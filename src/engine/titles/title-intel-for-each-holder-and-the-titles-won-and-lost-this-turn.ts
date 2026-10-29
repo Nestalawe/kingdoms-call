@@ -1,7 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { SKILL_LABELS } from '../army-tables.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { noteGraveIntel } from '../graves.ts';
@@ -30,6 +29,10 @@ import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-thei
 // the holders board and each report's gains/losses therefore never disagree on who holds what.
 // Each rival / piece of intel is its OWN line, and any character named carries their province.
 // Gated: nothing emits before Titles go public (turn 5) or once the game is over.
+// Every line is a fact (plan P1-12d13): the title intelligence's kinds (titles/the-facts-the-title-intelligence-lines-
+// record.ts), each holding a realm as the line names it, a province's name as the world holds it (null where it has
+// none), counts and figures; the prose writes the words, each line's "[The Throne] " first
+// (src/views/prose/the-words-of-the-title-intelligence-lines.ts).
 export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy(turnContext) {
   const { G } = turnContext;
   const _pub = (G.turn || 1) >= TITLES_PUBLIC_FROM_TURN || !!G.gameOver;
@@ -46,28 +49,18 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
     const h = TH[key];
     return h && h.playerIndex != null ? h.playerIndex : null;
   };
-  const pnm = (pi) => (pi == null ? 'no realm' : G.players[pi]?.name || 'Player ' + (pi + 1));
-  const prn = (id) => provs[id]?.name || 'unknown';
-  // name a character with their realm, or — for an unsworn hero — the province they guard. `lvl`
-  // (optional) prints as "Level N", never the old "L2" shorthand.
-  const who = (ch, lvl) => {
-    const lv = lvl != null ? ` (Level ${lvl})` : '';
-    return ch.player != null
-      ? `${ch.name}${lv} of ${pnm(ch.player)}`
-      : `${ch.name}${lv}, an independent hero guarding ${prn(ch.location)}`;
-  };
   // 2026-09-24 (Toby item 5): a title tells its holder nothing about a realm the crown has not
   // yet MET (player._encountered — the same list that gates Treat / Declare War). Unmet realms
   // are neither named nor measured; one closing line per title says how many stay in the dark.
   const met = (pi, i) => i === pi || ((G.players[pi] || {})._encountered || []).includes(i);
-  const unmetLine = (pi, label) => {
+  const unmetLine = (pi, title) => {
     const n = (G.players || []).filter(
       (pl, i) => pl && i !== pi && !pl.conceded && !pl.eliminated && !met(pi, i),
     ).length;
     if (n > 0)
       emit(turnContext, {
         type: 'system',
-        text: `[${label}] ${n === 1 ? 'One realm' : `${n} realms`} your crown has not yet met — nothing may be gleaned of ${n === 1 ? 'it' : 'them'} until you do.`,
+        fact: { kind: "a title's holder learns how many realms his crown has not met", title, count: n },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -104,7 +97,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       const own = dispFloor((100 * (STD.taxByPlayer[pi] || 0)) / world);
       emit(turnContext, {
         type: 'system',
-        text: `[The Throne] Your realm: ${own}% of the world tax base.`,
+        fact: { kind: "the Throne's holder learns his realm's share of the world tax base", percent: own },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -113,12 +106,16 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         const pct = Math.round((100 * (STD.taxByPlayer[i] || 0)) / world);
         emit(turnContext, {
           type: 'system',
-          text: `[The Throne] ${pnm(i)}: ${pct}% of the world tax base.`,
+          fact: {
+            kind: "the Throne's holder learns a rival's share of the world tax base",
+            realm: { realmName: G.players[i]?.name || null, seat: i },
+            percent: pct,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       });
-      unmetLine(pi, 'The Throne');
+      unmetLine(pi, 'throne');
     }
   }
   // THE VAULTKEEPER — each rival's treasury (own line).
@@ -127,7 +124,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
     if (pi != null) {
       emit(turnContext, {
         type: 'system',
-        text: `[The Vaultkeeper] Your realm: ${G.players[pi]?.gold || 0}g in treasury.`,
+        fact: { kind: "the Vaultkeeper's holder learns his realm's treasury", gold: G.players[pi]?.gold || 0 },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -135,12 +132,16 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         if (i === pi || !met(pi, i)) return;
         emit(turnContext, {
           type: 'system',
-          text: `[The Vaultkeeper] ${pnm(i)}: ${pl.gold || 0}g in treasury.`,
+          fact: {
+            kind: "the Vaultkeeper's holder learns a rival's treasury",
+            realm: { realmName: G.players[i]?.name || null, seat: i },
+            gold: pl.gold || 0,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       });
-      unmetLine(pi, 'The Vaultkeeper');
+      unmetLine(pi, 'vault');
     }
   }
   // THE GRAND MARSHAL — each rival's strongest land army: commander + province (own line).
@@ -152,7 +153,12 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         const oc = strongestChar(pi, false);
         emit(turnContext, {
           type: 'system',
-          text: `[The Grand Marshal] Your realm: ${oc ? `strongest land army led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc, false)})` : 'no land army in the field'}.`,
+          fact: {
+            kind: "the Grand Marshal's holder learns his realm's strongest land army",
+            army: oc
+              ? { commanderName: oc.name, provinceName: provs[oc.location]?.name || null, strength: kindStr(oc, false) }
+              : null,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -164,7 +170,15 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           any = true;
           emit(turnContext, {
             type: 'system',
-            text: `[The Grand Marshal] ${pnm(i)}: strongest land army led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c, false)}).`,
+            fact: {
+              kind: "the Grand Marshal's holder learns a rival's strongest land army",
+              realm: { realmName: G.players[i]?.name || null, seat: i },
+              army: {
+                commanderName: c.name,
+                provinceName: provs[c.location]?.name || null,
+                strength: kindStr(c, false),
+              },
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -173,11 +187,11 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       if (!any)
         emit(turnContext, {
           type: 'system',
-          text: `[The Grand Marshal] No rival fields a land army this turn.`,
+          fact: { kind: "the Grand Marshal's holder learns no rival fields a land army" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
-      unmetLine(pi, 'The Grand Marshal');
+      unmetLine(pi, 'marshal');
     }
   }
   // THE SEA LORD — each rival's strongest fleet: commander + province (own line).
@@ -189,7 +203,12 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         const oc = strongestChar(pi, true);
         emit(turnContext, {
           type: 'system',
-          text: `[The Sea Lord] Your realm: ${oc ? `strongest fleet led by ${oc.name} in ${prn(oc.location)} (strength ${kindStr(oc, true)})` : 'no fleet at sea'}.`,
+          fact: {
+            kind: "the Sea Lord's holder learns his realm's strongest fleet",
+            fleet: oc
+              ? { commanderName: oc.name, provinceName: provs[oc.location]?.name || null, strength: kindStr(oc, true) }
+              : null,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -201,7 +220,15 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           any = true;
           emit(turnContext, {
             type: 'system',
-            text: `[The Sea Lord] ${pnm(i)}: strongest fleet led by ${c.name} in ${prn(c.location)} (strength ${kindStr(c, true)}).`,
+            fact: {
+              kind: "the Sea Lord's holder learns a rival's strongest fleet",
+              realm: { realmName: G.players[i]?.name || null, seat: i },
+              fleet: {
+                commanderName: c.name,
+                provinceName: provs[c.location]?.name || null,
+                strength: kindStr(c, true),
+              },
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -210,11 +237,11 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       if (!any)
         emit(turnContext, {
           type: 'system',
-          text: `[The Sea Lord] No rival fields a fleet this turn.`,
+          fact: { kind: "the Sea Lord's holder learns no rival fields a fleet" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
-      unmetLine(pi, 'The Sea Lord');
+      unmetLine(pi, 'sea');
     }
   }
   // THE MONSTER-BANE — 2026-09-17: was the single runner-up for the title. Now the foremost
@@ -242,7 +269,12 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       const own = bestOf(pi);
       emit(turnContext, {
         type: 'system',
-        text: `[The Monster-Bane] Your champion: ${own ? `${own.c.name} in ${prn(own.c.location)} with ${own.m} monster-blood to their name` : 'no hero of yours has drawn monster-blood'}.`,
+        fact: {
+          kind: "the Monster-Bane's holder learns his realm's champion",
+          champion: own
+            ? { heroName: own.c.name, provinceName: provs[own.c.location]?.name || null, monsterBlood: own.m }
+            : null,
+        },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -254,7 +286,11 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           any = true;
           emit(turnContext, {
             type: 'system',
-            text: `[The Monster-Bane] ${pnm(i)}: ${r.c.name} in ${prn(r.c.location)} — ${r.m} monster-blood.`,
+            fact: {
+              kind: "the Monster-Bane's holder learns a rival's champion",
+              realm: { realmName: G.players[i]?.name || null, seat: i },
+              champion: { heroName: r.c.name, provinceName: provs[r.c.location]?.name || null, monsterBlood: r.m },
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -263,11 +299,11 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       if (!any)
         emit(turnContext, {
           type: 'system',
-          text: `[The Monster-Bane] No rival realm has a hero who has drawn monster-blood worth noting.`,
+          fact: { kind: "the Monster-Bane's holder learns no rival's hero has drawn monster-blood" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
-      unmetLine(pi, 'The Monster-Bane');
+      unmetLine(pi, 'monster');
     }
   }
   // THE LOREMASTER — 2026-09-17: was this turn's discoveries only, which in most turns is nothing
@@ -287,14 +323,21 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           anyHeld = true;
           emit(turnContext, {
             type: 'system',
-            text: `[The Loremaster] ${pnm(i)} holds ${ds.length} discover${ds.length === 1 ? 'y' : 'ies'}: ${ds.map((d) => d.name).join(', ')}.`,
+            fact: {
+              kind: "the Loremaster's holder learns a rival's discoveries",
+              realm: { realmName: G.players[i]?.name || null, seat: i },
+              discoveries: ds.map((d) => d.name),
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
         } else
           emit(turnContext, {
             type: 'system',
-            text: `[The Loremaster] ${pnm(i)} holds no discoveries at all.`,
+            fact: {
+              kind: "the Loremaster's holder learns a rival holds no discoveries",
+              realm: { realmName: G.players[i]?.name || null, seat: i },
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -305,7 +348,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       if (!anyHeld)
         emit(turnContext, {
           type: 'system',
-          text: `[The Loremaster] No rival realm has yet learned anything worth copying.`,
+          fact: { kind: "the Loremaster's holder learns no rival has learned anything worth copying" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -324,13 +367,13 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           });
           emit(turnContext, {
             type: 'system',
-            text: `[The Loremaster] Your scholars copy ${pk.name} from a rival's fresh notes — you now hold this discovery.`,
+            fact: { kind: "the Loremaster's scholars copy a rival's fresh discovery", discoveryName: pk.name },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
         }
       }
-      unmetLine(pi, 'The Loremaster');
+      unmetLine(pi, 'lore');
     }
   }
   // THE ARCHMAGE — 2026-09-17: the foremost mage of each school OUTSIDE the holder's own realm.
@@ -340,13 +383,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
     const pi = holder('arch');
     if (pi != null) {
       const tot = (c) => Object.values(c.skills || {}).reduce((s, v) => s + (v || 0), 0);
-      [
-        ['white', 'White'],
-        ['psychic', 'Psychic'],
-        ['illusory', 'Illusory'],
-        ['elemental', 'Elemental'],
-        ['necromancy', 'Necromancy'],
-      ].forEach(([sk, lab]) => {
+      ['white', 'psychic', 'illusory', 'elemental', 'necromancy'].forEach((sk) => {
         let best = null,
           bl = -1,
           bt = -1;
@@ -363,19 +400,27 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         if (best && bl > 0)
           emit(turnContext, {
             type: 'system',
-            text: `[The Archmage] ${lab}: ${who(best, bl)}${best.player != null ? ` in ${prn(best.location)}` : ''}.`,
+            fact: {
+              kind: "the Archmage's holder learns a school's foremost mage outside his realm",
+              school: sk,
+              heroName: best.name,
+              level: bl,
+              realm:
+                best.player != null ? { realmName: G.players[best.player]?.name || null, seat: best.player } : null,
+              provinceName: provs[best.location]?.name || null,
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
         else
           emit(turnContext, {
             type: 'system',
-            text: `[The Archmage] ${lab}: no mage of note outside your own realm.`,
+            fact: { kind: "the Archmage's holder learns of no mage of a school outside his realm", school: sk },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
       });
-      unmetLine(pi, 'The Archmage');
+      unmetLine(pi, 'arch');
     }
   }
   // THE HIEROPHANT — 2026-09-17: was the largest skeletal army, which is the Deathpriest's ground
@@ -400,15 +445,20 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       );
       if (vis.length) {
         vis.forEach((g) => {
-          const sk =
-            Object.entries(g.skills || {})
-              .filter(([, v]) => v > 0)
-              .sort((a, b) => b[1] - a[1])
-              .map(([k, v]) => `${SKILL_LABELS[k] || k} ${v}`)
-              .join(', ') || 'no skills the grave remembers';
+          const skills = Object.entries(g.skills || {})
+            .filter(([, v]) => v > 0)
+            .sort((a, b) => b[1] - a[1])
+            .map(([skill, level]) => ({ skill, level }));
           emit(turnContext, {
             type: 'system',
-            text: `[The Hierophant] The dead speak: ${g.name}${g.player != null ? ` of ${pnm(g.player)}` : ''}${g.isKing ? ', a king,' : ''} lying in ${prn(g.location)} — ${sk}.`,
+            fact: {
+              kind: "the Hierophant's holder hears what a fallen hero knew",
+              heroName: g.name,
+              realm: g.player != null ? { realmName: G.players[g.player]?.name || null, seat: g.player } : null,
+              isKing: !!g.isKing,
+              provinceName: provs[g.location]?.name || null,
+              skills,
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -416,7 +466,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       } else
         emit(turnContext, {
           type: 'system',
-          text: `[The Hierophant] No fallen hero lies where your priests can read them this turn.`,
+          fact: { kind: "the Hierophant's holder finds no fallen hero to read" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -443,7 +493,11 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           if (_dpl) noteGraveIntel(_dpl, pv.id, G.turn, _fine, { partial: true });
           emit(turnContext, {
             type: 'system',
-            text: `[The Deathpriest] Grave-sight: ${prn(pv.id)} holds ${n} crack/elite dead. (Filed under Graveyards Known.)`,
+            fact: {
+              kind: "the Deathpriest's Grave-sight finds crack and elite dead in a province",
+              provinceName: provs[pv.id]?.name || null,
+              count: n,
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -452,7 +506,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       if (!any)
         emit(turnContext, {
           type: 'system',
-          text: `[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.`,
+          fact: { kind: "the Deathpriest's Grave-sight finds no crack or elite dead" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -475,10 +529,16 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         // actionable; knowing WHICH hero did it, and where they were standing when they did,
         // tells you who to hunt and where they are. The realm is still given, after the name.
         led.forEach((e) => {
-          const agent = `${e.isKing ? '\u265B ' : ''}${e.charName || 'an unknown agent'}${e.byPi != null ? ` of ${pnm(e.byPi)}` : ', unsworn to any crown'}`;
           emit(turnContext, {
             type: 'system',
-            text: `[The Spymaster] ${agent} ${e.kind} in ${prn(e.provId)}.`,
+            fact: {
+              kind: "the Spymaster's holder learns of an act of espionage against his lands",
+              agentIsKing: !!e.isKing,
+              agentName: e.charName || null,
+              agentsRealm: e.byPi != null ? { realmName: G.players[e.byPi]?.name || null, seat: e.byPi } : null,
+              whatTheAgentDid: e.kind,
+              provinceName: provs[e.provId]?.name || null,
+            },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -492,19 +552,27 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           r.n++;
           byChar.set(k, r);
         });
-        const roll = [...byChar.values()]
+        const heroes = [...byChar.values()]
           .sort((a, b) => b.n - a.n)
-          .map((r) => `${r.name || '?'}${r.pi != null ? ` (${pnm(r.pi)})` : ''}${r.n > 1 ? ` \u00d7${r.n}` : ''}`);
+          .map((r) => ({
+            heroName: r.name || null,
+            realm: r.pi != null ? { realmName: G.players[r.pi]?.name || null, seat: r.pi } : null,
+            times: r.n,
+          }));
         emit(turnContext, {
           type: 'system',
-          text: `[The Spymaster] ${led.length} intrusion${led.length === 1 ? '' : 's'} into your lands this turn by ${byChar.size} hero${byChar.size === 1 ? '' : 'es'}: ${roll.join(', ')}.`,
+          fact: {
+            kind: "the Spymaster's holder learns who intruded into his lands this turn",
+            intrusions: led.length,
+            heroes,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       } else
         emit(turnContext, {
           type: 'system',
-          text: `[The Spymaster] Your counter-intelligence reports a quiet turn — no hand was raised against your lands.`,
+          fact: { kind: "the Spymaster's holder learns no hand was raised against his lands" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -537,7 +605,11 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       const own = atlas(pi);
       emit(turnContext, {
         type: 'system',
-        text: `[The Cartographer] Your atlas: ${own.full} province${own.full === 1 ? '' : 's'} fully charted, ${own.pct}% of the world mapped.`,
+        fact: {
+          kind: "the Cartographer's holder learns his realm's atlas",
+          fullyCharted: own.full,
+          percentMapped: own.pct,
+        },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -548,7 +620,12 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         const a = atlas(i);
         emit(turnContext, {
           type: 'system',
-          text: `[The Cartographer] ${pnm(i)}: ${a.full} province${a.full === 1 ? '' : 's'} fully charted, ${a.pct}% of the world mapped.`,
+          fact: {
+            kind: "the Cartographer's holder learns a rival's atlas",
+            realm: { realmName: G.players[i]?.name || null, seat: i },
+            fullyCharted: a.full,
+            percentMapped: a.pct,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
@@ -556,11 +633,11 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       if (!any)
         emit(turnContext, {
           type: 'system',
-          text: `[The Cartographer] No rival realm remains to survey.`,
+          fact: { kind: "the Cartographer's holder finds no rival realm to survey" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
-      unmetLine(pi, 'The Cartographer');
+      unmetLine(pi, 'carto');
     }
   }
   // THE BEASTLORD — the rival menagerie. For each realm: how many Monster-category units they
@@ -589,12 +666,12 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         });
         return { total, best, bn };
       };
-      const line = (i, label) => {
+      const line = (i, realm) => {
         const r = census(i, TITLE_MONSTER_ARMIES);
         if (r.total === 0) {
           emit(turnContext, {
             type: 'system',
-            text: `[The Beastlord] ${label}: no monsters under arms.`,
+            fact: { kind: "the Beastlord's holder learns a realm has no monsters under arms", realm },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -602,26 +679,33 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         }
         emit(turnContext, {
           type: 'system',
-          text: `[The Beastlord] ${label}: ${r.total} monster unit${r.total === 1 ? '' : 's'} under arms${r.best ? `, the largest host — ${r.bn} — with ${r.best.name} in ${prn(r.best.location)}` : ' (all of them garrisoned)'}.`,
+          fact: {
+            kind: "the Beastlord's holder learns a realm's monsters under arms",
+            realm,
+            units: r.total,
+            largestHost: r.best
+              ? { units: r.bn, heroName: r.best.name, provinceName: provs[r.best.location]?.name || null }
+              : null,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       };
-      line(pi, 'Your realm');
+      line(pi, null);
       let any = false;
       G.players.forEach((pl, i) => {
         if (i === pi || !met(pi, i)) return;
         any = true;
-        line(i, pnm(i));
+        line(i, { realmName: G.players[i]?.name || null, seat: i });
       });
       if (!any)
         emit(turnContext, {
           type: 'system',
-          text: `[The Beastlord] No rival realm remains to reckon.`,
+          fact: { kind: "the Beastlord's holder finds no rival realm to reckon" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
-      unmetLine(pi, 'The Beastlord');
+      unmetLine(pi, 'beast');
     }
   }
   // THE WILDWARDEN — the rival wild host. The same census, for the free beasts: thunderbirds, ents,
@@ -649,12 +733,12 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         });
         return { total, best, bn };
       };
-      const line = (i, label) => {
+      const line = (i, realm) => {
         const r = census(i, TITLE_CREATURE_ARMIES);
         if (r.total === 0) {
           emit(turnContext, {
             type: 'system',
-            text: `[The Wildwarden] ${label}: the wild answers to no one here.`,
+            fact: { kind: "the Wildwarden's holder learns the wild answers to no one in a realm", realm },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           });
@@ -662,26 +746,33 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         }
         emit(turnContext, {
           type: 'system',
-          text: `[The Wildwarden] ${label}: ${r.total} creature unit${r.total === 1 ? '' : 's'} in the field${r.best ? `, the greatest host — ${r.bn} — with ${r.best.name} in ${prn(r.best.location)}` : ' (all of them garrisoned)'}.`,
+          fact: {
+            kind: "the Wildwarden's holder learns a realm's creatures in the field",
+            realm,
+            units: r.total,
+            largestHost: r.best
+              ? { units: r.bn, heroName: r.best.name, provinceName: provs[r.best.location]?.name || null }
+              : null,
+          },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
       };
-      line(pi, 'Your realm');
+      line(pi, null);
       let any = false;
       G.players.forEach((pl, i) => {
         if (i === pi || !met(pi, i)) return;
         any = true;
-        line(i, pnm(i));
+        line(i, { realmName: G.players[i]?.name || null, seat: i });
       });
       if (!any)
         emit(turnContext, {
           type: 'system',
-          text: `[The Wildwarden] No rival realm remains to reckon.`,
+          fact: { kind: "the Wildwarden's holder finds no rival realm to reckon" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
-      unmetLine(pi, 'The Wildwarden');
+      unmetLine(pi, 'wild');
     }
   }
 }
