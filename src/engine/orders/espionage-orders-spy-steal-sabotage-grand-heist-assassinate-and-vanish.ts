@@ -4,7 +4,7 @@ import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { homeFounderOf, homeProvinceIdFor } from '../grand-design.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.ts';
-import { activeItems, gainedItemNote } from '../items/equipment.ts';
+import { activeItems, settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { theSpysItemsMakeHisSpySure } from '../rules/the-registry-of-magic-item-effects.ts';
 import { applyItemMaxHp, transferableItems } from '../personal-combat/helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
@@ -758,7 +758,10 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
         });
         emit(turnContext, {
           type: 'hire',
-          fact: { kind: 'a thief notes how he carries what he took', gainedItemNote: gainedItemNote(c, [stolen]) },
+          fact: {
+            kind: 'a thief notes how he carries what he took',
+            theItemsHeGained: settleTheItemsAHeroGained(c, [stolen]),
+          },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
@@ -1006,11 +1009,11 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       province: prov.id,
     });
     if (_heistItem) {
-      const _gn = gainedItemNote(c, [_heistItem]);
+      const _gn = settleTheItemsAHeroGained(c, [_heistItem]);
       if (_gn)
         emit(turnContext, {
           type: 'hire',
-          fact: { kind: 'a thief notes how he carries what he took', gainedItemNote: _gn },
+          fact: { kind: 'a thief notes how he carries what he took', theItemsHeGained: _gn },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,

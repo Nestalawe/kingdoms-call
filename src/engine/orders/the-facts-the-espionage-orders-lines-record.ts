@@ -11,13 +11,14 @@
 // realm is shown them (theStatShownAsALineTellsIt and theOddsShownAsALineTellsIt, heroes/effective-skills-and-hidden-
 // heroes.ts: what a realm has not earned is never in the fact), and what a thief was caught at and a Grand Heist's haul
 // as records of their values; the prose writes every word (src/views/prose/the-words-of-the-espionage-orders-lines.ts).
-// One field holds words still: the note of how a thief carries what he took (gainedItemNote, src/engine/items/
-// equipment.ts, which also settles what he wears: the items' area, a later slice), listed by the static test. Each is
-// filed on its own, with the audience its event names (Decision 6: its event's): no audience changes. A hero slain by a
-// cornered thief or an assassin is told by reportHeroFall (heroes/), as a hero's death's kind "a hero is slain outside
-// a battle", the way he fell a value (P1-12d11).
+// How a thief carries what he took is a record since P1-12d21 (TheItemsAHeroGained, src/engine/items/equipment.ts,
+// whose settleTheItemsAHeroGained also settles what he wears). Each is filed on its own, with the audience its event
+// names (Decision 6: its event's): no audience changes. A hero slain by a cornered thief or an assassin is told by
+// reportHeroFall (heroes/), as a hero's death's kind "a hero is slain outside a battle", the way he fell a value
+// (P1-12d11).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
+import type { TheItemsAHeroGained } from '../items/equipment.ts';
 import type {
   AStatShownAsALineTellsIt,
   TheOddsShownAsALineTellsIt,
@@ -206,8 +207,9 @@ export type TheFactOfTheEspionageOrdersLine =
   | { kind: 'a thief lifts a magic item from a hero'; heroName: string; itemName: string; victimName: string }
   | {
       kind: 'a thief notes how he carries what he took';
-      /** gainedItemNote's words (the items' area: a later slice). */
-      gainedItemNote: string;
+      /** How he carries each item he gained, as the line tells it (settleTheItemsAHeroGained): null when there is
+       *  nothing to say. */
+      theItemsHeGained: TheItemsAHeroGained | null;
     }
   | {
       kind: 'a realm learns a thief stole a magic item';

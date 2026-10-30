@@ -15,9 +15,10 @@
 // tells it (its event's); and who slew a hero is a record, not words (TheOneWhoSlewAHero: handleHeroDeath keeps it on
 // the dead hero as `_slainBy`, and his host's lines hold it), so a lair's guardian is its name and its province.
 // Since P1-12d12: the note of how a hero carries a fallen foe's possessions he takes is a kind too, holding
-// gainedItemNote's words (the items' area: a later slice), listed by the static test.
+// how he carries each of them (since P1-12d21 a record, TheItemsAHeroGained: the prose writes the note).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
+import type { TheItemsAHeroGained } from '../items/equipment.ts';
 
 /** The surgeons' line when they come too late (the duel before a battle tells it to the fallen duellist's realm alone,
  *  as personal combat's kind for his realm alone, with the same values). */
@@ -129,8 +130,8 @@ export type TheFactOfAHerosDeathsLine =
   | { kind: "a hero takes a fallen foe's possessions"; recipientName: string; heroName: string; itemNames: string[] }
   | {
       kind: "a hero notes how he carries a fallen foe's possessions";
-      /** gainedItemNote's words (the items' area: a later slice). */
-      gainedItemNote: string;
+      /** How he carries each item he gained, as the line tells it (settleTheItemsAHeroGained). */
+      theItemsHeGained: TheItemsAHeroGained;
     }
   | { kind: "a fallen hero's possessions are lost with no heir"; heroName: string }
   | { kind: 'a fallen Divine monarch will rise again on holy ground'; heroName: string }

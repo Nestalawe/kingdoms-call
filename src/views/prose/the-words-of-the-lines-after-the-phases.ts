@@ -9,6 +9,7 @@ import type {
   SkeletalCompaniesThatCrumbled,
   TheFactOfALineAfterThePhases,
 } from '../../engine/turn/the-facts-the-lines-after-the-phases-record.ts';
+import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 /** Skeletal companies that crumbled, as the line tells them: "2 skeletal units under Aldric in Highmoor — …". */
 function theCompaniesThatCrumbled(crumbled: SkeletalCompaniesThatCrumbled): string {
@@ -41,7 +42,7 @@ export function theWordsOfALineAfterThePhases(fact: TheFactOfALineAfterThePhases
     case "a courier's parcel reaches its hero as the season closes":
       return `📦 A courier reaches ${fact.heroName} with ${fact.itemNames.join(', ')}${fact.senderName !== null ? ` from ${fact.senderName}` : ''} — delivered as the season closes, ready to use next turn.`;
     case "a hero a courier's parcel reaches notes how he carries it":
-      return fact.gainedItemNote;
+      return theWordsOfTheItemsAHeroGained(fact.theItemsHeGained);
     case 'Elven companies that slipped a battle scatter with no land to return to':
       return `🍃 ${String(fact.unitCount)} Elven unit${fact.unitCount !== 1 ? 's' : ''} broke free of battle and made for home — but ${fact.realmName ?? 'the realm'} holds no land left to return to, and they scatter into the wild, lost.`;
     case 'Elven companies that slipped a battle find their way home':

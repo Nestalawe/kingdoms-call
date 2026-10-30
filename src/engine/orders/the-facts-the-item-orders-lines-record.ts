@@ -4,11 +4,12 @@
 // copies struck from the hoards) or refused, a passive item, items handed over or sent by courier, and each refusal.
 // Each kind holds plain values: a hero's, an item's or a province's name as the world holds it (null where the world
 // has none: the prose writes the words for it), a count, a flag, and the items a line names copied as it is told; the
-// prose writes every word (src/views/prose/the-words-of-the-item-orders-lines.ts). One field holds words still: the
-// equip note of a hero handed items (gainedItemNote, src/engine/items/equipment.ts, which also settles what he
-// wears: the items' area, a later slice), listed by the static test. Each is filed on its own, with the audience its
-// event names (Decision 6: its event's).
+// prose writes every word (src/views/prose/the-words-of-the-item-orders-lines.ts). How a hero handed items carries
+// each is a record since P1-12d21 (TheItemsAHeroGained, src/engine/items/equipment.ts, whose
+// settleTheItemsAHeroGained also settles what he wears). Each is filed on its own, with the audience its event names
+// (Decision 6: its event's).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type { TheItemsAHeroGained } from '../items/equipment.ts';
 
 /** An item a hero wears or wields, as the line names it: its name and its slot. */
 export interface AnItemWornAsTheLineNamesIt {
@@ -81,8 +82,8 @@ export type TheFactOfTheItemOrdersLine =
   | { kind: 'a hero receives items from a comrade'; recipientName: string; itemNames: string[]; heroName: string }
   | {
       kind: 'a hero handed items notes how he carries them';
-      /** gainedItemNote's words (the items' area: a later slice). */
-      gainedItemNote: string;
+      /** How he carries each item he gained, as the line tells it (settleTheItemsAHeroGained). */
+      theItemsHeGained: TheItemsAHeroGained;
     }
   | {
       kind: 'a hero sends items by courier';

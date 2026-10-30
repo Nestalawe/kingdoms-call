@@ -1,6 +1,6 @@
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
-import { activeItems, gainedItemNote, hasItemBase } from '../items/equipment.ts';
+import { activeItems, hasItemBase, settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { applyItemMaxHp, transferableItems } from './helpers.ts';
 import { pcFoeCat } from '../titles/perks.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -643,8 +643,8 @@ export function resolvePersonalCombat(
             {
               // every hero's name is words (above); a hero of none would be a broken save, refused here
               if (!hisNameIsWords(theFoesHero)) throw new TypeError('a hero of no name');
-              const _gn = gainedItemNote(theFoesHero, [_lost]);
-              if (_gn) narrate(narrative, { kind: 'a gained item noted', gainedItemNote: _gn });
+              const _gn = settleTheItemsAHeroGained(theFoesHero, [_lost]);
+              if (_gn) narrate(narrative, { kind: 'a gained item noted', theItemsHeGained: _gn });
             } // item 10
           }
         }

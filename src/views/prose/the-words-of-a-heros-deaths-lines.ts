@@ -13,6 +13,7 @@ import type {
 } from '../../engine/heroes/the-facts-a-heros-death-lines-record.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../../engine/dice-and-army-names.ts';
 import { fmtRoll } from '../../engine/dice-and-army-names.ts';
+import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 /** Who slew the dead commander, in words: the killer's name, or "the Barrow Wight of Highmoor" for a lair's guardian
  *  ("the guardian of Highmoor" when the guardian has no name); null when the death recorded no one. */
@@ -122,7 +123,7 @@ export function theWordsOfAHerosDeathsLine(fact: TheFactOfAHerosDeathsLine): str
     case "a hero takes a fallen foe's possessions":
       return `🗡 ${fact.recipientName} takes ${fact.heroName}'s possessions from the fallen: ${fact.itemNames.join(', ')}.`;
     case "a hero notes how he carries a fallen foe's possessions":
-      return fact.gainedItemNote;
+      return theWordsOfTheItemsAHeroGained(fact.theItemsHeGained);
     case "a fallen hero's possessions are lost with no heir":
       return `${fact.heroName}'s possessions are lost — no heir to receive them.`;
     case 'a fallen Divine monarch will rise again on holy ground':

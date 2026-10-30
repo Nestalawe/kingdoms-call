@@ -5,7 +5,7 @@ import { monarchRestProvId } from '../grand-design.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { recordBattleGraves, recordHeroGrave } from '../graves.ts';
 import { ownedConsecratedProvs } from './fame-and-consecration.ts';
-import { gainedItemNote } from '../items/equipment.ts';
+import { settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { _KC_LOOT_GAINED, applyItemMaxHp, transferableItems } from '../personal-combat/helpers.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
@@ -520,11 +520,11 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
           province: recipient.location != null ? recipient.location : undefined,
         });
       if (recipient.player != null) {
-        const _gn = gainedItemNote(recipient, deadItems);
+        const _gn = settleTheItemsAHeroGained(recipient, deadItems);
         if (_gn)
           emit(turnContext, {
             type: 'system',
-            fact: { kind: "a hero notes how he carries a fallen foe's possessions", gainedItemNote: _gn },
+            fact: { kind: "a hero notes how he carries a fallen foe's possessions", theItemsHeGained: _gn },
             audience: { actor: recipient.player, realms: [recipient.player] },
             hero: recipient.id,
             phase: turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,

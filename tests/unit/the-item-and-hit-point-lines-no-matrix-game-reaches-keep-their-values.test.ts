@@ -29,7 +29,6 @@ import {
   _wardScore,
   activeItems,
   effTemper,
-  gainedItemNote,
   hasItemBase,
   itemFallbackOk,
   itemPowerScore,
@@ -38,7 +37,9 @@ import {
   migrateItemTiers,
   normaliseEquipment,
   rollMagicItem,
+  settleTheItemsAHeroGained,
 } from '../../src/engine/items/equipment.ts';
+import { theWordsOfTheItemsAHeroGained } from '../../src/views/prose/the-words-of-the-items-a-hero-gained.ts';
 import {
   GUARDIAN_TABLE_VER,
   computeMaxHp,
@@ -252,19 +253,27 @@ describe('the item and hit-point lines no matrix game reaches keep their values'
   });
 
   test("a gained item's note: no hero, list or items, a gap, nothing gained, no room in a slot of no words", () => {
+    // the engine settles the slots and records how the hero carries each item; the prose writes the note (P1-12d21)
+    const theNote = (...a: Parameters<typeof settleTheItemsAHeroGained>) =>
+      theWordsOfTheItemsAHeroGained(settleTheItemsAHeroGained(...a));
     const ring = aRing('A Gained Ring');
-    expect(gainedItemNote(null, [ring])).toBe('');
-    expect(gainedItemNote({ name: 'Ana' }, [ring])).toBe('');
-    expect(gainedItemNote({ name: 'Ana', items: {} as never }, [ring])).toBe('');
-    expect(gainedItemNote({ name: 'Ana', items: [ring] }, null)).toBe('');
-    expect(gainedItemNote({ name: 'Ana', items: [ring] }, [aRing('A Ring Not Carried')])).toBe('');
+    expect(theNote(null, [ring])).toBe('');
+    expect(theNote({ name: 'Ana' }, [ring])).toBe('');
+    expect(theNote({ name: 'Ana', items: {} as never }, [ring])).toBe('');
+    expect(theNote({ name: 'Ana', items: [ring] }, null)).toBe('');
+    expect(theNote({ name: 'Ana', items: [ring] }, [aRing('A Ring Not Carried')])).toBe('');
     const odd = anOddSlotItem('Old Boots');
-    expect(gainedItemNote({ name: 'Ana', items: [null, odd] }, [null, odd])).toBe(
+    expect(theNote({ name: 'Ana', items: [null, odd] }, [null, odd])).toBe(
       '🎒 Ana has no room to equip the Old Boots: the boots slot is full, so it goes in the pack (an Equip Items order can swap it in).',
+    );
+    const wornOdd = anOddSlotItem('Worn Boots', true);
+    const odd2 = anOddSlotItem('Old Boots');
+    expect(theNote({ name: 'Ana', items: [wornOdd, odd2] }, [odd2])).toBe(
+      '🎒 Ana has no room to equip the Old Boots: the boots slot already holds the Worn Boots, so it goes in the pack (an Equip Items order can swap it in).',
     );
     const worn = [aRing('Ring One', true), aRing('Ring Two', true)];
     const third = aRing('Ring Three');
-    expect(gainedItemNote({ name: 'Ana', items: [null, ...worn, third] }, [third])).toBe(
+    expect(theNote({ name: 'Ana', items: [null, ...worn, third] }, [third])).toBe(
       '🎒 Ana has no room to equip the Ring Three: the both ring slots already hold the Ring One and the Ring Two, so it goes in the pack (an Equip Items order can swap it in).',
     );
   });

@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
-import { ITEM_SLOT_CAP, gainedItemNote, normaliseEquipment } from '../items/equipment.ts';
+import { ITEM_SLOT_CAP, normaliseEquipment, settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { thePowerAnItemWorksWhenUsed } from '../rules/the-registry-of-magic-item-effects.ts';
 import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
@@ -414,12 +414,12 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       ph,
     );
     {
-      const _gn = gainedItemNote(recip, given);
+      const _gn = settleTheItemsAHeroGained(recip, given);
       if (_gn)
         notifyTarget(
           turnContext,
           recip,
-          { kind: 'a hero handed items notes how he carries them', gainedItemNote: _gn },
+          { kind: 'a hero handed items notes how he carries them', theItemsHeGained: _gn },
           ph,
         );
     } // item 10

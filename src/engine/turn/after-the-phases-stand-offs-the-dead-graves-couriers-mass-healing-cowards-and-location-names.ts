@@ -2,7 +2,7 @@
 import { monarchRestProvId } from '../grand-design.ts';
 import { senseGravesUnderfoot } from '../graves.ts';
 import { consecratedIds, relOfReport } from '../heroes/fame-and-consecration.ts';
-import { gainedItemNote } from '../items/equipment.ts';
+import { settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { maxHpPlayers } from '../heroes/skills-and-hp.ts';
 import { applyItemMaxHp } from '../personal-combat/helpers.ts';
 import { perkTier } from '../titles/perks.ts';
@@ -230,11 +230,11 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         phase: 99,
       });
       {
-        const _gn = gainedItemNote(dest, d.items);
+        const _gn = settleTheItemsAHeroGained(dest, d.items);
         if (_gn)
           emit(turnContext, {
             type: 'hire',
-            fact: { kind: "a hero a courier's parcel reaches notes how he carries it", gainedItemNote: _gn },
+            fact: { kind: "a hero a courier's parcel reaches notes how he carries it", theItemsHeGained: _gn },
             audience: { actor: dest.player, realms: [dest.player] },
             hero: dest.id,
             phase: 99,

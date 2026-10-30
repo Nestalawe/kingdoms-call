@@ -36,9 +36,8 @@
 //
 // What it lets through, by kind and field (Decision 2): the fighters' labels ("The Barrow Wight", a hero's name: the
 // facts-by-sense slice names a side) and a battle's side's, guard's, realm's or unit's label ("Aldric's leaderless
-// host", "the defenders of Highmoor", a realm's tag, "Aldric's Free Lances (Free Lances, Veteran)"), an item's equip
-// note (gainedItemNote: the items' words, src/engine/items/, a later row), the order's action (a slug: P1-12d6), five
-// slugs or names a string literal gives
+// host", "the defenders of Highmoor", a realm's tag, "Aldric's Free Lances (Free Lances, Veteran)"), the order's
+// action (a slug: P1-12d6), five slugs or names a string literal gives
 // (a strike's class, its channel, a guardian's grade as the content names it, a school's name as the content names it,
 // a realm's alignment, a unit's quality, the line an ability places a unit in; since P1-12d11 the way a hero slain
 // outside a battle fell, `how`; since P1-12d15 an heir's name as the engine names him, `heirName`). It can't see words
@@ -46,7 +45,9 @@
 // lingering harm's source are records (TheSourceOfADaze, TheSourceOfALingeringHarm), and since P1-12d20 a unit's fate's
 // verb is a flag (`inTheRout`, `hardenedByVictory`), a force's header's verb its values (HowAForceComesOnInItsHeader)
 // and a battle's severity its band's slug (TheSeverityOfABattle), so the compiler refuses words there from a typed
-// caller (the two battle files that call them are still untyped).
+// caller (the two battle files that call them are still untyped); since P1-12d21 how a hero carries the items he
+// gained is a record (TheItemsAHeroGained: settleTheItemsAHeroGained, src/engine/items/equipment.ts, in place of
+// gainedItemNote's words).
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
@@ -76,20 +77,17 @@
 // `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
 // assignment (`=`, `+=`); a call's argument or a comparison's operand isn't the value's words. It lets through, by kind
 // and field, the fighters' labels (`foeWho`, `who`: Decision 2) and a battle's side's, guard's, realm's and unit's
-// labels (`cName`, `atkName`, `defName`, `loserName`, `guardName`, `realmTag`, `unitName`, …: 27 fields), an item's
-// equip note (`gainedItemNote`, the items' words, a fight's and since P1-12d6 a hero handed items), the enemy unit a
-// unit faced (`theEnemyUnit`, a unit's label), a disbanding unit's owner (`ownerName`, a side's or a guard's label,
-// P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
+// labels (`cName`, `atkName`, `defName`, `loserName`, `guardName`, `realmTag`, `unitName`, …: 27 fields), the enemy
+// unit a unit faced (`theEnemyUnit`, a unit's label), a disbanding unit's owner (`ownerName`, a side's or a guard's
+// label, P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
 // `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
 // a company raised's `quality`, `unitType` and `unitName` as the world or the content holds them, Call to Arms' and
 // Harvest the Field's (since P1-12d17 an Evil conquest's enslaved folk's `unitType` too); since P1-12d8 the class
-// of lair Discover Lost Ruin names, `lairClass`, and the equip note of a
-// thief's take and of a lair's finder, `gainedItemNote`; since P1-12d9 a skeletal company's `quality`, `unitType` and
+// of lair Discover Lost Ruin names, `lairClass`; since P1-12d9 a skeletal company's `quality`, `unitType` and
 // `unitName` as the world holds them, Skeletal Armies', and the Wraiths' `unitName`, Raise Wraiths'; since P1-12d11
 // the way a hero slain outside a battle fell, `how`, each of reportHeroFall's 12 callers'; since P1-12d12 the realm's
-// tag of a challenger his quarry's realm learns of, `realmTag`, and the equip note of a hero who takes a fallen foe's
-// possessions, `gainedItemNote`; since P1-12d15 an heir's name as the engine names him, `heirName`; since P1-12d16 the
-// equip note of a hero a courier's parcel reaches, `gainedItemNote`); a record's `kind`
+// tag of a challenger his quarry's realm learns of, `realmTag`; since P1-12d15 an heir's name as the engine names him,
+// `heirName`; an item's equip note, `gainedItemNote`, until P1-12d21 made it a record); a record's `kind`
 // that a facts module declares is the record's name, not words (P1-12d6: where the companies muster; P1-12d7: why a
 // hand-over at sea is refused, where a Wild Calling tore beasts from; P1-12d8: what a thief was caught at; P1-12d9: why
 // a charmed mind may turn on its enchanter, a company a Telekinetic Storm strikes; P1-12d10: the troops that rally to a
@@ -408,17 +406,6 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
 
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
 const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
-  // an item's equip note: gainedItemNote's words (src/engine/items/equipment.ts), the items' area, a later row; since
-  // P1-12d8 a thief's (what he lifted from a hero or in a Grand Heist) and a lair's finder's; since P1-12d16 a hero a
-  // courier's parcel reaches
-  gainedItemNote: [
-    'a gained item noted',
-    'a hero handed items notes how he carries them',
-    'a thief notes how he carries what he took',
-    'a hero notes how he carries what a lair gave up',
-    "a hero notes how he carries a fallen foe's possessions",
-    "a hero a courier's parcel reaches notes how he carries it",
-  ],
   // the order's action as the order names it ('disband_army', 'rampage', …): a slug the prose reads
   action: ['a charmed hero will not carry out an order of his captor', 'a hero has already used a mastery this turn'],
   // the class of the killing strike, 'melee', 'ranged' or 'power': a slug the prose reads

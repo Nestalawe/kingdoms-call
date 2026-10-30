@@ -9,12 +9,13 @@
 // world has none: the prose writes the words for it), a count, a share mapped, a price, a chance and its roll, a flag
 // for a clause chosen by it, a lair's class or a guardian's grade as the order or the content names it, and the sites,
 // beasts, companies and items a line names copied as it is told; the prose writes every word (src/views/prose/the-
-// words-of-the-explore-and-search-orders-lines.ts). One field holds words still: the note of how a hero carries what a
-// lair gave up (gainedItemNote, src/engine/items/equipment.ts, which also settles what he wears: the items' area, a
-// later slice), listed by the static test. Each is filed on its own, with the audience its event names (Decision 6:
-// its event's). A hero slain by a lair's guardian is told by reportHeroFall (heroes/), as a hero's death's kind "a
-// hero is slain outside a battle", the way he fell a value (P1-12d11).
+// words-of-the-explore-and-search-orders-lines.ts). How a hero carries what a lair gave up is a record since P1-12d21
+// (TheItemsAHeroGained, src/engine/items/equipment.ts, whose settleTheItemsAHeroGained also settles what he wears).
+// Each is filed on its own, with the audience its event names (Decision 6: its event's). A hero slain by a lair's
+// guardian is told by reportHeroFall (heroes/), as a hero's death's kind "a hero is slain outside a battle", the way
+// he fell a value (P1-12d11).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type { TheItemsAHeroGained } from '../items/equipment.ts';
 import type {
   AGuardianAsItsKindIsRead,
   AnItemAsTheLineNamesIt,
@@ -245,8 +246,9 @@ export type TheFactOfTheExploreAndSearchOrdersLine =
     }
   | {
       kind: 'a hero notes how he carries what a lair gave up';
-      /** gainedItemNote's words (the items' area: a later slice). */
-      gainedItemNote: string;
+      /** How he carries each item he gained, as the line tells it (settleTheItemsAHeroGained): null when there is
+       *  nothing to say. */
+      theItemsHeGained: TheItemsAHeroGained | null;
     }
   | { kind: "a thief cannot get near a hoard's magic"; heroName: string; chance: number; roll: number }
   | { kind: "the realm's lore yields an extra find"; itemName: string }
