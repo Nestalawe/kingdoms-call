@@ -1,11 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
-import { demoteOrDisband, unitRef } from '../army-tables.ts';
+import { demoteOrDisband } from '../army-tables.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { theUnitsAsTheLineNamesThem } from './the-facts-a-battles-lines-record.ts';
-import { realmTag } from '../turn/log-line-helpers.ts';
+import { theNameOfAPlayersRealm } from '../turn/log-line-helpers.ts';
 import {
   narrateAt,
   emit,
@@ -53,7 +53,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       {
         kind: "a hero not at war with the province's realm gains a host inside it",
         cName: c.name,
-        realmTag: realmTag(turnContext, c.player),
+        realmTag: theNameOfAPlayersRealm(turnContext, c.player),
         unitCount: (c.armies || []).length,
         provName: prov.name,
         theRealmsAreAllied: _allied,
@@ -196,7 +196,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         _form.push({
           kind: 'the hero turns a newly gathered host on a province and a battle is initiated',
           cName: c.name,
-          realmTag: realmTag(turnContext, c.player),
+          realmTag: theNameOfAPlayersRealm(turnContext, c.player),
           provName: prov.name,
           heldByName:
             prov.owner != null && G.players[prov.owner]
@@ -567,7 +567,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         {
           kind: "the province's owner learns his defenders still hold against the hero",
           cName: c.name,
-          realmTag: realmTag(turnContext, c.player),
+          realmTag: theNameOfAPlayersRealm(turnContext, c.player),
           provName: prov.name,
           provName2: prov.name,
           heroFell: c.alive === false,
@@ -583,7 +583,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         {
           kind: "the province's owner learns the hero was beaten back",
           cName: c.name,
-          realmTag: realmTag(turnContext, c.player),
+          realmTag: theNameOfAPlayersRealm(turnContext, c.player),
           provName: prov.name,
           provName2: prov.name,
         },
@@ -628,7 +628,13 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
       });
       tellASurvivingUnitsFate({
         kind: "a beaten guard's surviving unit breaks ranks and flees as mercenaries",
-        unitName: unitRef(gname, a),
+        unitName: {
+          kind: 'a unit named with its quality',
+          owner: theGuard,
+          unitName: a.unitName,
+          type: a.type,
+          quality: a.quality,
+        },
         victorsHost: _vh,
         provName: prov.name,
       }); // unified unit naming
@@ -649,7 +655,13 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
       }
       tellASurvivingUnitsFate({
         kind: "a beaten guard's surviving unit loses heart and is reduced a tier",
-        unitNameAtItsOldQuality: unitRef(gname, { ...a, quality: _q0 }),
+        unitNameAtItsOldQuality: {
+          kind: 'a unit named with its quality',
+          owner: theGuard,
+          unitName: a.unitName,
+          type: a.type,
+          quality: _q0,
+        },
         unitQuality: a.quality,
         victorsHost: _vh,
         guardName: theGuard,
@@ -659,7 +671,13 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
     }
     tellASurvivingUnitsFate({
       kind: "a beaten guard's surviving unit holds its ground unbroken",
-      unitName: unitRef(gname, a),
+      unitName: {
+        kind: 'a unit named with its quality',
+        owner: theGuard,
+        unitName: a.unitName,
+        type: a.type,
+        quality: a.quality,
+      },
       victorsHost: _vh,
       guardName: theGuard,
     });

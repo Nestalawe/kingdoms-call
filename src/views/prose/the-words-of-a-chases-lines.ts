@@ -4,6 +4,7 @@
 // the odds as a realm is shown them are written by theWordsOfAStatShown and theWordsOfTheOddsShown (heroes/effective-
 // skills-and-hidden-heroes.ts), on the values alone, as the engine's statNote and oddsNote wrote them. A kind with no
 // words here is a compile error (the `never` below).
+import { theRealmsTag } from './the-words-of-the-realm-works-orders-lines.ts';
 import type { TheFactOfAChasesLine } from '../../engine/heroes/the-facts-a-chases-lines-record.ts';
 import {
   theWordsOfAStatShown,
@@ -56,7 +57,7 @@ export function theWordsOfAChasesLine(fact: TheFactOfAChasesLine): string {
     case 'a lone challenger is turned away by the sentries':
       return `${fact.heroName} runs ${fact.quarryName} to ground in ${fact.provinceName}, but the sentries of their column are awake — the challenger is turned away from the lines before reaching the commander, and the chase is abandoned.`;
     case "a quarry's realm learns a lone challenger came for him":
-      return `👁 ${fact.heroName}${fact.realmTag} came for ${fact.quarryName} in ${fact.provinceName} — a lone challenger, turned away by the sentries before reaching the tent.`;
+      return `👁 ${fact.heroName}${theRealmsTag(fact.realmTag)} came for ${fact.quarryName} in ${fact.provinceName} — a lone challenger, turned away by the sentries before reaching the tent.`;
     case 'a lone challenger slips through the picket lines':
       return `${fact.heroName} slips through the picket lines of ${fact.quarryName}'s column in ${fact.provinceName} and forces the matter before the commander can rally the guard.`;
     case "a crowned quarry will not answer a commoner's challenge":

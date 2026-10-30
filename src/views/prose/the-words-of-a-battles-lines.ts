@@ -2,11 +2,13 @@
 // The views write the words of each fact a battle's lines record (src/engine/battle/the-facts-a-battles-lines-record.ts),
 // after the engine, in the same words the engine wrote before. A kind with no words here is a compile error (the
 // `never` below) and, from an untyped caller, a throw in play.
+import { theRealmsTag } from './the-words-of-the-realm-works-orders-lines.ts';
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
   THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH,
   type ACommandMultiplierInTheLadder,
   type ASideOfABattle,
+  type AUnitAsALineNamesIt,
   type TheDefendersOfAProvince,
   type ACommandMultiplierOfAUnit,
   type AFacingAsTheLadderTellsIt,
@@ -31,6 +33,7 @@ import {
   type WhyACommandersForceIsDemoralised,
 } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
 import { describeArmy } from '../../engine/dice-and-army-names.ts';
+import { ownedUnitName, unitRef } from '../../engine/army-tables.ts';
 import { fortuneCdf, fortuneWinChance } from '../../engine/battle/fortune.ts';
 import { dispFloor } from '../../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';
@@ -89,6 +92,21 @@ function theLabelOfTheDefenders(defenders: TheDefendersOfAProvince, afterTheGuar
 /** A defending side, as its label names it: a hero's side (a battle between heroes), or a province's defenders. */
 function theLabelOfASideOrTheDefenders(defenders: ASideOfABattle | TheDefendersOfAProvince): string {
   return 'kind' in defenders ? theLabelOfTheDefenders(defenders) : theLabelOfASide(defenders);
+}
+
+/** A unit as a line names it (plan P1-12d25): its owner's label, then unitRef's form, ownedUnitName's, or its name or
+ *  type alone (the engine wrote it so: battles-between-heroes.ts, battles-against-province-defenders.ts,
+ *  hosts-gained-in-a-province.ts' beaten guard). */
+function theLabelOfAUnit(unit: AUnitAsALineNamesIt): string {
+  const owner = unit.owner ? theLabelOfASideOrTheDefenders(unit.owner) : null;
+  switch (unit.kind) {
+    case 'a unit named with its quality':
+      return unitRef(owner, unit);
+    case 'a unit named without its quality':
+      return ownedUnitName(owner, unit);
+    case 'a unit named by its name or type alone':
+      return unit.unitName || unit.type;
+  }
 }
 
 /** The verbs a victory is told with: the engine draws which (winVerbIndex), as many as it counts. Each reads
@@ -908,7 +926,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the winner's shark shoals tear into the beaten crews":
       return `🦈 ${theNameOfTheAbility('feeding-frenzy')} — ${String(fact.winnerName)}'s Shark Shoals tear into ${String(fact.loserName)}'s beaten crews as they founder (+${String(fact.runThemDownPct)}% losses to ${String(fact.loserName2)}).`;
     case 'a unit is cut down with no escape':
-      return `— ${fact.unitName} are cut down with no escape!`;
+      return `— ${theLabelOfAUnit(fact.unitName)} are cut down with no escape!`;
     case "a side's other forces survive the engagement":
       return `— ${allOrAllOther(fact.someUnitsFateIsToldAbove)} forces survive the engagement.`;
     case 'no units were left on the field to count':
@@ -1092,7 +1110,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the attacker's free lances ride down the defenders' broken companies":
       return `🐎 ${theLabelOfASide(fact.cName)}'s Free Lances ride down the broken companies across open ground (+${String(fact.extraLossesPct)}% losses).`;
     case 'a defending unit is destroyed in the rout':
-      return `— ${fact.defendingUnitName}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the rout!`;
+      return `— ${theLabelOfAUnit(fact.defendingUnitName)}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the rout!`;
     case 'the defenders have nowhere to retreat and hold a shield fort':
       return `🛡 ${theNameOfTheAbility('shield-fort')} — the defenders of ${fact.provName} have nowhere to retreat, so they lock shields where they stand. None are cut down.`;
     case 'the defenders have nowhere to retreat and take further losses':
@@ -1100,7 +1118,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the attacker is repelled by the defenders':
       return `${theLabelOfASide(fact.cName)}'s forces are repelled! After ${aSeverity(fact.severity)} engagement (margin ${theMarginInPercent(fact.margRatio)}%), ${theLabelOfTheDefenders(fact.defName2)} hold their ground — ${fact.aPlayersGarrison ? (fact.atSea ? 'the garrison holds these waters!' : 'the garrison holds its walls!') : 'neutral defenders never retreat!'}`;
     case 'a defending unit is destroyed in the fighting':
-      return `— ${fact.defendingUnitName}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the fighting.`;
+      return `— ${theLabelOfAUnit(fact.defendingUnitName)}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the fighting.`;
     case "the guard's host is destroyed and he is a masterless hero":
       return `— but every soldier of ${fact.guardName}'s band lies dead. With no host left to command, they are ${fact.provName}'s guardian no more — a masterless hero now.`;
     case "the attacker's dwarven guard leave the defenders' free lances no broken backs":
@@ -1150,7 +1168,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
         fact.whomItFaced ? theClauseOfWhomAUnitFaced(fact.whomItFaced) : '',
       );
     case "a hero not at war with the province's realm gains a host inside it":
-      return `👁 ${fact.cName}${fact.realmTag} now leads ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''} inside your province of ${fact.provName}, but makes no move against it — ${fact.theRealmsAreAllied ? 'your realms are allied' : 'your realms are not at war'}. ${fact.provName2} remains yours.`;
+      return `👁 ${fact.cName}${theRealmsTag(fact.realmTag)} now leads ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''} inside your province of ${fact.provName}, but makes no move against it — ${fact.theRealmsAreAllied ? 'your realms are allied' : 'your realms are not at war'}. ${fact.provName2} remains yours.`;
     case "a hero's new host is still forming up in a province":
       return `${fact.cName}'s new host is still forming up in ${fact.provName} — whether the province can be taken will be settled before the season's marches begin.`;
     case 'no one stands to defend a province and the hero takes control of it':
@@ -1158,7 +1176,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'with fresh troops the hero takes control of a province':
       return `With fresh troops now at their back, ${fact.cName} takes control of ${fact.provName} for ${fact.playerName}!`;
     case 'the hero turns a newly gathered host on a province and a battle is initiated':
-      return `➡️ ${fact.cName}${fact.realmTag} turns a newly-gathered host on ${fact.provName}, held by ${fact.heldByName} — a battle is initiated.`;
+      return `➡️ ${fact.cName}${theRealmsTag(fact.realmTag)} turns a newly-gathered host on ${fact.provName}, held by ${fact.heldByName} — a battle is initiated.`;
     case 'the defenders riding in were keeping watch and are already in the line':
       return `🛡 ${fact.ridersNames.join(' and ')} ${fact.ridersNames.length > 1 ? 'were' : 'was'} keeping watch over ${fact.provName} and ${fact.ridersNames.length > 1 ? 'are' : 'is'} already in the line when ${fact.cName}'s ${fact.onAWarFront ? 'host turns on the province' : 'new host forms up'} — ${fact.provName2} is defended, not retaken.`;
     case 'the defender is reinforced by other heroes in the defence of a province':
@@ -1186,15 +1204,15 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the hero overcomes the defenders and claims the province for his realm':
       return `${theLabelOfASide(fact.hostName)} overcomes the defenders and claims ${fact.provName} for ${fact.playerName}!`;
     case "the province's owner learns his defenders still hold against the hero":
-      return `⚔ ${fact.cName}${fact.realmTag} fought for ${fact.provName} this phase and had the better of it, but your defenders still hold the ground — ${fact.provName2} is not yet taken. ${fact.heroFell ? `${fact.cName} fell in the fighting; his leaderless host` : fact.cName} stands there with ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''}.`;
+      return `⚔ ${fact.cName}${theRealmsTag(fact.realmTag)} fought for ${fact.provName} this phase and had the better of it, but your defenders still hold the ground — ${fact.provName2} is not yet taken. ${fact.heroFell ? `${fact.cName} fell in the fighting; his leaderless host` : fact.cName} stands there with ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''}.`;
     case "the province's owner learns the hero was beaten back":
-      return `🛡 ${fact.cName}${fact.realmTag} fought for ${fact.provName} this phase and was beaten back — ${fact.provName2} remains yours.`;
+      return `🛡 ${fact.cName}${theRealmsTag(fact.realmTag)} fought for ${fact.provName} this phase and was beaten back — ${fact.provName2} remains yours.`;
     case "a beaten guard's surviving unit breaks ranks and flees as mercenaries":
-      return `— ${fact.unitName} break ranks and flee${fact.victorsHost ? ` before ${fact.victorsHost}'s host` : ''} — they now roam as mercenaries near ${fact.provName}.`;
+      return `— ${theLabelOfAUnit(fact.unitName)} break ranks and flee${fact.victorsHost ? ` before ${fact.victorsHost}'s host` : ''} — they now roam as mercenaries near ${fact.provName}.`;
     case "a beaten guard's surviving unit loses heart and is reduced a tier":
-      return `— ${fact.unitNameAtItsOldQuality} lost heart in defeat, reduced to ${fact.unitQuality} — ${fact.victorsHost ? `beaten by ${fact.victorsHost}'s host, ` : ''}they rally around ${theLabelOfTheDefenders(fact.guardName)}.`;
+      return `— ${theLabelOfAUnit(fact.unitNameAtItsOldQuality)} lost heart in defeat, reduced to ${fact.unitQuality} — ${fact.victorsHost ? `beaten by ${fact.victorsHost}'s host, ` : ''}they rally around ${theLabelOfTheDefenders(fact.guardName)}.`;
     case "a beaten guard's surviving unit holds its ground unbroken":
-      return `— ${fact.unitName} hold their ground unbroken${fact.victorsHost ? ` against ${fact.victorsHost}'s host` : ''} and rally around ${theLabelOfTheDefenders(fact.guardName)}.`;
+      return `— ${theLabelOfAUnit(fact.unitName)} hold their ground unbroken${fact.victorsHost ? ` against ${fact.victorsHost}'s host` : ''} and rally around ${theLabelOfTheDefenders(fact.guardName)}.`;
     case "a side's strength ladder begins":
       return `  ${fact.side === 'attacker' ? 'Attacker' : 'Defender'} (${fact.sideName}): ${pl(fact.unitCount, 'unit')} — strength **${String(fact.strength)}**`;
     case "the strength ladder's units":
@@ -1238,7 +1256,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'a contest for a province lapses as the realms are no longer at war':
       return `The contest for ${fact.provName} lapses — ${theNameOrElse(fact.attackersRealmName, 'one side')} and ${theNameOrElse(fact.defendersRealmName, 'the other')} are no longer at war, and the two hosts stand down.`;
     case "war comes to a province two realms' hosts share":
-      return `⚔ War has come to ${String(fact.provName)}: ${theLabelOfASide(fact.attackersHostName)}${String(fact.attackersRealmTag)} and ${theLabelOfASide(fact.defendersHostName)}${String(fact.defendersRealmTag)} have stood on the same ground since the season opened, and with ${String(fact.seasonName)}'s orders done they fall upon each other.`;
+      return `⚔ War has come to ${String(fact.provName)}: ${theLabelOfASide(fact.attackersHostName)}${theRealmsTag(fact.attackersRealmTag)} and ${theLabelOfASide(fact.defendersHostName)}${theRealmsTag(fact.defendersRealmTag)} have stood on the same ground since the season opened, and with ${String(fact.seasonName)}'s orders done they fall upon each other.`;
     case 'an unfinished battle between two hosts resumes':
       return `⚔ The unfinished battle for ${fact.provName} resumes — ${theLabelOfASide(fact.attackersHostName)} and ${theLabelOfASide(fact.defendersHostName)} clash again.`;
     case 'the winner of a stalled battle secures a province':
@@ -1254,7 +1272,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a side's units fight beside their own kin":
       return `🤝 Kinship — ${fact.sideName}: ${theWordsOfKinship(fact.unitsOfTheKingsRaceUnderACommanderOfThatBlood, fact.unitsOfTheKingsRace, fact.unitsOfTheirCommandersRace)}.`;
     case "a hero's host turns on a province it has shared with a realm at war":
-      return `⚔ War stands between ${theNameOrElse(fact.attackersRealmName, 'their realm')} and ${theNameOrElse(fact.ownersRealmName, 'the realm whose host shares the ground')}, and ${fact.cName}${fact.realmTag} has held ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''} in ${fact.provName} since the season opened. With ${fact.seasonName}'s orders done, the host turns on the province${fact.ownersRealmName ? ` of ${fact.ownersRealmName}` : ''}.`;
+      return `⚔ War stands between ${theNameOrElse(fact.attackersRealmName, 'their realm')} and ${theNameOrElse(fact.ownersRealmName, 'the realm whose host shares the ground')}, and ${fact.cName}${theRealmsTag(fact.realmTag)} has held ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''} in ${fact.provName} since the season opened. With ${fact.seasonName}'s orders done, the host turns on the province${fact.ownersRealmName ? ` of ${fact.ownersRealmName}` : ''}.`;
     default: {
       const aKindWithNoWords: never = fact;
       throw new Error(`a battle's line records a fact with no words: ${JSON.stringify(aKindWithNoWords)}`);

@@ -26,7 +26,10 @@ import {
   aFightersPerkNameAsTheLineTellsIt,
   isAPersonalCombatsLine,
 } from './the-facts-a-personal-combats-lines-record.ts';
-import type { TheFactOfAPersonalCombatsLine } from './the-facts-a-personal-combats-lines-record.ts';
+import type {
+  AFighterOfAPersonalCombat,
+  TheFactOfAPersonalCombatsLine,
+} from './the-facts-a-personal-combats-lines-record.ts';
 import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
 import { theChanceAMirrorImageIsSeenThrough } from '../rules/the-registry-of-spell-effects.ts';
 import { whatAHerosItemsChangeInHisCombatSpells } from '../rules/the-registry-of-magic-item-effects.ts';
@@ -533,8 +536,9 @@ export function resolvePersonalCombat(
       const _blow = !!fm?.blow; // a struck blow (not lingering harm or an aura)
       const at = _mercyAt(fm);
       const who = cbt.name,
-        foeWho = foe.kind === 'monster' ? `the ${foe.name}` : foe.name,
-        FoeWho = foe.kind === 'monster' ? `The ${foe.name}` : foe.name;
+        // The foe as the lines' facts hold him (plan P1-12d25): the prose writes "the <name>" or "The <name>" for a
+        // guardian, else his name (theLabelOfAFighter).
+        foeWho: AFighterOfAPersonalCombat = { name: foe.name, isAGuardian: foe.kind === 'monster' };
       const _odds = { mercy, shown: _shown, granted: _granted };
       // what kind of killing blow is coming: a weapon stroke, an arrow, or a spell / power
       const _k = fm?.kind ?? '';
@@ -574,28 +578,28 @@ export function resolvePersonalCombat(
           foe.kind === 'monster'
             ? {
                 kind: 'the guardian pauses over its prey and lets a fighter crawl away',
-                foeWho: FoeWho,
+                foeWho,
                 who,
                 who2: who,
               }
             : !_blow
-              ? { kind: 'the foe lets a fighter go', foeWho: FoeWho, who }
+              ? { kind: 'the foe lets a fighter go', foeWho, who }
               : _cls === 'ranged'
-                ? { kind: 'the foe lowers their bow and lets a fighter go', foeWho: FoeWho, who }
+                ? { kind: 'the foe lowers their bow and lets a fighter go', foeWho, who }
                 : _cls === 'power'
                   ? {
                       kind: 'the foe lets a power die unspent',
-                      foeWho: FoeWho,
+                      foeWho,
                       strikeKind: _k,
                       strikeClass: _cls,
                       who,
                       who2: who,
                     }
                   : _pick<APleasLine>([
-                      { kind: 'the foe stays the blow and lets a fighter go', foeWho: FoeWho, who },
+                      { kind: 'the foe stays the blow and lets a fighter go', foeWho, who },
                       {
                         kind: 'the foe lowers their weapon in disgust and lets a fighter go',
-                        foeWho: FoeWho,
+                        foeWho,
                         who,
                         who2: who,
                       },
@@ -653,7 +657,7 @@ export function resolvePersonalCombat(
           foe.kind === 'monster'
             ? {
                 kind: 'the foe knows nothing of mercy',
-                foeWho: FoeWho,
+                foeWho,
                 aBlowFalls: _blow,
                 strikeKind: _k,
                 strikeClass: _cls,
@@ -661,7 +665,7 @@ export function resolvePersonalCombat(
             : foeAlign === 'Evil' || foeAlign === 'Undead'
               ? {
                   kind: 'the foe laughs at the plea',
-                  foeWho: FoeWho,
+                  foeWho,
                   aBlowFalls: _blow,
                   strikeKind: _k,
                   strikeClass: _cls,
@@ -669,7 +673,7 @@ export function resolvePersonalCombat(
               : _pick<APleasLine>([
                   {
                     kind: 'the foe is deaf to the plea',
-                    foeWho: FoeWho,
+                    foeWho,
                     aBlowFalls: _blow,
                     strikeKind: _k,
                     strikeClass: _cls,

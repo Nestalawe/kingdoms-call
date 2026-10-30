@@ -8,8 +8,7 @@
 // words for it), a count, a flag for a clause chosen by it, and a rival's skill and the odds as a realm is shown them
 // (theStatShownAsALineTellsIt and theOddsShownAsALineTellsIt, heroes/effective-skills-and-hidden-heroes.ts: what a
 // realm has not earned is never in the fact); the prose writes every word (src/views/prose/the-words-of-a-chases-
-// lines.ts). One field holds words still: a realm's tag after the challenger's name (realmTag, turn/log-line-
-// helpers.ts: a label, listed by the static test). Each is filed on its own, with the audience its event names (its
+// lines.ts), the realm's tag after the challenger's name too, from the realm's name (since P1-12d25). Each is filed on its own, with the audience its event names (its
 // event's): no audience changes. A hero slain at the end of the chase is told by reportHeroFall, as a hero's death's
 // kind "a hero is slain outside a battle" (P1-12d11); the duel's own lines are personal combat's.
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
@@ -118,8 +117,8 @@ export type TheFactOfAChasesLine =
   | {
       kind: "a quarry's realm learns a lone challenger came for him";
       heroName: string;
-      /** realmTag's words: " (Westmarch)", or none (a label, listed by the static test). */
-      realmTag: string;
+      /** The realm's name, as the world holds it, or null for no realm: the prose writes its tag, " (Westmarch)". */
+      realmTag: string | null;
       quarryName: string;
       provinceName: string;
     }

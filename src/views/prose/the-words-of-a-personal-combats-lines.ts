@@ -18,6 +18,7 @@ import { itemNameList } from '../../engine/heroes/fame-and-consecration.ts';
 import { hpGainLine } from '../../engine/heroes/skills-and-hp.ts';
 import { monsterCatLabel } from '../../engine/items/tiers-and-hoards.ts';
 import type {
+  AFighterOfAPersonalCombat,
   AFightersSkillAsTheLineTellsIt,
   AFightersWardAsTheLineTellsIt,
   TheFactOfAPersonalCombatsLine,
@@ -29,6 +30,12 @@ import { isLegendaryItem } from '../../engine/rules-on-plain-values/items-slots-
 import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 // ── THE WORDS THE ENGINE'S HELPERS WROTE, FROM THE COPIES (moved from src/engine/personal-combat/) ────
+
+/** A fighter as a line names him (plan P1-12d25): "the <name>" for a guardian ("The <name>" where the sentence begins
+ *  with him), else his name (the engine wrote it so: resolve-personal-combat.ts' mercy, pcUseCombatItem). */
+function theLabelOfAFighter(fighter: AFighterOfAPersonalCombat, theGuardiansArticle: 'the' | 'The'): string {
+  return fighter.isAGuardian ? `${theGuardiansArticle} ${fighter.name}` : fighter.name;
+}
 
 // "Melee 6" alone looks like a bug when the sheet says 4. Show the boost and its size: "Archery 6
 // (4 +2 bonus)". Monsters and unboosted characters print the plain figure. (pcSkillLabel, moved.)
@@ -453,53 +460,53 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
     case 'a fighter finds their second wind and fights on':
       return `  💪 ${fact.cbtName} (${fact.cbtTemper}) finds their second wind and fights on — ${String(fact.back)} HP recovered. (HP ${String(fact.cbtHp)})`;
     case 'as their strength fails a fighter begs the foe for mercy':
-      return `  🙏 As their strength fails and death closes in, ${fact.who} begs ${fact.foeWho} for mercy!${theOddsOfMercy(fact.odds)}`;
+      return `  🙏 As their strength fails and death closes in, ${fact.who} begs ${theLabelOfAFighter(fact.foeWho, 'the')} for mercy!${theOddsOfMercy(fact.odds)}`;
     case 'as the foe draws for the killing shot a fighter begs for their life':
-      return `  🙏 As ${fact.foeWho} draws for the killing shot, ${fact.who} throws down their weapon and begs for their life!${theOddsOfMercy(fact.odds)}`;
+      return `  🙏 As ${theLabelOfAFighter(fact.foeWho, 'the')} draws for the killing shot, ${fact.who} throws down their weapon and begs for their life!${theOddsOfMercy(fact.odds)}`;
     case 'pinned and bleeding a fighter cries out for mercy':
       return `  🙏 Pinned and bleeding, ${fact.who} cries out for mercy before the last arrow can fly!${theOddsOfMercy(fact.odds)}`;
     case 'as the foe readies a power for the killing stroke a fighter begs':
-      return `  🙏 As ${fact.foeWho} readies ${thePowerAboutToBeLoosed(fact.strikeKind, fact.strikeClass)} for the killing stroke, ${fact.who} falls to their knees and begs to be spared!${theOddsOfMercy(fact.odds)}`;
+      return `  🙏 As ${theLabelOfAFighter(fact.foeWho, 'the')} readies ${thePowerAboutToBeLoosed(fact.strikeKind, fact.strikeClass)} for the killing stroke, ${fact.who} falls to their knees and begs to be spared!${theOddsOfMercy(fact.odds)}`;
     case 'beaten and bleeding a fighter sees the killing blow coming':
-      return `  🙏 Beaten and bleeding, ${fact.who} sees the killing blow coming — they throw down their weapon and beg ${fact.foeWho} for their life!${theOddsOfMercy(fact.odds)}`;
+      return `  🙏 Beaten and bleeding, ${fact.who} sees the killing blow coming — they throw down their weapon and beg ${theLabelOfAFighter(fact.foeWho, 'the')} for their life!${theOddsOfMercy(fact.odds)}`;
     case 'as the foe closes for the kill a fighter cries out for mercy':
-      return `  🙏 As ${fact.foeWho} closes for the kill, ${fact.who} flings up their hands and cries out for mercy!${theOddsOfMercy(fact.odds)}`;
+      return `  🙏 As ${theLabelOfAFighter(fact.foeWho, 'the')} closes for the kill, ${fact.who} flings up their hands and cries out for mercy!${theOddsOfMercy(fact.odds)}`;
     case 'a fighter drops to their knees before the final stroke':
       return `  🙏 ${fact.who} drops to their knees before the final stroke can fall, pleading to be spared!${theOddsOfMercy(fact.odds)}`;
     case 'the guardian pauses over its prey and lets a fighter crawl away':
-      return `  ${fact.foeWho} pauses over its prey — and, for reasons of its own, lets ${fact.who} crawl away. ${fact.who2} flees the field with their life. (HP 1)`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} pauses over its prey — and, for reasons of its own, lets ${fact.who} crawl away. ${fact.who2} flees the field with their life. (HP 1)`;
     case 'the foe lets a fighter go':
-      return `  ${String(fact.foeWho)} lets them go — ${String(fact.who)} staggers from the field with their life. (HP 1)`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} lets them go — ${String(fact.who)} staggers from the field with their life. (HP 1)`;
     case 'the foe lowers their bow and lets a fighter go':
-      return `  ${fact.foeWho} lowers their bow. "Go, while you still can." ${fact.who} flees the field with their life. (HP 1)`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} lowers their bow. "Go, while you still can." ${fact.who} flees the field with their life. (HP 1)`;
     case 'the foe lets a power die unspent':
-      return `  ${fact.foeWho} lets ${thePowerAboutToBeLoosed(fact.strikeKind, fact.strikeClass)} die unspent and waves ${fact.who} away. ${fact.who2} flees the field with their life. (HP 1)`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} lets ${thePowerAboutToBeLoosed(fact.strikeKind, fact.strikeClass)} die unspent and waves ${fact.who} away. ${fact.who2} flees the field with their life. (HP 1)`;
     case 'the foe stays the blow and lets a fighter go':
-      return `  ${fact.foeWho} stays the blow. "Go — and never let me see your face again." ${fact.who} scrambles away and flees the field with their life. (HP 1)`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} stays the blow. "Go — and never let me see your face again." ${fact.who} scrambles away and flees the field with their life. (HP 1)`;
     case 'the foe lowers their weapon in disgust and lets a fighter go':
-      return `  ${fact.foeWho} lowers their weapon in disgust and lets ${fact.who} go. ${fact.who2} flees the field, alive but broken. (HP 1)`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} lowers their weapon in disgust and lets ${fact.who} go. ${fact.who2} flees the field, alive but broken. (HP 1)`;
     case 'the stroke never falls and the foe spares a fighter':
-      return `  The stroke never falls — ${fact.foeWho} spares them. ${fact.who} stumbles from the field with their life. (HP 1)`;
+      return `  The stroke never falls — ${theLabelOfAFighter(fact.foeWho, 'the')} spares them. ${fact.who} stumbles from the field with their life. (HP 1)`;
     case 'a fighter surrenders an item to the foe as the price of mercy':
       return `  🎒 ${fact.cbtName} surrenders ${fact.lostName} to ${fact.foeName} as the price of mercy.`;
     case 'the foe knows nothing of mercy':
-      return `  ${fact.foeWho} knows nothing of mercy.${fact.aBlowFalls ? theBlowThatFalls(fact.strikeKind, fact.strikeClass) : ''}`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} knows nothing of mercy.${fact.aBlowFalls ? theBlowThatFalls(fact.strikeKind, fact.strikeClass) : ''}`;
     case 'the foe laughs at the plea':
-      return `  ${fact.foeWho} laughs at the plea.${fact.aBlowFalls ? theBlowThatFalls(fact.strikeKind, fact.strikeClass) : ''}`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} laughs at the plea.${fact.aBlowFalls ? theBlowThatFalls(fact.strikeKind, fact.strikeClass) : ''}`;
     case 'the foe is deaf to the plea':
-      return `  ${fact.foeWho} is deaf to the plea.${fact.aBlowFalls ? theBlowThatFalls(fact.strikeKind, fact.strikeClass) : ''}`;
+      return `  ${theLabelOfAFighter(fact.foeWho, 'The')} is deaf to the plea.${fact.aBlowFalls ? theBlowThatFalls(fact.strikeKind, fact.strikeClass) : ''}`;
     case 'there is no pity in the foe':
-      return `  There is no pity in ${fact.foeWho} today.${fact.aBlowFalls ? theBlowThatFalls(fact.strikeKind, fact.strikeClass) : ''}`;
+      return `  There is no pity in ${theLabelOfAFighter(fact.foeWho, 'the')} today.${fact.aBlowFalls ? theBlowThatFalls(fact.strikeKind, fact.strikeClass) : ''}`;
     case 'a combat item strikes the foe':
       return `  ${fact.nm} strikes ${fact.foeName} for ${String(fact.dealt)} damage. (HP ${String(fact.foeHp)})`;
     case 'a fighter uses a combat item':
-      return `  🧪 ${fact.who} uses the ${fact.nm}!`;
+      return `  🧪 ${theLabelOfAFighter(fact.who, 'The')} uses the ${fact.nm}!`;
     case 'a fighter recovers hit points':
-      return `  ${String(fact.who)} recovers ${String(fact.healed)} HP. (HP ${String(fact.actorHp)})`;
+      return `  ${theLabelOfAFighter(fact.who, 'The')} recovers ${String(fact.healed)} HP. (HP ${String(fact.actorHp)})`;
     case 'warmth spreads through a fighter each round':
       return `  Warmth spreads through ${String(fact.actorName)} — ${String(fact.eAmt)} HP a round for ${String(fact.eRounds)} rounds.`;
     case 'a fighter recovers hit points and every lingering affliction lifts':
-      return `  ${String(fact.who)} recovers ${String(fact.healed)} HP and every lingering affliction lifts. (HP ${String(fact.actorHp)})`;
+      return `  ${theLabelOfAFighter(fact.who, 'The')} recovers ${String(fact.healed)} HP and every lingering affliction lifts. (HP ${String(fact.actorHp)})`;
     case 'a combat item blazes twice as bright against the foe':
       return `  The ${String(fact.nm)} blazes twice as bright against ${String(fact.foeName)}!`;
     case 'a combat item keeps burning on the foe':
@@ -509,7 +516,7 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
     case 'the foe reels losing actions from the next round':
       return `  ${String(fact.foeName)} reels — ${String(fact.eStun)} action${fact.eStun !== 1 ? 's' : ''} lost from the next round.`;
     case 'a fighter drinks the stolen vigour':
-      return `  ${String(fact.who)} drinks the stolen vigour — +${String(fact.healed)} HP. (HP ${String(fact.actorHp)})`;
+      return `  ${theLabelOfAFighter(fact.who, 'The')} drinks the stolen vigour — +${String(fact.healed)} HP. (HP ${String(fact.actorHp)})`;
     case 'the foe is held fast, losing actions':
       return `  ${fact.foeName} is held fast — ${String(fact.eStun)} action${fact.eStun !== 1 ? 's' : ''} lost.`;
     case 'the foe can barely see to strike':
@@ -525,17 +532,17 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
     case "the foe's magic and powers are bound":
       return `  ${String(fact.foeName)}'s magic and powers are bound for ${String(fact.eRounds)} rounds.`;
     case 'a fighter surges with strength':
-      return `  ${fact.who} surges with strength — Melee ${String(fact.actorMelee)}${fact.eArchery ? `, Archery ${String(fact.actorArchery)}` : ''}.`;
+      return `  ${theLabelOfAFighter(fact.who, 'The')} surges with strength — Melee ${String(fact.actorMelee)}${fact.eArchery ? `, Archery ${String(fact.actorArchery)}` : ''}.`;
     case "a fighter's eye sharpens":
-      return `  ${String(fact.who)}'s eye sharpens (+${String(fact.eHitBonus)}% to hit).`;
+      return `  ${theLabelOfAFighter(fact.who, 'The')}'s eye sharpens (+${String(fact.eHitBonus)}% to hit).`;
     case 'a ward settles over a fighter':
       return `  A ward settles over ${fact.actorName}, ready to drink ${String(fact.stAbsorb)} damage${fact.eReflect ? ` and bite back for ${String(fact.stReflect)}` : ''}.`;
     case 'shimmering doubles step out of a fighter':
       return `  ${String(fact.eImages)} shimmering doubles step out of ${String(fact.actorName)}.`;
     case 'a fighter is ready to break away':
-      return `  ${String(fact.who)} is ready to break away (+${String(fact.eFleeBonus)}% to flee${fact.eToHitReduce ? `, foe −${String(fact.eToHitReduce)}% to hit` : ''}).`;
+      return `  ${theLabelOfAFighter(fact.who, 'The')} is ready to break away (+${String(fact.eFleeBonus)}% to flee${fact.eToHitReduce ? `, foe −${String(fact.eToHitReduce)}% to hit` : ''}).`;
     case 'a fighter fades from sight the foe':
-      return `  ${fact.who} fades from sight — ${fact.foeName} strikes at shadows (−${String(fact.eToHitReduce)}% to hit).`;
+      return `  ${theLabelOfAFighter(fact.who, 'The')} fades from sight — ${fact.foeName} strikes at shadows (−${String(fact.eToHitReduce)}% to hit).`;
     case 'every poison burn and blinding on a fighter lifts':
       return `  Every poison, burn and blinding on ${fact.actorName} lifts.`;
     case 'but nothing happens':

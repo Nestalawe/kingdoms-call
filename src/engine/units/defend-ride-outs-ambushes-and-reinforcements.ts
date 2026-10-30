@@ -4,7 +4,7 @@ import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
-import { realmTag } from '../turn/log-line-helpers.ts';
+import { theNameOfAPlayersRealm } from '../turn/log-line-helpers.ts';
 import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { completeDefendWatches } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
@@ -343,7 +343,7 @@ export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
         kind: 'a defender rides in to meet a host raised in a province of his realm',
         heroName: d.name,
         raiserName: raiser.name,
-        realmTag: realmTag(turnContext, raiser.player),
+        realmTag: theNameOfAPlayersRealm(turnContext, raiser.player),
         turningAWarFront: !!raiser._warFront,
         provinceName: prov.name,
       },

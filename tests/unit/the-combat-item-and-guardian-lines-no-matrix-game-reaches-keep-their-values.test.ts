@@ -34,6 +34,7 @@ const { pcPromotePending } = await import('../../src/engine/personal-combat/help
 const { pcBuildGuardian } = await import('../../src/engine/personal-combat/lair-guardians-and-the-odds.ts');
 const { pcMeleeDamage } = await import('../../src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts');
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const { theWordsOf } = await import('../../src/views/prose/the-words-of-each-line.ts');
 
 type Staged = Record<string, unknown>;
 type AFight = Parameters<typeof pcAct>[4];
@@ -325,6 +326,41 @@ describe('a combat item used', () => {
     use(g, fighter(), made({ use: 'invis' }));
     use(g, fighter(), item('Grey Cloak Draught'));
     expect(g.status.toHitReduce).toBe(45);
+  });
+});
+
+describe("a combat item's lines name the fighter who uses it", () => {
+  // Since plan P1-12d25 a fighter is a record the prose names; the words are those the engine wrote before: "The <name>"
+  // for a guardian, his name for anyone else (pcUseCombatItem's `who`), in each line no game reaches.
+  const theLines = (kind: string) => {
+    const f = at(5, { kind, name: 'Made-up Mole' });
+    const uses = [
+      made({ use: 'heal' }),
+      made({ use: 'secondwind' }),
+      made({ use: 'buff', melee: 2 }),
+      made({ use: 'focus' }),
+      made({ use: 'flee' }),
+      made({ use: 'invis' }),
+    ];
+    const narrative = uses.flatMap((it) => use(f, fighter(), it));
+    narrative.push(
+      ...use(at(5, { kind, name: 'Made-up Mole' }), fighter({ hp: 40, maxHp: 40 }), item('Scroll of Life Drain')),
+    );
+    return narrative.map((l) => theWordsOf(l));
+  };
+  test("a guardian is 'The <name>', a hero his name", () => {
+    const guardians = theLines('monster');
+    expect(guardians.filter((w) => /recovers|surges|eye sharpens|break away|stolen vigour/.test(w))).toEqual([
+      '  The Made-up Mole recovers 5 HP. (HP 10)',
+      '  The Made-up Mole recovers 10 HP and every lingering affliction lifts. (HP 20)',
+      '  The Made-up Mole surges with strength — Melee 4.',
+      "  The Made-up Mole's eye sharpens (+10% to hit).",
+      '  The Made-up Mole is ready to break away (+25% to flee).',
+      '  The Made-up Mole drinks the stolen vigour — +5 HP. (HP 10)',
+    ]);
+    expect(theLines('char').filter((w) => w.includes('eye sharpens'))).toEqual([
+      "  Made-up Mole's eye sharpens (+10% to hit).",
+    ]);
   });
 });
 

@@ -31,6 +31,7 @@ import {
   type NarrativeLine,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theTurnsLinesInWords, theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
+import { theNameOfAPlayersRealm } from '../../src/engine/turn/log-line-helpers.ts';
 import type { Army, Province } from '../../src/schemas/saved-game-state.ts';
 
 // emit echoes each line on the console: quiet while the tests write lines.
@@ -108,7 +109,16 @@ function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: { heroName: 'Aldric', leaderless: false } });
     narrate(narrative, { kind: "a side's other forces survive the engagement", someUnitsFateIsToldAbove: false });
     narrate(narrative, { kind: "the defender's casualties begin", defName: { heroName: 'Brann', leaderless: false } });
-    narrate(narrative, { kind: 'a unit is cut down with no escape', unitName: "Brann's Ford Watch (Men-at-Arms)" });
+    narrate(narrative, {
+      kind: 'a unit is cut down with no escape',
+      unitName: {
+        kind: 'a unit named without its quality',
+        owner: { heroName: 'Brann', leaderless: false },
+        unitName: 'Ford Watch',
+        type: 'Men-at-Arms',
+        quality: 'Veteran',
+      },
+    });
   }
   return narrative;
 }
@@ -283,5 +293,25 @@ describe("the GM's log in words is stored in the form it had", () => {
     expect(gmLog[0]).toBe(tc.turnLog[0]);
     expect(gmLog.at(-1)).toBe(tc.turnLog.at(-1));
     expect(gmLog).toHaveLength(tc.turnLog.length);
+  });
+});
+
+describe('a label no game writes, as the engine wrote it (plan P1-12d25: the labels as records)', () => {
+  test('a unit of no name a line names alone is named by its type', () => {
+    const unit = { owner: null, unitName: '', type: 'Men-at-Arms', quality: 'Veteran' };
+    expect(
+      theWordsOf({
+        kind: 'a unit is cut down with no escape',
+        unitName: { kind: 'a unit named by its name or type alone', ...unit },
+      }),
+    ).toBe('— Men-at-Arms are cut down with no escape!');
+  });
+  test("a hero of no realm has no realm's name to tag him with", () => {
+    const tc = { G: { players: [{ name: 'Westmarch' }] } };
+    expect([theNameOfAPlayersRealm(tc, 0), theNameOfAPlayersRealm(tc, 1), theNameOfAPlayersRealm(tc, null)]).toEqual([
+      'Westmarch',
+      null,
+      null,
+    ]);
   });
 });

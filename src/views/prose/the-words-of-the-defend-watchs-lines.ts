@@ -4,6 +4,7 @@
 // reinforcements.ts). The heroes a column marches with are joined with "and"; the ambush's mark is fmtRoll's, which the
 // engine still calls elsewhere, on the chance and the roll alone. A kind with no words here is a compile error (the
 // `never` below).
+import { theRealmsTag } from './the-words-of-the-realm-works-orders-lines.ts';
 import type { TheFactOfADefendWatchsLine } from '../../engine/units/the-facts-the-defend-watchs-lines-record.ts';
 import { fmtRoll } from '../../engine/dice-and-army-names.ts';
 
@@ -23,7 +24,7 @@ export function theWordsOfADefendWatchsLine(fact: TheFactOfADefendWatchsLine): s
     case 'a defender rides out and faces a column but no battle is joined':
       return `🛡 ${fact.heroName} stands in ${fact.provinceName} facing an enemy column, but no battle was joined this season — the contest will be settled next phase.`;
     case 'a defender rides in to meet a host raised in a province of his realm':
-      return `🛡 ${fact.heroName} is standing watch — word reaches them that ${fact.raiserName}${fact.realmTag} ${fact.turningAWarFront ? 'is turning the host camped inside ' + fact.provinceName + ' on the province' : 'is gathering a host inside ' + fact.provinceName}. They break camp at once and reach ${fact.provinceName} before it can be seized, drawing up to defend it.`;
+      return `🛡 ${fact.heroName} is standing watch — word reaches them that ${fact.raiserName}${theRealmsTag(fact.realmTag)} ${fact.turningAWarFront ? 'is turning the host camped inside ' + fact.provinceName + ' on the province' : 'is gathering a host inside ' + fact.provinceName}. They break camp at once and reach ${fact.provinceName} before it can be seized, drawing up to defend it.`;
     case 'a defender rides out to meet a host risen in his watch':
       return `🛡 ${fact.heroName} stands watch — word comes that an enemy host has risen in ${fact.provinceName}. They break camp and march to meet it.`;
     case 'a defender forms his line against a host taking shape where he stands':

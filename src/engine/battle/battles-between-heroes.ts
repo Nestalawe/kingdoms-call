@@ -11,13 +11,7 @@ import {
   whatABattleSpellDoesBeforeTheBattle,
   whatAUnitsStrikeMayDoBeforeTheBattle,
 } from '../rules/the-registry-of-spell-effects.ts';
-import {
-  BATTLE_MAGIC_SPELL_NAMES,
-  FANATIC_CHANCE_BY_ALIGN,
-  QUALITY_TIERS,
-  SKILL_LABELS,
-  ownedUnitName,
-} from '../army-tables.ts';
+import { BATTLE_MAGIC_SPELL_NAMES, FANATIC_CHANCE_BY_ALIGN, QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
 import { battleMarginBand, rollUnitFates } from './fates.ts';
 import {
   battleDeploy,
@@ -1422,7 +1416,16 @@ export function combatVsChar(turnContext, atk, def, prov) {
     (force || []).forEach((a) => {
       if (kcRng() < 0.15) {
         a._died = true;
-        narrate(narr, { kind: 'a unit is cut down with no escape', unitName: ownedUnitName(name, a) });
+        narrate(narr, {
+          kind: 'a unit is cut down with no escape',
+          unitName: {
+            kind: 'a unit named without its quality',
+            owner: { heroName: name, leaderless: false },
+            unitName: a.unitName,
+            type: a.type,
+            quality: a.quality,
+          },
+        });
       }
     });
   };

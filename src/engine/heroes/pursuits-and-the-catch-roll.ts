@@ -4,7 +4,7 @@ import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
-import { realmTag } from '../turn/log-line-helpers.ts';
+import { theNameOfAPlayersRealm } from '../turn/log-line-helpers.ts';
 import {
   emit,
   emitNarrLine,
@@ -555,7 +555,7 @@ export function advancePursuit(turnContext, c, ph) {
           {
             kind: "a quarry's realm learns a lone challenger came for him",
             heroName: c.name,
-            realmTag: realmTag(turnContext, c.player),
+            realmTag: theNameOfAPlayersRealm(turnContext, c.player),
             quarryName: quarry.name,
             provinceName: prov.name,
           },

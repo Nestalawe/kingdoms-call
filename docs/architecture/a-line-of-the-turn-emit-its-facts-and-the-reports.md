@@ -170,7 +170,11 @@ check finds were made.
   and in the battle-magic lines whose kind a spell's resolver gives. Since P1-12d24 a stalled battle's hosts and a
   hero's newly gathered host are sides too, a stalled battle's defenders and a beaten guard are defenders ("the
   leaderless garrison", "the defenders"), and a beaten guard's victor is his name (the prose writes "Aldric's host").
-  The helpers' lines, the realm's tag and the units' labels still take words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  Since P1-12d25 a personal combat's fighter is a record (`AFighterOfAPersonalCombat`: his name, and whether he is a
+  guardian, "the Barrow Wight"), a realm's tag is the realm's name (`theRealmsTag` writes " (Westmarch)"), and a unit a
+  battle's line names is a record (`AUnitAsALineNamesIt`: its owner as a side or the defenders, its name, type and
+  quality, and the form: `unitRef`'s, `ownedUnitName`'s, or its name alone). The helpers' lines, the force header's
+  name, a disbanding unit's owner and the enemy unit a unit faced still take words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
