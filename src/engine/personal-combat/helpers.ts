@@ -12,6 +12,7 @@ import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type {
   AWardAsTheMergeReadsIt,
   TheRidersOfAnItemOrAPerk,
+  TheSourceOfALingeringHarm,
   TheWardsAFighterWears,
 } from '../rules/the-registry-of-content-effects.ts';
 
@@ -23,17 +24,21 @@ import type {
 // the file of the wards' merge, not in a file of their own: a file under src/ that no page bundles fails the harness
 // (tests/static/pages-build.test.ts, "every file under src/ is in a page"). The wards he wears, a ward and the riders as
 // the merge reads them are the items' registry's stage types since plan P1-19q (src/engine/rules/ imports nothing from
-// here: npm run lint:arch), and are exported from here too, by the same names.
+// here: npm run lint:arch), and are exported from here too, by the same names, as are what a daze or a lingering harm
+// comes from since P1-12d19 (a combat spell's step names it there).
 export type {
   AWardAsTheMergeReadsIt,
   TheRidersOfAnItemOrAPerk,
+  TheSourceOfADaze,
+  TheSourceOfALingeringHarm,
   TheWardsAFighterWears,
 } from '../rules/the-registry-of-content-effects.ts';
-/** A lingering harm on a fighter (a damage-over-time: a bleed, a burn), added by pcPushDot. */
+/** A lingering harm on a fighter (a damage-over-time: a bleed, a burn), added by pcPushDot: its source is its identity,
+ *  null for none ("Lingering harm"). */
 export interface ALingeringHarm {
   dmg: number;
   rounds: number;
-  label: string;
+  source: TheSourceOfALingeringHarm | null;
 }
 
 /** A healing over time on a fighter (a combat item's), as the fight writes it. */
@@ -336,17 +341,17 @@ export function pcPushDot(
   cbt: AFighterAsHisStatusIsGuarded | null | undefined,
   dmg: number | null | undefined,
   rounds: number | string | null | undefined,
-  label: string | null | undefined,
+  source: TheSourceOfALingeringHarm | null | undefined,
 ): ALingeringHarm | null {
   if (!cbt?.status) return null;
   cbt.status.dot ??= [];
-  const lbl = (label ?? '') || 'Lingering harm';
-  const e = { dmg: Math.max(1, Math.round((dmg ?? 0) || 1)), rounds: pcLingerRounds(rounds), label: lbl };
+  const theSource = source ?? null;
+  const e = { dmg: Math.max(1, Math.round((dmg ?? 0) || 1)), rounds: pcLingerRounds(rounds), source: theSource };
   // The SAME affliction REFRESHES rather than stacking. Without this an archer with Impalement
   // stacks a fresh three-round bleed on every hit and the target bleeds for the whole fight after
   // all — the exact thing the three-round cap exists to stop. Different afflictions still run side
   // by side.
-  const prev = cbt.status.dot.find((d) => d?.label === lbl);
+  const prev = cbt.status.dot.find((d) => d && theSameSourceOfALingeringHarm(d.source, theSource));
   if (prev) {
     prev.dmg = Math.max(prev.dmg, e.dmg);
     prev.rounds = Math.max(prev.rounds, e.rounds);
@@ -354,6 +359,25 @@ export function pcPushDot(
   }
   cbt.status.dot.push(e);
   return e;
+}
+/** Whether two lingering harms come from the same source (plan P1-12d19): both from none, or of one kind and one name.
+ *  Until P1-12d19 a harm's identity was its label's words; the words are one kind's name in one phrase, and no content
+ *  item, guardian's special or spell is named like another kind's words, so the same words were the same source. */
+export function theSameSourceOfALingeringHarm(
+  a: TheSourceOfALingeringHarm | null,
+  b: TheSourceOfALingeringHarm | null,
+): boolean {
+  if (a === null || b === null) return a === b;
+  switch (a.kind) {
+    case 'a combat item':
+      return b.kind === a.kind && b.itemName === a.itemName;
+    case "an archer's impaling arrow":
+      return b.kind === a.kind && b.archerName === a.archerName;
+    case 'a spell that burns':
+      return b.kind === a.kind && b.spellName === a.spellName;
+    case "a guardian's special":
+      return b.kind === a.kind && b.specialName === a.specialName;
+  }
 }
 // ── RIDERS BEGIN THE ROUND AFTER ────
 // An ability that lands an IMMEDIATE effect and ALSO hangs something lingering on its target — a

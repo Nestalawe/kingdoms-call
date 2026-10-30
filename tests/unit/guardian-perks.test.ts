@@ -175,7 +175,7 @@ test("a Weak guardian's stun ward (40) fails when its roll does (51 > 40)", () =
 
 test("a Moderate guardian's lingering-harm ward (60) cuts a 10 burn to 4", () => {
   const t = g('Mummified Champion');
-  t.status.dot = [{ dmg: 10, rounds: 3, label: 'Fireball burns' }];
+  t.status.dot = [{ dmg: 10, rounds: 3, source: { kind: 'a spell that burns', spellName: 'Fireball' } }];
   const hp = t.hp;
   call('pcRoundStart', t, []);
   expect(hp - t.hp).toBe(4);

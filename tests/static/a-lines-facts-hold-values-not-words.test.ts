@@ -44,8 +44,9 @@
 // outside a battle fell, `how`; since P1-12d15 an heir's name as the engine names him, `heirName`). It can't see words
 // handed in through a
 // function's parameter
-// (pcStunTurned's `what`, a lingering harm's label, the verb a battle hands a unit's fate, a force's header's verb):
-// see the Parked list.
+// (the verb a battle hands a unit's fate, a force's header's verb): see the Parked list. Since P1-12d19 a daze's `what`
+// and a lingering harm's source are records (TheSourceOfADaze, TheSourceOfALingeringHarm), so the compiler refuses words
+// there.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,

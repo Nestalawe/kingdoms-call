@@ -504,7 +504,10 @@ export function pcFireOne(
     // ARCHERY L6 (Impalement): 50% chance a hit lodges, bleeding the foe 1-3 each round — capped
     // at three rounds.
     if (dealt && actor.perkImpale && foe.hp > 0 && kcRng() < 0.5) {
-      const _imp = pcPushDot(foe, rng(1, 3), PC_MAX_LINGER_ROUNDS, `${actor.name}'s impaling arrow`);
+      const _imp = pcPushDot(foe, rng(1, 3), PC_MAX_LINGER_ROUNDS, {
+        kind: "an archer's impaling arrow",
+        archerName: actor.name,
+      });
       // (pcPushDot gives none only for a foe of no status, whose line below threw before: it throws here)
       if (!_imp) throw new TypeError("Cannot read properties of null (reading 'dmg')");
       narrate(narrative, {

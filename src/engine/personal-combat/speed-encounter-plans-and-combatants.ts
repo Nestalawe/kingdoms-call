@@ -79,7 +79,7 @@ interface AnItemAsItsKindIsTested {
 // (1 = normal, 0.5 = twice as hard to hit — Invisibility)
 // meleeHalvedRounds rounds this combatant's melee damage is halved (Spiritwrack)
 // silenceRounds rounds this combatant cannot cast or use archery (Spiritwrack)
-// dot: [{dmg, rounds, label}] damage-over-time stacks applied at round start (Fireball etc.)
+// dot: [{dmg, rounds, source}] damage-over-time stacks applied at round start (Fireball etc.)
 // mirrorImages decoy hits that soak incoming melee/arrows (Mirror Image)
 // freeAttacksForFoe attacker gets this many un-retaliated strikes (Psychic Blast)
 // fleeBonus flat % added to this combatant's flee attempts

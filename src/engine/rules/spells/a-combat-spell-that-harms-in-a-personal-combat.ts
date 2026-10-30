@@ -54,7 +54,7 @@ export const A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD = {
         kind: 'a burn',
         theDamage: Math.max(1, Math.round((facts.theTarget.maxHp * theShare) / 100)),
         theRounds: FIREBALLS_IN_COMBAT.theRoundsItBurns.value,
-        theLabel: 'Fireball burns',
+        theSource: { kind: 'a spell that burns', spellName: ROWS.fireball.name },
         theShareOfMaximumHp: theShare,
         theWardsCut: facts.theTarget.theShareHisWardsCutABurnBy,
         theLine: 'a fireball engulfs the target and will burn',
@@ -133,7 +133,7 @@ export const A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD = {
           Math.floor(facts.theLevelCountedTo5 / PSYCHIC_BLASTS_IN_COMBAT.theLevelsForEachRoundMore.value)) *
           facts.theWeaknessFactor +
         facts.whatTheCastersItemsChange().theRoundsHisPsychicBlastStunsLonger,
-      what: 'the blast',
+      theSource: { kind: "a spell's blast", spellName: ROWS['psychic-blast'].name },
       theLine: "psychic blast sears the target's mind",
     },
   ],

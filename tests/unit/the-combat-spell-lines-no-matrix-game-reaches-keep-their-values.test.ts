@@ -44,6 +44,9 @@ const { pcCharCombatant, pcMonsterCombatant } =
 const { pcAct } = await import('../../src/engine/personal-combat/tactics-combat-items-and-actions.ts');
 const { resolvePersonalCombat } = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+// since P1-12d19 a daze's and a lingering harm's source is a record; the words, read through the prose
+const { theWordsOfTheSourceOfADaze, theWordsOfTheSourceOfALingeringHarm } =
+  await import('../../src/views/prose/the-words-of-a-personal-combats-lines.ts');
 
 type ASpecial = Parameters<typeof pcMonsterSpecial>[3];
 
@@ -277,7 +280,9 @@ describe("the combat spells that harm (plan P1-19w: the spells' registry)", () =
     const g = aGuardian({ hp: 100 });
     g.arm = { spellPct: 40 } as unknown as AFighterInAPersonalCombat['arm'];
     const { narrative } = cast(aHero({ elemental: 3 }), g, 'Fireball');
-    expect(g.status.dot.map((d) => [d.dmg, d.rounds, d.label])).toEqual([[10, 3, 'Fireball burns']]);
+    expect(g.status.dot.map((d) => [d.dmg, d.rounds, theWordsOfTheSourceOfALingeringHarm(d.source)])).toEqual([
+      [10, 3, 'Fireball burns'],
+    ]);
     expect(lineOf(narrative, 'a fireball engulfs the target and will burn')).toEqual({
       kind: 'a fireball engulfs the target and will burn',
       targetName: 'Made-up Ogre',
@@ -439,7 +444,10 @@ describe("the other combat spells (plan P1-19x: the spells' registry)", () => {
     g.arm = { stunImmune: true } as unknown as AFighterInAPersonalCombat['arm'];
     const { narrative } = cast(h, g, 'Control Undead');
     expect(g.status.stun).toBe(0);
-    expect(lineOf(narrative, 'the target cannot be held')).toMatchObject({ what: `${h.name}'s grip` });
+    const turned = lineOf(narrative, 'the target cannot be held');
+    expect(turned?.kind === 'the target cannot be held' && theWordsOfTheSourceOfADaze(turned.what)).toBe(
+      `${h.name}'s grip`,
+    );
     expect(kinds(narrative)).not.toContain('the caster seizes the undead target');
   });
 

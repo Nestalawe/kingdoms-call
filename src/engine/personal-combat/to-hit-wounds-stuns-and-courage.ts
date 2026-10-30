@@ -38,6 +38,7 @@ import type {
   AFightersSchools,
   AFightersStatus,
   ALingeringHarm,
+  TheSourceOfADaze,
   TheWardsAFighterWears,
 } from './helpers.ts';
 
@@ -216,11 +217,12 @@ export function pcStunWard(t: AFighterAsHisStunWardIsRead) {
   if (!a) return 0;
   return aFightersWardsRefuseAStunOrATerror(a) ? 100 : Math.max(0, Math.min(100, Number(a.stunWard) || 0));
 }
-// pcStunTurned rolls the ward once and says so when it turns the stun.
+// pcStunTurned rolls the ward once and says so when it turns the stun, naming what the daze comes from (its source, a
+// record: plan P1-12d19).
 export function pcStunTurned(
   target: AFighterAsAStunLandsOnHim,
   narrative: NarrativeLine[] | null | undefined,
-  what: string | undefined,
+  what: TheSourceOfADaze,
 ) {
   const w = pcStunWard(target);
   if (!(w >= 100 || (w > 0 && d100() <= w))) return false;
@@ -241,7 +243,7 @@ export function pcLandStun(
   target: AFighterAsAStunLandsOnHim | null | undefined,
   n: number,
   narrative: NarrativeLine[] | null | undefined,
-  what: string | undefined,
+  what: TheSourceOfADaze,
 ) {
   if (!target?.status || !(n > 0)) return false;
   if (pcStunTurned(target, narrative, what)) return false;
@@ -684,7 +686,7 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
       d.rounds--;
       narrate(narrative, {
         kind: 'a lingering harm afflicts a fighter',
-        harmLabel: d.label,
+        harmSource: d.source,
         cbtName: cbt.name,
         harmDealt: _t,
         dotWard: _dw,

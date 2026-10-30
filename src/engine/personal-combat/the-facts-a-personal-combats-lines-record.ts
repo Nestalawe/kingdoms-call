@@ -6,9 +6,10 @@
 // by construction. Since P1-12d2 (P1-12's Decisions of 2026-10-26, Decision 2) a field holds a value, never words: a
 // plural, a mark, a clause chosen by a flag, a joined list are written in the prose from the count, the roll and the
 // chance, the flag, the list (copied as the line is told: below). Words are still handed only in the fighters' labels
-// (`who`, `foeWho`: "The Barrow Wight") and an item's equip note (`gainedItemNote`, the items' words), and in what a
-// caller hands in through a parameter (a daze's `what`, a lingering harm's label). P1-12d's next slice merges the kinds
-// into facts by sense.
+// (`who`, `foeWho`: "The Barrow Wight") and an item's equip note (`gainedItemNote`, the items' words). What a daze or a
+// lingering harm comes from, which a caller hands in through a parameter, is a record of its names since P1-12d19
+// (TheSourceOfADaze, TheSourceOfALingeringHarm: src/engine/rules/the-registry-of-content-effects.ts, beside the combat
+// spells' steps that name one). P1-12d's next slice merges the kinds into facts by sense.
 //
 // Each kind's audience is written once, by its type (THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE): the
 // fight's (whoever the fight's lines are written for: emitNarrLine files them with the fight's event), or its hero's
@@ -17,6 +18,8 @@
 // (battle/pre-battle-duels.ts); each names its realm. The rise names its hero, his name and a copy of the rise (its
 // words: hpGainLine, in the prose); the surgeons' line holds the values a hero's death records for it (P1-12d5).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type { TheSourceOfADaze, TheSourceOfALingeringHarm } from '../rules/the-registry-of-content-effects.ts';
+export type { TheSourceOfADaze, TheSourceOfALingeringHarm } from '../rules/the-registry-of-content-effects.ts';
 
 /** A value a line's words are written with: a name, a number, or words themselves. */
 export type AValueInALinesWords = string | number | boolean | null;
@@ -786,7 +789,7 @@ export type TheFactOfAPersonalCombatsLine =
       targetStunPerk: string | null;
       targetArmourNames: readonly string[] | null;
       w: number;
-      what: string | undefined;
+      what: TheSourceOfADaze;
     }
   | {
       kind: "a fighter's harm strikes a mirror image";
@@ -905,7 +908,7 @@ export type TheFactOfAPersonalCombatsLine =
   | { kind: 'a fighter shrugs off the daze, held steady by their armour'; cbtName: AValueInALinesWords }
   | {
       kind: 'a lingering harm afflicts a fighter';
-      harmLabel: string | undefined;
+      harmSource: TheSourceOfALingeringHarm | null;
       cbtName: string;
       harmDealt: number;
       dotWard: number;

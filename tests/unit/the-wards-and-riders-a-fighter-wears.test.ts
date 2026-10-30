@@ -11,7 +11,9 @@
 // - the ward kinds no game merges (resist, which no item or perk has), and each kind merged onto one already worn.
 // Since plan P1-19q each ward's and each rider's merge, and the Mithril suit, are the items' registry's
 // (src/engine/rules/magic-items/what-a-fighter-wears-in-a-personal-combat.ts), reached through the same functions: the
-// cases read them as before, and one more, a hero who wears the suit fights in Mithril.
+// cases read them as before, and one more, a hero who wears the suit fights in Mithril. Since plan P1-12d19 a lingering
+// harm is handed its source, a record, not its label's words, and its identity is that record: the same source refreshes
+// it, another (by name or by kind, or none) runs beside it, each kind's words as its caller wrote them.
 // Level 1 (unit): each is a plain function on a staged fighter, ward or hero, called on the engine's modules (the
 // hero's builder through tests/lib/personal-combat.ts, for the turn's context); a static check can't run them, and no
 // game reaches these lines. No line here draws a die (no temper has a rage); a staged table is put back as it was.
@@ -39,8 +41,11 @@ const {
   pcLingerRounds,
   pcPromotePending,
   pcPushDot,
+  theSameSourceOfALingeringHarm,
   transferableItems,
 } = await import('../../src/engine/personal-combat/helpers.ts');
+const { theWordsOfTheSourceOfALingeringHarm } =
+  await import('../../src/views/prose/the-words-of-a-personal-combats-lines.ts');
 const {
   duelStanceOf,
   ensureEncounterPlan,
@@ -476,22 +481,63 @@ describe('a fighter’s lingering harm and his riders that wait a round', () => 
     ]);
   });
 
+  // since P1-12d19 a harm is handed its source, a record, not its label's words (the words: the prose's)
+  const bleed = { kind: 'a combat item', itemName: 'Made-up Bleed' } as const;
   test('no fighter or no status takes none; no list starts one; a gap in the list is passed over', () => {
-    expect(pcPushDot(null, 3, 2, 'Made-up Bleed')).toBeNull();
-    expect(pcPushDot({}, 3, 2, 'Made-up Bleed')).toBeNull();
-    const f: { status: { dot?: ({ dmg: number; rounds: number; label: string } | null)[] } } = { status: {} };
-    expect(pcPushDot(f, 3, 2, 'Made-up Bleed')).toEqual({ dmg: 3, rounds: 2, label: 'Made-up Bleed' });
+    expect(pcPushDot(null, 3, 2, bleed)).toBeNull();
+    expect(pcPushDot({}, 3, 2, bleed)).toBeNull();
+    const f: { status: { dot?: ({ dmg: number; rounds: number; source: typeof bleed } | null)[] } } = { status: {} };
+    expect(pcPushDot(f, 3, 2, bleed)).toEqual({ dmg: 3, rounds: 2, source: bleed });
     f.status.dot = [null];
-    pcPushDot(f, 3, 2, 'Made-up Bleed');
-    expect(f.status.dot).toEqual([null, { dmg: 3, rounds: 2, label: 'Made-up Bleed' }]);
+    pcPushDot(f, 3, 2, bleed);
+    expect(f.status.dot).toEqual([null, { dmg: 3, rounds: 2, source: bleed }]);
   });
 
-  test('no damage, 0 or not a number is 1; no label or an empty one is “Lingering harm”, and refreshes it', () => {
+  test('no damage, 0 or not a number is 1; no source is none, “Lingering harm”, and refreshes it', () => {
     const f = { status: { dot: [] } };
-    expect(pcPushDot(f, undefined, 1, undefined)).toEqual({ dmg: 1, rounds: 1, label: 'Lingering harm' });
-    expect(pcPushDot(f, 0, 1, '')).toEqual({ dmg: 1, rounds: 1, label: 'Lingering harm' });
-    expect(pcPushDot(f, NaN, 3, null)).toEqual({ dmg: 1, rounds: 3, label: 'Lingering harm' });
+    expect(pcPushDot(f, undefined, 1, undefined)).toEqual({ dmg: 1, rounds: 1, source: null });
+    expect(pcPushDot(f, 0, 1, null)).toEqual({ dmg: 1, rounds: 1, source: null });
+    expect(pcPushDot(f, NaN, 3, null)).toEqual({ dmg: 1, rounds: 3, source: null });
     expect(f.status.dot).toHaveLength(1);
+    expect(theWordsOfTheSourceOfALingeringHarm(null)).toBe('Lingering harm');
+  });
+
+  // A harm's identity is its source (P1-12d19; until then its label's words): the same source refreshes it, another
+  // runs beside it, a source of another kind by the same name too. Each kind's words, as its caller once wrote them.
+  test('the same source refreshes a lingering harm; another name, another kind or none runs beside it', () => {
+    const sources = [
+      [{ kind: 'a combat item', itemName: 'Made-up Vial' }, 'Made-up Vial'],
+      [{ kind: "an archer's impaling arrow", archerName: 'Made-up Archer' }, "Made-up Archer's impaling arrow"],
+      [{ kind: 'a spell that burns', spellName: 'Made-up Flame' }, 'Made-up Flame burns'],
+      [{ kind: "a guardian's special", specialName: 'Made-up Sting' }, 'Made-up Sting'],
+    ] as const;
+    for (const [source, words] of sources) {
+      expect(theWordsOfTheSourceOfALingeringHarm(source)).toBe(words);
+      const f = { status: { dot: [] } };
+      pcPushDot(f, 2, 1, source);
+      expect(pcPushDot(f, 3, 3, { ...source })).toEqual({ dmg: 3, rounds: 3, source });
+      expect(f.status.dot).toHaveLength(1);
+      pcPushDot(f, 1, 1, null);
+      expect(f.status.dot).toHaveLength(2);
+    }
+    // named alike, every kind against every other: the same source only of one kind
+    const namedX = [
+      { kind: 'a combat item', itemName: 'X' },
+      { kind: "an archer's impaling arrow", archerName: 'X' },
+      { kind: 'a spell that burns', spellName: 'X' },
+      { kind: "a guardian's special", specialName: 'X' },
+    ] as const;
+    for (const [i, a] of namedX.entries())
+      for (const [j, b] of namedX.entries()) expect(theSameSourceOfALingeringHarm(a, b)).toBe(i === j);
+    expect(theSameSourceOfALingeringHarm(namedX[0], { kind: 'a combat item', itemName: 'Y' })).toBe(false);
+    expect(theSameSourceOfALingeringHarm(namedX[1], { kind: "an archer's impaling arrow", archerName: 'Y' })).toBe(
+      false,
+    );
+    expect(theSameSourceOfALingeringHarm(namedX[2], { kind: 'a spell that burns', spellName: 'Y' })).toBe(false);
+    expect(theSameSourceOfALingeringHarm(namedX[3], { kind: "a guardian's special", specialName: 'Y' })).toBe(false);
+    expect(theSameSourceOfALingeringHarm(null, null)).toBe(true);
+    expect(theSameSourceOfALingeringHarm(null, sources[0][0])).toBe(false);
+    expect(theSameSourceOfALingeringHarm(sources[0][0], null)).toBe(false);
   });
 
   test('a rider deferred: no fighter, no status or no function hangs none; no queue starts one; each runs once', () => {

@@ -21,6 +21,8 @@ import type {
   AFightersWardAsTheLineTellsIt,
   TheFactOfAPersonalCombatsLine,
   TheOddsOfMercy,
+  TheSourceOfADaze,
+  TheSourceOfALingeringHarm,
 } from '../../engine/personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import { isLegendaryItem } from '../../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 
@@ -127,16 +129,36 @@ function theArmourThatHoldsAFighter(armourNames: readonly string[] | null): stri
   return 'their armour';
 }
 
-/** The daze a ward turns (the words its caller handed: "the blast", "the Ghoul's daze"), else "the daze". */
-function theDazeThatFindsNoHold(what: string | undefined): string {
-  if (what) return what;
-  return 'the daze';
+/** The daze a ward turns, by what it comes from (plan P1-12d19: until then its caller handed these words). */
+export function theWordsOfTheSourceOfADaze(what: TheSourceOfADaze): string {
+  switch (what.kind) {
+    case "a combat item's daze":
+      return `the ${what.itemName}'s daze`;
+    case "a combat item's hold":
+      return `the ${what.itemName}`;
+    case "a spell's blast":
+      return 'the blast';
+    case "a caster's grip":
+      return `${what.casterName}'s grip`;
+    case "a guardian's special's daze":
+      return `${what.specialName}'s daze`;
+  }
 }
 
-/** A lingering harm by its name (the item or spell that dealt it), else "Lingering harm". */
-function theNameOfALingeringHarm(label: string | undefined): string {
-  if (label) return label;
-  return 'Lingering harm';
+/** A lingering harm by what it comes from (the item, the archer's arrow, the spell or the special that dealt it), else
+ *  "Lingering harm" (plan P1-12d19: until then its caller handed the label's words, its identity too). */
+export function theWordsOfTheSourceOfALingeringHarm(source: TheSourceOfALingeringHarm | null): string {
+  if (source === null) return 'Lingering harm';
+  switch (source.kind) {
+    case 'a combat item':
+      return source.itemName;
+    case "an archer's impaling arrow":
+      return `${source.archerName}'s impaling arrow`;
+    case 'a spell that burns':
+      return `${source.spellName} burns`;
+    case "a guardian's special":
+      return source.specialName;
+  }
 }
 
 /** A healing over time by its name (the potion), else "Regeneration". */
@@ -563,7 +585,7 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
     case 'a fighter reads the ground and steadies their aim':
       return `  ${String(fact.actorName)} reads the ground and steadies — ${String(fact.cut)}% of their to-hit penalty is shaken off (Explorer ${String(fact.ex)}).`;
     case 'the target cannot be held':
-      return `  ${theWardsIcon(fact.targetIsAGuardian)} ${fact.targetName} cannot be held (${fact.targetIsAGuardian ? (fact.targetStunPerk ?? 'its nature') : theArmourThatHoldsAFighter(fact.targetArmourNames)}${fact.w < 100 ? `, ${String(fact.w)}%` : ''}) — ${theDazeThatFindsNoHold(fact.what)} finds no hold.`;
+      return `  ${theWardsIcon(fact.targetIsAGuardian)} ${fact.targetName} cannot be held (${fact.targetIsAGuardian ? (fact.targetStunPerk ?? 'its nature') : theArmourThatHoldsAFighter(fact.targetArmourNames)}${fact.w < 100 ? `, ${String(fact.w)}%` : ''}) — ${theWordsOfTheSourceOfADaze(fact.what)} finds no hold.`;
     case "a fighter's harm strikes a mirror image":
       return `  ${String(fact.srcName)}'s ${String(fact.harmKind)} strikes a Mirror Image of ${String(fact.targetName)}! (${String(fact.targetStatusMirrorImages)} image${fact.targetStatusMirrorImages !== 1 ? 's' : ''} left)`;
     case 'the first harm to reach the target is drunk by their armour':
@@ -613,7 +635,7 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
     case 'a fighter shrugs off the daze, held steady by their armour':
       return `  🛡 ${String(fact.cbtName)} shrugs off the daze — their armour holds them steady.`;
     case 'a lingering harm afflicts a fighter':
-      return `  ${theNameOfALingeringHarm(fact.harmLabel)} afflicts ${fact.cbtName} for ${String(fact.harmDealt)} damage${fact.dotWard > 0 ? ` (${theWordsOfAFightersWard(fact.cbtsWard, 'hide')} turns ${String(fact.dotWard)}% of it)` : ''}. (HP ${String(fact.cbtHp)})`;
+      return `  ${theWordsOfTheSourceOfALingeringHarm(fact.harmSource)} afflicts ${fact.cbtName} for ${String(fact.harmDealt)} damage${fact.dotWard > 0 ? ` (${theWordsOfAFightersWard(fact.cbtsWard, 'hide')} turns ${String(fact.dotWard)}% of it)` : ''}. (HP ${String(fact.cbtHp)})`;
     case 'a healing knits a fighter':
       return `  ${theNameOfAHealing(fact.healingLabel)} knits ${String(fact.cbtName)} for ${String(fact.healed)}. (HP ${String(fact.cbtHp)})`;
     case 'a fighter tears free of the spiritwrack':
