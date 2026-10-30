@@ -46,6 +46,24 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   (`magic-items/a-heros-items-and-his-battle-spell.ts`, keyed `{ field: 'emberTwo' }`: his Fireball strikes the two
   strongest units). Its runner, `theStrongestUnitsAHerosItemsLetHisFireballStrike`, is asked by the two copies a hero
   casts.
+- **The pre-battle strikes** (P1-19v, `spells/a-units-strike-before-an-army-battle.ts`). `strength`'s **a unit strikes
+  before the battle**, asked after battle magic by the battle code's three copies: a hero's units' between two heroes'
+  hosts (`combatVsChar`'s `applyArmyBattleSpells`), a hero's units' against a province's neutral guards, and the
+  guards' own units' against him (both in `combatVsNPC`). The strikes are each unit's, in the content's tables (a
+  winged rider's in `BATTLE_ARMY_SPELLS`, else a beast's `spells` that deal damage, in `PRIMAL_ARMY_DEFS_P`), not a
+  spell's, so no entry holds them: one effect casts them all, and its runner, `whatAUnitsStrikeMayDoBeforeTheBattle`,
+  is the registry's. It is handed the copy, the unit's type, whether the other side has a unit, the commander's Druid
+  as the copy counts it, and what his items add to the chance (asked only when the chance counts them). It returns
+  the strikes to draw from (each with whom it strikes, its damage range and its line), the chance, and the lines its
+  copy writes when it strikes and when it misses (a winged rider misses quietly). The copy draws the strike, rolls its
+  chance as it rolled it (`d100()` against the guards, `kcRng() * 100` in the other two), draws the unit struck and the
+  damage, and writes its lines. The chance's numbers are the content's (`THE_CHANCE_OF_A_STRIKE_BEFORE_THE_BATTLE`: a
+  beast's 30% and 10% a Druid level, to 90%; a flying unit's one in two, ruling R-093); `primalStrikeChance` asks the
+  same rule (`theChanceOfAUnitsStrikeBeforeTheBattle`).
+- **The totems** are the items' registry's: `strength`'s **a commander's items add to a strike's chance**
+  (`magic-items/a-commanders-items-and-his-units-strikes.ts`: the Totem of the Thunderhead's `{ stat: 'primalStrike' }`
+  and the Beastcaller's Warhorn's `{ field: 'primalStrike' }`, each the copy's own number). Its runner,
+  `whatTheCommandersItemsAddToAStrikesChance`, is asked through `primalStrikeItemBonus`.
 
 ## What checks it
 
@@ -58,6 +76,9 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
 - Each spell's values in each copy, and the battles' lines no matrix game reaches (a hero's Control Undead and Holy
   Symbol against undead guards, a Fireball with an Ember Rune in both battles)
   (`tests/unit/the-battle-spells-each-copy-casts-keep-their-values.test.ts`).
+- Each unit's strike in each copy, and the totems on `primalStrikeChance`
+  (`tests/unit/the-strikes-each-copy-makes-before-the-battle-keep-their-values.test.ts`); a slain hero's totem against
+  guards, which no game reaches (`tests/unit/the-battle-magic-lines-no-matrix-game-reaches-keep-their-values.test.ts`).
 
 ## How to add a spell's effect
 

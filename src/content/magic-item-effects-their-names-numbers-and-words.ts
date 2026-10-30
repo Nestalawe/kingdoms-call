@@ -37,8 +37,8 @@ export interface ANumberOfAnItemsEffect {
   readonly theTextsWriteIt: HowAnItemsTextsWriteANumber;
 }
 
-/** The three effects a held copy carries on the item itself, beside its `effect` (Parked: one key per effect, later). */
-export type AnItemsOwnField = 'fleetStr' | 'landFullAtSea' | 'exploreMove' | 'emberTwo';
+/** The effects a held copy carries on the item itself, beside its `effect` (Parked: one key per effect, later). */
+export type AnItemsOwnField = 'fleetStr' | 'landFullAtSea' | 'exploreMove' | 'emberTwo' | 'primalStrike';
 
 /** The riders a held copy carries for personal combat (its `effect.pc`), beside a ward: each carried when above 0. */
 export type ARiderAnItemCarries = 'aura' | 'burn' | 'drain' | 'hitBonus' | 'dmgBonus';
@@ -217,6 +217,12 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { field: 'emberTwo' },
     numbers: { theStrongestUnitsStruck: { value: 2, theTextsWriteIt: 'the strongest units, in words' } },
   },
+  // ── A commander's items and his units' strikes (strength, before an army battle, where each unit's strike rolls its
+  // chance: plan P1-19v) ──
+  // The pre-battle strikes of the units he leads fire more often, by the copy's own bonus (in percentage points).
+  'strike-chance-bonus': { name: 'Totem of the Thunderhead', carriedAs: { stat: 'primalStrike' }, numbers: {} },
+  // The same, by a field of the copy's own (an item that carries another effect too: the Druid's, beside it).
+  'strike-chance-field': { name: "Beastcaller's Warhorn", carriedAs: { field: 'primalStrike' }, numbers: {} },
   // ── The commander's items at sea (strength, in armStr, where the sea's penalty would cut a land unit he leads):
   // the penalty is waived, as for a commander of Naval's eighth level. ──
   'land-units-at-full-strength-at-sea': {

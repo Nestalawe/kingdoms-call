@@ -1,10 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import {
-  BATTLE_ARMY_SPELLS,
-  KC_UNIT_CLASS,
-  PRIMAL_ARMY_DEFS_P,
-  SPELL_DEFS_P,
-} from '../../content/kingdoms-call-data.ts';
+import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
@@ -13,7 +8,10 @@ import {
   theStrongestUnitsAHerosItemsLetHisFireballStrike,
   theVolleysTheCommandersItemsLoose,
 } from '../rules/the-registry-of-magic-item-effects.ts';
-import { whatABattleSpellDoesBeforeTheBattle } from '../rules/the-registry-of-spell-effects.ts';
+import {
+  whatABattleSpellDoesBeforeTheBattle,
+  whatAUnitsStrikeMayDoBeforeTheBattle,
+} from '../rules/the-registry-of-spell-effects.ts';
 import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
@@ -67,7 +65,12 @@ import { d100, pick, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
-import { SPELL_CAST_BASE, guardCastChance, magicL8CastBonus, primalStrikeChance } from '../chances-and-lair-grades.ts';
+import {
+  SPELL_CAST_BASE,
+  guardCastChance,
+  magicL8CastBonus,
+  primalStrikeItemBonus,
+} from '../chances-and-lair-grades.ts';
 import {
   DISC_DEFOWN_CAP,
   discDeathMult,
@@ -607,21 +610,23 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // Pre-battle magic: special army spells (Wyvern Riders, etc. + all primal armies)
   const druIdLvlMag = atkCmdrSlain ? 0 : effStat(turnContext, c, 'druid');
   armies.forEach((atk) => {
-    // Check standard army spell table first
-    let armySpells = BATTLE_ARMY_SPELLS[atk.type] || [];
-    // Check PRIMAL_ARMY_DEFS_P for spells
-    const _isPrimalStrikeA = armySpells.length === 0 && PRIMAL_ARMY_DEFS_P[atk.type]?.spells;
-    if (_isPrimalStrikeA) {
-      armySpells = PRIMAL_ARMY_DEFS_P[atk.type].spells.filter((s) => s.dmg && s.dmg[1] > 0);
-    }
-    if (armySpells.length === 0 || defenders.length === 0) return;
-    const sp = armySpells[Math.floor(kcRng() * armySpells.length)];
-    // Cast chance: 20% + 10% per druid level (druid rating governs primal/special units)
-    const armySpellChance = primalStrikeChance(druIdLvlMag, atkCmdrSlain ? null : c, atk.type);
+    // What the unit's strike may do is the spells' registry's (plan P1-19v): its strikes are its type's, in the
+    // content's tables; its chance 30% + 10% per Druid level (the winged riders' one in two). This copy draws where it
+    // drew, rolls its chance, applies the blow and writes its lines.
+    const may = whatAUnitsStrikeMayDoBeforeTheBattle({
+      theCopy: "a hero's units against the guards",
+      theUnitsType: atk.type,
+      theEnemyHasAUnit: defenders.length > 0,
+      theDruidLevel: Number(druIdLvlMag) || 0,
+      whatTheCommandersItemsAdd: () => primalStrikeItemBonus(atkCmdrSlain ? null : c),
+    });
+    if (!may) return;
+    const sp = may.theStrikes[Math.floor(kcRng() * may.theStrikes.length)];
+    const armySpellChance = may.theChance;
     const armySpellRoll = d100();
-    if (armySpellRoll > armySpellChance && _isPrimalStrikeA) {
+    if (armySpellRoll > armySpellChance && may.theLineIfItMisses) {
       narrate(narrative, {
-        kind: "a unit's power gathers but never strikes",
+        kind: may.theLineIfItMisses,
         unitName: atk.unitName || atk.type,
         powerName: sp.name,
         strikeChancePct: armySpellChance,
@@ -630,28 +635,28 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     }
     if (armySpellRoll <= armySpellChance) {
       narrate(narrative, {
-        kind: 'a unit uses its power in battle',
+        kind: may.theLineIfItStrikes,
         unitName: atk.unitName || atk.type,
         powerName: sp.name,
         powerFlavour: sp.flavour,
       });
-      if (sp.target === 'all') {
-        const dmg = rng(sp.dmg[0], sp.dmg[1]);
+      if (sp.theBlow.reaches === 'every enemy unit') {
+        const dmg = rng(sp.theBlow.theDamage[0], sp.theBlow.theDamage[1]);
         defenders.forEach((d) => {
           d._tempStrReduction = (d._tempStrReduction || 0) + dmg;
         });
         narrate(narrative, {
-          kind: "a unit's power hits every defending unit",
+          kind: sp.theBlow.theLine,
           powerName: sp.name,
           unitCount: defenders.length,
           damage: dmg,
         });
       } else {
         const d = defenders[Math.floor(kcRng() * defenders.length)];
-        const dmg = rng(sp.dmg[0], sp.dmg[1]);
+        const dmg = rng(sp.theBlow.theDamage[0], sp.theBlow.theDamage[1]);
         d._tempStrReduction = (d._tempStrReduction || 0) + dmg;
         narrate(narrative, {
-          kind: "a unit's power hits one unit of the other side",
+          kind: sp.theBlow.theLine,
           powerName: sp.name,
           struckUnitName: d.unitName || d.type,
           damage: dmg,
@@ -1005,51 +1010,50 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // Brood defending without a hero was silently inert. No commander = druid 0 (20% base chance).
   const defDruIdLvl = defHero && !defHero._druidNegated ? effStat(turnContext, defHero, 'druid') : 0;
   (_cLA ? [] : defenders).forEach((def) => {
-    let armySpells = BATTLE_ARMY_SPELLS[def.type] || [];
-    const _isPrimalStrike = armySpells.length === 0 && PRIMAL_ARMY_DEFS_P[def.type]?.spells;
-    if (_isPrimalStrike) {
-      armySpells = PRIMAL_ARMY_DEFS_P[def.type].spells.filter((s) => s.dmg && s.dmg[1] > 0);
-    }
-    if (armySpells.length === 0 || armies.length === 0) return;
-    const sp = armySpells[Math.floor(kcRng() * armySpells.length)];
-    const armySpellChance = primalStrikeChance(
-      defDruIdLvl,
-      defHero && !defHero._druidNegated ? defHero : null,
-      def.type,
-    );
+    // the spells' registry's "strength: a unit strikes before the battle" (plan P1-19v); this copy rolls as it rolled
+    const may = whatAUnitsStrikeMayDoBeforeTheBattle({
+      theCopy: "the guards' units against a hero",
+      theUnitsType: def.type,
+      theEnemyHasAUnit: armies.length > 0,
+      theDruidLevel: Number(defDruIdLvl) || 0,
+      whatTheCommandersItemsAdd: () => primalStrikeItemBonus(defHero && !defHero._druidNegated ? defHero : null),
+    });
+    if (!may) return;
+    const sp = may.theStrikes[Math.floor(kcRng() * may.theStrikes.length)];
+    const armySpellChance = may.theChance;
     if (kcRng() * 100 < armySpellChance) {
       narrate(narrative, {
-        kind: 'a defending unit uses its power in battle',
+        kind: may.theLineIfItStrikes,
         unitName: def.unitName || def.type,
         powerName: sp.name,
         powerFlavour: sp.flavour,
       });
-      if (sp.target === 'all') {
-        const dmg = rng(sp.dmg[0], sp.dmg[1]);
+      if (sp.theBlow.reaches === 'every enemy unit') {
+        const dmg = rng(sp.theBlow.theDamage[0], sp.theBlow.theDamage[1]);
         armies.forEach((a) => {
           a._tempStrReduction = (a._tempStrReduction || 0) + dmg;
         });
         narrate(narrative, {
-          kind: "a unit's power hits every attacking unit",
+          kind: sp.theBlow.theLine,
           powerName: sp.name,
           unitCount: armies.length,
           damage: dmg,
         });
       } else {
         const a = armies[Math.floor(kcRng() * armies.length)];
-        const dmg = rng(sp.dmg[0], sp.dmg[1]);
+        const dmg = rng(sp.theBlow.theDamage[0], sp.theBlow.theDamage[1]);
         a._tempStrReduction = (a._tempStrReduction || 0) + dmg;
         narrate(narrative, {
-          kind: "a unit's power hits one unit of the other side",
+          kind: sp.theBlow.theLine,
           powerName: sp.name,
           struckUnitName: a.unitName || a.type,
           damage: dmg,
         });
       }
-    } else if (_isPrimalStrike) {
+    } else if (may.theLineIfItMisses) {
       // Primal strikes now announce a miss (standard units stay quiet to keep reports lean).
       narrate(narrative, {
-        kind: "a unit's power gathers but never strikes",
+        kind: may.theLineIfItMisses,
         unitName: def.unitName || def.type,
         powerName: sp.name,
         strikeChancePct: armySpellChance,

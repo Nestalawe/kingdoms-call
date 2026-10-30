@@ -24,7 +24,7 @@
 // ward, and pcMeleeStrike's 'thorns', pcTakeHit's 5 and pcRoundStart's 'regen', on P1-19r's; pcCombatItemWanted 19,
 // pcUseCombatItem 19, pcAct 1, pcMeleeDamage 1, pcBuildGuardian 4 and pcCharCombatant's 'combatUse' 1 on P1-19s's;
 // _useScore 20, itemPowerScore 8, itemSlot 2, plain 1, tiers-and-hoards.ts' copy pass 1, and the 7 item effects in
-// ITEM_COMBAT_STATS, on P1-19t's), as the unit-name test was: the one exception to refactor-only's rule
+// ITEM_COMBAT_STATS, on P1-19t's; primalStrikeItemBonus 1, and its read of `primalStrike`, on P1-19v's), as the unit-name test was: the one exception to refactor-only's rule
 // that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
@@ -134,6 +134,7 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'itemSlot',
     "P1-19t, the treasury: a combat item's and the Mithril suit's slot",
   ],
+  ['src/engine/chances-and-lair-grades.ts', 'primalStrikeItemBonus', "P1-19v, the totems' bonus to a strike"],
 ];
 
 /** The passes that build the treasury as the engine loads, each a named function run at once (`(function name()

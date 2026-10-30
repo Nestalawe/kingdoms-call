@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { BATTLE_ARMY_SPELLS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
@@ -7,7 +7,10 @@ import {
   theStrongestUnitsAHerosItemsLetHisFireballStrike,
   theVolleysTheCommandersItemsLoose,
 } from '../rules/the-registry-of-magic-item-effects.ts';
-import { whatABattleSpellDoesBeforeTheBattle } from '../rules/the-registry-of-spell-effects.ts';
+import {
+  whatABattleSpellDoesBeforeTheBattle,
+  whatAUnitsStrikeMayDoBeforeTheBattle,
+} from '../rules/the-registry-of-spell-effects.ts';
 import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
@@ -57,7 +60,7 @@ import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
-import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeChance } from '../chances-and-lair-grades.ts';
+import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeItemBonus } from '../chances-and-lair-grades.ts';
 import {
   DISC_DEFOWN_CAP,
   discDeathMult,
@@ -779,16 +782,21 @@ export function combatVsChar(turnContext, atk, def, prov) {
   function applyArmyBattleSpells(heroChar, myArmies, enemyArmies, narr) {
     const druLvl = heroChar._druidNegated ? 0 : effStat(turnContext, heroChar, 'druid');
     myArmies.forEach((a) => {
-      let armySpells = BATTLE_ARMY_SPELLS[a.type] || [];
-      const _isPrimalP = !armySpells.length && PRIMAL_ARMY_DEFS_P[a.type]?.spells;
-      if (_isPrimalP) armySpells = PRIMAL_ARMY_DEFS_P[a.type].spells.filter((s) => s.dmg && s.dmg[1] > 0);
-      if (!armySpells.length || !enemyArmies.length) return;
-      const sp = armySpells[Math.floor(kcRng() * armySpells.length)];
-      const _pvpStrikeChance = primalStrikeChance(druLvl, heroChar._druidNegated ? null : heroChar, a.type);
+      // the spells' registry's "strength: a unit strikes before the battle" (plan P1-19v); this copy rolls as it rolled
+      const may = whatAUnitsStrikeMayDoBeforeTheBattle({
+        theCopy: 'between heroes',
+        theUnitsType: a.type,
+        theEnemyHasAUnit: enemyArmies.length > 0,
+        theDruidLevel: Number(druLvl) || 0,
+        whatTheCommandersItemsAdd: () => primalStrikeItemBonus(heroChar._druidNegated ? null : heroChar),
+      });
+      if (!may) return;
+      const sp = may.theStrikes[Math.floor(kcRng() * may.theStrikes.length)];
+      const _pvpStrikeChance = may.theChance;
       const _pvpHit = kcRng() * 100 < _pvpStrikeChance;
-      if (!_pvpHit && _isPrimalP)
+      if (!_pvpHit && may.theLineIfItMisses)
         narrate(narr, {
-          kind: "a unit's power gathers but never strikes",
+          kind: may.theLineIfItMisses,
           unitName: a.unitName || a.type,
           powerName: sp.name,
           strikeChancePct: _pvpStrikeChance,
@@ -796,27 +804,27 @@ export function combatVsChar(turnContext, atk, def, prov) {
         });
       if (_pvpHit) {
         narrate(narr, {
-          kind: 'a unit uses its power in battle',
+          kind: may.theLineIfItStrikes,
           unitName: a.unitName || a.type,
           powerName: sp.name,
           powerFlavour: sp.flavour,
         });
-        if (sp.target === 'all') {
-          const dmg = rng(sp.dmg[0], sp.dmg[1]);
+        if (sp.theBlow.reaches === 'every enemy unit') {
+          const dmg = rng(sp.theBlow.theDamage[0], sp.theBlow.theDamage[1]);
           enemyArmies.forEach((d) => {
             d._tempStrReduction = (d._tempStrReduction || 0) + dmg;
           });
           narrate(narr, {
-            kind: "a unit's power hits all enemy units",
+            kind: sp.theBlow.theLine,
             enemyUnitCount: enemyArmies.length,
             damage: dmg,
           });
         } else {
           const d = enemyArmies[Math.floor(kcRng() * enemyArmies.length)];
-          const dmg = rng(sp.dmg[0], sp.dmg[1]);
+          const dmg = rng(sp.theBlow.theDamage[0], sp.theBlow.theDamage[1]);
           d._tempStrReduction = (d._tempStrReduction || 0) + dmg;
           narrate(narr, {
-            kind: "a unit's power hits one enemy unit",
+            kind: sp.theBlow.theLine,
             struckUnitName: d.unitName || d.type,
             damage: dmg,
           });

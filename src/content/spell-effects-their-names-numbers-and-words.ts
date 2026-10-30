@@ -92,3 +92,14 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
 
 /** A spell the registry holds, by its slug. */
 export type SpellSlug = keyof typeof SPELL_EFFECTS_THE_REGISTRY_HOLDS;
+
+/** The chance a unit's strike before an army battle lands (plan P1-19's spells family, row P1-19v; until then written in
+ *  primalStrikeChance, src/engine/chances-and-lair-grades.ts): a beast's (any unit's that doesn't fly), 30% and 10% for
+ *  each level of its commander's Druid, with what his items add, to 90% at most; a flying unit's (the winged riders',
+ *  ruling R-093), one in two whatever his Druid. The strikes themselves are each unit's, in the content's tables
+ *  (PRIMAL_ARMY_DEFS_P's `spells`, BATTLE_ARMY_SPELLS), each with its name and damage, which the units' words test
+ *  reads; each beast's blurb states these numbers. */
+export const THE_CHANCE_OF_A_STRIKE_BEFORE_THE_BATTLE = {
+  aBeastsStrike: { thePercentage: 30, perDruidLevel: 10, atMost: 90 },
+  aFlyingUnitsStrike: { thePercentage: 50 },
+} as const;

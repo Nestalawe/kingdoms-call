@@ -11,8 +11,11 @@
 // Control Undead against guards adds the unit drawn to the hero's host twice when the battle's hero is the world's own
 // (Parked "Control Undead against neutral guards may add the turned unit twice"): this pins today's count, so its fix
 // changes this test with it.
+// Since P1-19v it plays a hero's units' strike against guards too, which no game reaches with a totem carried: his
+// Totem of the Thunderhead adds its 25 to his Stone Giants' chance, and nothing once he is slain before the battle (his
+// host fights on, leaderless), the strike's roll fed so that the miss's line gives the chance.
 // The battles and the spell choice keep their names and signatures, so this passes on the code before the registry
-// took battle magic (P1-19u's base), as after.
+// took battle magic (P1-19u's base) and the strikes (P1-19v's), as after.
 // Level 1 (unit): the engine's modules called directly (plan P1-14a), with the dice that decide fed in order; no turn
 // is played. Not lower: the lines sit inside combatVsNPC and combatVsChar. Not higher: a whole turn adds dice before
 // the battle, and a cast that succeeds at most 95 times in 100 (the Decisions named a scenario case on the staged
@@ -98,12 +101,15 @@ const aCompany = (quality: string, unitName: string, more: Partial<ArmyInABattle
  *  units, with what this battle took off each, when Flak Screen first runs. */
 interface WhatTheBattleShows {
   readonly lines: readonly Record<string, unknown>[];
+  /** The lines of the units' strikes before the battle (plan P1-19v). */
+  readonly theStrikes: readonly Record<string, unknown>[];
   readonly theAttackers: readonly (readonly [unitName: string, lost: number])[];
   readonly theDefenders: readonly (readonly [unitName: string, lost: number])[];
 }
 
 /** A battle on land in which realm 0's king (Elemental, White and Necromancy 5) casts the battle spell his plan names
- *  (`CA:<spell>`), carrying the item named: against `defenders`, either neutral guards with no commander
+ *  (`CA:<spell>`; none for ''), carrying the item named, at the head of his host (the First Shields, or the host given,
+ *  with the Druid given; slain before the battle, if so): against `defenders`, either neutral guards with no commander
  *  (combatVsNPC), or realm 1's king's host, who casts nothing (combatVsChar). From the moment his spell is chosen the
  *  next dice are `dice`, in order (the cast roll first: 0 rolls a 1); every other die is a seeded stream's. */
 function aBattle(
@@ -112,6 +118,7 @@ function aBattle(
   defenders: readonly ArmyInABattle[],
   dice: readonly number[],
   item?: string,
+  theHero: { readonly host?: readonly ArmyInABattle[]; readonly isSlain?: boolean; readonly druid?: number } = {},
 ): WhatTheBattleShows {
   const G = JSON.parse(THE_WORLD) as World;
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
@@ -131,9 +138,16 @@ function aBattle(
   };
   atk['_attackedFrom'] = atk.location;
   moveTo(atk);
-  atk.armies = [aCompany('Average', 'the First Shields')];
-  atk.skills = { ...atk.skills, elemental: 5, white: 5, necromancy: 5 };
-  atk.encounterPlan = { tactics: [`CA:${spell}`, 'ME', 'ME', 'ME', 'ME'], duelStance: 'refuse' };
+  atk.armies = theHero.host ? [...theHero.host] : [aCompany('Average', 'the First Shields')];
+  atk.skills = {
+    ...atk.skills,
+    elemental: 5,
+    white: 5,
+    necromancy: 5,
+    ...(theHero.druid === undefined ? {} : { druid: theHero.druid }),
+  };
+  if (theHero.isSlain) atk.alive = false;
+  atk.encounterPlan = { tactics: [spell ? `CA:${spell}` : 'ME', 'ME', 'ME', 'ME', 'ME'], duelStance: 'refuse' };
   const rune = item ? ALL_MAGIC_ITEMS_P.find((it) => it.name === item) : undefined;
   atk.items = rune ? [{ ...rune, id: 1, equipped: true }] : [];
 
@@ -176,7 +190,8 @@ function aBattle(
   const lines = narrative.flatMap((l) =>
     typeof l === 'object' && /fireball|control undead|holy symbol/.test(l.kind) ? [{ ...l }] : [],
   );
-  return { lines, ...seen.at };
+  const theStrikes = narrative.flatMap((l) => (typeof l === 'object' && l.kind.includes('power') ? [{ ...l }] : []));
+  return { lines, theStrikes, ...seen.at };
 }
 
 describe("a hero's battle magic against neutral guards, in the lines no game reaches", () => {
@@ -247,5 +262,35 @@ describe.for(['against the guards', 'between two hosts'] as const)('Fireball wit
       ['the Old Guard', 15],
       ['the Hill Watch', 12],
     ]);
+  });
+});
+
+describe("a hero's units' strikes against neutral guards, in the lines no game reaches (plan P1-19v)", () => {
+  // He casts no battle spell, so the first dice fed are his Stone Giants': their one strike drawn (any die), then its
+  // roll, a 100: it misses whatever its chance (90% at most), and the line says the chance it had. He carries the Totem
+  // of the Thunderhead (+25) and has no Druid.
+  const theGiants = [{ type: 'Stone Giants', quality: 'Average', race: 'Stone Giant', unitName: 'the Hill Giants' }];
+  const theGuards = [aCompany('Average', 'the Mill Watch')];
+  const theMiss = (chance: number) => ({
+    kind: "a unit's power gathers but never strikes",
+    unitName: 'the Hill Giants',
+    powerName: 'Boulder Barrage',
+    strikeChancePct: chance,
+    druidLevel: 0,
+  });
+  test('leading them, his totem adds to their chance: 30% and 25%', () => {
+    const shown = aBattle('against the guards', '', theGuards, [0, 0.995], 'Totem of the Thunderhead', {
+      host: theGiants,
+      druid: 0,
+    });
+    expect(shown.theStrikes).toEqual([theMiss(55)]);
+  });
+  test('slain before the battle (his host fights on, leaderless), his totem adds nothing: 30%', () => {
+    const shown = aBattle('against the guards', '', theGuards, [0, 0.995], 'Totem of the Thunderhead', {
+      host: theGiants,
+      druid: 0,
+      isSlain: true,
+    });
+    expect(shown.theStrikes).toEqual([theMiss(30)]);
   });
 });

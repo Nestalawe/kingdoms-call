@@ -155,10 +155,12 @@ export interface TheVolleysAnItemAdds {
 
 /** A held copy of a magic item, as a stage that reads the copy's own numbers hands it to an effect (plan P1-19's items
  *  family, Decision 2: the copy's number, not content's, so an old save's copy works as it did): its effect's `bonus`
- *  and `temper`, and the share of a province it explores on a move (`exploreMove`, a field of its own), each guarded. */
+ *  and `temper`, the share of a province it explores on a move (`exploreMove`, a field of its own) and what it adds to
+ *  a strike's chance (`primalStrike`, a field of its own), each guarded. */
 export interface AHeldCopysOwnNumbers {
   readonly effect?: { readonly bonus?: unknown; readonly temper?: string | null | undefined } | null | undefined;
   readonly exploreMove?: unknown;
+  readonly primalStrike?: unknown;
 }
 
 /** The aura a hero's item spreads over his realm's heroes in his province: the levels it adds to every skill, and the
@@ -1003,6 +1005,63 @@ export interface TheChangeAnItemMakesToABattleSpell {
   readonly theStrongestUnitsAFireballStrikes: number;
 }
 
+// ── The pre-battle strikes (plan P1-19's spells family, row P1-19v): a unit's strike before an army battle, after battle
+// magic. The strikes are each unit's, in the content's tables (P1-19l's Choice 2); one effect casts them all. ──
+
+/** Which of the battle code's three copies of the pre-battle strikes asks: a hero's units' between two heroes' hosts
+ *  (combatVsChar's applyArmyBattleSpells, each side), a hero's units' against a province's neutral guards, or the
+ *  guards' own units' against him (both in combatVsNPC). Each copy keeps its own roll and writes its own lines. */
+export type ACopyOfThePreBattleStrikes =
+  'between heroes' | "a hero's units against the guards" | "the guards' units against a hero";
+
+/** What the stage "strength: a unit strikes before the battle" hands an effect (before any of the strike's draws). */
+export interface AUnitAboutToStrikeBeforeTheBattle {
+  readonly theCopy: ACopyOfThePreBattleStrikes;
+  /** Its type: its strikes are its type's, in the content's tables. */
+  readonly theUnitsType: string | null | undefined;
+  /** Whether the other side has a unit to strike. */
+  readonly theEnemyHasAUnit: boolean;
+  /** Its commander's Druid, as the copy counts it (0 for none). */
+  readonly theDruidLevel: number;
+  /** What its commander's items add to the chance (the items' registry's runner of "strength: a commander's items add
+   *  to a strike's chance"), asked only when the chance counts them: reading a commander's items tidies them. */
+  readonly whatTheCommandersItemsAdd: () => number;
+}
+
+/** The line a copy writes for a strike: each copy's own kinds, as the battle code wrote them. */
+export type TheLineOfAPreBattleStrike =
+  | "a unit's power gathers but never strikes"
+  | 'a unit uses its power in battle'
+  | 'a defending unit uses its power in battle'
+  | "a unit's power hits all enemy units"
+  | "a unit's power hits every defending unit"
+  | "a unit's power hits every attacking unit"
+  | "a unit's power hits one enemy unit"
+  | "a unit's power hits one unit of the other side";
+
+/** A strike a unit may make, as the resolver draws it: its name and flavour (the table's), and its blow: every enemy
+ *  unit, or one the resolver draws, loses the damage the resolver draws in the table's range, and the line its copy
+ *  writes for it. */
+export interface APreBattleStrike {
+  readonly name: string;
+  readonly flavour: string | undefined;
+  readonly theBlow: {
+    readonly reaches: 'every enemy unit' | 'one enemy unit drawn at random';
+    /** The table's range, as the battle reads it: its least and its most. */
+    readonly theDamage: readonly number[];
+    readonly theLine: TheLineOfAPreBattleStrike;
+  };
+}
+
+/** What a unit's strike may do before the battle: the strikes the resolver draws one of, the chance its roll must make,
+ *  and the lines its copy writes when it strikes, and when it misses (none: a winged rider's strike misses quietly). */
+export interface WhatAUnitsStrikeMayDo {
+  readonly theStrikes: readonly APreBattleStrike[];
+  readonly theChance: number;
+  readonly theLineIfItStrikes: TheLineOfAPreBattleStrike;
+  readonly theLineIfItMisses: TheLineOfAPreBattleStrike | null;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1067,6 +1126,15 @@ export interface TheStagesOfEachHookPoint {
     /** What a hero's item changes in his battle spell (applyPreBattleMagic and the hero's cast in combatVsNPC; the
      *  items' registry: the first of his items, in the stage's order, that changes it). */
     readonly "a hero's items change his battle spell": () => TheChangeAnItemMakesToABattleSpell;
+    /** What a unit's strike may do before an army battle, in the copy that asks, or nothing (it has no strike, or the
+     *  other side no unit): the three copies, after battle magic. One effect casts every unit's strikes, its type's in
+     *  the content's tables (the spells' registry's runner). */
+    readonly 'a unit strikes before the battle': (
+      facts: AUnitAboutToStrikeBeforeTheBattle,
+    ) => WhatAUnitsStrikeMayDo | null;
+    /** What an item a commander carries adds to the chance of his units' strikes before an army battle (the three
+     *  copies, through primalStrikeChance; the items' registry: the runner adds every item's, item by item). */
+    readonly "a commander's items add to a strike's chance": (theItem: AHeldCopysOwnNumbers) => number;
   };
   readonly volley: {
     /** Whether a unit that is no ranged unit shoots in the volley (abilityMissileUnits, after the ranged units). */
