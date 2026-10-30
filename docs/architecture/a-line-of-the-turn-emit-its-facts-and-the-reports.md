@@ -159,7 +159,9 @@ check finds were made.
   (`rollUnitFates`' `inTheRout`, `hardenedByVictory`), a force's header's verb its values (`forceMarker`'s
   `HowAForceComesOnInItsHeader`: the verb by its index, drawn where the battle drew the verb, the province, the
   strength, the Tactical level; the prose writes the header's `verb` as before) and a battle's severity its margin
-  band's slug (`TheSeverityOfABattle`). The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  band's slug (`TheSeverityOfABattle`); since P1-12d21 an item's equip note is the record of how the hero carries each
+  item he gained (`TheItemsAHeroGained`: `settleTheItemsAHeroGained`, `src/engine/items/equipment.ts`, settles the slots
+  and returns it; `theWordsOfTheItemsAHeroGained` writes the note). The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-

@@ -266,6 +266,11 @@ describe('the item and hit-point lines no matrix game reaches keep their values'
     expect(theNote({ name: 'Ana', items: [null, odd] }, [null, odd])).toBe(
       '🎒 Ana has no room to equip the Old Boots: the boots slot is full, so it goes in the pack (an Equip Items order can swap it in).',
     );
+    const wornOdd = anOddSlotItem('Worn Boots', true);
+    const odd2 = anOddSlotItem('Old Boots');
+    expect(theNote({ name: 'Ana', items: [wornOdd, odd2] }, [odd2])).toBe(
+      '🎒 Ana has no room to equip the Old Boots: the boots slot already holds the Worn Boots, so it goes in the pack (an Equip Items order can swap it in).',
+    );
     const worn = [aRing('Ring One', true), aRing('Ring Two', true)];
     const third = aRing('Ring Three');
     expect(theNote({ name: 'Ana', items: [null, ...worn, third] }, [third])).toBe(
