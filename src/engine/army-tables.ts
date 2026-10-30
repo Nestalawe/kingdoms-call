@@ -340,37 +340,6 @@ export const MASTERY_ORDER_LABEL = {
 // Alignment-signature orders, by engine action key. Used with MASTERY_ORDER_KEYS to decide what a
 // charmed enemy hero may not be made to do.
 export const ALIGNMENT_ORDER_KEYS = new Set(['consecrate', 'call_to_arms', 'broker', 'harvest_field', 'rite']); // Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22)
-// the character-targeted hostile spells a seized enemy hero will not aim at their ORIGINAL lord's
-// characters (the Encounter order is refused on the same grounds).
-export const CHARMED_NO_TURN_SPELLS = new Set([
-  'Psychic Blast',
-  'Telekinetic Storm',
-  'Curse',
-  'Charm',
-  'Control Undead',
-  'Dominate',
-]);
-
-// Spells whose named CHARACTER target must be standing in the caster's own province. Each of these
-// branches already refuses an absent target — but it did so BELOW the cast roll, so a caster whose
-// target had marched away (most often a general on Defend who rode out at the top of the phase)
-// burned the roll and the per-turn casting slot on a spell that was never worked. The guard is
-// hoisted above the roll instead (DEV_LOG: "a guard after the cast roll is not a guard").
-// Keyed by SPELL_DEFS_P.fn. Province-targeted spells and the remote scry (Clairvoyance) are absent.
-export const SPELL_FNS_NEED_COLOCATED_TARGET = new Set([
-  'psychic_charm',
-  'psychic_blast',
-  'psychic_storm',
-  'psychic_oratory',
-  'illusory_phantasmal',
-  'necromancy_control',
-  'necromancy_curse',
-  'white_judgment',
-  'psychic_massconfusion',
-  'psychic_dominate',
-  'elemental_chainlightning',
-]);
-
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
 // orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
 // make none. `turn` is the turn being resolved (games.turn when its orders are run).

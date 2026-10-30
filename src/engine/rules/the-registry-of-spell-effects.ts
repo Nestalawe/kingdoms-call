@@ -23,10 +23,18 @@ import {
   A_MIRROR_IMAGE_IS_DISBELIEVED,
 } from './spells/a-combat-spell-that-hinders-deceives-or-sways-in-a-personal-combat.ts';
 import {
+  A_BLESS_WARD_MAY_TURN_IT_ASIDE,
+  A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD,
+  A_CLOAKED_MARK_IS_SHIELDED_FROM_IT,
+  A_SPELL_THAT_COSTS_NO_CASTING_SLOT,
+  A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE,
+} from './spells/the-checks-the-cast-spell-order-makes-of-a-spell.ts';
+import {
   A_UNIT_STRIKES_BEFORE_THE_BATTLE,
   theChanceOfAStrikeBeforeTheBattle,
 } from './spells/a-units-strike-before-an-army-battle.ts';
 import type {
+  ACastAndTheCastersRealm,
   ABattleSpellCastBeforeTheBattle,
   ACombatSpellTakingHold,
   AFieldABattleSpellMayBeCastOn,
@@ -65,6 +73,10 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE['telekinetic-storm'],
     },
     personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD['telekinetic-storm'] },
+    orderValidity: {
+      'a charmed hero will not turn it on his lord': A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD['telekinetic-storm'],
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE['telekinetic-storm'],
+    },
   },
   'psychic-blast': {
     strength: {
@@ -72,6 +84,11 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE['psychic-blast'],
     },
     personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD['psychic-blast'] },
+    orderValidity: {
+      'a charmed hero will not turn it on his lord': A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD['psychic-blast'],
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE['psychic-blast'],
+      'a cloaked mark is shielded from it': A_CLOAKED_MARK_IS_SHIELDED_FROM_IT['psychic-blast'],
+    },
   },
   curse: {
     strength: {
@@ -79,6 +96,11 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE.curse,
     },
     personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD.curse },
+    orderValidity: {
+      'a charmed hero will not turn it on his lord': A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD.curse,
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE.curse,
+      'a cloaked mark is shielded from it': A_CLOAKED_MARK_IS_SHIELDED_FROM_IT.curse,
+    },
   },
   'control-undead': {
     strength: {
@@ -86,6 +108,10 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE['control-undead'],
     },
     personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD['control-undead'] },
+    orderValidity: {
+      'a charmed hero will not turn it on his lord': A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD['control-undead'],
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE['control-undead'],
+    },
   },
   'holy-symbol': {
     strength: {
@@ -118,6 +144,46 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
   },
   charm: {
     personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD.charm },
+    orderValidity: {
+      'a charmed hero will not turn it on his lord': A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD.charm,
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE.charm,
+    },
+  },
+  'part-sea': { orderValidity: { 'a Bless ward may turn it aside': A_BLESS_WARD_MAY_TURN_IT_ASIDE['part-sea'] } },
+  'bless-province': {
+    orderValidity: { 'a spell that costs no casting slot': A_SPELL_THAT_COSTS_NO_CASTING_SLOT['bless-province'] },
+  },
+  oratory: {
+    orderValidity: { "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE.oratory },
+  },
+  'phantasmal-armies': {
+    orderValidity: {
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE['phantasmal-armies'],
+    },
+  },
+  earthquake: { orderValidity: { 'a Bless ward may turn it aside': A_BLESS_WARD_MAY_TURN_IT_ASIDE.earthquake } },
+  flood: { orderValidity: { 'a Bless ward may turn it aside': A_BLESS_WARD_MAY_TURN_IT_ASIDE.flood } },
+  plague: { orderValidity: { 'a Bless ward may turn it aside': A_BLESS_WARD_MAY_TURN_IT_ASIDE.plague } },
+  'divine-judgment': {
+    orderValidity: {
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE['divine-judgment'],
+    },
+  },
+  'mass-confusion': {
+    orderValidity: {
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE['mass-confusion'],
+    },
+  },
+  dominate: {
+    orderValidity: {
+      'a charmed hero will not turn it on his lord': A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD.dominate,
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE.dominate,
+    },
+  },
+  'chain-lightning': {
+    orderValidity: {
+      "a spell's mark must stand in the province": A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE['chain-lightning'],
+    },
   },
 } satisfies Record<SpellSlug, SpellEffectEntry>;
 
@@ -159,6 +225,34 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS = {
     "a fighter's spell adds to his steal": ['invisibility'],
     'a mirror image is disbelieved': ['mirror-image'],
   },
+  // the Cast Spell order's checks (plan P1-19y), each in the order its set or the order's code wrote it; one spell is
+  // cast at a time
+  orderValidity: {
+    'a charmed hero will not turn it on his lord': [
+      'psychic-blast',
+      'telekinetic-storm',
+      'curse',
+      'charm',
+      'control-undead',
+      'dominate',
+    ],
+    'a spell that costs no casting slot': ['bless-province'],
+    "a spell's mark must stand in the province": [
+      'charm',
+      'psychic-blast',
+      'telekinetic-storm',
+      'oratory',
+      'phantasmal-armies',
+      'control-undead',
+      'curse',
+      'divine-judgment',
+      'mass-confusion',
+      'dominate',
+      'chain-lightning',
+    ],
+    'a cloaked mark is shielded from it': ['psychic-blast', 'curse'],
+    'a Bless ward may turn it aside': ['part-sea', 'earthquake', 'flood', 'plague'],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly SpellSlug[];
@@ -178,6 +272,12 @@ const HAS_SOMETHING_TO_STRIKE = byTheSpellsName(
   THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.strength['a battle spell has something to strike'],
 );
 const TAKES_HOLD = byTheSpellsName(THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.personalCombat['a combat spell takes hold']);
+const THE_ORDERS_CHECKS = THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.orderValidity;
+const NOT_ON_HIS_LORD = byTheSpellsName(THE_ORDERS_CHECKS['a charmed hero will not turn it on his lord']);
+const NO_CASTING_SLOT = byTheSpellsName(THE_ORDERS_CHECKS['a spell that costs no casting slot']);
+const THE_MARK_STANDS_HERE = byTheSpellsName(THE_ORDERS_CHECKS["a spell's mark must stand in the province"]);
+const SHIELDED_BY_A_CLOAK = byTheSpellsName(THE_ORDERS_CHECKS['a cloaked mark is shielded from it']);
+const TURNED_BY_A_BLESS_WARD = byTheSpellsName(THE_ORDERS_CHECKS['a Bless ward may turn it aside']);
 
 /** The runner of "strength: a battle spell is cast before the battle" (applyPreBattleMagic, and combatVsNPC twice, once
  *  the spell's roll is made): what the spell named does, or nothing for a name the registry holds no effect for (the
@@ -243,4 +343,50 @@ export function theChanceAThiefsSpellsAddToHisSteal(theSpellsHeHasCast: readonly
 export function theChanceAMirrorImageIsSeenThrough(facts: AMirrorImageItsVictimMaySeeThrough): number {
   const [theSpell] = THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.personalCombat['a mirror image is disbelieved'];
   return THE_REGISTRY_OF_SPELL_EFFECTS[theSpell].personalCombat['a mirror image is disbelieved'](facts);
+}
+
+/** The runner of "orderValidity: a charmed hero will not turn it on his lord" (resolveCastSpellOrder, before the casting
+ *  limit): whether a hero charmed from an enemy realm refuses to aim the spell named at his own lord's heroes; a name
+ *  the registry holds no such effect for, he aims as any hero would. */
+export function aCharmedHeroWillNotTurnThisSpellOnHisLord(theSpellsName: string): boolean {
+  const slug = NOT_ON_HIS_LORD.get(theSpellsName);
+  const effect =
+    slug === undefined ? undefined : ENTRIES[slug].orderValidity?.['a charmed hero will not turn it on his lord'];
+  return effect ? effect() : false;
+}
+
+/** The runner of "orderValidity: a spell that costs no casting slot" (resolveCastSpellOrder's casting limit, for each
+ *  cast so far and for the cast itself): whether the spell named spends no slot of its school; a name the registry
+ *  holds no such effect for spends one. */
+export function theSpellCostsNoCastingSlot(theSpellsName: string, facts: ACastAndTheCastersRealm): boolean {
+  const slug = NO_CASTING_SLOT.get(theSpellsName);
+  const effect = slug === undefined ? undefined : ENTRIES[slug].orderValidity?.['a spell that costs no casting slot'];
+  return effect ? effect(facts) : false;
+}
+
+/** The runner of "orderValidity: a spell's mark must stand in the province" (resolveCastSpellOrder, before the cast
+ *  roll): whether the hero the spell named is aimed at must stand in the caster's province; a name the registry holds
+ *  no such effect for needs none. */
+export function theMarkOfThisSpellMustStandInTheProvince(theSpellsName: string): boolean {
+  const slug = THE_MARK_STANDS_HERE.get(theSpellsName);
+  const effect =
+    slug === undefined ? undefined : ENTRIES[slug].orderValidity?.["a spell's mark must stand in the province"];
+  return effect ? effect() : false;
+}
+
+/** The runner of "orderValidity: a cloaked mark is shielded from it" (resolveCastSpellOrder, once the cast lands):
+ *  whether a hostile mark hidden by a Cloak of Many Faces is shielded from the spell named; a name the registry holds
+ *  no such effect for reaches him. */
+export function aCloakedMarkIsShieldedFromThisSpell(theSpellsName: string): boolean {
+  const slug = SHIELDED_BY_A_CLOAK.get(theSpellsName);
+  const effect = slug === undefined ? undefined : ENTRIES[slug].orderValidity?.['a cloaked mark is shielded from it'];
+  return effect ? effect() : false;
+}
+
+/** The runner of "orderValidity: a Bless ward may turn it aside" (blessWardNegates, before the ward's own roll): whether
+ *  an enemy's Bless ward may turn the spell named aside; a name the registry holds no such effect for it never turns. */
+export function aBlessWardMayTurnThisSpellAside(theSpellsName: string): boolean {
+  const slug = TURNED_BY_A_BLESS_WARD.get(theSpellsName);
+  const effect = slug === undefined ? undefined : ENTRIES[slug].orderValidity?.['a Bless ward may turn it aside'];
+  return effect ? effect() : false;
 }

@@ -180,8 +180,23 @@ export interface AHeroAtRest {
   readonly hisMaximumHp: number;
 }
 
-/** The power a held item works when it is used (a Use Item order; the bots' plan reads it to choose one). */
-export type ThePowerAnItemWorksWhenUsed = 'every unit of the realm rises a quality tier';
+/** The power a held item works when it is used (a Use Item order; the bots' plan reads it to choose one): a spell
+ *  charm's is to cast the spell its copy names (`effect.spell`), as a Cast Spell order (plan P1-19y). */
+export type ThePowerAnItemWorksWhenUsed =
+  'every unit of the realm rises a quality tier' | 'it casts the spell it holds';
+
+/** What the stage "orderOutcome: a spell's cast cannot fail" hands an effect (resolveCastSpellOrder, before the cast
+ *  chance: plan P1-19y): the spell's school, and whether the caster's sure cast is spent this turn (his mark). */
+export interface ASpellAboutToBeCast {
+  readonly theSpellsSchool: string;
+  readonly hisSureCastIsSpentThisTurn: boolean;
+}
+
+/** What the stage "orderValidity: a spell that costs no casting slot" hands an effect (resolveCastSpellOrder's casting
+ *  limit: plan P1-19y): whether the caster's realm has a Grand Cathedral (the Divine realm's Grand Design). */
+export interface ACastAndTheCastersRealm {
+  readonly theCastersRealmHasAGrandCathedral: boolean;
+}
 
 /** A unit's part in the battle line: in the air, cavalry, ranged, or on foot (battleRole). */
 export type ARoleInTheBattleLine = 'fly' | 'cav' | 'arc' | 'foot';
@@ -1378,7 +1393,26 @@ export interface TheStagesOfEachHookPoint {
     readonly 'the beaten force may retreat': () => boolean;
   };
   readonly movementCost: never;
-  readonly orderValidity: never;
+  /** The checks the Cast Spell order makes of the spell named, before it is worked and as it is (plan P1-19's spells
+   *  family: its row P1-19y typed them; the spells' registry, one spell an order, found by its name). In the order the
+   *  order makes them. */
+  readonly orderValidity: {
+    /** Whether a hero charmed from an enemy realm will not turn the spell on his own lord's heroes (refused before the
+     *  casting limit, unrolled, no slot spent). */
+    readonly 'a charmed hero will not turn it on his lord': () => boolean;
+    /** Whether the spell costs no casting slot of its school (the casting limit: it is not counted among the casts so
+     *  far, nor ever blocked). */
+    readonly 'a spell that costs no casting slot': (facts: ACastAndTheCastersRealm) => boolean;
+    /** Whether the hero the spell is aimed at must stand in the caster's province (one gone is refused before the cast
+     *  roll, and spends no slot). */
+    readonly "a spell's mark must stand in the province": () => boolean;
+    /** Whether a hostile mark hidden by a Cloak of Many Faces is shielded from the spell (once the cast lands, before
+     *  the spell works). */
+    readonly 'a cloaked mark is shielded from it': () => boolean;
+    /** Whether an enemy's Bless ward over the province the spell is aimed at may turn it aside (blessWardNegates, where
+     *  the spell asks it, before the ward's own roll). */
+    readonly 'a Bless ward may turn it aside': () => boolean;
+  };
   readonly experience: never;
   readonly visibility: never;
   readonly turnStart: never;
@@ -1404,9 +1438,12 @@ export interface TheStagesOfEachHookPoint {
     /** The share of a province a held item explores more as its bearer moves in (resolveMoveOrder, with his Explorer
      *  skill's; the items' registry: the runner adds every item's). */
     readonly "a move's exploration": (theItem: AHeldCopysOwnNumbers) => number;
-    /** The power a held item works when it is used (resolveUseItemOrder; the bots' plan, botItemPre, to choose it; the
-     *  items' registry). */
+    /** The power a held item works when it is used (resolveUseItemOrder; the bots' plan, botItemPre, to choose it;
+     *  processOrder, which makes a spell charm's Use Item a Cast Spell order; the items' registry). */
     readonly "an item's power used": () => ThePowerAnItemWorksWhenUsed;
+    /** Whether an item the caster carries makes the cast of a spell sure (resolveCastSpellOrder, before the cast chance:
+     *  plan P1-19y; the items' registry: any of his items, in the stage's order). */
+    readonly "a spell's cast cannot fail": (facts: ASpellAboutToBeCast) => boolean;
   };
   /** A hero's own figures a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19p, typed it). */
   readonly aHerosStanding: {

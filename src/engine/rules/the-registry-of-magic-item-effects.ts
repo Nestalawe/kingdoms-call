@@ -24,6 +24,7 @@ import {
   A_LAIR_REVEALED_WHEN_EXPLORING,
   A_MOVES_EXPLORATION,
   A_RESTS_HEAL,
+  A_SPELLS_CAST_CANNOT_FAIL,
   A_SPYS_SURE_SUCCESS,
   AN_ITEMS_POWER_USED,
 } from './magic-items/a-heros-items-in-the-realms-tax-and-in-his-orders.ts';
@@ -96,6 +97,7 @@ import type {
   WhatAFightersWardsLeaveOfAHit,
   WhatAWardDoesToAHitFirst,
   AHeroAtRest,
+  ASpellAboutToBeCast,
   ALandUnitAtSeaLed,
   AUnitLedByACommander,
   AWardAsTheMergeReadsIt,
@@ -176,6 +178,9 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'iron-heart-talisman': { orderOutcome: { "a rest's heal": A_RESTS_HEAL['iron-heart-talisman'] } },
   'travellers-cloak': { orderOutcome: { "a move's exploration": A_MOVES_EXPLORATION['travellers-cloak'] } },
   'philosophers-stone': { orderOutcome: { "an item's power used": AN_ITEMS_POWER_USED['philosophers-stone'] } },
+  'wailing-phylactery': {
+    orderOutcome: { "a spell's cast cannot fail": A_SPELLS_CAST_CANNOT_FAIL['wailing-phylactery'] },
+  },
   'maximum-hp': {
     aHerosStanding: { 'maximum HP': A_HEROS_MAXIMUM_HP['maximum-hp'] },
     personalCombat: { 'a guardian wields its hoard': A_GUARDIAN_WIELDS_ITS_HOARD['maximum-hp'] },
@@ -536,7 +541,10 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       "an item's worth": AN_ITEMS_WORTH['an-item-of-riders-alone'],
     },
   },
-  'a-spell-charm': { treasury: { "an item's worth": AN_ITEMS_WORTH['a-spell-charm'] } },
+  'a-spell-charm': {
+    orderOutcome: { "an item's power used": AN_ITEMS_POWER_USED['a-spell-charm'] },
+    treasury: { "an item's worth": AN_ITEMS_WORTH['a-spell-charm'] },
+  },
 } satisfies Record<MagicItemEffectSlug, MagicItemEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once, in the order they run (the battle code's
@@ -574,7 +582,9 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     'a lair revealed when exploring': ['philosophers-lens'],
     "a rest's heal": ['iron-heart-talisman'],
     "a move's exploration": ['travellers-cloak'],
-    "an item's power used": ['philosophers-stone'],
+    // one power an item (an item carries one stat): the Stone's, then a spell charm's (plan P1-19y)
+    "an item's power used": ['philosophers-stone', 'a-spell-charm'],
+    "a spell's cast cannot fail": ['wailing-phylactery'],
   },
   aHerosStanding: {
     'maximum HP': ['maximum-hp'],
@@ -1098,6 +1108,22 @@ export function thePowerAnItemWorksWhenUsed(item: AMagicItemAsTheRegistryReadsIt
     if (power) return power;
   }
   return null;
+}
+
+/** The runner of "orderOutcome: a spell's cast cannot fail" (resolveCastSpellOrder, before the cast chance): whether an
+ *  effect the caster's items carry, in the stage's order, makes this cast sure. His items are read only once an effect
+ *  of the stage would make it sure (reading a hero's items tidies them, as the order read them only for a Necromancy
+ *  spell whose sure cast wasn't spent). */
+export function theCastersItemsMakeHisCastSure(
+  facts: ASpellAboutToBeCast,
+  theCastersItems: () => readonly AMagicItemAsTheRegistryReadsIt[],
+): boolean {
+  const order = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.orderOutcome["a spell's cast cannot fail"];
+  const makesItSure = (slug: MagicItemEffectSlug) =>
+    ENTRIES[slug].orderOutcome?.["a spell's cast cannot fail"]?.(facts) === true;
+  if (!order.some(makesItSure)) return false;
+  const carried = theEffectsTheseItemsCarry(theCastersItems());
+  return order.some((slug) => carried.has(slug) && makesItSure(slug));
 }
 
 /** The runner of "aHerosStanding: maximum HP" (itemMaxHpBonus): the hit points a hero's items add to his maximum, item

@@ -96,10 +96,29 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   Blast stuns a round longer, after any doubling; his Hand of Death bites ×1.1). Its runner,
   `whatAHerosItemsChangeInHisCombatSpells`, is handed the caster's active items. Since P1-19x the **Mirror Shard** is
   there too: the chance his Mirror Image is seen through is halved.
+- **The Cast Spell order's checks** (P1-19y, `spells/the-checks-the-cast-spell-order-makes-of-a-spell.ts`), the five
+  stages of `orderValidity`, each true where the spell's row sets its flag (`asAnOrder`), in the order
+  `resolveCastSpellOrder` asks them:
+  - **a charmed hero will not turn it on his lord** (before the casting limit, unrolled, no slot spent);
+  - **a spell that costs no casting slot** (handed whether the caster's realm has a Grand Cathedral: Bless Province);
+  - **a spell's mark must stand in the province** (before the cast roll: a mark gone is refused, no slot spent);
+  - **a cloaked mark is shielded from it** (once the cast lands: Psychic Blast and Curse; the Cloak's own check,
+    `isHiddenChar`, waits for P1-23);
+  - **a Bless ward may turn it aside** (asked by `blessWardNegates`, before the ward's roll: Part Sea, Earthquake, Flood
+    and Plague, whose code still calls it where it did).
+
+  Each runner takes the spell's name, as the order holds it. A row may hold `asAnOrder` alone (Bless Province, Part
+  Sea, …): what an action spell does stays in the order's code until the family's second slice.
+- **The spell charm and the Wailing Phylactery** are the items' registry's (P1-19y): `orderOutcome`'s **an item's power
+  used** gains a spell charm's (`'it casts the spell it holds'`, by `{ stat: 'castSpell' }`), which `processOrder` asks
+  to make its Use Item a cast; and **a spell's cast cannot fail** (`{ stat: 'necroAuto' }`: the first Necromancy spell
+  its bearer casts each turn), handed the spell's school and whether his sure cast is spent. Its runner,
+  `theCastersItemsMakeHisCastSure`, reads his items only once an effect would make the cast sure.
 
 ## What checks it
 
-- The two registry tests, each extended to the spells' registry (each row's name a spell, its `fn` that spell's).
+- The two registry tests, each extended to the spells' registry (each row's name a spell, its `fn` that spell's, and
+  each of the order's checks holding exactly the spells whose row sets its flag).
 - Each row's numbers in the "Battle magic:" part of its blurb and the "Battle:" part of its rulebook row, and its
   combat's in the "Combat:" parts, the known gaps listed with where and why
   (`tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts`); the two items' numbers in their
@@ -119,6 +138,9 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   Invisibility and its steal, Curse, Charm, Mirror Image with no fight or cast again, the phantom, a hero's and a
   guardian's chance to see through it)
   (`tests/unit/the-combat-spell-lines-no-matrix-game-reaches-keep-their-values.test.ts`).
+- The order's checks and the two items, by the Cast Spell order's cases (`tests/lib/cast-spell-order-cases.ts`, played
+  whole-turn and called directly): the charmed hero, the mark gone, the cloaked mark, the Grand Cathedral's Bless, each
+  spell a Bless ward turns, the Phylactery and a spell charm's cast.
 
 ## How to add a spell's effect
 

@@ -241,6 +241,29 @@ const mage = (b: Board, skills: Record<string, number>, ...os: Order[]): Staged 
 };
 const NOTHING_TO_CLEANSE = (s: Staged) =>
   `✝ ${s.hero.name} raises the Holy Symbol over ${must(s.there, 'the province').name}, but no battlefield dead lie unquiet here — there is nothing to cleanse.`;
+/** The other hostile spells a hero charmed from an enemy realm will not turn on his own lord's heroes (Psychic Blast's
+ *  case is written out below), each refused before it is worked (plan P1-19y: each spell's flag in its content row). */
+const THE_OTHER_SPELLS_A_CHARMED_HERO_WILL_NOT_TURN_ON_HIS_LORD = [
+  'Telekinetic Storm',
+  'Curse',
+  'Charm',
+  'Control Undead',
+  'Dominate',
+];
+/** The other spells whose mark must stand in the caster's province (Psychic Blast's and Oratory's cases are written out
+ *  below), each with the school and level that let a hero work it: a mark gone is refused before the roll (plan P1-19y:
+ *  each spell's flag in its content row). */
+const THE_OTHER_SPELLS_WHOSE_MARK_MUST_STAND_HERE: [spell: string, school: string, level: number][] = [
+  ['Charm', 'psychic', 1],
+  ['Telekinetic Storm', 'psychic', 1],
+  ['Phantasmal Armies', 'illusory', 1],
+  ['Control Undead', 'necromancy', 1],
+  ['Curse', 'necromancy', 1],
+  ['Divine Judgment', 'white', 9],
+  ['Mass Confusion', 'psychic', 7],
+  ['Dominate', 'psychic', 9],
+  ['Chain Lightning', 'elemental', 7],
+];
 export const CASTING_CASES: CastSpellOrderCase[] = [
   {
     name: 'a spell the game does not know is refused, unrolled',
@@ -458,6 +481,26 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
       };
     },
   },
+  ...THE_OTHER_SPELLS_WHOSE_MARK_MUST_STAND_HERE.map(([spell, school, level]): CastSpellOrderCase => ({
+    name: `${spell}: a mark gone before the spell is shaped is refused, unrolled`,
+    stage(b) {
+      const away = rival(b, { at: ring1(b, 0) }, { melee: 1 });
+      return { ...mage(b, { [school]: level }, cast(spell, away.id)), mark: away };
+    },
+    check(o, s) {
+      const away = must(s.mark, 'the hero away');
+      return {
+        got: {
+          gone: says(
+            o,
+            `${s.hero.name} looks for ${away.name} to work ${spell} upon, and finds them gone — they had already moved on to ${ring1Name(o, away)} before the spell could be shaped.`,
+          ),
+          rolled: says(o, '📊'),
+        },
+        want: { gone: true, rolled: false },
+      };
+    },
+  })),
   {
     name: "a Divine realm's Grand Cathedral: Bless Province spends no slot, so a White 1 caster blesses and then works another",
     stage(b) {
@@ -825,6 +868,17 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'without a Wailing Phylactery, a Necromancy spell rolls as ever (Necromancy 3: 60%, a roll of 100 fizzles)',
+    dice: UNLUCKY,
+    stage: (b) => mage(b, { necromancy: 3 }, cast('Skeletal Armies')),
+    check(o, s) {
+      return {
+        got: { roll: says(o, castLine(s.hero, 'Skeletal Armies', 'necromancy', 3, 60, 100)) },
+        want: { roll: true },
+      };
+    },
+  },
+  {
     name: 'the Wailing Phylactery makes only Necromancy certain: a White spell still rolls',
     dice: UNLUCKY,
     stage(b) {
@@ -903,6 +957,38 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
       };
     },
   },
+  ...THE_OTHER_SPELLS_A_CHARMED_HERO_WILL_NOT_TURN_ON_HIS_LORD.map((spell): CastSpellOrderCase => ({
+    name: `a charmed enemy hero will not turn ${spell} on his own lord's people: refused, unrolled`,
+    wholeTurnOnly: true,
+    stage(b) {
+      const m = rival(b, {}, { psychic: 2 });
+      const lord = rival(b, {}, { melee: 1 });
+      const s = mage(b, { psychic: 3 }, cast('Charm', m.id));
+      return {
+        ...s,
+        mark: m,
+        other: lord,
+        written: {
+          0: { [`charm_${String(m.id)}_via_${String(s.hero.id)}_ph0`]: plan(order('rest'), cast(spell, lord.id)) },
+        },
+      };
+    },
+    check(o, s) {
+      const m = must(s.mark, 'the charmed hero');
+      const lord = must(s.other, 'his lord');
+      return {
+        got: {
+          refused: anySays(
+            o,
+            `${m.name} lets the ${spell} die on their lips — the Charm bends their will, but not so far as to turn them on their own lord's people.`,
+          ),
+          rolled: anySays(o, `📊 ${m.name} casts`),
+          lordSkills: char(o, lord).skills,
+        },
+        want: { refused: true, rolled: false, lordSkills: { melee: 1, tactical: 2, march: 1 } },
+      };
+    },
+  })),
 ];
 /** The name of the province a hero stands in after the turn. */
 const ring1Name = (o: Outcome, c: Character) => must(o.world.world.provinces[char(o, c).location], 'his province').name;
