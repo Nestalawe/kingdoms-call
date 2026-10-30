@@ -81,10 +81,8 @@
 // `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
 // `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
 // assignment (`=`, `+=`); a call's argument or a comparison's operand isn't the value's words. It lets through, by kind
-// and field, the fighters' labels (`foeWho`, `who`: Decision 2) and a battle's side's, guard's, realm's and unit's
-// labels (`realmTag`, `unitName`, the force header's `name`, …: 7 fields; since P1-12d22 not a battle between heroes'
-// side in the kinds only it writes, a record; since P1-12d23 none of the two battles' sides and guards, records; since
-// P1-12d24 none of a stalled battle's hosts and defenders, nor a newly gathered host or a beaten guard), the enemy
+// and field, the force header's `name` (until P1-12d25 the fighters', the realm's tag and the units' labels too, now
+// records; since P1-12d22 to d24 no battle's side, guard, host or defenders, records), the enemy
 // unit a unit faced (`theEnemyUnit`, a unit's label), a disbanding unit's owner (`ownerName`, a side's or a guard's
 // label, P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
 // `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
