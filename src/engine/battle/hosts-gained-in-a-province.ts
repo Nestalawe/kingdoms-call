@@ -12,7 +12,6 @@ import {
   notifyProvinceOwner,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-  theWordsOrTheFactOfALine,
 } from '../turn/events-and-their-audiences.ts';
 import { newMercId, noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areAllied, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
@@ -429,7 +428,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         (line) =>
           emit(turnContext, {
             type: 'combat',
-            ...theWordsOrTheFactOfALine(line),
+            fact: line,
             audience: { actor: c.player, realms: targets },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
@@ -446,7 +445,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         (line) =>
           emit(turnContext, {
             type: 'combat',
-            ...theWordsOrTheFactOfALine(line),
+            fact: line,
             audience: { actor: c.player, realms: targets },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,

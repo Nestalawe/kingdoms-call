@@ -8,7 +8,6 @@ import {
   isALineForEveryoneInTheFight,
   narrate,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-  theWordsOrTheFactOfALine,
 } from '../turn/events-and-their-audiences.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
@@ -210,5 +209,5 @@ export function emitBattle(
   // Read with an `if`, not `||` (P1-12d12): TypeScript can't reduce the union `||` makes of every kind of line.
   let sTxt = opts.summaryText;
   if (!sTxt && battle) sTxt = battle.summaryText;
-  if (sTxt) emit(turnContext, { ...fight, ...theWordsOrTheFactOfALine(sTxt), battle: { id: _bid, tier: 's' } });
+  if (sTxt) emit(turnContext, { ...fight, fact: sTxt, battle: { id: _bid, tier: 's' } });
 }

@@ -66,7 +66,7 @@ The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`)
 These are CLAUDE.md's rules for the code (P1-09; the steps named bring the rest): (1) `src/engine/` and `src/views/` import no
 Supabase client, `window` or UI code, so each function there runs on plain data (the imports: `npm run lint:arch`; the
 page's names: lint); (2) no `Math.random` or `Date` there (lint: `Math.random` nowhere but `rng.ts`); (3) every line enters the GM's log through `emit`, with its
-audience ([traps.md](traps.md#a-line-goes-through-emit)), and the engine emits events, never prose, which `src/views/` writes after perception (P1-12); (4) a content effect lives in the rule registry, not in an `if` on its name inside a resolver (P1-19); (5) an
+audience ([traps.md](traps.md#a-line-goes-through-emit)), and the engine emits events, never prose, which `src/views/` writes after perception (P1-12: `emit` throws on words, and lint refuses them); (4) a content effect lives in the rule registry, not in an `if` on its name inside a resolver (P1-19); (5) an
 iteration order that can change a draw or the outcome is explicit; (6) all code and tests are TypeScript (P1-09e), with
 no `any`, `@ts-ignore` or `eslint-disable` without a reviewed allowlist entry, and data crossing a boundary
 (database, saved state, content) is parsed by its Zod schema (P1-10).

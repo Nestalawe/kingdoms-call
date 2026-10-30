@@ -62,12 +62,14 @@ describe('createTurnContext', () => {
     const tc = turnContext(engine, { turn: 1, players: [], characters: [] });
     const restore = quiet();
     const emit = engineFn(engine, 'emit') as (tc: TurnContext, event: Record<string, unknown>) => void;
+    // A line is a fact (P1-12d18): one of a kind that holds no values.
+    const A_LINE = { kind: "a battle's losses, tallied from its lines" };
     const line = (place?: Record<string, unknown>) => {
-      emit(tc, { type: 'combat', text: 'a line', audience: {}, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, ...place });
+      emit(tc, { type: 'combat', fact: A_LINE, audience: {}, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, ...place });
       return tc.turnLog[tc.turnLog.length - 1];
     };
     try {
-      expect(line()).toMatchObject({ type: 'combat', text: 'a line', charId: null, phase: null, public: false });
+      expect(line()).toMatchObject({ type: 'combat', fact: A_LINE, charId: null, phase: null, public: false });
       tc._logCtx = { charId: 7, phase: 2 };
       expect(line()).toMatchObject({ charId: 7, phase: 2 });
       expect(line({ hero: 9, phase: 4 })).toMatchObject({ charId: 9, phase: 4 });

@@ -15,7 +15,7 @@
 // the tiers their words give and puts its losses tally where its casualty lists begin, every line with the fight's
 // audience, hero and place; a battle with nothing to tally has no tally line, one whose lines are all for one realm
 // alone files no tally place, two battles side by side keep their own; the GM's log in words has the 17 keys in their
-// order, no fact and no tier left to work out, and a line filed with its words is stored as it was filed. Red on the
+// order, no fact and no tier left to work out, and a line that holds its words already is stored as it is. Red on the
 // plants of the row's PR (a force's words without `guard`, the tally always last, every tier `'k'`). Level 1:
 // `forceMarker`, `emitBattle` and the words pass on a context made in the test
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -27,6 +27,7 @@ import {
   narrate,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   type EventButItsWords,
+  type LogLine,
   type NarrativeLine,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theTurnsLinesInWords, theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
@@ -74,18 +75,27 @@ function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
   const narrative: NarrativeLine[] = [];
   narrate(narrative, forceMarker(tc, 'Aldric (Red)', 0, 'attacker', [company('Shieldwall')], 'attacks Greyford with'));
   narrate(narrative, forceMarker(tc, 'Brann (Blue)', 1, 'defender', [company('Ford Watch')], 'holds Greyford with'));
-  narrate(narrative, 'The hosts meet at the ford.');
-  narrate(narrative, '  Shieldwall strikes Ford Watch for 6.');
+  narrate(narrative, { kind: 'the battle for a province begins', provName: 'Greyford' });
+  narrate(narrative, { kind: "the defender's feigned retreat springs shut", defName: 'Brann' });
   if (!noLosses) {
-    narrate(narrative, "⚔ **Aldric's forces** (attacker):");
-    narrate(narrative, "— Aldric's Shieldwall (Men-at-Arms) hold the bank.");
-    narrate(narrative, "🛡 **Brann's forces** (defender):");
-    narrate(narrative, "— Brann's Ford Watch (Men-at-Arms) were annihilated.");
+    narrate(narrative, { kind: "the attacker's casualties begin", atkName: 'Aldric' });
+    narrate(narrative, { kind: "a side's other forces survive the engagement", someUnitsFateIsToldAbove: false });
+    narrate(narrative, { kind: "the defender's casualties begin", defName: 'Brann' });
+    narrate(narrative, { kind: 'a unit is cut down with no escape', unitName: "Brann's Ford Watch (Men-at-Arms)" });
   }
   return narrative;
 }
+/** The battle's summary for the onlookers: Aldric's forces take Greyford from Brann. */
+const THE_SUMMARY = {
+  kind: 'the attacker wins the battle and seizes the province',
+  severity: 'decisive',
+  atkName: 'Aldric',
+  winVerbIndex: 0,
+  defName: 'Brann',
+  provName: 'Greyford',
+} as const;
 const fileTheBattle = (tc: TurnContext, narrative: NarrativeLine[]) => {
-  emitBattle(tc, { narrative, summaryText: "Aldric's forces defeat Brann at Greyford." }, FORD, 1, [0, 1], {
+  emitBattle(tc, { narrative, summaryText: THE_SUMMARY }, FORD, 1, [0, 1], {
     actor: 0,
     charIds: [7, 8],
   });
@@ -122,20 +132,20 @@ describe("a battle's lines in words", () => {
     const narrative = aBattle(tc);
     fileTheBattle(tc, narrative);
     const { gmLog } = theTurnsLinesInWords(tc.turnLog);
-    const words = narrative.map((line) => (typeof line === 'string' ? line : theWordsOf(line as never)));
+    const words = narrative.map((line) => theWordsOf(line));
     const tally = battleTallyLine(words);
     expect(tally).toContain('Men-at-Arms');
     expect(gmLog.map((l) => [l.bTier, l.text])).toEqual([
       ['k', words[0]],
       ['k', words[1]],
-      ['k', 'The hosts meet at the ford.'],
-      ['d', '  Shieldwall strikes Ford Watch for 6.'],
+      ['k', words[2]],
+      ['d', words[3]],
       ['t', tally],
-      ['d', "⚔ **Aldric's forces** (attacker):"],
-      ['d', "— Aldric's Shieldwall (Men-at-Arms) hold the bank."],
-      ['d', "🛡 **Brann's forces** (defender):"],
-      ['d', "— Brann's Ford Watch (Men-at-Arms) were annihilated."],
-      ['s', "Aldric's forces defeat Brann at Greyford."],
+      ['d', words[4]],
+      ['d', words[5]],
+      ['d', words[6]],
+      ['d', words[7]],
+      ['s', theWordsOf(THE_SUMMARY)],
     ]);
     // every line of it with the fight's audience, hero and place, the tally too
     for (const l of gmLog)
@@ -214,12 +224,24 @@ describe("the GM's log in words is stored in the form it had", () => {
     expect(gmLog.filter((l) => l.text?.startsWith('⚑FORCE⚑'))).toHaveLength(2);
   });
 
-  test('a line filed with its words is stored as it was filed, in its place among the rest', () => {
+  test('a line that holds its words already is stored as it is, in its place among the rest', () => {
+    // emit files every line as a fact (P1-12d18); a line holding its words, as the GM's log stores it, is made here
+    // from one emit filed.
     const tc = newContext();
     const told: EventButItsWords = { audience: { realms: [0] }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING };
-    emit(tc, { type: 'system', text: 'The levy marches out.', ...told });
+    const aLine = { kind: 'the battle for a province begins', provName: 'Greyford' } as const;
+    const inWords = (text: string) => {
+      const line = tc.turnLog.pop();
+      if (line === undefined) throw new Error('no line filed');
+      const stored: LogLine = { ...line, text };
+      delete stored.fact;
+      tc.turnLog.push(stored);
+    };
+    emit(tc, { type: 'system', fact: aLine, ...told });
+    inWords('The levy marches out.');
     fileTheBattle(tc, aBattle(tc));
-    emit(tc, { type: 'system', text: 'The levy comes home.', ...told, form: 'bare' });
+    emit(tc, { type: 'system', fact: aLine, ...told, form: 'bare' });
+    inWords('The levy comes home.');
     const { gmLog } = theTurnsLinesInWords(tc.turnLog);
     expect(gmLog[0]).toBe(tc.turnLog[0]);
     expect(gmLog.at(-1)).toBe(tc.turnLog.at(-1));

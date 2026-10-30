@@ -154,6 +154,8 @@ describe('What the plan hands the passes', () => {
     expect(third('runBotReckoning')).toBe(tc['reckoningCalls']);
   });
   test('a pass that writes to what it is handed writes to the turn’s own: the log’s lines and a call added are the turn’s', () => {
+    // A line is a fact (P1-12d18): one of a kind that holds no values.
+    const A_LINE = { kind: "a battle's losses, tallied from its lines" };
     const { tc } = fresh(() => ({ bots: [1] }));
     const lines = (tc['turnLog'] as unknown[]).length;
     standIn(PASSES, () => plan(tc), {
@@ -161,7 +163,7 @@ describe('What the plan hands the passes', () => {
       runBotConcessions: (_G: unknown, _set: unknown, turnContext: unknown) => {
         (engineFn(engine, 'emit') as Fn)(turnContext, {
           type: 'system',
-          text: 'a line',
+          fact: A_LINE,
           audience: { actor: null, realms: [] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           system: true,
@@ -169,7 +171,7 @@ describe('What the plan hands the passes', () => {
       },
       runBotReckoning: (_G: unknown, _set: unknown, calls: unknown) => (calls as Set<number>).add(2),
     });
-    expect((json(tc['turnLog']) as { text: string }[]).slice(lines).map((l) => l.text)).toEqual(['a line']);
+    expect((json(tc['turnLog']) as { fact: unknown }[]).slice(lines).map((l) => l.fact)).toEqual([A_LINE]);
     expect([...(tc['reckoningCalls'] as Set<number>)]).toEqual([2]);
   });
   test('the duel forecast handed to the movement pass is the top-level one, asked with the turn’s context first and the hunter’s question after it', () => {

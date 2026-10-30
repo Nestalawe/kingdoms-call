@@ -49,6 +49,8 @@ import {
   type Province,
 } from '../lib/middle-of-a-bot-world.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
+import type { LineFact } from '../../src/engine/turn/events-and-their-audiences.ts';
+import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -91,10 +93,13 @@ function rolls<T>(d100s: number[], body: () => T, die = 0.5): T {
     g['d100'] = was;
   }
 }
+/** A line of the duel the stand-in fights, as the fact it is (P1-12d18: every line is a fact). */
+const THE_FIRST_BLOW = { kind: 'one fighter has the initiative', firstName: 'Brann' } as const;
+
 /** Runs `body` with personal combat stood in by `end` (the top-level resolveCharVsChar replaced in the vm for the
  *  test's length), recording the plans each side fought on. */
 function duelEndsIn<T>(
-  end: { atkHp: number; defHp: number; atkKilled?: boolean; defKilled?: boolean; narrative?: string[] },
+  end: { atkHp: number; defHp: number; atkKilled?: boolean; defKilled?: boolean; narrative?: LineFact[] },
   body: (plans: string[][][]) => T,
 ): T {
   const g = engine as unknown as Record<string, unknown>;
@@ -685,12 +690,12 @@ describe('a thief caught in the act (thiefCaughtScuffle, nested in processOrder 
     const { b, thief, victim } = stage();
     thief['encounterPlan'] = { tactics: ['FL', 'AR:2'], duelStance: 'accept' };
     victim['encounterPlan'] = { tactics: ['XX', 'CA:Bless'], duelStance: 'accept' };
-    duelEndsIn({ atkHp: 7, defHp: 9, narrative: ['Steel rings in the market square.'] }, (plans) => {
+    duelEndsIn({ atkHp: 7, defHp: 9, narrative: [THE_FIRST_BLOW] }, (plans) => {
       scuffle(b.tc, b.X, thief, victim, 'red-handed');
       expect(plans).toEqual([[['FL', 'AR:2'], ['CA:Bless']]]);
     });
     expect(allText(b)).toContain(`⚔ ${victim.name} catches ${thief.name} red-handed — blades are drawn!`);
-    expect(allText(b)).toContain('Steel rings in the market square.');
+    expect(allText(b)).toContain(theWordsOf(THE_FIRST_BLOW));
     expect([thief.hp, victim.hp]).toEqual([7, 9]);
     expect(b.X['_combatPlayersThisTurn']).toEqual([0, 1]);
   });

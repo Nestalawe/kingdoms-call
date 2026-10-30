@@ -110,12 +110,12 @@ helper, an order or a stage: [the turn's context](architecture/the-turns-context
 ## A line goes through `emit`
 
 Every line of the turn enters the GM's log through `emit(turnContext, event)`
-(`src/engine/turn/events-and-their-audiences.ts`), and its event says who may read it (`audience`). A typed line
-records a fact (values, never words or a live part of the world), and `src/views/prose/` writes its words after the
-turn. Example: a line pushed past `emit` chooses its own audience, which is how the leaks the report check finds were
+(`src/engine/turn/events-and-their-audiences.ts`), and its event says who may read it (`audience`). A line records a
+fact (values, never words or a live part of the world), and `src/views/prose/` writes its words after the turn. Example: a line pushed past `emit` chooses its own audience, which is how the leaks the report check finds were
 made. In full, with "Every event names its hero" and "A line for one realm alone inside a fight":
-[a line of the turn](architecture/a-line-of-the-turn-emit-its-facts-and-the-reports.md). Checks: the lint rule `kc/narrative-lines-go-through-emit`; `emit` throws on an event with
-no `hero`; `a-lines-facts-hold-values-not-words`; the report-leak check (`tests/lib/report-leaks.ts`).
+[a line of the turn](architecture/a-line-of-the-turn-emit-its-facts-and-the-reports.md). Checks: the lint rule `kc/narrative-lines-go-through-emit` (it also refuses an
+event with a `text` key and a string handed to `narrate`, `emitNarrLine`, `narrateAll` or `narrateAt`); `emit` throws
+on an event with no `hero` or handed as words; `a-lines-facts-hold-values-not-words`; the report-leak check (`tests/lib/report-leaks.ts`).
 
 ## Views never write
 

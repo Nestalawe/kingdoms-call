@@ -50,6 +50,8 @@ import {
   type Unit,
 } from '../lib/middle-of-a-bot-world.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
+import type { LineFact } from '../../src/engine/turn/events-and-their-audiences.ts';
+import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -168,10 +170,13 @@ describe.each(CAST_SPELL_ORDER_CASES)('Cast Spell (%s), called directly: the who
   );
 });
 
+/** A line of the duel the stand-in fights, as the fact it is (P1-12d18: every line is a fact). */
+const THE_FIRST_BLOW = { kind: 'one fighter has the initiative', firstName: 'Brann' } as const;
+
 /** Runs `body` with personal combat stood in by `end` (the top-level resolveCharVsChar replaced in the vm for the
  *  test's length), recording the plans each side fought on. */
 function duelEndsIn<T>(
-  end: { atkHp: number; defHp: number; atkKilled?: boolean; defKilled?: boolean; narrative?: string[] },
+  end: { atkHp: number; defHp: number; atkKilled?: boolean; defKilled?: boolean; narrative?: LineFact[] },
   body: (plans: string[][][]) => T,
 ): T {
   const g = engine as unknown as Record<string, unknown>;
@@ -762,10 +767,10 @@ describe('a failed Charm brings the hero down on the caster (charmBacklash), cal
   test("the fight's lines go to both realms, the drawing of blades in public", () => {
     const b = fresh();
     const { caster, t } = pair(b);
-    duelEndsIn({ atkHp: 9, defHp: 9, narrative: ['They clash.'] }, () => rolls([1], () => backlash(b, caster, t)));
+    duelEndsIn({ atkHp: 9, defHp: 9, narrative: [THE_FIRST_BLOW] }, () => rolls([1], () => backlash(b, caster, t)));
     const drawn = b.lines().find((l) => l.text.includes('blades are drawn'));
     expect([drawn?.targets, drawn?.['public'], drawn?.['charIds']]).toEqual([[0, 1], true, [t.id, caster.id]]);
-    expect(b.lines().find((l) => l.text === 'They clash.')?.targets).toEqual([0, 1]);
+    expect(b.lines().find((l) => l.text === theWordsOf(THE_FIRST_BLOW))?.targets).toEqual([0, 1]);
   });
 });
 
