@@ -7,16 +7,22 @@
 // Since P1-19m the items' registry (src/engine/rules/the-registry-of-magic-item-effects.ts) is held to the same: each
 // effect once in its stage's order (THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS), each order naming only entries with an
 // effect there, each content row with its entry and each entry with its row; each unit a row reaches is a unit type,
-// the realm it needs an alignment, and no two rows share a name.
+// the realm it needs an alignment, and no two rows share a name. Since P1-19u the spells' registry
+// (src/engine/rules/the-registry-of-spell-effects.ts) is held to the same: each effect once in its stage's order
+// (THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS), each order naming only entries with an effect there, each content row with
+// its entry and each entry with its row; each row's name is a spell of SPELL_DEFS_P and its fn that spell's, and no two
+// rows share a name.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
 // reaches, or counts as), two rows' name; in the items' registry, an entry left out of its order, an order naming an
 // entry with no effect at its stage, a row with no entry, a unit reached that isn't a unit type, a realm's alignment
-// that isn't one, two rows' name.
+// that isn't one, two rows' name; in the spells' registry, an entry left out of its order, a row with no entry, a
+// row's name that is no spell, a row's fn that isn't its spell's, two rows' name.
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
-import { KC_ALIGNMENTS, KC_UNIT_TYPE } from '../../src/content/kingdoms-call-data.ts';
+import { KC_ALIGNMENTS, KC_UNIT_TYPE, SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
+import { SPELL_EFFECTS_THE_REGISTRY_HOLDS } from '../../src/content/spell-effects-their-names-numbers-and-words.ts';
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS } from '../../src/content/unit-abilities-their-names-numbers-and-words.ts';
 import { MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS } from '../../src/content/magic-item-effects-their-names-numbers-and-words.ts';
 import {
@@ -27,6 +33,10 @@ import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS,
   THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS,
 } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS,
+  THE_REGISTRY_OF_SPELL_EFFECTS,
+} from '../../src/engine/rules/the-registry-of-spell-effects.ts';
 
 /** The registry as this test reads it: each entry's effects by hook point and stage, and each stage's order. */
 type Entries = Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, unknown>>>>>>;
@@ -54,7 +64,12 @@ type ItemRows = Readonly<
   >
 >;
 
+/** A spell's row as this test reads it (its name and fn as any string, so a planted row may name one that isn't). */
+type SpellRows = Readonly<Record<string, { readonly name: string; readonly fn: string }>>;
+
 const unitTypes: ReadonlySet<string> = new Set(Object.keys(KC_UNIT_TYPE));
+/** The spells' fn, by any spell's name. */
+const SPELLS: Readonly<Record<string, { readonly fn: string } | undefined>> = SPELL_DEFS_P;
 const alignments: ReadonlySet<string> = new Set(KC_ALIGNMENTS);
 
 /** What a unit ability's row breaks: its unit, each unit it counts or reaches, and the unit it counts as, each a unit
@@ -78,6 +93,13 @@ function whatAnItemEffectsRowBreaks(slug: string, row: ItemRows[string]): string
   if (row.forARealmThatIs !== undefined && !alignments.has(row.forARealmThatIs))
     broken.push(`${slug} needs a realm that is ${row.forARealmThatIs}, not an alignment`);
   return broken;
+}
+
+/** What a spell's row breaks: its name a spell of SPELL_DEFS_P, and its fn that spell's. */
+function whatASpellsRowBreaks(slug: string, row: SpellRows[string]): string[] {
+  const spell = SPELLS[row.name];
+  if (!spell) return [`${slug}'s name, ${row.name}, is no spell`];
+  return spell.fn === row.fn ? [] : [`${slug}'s fn, ${row.fn}, is not ${row.name}'s (${spell.fn})`];
 }
 
 /** What the registry breaks, one line each: an empty list when it holds each effect once in its stage's order. */
@@ -130,6 +152,12 @@ const ITEM_ROWS: ItemRows = MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS;
 const THE_COMMANDERS_ITEMS = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.strength["the commander's items"];
 const ITEMS = (entries: Entries, orders: Orders, rows: ItemRows) =>
   whatTheRegistryBreaks(entries, orders, rows, whatAnItemEffectsRowBreaks);
+const SPELL_ENTRIES: Entries = THE_REGISTRY_OF_SPELL_EFFECTS;
+const SPELL_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS;
+const SPELL_ROWS: SpellRows = SPELL_EFFECTS_THE_REGISTRY_HOLDS;
+const SPELLS_CAST = THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.strength['a battle spell is cast before the battle'];
+const SPELLS_REGISTRY = (entries: Entries, orders: Orders, rows: SpellRows) =>
+  whatTheRegistryBreaks(entries, orders, rows, whatASpellsRowBreaks);
 
 test('the registry holds each effect once, in the order of its stage, and each content row is sound', () => {
   expect(UNITS(ENTRIES, ORDERS, ROWS)).toEqual([]);
@@ -236,5 +264,36 @@ test("planted in the items' registry, a row with no entry, a unit reached that i
     'heavy-bonus and cavalry-bonus share the name Golden Spur',
     'chalice-of-dawn needs a realm that is Planted, not an alignment',
     'planted-effect has a content row and no entry',
+  ]);
+});
+
+test("the spells' registry holds each effect once, in the order of its stage, and each content row is sound", () => {
+  expect(SPELLS_REGISTRY(SPELL_ENTRIES, SPELL_ORDERS, SPELL_ROWS)).toEqual([]);
+  expect(Object.keys(SPELL_ENTRIES).length).toBeGreaterThan(0);
+  const ordered = new Set(Object.values(SPELL_ORDERS).flatMap((stages) => Object.values(stages).flat()));
+  expect([...ordered].sort()).toEqual(Object.keys(SPELL_ENTRIES).sort());
+});
+
+test("planted in the spells' registry, an entry left out of its order, a row with no entry, a name that is no spell, a fn that isn't its spell's, and two rows of one name, are found", () => {
+  const orders: Orders = {
+    ...SPELL_ORDERS,
+    strength: {
+      ...SPELL_ORDERS['strength'],
+      'a battle spell is cast before the battle': SPELLS_CAST.filter((s) => s !== 'curse'),
+    },
+  };
+  const rows: SpellRows = {
+    ...SPELL_ROWS,
+    fireball: { ...SPELL_EFFECTS_THE_REGISTRY_HOLDS.fireball, name: 'Planted Fireball' },
+    spiritwrack: { ...SPELL_EFFECTS_THE_REGISTRY_HOLDS.spiritwrack, fn: 'white_planted' },
+    'holy-symbol': { ...SPELL_EFFECTS_THE_REGISTRY_HOLDS['holy-symbol'], name: 'Curse', fn: 'necromancy_curse' },
+    'planted-spell': { name: 'Resurrect', fn: 'white_resurrect' },
+  };
+  expect(SPELLS_REGISTRY(SPELL_ENTRIES, orders, rows)).toEqual([
+    'curse is in the order of strength: a battle spell is cast before the battle 0 times',
+    "fireball's name, Planted Fireball, is no spell",
+    'holy-symbol and curse share the name Curse',
+    "spiritwrack's fn, white_planted, is not Spiritwrack's (white_spiritwrack)",
+    'planted-spell has a content row and no entry',
   ]);
 });

@@ -6,7 +6,7 @@
 // `+2`, a share as "half" or "halved", volleys as "two volleys", extra shots as "one extra shot", a share as a
 // percentage as `10%`, gold for each province as `+1g`, `+1 gold` or "1 extra gold", skill levels added as `+1` or
 // "one level", damage turned aside as "1 less", a chance in percentage points as `5%`, a multiplier in words as
-// "doubled", damage added as `+2 damage` or "2 extra damage"), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
+// "doubled", damage added as `+2 damage` or "2 extra damage", the strongest units a Fireball strikes as "two strongest"), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
 // alone. The items read are the items in play and the Mithril suit (a dwarven birthright in no table, granted: plan
 // P1-19r). Each row with numbers is carried by some item read (else this would check nothing), but the steadfast ward's
 // (resist), which no item in play carries, listed. The rows with no number
@@ -178,7 +178,7 @@ const IN_WORDS_AS_A_MULTIPLIER: Readonly<Record<number, string>> = { 2: 'doubled
  *  strength added as +2, a share in words (0.5 as "half" or "halved"), volleys in words (2 as "two volleys"), extra
  *  shots in words (1 as "one extra shot"), a share as a percentage (0.1 as 10%), gold for each province (1 as +1g,
  *  +1 gold or "1 extra gold"), skill levels added (1 as +1 or "one level"), damage turned aside (1 as "1 less"), a
- *  chance in percentage points (5 as 5%). */
+ *  chance in percentage points (5 as 5%), the strongest units a Fireball strikes in words (2 as "two strongest"). */
 function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
   switch (n.theTextsWriteIt) {
     case 'a multiplier, as the share it adds':
@@ -205,6 +205,8 @@ function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
       return [IN_WORDS_AS_A_MULTIPLIER[n.value] ?? `×${String(n.value)}`];
     case 'damage added':
       return [`+${String(n.value)} damage`, `${String(n.value)} extra damage`];
+    case 'the strongest units, in words':
+      return [`${inWords(n.value)} strongest`];
   }
 }
 /** A number as the texts write it, with no digit or letter just before it, nor a digit, a letter, a `%` or a decimal

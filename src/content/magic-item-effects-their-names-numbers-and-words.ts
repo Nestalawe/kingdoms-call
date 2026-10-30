@@ -15,7 +15,7 @@ import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
  *  extra shot"); a share as a percentage (0.1 as `10%`); gold for each province (1 as `+1g`, `+1 gold` or "1 extra
  *  gold"); skill levels added (1 as `+1`, or "one level"); damage turned aside (1 as "1 less"); a chance in
  *  percentage points (5 as `5%`); a multiplier in words (2 as "doubled"); damage added (2 as `+2 damage`, or "2 extra
- *  damage"). */
+ *  damage"); how many of the strongest enemy units a battle spell strikes, in words (2 as "two strongest"). */
 export type HowAnItemsTextsWriteANumber =
   | 'a multiplier, as the share it adds'
   | 'strength added'
@@ -28,7 +28,8 @@ export type HowAnItemsTextsWriteANumber =
   | 'damage turned aside'
   | 'a chance, in percentage points'
   | 'a multiplier, in words'
-  | 'damage added';
+  | 'damage added'
+  | 'the strongest units, in words';
 
 /** One number of an item's effect, and how the item's texts write it. */
 export interface ANumberOfAnItemsEffect {
@@ -37,7 +38,7 @@ export interface ANumberOfAnItemsEffect {
 }
 
 /** The three effects a held copy carries on the item itself, beside its `effect` (Parked: one key per effect, later). */
-export type AnItemsOwnField = 'fleetStr' | 'landFullAtSea' | 'exploreMove';
+export type AnItemsOwnField = 'fleetStr' | 'landFullAtSea' | 'exploreMove' | 'emberTwo';
 
 /** The riders a held copy carries for personal combat (its `effect.pc`), beside a ward: each carried when above 0. */
 export type ARiderAnItemCarries = 'aura' | 'burn' | 'drain' | 'hitBonus' | 'dmgBonus';
@@ -208,6 +209,13 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { stat: 'undeadBonus' },
     numbers: { strengthAdded: { value: 4, theTextsWriteIt: 'strength added' } },
     reaches: 'the skeletal units',
+  },
+  // ── A hero's items and his battle spell (strength, before an army battle, where his Fireball is cast: plan P1-19u) ──
+  // The bearer's Fireball strikes the two strongest enemy units instead of one.
+  'fireball-strikes-two': {
+    name: 'Ember Rune',
+    carriedAs: { field: 'emberTwo' },
+    numbers: { theStrongestUnitsStruck: { value: 2, theTextsWriteIt: 'the strongest units, in words' } },
   },
   // ── The commander's items at sea (strength, in armStr, where the sea's penalty would cut a land unit he leads):
   // the penalty is waived, as for a commander of Naval's eighth level. ──

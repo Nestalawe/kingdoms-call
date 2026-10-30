@@ -174,7 +174,8 @@ common root cause in this project's history is two copies of one rule disagreein
 through `src/shared/` is written once; it is still restated in the portal's projections (the copies
 `tests/lib/player-portal-copies.ts` checks), at order time and resolution time, in the balance matrix's scripted realm,
 and in the words players read. Checks: `the-player-portals-copies-agree-with-the-engine`, the scripted realm's page
-test and the `*-words` tests, for what they cover. [Where](architecture/adding-or-changing-content-units-orders-and-discoveries.md#a-rule-written-twice-must-change-twice).
+test and the `*-words` tests, for what they cover. Battle magic is one stage of the spells' registry, asked by three
+copies that keep two rules apart (Parked: a guards' commander's Lightning Bolt, a storm at sea). [Where](architecture/adding-or-changing-content-units-orders-and-discoveries.md#a-rule-written-twice-must-change-twice).
 
 ## HTML is built only through `kcHtml`
 
@@ -202,7 +203,7 @@ An effect of the rule registry reads its stage's facts and its content row and r
 `src/engine/rules/`, `src/engine/rules-on-plain-values/` and `src/content/`, so it can't draw a die, read the turn's
 state or write a line. A set it needs is built from content or handed by the stage, and another ability is asked about
 by its slug, never a unit's name; an item's effect is found by its row's key, from the items the resolver hands the
-runner (`activeItems` stays the engine's), asked only where the battle code asked them (reading them tidies them); one that reads a copy's own number is handed the copy. Hook points so far: `strength`, `volley`, `fate`, `turnEnd`, `orderOutcome`, `aHerosStanding`, `personalCombat`, `treasury`. Example: whether
+runner (`activeItems` stays the engine's), asked only where the battle code asked them (reading them tidies them); one that reads a copy's own number is handed the copy. A spell's effect is found by the spell's name, returns what it does and its line, and the resolver draws. Hook points so far: `strength`, `volley`, `fate`, `turnEnd`, `orderOutcome`, `aHerosStanding`, `personalCombat`, `treasury`. Example: whether
 the enemy fields ranged units comes from the stage (the ladder's missile set), never from an import of `battle/`. Only `src/globals.d.ts` and `src/schemas/` may hold types alone
 (a file only `import type` reaches is in no bundle). Checks: `npm run lint:arch`; `pages-build`. Detail: [the rule registry](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry).
 
