@@ -87,7 +87,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   and the one P1-10b14 freed (`personal-combat/lair-guardians-and-the-odds.ts`: a guardian's traits, his fighter, the
   Hunting Rumours' odds and a hero's fight at a lair) and the three P1-10b15 freed (`chances-and-lair-grades.ts`: the
   cast chance, the primal strike's and the lairs' grades; `magic/pre-battle-spell-choice.ts`; and the order dispatch,
-  `orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`). The other 64
+  `orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`) and the two P1-10b16 freed
+  (`personal-combat/combat-spells-and-guardian-abilities.ts`: a spell cast in a fight and a guardian's power, and
+  `personal-combat/resolve-personal-combat.ts`: the whole fight, round by round). The other 62
   of those 108 files
   still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the

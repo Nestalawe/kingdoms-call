@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { gainedItemNote, hasItemBase } from '../items/equipment.ts';
@@ -27,8 +26,96 @@ import {
   aFightersPerkNameAsTheLineTellsIt,
   isAPersonalCombatsLine,
 } from './the-facts-a-personal-combats-lines-record.ts';
+import type { TheFactOfAPersonalCombatsLine } from './the-facts-a-personal-combats-lines-record.ts';
+import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
+import type { Character, Item } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
-import type { AFighterInAPersonalCombat } from './helpers.ts';
+import type { AFatalMark, AFighterInAPersonalCombat } from './helpers.ts';
+import type { AMirrorImageInAFight } from './combat-spells-and-guardian-abilities.ts';
+
+// Its types (plan P1-10b16): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
+// stays; a fighter is AFighterInAPersonalCombat (helpers.ts), and a value the code guards here but reads unguarded
+// elsewhere is read through asItsGuardReadsIt (to-hit-wounds-stuns-and-courage.ts).
+/** The fight's state as an action reads it (pcAct's, tactics-combat-items-and-actions.ts). */
+type TheFightAsAnActionReadsIt = Parameters<typeof pcAct>[4];
+/** The fight's state as the whole fight keeps it: who fled, stole or talked the guardian down, and the Mirror Image,
+ *  each set from the start. */
+type TheFightAsItIsKept = TheFightAsAnActionReadsIt & {
+  fledBy: AFighterInAPersonalCombat | null;
+  parley: boolean;
+  stoleBy: AFighterInAPersonalCombat | null;
+  mirror: AMirrorImageInAFight | null;
+};
+/** How a personal combat is run: its rounds at most, the lair it is fought at (none in a duel), and whether a side
+ *  that holds the field when the other flees wins it (a duel's). */
+interface HowAPersonalCombatIsRun {
+  readonly maxRounds?: number | undefined;
+  readonly feature?: TheFightAsAnActionReadsIt['feature'];
+  readonly heldFieldWins?: boolean | undefined;
+}
+/** A fighter's hero as the fight reads and writes him (a guardian has none of these fields): the same object. His id
+ *  may be a string (a Hunting Rumours copy's). */
+type AHeroAsTheFightReadsHim = object & {
+  readonly skills?: Character['skills'] | null | undefined;
+  readonly _druidNegated?: unknown;
+  readonly _curseHalveStat?: unknown;
+  readonly id?: Character['id'] | string | null | undefined;
+  hp?: number | undefined;
+};
+/** A hero of the world as the wound's roll finds him: his id, and whether he lives (an older save's may say none). */
+interface AHeroAsTheWoundRollFindsHim {
+  readonly id: Character['id'];
+  readonly alive?: boolean | undefined;
+}
+/** A fighter's hero as the mercy reads and writes him (a guardian has none of these fields): the same object. */
+type AHeroAsTheMercyReadsHim = object &
+  Omit<NonNullable<Parameters<typeof applyItemMaxHp>[0]>, 'id' | 'items' | 'name' | 'alignment'> & {
+    readonly name?: string | undefined;
+    readonly alignment?: string | null | undefined;
+    items?: Item[] | undefined;
+    _mercyFledTurn?: number | undefined;
+  };
+/** A coward's plea for mercy, the foe sparing him, or the foe refusing him: the lines of a plea. */
+type APleasLine = Extract<
+  TheFactOfAPersonalCombatsLine,
+  {
+    kind:
+      | 'as their strength fails a fighter begs the foe for mercy'
+      | 'as the foe draws for the killing shot a fighter begs for their life'
+      | 'pinned and bleeding a fighter cries out for mercy'
+      | 'as the foe readies a power for the killing stroke a fighter begs'
+      | 'beaten and bleeding a fighter sees the killing blow coming'
+      | 'as the foe closes for the kill a fighter cries out for mercy'
+      | 'a fighter drops to their knees before the final stroke'
+      | 'the guardian pauses over its prey and lets a fighter crawl away'
+      | 'the foe lets a fighter go'
+      | 'the foe lowers their bow and lets a fighter go'
+      | 'the foe lets a power die unspent'
+      | 'the foe stays the blow and lets a fighter go'
+      | 'the foe lowers their weapon in disgust and lets a fighter go'
+      | 'the stroke never falls and the foe spares a fighter'
+      | 'the foe knows nothing of mercy'
+      | 'the foe laughs at the plea'
+      | 'the foe is deaf to the plea'
+      | 'there is no pity in the foe';
+  }
+>;
+/** The fight's state as it is now: an action or a flight may have changed it since the code last tested it, which the
+ *  compiler's narrowing doesn't see. The same object. */
+function theFightAsItIsNow(fight: TheFightAsItIsKept): TheFightAsItIsKept {
+  return fight;
+}
+/** Whether a hero's name is words, as every hero's is (the saved schema's, and the fight's lines name him by it). */
+function hisNameIsWords<Hero extends { readonly name?: string | undefined }>(
+  hero: Hero,
+): hero is Hero & { readonly name: string } {
+  return typeof hero.name === 'string';
+}
+/** A fighter's hero or guardian as his items are asked about (a guardian has none): the same object. */
+type AHeroOrGuardianAsHisItemsAreAsked = object & NonNullable<Parameters<typeof hasItemBase>[0]>;
+/** Each fighter and his foe, in the order the fight takes them. */
+type EachFighterAndHisFoe = readonly (readonly [me: AFighterInAPersonalCombat, foe: AFighterInAPersonalCombat])[];
 
 // ── PERSONAL COMBAT: THE FIGHT (plan P1-08e: lifted out of resolveTurn) ────
 // resolvePersonalCombat runs a whole personal fight between two combatants, round by round. It takes the turn's
@@ -49,11 +136,16 @@ interface HowAPersonalCombatEnds {
   bHp: number;
   narrative: NarrativeLine[];
 }
-export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalCombatEnds {
+export function resolvePersonalCombat(
+  turnContext: TurnContext,
+  A: AFighterInAPersonalCombat,
+  B: AFighterInAPersonalCombat,
+  opts?: HowAPersonalCombatIsRun | null,
+): HowAPersonalCombatEnds {
   const { G } = turnContext;
-  opts = opts || {};
-  const maxRounds = opts.maxRounds || 20;
-  const narrative = [];
+  opts = opts ?? {};
+  const maxRounds = (opts.maxRounds ?? 0) || 20;
+  const narrative: NarrativeLine[] = [];
   A._foeCat = pcFoeCat(B);
   B._foeCat = pcFoeCat(A); // 2026-09-10 armour: nature-keyed wards (Serpent-Scale / Grave-Iron) read the striker's kind
   A._foe = B;
@@ -68,37 +160,42 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
   B._roundWardLeft = 0;
   A._openGuardUsed = 0;
   B._openGuardUsed = 0;
-  const state = {
+  const state: TheFightAsItIsKept = {
     fledBy: null,
     parley: false,
     stoleBy: null,
     range: 'spell',
     mirror: null,
-    feature: opts.feature || null,
+    feature: opts.feature ?? null,
   }; // all combats begin at Spell range
   // ── DRUID 3+ beast ward ── decided once, at the joining of the fight: a character of Druid 3
   // or better facing a NATURAL creature (beast or vermin) takes half damage from it. Undead,
   // fiends, constructs, dragons, giants, fey and aberrations are outside a druid's understanding,
   // and a commander whose Druid has been severed (Psychic Blast) loses the ward with it.
   const _PC_BEAST_CATS = new Set(['beast', 'vermin']);
-  const _wardOf = (me, foe) => {
-    if (!me || me.kind !== 'character' || !me.ref || me.ref._druidNegated) return 0;
-    if (!foe || foe.kind !== 'monster' || !_PC_BEAST_CATS.has(String(foe.cat || ''))) return 0;
-    let lvl = Math.min(5, effStat(turnContext, me.ref, 'druid'));
-    if (me.ref._curseHalveStat === 'druid') lvl = Math.floor(lvl / 2);
+  const _wardOf = (
+    me: AFighterInAPersonalCombat | null | undefined,
+    foe: AFighterInAPersonalCombat | null | undefined,
+  ) => {
+    const myHero = me ? asItsGuardReadsIt<AHeroAsTheFightReadsHim>(me.ref) : null;
+    if (me?.kind !== 'character' || !myHero || myHero._druidNegated) return 0;
+    if (foe?.kind !== 'monster' || !_PC_BEAST_CATS.has(foe.cat ?? '')) return 0;
+    let lvl = Math.min(5, effStat(turnContext, myHero, 'druid'));
+    if (myHero._curseHalveStat === 'druid') lvl = Math.floor(lvl / 2);
     return lvl >= 3 ? lvl : 0;
   };
   A.druidBeastWard = _wardOf(A, B);
   B.druidBeastWard = _wardOf(B, A);
   // ── Guardian passives ── announced once; an aura is a standing to-hit penalty on the foe.
-  for (const [me, foe] of [
+  const eachFighterAndHisFoe: EachFighterAndHisFoe = [
     [A, B],
     [B, A],
-  ]) {
-    if (me.kind === 'monster' && (me.perks || []).length)
-      me.perks.forEach((p) =>
-        narrate(narrative, { kind: "a guardian's perk is named", meName: me.name, pName: p.name, pDesc: p.desc }),
-      );
+  ];
+  for (const [me, foe] of eachFighterAndHisFoe) {
+    if (me.kind === 'monster' && me.perks?.length)
+      me.perks.forEach((p) => {
+        narrate(narrative, { kind: "a guardian's perk is named", meName: me.name, pName: p.name, pDesc: p.desc });
+      });
     else if (me.kind === 'monster' && me.passiveName)
       narrate(narrative, {
         kind: "a guardian's perk is named",
@@ -106,8 +203,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
         pName: me.passiveName,
         pDesc: me.passiveDesc,
       });
-    if (me.aura > 0) {
-      foe.status.auraPenalty = (foe.status.auraPenalty || 0) + me.aura;
+    if (me.aura !== undefined && me.aura > 0) {
+      foe.status.auraPenalty = ((foe.status.auraPenalty ?? 0) || 0) + me.aura;
     }
   }
   if (A.druidBeastWard)
@@ -132,6 +229,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
   // One "mirror round": the victim fights their phantom (an even duel) while the caster
   // concentrates. Shared by the round-start mirror branch and the same-round hook below.
   const _mirrorExchange = () => {
+    // called only with an illusion fighting (both callers test it first); the old destructuring threw without one
+    if (!state.mirror) throw new TypeError("Cannot destructure property 'caster' of 'state.mirror' as it is null.");
     const { caster, victim, phantasm } = state.mirror;
     narrate(narrative, {
       kind: 'the victim fights their own mirror image',
@@ -145,7 +244,14 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
     // flee/parley/steal against the phantom can never end or re-range the real duel. A stunned
     // victim stands helpless.
     {
-      const _vstate = { fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null };
+      const _vstate: TheFightAsItIsKept = {
+        fledBy: null,
+        parley: false,
+        stoleBy: null,
+        range: 'melee',
+        mirror: null,
+        feature: null,
+      };
       pcAct(turnContext, victim, phantasm, narrative, _vstate);
       if (_vstate.fledBy)
         narrate(narrative, { kind: "but there is no escaping one's own reflection", victimName: victim.name });
@@ -158,13 +264,21 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
     // range; only the damage/effects it lands on the victim
     // (a shared object) persist.
     if (phantasm.hp > 0) {
-      const _mstate = { fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null };
+      const _mstate: TheFightAsItIsKept = {
+        fledBy: null,
+        parley: false,
+        stoleBy: null,
+        range: 'melee',
+        mirror: null,
+        feature: null,
+      };
       pcAct(turnContext, phantasm, victim, narrative, _mstate);
     }
+    const theMirrorNow = theFightAsItIsNow(state).mirror;
     if (phantasm.hp <= 0) {
       narrate(narrative, { kind: 'the victim shatters the phantom', victimName: victim.name });
       state.mirror = null;
-    } else if (state.mirror && --state.mirror.life <= 0) {
+    } else if (theMirrorNow && --theMirrorNow.life <= 0) {
       narrate(narrative, { kind: 'the phantom of the victim thins to nothing', victimName: victim.name });
       state.mirror = null;
     }
@@ -183,18 +297,19 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
   A._hpLow = A.hp;
   B._hpLow = B.hp;
   const _noteLow = () => {
-    A._hpLow = Math.min(A._hpLow, A.hp);
-    B._hpLow = Math.min(B._hpLow, B.hp);
+    A._hpLow = Math.min(Number(A._hpLow), A.hp); // set at the fight's start; Math.min reads each as a number
+    B._hpLow = Math.min(Number(B._hpLow), B.hp);
   };
-  const _stepCheck = (m) => {
+  const _stepCheck = (m: ReturnType<typeof _stepMark>) => {
     _noteLow();
-    [
+    const eachFighterAndHisHpAtTheMark: [fighter: AFighterInAPersonalCombat, hp: number][] = [
       [A, m.a],
       [B, m.b],
-    ].forEach(([cb, h]) => {
+    ];
+    eachFighterAndHisHpAtTheMark.forEach(([cb, h]) => {
       if (h > 0 && cb.hp <= 0 && cb.kind === 'character') {
         const fm = cb._fatalMark;
-        if (!(fm && fm.arr === narrative && fm.idx >= m.n)) cb._fatalMark = { arr: narrative, idx: m.n, blow: null };
+        if (!(fm?.arr === narrative && fm.idx >= m.n)) cb._fatalMark = { arr: narrative, idx: m.n, blow: null };
       }
     });
   };
@@ -212,11 +327,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
     // Guardian burn aura: a foe standing at melee range is scorched / frozen each round (never
     // soaked).
     if (state.range === 'melee')
-      for (const [me, foe] of [
-        [A, B],
-        [B, A],
-      ]) {
-        if (me.burn > 0 && me.hp > 0 && foe.hp > 0) {
+      for (const [me, foe] of eachFighterAndHisFoe) {
+        if (me.burn !== undefined && me.burn > 0 && me.hp > 0 && foe.hp > 0) {
           foe.hp -= me.burn;
           narrate(narrative, {
             kind: "a guardian's aura sears the foe",
@@ -237,13 +349,19 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
       const { caster, victim, phantasm } = state.mirror;
       // Disbelief chance: characters = 4% × total of all their skill levels; monsters = tougher =
       // harder to fool.
-      let disbelief;
-      if (victim.kind === 'character' && victim.ref && victim.ref.skills) {
-        disbelief = 4 * Object.values(victim.ref.skills).reduce((s, v) => s + (v || 0), 0);
+      let disbelief: number;
+      const theVictimsHero = asItsGuardReadsIt<AHeroAsTheFightReadsHim>(victim.ref);
+      if (victim.kind === 'character' && theVictimsHero?.skills) {
+        const hisLevels: readonly (number | undefined)[] = Object.values(theVictimsHero.skills);
+        disbelief = 4 * hisLevels.reduce<number>((s, v) => s + ((v ?? 0) || 0), 0);
       } else {
         disbelief = 5 + 3 * (victim.melee || 0);
       }
-      if (caster && caster.ref && hasItemBase(caster.ref, 'Mirror Shard')) disbelief *= 0.5; // Mirror Shard: harder to disbelieve
+      const casterAsGuarded = asItsGuardReadsIt(caster);
+      const theCastersHeroOrGuardian = casterAsGuarded
+        ? asItsGuardReadsIt<AHeroOrGuardianAsHisItemsAreAsked>(casterAsGuarded.ref)
+        : null;
+      if (theCastersHeroOrGuardian && hasItemBase(theCastersHeroOrGuardian, 'Mirror Shard')) disbelief *= 0.5; // Mirror Shard: harder to disbelieve
       disbelief = Math.max(2, Math.min(90, disbelief));
       if (kcRng() * 100 < disbelief) {
         narrate(narrative, {
@@ -270,18 +388,19 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
       if (actor.hp <= 0 || foe.hp <= 0) break;
       _stepCheck(_sm);
       _sm = _stepMark();
-      const _mirrorBefore = state.mirror;
+      const _mirrorBefore = theFightAsItIsNow(state).mirror;
       pcAct(turnContext, actor, foe, narrative, state);
       // 2026-09-10 item 2: if this action just conjured a Mirror Image and the victim has NOT yet
       // acted this round (caster held the initiative), the victim's action goes against the
       // phantom at once — they must not get a free swing at the concentrating caster before the
       // illusion takes hold.
-      if (!_mirrorBefore && state.mirror && actor === first && state.mirror.victim === second && second.hp > 0) {
+      const theMirrorNow = theFightAsItIsNow(state).mirror;
+      if (!_mirrorBefore && theMirrorNow && actor === first && theMirrorNow.victim === second && second.hp > 0) {
         _mirrorExchange(); // the victim's action this round goes to the phantom, not to the caster
         break;
       }
       // consume queued free attacks (Psychic Blast) — only land as strikes at melee range
-      let free = actor._freeAttacks || 0;
+      let free = (actor._freeAttacks ?? 0) || 0;
       while (free > 0 && foe.hp > 0 && state.range === 'melee') {
         const hit = pcHitChance(turnContext, actor, foe);
         if (kcRng() * 100 < hit) {
@@ -323,7 +442,8 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
           foeHp: actor.hp,
         });
       }
-      if (state.fledBy || state.parley || state.stoleBy || foe.hp <= 0 || actor.hp <= 0) break;
+      const theFightNow = theFightAsItIsNow(state);
+      if (theFightNow.fledBy || theFightNow.parley || theFightNow.stoleBy || foe.hp <= 0 || actor.hp <= 0) break;
     }
     _stepCheck(_sm);
     _sm = _stepMark();
@@ -347,10 +467,12 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
 
     // ── Flight from Combat (AK §2.4): a fighter's Temper may make them break off when death
     // nears ──
-    if (!state.fledBy && !state.parley && !state.stoleBy) {
+    const theFightNow = theFightAsItIsNow(state);
+    if (!theFightNow.fledBy && !theFightNow.parley && !theFightNow.stoleBy) {
       for (const cbt of [A, B]) {
         if (cbt.hp <= 0 || cbt.neverFlees) continue;
-        if (cbt.status && cbt.status.stun > 0) continue; // a Psychic-Blasted mind cannot even run
+        const hisStatus = asItsGuardReadsIt(cbt.status);
+        if (hisStatus && hisStatus.stun > 0) continue; // a Psychic-Blasted mind cannot even run
         const foe = cbt === A ? B : A;
         if (foe.hp <= 0) continue;
         const tt = temperOf(cbt.temper);
@@ -363,14 +485,15 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
           if (cbt.hp <= 0) break; // the free strike finished them
         }
       }
-      if (state.fledBy) break;
+      if (theFightAsItIsNow(state).fledBy) break;
     }
     _stepCheck(_sm);
   }
   // Write back HP to underlying characters.
   [A, B].forEach((cbt) => {
-    if (cbt.kind === 'character' && cbt.ref) {
-      cbt.ref.hp = Math.max(0, Math.round(cbt.hp));
+    const hisHero = asItsGuardReadsIt<AHeroAsTheFightReadsHim>(cbt.ref);
+    if (cbt.kind === 'character' && hisHero) {
+      hisHero.hp = Math.max(0, Math.round(cbt.hp));
     }
   });
   // ── Begging for Mercy (AK §2.4): a Cowardly fighter felled in combat may plead and be spared,
@@ -381,19 +504,25 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
   // lines of the blow are dropped (private skill-rise markers are kept) and the coward escapes.
   // Refused → the plea is spliced in before the blow, which then falls as already written.
   // The odds, the roll and every consequence are exactly as before — only the telling moved.
-  let _mercyShift = []; // [index, lines inserted] — keeps a second combatant's mark true after a splice
-  const _mercyAt = (fm) => {
-    let at = fm && fm.arr === narrative && fm.idx <= narrative.length ? fm.idx : narrative.length;
+  let _mercyShift: [index: number, inserted: number][] = []; // [index, lines inserted] — keeps a second combatant's mark true after a splice
+  const _mercyAt = (fm: AFatalMark | null | undefined) => {
+    let at = fm?.arr === narrative && fm.idx <= narrative.length ? fm.idx : narrative.length;
     _mercyShift.forEach(([ix, n]) => {
       if (ix <= at) at += n;
     });
     return Math.min(at, narrative.length);
   };
-  const _pick = (arr) => arr[Math.floor(kcRng() * arr.length)];
+  // one of a few lines, by the dice (each list holds two or three, so the dice always find one)
+  const _pick = <Line>(arr: readonly Line[]): Line => {
+    const one = arr[Math.floor(kcRng() * arr.length)];
+    if (one === undefined) throw new TypeError('no line at that place');
+    return one;
+  };
   for (const cbt of [A, B]) {
     const foe = cbt === A ? B : A;
     if (cbt.hp <= 0 && cbt.kind === 'character' && temperOf(cbt.temper).mercy && !state.fledBy && !cbt._begged) {
-      const foeAlign = foe.alignment || (foe.ref && foe.ref.alignment) || '';
+      const theFoesHero = asItsGuardReadsIt<AHeroAsTheMercyReadsHim>(foe.ref);
+      const foeAlign = (foe.alignment ?? '') || (theFoesHero?.alignment ?? '');
       let mercy = 50;
       if (foeAlign === 'Good' || foeAlign === 'Divine' || foeAlign === 'Druidic') mercy = 75;
       else if (foeAlign === 'Evil' || foeAlign === 'Undead') mercy = 20;
@@ -401,23 +530,23 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
         _granted = _r < mercy,
         _shown = Math.floor(_r) + 1; // same odds as ever; shown as a d100
       const fm = cbt._fatalMark;
-      const _blow = !!(fm && fm.blow); // a struck blow (not lingering harm or an aura)
+      const _blow = !!fm?.blow; // a struck blow (not lingering harm or an aura)
       const at = _mercyAt(fm);
       const who = cbt.name,
         foeWho = foe.kind === 'monster' ? `the ${foe.name}` : foe.name,
         FoeWho = foe.kind === 'monster' ? `The ${foe.name}` : foe.name;
       const _odds = { mercy, shown: _shown, granted: _granted };
       // what kind of killing blow is coming: a weapon stroke, an arrow, or a spell / power
-      const _k = String((fm && fm.kind) || '');
+      const _k = fm?.kind ?? '';
       const _cls = /^(blow|free strike|counterattack)$/i.test(_k)
         ? 'melee'
         : /arrow|shot/i.test(_k)
           ? 'ranged'
           : 'power';
-      const plea = !_blow
+      const plea: APleasLine = !_blow
         ? { kind: 'as their strength fails a fighter begs the foe for mercy', who, foeWho, odds: _odds }
         : _cls === 'ranged'
-          ? _pick([
+          ? _pick<APleasLine>([
               { kind: 'as the foe draws for the killing shot a fighter begs for their life', foeWho, who, odds: _odds },
               { kind: 'pinned and bleeding a fighter cries out for mercy', who, odds: _odds },
             ])
@@ -430,17 +559,18 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
                 who,
                 odds: _odds,
               }
-            : _pick([
+            : _pick<APleasLine>([
                 { kind: 'beaten and bleeding a fighter sees the killing blow coming', who, foeWho, odds: _odds },
                 { kind: 'as the foe closes for the kill a fighter cries out for mercy', foeWho, who, odds: _odds },
                 { kind: 'a fighter drops to their knees before the final stroke', who, odds: _odds },
               ]);
       if (_granted) {
         cbt.hp = 1;
-        if (cbt.ref) cbt.ref.hp = 1;
+        const hisHero = asItsGuardReadsIt<AHeroAsTheMercyReadsHim>(cbt.ref);
+        if (hisHero) hisHero.hp = 1;
         cbt._begged = true;
         state.fledBy = cbt;
-        const spared =
+        const spared: APleasLine =
           foe.kind === 'monster'
             ? {
                 kind: 'the guardian pauses over its prey and lets a fighter crawl away',
@@ -461,7 +591,7 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
                       who,
                       who2: who,
                     }
-                  : _pick([
+                  : _pick<APleasLine>([
                       { kind: 'the foe stays the blow and lets a fighter go', foeWho: FoeWho, who },
                       {
                         kind: 'the foe lowers their weapon in disgust and lets a fighter go',
@@ -476,12 +606,15 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
           // words; a line for one realm alone, another area's fact). Since P1-12c4 the fight's own lines are facts of
           // personal combat's kinds, none of whose words starts with those markers: a kind check, not a test of words.
           const tail = takeBackLinesFrom(narrative, at);
-          const kept = tail.filter((x) =>
+          const kept = tail.filter((x): boolean =>
             typeof x === 'string'
               ? /^\s*(📈|🎉|💰)/.test(x)
               : !(isAPersonalCombatsLine(x) && isALineForEveryoneInTheFight(x)),
           );
-          narrateAll(narrative, [plea, spared, ...kept]);
+          // the plea, the sparing, then what is kept (built in two steps: the compiler can't reduce one literal of them)
+          const thePleaAndWhatIsKept: NarrativeLine[] = [plea, spared];
+          thePleaAndWhatIsKept.push(...kept);
+          narrateAll(narrative, thePleaAndWhatIsKept);
         } else {
           narrate(narrative, plea);
           narrate(narrative, spared);
@@ -490,15 +623,17 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
         // turn
         // (all remaining actions lost), slink back to their home province by next turn, and yield a
         // random magic item to the victor as the price of their life.
-        if (cbt.ref) {
-          cbt.ref._mercyFledTurn = G.turn; // out of action this turn; relocated home at end of turn
-          const _giveable = transferableItems(cbt.ref.items); // a granted Mithril suit is never surrendered
-          if (foe && foe.kind === 'character' && foe.ref && _giveable.length > 0) {
+        if (hisHero) {
+          hisHero._mercyFledTurn = G.turn; // out of action this turn; relocated home at end of turn
+          const _giveable = transferableItems(hisHero.items); // a granted Mithril suit is never surrendered
+          const foeAsGuarded = asItsGuardReadsIt(foe);
+          if (foeAsGuarded?.kind === 'character' && theFoesHero && _giveable.length > 0) {
             const _lost = _giveable[Math.floor(kcRng() * _giveable.length)];
-            cbt.ref.items.splice(cbt.ref.items.indexOf(_lost), 1);
-            applyItemMaxHp(cbt.ref, _lost);
-            foe.ref.items = foe.ref.items || [];
-            foe.ref.items.push(_lost);
+            if (_lost === undefined || !hisHero.items) throw new TypeError('no item at that place'); // one of his, by the dice
+            hisHero.items.splice(hisHero.items.indexOf(_lost), 1);
+            applyItemMaxHp(hisHero, _lost);
+            theFoesHero.items = theFoesHero.items ?? [];
+            theFoesHero.items.push(_lost);
             narrate(narrative, {
               kind: 'a fighter surrenders an item to the foe as the price of mercy',
               cbtName: cbt.name,
@@ -506,13 +641,15 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
               foeName: foe.name,
             });
             {
-              const _gn = gainedItemNote(foe.ref, [_lost]);
+              // every hero's name is words (above); a hero of none would be a broken save, refused here
+              if (!hisNameIsWords(theFoesHero)) throw new TypeError('a hero of no name');
+              const _gn = gainedItemNote(theFoesHero, [_lost]);
               if (_gn) narrate(narrative, { kind: 'a gained item noted', gainedItemNote: _gn });
             } // item 10
           }
         }
       } else {
-        const refused =
+        const refused: APleasLine =
           foe.kind === 'monster'
             ? {
                 kind: 'the foe knows nothing of mercy',
@@ -529,7 +666,7 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
                   strikeKind: _k,
                   strikeClass: _cls,
                 }
-              : _pick([
+              : _pick<APleasLine>([
                   {
                     kind: 'the foe is deaf to the plea',
                     foeWho: FoeWho,
@@ -549,14 +686,15 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
       }
     }
   }
-  let winner = null,
-    loser = null;
+  let winner: AFighterInAPersonalCombat | null = null,
+    loser: AFighterInAPersonalCombat | null = null;
   if (!state.fledBy && !state.parley && !state.stoleBy) {
     if (A.hp <= 0 && B.hp <= 0) {
       winner = A.melee >= B.melee ? A : B;
       loser = winner === A ? B : A;
       winner.hp = 1;
-      if (winner.ref) winner.ref.hp = 1;
+      const theWinnersHero = asItsGuardReadsIt<AHeroAsTheFightReadsHim>(winner.ref);
+      if (theWinnersHero) theWinnersHero.hp = 1;
     } else if (A.hp <= 0) {
       winner = B;
       loser = A;
@@ -571,7 +709,7 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
   // landed them ABOVE the encounter report, i.e. at the top of the phase in the player Chronicle.
   // 2026-09-29 (Toby): melee/archery experience is now rolled per successful hit as it lands
   // (pcCombatXP) — the old single end-of-fight roll for the victor is retired.
-  if (state.stoleBy && state.stoleBy.kind === 'character' && state.stoleBy.ref)
+  if (state.stoleBy?.kind === 'character' && asItsGuardReadsIt(state.stoleBy.ref))
     trySkillGain(turnContext, state.stoleBy.ref, 'thief', SKILLGAIN_STD, narrative);
   // ── 2026-10-08 (Toby item 16): WOUNDS HARDEN TOO ── every hero who took at least 1 HP of damage in
   // the fight rolls for maximum HP at its end, as the winner always has. The winner is left to the
@@ -580,23 +718,28 @@ export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalComb
   // (simulated fights on copies) never do.
   _noteLow();
   if (!turnContext._pcSimulating) {
-    const _winSide = winner || (opts.heldFieldWins && state.fledBy ? (state.fledBy === A ? B : A) : null);
+    const _winSide = winner ?? (opts.heldFieldWins && state.fledBy ? (state.fledBy === A ? B : A) : null);
     // 2026-10-14 (batch item 12, Toby): ANY HERO WHO WINS A FIGHT rolls for Melee experience at the
     // standard rate, on top of the rolls for each blow, arrow or spell that landed (trySkillGain's
     // own guards keep it to one rise of a skill a phase and a turn).
-    if (_winSide && _winSide.kind === 'character' && _winSide.ref && _winSide.hp > 0)
+    if (_winSide?.kind === 'character' && asItsGuardReadsIt(_winSide.ref) && _winSide.hp > 0)
       trySkillGain(turnContext, _winSide.ref, 'melee', SKILLGAIN_STD, narrative);
     // 2026-10-14 (batch item 11, Toby): a hero who LOSES a fight and lives — beaten and spared, or
     // fled — learns a little: Melee at the small frequent-action rate.
     for (const X of [A, B]) {
-      if (X.kind !== 'character' || !X.ref || X.hp <= 0 || X === _winSide) continue;
-      const _lost = (winner && winner !== X) || state.fledBy === X || (_winSide && _winSide !== X);
+      if (X.kind !== 'character' || !asItsGuardReadsIt(X.ref) || X.hp <= 0 || X === _winSide) continue;
+      const _lost = (winner !== null && winner !== X) || state.fledBy === X || (_winSide && _winSide !== X);
       if (_lost) trySkillGain(turnContext, X.ref, 'melee', SKILLGAIN_COMMON, narrative);
     }
     for (const X of [A, B]) {
-      if (X === _winSide || X.kind !== 'character' || !X.ref || X.hp <= 0) continue;
-      if (!(X._hpLow <= X._hpStart - 1)) continue;
-      const real = X.ref.id != null ? (G.characters || []).find((r) => r && r.id === X.ref.id) : null;
+      const hisHero = asItsGuardReadsIt<AHeroAsTheFightReadsHim>(X.ref);
+      if (X === _winSide || X.kind !== 'character' || !hisHero || X.hp <= 0) continue;
+      if (!(Number(X._hpLow) <= Number(X._hpStart) - 1)) continue; // both set at the fight's start
+      // the world's heroes, read as the guard reads them (a gap among them)
+      const theHeroes: readonly (AHeroAsTheWoundRollFindsHim | null | undefined)[] =
+        asItsGuardReadsIt(G.characters) ?? [];
+      const hisId = hisHero.id;
+      const real = hisId != null ? theHeroes.find((r) => r?.id === hisId) : null;
       if (!real || real.alive === false) continue;
       const r = awardHpRoll(turnContext, X.ref, narrative, 'wound', false);
       if (r && r.gain > 0) {
