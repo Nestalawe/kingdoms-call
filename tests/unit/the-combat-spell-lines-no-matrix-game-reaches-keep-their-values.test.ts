@@ -5,10 +5,12 @@
 // - a spell cast in a fight: one of no name (no school, nothing told), a school's limit reached, Spiritwrack's shrug
 //   by the guardian's grade (none for a hero), Invisibility's cut to the foe's aim (the larger of the two, a NaN read
 //   as none), Curse on the best of Melee, Archery and the best school, and Charm against a king, a mind lately swayed,
-//   a will that resists it (or doesn't) and a guardian;
+//   a will that resists it (or doesn't) and a guardian, and (the mutation session of 2026-10-31) the dice it draws: no
+//   die for the will of a foe never charmed;
 // - a guardian's power: an older save's damage range (no weight), a range of nothing, a power that raises his Melee,
 //   and a power that kills outright (or never);
-// - the fight: a Druid's beast ward halved by a curse on his Druid, or gone with it, and a Mirror Shard that makes the
+// - the fight: a Druid's beast ward halved by a curse on his Druid, or gone with it, his Druid counted to 5 for it
+//   (the mutation session of 2026-10-31), and a Mirror Shard that makes the
 //   illusion harder to see through;
 // - since P1-19w, the combat spells that harm, through the spells' registry, where no game meets them, or meets them
 //   only in a forecast: Fireball's line (its share shown rounded down, its rounds, a ward's cut; a target with no
@@ -44,6 +46,8 @@ const { pcCharCombatant, pcMonsterCombatant } =
 const { pcAct } = await import('../../src/engine/personal-combat/tactics-combat-items-and-actions.ts');
 const { resolvePersonalCombat } = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+// the engine's dice, the fresh module the functions above draw from (to count the dice a spell draws)
+const { kcRng } = await import('../../src/engine/rng.ts');
 // since P1-12d19 a daze's and a lingering harm's source is a record; the words, read through the prose
 const { theWordsOfTheSourceOfADaze, theWordsOfTheSourceOfALingeringHarm } =
   await import('../../src/views/prose/the-words-of-a-personal-combats-lines.ts');
@@ -213,6 +217,29 @@ describe('a spell cast in a fight', () => {
     expect(kinds(narrative)).toContain("the caster charms the target's wits");
     expect(caster.status.fleeDoubled).toBe(true);
   });
+
+  test("Charm on a foe never charmed (a will of 0) draws the cast's die alone; a will of 50 draws one more for it", () => {
+    /** The dice the Charm draws, every one a 2 (a cast roll of 2 takes hold), and whether the caster's flight doubles.
+     *  The caster has had his experience roll of this fight already, so a cast that takes hold draws no die for it. */
+    const draws = (charmResist: number) => {
+      const caster = aHero({ psychic: 5 });
+      caster._xpGained = true;
+      const target = aHero({}, { over: { isKing: false, _charmResist: charmResist } });
+      let n = 0;
+      const real = kcRng.use(() => {
+        n++;
+        return 0.01;
+      });
+      try {
+        pcCastCombatSpell(tc, caster, target, 'Charm', [], aFight());
+      } finally {
+        kcRng.use(real);
+      }
+      return [n, caster.status.fleeDoubled ?? false];
+    };
+    expect(draws(0)).toEqual([1, true]);
+    expect(draws(50)).toEqual([2, false]);
+  });
 });
 
 describe("a guardian's power", () => {
@@ -259,6 +286,15 @@ describe('the fight', () => {
     expect(ward({ _curseHalveStat: 'druid' })).toBe(0); // 2: below the ward's 3
     expect(ward({ _curseHalveStat: 'melee' })).toBe(4);
     expect(ward({ _druidNegated: true })).toBe(0);
+  });
+
+  test("a Druid's beast ward counts his Druid to 5: 3 at Druid 3, 5 at Druid 5, still 5 at Druid 9", () => {
+    const ward = (druid: number) => {
+      const h = aHero({ druid });
+      pc.pinned(0.5, () => resolvePersonalCombat(tc, h, aGuardian({ cat: 'beast' }), { maxRounds: 1 }));
+      return h.druidBeastWard;
+    };
+    expect([ward(3), ward(5), ward(9)]).toEqual([3, 5, 5]);
   });
 
   test('a Mirror Shard halves the chance to see through the illusion (5 for a guardian of no Melee, then 2.5)', () => {

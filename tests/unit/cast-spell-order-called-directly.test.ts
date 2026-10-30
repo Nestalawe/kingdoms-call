@@ -23,7 +23,9 @@
 // the resistance capped at 95); the helper that was nested in `processOrder` (`charmBacklash`, handed why as a record
 // since P1-12d9, with the duel stood in: no roll for a hero gone or fallen, 50 and 51, Flee on either side, combat
 // tactics only, the HP and their floor, a wanderer's HP, the kill credited, one who can't be killed, who is told); the
-// details the planted faults asked for. The balance matrix never gives a mastery spell, Part Sea, Holy Symbol,
+// details the planted faults asked for, and those the mutation session of 2026-10-31 asked for (a Divine Judgment
+// refused on his own realm's hero teaches no White Magic; Death's Dominion raises five at most when items lift his
+// Necromancy past 5). The balance matrix never gives a mastery spell, Part Sea, Holy Symbol,
 // Clairvoyance, Hide Lairs or Control Undead's scan. Properties: the casting limit and the chance (the level counted to
 // 5, 10% more at level 8); a cast lands exactly within its chance; Curse halves, cast after cast; Psychic Blast takes
 // two levels in all; Telekinetic Storm strikes min(level, companies), each down a tier or gone; Dominate and Chain
@@ -1213,5 +1215,31 @@ describe('Cast Spell, called directly: the details', () => {
     rolls([1], () => casts(b, h, 'Cataclysm', p.id));
     const line = b.lines().find((l) => l.text.startsWith(`☄ ${h.name} calls down a Cataclysm`));
     expect([...(line?.targets ?? [])].sort()).toEqual([1, 2]);
+  });
+
+  test("Divine Judgment refused on a hero of his own realm teaches him no White Magic; on a rival's, one roll", () => {
+    const judged = (own: boolean) => {
+      const b = fresh();
+      const mark = own ? at(b, { melee: 3 }) : rival(b, { hp: 40 });
+      const h = at(b, { white: 9 });
+      const { xp } = recording(() => rolls([1], () => casts(b, h, 'Divine Judgment', mark.id)));
+      return {
+        refused: textOf(b, h).includes('Divine Judgment cannot be turned on your own heroes.'),
+        lessons: xp.filter((x) => x.id === h.id && x.skill === 'white').length,
+      };
+    };
+    expect(judged(true)).toEqual({ refused: true, lessons: 0 });
+    expect(judged(false)).toEqual({ refused: false, lessons: 1 });
+  });
+
+  test("Death's Dominion raises five at most even when his items lift his Necromancy past 5 (9 trained, +2: 7)", () => {
+    const b = fresh();
+    b.own(b.X, 0);
+    b.X['battleGraves'] = companies(7, 'Men-at-Arms', 'Average', 'Dead');
+    const h = at(b, { necromancy: 9 });
+    h.items = [item(b, 'Skull of the Undying')];
+    expect(fn('effStat')(b.tc, h, 'necromancy')).toBe(7);
+    rolls([1], () => casts(b, h, "Death's Dominion"));
+    expect([h.armies.length, (b.X['battleGraves'] as Unit[]).length]).toEqual([5, 2]);
   });
 });

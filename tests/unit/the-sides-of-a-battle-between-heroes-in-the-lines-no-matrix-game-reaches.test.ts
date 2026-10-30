@@ -9,6 +9,8 @@
 // are stood in (vi.spyOn, the registry's aForceHoldsTheSeaLanes and retreatOptions): the winner holds them, and the
 // loser could fall back to a sea or a land province. The realm discoveries' line can't be played: discoveryArmyBonus
 // always returns 0 (Parked).
+// Since the mutation session of 2026-10-31, also a line the matrix reaches but no test read: an Evil defender's monsters'
+// savage fury names the defender's side (every die at 0.99, so neither side is seized by zeal, which takes its place).
 // The battle keeps its name and signature, so this passes on the code before the row (P1-12d22's base), as after.
 // Level 1 (unit): combatVsChar called directly on a world the engine makes from a fixed seed; no turn is played. Not
 // lower: the lines sit inside combatVsChar, and their words in the views. Not higher: a whole turn adds dice and orders
@@ -100,11 +102,12 @@ interface WhatTheBattleShows {
 
 /** A battle on a free plain between realm 0's king (attacking) and realm 1's, each at the head of the host given, both
  *  alive or both slain before the battle; `stage` sets what the battle reads (on the world, the two kings and the
- *  plain) before it is fought, the dice a seeded stream's. */
+ *  plain) before it is fought, the dice a seeded stream's (or the dice given). */
 function aBattle(
   hosts: { readonly atk: ArmyInABattle[]; readonly def: ArmyInABattle[] },
   bothSlain: boolean,
   stage: (G: World, atk: Character, def: Character, field: Province) => void,
+  dice: () => number = kcRngStream(7),
 ): WhatTheBattleShows {
   const G = JSON.parse(THE_WORLD) as World;
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
@@ -126,7 +129,7 @@ function aBattle(
   atk.armies = hosts.atk;
   def.armies = hosts.def;
   stage(G, atk, def, field);
-  const was = kcRng.use(kcRngStream(7));
+  const was = kcRng.use(dice);
   let narrative: NarrativeLine[];
   try {
     narrative = (combatVsChar(tc, atk, def, field) as { narrative: NarrativeLine[] }).narrative;
@@ -185,5 +188,28 @@ describe.each([false, true])('a battle between heroes, both commanders slain bef
     expect(shown.words).toContain(
       `⛵ ${name[winner]}'s corsairs close the sea lanes — ${name[loser]} cannot slip away by water.`,
     );
+  });
+
+  test("an Evil defender's monsters: their savage fury names the defender's side, never the attacker's", () => {
+    // every die at 0.99: neither side is seized by fanatical zeal (Evil's 25%), which would take the fury's place
+    const shown = aBattle(
+      {
+        atk: companies(2, 'Average'),
+        def: [
+          ...companies(1, 'Average'),
+          { type: 'Cave Trolls', quality: 'Average', race: 'Troll', unitName: 'Troll Band' },
+        ],
+      },
+      slain,
+      (G) => {
+        const realms = (G as unknown as { players: { alignment?: string }[] }).players;
+        realms.forEach((realm, i) => {
+          realm.alignment = i === 1 ? 'Evil' : 'Neutral';
+        });
+      },
+      () => 0.99,
+    );
+    const fury = shown.words.filter((w) => w.includes('driven to savage fury'));
+    expect(fury).toEqual([`${sideOf(shown.def, slain)}'s monsters are driven to savage fury! (+25% strength)`]);
   });
 });

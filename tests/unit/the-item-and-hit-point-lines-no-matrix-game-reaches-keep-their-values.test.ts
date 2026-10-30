@@ -10,7 +10,8 @@
 // - a key no table holds: a tier or a kind with no stock target, a slot with no cap or no words, a spell of no name or
 //   of a name no spell has, a held discovery the table doesn't know, a guardian the table doesn't know;
 // - the functions no game calls: rollMagicItem (an unstocked hoard's roll) and itemFallbackOk (a spent tier's
-//   fallback), and the passes of an older save (its items' words, a guardian table behind, a discovery since retired).
+//   fallback), and the passes of an older save (its items' words, a guardian table behind, a discovery since retired);
+// - since the mutation session of 2026-10-31, a gained item of no slot that the hero's race can't use: carried unused.
 // Level 1 (unit): each is a plain function on staged values, called directly on the engine's modules (plan P1-14a); a
 // static check can't run them, and no game reaches these lines. The dice are fixed with kcRng.use where a line draws
 // them. A case that stages a content table (a spell with a level, an empty tier) puts it back as it was.
@@ -275,6 +276,19 @@ describe('the item and hit-point lines no matrix game reaches keep their values'
     const third = aRing('Ring Three');
     expect(theNote({ name: 'Ana', items: [null, ...worn, third] }, [third])).toBe(
       '🎒 Ana has no room to equip the Ring Three: the both ring slots already hold the Ring One and the Ring Two, so it goes in the pack (an Equip Items order can swap it in).',
+    );
+  });
+
+  test("a gained item of no slot that the hero's race can't use: carried unused, never working at once", () => {
+    const theNote = (...a: Parameters<typeof settleTheItemsAHeroGained>) =>
+      theWordsOfTheItemsAHeroGained(settleTheItemsAHeroGained(...a));
+    const elvish = { ...aTrinket('An Elvish Charm'), race: 'Elven' };
+    expect(theNote({ name: 'Ana', race: 'Human', items: [elvish] }, [elvish])).toBe(
+      '🎒 Ana cannot use the An Elvish Charm and carries it unused.',
+    );
+    const plain = aTrinket('A Plain Charm');
+    expect(theNote({ name: 'Ana', race: 'Human', items: [plain] }, [plain])).toBe(
+      '🎒 The A Plain Charm needs no slot: it works for Ana at once.',
     );
   });
 
