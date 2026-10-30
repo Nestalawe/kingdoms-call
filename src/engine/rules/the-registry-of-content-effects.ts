@@ -845,6 +845,164 @@ export interface TheWorthOfAnItemsParts {
   readonly ofItsWard: () => number;
 }
 
+// ── Battle magic (plan P1-19's spells family, row P1-19u): a battle spell cast before an army battle, and whether it
+// has something to strike. The spells' registry (the-registry-of-spell-effects.ts) holds the effects. ──
+
+/** Which of the battle code's three copies of battle magic casts the spell: a hero's between two heroes' hosts
+ *  (applyPreBattleMagic), a hero's against a province's neutral guards, or the guards' commander's against him (both in
+ *  combatVsNPC). Each copy keeps its own rule and writes its own lines (Parked "Battle magic's three copies disagree on
+ *  two rules"). */
+export type ACopyOfBattleMagic = 'between heroes' | 'a hero against the guards' | "the guards' commander";
+
+/** An enemy unit as a battle spell reads it. */
+export interface AnEnemyUnitAsABattleSpellReadsIt {
+  /** Its type ('' for none). */
+  readonly type: string;
+  /** Its race, if it has one. */
+  readonly race?: string | null | undefined;
+  /** Whether it is risen dead (skeletal). */
+  readonly isSkeletal: boolean;
+  /** Its base strength (unitBaseStrength: its type's strength by its quality's multiplier). */
+  readonly baseStrength: number;
+  /** Whether it is a missile unit, by the copy's set. */
+  readonly isAMissileUnit: boolean;
+}
+
+/** The enemy commander as a battle spell reads him. */
+export interface AnEnemyCommanderAsABattleSpellReadsHim {
+  /** His Tactical (effStat). */
+  readonly tactical: number;
+  /** The best of his combat-affecting skills, which a Curse withers (bestCurseSkill). */
+  readonly theSkillACurseWithers: string;
+}
+
+/** What the stage "strength: a battle spell is cast before the battle" hands an effect (once the spell's roll is made). */
+export interface ABattleSpellCastBeforeTheBattle {
+  readonly theCopy: ACopyOfBattleMagic;
+  /** The caster's level in the spell's school (effStat). */
+  readonly theCastersLevel: number;
+  /** The enemy's units, in the order the battle holds them. */
+  readonly theEnemysUnits: readonly AnEnemyUnitAsABattleSpellReadsIt[];
+  /** The enemy commander, or none. */
+  readonly theEnemyCommander: AnEnemyCommanderAsABattleSpellReadsHim | null;
+  /** Whether the battle is fought at sea. */
+  readonly atSea: boolean;
+  /** How many of the strongest enemy units the caster's items let his Fireball strike, or nothing (the items'
+   *  registry's runner of "strength: a hero's items change his battle spell"). */
+  readonly theStrongestUnitsTheCastersItemsLetAFireballStrike: number | null;
+}
+
+/** An enemy unit a battle spell strikes, by its place in the list handed, and the strength it loses. */
+export interface AnEnemyUnitStruck {
+  readonly theUnit: number;
+  readonly theStrengthItLoses: number;
+}
+
+/** The line a copy writes for what a battle spell does: each copy's own kinds, as the battle code wrote them. */
+export type TheLineOfABattleSpell =
+  | "a fireball halves the enemy's strongest units"
+  | "a fireball engulfs the defenders' strongest units"
+  | "a fireball halves the attackers' strongest unit"
+  | 'a lightning bolt weakens enemy units'
+  | 'a lightning bolt sears the defending units'
+  | 'a lightning bolt sears the attacking units'
+  | "a telekinetic storm scatters the enemy commander's formations"
+  | 'a telekinetic storm finds no tactical command to disrupt'
+  | 'a telekinetic storm finds no command among leaderless defenders'
+  | "a psychic blast severs the enemy commander's bond with his beasts"
+  | 'a psychic blast finds no commander among the defenders'
+  | "a curse withers the enemy commander's skill"
+  | 'a curse finds no commander among leaderless defenders'
+  | "control undead turns an enemy undead unit to the caster's side"
+  | "control undead turns a defending undead unit to the attacker's side"
+  | 'control undead finds no enemy undead to turn'
+  | 'control undead finds no undead among the defenders'
+  | 'control undead finds no undead among the attackers'
+  | 'a holy symbol weakens enemy undead units'
+  | 'a holy symbol sears the defending undead'
+  | 'a holy symbol sears the attacking undead'
+  | 'a holy symbol finds no enemy undead to smite'
+  | 'a holy symbol finds no undead among the defenders'
+  | 'a holy symbol finds no undead among the attackers'
+  | 'spiritwrack halves enemy missile units'
+  | "spiritwrack halves the defenders' missile units"
+  | "spiritwrack halves the attackers' missile units"
+  | 'spiritwrack finds no enemy missile troops'
+  | 'spiritwrack finds no missile troops among the defenders'
+  | 'spiritwrack finds no missile troops among the attackers';
+
+/** What a battle spell does, and the line its copy writes (the resolver draws what it draws, applies the rest and
+ *  writes the line, with the facts its kind records): the strongest units, or the undead, or the missile units, each
+ *  lose the strength given; units drawn at random (howMany of them, the resolver's draw) each lose the strength given
+ *  for its place; the enemy commander's Tactical is cut to the multiplier (or only marked, with none to cut), his Druid
+ *  negated, or his skill withered; an undead unit drawn at random among those given defects; or nothing to strike (with
+ *  a line, or none). */
+export type WhatABattleSpellDoes =
+  | {
+      readonly kind:
+        'the strongest units lose strength' | 'the undead lose strength' | 'the missile units lose strength';
+      readonly theUnitsStruck: readonly AnEnemyUnitStruck[];
+      readonly theLine: TheLineOfABattleSpell;
+    }
+  | {
+      readonly kind: 'units drawn at random lose strength';
+      readonly howMany: number;
+      readonly theStrengthEachWouldLose: readonly number[];
+      readonly theLine: TheLineOfABattleSpell;
+    }
+  | {
+      readonly kind: "the enemy commander's Tactical is cut";
+      readonly theMultiplier: number;
+      readonly theLine: TheLineOfABattleSpell;
+    }
+  | {
+      readonly kind:
+        "the enemy commander's Tactical is marked, with none to cut" | "the enemy commander's Druid is negated";
+      readonly theLine: TheLineOfABattleSpell;
+    }
+  | {
+      readonly kind: "the enemy commander's skill is withered";
+      readonly theSkill: string;
+      readonly theLine: TheLineOfABattleSpell;
+    }
+  | {
+      readonly kind: 'an undead unit drawn at random defects';
+      readonly theUndead: readonly number[];
+      readonly theLine: TheLineOfABattleSpell;
+    }
+  | { readonly kind: 'nothing to strike'; readonly theLine: TheLineOfABattleSpell | null };
+
+/** An enemy unit as the battle spell's choice reads it. */
+export interface AnEnemyUnitAsTheSpellChoiceReadsIt {
+  /** Its type ('' for none). */
+  readonly type: string;
+  /** Whether it is risen dead (skeletal). */
+  readonly isSkeletal: boolean;
+  /** Whether it is a missile unit (MISSILE_ARMIES_MASTER). */
+  readonly isAMissileUnit: boolean;
+}
+
+/** The enemy commander as the battle spell's choice reads him: whether a spell has halved his Tactical or negated his
+ *  Druid this battle already, and his Tactical, Druid and Naval (effStat). */
+export interface AnEnemyCommanderAsTheSpellChoiceReadsHim {
+  readonly hisTacticalIsHalved: boolean;
+  readonly hisDruidIsNegated: boolean;
+  readonly tactical: number;
+  readonly druid: number;
+  readonly naval: number;
+}
+
+/** What the stage "strength: a battle spell has something to strike" hands an effect (battleSpellUseful). */
+export interface AFieldABattleSpellMayBeCastOn {
+  readonly theEnemyCommander: AnEnemyCommanderAsTheSpellChoiceReadsHim | null;
+  readonly theEnemysUnits: readonly AnEnemyUnitAsTheSpellChoiceReadsIt[];
+}
+
+/** What a hero's item changes in his battle spell: how many of the strongest enemy units his Fireball strikes. */
+export interface TheChangeAnItemMakesToABattleSpell {
+  readonly theStrongestUnitsAFireballStrikes: number;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -898,6 +1056,17 @@ export interface TheStagesOfEachHookPoint {
     readonly 'turns an anchored line': (facts: TheFreeEnemyRiders) => UnitAbilitySlug | null;
     /** A unit's own ability in the air, from ×1. */
     readonly 'what a flyer does': AnEffectOnTheMultiplierSoFar<AFlyerAndTheEnemysFlyers>;
+    /** What a battle spell does once cast before an army battle, in the copy that casts it (applyPreBattleMagic, and
+     *  combatVsNPC twice: the spells' registry; one spell a cast, found by its name). */
+    readonly 'a battle spell is cast before the battle': (
+      facts: ABattleSpellCastBeforeTheBattle,
+    ) => WhatABattleSpellDoes;
+    /** Whether a battle spell has something to strike on this field (battleSpellUseful, which the choice of a battle
+     *  spell asks; the spells' registry: a spell with no effect here strikes any enemy unit). */
+    readonly 'a battle spell has something to strike': (facts: AFieldABattleSpellMayBeCastOn) => boolean;
+    /** What a hero's item changes in his battle spell (applyPreBattleMagic and the hero's cast in combatVsNPC; the
+     *  items' registry: the first of his items, in the stage's order, that changes it). */
+    readonly "a hero's items change his battle spell": () => TheChangeAnItemMakesToABattleSpell;
   };
   readonly volley: {
     /** Whether a unit that is no ranged unit shoots in the volley (abilityMissileUnits, after the ranged units). */

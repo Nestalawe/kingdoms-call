@@ -39,6 +39,7 @@ import {
   THE_DEFENDERS_FORTIFICATIONS,
 } from './magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts';
 import { A_LAND_UNIT_AT_SEA_LED, THE_COMMANDERS_ITEMS } from './magic-items/the-commanders-items-in-a-battle.ts';
+import { A_HEROS_ITEMS_CHANGE_HIS_BATTLE_SPELL } from './magic-items/a-heros-items-and-his-battle-spell.ts';
 import {
   A_FIGHTER_IN_MITHRIL,
   A_RIDER_A_FIGHTER_WEARS,
@@ -123,6 +124,11 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'naval-bonus': { strength: { "the commander's items": THE_COMMANDERS_ITEMS['naval-bonus'] } },
   'fleet-strength': { strength: { "the commander's items": THE_COMMANDERS_ITEMS['fleet-strength'] } },
   'admirals-spyglass': { strength: { "the commander's items": THE_COMMANDERS_ITEMS['admirals-spyglass'] } },
+  'fireball-strikes-two': {
+    strength: {
+      "a hero's items change his battle spell": A_HEROS_ITEMS_CHANGE_HIS_BATTLE_SPELL['fireball-strikes-two'],
+    },
+  },
   'chalice-of-dawn': { strength: { "the commander's items": THE_COMMANDERS_ITEMS['chalice-of-dawn'] } },
   'undead-bonus': { strength: { "the commander's items": THE_COMMANDERS_ITEMS['undead-bonus'] } },
   'land-units-at-full-strength-at-sea': {
@@ -526,6 +532,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
       'undead-bonus',
     ],
     'a land unit at sea, led': ['land-units-at-full-strength-at-sea'],
+    "a hero's items change his battle spell": ['fireball-strikes-two'],
     // the defender's item first: the siege halves what home defence added
     "the defenders' fortifications": ['home-defence-bonus', 'siege-bonus'],
   },
@@ -893,6 +900,21 @@ export function theDefendersFortificationsAfterTheCommandersItems(
     }
   }
   return { theBonus, theLines };
+}
+
+/** The runner of "strength: a hero's items change his battle spell" (applyPreBattleMagic and the hero's cast in
+ *  combatVsNPC, once his spell's roll is made): how many of the strongest enemy units his Fireball strikes, by the first
+ *  effect his items carry in the stage's order, or nothing (his Fireball's own). */
+export function theStrongestUnitsAHerosItemsLetHisFireballStrike(
+  theHerosItems: readonly AMagicItemAsTheRegistryReadsIt[],
+): number | null {
+  const carried = theEffectsTheseItemsCarry(theHerosItems);
+  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.strength["a hero's items change his battle spell"]) {
+    if (!carried.has(slug)) continue;
+    const change = ENTRIES[slug].strength?.["a hero's items change his battle spell"]?.();
+    if (change) return change.theStrongestUnitsAFireballStrikes;
+  }
+  return null;
 }
 
 /** The runner of "volley: the commander adds volleys" (both battles' volley before the battle): the volleys each

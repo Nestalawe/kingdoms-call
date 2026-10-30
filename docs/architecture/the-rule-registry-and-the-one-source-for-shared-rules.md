@@ -223,13 +223,14 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   cases), a hero's standing (the hit points' and skills' cases, and the portal's parity test on the Crown; the temper
   items by the matrix alone), what a fighter wears, what a ward does, and the combat items, a steal, a blow and a
   guardian's hoard (`tests/unit/the-combat-item-and-guardian-lines-no-matrix-game-reaches-keep-their-values.test.ts`);
-  the treasury by its properties (`tests/unit/an-items-role-and-worth-follow-its-effect.test.ts`) and the matrix;
-  [the test list](../../tests/every-test-its-level-and-what-it-checks.md) names each file.
+  the treasury by its properties (`tests/unit/an-items-role-and-worth-follow-its-effect.test.ts`) and the matrix.
 - **How to add an item effect** of a stage already written: its row (the key a copy carries it by, its numbers, the
   units it reaches); its effect in the stage's file under `src/engine/rules/magic-items/`, reading its numbers from its
   row; its entry and its place in the stage's order; and the numbers in the desc and lore of every item that carries it
   (the words test reads them). A new stage's signature goes into `TheStagesOfEachHookPoint`, with its runner in the
   items' registry.
+
+**The spells' registry** (P1-19u): [its file](the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md).
 
 ## `kingdoms-call-data.ts`: the one source for shared rules
 

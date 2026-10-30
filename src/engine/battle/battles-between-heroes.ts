@@ -4,8 +4,10 @@ import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
   theDefendersFortificationsAfterTheCommandersItems,
+  theStrongestUnitsAHerosItemsLetHisFireballStrike,
   theVolleysTheCommandersItemsLoose,
 } from '../rules/the-registry-of-magic-item-effects.ts';
+import { whatABattleSpellDoesBeforeTheBattle } from '../rules/the-registry-of-spell-effects.ts';
 import {
   BATTLE_MAGIC_SPELL_NAMES,
   FANATIC_CHANCE_BY_ALIGN,
@@ -673,74 +675,84 @@ export function combatVsChar(turnContext, atk, def, prov) {
       return;
     }
     // no school gain from pre-battle magic — see resolveBattle's cast.
-    if (spellName === 'Fireball') {
-      if (targets.length > 0) {
-        const _ember = caster && activeItems(caster).some((it) => it && it.emberTwo);
-        const _fbHits = targets
-          .slice()
-          .sort((a, b) => unitBaseStrength(b) - unitBaseStrength(a))
-          .slice(0, _ember ? 2 : 1);
-        _fbHits.forEach((d) => {
-          const cut = Math.max(1, Math.round(unitBaseStrength(d) * 0.5));
-          d._tempStrReduction = (d._tempStrReduction || 0) + cut;
-        });
+    // What the spell does is the spells' registry's (plan P1-19u); this copy draws where it drew, applies it and writes
+    // its line.
+    const done = whatABattleSpellDoesBeforeTheBattle(spellName, {
+      theCopy: 'between heroes',
+      theCastersLevel: spellLvl,
+      theEnemysUnits: targets.map((d) => ({
+        type: d.type || '',
+        race: d.race,
+        isSkeletal: !!d._isSkeletal,
+        baseStrength: unitBaseStrength(d),
+        isAMissileUnit: MISSILE_A.has(d.type),
+      })),
+      theEnemyCommander: enemyCmdr
+        ? {
+            tactical: effStat(turnContext, enemyCmdr, 'tactical'),
+            theSkillACurseWithers: bestCurseSkill(turnContext, enemyCmdr),
+          }
+        : null,
+      atSea: isPvPSea,
+      theStrongestUnitsTheCastersItemsLetAFireballStrike: theStrongestUnitsAHerosItemsLetHisFireballStrike(
+        activeItems(caster),
+      ),
+    });
+    if (!done) return;
+    const strike = (s) => {
+      const d = targets[s.theUnit];
+      d._tempStrReduction = (d._tempStrReduction || 0) + s.theStrengthItLoses;
+    };
+    switch (done.kind) {
+      case 'the strongest units lose strength':
+        done.theUnitsStruck.forEach(strike);
         narrate(narr, {
-          kind: "a fireball halves the enemy's strongest units",
-          fireballHitUnitNames: _fbHits.map((d) => d.unitName || d.type),
+          kind: done.theLine,
+          fireballHitUnitNames: done.theUnitsStruck.map((s) => targets[s.theUnit].unitName || targets[s.theUnit].type),
         });
-      }
-    } else if (spellName === 'Telekinetic Storm') {
-      if (enemyCmdr) {
-        if (effStat(turnContext, enemyCmdr, 'tactical') > 0 && !isPvPSea) {
-          enemyCmdr._tacticalHalved = true;
-          enemyCmdr._tacticalMult = 0.5;
-          narrate(narr, {
-            kind: "a telekinetic storm scatters the enemy commander's formations",
-            enemyCommanderName: enemyCmdr.name,
+        break;
+      case 'units drawn at random lose strength': {
+        const theLoss = new Map(targets.map((d, i) => [d, done.theStrengthEachWouldLose[i]]));
+        shuffleP(targets)
+          .slice(0, done.howMany)
+          .forEach((d) => {
+            d._tempStrReduction = (d._tempStrReduction || 0) + theLoss.get(d);
           });
-        } else {
-          enemyCmdr._tacticalHalved = true;
-          narrate(narr, {
-            kind: 'a telekinetic storm finds no tactical command to disrupt',
-            enemyCommanderName: enemyCmdr.name,
-          });
-        }
+        narrate(narr, { kind: done.theLine, unitCount: done.howMany });
+        break;
       }
-    } else if (spellName === 'Psychic Blast') {
-      if (enemyCmdr) {
+      case 'the undead lose strength':
+        done.theUnitsStruck.forEach(strike);
+        narrate(narr, { kind: done.theLine, undeadUnitCount: done.theUnitsStruck.length });
+        break;
+      case 'the missile units lose strength':
+        done.theUnitsStruck.forEach(strike);
+        narrate(narr, { kind: done.theLine, missileUnitCount: done.theUnitsStruck.length });
+        break;
+      case "the enemy commander's Tactical is cut":
+        enemyCmdr._tacticalHalved = true;
+        enemyCmdr._tacticalMult = done.theMultiplier;
+        narrate(narr, { kind: done.theLine, enemyCommanderName: enemyCmdr.name });
+        break;
+      case "the enemy commander's Tactical is marked, with none to cut":
+        enemyCmdr._tacticalHalved = true;
+        narrate(narr, { kind: done.theLine, enemyCommanderName: enemyCmdr.name });
+        break;
+      case "the enemy commander's Druid is negated":
         enemyCmdr._druidNegated = true;
+        narrate(narr, { kind: done.theLine, enemyCommanderName: enemyCmdr.name });
+        break;
+      case "the enemy commander's skill is withered":
+        enemyCmdr._curseHalveStat = done.theSkill;
         narrate(narr, {
-          kind: "a psychic blast severs the enemy commander's bond with his beasts",
-          enemyCommanderName: enemyCmdr.name,
-        });
-      }
-    } else if (spellName === 'Lightning Bolt') {
-      const n = Math.min(targets.length, Math.max(1, Math.min(spellLvl, 5)));
-      shuffleP(targets)
-        .slice(0, n)
-        .forEach((d) => {
-          d._tempStrReduction = (d._tempStrReduction || 0) + Math.max(1, Math.round(unitBaseStrength(d) * 0.2));
-        });
-      narrate(narr, { kind: 'a lightning bolt weakens enemy units', unitCount: n });
-    } else if (spellName === 'Curse') {
-      if (enemyCmdr) {
-        enemyCmdr._curseHalveStat = bestCurseSkill(turnContext, enemyCmdr);
-        narrate(narr, {
-          kind: "a curse withers the enemy commander's skill",
+          kind: done.theLine,
           enemyCommanderName: enemyCmdr.name,
           cursedSkill: enemyCmdr._curseHalveStat,
         });
-      }
-    } else if (spellName === 'Control Undead') {
-      const ui = targets
-        .map((a, i) => ({ a, i }))
-        .filter(
-          (x) =>
-            x.a._isSkeletal || x.a.race === 'Undead' || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type || ''),
-        );
-      if (ui.length > 0) {
-        const pick = ui[Math.floor(kcRng() * ui.length)];
-        const unit = targets.splice(pick.i, 1)[0];
+        break;
+      case 'an undead unit drawn at random defects': {
+        const pick = done.theUndead[Math.floor(kcRng() * done.theUndead.length)];
+        const unit = targets.splice(pick, 1)[0];
         caster.armies = caster.armies || [];
         caster.armies.push(unit);
         const rc = G.characters[caster.id];
@@ -749,35 +761,15 @@ export function combatVsChar(turnContext, atk, def, prov) {
           rc.armies.push(unit);
         }
         narrate(narr, {
-          kind: "control undead turns an enemy undead unit to the caster's side",
+          kind: done.theLine,
           turnedUnitName: unit.unitName || unit.type,
           casterName: caster.name,
         });
-      } else narrate(narr, { kind: 'control undead finds no enemy undead to turn' });
-    } else if (spellName === 'Holy Symbol') {
-      const ud = targets.filter(
-        (d) => d._isSkeletal || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(d.type || ''),
-      );
-      if (ud.length > 0) {
-        ud.forEach((d) => {
-          d._tempStrReduction = (d._tempStrReduction || 0) + Math.ceil(unitBaseStrength(d) * 0.25);
-        });
-        narrate(narr, {
-          kind: 'a holy symbol weakens enemy undead units',
-          undeadUnitCount: ud.length,
-        });
-      } else narrate(narr, { kind: 'a holy symbol finds no enemy undead to smite' });
-    } else if (spellName === 'Spiritwrack') {
-      const md = targets.filter((d) => MISSILE_A.has(d.type));
-      if (md.length > 0) {
-        md.forEach((d) => {
-          d._tempStrReduction = (d._tempStrReduction || 0) + Math.ceil(unitBaseStrength(d) * 0.5);
-        });
-        narrate(narr, {
-          kind: 'spiritwrack halves enemy missile units',
-          missileUnitCount: md.length,
-        });
-      } else narrate(narr, { kind: 'spiritwrack finds no enemy missile troops' });
+        break;
+      }
+      case 'nothing to strike':
+        if (done.theLine) narrate(narr, { kind: done.theLine });
+        break;
     }
   }
   if (!atkCmdrSlain) applyPreBattleMagic(atk, defArmies, narrative, def);

@@ -3,6 +3,7 @@ import { kcRng } from '../rng.ts';
 import { BATTLE_MAGIC_SPELL_NAMES } from '../army-tables.ts';
 import { MISSILE_ARMIES_MASTER } from '../battle/ladder.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import { aBattleSpellHasSomethingToStrike } from '../rules/the-registry-of-spell-effects.ts';
 import type { Army, Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 
@@ -29,10 +30,10 @@ export const BATTLE_SPELLS_BY_SCHOOL = {
   necromancy: ['Curse', 'Control Undead'],
 };
 export const BATTLE_MAGIC_SPELL_SET = new Set(BATTLE_MAGIC_SPELL_NAMES);
-// A battle spell is only worth choosing if the field offers it a valid target/effect: Storm and
-// Blast need an enemy commander with the skill they negate; Curse needs a commander with any
-// curseable skill; Control Undead and Holy Symbol need enemy undead; Spiritwrack needs enemy
-// missile troops. Fireball and Lightning Bolt need only enemies on the field.
+// A battle spell is only worth choosing if the field offers it a valid target/effect: the spells' registry says what
+// each needs (src/engine/rules/spells/battle-magic-cast-before-an-army-battle.ts, plan P1-19u). Handed here: the enemy
+// commander's figures (whether halved or negated this battle already, his Tactical, Druid and Naval) and each enemy
+// unit's type, whether it is risen dead, and whether it is a missile unit.
 export function battleSpellUseful(
   turnContext: TurnContext,
   spellName: string,
@@ -40,30 +41,22 @@ export function battleSpellUseful(
   enemyArmies: TheEnemysUnitsAsTheSpellChoiceReadsThem,
 ) {
   const armies = enemyArmies ?? [];
-  const hasUndead = armies.some(
-    (a) => (a._isSkeletal ?? false) || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(a.type || ''),
-  );
-  switch (spellName) {
-    case 'Telekinetic Storm':
-      return !!enemyCmdr && !enemyCmdr._tacticalHalved && effStat(turnContext, enemyCmdr, 'tactical') > 0;
-    case 'Psychic Blast':
-      return !!enemyCmdr && !enemyCmdr._druidNegated && effStat(turnContext, enemyCmdr, 'druid') > 0;
-    case 'Curse':
-      return (
-        !!enemyCmdr &&
-        (effStat(turnContext, enemyCmdr, 'tactical') > 0 ||
-          effStat(turnContext, enemyCmdr, 'druid') > 0 ||
-          effStat(turnContext, enemyCmdr, 'naval') > 0)
-      );
-    case 'Control Undead':
-      return hasUndead;
-    case 'Holy Symbol':
-      return hasUndead;
-    case 'Spiritwrack':
-      return armies.some((a) => MISSILE_ARMIES_MASTER.has(a.type)); // MASTER set — the similarly named MISSILE_ARMIES is combatVsNPC-local (scope trap)
-    default:
-      return armies.length > 0;
-  }
+  return aBattleSpellHasSomethingToStrike(spellName, {
+    theEnemyCommander: enemyCmdr
+      ? {
+          hisTacticalIsHalved: enemyCmdr._tacticalHalved ?? false,
+          hisDruidIsNegated: enemyCmdr._druidNegated ?? false,
+          tactical: effStat(turnContext, enemyCmdr, 'tactical'),
+          druid: effStat(turnContext, enemyCmdr, 'druid'),
+          naval: effStat(turnContext, enemyCmdr, 'naval'),
+        }
+      : null,
+    theEnemysUnits: armies.map((a) => ({
+      type: a.type || '',
+      isSkeletal: a._isSkeletal ?? false,
+      isAMissileUnit: MISSILE_ARMIES_MASTER.has(a.type), // MASTER set — the similarly named MISSILE_ARMIES is combatVsNPC-local (scope trap)
+    })),
+  });
 }
 export function pickBattleSpell(
   turnContext: TurnContext,

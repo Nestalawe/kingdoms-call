@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the hand-written database stand-in, tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name and of an item's effect by its key or an item by its name, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name and of a spell by its name or its `fn`, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -18,6 +18,7 @@ import {
   KC_SKILLS,
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
+  SPELL_DEFS_P,
 } from '../src/content/kingdoms-call-data.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -251,6 +252,60 @@ export function itemEffectChecksInEngine(codeFiles: readonly (readonly [file: st
   return n;
 }
 
+// The engine's checks of a spell by its name or its key (plan P1-19's spells family, Decision 5): a string naming a
+// spell (a key of SPELL_DEFS_P) or its `fn` (`'white_resurrect'`), that the code compares (===, !==, ==, !=), switches
+// on (a case), or passes to has, includes, indexOf or get (a method of any object, or has or includes alone), counted by
+// syntax tree in the files of src/engine/ outside src/engine/rules/ (the scoping's spell-checks.mts rule). The spells'
+// registry takes them out row by row (an effect is found by its spell's row, in src/engine/rules/), so the count only
+// falls. tests/static/the-resolvers-the-spell-registry-has-taken-name-no-spell.test.ts counts the functions the
+// registry has taken, with spellChecksByFunction, at 0 each.
+/** Every string naming a spell or its `fn` (above). */
+export const SPELL_VOCABULARY: ReadonlySet<string> = new Set(
+  Object.entries(SPELL_DEFS_P).flatMap(([name, spell]) => [name, spell.fn]),
+);
+/** The calls a spell's name or `fn` handed to is a check: a method of these names, or has or includes alone. */
+const A_SPELLS_LOOKUP_METHODS = new Set(['has', 'includes', 'indexOf', 'get']);
+const A_SPELLS_LOOKUP_FUNCTIONS = new Set(['has', 'includes']);
+/** Whether a string literal is a check of a spell by its name or its `fn` (above). */
+function isASpellCheck(node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral): boolean {
+  if (!SPELL_VOCABULARY.has(node.text)) return false;
+  const p = node.parent;
+  if (ts.isBinaryExpression(p)) return COMPARISONS.has(p.operatorToken.kind);
+  if (ts.isCaseClause(p)) return true;
+  if (!ts.isCallExpression(p) || !p.arguments.some((argument) => argument === node)) return false;
+  const callee = p.expression;
+  return ts.isPropertyAccessExpression(callee)
+    ? A_SPELLS_LOOKUP_METHODS.has(callee.name.text)
+    : ts.isIdentifier(callee) && A_SPELLS_LOOKUP_FUNCTIONS.has(callee.text);
+}
+/** Each function of a file, by its name, with the spell checks in it (0 for a function with none); a check inside a
+ *  nested function that has no name counts for the named one around it, and one outside any function for '(top)'. */
+export function spellChecksByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && isASpellCheck(node))
+      counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)');
+  return counts;
+}
+/** The spell checks in the files of src/engine/ outside src/engine/rules/ (the files unitNameChecksInEngine counts),
+ *  for the files given as [path from the repository's root, text]. */
+export function spellChecksInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    if (!countsUnitNameChecks(file)) continue;
+    for (const count of spellChecksByFunction(file, text).values()) n += count;
+  }
+  return n;
+}
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -336,6 +391,7 @@ export function measure(): Counts {
     vmLoaderTests: vmLoaderTests(all),
     unitNameChecksInEngine: unitNameChecksInEngine(codeFiles),
     itemEffectChecksInEngine: itemEffectChecksInEngine(codeFiles),
+    spellChecksInEngine: spellChecksInEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),
