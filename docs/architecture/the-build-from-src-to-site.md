@@ -83,8 +83,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   saved, so these are plain interfaces, not schemas, and a file of types alone would be in no page, which
   `pages-build` refuses) and the two P1-10b12 freed (`personal-combat/to-hit-wounds-stuns-and-courage.ts` and
   `personal-combat/melee-flight-and-archery.ts`: the hit, the round and the strikes, read on that type) and the one
-  P1-10b13 freed (`personal-combat/tactics-combat-items-and-actions.ts`: the tactics, the combat items and each action).
-  The other 68
+  P1-10b13 freed (`personal-combat/tactics-combat-items-and-actions.ts`: the tactics, the combat items and each action)
+  and the one P1-10b14 freed (`personal-combat/lair-guardians-and-the-odds.ts`: a guardian's traits, his fighter, the
+  Hunting Rumours' odds and a hero's fight at a lair). The other 67
   of those 108 files
   still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the

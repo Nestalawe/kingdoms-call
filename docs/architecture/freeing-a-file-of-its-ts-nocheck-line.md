@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-102 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(68: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+101 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(67: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -259,7 +259,20 @@ table with a key left out.
   - **A list whose items the code tests for a gap or a missing field** (`it && it.effect && it.effect.use === use`, a
     gap among a guardian's specials) is read through a local typed with its element as wide as the test, and the test
     is `it?.effect?.use === use`.
-  - **A copy made through JSON can't be typed yet** (`JSON.parse(JSON.stringify(x))`, the Hunting Rumours copies of a
-    hero and a guardian in `lair-guardians-and-the-odds.ts`): `JSON.parse` gives `any`, so the copy reaches a typed
-    function only through a claim (an `as`, a type predicate that checks nothing, or a suppression), which these rows
-    refuse. That file keeps its line until a form is chosen.
+  - **A copy made through JSON** (`JSON.parse` gives `any`) reaches a typed function only through a claim: its form
+    is P1-10b14's, below.
+- (P1-10b14: `personal-combat/lair-guardians-and-the-odds.ts`, 17,809 bytes): 66 errors, 30 of them a parameter with
+  no type. The first pass wrote the forms lint asks for as it went; the typed lint then found 1 more, fixed. Four more
+  forms:
+  - **A copy made through JSON is typed by a check that compares it with its original** (Theo, 2026-10-30):
+    `aCopyMadeThroughJson` parses into `unknown`, and a type predicate holds when `JSON.stringify(copy) ===
+    JSON.stringify(original)`: no `as`, no suppression, one more `stringify` a copy. Plain data's JSON is the same each
+    time, so the check never fails; it throws if it does.
+  - **A copy whose id is made a string** (a Hunting Rumours hero) is typed as the fighter's hero allows:
+    `AHeroAsAFightTakesHim` (`helpers.ts`, a `Character` whose `id` may be a string), which the fighter's `ref`,
+    `pcCharCombatant`, the encounter plans and `charMinor` take.
+  - **A return type written on a callee that keeps its line changes what its other untyped callers give:**
+    `resolvePersonalCombat`'s typed `resolveDuel`'s result, which `battle/pre-battle-duels.ts` reads. Write the
+    caller's return type too (a winner and a loser together, or neither), fix the typed reader's new findings (4) and
+    prune its cleared suppressions (18).
+  - **A `for (k in obj)` over a literal's keys** is a `for … of` over a typed list of them, in the same order.

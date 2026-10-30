@@ -69,7 +69,15 @@ export function playerHoldsTitle(turnContext: TurnContext, pi: number | null | u
   const { G } = turnContext;
   return !!(G._titleHolders && G._titleHolders[key] && G._titleHolders[key].playerIndex === pi);
 }
-export function charMinor(turnContext: TurnContext, c: Character | null | undefined, key: MinorTitleKey) {
+/** A hero as his minor titles are read: his id (a Hunting Rumours copy's is a string no holder's id matches). */
+interface AHeroAsHisMinorTitlesAreRead {
+  readonly id: Character['id'] | string;
+}
+export function charMinor(
+  turnContext: TurnContext,
+  c: AHeroAsHisMinorTitlesAreRead | null | undefined,
+  key: MinorTitleKey,
+) {
   const { G } = turnContext;
   return !!(c && G._minorHolders && G._minorHolders[key] && G._minorHolders[key].charId === c.id);
 }

@@ -10,6 +10,7 @@ import { pcCharCombatant } from './speed-encounter-plans-and-combatants.ts';
 import { resolvePersonalCombat } from './resolve-personal-combat.ts';
 import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
 import { theItemsAsTheLineNamesThem } from './the-facts-a-personal-combats-lines-record.ts';
+import type { Character } from '../../schemas/saved-game-state.ts';
 
 // ── PERSONAL COMBAT: DUELS AND CHARACTER ENCOUNTERS (plan P1-08f: lifted out of resolveTurn) ────
 // The magic items a fighter brings to bear (magicItemsLine), the item a character may drop when they break off a fight
@@ -95,7 +96,14 @@ export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
   } // item 10
   return it;
 }
-export function resolveDuel(turnContext, atk, def, narrative) {
+/** How a duel ends (resolveDuel's result): the runner and the one who held the field, the winner and the loser, or
+ *  neither (a draw: resolvePersonalCombat names a winner and a loser together or not at all); each is one of the two
+ *  heroes the duel was fought by. */
+type HowADuelEnds =
+  | { fled: Character; heldField: Character; winner?: undefined; loser?: undefined }
+  | { winner: Character; loser: Character; fled?: undefined; heldField?: undefined }
+  | { winner: null; loser: null; fled?: undefined; heldField?: undefined };
+export function resolveDuel(turnContext, atk, def, narrative): HowADuelEnds {
   const _ia = magicItemsLine(atk),
     _ib = magicItemsLine(def); // item 5
   if (_ia) narrate(narrative, _ia);

@@ -27,6 +27,8 @@ import {
   aFightersPerkNameAsTheLineTellsIt,
   isAPersonalCombatsLine,
 } from './the-facts-a-personal-combats-lines-record.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { AFighterInAPersonalCombat } from './helpers.ts';
 
 // ── PERSONAL COMBAT: THE FIGHT (plan P1-08e: lifted out of resolveTurn) ────
 // resolvePersonalCombat runs a whole personal fight between two combatants, round by round. It takes the turn's
@@ -35,7 +37,19 @@ import {
 // 16 rounds. Each round both sides take exactly one action from their plan, the
 // faster/higher-initiative side going first — a strict back-and-forth. opts: {maxRounds,
 // feature}. Returns {winner, loser, fledBy, parley, stoleBy, aHp, bHp, narrative}
-export function resolvePersonalCombat(turnContext, A, B, opts) {
+/** How a personal combat ends (resolvePersonalCombat's result): who won and lost (none for a draw, a flight, a parley
+ *  or a theft), who fled or stole, whether the guardian was talked down, both sides' hit points left and the lines. */
+interface HowAPersonalCombatEnds {
+  winner: AFighterInAPersonalCombat | null;
+  loser: AFighterInAPersonalCombat | null;
+  fledBy: AFighterInAPersonalCombat | null;
+  parley: boolean;
+  stoleBy: AFighterInAPersonalCombat | null;
+  aHp: number;
+  bHp: number;
+  narrative: NarrativeLine[];
+}
+export function resolvePersonalCombat(turnContext, A, B, opts): HowAPersonalCombatEnds {
   const { G } = turnContext;
   opts = opts || {};
   const maxRounds = opts.maxRounds || 20;
