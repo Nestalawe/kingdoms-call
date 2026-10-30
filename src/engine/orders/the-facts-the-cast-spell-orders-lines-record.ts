@@ -78,7 +78,7 @@ export type TheFactOfTheCastSpellOrdersLine =
     }
   | { kind: 'an enchanted hero rounds on his enchanter and blades are drawn'; targetName: string; casterName: string }
   // ── The casting ──
-  | ({ kind: 'a hero names a spell there is none of'; spellName: string } & ACaster)
+  | ({ kind: 'a hero names a spell there is none of'; spellName: string | undefined } & ACaster)
   | ({ kind: 'a spell cannot be worked as a phase order'; spellName: string } & ACaster)
   | ({ kind: "a charmed hero will not turn a spell on his own lord's people"; spellName: string } & ACaster)
   | ({

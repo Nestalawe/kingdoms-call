@@ -11,6 +11,7 @@ import { resolvePersonalCombat } from './resolve-personal-combat.ts';
 import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
 import { theItemsAsTheLineNamesThem } from './the-facts-a-personal-combats-lines-record.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 
 // ── PERSONAL COMBAT: DUELS AND CHARACTER ENCOUNTERS (plan P1-08f: lifted out of resolveTurn) ────
 // The magic items a fighter brings to bear (magicItemsLine), the item a character may drop when they break off a fight
@@ -141,7 +142,26 @@ export function resolveDuel(turnContext, atk, def, narrative): HowADuelEnds {
 // damageToHero, narrative:[...strings]} Character vs Character encounter (triggered by 'Encounter
 // Character' order). Runs on the unified personal-combat engine — identical rounds, ranges and
 // alternation to duels and monster encounters. The only difference is who is on the other side.
-export function resolveCharVsChar(turnContext, atk, def, atkTactics, defTactics, prov, effStat, rng, G) {
+/** How a personal encounter between two heroes ends (resolveCharVsChar's result): each side's hit points left, whether
+ *  each was slain (a felled hero may capitulate instead), and the lines. */
+interface HowAnEncounterBetweenHeroesEnds {
+  atkHp: number;
+  defHp: number;
+  atkKilled: boolean;
+  defKilled: boolean;
+  narrative: NarrativeLine[];
+}
+export function resolveCharVsChar(
+  turnContext,
+  atk,
+  def,
+  atkTactics,
+  defTactics,
+  prov,
+  effStat,
+  rng,
+  G,
+): HowAnEncounterBetweenHeroesEnds {
   const narrative = [];
   narrate(narrative, {
     kind: 'the attacker meets the defender in a personal encounter',

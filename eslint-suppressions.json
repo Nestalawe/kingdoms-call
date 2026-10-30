@@ -222,7 +222,7 @@
   },
   "src/engine/dice-and-army-names.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
-      "count": 8
+      "count": 7
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2

@@ -86,7 +86,7 @@ export function theWordsOfTheCastSpellOrdersLine(fact: TheFactOfTheCastSpellOrde
       return `⚔ ${fact.targetName} feels the enchantment clawing at their mind and rounds on ${fact.casterName} — blades are drawn!`;
     // ── The casting ──
     case 'a hero names a spell there is none of':
-      return `${fact.heroName}: unknown spell "${fact.spellName}".`;
+      return `${fact.heroName}: unknown spell "${String(fact.spellName)}".`;
     case 'a spell cannot be worked as a phase order':
       return `${fact.heroName}: ${fact.spellName} cannot be used as a phase order.`;
     case "a charmed hero will not turn a spell on his own lord's people":

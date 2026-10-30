@@ -485,7 +485,7 @@ export function processOrder(
     // 'encounter' so in-flight games resolve cleanly.
 
     case 'cast_spell':
-      resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov, player, _itemCast);
+      resolveCastSpellOrder(turnContext, c, o, ph, target, extra, theProvinceAnOrderTakes(prov), player, _itemCast);
       break;
 
     // ══ L7/L9 MASTERY ORDERS (batch 2a) ════
