@@ -16,13 +16,16 @@ import {
   A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE,
   A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE,
 } from './spells/battle-magic-cast-before-an-army-battle.ts';
+import { A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD } from './spells/a-combat-spell-that-harms-in-a-personal-combat.ts';
 import {
   A_UNIT_STRIKES_BEFORE_THE_BATTLE,
   theChanceOfAStrikeBeforeTheBattle,
 } from './spells/a-units-strike-before-an-army-battle.ts';
 import type {
   ABattleSpellCastBeforeTheBattle,
+  ACombatSpellTakingHold,
   AFieldABattleSpellMayBeCastOn,
+  AStepOfACombatSpell,
   AUnitAboutToStrikeBeforeTheBattle,
   HookPointName,
   TheStagesOfEachHookPoint,
@@ -41,24 +44,28 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE.fireball,
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE.fireball,
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD.fireball },
   },
   'lightning-bolt': {
     strength: {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE['lightning-bolt'],
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE['lightning-bolt'],
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD['lightning-bolt'] },
   },
   'telekinetic-storm': {
     strength: {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE['telekinetic-storm'],
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE['telekinetic-storm'],
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD['telekinetic-storm'] },
   },
   'psychic-blast': {
     strength: {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE['psychic-blast'],
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE['psychic-blast'],
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD['psychic-blast'] },
   },
   curse: {
     strength: {
@@ -77,12 +84,17 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE['holy-symbol'],
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE['holy-symbol'],
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD['holy-symbol'] },
   },
   spiritwrack: {
     strength: {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE.spiritwrack,
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE.spiritwrack,
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD.spiritwrack },
+  },
+  'hand-of-death': {
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD['hand-of-death'] },
   },
 } satisfies Record<SpellSlug, SpellEffectEntry>;
 
@@ -104,6 +116,19 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS = {
     'a battle spell is cast before the battle': THE_BATTLE_SPELLS,
     'a battle spell has something to strike': THE_BATTLE_SPELLS,
   },
+  // the combat spells the registry holds, in the order pcCastCombatSpell's switch wrote them (written here, once: a
+  // constant read once is written in where it is read in the engine's bundle, and so is no name of it)
+  personalCombat: {
+    'a combat spell takes hold': [
+      'lightning-bolt',
+      'fireball',
+      'holy-symbol',
+      'spiritwrack',
+      'psychic-blast',
+      'telekinetic-storm',
+      'hand-of-death',
+    ],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly SpellSlug[];
@@ -122,6 +147,7 @@ const CAST_BEFORE_THE_BATTLE = byTheSpellsName(
 const HAS_SOMETHING_TO_STRIKE = byTheSpellsName(
   THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.strength['a battle spell has something to strike'],
 );
+const TAKES_HOLD = byTheSpellsName(THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.personalCombat['a combat spell takes hold']);
 
 /** The runner of "strength: a battle spell is cast before the battle" (applyPreBattleMagic, and combatVsNPC twice, once
  *  the spell's roll is made): what the spell named does, or nothing for a name the registry holds no effect for (the
@@ -158,4 +184,16 @@ export function theChanceOfAUnitsStrikeBeforeTheBattle(
   facts: Pick<AUnitAboutToStrikeBeforeTheBattle, 'theUnitsType' | 'theDruidLevel' | 'whatTheCommandersItemsAdd'>,
 ): number {
   return theChanceOfAStrikeBeforeTheBattle(facts);
+}
+
+/** The runner of "personalCombat: a combat spell takes hold" (pcCastCombatSpell, once the cast roll is made and the
+ *  weakness's lines written): the steps of what the spell named does, in order, or nothing for a name the registry
+ *  holds no effect for (the resolver's own code casts it). */
+export function whatACombatSpellDoesAsItTakesHold(
+  theSpellsName: string,
+  facts: ACombatSpellTakingHold,
+): readonly AStepOfACombatSpell[] | null {
+  const slug = TAKES_HOLD.get(theSpellsName);
+  const effect = slug === undefined ? undefined : ENTRIES[slug].personalCombat?.['a combat spell takes hold'];
+  return effect ? effect(facts) : null;
 }

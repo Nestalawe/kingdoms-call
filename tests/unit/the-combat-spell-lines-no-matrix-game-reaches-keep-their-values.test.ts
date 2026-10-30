@@ -9,7 +9,14 @@
 // - a guardian's power: an older save's damage range (no weight), a range of nothing, a power that raises his Melee,
 //   and a power that kills outright (or never);
 // - the fight: a Druid's beast ward halved by a curse on his Druid, or gone with it, and a Mirror Shard that makes the
-//   illusion harder to see through.
+//   illusion harder to see through;
+// - since P1-19w, the combat spells that harm, through the spells' registry, where no game meets them, or meets them
+//   only in a forecast: Fireball's line (its share shown rounded down, its rounds, a ward's cut; a target with no
+//   status burns not, and the line gives three rounds), Spiritwrack's (its rounds, a longer silence kept, the melee
+//   halved, the shrug by the grade, none for the mirror image of a Powerful guardian), a level past 5 counted to 5
+//   (Lightning Bolt's dice), Holy Symbol's heal for a caster of no maximum HP (of 20), Telekinetic Storm's
+//   recoil (the caster takes a quarter of the hit back, whether or not it deals any), and the Death's Finger Ring's ×1.1
+//   on Hand of Death's bite (the items' registry), and its chance missed.
 // Level 1 (unit): each is a function on staged fighters, called on the engine's modules (tests/lib/personal-combat.ts,
 // for the turn's context), the dice pinned with kcRng.use (pc.pinned). A static check can't run them, and no game
 // reaches these lines.
@@ -252,5 +259,148 @@ describe('the fight', () => {
     };
     expect(disbelief([])).toBe(5);
     expect(disbelief([worn('Mirror Shard')])).toBe(2.5);
+  });
+});
+
+describe("the combat spells that harm (plan P1-19w: the spells' registry)", () => {
+  test("Fireball at Elemental 3 on a 100 HP guardian with a 40% spell ward: 10 a round for 3, the line's 9% and 40", () => {
+    const g = aGuardian({ hp: 100 });
+    g.arm = { spellPct: 40 } as unknown as AFighterInAPersonalCombat['arm'];
+    const { narrative } = cast(aHero({ elemental: 3 }), g, 'Fireball');
+    expect(g.status.dot.map((d) => [d.dmg, d.rounds, d.label])).toEqual([[10, 3, 'Fireball burns']]);
+    expect(lineOf(narrative, 'a fireball engulfs the target and will burn')).toEqual({
+      kind: 'a fireball engulfs the target and will burn',
+      targetName: 'Made-up Ogre',
+      fbPct: 9, // (10 + 2 × 3) × 0.6 = 9.6, shown rounded down
+      burnRounds: 3,
+      fbWard: 40,
+    });
+  });
+
+  test('Fireball on a target with no status: no burn, and the line gives its three rounds', () => {
+    const g = aGuardian({ hp: 100 });
+    (g as unknown as { status: undefined }).status = undefined;
+    const { narrative } = cast(aHero({ elemental: 5 }), g, 'Fireball');
+    expect(lineOf(narrative, 'a fireball engulfs the target and will burn')).toMatchObject({
+      fbPct: 20,
+      burnRounds: 3,
+    });
+  });
+
+  test("Spiritwrack at White 5 on a Powerful guardian already silenced 5 rounds: kept at 5, his melee halved 3, the line's 3 and 25", () => {
+    const h = aHero({ white: 5 });
+    const g = aGuardian({ power: 'Powerful' });
+    g.status.silenceRounds = 5;
+    const { narrative } = cast(h, g, 'Spiritwrack');
+    expect([g.status.silenceRounds, g.status.meleeHalvedRounds, g.status._swShrugPct]).toEqual([5, 3, 25]);
+    expect(lineOf(narrative, 'the caster binds the target with spiritwrack')).toEqual({
+      kind: 'the caster binds the target with spiritwrack',
+      casterName: h.name,
+      targetName: 'Made-up Ogre',
+      swR: 3,
+      shr: 25,
+      targetPower: 'Powerful',
+    });
+  });
+
+  test('Spiritwrack on the mirror image of a Powerful guardian: an illusion has no grade, so it never shrugs it off', () => {
+    const image = aGuardian({ power: 'Powerful' });
+    image.kind = 'phantasm';
+    cast(aHero({ white: 5 }), image, 'Spiritwrack');
+    expect(image.status._swShrugPct).toBe(0);
+  });
+
+  test('Lightning Bolt cast at Elemental 7 (a level past 5, set on the fighter): its dice counted to 5, 15 at most', () => {
+    const h = aHero({ elemental: 5 });
+    h.school.elemental = 7;
+    const g = aGuardian();
+    cast(h, g, 'Lightning Bolt', [0.01, 0.99]); // a cast roll of 2, then every die its 3
+    expect(200 - g.hp).toBe(15);
+  });
+
+  test('Holy Symbol cast by a fighter of no maximum HP: he recovers 10% of 20, up to 20', () => {
+    const h = aHero({ white: 1 });
+    h.maxHp = 0;
+    h.hp = 5;
+    const { narrative } = cast(h, aGuardian(), 'Holy Symbol');
+    expect(h.hp).toBe(7);
+    expect(lineOf(narrative, "the light closes the caster's hurts")).toEqual({
+      kind: "the light closes the caster's hurts",
+      casterName: h.name,
+      healed: 2,
+      casterHp: 7,
+    });
+    const nearlyWhole = aHero({ white: 1 });
+    nearlyWhole.maxHp = 0;
+    nearlyWhole.hp = 19;
+    cast(nearlyWhole, aGuardian(), 'Holy Symbol');
+    expect(nearlyWhole.hp).toBe(20);
+  });
+
+  test('Telekinetic Storm at Psychic 5 on a 200 HP guardian: 54 dealt, and the caster takes 14 back', () => {
+    const h = aHero({ psychic: 5 });
+    const g = aGuardian();
+    const { took, narrative } = cast(h, g, 'Telekinetic Storm');
+    expect(took).toBe(true);
+    expect([g.hp, h.hp]).toEqual([146, 26]);
+    expect(lineOf(narrative, 'a telekinetic storm rips the target')).toEqual({
+      kind: 'a telekinetic storm rips the target',
+      targetName: 'Made-up Ogre',
+      dealt: 54,
+      casterName: h.name,
+      self: 14,
+      targetHp: 146,
+    });
+  });
+
+  test('Telekinetic Storm turned aside by a spell block: no harm and no line, but the caster still takes 14 back', () => {
+    const h = aHero({ psychic: 5 });
+    const g = aGuardian();
+    g.arm = { spellBlock: 100 } as unknown as AFighterInAPersonalCombat['arm'];
+    const { narrative } = cast(h, g, 'Telekinetic Storm');
+    expect([g.hp, h.hp]).toEqual([200, 26]);
+    expect(kinds(narrative)).not.toContain('a telekinetic storm rips the target');
+  });
+
+  test("Hand of Death at Necromancy 5 on a 200 HP guardian: 80, and 88 with a Death's Finger Ring (×1.1)", () => {
+    const bite = (items: Item[]) => {
+      const h = aHero({ necromancy: items.length ? 4 : 5 }, { items }); // the Ring's +1: Necromancy 5 either way
+      const g = aGuardian();
+      const { narrative } = cast(h, g, 'Hand of Death'); // a cast roll of 2, then the grip's roll of 1 under 50
+      const line: unknown = lineOf(narrative, "the hand of death claims part of the target's health");
+      return [200 - g.hp, line];
+    };
+    expect(bite([])).toEqual([
+      80,
+      {
+        kind: "the hand of death claims part of the target's health",
+        handOfDeathBitePct: 40,
+        targetName: 'Made-up Ogre',
+        dealt: 80,
+        targetHp: 120,
+      },
+    ]);
+    expect(bite([worn("Death's Finger Ring")])).toEqual([
+      88,
+      {
+        kind: "the hand of death claims part of the target's health",
+        handOfDeathBitePct: 40,
+        targetName: 'Made-up Ogre',
+        dealt: 88,
+        targetHp: 112,
+      },
+    ]);
+  });
+
+  test('Hand of Death at Necromancy 5 missed (a roll of 99 against 50): no harm, and the line gives the chance', () => {
+    const h = aHero({ necromancy: 4 }, { items: [worn("Death's Finger Ring")] });
+    const g = aGuardian();
+    const { narrative } = cast(h, g, 'Hand of Death', [0.01, 0.99]);
+    expect(g.hp).toBe(200);
+    expect(lineOf(narrative, "the caster's hand of death fails")).toEqual({
+      kind: "the caster's hand of death fails",
+      casterName: h.name,
+      handOfDeathChancePct: 50,
+    });
   });
 });

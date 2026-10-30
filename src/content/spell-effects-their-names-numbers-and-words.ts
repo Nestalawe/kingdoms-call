@@ -3,6 +3,9 @@
 // the spell's texts write it, by use (`battleMagic` from row P1-19u). The spells' registry (src/engine/rules/the-
 // registry-of-spell-effects.ts) has one entry for each row and no other: a row with no entry, or an entry with no row,
 // fails to compile. A row exists only for a spell whose effect the registry holds, so no row waits for its code.
+// `combat` holds the numbers of the spell's effect in a personal combat (from row P1-19w), read by its stage "a combat
+// spell takes hold"; a rule the spell shares with every other (its effect's level counted to 5, a guardian weak to its
+// school doubling what doesn't harm, at least 1 of any harm or rounds) stays in the resolver, pcCastCombatSpell.
 //
 // A save names a spell by its name (an order's `target`, a spell charm's `effect.spell`), never by its slug (Decision
 // 8): the registry finds a spell's row by the name it is handed. SPELL_DEFS_P stays as it is (the player portal reads
@@ -14,14 +17,27 @@
  *  "halves"); a share lost as a percentage (0.2 as `20%`); a share lost written as the share kept, as a percentage (0.25
  *  as `75%`); a multiplier in words (0.5 as "half", "halved" or "halves"); how many of the strongest units it strikes,
  *  in words (1 as "strongest unit" or "strongest enemy army unit", 2 as "two strongest"); the level its effect counts
- *  the caster's to (5 as "counted to 5" or "counted to level 5"). */
+ *  the caster's to (5 as "counted to 5" or "counted to level 5"); and, in a personal combat: a percentage (10 as
+ *  `10%`); rounds (3 as "3 rounds" or "three rounds", 1 as "1 round" or "one round"); rounds longer (1 as "one round
+ *  longer"); the most rounds (3 as "at most 3" or "up to 3"); the levels for each round more, in words (2 as "per two"
+ *  or "every two"); a share in words (0.25 as "a quarter"); a multiplier as a figure (1.5 as `×1.5` or "half as much
+ *  again"); the least and the most of a range of damage (1 and 3 as `1–3`). */
 export type HowASpellsTextsWriteANumber =
   | 'a share lost, in words'
   | 'a share lost, as a percentage'
   | 'a share lost, as the share kept'
   | 'a multiplier, in words'
   | 'the strongest units, in words'
-  | 'the level it counts to';
+  | 'the level it counts to'
+  | 'a percentage'
+  | 'rounds'
+  | 'rounds longer'
+  | 'the most rounds'
+  | 'the levels for each round more, in words'
+  | 'a share, in words'
+  | 'a multiplier, as a figure'
+  | 'the least of a range'
+  | 'the most of a range';
 
 /** One number of a spell's effect, and how its texts write it. */
 export interface ANumberOfASpellsEffect {
@@ -38,12 +54,17 @@ export interface ASpellAsItsTextsWriteIt {
   /** Its battle magic's numbers, cast before an army battle (none where the effect is a mark on the enemy commander or
    *  a unit turned). */
   readonly battleMagic?: Readonly<Record<string, ANumberOfASpellsEffect>>;
+  /** Its numbers in a personal combat, once it takes hold (from row P1-19w). */
+  readonly combat?: Readonly<Record<string, ANumberOfASpellsEffect>>;
 }
 
 export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
-  // ── Battle magic (strength, before an army battle, in each of the battle code's three copies: plan P1-19u) ──
-  // The strongest enemy unit (or the two strongest, with an Ember Rune: the items' registry) loses half its base
-  // strength (rounded, at least 1).
+  // Battle magic (strength, before an army battle, in each of the battle code's three copies: plan P1-19u), and a combat
+  // spell in a personal combat (personalCombat, once its cast takes hold: plan P1-19w), each described above its row.
+  //
+  // Battle magic: the strongest enemy unit (or the two strongest, with an Ember Rune: the items' registry) loses half
+  // its base strength (rounded, at least 1). Combat: the target burns for 10% of its maximum HP a round and 2% a level,
+  // for three rounds (a guardian weak to Elemental twice that; a spell ward cuts it by its share).
   fireball: {
     name: 'Fireball',
     fn: 'elemental_fireball',
@@ -51,9 +72,15 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
       theShareOfBaseStrengthLost: { value: 0.5, theTextsWriteIt: 'a share lost, in words' },
       theStrongestUnitsStruck: { value: 1, theTextsWriteIt: 'the strongest units, in words' },
     },
+    combat: {
+      theShareOfMaximumHpItBurnsARound: { value: 10, theTextsWriteIt: 'a percentage' },
+      theShareMoreALevel: { value: 2, theTextsWriteIt: 'a percentage' },
+      theRoundsItBurns: { value: 3, theTextsWriteIt: 'rounds' },
+    },
   },
-  // As many enemy units as the caster's level, drawn at random (at least one; the level counted to 5 between heroes and
-  // against guards, not by a guards' commander: Parked), each lose 20% of its base strength (rounded, at least 1).
+  // Battle magic: as many enemy units as the caster's level, drawn at random (at least one; the level counted to 5
+  // between heroes and against guards, not by a guards' commander: Parked), each lose 20% of its base strength (rounded,
+  // at least 1). Combat: 1 to 3 damage a level, each level's drawn.
   'lightning-bolt': {
     name: 'Lightning Bolt',
     fn: 'elemental_lightning',
@@ -61,32 +88,81 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
       theShareOfBaseStrengthLost: { value: 0.2, theTextsWriteIt: 'a share lost, as a percentage' },
       theLevelItCountsTo: { value: 5, theTextsWriteIt: 'the level it counts to' },
     },
+    combat: {
+      theLeastDamageALevel: { value: 1, theTextsWriteIt: 'the least of a range' },
+      theMostDamageALevel: { value: 3, theTextsWriteIt: 'the most of a range' },
+    },
   },
-  // The enemy commander's Tactical bonus is halved for the battle (between heroes, only if he has Tactical and not at
-  // sea: Parked).
+  // Battle magic: the enemy commander's Tactical bonus is halved for the battle (between heroes, only if he has Tactical
+  // and not at sea: Parked). Combat: 12% of the target's maximum HP and 3% a level, and the caster takes a quarter of
+  // it back.
   'telekinetic-storm': {
     name: 'Telekinetic Storm',
     fn: 'psychic_storm',
     battleMagic: { theTacticalMultiplier: { value: 0.5, theTextsWriteIt: 'a multiplier, in words' } },
+    combat: {
+      theShareOfMaximumHpItDeals: { value: 12, theTextsWriteIt: 'a percentage' },
+      theShareMoreALevel: { value: 3, theTextsWriteIt: 'a percentage' },
+      theShareTheCasterTakesBack: { value: 0.25, theTextsWriteIt: 'a share, in words' },
+    },
   },
-  // The enemy commander's Druid is negated for the battle (a mark the battle reads).
-  'psychic-blast': { name: 'Psychic Blast', fn: 'psychic_blast', battleMagic: {} },
-  // The enemy commander's best combat-affecting skill is marked to be halved for the battle (the halving is the
-  // mark's readers').
+  // Battle magic: the enemy commander's Druid is negated for the battle (a mark the battle reads). Combat: the target is
+  // stunned for 1 round and 1 more for every two levels (doubled against a guardian weak to Psychic; the Dreamstone's
+  // round after the doubling: the items' registry).
+  'psychic-blast': {
+    name: 'Psychic Blast',
+    fn: 'psychic_blast',
+    battleMagic: {},
+    combat: {
+      theRoundsItStuns: { value: 1, theTextsWriteIt: 'rounds' },
+      theLevelsForEachRoundMore: { value: 2, theTextsWriteIt: 'the levels for each round more, in words' },
+    },
+  },
+  // Battle magic: the enemy commander's best combat-affecting skill is marked to be halved for the battle (the halving is
+  // the mark's readers').
   curse: { name: 'Curse', fn: 'necromancy_curse', battleMagic: {} },
-  // One enemy undead unit, drawn at random, defects to the caster's side.
+  // Battle magic: one enemy undead unit, drawn at random, defects to the caster's side.
   'control-undead': { name: 'Control Undead', fn: 'necromancy_control', battleMagic: {} },
-  // Every enemy undead unit loses a quarter of its base strength (rounded up).
+  // Battle magic: every enemy undead unit loses a quarter of its base strength (rounded up). Combat: the target's aim is
+  // cut by 8 a level, and it is seared for 6% of its maximum HP (both ×1.5 against the undead and fiends, and the cut
+  // doubled against a guardian weak to White); the caster recovers 10% of his own (of 20 when he has none).
   'holy-symbol': {
     name: 'Holy Symbol',
     fn: 'white_holy_symbol',
     battleMagic: { theShareOfBaseStrengthLost: { value: 0.25, theTextsWriteIt: 'a share lost, as the share kept' } },
+    combat: {
+      theCutToTheTargetsAimALevel: { value: 8, theTextsWriteIt: 'a percentage' },
+      theShareOfMaximumHpItSears: { value: 6, theTextsWriteIt: 'a percentage' },
+      theShareOfHisOwnMaximumHpTheCasterRecovers: { value: 10, theTextsWriteIt: 'a percentage' },
+      theMultiplierAgainstTheUndeadAndFiends: { value: 1.5, theTextsWriteIt: 'a multiplier, as a figure' },
+    },
   },
-  // Every enemy missile unit loses half its base strength (rounded up).
+  // Battle magic: every enemy missile unit loses half its base strength (rounded up). Combat: the target is silenced,
+  // and its melee halved, for 1 round and 1 more for every two levels, at most 3 (one round longer against a guardian
+  // weak to White); a Powerful guardian may shrug it off 25 in 100 a round after the first, a Legendary one 40.
   spiritwrack: {
     name: 'Spiritwrack',
     fn: 'white_spiritwrack',
     battleMagic: { theShareOfBaseStrengthLost: { value: 0.5, theTextsWriteIt: 'a share lost, in words' } },
+    combat: {
+      theRoundsItSilences: { value: 1, theTextsWriteIt: 'rounds' },
+      theLevelsForEachRoundMore: { value: 2, theTextsWriteIt: 'the levels for each round more, in words' },
+      theMostRounds: { value: 3, theTextsWriteIt: 'the most rounds' },
+      theRoundsLongerAgainstAGuardianWeakToWhite: { value: 1, theTextsWriteIt: 'rounds longer' },
+      theChanceAPowerfulGuardianShrugsItOff: { value: 25, theTextsWriteIt: 'a percentage' },
+      theChanceALegendaryGuardianShrugsItOff: { value: 40, theTextsWriteIt: 'a percentage' },
+    },
+  },
+  // Combat: a chance of 10 in 100 a level (doubled against a guardian weak to Necromancy), at most 60, to strike for 40%
+  // of the target's maximum HP (×1.1 with a Death's Finger Ring: the items' registry).
+  'hand-of-death': {
+    name: 'Hand of Death',
+    fn: 'necromancy_hand',
+    combat: {
+      theChanceALevel: { value: 10, theTextsWriteIt: 'a percentage' },
+      theMostChance: { value: 60, theTextsWriteIt: 'a percentage' },
+      theShareOfMaximumHpItStrikesFor: { value: 40, theTextsWriteIt: 'a percentage' },
+    },
   },
 } as const satisfies Record<string, ASpellAsItsTextsWriteIt>;
 

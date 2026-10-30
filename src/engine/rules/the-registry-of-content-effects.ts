@@ -1062,6 +1062,101 @@ export interface WhatAUnitsStrikeMayDo {
   readonly theLineIfItMisses: TheLineOfAPreBattleStrike | null;
 }
 
+// ── A combat spell in a personal combat (plan P1-19's spells family, row P1-19w): what a spell does once its cast takes
+// hold (pcCastCombatSpell, after the cast roll and the weakness's lines). The effect returns its steps; the resolver
+// draws where the code drew, applies each step with the functions it called (pcTakeHit, pcPushDot, pcLandStun), in the
+// steps' order, and writes each step's line. ──
+
+/** The target as a combat spell reads him. */
+export interface ATargetAsACombatSpellReadsHim {
+  readonly maxHp: number;
+  /** Whether he is undead or a fiend (Holy Symbol bites them harder). */
+  readonly isUndeadOrAFiend: boolean;
+  /** His grade, if he is a guardian (none for a hero or an illusion). */
+  readonly theGuardiansGrade: string | null;
+  /** The percentage his wards cut a spell's burn by (the items' registry: a burn ticks outside pcTakeHit). */
+  readonly theShareHisWardsCutABurnBy: number;
+}
+
+/** What a hero's items change in his combat spells (the items' registry's runner of "personalCombat: a hero's items
+ *  change his combat spell"): none of his items, 0 rounds and ×1. */
+export interface TheChangesAHerosItemsMakeToHisCombatSpells {
+  readonly theRoundsHisPsychicBlastStunsLonger: number;
+  readonly theMultiplierOfHisHandOfDeathsBite: number;
+}
+
+/** What one of a hero's items changes in his combat spells: one of the two. */
+export type TheChangeAnItemMakesToACombatSpell = Partial<TheChangesAHerosItemsMakeToHisCombatSpells>;
+
+/** What the stage "personalCombat: a combat spell takes hold" hands an effect (after the cast roll). */
+export interface ACombatSpellTakingHold {
+  /** The caster's level in the spell's school, counted to 5 (every spell's effect counts it so). */
+  readonly theLevelCountedTo5: number;
+  /** ×2 against a guardian weak to the spell's school, else ×1 (it doubles what doesn't harm: a harm is doubled once,
+   *  in pcTakeHit). */
+  readonly theWeaknessFactor: number;
+  /** Whether the target is a guardian weak to the spell's school. */
+  readonly theTargetIsWeakToTheSchool: boolean;
+  /** The caster's maximum HP, as Holy Symbol reads it (20 when he has none). */
+  readonly theCastersMaximumHp: number;
+  readonly theTarget: ATargetAsACombatSpellReadsHim;
+  /** What the caster's items change in his combat spells, asked only by a spell that reads it, when it reads it:
+   *  reading a hero's items tidies them. */
+  readonly whatTheCastersItemsChange: () => TheChangesAHerosItemsMakeToHisCombatSpells;
+}
+
+/** The line a hit of a combat spell writes when it lands, with the facts its kind records beside the target's. */
+export type TheLineOfACombatSpellsHit =
+  | { readonly kind: "the caster's lightning bolt arcs into the target" }
+  | { readonly kind: "the holy light's damage"; readonly againstTheUnclean: boolean }
+  | { readonly kind: 'a telekinetic storm rips the target'; readonly self: number }
+  | { readonly kind: "the hand of death claims part of the target's health"; readonly handOfDeathBitePct: number };
+
+/** The damage of a hit: a number, or dice the resolver draws (rng), one a level. */
+export type TheDamageOfACombatSpellsHit =
+  number | { readonly theDice: number; readonly eachFrom: number; readonly eachTo: number };
+
+/** One step of what a combat spell does, in the order the resolver applies them. */
+export type AStepOfACombatSpell =
+  /** A hit (pcTakeHit, the spell's name its kind), the HP the caster loses as it lands, and its line if it deals any. */
+  | {
+      readonly kind: 'a hit';
+      readonly theDamage: TheDamageOfACombatSpellsHit;
+      readonly theCastersRecoil: number | null;
+      readonly theLine: TheLineOfACombatSpellsHit;
+    }
+  /** A burn a round (pcPushDot), its label, and the share of the target's maximum HP and the ward's cut its line shows. */
+  | {
+      readonly kind: 'a burn';
+      readonly theDamage: number;
+      readonly theRounds: number;
+      readonly theLabel: string;
+      readonly theShareOfMaximumHp: number;
+      readonly theWardsCut: number;
+      readonly theLine: 'a fireball engulfs the target and will burn';
+    }
+  /** A stun (pcLandStun, by what), and its line if it lands. */
+  | {
+      readonly kind: 'a stun';
+      readonly theRounds: number;
+      readonly what: string;
+      readonly theLine: "psychic blast sears the target's mind";
+    }
+  /** A silence and a halved melee, at least these rounds, and the chance a round the target shrugs it off. */
+  | { readonly kind: 'a silence'; readonly theRounds: number; readonly theChanceItIsShruggedOff: number }
+  /** A cut to the target's aim. */
+  | { readonly kind: "a cut to the target's aim"; readonly theCut: number; readonly againstTheUnclean: boolean }
+  /** The caster's heal, to his maximum HP as the spell reads it, if he is hurt. */
+  | { readonly kind: "the caster's heal"; readonly theHp: number; readonly theCastersMaximumHp: number }
+  /** A chance (the resolver's roll: kcRng() * 100 under it), the steps if it holds (worked out once it holds), and the
+   *  line if it fails. */
+  | {
+      readonly kind: 'a chance';
+      readonly theChance: number;
+      readonly ifItHolds: () => readonly AStepOfACombatSpell[];
+      readonly theLineIfItFails: "the caster's hand of death fails";
+    };
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1299,6 +1394,12 @@ export interface TheStagesOfEachHookPoint {
     /** The damage an item its bearer strikes with adds to a melee blow he lands (pcMeleeDamage, after a halving, before
      *  a guardian's perk). */
     readonly "a blow's damage": () => number;
+    /** What a combat spell does once its cast takes hold (pcCastCombatSpell: the spells' registry; one spell a cast,
+     *  found by its name): its steps, in order (plan P1-19w). */
+    readonly 'a combat spell takes hold': (facts: ACombatSpellTakingHold) => readonly AStepOfACombatSpell[];
+    /** What a hero's item changes in his combat spells (pcCastCombatSpell, through the stage above; the items'
+     *  registry: the first of his items, in the stage's order, that changes each). */
+    readonly "a hero's items change his combat spell": () => TheChangeAnItemMakesToACombatSpell;
   };
   /** The treasury (plan P1-19's items family, Choice 1: its first row, P1-19t, typed it): what an item is for and what
    *  it is worth, read as the engine loads (the load-time pass tiers each item by them, so which lairs hold it) and by a

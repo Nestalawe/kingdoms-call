@@ -41,6 +41,7 @@ import {
 import { A_LAND_UNIT_AT_SEA_LED, THE_COMMANDERS_ITEMS } from './magic-items/the-commanders-items-in-a-battle.ts';
 import { A_HEROS_ITEMS_CHANGE_HIS_BATTLE_SPELL } from './magic-items/a-heros-items-and-his-battle-spell.ts';
 import { A_COMMANDERS_ITEMS_ADD_TO_A_STRIKES_CHANCE } from './magic-items/a-commanders-items-and-his-units-strikes.ts';
+import { A_HEROS_ITEMS_CHANGE_HIS_COMBAT_SPELL } from './magic-items/a-heros-items-and-his-combat-spells.ts';
 import {
   A_FIGHTER_IN_MITHRIL,
   A_RIDER_A_FIGHTER_WEARS,
@@ -100,6 +101,7 @@ import type {
   AWardAsTheMergeReadsIt,
   HookPointName,
   TheAuraAnItemSpreads,
+  TheChangesAHerosItemsMakeToHisCombatSpells,
   TheDefendersFortificationsAndACommandersSide,
   TheFortificationsLine,
   TheStagesOfEachHookPoint,
@@ -508,6 +510,14 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       "a blow's damage": A_BLOWS_DAMAGE['warbringer-gauntlets'],
     },
   },
+  dreamstone: {
+    personalCombat: { "a hero's items change his combat spell": A_HEROS_ITEMS_CHANGE_HIS_COMBAT_SPELL.dreamstone },
+  },
+  'deaths-finger-ring': {
+    personalCombat: {
+      "a hero's items change his combat spell": A_HEROS_ITEMS_CHANGE_HIS_COMBAT_SPELL['deaths-finger-ring'],
+    },
+  },
   'an-item-worn-as-armour': {
     treasury: {
       "an item's role": AN_ITEMS_ROLE['an-item-worn-as-armour'],
@@ -676,6 +686,8 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     'a guardian wields its hoard': ['maximum-hp', 'warbringer-gauntlets'],
     "a steal's chance": ['lock-pick-of-legends'],
     "a blow's damage": ['warbringer-gauntlets'],
+    // one effect a spell (plan P1-19w): the Dreamstone's Psychic Blast, the Ring's Hand of Death
+    "a hero's items change his combat spell": ['dreamstone', 'deaths-finger-ring'],
   },
   // the treasury (plan P1-19t): each in the order itemRole's set of combat stats, itemPowerScore's kinds, _useScore's
   // cases, _wardScore's three sorts (a flag, an amount, a percentage) and _pcScore's sum named them. An item's kind is
@@ -1380,6 +1392,29 @@ export function theChanceAThiefsItemsAddToHisSteal(theThiefsItems: readonly AMag
     added += ENTRIES[slug].personalCombat?.["a steal's chance"]?.() ?? 0;
   }
   return added;
+}
+
+/** The runner of "personalCombat: a hero's items change his combat spell" (pcCastCombatSpell, through the spells'
+ *  stage "a combat spell takes hold", asked only by a spell that reads it): the rounds his Psychic Blast stuns longer
+ *  and the multiplier of his Hand of Death's bite, each by the first effect his items carry, in the stage's order, that
+ *  changes it (none: 0 rounds and ×1). */
+export function whatAHerosItemsChangeInHisCombatSpells(
+  theHerosItems: readonly AMagicItemAsTheRegistryReadsIt[],
+): TheChangesAHerosItemsMakeToHisCombatSpells {
+  const carried = theEffectsTheseItemsCarry(theHerosItems);
+  const changes = THE_WARDS_STAGES["a hero's items change his combat spell"].flatMap((slug) => {
+    const change = carried.has(slug)
+      ? ENTRIES[slug].personalCombat?.["a hero's items change his combat spell"]?.()
+      : undefined;
+    return change ? [change] : [];
+  });
+  return {
+    theRoundsHisPsychicBlastStunsLonger:
+      changes.find((c) => c.theRoundsHisPsychicBlastStunsLonger !== undefined)?.theRoundsHisPsychicBlastStunsLonger ??
+      0,
+    theMultiplierOfHisHandOfDeathsBite:
+      changes.find((c) => c.theMultiplierOfHisHandOfDeathsBite !== undefined)?.theMultiplierOfHisHandOfDeathsBite ?? 1,
+  };
 }
 
 /** The runner of "personalCombat: a blow's damage" (pcMeleeDamage): the damage the effects the striker strikes with add

@@ -10,8 +10,8 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
 `src/engine/rules/spells/`, a file per group of stages.
 
 - **A row** names the spell as `SPELL_DEFS_P` keys it (`'Fireball'`) and its `fn` (`'elemental_fireball'`), and holds
-  the numbers the code writes for it, by use (`battleMagic`), each with how the spell's texts write it (0.5 as "half";
-  0.2 as `20%`; a quarter lost as `75%` kept). `SPELL_DEFS_P` stays as it is: the player portal reads it, and the
+  the numbers the code writes for it, by use (`battleMagic`, `combat`), each with how the spell's texts write it (0.5
+  as "half"; 0.2 as `20%`; a quarter lost as `75%` kept; 3 rounds as "three rounds"; a range as `1–3`). `SPELL_DEFS_P` stays as it is: the player portal reads it, and the
   player page doesn't import the rows.
 - **The registry** ends `satisfies Record<SpellSlug, SpellEffectEntry>`, both ways, as the unit abilities' and the
   items' do: a row with no entry, or an entry with no row, fails to compile. Its stages are the hook points' own (one
@@ -64,12 +64,31 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   (`magic-items/a-commanders-items-and-his-units-strikes.ts`: the Totem of the Thunderhead's `{ stat: 'primalStrike' }`
   and the Beastcaller's Warhorn's `{ field: 'primalStrike' }`, each the copy's own number). Its runner,
   `whatTheCommandersItemsAddToAStrikesChance`, is asked through `primalStrikeItemBonus`.
+- **The combat spells that harm** (P1-19w, `spells/a-combat-spell-that-harms-in-a-personal-combat.ts`).
+  `personalCombat`'s **a combat spell takes hold**, asked by `pcCastCombatSpell` once a fighter's cast roll holds and
+  the weakness's lines are written: Lightning Bolt, Fireball, Holy Symbol, Spiritwrack, Psychic Blast, Telekinetic
+  Storm and Hand of Death. It is handed the caster's level counted to 5, the weakness factor (×2 against a guardian
+  weak to the school, which doubles what doesn't harm), whether the target is weak to the school, the caster's maximum
+  HP as Holy Symbol reads it, the target's figures (his maximum HP, whether he is undead or a fiend, his grade if he is
+  a guardian, the share his wards cut a burn by), and what the caster's items change, asked only by the spell that
+  reads it, when it reads it. It returns the spell's steps, in order: a hit (a number, or dice of 1–3 a level), with
+  the HP the caster takes back as it lands and its line; a burn; a stun; a silence; a cut to the target's aim; the
+  caster's heal; or a chance, whose steps are worked out once it holds. `applyTheStepsOfACombatSpell` applies each with
+  the function the spell's case called (`pcTakeHit`, `pcPushDot`, `pcLandStun`), rolls a chance as the case rolled it
+  (`kcRng() * 100` under it), and writes each line with its fields in the order the case wrote them. A spell the stage
+  holds no effect for is still a case of `pcCastCombatSpell`'s switch (the other five: P1-19x).
+- **The Dreamstone and the Death's Finger Ring** are the items' registry's: `personalCombat`'s **a hero's items change
+  his combat spell** (`magic-items/a-heros-items-and-his-combat-spells.ts`, keyed by the item's base name: his Psychic
+  Blast stuns a round longer, after any doubling; his Hand of Death bites ×1.1). Its runner,
+  `whatAHerosItemsChangeInHisCombatSpells`, is handed the caster's active items.
 
 ## What checks it
 
 - The two registry tests, each extended to the spells' registry (each row's name a spell, its `fn` that spell's).
-- Each row's numbers in the "Battle magic:" part of its blurb and the "Battle:" part of its rulebook row, the known gaps
-  listed with their Parked entries (`tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts`).
+- Each row's numbers in the "Battle magic:" part of its blurb and the "Battle:" part of its rulebook row, and its
+  combat's in the "Combat:" parts, the known gaps listed with where and why
+  (`tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts`); the two items' numbers in their
+  texts (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`).
 - No spell's name or `fn` in a function the registry has taken
   (`tests/static/the-resolvers-the-spell-registry-has-taken-name-no-spell.test.ts`), and, outside the registry, the
   ratchet's `spellChecksInEngine`, which only falls.
@@ -79,6 +98,10 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
 - Each unit's strike in each copy, and the totems on `primalStrikeChance`
   (`tests/unit/the-strikes-each-copy-makes-before-the-battle-keep-their-values.test.ts`); a slain hero's totem against
   guards, which no game reaches (`tests/unit/the-battle-magic-lines-no-matrix-game-reaches-keep-their-values.test.ts`).
+- Each combat spell that harms, called directly with the dice pinned: `bolt-damage`, `fireball-burn`,
+  `holy-symbol-unclean`, `spiritwrack-five` and `blast-dreamstone`; Telekinetic Storm's recoil and the Death's Finger
+  Ring, which no game meets but in a forecast
+  (`tests/unit/the-combat-spell-lines-no-matrix-game-reaches-keep-their-values.test.ts`).
 
 ## How to add a spell's effect
 

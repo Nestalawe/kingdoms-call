@@ -6,7 +6,7 @@
 // `+2`, a share as "half" or "halved", volleys as "two volleys", extra shots as "one extra shot", a share as a
 // percentage as `10%`, gold for each province as `+1g`, `+1 gold` or "1 extra gold", skill levels added as `+1` or
 // "one level", damage turned aside as "1 less", a chance in percentage points as `5%`, a multiplier in words as
-// "doubled", damage added as `+2 damage` or "2 extra damage", the strongest units a Fireball strikes as "two strongest"), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
+// "doubled", damage added as `+2 damage` or "2 extra damage", the strongest units a Fireball strikes as "two strongest", rounds added as "an extra round", a multiplier as the share more as `10% more`), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
 // alone. The items read are the items in play and the Mithril suit (a dwarven birthright in no table, granted: plan
 // P1-19r). Each row with numbers is carried by some item read (else this would check nothing), but the steadfast ward's
 // (resist), which no item in play carries, listed. The rows with no number
@@ -209,6 +209,10 @@ function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
       return [`+${String(n.value)} damage`, `${String(n.value)} extra damage`];
     case 'the strongest units, in words':
       return [`${inWords(n.value)} strongest`];
+    case 'rounds added, in words':
+      return n.value === 1 ? ['an extra round', 'one extra round'] : [`${inWords(n.value)} extra rounds`];
+    case 'a multiplier, as the share more':
+      return [`${String(Number(((n.value - 1) * 100).toFixed(6)))}% more`];
   }
 }
 /** A number as the texts write it, with no digit or letter just before it, nor a digit, a letter, a `%` or a decimal
@@ -291,6 +295,13 @@ test('a number is matched as the texts write it, and not inside another', () => 
   expect(asTheTextsWriteIt({ value: 5, theTextsWriteIt: 'a chance, in percentage points' })).toEqual(['5%']);
   expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'a multiplier, in words' })).toEqual(['doubled']);
   expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'damage added' })).toEqual(['+2 damage', '2 extra damage']);
+  expect(asTheTextsWriteIt({ value: 1, theTextsWriteIt: 'rounds added, in words' })).toEqual([
+    'an extra round',
+    'one extra round',
+  ]);
+  expect(asTheTextsWriteIt({ value: 1.1, theTextsWriteIt: 'a multiplier, as the share more' })).toEqual(['10% more']);
+  expect(states('does 10% more damage', ['10% more'])).toBe(true);
+  expect(states('does 110% more damage', ['10% more'])).toBe(false);
   expect(theNumber('+2').test('Every army you lead fights +2.')).toBe(true);
   expect(theNumber('+2').test('strength +25%')).toBe(false);
   expect(theNumber('+2').test('strength +2.5')).toBe(false);
