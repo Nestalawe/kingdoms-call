@@ -4,11 +4,12 @@
 //   Eyes of the Forest Eagle Riders flying with the shooters spoil a Forest Wardens' Ambush, and the report says so;
 //   Raiders' Muster   an orcish province that saw an orc realm win there gains a Goblin Horde in its garrison at
 //                     turn's end, for nothing, and the realm is told.
-// Level 2 (scenario): each is staged against a neutral guard with overwhelming odds, so the outcome never
-// depends on the dice; the lines counted are deterministic whatever the fortune roll does afterwards.
+// Level 2 (scenario): each is staged against a neutral guard so the outcome never depends on the dice; the
+// Longbows' volleys are counted per battle, since the fortune roll decides whether the battle stalls and is
+// fought again next phase.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// The three abilities only a turn can show: Prepared Ground (a defending Longbow company fires twice in the report, an
+// The three abilities only a turn can show: Prepared Ground (a defending Longbow company fires twice a battle, an
 // attacking one once, with no header); Eyes of the Forest (Eagles flying with the shooters spoil a Wardens' Ambush in a
 // forest, with the 🦅 line; without them the Ambush holds); Raiders' Muster (an orc realm's win in an orcish province
 // adds a named Average Goblin Horde to its garrison at turn's end, with the 🥁 line; a human win adds none). Level 2
@@ -44,7 +45,11 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   let r=await turn('plain',(S,st)=>{ st.guard.armies=army('Yeoman Longbows',1,'Elite'); st.N.neutralDefenders=[...st.guard.armies]; st.N.npcArmies=1; st.H.armies=army('Shieldwall Levies',1,'Elite'); });
   let txt=r.text(r.extra.H.id);
   ok(/Defender Archery Phase\*\* — 1 ranged unit \(Prepared Ground: the Longbows loose twice\)/.test(txt),'the defenders\' archery names Prepared Ground');
-  ok((txt.match(/Yeoman Longbows 1 fires at Shieldwall Levies 1/g)||[]).length===2,`the Longbow company fires twice (got ${(txt.match(/Yeoman Longbows 1 fires at/g)||[]).length})`);
+  // The battle's fortune roll may let the Levies win and the pinned guard rally, so the battle is fought
+  // again next phase (a stalled battle): the count is per battle, and every battle has its two volleys.
+  { const volleysEachBattle=txt.split(/⚔ \*\*Battle for /).slice(1).map(b=>(b.match(/Yeoman Longbows 1 fires at Shieldwall Levies 1/g)||[]).length);
+    const volleys=(txt.match(/Yeoman Longbows 1 fires at/g)||[]).length;
+    ok(volleysEachBattle.length>=1&&volleysEachBattle.every(n=>n===2)&&volleys===2*volleysEachBattle.length,`the Longbow company fires twice a battle (got ${volleys} over ${volleysEachBattle.length} battle${volleysEachBattle.length===1?'':'s'}: ${volleysEachBattle.join(', ')||'none'})`); }
   // …and attacking, Longbows loose once
   r=await turn('plain',(S,st)=>{ st.guard.armies=army('Shieldwall Levies',1,'Elite'); st.N.neutralDefenders=[...st.guard.armies]; st.N.npcArmies=1; st.H.armies=army('Yeoman Longbows',1,'Elite'); });
   txt=r.text(r.extra.H.id);
