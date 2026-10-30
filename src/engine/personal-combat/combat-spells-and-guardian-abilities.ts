@@ -1,4 +1,3 @@
-import { KC_MAGIC_SCHOOLS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { combatSpellsAllowedPerSchoolEachFight } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
@@ -30,7 +29,11 @@ import {
   whatAHerosItemsChangeInHisCombatSpells,
 } from '../rules/the-registry-of-magic-item-effects.ts';
 import { whatACombatSpellDoesAsItTakesHold } from '../rules/the-registry-of-spell-effects.ts';
-import type { AStepOfACombatSpell, TheLineOfACombatSpellsHit } from '../rules/the-registry-of-content-effects.ts';
+import type {
+  AStepOfACombatSpell,
+  TheLineOfACombatSpell,
+  TheLineOfACombatSpellsHit,
+} from '../rules/the-registry-of-content-effects.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
@@ -84,13 +87,9 @@ function aDamageRangeAsTheDiceReadIt(range: readonly number[] | null | undefined
 // the set. First, the best spells did not read the caster: Fireball, Psychic Blast, Telekinetic
 // Storm and Invisibility were identical at school level 1 and level 5, so a dabbler got a
 // master's spell. Second, White had no way to convert an action into an advantage at all. Each
-// spell keeps what it does; the numbers are what changed. The numbers of the spells that harm, and what each does once
-// it takes hold, are the spells' registry's (plan P1-19w: src/content/spell-effects-their-names-numbers-and-words.ts
-// and src/engine/rules/spells/a-combat-spell-that-harms-in-a-personal-combat.ts); the others' are below.
-export const SPELL_INVIS_BASE_PCT = 10,
-  SPELL_INVIS_PCT_PER_LVL = 4; // Invisibility, foe to-hit reduction
-export const SPELL_MIRROR_HP_PCT = 40,
-  SPELL_MIRROR_ROUNDS = 3; // Mirror Image, see the case below
+// spell keeps what it does; the numbers are what changed. Each spell's numbers, and what it does once it takes hold,
+// are the spells' registry's (plans P1-19w and P1-19x: src/content/spell-effects-their-names-numbers-and-words.ts and
+// src/engine/rules/spells/, the spells that harm and the others).
 export const PC_CAST_BASE = SPELL_CAST_BASE; // personal-combat casting is 30 + school level × 10 · 2026-09-11: every path now shares SPELL_CAST_BASE
 export function pcCastCombatSpell(
   turnContext: TurnContext,
@@ -210,7 +209,10 @@ export function pcCastCombatSpell(
       });
   }
 
-  // ----- effects: the spells' registry's, where it holds one (plan P1-19w), else the cases below -----
+  // ----- effects: the spells' registry's (plans P1-19w and P1-19x) -----
+  // the target's hero as a Charm reads him (a guardian has none of these): the same object, guarded as before
+  const theTargetsHero = targetAsGuarded ? asItsGuardReadsIt<AHeroAsACharmReadsHim>(targetAsGuarded.ref) : null;
+  const theTargetIsAHero = targetAsGuarded?.kind === 'character';
   const theSteps = whatACombatSpellDoesAsItTakesHold(spellName, {
     theLevelCountedTo5: lvlEff,
     theWeaknessFactor: wx,
@@ -221,181 +223,25 @@ export function pcCastCombatSpell(
       isUndeadOrAFiend: target.isUndead || pcFoeCat(target) === 'fiend',
       theGuardiansGrade: target.kind === 'monster' ? String(target.power) : null,
       theShareHisWardsCutABurnBy: theShareAFightersWardsCutASpellsBurnBy(target.arm), // the ward's effect in the items' registry (plan P1-19r)
+      hp: target.hp,
+      isUndead: target.isUndead,
+      melee: target.melee,
+      archery: target.archery,
+      hisSchools: target.school,
+      hisPlan: asItsGuardReadsIt(target.tactics),
+      asACharmReadsHim: {
+        isACrownedHero: theTargetIsAHero && !!theTargetsHero?.isKing,
+        wasSwayedThisTurn: theTargetIsAHero && theTargetsHero?._charmImmuneTurn === G.turn,
+        hisWill: (theTargetIsAHero ? theTargetsHero?._charmResist : undefined) ?? 0,
+      },
     },
+    theFightsMirrorImage: !state ? 'there is no fight' : state.mirror ? 'an image fights' : 'no image fights',
     // the items' registry (plan P1-19w): a guardian's hoard or a hero's active items, as hasItemBase read them
     whatTheCastersItemsChange: () =>
       whatAHerosItemsChangeInHisCombatSpells(activeItems(theCastersHeroOrGuardianAsGuarded)),
   });
-  if (theSteps) applyTheStepsOfACombatSpell(turnContext, caster, target, spellName, theSteps, narrative);
-  else
-    switch (spellName) {
-      case 'Mirror Image': {
-        if (!state) {
-          narrate(narrative, { kind: 'the caster conjures a mirror image', casterName: caster.name });
-          break;
-        }
-        if (state.mirror) {
-          // casting again while an illusion fights dissipates both images
-          narrate(narrative, { kind: 'the caster weaves a second mirror image', casterName: caster.name });
-          state.mirror = null;
-          break;
-        }
-        // Conjure a phantom duplicate of the OPPONENT, with their characteristics at this moment.
-        // the phantom is a FULL clone of the mirrored combatant so it fights back exactly as they
-        // would — running THEIR Encounter Plan from the very start (spells, archery and tactics,
-        // not just melee). It gets its own fresh status, spell-limit trackers and plan pointer
-        // (tacIdx 0) so nothing bleeds back into the real character, and its own Mirror Image casts
-        // are stripped from the copied plan (an illusion casting illusions is meaningless and would
-        // only end its own duel).
-        let _phTactics = (asItsGuardReadsIt(target.tactics) ?? ['ME'])
-          .slice()
-          .filter((t) => !/mirror\s*image/i.test(t));
-        if (!_phTactics.length) _phTactics = ['ME'];
-        // MIRROR IMAGE, REBUILT. Measured, it was the worst thing a hero could do with an action: a
-        // fully trained Illusory adept beat a Lich Acolyte 100% of the time casting nothing at all,
-        // and 94.3% casting this. Two faults. The phantom was a FULL-strength copy of the victim,
-        // so shattering it took as long as winning the real fight; and the caster "concentrated",
-        // meaning they stood still for every round the illusion lasted. An illusion now carries a
-        // share of the victim's health, fades of its own accord after a few rounds, and — the
-        // change that matters — the caster is free to act while the victim's attention is on it.
-        const _phHp = Math.max(1, Math.round((target.hp * SPELL_MIRROR_HP_PCT) / 100));
-        const ph: AFighterInAPersonalCombat = {
-          ...target,
-          kind: 'phantasm',
-          name: target.name + "'s mirror image",
-          ref: target.ref,
-          hp: _phHp,
-          maxHp: _phHp,
-          school: { ...target.school }, // a spread of none is no field, as a spread of {} was
-          specials: (asItsGuardReadsIt(target.specials) ?? []).slice(),
-          tactics: _phTactics,
-          tacIdx: 0,
-          planExhausted: false,
-          neverFlees: true, // an illusion never runs
-          castSpells: [],
-          castSchool: {},
-          status: pcNewStatus(),
-        };
-        state.mirror = { caster, victim: target, phantasm: ph, life: SPELL_MIRROR_ROUNDS };
-        narrate(narrative, {
-          kind: 'the caster conjures a phantom of the target',
-          casterName: caster.name,
-          targetName: target.name,
-          targetName2: target.name,
-          casterName2: caster.name,
-        });
-        break;
-      }
-      case 'Invisibility': {
-        // 10% + 4% a level (14% at Illusory 1, 30% at Illusory 5) instead of a
-        // flat 25 at every level. 2026-09-16: the line printed a hard-coded "\u221225%" — the flat
-        // figure this spell had BEFORE the 2026-09-15 rebalance — while the code applied 10 +
-        // 4/level. A player reading their own report was told the wrong number at every level.
-        // Quote the figure actually applied.
-        const _invPct = SPELL_INVIS_BASE_PCT + SPELL_INVIS_PCT_PER_LVL * lvlEff;
-        caster.status.toHitReduce = Math.max(Number(caster.status.toHitReduce) || 0, _invPct);
-        caster.status.fleeBonus = (caster.status.fleeBonus || 0) + 30;
-        narrate(narrative, { kind: 'the caster fades from sight', casterName: caster.name, invPct: _invPct });
-        break;
-      }
-      case 'Curse': {
-        // Halve (round down) the target's best combat ability for the duration of the fight.
-        const bestSchool = KC_MAGIC_SCHOOLS.reduce(
-          (b, s) => ((target.school[s] || 0) > (target.school[b] || 0) ? s : b),
-          'white',
-        );
-        const cands: [key: string, level: number][] = [
-          ['melee', target.melee],
-          ['archery', target.archery],
-          ['magic', target.school[bestSchool] || 0],
-        ];
-        cands.sort((a, b) => b[1] - a[1]);
-        const theBest = cands[0]; // one of three, made sure above
-        if (theBest === undefined) throw new TypeError('undefined is not iterable');
-        const [bestKey, bestVal] = theBest;
-        if (bestVal > 0) {
-          if (bestKey === 'melee') target.melee = Math.floor(target.melee / 2);
-          else if (bestKey === 'archery') target.archery = Math.floor(target.archery / 2);
-          else target.school[bestSchool] = Math.floor(target.school[bestSchool] / 2);
-          narrate(narrative, {
-            kind: "the caster's curse withers the target",
-            casterName: caster.name,
-            targetName: target.name,
-            bestKey,
-            bestSchool,
-            bestAbilityLevel:
-              bestKey === 'melee' ? target.melee : bestKey === 'archery' ? target.archery : target.school[bestSchool],
-          });
-        } else
-          narrate(narrative, {
-            kind: "the caster's curse finds no ability",
-            casterName: caster.name,
-            targetName: target.name,
-          });
-        break;
-      }
-      case 'Control Undead': {
-        if (target.isUndead) {
-          const _cuR = Math.max(1, lvlEff);
-          if (!pcLandStun(target, _cuR, narrative, `${caster.name}'s grip`)) break; // printed the RAW level while applying the capped one — a Necromancy 8 caster was told "8 rounds" and got 5.
-          narrate(narrative, {
-            kind: 'the caster seizes the undead target',
-            casterName: caster.name,
-            targetName: target.name,
-            cuR: _cuR,
-          });
-        } else narrate(narrative, { kind: 'control undead has no hold over the living', targetName: target.name });
-        break;
-      }
-      case 'Charm': {
-        // the target's hero as a Charm reads him (a guardian has none of these): the same object, guarded as before
-        const theTargetsHero = targetAsGuarded ? asItsGuardReadsIt<AHeroAsACharmReadsHim>(targetAsGuarded.ref) : null;
-        // a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
-        if (targetAsGuarded?.kind === 'character' && theTargetsHero?.isKing) {
-          narrate(narrative, {
-            kind: "the caster's charm washes over a crowned will",
-            casterName: caster.name,
-            targetName: target.name,
-          });
-          break;
-        }
-        // ...and so is a mind swayed only last season — the same immunity the action-phase Charm
-        // honours.
-        if (targetAsGuarded?.kind === 'character' && theTargetsHero?._charmImmuneTurn === G.turn) {
-          narrate(narrative, {
-            kind: "the caster's charm slides off a mind lately swayed",
-            casterName: caster.name,
-            targetName: target.name,
-          });
-          break;
-        }
-        // a mind swayed before resists any later Charm, combat casts included (30% per past charm,
-        // cumulative).
-        if (
-          targetAsGuarded?.kind === 'character' &&
-          theTargetsHero?._charmResist !== undefined &&
-          theTargetsHero._charmResist > 0 &&
-          d100() <= theTargetsHero._charmResist
-        ) {
-          narrate(narrative, {
-            kind: "the caster's charm breaks against the target's will",
-            casterName: caster.name,
-            targetName: target.name,
-            targetRefCharmResist: theTargetsHero._charmResist,
-          });
-          break;
-        }
-        caster.status.fleeDoubled = true;
-        narrate(narrative, {
-          kind: "the caster charms the target's wits",
-          casterName: caster.name,
-          targetName: target.name,
-        });
-        break;
-      }
-      default:
-        narrate(narrative, { kind: 'the caster casts a spell', casterName: caster.name, spellName });
-    }
+  if (theSteps) applyTheStepsOfACombatSpell(turnContext, caster, target, spellName, theSteps, narrative, state);
+  else narrate(narrative, { kind: 'the caster casts a spell', casterName: caster.name, spellName });
   // small skill-up chance — pass narrative so the "X rises to level N" line appears at the end of
   // the encounter report, not emitted ahead of it at the top of the phase.
   if (caster.kind === 'character' && theCastersHeroOrGuardianAsGuarded) {
@@ -412,9 +258,10 @@ export function pcCastCombatSpell(
   return true;
 }
 
-/** What a combat spell does, step by step, as the spells' registry returns it (plan P1-19w): each step applied with the
- *  function the spell's case called, in order, and its line written with the facts its kind records (each line's
- *  fields in the order the case wrote them). A chance is rolled here, where the case rolled it. */
+/** What a combat spell does, step by step, as the spells' registry returns it (plans P1-19w and P1-19x): each step
+ *  applied with the function the spell's case called, in order, and its line written with the facts its kind records
+ *  (each line's fields in the order the case wrote them). A chance, or a will against a Charm, is rolled here, where
+ *  the case rolled it. */
 function applyTheStepsOfACombatSpell(
   turnContext: TurnContext,
   caster: AFighterInAPersonalCombat,
@@ -422,6 +269,7 @@ function applyTheStepsOfACombatSpell(
   spellName: string,
   theSteps: readonly AStepOfACombatSpell[],
   narrative: NarrativeLine[],
+  state: TheFightAsASpellReadsIt | null | undefined,
 ): void {
   for (const step of theSteps) {
     switch (step.kind) {
@@ -446,8 +294,23 @@ function applyTheStepsOfACombatSpell(
         break;
       }
       case 'a stun':
-        if (pcLandStun(target, step.theRounds, narrative, step.what))
-          narrate(narrative, { kind: step.theLine, targetName: target.name, stunN: step.theRounds });
+        if (
+          pcLandStun(
+            target,
+            step.theRounds,
+            narrative,
+            step.what === "the caster's grip" ? `${caster.name}'s grip` : step.what,
+          )
+        ) {
+          if (step.theLine === 'the caster seizes the undead target')
+            narrate(narrative, {
+              kind: step.theLine,
+              casterName: caster.name,
+              targetName: target.name,
+              cuR: step.theRounds,
+            });
+          else narrate(narrative, { kind: step.theLine, targetName: target.name, stunN: step.theRounds });
+        }
         break;
       case 'a silence':
         target.status.silenceRounds = Math.max(target.status.silenceRounds, step.theRounds);
@@ -486,7 +349,7 @@ function applyTheStepsOfACombatSpell(
         break;
       case 'a chance':
         if (kcRng() * 100 < step.theChance)
-          applyTheStepsOfACombatSpell(turnContext, caster, target, spellName, step.ifItHolds(), narrative);
+          applyTheStepsOfACombatSpell(turnContext, caster, target, spellName, step.ifItHolds(), narrative, state);
         else
           narrate(narrative, {
             kind: step.theLineIfItFails,
@@ -494,7 +357,113 @@ function applyTheStepsOfACombatSpell(
             handOfDeathChancePct: step.theChance,
           });
         break;
+      case "a cut to the foes' aim at the caster":
+        caster.status.toHitReduce = Math.max(Number(caster.status.toHitReduce) || 0, step.theCut);
+        break;
+      case 'a flight bonus':
+        caster.status.fleeBonus = (caster.status.fleeBonus || 0) + step.theShareAdded;
+        break;
+      case "the caster's flight doubled":
+        caster.status.fleeDoubled = true;
+        break;
+      case 'a skill halved':
+        if (step.theSkill === 'melee') target.melee = step.theLevelLeft;
+        else if (step.theSkill === 'archery') target.archery = step.theLevelLeft;
+        else target.school[step.theSchool] = step.theLevelLeft;
+        break;
+      case 'an image conjured':
+        // Conjure a phantom duplicate of the OPPONENT, with their characteristics at this moment: a FULL clone of the
+        // mirrored combatant so it fights back exactly as they would, running the plan the spell gives it. It gets its
+        // own fresh status, spell-limit trackers and plan pointer (tacIdx 0) so nothing bleeds back into the real
+        // character. (A step the spell gives only in a fight.)
+        if (state)
+          state.mirror = {
+            caster,
+            victim: target,
+            phantasm: {
+              ...target,
+              kind: 'phantasm',
+              name: target.name + "'s mirror image",
+              ref: target.ref,
+              hp: step.theImagesHp,
+              maxHp: step.theImagesHp,
+              school: { ...target.school }, // a spread of none is no field, as a spread of {} was
+              specials: (asItsGuardReadsIt(target.specials) ?? []).slice(),
+              tactics: [...step.theImagesPlan],
+              tacIdx: 0,
+              planExhausted: false,
+              neverFlees: true, // an illusion never runs
+              castSpells: [],
+              castSchool: {},
+              status: pcNewStatus(),
+            },
+            life: step.theRounds,
+          };
+        break;
+      case 'the images vanish':
+        if (state) state.mirror = null; // a step the spell gives only while an image fights
+        break;
+      case 'a will that may throw it off':
+        if (d100() <= step.theWill)
+          narrate(narrative, {
+            kind: "the caster's charm breaks against the target's will",
+            casterName: caster.name,
+            targetName: target.name,
+            targetRefCharmResist: step.theWill,
+          });
+        else applyTheStepsOfACombatSpell(turnContext, caster, target, spellName, step.ifItDoesNot, narrative, state);
+        break;
+      case 'a line':
+        writeTheLineOfACombatSpell(caster, target, step.theLine, narrative);
+        break;
     }
+  }
+}
+
+/** The line of a combat spell that has no other step to write it (plan P1-19x), its fields in the order the spell's case
+ *  wrote them. */
+function writeTheLineOfACombatSpell(
+  caster: AFighterInAPersonalCombat,
+  target: AFighterInAPersonalCombat,
+  theLine: TheLineOfACombatSpell,
+  narrative: NarrativeLine[],
+): void {
+  switch (theLine.kind) {
+    case 'the caster conjures a mirror image':
+    case 'the caster weaves a second mirror image':
+      narrate(narrative, { kind: theLine.kind, casterName: caster.name });
+      break;
+    case 'the caster conjures a phantom of the target':
+      narrate(narrative, {
+        kind: theLine.kind,
+        casterName: caster.name,
+        targetName: target.name,
+        targetName2: target.name,
+        casterName2: caster.name,
+      });
+      break;
+    case 'the caster fades from sight':
+      narrate(narrative, { kind: theLine.kind, casterName: caster.name, invPct: theLine.invPct });
+      break;
+    case "the caster's curse withers the target":
+      narrate(narrative, {
+        kind: theLine.kind,
+        casterName: caster.name,
+        targetName: target.name,
+        bestKey: theLine.bestKey,
+        bestSchool: theLine.bestSchool,
+        bestAbilityLevel: theLine.bestAbilityLevel,
+      });
+      break;
+    case "the caster's curse finds no ability":
+    case "the caster's charm washes over a crowned will":
+    case "the caster's charm slides off a mind lately swayed":
+    case "the caster charms the target's wits":
+      narrate(narrative, { kind: theLine.kind, casterName: caster.name, targetName: target.name });
+      break;
+    case 'control undead has no hold over the living':
+      narrate(narrative, { kind: theLine.kind, targetName: target.name });
+      break;
   }
 }
 

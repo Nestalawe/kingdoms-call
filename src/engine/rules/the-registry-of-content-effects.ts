@@ -11,7 +11,7 @@
 //
 // The hook points' types live here, in a file that holds code, not in a file of types alone: a file only `import type`
 // reaches is in no page's bundle, and the build's checks refuse it (docs/traps.md).
-import type { Quality, UnitType } from '../../content/kingdoms-call-data.ts';
+import type { KC_MAGIC_SCHOOLS, Quality, UnitType } from '../../content/kingdoms-call-data.ts';
 import {
   UNIT_ABILITIES_THE_REGISTRY_HOLDS,
   type AUnitAbilityAsTheBooksWriteIt,
@@ -1062,10 +1062,23 @@ export interface WhatAUnitsStrikeMayDo {
   readonly theLineIfItMisses: TheLineOfAPreBattleStrike | null;
 }
 
-// ── A combat spell in a personal combat (plan P1-19's spells family, row P1-19w): what a spell does once its cast takes
-// hold (pcCastCombatSpell, after the cast roll and the weakness's lines). The effect returns its steps; the resolver
-// draws where the code drew, applies each step with the functions it called (pcTakeHit, pcPushDot, pcLandStun), in the
-// steps' order, and writes each step's line. ──
+// ── A combat spell in a personal combat (plan P1-19's spells family, rows P1-19w and P1-19x): what a spell does once its
+// cast takes hold (pcCastCombatSpell, after the cast roll and the weakness's lines). The effect returns its steps; the
+// resolver draws where the code drew, applies each step with the functions it called (pcTakeHit, pcPushDot,
+// pcLandStun), in the steps' order, and writes each step's line. ──
+
+/** A school of magic. */
+export type AMagicSchool = (typeof KC_MAGIC_SCHOOLS)[number];
+
+/** What a Charm reads of its target (a guardian or an illusion is none of these). */
+export interface ATargetAsACharmReadsHim {
+  /** Whether he is a hero and a king. */
+  readonly isACrownedHero: boolean;
+  /** Whether he is a hero charmed this turn already. */
+  readonly wasSwayedThisTurn: boolean;
+  /** A hero's will against a Charm (each past charm's), or 0 for none. */
+  readonly hisWill: number;
+}
 
 /** The target as a combat spell reads him. */
 export interface ATargetAsACombatSpellReadsHim {
@@ -1076,6 +1089,18 @@ export interface ATargetAsACombatSpellReadsHim {
   readonly theGuardiansGrade: string | null;
   /** The percentage his wards cut a spell's burn by (the items' registry: a burn ticks outside pcTakeHit). */
   readonly theShareHisWardsCutABurnBy: number;
+  // From P1-19x:
+  /** His HP now (a Mirror Image's phantom carries a share of it). */
+  readonly hp: number;
+  /** Whether he is undead (Control Undead grips the undead alone). */
+  readonly isUndead: boolean;
+  /** His Melee, his Archery and his level in each school, as Curse weighs his best. */
+  readonly melee: number;
+  readonly archery: number;
+  readonly hisSchools: Readonly<Record<AMagicSchool, number>>;
+  /** His plan, as it is guarded (a Mirror Image's phantom fights by it). */
+  readonly hisPlan: readonly string[] | null | undefined;
+  readonly asACharmReadsHim: ATargetAsACharmReadsHim;
 }
 
 /** What a hero's items change in his combat spells (the items' registry's runner of "personalCombat: a hero's items
@@ -1083,6 +1108,8 @@ export interface ATargetAsACombatSpellReadsHim {
 export interface TheChangesAHerosItemsMakeToHisCombatSpells {
   readonly theRoundsHisPsychicBlastStunsLonger: number;
   readonly theMultiplierOfHisHandOfDeathsBite: number;
+  /** The Mirror Shard's (plan P1-19x): the chance his Mirror Image is seen through is multiplied by it. */
+  readonly theMultiplierOfTheChanceHisMirrorImageIsSeenThrough: number;
 }
 
 /** What one of a hero's items changes in his combat spells: one of the two. */
@@ -1100,10 +1127,45 @@ export interface ACombatSpellTakingHold {
   /** The caster's maximum HP, as Holy Symbol reads it (20 when he has none). */
   readonly theCastersMaximumHp: number;
   readonly theTarget: ATargetAsACombatSpellReadsHim;
+  /** The fight's Mirror Image as the spell finds it: no fight to conjure one in (a forecast's bare cast), one that
+   *  fights, or none (from P1-19x). */
+  readonly theFightsMirrorImage: 'there is no fight' | 'an image fights' | 'no image fights';
   /** What the caster's items change in his combat spells, asked only by a spell that reads it, when it reads it:
    *  reading a hero's items tidies them. */
   readonly whatTheCastersItemsChange: () => TheChangesAHerosItemsMakeToHisCombatSpells;
 }
+
+/** What the stage "personalCombat: a mirror image is disbelieved" hands an effect (resolvePersonalCombat, each round an
+ *  image fights, before the victim's roll; plan P1-19x). */
+export interface AMirrorImageItsVictimMaySeeThrough {
+  /** The victim's skill levels, if he is a hero with skills (each as it is held: none read as 0), else none. */
+  readonly theVictimsSkillLevels: readonly (number | undefined)[] | null;
+  /** The victim's Melee (none read as 0). */
+  readonly theVictimsMelee: number;
+  /** What the caster's items change in his combat spells (asked every round, as the code asked it). */
+  readonly whatTheCastersItemsChange: () => TheChangesAHerosItemsMakeToHisCombatSpells;
+}
+
+/** The line of a combat spell that has no other step to write it (plan P1-19x), with the facts its kind records beside
+ *  the caster's and the target's names. */
+export type TheLineOfACombatSpell =
+  | { readonly kind: 'the caster conjures a mirror image' | 'the caster weaves a second mirror image' }
+  | { readonly kind: 'the caster conjures a phantom of the target' }
+  | { readonly kind: 'the caster fades from sight'; readonly invPct: number }
+  | {
+      readonly kind: "the caster's curse withers the target";
+      readonly bestKey: string;
+      readonly bestSchool: string;
+      readonly bestAbilityLevel: number;
+    }
+  | {
+      readonly kind:
+        | "the caster's curse finds no ability"
+        | "the caster's charm washes over a crowned will"
+        | "the caster's charm slides off a mind lately swayed"
+        | "the caster charms the target's wits";
+    }
+  | { readonly kind: 'control undead has no hold over the living' };
 
 /** The line a hit of a combat spell writes when it lands, with the facts its kind records beside the target's. */
 export type TheLineOfACombatSpellsHit =
@@ -1135,12 +1197,12 @@ export type AStepOfACombatSpell =
       readonly theWardsCut: number;
       readonly theLine: 'a fireball engulfs the target and will burn';
     }
-  /** A stun (pcLandStun, by what), and its line if it lands. */
+  /** A stun (pcLandStun, by what: the blast, or the caster's grip by his name), and its line if it lands. */
   | {
       readonly kind: 'a stun';
       readonly theRounds: number;
-      readonly what: string;
-      readonly theLine: "psychic blast sears the target's mind";
+      readonly what: 'the blast' | "the caster's grip";
+      readonly theLine: "psychic blast sears the target's mind" | 'the caster seizes the undead target';
     }
   /** A silence and a halved melee, at least these rounds, and the chance a round the target shrugs it off. */
   | { readonly kind: 'a silence'; readonly theRounds: number; readonly theChanceItIsShruggedOff: number }
@@ -1155,7 +1217,40 @@ export type AStepOfACombatSpell =
       readonly theChance: number;
       readonly ifItHolds: () => readonly AStepOfACombatSpell[];
       readonly theLineIfItFails: "the caster's hand of death fails";
-    };
+    }
+  // From P1-19x:
+  /** A cut to his foes' aim at the caster (the larger of it and the cut he has). */
+  | { readonly kind: "a cut to the foes' aim at the caster"; readonly theCut: number }
+  /** A share added to the caster's chance to flee. */
+  | { readonly kind: 'a flight bonus'; readonly theShareAdded: number }
+  /** The caster's next flight at double the chance. */
+  | { readonly kind: "the caster's flight doubled" }
+  /** The target's skill (his Melee, his Archery, or his level in the school) left at the level given. */
+  | {
+      readonly kind: 'a skill halved';
+      readonly theSkill: 'melee' | 'archery' | 'magic';
+      readonly theSchool: AMagicSchool;
+      readonly theLevelLeft: number;
+    }
+  /** A phantom of the target conjured into the fight (the resolver builds it), of the HP and the plan given, for the
+   *  rounds given. */
+  | {
+      readonly kind: 'an image conjured';
+      readonly theImagesHp: number;
+      readonly theImagesPlan: readonly string[];
+      readonly theRounds: number;
+    }
+  /** The image that fights, and the one cast, vanish. */
+  | { readonly kind: 'the images vanish' }
+  /** A target's will that may throw the spell off (the resolver's roll: d100() at most it), and the steps if it
+   *  doesn't. */
+  | {
+      readonly kind: 'a will that may throw it off';
+      readonly theWill: number;
+      readonly ifItDoesNot: readonly AStepOfACombatSpell[];
+    }
+  /** A line alone. */
+  | { readonly kind: 'a line'; readonly theLine: TheLineOfACombatSpell };
 
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
@@ -1397,6 +1492,12 @@ export interface TheStagesOfEachHookPoint {
     /** What a combat spell does once its cast takes hold (pcCastCombatSpell: the spells' registry; one spell a cast,
      *  found by its name): its steps, in order (plan P1-19w). */
     readonly 'a combat spell takes hold': (facts: ACombatSpellTakingHold) => readonly AStepOfACombatSpell[];
+    /** The percentage points a spell a thief has cast in the fight adds to his chance to steal (pcAct's theft, after his
+     *  temper, before his items: plan P1-19x). */
+    readonly "a fighter's spell adds to his steal": () => number;
+    /** The chance a mirror image's victim sees through it this round (resolvePersonalCombat; the spells' registry: plan
+     *  P1-19x). */
+    readonly 'a mirror image is disbelieved': (facts: AMirrorImageItsVictimMaySeeThrough) => number;
     /** What a hero's item changes in his combat spells (pcCastCombatSpell, through the stage above; the items'
      *  registry: the first of his items, in the stage's order, that changes each). */
     readonly "a hero's items change his combat spell": () => TheChangeAnItemMakesToACombatSpell;

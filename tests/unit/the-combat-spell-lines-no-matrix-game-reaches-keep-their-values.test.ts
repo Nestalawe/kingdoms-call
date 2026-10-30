@@ -16,7 +16,13 @@
 //   halved, the shrug by the grade, none for the mirror image of a Powerful guardian), a level past 5 counted to 5
 //   (Lightning Bolt's dice), Holy Symbol's heal for a caster of no maximum HP (of 20), Telekinetic Storm's
 //   recoil (the caster takes a quarter of the hit back, whether or not it deals any), and the Death's Finger Ring's ×1.1
-//   on Hand of Death's bite (the items' registry), and its chance missed.
+//   on Hand of Death's bite (the items' registry), and its chance missed;
+// - since P1-19x, the other combat spells, through the spells' registry, where no game meets them, or meets them only in
+//   part: Control Undead's grip on the undead (its rounds counted to 5, its line, the caster's name for the grip a ward
+//   turns) and its line for the living, Invisibility's line and its +15% to a thief's steal (pcAct), Mirror Image cast
+//   with no fight (a forecast's bare cast) and again while an image fights, the phantom it conjures (its share of the
+//   target's health now, its rounds, its plan with the Mirror Image casts stripped), and the chance a hero sees through
+//   the image: 4% a skill level together, between 2% and 90%.
 // Level 1 (unit): each is a function on staged fighters, called on the engine's modules (tests/lib/personal-combat.ts,
 // for the turn's context), the dice pinned with kcRng.use (pc.pinned). A static check can't run them, and no game
 // reaches these lines.
@@ -26,6 +32,7 @@ import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audie
 import type { TurnContext } from '../../src/engine/turn/context.ts';
 import type { Character, Item } from '../../src/schemas/saved-game-state.ts';
 import type { AFighterInAPersonalCombat } from '../../src/engine/personal-combat/helpers.ts';
+import type { AMirrorImageInAFight } from '../../src/engine/personal-combat/combat-spells-and-guardian-abilities.ts';
 
 const pc = await personalCombatEngine();
 /** The turn's context the engine made for this world (the test library's type names only the fields it reads). */
@@ -34,6 +41,7 @@ const { pcCastCombatSpell, pcMonsterSpecial } =
   await import('../../src/engine/personal-combat/combat-spells-and-guardian-abilities.ts');
 const { pcCharCombatant, pcMonsterCombatant } =
   await import('../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts');
+const { pcAct } = await import('../../src/engine/personal-combat/tactics-combat-items-and-actions.ts');
 const { resolvePersonalCombat } = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
 
@@ -46,6 +54,8 @@ const lineOf = (narrative: readonly NarrativeLine[], kind: string) =>
   narrative.find((l): l is Exclude<NarrativeLine, string> => typeof l !== 'string' && l.kind === kind);
 /** A fight's state as a spell finds it, at melee range. */
 const aFight = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
+/** A fight's state as a spell finds it, with the Mirror Image given fighting (or none). */
+const aFightWith = (mirror: AMirrorImageInAFight | null) => ({ ...aFight(), mirror });
 /** A held copy of the item of that name, worn. */
 const worn = (name: string): Item => {
   const it = (ALL_MAGIC_ITEMS_P as unknown as Item[]).find((i) => i.name === name);
@@ -402,5 +412,196 @@ describe("the combat spells that harm (plan P1-19w: the spells' registry)", () =
       casterName: h.name,
       handOfDeathChancePct: 50,
     });
+  });
+});
+
+describe("the other combat spells (plan P1-19x: the spells' registry)", () => {
+  test('Control Undead cast at Necromancy 7 (set on the fighter) on an undead guardian: gripped 5 rounds, and the line says 5', () => {
+    const h = aHero({ necromancy: 5 });
+    h.school.necromancy = 7;
+    const g = aGuardian({ cat: 'undead', isUndead: true });
+    g.isUndead = true;
+    const { took, narrative } = cast(h, g, 'Control Undead');
+    expect(took).toBe(true);
+    expect(g.status.stun).toBe(5);
+    expect(lineOf(narrative, 'the caster seizes the undead target')).toEqual({
+      kind: 'the caster seizes the undead target',
+      casterName: h.name,
+      targetName: 'Made-up Ogre',
+      cuR: 5,
+    });
+  });
+
+  test("Control Undead on an undead guardian who wards off a stun: the ward's line names the caster's grip, and no seizing", () => {
+    const h = aHero({ necromancy: 2 });
+    const g = aGuardian({ isUndead: true });
+    g.isUndead = true;
+    g.arm = { stunImmune: true } as unknown as AFighterInAPersonalCombat['arm'];
+    const { narrative } = cast(h, g, 'Control Undead');
+    expect(g.status.stun).toBe(0);
+    expect(lineOf(narrative, 'the target cannot be held')).toMatchObject({ what: `${h.name}'s grip` });
+    expect(kinds(narrative)).not.toContain('the caster seizes the undead target');
+  });
+
+  test('Control Undead on the living: no grip, and the line names the target alone', () => {
+    const g = aGuardian();
+    const { took, narrative } = cast(aHero({ necromancy: 5 }), g, 'Control Undead');
+    expect(took).toBe(true);
+    expect(g.status.stun).toBe(0);
+    expect(lineOf(narrative, 'control undead has no hold over the living')).toEqual({
+      kind: 'control undead has no hold over the living',
+      targetName: 'Made-up Ogre',
+    });
+  });
+
+  test('Control Undead on a fiend that is not undead: no grip, as on the living', () => {
+    const g = aGuardian({ cat: 'fiend' });
+    const { narrative } = cast(aHero({ necromancy: 5 }), g, 'Control Undead');
+    expect(g.status.stun).toBe(0);
+    expect(kinds(narrative)).toContain('control undead has no hold over the living');
+  });
+
+  test("Curse's lines: the skill withered and the level it is left at, or no ability to wither", () => {
+    const h = aHero({ necromancy: 5 });
+    const g = aGuardian();
+    g.melee = 2;
+    g.archery = 7;
+    const withered = cast(h, g, 'Curse').narrative;
+    expect(lineOf(withered, "the caster's curse withers the target")).toEqual({
+      kind: "the caster's curse withers the target",
+      casterName: h.name,
+      targetName: 'Made-up Ogre',
+      bestKey: 'archery',
+      bestSchool: 'white',
+      bestAbilityLevel: 3,
+    });
+    const none = aGuardian();
+    none.melee = 0;
+    none.archery = 0;
+    const again = aHero({ necromancy: 5 }); // a spell is cast once a fight
+    expect(lineOf(cast(again, none, 'Curse').narrative, "the caster's curse finds no ability")).toEqual({
+      kind: "the caster's curse finds no ability",
+      casterName: again.name,
+      targetName: 'Made-up Ogre',
+    });
+  });
+
+  test("Invisibility at Illusory 3: the line gives the 22% it cuts the foes' aim by", () => {
+    const h = aHero({ illusory: 3 });
+    const { narrative } = cast(h, aGuardian(), 'Invisibility');
+    expect(lineOf(narrative, 'the caster fades from sight')).toEqual({
+      kind: 'the caster fades from sight',
+      casterName: h.name,
+      invPct: 22,
+    });
+  });
+
+  test('Invisibility adds its 30% to a flight bonus the caster already has', () => {
+    const h = aHero({ illusory: 1 });
+    h.status.fleeBonus = 5;
+    cast(h, aGuardian(), 'Invisibility');
+    expect(h.status.fleeBonus).toBe(35);
+  });
+
+  test("Invisibility adds 15% to a thief's steal in the fight he cast it in, and nothing before", () => {
+    const steal = (spellsCast: string[]) => {
+      const h = aHero({ thief: 1 }, { tactics: ['ST'] });
+      h.castSpells.push(...spellsCast);
+      const narrative: NarrativeLine[] = [];
+      pc.pinned(0.99, () => {
+        pcAct(tc, h, aGuardian(), narrative, aFight());
+      });
+      const line = lineOf(narrative, "a fighter's theft is noticed");
+      return line && 'chance' in line ? line.chance : null;
+    };
+    const without = steal([]);
+    expect(typeof without).toBe('number');
+    expect(steal(['Invisibility'])).toBe(Number(without) + 15);
+    expect(steal(['Fireball'])).toBe(without);
+  });
+
+  test("Mirror Image cast with no fight (a forecast's bare cast): the line alone", () => {
+    const h = aHero({ illusory: 5 });
+    const narrative: NarrativeLine[] = [];
+    const took = pc.pinned(0.01, () => pcCastCombatSpell(tc, h, aGuardian(), 'Mirror Image', narrative, null));
+    expect(took).toBe(true);
+    expect(lineOf(narrative, 'the caster conjures a mirror image')).toEqual({
+      kind: 'the caster conjures a mirror image',
+      casterName: h.name,
+    });
+  });
+
+  test('Mirror Image cast again while an image fights: both images vanish, and the line says so', () => {
+    const h = aHero({ illusory: 5 });
+    const g = aGuardian();
+    const fight = aFightWith({ caster: h, victim: g, phantasm: g, life: 2 });
+    const narrative: NarrativeLine[] = [];
+    pc.pinned(0.01, () => pcCastCombatSpell(tc, h, g, 'Mirror Image', narrative, fight));
+    expect(fight.mirror).toBeNull();
+    expect(lineOf(narrative, 'the caster weaves a second mirror image')).toEqual({
+      kind: 'the caster weaves a second mirror image',
+      casterName: h.name,
+    });
+    expect(kinds(narrative)).not.toContain('the caster conjures a phantom of the target');
+  });
+
+  test("Mirror Image's phantom: 40% of the target's health now, 3 rounds, his plan with its Mirror Image casts stripped", () => {
+    const conjured = (hp: number, tactics: string[] | null) => {
+      const h = aHero({ illusory: 5 });
+      const g = aGuardian({ hp: 200 });
+      g.hp = hp;
+      (g as unknown as { tactics: string[] | null }).tactics = tactics;
+      const fight = aFightWith(null);
+      const narrative: NarrativeLine[] = [];
+      pc.pinned(0.01, () => pcCastCombatSpell(tc, h, g, 'Mirror Image', narrative, fight));
+      const m = fight.mirror;
+      return {
+        image: m && [m.phantasm.kind, m.phantasm.name, m.phantasm.hp, m.phantasm.maxHp, m.phantasm.tactics, m.life],
+        theSame: m && [m.caster === h, m.victim === g, m.phantasm.ref === g.ref, m.phantasm.status !== g.status],
+        line: lineOf(narrative, 'the caster conjures a phantom of the target'),
+        casterName: h.name,
+      };
+    };
+    const a = conjured(37, ['CA:Mirror Image', 'ME', 'cast:mirror  IMAGE', 'FI']);
+    expect(a.image).toEqual(['phantasm', "Made-up Ogre's mirror image", 15, 15, ['ME', 'FI'], 3]);
+    expect(a.theSame).toEqual([true, true, true, true]);
+    expect(a.line).toEqual({
+      kind: 'the caster conjures a phantom of the target',
+      casterName: a.casterName,
+      targetName: 'Made-up Ogre',
+      targetName2: 'Made-up Ogre',
+      casterName2: a.casterName,
+    });
+    expect(conjured(1, ['CA:Mirror Image']).image).toEqual([
+      'phantasm',
+      "Made-up Ogre's mirror image",
+      1,
+      1,
+      ['ME'],
+      3,
+    ]);
+    expect(conjured(10, null).image?.[4]).toEqual(['ME']);
+  });
+
+  test('a hero sees through a Mirror Image at 4% for each of his skill levels together, between 2% and 90%', () => {
+    const disbelief = (skills: Record<string, number>) => {
+      const h = aHero({ illusory: 5 }, { tactics: ['CA:Mirror Image', 'ME', 'ME', 'ME'] });
+      const victim = aHero({}, { over: { skills } });
+      victim.hp = victim.maxHp = 500;
+      const res = pc.pinned(0.01, () => resolvePersonalCombat(tc, h, victim, { maxRounds: 3 }));
+      const line = lineOf(res.narrative, 'the victim sees through the illusion');
+      return line && 'disbelief' in line ? line.disbelief : null;
+    };
+    expect(disbelief({ melee: 2, archery: 1, white: 3 })).toBe(24);
+    expect(disbelief({ melee: 9, archery: 9, white: 9, thief: 9 })).toBe(90);
+    expect(disbelief({})).toBe(2);
+  });
+
+  test('a guardian sees through a Mirror Image at 5% and 3% for each level of his Melee', () => {
+    const h = aHero({ illusory: 5 }, { tactics: ['CA:Mirror Image', 'ME', 'ME', 'ME'] });
+    const g = aGuardian({ melee: 4, hp: 500 });
+    g.melee = 4;
+    const res = pc.pinned(0.01, () => resolvePersonalCombat(tc, h, g, { maxRounds: 3 }));
+    expect(lineOf(res.narrative, 'the victim sees through the illusion')).toMatchObject({ disbelief: 17 });
   });
 });

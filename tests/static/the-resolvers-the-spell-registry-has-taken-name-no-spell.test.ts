@@ -9,7 +9,8 @@
 //
 // Red on its row's base by design (applyPreBattleMagic held 8 checks, combatVsNPC 16 and battleSpellUseful 6 on
 // P1-19u's base; P1-19w's two functions, which take pcCastCombatSpell's 7 cases of the spells that harm, didn't exist
-// on its base), as the unit-name and item-effect tests were: the one exception to refactor-only's rule that new tests
+// on its base; on P1-19x's, pcCastCombatSpell held its other 5 cases, pcAct its check of Invisibility, and
+// writeTheLineOfACombatSpell didn't exist), as the unit-name and item-effect tests were: the one exception to refactor-only's rule that new tests
 // pass before and after (Theo, 2026-10-25; the spells family's Decision 5).
 // Level 0 (static): the files' syntax trees and the content's spells as written; nothing runs.
 import fs from 'node:fs';
@@ -42,12 +43,32 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   [
     'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
     'applyTheStepsOfACombatSpell',
-    'P1-19w, the steps of the combat spells that harm (pcCastCombatSpell itself joins with P1-19x)',
+    'P1-19w, the steps of the combat spells that harm; P1-19x, the others',
   ],
   [
     'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
     'writeTheLineOfACombatSpellsHit',
     "P1-19w, a combat spell's hit's line",
+  ],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'pcCastCombatSpell',
+    'P1-19x, a combat spell takes hold (its switch gone)',
+  ],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'writeTheLineOfACombatSpell',
+    "P1-19x, the other combat spells' lines",
+  ],
+  [
+    'src/engine/personal-combat/tactics-combat-items-and-actions.ts',
+    'pcAct',
+    "P1-19x, a fighter's spell adds to his steal",
+  ],
+  [
+    'src/engine/personal-combat/resolve-personal-combat.ts',
+    'resolvePersonalCombat',
+    'P1-19x, a mirror image is disbelieved',
   ],
 ];
 

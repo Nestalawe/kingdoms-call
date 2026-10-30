@@ -3,8 +3,8 @@
 // the spell's texts write it, by use (`battleMagic` from row P1-19u). The spells' registry (src/engine/rules/the-
 // registry-of-spell-effects.ts) has one entry for each row and no other: a row with no entry, or an entry with no row,
 // fails to compile. A row exists only for a spell whose effect the registry holds, so no row waits for its code.
-// `combat` holds the numbers of the spell's effect in a personal combat (from row P1-19w), read by its stage "a combat
-// spell takes hold"; a rule the spell shares with every other (its effect's level counted to 5, a guardian weak to its
+// `combat` holds the numbers of the spell's effect in a personal combat (from row P1-19w), read by its stages "a combat
+// spell takes hold", "a fighter's spell adds to his steal" and "a mirror image is disbelieved" (from row P1-19x); a rule the spell shares with every other (its effect's level counted to 5, a guardian weak to its
 // school doubling what doesn't harm, at least 1 of any harm or rounds) stays in the resolver, pcCastCombatSpell.
 //
 // A save names a spell by its name (an order's `target`, a spell charm's `effect.spell`), never by its slug (Decision
@@ -21,7 +21,8 @@
  *  `10%`); rounds (3 as "3 rounds" or "three rounds", 1 as "1 round" or "one round"); rounds longer (1 as "one round
  *  longer"); the most rounds (3 as "at most 3" or "up to 3"); the levels for each round more, in words (2 as "per two"
  *  or "every two"); a share in words (0.25 as "a quarter"); a multiplier as a figure (1.5 as `×1.5` or "half as much
- *  again"); the least and the most of a range of damage (1 and 3 as `1–3`). */
+ *  again"); the least and the most of a range of damage (1 and 3 as `1–3`); a divisor in words (2 as "halve", "halved"
+ *  or "halves"). */
 export type HowASpellsTextsWriteANumber =
   | 'a share lost, in words'
   | 'a share lost, as a percentage'
@@ -37,7 +38,8 @@ export type HowASpellsTextsWriteANumber =
   | 'a share, in words'
   | 'a multiplier, as a figure'
   | 'the least of a range'
-  | 'the most of a range';
+  | 'the most of a range'
+  | 'a divisor, in words';
 
 /** One number of a spell's effect, and how its texts write it. */
 export interface ANumberOfASpellsEffect {
@@ -119,10 +121,18 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
     },
   },
   // Battle magic: the enemy commander's best combat-affecting skill is marked to be halved for the battle (the halving is
-  // the mark's readers').
-  curse: { name: 'Curse', fn: 'necromancy_curse', battleMagic: {} },
-  // Battle magic: one enemy undead unit, drawn at random, defects to the caster's side.
-  'control-undead': { name: 'Control Undead', fn: 'necromancy_control', battleMagic: {} },
+  // the mark's readers'). Combat: the best of the target's Melee, Archery and best school is halved (rounded down) for
+  // the fight, Melee first on a tie, then Archery.
+  curse: {
+    name: 'Curse',
+    fn: 'necromancy_curse',
+    battleMagic: {},
+    combat: { theDivisorOfHisBestSkill: { value: 2, theTextsWriteIt: 'a divisor, in words' } },
+  },
+  // Battle magic: one enemy undead unit, drawn at random, defects to the caster's side. Combat: an undead foe is stunned
+  // for a round a level, the level counted to 5 (the rule every spell shares), unless a stun ward turns it; the living
+  // are beyond its hold.
+  'control-undead': { name: 'Control Undead', fn: 'necromancy_control', battleMagic: {}, combat: {} },
   // Battle magic: every enemy undead unit loses a quarter of its base strength (rounded up). Combat: the target's aim is
   // cut by 8 a level, and it is seared for 6% of its maximum HP (both ×1.5 against the undead and fiends, and the cut
   // doubled against a guardian weak to White); the caster recovers 10% of his own (of 20 when he has none).
@@ -164,6 +174,40 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
       theShareOfMaximumHpItStrikesFor: { value: 40, theTextsWriteIt: 'a percentage' },
     },
   },
+  // ── The other combat spells (plan P1-19x), each in a personal combat alone. ──
+  //
+  // Combat: a phantom of the target, of 40% of his health now (at least 1) and fighting by his own plan (its Mirror
+  // Image casts stripped), fights him for 3 rounds; cast again while one fights, both images vanish. Each round he may
+  // see through it: a hero at 4% for each of his skill levels together, a guardian at 5% and 3% for each level of his
+  // Melee (half that against a caster with a Mirror Shard: the items' registry), between 2% and 90%.
+  'mirror-image': {
+    name: 'Mirror Image',
+    fn: 'illusory_mirror_image',
+    combat: {
+      theShareOfHisHealthTheImageCarries: { value: 40, theTextsWriteIt: 'a percentage' },
+      theRoundsItLasts: { value: 3, theTextsWriteIt: 'rounds' },
+      theChanceAHeroSeesThroughItForEachSkillLevel: { value: 4, theTextsWriteIt: 'a percentage' },
+      theChanceAGuardianSeesThroughIt: { value: 5, theTextsWriteIt: 'a percentage' },
+      theChanceMoreForEachLevelOfAGuardiansMelee: { value: 3, theTextsWriteIt: 'a percentage' },
+      theLeastChanceItIsSeenThrough: { value: 2, theTextsWriteIt: 'a percentage' },
+      theMostChanceItIsSeenThrough: { value: 90, theTextsWriteIt: 'a percentage' },
+    },
+  },
+  // Combat: the foes' aim at the caster is cut by 10% and 4% a level (or by more, if it already was), and he gains 30%
+  // to flee and, if he steals in the fight, 15% to his steal.
+  invisibility: {
+    name: 'Invisibility',
+    fn: 'illusory_invisibility',
+    combat: {
+      theCutToHisFoesAim: { value: 10, theTextsWriteIt: 'a percentage' },
+      theCutMoreALevel: { value: 4, theTextsWriteIt: 'a percentage' },
+      theFlightAdded: { value: 30, theTextsWriteIt: 'a percentage' },
+      theStealAdded: { value: 15, theTextsWriteIt: 'a percentage' },
+    },
+  },
+  // Combat: the caster's next flight is at double the chance, but against a crowned hero, a hero charmed this turn
+  // already, or a hero whose will (each past charm's) throws it off.
+  charm: { name: 'Charm', fn: 'psychic_charm', combat: {} },
 } as const satisfies Record<string, ASpellAsItsTextsWriteIt>;
 
 /** A spell the registry holds, by its slug. */

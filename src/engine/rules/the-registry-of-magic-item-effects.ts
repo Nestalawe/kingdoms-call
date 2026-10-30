@@ -518,6 +518,9 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       "a hero's items change his combat spell": A_HEROS_ITEMS_CHANGE_HIS_COMBAT_SPELL['deaths-finger-ring'],
     },
   },
+  'mirror-shard': {
+    personalCombat: { "a hero's items change his combat spell": A_HEROS_ITEMS_CHANGE_HIS_COMBAT_SPELL['mirror-shard'] },
+  },
   'an-item-worn-as-armour': {
     treasury: {
       "an item's role": AN_ITEMS_ROLE['an-item-worn-as-armour'],
@@ -686,8 +689,9 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     'a guardian wields its hoard': ['maximum-hp', 'warbringer-gauntlets'],
     "a steal's chance": ['lock-pick-of-legends'],
     "a blow's damage": ['warbringer-gauntlets'],
-    // one effect a spell (plan P1-19w): the Dreamstone's Psychic Blast, the Ring's Hand of Death
-    "a hero's items change his combat spell": ['dreamstone', 'deaths-finger-ring'],
+    // one effect a spell (plan P1-19w): the Dreamstone's Psychic Blast, the Ring's Hand of Death, the Mirror Shard's
+    // Mirror Image (P1-19x)
+    "a hero's items change his combat spell": ['dreamstone', 'deaths-finger-ring', 'mirror-shard'],
   },
   // the treasury (plan P1-19t): each in the order itemRole's set of combat stats, itemPowerScore's kinds, _useScore's
   // cases, _wardScore's three sorts (a flag, an amount, a percentage) and _pcScore's sum named them. An item's kind is
@@ -1395,9 +1399,10 @@ export function theChanceAThiefsItemsAddToHisSteal(theThiefsItems: readonly AMag
 }
 
 /** The runner of "personalCombat: a hero's items change his combat spell" (pcCastCombatSpell, through the spells'
- *  stage "a combat spell takes hold", asked only by a spell that reads it): the rounds his Psychic Blast stuns longer
- *  and the multiplier of his Hand of Death's bite, each by the first effect his items carry, in the stage's order, that
- *  changes it (none: 0 rounds and ×1). */
+ *  stage "a combat spell takes hold", asked only by a spell that reads it; resolvePersonalCombat, through "a mirror
+ *  image is disbelieved"): the rounds his Psychic Blast stuns longer, the multiplier of his Hand of Death's bite and
+ *  that of the chance his Mirror Image is seen through, each by the first effect his items carry, in the stage's order,
+ *  that changes it (none: 0 rounds and ×1). */
 export function whatAHerosItemsChangeInHisCombatSpells(
   theHerosItems: readonly AMagicItemAsTheRegistryReadsIt[],
 ): TheChangesAHerosItemsMakeToHisCombatSpells {
@@ -1414,6 +1419,9 @@ export function whatAHerosItemsChangeInHisCombatSpells(
       0,
     theMultiplierOfHisHandOfDeathsBite:
       changes.find((c) => c.theMultiplierOfHisHandOfDeathsBite !== undefined)?.theMultiplierOfHisHandOfDeathsBite ?? 1,
+    theMultiplierOfTheChanceHisMirrorImageIsSeenThrough:
+      changes.find((c) => c.theMultiplierOfTheChanceHisMirrorImageIsSeenThrough !== undefined)
+        ?.theMultiplierOfTheChanceHisMirrorImageIsSeenThrough ?? 1,
   };
 }
 
