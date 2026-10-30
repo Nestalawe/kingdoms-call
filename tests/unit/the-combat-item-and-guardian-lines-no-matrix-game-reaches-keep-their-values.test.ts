@@ -358,7 +358,7 @@ describe("a combat item's lines name the fighter who uses it", () => {
       '  The Made-up Mole is ready to break away (+25% to flee).',
       '  The Made-up Mole drinks the stolen vigour — +5 HP. (HP 10)',
     ]);
-    expect(theLines('char').filter((w) => /eye sharpens/.test(w))).toEqual([
+    expect(theLines('char').filter((w) => w.includes('eye sharpens'))).toEqual([
       "  Made-up Mole's eye sharpens (+10% to hit).",
     ]);
   });
