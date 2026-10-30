@@ -47,7 +47,8 @@
 // and a battle's severity its band's slug (TheSeverityOfABattle), so the compiler refuses words there from a typed
 // caller (the two battle files that call them are still untyped); since P1-12d21 how a hero carries the items he
 // gained is a record (TheItemsAHeroGained: settleTheItemsAHeroGained, src/engine/items/equipment.ts, in place of
-// gainedItemNote's words).
+// gainedItemNote's words); since P1-12d22 a battle between heroes' side, in the kinds only that battle writes, is a
+// record (ASideOfABattle: the commander's name and whether he fell), and those kinds leave LABELS.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
@@ -77,7 +78,7 @@
 // `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
 // assignment (`=`, `+=`); a call's argument or a comparison's operand isn't the value's words. It lets through, by kind
 // and field, the fighters' labels (`foeWho`, `who`: Decision 2) and a battle's side's, guard's, realm's and unit's
-// labels (`cName`, `atkName`, `defName`, `loserName`, `guardName`, `realmTag`, `unitName`, …: 27 fields), the enemy
+// labels (`cName`, `atkName`, `defName`, `loserName`, `guardName`, `realmTag`, `unitName`, …: 26 fields; since P1-12d22 not a battle between heroes' side in the kinds only it writes, a record), the enemy
 // unit a unit faced (`theEnemyUnit`, a unit's label), a disbanding unit's owner (`ownerName`, a side's or a guard's
 // label, P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
 // `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
