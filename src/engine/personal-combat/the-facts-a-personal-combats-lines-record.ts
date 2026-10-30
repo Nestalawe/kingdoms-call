@@ -5,8 +5,8 @@
 // sentence was written with, worked out where the line is told and in the sentence's order, so the words are the same
 // by construction. Since P1-12d2 (P1-12's Decisions of 2026-10-26, Decision 2) a field holds a value, never words: a
 // plural, a mark, a clause chosen by a flag, a joined list are written in the prose from the count, the roll and the
-// chance, the flag, the list (copied as the line is told: below). Words are still handed only in the fighters' labels
-// (`who`, `foeWho`: "The Barrow Wight"); how a hero carries an item he gained is a record since P1-12d21
+// chance, the flag, the list (copied as the line is told: below). The fighters' labels (`who`, `foeWho`: "The Barrow
+// Wight") are records since P1-12d25 (AFighterOfAPersonalCombat); how a hero carries an item he gained is a record since P1-12d21
 // (TheItemsAHeroGained, src/engine/items/equipment.ts). What a daze or a lingering harm comes from, which a caller
 // hands in through a parameter, is a record of its names since P1-12d19 (TheSourceOfADaze, TheSourceOfALingeringHarm:
 // src/engine/rules/the-registry-of-content-effects.ts, beside the combat spells' steps that name one). P1-12d's next
@@ -22,6 +22,14 @@ import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audience
 import type { TheItemsAHeroGained } from '../items/equipment.ts';
 import type { TheSourceOfADaze, TheSourceOfALingeringHarm } from '../rules/the-registry-of-content-effects.ts';
 export type { TheSourceOfADaze, TheSourceOfALingeringHarm } from '../rules/the-registry-of-content-effects.ts';
+
+/** A fighter as a line names him (plan P1-12d25: the battle slice's Decision 6): his name as the fight holds it, and
+ *  whether he is a guardian, whom a line names "the <name>" ("The <name>" where the sentence begins with him). The
+ *  prose writes the label (theLabelOfAFighter). */
+export interface AFighterOfAPersonalCombat {
+  readonly name: string;
+  readonly isAGuardian: boolean;
+}
 
 /** A value a line's words are written with: a name, a number, or words themselves. */
 export type AValueInALinesWords = string | number | boolean | null;
@@ -561,19 +569,19 @@ export type TheFactOfAPersonalCombatsLine =
   | {
       kind: 'as their strength fails a fighter begs the foe for mercy';
       who: string;
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       odds: TheOddsOfMercy;
     }
   | {
       kind: 'as the foe draws for the killing shot a fighter begs for their life';
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       who: string;
       odds: TheOddsOfMercy;
     }
   | { kind: 'pinned and bleeding a fighter cries out for mercy'; who: string; odds: TheOddsOfMercy }
   | {
       kind: 'as the foe readies a power for the killing stroke a fighter begs';
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       strikeKind: string;
       strikeClass: string;
       who: string;
@@ -582,35 +590,40 @@ export type TheFactOfAPersonalCombatsLine =
   | {
       kind: 'beaten and bleeding a fighter sees the killing blow coming';
       who: string;
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       odds: TheOddsOfMercy;
     }
   | {
       kind: 'as the foe closes for the kill a fighter cries out for mercy';
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       who: string;
       odds: TheOddsOfMercy;
     }
   | { kind: 'a fighter drops to their knees before the final stroke'; who: string; odds: TheOddsOfMercy }
   | {
       kind: 'the guardian pauses over its prey and lets a fighter crawl away';
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       who: string;
       who2: string;
     }
-  | { kind: 'the foe lets a fighter go'; foeWho: AValueInALinesWords; who: AValueInALinesWords }
-  | { kind: 'the foe lowers their bow and lets a fighter go'; foeWho: string; who: string }
+  | { kind: 'the foe lets a fighter go'; foeWho: AFighterOfAPersonalCombat; who: AValueInALinesWords }
+  | { kind: 'the foe lowers their bow and lets a fighter go'; foeWho: AFighterOfAPersonalCombat; who: string }
   | {
       kind: 'the foe lets a power die unspent';
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       strikeKind: string;
       strikeClass: string;
       who: string;
       who2: string;
     }
-  | { kind: 'the foe stays the blow and lets a fighter go'; foeWho: string; who: string }
-  | { kind: 'the foe lowers their weapon in disgust and lets a fighter go'; foeWho: string; who: string; who2: string }
-  | { kind: 'the stroke never falls and the foe spares a fighter'; foeWho: string; who: string }
+  | { kind: 'the foe stays the blow and lets a fighter go'; foeWho: AFighterOfAPersonalCombat; who: string }
+  | {
+      kind: 'the foe lowers their weapon in disgust and lets a fighter go';
+      foeWho: AFighterOfAPersonalCombat;
+      who: string;
+      who2: string;
+    }
+  | { kind: 'the stroke never falls and the foe spares a fighter'; foeWho: AFighterOfAPersonalCombat; who: string }
   | {
       kind: 'a fighter surrenders an item to the foe as the price of mercy';
       cbtName: string;
@@ -619,31 +632,37 @@ export type TheFactOfAPersonalCombatsLine =
     }
   | {
       kind: 'the foe knows nothing of mercy';
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       aBlowFalls: boolean;
       strikeKind: string;
       strikeClass: string;
     }
-  | { kind: 'the foe laughs at the plea'; foeWho: string; aBlowFalls: boolean; strikeKind: string; strikeClass: string }
+  | {
+      kind: 'the foe laughs at the plea';
+      foeWho: AFighterOfAPersonalCombat;
+      aBlowFalls: boolean;
+      strikeKind: string;
+      strikeClass: string;
+    }
   | {
       kind: 'the foe is deaf to the plea';
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       aBlowFalls: boolean;
       strikeKind: string;
       strikeClass: string;
     }
   | {
       kind: 'there is no pity in the foe';
-      foeWho: string;
+      foeWho: AFighterOfAPersonalCombat;
       aBlowFalls: boolean;
       strikeKind: string;
       strikeClass: string;
     }
   | { kind: 'a combat item strikes the foe'; nm: string; foeName: string; dealt: number; foeHp: number }
-  | { kind: 'a fighter uses a combat item'; who: string; nm: string }
+  | { kind: 'a fighter uses a combat item'; who: AFighterOfAPersonalCombat; nm: string }
   | {
       kind: 'a fighter recovers hit points';
-      who: AValueInALinesWords;
+      who: AFighterOfAPersonalCombat;
       healed: AValueInALinesWords;
       actorHp: AValueInALinesWords;
     }
@@ -655,7 +674,7 @@ export type TheFactOfAPersonalCombatsLine =
     }
   | {
       kind: 'a fighter recovers hit points and every lingering affliction lifts';
-      who: AValueInALinesWords;
+      who: AFighterOfAPersonalCombat;
       healed: AValueInALinesWords;
       actorHp: AValueInALinesWords;
     }
@@ -675,7 +694,7 @@ export type TheFactOfAPersonalCombatsLine =
   | { kind: 'the foe reels losing actions from the next round'; foeName: AValueInALinesWords; eStun: number }
   | {
       kind: 'a fighter drinks the stolen vigour';
-      who: AValueInALinesWords;
+      who: AFighterOfAPersonalCombat;
       healed: AValueInALinesWords;
       actorHp: AValueInALinesWords;
     }
@@ -694,12 +713,12 @@ export type TheFactOfAPersonalCombatsLine =
   | { kind: "the foe's magic and powers are bound"; foeName: AValueInALinesWords; eRounds: AValueInALinesWords }
   | {
       kind: 'a fighter surges with strength';
-      who: string;
+      who: AFighterOfAPersonalCombat;
       actorMelee: number;
       eArchery: number | undefined;
       actorArchery: number;
     }
-  | { kind: "a fighter's eye sharpens"; who: AValueInALinesWords; eHitBonus: AValueInALinesWords }
+  | { kind: "a fighter's eye sharpens"; who: AFighterOfAPersonalCombat; eHitBonus: AValueInALinesWords }
   | {
       kind: 'a ward settles over a fighter';
       actorName: string;
@@ -710,11 +729,16 @@ export type TheFactOfAPersonalCombatsLine =
   | { kind: 'shimmering doubles step out of a fighter'; eImages: AValueInALinesWords; actorName: AValueInALinesWords }
   | {
       kind: 'a fighter is ready to break away';
-      who: AValueInALinesWords;
+      who: AFighterOfAPersonalCombat;
       eFleeBonus: AValueInALinesWords;
       eToHitReduce: number | undefined;
     }
-  | { kind: 'a fighter fades from sight the foe'; who: string; foeName: string; eToHitReduce: number }
+  | {
+      kind: 'a fighter fades from sight the foe';
+      who: AFighterOfAPersonalCombat;
+      foeName: string;
+      eToHitReduce: number;
+    }
   | { kind: 'every poison burn and blinding on a fighter lifts'; actorName: string }
   | { kind: 'but nothing happens' }
   | { kind: 'a fighter is stunned and cannot act'; actorName: string; actorStatusStun: number }

@@ -78,9 +78,11 @@ export function noteSilentHeroes(turnContext, ph, startLoc) {
   });
 }
 
-export function realmTag(turnContext, pi) {
+// A realm's name as a line's fact holds it for the tag after a hero's name, or null for no realm: the prose writes
+// " (Westmarch)" (theRealmsTag, the realm works' prose; plan P1-12d25: realmTag moved there as its words).
+export function theNameOfAPlayersRealm(turnContext, pi) {
   const { G } = turnContext;
-  return pi != null && G.players[pi] ? ` (${G.players[pi].name})` : '';
+  return pi != null && G.players[pi] ? G.players[pi].name : null;
 }
 
 // ── SNAPSHOT of one realm's situation, from a parsed game state. Module level: uses only module-level

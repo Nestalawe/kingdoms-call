@@ -28,6 +28,7 @@ import {
   theItemsAsTheLineNamesThem,
   theNamesAndDescriptionsAsTheLineTellsThem,
   theNamesAsTheLineTellsThem,
+  type AFighterOfAPersonalCombat,
 } from './the-facts-a-personal-combats-lines-record.ts';
 import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
 import type { TurnContext } from '../turn/context.ts';
@@ -199,7 +200,8 @@ export function pcUseCombatItem(
   const nm = it.name;
   const st = actor.status;
   const fs = foe.status;
-  const who = actor.kind === 'monster' ? `The ${actor.name}` : actor.name;
+  // The fighter as the lines' facts hold him (plan P1-12d25): the prose writes "The <name>" for a guardian.
+  const who: AFighterOfAPersonalCombat = { name: actor.name, isAGuardian: actor.kind === 'monster' };
   const hurt = (d: number, label?: string) => {
     const dealt = pcTakeHit(turnContext, foe, d, narrative, actor.name, (label ?? '') || nm);
     if (dealt)

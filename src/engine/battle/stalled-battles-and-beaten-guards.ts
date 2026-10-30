@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
-import { realmTag } from '../turn/log-line-helpers.ts';
+import { theNameOfAPlayersRealm } from '../turn/log-line-helpers.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -405,9 +405,9 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               kind: "war comes to a province two realms' hosts share",
               provName: prov.name,
               attackersHostName: theSideOfAForce(attacker),
-              attackersRealmTag: realmTag(turnContext, attacker.player),
+              attackersRealmTag: theNameOfAPlayersRealm(turnContext, attacker.player),
               defendersHostName: theSideOfAForce(defender),
-              defendersRealmTag: realmTag(turnContext, defender.player),
+              defendersRealmTag: theNameOfAPlayersRealm(turnContext, defender.player),
               seasonName: SEASONS[ph],
             }
           : {

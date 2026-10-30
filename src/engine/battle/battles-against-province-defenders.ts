@@ -12,13 +12,7 @@ import {
   whatABattleSpellDoesBeforeTheBattle,
   whatAUnitsStrikeMayDoBeforeTheBattle,
 } from '../rules/the-registry-of-spell-effects.ts';
-import {
-  BATTLE_MAGIC_SPELL_NAMES,
-  FANATIC_CHANCE_BY_ALIGN,
-  QUALITY_TIERS,
-  SKILL_LABELS,
-  unitRef,
-} from '../army-tables.ts';
+import { BATTLE_MAGIC_SPELL_NAMES, FANATIC_CHANCE_BY_ALIGN, QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
 import { battleMarginBand, rollUnitFates } from './fates.ts';
 import {
   battleDeploy,
@@ -1651,7 +1645,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     // They now roll unit-by-unit at the same rate a beaten player would, plus the extra no-escape
     // roll a trapped player takes — because neutrals genuinely cannot retreat. Survivors stay in
     // the province and contest it again next phase.
-    const _defOwnerNm = defHero ? defHero.name.replace(' (wandering)', '') : 'The defenders of ' + prov.name;
+    // The units' owner as their lines' facts hold him (plan P1-12d25): his guard, " (wandering)" cut, or "The defenders
+    // of <province>"; the prose writes the label (theLabelOfAUnit).
+    const _defOwner = defHero
+      ? { kind: 'the defenders led by their guard', guardName: defHero.name.replace(' (wandering)', '') }
+      : { kind: 'the defenders of a province with no guard to lead them', provName: prov.name, capitalised: true };
     narrate(narrative, {
       kind: "the defender's casualties begin",
       defName: defHero
@@ -1679,7 +1677,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
         narrate(narrative, {
           kind: 'a defending unit is destroyed in the rout',
-          defendingUnitName: unitRef(_defOwnerNm, a),
+          defendingUnitName: {
+            kind: 'a unit named with its quality',
+            owner: _defOwner,
+            unitName: a.unitName,
+            type: a.type,
+            quality: a.quality,
+          },
           whomItFaced: _fc ?? null,
         });
       }
@@ -1703,7 +1707,16 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
           // (Skyward Retreat retired with the unit abilities, 2026-10-11: the Eagles roll like anyone.)
           if (kcRng() < 0.15) {
             a._died = true;
-            narrate(narrative, { kind: 'a unit is cut down with no escape', unitName: a.unitName || a.type });
+            narrate(narrative, {
+              kind: 'a unit is cut down with no escape',
+              unitName: {
+                kind: 'a unit named by its name or type alone',
+                owner: null,
+                unitName: a.unitName,
+                type: a.type,
+                quality: a.quality,
+              },
+            });
           }
         });
       }
@@ -1722,13 +1735,9 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     if (defHero) defHero.armies = _defLeft;
     if (_defLeft.length > 0) prov._battleUnresolved = true; // unbeaten survivors contest it again
   } else {
-    const defName2 = defHero
-      ? defHero.name
-      : prov.owner != null && !neutralGuardHero
-        ? 'the garrison of ' + prov.name
-        : 'the defenders of ' + prov.name;
-    // The defenders as the facts hold them (plan P1-12d23): the record defName2 is written from, its guard's name as
-    // each line hands it; the prose writes the label (theLabelOfTheDefenders). The units' lines still take the label.
+    // The defenders as the facts hold them (plan P1-12d23): their guard, by his name as each line hands it, else the
+    // realm's garrison or the province's defenders; the prose writes the label (theLabelOfTheDefenders). Since P1-12d25
+    // the units' lines hold the record too (theLabelOfAUnit).
     const _defSide2 = (guardName) =>
       defHero
         ? { kind: 'the defenders led by their guard', guardName }
@@ -1758,7 +1767,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
         narrate(narrative, {
           kind: 'a defending unit is destroyed in the fighting',
-          defendingUnitName: unitRef(defName2.replace(' (wandering)', ''), a),
+          defendingUnitName: {
+            kind: 'a unit named with its quality',
+            owner: _defSide2(defHero?.name.replace(' (wandering)', '')),
+            unitName: a.unitName,
+            type: a.type,
+            quality: a.quality,
+          },
           whomItFaced: _fc ?? null,
         }); // item 8
       }

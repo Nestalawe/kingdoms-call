@@ -8,9 +8,8 @@
 // values: a hero's, a province's or a realm's name as the world holds it (null where the line falls back: the prose
 // writes "their realm"), the names of the heroes a column marches with (copied as the line is told: the prose joins
 // them), a flag for each clause the line chooses, and the ambush's Spy level, chance and roll (the prose writes the
-// mark). One field holds words still: a realm's tag after a raiser's name (realmTag, turn/log-line-helpers.ts: a label,
-// listed by the static test). The prose writes every other word (src/views/prose/the-words-of-the-defend-watchs-
-// lines.ts). Each is filed on its own, with the audience its event names (its event's): no audience changes. The lines
+// mark), and the realm's name a raiser's tag is written from (since P1-12d25). The prose writes every word
+// (src/views/prose/the-words-of-the-defend-watchs-lines.ts). Each is filed on its own, with the audience its event names (its event's): no audience changes. The lines
 // of the fight an ambush springs are personal combat's, and the slain line a hero's death's.
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 
@@ -55,8 +54,8 @@ export type TheFactOfADefendWatchsLine =
       kind: 'a defender rides in to meet a host raised in a province of his realm';
       heroName: string;
       raiserName: string;
-      /** realmTag's words: " (Westmarch)", or none (a label, listed by the static test). */
-      realmTag: string;
+      /** The realm's name, as the world holds it, or null for no realm: the prose writes its tag, " (Westmarch)". */
+      realmTag: string | null;
       /** The raiser turns a host already camped inside on the province (a war front), else he gathers one there. */
       turningAWarFront: boolean;
       provinceName: string;

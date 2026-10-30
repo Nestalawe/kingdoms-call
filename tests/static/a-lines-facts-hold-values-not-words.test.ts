@@ -222,61 +222,12 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/turn/the-facts-the-spy-stealth-line-records.ts',
 ];
 
-/** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
+/** A label still a field's words (plan P1-12d25 left three: the force header's name, and the two a helper is handed its
+ *  owner's words for), by its field, with the kinds that hold it. */
 const LABELS: Readonly<Record<string, readonly string[]>> = {
-  // `The ${foe.name}` for a guardian, else the hero's name (resolvePersonalCombat's mercy)
-  foeWho: [
-    'as their strength fails a fighter begs the foe for mercy',
-    'as the foe draws for the killing shot a fighter begs for their life',
-    'as the foe readies a power for the killing stroke a fighter begs',
-    'beaten and bleeding a fighter sees the killing blow coming',
-    'as the foe closes for the kill a fighter cries out for mercy',
-    'the guardian pauses over its prey and lets a fighter crawl away',
-    'the foe lets a fighter go',
-    'the foe lowers their bow and lets a fighter go',
-    'the foe lets a power die unspent',
-    'the foe stays the blow and lets a fighter go',
-    'the foe lowers their weapon in disgust and lets a fighter go',
-    'the stroke never falls and the foe spares a fighter',
-    'the foe knows nothing of mercy',
-    'the foe laughs at the plea',
-    'the foe is deaf to the plea',
-    'there is no pity in the foe',
-  ],
-  // `The ${actor.name}` for a guardian, else the hero's name (pcUseCombatItem)
-  who: [
-    'a fighter uses a combat item',
-    'a fighter recovers hit points',
-    'a fighter recovers hit points and every lingering affliction lifts',
-    'a fighter drinks the stolen vigour',
-    'a fighter surges with strength',
-    "a fighter's eye sharpens",
-    'a fighter is ready to break away',
-    'a fighter fades from sight the foe',
-  ],
   // A battle's side, as the battle names it: a hero, "Aldric's leaderless host" when he fell, "Aldric's host" (the
   // battles' tally and the tiers find a side by these words; the facts-by-sense slice names a side)
   name: ['a force drawn up for battle'],
-  // A realm's tag, " (Westmarch)" (realmTag)
-  realmTag: [
-    "a hero not at war with the province's realm gains a host inside it",
-    "a hero's host turns on a province it has shared with a realm at war",
-    'the hero turns a newly gathered host on a province and a battle is initiated',
-    "the province's owner learns his defenders still hold against the hero",
-    "the province's owner learns the hero was beaten back",
-    "a quarry's realm learns a lone challenger came for him",
-    'a defender rides in to meet a host raised in a province of his realm',
-  ],
-  attackersRealmTag: ["war comes to a province two realms' hosts share"],
-  defendersRealmTag: ["war comes to a province two realms' hosts share"],
-  // A unit's label, "Aldric's Free Lances (Free Lances, Veteran)" (unitRef, ownedUnitName)
-  unitName: [
-    "a beaten guard's surviving unit breaks ranks and flees as mercenaries",
-    "a beaten guard's surviving unit holds its ground unbroken",
-    'a unit is cut down with no escape',
-  ],
-  defendingUnitName: ['a defending unit is destroyed in the fighting', 'a defending unit is destroyed in the rout'],
-  unitNameAtItsOldQuality: ["a beaten guard's surviving unit loses heart and is reduced a tier"],
   // the units' owner as a unit's disbanding names him: a side's label, or a guard's ("the defenders")
   ownerName: ['a beaten unit has had enough and disbands'],
   // the enemy unit a unit faced, as its fate's line names it (ownedUnitName: battleFacedClauses)

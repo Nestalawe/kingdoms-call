@@ -334,6 +334,23 @@ export type TheDefendersOfAProvince =
   | { readonly kind: 'defenders with no guard to name them' }
   | { readonly kind: 'the realm that holds the province'; readonly realmName: string | undefined };
 
+/** The values a unit's label is written from: its owner as the line names him (a side, the defenders, or none), and its
+ *  name, type and quality as the world holds them as the line is told. */
+interface TheValuesAUnitIsNamedFrom {
+  readonly owner: ASideOfABattle | TheDefendersOfAProvince | null;
+  readonly unitName: string;
+  readonly type: string;
+  readonly quality: string;
+}
+
+/** A unit as a line names it (plan P1-12d25: the battle slice's Decision 6), by which form names it: with its quality
+ *  ("Aldric's Veteran Free Lances", "the Red Hand (Aldric's Free Lances, Veteran)": unitRef), without it ("Aldric's
+ *  Free Lances": ownedUnitName), or by its name, else its type, alone. The prose writes the label (theLabelOfAUnit). */
+export type AUnitAsALineNamesIt =
+  | ({ readonly kind: 'a unit named with its quality' } & TheValuesAUnitIsNamedFrom)
+  | ({ readonly kind: 'a unit named without its quality' } & TheValuesAUnitIsNamedFrom)
+  | ({ readonly kind: 'a unit named by its name or type alone' } & TheValuesAUnitIsNamedFrom);
+
 /** How hard a battle was won: the margin band's slug (BATTLE_MARGIN_BANDS, battle/fates.ts), which the prose writes
  *  ("a pyrrhic battle", "an annihilating engagement"). */
 export type TheSeverityOfABattle = 'pyrrhic' | 'narrow' | 'clear' | 'decisive' | 'crushing' | 'annihilating';
@@ -593,7 +610,7 @@ export type TheFactOfOneOfABattlesSentences =
       runThemDownPct: AValueInALinesWords;
       loserName2: AValueInALinesWords;
     }
-  | { kind: 'a unit is cut down with no escape'; unitName: string }
+  | { kind: 'a unit is cut down with no escape'; unitName: AUnitAsALineNamesIt }
   | { kind: "a side's other forces survive the engagement"; someUnitsFateIsToldAbove: boolean }
   | { kind: 'no units were left on the field to count' }
   | {
@@ -849,7 +866,11 @@ export type TheFactOfOneOfABattlesSentences =
       cName: ASideOfABattle;
       extraLossesPct: number;
     }
-  | { kind: 'a defending unit is destroyed in the rout'; defendingUnitName: string; whomItFaced: WhomAUnitFaced | null }
+  | {
+      kind: 'a defending unit is destroyed in the rout';
+      defendingUnitName: AUnitAsALineNamesIt;
+      whomItFaced: WhomAUnitFaced | null;
+    }
   | { kind: 'the defenders have nowhere to retreat and hold a shield fort'; provName: string }
   | { kind: 'the defenders have nowhere to retreat and take further losses'; provName: string }
   | {
@@ -863,7 +884,7 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'a defending unit is destroyed in the fighting';
-      defendingUnitName: string;
+      defendingUnitName: AUnitAsALineNamesIt;
       whomItFaced: WhomAUnitFaced | null;
     }
   | { kind: "the guard's host is destroyed and he is a masterless hero"; guardName: string; provName: string }
@@ -969,7 +990,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "a hero not at war with the province's realm gains a host inside it";
       cName: string;
-      realmTag: string;
+      realmTag: string | null;
       unitCount: number;
       provName: string;
       theRealmsAreAllied: boolean;
@@ -991,7 +1012,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: 'the hero turns a newly gathered host on a province and a battle is initiated';
       cName: string;
-      realmTag: string;
+      realmTag: string | null;
       provName: string;
       heldByName: string;
     }
@@ -1079,7 +1100,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the province's owner learns his defenders still hold against the hero";
       cName: string;
-      realmTag: string;
+      realmTag: string | null;
       provName: string;
       provName2: string;
       heroFell: boolean;
@@ -1088,20 +1109,20 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the province's owner learns the hero was beaten back";
       cName: string;
-      realmTag: string;
+      realmTag: string | null;
       provName: string;
       provName2: string;
     }
   | {
       kind: "a beaten guard's surviving unit breaks ranks and flees as mercenaries";
-      unitName: string;
+      unitName: AUnitAsALineNamesIt;
       /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
       victorsHost: string | null;
       provName: string;
     }
   | {
       kind: "a beaten guard's surviving unit loses heart and is reduced a tier";
-      unitNameAtItsOldQuality: string;
+      unitNameAtItsOldQuality: AUnitAsALineNamesIt;
       unitQuality: string;
       /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
       victorsHost: string | null;
@@ -1109,7 +1130,7 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: "a beaten guard's surviving unit holds its ground unbroken";
-      unitName: string;
+      unitName: AUnitAsALineNamesIt;
       /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
       victorsHost: string | null;
       guardName: TheDefendersOfAProvince;
@@ -1239,9 +1260,9 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "war comes to a province two realms' hosts share";
       provName: AValueInALinesWords;
       attackersHostName: ASideOfABattle;
-      attackersRealmTag: AValueInALinesWords;
+      attackersRealmTag: string | null;
       defendersHostName: ASideOfABattle;
-      defendersRealmTag: AValueInALinesWords;
+      defendersRealmTag: string | null;
       seasonName: AValueInALinesWords;
     }
   | {
@@ -1267,7 +1288,7 @@ export type TheFactOfOneOfABattlesSentences =
       attackersRealmName: string | undefined;
       ownersRealmName: string | null;
       cName: string;
-      realmTag: string;
+      realmTag: string | null;
       unitCount: number;
       provName: string;
       seasonName: string;
