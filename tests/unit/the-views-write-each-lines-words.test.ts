@@ -11,7 +11,7 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The views write each line's words (P1-12c3; plan P1-12's Decisions of 2026-10-24, 2 and 3): `theWordsOf` a force
 // drawn up for battle is the header's machine form the engine wrote before, its keys in their order (a chieftain's
-// force too), and the place of a battle's tally has no words of its own; `theTurnsLinesInWords` gives a battle's lines
+// force too; since P1-12d20 its verb written from its values, and empty for a force with none), and the place of a battle's tally has no words of its own; `theTurnsLinesInWords` gives a battle's lines
 // the tiers their words give and puts its losses tally where its casualty lists begin, every line with the fight's
 // audience, hero and place; a battle with nothing to tally has no tally line, one whose lines are all for one realm
 // alone files no tally place, two battles side by side keep their own; the GM's log in words has the 17 keys in their
@@ -133,8 +133,9 @@ describe("a fact's words are the engine's words before P1-12c3", () => {
     });
     expect(theWordsOf(fact)).toBe(
       '⚑FORCE⚑{"name":"Aldric (Red)","color":"#c33","neutral":false,"guard":false,"role":"attacker",' +
-        '"verb":"attacks Greyford under Tactical 2 command — army strength 12, with","armies":[{"type":"Men-at-Arms","quality":"Veteran","unitName":"Shieldwall",' +
-        '"race":"Human","phantom":false,"skeletal":false,"wildHunt":false,"wildHuntUntil":null}]}',
+        '"verb":"attacks Greyford under Tactical 2 command — army strength 12, with",' +
+        '"armies":[{"type":"Men-at-Arms","quality":"Veteran","unitName":"Shieldwall","race":"Human",' +
+        '"phantom":false,"skeletal":false,"wildHunt":false,"wildHuntUntil":null}]}',
     );
     const guard = forceMarker(tc, 'The Chieftain of Greyford', null, 'defender', [], THE_CHIEFTAIN_GUARDS_GREYFORD, {
       guard: true,
@@ -142,6 +143,15 @@ describe("a fact's words are the engine's words before P1-12c3", () => {
     expect(theWordsOf(guard)).toBe(
       '⚑FORCE⚑{"name":"The Chieftain of Greyford","color":null,"neutral":true,"guard":true,"role":"defender",' +
         '"verb":"guards Greyford — army strength 0, with","armies":[]}',
+    );
+  });
+
+  test("a force drawn up with no verb: the header's verb is empty", () => {
+    // No battle draws up a force without one (the matrix never reaches it); the header still has its verb key.
+    const fact = forceMarker(newContext(), 'Brann (Blue)', 1, 'defender', []);
+    expect(theWordsOf(fact)).toBe(
+      '⚑FORCE⚑{"name":"Brann (Blue)","color":"#33c","neutral":false,"guard":false,"role":"defender","verb":"",' +
+        '"armies":[]}',
     );
   });
 
