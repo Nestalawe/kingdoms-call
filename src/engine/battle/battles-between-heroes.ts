@@ -388,6 +388,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // itself, the death notice) the real names still stand.
   const atkName = atkCmdrSlain ? `${atk.name}'s leaderless host` : atk.name; // item 12
   const defName = defCmdrSlain ? `${def.name}'s leaderless host` : def.name; // item 12
+  // Each side as the facts hold it (plan P1-12d22): the record the label above is written from; the prose writes the
+  // label (theLabelOfASide). The kinds a battle against a province's defenders writes too still take the label.
+  const atkSide = { heroName: atk.name, leaderless: atkCmdrSlain };
+  const defSide = { heroName: def.name, leaderless: defCmdrSlain };
 
   // No challenge issued: nobody is shamed and no duel is fought, whatever the stances were.
 
@@ -423,7 +427,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // GOOD — Righteous Defence: +10% when a Good player defends a province they own.
   if (prov.owner === def.player && G.players[def.player]?.alignment === 'Good') {
     defBonus *= 1.1;
-    narrate(narrative, { kind: "the defender's host defends ground held justly", defName });
+    narrate(narrative, { kind: "the defender's host defends ground held justly", defName: defSide });
   }
   {
     const _dOwnP =
@@ -460,7 +464,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     defBonus = _fort.theBonus;
     for (const _line of _fort.theLines) {
       if (_line === "the defender's banner rallies the home defence")
-        narrate(narrative, { kind: "the defender's banner of the realm rallies the home defence", defName });
+        narrate(narrative, { kind: "the defender's banner of the realm rallies the home defence", defName: defSide });
       else narrate(narrative, { kind: "the attacker's siege mastery halves the defenders' fortifications", atkName });
     }
   }
@@ -530,9 +534,9 @@ export function combatVsChar(turnContext, atk, def, prov) {
       undeadKingFanaticismPct: Math.round((UNDEAD_SKEL_KING_FAN - 1) * 100),
     });
   if (atkEvilMonster && !atkFanatic)
-    narrate(narrative, { kind: "a side's monsters are driven to savage fury", sideName: atkName });
+    narrate(narrative, { kind: "a side's monsters are driven to savage fury", sideName: atkSide });
   if (defEvilMonster && !defFanatic)
-    narrate(narrative, { kind: "a side's monsters are driven to savage fury", sideName: defName });
+    narrate(narrative, { kind: "a side's monsters are driven to savage fury", sideName: defSide });
   if (atkSkelHero)
     narrate(narrative, {
       kind: "a side's skeletal legions know no fear",
@@ -546,15 +550,15 @@ export function combatVsChar(turnContext, atk, def, prov) {
       undeadHeroFanaticismPct: Math.round((UNDEAD_SKEL_HERO_FAN - 1) * 100),
     });
   if (atkFanatic && !atkSkelFanatic && !atkSkelHero)
-    narrate(narrative, { kind: "the attacker's forces fight with fanatical zeal", atkName });
+    narrate(narrative, { kind: "the attacker's forces fight with fanatical zeal", atkName: atkSide });
   if (defFanatic && !defSkelFanatic && !defSkelHero && _consecratedHere)
     narrate(narrative, {
       kind: 'the defenders fight with fanatical zeal on consecrated ground',
       provName: prov.name,
-      defName,
+      defName: defSide,
     });
   else if (defFanatic && !defSkelFanatic && !defSkelHero)
-    narrate(narrative, { kind: "the defender's forces fight with fanatical zeal", defName });
+    narrate(narrative, { kind: "the defender's forces fight with fanatical zeal", defName: defSide });
 
   // Terrain sets the front-line width — how many units fight in the front row (the rest form a
   // reduced-effect reserve). This is the ONE source of truth for the front width, used by BOTH
@@ -957,9 +961,9 @@ export function combatVsChar(turnContext, atk, def, prov) {
       narrate(narrative, {
         kind: "the terrain's effect on each side",
         terrain: pvpTerrain,
-        atkName,
+        atkName: atkSide,
         unitsTheTerrainMarksOfTheAttacker: _ta,
-        defName,
+        defName: defSide,
         unitsTheTerrainMarksOfTheDefender: _td,
       });
   }
@@ -976,8 +980,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
         kind: 'hosts airborne over open water fight at a penalty',
         attackersHostIsAirborne: _airA,
         defendersHostIsAirborne: _airD,
-        atkName,
-        defName,
+        atkName: atkSide,
+        defName: defSide,
         seaAirborneLandPenalty: SEA_AIRBORNE_LAND_PENALTY,
         seaAirborneFlyerPenalty: SEA_AIRBORNE_FLYER_PENALTY,
       });
@@ -1036,13 +1040,13 @@ export function combatVsChar(turnContext, atk, def, prov) {
   if (atkDiscBonus > 1)
     narrate(narrative, {
       kind: "a side's realm discoveries strengthen its army",
-      sideName: atkName,
+      sideName: atkSide,
       discoveriesBonus: atkDiscBonus,
     });
   if (defDiscBonus > 1)
     narrate(narrative, {
       kind: "a side's realm discoveries strengthen its army",
-      sideName: defName,
+      sideName: defSide,
       discoveriesBonus: defDiscBonus,
     });
 
@@ -1068,32 +1072,32 @@ export function combatVsChar(turnContext, atk, def, prov) {
     narrate(narrative, {
       kind: "the sanctuary wards of the province sap a side's attackers",
       provName: prov.name,
-      sideName: atkName,
+      sideName: atkSide,
     });
   if (defSanct < 1)
     narrate(narrative, {
       kind: "the sanctuary wards of the province sap a side's attackers",
       provName: prov.name,
-      sideName: defName,
+      sideName: defSide,
     });
   // ── L7/L9 MASTERY ORDER battle modifiers (turn-stamped flags set in the action phase) ──
   let atkOrd = 1,
     defOrd = 1;
   if (atk._grandStratagemTurn === G.turn) {
     atkOrd *= 1.2;
-    narrate(narrative, { kind: 'the attacker unfolds a grand stratagem', atkName });
+    narrate(narrative, { kind: 'the attacker unfolds a grand stratagem', atkName: atkSide });
   }
   if (def._grandStratagemTurn === G.turn) {
     defOrd *= 1.2;
-    narrate(narrative, { kind: 'the defender unfolds a grand stratagem', defName });
+    narrate(narrative, { kind: 'the defender unfolds a grand stratagem', defName: defSide });
   }
   if (def._feignedRetreatTurn === G.turn) {
     defOrd *= 1.25;
-    narrate(narrative, { kind: "the defender's feigned retreat springs shut", defName });
+    narrate(narrative, { kind: "the defender's feigned retreat springs shut", defName: defSide });
   }
   if (raidLandedHere(turnContext, atk, prov)) {
     atkOrd *= 1.25;
-    narrate(narrative, { kind: 'the attacker storms ashore in a raid on the coast', atkName });
+    narrate(narrative, { kind: 'the attacker storms ashore in a raid on the coast', atkName: atkSide });
   } // 2026-09-23e: only a coast attacked from the sea
   // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
   // consecrated province).
@@ -1516,9 +1520,9 @@ export function combatVsChar(turnContext, atk, def, prov) {
     narrate(narrative, {
       kind: 'the attacker wins the battle and seizes the province',
       severity,
-      atkName,
+      atkName: atkSide,
       winVerbIndex: _winVerbIndex,
-      defName,
+      defName: defSide,
       provName: prov.name,
     });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName }); // Winning attacker
@@ -1582,8 +1586,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
       if (overland.length < defFriendlyAdj.length) {
         narrate(narrative, {
           kind: "the winner's corsairs close the sea lanes to the loser",
-          winnerName: atkName,
-          loserName: defName,
+          winnerName: atkSide,
+          loserName: defSide,
         });
         defFriendlyAdj = overland;
       }
@@ -1630,7 +1634,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
         prov._battleUnresolved = true;
         _heldField = true;
       } else {
-        narrate(narrative, { kind: 'the defender has nowhere to retreat', defName });
+        narrate(narrative, { kind: 'the defender has nowhere to retreat', defName: defSide });
         _noEscapeRoll(def.armies, def.name, narrative);
         def.armies = def.armies.filter((a) => !a._died && !a._disbanded);
         if (def.armies.length > 0) prov._battleUnresolved = true;
@@ -1640,7 +1644,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
       // still the stronger host — the defender refuses to yield and fights on.
       narrate(narrative, {
         kind: "the defender's stronger host is pushed back but stays",
-        defName,
+        defName: defSide,
         stayingHostStrength: _stayLo,
         victorsStrength: _stayWi,
         provName: prov.name,
@@ -1653,7 +1657,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
       // survivors are dispersed after the battle by disperseDeadCharArmies (which logs where they
       // go), so we say nothing about a retreat here.
       if ((def.armies || []).length === 0)
-        narrate(narrative, { kind: "the loser's force is destroyed to the last", loserName: defName });
+        narrate(narrative, { kind: "the loser's force is destroyed to the last", loserName: defSide });
     } else {
       if (_sfDef && def.armies.length > 0)
         narrate(narrative, { kind: "the loser's dwarven guard withdraw behind a shield fort", loserName: defName });
@@ -1669,20 +1673,20 @@ export function combatVsChar(turnContext, atk, def, prov) {
             ) || defFriendlyAdj[0]; // adjacent only; with a choice, the most valuable ground wins
       narrate(narrative, {
         kind: 'the loser retreats to a province',
-        loserName: defName,
+        loserName: defSide,
         retreatToName: defRetreatTo.name,
       });
       const defSurvivors2 = def.armies || [];
       if (defSurvivors2.length > 0)
         narrate(narrative, {
           kind: "the loser's surviving forces",
-          loserName: defName,
+          loserName: defSide,
           survivingForces: theUnitsAsTheLineNamesThem(defSurvivors2),
         });
       else
         narrate(narrative, {
           kind: "the loser's forces are completely destroyed and he retreats alone",
-          loserName: defName,
+          loserName: defSide,
         });
       prov.characters = (prov.characters || []).filter((id) => id !== def.id);
       defRetreatTo.characters = defRetreatTo.characters || [];
@@ -1693,19 +1697,19 @@ export function combatVsChar(turnContext, atk, def, prov) {
       narrative[_headIdx] = {
         kind: "the attacker wins the battle but the defender's survivors hold the province",
         severity,
-        atkName,
+        atkName: atkSide,
         winVerbIndex: _winVerbIndex,
-        defName,
-        defName2: defName,
+        defName: defSide,
+        defName2: defSide,
         provName: prov.name,
       };
   } else {
     const _headIdx = narrative.length;
     narrate(narrative, {
       kind: "the attacker's assault is repelled and driven from the province",
-      atkName,
+      atkName: atkSide,
       severity,
-      defName,
+      defName: defSide,
       provName: prov.name,
     });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName }); // Losing attacker
@@ -1771,8 +1775,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
       if (overland.length < atkFriendlyAdj.length) {
         narrate(narrative, {
           kind: "the winner's corsairs close the sea lanes to the loser",
-          winnerName: defName,
-          loserName: atkName,
+          winnerName: defSide,
+          loserName: atkSide,
         });
         atkFriendlyAdj = overland;
       }
@@ -1816,7 +1820,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
       } else {
         narrate(narrative, {
           kind: 'the attacker has nowhere to retreat',
-          atkName,
+          atkName: atkSide,
           atSea: prov.terrain === 'sea',
         });
         _noEscapeRoll(atk.armies, atk.name, narrative);
@@ -1828,7 +1832,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
       // still the stronger host — the attacker refuses to break off and fights on.
       narrate(narrative, {
         kind: "the attacker's stronger host is thrown back but stays",
-        atkName,
+        atkName: atkSide,
         stayingHostStrength: _stayLo,
         victorsStrength: _stayWi,
         provName: prov.name,
@@ -1839,7 +1843,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
       // commander already slain — a corpse does not retreat; a force wiped to the last has
       // nothing to fall back with. Leaderless survivors are dispersed after the battle.
       if ((atk.armies || []).length === 0)
-        narrate(narrative, { kind: "the loser's force is destroyed to the last", loserName: atkName });
+        narrate(narrative, { kind: "the loser's force is destroyed to the last", loserName: atkSide });
     } else {
       if (_sfAtk && atk.armies.length > 0)
         narrate(narrative, { kind: "the loser's dwarven guard withdraw behind a shield fort", loserName: atkName });
@@ -1855,7 +1859,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
             ) || atkFriendlyAdj[0]; // adjacent only; with a choice, the most valuable ground wins
       narrate(narrative, {
         kind: 'the loser retreats to a province',
-        loserName: atkName,
+        loserName: atkSide,
         retreatToName: retreatTo.name,
       });
       // Summarise surviving attacker armies
@@ -1863,13 +1867,13 @@ export function combatVsChar(turnContext, atk, def, prov) {
       if (atkSurvivors.length > 0)
         narrate(narrative, {
           kind: "the loser's surviving forces",
-          loserName: atkName,
+          loserName: atkSide,
           survivingForces: theUnitsAsTheLineNamesThem(atkSurvivors),
         });
       else
         narrate(narrative, {
           kind: "the loser's forces are completely destroyed and he retreats alone",
-          loserName: atkName,
+          loserName: atkSide,
         });
       prov.characters = (prov.characters || []).filter((id) => id !== atk.id);
       retreatTo.characters = retreatTo.characters || [];
@@ -1879,9 +1883,9 @@ export function combatVsChar(turnContext, atk, def, prov) {
     if (_heldField)
       narrative[_headIdx] = {
         kind: "the attacker's assault is repelled but not driven from the province",
-        atkName,
+        atkName: atkSide,
         severity,
-        defName,
+        defName: defSide,
         provName: prov.name,
       };
   }

@@ -47,7 +47,8 @@
 // and a battle's severity its band's slug (TheSeverityOfABattle), so the compiler refuses words there from a typed
 // caller (the two battle files that call them are still untyped); since P1-12d21 how a hero carries the items he
 // gained is a record (TheItemsAHeroGained: settleTheItemsAHeroGained, src/engine/items/equipment.ts, in place of
-// gainedItemNote's words).
+// gainedItemNote's words); since P1-12d22 a battle between heroes' side, in the kinds only that battle writes, is a
+// record (ASideOfABattle: the commander's name and whether he fell), and those kinds leave LABELS.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
@@ -77,7 +78,7 @@
 // `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
 // assignment (`=`, `+=`); a call's argument or a comparison's operand isn't the value's words. It lets through, by kind
 // and field, the fighters' labels (`foeWho`, `who`: Decision 2) and a battle's side's, guard's, realm's and unit's
-// labels (`cName`, `atkName`, `defName`, `loserName`, `guardName`, `realmTag`, `unitName`, …: 27 fields), the enemy
+// labels (`cName`, `atkName`, `defName`, `loserName`, `guardName`, `realmTag`, `unitName`, …: 26 fields; since P1-12d22 not a battle between heroes' side in the kinds only it writes, a record), the enemy
 // unit a unit faced (`theEnemyUnit`, a unit's label), a disbanding unit's owner (`ownerName`, a side's or a guard's
 // label, P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
 // `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
@@ -275,60 +276,23 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
     "the terrain's effect on the attacker's units",
   ],
   atkName: [
-    'hosts airborne over open water fight at a penalty',
     "the attacker fights to win back his realm's capital",
-    'the attacker has nowhere to retreat',
-    'the attacker storms ashore in a raid on the coast',
-    'the attacker unfolds a grand stratagem',
-    'the attacker wins the battle and seizes the province',
-    "the attacker wins the battle but the defender's survivors hold the province",
-    "the attacker's assault is repelled and driven from the province",
-    "the attacker's assault is repelled but not driven from the province",
     "the attacker's casualties begin",
-    "the attacker's forces fight with fanatical zeal",
     "the attacker's siege mastery halves the defenders' fortifications",
     "the attacker's siegecraft wears down the defenders' fortifications",
-    "the attacker's stronger host is thrown back but stays",
     "the consecrated ground of the province weakens the attacker's host",
-    "the terrain's effect on each side",
   ],
-  defName: [
-    'hosts airborne over open water fight at a penalty',
-    'the attacker wins the battle and seizes the province',
-    "the attacker wins the battle but the defender's survivors hold the province",
-    "the attacker's assault is repelled and driven from the province",
-    "the attacker's assault is repelled but not driven from the province",
-    'the defender has nowhere to retreat',
-    'the defender unfolds a grand stratagem',
-    "the defender's banner of the realm rallies the home defence",
-    "the defender's casualties begin",
-    "the defender's feigned retreat springs shut",
-    "the defender's forces fight with fanatical zeal",
-    "the defender's host defends ground held justly",
-    "the defender's realm holds its own ground the harder",
-    "the defender's stronger host is pushed back but stays",
-    'the defenders fight with fanatical zeal on consecrated ground',
-    "the terrain's effect on each side",
-  ],
+  defName: ["the defender's casualties begin", "the defender's realm holds its own ground the harder"],
   loserName: [
-    'the loser retreats to a province',
     "the loser's dwarven guard hold a shield fort with no road out",
     "the loser's dwarven guard withdraw behind a shield fort",
-    "the loser's force is destroyed to the last",
-    "the loser's forces are completely destroyed and he retreats alone",
     "the loser's skeletal host stands its ground in a deathless march",
-    "the loser's surviving forces",
-    "the winner's corsairs close the sea lanes to the loser",
   ],
-  winnerName: ["the winner's corsairs close the sea lanes to the loser"],
   sideName: [
-    "a side's monsters are driven to savage fury",
-    "a side's realm discoveries strengthen its army",
     "a side's skeletal legions fight with fanaticism under their undead king",
     "a side's skeletal legions know no fear",
     "a side's war-horn of the plains lets its free lances ride in rough country",
     "the illusory ground of the province confuses a side's forces",
-    "the sanctuary wards of the province sap a side's attackers",
   ],
   heroName: ["the hero's archers find no target among the forest wardens"],
   enemyCommanderName: [
@@ -372,10 +336,7 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
     "a beaten guard's surviving unit loses heart and is reduced a tier",
     'the attacker wins the battle against the defenders',
   ],
-  defName2: [
-    'the attacker is repelled by the defenders',
-    "the attacker wins the battle but the defender's survivors hold the province",
-  ],
+  defName2: ['the attacker is repelled by the defenders'],
   heldByName: ['the attacker moves into a province held by its defenders and a battle is initiated'],
   defendersName: ["an unfinished battle against a province's defenders resumes", "the onlookers' summary of a battle"],
   // A realm's tag, " (Westmarch)" (realmTag)
