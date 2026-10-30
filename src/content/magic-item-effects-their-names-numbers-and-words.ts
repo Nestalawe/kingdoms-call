@@ -328,6 +328,12 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { stat: 'massPromote' },
     numbers: {},
   },
+  // The first Necromancy spell its bearer casts each turn cannot fail (plan P1-19y: the spells family's).
+  'wailing-phylactery': {
+    name: 'Wailing Phylactery',
+    carriedAs: { stat: 'necroAuto' },
+    numbers: {},
+  },
   // ── A hero's standing (aHerosStanding): his maximum hit points, the temper he fights with, and his skills. ──
   // His maximum hit points rise by each copy's own `effect.bonus` (the copy's number, not content's: no number here); two
   // copies of one name count once.
@@ -780,8 +786,10 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: {},
     theWorthOfItInTheTreasury: { worth: 0 },
   },
-  // A charm that casts a spell (what it casts is the spells family's, plan P1-19's items family, Decision 5): worth so
-  // much, and so much a level of its spell (a spell that states no level counts as this one).
+  // A charm that casts a spell: worth so much, and so much a level of its spell (a spell that states no level counts as
+  // this one). Used (a Use Item order), it casts the spell its copy names (`effect.spell`, the copy's word) as a Cast
+  // Spell order (its power, "orderOutcome: an item's power used": plan P1-19y, the spells family's; the order's rules for
+  // a spell item's cast stay its own).
   'a-spell-charm': {
     name: 'Phial of the Dawn',
     carriedAs: { stat: 'castSpell' },

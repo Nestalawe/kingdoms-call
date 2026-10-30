@@ -6,6 +6,9 @@
 // `combat` holds the numbers of the spell's effect in a personal combat (from row P1-19w), read by its stages "a combat
 // spell takes hold", "a fighter's spell adds to his steal" and "a mirror image is disbelieved" (from row P1-19x); a rule the spell shares with every other (its effect's level counted to 5, a guardian weak to its
 // school doubling what doesn't harm, at least 1 of any harm or rounds) stays in the resolver, pcCastCombatSpell.
+// `asAnOrder` holds what the Cast Spell order checks of the spell before it is worked, and as it is (from row P1-19y),
+// read by the five stages of "orderValidity"; what each action spell does stays in the order's code
+// (resolveCastSpellOrder) until the family's second slice.
 //
 // A save names a spell by its name (an order's `target`, a spell charm's `effect.spell`), never by its slug (Decision
 // 8): the registry finds a spell's row by the name it is handed. SPELL_DEFS_P stays as it is (the player portal reads
@@ -47,6 +50,25 @@ export interface ANumberOfASpellsEffect {
   readonly theTextsWriteIt: HowASpellsTextsWriteANumber;
 }
 
+/** What the Cast Spell order checks of a spell before it is worked, and as it is (plan P1-19y; each true where it
+ *  holds, and left out where it doesn't). */
+export interface TheChecksTheCastSpellOrderMakesOfASpell {
+  /** A hero charmed from an enemy realm will not turn it on his own lord's heroes (the rule of the Encounter order):
+   *  refused before the casting limit, unrolled, so it spends no slot. */
+  readonly aCharmedHeroWillNotTurnItOnHisLord?: true;
+  /** A Divine realm's Grand Cathedral frees its casting slot: it is never counted among the casts of its school, nor
+   *  ever blocked by them. */
+  readonly aGrandCathedralFreesItsSlot?: true;
+  /** The hero it is aimed at must stand in the caster's province: one who has left (a general on Defend riding out at
+   *  the top of the phase) is refused before the cast roll, so it spends neither the roll nor a slot. A spell aimed at
+   *  a province, and Clairvoyance (a scry from afar), need none. */
+  readonly itsMarkMustStandInTheProvince?: true;
+  /** A hostile hero hidden by a Cloak of Many Faces is shielded from it. */
+  readonly aCloakedMarkIsShieldedFromIt?: true;
+  /** An enemy's Bless ward over the province it is aimed at may turn it aside, on the ward's own roll. */
+  readonly aBlessWardMayTurnItAside?: true;
+}
+
 /** A row: what the spells' registry and the spell's texts read of one spell. */
 export interface ASpellAsItsTextsWriteIt {
   /** The spell's name, as SPELL_DEFS_P keys it (and an order or a save names it). */
@@ -58,6 +80,8 @@ export interface ASpellAsItsTextsWriteIt {
   readonly battleMagic?: Readonly<Record<string, ANumberOfASpellsEffect>>;
   /** Its numbers in a personal combat, once it takes hold (from row P1-19w). */
   readonly combat?: Readonly<Record<string, ANumberOfASpellsEffect>>;
+  /** What the Cast Spell order checks of it (from row P1-19y). */
+  readonly asAnOrder?: TheChecksTheCastSpellOrderMakesOfASpell;
 }
 
 export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
@@ -97,7 +121,7 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
   },
   // Battle magic: the enemy commander's Tactical bonus is halved for the battle (between heroes, only if he has Tactical
   // and not at sea: Parked). Combat: 12% of the target's maximum HP and 3% a level, and the caster takes a quarter of
-  // it back.
+  // it back. As an order: a charmed hero won't turn it on his lord, and its mark must stand in the province.
   'telekinetic-storm': {
     name: 'Telekinetic Storm',
     fn: 'psychic_storm',
@@ -107,10 +131,12 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
       theShareMoreALevel: { value: 3, theTextsWriteIt: 'a percentage' },
       theShareTheCasterTakesBack: { value: 0.25, theTextsWriteIt: 'a share, in words' },
     },
+    asAnOrder: { aCharmedHeroWillNotTurnItOnHisLord: true, itsMarkMustStandInTheProvince: true },
   },
   // Battle magic: the enemy commander's Druid is negated for the battle (a mark the battle reads). Combat: the target is
   // stunned for 1 round and 1 more for every two levels (doubled against a guardian weak to Psychic; the Dreamstone's
-  // round after the doubling: the items' registry).
+  // round after the doubling: the items' registry). As an order: a charmed hero won't turn it on his lord, its mark
+  // must stand in the province, and a Cloak of Many Faces shields him from it.
   'psychic-blast': {
     name: 'Psychic Blast',
     fn: 'psychic_blast',
@@ -119,20 +145,37 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
       theRoundsItStuns: { value: 1, theTextsWriteIt: 'rounds' },
       theLevelsForEachRoundMore: { value: 2, theTextsWriteIt: 'the levels for each round more, in words' },
     },
+    asAnOrder: {
+      aCharmedHeroWillNotTurnItOnHisLord: true,
+      itsMarkMustStandInTheProvince: true,
+      aCloakedMarkIsShieldedFromIt: true,
+    },
   },
   // Battle magic: the enemy commander's best combat-affecting skill is marked to be halved for the battle (the halving is
   // the mark's readers'). Combat: the best of the target's Melee, Archery and best school is halved (rounded down) for
-  // the fight, Melee first on a tie, then Archery.
+  // the fight, Melee first on a tie, then Archery. As an order: a charmed hero won't turn it on his lord, its mark must
+  // stand in the province, and a Cloak of Many Faces shields him from it.
   curse: {
     name: 'Curse',
     fn: 'necromancy_curse',
     battleMagic: {},
     combat: { theDivisorOfHisBestSkill: { value: 2, theTextsWriteIt: 'a divisor, in words' } },
+    asAnOrder: {
+      aCharmedHeroWillNotTurnItOnHisLord: true,
+      itsMarkMustStandInTheProvince: true,
+      aCloakedMarkIsShieldedFromIt: true,
+    },
   },
   // Battle magic: one enemy undead unit, drawn at random, defects to the caster's side. Combat: an undead foe is stunned
   // for a round a level, the level counted to 5 (the rule every spell shares), unless a stun ward turns it; the living
-  // are beyond its hold.
-  'control-undead': { name: 'Control Undead', fn: 'necromancy_control', battleMagic: {}, combat: {} },
+  // are beyond its hold. As an order: a charmed hero won't turn it on his lord, and its mark must stand in the province.
+  'control-undead': {
+    name: 'Control Undead',
+    fn: 'necromancy_control',
+    battleMagic: {},
+    combat: {},
+    asAnOrder: { aCharmedHeroWillNotTurnItOnHisLord: true, itsMarkMustStandInTheProvince: true },
+  },
   // Battle magic: every enemy undead unit loses a quarter of its base strength (rounded up). Combat: the target's aim is
   // cut by 8 a level, and it is seared for 6% of its maximum HP (both ×1.5 against the undead and fiends, and the cut
   // doubled against a guardian weak to White); the caster recovers 10% of his own (of 20 when he has none).
@@ -206,8 +249,64 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
     },
   },
   // Combat: the caster's next flight is at double the chance, but against a crowned hero, a hero charmed this turn
-  // already, or a hero whose will (each past charm's) throws it off.
-  charm: { name: 'Charm', fn: 'psychic_charm', combat: {} },
+  // already, or a hero whose will (each past charm's) throws it off. As an order: a charmed hero won't turn it on his
+  // lord, and its mark must stand in the province.
+  charm: {
+    name: 'Charm',
+    fn: 'psychic_charm',
+    combat: {},
+    asAnOrder: { aCharmedHeroWillNotTurnItOnHisLord: true, itsMarkMustStandInTheProvince: true },
+  },
+  // ── The action spells the Cast Spell order checks before they are worked, or as they are (plan P1-19y), each as an
+  // order alone: what each does stays in the order's code (resolveCastSpellOrder) until the family's second slice. In the
+  // order of SPELL_DEFS_P. ──
+  //
+  // An enemy's Bless ward may turn it aside.
+  'part-sea': { name: 'Part Sea', fn: 'white_part_sea', asAnOrder: { aBlessWardMayTurnItAside: true } },
+  // A Divine realm's Grand Cathedral frees its casting slot.
+  'bless-province': {
+    name: 'Bless Province',
+    fn: 'white_bless_province',
+    asAnOrder: { aGrandCathedralFreesItsSlot: true },
+  },
+  // Its mark must stand in the province (a hero of his realm beside him).
+  oratory: { name: 'Oratory', fn: 'psychic_oratory', asAnOrder: { itsMarkMustStandInTheProvince: true } },
+  // Its mark must stand in the province.
+  'phantasmal-armies': {
+    name: 'Phantasmal Armies',
+    fn: 'illusory_phantasmal',
+    asAnOrder: { itsMarkMustStandInTheProvince: true },
+  },
+  // An enemy's Bless ward may turn it aside.
+  earthquake: { name: 'Earthquake', fn: 'elemental_earthquake', asAnOrder: { aBlessWardMayTurnItAside: true } },
+  // An enemy's Bless ward may turn it aside.
+  flood: { name: 'Flood', fn: 'elemental_flood', asAnOrder: { aBlessWardMayTurnItAside: true } },
+  // An enemy's Bless ward may turn it aside.
+  plague: { name: 'Plague', fn: 'necromancy_plague', asAnOrder: { aBlessWardMayTurnItAside: true } },
+  // Its mark must stand in the province.
+  'divine-judgment': {
+    name: 'Divine Judgment',
+    fn: 'white_judgment',
+    asAnOrder: { itsMarkMustStandInTheProvince: true },
+  },
+  // Its mark must stand in the province.
+  'mass-confusion': {
+    name: 'Mass Confusion',
+    fn: 'psychic_massconfusion',
+    asAnOrder: { itsMarkMustStandInTheProvince: true },
+  },
+  // A charmed hero won't turn it on his lord, and its mark must stand in the province.
+  dominate: {
+    name: 'Dominate',
+    fn: 'psychic_dominate',
+    asAnOrder: { aCharmedHeroWillNotTurnItOnHisLord: true, itsMarkMustStandInTheProvince: true },
+  },
+  // Its mark must stand in the province.
+  'chain-lightning': {
+    name: 'Chain Lightning',
+    fn: 'elemental_chainlightning',
+    asAnOrder: { itsMarkMustStandInTheProvince: true },
+  },
 } as const satisfies Record<string, ASpellAsItsTextsWriteIt>;
 
 /** A spell the registry holds, by its slug. */

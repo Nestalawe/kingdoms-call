@@ -26,7 +26,8 @@
 // _useScore 20, itemPowerScore 8, itemSlot 2, plain 1, tiers-and-hoards.ts' copy pass 1, and the 7 item effects in
 // ITEM_COMBAT_STATS, on P1-19t's; primalStrikeItemBonus 1, and its read of `primalStrike`, on P1-19v's; pcCastCombatSpell's
 // Dreamstone and Death's Finger Ring, left to the spells family until then, on P1-19w's; resolvePersonalCombat's
-// Mirror Shard, likewise, on P1-19x's), as the unit-name test was: the one exception to refactor-only's rule
+// Mirror Shard, likewise, on P1-19x's; processOrder's spell charm and resolveCastSpellOrder's Wailing Phylactery,
+// likewise, on P1-19y's), as the unit-name test was: the one exception to refactor-only's rule
 // that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
@@ -142,6 +143,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19t, the treasury: a combat item's and the Mithril suit's slot",
   ],
   ['src/engine/chances-and-lair-grades.ts', 'primalStrikeItemBonus', "P1-19v, the totems' bonus to a strike"],
+  [
+    'src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts',
+    'processOrder',
+    "P1-19y, a spell charm's power (with the spells family)",
+  ],
+  [
+    'src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts',
+    'resolveCastSpellOrder',
+    "P1-19y, the Wailing Phylactery's sure cast (with the spells family)",
+  ],
 ];
 
 /** The passes that build the treasury as the engine loads, each a named function run at once (`(function name()

@@ -11,14 +11,16 @@
 // (src/engine/rules/the-registry-of-spell-effects.ts) is held to the same: each effect once in its stage's order
 // (THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS), each order naming only entries with an effect there, each content row with
 // its entry and each entry with its row; each row's name is a spell of SPELL_DEFS_P and its fn that spell's, and no two
-// rows share a name.
+// rows share a name. Since P1-19y each stage of "orderValidity" (the Cast Spell order's checks) holds the spells whose
+// row sets its flag (`asAnOrder`), and no other, so a flag and its entry can't part.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
 // reaches, or counts as), two rows' name; in the items' registry, an entry left out of its order, an order naming an
 // entry with no effect at its stage, a row with no entry, a unit reached that isn't a unit type, a realm's alignment
 // that isn't one, two rows' name; in the spells' registry, an entry left out of its order, a row with no entry, a
-// row's name that is no spell, a row's fn that isn't its spell's, two rows' name.
+// row's name that is no spell, a row's fn that isn't its spell's, two rows' name, a flag of the order's checks with
+// no entry and an entry with no flag.
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { KC_ALIGNMENTS, KC_UNIT_TYPE, SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
@@ -295,5 +297,49 @@ test("planted in the spells' registry, an entry left out of its order, a row wit
     'holy-symbol and curse share the name Curse',
     "spiritwrack's fn, white_planted, is not Spiritwrack's (white_spiritwrack)",
     'planted-spell has a content row and no entry',
+  ]);
+});
+
+/** Each stage of the Cast Spell order's checks, by the flag of a spell's row (`asAnOrder`) it reads (plan P1-19y). */
+const THE_FLAG_OF_EACH_CHECK = {
+  'a charmed hero will not turn it on his lord': 'aCharmedHeroWillNotTurnItOnHisLord',
+  'a spell that costs no casting slot': 'aGrandCathedralFreesItsSlot',
+  "a spell's mark must stand in the province": 'itsMarkMustStandInTheProvince',
+  'a cloaked mark is shielded from it': 'aCloakedMarkIsShieldedFromIt',
+  'a Bless ward may turn it aside': 'aBlessWardMayTurnItAside',
+} as const;
+/** A spell's row as the order's checks read it (its flags by any name, so a planted row may set one or not). */
+type ARowsFlags = Readonly<
+  Record<string, { readonly name: string; readonly asAnOrder?: Readonly<Partial<Record<string, true>>> }>
+>;
+/** Where a stage of the order's checks and the rows' flags part: a spell whose row sets the flag and is not in the
+ *  stage's order, or one in the order whose row doesn't set it. */
+const whereTheChecksAndTheFlagsPart = (orders: Orders, rows: ARowsFlags) =>
+  Object.entries(THE_FLAG_OF_EACH_CHECK).flatMap(([stage, flag]) => {
+    const ordered = orders['orderValidity']?.[stage] ?? [];
+    const flagged = Object.keys(rows).filter((slug) => rows[slug]?.asAnOrder?.[flag] === true);
+    return [
+      ...flagged.filter((slug) => !ordered.includes(slug)).map((slug) => `${slug} sets ${flag}, not in ${stage}`),
+      ...ordered.filter((slug) => !flagged.includes(slug)).map((slug) => `${slug} is in ${stage}, not setting ${flag}`),
+    ];
+  });
+
+test("each of the Cast Spell order's checks holds the spells whose row sets its flag, and no other", () => {
+  expect(Object.keys(SPELL_ORDERS['orderValidity'] ?? {}).sort()).toEqual(Object.keys(THE_FLAG_OF_EACH_CHECK).sort());
+  expect(whereTheChecksAndTheFlagsPart(SPELL_ORDERS, SPELL_EFFECTS_THE_REGISTRY_HOLDS)).toEqual([]);
+});
+
+test("planted, a flag of the order's checks with no entry, and an entry with no flag, are found", () => {
+  const rows: ARowsFlags = {
+    ...SPELL_EFFECTS_THE_REGISTRY_HOLDS,
+    flood: { name: 'Flood', asAnOrder: {} },
+    oratory: {
+      name: 'Oratory',
+      asAnOrder: { itsMarkMustStandInTheProvince: true, aCloakedMarkIsShieldedFromIt: true },
+    },
+  };
+  expect(whereTheChecksAndTheFlagsPart(SPELL_ORDERS, rows)).toEqual([
+    'oratory sets aCloakedMarkIsShieldedFromIt, not in a cloaked mark is shielded from it',
+    'flood is in a Bless ward may turn it aside, not setting aBlessWardMayTurnItAside',
   ]);
 });

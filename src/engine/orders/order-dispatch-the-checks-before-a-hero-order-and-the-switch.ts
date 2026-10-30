@@ -72,6 +72,7 @@ import {
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { botPracticeSkill } from '../bots/strategy.ts';
 import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { thePowerAnItemWorksWhenUsed } from '../rules/the-registry-of-magic-item-effects.ts';
 import type { Character, Item, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext, TurnOrder } from '../turn/context.ts';
 
@@ -389,8 +390,13 @@ export function processOrder(
     const _sit = theItems.find((x) => x && (String(x.id) === aTargetInWords(target) || x.name === target));
     // the spells' rows by any name an item gives (the key "undefined" for none, as JavaScript reads it)
     const spellDefs: Readonly<Partial<Record<string, object>>> = SPELL_DEFS_P;
-    if (_sit?.effect?.stat === 'castSpell' && spellDefs[String(_sit.effect.spell)]) {
-      _itemCast = { item: _sit.name, spell: _sit.effect.spell };
+    // a spell charm's power (the items' registry, plan P1-19y)
+    if (
+      _sit &&
+      thePowerAnItemWorksWhenUsed(_sit) === 'it casts the spell it holds' &&
+      spellDefs[String(_sit.effect?.spell)]
+    ) {
+      _itemCast = { item: _sit.name, spell: _sit.effect?.spell };
       action = 'cast_spell';
     }
   }

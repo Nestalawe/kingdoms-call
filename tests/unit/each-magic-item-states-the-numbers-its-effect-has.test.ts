@@ -106,6 +106,7 @@ const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
   'philosophers-lens': 'one more lair revealed (the order draws which)',
   'travellers-cloak': 'the share of a province each copy carries itself (its exploreMove)',
   'philosophers-stone': 'a step up a quality tier, from the tables (and no item in play carries it)',
+  'wailing-phylactery': 'a sure cast, of the first Necromancy spell each turn (plan P1-19y)',
   'maximum-hp': "the hit points each copy carries itself (its effect's bonus)",
   temper: "the temper each copy carries itself (its effect's temper)",
   ...Object.fromEntries(

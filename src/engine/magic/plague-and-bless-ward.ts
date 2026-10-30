@@ -3,6 +3,7 @@ import { KC_QUALITY_DOWN } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { _isHumanoidRace } from '../discoveries.ts';
+import { aBlessWardMayTurnThisSpellAside } from '../rules/the-registry-of-spell-effects.ts';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
@@ -19,6 +20,7 @@ export const _PLAGUE_QDOWN = { ...KC_QUALITY_DOWN };
 // effect. Rolls per incoming spell.
 export function blessWardNegates(turnContext, prov, caster, spellName) {
   const { G } = turnContext;
+  if (!aBlessWardMayTurnThisSpellAside(spellName)) return false; // which spells a ward may turn: the spells' registry (plan P1-19y)
   if (!prov || prov._blessWardTurn !== G.turn) return false;
   if (prov._blessWardBy == null || (caster && prov._blessWardBy === caster.player)) return false; // your own ward never blocks your own spell
   if (kcRng() * 100 >= (prov._blessWardPct || 0)) return false;

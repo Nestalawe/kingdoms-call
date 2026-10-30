@@ -1,12 +1,14 @@
 import { KC_QUALITY_UP, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
+import { COMBAT_ONLY_TACTICS, demoteOrDisband } from '../army-tables.ts';
 import {
-  CHARMED_NO_TURN_SPELLS,
-  COMBAT_ONLY_TACTICS,
-  SPELL_FNS_NEED_COLOCATED_TARGET,
-  demoteOrDisband,
-} from '../army-tables.ts';
+  aCharmedHeroWillNotTurnThisSpellOnHisLord,
+  aCloakedMarkIsShieldedFromThisSpell,
+  theMarkOfThisSpellMustStandInTheProvince,
+  theSpellCostsNoCastingSlot,
+} from '../rules/the-registry-of-spell-effects.ts';
+import { theCastersItemsMakeHisCastSure } from '../rules/the-registry-of-magic-item-effects.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
@@ -380,8 +382,8 @@ export function resolveCastSpellOrder(
   }
   // a seized ENEMY hero will not turn hostile magic on their own lord's characters (the same
   // rule as Encounter) — refused BEFORE the cast is even attempted, so it costs no casting
-  // slot. Other realms' heroes: as normal.
-  if (c._charmTempControl && c._charmOriginalPlayer != null && CHARMED_NO_TURN_SPELLS.has(spellName)) {
+  // slot. Other realms' heroes: as normal. Which spells: the spells' registry (plan P1-19y).
+  if (c._charmTempControl && c._charmOriginalPlayer != null && aCharmedHeroWillNotTurnThisSpellOnHisLord(spellName)) {
     const _lordChar = G.characters.find((ch) => ch.alive && ch.id === (parseInt(String(extra)) || -1));
     if (_lordChar?.player === c._charmOriginalPlayer) {
       emit(turnContext, {
@@ -407,7 +409,7 @@ export function resolveCastSpellOrder(
     const _limit =
       actionSpellsAllowedPerSchoolEachTurn(_lvl) +
       (charMinor(turnContext, c, 'warlock') && _BEST_SCHOOL(c) === skillLevel(c, _school) ? 1 : 0); // Warlock minor (Archmage +1-cast perk removed \u2014 now an intel line)
-    const _divCath = gdActive(turnContext, c.player, 'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot
+    const _divCath = gdActive(turnContext, c.player, 'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot (the spells' registry, plan P1-19y)
     // NORMALISE the saved action: the player portal writes "Cast Spell", the bots write
     // "cast_spell". Comparing the raw string counted only the bots' casts, so a human caster
     // had NO per-turn limit at all (a Psychic 1 hero could work five action spells a season).
@@ -417,10 +419,14 @@ export function resolveCastSpellOrder(
     const _castsSoFar = (G.turnOrders[c.id] ?? []).slice(0, ph).filter((o) => {
       if (!o || normaliseAction(o) !== 'cast_spell') return false;
       if (o._castNotWorked) return false; // never left the caster's lips
-      if (o.target === 'Bless Province' && _divCath) return false; // a Grand Cathedral's Bless never consumes a slot
+      if (theSpellCostsNoCastingSlot(o.target, { theCastersRealmHasAGrandCathedral: _divCath })) return false; // a Grand Cathedral's Bless never consumes a slot
       return spellDefs[o.target]?.school === _school;
     }).length;
-    if (_castsSoFar >= _limit && _lvl > 0 && !(spellName === 'Bless Province' && _divCath)) {
+    if (
+      _castsSoFar >= _limit &&
+      _lvl > 0 &&
+      !theSpellCostsNoCastingSlot(spellName, { theCastersRealmHasAGrandCathedral: _divCath })
+    ) {
       o._castNotWorked = true; // 2026-10-13 (item 16): a blocked cast is never worked, so it spends no slot either
       emit(turnContext, {
         type: 'system',
@@ -516,11 +522,11 @@ export function resolveCastSpellOrder(
 
   // Cast chance — computed by the shared castChanceFor() so the player's order form can quote
   // exactly what will be rolled here (see the helper beside MAGIC_L8_SCHOOLS). Wailing
-  // Phylactery: the first Necromancy spell each turn cannot fail.
-  const necroAuto =
-    school === 'necromancy' &&
-    !c._necroAutoUsed &&
-    activeItems(c).some((it) => asItsGuardReadsIt(it.effect)?.stat === 'necroAuto');
+  // Phylactery: the first Necromancy spell each turn cannot fail (the items' registry, plan P1-19y).
+  const necroAuto = theCastersItemsMakeHisCastSure(
+    { theSpellsSchool: school, hisSureCastIsSpentThisTurn: !!c._necroAutoUsed },
+    () => activeItems(c),
+  );
   const castChance = castChanceFor(c, school, G.players[c.player], {
     chars: asItsGuardReadsIt(G.characters) ?? [],
     itemCast: !!_itemCast,
@@ -531,7 +537,7 @@ export function resolveCastSpellOrder(
   // neither the cast nor the turn's casting slot. This is what a caster meets when the hero
   // they aimed at has left the province — most often a general on Defend who rode out to a
   // threatened neighbour at the top of the phase, before any order resolved.
-  if (SPELL_FNS_NEED_COLOCATED_TARGET.has(spellDef.fn)) {
+  if (theMarkOfThisSpellMustStandInTheProvince(spellName)) {
     const _tid = parseInt(String(extra));
     const _t = Number.isInteger(_tid)
       ? (asItsGuardReadsIt<readonly (AHeroAsTheCastMarksHim | null | undefined)[]>(G.characters) ?? []).find(
@@ -667,12 +673,12 @@ export function resolveCastSpellOrder(
     });
     return;
   }
-  // Cloak of Many Faces: shields the wearer from hostile Psychic Blast / Curse.
+  // Cloak of Many Faces: shields the wearer from hostile Psychic Blast / Curse (which spells: the spells' registry).
   if (
     targetChar &&
     targetChar.player !== c.player &&
     isHiddenChar(turnContext, targetChar) &&
-    (spellName === 'Psychic Blast' || spellName === 'Curse')
+    aCloakedMarkIsShieldedFromThisSpell(spellName)
   ) {
     emit(turnContext, {
       type: 'system',
