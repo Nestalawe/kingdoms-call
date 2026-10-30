@@ -11,7 +11,9 @@
 // - a key no table holds: a monster's category with no label or use, a unit type of no price (or of a price of 0), a
 //   lair's power of no tier, an item of no name the lore table knows;
 // - a phase the warnings hold no name or force for (a sighting staged with none), the phase a capture takes from the
-//   hero's order or the stage, a column's units left out or of no name, and the rises of the Iron Throne.
+//   hero's order or the stage, a column's units left out or of no name, and the rises of the Iron Throne;
+// - since the mutation session of 2026-10-31, the altars cast down by a Good or a Neutral column, whose troops can't
+//   rise: the line says they take no pride in it.
 // Level 1 (unit): each is a plain function on staged values, called directly on the engine's modules (plan P1-14a); a
 // static check can't run them, and no game reaches these lines. The staged values carry only the fields each reads, so
 // their type is given by assertion (`as never`), as the views' unit cases give a staged world's. The dice are fixed
@@ -459,6 +461,29 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
       const text = theTurnsLinesInWords(tc.turnLog).gmLog[1]?.text ?? '';
       const named = /Flushed with the deed, (.+) \(now Average\) gains an experience level\./.exec(text)?.[1] ?? '';
       expect(pool.some((name) => named.startsWith(name))).toBe(true);
+    });
+
+    test("the altars cast down by a Good or Neutral column: its troops can't rise, so they take no pride in it", () => {
+      for (const alignment of ['Good', 'Neutral']) {
+        const g = G();
+        const tc = aTurn({
+          ...g,
+          players: [...g.players.slice(0, 1), { name: 'Varn', alignment, consecratedProvIds: [] }],
+        });
+        const column = [{ type: 'Shieldwall Levies', quality: 'Green', unitName: 'the Old Guard' }];
+        breakConsecrationOnCapture(
+          tc,
+          { id: 0, name: 'Wendmeadow' },
+          0,
+          1,
+          { id: 9, name: 'Thorn', armies: column } as never,
+          2,
+        );
+        expect([column[0]?.quality, theTurnsLinesInWords(tc.turnLog).gmLog[1]?.text]).toEqual([
+          'Green',
+          "✨ Thorn's column casts down the altars of Wendmeadow — the ground is holy no longer. The troops take no pride in the sacrilege.",
+        ]);
+      }
     });
   });
 

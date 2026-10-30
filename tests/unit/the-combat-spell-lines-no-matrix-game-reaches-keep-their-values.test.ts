@@ -9,7 +9,8 @@
 //   die for the will of a foe never charmed;
 // - a guardian's power: an older save's damage range (no weight), a range of nothing, a power that raises his Melee,
 //   and a power that kills outright (or never);
-// - the fight: a Druid's beast ward halved by a curse on his Druid, or gone with it, and a Mirror Shard that makes the
+// - the fight: a Druid's beast ward halved by a curse on his Druid, or gone with it, his Druid counted to 5 for it
+//   (the mutation session of 2026-10-31), and a Mirror Shard that makes the
 //   illusion harder to see through;
 // - since P1-19w, the combat spells that harm, through the spells' registry, where no game meets them, or meets them
 //   only in a forecast: Fireball's line (its share shown rounded down, its rounds, a ward's cut; a target with no
@@ -285,6 +286,15 @@ describe('the fight', () => {
     expect(ward({ _curseHalveStat: 'druid' })).toBe(0); // 2: below the ward's 3
     expect(ward({ _curseHalveStat: 'melee' })).toBe(4);
     expect(ward({ _druidNegated: true })).toBe(0);
+  });
+
+  test("a Druid's beast ward counts his Druid to 5: 3 at Druid 3, 5 at Druid 5, still 5 at Druid 9", () => {
+    const ward = (druid: number) => {
+      const h = aHero({ druid });
+      pc.pinned(0.5, () => resolvePersonalCombat(tc, h, aGuardian({ cat: 'beast' }), { maxRounds: 1 }));
+      return h.druidBeastWard;
+    };
+    expect([ward(3), ward(5), ward(9)]).toEqual([3, 5, 5]);
   });
 
   test('a Mirror Shard halves the chance to see through the illusion (5 for a guardian of no Melee, then 2.5)', () => {
