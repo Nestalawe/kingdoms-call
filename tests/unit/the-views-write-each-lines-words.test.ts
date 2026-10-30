@@ -100,7 +100,10 @@ function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
   narrate(narrative, forceMarker(tc, 'Aldric (Red)', 0, 'attacker', [company('Shieldwall')], ATTACKS_GREYFORD));
   narrate(narrative, forceMarker(tc, 'Brann (Blue)', 1, 'defender', [company('Ford Watch')], HOLDS_GREYFORD));
   narrate(narrative, { kind: 'the battle for a province begins', provName: 'Greyford' });
-  narrate(narrative, { kind: "the defender's feigned retreat springs shut", defName: 'Brann' });
+  narrate(narrative, {
+    kind: "the defender's feigned retreat springs shut",
+    defName: { heroName: 'Brann', leaderless: false },
+  });
   if (!noLosses) {
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: 'Aldric' });
     narrate(narrative, { kind: "a side's other forces survive the engagement", someUnitsFateIsToldAbove: false });
@@ -113,9 +116,9 @@ function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
 const THE_SUMMARY = {
   kind: 'the attacker wins the battle and seizes the province',
   severity: 'decisive',
-  atkName: 'Aldric',
+  atkName: { heroName: 'Aldric', leaderless: false },
   winVerbIndex: 0,
-  defName: 'Brann',
+  defName: { heroName: 'Brann', leaderless: false },
   provName: 'Greyford',
 } as const;
 const fileTheBattle = (tc: TurnContext, narrative: NarrativeLine[]) => {
