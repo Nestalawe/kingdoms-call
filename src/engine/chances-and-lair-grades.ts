@@ -1,13 +1,75 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS, MONSTERS_P } from '../content/kingdoms-call-data.ts';
 import { kcRng } from './rng.ts';
 import { shuffleP } from './battle/fortune.ts';
 import { SEA_GUARDIAN_NAMES } from './names.ts';
 import { activeItems } from './items/equipment.ts';
+import type { AHeroAsHisItemsAreRead, AnItemAsTheSlotsReadIt } from './items/equipment.ts';
 import { effSkillOf } from './heroes/skills-and-hp.ts';
 import { hexDistP } from './world/map-helpers.ts';
 import { skillLevel } from './titles/perks.ts';
 import { discSumOf } from './discoveries.ts';
+
+/** An item as the primal strike's bonus reads it: the slots' item, with a `primalStrike` of its own (an older item's)
+ *  or an effect that names the stat. */
+interface AnItemAsThePrimalStrikeReadsIt extends AnItemAsTheSlotsReadIt {
+  readonly primalStrike?: number | null | undefined;
+}
+/** A commander as the primal strike's bonus reads him: his items (or none). */
+type ACommanderAsThePrimalStrikeReadsHim = AHeroAsHisItemsAreRead<AnItemAsThePrimalStrikeReadsIt> | null | undefined;
+/** A lair's grade, the guardian's standing the grading gives it. */
+type TheGradeOfALair = 'Legendary' | 'Powerful' | 'Moderate' | 'Weak';
+/** A lair's feature as the grading reads and writes it: whether it is a ritual site, its guardian (drawn again) and
+ *  its grade. */
+interface AFeatureAsTheGradingReadsIt {
+  readonly ritualSite?: boolean | null | undefined;
+  monster?: { readonly name: string; power?: string | undefined } | null | undefined;
+  tier?: string | undefined;
+}
+/** A province as the grading reads it: its id, its place on the map, its terrain and its features (a gap among them,
+ *  or none). */
+interface AProvinceAsTheGradingReadsIt {
+  readonly id: number;
+  readonly col: number;
+  readonly row: number;
+  readonly terrain?: string | undefined;
+  readonly features?: readonly (AFeatureAsTheGradingReadsIt | null | undefined)[] | null | undefined;
+}
+/** A lair as the grading works on it: its feature and its province, its grade, and its place in the far country's
+ *  jittered order (taken off once it is graded). */
+interface ALairAsTheGradingFindsIt {
+  readonly f: AFeatureAsTheGradingReadsIt;
+  readonly p: AProvinceAsTheGradingReadsIt;
+  grade?: TheGradeOfALair | undefined;
+  _rank?: number;
+}
+/** The one at a place in a list the code has just made sure is within it: for none, the TypeError reading it would
+ *  have thrown (a splice's or a draw's place is within the list too). */
+function theOneAtAPlaceMadeSure<One>(list: readonly One[], i: number): One {
+  const one = list[i];
+  if (one === undefined) throw new TypeError(`no one at place ${String(i)} of the list`);
+  return one;
+}
+/** A hero as the cast chance reads him: as his skill's level is read (his skills, his items). */
+type AHeroAsTheCastChanceReadsHim = Parameters<typeof effSkillOf>[0];
+/** The heroes the cast chance reads the Crown of Command's aura from, or none. */
+type TheHeroesAsTheCastChanceReadsThem = Parameters<typeof effSkillOf>[2];
+/** A feature as the guardians' healing reads it: its guardian (or none), his hit points and his full hit points. */
+interface AFeatureAsTheHealingReadsIt {
+  readonly monster?: { hp?: number | undefined; readonly _hpFull?: number | null | undefined } | null | undefined;
+}
+/** The state as the guardians' healing reads it: the world's provinces (or none), each with its features (or none). */
+interface TheStateAsTheGuardiansHealingReadsIt {
+  readonly world: {
+    readonly provinces?:
+      | readonly (
+          | { readonly features?: readonly (AFeatureAsTheHealingReadsIt | null | undefined)[] | null | undefined }
+          | null
+          | undefined
+        )[]
+      | null
+      | undefined;
+  };
+}
 
 // MAGIC L8 PERK — "+10% to cast ANY spell" for each magic school mastered to level 8, stacking
 // across
@@ -22,22 +84,24 @@ import { discSumOf } from './discoveries.ts';
 // plus any `primalStrike` item bonus the commander carries, hard cap 90%. Read by the NPC-attacker,
 // NPC-defender and PvP strike rolls so all three quote and roll the same odds.
 export const MASS_HEALING_PCT = 0.5; // WHITE L6 Mass Healing heals this share of max HP per character
-export function primalStrikeItemBonus(c) {
+export function primalStrikeItemBonus(c: ACommanderAsThePrimalStrikeReadsHim) {
   if (!c || typeof activeItems !== 'function') return 0;
   return activeItems(c).reduce(
-    (s, it) =>
-      s +
-      ((it && it.primalStrike) || 0) +
-      (it && it.effect && it.effect.stat === 'primalStrike' ? it.effect.bonus || 0 : 0),
+    (s, it: AnItemAsThePrimalStrikeReadsIt | null | undefined) =>
+      s + (Number(it?.primalStrike) || 0) + (it?.effect?.stat === 'primalStrike' ? Number(it.effect.bonus) || 0 : 0),
     0,
   );
 }
 // 2026-10-11 (Toby): the winged riders' own strikes (a Griffon's Screech Dive, a Wyvern's Acid Spit) are
 // soldiers' work, not beast-craft: a flat chance in two, whatever the commander's Druid.
 export const RIDER_STRIKE_PCT = 50;
-export function primalStrikeChance(druidLvl, commander, unitType) {
+export function primalStrikeChance(
+  druidLvl: number | null | undefined,
+  commander: ACommanderAsThePrimalStrikeReadsHim,
+  unitType: string | null | undefined,
+) {
   if (unitType && KC_UNIT_CLASS.flying.includes(unitType)) return RIDER_STRIKE_PCT;
-  return Math.min(90, 30 + (druidLvl || 0) * 10 + primalStrikeItemBonus(commander));
+  return Math.min(90, 30 + (Number(druidLvl) || 0) * 10 + primalStrikeItemBonus(commander));
 }
 // == LAIR GRADES: RELICS EVERYWHERE, DANGER FARTHEST FROM HOME ==== The grade of every lair is
 // decided here, AFTER all land and sea features exist, rather than rolled one at a time as each
@@ -56,24 +120,29 @@ export function primalStrikeChance(druidLvl, commander, unitType) {
 //
 // The guardian is then re-drawn from the beasts of the lair's new standing, respecting land and sea
 // pools, so a Legendary lair is kept by a legendary beast and a sea lair never gets a land one.
-export function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
-  const lairs = [];
-  provinces.forEach((p) =>
-    (p.features || []).forEach((f) => {
-      if (f && !f.ritualSite) lairs.push({ f, p });
-    }),
-  );
-  if (!lairs.length) return;
-  const homes = (homeIds || []).map((id) => provinces[id]).filter(Boolean);
-  const dist = (a, b) => hexDistP(a, b, cols);
-  const homeDist = (p) => (homes.length ? Math.min(...homes.map((h) => dist(p, h))) : 0);
-  lairs.forEach((L) => {
-    L.dHome = homeDist(L.p);
+export function assignLairGrades(
+  provinces: readonly AProvinceAsTheGradingReadsIt[],
+  homeIds: readonly number[] | null | undefined,
+  cols: number,
+  rows: number,
+  relicCount: number,
+) {
+  const lairsFound: ALairAsTheGradingFindsIt[] = [];
+  provinces.forEach((p) => {
+    (p.features ?? []).forEach((f) => {
+      if (f && !f.ritualSite) lairsFound.push({ f, p });
+    });
   });
+  if (!lairsFound.length) return;
+  const homes = (homeIds ?? []).map((id) => provinces[id]).filter((h): h is AProvinceAsTheGradingReadsIt => Boolean(h));
+  const dist = (a: AProvinceAsTheGradingReadsIt, b: AProvinceAsTheGradingReadsIt) => hexDistP(a, b, cols);
+  const homeDist = (p: AProvinceAsTheGradingReadsIt) => (homes.length ? Math.min(...homes.map((h) => dist(p, h))) : 0);
+  // each lair's distance from the nearest home, written on it (the same objects, in the same order)
+  const lairs = lairsFound.map((L) => Object.assign(L, { dHome: homeDist(L.p) }));
 
   // 1 + 2: the legendary lairs, spread by a farthest-point walk.
   const wantLeg = Math.min(lairs.length, relicCount);
-  const legs = [];
+  const legs: typeof lairs = [];
   const pool = lairs.slice();
   // 2026-09-21: a king's OWN province never holds a Legendary lair. The farthest-point walk
   // starts far from home but, on a crowded map with 22 relics to place, it could still reach a
@@ -81,31 +150,34 @@ export function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
   // out the walk (whenever the rest of the world has enough lairs to carry all 22 relics) and
   // rejoin the pool for the ordinary grading below.
   const _homeIdSet = new Set(homes.map((h) => h.id));
-  const _homeHeld = [];
+  const _homeHeld: typeof lairs = [];
   if (pool.filter((L) => !_homeIdSet.has(L.p.id)).length >= wantLeg) {
-    for (let i = pool.length - 1; i >= 0; i--) if (_homeIdSet.has(pool[i].p.id)) _homeHeld.push(pool.splice(i, 1)[0]);
+    for (let i = pool.length - 1; i >= 0; i--)
+      if (_homeIdSet.has(theOneAtAPlaceMadeSure(pool, i).p.id))
+        _homeHeld.push(theOneAtAPlaceMadeSure(pool.splice(i, 1), 0));
   }
   if (wantLeg > 0) {
     let first = 0;
-    for (let i = 1; i < pool.length; i++) if (pool[i].dHome > pool[first].dHome) first = i;
-    legs.push(pool.splice(first, 1)[0]);
+    for (let i = 1; i < pool.length; i++)
+      if (theOneAtAPlaceMadeSure(pool, i).dHome > theOneAtAPlaceMadeSure(pool, first).dHome) first = i;
+    legs.push(theOneAtAPlaceMadeSure(pool.splice(first, 1), 0));
     while (legs.length < wantLeg && pool.length) {
       let best = 0,
         bestD = -1;
       for (let i = 0; i < pool.length; i++) {
         let near = Infinity;
         for (const L of legs) {
-          const d = dist(pool[i].p, L.p);
+          const d = dist(theOneAtAPlaceMadeSure(pool, i).p, L.p);
           if (d < near) near = d;
         }
         // Ties broken outward: of two equally isolated lairs, take the one deeper from home.
-        const score = near * 100 + pool[i].dHome;
+        const score = near * 100 + theOneAtAPlaceMadeSure(pool, i).dHome;
         if (score > bestD) {
           bestD = score;
           best = i;
         }
       }
-      legs.push(pool.splice(best, 1)[0]);
+      legs.push(theOneAtAPlaceMadeSure(pool.splice(best, 1), 0));
     }
   }
   legs.forEach((L) => {
@@ -154,7 +226,7 @@ export function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
   // Shuffle first, then sort by distance alone: the sort is stable, so lairs at the same distance keep
   // their shuffled order. (A random tie-break inside the comparator made the result, and the number of
   // random draws, depend on the browser's sort algorithm.)
-  const farKey = (L) => (Number.isFinite(L.dHome) ? L.dHome : Infinity);
+  const farKey = (L: (typeof lairs)[number]) => (Number.isFinite(L.dHome) ? L.dHome : Infinity);
   far.splice(
     0,
     far.length,
@@ -179,7 +251,7 @@ export function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
   far.forEach((L, i) => {
     L._rank = i + (kcRng() - 0.5) * 2 * jitter;
   });
-  far.sort((a, b) => a._rank - b._rank);
+  far.sort((a, b) => Number(a._rank) - Number(b._rank)); // each set just above
   far.forEach((L, i) => {
     L.grade = i < remW ? 'Weak' : i < remW + remM ? 'Moderate' : 'Powerful';
     delete L._rank;
@@ -194,10 +266,10 @@ export function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
   homes.forEach((h) => {
     const mine = lairs.filter((L) => L.p === h);
     if (!mine.length || mine.some((L) => L.grade === 'Weak')) return;
-    const target = mine.find((L) => L.grade !== 'Legendary') || mine[0];
+    const target = mine.find((L) => L.grade !== 'Legendary') ?? theOneAtAPlaceMadeSure(mine, 0);
     const donors = lairs.filter((L) => L.grade === 'Weak' && !_homeIdSet.has(L.p.id));
     // prefer a donor in the home band (keeps that band's mix intact), else the nearest one
-    const donor = donors.filter((L) => L.dHome <= NEAR_D)[0] || donors.sort((a, b) => a.dHome - b.dHome)[0];
+    const donor = donors.find((L) => L.dHome <= NEAR_D) ?? donors.sort((a, b) => a.dHome - b.dHome)[0];
     if (donor) {
       const g = target.grade;
       target.grade = 'Weak';
@@ -211,24 +283,25 @@ export function assignLairGrades(provinces, homeIds, cols, rows, relicCount) {
   // all does the ladder below reach another standing for one.
   const seaMons = MONSTERS_P.filter((m) => SEA_GUARDIAN_NAMES.has(m.name));
   const landMons = MONSTERS_P.filter((m) => !SEA_GUARDIAN_NAMES.has(m.name));
-  const _guardsHere = new Map(); // province id → guardian names already drawn there
+  const _guardsHere = new Map<number, Set<string>>(); // province id → guardian names already drawn there
   lairs.forEach((L) => {
     const isSea = L.p.terrain === 'sea';
     if (!_guardsHere.has(L.p.id)) _guardsHere.set(L.p.id, new Set());
     const here = _guardsHere.get(L.p.id);
+    if (!here) throw new TypeError("Cannot read properties of undefined (reading 'has')"); // set just above
     const src = (isSea ? seaMons : landMons).filter((m) => !here.has(m.name));
     let cand = src.filter((m) => m.power === L.grade);
     if (!cand.length) {
       // No beast of that standing in this element (the seas hold no legendary beast, for instance):
       // take the nearest standing the element does offer, but the LAIR keeps the grade it was
       // given, so the relic count never bends to the shape of the map.
-      const ORDER = ['Legendary', 'Powerful', 'Moderate', 'Weak'];
+      const ORDER: readonly (string | undefined)[] = ['Legendary', 'Powerful', 'Moderate', 'Weak'];
       const from = ORDER.indexOf(L.grade);
       for (let i = from; i < ORDER.length && !cand.length; i++) cand = src.filter((m) => m.power === ORDER[i]);
       for (let i = from - 1; i >= 0 && !cand.length; i--) cand = src.filter((m) => m.power === ORDER[i]);
     }
     if (!cand.length) cand = src.length ? src : MONSTERS_P;
-    L.f.monster = { ...cand[Math.floor(kcRng() * cand.length)] };
+    L.f.monster = { ...theOneAtAPlaceMadeSure(cand, Math.floor(kcRng() * cand.length)) }; // cand is never empty
     here.add(L.f.monster.name);
     L.f.tier = L.grade; // the grade shown to players is the lair's own, not the beast's
     L.f.monster.power = L.grade; // and the guardian is treated as being of that standing
@@ -252,10 +325,22 @@ export const MAGIC_L8_SCHOOLS = KC_MAGIC_SCHOOLS.slice();
 // and personal combat — is now 30 + school level × 10 (+ discoveries / L8 mastery), capped 95. Was
 // 20 outside personal combat.
 export const SPELL_CAST_BASE = 30;
-export function castChanceFor(c, school, player, opts) {
-  opts = opts || {};
-  const lvl = opts.itemCast ? Math.max(3, effSkillOf(c, school, opts.chars)) : effSkillOf(c, school, opts.chars);
-  if (lvl <= 0 && !opts.itemCast) return { level: 0, chance: 0, reason: 'no skill' };
+export function castChanceFor(
+  c: AHeroAsTheCastChanceReadsHim,
+  school: string,
+  player: Parameters<typeof discSumOf>[0],
+  opts?: {
+    readonly itemCast?: boolean | undefined;
+    readonly necroAuto?: boolean | undefined;
+    readonly chars?: TheHeroesAsTheCastChanceReadsThem;
+  } | null,
+) {
+  opts = opts ?? {};
+  // effSkillOf gives no level for no hero, which no caller passes: Number() reads it as JavaScript did (NaN)
+  const lvl = opts.itemCast
+    ? Math.max(3, Number(effSkillOf(c, school, opts.chars)))
+    : effSkillOf(c, school, opts.chars);
+  if (Number(lvl) <= 0 && !opts.itemCast) return { level: 0, chance: 0, reason: 'no skill' };
   if (opts.itemCast) return { level: lvl, chance: 95, reason: 'item' };
   if (opts.necroAuto) return { level: lvl, chance: 100, reason: 'necroAuto' };
   const arcane = 0; // sd27 Arcane Codex is now an ordinary `cast` effect (kept as a field for old callers)
@@ -266,17 +351,27 @@ export function castChanceFor(c, school, player, opts) {
     'pct',
     (e) => (!e.school || e.school === school) && (!e.ctx || e.ctx === 'action'),
   );
-  return { level: lvl, chance: Math.min(95, SPELL_CAST_BASE + lvl * 10 + arcane + l8 + disc), arcane, l8, disc };
+  return {
+    level: lvl,
+    chance: Math.min(95, SPELL_CAST_BASE + Number(lvl) * 10 + arcane + l8 + disc),
+    arcane,
+    l8,
+    disc,
+  };
 }
 // 2026-10-15 (Toby, D7): a hero guarding a neutral province casts at the same odds as a player's hero —
 // 30% + 10% a level (the school as effSkillOf counts it: training to 5, items on top), the mastery bonus,
 // at most 95%. A guard holds no Sage discoveries. (Was 30% + 15% a level, at most 90%.)
-export function guardCastChance(c, school, chars) {
-  const lvl = effSkillOf(c, school, chars || []);
+export function guardCastChance(
+  c: AHeroAsTheCastChanceReadsHim,
+  school: string,
+  chars: TheHeroesAsTheCastChanceReadsThem,
+) {
+  const lvl = Number(effSkillOf(c, school, chars ?? [])); // NaN for no hero, as before
   if (lvl <= 0) return 0;
   return Math.min(95, SPELL_CAST_BASE + lvl * 10 + magicL8CastBonus(c));
 }
-export function magicL8CastBonus(c) {
+export function magicL8CastBonus(c: Parameters<typeof skillLevel>[0]) {
   return 10 * MAGIC_L8_SCHOOLS.filter((sc) => skillLevel(c, sc) >= 8).length;
 }
 
@@ -284,12 +379,12 @@ export function magicL8CastBonus(c) {
 // (src/engine/turn/context.ts).
 // Feature guardians keep their wounds across phases within a turn (so a second searcher meets the
 // creature the first one bloodied) but recover fully between turns — a whole year passes.
-export function healFeatureMonsters(turnContext) {
+export function healFeatureMonsters(turnContext: { readonly G: TheStateAsTheGuardiansHealingReadsIt }) {
   const { G } = turnContext;
-  (G.world.provinces || []).forEach((prov) => {
-    ((prov && prov.features) || []).forEach((f) => {
-      const m = f && f.monster;
-      if (!m || m._hpFull == null) return;
+  (G.world.provinces ?? []).forEach((prov) => {
+    (prov?.features ?? []).forEach((f) => {
+      const m = f?.monster;
+      if (m?._hpFull == null) return;
       m.hp = m._hpFull;
     });
   });

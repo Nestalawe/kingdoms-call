@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-101 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(67: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+98 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(64: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -276,3 +276,14 @@ table with a key left out.
     caller's return type too (a winner and a loser together, or neither), fix the typed reader's new findings (4) and
     prune its cleared suppressions (18).
   - **A `for (k in obj)` over a literal's keys** is a `for … of` over a typed list of them, in the same order.
+- (P1-10b15: `chances-and-lair-grades.ts`, `magic/pre-battle-spell-choice.ts` and the order dispatch, 41,157 bytes): 77
+  errors, 50 of them a parameter with no type; the first pass wrote the forms lint asks for as it went. Four more forms:
+  - **A list the saved state holds empty but a turn fills** (`G.turnOrders`: nulls in a save, orders in a turn) is read
+    through a local typed as the turn holds it (`TheTurnsOrdersAsTheDispatchReadsThem`); the schema stays as it is.
+  - **A `String()` a test shows is needed** (an order's target, an item's id held as a number) stays, through a reader
+    typed as wide (`aTargetInWords`), though the order's type says words.
+  - **A typed callee that takes a value its caller may lack** (an order's typed function takes the hero's `Province`;
+    `provOf` may give none) gets it through a check that throws for none, named for the invariant that makes it sure
+    (every living hero stands in a province of the map).
+  - **A number a typed callee may give as `undefined`** (`effSkillOf` for no hero) is read `Number(x)` where it is
+    counted or compared (`NaN`, as before), and kept as it is where it is handed back.
