@@ -70,11 +70,35 @@ function newContext(): TurnContext {
 const company = (unitName: string): Army => ({ type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName });
 const FORD = { id: 4, name: 'Greyford' } as unknown as Province;
 
+/** How Aldric's host comes on at Greyford, and how Brann's and the chieftain's stand there, as the headers' verbs tell
+ *  it (P1-12d20: its values; the prose writes the words). */
+const ATTACKS_GREYFORD = {
+  itsVerbs: 'an attack',
+  verbIndex: 3,
+  provName: 'Greyford',
+  armyStrength: 12,
+  tacticalLevel: 2,
+} as const;
+const HOLDS_GREYFORD = {
+  itsVerbs: 'a defence',
+  verbIndex: 0,
+  provName: 'Greyford',
+  armyStrength: 9,
+  tacticalLevel: 0,
+} as const;
+const THE_CHIEFTAIN_GUARDS_GREYFORD = {
+  itsVerbs: 'a defence',
+  verbIndex: 4,
+  provName: 'Greyford',
+  armyStrength: 0,
+  tacticalLevel: null,
+} as const;
+
 /** Aldric's attack on Brann at Greyford: both forces drawn up, the blows, and (unless `noLosses`) both casualty lists. */
 function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
   const narrative: NarrativeLine[] = [];
-  narrate(narrative, forceMarker(tc, 'Aldric (Red)', 0, 'attacker', [company('Shieldwall')], 'attacks Greyford with'));
-  narrate(narrative, forceMarker(tc, 'Brann (Blue)', 1, 'defender', [company('Ford Watch')], 'holds Greyford with'));
+  narrate(narrative, forceMarker(tc, 'Aldric (Red)', 0, 'attacker', [company('Shieldwall')], ATTACKS_GREYFORD));
+  narrate(narrative, forceMarker(tc, 'Brann (Blue)', 1, 'defender', [company('Ford Watch')], HOLDS_GREYFORD));
   narrate(narrative, { kind: 'the battle for a province begins', provName: 'Greyford' });
   narrate(narrative, { kind: "the defender's feigned retreat springs shut", defName: 'Brann' });
   if (!noLosses) {
@@ -104,20 +128,20 @@ const fileTheBattle = (tc: TurnContext, narrative: NarrativeLine[]) => {
 describe("a fact's words are the engine's words before P1-12c3", () => {
   test("a force drawn up for battle: the header's machine form, its keys in their order", () => {
     const tc = newContext();
-    const fact = forceMarker(tc, 'Aldric (Red)', 0, 'attacker', [company('Shieldwall')], 'attacks Greyford with', {
+    const fact = forceMarker(tc, 'Aldric (Red)', 0, 'attacker', [company('Shieldwall')], ATTACKS_GREYFORD, {
       guard: false,
     });
     expect(theWordsOf(fact)).toBe(
       '⚑FORCE⚑{"name":"Aldric (Red)","color":"#c33","neutral":false,"guard":false,"role":"attacker",' +
-        '"verb":"attacks Greyford with","armies":[{"type":"Men-at-Arms","quality":"Veteran","unitName":"Shieldwall",' +
+        '"verb":"attacks Greyford under Tactical 2 command — army strength 12, with","armies":[{"type":"Men-at-Arms","quality":"Veteran","unitName":"Shieldwall",' +
         '"race":"Human","phantom":false,"skeletal":false,"wildHunt":false,"wildHuntUntil":null}]}',
     );
-    const guard = forceMarker(tc, 'The Chieftain of Greyford', null, 'defender', [], 'guards Greyford with', {
+    const guard = forceMarker(tc, 'The Chieftain of Greyford', null, 'defender', [], THE_CHIEFTAIN_GUARDS_GREYFORD, {
       guard: true,
     });
     expect(theWordsOf(guard)).toBe(
       '⚑FORCE⚑{"name":"The Chieftain of Greyford","color":null,"neutral":true,"guard":true,"role":"defender",' +
-        '"verb":"guards Greyford with","armies":[]}',
+        '"verb":"guards Greyford — army strength 0, with","armies":[]}',
     );
   });
 

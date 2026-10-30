@@ -124,7 +124,7 @@ check finds were made.
   Winter, after the phases). Two fields there still hold words handed in: a line the order merge held
   (`staleOrderWarnings`, the set-up's words) and a neutral hero's lesson (`progressNeutralHeroes`' words, `heroes/`).
   Since P1-12d17 neither do the other folders (`espionage/`, `realms/`, `magic/`, `world/`, `bots/`, `run-turn.ts`):
-  every place in `src/engine/` hands its line as a fact (but the words still handed through a parameter, listed above).
+  every place in `src/engine/` hands its line as a fact (but the words still handed in, listed above).
   **Words others read stay the same by construction**: the save check's line begins "[Save check] ", written by the
   prose (`the-words-of-the-new-turns-lines.ts`), and the balance matrix finds it by those words in the log stored
   (`THE_SAVE_CHECKS_LINE_BEGINS`, `tools/balance/a-game-fails-on-the-save-check.ts`); no game writes the line, so a
@@ -152,10 +152,14 @@ check finds were made.
   kinds of the records its facts hold (why a unit stands or faces as it does, a ladder's modifiers: P1-12d4), so a
   record's literal is read too. **The engine reads no word it wrote:** a choice made on a line's words (the faced
   clause once read the facing's "empty column") is made on the record's kind. It can't see words handed in through a
-  parameter (the verb a battle hands a unit's fate, a force's header's verb); since P1-12d19 a daze's `what` and a
+  parameter, so those are typed as values: since P1-12d19 a daze's `what` and a
   lingering harm's source are records of the names they are written from (`TheSourceOfADaze`,
   `TheSourceOfALingeringHarm`, beside the combat spells' steps in `src/engine/rules/the-registry-of-content-effects.ts`),
-  so the compiler refuses words there, and a lingering harm's identity is its source (the same refreshes it). Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  and a lingering harm's identity is its source (the same refreshes it); since P1-12d20 a unit's fate's verb is a flag
+  (`rollUnitFates`' `inTheRout`, `hardenedByVictory`), a force's header's verb its values (`forceMarker`'s
+  `HowAForceComesOnInItsHeader`: the verb by its index, drawn where the battle drew the verb, the province, the
+  strength, the Tactical level; the prose writes the header's `verb` as before) and a battle's severity its margin
+  band's slug (`TheSeverityOfABattle`). The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-

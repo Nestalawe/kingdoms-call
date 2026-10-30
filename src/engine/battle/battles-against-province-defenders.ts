@@ -61,7 +61,7 @@ import { recordBattleGraves } from '../graves.ts';
 import { demoteGuardToWanderer, isConsecrated } from '../heroes/fame-and-consecration.ts';
 import { activeItems } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
-import { d100, pick, rng } from '../dice-and-army-names.ts';
+import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
@@ -116,6 +116,8 @@ import { magicItemsLine } from '../personal-combat/duels-and-character-encounter
 import { preBattleDuel } from './pre-battle-duels.ts';
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
+  THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH,
+  THE_VERB_A_PROVINCES_DEFENDERS_STAND_WITH,
   theFortuneAsTheLineTellsIt,
 } from './the-facts-a-battles-lines-record.ts';
 import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
@@ -142,9 +144,8 @@ export const SEA_AIRBORNE_LAND_PENALTY = 0.25,
 
 // Simple combat resolve
 // ── ARMY BATTLE NARRATIVE ENGINE ────
-// Narrative vocabulary helpers
-export const ATK_VERBS = ['advances on', 'charges into', 'storms', 'attacks', 'assaults', 'drives into'];
-export const DEF_VERBS = ['holds the line in', 'stands firm in', 'defends', 'fortifies', 'guards'];
+// Narrative vocabulary helpers (P1-12d20: the verbs of an attack and of a defence are the prose's,
+// src/views/prose/the-words-of-a-battles-lines.ts; the engine draws an attack's by its index)
 export const LOSE_VERBS = ['is repulsed by', 'retreats before', 'cannot break', 'is driven back by'];
 
 export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
@@ -269,7 +270,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         c.player,
         'attacker',
         armies,
-        `${pick(ATK_VERBS)} ${prov.name} — army strength ${_aS}, with`,
+        {
+          itsVerbs: 'an attack',
+          verbIndex: Math.floor(kcRng() * THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH),
+          provName: prov.name,
+          armyStrength: _aS,
+          tacticalLevel: null,
+        },
       ),
     ); // realm named, as in PvP
     // 2026-09-24 (Toby item 2): the defending side's header carries its own post-modifier strength
@@ -301,7 +308,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
           null,
           'defender',
           defenders,
-          `${DEF_VERBS[1]} ${prov.name} — army strength ${_dS}, with`,
+          {
+            itsVerbs: 'a defence',
+            verbIndex: THE_VERB_A_PROVINCES_DEFENDERS_STAND_WITH,
+            provName: prov.name,
+            armyStrength: _dS,
+            tacticalLevel: null,
+          },
           { guard: true },
         ),
       );
@@ -314,7 +327,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
           prov.owner != null ? prov.owner : null,
           'defender',
           defenders,
-          `${DEF_VERBS[1]} ${prov.name} — army strength ${_dS}, with`,
+          {
+            itsVerbs: 'a defence',
+            verbIndex: THE_VERB_A_PROVINCES_DEFENDERS_STAND_WITH,
+            provName: prov.name,
+            armyStrength: _dS,
+            tacticalLevel: null,
+          },
         ),
       );
     }
@@ -1468,7 +1487,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const isNarrow = _band.max <= 0.1; // pyrrhic or narrow (kept for existing consumers)
   const isDecisive = _band.max > 0.3; // decisive, crushing or annihilating
   // Severity label for narrative
-  const severity = _band.label;
+  const severity = _band.slug;
 
   // XP tier multipliers — higher tiers harder to improve
   const xpMult = QUALITY_TIERS.map((_, i) => [1.5, 1.0, 0.6, 0.3, 0][i]);
@@ -1754,7 +1773,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     rollUnitFates(armies, {
       owner: cName,
       won: false,
-      diedVerb: 'were annihilated in the rout!',
+      inTheRout: true,
       dieAt: (a) => loseDeathChance * steelMultOf(a) * tacMultNPC + _npcRideDefEff,
       demoteAt: (a) => loseDemoteChance * tacMultNPC,
       promoteTo: (a) => loseDemoteChance + xpChance(loseXPChance, a.quality) * humanXPMult(a, c.player, G),

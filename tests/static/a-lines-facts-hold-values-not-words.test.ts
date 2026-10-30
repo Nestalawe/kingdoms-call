@@ -42,11 +42,11 @@
 // (a strike's class, its channel, a guardian's grade as the content names it, a school's name as the content names it,
 // a realm's alignment, a unit's quality, the line an ability places a unit in; since P1-12d11 the way a hero slain
 // outside a battle fell, `how`; since P1-12d15 an heir's name as the engine names him, `heirName`). It can't see words
-// handed in through a
-// function's parameter
-// (the verb a battle hands a unit's fate, a force's header's verb): see the Parked list. Since P1-12d19 a daze's `what`
-// and a lingering harm's source are records (TheSourceOfADaze, TheSourceOfALingeringHarm), so the compiler refuses words
-// there.
+// handed in through a function's parameter, so those are typed as values: since P1-12d19 a daze's `what` and a
+// lingering harm's source are records (TheSourceOfADaze, TheSourceOfALingeringHarm), and since P1-12d20 a unit's fate's
+// verb is a flag (`inTheRout`, `hardenedByVictory`), a force's header's verb its values (HowAForceComesOnInItsHeader)
+// and a battle's severity its band's slug (TheSeverityOfABattle), so the compiler refuses words there from a typed
+// caller (the two battle files that call them are still untyped).
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,

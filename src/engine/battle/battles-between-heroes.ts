@@ -111,7 +111,6 @@ import { magicItemsLine } from '../personal-combat/duels-and-character-encounter
 import {
   CARRYON_DEATH_CAP,
   CARRYON_DEATH_STEP,
-  DEF_VERBS,
   SEA_AIRBORNE_FLYER_PENALTY,
   SEA_AIRBORNE_LAND_PENALTY,
 } from './battles-against-province-defenders.ts';
@@ -119,6 +118,8 @@ import { preBattleDuel } from './pre-battle-duels.ts';
 import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
+  THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
+  THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
   theFortuneAsTheLineTellsIt,
   theUnitsAsTheLineNamesThem,
 } from './the-facts-a-battles-lines-record.ts';
@@ -306,25 +307,23 @@ export function combatVsChar(turnContext, atk, def, prov) {
     );
     narrate(
       narrative,
-      forceMarker(
-        turnContext,
-        `${atk.name} (${G.players[atk.player]?.name})`,
-        atk.player,
-        'attacker',
-        atkArmies,
-        `attacks ${prov.name}${atkTact > 0 ? ` under Tactical ${atkTact} command` : ''} — army strength ${_aS}, with`,
-      ),
+      forceMarker(turnContext, `${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, {
+        itsVerbs: 'an attack',
+        verbIndex: THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
+        provName: prov.name,
+        armyStrength: _aS,
+        tacticalLevel: atkTact,
+      }),
     );
     narrate(
       narrative,
-      forceMarker(
-        turnContext,
-        `${def.name} (${G.players[def.player]?.name})`,
-        def.player,
-        'defender',
-        defArmies,
-        `${DEF_VERBS[0]} ${prov.name}${defTact > 0 ? ` under Tactical ${defTact} command` : ''} — army strength ${_dS}, with`,
-      ),
+      forceMarker(turnContext, `${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, {
+        itsVerbs: 'a defence',
+        verbIndex: THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
+        provName: prov.name,
+        armyStrength: _dS,
+        tacticalLevel: defTact,
+      }),
     );
   }
   // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now
@@ -1254,7 +1253,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const _bandPvP = battleMarginBand(margRatioPvP);
   const isNarrowPvP = _bandPvP.max <= 0.1;
   const isDecisivePvP = _bandPvP.max > 0.3;
-  const severity = _bandPvP.label;
+  const severity = _bandPvP.slug;
   narrate(narrative, {
     kind: "the battle's outcome and its margin",
     winnerName: won ? atk.name : def.name,
@@ -1716,7 +1715,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     rollUnitFates(atkArmies, {
       owner: atkName,
       won: false,
-      diedVerb: 'were annihilated in the rout!',
+      inTheRout: true,
       dieAt: (a) => loseDeathPvP * atkSteelMultOf(a) * atkTacMult + _rideDefEff,
       demoteAt: (a) => loseDemotePvP * atkTacMult,
       promoteTo: (a) =>
@@ -1732,7 +1731,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     rollUnitFates(defArmies, {
       owner: defName,
       won: true,
-      promoteVerb: 'are hardened by victory to',
+      hardenedByVictory: true,
       dieAt: (a) => winDeathPvP * defSteelMultOf(a),
       promoteTo: (a) =>
         winDeathPvP * defSteelMultOf(a) +

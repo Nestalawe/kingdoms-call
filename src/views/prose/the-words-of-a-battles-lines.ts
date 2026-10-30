@@ -4,6 +4,7 @@
 // `never` below) and, from an untyped caller, a throw in play.
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
+  THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH,
   type ACommandMultiplierInTheLadder,
   type ACommandMultiplierOfAUnit,
   type AFacingAsTheLadderTellsIt,
@@ -23,6 +24,8 @@ import {
   type TheClausesOfAShotThatWeakensItsTarget,
   type TheFactOfABattlesLine,
   type TheFortuneAsTheLineTellsIt,
+  type TheSeverityOfABattle,
+  type HowAForceComesOnInItsHeader,
   type WhyACommandersForceIsDemoralised,
 } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
 import { describeArmy } from '../../engine/dice-and-army-names.ts';
@@ -56,6 +59,54 @@ const WIN_VERBS = ['rout', 'break', 'scatter', 'overwhelm', 'destroy'] as const 
 /** The verb a victory is told with, by the index the engine drew. */
 function theVerbAVictoryIsToldWith(index: number): string {
   return WIN_VERBS[index] ?? '';
+}
+
+/** The verbs an attack on a province is told with in its force's header: the engine draws which against a province's
+ *  defenders (verbIndex), as many as it counts; a hero's host attacking another's is told with "attacks" (P1-12d20:
+ *  the table moved here from battle/battles-against-province-defenders.ts, ATK_VERBS). */
+const THE_VERBS_AN_ATTACK_IS_TOLD_WITH = [
+  'advances on',
+  'charges into',
+  'storms',
+  'attacks',
+  'assaults',
+  'drives into',
+] as const satisfies { length: typeof THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH };
+
+/** The verbs a defence is told with in its force's header (P1-12d20: the table moved here, DEF_VERBS): a hero holds the
+ *  line in a province, a province's own defenders stand firm in it. */
+const THE_VERBS_A_DEFENCE_IS_TOLD_WITH = [
+  'holds the line in',
+  'stands firm in',
+  'defends',
+  'fortifies',
+  'guards',
+] as const;
+
+/** The verb of a force's header: "storms Highmoor under Tactical 2 command — army strength 40, with" (the Tactical clause
+ *  only where the header names a level above 0). */
+function theWordsOfHowAForceComesOn(how: HowAForceComesOnInItsHeader): string {
+  const verbs: readonly string[] =
+    how.itsVerbs === 'an attack' ? THE_VERBS_AN_ATTACK_IS_TOLD_WITH : THE_VERBS_A_DEFENCE_IS_TOLD_WITH;
+  const tactical =
+    how.tacticalLevel !== null && how.tacticalLevel > 0 ? ` under Tactical ${String(how.tacticalLevel)} command` : '';
+  return `${verbs[how.verbIndex] ?? ''} ${how.provName}${tactical} — army strength ${String(how.armyStrength)}, with`;
+}
+
+/** The words of a battle's severity, by its margin band's slug (P1-12d20: the band's label was the word). */
+const THE_WORDS_OF_A_BATTLES_SEVERITY: Readonly<Record<TheSeverityOfABattle, string>> = {
+  pyrrhic: 'pyrrhic',
+  narrow: 'narrow',
+  clear: 'clear',
+  decisive: 'decisive',
+  crushing: 'crushing',
+  annihilating: 'annihilating',
+};
+
+/** "a pyrrhic", "an annihilating": a battle's severity in words, with its article. */
+function aSeverity(severity: TheSeverityOfABattle): string {
+  const w = THE_WORDS_OF_A_BATTLES_SEVERITY[severity];
+  return `${aAn(w)} ${w}`;
 }
 
 /** "a" or "an" before a word: "an annihilating battle". */
@@ -672,7 +723,8 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'a force drawn up for battle': {
       // The header's machine form, its keys in this order: the player page, the GM page, the battle's tiers and its
       // tally read it back (join-and-chronicle.ts, turn-log.ts, engine/battle/fates.ts).
-      const { name, color, neutral, guard, role, verb, armies } = fact;
+      const { name, color, neutral, guard, role, howItComesOn, armies } = fact;
+      const verb = howItComesOn ? theWordsOfHowAForceComesOn(howItComesOn) : '';
       return '⚑FORCE⚑' + JSON.stringify({ name, color, neutral, guard, role, verb, armies });
     }
     case "a battle's losses, tallied from its lines":
@@ -801,7 +853,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the fortune of the battle':
       return `  ${fortuneNarrative(fact.atkLabel, fact.defLabel, fact.atkBase, fact.defBase, fact.fortune)}`;
     case "the battle's outcome and its margin":
-      return `📊 Outcome: **${fact.winnerName} wins** — ${fact.severity} (margin ${theMarginInPercent(fact.margRatio)}% of combined strength after fortune)`;
+      return `📊 Outcome: **${fact.winnerName} wins** — ${THE_WORDS_OF_A_BATTLES_SEVERITY[fact.severity]} (margin ${theMarginInPercent(fact.margRatio)}% of combined strength after fortune)`;
     case "a side's war-horn of the plains lets its free lances ride in rough country":
       return `📯 ${String(fact.sideName)}'s War-Horn of the Plains sounds — the Free Lances ride the broken enemy down even in ${String(fact.terrain)} country.`;
     case "a side's free lances find no room to ride":
@@ -821,7 +873,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'no units were left on the field to count':
       return `— No units were left on the field to count.`;
     case 'the attacker wins the battle and seizes the province':
-      return `After ${aAn(fact.severity)} ${fact.severity} battle, ${fact.atkName}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${fact.defName}'s army and seize ${fact.provName}!`;
+      return `After ${aSeverity(fact.severity)} battle, ${fact.atkName}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${fact.defName}'s army and seize ${fact.provName}!`;
     case "the attacker's casualties begin":
       return `⚔ **${fact.atkName}'s forces** (attacker):`;
     case "the defender's casualties begin":
@@ -855,15 +907,15 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the loser's forces are completely destroyed and he retreats alone":
       return `📊 ${fact.loserName}'s forces are completely destroyed — they retreat alone.`;
     case "the attacker wins the battle but the defender's survivors hold the province":
-      return `After ${aAn(fact.severity)} ${fact.severity} battle, ${fact.atkName}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${fact.defName}'s army — but ${fact.defName2}'s survivors do not yield ${fact.provName}.`;
+      return `After ${aSeverity(fact.severity)} battle, ${fact.atkName}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${fact.defName}'s army — but ${fact.defName2}'s survivors do not yield ${fact.provName}.`;
     case "the attacker's assault is repelled and driven from the province":
-      return `${fact.atkName}'s assault is repelled! After ${aAn(fact.severity)} ${fact.severity} engagement, ${fact.defName} drives the attackers from ${fact.provName}.`;
+      return `${fact.atkName}'s assault is repelled! After ${aSeverity(fact.severity)} engagement, ${fact.defName} drives the attackers from ${fact.provName}.`;
     case 'the attacker has nowhere to retreat':
       return `${fact.atkName} has nowhere to retreat — their forces take additional casualties, ${fact.atSea ? 'hemmed in on open water' : 'cut down against the walls'} with no escape!`;
     case "the attacker's stronger host is thrown back but stays":
       return `${fact.atkName}'s assault is thrown back but their host is still the stronger (${n0(fact.stayingHostStrength)} vs ${n0(fact.victorsStrength)} on the same footing, before fortune) — they hold the field in ${fact.provName} and re-form to press the attack again rather than retreat.`;
     case "the attacker's assault is repelled but not driven from the province":
-      return `${fact.atkName}'s assault is repelled! After ${aAn(fact.severity)} ${fact.severity} engagement, ${fact.defName} throws the attackers back — but they are not yet driven from ${fact.provName}.`;
+      return `${fact.atkName}'s assault is repelled! After ${aSeverity(fact.severity)} engagement, ${fact.defName} throws the attackers back — but they are not yet driven from ${fact.provName}.`;
     case "a commander's force is demoralised":
       return `\u{1F4C9} ${fact.commanderName}'s force is demoralised — ${THE_WORDS_OF_WHY_A_FORCE_IS_DEMORALISED[fact.why]} (−20% strength this battle).`;
     case 'a commander rides out and challenges the other to single combat':
@@ -989,7 +1041,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the attacker sweeps into a province with no one left to stand against him':
       return `${fact.cName}'s forces sweep into ${fact.provName} — nothing is left to stand against them.`;
     case 'the attacker wins the battle against the defenders':
-      return `After ${aAn(fact.severity)} ${fact.severity} engagement (margin ${theMarginInPercent(fact.margRatio)}% of total strength), ${fact.cName}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${fact.guardName}!`;
+      return `After ${aSeverity(fact.severity)} engagement (margin ${theMarginInPercent(fact.margRatio)}% of total strength), ${fact.cName}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${fact.guardName}!`;
     case "the attacker's warg riders halve his losses":
       return `🐺 The warg packs are into the defenders before they can set themselves — the business is over quickly, and ${fact.cName}'s losses are halved.`;
     case 'every defending unit was lost before the lines closed':
@@ -1005,7 +1057,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the defenders have nowhere to retreat and take further losses':
       return `The defenders of ${fact.provName} have nowhere to retreat — they are pinned against their own ground and take further losses!`;
     case 'the attacker is repelled by the defenders':
-      return `${fact.cName}'s forces are repelled! After ${aAn(fact.severity)} ${fact.severity} engagement (margin ${theMarginInPercent(fact.margRatio)}%), ${fact.defName2} hold their ground — ${fact.aPlayersGarrison ? (fact.atSea ? 'the garrison holds these waters!' : 'the garrison holds its walls!') : 'neutral defenders never retreat!'}`;
+      return `${fact.cName}'s forces are repelled! After ${aSeverity(fact.severity)} engagement (margin ${theMarginInPercent(fact.margRatio)}%), ${fact.defName2} hold their ground — ${fact.aPlayersGarrison ? (fact.atSea ? 'the garrison holds these waters!' : 'the garrison holds its walls!') : 'neutral defenders never retreat!'}`;
     case 'a defending unit is destroyed in the fighting':
       return `— ${fact.defendingUnitName}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the fighting.`;
     case "the guard's host is destroyed and he is a masterless hero":
@@ -1039,9 +1091,9 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'a unit is cut down and rises again by its regenerating hide':
       return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} are cut down — and rise again, the ${theNameOfTheAbility('regenerating-hide')} knitting flesh as they stagger clear.`;
     case 'a unit dies in the battle':
-      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} ${fact.diedVerb ?? (fact.itsSideWon ? 'were destroyed in the fighting.' : 'were destroyed in the rout!')}${fact.itsBonesCrumble ? ' Their bones crumble to dust — gone forever.' : ''}`;
+      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} ${fact.inTheRout ? 'were annihilated in the rout!' : fact.itsSideWon ? 'were destroyed in the fighting.' : 'were destroyed in the rout!'}${fact.itsBonesCrumble ? ' Their bones crumble to dust — gone forever.' : ''}`;
     case 'a unit is promoted after the battle':
-      return `— ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} ${fact.promoteVerb ?? 'earn promotion to'} ${fact.unitQuality}!`;
+      return `— ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} ${fact.hardenedByVictory ? 'are hardened by victory to' : 'earn promotion to'} ${fact.unitQuality}!`;
     case 'a unit falls back behind the shield wall in good order':
       return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} fall back behind the shield wall in good order.`;
     case 'a unit keeps its nerve under the knightly example':

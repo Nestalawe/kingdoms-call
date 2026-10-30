@@ -20,6 +20,7 @@ import {
   type AForceDrawnUpForBattle,
   type AUnitTheTerrainMarks,
   type AUnitsDruidShortfall,
+  type HowAForceComesOnInItsHeader,
 } from './the-facts-a-battles-lines-record.ts';
 
 // ── BATTLE REPORT LINES AND FORCE MARKERS (plan P1-08c: lifted out of resolveTurn) ────
@@ -31,14 +32,15 @@ import {
 // Chronicle expands into: a header coloured in the owner's map colour (neutral = dark grey) + one
 // icon row per unit (same look as "Your Realm"). Since P1-12c3 it returns the fact, and the views write its words
 // ('⚑FORCE⚑' and the header as JSON: src/views/prose/the-words-of-a-battles-lines.ts).
-// playerIdx null → neutral. role: 'attacker' | 'defender'. verbText overrides the default verb.
+// playerIdx null → neutral. role: 'attacker' | 'defender'. howItComesOn: its header's verb as its values (P1-12d20: the
+// prose writes the words), or none for an empty verb.
 export function forceMarker(
   turnContext: TurnContext,
   name: string | null | undefined,
   playerIdx: number | null | undefined,
   role: string | null | undefined,
   armies: Army[] | null | undefined,
-  verbText?: string | null,
+  howItComesOn?: HowAForceComesOnInItsHeader | null,
   opts?: { guard?: boolean | undefined } | null,
 ): AForceDrawnUpForBattle {
   const { G } = turnContext;
@@ -78,7 +80,7 @@ export function forceMarker(
     neutral: playerIdx == null,
     guard,
     role: role || '',
-    verb: verbText || '',
+    howItComesOn: howItComesOn ?? null,
     armies: arr,
   };
 }

@@ -99,7 +99,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(lines[2]==="— the Sky Host (Aldric's Eagle Riders, Veteran), fighting from the air, earn promotion to Crack!",`a named company keeps its form, clause after it: "${lines[2]}"`);
   f=[unit('Orc Berserkers','Veteran','Zog'),unit('Goblin Horde','Average','Gob 1'),unit('Goblin Horde','Green','Gob 2'),unit('Warg Riders','Average','Fang'),unit('Dwarven Guard','Veteran','Durn'),unit('Shieldwall Levies','Average','Levy X')];
   faced=new w.Map(f.map((a,i)=>[a,facing('faces',`Aldric's Levy A${i+1}`)]));
-  lines=run(f,{owner:'Gorbash',won:false,diedVerb:'were annihilated in the rout!',dieAt:()=>0.20,demoteAt:()=>0.30,promoteTo:()=>0.45},[0.10, 0.50,0.10, 0.50,0.20, 0.50,0.40, 0.50,0.10, 0.50,0.10],faced);
+  lines=run(f,{owner:'Gorbash',won:false,inTheRout:true,dieAt:()=>0.20,demoteAt:()=>0.30,promoteTo:()=>0.45},[0.10, 0.50,0.10, 0.50,0.20, 0.50,0.40, 0.50,0.10, 0.50,0.10],faced);
   ok(lines[0]==="— Gorbash's Zog (Orc Berserkers, Veteran), facing Aldric's Levy A1, were annihilated in the rout!",`a loser's death: "${lines[0]}"`);
   ok(lines[1]==="— Gorbash's Gob 1 (Goblin Horde, Average), facing Aldric's Levy A2, lost heart in defeat, reduced to Green.",`a demotion: "${lines[1]}"`);
   ok(lines[2]==="— Gorbash's Gob 2 (Goblin Horde), facing Aldric's Levy A3, have had enough — the survivors slip away to their villages and the unit disbands for good.",`a disbanding: "${lines[2]}"`);
