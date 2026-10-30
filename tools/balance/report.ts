@@ -16,6 +16,13 @@
 // - a rule change: fewer games played out differently. The others are identical, so the games that changed show what
 //   the rule does: it is judged by where they first differ and by every figure and slice beyond the noise, so a change
 //   confined to one slice (battles between realms) still shows in the verdict.
+// Its headline tells a change to play (some game's saved state differs) from a change only to what the turns record
+// beside it: the GM log's fields (what each line keeps beside its words, such as the hero it is filed under), the
+// telemetry or the scripted realm's report, with every game's saved state the same.
+//
+// The report comes in two forms. The one CI publishes (the comment, the job's summary, its log and the uploaded
+// files) gives each replayed game's first differing turn as counts of GM-log lines, and quotes no line. The one with
+// the lines quotes where each game's two logs part; npm run balance:report writes it only outside CI.
 // The pure functions are here, tested in tests/unit/balance-report.test.ts; report-run.ts plays the replays and
 // writes the files.
 import {
@@ -56,6 +63,11 @@ export interface GameChange {
   id: string;
   /** It played out differently: a play hash, the number of turns, the results, the scripted cases. */
   play: boolean;
+  /** Its saved state differs: the state's play hash at some turn, the number of turns, the results or the scripted
+   *  cases. A game that played out differently with its state the same changed only what is recorded beside it. */
+  state: boolean;
+  /** What else of play differs: the GM log's fields, the telemetry, the scripted realm's report. */
+  besideTheState: BesideTheState[];
   /** Some words differ. */
   words: boolean;
   /** What a turn wrote to the database differs (the `writes` column). */
@@ -69,6 +81,16 @@ export interface GameChange {
 /** Hashes of play: every column but the words and the writes. A change of play or words changes the writes too. */
 const PLAY_COLUMN = (c: string) => !WORD_COLUMNS.has(c as TurnColumn) && c !== 'writes';
 
+/** The play columns beside the state: what a turn records of play without being the saved game (a column added to
+ *  the matrix is play, by PLAY_COLUMN, until it is named here or in WORD_COLUMNS). */
+export const BESIDE_THE_STATE = ['log', 'telemetry', 'report'] as const;
+export type BesideTheState = (typeof BESIDE_THE_STATE)[number];
+const BESIDE_THE_STATE_WORDS: Readonly<Record<BesideTheState, string>> = {
+  log: "the GM log's fields",
+  telemetry: 'the telemetry',
+  report: "the scripted realm's report",
+};
+
 /** The games that differ in anything, in the branch's order. A game missing on one side counts as played out
  *  differently. */
 export function compareGames(base: KeptGame[], head: KeptGame[]): GameChange[] {
@@ -77,30 +99,52 @@ export function compareGames(base: KeptGame[], head: KeptGame[]): GameChange[] {
   for (const h of head) {
     const b = byId.get(h.id);
     if (!b) {
-      out.push({ id: h.id, play: true, words: true, writes: true, firstTurn: 1, stats: Object.keys(h.stats) });
+      out.push(missing(h));
       continue;
     }
     const d = diffGame(b, h);
     if (!d) continue;
     const sections = [...new Set([...Object.keys(b.report ?? {}), ...Object.keys(h.report ?? {})])];
     const part = (g: KeptGame, k: string, i: number) => g.report?.[k]?.[i] ?? '-';
-    const play =
-      d.columns.some(PLAY_COLUMN) ||
+    const state =
+      d.columns.includes('state') ||
       d.turns != null ||
       d.results ||
-      sections.some((k) => part(b, k, 0) !== part(h, k, 0)) ||
       JSON.stringify(b.cases) !== JSON.stringify(h.cases);
+    const reportPlayed = d.columns.includes('report') || sections.some((k) => part(b, k, 0) !== part(h, k, 0));
+    const besideTheState = BESIDE_THE_STATE.filter((c) => (c === 'report' ? reportPlayed : d.columns.includes(c)));
+    const play = state || reportPlayed || d.columns.some(PLAY_COLUMN);
     const words =
       d.columns.some((c) => WORD_COLUMNS.has(c as TurnColumn)) || sections.some((k) => part(b, k, 1) !== part(h, k, 1));
     const writes = d.columns.includes('writes');
-    out.push({ id: h.id, play, words, writes, firstTurn: d.firstTurn, stats: d.stats });
+    out.push({ id: h.id, play, state, besideTheState, words, writes, firstTurn: d.firstTurn, stats: d.stats });
   }
   const heads = new Set(head.map((g) => g.id));
   for (const b of base) {
-    if (!heads.has(b.id))
-      out.push({ id: b.id, play: true, words: true, writes: true, firstTurn: 1, stats: Object.keys(b.stats) });
+    if (!heads.has(b.id)) out.push(missing(b));
   }
   return out;
+}
+
+/** A game one side doesn't have: everything differs. */
+const missing = (g: KeptGame): GameChange => ({
+  id: g.id,
+  play: true,
+  state: true,
+  besideTheState: [...BESIDE_THE_STATE],
+  words: true,
+  writes: true,
+  firstTurn: 1,
+  stats: Object.keys(g.stats),
+});
+
+/** What changed beside the state in the games whose state is the same, in words ("the GM log's fields"). */
+function besideTheStateInWords(changes: GameChange[]): string {
+  const changed = new Set(changes.filter((c) => c.play && !c.state).flatMap((c) => c.besideTheState));
+  const words = BESIDE_THE_STATE.filter((c) => changed.has(c)).map((c) => BESIDE_THE_STATE_WORDS[c]);
+  return words.length > 1
+    ? `${words.slice(0, -1).join(', ')} and ${words.at(-1) ?? ''}`
+    : (words[0] ?? 'what the turns record beside it');
 }
 
 /** How many games played out differently, of those still being played at the first turn any of them differs (a game
@@ -164,6 +208,10 @@ export interface FirstDiff {
   detail: string[];
   /** Lines of this turn whose words alone differ. */
   reworded: number;
+  /** The turn's GM-log lines, compared by position: how many each side has, how many of those both have differ in
+   *  their words (and perhaps their fields too), and how many in their fields alone. The published report shows
+   *  these, never the lines. */
+  lines: { before: number; after: number; words: number; fields: number };
 }
 
 /** A log line's words as a reader sees them: the bold marks dropped, a battle's force line in short. */
@@ -194,8 +242,13 @@ export function firstDifference(id: string, turn: number, base: LogEntry[], head
   let i = 0;
   while (i < Math.max(base.length, head.length) && JSON.stringify(base[i]) === JSON.stringify(head[i])) i++;
   let reworded = 0;
+  const lines = { before: base.length, after: head.length, words: 0, fields: 0 };
   for (let j = 0; j < Math.min(base.length, head.length); j++) {
-    if (base[j]?.text !== head[j]?.text && withoutText(base[j]) === withoutText(head[j])) reworded++;
+    const sameWords = base[j]?.text === head[j]?.text;
+    const sameFields = withoutText(base[j]) === withoutText(head[j]);
+    if (!sameWords && sameFields) reworded++;
+    if (!sameWords) lines.words++;
+    else if (!sameFields) lines.fields++;
   }
   if (i >= Math.max(base.length, head.length)) {
     return {
@@ -208,6 +261,7 @@ export function firstDifference(id: string, turn: number, base: LogEntry[], head
       after: null,
       detail: [],
       reworded,
+      lines,
     };
   }
   const log = i < head.length ? head : base;
@@ -245,6 +299,7 @@ export function firstDifference(id: string, turn: number, base: LogEntry[], head
     after,
     detail,
     reworded,
+    lines,
   };
 }
 
@@ -269,12 +324,16 @@ export interface Report {
   games: {
     changed: number;
     total: number;
+    /** Of those that played out differently, the games whose saved state differs. */
+    stateChanged: number;
     /** The games still being played at turn `from`, the first turn any game differs. */
     running: number;
     from: number;
     bots: [changed: number, total: number];
     scripted: [number, number];
   };
+  /** What changed beside the state in the games whose saved state is the same, in words ('' if none). */
+  besideTheState: string;
   firstDiffs: FirstDiff[];
   /** Why some replays aren't shown. */
   replayNotes: string[];
@@ -349,6 +408,11 @@ function toLine(c: Change, base: KeptGame[], head: KeptGame[], ids: string[]): L
 
 const figure = (l: Line) => `${l.label}: ${l.base} → ${l.head} (${l.verdict})`;
 
+/** The headline when games played out differently but every game's saved state is the same. */
+const nothingInPlay = (beside: string, played: number, total: number) =>
+  "Nothing in play changed: every game's saved state is the same as before, turn by turn. " +
+  `Only ${beside} changed, in ${String(played)} of ${String(total)} games.`;
+
 export function buildReport(input: {
   base: KeptGame[];
   head: KeptGame[];
@@ -381,6 +445,17 @@ export function buildReport(input: {
   const statsFromWords = cls === 'wording only' ? [...new Set(changes.flatMap((c) => c.stats))].map(label) : [];
 
   const total = head.length;
+  const stateChanged = changes.filter((c) => c.state).length;
+  const besideOnly = played - stateChanged;
+  const beside = besideTheStateInWords(changes);
+  const besideTooIn = (n: number) => `in ${String(n)} of them, only ${beside} changed, not the saved state`;
+  const meaningfulWords = meaningful.length
+    ? `a meaningful change in ${meaningful.map(figure).join('; ')}.`
+    : 'no meaningful change.';
+  const top = [...all].sort(biggestFirst).slice(0, SHOWN);
+  const beyondTheNoise = top.length
+    ? `Beyond the noise: ${top.map(figure).join('; ')}${all.length > SHOWN ? `; and ${String(all.length - SHOWN)} more` : ''}.`
+    : 'No figure moved beyond the noise.';
   let verdict: string;
   switch (cls) {
     case 'no change':
@@ -393,22 +468,23 @@ export function buildReport(input: {
       verdict = `Nothing in play changed, but what the game writes to the database did, in ${String(changes.length)} of ${String(total)} games. Every game played out exactly as before, in the same words.`;
       break;
     case 'reshape':
+      if (!stateChanged) {
+        verdict = `${nothingInPlay(beside, played, total)} Judged as a whole: ${meaningfulWords}`;
+        break;
+      }
       verdict =
         (share.running === total && share.from === 1
-          ? `Every game played out differently (${String(played)} of ${String(total)}), as when the order of the dice changes, `
-          : `${String(played)} of the ${String(share.running)} games still being played at turn ${String(share.from)} played out differently from then on, as when the order of the dice changes, `) +
-        'so the games are judged as a whole: ' +
-        (meaningful.length ? `a meaningful change in ${meaningful.map(figure).join('; ')}.` : 'no meaningful change.');
+          ? `Every game played out differently (${String(played)} of ${String(total)}${besideOnly ? `; ${besideTooIn(besideOnly)}` : ''}), as when the order of the dice changes, `
+          : `${String(played)} of the ${String(share.running)} games still being played at turn ${String(share.from)} played out differently from then on${besideOnly ? ` (${besideTooIn(besideOnly)})` : ''}, as when the order of the dice changes, `) +
+        `so the games are judged as a whole: ${meaningfulWords}`;
       break;
-    case 'rule change': {
-      const top = [...all].sort(biggestFirst).slice(0, SHOWN);
-      verdict =
-        `Play changed in ${String(played)} of ${String(total)} games. ` +
-        (top.length
-          ? `Beyond the noise: ${top.map(figure).join('; ')}${all.length > SHOWN ? `; and ${String(all.length - SHOWN)} more` : ''}.`
-          : 'No figure moved beyond the noise.');
+    case 'rule change':
+      verdict = stateChanged
+        ? `Play changed in ${String(stateChanged)} of ${String(total)} games` +
+          (besideOnly ? `; in ${String(besideOnly)} more, only ${beside} changed` : '') +
+          `. ${beyondTheNoise}`
+        : `${nothingInPlay(beside, played, total)} ${beyondTheNoise}`;
       break;
-    }
   }
 
   return {
@@ -417,11 +493,13 @@ export function buildReport(input: {
     games: {
       changed: cls === 'wording only' ? changes.length : played,
       total,
+      stateChanged,
       running: share.running,
       from: share.from,
       bots: [playedIn(bots), bots.length],
       scripted: [playedIn(scriptedIds), scriptedIds.length],
     },
+    besideTheState: beside,
     firstDiffs: input.firstDiffs ?? [],
     replayNotes: input.replayNotes ?? [],
     changes: all.filter((l) => !isSlice(l)).sort(biggestFirst),
@@ -528,8 +606,23 @@ function everyRealmLines(e: EveryRealm): string[] {
   return out;
 }
 
-/** The comment's text (without its marker: the posting workflow adds that). */
-export function renderReport(r: Report): string {
+/** Each replayed game's first differing turn, in counts of GM-log lines. */
+function lineCounts(diffs: FirstDiff[]): string[] {
+  return [
+    '| Game | Turn | GM-log lines, before → after | Lines whose words differ | Lines that differ only in their fields |',
+    '|---|---|---|---|---|',
+    ...diffs.map(
+      ({ id, turn, lines: l }) =>
+        `| ${id} | ${String(turn)} | ${String(l.before)} → ${String(l.after)} | ${String(l.words)} | ${String(l.fields)} |`,
+    ),
+  ];
+}
+
+/** The report's two forms: the one CI publishes counts the GM log's lines; the one with the lines quotes them. */
+export type ReportForm = 'counts only' | 'with the lines';
+
+/** The report's text in `form` (without the comment's marker: the posting workflow adds that). */
+export function renderReport(r: Report, form: ReportForm = 'counts only'): string {
   const out = ['## Balance report', '', `**${r.verdict}**`, '', ...everyRealmLines(r.everyRealm)];
   if (r.baselineStale) {
     out.push(
@@ -564,10 +657,15 @@ export function renderReport(r: Report): string {
   }
   const [bc, bt] = r.games.bots;
   const [sc, st] = r.games.scripted;
+  const besideOnly = r.games.changed - r.games.stateChanged;
   out.push(
     r.class === 'wording only'
       ? `${String(r.games.changed)} of ${String(r.games.total)} games have different words; none played out differently.`
-      : `${String(r.games.changed)} of ${String(r.games.total)} games played out differently: ${String(bc)} of the ${String(bt)} computer-played games and ${String(sc)} of the ${String(st)} with a scripted realm.`,
+      : !r.games.stateChanged
+        ? `${String(r.games.changed)} of ${String(r.games.total)} games differ beyond their words, but in none of them did the saved state: only ${r.besideTheState} changed.`
+        : besideOnly
+          ? `${String(r.games.changed)} of ${String(r.games.total)} games differ beyond their words (${String(bc)} of the ${String(bt)} computer-played games and ${String(sc)} of the ${String(st)} with a scripted realm): in ${String(r.games.stateChanged)}, play changed; in ${String(besideOnly)}, only ${r.besideTheState} changed, not the saved state.`
+          : `${String(r.games.changed)} of ${String(r.games.total)} games played out differently: ${String(bc)} of the ${String(bt)} computer-played games and ${String(sc)} of the ${String(st)} with a scripted realm.`,
     '',
   );
   const writesBeyondWords = r.class === 'wording only' ? r.writes.length : 0;
@@ -589,31 +687,51 @@ export function renderReport(r: Report): string {
   }
 
   out.push(
-    r.class === 'wording only' ? '### Words that changed' : '### Where the games first played out differently',
+    r.class === 'wording only'
+      ? '### Words that changed'
+      : r.games.stateChanged
+        ? '### Where the games first played out differently'
+        : '### Where the games first differ',
     '',
   );
   if (r.firstDiffs.length) {
-    const groups = new Map<string, number>();
-    for (const d of r.firstDiffs) groups.set(d.kind, (groups.get(d.kind) ?? 0) + 1);
     const n = r.firstDiffs.length;
     out.push(
-      `Of the ${String(n)} game${n === 1 ? '' : 's'} replayed on both sides, the first difference was in ` +
-        [...groups]
-          .sort((a, b) => b[1] - a[1])
-          .map(([k, c]) => `${k} (${String(c)})`)
-          .join(', ') +
-        '.' +
-        (r.class === 'wording only'
-          ? ` In those turns, ${String(r.firstDiffs.reduce((t, d) => t + d.reworded, 0))} log lines were reworded.`
-          : ''),
+      `${String(n)} changed game${n === 1 ? ' was' : 's were'} replayed on both sides, each up to the first turn that ` +
+        "differs. That turn's GM-log lines, counted (the report that `npm run balance:report` writes outside CI " +
+        'shows them):',
       '',
+      ...lineCounts(r.firstDiffs),
+      '',
+      'Lines are compared by position, so a line added or left out makes the lines after it differ.' +
+        (r.class === 'wording only'
+          ? ` In those turns, ${String(r.firstDiffs.reduce((t, d) => t + d.reworded, 0))} log lines were reworded, and nothing else in them changed.`
+          : ''),
     );
-    const example = (d: FirstDiff) => [`- ${where(d)}`, ...diffBlock(d)];
-    out.push(...r.firstDiffs.slice(0, SHOWN).flatMap(example));
-    if (n > SHOWN) {
-      out.push('', `<details><summary>Show all ${String(n)}</summary>`, '');
-      out.push(...r.firstDiffs.slice(SHOWN).flatMap(example));
-      out.push('', '</details>');
+    if (r.firstDiffs.some((d) => d.kind === 'no log line'))
+      out.push(
+        'A game with no differing line has the same GM log that turn: the first difference is in the saved game.',
+      );
+    if (form === 'with the lines') {
+      const groups = new Map<string, number>();
+      for (const d of r.firstDiffs) groups.set(d.kind, (groups.get(d.kind) ?? 0) + 1);
+      out.push(
+        '',
+        `Of the ${String(n)} game${n === 1 ? '' : 's'} replayed on both sides, the first difference was in ` +
+          [...groups]
+            .sort((a, b) => b[1] - a[1])
+            .map(([k, c]) => `${k} (${String(c)})`)
+            .join(', ') +
+          '.',
+        '',
+      );
+      const example = (d: FirstDiff) => [`- ${where(d)}`, ...diffBlock(d)];
+      out.push(...r.firstDiffs.slice(0, SHOWN).flatMap(example));
+      if (n > SHOWN) {
+        out.push('', `<details><summary>Show all ${String(n)}</summary>`, '');
+        out.push(...r.firstDiffs.slice(SHOWN).flatMap(example));
+        out.push('', '</details>');
+      }
     }
   } else {
     out.push('No game was replayed.');
@@ -677,10 +795,30 @@ export function renderReport(r: Report): string {
       'the order of the dice), every figure moves a little by chance, so only the headline figures are judged, with ' +
       'the bar raised for their number.',
     "- The figures come from the computer-played games; the scripted realm's games are shown apart.",
+    '- **Play** changed in a game when its saved state differs at some turn. A game can differ while its state stays ' +
+      "the same, in what the turns record beside it: the GM log's fields (what each line keeps beside its words, such " +
+      "as the hero it is filed under), the telemetry or the scripted realm's report.",
     '- Each turn, the matrix also checks what the game writes to the database. That can change while nothing in ' +
       'play does (**writes only**): expected only when a change is about how the game saves.',
     '',
     '</details>',
   );
   return out.join('\n') + '\n';
+}
+
+/** What npm run balance:report writes and prints. */
+export interface TheReportsOutputs {
+  /** report.md, report.json's text and the job's summary: what CI uploads and posts as the comment. Counts only. */
+  published: string;
+  /** What the run prints: on CI its log is public, so the published text there. */
+  log: string;
+  /** The report with the lines (report-with-the-lines.md), written beside the others only outside CI. */
+  withTheLines: string | null;
+}
+
+export function theReportsOutputs(r: Report, where: { onCi: boolean }): TheReportsOutputs {
+  const published = renderReport(r);
+  if (where.onCi) return { published, log: published, withTheLines: null };
+  const withTheLines = renderReport(r, 'with the lines');
+  return { published, log: withTheLines, withTheLines };
 }

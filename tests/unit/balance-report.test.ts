@@ -1,6 +1,7 @@
 // The balance report (tools/balance/report.ts, labels.ts; P1-03a): the class of change, where two runs first differ,
 // the verdict, and every statistic's plain-words label; the class for a change in the database writes alone (P1-02c);
-// the line on every realm's report (P1-12a1). Made-up games with a known answer. Level 1 (unit): pure
+// the line on every realm's report (P1-12a1); the published report's counts of GM-log lines, and its headline telling
+// play from the log's fields. Made-up games with a known answer. Level 1 (unit): pure
 // functions on small data; playing real games (the matrix, in CI) can't stage a reshape or a slice-only change on
 // demand.
 //
@@ -13,7 +14,13 @@
 // slice-only change judged both ways (a rule change names the slice in its verdict; a reshape is "no meaningful
 // change"; a reshape that moves a headline figure is a meaningful change); where two logs first differ (a flipped
 // battle with its season and battle, spacing shown in quotes, another field named, a missing line, a force line's
-// units); at most 12 replays; the season names are the data file's; log lines can't close their code block; every
+// units); at most 12 replays; the season names are the data file's; in the report with the lines, log lines can't
+// close their code block; the published report (the comment, CI's files, summary and log) gives each replayed game's
+// turn and counts of its lines (each side's, those whose words differ, those whose fields alone do), and holds no
+// line's words, field names, kind, season or battle, while the report with the lines, written only outside CI, quotes
+// them; a game whose saved state is the same at every turn, while its GM log, telemetry or report differs, is not play
+// in the headline ("Nothing in play changed", or counted apart beside games whose state changed, and never taken for a
+// reshape), while the state, the length, the results or the scripted cases are; every
 // statistic in the baselines has its own label; the comment's script knows every class; every realm's report in one
 // line under the verdict (identical, with its count; where it differs, game by game; not compared when the base has no
 // baseline of it; not played) (P1-12a1). TypeScript, in `unit/`
@@ -38,6 +45,7 @@ import {
   PHASES,
   renderReport,
   RESHAPE_SHARE,
+  theReportsOutputs,
 } from '../../tools/balance/report.ts';
 import { PER_GAME, type Stats } from '../../tools/balance/stats.ts';
 import { sourceOf } from '../lib/source.ts';
@@ -213,6 +221,7 @@ describe('where two runs first differ', () => {
       after: '📊 Outcome: Brenna wins — narrow (margin 2% of combined strength after fortune)',
       detail: [],
       reworded: 1,
+      lines: { before: 3, after: 3, words: 1, fields: 0 },
     });
   });
 
@@ -269,12 +278,12 @@ describe('where two runs first differ', () => {
 });
 
 describe('the comment', () => {
-  test('log lines go in code blocks that a line cannot close', () => {
+  test('in the report with the lines, log lines go in code blocks that a line cannot close', () => {
     const head = BASE.map((g, i) => (i === 0 ? alter(g, ['state']) : g));
     const firstDiffs = [
       firstDifference('bots-00', 1, [{ type: 'move', text: 'a ```b' }], [{ type: 'move', text: 'c' }]),
     ];
-    const md = renderReport(buildReport({ base: BASE, head, firstDiffs }));
+    const md = renderReport(buildReport({ base: BASE, head, firstDiffs }), 'with the lines');
     expect(md).toContain('  - a ʼʼʼb');
     expect(md.match(/```/g)).toHaveLength(2);
   });
@@ -283,6 +292,130 @@ describe('the comment', () => {
     const md = renderReport(buildReport({ base: BASE, head: BASE }));
     expect(md).toContain('**No change: all 60 games played out exactly as before.**');
     expect(md).not.toContain('###');
+  });
+});
+
+// The comment, the job's summary, its log and the uploaded report give each replayed game's GM-log lines as counts. The
+// lines themselves are only in the report written for whoever runs npm run balance:report outside CI.
+describe("the comment counts each replayed game's GM-log lines", () => {
+  const line = (text: string, extra: Partial<LogEntry> = {}): LogEntry => ({
+    type: 'combat',
+    text,
+    phase: 1,
+    ...extra,
+  });
+  const battle = (outcome: string) => [
+    line('— Early Summer —', { type: 'system' }),
+    line('⚔ **Battle for Oakvale**'),
+    line(`📊 Outcome: **${outcome}** wins`),
+  ];
+  const head = BASE.map((g, i) => (i < 3 ? alter(g, ['state', 'log']) : g));
+  const firstDiffs = [
+    firstDifference('bots-00', 7, battle('Aldric'), battle('Brenna')),
+    firstDifference(
+      'bots-01',
+      3,
+      [line('Moves north.', { type: 'move', charId: 4 }), line('Rests.')],
+      [line('Moves north.', { type: 'move', charId: 9 }), line('Rests.'), line('Sings.')],
+    ),
+    firstDifference('bots-02', 2, battle('Aldric'), battle('Aldric')),
+  ];
+  const report = buildReport({ base: BASE, head, firstDiffs });
+  const QUOTED = ['Aldric', 'Brenna', 'Oakvale', 'Moves north', 'Rests', 'Sings', 'Early Summer', 'charId', 'a battle'];
+
+  test("the comment holds no line's words, nor its fields' names, its kind, its season or its battle", () => {
+    const md = renderReport(report);
+    for (const quoted of QUOTED) expect(md, quoted).not.toContain(quoted);
+    expect(md).not.toContain('```');
+  });
+
+  test('per game, its turn and counts: how many lines each side has, and how many differ in their words or fields', () => {
+    expect(firstDiffs.map((d) => d.lines)).toEqual([
+      { before: 3, after: 3, words: 1, fields: 0 },
+      { before: 2, after: 3, words: 0, fields: 1 },
+      { before: 3, after: 3, words: 0, fields: 0 },
+    ]);
+    const md = renderReport(report);
+    expect(md).toContain(
+      '| Game | Turn | GM-log lines, before → after | Lines whose words differ | Lines that differ only in their fields |\n' +
+        '|---|---|---|---|---|\n' +
+        '| bots-00 | 7 | 3 → 3 | 1 | 0 |\n' +
+        '| bots-01 | 3 | 2 → 3 | 0 | 1 |\n' +
+        '| bots-02 | 2 | 3 → 3 | 0 | 0 |',
+    );
+    for (const quoted of QUOTED) expect(md, quoted).not.toContain(quoted);
+    expect(md).not.toContain('```');
+  });
+
+  test('the report with the lines still quotes them, for whoever runs it', () => {
+    const md = renderReport(report, 'with the lines');
+    for (const quoted of ['Brenna', 'Moves north', 'charId', 'a battle']) expect(md, quoted).toContain(quoted);
+  });
+
+  test("on CI, the files it uploads, the job's summary and its log hold the counts; the lines are written only outside CI", () => {
+    const onCi = theReportsOutputs(report, { onCi: true });
+    expect(onCi.withTheLines).toBeNull();
+    for (const text of [onCi.published, onCi.log]) {
+      expect(text).toContain('| bots-01 | 3 | 2 → 3 | 0 | 1 |');
+      for (const quoted of QUOTED) expect(text, quoted).not.toContain(quoted);
+    }
+    const local = theReportsOutputs(report, { onCi: false });
+    expect(local.published).toBe(onCi.published);
+    expect(local.withTheLines).toContain('Brenna');
+    expect(local.log).toContain('Brenna');
+  });
+});
+
+// A game whose saved state is the same at every turn, while its GM log's lines differ in their fields (the hero a line
+// is filed under, say): nothing in play changed, and the headline says so.
+describe("the headline tells a change to play from a change to the GM log's fields alone", () => {
+  test('only the GM log differs, beside the writes: its fields changed, not play', () => {
+    const head = BASE.map((g, i) => (i < 26 ? alter(g, ['log', 'writes'], 2) : g));
+    const changes = compareGames(BASE, head);
+    expect(changes[0]).toMatchObject({ play: true, state: false, besideTheState: ['log'] });
+    const r = buildReport({ base: BASE, head });
+    expect(r.games).toMatchObject({ changed: 26, stateChanged: 0 });
+    expect(r.verdict).toBe(
+      "Nothing in play changed: every game's saved state is the same as before, turn by turn. Only the GM log's " +
+        'fields changed, in 26 of 60 games. No figure moved beyond the noise.',
+    );
+    expect(renderReport(r)).toContain(
+      "26 of 60 games differ beyond their words, but in none of them did the saved state: only the GM log's fields changed.",
+    );
+  });
+
+  test('a change to play beside it: each counted apart', () => {
+    const head = BASE.map((g, i) => (i < 10 ? alter(g, ['state', 'log']) : i < 26 ? alter(g, ['log']) : g));
+    expect(compareGames(BASE, head)[0]).toMatchObject({ play: true, state: true });
+    const r = buildReport({ base: BASE, head });
+    expect(r.games).toMatchObject({ changed: 26, stateChanged: 10 });
+    expect(r.verdict).toBe(
+      "Play changed in 10 of 60 games; in 16 more, only the GM log's fields changed. No figure moved beyond the noise.",
+    );
+    expect(renderReport(r)).toContain(
+      '26 of 60 games differ beyond their words (26 of the 48 computer-played games and 0 of the 12 with a scripted ' +
+        "realm): in 10, play changed; in 16, only the GM log's fields changed, not the saved state.",
+    );
+  });
+
+  test('every game, the telemetry and the report too: still not play, and not taken for a change in the dice', () => {
+    const head = BASE.map((g) => alter(g, ['log', 'telemetry', 'report']));
+    const r = buildReport({ base: BASE, head });
+    expect(r.verdict).toBe(
+      "Nothing in play changed: every game's saved state is the same as before, turn by turn. Only the GM log's " +
+        "fields, the telemetry and the scripted realm's report changed, in 60 of 60 games. Judged as a whole: no " +
+        'meaningful change.',
+    );
+  });
+
+  test('the saved state, the length, the results or the scripted cases: play', () => {
+    const one = (h: KeptGame, b: KeptGame = game('bots-00')) => compareGames([b], [h])[0];
+    expect(one(alter(game('bots-00'), ['state']))).toMatchObject({ state: true });
+    expect(one({ ...game('bots-00'), turns: game('bots-00').turns.slice(0, 4) })).toMatchObject({ state: true });
+    expect(one({ ...game('bots-00'), results: 'other' })).toMatchObject({ state: true });
+    const scripted = { ...game('bots-00'), cases: { encounter: 1, battleChase: 0 } };
+    expect(one({ ...scripted, cases: { encounter: 2, battleChase: 0 } }, scripted)).toMatchObject({ state: true });
+    expect(compareGames(BASE, BASE.slice(1))).toMatchObject([{ id: 'bots-00', state: true }]);
   });
 });
 
