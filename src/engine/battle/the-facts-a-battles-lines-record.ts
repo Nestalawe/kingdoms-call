@@ -306,7 +306,8 @@ export interface HowAForceComesOnInItsHeader {
 
 /** A side of a battle between heroes, as its label is written from (plan P1-12d22: the battle slice's Decision 6): its
  *  commander's name as the world holds it, and whether he fell before the lines joined, which makes the side "<name>'s
- *  leaderless host". The prose writes the label (theLabelOfASide). */
+ *  leaderless host". Since P1-12d24 a host in a stalled battle and a hero's newly gathered host too. The prose writes
+ *  the label (theLabelOfASide). */
 export interface ASideOfABattle {
   readonly heroName: string;
   readonly leaderless: boolean;
@@ -317,7 +318,8 @@ export interface ASideOfABattle {
  *  "Ulric and the local defenders"), or with no guard to lead them (none, or he fell before the lines joined): "the
  *  defenders of Highmoor" ("The defenders of Highmoor" where the place writes it so), "the garrison of Highmoor" (a
  *  realm's unled garrison), "Westmarch's garrison", "its neutral defenders"; or the realm that holds the province, by
- *  its name as the world holds it. The prose writes the label (theLabelOfTheDefenders). */
+ *  its name as the world holds it. Since P1-12d24 a stalled battle's defenders with no guard ("the leaderless garrison")
+ *  and a beaten guard's with no name to give ("the defenders"). The prose writes the label (theLabelOfTheDefenders). */
 export type TheDefendersOfAProvince =
   | { readonly kind: 'the defenders led by their guard'; readonly guardName: string }
   | {
@@ -328,6 +330,8 @@ export type TheDefendersOfAProvince =
   | { readonly kind: "a realm's garrison of a province with no guard to lead it"; readonly provName: string }
   | { readonly kind: "a realm's garrison with no guard to lead it"; readonly ownerName: string }
   | { readonly kind: 'neutral defenders with no guard to lead them' }
+  | { readonly kind: 'a leaderless garrison' }
+  | { readonly kind: 'defenders with no guard to name them' }
   | { readonly kind: 'the realm that holds the province'; readonly realmName: string | undefined };
 
 /** How hard a battle was won: the margin band's slug (BATTLE_MARGIN_BANDS, battle/fates.ts), which the prose writes
@@ -1044,31 +1048,31 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'the hero has the better of the fighting but the guard still holds the field';
-      hostName: string;
+      hostName: ASideOfABattle;
       provName: string;
       guardName: string;
       guardUnitCount: number;
     }
   | {
       kind: 'the hero has the better of the fighting but leaderless defenders still hold the field';
-      hostName: AValueInALinesWords;
+      hostName: ASideOfABattle;
       provName: AValueInALinesWords;
       leaderlessUnitCount: number;
     }
   | {
       kind: 'the hero has the better of the fighting but enemy forces still hold their ground';
-      hostName: string;
+      hostName: ASideOfABattle;
       provName: string;
     }
   | {
       kind: "the hero has the better of the fighting but the province's garrison still holds";
-      hostName: AValueInALinesWords;
+      hostName: ASideOfABattle;
       provName: AValueInALinesWords;
       atSea: boolean;
     }
   | {
       kind: 'the hero overcomes the defenders and claims the province for his realm';
-      hostName: string;
+      hostName: ASideOfABattle;
       provName: string;
       playerName: string;
     }
@@ -1091,6 +1095,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "a beaten guard's surviving unit breaks ranks and flees as mercenaries";
       unitName: string;
+      /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
       victorsHost: string | null;
       provName: string;
     }
@@ -1098,14 +1103,16 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "a beaten guard's surviving unit loses heart and is reduced a tier";
       unitNameAtItsOldQuality: string;
       unitQuality: string;
+      /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
       victorsHost: string | null;
-      guardName: string;
+      guardName: TheDefendersOfAProvince;
     }
   | {
       kind: "a beaten guard's surviving unit holds its ground unbroken";
       unitName: string;
+      /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
       victorsHost: string | null;
-      guardName: string;
+      guardName: TheDefendersOfAProvince;
     }
   | {
       kind: "a side's strength ladder begins";
@@ -1198,8 +1205,8 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "an unfinished battle against a province's defenders resumes";
       provName: string;
-      attackersHostName: string;
-      defendersName: string;
+      attackersHostName: ASideOfABattle;
+      defendersName: TheDefendersOfAProvince;
     }
   | { kind: 'the guard still holds a contested province with survivors'; guardName: string; provName: string }
   | {
@@ -1209,15 +1216,19 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'the attacker finally overcomes the defenders and claims a province';
-      attackersHostName: string;
+      attackersHostName: ASideOfABattle;
       provName: string;
     }
   | {
       kind: 'the attacker breaks off a stalled battle and retreats';
-      attackersHostName: AValueInALinesWords;
+      attackersHostName: ASideOfABattle;
       retreatToName: AValueInALinesWords;
     }
-  | { kind: 'the attacker is pinned in a province with no way out'; attackersHostName: string; provName: string }
+  | {
+      kind: 'the attacker is pinned in a province with no way out';
+      attackersHostName: ASideOfABattle;
+      provName: string;
+    }
   | {
       kind: 'a contest for a province lapses as the realms are no longer at war';
       provName: string;
@@ -1227,20 +1238,20 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "war comes to a province two realms' hosts share";
       provName: AValueInALinesWords;
-      attackersHostName: AValueInALinesWords;
+      attackersHostName: ASideOfABattle;
       attackersRealmTag: AValueInALinesWords;
-      defendersHostName: AValueInALinesWords;
+      defendersHostName: ASideOfABattle;
       defendersRealmTag: AValueInALinesWords;
       seasonName: AValueInALinesWords;
     }
   | {
       kind: 'an unfinished battle between two hosts resumes';
       provName: string;
-      attackersHostName: string;
-      defendersHostName: string;
+      attackersHostName: ASideOfABattle;
+      defendersHostName: ASideOfABattle;
     }
-  | { kind: 'the winner of a stalled battle secures a province'; winnersHostName: string; provName: string }
-  | { kind: 'a host holds a province unopposed and secures it'; hostName: string; provName: string }
+  | { kind: 'the winner of a stalled battle secures a province'; winnersHostName: ASideOfABattle; provName: string }
+  | { kind: 'a host holds a province unopposed and secures it'; hostName: ASideOfABattle; provName: string }
   | { kind: 'the eagle riders mark the forest wardens and spoil the ambush'; shooterName: string }
   | { kind: 'the gyrocopters harry a flying unit off its line'; targetUnitName: string; strengthLost: number }
   | { kind: "a side's gyrocopters climb to meet the enemy's flyers"; sideName: string; engagedCount: number }

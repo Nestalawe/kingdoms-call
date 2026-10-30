@@ -475,7 +475,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         type: 'combat',
         fact: {
           kind: 'the hero has the better of the fighting but the guard still holds the field',
-          hostName: c.alive === false ? `${c.name}'s leaderless host` : c.name,
+          hostName: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
           guardName: neutralGuard.name.replace(' (wandering)', ''),
           guardUnitCount: guardLeft,
@@ -490,7 +490,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         type: 'combat',
         fact: {
           kind: 'the hero has the better of the fighting but leaderless defenders still hold the field',
-          hostName: c.alive === false ? `${c.name}'s leaderless host` : c.name,
+          hostName: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
           leaderlessUnitCount: llLeft,
         },
@@ -504,7 +504,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         type: 'combat',
         fact: {
           kind: 'the hero has the better of the fighting but enemy forces still hold their ground',
-          hostName: c.alive === false ? `${c.name}'s leaderless host` : c.name,
+          hostName: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
@@ -526,7 +526,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         type: 'combat',
         fact: {
           kind: "the hero has the better of the fighting but the province's garrison still holds",
-          hostName: c.alive === false ? `${c.name}'s leaderless host` : c.name,
+          hostName: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
           atSea: prov.terrain === 'sea',
         },
@@ -543,7 +543,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         type: 'combat',
         fact: {
           kind: 'the hero overcomes the defenders and claims the province for his realm',
-          hostName: c.alive === false ? `${c.name}'s leaderless host` : c.name,
+          hostName: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
           playerName: player.name,
         },
@@ -606,9 +606,15 @@ export const GUARD_DEMOTE_CHANCE = 0.5;
 export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASurvivingUnitsFate, victor) {
   const { G } = turnContext;
   const kept = [];
-  const _vh = victor ? `${String(victor).replace(' (wandering)', '')}'s host` : null;
+  // The victor's name, " (wandering)" cut; the prose writes "<name>'s host" (plan P1-12d24).
+  const _vh = victor ? String(victor).replace(' (wandering)', '') : null;
   (survivors || []).forEach((a) => {
     const gname = ((guard && guard.name) || 'the defenders').replace(' (wandering)', '');
+    // The same guard as the lines' facts hold him (plan P1-12d24): by his name, or the defenders with none to give.
+    const theGuard =
+      guard && guard.name
+        ? { kind: 'the defenders led by their guard', guardName: guard.name.replace(' (wandering)', '') }
+        : { kind: 'defenders with no guard to name them' };
     if (kcRng() < GUARD_FLIGHT_CHANCE) {
       if (!G.mercenaries) G.mercenaries = [];
       G.mercenaries.push({
@@ -646,7 +652,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
         unitNameAtItsOldQuality: unitRef(gname, { ...a, quality: _q0 }),
         unitQuality: a.quality,
         victorsHost: _vh,
-        guardName: gname,
+        guardName: theGuard,
       });
       kept.push(a);
       return;
@@ -655,7 +661,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
       kind: "a beaten guard's surviving unit holds its ground unbroken",
       unitName: unitRef(gname, a),
       victorsHost: _vh,
-      guardName: gname,
+      guardName: theGuard,
     });
     kept.push(a);
   });

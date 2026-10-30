@@ -84,6 +84,10 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
     // top-level lines resolveStalledBattles writes itself.
     const forceLabel = (f) =>
       f && (f._leaderlessHost || f.alive === false) ? `${f.name}'s leaderless host` : f ? f.name : 'the host';
+    // The same host as a line's fact holds it (plan P1-12d24): its commander's name and whether he fell; the prose writes
+    // forceLabel's words. Every fact that names a host names one the line's audience reads (attacker.player, …), so no
+    // fact meets forceLabel's 'the host'.
+    const theSideOfAForce = (f) => ({ heroName: f.name, leaderless: Boolean(f._leaderlessHost || f.alive === false) });
 
     // CASE A — neutral defenders still hold an unowned province with an enemy force present. Two
     // forms: a live guard commander (fights with skills, may duel), or a LEADERLESS garrison
@@ -98,8 +102,10 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         fact: {
           kind: "an unfinished battle against a province's defenders resumes",
           provName: prov.name,
-          attackersHostName: forceLabel(attacker),
-          defendersName: guard ? guard.name.replace(' (wandering)', '') : 'the leaderless garrison',
+          attackersHostName: theSideOfAForce(attacker),
+          defendersName: guard
+            ? { kind: 'the defenders led by their guard', guardName: guard.name.replace(' (wandering)', '') }
+            : { kind: 'a leaderless garrison' },
         },
         audience: { actor: attacker.player, realms: [attacker.player], seen: 'battle' },
         hero: _ctxCharId,
@@ -212,7 +218,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             type: 'combat',
             fact: {
               kind: 'the attacker finally overcomes the defenders and claims a province',
-              attackersHostName: forceLabel(attacker),
+              attackersHostName: theSideOfAForce(attacker),
               provName: prov.name,
             },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
@@ -264,7 +270,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               type: 'combat',
               fact: {
                 kind: 'the attacker breaks off a stalled battle and retreats',
-                attackersHostName: forceLabel(attacker),
+                attackersHostName: theSideOfAForce(attacker),
                 retreatToName: dest.name,
               },
               audience: { actor: attacker.player, realms: [attacker.player] },
@@ -290,7 +296,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               type: 'combat',
               fact: {
                 kind: 'the attacker is pinned in a province with no way out',
-                attackersHostName: forceLabel(attacker),
+                attackersHostName: theSideOfAForce(attacker),
                 provName: prov.name,
               },
               audience: { actor: attacker.player, realms: [attacker.player] },
@@ -398,17 +404,17 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           ? {
               kind: "war comes to a province two realms' hosts share",
               provName: prov.name,
-              attackersHostName: forceLabel(attacker),
+              attackersHostName: theSideOfAForce(attacker),
               attackersRealmTag: realmTag(turnContext, attacker.player),
-              defendersHostName: forceLabel(defender),
+              defendersHostName: theSideOfAForce(defender),
               defendersRealmTag: realmTag(turnContext, defender.player),
               seasonName: SEASONS[ph],
             }
           : {
               kind: 'an unfinished battle between two hosts resumes',
               provName: prov.name,
-              attackersHostName: forceLabel(attacker),
-              defendersHostName: forceLabel(defender),
+              attackersHostName: theSideOfAForce(attacker),
+              defendersHostName: theSideOfAForce(defender),
             },
         audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
         hero: _ctxCharId,
@@ -483,7 +489,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           type: 'combat',
           fact: {
             kind: 'the winner of a stalled battle secures a province',
-            winnersHostName: forceLabel(winner),
+            winnersHostName: theSideOfAForce(winner),
             provName: prov.name,
           },
           audience: { actor: winner.player, realms: [], seen: 'battle' },
@@ -545,7 +551,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         type: 'combat',
         fact: {
           kind: 'a host holds a province unopposed and secures it',
-          hostName: forceLabel(lone),
+          hostName: theSideOfAForce(lone),
           provName: prov.name,
         },
         audience: { actor: lone.player, realms: [], seen: 'battle' },
