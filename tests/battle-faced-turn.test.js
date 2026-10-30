@@ -5,9 +5,9 @@
 // A fallen commander's host told who slew them is tests/unit/fallen-commander-host.test.ts (plan P1-08f: handleHeroDeath
 // and disperseDeadCharArmies are top-level now); each fate of a beaten guard's survivors, with fixed dice, is
 // tests/unit/stalled-battles-unit-gain-and-war-fronts.test.ts (plan P1-08i3: erodeGuardSurvivors is top-level now).
-// Level 2 (scenario): what a real turn's battle writes. The battle is staged with overwhelming odds, so the attacker
-// always wins; which fate each company draws is the dice's, so the checks hold for every line that appears rather than
-// for one line in particular.
+// Level 2 (scenario): what a real turn's battle writes. The battle is staged with overwhelming odds (an edge of 5.8× or
+// more, and fortune never overturns 4×: src/engine/battle/fortune.ts), so the attacker always wins; which fate each
+// company draws is the dice's, so the checks hold for every line that appears rather than for one line in particular.
 const {bootScenario,order,plan}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|wrapping the line at|met at the end of the line by|riding free round the flank|fighting from the air|in the reserve|in the second line|shooting at an empty column|with nobody opposite)\b/;
@@ -27,8 +27,11 @@ const CLAUSE=/, (facing|shooting|in a flank duel with|guarding the end against|w
     if(!H||!guard) throw new Error('could not stage: no hero or no neutral guard');
     S.characters=S.characters.filter(c=>c.player!=null||c.id===guard.id||c.location!==P.id);
     P.characters=(P.characters||[]).filter(id=>S.characters.some(c=>c.id===id));
-    own(S,P,0); N.terrain=terrain; guard.items=[];
-    place(S,H,P); H.items=[]; H.skills={...(H.skills||{}),archery:0,tactical:0};
+    // The odds are made overwhelming: the guard has no skill (no Tactical, no battle magic) and a Cautious temper (he
+    // calls out nobody, and the hero refuses no challenge, so neither host is demoralised); the hero's Druid 1 leads
+    // every company at full strength, whatever his race.
+    own(S,P,0); N.terrain=terrain; guard.items=[]; guard.skills={}; guard.temper='Cautious';
+    place(S,H,P); H.items=[]; H.skills={...(H.skills||{}),archery:0,tactical:0,druid:1};
     return {H,N,P,guard};
   };
 
