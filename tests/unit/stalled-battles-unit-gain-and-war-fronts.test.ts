@@ -24,9 +24,14 @@
 // matrix runs all of them, but never the war front's battle, a leaderless neutral garrison fighting on, a repelled
 // attacker's retreat, a contest between realms at peace, or a lone host on an ally's ground (V8 block coverage,
 // P1-08i3).
+// - The hosts and the defenders the lines name where no matrix game goes (P1-12d24, the battle stood in): a guard
+//   "(wandering)" and a leaderless garrison throwing a stalled battle's attacker back, who breaks off and retreats; war
+//   coming to shared ground; a host gained beating a leaderless garrison whose survivors hold, or a third realm's column
+//   while the garrison never fought; a beaten guard's survivors with no guard to name and a victor "(wandering)". Each
+//   with the host led and leaderless, its words read whole (passes on P1-12d24's base, as after).
 import vm from 'node:vm';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {
   allText,
@@ -618,5 +623,159 @@ describe('every hero’s maximum HP kept in step (syncAllMaxHp)', () => {
         },
       ),
     );
+  });
+});
+
+// ── The hosts and the defenders named in the lines no matrix game reaches (plan P1-12d24) ────
+// By the matrix's coverage of both sets (npm run proof:unreached on P1-12d24), no game reaches these lines; each is
+// played with the host's commander alive and fallen, and its words read whole. The battle itself is stood in (the
+// vm's globals combatVsNPC, combatVsChar, creditBattle, emitBattle and markOrcAttackWin, put back after each case): a
+// battle won or lost as the case needs, so that what follows it is staged directly.
+const lines = (b: ReturnType<typeof fresh>) => allText(b).split('\n');
+/** A host's label: its commander's name, or "<name>'s leaderless host" once he has fallen. */
+const label = (c: Character, fallen: boolean) => (fallen ? `${c.name}'s leaderless host` : c.name);
+
+// ── The battle, stood in: the vm's globals, put back after each case ────
+const g = vm.runInContext('globalThis', engine) as Record<string, unknown>;
+const was: Record<string, unknown> = {};
+function standIn(fns: Record<string, unknown>) {
+  for (const [k, f] of Object.entries(fns)) {
+    if (!(k in was)) was[k] = g[k];
+    g[k] = f;
+  }
+}
+afterEach(() => {
+  for (const [k, f] of Object.entries(was)) g[k] = f;
+  for (const k of Object.keys(was)) Reflect.deleteProperty(was, k);
+});
+const noop = () => undefined;
+/** The battle won or lost, and nothing else of it told or credited. */
+const aBattle = (won: boolean, before: (...a: unknown[]) => void = noop) => {
+  standIn({
+    combatVsNPC: (...a: unknown[]) => (before(...a), { won, narrative: [] }),
+    combatVsChar: (...a: unknown[]) => (before(...a), { won, narrative: [] }),
+    creditBattle: noop,
+    emitBattle: noop,
+    markOrcAttackWin: noop,
+  });
+};
+
+describe('the hosts and defenders a stalled battle names, in the lines no game reaches (resolveStalledBattles)', () => {
+  for (const fallen of [false, true]) {
+    const who = fallen ? 'his host leaderless' : 'its commander alive';
+    test(`a guard "(wandering)" and a leaderless garrison are pressed again, and each throws the attacker back, who breaks off and retreats (${who})`, () => {
+      for (const guarded of [true, false]) {
+        const b = fresh();
+        const A = must(b.ring1[0], 'a neighbour');
+        b.own(A, 0);
+        const c = hero(b, { player: 0, at: b.X, troops: 3, quality: 'Green' });
+        Object.assign(c, { _attackedFrom: A.id }, fallen ? { _leaderlessHost: true } : {});
+        if (guarded) {
+          const guard = hero(b, { player: null, at: b.X, troops: 3, quality: 'Elite' });
+          Object.assign(guard, { name: 'Ulric (wandering)', _isNeutralGuard: true });
+          b.X.neutralDefenders = [...guard.armies];
+        } else {
+          b.X._leaderlessDefenders = true;
+          b.X.neutralDefenders = units('Shieldwall Levies', 'Elite', ['Levy L1', 'Levy L2']);
+        }
+        b.X.npcArmies = 2;
+        b.X._battleUnresolved = true;
+        aBattle(false);
+        resolveStalledBattles(b.tc, PH);
+        expect(lines(b)).toEqual(
+          expect.arrayContaining([
+            `⚔ The unfinished battle for ${b.X.name} resumes — ${label(c, fallen)} presses the attack on ${guarded ? 'Ulric' : 'the leaderless garrison'}.`,
+            `${label(c, fallen)} breaks off and retreats to ${A.name}.`,
+          ]),
+        );
+        expect(c.location).toBe(A.id);
+      }
+    });
+    test(`war comes to a province two realms' hosts share: each host by its label and its realm (${who})`, () => {
+      const b = fresh();
+      b.own(b.X, 1);
+      const c = hero(b, { player: 0, at: b.X, troops: 2, land: 2 });
+      const d = hero(b, { player: 1, at: b.X, troops: 2, land: 2 });
+      if (fallen) Object.assign(d, { _leaderlessHost: true });
+      b.X._battleUnresolved = true;
+      aBattle(true);
+      resolveStalledBattles(b.tc, PH, undefined, true);
+      const [r0, r1] = [0, 1].map((p) => must(b.G.players[p], 'a realm').name);
+      const season = (b.tc as unknown as { SEASONS: string[] }).SEASONS[PH];
+      expect(lines(b)).toContain(
+        `⚔ War has come to ${b.X.name}: ${c.name} (${String(r0)}) and ${label(d, fallen)} (${String(r1)}) have stood on the same ground since the season opened, and with ${String(season)}'s orders done they fall upon each other.`,
+      );
+    });
+  }
+});
+
+describe('the host a host gained in a province names, in the lines no game reaches (resolveUnitGainInProvince)', () => {
+  for (const fallen of [false, true]) {
+    const who = fallen ? 'its commander fallen' : 'its commander alive';
+    test(`he has the better of the fighting, but a leaderless garrison's survivors still hold, rallying round "the defenders" (${who})`, () => {
+      const b = fresh();
+      b.X._leaderlessDefenders = true;
+      b.X.neutralDefenders = units('Shieldwall Levies', 'Average', ['Levy L1', 'Levy L2']);
+      b.X.npcArmies = 2;
+      const c = hero(b, { player: 0, at: b.X, troops: 6, quality: 'Elite' });
+      if (fallen) c.alive = false;
+      aBattle(true);
+      withDice(engine, [0.999], () => resolveUnitGainInProvince(b.tc, c, b.X, PH));
+      const told = lines(b);
+      expect(told).toContain(
+        `⚔ ${label(c, fallen)} has the better of the fighting in ${b.X.name}, but 2 leaderless defending units still hold the field — the province is not yet taken.`,
+      );
+      for (const n of ['Levy L1', 'Levy L2'])
+        expect(told.find((l) => l.includes(n))).toMatch(
+          new RegExp(`hold their ground unbroken against ${c.name}'s host and rally around the defenders\\.$`),
+        );
+    });
+    test(`he beats a third realm's column, but the province's garrison never fought and still mans the walls (${who})`, () => {
+      const b = fresh();
+      b.own(b.X, 1);
+      b.X.garrisonArmies = units('Shieldwall Levies', 'Green', ['the Gate Watch']);
+      b.G.relations['0-2'] = 'enemy';
+      const d = hero(b, { player: 2, at: b.X, troops: 2 });
+      const c = hero(b, { player: 0, at: b.X, troops: 6, quality: 'Elite' });
+      if (fallen) c.alive = false;
+      aBattle(true, () => {
+        d.armies = [];
+      });
+      resolveUnitGainInProvince(b.tc, c, b.X, PH);
+      expect(lines(b)).toContain(
+        `⚔ ${label(c, fallen)} has the better of the fighting in ${b.X.name}, but its garrison still mans the walls — the province is not yet taken.`,
+      );
+    });
+  }
+});
+
+describe('a beaten guard’s survivors with no guard to name, and a victor "(wandering)" (erodeGuardSurvivors)', () => {
+  const erode = (dice: number[], victor?: string) => {
+    const b = fresh();
+    const told: string[] = [];
+    withDice(engine, dice, () =>
+      erodeGuardSurvivors(
+        b.tc,
+        null,
+        b.X,
+        units('Shieldwall Levies', 'Average', ['Levy S1']),
+        (l) => told.push(theWordsOf(l)),
+        victor,
+      ),
+    );
+    return told;
+  };
+  test('survivors who hold rally around the defenders, against the victor\'s host, " (wandering)" cut', () => {
+    expect(erode([0.999], 'Aldric (wandering)')).toEqual([
+      "— the defenders's Levy S1 (Shieldwall Levies, Average) hold their ground unbroken against Aldric's host and rally around the defenders.",
+    ]);
+  });
+  test('a survivor who loses heart, with no victor named, rallies around the defenders', () => {
+    expect(erode([0.999, 0])).toEqual([
+      "— the defenders's Levy S1 (Shieldwall Levies, Average) lost heart in defeat, reduced to Green — they rally around the defenders.",
+    ]);
+  });
+  test('survivors who flee before the victor\'s host, " (wandering)" cut', () => {
+    expect(erode([0], 'Aldric (wandering)')[0]).toMatch(/break ranks and flee before Aldric's host — they now roam/);
   });
 });
