@@ -98,7 +98,7 @@ test("two rivals both harden; each realm reads only its own hero's rise, and the
 
 test("a battle's winner: the victory line is private to the winner's realm; the battle is shown to both", () => {
   const w = hero('Corlis Vane', 0, 3, 20);
-  const narr: unknown[] = ['⚔ **Battle for Testmoor**'];
+  const narr: unknown[] = [{ kind: 'the battle for a province begins', provName: 'Testmoor' }];
   const r = call('awardWinHp', w, narr, 'duel') as { gain: number } | null;
   expect(r?.gain, 'staged: the winner hardens').toBeGreaterThanOrEqual(2);
   const from = L.length;

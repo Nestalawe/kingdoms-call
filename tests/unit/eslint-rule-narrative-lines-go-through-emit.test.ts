@@ -1,11 +1,12 @@
 // kc/narrative-lines-go-through-emit (tools/eslint-rules/; plan P1-12, Decision 6): every line of the turn enters the
 // GM's log through emit. Refused: a write to turnLog (a mutating call on it, an assignment to it or inside it, delete,
 // ++), a log() call (but console's and Math's), a push, unshift or splice on a fight's narrative, an object literal
-// with an onlyPlayer key, and an event written without its hero (emit's event, or a place with an audience, with no hero
-// and no spread: P1-12c2). Allowed: emit, narrate, narrateTo, narrateAll, narrateAt, takeBackLinesFrom, reading the log
-// and narratives, console.log, Math.log. Each refusal is red on its planted line. Where the rule runs (all of the engine
-// and the views but the events file, since P1-12a4) is eslint.config.js's; tests/static/harness.test.ts checks it
-// refuses a planted line there and nowhere else.
+// with an onlyPlayer key, an event written without its hero (emit's event, or a place with an audience, with no hero
+// and no spread: P1-12c2), and a line handed as words (P1-12d18: such an event with a text key, and a string handed to
+// narrate, emitNarrLine, narrateAll or narrateAt). Allowed: emit, narrate, narrateTo, narrateAll, narrateAt,
+// takeBackLinesFrom, each handed a fact, reading the log and narratives, console.log, Math.log. Each refusal is red on
+// its planted line. Where the rule runs (all of the engine and the views but the events file, since P1-12a4) is
+// eslint.config.js's; tests/static/harness.test.ts checks it refuses a planted line there and nowhere else.
 // Level 1 (unit): ESLint's RuleTester runs the rule's code on snippets, which a static test, running nothing, can't.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -16,11 +17,14 @@
 // `X.narrative`, an object literal with an `onlyPlayer` key (the option that refused only the writes to the GM's log,
 // for the folders not yet converted, went in P1-12a4), and an event written without its hero (P1-12c2: `emit`'s event,
 // or an event's place, an object literal with an `audience` as handed to `logSplit` or held in a `const` or an array,
-// with no `hero` and no spread); a hero's id, `null`, `THE_HERO_WHOSE_ORDER_IS_RESOLVING`, a spread place and an object
-// with no `audience` pass; `emit`, `narrate`, `narrateTo`, `narrateAll`, `narrateAt`, `takeBackLinesFrom`, reading the
-// log or a narrative, a context made with an empty log, another list's push, `console.log` and `Math.log` pass;
-// JavaScript and TypeScript. Each refusal is red on its planted line. Where it runs is `harness`'s. Level 1: RuleTester
-// runs the rule's code on snippets, which a static test, running nothing, can't
+// with no `hero` and no spread), and a line handed as words (P1-12d18: such an event with a `text` key, once it names
+// its hero, and a string, a template, a `+` or a choice with one, handed to `narrate`, `emitNarrLine`, `narrateAll` or
+// `narrateAt`, alone or in an array written there); a fact, a fact whose fields hold a string, a hero's id, `null`,
+// `THE_HERO_WHOSE_ORDER_IS_RESOLVING`, a spread place and an object with no `audience` pass; `emit`, `narrate`,
+// `narrateTo`, `narrateAll`, `narrateAt`, `takeBackLinesFrom`, reading the log or a narrative, a context made with an
+// empty log, another list's push, `console.log` and `Math.log` pass; JavaScript and TypeScript. Each refusal is red on
+// its planted line. Where it runs is `harness`'s. Level 1: RuleTester runs the rule's code on snippets, which a static
+// test, running nothing, can't
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, test } from 'vitest';
@@ -35,27 +39,38 @@ const log = [{ messageId: 'log' }];
 const narrative = [{ messageId: 'narrative' }];
 const onlyPlayer = [{ messageId: 'onlyPlayer' }];
 const hero = [{ messageId: 'hero' }];
+const text = [{ messageId: 'text' }];
+const words = [{ messageId: 'words' }];
 
 tester.run('kc/narrative-lines-go-through-emit', rule, {
   valid: [
     // the door, and the narrative's two helpers
-    "emit(turnContext, { type: 'system', text, audience: { realms: [pi] }, hero: c.id });",
+    "emit(turnContext, { type: 'system', fact, audience: { realms: [pi] }, hero: c.id });",
     // every event names its hero: a hero's id, null for no hero, the hero whose order is resolving; a place with an
     // audience names it too; an event spreading a place carries the place's
-    "emit(turnContext, { type: 'system', text, audience: {}, hero: null });",
-    "emit(turnContext, { type: 'system', text, audience: { actor: pi }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING });",
+    "emit(turnContext, { type: 'system', fact, audience: {}, hero: null });",
+    "emit(turnContext, { type: 'system', fact, audience: { actor: pi }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING });",
     "logSplit(turnContext, 'system', mine, theirs, { audience: { actor: pi }, hero: c.id, province: p.id });",
     'const place = { audience: { realms: [owner] }, hero: null, province: prov.id };',
-    "emit(turnContext, { type: 'combat', text: slainLine, ...place });",
+    "emit(turnContext, { type: 'combat', fact: slainLine, ...place });",
     "lines.push([msg, { audience: { actor: pi }, 'hero': THE_HERO_WHOSE_ORDER_IS_RESOLVING }]);",
     // an object that is no event: no audience, not handed to emit
     'const opts = { actor: c.player, charId: c.id };',
-    "narrate(narrative, 'The hosts close.');",
+    "narrate(narrative, { kind: 'the hosts close', province: prov.name });",
+    'narrate(narrative, line);',
     'narrateTo(narrative, realm, hero.id, line);',
     // and the three that move lines already written: a duel's narrative into a battle's, lines put in before a line,
     // lines taken back
     'narrateAll(narrative, res.narrative);',
     'narrateAt(battle.narrative, at, form);',
+    'narrateAt(narrative, at, [plea, refused]);',
+    "narrateAll(narrative, [battleWidthLine(prov.terrain, w), { kind: 'the hosts close' }]);",
+    "emitNarrLine(turnContext, line, { ...fight, battle: { id, tier: 'd' } });",
+    // a fact whose fields hold a string, and a string handed elsewhere: only the line itself is refused
+    "narrate(narrative, { kind: 'a blow', who: `${a.name}'s host` });",
+    "notes.push('a note'); describe('words');",
+    // an object with a text key that is no event: no audience, not handed to emit
+    "const shown = { text: 'a line', bTier: 'k' };",
     'const tail = takeBackLinesFrom(narrative, at);',
     // reading the log and a narrative
     'turnLog.forEach((e) => seen.add(e.charId));',
@@ -77,7 +92,7 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
     'const r = Math.log(Math.max(a, 1e-9) / Math.max(b, 1e-9));',
     'const small = Math.abs(S) < globalThis.Math.log(1.15);',
     {
-      code: 'emit(turnContext, { type: "move", text: t as string, audience: {}, hero: null });',
+      code: 'emit(turnContext, { type: "move", fact: f as LineFact, audience: {}, hero: null });',
       languageOptions: { parser: tseslint.parser },
     },
   ],
@@ -118,9 +133,11 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
     },
     { code: "const l = { text, 'onlyPlayer': 1 };", errors: onlyPlayer },
     // an event written without its hero: emit's, or a place with an audience
-    { code: "emit(turnContext, { type: 'system', text, audience: { realms: [pi] } });", errors: hero },
-    { code: "emit(turnContext, { type: 'system', text, audience: {}, heroes: [c.id] });", errors: hero },
-    { code: "emit(turnContext, { type: 'system', text, audience: {}, charId: c.id });", errors: hero },
+    { code: "emit(turnContext, { type: 'system', fact, audience: { realms: [pi] } });", errors: hero },
+    { code: "emit(turnContext, { type: 'system', fact, audience: {}, heroes: [c.id] });", errors: hero },
+    { code: "emit(turnContext, { type: 'system', fact, audience: {}, charId: c.id });", errors: hero },
+    // an event with no hero and words too: refused for its hero first (one fault at a time)
+    { code: "emit(turnContext, { type: 'system', text, audience: {} });", errors: hero },
     {
       code: "logSplit(turnContext, 'system', mine, theirs, { audience: { actor: pi }, province: p.id });",
       errors: hero,
@@ -128,9 +145,40 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
     { code: 'const place = { audience: { realms: [owner] }, province: prov.id };', errors: hero },
     { code: 'lines.push([msg, { audience: { actor: pi }, phase: ph }]);', errors: hero },
     {
-      code: 'emit(turnContext, { type: "move", text: t as string, audience: {} });',
+      code: 'emit(turnContext, { type: "move", fact: f as LineFact, audience: {} });',
       languageOptions: { parser: tseslint.parser },
       errors: hero,
+    },
+    // a line handed as words (P1-12d18): an event or a place with a text key, once it names its hero
+    { code: "emit(turnContext, { type: 'system', text, audience: { realms: [pi] }, hero: c.id });", errors: text },
+    { code: "emit(turnContext, { type: 'system', text: 'A line.', audience: {}, hero: null });", errors: text },
+    { code: "emit(turnContext, { type: 'combat', text: slainLine, ...place });", errors: text },
+    { code: 'emit(turnContext, { ...fight, text: line });', errors: text },
+    { code: "emit(turnContext, { type: 'system', 'text': t, audience: {}, hero: null });", errors: text },
+    {
+      code: "logSplit(turnContext, 'system', a, b, { audience: { actor: pi }, hero: c.id, text: line });",
+      errors: text,
+    },
+    { code: 'const place = { audience: { realms: [owner] }, hero: null, text: line };', errors: text },
+    // and a string handed to a fight's narrative: a string, a template, a + or a choice with one, in an array too
+    { code: "narrate(narrative, 'The hosts close.');", errors: words },
+    { code: 'narrate(narr, `— ${name} falls.`);', errors: words },
+    { code: "narrate(narrative, '  ' + line);", errors: words },
+    { code: "narrate(narrative, won ? fact : 'The hosts break.');", errors: words },
+    { code: "narrate(narrative, fact || 'The hosts break.');", errors: words },
+    { code: "emitNarrLine(turnContext, 'A line.', fight);", errors: words },
+    { code: "narrateAll(narrative, [fact, 'A line.', `— ${name}`]);", errors: [...words, ...words] },
+    { code: "narrateAll(narrative, 'A line.');", errors: words },
+    { code: "narrateAt(battle.narrative, at, ['A line.']);", errors: words },
+    {
+      code: 'narrate(narrative, `${name} falls.` as LineFact);',
+      languageOptions: { parser: tseslint.parser },
+      errors: words,
+    },
+    {
+      code: 'emit(turnContext, { type: "move", text: t as string, audience: {}, hero: null });',
+      languageOptions: { parser: tseslint.parser },
+      errors: text,
     },
     {
       code: "log('system', (text as string), { actor: pi });",

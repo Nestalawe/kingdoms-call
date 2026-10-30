@@ -5,15 +5,18 @@ How a line of the turn reaches the GM's log and each realm's report. The trap in
 ## A line goes through `emit`
 
 Every line of the turn enters the GM's log (`turnContext.turnLog`) through `emit(turnContext, event)`, in
-`src/engine/turn/events-and-their-audiences.ts`. The event says what happened (its type, and its finished
-text or, from P1-12c3, the fact its words are written from: below), where and when (`province`, `phase`), whom it is about (`hero`, `heroes`, `battle`), and who may read it
+`src/engine/turn/events-and-their-audiences.ts`. The event says what happened (its type, and the fact its words are
+written from: below), where and when (`province`, `phase`), whom it is about (`hero`, `heroes`, `battle`), and who may read it
 (`audience`: `realms` told, the `actor`, `seen` by the `'world'`, by whoever is `'there'` or by those in the `'battle'`,
 and `except` the realms that never read it). A line pushed past it chooses its own audience, the way the leaks the report
 check finds were made.
 - The lint rule `kc/narrative-lines-go-through-emit` refuses, in all of `src/engine` and `src/views` but the events file
   (since P1-12a4; folder by folder from P1-12a2), any write to `turnLog`, a `log(…)` call (but `console.log` and
   `Math.log`; there is no `log()` helper any more) and a narrative written by hand: add a fight's line with
-  `narrate(narrative, line)`: its words, or a fact (below). Lines already written move with `narrateAll` (a duel's
+  `narrate(narrative, line)`: a fact (below). Since P1-12d18 it also refuses a line handed as words: an event or a
+  place with a `text` key (once it names its hero), and a string (a string literal, a template, a `+` or a choice with
+  one) handed to `narrate`, `emitNarrLine`, `narrateAll` or `narrateAt`, alone or in an array written there. It runs on
+  the untyped files too, which the compiler doesn't check. Lines already written move with `narrateAll` (a duel's
   narrative into a battle's, each line as it is), `narrateAt` (lines put in before a line) and `takeBackLinesFrom` (a
   blow that never landed). `emitBattle` and `emitNarrLine` write a fight's narrative out with the fight's event
   (`FightLine`: the event but its words), each line in order: a fact of a kind whose audience is its hero's realm alone
@@ -37,14 +40,14 @@ check finds were made.
   beaten side holds the field) is overwritten with a fact of another kind.
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
   `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
-  (the event without its type and text: `{ audience, province, hero, phase, … }`), and files it with
-  `emit(turnContext, { type, text, ...place })`. `reportHeroFall` takes the line as a fact, as `notifyTarget` does
+  (the event without its type and fact: `{ audience, province, hero, phase, … }`), and files it with
+  `emit(turnContext, { type, fact, ...place })`. `reportHeroFall` takes the line as a fact, as `notifyTarget` does
   (since P1-12d11: one kind, "a hero is slain outside a battle", the way he fell a value, `how`, one for each of its 12
   callers), and who slew a hero is a record (`TheOneWhoSlewAHero`: a killer's name, or a lair's guardian and its
   province), not words. The skill rises held back (`_deferredSkillLogs`) hold their facts (since P1-12d12: a hero's
-  experience lines' kinds) until `writeDeferredSkillLines` files each. A line that may be words or a fact (a beaten guard's survivors' fates:
-  facts, but a unit disbanding is still words from `army-tables.ts`; what `notifyTarget` and `notifyProvinceOwner` are
-  handed; each half `logSplit` is handed, since P1-12d7) goes in as `...theWordsOrTheFactOfALine(line)`, which gives `emit` its `text` or its `fact`. Build it as the event's own fields, never as the old `log()` meta
+  experience lines' kinds) until `writeDeferredSkillLines` files each. What `notifyTarget` and `notifyProvinceOwner`
+  are handed, and each half `logSplit` is handed, is a fact too, filed as `fact: line`. Build it as the event's own
+  fields, never as the old `log()` meta
   (`targets`, `provinceId`, `charId`, `public`). A line seen by those there but with no province is seen by the world
   (`seen: 'world'`), as the report reads it: where the province may be missing, say so
   (`seen: prov ? 'there' : 'world'`).
@@ -66,8 +69,9 @@ check finds were made.
   same rule apart. The area rows of P1-12c replace the constant with the hero each fact names. The `phase` falls back
   as before: left out or `null` is the phase of that order, else the phase resolving, else 99 once the phases are over;
   `phase: 'none'` is no phase.
-- **A typed line records a fact, and the views write its words**. An event carries `text` (its finished
-  words) or `fact` (one kind of `LineFact`, never both: `emit` throws on both). An area's kinds are typed beside its code
+- **A line records a fact, and the views write its words**. An event carries `fact` (one kind of `LineFact`), never
+  its words: since P1-12d18 `TurnEvent` has no `text` and `NarrativeLine` is `LineFact`, and `emit` throws on an event
+  handed as words (a `text`, or a string in the fact's place), as it throws on one with no hero. An area's kinds are typed beside its code
   (the battles': `src/engine/battle/the-facts-a-battles-lines-record.ts`, the force markers and, since P1-12c5 and c6,
   every sentence of `battle/`: a battle between heroes, the duel before a battle, a battle against a province's own
   defenders, a host gained in a province, a stalled battle, a war front, and the helpers that return a line, which

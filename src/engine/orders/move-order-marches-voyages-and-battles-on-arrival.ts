@@ -24,7 +24,6 @@ import {
   narrateAt,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-  theWordsOrTheFactOfALine,
 } from '../turn/events-and-their-audiences.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from '../realms/relations-and-captures.ts';
@@ -873,7 +872,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         (line) =>
           emit(turnContext, {
             type: 'combat',
-            ...theWordsOrTheFactOfALine(line),
+            fact: line,
             audience: { actor: c.player, realms: [] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: toProv.id,
@@ -1812,7 +1811,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           (line) =>
             emit(turnContext, {
               type: 'combat',
-              ...theWordsOrTheFactOfALine(line),
+              fact: line,
               audience: { actor: c.player, realms: [] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               province: toProv.id,

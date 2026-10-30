@@ -55,6 +55,7 @@ import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts'
 import { at, leads, rival, wanderer } from '../lib/cast-spell-order-cases.ts';
 import { companies, item, skeletal } from '../lib/item-and-army-order-cases.ts';
 import type { WhatTheSavesUpgradeFound } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
+import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -95,6 +96,19 @@ const after = (b: Board, die = LANDS.die) => {
 const ring1 = (b: Board, i: number) => must(b.ring1[i], 'a neighbour of the middle');
 const realm = (b: Board, pi = 0) => must(b.G.players[pi], 'realm ' + String(pi));
 const texts = (b: Board) => b.lines().map((l) => l.text);
+/** A skill rise's line, as the fact it is (P1-12d18: every line is a fact): Aldric's Melee rising to this level. */
+const aRise = (level: number) =>
+  ({
+    kind: "a hero's skill rises through experience",
+    heroName: 'Aldric',
+    skill: 'melee',
+    level,
+    duelWith: null,
+    provinceName: null,
+    skillInPlay: null,
+    maxHpRise: 0,
+    maxHp: 20,
+  }) as const;
 
 const DIRECT = AFTER_THE_PHASES_CASES.map(
   ([part, cases]) => [part, cases.filter((c) => !c.wholeTurnOnly)] as const,
@@ -164,9 +178,7 @@ const everything = () => {
   const coward = spared(at(b, {}, { at: away }), b.G.turn);
   const fallenAlone = at(b, {}, { at: ring1(b, 2) });
   Object.assign(fallenAlone, { alive: false, hp: 0 });
-  tc(b)['_deferredSkillLogs'] = [
-    ['📈 A rise told late.', { audience: { actor: 0, realms: [0] }, hero: h.id, phase: 4 }],
-  ];
+  tc(b)['_deferredSkillLogs'] = [[aRise(2), { audience: { actor: 0, realms: [0] }, hero: h.id, phase: 4 }]];
   return { b, h, fallen, coward, away };
 };
 
@@ -278,7 +290,7 @@ describe('After the phases: what it calls', () => {
     const calls = standIn(b, ['resolveAllPendingSkillGains', 'writeDeferredSkillLines'], () => after(b), {
       resolveAllPendingSkillGains: () => {
         (tc(b)['_deferredSkillLogs'] as unknown[]).push([
-          '📈 Risen.',
+          aRise(2),
           { audience: { actor: 0, realms: [0] }, hero: h.id },
         ]);
       },
@@ -375,14 +387,14 @@ describe('After the phases: what only a direct call can stage', () => {
     const b = fresh();
     const h = at(b);
     tc(b)['_deferredSkillLogs'] = [
-      ['📈 First rise.', { audience: { actor: 0, realms: [0] }, hero: h.id, phase: 3 }],
-      ['📈 Second rise.', { audience: { actor: 0, realms: [0] }, hero: h.id }],
+      [aRise(2), { audience: { actor: 0, realms: [0] }, hero: h.id, phase: 3 }],
+      [aRise(3), { audience: { actor: 0, realms: [0] }, hero: h.id }],
     ];
     after(b);
     const ls = b.lines().filter((l) => l.text.startsWith('📈 '));
     expect(ls.map((l) => [l.text, l.charId, l.phase])).toEqual([
-      ['📈 First rise.', h.id, 3],
-      ['📈 Second rise.', h.id, 99],
+      [theWordsOf(aRise(2)), h.id, 3],
+      [theWordsOf(aRise(3)), h.id, 99],
     ]);
     expect(tc(b)['_deferredSkillLogs']).toEqual([]);
   });

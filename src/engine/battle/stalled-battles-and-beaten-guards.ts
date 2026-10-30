@@ -18,7 +18,7 @@ import { emitBattle } from './battle-report-lines-and-force-markers.ts';
 import { combatVsNPC } from './battles-against-province-defenders.ts';
 import { combatVsChar } from './battles-between-heroes.ts';
 import { erodeGuardSurvivors, resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
-import { emit, theWordsOrTheFactOfALine } from '../turn/events-and-their-audiences.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
 
 // ── STALLED BATTLES AND A BEATEN GUARD'S SURVIVORS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where a battle was left unresolved (the loser could not retreat) is fought over again at the start of
@@ -159,7 +159,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           (line) =>
             emit(turnContext, {
               type: 'combat',
-              ...theWordsOrTheFactOfALine(line),
+              fact: line,
               audience: { actor: attacker.player, realms: [], seen: 'battle' },
               hero: _ctxCharId,
               phase: ph,
