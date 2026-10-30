@@ -7,6 +7,7 @@ import {
   THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH,
   type ACommandMultiplierInTheLadder,
   type ASideOfABattle,
+  type TheDefendersOfAProvince,
   type ACommandMultiplierOfAUnit,
   type AFacingAsTheLadderTellsIt,
   type AForceWideModifierInTheLadder,
@@ -51,10 +52,36 @@ function theNameOfTheAbility(slug: UnitAbilitySlug): string {
   return UNIT_ABILITIES_THE_REGISTRY_HOLDS[slug].name;
 }
 
-/** A side of a battle between heroes, as its label names it (plan P1-12d22): its commander's name, or "<name>'s
- *  leaderless host" when he fell before the lines joined (the engine wrote it so: battles-between-heroes.ts). */
+/** A side of a battle, as its label names it (plan P1-12d22; since P1-12d23 a hero's side against a province's
+ *  defenders too): its commander's name, or "<name>'s leaderless host" when he fell before the lines joined (the
+ *  engine wrote it so: battles-between-heroes.ts, battles-against-province-defenders.ts). */
 function theLabelOfASide(side: ASideOfABattle): string {
   return side.leaderless ? `${side.heroName}'s leaderless host` : side.heroName;
+}
+
+/** The defenders of a province, as a battle against them names them (plan P1-12d23): their guard's name, with the
+ *  words the line follows it with ("and their forces", "and the local defenders"), or the defenders with no guard to
+ *  lead them, or the realm that holds the province (the engine wrote it so: battles-against-province-defenders.ts). */
+function theLabelOfTheDefenders(defenders: TheDefendersOfAProvince, afterTheGuardsName = ''): string {
+  switch (defenders.kind) {
+    case 'the defenders led by their guard':
+      return defenders.guardName + afterTheGuardsName;
+    case 'the defenders of a province with no guard to lead them':
+      return `${defenders.capitalised ? 'The' : 'the'} defenders of ${defenders.provName}`;
+    case "a realm's garrison of a province with no guard to lead it":
+      return `the garrison of ${defenders.provName}`;
+    case "a realm's garrison with no guard to lead it":
+      return `${defenders.ownerName}'s garrison`;
+    case 'neutral defenders with no guard to lead them':
+      return 'its neutral defenders';
+    case 'the realm that holds the province':
+      return String(defenders.realmName);
+  }
+}
+
+/** A defending side, as its label names it: a hero's side (a battle between heroes), or a province's defenders. */
+function theLabelOfASideOrTheDefenders(defenders: ASideOfABattle | TheDefendersOfAProvince): string {
+  return 'kind' in defenders ? theLabelOfTheDefenders(defenders) : theLabelOfASide(defenders);
 }
 
 /** The verbs a victory is told with: the engine draws which (winVerbIndex), as many as it counts. Each reads
@@ -751,25 +778,25 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the defender is slain before his army, and a veteran takes command':
       return `⚑ With ${fact.defName} slain before their army, a steady-handed veteran steps into command — the defence holds its ground, leaderless but unbowed.`;
     case "the attacker fights to win back his realm's capital":
-      return `🏠 ${fact.atkName} fights to win back ${fact.provName}, the realm's own capital — home ground lends the assault ×1.5 strength.`;
+      return `🏠 ${theLabelOfASide(fact.atkName)} fights to win back ${fact.provName}, the realm's own capital — home ground lends the assault ×1.5 strength.`;
     case "the attacker's siegecraft wears down the defenders' fortifications":
-      return `  🏰 ${fact.atkName}'s siegecraft wears down the defenders' fortifications (province bonus −${fact.siegecraft.toFixed(2)}).`;
+      return `  🏰 ${theLabelOfASide(fact.atkName)}'s siegecraft wears down the defenders' fortifications (province bonus −${fact.siegecraft.toFixed(2)}).`;
     case "the defender's host defends ground held justly":
       return `✝ Righteous Defence — ${theLabelOfASide(fact.defName)}'s host defends ground held justly (+10% defence).`;
     case "the defender's realm holds its own ground the harder":
-      return `  🛡 ${fact.defName}'s realm holds its own ground the harder (+${String(fact.ownGroundDefencePct)}% defence).`;
+      return `  🛡 ${theLabelOfASideOrTheDefenders(fact.defName)}'s realm holds its own ground the harder (+${String(fact.ownGroundDefencePct)}% defence).`;
     case "the defender's banner of the realm rallies the home defence":
       return `  🛡 ${theLabelOfASide(fact.defName)}'s Banner of the Realm rallies the home defense (+25%).`;
     case "the attacker's siege mastery halves the defenders' fortifications":
-      return `  🏰 ${String(fact.atkName)}'s siege mastery halves the defenders' fortifications.`;
+      return `  🏰 ${theLabelOfASide(fact.atkName)}'s siege mastery halves the defenders' fortifications.`;
     case 'the defenders fight on home ground':
       return `The defenders fight on home ground, gaining ×1.5 total defensive bonus.`;
     case "a side's skeletal legions fight with fanaticism under their undead king":
-      return `${fact.sideName}'s skeletal legions fight with undying fanaticism under their Undead king! (+${String(fact.undeadKingFanaticismPct)}% strength)`;
+      return `${theLabelOfASide(fact.sideName)}'s skeletal legions fight with undying fanaticism under their Undead king! (+${String(fact.undeadKingFanaticismPct)}% strength)`;
     case "a side's monsters are driven to savage fury":
       return `${theLabelOfASide(fact.sideName)}'s monsters are driven to savage fury! (+25% strength)`;
     case "a side's skeletal legions know no fear":
-      return `${fact.sideName}'s skeletal legions know no fear (+${String(fact.undeadHeroFanaticismPct)}% strength — undying fanaticism).`;
+      return `${theLabelOfASide(fact.sideName)}'s skeletal legions know no fear (+${String(fact.undeadHeroFanaticismPct)}% strength — undying fanaticism).`;
     case "the attacker's forces fight with fanatical zeal":
       return `${theLabelOfASide(fact.atkName)}'s forces fight with fanatical zeal! (+30% attacking strength)`;
     case 'the defenders fight with fanatical zeal on consecrated ground':
@@ -783,15 +810,15 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a fireball halves the enemy's strongest units":
       return `  🔥 Fireball halves the enemy's ${fact.fireballHitUnitNames.length > 1 ? 'two strongest units' : 'strongest unit'}, ${fact.fireballHitUnitNames.join(' and ')}.`;
     case "a telekinetic storm scatters the enemy commander's formations":
-      return `  🌀 Telekinetic Storm scatters ${fact.enemyCommanderName}'s formations — their Tactical command is cut to half effectiveness this battle.`;
+      return `  🌀 Telekinetic Storm scatters ${theLabelOfASide(fact.enemyCommanderName)}'s formations — their Tactical command is cut to half effectiveness this battle.`;
     case 'a telekinetic storm finds no tactical command to disrupt':
-      return `  🌀 Telekinetic Storm rages, but ${fact.enemyCommanderName} has no tactical command to disrupt here.`;
+      return `  🌀 Telekinetic Storm rages, but ${theLabelOfASide(fact.enemyCommanderName)} has no tactical command to disrupt here.`;
     case "a psychic blast severs the enemy commander's bond with his beasts":
-      return `  🧠 Psychic Blast severs ${fact.enemyCommanderName}'s bond with their beasts — their Druid skill is negated this battle.`;
+      return `  🧠 Psychic Blast severs ${theLabelOfASide(fact.enemyCommanderName)}'s bond with their beasts — their Druid skill is negated this battle.`;
     case 'a lightning bolt weakens enemy units':
       return `  ⚡ Lightning Bolt: ${String(fact.unitCount)} enemy unit${fact.unitCount !== 1 ? 's' : ''} lose 20% strength.`;
     case "a curse withers the enemy commander's skill":
-      return `  ☠ Curse withers ${fact.enemyCommanderName}'s ${curseSkillLabel(fact.cursedSkill)} — halved for this battle.`;
+      return `  ☠ Curse withers ${theLabelOfASide(fact.enemyCommanderName)}'s ${curseSkillLabel(fact.cursedSkill)} — halved for this battle.`;
     case "control undead turns an enemy undead unit to the caster's side":
       return `  ☠ Control Undead turns the ${fact.turnedUnitName} to ${fact.casterName}'s side!`;
     case 'control undead finds no enemy undead to turn':
@@ -813,7 +840,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a unit's power hits one enemy unit":
       return `  Hits ${fact.struckUnitName}: −${String(fact.damage)} str.`;
     case "the hero's archers find no target among the forest wardens":
-      return `🌲 ${fact.heroName}'s archers can find no target — Forest Wardens hold the thickets and the volley never comes.`;
+      return `🌲 ${theLabelOfASide(fact.heroName)}'s archers can find no target — Forest Wardens hold the thickets and the volley never comes.`;
     case "the hero's archery volley begins":
       return `🏹 ${fact.heroName}'s archery: ${String(fact.missileUnitCount)} unit${fact.missileUnitCount !== 1 ? 's' : ''}${fact.doubleVolleys ? ' (double volleys)' : ''}${fact.oneMoreShot ? ' (+1 shot)' : ''}${fact.preparedGround ? ` (${theNameOfTheAbility('prepared-ground')}: the Longbows loose twice)` : ''}`;
     case "a unit's shot glances off its target":
@@ -842,7 +869,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a side's realm discoveries strengthen its army":
       return `${theLabelOfASide(fact.sideName)}'s realm discoveries: +${((fact.discoveriesBonus - 1) * 100).toFixed(0)}% army str.`;
     case "the illusory ground of the province confuses a side's forces":
-      return `  🌫 The ever-shifting illusory ground of ${fact.provName} throws ${fact.sideName}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`;
+      return `  🌫 The ever-shifting illusory ground of ${fact.provName} throws ${theLabelOfASide(fact.sideName)}'s forces into confusion — every unit fights as though mired in the worst terrain for its kind (at least −15% strength).`;
     case "the sanctuary wards of the province sap a side's attackers":
       return `  ✨ The sanctuary wards of ${String(fact.provName)} sap ${theLabelOfASide(fact.sideName)}'s attackers (−25% strength).`;
     case 'the attacker unfolds a grand stratagem':
@@ -854,15 +881,15 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the attacker storms ashore in a raid on the coast':
       return `  ⚓ ${theLabelOfASide(fact.atkName)} storms ashore in a Raid the Coast — the amphibious assault hits at +25% strength.`;
     case "the consecrated ground of the province weakens the attacker's host":
-      return `✨ The ground of ${fact.provName} is consecrated — ${fact.atkName}'s ${fact.attackersAlignment.toLowerCase()} host falters on hallowed earth (−15% strength).`;
+      return `✨ The ground of ${fact.provName} is consecrated — ${theLabelOfASide(fact.atkName)}'s ${fact.attackersAlignment.toLowerCase()} host falters on hallowed earth (−15% strength).`;
     case "the battle's statistics begin":
       return `📊 **Battle stats:**`;
     case 'the fortune of the battle':
-      return `  ${fortuneNarrative(fact.atkLabel, fact.defLabel, fact.atkBase, fact.defBase, fact.fortune)}`;
+      return `  ${fortuneNarrative(theLabelOfASide(fact.atkLabel), theLabelOfASideOrTheDefenders(fact.defLabel), fact.atkBase, fact.defBase, fact.fortune)}`;
     case "the battle's outcome and its margin":
       return `📊 Outcome: **${fact.winnerName} wins** — ${THE_WORDS_OF_A_BATTLES_SEVERITY[fact.severity]} (margin ${theMarginInPercent(fact.margRatio)}% of combined strength after fortune)`;
     case "a side's war-horn of the plains lets its free lances ride in rough country":
-      return `📯 ${String(fact.sideName)}'s War-Horn of the Plains sounds — the Free Lances ride the broken enemy down even in ${String(fact.terrain)} country.`;
+      return `📯 ${theLabelOfASide(fact.sideName)}'s War-Horn of the Plains sounds — the Free Lances ride the broken enemy down even in ${String(fact.terrain)} country.`;
     case "a side's free lances find no room to ride":
       return `🐎 ${fact.sideName}'s Free Lances find no room to ride in ${fact.terrain} country — the broken enemy scatters into cover.`;
     case "the loser's dwarven guard leave the manticore pride nothing to hunt":
@@ -882,9 +909,9 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the attacker wins the battle and seizes the province':
       return `After ${aSeverity(fact.severity)} battle, ${theLabelOfASide(fact.atkName)}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${theLabelOfASide(fact.defName)}'s army and seize ${fact.provName}!`;
     case "the attacker's casualties begin":
-      return `⚔ **${fact.atkName}'s forces** (attacker):`;
+      return `⚔ **${theLabelOfASide(fact.atkName)}'s forces** (attacker):`;
     case "the defender's casualties begin":
-      return `🛡 **${fact.defName}'s forces** (defender):`;
+      return `🛡 **${theLabelOfASideOrTheDefenders(fact.defName)}'s forces** (defender):`;
     case "the loser's dwarven guard leave the free lances no broken backs":
       return `🛡 ${fact.loserName}'s Dwarven Guard lock shields as they give ground — ${fact.winnerName}'s Free Lances find no broken backs to ride down.`;
     case "the winner's free lances ride down the broken companies":
@@ -896,9 +923,9 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the winner's corsairs close the sea lanes to the loser":
       return `⛵ ${theLabelOfASide(fact.winnerName)}'s corsairs close the sea lanes — ${theLabelOfASide(fact.loserName)} cannot slip away by water.`;
     case "the loser's skeletal host stands its ground in a deathless march":
-      return `💀 Deathless March — ${fact.loserName}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${fact.provName}.`;
+      return `💀 Deathless March — ${theLabelOfASide(fact.loserName)}'s skeletal host has no fear to exploit: none are cut down in flight, and the dead stand their ground in ${fact.provName}.`;
     case "the loser's dwarven guard hold a shield fort with no road out":
-      return `🛡 ${theNameOfTheAbility('shield-fort')} — with no road out, ${fact.loserName}'s Dwarven Guard lock shields where they stand. None are cut down in flight, and ${fact.provName} remains contested.`;
+      return `🛡 ${theNameOfTheAbility('shield-fort')} — with no road out, ${theLabelOfASide(fact.loserName)}'s Dwarven Guard lock shields where they stand. None are cut down in flight, and ${fact.provName} remains contested.`;
     case 'the defender has nowhere to retreat':
       return `${theLabelOfASide(fact.defName)} has nowhere to retreat — their forces take additional casualties!`;
     case "the defender's stronger host is pushed back but stays":
@@ -906,7 +933,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the loser's force is destroyed to the last":
       return `📊 ${theLabelOfASide(fact.loserName)}'s force is destroyed to the last — commander and column both.`;
     case "the loser's dwarven guard withdraw behind a shield fort":
-      return `🛡 ${theNameOfTheAbility('shield-fort')} — ${fact.loserName}'s Dwarven Guard withdraw in good order behind locked shields.`;
+      return `🛡 ${theNameOfTheAbility('shield-fort')} — ${theLabelOfASide(fact.loserName)}'s Dwarven Guard withdraw in good order behind locked shields.`;
     case 'the loser retreats to a province':
       return `${theLabelOfASide(fact.loserName)} retreats to ${fact.retreatToName}.`;
     case "the loser's surviving forces":
@@ -942,19 +969,19 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a side's Druid cannot fully command its units":
       return `⚠ Druid shortfall — ${fact.sideName} cannot fully command ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''}: ${theWordsOfTheDruidShortfalls(fact.shortfalls)}.`;
     case 'the attacker moves into a province held by its defenders and a battle is initiated':
-      return `➡️ ${fact.cName}${fact.aRealmsHero ? ` (${String(fact.attackersRealmName)})` : ''} moves into ${fact.provName}, held by ${fact.heldByName} — a battle is initiated.`;
+      return `➡️ ${fact.cName}${fact.aRealmsHero ? ` (${String(fact.attackersRealmName)})` : ''} moves into ${fact.provName}, held by ${theLabelOfTheDefenders(fact.heldByName, ' and the local defenders')} — a battle is initiated.`;
     case 'the guard is slain before his host, and a sergeant of the garrison takes up the banner':
       return `⚑ With ${String(fact.guardName)} slain before the host, a battle-worn sergeant of the garrison takes up the fallen banner — the defenders close ranks and fight on, leaderless but unbowed.`;
     case 'the attacker is cut down before the lines join, and the eldest captain takes command':
       return `⚑ With ${fact.cName} cut down before the lines were even joined, the eldest captain of the host takes command — the attack goes in regardless, though without their fallen leader's guiding hand.`;
     case "the attacker's Tactical command does not apply at sea":
-      return `📊 ${fact.cName}'s Tactical command does not apply in sea terrain.`;
+      return `📊 ${theLabelOfASide(fact.cName)}'s Tactical command does not apply in sea terrain.`;
     case 'the defenders of a province defend ground held justly':
       return `✝ Righteous Defence — the defenders of ${fact.provName} stand on ground they hold justly (+10% defence).`;
     case 'the defenders fight on home soil':
       return `The defenders fight on home soil, gaining an additional ×1.2 bonus.`;
     case 'the attacker casts a spell before the battle against the defenders':
-      return `✨ **Pre-battle Magic: ${fact.cName} casts ${fact.spellName}** (${fact.schoolLabel} ${String(fact.spellLevel)}) — cast chance ${String(fact.castChance)}% [roll ${String(fact.castRoll)}${fact.castRoll <= fact.castChance ? ' ✓' : ' ✗'}]`;
+      return `✨ **Pre-battle Magic: ${theLabelOfASide(fact.cName)} casts ${fact.spellName}** (${fact.schoolLabel} ${String(fact.spellLevel)}) — cast chance ${String(fact.castChance)}% [roll ${String(fact.castRoll)}${fact.castRoll <= fact.castChance ? ' ✓' : ' ✗'}]`;
     case "a fireball engulfs the defenders' strongest units":
       return `  🔥 Fireball engulfs the enemy's ${fact.fireballHitUnitNames.length > 1 ? 'two strongest units' : 'strongest unit'}, ${fact.fireballHitUnitNames.join(' and ')} — halved this battle.`;
     case 'a telekinetic storm finds no command among leaderless defenders':
@@ -966,7 +993,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'a curse finds no commander among leaderless defenders':
       return `  ☠ Curse seeks a commander to wither, but these defenders are leaderless.`;
     case "control undead turns a defending undead unit to the attacker's side":
-      return `  ☠ Control Undead turns the ${fact.turnedUnitName} — it defects to ${fact.cName}'s side!`;
+      return `  ☠ Control Undead turns the ${fact.turnedUnitName} — it defects to ${theLabelOfASide(fact.cName)}'s side!`;
     case 'control undead finds no undead among the defenders':
       return `  ☠ Control Undead reaches out, but the enemy fields no undead to turn.`;
     case 'a holy symbol sears the defending undead':
@@ -1016,7 +1043,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the attacker's lightning advance catches the defenders unready":
       return `⚡ ${String(fact.cName)}'s Lightning Advance catches the defenders completely unready — they fight with no terrain advantage, no pre-battle magic and no answering volley.`;
     case "the defenders' archers find no target among the attacker's forest wardens":
-      return `🌲 The defenders' archers can find no target — ${fact.cName}'s Forest Wardens hold the thickets and the answering volley never comes.`;
+      return `🌲 The defenders' archers can find no target — ${theLabelOfASide(fact.cName)}'s Forest Wardens hold the thickets and the answering volley never comes.`;
     case "the defenders' archery volley begins":
       return `🏹 **Defender Archery Phase** — ${String(fact.missileUnitCount)} ranged unit${fact.missileUnitCount !== 1 ? 's' : ''}${fact.preparedGround ? ` (${theNameOfTheAbility('prepared-ground')}: the Longbows loose twice)` : ''}`;
     case "a defending unit's target is already softened as far as arrows allow":
@@ -1028,35 +1055,35 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a unit's power hits every attacking unit":
       return `  ${fact.powerName} hits all ${String(fact.unitCount)} attacking units: −${String(fact.damage)} strength each.`;
     case "the terrain's effect on the attacker's units":
-      return `📊 Terrain (${fact.terrain}): ${fact.cName} — ${theWordsOfTheUnitsTheTerrainMarks(fact.unitsTheTerrainMarks)}`;
+      return `📊 Terrain (${fact.terrain}): ${theLabelOfASide(fact.cName)} — ${theWordsOfTheUnitsTheTerrainMarks(fact.unitsTheTerrainMarks)}`;
     case 'hosts airborne over open water fight at a penalty against the defenders':
       return `⚠ Airborne over open water: land units carried by flyers fight at ×${String(fact.seaAirborneLandPenalty)}, and the flyers carrying them at ×${String(fact.seaAirborneFlyerPenalty)}.`;
     case 'land units fight at sea at a penalty against the defenders':
       return `⚠ Land units at sea: ×${String(fact.seaLandPenalty)} strength penalty.`;
     case 'the attacker unfolds a grand stratagem against the defenders':
-      return `  📜 ${String(fact.cName)} unfolds a Grand Stratagem — the assault lands at +20% strength.`;
+      return `  📜 ${theLabelOfASide(fact.cName)} unfolds a Grand Stratagem — the assault lands at +20% strength.`;
     case 'the attacker storms ashore in a raid on the coast against the defenders':
-      return `  ⚓ ${String(fact.cName)} storms ashore in a Raid the Coast — +25% strength.`;
+      return `  ⚓ ${theLabelOfASide(fact.cName)} storms ashore in a Raid the Coast — +25% strength.`;
     case "the attacker's monsters are driven to savage fury":
-      return `${fact.cName}'s monsters are driven to savage fury under their Evil overlord! (+25% strength)`;
+      return `${theLabelOfASide(fact.cName)}'s monsters are driven to savage fury under their Evil overlord! (+25% strength)`;
     case "the attacker's troops fight with fanatical zeal":
-      return `Seized by religious fervour, ${fact.cName}'s troops fight with fanatical zeal! (+30% strength)`;
+      return `Seized by religious fervour, ${theLabelOfASide(fact.cName)}'s troops fight with fanatical zeal! (+30% strength)`;
     case "the attacker's realm discoveries strengthen his army":
       return `Realm discoveries grant +${((fact.discoveriesArmyBonus - 1) * 100).toFixed(0)}% army strength.`;
     case "the attacker's free lances find no room to ride":
-      return `🐎 ${fact.cName}'s Free Lances find no room to ride in ${fact.terrain} country.`;
+      return `🐎 ${theLabelOfASide(fact.cName)}'s Free Lances find no room to ride in ${fact.terrain} country.`;
     case 'the attacker sweeps into a province with no one left to stand against him':
-      return `${fact.cName}'s forces sweep into ${fact.provName} — nothing is left to stand against them.`;
+      return `${theLabelOfASide(fact.cName)}'s forces sweep into ${fact.provName} — nothing is left to stand against them.`;
     case 'the attacker wins the battle against the defenders':
-      return `After ${aSeverity(fact.severity)} engagement (margin ${theMarginInPercent(fact.margRatio)}% of total strength), ${fact.cName}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${fact.guardName}!`;
+      return `After ${aSeverity(fact.severity)} engagement (margin ${theMarginInPercent(fact.margRatio)}% of total strength), ${theLabelOfASide(fact.cName)}'s forces ${theVerbAVictoryIsToldWith(fact.winVerbIndex)} ${theLabelOfTheDefenders(fact.guardName, ' and their forces')}!`;
     case "the attacker's warg riders halve his losses":
-      return `🐺 The warg packs are into the defenders before they can set themselves — the business is over quickly, and ${fact.cName}'s losses are halved.`;
+      return `🐺 The warg packs are into the defenders before they can set themselves — the business is over quickly, and ${theLabelOfASide(fact.cName)}'s losses are halved.`;
     case 'every defending unit was lost before the lines closed':
       return `— None left to fight: every defending unit was lost before the lines closed.`;
     case "the defenders' dwarven guard leave the attacker's free lances no broken backs":
-      return `🛡 The defenders' Dwarven Guard lock shields where they stand — ${fact.cName}'s Free Lances find no broken backs to ride down.`;
+      return `🛡 The defenders' Dwarven Guard lock shields where they stand — ${theLabelOfASide(fact.cName)}'s Free Lances find no broken backs to ride down.`;
     case "the attacker's free lances ride down the defenders' broken companies":
-      return `🐎 ${fact.cName}'s Free Lances ride down the broken companies across open ground (+${String(fact.extraLossesPct)}% losses).`;
+      return `🐎 ${theLabelOfASide(fact.cName)}'s Free Lances ride down the broken companies across open ground (+${String(fact.extraLossesPct)}% losses).`;
     case 'a defending unit is destroyed in the rout':
       return `— ${fact.defendingUnitName}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the rout!`;
     case 'the defenders have nowhere to retreat and hold a shield fort':
@@ -1064,27 +1091,27 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the defenders have nowhere to retreat and take further losses':
       return `The defenders of ${fact.provName} have nowhere to retreat — they are pinned against their own ground and take further losses!`;
     case 'the attacker is repelled by the defenders':
-      return `${fact.cName}'s forces are repelled! After ${aSeverity(fact.severity)} engagement (margin ${theMarginInPercent(fact.margRatio)}%), ${fact.defName2} hold their ground — ${fact.aPlayersGarrison ? (fact.atSea ? 'the garrison holds these waters!' : 'the garrison holds its walls!') : 'neutral defenders never retreat!'}`;
+      return `${theLabelOfASide(fact.cName)}'s forces are repelled! After ${aSeverity(fact.severity)} engagement (margin ${theMarginInPercent(fact.margRatio)}%), ${theLabelOfTheDefenders(fact.defName2)} hold their ground — ${fact.aPlayersGarrison ? (fact.atSea ? 'the garrison holds these waters!' : 'the garrison holds its walls!') : 'neutral defenders never retreat!'}`;
     case 'a defending unit is destroyed in the fighting':
       return `— ${fact.defendingUnitName}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the fighting.`;
     case "the guard's host is destroyed and he is a masterless hero":
       return `— but every soldier of ${fact.guardName}'s band lies dead. With no host left to command, they are ${fact.provName}'s guardian no more — a masterless hero now.`;
     case "the attacker's dwarven guard leave the defenders' free lances no broken backs":
-      return `🛡 ${fact.cName}'s Dwarven Guard lock shields as they give ground — the defenders' Free Lances find no broken backs to ride down.`;
+      return `🛡 ${theLabelOfASide(fact.cName)}'s Dwarven Guard lock shields as they give ground — the defenders' Free Lances find no broken backs to ride down.`;
     case "the defenders' free lances ride down the attacker's broken companies":
-      return `🐎 The defenders' Free Lances range across the open ground and ride down ${fact.cName}'s broken companies (+${String(fact.extraLossesPct)}% losses).`;
+      return `🐎 The defenders' Free Lances range across the open ground and ride down ${theLabelOfASide(fact.cName)}'s broken companies (+${String(fact.extraLossesPct)}% losses).`;
     case "the attacker's corsairs take his beaten force back to the ships":
-      return `⛵ ${String(fact.cName)}'s corsairs stand off the shore with boats ready — the beaten force pulls back to the ships in good order rather than being cut down.`;
+      return `⛵ ${theLabelOfASide(fact.cName)}'s corsairs stand off the shore with boats ready — the beaten force pulls back to the ships in good order rather than being cut down.`;
     case "the attacker's shield-wall holds and the infantry stand their ground":
-      return `${fact.cName}'s Shield-Wall holds — the infantry refuse to retreat and stand their ground, come what may.`;
+      return `${theLabelOfASide(fact.cName)}'s Shield-Wall holds — the infantry refuse to retreat and stand their ground, come what may.`;
     case 'the attacker has nowhere to retreat and takes further losses':
-      return `${fact.cName}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`;
+      return `${theLabelOfASide(fact.cName)}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`;
     case 'an attacking unit is cut down in the rout with no escape':
       return `— ${fact.unitName} are cut down in the rout — no escape!${fact.itsBonesCrumble ? ' Their bones crumble to dust.' : ''}`;
     case "the attacker's forces retreat to a province":
-      return `${fact.cName}'s forces retreat to ${fact.retreatToName}.`;
+      return `${theLabelOfASide(fact.cName)}'s forces retreat to ${fact.retreatToName}.`;
     case "the onlookers' summary of a battle":
-      return `⚔ Battle at ${fact.provName}: ${fact.won ? `${fact.attackersName}'s forces defeat ${fact.defendersName}` : fact.betweenTwoHeroesHosts ? `${fact.defendersName}'s forces hold against ${fact.attackersName}` : `${fact.defendersName} hold against ${fact.attackersName}`}.`;
+      return `⚔ Battle at ${fact.provName}: ${fact.won ? `${theLabelOfASide(fact.attackersName)}'s forces defeat ${theLabelOfASideOrTheDefenders(fact.defendersName)}` : fact.betweenTwoHeroesHosts ? `${theLabelOfASideOrTheDefenders(fact.defendersName)}'s forces hold against ${theLabelOfASide(fact.attackersName)}` : `${theLabelOfASideOrTheDefenders(fact.defendersName)} hold against ${theLabelOfASide(fact.attackersName)}`}.`;
     case 'the most seasoned captain takes command of the combined host':
       return `\u{1F396} ${fact.leaderName} takes command of the combined host at ${fact.provName} \u2014 the most seasoned captain on the field, and ${fact.previousCommanderName}'s troops fall in behind him.`;
     case 'the blood harvest claims offerings from the fallen enemy units':

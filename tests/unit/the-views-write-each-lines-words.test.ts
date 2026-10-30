@@ -105,9 +105,9 @@ function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
     defName: { heroName: 'Brann', leaderless: false },
   });
   if (!noLosses) {
-    narrate(narrative, { kind: "the attacker's casualties begin", atkName: 'Aldric' });
+    narrate(narrative, { kind: "the attacker's casualties begin", atkName: { heroName: 'Aldric', leaderless: false } });
     narrate(narrative, { kind: "a side's other forces survive the engagement", someUnitsFateIsToldAbove: false });
-    narrate(narrative, { kind: "the defender's casualties begin", defName: 'Brann' });
+    narrate(narrative, { kind: "the defender's casualties begin", defName: { heroName: 'Brann', leaderless: false } });
     narrate(narrative, { kind: 'a unit is cut down with no escape', unitName: "Brann's Ford Watch (Men-at-Arms)" });
   }
   return narrative;

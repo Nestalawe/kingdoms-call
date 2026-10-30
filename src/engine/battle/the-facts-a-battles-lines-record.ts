@@ -312,6 +312,24 @@ export interface ASideOfABattle {
   readonly leaderless: boolean;
 }
 
+/** The defenders of a province, as a battle against them names them (plan P1-12d23: the battle slice's Decision 6):
+ *  led by their guard (his name as each place hands it, " (wandering)" cut or not: "Ulric", "Ulric and their forces",
+ *  "Ulric and the local defenders"), or with no guard to lead them (none, or he fell before the lines joined): "the
+ *  defenders of Highmoor" ("The defenders of Highmoor" where the place writes it so), "the garrison of Highmoor" (a
+ *  realm's unled garrison), "Westmarch's garrison", "its neutral defenders"; or the realm that holds the province, by
+ *  its name as the world holds it. The prose writes the label (theLabelOfTheDefenders). */
+export type TheDefendersOfAProvince =
+  | { readonly kind: 'the defenders led by their guard'; readonly guardName: string }
+  | {
+      readonly kind: 'the defenders of a province with no guard to lead them';
+      readonly provName: string;
+      readonly capitalised: boolean;
+    }
+  | { readonly kind: "a realm's garrison of a province with no guard to lead it"; readonly provName: string }
+  | { readonly kind: "a realm's garrison with no guard to lead it"; readonly ownerName: string }
+  | { readonly kind: 'neutral defenders with no guard to lead them' }
+  | { readonly kind: 'the realm that holds the province'; readonly realmName: string | undefined };
+
 /** How hard a battle was won: the margin band's slug (BATTLE_MARGIN_BANDS, battle/fates.ts), which the prose writes
  *  ("a pyrrhic battle", "an annihilating engagement"). */
 export type TheSeverityOfABattle = 'pyrrhic' | 'narrow' | 'clear' | 'decisive' | 'crushing' | 'annihilating';
@@ -389,24 +407,28 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | { kind: 'the attacker is cut down before the lines join, and a captain takes command'; atkName: string }
   | { kind: 'the defender is slain before his army, and a veteran takes command'; defName: string }
-  | { kind: "the attacker fights to win back his realm's capital"; atkName: string; provName: string }
+  | { kind: "the attacker fights to win back his realm's capital"; atkName: ASideOfABattle; provName: string }
   | {
       kind: "the attacker's siegecraft wears down the defenders' fortifications";
-      atkName: string;
+      atkName: ASideOfABattle;
       siegecraft: number;
     }
   | { kind: "the defender's host defends ground held justly"; defName: ASideOfABattle }
-  | { kind: "the defender's realm holds its own ground the harder"; defName: string; ownGroundDefencePct: number }
+  | {
+      kind: "the defender's realm holds its own ground the harder";
+      defName: ASideOfABattle | TheDefendersOfAProvince;
+      ownGroundDefencePct: number;
+    }
   | { kind: "the defender's banner of the realm rallies the home defence"; defName: ASideOfABattle }
-  | { kind: "the attacker's siege mastery halves the defenders' fortifications"; atkName: AValueInALinesWords }
+  | { kind: "the attacker's siege mastery halves the defenders' fortifications"; atkName: ASideOfABattle }
   | { kind: 'the defenders fight on home ground' }
   | {
       kind: "a side's skeletal legions fight with fanaticism under their undead king";
-      sideName: string;
+      sideName: ASideOfABattle;
       undeadKingFanaticismPct: number;
     }
   | { kind: "a side's monsters are driven to savage fury"; sideName: ASideOfABattle }
-  | { kind: "a side's skeletal legions know no fear"; sideName: string; undeadHeroFanaticismPct: number }
+  | { kind: "a side's skeletal legions know no fear"; sideName: ASideOfABattle; undeadHeroFanaticismPct: number }
   | { kind: "the attacker's forces fight with fanatical zeal"; atkName: ASideOfABattle }
   | { kind: 'the defenders fight with fanatical zeal on consecrated ground'; provName: string; defName: ASideOfABattle }
   | { kind: "the defender's forces fight with fanatical zeal"; defName: ASideOfABattle }
@@ -424,13 +446,13 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "a fireball halves the enemy's strongest units";
       fireballHitUnitNames: string[];
     }
-  | { kind: "a telekinetic storm scatters the enemy commander's formations"; enemyCommanderName: string }
-  | { kind: 'a telekinetic storm finds no tactical command to disrupt'; enemyCommanderName: string }
-  | { kind: "a psychic blast severs the enemy commander's bond with his beasts"; enemyCommanderName: string }
+  | { kind: "a telekinetic storm scatters the enemy commander's formations"; enemyCommanderName: ASideOfABattle }
+  | { kind: 'a telekinetic storm finds no tactical command to disrupt'; enemyCommanderName: ASideOfABattle }
+  | { kind: "a psychic blast severs the enemy commander's bond with his beasts"; enemyCommanderName: ASideOfABattle }
   | { kind: 'a lightning bolt weakens enemy units'; unitCount: number }
   | {
       kind: "a curse withers the enemy commander's skill";
-      enemyCommanderName: string;
+      enemyCommanderName: ASideOfABattle;
       cursedSkill: string | null | undefined;
     }
   | {
@@ -453,7 +475,7 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'a unit uses its power in battle'; unitName: string; powerName: string; powerFlavour: string }
   | { kind: "a unit's power hits all enemy units"; enemyUnitCount: number; damage: number }
   | { kind: "a unit's power hits one enemy unit"; struckUnitName: string; damage: number }
-  | { kind: "the hero's archers find no target among the forest wardens"; heroName: string }
+  | { kind: "the hero's archers find no target among the forest wardens"; heroName: ASideOfABattle }
   | {
       kind: "the hero's archery volley begins";
       heroName: string;
@@ -507,7 +529,7 @@ export type TheFactOfOneOfABattlesSentences =
       sideName: ASideOfABattle;
       discoveriesBonus: number;
     }
-  | { kind: "the illusory ground of the province confuses a side's forces"; provName: string; sideName: string }
+  | { kind: "the illusory ground of the province confuses a side's forces"; provName: string; sideName: ASideOfABattle }
   | {
       kind: "the sanctuary wards of the province sap a side's attackers";
       provName: AValueInALinesWords;
@@ -520,14 +542,14 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the consecrated ground of the province weakens the attacker's host";
       provName: string;
-      atkName: string;
+      atkName: ASideOfABattle;
       attackersAlignment: string;
     }
   | { kind: "the battle's statistics begin" }
   | {
       kind: 'the fortune of the battle';
-      atkLabel: string;
-      defLabel: string;
+      atkLabel: ASideOfABattle;
+      defLabel: ASideOfABattle | TheDefendersOfAProvince;
       atkBase: number;
       defBase: number;
       fortune: TheFortuneAsTheLineTellsIt;
@@ -540,7 +562,7 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: "a side's war-horn of the plains lets its free lances ride in rough country";
-      sideName: AValueInALinesWords;
+      sideName: ASideOfABattle;
       terrain: AValueInALinesWords;
     }
   | { kind: "a side's free lances find no room to ride"; sideName: string; terrain: string }
@@ -578,8 +600,8 @@ export type TheFactOfOneOfABattlesSentences =
       defName: ASideOfABattle;
       provName: string;
     }
-  | { kind: "the attacker's casualties begin"; atkName: string }
-  | { kind: "the defender's casualties begin"; defName: string }
+  | { kind: "the attacker's casualties begin"; atkName: ASideOfABattle }
+  | { kind: "the defender's casualties begin"; defName: ASideOfABattle | TheDefendersOfAProvince }
   | { kind: "the loser's dwarven guard leave the free lances no broken backs"; loserName: string; winnerName: string }
   | {
       kind: "the winner's free lances ride down the broken companies";
@@ -599,8 +621,16 @@ export type TheFactOfOneOfABattlesSentences =
       winnerName: ASideOfABattle;
       loserName: ASideOfABattle;
     }
-  | { kind: "the loser's skeletal host stands its ground in a deathless march"; loserName: string; provName: string }
-  | { kind: "the loser's dwarven guard hold a shield fort with no road out"; loserName: string; provName: string }
+  | {
+      kind: "the loser's skeletal host stands its ground in a deathless march";
+      loserName: ASideOfABattle;
+      provName: string;
+    }
+  | {
+      kind: "the loser's dwarven guard hold a shield fort with no road out";
+      loserName: ASideOfABattle;
+      provName: string;
+    }
   | { kind: 'the defender has nowhere to retreat'; defName: ASideOfABattle }
   | {
       kind: "the defender's stronger host is pushed back but stays";
@@ -610,7 +640,7 @@ export type TheFactOfOneOfABattlesSentences =
       provName: string;
     }
   | { kind: "the loser's force is destroyed to the last"; loserName: ASideOfABattle }
-  | { kind: "the loser's dwarven guard withdraw behind a shield fort"; loserName: string }
+  | { kind: "the loser's dwarven guard withdraw behind a shield fort"; loserName: ASideOfABattle }
   | { kind: 'the loser retreats to a province'; loserName: ASideOfABattle; retreatToName: string }
   | { kind: "the loser's surviving forces"; loserName: ASideOfABattle; survivingForces: AUnitAsDescribeArmyNamesIt[] }
   | { kind: "the loser's forces are completely destroyed and he retreats alone"; loserName: ASideOfABattle }
@@ -674,19 +704,19 @@ export type TheFactOfOneOfABattlesSentences =
       aRealmsHero: boolean;
       attackersRealmName: string | undefined;
       provName: string;
-      heldByName: string;
+      heldByName: TheDefendersOfAProvince;
     }
   | {
       kind: 'the guard is slain before his host, and a sergeant of the garrison takes up the banner';
       guardName: AValueInALinesWords;
     }
   | { kind: 'the attacker is cut down before the lines join, and the eldest captain takes command'; cName: string }
-  | { kind: "the attacker's Tactical command does not apply at sea"; cName: string }
+  | { kind: "the attacker's Tactical command does not apply at sea"; cName: ASideOfABattle }
   | { kind: 'the defenders of a province defend ground held justly'; provName: string }
   | { kind: 'the defenders fight on home soil' }
   | {
       kind: 'the attacker casts a spell before the battle against the defenders';
-      cName: string;
+      cName: ASideOfABattle;
       spellName: string;
       schoolLabel: string;
       spellLevel: number;
@@ -704,7 +734,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "control undead turns a defending undead unit to the attacker's side";
       turnedUnitName: string;
-      cName: string;
+      cName: ASideOfABattle;
     }
   | { kind: 'control undead finds no undead among the defenders' }
   | { kind: 'a holy symbol sears the defending undead'; undeadUnitCount: number }
@@ -762,7 +792,7 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'spiritwrack finds no missile troops among the attackers' }
   | { kind: "the defender's spell before the battle fizzles" }
   | { kind: "the attacker's lightning advance catches the defenders unready"; cName: AValueInALinesWords }
-  | { kind: "the defenders' archers find no target among the attacker's forest wardens"; cName: string }
+  | { kind: "the defenders' archers find no target among the attacker's forest wardens"; cName: ASideOfABattle }
   | {
       kind: "the defenders' archery volley begins";
       missileUnitCount: number;
@@ -779,7 +809,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the terrain's effect on the attacker's units";
       terrain: string;
-      cName: string;
+      cName: ASideOfABattle;
       unitsTheTerrainMarks: AUnitTheTerrainMarks[];
     }
   | {
@@ -788,31 +818,31 @@ export type TheFactOfOneOfABattlesSentences =
       seaAirborneFlyerPenalty: number;
     }
   | { kind: 'land units fight at sea at a penalty against the defenders'; seaLandPenalty: number }
-  | { kind: 'the attacker unfolds a grand stratagem against the defenders'; cName: AValueInALinesWords }
-  | { kind: 'the attacker storms ashore in a raid on the coast against the defenders'; cName: AValueInALinesWords }
-  | { kind: "the attacker's monsters are driven to savage fury"; cName: string }
-  | { kind: "the attacker's troops fight with fanatical zeal"; cName: string }
+  | { kind: 'the attacker unfolds a grand stratagem against the defenders'; cName: ASideOfABattle }
+  | { kind: 'the attacker storms ashore in a raid on the coast against the defenders'; cName: ASideOfABattle }
+  | { kind: "the attacker's monsters are driven to savage fury"; cName: ASideOfABattle }
+  | { kind: "the attacker's troops fight with fanatical zeal"; cName: ASideOfABattle }
   | { kind: "the attacker's realm discoveries strengthen his army"; discoveriesArmyBonus: number }
-  | { kind: "the attacker's free lances find no room to ride"; cName: string; terrain: string }
+  | { kind: "the attacker's free lances find no room to ride"; cName: ASideOfABattle; terrain: string }
   | {
       kind: 'the attacker sweeps into a province with no one left to stand against him';
-      cName: string;
+      cName: ASideOfABattle;
       provName: string;
     }
   | {
       kind: 'the attacker wins the battle against the defenders';
       severity: TheSeverityOfABattle;
       margRatio: number;
-      cName: string;
+      cName: ASideOfABattle;
       winVerbIndex: number;
-      guardName: string;
+      guardName: TheDefendersOfAProvince;
     }
-  | { kind: "the attacker's warg riders halve his losses"; cName: string }
+  | { kind: "the attacker's warg riders halve his losses"; cName: ASideOfABattle }
   | { kind: 'every defending unit was lost before the lines closed' }
-  | { kind: "the defenders' dwarven guard leave the attacker's free lances no broken backs"; cName: string }
+  | { kind: "the defenders' dwarven guard leave the attacker's free lances no broken backs"; cName: ASideOfABattle }
   | {
       kind: "the attacker's free lances ride down the defenders' broken companies";
-      cName: string;
+      cName: ASideOfABattle;
       extraLossesPct: number;
     }
   | { kind: 'a defending unit is destroyed in the rout'; defendingUnitName: string; whomItFaced: WhomAUnitFaced | null }
@@ -820,10 +850,10 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'the defenders have nowhere to retreat and take further losses'; provName: string }
   | {
       kind: 'the attacker is repelled by the defenders';
-      cName: string;
+      cName: ASideOfABattle;
       severity: TheSeverityOfABattle;
       margRatio: number;
-      defName2: string;
+      defName2: TheDefendersOfAProvince;
       aPlayersGarrison: boolean;
       atSea: boolean;
     }
@@ -833,27 +863,27 @@ export type TheFactOfOneOfABattlesSentences =
       whomItFaced: WhomAUnitFaced | null;
     }
   | { kind: "the guard's host is destroyed and he is a masterless hero"; guardName: string; provName: string }
-  | { kind: "the attacker's dwarven guard leave the defenders' free lances no broken backs"; cName: string }
+  | { kind: "the attacker's dwarven guard leave the defenders' free lances no broken backs"; cName: ASideOfABattle }
   | {
       kind: "the defenders' free lances ride down the attacker's broken companies";
-      cName: string;
+      cName: ASideOfABattle;
       extraLossesPct: number;
     }
-  | { kind: "the attacker's corsairs take his beaten force back to the ships"; cName: AValueInALinesWords }
-  | { kind: "the attacker's shield-wall holds and the infantry stand their ground"; cName: string }
-  | { kind: 'the attacker has nowhere to retreat and takes further losses'; cName: string }
+  | { kind: "the attacker's corsairs take his beaten force back to the ships"; cName: ASideOfABattle }
+  | { kind: "the attacker's shield-wall holds and the infantry stand their ground"; cName: ASideOfABattle }
+  | { kind: 'the attacker has nowhere to retreat and takes further losses'; cName: ASideOfABattle }
   | {
       kind: 'an attacking unit is cut down in the rout with no escape';
       unitName: string;
       itsBonesCrumble: boolean | undefined;
     }
-  | { kind: "the attacker's forces retreat to a province"; cName: string; retreatToName: string }
+  | { kind: "the attacker's forces retreat to a province"; cName: ASideOfABattle; retreatToName: string }
   | {
       kind: "the onlookers' summary of a battle";
       provName: string;
       won: boolean;
-      attackersName: string;
-      defendersName: string;
+      attackersName: ASideOfABattle;
+      defendersName: ASideOfABattle | TheDefendersOfAProvince;
       betweenTwoHeroesHosts: boolean;
     }
   | {

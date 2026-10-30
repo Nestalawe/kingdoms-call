@@ -48,7 +48,10 @@
 // caller (the two battle files that call them are still untyped); since P1-12d21 how a hero carries the items he
 // gained is a record (TheItemsAHeroGained: settleTheItemsAHeroGained, src/engine/items/equipment.ts, in place of
 // gainedItemNote's words); since P1-12d22 a battle between heroes' side, in the kinds only that battle writes, is a
-// record (ASideOfABattle: the commander's name and whether he fell), and those kinds leave LABELS.
+// record (ASideOfABattle: the commander's name and whether he fell), and those kinds leave LABELS; since P1-12d23 so
+// is a hero's side in a battle against a province's defenders, and the defenders are a record too
+// (TheDefendersOfAProvince: their guard, or the province or the realm with no guard to lead them), in both battles'
+// kinds and in the battle-magic lines a spell's resolver gives the kind of.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
@@ -78,7 +81,7 @@
 // `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
 // assignment (`=`, `+=`); a call's argument or a comparison's operand isn't the value's words. It lets through, by kind
 // and field, the fighters' labels (`foeWho`, `who`: Decision 2) and a battle's side's, guard's, realm's and unit's
-// labels (`cName`, `atkName`, `defName`, `loserName`, `guardName`, `realmTag`, `unitName`, …: 26 fields; since P1-12d22 not a battle between heroes' side in the kinds only it writes, a record), the enemy
+// labels (`guardName`, `realmTag`, `unitName`, `hostName`, …: 14 fields; since P1-12d22 not a battle between heroes' side in the kinds only it writes, a record; since P1-12d23 none of the two battles' sides and guards, records), the enemy
 // unit a unit faced (`theEnemyUnit`, a unit's label), a disbanding unit's owner (`ownerName`, a side's or a guard's
 // label, P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
 // `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
@@ -251,58 +254,6 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
   // A battle's side, as the battle names it: a hero, "Aldric's leaderless host" when he fell, "Aldric's host" (the
   // battles' tally and the tiers find a side by these words; the facts-by-sense slice names a side)
   name: ['a force drawn up for battle'],
-  cName: [
-    "control undead turns a defending undead unit to the attacker's side",
-    'the attacker casts a spell before the battle against the defenders',
-    'the attacker has nowhere to retreat and takes further losses',
-    'the attacker is repelled by the defenders',
-    'the attacker storms ashore in a raid on the coast against the defenders',
-    'the attacker sweeps into a province with no one left to stand against him',
-    'the attacker unfolds a grand stratagem against the defenders',
-    'the attacker wins the battle against the defenders',
-    "the attacker's Tactical command does not apply at sea",
-    "the attacker's corsairs take his beaten force back to the ships",
-    "the attacker's dwarven guard leave the defenders' free lances no broken backs",
-    "the attacker's forces retreat to a province",
-    "the attacker's free lances find no room to ride",
-    "the attacker's free lances ride down the defenders' broken companies",
-    "the attacker's monsters are driven to savage fury",
-    "the attacker's shield-wall holds and the infantry stand their ground",
-    "the attacker's troops fight with fanatical zeal",
-    "the attacker's warg riders halve his losses",
-    "the defenders' archers find no target among the attacker's forest wardens",
-    "the defenders' dwarven guard leave the attacker's free lances no broken backs",
-    "the defenders' free lances ride down the attacker's broken companies",
-    "the terrain's effect on the attacker's units",
-  ],
-  atkName: [
-    "the attacker fights to win back his realm's capital",
-    "the attacker's casualties begin",
-    "the attacker's siege mastery halves the defenders' fortifications",
-    "the attacker's siegecraft wears down the defenders' fortifications",
-    "the consecrated ground of the province weakens the attacker's host",
-  ],
-  defName: ["the defender's casualties begin", "the defender's realm holds its own ground the harder"],
-  loserName: [
-    "the loser's dwarven guard hold a shield fort with no road out",
-    "the loser's dwarven guard withdraw behind a shield fort",
-    "the loser's skeletal host stands its ground in a deathless march",
-  ],
-  sideName: [
-    "a side's skeletal legions fight with fanaticism under their undead king",
-    "a side's skeletal legions know no fear",
-    "a side's war-horn of the plains lets its free lances ride in rough country",
-    "the illusory ground of the province confuses a side's forces",
-  ],
-  heroName: ["the hero's archers find no target among the forest wardens"],
-  enemyCommanderName: [
-    "a curse withers the enemy commander's skill",
-    "a psychic blast severs the enemy commander's bond with his beasts",
-    "a telekinetic storm scatters the enemy commander's formations",
-  ],
-  atkLabel: ['the fortune of the battle'],
-  defLabel: ['the fortune of the battle'],
-  attackersName: ["the onlookers' summary of a battle"],
   hostName: [
     'a host holds a province unopposed and secures it',
     'the hero has the better of the fighting but enemy forces still hold their ground',
@@ -329,16 +280,13 @@ const LABELS: Readonly<Record<string, readonly string[]>> = {
     "a beaten guard's surviving unit holds its ground unbroken",
     "a beaten guard's surviving unit loses heart and is reduced a tier",
   ],
-  // A guard's label: "Ulric and their forces", "the defenders of Highmoor", "the garrison of Highmoor", "the leaderless
-  // garrison", whom a province is held by
+  // A guard's label: "Ulric", "the defenders", "the leaderless garrison" (since P1-12d23 a battle against a province's
+  // defenders names them by a record, TheDefendersOfAProvince)
   guardName: [
     "a beaten guard's surviving unit holds its ground unbroken",
     "a beaten guard's surviving unit loses heart and is reduced a tier",
-    'the attacker wins the battle against the defenders',
   ],
-  defName2: ['the attacker is repelled by the defenders'],
-  heldByName: ['the attacker moves into a province held by its defenders and a battle is initiated'],
-  defendersName: ["an unfinished battle against a province's defenders resumes", "the onlookers' summary of a battle"],
+  defendersName: ["an unfinished battle against a province's defenders resumes"],
   // A realm's tag, " (Westmarch)" (realmTag)
   realmTag: [
     "a hero not at war with the province's realm gains a host inside it",

@@ -163,7 +163,12 @@ check finds were made.
   item he gained (`TheItemsAHeroGained`: `settleTheItemsAHeroGained`, `src/engine/items/equipment.ts`, settles the slots
   and returns it; `theWordsOfTheItemsAHeroGained` writes the note). Since P1-12d22 a side of a battle between heroes, in the kinds only that battle
   writes, is the record its label is written from (`ASideOfABattle`: the commander's name and whether he fell before the
-  lines joined); `theLabelOfASide` writes "Aldric" or "Aldric's leaderless host". The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  lines joined); `theLabelOfASide` writes "Aldric" or "Aldric's leaderless host". Since P1-12d23 so is a hero's side in
+  a battle against a province's defenders, and the defenders are a record too (`TheDefendersOfAProvince`: their guard's
+  name, or the province or the realm with no guard to lead them); `theLabelOfTheDefenders` writes "Ulric and their
+  forces", "the defenders of Highmoor", "the garrison of Highmoor" or "Westmarch's garrison", in both battles' kinds
+  and in the battle-magic lines whose kind a spell's resolver gives. The helpers' lines and the units' labels still
+  take words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
