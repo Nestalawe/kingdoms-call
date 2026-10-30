@@ -72,6 +72,7 @@ const SPIRITWRACK_ENTRY = `  spiritwrack: {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE.spiritwrack,
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE.spiritwrack,
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD.spiritwrack },
   },
 `;
 const UNDEAD_BONUS_ENTRY =

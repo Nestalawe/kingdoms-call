@@ -24,7 +24,8 @@
 // ward, and pcMeleeStrike's 'thorns', pcTakeHit's 5 and pcRoundStart's 'regen', on P1-19r's; pcCombatItemWanted 19,
 // pcUseCombatItem 19, pcAct 1, pcMeleeDamage 1, pcBuildGuardian 4 and pcCharCombatant's 'combatUse' 1 on P1-19s's;
 // _useScore 20, itemPowerScore 8, itemSlot 2, plain 1, tiers-and-hoards.ts' copy pass 1, and the 7 item effects in
-// ITEM_COMBAT_STATS, on P1-19t's; primalStrikeItemBonus 1, and its read of `primalStrike`, on P1-19v's), as the unit-name test was: the one exception to refactor-only's rule
+// ITEM_COMBAT_STATS, on P1-19t's; primalStrikeItemBonus 1, and its read of `primalStrike`, on P1-19v's; pcCastCombatSpell's
+// Dreamstone and Death's Finger Ring, left to the spells family until then, on P1-19w's), as the unit-name test was: the one exception to refactor-only's rule
 // that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
@@ -186,9 +187,6 @@ const CHECKS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> =
   // `'hidden'`: an older save's Cloak of Many Faces, which a spy can't fix on, with P1-23's `visibility` (the items
   // family's Decision 5)
   resolveSpyOrder: ['hidden'],
-  // the Dreamstone's stun and the Death's Finger Ring's bite: items that change a spell, with the spells family (the
-  // items family's Decision 5)
-  pcCastCombatSpell: ['Dreamstone', "Death's Finger Ring"],
 };
 
 /** The uses of a field of the wards a fighter wears that a function of src/engine/ outside rules/ still holds, by the

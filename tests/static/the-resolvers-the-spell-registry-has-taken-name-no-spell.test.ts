@@ -8,7 +8,8 @@
 // falls: the helper counts each such check planted, and none in src/engine/rules/ or a page's code.
 //
 // Red on its row's base by design (applyPreBattleMagic held 8 checks, combatVsNPC 16 and battleSpellUseful 6 on
-// P1-19u's base), as the unit-name and item-effect tests were: the one exception to refactor-only's rule that new tests
+// P1-19u's base; P1-19w's two functions, which take pcCastCombatSpell's 7 cases of the spells that harm, didn't exist
+// on its base), as the unit-name and item-effect tests were: the one exception to refactor-only's rule that new tests
 // pass before and after (Theo, 2026-10-25; the spells family's Decision 5).
 // Level 0 (static): the files' syntax trees and the content's spells as written; nothing runs.
 import fs from 'node:fs';
@@ -37,6 +38,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/magic/pre-battle-spell-choice.ts',
     'battleSpellUseful',
     'P1-19u, a battle spell has something to strike',
+  ],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'applyTheStepsOfACombatSpell',
+    'P1-19w, the steps of the combat spells that harm (pcCastCombatSpell itself joins with P1-19x)',
+  ],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'writeTheLineOfACombatSpellsHit',
+    "P1-19w, a combat spell's hit's line",
   ],
 ];
 

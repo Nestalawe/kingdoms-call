@@ -15,7 +15,8 @@ import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
  *  extra shot"); a share as a percentage (0.1 as `10%`); gold for each province (1 as `+1g`, `+1 gold` or "1 extra
  *  gold"); skill levels added (1 as `+1`, or "one level"); damage turned aside (1 as "1 less"); a chance in
  *  percentage points (5 as `5%`); a multiplier in words (2 as "doubled"); damage added (2 as `+2 damage`, or "2 extra
- *  damage"); how many of the strongest enemy units a battle spell strikes, in words (2 as "two strongest"). */
+ *  damage"); how many of the strongest enemy units a battle spell strikes, in words (2 as "two strongest"); rounds added,
+ *  in words (1 as "an extra round"); a multiplier as the share more (×1.1 as `10% more`). */
 export type HowAnItemsTextsWriteANumber =
   | 'a multiplier, as the share it adds'
   | 'strength added'
@@ -29,7 +30,9 @@ export type HowAnItemsTextsWriteANumber =
   | 'a chance, in percentage points'
   | 'a multiplier, in words'
   | 'damage added'
-  | 'the strongest units, in words';
+  | 'the strongest units, in words'
+  | 'rounds added, in words'
+  | 'a multiplier, as the share more';
 
 /** One number of an item's effect, and how the item's texts write it. */
 export interface ANumberOfAnItemsEffect {
@@ -737,6 +740,19 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     name: 'Warbringer Gauntlets',
     carriedAs: { itemName: 'Warbringer Gauntlets' },
     numbers: { damageAdded: { value: 2, theTextsWriteIt: 'damage added' } },
+  },
+  // ── The items that change a hero's combat spell in personal combat (plan P1-19w), each his own spell's. ──
+  // His Psychic Blast stuns for one round more, after any doubling (2026-10-15, Toby, D4).
+  dreamstone: {
+    name: 'Dreamstone',
+    carriedAs: { itemName: 'Dreamstone' },
+    numbers: { theRoundsAdded: { value: 1, theTextsWriteIt: 'rounds added, in words' } },
+  },
+  // His Hand of Death bites ×1.1.
+  'deaths-finger-ring': {
+    name: "Death's Finger Ring",
+    carriedAs: { itemName: "Death's Finger Ring" },
+    numbers: { multiplier: { value: 1.1, theTextsWriteIt: 'a multiplier, as the share more' } },
   },
   // ── The kinds of item the treasury weighs as a whole (treasury, plan P1-19t: an item's role, what it is for, and its
   // worth, read as the engine loads, to tier each item, and by a bot choosing what to carry). Above, the effects of an

@@ -2,7 +2,7 @@ import { KC_MAGIC_SCHOOLS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { combatSpellsAllowedPerSchoolEachFight } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
-import { hasItemBase } from '../items/equipment.ts';
+import { activeItems, hasItemBase } from '../items/equipment.ts';
 import { PC_SPELL_SCHOOL_MAP, PC_WEAK_MULT, pcDeferEffect, pcLearnWeakness, pcPushDot } from './helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -27,7 +27,10 @@ import { aFightersWardAsTheLineTellsIt } from './the-facts-a-personal-combats-li
 import {
   aFightersWardsRefuseAStunOrATerror,
   theShareAFightersWardsCutASpellsBurnBy,
+  whatAHerosItemsChangeInHisCombatSpells,
 } from '../rules/the-registry-of-magic-item-effects.ts';
+import { whatACombatSpellDoesAsItTakesHold } from '../rules/the-registry-of-spell-effects.ts';
+import type { AStepOfACombatSpell, TheLineOfACombatSpellsHit } from '../rules/the-registry-of-content-effects.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
@@ -81,25 +84,11 @@ function aDamageRangeAsTheDiceReadIt(range: readonly number[] | null | undefined
 // the set. First, the best spells did not read the caster: Fireball, Psychic Blast, Telekinetic
 // Storm and Invisibility were identical at school level 1 and level 5, so a dabbler got a
 // master's spell. Second, White had no way to convert an action into an advantage at all. Each
-// spell keeps what it does; the numbers below are what changed.
-export const SPELL_FIREBALL_BASE_PCT = 10,
-  SPELL_FIREBALL_PCT_PER_LVL = 2; // burn, % of target max HP a round (2026-10-14, batch item 6: was 3 + 1 a level)
-export const SPELL_HOLY_PEN_PER_LVL = 8; // Holy Symbol to-hit penalty a level
-export const SPELL_HOLY_HEAL_PCT = 10; // …and the light closes the caster's hurts
-export const SPELL_HOLY_BURN_PCT = 6; // …and sears the foe (×1.5 vs undead and fiends)
-export const SPELL_HOLY_UNCLEAN_MULT = 1.5; // penalty and burn against the undead and fiends (was ×2 until 2026-10-14)
-export const SPELL_SPIRITWRACK_BASE_ROUNDS = 1,
-  SPELL_SPIRITWRACK_MAX_ROUNDS = 3; // 1 + floor(level/2), level counted to 5: max 3 (4 vs a White-weak guardian)
-// 2026-09-26 (Toby item 3): a Powerful or Legendary guardian may shrug the binding off at the start
-// of every round after the first in which it held — this chance a round.
-export const SPIRITWRACK_SHRUG_PCT = { Powerful: 25, Legendary: 40 };
-export const SPELL_BLAST_BASE_ROUNDS = 1; // +1 per two levels
-export const SPELL_TKS_BASE_PCT = 12,
-  SPELL_TKS_PCT_PER_LVL = 3; // Telekinetic Storm, % of target max HP
+// spell keeps what it does; the numbers are what changed. The numbers of the spells that harm, and what each does once
+// it takes hold, are the spells' registry's (plan P1-19w: src/content/spell-effects-their-names-numbers-and-words.ts
+// and src/engine/rules/spells/a-combat-spell-that-harms-in-a-personal-combat.ts); the others' are below.
 export const SPELL_INVIS_BASE_PCT = 10,
   SPELL_INVIS_PCT_PER_LVL = 4; // Invisibility, foe to-hit reduction
-export const SPELL_HOD_BITE_PCT = 40,
-  SPELL_HOD_MAX_PCT = 60; // Hand of Death
 export const SPELL_MIRROR_HP_PCT = 40,
   SPELL_MIRROR_ROUNDS = 3; // Mirror Image, see the case below
 export const PC_CAST_BASE = SPELL_CAST_BASE; // personal-combat casting is 30 + school level × 10 · 2026-09-11: every path now shares SPELL_CAST_BASE
@@ -221,346 +210,192 @@ export function pcCastCombatSpell(
       });
   }
 
-  // ----- effects (placeholder = pre-CSV behaviour; replaced per-school later) -----
-  switch (spellName) {
-    case 'Lightning Bolt': {
-      let d = 0;
-      const _lbLvl = Math.min(Math.max(1, lvl), 5);
-      for (let i = 0; i < _lbLvl; i++) d += rng(1, 3);
-      /* 1–3 a level (2026-10-14, Toby item 9; was 2–4) */ const dealt = pcTakeHit(
-        turnContext,
-        target,
-        d,
-        narrative,
-        caster.name,
-        'Lightning Bolt',
-      );
-      if (dealt)
+  // ----- effects: the spells' registry's, where it holds one (plan P1-19w), else the cases below -----
+  const theSteps = whatACombatSpellDoesAsItTakesHold(spellName, {
+    theLevelCountedTo5: lvlEff,
+    theWeaknessFactor: wx,
+    theTargetIsWeakToTheSchool: _wkSch,
+    theCastersMaximumHp: caster.maxHp || 20,
+    theTarget: {
+      maxHp: target.maxHp,
+      isUndeadOrAFiend: target.isUndead || pcFoeCat(target) === 'fiend',
+      theGuardiansGrade: target.kind === 'monster' ? String(target.power) : null,
+      theShareHisWardsCutABurnBy: theShareAFightersWardsCutASpellsBurnBy(target.arm), // the ward's effect in the items' registry (plan P1-19r)
+    },
+    // the items' registry (plan P1-19w): a guardian's hoard or a hero's active items, as hasItemBase read them
+    whatTheCastersItemsChange: () =>
+      whatAHerosItemsChangeInHisCombatSpells(activeItems(theCastersHeroOrGuardianAsGuarded)),
+  });
+  if (theSteps) applyTheStepsOfACombatSpell(turnContext, caster, target, spellName, theSteps, narrative);
+  else
+    switch (spellName) {
+      case 'Mirror Image': {
+        if (!state) {
+          narrate(narrative, { kind: 'the caster conjures a mirror image', casterName: caster.name });
+          break;
+        }
+        if (state.mirror) {
+          // casting again while an illusion fights dissipates both images
+          narrate(narrative, { kind: 'the caster weaves a second mirror image', casterName: caster.name });
+          state.mirror = null;
+          break;
+        }
+        // Conjure a phantom duplicate of the OPPONENT, with their characteristics at this moment.
+        // the phantom is a FULL clone of the mirrored combatant so it fights back exactly as they
+        // would — running THEIR Encounter Plan from the very start (spells, archery and tactics,
+        // not just melee). It gets its own fresh status, spell-limit trackers and plan pointer
+        // (tacIdx 0) so nothing bleeds back into the real character, and its own Mirror Image casts
+        // are stripped from the copied plan (an illusion casting illusions is meaningless and would
+        // only end its own duel).
+        let _phTactics = (asItsGuardReadsIt(target.tactics) ?? ['ME'])
+          .slice()
+          .filter((t) => !/mirror\s*image/i.test(t));
+        if (!_phTactics.length) _phTactics = ['ME'];
+        // MIRROR IMAGE, REBUILT. Measured, it was the worst thing a hero could do with an action: a
+        // fully trained Illusory adept beat a Lich Acolyte 100% of the time casting nothing at all,
+        // and 94.3% casting this. Two faults. The phantom was a FULL-strength copy of the victim,
+        // so shattering it took as long as winning the real fight; and the caster "concentrated",
+        // meaning they stood still for every round the illusion lasted. An illusion now carries a
+        // share of the victim's health, fades of its own accord after a few rounds, and — the
+        // change that matters — the caster is free to act while the victim's attention is on it.
+        const _phHp = Math.max(1, Math.round((target.hp * SPELL_MIRROR_HP_PCT) / 100));
+        const ph: AFighterInAPersonalCombat = {
+          ...target,
+          kind: 'phantasm',
+          name: target.name + "'s mirror image",
+          ref: target.ref,
+          hp: _phHp,
+          maxHp: _phHp,
+          school: { ...target.school }, // a spread of none is no field, as a spread of {} was
+          specials: (asItsGuardReadsIt(target.specials) ?? []).slice(),
+          tactics: _phTactics,
+          tacIdx: 0,
+          planExhausted: false,
+          neverFlees: true, // an illusion never runs
+          castSpells: [],
+          castSchool: {},
+          status: pcNewStatus(),
+        };
+        state.mirror = { caster, victim: target, phantasm: ph, life: SPELL_MIRROR_ROUNDS };
         narrate(narrative, {
-          kind: "the caster's lightning bolt arcs into the target",
+          kind: 'the caster conjures a phantom of the target',
           casterName: caster.name,
           targetName: target.name,
-          dealt,
-          targetHp: Math.max(0, Math.round(target.hp)),
+          targetName2: target.name,
+          casterName2: caster.name,
         });
-      break;
-    }
-    case 'Fireball': {
-      // 2026-09-15 rebalance: the burn now reads the caster. It was a flat 10% of the target's
-      // maximum health a round whoever threw it, which made Elemental the strongest school at
-      // level 1 and no stronger at level 5. 3% + 1% a level: 4% a round at Elemental 1, 8% at
-      // Elemental 5.
-      // 2026-10-14 (batch item 6): 10% + 2% a level (12% at Elemental 1, 20% at 5). A spell ward
-      // (spellPct) cuts the burn as it cuts any spell's harm — the burn ticks outside pcTakeHit, so
-      // the ward is applied here.
-      const _fbWard = theShareAFightersWardsCutASpellsBurnBy(target.arm); // the ward's effect in the items' registry (plan P1-19r)
-      const _fbPct = (SPELL_FIREBALL_BASE_PCT + SPELL_FIREBALL_PCT_PER_LVL * lvlEff) * wx * (1 - _fbWard / 100);
-      const _fbD = Math.max(1, Math.round((target.maxHp * _fbPct) / 100));
-      const _fbE = pcPushDot(target, _fbD, 3, 'Fireball burns');
-      narrate(narrative, {
-        kind: 'a fireball engulfs the target and will burn',
-        targetName: target.name,
-        fbPct: dispFloor(_fbPct),
-        burnRounds: _fbE ? _fbE.rounds : 3,
-        fbWard: _fbWard,
-      });
-      break;
-    }
-    // ── WHITE (CSV) ──
-    case 'Holy Symbol': {
-      // 2026-09-15 rebalance: measured, a White adept was WORSE in a duel than carrying no
-      // magic at all — both its spells cost an action and neither did any harm. The symbol keeps
-      // its identity (a ward, not a weapon) but now sustains the one who raises it, and against
-      // the unclean it burns as well as blinds. The to-hit penalty comes down from 10 to 8 a
-      // level to pay for it.
-      // 2026-10-14 (batch item 5): the unclean are told by their KIND — every undead and every
-      // fiend — not by a name pattern (which doubled the Dust Devil, an elemental, and missed the
-      // Chaos Knight, a fiend), and the symbol bites them ×1.5 rather than ×2.
-      const holy = target.isUndead || pcFoeCat(target) === 'fiend';
-      const _hm = holy ? SPELL_HOLY_UNCLEAN_MULT : 1;
-      const pen = Math.round(lvlEff * SPELL_HOLY_PEN_PER_LVL * _hm * wx);
-      target.status.hitPenalty = (target.status.hitPenalty || 0) + pen;
-      narrate(narrative, {
-        kind: 'the caster raises a holy symbol',
-        casterName: caster.name,
-        targetName: target.name,
-        pen,
-        againstTheUnclean: holy,
-      });
-      const _hsHeal = Math.max(1, Math.round(((caster.maxHp || 20) * SPELL_HOLY_HEAL_PCT) / 100));
-      if (caster.hp < (caster.maxHp || 20)) {
-        const _h = Math.min(_hsHeal, (caster.maxHp || 20) - caster.hp);
-        caster.hp += _h;
-        narrate(narrative, {
-          kind: "the light closes the caster's hurts",
-          casterName: caster.name,
-          healed: _h,
-          casterHp: dispFloor(caster.hp),
-        });
+        break;
       }
-      // The light burns whatever stands between a hero and a barrow, and burns the unclean twice
-      // as deep. Measured, a symbol that only blinded left White worse than carrying no magic at
-      // all against anything that was neither undead nor a fiend.
-      {
-        const _hsD = Math.max(1, Math.round((target.maxHp * SPELL_HOLY_BURN_PCT * _hm) / 100));
-        const _dealt = pcTakeHit(turnContext, target, _hsD, narrative, caster.name, 'Holy Symbol');
-        if (_dealt)
+      case 'Invisibility': {
+        // 10% + 4% a level (14% at Illusory 1, 30% at Illusory 5) instead of a
+        // flat 25 at every level. 2026-09-16: the line printed a hard-coded "\u221225%" — the flat
+        // figure this spell had BEFORE the 2026-09-15 rebalance — while the code applied 10 +
+        // 4/level. A player reading their own report was told the wrong number at every level.
+        // Quote the figure actually applied.
+        const _invPct = SPELL_INVIS_BASE_PCT + SPELL_INVIS_PCT_PER_LVL * lvlEff;
+        caster.status.toHitReduce = Math.max(Number(caster.status.toHitReduce) || 0, _invPct);
+        caster.status.fleeBonus = (caster.status.fleeBonus || 0) + 30;
+        narrate(narrative, { kind: 'the caster fades from sight', casterName: caster.name, invPct: _invPct });
+        break;
+      }
+      case 'Curse': {
+        // Halve (round down) the target's best combat ability for the duration of the fight.
+        const bestSchool = KC_MAGIC_SCHOOLS.reduce(
+          (b, s) => ((target.school[s] || 0) > (target.school[b] || 0) ? s : b),
+          'white',
+        );
+        const cands: [key: string, level: number][] = [
+          ['melee', target.melee],
+          ['archery', target.archery],
+          ['magic', target.school[bestSchool] || 0],
+        ];
+        cands.sort((a, b) => b[1] - a[1]);
+        const theBest = cands[0]; // one of three, made sure above
+        if (theBest === undefined) throw new TypeError('undefined is not iterable');
+        const [bestKey, bestVal] = theBest;
+        if (bestVal > 0) {
+          if (bestKey === 'melee') target.melee = Math.floor(target.melee / 2);
+          else if (bestKey === 'archery') target.archery = Math.floor(target.archery / 2);
+          else target.school[bestSchool] = Math.floor(target.school[bestSchool] / 2);
           narrate(narrative, {
-            kind: "the holy light's damage",
-            againstTheUnclean: holy,
+            kind: "the caster's curse withers the target",
+            casterName: caster.name,
             targetName: target.name,
-            dealt: _dealt,
-            targetHp: Math.max(0, Math.round(target.hp)),
+            bestKey,
+            bestSchool,
+            bestAbilityLevel:
+              bestKey === 'melee' ? target.melee : bestKey === 'archery' ? target.archery : target.school[bestSchool],
           });
-      }
-      break;
-    }
-    case 'Spiritwrack': {
-      // 2026-09-26 (Toby item 3): silenced for 1 + floor(level/2) rounds.
-      // 2026-10-15 (Toby, D5): the level is counted to 5, like every other spell's effect, so at most 3.
-      // Against a guardian WEAK to White Magic the cast already takes hold at 95% (above) and the
-      // binding runs one round longer — up to 4 — instead of doubling.
-      let _swR = Math.min(
-        SPELL_SPIRITWRACK_MAX_ROUNDS,
-        SPELL_SPIRITWRACK_BASE_ROUNDS + Math.floor(Math.max(1, lvlEff) / 2),
-      );
-      if (_wkSch) _swR = Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS + 1, _swR + 1);
-      target.status.silenceRounds = Math.max(target.status.silenceRounds, _swR);
-      target.status.meleeHalvedRounds = Math.max(target.status.meleeHalvedRounds, _swR);
-      const shrugByGrade: Readonly<Partial<Record<string, number>>> = SPIRITWRACK_SHRUG_PCT; // read by any grade's name
-      const _shr = target.kind === 'monster' ? (shrugByGrade[String(target.power)] ?? 0) || 0 : 0;
-      target.status._swShrugPct = _shr;
-      narrate(narrative, {
-        kind: 'the caster binds the target with spiritwrack',
-        casterName: caster.name,
-        targetName: target.name,
-        swR: _swR,
-        shr: _shr,
-        targetPower: target.power,
-      });
-      break;
-    }
-    case 'Psychic Blast': {
-      // three rounds of total helplessness was the same at Psychic 1 as at
-      // Psychic 5. Now 1 round + 1 per two levels (1 at Psychic 1, 3 at Psychic 5), doubled against a
-      // guardian weak to Psychic; 2026-10-15 (Toby, D4): the Dreamstone's +1 comes after the doubling.
-      const _stunN =
-        (SPELL_BLAST_BASE_ROUNDS + Math.floor(lvlEff / 2)) * wx +
-        (theCastersHeroOrGuardianAsGuarded && hasItemBase(theCastersHeroOrGuardianAsGuarded, 'Dreamstone') ? 1 : 0);
-      if (pcLandStun(target, _stunN, narrative, 'the blast'))
-        narrate(narrative, { kind: "psychic blast sears the target's mind", targetName: target.name, stunN: _stunN });
-      break;
-    }
-    case 'Telekinetic Storm': {
-      // a quarter of the target's health whoever threw it. Now 10% + 3% a
-      // level — 27% at Psychic 5, half that from an apprentice. The recoil is unchanged.
-      const d = Math.max(1, Math.round((target.maxHp * (SPELL_TKS_BASE_PCT + SPELL_TKS_PCT_PER_LVL * lvlEff)) / 100));
-      const self = Math.max(0, Math.round(d * 0.25));
-      const dealt = pcTakeHit(turnContext, target, d, narrative, caster.name, 'Telekinetic Storm');
-      caster.hp -= self;
-      if (dealt)
-        narrate(narrative, {
-          kind: 'a telekinetic storm rips the target',
-          targetName: target.name,
-          dealt,
-          casterName: caster.name,
-          self,
-          targetHp: Math.max(0, Math.round(target.hp)),
-        });
-      break;
-    }
-    case 'Mirror Image': {
-      if (!state) {
-        narrate(narrative, { kind: 'the caster conjures a mirror image', casterName: caster.name });
-        break;
-      }
-      if (state.mirror) {
-        // casting again while an illusion fights dissipates both images
-        narrate(narrative, { kind: 'the caster weaves a second mirror image', casterName: caster.name });
-        state.mirror = null;
-        break;
-      }
-      // Conjure a phantom duplicate of the OPPONENT, with their characteristics at this moment.
-      // the phantom is a FULL clone of the mirrored combatant so it fights back exactly as they
-      // would — running THEIR Encounter Plan from the very start (spells, archery and tactics,
-      // not just melee). It gets its own fresh status, spell-limit trackers and plan pointer
-      // (tacIdx 0) so nothing bleeds back into the real character, and its own Mirror Image casts
-      // are stripped from the copied plan (an illusion casting illusions is meaningless and would
-      // only end its own duel).
-      let _phTactics = (asItsGuardReadsIt(target.tactics) ?? ['ME']).slice().filter((t) => !/mirror\s*image/i.test(t));
-      if (!_phTactics.length) _phTactics = ['ME'];
-      // MIRROR IMAGE, REBUILT. Measured, it was the worst thing a hero could do with an action: a
-      // fully trained Illusory adept beat a Lich Acolyte 100% of the time casting nothing at all,
-      // and 94.3% casting this. Two faults. The phantom was a FULL-strength copy of the victim,
-      // so shattering it took as long as winning the real fight; and the caster "concentrated",
-      // meaning they stood still for every round the illusion lasted. An illusion now carries a
-      // share of the victim's health, fades of its own accord after a few rounds, and — the
-      // change that matters — the caster is free to act while the victim's attention is on it.
-      const _phHp = Math.max(1, Math.round((target.hp * SPELL_MIRROR_HP_PCT) / 100));
-      const ph: AFighterInAPersonalCombat = {
-        ...target,
-        kind: 'phantasm',
-        name: target.name + "'s mirror image",
-        ref: target.ref,
-        hp: _phHp,
-        maxHp: _phHp,
-        school: { ...target.school }, // a spread of none is no field, as a spread of {} was
-        specials: (asItsGuardReadsIt(target.specials) ?? []).slice(),
-        tactics: _phTactics,
-        tacIdx: 0,
-        planExhausted: false,
-        neverFlees: true, // an illusion never runs
-        castSpells: [],
-        castSchool: {},
-        status: pcNewStatus(),
-      };
-      state.mirror = { caster, victim: target, phantasm: ph, life: SPELL_MIRROR_ROUNDS };
-      narrate(narrative, {
-        kind: 'the caster conjures a phantom of the target',
-        casterName: caster.name,
-        targetName: target.name,
-        targetName2: target.name,
-        casterName2: caster.name,
-      });
-      break;
-    }
-    case 'Invisibility': {
-      // 10% + 4% a level (14% at Illusory 1, 30% at Illusory 5) instead of a
-      // flat 25 at every level. 2026-09-16: the line printed a hard-coded "\u221225%" — the flat
-      // figure this spell had BEFORE the 2026-09-15 rebalance — while the code applied 10 +
-      // 4/level. A player reading their own report was told the wrong number at every level.
-      // Quote the figure actually applied.
-      const _invPct = SPELL_INVIS_BASE_PCT + SPELL_INVIS_PCT_PER_LVL * lvlEff;
-      caster.status.toHitReduce = Math.max(Number(caster.status.toHitReduce) || 0, _invPct);
-      caster.status.fleeBonus = (caster.status.fleeBonus || 0) + 30;
-      narrate(narrative, { kind: 'the caster fades from sight', casterName: caster.name, invPct: _invPct });
-      break;
-    }
-    case 'Hand of Death': {
-      // half the target's health on a coin flip was the single strongest thing a
-      // hero could do in a duel. The grip is the same, the bite is 40% rather than 50%, and the
-      // chance is capped at 60 rather than 95 so an item cannot push it to a near-certainty.
-      if (kcRng() * 100 < Math.min(SPELL_HOD_MAX_PCT, lvlEff * 10 * wx)) {
-        const _dfMult =
-          theCastersHeroOrGuardianAsGuarded && hasItemBase(theCastersHeroOrGuardianAsGuarded, "Death's Finger Ring")
-            ? 1.1
-            : 1;
-        const d = Math.max(1, Math.round(((target.maxHp * SPELL_HOD_BITE_PCT) / 100) * _dfMult));
-        const dealt = pcTakeHit(turnContext, target, d, narrative, caster.name, 'Hand of Death');
-        if (dealt)
+        } else
           narrate(narrative, {
-            kind: "the hand of death claims part of the target's health",
-            handOfDeathBitePct: SPELL_HOD_BITE_PCT,
+            kind: "the caster's curse finds no ability",
+            casterName: caster.name,
             targetName: target.name,
-            dealt,
-            targetHp: Math.max(0, Math.round(target.hp)),
           });
-      } else
+        break;
+      }
+      case 'Control Undead': {
+        if (target.isUndead) {
+          const _cuR = Math.max(1, lvlEff);
+          if (!pcLandStun(target, _cuR, narrative, `${caster.name}'s grip`)) break; // printed the RAW level while applying the capped one — a Necromancy 8 caster was told "8 rounds" and got 5.
+          narrate(narrative, {
+            kind: 'the caster seizes the undead target',
+            casterName: caster.name,
+            targetName: target.name,
+            cuR: _cuR,
+          });
+        } else narrate(narrative, { kind: 'control undead has no hold over the living', targetName: target.name });
+        break;
+      }
+      case 'Charm': {
+        // the target's hero as a Charm reads him (a guardian has none of these): the same object, guarded as before
+        const theTargetsHero = targetAsGuarded ? asItsGuardReadsIt<AHeroAsACharmReadsHim>(targetAsGuarded.ref) : null;
+        // a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
+        if (targetAsGuarded?.kind === 'character' && theTargetsHero?.isKing) {
+          narrate(narrative, {
+            kind: "the caster's charm washes over a crowned will",
+            casterName: caster.name,
+            targetName: target.name,
+          });
+          break;
+        }
+        // ...and so is a mind swayed only last season — the same immunity the action-phase Charm
+        // honours.
+        if (targetAsGuarded?.kind === 'character' && theTargetsHero?._charmImmuneTurn === G.turn) {
+          narrate(narrative, {
+            kind: "the caster's charm slides off a mind lately swayed",
+            casterName: caster.name,
+            targetName: target.name,
+          });
+          break;
+        }
+        // a mind swayed before resists any later Charm, combat casts included (30% per past charm,
+        // cumulative).
+        if (
+          targetAsGuarded?.kind === 'character' &&
+          theTargetsHero?._charmResist !== undefined &&
+          theTargetsHero._charmResist > 0 &&
+          d100() <= theTargetsHero._charmResist
+        ) {
+          narrate(narrative, {
+            kind: "the caster's charm breaks against the target's will",
+            casterName: caster.name,
+            targetName: target.name,
+            targetRefCharmResist: theTargetsHero._charmResist,
+          });
+          break;
+        }
+        caster.status.fleeDoubled = true;
         narrate(narrative, {
-          kind: "the caster's hand of death fails",
-          casterName: caster.name,
-          handOfDeathChancePct: Math.min(SPELL_HOD_MAX_PCT, lvlEff * 10 * wx),
-        });
-      break;
-    }
-    case 'Curse': {
-      // Halve (round down) the target's best combat ability for the duration of the fight.
-      const bestSchool = KC_MAGIC_SCHOOLS.reduce(
-        (b, s) => ((target.school[s] || 0) > (target.school[b] || 0) ? s : b),
-        'white',
-      );
-      const cands: [key: string, level: number][] = [
-        ['melee', target.melee],
-        ['archery', target.archery],
-        ['magic', target.school[bestSchool] || 0],
-      ];
-      cands.sort((a, b) => b[1] - a[1]);
-      const theBest = cands[0]; // one of three, made sure above
-      if (theBest === undefined) throw new TypeError('undefined is not iterable');
-      const [bestKey, bestVal] = theBest;
-      if (bestVal > 0) {
-        if (bestKey === 'melee') target.melee = Math.floor(target.melee / 2);
-        else if (bestKey === 'archery') target.archery = Math.floor(target.archery / 2);
-        else target.school[bestSchool] = Math.floor(target.school[bestSchool] / 2);
-        narrate(narrative, {
-          kind: "the caster's curse withers the target",
-          casterName: caster.name,
-          targetName: target.name,
-          bestKey,
-          bestSchool,
-          bestAbilityLevel:
-            bestKey === 'melee' ? target.melee : bestKey === 'archery' ? target.archery : target.school[bestSchool],
-        });
-      } else
-        narrate(narrative, {
-          kind: "the caster's curse finds no ability",
-          casterName: caster.name,
-          targetName: target.name,
-        });
-      break;
-    }
-    case 'Control Undead': {
-      if (target.isUndead) {
-        const _cuR = Math.max(1, lvlEff);
-        if (!pcLandStun(target, _cuR, narrative, `${caster.name}'s grip`)) break; // printed the RAW level while applying the capped one — a Necromancy 8 caster was told "8 rounds" and got 5.
-        narrate(narrative, {
-          kind: 'the caster seizes the undead target',
-          casterName: caster.name,
-          targetName: target.name,
-          cuR: _cuR,
-        });
-      } else narrate(narrative, { kind: 'control undead has no hold over the living', targetName: target.name });
-      break;
-    }
-    case 'Charm': {
-      // the target's hero as a Charm reads him (a guardian has none of these): the same object, guarded as before
-      const theTargetsHero = targetAsGuarded ? asItsGuardReadsIt<AHeroAsACharmReadsHim>(targetAsGuarded.ref) : null;
-      // a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
-      if (targetAsGuarded?.kind === 'character' && theTargetsHero?.isKing) {
-        narrate(narrative, {
-          kind: "the caster's charm washes over a crowned will",
+          kind: "the caster charms the target's wits",
           casterName: caster.name,
           targetName: target.name,
         });
         break;
       }
-      // ...and so is a mind swayed only last season — the same immunity the action-phase Charm
-      // honours.
-      if (targetAsGuarded?.kind === 'character' && theTargetsHero?._charmImmuneTurn === G.turn) {
-        narrate(narrative, {
-          kind: "the caster's charm slides off a mind lately swayed",
-          casterName: caster.name,
-          targetName: target.name,
-        });
-        break;
-      }
-      // a mind swayed before resists any later Charm, combat casts included (30% per past charm,
-      // cumulative).
-      if (
-        targetAsGuarded?.kind === 'character' &&
-        theTargetsHero?._charmResist !== undefined &&
-        theTargetsHero._charmResist > 0 &&
-        d100() <= theTargetsHero._charmResist
-      ) {
-        narrate(narrative, {
-          kind: "the caster's charm breaks against the target's will",
-          casterName: caster.name,
-          targetName: target.name,
-          targetRefCharmResist: theTargetsHero._charmResist,
-        });
-        break;
-      }
-      caster.status.fleeDoubled = true;
-      narrate(narrative, {
-        kind: "the caster charms the target's wits",
-        casterName: caster.name,
-        targetName: target.name,
-      });
-      break;
+      default:
+        narrate(narrative, { kind: 'the caster casts a spell', casterName: caster.name, spellName });
     }
-    default:
-      narrate(narrative, { kind: 'the caster casts a spell', casterName: caster.name, spellName });
-  }
   // small skill-up chance — pass narrative so the "X rises to level N" line appears at the end of
   // the encounter report, not emitted ahead of it at the top of the phase.
   if (caster.kind === 'character' && theCastersHeroOrGuardianAsGuarded) {
@@ -575,6 +410,136 @@ export function pcCastCombatSpell(
       caster.school[school] = Math.max(caster.school[school] || 0, effStat(turnContext, caster.ref, school));
   }
   return true;
+}
+
+/** What a combat spell does, step by step, as the spells' registry returns it (plan P1-19w): each step applied with the
+ *  function the spell's case called, in order, and its line written with the facts its kind records (each line's
+ *  fields in the order the case wrote them). A chance is rolled here, where the case rolled it. */
+function applyTheStepsOfACombatSpell(
+  turnContext: TurnContext,
+  caster: AFighterInAPersonalCombat,
+  target: AFighterInAPersonalCombat,
+  spellName: string,
+  theSteps: readonly AStepOfACombatSpell[],
+  narrative: NarrativeLine[],
+): void {
+  for (const step of theSteps) {
+    switch (step.kind) {
+      case 'a hit': {
+        let d = 0;
+        if (typeof step.theDamage === 'number') d = step.theDamage;
+        else for (let i = 0; i < step.theDamage.theDice; i++) d += rng(step.theDamage.eachFrom, step.theDamage.eachTo);
+        const dealt = pcTakeHit(turnContext, target, d, narrative, caster.name, spellName);
+        if (step.theCastersRecoil !== null) caster.hp -= step.theCastersRecoil;
+        if (dealt) writeTheLineOfACombatSpellsHit(caster, target, step.theLine, dealt, narrative);
+        break;
+      }
+      case 'a burn': {
+        const theBurn = pcPushDot(target, step.theDamage, step.theRounds, step.theLabel);
+        narrate(narrative, {
+          kind: step.theLine,
+          targetName: target.name,
+          fbPct: dispFloor(step.theShareOfMaximumHp),
+          burnRounds: theBurn ? theBurn.rounds : step.theRounds,
+          fbWard: step.theWardsCut,
+        });
+        break;
+      }
+      case 'a stun':
+        if (pcLandStun(target, step.theRounds, narrative, step.what))
+          narrate(narrative, { kind: step.theLine, targetName: target.name, stunN: step.theRounds });
+        break;
+      case 'a silence':
+        target.status.silenceRounds = Math.max(target.status.silenceRounds, step.theRounds);
+        target.status.meleeHalvedRounds = Math.max(target.status.meleeHalvedRounds, step.theRounds);
+        target.status._swShrugPct = step.theChanceItIsShruggedOff;
+        narrate(narrative, {
+          kind: 'the caster binds the target with spiritwrack',
+          casterName: caster.name,
+          targetName: target.name,
+          swR: step.theRounds,
+          shr: step.theChanceItIsShruggedOff,
+          targetPower: target.power,
+        });
+        break;
+      case "a cut to the target's aim":
+        target.status.hitPenalty = (target.status.hitPenalty || 0) + step.theCut;
+        narrate(narrative, {
+          kind: 'the caster raises a holy symbol',
+          casterName: caster.name,
+          targetName: target.name,
+          pen: step.theCut,
+          againstTheUnclean: step.againstTheUnclean,
+        });
+        break;
+      case "the caster's heal":
+        if (caster.hp < step.theCastersMaximumHp) {
+          const _h = Math.min(step.theHp, step.theCastersMaximumHp - caster.hp);
+          caster.hp += _h;
+          narrate(narrative, {
+            kind: "the light closes the caster's hurts",
+            casterName: caster.name,
+            healed: _h,
+            casterHp: dispFloor(caster.hp),
+          });
+        }
+        break;
+      case 'a chance':
+        if (kcRng() * 100 < step.theChance)
+          applyTheStepsOfACombatSpell(turnContext, caster, target, spellName, step.ifItHolds(), narrative);
+        else
+          narrate(narrative, {
+            kind: step.theLineIfItFails,
+            casterName: caster.name,
+            handOfDeathChancePct: step.theChance,
+          });
+        break;
+    }
+  }
+}
+
+/** The line a combat spell's hit writes once it deals damage, its fields in the order the spell's case wrote them. */
+function writeTheLineOfACombatSpellsHit(
+  caster: AFighterInAPersonalCombat,
+  target: AFighterInAPersonalCombat,
+  theLine: TheLineOfACombatSpellsHit,
+  dealt: number,
+  narrative: NarrativeLine[],
+): void {
+  const targetHp = Math.max(0, Math.round(target.hp));
+  switch (theLine.kind) {
+    case "the caster's lightning bolt arcs into the target":
+      narrate(narrative, { kind: theLine.kind, casterName: caster.name, targetName: target.name, dealt, targetHp });
+      break;
+    case "the holy light's damage":
+      narrate(narrative, {
+        kind: theLine.kind,
+        againstTheUnclean: theLine.againstTheUnclean,
+        targetName: target.name,
+        dealt,
+        targetHp,
+      });
+      break;
+    case 'a telekinetic storm rips the target':
+      narrate(narrative, {
+        kind: theLine.kind,
+        targetName: target.name,
+        dealt,
+        casterName: caster.name,
+        self: theLine.self,
+        targetHp,
+      });
+      break;
+    case "the hand of death claims part of the target's health":
+      narrate(narrative, {
+        kind: theLine.kind,
+        handOfDeathBitePct: theLine.handOfDeathBitePct,
+        targetName: target.name,
+        dealt,
+        targetHp,
+      });
+      break;
+  }
 }
 
 // --- Monster special abilities ---------------------------------------------- A monster's
