@@ -8,8 +8,9 @@
 // experience and hit points', since P1-12d13 the title intelligence's, since P1-12d14 the Defend watch's, a stranding
 // at sea's and the war-spoils', since P1-12d15 the lines before the first phase, the new turn's, a phase's, the intrusion
 // warnings', a Defend watch met in battle's and a silent hero's season's, since P1-12d16 the lines after the phases,
-// diplomacy's and victory's, and Early Winter's), each kind routed to its area's (theWordsOf,
-// below). A battle's
+// diplomacy's and victory's, and Early Winter's, since P1-12d17 the other folders': what a spy learns, relations and
+// captures, the Plague and the Bless ward, a rallied garrison and Wraith's Touch, a bot's concession, the Spy
+// stealth's), each kind routed to its area's (theWordsOf, below). A battle's
 // lines take their tiers ('k' key, 'd' detail) and its losses tally its place from those words, as emitBattle did
 // before (battleLineTiers and battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
 // as it is stored (turn_logs, player index −1), in the same form as before, key for key: the shell saves it, and the
@@ -86,6 +87,18 @@ import { THE_AUDIENCE_OF_EACH_KIND_OF_A_DIPLOMACY_OR_VICTORY_LINE } from '../../
 import { theWordsOfADiplomacyOrVictoryLine } from './the-words-of-diplomacy-and-victorys-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_AN_EARLY_WINTERS_LINE } from '../../engine/turn/the-facts-early-winters-lines-record.ts';
 import { theWordsOfAnEarlyWintersLine } from './the-words-of-early-winters-lines.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_WHAT_A_SPY_LEARNS_LINE } from '../../engine/espionage/the-facts-what-a-spy-learns-lines-record.ts';
+import { theWordsOfWhatASpyLearnsLine } from './the-words-of-what-a-spy-learns-lines.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_RELATIONS_AND_CAPTURES_LINE } from '../../engine/realms/the-facts-relations-and-captures-lines-record.ts';
+import { theWordsOfARelationsAndCapturesLine } from './the-words-of-relations-and-captures-lines.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_PLAGUE_OR_BLESS_WARD_LINE } from '../../engine/magic/the-facts-plague-and-bless-ward-lines-record.ts';
+import { theWordsOfAPlagueOrBlessWardLine } from './the-words-of-plague-and-bless-ward-lines.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE } from '../../engine/world/the-facts-rallied-garrisons-and-wraiths-touch-lines-record.ts';
+import { theWordsOfARalliedGarrisonOrWraithsTouchLine } from './the-words-of-rallied-garrisons-and-wraiths-touch-lines.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_A_BOTS_CONCESSION_LINE } from '../../engine/bots/the-facts-a-bots-concession-line-records.ts';
+import { theWordsOfABotsConcessionLine } from './the-words-of-a-bots-concession-line.ts';
+import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_SPY_STEALTH_LINE } from '../../engine/turn/the-facts-the-spy-stealth-line-records.ts';
+import { theWordsOfTheSpyStealthLine } from './the-words-of-the-spy-stealth-line.ts';
 
 // ── THE ROUTE BY KIND (plan P1-12d5: P1-12's Decisions of 2026-10-26, Decision 6) ──
 // Each area's kinds are typed beside its code, each with its audience (its audience table lists every kind it has), and
@@ -155,6 +168,15 @@ const THE_WORDS_OF_EACH_KIND: ReadonlyMap<string, (fact: LineFact) => string> = 
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_LINE_AFTER_THE_PHASES, theWordsOfALineAfterThePhases),
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_DIPLOMACY_OR_VICTORY_LINE, theWordsOfADiplomacyOrVictoryLine),
   ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_AN_EARLY_WINTERS_LINE, theWordsOfAnEarlyWintersLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_WHAT_A_SPY_LEARNS_LINE, theWordsOfWhatASpyLearnsLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_RELATIONS_AND_CAPTURES_LINE, theWordsOfARelationsAndCapturesLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_PLAGUE_OR_BLESS_WARD_LINE, theWordsOfAPlagueOrBlessWardLine),
+  ...theRouteToAnArea(
+    THE_AUDIENCE_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE,
+    theWordsOfARalliedGarrisonOrWraithsTouchLine,
+  ),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_A_BOTS_CONCESSION_LINE, theWordsOfABotsConcessionLine),
+  ...theRouteToAnArea(THE_AUDIENCE_OF_EACH_KIND_OF_THE_SPY_STEALTH_LINE, theWordsOfTheSpyStealthLine),
 ]);
 
 /** The words of a fact, of any area: its kind's area writes them. */

@@ -89,7 +89,13 @@ check finds were made.
   (`the-facts-the-lines-before-the-first-phase-record.ts`, `the-facts-the-new-turns-lines-record.ts`, …); since
   P1-12d16 the season's close: the lines after the phases, diplomacy's and victory's, and Early Winter's
   (`the-facts-the-lines-after-the-phases-record.ts`, `the-facts-diplomacy-and-victorys-lines-record.ts`,
-  `the-facts-early-winters-lines-record.ts`); one kind per
+  `the-facts-early-winters-lines-record.ts`); since P1-12d17 the other folders', one beside each folder's files: what a
+  spy learns (`src/engine/espionage/the-facts-what-a-spy-learns-lines-record.ts`), relations and captures
+  (`realms/the-facts-relations-and-captures-lines-record.ts`), the Plague and the Bless ward
+  (`magic/the-facts-plague-and-bless-ward-lines-record.ts`), a rallied garrison and Wraith's Touch
+  (`world/the-facts-rallied-garrisons-and-wraiths-touch-lines-record.ts`; Wraith's Touch the fight's, told in a
+  battle's narrative), a bot's concession (`bots/the-facts-a-bots-concession-line-records.ts`) and the Spy stealth's
+  line (`turn/the-facts-the-spy-stealth-line-records.ts`, from `run-turn.ts`); one kind per
   sentence, one field per value it was written
   with, and a kind in one area only: `theWordsOf` routes a fact by its kind to its area's words, and a kind declared in
   two areas doesn't compile, where `LineFact` lists the areas), each with its fields and its audience, and
@@ -113,6 +119,8 @@ check finds were made.
   P1-12d15 nor `src/engine/turn/`'s opening, and since P1-12d16 nor its season's close (diplomacy and victory, Early
   Winter, after the phases). Two fields there still hold words handed in: a line the order merge held
   (`staleOrderWarnings`, the set-up's words) and a neutral hero's lesson (`progressNeutralHeroes`' words, `heroes/`).
+  Since P1-12d17 neither do the other folders (`espionage/`, `realms/`, `magic/`, `world/`, `bots/`, `run-turn.ts`):
+  every place in `src/engine/` hands its line as a fact (but the words still handed through a parameter, listed above).
   **Words others read stay the same by construction**: the save check's line begins "[Save check] ", written by the
   prose (`the-words-of-the-new-turns-lines.ts`), and the balance matrix finds it by those words in the log stored
   (`THE_SAVE_CHECKS_LINE_BEGINS`, `tools/balance/a-game-fails-on-the-save-check.ts`); no game writes the line, so a

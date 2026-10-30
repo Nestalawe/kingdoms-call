@@ -62,7 +62,11 @@ export function settleRalliedGarrisons(turnContext) {
     const n = _returnedByProv[pid];
     emit(turnContext, {
       type: 'combat',
-      text: `🛡 With ${prov.name} held, its standing troops (${n} unit${n !== 1 ? 's' : ''}) resume their post as the garrison.`,
+      fact: {
+        kind: "a held province's standing troops resume their post as its garrison",
+        provinceName: prov.name,
+        units: n,
+      },
       audience: { actor: prov.owner, realms: [prov.owner].filter((x) => x != null), seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,

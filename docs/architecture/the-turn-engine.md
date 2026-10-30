@@ -39,7 +39,9 @@
   `-army-orders-`, `-realm-works-orders-`, `-war-mastery-orders-`; since P1-12d8 `-espionage-orders-`,
   `-explore-and-search-orders-`; since P1-12d9 `-cast-spell-orders-`; since P1-12d10 `-move-orders-`), since P1-12d15
   six of `engine/turn/`'s beside its files (the turn's opening, the new turn, a phase's), since P1-12d16 three more
-  (the season's close: after the phases, diplomacy and victory, Early Winter), all of them in
+  (the season's close: after the phases, diplomacy and victory, Early Winter), since P1-12d17 one beside each of the
+  other folders' files (`espionage/`, `realms/`, `magic/`, `world/`, `bots/`; `run-turn.ts`' Spy stealth's in
+  `turn/`), all of them in
   `LineFact`, each with its
   audience: the fight's, its hero's realm alone, or for a kind filed on its own the audience its event names), and the
   views write its words, one module per area, a `switch` over the kinds with a `never` default, so a kind with no words
@@ -66,7 +68,9 @@
   it, the saved game's words), since P1-12d14 nor `units/` (a stranding at sea's line still holds why the column is short
   as Early Winter's safety net hands it in, words through a parameter), since P1-12d15 nor `turn/`'s opening, new turn
   and phases (a line the order merge held, `staleOrderWarnings`, is still its words), since P1-12d16 nor its season's
-  close (a neutral hero's lesson is still the words `heroes/`' `progressNeutralHeroes` hands in). A word helper that reads the world and still has an engine caller elsewhere is split in two where it is: a copy
+  close (a neutral hero's lesson is still the words `heroes/`' `progressNeutralHeroes` hands in), and since P1-12d17
+  nor the other folders (`espionage/`, `realms/`, `magic/`, `world/`, `bots/`, `run-turn.ts`): every place in
+  `src/engine/` hands its line as a fact. A word helper that reads the world and still has an engine caller elsewhere is split in two where it is: a copy
   as the line tells it and its words on that copy alone, which the prose imports (`theSkillInPlayAsALineTellsIt` and
   `theWordsOfASkillInPlay` beside `skillInPlayNote`; since P1-12d8 `theStatShownAsALineTellsIt` and
   `theWordsOfAStatShown` beside `statNote`, `theOddsShownAsALineTellsIt` and `theWordsOfTheOddsShown` beside `oddsNote`:

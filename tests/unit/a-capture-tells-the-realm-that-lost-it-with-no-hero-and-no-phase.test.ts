@@ -8,6 +8,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import { setProvinceOwner } from '../../src/engine/realms/relations-and-captures.ts';
+import { theTurnsLinesInWords } from '../../src/views/prose/the-words-of-each-line.ts';
 
 // The GM's log echoes each line on the console: quiet while the test writes lines.
 const consoleLog = console.log;
@@ -46,7 +47,8 @@ describe('the lines a capture writes', () => {
       recruits: [],
     };
     setProvinceOwner(tc, G.world.provinces[0], 1, null, undefined);
-    return tc.turnLog;
+    // the lines as the GM's log stores them, in words (since P1-12d17 they are facts, written by the views)
+    return theTurnsLinesInWords(tc.turnLog).gmLog;
   };
 
   test("are the bare form, to the realm that lost it, with no hero and no phase (not the End of Turn's 99)", () => {

@@ -173,6 +173,30 @@ import {
   THE_AUDIENCE_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE,
   type TheFactOfTheMoveOrdersLine,
 } from '../orders/the-facts-the-move-orders-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_WHAT_A_SPY_LEARNS_LINE,
+  type TheFactOfWhatASpyLearnsLine,
+} from '../espionage/the-facts-what-a-spy-learns-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_RELATIONS_AND_CAPTURES_LINE,
+  type TheFactOfARelationsAndCapturesLine,
+} from '../realms/the-facts-relations-and-captures-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_PLAGUE_OR_BLESS_WARD_LINE,
+  type TheFactOfAPlagueOrBlessWardLine,
+} from '../magic/the-facts-plague-and-bless-ward-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE,
+  type TheFactOfARalliedGarrisonOrWraithsTouchLine,
+} from '../world/the-facts-rallied-garrisons-and-wraiths-touch-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_BOTS_CONCESSION_LINE,
+  type TheFactOfABotsConcessionLine,
+} from '../bots/the-facts-a-bots-concession-line-records.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_SPY_STEALTH_LINE,
+  type TheFactOfTheSpyStealthLine,
+} from './the-facts-the-spy-stealth-line-records.ts';
 
 /** An event's hero when the line is the deed of the hero whose order is resolving, whoever he is: emit files it under
  *  him only when the line already reaches his realm, else under no hero. The area rows of P1-12c replace it with the
@@ -187,7 +211,9 @@ export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolv
  *  P1-12d10 the move order's; since P1-12d12 a chase's and a hero's experience and hit points'; since P1-12d13 the
  *  title intelligence's; since P1-12d14 the Defend watch's, a stranding at sea's and the war-spoils'; since P1-12d15 the
  *  lines before the first phase, the new turn's, a phase's, the intrusion warnings', a Defend watch met in battle's and
- *  a silent hero's season's; since P1-12d16 the lines after the phases, diplomacy's and victory's, and Early Winter's. */
+ *  a silent hero's season's; since P1-12d16 the lines after the phases, diplomacy's and victory's, and Early Winter's;
+ *  since P1-12d17 the other folders': what a spy learns, relations and captures, the Plague and the Bless ward, a
+ *  rallied garrison and Wraith's Touch, a bot's concession, and the Spy stealth's line. */
 type TheFactsOfEachArea = [
   TheFactOfABattlesLine,
   TheFactOfAPersonalCombatsLine,
@@ -221,6 +247,12 @@ type TheFactsOfEachArea = [
   TheFactOfALineAfterThePhases,
   TheFactOfADiplomacyOrVictoryLine,
   TheFactOfAnEarlyWintersLine,
+  TheFactOfWhatASpyLearnsLine,
+  TheFactOfARelationsAndCapturesLine,
+  TheFactOfAPlagueOrBlessWardLine,
+  TheFactOfARalliedGarrisonOrWraithsTouchLine,
+  TheFactOfABotsConcessionLine,
+  TheFactOfTheSpyStealthLine,
 ];
 
 /** What a typed line records, of every area's kinds; the views write its words (src/views/prose/). */
@@ -281,6 +313,12 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_LINE_AFTER_THE_PHASES,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_DIPLOMACY_OR_VICTORY_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_AN_EARLY_WINTERS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_WHAT_A_SPY_LEARNS_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_RELATIONS_AND_CAPTURES_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_PLAGUE_OR_BLESS_WARD_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_A_BOTS_CONCESSION_LINE,
+  ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_SPY_STEALTH_LINE,
 };
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */

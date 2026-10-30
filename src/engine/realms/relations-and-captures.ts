@@ -5,6 +5,7 @@ import { armyUnitName } from '../dice-and-army-names.ts';
 import { discSum } from '../discoveries.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';
+import type { AUnitThatRoseAsTheLineNamesIt } from './the-facts-relations-and-captures-lines-record.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
@@ -73,7 +74,11 @@ export function breakConsecrationOnCapture(
   list.splice(at, 1);
   emit(turnContext, {
     type: 'system',
-    text: `✨ The consecration of ${prov.name} is broken — it has passed from ${pl.name}'s hands, and the hallowed light departs. The crown may sanctify new ground in its place.`,
+    fact: {
+      kind: 'a consecration is broken as its province is captured',
+      provinceName: prov.name,
+      realmName: pl.name,
+    },
     audience: { actor: null, realms: [prev] },
     province: prov.id,
     hero: null,
@@ -86,19 +91,25 @@ export function breakConsecrationOnCapture(
   );
   if (!units.length) return;
   const _pct = consecCaptureXpPct(G.players[newOwner]); // Undead 100 · Evil 50 · others 0
-  const rose: string[] = [];
+  const rose: AUnitThatRoseAsTheLineNamesIt[] = [];
   units.forEach((a) => {
     const qi = QUALITY_TIERS.indexOf(a.quality);
     if (a._isSkeletal) return; // skeletons never change quality by any means
     if (qi < 0 || qi >= QUALITY_TIERS.length - 1) return; // Elite (or unknown) cannot rise
     if (_pct > 0 && kcRng() * 100 < _pct) {
       a.quality = QUALITY_TIERS[qi + 1] ?? a.quality; // qi + 1 is a tier: Elite returned above
-      rose.push(`${String(a.unitName || armyUnitName(a.type))} (now ${a.quality})`);
+      rose.push({ unitName: String(a.unitName || armyUnitName(a.type)), quality: a.quality });
     }
   });
   emit(turnContext, {
     type: 'combat',
-    text: `✨ ${byChar.name}'s column casts down the altars of ${prov.name} — the ground is holy no longer. ${rose.length ? `Flushed with the deed, ${rose.join(', ')} gain${rose.length === 1 ? 's' : ''} an experience level.` : _pct > 0 ? 'None of the troops is the better for it.' : 'The troops take no pride in the sacrilege.'}`,
+    fact: {
+      kind: "a conquering column casts down a province's altars",
+      heroName: byChar.name,
+      provinceName: prov.name,
+      unitsThatRose: rose,
+      theTroopsMayRise: _pct > 0,
+    },
     audience: { actor: newOwner, realms: [newOwner] },
     province: prov.id,
     hero: byChar.id,
@@ -143,17 +154,19 @@ export function setProvinceOwner(
     );
   if (prev == null || prev === newOwner || newOwner == null) return;
   const _ph = ph ?? turnContext._logCtx.phase ?? turnContext._currentPhase;
-  const who = byChar ? byChar.name : 'an unknown commander';
-  const realm = G.players[newOwner] ? G.players[newOwner].name : 'an enemy realm'; // newOwner is set: returned above
   const n = byChar ? (byChar.armies ?? []).filter((a) => a && !a._died && !a._disbanded && !a._phantom).length : 0;
-  const led = byChar ? (n > 0 ? `, leading ${String(n)} unit${n !== 1 ? 's' : ''}` : ', leading no units') : '';
-  const text = `🏴 ${prov.name} has been captured from you by ${who} (${realm})${led}.`;
   // type 'system', NOT 'combat': the report re-files combat lines under the viewer's commander
   // who fought in that province that phase (battleCommanders), which would pull this out of Realm
   // Events.
   emit(turnContext, {
     type: 'system',
-    text,
+    fact: {
+      kind: 'a realm is told a province has been captured from it',
+      provinceName: prov.name,
+      conquerorName: byChar ? byChar.name : null,
+      realmName: G.players[newOwner] ? G.players[newOwner].name : null, // newOwner is set: returned above
+      unitsLed: byChar ? n : null,
+    },
     audience: { actor: null, realms: [prev] },
     province: prov.id,
     hero: null,
@@ -244,7 +257,12 @@ export function applyEvilConquest(
     prov._enslavedUntil = G.turn + 3;
     emit(turnContext, {
       type: 'combat',
-      text: `⛓ Enslavement: ${cc.name} presses the beaten folk of ${prov.name} into service — a Green ${enType} joins the garrison in chains, but the province seethes (−1 tax for 3 turns).`,
+      fact: {
+        kind: 'an Evil conqueror presses the beaten folk into the garrison in chains',
+        heroName: cc.name,
+        provinceName: prov.name,
+        unitType: enType,
+      },
       audience: { actor: cc.player, realms: [cc.player], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -253,7 +271,11 @@ export function applyEvilConquest(
     if (mode === 'enslave' && !humanoid)
       emit(turnContext, {
         type: 'combat',
-        text: `⛓ ${cc.name} would enslave ${prov.name}, but there are no humanoid folk here to press — the forces plunder instead.`,
+        fact: {
+          kind: 'an Evil conqueror finds no humanoid folk to enslave',
+          heroName: cc.name,
+          provinceName: prov.name,
+        },
         audience: { actor: cc.player, realms: [cc.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -267,7 +289,12 @@ export function applyEvilConquest(
       pl.gold = (pl.gold || 0) + loot;
       emit(turnContext, {
         type: 'combat',
-        text: `⚔ Evil looting: ${cc.name}'s forces plunder ${prov.name} — ${String(loot)}g seized immediately!`,
+        fact: {
+          kind: "an Evil conqueror's forces plunder a province",
+          heroName: cc.name,
+          provinceName: prov.name,
+          loot,
+        },
         audience: { actor: cc.player, realms: [cc.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
