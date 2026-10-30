@@ -111,6 +111,13 @@ import '../../engine/orders/research-and-practice-orders-discoveries-skill-drill
 import '../../engine/orders/item-orders-equip-use-and-send-magic-items.ts';
 import '../../engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.ts';
 import '../../engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts';
+import '../../engine/orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import '../../engine/orders/spells/white-magic-spells-the-cast-spell-order-works.ts';
+import '../../engine/orders/spells/psychic-spells-the-cast-spell-order-works-and-the-charms-backlash.ts';
+import '../../engine/orders/spells/illusory-spells-the-cast-spell-order-works.ts';
+import '../../engine/orders/spells/elemental-spells-the-cast-spell-order-works.ts';
+import '../../engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts';
+import '../../engine/orders/spells/the-action-spells-the-cast-spell-order-works-by-slug.ts';
 import '../../engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts';
 import '../../engine/orders/encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.ts';
 import '../../engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts';
