@@ -16,12 +16,18 @@ import {
   A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE,
   A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE,
 } from './spells/battle-magic-cast-before-an-army-battle.ts';
+import {
+  A_UNIT_STRIKES_BEFORE_THE_BATTLE,
+  theChanceOfAStrikeBeforeTheBattle,
+} from './spells/a-units-strike-before-an-army-battle.ts';
 import type {
   ABattleSpellCastBeforeTheBattle,
   AFieldABattleSpellMayBeCastOn,
+  AUnitAboutToStrikeBeforeTheBattle,
   HookPointName,
   TheStagesOfEachHookPoint,
   WhatABattleSpellDoes,
+  WhatAUnitsStrikeMayDo,
 } from './the-registry-of-content-effects.ts';
 
 /** An entry: the spell's effect at each stage it acts in. */
@@ -135,4 +141,21 @@ export function aBattleSpellHasSomethingToStrike(theSpellsName: string, facts: A
   const slug = HAS_SOMETHING_TO_STRIKE.get(theSpellsName);
   const effect = slug === undefined ? undefined : ENTRIES[slug].strength?.['a battle spell has something to strike'];
   return effect ? effect(facts) : facts.theEnemysUnits.length > 0;
+}
+
+/** The runner of "strength: a unit strikes before the battle" (the three copies of the pre-battle strikes, after battle
+ *  magic): what the unit's strike may do, or nothing. The strikes are each unit's, in the content's tables, not a
+ *  spell's (P1-19l's Choice 2), so no entry holds them: one effect casts them all (plan P1-19v). */
+export function whatAUnitsStrikeMayDoBeforeTheBattle(
+  facts: AUnitAboutToStrikeBeforeTheBattle,
+): WhatAUnitsStrikeMayDo | null {
+  return A_UNIT_STRIKES_BEFORE_THE_BATTLE(facts);
+}
+
+/** The chance a unit's strike lands before an army battle (primalStrikeChance, which the GM page and the tests call
+ *  too): the effect's own rule, as the stage above counts it. */
+export function theChanceOfAUnitsStrikeBeforeTheBattle(
+  facts: Pick<AUnitAboutToStrikeBeforeTheBattle, 'theUnitsType' | 'theDruidLevel' | 'whatTheCommandersItemsAdd'>,
+): number {
+  return theChanceOfAStrikeBeforeTheBattle(facts);
 }

@@ -1,4 +1,4 @@
-import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS, MONSTERS_P } from '../content/kingdoms-call-data.ts';
+import { KC_MAGIC_SCHOOLS, MONSTERS_P } from '../content/kingdoms-call-data.ts';
 import { kcRng } from './rng.ts';
 import { shuffleP } from './battle/fortune.ts';
 import { SEA_GUARDIAN_NAMES } from './names.ts';
@@ -8,14 +8,15 @@ import { effSkillOf } from './heroes/skills-and-hp.ts';
 import { hexDistP } from './world/map-helpers.ts';
 import { skillLevel } from './titles/perks.ts';
 import { discSumOf } from './discoveries.ts';
+import {
+  whatTheCommandersItemsAddToAStrikesChance,
+  type AMagicItemAsTheRegistryReadsIt,
+} from './rules/the-registry-of-magic-item-effects.ts';
+import { theChanceOfAUnitsStrikeBeforeTheBattle } from './rules/the-registry-of-spell-effects.ts';
 
-/** An item as the primal strike's bonus reads it: the slots' item, with a `primalStrike` of its own (an older item's)
- *  or an effect that names the stat. */
-interface AnItemAsThePrimalStrikeReadsIt extends AnItemAsTheSlotsReadIt {
-  readonly primalStrike?: number | null | undefined;
-}
-/** A commander as the primal strike's bonus reads him: his items (or none). */
-type ACommanderAsThePrimalStrikeReadsHim = AHeroAsHisItemsAreRead<AnItemAsThePrimalStrikeReadsIt> | null | undefined;
+/** A commander as the primal strike's bonus reads him: his items (or none), as the items' registry reads them. */
+type ACommanderAsThePrimalStrikeReadsHim =
+  AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt & AMagicItemAsTheRegistryReadsIt> | null | undefined;
 /** A lair's grade, the guardian's standing the grading gives it. */
 type TheGradeOfALair = 'Legendary' | 'Powerful' | 'Moderate' | 'Weak';
 /** A lair's feature as the grading reads and writes it: whether it is a ritual site, its guardian (drawn again) and
@@ -86,22 +87,22 @@ interface TheStateAsTheGuardiansHealingReadsIt {
 export const MASS_HEALING_PCT = 0.5; // WHITE L6 Mass Healing heals this share of max HP per character
 export function primalStrikeItemBonus(c: ACommanderAsThePrimalStrikeReadsHim) {
   if (!c || typeof activeItems !== 'function') return 0;
-  return activeItems(c).reduce(
-    (s, it: AnItemAsThePrimalStrikeReadsIt | null | undefined) =>
-      s + (Number(it?.primalStrike) || 0) + (it?.effect?.stat === 'primalStrike' ? Number(it.effect.bonus) || 0 : 0),
-    0,
-  );
+  // the items' registry's "strength: a commander's items add to a strike's chance" (plan P1-19v: the totems)
+  return whatTheCommandersItemsAddToAStrikesChance(activeItems(c));
 }
 // 2026-10-11 (Toby): the winged riders' own strikes (a Griffon's Screech Dive, a Wyvern's Acid Spit) are
-// soldiers' work, not beast-craft: a flat chance in two, whatever the commander's Druid.
-export const RIDER_STRIKE_PCT = 50;
+// soldiers' work, not beast-craft: a flat chance in two, whatever the commander's Druid. The chance and its numbers are
+// the spells' registry's (plan P1-19v: theChanceOfAUnitsStrikeBeforeTheBattle, the content's numbers).
 export function primalStrikeChance(
   druidLvl: number | null | undefined,
   commander: ACommanderAsThePrimalStrikeReadsHim,
   unitType: string | null | undefined,
 ) {
-  if (unitType && KC_UNIT_CLASS.flying.includes(unitType)) return RIDER_STRIKE_PCT;
-  return Math.min(90, 30 + (Number(druidLvl) || 0) * 10 + primalStrikeItemBonus(commander));
+  return theChanceOfAUnitsStrikeBeforeTheBattle({
+    theUnitsType: unitType,
+    theDruidLevel: Number(druidLvl) || 0,
+    whatTheCommandersItemsAdd: () => primalStrikeItemBonus(commander),
+  });
 }
 // == LAIR GRADES: RELICS EVERYWHERE, DANGER FARTHEST FROM HOME ==== The grade of every lair is
 // decided here, AFTER all land and sea features exist, rather than rolled one at a time as each

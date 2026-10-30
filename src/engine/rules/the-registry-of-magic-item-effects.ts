@@ -40,6 +40,7 @@ import {
 } from './magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts';
 import { A_LAND_UNIT_AT_SEA_LED, THE_COMMANDERS_ITEMS } from './magic-items/the-commanders-items-in-a-battle.ts';
 import { A_HEROS_ITEMS_CHANGE_HIS_BATTLE_SPELL } from './magic-items/a-heros-items-and-his-battle-spell.ts';
+import { A_COMMANDERS_ITEMS_ADD_TO_A_STRIKES_CHANCE } from './magic-items/a-commanders-items-and-his-units-strikes.ts';
 import {
   A_FIGHTER_IN_MITHRIL,
   A_RIDER_A_FIGHTER_WEARS,
@@ -127,6 +128,16 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'fireball-strikes-two': {
     strength: {
       "a hero's items change his battle spell": A_HEROS_ITEMS_CHANGE_HIS_BATTLE_SPELL['fireball-strikes-two'],
+    },
+  },
+  'strike-chance-bonus': {
+    strength: {
+      "a commander's items add to a strike's chance": A_COMMANDERS_ITEMS_ADD_TO_A_STRIKES_CHANCE['strike-chance-bonus'],
+    },
+  },
+  'strike-chance-field': {
+    strength: {
+      "a commander's items add to a strike's chance": A_COMMANDERS_ITEMS_ADD_TO_A_STRIKES_CHANCE['strike-chance-field'],
     },
   },
   'chalice-of-dawn': { strength: { "the commander's items": THE_COMMANDERS_ITEMS['chalice-of-dawn'] } },
@@ -533,6 +544,8 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     ],
     'a land unit at sea, led': ['land-units-at-full-strength-at-sea'],
     "a hero's items change his battle spell": ['fireball-strikes-two'],
+    // an item's own field first, then its effect's bonus, as primalStrikeItemBonus added them
+    "a commander's items add to a strike's chance": ['strike-chance-field', 'strike-chance-bonus'],
     // the defender's item first: the siege halves what home defence added
     "the defenders' fortifications": ['home-defence-bonus', 'siege-bonus'],
   },
@@ -915,6 +928,24 @@ export function theStrongestUnitsAHerosItemsLetHisFireballStrike(
     if (change) return change.theStrongestUnitsAFireballStrikes;
   }
   return null;
+}
+
+/** The runner of "strength: a commander's items add to a strike's chance" (primalStrikeItemBonus, which the three
+ *  copies of the pre-battle strikes ask through primalStrikeChance): what the commander's items add to the chance of his
+ *  units' strikes, item by item in the order he holds them, each item's effects in the stage's order. */
+export function whatTheCommandersItemsAddToAStrikesChance(
+  theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[],
+): number {
+  const order = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.strength["a commander's items add to a strike's chance"];
+  let added = 0;
+  for (const item of theCommandersItems) {
+    const carried = theEffectsAnItemCarries(item);
+    for (const slug of order) {
+      if (!carried.includes(slug)) continue;
+      added += ENTRIES[slug].strength?.["a commander's items add to a strike's chance"]?.(item) ?? 0;
+    }
+  }
+  return added;
 }
 
 /** The runner of "volley: the commander adds volleys" (both battles' volley before the battle): the volleys each
