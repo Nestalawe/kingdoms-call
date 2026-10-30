@@ -1,7 +1,11 @@
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS, demoteOrDisband, unitRef } from '../army-tables.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
-import type { TheFactOfOneOfABattlesSentences, WhomAUnitFaced } from './the-facts-a-battles-lines-record.ts';
+import type {
+  TheFactOfOneOfABattlesSentences,
+  TheSeverityOfABattle,
+  WhomAUnitFaced,
+} from './the-facts-a-battles-lines-record.ts';
 import {
   theLineByWhichABeatenUnitHoldsItsTier,
   theLineByWhichAUnitLivesThroughItsDeathRoll,
@@ -18,8 +22,8 @@ import {
 //   !o.won       the loser's rolls: below dieAt(a) it dies; else (not skeletal) a second roll: below
 //                demoteAt(a) it falls back in good order (o.shieldFort) or loses a tier / disbands; else
 //                below promoteTo(a) it rises a tier despite defeat.
-//   o.diedVerb / o.promoteVerb  the site's wording ("were annihilated in the rout!", "are hardened by
-//                victory to"); o.notable stamps a._notable on a demoted or promoted unit (the NPC loser's
+//   o.inTheRout / o.hardenedByVictory  how the site's lines tell a death and a promotion (P1-12d20: the words "were
+//                annihilated in the rout!" and "are hardened by victory to" are the prose's); o.notable stamps a._notable on a demoted or promoted unit (the NPC loser's
 //                "All other forces survive" line reads it); o.say receives each unit's line.
 //   o.faced      (2026-10-12, Toby: who beat whom) a Map army → whom it faced, or a function of the army, from
 //                battleFacedClauses: each line holds it beside the company's own reference, and its words put the
@@ -31,7 +35,8 @@ import {
 /** A unit's chance, as the battle that rolls its fate works it out: a roll below it, and the unit dies (dieAt), loses a
  *  tier (demoteAt) or rises one (promoteTo). */
 type AUnitsChanceOfAFate = (a: ArmyInABattle) => number;
-/** What rollUnitFates is told by the battle that calls it (the header above): the dice, the thresholds, the words. */
+/** What rollUnitFates is told by the battle that calls it (the header above): the dice, the thresholds, how its lines
+ *  are told. */
 interface TheOptionsOfEveryUnitsFate {
   /** The dice (the tests feed their own); else kcRng. */
   rng?: (() => number) | null;
@@ -43,8 +48,10 @@ interface TheOptionsOfEveryUnitsFate {
   unitRef?: ((ownerName: string, a: ArmyInABattle) => string) | null;
   /** The units' owner, as each line names him. */
   owner?: string | null;
-  diedVerb?: string | null;
-  promoteVerb?: string | null;
+  /** A beaten host's rout: its deaths are told as an annihilation. */
+  inTheRout?: boolean | null;
+  /** A victorious defender: its promotions are told as hardened by victory. */
+  hardenedByVictory?: boolean | null;
   /** Whom each unit faced (battleFacedClauses): a Map army → whom (the tests' Map comes from another window, hence
    *  the check on its get), or a function of the army. */
   faced?:
@@ -111,7 +118,7 @@ export function rollUnitFates(
         kind: 'a unit dies in the battle',
         unitReference: head(a),
         whomItFaced: whomItFaced(a),
-        diedVerb: o.diedVerb,
+        inTheRout: o.inTheRout ?? false,
         itsSideWon: o.won,
         itsBonesCrumble: a._isSkeletal,
       });
@@ -131,7 +138,7 @@ export function rollUnitFates(
           kind: 'a unit is promoted after the battle',
           unitReferenceAtItsOldQuality: head(a, q0),
           whomItFaced: whomItFaced(a),
-          promoteVerb: o.promoteVerb,
+          hardenedByVictory: o.hardenedByVictory ?? false,
           unitQuality: a.quality,
         });
       } else r.survived++;
@@ -405,13 +412,24 @@ export function battleTallyLine(texts: readonly (string | null | undefined)[] | 
 // the bottom of Narrow, Crushing and Annihilating split off the top of Decisive. Every band keeps
 // at least 1% winner death and 1% loser XP (a rout still costs the victor something, and even a
 // shattered army learns). Used by BOTH the NPC (combatVsNPC) and hero-vs-hero (combatVsChar) paths.
-export const BATTLE_MARGIN_BANDS = [
-  { label: 'pyrrhic', max: 0.04, winDeath: 0.15, loseDeath: 0.12, winXP: 0.6, loseXP: 0.2, loseDemote: 0.05 },
-  { label: 'narrow', max: 0.1, winDeath: 0.12, loseDeath: 0.12, winXP: 0.5, loseXP: 0.12, loseDemote: 0.1 },
-  { label: 'clear', max: 0.3, winDeath: 0.05, loseDeath: 0.18, winXP: 0.3, loseXP: 0.06, loseDemote: 0.2 },
-  { label: 'decisive', max: 0.55, winDeath: 0.01, loseDeath: 0.35, winXP: 0.15, loseXP: 0.02, loseDemote: 0.3 },
-  { label: 'crushing', max: 0.75, winDeath: 0.01, loseDeath: 0.5, winXP: 0.08, loseXP: 0.01, loseDemote: 0.45 },
-  { label: 'annihilating', max: 9, winDeath: 0.01, loseDeath: 0.6, winXP: 0.05, loseXP: 0.01, loseDemote: 0.55 },
+/** One margin band: its slug (the severity a battle's outcome line tells: P1-12d20, the words are the prose's), the
+ *  margin it runs up to, and its chances. */
+interface AMarginBand {
+  slug: TheSeverityOfABattle;
+  max: number;
+  winDeath: number;
+  loseDeath: number;
+  winXP: number;
+  loseXP: number;
+  loseDemote: number;
+}
+export const BATTLE_MARGIN_BANDS: readonly AMarginBand[] = [
+  { slug: 'pyrrhic', max: 0.04, winDeath: 0.15, loseDeath: 0.12, winXP: 0.6, loseXP: 0.2, loseDemote: 0.05 },
+  { slug: 'narrow', max: 0.1, winDeath: 0.12, loseDeath: 0.12, winXP: 0.5, loseXP: 0.12, loseDemote: 0.1 },
+  { slug: 'clear', max: 0.3, winDeath: 0.05, loseDeath: 0.18, winXP: 0.3, loseXP: 0.06, loseDemote: 0.2 },
+  { slug: 'decisive', max: 0.55, winDeath: 0.01, loseDeath: 0.35, winXP: 0.15, loseXP: 0.02, loseDemote: 0.3 },
+  { slug: 'crushing', max: 0.75, winDeath: 0.01, loseDeath: 0.5, winXP: 0.08, loseXP: 0.01, loseDemote: 0.45 },
+  { slug: 'annihilating', max: 9, winDeath: 0.01, loseDeath: 0.6, winXP: 0.05, loseXP: 0.01, loseDemote: 0.55 },
 ];
 export function battleMarginBand(margRatio: number) {
   const r = Math.max(0, margRatio || 0);

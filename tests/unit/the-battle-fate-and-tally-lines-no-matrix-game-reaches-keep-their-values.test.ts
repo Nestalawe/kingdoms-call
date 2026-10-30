@@ -228,8 +228,8 @@ describe('battleLineTiers and battleMarginBand', () => {
     expect(battleLineTiers(null)).toEqual({ t: [], casIdx: -1 });
   });
   test('a margin past the last band, or none, takes the last band, or the first', () => {
-    expect(battleMarginBand(10)?.label).toBe('annihilating');
-    expect(battleMarginBand(Infinity)?.label).toBe('annihilating');
-    expect(battleMarginBand(NaN)?.label).toBe('pyrrhic');
+    expect(battleMarginBand(10)?.slug).toBe('annihilating');
+    expect(battleMarginBand(Infinity)?.slug).toBe('annihilating');
+    expect(battleMarginBand(NaN)?.slug).toBe('pyrrhic');
   });
 });

@@ -143,13 +143,12 @@ export function seedUsedArmyNames(gameState: GameState) {
   });
 }
 
-// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── a random whole number from a to b, a random pick, and a host described
-// for a battle line. They read no turn state.
+// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── a random whole number from a to b, and a host described for a battle
+// line. They read no turn state. (Its random pick went with its last caller, P1-12d20: an attack's verb is drawn by its
+// index.)
 export function rng(a: number, b: number) {
   return Math.floor(kcRng() * (b - a + 1)) + a;
 }
-
-export const pick = <T>(arr: readonly T[]) => arr[Math.floor(kcRng() * arr.length)];
 
 /** A unit as describeArmy names it: an army, or a copy of one that a battle's line holds (theUnitsAsTheLineNamesThem). */
 export interface AUnitAsDescribeArmyNamesIt {

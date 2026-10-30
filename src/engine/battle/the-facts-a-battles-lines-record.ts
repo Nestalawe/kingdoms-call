@@ -13,7 +13,8 @@
 // (a number, a flag, a name as the world or the content holds it, a slug, and lists copied as the line is told by the
 // functions below), never a clause, a plural, a mark, a join or a number formatted for reading. What still holds words,
 // listed by the static test (tests/static/a-lines-facts-hold-values-not-words.test.ts): a side's, a guard's or a unit's
-// label (Decision 2: the facts-by-sense slice names a side), and words a caller hands in (a unit's fate's verb).
+// label (Decision 2: the facts-by-sense slice names a side). Since P1-12d20 no caller hands words in: a unit's fate's
+// verb is a flag, a force's header's verb its values, a battle's severity its band's slug.
 // P1-12d4 moved the strength ladder's and the grid's words into the prose too: their lines hold each modifier's reason,
 // each unit's place and facing, and whom a unit faced, as the records below (the registry's effects name an ability by
 // its slug, and the prose writes its name from the content's row). P1-12d5 made the lines a battle took as words from
@@ -274,6 +275,39 @@ export function theForceWideModifiersAsTheLadderTellsThem(
  *  (Decision 4: a die drawn for words stays where it is drawn, and the fact holds which). */
 export const THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH = 5;
 
+/** How many verbs an attack on a province's defenders is told with (the prose's verbs of an attack): the engine draws
+ *  which, where it drew the verb before (Decision 4: a die drawn for words stays where it is drawn, and the fact holds
+ *  which). */
+export const THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH = 6;
+/** The verb a hero's host attacks another hero's with, by its index in the verbs of an attack ("attacks"). */
+export const THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH = 3;
+/** The verb a hero holds a province against another hero's host with, by its index in the verbs of a defence ("holds
+ *  the line in"). */
+export const THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH = 0;
+/** The verb a province's own defenders stand with against an attacker, by its index in the verbs of a defence ("stands
+ *  firm in"). */
+export const THE_VERB_A_PROVINCES_DEFENDERS_STAND_WITH = 1;
+
+/** How a force comes on, as its header's verb tells it (P1-12d20; the battle handed these words in before): the verb,
+ *  by its index in an attack's verbs or a defence's, the province, the force's strength, and its commander's Tactical
+ *  level where the header names it. The prose writes "storms Highmoor — army strength 40, with". */
+export interface HowAForceComesOnInItsHeader {
+  /** Which verbs its verb is one of: an attack's or a defence's. */
+  itsVerbs: 'an attack' | 'a defence';
+  /** Its verb, by its index in those verbs. */
+  verbIndex: number;
+  provName: string;
+  /** The force's strength, as its header gives it (rounded by the battle). */
+  armyStrength: number;
+  /** Its commander's Tactical level (a battle between heroes' header names it above 0), or null where the header never
+   *  names it (a battle against a province's defenders). */
+  tacticalLevel: number | null;
+}
+
+/** How hard a battle was won: the margin band's slug (BATTLE_MARGIN_BANDS, battle/fates.ts), which the prose writes
+ *  ("a pyrrhic battle", "an annihilating engagement"). */
+export type TheSeverityOfABattle = 'pyrrhic' | 'narrow' | 'clear' | 'decisive' | 'crushing' | 'annihilating';
+
 /** One unit of a force drawn up for battle, as its header row shows it. */
 export interface AUnitOfAForceDrawnUp {
   type: string;
@@ -296,7 +330,8 @@ export interface AForceDrawnUpForBattle {
   neutral: boolean;
   guard: boolean;
   role: string;
-  verb: string;
+  /** How it comes on, as its header's verb tells it: null for none (the header's verb is then empty). */
+  howItComesOn: HowAForceComesOnInItsHeader | null;
   armies: AUnitOfAForceDrawnUp[];
 }
 
@@ -489,7 +524,12 @@ export type TheFactOfOneOfABattlesSentences =
       defBase: number;
       fortune: TheFortuneAsTheLineTellsIt;
     }
-  | { kind: "the battle's outcome and its margin"; winnerName: string; severity: string; margRatio: number }
+  | {
+      kind: "the battle's outcome and its margin";
+      winnerName: string;
+      severity: TheSeverityOfABattle;
+      margRatio: number;
+    }
   | {
       kind: "a side's war-horn of the plains lets its free lances ride in rough country";
       sideName: AValueInALinesWords;
@@ -524,7 +564,7 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'no units were left on the field to count' }
   | {
       kind: 'the attacker wins the battle and seizes the province';
-      severity: string;
+      severity: TheSeverityOfABattle;
       atkName: string;
       winVerbIndex: number;
       defName: string;
@@ -568,7 +608,7 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: "the loser's forces are completely destroyed and he retreats alone"; loserName: string }
   | {
       kind: "the attacker wins the battle but the defender's survivors hold the province";
-      severity: string;
+      severity: TheSeverityOfABattle;
       atkName: string;
       winVerbIndex: number;
       defName: string;
@@ -578,7 +618,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the attacker's assault is repelled and driven from the province";
       atkName: string;
-      severity: string;
+      severity: TheSeverityOfABattle;
       defName: string;
       provName: string;
     }
@@ -593,7 +633,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "the attacker's assault is repelled but not driven from the province";
       atkName: string;
-      severity: string;
+      severity: TheSeverityOfABattle;
       defName: string;
       provName: string;
     }
@@ -753,7 +793,7 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'the attacker wins the battle against the defenders';
-      severity: string;
+      severity: TheSeverityOfABattle;
       margRatio: number;
       cName: string;
       winVerbIndex: number;
@@ -773,7 +813,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: 'the attacker is repelled by the defenders';
       cName: string;
-      severity: string;
+      severity: TheSeverityOfABattle;
       margRatio: number;
       defName2: string;
       aPlayersGarrison: boolean;
@@ -841,7 +881,8 @@ export type TheFactOfOneOfABattlesSentences =
       kind: 'a unit dies in the battle';
       unitReference: string;
       whomItFaced: WhomAUnitFaced | null;
-      diedVerb: string | null | undefined;
+      /** The rout a beaten host's companies die in (a battle's loser that fled the field), told as an annihilation. */
+      inTheRout: boolean;
       itsSideWon: boolean;
       itsBonesCrumble: boolean | undefined;
     }
@@ -849,7 +890,8 @@ export type TheFactOfOneOfABattlesSentences =
       kind: 'a unit is promoted after the battle';
       unitReferenceAtItsOldQuality: string;
       whomItFaced: WhomAUnitFaced | null;
-      promoteVerb: string | null | undefined;
+      /** A victorious defender's company, told as hardened by victory; else it earns its promotion. */
+      hardenedByVictory: boolean;
       unitQuality: string;
     }
   | {

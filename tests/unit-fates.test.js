@@ -2,8 +2,8 @@
 // casualty loops. Level 1 (unit): driven with injected dice, read straight off the booted GM portal.
 //   • the winner's rolls: below dieAt a unit dies ("destroyed in the fighting", bones to dust for a
 //     skeleton); otherwise below promoteTo it rises a tier (an Elite company, or a skeleton, simply
-//     survives); the verb can be the defender's "are hardened by victory to";
-//   • the loser's rolls: below dieAt it dies with the site's verb; otherwise a second roll: below
+//     survives); a victorious defender's are told as "are hardened by victory to" (hardenedByVictory);
+//   • the loser's rolls: below dieAt it dies, told as the site tells it (inTheRout: "annihilated in the rout"); otherwise a second roll: below
 //     demoteAt it falls back in good order under Shield Fort, else loses a tier or, from Green, disbands;
 //     else below promoteTo it rises "despite defeat"; o.notable stamps _notable on a demoted or promoted unit;
 //   • the dice are drawn exactly as the old loops drew them: one per unit, a second only for a beaten
@@ -43,13 +43,13 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(t.used===4,'one die per unit for a winner');
   t=run([unit('Shieldwall Levies','Average',{_isSkeletal:true})],{owner:'Aldric',won:true,dieAt:()=>0.5,promoteTo:()=>1},[0.1]);
   ok(t.lines[0].endsWith('were destroyed in the fighting. Their bones crumble to dust — gone forever.'),'a dead skeleton crumbles to dust');
-  t=run([unit('Free Lances','Green')],{owner:'Gorbash',won:true,promoteVerb:'are hardened by victory to',dieAt:()=>0,promoteTo:()=>1},[0.5]);
+  t=run([unit('Free Lances','Green')],{owner:'Gorbash',won:true,hardenedByVictory:true,dieAt:()=>0,promoteTo:()=>1},[0.5]);
   ok(t.lines[0]==="— Gorbash's Free Lances 1 (Free Lances, Green) are hardened by victory to Average!",`the defender's verb: "${t.lines[0]}"`);
   ok(!f.some(a=>a._notable),'a winner is never stamped notable');
 
   // the loser
   f=[unit('Orc Berserkers','Veteran'),unit('Goblin Horde','Average'),unit('Goblin Horde','Green'),unit('Warg Riders','Average'),unit('Orc Berserkers','Crack'),unit('Goblin Horde','Average',{_isSkeletal:true})];
-  t=run(f,{owner:'Gorbash',won:false,diedVerb:'were annihilated in the rout!',dieAt:()=>0.20,demoteAt:()=>0.30,promoteTo:()=>0.45,notable:true},
+  t=run(f,{owner:'Gorbash',won:false,inTheRout:true,dieAt:()=>0.20,demoteAt:()=>0.30,promoteTo:()=>0.45,notable:true},
     [0.10,  0.50,0.10,  0.50,0.20,  0.50,0.40,  0.50,0.90,  0.50]);
   ok(t.r.died===1&&t.lines[0]==="— Gorbash's Orc Berserkers 1 (Orc Berserkers, Veteran) were annihilated in the rout!",`the site's death verb: "${t.lines[0]}"`);
   ok(t.r.demoted===1&&f[1].quality==='Green'&&f[1]._notable===true&&t.lines[1]==="— Gorbash's Goblin Horde 1 (Goblin Horde, Average) lost heart in defeat, reduced to Green.",`a second roll under demoteAt loses a tier: "${t.lines[1]}"`);
