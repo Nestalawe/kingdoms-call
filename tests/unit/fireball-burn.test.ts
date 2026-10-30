@@ -7,6 +7,8 @@
 // succeed.
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
+// since P1-12d19 a lingering harm's source is a record; its words, read through the prose
+import { theWordsOfTheSourceOfALingeringHarm } from '../../src/views/prose/the-words-of-a-personal-combats-lines.ts';
 
 const { call, base, MON, pinned } = await personalCombatEngine();
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
@@ -25,7 +27,7 @@ const burn = (lvl: number, setup?: (g: Combatant) => void): [number, number] => 
   g.hp = g.maxHp = 100;
   if (setup) setup(g);
   pinned(0.01, () => call('pcCastCombatSpell', h, g, 'Fireball', [], st()));
-  const d = (g.status.dot ?? []).find((x) => /Fireball/.test(x.label ?? ''));
+  const d = (g.status.dot ?? []).find((x) => /Fireball/.test(theWordsOfTheSourceOfALingeringHarm(x.source ?? null)));
   return d ? [d.dmg, d.rounds] : [0, 0];
 };
 

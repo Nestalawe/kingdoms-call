@@ -111,7 +111,7 @@ export const A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD = {
           {
             kind: 'a stun',
             theRounds: Math.max(1, facts.theLevelCountedTo5),
-            what: "the caster's grip",
+            theSource: { kind: "a caster's grip" },
             theLine: 'the caster seizes the undead target',
           },
         ]

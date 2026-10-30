@@ -24,6 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { vi } from 'vitest';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
+import type { TheSourceOfALingeringHarm } from '../../src/engine/personal-combat/helpers.ts';
 import { addTheFieldsResolveTurnAdds, type TurnContext } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
 /** A combatant's state in a fight (pcNewStatus), as far as the tests read it. */
@@ -33,7 +34,7 @@ export interface CombatStatus {
   meleeHalvedRounds?: number;
   hitPenalty?: number;
   hitBonus?: number;
-  dot?: { dmg: number; rounds: number; label?: string }[];
+  dot?: { dmg: number; rounds: number; source?: TheSourceOfALingeringHarm | null }[];
   [key: string]: unknown;
 }
 

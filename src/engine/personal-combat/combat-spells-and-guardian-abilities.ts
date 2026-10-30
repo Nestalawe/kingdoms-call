@@ -283,7 +283,7 @@ function applyTheStepsOfACombatSpell(
         break;
       }
       case 'a burn': {
-        const theBurn = pcPushDot(target, step.theDamage, step.theRounds, step.theLabel);
+        const theBurn = pcPushDot(target, step.theDamage, step.theRounds, step.theSource);
         narrate(narrative, {
           kind: step.theLine,
           targetName: target.name,
@@ -299,7 +299,9 @@ function applyTheStepsOfACombatSpell(
             target,
             step.theRounds,
             narrative,
-            step.what === "the caster's grip" ? `${caster.name}'s grip` : step.what,
+            step.theSource.kind === "a caster's grip"
+              ? { kind: "a caster's grip", casterName: caster.name }
+              : step.theSource,
           )
         ) {
           if (step.theLine === 'the caster seizes the undead target')
@@ -592,7 +594,7 @@ export function pcMonsterSpecial(
     // round. A special that does nothing but daze still takes hold at once.
     // the target's stun ward is asked as the daze LANDS — a deferred rider that a ward turns is
     // never queued at all (batch item 3).
-    if (pcStunTurned(foe, narrative, `${sp.name}'s daze`)) {
+    if (pcStunTurned(foe, narrative, { kind: "a guardian's special's daze", specialName: sp.name })) {
       /* turned */
     } else if (
       dealt > 0 &&
@@ -656,7 +658,10 @@ export function pcMonsterSpecial(
   // ── Lingering harm ──
   const dm = /takes (\d+) dmg at start of each round for (\d+) rounds/i.exec(eff);
   if (dm) {
-    const _e = pcPushDot(foe, parseInt(String(dm[1])), parseInt(String(dm[2])), sp.name);
+    const _e = pcPushDot(foe, parseInt(String(dm[1])), parseInt(String(dm[2])), {
+      kind: "a guardian's special",
+      specialName: sp.name,
+    });
     if (_e)
       narrate(narrative, {
         kind: 'a power festers on the foe',

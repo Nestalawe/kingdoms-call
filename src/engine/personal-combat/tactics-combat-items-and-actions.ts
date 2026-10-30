@@ -264,7 +264,7 @@ export function pcUseCombatItem(
       }
       const lingering = does.theLingeringHarm;
       if (lingering && foe.hp > 0) {
-        const _de = pcPushDot(foe, lingering[0], lingering[1], nm);
+        const _de = pcPushDot(foe, lingering[0], lingering[1], { kind: 'a combat item', itemName: nm });
         if (_de)
           narrate(narrative, {
             kind: 'a combat item keeps burning on the foe',
@@ -285,7 +285,7 @@ export function pcUseCombatItem(
         narrate(narrative, { kind: 'the foe is thrown off from the next round', foeName: foe.name, eHitPen: hitPen });
       }
       if (stun && foe.hp > 0) {
-        if (pcStunTurned(foe, narrative, `the ${nm}'s daze`)) {
+        if (pcStunTurned(foe, narrative, { kind: "a combat item's daze", itemName: nm })) {
           /* turned (batch item 3) */
         } else {
           pcDeferEffect(foe, () => {
@@ -315,7 +315,7 @@ export function pcUseCombatItem(
       break;
     }
     case 'holds the foe': {
-      if (pcLandStun(foe, does.theRounds, narrative, `the ${nm}`))
+      if (pcLandStun(foe, does.theRounds, narrative, { kind: "a combat item's hold", itemName: nm }))
         narrate(narrative, {
           kind: 'the foe is held fast, losing actions',
           foeName: foe.name,

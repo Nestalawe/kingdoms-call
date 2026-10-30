@@ -116,23 +116,21 @@ describe('the stuns and the courage test', () => {
     expect(pcStunWard(null)).toBe(0);
     expect(pcStunWard(undefined)).toBe(0);
   });
+  // since P1-12d19 a daze is handed its source, a record, not its words
+  const daze = { kind: "a guardian's special's daze", specialName: 'Made-up Daze' } as const;
   test('a stun turned with no narrative, on no wards, and by wards of no names', () => {
-    expect(pcStunTurned(fighter({ arm: { names: ['Signet'], stunImmune: true } }), null, 'a daze')).toBe(true);
-    expect(pcStunTurned(fighter(), [], 'a daze')).toBe(false);
+    expect(pcStunTurned(fighter({ arm: { names: ['Signet'], stunImmune: true } }), null, daze)).toBe(true);
+    expect(pcStunTurned(fighter(), [], daze)).toBe(false);
     const narrative: NarrativeLine[] = [];
-    expect(pcStunTurned(fighter({ arm: { stunImmune: true } }), narrative, 'a daze')).toBe(true);
+    expect(pcStunTurned(fighter({ arm: { stunImmune: true } }), narrative, daze)).toBe(true);
     expect(narrative).toMatchObject([{ kind: 'the target cannot be held', targetArmourNames: null, w: 100 }]);
   });
   test('a stun lands on no fighter, on no status, and of none or NaN rounds: none', () => {
-    expect(pcLandStun(null, 1, [], 'a daze')).toBe(false);
-    expect(pcLandStun(noStatus(), 1, [], 'a daze')).toBe(false);
+    expect(pcLandStun(null, 1, [], daze)).toBe(false);
+    expect(pcLandStun(noStatus(), 1, [], daze)).toBe(false);
     const f = fighter();
-    expect([pcLandStun(f, 0, [], 'a daze'), pcLandStun(f, NaN, [], 'a daze'), f.status.stun]).toEqual([
-      false,
-      false,
-      0,
-    ]);
-    expect([pcLandStun(f, 2, [], 'a daze'), f.status.stun]).toEqual([true, 2]);
+    expect([pcLandStun(f, 0, [], daze), pcLandStun(f, NaN, [], daze), f.status.stun]).toEqual([false, false, 0]);
+    expect([pcLandStun(f, 2, [], daze), f.status.stun]).toEqual([true, 2]);
   });
   // 55 + stature − 5 × nerve − faith + temper's terror, within 10–70
   test('the courage test: no raw level, schools, white, foe, guardian, grade; a grade or temper the tables lack', () => {
@@ -331,7 +329,7 @@ describe('the start of a round', () => {
       kind: 'character',
       hp: 10,
       arm: { names: ['Ashen Plate'], regen: 2, roundWard: 3, dotImmune: true },
-      status: status({ dot: [{ dmg: 2, rounds: 2, label: 'a burn' }] }),
+      status: status({ dot: [{ dmg: 2, rounds: 2, source: { kind: 'a combat item', itemName: 'Made-up Burn' } }] }),
     });
     expect(kinds(round(f))).toEqual([
       "a fighter's armour sloughs off every burn poison and bleeding",

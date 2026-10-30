@@ -1189,6 +1189,42 @@ export type TheLineOfACombatSpellsHit =
   | { readonly kind: 'a telekinetic storm rips the target'; readonly self: number }
   | { readonly kind: "the hand of death claims part of the target's health"; readonly handOfDeathBitePct: number };
 
+// ── What a daze or a lingering harm in a personal combat comes from (plan P1-12d19: P1-12's Decisions of 2026-10-30,
+// Decision 4). The fight hands its source, as a record of the names it is written from, never its words: the prose
+// writes them (src/views/prose/the-words-of-a-personal-combats-lines.ts). Here, beside the combat spells' steps, which
+// name a source too (src/engine/rules/ imports nothing from src/engine/personal-combat/); the facts module of personal
+// combat exports them by the same names. ──
+
+/** What a daze comes from, as the line a ward turns it with names it (pcStunTurned, pcLandStun). */
+export type TheSourceOfADaze =
+  /** A combat item's daze, riding on its blow: "the Thunder Stone's daze". */
+  | { readonly kind: "a combat item's daze"; readonly itemName: string }
+  /** A combat item that holds the foe: "the Scroll of Paralysis". */
+  | { readonly kind: "a combat item's hold"; readonly itemName: string }
+  /** A spell's blast (Psychic Blast's), by the spell's name as the content holds it: "the blast". */
+  | { readonly kind: "a spell's blast"; readonly spellName: string }
+  /** A caster's grip (Control Undead's), by the caster's name: "Aldric's grip". */
+  | { readonly kind: "a caster's grip"; readonly casterName: string }
+  /** A guardian's special's daze, by the special's name: "Tail Sweep's daze". */
+  | { readonly kind: "a guardian's special's daze"; readonly specialName: string };
+
+/** What a daze comes from, as a combat spell's step names it: a caster's grip without his name, which the resolver
+ *  adds. */
+export type TheSourceOfADazeAsACombatSpellsStepNamesIt =
+  Exclude<TheSourceOfADaze, { readonly kind: "a caster's grip" }> | { readonly kind: "a caster's grip" };
+
+/** What a lingering harm comes from (pcPushDot). Its identity too: the same source refreshes the harm, another runs
+ *  beside it (theSameSourceOfALingeringHarm, src/engine/personal-combat/helpers.ts). */
+export type TheSourceOfALingeringHarm =
+  /** A combat item's burn: "Vial of Alchemist's Fire". */
+  | { readonly kind: 'a combat item'; readonly itemName: string }
+  /** An archer's impaling arrow, by the archer's name: "Aldric's impaling arrow". */
+  | { readonly kind: "an archer's impaling arrow"; readonly archerName: string }
+  /** A spell that burns (Fireball's), by the spell's name as the content holds it: "Fireball burns". */
+  | { readonly kind: 'a spell that burns'; readonly spellName: string }
+  /** A guardian's special, by its name: "Barbed Sting". */
+  | { readonly kind: "a guardian's special"; readonly specialName: string };
+
 /** The damage of a hit: a number, or dice the resolver draws (rng), one a level. */
 export type TheDamageOfACombatSpellsHit =
   number | { readonly theDice: number; readonly eachFrom: number; readonly eachTo: number };
@@ -1202,21 +1238,23 @@ export type AStepOfACombatSpell =
       readonly theCastersRecoil: number | null;
       readonly theLine: TheLineOfACombatSpellsHit;
     }
-  /** A burn a round (pcPushDot), its label, and the share of the target's maximum HP and the ward's cut its line shows. */
+  /** A burn a round (pcPushDot), its source, and the share of the target's maximum HP and the ward's cut its line
+   *  shows. */
   | {
       readonly kind: 'a burn';
       readonly theDamage: number;
       readonly theRounds: number;
-      readonly theLabel: string;
+      readonly theSource: TheSourceOfALingeringHarm;
       readonly theShareOfMaximumHp: number;
       readonly theWardsCut: number;
       readonly theLine: 'a fireball engulfs the target and will burn';
     }
-  /** A stun (pcLandStun, by what: the blast, or the caster's grip by his name), and its line if it lands. */
+  /** A stun (pcLandStun, by its source: a spell's blast, or the caster's grip, his name added by the resolver), and its
+   *  line if it lands. */
   | {
       readonly kind: 'a stun';
       readonly theRounds: number;
-      readonly what: 'the blast' | "the caster's grip";
+      readonly theSource: TheSourceOfADazeAsACombatSpellsStepNamesIt;
       readonly theLine: "psychic blast sears the target's mind" | 'the caster seizes the undead target';
     }
   /** A silence and a halved melee, at least these rounds, and the chance a round the target shrugs it off. */

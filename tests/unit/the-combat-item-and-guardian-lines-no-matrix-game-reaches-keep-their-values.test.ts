@@ -7,8 +7,8 @@
 // - a number a `||` gave its fallback for, which `??` alone would keep: an item's 0 or missing threshold, amount,
 //   rounds, count, penalty, bonus or images; a school's missing or NaN level; a grade the table lacks;
 // - the uses no game sees take effect (P1-19's count: a healing, a draining, a silence's rounds, a terror, bane's
-//   double, the Lock-Pick of Legends), a stun item, a daze riding a blow, and an item of no damage range, which throws
-//   where it threw;
+//   double, the Lock-Pick of Legends), a stun item, a daze riding a blow (and since plan P1-12d19, which hands its
+//   source, the words of one a ward turns), and an item of no damage range, which throws where it threw;
 // - and, since plan P1-19s moved the combat items into the items' registry (src/engine/rules/), the lines its planted
 //   faults showed no test or game sees: a bane-stun against its kinds only, the order a fighter reaches for his items
 //   in, and a guardian taking up its lair's hoard (its maximum HP at full health, its combat items, its armour, the
@@ -235,6 +235,16 @@ describe('a combat item used', () => {
     expect(foe.status.stun).toBe(0);
     pcPromotePending(foe);
     expect(foe.status.stun).toBe(1);
+  });
+  // (plan P1-12d19: the item's daze is handed as its source, the item's name, and the prose writes these words)
+  test("a daze riding a blow that a ward turns: the line names the item's daze, and none waits", () => {
+    const foe = fighter({ hp: 40, maxHp: 40, arm: { stunImmune: true } });
+    const said = pc.wordsOf(use(fighter(), foe, item('Thunder Stone')));
+    expect(said.filter((l) => l.includes('finds no hold'))).toEqual([
+      "  🜏 Made-up Mole cannot be held (its nature) — the Thunder Stone's daze finds no hold.",
+    ]);
+    pcPromotePending(foe);
+    expect(foe.status.stun).toBe(0);
   });
   test('a draining: the actor drinks what it dealt', () => {
     const f = at(5);
