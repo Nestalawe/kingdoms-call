@@ -421,7 +421,8 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
       const prov = g.world.provinces[0];
       setProvinceOwner(tc, prov, 5, { id: 9, name: 'Thorn' });
       expect(tc._tel.captures).toEqual([{ ph: 2, prov: 0, terrain: 'plain', tax: 0, from: 0, to: 5, charId: 9 }]);
-      expect(tc.turnLog.map((l) => [l.phase, l.text])).toEqual([
+      // the lines in words, as the views write them and the GM's log stores them (since P1-12d17 they are facts)
+      expect(theTurnsLinesInWords(tc.turnLog).gmLog.map((l) => [l.phase, l.text])).toEqual([
         [2, expect.stringContaining('The consecration of Wendmeadow is broken')],
         [2, '🏴 Wendmeadow has been captured from you by Thorn (an enemy realm), leading no units.'],
       ]);
@@ -455,7 +456,7 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
       expect(column[1]).toMatchObject({ quality: 'Green' });
       expect(column[2]).toMatchObject({ quality: 'Average', unitName: '' });
       const pool: readonly string[] = ARMY_UNIT_NAMES['Shieldwall Levies'];
-      const text = tc.turnLog[1]?.text ?? '';
+      const text = theTurnsLinesInWords(tc.turnLog).gmLog[1]?.text ?? '';
       const named = /Flushed with the deed, (.+) \(now Average\) gains an experience level\./.exec(text)?.[1] ?? '';
       expect(pool.some((name) => named.startsWith(name))).toBe(true);
     });

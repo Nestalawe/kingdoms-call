@@ -35,6 +35,7 @@ import {
 } from '../../src/engine/names.ts';
 import { creditMapped, itemKeyOf, noteEspionage, snapshotHeldItems } from '../../src/engine/titles/perks.ts';
 import { theWordsOfTheWanderersEscape } from '../../src/views/prose/the-words-of-the-wanderers-escape.ts';
+import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import {
   isCharmedNow,
   isPreOrderRef,
@@ -257,7 +258,10 @@ describe("Wraith's Touch, and a province's name by id", () => {
     const enemy = [null, unit('Green'), unit('Veteran'), unit('Elite')];
     applyWraithTouch([unit('Elite', { _isWraith: true })], enemy, narr);
     expect(enemy.map((a) => a?.quality)).toEqual([undefined, 'Green', 'Veteran', 'Crack']);
-    expect(narr).toEqual(["  ☠ Wraith's Touch withers the Elite Levies — permanently reduced from Elite to Crack."]);
+    // the line in words, as the views write it (since P1-12d17 it is a fact)
+    expect(narr.map((l) => (typeof l === 'string' ? l : theWordsOf(l)))).toEqual([
+      "  ☠ Wraith's Touch withers the Elite Levies — permanently reduced from Elite to Crack.",
+    ]);
   });
   test('no wraith, or no enemy above Green: nothing happens', () => {
     const narr: NarrativeLine[] = [];

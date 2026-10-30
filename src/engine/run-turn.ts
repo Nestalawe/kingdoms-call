@@ -358,7 +358,7 @@ export function spyStealthAndInvisibilityStampedForTheReports(turnContext) {
       c._unspottedTurn = G.turn;
       emit(turnContext, {
         type: 'system',
-        text: `[Intelligence] 🕶 ${c.name} moved unseen this turn — ${_shimmer ? 'the Shimmer of illusory magic blurred them from watching eyes' : 'Spy ' + _lvl + ' kept them out of enemy sightings'}.`,
+        fact: { kind: 'a hero moves unseen this turn', heroName: c.name, byTheShimmer: _shimmer, spyLevel: _lvl },
         audience: { actor: c.player, realms: [c.player] },
         hero: c.id,
         phase: 0,

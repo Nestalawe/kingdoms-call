@@ -12,7 +12,9 @@
 // the title intelligence, P1-12d14 the Defend watch, a stranding at sea and the war-spoils, P1-12d15 the lines before
 // the first phase, the new turn, a phase's stages and intents, the intrusion warnings, a Defend watch met in battle and a
 // silent hero's season, P1-12d16 the season's close (the lines after the phases, diplomacy's and victory's, and Early
-// Winter's: their records too, the crumbling companies, a title's perk of gold, a garrison company drilled). A facts
+// Winter's: their records too, the crumbling companies, a title's perk of gold, a garrison company drilled), P1-12d17
+// the other folders (what a spy learns, relations and captures, the Plague and the Bless ward, a rallied garrison and
+// Wraith's Touch, a bot's concession, the Spy stealth's line). A facts
 // module's kinds include the kinds of the records its facts hold (P1-12d4: why a
 // unit stands or faces as it does, whom it faced, each modifier of the ladder; P1-12d6: why a practice's chance is what
 // it is, where companies muster, why a company was not raised; P1-12d7: why a hand-over at sea is refused, where a Wild
@@ -47,8 +49,8 @@
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
-// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's, P1-12d12's, P1-12d13's, P1-12d14's, P1-12d15's and
-// P1-12d16's: their areas' facts modules, which their
+// P1-12d6's, P1-12d7's, P1-12d8's, P1-12d9's, P1-12d10's, P1-12d12's, P1-12d13's, P1-12d14's, P1-12d15's,
+// P1-12d16's and P1-12d17's: their areas' facts modules, which their
 // bases lack), as the static
 // tests of P1-19's
 // rows are: the one exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25).
@@ -64,7 +66,9 @@
 // P1-12d9: the Cast Spell order; P1-12d10: the move order; P1-12d12: a chase, a hero's experience and hit points;
 // P1-12d13: the title intelligence; P1-12d14: the Defend watch, a stranding at sea, the war-spoils; P1-12d15: the lines
 // before the first phase, the new turn, a phase's stages and intents, the intrusion warnings, a Defend watch met in
-// battle, a silent hero's season; P1-12d16: the lines after the phases, diplomacy's and victory's, Early Winter's) holds
+// battle, a silent hero's season; P1-12d16: the lines after the phases, diplomacy's and victory's, Early Winter's;
+// P1-12d17: what a spy learns, relations and captures, the Plague and the Bless ward, a rallied garrison and Wraith's
+// Touch, a bot's concession, the Spy stealth's line) holds
 // no field whose value is, or holds, words: a string or
 // a template with text reached as the value (through a conditional's branches, `+`, `||`, `??`, `&&`, a placeholder,
 // `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
@@ -77,7 +81,8 @@
 // P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
 // `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
 // a company raised's `quality`, `unitType` and `unitName` as the world or the content holds them, Call to Arms' and
-// Harvest the Field's; since P1-12d8 the class of lair Discover Lost Ruin names, `lairClass`, and the equip note of a
+// Harvest the Field's (since P1-12d17 an Evil conquest's enslaved folk's `unitType` too); since P1-12d8 the class
+// of lair Discover Lost Ruin names, `lairClass`, and the equip note of a
 // thief's take and of a lair's finder, `gainedItemNote`; since P1-12d9 a skeletal company's `quality`, `unitType` and
 // `unitName` as the world holds them, Skeletal Armies', and the Wraiths' `unitName`, Raise Wraiths'; since P1-12d11
 // the way a hero slain outside a battle fell, `how`, each of reportHeroFall's 12 callers'; since P1-12d12 the realm's
@@ -93,7 +98,7 @@
 // fields of personal combat's facts; P1-12d3's: 121 of a battle's; P1-12d4's: the 10 of the ladder and the grid it
 // listed; P1-12d5's: its three areas' facts modules, which the base lacks, and the disbanding kind; P1-12d6's: its five
 // areas' facts modules; P1-12d7's: its three; P1-12d8's: its two; P1-12d9's: its one; P1-12d12's: its two;
-// P1-12d13's: its one; P1-12d14's: its three; P1-12d15's: its six; P1-12d16's: its three), the one
+// P1-12d13's: its one; P1-12d14's: its three; P1-12d15's: its six; P1-12d16's: its three; P1-12d17's: its six), the one
 // exception to
 // `refactor-only`'s rule (Theo, 2026-10-25). It can't see words handed in through a parameter. Level 0: syntax trees;
 // nothing runs. TypeScript, in `static/`
@@ -157,6 +162,16 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
   ['the lines after the phases', 'src/engine/turn/the-facts-the-lines-after-the-phases-record.ts', 'P1-12d16'],
   ["diplomacy's and victory's lines", 'src/engine/turn/the-facts-diplomacy-and-victorys-lines-record.ts', 'P1-12d16'],
   ["Early Winter's lines", 'src/engine/turn/the-facts-early-winters-lines-record.ts', 'P1-12d16'],
+  ['what a spy learns', 'src/engine/espionage/the-facts-what-a-spy-learns-lines-record.ts', 'P1-12d17'],
+  ['relations and captures', 'src/engine/realms/the-facts-relations-and-captures-lines-record.ts', 'P1-12d17'],
+  ['the Plague and the Bless ward', 'src/engine/magic/the-facts-plague-and-bless-ward-lines-record.ts', 'P1-12d17'],
+  [
+    "a rallied garrison and Wraith's Touch",
+    'src/engine/world/the-facts-rallied-garrisons-and-wraiths-touch-lines-record.ts',
+    'P1-12d17',
+  ],
+  ["a bot's concession", 'src/engine/bots/the-facts-a-bots-concession-line-records.ts', 'P1-12d17'],
+  ["the Spy stealth's line", 'src/engine/turn/the-facts-the-spy-stealth-line-records.ts', 'P1-12d17'],
 ];
 
 /** Every facts module (none may import the world's types). */
@@ -193,6 +208,12 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/turn/the-facts-the-lines-after-the-phases-record.ts',
   'src/engine/turn/the-facts-diplomacy-and-victorys-lines-record.ts',
   'src/engine/turn/the-facts-early-winters-lines-record.ts',
+  'src/engine/espionage/the-facts-what-a-spy-learns-lines-record.ts',
+  'src/engine/realms/the-facts-relations-and-captures-lines-record.ts',
+  'src/engine/magic/the-facts-plague-and-bless-ward-lines-record.ts',
+  'src/engine/world/the-facts-rallied-garrisons-and-wraiths-touch-lines-record.ts',
+  'src/engine/bots/the-facts-a-bots-concession-line-records.ts',
+  'src/engine/turn/the-facts-the-spy-stealth-line-records.ts',
 ];
 
 /** A fighter's label: still a field's words in this slice (Decision 2), by its field, with the kinds that hold it. */
@@ -434,8 +455,13 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
     'a skeletal company rises from the graves',
   ],
   // the type of a company raised, as the content names it (a province's garrison type, else its race's: Call to Arms;
-  // the grave's: Skeletal Armies, P1-12d9)
-  unitType: ['the folk answer a Call to Arms', 'a skeletal company rises from the graves'],
+  // the grave's: Skeletal Armies, P1-12d9; the province's first army type, else Shieldwall Levies, as the garrison then
+  // holds it: an Evil conquest's enslaved folk, P1-12d17)
+  unitType: [
+    'the folk answer a Call to Arms',
+    'a skeletal company rises from the graves',
+    'an Evil conqueror presses the beaten folk into the garrison in chains',
+  ],
   // the name of a company raised, as the world holds it (the grave's company, "(Skeletal)": Harvest the Field; and
   // since P1-12d9 Skeletal Armies', and Raise Wraiths' "Wraiths (…)")
   unitName: [

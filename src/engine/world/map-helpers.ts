@@ -70,10 +70,12 @@ export function applyWraithTouch(friendly: AForce, enemy: AForce, narr: Narrativ
   const was = v.quality;
   v.quality = _WRAITH_DOWN[v.quality] ?? v.quality;
   if (narr)
-    narrate(
-      narr,
-      `  \u2620 Wraith's Touch withers ${v.unitName || v.type} \u2014 permanently reduced from ${was} to ${v.quality}.`,
-    );
+    narrate(narr, {
+      kind: "Wraith's Touch withers the enemy's best unit",
+      unitName: v.unitName || v.type,
+      was,
+      quality: v.quality,
+    });
 }
 
 // PHANTASMAL ARMIES / PHANTOM HOST — illusory duplicates live in ch._phantoms (a SEPARATE store, so

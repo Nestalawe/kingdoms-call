@@ -1382,7 +1382,7 @@ export function runBotConcessions(G, botIdxSet, turnContext) {
     if (turnContext)
       emit(turnContext, {
         type: 'system',
-        text: `\u{1F3F3} ${p.name} holds no province in all the world — the realm CONCEDES the game. Its heroes lay down their ambitions and will only defend what they have from here on.`,
+        fact: { kind: 'a bot realm with no province concedes the game', realmName: p.name },
         audience: { actor: null, realms: [], seen: 'world' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         system: true,

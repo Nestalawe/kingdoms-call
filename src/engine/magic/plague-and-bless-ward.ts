@@ -24,10 +24,14 @@ export function blessWardNegates(turnContext, prov, caster, spellName) {
   if (!prov || prov._blessWardTurn !== G.turn) return false;
   if (prov._blessWardBy == null || (caster && prov._blessWardBy === caster.player)) return false; // your own ward never blocks your own spell
   if (kcRng() * 100 >= (prov._blessWardPct || 0)) return false;
-  const _who = caster ? caster.name : 'a hostile mage';
   emit(turnContext, {
     type: 'combat',
-    text: `✨ A blessing lies over ${prov.name} — ${_who}'s ${spellName} washes over the sacred ground and does no harm.`,
+    fact: {
+      kind: "a Bless ward turns an enemy's spell aside",
+      provinceName: prov.name,
+      casterName: caster ? caster.name : null,
+      spellName,
+    },
     audience: {
       actor: caster ? caster.player : null,
       realms: prov._blessWardBy != null ? [prov._blessWardBy] : [],
@@ -84,8 +88,6 @@ export function applyPlague(turnContext, prov, level, ph) {
   // These per-unit notices are NOT env-tagged — they belong to the affected player's own report,
   // not the shared Province Reports environmental log.
   hitByCtx.forEach((rec) => {
-    const names = rec.units.map((u) => `${u.unitName || u.type} (now ${u.quality})`).join(', ');
-    const where = rec.garrison ? `the garrison of ${prov.name}` : `your troops in ${prov.name}`;
     const place = {
       audience: { actor: null, realms: [rec.owner] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -95,7 +97,13 @@ export function applyPlague(turnContext, prov, level, ph) {
     if (ph != null) place.phase = ph;
     emit(turnContext, {
       type: 'combat',
-      text: `☠ Plague sickens ${where}: ${names} lose an experience level.`,
+      fact: {
+        kind: "the Plague sickens a realm's troops in a province",
+        theGarrison: rec.garrison,
+        provinceName: prov.name,
+        // the units sickened, each its name (else its type) and its new quality, copied as the line is told
+        units: rec.units.map((u) => ({ unitName: u.unitName || u.type, quality: u.quality })),
+      },
       ...place,
     });
   });
@@ -122,7 +130,12 @@ export function spreadPlagues(turnContext, ph) {
         const res = applyPlague(turnContext, nb, nb._plagueLevel, ph);
         emit(turnContext, {
           type: 'combat',
-          text: `☠ The plague spreads into ${nb.name} — ${res.affected} of ${res.tested} humanoid unit${res.tested !== 1 ? 's' : ''} sicken.`,
+          fact: {
+            kind: 'the Plague spreads into a province',
+            provinceName: nb.name,
+            affected: res.affected,
+            tested: res.tested,
+          },
           audience: {
             actor: null,
             realms: (nb.owner != null ? [nb.owner] : []).concat(p._plagueCaster != null ? [p._plagueCaster] : []),
