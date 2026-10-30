@@ -5,7 +5,8 @@
 //   • Spying a hero shows all their skills, the magic items they carry and the army units they lead, in the
 //     turn report. That holds for a wandering hero or a local chieftain as for another realm's hero (D9).
 // Level 2 (scenario): the Spy order and applySpySuccess are nested inside runTurn, so a real turn runs. Every
-// spy has Spy 6 (Master Spy: the order cannot fail), so nothing rests on a roll.
+// spy has Spy 6 (Master Spy: the order cannot fail), so nothing rests on a roll; and the neighbouring hero stands on
+// empty, unclaimed land, so nothing the map deals can take his army away before the report.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Item 5 (R-111): a province Spy shows another realm's hero's army units by type and quality but records and shows no
@@ -25,8 +26,15 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
       const moveTo=(c,p)=>{ const old=P[c.location]; if(old&&Array.isArray(old.characters)) old.characters=old.characters.filter(id=>id!==c.id);
         if(!Array.isArray(p.characters)) p.characters=[]; if(!p.characters.includes(c.id)) p.characters.push(c.id); c.location=p.id; };
       const mine=S.characters.filter(c=>c.alive&&c.player===0), theirs=S.characters.filter(c=>c.alive&&c.player===1);
-      const X=P.find(p=>p&&p.terrain!=='sea'&&p.owner==null&&(p.characters||[]).some(id=>S.characters[id]&&S.characters[id]._isNeutralGuard));
-      const Y=W.getNeighborsP(X,S.world.cols,S.world.rows,P).find(p=>p&&p.owner==null&&!S.characters.some(c=>c.alive&&c.player===0&&c.location===p.id));
+      // X: unclaimed land with a local chieftain. Y: unclaimed land beside it where no realm's character stands. Y must be
+      // land: a hero put at sea with no fleet leaves his units ashore as a garrison, so his band would read "no armies".
+      // Every guarded province is tried, so the map the seed deals decides only which pair is used, never the outcome.
+      const land=p=>!!p&&p.terrain!=='sea';
+      const guarded=p=>land(p)&&p.owner==null&&(p.characters||[]).some(id=>S.characters[id]&&S.characters[id]._isNeutralGuard);
+      const quietNeighbour=p=>W.getNeighborsP(p,S.world.cols,S.world.rows,P)
+        .find(n=>land(n)&&n.owner==null&&!S.characters.some(c=>c.alive&&c.player!=null&&c.location===n.id));
+      const X=P.find(p=>guarded(p)&&quietNeighbour(p));
+      const Y=X&&quietNeighbour(X);
       const chief=S.characters.find(c=>c.alive&&c._isNeutralGuard&&c.location===X.id);
       const [A,D,F]=mine, [B,E,C]=theirs;
       [A,D,F].forEach(c=>{ moveTo(c,X); c.skills={...(c.skills||{}),spy:6}; });
