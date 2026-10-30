@@ -589,48 +589,56 @@ export function normaliseEquipment(c: AHeroAsHisItemsAreRead<AnItemAsTheSlotsRea
 // 2026-10-13 (Toby, item 10): every time a hero gains an item, the report says whether they put
 // it on at once or have no room for it. Call it AFTER the items are in `ch.items`: a gained item's
 // old `equipped` flag (from its last owner) is dropped, normaliseEquipment re-slots it exactly as
-// every effect read will, and the line says what came of it. Returns '' when there is nothing to
+// every effect read will, and the record says what came of each (its words: theWordsOfTheItemsAHeroGained,
+// src/views/prose/the-words-of-the-items-a-hero-gained.ts, plan P1-12d21). Returns null when there is nothing to
 // say.
-export const KC_SLOT_WORDS = {
-  weapon: 'weapon slot',
-  armour: 'armour slot',
-  shield: 'shield slot',
-  cloak: 'cloak slot',
-  helm: 'helm slot',
-  ring: 'both ring slots',
-  amulet: 'amulet slot',
-  combat: 'both combat-item slots',
-};
-export function gainedItemNote(
+/** How a hero carries an item he has just gained, as the line tells it (settleTheItemsAHeroGained): one of four ways,
+ *  with the item's name, and for an item with no room its slot and the names of the items worn there. */
+export type HowAHeroCarriesAnItemHeGained =
+  /** He cannot use it ("Aldric cannot use the Elven Bow and carries it unused."). */
+  | { readonly kind: 'he cannot use it'; readonly itemName: string }
+  /** It needs no slot ("The Tome of Tactics needs no slot: it works for Aldric at once."). */
+  | { readonly kind: 'it needs no slot'; readonly itemName: string }
+  /** He puts it on at once ("Aldric equips the Blade of Fury at once."). */
+  | { readonly kind: 'he equips it at once'; readonly itemName: string }
+  /** No room in its slot: the slot, and the items worn there ("the weapon slot already holds the Sword of …"). */
+  | {
+      readonly kind: 'he has no room for it';
+      readonly itemName: string;
+      readonly slot: string;
+      readonly wornNames: readonly string[];
+    };
+/** The items a hero has just gained, and how he carries each, copied as the line is told. */
+export interface TheItemsAHeroGained {
+  readonly heroName: string;
+  readonly items: readonly HowAHeroCarriesAnItemHeGained[];
+}
+export function settleTheItemsAHeroGained(
   ch: (AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> & { readonly name: string }) | null | undefined,
   items: readonly (AnItemAsTheSlotsReadIt | null | undefined)[] | null | undefined,
-) {
-  if (!ch || !Array.isArray(ch.items)) return '';
+): TheItemsAHeroGained | null {
+  if (!ch || !Array.isArray(ch.items)) return null;
   const carried = ch.items; // the list just tested
   const got = (items ?? []).filter((it): it is AnItemAsTheSlotsReadIt => !!it && carried.includes(it));
-  if (!got.length) return '';
+  if (!got.length) return null;
   got.forEach((it) => {
     delete it.equipped;
   });
   normaliseEquipment(ch);
-  // the words read by any slot's name
-  const slotWords: Readonly<Partial<Record<string, string>>> = KC_SLOT_WORDS;
-  return (
-    '🎒 ' +
-    got
-      .map((it) => {
-        const nm = 'the ' + it.name;
-        if (!itemUsableBy(it, ch)) return `${ch.name} cannot use ${nm} and carries it unused.`;
-        const sl = itemSlot(it);
-        if (!sl) return `${(nm[0] ?? '').toUpperCase() + nm.slice(1)} needs no slot: it works for ${ch.name} at once.`;
-        if (it.equipped === true) return `${ch.name} equips ${nm} at once.`;
-        const worn = carried
-          .filter((x): x is AnItemAsTheSlotsReadIt => !!x && x !== it && x.equipped === true && itemSlot(x) === sl)
-          .map((x) => 'the ' + x.name);
-        return `${ch.name} has no room to equip ${nm}: ${worn.length ? `the ${(slotWords[sl] ?? '') || sl + ' slot'} already ${worn.length > 1 ? 'hold' : 'holds'} ${worn.join(' and ')}` : `the ${(slotWords[sl] ?? '') || sl + ' slot'} is full`}, so it goes in the pack (an Equip Items order can swap it in).`;
-      })
-      .join(' ')
-  );
+  return {
+    heroName: ch.name,
+    items: got.map((it): HowAHeroCarriesAnItemHeGained => {
+      const itemName = it.name;
+      if (!itemUsableBy(it, ch)) return { kind: 'he cannot use it', itemName };
+      const sl = itemSlot(it);
+      if (!sl) return { kind: 'it needs no slot', itemName };
+      if (it.equipped === true) return { kind: 'he equips it at once', itemName };
+      const wornNames = carried
+        .filter((x): x is AnItemAsTheSlotsReadIt => !!x && x !== it && x.equipped === true && itemSlot(x) === sl)
+        .map((x) => x.name);
+      return { kind: 'he has no room for it', itemName, slot: sl, wornNames };
+    }),
+  };
 }
 export function activeItems<AnItem extends AnItemAsTheSlotsReadIt>(
   c: AHeroAsHisItemsAreRead<AnItem> | null | undefined,

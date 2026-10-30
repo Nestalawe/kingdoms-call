@@ -13,6 +13,7 @@ import { fmtRoll } from '../../engine/dice-and-army-names.ts';
 import { itemNameList } from '../../engine/heroes/fame-and-consecration.ts';
 import { itemLoreLines, monsterCatLabel } from '../../engine/items/tiers-and-hoards.ts';
 import { rumourOddsBand } from '../../engine/personal-combat/lair-guardians-and-the-odds.ts';
+import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 /** A guardian's name with its article: "a Barrow Wight", "an Ogre", a plural as it is, "a creature" for none. */
 function _art(n: string | null): string {
@@ -131,7 +132,7 @@ export function theWordsOfTheExploreAndSearchOrdersLine(fact: TheFactOfTheExplor
     case "a thief slips a magic item from a lair's hoard":
       return `🗝 ${fact.heroName} also slips ${fact.isLegendary ? 'the LEGENDARY ' : 'the '}${fact.itemName} (${fact.itemDesc}) out from under the guardian's nose! ${fmtRoll(fact.chance, fact.roll)}`;
     case 'a hero notes how he carries what a lair gave up':
-      return fact.gainedItemNote;
+      return theWordsOfTheItemsAHeroGained(fact.theItemsHeGained);
     case "a thief cannot get near a hoard's magic":
       return `${fact.heroName} eyes the hoard's magic but cannot get near it. ${fmtRoll(fact.chance, fact.roll)}`;
     case "the realm's lore yields an extra find":

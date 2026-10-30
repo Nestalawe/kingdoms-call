@@ -10,7 +10,8 @@
 // theWordsOfAFightersSkill, theWordsOfAFightersWard and theWardsIcon), and a die drawn for words from the face the
 // engine drew. The word helpers the engine still calls elsewhere (fmtRoll, monsterCatLabel, hpGainLine, itemNameList,
 // isLegendaryItem) are imported from it, on plain values. Only the fighters' labels (who, foeWho: "The Barrow Wight")
-// and an item's equip note (gainedItemNote, the items' words) are still handed as words.
+// are still handed as words; an item's equip note is written from its record since P1-12d21
+// (theWordsOfTheItemsAHeroGained).
 import { fmtRoll } from '../../engine/dice-and-army-names.ts';
 import { theWordsOfTheSurgeonsComingTooLate } from './the-words-of-a-heros-deaths-lines.ts';
 import { itemNameList } from '../../engine/heroes/fame-and-consecration.ts';
@@ -25,6 +26,7 @@ import type {
   TheSourceOfALingeringHarm,
 } from '../../engine/personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import { isLegendaryItem } from '../../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 // ── THE WORDS THE ENGINE'S HELPERS WROTE, FROM THE COPIES (moved from src/engine/personal-combat/) ────
 
@@ -321,7 +323,7 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
     case 'in the rout the runner drops an item the one who stays claims':
       return `  💎 In the rout ${fact.runnerName} drops ${fact.itName}${fact.itIsLegendary ? ' (Legendary)' : ''} — ${fact.stayerName} claims it.`;
     case 'a gained item noted':
-      return `  ${fact.gainedItemNote}`;
+      return `  ${theWordsOfTheItemsAHeroGained(fact.theItemsHeGained)}`;
     case 'the runner breaks off the duel and slips away':
       return `${fact.runnerName} breaks off the duel and slips away — ${fact.stayerName} holds the field.`;
     case 'the attacker meets the defender in a personal encounter':

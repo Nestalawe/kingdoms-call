@@ -14,7 +14,7 @@ import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-
 import { recordBattleGraves, recordDeadHeroSighting } from '../graves.ts';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.ts';
 import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
-import { activeItems, gainedItemNote } from '../items/equipment.ts';
+import { activeItems, settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { theExplorersItemsRevealALair } from '../rules/the-registry-of-magic-item-effects.ts';
 import { RUMOUR_COST_BY_POWER, applyItemMaxHp, noteLairRumour, pcLearnWeakness } from '../personal-combat/helpers.ts';
 import { armyUnitName, d100, rng } from '../dice-and-army-names.ts';
@@ -829,7 +829,10 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
           });
           emit(turnContext, {
             type: 'explore',
-            fact: { kind: 'a hero notes how he carries what a lair gave up', gainedItemNote: gainedItemNote(c, [_it]) },
+            fact: {
+              kind: 'a hero notes how he carries what a lair gave up',
+              theItemsHeGained: settleTheItemsAHeroGained(c, [_it]),
+            },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             province: prov.id,
@@ -976,7 +979,10 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     if (drops.length > 0)
       emit(turnContext, {
         type: 'explore',
-        fact: { kind: 'a hero notes how he carries what a lair gave up', gainedItemNote: gainedItemNote(c, drops) },
+        fact: {
+          kind: 'a hero notes how he carries what a lair gave up',
+          theItemsHeGained: settleTheItemsAHeroGained(c, drops),
+        },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
@@ -1013,7 +1019,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         type: 'explore',
         fact: {
           kind: 'a hero notes how he carries what a lair gave up',
-          gainedItemNote: gainedItemNote(c, _recovered),
+          theItemsHeGained: settleTheItemsAHeroGained(c, _recovered),
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,

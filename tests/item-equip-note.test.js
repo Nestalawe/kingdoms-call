@@ -1,7 +1,8 @@
 // 2026-10-13 (item 10) — whenever a hero gains an item, the report says whether they equip it at
 // once or have no room for it (the slot already holds another item), or that it needs no slot, or
 // that they cannot use it.
-//   Unit: gainedItemNote (module level, booted GM portal) on staged heroes.
+//   Unit: settleTheItemsAHeroGained and its words, theWordsOfTheItemsAHeroGained (module level, booted GM portal),
+//     on staged heroes.
 //   Static: every way a hero gains an item (lair hoard, lair theft, bones of the fallen, a dead
 //     hero's possessions, the mercy price, a drop in the rout, Send Item by hand and by courier,
 //     Steal Item, the Grand Heist) writes the note straight after its own line.
@@ -10,10 +11,11 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Item 10 (2026-10-13): whenever a hero gains an item the report says whether they equip it at once, have no room
-// (naming what the slot already holds), need no slot, or cannot use it (`gainedItemNote`, module level: a free slot, a
-// full weapon slot, both ring slots, an item its last owner wore, two at once); every gain path (lair hoard, lair
-// theft, bones of the fallen, a dead hero's possessions, the mercy price, a drop in the rout, Send Item by hand and by
-// courier, Steal Item, the Grand Heist) writes the note after its own line (static; a line that is a fact is found by
+// (naming what the slot already holds), need no slot, or cannot use it (`settleTheItemsAHeroGained`, its words
+// written by `theWordsOfTheItemsAHeroGained` since P1-12d21, module level: a free slot, a full weapon slot, both ring
+// slots, an item its last owner wore, two at once); every gain path (lair hoard, lair theft, bones of the fallen, a
+// dead hero's possessions, the mercy price, a drop in the rout, Send Item by hand and by courier, Steal Item, the
+// Grand Heist) writes the note after its own line (static; a line that is a fact is found by
 // its kind's name: a dead hero's possessions since P1-12d5, Send Item by hand since P1-12d6, the lair hoard, the lair
 // theft, the bones of the fallen, Steal Item and the Grand Heist since P1-12d8, Send Item by courier since P1-12d16); a
 // real Send Item puts it in the recipient's report and the saved world agrees. Level 2 for the last part because Send
@@ -25,7 +27,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const ITEMS=W.eval('ALL_MAGIC_ITEMS_P');
   ok(Array.isArray(ITEMS)&&ITEMS.length>20,'the item table was read');
   const item=n=>{ const it=ITEMS.find(x=>x.name===n); if(!it) throw new Error('no item '+n); return JSON.parse(JSON.stringify(it)); };
-  const note=(ch,its)=>W.gainedItemNote(ch,its);
+  const note=(ch,its)=>W.theWordsOfTheItemsAHeroGained(W.settleTheItemsAHeroGained(ch,its));
   const hero=(items=[])=>({id:'h',name:'Aldric',race:'Human',alignment:'Good',player:0,items});
 
   // A free slot: equipped at once.
@@ -58,7 +60,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // statements after it (innermost statements, in the order they start), whatever the lines (tests/lib/source.ts;
   // until plan P1-09a it was the same number of lines of the built page). A line that is a fact is found by its kind's
   // name (since P1-12d6 Send Item by hand; since P1-12d8 the lair's, the bones', Steal Item's and the Grand Heist's;
-  // since P1-12d16 Send Item by courier's).
+  // since P1-12d16 Send Item by courier's). The note is the engine's settleTheItemsAHeroGained since P1-12d21.
   const {statementsFollowing}=require('./lib/source.ts');
   const PATHS=[
     ['lair hoard', /a hero clears a lair and hauls out its magic/, 4],
@@ -74,7 +76,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ];
   PATHS.forEach(([what,re,within])=>{ const at=statementsFollowing('kingdoms-call-gm-portal.html',re,within);
     ok(!!at,`found the ${what} line`);
-    ok(!!at&&/gainedItemNote\(/.test(at.text),`${what}: the equip note follows`); });
+    ok(!!at&&/settleTheItemsAHeroGained\(/.test(at.text),`${what}: the equip note follows`); });
 
   // ── Scenario: a real Send Item ──
   let giver, recip;

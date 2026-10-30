@@ -7,12 +7,13 @@
 // way home. Each kind holds plain values: a hero's, a realm's, a province's, an item's or a company's name as the world
 // holds it (null where the line falls back: the prose writes "the realm", "safety"), counts and hit points, the
 // companies that crumbled (each a record of where: under a hero, or left to garrison a province), and a flag for each
-// clause the line chooses. Two fields hold words still: a neutral hero's lesson, written by heroes/charms-and-
-// neutrals.ts (progressNeutralHeroes hands its words to the turn through a parameter, and a case pins them: Parked),
-// and the equip note of the hero a parcel reaches (gainedItemNote's words, the items' area: listed by the static test).
+// clause the line chooses, and how the hero a parcel reaches carries each item (since P1-12d21 a record,
+// TheItemsAHeroGained). One field holds words still: a neutral hero's lesson, written by heroes/charms-and-
+// neutrals.ts (progressNeutralHeroes hands its words to the turn through a parameter, and a case pins them: Parked).
 // The prose writes every other word (src/views/prose/the-words-of-the-lines-after-the-phases.ts). Each is filed on its
 // own, with the audience its event names (its event's): no audience changes.
 import type { TheAudienceOfAKindOfLine } from './events-and-their-audiences.ts';
+import type { TheItemsAHeroGained } from '../items/equipment.ts';
 
 /** Skeletal companies that crumbled, as the line tells each: under a hero with no Necromancy, or left to garrison a
  *  province with no one to command them. */
@@ -68,8 +69,8 @@ export type TheFactOfALineAfterThePhases =
     }
   | {
       kind: "a hero a courier's parcel reaches notes how he carries it";
-      /** gainedItemNote's words (the items' area: a later slice), listed by the static test. */
-      gainedItemNote: string;
+      /** How he carries each item he gained, as the line tells it (settleTheItemsAHeroGained). */
+      theItemsHeGained: TheItemsAHeroGained;
     }
   | {
       kind: 'Elven companies that slipped a battle scatter with no land to return to';

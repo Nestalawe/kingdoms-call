@@ -3,6 +3,7 @@
 // lines-record.ts), in the same words the engine wrote before (orders/item-orders-equip-use-and-send-magic-items.ts).
 // A kind with no words here is a compile error (the `never` below).
 import type { TheFactOfTheItemOrdersLine } from '../../engine/orders/the-facts-the-item-orders-lines-record.ts';
+import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 /** The words of one fact of the item orders' lines. */
 export function theWordsOfTheItemOrdersLine(fact: TheFactOfTheItemOrdersLine): string {
@@ -56,7 +57,7 @@ export function theWordsOfTheItemOrdersLine(fact: TheFactOfTheItemOrdersLine): s
     case 'a hero receives items from a comrade':
       return `📦 ${fact.recipientName} receives ${fact.itemNames.join(', ')} from ${fact.heroName}.`;
     case 'a hero handed items notes how he carries them':
-      return fact.gainedItemNote;
+      return theWordsOfTheItemsAHeroGained(fact.theItemsHeGained);
     case 'a hero sends items by courier':
       return `${fact.heroName} dispatches ${fact.itemNames.join(', ')} by courier to ${fact.recipientName} in ${fact.provinceName ?? 'a distant province'} — it will arrive by turn's end.`;
     default: {

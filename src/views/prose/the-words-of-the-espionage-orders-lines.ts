@@ -17,6 +17,7 @@ import {
   theWordsOfTheOddsShown,
 } from '../../engine/heroes/effective-skills-and-hidden-heroes.ts';
 import { theWordsInATableFor } from './the-words-of-the-order-dispatchs-lines.ts';
+import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 /** What a thief was caught at: "spying on them", "with a hand in their strongbox", "breaking into the vaults of …". */
 function whatAThiefWasCaughtAt(caughtAt: WhatAThiefWasCaughtAt): string {
@@ -129,7 +130,7 @@ export function theWordsOfTheEspionageOrdersLine(fact: TheFactOfTheEspionageOrde
     case 'a thief lifts a magic item from a hero':
       return `${fact.heroName} deftly lifts the ${fact.itemName} from ${fact.victimName}!`;
     case 'a thief notes how he carries what he took':
-      return fact.gainedItemNote;
+      return theWordsOfTheItemsAHeroGained(fact.theItemsHeGained);
     case 'a realm learns a thief stole a magic item':
       return `[Intelligence] ${fact.thiefName} (${fact.thiefsRealmName}) has stolen the ${fact.itemName} from ${fact.victimName}!`;
     case "a thief's attempt on a hero fails unnoticed":
