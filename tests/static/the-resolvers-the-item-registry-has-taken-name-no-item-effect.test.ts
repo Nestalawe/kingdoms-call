@@ -25,7 +25,8 @@
 // pcUseCombatItem 19, pcAct 1, pcMeleeDamage 1, pcBuildGuardian 4 and pcCharCombatant's 'combatUse' 1 on P1-19s's;
 // _useScore 20, itemPowerScore 8, itemSlot 2, plain 1, tiers-and-hoards.ts' copy pass 1, and the 7 item effects in
 // ITEM_COMBAT_STATS, on P1-19t's; primalStrikeItemBonus 1, and its read of `primalStrike`, on P1-19v's; pcCastCombatSpell's
-// Dreamstone and Death's Finger Ring, left to the spells family until then, on P1-19w's), as the unit-name test was: the one exception to refactor-only's rule
+// Dreamstone and Death's Finger Ring, left to the spells family until then, on P1-19w's; resolvePersonalCombat's
+// Mirror Shard, likewise, on P1-19x's), as the unit-name test was: the one exception to refactor-only's rule
 // that new tests pass before and after (Theo,
 // 2026-10-25; the items family's Decision 6, "red on its row's base by design").
 // Level 0 (static): the files' syntax trees and the content's tables as written; nothing runs.
@@ -119,6 +120,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/personal-combat/tactics-combat-items-and-actions.ts', 'pcUseCombatItem', 'P1-19s, the combat items'],
   ['src/engine/personal-combat/tactics-combat-items-and-actions.ts', 'pcAct', "P1-19s, the Lock-Pick's steal"],
   [
+    'src/engine/personal-combat/resolve-personal-combat.ts',
+    'resolvePersonalCombat',
+    "P1-19x, the Mirror Shard's half (with the spells family)",
+  ],
+  [
     'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
     'pcMeleeDamage',
     "P1-19s, the Warbringer Gauntlets' blow",
@@ -168,6 +174,8 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   pcMeleeStrike: ['drain'],
   // the armour slot the Mithril suit is worn in (`return 'armour'`), not an armour's stat
   itemSlot: ['armour'],
+  // the reason a fighter flees, his temper's panic (`pcAttemptFlee(…, 'temper')`), not a temper item's stat
+  resolvePersonalCombat: ['temper'],
 };
 
 /** The reads of an item's own field a taken function still holds, by the function, each left to a later step (the

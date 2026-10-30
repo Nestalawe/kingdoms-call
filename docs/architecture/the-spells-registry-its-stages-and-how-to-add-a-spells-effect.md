@@ -75,12 +75,27 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   the HP the caster takes back as it lands and its line; a burn; a stun; a silence; a cut to the target's aim; the
   caster's heal; or a chance, whose steps are worked out once it holds. `applyTheStepsOfACombatSpell` applies each with
   the function the spell's case called (`pcTakeHit`, `pcPushDot`, `pcLandStun`), rolls a chance as the case rolled it
-  (`kcRng() * 100` under it), and writes each line with its fields in the order the case wrote them. A spell the stage
-  holds no effect for is still a case of `pcCastCombatSpell`'s switch (the other five: P1-19x).
+  (`kcRng() * 100` under it), and writes each line with its fields in the order the case wrote them.
+- **The other combat spells** (P1-19x, `spells/a-combat-spell-that-hinders-deceives-or-sways-in-a-personal-combat.ts`),
+  at the same stage: Mirror Image, Invisibility, Curse, Control Undead and Charm. Since P1-19x every combat spell is an
+  effect there, and `pcCastCombatSpell` names no spell. The stage also hands the target's HP now, whether he is undead,
+  his Melee, Archery and schools, his plan, what a Charm reads of him (a crowned hero, swayed this turn, his will), and
+  the fight's Mirror Image (no fight, one fighting, or none). The steps it adds: a cut to the foes' aim at the caster; a
+  flight bonus; the caster's flight doubled; a skill halved; an image conjured (the resolver builds the phantom from
+  the HP, plan and rounds given); the images vanish; a will that may throw the spell off (the resolver rolls `d100()`
+  against it, as the Charm's case did); and a line alone. A stun now names what stuns, the blast or the caster's grip.
+- **A fighter's spell adds to his steal** (`personalCombat`, P1-19x): Invisibility's 15% to a thief's steal in the
+  fight he cast it in. Its runner, `theChanceAThiefsSpellsAddToHisSteal`, is asked by `pcAct`'s theft with the spells
+  he has cast.
+- **A mirror image is disbelieved** (`personalCombat`, P1-19x): the chance a Mirror Image's victim sees through it,
+  each round it fights. It is handed the victim's skill levels if he is a hero, his Melee, and what the caster's items
+  change. Its runner, `theChanceAMirrorImageIsSeenThrough`, is asked by `resolvePersonalCombat`, which rolls it as
+  before.
 - **The Dreamstone and the Death's Finger Ring** are the items' registry's: `personalCombat`'s **a hero's items change
   his combat spell** (`magic-items/a-heros-items-and-his-combat-spells.ts`, keyed by the item's base name: his Psychic
   Blast stuns a round longer, after any doubling; his Hand of Death bites ×1.1). Its runner,
-  `whatAHerosItemsChangeInHisCombatSpells`, is handed the caster's active items.
+  `whatAHerosItemsChangeInHisCombatSpells`, is handed the caster's active items. Since P1-19x the **Mirror Shard** is
+  there too: the chance his Mirror Image is seen through is halved.
 
 ## What checks it
 
@@ -100,7 +115,9 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   guards, which no game reaches (`tests/unit/the-battle-magic-lines-no-matrix-game-reaches-keep-their-values.test.ts`).
 - Each combat spell that harms, called directly with the dice pinned: `bolt-damage`, `fireball-burn`,
   `holy-symbol-unclean`, `spiritwrack-five` and `blast-dreamstone`; Telekinetic Storm's recoil and the Death's Finger
-  Ring, which no game meets but in a forecast
+  Ring, which no game meets but in a forecast; the other combat spells' lines no game reaches (Control Undead,
+  Invisibility and its steal, Curse, Charm, Mirror Image with no fight or cast again, the phantom, a hero's and a
+  guardian's chance to see through it)
   (`tests/unit/the-combat-spell-lines-no-matrix-game-reaches-keep-their-values.test.ts`).
 
 ## How to add a spell's effect

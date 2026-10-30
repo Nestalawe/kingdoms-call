@@ -18,6 +18,11 @@ import {
 } from './spells/battle-magic-cast-before-an-army-battle.ts';
 import { A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD } from './spells/a-combat-spell-that-harms-in-a-personal-combat.ts';
 import {
+  A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD,
+  A_FIGHTERS_SPELL_ADDS_TO_HIS_STEAL,
+  A_MIRROR_IMAGE_IS_DISBELIEVED,
+} from './spells/a-combat-spell-that-hinders-deceives-or-sways-in-a-personal-combat.ts';
+import {
   A_UNIT_STRIKES_BEFORE_THE_BATTLE,
   theChanceOfAStrikeBeforeTheBattle,
 } from './spells/a-units-strike-before-an-army-battle.ts';
@@ -25,6 +30,7 @@ import type {
   ABattleSpellCastBeforeTheBattle,
   ACombatSpellTakingHold,
   AFieldABattleSpellMayBeCastOn,
+  AMirrorImageItsVictimMaySeeThrough,
   AStepOfACombatSpell,
   AUnitAboutToStrikeBeforeTheBattle,
   HookPointName,
@@ -72,12 +78,14 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE.curse,
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE.curse,
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD.curse },
   },
   'control-undead': {
     strength: {
       'a battle spell is cast before the battle': A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE['control-undead'],
       'a battle spell has something to strike': A_BATTLE_SPELL_HAS_SOMETHING_TO_STRIKE['control-undead'],
     },
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD['control-undead'] },
   },
   'holy-symbol': {
     strength: {
@@ -95,6 +103,21 @@ export const THE_REGISTRY_OF_SPELL_EFFECTS = {
   },
   'hand-of-death': {
     personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HARMS_TAKES_HOLD['hand-of-death'] },
+  },
+  'mirror-image': {
+    personalCombat: {
+      'a combat spell takes hold': A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD['mirror-image'],
+      'a mirror image is disbelieved': A_MIRROR_IMAGE_IS_DISBELIEVED['mirror-image'],
+    },
+  },
+  invisibility: {
+    personalCombat: {
+      'a combat spell takes hold': A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD.invisibility,
+      "a fighter's spell adds to his steal": A_FIGHTERS_SPELL_ADDS_TO_HIS_STEAL.invisibility,
+    },
+  },
+  charm: {
+    personalCombat: { 'a combat spell takes hold': A_COMBAT_SPELL_THAT_HINDERS_TAKES_HOLD.charm },
   },
 } satisfies Record<SpellSlug, SpellEffectEntry>;
 
@@ -116,8 +139,8 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS = {
     'a battle spell is cast before the battle': THE_BATTLE_SPELLS,
     'a battle spell has something to strike': THE_BATTLE_SPELLS,
   },
-  // the combat spells the registry holds, in the order pcCastCombatSpell's switch wrote them (written here, once: a
-  // constant read once is written in where it is read in the engine's bundle, and so is no name of it)
+  // the combat spells, in the order pcCastCombatSpell's switch wrote them (written here, once: a constant read once is
+  // written in where it is read in the engine's bundle, and so is no name of it); one spell is cast at a time
   personalCombat: {
     'a combat spell takes hold': [
       'lightning-bolt',
@@ -126,8 +149,15 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS = {
       'spiritwrack',
       'psychic-blast',
       'telekinetic-storm',
+      'mirror-image',
+      'invisibility',
       'hand-of-death',
+      'curse',
+      'control-undead',
+      'charm',
     ],
+    "a fighter's spell adds to his steal": ['invisibility'],
+    'a mirror image is disbelieved': ['mirror-image'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -196,4 +226,21 @@ export function whatACombatSpellDoesAsItTakesHold(
   const slug = TAKES_HOLD.get(theSpellsName);
   const effect = slug === undefined ? undefined : ENTRIES[slug].personalCombat?.['a combat spell takes hold'];
   return effect ? effect(facts) : null;
+}
+
+/** The runner of "personalCombat: a fighter's spell adds to his steal" (pcAct's theft): the percentage points the
+ *  spells he has cast in the fight add to his chance, each once, in the stage's order (none: 0). */
+export function theChanceAThiefsSpellsAddToHisSteal(theSpellsHeHasCast: readonly string[]): number {
+  let added = 0;
+  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.personalCombat["a fighter's spell adds to his steal"])
+    if (theSpellsHeHasCast.includes(ROWS[slug].name))
+      added += ENTRIES[slug].personalCombat?.["a fighter's spell adds to his steal"]?.() ?? 0;
+  return added;
+}
+
+/** The runner of "personalCombat: a mirror image is disbelieved" (resolvePersonalCombat, each round an image fights):
+ *  the chance its victim sees through it, by the one spell that conjures an image. */
+export function theChanceAMirrorImageIsSeenThrough(facts: AMirrorImageItsVictimMaySeeThrough): number {
+  const [theSpell] = THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS.personalCombat['a mirror image is disbelieved'];
+  return THE_REGISTRY_OF_SPELL_EFFECTS[theSpell].personalCombat['a mirror image is disbelieved'](facts);
 }

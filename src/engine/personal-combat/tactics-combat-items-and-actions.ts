@@ -19,6 +19,7 @@ import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises
 import { pcHasRanged, pcMoveCheck } from './speed-encounter-plans-and-combatants.ts';
 import { pcHitSkill, pcLandStun, pcStunTurned, pcTakeHit } from './to-hit-wounds-stuns-and-courage.ts';
 import { pcCastCombatSpell, pcMonsterSpecial } from './combat-spells-and-guardian-abilities.ts';
+import { theChanceAThiefsSpellsAddToHisSteal } from '../rules/the-registry-of-spell-effects.ts';
 import type { AMirrorImageInAFight } from './combat-spells-and-guardian-abilities.ts';
 import { pcAdvanceOrStrike, pcAttemptFlee, pcFireShot, pcMeleeStrike } from './melee-flight-and-archery.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
@@ -678,7 +679,7 @@ export function pcAct(
         break;
       }
       let bonus = temperOf(actor.temper).stealMod;
-      if (actor.castSpells.includes('Invisibility')) bonus += 15;
+      bonus += theChanceAThiefsSpellsAddToHisSteal(actor.castSpells); // Invisibility: +15% (the spells' registry, plan P1-19x)
       const actorsHero: (object & AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt>) | null | undefined =
         asItsGuardReadsIt(actor.ref);
       if (actorsHero) bonus += theChanceAThiefsItemsAddToHisSteal(activeItems(actorsHero)); // Lock-Pick of Legends: +20% steal chance (the items' registry, plan P1-19s)

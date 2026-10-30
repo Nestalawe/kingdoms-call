@@ -26,7 +26,9 @@
 // alone"); six second-wind items don't say it acts below 30% of the bearer's maximum HP, two of them saying it saves
 // him from a killing blow at 1 HP (question 25: Parked "Six second-wind items don't say the 30% it acts below; two
 // describe another rule"); neither terror item says a foe flees half the time (question 26: Parked "The two terror
-// items don't say a foe flees half the time"). The units an item reaches are words this test can't match to a set (question 21).
+// items don't say a foe flees half the time"); the Mirror Shard says its illusions are "harder to disbelieve", not that
+// the chance is halved (Parked "Mirror Image's and Invisibility's texts leave out numbers, and the Mirror Shard's its
+// half"). The units an item reaches are words this test can't match to a set (question 21).
 // Level 1 (unit), not static: the items in play exist only after the engine's load-time pass (src/engine/items/
 // equipment.ts and tiers-and-hoards.ts rewrite the list: 711 items), so the whole engine is imported first.
 import '../lib/the-whole-engine.ts';
@@ -48,6 +50,8 @@ const HOME_DEFENCE_WORDS =
 const SECOND_WIND_WORDS =
   'Parked "Six second-wind items don\'t say the 30% it acts below; two describe another rule" (NEXT.md question 25)';
 const TERROR_WORDS = 'Parked "The two terror items don\'t say a foe flees half the time" (NEXT.md question 26)';
+const MIRROR_SHARD_WORDS =
+  "Parked \"Mirror Image's and Invisibility's texts leave out numbers, and the Mirror Shard's its half\"";
 const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, string>>>> = {
   'army-bonus': {
     'Battle Standard': 'Parked "The two relic standards give +2, not their +4 and +6" (NEXT.md question 20)',
@@ -83,6 +87,7 @@ const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, st
     'Grey Mantlet': SECOND_WIND_WORDS,
   },
   'combat-item-terrifies': { 'Scroll of Terror': TERROR_WORDS, 'Wailing Horn': TERROR_WORDS },
+  'mirror-shard': { 'Mirror Shard': MIRROR_SHARD_WORDS },
 };
 /** The rows with numbers no item read carries, each with why (so one carried is checked). */
 const ROWS_NO_ITEM_CARRIES: Partial<Record<MagicItemEffectSlug, string>> = {

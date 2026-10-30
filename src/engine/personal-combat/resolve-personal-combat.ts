@@ -1,6 +1,6 @@
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
-import { gainedItemNote, hasItemBase } from '../items/equipment.ts';
+import { activeItems, gainedItemNote, hasItemBase } from '../items/equipment.ts';
 import { applyItemMaxHp, transferableItems } from './helpers.ts';
 import { pcFoeCat } from '../titles/perks.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -28,6 +28,8 @@ import {
 } from './the-facts-a-personal-combats-lines-record.ts';
 import type { TheFactOfAPersonalCombatsLine } from './the-facts-a-personal-combats-lines-record.ts';
 import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
+import { theChanceAMirrorImageIsSeenThrough } from '../rules/the-registry-of-spell-effects.ts';
+import { whatAHerosItemsChangeInHisCombatSpells } from '../rules/the-registry-of-magic-item-effects.ts';
 import type { Character, Item } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
@@ -347,22 +349,20 @@ export function resolvePersonalCombat(
     // caster concentrates (no other actions). Each round the victim may disbelieve.
     if (state.mirror) {
       const { caster, victim, phantasm } = state.mirror;
-      // Disbelief chance: characters = 4% × total of all their skill levels; monsters = tougher =
-      // harder to fool.
-      let disbelief: number;
+      // Disbelief chance (the spells' registry, plan P1-19x): a hero's by all his skill levels together; a guardian,
+      // tougher, harder to fool; a Mirror Shard's half (the items' registry).
       const theVictimsHero = asItsGuardReadsIt<AHeroAsTheFightReadsHim>(victim.ref);
-      if (victim.kind === 'character' && theVictimsHero?.skills) {
-        const hisLevels: readonly (number | undefined)[] = Object.values(theVictimsHero.skills);
-        disbelief = 4 * hisLevels.reduce<number>((s, v) => s + ((v ?? 0) || 0), 0);
-      } else {
-        disbelief = 5 + 3 * (victim.melee || 0);
-      }
       const casterAsGuarded = asItsGuardReadsIt(caster);
       const theCastersHeroOrGuardian = casterAsGuarded
         ? asItsGuardReadsIt<AHeroOrGuardianAsHisItemsAreAsked>(casterAsGuarded.ref)
         : null;
-      if (theCastersHeroOrGuardian && hasItemBase(theCastersHeroOrGuardian, 'Mirror Shard')) disbelief *= 0.5; // Mirror Shard: harder to disbelieve
-      disbelief = Math.max(2, Math.min(90, disbelief));
+      const disbelief = theChanceAMirrorImageIsSeenThrough({
+        theVictimsSkillLevels:
+          victim.kind === 'character' && theVictimsHero?.skills ? Object.values(theVictimsHero.skills) : null,
+        theVictimsMelee: victim.melee,
+        // a guardian's hoard or a hero's active items, as hasItemBase read them
+        whatTheCastersItemsChange: () => whatAHerosItemsChangeInHisCombatSpells(activeItems(theCastersHeroOrGuardian)),
+      });
       if (kcRng() * 100 < disbelief) {
         narrate(narrative, {
           kind: 'the victim sees through the illusion',

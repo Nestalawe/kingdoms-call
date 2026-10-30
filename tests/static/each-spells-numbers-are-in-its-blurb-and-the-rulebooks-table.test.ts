@@ -12,11 +12,12 @@
 // listed with why, so a number added to one is checked. Since P1-19w, each number of a row's combat (a percentage as
 // `10%`, rounds as "3 rounds" or "three rounds", rounds longer as "one round longer", the most rounds as "at most 3" or
 // "up to 3", the levels for each round more as "per two" or "every two", a share as "a quarter", a multiplier as
-// `×1.5` or "half as much again", a range of damage as `1–3`) is stated the same way in the "Combat:" part of its blurb
-// (up to its "Battle magic:") and of its rulebook row (up to its "Battle:"); every spell whose blurb has a "Combat:"
-// part has a row with its combat but those listed for the next row (P1-19x). The known gaps are listed by name, each
-// with where and why (a Parked entry where the text is at fault), and checked to be still gaps (so the exception leaves
-// with the fix).
+// `×1.5` or "half as much again", a range of damage as `1–3`, a divisor as "halve", "halved" or "halves") is stated the
+// same way in the "Combat:" part of its blurb (up to its "Battle magic:") and of its rulebook row (from its "Combat:" or
+// "In combat:", up to its "Battle:"); since P1-19x, every spell whose blurb has a "Combat:" part has a row with its
+// combat, and the rows with no combat number are listed with why. The known gaps are listed by name, each with where
+// and why (a Parked entry where the text is at fault), and checked to be still gaps (so the exception leaves with the
+// fix).
 // Level 0 (static): the content's spells and the rulebook's source are files; nothing of the engine runs.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,6 +32,10 @@ import { ROOT } from '../../tools/build.ts';
 
 const BLURBS = 'Parked "Two spell blurbs misstate their battle magic"';
 const SPIRITWRACKS_BLURB = 'Parked "Spiritwrack\'s blurb leaves out three of its combat numbers"';
+const MIRROR_AND_INVISIBILITY =
+  "Parked \"Mirror Image's and Invisibility's texts leave out numbers, and the Mirror Shard's its half\"";
+/** A Mirror Image's chance to be seen through, as no text gives it yet: a guardian's, and its bounds. */
+const A_GUARDIANS_DISBELIEF = `a guardian's chance to see through it, and its bounds, are in neither text (${MIRROR_AND_INVISIBILITY})`;
 /** Where a text states a spell's numbers: its blurb's or its rulebook row's part for a use. */
 type AText = 'blurb' | 'rulebook';
 /** The numbers of a use a text doesn't state yet, by the row's slug and the number's name, each with where and why. */
@@ -58,9 +63,25 @@ const KNOWN_COMBAT_GAPS: TheGaps = {
     theChanceAPowerfulGuardianShrugsItOff: { blurb: `its Combat part leaves out the shrug (${SPIRITWRACKS_BLURB})` },
     theChanceALegendaryGuardianShrugsItOff: { blurb: `its Combat part leaves out the shrug (${SPIRITWRACKS_BLURB})` },
   },
+  'mirror-image': {
+    theShareOfHisHealthTheImageCarries: {
+      blurb: `its Combat part leaves out the image's health (${MIRROR_AND_INVISIBILITY})`,
+    },
+    theRoundsItLasts: { blurb: `its Combat part leaves out the rounds it lasts (${MIRROR_AND_INVISIBILITY})` },
+    theChanceAGuardianSeesThroughIt: { blurb: A_GUARDIANS_DISBELIEF, rulebook: A_GUARDIANS_DISBELIEF },
+    theChanceMoreForEachLevelOfAGuardiansMelee: { blurb: A_GUARDIANS_DISBELIEF, rulebook: A_GUARDIANS_DISBELIEF },
+    theLeastChanceItIsSeenThrough: { blurb: A_GUARDIANS_DISBELIEF, rulebook: A_GUARDIANS_DISBELIEF },
+    theMostChanceItIsSeenThrough: { blurb: A_GUARDIANS_DISBELIEF, rulebook: A_GUARDIANS_DISBELIEF },
+  },
+  invisibility: {
+    theStealAdded: { blurb: `its Combat part leaves out the steal (${MIRROR_AND_INVISIBILITY})` },
+  },
 };
-/** The combat spells whose numbers the registry doesn't hold yet: the next row's (plan P1-19x). */
-const THE_NEXT_ROWS_COMBAT_SPELLS = ['Charm', 'Control Undead', 'Curse', 'Invisibility', 'Mirror Image'];
+/** The rows with no number in their combat, each with why. */
+const ROWS_WITH_NO_COMBAT_NUMBER: Partial<Record<SpellSlug, string>> = {
+  'control-undead': 'a stun of a round a level, the level counted to 5 (the rule every spell shares)',
+  charm: "the caster's next flight at double the chance (the doubling is the flight's)",
+};
 /** The rows with no number in their battle magic, each with why. */
 const ROWS_WITH_NO_NUMBER: Partial<Record<SpellSlug, string>> = {
   'psychic-blast': "a mark on the enemy commander (his Druid negated, which the battle's readers of the mark apply)",
@@ -115,6 +136,8 @@ function asTheTextsWriteIt(n: ANumberOfASpellsEffect): string[] {
       return [`${String(n.value)}–`];
     case 'the most of a range':
       return [`–${String(n.value)}`];
+    case 'a divisor, in words':
+      return n.value === 2 ? ['halve', 'halved', 'halves'] : [String(n.value)];
   }
 }
 /** A number as the texts write it, with no digit or letter just before it, nor a digit, a letter, a `%` or a decimal
@@ -145,10 +168,11 @@ const theRulebooksBattleOf = (name: string) =>
     ?.replace(/<[^>]*>/g, '')
     .trim() ?? null;
 
-/** The words of the "Combat:" part of a spell's rulebook row, up to its "Battle:" (its tags taken out), or none. */
+/** The words of the "Combat:" (or "In combat:") part of a spell's rulebook row, up to its "Battle:" (its tags taken
+ *  out), or none. */
 const theRulebooksCombatOf = (name: string) =>
   theRulebooksRowOf(name)
-    ?.split('Combat:')[1]
+    ?.split(/Combat:|In combat:/)[1]
     ?.split('Battle:')[0]
     ?.replace(/<[^>]*>/g, '')
     .trim() ?? null;
@@ -239,11 +263,9 @@ test('every spell whose blurb has battle magic has a row with it, and its rulebo
     expect(theRulebooksRowOf(row.name), `${row.name}'s rulebook row`).toContain('<span class="pill">B</span>');
 });
 
-test("every spell whose blurb has a Combat part has a row with its combat, but the next row's, and its rulebook row the C pill", () => {
+test('every spell whose blurb has a Combat part has a row with its combat, and its rulebook row the C pill', () => {
   const withCombat = Object.keys(SPELL_DEFS_P).filter((name) => theCombatOf(name) !== null);
-  expect(withCombat.filter((name) => !THE_NEXT_ROWS_COMBAT_SPELLS.includes(name)).sort()).toEqual(
-    COMBAT_ROWS.map((row) => row.name).sort(),
-  );
+  expect(withCombat.sort()).toEqual(COMBAT_ROWS.map((row) => row.name).sort());
   for (const row of COMBAT_ROWS)
     expect(theRulebooksRowOf(row.name), `${row.name}'s rulebook row`).toContain('<span class="pill">C</span>');
 });
@@ -266,4 +288,22 @@ test('the rows with no number are the ones listed', () => {
       .map((row) => row.slug)
       .sort(),
   ).toEqual(Object.keys(ROWS_WITH_NO_NUMBER).sort());
+});
+
+test('the rows with no combat number are the ones listed', () => {
+  expect(
+    COMBAT_ROWS.filter((row) => !row.numbers.length)
+      .map((row) => row.slug)
+      .sort(),
+  ).toEqual(Object.keys(ROWS_WITH_NO_COMBAT_NUMBER).sort());
+});
+
+test('a divisor of 2 is matched as "halve", "halved" or "halves", whole', () => {
+  expect(asTheTextsWriteIt({ value: 2, theTextsWriteIt: 'a divisor, in words' })).toEqual([
+    'halve',
+    'halved',
+    'halves',
+  ]);
+  expect(states('halve (round down) the best', ['halve'])).toBe(true);
+  expect(states('it halved', ['halve']) || states('behalves', ['halves'])).toBe(false);
 });

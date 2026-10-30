@@ -754,6 +754,12 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { itemName: "Death's Finger Ring" },
     numbers: { multiplier: { value: 1.1, theTextsWriteIt: 'a multiplier, as the share more' } },
   },
+  // His Mirror Image is seen through at half the chance (plan P1-19x).
+  'mirror-shard': {
+    name: 'Mirror Shard',
+    carriedAs: { itemName: 'Mirror Shard' },
+    numbers: { multiplier: { value: 0.5, theTextsWriteIt: 'a share, in words' } },
+  },
   // ── The kinds of item the treasury weighs as a whole (treasury, plan P1-19t: an item's role, what it is for, and its
   // worth, read as the engine loads, to tier each item, and by a bot choosing what to carry). Above, the effects of an
   // item's stat, use, ward or rider that the treasury weighs carry their worth too. Each kind is named by the first item
