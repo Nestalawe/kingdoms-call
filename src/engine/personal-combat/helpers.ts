@@ -135,12 +135,16 @@ export interface AFatalMark {
   kind?: string | undefined;
 }
 
+/** A hero as a personal combat takes him: a hero of the world, or a copy of one the Hunting Rumours fight on
+ *  (simulateLairOdds), whose id is a string no hero of the world carries. */
+export type AHeroAsAFightTakesHim = Omit<Character, 'id'> & { id: Character['id'] | string };
+
 /** A fighter in a personal combat: a hero (`kind` 'character', his `ref` the hero) or a guardian ('monster', his `ref`
  *  the guardian). */
 export interface AFighterInAPersonalCombat {
   // Both builders set these:
   kind: 'character' | 'monster';
-  ref: Character | AGuardianAsHisFighterIsBuilt;
+  ref: AHeroAsAFightTakesHim | AGuardianAsHisFighterIsBuilt;
   name: string;
   player: Character['player'];
   hp: number;

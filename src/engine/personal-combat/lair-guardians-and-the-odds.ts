@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { monsterCat } from '../names.ts';
 import { guardianCanUseItem } from '../items/tiers-and-hoards.ts';
@@ -11,6 +10,7 @@ import {
 } from '../rules/the-registry-of-magic-item-effects.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, transferableItems } from './helpers.ts';
+import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.ts';
 import {
@@ -28,6 +28,67 @@ import {
   aListAsTheLineTellsIt,
   theNamesAsTheLineTellsThem,
 } from './the-facts-a-personal-combats-lines-record.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { Character, Item } from '../../schemas/saved-game-state.ts';
+import type { AGuardianAsHisFighterIsBuilt, AHeroAsAFightTakesHim } from './helpers.ts';
+
+/** A guardian as its traits are read (monsterTraits): its name, kind, perks, weakness and speed. */
+type AGuardianAsItsTraitsAreRead = Pick<
+  AGuardianAsHisFighterIsBuilt,
+  'name' | 'cat' | 'passives' | 'passive' | 'weak' | 'speed'
+>;
+/** A perk's riders as the hidden multipliers test them: its ward, or the ward's own field. */
+interface APerksRidersAsTheTraitsTestThem {
+  readonly ward?: string | undefined;
+  readonly meleeDR?: unknown;
+  readonly arrowDR?: unknown;
+  readonly spellPct?: unknown;
+}
+/** A lair's guardian as a fight at his lair reads and writes him (pcBuildGuardian, simulateLairOdds, resolveEncounter):
+ *  a lair's guardian, a copy of one, or the creature a lair of none is fought as. His hit points are written back after
+ *  a fight, and his treasure marked stolen. */
+interface ALairsGuardian extends AGuardianAsHisFighterIsBuilt {
+  readonly name: string;
+  hp?: number | undefined;
+  _hpFull?: number | null | undefined;
+  readonly minG?: number | undefined;
+  readonly maxG?: number | undefined;
+  _treasureStolen?: boolean | undefined;
+}
+/** A lair as its guardian is fought there (pcBuildGuardian, simulateLairOdds): its guardian and the hoard he takes up,
+ *  which ensureLairHoard stocks first (a stocked hoard is marked `_hoardV2`; a ritual site has none). */
+interface ALairAsItsGuardianIsFoughtThere {
+  readonly name?: string | undefined;
+  readonly monster?: ALairsGuardian | null | undefined;
+  readonly _hoardV2?: boolean | undefined;
+  readonly ritualSite?: boolean | undefined;
+  hoardItems?: Item[] | null | undefined;
+}
+/** A lair as a hero fights its guardian there (resolveEncounter): its name, its guardian and its hoard. */
+interface ALairAsAHeroFightsAtIt extends ALairAsItsGuardianIsFoughtThere {
+  readonly name: string;
+}
+/** A hero as the rout's dropped item reads him: his items, guarded (a hero an untyped caller stages may have none). */
+interface AHeroAsTheRoutsDropGuardsHim {
+  items?: Item[] | null | undefined;
+}
+/** A hoard's item as the guardian who wields it reads its effect (an item an untyped caller stages may have none). */
+interface AnItemAsItsEffectIsGuarded {
+  readonly effect?: Item['effect'] | null | undefined;
+}
+
+/** A copy of `value` made through JSON, as the Hunting Rumours fight on: the copy has the original's type once
+ *  `itsJsonIsTheOriginals` has found its JSON the same as the original's (Theo's form, 2026-10-30, plan P1-10b14). */
+function aCopyMadeThroughJson<Value>(value: Value): Value {
+  const copy: unknown = JSON.parse(JSON.stringify(value));
+  if (!itsJsonIsTheOriginals(copy, value)) throw new Error('a copy made through JSON differs from its original');
+  return copy;
+}
+/** Whether a copy's JSON is its original's: the check that types a copy made through JSON as its original. */
+function itsJsonIsTheOriginals<Value>(copy: unknown, original: Value): copy is Value {
+  return JSON.stringify(copy) === JSON.stringify(original);
+}
 
 // ── PERSONAL COMBAT: LAIR GUARDIANS AND THE ODDS (plan P1-08f: lifted out of resolveTurn) ────
 // What a guardian's nature makes it weak or strong against (monsterTraits), the guardian as a combatant
@@ -39,8 +100,8 @@ import {
 // mods.melee/archery/spell — <1 resists that approach, >1 is vulnerable to it
 // pacifiable — a beast that Talk (Druid) can turn aside
 // closeRounds — rounds to reach melee (fast 1 / medium 2 / slow 3): the archer's window
-export function monsterTraits(m) {
-  const n = (m.name || '').toLowerCase();
+export function monsterTraits(m: AGuardianAsItsTraitsAreRead) {
+  const n = (m.name ?? '').toLowerCase();
   const mods = { melee: 1, archery: 1, spell: 1 };
   // category-driven (name regex only refines flyers/armour and covers legacy saves).
   const cat = monsterCat(m);
@@ -81,18 +142,22 @@ export function monsterTraits(m) {
   // against the creature's passive (its hide turns blows, it shrugs off arrows or spells) or
   // against its weakness (arrows, a school of magic), the hidden one is dropped.
   {
-    const _fxs = guardianPassives(m).map((p) => p.fx),
-      w = m.weak || {},
-      has = (k) => _fxs.some((fx) => fx.ward === k || fx[k]);
+    // guardianPassives keeps only the perks that have riders, so each `fx` is there
+    const _fxs: readonly (APerksRidersAsTheTraitsTestThem | null | undefined)[] = guardianPassives(m).map((p) => p.fx),
+      kind = m.weak?.kind,
+      has = (k: 'meleeDR' | 'arrowDR' | 'spellPct') => _fxs.some((fx) => fx?.ward === k || fx?.[k]);
     if (has('meleeDR')) mods.melee = Math.min(1, mods.melee);
     if (has('arrowDR')) mods.archery = Math.min(1, mods.archery);
     if (has('spellPct')) mods.spell = Math.min(1, mods.spell);
-    if (w.kind === 'archery') mods.archery = Math.max(1, mods.archery);
-    if (w.kind === 'school') mods.spell = Math.max(1, mods.spell);
+    if (kind === 'archery') mods.archery = Math.max(1, mods.archery);
+    if (kind === 'school') mods.spell = Math.max(1, mods.spell);
   }
-  for (const k in mods) mods[k] = Math.max(0.4, Math.min(1.8, mods[k]));
+  const approaches: readonly (keyof typeof mods)[] = ['melee', 'archery', 'spell']; // the order `for (k in mods)` read
+  for (const k of approaches) mods[k] = Math.max(0.4, Math.min(1.8, mods[k]));
   const pacifiable = beast && !undead && !demon;
-  const closeRounds = { fast: 2, medium: 3, slow: 4 }[m.speed || 'medium'] || 3;
+  // the table read by any speed; it holds no 0, so `?? 3` gives what `|| 3` gave
+  const closeRoundsBySpeed: Readonly<Partial<Record<string, number>>> = { fast: 2, medium: 3, slow: 4 };
+  const closeRounds = closeRoundsBySpeed[(m.speed ?? '') || 'medium'] ?? 3;
   return { mods, pacifiable, closeRounds };
 }
 
@@ -105,30 +170,37 @@ export function monsterTraits(m) {
 // Rumours simulation builds the guardian EXACTLY as a real lair fight does — hoard items wielded,
 // nature-based vulnerabilities, pacifiable flag. `m` may be the live feature.monster (a real
 // fight) or a deep copy of it (a simulation); the hoard is read from the feature either way.
-export function pcBuildGuardian(turnContext, feature, m, narrative) {
+export function pcBuildGuardian(
+  turnContext: Pick<TurnContext, 'G'>,
+  feature: ALairAsItsGuardianIsFoughtThere,
+  m: ALairsGuardian,
+  narrative?: NarrativeLine[] | null,
+) {
   const { G } = turnContext;
-  narrative = narrative || [];
+  narrative ??= [];
   const traits = monsterTraits(m);
   const mon = pcMonsterCombatant(m);
   // a guardian that can wield the hoard's magic brings it into the fight — skill items raise its
   // Melee/Archery/HP, combat-use items are drunk/read when the moment is right.
   ensureLairHoard(feature, G);
   {
-    const _wield = (feature.hoardItems || []).filter((it) => guardianCanUseItem(m, it));
+    const _wield = (feature.hoardItems ?? []).filter((it) => guardianCanUseItem(m, it));
     if (_wield.length) {
       mon.wielded = _wield;
-      mon.combatItems = [];
+      const combatItems: Item[] = [];
+      mon.combatItems = combatItems;
       mon._hpItemBonus = 0;
       _wield.forEach((it) => {
-        const e = it.effect || {};
+        const theItemAsGuarded: AnItemAsItsEffectIsGuarded = it;
+        const e: Partial<Item['effect']> = theItemAsGuarded.effect ?? {};
         const _does = whatAHoardsItemDoesForTheGuardianWhoWieldsIt(it); // its hit points and its gauntlets: the items' registry (plan P1-19s)
-        if (e.stat === 'melee') mon.melee = (mon.melee || 0) + (e.bonus || 0);
-        else if (e.stat === 'archery') mon.archery = (mon.archery || 0) + (e.bonus || 0);
+        if (e.stat === 'melee') mon.melee = (mon.melee || 0) + (Number(e.bonus) || 0);
+        else if (e.stat === 'archery') mon.archery = (mon.archery || 0) + (Number(e.bonus) || 0);
         else if (_does.theHpItAddsAtFullHealth !== undefined && mon.hp >= mon.maxHp) {
           mon.maxHp += _does.theHpItAddsAtFullHealth;
           mon.hp += _does.theHpItAddsAtFullHealth;
-          mon._hpItemBonus += _does.theHpItAddsAtFullHealth;
-        } else if (anItemIsACombatItem(it)) mon.combatItems.push(it);
+          mon._hpItemBonus = (mon._hpItemBonus ?? 0) + _does.theHpItAddsAtFullHealth; // 0 above, a number since
+        } else if (anItemIsACombatItem(it)) combatItems.push(it);
         else if (anItemIsWornAsArmour(it)) mon.arm = pcArmourMerge(mon.arm, e, it.name); // a guardian in the hoard's armour
         if (e.pc) pcApplyFx(mon, e.pc, it.name); // a guardian wearing a new rider item feels it too
         if (_does.itDrivesHisBlowsHome) mon.gauntlets = true;
@@ -142,7 +214,7 @@ export function pcBuildGuardian(turnContext, feature, m, narrative) {
   }
   // The monster's nature decides what hurts it: blades, arrows or magic.
   mon.vuln = { melee: traits.mods.melee, archery: traits.mods.archery, spell: traits.mods.spell };
-  mon.pacifiable = !!traits.pacifiable;
+  mon.pacifiable = traits.pacifiable;
   return mon;
 }
 
@@ -166,78 +238,98 @@ export const RUMOUR_ODDS_BANDS = [
   // upper bound of the band (kill %), and the line read to the player
   {
     max: 20,
-    text: (g) =>
+    text: (g: string) =>
       `the talk is grim: you would have no real chance against the ${g} — it would leave you in the dust with the rest`,
   },
   {
     max: 40,
-    text: (g) =>
+    text: (g: string) =>
       `the odds are against you: the ${g} would most likely be the end of you, though a lucky hand might yet see it done`,
   },
   {
     max: 60,
-    text: (g) => `it could go either way: you and the ${g} are evenly matched, and the dice will decide who walks out`,
+    text: (g: string) =>
+      `it could go either way: you and the ${g} are evenly matched, and the dice will decide who walks out`,
   },
-  { max: 80, text: (g) => `the odds favour you: you would likely bring the ${g} down, but not without real danger` },
+  {
+    max: 80,
+    text: (g: string) => `the odds favour you: you would likely bring the ${g} down, but not without real danger`,
+  },
   {
     max: 90,
-    text: (g) => `the talk is confident: you should bring the ${g} down, though it could still cost you dearly`,
+    text: (g: string) => `the talk is confident: you should bring the ${g} down, though it could still cost you dearly`,
   }, // Sept 2026: the 80–90 band split out so a 90%+ reading exists
   {
     max: 101,
-    text: (g) => `the talk is certain: you are all but sure to defeat the ${g} — only ill fortune could turn it`,
+    text: (g: string) =>
+      `the talk is certain: you are all but sure to defeat the ${g} — only ill fortune could turn it`,
   },
 ];
-export function rumourOddsBand(pct) {
-  return RUMOUR_ODDS_BANDS.find((b) => pct < b.max) || RUMOUR_ODDS_BANDS[RUMOUR_ODDS_BANDS.length - 1];
+export function rumourOddsBand(pct: number) {
+  return RUMOUR_ODDS_BANDS.find((b) => pct < b.max) ?? RUMOUR_ODDS_BANDS[RUMOUR_ODDS_BANDS.length - 1];
 }
-export function simulateLairOdds(turnContext, c, feature, fights) {
+export function simulateLairOdds(
+  turnContext: TurnContext,
+  c: Character | null | undefined,
+  feature: ALairAsItsGuardianIsFoughtThere | null | undefined,
+  fights?: number,
+) {
   const { G } = turnContext;
-  fights = fights || RUMOUR_SIM_FIGHTS;
-  const m0 = feature && feature.monster;
-  if (!c || !m0) return null;
+  fights = (fights ?? 0) || RUMOUR_SIM_FIGHTS; // 0 and NaN fight the full count, as `||` gave
+  const m0 = feature?.monster;
+  if (!c || !feature || !m0) return null; // no lair, no guardian: `feature && feature.monster` gave none
   const pl = c.player != null ? G.players[c.player] : null;
-  const _kwSnap = pl ? JSON.stringify(pl._knownWeak || {}) : null;
+  const knownWeakBefore = pl ? aCopyMadeThroughJson(pl._knownWeak ?? {}) : null;
   const _prevSim = turnContext._pcSimulating;
   turnContext._pcSimulating = true;
   let wins = 0,
     ran = 0;
   try {
-    const heroSrc = JSON.parse(JSON.stringify(c));
+    const heroSrc = aCopyMadeThroughJson(c);
     // a plan of their own if set; else the standard unordered-character plan
-    const ownPlan =
-      c.encounterPlan && Array.isArray(c.encounterPlan.tactics) && c.encounterPlan.tactics.length
-        ? c.encounterPlan.tactics.slice()
-        : null;
+    const ownTactics = c.encounterPlan?.tactics;
+    const ownPlan = Array.isArray(ownTactics) && ownTactics.length ? ownTactics.slice() : null;
     for (let i = 0; i < fights; i++) {
-      const hc = JSON.parse(JSON.stringify(heroSrc));
-      hc.id = 'rumour_sim_' + i; // no live character carries this id
-      hc.encounterPlan = { tactics: ownPlan || autoEncounterPlan(turnContext, hc), duelStance: 'accept', _auto: true };
-      const mc = JSON.parse(JSON.stringify(m0));
-      if (mc._hpFull == null) mc._hpFull = mc.hp || 10;
+      // the copy's id is a string: the fighter's hero may be such a copy (AHeroAsAFightTakesHim)
+      const hc: AHeroAsAFightTakesHim = aCopyMadeThroughJson(heroSrc);
+      hc.id = `rumour_sim_${String(i)}`; // no live character carries this id
+      hc.encounterPlan = { tactics: ownPlan ?? autoEncounterPlan(turnContext, hc), duelStance: 'accept', _auto: true };
+      const mc = aCopyMadeThroughJson(m0);
+      mc._hpFull ??= (mc.hp ?? 0) || 10;
       mc.hp = mc._hpFull;
       const hero = pcCharCombatant(turnContext, hc);
-      hero.tactics = hc.encounterPlan.tactics.slice();
+      const tactics = hc.encounterPlan.tactics;
+      if (!tactics) throw new TypeError("Cannot read properties of undefined (reading 'slice')"); // set just above
+      hero.tactics = tactics.slice();
       hero._vsGuardian = true;
       const mon = pcBuildGuardian(turnContext, feature, mc, []);
-      const res = resolvePersonalCombat(turnContext, hero, mon, { maxRounds: 20, feature });
+      const res = asItsGuardReadsIt(resolvePersonalCombat(turnContext, hero, mon, { maxRounds: 20, feature }));
       ran++;
-      if (res && res.winner === hero && !res.fledBy && !res.parley && !res.stoleBy) wins++;
+      if (res?.winner === hero && !res.fledBy && !res.parley && !res.stoleBy) wins++;
     }
   } catch (e) {
     console.warn('simulateLairOdds failed', e);
   } finally {
     turnContext._pcSimulating = _prevSim;
-    if (pl) pl._knownWeak = JSON.parse(_kwSnap);
+    if (pl && knownWeakBefore) pl._knownWeak = aCopyMadeThroughJson(knownWeakBefore);
   }
   if (!ran) return null;
   return { pct: Math.round((100 * wins) / ran), wins, fights: ran };
 }
 
-export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat, rng, player) {
+export function resolveEncounter(
+  turnContext: TurnContext,
+  c: Character,
+  feature: ALairAsAHeroFightsAtIt,
+  prov: { readonly name: string },
+  tactics: string[] | null | undefined,
+  effStat: unknown,
+  rng: (min: number, max: number) => number,
+  player: unknown,
+) {
   const { G } = turnContext;
-  const m = feature.monster || { name: 'creature', hp: 10, power: '', minG: 1, maxG: 3 };
-  const narrative = [];
+  const m: ALairsGuardian = feature.monster ?? { name: 'creature', hp: 10, power: '', minG: 1, maxG: 3 };
+  const narrative: NarrativeLine[] = [];
   const startHp = c.hp || 10;
   const traits = monsterTraits(m);
 
@@ -248,11 +340,11 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
     featureName: feature.name,
     provName: prov.name,
   });
-  const monsterPower = m.power || '';
+  const monsterPower = m.power ?? '';
   // Describe the creature by its FULL stature, not its current (possibly wounded) health, so the
   // description doesn't shrink just because someone else bloodied it earlier this turn.
-  const monFullHp = m._hpFull != null ? m._hpFull : m.hp || 10;
-  const monHp = m.hp != null ? m.hp : monFullHp;
+  const monFullHp = m._hpFull ?? ((m.hp ?? 0) || 10);
+  const monHp = m.hp ?? monFullHp;
   narrate(narrative, {
     kind: 'within lurks the guardian blocking the path',
     mPower: m.power,
@@ -309,8 +401,14 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
     // hoardItems — it is treasure for whoever finally clears the lair, and the guardian wields it
     // in every later fight (the wield block above rebuilds from hoardItems on each encounter).
     {
-      const _realC = (c && c.id != null && (G.characters || []).find((r) => r && r.id === c.id)) || c;
-      const _pool = transferableItems(_realC.items || []);
+      // read as the guards read them (a hero or a world an untyped caller stages may hold no id or list)
+      const theHeroAsGuarded: { readonly id?: Character['id'] | null | undefined } = c;
+      const theStateAsGuarded: { readonly characters?: readonly (Character | null | undefined)[] | null | undefined } =
+        G;
+      const theRealHero =
+        theHeroAsGuarded.id != null ? (theStateAsGuarded.characters ?? []).find((r) => r?.id === c.id) : undefined;
+      const _realC: AHeroAsTheRoutsDropGuardsHim = theRealHero ?? c; // a hero found is an object: `||` gave him
+      const _pool = transferableItems(_realC.items ?? []);
       if (_pool.length) {
         const _roll = d100(),
           _chance = Math.round(DUEL_FLEE_DROP * 100);
@@ -322,12 +420,15 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
         });
         if (_roll <= _chance) {
           const _it = _pool[Math.floor(kcRng() * _pool.length)];
-          _realC.items = (_realC.items || []).filter((x) => x !== _it);
+          if (!_it) throw new TypeError('Cannot convert undefined or null to object'); // the index is within the pool
+          _realC.items = (_realC.items ?? []).filter((x) => x !== _it);
           if (c !== _realC && Array.isArray(c.items))
-            c.items = c.items.filter((x) => x !== _it && !(x && x.name === _it.name && x.tier === _it.tier));
+            c.items = c.items.filter(
+              (x: Item | null | undefined) => x !== _it && !(x?.name === _it.name && x.tier === _it.tier),
+            );
           delete _it.equipped;
           ensureLairHoard(feature, G);
-          feature.hoardItems = (feature.hoardItems || []).concat([_it]);
+          feature.hoardItems = (feature.hoardItems ?? []).concat([_it]);
           narrate(narrative, {
             kind: 'in the rout the hero drops an item into the hoard',
             cName: c.name,
@@ -359,10 +460,12 @@ export function resolveEncounter(turnContext, c, feature, prov, tactics, effStat
 
   // ── 2026-09-10: the guardian heals to FULL at the end of every combat. Wounds no longer carry
   // between searches in a turn — each challenger faces the creature whole.
-  if (!won && m) {
-    if (m._hpFull == null) m._hpFull = m.hp || 10;
+  if (!won) {
+    // m is the lair's guardian or the stand-in above: never missing
+    m._hpFull ??= (m.hp ?? 0) || 10;
     m.hp = m._hpFull;
-    if (res.bHp != null && res.bHp < mon.maxHp - (mon._hpItemBonus || 0))
+    const theGuardiansHp = asItsGuardReadsIt(res.bHp);
+    if (theGuardiansHp != null && theGuardiansHp < mon.maxHp - (Number(mon._hpItemBonus) || 0))
       narrate(narrative, { kind: 'the guardian draws back into its lair', mName: m.name });
   }
 

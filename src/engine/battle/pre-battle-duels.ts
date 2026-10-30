@@ -108,7 +108,8 @@ export function preBattleDuel(
       // ended before round 1 on the hp<=0 check and printed the escape line without a fight.
       const _gHp = Math.max(1, realLoser.maxHp ? Math.round(realLoser.maxHp / 2) : 1);
       if (realLoser.hp == null || realLoser.hp <= 0) realLoser.hp = _gHp;
-      if (loser !== realLoser && (loser.hp == null || loser.hp <= 0)) loser.hp = realLoser.hp;
+      const theLoserAsGuarded: { readonly hp?: number | null | undefined } = loser; // a battle's copy may hold none
+      if (loser !== realLoser && (theLoserAsGuarded.hp == null || theLoserAsGuarded.hp <= 0)) loser.hp = realLoser.hp;
       realLoser.alive = true;
       realLoser.killedThisTurn = false;
       demoralise(loser, 'he was driven from the field');
@@ -137,8 +138,8 @@ export function preBattleDuel(
     narrate(
       narrative,
       _saved
-        ? { kind: "the duel's loser falls at death's door but is not slain", loserName: String(loser.name) }
-        : { kind: "the duel's loser is slain", loserName: String(loser.name) },
+        ? { kind: "the duel's loser falls at death's door but is not slain", loserName: loser.name }
+        : { kind: "the duel's loser is slain", loserName: loser.name },
     );
     _dOpts.lines.forEach((l) => {
       if (l.priv != null)
@@ -175,7 +176,8 @@ export function preBattleDuel(
   } else if (duelResult.fled) {
     // Breaking off the duel is losing it — the runner's own troops saw them go.
     demoralise(duelResult.fled, 'he broke off the duel');
-    if (duelResult.heldField) awardWinHp(turnContext, duelResult.heldField, narrative, 'duel'); // holding the field in a pre-battle duel is a win
+    const theDuelAsGuarded: { readonly heldField?: Character | null | undefined } = duelResult; // resolveDuel names one
+    if (theDuelAsGuarded.heldField) awardWinHp(turnContext, theDuelAsGuarded.heldField, narrative, 'duel'); // holding the field in a pre-battle duel is a win
   } else {
     narrate(narrative, { kind: 'the duel ends inconclusively' });
   }

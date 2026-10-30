@@ -21,6 +21,7 @@ import { clone, personalCombatEngine } from '../lib/personal-combat.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import type { AFighterInAPersonalCombat } from '../../src/engine/personal-combat/helpers.ts';
 import type { TurnContext } from '../../src/engine/turn/context.ts';
+import type { Item } from '../../src/schemas/saved-game-state.ts';
 
 const pc = await personalCombatEngine();
 /** The turn's context the engine made for this world (the test library's type names only the fields it reads). */
@@ -392,7 +393,8 @@ describe('a guardian takes up its lair’s hoard', () => {
     const narrative: NarrativeLine[] = [];
     const g = pcBuildGuardian(
       tc,
-      { name: 'Made-up Ruin', monster: m, hoardItems: hoard, _hoardV2: true },
+      // the content's items, staged as the hoard's saved items (pcBuildGuardian reads none of the fields they lack)
+      { name: 'Made-up Ruin', monster: m, hoardItems: hoard as unknown as Item[], _hoardV2: true },
       m,
       narrative,
     );

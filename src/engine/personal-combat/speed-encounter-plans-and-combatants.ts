@@ -22,6 +22,7 @@ import type {
   AFightersStatus,
   AGuardianAsHisFighterIsBuilt,
   AGuardiansSpecial,
+  AHeroAsAFightTakesHim,
   TheRidersOfAnItemOrAPerk,
 } from './helpers.ts';
 
@@ -29,7 +30,7 @@ import type {
 // stays; the fighter both builders make is AFighterInAPersonalCombat (a-fighter-in-a-personal-combat-and-the-wards-he-
 // wears.ts), and a table read by any name is read through a typed local inside its function.
 /** A hero as his fighter is built from him: the saved hero, and the speed bonus an older save may hold. */
-type AHeroAsHisFighterIsBuilt = Character & { readonly _speedBonus?: number | undefined };
+type AHeroAsHisFighterIsBuilt = AHeroAsAFightTakesHim & { readonly _speedBonus?: number | undefined };
 /** A hero as the builder guards his hit points: a hero staged without them enters at his maximum. */
 interface AHeroAsHisHitPointsAreGuarded {
   readonly hp?: number | null | undefined;
@@ -132,7 +133,7 @@ export function pcMoveCheck(actor: AFighterAsHisSpeedIsRead, foe: AFighterAsHisS
 // Cautious and Cowardly open with Flee, so they REFUSE a challenge rather than risk single combat
 // — trading 20% of their force's strength for their commander's life.
 export const NPC_SPELL_BY_SCHOOL = { ...NPC_SCHOOL_SPELL };
-export function autoEncounterPlan(turnContext: Pick<TurnContext, 'G'>, ch: Character) {
+export function autoEncounterPlan(turnContext: Pick<TurnContext, 'G'>, ch: AHeroAsAFightTakesHim) {
   const spellOfSchool: Readonly<Partial<Record<string, string>>> = NPC_SPELL_BY_SCHOOL;
   const melee = effStat(turnContext, ch, 'melee'),
     arch = effStat(turnContext, ch, 'archery');
@@ -221,7 +222,7 @@ export function duelStanceOf(ch: Character | null | undefined) {
 // Give any un-ordered character (player === null) a plan the moment one is needed.
 export function ensureEncounterPlan(
   turnContext: TheContextAsTheEncounterPlansReadIt,
-  ch: Character | null | undefined,
+  ch: AHeroAsAFightTakesHim | null | undefined,
 ) {
   const { _botPlayerIdx } = turnContext;
   if (!ch) return null;
@@ -494,7 +495,7 @@ export function pcMonsterCombatant(m: AGuardianAsHisFighterIsBuilt) {
     'Banshee',
     'Dracolich',
   ];
-  const cbt: AFighterInAPersonalCombat = {
+  const cbt: AFighterInAPersonalCombat & { speedName: string } = {
     kind: 'monster',
     ref: m,
     name: nm,
