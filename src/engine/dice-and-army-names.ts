@@ -1,7 +1,6 @@
 import { ARMY_UNIT_NAMES, PRIMAL_UNIT_NAMES } from '../content/kingdoms-call-data.ts';
 import { kcRng } from './rng.ts';
 import { dispFloor } from './rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
-import type { UnitType } from '../content/kingdoms-call-data.ts';
 import type { GameState } from '../schemas/saved-game-state.ts';
 
 // ── Percentage dice ────
@@ -72,8 +71,12 @@ export const _NAME_TAILS = [
   'of the Long March',
   'of the Last Stand',
 ];
-export function armyUnitName(type: UnitType) {
-  const pool = { ...ARMY_UNIT_NAMES, ...PRIMAL_UNIT_NAMES }[type] || ['the Guard'];
+/** A company's name, drawn from its type's pool of names: any unit's type, as a save holds it (the schema's is any
+ *  words); a type with no pool draws the Guard's. */
+export function armyUnitName(type: string) {
+  // the pools by any type (none for a type with no pool)
+  const pools: Readonly<Partial<Record<string, readonly string[]>>> = { ...ARMY_UNIT_NAMES, ...PRIMAL_UNIT_NAMES };
+  const pool = pools[type] ?? ['the Guard'];
   // Try to find a unique name from the (generously sized) pool.
   let name;
   let attempts = 0;

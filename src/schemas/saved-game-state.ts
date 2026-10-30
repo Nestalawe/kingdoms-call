@@ -512,8 +512,9 @@ export const RealmSchema = z.object({
       z.object({
         name: z.string(),
         isKing: z.boolean(),
-        alignment: z.string(),
-        race: z.string(),
+        // (P1-10b17) null for a hero of no alignment or race on record (Clairvoyance writes `|| null`)
+        alignment: z.string().nullable(),
+        race: z.string().nullable(),
         // (P1-15b2) a wandering hero's realm is null; Clairvoyance learns his skills alone, without items or companies
         kingdom: z.string().nullable(),
         skills: SkillLevelsSchema,

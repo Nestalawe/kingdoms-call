@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-96 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(62: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+95 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(61: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b16 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b17 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -63,7 +63,10 @@ added under its kind.
   `x ?? ''`.
 - **`(a && (a.b || a.c)) || 'x'`**, where `''` may reach, is read into a `const` first: `const bc = a ? a.b || a.c : '';`,
   then `bc || 'x'`. `x != null ? x : y` is `x ?? y`; `(h && h.race) || null` is `(h?.race ?? '') || null`.
-- **`a && a.b`** is `a?.b`, and `!(fm && fm.arr === n)` is `!(fm?.arr === n)` when `n` is never `undefined`.
+- **`a && a.b`** is `a?.b`, and `!(fm && fm.arr === n)` is `!(fm?.arr === n)` when `n` is never `undefined`;
+  `!t || t.location !== n` is `t?.location !== n`, which narrows `t` after it.
+- **`if (!x) x = v` on words** (a unit's phantom tag) is `if (x === undefined || x === '') x = v`: lint's `x ??= v`
+  would keep a `''`.
 
 ### Numbers, words and conversions
 
@@ -87,7 +90,9 @@ added under its kind.
 
 - **A list's or a table's element read where the code has just made it sure** (`cav[i]` after `i >= 0`, one of three
   candidates sorted) is read into a `const` and checked; where the old code would have thrown there, the check throws
-  the same kind of error. `G.players[c.player].name` after a check doesn't narrow: only a plain variable as the key does.
+  the same kind of error. A die's pick from a list just found not empty goes through a reader that throws for none
+  (`theOneThePickFell`), and `list.splice(i, 1)[0]` at an index just drawn through one that takes it out
+  (`theOneTakenOut`). `G.players[c.player].name` after a check doesn't narrow: only a plain variable as the key does.
 - **A table read by any string** is typed inside the function that reads it, `Readonly<Partial<Record<string, T>>>`,
   not by a second module-level `const` (`tests/unit/engine-purity.test.ts` watches the engine's module-level names). A
   key that may be `undefined` is read as JavaScript reads it, `table[String(key)]`; an element by an index that may be
@@ -145,6 +150,10 @@ added under its kind.
   `Pick<TurnContext, 'G'>`; one that reads part of the state through the context, `const { G }: { readonly G:
   TheStateAsEarlyWinterReadsIt } = turnContext`. A typed callee's parameter type its file doesn't export is
   `Parameters<typeof callee>[0]`.
+- **The turn's marks an order writes that the schema lacks** (a Curse's levels taken, a Clairvoyance's watchers, Part
+  Sea's waters) are typed on a local shape beside it, built on the battle's (`AHeroAsTheCastMarksHim` from
+  `HeroInABattle`), and the state is read through `Omit<GameState, …> & { … }` with its heroes and provinces so marked,
+  a guarded list optional and the turn's lists added (`TheStateAsTheCastReadsIt`).
 - **A shape whose fields are all optional** is refused for a value that has none of them (TypeScript's weak-type
   check): type it `object & { … }`. A fighter's `ref` is a hero or a guardian: a hero's fields are read through a
   reader typed `object & { … }` with only the fields read, so the guardian passes.
@@ -158,7 +167,8 @@ added under its kind.
   Image, in the combat spells' file. A copy whose id is a string (a Hunting Rumours hero) is `AHeroAsAFightTakesHim`.
 - **A claim the compiler can't check is made only through a check that holds it**: a copy made through JSON parses into
   `unknown` and a type predicate holds when `JSON.stringify(copy) === JSON.stringify(original)` (Theo, 2026-10-30); a
-  hero handed to a callee that needs his name as words passes a predicate `typeof hero.name === 'string'`. Each check
+  hero handed to a callee that needs his name as words passes a predicate `typeof hero.name === 'string'`; a caster
+  passes `servesARealm` (only a hero of a realm acts in a phase), so each `c.player` after it is a realm's index. Each check
   never fails on a sound save, and throws if it does. A typed callee that takes a value its caller may lack (a hero's
   province) gets it through a check that throws for none, named for the invariant that makes it sure.
 - **A return type written on a callee that keeps its line** is a claim, checked once that file is freed; write in a
@@ -171,7 +181,8 @@ added under its kind.
   (the druid's line's channel, a guardian's perk's words) is `string | undefined` in the facts file, and its words read
   it `${String(x)}`; a shared type its readers show too narrow is widened (a fighter's kind may be a Mirror Image's
   phantom), and one they show too wide is narrowed (a guardian's weakness has its name and words). `armyUnitName`
-  takes a `UnitType`, so a function that names a unit types that field `UnitType` in its own shape.
+  takes any unit's type, as a save holds it (a type with no pool of names draws the Guard's). A saved field the code
+  writes `|| null` to is nullable in the schema (a spied hero's alignment and race).
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does.
 - **A ternary or a list of many kinds of line** can be "too complex to represent" (TS2590) as `NarrativeLine`: type it

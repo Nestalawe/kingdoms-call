@@ -2246,9 +2246,16 @@ export const CLAIRVOYANCE_CASES: CastSpellOrderCase[] = [
           ),
           skills: read?.['skills'],
           kingdom: read?.['kingdom'],
+          isKing: read?.['isKing'],
           turn: read?.['turn'],
         },
-        want: { told: true, skills: { melee: 4, tactical: 2, march: 1 }, kingdom: realmName(o, 1), turn: o.turn },
+        want: {
+          told: true,
+          skills: { melee: 4, tactical: 2, march: 1 },
+          kingdom: realmName(o, 1),
+          isKing: false,
+          turn: o.turn,
+        },
       };
     },
   },
@@ -3544,6 +3551,26 @@ export const CONTROL_UNDEAD_CASES: CastSpellOrderCase[] = [
           ),
         },
         want: { own: true, victim: [1], others: true },
+      };
+    },
+  },
+  {
+    name: "Control Undead wrests a wandering hero's undead company: onlookers are told of him with no realm",
+    stage(b) {
+      const m = leads(wanderer(b), [skeletal('Rattling Guard')]);
+      const s = necromancer(b, 1, 'Control Undead', m.id);
+      return { ...s, mark: m };
+    },
+    check(o, s) {
+      const m = must(s.mark, 'the mark');
+      return {
+        got: {
+          others: anySays(
+            o,
+            `✨ ${s.hero.name} (${realmName(o, 0)})'s Control Undead wrests the Rattling Guard from ${m.name} in ${b0(s).name} — it now marches under ${s.hero.name}'s banner.`,
+          ),
+        },
+        want: { others: true },
       };
     },
   },

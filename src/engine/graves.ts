@@ -6,6 +6,7 @@ import { effSkillOf } from './heroes/skills-and-hp.ts';
 import { armyUnitName } from './dice-and-army-names.ts';
 import { noteServedRealm } from './heroes/charms-and-neutrals.ts';
 import { discSum } from './discoveries.ts';
+import type { Army } from '../schemas/saved-game-state.ts';
 
 // ══ GRAVEYARD LORE ════
 // A character with any Necromancy at all feels the battlefield dead underfoot. At the end of their
@@ -23,7 +24,7 @@ import { discSum } from './discoveries.ts';
 // the report can say "at least". A partial reading with nothing to show is NOT treated as "seen
 // bare" — the title simply found no crack or elite dead there, which says nothing about whether
 // other graves lie in the province.
-export function noteGraveIntel(pl, provId, turn, graves, opts) {
+export function noteGraveIntel(pl, provId, turn, graves, opts?) {
   if (!pl || provId == null) return;
   if (!pl._graveIntel || typeof pl._graveIntel !== 'object' || Array.isArray(pl._graveIntel)) pl._graveIntel = {};
   const partial = !!(opts && opts.partial);
@@ -66,7 +67,7 @@ export function skeletalRaiseCount(lvl) {
   lvl = lvl || 0;
   return lvl >= 5 ? 3 : lvl >= 3 ? 2 : 1;
 }
-export function takeBestGrave(prov) {
+export function takeBestGrave(prov): Army | null | undefined {
   const gs = (prov && prov.battleGraves) || [];
   if (!gs.length) return null;
   const qi = (g) => {
