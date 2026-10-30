@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, SKILL_LABELS } from '../army-tables.ts';
 import { botDrillUseful } from '../bots/economy.ts';
@@ -72,6 +71,50 @@ import {
 } from './war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { botPracticeSkill } from '../bots/strategy.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import type { Character, Item, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext, TurnOrder } from '../turn/context.ts';
+
+/** A hero's order as the dispatch reads it: the turn's order, with the marks the engine and a bot's plan write on it
+ *  (the hero whose battle he joined, a bot's least share of his hit points for a Search, the rumour's band a bot's
+ *  Search waits for, and the lower band he takes at full health). */
+type AnOrderAsTheDispatchReadsIt = TurnOrder & {
+  readonly _unifiedWith?: number | null | undefined;
+  readonly _botMinHp?: number | undefined;
+  readonly _botIfRumour?: number | undefined;
+  readonly _botIfRumourLow?: number | undefined;
+  readonly _botIfRumourLowHp?: number | undefined;
+};
+/** An order's province as the dispatch guards it (an older order may hold it as words, or as none). */
+interface AnOrdersProvinceAsTheDispatchGuardsIt {
+  readonly prov?: number | string | null | undefined;
+}
+/** An item as a spell item's Use Item reads it: its id and name, and its effect (or none: a gap among the items, or an
+ *  item with no effect, in an older save). */
+interface AnItemAsTheSpellItemReadsIt {
+  readonly id: Item['id'];
+  readonly name: string;
+  readonly effect?: Pick<Item['effect'], 'stat' | 'spell'> | null | undefined;
+}
+/** The heroes' orders for the turn as the dispatch reads them while the turn runs (the saved state holds them
+ *  cleared, as nulls): by hero (or none), then by phase (or none). */
+type TheTurnsOrdersAsTheDispatchReadsThem = Readonly<
+  Partial<Record<string, readonly (TurnOrder | null | undefined)[]>>
+>;
+/** A hero's skills as the dispatch reads them by any skill's name (a season's snapshot, or his own). */
+type SkillsByAnyName = Readonly<Partial<Record<string, number>>>;
+/** A level in a skill named by any name, from a hero's skills: `|| 0`, as before (a missing one, or NaN, is 0). */
+const aLevelByAnyName = (skills: SkillsByAnyName, name: string) => Number(skills[name]) || 0;
+/** An order's target in words, as `String()` makes them: the turn's order holds words, but a save may hold an item's id
+ *  as a number (tests/unit/order-dispatch-called-directly.test.ts stages one), so the words are made as before. */
+const aTargetInWords = (target: string | number) => String(target);
+/** The province a hero stands in, as the orders' typed functions take it: every living hero stands in a province of
+ *  the map (the matrix's invariant "armies in real provinces"), so there is always one; for none, a TypeError, as the
+ *  first read of it there would throw. */
+function theProvinceAnOrderTakes(prov: Province | undefined): Province {
+  if (!prov) throw new TypeError("Cannot read properties of undefined (reading 'id')");
+  return prov;
+}
 
 // ── ONE HERO'S ORDER, CHECKED AND HANDED TO ITS ORDER'S FUNCTION (plan P1-08j9: lifted out of resolveTurn) ────
 // processOrder carries out one hero's order for one phase: resolveTurn's phase loop calls it for each hero in turn.
@@ -83,18 +126,24 @@ import { botPracticeSkill } from '../bots/strategy.ts';
 // order to its own function (src/engine/orders/, rows j1 to j8). It takes the turn's context first
 // (src/engine/turn/context.ts).
 // Process one order
-export function processOrder(turnContext, c, o, ph) {
+export function processOrder(
+  turnContext: TurnContext,
+  c: Character | null | undefined,
+  o: AnOrderAsTheDispatchReadsIt | null | undefined,
+  ph: number,
+) {
   const { G, _botPlayerIdx } = turnContext;
   if (!c || !c.alive || !o) return;
   // If this hero was unified into another's battle this phase, their own order is superseded
   if (o._unifiedWith != null) {
+    const theLeadersId = o._unifiedWith;
     // filed under the hero himself (2026-10-09, Toby item 1): with no charId it fell into Realm Events
     emit(turnContext, {
       type: 'move',
       fact: {
         kind: "a hero's order is superseded: he joined another hero's battle",
         heroName: c.name,
-        joinedHeroName: G.characters.find((x) => x.id === o._unifiedWith)?.name || null,
+        joinedHeroName: (G.characters.find((x) => x.id === theLeadersId)?.name ?? '') || null,
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
@@ -105,7 +154,9 @@ export function processOrder(turnContext, c, o, ph) {
   }
   turnContext._logCtx = { charId: c.id, phase: ph }; // every line emitted inside here inherits this
   const rawAction = (o.action || 'defend').toLowerCase().trim();
-  let action = PHASE_ACTION_MAP[rawAction] || 'defend';
+  // the actions by any name an order gives
+  const actionsByName: Readonly<Partial<Record<string, string>>> = PHASE_ACTION_MAP;
+  let action = (actionsByName[rawAction] ?? '') || 'defend';
   let _fmSlip = false; // MARCH L7 Forced March: set below when a forced-march move should try to slip past battle
   // 2026-09-28: a BOT slayer's second / third lair of the year carries _botMinHp — if an earlier fight left him
   // below that share of his HP, he rests instead of walking into another guardian half-dead. (Never set on
@@ -113,32 +164,34 @@ export function processOrder(turnContext, c, o, ph) {
   // 2026-09-29 (Toby): a BOT's Practice on a skill that has reached 5 SINCE its orders were written (an earlier
   // phase's practice or experience in the field this turn) switches to its next skill below 5 — unless it is
   // teaching a comrade practising that skill beside it this phase, or drilling troops that can still improve.
-  if (action === 'practice' && c.player != null && _botPlayerIdx && _botPlayerIdx.has(c.player) && o.target) {
-    const _S = String(o.target);
-    const _sn = (G._phaseSkillSnapshot || {})[c.id] || c.skills || {};
-    const _myL = _sn[_S] || 0;
+  if (action === 'practice' && c.player != null && asItsGuardReadsIt(_botPlayerIdx)?.has(c.player) && o.target) {
+    const _S = aTargetInWords(o.target);
+    const _sn = G._phaseSkillSnapshot?.[c.id] ?? asItsGuardReadsIt(c.skills) ?? {};
+    const _myL = aLevelByAnyName(_sn, _S);
     if (_myL >= 5 && !((_S === 'tactical' || _S === 'naval') && botDrillUseful(c, _S))) {
-      const _teaching = (G.characters || []).some(
-        (t) =>
-          t &&
-          t.alive &&
+      const _teaching = (asItsGuardReadsIt(G.characters) ?? []).some(
+        (t: Character | null | undefined) =>
+          t?.alive &&
           t.id !== c.id &&
           t.player === c.player &&
           t.location === c.location &&
           (() => {
-            const k = (G.turnOrders[t.id] || [])[ph];
+            const turnOrders: TheTurnsOrdersAsTheDispatchReadsThem = G.turnOrders;
+            const k = (turnOrders[t.id] ?? [])[ph];
             return (
               k &&
               normaliseAction(k) === 'practice' &&
-              String(k.target) === _S &&
-              (((G._phaseSkillSnapshot || {})[t.id] || t.skills || {})[_S] || 0) < _myL
+              aTargetInWords(k.target) === _S &&
+              aLevelByAnyName(G._phaseSkillSnapshot?.[t.id] ?? asItsGuardReadsIt(t.skills) ?? {}, _S) < _myL
             );
           })(),
       );
       if (!_teaching) {
         const _nx = botPracticeSkill(c);
         if (_nx) {
-          o = { ...o, target: _nx, desc: 'Practice ' + (SKILL_LABELS[_nx] || _nx) };
+          // the skills' labels by any name
+          const skillLabels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
+          o = { ...o, target: _nx, desc: 'Practice ' + ((skillLabels[_nx] ?? '') || _nx) };
         } else {
           action = 'defend';
         }
@@ -149,7 +202,7 @@ export function processOrder(turnContext, c, o, ph) {
     action === 'search' &&
     o._botMinHp &&
     c.player != null &&
-    (c.hp != null ? c.hp : c.maxHp || 20) < (c.maxHp || 20) * o._botMinHp
+    (asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20)) < (c.maxHp || 20) * o._botMinHp
   ) {
     emit(turnContext, {
       type: 'explore',
@@ -164,15 +217,14 @@ export function processOrder(turnContext, c, o, ph) {
   // this lair, at the band the order names (or the lower band for a Weak lair when he is at full health).
   if (action === 'search' && o._botIfRumour && c.player != null) {
     const _pv = G.world.provinces[c.location];
-    const _f = _pv && (_pv.features || [])[parseInt(o.target)];
-    const _r = _f && _f._rumourOdds && _f._rumourOdds[c.player];
-    const _hpR = (c.hp != null ? c.hp : c.maxHp || 20) / (c.maxHp || 20);
+    const _f = _pv && (asItsGuardReadsIt(_pv.features) ?? [])[parseInt(o.target)];
+    const _r = _f?._rumourOdds?.[c.player];
+    const _hpR = (asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20)) / (c.maxHp || 20);
     const _ok = !!(
-      _r &&
-      _r.charId === c.id &&
+      _r?.charId === c.id &&
       _r.turn === G.turn &&
       (_r.band >= o._botIfRumour ||
-        (o._botIfRumourLow && _r.band >= o._botIfRumourLow && _hpR >= (o._botIfRumourLowHp || 0.95)))
+        (o._botIfRumourLow && _r.band >= o._botIfRumourLow && _hpR >= ((o._botIfRumourLowHp ?? 0) || 0.95)))
     );
     if (!_ok) {
       emit(turnContext, {
@@ -195,8 +247,14 @@ export function processOrder(turnContext, c, o, ph) {
   // untrained heroes died to Moderate guardians nobody chose (40 bot games: 12 such deaths). Every
   // bot search, and every player search from this build on, carries `prov`, the province it was
   // written for; standing anywhere else, the searcher does not go in.
-  if (action === 'search' && o.prov != null && o.prov !== '' && String(o.prov) !== String(c.location)) {
-    const _pw = G.world.provinces[parseInt(o.prov)];
+  const theOrderAsItsProvinceIsGuarded: AnOrdersProvinceAsTheDispatchGuardsIt = o;
+  if (
+    action === 'search' &&
+    theOrderAsItsProvinceIsGuarded.prov != null &&
+    theOrderAsItsProvinceIsGuarded.prov !== '' &&
+    String(theOrderAsItsProvinceIsGuarded.prov) !== String(c.location)
+  ) {
+    const _pw = G.world.provinces[parseInt(String(theOrderAsItsProvinceIsGuarded.prov))];
     emit(turnContext, {
       type: 'explore',
       fact: {
@@ -213,7 +271,7 @@ export function processOrder(turnContext, c, o, ph) {
   const target = o.target || '';
   const extra = o.extra || '';
   const prov = provOf(turnContext, c);
-  const player = G.players[c.player];
+  const player = c.player === null ? undefined : G.players[c.player]; // a wanderer's: none
 
   // ── BATTLE LOCK, RE-CHECKED AT THE MOMENT OF MARCHING ────
   // STAGE 1b already pins army-leaders standing in a contested province, but it is computed ONCE,
@@ -235,19 +293,19 @@ export function processOrder(turnContext, c, o, ph) {
     (action === 'move' || action === 'encounter' || action === 'pursue') &&
     prov &&
     prov._battleUnresolved &&
-    (c.armies || []).length > 0
+    (asItsGuardReadsIt(c.armies) ?? []).length > 0
   ) {
     const _foeHere =
-      (G.characters || []).some(
-        (x) =>
+      (asItsGuardReadsIt(G.characters) ?? []).some(
+        (x: Character | null | undefined) =>
           x &&
           (x.alive || x._leaderlessHost) &&
           x.id !== c.id &&
           x.location === prov.id &&
-          (x.armies || []).length > 0 &&
+          (asItsGuardReadsIt(x.armies) ?? []).length > 0 &&
           (x.player == null || (x.player !== c.player && areEnemies(turnContext, c.player, x.player))),
       ) ||
-      (prov.owner !== c.player && (prov.neutralDefenders || []).length > 0);
+      (prov.owner !== c.player && (asItsGuardReadsIt(prov.neutralDefenders) ?? []).length > 0);
     if (_foeHere) {
       emit(turnContext, {
         type: 'combat',
@@ -290,8 +348,10 @@ export function processOrder(turnContext, c, o, ph) {
 
   // ── ONCE PER TURN ── a mastery order may be attempted only once per turn per character.
   if (MASTERY_ORDER_KEYS.has(action)) {
-    c._masteryOrderUsed = c._masteryOrderUsed || {};
-    if (c._masteryOrderUsed[action] === G.turn) {
+    c._masteryOrderUsed = c._masteryOrderUsed ?? {};
+    // the turn each mastery was last used, by any order's name
+    const theMasteriesUsed: Partial<Record<string, number>> = c._masteryOrderUsed;
+    if (theMasteriesUsed[action] === G.turn) {
       emit(turnContext, {
         type: 'system',
         fact: { kind: 'a hero has already used a mastery this turn', heroName: c.name, action },
@@ -301,7 +361,7 @@ export function processOrder(turnContext, c, o, ph) {
       turnContext._logCtx = { charId: null, phase: null };
       return;
     }
-    c._masteryOrderUsed[action] = G.turn;
+    theMasteriesUsed[action] = G.turn;
   }
 
   // ── MARCH L7 — Forced March ── is now a MOVE with a 50% chance to slip past a battle this
@@ -323,10 +383,13 @@ export function processOrder(turnContext, c, o, ph) {
   }
 
   // ── a SPELL ITEM used via Use Item becomes a cast of its spell at a flat 95%. ──
-  let _itemCast = null;
+  let _itemCast: { item: string; spell: string | undefined } | null = null;
   if (action === 'use_item') {
-    const _sit = (c.items || []).find((x) => x && (String(x.id) === String(target) || x.name === target));
-    if (_sit && _sit.effect && _sit.effect.stat === 'castSpell' && SPELL_DEFS_P[_sit.effect.spell]) {
+    const theItems: readonly (AnItemAsTheSpellItemReadsIt | null | undefined)[] = asItsGuardReadsIt(c.items) ?? [];
+    const _sit = theItems.find((x) => x && (String(x.id) === aTargetInWords(target) || x.name === target));
+    // the spells' rows by any name an item gives (the key "undefined" for none, as JavaScript reads it)
+    const spellDefs: Readonly<Partial<Record<string, object>>> = SPELL_DEFS_P;
+    if (_sit?.effect?.stat === 'castSpell' && spellDefs[String(_sit.effect.spell)]) {
       _itemCast = { item: _sit.name, spell: _sit.effect.spell };
       action = 'cast_spell';
     }
@@ -406,7 +469,7 @@ export function processOrder(turnContext, c, o, ph) {
       resolvePickUpArmyOrder(turnContext, c, target, prov);
       break;
     case 'encounter':
-      resolveEncounterCharacterOrder(turnContext, c, ph, target, prov);
+      resolveEncounterCharacterOrder(turnContext, c, ph, target, theProvinceAnOrderTakes(prov));
       break;
 
     case 'steal':
@@ -414,7 +477,7 @@ export function processOrder(turnContext, c, o, ph) {
       break;
 
     case 'defend':
-      resolveDefendOrder(turnContext, c, o, ph, prov);
+      resolveDefendOrder(turnContext, c, o, ph, theProvinceAnOrderTakes(prov));
       break;
 
     // the standalone 'pursue' case is removed — Pursue is folded into Encounter Character (see
@@ -458,30 +521,30 @@ export function processOrder(turnContext, c, o, ph) {
 
     // ══ L7/L9 MASTERY ORDERS (batch 2c-i — immediate strikes) ════
     case 'challenge':
-      resolveChallengeOrder(turnContext, c, target, prov);
+      resolveChallengeOrder(turnContext, c, target, theProvinceAnOrderTakes(prov));
       break;
     case 'rampage':
-      resolveRampageOrder(turnContext, c, target, prov);
+      resolveRampageOrder(turnContext, c, target, theProvinceAnOrderTakes(prov));
       break;
     case 'rain_of_arrows':
-      resolveRainOfArrowsOrder(turnContext, c, target, prov);
+      resolveRainOfArrowsOrder(turnContext, c, target, theProvinceAnOrderTakes(prov));
       break;
     case 'snipers_mark':
-      resolveSnipersMarkOrder(turnContext, c, target, prov);
+      resolveSnipersMarkOrder(turnContext, c, target, theProvinceAnOrderTakes(prov));
       break;
 
     // ══ L7/L9 MASTERY ORDERS (batch 2c-ii — battle-strength flags) ════
     case 'feigned_retreat':
-      resolveFeignedRetreatOrder(turnContext, c, prov);
+      resolveFeignedRetreatOrder(turnContext, c, theProvinceAnOrderTakes(prov));
       break;
     case 'grand_stratagem':
-      resolveGrandStratagemOrder(turnContext, c, prov);
+      resolveGrandStratagemOrder(turnContext, c, theProvinceAnOrderTakes(prov));
       break;
     case 'lightning_advance':
-      resolveLightningAdvanceOrder(turnContext, c, prov);
+      resolveLightningAdvanceOrder(turnContext, c, theProvinceAnOrderTakes(prov));
       break;
     case 'raid_coast':
-      resolveRaidTheCoastOrder(turnContext, c, prov);
+      resolveRaidTheCoastOrder(turnContext, c, theProvinceAnOrderTakes(prov));
       break;
     // ══ L7/L9 MASTERY ORDERS (batch 2c-iii — specials) ════
     case 'wild_calling':

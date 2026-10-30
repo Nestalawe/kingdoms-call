@@ -710,6 +710,10 @@ describe("a spell item's Use Item", () => {
     ['an item with another power', (it: Record<string, unknown>) => ({ ...it, effect: { stat: 'heal', bonus: 2 } })],
     ['an item with no power', (it: Record<string, unknown>) => ({ ...it, effect: undefined })],
     [
+      'an item of spells that names no spell',
+      (it: Record<string, unknown>) => ({ ...it, effect: { stat: 'castSpell' } }),
+    ],
+    [
       'an item with another power that names a spell',
       (it: Record<string, unknown>) => ({ ...it, effect: { stat: 'ward', spell: 'Bless Province' } }),
     ],
@@ -782,9 +786,25 @@ describe("a bot's Practice on a skill at 5, as the season began", () => {
       practised(
         standIn(() => {
           dispatch(b, c, o('practice', 'melee'));
+          dispatch(b, c, o('practice', 'tactical'));
         }),
       ),
-    ).toEqual(['melee']);
+    ).toEqual(['melee', 'tactical']);
+  });
+
+  test('a save missing the heroes: no comrade to teach, so he switches', () => {
+    const b = fresh();
+    bot(b);
+    const c = at(b);
+    c.skills = { melee: 5, tactical: 3, march: 1 };
+    b.G.characters = undefined as unknown as Character[];
+    expect(
+      practised(
+        standIn(() => {
+          dispatch(b, c, o('practice', 'melee'));
+        }),
+      ),
+    ).toEqual(['tactical']);
   });
 
   test("a comrade's level is read as the season began too", () => {
@@ -797,6 +817,23 @@ describe("a bot's Practice on a skill at 5, as the season began", () => {
     b.G.turnOrders = { [t.id]: [o('practice', 'melee')] };
     snapshot(b);
     t.skills['melee'] = 5; // risen since; the season's record still says 2, so he is still a pupil
+    expect(
+      practised(
+        standIn(() => {
+          dispatch(b, c, o('practice', 'melee'));
+        }),
+      ),
+    ).toEqual(['melee']);
+  });
+
+  test("a comrade with no skills in the save, and no record of the season's, is a pupil at 0", () => {
+    const b = fresh();
+    bot(b);
+    const c = at(b);
+    c.skills = { melee: 5, tactical: 3, march: 1 };
+    const t = at(b);
+    t.skills = undefined as unknown as Record<string, number>;
+    b.G.turnOrders = { [t.id]: [o('practice', 'melee')] };
     expect(
       practised(
         standIn(() => {

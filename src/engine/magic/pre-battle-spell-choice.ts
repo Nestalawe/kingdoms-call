@@ -1,9 +1,18 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { BATTLE_MAGIC_SPELL_NAMES } from '../army-tables.ts';
 import { MISSILE_ARMIES_MASTER } from '../battle/ladder.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import type { Army, Character } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+
+/** The enemy commander as the spell's use reads him: a hero, his Tactical halved or his Druid negated this battle. */
+type AnEnemyCommanderAsTheSpellChoiceReadsHim = Character & {
+  readonly _tacticalHalved?: boolean | undefined;
+  readonly _druidNegated?: boolean | undefined;
+};
+/** The enemy's units as the spell's use reads them (or none): each one's type, and whether it is risen dead. */
+type TheEnemysUnitsAsTheSpellChoiceReadsThem = readonly Pick<Army, 'type' | '_isSkeletal'>[] | null | undefined;
 
 // ── PRE-BATTLE SPELL CHOICE (plan P1-08c: lifted out of resolveTurn) ────
 // Which battle spell a commander casts before the armies meet: one from the school in the Encounter Plan that has
@@ -24,10 +33,15 @@ export const BATTLE_MAGIC_SPELL_SET = new Set(BATTLE_MAGIC_SPELL_NAMES);
 // Blast need an enemy commander with the skill they negate; Curse needs a commander with any
 // curseable skill; Control Undead and Holy Symbol need enemy undead; Spiritwrack needs enemy
 // missile troops. Fireball and Lightning Bolt need only enemies on the field.
-export function battleSpellUseful(turnContext, spellName, enemyCmdr, enemyArmies) {
-  const armies = enemyArmies || [];
+export function battleSpellUseful(
+  turnContext: TurnContext,
+  spellName: string,
+  enemyCmdr: AnEnemyCommanderAsTheSpellChoiceReadsHim | null | undefined,
+  enemyArmies: TheEnemysUnitsAsTheSpellChoiceReadsThem,
+) {
+  const armies = enemyArmies ?? [];
   const hasUndead = armies.some(
-    (a) => a._isSkeletal || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(a.type || ''),
+    (a) => (a._isSkeletal ?? false) || /Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i.test(a.type || ''),
   );
   switch (spellName) {
     case 'Telekinetic Storm':
@@ -51,15 +65,24 @@ export function battleSpellUseful(turnContext, spellName, enemyCmdr, enemyArmies
       return armies.length > 0;
   }
 }
-export function pickBattleSpell(turnContext, tactics, heroChar, enemyCmdr, enemyArmies) {
-  tactics = tactics || [];
+export function pickBattleSpell(
+  turnContext: TurnContext,
+  tactics: readonly (string | null | undefined)[] | null | undefined,
+  heroChar: Character,
+  enemyCmdr: AnEnemyCommanderAsTheSpellChoiceReadsHim | null | undefined,
+  enemyArmies: TheEnemysUnitsAsTheSpellChoiceReadsThem,
+) {
+  tactics = tactics ?? [];
+  // the battle spells by any school a plan names
+  const spellsBySchool: Readonly<Partial<Record<string, readonly string[]>>> = BATTLE_SPELLS_BY_SCHOOL;
   // Preferred: an explicit school choice — cast a random USEFUL spell the commander knows from
   // that school. Spells with no valid target on this field (e.g. Control Undead against a living
   // enemy) are excluded from the auto-pick, so the phase is never wasted on a guaranteed no-op.
   for (const t of tactics) {
-    if ((t || '').toUpperCase().startsWith('CS:')) {
-      const school = t.slice(3).toLowerCase().trim();
-      const pool = (BATTLE_SPELLS_BY_SCHOOL[school] || []).filter((sp) =>
+    const tactic = t ?? ''; // a tactic, or none (which names no school)
+    if (tactic.toUpperCase().startsWith('CS:')) {
+      const school = tactic.slice(3).toLowerCase().trim();
+      const pool = (spellsBySchool[school] ?? []).filter((sp) =>
         battleSpellUseful(turnContext, sp, enemyCmdr, enemyArmies),
       );
       if (pool.length && effStat(turnContext, heroChar, school) >= 1) {
@@ -69,11 +92,14 @@ export function pickBattleSpell(turnContext, tactics, heroChar, enemyCmdr, enemy
   }
   // Legacy: an explicit single-spell choice. An explicitly named spell is HONOURED even if it has
   // no valid target — the player asked for it by name, and the handler narrates the miss.
+  // the spells' rows by any name a plan gives
+  const spellDefs: Readonly<Partial<Record<string, { readonly school: string }>>> = SPELL_DEFS_P;
   for (const t of tactics) {
-    if ((t || '').toUpperCase().startsWith('CA:')) {
-      const spellName = t.slice(3);
+    const tactic = t ?? ''; // a tactic, or none (which names no spell)
+    if (tactic.toUpperCase().startsWith('CA:')) {
+      const spellName = tactic.slice(3);
       if (BATTLE_MAGIC_SPELL_SET.has(spellName)) {
-        const school = SPELL_DEFS_P[spellName]?.school || 'elemental';
+        const school = (spellDefs[spellName]?.school ?? '') || 'elemental';
         if (effStat(turnContext, heroChar, school) >= 1) return { spellName, school };
       }
     }
