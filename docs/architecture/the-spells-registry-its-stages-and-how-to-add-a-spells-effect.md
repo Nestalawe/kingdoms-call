@@ -109,6 +109,16 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
 
   Each runner takes the spell's name, as the order holds it. A row may hold `asAnOrder` alone (Bless Province, Part
   Sea, …): what an action spell does stays in the order's code until the family's second slice.
+- **The Cast Spell order's spells** (P1-19z, `src/engine/orders/spells/`, outside the registry: a spell's work raises a
+  hero, floods a province, draws dice and writes lines, which an effect of the registry may not do). Each of the 30
+  action spells is its branch of `resolveCastSpellOrder`'s old chain, moved as it was into a function `work<Spell>`, in
+  the file of its school (the Charm's backlash with the psychic spells). It takes one object of the 14 names the branch
+  reads from the order (`TheNamesAnActionSpellIsHanded`) and returns false where the cast ends here (no skill gain), true
+  where the spell is worked. `the-action-spells-the-cast-spell-order-works-by-slug.ts` is the table, `satisfies
+  Record<ActionSpellSlug, …>`; `theWorkOfTheActionSpell` finds a work by the spell's `fn`. A spell with a row has its
+  slug there; the 12 without an effect yet (`ACTION_SPELLS_THE_REGISTRY_HOLDS_NO_EFFECT_FOR`) have their slug, name and
+  `fn` in the same content file. A fizzled Charm's backlash is the Charm's `whenItFizzles`. The numbers stay in the
+  moved code: the family's second slice.
 - **The spell charm and the Wailing Phylactery** are the items' registry's (P1-19y): `orderOutcome`'s **an item's power
   used** gains a spell charm's (`'it casts the spell it holds'`, by `{ stat: 'castSpell' }`), which `processOrder` asks
   to make its Use Item a cast; and **a spell's cast cannot fail** (`{ stat: 'necroAuto' }`: the first Necromancy spell
@@ -152,3 +162,7 @@ For a stage already written:
 4. State its numbers in its blurb and its rulebook row (the words test reads them).
 
 A new stage's signature goes into `TheStagesOfEachHookPoint`, with its runner in the spells' registry.
+
+For an action spell (the Cast Spell order's): write its work in its school's file under `src/engine/orders/spells/`, add
+its slug to `ActionSpellSlug` and its work to the table, and, for a spell with no row yet, its slug, name and `fn` to
+`ACTION_SPELLS_THE_REGISTRY_HOLDS_NO_EFFECT_FOR`.

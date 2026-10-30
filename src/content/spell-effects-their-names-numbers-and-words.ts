@@ -312,6 +312,25 @@ export const SPELL_EFFECTS_THE_REGISTRY_HOLDS = {
 /** A spell the registry holds, by its slug. */
 export type SpellSlug = keyof typeof SPELL_EFFECTS_THE_REGISTRY_HOLDS;
 
+/** The action spells the registry holds no effect for yet (plan P1-19z): each one's slug, name as SPELL_DEFS_P keys it and
+ *  `fn`, so that the Cast Spell order's table (src/engine/orders/spells/) finds its work by its slug, as it does for a
+ *  spell with a row above. A spell moves up to a row, with its numbers, when the family's second slice gives it an effect
+ *  at a stage: until then no row waits for its code. */
+export const ACTION_SPELLS_THE_REGISTRY_HOLDS_NO_EFFECT_FOR = {
+  resurrect: { name: 'Resurrect', fn: 'white_resurrect' },
+  clairvoyance: { name: 'Clairvoyance', fn: 'psychic_clairvoyance' },
+  'illusory-terrain': { name: 'Illusory Terrain', fn: 'illusory_terrain' },
+  'hide-lairs': { name: 'Hide Lairs', fn: 'illusory_hide_feature' },
+  'elemental-summon': { name: 'Elemental Summon', fn: 'elemental_summon' },
+  'skeletal-armies': { name: 'Skeletal Armies', fn: 'necromancy_skeletal' },
+  sanctuary: { name: 'Sanctuary', fn: 'white_sanctuary' },
+  'phantom-host': { name: 'Phantom Host', fn: 'illusory_phantomhost' },
+  veil: { name: 'Veil', fn: 'illusory_veil' },
+  cataclysm: { name: 'Cataclysm', fn: 'elemental_cataclysm' },
+  'raise-wraiths': { name: 'Raise Wraiths', fn: 'necromancy_wraiths' },
+  'deaths-dominion': { name: "Death's Dominion", fn: 'necromancy_dominion' },
+} as const satisfies Record<string, Pick<ASpellAsItsTextsWriteIt, 'name' | 'fn'>>;
+
 /** The chance a unit's strike before an army battle lands (plan P1-19's spells family, row P1-19v; until then written in
  *  primalStrikeChance, src/engine/chances-and-lair-grades.ts): a beast's (any unit's that doesn't fly), 30% and 10% for
  *  each level of its commander's Druid, with what his items add, to 90% at most; a flying unit's (the winged riders',

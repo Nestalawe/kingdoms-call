@@ -11,8 +11,7 @@
 // P1-19u's base; P1-19w's two functions, which take pcCastCombatSpell's 7 cases of the spells that harm, didn't exist
 // on its base; on P1-19x's, pcCastCombatSpell held its other 5 cases, pcAct its check of Invisibility, and
 // writeTheLineOfACombatSpell didn't exist; blessWardNegates, P1-19y's, named none on its base, and resolveCastSpellOrder,
-// which keeps its 30 spells' branches and a fizzled Charm's backlash until P1-19z, isn't listed: the ratchet counts its
-// 4 names gone), as the unit-name and item-effect tests were: the one exception to refactor-only's rule that new tests
+// P1-19z's, held its 30 spells' branches and a fizzled Charm's check: 31), as the unit-name and item-effect tests were: the one exception to refactor-only's rule that new tests
 // pass before and after (Theo, 2026-10-25; the spells family's Decision 5).
 // Level 0 (static): the files' syntax trees and the content's spells as written; nothing runs.
 import fs from 'node:fs';
@@ -73,6 +72,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'P1-19x, a mirror image is disbelieved',
   ],
   ['src/engine/magic/plague-and-bless-ward.ts', 'blessWardNegates', 'P1-19y, a Bless ward may turn it aside'],
+  [
+    'src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts',
+    'resolveCastSpellOrder',
+    "P1-19z, the order's spells by slug (its chain and a fizzled Charm's check gone)",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
