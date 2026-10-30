@@ -401,7 +401,7 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
     case "a fighter's shot flies wide":
       return `  ${fact.actorName}'s shot flies wide.`;
     case "a guardian's perk is named":
-      return `  🜏 ${fact.meName} — ${fact.pName}: ${fact.pDesc}.`;
+      return `  🜏 ${fact.meName} — ${fact.pName}: ${String(fact.pDesc)}.`;
     case 'a druid has hunted this kind of beast before':
       return `  🍃 ${fact.aName} has hunted this kind before — the beast's blows will land at half force (Druid ${String(fact.aDruidBeastWard)}).`;
     case 'one fighter has the initiative':

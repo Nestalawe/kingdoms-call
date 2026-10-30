@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-98 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(64: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+96 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(62: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -42,248 +42,139 @@ table with a key left out.
   caller still keeping its line may need stays, its parameter typed optional; a `no-unsafe-*` finding from a callee
   that keeps its line is met by typing the value where the freed file takes it. A finding that can't be fixed without
   freeing another file waits for that file.
-- **What it took, file by file** (P1-10b2: `army-tables.ts`, `units/movement.ts`, `battle/strength.ts`, 34,104
-  bytes): the line off, strict TypeScript reported 103 errors; about 40 annotations and 9 statements cleared them, then
-  the type-aware lint found 55 findings there, all fixed (mostly `?? []` for `|| []` on a list, and `a?.type === x`
-  for `a && a.type === x`). Three forms keep a value where `??` wouldn't:
-  - **`x || 0` on a number that is worked out** (a skill level, a strength taken off) becomes `Number(x) || 0`, not
-    `x ?? 0`: the two differ when `x` is `NaN`, which `|| 0` turns into 0. `?? 0` is right where `x` can't be `NaN`
-    (a number from the data file, a field compared at once in a way `NaN` and 0 both fail).
-  - **`(a && (a.unitName || a.type)) || 'unit'`**, where `''` may reach, is read into a `const` first:
-    `const nameOrType = a ? a.unitName || a.type : '';`, then `nameOrType || 'unit'`.
-  - **A function that reads an old save** (`migrateLegacyUnitNames`) takes the old save's shape, declared beside it
-    with every field it reads optional, so each of its guards stays needed; today's `GameState` passes.
-  A guard lint calls needless is dropped only where the code would already have thrown without it (in
-  `abilityMissileUnits`, `a && a.type` after a filter that reads `a.type` of every unit).
-- (P1-10b3: `battle/fates.ts`, 14,606 bytes): 56 errors, 30 of them a parameter with no type; then 13 typed lint
-  findings, all fixed. Three more forms:
-  - **A value parsed from JSON** (`battleTallyLine` reads each force's row back from its line's words) is typed
-    `unknown`, and each field is read through `fieldAsJavaScriptReadsIt(value, key)`, which does what `value[key]` does
-    (undefined where there is none, a `TypeError` for `null`), so a row the engine never writes still gives the tally it
-    gave. Checking each field's type instead would be shorter, but it changes what such a row gives.
-    `tests/unit/the-battle-fate-and-tally-lines-no-matrix-game-reaches-keep-their-values.test.ts` holds those rows.
-  - **A `let` set inside a `forEach` callback and read after it** (`let best = null`) is still `null` to the compiler,
-    so a property read after it fails (TS2339 on `never`). A `for … of` loop over the same list, with `continue` for the
-    callback's `return`, keeps the order and lets the compiler see the assignment.
-  - **A callback option a winner never calls** (`demoteAt`) is required only where it is called: `rollUnitFates`'
-    options are a union on `won`, `{ won: true }` or `{ won: false; demoteAt }`, so no caller passes a dummy and no
-    `?.` hides a missing one.
-- (P1-10b4: `battle/lines.ts`, 42,398 bytes): 195 errors, 162 of them a parameter with no type; then 4 typed lint
-  findings, all fixed. Freeing it also cleared the 5 findings `battle/ladder.ts` held for its calls into it (a value
-  from a file that keeps the line is `any`), so `eslintSuppressions` fell. Four more forms:
-  - **A function that adds fields to the object it is handed** (`battleRegrid` adds `units` and `total` to a grid)
-    returns `Object.assign(g, { units, total })`: the same object, the same fields in the same order, and its type is
-    the grid with them (`BattleGrid`), so no reader needs a check for them.
-  - **A list's element read where the code has just made it sure** (`cav[i]` after `i >= 0`, `them.flanks[i]` with
-    `i` below both sides' count) is read into a `const` and checked; where the function must return a value and the
-    old code would have thrown there (`gA.face.total` right after `battleFacing`), the check throws.
-  - **`Array.isArray` on a `readonly` list type** narrows it to `any[]`, which the typed lint refuses: a parameter the
-    body tests with `Array.isArray` takes a list that isn't `readonly` (`shieldFortHolds`' `grid.front`).
-  - **A list a filter keeps the right kind of** (`filter(isALine)` on a list whose members the compiler has narrowed)
-    needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`, not one written for the wider type.
-- (P1-10b5: six files, 56,447 bytes: `battle/fortune.ts`, `grand-design.ts`, `names.ts`, `titles/perks.ts`,
-  `world/map-helpers.ts`, `heroes/charms-and-neutrals.ts`): 172 errors, 141 of them a parameter with no type; then the
-  typed lint's findings, all fixed. Freeing them cleared 54 findings their typed readers held on values from their calls
-  into the untyped files, and the readers met 7 new ones, each a guard on a neighbour `getNeighborsP` returns (it keeps
-  only provinces), dropped with 2 suppressed findings on the same guards: `eslintSuppressions` fell, 790 to 734. Four more forms:
-  - **A parameter is typed by what the function reads, not by the schema's whole type:** an interface beside it, "the
-    state as these read it", with each field a guard tests optional and a plain `number` where the schema has a brand
-    (`id`, `location`), so a `GameState` passes and so does a test's plain object, with no cast in either.
-  - **A table read by any string is typed inside the function that reads it**, not by a second module-level `const`:
-    `tests/unit/engine-purity.test.ts` watches the engine's module-level names, and an alias of `SKILL_LABELS` there
-    reads as a second table the turn wrote.
-  - **A `||` on a name that a player may choose** (a hero's, a realm's) keeps its `''` case: `const name = ch?.name ??
-    '';` then `name || 'The wanderer'`. A key that may be `undefined` is read as JavaScript reads it,
-    `table[String(key)]` (the key `"undefined"`), not guarded away.
-  - **An element read where the list may hold `undefined`** (`shuffleP`'s swap) is checked by its place (`k in list`),
-    not by `!== undefined`, so a list holding `undefined` shuffles exactly as before.
-- (P1-10b6: `battle/terrain-and-unit-strength.ts`, 38,872 bytes): 73 errors, 60 of them a parameter with no type;
-  then 55 typed lint findings, all fixed. `effStat`'s return type, written in its file (which keeps the line), cleared
-  the one finding `battle/battle-report-lines-and-force-markers.ts` held on its result: `eslintSuppressions` fell, 734
-  to 733. Three more forms:
-  - **A guard on a field the schema requires stays where an untyped caller may still leave it out**, by reading the
-    value into a `const` typed as wide as the guard (`const heroItems: readonly unknown[] | null | undefined =
-    heroChar?.items`), or by typing a callback's parameter that way (an item's `effect`), so the parameter keeps the
-    schema's type and its other callers needn't change.
-  - **`x != null ? x : y`** becomes `x ?? y`, the same value; `(h && h.race) || null`, where `''` may reach, becomes
-    `(h?.race ?? '') || null`.
-  - **A literal table keyed by unit type** gains `satisfies Record<string, Partial<Record<UnitType, number>>>`
-    (`TERRAIN_MODS`), so a misspelt or retired unit's name fails `tsc` (TS2353). A test that reads such a table by its
-    syntax tree (`entriesOf`, `tests/lib/source.ts`) must look through the `satisfies`.
-- (P1-10b7: Early Winter's stage, `turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts`,
-  28,831 bytes): 55 errors, 47 of them a parameter with no type; typing the context as `TurnContext` and the turn's
-  marks it reads left 14; then 87 typed lint findings, 70 once the return types of the three `discoveries.ts`
-  functions it calls were written there (`realmBaseTax` and `discUpkeepWage`: `number`; `discEff`: the content's
-  discovery effects), all fixed. Its guards test lists the schema requires (`G.characters || []`, a hero's `armies`, a
-  garrison) and some of them it also reads unguarded. Four more forms:
-  - **A `const` typed as a wide list is narrowed by its value:** `const list: readonly Army[] | null | undefined =
-    hero.armies` is `Army[]` to the compiler, so lint still calls `list ?? []` needless (P1-10b6's `heroItems` worked
-    because its value came through `?.`). Type the object instead, `const theHeroAsGuarded:
-    AHeroAsEarlyWinterReadsHisArmies = hero` (his `armies` optional), or a callback's parameter: an object's optional
-    field isn't narrowed away.
-  - **The state as one function reads it, through the context:** `const { G }: { readonly G:
-    TheStateAsEarlyWinterReadsIt } = turnContext`, so `G`'s guarded lists are typed as wide as the guards and the
-    context keeps `TurnContext` for the typed functions it is handed to.
-  - **A list the body reads both guarded and unguarded** (the world's provinces: `|| []` in six places, by a
-    province's id in three) keeps the schema's type for the unguarded reads, and the guarded ones read it through a
-    small reader typed as wide as the guard (`provincesOrNone`), at the same moment.
-  - **A number in a line's words** is written `${String(x)}` (the same text), and `x || 1.6` on a number that may be
-    missing is `Number(x) || 1.6`.
-- (P1-10b8: `discoveries.ts`, 22,225 bytes): 123 errors, 113 of them a parameter with no type (one more than the
-  scoping's 122: the return type P1-10b7 wrote on `discEff` reads `e.led`, which the content's own effect type only has
-  on some rows). The first pass wrote the forms lint asks for as it went (`a?.b` for `a && a.b`, `??` for `||` where
-  no `0`, `''` or `NaN` reaches, `Number(x) || 0` where one may); the typed lint then found 3 more, all fixed. The three return types P1-10b7 wrote there are now checked, and
-  `discEff`'s is the file's one effect type, `TheEffectOfADiscovery` (every field a row's `effect` or `effect2` may
-  set, each optional; the compiler checks every row against it where `DISC_BY_ID` is filled), which every hook hands
-  its readers. No typed reader held a suppression on its results, so `eslintSuppressions` stays 733. Five more forms:
-  - **A parameter whose kind a flag says** (`discUnitIs(cls, army, typeOnly)`: a type's name with `typeOnly` true,
-    else a unit) is a rest tuple, `...[army, typeOnly]: [army: string, typeOnly: true] | [army: AUnit | null |
-    undefined, typeOnly?: false]`: the body's `typeOnly ? army : army?.type` then narrows, the arguments are the same
-    values, and a caller that passes them on spreads the tuple (`discUnitIs(e.cls, ...unitOrItsTypesName)`).
-  - **A function that reads only the state** takes `Pick<TurnContext, 'G'>`, not the whole context, so a typed test's
-    staged `{ G }` needs no more than the state's type.
-  - **A Map a caller makes and the function reads and writes** is typed by the two methods it calls (`get` and
-    `set`), so a caller's `Map<unknown, number>` passes; a `Map<unknown, unknown>` doesn't, and its caller types the
-    values it holds.
-  - **A typed callee's parameter type that its file doesn't export** is taken as `Parameters<typeof callee>[0]`
-    (`homeFounderOf`'s state, `pcFoeCat`'s foe), so no typed file changes to export it.
-  - **`list.includes(x)` where `x` may be missing** (a ground the battle may not give) is `x == null ||
-    !list.includes(x)` in a filter that returns on a miss: `includes` of `undefined` is false, as before. A `?? 1` for
-    `|| 1` on a content number was checked against the content: no row sets it to 0.
-- (P1-10b9: five leaves, 40,621 bytes: `heroes/fame-and-consecration.ts`, `items/tiers-and-hoards.ts`,
-  `turn/intrusion-warnings.ts`, `realms/relations-and-captures.ts`, `battle/blood-harvest-and-iron-throne.ts`): 123
-  errors, 109 of them a parameter with no type; then 109 typed lint findings (41, 20, 8, 27 and 13, in that order),
-  all fixed. No typed reader held a suppression on their results, and none met a new finding, so
-  `eslintSuppressions` stays 733. Six more forms:
-  - **`a || 'fallback'` on a string a table or a player may leave empty** (a relation, a doctrine, a race, an army
-    type, an item's lore) is `(a ?? '') || 'fallback'`, or a `const` read with `?? ''` and then `|| 'fallback'`, so
-    `''` still gives the fallback; `?? 'fallback'` alone is written only where the table has no `''` (a monster's
-    label, a lair's tier: said in a comment).
-  - **`String(x || '')` on a name typed `string | null | undefined`** is `(x ?? '')`: the same string, and lint calls
-    `String` of a string needless. A number in a key or a line's words is `${String(x)}`, and
-    `a + '-' + b` on two numbers is `` `${String(a)}-${String(b)}` ``.
-  - **A spread of an element of a big content table** (`{ ...it, effect: { ...it.effect }, name }` over
-    `ALL_MAGIC_ITEMS_P`) pairs each item with any item's effect in the compiler's eyes: the copy goes through a small
-    generic function typed as the item it copies (`underAnotherName`), the same spread inside it.
-  - **A guard on a value the line before has just made sure** (`if (!_pl) return;` after the realm's alignment was
-    read through `?.`) is added where the compiler can't see it, as P1-10b2's; it changes no value.
-  - **`armyUnitName` takes a `UnitType`**, so a function that names a unit from its `type` types that field `UnitType`
-    in its own shape (a column's units, the fallen, a province's army types), though the schema's is any string. A
-    freed caller that hands it an `Army` meets the difference (P1-10b9's "for the next row").
-  - **A phase's name or a force read by an index that may be missing** (`SEASONS[s[0]]` when the list may be empty) is
-    read through a small reader, `(p) => (p === undefined ? undefined : SEASONS[p])`, as JavaScript reads it, and the
-    words take `${String(…)}`: `undefined` still reads `undefined`.
-- (P1-10b10: `items/equipment.ts` and `heroes/skills-and-hp.ts`, 42,618 bytes): 156 errors, 97 of them a parameter
-  with no type. The first pass wrote the forms lint asks for as it went; the typed lint then found 2 more, both fixed.
-  No typed reader held a suppression on their results, and none met a new finding, so `eslintSuppressions` stays 711.
-  The item's shapes the hit-point helpers and later rows take are exported from `equipment.ts` (`AnItemAsTheSlotsReadIt`,
-  `AHeroAsHisItemsAreRead`); `skillBonusBreakdown` gives `ASkillsLevelAndItsSources`. Six more forms:
-  - **`x || 5` on a number a held copy may hold as 0** (a combat item's amount, rounds, hits) is `(x ?? 0) || 5`, never
-    `x ?? 5`: the content holds no 0 there, but the saved item's schema allows one, and `|| 5` gives 5 for it.
-  - **A load-time pass that writes its marks on a content table** (`_score`, `_drop`, a minted item's `_variantOf`)
-    reads it through one wide shape, the same array: `const treasury: AnItemOfTheTreasury[] = ALL_MAGIC_ITEMS_P`. A
-    derived table typed by the content's rows (`ITEMS_BY_TIER`) is filled through a local typed the same way.
-  - **A function that hands back the items it was given** (`activeItems`) is generic in the item's type, so a caller
-    with a `Character` still gets `Item[]`, and one with its own item shape gets that shape.
-  - **A set, map or list looked up with a value that may be missing** (`ITEM_COMBAT_STATS.has(stat)` for an effect of
-    no stat) is read through a local typed `ReadonlySet<string | undefined>` (or made `new Set<string | undefined>`):
-    `has(undefined)` is false, as before, with no guard added.
-  - **A shape whose fields are all optional** is refused for a value that has none of them (TypeScript's weak-type
-    check): today's realm has no `vault` (an older save's may), and no spell row has a `level`. The realm is typed
-    `object & { vault?: … }`; the spell names `school`, which every row has.
-  - **A pair read element by element** (`a[0] + a[1]`, a list that may be short) is `Number(a[0]) + Number(a[1])`: the
-    same sum for numbers, `null` and a missing element (`NaN`). A literal table of pairs is annotated with a tuple
-    (`ITEM_TIER_TARGET`: `readonly [utility: number, combat: number]`), so its elements are numbers.
-- (P1-10b11: `personal-combat/helpers.ts` and `personal-combat/speed-encounter-plans-and-combatants.ts`, 39,073
-  bytes): 96 errors, 67 of them a parameter with no type. The fighter both builders make is one interface,
-  `AFighterInAPersonalCombat`, declared in `helpers.ts` with `TheWardsAFighterWears`, his status and
-  `TheRidersOfAnItemOrAPerk` (the riders of an item's `effect.pc` and of a guardian's perk; since P1-19q these two and
-  a ward are the items' registry's stage types, in `rules/the-registry-of-content-effects.ts`, and `helpers.ts` exports
-  them by the same names): the fields both builders
-  set are required, a field one kind has or the fight writes later is optional. A file of types alone would be in no
-  page's bundle, which `tests/static/pages-build.test.ts` refuses (only `src/globals.d.ts` and `src/schemas/` are
-  types for the code alone), so a type goes in the file whose code it types most. `temperOf`'s return type is written in
-  `world/tables.ts`, which keeps the line. The first pass wrote the forms lint asks for as it went; the typed lint then
-  found 1 more, fixed. Typing `duelStanceOf` and `ensureEncounterPlan` cleared 3 of the findings
-  `battle/pre-battle-duels.ts` held on their results, so `eslintSuppressions` fell, 711 to 708. Five more forms:
-  - **A function that guards a field the shared type requires** (`pcPushDot`'s `!cbt.status`, a list there that may be
-    missing) takes a small shape of its own with that field optional ("a fighter as his status is guarded"), so the
-    guard stays and every caller's fighter passes.
-  - **`x > 0` on an optional number** read several times is read once: `const { aura = 0, burn = 0 } = fx`, then
-    `aura > 0` (a missing one is not above 0, as before; a default takes only `undefined`, so a `null` compares as it
-    did).
-  - **`parseInt(n)` on a number** is `parseInt(String(n))`: parseInt reads its argument as a string.
-  - **A `let` set inside a `forEach` callback and handed back** (`pcArmourOf`'s table) keeps the callback, with the
-    function's return type written (`TheWardsAFighterWears | null`): the compiler sees only the `null` it started at.
-  - **A list looked up with a value that may be missing** (`includes` of a stance a plan may not hold) is read through a
-    local typed `readonly (string | undefined)[]`, as P1-10b10's sets are; where the found value is handed back, the
-    check is `v !== undefined && list.includes(v)` (no stance is in the list), so the value keeps its type.
-- (P1-10b12: `personal-combat/to-hit-wounds-stuns-and-courage.ts` and `personal-combat/melee-flight-and-archery.ts`,
-  50,908 bytes): 90 errors, 74 of them a parameter with no type. Each fighter is `AFighterInAPersonalCombat` (or a shape
-  of it with a field the code guards made optional); the first pass wrote the forms lint asks for as it went; the
-  typed lint then found 3 more, all fixed. No typed reader held a suppression on their results, so
-  `eslintSuppressions` stays 708. `trySkillGain`'s return type (`void`) is written in its file, which keeps the line.
-  Six more forms:
-  - **A value the code guards in one place and reads unguarded in another** (a fight's narrative, a foe, a fighter's
-    status that a strike tests before it writes and the to-hit then reads unguarded) keeps its type, and the guarded
-    reads go through `asItsGuardReadsIt(value)` (to-hit-wounds-stuns-and-courage.ts: the value, typed `Value | null |
-    undefined`), as P1-10b7's `provincesOrNone` does for a list.
-  - **`x > 0` on an optional number read again after the test** (a block's percentage rolled against, a round ward
-    taken from) is `x !== undefined && x > 0`, which narrows `x` for the reads after it: `undefined > 0` and
-    `null > 0` are false, as before.
-  - **A table read by the same key several times** (`PC_CHANNEL[kind]`, eight reads in `pcTakeHit`) is read once into
-    a `const`: the same value each time, and a test of it (`kindsChannel === 'melee'`) narrows the reads after it.
-  - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`,
-    so lint doesn't call its test always true and the test still reads it when it is turned off (`: boolean` alone is
-    refused as a type inferred from the literal).
-  - **A fact's field the engine may leave `undefined`** (the druid's line's channel, for a guardian's special that no
-    channel names) has its type corrected in the facts file, `string | undefined`: the type, not the code. A shared
-    type is corrected the same way where its readers show it too wide: a guardian's weakness has its `name` and
-    `desc`, as the saved schema and every content row do.
-  - **A result the code has just made sure** (`pcRangeStep`'s range: it keeps its index within the list) is checked
-    with a `return` the compiler can see; where the old code threw on the next line instead (`pcPushDot`'s none, for a
-    foe of no status), the check throws the same `TypeError`.
-- (P1-10b13: `personal-combat/tactics-combat-items-and-actions.ts`, 30,058 bytes): 35 errors, 28 of them a parameter
-  with no type. The first pass wrote the forms lint asks for as it went; the typed lint then found 1 more, fixed. No
-  typed reader held a suppression on its results, so `eslintSuppressions` stays 708. The return types of the four
-  callees it meets that keep their line are written there (`encounterClearGold`: `number`; `ensureLairHoard`: `void`,
-  its `opts` optional; `pcCastCombatSpell`: `boolean`; `pcMonsterSpecial`: `void`). Five more forms:
-  - **A value a rider reads when the fight runs it later** (`pcDeferEffect`'s closure adding an item's `hitPen` or
-    `stun` next round) is read once into a `const` before the closure (`const { hitPen, stun } = e`), so the test
-    before it narrows it inside the closure too; nothing writes an item's effect, so the value is the same.
-  - **A pair the dice read** (`rng(e.dmg[0], e.dmg[1])`) goes through a small reader that hands back `[Number(a[0]),
-    Number(a[1])]` and, for no pair, throws the `TypeError` the old read threw.
-  - **An interface read by any name** (a fighter's schools, `actor.school[s]`) is copied into a local typed
-    `Readonly<Partial<Record<string, number>>>` by a spread: an interface has no index signature, a spread's object type
-    has one. The levels are read `Number(x) || 0`, as a school may hold `NaN`.
-  - **A list whose items the code tests for a gap or a missing field** (`it && it.effect && it.effect.use === use`, a
-    gap among a guardian's specials) is read through a local typed with its element as wide as the test, and the test
-    is `it?.effect?.use === use`.
-  - **A copy made through JSON** (`JSON.parse` gives `any`) reaches a typed function only through a claim: its form
-    is P1-10b14's, below.
-- (P1-10b14: `personal-combat/lair-guardians-and-the-odds.ts`, 17,809 bytes): 66 errors, 30 of them a parameter with
-  no type. The first pass wrote the forms lint asks for as it went; the typed lint then found 1 more, fixed. Four more
-  forms:
-  - **A copy made through JSON is typed by a check that compares it with its original** (Theo, 2026-10-30):
-    `aCopyMadeThroughJson` parses into `unknown`, and a type predicate holds when `JSON.stringify(copy) ===
-    JSON.stringify(original)`: no `as`, no suppression, one more `stringify` a copy. Plain data's JSON is the same each
-    time, so the check never fails; it throws if it does.
-  - **A copy whose id is made a string** (a Hunting Rumours hero) is typed as the fighter's hero allows:
-    `AHeroAsAFightTakesHim` (`helpers.ts`, a `Character` whose `id` may be a string), which the fighter's `ref`,
-    `pcCharCombatant`, the encounter plans and `charMinor` take.
-  - **A return type written on a callee that keeps its line changes what its other untyped callers give:**
-    `resolvePersonalCombat`'s typed `resolveDuel`'s result, which `battle/pre-battle-duels.ts` reads. Write the
-    caller's return type too (a winner and a loser together, or neither), fix the typed reader's new findings (4) and
-    prune its cleared suppressions (18).
-  - **A `for (k in obj)` over a literal's keys** is a `for … of` over a typed list of them, in the same order.
-- (P1-10b15: `chances-and-lair-grades.ts`, `magic/pre-battle-spell-choice.ts` and the order dispatch, 41,157 bytes): 77
-  errors, 50 of them a parameter with no type; the first pass wrote the forms lint asks for as it went. Four more forms:
-  - **A list the saved state holds empty but a turn fills** (`G.turnOrders`: nulls in a save, orders in a turn) is read
-    through a local typed as the turn holds it (`TheTurnsOrdersAsTheDispatchReadsThem`); the schema stays as it is.
-  - **A `String()` a test shows is needed** (an order's target, an item's id held as a number) stays, through a reader
-    typed as wide (`aTargetInWords`), though the order's type says words.
-  - **A typed callee that takes a value its caller may lack** (an order's typed function takes the hero's `Province`;
-    `provOf` may give none) gets it through a check that throws for none, named for the invariant that makes it sure
-    (every living hero stands in a province of the map).
-  - **A number a typed callee may give as `undefined`** (`effSkillOf` for no hero) is read `Number(x)` where it is
-    counted or compared (`NaN`, as before), and kept as it is where it is handed back.
+
+## The forms that keep a value, by kind
+
+Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
+value at all. P1-10b2 to P1-10b16 found them (each row's figures are in its PR). A form a row needs that isn't here is
+added under its kind.
+
+### `||` and `??`
+
+- **`a || b` where `a` can't be falsy but missing** (a list, an object, a function) is `a ?? b`. Where it can be (a
+  number, words, a flag), **`(a ?? F) || b`**, `F` its type's falsy value (`0`, `''`, `false`), gives the same value
+  for every value: `a || ''` is `a ?? ''`, but `a || 0` is not `a ?? 0`, which keeps a `NaN` that `|| 0` turned into 0.
+- **`x || 0` on a number that is worked out** (a skill level, a strength taken off) is `Number(x) || 0`; `x ?? 0` only
+  where `x` can't be `NaN` (a number from the data file, a count only `+ 1` writes). `x || 5` on a number a held copy
+  may hold as 0 (a combat item's amount) is `(x ?? 0) || 5`, never `x ?? 5`.
+- **Words a table or a player may leave empty** (a relation, a race, a hero's name, a lore) keep their `''` case:
+  `(a ?? '') || 'fallback'`, or a `const` read with `?? ''` and then `|| 'fallback'`. `?? 'fallback'` alone only where
+  the table holds no `''` (say so in a comment). `String(x || '')` on words typed `string | null | undefined` is
+  `x ?? ''`.
+- **`(a && (a.b || a.c)) || 'x'`**, where `''` may reach, is read into a `const` first: `const bc = a ? a.b || a.c : '';`,
+  then `bc || 'x'`. `x != null ? x : y` is `x ?? y`; `(h && h.race) || null` is `(h?.race ?? '') || null`.
+- **`a && a.b`** is `a?.b`, and `!(fm && fm.arr === n)` is `!(fm?.arr === n)` when `n` is never `undefined`.
+
+### Numbers, words and conversions
+
+- **A number in a line's words or a key** is `${String(x)}` (the same text); `a + '-' + b` on numbers is
+  `` `${String(a)}-${String(b)}` ``.
+- **`parseInt(x)`** on a number or a regular expression's group is `parseInt(String(x))`: `parseInt` reads its argument
+  as words. `s.match(re)` with no `g` flag is `re.exec(s)`, the same result.
+- **A pair read element by element** (`a[0] + a[1]`, a damage range the dice read) is `Number(a[0]) + Number(a[1])`, or
+  a small reader that hands back `[Number(a[0]), Number(a[1])]` and, for no pair, throws the `TypeError` the old read
+  threw. `x > 0` already reads `x` as a number, so `Number(x) > 0` is the same.
+- **`x > 0` on an optional number read again after the test** is `x !== undefined && x > 0`, which narrows `x`; read
+  once, `const { aura = 0 } = fx` and `aura > 0`. `Math.min(x, y)` and `x <= y - 1` read a missing `x` as `NaN`:
+  `Math.min(Number(x), y)`, `Number(x) <= Number(y) - 1`.
+- **A `String()` a test shows is needed** (an order's target, an item's id held as a number) stays, through a reader
+  typed as wide (`aTargetInWords`), though the type says words. One the saved schema makes needless (a guardian's
+  power's words) goes. `!!x` on a flag is `x`.
+- **A number a typed callee may give as `undefined`** (`effSkillOf` for no hero) is read `Number(x)` where it is counted
+  or compared, and kept as it is where it is handed back.
+
+### Lists, tables, sets and maps
+
+- **A list's or a table's element read where the code has just made it sure** (`cav[i]` after `i >= 0`, one of three
+  candidates sorted) is read into a `const` and checked; where the old code would have thrown there, the check throws
+  the same kind of error. `G.players[c.player].name` after a check doesn't narrow: only a plain variable as the key does.
+- **A table read by any string** is typed inside the function that reads it, `Readonly<Partial<Record<string, T>>>`,
+  not by a second module-level `const` (`tests/unit/engine-purity.test.ts` watches the engine's module-level names). A
+  key that may be `undefined` is read as JavaScript reads it, `table[String(key)]`; an element by an index that may be
+  missing (`SEASONS[s[0]]`), through `(p) => (p === undefined ? undefined : SEASONS[p])`.
+- **A literal table keyed by a closed set** gains `satisfies Record<…>` (`TERRAIN_MODS` by unit type: a misspelt unit
+  fails `tsc`; `PC_SPELL_SCHOOL_MAP` by school, so its values keep their literal types and index a fighter's schools).
+  A table of pairs takes a tuple (`readonly [utility: number, combat: number]`). A test that reads such a table by its
+  syntax tree (`entriesOf`, `tests/lib/source.ts`) must look through the `satisfies`.
+- **An interface read by any name** (a fighter's schools) is copied into a local `Readonly<Partial<Record<string,
+  number>>>` by a spread: an interface has no index signature, a spread's object type has one.
+- **A list the code tests for a gap or a missing field** is read through a local typed with its element as wide as the
+  test (`it?.effect?.use === use`); a list looked up with a value that may be missing (`includes`, `has`) through a
+  local `readonly (string | undefined)[]` or `ReadonlySet<string | undefined>`. `x == null || !list.includes(x)` in a
+  filter that returns on a miss; a swap that may meet `undefined` checks `k in list`.
+- **A filter that keeps a kind** needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`;
+  `filter(Boolean)` a type predicate. A callback whose result is read only as true or false is typed `: boolean`, so
+  the compiler doesn't infer a predicate over a large union.
+- **`Array.isArray` on a `readonly` list type** narrows it to `any[]`: a parameter tested so takes a list that isn't
+  `readonly`.
+- **A list the saved state holds empty but a turn fills** (`G.turnOrders`) is read through a local typed as the turn
+  holds it; a list read both guarded and unguarded keeps the schema's type, and the guarded reads go through a reader
+  typed as wide as the guard (`provincesOrNone`).
+- **A load-time pass that marks a content table** reads it through one wide shape, the same array; a derived table is
+  filled through a local typed the same way. A spread of an element of a big content table goes through a small
+  generic function typed as the item it copies (`underAnotherName`).
+- **`for (k in obj)` over a literal's keys** is a `for … of` over a typed list of them, in the same order. A `Map` a
+  caller makes is typed by the methods the function calls.
+
+### Guards and the compiler's narrowing
+
+- **A guard on a value the code has made sure** (`if (!x) return;` after a read through `?.`) is added where the
+  compiler can't see it; it changes no value. A guard lint calls needless is dropped only where the code would already
+  have thrown without it.
+- **A value guarded in one place and read unguarded in another** (a fight's narrative, a foe, a fighter's hero) keeps
+  its type, and the guarded reads go through `asItsGuardReadsIt(value)` (`to-hit-wounds-stuns-and-courage.ts`). A guard
+  on a field the schema requires stays where an untyped caller may still leave it out.
+- **A `const` typed as a wide list is narrowed by its value** (`const l: readonly Army[] | null | undefined =
+  hero.armies` is `Army[]`): type the object instead (`const h: AHeroAsEarlyWinterReadsHisArmies = hero`, his `armies`
+  optional), or a callback's parameter; an object's optional field isn't narrowed away.
+- **A state the code tests, then hands to a call that changes it** (a fight's state: an action sets who fled, a spell
+  conjures a Mirror Image) is read again through a reader typed as the state is kept (`theFightAsItIsNow`), so a test
+  after the call isn't read as always false.
+- **A `let` set inside a `forEach` callback** is still its first value to the compiler: a `for … of` over the same list,
+  `continue` for the callback's `return`; or, where it is handed back, the function's return type written.
+- **A value a closure reads later** (`pcDeferEffect`'s rider) is read into a `const` before it, so the test before it
+  narrows it inside too. A table read by the same key several times is read once into a `const`.
+- **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
+  its test still reads it.
+
+### Parameters, shapes and claims
+
+- **A parameter is typed from what its callers pass and as wide as the body's guards**, by what the function reads,
+  not the schema's whole type: an interface beside it ("the state as these read it"), each field a guard tests
+  optional, a plain `number` where the schema has a brand. A function that reads only the state takes
+  `Pick<TurnContext, 'G'>`; one that reads part of the state through the context, `const { G }: { readonly G:
+  TheStateAsEarlyWinterReadsIt } = turnContext`. A typed callee's parameter type its file doesn't export is
+  `Parameters<typeof callee>[0]`.
+- **A shape whose fields are all optional** is refused for a value that has none of them (TypeScript's weak-type
+  check): type it `object & { … }`. A fighter's `ref` is a hero or a guardian: a hero's fields are read through a
+  reader typed `object & { … }` with only the fields read, so the guardian passes.
+- **A parameter whose kind a flag says** is a rest tuple (`...[army, typeOnly]: [string, true] | [AUnit, false?]`); a
+  callback option only one case calls is required only there (`{ won: true } | { won: false; demoteAt }`).
+- **A function that reads an old save** takes the old save's shape, every field it reads optional. A function that
+  hands back what it was given (`activeItems`) is generic in its type; one that adds fields to its argument returns
+  `Object.assign(g, { units, total })`, the same object.
+- **A type goes in the file whose code it types most** (a file of types alone is in no page's bundle, which
+  `tests/static/pages-build.test.ts` refuses): the fighter, `AFighterInAPersonalCombat`, is in `helpers.ts`; the Mirror
+  Image, in the combat spells' file. A copy whose id is a string (a Hunting Rumours hero) is `AHeroAsAFightTakesHim`.
+- **A claim the compiler can't check is made only through a check that holds it**: a copy made through JSON parses into
+  `unknown` and a type predicate holds when `JSON.stringify(copy) === JSON.stringify(original)` (Theo, 2026-10-30); a
+  hero handed to a callee that needs his name as words passes a predicate `typeof hero.name === 'string'`. Each check
+  never fails on a sound save, and throws if it does. A typed callee that takes a value its caller may lack (a hero's
+  province) gets it through a check that throws for none, named for the invariant that makes it sure.
+- **A return type written on a callee that keeps its line** is a claim, checked once that file is freed; write in a
+  comment where it doesn't hold. It changes what its other untyped callers give: type their result too, fix the typed
+  readers' new findings and prune their cleared suppressions.
+
+### The types the code corrects
+
+- **A type that disagrees with the code is corrected, not the code**: a fact's field the engine may leave `undefined`
+  (the druid's line's channel, a guardian's perk's words) is `string | undefined` in the facts file, and its words read
+  it `${String(x)}`; a shared type its readers show too narrow is widened (a fighter's kind may be a Mirror Image's
+  phantom), and one they show too wide is narrowed (a guardian's weakness has its name and words). `armyUnitName`
+  takes a `UnitType`, so a function that names a unit types that field `UnitType` in its own shape.
+- **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
+  does what `value[key]` does.
+- **A ternary or a list of many kinds of line** can be "too complex to represent" (TS2590) as `NarrativeLine`: type it
+  by the kinds it holds, `Extract<TheFactOfAPersonalCombatsLine, { kind: … }>`, and build a list of them with other
+  lines in two steps (a literal of them, then `push`).
+- **`{ ...(x || {}) }`** is `{ ...x }`: a spread of a missing or falsy value adds nothing.

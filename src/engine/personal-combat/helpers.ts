@@ -143,7 +143,8 @@ export type AHeroAsAFightTakesHim = Omit<Character, 'id'> & { id: Character['id'
  *  the guardian). */
 export interface AFighterInAPersonalCombat {
   // Both builders set these:
-  kind: 'character' | 'monster';
+  /** A hero, a guardian, or a Mirror Image's phantom of either (pcCastCombatSpell: a copy of its victim). */
+  kind: 'character' | 'monster' | 'phantasm';
   ref: AHeroAsAFightTakesHim | AGuardianAsHisFighterIsBuilt;
   name: string;
   player: Character['player'];
@@ -409,7 +410,7 @@ export const PC_SPELL_SCHOOL_MAP = {
   'Hand of Death': 'necromancy',
   'Control Undead': 'necromancy',
   Charm: 'psychic',
-};
+} satisfies Record<string, keyof AFightersSchools>;
 // Percentage-of-max-HP spells are exempt from the DAMAGE doubling — Hand of Death already takes
 // half a guardian's total, and doubling that is an instant kill on anything. A Necromancy-weak
 // guardian gets the take-hold chance doubled instead (see pcCastCombatSpell).

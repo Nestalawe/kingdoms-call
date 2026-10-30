@@ -271,7 +271,7 @@ export function rumourOddsBand(pct: number) {
 export function simulateLairOdds(
   turnContext: TurnContext,
   c: Character | null | undefined,
-  feature: ALairAsItsGuardianIsFoughtThere | null | undefined,
+  feature: ALairAsAHeroFightsAtIt | null | undefined,
   fights?: number,
 ) {
   const { G } = turnContext;

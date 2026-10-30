@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_MAGIC_SCHOOLS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { combatSpellsAllowedPerSchoolEachFight } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
@@ -14,6 +13,7 @@ import { telSpell } from '../turn/log-line-helpers.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { pcNewStatus } from './speed-encounter-plans-and-combatants.ts';
 import {
+  asItsGuardReadsIt,
   pcCourageChance,
   pcHitSkill,
   pcLandStun,
@@ -28,6 +28,44 @@ import {
   aFightersWardsRefuseAStunOrATerror,
   theShareAFightersWardsCutASpellsBurnBy,
 } from '../rules/the-registry-of-magic-item-effects.ts';
+import type { Character } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { AFighterInAPersonalCombat, AFightersSchools, AGuardiansSpecial } from './helpers.ts';
+
+// Its types (plan P1-10b16): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
+// stays; a fighter is AFighterInAPersonalCombat (helpers.ts), and a value the code guards here but reads unguarded
+// elsewhere is read through asItsGuardReadsIt (to-hit-wounds-stuns-and-courage.ts).
+/** A Mirror Image in a fight: who cast it, on whom, the phantom that fights the victim and the rounds it has left. */
+export interface AMirrorImageInAFight {
+  readonly caster: AFighterInAPersonalCombat;
+  readonly victim: AFighterInAPersonalCombat;
+  readonly phantasm: AFighterInAPersonalCombat;
+  life: number;
+}
+/** The fight's state as a spell reads and writes it: the Mirror Image (none in a forecast's bare cast). */
+interface TheFightAsASpellReadsIt {
+  mirror?: AMirrorImageInAFight | null | undefined;
+}
+/** The fight's state as a guardian's special writes it: who fled. */
+interface TheFightAsASpecialWritesIt {
+  fledBy?: AFighterInAPersonalCombat | null | undefined;
+}
+/** A guardian's special as it is used: an older save's creature may still carry a damage range (`dmg`) instead of a
+ *  weight. */
+type AGuardiansSpecialAsItIsUsed = AGuardiansSpecial & { readonly dmg?: readonly number[] | null | undefined };
+/** A fighter's hero as a Charm reads him: whether he is a king, the turn he was last charmed, his will against it. */
+type AHeroAsACharmReadsHim = object & Partial<Pick<Character, 'isKing' | '_charmImmuneTurn' | '_charmResist'>>;
+/** A fighter's hero or guardian as his skills and items are asked about (a guardian has neither). */
+type AHeroOrGuardianAsHisSkillsAndItemsAreAsked = object &
+  NonNullable<Parameters<typeof skillLevel>[0]> &
+  NonNullable<Parameters<typeof hasItemBase>[0]>;
+/** A damage range as the dice read it (`dmg[0]`, `dmg[1]`): an element missing is NaN to the dice, as `undefined` was
+ *  (as tactics-combat-items-and-actions.ts reads an item's). */
+function aDamageRangeAsTheDiceReadIt(range: readonly number[] | null | undefined): [low: number, high: number] {
+  if (!range) throw new TypeError(`Cannot read properties of ${String(range)} (reading '0')`);
+  return [Number(range[0]), Number(range[1])];
+}
 
 // ── PERSONAL COMBAT: COMBAT SPELLS AND GUARDIAN ABILITIES (plan P1-08e: lifted out of resolveTurn) ────
 // A spell cast in a personal fight (pcCastCombatSpell, with the spell-balance figures above it) and a guardian's
@@ -65,9 +103,19 @@ export const SPELL_HOD_BITE_PCT = 40,
 export const SPELL_MIRROR_HP_PCT = 40,
   SPELL_MIRROR_ROUNDS = 3; // Mirror Image, see the case below
 export const PC_CAST_BASE = SPELL_CAST_BASE; // personal-combat casting is 30 + school level × 10 · 2026-09-11: every path now shares SPELL_CAST_BASE
-export function pcCastCombatSpell(turnContext, caster, target, spellName, narrative, state): boolean {
+export function pcCastCombatSpell(
+  turnContext: TurnContext,
+  caster: AFighterInAPersonalCombat,
+  target: AFighterInAPersonalCombat,
+  spellName: string | null | undefined,
+  narrative: NarrativeLine[],
+  state: TheFightAsASpellReadsIt | null | undefined,
+): boolean {
   const { G } = turnContext;
-  const SPELL_SCHOOL = PC_SPELL_SCHOOL_MAP; // one shared table (pcTakeHit reads it too)
+  // one shared table (pcTakeHit reads it too), read by any spell's name
+  const SPELL_SCHOOL: Readonly<Partial<Record<string, keyof AFightersSchools>>> = PC_SPELL_SCHOOL_MAP;
+  // a spell of no name has no school: the table read it as the key "null" or "undefined", which it doesn't hold
+  if (spellName == null) return false;
   const school = SPELL_SCHOOL[spellName];
   if (!school) {
     return false;
@@ -89,7 +137,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
     narrate(narrative, { kind: "the caster's spell already cast this combat", casterName: caster.name, spellName });
     return false;
   }
-  if ((caster.castSchool[school] || 0) >= limit) {
+  if ((caster.castSchool[school] ?? 0) >= limit) {
     narrate(narrative, {
       kind: "the caster's spell limit reached this combat",
       casterName: caster.name,
@@ -100,13 +148,17 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
   // ── WEAKNESS ── a guardian open to this school cannot shrug the weave off: the cast always
   // takes hold (95%), and `wx` doubles every NON-damaging effect below. Damage itself is doubled
   // once, in pcTakeHit — never here, or it would double twice.
-  const _wkSch = !!(
-    target &&
-    target.kind === 'monster' &&
-    target.weak &&
-    target.weak.kind === 'school' &&
-    target.weak.key === school
-  );
+  const targetAsGuarded = asItsGuardReadsIt(target);
+  const theWeaknessOpenToTheSchool =
+    targetAsGuarded?.kind === 'monster' &&
+    targetAsGuarded.weak?.kind === 'school' &&
+    targetAsGuarded.weak.key === school
+      ? targetAsGuarded.weak
+      : null;
+  const _wkSch = theWeaknessOpenToTheSchool !== null;
+  // the caster's hero or guardian as his skills and items are asked about (a guardian has neither): the same object
+  const theCastersHeroOrGuardian: AHeroOrGuardianAsHisSkillsAndItemsAreAsked = caster.ref;
+  const theCastersHeroOrGuardianAsGuarded = asItsGuardReadsIt(theCastersHeroOrGuardian);
   const wx = _wkSch ? PC_WEAK_MULT : 1;
   const _castBase = _wkSch
     ? 95
@@ -114,7 +166,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         95,
         PC_CAST_BASE +
           lvl * 10 +
-          magicL8CastBonus(caster.ref) +
+          magicL8CastBonus(theCastersHeroOrGuardian) +
           (caster.player != null
             ? discSum(
                 turnContext,
@@ -128,7 +180,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
   // ── SCHOOL WARD (2026-10-14, batch item 7) ── a guardian's ward against this school takes its
   // points off the (already capped) cast chance; never below 5. A guardian is never warded against
   // the school it is weak to.
-  const _sw = (!_wkSch && target && target.arm && target.arm.schoolWard && target.arm.schoolWard[school]) || 0;
+  const _sw = (_wkSch ? 0 : (targetAsGuarded?.arm?.schoolWard?.[school] ?? 0)) || 0;
   const castChance = _sw > 0 ? Math.max(5, _castBase - _sw) : _castBase;
   // narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader sees the
   // character reach for the spell, then whether the weave holds or collapses.
@@ -152,19 +204,19 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
     return false;
   }
   caster.castSpells.push(spellName);
-  caster.castSchool[school] = (caster.castSchool[school] || 0) + 1;
+  caster.castSchool[school] = (caster.castSchool[school] ?? 0) + 1;
   if (_wkSch) {
     narrate(narrative, {
       kind: "the target is open to the school's arts",
       targetName: target.name,
       school,
-      targetWeakName: target.weak.name,
+      targetWeakName: theWeaknessOpenToTheSchool.name,
     });
     if (caster.player != null && pcLearnWeakness(G, caster.player, target.name))
       narrate(narrative, {
         kind: "the caster marks the target's weakness well",
         casterName: caster.name,
-        targetWeakDesc: target.weak.desc,
+        targetWeakDesc: theWeaknessOpenToTheSchool.desc,
         targetName: target.name,
       });
   }
@@ -224,7 +276,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       // 2026-10-14 (batch item 5): the unclean are told by their KIND — every undead and every
       // fiend — not by a name pattern (which doubled the Dust Devil, an elemental, and missed the
       // Chaos Knight, a fiend), and the symbol bites them ×1.5 rather than ×2.
-      const holy = !!target.isUndead || pcFoeCat(target) === 'fiend';
+      const holy = target.isUndead || pcFoeCat(target) === 'fiend';
       const _hm = holy ? SPELL_HOLY_UNCLEAN_MULT : 1;
       const pen = Math.round(lvlEff * SPELL_HOLY_PEN_PER_LVL * _hm * wx);
       target.status.hitPenalty = (target.status.hitPenalty || 0) + pen;
@@ -275,7 +327,8 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       if (_wkSch) _swR = Math.min(SPELL_SPIRITWRACK_MAX_ROUNDS + 1, _swR + 1);
       target.status.silenceRounds = Math.max(target.status.silenceRounds, _swR);
       target.status.meleeHalvedRounds = Math.max(target.status.meleeHalvedRounds, _swR);
-      const _shr = target.kind === 'monster' ? SPIRITWRACK_SHRUG_PCT[target.power] || 0 : 0;
+      const shrugByGrade: Readonly<Partial<Record<string, number>>> = SPIRITWRACK_SHRUG_PCT; // read by any grade's name
+      const _shr = target.kind === 'monster' ? (shrugByGrade[String(target.power)] ?? 0) || 0 : 0;
       target.status._swShrugPct = _shr;
       narrate(narrative, {
         kind: 'the caster binds the target with spiritwrack',
@@ -293,7 +346,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       // guardian weak to Psychic; 2026-10-15 (Toby, D4): the Dreamstone's +1 comes after the doubling.
       const _stunN =
         (SPELL_BLAST_BASE_ROUNDS + Math.floor(lvlEff / 2)) * wx +
-        (caster.ref && hasItemBase(caster.ref, 'Dreamstone') ? 1 : 0);
+        (theCastersHeroOrGuardianAsGuarded && hasItemBase(theCastersHeroOrGuardianAsGuarded, 'Dreamstone') ? 1 : 0);
       if (pcLandStun(target, _stunN, narrative, 'the blast'))
         narrate(narrative, { kind: "psychic blast sears the target's mind", targetName: target.name, stunN: _stunN });
       break;
@@ -334,7 +387,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       // (tacIdx 0) so nothing bleeds back into the real character, and its own Mirror Image casts
       // are stripped from the copied plan (an illusion casting illusions is meaningless and would
       // only end its own duel).
-      let _phTactics = (target.tactics || ['ME']).slice().filter((t) => !/mirror\s*image/i.test(t));
+      let _phTactics = (asItsGuardReadsIt(target.tactics) ?? ['ME']).slice().filter((t) => !/mirror\s*image/i.test(t));
       if (!_phTactics.length) _phTactics = ['ME'];
       // MIRROR IMAGE, REBUILT. Measured, it was the worst thing a hero could do with an action: a
       // fully trained Illusory adept beat a Lich Acolyte 100% of the time casting nothing at all,
@@ -344,15 +397,15 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       // share of the victim's health, fades of its own accord after a few rounds, and — the
       // change that matters — the caster is free to act while the victim's attention is on it.
       const _phHp = Math.max(1, Math.round((target.hp * SPELL_MIRROR_HP_PCT) / 100));
-      const ph = {
+      const ph: AFighterInAPersonalCombat = {
         ...target,
         kind: 'phantasm',
         name: target.name + "'s mirror image",
         ref: target.ref,
         hp: _phHp,
         maxHp: _phHp,
-        school: { ...(target.school || {}) },
-        specials: (target.specials || []).slice(),
+        school: { ...target.school }, // a spread of none is no field, as a spread of {} was
+        specials: (asItsGuardReadsIt(target.specials) ?? []).slice(),
         tactics: _phTactics,
         tacIdx: 0,
         planExhausted: false,
@@ -378,7 +431,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       // 4/level. A player reading their own report was told the wrong number at every level.
       // Quote the figure actually applied.
       const _invPct = SPELL_INVIS_BASE_PCT + SPELL_INVIS_PCT_PER_LVL * lvlEff;
-      caster.status.toHitReduce = Math.max(caster.status.toHitReduce || 0, _invPct);
+      caster.status.toHitReduce = Math.max(Number(caster.status.toHitReduce) || 0, _invPct);
       caster.status.fleeBonus = (caster.status.fleeBonus || 0) + 30;
       narrate(narrative, { kind: 'the caster fades from sight', casterName: caster.name, invPct: _invPct });
       break;
@@ -388,7 +441,10 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       // hero could do in a duel. The grip is the same, the bite is 40% rather than 50%, and the
       // chance is capped at 60 rather than 95 so an item cannot push it to a near-certainty.
       if (kcRng() * 100 < Math.min(SPELL_HOD_MAX_PCT, lvlEff * 10 * wx)) {
-        const _dfMult = caster.ref && hasItemBase(caster.ref, "Death's Finger Ring") ? 1.1 : 1;
+        const _dfMult =
+          theCastersHeroOrGuardianAsGuarded && hasItemBase(theCastersHeroOrGuardianAsGuarded, "Death's Finger Ring")
+            ? 1.1
+            : 1;
         const d = Math.max(1, Math.round(((target.maxHp * SPELL_HOD_BITE_PCT) / 100) * _dfMult));
         const dealt = pcTakeHit(turnContext, target, d, narrative, caster.name, 'Hand of Death');
         if (dealt)
@@ -413,13 +469,15 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
         (b, s) => ((target.school[s] || 0) > (target.school[b] || 0) ? s : b),
         'white',
       );
-      const cands = [
+      const cands: [key: string, level: number][] = [
         ['melee', target.melee],
         ['archery', target.archery],
         ['magic', target.school[bestSchool] || 0],
       ];
       cands.sort((a, b) => b[1] - a[1]);
-      const [bestKey, bestVal] = cands[0];
+      const theBest = cands[0]; // one of three, made sure above
+      if (theBest === undefined) throw new TypeError('undefined is not iterable');
+      const [bestKey, bestVal] = theBest;
       if (bestVal > 0) {
         if (bestKey === 'melee') target.melee = Math.floor(target.melee / 2);
         else if (bestKey === 'archery') target.archery = Math.floor(target.archery / 2);
@@ -455,8 +513,10 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       break;
     }
     case 'Charm': {
+      // the target's hero as a Charm reads him (a guardian has none of these): the same object, guarded as before
+      const theTargetsHero = targetAsGuarded ? asItsGuardReadsIt<AHeroAsACharmReadsHim>(targetAsGuarded.ref) : null;
       // a king's will is beyond a Charm — no effect whatsoever (matches the action-phase rule).
-      if (target && target.kind === 'character' && target.ref && target.ref.isKing) {
+      if (targetAsGuarded?.kind === 'character' && theTargetsHero?.isKing) {
         narrate(narrative, {
           kind: "the caster's charm washes over a crowned will",
           casterName: caster.name,
@@ -466,7 +526,7 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       }
       // ...and so is a mind swayed only last season — the same immunity the action-phase Charm
       // honours.
-      if (target && target.kind === 'character' && target.ref && target.ref._charmImmuneTurn === G.turn) {
+      if (targetAsGuarded?.kind === 'character' && theTargetsHero?._charmImmuneTurn === G.turn) {
         narrate(narrative, {
           kind: "the caster's charm slides off a mind lately swayed",
           casterName: caster.name,
@@ -477,17 +537,16 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
       // a mind swayed before resists any later Charm, combat casts included (30% per past charm,
       // cumulative).
       if (
-        target &&
-        target.kind === 'character' &&
-        target.ref &&
-        (target.ref._charmResist || 0) > 0 &&
-        d100() <= target.ref._charmResist
+        targetAsGuarded?.kind === 'character' &&
+        theTargetsHero?._charmResist !== undefined &&
+        theTargetsHero._charmResist > 0 &&
+        d100() <= theTargetsHero._charmResist
       ) {
         narrate(narrative, {
           kind: "the caster's charm breaks against the target's will",
           casterName: caster.name,
           targetName: target.name,
-          targetRefCharmResist: target.ref._charmResist,
+          targetRefCharmResist: theTargetsHero._charmResist,
         });
         break;
       }
@@ -504,15 +563,15 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
   }
   // small skill-up chance — pass narrative so the "X rises to level N" line appears at the end of
   // the encounter report, not emitted ahead of it at the top of the phase.
-  if (caster.kind === 'character' && caster.ref) {
+  if (caster.kind === 'character' && theCastersHeroOrGuardianAsGuarded) {
     // 2026-09-21 (found with Toby's "Illusory 3 … rises to level 1"): after the roll this used to
     // write the RAW trained level back into the fighter's school — `ref.skills[school]||…` — so a
     // mage casting on item bonuses (Illusory 0 + a +3 diadem) dropped to Illusory 1 for the rest of
     // the fight the moment the skill rose, and a trained 6+ mage jumped past the level-5 cap. The
     // level in play is re-read exactly as pcCharCombatant built it, and only when it actually rose.
-    const _lvB = skillLevel(caster.ref, school);
+    const _lvB = skillLevel(theCastersHeroOrGuardianAsGuarded, school);
     pcCombatXP(turnContext, caster, school, narrative); // 2026-09-29: per successful cast, until the first success
-    if (skillLevel(caster.ref, school) > _lvB)
+    if (skillLevel(theCastersHeroOrGuardianAsGuarded, school) > _lvB)
       caster.school[school] = Math.max(caster.school[school] || 0, effStat(turnContext, caster.ref, school));
   }
   return true;
@@ -522,21 +581,31 @@ export function pcCastCombatSpell(turnContext, caster, target, spellName, narrat
 // special is its equivalent of a Cast action: it appears in the creature's action plan as
 // MS:<name> and resolves here. Effects are parsed from the ability's `effect` text so new
 // monsters can be added as data without touching the engine.
-export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state): void {
+export function pcMonsterSpecial(
+  turnContext: TurnContext,
+  actor: AFighterInAPersonalCombat,
+  foe: AFighterInAPersonalCombat,
+  sp: AGuardiansSpecialAsItIsUsed,
+  narrative: NarrativeLine[],
+  state: TheFightAsASpecialWritesIt,
+): void {
   narrate(narrative, {
     kind: 'a fighter uses a power',
     actorName: actor.name,
     spName: sp.name,
     spFlavour: sp.flavour,
   });
-  const eff = String(sp.effect || '');
+  const eff = sp.effect ?? ''; // the saved schema's words, or none
   let dealt = 0;
   // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — its tier's base + ⌈melee/2⌉)
   // × the special's weight: 1.0 light, 1.5 heavy, 2.0 breath. Legacy saved creatures
   // still carrying a dmg:[lo,hi] range roll that range instead.
-  const _w = sp.dmgW != null ? sp.dmgW : sp.dmg && (sp.dmg[0] > 0 || sp.dmg[1] > 0) ? null : 0;
+  const _w = sp.dmgW ?? (sp.dmg && (Number(sp.dmg[0]) > 0 || Number(sp.dmg[1]) > 0) ? null : 0);
   if (_w !== 0) {
-    let d = _w != null ? Math.max(1, Math.round(pcMeleeDamage(actor, foe) * _w)) : rng(sp.dmg[0], sp.dmg[1]);
+    let d =
+      _w != null
+        ? Math.max(1, Math.round(pcMeleeDamage(actor, foe) * _w))
+        : rng(...aDamageRangeAsTheDiceReadIt(sp.dmg));
     if (/hits twice/i.test(eff)) d *= 2;
     dealt = pcTakeHit(turnContext, foe, d, narrative, actor.name, sp.name);
     if (dealt)
@@ -552,8 +621,8 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state):
   let heal = 0;
   if (/heals half/i.test(eff)) heal = Math.ceil(dealt / 2);
   else {
-    const hm = eff.match(/(?:regains|gains)\s*\+?(\d+)\s*HP/i);
-    if (hm) heal = parseInt(hm[1]);
+    const hm = /(?:regains|gains)\s*\+?(\d+)\s*HP/i.exec(eff);
+    if (hm) heal = parseInt(String(hm[1]));
     else if (/heal|regenerat/i.test(eff)) heal = rng(3, 8);
   }
   // a guardian may mend itself ONCE in the whole combat, whichever ability does it and however
@@ -612,9 +681,9 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state):
     }
   }
   // ── To-hit penalties ──
-  const pm = eff.match(/[-−](\d+)%/);
+  const pm = /[-−](\d+)%/.exec(eff);
   if (pm) {
-    const pen = parseInt(pm[1]);
+    const pen = parseInt(String(pm[1]));
     // a rider on a landed blow — it starts biting from the next round.
     if (
       dealt > 0 &&
@@ -645,15 +714,15 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state):
       narrate(narrative, { kind: "the foe's guard is beaten down now", foeName: foe.name, now: _now });
     }
   }
-  const bm = eff.match(/gains \+(\d+) melee/i);
+  const bm = /gains \+(\d+) melee/i.exec(eff);
   if (bm) {
-    actor.melee = (actor.melee || 0) + parseInt(bm[1]);
+    actor.melee = (actor.melee || 0) + parseInt(String(bm[1]));
     narrate(narrative, { kind: "the guardian's melee surges", actorName: actor.name, actorMelee: actor.melee });
   }
   // ── Lingering harm ──
-  const dm = eff.match(/takes (\d+) dmg at start of each round for (\d+) rounds/i);
+  const dm = /takes (\d+) dmg at start of each round for (\d+) rounds/i.exec(eff);
   if (dm) {
-    const _e = pcPushDot(foe, parseInt(dm[1]), parseInt(dm[2]), sp.name);
+    const _e = pcPushDot(foe, parseInt(String(dm[1])), parseInt(String(dm[2])), sp.name);
     if (_e)
       narrate(narrative, {
         kind: 'a power festers on the foe',
@@ -664,18 +733,18 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state):
       });
   }
   // ── Wards and shields ──
-  const rf = eff.match(/reflects (\d+) dmg/i);
+  const rf = /reflects (\d+) dmg/i.exec(eff);
   if (rf) {
-    actor.status.reflect = (actor.status.reflect || 0) + parseInt(rf[1]);
+    actor.status.reflect = (actor.status.reflect || 0) + parseInt(String(rf[1]));
     narrate(narrative, {
       kind: 'every blow against the guardian will bite back',
       actorName: actor.name,
       actorStatusReflect: actor.status.reflect,
     });
   }
-  const ab = eff.match(/absorbs next (\d+) dmg/i);
+  const ab = /absorbs next (\d+) dmg/i.exec(eff);
   if (ab) {
-    actor.status.absorb = (actor.status.absorb || 0) + parseInt(ab[1]);
+    actor.status.absorb = (actor.status.absorb || 0) + parseInt(String(ab[1]));
     narrate(narrative, {
       kind: 'a ward shrouds the guardian',
       actorName: actor.name,
@@ -685,8 +754,8 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state):
   if (/ignores all armour/i.test(eff)) foe.status.incomingDmgBonus = (foe.status.incomingDmgBonus || 0) + 3;
   // ── Halving (Sept 2026: replaced Finger of Death's 10% instant kill) — a chance to cut the
   // foe's CURRENT HP in half.
-  const hv = eff.match(/(\d+)% halves current hp/i);
-  if (hv && foe.hp > 1 && kcRng() * 100 < parseInt(hv[1])) {
+  const hv = /(\d+)% halves current hp/i.exec(eff);
+  if (hv && foe.hp > 1 && kcRng() * 100 < parseInt(String(hv[1]))) {
     const _cut = Math.floor(foe.hp / 2);
     foe.hp -= _cut;
     narrate(narrative, {
@@ -697,8 +766,8 @@ export function pcMonsterSpecial(turnContext, actor, foe, sp, narrative, state):
     });
   }
   // ── Instant kill ──
-  const ik = eff.match(/(\d+)% instant kill/i);
-  if (ik && kcRng() * 100 < parseInt(ik[1])) {
+  const ik = /(\d+)% instant kill/i.exec(eff);
+  if (ik && kcRng() * 100 < parseInt(String(ik[1]))) {
     foe.hp = 0;
     narrate(narrative, { kind: 'the foe is struck down where they stand', foeName: foe.name });
   }

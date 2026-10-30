@@ -521,7 +521,7 @@ export type TheFactOfAPersonalCombatsLine =
   | { kind: "a fighter's arrow impales the foe"; actorName: string; foeName: string; impDmg: number; impRounds: number }
   | { kind: "a fighter's shot strikes a vital point"; actorName: string; foeName: string }
   | { kind: "a fighter's shot flies wide"; actorName: string }
-  | { kind: "a guardian's perk is named"; meName: string; pName: string; pDesc: string }
+  | { kind: "a guardian's perk is named"; meName: string; pName: string; pDesc: string | undefined }
   | { kind: 'a druid has hunted this kind of beast before'; aName: string; aDruidBeastWard: number }
   | { kind: 'one fighter has the initiative'; firstName: string }
   | { kind: 'the victim fights their own mirror image'; victimName: string; casterName: string }

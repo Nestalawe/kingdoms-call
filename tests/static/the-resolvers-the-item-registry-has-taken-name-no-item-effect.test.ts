@@ -199,8 +199,8 @@ const WARD_USES_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>
   pcStunWard: ['stunWard'],
   // a guardian's perk's share off a lingering harm, and its whole (100)
   pcRoundStart: ['dotWard', 'dotWard'],
-  // a guardian's perk's ward against one school of magic
-  pcCastCombatSpell: ['schoolWard', 'schoolWard'],
+  // a guardian's perk's ward against one school of magic (read once since P1-10b16: `?.arm?.schoolWard?.[school]`)
+  pcCastCombatSpell: ['schoolWard'],
   // a guardian's own cap beside its grade's bulk (the guardian's build)
   pcMonsterCombatant: ['cap', 'cap'],
 };

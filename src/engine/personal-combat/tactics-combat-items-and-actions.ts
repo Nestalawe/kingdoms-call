@@ -19,6 +19,7 @@ import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises
 import { pcHasRanged, pcMoveCheck } from './speed-encounter-plans-and-combatants.ts';
 import { pcHitSkill, pcLandStun, pcStunTurned, pcTakeHit } from './to-hit-wounds-stuns-and-courage.ts';
 import { pcCastCombatSpell, pcMonsterSpecial } from './combat-spells-and-guardian-abilities.ts';
+import type { AMirrorImageInAFight } from './combat-spells-and-guardian-abilities.ts';
 import { pcAdvanceOrStrike, pcAttemptFlee, pcFireShot, pcMeleeStrike } from './melee-flight-and-archery.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import {
@@ -80,6 +81,8 @@ interface TheFightAsAnActionReadsIt {
   stoleBy?: AFighterInAPersonalCombat | null | undefined;
   parley?: boolean | undefined;
   readonly feature?: ALairAsTheScoutReadsIt | null | undefined;
+  /** The Mirror Image a spell conjures (pcCastCombatSpell), none until one is cast. */
+  mirror?: AMirrorImageInAFight | null | undefined;
 }
 /** A fighter's hero or guardian as the theft and the Scout read a guardian's fields (a hero has none of them). */
 type AGuardianAsTheTheftAndTheScoutReadHim = object & {
