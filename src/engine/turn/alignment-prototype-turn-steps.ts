@@ -36,6 +36,7 @@ export const WILD_BREED_EVERY_DRUIDIC = 3;
 /** The most companies a kit will raise into one garrison on its own (the Druids' beasts have no cap: master list). */
 export const KIT_GARRISON_CAP = 3;
 export const FOREST_HEAL_SHARE = 0.25;
+export const TERROR_FADE_EVERY = 3;
 const TIERS: readonly string[] = KC_QUALITY_TIERS;
 const fieldUnit = (t: string): boolean => !/garrison|fleet|galley|ironclad|longship/i.test(t);
 /** The most experienced of a province's battlefield dead, taken from its graves (as the dead are raised everywhere). */
@@ -65,6 +66,22 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
   };
   // master list (Pilgrim roads): remember where every hero stands as the turn begins
   for (const c of G.characters) if (c.alive) c._turnStartLoc = c.location;
+
+  // ── EVIL: Terror fades ── (round 20) a stack fades every TERROR_FADE_EVERY turns unless renewed (the master list's
+  // Terror never faded; the fade is the round 20 brake)
+  if (alignProto(G, 'Evil'))
+    for (const pv of provinces) {
+      if (!pv._terrorStacks || pv._terrorisedBy == null || protoAlignOf(G, pv._terrorisedBy) !== 'Evil') continue;
+      if (G.turn - (pv._terrorTurn ?? G.turn) < TERROR_FADE_EVERY) continue;
+      pv._terrorStacks -= 1;
+      pv._terrorTurn = G.turn;
+      if (pv._terrorStacks <= 0) {
+        delete pv._terrorStacks;
+        delete pv._terrorTurn;
+        delete pv._terrorisedBy;
+        delete pv._terrorPct;
+      }
+    }
 
   for (const pv of provinces) {
     if (pv.terrain === 'sea') continue;

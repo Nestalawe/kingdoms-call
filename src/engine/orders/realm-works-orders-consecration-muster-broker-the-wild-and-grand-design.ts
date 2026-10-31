@@ -467,11 +467,13 @@ export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, 
 // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.
 export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   const { G } = turnContext;
-  // PROTOTYPE Undead (master list): Harvest the Field is removed from the game; the barrows' dead are raised by Necromancy
-  if (protoAlignOf(G, c.player) === 'Undead') {
+  // PROTOTYPE Undead (round 20): the corpse-carters work only at a barrow the realm holds (the master list had removed the
+  // order altogether; round 19 showed the kit cannot live on the spell alone). 2g a company, one grave a phase.
+  const _kitUndead = protoAlignOf(G, c.player) === 'Undead';
+  if (_kitUndead && !(prov.owner === c.player && (prov.features || []).some((f) => f && f.ritualSite && f.siteKind === 'barrow'))) {
     emit(turnContext, {
       type: 'system',
-      text: `${c.name}: the corpse-carters are gone — the dead are raised by Necromancy alone now (Skeletal Armies).`,
+      text: `${c.name}: the corpse-carters work only the barrows of the realm — elsewhere the dead are raised by Necromancy alone.`,
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
@@ -518,20 +520,8 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   };
   c.armies = c.armies || [];
   c.armies.push(hSkel);
-  // PROTOTYPE Undead (round 8): the kit's carters raise a second company from the same field when one lies there
-  let _second = '';
-  if (protoAlignOf(G, c.player) === 'Undead' && (prov.battleGraves || []).length) {
-    const g2 = takeBestGrave(prov);
-    const s2 = {
-      type: g2.type,
-      quality: _uTierH ? KC_QUALITY_UP[g2.quality] || g2.quality : g2.quality,
-      race: 'Undead',
-      _isSkeletal: true,
-      unitName: `${g2.unitName || armyUnitName(g2.type)} (Skeletal)`,
-    };
-    c.armies.push(s2);
-    _second = ` The kit's carters raise a second: ${s2.unitName} (${s2.quality}).`;
-  }
+  // (round 8's second company for the kit's carters went in round 20: one grave a phase, 2g a company)
+  const _second = '';
   emit(turnContext, {
     type: 'hire',
     text: `💀 Harvest the Field — ${c.name}'s carters work the graves of ${prov.name}: ${hSkel.unitName} (${hSkel.quality}) rises to serve, no magic required. (${_hCost}g; upkeep 1g/turn.)${_second}`,

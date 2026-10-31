@@ -705,13 +705,7 @@ export function runBotMovement(G, botIdxSet, hooks) {
             if (bp && pre.length + bp.path.length < 5) {
               const mv = [
                 ...bp.path.map((d) => botMoveOrder(d, 'To the barrow of ' + bp.X.name)),
-                {
-                  action: 'cast_spell',
-                  target: 'Skeletal Armies',
-                  extra: '',
-                  desc: 'Raise the barrow dead of ' + bp.X.name,
-                  prov: bp.X.id,
-                },
+                { action: 'harvest_field', target: '', extra: '', desc: 'Harvest the barrow of ' + bp.X.name, prov: bp.X.id }, // round 20: the carters, no roll
               ];
               G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, mv);
               assigned.add(c.id);

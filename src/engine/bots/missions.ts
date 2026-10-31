@@ -270,7 +270,7 @@ export function botSignaturePre(G, pi, c, P, L) {
   if (alignProto(G, pl.alignment)) {
     const kit = botKitPre(G, pi, c, P, L);
     if (kit) return kit;
-    if (pl.alignment === 'Good' || pl.alignment === 'Druidic' || pl.alignment === 'Evil' || pl.alignment === 'Undead') return null; // their old orders are gone (master list: Harvest the Field too)
+    if (pl.alignment === 'Good' || pl.alignment === 'Druidic' || pl.alignment === 'Evil') return null; // their old orders are gone
   }
   switch (pl.alignment) {
     case 'Divine': // CONSECRATE the ground the king stands on
@@ -296,8 +296,9 @@ export function botSignaturePre(G, pi, c, P, L) {
     }
     // Druidic and Evil: no signature order since 2026-10-12 (Toby item 22: Awaken the Wild and Call from the Pit removed).
     case 'Undead': {
-      // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it)
+      // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it); round 20: under the kit, at a held barrow only
       if ((sk.necromancy || 0) < 1 || !botSees(G, pi, P.id) || !(P.battleGraves || []).length) return null;
+      if (alignProto(G, 'Undead') && !(P.owner === pi && (P.features || []).some(isBarrow))) return null;
       if (L.budget < 2) return null;
       L.budget -= 2;
       L.upkeep += 1;
@@ -1962,7 +1963,7 @@ export function botKingKitOrder(G, pi, c, P, L) {
       };
     }
     case 'Good':
-      if (!war || !ready('light_beacons') || !owned || !botCanAfford(L, 2 * LIGHT_BEACONS_COST_PER_COMPANY))
+      if (!war || !ready('light_beacons') || !botCanAfford(L, 2 * LIGHT_BEACONS_COST_PER_COMPANY)) // round 20: from anywhere
         return null;
       botSpend(L, Math.min(L.budget, 4 * LIGHT_BEACONS_COST_PER_COMPANY));
       return { action: 'light_beacons', target: '', extra: '', desc: 'Light the Beacons' };

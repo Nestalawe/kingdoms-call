@@ -18,8 +18,11 @@ export const START = '2026-10-01T12:00:00Z';
 /** The realm the runner holds in a scripted game. */
 export const SCRIPTED_REALM = 0;
 
-export type SeedSet = 'A' | 'B';
-const SEED_BASE: Record<SeedSet, number> = { A: 1000, B: 2000 };
+export type SeedSet = 'A' | 'B' | 'C' | 'D' | 'E';
+/** A and B have baselines (tests/balance/baseline/); C to E are extra seed sets for bigger runs, compared with nothing. */
+export type BaselineSet = 'A' | 'B';
+const SEED_BASE: Record<SeedSet, number> = { A: 1000, B: 2000, C: 3000, D: 4000, E: 5000 };
+export const SEED_SETS: readonly SeedSet[] = ['A', 'B', 'C', 'D', 'E'];
 
 export interface GameSpec {
   /** 'bots-07', 'scripted-03': the same game in both seed sets has the same id, so they pair. */

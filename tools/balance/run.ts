@@ -43,7 +43,7 @@ import {
   type ReportsResult,
 } from './baseline.ts';
 import { isEnginePath } from './engine-paths.ts';
-import { matrix, type GameSpec, type SeedSet } from './matrix.ts';
+import { matrix, SEED_SETS, type BaselineSet, type GameSpec, type SeedSet } from './matrix.ts';
 import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
 import { CASE_NAMES, type GameResult } from './play.ts';
 import { show, showDiff, showRange } from './report.ts';
@@ -164,7 +164,8 @@ async function main(): Promise<number> {
     },
   });
   const jobs = Number(values.jobs) || os.availableParallelism();
-  const sets: SeedSet[] = values.update ? ['A', 'B'] : [values.set === 'B' ? 'B' : 'A'];
+  const chosen = SEED_SETS.find((s) => s === values.set) ?? 'A';
+  const sets: SeedSet[] = values.update ? ['A', 'B'] : [chosen];
   const only = values.only?.split(',');
   let failed = false;
   buildSite();
@@ -210,6 +211,10 @@ async function main(): Promise<number> {
     }
     const kept = results.map(keep);
     if (values.out) writeRun(values.out, kept);
+    if (set !== 'A' && set !== 'B') {
+      console.log(`Set ${set} has no baseline: the run is written, nothing is compared.\n`);
+      continue;
+    }
     if (values.update) {
       writeBaseline(set, kept);
       console.log(`Rewrote ${path.relative(process.cwd(), BASELINE_FILE[set])}: commit it with the change.\n`);
@@ -279,7 +284,7 @@ async function main(): Promise<number> {
 /** The second half: `games` with every realm's report, against reports.json's set `set` (or rewriting it), and their
  *  saved states against the page's `page`. True if it fails. */
 async function everyRealm(
-  set: SeedSet,
+  set: BaselineSet,
   games: GameSpec[],
   page: GameResult[],
   jobs: number,

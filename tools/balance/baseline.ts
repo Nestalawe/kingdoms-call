@@ -11,7 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { TURN_COLUMNS, type TurnColumn } from './hash.ts';
-import type { SeedSet } from './matrix.ts';
+import type { BaselineSet as SeedSet } from './matrix.ts';
 import type { Cases, GameResult } from './play.ts';
 import type { Stat, Stats } from './stats.ts';
 

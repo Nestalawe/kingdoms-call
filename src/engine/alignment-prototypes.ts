@@ -229,9 +229,10 @@ export function paganFavourPoints(G: GameState, pi: number): number {
   if (!kitRealm(G, pi, 'Pagan')) return 0;
   return heldSites(G, pi, isPaganStones).length + activatedSites(G, pi);
 }
-export const FAVOUR_PER_POINT = 0.15;
-export const FAVOUR_CAP = 1.9;
-/** The Favour of the Old Gods (master list): ×(1 + 0.15 × points), to ×1.9 at 6 points. */
+export const FAVOUR_PER_POINT = 0.1; // round 20 (master list: 0.15)
+export const FAVOUR_CAP = 1.6; // round 20 (master list: 1.9)
+export const OLD_STONES_MULT = 1.9; // defending a stones province of the realm
+/** The Favour of the Old Gods (round 20): ×(1 + 0.1 × points), to ×1.6 at 6 points (master list: 0.15 a point, to ×1.9). */
 export function paganFavourMult(G: GameState, pi: number): number {
   const n = paganFavourPoints(G, pi);
   return Math.min(FAVOUR_CAP, Math.round((1 + FAVOUR_PER_POINT * n) * 100) / 100);
@@ -324,9 +325,11 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       const monsterWild = wild && prov.armyTypes.some((t) => monsterTypes.has(t));
       const dark = enemyAlign === 'Evil';
       const holy = !isAttacker && !!prov && prov.owner === pi && (pl.consecratedProvIds ?? []).includes(prov.id);
-      // master list: the Proclaimed Crusade no longer carries a battle bonus of its own, and Divine Power 3 no longer
-      // puts the ×1.5 in every battle (the gifts of the faith are elsewhere now)
+      // round 20: the Proclaimed Crusade's ×1.5 against the named realm's hosts is back (the master list had dropped it);
+      // Divine Power 3 no longer puts the ×1.5 in every battle (the gifts of the faith are elsewhere now)
+      const proclaimed = enemyPi != null && pl._crusadeVs === enemyPi && (pl._crusadeUntil ?? -1) >= G.turn;
       if (enemyAlign === 'Undead') return { mult: CRUSADE_VS_UNDEAD_MULT, label: 'Crusade against the Undead ×1.75' }; // round 5
+      if (proclaimed) return { mult: 1.5, label: 'Proclaimed Crusade ×1.5' };
       // round 8: the Crusade is against the wild too — any host with a creature or monster company in it
       if ((side.enemyArmies ?? []).some((a) => CREATURES.has(a.type) || MONSTERS.has(a.type)))
         return { mult: 1.5, label: 'Crusade against the wild ×1.5' };
@@ -353,7 +356,7 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
     case 'Pagan': {
       // round 4: the Old Stones — a host defending a stones province of the realm fights at the Favour's maximum
       if (!isAttacker && !!prov && prov.owner === pi && prov.features.some(isPaganStones))
-        return { mult: FAVOUR_CAP, label: `The Old Stones ×${String(FAVOUR_CAP)}` }; // master list: ×1.9 (round 9: ×1.75)
+        return { mult: OLD_STONES_MULT, label: `The Old Stones ×${String(OLD_STONES_MULT)}` }; // ×1.9 (round 9: ×1.75)
       const m = paganFavourMult(G, pi);
       return m > 1 ? { mult: m, label: `Favour of the Old Gods ×${String(m)}` } : nothing;
     }
@@ -424,7 +427,7 @@ export function protoRealmGold(G: GameState, pi: number): { gold: number; note: 
     case 'Evil': {
       let g = 0;
       for (const pv of G.world.provinces)
-        if (pv.owner != null && pv.owner !== pi && pv._terrorisedBy === pi && pv._terrorStacks) g += pv._terrorStacks;
+        if (pv.owner != null && pv.owner !== pi && pv._terrorisedBy === pi && pv._terrorStacks) g += 1; // round 20: 1g a province (master list: a stack)
       return { gold: g, note: g ? ` (+${String(g)}g Tribute of Fear)` : '' }; // master list: no cap (round 3: 5g)
     }
     case 'Undead': {
