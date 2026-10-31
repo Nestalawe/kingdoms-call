@@ -37,7 +37,8 @@
 // realm's own heroes, their units and their items: the values the report makes from the state. (Until P1-11a4 the swap
 // cases also took every alignment pair, every level, games rows and every number the reports hold.) For the Druid
 // rule, six more staged worlds (druidWorlds) and for the Explore order one more (exploreWorld), each sized so the whole
-// test runs in a few seconds.
+// test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
+// report staged for the target field, a world of five casters and one of the kin (kinWorld).
 import vm from 'node:vm';
 import {
   ALL_MAGIC_ITEMS_P,
@@ -53,6 +54,7 @@ import {
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
   SAGE_DISCOVERIES_P,
+  SPELL_DEFS_P,
 } from '../../src/content/kingdoms-call-data.ts';
 import { SKILL_LABELS, type ArmyInABattle, type HeroInABattle } from '../../src/engine/army-tables.ts';
 import { getSeaCapability } from '../../src/engine/units/movement-pools.ts';
@@ -77,7 +79,9 @@ import {
 } from '../../src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { countsAgainstBeastCommand } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { beastCommandCount, druIdPenaltyMult } from '../../src/engine/world/tables.ts';
-import { druidMasteryGain } from '../../src/engine/battle/terrain-and-unit-strength.ts';
+import { armStr, druidMasteryGain } from '../../src/engine/battle/terrain-and-unit-strength.ts';
+import { resolveCastSpellOrder } from '../../src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts';
+import { theMarkOfThisSpellMustStandInTheProvince } from '../../src/engine/rules/the-registry-of-spell-effects.ts';
 import { dragonTamed } from '../../src/engine/discoveries.ts';
 import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
@@ -94,7 +98,7 @@ import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import * as theRulesTheSharedDoorHandsThePortal from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { GAME, SETUPS, slotRowsJson } from './matrix-game.ts';
-import { scriptOf, sourceOf, statementsBetween, type SourceOptions } from './source.ts';
+import { initializersOf, scriptOf, sourceOf, statementsBetween, type SourceOptions } from './source.ts';
 import { addTheFieldsResolveTurnAdds } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
 /** A value as the JSON of a save or a report holds it. */
@@ -138,6 +142,16 @@ function armyCardSeaNote(arr, c) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', '_FLY_UI2', 'druNote', opts)}
   return String(_seaNote);
 }
+// The army card's strength for one unit \`a\` of the hero \`c\`, as its line shows it ("str …"): the unit's kin (its
+// realm's king's and its leader's), a rival kin's leader, a Druid shortfall and the Druid mastery, in the card's order
+// (plan P1-11c1).
+function armyCardUnitStrength(a, c, report) {
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom', opts)}
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel', opts)}
+  let totalStr = 0, druidUnits = 0, druidShort = 0;
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'rawBs', 'totalStr+=bs;', opts)}
+  return bs;
+}
 // The turn report's flying carry, on the column \`armies\` as the report projects it.
 function turnReportFlyingCarry(armies) {
   ${statementsBetween(TURN_REPORT, 'buildTurnReport', 'SEA_UNIT_TYPES', 'AERIAL_UNIT_TYPES', opts)}
@@ -156,6 +170,7 @@ const COPY_FUNCTIONS = [
   'exploreGainOn',
   'armyCardDruidLines',
   'armyCardSeaNote',
+  'armyCardUnitStrength',
   'turnReportFlyingCarry',
 ] as const;
 export type CopyName = (typeof COPY_FUNCTIONS)[number];
@@ -181,6 +196,96 @@ export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   for (const name of COPY_FUNCTIONS)
     if (typeof made[name] !== 'function') throw new Error(`the player portal has no function ${name}`);
   return made as Copies;
+}
+
+/** The order form's Cast Spell tables, as it declares them (plan P1-11c1): every school's spells, each spell's
+ *  school and the mastery spells' levels (order-chances.ts, at top level), the action spells and those offered a hero
+ *  of unseen levels (buildTargetField), the combat spells by school an Encounter plan offers (the Encounter's plan),
+ *  and the spells aimed at a province or at a hero (spellSecondaryHtml). A Set as its list, in its order. */
+export interface TheOrderFormsSpellTables {
+  readonly SPELLS_BY_SCHOOL: Record<string, string[]>;
+  readonly SPELL_TO_SCHOOL: Record<string, string>;
+  readonly SPELL_REQ_LEVEL: Record<string, number>;
+  readonly PHASE_SPELLS: string[];
+  readonly _hsPhase: string[];
+  readonly ENCOUNTER_VALID: Record<string, string[]>;
+  readonly NEEDS_PROV: string[];
+  readonly NEEDS_CHAR: string[];
+}
+/** A spell the form offers a caster in a phase, as its Cast Spell field builds it: whether its school's casting limit
+ *  is reached, and its label. */
+export interface ASpellTheFormOffers {
+  readonly spell: string;
+  readonly atLimit: boolean;
+  readonly label: string;
+}
+export interface TheOrderFormsSpells {
+  readonly tables: TheOrderFormsSpellTables;
+  /** The spells the Cast Spell field offers the hero `c` (as his realm's report holds him) in phase `ph`, the form's
+   *  fields (`po-action-<id>-<phase>`, `po-target-<id>-<phase>`) holding `fields`: buildTargetField's statements from
+   *  the action spells through the rows it builds. */
+  readonly castSpellRows: (c: Obj, ph: number, fields: Record<string, string>) => ASpellTheFormOffers[];
+  /** The target field spellSecondaryHtml builds for the spell, the caster `c` in phase 0 of `report`'s orders, with no
+   *  target chosen: its markup. */
+  readonly targetField: (report: Obj, c: Obj, spell: string) => string;
+}
+
+/** The order form's Cast Spell tables, and its two functions that read them, read from `src` (default: this
+ *  checkout's src/) by their statements and run beside the data file and kc-safe, with the names src/shared/ hands the
+ *  portal: order-chances.ts whole (its tables, effMagicLvl and projectedMagicLevels), the helpers the target field
+ *  calls as the portal declares them, and a stand-in for the page's fields (document.getElementById, which the form's
+ *  count and getOrderTarget read). Apart from playerPortalCopies: order-chances.ts runs whole here. */
+export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpells {
+  const one = (file: string, name: string) => {
+    const found = initializersOf(file, name, opts);
+    if (found.length !== 1) throw new Error(`${file}: ${String(found.length)} declarations of ${name}`);
+    return found[0] ?? '';
+  };
+  const code = [
+    'let currentReport = null;',
+    // the page's fields, as the form reads them by id: here, the values handed in
+    'let theFields = {};',
+    'const document = { getElementById: (id) => (id in theFields ? { value: theFields[id] } : null) };',
+    scriptOf('content/kingdoms-call-data.ts', opts),
+    scriptOf('ui/shared/kc-safe.ts', opts),
+    scriptOf('ui/player/order-chances.ts', opts),
+    sourceOf('ui/player/pre-orders.ts', ['getOrderTarget'], opts),
+    sourceOf('ui/player/order-targets.ts', ['predictedLocation', 'provDirectionLabel'], opts),
+    sourceOf(
+      'ui/player/items-and-heroes.ts',
+      ['isPreOrderIdP', 'orderTargetCharsP', 'preOrderTagP', 'realmOfP', 'realmNameP', 'realmOptStyleP'],
+      opts,
+    ),
+    sourceOf('ui/player/map-symbols.ts', ['leadsArmiesP'], opts),
+    sourceOf('ui/player/move-analysis.ts', ['SKILL_LABELS'], opts),
+    sourceOf('ui/player/titles.ts', ['spellSecondaryHtml'], opts),
+    `function castSpellRows(c, ph, fields) {
+      theFields = fields;
+      try {
+        ${statementsBetween('ui/player/order-targets.ts', 'buildTargetField', 'PHASE_SPELLS', '_spellRows', opts)}
+        return _spellRows;
+      } finally { theFields = {}; }
+    }`,
+    `function targetField(report, c, spell) {
+      currentReport = report;
+      try { return String(spellSecondaryHtml(report, c, 0, spell, '', spell)); } finally { currentReport = null; }
+    }`,
+    `const tables = JSON.parse(JSON.stringify({
+      SPELLS_BY_SCHOOL, SPELL_TO_SCHOOL, SPELL_REQ_LEVEL,
+      PHASE_SPELLS: [...${one('ui/player/order-targets.ts', 'PHASE_SPELLS')}],
+      _hsPhase: [...${one('ui/player/order-targets.ts', '_hsPhase')}],
+      ENCOUNTER_VALID: ${one('ui/player/orders-form.ts', 'ENCOUNTER_VALID')},
+      NEEDS_PROV: [...${one('ui/player/titles.ts', 'NEEDS_PROV')}],
+      NEEDS_CHAR: [...${one('ui/player/titles.ts', 'NEEDS_CHAR')}],
+    }));`,
+  ].join('\n');
+  const made: unknown = vm.runInNewContext(`(() => {\n${code}\nreturn { tables, castSpellRows, targetField };\n})()`, {
+    ...theRulesTheSharedDoorHandsThePortal,
+  });
+  if (!isObj(made) || typeof made['castSpellRows'] !== 'function' || typeof made['targetField'] !== 'function')
+    throw new Error("the order form's spells did not load");
+  // (the vm's values, made by the form's own statements: its tables as JSON, its rows and its markup)
+  return made as unknown as TheOrderFormsSpells;
 }
 
 // ── The values ────
@@ -1066,4 +1171,327 @@ export function armyCardSeaNoteAgainstTheEngine(c: Copies, s: Samples): SeaNoteC
         engineWithoutTheMastery: engineOn(getSeaCapability, [armies, withSkillAt(h.state, 'naval', 7)]).answer,
       };
     });
+}
+
+// ── The order form's Cast Spell tables and checks, and the army card's kin and feud (P1-11c1) ────
+// Plan P1-11c's parity cases, before the form takes its tables and its check from the engine's side (P1-11c2 to c5).
+// The truth, as above: the form's copy on what the realm's report holds, against the content's spells (SPELL_DEFS_P)
+// or the engine's function on the state. Where the two are known to disagree (plan P1-11c, question 28 for Toby, and the
+// Warlock's extra cast, Parked), the difference is pinned exactly.
+
+/** A spell as the content's table (SPELL_DEFS_P) writes what the order form reads of it. */
+interface ASpellAsTheFormReadsIt {
+  readonly school: string;
+  readonly target?: string;
+  readonly encounter?: boolean;
+  readonly phase?: boolean;
+  readonly reqLevel?: number;
+}
+const THE_SPELLS: [string, ASpellAsTheFormReadsIt][] = Object.entries(
+  SPELL_DEFS_P as Record<string, ASpellAsTheFormReadsIt>,
+);
+/** The spells the content's table writes as `keep` says, in its order. */
+const spellsThat = (keep: (d: ASpellAsTheFormReadsIt) => boolean | undefined) =>
+  THE_SPELLS.filter(([, d]) => keep(d)).map(([name]) => name);
+/** The spells named, by school, each school in the order its first spell comes, its spells in the table's order. */
+function bySchool(names: readonly string[]): Record<string, string[]> {
+  const schools: Record<string, string[]> = {};
+  for (const name of names) {
+    const school = THE_SPELLS.find(([n]) => n === name)?.[1].school ?? '(no school)';
+    (schools[school] ??= []).push(name);
+  }
+  return schools;
+}
+
+/** How a table is compared: in its order (a list the form shows in its order), as a map (each key's value, whatever the
+ *  keys' order), as a set (the form only asks whether a spell is in it), or by school as sets (each school in its order,
+ *  its spells whatever their order). */
+type HowATableIsCompared = 'in order' | 'as a map' | 'as a set' | 'by school, as sets';
+const HOW_EACH_TABLE_IS_COMPARED: Record<keyof TheOrderFormsSpellTables, HowATableIsCompared> = {
+  SPELLS_BY_SCHOOL: 'in order',
+  SPELL_TO_SCHOOL: 'as a map',
+  SPELL_REQ_LEVEL: 'as a map',
+  PHASE_SPELLS: 'in order',
+  _hsPhase: 'in order',
+  ENCOUNTER_VALID: 'by school, as sets',
+  NEEDS_PROV: 'as a set',
+  NEEDS_CHAR: 'as a set',
+};
+/** A table as it is compared (`how`): the keys of a map sorted, a set's spells sorted, each school's spells sorted. */
+function asCompared(how: HowATableIsCompared, table: unknown): unknown {
+  const sorted = (x: unknown) => (Array.isArray(x) ? x.map(String).sort() : x);
+  if (how === 'in order' || !isObj(table)) return how === 'as a set' ? sorted(table) : table;
+  if (how === 'as a map') return Object.fromEntries(Object.entries(table).sort(([a], [b]) => (a < b ? -1 : 1)));
+  return Object.fromEntries(Object.entries(table).map(([school, spells]) => [school, sorted(spells)]));
+}
+/** The tables the content's spells (SPELL_DEFS_P) make of the order form's eight: every spell by school, each spell's
+ *  school, the mastery spells' levels, the action spells, those offered a hero of unseen levels (an action spell with
+ *  no mastery level), the combat spells by school, and the action spells aimed at a province and at a hero. */
+export function theContentsSpellTables(): TheOrderFormsSpellTables {
+  const everySpellBySchool = bySchool(spellsThat(() => true));
+  return {
+    SPELLS_BY_SCHOOL: everySpellBySchool,
+    SPELL_TO_SCHOOL: Object.fromEntries(
+      Object.entries(everySpellBySchool).flatMap(([school, spells]) => spells.map((name) => [name, school])),
+    ),
+    SPELL_REQ_LEVEL: Object.fromEntries(THE_SPELLS.flatMap(([name, d]) => (d.reqLevel ? [[name, d.reqLevel]] : []))),
+    PHASE_SPELLS: spellsThat((d) => d.phase),
+    _hsPhase: spellsThat((d) => d.phase && !d.reqLevel),
+    ENCOUNTER_VALID: bySchool(spellsThat((d) => d.encounter)),
+    NEEDS_PROV: spellsThat((d) => d.phase && d.target === 'province'),
+    NEEDS_CHAR: spellsThat((d) => d.phase && d.target === 'character'),
+  };
+}
+/** Each of the order form's eight Cast Spell tables, against the table the content's spells make of it, each compared
+ *  as HOW_EACH_TABLE_IS_COMPARED says. */
+export function theFormsSpellTablesAgainstTheContent(form: TheOrderFormsSpells): Comparison[] {
+  const content = theContentsSpellTables();
+  return Object.entries(HOW_EACH_TABLE_IS_COMPARED).map(([name, how]) => {
+    const table = name as keyof TheOrderFormsSpellTables;
+    return compare(`${table} (${how})`, asCompared(how, form.tables[table]), {
+      answer: asCompared(how, content[table]),
+      changed: false,
+    });
+  });
+}
+
+/** Where a spell's target field looks for the hero it is aimed at: in the caster's province only, anywhere, or at no
+ *  hero (a spell aimed at a province, or at none). */
+export type WhereTheFormLooks = "the caster's province" | 'anywhere' | 'no hero';
+/** The report staged for the target field: realm 0's caster in province 100 with a hero of his realm there and one in
+ *  province 200; and in each of the two provinces, a lone hero of realm 1, one of realm 1 leading armies, a lone
+ *  wanderer, and the body of a fallen hero of realm 0 (every one of them seen, and every one a mark some spell may
+ *  take). */
+function aReportToAimSpellsIn(): { report: Obj; caster: Obj; whereEachStands: Map<string, number> } {
+  const HERE = 100;
+  const caster: Obj = { id: 1, name: 'Ysolde Fen', player: 0, locationId: HERE, alive: true, skills: {} };
+  const own: Obj[] = [caster];
+  const others: Obj[] = [];
+  const bodies: Obj[] = [];
+  let id = 2;
+  for (const where of [HERE, 200]) {
+    const at = { locationId: where, locationName: `Province ${String(where)}`, alive: true };
+    own.push({ ...at, id: id++, name: `Ally ${String(where)}`, player: 0, skills: {} });
+    others.push({ ...at, id: id++, name: `Lone ${String(where)}`, player: 1, armies: 0, isKing: false });
+    others.push({ ...at, id: id++, name: `Leader ${String(where)}`, player: 1, armies: 3, leadsArmies: true });
+    others.push({ ...at, id: id++, name: `Wanderer ${String(where)}`, player: null, isWandering: true, armies: 0 });
+    bodies.push({ id: id++, name: `Fallen ${String(where)}`, locationId: where, raisable: true, wasOwnHero: true });
+  }
+  const report: Obj = {
+    characters: own,
+    visibleChars: others,
+    everSeenChars: others,
+    knownDeadHeroes: bodies,
+    allKingdoms: [
+      { index: 0, name: 'Realm0' },
+      { index: 1, name: 'Realm1' },
+    ],
+  };
+  const whereEachStands = new Map(
+    [...own, ...others, ...bodies].map((x) => [String(x['id']), Number(x['locationId'])]),
+  );
+  return { report: deepFreeze(report), caster, whereEachStands };
+}
+/** One spell's target field: where the form looks for its mark, against whether the engine's Cast Spell order holds
+ *  that its mark must stand in the caster's province (the spells' registry's "a spell's mark must stand in the
+ *  province", the check the order makes before the cast roll). */
+export interface WhereTheMarkStandsComparison extends Comparison {
+  readonly where: WhereTheFormLooks;
+}
+/** For every spell of the content's table, the form's target field on the staged report (the heroes it offers, by the
+ *  province each stands in) against the engine's check that its mark must stand in the caster's province. */
+export function theFormsTargetsAgainstTheMarkCheck(form: TheOrderFormsSpells): WhereTheMarkStandsComparison[] {
+  const { report, caster, whereEachStands } = aReportToAimSpellsIn();
+  const here = caster['locationId'];
+  return THE_SPELLS.map(([spell]) => {
+    const offered = [...form.targetField(report, caster, spell).matchAll(/<option value="([^"]*)"/g)]
+      .map((m) => m[1] ?? '')
+      .filter((v) => whereEachStands.has(v));
+    const where: WhereTheFormLooks = !offered.length
+      ? 'no hero'
+      : offered.every((v) => whereEachStands.get(v) === here)
+        ? "the caster's province"
+        : 'anywhere';
+    return {
+      ...compare(spell, where === "the caster's province", {
+        answer: theMarkOfThisSpellMustStandInTheProvince(spell),
+        changed: false,
+      }),
+      where,
+    };
+  });
+}
+
+/** One cast compared: whether the form greys the spell out at its school's casting limit, and whether the engine's
+ *  Cast Spell order blocks it there; with the engine's answer for the same cast in a realm without the Grand Cathedral
+ *  and by a hero without the Warlock's title. */
+export interface CastingLimitComparison extends Comparison {
+  readonly cathedral: boolean;
+  readonly warlock: boolean;
+  readonly engineWithNeither: unknown;
+}
+/** The spells each cast and earlier cast is made of: a White spell, the White spell a Grand Cathedral frees, and a
+ *  Psychic spell. */
+const SPELLS_CAST = ['Holy Symbol', 'Bless Province', 'Oratory'] as const;
+/** Every list of earlier casts of SPELLS_CAST, from none to three (the phases before the cast's). */
+function earlierCasts(): string[][] {
+  const lists: string[][] = [[]];
+  for (let n = 1; n <= 3; n++)
+    for (const list of lists.filter((l) => l.length === n - 1)) for (const s of SPELLS_CAST) lists.push([...list, s]);
+  return lists;
+}
+/** Whether the engine's Cast Spell order (resolveCastSpellOrder, called as processOrder calls it) blocks the cast at
+ *  its school's casting limit: the hero `c` (a copy, so a cast that lands and teaches him changes no other case) casts
+ *  `spell` in the phase after `earlier`, his realm's orders for those phases. */
+function theOrderBlocks(G: Obj, c: Obj, earlier: readonly string[], spell: string): boolean {
+  const extraOf = (s: string) =>
+    s === 'Bless Province' ? String(c['location']) : s === 'Oratory' ? String(c['id']) : '';
+  const order = (s: string): Obj => ({ action: 'Cast Spell', target: s, extra: extraOf(s) });
+  const ph = earlier.length;
+  const cast = order(spell);
+  G['turnOrders'] = { [String(c['id'])]: [...earlier.map(order), cast] };
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], Number(G['turn']) || 1), { KC_SEASONS, isBotRow });
+  tc._currentPhase = ph;
+  tc._logCtx = { charId: c['id'], phase: ph };
+  const prov = objects(isObj(G['world']) ? G['world']['provinces'] : []).find((p) => p['id'] === c['location']);
+  const realm = objects(G['players'])[Number(c['player'])];
+  quietly(() => {
+    // (the staged world's hero, his order, his province and his realm, given the types the order takes, by assertion
+    // as the staged worlds give the saved state's: the turn's context is made by the engine's own createTurnContext)
+    resolveCastSpellOrder(
+      tc as unknown as TurnContext,
+      copyOf(c) as never,
+      cast as never,
+      ph,
+      spell,
+      extraOf(spell),
+      prov as never,
+      realm as never,
+      null,
+    );
+  });
+  return tc.turnLog.some((l) => isObj(l['fact']) && l['fact']['kind'] === "a school's casting limit blocks a spell");
+}
+/** The form's casting count against the engine's: a hero of realm 0 (a Divine realm) of White Magic 1 to 5 and Psychic
+ *  1 casts each of SPELLS_CAST after every list of earlier casts, in a realm with and without a Grand Cathedral, and
+ *  holding the Warlock's title or not. The form greys a spell out at its school's limit (its rows' `atLimit`); the
+ *  engine blocks it ("a school's casting limit blocks a spell"). */
+export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingLimitComparison[] {
+  const { g, king, hero } = aWorldToStageIn();
+  const realm = objects(g['players'])[0];
+  if (!realm) throw new Error('the staged world has no realm 0');
+  realm['alignment'] = 'Divine';
+  realm['gdProvinceId'] = null; // a Wonder raised before Wonders were sited: always on (gdActiveFor)
+  const casters = [1, 2, 3, 4, 5].map((white) => hero({ location: king['location'], skills: { white, psychic: 1 } }));
+  const world = quietly(() => savedAndReported(g));
+  const G = copyOf(world.state);
+  const realmInG = objects(G['players'])[0] ?? {};
+  const out: CastingLimitComparison[] = [];
+  for (const caster of casters) {
+    // (as saved, before any cast: a cast that lands may teach the hero in the state, which no later case may see)
+    const saved = objects(world.state['characters']).find((x) => x['id'] === caster['id']);
+    const reported = objects(world.report['characters']).find((x) => x['id'] === caster['id']);
+    if (!saved || !reported) throw new Error('a staged caster is missing from the state or the report');
+    const c = deepFreeze(copyOf(saved));
+    for (const earlier of earlierCasts()) {
+      const fields: Record<string, string> = {};
+      earlier.forEach((s, ph) => {
+        fields[`po-action-${String(c['id'])}-${String(ph)}`] = 'Cast Spell';
+        fields[`po-target-${String(c['id'])}-${String(ph)}`] = s;
+      });
+      const rows = form.castSpellRows(reported, earlier.length, fields);
+      for (const spell of SPELLS_CAST) {
+        const row = rows.find((r) => r.spell === spell);
+        const blocks = (cathedral: boolean, warlock: boolean) => {
+          realmInG['discoveries'] = cathedral ? [{ id: 'gd' }] : [];
+          G['_minorHolders'] = warlock ? { warlock: { charId: c['id'] } } : {};
+          return theOrderBlocks(G, c, earlier, spell);
+        };
+        const engineWithNeither = blocks(false, false);
+        for (const cathedral of [false, true])
+          for (const warlock of [false, true])
+            out.push({
+              ...compare({ white: skillOf(c, 'white'), earlier, spell }, row ? row.atLimit : '(not offered)', {
+                answer: cathedral || warlock ? blocks(cathedral, warlock) : engineWithNeither,
+                changed: false,
+              }),
+              cathedral,
+              warlock,
+              engineWithNeither,
+            });
+      }
+    }
+  }
+  return out;
+}
+
+/** One unit's strength on the army card compared with the battle's, and what the battle makes of the Druid its leader
+ *  falls short of: its multiplier (1: none short), and its figure for the unit under the same leader trained in Druid
+ *  enough to lead it. */
+export interface KinComparison extends Comparison {
+  readonly druidMultiplier: number;
+  readonly engineWithoutTheShortfall: unknown;
+}
+/** The world staged for the kin and feud: realm 0 (a Good realm whose king is a Human) with a hero of every humanoid
+ *  race, of Druid 0 and 1, away from the king; the king leads a unit of every type a race can raise (neither a creature
+ *  nor a monster, nor an elemental) at every quality, of every race and of none. */
+export function kinWorld(): World {
+  const { g, king, land, hero } = aWorldToStageIn();
+  const [away] = land;
+  if (!away) throw new Error('the staged world has too few land provinces');
+  const classes: Record<string, readonly string[]> = KC_UNIT_CLASS;
+  const has = (cls: string, t: string) => (classes[cls] ?? []).includes(t);
+  const raised = Object.keys(KC_UNIT_TYPE).filter(
+    (t) => !has('creature', t) && !has('monster', t) && Object.keys(classes).some((cls) => has(cls, t)),
+  );
+  king['armies'] = raised.flatMap((type) =>
+    KC_QUALITY_TIERS.flatMap((quality) =>
+      [...KC_HUMANOID_RACES, null].map((race) => ({ type, quality, unitName: type, ...(race ? { race } : {}) })),
+    ),
+  );
+  for (const race of KC_HUMANOID_RACES)
+    for (const druid of [0, 1]) hero({ race, alignment: 'Good', location: away['id'], skills: { druid } });
+  return quietly(() => savedAndReported(g));
+}
+/** The army card's strength of each unit the king leads, under each staged hero (armyCardUnitStrength, read by its
+ *  statements), against the battle's (armStr, on the ground of no terrain, with nothing of the battle around it). */
+export function armyCardKinAgainstTheBattle(c: Copies, world: World): KinComparison[] {
+  const G = copyOf(world.state);
+  G['_titleHolders'] = {};
+  G['_minorHolders'] = {};
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], Number(G['turn']) || 1), { KC_SEASONS, isBotRow });
+  deepFreeze(G);
+  const heroes = ownHeroes({ state: G, report: world.report });
+  const king = heroes.find((h) => h.report['isKing']);
+  if (!king) throw new Error('the kin world has no king in its report');
+  const alignment = realmOf({ state: G, report: world.report }, king.state)['alignment'];
+  const multiplier = battleDruidMultiplier({ state: G, report: world.report });
+  // (the staged world's hero and unit, given the types armStr takes, by assertion as battleDruidMultiplier's)
+  const battle = (h: Obj, u: Obj) =>
+    armStr(tc as unknown as TurnContext, u as ArmyInABattle, h as HeroInABattle, String(alignment), null, null);
+  const units = objects(king.report['armies']).map((a, i) => ({ report: a, state: objects(king.state['armies'])[i] }));
+  return heroes
+    .filter((h) => !h.report['isKing'])
+    .flatMap((h) =>
+      units.flatMap((u) => {
+        if (!u.state) return [];
+        return [
+          {
+            ...compare(
+              [
+                u.report['type'],
+                u.report['quality'],
+                u.report['race'] ?? null,
+                h.report['race'],
+                skillOf(h.state, 'druid'),
+              ],
+              c.armyCardUnitStrength(u.report, h.report, world.report),
+              engineOn(battle, [h.state, u.state]),
+            ),
+            druidMultiplier: multiplier(h.state, u.state),
+            engineWithoutTheShortfall: engineOn(battle, [withSkillAt(h.state, 'druid', 5), u.state]).answer,
+          },
+        ];
+      }),
+    );
 }
