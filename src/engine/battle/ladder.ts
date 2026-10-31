@@ -13,6 +13,7 @@ import {
   type ACommandMultiplierOfAUnit,
   type AForceWideModifierOfASide,
   type AModifierOfAUnitInTheLadder,
+  type ASideAsABattlesReportLinesNameIt,
   type ASidesTacticalInTheLadder,
   type TheFactOfOneOfABattlesSentences,
 } from './the-facts-a-battles-lines-record.ts';
@@ -53,7 +54,7 @@ export interface LadderRow {
 }
 export function ladderLines(
   role: 'attacker' | 'defender',
-  name: string,
+  name: ASideAsABattlesReportLinesNameIt,
   rows: LadderRow[],
   width: number,
   flank: boolean,

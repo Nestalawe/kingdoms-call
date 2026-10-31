@@ -339,6 +339,18 @@ export type TheDefendersOfAProvince =
  *  enemy owner): a side of the battle, or a province's defenders. */
 export type TheOwnerOfABattlesUnits = ASideOfABattle | TheDefendersOfAProvince;
 
+/** A side as a battle's report lines name it (plan P1-12d30: the battle slice's Decision 6 of 2026-10-31; the battle
+ *  handed these helpers its label in words before): a side (ASideOfABattle), a province's defenders
+ *  (TheDefendersOfAProvince), or a form only these lines write: a hero's host ("Aldric's host": the kinship line), a
+ *  province's defenders whoever leads them ("the defenders of Highmoor": the kinship line), a province's guards with no
+ *  guard to name them ("Guards": the battle grid). The prose writes the label (theLabelOfASideAsTheReportLinesNameIt). */
+export type ASideAsABattlesReportLinesNameIt =
+  | ASideOfABattle
+  | TheDefendersOfAProvince
+  | { readonly kind: "a hero's host in the battle"; readonly heroName: string }
+  | { readonly kind: "a province's defenders, whoever leads them"; readonly provName: string }
+  | { readonly kind: "a province's guards with no guard to name them" };
+
 /** The values a unit's label is written from: its owner as the line names him (a side, the defenders, or none), and its
  *  name, type and quality as the world holds them as the line is told. */
 interface TheValuesAUnitIsNamedFrom {
@@ -968,7 +980,7 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: "a side's Druid cannot fully command its units";
-      sideName: string;
+      sideName: ASideAsABattlesReportLinesNameIt;
       unitCount: number;
       shortfalls: AUnitsDruidShortfall[];
     }
@@ -1238,7 +1250,7 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: "a side's strength ladder begins";
       side: 'attacker' | 'defender';
-      sideName: string;
+      sideName: ASideAsABattlesReportLinesNameIt;
       unitCount: number;
       strength: number;
     }
@@ -1295,7 +1307,7 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'the ground allows a front of a width'; terrain: string; frontWidth: number }
   | {
       kind: "a side's front line in the battle grid";
-      sideName: string | null | undefined;
+      sideName: ASideAsABattlesReportLinesNameIt | null | undefined;
       theFrontLine: (AUnitAsTheGridNamesIt | null)[];
       theFlanks: AUnitAsTheGridNamesIt[];
       theAir: AUnitAsTheGridNamesIt[];
@@ -1303,24 +1315,24 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: "a side's second line in the battle grid";
-      sideName: string | null | undefined;
+      sideName: ASideAsABattlesReportLinesNameIt | null | undefined;
       theSecondLine: (AUnitAsTheGridNamesIt | null)[];
     }
   | {
       kind: 'the scouting side chooses the front';
-      scoutName: string;
+      scoutName: ASideAsABattlesReportLinesNameIt;
       itsSideHasExploredMore: boolean;
-      otherSideName: string;
-      scoutName2: string;
+      otherSideName: ASideAsABattlesReportLinesNameIt;
+      scoutName2: ASideAsABattlesReportLinesNameIt;
       frontWidth: number;
       frontTheDiceAllow: number;
       adjustments: number;
     }
   | {
       kind: 'each side shifts its battle line';
-      otherSideName: string;
+      otherSideName: ASideAsABattlesReportLinesNameIt;
       otherSidesMoves: number;
-      scoutName: string;
+      scoutName: ASideAsABattlesReportLinesNameIt;
       scoutsMoves: number;
     }
   | {
@@ -1360,7 +1372,7 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: "a side's gyrocopters climb to meet the enemy's flyers"; sideName: string; engagedCount: number }
   | {
       kind: "a side's units fight beside their own kin";
-      sideName: string;
+      sideName: ASideAsABattlesReportLinesNameIt;
       unitsOfTheKingsRaceUnderACommanderOfThatBlood: number;
       unitsOfTheKingsRace: number;
       unitsOfTheirCommandersRace: number;

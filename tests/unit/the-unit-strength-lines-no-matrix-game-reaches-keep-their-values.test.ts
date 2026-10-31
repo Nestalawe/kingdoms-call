@@ -148,22 +148,20 @@ describe('a force carried over the sea by its flyers', () => {
 });
 
 describe('a force, a leader or a world that is missing', () => {
+  /** A side whose label is "the attackers" (plan P1-12d30: the kinship line takes a side's record; the prose writes
+   *  its label). */
+  const theAttackers = { heroName: 'the attackers', leaderless: false };
   test("kinship's line: no force gives none; a gap in a force is passed over", () => {
-    expect(kinNarrative(null, null, 'Human', 'the attackers')).toBeNull();
-    expect(kinNarrative(undefined, null, 'Human', 'the attackers')).toBeNull();
+    expect(kinNarrative(null, null, 'Human', theAttackers)).toBeNull();
+    expect(kinNarrative(undefined, null, 'Human', theAttackers)).toBeNull();
     // its fact holds the counts, and the views write its words (plan P1-12d3): the kind and the whole line's words
-    const line = kinNarrative(
-      [null, unit('Men-at-Arms', 'Average', { race: 'Human' })],
-      null,
-      'Human',
-      'the attackers',
-    );
+    const line = kinNarrative([null, unit('Men-at-Arms', 'Average', { race: 'Human' })], null, 'Human', theAttackers);
     expect(line?.kind).toBe("a side's units fight beside their own kin");
     expect(line && theWordsOf(line)).toBe("🤝 Kinship — the attackers: 1 unit of the king's race (+20%).");
   });
   test("kinship's line: a leader whose race is '' is of no race", () => {
     const humans = [unit('Men-at-Arms', 'Average', { race: 'Human' })];
-    expect(kinNarrative(humans, hero({ race: '' }), 'Elven', 'the attackers')).toBeNull();
+    expect(kinNarrative(humans, hero({ race: '' }), 'Elven', theAttackers)).toBeNull();
   });
   test('a province is not coastal when the state, its world or the province is missing', () => {
     const prov = { id: 0, row: 0, col: 0, terrain: 'plain' } as unknown as Province;

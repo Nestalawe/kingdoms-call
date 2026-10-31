@@ -108,7 +108,7 @@ describe('a row with no unit on it, or a type no table names', () => {
     const g = battleGrid([{ base: 5, name: 'Wild Hunt', fly: true }, { base: 3 }, null], 6, 'plain', {});
     expect(g.fly.map((x) => x.s)).toEqual([5]);
     expect(g.front.filter(Boolean).map((x) => x?.s)).toEqual([3]);
-    expect(battleGridLines('Aldric', g, false).map(theWordsOf)).toEqual([
+    expect(battleGridLines({ heroName: 'Aldric', leaderless: false }, g, false).map(theWordsOf)).toEqual([
       '📊 Aldric   1st │ ·     ·     unit  ·     ·     ·     │ air: WildH',
     ]);
   });
@@ -119,7 +119,8 @@ describe("the grid print's side label", () => {
     const g = battleGrid([{ a: army('Men-at-Arms'), base: 4 }], 2, 'plain', {});
     /** The side's label in the words of its first grid line, "📊 <label> 1st │ …". */
     const label = (l: string | null | undefined) => {
-      const line = battleGridLines(l, g, true)[0];
+      // the side a label names (plan P1-12d30: a record, whose label the prose writes), or none
+      const line = battleGridLines(l == null ? l : { heroName: l, leaderless: false }, g, true)[0];
       return line ? /^📊 (.{8}) 1st │/u.exec(theWordsOf(line))?.[1] : undefined;
     };
     expect(label(null)).toBe('        ');
