@@ -525,6 +525,107 @@ export type AContestForAProvinceIsDecided = { kind: 'a contest for a province is
     }
 );
 
+// ── A UNIT'S FATE, ONE KIND FOR EACH AUDIENCE (plan P1-12d27: P1-12's Decisions of 2026-10-31, Decision 4) ──
+// A unit's fate was 15 kinds, one for each sentence: 12 of the fight's (rollUnitFates' 6 and the 2 the rule registry
+// names, and the 4 a battle writes itself: a defending unit destroyed in the rout or in the fighting, a unit cut down
+// with no escape, an attacking unit cut down in the rout) and a beaten guard's surviving unit's 3 of its event's, beside
+// the disbanding it shared with rollUnitFates. It is two, merged by sense within one audience: a unit's fate in the
+// battle (the fight's, told in the fight's narrative) and a beaten guard's surviving unit's fate (its event's: its
+// callers file it on its own; the disbanding goes with it). Each holds the unit's record, its fate as a slug and the
+// values its sentence is written from; the prose switches on them to the sentences the 15 kinds had
+// (theWordsOfAUnitsFateInTheBattle, theWordsOfABeatenGuardsSurvivingUnitsFate). A reader of the fates reads one kind for
+// each audience.
+
+/** A unit's fate in a battle, as the fight's narrative tells it: the unit's record at its quality before its fate,
+ *  whether its side won, what becomes of it, whom it faced (a clause after its name), and the values its sentence is
+ *  written from. It dies (annihilated in the rout, destroyed in the fighting or in the rout, its bones crumbling; the
+ *  defenders' own rolls in a battle against them never tell the bones), is cut down with no escape (trapped, or in the
+ *  rout, its bones crumbling), is cut down and rises again by its regenerating hide, rises a tier (hardened by victory,
+ *  earned, or despite defeat), falls back behind the shield wall in good order, keeps its nerve under the knightly
+ *  example, loses heart and falls a tier, or has had enough and disbands (its owner, name and type: the disbanding's
+ *  own form of its label). Its audience: the fight's. */
+export type AUnitsFateInTheBattle = { kind: "a unit's fate in the battle"; itsSideWon: boolean } & (
+  | {
+      fate: 'dies';
+      theUnit: AUnitAsALineNamesIt;
+      whomItFaced: WhomAUnitFaced | null;
+      /** The rout a beaten host's companies die in (a battle's loser that fled the field), told as an annihilation. */
+      inTheRout: boolean;
+      itsBonesCrumble: boolean | undefined;
+    }
+  | { fate: 'is cut down with no escape'; inTheRout: false; theUnit: AUnitAsALineNamesIt }
+  | {
+      fate: 'is cut down with no escape';
+      inTheRout: true;
+      theUnit: AUnitAsALineNamesIt;
+      itsBonesCrumble: boolean | undefined;
+    }
+  | {
+      fate:
+        | 'is cut down and rises again by its regenerating hide'
+        | 'falls back behind the shield wall in good order'
+        | 'keeps its nerve under the knightly example';
+      theUnit: AUnitAsALineNamesIt;
+      whomItFaced: WhomAUnitFaced | null;
+    }
+  | {
+      fate: 'rises a tier';
+      theUnit: AUnitAsALineNamesIt;
+      whomItFaced: WhomAUnitFaced | null;
+      /** A victorious defender's company, told as hardened by victory; else it earns its promotion (a winner's) or
+       *  improves despite defeat (a beaten side's). */
+      hardenedByVictory: boolean;
+      itsQualityAfter: string;
+    }
+  | {
+      fate: 'loses heart and falls a tier';
+      theUnit: AUnitAsALineNamesIt;
+      whomItFaced: WhomAUnitFaced | null;
+      itsQualityAfter: string;
+    }
+  | {
+      fate: 'has had enough and disbands';
+      /** The units' owner, as the battle names him (a side's record or the defenders'); null: none named. */
+      theUnitsOwner: TheOwnerOfABattlesUnits | null;
+      unitName: string | null | undefined;
+      unitType: string;
+      whomItFaced: WhomAUnitFaced | null;
+    }
+);
+
+/** A beaten guard's surviving unit's fate, as a line filed on its own tells it (erodeGuardSurvivors): the unit's record
+ *  at its quality before its fate, and what becomes of it: it breaks ranks and flees as mercenaries near the province,
+ *  loses heart and falls a tier, holds its ground unbroken (both rallying around the guard), or has had enough and
+ *  disbands (the guard, its name and type: the disbanding's own form of its label). The victor's name, " (wandering)"
+ *  cut: the prose writes "<name>'s host"; null for none. Its audience: its event's. */
+export type ABeatenGuardsSurvivingUnitsFate = { kind: "a beaten guard's surviving unit's fate" } & (
+  | {
+      fate: 'breaks ranks and flees as mercenaries';
+      theUnit: AUnitAsALineNamesIt;
+      victorsHost: string | null;
+      provName: string;
+    }
+  | {
+      fate: 'loses heart and falls a tier';
+      theUnit: AUnitAsALineNamesIt;
+      itsQualityAfter: string;
+      victorsHost: string | null;
+      theGuard: TheDefendersOfAProvince;
+    }
+  | {
+      fate: 'holds its ground unbroken';
+      theUnit: AUnitAsALineNamesIt;
+      victorsHost: string | null;
+      theGuard: TheDefendersOfAProvince;
+    }
+  | {
+      fate: 'has had enough and disbands';
+      theGuard: TheDefendersOfAProvince;
+      unitName: string | null | undefined;
+      unitType: string;
+    }
+);
+
 /** One unit of a force drawn up for battle, as its header row shows it. */
 export interface AUnitOfAForceDrawnUp {
   type: string;
@@ -579,6 +680,8 @@ export type WhyACommandersForceIsDemoralised =
 export type TheFactOfOneOfABattlesSentences =
   | ABattleIsDecided
   | AContestForAProvinceIsDecided
+  | AUnitsFateInTheBattle
+  | ABeatenGuardsSurvivingUnitsFate
   | {
       kind: "the attacker's lightning advance catches the defender unready";
       atkName: AValueInALinesWords;
@@ -783,7 +886,6 @@ export type TheFactOfOneOfABattlesSentences =
       runThemDownPct: AValueInALinesWords;
       loserName2: AValueInALinesWords;
     }
-  | { kind: 'a unit is cut down with no escape'; unitName: AUnitAsALineNamesIt }
   | { kind: "a side's other forces survive the engagement"; someUnitsFateIsToldAbove: boolean }
   | { kind: 'no units were left on the field to count' }
   | { kind: "the attacker's casualties begin"; atkName: ASideOfABattle }
@@ -981,18 +1083,8 @@ export type TheFactOfOneOfABattlesSentences =
       cName: ASideOfABattle;
       extraLossesPct: number;
     }
-  | {
-      kind: 'a defending unit is destroyed in the rout';
-      defendingUnitName: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-    }
   | { kind: 'the defenders have nowhere to retreat and hold a shield fort'; provName: string }
   | { kind: 'the defenders have nowhere to retreat and take further losses'; provName: string }
-  | {
-      kind: 'a defending unit is destroyed in the fighting';
-      defendingUnitName: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-    }
   | { kind: "the guard's host is destroyed and he is a masterless hero"; guardName: string; provName: string }
   | { kind: "the attacker's dwarven guard leave the defenders' free lances no broken backs"; cName: ASideOfABattle }
   | {
@@ -1003,11 +1095,6 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: "the attacker's corsairs take his beaten force back to the ships"; cName: ASideOfABattle }
   | { kind: "the attacker's shield-wall holds and the infantry stand their ground"; cName: ASideOfABattle }
   | { kind: 'the attacker has nowhere to retreat and takes further losses'; cName: ASideOfABattle }
-  | {
-      kind: 'an attacking unit is cut down in the rout with no escape';
-      unitName: string;
-      itsBonesCrumble: boolean | undefined;
-    }
   | { kind: "the attacker's forces retreat to a province"; cName: ASideOfABattle; retreatToName: string }
   | {
       kind: "the onlookers' summary of a battle";
@@ -1040,59 +1127,6 @@ export type TheFactOfOneOfABattlesSentences =
       provName: string;
       terrorPct: number;
       terrorStacks: number;
-    }
-  | {
-      kind: 'a unit is cut down and rises again by its regenerating hide';
-      unitReference: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-    }
-  | {
-      kind: 'a unit dies in the battle';
-      unitReference: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-      /** The rout a beaten host's companies die in (a battle's loser that fled the field), told as an annihilation. */
-      inTheRout: boolean;
-      itsSideWon: boolean;
-      itsBonesCrumble: boolean | undefined;
-    }
-  | {
-      kind: 'a unit is promoted after the battle';
-      unitReferenceAtItsOldQuality: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-      /** A victorious defender's company, told as hardened by victory; else it earns its promotion. */
-      hardenedByVictory: boolean;
-      unitQuality: string;
-    }
-  | {
-      kind: 'a unit falls back behind the shield wall in good order';
-      unitReference: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-    }
-  | {
-      kind: 'a unit keeps its nerve under the knightly example';
-      unitReference: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-    }
-  | {
-      kind: 'a unit loses heart in defeat and is reduced a tier';
-      unitReferenceAtItsOldQuality: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-      unitQuality: string;
-    }
-  | {
-      kind: 'a unit improves a tier despite defeat';
-      unitReferenceAtItsOldQuality: AUnitAsALineNamesIt;
-      whomItFaced: WhomAUnitFaced | null;
-      unitQuality: string;
-    }
-  | {
-      kind: 'a beaten unit has had enough and disbands';
-      /** The units' owner, as the battle names him (since plan P1-12d28 a side's record or the defenders', a beaten
-       *  guard's among them); null: none named. */
-      ownerName: TheOwnerOfABattlesUnits | null;
-      unitName: string | null | undefined;
-      unitType: string;
-      whomItFaced: WhomAUnitFaced | null;
     }
   | {
       kind: "a hero not at war with the province's realm gains a host inside it";
@@ -1177,28 +1211,6 @@ export type TheFactOfOneOfABattlesSentences =
       realmTag: string | null;
       provName: string;
       provName2: string;
-    }
-  | {
-      kind: "a beaten guard's surviving unit breaks ranks and flees as mercenaries";
-      unitName: AUnitAsALineNamesIt;
-      /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
-      victorsHost: string | null;
-      provName: string;
-    }
-  | {
-      kind: "a beaten guard's surviving unit loses heart and is reduced a tier";
-      unitNameAtItsOldQuality: AUnitAsALineNamesIt;
-      unitQuality: string;
-      /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
-      victorsHost: string | null;
-      guardName: TheDefendersOfAProvince;
-    }
-  | {
-      kind: "a beaten guard's surviving unit holds its ground unbroken";
-      unitName: AUnitAsALineNamesIt;
-      /** The victor's name, " (wandering)" cut: the prose writes "<name>'s host"; null for none. */
-      victorsHost: string | null;
-      guardName: TheDefendersOfAProvince;
     }
   | {
       kind: "a side's strength ladder begins";
@@ -1358,6 +1370,8 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   'a force drawn up for battle': "the fight's",
   'a battle is decided': "the fight's",
   'a contest for a province is decided': "its event's",
+  "a unit's fate in the battle": "the fight's",
+  "a beaten guard's surviving unit's fate": "its event's",
   "a battle's losses, tallied from its lines": "the fight's",
   "the attacker's lightning advance catches the defender unready": "the fight's",
   'the attacker moves into the province and a battle is initiated': "the fight's",
@@ -1422,7 +1436,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "the winner's manticore pride hunt the broken companies": "the fight's",
   "the loser's dwarven guard leave the shark shoals nothing in the water": "the fight's",
   "the winner's shark shoals tear into the beaten crews": "the fight's",
-  'a unit is cut down with no escape': "the fight's",
   "a side's other forces survive the engagement": "the fight's",
   'no units were left on the field to count': "the fight's",
   "the attacker's casualties begin": "the fight's",
@@ -1506,17 +1519,14 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   'every defending unit was lost before the lines closed': "the fight's",
   "the defenders' dwarven guard leave the attacker's free lances no broken backs": "the fight's",
   "the attacker's free lances ride down the defenders' broken companies": "the fight's",
-  'a defending unit is destroyed in the rout': "the fight's",
   'the defenders have nowhere to retreat and hold a shield fort': "the fight's",
   'the defenders have nowhere to retreat and take further losses': "the fight's",
-  'a defending unit is destroyed in the fighting': "the fight's",
   "the guard's host is destroyed and he is a masterless hero": "the fight's",
   "the attacker's dwarven guard leave the defenders' free lances no broken backs": "the fight's",
   "the defenders' free lances ride down the attacker's broken companies": "the fight's",
   "the attacker's corsairs take his beaten force back to the ships": "the fight's",
   "the attacker's shield-wall holds and the infantry stand their ground": "the fight's",
   'the attacker has nowhere to retreat and takes further losses': "the fight's",
-  'an attacking unit is cut down in the rout with no escape': "the fight's",
   "the attacker's forces retreat to a province": "the fight's",
   "the onlookers' summary of a battle": "the fight's",
   'the most seasoned captain takes command of the combined host': "its event's",
@@ -1524,14 +1534,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "the iron throne of skulls raises the enemy's fallen as skeletons": "the fight's",
   'terror radiates from a province after an evil victory': "the fight's",
   'terror lingers in a province and its defenders fight demoralised': "the fight's",
-  'a unit is cut down and rises again by its regenerating hide': "the fight's",
-  'a unit dies in the battle': "the fight's",
-  'a unit is promoted after the battle': "the fight's",
-  'a unit falls back behind the shield wall in good order': "the fight's",
-  'a unit keeps its nerve under the knightly example': "the fight's",
-  'a unit loses heart in defeat and is reduced a tier': "the fight's",
-  'a unit improves a tier despite defeat': "the fight's",
-  'a beaten unit has had enough and disbands': "the fight's",
   "a hero not at war with the province's realm gains a host inside it": "its event's",
   "a hero's new host is still forming up in a province": "its event's",
   'the hero turns a newly gathered host on a province and a battle is initiated': "the fight's",
@@ -1545,9 +1547,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "the province's garrison is overwhelmed as the province falls": "its event's",
   "the province's owner learns his defenders still hold against the hero": "its event's",
   "the province's owner learns the hero was beaten back": "its event's",
-  "a beaten guard's surviving unit breaks ranks and flees as mercenaries": "its event's",
-  "a beaten guard's surviving unit loses heart and is reduced a tier": "its event's",
-  "a beaten guard's surviving unit holds its ground unbroken": "its event's",
   "a side's strength ladder begins": "the fight's",
   "the strength ladder's units": "the fight's",
   "the strength ladder's command": "the fight's",

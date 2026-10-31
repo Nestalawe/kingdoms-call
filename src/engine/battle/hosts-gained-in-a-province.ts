@@ -613,6 +613,8 @@ export const GUARD_FLIGHT_CHANCE = 0.35;
 // tier; the rest fight on unbowed.
 export const GUARD_DEMOTE_CHANCE = 0.5;
 // victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
+// Since P1-12d27 each survivor's line is one kind, a beaten guard's surviving unit's fate (its event's), its fate a
+// slug, the disbanding among them.
 export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASurvivingUnitsFate, victor) {
   const { G } = turnContext;
   const kept = [];
@@ -636,8 +638,9 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
         id: newMercId(turnContext),
       });
       tellASurvivingUnitsFate({
-        kind: "a beaten guard's surviving unit breaks ranks and flees as mercenaries",
-        unitName: {
+        kind: "a beaten guard's surviving unit's fate",
+        fate: 'breaks ranks and flees as mercenaries',
+        theUnit: {
           kind: 'a unit named with its quality',
           owner: theGuard,
           unitName: a.unitName,
@@ -654,33 +657,35 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
       const _q0 = a.quality;
       if (demoteOrDisband(a)) {
         tellASurvivingUnitsFate({
-          kind: 'a beaten unit has had enough and disbands',
-          ownerName: theGuard,
+          kind: "a beaten guard's surviving unit's fate",
+          fate: 'has had enough and disbands',
+          theGuard,
           unitName: a.unitName,
           unitType: a.type,
-          whomItFaced: null,
         });
         return;
       }
       tellASurvivingUnitsFate({
-        kind: "a beaten guard's surviving unit loses heart and is reduced a tier",
-        unitNameAtItsOldQuality: {
+        kind: "a beaten guard's surviving unit's fate",
+        fate: 'loses heart and falls a tier',
+        theUnit: {
           kind: 'a unit named with its quality',
           owner: theGuard,
           unitName: a.unitName,
           type: a.type,
           quality: _q0,
         },
-        unitQuality: a.quality,
+        itsQualityAfter: a.quality,
         victorsHost: _vh,
-        guardName: theGuard,
+        theGuard,
       });
       kept.push(a);
       return;
     }
     tellASurvivingUnitsFate({
-      kind: "a beaten guard's surviving unit holds its ground unbroken",
-      unitName: {
+      kind: "a beaten guard's surviving unit's fate",
+      fate: 'holds its ground unbroken',
+      theUnit: {
         kind: 'a unit named with its quality',
         owner: theGuard,
         unitName: a.unitName,
@@ -688,7 +693,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
         quality: a.quality,
       },
       victorsHost: _vh,
-      guardName: theGuard,
+      theGuard,
     });
     kept.push(a);
   });
