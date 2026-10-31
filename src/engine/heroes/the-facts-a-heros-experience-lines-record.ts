@@ -43,6 +43,8 @@ export type TheFactOfAHerosExperienceLine =
   | { kind: 'a hero is hardened after a fight'; heroName: string; rise: AHitPointRiseAsTheLineTellsIt }
   | {
       kind: "a hero's maximum hit points rise as the phase ends";
+      /** His realm, whose alone the line is (R-117; null: a hero of no realm, whose rise no realm is told). */
+      realm: number | null;
       heroName: string;
       /** How far it rises, his maximum HP after it, and his current HP (the prose rounds it down). */
       by: number;
