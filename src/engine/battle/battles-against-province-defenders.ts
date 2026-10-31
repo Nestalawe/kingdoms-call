@@ -65,8 +65,9 @@ import {
   magicL8CastBonus,
   primalStrikeItemBonus,
 } from '../chances-and-lair-grades.ts';
-import { discDeathMult, discPromo, hasDisc } from '../discoveries.ts';
+import { discDeathMult, discPromo } from '../discoveries.ts';
 import {
+  doARealmsDiscoveriesWeightTheLinesBehindTheFront,
   theShareARealmsDiscoveriesFortifyItsOwnGroundBy,
   whatARealmsDiscoveriesAddToACastersChance,
   whatARealmsDiscoveriesAddToASidesFanaticism,
@@ -1111,7 +1112,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
 
   // ── BATTLE LINES ──
   // (The old count-based "N flanking units" line is gone — it described a mechanic that no longer existed.)
-  const atkFlankDisc = hasDisc(turnContext, c.player, 'sd09');
+  const atkFlankDisc = doARealmsDiscoveriesWeightTheLinesBehindTheFront(G.players[c.player]);
   const terrainFront = rollBattleWidth(prov.terrain); // 2026-10-11: rolled once per battle, shared by both sides; the scout may take one wider or narrower (battleDeploy)
   let lineWidth = terrainFront;
   void atkCount;
@@ -1199,8 +1200,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // the defenders' Flanking Tactics come from the province OWNER (a player garrison) or the
   // defending commander's realm — previously hard-coded ×0.5 whatever discoveries they held.
   const defFlankDisc =
-    (prov.owner != null && hasDisc(turnContext, prov.owner, 'sd09')) ||
-    (!!defHero && defHero.player != null && hasDisc(turnContext, defHero.player, 'sd09'));
+    (prov.owner != null && doARealmsDiscoveriesWeightTheLinesBehindTheFront(G.players[prov.owner])) ||
+    (!!defHero &&
+      defHero.player != null &&
+      doARealmsDiscoveriesWeightTheLinesBehindTheFront(G.players[defHero.player]));
   const defsWithStr = (prov.neutralDefenders || [])
     .map((a) => {
       const cmd = [];

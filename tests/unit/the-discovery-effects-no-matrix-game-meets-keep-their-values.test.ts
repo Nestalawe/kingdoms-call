@@ -11,10 +11,17 @@
 //   their case, and taken out after): a siege, own-ground, fanaticism or casting effect with no number, a siege's unit
 //   types met by no unit, a gap among the attacker's units (none but gaps: nothing), a gap in a force asked for a class
 //   of unit (no unit of it, a humanoid's neither), a unit's strength stacked past its ceiling (×1.30).
-// Level 1 (unit): the runner on a staged realm, and combatVsNPC called directly on a world the engine makes from a
-// fixed seed, no turn played; whether the line is written is decided before any die is drawn (a seeded stream feeds
-// the rest of the battle). Not lower: the effects read the content's rows and the battle writes the line. Not higher: a
-// whole turn adds dice and orders before the battle, and no bot researches these discoveries in the matrix.
+// - P1-19ab: Homeward Song (re10: +40 to an Elven unit's chance of slipping away home; met 4 times in 1 game of the
+//   matrix, which no game's outcome shows), in recordBattleGraves called with its die fed: the fallen unit flees home
+//   on a roll its song lifts it past, and leaves a grave without the song. And the lines' and the fates' effects on rows
+//   the content doesn't write: a beaten unit's death cut stacked past its floor (a quarter), a side asked with none
+//   given, a flight home or a surgery with no number (Battlefield Surgery's 20%: discParam's fallback, moved as it is),
+//   and Flanking Tactics' weights when no discovery has the kind.
+// Level 1 (unit): the runner on a staged realm, and combatVsNPC and recordBattleGraves called directly (combatVsNPC on a
+// world the engine makes from a fixed seed), no turn played; whether the line is written is decided before any die is
+// drawn (a seeded stream feeds the rest of the battle), and the graves' one die is fed. Not lower: the effects read the
+// content's rows and the battle writes the line. Not higher: a whole turn adds dice and orders before the battle, and no
+// bot researches these discoveries in the matrix.
 import '../lib/the-whole-engine.ts';
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { KC_SEASONS } from '../../src/content/kingdoms-call-data.ts';
@@ -24,8 +31,14 @@ import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { createTurnContext } from '../../src/engine/turn/context.ts';
 import { homeProvinceIdFor } from '../../src/engine/grand-design.ts';
 import { combatVsNPC } from '../../src/engine/battle/battles-against-province-defenders.ts';
+import { recordBattleGraves } from '../../src/engine/graves.ts';
 import {
   DISC_BY_ID,
+  doARealmsDiscoveriesWeightTheLinesBehindTheFront,
+  theChanceARealmsDiscoveriesDragAHeroFromTheField,
+  theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath,
+  theWeightsADiscoveryGivesTheLinesBehindTheFront,
+  whatARealmsDiscoveriesAddToAFallenUnitsFlightHome,
   theFactorARealmsDiscoveriesStrengthenAUnitBy,
   theShareARealmsDiscoveriesFortifyItsOwnGroundBy,
   whatARealmsDiscoveriesAddToACastersChance,
@@ -179,6 +192,111 @@ describe("the army's effects on rows the content doesn't write", () => {
       ],
     );
     expect(got).toEqual([7, 8]);
+  });
+});
+
+/** Homeward Song (Elven Heritage: +40 to an Elven unit's chance of slipping away home), and Battlefield Surgery (15%). */
+const HOMEWARD_SONG = { id: 're10' };
+const BATTLEFIELD_SURGERY = { id: 'sd36' };
+
+/** An Elven realm holding the discoveries given loses one Elven company on the ground given, its die fed: whether the
+ *  company slipped away home (queued, no grave) or left a grave. */
+function anElvenCompanyFalls(
+  discoveries: readonly { readonly id: string }[],
+  terrain: string,
+  theDie: number,
+): 'it slips away home' | 'it leaves a grave' {
+  const queue: unknown[] = [];
+  const tc = { G: { players: [{ race: 'Elven', discoveries }] }, _elvenEscapeQueue: queue };
+  const field: { terrain: string; battleGraves?: unknown[] } = { terrain };
+  const was = kcRng.use(() => theDie);
+  try {
+    recordBattleGraves(
+      tc,
+      field,
+      [{ type: 'Elven Archers', quality: 'Average', race: 'Elven', unitName: 'Wardens' }],
+      0,
+    );
+  } finally {
+    kcRng.use(was);
+  }
+  if (queue.length === 1 && field.battleGraves?.length === 0) return 'it slips away home';
+  if (queue.length === 0 && field.battleGraves?.length === 1) return 'it leaves a grave';
+  throw new Error('the company both fled and left a grave, or neither');
+}
+
+describe('Homeward Song, as a fallen Elven company rolls to slip away home (recordBattleGraves)', () => {
+  test.for([
+    ['the song, on the plain: 80 is below 45 + 40', [HOMEWARD_SONG], 'plain', 0.8, 'it slips away home'],
+    ['no song, on the plain: 80 is not below 45', [], 'plain', 0.8, 'it leaves a grave'],
+    ['the song, on the plain: 86 is not below 45 + 40', [HOMEWARD_SONG], 'plain', 0.86, 'it leaves a grave'],
+    ['the song, in the forest: 99 is below 60 + 40', [HOMEWARD_SONG], 'forest', 0.99, 'it slips away home'],
+    ['no song, in the forest: 99 is not below 60', [], 'forest', 0.99, 'it leaves a grave'],
+  ] as const)('%s', ([, discoveries, terrain, theDie, what]) => {
+    expect(anElvenCompanyFalls(discoveries, terrain, theDie)).toBe(what);
+  });
+
+  test("the runner: the song's 40 points, none for a realm without it or no realm", () => {
+    expect(whatARealmsDiscoveriesAddToAFallenUnitsFlightHome({ discoveries: [HOMEWARD_SONG] })).toBe(40);
+    expect(whatARealmsDiscoveriesAddToAFallenUnitsFlightHome({ discoveries: [] })).toBe(0);
+    expect(whatARealmsDiscoveriesAddToAFallenUnitsFlightHome(undefined)).toBe(0);
+  });
+});
+
+describe("the lines' and the fates' effects, in their runners", () => {
+  test("Battlefield Surgery's chance: its row's 15%, or nothing for a realm without it", () => {
+    expect(theChanceARealmsDiscoveriesDragAHeroFromTheField({ discoveries: [BATTLEFIELD_SURGERY] })).toBe(0.15);
+    expect(theChanceARealmsDiscoveriesDragAHeroFromTheField({ discoveries: [HOMEWARD_SONG] })).toBeNull();
+    expect(theChanceARealmsDiscoveriesDragAHeroFromTheField(undefined)).toBeNull();
+  });
+
+  test("Flanking Tactics: a realm holding it has its lines weighted, by its row's four; one without, not", () => {
+    expect(doARealmsDiscoveriesWeightTheLinesBehindTheFront({ discoveries: [{ id: 'sd09' }] })).toBe(true);
+    expect(doARealmsDiscoveriesWeightTheLinesBehindTheFront({ discoveries: [BATTLEFIELD_SURGERY] })).toBe(false);
+    expect(doARealmsDiscoveriesWeightTheLinesBehindTheFront(undefined)).toBe(false);
+    expect(theWeightsADiscoveryGivesTheLinesBehindTheFront()).toEqual([1, 0.5625, 0.3125, 0.1563]);
+  });
+});
+
+describe("the lines' and the fates' effects on rows the content doesn't write", () => {
+  const unit = { type: 'Free Lances', quality: 'Average', race: 'Human' };
+
+  test("a beaten unit's death cut stacked past the kind's floor: a quarter", () => {
+    const left = withPlantedRows(
+      { mail: { kind: 'deathRed', pct: 0.5 }, plate: { kind: 'deathRed', pct: 0.4 } },
+      (realm) => theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath(realm, { theUnit: unit, theSide: 'atk' }),
+    );
+    expect(left).toBe(0.25);
+  });
+
+  test("a death cut for one side: the other side's unit, and a unit whose side isn't given, keep their chance", () => {
+    const left = withPlantedRows({ charge: { kind: 'deathRed', pct: 0.4, side: 'atk' } }, (realm) =>
+      (['atk', 'def', null, undefined] as const).map((theSide) =>
+        theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath(realm, { theUnit: unit, theSide }),
+      ),
+    );
+    expect(left).toEqual([0.6, 1, 1, 1]);
+  });
+
+  test("a flight home with no number, beside one with: the other's points; a surgery with no number: 20%", () => {
+    const got = withPlantedRows(
+      { hum: { kind: 'elvenEscape' }, song: { kind: 'elvenEscape', pct: 10 }, knife: { kind: 'nearDeathSurvival' } },
+      (realm) => [
+        whatARealmsDiscoveriesAddToAFallenUnitsFlightHome(realm),
+        theChanceARealmsDiscoveriesDragAHeroFromTheField(realm),
+      ],
+    );
+    expect(got).toEqual([10, 0.2]);
+  });
+
+  test("Flanking Tactics' weights when no discovery has the kind: none", () => {
+    const sd09: unknown = Reflect.get(DISC_BY_ID, 'sd09');
+    try {
+      Reflect.deleteProperty(DISC_BY_ID, 'sd09');
+      expect(theWeightsADiscoveryGivesTheLinesBehindTheFront()).toBeUndefined();
+    } finally {
+      Reflect.set(DISC_BY_ID, 'sd09', sd09);
+    }
   });
 });
 

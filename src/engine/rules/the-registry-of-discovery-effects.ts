@@ -24,10 +24,19 @@ import {
   A_REALMS_DISCOVERIES_STIR_A_SIDES_FANATICISM,
   A_REALMS_DISCOVERIES_STRENGTHEN_A_UNIT,
 } from './discoveries/a-realms-discoveries-in-its-armys-strength.ts';
+import {
+  A_REALMS_DISCOVERIES_CARRY_A_FALLEN_UNIT_HOME,
+  A_REALMS_DISCOVERIES_DRAG_A_HERO_FROM_THE_FIELD,
+  A_REALMS_DISCOVERIES_PROMOTE_A_UNIT,
+  A_REALMS_DISCOVERIES_SPARE_A_BEATEN_UNIT,
+  A_REALMS_DISCOVERIES_WEIGHT_THE_LINES_BEHIND_THE_FRONT,
+} from './discoveries/a-realms-discoveries-in-its-lines-and-its-units-fates.ts';
 import type {
   ABeastACommanderLeads,
+  ABeatenUnitARealmsDiscoveriesMaySpare,
   ACastARealmsDiscoveriesMayHelp,
   ASideAsItsFanaticismIsRolled,
+  AUnitARealmsDiscoveriesMayPromote,
   AUnitARealmsDiscoveriesMayStrengthen,
   HookPointName,
   TheAttackersUnitsAtASiege,
@@ -102,6 +111,30 @@ export const THE_REGISTRY_OF_DISCOVERY_EFFECTS = {
         A_REALMS_DISCOVERIES_LET_A_BEAST_FOLLOW_WITHOUT_ITS_DRUID['dragon-taming'],
     },
   },
+  'flanking-tactics': {
+    strength: {
+      "a realm's discoveries weight the lines behind the front":
+        A_REALMS_DISCOVERIES_WEIGHT_THE_LINES_BEHIND_THE_FRONT['flanking-tactics'],
+    },
+  },
+  'a-beaten-units-death-cut': {
+    fate: {
+      "a realm's discoveries spare a beaten unit": A_REALMS_DISCOVERIES_SPARE_A_BEATEN_UNIT['a-beaten-units-death-cut'],
+    },
+  },
+  promotion: { fate: { "a realm's discoveries promote a unit": A_REALMS_DISCOVERIES_PROMOTE_A_UNIT.promotion } },
+  'homeward-flight': {
+    fate: {
+      "a realm's discoveries carry a fallen unit home":
+        A_REALMS_DISCOVERIES_CARRY_A_FALLEN_UNIT_HOME['homeward-flight'],
+    },
+  },
+  'battlefield-surgery': {
+    fate: {
+      "a realm's discoveries drag a hero from the field":
+        A_REALMS_DISCOVERIES_DRAG_A_HERO_FROM_THE_FIELD['battlefield-surgery'],
+    },
+  },
 } satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once. Each stage holds one kind today, so its
@@ -113,8 +146,15 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
     "a realm's discoveries fortify its own ground": ['own-ground'],
     "a realm's discoveries stir a side's fanaticism": ['fanaticism'],
     "a realm's discoveries let a beast follow without its Druid": ['dragon-taming'],
+    "a realm's discoveries weight the lines behind the front": ['flanking-tactics'],
   },
   aHerosStanding: { "a realm's discoveries add to a caster's chance": ['casting'] },
+  fate: {
+    "a realm's discoveries spare a beaten unit": ['a-beaten-units-death-cut'],
+    "a realm's discoveries promote a unit": ['promotion'],
+    "a realm's discoveries carry a fallen unit home": ['homeward-flight'],
+    "a realm's discoveries drag a hero from the field": ['battlefield-surgery'],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly DiscoveryEffectSlug[];
@@ -124,6 +164,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
 const ROWS: Readonly<Record<DiscoveryEffectSlug, AKindOfDiscoveryEffect>> = DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS;
 const ENTRIES: Readonly<Record<DiscoveryEffectSlug, DiscoveryEffectEntry>> = THE_REGISTRY_OF_DISCOVERY_EFFECTS;
 const STRENGTH = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.strength;
+const FATE = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.fate;
 
 /** The effects of the kind of each entry of a stage's order the realm holds, with the entry's slug. */
 function theEffectsOfTheStageARealmHolds(
@@ -232,4 +273,86 @@ export function whatARealmsDiscoveriesAddToACastersChance(
     if (added !== null) s += added;
   }
   return s;
+}
+
+/** The runner of "strength: a realm's discoveries weight the lines behind the front", for a side (both battles, and
+ *  commandScore): whether the side's realm holds an effect of the stage, so the grid weights its lines behind the front
+ *  (flankLineMults: the weights, below). */
+export function doARealmsDiscoveriesWeightTheLinesBehindTheFront(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): boolean {
+  return (
+    theEffectsOfTheStageARealmHolds(theRealm, STRENGTH["a realm's discoveries weight the lines behind the front"])
+      .length > 0
+  );
+}
+
+/** The runner of "strength: a realm's discoveries weight the lines behind the front", for the weights (flankLineMults,
+ *  which the grid asks for a side whose lines are weighted): the weights the first discovery of the content (the table
+ *  of the discoveries by id, in its order) with an effect of the stage gives, as its row writes them, or none. */
+export function theWeightsADiscoveryGivesTheLinesBehindTheFront(): readonly number[] | undefined {
+  for (const slug of STRENGTH["a realm's discoveries weight the lines behind the front"]) {
+    for (const d of Object.values(DISC_BY_ID)) {
+      const e = [d.effect, d.effect2].find((effect) => effect?.kind === ROWS[slug].kind);
+      if (e) return ENTRIES[slug].strength?.["a realm's discoveries weight the lines behind the front"]?.(e);
+    }
+  }
+  return undefined;
+}
+
+/** The runner of "fate: a realm's discoveries spare a beaten unit" (discDeathMult, which both battles ask): the
+ *  multiplier left on the unit's chance of death, 1 less the shares the realm's effects cut, added, never below the
+ *  kind's floor (a quarter). */
+export function theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: ABeatenUnitARealmsDiscoveriesMaySpare,
+): number {
+  let r = 0;
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(
+    theRealm,
+    FATE["a realm's discoveries spare a beaten unit"],
+  )) {
+    const cut = ENTRIES[slug].fate?.["a realm's discoveries spare a beaten unit"]?.(e, facts) ?? null;
+    if (cut !== null) r += cut;
+  }
+  return Math.max(DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS['a-beaten-units-death-cut'].numbers.theFloor.value, 1 - r);
+}
+
+/** The runner of "fate: a realm's discoveries promote a unit" (discPromo, which both battles ask): the shares the
+ *  realm's effects add to the unit's chance of promotion, added. */
+export function whatARealmsDiscoveriesAddToAUnitsPromotion(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AUnitARealmsDiscoveriesMayPromote,
+): number {
+  let r = 0;
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, FATE["a realm's discoveries promote a unit"])) {
+    const added = ENTRIES[slug].fate?.["a realm's discoveries promote a unit"]?.(e, facts) ?? null;
+    if (added !== null) r += added;
+  }
+  return r;
+}
+
+/** The runner of "fate: a realm's discoveries carry a fallen unit home" (recordBattleGraves, before it rolls): the
+ *  points the realm's effects add to a fallen Elven unit's chance of slipping away home, added. */
+export function whatARealmsDiscoveriesAddToAFallenUnitsFlightHome(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number {
+  let s = 0;
+  const theStage = FATE["a realm's discoveries carry a fallen unit home"];
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, theStage)) {
+    s += ENTRIES[slug].fate?.["a realm's discoveries carry a fallen unit home"]?.(e) ?? 0;
+  }
+  return s;
+}
+
+/** The runner of "fate: a realm's discoveries drag a hero from the field" (handleHeroDeath, before it rolls): the
+ *  chance the first of the realm's effects gives a slain hero, as a share, or nothing if the realm holds none. */
+export function theChanceARealmsDiscoveriesDragAHeroFromTheField(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number | null {
+  const theStage = FATE["a realm's discoveries drag a hero from the field"];
+  const [first] = theEffectsOfTheStageARealmHolds(theRealm, theStage);
+  if (!first) return null;
+  const [slug, e] = first;
+  return ENTRIES[slug].fate?.["a realm's discoveries drag a hero from the field"]?.(e) ?? null;
 }
