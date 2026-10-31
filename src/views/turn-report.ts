@@ -46,13 +46,14 @@ import {
   discEligible,
   discExploreMult,
   discHeroWage,
-  discSumOf,
   discUpkeepWage,
   realmRecruitCost,
   taxBonusCap,
   taxRecordsGold,
 } from '../engine/discoveries.ts';
 import {
+  whatARealmsDiscoveriesAddToAMercenaryBandsPrice,
+  whatARealmsDiscoveriesAddToTheCorpseCartersCost,
   whatARealmsDiscoveriesAddToASpysChance,
   whatARealmsDiscoveriesAddToPractice,
   whatARealmsDiscoveriesAddToResearch,
@@ -63,10 +64,7 @@ import {
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
   THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
 } from '../engine/rules/discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
-import {
-  discUnitIs,
-  discUnitMatch,
-} from '../engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
+import { discUnitMatch } from '../engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../engine/battle/evil-terror.ts';
 
 // ── EVIL TERROR: the reading (2026-10-12, Toby items 21 and 23) ── The constants (−10% a stack, at most three stacks)
@@ -631,8 +629,8 @@ export function buildTurnReport(view, itsLines = null) {
         1,
         (ARMY_COST_MASTER[merc.type] || 2) -
           (player && player.alignment === 'Neutral' ? 2 : 0) +
-          (player ? discSumOf(player, 'merc', 'delta', (e) => !e.cls || discUnitIs(e.cls, merc.type, true)) : 0),
-      ), // + merc discoveries
+          (player ? whatARealmsDiscoveriesAddToAMercenaryBandsPrice(player, { theUnitsType: merc.type }) : 0),
+      ), // + merc discoveries (the discoveries' registry's since plan P1-19ae: the rule the hire reads)
       location: p2?.name || 'unknown',
       locationId: merc.location,
       isSea: merc.isSea,
@@ -1264,7 +1262,7 @@ export function buildTurnReport(view, itsLines = null) {
       return {
         unitWage,
         unitCost: { ...ARMY_COST_MASTER },
-        harvest: Math.max(0, 2 + discSumOf(player, 'harvestCost', 'delta')),
+        harvest: Math.max(0, 2 + whatARealmsDiscoveriesAddToTheCorpseCartersCost(player)), // (the registry's, P1-19ae: the order's rule)
         brokerSpy: 2,
       };
     })(),

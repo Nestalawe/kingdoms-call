@@ -20,13 +20,14 @@ import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import {
   applyPendingSynthPlan,
   discRecruitQChance,
-  discSum,
   gdActive,
-  hasDisc,
   isGarrisonUnitType,
   realmRecruitCost,
 } from '../discoveries.ts';
-import { discUnitIs } from '../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
+import {
+  doARealmsDiscoveriesWaiveTheHiringBan,
+  whatARealmsDiscoveriesAddToAMercenaryBandsPrice,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { emit, notifyTarget, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.ts';
@@ -216,8 +217,9 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         1,
         baseMercCost -
           (G.players[c.player]?.alignment === 'Neutral' ? 2 : 0) +
-          discSum(turnContext, c.player, 'merc', 'delta', (e) => !e.cls || discUnitIs(e.cls, merc.type, true)),
-      ); // + merc discoveries
+          whatARealmsDiscoveriesAddToAMercenaryBandsPrice(G.players[c.player], { theUnitsType: merc.type }),
+      ); // + merc discoveries (the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries cut a
+      // company's price", which the report's price asks too)
       if ((player.gold || 0) < mCost) {
         emit(turnContext, {
           type: 'hire',
@@ -463,7 +465,8 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   // Divine…Undead spectrum. Divine realms cannot hire Undead heroes and vice versa (distance
   // 6) — unless sd31 Diplomatic Protocols waives the ban (at 5g).
   const kingdomAlign = G.players[c.player]?.alignment || 'Neutral';
-  const _waiveBan = hasDisc(turnContext, c.player, 'sd31');
+  // (the discoveries' registry's since plan P1-19ae: "orderValidity: a realm's discoveries waive the hiring ban")
+  const _waiveBan = doARealmsDiscoveriesWaiveTheHiringBan(G.players[c.player]);
   const hireWage = h.player === null ? heroHireWage(kingdomAlign, h.alignment, _waiveBan, h) : h.pay || 1;
   if (hireWage == null) {
     emit(turnContext, {
