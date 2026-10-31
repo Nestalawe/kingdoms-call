@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 8, built in PR #PRNUMBER
+- **Source:** Plan question 8, built in PR #317
 - **Enforced by:** [`realm-reports`](../../tests/unit/realm-reports.test.ts), [`report-leaks`](../../tests/unit/report-leaks.test.ts), [`hp-gain-private`](../../tests/unit/hp-gain-private.test.ts)
 
 After a hero spies on a province, his realm's report shows, under Spy Activity, what other realms' heroes do there
