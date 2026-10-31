@@ -2,6 +2,7 @@ import { SKILL_LABELS } from '../army-tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { activeItems } from '../items/equipment.ts';
 import { effSkillOf, skillBonusBreakdown } from './skills-and-hp.ts';
+import type { ASourceOfASkillsBonus } from './skills-and-hp.ts';
 import { fmtRoll } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { botKnownSkills } from '../bots/intel.ts';
@@ -182,14 +183,20 @@ export function theSkillInPlayAsALineTellsIt(
 ): ASkillInPlayAsALineTellsIt | null {
   const { G } = turnContext;
   if (!ch) return null;
-  const b = skillBonusBreakdown(ch, skill, G.characters ?? []);
+  // the breakdown as this reads it, its sources guarded as if a gap or none may come
+  const b: {
+    readonly total?: number | undefined;
+    readonly sources?: readonly (ASourceOfASkillsBonus | null | undefined)[] | null | undefined;
+  } = skillBonusBreakdown(ch, skill, G.characters ?? []);
   const raw = skillLevel(ch, skill);
   const { total } = b;
   if (total === undefined || !(total > raw)) return null;
   return {
     skill,
     total,
-    sources: b.sources.filter((s) => s.delta > 0).map((s) => ({ label: s.label, delta: s.delta })),
+    sources: (b.sources ?? [])
+      .filter((s): s is ASourceOfASkillsBonus => !!s && s.delta > 0)
+      .map((s) => ({ label: s.label, delta: s.delta })),
   };
 }
 /** The words of a skill in play, " (Melee 6 in play, with Sword of Ages +1)", or none. */
