@@ -5,7 +5,7 @@ import { unitBaseStrength } from './rules-on-plain-values/unit-types-and-base-st
 import { effSkillOf } from './heroes/skills-and-hp.ts';
 import { armyUnitName } from './dice-and-army-names.ts';
 import { noteServedRealm } from './heroes/charms-and-neutrals.ts';
-import { discSum } from './discoveries.ts';
+import { whatARealmsDiscoveriesAddToAFallenUnitsFlightHome } from './rules/the-registry-of-discovery-effects.ts';
 import type { Army } from '../schemas/saved-game-state.ts';
 
 // ══ GRAVEYARD LORE ════
@@ -195,7 +195,8 @@ export function recordBattleGraves(turnContext, prov, killedArmies, ownerPlayer)
     if (ownerIsElven && a && a.race === 'Elven' && !a._temporary && a._wildHuntUntilTurn == null && !a._elvenEscaped) {
       if (
         kcRng() * 100 <
-        elvenEscapeChance(prov && prov.terrain) + discSum(turnContext, ownerPlayer, 'elvenEscape', 'pct')
+        elvenEscapeChance(prov && prov.terrain) +
+          whatARealmsDiscoveriesAddToAFallenUnitsFlightHome(G.players[ownerPlayer])
       ) {
         // Homeward Song
         a._elvenEscaped = true;

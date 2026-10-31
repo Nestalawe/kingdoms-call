@@ -77,8 +77,8 @@ export interface ADiscoverysRow {
   readonly effect2?: TheEffectOfADiscovery;
 }
 
-/** How a text would write a number of a kind: a multiplier as a figure (1.3 as `×1.30`), or a share added as a
- *  percentage (0.3 as `+30%`). */
+/** How a text would write a number of a kind: a multiplier as a figure (1.3 as `×1.30`, 0.25 as `×0.25`), or a share
+ *  added as a percentage (0.3 as `+30%`). */
 export type HowADiscoveryEffectsNumberIsWritten = 'a multiplier, as a figure' | 'a share added, as a percentage';
 
 /** One number the code writes for a kind of effect, and how a text would write it. */
@@ -116,6 +116,20 @@ export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
   casting: { kind: 'cast' },
   // Dragon Taming (sd40): a winged beast follows its commander without his Druid (P1-19aa)
   'dragon-taming': { kind: 'flyingNoDruid' },
+  // Flanking Tactics (sd09): the lines behind the front weighted as its row writes them (P1-19ab)
+  'flanking-tactics': { kind: 'flankBonus' },
+  // a beaten unit's chance of death cut: however many of these effects a realm stacks, the chance is never cut below a
+  // quarter of itself (P1-19ab)
+  'a-beaten-units-death-cut': {
+    kind: 'deathRed',
+    numbers: { theFloor: { value: 0.25, aTextWouldWriteIt: 'a multiplier, as a figure' } },
+  },
+  // what a unit's chance of promotion after a battle gains (P1-19ab)
+  promotion: { kind: 'promo' },
+  // Homeward Song (re10): what an Elven unit's chance to slip away home gains (P1-19ab)
+  'homeward-flight': { kind: 'elvenEscape' },
+  // Battlefield Surgery (sd36): a slain hero's chance to be dragged from the field alive (P1-19ab)
+  'battlefield-surgery': { kind: 'nearDeathSurvival' },
 } as const satisfies Record<string, AKindOfDiscoveryEffect>;
 
 /** A kind of effect's slug (a key of DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS). */

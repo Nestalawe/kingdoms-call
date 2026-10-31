@@ -1,7 +1,7 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { UNIT_BASE_STR, unitTypeOf } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
-import { DISC_BY_ID } from '../discoveries.ts';
+import { theWeightsADiscoveryGivesTheLinesBehindTheFront } from '../rules/the-registry-of-discovery-effects.ts';
 import type { UnitAbilitySlug } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import {
@@ -183,16 +183,13 @@ export function battleFrontWidth(terrain: string) {
   const r = FRONT_RANGE_ON[terrain] ?? BATTLE_FRONT_RANGE.plain;
   return Math.round((r[0] + r[1]) / 2);
 }
-/** The discoveries by id, as this file reads them: discoveries.ts keeps its ts-nocheck line, so its table is `{}` to the
- *  compiler. */
-const DISCOVERY_BY_ID: Readonly<Record<string, { readonly effect?: { readonly lines?: unknown } } | undefined>> =
-  DISC_BY_ID;
 /** A discovery's `lines` that flankLineMults takes: a list of four (its numbers are the data file's). */
 function isFourLineMultipliers(l: unknown): l is TheLinesMultipliers {
   return Array.isArray(l) && l.length === 4;
 }
 export function flankLineMults(): TheLinesMultipliers {
-  const l = DISCOVERY_BY_ID['sd09']?.effect?.lines;
+  // the discoveries' registry's since plan P1-19ab: "strength: a realm's discoveries weight the lines behind the front"
+  const l = theWeightsADiscoveryGivesTheLinesBehindTheFront();
   return isFourLineMultipliers(l) ? l : BATTLE_LINE_MULTS_FLANK;
 }
 // A row's place comes from its unit's type: 'fly' for the winged riders and the flying beasts (no place

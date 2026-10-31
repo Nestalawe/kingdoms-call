@@ -73,9 +73,9 @@ describe("Flanking Tactics' lines", () => {
     const sd09: unknown = Reflect.get(DISC_BY_ID, 'sd09');
     expect(flankLineMults()).toEqual([1, 0.5625, 0.3125, 0.1563]);
     try {
-      Reflect.set(DISC_BY_ID, 'sd09', { effect: { lines: [1, 0.5, 0.25] } });
+      Reflect.set(DISC_BY_ID, 'sd09', { effect: { kind: 'flankBonus', lines: [1, 0.5, 0.25] } });
       expect(flankLineMults()).toBe(BATTLE_LINE_MULTS_FLANK);
-      Reflect.set(DISC_BY_ID, 'sd09', { effect: {} });
+      Reflect.set(DISC_BY_ID, 'sd09', { effect: { kind: 'flankBonus' } });
       expect(flankLineMults()).toBe(BATTLE_LINE_MULTS_FLANK);
       Reflect.set(DISC_BY_ID, 'sd09', {});
       expect(flankLineMults()).toBe(BATTLE_LINE_MULTS_FLANK);

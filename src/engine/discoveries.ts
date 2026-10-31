@@ -8,6 +8,8 @@ import {
   aRealmsDiscoveriesLetABeastFollowWithoutItsDruid,
   theEffectsOfAKindARealmHolds,
   theFactorARealmsDiscoveriesStrengthenAUnitBy,
+  theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath,
+  whatARealmsDiscoveriesAddToAUnitsPromotion,
   type ARealmAsTheDiscoveriesReadIt,
 } from './rules/the-registry-of-discovery-effects.ts';
 import {
@@ -453,11 +455,9 @@ export function discPromo(
   army: AUnitAsTheDiscoveriesReadIt | null | undefined,
 ) {
   if (pi == null || !army) return 0;
-  let r = 0;
-  discEff(turnContext, pi, 'promo').forEach((e) => {
-    if (discUnitMatch(e, army)) r += e.pct ?? 0;
-  });
-  return r;
+  // (the discoveries' registry's since plan P1-19ab: "fate: a realm's discoveries promote a unit")
+  const { G } = turnContext;
+  return whatARealmsDiscoveriesAddToAUnitsPromotion(G.players[pi], { theUnit: army });
 }
 // Does a `duelHit` effect apply against this foe? vs: 'monster' | 'character' | 'undead'.
 export function discDuelVs(e: TheEffectOfADiscovery, foe: Parameters<typeof pcFoeCat>[0] | null | undefined) {
@@ -476,13 +476,10 @@ export function discDeathMult(
   side: string | null | undefined,
 ) {
   if (pi == null || !army) return 1;
-  let r = 0;
-  discEff(turnContext, pi, 'deathRed').forEach((e) => {
-    if (e.side && side && e.side !== side) return;
-    if (e.side && !side) return;
-    if (discUnitMatch(e, army)) r += e.pct ?? 0;
-  });
-  return Math.max(0.25, 1 - r);
+  // (the discoveries' registry's since plan P1-19ab: "fate: a realm's discoveries spare a beaten unit", never below the
+  // kind's floor, a quarter)
+  const { G } = turnContext;
+  return theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath(G.players[pi], { theUnit: army, theSide: side });
 }
 // Only discoveries the realm is eligible for (race / alignment) can be researched, found or
 // stolen.

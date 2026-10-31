@@ -1354,6 +1354,19 @@ export interface ABeastACommanderLeads {
   readonly theUnitsType: string;
 }
 
+/** A beaten unit, as a realm's discoveries that cut its chance of death read it (discDeathMult: plan P1-19ab). */
+export interface ABeatenUnitARealmsDiscoveriesMaySpare {
+  readonly theUnit: AUnitAsTheDiscoveriesReadIt;
+  /** Its side ('atk' or 'def'), or none given. */
+  readonly theSide: string | null | undefined;
+}
+
+/** A unit after a battle, as a realm's discoveries that add to its chance of promotion read it (discPromo: plan
+ *  P1-19ab). */
+export interface AUnitARealmsDiscoveriesMayPromote {
+  readonly theUnit: AUnitAsTheDiscoveriesReadIt;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1462,6 +1475,12 @@ export interface TheStagesOfEachHookPoint {
      *  Drums, the one such discovery, is an ordinary unit strength effect since 2026-09-21, so the runner adds
      *  nothing (Parked "Three dead paths in discoveries.ts"). */
     readonly "a realm's discoveries add to the whole army": (theEffect: TheEffectOfADiscovery) => number;
+    /** The weights a discovery gives the lines behind the front, as its row writes them, or none (Flanking Tactics:
+     *  a side whose realm holds an effect of the stage has its lines weighted, and flankLineMults reads the weights
+     *  of the content's effect of it, a list of four or its fallback; plan P1-19ab). */
+    readonly "a realm's discoveries weight the lines behind the front": (
+      theEffect: TheEffectOfADiscovery,
+    ) => readonly number[] | undefined;
   };
   readonly volley: {
     /** Whether a unit that is no ranged unit shoots in the volley (abilityMissileUnits, after the ranged units). */
@@ -1513,6 +1532,26 @@ export interface TheStagesOfEachHookPoint {
     /** Whether an item the beaten commander carries lets his force retreat (the battle against neutral guards'
      *  retreat, after the units' fates; the items' registry: false refuses every retreat, and the force stands). */
     readonly 'the beaten force may retreat': () => boolean;
+    /** The share a discovery the unit's realm holds cuts from a beaten unit's chance of death, or nothing (it doesn't
+     *  reach the unit, or not on its side); the runner adds them and gives the multiplier left, never below the
+     *  kind's floor (discDeathMult, which both battles ask: plan P1-19ab). */
+    readonly "a realm's discoveries spare a beaten unit": (
+      theEffect: TheEffectOfADiscovery,
+      facts: ABeatenUnitARealmsDiscoveriesMaySpare,
+    ) => number | null;
+    /** The share a discovery the unit's realm holds adds to its chance of promotion after a battle, or nothing (it
+     *  doesn't reach the unit); the runner adds them (discPromo, which both battles ask). */
+    readonly "a realm's discoveries promote a unit": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AUnitARealmsDiscoveriesMayPromote,
+    ) => number | null;
+    /** The points a discovery an Elven realm holds adds to a fallen Elven unit's chance of slipping away home; the
+     *  runner adds them (recordBattleGraves, which rolls). */
+    readonly "a realm's discoveries carry a fallen unit home": (theEffect: TheEffectOfADiscovery) => number;
+    /** The chance a discovery a slain hero's realm holds gives him of being dragged from the field alive, as its row
+     *  writes it (a share); the runner gives the first effect's, or nothing if the realm holds none
+     *  (handleHeroDeath, which rolls). */
+    readonly "a realm's discoveries drag a hero from the field": (theEffect: TheEffectOfADiscovery) => number;
   };
   readonly movementCost: never;
   /** The checks the Cast Spell order makes of the spell named, before it is worked and as it is (plan P1-19's spells
