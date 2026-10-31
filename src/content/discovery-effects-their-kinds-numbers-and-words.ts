@@ -194,6 +194,17 @@ export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
   'recruit-quality': { kind: 'recruitQ' },
   // what a Bless adds to the province's tax (P1-19ae)
   'rites-of-plenty': { kind: 'bless' },
+  // the gold a Pagan victor's blood harvest takes more for each enemy unit destroyed (P1-19af)
+  'blood-harvest': { kind: 'bloodHarvest' },
+  // the share of strength each terror stack an Evil victory leaves costs the next defenders more (P1-19af)
+  'lingering-terror': { kind: 'terror' },
+  // the share of a conquered province's tax an Evil conqueror plunders more, anywhere or on the ground its row names
+  // (P1-19af)
+  plunder: { kind: 'plunder' },
+  // the move points a land unit of Speed 1–2 the effect reaches gains a turn (P1-19af)
+  marching: { kind: 'move' },
+  // what the chance that columns converging on one battle unite gains (P1-19af)
+  'converging-columns': { kind: 'unify' },
 } as const satisfies Record<string, AKindOfDiscoveryEffect>;
 
 /** A kind of effect's slug (a key of DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS). */

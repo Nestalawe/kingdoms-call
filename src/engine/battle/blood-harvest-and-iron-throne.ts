@@ -1,7 +1,8 @@
 import { kcRng } from '../rng.ts';
 import { BLOOD_HARVEST_PER_UNIT } from '../items/tiers-and-hoards.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
-import { discSum, gdActive } from '../discoveries.ts';
+import { gdActive } from '../discoveries.ts';
+import { whatARealmsDiscoveriesAddToABloodHarvest } from '../rules/the-registry-of-discovery-effects.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';
@@ -32,7 +33,9 @@ export function bloodHarvest(
   if (G.players[winner.player]?.alignment !== 'Pagan') return;
   const _pl = G.players[winner.player];
   if (!_pl) return; // a Pagan realm: its alignment was read above
-  const _take = destroyed * (BLOOD_HARVEST_PER_UNIT + discSum(turnContext, winner.player, 'bloodHarvest', 'gold')); // + ap09 Skull Tithe
+  // + ap09 Skull Tithe (the discoveries' registry's since plan P1-19af: "fate: a realm's discoveries add to a blood
+  // harvest")
+  const _take = destroyed * (BLOOD_HARVEST_PER_UNIT + whatARealmsDiscoveriesAddToABloodHarvest(_pl));
   _pl.gold = (_pl.gold || 0) + _take;
   narrate(narrative, {
     kind: 'the blood harvest claims offerings from the fallen enemy units',

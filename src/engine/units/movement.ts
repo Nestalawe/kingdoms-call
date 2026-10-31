@@ -3,8 +3,7 @@ import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { typeOfX } from '../battle/lines.ts';
 import type { GridCell } from '../battle/lines.ts';
 import { activeItems } from '../items/equipment.ts';
-import { discEffectsOf } from '../discoveries.ts';
-import { discUnitMatch } from '../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
+import { whatARealmsDiscoveriesAddToAMarch } from '../rules/the-registry-of-discovery-effects.ts';
 import type { HeroInABattle } from '../army-tables.ts';
 import type { Army, Character, Realm } from '../../schemas/saved-game-state.ts';
 import { theBeatenForceHolds, thePursuitsOfTheBeaten } from '../rules/the-registry-of-content-effects.ts';
@@ -38,10 +37,15 @@ export function garrisonMoveRate(
   const base = ARMY_SPEED_MASTER[a.type] ?? 3;
   const sea = GARRISON_SEA_TYPES_R.has(a.type);
   let road = 0;
-  if (!sea && !GARRISON_FLY_TYPES_R.has(a.type) && base <= 2 && pl && typeof discEffectsOf === 'function')
-    discEffectsOf(pl, 'move').forEach((e: { readonly extra?: number }) => {
-      if (discUnitMatch(e, a)) road += e.extra ?? 0;
-    });
+  // (the discoveries' registry's since plan P1-19af: "movementCost: a realm's discoveries add to a march")
+  if (
+    !sea &&
+    !GARRISON_FLY_TYPES_R.has(a.type) &&
+    base <= 2 &&
+    pl &&
+    typeof whatARealmsDiscoveriesAddToAMarch === 'function'
+  )
+    road = whatARealmsDiscoveriesAddToAMarch(pl, { theUnit: a });
   return { moveRate: base + road, moveKind: sea ? 'sea' : GARRISON_AIR_TYPES_R.has(a.type) ? 'air' : 'land' };
 }
 export function navalSpeedBonus(baseSpeed: number, navalLevel: number | null | undefined): number | undefined {

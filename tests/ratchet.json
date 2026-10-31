@@ -14,7 +14,7 @@
     "unitNameChecksInEngine": 9,
     "itemEffectChecksInEngine": 11,
     "spellChecksInEngine": 13,
-    "discoveryChecksInEngine": 31,
+    "discoveryChecksInEngine": 23,
     "eslintSuppressions": 680,
     "knownArchitectureViolations": 105,
     "unusedCode": 23

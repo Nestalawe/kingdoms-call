@@ -65,11 +65,20 @@ import {
   A_REALMS_DISCOVERIES_RAISE_A_RECRUITS_QUALITY,
   A_REALMS_DISCOVERIES_WAIVE_THE_HIRING_BAN,
 } from './discoveries/a-realms-discoveries-in-its-recruits-and-its-works.ts';
+import {
+  A_REALMS_DISCOVERIES_ADD_TO_A_BLOOD_HARVEST,
+  A_REALMS_DISCOVERIES_ADD_TO_A_CONQUESTS_PLUNDER,
+  A_REALMS_DISCOVERIES_ADD_TO_A_MARCH,
+  A_REALMS_DISCOVERIES_ADD_TO_THE_TERROR_A_VICTORY_LEAVES,
+  A_REALMS_DISCOVERIES_HELP_CONVERGING_COLUMNS_UNITE,
+} from './discoveries/a-realms-discoveries-in-wars-spoils-and-the-march.ts';
 import type {
   ABeastACommanderLeads,
   AConsecrationARealmsDiscoveriesMayAllow,
   AQualityACallToArmsMayRaise,
   AUnitARealmRaises,
+  AProvinceARealmsDiscoveriesMayPlunder,
+  AUnitARealmsDiscoveriesMaySpeed,
   ABeatenUnitARealmsDiscoveriesMaySpare,
   ACastARealmsDiscoveriesMayHelp,
   AFoeARealmsDiscoveriesSteadyAFightersAimAt,
@@ -316,6 +325,31 @@ export const THE_REGISTRY_OF_DISCOVERY_EFFECTS = {
   'rites-of-plenty': {
     orderOutcome: { "a realm's discoveries add to a Bless": A_REALMS_DISCOVERIES_ADD_TO_A_BLESS['rites-of-plenty'] },
   },
+  'blood-harvest': {
+    fate: {
+      "a realm's discoveries add to a blood harvest": A_REALMS_DISCOVERIES_ADD_TO_A_BLOOD_HARVEST['blood-harvest'],
+    },
+  },
+  'lingering-terror': {
+    fate: {
+      "a realm's discoveries add to the terror a victory leaves":
+        A_REALMS_DISCOVERIES_ADD_TO_THE_TERROR_A_VICTORY_LEAVES['lingering-terror'],
+    },
+  },
+  plunder: {
+    fate: {
+      "a realm's discoveries add to a conquest's plunder": A_REALMS_DISCOVERIES_ADD_TO_A_CONQUESTS_PLUNDER.plunder,
+    },
+  },
+  marching: {
+    movementCost: { "a realm's discoveries add to a march": A_REALMS_DISCOVERIES_ADD_TO_A_MARCH.marching },
+  },
+  'converging-columns': {
+    movementCost: {
+      "a realm's discoveries help converging columns unite":
+        A_REALMS_DISCOVERIES_HELP_CONVERGING_COLUMNS_UNITE['converging-columns'],
+    },
+  },
 } satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once. Each stage holds one kind today, so its
@@ -335,6 +369,13 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
     "a realm's discoveries promote a unit": ['promotion'],
     "a realm's discoveries carry a fallen unit home": ['homeward-flight'],
     "a realm's discoveries drag a hero from the field": ['battlefield-surgery'],
+    "a realm's discoveries add to a blood harvest": ['blood-harvest'],
+    "a realm's discoveries add to the terror a victory leaves": ['lingering-terror'],
+    "a realm's discoveries add to a conquest's plunder": ['plunder'],
+  },
+  movementCost: {
+    "a realm's discoveries add to a march": ['marching'],
+    "a realm's discoveries help converging columns unite": ['converging-columns'],
   },
   personalCombat: {
     "a realm's discoveries steady a fighter's aim": ['a-fighters-aim'],
@@ -386,6 +427,7 @@ const PERSONAL_COMBAT = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.personalComba
 const EXPERIENCE = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.experience;
 const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.orderOutcome;
 const VISIBILITY = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.visibility;
+const MOVEMENT_COST = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.movementCost;
 
 /** The effects of the kind of each entry of a stage's order the realm holds, with the entry's slug. */
 function theEffectsOfTheStageARealmHolds(
@@ -958,5 +1000,57 @@ export function whatARealmsDiscoveriesAddToABless(theRealm: ARealmAsTheDiscoveri
   const theStage = "a realm's discoveries add to a Bless";
   return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
     ENTRIES[slug].orderOutcome?.[theStage]?.(e),
+  );
+}
+
+/** The runner of "fate: a realm's discoveries add to a blood harvest" (bloodHarvest): the gold the Pagan victor's
+ *  realm's effects add for each enemy unit destroyed, added. */
+export function whatARealmsDiscoveriesAddToABloodHarvest(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number {
+  const theStage = "a realm's discoveries add to a blood harvest";
+  return addTheNumbersOfTheStage(theRealm, FATE[theStage], (slug, e) => ENTRIES[slug].fate?.[theStage]?.(e));
+}
+
+/** The runner of "fate: a realm's discoveries add to the terror a victory leaves" (spreadTerror, its stacks and its
+ *  line): the shares of strength the Evil victor's realm's effects add to each terror stack's toll, added. */
+export function whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number {
+  const theStage = "a realm's discoveries add to the terror a victory leaves";
+  return addTheNumbersOfTheStage(theRealm, FATE[theStage], (slug, e) => ENTRIES[slug].fate?.[theStage]?.(e));
+}
+
+/** The runner of "fate: a realm's discoveries add to a conquest's plunder" (applyEvilConquest): the shares of the
+ *  province's tax the Evil conqueror's realm's effects add to the plunder, added. */
+export function whatARealmsDiscoveriesAddToAConquestsPlunder(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AProvinceARealmsDiscoveriesMayPlunder,
+): number {
+  const theStage = "a realm's discoveries add to a conquest's plunder";
+  return addTheNumbersOfTheStage(theRealm, FATE[theStage], (slug, e) => ENTRIES[slug].fate?.[theStage]?.(e, facts));
+}
+
+/** The runner of "movementCost: a realm's discoveries add to a march" (computeMovePoolMax, garrisonMoveRate and the
+ *  report's speeds, each for a land unit of Speed 1–2 after its own guards): the move points the realm's effects add
+ *  to the unit, added. */
+export function whatARealmsDiscoveriesAddToAMarch(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AUnitARealmsDiscoveriesMaySpeed,
+): number {
+  const theStage = "a realm's discoveries add to a march";
+  return addTheNumbersOfTheStage(theRealm, MOVEMENT_COST[theStage], (slug, e) =>
+    ENTRIES[slug].movementCost?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "movementCost: a realm's discoveries help converging columns unite" (resolveMoveOrder, both its unify
+ *  rolls): the points the hero's realm's effects add to the chance a converging column unites with his force, added. */
+export function whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number {
+  const theStage = "a realm's discoveries help converging columns unite";
+  return addTheNumbersOfTheStage(theRealm, MOVEMENT_COST[theStage], (slug, e) =>
+    ENTRIES[slug].movementCost?.[theStage]?.(e),
   );
 }

@@ -1467,6 +1467,19 @@ export interface AUnitARealmRecruitsAndItsPriceSoFar extends AUnitARealmRaises {
   readonly thePriceSoFar: number;
 }
 
+/** A province an Evil conqueror plunders, as a realm's discoveries that add to the plunder read it (applyEvilConquest:
+ *  plan P1-19af). */
+export interface AProvinceARealmsDiscoveriesMayPlunder {
+  /** The province's terrain. */
+  readonly theGround: string;
+}
+
+/** A land unit of Speed 1–2 a realm's discoveries may speed on the march, as they read it (computeMovePoolMax,
+ *  garrisonMoveRate and the report's speeds, each after its own guards: plan P1-19af). */
+export interface AUnitARealmsDiscoveriesMaySpeed {
+  readonly theUnit: AUnitAsTheDiscoveriesReadIt;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1652,8 +1665,32 @@ export interface TheStagesOfEachHookPoint {
      *  writes it (a share); the runner gives the first effect's, or nothing if the realm holds none
      *  (handleHeroDeath, which rolls). */
     readonly "a realm's discoveries drag a hero from the field": (theEffect: TheEffectOfADiscovery) => number;
+    /** The gold a discovery a Pagan victor's realm holds adds to its blood harvest for each enemy unit destroyed; the
+     *  runner adds them (bloodHarvest: plan P1-19af). */
+    readonly "a realm's discoveries add to a blood harvest": (theEffect: TheEffectOfADiscovery) => number;
+    /** The share of strength a discovery an Evil victor's realm holds adds to what each terror stack its victory leaves
+     *  costs the next defenders; the runner adds them (spreadTerror, its stacks and its line). */
+    readonly "a realm's discoveries add to the terror a victory leaves": (theEffect: TheEffectOfADiscovery) => number;
+    /** The share of a conquered province's tax a discovery an Evil conqueror's realm holds adds to the plunder, or
+     *  nothing (its row names other ground); the runner adds them (applyEvilConquest). */
+    readonly "a realm's discoveries add to a conquest's plunder": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AProvinceARealmsDiscoveriesMayPlunder,
+    ) => number | null;
   };
-  readonly movementCost: never;
+  /** A unit's or a force's movement (plan P1-19's discoveries family: its row P1-19af typed it). */
+  readonly movementCost: {
+    /** The move points a discovery a realm holds adds to a land unit of Speed 1–2 (no flyer, no ship) a turn, or
+     *  nothing (it doesn't reach the unit); the runner adds them (computeMovePoolMax, garrisonMoveRate and the
+     *  report's speeds, each after its own guards). */
+    readonly "a realm's discoveries add to a march": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AUnitARealmsDiscoveriesMaySpeed,
+    ) => number | null;
+    /** The points a discovery a realm holds adds to the chance a column converging on a hero's battle unites with his
+     *  force; the runner adds them (resolveMoveOrder, both its rolls). */
+    readonly "a realm's discoveries help converging columns unite": (theEffect: TheEffectOfADiscovery) => number;
+  };
   /** The checks the Cast Spell order makes of the spell named, before it is worked and as it is (plan P1-19's spells
    *  family: its row P1-19y typed them; the spells' registry, one spell an order, found by its name). In the order the
    *  order makes them. */
