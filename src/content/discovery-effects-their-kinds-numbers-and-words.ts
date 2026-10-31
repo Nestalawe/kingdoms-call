@@ -77,9 +77,10 @@ export interface ADiscoverysRow {
   readonly effect2?: TheEffectOfADiscovery;
 }
 
-/** How a text would write a number of a kind: a multiplier as a figure (1.3 as `×1.30`, 0.25 as `×0.25`), or a share
- *  added as a percentage (0.3 as `+30%`). */
-export type HowADiscoveryEffectsNumberIsWritten = 'a multiplier, as a figure' | 'a share added, as a percentage';
+/** How a text would write a number of a kind: a multiplier as a figure (1.3 as `×1.30`, 0.25 as `×0.25`, 2 as `×2`), a
+ *  share added as a percentage (0.3 as `+30%`), or levels added to a skill as a figure (1 as `+1`). */
+export type HowADiscoveryEffectsNumberIsWritten =
+  'a multiplier, as a figure' | 'a share added, as a percentage' | 'levels added, as a figure';
 
 /** One number the code writes for a kind of effect, and how a text would write it. */
 export interface ANumberOfAKindOfDiscoveryEffect {
@@ -130,6 +131,23 @@ export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
   'homeward-flight': { kind: 'elvenEscape' },
   // Battlefield Surgery (sd36): a slain hero's chance to be dragged from the field alive (P1-19ab)
   'battlefield-surgery': { kind: 'nearDeathSurvival' },
+  // what a fighter's chance to hit gains in a personal combat, against every foe or one kind of foe (P1-19ac)
+  'a-fighters-aim': { kind: 'duelHit' },
+  // Veteran Training (sd37): every hero of the realm fights in personal combat as if his Melee and his Archery were a
+  // level higher (P1-19ac)
+  'veteran-training': {
+    kind: 'skillBonusCombat',
+    numbers: { theLevelsAdded: { value: 1, aTextWouldWriteIt: 'levels added, as a figure' } },
+  },
+  // what a fighter's Mithril turns aside of a melee blow, more than the suit's own (P1-19ac)
+  'mithril-craft': { kind: 'mithril' },
+  // what a skill's chance to rise through experience gains, for every skill or a listed few (P1-19ac)
+  'a-skills-rise': { kind: 'skillGain' },
+  // Order of the Golden Shield (sd35): the king's hardening after a fight is doubled (P1-19ac)
+  'golden-shield': {
+    kind: 'kingKillHpX2',
+    numbers: { theFactor: { value: 2, aTextWouldWriteIt: 'a multiplier, as a figure' } },
+  },
 } as const satisfies Record<string, AKindOfDiscoveryEffect>;
 
 /** A kind of effect's slug (a key of DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS). */

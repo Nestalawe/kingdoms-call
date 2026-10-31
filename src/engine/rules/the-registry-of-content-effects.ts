@@ -1343,7 +1343,7 @@ export interface ASideAsItsFanaticismIsRolled {
 export type WhereAHeroCasts = 'battle' | 'action' | 'duel';
 
 /** A caster's cast, as a realm's discoveries read it (applyPreBattleMagic and the hero's cast in combatVsNPC: plan
- *  P1-19aa; castChanceFor's and pcCastCombatSpell's are its row P1-19ac's). */
+ *  P1-19aa; castChanceFor and pcCastCombatSpell: P1-19ac). */
 export interface ACastARealmsDiscoveriesMayHelp {
   readonly theSchool: string;
   readonly whereHeCasts: WhereAHeroCasts;
@@ -1365,6 +1365,21 @@ export interface ABeatenUnitARealmsDiscoveriesMaySpare {
  *  P1-19ab). */
 export interface AUnitARealmsDiscoveriesMayPromote {
   readonly theUnit: AUnitAsTheDiscoveriesReadIt;
+}
+
+/** The foe a fighter aims at in a personal combat, as a realm's discoveries that steady his aim read him (pcHitChance
+ *  and pcArrowHitChance: plan P1-19ac). */
+export interface AFoeARealmsDiscoveriesSteadyAFightersAimAt {
+  /** What the foe is: a character or a monster (his `kind`). */
+  readonly whatTheFoeIs: string | undefined;
+  /** The foe's kind (pcFoeCat: 'undead', 'humanoid', 'beast', …), asked only by an effect that reads it. */
+  readonly theFoesKind: () => string;
+}
+
+/** A skill about to roll to rise through experience, as a realm's discoveries that add to its chance read it
+ *  (trySkillGain: plan P1-19ac). */
+export interface ASkillARealmsDiscoveriesMayRaise {
+  readonly theSkill: string;
 }
 
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
@@ -1574,7 +1589,18 @@ export interface TheStagesOfEachHookPoint {
      *  the spell asks it, before the ward's own roll). */
     readonly 'a Bless ward may turn it aside': () => boolean;
   };
-  readonly experience: never;
+  /** A hero's experience (plan P1-19's discoveries family: its row P1-19ac typed it). */
+  readonly experience: {
+    /** The share a discovery the hero's realm holds adds to a skill's chance to rise through experience, or nothing
+     *  (it names other skills); the runner adds them (trySkillGain, which rolls). */
+    readonly "a realm's discoveries add to a skill's rise": (
+      theEffect: TheEffectOfADiscovery,
+      facts: ASkillARealmsDiscoveriesMayRaise,
+    ) => number | null;
+    /** The factor a discovery the king's realm holds multiplies his hardening after a fight by (the hit points a win
+     *  or a wound earns him); the runner gives the first effect's, or nothing if the realm holds none (awardHpRoll). */
+    readonly "a realm's discoveries harden the king": (theEffect: TheEffectOfADiscovery) => number;
+  };
   readonly visibility: never;
   readonly turnStart: never;
   readonly turnEnd: {
@@ -1705,6 +1731,19 @@ export interface TheStagesOfEachHookPoint {
     /** What a hero's item changes in his combat spells (pcCastCombatSpell, through the stage above; the items'
      *  registry: the first of his items, in the stage's order, that changes each). */
     readonly "a hero's items change his combat spell": () => TheChangeAnItemMakesToACombatSpell;
+    /** The percentage points a discovery a fighter's realm holds adds to his chance to hit the foe, or nothing (it
+     *  names another kind of foe); the runner adds them (pcHitChance and pcArrowHitChance, after the wards: plan
+     *  P1-19ac). */
+    readonly "a realm's discoveries steady a fighter's aim": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AFoeARealmsDiscoveriesSteadyAFightersAimAt,
+    ) => number | null;
+    /** The levels a discovery a hero's realm holds adds to his Melee and his Archery in a personal combat; the runner
+     *  gives the first effect's, or 0 if the realm holds none (pcCharCombatant, and extraSkillBonuses for his card). */
+    readonly "a realm's discoveries add to a fighter's skills": (theEffect: TheEffectOfADiscovery) => number;
+    /** The damage a discovery a hero's realm holds adds to what his Mithril turns aside of a melee blow; the runner
+     *  adds them (pcCharCombatant, after the suit's own). */
+    readonly "a realm's discoveries strengthen his Mithril": (theEffect: TheEffectOfADiscovery) => number;
   };
   /** The treasury (plan P1-19's items family, Choice 1: its first row, P1-19t, typed it): what an item is for and what
    *  it is worth, read as the engine loads (the load-time pass tiers each item by them, so which lairs hold it) and by a

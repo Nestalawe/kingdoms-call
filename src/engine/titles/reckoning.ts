@@ -7,6 +7,7 @@ import {
 import { ITEMS_BY_TIER } from '../items/tiers-and-hoards.ts';
 import { _skillItem, activeItems } from '../items/equipment.ts';
 import { botConceded } from '../bots/intel.ts';
+import { theLevelsARealmsDiscoveriesAddToAFightersSkills } from '../rules/the-registry-of-discovery-effects.ts';
 import {
   RECKONING_CALLER_MIN_FRAC,
   RECKONING_MIN_TURN,
@@ -568,11 +569,13 @@ export function extraSkillBonuses(c, state, minorHolders) {
     if (!(h && h.charId === c.id)) return;
     skills.forEach((sk) => add(sk, nameOf(key), delta, kind, scope));
   });
-  // sd37 Veteran Training — a realm-wide Heroic discovery, +1 melee/archery in personal combat.
+  // Veteran Training — a realm-wide Heroic discovery, +1 melee/archery in personal combat (the discoveries' registry's
+  // since plan P1-19ac: "personalCombat: a realm's discoveries add to a fighter's skills", as pcCharCombatant asks it).
   const pl = state && state.players && c.player != null ? state.players[c.player] : null;
-  if (pl && (pl.discoveries || []).some((d) => d && d.id === 'sd37')) {
-    add('melee', 'Veteran Training', 1, 'discovery', 'combat');
-    add('archery', 'Veteran Training', 1, 'discovery', 'combat');
+  const _veteranLevels = theLevelsARealmsDiscoveriesAddToAFightersSkills(pl);
+  if (_veteranLevels) {
+    add('melee', 'Veteran Training', _veteranLevels, 'discovery', 'combat');
+    add('archery', 'Veteran Training', _veteranLevels, 'discovery', 'combat');
   }
   return out;
 }

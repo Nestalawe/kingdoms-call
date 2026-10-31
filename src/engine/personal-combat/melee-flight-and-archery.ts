@@ -3,7 +3,8 @@ import { temperOf } from '../world/tables.ts';
 import { PC_MAX_LINGER_ROUNDS, pcPushDot } from './helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
-import { discDuelVs, discSum } from '../discoveries.ts';
+import { whatARealmsDiscoveriesAddToAFightersAim } from '../rules/the-registry-of-discovery-effects.ts';
+import { pcFoeCat } from '../titles/perks.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { pcHasRanged, pcRangeStep, pcSpeedOf } from './speed-encounter-plans-and-combatants.ts';
 import {
@@ -469,7 +470,12 @@ export function pcArrowHitChance(
   chance += Number(actor.status.hitBonus) || 0;
   chance -= Number(foe.status.toHitReduce) || 0;
   chance -= whatAFightersWardsTakeOffAChanceToHitHim(foe.arm);
-  if (actor.player != null) chance += discSum(turnContext, actor.player, 'duelHit', 'pct', (e) => discDuelVs(e, foe)); // duelHit discoveries
+  if (actor.player != null)
+    // the discoveries' registry's since plan P1-19ac: "personalCombat: a realm's discoveries steady a fighter's aim"
+    chance += whatARealmsDiscoveriesAddToAFightersAim(turnContext.G.players[actor.player], {
+      whatTheFoeIs: foe.kind,
+      theFoesKind: () => pcFoeCat(foe),
+    }); // duelHit discoveries
   chance = chance * (foe.status.dodge || 1);
   return Math.max(PC_HIT_MIN, Math.min(PC_HIT_MAX, dispFloor(chance)));
 }
