@@ -7,6 +7,9 @@
 // defenders' force header, "The defenders of <province>" or "<realm>'s garrison at <province>"); an attacker storming
 // ashore in a Raid the Coast; his corsairs taking his beaten force back to the ships; his Control Undead turning a
 // defending unit.
+// Since the mutation session of 2026-11-01, also a line the matrix reaches but no test read: the attacker's company
+// cut down in the rout when the province's defenders repel him and he has nowhere to retreat (no retreat, stood in;
+// the beaten keep every company in the battle's fates, stood in, and from then on every die is 0.1, under the 15%).
 // Nor, in a battle between two heroes' hosts: the defender's realm holding its own ground the harder, or the beaten
 // attacker's Dwarven Guard holding a Shield Fort with no road out. This plays each, the attacker (or both commanders)
 // alive and slain before the battle (each side then fights on as "<name>'s leaderless host"), and reads each line's
@@ -270,6 +273,25 @@ describe.each([false, true])('a battle against a province with no guard, the att
       hold(f);
     });
     expect(told).toEqual([`facing ${owner} ${shown.province}'s Company 0`]);
+  });
+
+  test('its neutral defenders repel the attacker with nowhere to retreat: his company is cut down in the rout', () => {
+    vi.spyOn(retreats, 'retreatOptions').mockReturnValue([]);
+    // the beaten keep every company in the battle's fates; from then on every die is 0.1, under the 15% chance a
+    // company with no road out is cut down
+    vi.spyOn(fates, 'rollUnitFates').mockImplementation((force, o) => {
+      if (!o.won) kcRng.use(() => 0.1);
+      return { survived: (force ?? []).length, died: 0, promoted: 0, demoted: 0, disbanded: 0, held: 0 };
+    });
+    const shown = aBattle({ atk: companies(1, 'Green'), defenders: companies(8, 'Elite') }, slain, () => undefined);
+    expect(shown.words).toContain(
+      `${sideOf(shown.atk, slain)}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`,
+    );
+    // the units' fates: the defenders' one line, then the attacker's company's
+    expect(shown.words.filter((w) => w.startsWith('— '))).toEqual([
+      '— All forces survive the engagement.',
+      '— Company 0 are cut down in the rout — no escape!',
+    ]);
   });
 });
 
