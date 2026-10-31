@@ -135,7 +135,7 @@ export function charmBacklash(
     atkPlan,
     defPlan,
     prov,
-    (...a: [hero: unknown, stat: unknown]) => effStat(turnContext, ...a),
+    (...a: [hero: Parameters<typeof effStat>[1], stat: string]) => effStat(turnContext, ...a),
     rng,
     G,
   );
