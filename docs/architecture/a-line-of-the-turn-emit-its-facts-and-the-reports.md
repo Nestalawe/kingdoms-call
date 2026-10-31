@@ -196,8 +196,9 @@ check finds were made.
   a copy of those words (`theNameAForcesHeaderIsCheckedBy`) and holds the fallen commander it found. Since P1-12d30 the
   battle's report lines (the ladder, kinship, the grid, the scouting and Tactics lines, the Druid shortfall) take a side
   as a record (`ASideAsABattlesReportLinesNameIt`: a side, the defenders, or a form only they write: "Aldric's host",
-  "the defenders of Highmoor" whoever leads them, "Guards"). The pre-battle, pursuit and sea lift lines still take
-  words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  "the defenders of Highmoor" whoever leads them, "Guards"). Since P1-12d31 the lines before the volleys (Flak Screen,
+  Eyes of the Forest) take that record too, with one more form ("The defenders"), and the pursuit lines a side
+  (`ASideOfABattle`). The sea lift lines still take words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
