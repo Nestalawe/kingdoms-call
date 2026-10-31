@@ -262,6 +262,17 @@ describe('Encounter Character, called directly: the chase it sets', () => {
     ).toBe(1);
   });
 
+  test('no hero at all is neither veiled, hidden nor vanished, in the middle of a phase', () => {
+    const b = fresh();
+    b.tc._currentPhase = 1;
+    const asked = (name: string) => [null, undefined].map((none) => fn(name)(b.tc, none));
+    expect([asked('isVeiled'), asked('isHiddenChar'), asked('isVanished')]).toEqual([
+      [false, false],
+      [false, false],
+      [false, false],
+    ]);
+  });
+
   test("a hero charmed from no realm (a wanderer won for good) may hunt anyone; one charmed from realm 1 may not hunt realm 1's", () => {
     const b = fresh();
     const q = rival(b);

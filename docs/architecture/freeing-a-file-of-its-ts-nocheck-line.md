@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-95 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(61: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+93 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(59: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b17 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b18 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -173,7 +173,9 @@ added under its kind.
   province) gets it through a check that throws for none, named for the invariant that makes it sure.
 - **A return type written on a callee that keeps its line** is a claim, checked once that file is freed; write in a
   comment where it doesn't hold. It changes what its other untyped callers give: type their result too, fix the typed
-  readers' new findings and prune their cleared suppressions.
+  readers' new findings and prune their cleared suppressions. Freed, a claim that holds only for some values takes
+  only those, and reads the value through a check that holds it: `effStat` takes a hero, never none, and reads his
+  total through `aHerosSkillAsItIsCounted`, which throws only where `skillBonusBreakdown` counts none (no hero).
 
 ### The types the code corrects
 
@@ -181,8 +183,10 @@ added under its kind.
   (the druid's line's channel, a guardian's perk's words) is `string | undefined` in the facts file, and its words read
   it `${String(x)}`; a shared type its readers show too narrow is widened (a fighter's kind may be a Mirror Image's
   phantom), and one they show too wide is narrowed (a guardian's weakness has its name and words). `armyUnitName`
-  takes any unit's type, as a save holds it (a type with no pool of names draws the Guard's). A saved field the code
-  writes `|| null` to is nullable in the schema (a spied hero's alignment and race).
+  takes any unit's type, as a save holds it (a type with no pool of names draws the Guard's). A hero's id that a
+  function only compares is typed as every caller holds it (`effSkillOf`'s: a fight's copy of a Hunting Rumours hero
+  holds it as words). A saved field the code writes `|| null` to is nullable in the schema (a spied hero's alignment
+  and race).
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does.
 - **A ternary or a list of many kinds of line** can be "too complex to represent" (TS2590) as `NarrativeLine`: type it
