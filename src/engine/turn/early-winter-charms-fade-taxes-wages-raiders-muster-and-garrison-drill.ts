@@ -15,12 +15,10 @@ import { perkTier } from '../titles/perks.ts';
 import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 import {
   capItemTaxGold,
-  discEff,
   discHeroWage,
   discTaxAdd,
   discUpkeepWage,
   gdActive,
-  hasDisc,
   realmBaseTax,
   taxBonusCap,
   taxRecordsGold,
@@ -31,6 +29,10 @@ import { setMovePool } from '../units/movement-pools.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 import { theUnitsAProvinceRaisesAtTheTurnsEnd } from '../rules/the-registry-of-content-effects.ts';
 import { theTaxTheHeroesItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
+import {
+  doARealmsDiscoveriesAddToTheRealmsTax,
+  whatARealmsDiscoveriesEarnInInterest,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import type { TurnContext } from './context.ts';
 import type { AGarrisonCompanyDrilledAGrade, ATitlesPerkOfGold } from './the-facts-early-winters-lines-record.ts';
 import type { Character, Realm } from '../../schemas/saved-game-state.ts';
@@ -177,16 +179,20 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     const _itemTax = capItemTaxGold(_taxBonusRaw, _perProvRaw, _taxCap);
     const taxBonus = _itemTax.taxBonus,
       perProvBonus = _itemTax.perProvBonus;
-    const interestBonus = discEff(turnContext, pi, 'interest').reduce(
-      (s2, e) => s2 + Math.min(_taxCap, Math.floor((p.gold || 0) * (e.pct ?? 0))),
-      0,
-    ); // interest discoveries
+    // interest discoveries (the discoveries' registry's since plan P1-19ag: "turnEnd: a realm's discoveries earn
+    // interest")
+    const interestBonus = whatARealmsDiscoveriesEarnInInterest(G.players[pi], {
+      theTreasury: p.gold || 0,
+      theCeiling: _taxCap,
+    });
     // Neutral trade: +20% of province income, rounded down.
     // (10 -> floor(1.9999...) = 1 instead of 2). Keep in step with neutralTradeGold / the report builder.
     // sd14 Taxation Records: +10% of province income, rounded down. Integer maths for the same
     // reason neutralTradeGold uses it — floor(income*0.10) drifts a gold on float-unfriendly
     // totals.
-    const taxRecordsBonus = hasDisc(turnContext, pi, 'sd14') ? taxRecordsGold(income, _taxCap) : 0;
+    // (whether the realm holds it: the discoveries' registry's since plan P1-19ag, "turnEnd: a realm's discoveries add to
+    // the realm's tax")
+    const taxRecordsBonus = doARealmsDiscoveriesAddToTheRealmsTax(G.players[pi]) ? taxRecordsGold(income, _taxCap) : 0;
     const neutralTradeBonus = neutralTradeGold(p, income);
     // ── MINOR-TITLE PERKS (economy) ── Cutpurse / Champion of the People +2g, Castellan +1g
     // per 5 provinces.

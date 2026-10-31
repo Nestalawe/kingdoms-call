@@ -38,6 +38,12 @@
 //   line (spreadTerror), the plunder discoveries on the ground they name (applyEvilConquest; no game meets these three
 //   but Skull Tithe, once, and no test saw it), the march's discoveries for each unit they reach (a land unit of Speed
 //   1–2: computeMovePoolMax and garrisonMoveRate), Signal Fires' unify points; and each kind on a row with no number.
+// - P1-19ag: the turn's end and the new turn, in their runners on a staged realm and in the functions that ask them: a
+//   province's tax by each filter (its coast and home asked only by an effect that needs them, once each filter before
+//   holds), each effect under the realm's ceiling and its row's own, its account kept across provinces; Taxation
+//   Records; interest; a unit's and a hero's wage cut in turn, never below 1g, and the heroes' ceiling; a hero's maximum
+//   HP for the king, the heroes or a skill; the gardens; the Embalmers' rate; War Academy's and Herbal Lore's chance and
+//   share; Informant Network and Arcane Observatory; and each kind on a row with no number.
 // Level 1 (unit): the runner on a staged realm, and combatVsNPC, recordBattleGraves, the to-hit chances,
 // pcCharCombatant, extraSkillBonuses and awardHpRoll called directly (on a world the engine makes from a fixed seed, or
 // a staged realm), no turn played; whether the line is written is decided before any die is drawn (a seeded stream
@@ -114,13 +120,37 @@ import {
   whatARealmsDiscoveriesAddToAMarch,
   whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite,
   whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves,
+  doARealmsDiscoveriesAddToTheRealmsTax,
+  doARealmsDiscoveriesChartAProvince,
+  doARealmsDiscoveriesHealTheWounded,
+  doARealmsDiscoveriesNameAnUnseenCaptain,
+  theChanceARealmsDiscoveriesPromoteTheCapitalsArmies,
+  theGoldADiscoveryAddsToTheRealmsTax,
+  theHpARealmsDiscoveriesHealAWoundedHeroBy,
+  theRateARealmsDiscoveriesLetTheGravesRotAt,
+  theShareARealmsDiscoveriesDressAFightersWoundsBy,
+  theWageARealmsDiscoveriesCeilingsLeaveAHero,
+  theWageARealmsDiscoveriesCutsLeaveAHero,
+  theWageARealmsDiscoveriesLeaveAUnit,
+  whatARealmsDiscoveriesAddToAHerosMaximumHp,
+  whatARealmsDiscoveriesAddToAProvincesTax,
+  whatARealmsDiscoveriesEarnInInterest,
 } from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
   THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
 } from '../../src/engine/rules/discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
-import { discExploreMult, discRecruitQChance, realmRecruitCost } from '../../src/engine/discoveries.ts';
+import {
+  discExploreMult,
+  discHeroWage,
+  discMaxHpFor,
+  discRecruitQChance,
+  discTaxAdd,
+  discUpkeepWage,
+  realmRecruitCost,
+  taxRecordsGold,
+} from '../../src/engine/discoveries.ts';
 import { detRoll, spotEnemyInOwnedProvince } from '../../src/engine/heroes/fame-and-consecration.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { AFighterInAPersonalCombat } from '../../src/engine/personal-combat/helpers.ts';
@@ -1317,5 +1347,274 @@ describe("war's spoils and the march, on rows the content doesn't write (P1-19af
       plunder(['plain'], 'plain'),
       plunder(['hill'], 'plain'),
     ]).toEqual([0.4, 0, 0.4, 0]);
+  });
+});
+
+/** The discoveries of P1-19ag's cases, by id (their rows' numbers in SAGE_DISCOVERIES_P). */
+const THE_TURNS_END = {
+  advancedAgriculture: { id: 'sd11' }, // +1 tax on a province of tax 3 or more
+  frontierCharters: { id: 'sd53' }, // +1 on a province of tax 3 or less
+  miningTechniques: { id: 'sd15' }, // +1 on a mountain
+  harbourDues: { id: 'sd51' }, // +1 on a coastal province
+  freePorts: { id: 'an02' }, // +1 on a coastal province of tax 4 or more
+  royalMint: { id: 'sd52' }, // +1 at the realm's home
+  garrisonFarms: { id: 'sd54' }, // +1 on a garrisoned province
+  woolTrade: { id: 'rh16' }, // +1 on a plain of Human folk
+  templeCharities: { id: 'ag20' }, // +1 on a province of the king's race
+  extortion: { id: 'ae06' }, // +1 on a province of another race
+  taxationRecords: { id: 'sd14' }, // 5% of the income
+  merchantGuilds: { id: 'sd12' }, // 5% interest on the treasury
+  quartermasters: { id: 'sd45' }, // −1g an infantry unit's wage, at most 1g a turn
+  supplyDepots: { id: 'sd55' }, // −1g every unit's wage, at most 1g a turn
+  granaries: { id: 'sd17' }, // −1g every hero's wage, at most 1g
+  loyalRetainers: { id: 'ag03' }, // −1g a Good or Divine hero's, at most 1g
+  mercenaryContracts: { id: 'an03' }, // −1g a Neutral hero's, at most 1g
+  inspiringLeadership: { id: 'sd38' }, // no hero paid above 3g, at most 2g saved
+  royalPhysicians: { id: 'sd72' }, // +8 maximum HP and +4 HP a turn, the king's
+  thickHides: { id: 'ro08' }, // +2 maximum HP
+  bestiaries: { id: 'sd73' }, // +1 for a trained explorer
+  blessedVigour: { id: 'ad19' }, // +2 for a hero, not the king
+  physickGardens: { id: 'sd65' }, // +3 HP a turn
+  embalmers: { id: 'az08' }, // the graves never rot
+  warAcademy: { id: 'sd08' }, // 7% a company
+  herbalLore: { id: 'sd29' }, // 60% of last season's wounds
+  informantNetwork: { id: 'sd22' },
+  arcaneObservatory: { id: 'sd39' },
+} as const;
+
+/** A province as the tax discoveries read it: tax 3, plain, of Human folk, inland, ungarrisoned, not the home, for a
+ *  Human realm; its questions count how often they are asked. */
+function aProvinceToTax(over: Partial<{ theTax: number; theGround: string; theFolk: string | undefined }> = {}) {
+  const asked = { coast: 0, home: 0 };
+  const facts = {
+    theTax: 3,
+    theGround: 'plain',
+    theFolk: 'Human' as string | undefined,
+    theRealmsRace: 'Human',
+    isItGarrisoned: false,
+    isItCoastal: () => (asked.coast++, false),
+    isItTheRealmsHome: () => (asked.home++, false),
+    ...over,
+  };
+  return { facts, asked };
+}
+const taxOf = (realm: object, facts: ReturnType<typeof aProvinceToTax>['facts'], ceiling: number | null = 99) =>
+  whatARealmsDiscoveriesAddToAProvincesTax(realm, facts, new Map(), ceiling);
+
+describe("the turn's end and the new turn, in their runners (P1-19ag)", () => {
+  test("a province's tax: each filter of a row, its tax, ground and folk", () => {
+    const T = THE_TURNS_END;
+    const byTax = holding(T.advancedAgriculture, T.frontierCharters, T.miningTechniques);
+    expect([
+      taxOf(byTax, aProvinceToTax().facts),
+      taxOf(byTax, aProvinceToTax({ theTax: 2, theGround: 'mountain' }).facts),
+      taxOf(byTax, aProvinceToTax({ theTax: 4 }).facts),
+    ]).toEqual([2, 2, 1]);
+    const byFolk = holding(T.woolTrade, T.templeCharities, T.extortion);
+    expect([
+      taxOf(byFolk, aProvinceToTax().facts),
+      taxOf(byFolk, aProvinceToTax({ theGround: 'forest' }).facts),
+      taxOf(byFolk, aProvinceToTax({ theFolk: 'Elven' }).facts),
+      taxOf(byFolk, aProvinceToTax({ theFolk: undefined }).facts),
+      taxOf(byFolk, aProvinceToTax({ theFolk: '' }).facts),
+    ]).toEqual([2, 1, 1, 0, 0]);
+  });
+
+  test("a province's tax: a garrison, the coast and the realm's home, each question asked only by an effect that needs it", () => {
+    const T = THE_TURNS_END;
+    const realm = holding(T.garrisonFarms, T.harbourDues, T.freePorts, T.royalMint);
+    const inland = aProvinceToTax();
+    expect(taxOf(realm, inland.facts)).toBe(0);
+    // Free Ports asks no coast of a province of tax 3: only Harbour Dues asks it
+    expect(inland.asked).toEqual({ coast: 1, home: 1 });
+    const coastalHome = aProvinceToTax({ theTax: 4 });
+    const facts = {
+      ...coastalHome.facts,
+      isItGarrisoned: true,
+      isItCoastal: () => true,
+      isItTheRealmsHome: () => true,
+    };
+    expect(taxOf(realm, facts)).toBe(4);
+    const none = aProvinceToTax();
+    expect(taxOf(holding(T.advancedAgriculture), none.facts)).toBe(1);
+    expect(none.asked).toEqual({ coast: 0, home: 0 });
+  });
+
+  test("a province's tax: each effect under the realm's ceiling and its row's own, its account kept across provinces", () => {
+    const realm = holding(THE_TURNS_END.advancedAgriculture, THE_TURNS_END.frontierCharters);
+    const account = new Map();
+    const pay = (ceiling: number | null | undefined) =>
+      whatARealmsDiscoveriesAddToAProvincesTax(realm, aProvinceToTax().facts, account, ceiling);
+    // two effects, each 1g: a ceiling of 2 lets each pay twice, then nothing
+    expect([pay(2), pay(2), pay(2)]).toEqual([2, 2, 0]);
+    const own = withPlantedRows({ capped: { kind: 'tax', bonus: 3, max: 2 } }, (planted) => {
+      const acc = new Map();
+      const one = (ceiling: number | null) =>
+        whatARealmsDiscoveriesAddToAProvincesTax(planted, aProvinceToTax().facts, acc, ceiling);
+      return [one(null), one(null), one(5)];
+    });
+    // its own max of 2 with no ceiling, then nothing left; given a ceiling, the lower of the two, the account kept
+    expect(own).toEqual([2, 0, 0]);
+  });
+
+  test('discTaxAdd hands the province as it is: its tax, folk, garrison, coast and home', () => {
+    const T = THE_TURNS_END;
+    const realm = { race: 'Human', ...holding(T.advancedAgriculture, T.garrisonFarms, T.templeCharities, T.royalMint) };
+    const state = { world: { cols: 1, rows: 1, provinces: [] }, homes: {} };
+    const province = { id: 0, row: 0, col: 0, tax: 3, terrain: 'plain', race: 'Human', garrisonArmies: [{}] };
+    expect(discTaxAdd(realm, province as never, state as never, 0, new Map(), 99)).toBe(3);
+    expect(
+      discTaxAdd(realm, { ...province, tax: undefined, race: 'Elven' } as never, state as never, 0, new Map(), 99),
+    ).toBe(1);
+  });
+
+  test('Taxation Records: 5% of the income, rounded down, under the ceiling, for a realm that holds it', () => {
+    expect(doARealmsDiscoveriesAddToTheRealmsTax(holding(THE_TURNS_END.taxationRecords))).toBe(true);
+    expect(doARealmsDiscoveriesAddToTheRealmsTax(holding(THE_TURNS_END.advancedAgriculture))).toBe(false);
+    expect(doARealmsDiscoveriesAddToTheRealmsTax(undefined)).toBe(false);
+    expect([
+      theGoldADiscoveryAddsToTheRealmsTax({ theIncome: 139, theCeiling: 10 }),
+      theGoldADiscoveryAddsToTheRealmsTax({ theIncome: 1000, theCeiling: 10 }),
+      taxRecordsGold(139, 10),
+    ]).toEqual([6, 10, 6]);
+  });
+
+  test('Taxation Records with no discovery of its kind in the table: the old fallbacks, 5% and 99g', () => {
+    const theRow = DISC_BY_ID['sd14'];
+    Reflect.set(DISC_BY_ID, 'sd14', { ...theRow, effect: undefined });
+    try {
+      expect([taxRecordsGold(1000, null), taxRecordsGold(5000, null), taxRecordsGold(1000, 10)]).toEqual([50, 99, 10]);
+    } finally {
+      Reflect.set(DISC_BY_ID, 'sd14', theRow);
+    }
+  });
+
+  test('interest: 5% of the treasury, rounded down, under the ceiling', () => {
+    const realm = holding(THE_TURNS_END.merchantGuilds);
+    const interest = (theTreasury: number, theCeiling: number) =>
+      whatARealmsDiscoveriesEarnInInterest(realm, { theTreasury, theCeiling });
+    expect([interest(100, 10), interest(100, 2), interest(39, 10), interest(0, 10)]).toEqual([5, 2, 1, 0]);
+    expect(whatARealmsDiscoveriesEarnInInterest(holding(), { theTreasury: 100, theCeiling: 10 })).toBe(0);
+  });
+
+  test("a unit's wage: each cut that reaches it in turn, never below 1g, each at most its own max a turn", () => {
+    const realm = holding(THE_TURNS_END.quartermasters, THE_TURNS_END.supplyDepots);
+    const infantry = { type: 'Shieldwall Levies', quality: 'Average', race: 'Human' };
+    const cavalry = { type: 'Free Lances', quality: 'Average', race: 'Human' };
+    const acc = new Map();
+    expect([
+      theWageARealmsDiscoveriesLeaveAUnit(realm, { theUnit: infantry }, 5, acc, null),
+      theWageARealmsDiscoveriesLeaveAUnit(realm, { theUnit: infantry }, 5, acc, null),
+      theWageARealmsDiscoveriesLeaveAUnit(realm, { theUnit: cavalry }, 5, new Map(), null),
+      theWageARealmsDiscoveriesLeaveAUnit(realm, { theUnit: infantry }, 2, new Map(), null),
+      theWageARealmsDiscoveriesLeaveAUnit(realm, { theUnit: infantry }, 5, new Map(), 0),
+      discUpkeepWage(realm, infantry, 5, new Map(), 3),
+    ]).toEqual([3, 5, 4, 1, 5, 3]);
+  });
+
+  test("a hero's wage: the cuts for his alignment in turn, then the heroes' ceiling, each at most its own max", () => {
+    const T = THE_TURNS_END;
+    const realm = holding(T.granaries, T.loyalRetainers, T.mercenaryContracts, T.inspiringLeadership);
+    const wage = (alignment: string, raw: number, ceiling: number | null) =>
+      discHeroWage(realm, { alignment }, raw, new Map(), ceiling);
+    expect([
+      wage('Good', 6, 10),
+      wage('Neutral', 6, 10),
+      wage('Evil', 8, 10),
+      wage('Evil', 8, null),
+      wage('Evil', 1, 10),
+    ]).toEqual([3, 3, 3, 5, 1]);
+    expect([
+      theWageARealmsDiscoveriesCutsLeaveAHero(realm, { theHerosAlignment: 'Divine' }, 6, new Map(), 10),
+      theWageARealmsDiscoveriesCeilingsLeaveAHero(realm, 6, new Map(), 10),
+      theWageARealmsDiscoveriesCeilingsLeaveAHero(realm, 3, new Map(), 10),
+      theWageARealmsDiscoveriesCeilingsLeaveAHero(realm, 6, new Map(), 0),
+    ]).toEqual([4, 3, 3, 6]);
+  });
+
+  test("a hero's maximum HP: the king's, the heroes' and a trained skill's", () => {
+    const T = THE_TURNS_END;
+    const realm = holding(T.royalPhysicians, T.thickHides, T.bestiaries, T.blessedVigour);
+    const hp = (isHeTheKing: boolean, explorer: number) =>
+      whatARealmsDiscoveriesAddToAHerosMaximumHp(realm, { isHeTheKing, theLevelsOfHisSkills: { explorer } });
+    expect([hp(true, 0), hp(true, 1), hp(false, 0), hp(false, 2)]).toEqual([10, 11, 4, 5]);
+    expect([discMaxHpFor(realm, { isKing: true }), discMaxHpFor(realm, { skills: { explorer: 1 } })]).toEqual([10, 5]);
+  });
+
+  test("the gardens heal the wounded: the king's effects for the king alone", () => {
+    const realm = holding(THE_TURNS_END.physickGardens, THE_TURNS_END.royalPhysicians);
+    expect([
+      theHpARealmsDiscoveriesHealAWoundedHeroBy(realm, { isHeTheKing: true }),
+      theHpARealmsDiscoveriesHealAWoundedHeroBy(realm, { isHeTheKing: false }),
+      doARealmsDiscoveriesHealTheWounded(realm),
+      doARealmsDiscoveriesHealTheWounded(holding(THE_TURNS_END.royalPhysicians)),
+      doARealmsDiscoveriesHealTheWounded(holding(THE_TURNS_END.thickHides)),
+    ]).toEqual([7, 3, true, true, false]);
+  });
+
+  test("the Embalmers: the graves of the realm's ground never rot; with none, the ground's own rate", () => {
+    expect(theRateARealmsDiscoveriesLetTheGravesRotAt(holding(THE_TURNS_END.embalmers), 0.1)).toBe(0);
+    expect(theRateARealmsDiscoveriesLetTheGravesRotAt(holding(THE_TURNS_END.physickGardens), 0.1)).toBe(0.1);
+    expect(theRateARealmsDiscoveriesLetTheGravesRotAt(undefined, 0.05)).toBe(0.05);
+  });
+
+  test("War Academy's chance, Herbal Lore's share, Informant Network and Arcane Observatory, or none", () => {
+    const T = THE_TURNS_END;
+    const all = holding(T.warAcademy, T.herbalLore, T.informantNetwork, T.arcaneObservatory);
+    const none = holding(T.thickHides);
+    expect(
+      [all, none].map((realm) => [
+        theChanceARealmsDiscoveriesPromoteTheCapitalsArmies(realm),
+        theShareARealmsDiscoveriesDressAFightersWoundsBy(realm),
+        doARealmsDiscoveriesNameAnUnseenCaptain(realm),
+        doARealmsDiscoveriesChartAProvince(realm),
+      ]),
+    ).toEqual([
+      [0.07, 0.6, true, true],
+      [null, null, false, false],
+    ]);
+  });
+});
+
+describe("the turn's end and the new turn, on rows the content doesn't write (P1-19ag)", () => {
+  test("no number: each adds, cuts or heals nothing, keeps the ground's rate, or takes its fallback", () => {
+    const got = withPlantedRows(
+      {
+        tax: { kind: 'tax' },
+        interest: { kind: 'interest' },
+        upkeep: { kind: 'upkeep' },
+        heroWage: { kind: 'heroWage' },
+        heroWageCap: { kind: 'heroWageCap' },
+        maxHp: { kind: 'maxHp' },
+        regen: { kind: 'regen' },
+        graveDecay: { kind: 'graveDecay' },
+        homePromotion: { kind: 'homePromotion' },
+        autoHeal: { kind: 'autoHeal' },
+      },
+      (realm) => [
+        taxOf(realm, aProvinceToTax().facts),
+        whatARealmsDiscoveriesEarnInInterest(realm, { theTreasury: 100, theCeiling: 10 }),
+        theWageARealmsDiscoveriesLeaveAUnit(realm, { theUnit: { type: 'Free Lances' } }, 5, new Map(), 10),
+        theWageARealmsDiscoveriesCutsLeaveAHero(realm, { theHerosAlignment: 'Good' }, 5, new Map(), 10),
+        theWageARealmsDiscoveriesCeilingsLeaveAHero(realm, 5, new Map(), 10),
+        whatARealmsDiscoveriesAddToAHerosMaximumHp(realm, { isHeTheKing: false, theLevelsOfHisSkills: {} }),
+        theHpARealmsDiscoveriesHealAWoundedHeroBy(realm, { isHeTheKing: false }),
+        theRateARealmsDiscoveriesLetTheGravesRotAt(realm, 0.1),
+        theChanceARealmsDiscoveriesPromoteTheCapitalsArmies(realm),
+        theShareARealmsDiscoveriesDressAFightersWoundsBy(realm),
+      ],
+    );
+    expect(got).toEqual([0, 0, 5, 5, 5, 0, 0, 0.1, 0.5, 0.4]);
+  });
+
+  test("a row's filters the content writes with no other: a tax row's ceiling of its own only, a hero's wage for no alignment", () => {
+    const got = withPlantedRows(
+      { own: { kind: 'tax', bonus: 2, max: 1 }, nobody: { kind: 'heroWage', amount: 2, heroAlign: [] } },
+      (realm) => [
+        taxOf(realm, aProvinceToTax().facts, 5),
+        theWageARealmsDiscoveriesCutsLeaveAHero(realm, { theHerosAlignment: 'Good' }, 5, new Map(), 10),
+      ],
+    );
+    expect(got).toEqual([1, 5]);
   });
 });

@@ -21,8 +21,8 @@
 // those only a whole turn stages: the save's repairs counted at the turn's start, a maximum raised by Royal Physicians,
 // an heir crowned, a summons gone, the titles); then, with its helpers stood in by recorders in the `vm`, what each is
 // handed: each realm's Academy, gardens, informants and Observatory in turn, then the reconcile and the stranded
-// guards; the Academy's chance asked once per realm with companies to drill; the gardens summed per wounded hero, the
-// king's effects for the king; the Embalmers asked only on held ground; the holy ground measured from the body (or the
+// guards; the Academy's chance asked once per realm (since P1-19ag; with companies to drill, before); the gardens summed
+// per wounded hero, the king's effects for the king; the Embalmers asked only on held ground; the holy ground measured from the body (or the
 // hero) and spent from the realm's list. Then what a whole turn can't stage: each company's, grave's, band's and
 // wanderer's die in turn; a nameless company; a fallen hero at home; heroes with no maximum or no HP, or past it; a
 // captain standing nowhere; a province no realm mapped or of no terrain, its list of visitors kept; no graveyard, a
@@ -38,6 +38,9 @@
 // realm held, spending it, each ground once; every province ends listing exactly the heroes standing in it. Planted
 // faults: in the PR (P1-08k5b)
 // Since P1-23e (R-119): the Informant Network passes over a captain whose Invisibility held this turn (the cases).
+// Since P1-19ag the stage asks the discoveries' registry's runners, not hasDisc, discParam, discEff and discSum (gone):
+// the recorders stand in for the runners, each handed the realm (shown by its place in the list), the Academy's chance
+// asked once for each realm, before it looks for companies; a grave-keeping row with no rate is planted in the table.
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -183,19 +186,28 @@ function standIn(b: Board, names: string[], body: () => void, returns: Record<st
   return calls;
 }
 const HELPERS = [
-  'hasDisc',
-  'discParam',
-  'discEff',
-  'discSum',
+  'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies',
+  'doARealmsDiscoveriesHealTheWounded',
+  'theHpARealmsDiscoveriesHealAWoundedHeroBy',
+  'doARealmsDiscoveriesNameAnUnseenCaptain',
+  'doARealmsDiscoveriesChartAProvince',
+  'theRateARealmsDiscoveriesLetTheGravesRotAt',
   'nearestConsecratedProv',
   'consecratedIds',
   'reconcileProvinceCharacters',
   'normaliseStrandedGuards',
 ];
-/** Each call as `<helper> <its arguments but the context and the save>`. */
+/** The place of a realm in the save's list, or -1. */
+const realmAt = (b: Board, a: unknown) => (b.G.players as unknown[]).indexOf(a);
+/** Each call as `<helper> <its arguments but the context and the save>`, a realm as `realm <its place>`. */
 const shown = (b: Board, calls: Call[]) =>
   calls.map((c) =>
-    [c.fn, ...c.args.filter((a) => a !== b.tc && a !== b.G).map((a) => (typeof a === 'function' ? 'fn' : a))].join(' '),
+    [
+      c.fn,
+      ...c.args
+        .filter((a) => a !== b.tc && a !== b.G)
+        .map((a) => (typeof a === 'function' ? 'fn' : realmAt(b, a) >= 0 ? `realm ${String(realmAt(b, a))}` : a)),
+    ].join(' '),
   );
 
 describe('The new turn’s second part: what it calls', () => {
@@ -203,18 +215,18 @@ describe('The new turn’s second part: what it calls', () => {
     const b = fresh();
     const calls = standIn(b, HELPERS, () => after(b));
     expect(shown(b, calls)).toEqual([
-      'hasDisc 0 sd08',
-      'hasDisc 1 sd08',
-      'hasDisc 2 sd08',
-      'discEff 0 regen',
-      'discEff 1 regen',
-      'discEff 2 regen',
-      'hasDisc 0 sd22',
-      'hasDisc 1 sd22',
-      'hasDisc 2 sd22',
-      'hasDisc 0 sd39',
-      'hasDisc 1 sd39',
-      'hasDisc 2 sd39',
+      'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies realm 0',
+      'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies realm 1',
+      'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies realm 2',
+      'doARealmsDiscoveriesHealTheWounded realm 0',
+      'doARealmsDiscoveriesHealTheWounded realm 1',
+      'doARealmsDiscoveriesHealTheWounded realm 2',
+      'doARealmsDiscoveriesNameAnUnseenCaptain realm 0',
+      'doARealmsDiscoveriesNameAnUnseenCaptain realm 1',
+      'doARealmsDiscoveriesNameAnUnseenCaptain realm 2',
+      'doARealmsDiscoveriesChartAProvince realm 0',
+      'doARealmsDiscoveriesChartAProvince realm 1',
+      'doARealmsDiscoveriesChartAProvince realm 2',
       'reconcileProvinceCharacters',
       'normaliseStrandedGuards',
     ]);
@@ -222,20 +234,31 @@ describe('The new turn’s second part: what it calls', () => {
     expect(last.map((c) => c.args)).toEqual([[b.tc], [b.G]]);
   });
 
-  test('the War Academy asks its 7% once for each realm with companies it may drill at home, with 50% where the table has none', () => {
+  test('the War Academy asks its chance once for each realm, before it looks for companies: 7% for a realm that holds it, none for one that doesn’t', () => {
     const b = fresh();
     knows(b, 0, 'sd08');
     knows(b, 1, 'sd08');
     leads(kingOf(b, 0), [unit('A', 'Men-at-Arms'), unit('B', 'Men-at-Arms')]);
-    const calls = standIn(b, ['discParam'], () => after(b));
-    expect(calls.map((c) => c.args)).toEqual([['sd08', 'pct', 0.5]]);
+    const theRunner = engineFn(engine, 'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies');
+    const asked: unknown[] = [];
+    const calls = standIn(b, ['theChanceARealmsDiscoveriesPromoteTheCapitalsArmies'], () => after(b), {
+      theChanceARealmsDiscoveriesPromoteTheCapitalsArmies: (...a) => {
+        const chance = theRunner(...(a as never[]));
+        asked.push(chance);
+        return chance;
+      },
+    });
+    expect(calls.map((c) => realmAt(b, c.args[0]))).toEqual([0, 1, 2]);
+    expect(asked).toEqual([0.07, 0.07, null]);
   });
 
-  test('the War Academy drills at the chance its table gives: with 50% in its place, a die of 0.4 drills', () => {
+  test('the War Academy drills at the chance its runner gives: with 50% in its place, a die of 0.4 drills', () => {
     const b = fresh();
     knows(b, 0, 'sd08');
     const k = leads(kingOf(b, 0), [unit('A', 'Men-at-Arms')]);
-    standIn(b, ['discParam'], () => after(b, 0.4), { discParam: () => 0.5 });
+    standIn(b, ['theChanceARealmsDiscoveriesPromoteTheCapitalsArmies'], () => after(b, 0.4), {
+      theChanceARealmsDiscoveriesPromoteTheCapitalsArmies: (...a) => (realmAt(b, a[0]) === 0 ? 0.5 : null),
+    });
     expect(grades(k)).toEqual(['A (Veteran)']);
   });
 
@@ -245,17 +268,10 @@ describe('The new turn’s second part: what it calls', () => {
     const k = wounded(kingOf(b, 0), 10);
     const h = wounded(standing(b, 0, b.X), 10);
     standing(b, 0, ring1(b, 0));
-    const calls = standIn(b, ['discSum'], () => after(b));
-    expect(calls.map((c) => [c.args[1], c.args[2], c.args[3]])).toEqual([
-      [0, 'regen', 'hp'],
-      [0, 'regen', 'hp'],
-    ]);
-    const [forKing, forHero] = calls.map((c) => c.args[4] as (e: Raw) => boolean);
-    expect([forKing?.({ king: true }), forKing?.({}), forHero?.({ king: true }), forHero?.({})]).toEqual([
-      true,
-      true,
-      false,
-      true,
+    const calls = standIn(b, ['theHpARealmsDiscoveriesHealAWoundedHeroBy'], () => after(b));
+    expect(calls.map((c) => [realmAt(b, c.args[0]), c.args[1]])).toEqual([
+      [0, { isHeTheKing: true }],
+      [0, { isHeTheKing: false }],
     ]);
     expect([k.hp, h.hp]).toEqual([17, 13]);
   });
@@ -264,8 +280,8 @@ describe('The new turn’s second part: what it calls', () => {
     const b = fresh();
     graves(home(b), 2);
     graves(ring1(b, 3), 2);
-    const calls = standIn(b, ['discEff'], () => after(b));
-    expect(calls.filter((c) => c.args[2] === 'graveDecay').map((c) => c.args[1])).toEqual([0]);
+    const calls = standIn(b, ['theRateARealmsDiscoveriesLetTheGravesRotAt'], () => after(b));
+    expect(calls.map((c) => [realmAt(b, c.args[0]), c.args[1]])).toEqual([[0, 0.1]]);
   });
 
   test('a Divine return looks for the holy ground nearest the body, or the hero if the grave has no place (reading the realm’s list), then spends it from the list', () => {
@@ -542,9 +558,20 @@ describe('The new turn’s second part: what only a direct call can stage', () =
   test('a grave-keeping effect that names no rate keeps the ground’s own: 10%', () => {
     const b = fresh();
     graves(home(b), 2);
-    standIn(b, ['discEff'], () => after(b, 0.07), {
-      discEff: (...a) => (a[2] === 'graveDecay' ? [{ kind: 'graveDecay' }] : []),
-    });
+    const table = engine['DISC_BY_ID'] as Record<string, unknown>;
+    table['test-keeper'] = {
+      id: 'test-keeper',
+      name: 'Keeper',
+      category: 'Test',
+      desc: '',
+      effect: { kind: 'graveDecay' },
+    };
+    try {
+      knows(b, 0, 'test-keeper');
+      after(b, 0.07);
+    } finally {
+      Reflect.deleteProperty(table, 'test-keeper');
+    }
     expect(gravesIn(home(b))).toBe(0);
   });
 

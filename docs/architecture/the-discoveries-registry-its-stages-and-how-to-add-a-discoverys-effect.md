@@ -30,8 +30,9 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   (`theEffectsOfAKindARealmHolds`, in the table `DISC_BY_ID`): in the order the realm holds its discoveries, `effect`
   before `effect2`, the order a product or a sum of decimals runs in. It hands each effect, with the stage's facts, to
   the kind's effect, which returns its number (or nothing, where its filters don't hold), and adds, multiplies or asks
-  them as the old reader did. The old readers of `src/engine/discoveries.ts` (`discEffectsOf`, `discSum`, …) ask the
-  same finder, so a kind not yet taken is found the same way.
+  them as the old reader did. The old readers of `src/engine/discoveries.ts` (`discEffectsOf`, `discSum`, `discEff`,
+  `discSumOf`, `discParam`) went with their last callers in P1-19ag; the one kind not yet taken, Messenger Birds'
+  `extendedIntel`, is still read by its id (`hasDisc`) until P1-19ah.
 - **The unit-class tests** the filters need (`discUnitIs`, `discUnitMatch`, the class sets `DISC_CLS_SETS`,
   `ARMY_RACE_OF_TYPE`) are in `src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts`,
   which the engine, the views and the registry's effects all read.
@@ -148,6 +149,32 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   speeds. The report hands its own copy of the unit, as before, so its speeds are unchanged. **… help converging
   columns unite** (Signal Fires, `unify`): the points it adds to both of `resolveMoveOrder`'s unify rolls.
 
+**The turn's end and the new turn** (P1-19ag, `discoveries/a-realms-discoveries-at-the-turns-end-and-the-new-turn.ts`):
+
+- `turnEnd`'s **a realm's discoveries add to a province's tax** (`tax`; `discTaxAdd`, which Early Winter and the views
+  ask): handed the province's tax, ground and folk, the realm's race, whether it is garrisoned, and its coast and
+  whether it is the realm's home as questions, asked only by an effect that needs them, once the filters before hold.
+  It returns its `bonus` and its own `max`. The runner caps each effect at the realm's ceiling (5% of its base tax,
+  `taxBonusCap`, shared with the items' tax gold) and its `max`, and keeps what each has paid in the caller's account.
+- **… add to the realm's tax** (Taxation Records, `taxPct`): its share of the income, rounded down, under the ceiling
+  (5% and 99g for a row with none: the old fallbacks, Parked). Two runners, as Flanking Tactics has: whether a realm
+  holds it (Early Winter and the report ask first), and the gold of the first discovery in content with it
+  (`taxRecordsGold`, which is asked with no realm).
+- **… earn interest** (`interest`): its share of the treasury, rounded down, under the ceiling; Early Winter and the
+  report's forecast ask one runner.
+- **… cut a unit's wage** (`upkeep`; `discUpkeepWage`), **… cut a hero's wage** (`heroWage`, handed his alignment) and
+  **… cap a hero's wage** (`heroWageCap`; both `discHeroWage`, the cuts first): each cut in turn, never below 1g, at
+  most the ceiling (or, given none, its row's `max`) a turn, the account kept as for the tax.
+- **… heal the wounded** (`regen`, the new turn's gardens): handed whether he is the king. Two runners: whether the
+  realm holds any, then the hit points for each wounded hero. **… keep the graves** (Embalmers, `graveDecay`): the rate;
+  the runner keeps the lowest of it and the ground's own. **… promote the capital's armies** (War Academy,
+  `homePromotion`): its chance (0.5 for a row with none), asked once a realm; the new turn rolls each company.
+- `turnStart`'s first stage, **… dress a fighter's wounds** (Herbal Lore, `autoHeal`): the share of last season's
+  wounds (0.4 for a row with none), asked last of a wounded hero's checks as the phase begins.
+- `aHerosStanding`'s **… add to maximum HP** (`maxHp`; `discMaxHpFor`): handed whether he is the king and his skills'
+  levels. `visibility`'s **… name an unseen captain** (Informant Network, `informants`) and **… chart a province**
+  (Arcane Observatory, `turnReveal`): yes or no; the new turn draws whom and where, as before.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
@@ -156,7 +183,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae, 23 after P1-19af): the functions taken name no
+  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae, 23 after P1-19af, 5 after P1-19ag): the functions taken name no
   discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
   but means something else (the Evil doctrine `'terror'` in both battles; the Spy skill `'spy'`, a line's type
   `'explore'`) is listed beside its function.
@@ -165,7 +192,8 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games
   meet 0 times or can't show (the own ground, P1-19aa; Homeward Song, P1-19ab; an aim against the undead, Veteran
   Training in a fight and on the card, P1-19ac; each spy's, explorer's, scholar's and rester's effect on and off its
-  ground, coast or home, P1-19ad; each recruit's and realm's work's, P1-19ae; war's spoils and the march, P1-19af), and
+  ground, coast or home, P1-19ad; each recruit's and realm's work's, P1-19ae; war's spoils and the march, P1-19af; the
+  turn's end and the new turn, P1-19ag), and
   the effects on rows the content doesn't write. `tests/unit/what-each-realm-may-see-of-the-world.test.ts` checks the
   wages and prices the view and the report quote with the discoveries of P1-19ae, and the march rates of P1-19af. Each later row adds
   its own.

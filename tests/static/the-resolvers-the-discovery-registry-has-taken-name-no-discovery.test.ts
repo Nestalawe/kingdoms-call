@@ -10,7 +10,8 @@
 //
 // Red on its row's base by design (applyPreBattleMagic held 1 check, discUnitMult 1 and dragonTamed 1 on P1-19aa's
 // base; pcCharCombatant 5 on P1-19ac's; resolveSpyOrder 6 on P1-19ad's; each of P1-19ae's ten 1; P1-19af's
-// spreadTerror and resolveMoveOrder 2, its other four 1), as the unit-name, item-effect and spell tests were: the one
+// spreadTerror and resolveMoveOrder 2, its other four 1; P1-19ag's new turn 7, Early Winter, Herbal Lore's stage,
+// taxRecordsGold and discHeroWage 2, its other three 1), as the unit-name, item-effect and spell tests were: the one
 // exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25; the discoveries family's
 // Decision 6).
 // Level 0 (static): the files' syntax trees and the content's discoveries as written; nothing runs.
@@ -244,6 +245,28 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
   ],
   ['src/engine/units/movement-pools.ts', 'computeMovePoolMax', "P1-19af, a realm's discoveries add to a march"],
   ['src/engine/units/movement.ts', 'garrisonMoveRate', "P1-19af, a realm's discoveries add to a march"],
+  ['src/engine/discoveries.ts', 'discTaxAdd', "P1-19ag, a realm's discoveries add to a province's tax"],
+  ['src/engine/discoveries.ts', 'taxRecordsGold', "P1-19ag, a realm's discoveries add to the realm's tax"],
+  ['src/engine/discoveries.ts', 'discUpkeepWage', "P1-19ag, a realm's discoveries cut a unit's wage"],
+  ['src/engine/discoveries.ts', 'discHeroWage', "P1-19ag, a realm's discoveries cut a hero's wage and cap it"],
+  ['src/engine/discoveries.ts', 'discMaxHpFor', "P1-19ag, a realm's discoveries add to maximum HP"],
+  [
+    'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
+    'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
+    "P1-19ag, a realm's discoveries earn interest and add to the realm's tax",
+  ],
+  [
+    'src/engine/turn/new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-final-reconcile.ts',
+    'newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile',
+    "P1-19ag, a realm's discoveries promote the capital's armies, heal the wounded, name an unseen captain, chart a province and keep the graves",
+    // the type of the Observatory's two lines and of a Divine hero's return (found, or not), `'explore'`
+    theExploreLines(4),
+  ],
+  [
+    'src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts',
+    'startPhaseHealingSnapshotsAndStalledBattles',
+    "P1-19ag, a realm's discoveries dress a fighter's wounds",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

@@ -1,13 +1,15 @@
 import { KC_UNIT_CLASS, SAGE_DISCOVERIES_P } from '../content/kingdoms-call-data.ts';
-import type {
-  TheEffectOfADiscovery,
-  ADiscoverysRow,
-} from '../content/discovery-effects-their-kinds-numbers-and-words.ts';
+import type { ADiscoverysRow } from '../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import {
   DISC_BY_ID,
   aRealmsDiscoveriesLetABeastFollowWithoutItsDruid,
-  theEffectsOfAKindARealmHolds,
   theFactorARealmsDiscoveriesMultiplyExploringBy,
+  theGoldADiscoveryAddsToTheRealmsTax,
+  theWageARealmsDiscoveriesCeilingsLeaveAHero,
+  theWageARealmsDiscoveriesCutsLeaveAHero,
+  theWageARealmsDiscoveriesLeaveAUnit,
+  whatARealmsDiscoveriesAddToAHerosMaximumHp,
+  whatARealmsDiscoveriesAddToAProvincesTax,
   theUnitsPriceARealmsDiscoveriesLeave,
   whatARealmsDiscoveriesAddToARecruitsChanceOfAHigherGrade,
   theFactorARealmsDiscoveriesStrengthenAUnitBy,
@@ -17,27 +19,20 @@ import {
 } from './rules/the-registry-of-discovery-effects.ts';
 import {
   DISC_CLS_SETS,
-  discUnitMatch,
   type AUnitAsTheDiscoveriesReadIt,
 } from './rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { gdActiveFor, homeFounderOf } from './grand-design.ts';
 import { getNeighborsP } from './world/map-helpers.ts';
 import type { TurnContext } from './turn/context.ts';
+import type { WhatEachCappedEffectHasPaid } from './rules/the-registry-of-content-effects.ts';
 import type { Army, Character, Province } from '../schemas/saved-game-state.ts';
 
 // Its types (plan P1-10b8): a discovery's effect has one shape, TheEffectOfADiscovery (since plan P1-19aa in
-// src/content/discovery-effects-their-kinds-numbers-and-words.ts, beside the kinds the registry holds), which discEffectsOf,
-// discEff and every hook below hand their readers. A value the body guards (`pl &&`, `|| []`, `|| 0`) is typed as wide as
-// the guard, so each guard stays (plan P1-10b's Decision 3), though a state the turn hands always holds it.
-/** The fields of an effect that hold a number: what discSumOf adds up and discParam reads. */
-type ANumberFieldOfAnEffect = {
-  [F in keyof TheEffectOfADiscovery]-?: NonNullable<TheEffectOfADiscovery[F]> extends number ? F : never;
-}[keyof TheEffectOfADiscovery];
-/** What each capped effect has paid (or saved) so far this collection: a Map, one per realm per collection. */
-interface WhatEachCappedEffectHasPaid {
-  get(effect: TheEffectOfADiscovery): number | undefined;
-  set(effect: TheEffectOfADiscovery, paid: number): unknown;
-}
+// src/content/discovery-effects-their-kinds-numbers-and-words.ts, beside the kinds the registry holds), which the
+// registry's runners hand their effects. A value the body guards (`pl &&`, `|| []`, `|| 0`) is typed as wide as the
+// guard, so each guard stays (plan P1-10b's Decision 3), though a state the turn hands always holds it. What each capped
+// effect has paid so far this collection (WhatEachCappedEffectHasPaid, a Map, one per realm per collection) is the
+// registry's type since plan P1-19ag.
 /** A province's place and ground, which discProvCoastal reads. */
 type AProvinceOnTheMap = Pick<Province, 'row' | 'col' | 'terrain'>;
 /** The map as discProvCoastal reads it. */
@@ -84,8 +79,9 @@ export function discBlockedIds(pl: ARealmAsTheDiscoveriesReadIt | null | undefin
 // ── Discovery eligibility & generic effect readers ────
 // Race/alignment discoveries carry `race` / `alignment`; a realm can only research, breakthrough,
 // Grand-Library or steal (spy) a discovery it is eligible for. Their effects are data-driven
-// (`effect.kind`) and read through discEffectsOf / discSumOf at the relevant engine hooks. The table of the
-// discoveries by id is the discoveries' registry's (plan P1-19aa), which finds a realm's effects of a kind by it.
+// (`effect.kind`) and found by the discoveries' registry's runners at the hooks (plan P1-19aa to P1-19ag; the readers
+// discEffectsOf, discSumOf, discEff, discSum and discParam went with their last callers, P1-19ag). The table of the
+// discoveries by id is the registry's, which finds a realm's effects of a kind by it.
 export { DISC_BY_ID };
 export function discEligible(
   d: Pick<ADiscoverysRow, 'race' | 'alignment'> | null | undefined,
@@ -96,27 +92,12 @@ export function discEligible(
   if (d.alignment && pl?.alignment !== d.alignment) return false;
   return true;
 }
-// 2026-09-21 rebalance: a discovery may carry a SECOND, smaller effect (`effect2`) — used by the
-// Espionage and exploration discoveries whose single lever was too weak on its own. Both are read
-// through the same generic hooks, so every effect below applies to either slot.
-// (The rule is the discoveries' registry's since plan P1-19aa: theEffectsOfAKindARealmHolds.)
-export function discEffectsOf(
-  pl: ARealmAsTheDiscoveriesReadIt | null | undefined,
-  kind: string,
-): TheEffectOfADiscovery[] {
-  return theEffectsOfAKindARealmHolds(pl, kind);
-}
-// Tunable magnitude of a discovery still wired by id (its row in SAGE_DISCOVERIES_P holds the number).
-export function discParam(id: string, field: ANumberFieldOfAnEffect, dflt: number) {
-  const d = DISC_BY_ID[id];
-  const v = d?.effect ? d.effect[field] : undefined;
-  return v ?? dflt;
-}
-// sd14 Taxation Records: +pct% of province income (integer maths, rounded down), capped.
+// (A discovery may carry a second, smaller effect, `effect2` (2026-09-21 rebalance): the registry finds either slot.)
+// sd14 Taxation Records: +pct% of province income (integer maths, rounded down), capped. (The discoveries' registry's
+// since plan P1-19ag: "turnEnd: a realm's discoveries add to the realm's tax", the first discovery of the content with
+// the effect; whether a realm holds one is its other runner, which the callers ask first.)
 export function taxRecordsGold(income: number | null | undefined, capG: number | null | undefined) {
-  const pc = Math.round(discParam('sd14', 'pct', 0.05) * 100);
-  const raw = Math.floor(((Number(income) || 0) * pc) / 100);
-  return Math.min(capG ?? discParam('sd14', 'max', 99), raw);
+  return theGoldADiscoveryAddsToTheRealmsTax({ theIncome: income, theCeiling: capG });
 }
 // ── TAX-BONUS CEILING (Toby 2026-09-24) ─────────────────────────────────────────────────────
 // No single source of extra TAX INCOME may pay more than 5% of the realm's BASE tax income — the
@@ -156,28 +137,6 @@ export function capItemTaxGold(
     cut: (Number(taxBonus) || 0) + (Number(perProvBonus) || 0) - (flat + perProv),
   };
 }
-// Does a `tax` effect pay on this province? Filters: minTax / maxTax (the province's own tax),
-// terrains, race (the province's folk), ownRace / foreign (folk of / not of the king's race),
-// coastal, garrisoned, home (the realm's founding capital).
-export function discTaxMatch(
-  e: TheEffectOfADiscovery,
-  pv: AProvinceAsTheTaxDiscoveriesReadIt,
-  gs: TheStateAsTheTaxDiscoveriesReadIt | null | undefined,
-  pi: number | null | undefined,
-  pl: ARealmAsTheDiscoveriesReadIt | null | undefined,
-) {
-  const t = pv.tax || 0;
-  if (e.minTax != null && t < e.minTax) return false;
-  if (e.maxTax != null && t > e.maxTax) return false;
-  if (e.terrains && !e.terrains.includes(pv.terrain)) return false;
-  if (e.race && pv.race !== e.race) return false;
-  if (e.ownRace && !(pl && pv.race && pv.race === pl.race)) return false;
-  if (e.foreign && !(pl && pv.race && pv.race !== pl.race)) return false;
-  if (e.coastal && !discProvCoastal(gs, pv)) return false;
-  if (e.garrisoned && !((pv.garrisonArmies ?? []).length > 0)) return false;
-  if (e.home && homeFounderOf(gs, pv.id) !== pi) return false;
-  return true;
-}
 // Module-level coastal test for the discovery helpers (provIsCoastal itself lives inside runTurn's
 // scope, so the report builder cannot call it). Same rule: a land province with a sea neighbour.
 export function discProvCoastal(
@@ -190,6 +149,11 @@ export function discProvCoastal(
 // Per-province `tax` discovery gold. `acc` (a Map, one per realm per collection) tracks what each
 // capped effect (`max`) has already paid this turn, so a capped discovery never pays more than its
 // ceiling however large the realm grows. Shared by the collector and the report forecast.
+// Every province-tax discovery is capped: at `capG` (5% of the realm's base tax income) and, if its row still carries a
+// fixed `max`, at that too. Its filters: minTax / maxTax (the province's own tax), terrains, race (the province's
+// folk), ownRace / foreign (folk of / not of the king's race), coastal, garrisoned, home (the realm's founding capital).
+// (The discoveries' registry's since plan P1-19ag: "turnEnd: a realm's discoveries add to a province's tax", its coast
+// and home asked only by an effect that needs them.)
 export function discTaxAdd(
   pl: ARealmAsTheDiscoveriesReadIt | null | undefined,
   pv: AProvinceAsTheTaxDiscoveriesReadIt,
@@ -198,21 +162,20 @@ export function discTaxAdd(
   acc: WhatEachCappedEffectHasPaid,
   capG: number | null | undefined,
 ) {
-  let add = 0;
-  discEffectsOf(pl, 'tax').forEach((e) => {
-    if (!discTaxMatch(e, pv, gs, pi, pl)) return;
-    let b = e.bonus ?? 0;
-    // every province-tax discovery is capped: at `capG` (5% of the realm's base tax income) and, if
-    // its row still carries a fixed `max`, at that too. `acc` tracks what each effect has paid.
-    const lim = capG != null ? Math.min(capG, e.max ?? capG) : e.max;
-    if (lim != null) {
-      const u = Number(acc.get(e)) || 0;
-      b = Math.max(0, Math.min(b, lim - u));
-      acc.set(e, u + b);
-    }
-    add += b;
-  });
-  return add;
+  return whatARealmsDiscoveriesAddToAProvincesTax(
+    pl,
+    {
+      theTax: pv.tax || 0,
+      theGround: pv.terrain,
+      theFolk: pv.race,
+      theRealmsRace: pl?.race,
+      isItGarrisoned: (pv.garrisonArmies ?? []).length > 0,
+      isItCoastal: () => discProvCoastal(gs, pv),
+      isItTheRealmsHome: () => homeFounderOf(gs, pv.id) === pi,
+    },
+    acc,
+    capG,
+  );
 }
 // `upkeep` discoveries: the wage of one army after every matching cut (minimum 1g per unit). The
 // per-turn ceiling on what a single upkeep discovery may save is now the SAME 5%-of-base-income cap
@@ -228,21 +191,8 @@ export function discUpkeepWage(
   capG: number | null | undefined,
 ): number {
   if (!pl || !a || a._isSkeletal) return w;
-  let out = w;
-  discEffectsOf(pl, 'upkeep').forEach((e) => {
-    if (!discUnitMatch(e, a)) return;
-    let cut = Math.min(-(e.delta ?? 0), out - 1);
-    if (cut <= 0) return;
-    const lim = capG ?? e.max;
-    if (lim != null) {
-      const u = Number(acc.get(e)) || 0;
-      cut = Math.min(cut, lim - u);
-      if (cut <= 0) return;
-      acc.set(e, u + cut);
-    }
-    out -= cut;
-  });
-  return out;
+  // (the discoveries' registry's since plan P1-19ag: "turnEnd: a realm's discoveries cut a unit's wage", each in turn)
+  return theWageARealmsDiscoveriesLeaveAUnit(pl, { theUnit: a }, w, acc, capG);
 }
 // Hero wage after discoveries: `heroWage` cuts (optionally only for heroes of given alignments) then
 // the `heroWageCap` ceiling. Minimum 1g. Both are capped per turn at `capG` (5% of base income).
@@ -253,32 +203,10 @@ export function discHeroWage(
   acc: WhatEachCappedEffectHasPaid,
   capG: number | null | undefined,
 ) {
-  let w = raw;
-  discEffectsOf(pl, 'heroWage').forEach((e) => {
-    if (e.heroAlign && !e.heroAlign.includes(h.alignment)) return;
-    let cut = Math.min(e.amount ?? 0, w - 1);
-    if (cut <= 0) return;
-    const lim = capG ?? e.max;
-    if (lim != null) {
-      const u = Number(acc.get(e)) || 0;
-      cut = Math.min(cut, lim - u);
-      if (cut <= 0) return;
-      acc.set(e, u + cut);
-    }
-    w -= cut;
-  });
-  discEffectsOf(pl, 'heroWageCap').forEach((e) => {
-    if (e.cap == null || w <= e.cap) return;
-    let cut = w - Math.max(1, e.cap);
-    const lim = capG ?? e.max;
-    if (lim != null) {
-      const u = Number(acc.get(e)) || 0;
-      cut = Math.min(cut, lim - u);
-      if (cut <= 0) return;
-      acc.set(e, u + cut);
-    }
-    w -= cut;
-  });
+  // (the discoveries' registry's since plan P1-19ag: "turnEnd: a realm's discoveries cut a hero's wage", then "… cap a
+  // hero's wage", each in turn)
+  let w = theWageARealmsDiscoveriesCutsLeaveAHero(pl, { theHerosAlignment: h.alignment }, raw, acc, capG);
+  w = theWageARealmsDiscoveriesCeilingsLeaveAHero(pl, w, acc, capG);
   return Math.max(1, w);
 }
 // `maxHp` discoveries for one character (filters: king, heroOnly, skill — at least one trained level).
@@ -293,13 +221,11 @@ export function discMaxHpFor(
     | undefined,
 ) {
   if (!pl || !ch) return 0;
-  const levels: Readonly<Partial<Record<string, number>>> = ch.skills ?? {};
-  return discSumOf(
-    pl,
-    'maxHp',
-    'hp',
-    (e) => (!e.king || !!ch.isKing) && (!e.heroOnly || !ch.isKing) && (!e.skill || (levels[e.skill] ?? 0) >= 1),
-  );
+  // (the discoveries' registry's since plan P1-19ag: "aHerosStanding: a realm's discoveries add to maximum HP")
+  return whatARealmsDiscoveriesAddToAHerosMaximumHp(pl, {
+    isHeTheKing: !!ch.isKing,
+    theLevelsOfHisSkills: ch.skills ?? {},
+  });
 }
 // Chance (0..1) that a newly raised unit of this type starts one tier higher (`recruitQ`).
 export function discRecruitQChance(pl: ARealmAsTheDiscoveriesReadIt | null | undefined, armyType: string) {
@@ -312,18 +238,6 @@ export function discExploreMult(pl: ARealmAsTheDiscoveriesReadIt | null | undefi
   // (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to exploring", the rule
   // the Explore order reads)
   return theFactorARealmsDiscoveriesMultiplyExploringBy(pl, { theGround: terrain });
-}
-export function discSumOf(
-  pl: ARealmAsTheDiscoveriesReadIt | null | undefined,
-  kind: string,
-  field: ANumberFieldOfAnEffect,
-  pred?: ((e: TheEffectOfADiscovery) => boolean) | null,
-) {
-  let s = 0;
-  discEffectsOf(pl, kind).forEach((e) => {
-    if (!pred || pred(e)) s += e[field] ?? 0;
-  });
-  return s;
 }
 // Garrison units always muster into the province garrison when recruited (2026-09-23c, Toby).
 export function isGarrisonUnitType(t: string) {
@@ -402,25 +316,6 @@ export function dragonTamed(
     army &&
     aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(G.players[heroChar.player], { theUnitsType: army.type })
   );
-}
-// data-driven discovery effects (race / alignment discoveries).
-export function discEff(
-  turnContext: Pick<TurnContext, 'G'>,
-  pi: number | null | undefined,
-  kind: string,
-): TheEffectOfADiscovery[] {
-  const { G } = turnContext;
-  return pi == null ? [] : discEffectsOf(G.players[pi], kind);
-}
-export function discSum(
-  turnContext: Pick<TurnContext, 'G'>,
-  pi: number | null | undefined,
-  kind: string,
-  field: ANumberFieldOfAnEffect,
-  pred?: ((e: TheEffectOfADiscovery) => boolean) | null,
-) {
-  const { G } = turnContext;
-  return pi == null ? 0 : discSumOf(G.players[pi], kind, field, pred);
 }
 // Multiplier on ONE army's strength from `unitStr` discoveries (race / types / cls / terrain /
 // side).
