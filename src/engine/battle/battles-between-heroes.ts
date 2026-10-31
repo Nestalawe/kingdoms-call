@@ -413,8 +413,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const atkName = atkCmdrSlain ? `${atk.name}'s leaderless host` : atk.name; // item 12
   const defName = defCmdrSlain ? `${def.name}'s leaderless host` : def.name; // item 12
   // Each side as the facts hold it (plan P1-12d22): the record the label above is written from; the prose writes the
-  // label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too; the pursuit and sea lift lines still
-  // take the label.
+  // label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too, since P1-12d31 the pursuit lines; the
+  // sea lift lines still take the label.
   const atkSide = { heroName: atk.name, leaderless: atkCmdrSlain };
   const defSide = { heroName: def.name, leaderless: defCmdrSlain };
 
@@ -879,7 +879,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
     // ELF — Ambush: Forest Wardens defending their own woods deny the enemy an archery phase — unless
     // Eagle Riders fly with the shooters (Eyes of the Forest).
     {
-      const _eyes = eyesOfTheForestLine(enemyArmies, pvpTerrain, myForce, heroChar.name);
+      const _eyes = eyesOfTheForestLine(enemyArmies, pvpTerrain, myForce, {
+        heroName: heroChar.name,
+        leaderless: false,
+      });
       if (_eyes) narrate(narr, _eyes);
     }
     if (archeryBlockedBy(enemyArmies, pvpTerrain, myForce)) {
@@ -942,8 +945,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
     });
   }
   // DWARF — Flak Screen runs before the arrows fly.
-  applyFlakScreen(atkArmies, defArmies, atk.name, narrative);
-  applyFlakScreen(defArmies, atkArmies, def.name, narrative);
+  applyFlakScreen(atkArmies, defArmies, { heroName: atk.name, leaderless: false }, narrative);
+  applyFlakScreen(defArmies, atkArmies, { heroName: def.name, leaderless: false }, narrative);
   applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);
   if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);
 
@@ -1361,8 +1364,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
           terrain: pvpTerrain,
         });
   for (const [_ps, _side] of [
-    [_pursuitsAtk, atkName],
-    [_pursuitsDef, defName],
+    [_pursuitsAtk, atkSide],
+    [_pursuitsDef, defSide],
   ])
     for (const p of _ps)
       if (p.onTheGround === 'it finds no room')
@@ -1599,7 +1602,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     survLine(atkArmies, _cas0);
     narrate(narrative, { kind: "the defender's casualties begin", defName: defSide });
     const _rideAtkEff = _sfDef ? 0 : theFractionThePursuitsAdd(_pursuitsAtk);
-    _pursuitLines(_pursuitsAtk, _sfDef, atkName, defName, narrative);
+    _pursuitLines(_pursuitsAtk, _sfDef, atkSide, defSide, narrative);
     // Losing defender
     const _cas1 = narrative.length;
     rollUnitFates(defArmies, {
@@ -1771,7 +1774,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: atkSide }); // Losing attacker
     const _rideDefEff = _sfAtk ? 0 : theFractionThePursuitsAdd(_pursuitsDef);
-    _pursuitLines(_pursuitsDef, _sfAtk, defName, atkName, narrative);
+    _pursuitLines(_pursuitsDef, _sfAtk, defSide, atkSide, narrative);
     const _cas2 = narrative.length;
     rollUnitFates(atkArmies, {
       owner: atkSide,

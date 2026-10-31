@@ -343,13 +343,16 @@ export type TheOwnerOfABattlesUnits = ASideOfABattle | TheDefendersOfAProvince;
  *  handed these helpers its label in words before): a side (ASideOfABattle), a province's defenders
  *  (TheDefendersOfAProvince), or a form only these lines write: a hero's host ("Aldric's host": the kinship line), a
  *  province's defenders whoever leads them ("the defenders of Highmoor": the kinship line), a province's guards with no
- *  guard to name them ("Guards": the battle grid). The prose writes the label (theLabelOfASideAsTheReportLinesNameIt). */
+ *  guard to name them ("Guards": the battle grid). Since P1-12d31 the lines before the volleys too (Flak Screen and Eyes
+ *  of the Forest), and their form for a province's defenders with no guard to name them ("The defenders"). The prose
+ *  writes the label (theLabelOfASideAsTheReportLinesNameIt). */
 export type ASideAsABattlesReportLinesNameIt =
   | ASideOfABattle
   | TheDefendersOfAProvince
   | { readonly kind: "a hero's host in the battle"; readonly heroName: string }
   | { readonly kind: "a province's defenders, whoever leads them"; readonly provName: string }
-  | { readonly kind: "a province's guards with no guard to name them" };
+  | { readonly kind: "a province's guards with no guard to name them" }
+  | { readonly kind: "a province's defenders with no guard to name them, as the lines before the volleys name them" };
 
 /** The values a unit's label is written from: its owner as the line names him (a side, the defenders, or none), and its
  *  name, type and quality as the world holds them as the line is told. */
@@ -897,47 +900,55 @@ export type TheFactOfOneOfABattlesSentences =
       sideName: ASideOfABattle;
       terrain: AValueInALinesWords;
     }
-  | { kind: "a side's free lances find no room to ride"; sideName: string; terrain: string }
+  | { kind: "a side's free lances find no room to ride"; sideName: ASideOfABattle; terrain: string }
   | {
       kind: "the loser's dwarven guard leave the manticore pride nothing to hunt";
-      loserName: string;
-      winnerName: string;
+      loserName: ASideOfABattle;
+      winnerName: ASideOfABattle;
     }
   | {
       kind: "the winner's manticore pride hunt the broken companies";
-      winnerName: string;
+      winnerName: ASideOfABattle;
       runThemDownPct: number;
-      loserName: string;
+      loserName: ASideOfABattle;
     }
   | {
       kind: "the loser's dwarven guard leave the shark shoals nothing in the water";
-      loserName: AValueInALinesWords;
-      winnerName: AValueInALinesWords;
+      loserName: ASideOfABattle;
+      winnerName: ASideOfABattle;
     }
   | {
       kind: "the winner's shark shoals tear into the beaten crews";
-      winnerName: AValueInALinesWords;
-      loserName: AValueInALinesWords;
+      winnerName: ASideOfABattle;
+      loserName: ASideOfABattle;
       runThemDownPct: AValueInALinesWords;
-      loserName2: AValueInALinesWords;
+      loserName2: ASideOfABattle;
     }
   | { kind: "a side's other forces survive the engagement"; someUnitsFateIsToldAbove: boolean }
   | { kind: 'no units were left on the field to count' }
   | { kind: "the attacker's casualties begin"; atkName: ASideOfABattle }
   | { kind: "the defender's casualties begin"; defName: ASideOfABattle | TheDefendersOfAProvince }
-  | { kind: "the loser's dwarven guard leave the free lances no broken backs"; loserName: string; winnerName: string }
+  | {
+      kind: "the loser's dwarven guard leave the free lances no broken backs";
+      loserName: ASideOfABattle;
+      winnerName: ASideOfABattle;
+    }
   | {
       kind: "the winner's free lances ride down the broken companies";
-      winnerName: string;
+      winnerName: ASideOfABattle;
       rideDownPct: number;
-      loserName: string;
+      loserName: ASideOfABattle;
     }
-  | { kind: "the loser's dwarven guard leave the warg riders no broken backs"; loserName: string; winnerName: string }
+  | {
+      kind: "the loser's dwarven guard leave the warg riders no broken backs";
+      loserName: ASideOfABattle;
+      winnerName: ASideOfABattle;
+    }
   | {
       kind: "the winner's warg riders run down the broken companies";
-      winnerName: string;
+      winnerName: ASideOfABattle;
       runThemDownPct: number;
-      loserName: string;
+      loserName: ASideOfABattle;
     }
   | {
       kind: "the winner's corsairs close the sea lanes to the loser";
@@ -1367,9 +1378,16 @@ export type TheFactOfOneOfABattlesSentences =
       attackersHostName: ASideOfABattle;
       defendersHostName: ASideOfABattle;
     }
-  | { kind: 'the eagle riders mark the forest wardens and spoil the ambush'; shooterName: string }
+  | {
+      kind: 'the eagle riders mark the forest wardens and spoil the ambush';
+      shooterName: ASideAsABattlesReportLinesNameIt;
+    }
   | { kind: 'the gyrocopters harry a flying unit off its line'; targetUnitName: string; strengthLost: number }
-  | { kind: "a side's gyrocopters climb to meet the enemy's flyers"; sideName: string; engagedCount: number }
+  | {
+      kind: "a side's gyrocopters climb to meet the enemy's flyers";
+      sideName: ASideAsABattlesReportLinesNameIt;
+      engagedCount: number;
+    }
   | {
       kind: "a side's units fight beside their own kin";
       sideName: ASideAsABattlesReportLinesNameIt;

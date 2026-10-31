@@ -10,7 +10,8 @@
 //   battle (terrainNoteList in combatVsChar, eyesOfTheForestLine in combatVsNPC), and counted.
 // - Flak Screen: a Gyrocopter harries one enemy winged rider, which loses 30% of its base strength (at least 1), as both
 //   books write it; no two gyrocopters harry the same flyer, nor one harried already this battle, and one die is drawn
-//   for each gyrocopter while a flyer is left (applyFlakScreen called directly).
+//   for each gyrocopter while a flyer is left (applyFlakScreen called directly; since P1-12d31 it is handed the side's
+//   record, not its label).
 // Why: the balance matrix never shows Breach and Swamp's chance (planted at 20%, no game of 60 changes; at 100%, 5), and
 // no race or beast test checks either number (Flak Screen planted at −25%, every script green): the matrix sees Flak
 // Screen only as hashes that changed. The battles and applyFlakScreen keep their names and signatures, so this passes
@@ -236,7 +237,7 @@ function aFlakScreen(gyros: number, flyers: readonly (readonly [type: string, ha
   const narr: NarrativeLine[] = [];
   const was = kcRng.use(() => dice[drawn++] ?? Number.NaN);
   try {
-    strength.applyFlakScreen(mine, theirs, 'Aldric', narr);
+    strength.applyFlakScreen(mine, theirs, { heroName: 'Aldric', leaderless: false }, narr);
   } finally {
     kcRng.use(was);
   }
@@ -297,7 +298,12 @@ describe('Flak Screen', () => {
     let drawn = 0;
     const was = kcRng.use(() => (drawn++, 0));
     try {
-      strength.applyFlakScreen([aCompany('Mountain Guns')], [aCompany('Eagle Riders')], 'Aldric', []);
+      strength.applyFlakScreen(
+        [aCompany('Mountain Guns')],
+        [aCompany('Eagle Riders')],
+        { heroName: 'Aldric', leaderless: false },
+        [],
+      );
     } finally {
       kcRng.use(was);
     }
