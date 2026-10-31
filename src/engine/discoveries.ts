@@ -7,6 +7,7 @@ import {
   DISC_BY_ID,
   aRealmsDiscoveriesLetABeastFollowWithoutItsDruid,
   theEffectsOfAKindARealmHolds,
+  theFactorARealmsDiscoveriesMultiplyExploringBy,
   theFactorARealmsDiscoveriesStrengthenAUnitBy,
   theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath,
   whatARealmsDiscoveriesAddToAUnitsPromotion,
@@ -308,11 +309,9 @@ export function discRecruitQChance(pl: ARealmAsTheDiscoveriesReadIt | null | und
 // Per-terrain explore multiplier from `explore` discoveries (shipped in the report so the player
 // portal's preview no longer parses description text).
 export function discExploreMult(pl: ARealmAsTheDiscoveriesReadIt | null | undefined, terrain: string) {
-  let m = 1;
-  discEffectsOf(pl, 'explore').forEach((e) => {
-    if (!e.terrains || e.terrains.includes(terrain)) m *= e.mult ?? 1;
-  });
-  return m;
+  // (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to exploring", the rule
+  // the Explore order reads)
+  return theFactorARealmsDiscoveriesMultiplyExploringBy(pl, { theGround: terrain });
 }
 export function discSumOf(
   pl: ARealmAsTheDiscoveriesReadIt | null | undefined,

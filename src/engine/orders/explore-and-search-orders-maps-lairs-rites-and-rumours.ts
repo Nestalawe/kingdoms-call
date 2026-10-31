@@ -21,7 +21,13 @@ import { armyUnitName, d100, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM, creditMapped, perkTier, skillLevel } from '../titles/perks.ts';
-import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
+import {
+  theFactorARealmsDiscoveriesMultiplyExploringBy,
+  theShareARealmsDiscoveriesMapAroundAnExplorer,
+  theTurnsARealmsDiscoveriesLengthenTheWildHuntBy,
+  whatARealmsDiscoveriesAddToALairsGold,
+  whatARealmsDiscoveriesAddToALairsItemChance,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -70,10 +76,9 @@ export function resolveExploreOrder(turnContext, c, prov) {
   // (The old Elven "Pathfinder" double forest/jungle exploration has been REPLACED this session by
   // the Elven escape ability — see recordBattleGraves / flushElvenEscapes. No exploration
   // bonus now.)
-  let _discExpl = 1;
-  discEff(turnContext, c.player, 'explore').forEach((e) => {
-    if (!e.terrains || e.terrains.includes(prov.terrain)) _discExpl *= e.mult || 1;
-  }); // explore discoveries
+  // explore discoveries (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to
+  // exploring", the rule discExploreMult ships to the report)
+  const _discExpl = theFactorARealmsDiscoveriesMultiplyExploringBy(G.players[c.player], { theGround: prov.terrain });
   const gain = Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * loreMult * _discExpl));
   if (!prov.exploredBy) prov.exploredBy = {};
   const before = prov.exploredBy[c.player] || 0;
@@ -102,9 +107,10 @@ export function resolveExploreOrder(turnContext, c, prov) {
         province: prov.id,
       });
   }
-  // ANCIENT LORE (sd32) — the same Explore action also maps 10% of each adjacent province.
-  if (hasDisc(turnContext, c.player, 'sd32')) {
-    const _alPct = discParam('sd32', 'pct', 10);
+  // ANCIENT LORE — the same Explore action also maps 10% of each adjacent province. (The discoveries' registry's since
+  // plan P1-19ad: "visibility: a realm's discoveries map the provinces around an explorer", its row's share.)
+  const _alPct = theShareARealmsDiscoveriesMapAroundAnExplorer(G.players[c.player]);
+  if (_alPct !== null) {
     getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).forEach((nb) => {
       if (!nb) return;
       if (!nb.exploredBy) nb.exploredBy = {};
@@ -306,8 +312,10 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
         quality: 'Veteran',
         race: prov.race || 'Primal',
         unitName: armyUnitName(_wildType),
-        _wildHuntUntilTurn: G.turn + WILD_HUNT_TURNS + discSum(turnContext, c.player, 'wildHunt', 'turns'),
-      }; // + ap08 The Long Hunt
+        _wildHuntUntilTurn:
+          G.turn + WILD_HUNT_TURNS + theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(G.players[c.player]),
+      }; // + ap08 The Long Hunt (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries
+      // lengthen the wild hunt")
       c.armies.push(_u);
       _bound.push({ unitName: _u.unitName, type: _wildType });
     }
@@ -867,14 +875,12 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     const goldFinal = Math.round(
       gold *
         (1 +
-          discSum(
-            turnContext,
-            c.player,
-            'lairGold',
-            'pct',
-            (e) => (!e.terrains || e.terrains.includes(prov.terrain)) && (!e.charRace || c.race === e.charRace),
-          )),
-    ); // lairGold discoveries. Monster-Bane +50% hoard removed \u2014 the title is now an intel line
+          whatARealmsDiscoveriesAddToALairsGold(G.players[c.player], {
+            theGround: prov.terrain,
+            theHerosRace: c.race,
+          })),
+    ); // lairGold discoveries (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add
+    // to a lair's gold"). Monster-Bane +50% hoard removed \u2014 the title is now an intel line
     player.gold = (player.gold || 0) + goldFinal;
     c.merits = (c.merits || 0) + goldFinal;
     setFeatureTreasure(f, 0); // the hoard is lifted
@@ -914,13 +920,8 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     const baseDrops = drops.slice(); // the hoard's own magic, narrated below; bonus finds announce themselves.
     // sd25 Alchemical Theory: 10% chance of an extra find.
     {
-      const _dIC = discSum(
-        turnContext,
-        c.player,
-        'itemChance',
-        'pct',
-        (e) => !e.terrains || e.terrains.includes(prov.terrain),
-      );
+      // (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to a lair's item")
+      const _dIC = whatARealmsDiscoveriesAddToALairsItemChance(G.players[c.player], { theGround: prov.terrain });
       if (_dIC > 0 && kcRng() < _dIC) {
         const bonus = rollItem();
         if (bonus) {
