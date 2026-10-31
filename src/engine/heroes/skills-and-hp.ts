@@ -26,14 +26,16 @@ export interface ASkillsLevelAndItsSources {
   total?: number;
   bonus?: number;
 }
-/** A hero as his skill's level is read: his skills and curses, where he stands and whose he is, and his items. */
+/** A hero as his skill's level is read: his skills and curses, where he stands and whose he is, and his items. His id
+ *  is only compared with an aura's bearer's: a fight's copy of a Hunting Rumours hero holds it as words, and a fighter
+ *  may hold none (effStat's callers, plan P1-10b18). */
 interface AHeroAsHisSkillIsRead extends AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> {
   readonly skills?: Readonly<Partial<Record<string, number>>> | null | undefined;
   readonly _curses?: Readonly<Partial<Record<string, number>>> | null | undefined;
   readonly location?: number | null | undefined;
   readonly player?: number | null | undefined;
   readonly alive?: boolean | undefined;
-  readonly id?: number | undefined;
+  readonly id?: number | string | null | undefined;
   readonly name?: string | undefined;
 }
 /** A realm as the max-HP helpers read it: as the discoveries read it (its race among them). */
