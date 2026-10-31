@@ -25,7 +25,8 @@
 // attacker's retreat, a contest between realms at peace, or a lone host on an ally's ground (V8 block coverage,
 // P1-08i3).
 // - The hosts and the defenders the lines name where no matrix game goes (P1-12d24, the battle stood in): a guard
-//   "(wandering)" and a leaderless garrison throwing a stalled battle's attacker back, who breaks off and retreats; war
+//   "(wandering)" and a leaderless garrison throwing a stalled battle's attacker back, who breaks off and retreats, or
+//   (P1-12d26) a leaderless garrison beaten again whose survivors, commanderless, still contest the province; war
 //   coming to shared ground; a host gained beating a leaderless garrison whose survivors hold, or a third realm's column
 //   while the garrison never fought; a beaten guard's survivors with no guard to name and a victor "(wandering)". Each
 //   with the host led and leaderless, its words read whole (passes on P1-12d24's base, as after).
@@ -730,6 +731,23 @@ describe('the hosts and defenders a stalled battle names, in the lines no game r
         );
         expect(c.location).toBe(A.id);
       }
+    });
+    test(`a leaderless garrison pressed again is beaten, but its survivors hold: commanderless, they still contest the province (${who})`, () => {
+      const b = fresh();
+      const c = hero(b, { player: 0, at: b.X, troops: 3, quality: 'Elite' });
+      if (fallen) Object.assign(c, { _leaderlessHost: true });
+      b.X._leaderlessDefenders = true;
+      b.X.neutralDefenders = units('Shieldwall Levies', 'Average', ['Levy L1', 'Levy L2']);
+      b.X.npcArmies = 2;
+      b.X._battleUnresolved = true;
+      aBattle(true);
+      withDice(engine, [0.999], () => {
+        resolveStalledBattles(b.tc, PH);
+      });
+      expect(lines(b)).toContain(
+        `💢 Commanderless but unbroken, 2 surviving units still contest ${b.X.name} — the fight resumes next phase!`,
+      );
+      expect(b.X._battleUnresolved).toBe(true);
     });
     test(`war comes to a province two realms' hosts share: each host by its label and its realm (${who})`, () => {
       const b = fresh();

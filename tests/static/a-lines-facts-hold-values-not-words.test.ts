@@ -298,6 +298,14 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   // an heir's name, as the engine names him and the world then holds it (nextHeroName; its fallbacks, "Heir of …" and
   // "The New Monarch", are the name the world would hold too): a name, not the line's words (P1-12d15)
   heirName: ['an heir is crowned'],
+  // a battle's outcome by sense (P1-12d26): which battle ('between two hosts', …), the winner's role ('the attacker',
+  // 'the defender'), which contest for a province ('a host gathered in the province', …), what becomes of the province
+  // ('seized', 'still held', …) and by whom it is still held ('its guard', …): slugs the prose reads
+  battle: ['a battle is decided'],
+  winnersRole: ['a battle is decided'],
+  contest: ['a contest for a province is decided'],
+  whatBecomesOfTheProvince: ['a battle is decided', 'a contest for a province is decided'],
+  heldBy: ['a contest for a province is decided'],
 };
 
 const WORD_HELPER =

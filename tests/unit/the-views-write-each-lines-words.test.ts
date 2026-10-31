@@ -124,11 +124,14 @@ function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
 }
 /** The battle's summary for the onlookers: Aldric's forces take Greyford from Brann. */
 const THE_SUMMARY = {
-  kind: 'the attacker wins the battle and seizes the province',
+  kind: 'a battle is decided',
+  battle: 'between two hosts',
+  winnersRole: 'the attacker',
+  whatBecomesOfTheProvince: 'seized',
   severity: 'decisive',
-  atkName: { heroName: 'Aldric', leaderless: false },
   winVerbIndex: 0,
-  defName: { heroName: 'Brann', leaderless: false },
+  attackersSide: { heroName: 'Aldric', leaderless: false },
+  defendersSide: { heroName: 'Brann', leaderless: false },
   provName: 'Greyford',
 } as const;
 const fileTheBattle = (tc: TurnContext, narrative: NarrativeLine[]) => {
