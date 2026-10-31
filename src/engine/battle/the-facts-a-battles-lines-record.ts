@@ -638,12 +638,35 @@ export interface AUnitOfAForceDrawnUp {
   wildHuntUntil: number | null;
 }
 
+/** The force a battle's header names, as its name is written from (plan P1-12d29: the battle slice's Decision 5): a
+ *  hero, with the realm he serves in brackets only when he serves one ("Aldric (Westmarch)", "Aldric": P1-23a), a
+ *  province's guard ("The Chieftain of Greyford"), a realm's garrison at a province ("Westmarch's garrison at
+ *  Greyford"), or a province's own defenders with no one to lead them ("The defenders of Greyford"). The prose writes
+ *  the name (theNameOfTheForceAHeaderNames); the engine keeps a copy of its words for the leaderless check alone
+ *  (theNameAForcesHeaderIsCheckedBy, battle-report-lines-and-force-markers.ts). */
+export type TheForceABattlesHeaderNames =
+  | {
+      readonly kind: 'a hero, with the realm he serves';
+      readonly heroName: string;
+      readonly servesARealm: boolean;
+      /** The realm's name as the world holds it: read only when he serves one. */
+      readonly realmName: string | undefined;
+    }
+  | { readonly kind: "a province's guard at the head of its force"; readonly guardName: string }
+  | { readonly kind: "a realm's garrison at a province"; readonly ownerName: string; readonly provName: string }
+  | { readonly kind: "a province's own defenders with no one to lead them"; readonly provName: string };
+
 /** A side's force as a battle begins: its header (its name, its owner's colour, how it comes on) and one row per unit
  *  (forceMarker, battle-report-lines-and-force-markers.ts). Its words are the header's machine form, which the player
  *  page and the GM page draw as the force's rows. Its audience: the fight's. */
 export interface AForceDrawnUpForBattle {
   kind: 'a force drawn up for battle';
-  name: string;
+  /** The force its header names (plan P1-12d29). */
+  theForce: TheForceABattlesHeaderNames;
+  /** The commander who fell earlier in the battle series and whose host this is (forceMarker's leaderless check: his
+   *  name, " (wandering)" cut), or null: the header then names "<his name>'s leaderless host" (2026-09-23, Toby's
+   *  item 10). */
+  fallenCommandersName: string | null;
   color: string | null;
   neutral: boolean;
   guard: boolean;

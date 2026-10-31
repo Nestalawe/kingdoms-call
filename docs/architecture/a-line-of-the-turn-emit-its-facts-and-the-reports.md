@@ -152,8 +152,8 @@ check finds were made.
   (`aDecisiveBlow: rng(0, 1)`; a victory's verb, `winVerbIndex: Math.floor(kcRng() * THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH)`,
   P1-12d3): the views drawing their own would move every draw after it. The table of words moves to the prose, and its
   length is pinned to the engine's count (`satisfies { length: … }`), so the two can't drift apart. The static test
-  `a-lines-facts-hold-values-not-words` refuses a field holding words in an area its list names, but the labels (a
-  fighter's, a battle's side's, guard's, realm's or unit's) and the slugs it lists; a facts module's kinds include the
+  `a-lines-facts-hold-values-not-words` refuses a field holding words in an area its list names, but the slugs it
+  lists (no label since P1-12d29); a facts module's kinds include the
   kinds of the records its facts hold (why a unit stands or faces as it does, a ladder's modifiers: P1-12d4), so a
   record's literal is read too. **The engine reads no word it wrote:** a choice made on a line's words (the faced
   clause once read the facing's "empty column") is made on the record's kind. It can't see words handed in through a
@@ -190,7 +190,11 @@ check finds were made.
   battle` (the fight's: the unit's record, whether its side won, whom it faced and its fate as a slug, which the rule
   registry's two fate effects return) and `a beaten guard's surviving unit's fate` (its event's, his disbanding units
   among them); the prose switches on the slugs (`theWordsOfAUnitsFateInTheBattle`,
-  `theWordsOfABeatenGuardsSurvivingUnitsFate`). The helpers' lines and the force header's name still take words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  `theWordsOfABeatenGuardsSurvivingUnitsFate`). Since P1-12d29 the force a battle's header names is a record
+  (`TheForceABattlesHeaderNames`: a hero and the realm he serves, a guard, a realm's garrison at a province, a
+  province's own defenders); the prose writes the header's `name` as before, and `forceMarker`'s leaderless check reads
+  a copy of those words (`theNameAForcesHeaderIsCheckedBy`) and holds the fallen commander it found. The helpers' lines
+  still take words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
