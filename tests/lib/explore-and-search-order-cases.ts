@@ -434,6 +434,29 @@ export const RITE_ORDER_CASES: ExploreAndSearchOrderCase[] = [
     },
   },
   {
+    // no game of the balance matrix meets The Long Hunt (plan P1-19ad: its effect in the discoveries' registry)
+    name: "The Long Hunt keeps the Wild Hunt's beasts a turn longer",
+    stage(b) {
+      paganHolding(b);
+      withFeatures(b.X, ritualSite());
+      b.X['armyTypes'] = ['Mammoth Host'];
+      b.X['race'] = 'Primal:Mammoth';
+      const realm = must(b.G.players[0], 'realm 0');
+      realm['gold'] = 40;
+      realm['discoveries'] = [{ id: 'ap08' }];
+      const h = at(b);
+      h.armies = companies(1);
+      return { hero: h, here: b.X, orders: plan(order('rite', 'wild')) };
+    },
+    check(o, { hero: h }) {
+      const bound = char(o, h).armies.filter((a) => a.type === 'Mammoth Host');
+      return {
+        got: { bound: bound.map((a) => a['_wildHuntUntilTurn']) },
+        want: { bound: [o.turn + 2, o.turn + 2] },
+      };
+    },
+  },
+  {
     name: 'the Wild Hunt needs wild creatures: where none roam, nothing answers',
     stage(b) {
       paganHolding(b);

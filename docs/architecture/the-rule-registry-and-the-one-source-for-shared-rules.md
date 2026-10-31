@@ -92,8 +92,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   quality and race) or nothing, and Early Winter names it (a die, as before), adds it to the garrison and writes the
   line. Reaver Crews' landing mark, which the move order sets for a column its longships put ashore, asks the content
   row's unit (`reaver-crews`), with no stage of its own. Every stage of `strength`, `volley` and `fate`, and `turnEnd`'s
-  one, has its signature (and the other families', below); `movementCost`, `visibility` and `turnStart` are
-  `never` until their family's first row.
+  one, has its signature (and the other families', below); `movementCost` and `turnStart` are `never`
+  until their family's first row.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
   `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its
