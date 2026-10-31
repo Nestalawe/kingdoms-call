@@ -20,6 +20,8 @@
 // matrix calls each of them, but never runs the ride-in to a raised host, the battle with a host standing in the watch,
 // a column hurried in, or a ride-out that met no battle (V8 coverage, P1-08i2); here they are called directly. The page
 // tests defend-once and defend-naval-overland stage some of them in whole turns.
+// Since P1-23e (R-119): the lone hero's ambush passes over a hero whose Invisibility holds, and falls on the next quarry;
+// a realm that watches him by Clairvoyance still lies in wait for him.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -937,10 +939,29 @@ describe('the ambush of a hero with no troops on watch (runDefendAmbush)', () =>
     expect(quarry([{ player: 1, at: 'C', troops: 3 }, column])).toBe(0);
   });
 
-  test('no ambush of a hero who did not march in, is vanished, was already fought, or is not an enemy; nor by an armed one', () => {
+  test('Invisibility (R-119): the ambush passes him by and falls on the next quarry; a realm that watches him by Clairvoyance still lies in wait for him', () => {
+    const quarry = (watched: boolean) => {
+      const s = stageAmbush(3, [
+        { player: 1, at: 'B', troops: 3 },
+        { player: 1, at: 'C' },
+      ]);
+      const unseen = must(s.es[0], 'the heaviest column');
+      Object.assign(unseen, { _invisTurn: s.b.G.turn });
+      if (watched) Object.assign(must(s.b.G.players[0], 'realm 0'), { _clairCharThisTurn: unseen.id });
+      firstDie(0.999, () => {
+        runDefendAmbush(s.b.tc, PH);
+      });
+      const line = must(ambushOdds(s.b)[0], 'the odds line').text;
+      return s.es.findIndex((e) => line.includes(` lies in wait for ${e.name}`));
+    };
+    expect([quarry(false), quarry(true)]).toEqual([1, 0]);
+  });
+
+  test('no ambush of a hero who did not march in, is vanished or invisible, was already fought, or is not an enemy; nor by an armed one', () => {
     const cases: [string, Foe[], ((s: ReturnType<typeof stageAmbush>) => void)?][] = [
       ['stood still', [{ player: 1, at: 'B', stayed: true }]],
       ['vanished', [{ player: 1, at: 'B', extra: { _vanishTurn: 1 } }]],
+      ['invisible (R-119)', [{ player: 1, at: 'B', extra: { _invisTurn: 1 } }]],
       ['already fought', [{ player: 1, at: 'B', extra: { _encounteredThisPhase: 1 } }]],
       ['at peace', [{ player: 2, at: 'B' }]],
       ['a king', [{ player: 1, at: 'B', king: true }]],

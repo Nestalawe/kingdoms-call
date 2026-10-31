@@ -658,6 +658,28 @@ export const INFORMANT_CASES: NewTurnCase[] = [
     },
   },
   {
+    name: 'a captain whose Invisibility held this turn is passed over (R-119): nothing new',
+    stage(b) {
+      knows(b, 0, 'sd22');
+      Object.assign(standing(b, 1, ring1(b, 3)), { _invisTurn: b.G.turn });
+      return nothing();
+    },
+    check(o) {
+      return { got: { said: said(o) }, want: { said: [[[0], NOTHING_NEW]] } };
+    },
+  },
+  {
+    name: 'a captain whose Invisibility held the turn before is named as any other',
+    stage(b) {
+      knows(b, 0, 'sd22');
+      const e = Object.assign(standing(b, 1, ring1(b, 3)), { _invisTurn: b.G.turn - 1 });
+      return { hero: e, there: ring1(b, 3), orders: [] };
+    },
+    check(o, s) {
+      return { got: { said: said(o) }, want: { said: [[[0], reports(hero(s), nameOf(o, 1), there(s))]] } };
+    },
+  },
+  {
     name: 'a realm without the network learns nothing of an unseen captain',
     stage(b) {
       standing(b, 1, ring1(b, 3));

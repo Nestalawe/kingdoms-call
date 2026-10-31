@@ -124,8 +124,7 @@
   lines excepted: a fallen commander's leaderless host fights on under his id, R-019); `orders_submitted` cleared.
   `turn-fuzz` and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
   `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (Theo, 2026-10-17: no
-  engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: enemy orders
-  and reactions still reach a hero after he turns invisible, and the acting realm's report says so.
+  engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: none.
 - **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
   rule and let fast-check make up the inputs: heroes, guardians, hits, small worlds, orders. Every dice roll in the
   page comes from a seed that is part of the input (the page's dice are reseeded, `kcRng.seed`, and its clock starts again,
@@ -151,8 +150,9 @@
     (R-046). A met realm's name that holds an unmet one is matched first;
   - **an unseen hero**: a hero who cast Invisibility this turn, in another realm's sightings (`SIGHTINGS`: the map,
     sightings, province intelligence, Encounter targets) or named in its lines from the moment he cast it. Allowed:
-    Clairvoyance on him; title intelligence; and, from the phase he first acts on the reader, every line (Toby to
-    rule);
+    Clairvoyance on him; title intelligence; and, from the phase he first acts on the reader, every line (acting on a
+    realm reveals him to it: R-119, part 2). A line of the reader's own order naming him is a breach too: every order
+    and reaction of another realm aimed at him finds no one (R-119);
   - **a line its audience does not admit** (P1-12b3, P1-12's Decision 12): every line a realm reads (the chronicle,
     province events, spy activity) comes from an event of the turn, with its text in its phase, whose audience admits
     it, by the audience model stated there again, apart from the views' `playerEvents`: told, its own deed, its hero

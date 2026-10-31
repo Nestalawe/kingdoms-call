@@ -23,6 +23,8 @@
 // of Arrows, Sniper's Mark, Feigned Retreat or Raid the Coast. Properties: the Challenge's winner and wounds; a
 // strike's companies (min(companies, 6) at Melee 9, 1 + level ÷ 2 at Archery, the rest in order, a commander bloodied
 // to 1 at the least); the Sniper's Mark's wounds and kill. Planted faults: in the PR (P1-08j8)
+// Since P1-23e (R-119): Encounter, Challenge and Sniper's Mark find no hero of another realm whose Invisibility holds
+// (the cases); a realm that watches him by Clairvoyance still hunts him (here).
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -178,6 +180,21 @@ describe('Encounter Character, called directly: the chase it sets', () => {
       watch: undefined,
     });
     expect(linesOf(b, h).map((l) => [l.type, l.phase, l.targets, l.provinceId])).toEqual([['move', 2, [0], b.X.id]]);
+  });
+
+  test('a realm that watches him by Clairvoyance still hunts a quarry whose Invisibility holds (R-119)', () => {
+    const b = fresh();
+    const q = rival(b);
+    Object.assign(q, { _invisTurn: b.G.turn });
+    Object.assign(must(b.G.players[0], 'realm 0'), { _clairCharThisTurn: q.id });
+    const h = at(b);
+    const calls = chaseStoodIn(() => {
+      play(b, h, o('encounter', q.id), 2);
+    });
+    expect({ calls, chase: h._pursuit }).toEqual({
+      calls: [[h.id, 2, { targetId: q.id, active: true, setPhase: 2 }]],
+      chase: { targetId: q.id, active: true, setPhase: 2 },
+    });
   });
 
   test('a pair already met this phase: nothing at all, whichever side met the other', () => {

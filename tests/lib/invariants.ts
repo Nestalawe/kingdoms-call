@@ -268,14 +268,8 @@ export const INVARIANTS: readonly { name: string; check: (t: Turn) => string[] }
 /** Breaches known on main, each let through, in exactly this form, until its fix lands (Theo, 2026-10-17: no engine
  *  fixes during the refactor; the leak check's three and the dead wanderer's hire, the same day). Each fix is parked in
  *  the plan's STATUS; its pull
- *  request removes the entry. `line` matches one line of what broke. */
-export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string }[] = [
-  {
-    check: 'an unseen hero',
-    line: /^realm \d+ reads of [^"]+ \(id \d+, invisible from phase \d\) in phase \d+, in a line of its own order, at lastTurnLog\[\d+\]: "[^"]*"(?: \(and \d+ more lines like it that phase\))?$/,
-    why: "Enemy orders and reactions still reach a hero after he turns invisible (the Defend ambush, Encounter and Pursue, a chase under way, Spy on a hero, Steal, Curse: they check cloaks and Vanish, not Invisibility), and the acting realm's report tells it so",
-  },
-];
+ *  request removes the entry. `line` matches one line of what broke. Empty since P1-23e: every one is fixed. */
+export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string }[] = [];
 const known = (check: string, line: string) => KNOWN_BREACHES.some((k) => k.check === check && k.line.test(line));
 
 /** Every invariant and leak check `turn` breaks, less the KNOWN_BREACHES; [] when it keeps them all. */

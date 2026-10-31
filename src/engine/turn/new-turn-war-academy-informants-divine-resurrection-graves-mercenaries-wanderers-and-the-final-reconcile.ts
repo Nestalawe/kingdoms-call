@@ -4,6 +4,7 @@ import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
 import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
+import { isHiddenByInvisibilityFrom } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
 
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
@@ -108,8 +109,16 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     (G.characters || []).forEach((c) => {
       if (c.alive && c.player === pi) _seen.add(c.location);
     });
+    // R-119: the informants pass over a hero whose Invisibility held this turn (the counter has moved on: the turn
+    // played is the one before)
     const enemyChars = (G.characters || []).filter(
-      (c) => c.alive && c.player !== null && c.player !== pi && !c.isKing && !_seen.has(c.location),
+      (c) =>
+        c.alive &&
+        c.player !== null &&
+        c.player !== pi &&
+        !c.isKing &&
+        !_seen.has(c.location) &&
+        !isHiddenByInvisibilityFrom(turnContext, c, pi, G.turn - 1),
     );
     if (enemyChars.length === 0) {
       emit(turnContext, {

@@ -1,5 +1,5 @@
 import { defendSpentThisPhase } from '../turn/mercenary-ids-and-battle-records.ts';
-import { isHiddenChar } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import { isHiddenByInvisibilityFrom, isHiddenChar } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext, TurnOrder } from '../turn/context.ts';
@@ -31,7 +31,10 @@ export function resolveEncounterCharacterOrder(
   // (you may name any enemy you can see: in a province you own, one you have a character in, or
   // one you spied). The chase + catch + duel is resolved in advancePursuit below.
   const targetId = parseInt(target);
-  const quarry = (G.characters || []).find((x) => x.alive && x.id === targetId);
+  // R-119: a quarry whose Invisibility holds leaves this realm no trail at all (the same line as no quarry)
+  const quarry = (G.characters || []).find(
+    (x) => x.alive && x.id === targetId && !isHiddenByInvisibilityFrom(turnContext, x, c.player),
+  );
   if (!quarry) {
     emit(turnContext, {
       type: 'system',

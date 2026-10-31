@@ -16,7 +16,13 @@ import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 import { gdActive } from '../discoveries.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
-import { effStat, isHiddenChar, isVanished, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import {
+  effStat,
+  isHiddenByInvisibilityFrom,
+  isHiddenChar,
+  isVanished,
+  isVeiled,
+} from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
 import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
@@ -247,6 +253,20 @@ export function resolveCastSpellOrder(
           (ch) => ch?.alive && ch.id === _tid,
         )
       : null;
+    // R-119: a mark whose Invisibility holds is found by no other realm's spell: refused before the roll, as a mark
+    // gone from the province is, with a line that names no one (nor where he stands)
+    if (_t && isHiddenByInvisibilityFrom(turnContext, _t, c.player)) {
+      o._castNotWorked = true; // costs no casting slot for the rest of the turn
+      emit(turnContext, {
+        type: 'system',
+        fact: { kind: "a spell's mark is nowhere to be found", heroName: c.name, spellName: spellName },
+        audience: { actor: c.player, realms: [c.player] },
+        province: prov.id,
+        hero: c.id,
+        phase: ph,
+      });
+      return;
+    }
     if (_t && _t.location !== c.location) {
       const _tp = G.world.provinces[_t.location];
       const _own = _t.player === c.player;

@@ -17,6 +17,7 @@ import { areEnemies } from '../realms/relations-and-captures.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import {
   effStat,
+  isHiddenByInvisibilityFrom,
   isVanished,
   theOddsShownAsALineTellsIt,
   theStatShownAsALineTellsIt,
@@ -250,7 +251,10 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
   // thief).
   if (String(target || '').startsWith('char:')) {
     const _tid = String(target).slice(5);
-    const _tgt = (G.characters || []).find((x) => x && String(x.id) === _tid && x.alive);
+    // R-119: a hero whose Invisibility holds is not to be found by another realm's spy (the line names no one)
+    const _tgt = (G.characters || []).find(
+      (x) => x && String(x.id) === _tid && x.alive && !isHiddenByInvisibilityFrom(turnContext, x, c.player),
+    );
     if (!_tgt || _tgt.location !== c.location || _tgt.player === c.player) {
       emit(turnContext, {
         type: 'system',
@@ -624,7 +628,14 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
     return;
   }
   const targetId = parseInt(target);
-  const victim = G.characters.find((ch) => ch.alive && ch.id === targetId && ch.location === c.location);
+  // R-119: a hero whose Invisibility holds is no target for another realm's thief
+  const victim = G.characters.find(
+    (ch) =>
+      ch.alive &&
+      ch.id === targetId &&
+      ch.location === c.location &&
+      !isHiddenByInvisibilityFrom(turnContext, ch, c.player),
+  );
   if (!victim) {
     emit(turnContext, {
       type: 'system',
@@ -1096,8 +1107,14 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
     });
     return;
   }
+  // R-119: a hero whose Invisibility holds is no mark for another realm's assassin
   const victim = G.characters.find(
-    (ch) => ch.alive && ch.id === parseInt(target) && ch.location === c.location && ch.player !== c.player,
+    (ch) =>
+      ch.alive &&
+      ch.id === parseInt(target) &&
+      ch.location === c.location &&
+      ch.player !== c.player &&
+      !isHiddenByInvisibilityFrom(turnContext, ch, c.player),
   );
   if (!victim) {
     emit(turnContext, {

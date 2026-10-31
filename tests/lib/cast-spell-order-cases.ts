@@ -461,6 +461,70 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'a Curse at a hero whose Invisibility holds finds no one (R-119): refused before the roll, its line names neither him nor where he went, and the next cast of the school lands',
+    stage(b) {
+      const away = rival(b, { at: ring1(b, 0) }, { melee: 1 });
+      away['_invisTurn'] = b.G.turn;
+      const here = rival(b, {}, { melee: 1 });
+      const s = mage(b, { necromancy: 1 }, cast('Curse', away.id), cast('Curse', here.id));
+      return { ...s, mark: away, other: here };
+    },
+    check(o, s) {
+      const away = must(s.mark, 'the hero unseen');
+      return {
+        got: {
+          nowhere: says(
+            o,
+            `${s.hero.name} looks for the one Curse was to be worked upon, and finds no one; it is never worked, and costs ${s.hero.name} nothing.`,
+          ),
+          namesHim: says(o, away.name),
+          second: landed(o, s, 'Curse'),
+          rolls: o.lines.filter((l) => l.text.startsWith(`📊 ${s.hero.name} casts`)).length,
+        },
+        want: { nowhere: true, namesHim: false, second: true, rolls: 1 },
+      };
+    },
+  },
+  {
+    name: 'a Charm at a hero whose Invisibility holds, beside the caster, finds no one (R-119): no roll, and he keeps to his own realm',
+    stage(b) {
+      const m = rival(b, {}, { melee: 1 });
+      m['_invisTurn'] = b.G.turn;
+      return { ...mage(b, { psychic: 2 }, cast('Charm', m.id)), mark: m };
+    },
+    check(o, s) {
+      const m = must(s.mark, 'the hero unseen');
+      return {
+        got: {
+          nowhere: says(
+            o,
+            `${s.hero.name} looks for the one Charm was to be worked upon, and finds no one; it is never worked, and costs ${s.hero.name} nothing.`,
+          ),
+          rolled: says(o, '📊'),
+          namesHim: says(o, m.name),
+          his: char(o, m).player,
+        },
+        want: { nowhere: true, rolled: false, namesHim: false, his: 1 },
+      };
+    },
+  },
+  {
+    name: 'a realm that watches a hero by Clairvoyance still finds him under Invisibility (R-119): its Psychic Blast is worked',
+    stage(b) {
+      const m = rival(b, {}, { melee: 1 });
+      m['_invisTurn'] = b.G.turn;
+      const seer = at(b, { psychic: 1 });
+      const s = mage(b, { psychic: 1 }, order('rest'), cast('Psychic Blast', m.id));
+      return { ...s, orders: [...s.orders, one(seer, cast('Clairvoyance', m.id))], mark: m };
+    },
+    check(o, s) {
+      return {
+        got: { worked: landed(o, s, 'Psychic Blast'), nowhere: says(o, 'finds no one') },
+        want: { worked: true, nowhere: false },
+      };
+    },
+  },
+  {
     name: 'an own hero gone before the spell is shaped "had already marched on"',
     stage(b) {
       const away = at(b, {}, { at: ring1(b, 0), troops: 1 });

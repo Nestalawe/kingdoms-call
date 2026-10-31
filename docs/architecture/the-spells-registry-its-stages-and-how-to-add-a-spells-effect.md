@@ -101,7 +101,8 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   `resolveCastSpellOrder` asks them:
   - **a charmed hero will not turn it on his lord** (before the casting limit, unrolled, no slot spent);
   - **a spell that costs no casting slot** (handed whether the caster's realm has a Grand Cathedral: Bless Province);
-  - **a spell's mark must stand in the province** (before the cast roll: a mark gone is refused, no slot spent);
+  - **a spell's mark must stand in the province** (before the cast roll: a mark gone is refused, no slot spent; so is a
+    mark of another realm whose Invisibility holds, R-119, with a line that names no one: `isHiddenByInvisibilityFrom`);
   - **a cloaked mark is shielded from it** (once the cast lands: Psychic Blast and Curse; the Cloak's own check,
     `isHiddenChar`, waits for P1-23);
   - **a Bless ward may turn it aside** (asked by `blessWardNegates`, before the ward's roll: Part Sea, Earthquake, Flood
