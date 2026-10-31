@@ -16,7 +16,7 @@
 // time, then on what the dice decide (fixed) and what the balance matrix never reaches: a recruit's grade from Superior
 // Forging or the Druidic Wonder, the Druid's rise from a beast raised, the running cost of an order, bands hired by a
 // Recruit (named four ways, Black Market's discount, a band unpaid staying), the written orders' cards (the hirer's own
-// first, never a rival's), the Broker's refusals and its last-season hire, Holy Sites, Muster Rolls, the province's own
+// first, never a rival's), a wanderer dead earlier in the turn not hired, the Broker's refusals and its last-season hire, Holy Sites, Muster Rolls, the province's own
 // garrison company, the carters' discount and the Undead Wonder, the Grove's Ents, Wild Calling's even chance per beast
 // with the room it leaves (the settling of the province after it stood in for), and the Grand Design's Wonder by creed.
 // 192 planted faults in the functions and their calls: 191 turn at least one of the two tests red, and every test goes
@@ -420,6 +420,25 @@ describe('Hire Hero, called directly', () => {
     play(b, h, o('hire', String(b.G.characters.indexOf(w))));
     expect(w.player).toBe(null);
     play(b, h, o('hire', 'nobody'));
+    expect(textOf(b, h)).toContain('none matching that description');
+  });
+
+  // P1-23b: a wanderer slain earlier in the turn still stood in the province, unsworn, and was hired (seen with
+  // KC_SEED=7 and KC_SEED=3 in turn-fuzz, and in the balance matrix's set A, bots-27, turn 15)
+  test('a wanderer who died earlier in the turn is none to be hired: no gold spent, no oath', () => {
+    const b = fresh();
+    const w = wanderer(b, b.X);
+    w.alive = false;
+    const h = at(b);
+    const gold = realm(b)['gold'];
+    play(b, h, o('hire', w.id), 2);
+    expect({
+      player: w.player,
+      gold: realm(b)['gold'],
+      heroes: (realm(b)['heroes'] as number[] | undefined)?.includes(w.id) ?? false,
+      orders: b.G.turnOrders[w.id] ?? null,
+      hiredInPhase: w['hiredInPhase'] ?? null,
+    }).toEqual({ player: null, gold, heroes: false, orders: null, hiredInPhase: null });
     expect(textOf(b, h)).toContain('none matching that description');
   });
 });

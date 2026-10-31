@@ -417,7 +417,8 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   // today, but a positional lookup would silently hire the WRONG hero if it ever broke).
   const heroId = parseInt(target);
   const h = Number.isInteger(heroId) ? (G.characters || []).find((x) => x && x.id === heroId) || null : null;
-  if (!h || h.player !== null || h.location !== c.location) {
+  // the dead take no actions: a wanderer slain earlier in the turn is none to be hired (P1-23b)
+  if (!h || h.player !== null || !h.alive || h.location !== c.location) {
     emit(turnContext, {
       type: 'hire',
       fact: { kind: 'no hero of that description is to be hired here', heroName: c.name, provinceName: prov.name },
