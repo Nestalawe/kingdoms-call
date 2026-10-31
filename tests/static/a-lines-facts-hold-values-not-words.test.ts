@@ -56,7 +56,8 @@
 // a unit's reference in its fate's line and the enemy unit it faced (AUnitAsALineNamesIt), and a disbanding unit's
 // owner, so those two fields leave LABELS; since P1-12d29 the force a battle's header names is a record
 // (TheForceABattlesHeaderNames: a hero and the realm he serves, a guard, a realm's garrison at a province, a province's
-// own defenders), and the fallen commander forceMarker's leaderless check found his name, so LABELS goes.
+// own defenders), and the fallen commander forceMarker's leaderless check found his name, so LABELS goes; since P1-12d30
+// the side the battle's report lines take is a record (ASideAsABattlesReportLinesNameIt).
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,

@@ -18,6 +18,7 @@ import type { FightLine, NarrativeLine } from '../turn/events-and-their-audience
 import {
   THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
   type AForceDrawnUpForBattle,
+  type ASideAsABattlesReportLinesNameIt,
   type AUnitTheTerrainMarks,
   type AUnitsDruidShortfall,
   type HowAForceComesOnInItsHeader,
@@ -147,7 +148,7 @@ export function pushBattlecry(narrative: NarrativeLine[], ch: Character, foeName
 // dragonTamed is.
 export function druidShortfallLine(
   turnContext: TurnContext,
-  sideName: string,
+  sideName: ASideAsABattlesReportLinesNameIt,
   ch: Character | null | undefined,
   force: Army[] | null | undefined,
   align: string,

@@ -11,6 +11,7 @@ import {
   type AUnitsFateInTheBattle,
   type ABeatenGuardsSurvivingUnitsFate,
   type ACommandMultiplierInTheLadder,
+  type ASideAsABattlesReportLinesNameIt,
   type ASideOfABattle,
   type AUnitAsALineNamesIt,
   type TheDefendersOfAProvince,
@@ -97,6 +98,24 @@ function theLabelOfTheDefenders(defenders: TheDefendersOfAProvince, afterTheGuar
 /** A defending side, as its label names it: a hero's side (a battle between heroes), or a province's defenders. */
 function theLabelOfASideOrTheDefenders(defenders: ASideOfABattle | TheDefendersOfAProvince): string {
   return 'kind' in defenders ? theLabelOfTheDefenders(defenders) : theLabelOfASide(defenders);
+}
+
+/** A side as a battle's report lines name it (plan P1-12d30; the engine wrote it so: battles-between-heroes.ts and
+ *  battles-against-province-defenders.ts handed ladderLines, kinNarrative, battleGridLines, battleScoutLine,
+ *  battleMovesLine and druidShortfallLine the label): a side or a province's defenders as their labels name them,
+ *  "<name>'s host", "the defenders of <province>" whoever leads them, or "Guards". */
+function theLabelOfASideAsTheReportLinesNameIt(side: ASideAsABattlesReportLinesNameIt): string {
+  if (!('kind' in side)) return theLabelOfASide(side);
+  switch (side.kind) {
+    case "a hero's host in the battle":
+      return `${side.heroName}'s host`;
+    case "a province's defenders, whoever leads them":
+      return `the defenders of ${side.provName}`;
+    case "a province's guards with no guard to name them":
+      return 'Guards';
+    default:
+      return theLabelOfTheDefenders(side);
+  }
 }
 
 /** The name a force's header gives (plan P1-12d29; the engine wrote it so: battles-between-heroes.ts and
@@ -711,9 +730,10 @@ const A_FORCE_WIDE_MODIFIERS_WORDS: Readonly<Record<AForceWideModifierInTheLadde
   'sanctuary-wards': 'sanctuary wards',
 };
 
-/** A side's name as its grid lines show it: its first word, eight wide. */
-function theSideAsTheGridShowsIt(label: string | null | undefined): string {
-  const firstWord = (label ?? '').split(/\s+/)[0] ?? ''; // split gives one word at least
+/** A side's name as its grid lines show it: its label's first word, eight wide; none when there is no side. */
+function theSideAsTheGridShowsIt(side: ASideAsABattlesReportLinesNameIt | null | undefined): string {
+  const label = side == null ? '' : theLabelOfASideAsTheReportLinesNameIt(side);
+  const firstWord = label.split(/\s+/)[0] ?? ''; // split gives one word at least
   return firstWord.slice(0, 8).padEnd(8);
 }
 
@@ -1142,7 +1162,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'a hero cries out his battlecry to his foe':
       return `📣 ${String(fact.heroName)} cries out to ${String(fact.foeName)}: “${String(fact.battlecry)}”`;
     case "a side's Druid cannot fully command its units":
-      return `⚠ Druid shortfall — ${fact.sideName} cannot fully command ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''}: ${theWordsOfTheDruidShortfalls(fact.shortfalls)}.`;
+      return `⚠ Druid shortfall — ${theLabelOfASideAsTheReportLinesNameIt(fact.sideName)} cannot fully command ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''}: ${theWordsOfTheDruidShortfalls(fact.shortfalls)}.`;
     case 'the attacker moves into a province held by its defenders and a battle is initiated':
       return `➡️ ${fact.cName}${fact.aRealmsHero ? ` (${String(fact.attackersRealmName)})` : ''} moves into ${fact.provName}, held by ${theLabelOfTheDefenders(fact.heldByName, ' and the local defenders')} — a battle is initiated.`;
     case 'the guard is slain before his host, and a sergeant of the garrison takes up the banner':
@@ -1312,7 +1332,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the province's owner learns the hero was beaten back":
       return `🛡 ${fact.cName}${theRealmsTag(fact.realmTag)} fought for ${fact.provName} this phase and was beaten back — ${fact.provName2} remains yours.`;
     case "a side's strength ladder begins":
-      return `  ${fact.side === 'attacker' ? 'Attacker' : 'Defender'} (${fact.sideName}): ${pl(fact.unitCount, 'unit')} — strength **${String(fact.strength)}**`;
+      return `  ${fact.side === 'attacker' ? 'Attacker' : 'Defender'} (${theLabelOfASideAsTheReportLinesNameIt(fact.sideName)}): ${pl(fact.unitCount, 'unit')} — strength **${String(fact.strength)}**`;
     case "the strength ladder's units":
       return `    · Units: base ${String(fact.baseStrength)} → ${String(fact.unitsStrength)}${theWordsOfTheUnitsModifiers(fact.theUnitsModifiers)}`;
     case "the strength ladder's command":
@@ -1336,9 +1356,9 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a side's second line in the battle grid":
       return `📊 ${theSideAsTheGridShowsIt(fact.sideName)} 2nd │ ${fact.theSecondLine.map(aCellOfTheGrid).join(' ')} │`;
     case 'the scouting side chooses the front':
-      return `📊 Scouting — ${fact.scoutName} ${whyItScouts(fact.itsSideHasExploredMore, fact.scoutName, fact.otherSideName)}: ${fact.scoutName2} ${whatItDoesWithTheFront(fact.frontWidth, fact.frontTheDiceAllow)} and lines up second${fact.adjustments ? ` (${String(fact.adjustments)} ${fact.adjustments === 1 ? 'adjustment' : 'adjustments'})` : ''}.`;
+      return `📊 Scouting — ${theLabelOfASideAsTheReportLinesNameIt(fact.scoutName)} ${whyItScouts(fact.itsSideHasExploredMore, theLabelOfASideAsTheReportLinesNameIt(fact.scoutName), theLabelOfASideAsTheReportLinesNameIt(fact.otherSideName))}: ${theLabelOfASideAsTheReportLinesNameIt(fact.scoutName2)} ${whatItDoesWithTheFront(fact.frontWidth, fact.frontTheDiceAllow)} and lines up second${fact.adjustments ? ` (${String(fact.adjustments)} ${fact.adjustments === 1 ? 'adjustment' : 'adjustments'})` : ''}.`;
     case 'each side shifts its battle line':
-      return `📊 Tactics — ${fact.otherSideName} ${theShiftsOfALine(fact.otherSidesMoves)}; ${fact.scoutName} ${theShiftsOfALine(fact.scoutsMoves)}.`;
+      return `📊 Tactics — ${theLabelOfASideAsTheReportLinesNameIt(fact.otherSideName)} ${theShiftsOfALine(fact.otherSidesMoves)}; ${theLabelOfASideAsTheReportLinesNameIt(fact.scoutName)} ${theShiftsOfALine(fact.scoutsMoves)}.`;
     case "an unfinished battle against a province's defenders resumes":
       return `⚔ The unfinished battle for ${fact.provName} resumes — ${theLabelOfASide(fact.attackersHostName)} presses the attack on ${theLabelOfTheDefenders(fact.defendersName)}.`;
     case 'the attacker is pinned in a province with no way out':
@@ -1356,7 +1376,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a side's gyrocopters climb to meet the enemy's flyers":
       return `🌀 ${fact.sideName}'s Gnomish Gyrocopters climb to meet the enemy's flyers — ${String(fact.engagedCount)} engaged.`;
     case "a side's units fight beside their own kin":
-      return `🤝 Kinship — ${fact.sideName}: ${theWordsOfKinship(fact.unitsOfTheKingsRaceUnderACommanderOfThatBlood, fact.unitsOfTheKingsRace, fact.unitsOfTheirCommandersRace)}.`;
+      return `🤝 Kinship — ${theLabelOfASideAsTheReportLinesNameIt(fact.sideName)}: ${theWordsOfKinship(fact.unitsOfTheKingsRaceUnderACommanderOfThatBlood, fact.unitsOfTheKingsRace, fact.unitsOfTheirCommandersRace)}.`;
     case "a hero's host turns on a province it has shared with a realm at war":
       return `⚔ War stands between ${theNameOrElse(fact.attackersRealmName, 'their realm')} and ${theNameOrElse(fact.ownersRealmName, 'the realm whose host shares the ground')}, and ${fact.cName}${theRealmsTag(fact.realmTag)} has held ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''} in ${fact.provName} since the season opened. With ${fact.seasonName}'s orders done, the host turns on the province${fact.ownersRealmName ? ` of ${fact.ownersRealmName}` : ''}.`;
     default: {

@@ -6,6 +6,7 @@ import type { UnitAbilitySlug } from '../../content/unit-abilities-their-names-n
 import type { ArmyInABattle } from '../army-tables.ts';
 import {
   aUnitAsTheGridNamesIt,
+  type ASideAsABattlesReportLinesNameIt,
   type AUnitAsALineNamesIt,
   type AUnitAsTheGridNamesIt,
   type TheFactOfOneOfABattlesSentences,
@@ -427,7 +428,7 @@ export function battleWidthLine(terrain: string, W: number): TheFactOfOneOfABatt
   return { kind: 'the ground allows a front of a width', terrain, frontWidth: W };
 }
 export function battleGridLines(
-  label: string | null | undefined,
+  label: ASideAsABattlesReportLinesNameIt | null | undefined,
   g: BattleGridCells | null | undefined,
   defender: boolean | null | undefined,
 ): TheFactOfOneOfABattlesSentences[] {
@@ -1077,8 +1078,8 @@ export function battleDeploy(
 // The report's two lines: who scouted and what front it chose; how many times each line shifted.
 export function battleScoutLine(
   d: Pick<ABattlesDeployment, 'scout' | 'W' | 'roll' | 'lineup'>,
-  atkName: string,
-  defName: string,
+  atkName: ASideAsABattlesReportLinesNameIt,
+  defName: ASideAsABattlesReportLinesNameIt,
   explAtk: number,
   explDef: number,
 ): TheFactOfOneOfABattlesSentences {
@@ -1102,8 +1103,8 @@ export function battleScoutLine(
 }
 export function battleMovesLine(
   d: Pick<ABattlesDeployment, 'scout' | 'moves'>,
-  atkName: string,
-  defName: string,
+  atkName: ASideAsABattlesReportLinesNameIt,
+  defName: ASideAsABattlesReportLinesNameIt,
 ): TheFactOfOneOfABattlesSentences | null {
   if (!d.moves.other && !d.moves.scout) return null;
   const atk = d.scout === 'atk',
