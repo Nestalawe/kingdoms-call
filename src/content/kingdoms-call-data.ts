@@ -11992,7 +11992,9 @@ export const TITLE_DEFS = [
 export const SAGE_DISCOVERIES_P = [
   // 2026-09-21 REBALANCE (Toby): 296 discoveries (148 → 296, every field doubled), every effect unique
   // (no two share a kind+scope anywhere in the table), magnitudes tuned to one value target; the
-  // descriptions are GENERATED from the effect rows (t/gen.js) so text and mechanics cannot drift.
+  // descriptions state the effect rows' numbers: tests/static/each-discoverys-numbers-are-in-its-text.test.ts checks
+  // each (plan P1-19aa; the generator that first wrote them, t/gen.js, isn't in the repository). Each effect's `kind`
+  // is the one the discoveries' registry finds it by (src/engine/rules/the-registry-of-discovery-effects.ts).
   // Ids sd30 / sd34 are retired and must never be reused.
   // ── Military ──
   {

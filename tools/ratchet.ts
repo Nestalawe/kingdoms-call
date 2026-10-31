@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the hand-written database stand-in, tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, of an item's effect by its key or an item by its name and of a spell by its name or its `fn`, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn` and of a discovery by its id or its effect's kind, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -18,6 +18,7 @@ import {
   KC_SKILLS,
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
+  SAGE_DISCOVERIES_P,
   SPELL_DEFS_P,
 } from '../src/content/kingdoms-call-data.ts';
 
@@ -306,6 +307,79 @@ export function spellChecksInEngine(codeFiles: readonly (readonly [file: string,
   return n;
 }
 
+// The engine's checks of a discovery by its id or of a discovery's effect by its kind (plan P1-19's discoveries family,
+// Decision 6): a string naming a discovery of SAGE_DISCOVERIES_P by its id (`'sd40'`), anywhere but where a reader of
+// the discoveries takes no id (below), or naming an effect's kind (`'unitStr'`) as the kind a reader takes or compared
+// with an effect's `.kind` or `.type`, counted by syntax tree in the files of src/engine/ outside src/engine/rules/ (the
+// scoping's disc-checks.mts rule). The readers: hasDisc, discParam, discEff, discSum, discEffectsOf, discSumOf, and the
+// bots' botHasDisc, each with the place of the id or kind it takes. The vocabulary is content's, so the two
+// retired ids (sd30 and sd34, which a save's mending names) aren't counted. The discoveries' registry takes them out
+// row by row (an effect is found by its kind, in src/engine/rules/), so the count only falls.
+// tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts counts the functions the
+// registry has taken, with discoveryChecksByFunction, at 0 each.
+/** Every discovery's id, and every kind of effect, as content writes them. */
+export const DISCOVERY_IDS: ReadonlySet<string> = new Set(SAGE_DISCOVERIES_P.map((d) => d.id));
+export const DISCOVERY_EFFECT_KINDS: ReadonlySet<string> = new Set(
+  SAGE_DISCOVERIES_P.flatMap((d): readonly { readonly kind?: string }[] => [
+    ...('effect' in d ? [d.effect] : []),
+    ...('effect2' in d ? [d.effect2] : []),
+  ]).flatMap((e) => (e.kind === undefined ? [] : [e.kind])),
+);
+/** The readers of the discoveries, each with the place of the id or the kind it takes. */
+const A_DISCOVERYS_READERS: ReadonlyMap<string, number> = new Map([
+  ['hasDisc', 2],
+  ['botHasDisc', 2],
+  ['discParam', 0],
+  ['discEff', 2],
+  ['discSum', 2],
+  ['discEffectsOf', 1],
+  ['discSumOf', 1],
+]);
+/** Whether a string literal is a check of a discovery by its id or of an effect by its kind (above). */
+function isADiscoveryCheck(node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral): boolean {
+  const isAnId = DISCOVERY_IDS.has(node.text);
+  if (!isAnId && !DISCOVERY_EFFECT_KINDS.has(node.text)) return false;
+  const p = node.parent;
+  if (ts.isCallExpression(p) && p.arguments.some((argument) => argument === node)) {
+    const callee = p.expression;
+    const name = ts.isPropertyAccessExpression(callee) ? callee.name.text : callee.getText();
+    const at = A_DISCOVERYS_READERS.get(name);
+    if (at !== undefined) return p.arguments.indexOf(node) === at;
+    return isAnId;
+  }
+  if (isAnId) return true;
+  if (!ts.isBinaryExpression(p) || !COMPARISONS.has(p.operatorToken.kind)) return false;
+  const other = p.left === node ? p.right : p.left;
+  return /\.(kind|type)$/.test(other.getText());
+}
+/** Each function of a file, by its name, with the discovery checks in it (0 for a function with none); a check inside a
+ *  nested function that has no name counts for the named one around it, and one outside any function for '(top)'. */
+export function discoveryChecksByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && isADiscoveryCheck(node))
+      counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)');
+  return counts;
+}
+/** The discovery checks in the files of src/engine/ outside src/engine/rules/ (the files unitNameChecksInEngine
+ *  counts), for the files given as [path from the repository's root, text]. */
+export function discoveryChecksInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    if (!countsUnitNameChecks(file)) continue;
+    for (const count of discoveryChecksByFunction(file, text).values()) n += count;
+  }
+  return n;
+}
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -392,6 +466,7 @@ export function measure(): Counts {
     unitNameChecksInEngine: unitNameChecksInEngine(codeFiles),
     itemEffectChecksInEngine: itemEffectChecksInEngine(codeFiles),
     spellChecksInEngine: spellChecksInEngine(codeFiles),
+    discoveryChecksInEngine: discoveryChecksInEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),
