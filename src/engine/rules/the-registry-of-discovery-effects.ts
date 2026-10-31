@@ -31,10 +31,19 @@ import {
   A_REALMS_DISCOVERIES_SPARE_A_BEATEN_UNIT,
   A_REALMS_DISCOVERIES_WEIGHT_THE_LINES_BEHIND_THE_FRONT,
 } from './discoveries/a-realms-discoveries-in-its-lines-and-its-units-fates.ts';
+import {
+  A_REALMS_DISCOVERIES_ADD_TO_A_FIGHTERS_SKILLS,
+  A_REALMS_DISCOVERIES_ADD_TO_A_SKILLS_RISE,
+  A_REALMS_DISCOVERIES_HARDEN_THE_KING,
+  A_REALMS_DISCOVERIES_STEADY_A_FIGHTERS_AIM,
+  A_REALMS_DISCOVERIES_STRENGTHEN_HIS_MITHRIL,
+} from './discoveries/a-realms-discoveries-in-its-heroes-fights-and-their-rise.ts';
 import type {
   ABeastACommanderLeads,
   ABeatenUnitARealmsDiscoveriesMaySpare,
   ACastARealmsDiscoveriesMayHelp,
+  AFoeARealmsDiscoveriesSteadyAFightersAimAt,
+  ASkillARealmsDiscoveriesMayRaise,
   ASideAsItsFanaticismIsRolled,
   AUnitARealmsDiscoveriesMayPromote,
   AUnitARealmsDiscoveriesMayStrengthen,
@@ -135,6 +144,30 @@ export const THE_REGISTRY_OF_DISCOVERY_EFFECTS = {
         A_REALMS_DISCOVERIES_DRAG_A_HERO_FROM_THE_FIELD['battlefield-surgery'],
     },
   },
+  'a-fighters-aim': {
+    personalCombat: {
+      "a realm's discoveries steady a fighter's aim": A_REALMS_DISCOVERIES_STEADY_A_FIGHTERS_AIM['a-fighters-aim'],
+    },
+  },
+  'veteran-training': {
+    personalCombat: {
+      "a realm's discoveries add to a fighter's skills":
+        A_REALMS_DISCOVERIES_ADD_TO_A_FIGHTERS_SKILLS['veteran-training'],
+    },
+  },
+  'mithril-craft': {
+    personalCombat: {
+      "a realm's discoveries strengthen his Mithril": A_REALMS_DISCOVERIES_STRENGTHEN_HIS_MITHRIL['mithril-craft'],
+    },
+  },
+  'a-skills-rise': {
+    experience: {
+      "a realm's discoveries add to a skill's rise": A_REALMS_DISCOVERIES_ADD_TO_A_SKILLS_RISE['a-skills-rise'],
+    },
+  },
+  'golden-shield': {
+    experience: { "a realm's discoveries harden the king": A_REALMS_DISCOVERIES_HARDEN_THE_KING['golden-shield'] },
+  },
 } satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once. Each stage holds one kind today, so its
@@ -155,6 +188,15 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
     "a realm's discoveries carry a fallen unit home": ['homeward-flight'],
     "a realm's discoveries drag a hero from the field": ['battlefield-surgery'],
   },
+  personalCombat: {
+    "a realm's discoveries steady a fighter's aim": ['a-fighters-aim'],
+    "a realm's discoveries add to a fighter's skills": ['veteran-training'],
+    "a realm's discoveries strengthen his Mithril": ['mithril-craft'],
+  },
+  experience: {
+    "a realm's discoveries add to a skill's rise": ['a-skills-rise'],
+    "a realm's discoveries harden the king": ['golden-shield'],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly DiscoveryEffectSlug[];
@@ -165,6 +207,8 @@ const ROWS: Readonly<Record<DiscoveryEffectSlug, AKindOfDiscoveryEffect>> = DISC
 const ENTRIES: Readonly<Record<DiscoveryEffectSlug, DiscoveryEffectEntry>> = THE_REGISTRY_OF_DISCOVERY_EFFECTS;
 const STRENGTH = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.strength;
 const FATE = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.fate;
+const PERSONAL_COMBAT = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.personalCombat;
+const EXPERIENCE = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.experience;
 
 /** The effects of the kind of each entry of a stage's order the realm holds, with the entry's slug. */
 function theEffectsOfTheStageARealmHolds(
@@ -260,7 +304,8 @@ export function whatARealmsDiscoveriesAddToTheWholeArmy(): number {
 }
 
 /** The runner of "aHerosStanding: a realm's discoveries add to a caster's chance" (applyPreBattleMagic and the hero's
- *  cast in combatVsNPC): the percentage points the caster's realm's effects add, summed. */
+ *  cast in combatVsNPC, P1-19aa; castChanceFor, which the Cast Spell order and the report ask, and pcCastCombatSpell,
+ *  P1-19ac): the percentage points the caster's realm's effects add, summed. */
 export function whatARealmsDiscoveriesAddToACastersChance(
   theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
   facts: ACastARealmsDiscoveriesMayHelp,
@@ -355,4 +400,73 @@ export function theChanceARealmsDiscoveriesDragAHeroFromTheField(
   if (!first) return null;
   const [slug, e] = first;
   return ENTRIES[slug].fate?.["a realm's discoveries drag a hero from the field"]?.(e) ?? null;
+}
+
+/** The runner of "personalCombat: a realm's discoveries steady a fighter's aim" (pcHitChance and pcArrowHitChance): the
+ *  percentage points the fighter's realm's effects add to his chance to hit the foe, added. */
+export function whatARealmsDiscoveriesAddToAFightersAim(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AFoeARealmsDiscoveriesSteadyAFightersAimAt,
+): number {
+  let s = 0;
+  const theStage = PERSONAL_COMBAT["a realm's discoveries steady a fighter's aim"];
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, theStage)) {
+    const added = ENTRIES[slug].personalCombat?.["a realm's discoveries steady a fighter's aim"]?.(e, facts) ?? null;
+    if (added !== null) s += added;
+  }
+  return s;
+}
+
+/** The runner of "personalCombat: a realm's discoveries add to a fighter's skills" (pcCharCombatant's Melee and
+ *  Archery, and extraSkillBonuses for the hero's card): the levels the first of the realm's effects adds, or 0 if the
+ *  realm holds none (one such discovery adds its levels once, as the check of its id did). */
+export function theLevelsARealmsDiscoveriesAddToAFightersSkills(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number {
+  const [first] = theEffectsOfTheStageARealmHolds(
+    theRealm,
+    PERSONAL_COMBAT["a realm's discoveries add to a fighter's skills"],
+  );
+  if (!first) return 0;
+  const [slug, e] = first;
+  return ENTRIES[slug].personalCombat?.["a realm's discoveries add to a fighter's skills"]?.(e) ?? 0;
+}
+
+/** The runner of "personalCombat: a realm's discoveries strengthen his Mithril" (pcCharCombatant, after the suit's
+ *  own): the damage the hero's realm's effects add to what his Mithril turns aside, added. */
+export function whatARealmsDiscoveriesAddToAFightersMithril(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number {
+  let s = 0;
+  const theStage = PERSONAL_COMBAT["a realm's discoveries strengthen his Mithril"];
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, theStage)) {
+    s += ENTRIES[slug].personalCombat?.["a realm's discoveries strengthen his Mithril"]?.(e) ?? 0;
+  }
+  return s;
+}
+
+/** The runner of "experience: a realm's discoveries add to a skill's rise" (trySkillGain, before it rolls): the shares
+ *  the hero's realm's effects add to the skill's chance to rise, added. */
+export function whatARealmsDiscoveriesAddToASkillsRise(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: ASkillARealmsDiscoveriesMayRaise,
+): number {
+  let s = 0;
+  const theStage = EXPERIENCE["a realm's discoveries add to a skill's rise"];
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, theStage)) {
+    const added = ENTRIES[slug].experience?.["a realm's discoveries add to a skill's rise"]?.(e, facts) ?? null;
+    if (added !== null) s += added;
+  }
+  return s;
+}
+
+/** The runner of "experience: a realm's discoveries harden the king" (awardHpRoll): the factor the first of the king's
+ *  realm's effects multiplies his hardening by, or nothing if the realm holds none. */
+export function theFactorARealmsDiscoveriesHardenTheKingBy(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number | null {
+  const [first] = theEffectsOfTheStageARealmHolds(theRealm, EXPERIENCE["a realm's discoveries harden the king"]);
+  if (!first) return null;
+  const [slug, e] = first;
+  return ENTRIES[slug].experience?.["a realm's discoveries harden the king"]?.(e) ?? null;
 }

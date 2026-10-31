@@ -12,7 +12,10 @@ import {
 } from '../rules/the-registry-of-magic-item-effects.ts';
 import { rng } from '../dice-and-army-names.ts';
 import { pcSkillCap, perkTier, skillLevel } from '../titles/perks.ts';
-import { discSum, hasDisc } from '../discoveries.ts';
+import {
+  theLevelsARealmsDiscoveriesAddToAFightersSkills,
+  whatARealmsDiscoveriesAddToAFightersMithril,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
@@ -302,15 +305,15 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterI
         (charMinor(turnContext, ch, 'duelist') ? 1 : 0) +
         (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
         (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
-        (ch.player != null && hasDisc(turnContext, ch.player, 'sd37') ? 1 : 0),
-    ), // sd37 Veteran Training
+        (ch.player != null ? theLevelsARealmsDiscoveriesAddToAFightersSkills(turnContext.G.players[ch.player]) : 0),
+    ), // Veteran Training (the discoveries' registry's since plan P1-19ac)
     archery: pcSkillCap(
       effStat(turnContext, ch, 'archery') +
         (charMinor(turnContext, ch, 'marksman') ? 1 : 0) +
         (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
         (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
-        (ch.player != null && hasDisc(turnContext, ch.player, 'sd37') ? 1 : 0),
-    ), // sd37 Veteran Training
+        (ch.player != null ? theLevelsARealmsDiscoveriesAddToAFightersSkills(turnContext.G.players[ch.player]) : 0),
+    ), // Veteran Training (the discoveries' registry's since plan P1-19ac)
     // Damage scales on the raw 1–9 level (levels 6–9 exist above the effStat cap of 5) — but an
     // item, aura or title that raises the skill now counts too, so a "+2 Melee" blade is felt in
     // the DAMAGE as well as the hit chance. Whichever is higher wins; nothing is lost either way.
@@ -321,7 +324,7 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterI
           (charMinor(turnContext, ch, 'duelist') ? 1 : 0) +
           (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
           (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
-          (ch.player != null && hasDisc(turnContext, ch.player, 'sd37') ? 1 : 0),
+          (ch.player != null ? theLevelsARealmsDiscoveriesAddToAFightersSkills(turnContext.G.players[ch.player]) : 0),
       ),
     ),
     archeryRaw: pcSkillCap(
@@ -331,7 +334,7 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterI
           (charMinor(turnContext, ch, 'marksman') ? 1 : 0) +
           (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
           (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
-          (ch.player != null && hasDisc(turnContext, ch.player, 'sd37') ? 1 : 0),
+          (ch.player != null ? theLevelsARealmsDiscoveriesAddToAFightersSkills(turnContext.G.players[ch.player]) : 0),
       ),
     ),
     // the character's OWN trained level, so the narrative can say why "Archery 6" exceeds what
@@ -355,7 +358,8 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterI
     specials: [],
     mithril: theItemsMakeTheirBearerFightInMithril(activeItems(ch)), // −2 melee damage taken (the items' registry, plan P1-19q)
     mithrilDR:
-      theDamageAMithrilSuitTurnsAside() + (ch.player != null ? discSum(turnContext, ch.player, 'mithril', 'extra') : 0), // the suit's 2 (the items' registry); rd08 Mithril Craft — 3 instead of 2
+      theDamageAMithrilSuitTurnsAside() +
+      (ch.player != null ? whatARealmsDiscoveriesAddToAFightersMithril(turnContext.G.players[ch.player]) : 0), // the suit's 2 (the items' registry), and Mithril Craft's `extra` on top (the discoveries' registry, plan P1-19ac)
     combatItems: dedupeItemsByName(activeItems(ch)).filter((it: AnItemAsItsKindIsTested) => anItemIsACombatItem(it)), // once-per-fight potions/scrolls (the items' registry, plan P1-19s)
     arm: pcArmourOf(activeItems(ch)), // worn armour wards (see pcArmourOf / pcTakeHit)
     status: pcNewStatus(),

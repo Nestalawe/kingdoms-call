@@ -18,7 +18,6 @@ import {
   type AUnitAsTheDiscoveriesReadIt,
 } from './rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { gdActiveFor, homeFounderOf } from './grand-design.ts';
-import { pcFoeCat } from './titles/perks.ts';
 import { getNeighborsP } from './world/map-helpers.ts';
 import type { TurnContext } from './turn/context.ts';
 import type { Army, Character, Province } from '../schemas/saved-game-state.ts';
@@ -379,8 +378,9 @@ export function applyPendingSynthPlan(
 }
 
 // ── LIFTED OUT OF resolveTurn (plan P1-08a) ── the discovery helpers, and _isHumanoidRace (the Plague's victims). Each
-// takes the turn's context first (src/engine/turn/context.ts), but discDuelVs and _isHumanoidRace, which read none
-// (discFanaticApplies, and discoveryArmyBonus's body, are the discoveries' registry's since plan P1-19aa).
+// takes the turn's context first (src/engine/turn/context.ts), but _isHumanoidRace, which reads none
+// (discFanaticApplies, and discoveryArmyBonus's body, are the discoveries' registry's since plan P1-19aa; discDuelVs's
+// rule, since P1-19ac).
 // ── DISCOVERY EFFECT HELPERS ────
 // Returns true if player has a specific discovery
 export function hasDisc(turnContext: Pick<TurnContext, 'G'>, playerIdx: number, discId: string) {
@@ -458,15 +458,6 @@ export function discPromo(
   // (the discoveries' registry's since plan P1-19ab: "fate: a realm's discoveries promote a unit")
   const { G } = turnContext;
   return whatARealmsDiscoveriesAddToAUnitsPromotion(G.players[pi], { theUnit: army });
-}
-// Does a `duelHit` effect apply against this foe? vs: 'monster' | 'character' | 'undead'.
-export function discDuelVs(e: TheEffectOfADiscovery, foe: Parameters<typeof pcFoeCat>[0] | null | undefined) {
-  if (!e.vs) return true;
-  if (!foe) return false;
-  if (e.vs === 'monster') return foe.kind === 'monster';
-  if (e.vs === 'character') return foe.kind === 'character';
-  if (e.vs === 'undead') return pcFoeCat(foe) === 'undead';
-  return false;
 }
 // 1 - (summed death-chance reduction) for one army.
 export function discDeathMult(
