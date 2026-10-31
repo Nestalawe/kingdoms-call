@@ -20,7 +20,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 
 - **A row** names the kind as `SAGE_DISCOVERIES_P` writes it, and holds the numbers the code writes for every effect of
   the kind, each with how a text would write it: the ceilings (a unit's strength ×1.30 at most, however many effects a
-  realm stacks; the own ground +30% at most). No text states them: the rulebook keeps the discoveries secret by design.
+  realm stacks; the own ground +30% at most), the floor (a quarter), Veteran Training's +1 and the Golden Shield's ×2. No text states them: the rulebook keeps the discoveries secret by design.
   A row exists only for a kind whose effect the registry holds.
 - **The registry** ends `satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>`, both ways, as the other
   registries do: a row with no entry, or an entry with no row, fails to compile. Its stages are the hook points' own
@@ -61,7 +61,8 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   (Parked "Three dead paths in `discoveries.ts`").
 - `aHerosStanding`'s **a realm's discoveries add to a caster's chance** (`cast`): handed the school and where he casts,
   as the effect's `ctx` names it (`'battle'`, `'action'`, `'duel'`). Asked by `applyPreBattleMagic` and the hero's cast
-  in `combatVsNPC`; `castChanceFor` and `pcCastCombatSpell` still read `discSum` until row P1-19ac.
+  in `combatVsNPC`, and since P1-19ac by `castChanceFor` (the Cast Spell order, and the report's odds) and
+  `pcCastCombatSpell`.
 
 **The lines and the fates** (P1-19ab, `discoveries/a-realms-discoveries-in-its-lines-and-its-units-fates.ts`):
 
@@ -80,6 +81,21 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   the chance, as its row writes it (0.2 for a row with none: the old fallback, Parked). The runner gives the first
   effect's chance, or nothing if the realm holds none; the hero's death rolls as before.
 
+**The fighter and his rise** (P1-19ac, `discoveries/a-realms-discoveries-in-its-heroes-fights-and-their-rise.ts`):
+
+- `personalCombat`'s **a realm's discoveries steady a fighter's aim** (`duelHit`; `pcHitChance` and `pcArrowHitChance`,
+  after the wards): handed what the foe is (a character or a monster) and his kind (`pcFoeCat`), as a question only an
+  effect against the undead asks. The runner adds the points.
+- **A realm's discoveries add to a fighter's skills** (Veteran Training, `skillBonusCombat`): the kind's +1 to his Melee
+  and his Archery. The runner gives the first effect's, so a realm holding it adds it once. Asked by `pcCharCombatant`
+  (his four figures, under the ceiling of 9) and by `extraSkillBonuses` for his card: one rule, two readers.
+- **A realm's discoveries strengthen his Mithril** (`mithril`; `pcCharCombatant`): its `extra`, after the suit's own 2.
+- `experience`'s **a realm's discoveries add to a skill's rise** (`skillGain`; `trySkillGain`, before it rolls): handed
+  the skill; an effect that lists skills reaches only those. The runner adds the shares.
+- **A realm's discoveries harden the king** (Order of the Golden Shield, `kingKillHpX2`; `awardHpRoll`): the kind's ×2.
+  The runner gives the first effect's factor, or nothing; the king's gain and his earned hit points are multiplied by
+  it.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
@@ -88,14 +104,15 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab): the functions taken name no
+  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac): the functions taken name no
   discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
   but means something else (the Evil doctrine `'terror'` in both battles) is listed beside its function.
 - `tests/static/each-discoverys-numbers-are-in-its-text.test.ts`: each number of each effect is in its discovery's
   `desc` (365 of 368; the 3 gaps listed with why).
 - `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games
-  meet 0 times or can't show (the own ground, P1-19aa; Homeward Song, P1-19ab), and the effects on rows the content
-  doesn't write. Each later row adds its own.
+  meet 0 times or can't show (the own ground, P1-19aa; Homeward Song, P1-19ab; an aim against the undead, Veteran
+  Training in a fight and on the card, P1-19ac), and the effects on rows the content doesn't write. Each later row adds
+  its own.
 
 ## How to add a discovery's effect
 

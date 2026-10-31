@@ -17,9 +17,16 @@
 //   the content doesn't write: a beaten unit's death cut stacked past its floor (a quarter), a side asked with none
 //   given, a flight home or a surgery with no number (Battlefield Surgery's 20%: discParam's fallback, moved as it is),
 //   and Flanking Tactics' weights when no discovery has the kind.
-// Level 1 (unit): the runner on a staged realm, and combatVsNPC and recordBattleGraves called directly (combatVsNPC on a
-// world the engine makes from a fixed seed), no turn played; whether the line is written is decided before any die is
-// drawn (a seeded stream feeds the rest of the battle), and the graves' one die is fed. Not lower: the effects read the
+// - P1-19ac: a fighter's aim steadied against each kind of foe (Saints' Relics against the undead, a hero or a guardian:
+//   no game meets it; Bestiaries, Champions' Tourney, Duelling Code), in pcHitChance and pcArrowHitChance, the foe's
+//   kind asked only by an effect against the undead; Veteran Training's +1 in a hero's fighter (pcCharCombatant, his
+//   Melee, Archery and their raw levels) and on his card (extraSkillBonuses), which games meet but no test saw; Mithril
+//   Craft in his fighter; the Order of the Golden Shield in awardHpRoll (the king's gain and earned hit points doubled,
+//   no other hero's), its die fed; and an aim, a Mithril and a rise on rows the content doesn't write.
+// Level 1 (unit): the runner on a staged realm, and combatVsNPC, recordBattleGraves, the to-hit chances,
+// pcCharCombatant, extraSkillBonuses and awardHpRoll called directly (on a world the engine makes from a fixed seed, or
+// a staged realm), no turn played; whether the line is written is decided before any die is drawn (a seeded stream
+// feeds the rest of the battle), and the graves' and the hardening's one die is fed. Not lower: the effects read the
 // content's rows and the battle writes the line. Not higher: a whole turn adds dice and orders before the battle, and no
 // bot researches these discoveries in the matrix.
 import '../lib/the-whole-engine.ts';
@@ -32,6 +39,15 @@ import { createTurnContext } from '../../src/engine/turn/context.ts';
 import { homeProvinceIdFor } from '../../src/engine/grand-design.ts';
 import { combatVsNPC } from '../../src/engine/battle/battles-against-province-defenders.ts';
 import { recordBattleGraves } from '../../src/engine/graves.ts';
+import { pcHitChance } from '../../src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { pcArrowHitChance } from '../../src/engine/personal-combat/melee-flight-and-archery.ts';
+import {
+  pcCharCombatant,
+  pcMonsterCombatant,
+  pcNewStatus,
+} from '../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts';
+import { extraSkillBonuses } from '../../src/engine/titles/reckoning.ts';
+import { awardHpRoll } from '../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts';
 import {
   DISC_BY_ID,
   doARealmsDiscoveriesWeightTheLinesBehindTheFront,
@@ -44,8 +60,14 @@ import {
   whatARealmsDiscoveriesAddToACastersChance,
   whatARealmsDiscoveriesAddToASidesFanaticism,
   whatARealmsDiscoveriesAddToASiege,
+  theFactorARealmsDiscoveriesHardenTheKingBy,
+  theLevelsARealmsDiscoveriesAddToAFightersSkills,
+  whatARealmsDiscoveriesAddToAFightersAim,
+  whatARealmsDiscoveriesAddToAFightersMithril,
+  whatARealmsDiscoveriesAddToASkillsRise,
 } from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
+import type { AFighterInAPersonalCombat } from '../../src/engine/personal-combat/helpers.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { addTheFieldsResolveTurnAdds } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
@@ -466,5 +488,184 @@ describe("Flanking Tactics held by the realm of a guard hero who leads a free pr
     const without = theDefendersLinesStrength([], 'of realm 1');
     expect(withIt).toBeGreaterThan(without);
     expect(theDefendersLinesStrength([{ id: 'sd09' }], 'of no realm')).toBe(without);
+  });
+});
+
+/** Saints' Relics (+20% to hit an undead foe), Bestiaries (+20% a monster), Champions' Tourney (+19% a character),
+ *  Duelling Code (+14% any foe), Veteran Training (+1 Melee and Archery in a fight), the Order of the Golden Shield
+ *  (the king's hardening doubled) and Mithril Craft (Mithril turns aside 4, not 2). */
+const SAINTS_RELICS = { id: 'ad14' };
+const BESTIARIES = { id: 'sd73' };
+const CHAMPIONS_TOURNEY = { id: 'sd74' };
+const DUELLING_CODE = { id: 'sd33' };
+const VETERAN_TRAINING = { id: 'sd37' };
+const GOLDEN_SHIELD = { id: 'sd35' };
+const MITHRIL_CRAFT = { id: 'rd08' };
+
+/** A plain fighter (a guardian of no perks, 20 HP, Melee and Archery 2, no wards, of the temper "None": no bonus), with
+ *  the fields given. */
+function aFighter(over: Record<string, unknown> = {}): AFighterInAPersonalCombat {
+  return { ...pcMonsterCombatant({ name: 'Made-up Mole', hp: 20, melee: 2 }), archery: 2, ...over };
+}
+
+/** The foes an aim may be steadied against: a hero of the undead, a living hero, an undead guardian and a beast. */
+const THE_FOES = {
+  'an undead hero': { kind: 'character', isUndead: true, cat: undefined },
+  'a living hero': { kind: 'character', isUndead: false, cat: undefined },
+  'an undead guardian': { kind: 'monster', cat: 'undead' },
+  'a beast': { kind: 'monster', cat: 'beast' },
+} as const;
+
+/** A fighter of realm 0, holding the discoveries given, swings at (or shoots) each foe: his chances to hit. */
+function theChancesToHitEachFoe(
+  discoveries: readonly { readonly id: string }[],
+  how: 'a blow' | 'an arrow',
+): Record<keyof typeof THE_FOES, number> {
+  const tc = { G: { players: [{ discoveries }] } } as unknown as Parameters<typeof pcHitChance>[0];
+  const out: Partial<Record<keyof typeof THE_FOES, number>> = {};
+  for (const [name, foe] of Object.entries(THE_FOES) as [keyof typeof THE_FOES, object][]) {
+    const actor = aFighter({ player: 0, status: pcNewStatus() });
+    const target = aFighter({ ...foe, status: pcNewStatus() });
+    out[name] = how === 'a blow' ? pcHitChance(tc, actor, target) : pcArrowHitChance(tc, actor, target);
+  }
+  return out as Record<keyof typeof THE_FOES, number>;
+}
+
+describe("a fighter's aim steadied by his realm's discoveries, against each kind of foe (pcHitChance, pcArrowHitChance)", () => {
+  // 30 + 10 × Melee (or Archery) 2: 50 against any foe, before the discoveries
+  test.for([
+    ['none', [], [50, 50, 50, 50]],
+    ["Saints' Relics: the undead only, a hero or a guardian", [SAINTS_RELICS], [70, 50, 70, 50]],
+    ['Bestiaries: monsters only', [BESTIARIES], [50, 50, 70, 70]],
+    ["Champions' Tourney: characters only", [CHAMPIONS_TOURNEY], [69, 69, 50, 50]],
+    ['Duelling Code: every foe', [DUELLING_CODE], [64, 64, 64, 64]],
+    ["Saints' Relics and Bestiaries: both against an undead guardian", [SAINTS_RELICS, BESTIARIES], [70, 50, 80, 70]],
+  ] as const)('%s', ([, discoveries, chances]) => {
+    for (const how of ['a blow', 'an arrow'] as const)
+      expect(Object.values(theChancesToHitEachFoe(discoveries, how)), how).toEqual(chances);
+  });
+
+  test("the foe's kind is asked only by an effect against the undead", () => {
+    const theFoesKind = vi.fn(() => 'undead');
+    const facts = { whatTheFoeIs: 'character', theFoesKind };
+    expect(whatARealmsDiscoveriesAddToAFightersAim({ discoveries: [DUELLING_CODE, BESTIARIES] }, facts)).toBe(14);
+    expect(theFoesKind).not.toHaveBeenCalled();
+    expect(whatARealmsDiscoveriesAddToAFightersAim({ discoveries: [SAINTS_RELICS] }, facts)).toBe(20);
+    expect(theFoesKind).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Veteran Training and Mithril Craft in a hero's fighter (pcCharCombatant), and Veteran Training on his card", () => {
+  /** Realm 1's first hero who isn't its king, of Melee and Archery given, no items, Cautious (no rage), his realm
+   *  holding the discoveries given: his fighter's Melee, Archery, their raw levels, and what Mithril turns aside. */
+  function hisFighter(discoveries: readonly { readonly id: string }[], melee: number, archery: number) {
+    const G = JSON.parse(THE_WORLD) as World;
+    const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
+    const hero = G.characters.find((c) => c.alive && c.player === 1 && !c.isKing);
+    const realm1 = G.players[1];
+    if (!hero || !realm1) throw new Error('the world has no hero in realm 1');
+    realm1.discoveries = discoveries.map((d) => ({ ...d }));
+    Object.assign(hero, { skills: { ...(hero['skills'] as object), melee, archery }, items: [], temper: 'Cautious' });
+    const was = kcRng.use(() => 0.5);
+    try {
+      const f = pcCharCombatant(tc as never, hero as never);
+      return [f.melee, f.archery, f.meleeRaw, f.archeryRaw, f.mithrilDR];
+    } finally {
+      kcRng.use(was);
+    }
+  }
+
+  test('Melee 3 and Archery 2: each a level higher with it, the raw levels too', () => {
+    expect(hisFighter([], 3, 2)).toEqual([3, 2, 3, 2, 2]);
+    expect(hisFighter([VETERAN_TRAINING], 3, 2)).toEqual([4, 3, 4, 3, 2]);
+  });
+
+  test("Mithril Craft: his Mithril turns aside its row's 2 more (4), whether he wears it or not", () => {
+    expect(hisFighter([MITHRIL_CRAFT], 3, 2)).toEqual([3, 2, 3, 2, 4]);
+  });
+
+  test("his card: Veteran Training's +1 on Melee and Archery, in personal combat only; none without it", () => {
+    const state = { players: [{ discoveries: [VETERAN_TRAINING] }, { discoveries: [DUELLING_CODE] }] };
+    const theLine = {
+      label: 'Veteran Training',
+      delta: 1,
+      kind: 'discovery',
+      scope: 'combat',
+      note: 'personal combat only',
+    };
+    expect(extraSkillBonuses({ id: 'a', player: 0 }, state, {})).toEqual({ melee: [theLine], archery: [theLine] });
+    expect(extraSkillBonuses({ id: 'b', player: 1 }, state, {})).toEqual({});
+    expect(extraSkillBonuses({ id: 'c', player: null }, state, {})).toEqual({});
+  });
+
+  test('the runner: its +1, once however often the realm holds it; none without it or a realm', () => {
+    expect(theLevelsARealmsDiscoveriesAddToAFightersSkills({ discoveries: [VETERAN_TRAINING] })).toBe(1);
+    expect(theLevelsARealmsDiscoveriesAddToAFightersSkills({ discoveries: [VETERAN_TRAINING, VETERAN_TRAINING] })).toBe(
+      1,
+    );
+    expect(theLevelsARealmsDiscoveriesAddToAFightersSkills({ discoveries: [DUELLING_CODE] })).toBe(0);
+    expect(theLevelsARealmsDiscoveriesAddToAFightersSkills(undefined)).toBe(0);
+  });
+});
+
+describe('the Order of the Golden Shield: the king hardened twice as much (awardHpRoll)', () => {
+  /** Realm 1's king (or its first other hero) rolls his hardening after a fight he won, the die fed at its middle, his
+   *  realm holding the discoveries given: what he gained, and whether the line names the Order. */
+  function hisHardening(discoveries: readonly { readonly id: string }[], who: 'the king' | 'another hero') {
+    const G = JSON.parse(THE_WORLD) as World;
+    const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
+    const hero = G.characters.find((c) => c.alive && c.player === 1 && (who === 'the king') === !!c.isKing);
+    const realm1 = G.players[1];
+    if (!hero || !realm1) throw new Error('the world has no such hero in realm 1');
+    realm1.discoveries = discoveries.map((d) => ({ ...d }));
+    const before = Number(hero['hpEarned']) || 0;
+    const was = kcRng.use(() => 0.5);
+    try {
+      const r = awardHpRoll(tc, hero, [], 'kill', true) as { gain: number; sd35?: boolean };
+      return { gain: r.gain, earned: (Number(hero['hpEarned']) || 0) - before, theOrder: r.sd35 === true };
+    } finally {
+      kcRng.use(was);
+    }
+  }
+
+  test('the king: twice the gain with it, the earned hit points too; another hero: as without', () => {
+    const without = hisHardening([], 'the king');
+    expect(without.theOrder).toBe(false);
+    expect(without.gain).toBeGreaterThan(0);
+    expect(hisHardening([GOLDEN_SHIELD], 'the king')).toEqual({
+      gain: without.gain * 2,
+      earned: without.earned + without.gain,
+      theOrder: true,
+    });
+    expect(hisHardening([GOLDEN_SHIELD], 'another hero')).toEqual(hisHardening([], 'another hero'));
+  });
+
+  test("the runner: the kind's ×2, or nothing for a realm without it", () => {
+    expect(theFactorARealmsDiscoveriesHardenTheKingBy({ discoveries: [GOLDEN_SHIELD] })).toBe(2);
+    expect(theFactorARealmsDiscoveriesHardenTheKingBy({ discoveries: [DUELLING_CODE] })).toBeNull();
+    expect(theFactorARealmsDiscoveriesHardenTheKingBy(undefined)).toBeNull();
+  });
+});
+
+describe("the fighter's and his rise's effects on rows the content doesn't write", () => {
+  test('an aim, a Mithril and a rise with no number; an aim against a foe no kind names; a rise for listed skills', () => {
+    const got = withPlantedRows(
+      {
+        squint: { kind: 'duelHit' },
+        stare: { kind: 'duelHit', pct: 3, vs: 'dragon' },
+        steady: { kind: 'duelHit', pct: 5 },
+        tin: { kind: 'mithril' },
+        silver: { kind: 'mithril', extra: 1 },
+        dull: { kind: 'skillGain' },
+        drill: { kind: 'skillGain', pct: 0.1, skills: ['melee', 'archery'] },
+      },
+      (realm) => [
+        whatARealmsDiscoveriesAddToAFightersAim(realm, { whatTheFoeIs: 'monster', theFoesKind: () => 'dragon' }),
+        whatARealmsDiscoveriesAddToAFightersMithril(realm),
+        whatARealmsDiscoveriesAddToASkillsRise(realm, { theSkill: 'melee' }),
+        whatARealmsDiscoveriesAddToASkillsRise(realm, { theSkill: 'white' }),
+      ],
+    );
+    expect(got).toEqual([5, 1, 0.1, 0]);
   });
 });
