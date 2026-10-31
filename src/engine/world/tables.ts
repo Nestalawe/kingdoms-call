@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   KC_HUMANOID_RACES,
   KC_TEMPERS,
@@ -22,6 +21,81 @@ import {
   strengthLeftByADruidShortfall,
   unitAsItsRealmSeesIt,
 } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import type { AHeroAsHisItemsAreRead, AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
+
+// Its types (plan P1-10b19): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
+// stays. A table read by any string is read through a typed local inside its function.
+/** A hero as his skill's level is read (effSkillOf's hero): his skills, curses and items, where he stands and whose he
+ *  is. */
+type AHeroAsHisSkillIsRead = NonNullable<Parameters<typeof effSkillOf>[0]>;
+/** The heroes a skill's level is read beside (an aura's bearer among them), or none. */
+type TheHeroesAsASkillIsReadBesideThem = Parameters<typeof effSkillOf>[2];
+/** A unit as the beast command counts it: the engine's unit, as unitAsItsRealmSeesIt reads it. */
+type AUnitAsTheBeastCommandCountsIt = Parameters<typeof unitAsItsRealmSeesIt>[0];
+/** A hero as the beast command reads him: his skill's hero, whose he is, and the units he leads (a gap among them, or
+ *  none). */
+interface AHeroAsTheBeastCommandReadsHim extends AHeroAsHisSkillIsRead {
+  readonly armies?: readonly (AUnitAsTheBeastCommandCountsIt | null | undefined)[] | null | undefined;
+}
+/** A commander as the battle's Druid check reads him: his race, alignment, Druid and items, and the marks a battle's
+ *  magic and a neutral guard leave on him. */
+interface ACommanderAsTheDruidCheckReadsHim extends AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> {
+  readonly _isNeutralGuard?: boolean | undefined;
+  readonly _druidNegated?: boolean | undefined;
+  readonly _curseHalveStat?: string | null | undefined;
+  readonly skills?: { readonly druid?: number | undefined } | null | undefined;
+}
+/** A unit as the battle's Druid check reads it: its type and race, and whether it is a skeleton. */
+interface AUnitAsTheDruidCheckReadsIt {
+  readonly type: string;
+  readonly race?: string | null | undefined;
+  readonly _isSkeletal?: boolean | undefined;
+}
+/** A feature's treasure as a save holds it: gold as a number, or (a sea feature saved before v1054) `{ gold }`. */
+type AFeaturesTreasure = number | { gold?: number | undefined } | null | undefined;
+/** An item in a lair's hoard, as the hoard's stocking moves it: one the lair held before hoards, or one rolled. */
+interface AnItemInAHoard {
+  readonly name: string;
+}
+/** A lair as its hoard is stocked and its gold read: its guardian's power, its treasure, its hoard and the marks the
+ *  stocking leaves (each optional: an older save holds none). */
+interface ALairAsItsHoardIsStocked {
+  readonly ritualSite?: boolean | undefined;
+  readonly cleared?: boolean | undefined;
+  readonly monster?: { readonly power?: string | undefined } | null | undefined;
+  treasure?: AFeaturesTreasure;
+  hoardItems?: AnItemInAHoard[] | null | undefined;
+  lairItems?: AnItemInAHoard[] | null | undefined;
+  _hoardV2?: boolean | undefined;
+  _clearGold?: number | null | undefined;
+  _hoardGoldOrig?: number | null | undefined;
+}
+/** The state as a lair's stocking reads it: the items handed out (by name) and the next item's id. */
+interface TheStateAsTheStockingReadsIt {
+  _awardedItems?: string[] | null | undefined;
+  nextItemId?: number | undefined;
+}
+/** A realm as the home rosters' backfill reads it: its race, and its home as homeProvinceIdFor finds it. */
+type ARealmAsTheBackfillReadsIt = NonNullable<
+  NonNullable<NonNullable<Parameters<typeof homeProvinceIdFor>[0]>['players']>[number]
+> & { readonly race?: string | null | undefined };
+/** A province as the home rosters' backfill reads it: its ground and race, the units it offers, and its place on the
+ *  map (discProvCoastal's). */
+type AProvinceAsTheBackfillReadsIt = NonNullable<
+  NonNullable<NonNullable<NonNullable<Parameters<typeof homeProvinceIdFor>[0]>['world']>['provinces']>[number]
+> &
+  NonNullable<NonNullable<NonNullable<Parameters<typeof discProvCoastal>[0]>['world']>['provinces'][number]> & {
+    readonly race?: string | null | undefined;
+  };
+/** The state as the home rosters' backfill reads it: the realms and the map, each guarded as if it may be missing. */
+interface TheStateAsTheBackfillReadsIt {
+  readonly players?: readonly (ARealmAsTheBackfillReadsIt | null | undefined)[] | null | undefined;
+  readonly world?:
+    | (NonNullable<NonNullable<Parameters<typeof discProvCoastal>[0]>['world']> & {
+        readonly provinces: readonly (AProvinceAsTheBackfillReadsIt | null | undefined)[];
+      })
+    | null;
+}
 
 // ── INLINE GAME GENERATION ENGINE ────
 // Self-contained mini game engine for the portal
@@ -51,13 +125,18 @@ export const SIGNATURE_WEIGHT_P = 6;
 // offered one now offer another ground unit of the same cell instead, where the cell has one to
 // spare; where it has none, the flyer stays (since item 15 nothing is borrowed from another terrain).
 // The king's home province is untouched (fullRaceLandRoster always grants the complete racial roster).
-export function provincePoolSize(rnd) {
-  return (rnd || kcRng)() < 0.75 ? 2 : 3;
+export function provincePoolSize(rnd: (() => number) | null | undefined) {
+  return (rnd ?? kcRng)() < 0.75 ? 2 : 3;
 }
 export const GEN_FLYER_TYPES = new Set(KC_UNIT_CLASS.flying);
 export const FLYER_PROVINCE_KEEP = 0.5; // share of would-be flyer offers that survive
-export function buildHumanoidPool(terrain, race, count, rnd) {
-  const full = (PROVINCE_ARMIES_P[terrain] || {})[race] || ['Shieldwall Levies'];
+export function buildHumanoidPool(terrain: string, race: string, count: number, rnd: () => number) {
+  // the cells read by any terrain's and race's name
+  const cells: Readonly<Partial<Record<string, Readonly<Partial<Record<string, readonly string[]>>>>>> =
+    PROVINCE_ARMIES_P;
+  // (read in two steps: a race read on no cell reads the empty object's field, as it always did)
+  const cell = cells[terrain] ?? {};
+  const full = cell[race] ?? ['Shieldwall Levies'];
   const garrison = full.filter((t) => t.toLowerCase().includes('garrison'));
   const local = full.filter((t) => !t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t));
   const shuffled = shuffleP(local, rnd);
@@ -65,13 +144,16 @@ export function buildHumanoidPool(terrain, race, count, rnd) {
   // Ground units this province could offer instead of a flyer: only its own terrain's (item 15:
   // every unit offered suits the province). A cell with nothing to spare keeps its flyer.
   const localSpare = shuffled.slice(count).filter((t) => !GEN_FLYER_TYPES.has(t));
+  // the flyers looked up by a pick that may be missing
+  const flyers: ReadonlySet<string | undefined> = GEN_FLYER_TYPES;
   for (let i = 0; i < types.length; i++) {
-    if (!GEN_FLYER_TYPES.has(types[i])) continue;
+    if (!flyers.has(types[i])) continue;
     if (rnd() < FLYER_PROVINCE_KEEP) continue; // this one keeps its flyers
-    let sub = null;
+    let sub: string | null = null;
     while (localSpare.length && !sub) {
       const t = localSpare.shift();
-      if (!types.includes(t)) sub = t;
+      // (the list was just found not empty, so t is one of its units)
+      if (t !== undefined && !types.includes(t)) sub = t;
     }
     if (sub) types[i] = sub; // otherwise nothing to swap to — keep the flyer
   }
@@ -81,12 +163,16 @@ export function buildHumanoidPool(terrain, race, count, rnd) {
 // own terrain. Union of the race's PROVINCE_ARMIES_P cells across all land terrains, non-garrison
 // types first (in table order), the racial garrison last. Fleets are never added here: a coastal
 // home earns its racial fleet through the coastal / Naval-skill rules.
-export function fullRaceLandRoster(race) {
-  const seen = new Set(),
-    types = [],
-    garrison = [];
+export function fullRaceLandRoster(race: string) {
+  // the cells read by any terrain's and race's name
+  const cells: Readonly<Partial<Record<string, Readonly<Partial<Record<string, readonly string[]>>>>>> =
+    PROVINCE_ARMIES_P;
+  const seen = new Set<string>(),
+    types: string[] = [],
+    garrison: string[] = [];
   LAND_TERRAINS_GEN.forEach((t) => {
-    ((PROVINCE_ARMIES_P[t] || {})[race] || []).forEach((u) => {
+    const cell = cells[t] ?? {};
+    (cell[race] ?? []).forEach((u) => {
       if (seen.has(u) || SEA_TYPES_GEN.has(u)) return;
       seen.add(u);
       (u.toLowerCase().includes('garrison') ? garrison : types).push(u);
@@ -97,15 +183,17 @@ export function fullRaceLandRoster(race) {
 // Existing saves: every king's home province recruits his race's FULL land roster. Idempotent -
 // appends any missing land type to the home's armyTypes, keeping fleets and order. Runs at the top
 // of every runTurn; a no-op once the roster is complete.
-export function backfillHomeRosters(gs) {
-  ((gs && gs.players) || []).forEach((pl, pi) => {
+export function backfillHomeRosters(gs: TheStateAsTheBackfillReadsIt | null | undefined) {
+  (gs?.players ?? []).forEach((pl, pi) => {
     if (!pl) return;
     const hid = homeProvinceIdFor(gs, pi);
-    const h = hid != null ? ((gs.world && gs.world.provinces) || [])[hid] : null;
+    const h = hid != null ? (gs?.world?.provinces ?? [])[hid] : null;
     if (!h || h.terrain === 'sea' || !pl.race || h.race !== pl.race) return;
     if (!Array.isArray(h.armyTypes)) h.armyTypes = [];
+    // the units it offers, the same list each push below fills
+    const armyTypes = h.armyTypes;
     fullRaceLandRoster(pl.race).forEach((u) => {
-      if (!h.armyTypes.includes(u)) h.armyTypes.push(u);
+      if (!armyTypes.includes(u)) armyTypes.push(u);
     });
     // 2026-09-25 (Toby): a coastal capital always offers its racial fleet — add it to any running
     // game whose home rolled without one.
@@ -139,8 +227,8 @@ export const HUMANOID_FLEET_TYPES = new Set([
 // its point). Everything else is one a turn outside the founder's own capital, which turns out two of
 // anything. Read by getRecruitLimit (the engine's gate) and by the order form's `maxPerTurn` payload
 // (buildTurnReport); tests/goblins-two-a-turn holds the two together.
-export function twoATurn(armyType) {
-  const t = String(armyType || '');
+export function twoATurn(armyType: string | null | undefined) {
+  const t = armyType ?? '';
   return t.toLowerCase().includes('garrison') || HUMANOID_FLEET_TYPES.has(t) || t === 'Goblin Horde';
 }
 export const SEA_TYPES_GEN = new Set(KC_UNIT_CLASS.sea);
@@ -150,15 +238,18 @@ export const SEA_TYPES_GEN = new Set(KC_UNIT_CLASS.sea);
 // ── BEAST COMMAND (2026-10-12, Toby item 24) ── A hero may lead only as many Creature and Monster units as his Druid
 // level. Which units count is countsAgainstBeastCommand's (engine/rules-on-plain-values/, which the player portal
 // shares), on a unit as its realm sees it: the engine hands it its own unit in the realm's names.
-export function beastCommandCount(a) {
+export function beastCommandCount(a: AUnitAsTheBeastCommandCountsIt | null | undefined) {
   return !!a && countsAgainstBeastCommand(unitAsItsRealmSeesIt(a));
 }
-export function beastsLed(c) {
-  return ((c && c.armies) || []).filter(beastCommandCount).length;
+export function beastsLed(c: AHeroAsTheBeastCommandReadsHim | null | undefined) {
+  return (c?.armies ?? []).filter(beastCommandCount).length;
 }
-export function beastCommandRoom(c, chars) {
-  if (!c || c.player == null) return Infinity;
-  return Math.max(0, (effSkillOf(c, 'druid', chars || []) | 0) - beastsLed(c));
+export function beastCommandRoom(
+  c: AHeroAsTheBeastCommandReadsHim | null | undefined,
+  chars: TheHeroesAsASkillIsReadBesideThem,
+) {
+  if (c?.player == null) return Infinity;
+  return Math.max(0, (Number(effSkillOf(c, 'druid', chars ?? [])) | 0) - beastsLed(c));
 }
 // A commander's beast command, as a line tells it (plan P1-12d6): his name and his Druid as it counts, copied as the
 // line is told. The Recruit and Hire orders' and the army orders' facts hold it, and the views write its words
@@ -169,14 +260,23 @@ export interface ABeastCommandAsALineTellsIt {
   readonly commanderName: string;
   readonly druid: number;
 }
-export function theBeastCommandAsALineTellsIt(c, chars): ABeastCommandAsALineTellsIt {
-  return { commanderName: c.name, druid: effSkillOf(c, 'druid', chars || []) | 0 };
+export function theBeastCommandAsALineTellsIt(
+  c: AHeroAsHisSkillIsRead & { readonly name: string },
+  chars: TheHeroesAsASkillIsReadBesideThem,
+): ABeastCommandAsALineTellsIt {
+  return { commanderName: c.name, druid: Number(effSkillOf(c, 'druid', chars ?? [])) | 0 };
 }
-export function druIdPenaltyMult(heroChar, army, playerAlignment, tamed) {
+export function druIdPenaltyMult(
+  heroChar: ACommanderAsTheDruidCheckReadsHim,
+  army: AUnitAsTheDruidCheckReadsIt,
+  playerAlignment: string | null | undefined,
+  tamed: boolean,
+) {
   // Skeletal armies never suffer Druid penalties — they are already dead
   if (army._isSkeletal) return 1.0;
-  // Neutral guard heroes natively command their province's armies — no Druid penalty
-  if (heroChar && heroChar._isNeutralGuard) return 1.0;
+  // Neutral guard heroes natively command their province's armies — no Druid penalty (no commander at all throws
+  // here, as it did on his race's read below)
+  if (heroChar._isNeutralGuard) return 1.0;
   const armyType = army.type;
   const heroRace = heroChar.race;
 
@@ -199,9 +299,9 @@ export function druIdPenaltyMult(heroChar, army, playerAlignment, tamed) {
         0,
         Math.min(
           5,
-          (heroChar.skills?.druid || 0) +
+          (Number(heroChar.skills?.druid) || 0) +
             dedupeItemsByName(activeItems(heroChar)).reduce(
-              (s, it) => s + (it.effect?.stat === 'druid' ? it.effect.bonus : 0),
+              (s, it) => s + (it.effect?.stat === 'druid' ? Number(it.effect.bonus) : 0),
               0,
             ),
         ),
@@ -221,19 +321,21 @@ export const TEMPERS_P = KC_TEMPERS.slice();
 type TheTraitsOfATemper = Omit<(typeof TEMPER_TRAITS)['Brave'], 'rageHp'> & {
   readonly rageHp: readonly [min: number, max: number] | null;
 };
-export function temperOf(t): TheTraitsOfATemper {
-  return TEMPER_TRAITS[t] || TEMPER_TRAITS.Brave;
+export function temperOf(t: string | null | undefined): TheTraitsOfATemper {
+  // the rows read by any temper's name
+  const rows: Readonly<Partial<Record<string, TheTraitsOfATemper>>> = TEMPER_TRAITS;
+  return rows[String(t)] ?? TEMPER_TRAITS.Brave;
 }
 // A feature's steal-able treasure as a plain number. Tolerates the legacy {gold:n} shape that
 // pre-v1054 sea features saved, so old games don't throw when a thief lifts from them.
-export function featureTreasure(f) {
+export function featureTreasure(f: { readonly treasure?: AFeaturesTreasure } | null | undefined) {
   if (!f) return 0;
   const t = f.treasure;
   if (t == null) return 0;
-  if (typeof t === 'object') return Math.max(0, t.gold || 0);
+  if (typeof t === 'object') return Math.max(0, Number(t.gold) || 0);
   return Math.max(0, t || 0);
 }
-export function setFeatureTreasure(f, v) {
+export function setFeatureTreasure(f: { treasure?: AFeaturesTreasure } | null | undefined, v: number) {
   v = Math.max(0, Math.round(v));
   if (f && typeof f.treasure === 'object' && f.treasure) f.treasure.gold = v;
   else if (f) f.treasure = v;
@@ -241,48 +343,67 @@ export function setFeatureTreasure(f, v) {
 // the gold a hero collects for CLEARING a feature guardian is a tier-band roll. We roll it ONCE and
 // cache it on the feature, so a Scout can report the EXACT figure a clearer will receive and the
 // victory branch pays out that same amount (rolled here if the site was never scouted).
-export const ENCOUNTER_CLEAR_GOLD_BANDS = { Weak: [5, 8], Moderate: [12, 18], Powerful: [20, 30], Legendary: [40, 60] }; // was 5–12 / 14–28 / 30–50 / 55–90
-export function encounterClearGold(feat): number {
+export const ENCOUNTER_CLEAR_GOLD_BANDS = {
+  Weak: [5, 8],
+  Moderate: [12, 18],
+  Powerful: [20, 30],
+  Legendary: [40, 60],
+} satisfies Record<string, readonly [min: number, max: number]>; // was 5–12 / 14–28 / 30–50 / 55–90
+export function encounterClearGold(feat: ALairAsItsHoardIsStocked | null | undefined): number {
   if (!feat) return 0;
   if (feat._hoardV2) return featureTreasure(feat); // the one hoard figure
   if (feat._clearGold == null) {
-    const band = ENCOUNTER_CLEAR_GOLD_BANDS[(feat.monster && feat.monster.power) || 'Weak'] || [1, 5];
+    // the bands read by any power's name
+    const bands: Readonly<Partial<Record<string, readonly [min: number, max: number]>>> = ENCOUNTER_CLEAR_GOLD_BANDS;
+    const band = bands[(feat.monster?.power ?? '') || 'Weak'] ?? [1, 5];
     feat._clearGold = Math.floor(kcRng() * (band[1] - band[0] + 1)) + band[0];
   }
   return feat._clearGold;
 }
-export function ensureLairHoard(f, gs, opts?): void {
+export function ensureLairHoard(
+  f: ALairAsItsHoardIsStocked | null | undefined,
+  gs: TheStateAsTheStockingReadsIt | null | undefined,
+  opts?: { readonly noItems?: boolean | undefined },
+): void {
   if (!f || f.ritualSite) return;
-  const _noItems = !!(opts && opts.noItems); // balanced stocking (ensureAllLairHoards) fills items itself
-  f.hoardItems = Array.isArray(f.hoardItems) ? f.hoardItems : [];
+  const _noItems = !!opts?.noItems; // balanced stocking (ensureAllLairHoards) fills items itself
+  // the hoard, the same list each push below fills
+  const hoardItems = Array.isArray(f.hoardItems) ? f.hoardItems : [];
+  f.hoardItems = hoardItems;
   if (Array.isArray(f.lairItems) && f.lairItems.length) {
-    f.hoardItems.push(...f.lairItems);
+    hoardItems.push(...f.lairItems);
     f.lairItems = [];
   }
   if (f._hoardV2) return;
   f._hoardV2 = true;
-  const power = (f.monster && f.monster.power) || 'Weak';
-  const band = ENCOUNTER_CLEAR_GOLD_BANDS[power] || [1, 5];
-  const gold = f._clearGold != null ? f._clearGold : Math.floor(kcRng() * (band[1] - band[0] + 1)) + band[0];
+  const power = (f.monster?.power ?? '') || 'Weak';
+  // the bands and the odds read by any power's name
+  const bands: Readonly<Partial<Record<string, readonly [min: number, max: number]>>> = ENCOUNTER_CLEAR_GOLD_BANDS;
+  const odds: Readonly<Partial<Record<string, (typeof LAIR_ITEM_ODDS)['Weak']>>> = LAIR_ITEM_ODDS;
+  const band = bands[power] ?? [1, 5];
+  const gold = f._clearGold ?? Math.floor(kcRng() * (band[1] - band[0] + 1)) + band[0];
   delete f._clearGold;
   setFeatureTreasure(f, gold);
   // Thief revision: remember the hoard as it stood at generation — a thief's cut is a share of the
   // ORIGINAL pile, so each successive theft takes a like amount until it runs dry.
-  if (f._hoardGoldOrig == null) f._hoardGoldOrig = gold;
+  f._hoardGoldOrig ??= gold;
   if (f.cleared || !gs || _noItems) return;
   if (!Array.isArray(gs._awardedItems)) gs._awardedItems = [];
-  const taken = new Set(gs._awardedItems);
+  // the names handed out, the same list each roll below adds to
+  const awarded = gs._awardedItems;
+  const taken = new Set(awarded);
   const takenEff = awardedEffectSet(gs);
-  const T = LAIR_ITEM_ODDS[power] || LAIR_ITEM_ODDS.Weak;
+  const T = odds[power] ?? LAIR_ITEM_ODDS.Weak;
   const roll = () => {
     const base = rollMagicItem(power, taken, takenEff);
     if (!base) return;
     taken.add(base.name);
     takenEff.add(itemEffectKey(base));
-    gs._awardedItems.push(base.name);
-    const id = gs.nextItemId || 0;
+    awarded.push(base.name);
+    const id = Number(gs.nextItemId) || 0;
     gs.nextItemId = id + 1;
-    f.hoardItems.push({ ...base, effect: { ...base.effect }, id });
+    const item = { ...base, effect: { ...base.effect }, id };
+    hoardItems.push(item);
   };
   if (kcRng() < T.itemChance) roll();
   if (kcRng() < T.bonusItem) roll();
