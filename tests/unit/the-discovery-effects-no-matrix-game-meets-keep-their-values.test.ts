@@ -278,9 +278,14 @@ describe("the lines' and the fates' effects on rows the content doesn't write", 
     expect(left).toEqual([0.6, 1, 1, 1]);
   });
 
-  test("a flight home with no number, beside one with: the other's points; a surgery with no number: 20%", () => {
+  test("a flight home with no number, beside one with: the other's points; a surgery with no number, before one with: 20%", () => {
     const got = withPlantedRows(
-      { hum: { kind: 'elvenEscape' }, song: { kind: 'elvenEscape', pct: 10 }, knife: { kind: 'nearDeathSurvival' } },
+      {
+        hum: { kind: 'elvenEscape' },
+        song: { kind: 'elvenEscape', pct: 10 },
+        knife: { kind: 'nearDeathSurvival' },
+        saw: { kind: 'nearDeathSurvival', pct: 0.3 },
+      },
       (realm) => [
         whatARealmsDiscoveriesAddToAFallenUnitsFlightHome(realm),
         theChanceARealmsDiscoveriesDragAHeroFromTheField(realm),
@@ -408,5 +413,58 @@ describe("a realm's own-ground discoveries, in a battle against a province's def
   ] as const)('%s: no line', ([, discoveries, where]) => {
     const shown = aBattleAgainstAGarrison(discoveries, where);
     expect(shown.words.filter((w) => w.includes('holds its own ground the harder'))).toEqual([]);
+  });
+});
+
+/** Realm 0's king attacks a free province held by twelve companies, led by a guard hero of realm 1 (or of no realm),
+ *  realm 1 holding the discoveries given: the defenders' strength in their battle lines, as the GM's ladder gives it. */
+function theDefendersLinesStrength(
+  discoveries: readonly { readonly id: string }[],
+  guard: 'of realm 1' | 'of no realm',
+) {
+  const G = JSON.parse(THE_WORLD) as World;
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
+  tc._currentPhase = 1;
+  tc._logCtx.phase = 1;
+  G.relations['0-1'] = 'enemy';
+  const atk = G.characters.find((c) => c.alive && c.player === 0 && c.isKing);
+  const theGuard = G.characters.find((c) => c.alive && c.player === 1 && !c.isKing);
+  const realm1 = G.players[1];
+  const field = G.world.provinces.find((p) => p.terrain === 'plain' && p.owner === null);
+  if (!atk || !theGuard || !realm1 || !field)
+    throw new Error('the world has no king in realm 0, no hero in realm 1 or no field');
+  realm1.discoveries = discoveries.map((d) => ({ ...d }));
+  if (guard === 'of no realm') theGuard.player = null;
+  Object.assign(field, { characters: [atk.id], features: [], garrisonArmies: [], npcArmies: 0 });
+  field.neutralDefenders = companies(12, 'Average');
+  theGuard.location = field.id;
+  theGuard.armies = [];
+  atk['_attackedFrom'] = atk.location;
+  atk.location = field.id;
+  atk.armies = companies(4, 'Average');
+  atk.encounterPlan = { tactics: ['ME', 'ME', 'ME', 'ME', 'ME'], duelStance: 'refuse' };
+  const was = kcRng.use(kcRngStream(7));
+  let narrative: NarrativeLine[];
+  try {
+    narrative = (combatVsNPC(tc, atk, field, theGuard) as { narrative: NarrativeLine[] }).narrative;
+  } finally {
+    kcRng.use(was);
+  }
+  const theLines = narrative.flatMap((l) =>
+    l.kind === "the strength ladder's battle lines" ? [l.battleLinesStrength] : [],
+  );
+  if (theLines.length !== 2)
+    throw new Error(`the battle wrote ${String(theLines.length)} ladders of battle lines, not 2`);
+  const [, theDefenders] = theLines;
+  if (theDefenders === undefined) throw new Error('the battle wrote no ladder of battle lines for the defenders');
+  return theDefenders;
+}
+
+describe("Flanking Tactics held by the realm of a guard hero who leads a free province's defenders (combatVsNPC)", () => {
+  test('his realm holding it weights the lines behind the front: more strength than without; a guard of no realm, none', () => {
+    const withIt = theDefendersLinesStrength([{ id: 'sd09' }], 'of realm 1');
+    const without = theDefendersLinesStrength([], 'of realm 1');
+    expect(withIt).toBeGreaterThan(without);
+    expect(theDefendersLinesStrength([{ id: 'sd09' }], 'of no realm')).toBe(without);
   });
 });
