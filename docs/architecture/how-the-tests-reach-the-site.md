@@ -124,8 +124,8 @@
   lines excepted: a fallen commander's leaderless host fights on under his id, R-019); `orders_submitted` cleared.
   `turn-fuzz` and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
   `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (Theo, 2026-10-17: no
-  engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: a realmless
-  hero's battle header reads "(undefined)"; enemy orders and reactions still reach a hero after he turns invisible, and
+  engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: enemy orders
+  and reactions still reach a hero after he turns invisible, and
   the acting realm's report says so; another realm's private line in the report's spy activity section (waits for
   P1-23); a wanderer who died earlier in the turn can still be hired.
 - **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
