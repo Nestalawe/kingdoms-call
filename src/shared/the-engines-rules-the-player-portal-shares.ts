@@ -4,7 +4,7 @@
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
 // and runs none of the engine's set-up. The portal calls them by the engine's names (Decision 3); each name here is
-// one the portal uses (the order form's spells from P1-11c3 and c4: until then the parity test reads them,
+// one the portal uses (the order form's spell tables from P1-11c3: until then the parity test reads them,
 // tests/lib/player-portal-copies.ts). tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this
 // file and the portal's own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -51,7 +51,6 @@ export {
   theActionSpellsNoMasteryLevelGates,
   theCombatSpellsBySchool,
   theLevelEachMasterySpellNeeds,
-  theMarkOfThisSpellMustStandInTheCastersProvince,
   theSchoolOfEachSpell,
-} from '../engine/rules-on-plain-values/spells-the-order-form-offers-and-where-their-marks-must-stand.ts';
+} from '../engine/rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts';
 export { unitBaseStrength, unitTypeOf } from '../engine/rules-on-plain-values/unit-types-and-base-strength.ts';

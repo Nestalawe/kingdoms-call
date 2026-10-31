@@ -1,23 +1,17 @@
-// ── The spells the order form offers, and where their marks must stand (plan P1-11c2) ────
+// ── The spells the order form offers: each school's, their aim and their mastery levels (plan P1-11c2) ────
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a). These are the Cast Spell order's tables as the order form reads them, made from the content's
 // spells (SPELL_DEFS_P, src/content/kingdoms-call-data.ts): each school's spells, each spell's school, the mastery
-// spells' levels, the action spells, the combat spells by school and what each action spell is aimed at; and the one
-// check of the order the form makes too, whether a spell's mark must stand in the caster's province, from the spell's
-// row (src/content/spell-effects-their-names-numbers-and-words.ts), which the spells' registry asks (src/engine/rules/
-// spells/the-checks-the-cast-spell-order-makes-of-a-spell.ts). Every table keeps the content's order but the combat
-// spells' (below). Until P1-11c3 the form keeps its own copies of the tables (tests/lib/player-portal-copies.ts checks
-// them against these).
+// spells' levels, the action spells, the combat spells by school and what each action spell is aimed at. Every table
+// keeps the content's order but the combat spells' (below). Until P1-11c3 the form keeps its own copies of the tables
+// (tests/lib/player-portal-copies.ts checks them against these). The one check of the order the form makes too, where
+// a spell's mark must stand, is beside this file (whether-a-spells-mark-must-stand-in-the-casters-province.ts).
 //
 // Each table is made when it is asked for, a new one each time (the caller may keep it, or change its copy), and this
 // file runs nothing as it loads: so a page that loads src/shared/ but asks for none of them loads none of the content's
 // spells.
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
-import {
-  SPELL_EFFECTS_THE_REGISTRY_HOLDS,
-  type ASpellAsItsTextsWriteIt,
-} from '../../content/spell-effects-their-names-numbers-and-words.ts';
 
 /** A spell as the content's table writes what the order form reads of it: its school, what it is aimed at (`province`,
  *  `character` or `none`), whether it is a combat spell (`encounter`) or an action spell (`phase`), and the raw level in
@@ -121,13 +115,4 @@ export function theActionSpellsAimedAtAProvince(): Set<string> {
 /** The action spells aimed at a hero (the order names the hero), in the content's order. */
 export function theActionSpellsAimedAtAHero(): Set<string> {
   return new Set(theSpellsThat((spell) => spell.phase && spell.target === 'character'));
-}
-
-/** Whether the hero the spell named is aimed at must stand in the caster's own province, as its row in the content
- *  says (`asAnOrder.itsMarkMustStandInTheProvince`): one who has left is refused before the cast roll. A spell aimed at
- *  a province, Resurrect (its body's own rule), Clairvoyance (a scry from afar) and a name with no row need none. */
-export function theMarkOfThisSpellMustStandInTheCastersProvince(theSpellsName: string): boolean {
-  const everyRow: readonly ASpellAsItsTextsWriteIt[] = Object.values(SPELL_EFFECTS_THE_REGISTRY_HOLDS);
-  const row = everyRow.find((r) => r.name === theSpellsName);
-  return row?.asAnOrder?.itsMarkMustStandInTheProvince === true;
 }

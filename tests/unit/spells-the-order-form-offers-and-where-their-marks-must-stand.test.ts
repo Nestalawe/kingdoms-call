@@ -1,11 +1,12 @@
-// The order form's spells and where their marks must stand (plan P1-11c2: src/engine/rules-on-plain-values/spells-the-
-// order-form-offers-and-where-their-marks-must-stand.ts), called directly: each table the folder makes of the content's
-// spells, in its order, and whether a spell's mark must stand in the caster's province, for every spell. The tables
-// written out are the order form's own (src/ui/player/: SPELLS_BY_SCHOOL, SPELL_TO_SCHOOL, SPELL_REQ_LEVEL,
-// PHASE_SPELLS, _hsPhase, ENCOUNTER_VALID, in their order; NEEDS_PROV and NEEDS_CHAR, which the form only asks `has` of,
-// in the content's), so P1-11c3 can swap them in with no screen changed. The file imports only the content, so the test
-// imports it as it is, with no engine loaded. The whole-turn cases (lib/cast-spell-order-cases.ts, "a mark gone before
-// the spell is shaped") show the Cast Spell order asks the mark check.
+// The order form's spells and where their marks must stand (plan P1-11c2: the two files of src/engine/rules-on-plain-
+// values/, spells-the-order-form-offers-each-school-aim-and-mastery-level.ts and whether-a-spells-mark-must-stand-in-
+// the-casters-province.ts), called directly: each table the folder makes of the content's spells, in its order, and
+// whether a spell's mark must stand in the caster's province, for every spell. The tables written out are the order
+// form's own (src/ui/player/: SPELLS_BY_SCHOOL, SPELL_TO_SCHOOL, SPELL_REQ_LEVEL, PHASE_SPELLS, _hsPhase,
+// ENCOUNTER_VALID, in their order; NEEDS_PROV and NEEDS_CHAR, which the form only asks `has` of, in the content's), so
+// P1-11c3 can swap them in with no screen changed. The files import only the content, so the test imports them as they
+// are, with no engine loaded. The whole-turn cases (lib/cast-spell-order-cases.ts, "a mark gone before the spell is
+// shaped") show the Cast Spell order asks the mark check.
 // Level 1 (unit): functions of the content's tables.
 import { describe, expect, test } from 'vitest';
 import { SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
@@ -17,9 +18,9 @@ import {
   theActionSpellsNoMasteryLevelGates,
   theCombatSpellsBySchool,
   theLevelEachMasterySpellNeeds,
-  theMarkOfThisSpellMustStandInTheCastersProvince,
   theSchoolOfEachSpell,
-} from '../../src/engine/rules-on-plain-values/spells-the-order-form-offers-and-where-their-marks-must-stand.ts';
+} from '../../src/engine/rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts';
+import { theMarkOfThisSpellMustStandInTheCastersProvince } from '../../src/engine/rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
 
 const WHITE = ['Resurrect', 'Part Sea', 'Bless Province', 'Holy Symbol', 'Spiritwrack', 'Sanctuary', 'Divine Judgment'];
 const PSYCHIC = [

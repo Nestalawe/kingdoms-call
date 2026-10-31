@@ -13,7 +13,7 @@ import {
   type SpellSlug,
   type TheChecksTheCastSpellOrderMakesOfASpell,
 } from '../../../content/spell-effects-their-names-numbers-and-words.ts';
-import { theMarkOfThisSpellMustStandInTheCastersProvince } from '../../rules-on-plain-values/spells-the-order-form-offers-and-where-their-marks-must-stand.ts';
+import { theMarkOfThisSpellMustStandInTheCastersProvince } from '../../rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
 import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effects.ts';
 
 type TheChecks = TheStagesOfEachHookPoint['orderValidity'];
