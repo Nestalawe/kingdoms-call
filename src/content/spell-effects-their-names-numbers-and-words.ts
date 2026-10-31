@@ -14,7 +14,8 @@
 // 8): the registry finds a spell's row by the name it is handed. SPELL_DEFS_P stays as it is (the player portal reads
 // it). Change a number here, and the texts with it: tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-
 // table.test.ts reads every row against its spell's blurb (SPELL_DEFS_P's `desc`) and its row of the rulebook's spell
-// table. The player page doesn't import this file.
+// table. The player page loads it too: the order form's target field asks the mark check that reads it (src/engine/
+// rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts, through src/shared/; P1-11c4).
 
 /** How a spell's texts write a number: a share of a unit's base strength lost in words (0.5 as "half", "halved" or
  *  "halves"); a share lost as a percentage (0.2 as `20%`); a share lost written as the share kept, as a percentage (0.25
