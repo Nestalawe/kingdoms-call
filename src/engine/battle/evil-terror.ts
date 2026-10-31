@@ -1,6 +1,6 @@
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
-import { discSum } from '../discoveries.ts';
+import { whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves } from '../rules/the-registry-of-discovery-effects.ts';
 import type { Army, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
@@ -37,7 +37,9 @@ export function spreadTerror(
     tp._terrorStacks = Math.min(TERROR_MAX_STACKS, (tp._terrorStacks || 0) + 1);
     tp._terrorTurn = G.turn;
     tp._terrorisedBy = byPlayer;
-    tp._terrorPct = TERROR_PCT_PER_STACK + discSum(turnContext, byPlayer, 'terror', 'pct'); // ae03 Reign of Terror
+    // ae03 Reign of Terror (the discoveries' registry's since plan P1-19af: "fate: a realm's discoveries add to the terror
+    // a victory leaves", which the line asks too)
+    tp._terrorPct = TERROR_PCT_PER_STACK + whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves(G.players[byPlayer]);
   });
   if (narrative) {
     const adjNames = getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)
@@ -47,7 +49,9 @@ export function spreadTerror(
       kind: 'terror radiates from a province after an evil victory',
       provName: battleProv.name,
       surroundingLands: adjNames,
-      terrorPctPerStack: dispFloor((TERROR_PCT_PER_STACK + discSum(turnContext, byPlayer, 'terror', 'pct')) * 100),
+      terrorPctPerStack: dispFloor(
+        (TERROR_PCT_PER_STACK + whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves(G.players[byPlayer])) * 100,
+      ),
     });
   }
 }

@@ -2,7 +2,7 @@ import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
-import { discSum } from '../discoveries.ts';
+import { whatARealmsDiscoveriesAddToAConquestsPlunder } from '../rules/the-registry-of-discovery-effects.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { AUnitThatRoseAsTheLineNamesIt } from './the-facts-relations-and-captures-lines-record.ts';
@@ -282,9 +282,9 @@ export function applyEvilConquest(
       });
     const loot = Math.floor(
       (Number(prov.tax) || 0) *
-        (0.5 +
-          discSum(turnContext, cc.player, 'plunder', 'pct', (e) => !e.terrains || e.terrains.includes(prov.terrain))),
-    ); // + plunder discoveries
+        (0.5 + whatARealmsDiscoveriesAddToAConquestsPlunder(G.players[cc.player], { theGround: prov.terrain })),
+    ); // + plunder discoveries (the discoveries' registry's since plan P1-19af: "fate: a realm's discoveries add to a
+    // conquest's plunder")
     if (loot > 0) {
       pl.gold = (pl.gold || 0) + loot;
       emit(turnContext, {

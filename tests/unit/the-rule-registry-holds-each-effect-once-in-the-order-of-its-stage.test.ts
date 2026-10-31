@@ -372,12 +372,10 @@ const THE_KINDS_IN_CONTENT: ReadonlySet<string> = new Set(
 /** The kinds of SAGE_DISCOVERIES_P the discoveries' registry hasn't taken yet: each row of the family takes its own off
  *  (plan P1-19's discoveries family, rows ab to ah), to none. */
 const THE_KINDS_NOT_YET_TAKEN: readonly string[] = [
-  'unify',
   'homePromotion',
   'upkeep',
   'tax',
   'interest',
-  'move',
   'taxPct',
   'heroWage',
   'extendedIntel',
@@ -387,9 +385,6 @@ const THE_KINDS_NOT_YET_TAKEN: readonly string[] = [
   'heroWageCap',
   'maxHp',
   'turnReveal',
-  'bloodHarvest',
-  'plunder',
-  'terror',
   'graveDecay',
 ];
 
@@ -451,12 +446,12 @@ test("planted in the discoveries' registry, an entry left out of its order, a ro
   expect(
     whereTheKindsAndTheRowsPart(
       rows,
-      THE_KINDS_NOT_YET_TAKEN.filter((kind) => kind !== 'plunder'),
+      THE_KINDS_NOT_YET_TAKEN.filter((kind) => kind !== 'extendedIntel'),
     ),
   ).toEqual([
+    "extendedIntel has no row and isn't listed as not yet taken",
     "cast has no row and isn't listed as not yet taken",
     "fanatic has no row and isn't listed as not yet taken",
-    "plunder has no row and isn't listed as not yet taken",
     'tax is listed as not yet taken, and has a row',
   ]);
 });
