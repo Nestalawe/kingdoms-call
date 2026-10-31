@@ -1297,6 +1297,8 @@ function aReportToAimSpellsIn(): { report: Obj; caster: Obj; whereEachStands: Ma
  *  province", the check the order makes before the cast roll). */
 export interface WhereTheMarkStandsComparison extends Comparison {
   readonly where: WhereTheFormLooks;
+  /** The heroes the field offers but the caster himself, by their ids. */
+  readonly othersOffered: string[];
 }
 /** For every spell of the content's table, the form's target field on the staged report (the heroes it offers, by the
  *  province each stands in) against the engine's check that its mark must stand in the caster's province. */
@@ -1318,6 +1320,7 @@ export function theFormsTargetsAgainstTheMarkCheck(form: TheOrderFormsSpells): W
         changed: false,
       }),
       where,
+      othersOffered: offered.filter((v) => v !== String(caster['id'])),
     };
   });
 }

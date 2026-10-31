@@ -318,9 +318,10 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
     const where = (spell: string) => list.find((x) => x.on === spell)?.where;
     expect([where('Resurrect'), where('Clairvoyance')]).toEqual(["the caster's province", 'anywhere']);
     expect(list.find((x) => x.on === 'Resurrect')?.engine).toBe(false);
-    // every spell aimed at a hero finds one on the staged report
+    // every spell aimed at a hero finds one on the staged report besides the caster himself (Oratory and Phantasmal
+    // Armies offer him too)
     const atAHero = theContentsSpellTables().NEEDS_CHAR;
-    expect(list.filter((x) => atAHero.includes(String(x.on)) && x.where === 'no hero')).toEqual([]);
+    expect(list.filter((x) => atAHero.includes(String(x.on)) && !x.othersOffered.length).map((x) => x.on)).toEqual([]);
   });
 
   test("the form's casting count is the engine's, but in a realm with a Grand Cathedral and for the Warlock, where it is the engine's without either", () => {
