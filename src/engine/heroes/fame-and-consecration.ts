@@ -2,7 +2,11 @@ import { homeFounderOf } from '../grand-design.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { hexDistP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
-import { discProvCoastal, discSumOf } from '../discoveries.ts';
+import { discProvCoastal } from '../discoveries.ts';
+import {
+  whatARealmsDiscoveriesAddToSpottingALurker,
+  type ARealmAsTheDiscoveriesReadIt,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import type { GameState, Item, Province, SkillLevels } from '../../schemas/saved-game-state.ts';
 
 // Its types (plan P1-10b9): each parameter typed as wide as the body's guards (plan P1-10b's Decision 3), so each guard
@@ -44,7 +48,7 @@ type AHeroAsSpottingReadsIt = NonNullable<NonNullable<Parameters<typeof homeFoun
 };
 /** The state as these read it: the realms, the heroes (by id), the relations, the turn and the map. */
 interface TheStateAsTheseReadIt {
-  readonly players?: readonly (ARealmAsConsecrationReadsIt & Parameters<typeof discSumOf>[0])[] | null | undefined;
+  readonly players?: readonly (ARealmAsConsecrationReadsIt & ARealmAsTheDiscoveriesReadIt)[] | null | undefined;
   readonly characters: readonly AHeroAsSpottingReadsIt[];
   readonly relations?: Readonly<Partial<Record<string, string>>> | null | undefined;
   readonly turn: number;
@@ -260,17 +264,14 @@ export function spotEnemyInOwnedProvince(
       explored -
         20 * enemySpy +
         10 * friendlySpy +
-        discSumOf(
-          gs.players?.[viewerPi],
-          'spotLurker',
-          'pct',
-          (e) =>
-            (!e.terrains || e.terrains.includes(prov.terrain)) &&
-            (!e.home || homeFounderOf(gs, prov.id) === viewerPi) &&
-            (!e.coastal || discProvCoastal(gs, prov)),
-        ),
+        whatARealmsDiscoveriesAddToSpottingALurker(gs.players?.[viewerPi], {
+          theGround: prov.terrain,
+          isItTheRealmsHome: () => homeFounderOf(gs, prov.id) === viewerPi,
+          isItCoastal: () => discProvCoastal(gs, prov),
+        }),
     ),
-  ); // + spotLurker discoveries (sd60 Watch Houses)
+  ); // + spotLurker discoveries (sd60 Watch Houses; the discoveries' registry's since plan P1-19ad: "visibility: a
+  // realm's discoveries spot a hero lurking in its province", the home and the coast asked only by an effect for them)
   if (perkTier(enemyChar, 'illusory') >= 1) chance = Math.max(5, chance * 0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
   return detRoll(turn ?? gs.turn, viewerPi, enemyChar.id, prov.id) * 100 < chance;
 }

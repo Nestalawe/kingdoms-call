@@ -794,6 +794,39 @@ export const SPY_ON_A_HERO_ORDER_CASES: EspionageOrderCase[] = [
     },
   },
   {
+    // no game of the balance matrix meets a catch scoped to a realm's home (plan P1-19ad: its effect in the
+    // discoveries' registry, handed the hero's realm)
+    name: 'Spy on a hero: Bulwark of the Realm adds 50 to catching the spy at the hero’s realm’s home',
+    dice: LUCKY,
+    stage(b) {
+      b.own(b.X, 1);
+      realm(b, 1)['homeProvinceId'] = b.X.id;
+      knows(b, 1, 'ag10');
+      return spyOn(b, rival(b), 1);
+    },
+    check(o, s) {
+      return {
+        got: { detection: detection(o, s, ` (Spy 0) noticing ${s.hero.name} in their own land: 75% [roll 1 ✓]`) },
+        want: { detection: true },
+      };
+    },
+  },
+  {
+    name: 'Spy on a hero: Bulwark of the Realm adds nothing away from the hero’s realm’s home',
+    dice: LUCKY,
+    stage(b) {
+      b.own(b.X, 1);
+      knows(b, 1, 'ag10');
+      return spyOn(b, rival(b), 1);
+    },
+    check(o, s) {
+      return {
+        got: { detection: detection(o, s, ` (Spy 0) noticing ${s.hero.name} in their own land: 25% [roll 1 ✓]`) },
+        want: { detection: true },
+      };
+    },
+  },
+  {
     name: 'Spy on a hero: a caught spy is brought to a duel by a hero who answers challenges',
     dice: LUCKY,
     stage(b) {

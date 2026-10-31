@@ -23,6 +23,11 @@
 //   Melee, Archery and their raw levels) and on his card (extraSkillBonuses), which games meet but no test saw; Mithril
 //   Craft in his fighter; the Order of the Golden Shield in awardHpRoll (the king's gain and earned hit points doubled,
 //   no other hero's), its die fed; and an aim, a Mithril and a rise on rows the content doesn't write.
+// - P1-19ad: the spies', explorers', scholars' and resters' discoveries and Watch Houses, in their runners on a staged
+//   realm: each kind anywhere and only on the ground, coast or home its row names (a rival's cut and a rest's: no game
+//   meets them), each question asked only by an effect that needs it, the report's odds (no province, field or skill
+//   named), Disguise Techniques' and Ancient Lore's chance and share, The Long Hunt's turn (its order's case is
+//   tests/lib/explore-and-search-order-cases.ts'), Medical Arts; and each kind on a row with no number.
 // Level 1 (unit): the runner on a staged realm, and combatVsNPC, recordBattleGraves, the to-hit chances,
 // pcCharCombatant, extraSkillBonuses and awardHpRoll called directly (on a world the engine makes from a fixed seed, or
 // a staged realm), no turn played; whether the line is written is decided before any die is drawn (a seeded stream
@@ -65,7 +70,30 @@ import {
   whatARealmsDiscoveriesAddToAFightersAim,
   whatARealmsDiscoveriesAddToAFightersMithril,
   whatARealmsDiscoveriesAddToASkillsRise,
+  aRealmsDiscoveriesHealARestingHeroInFull,
+  theChanceARealmsDiscoveriesKeepASpysSuccessQuiet,
+  theFactorARealmsDiscoveriesMultiplyExploringBy,
+  theShareARealmsDiscoveriesMapAroundAnExplorer,
+  theSharesARealmsDiscoveriesAddToPracticeSkillBySkill,
+  theTurnsARealmsDiscoveriesLengthenTheWildHuntBy,
+  whatARealmsDiscoveriesAddToALairsGold,
+  whatARealmsDiscoveriesAddToALairsItemChance,
+  whatARealmsDiscoveriesAddToARestsHeal,
+  whatARealmsDiscoveriesAddToASpysChance,
+  whatARealmsDiscoveriesAddToCatchingASpy,
+  whatARealmsDiscoveriesAddToPractice,
+  whatARealmsDiscoveriesAddToResearch,
+  whatARealmsDiscoveriesAddToSpottingALurker,
+  whatARealmsDiscoveriesAddToSpyingOnAHero,
+  whatARealmsDiscoveriesCutARivalSpysChanceBy,
 } from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
+import {
+  THE_REPORTS_ODDS_NAME_NO_PROVINCE,
+  THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
+  THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
+} from '../../src/engine/rules/discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
+import { discExploreMult } from '../../src/engine/discoveries.ts';
+import { detRoll, spotEnemyInOwnedProvince } from '../../src/engine/heroes/fame-and-consecration.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { AFighterInAPersonalCombat } from '../../src/engine/personal-combat/helpers.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
@@ -667,5 +695,292 @@ describe("the fighter's and his rise's effects on rows the content doesn't write
       ],
     );
     expect(got).toEqual([5, 1, 0.1, 0]);
+  });
+});
+
+/** The discoveries of P1-19ad's cases, by id (their rows' numbers in SAGE_DISCOVERIES_P). */
+const SPIES = {
+  forgeryArts: { id: 'sd21' }, // spy +0.4, anywhere
+  silentScouts: { id: 're05' }, // spy +0.5 and spying on a hero +0.5, in forest and jungle
+  silverTongues: { id: 'an07' }, // spy +0.5 and spying on a hero +0.5, on coastal ground
+  cipherScripts: { id: 'sd19' }, // a rival spy's chance −0.45, anywhere
+  hiddenTrails: { id: 're08' }, // −0.6 in forest and jungle (and catching a spy +50 there)
+  watchmen: { id: 'ag17' }, // −0.6 at the realm's home (and a rest +6 at its home)
+  shadowCouriers: { id: 'sd62' }, // spying on a hero +0.5 anywhere (and catching a spy +50 on plain and desert)
+  informerRewards: { id: 'sd63' }, // catching a spy +50, anywhere
+  bulwark: { id: 'ag10' }, // catching a spy +50 at the realm's home
+  disguise: { id: 'sd23' }, // a spy's success kept quiet: 0.65
+} as const;
+
+/** Where a spy acts: the ground, and each question answered as given, counted. */
+function whereHeSpies(theGround: string | undefined, coastal: boolean, home: boolean) {
+  return { theGround, isItCoastal: vi.fn(() => coastal), isItTheRealmsHome: vi.fn(() => home) };
+}
+
+describe("the spies' discoveries, in their runners (P1-19ad: no game meets a rival's cut, or a ground's, a coast's or a home's scope for each)", () => {
+  test('an effect for both the coast and its home: the coast asked first, the home only if it is coastal', () => {
+    const asked = withPlantedRows({ both: { kind: 'spy', pct: 0.2, coastal: true, home: true } }, (realm) => {
+      const out: string[] = [];
+      whatARealmsDiscoveriesAddToASpysChance(realm, {
+        theGround: 'plain',
+        isItCoastal: () => (out.push('coast'), false),
+        isItTheRealmsHome: () => (out.push('home'), true),
+      });
+      return out;
+    });
+    expect(asked).toEqual(['coast']);
+  });
+
+  test("a spy's chance: anywhere, and on the ground or the coast its row names; the coast asked only by its effect", () => {
+    const realm = { discoveries: [SPIES.forgeryArts, SPIES.silentScouts, SPIES.silverTongues] };
+    const inTheForest = whereHeSpies('forest', false, true);
+    expect(whatARealmsDiscoveriesAddToASpysChance(realm, inTheForest)).toBeCloseTo(0.9, 12);
+    expect(inTheForest.isItCoastal).toHaveBeenCalledTimes(1);
+    expect(inTheForest.isItTheRealmsHome).not.toHaveBeenCalled();
+    expect(whatARealmsDiscoveriesAddToASpysChance(realm, whereHeSpies('plain', true, false))).toBeCloseTo(0.9, 12);
+    expect(whatARealmsDiscoveriesAddToASpysChance(realm, whereHeSpies('plain', false, false))).toBeCloseTo(0.4, 12);
+    expect(whatARealmsDiscoveriesAddToASpysChance(realm, whereHeSpies(undefined, false, true))).toBeCloseTo(0.4, 12);
+    expect(whatARealmsDiscoveriesAddToASpysChance(undefined, whereHeSpies('plain', true, true))).toBe(0);
+  });
+
+  test("a rival spy's chance cut: anywhere, on its ground, and at the realm's home, asked only by its effect", () => {
+    const realm = { discoveries: [SPIES.cipherScripts, SPIES.hiddenTrails, SPIES.watchmen] };
+    const atHomeInTheForest = whereHeSpies('forest', false, true);
+    expect(whatARealmsDiscoveriesCutARivalSpysChanceBy(realm, atHomeInTheForest)).toBeCloseTo(1.65, 12);
+    expect(atHomeInTheForest.isItTheRealmsHome).toHaveBeenCalledTimes(1);
+    expect(atHomeInTheForest.isItCoastal).not.toHaveBeenCalled();
+    expect(whatARealmsDiscoveriesCutARivalSpysChanceBy(realm, whereHeSpies('plain', false, false))).toBeCloseTo(
+      0.45,
+      12,
+    );
+  });
+
+  test('spying on a hero: anywhere, and on its ground; a spy discovery adds nothing to it', () => {
+    const realm = { discoveries: [SPIES.shadowCouriers, SPIES.silentScouts, SPIES.forgeryArts] };
+    expect(whatARealmsDiscoveriesAddToSpyingOnAHero(realm, whereHeSpies('jungle', false, false))).toBeCloseTo(1, 12);
+    expect(whatARealmsDiscoveriesAddToSpyingOnAHero(realm, whereHeSpies('plain', false, false))).toBeCloseTo(0.5, 12);
+  });
+
+  test("catching a spy: anywhere, on its ground, and at the realm's home", () => {
+    const realm = { discoveries: [SPIES.informerRewards, SPIES.bulwark, SPIES.hiddenTrails] };
+    expect(whatARealmsDiscoveriesAddToCatchingASpy(realm, whereHeSpies('forest', false, true))).toBe(150);
+    expect(whatARealmsDiscoveriesAddToCatchingASpy(realm, whereHeSpies('plain', false, true))).toBe(100);
+    expect(whatARealmsDiscoveriesAddToCatchingASpy(realm, whereHeSpies('plain', false, false))).toBe(50);
+  });
+
+  test("Disguise Techniques: its row's 0.65, or nothing for a realm without it", () => {
+    expect(theChanceARealmsDiscoveriesKeepASpysSuccessQuiet({ discoveries: [SPIES.disguise] })).toBe(0.65);
+    expect(theChanceARealmsDiscoveriesKeepASpysSuccessQuiet({ discoveries: [SPIES.forgeryArts] })).toBeNull();
+    expect(theChanceARealmsDiscoveriesKeepASpysSuccessQuiet(undefined)).toBeNull();
+  });
+
+  test("the report's odds name no province: an effect for a ground or a coast doesn't count, one for a home does", () => {
+    const realm = { discoveries: [SPIES.forgeryArts, SPIES.silentScouts, SPIES.silverTongues] };
+    expect(whatARealmsDiscoveriesAddToASpysChance(realm, THE_REPORTS_ODDS_NAME_NO_PROVINCE)).toBeCloseTo(0.4, 12);
+    const homeOnly = withPlantedRows({ hearth: { kind: 'spy', pct: 0.2, home: true } }, (planted) => [
+      whatARealmsDiscoveriesAddToASpysChance(planted, THE_REPORTS_ODDS_NAME_NO_PROVINCE),
+      whatARealmsDiscoveriesAddToASpysChance(planted, whereHeSpies('plain', false, false)),
+    ]);
+    expect(homeOnly).toEqual([0.2, 0]);
+  });
+});
+
+describe("the explorers' discoveries, in their runners (P1-19ad)", () => {
+  test('exploring: the factors that reach the ground, multiplied; the same rule discExploreMult ships', () => {
+    const realm = { discoveries: [{ id: 'sd24' }, { id: 'sd10' }, { id: 'rd06' }] };
+    expect(theFactorARealmsDiscoveriesMultiplyExploringBy(realm, { theGround: 'plain' })).toBeCloseTo(7.2, 12);
+    expect(theFactorARealmsDiscoveriesMultiplyExploringBy(realm, { theGround: 'mountain' })).toBeCloseTo(7.2, 12);
+    expect(theFactorARealmsDiscoveriesMultiplyExploringBy(realm, { theGround: 'forest' })).toBeCloseTo(2.4, 12);
+    expect(discExploreMult(realm, 'forest')).toBe(
+      theFactorARealmsDiscoveriesMultiplyExploringBy(realm, { theGround: 'forest' }),
+    );
+    expect(theFactorARealmsDiscoveriesMultiplyExploringBy(undefined, { theGround: 'plain' })).toBe(1);
+  });
+
+  test("Ancient Lore: its row's 25, or nothing for a realm without it", () => {
+    expect(theShareARealmsDiscoveriesMapAroundAnExplorer({ discoveries: [{ id: 'sd32' }] })).toBe(25);
+    expect(theShareARealmsDiscoveriesMapAroundAnExplorer({ discoveries: [{ id: 'sd24' }] })).toBeNull();
+  });
+
+  test("The Long Hunt: its row's turn more; none without it", () => {
+    expect(theTurnsARealmsDiscoveriesLengthenTheWildHuntBy({ discoveries: [{ id: 'ap08' }] })).toBe(1);
+    expect(theTurnsARealmsDiscoveriesLengthenTheWildHuntBy({ discoveries: [{ id: 'sd24' }] })).toBe(0);
+  });
+
+  test("a lair's gold: anywhere, on its ground, for a hero of its race; a lair's item: anywhere and on its ground", () => {
+    const realm = { discoveries: [{ id: 'an10' }, { id: 'ro03' }, { id: 'sd10' }, { id: 'sd25' }, { id: 'rd10' }] };
+    expect(whatARealmsDiscoveriesAddToALairsGold(realm, { theGround: 'plain', theHerosRace: 'Orcish' })).toBeCloseTo(
+      1.25,
+      12,
+    );
+    expect(whatARealmsDiscoveriesAddToALairsGold(realm, { theGround: 'forest', theHerosRace: 'Human' })).toBeCloseTo(
+      0.35,
+      12,
+    );
+    expect(whatARealmsDiscoveriesAddToALairsItemChance(realm, { theGround: 'mountain' })).toBe(1);
+    expect(whatARealmsDiscoveriesAddToALairsItemChance(realm, { theGround: 'plain' })).toBe(0.5);
+  });
+});
+
+describe("the scholars' and the resters' discoveries, in their runners (P1-19ad: no game meets a rest's)", () => {
+  test("research: anywhere, and the realm's own creed only when it is the field studied, asked only by its effect", () => {
+    const realm = { discoveries: [{ id: 'an06' }, { id: 'az10' }] };
+    const itsOwnCreed = vi.fn(() => true);
+    expect(whatARealmsDiscoveriesAddToResearch(realm, { isTheFieldStudiedItsOwnCreed: itsOwnCreed })).toBe(13);
+    expect(itsOwnCreed).toHaveBeenCalledTimes(1);
+    expect(whatARealmsDiscoveriesAddToResearch(realm, { isTheFieldStudiedItsOwnCreed: () => false })).toBe(4);
+    expect(whatARealmsDiscoveriesAddToResearch(realm, THE_REPORTS_RESEARCH_NAMES_NO_FIELD)).toBe(4);
+    const another = withPlantedRows({ other: { kind: 'research', pct: 3, field: 'Military' } }, (planted) =>
+      whatARealmsDiscoveriesAddToResearch(planted, { isTheFieldStudiedItsOwnCreed: () => true }),
+    );
+    expect(another).toBe(0);
+  });
+
+  test('practice: for every skill and for the skills it lists; the report: every skill, then each listed one', () => {
+    const realm = { discoveries: [{ id: 'sd26' }, { id: 'sd61' }, { id: 'sd76' }] };
+    expect(whatARealmsDiscoveriesAddToPractice(realm, { theSkill: 'spy' })).toBeCloseTo(0.33, 12);
+    expect(whatARealmsDiscoveriesAddToPractice(realm, { theSkill: 'melee' })).toBeCloseTo(0.13, 12);
+    expect(whatARealmsDiscoveriesAddToPractice(realm, THE_REPORTS_PRACTICE_NAMES_NO_SKILL)).toBeCloseTo(0.03, 12);
+    expect(theSharesARealmsDiscoveriesAddToPracticeSkillBySkill(realm)).toEqual([
+      ['spy', 0.3],
+      ['thief', 0.3],
+      ['melee', 0.1],
+      ['archery', 0.1],
+    ]);
+  });
+
+  test("a rest's heal: anywhere, on the realm's ground, at its home (asked only there) and on its ground", () => {
+    const realm = { discoveries: [{ id: 'ad06' }, { id: 'ag06' }, SPIES.watchmen, { id: 'au07' }] };
+    const atHome = vi.fn(() => true);
+    const healAt = (isItHisRealmsGround: boolean, theGround: string, isItHisRealmsHome: () => boolean) =>
+      whatARealmsDiscoveriesAddToARestsHeal(realm, { isItHisRealmsGround, isItHisRealmsHome, theGround });
+    expect(healAt(true, 'forest', atHome)).toBe(23);
+    expect(atHome).toHaveBeenCalledTimes(1);
+    expect(healAt(true, 'plain', () => false)).toBe(11);
+    const abroad = vi.fn(() => true);
+    expect(healAt(false, 'forest', abroad)).toBe(11);
+    expect(abroad).not.toHaveBeenCalled();
+  });
+
+  test('Medical Arts: a resting hero healed in full with it, not without', () => {
+    expect(aRealmsDiscoveriesHealARestingHeroInFull({ discoveries: [{ id: 'sd28' }] })).toBe(true);
+    expect(aRealmsDiscoveriesHealARestingHeroInFull({ discoveries: [{ id: 'ad06' }] })).toBe(false);
+    expect(aRealmsDiscoveriesHealARestingHeroInFull(undefined)).toBe(false);
+  });
+});
+
+describe("a realm's discoveries that spot a hero lurking in its province (P1-19ad, visibility's first stage)", () => {
+  test('Watch Houses anywhere, Spies in Every Court on plain and desert', () => {
+    const realm = { discoveries: [{ id: 'sd60' }, { id: 'ae16' }] };
+    const watch = (theGround: string) =>
+      whatARealmsDiscoveriesAddToSpottingALurker(realm, {
+        theGround,
+        isItTheRealmsHome: () => false,
+        isItCoastal: () => false,
+      });
+    expect([watch('plain'), watch('forest')]).toEqual([100, 50]);
+  });
+
+  test('an effect for the home or the coast (no row writes one): each counted only there, asked only by it', () => {
+    const got = withPlantedRows(
+      { hearth: { kind: 'spotLurker', pct: 20, home: true }, shore: { kind: 'spotLurker', pct: 30, coastal: true } },
+      (realm) => {
+        const asked: string[] = [];
+        const watch = (home: boolean, coastal: boolean) =>
+          whatARealmsDiscoveriesAddToSpottingALurker(realm, {
+            theGround: 'plain',
+            isItTheRealmsHome: () => (asked.push('home'), home),
+            isItCoastal: () => (asked.push('coast'), coastal),
+          });
+        return [watch(true, true), watch(false, false), watch(true, false), asked];
+      },
+    );
+    expect(got).toEqual([50, 0, 20, ['home', 'coast', 'home', 'coast', 'home', 'coast']]);
+  });
+
+  test('an effect for both its home and the coast: the home asked first, the coast only if it is the home', () => {
+    const asked = withPlantedRows({ both: { kind: 'spotLurker', pct: 20, home: true, coastal: true } }, (realm) => {
+      const out: string[] = [];
+      whatARealmsDiscoveriesAddToSpottingALurker(realm, {
+        theGround: 'plain',
+        isItTheRealmsHome: () => (out.push('home'), false),
+        isItCoastal: () => (out.push('coast'), true),
+      });
+      return out;
+    });
+    expect(asked).toEqual(['home']);
+  });
+
+  test("spotEnemyInOwnedProvince asks whether the province is the watching realm's home", () => {
+    // a Spy 5 lurker: 0 before the discoveries, so the 25% floor, or the home effect's 70
+    let t = 1;
+    while (!(detRoll(t, 0, 5, 0) * 100 >= 25 && detRoll(t, 0, 5, 0) * 100 < 70)) t++;
+    const spotted = (homeProvinceId: number) =>
+      withPlantedRows({ hearth: { kind: 'spotLurker', pct: 70, home: true } }, (realm) =>
+        spotEnemyInOwnedProvince(
+          {
+            players: [{ ...realm, homeProvinceId }],
+            characters: [],
+            turn: t,
+            world: { cols: 8, rows: 8, provinces: [] },
+          } as never,
+          0,
+          { id: 0, row: 0, col: 0, terrain: 'plain', tax: 2, characters: [] },
+          { id: 5, skills: { spy: 5 } },
+          t,
+        ),
+      );
+    expect([spotted(0), spotted(7)]).toEqual([true, false]);
+  });
+});
+
+describe("the orders' and the sight's effects on rows the content doesn't write (P1-19ad)", () => {
+  test('no number: each kind adds nothing, multiplies by 1, or gives its fallback (Disguise 0.5, Ancient Lore 10)', () => {
+    const got = withPlantedRows(
+      {
+        spy: { kind: 'spy' },
+        cut: { kind: 'counterSpy' },
+        hero: { kind: 'spyChar' },
+        catch: { kind: 'catchSpy' },
+        quiet: { kind: 'spyDisguise' },
+        far: { kind: 'explore' },
+        hunt: { kind: 'wildHunt' },
+        gold: { kind: 'lairGold' },
+        item: { kind: 'itemChance' },
+        study: { kind: 'research' },
+        drill: { kind: 'practice' },
+        rest: { kind: 'rest' },
+        watch: { kind: 'spotLurker' },
+        lore: { kind: 'adjacentReveal' },
+      },
+      (realm) => {
+        const anywhere = whereHeSpies('plain', false, false);
+        return [
+          whatARealmsDiscoveriesAddToASpysChance(realm, anywhere),
+          whatARealmsDiscoveriesCutARivalSpysChanceBy(realm, anywhere),
+          whatARealmsDiscoveriesAddToSpyingOnAHero(realm, anywhere),
+          whatARealmsDiscoveriesAddToCatchingASpy(realm, anywhere),
+          theChanceARealmsDiscoveriesKeepASpysSuccessQuiet(realm),
+          theFactorARealmsDiscoveriesMultiplyExploringBy(realm, { theGround: 'plain' }),
+          theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(realm),
+          whatARealmsDiscoveriesAddToALairsGold(realm, { theGround: 'plain', theHerosRace: 'Human' }),
+          whatARealmsDiscoveriesAddToALairsItemChance(realm, { theGround: 'plain' }),
+          whatARealmsDiscoveriesAddToResearch(realm, THE_REPORTS_RESEARCH_NAMES_NO_FIELD),
+          whatARealmsDiscoveriesAddToPractice(realm, { theSkill: 'spy' }),
+          whatARealmsDiscoveriesAddToARestsHeal(realm, {
+            isItHisRealmsGround: true,
+            isItHisRealmsHome: () => true,
+            theGround: 'plain',
+          }),
+          whatARealmsDiscoveriesAddToSpottingALurker(realm, {
+            theGround: 'plain',
+            isItTheRealmsHome: () => true,
+            isItCoastal: () => true,
+          }),
+          theShareARealmsDiscoveriesMapAroundAnExplorer(realm),
+        ];
+      },
+    );
+    expect(got).toEqual([0, 0, 0, 0, 0.5, 1, 0, 0, 0, 0, 0, 0, 0, 10]);
   });
 });

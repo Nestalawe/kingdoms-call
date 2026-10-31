@@ -9,7 +9,7 @@
 // page's code.
 //
 // Red on its row's base by design (applyPreBattleMagic held 1 check, discUnitMult 1 and dragonTamed 1 on P1-19aa's
-// base; pcCharCombatant 5 on P1-19ac's), as the unit-name, item-effect and spell tests were: the one exception to refactor-only's rule that new tests
+// base; pcCharCombatant 5 on P1-19ac's; resolveSpyOrder 6 on P1-19ad's), as the unit-name, item-effect and spell tests were: the one exception to refactor-only's rule that new tests
 // pass before and after (Theo, 2026-10-25; the discoveries family's Decision 6).
 // Level 0 (static): the files' syntax trees and the content's discoveries as written; nothing runs.
 import fs from 'node:fs';
@@ -30,6 +30,16 @@ import {
 /** The Evil doctrine a victor's plan names (`encounterPlan.evilMode`, 'terror' or 'slaves'): the same word as the kind
  *  of Reign of Terror's effect, but no discovery's (both battles read it as the victor's choice, twice). */
 const THE_EVIL_DOCTRINE_IN_A_BATTLE: readonly string[] = ['terror', 'terror'];
+
+/** The Spy skill (read, risen and shown) and the type of the order's lines, `'spy'`: the word of the kind of a spy's
+ *  discoveries, but no discovery's (resolveSpyOrder, eleven times). */
+const THE_SPY_SKILL_AND_ITS_LINES: readonly string[] = Array<string>(11).fill('spy');
+
+/** The type of an explorer's or a scholar's line, `'explore'`: the word of the kind of an explorer's discoveries, but no
+ *  discovery's (n times in a function). */
+function theExploreLines(n: number): readonly string[] {
+  return Array<string>(n).fill('explore');
+}
 
 /** Each function the discoveries' registry has taken, by its file, from the row that took it, with the strings in it
  *  that name something else (none, unless given). */
@@ -99,6 +109,54 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'awardHpRoll',
     "P1-19ac, a realm's discoveries harden the king",
   ],
+  [
+    'src/engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts',
+    'resolveSpyOrder',
+    "P1-19ad, a realm's discoveries add to a spy's chance, cut a rival's, add to spying on a hero and to catching a " +
+      "spy, and keep a spy's success quiet",
+    THE_SPY_SKILL_AND_ITS_LINES,
+  ],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolveExploreOrder',
+    "P1-19ad, a realm's discoveries add to exploring and map the provinces around an explorer",
+    theExploreLines(6),
+  ],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolvePerformRiteOrder',
+    "P1-19ad, a realm's discoveries lengthen the wild hunt",
+  ],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolveSearchLairOrder',
+    "P1-19ad, a realm's discoveries add to a lair's gold and its item",
+    theExploreLines(21),
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolveResearchOrder',
+    "P1-19ad, a realm's discoveries add to research",
+    theExploreLines(3),
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolvePracticeSkillOrder',
+    "P1-19ad, a realm's discoveries add to practice",
+    // the action of another order of his this phase, `'practice'`: the word of the kind, but no discovery's
+    ['practice'],
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolveRestOrder',
+    "P1-19ad, a realm's discoveries add to a rest's heal and heal a resting hero in full",
+  ],
+  [
+    'src/engine/heroes/fame-and-consecration.ts',
+    'spotEnemyInOwnedProvince',
+    "P1-19ad, a realm's discoveries spot a hero lurking in its province",
+  ],
+  ['src/engine/discoveries.ts', 'discExploreMult', "P1-19ad, a realm's discoveries add to exploring"],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

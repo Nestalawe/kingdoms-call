@@ -16,9 +16,13 @@ import {
   HIDDEN_DISCOVERY_DIVISOR,
   RESEARCH_HIDDEN_CATS,
   discAvailableFor,
-  discSum,
-  hasDisc,
 } from '../discoveries.ts';
+import {
+  aRealmsDiscoveriesHealARestingHeroInFull,
+  whatARealmsDiscoveriesAddToARestsHeal,
+  whatARealmsDiscoveriesAddToPractice,
+  whatARealmsDiscoveriesAddToResearch,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, recalcHeroPay, theSkillInPlayAsALineTellsIt } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
@@ -106,18 +110,13 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
     sageLevel * perLevel +
     neutralSageBonus +
     (charMinor(turnContext, c, 'loreseeker') ? perLevel : 0) +
-    discSum(
-      turnContext,
-      c.player,
-      'research',
-      'pct',
-      (e) =>
-        !e.field ||
-        (e.field === 'own' &&
-          String(_rcat || '')
-            .trim()
-            .toLowerCase() === String((player.alignment || '') + ' Creed').toLowerCase()),
-    ); // + Loreseeker; research discoveries (az10: own creed field only — the field actually studied)
+    whatARealmsDiscoveriesAddToResearch(G.players[c.player], {
+      isTheFieldStudiedItsOwnCreed: () =>
+        String(_rcat || '')
+          .trim()
+          .toLowerCase() === String((player.alignment || '') + ' Creed').toLowerCase(),
+    }); // + Loreseeker; research discoveries (az10: own creed field only — the field actually studied; the discoveries'
+  // registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to research")
   // 2026-10-13 (Toby, item 18): PERSEVERANCE, as Practice has it — every Research order of this
   // hero that has failed earlier this turn makes this one ×1.2 likelier, cumulatively. A
   // discovery (the hidden-field find included) resets it; each turn starts afresh.
@@ -361,7 +360,9 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
     // (half the solo chance) and the guaranteed-success mentor rule below apply on top.
     const PRACTICE_BASE_BY_LEVEL = [0.25, 0.2, 0.15, 0.1, 0.05]; // level 0→25% … level 4→5%
     const baseByLevel = PRACTICE_BASE_BY_LEVEL[Math.min(current, 4)];
-    const astroBonus = discSum(turnContext, c.player, 'practice', 'pct', (e) => !e.skills || e.skills.includes(skill)); // practice discoveries (sd26 Astronomical Tables is one)
+    // practice discoveries (sd26 Astronomical Tables is one; the discoveries' registry's since plan P1-19ad:
+    // "orderOutcome: a realm's discoveries add to practice")
+    const astroBonus = whatARealmsDiscoveriesAddToPractice(G.players[c.player], { theSkill: skill });
     // perseverance. Each FAILED practice this turn multiplies the character's next practice
     // chance by 1.2 (cumulative); a success resets it. The streak is per character, any skill,
     // and starts fresh each turn.
@@ -566,20 +567,18 @@ export function resolveRestOrder(turnContext, c, prov) {
   // +50%, so the blessing stays a multiplier rather than becoming a flat addition). Rounded
   // UP, so the blessing is never worth nothing on a small pool.
   const isDivineKingdom = G.players[c.player]?.alignment === 'Divine';
-  const _medArts = hasDisc(turnContext, c.player, 'sd28'); // Medical Arts: a single Rest fully restores HP
+  // Medical Arts: a single Rest fully restores HP (the discoveries' registry's since plan P1-19ad: "orderOutcome: a
+  // realm's discoveries heal a resting hero in full")
+  const _medArts = aRealmsDiscoveriesHealARestingHeroInFull(G.players[c.player]);
   const baseHeal = Math.max(1, Math.ceil((c.maxHp || 20) * REST_HEAL_PCT)); // 30% of maximum HP (was 2–5)
   let heal = _medArts ? Math.max(0, (c.maxHp || 20) - c.hp) : isDivineKingdom ? Math.ceil(baseHeal * 1.5) : baseHeal;
   if (charMinor(turnContext, c, 'colossus')) heal += 2; // MINOR TITLE — The Colossus
-  heal += discSum(
-    turnContext,
-    c.player,
-    'rest',
-    'hp',
-    (e) =>
-      (!e.owned || prov.owner === c.player) &&
-      (!e.home || (prov.owner === c.player && homeFounderOf(G, prov.id) === c.player)) &&
-      (!e.terrains || e.terrains.includes(prov.terrain)),
-  ); // rest discoveries
+  heal += whatARealmsDiscoveriesAddToARestsHeal(G.players[c.player], {
+    isItHisRealmsGround: prov.owner === c.player,
+    isItHisRealmsHome: () => homeFounderOf(G, prov.id) === c.player,
+    theGround: prov.terrain,
+  }); // rest discoveries (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to a
+  // rest's heal"; the home is a question, asked only by an effect for the home, on the realm's ground, as before)
   heal += theHealTheRestersItemsAdd({ hisMaximumHp: c.maxHp || 20 }, activeItems(c)); // Iron Heart Talisman: +10% of max HP recovered (the items' registry, plan P1-19o)
   c.hp = Math.min(c.maxHp || 20, c.hp + heal);
   emit(turnContext, {
