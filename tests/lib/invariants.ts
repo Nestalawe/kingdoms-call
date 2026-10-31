@@ -275,21 +275,6 @@ export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string
     line: /^realm \d+ reads of [^"]+ \(id \d+, invisible from phase \d\) in phase \d+, in a line of its own order, at lastTurnLog\[\d+\]: "[^"]*"(?: \(and \d+ more lines like it that phase\))?$/,
     why: "Enemy orders and reactions still reach a hero after he turns invisible (the Defend ambush, Encounter and Pursue, a chase under way, Spy on a hero, Steal, Curse: they check cloaks and Vanish, not Invisibility), and the acting realm's report tells it so",
   },
-  {
-    check: "another realm's private line",
-    line: /^realm \d+ reads [A-Za-z -]+ of realm \d+(?:, \d+)*'s [^"]+ at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
-    why: "Another realm's private line in the report's spy activity section: waits for P1-23",
-  },
-  {
-    check: 'a line its audience does not admit',
-    line: /^realm \d+ reads, through its spy, a line its audience keeps from it at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
-    why: "Another realm's private line in the report's spy activity section: waits for P1-23",
-  },
-  {
-    check: 'a line for one realm alone',
-    line: /^realm \d+ reads a line for realm \d+(?:, \d+)* alone at spyActivity\[\d+\]\.lines\[\d+\]: ".*"$/,
-    why: "Another realm's private line in the report's spy activity section: waits for P1-23",
-  },
 ];
 const known = (check: string, line: string) => KNOWN_BREACHES.some((k) => k.check === check && k.line.test(line));
 

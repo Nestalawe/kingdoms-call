@@ -8,7 +8,8 @@ import { theTurnsLinesInWords } from './prose/the-words-of-each-line.ts';
 // playerEvents works out, from the turn's events (the GM's log, as emit stores them), which of them one realm reads,
 // in their order: its own deeds, the lines sent to it or about its heroes, the world's announcements and what happened
 // where it had eyes at the time (its own ground, a hero of its own standing there that phase, a spy on it that phase
-// or earlier); unmet realms left nameless in them; its spies' lingering sight; and its Clairvoyance feed. It also gives
+// or earlier); unmet realms left nameless in them; its spies' lingering sight (R-118: a rival's deeds and what anyone
+// there could see, never his realm's news); and its Clairvoyance feed. It also gives
 // the provinces it spied (and the first phase of each) and the two sets the map's battle markers read; the province
 // events come unnamed (provinceEventsItReads: the realm's view names their provinces, buildReports). It reads the
 // world (G: the realm's provinces, heroes, discoveries and meetings, the watched hero's place) and the turn's sight
@@ -199,6 +200,11 @@ export function playerEvents(turnLog, G, pi, sight) {
   // there in the phases AFTER the spy arrived (the agent's lingering line of sight). Rebuilt from
   // the resolved turnLog: entries in the spied province, at a LATER phase, attributed to a
   // character this player does not own. Machine-format battle force markers are skipped.
+  // R-118 (Toby, 2026-10-31, question 8): the spy sees what rival heroes do there (a line with a deed, its actor) and
+  // what anyone there could see (a public line: seen by the world, there or in a battle), never their realm's own news
+  // (a line told to a realm with no deed: a hit-point rise, a curse felt, the plague's toll), nor a line that excepts
+  // this realm (notFor).
+  const aSpyThereSees = (e) => (e.actor != null || e.public) && !(Array.isArray(e.notFor) && e.notFor.includes(pi));
   const spyActivity = [];
   Object.keys(spyPhaseByProv).forEach((pidStr) => {
     const pid = parseInt(pidStr);
@@ -209,6 +215,7 @@ export function playerEvents(turnLog, G, pi, sight) {
       if (e.provinceId !== pid) return;
       if (e.phase == null || e.phase <= afterPh) return;
       if (e.charId == null || ownCharIds.has(e.charId)) return;
+      if (!aSpyThereSees(e)) return;
       if (/^\u2691FORCE\u2691/.test(e.text || '')) return; // skip ⚑FORCE⚑ battle markers
       const key = e.phase + '|' + e.text;
       if (seen.has(key)) return;
