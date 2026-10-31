@@ -11,6 +11,10 @@
 // always returns 0 (Parked).
 // Since the mutation session of 2026-10-31, also a line the matrix reaches but no test read: an Evil defender's monsters'
 // savage fury names the defender's side (every die at 0.99, so neither side is seized by zeal, which takes its place).
+// Since P1-12d31, the pursuits' lines (no game reaches a Shield Fort leaving the Manticore Pride or the Shark Shoals
+// nothing, nor the Shark Shoals tearing into the beaten): each names the winner and the loser, with the War-Horn's and
+// the no-room lines before them naming each side. Which pursuits each force makes and whether a Shield Fort holds are
+// stood in (vi.spyOn, movement's pursuitsOfTheBeaten and shieldFortHolds): every pursuit, each adding a tenth.
 // The battle keeps its name and signature, so this passes on the code before the row (P1-12d22's base), as after.
 // Level 1 (unit): combatVsChar called directly on a world the engine makes from a fixed seed; no turn is played. Not
 // lower: the lines sit inside combatVsChar, and their words in the views. Not higher: a whole turn adds dice and orders
@@ -25,7 +29,12 @@ import { createTurnContext } from '../../src/engine/turn/context.ts';
 import { combatVsChar } from '../../src/engine/battle/battles-between-heroes.ts';
 import * as theRegistry from '../../src/engine/rules/the-registry-of-content-effects.ts';
 import * as retreats from '../../src/engine/units/sea-lift-stranding-and-retreats.ts';
+import * as movement from '../../src/engine/units/movement.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
+import type {
+  HowTheGroundLetsAPursuitRun,
+  ThePursuitsLine,
+} from '../../src/engine/rules/the-registry-of-content-effects.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { addTheFieldsResolveTurnAdds } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
@@ -187,6 +196,57 @@ describe.each([false, true])('a battle between heroes, both commanders slain bef
     const name = { atk: sideOf(shown.atk, slain), def: sideOf(shown.def, slain) };
     expect(shown.words).toContain(
       `⛵ ${name[winner]}'s corsairs close the sea lanes — ${name[loser]} cannot slip away by water.`,
+    );
+  });
+
+  test.each([
+    ['the attacker wins', 'atk', 'def', false],
+    ['the defender wins', 'def', 'atk', false],
+    ['the attacker wins, the beaten hold a Shield Fort', 'atk', 'def', true],
+    ['the defender wins, the beaten hold a Shield Fort', 'def', 'atk', true],
+  ] as const)("%s: each pursuit's line names the winner and the loser", (_, winner, loser, fort) => {
+    const aPursuit = (line: ThePursuitsLine, onTheGround: HowTheGroundLetsAPursuitRun) => ({
+      line,
+      theFractionAddedToEachBeatenUnitsDeathRoll: 0.1,
+      theFactorOnTheWinnersOwnDeathRolls: 1,
+      onTheGround,
+    });
+    vi.spyOn(movement, 'pursuitsOfTheBeaten').mockReturnValue([
+      aPursuit('the free lances ride the beaten down', 'by the war-horn of the plains'),
+      aPursuit('the warg riders run the beaten down', 'it finds no room'),
+      aPursuit('the manticore pride hunts the beaten', 'it runs'),
+      aPursuit('the shark shoals tear into the beaten crews', 'it runs'),
+    ]);
+    vi.spyOn(movement, 'shieldFortHolds').mockReturnValue(fort);
+    const shown = aBattle(
+      winner === 'atk'
+        ? { atk: companies(8, 'Elite'), def: companies(1, 'Green') }
+        : { atk: companies(1, 'Green'), def: companies(8, 'Elite') },
+      slain,
+      () => undefined,
+    );
+    const name = { atk: sideOf(shown.atk, slain), def: sideOf(shown.def, slain) };
+    const [w, l] = [name[winner], name[loser]];
+    expect(shown.words).toEqual(
+      expect.arrayContaining([
+        `📯 ${name.atk}'s War-Horn of the Plains sounds — the Free Lances ride the broken enemy down even in plain country.`,
+        `📯 ${name.def}'s War-Horn of the Plains sounds — the Free Lances ride the broken enemy down even in plain country.`,
+        `🐎 ${name.atk}'s Free Lances find no room to ride in plain country — the broken enemy scatters into cover.`,
+        `🐎 ${name.def}'s Free Lances find no room to ride in plain country — the broken enemy scatters into cover.`,
+        ...(fort
+          ? [
+              `🛡 ${l}'s Dwarven Guard lock shields as they give ground — ${w}'s Free Lances find no broken backs to ride down.`,
+              `🛡 ${l}'s Dwarven Guard lock shields as they give ground — ${w}'s Warg Riders find no broken backs to run down.`,
+              `🛡 ${l}'s Dwarven Guard lock shields as they give ground — ${w}'s Manticore Pride find no broken backs to hunt.`,
+              `🛡 ${l}'s Dwarven Guard lock shields as they give ground — ${w}'s Shark Shoals find nothing in the water.`,
+            ]
+          : [
+              `🐎 ${w}'s Free Lances ride down the broken companies (+10% losses to ${l}).`,
+              `🐺 ${w}'s Warg Riders run down the broken companies before they can get clear (+10% losses to ${l}).`,
+              `🦂 ${w}'s Manticore Pride hunt the broken companies down before they can get clear (+10% losses to ${l}).`,
+              `🦈 Feeding Frenzy — ${w}'s Shark Shoals tear into ${l}'s beaten crews as they founder (+10% losses to ${l}).`,
+            ]),
+      ]),
     );
   });
 

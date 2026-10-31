@@ -376,8 +376,8 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // command, not the fallen leader — the setup lines and the death notice above keep the name.
   const cName = atkCmdrSlain ? `${c.name}'s leaderless host` : c.name; // slain → the host acts, not the dead commander
   // The attacker's side as the facts hold it (plan P1-12d23): the record the label above is written from; the prose
-  // writes the label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too; the pre-battle and pursuit
-  // lines still take the label.
+  // writes the label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too, and since P1-12d31 the lines
+  // before the volleys.
   const atkSide = { heroName: c.name, leaderless: atkCmdrSlain };
   // A slain commander's skills die with them: the stand-in provides no Tactical, Archery, Naval,
   // Druid or spellcraft for the rest of this battle.
@@ -719,7 +719,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const _itemVolleys = theVolleysTheCommandersItemsLoose(activeItems(c));
   const hasQuiver = _itemVolleys.theLines.includes('each missile unit looses two volleys instead of one');
   const _manyArrows = _itemVolleys.theLines.includes('each missile unit looses one more shot'); // one extra shot per missile unit
-  applyFlakScreen(armies, defenders, c.name, narrative);
+  applyFlakScreen(armies, defenders, { heroName: c.name, leaderless: false }, narrative);
   // PRIMAL — Breach and Swamp: whale cohorts roll a hull over before a shot is fired. The rule registry's
   // "fate: a hull is sunk before the battle" picks the hull, with the dice it is handed (plan P1-19i).
   // 2026-09-23d: defenders lost OUTSIDE the `_died` flag — hulls sunk here (spliced out of the list)
@@ -750,7 +750,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     }
   })();
   {
-    const _eyes = eyesOfTheForestLine(defenders, prov.terrain, armies, cName);
+    const _eyes = eyesOfTheForestLine(defenders, prov.terrain, armies, atkSide);
     if (_eyes) narrate(narrative, _eyes);
   } // ELF — Eyes of the Forest
   const missileAtk = archeryBlockedBy(defenders, prov.terrain, armies) ? [] : abilityMissileUnits(armies, prov.terrain);
@@ -971,14 +971,19 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     });
     narrate(narrative, { kind: "the attacker's lightning advance catches the defenders unready", cName: c.name });
   }
-  applyFlakScreen(_cLA ? [] : defenders, armies, (defHero && defHero.name) || 'The defenders', narrative);
+  // The defenders as the lines before the volleys name them (plan P1-12d31: a record; the prose writes the label): their
+  // guard, or "The defenders" with no guard (or a guard with no name) to name them.
+  const _defSideBeforeTheVolleys = defHero?.name
+    ? { kind: 'the defenders led by their guard', guardName: defHero.name }
+    : { kind: "a province's defenders with no guard to name them, as the lines before the volleys name them" };
+  applyFlakScreen(_cLA ? [] : defenders, armies, _defSideBeforeTheVolleys, narrative);
   // ELF — Ambush, the other direction (2026-09-27, Toby): only the ATTACKER's volley was gated here,
   // so Forest Wardens marching on a neutral garrison did not silence its archers, while the very
   // same Wardens attacking another PLAYER did (the PvP path tests the OTHER side's force whichever
   // way round it is). Both paths now agree: a force facing Wardens in forest or jungle loses its
   // volley, attacking or defending.
   if (!_cLA) {
-    const _eyes = eyesOfTheForestLine(armies, prov.terrain, defenders, (defHero && defHero.name) || 'The defenders');
+    const _eyes = eyesOfTheForestLine(armies, prov.terrain, defenders, _defSideBeforeTheVolleys);
     if (_eyes) narrate(narrative, _eyes);
   } // ELF — Eyes of the Forest
   const _defArchBlocked = !_cLA && archeryBlockedBy(armies, prov.terrain, defenders);
