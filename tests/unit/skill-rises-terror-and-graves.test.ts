@@ -6,6 +6,8 @@
 //   level and never past 9, clears the hero's candidates, and closes that skill to experience for the rest of the turn.
 // - recordBattleGraves (property): a fallen unit leaves a grave or, in an Elven kingdom, slips away home, never both;
 //   skeletons and spectral doubles leave neither.
+// - takeBestGrave, senseGravesUnderfoot and graveIntelFor, where no matrix game goes: a gap among a province's graves,
+//   a necromancer handed no state, and a realm's lore of a province no map holds.
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The properties
 // describe the game as it is: they pass on the code as it was before the move too.
 import vm from 'node:vm';
@@ -183,5 +185,50 @@ describe('recordBattleGraves', () => {
         },
       ),
     );
+  });
+});
+
+// What no matrix game reaches in the graves' own functions (plan P1-10b19): a gap among a province's graves, a
+// necromancer handed no state, and a realm's lore of a province no map holds.
+describe('the graves where no game goes (takeBestGrave, senseGravesUnderfoot, graveIntelFor)', () => {
+  test('a gap among the graves counts as an Average grave with no strength, so a real Average company rises first', () => {
+    const takeBestGrave = engineFn(engine, 'takeBestGrave') as (prov: { battleGraves: unknown[] }) => unknown;
+    const company = { type: 'Shieldwall Levies', quality: 'Average', race: 'Human', unitName: 'the Ashford Levy' };
+    const prov = { battleGraves: [null, company] };
+    expect(takeBestGrave(prov)).toBe(company);
+    expect(prov.battleGraves).toEqual([null]);
+  });
+
+  test('a necromancer handed no state throws, as reading its realms did; a hero with no Necromancy senses nothing', () => {
+    const senseGravesUnderfoot = engineFn(engine, 'senseGravesUnderfoot') as (
+      state: null,
+      c: object,
+      pv: object,
+      tell: null,
+    ) => boolean;
+    const pv = { id: 0, battleGraves: [{ type: 'Shieldwall Levies', quality: 'Average' }] };
+    const necromancer = { alive: true, player: 0, skills: { necromancy: 1 }, items: [] };
+    // (the engine's TypeError is the vm's own class: its name and words are compared)
+    let thrown: unknown;
+    try {
+      senseGravesUnderfoot(null, necromancer, pv, null);
+    } catch (e) {
+      thrown = e;
+    }
+    expect(String(thrown)).toMatch(/^TypeError: Cannot read properties of .*\(reading 'players'\)$/);
+    expect(senseGravesUnderfoot(null, { ...necromancer, skills: {} }, pv, null)).toBe(false);
+  });
+
+  test("a realm's lore of a province no map holds reads it as an unmapped province, latest first", () => {
+    const graveIntelFor = engineFn(engine, 'graveIntelFor') as (gs: object, pl: object) => unknown;
+    const rec = (turn: number) => ({ turn, detail: null, detailTurn: null, detailPartial: false });
+    const lore = { _graveIntel: { '0': rec(2), '5': rec(6) } };
+    expect(graveIntelFor({ world: { provinces: [{ name: 'Ashford' }] } }, lore)).toEqual([
+      { provinceId: 5, name: 'an unmapped province', ...rec(6) },
+      { provinceId: 0, name: 'Ashford', ...rec(2) },
+    ]);
+    expect(graveIntelFor({}, { _graveIntel: { '3': rec(4) } })).toEqual([
+      { provinceId: 3, name: 'an unmapped province', ...rec(4) },
+    ]);
   });
 });
