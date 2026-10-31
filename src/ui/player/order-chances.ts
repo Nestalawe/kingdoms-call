@@ -309,7 +309,7 @@ export const SPELL_HINTS = {
   'Hide Lairs':
     'Target: a province you\u2019re in or adjacent to. Hides every lair there from all other players \u2014 they cannot discover any lair in it while the glamour holds (one already found stays theirs). 20% chance to fade each turn.',
   Invisibility:
-    'Combat: enemies suffer \u221210%, and a further \u22124% per Illusory level (\u221214% at 1, \u221230% at 5), to hit you (melee and arrows) for the fight, +30% to Flee, and +15% to a following Steal. Action: cast on yourself — 80% chance no enemy player sees you (sightings, spies, Encounter targeting, the map) for the rest of the turn.',
+    'Combat: enemies suffer \u221210%, and a further \u22124% per Illusory level (\u221214% at 1, \u221230% at 5), to hit you (melee and arrows) for the fight, +30% to Flee, and +15% to a following Steal. Action: cast on yourself — 80% chance no enemy player sees you (sightings, spies, Encounter targeting, the map) for the rest of the turn, and every enemy order and ambush aimed at you misses you.',
   'Lightning Bolt':
     'Combat: 1\u20133 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
   Fireball:

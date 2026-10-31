@@ -28,6 +28,8 @@
 // or no points, or the sentries. Of 56 faults planted in the lifted files, 55 turn this file, the next or
 // `encounter-seventy` red; the 56th, dropping the catch roll's 5% floor, can't be seen: a Spy counts to 5, so the
 // chance never falls below 45%
+// Since P1-23e (R-119): a quarry of another realm whose Invisibility holds is beyond catching (a line naming no one);
+// a realm that watches him by Clairvoyance, or his own, still follows.
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -128,6 +130,28 @@ describe('a chase called off', () => {
     expect([lost.said, lost.c._pursuit?.active, lost.c.location]).toEqual([true, false, lost.b.X.id]);
     const friend = ends(veil, /loses it utterly/, 0);
     expect([friend.said, friend.c.location]).toEqual([false, friend.q.location]);
+  });
+  test('a quarry of another realm whose Invisibility holds is beyond catching, a line that names no one (R-119); a realm that watches him by Clairvoyance, or his own, still follows', () => {
+    const invisible = (b: Board, q: Character) => Object.assign(q, { _invisTurn: b.G.turn });
+    const beyond = /quarry is beyond catching now — the chase is called off/;
+    const lost = ends(invisible, beyond);
+    expect([lost.said, lost.c._pursuit?.active, lost.c.location, allText(lost.b).includes(lost.q.name)]).toEqual([
+      true,
+      false,
+      lost.b.X.id,
+      false,
+    ]);
+    const watched = (b: Board, q: Character) => {
+      invisible(b, q);
+      must(b.G.players[0], 'realm 0')['_clairCharThisTurn'] = q.id;
+    };
+    for (const [stage, realm] of [
+      [watched, 1],
+      [invisible, 0],
+    ] as const) {
+      const r = dice(0.999, () => ends(stage, beyond, realm));
+      expect([r.said, r.c._pursuit?.active, r.c.location]).toEqual([false, realm === 1, r.q.location]);
+    }
   });
   test('a quarry who has Vanished this turn melts into the shadows', () => {
     const r = ends((b, q) => Object.assign(q, { _vanishTurn: b.G.turn }), /melts into the shadows and is gone/);

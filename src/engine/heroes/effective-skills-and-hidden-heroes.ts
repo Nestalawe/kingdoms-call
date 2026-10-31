@@ -167,6 +167,17 @@ export function isVanished(turnContext, ch) {
   const { G } = turnContext;
   return !!(ch && ch._vanishTurn === G.turn);
 }
+// R-119 (Toby, 2026-10-31): from the moment a hero's Invisibility holds until the turn ends, an order or reaction of
+// another realm aimed at him finds no one, unless that realm watches him by Clairvoyance (the mind-link pierces it, as
+// it does for sight). Each order calls this where it picks its target, so its realm reads the order's own "no one here"
+// line. `turn` is the turn being played: G.turn, until the turn's end moves the counter on (the Informant Network,
+// which runs after, passes the turn before).
+export function isHiddenByInvisibilityFrom(turnContext, ch, realm, turn = turnContext.G.turn) {
+  const { G } = turnContext;
+  if (!ch || ch._invisTurn !== turn || ch.player === realm) return false;
+  const theWatchersRealm = realm != null ? (G.players || [])[realm] : null;
+  return !(theWatchersRealm && theWatchersRealm._clairCharThisTurn === ch.id);
+}
 
 // A hero's wage is a function of their skills, so it must be recomputed EVERYWHERE skills
 // change — not just in the Practice order. Experience-driven gains (trySkillGain) previously left

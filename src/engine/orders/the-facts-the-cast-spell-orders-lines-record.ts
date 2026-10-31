@@ -112,6 +112,7 @@ export type TheFactOfTheCastSpellOrdersLine =
       /** Where the mark went; null: no such province (the prose writes "another province"). */
       whereTheMarkWentName: string | null;
     } & ACaster)
+  | ({ kind: "a spell's mark is nowhere to be found"; spellName: string } & ACaster)
   | ({ kind: 'a hero invokes an item to work a spell'; itemName: string; spellName: string } & ACaster)
   | ({
       kind: "a spell's cast is rolled";
@@ -478,6 +479,7 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_CAST_SPELL_ORDERS_LINE: Readonly<
   'a hero has not yet reached the level a mastery spell demands': "its event's",
   'a mastery spell is worked but once a turn': "its event's",
   "a spell's mark has gone from the province": "its event's",
+  "a spell's mark is nowhere to be found": "its event's",
   'a hero invokes an item to work a spell': "its event's",
   "a spell's cast is rolled": "its event's",
   'a spell fizzles without effect': "its event's",

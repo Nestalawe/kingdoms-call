@@ -10,6 +10,7 @@ import { areEnemies } from '../realms/relations-and-captures.ts';
 import { SKILLGAIN_STD, awardKillXP, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { pcCharCombatant } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
+import { isHiddenByInvisibilityFrom } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
@@ -101,8 +102,14 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
     });
     return;
   }
+  // R-119: a hero whose Invisibility holds is no foe another realm's champion can find
   const foe = G.characters.find(
-    (ch) => ch.alive && ch.id === parseInt(target) && ch.location === c.location && ch.player !== c.player,
+    (ch) =>
+      ch.alive &&
+      ch.id === parseInt(target) &&
+      ch.location === c.location &&
+      ch.player !== c.player &&
+      !isHiddenByInvisibilityFrom(turnContext, ch, c.player),
   );
   if (!foe) {
     emit(turnContext, {
@@ -308,8 +315,14 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
     });
     return;
   }
+  // R-119: a hero whose Invisibility holds is no mark for another realm's archer
   const foe = G.characters.find(
-    (ch) => ch.alive && ch.id === parseInt(target) && ch.location === c.location && ch.player !== c.player,
+    (ch) =>
+      ch.alive &&
+      ch.id === parseInt(target) &&
+      ch.location === c.location &&
+      ch.player !== c.player &&
+      !isHiddenByInvisibilityFrom(turnContext, ch, c.player),
   );
   if (!foe) {
     emit(turnContext, {

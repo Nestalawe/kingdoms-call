@@ -37,6 +37,7 @@
 // wanderer stays or drifts to land around him, listed only there; a Divine hero rises only when due, on holy ground his
 // realm held, spending it, each ground once; every province ends listing exactly the heroes standing in it. Planted
 // faults: in the PR (P1-08k5b)
+// Since P1-23e (R-119): the Informant Network passes over a captain whose Invisibility held this turn (the cases).
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
