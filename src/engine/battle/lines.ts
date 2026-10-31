@@ -1,14 +1,15 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { ownedUnitName } from '../army-tables.ts';
 import { UNIT_BASE_STR, unitTypeOf } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { DISC_BY_ID } from '../discoveries.ts';
 import type { UnitAbilitySlug } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import {
   aUnitAsTheGridNamesIt,
+  type AUnitAsALineNamesIt,
   type AUnitAsTheGridNamesIt,
   type TheFactOfOneOfABattlesSentences,
+  type TheOwnerOfABattlesUnits,
   type WhomAUnitFaced,
   type WhomAUnitMeets,
   type WhyAUnitFacesAsItDoes,
@@ -832,12 +833,12 @@ export function battleFacing(
 // duel with X", "guarding the end against X", "wrapping the line at X", "met at the end of the line by X", "riding
 // free round the flank", "fighting from the air", "in the second line", "in the reserve", "shooting at an empty
 // column", "with nobody opposite" — X the enemy company as ownedUnitName writes it (enemyOwner is that side's
-// name). Read it right after the deploy, while the rows still carry the deploy's facing: the stay-or-retreat
-// estimate faces the survivors afresh later. It reads the facing's kind, never its words (plan P1-12d4, P1-12's
-// Decision 8).
+// record, or the defenders': since plan P1-12d28 the clause holds the company's record, and the prose writes it). Read
+// it right after the deploy, while the rows still carry the deploy's facing: the stay-or-retreat estimate faces the
+// survivors afresh later. It reads the facing's kind, never its words (plan P1-12d4, P1-12's Decision 8).
 export function battleFacedClauses(
   g: { readonly units?: (GridUnit | null | undefined)[] | null | undefined } | null | undefined,
-  enemyOwner: string | null | undefined,
+  enemyOwner: TheOwnerOfABattlesUnits | null | undefined,
 ): Map<ArmyInABattle, WhomAUnitFaced> {
   const m = new Map<ArmyInABattle, WhomAUnitFaced>();
   if (!g || !Array.isArray(g.units)) return m;
@@ -845,7 +846,15 @@ export function battleFacedClauses(
     const r = u?.row,
       f = r?._faced;
     if (!u || !r?.a) return; // u is there whenever its row is
-    const vs = f?.vs?.a ? ownedUnitName(enemyOwner, f.vs.a) : null;
+    const vs: AUnitAsALineNamesIt | null = f?.vs?.a
+      ? {
+          kind: 'a unit named without its quality',
+          owner: enemyOwner ?? null,
+          unitName: f.vs.a.unitName,
+          type: f.vs.a.type,
+          quality: f.vs.a.quality,
+        }
+      : null;
     let c: WhomAUnitFaced | null = null;
     if (vs && f)
       switch (f.kind) {

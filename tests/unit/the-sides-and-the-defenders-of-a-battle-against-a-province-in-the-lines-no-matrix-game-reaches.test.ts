@@ -2,8 +2,10 @@
 // P1-12d23: P1-12d's battle slice, Decision 6). By the matrix's coverage of both sets (npm run proof:unreached on the
 // row), no game reaches, in a battle against a province's defenders: a province held by its neutral defenders with no
 // guard to lead them, nor by a realm's garrison with none, that repels the attacker (the line and the defenders'
-// casualties name "the defenders of <province>" and "the garrison of <province>"); an attacker storming ashore in a
-// Raid the Coast; his corsairs taking his beaten force back to the ships; his Control Undead turning a defending unit.
+// casualties name "the defenders of <province>" and "the garrison of <province>", and, since P1-12d28, so does the
+// clause of whom the attacker's company faced, "facing the defenders of <province>'s Company 0"); an attacker storming
+// ashore in a Raid the Coast; his corsairs taking his beaten force back to the ships; his Control Undead turning a
+// defending unit.
 // Nor, in a battle between two heroes' hosts: the defender's realm holding its own ground the harder, or the beaten
 // attacker's Dwarven Guard holding a Shield Fort with no road out. This plays each, the attacker (or both commanders)
 // alive and slain before the battle (each side then fights on as "<name>'s leaderless host"), and reads each line's
@@ -35,6 +37,7 @@ import * as spellChoice from '../../src/engine/magic/pre-battle-spell-choice.ts'
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
+import { theClauseOfWhomAUnitFaced } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
 import { addTheFieldsResolveTurnAdds } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
 // The GM's log echoes each line on the console: quiet while the battles write lines.
@@ -232,6 +235,28 @@ describe.each([false, true])('a battle against a province with no guard, the att
         `🛡 **the garrison of ${shown.province}'s forces** (defender):`,
       ]),
     );
+  });
+
+  // Whom the attacker's company faced (battleFacedClauses, read at the deploy and handed to rollUnitFates as `faced`):
+  // a company of the defenders, named as their owner (plan P1-12d28: the owner handed as a record, not words).
+  test.each([
+    ['its neutral defenders', 'the defenders of', () => undefined],
+    ["a realm's garrison", 'the garrison of', (f: Province) => Object.assign(f, { owner: 1 })],
+  ] as const)('held by %s, the attacker\'s company faced one of "%s" the province\'s companies', (_, owner, hold) => {
+    const told: string[] = [];
+    const realFates = fates.rollUnitFates;
+    vi.spyOn(fates, 'rollUnitFates').mockImplementation((force, o) => {
+      const f = o.faced;
+      for (const a of force ?? []) {
+        const whom = a && f ? (typeof f === 'function' ? f(a) : f.get?.(a)) : null;
+        if (whom) told.push(theClauseOfWhomAUnitFaced(whom));
+      }
+      return realFates(force, o);
+    });
+    const shown = aBattle({ atk: companies(1, 'Green'), defenders: companies(8, 'Elite') }, slain, (_, __, ___, f) => {
+      hold(f);
+    });
+    expect(told).toEqual([`facing ${owner} ${shown.province}'s Company 0`]);
   });
 });
 

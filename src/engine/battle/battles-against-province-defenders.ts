@@ -1394,13 +1394,19 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   _gD.grid = _dep.gD;
   lineWidth = defLineWidth = _dep.W;
   // Who each company fought, for the fate lines (2026-10-12, Toby): read now, while the rows carry the deploy's facing.
+  // Each enemy side as the clauses name it (plan P1-12d28: a record; the prose writes the label): the defenders (their
+  // guard, " (wandering)" cut, else the realm's garrison of the province or its defenders), and the attacker by his
+  // plain name, " (wandering)" cut, never "X's leaderless host".
   const _facedDefNm = defHero
-    ? defHero.name.replace(' (wandering)', '')
+    ? { kind: 'the defenders led by their guard', guardName: defHero.name.replace(' (wandering)', '') }
     : prov.owner != null && !neutralGuardHero
-      ? 'the garrison of ' + prov.name
-      : 'the defenders of ' + prov.name;
+      ? { kind: "a realm's garrison of a province with no guard to lead it", provName: prov.name }
+      : { kind: 'the defenders of a province with no guard to lead them', provName: prov.name, capitalised: false };
   const _facedA = battleFacedClauses(_dep.gA, _facedDefNm),
-    _facedD = battleFacedClauses(_dep.gD, String(c.name || cName || '').replace(' (wandering)', '')); // the commander's plain name, not "X's leaderless host"
+    _facedD = battleFacedClauses(_dep.gD, {
+      heroName: String(c.name || cName || '').replace(' (wandering)', ''),
+      leaderless: false,
+    });
   const atkBaseStr = _gA.grid.face.total,
     defBaseStr = _gD.grid.face.total;
   const _defNm = defHero ? defHero.name : `the defenders of ${prov.name}`;
@@ -1618,7 +1624,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         narrate(narrative, { kind: "the attacker's warg riders halve his losses", cName: atkSide });
     // (Run Them Down halves the death roll only; the promotion window keeps the unhalved figure, as it always has.)
     const _fw = rollUnitFates(armies, {
-      owner: cName,
+      owner: atkSide,
       won: true,
       dieAt: (a) => winDeathChance * steelMultOf(a) * _npcOwnLosses,
       promoteTo: (a) =>
@@ -1838,7 +1844,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         extraLossesPct: dispFloor(_npcRideDef * 100),
       });
     rollUnitFates(armies, {
-      owner: cName,
+      owner: atkSide,
       won: false,
       inTheRout: true,
       dieAt: (a) => loseDeathChance * steelMultOf(a) * tacMultNPC + _npcRideDefEff,

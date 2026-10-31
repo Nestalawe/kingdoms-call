@@ -12,7 +12,9 @@
 // - and, since plan P1-19s moved the combat items into the items' registry (src/engine/rules/), the lines its planted
 //   faults showed no test or game sees: a bane-stun against its kinds only, the order a fighter reaches for his items
 //   in, and a guardian taking up its lair's hoard (its maximum HP at full health, its combat items, its armour, the
-//   Warbringer Gauntlets and the blow they drive home).
+//   Warbringer Gauntlets and the blow they drive home);
+// - and, since plan P1-12d28 (the line's foe a record since P1-12d25), the plea granted after a harm that is no blow: a
+//   hero felled by a lingering burn is let go by his foe, a hero, who is named by his name, and staggers off at 1 HP.
 // Level 1 (unit): each is a plain function on a staged fighter and item, called on the engine's modules (tests/lib/
 // personal-combat.ts, for the turn's context), the dice pinned with kcRng.use (pc.pinned); a static check can't run
 // them, and no game reaches these lines.
@@ -466,5 +468,30 @@ describe('a guardian takes up its lair’s hoard', () => {
     const driven = blow();
     g.gauntlets = false;
     expect(driven - blow()).toBe(2);
+  });
+});
+
+describe('a plea granted after a harm that is no blow (plan P1-12d28)', () => {
+  test('the foe, a hero, lets the fighter go: his own name, and the fighter staggers off at 1 HP', () => {
+    /** A hero of the world, renamed, as a fight takes him up (pcCharCombatant). */
+    const aHero = (id: number, name: string, temper: string) =>
+      pc.call('pcCharCombatant', { ...clone(pc.base), id, name, temper }) as AFighterInAPersonalCombat;
+    const spared = aHero(9101, 'Made-up Fennick', 'Cowardly'),
+      foe = aHero(9102, 'Made-up Ostrander', 'Brave');
+    // felled at the round's start by a lingering burn, before any blow: his plea is told at the end, and granted (a die
+    // of 1 on the d100, under any alignment's mercy)
+    spared.hp = 2;
+    spared.status.dot = [
+      { dmg: 5, rounds: 2, source: { kind: 'a combat item', itemName: "Vial of Alchemist's Fire" } },
+    ];
+    const res = pc.pinned(0.01, () => pc.call('resolvePersonalCombat', spared, foe, { maxRounds: 3 })) as {
+      fledBy?: unknown;
+      narrative: NarrativeLine[];
+    };
+    expect(kinds(res.narrative)).toContain('the foe lets a fighter go');
+    expect(pc.wordsOf(res.narrative)).toContain(
+      '  Made-up Ostrander lets them go — Made-up Fennick staggers from the field with their life. (HP 1)',
+    );
+    expect([res.fledBy === spared, spared.hp]).toEqual([true, 1]);
   });
 });

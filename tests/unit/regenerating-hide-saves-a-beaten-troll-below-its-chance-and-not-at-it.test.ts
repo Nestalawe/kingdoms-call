@@ -39,7 +39,7 @@ function theFateOf(type: string, won: boolean, dice: readonly number[]) {
   const rolls: UnitFateOptions = won
     ? { won: true, dieAt: () => 1, promoteTo: () => 0 }
     : { won: false, dieAt: () => 1, demoteAt: () => 0, promoteTo: () => 0 };
-  const tally = rollUnitFates([company], { ...rolls, owner: 'Aldric', rng, say });
+  const tally = rollUnitFates([company], { ...rolls, owner: { heroName: 'Aldric', leaderless: false }, rng, say });
   return { died: company._died === true, tally, said, drawn };
 }
 

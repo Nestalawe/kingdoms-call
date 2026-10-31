@@ -139,12 +139,12 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     const feed=vals=>{ let i=0; return ()=>vals[Math.min(i++,vals.length-1)]; };
     const force=[mk(),mk()];
     // troll 1: dies on the first roll (0 < dieAt 1), regenerates on 0.1 (< 0.30); troll 2: dies, fails to regenerate on 0.5
-    const res=FATES(force,{owner:'Test',won:false,dieAt:()=>1,demoteAt:()=>0,promoteTo:()=>0,rng:feed([0,0.1,0,0.5]),say:s=>said.push(wordsOf(s))});
+    const res=FATES(force,{owner:{heroName:'Test',leaderless:false},won:false,dieAt:()=>1,demoteAt:()=>0,promoteTo:()=>0,rng:feed([0,0.1,0,0.5]),say:s=>said.push(wordsOf(s))});
     ok(!force[0]._died&&force[1]._died===true&&res.died===1&&res.survived===1,`one troll regenerates and one is destroyed (died ${res.died}, survived ${res.survived})`);
     ok(said.filter(s=>/Regenerating Hide/.test(s)).length===1,`one line names the Regenerating Hide — ${said.join(' / ')}`);
-    const won=[mk()]; FATES(won,{owner:'Test',won:true,dieAt:()=>1,promoteTo:()=>0,rng:feed([0,0.1])});
+    const won=[mk()]; FATES(won,{owner:{heroName:'Test',leaderless:false},won:true,dieAt:()=>1,promoteTo:()=>0,rng:feed([0,0.1])});
     ok(won[0]._died===true,'a troll destroyed in a victory gets no regeneration roll (the hide knits in flight, not in the press of the win)');
-    const other=[{type:'Stone Giants',quality:'Veteran',unitName:'Stone Giants'}]; FATES(other,{owner:'Test',won:false,dieAt:()=>1,demoteAt:()=>0,promoteTo:()=>0,rng:feed([0,0.1])});
+    const other=[{type:'Stone Giants',quality:'Veteran',unitName:'Stone Giants'}]; FATES(other,{owner:{heroName:'Test',leaderless:false},won:false,dieAt:()=>1,demoteAt:()=>0,promoteTo:()=>0,rng:feed([0,0.1])});
     ok(other[0]._died===true,'a Giant gets no such roll'); }
 
   console.log(`\n${pass} pass, ${fail} fail`);

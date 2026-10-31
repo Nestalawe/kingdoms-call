@@ -1,8 +1,10 @@
 import { kcRng } from '../rng.ts';
-import { QUALITY_TIERS, demoteOrDisband, unitRef } from '../army-tables.ts';
+import { QUALITY_TIERS, demoteOrDisband } from '../army-tables.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type {
+  AUnitAsALineNamesIt,
   TheFactOfOneOfABattlesSentences,
+  TheOwnerOfABattlesUnits,
   TheSeverityOfABattle,
   WhomAUnitFaced,
 } from './the-facts-a-battles-lines-record.ts';
@@ -44,10 +46,9 @@ interface TheOptionsOfEveryUnitsFate {
   tiers?: readonly string[] | null;
   /** Receives each unit's line. */
   say?: ((line: string | TheFactOfOneOfABattlesSentences) => void) | null;
-  /** How a unit is named in its line; else unitRef. */
-  unitRef?: ((ownerName: string, a: ArmyInABattle) => string) | null;
-  /** The units' owner, as each line names him. */
-  owner?: string | null;
+  /** The units' owner, as each line names him (plan P1-12d28: a side's record or the defenders'; the prose writes the
+   *  label); none named where it is missing. */
+  owner?: TheOwnerOfABattlesUnits | null;
   /** A beaten host's rout: its deaths are told as an annihilation. */
   inTheRout?: boolean | null;
   /** A victorious defender: its promotions are told as hardened by victory. */
@@ -83,16 +84,25 @@ export function rollUnitFates(
       (() => {
         // no line is said
       }),
-    ref = o.unitRef ?? unitRef,
-    who = o.owner ?? '';
+    who = o.owner ?? null;
   const whomItFaced = (a: ArmyInABattle | null | undefined): WhomAUnitFaced | null => {
     const f = o.faced;
     if (!f || !a) return null;
     const c = typeof f === 'function' ? f(a) : typeof f.get === 'function' ? f.get(a) : null;
     return c ?? null;
   };
-  // A unit as its line names it (its reference, and whom it faced, which the line's words put after it).
-  const head = (a: ArmyInABattle, q0?: string) => ref(who, q0 ? { ...a, quality: q0 } : a);
+  // A unit as its line names it (its reference, and whom it faced, which the line's words put after it): the record
+  // unitRef's form is written from (plan P1-12d28; the prose writes the label), at its old quality where one is given.
+  const head = (a: ArmyInABattle, q0?: string): AUnitAsALineNamesIt => {
+    const theUnit = q0 ? { ...a, quality: q0 } : a;
+    return {
+      kind: 'a unit named with its quality',
+      owner: who,
+      unitName: theUnit.unitName,
+      type: theUnit.type,
+      quality: theUnit.quality,
+    };
+  };
   const r = { died: 0, promoted: 0, demoted: 0, disbanded: 0, held: 0, survived: 0 };
   const theForce = force ?? [];
   theForce.forEach((a) => {

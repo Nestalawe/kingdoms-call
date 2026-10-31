@@ -126,13 +126,13 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   // Knightly Example: Levies and Men-at-Arms never lose a tier in defeat while a Gilded Lances unit is in the army
   { const mk=(type,q)=>({type,quality:q||'Veteran',unitName:type}); const said=[];
     const force=[mk('Shieldwall Levies'),mk('Men-at-Arms'),mk('Yeoman Longbows'),mk('Gilded Lances')];
-    const res=FATES(force,{owner:'Test',won:false,dieAt:()=>0,demoteAt:()=>1,promoteTo:()=>0,rng:()=>0.5,say:s=>said.push(wordsOf(s))});
+    const res=FATES(force,{owner:{heroName:'Test',leaderless:false},won:false,dieAt:()=>0,demoteAt:()=>1,promoteTo:()=>0,rng:()=>0.5,say:s=>said.push(wordsOf(s))});
     ok(force[0].quality==='Veteran'&&force[1].quality==='Veteran','the Levies and the Men-at-Arms keep Veteran though the roll said demote');
     ok(force[2].quality==='Average'&&force[3].quality==='Average','the Longbows and the Gilded Lances themselves still lose a tier');
     ok(res.held===2&&res.demoted===2,`two held, two demoted (got held ${res.held}, demoted ${res.demoted})`);
     ok(said.filter(s=>/Knightly Example/.test(s)).length===2,`two lines name the Knightly Example — ${said.join(' / ')}`);
     const force2=[mk('Shieldwall Levies'),mk('Men-at-Arms')];
-    FATES(force2,{owner:'Test',won:false,dieAt:()=>0,demoteAt:()=>1,promoteTo:()=>0,rng:()=>0.5});
+    FATES(force2,{owner:{heroName:'Test',leaderless:false},won:false,dieAt:()=>0,demoteAt:()=>1,promoteTo:()=>0,rng:()=>0.5});
     ok(force2.every(a=>a.quality==='Average'),'without a Gilded unit they lose a tier as before'); }
 
   dom.window.close();

@@ -52,7 +52,10 @@
 // is a hero's side in a battle against a province's defenders, and the defenders are a record too
 // (TheDefendersOfAProvince: their guard, or the province or the realm with no guard to lead them), in both battles'
 // kinds and in the battle-magic lines a spell's resolver gives the kind of; since P1-12d24 so are a stalled battle's hosts
-// and defenders, a hero's newly gathered host, and a beaten guard and his victor in his surviving units' lines.
+// and defenders, a hero's newly gathered host, and a beaten guard and his victor in his surviving units' lines; since
+// P1-12d28 the owner rollUnitFates and battleFacedClauses are handed is a record (TheOwnerOfABattlesUnits), and so are
+// a unit's reference in its fate's line and the enemy unit it faced (AUnitAsALineNamesIt), and a disbanding unit's
+// owner, so those two fields leave LABELS.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
@@ -82,9 +85,8 @@
 // `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
 // assignment (`=`, `+=`); a call's argument or a comparison's operand isn't the value's words. It lets through, by kind
 // and field, the force header's `name` (until P1-12d25 the fighters', the realm's tag and the units' labels too, now
-// records; since P1-12d22 to d24 no battle's side, guard, host or defenders, records), the enemy
-// unit a unit faced (`theEnemyUnit`, a unit's label), a disbanding unit's owner (`ownerName`, a side's or a guard's
-// label, P1-12d5), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
+// records; since P1-12d22 to d24 no battle's side, guard, host or defenders, records; until P1-12d28 the enemy unit a
+// unit faced, `theEnemyUnit`, and a disbanding unit's owner, `ownerName`, now records), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
 // `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
 // a company raised's `quality`, `unitType` and `unitName` as the world or the content holds them, Call to Arms' and
 // Harvest the Field's (since P1-12d17 an Evil conquest's enslaved folk's `unitType` too); since P1-12d8 the class
@@ -220,16 +222,12 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/turn/the-facts-the-spy-stealth-line-records.ts',
 ];
 
-/** A label still a field's words (plan P1-12d25 left three: the force header's name, and the two a helper is handed its
- *  owner's words for), by its field, with the kinds that hold it. */
+/** A label still a field's words (plan P1-12d25 left three; since P1-12d28 one: the force header's name), by its field,
+ *  with the kinds that hold it. */
 const LABELS: Readonly<Record<string, readonly string[]>> = {
   // A battle's side, as the battle names it: a hero, "Aldric's leaderless host" when he fell, "Aldric's host" (the
   // battles' tally and the tiers find a side by these words; the facts-by-sense slice names a side)
   name: ['a force drawn up for battle'],
-  // the units' owner as a unit's disbanding names him: a side's label, or a guard's ("the defenders")
-  ownerName: ['a beaten unit has had enough and disbands'],
-  // the enemy unit a unit faced, as its fate's line names it (ownedUnitName: battleFacedClauses)
-  theEnemyUnit: ['an enemy unit'],
 };
 
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
