@@ -8,7 +8,7 @@ import {
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { _KC_LOOT_GAINED } from '../personal-combat/helpers.ts';
-import { hasDisc } from '../discoveries.ts';
+import { doARealmsDiscoveriesWeightTheLinesBehindTheFront } from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { armStr, provIsCoastal } from './terrain-and-unit-strength.ts';
@@ -66,7 +66,7 @@ export function commandScore(turnContext, cand, pooled, prov, isAttacker) {
   return battleLineTotal(
     rows,
     battleFrontWidth(terrain),
-    cand.player != null && hasDisc(turnContext, cand.player, 'sd09'),
+    cand.player != null && doARealmsDiscoveriesWeightTheLinesBehindTheFront(G.players[cand.player]),
     { terrain, tac: tact },
   );
 }

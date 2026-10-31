@@ -55,8 +55,9 @@ import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-r
 import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeItemBonus } from '../chances-and-lair-grades.ts';
-import { discDeathMult, discPromo, hasDisc } from '../discoveries.ts';
+import { discDeathMult, discPromo } from '../discoveries.ts';
 import {
+  doARealmsDiscoveriesWeightTheLinesBehindTheFront,
   theShareARealmsDiscoveriesFortifyItsOwnGroundBy,
   whatARealmsDiscoveriesAddToACastersChance,
   whatARealmsDiscoveriesAddToASidesFanaticism,
@@ -1035,8 +1036,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const _defIllActiveP = _illCasterP != null && def.player !== _illCasterP;
   // PvP battle lines: sort by strength desc (flying first), strongest in front row. 2026-09-11:
   // each side's OWN Flanking Tactics.
-  const atkFlankPvp = hasDisc(turnContext, atk.player, 'sd09'),
-    defFlankPvp = hasDisc(turnContext, def.player, 'sd09');
+  const atkFlankPvp = doARealmsDiscoveriesWeightTheLinesBehindTheFront(G.players[atk.player]),
+    defFlankPvp = doARealmsDiscoveriesWeightTheLinesBehindTheFront(G.players[def.player]);
   const atkSorted = [...atkArmies]
     .map((a) => _pvpRow(a, true, atkArmies, defArmies))
     .sort((x, y) => y.fly - x.fly || y.s - x.s);

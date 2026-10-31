@@ -27,14 +27,45 @@ import {
   theCodeFiles,
 } from '../../tools/ratchet.ts';
 
-/** Each function the discoveries' registry has taken, by its file, from the row that took it. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+/** The Evil doctrine a victor's plan names (`encounterPlan.evilMode`, 'terror' or 'slaves'): the same word as the kind
+ *  of Reign of Terror's effect, but no discovery's (both battles read it as the victor's choice, twice). */
+const THE_EVIL_DOCTRINE_IN_A_BATTLE: readonly string[] = ['terror', 'terror'];
+
+/** Each function the discoveries' registry has taken, by its file, from the row that took it, with the strings in it
+ *  that name something else (none, unless given). */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSomethingElse?: readonly string[]])[] = [
   ['src/engine/discoveries.ts', 'discUnitMult', "P1-19aa, a realm's discoveries strengthen a unit"],
   ['src/engine/discoveries.ts', 'dragonTamed', "P1-19aa, a realm's discoveries let a beast follow without its Druid"],
   [
     'src/engine/battle/battles-between-heroes.ts',
     'applyPreBattleMagic',
     "P1-19aa, a realm's discoveries add to a caster's chance",
+  ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'combatVsNPC',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",
+    THE_EVIL_DOCTRINE_IN_A_BATTLE,
+  ],
+  [
+    'src/engine/battle/battles-between-heroes.ts',
+    'combatVsChar',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",
+    THE_EVIL_DOCTRINE_IN_A_BATTLE,
+  ],
+  [
+    'src/engine/battle/best-commander.ts',
+    'commandScore',
+    "P1-19ab, a realm's discoveries weight the lines behind the front",
+  ],
+  ['src/engine/battle/lines.ts', 'flankLineMults', "P1-19ab, a realm's discoveries weight the lines behind the front"],
+  ['src/engine/discoveries.ts', 'discDeathMult', "P1-19ab, a realm's discoveries spare a beaten unit"],
+  ['src/engine/discoveries.ts', 'discPromo', "P1-19ab, a realm's discoveries promote a unit"],
+  ['src/engine/graves.ts', 'recordBattleGraves', "P1-19ab, a realm's discoveries carry a fallen unit home"],
+  [
+    'src/engine/heroes/hero-death-and-leaderless-hosts.ts',
+    'handleHeroDeath',
+    "P1-19ab, a realm's discoveries drag a hero from the field",
   ],
 ];
 
@@ -76,12 +107,14 @@ function everyDiscoveryWordIn(file: string, text: string, fn: string): string[] 
   return found;
 }
 
-test.for(TAKEN)('%s: %s names no discovery (%s)', ([file, fn]) => {
+test.for(TAKEN)('%s: %s names no discovery (%s)', ([file, fn, , nameSomethingElse = []]) => {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
   const counts = discoveryChecksByFunction(file, text);
   expect(counts.has(fn), `${file} declares ${fn}`).toBe(true);
   expect(counts.get(fn), `${fn}'s checks of a discovery (the ratchet's helper)`).toBe(0);
-  expect(everyDiscoveryWordIn(file, text, fn), `every string in ${fn} naming a discovery or a kind`).toEqual([]);
+  expect(everyDiscoveryWordIn(file, text, fn), `every string in ${fn} naming a discovery or a kind`).toEqual(
+    nameSomethingElse,
+  );
 });
 
 test("the vocabulary holds every discovery's id and every kind of effect, and no retired id or other word", () => {

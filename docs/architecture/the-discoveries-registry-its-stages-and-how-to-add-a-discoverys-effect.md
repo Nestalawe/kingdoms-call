@@ -63,6 +63,23 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   as the effect's `ctx` names it (`'battle'`, `'action'`, `'duel'`). Asked by `applyPreBattleMagic` and the hero's cast
   in `combatVsNPC`; `castChanceFor` and `pcCastCombatSpell` still read `discSum` until row P1-19ac.
 
+**The lines and the fates** (P1-19ab, `discoveries/a-realms-discoveries-in-its-lines-and-its-units-fates.ts`):
+
+- `strength`'s **a realm's discoveries weight the lines behind the front** (Flanking Tactics, `flankBonus`). The effect
+  returns its row's `lines`. It has two runners. One is handed a side's realm and says whether it holds such an effect,
+  so the grid weights that side's lines (both battles, and `commandScore`). The other is handed nothing: it gives the
+  weights of the first discovery in content with such an effect, because the grid asks `flankLineMults` with no realm.
+  `flankLineMults` keeps its fallback for a row with no list of four.
+- `fate`'s **a realm's discoveries spare a beaten unit** (`deathRed`; `discDeathMult`, which both battles ask): handed
+  the unit and its side. An effect for one side reaches no unit whose side isn't given. The runner adds the shares cut
+  and gives the multiplier left on the chance of death, never below the kind's floor (×0.25, a quarter).
+- **A realm's discoveries promote a unit** (`promo`; `discPromo`): handed the unit. The runner adds the shares.
+- **A realm's discoveries carry a fallen unit home** (Homeward Song, `elvenEscape`; `recordBattleGraves`): the points
+  added to a fallen Elven unit's chance of slipping away home. The runner adds them; the graves roll as before.
+- **A realm's discoveries drag a hero from the field** (Battlefield Surgery, `nearDeathSurvival`; `handleHeroDeath`):
+  the chance, as its row writes it (0.2 for a row with none: the old fallback, Parked). The runner gives the first
+  effect's chance, or nothing if the realm holds none; the hero's death rolls as before.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
@@ -71,12 +88,14 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after): the functions taken name no discovery's id and no kind, and
-  the engine's checks outside the registry only fall.
+  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab): the functions taken name no
+  discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
+  but means something else (the Evil doctrine `'terror'` in both battles) is listed beside its function.
 - `tests/static/each-discoverys-numbers-are-in-its-text.test.ts`: each number of each effect is in its discovery's
   `desc` (365 of 368; the 3 gaps listed with why).
 - `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games
-  meet 0 times (the own ground, P1-19aa), and the effects on rows the content doesn't write. Each later row adds its own.
+  meet 0 times or can't show (the own ground, P1-19aa; Homeward Song, P1-19ab), and the effects on rows the content
+  doesn't write. Each later row adds its own.
 
 ## How to add a discovery's effect
 

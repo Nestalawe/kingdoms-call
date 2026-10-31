@@ -12,7 +12,7 @@ import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-
 import { theNamesAsTheLineTellsThem } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM } from '../titles/perks.ts';
-import { discParam, hasDisc } from '../discoveries.ts';
+import { theChanceARealmsDiscoveriesDragAHeroFromTheField } from '../rules/the-registry-of-discovery-effects.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { effStat, isVanished } from './effective-skills-and-hidden-heroes.ts';
@@ -357,14 +357,15 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     if (Array.isArray(opts.lines)) opts.lines.push({ type: 'combat', fact, place, priv });
     else emit(turnContext, { type: 'combat', fact, ...place });
   };
-  if (
-    !opts.noSave &&
-    deadChar.player != null &&
-    deadChar.alive !== false &&
-    hasDisc(turnContext, deadChar.player, 'sd36')
-  ) {
+  // (the discoveries' registry's since plan P1-19ab: "fate: a realm's discoveries drag a hero from the field", its
+  // chance, or nothing if his realm holds none)
+  const _bsChance =
+    !opts.noSave && deadChar.player != null && deadChar.alive !== false
+      ? theChanceARealmsDiscoveriesDragAHeroFromTheField(G.players[deadChar.player])
+      : null;
+  if (_bsChance !== null) {
     const _sRoll = d100();
-    const _bsPct = Math.round(discParam('sd36', 'pct', 0.2) * 100);
+    const _bsPct = Math.round(_bsChance * 100);
     if (_sRoll <= _bsPct) {
       deadChar.hp = 1;
       deadChar.alive = true;
