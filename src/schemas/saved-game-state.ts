@@ -734,6 +734,8 @@ export const GameStateSchema = z.object({
   alignmentPrototypeTactics: z.boolean().optional(),
   // PROTOTYPE (ideas round 4): the bots hunt lairs at a human player's pace (src/engine/bots/missions.ts, botLairTiers)
   botLairHunting: z.boolean().optional(),
+  // PROTOTYPE (ideas round 22): the world began with 1 to 3 graves in every land province (src/engine/world/generate.ts)
+  startingGraves: z.boolean().optional(),
   // (P1-12b5: read by the realm's view, for its diplomacy) Safe Start: no diplomacy before turn SAFE_START_TURN; the
   // matrix's games don't set it
   safeStart: z.boolean().optional(),

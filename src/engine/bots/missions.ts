@@ -1962,7 +1962,7 @@ export function botKingKitOrder(G, pi, c, P, L) {
       };
     }
     case 'Good':
-      if (!war || !ready('light_beacons') || !botCanAfford(L, 2 * LIGHT_BEACONS_COST_PER_COMPANY)) // round 20: from anywhere
+      if ((!war && G.turn < 6) || !ready('light_beacons') || !botCanAfford(L, 2 * LIGHT_BEACONS_COST_PER_COMPANY)) // round 22: at war, or from turn 6
         return null;
       botSpend(L, Math.min(L.budget, 4 * LIGHT_BEACONS_COST_PER_COMPANY));
       return { action: 'light_beacons', target: '', extra: '', desc: 'Light the Beacons' };

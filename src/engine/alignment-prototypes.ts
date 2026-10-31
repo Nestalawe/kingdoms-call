@@ -40,7 +40,7 @@ export const PILGRIM_ROADS_MARCH = 3;
 // round 5 (Toby): no king's order waits more than 3 turns; a cost decides instead
 export const KING_ORDER_EVERY: Record<string, number> = {
   proclaim_crusade: 3,
-  light_beacons: 3,
+  light_beacons: 2, // round 22 (master list: 3)
   embargo: 0, // master list: no waiting between Embargoes (rounds 2-18: 3)
   call_storm: 1, // master list: Call down the storm, once a turn
   dark_pact: 0, // every turn, at a price set by the monster
@@ -57,7 +57,7 @@ export const LIGHT_BEACONS_COST_PER_COMPANY = 2; // Good (was free)
 export const GROW_WILD_COST = 8; // Druidic (was free)
 export const CALL_WILD_COST = 2; // Druidic: master list, 2g a company that comes (rounds 5-18: 3g flat)
 export const EMBARGO_COST = 5; // Neutral: master list (rounds 6-18: 4; round 5: 6; was free)
-export const DESPOIL_COST = 5; // Undead: Blight the Land (master list; rounds 5-18: 3g)
+export const DESPOIL_COST = 3; // Undead: Blight the Land (round 22; master list: 5g)
 export const BIND_BONES_COST = 2; // Undead: Bind the Bones, 2g a company
 export const CALL_STORM_COST = 4; // Pagan: Call down the storm
 export const DARK_PACT_COST_MULT = 1.5; // Evil: 1.5 × the monster's recruit cost (round 5: 2 ×; rounds 2-4: a flat 10g)
@@ -200,7 +200,7 @@ export function barrowsHeld(G: GameState, pi: number): number {
 export const UNDEAD_FEAR_PER_BLIGHT = 0.05;
 export const UNDEAD_FEAR_CAP = 2.0;
 export const UNDEAD_FEAR_KING = 1.5;
-export const UNDEAD_FEAR_HERO = 1.3;
+export const UNDEAD_FEAR_HERO = 1.5; // round 22: a hero's skeletal host fights as the king's (master list: 1.3)
 export function undeadFearMult(G: GameState, pi: number, king: boolean): number {
   const base = king ? UNDEAD_FEAR_KING : UNDEAD_FEAR_HERO;
   return Math.min(UNDEAD_FEAR_CAP, Math.round((base + UNDEAD_FEAR_PER_BLIGHT * despoiledHeld(G, pi)) * 100) / 100);
@@ -229,10 +229,10 @@ export function paganFavourPoints(G: GameState, pi: number): number {
   if (!kitRealm(G, pi, 'Pagan')) return 0;
   return heldSites(G, pi, isPaganStones).length + activatedSites(G, pi);
 }
-export const FAVOUR_PER_POINT = 0.1; // round 20 (master list: 0.15)
+export const FAVOUR_PER_POINT = 0.08; // round 22 (round 20: 0.1; master list: 0.15)
 export const FAVOUR_CAP = 1.5; // round 21 (round 20: 1.6; master list: 1.9)
-export const OLD_STONES_MULT = 1.9; // defending a stones province of the realm
-/** The Favour of the Old Gods (round 20): ×(1 + 0.1 × points), to ×1.6 at 6 points (master list: 0.15 a point, to ×1.9). */
+export const OLD_STONES_MULT = 1.6; // defending a stones province of the realm (round 22; rounds 19-21: 1.9)
+/** The Favour of the Old Gods (round 22): ×(1 + 0.08 × points), to ×1.5 at 6 or more points (master list: 0.15 a point, to ×1.9). */
 export function paganFavourMult(G: GameState, pi: number): number {
   const n = paganFavourPoints(G, pi);
   return Math.min(FAVOUR_CAP, Math.round((1 + FAVOUR_PER_POINT * n) * 100) / 100);

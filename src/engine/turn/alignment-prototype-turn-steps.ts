@@ -32,7 +32,7 @@ const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
 /** A held wild province breeds a beast into its garrison every this many turns (master list: Druidic every 3rd, Evil
  *  every 4th; rounds 8-18 Evil 5 then 7, Druidic 4 then 6). */
 export const WILD_BREED_EVERY = 4;
-export const WILD_BREED_EVERY_DRUIDIC = 3;
+export const WILD_BREED_EVERY_DRUIDIC = 4; // round 22 (master list: 3)
 /** The most companies a kit will raise into one garrison on its own (round 21: the Druids' beasts too). */
 export const KIT_GARRISON_CAP = 3;
 export const FOREST_HEAL_SHARE = 0.25;

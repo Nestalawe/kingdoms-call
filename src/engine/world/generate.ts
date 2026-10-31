@@ -1902,6 +1902,26 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
     if (pv) c.locationName = pv.name;
   });
 
+  // PROTOTYPE (ideas round 22, Toby): STARTING GRAVES — every land province begins with 1 to 3 graves of units it can
+  // recruit (its field kinds; fleets never), of Green to Crack quality, for the necromancers to raise. Only when the
+  // game is made with the switch (KC_START_GRAVES=1 in the matrix); otherwise no die is rolled and the world is unchanged.
+  if (genOpts && genOpts.startingGraves === true) {
+    const _sgTiers = ['Green', 'Average', 'Veteran', 'Crack'];
+    const _sgField = (t) => !/garrison|fleet|galley|ironclad|longship|whale|shark/i.test(t);
+    provinces.forEach((pv) => {
+      if (!pv || pv.terrain === 'sea') return;
+      const kinds = (pv.armyTypes || []).filter(_sgField);
+      if (!kinds.length) return;
+      const n = 1 + Math.floor(kcRng() * 3);
+      pv.battleGraves = pv.battleGraves || [];
+      for (let k = 0; k < n; k++) {
+        const type = kinds[Math.floor(kcRng() * kinds.length)];
+        const quality = _sgTiers[Math.floor(kcRng() * _sgTiers.length)];
+        pv.battleGraves.push({ type, quality, race: pv.race || 'Primal', unitName: armyUnitName(type) });
+      }
+    });
+  }
+
   // Build turnOrders
   const turnOrders = {};
   allChars
@@ -1918,6 +1938,7 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
       : {}),
     ...(genOpts && genOpts.alignmentPrototypeTactics === true ? { alignmentPrototypeTactics: true } : {}),
     ...(genOpts && genOpts.botLairHunting === true ? { botLairHunting: true } : {}),
+    ...(genOpts && genOpts.startingGraves === true ? { startingGraves: true } : {}),
     players,
     characters: allChars,
     mercenaries: [],
