@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 9, built in PR #PRNUMBER
+- **Source:** Plan question 9, built in PR #316
 - **Enforced by:** [`hp-gain-private`](../../tests/unit/hp-gain-private.test.ts), [`stalled-battles-unit-gain-and-war-fronts`](../../tests/unit/stalled-battles-unit-gain-and-war-fronts.test.ts), [`report-leaks`](../../tests/unit/report-leaks.test.ts)
 
 When a hero's maximum HP rises outside a fight (an item picked up, bought or given, a title, a discovery), the line
