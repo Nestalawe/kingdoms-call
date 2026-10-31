@@ -49,6 +49,8 @@
 //   at full strength by a Druid-0 commander whose realm holds Dragon Taming, and at a Druid shortfall of 5 without it,
 //   with no realm or no list of realms; a host's lines behind the front weighted with Flanking Tactics, for a commander
 //   of a realm that holds it only. (Messenger Birds is made sure by the code: nothing reads the set it widens.)
+//   Since the mutation session of 2026-11-01: a bot sizing up a rival's host counts the rival's realm's Dragon Taming
+//   and Flanking Tactics, never its own.
 // Level 1 (unit): the runner on a staged realm, and combatVsNPC, recordBattleGraves, the to-hit chances,
 // pcCharCombatant, extraSkillBonuses and awardHpRoll called directly (on a world the engine makes from a fixed seed, or
 // a staged realm), no turn played; whether the line is written is decided before any die is drawn (a seeded stream
@@ -1675,5 +1677,33 @@ describe("the bots' strength estimates, with Dragon Taming and Flanking Tactics 
     // a commander of no realm: no flank, and no kinship with a king's folk
     for (const G of [flanking.G, plain.G])
       expect(botBattleForce(G, { ...flanking.theCommander, player: null }, aHost, 'plains', {})).toBeCloseTo(72, 9);
+  });
+
+  test("a bot weighs a rival's host with the rival's realm's Dragon Taming and Flanking Tactics, never its own", () => {
+    /** Realm 0, the bot that looks, and realm 1, its rival, each holding the discoveries given. */
+    const twoRealms = (theBots: readonly string[], theRivals: readonly string[]) => ({
+      players: [theBots, theRivals].map((ids) => ({
+        alignment: 'Good',
+        race: 'Human',
+        discoveries: ids.map((id) => ({ id })),
+      })),
+      turn: -2,
+      world: { provinces: [] },
+    });
+    const theRivalsCommander = { id: 'rival', player: 1, race: 'Human', skills: {}, armies: [] };
+    const asTheBotSeesIt = (G: object, armies: readonly object[]): number =>
+      botBattleForce(G, theRivalsCommander, armies, 'plains', { viewerPi: 0 });
+    for (const [id, armies] of [
+      ['sd40', aDragon],
+      ['sd09', aHost],
+    ] as const) {
+      const neither = asTheBotSeesIt(twoRealms([], []), armies);
+      // the bot's own discovery leaves the rival's host as it is
+      expect(asTheBotSeesIt(twoRealms([id], []), armies)).toBe(neither);
+      // the rival's discovery is counted, whether the bot holds it or not
+      const theRivals = asTheBotSeesIt(twoRealms([], [id]), armies);
+      expect(theRivals).toBeGreaterThan(neither);
+      expect(asTheBotSeesIt(twoRealms([id], [id]), armies)).toBe(theRivals);
+    }
   });
 });
