@@ -13,6 +13,7 @@ import {
   type SpellSlug,
   type TheChecksTheCastSpellOrderMakesOfASpell,
 } from '../../../content/spell-effects-their-names-numbers-and-words.ts';
+import { theMarkOfThisSpellMustStandInTheCastersProvince } from '../../rules-on-plain-values/spells-the-order-form-offers-and-where-their-marks-must-stand.ts';
 import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effects.ts';
 
 type TheChecks = TheStagesOfEachHookPoint['orderValidity'];
@@ -42,19 +43,22 @@ export const A_SPELL_THAT_COSTS_NO_CASTING_SLOT = {
 
 // The spells whose named hero must be standing in the caster's own province, refused before the cast roll (a guard
 // after the roll is no guard: a caster whose mark had marched away burned the roll and the slot on a spell never
-// worked), in the order the set wrote them. Province-aimed spells and the remote scry (Clairvoyance) are absent.
+// worked), in the order the set wrote them. Province-aimed spells and the remote scry (Clairvoyance) are absent. Each
+// asks the check the order form shares (src/engine/rules-on-plain-values/, plan P1-11c2), which reads the spell's row.
+const theSharedCheckSays = (slug: SpellSlug) => (): boolean =>
+  theMarkOfThisSpellMustStandInTheCastersProvince(ROWS[slug].name);
 export const A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE = {
-  charm: itsRowSays('charm', 'itsMarkMustStandInTheProvince'),
-  'psychic-blast': itsRowSays('psychic-blast', 'itsMarkMustStandInTheProvince'),
-  'telekinetic-storm': itsRowSays('telekinetic-storm', 'itsMarkMustStandInTheProvince'),
-  oratory: itsRowSays('oratory', 'itsMarkMustStandInTheProvince'),
-  'phantasmal-armies': itsRowSays('phantasmal-armies', 'itsMarkMustStandInTheProvince'),
-  'control-undead': itsRowSays('control-undead', 'itsMarkMustStandInTheProvince'),
-  curse: itsRowSays('curse', 'itsMarkMustStandInTheProvince'),
-  'divine-judgment': itsRowSays('divine-judgment', 'itsMarkMustStandInTheProvince'),
-  'mass-confusion': itsRowSays('mass-confusion', 'itsMarkMustStandInTheProvince'),
-  dominate: itsRowSays('dominate', 'itsMarkMustStandInTheProvince'),
-  'chain-lightning': itsRowSays('chain-lightning', 'itsMarkMustStandInTheProvince'),
+  charm: theSharedCheckSays('charm'),
+  'psychic-blast': theSharedCheckSays('psychic-blast'),
+  'telekinetic-storm': theSharedCheckSays('telekinetic-storm'),
+  oratory: theSharedCheckSays('oratory'),
+  'phantasmal-armies': theSharedCheckSays('phantasmal-armies'),
+  'control-undead': theSharedCheckSays('control-undead'),
+  curse: theSharedCheckSays('curse'),
+  'divine-judgment': theSharedCheckSays('divine-judgment'),
+  'mass-confusion': theSharedCheckSays('mass-confusion'),
+  dominate: theSharedCheckSays('dominate'),
+  'chain-lightning': theSharedCheckSays('chain-lightning'),
 } satisfies Partial<Record<SpellSlug, TheChecks["a spell's mark must stand in the province"]>>;
 
 // The Cloak of Many Faces shields its wearer from a hostile Psychic Blast and Curse (its own check, isHiddenChar, waits
