@@ -1380,6 +1380,36 @@ describe('the end of the phase: what it calls', () => {
   });
 });
 
+describe("the end of the phase: a silent hero's line", () => {
+  test('a silent hero who stands in no province: his line names none, whether he left one this season or not', () => {
+    const b = fresh();
+    const h = at(b);
+    Object.assign(h, { location: null });
+    const noteSilentHeroes = fn('noteSilentHeroes');
+    noteSilentHeroes(b.tc, 2, { [h.id]: b.X.id });
+    noteSilentHeroes(b.tc, 3, {});
+    expect(b.tc.turnLog.filter((l) => l['charId'] === h.id).map((l) => [l['phase'], l['fact']])).toEqual([
+      [
+        2,
+        {
+          kind: 'a hero with no line of his own leaves a province and ends the season in another',
+          heroName: h.name,
+          fromProvinceName: b.X.name,
+          provinceName: null,
+        },
+      ],
+      [
+        3,
+        {
+          kind: 'a hero with no line of his own remains where he is this season',
+          heroName: h.name,
+          provinceName: null,
+        },
+      ],
+    ]);
+  });
+});
+
 describe('the end of the phase: a watch, and the fallen commanders', () => {
   test.each([
     ['a Move', 'move', false],
