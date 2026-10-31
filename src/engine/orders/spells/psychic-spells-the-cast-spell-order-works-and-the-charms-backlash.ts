@@ -484,7 +484,8 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a realm learns its hero is ensorcelled by an enemy Charm', targetName: t.name },
-      audience: { actor: _origOwner, realms: [_origOwner] },
+      // told to his realm, with no deed: its own news, which a spy in the province doesn't read (R-118)
+      audience: { realms: [_origOwner] },
       hero: t.id,
       province: prov.id,
     });

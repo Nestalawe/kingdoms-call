@@ -351,11 +351,18 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
         rise: aHitPointRiseAsTheLineTellsIt(r),
       });
   } else {
+    // Told to his realm alone, with no deed (R-118: a spy who stays in the province doesn't read it); its fact names
+    // that realm, as the rise in a fight's does.
     const prov = real.location != null ? G.world.provinces[real.location] : null;
     emit(turnContext, {
       type: 'combat',
-      fact: { kind: 'a hero is hardened after a fight', heroName: real.name, rise: aHitPointRiseAsTheLineTellsIt(r) },
-      audience: { actor: real.player != null ? real.player : -1, realms: real.player != null ? [real.player] : [] },
+      fact: {
+        kind: 'a hero is hardened after a fight',
+        realm: real.player ?? null,
+        heroName: real.name,
+        rise: aHitPointRiseAsTheLineTellsIt(r),
+      },
+      audience: { realms: real.player != null ? [real.player] : [] },
       hero: real.id,
       province: prov ? prov.id : undefined,
     });

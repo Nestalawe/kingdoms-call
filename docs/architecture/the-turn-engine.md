@@ -100,7 +100,8 @@
   from those two alone: **perception** comes first, in two functions, and the report
   reads nothing else. `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines
   sent to it or about its heroes, the world's announcements and what happened where it had eyes at the time, unmet
-  realms left nameless, its spies' lingering sight and its Clairvoyance feed. `playerView(G, realm, itsLines)`
+  realms left nameless, its spies' lingering sight (a rival's deeds and what anyone there could see, never his realm's
+  news: R-118) and its Clairvoyance feed. `playerView(G, realm, itsLines)`
   (`views/what-each-realm-may-see-of-the-world.ts`, P1-12b4 and P1-12b5) is what the realm may see of the world, with
   the sight rules applied in that one place: the realm itself, the map's grid, and each province as it sees it (its
   own, a hero of its own there, spied, next to a spied one, next to its land, once visited, next to one it holds or

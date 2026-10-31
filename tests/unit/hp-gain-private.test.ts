@@ -8,6 +8,8 @@
 //   • With no narrative (a lair cleared alone) the line is still the hero's own realm's news.
 // 2026-10-31 (R-117, P1-23c): a maximum-HP rise outside a fight (an item, a title, a discovery), told as the phase
 // ends, is his own realm's alone too: a rival hero standing beside him does not read it.
+// 2026-10-31 (R-118, P1-23d): a hero hardened outside a fight's narrative is told to his realm with no deed (a spy who
+// stays in the province reads deeds, never a realm's news); a neutral's is told to no realm.
 // Level 1 (unit): the fight engine, the HP award and the narrative emitters called directly on the engine's modules
 // (tests/lib/personal-combat.ts), with the turn's own log, which is what each realm's report is cut from (an entry's
 // targets and its public flag). Plan P1-08e: this was a script that took them from the "  // 4. Run all 5 phases" hook
@@ -17,7 +19,8 @@
 // Item 20 (2026-10-12): in a fight report a realm reads its own heroes' maximum-HP rises and never an enemy's. Two
 // rival heroes wounded in one fight each harden, and each line reaches its own realm only while the rest of the fight
 // stays shared; a battle winner's rise is private to the winner's realm; a neutral's rise is shown to nobody; a lair
-// cleared alone still tells the hero's realm; a rise outside a fight is his realm's alone too (R-117).
+// cleared alone still tells the hero's realm, with no deed, and a neutral's no realm (R-118); a rise outside a fight is
+// his realm's alone too (R-117).
 // `unit/hp-gain-private.test.ts`: `resolvePersonalCombat`, `awardWinHp` and
 // the line emitters called directly on the engine's modules (`lib/personal-combat.ts`; P1-08e: it was a code-anchor
 // test that ran a turn on the GM portal first), reading the context's log in words (`theTurnsLinesInWords`: the rise in
@@ -133,6 +136,27 @@ test("a lair cleared alone: the hero's own realm reads the rise, nobody else", (
   call('awardWinHp', s, null, 'lair');
   const line = hardLines(from)[0];
   expect(sees(line, 1) && !sees(line, 0)).toBe(true);
+});
+
+// R-118 (Toby, 2026-10-31, question 8): a spy who stays in the province reads a rival hero's deeds, never his realm's
+// news, so the line is told to his realm with no deed (no actor); a neutral's is told to no realm and is no one's deed.
+test('hardened outside a fight: told to his realm, with no deed; a neutral’s to no realm', () => {
+  const s = hero('Gerd the Hewer', 1, 3, 20);
+  const n = hero('Old Mott', null, 3, 20);
+  const from = L.length;
+  call('awardWinHp', s, null, 'lair');
+  call('awardWinHp', n, null, 'lair');
+  const [his, neutrals] = [/Gerd the Hewer/, /Old Mott/].map((re) =>
+    hardLines(from).find((l) => re.test(String(l.text))),
+  );
+  expect(who(his)).toBe(who({ text: '', public: false, actor: null, targets: [1] }));
+  expect(who(neutrals)).toBe(who({ text: '', public: false, actor: null, targets: [] }));
+  // each fact names his realm (the leak check's "a line for one realm alone" reads it), a neutral's none
+  const factsRealm = (id: unknown) =>
+    (L.slice(from) as { charId?: unknown; fact?: { kind?: unknown; realm?: unknown } }[]).find(
+      (l) => l.charId === id && l.fact?.kind === 'a hero is hardened after a fight',
+    )?.fact?.realm;
+  expect([factsRealm(s.id), factsRealm(n.id)]).toEqual([1, null]);
 });
 
 // R-117 (Toby, 2026-10-31): a maximum-HP rise outside a fight (an item, a title, a discovery) is his own realm's alone.

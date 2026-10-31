@@ -40,7 +40,13 @@ export type TheFactOfAHerosExperienceLine =
     }
   | { kind: 'a hero attains mastery of a skill'; heroName: string; skill: string; level: number }
   | { kind: "a hero's growing renown raises his wage"; heroName: string; wageBefore: number; wageAfter: number }
-  | { kind: 'a hero is hardened after a fight'; heroName: string; rise: AHitPointRiseAsTheLineTellsIt }
+  | {
+      kind: 'a hero is hardened after a fight';
+      /** His realm, whose alone the line is (R-118; null: a hero of no realm, whose rise no realm is told). */
+      realm: number | null;
+      heroName: string;
+      rise: AHitPointRiseAsTheLineTellsIt;
+    }
   | {
       kind: "a hero's maximum hit points rise as the phase ends";
       /** His realm, whose alone the line is (R-117; null: a hero of no realm, whose rise no realm is told). */

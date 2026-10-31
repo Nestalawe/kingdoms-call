@@ -10,6 +10,10 @@
 // - Its Clairvoyance feed (P1-21b): a realm watching another realm's hero by Clairvoyance reads every line about him
 //   from the phase the watch began (the phase it was cast), not before, each once, and where he stands as the turn
 //   ends. No other test and no game of the balance matrix builds a report with a Clairvoyance watch.
+// - Its spy feed (R-118, P1-23d): a realm that spied a province reads, from the next phase on, what another realm's
+//   heroes do there (a line with a deed) or anyone there could see (a public line, a battle's included), never their
+//   realm's own news (a line told to it with no deed: a hit-point rise, a curse felt), a line with no reader, or a line
+//   that excepts it. No game of the matrix writes a line that excepts a spying realm in its feed.
 // Level 1 (unit): the function is called on a world and a turn's sight made in the test; nothing else of the turn runs.
 // The property describes the game as it is; a fault planted in a copy of the function turns it red (the PR shows it).
 // Over whole turns, the balance matrix's every-realm half and the page tests (report-privacy, concede) cover it.
@@ -38,7 +42,7 @@ const playerEvents = engineFn(engine, 'playerEvents') as (
   state: TurnContext['G'],
   realm: number,
   sight: { presenceByPhase: unknown; battleCommanders: unknown; clairWatch: unknown },
-) => { lastTurnLog: Line[] };
+) => { lastTurnLog: Line[]; spyActivity: { provId: number; lines: { phase: number; text: string }[] }[] };
 /** The turn's sight, as the context starts it: nobody has stood anywhere in a phase, fought or watched yet. */
 const sight = {
   presenceByPhase: tc['presenceByPhase'],
@@ -58,6 +62,7 @@ type Entry = {
   charId: number | null;
   charIds: null;
   phase: number | null;
+  spy?: boolean;
 };
 
 // fast-check's run count for every property (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. The test's time
@@ -198,5 +203,48 @@ describe('the Clairvoyance feed', () => {
       watching,
     ).lastTurnLog.filter((l) => l.text.includes('Clairvoyance') || l.text.includes('[about'));
     expect(lines).toEqual([]);
+  });
+});
+
+describe("the spy feed: what rival heroes do there, never their realm's news (R-118)", () => {
+  // Realm 0's spy looks over a province of realm 1's in phase 1; realm 1's hero is there. From phase 2 on, realm 0's
+  // feed reads his deeds and what anyone there could see, and nothing told to his realm alone.
+  const rival = G.characters.find((c) => c.player === 1 && c.alive);
+  const where = G.players[1]?.provinces?.[0];
+  if (!rival || where == null) throw new Error('realm 1 has no living hero or no province');
+  const there = (text: string, extra: Partial<Entry>): Entry => ({
+    type: 'system',
+    text,
+    actor: null,
+    targets: [],
+    public: false,
+    provinceId: where,
+    charId: rival.id,
+    charIds: null,
+    phase: 2,
+    ...extra,
+  });
+  const log: Entry[] = [
+    { ...there('[the spy looks]', { actor: 0, targets: [0], spy: true, phase: 1 }), charId: null },
+    there('[his deed]', { actor: 1, targets: [1] }),
+    there('[his deed, told to others too]', { actor: 1, targets: [1, 2] }),
+    there('[seen there]', { public: true }),
+    there('[a battle line]', { type: 'combat', public: true, targets: [1] }),
+    there('[told to his realm, no deed]', { targets: [1] }),
+    there('[hardened, as told now]', { type: 'combat', targets: [1] }),
+    there('[the GM alone]', {}),
+    there('[seen there, but not by realm 0]', { public: true, notFor: [0] }),
+    there('[his deed in the spy’s own phase]', { actor: 1, targets: [1], phase: 1 }),
+  ];
+  const feed = () =>
+    playerEvents(
+      log.map((e) => ({ ...e })),
+      tc.G,
+      0,
+      sight,
+    ).spyActivity.flatMap((s) => s.lines.map((l) => l.text));
+
+  test('it reads his deeds and what anyone there could see after the spy came; never his realm’s news, a line with no reader, or one that excepts it', () => {
+    expect(feed()).toEqual(['[his deed]', '[his deed, told to others too]', '[seen there]', '[a battle line]']);
   });
 });
