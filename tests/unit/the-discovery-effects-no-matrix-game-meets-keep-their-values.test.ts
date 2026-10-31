@@ -44,6 +44,11 @@
 //   Records; interest; a unit's and a hero's wage cut in turn, never below 1g, and the heroes' ceiling; a hero's maximum
 //   HP for the king, the heroes or a skill; the gardens; the Embalmers' rate; War Academy's and Herbal Lore's chance and
 //   share; Informant Network and Arcane Observatory; and each kind on a row with no number.
+// - P1-19ah: the bots' strength estimates (botEffForce, botBattleForce, botDruidShortfall, botRecruitableTypes) with
+//   Dragon Taming and Flanking Tactics, which the matrix meets in the bots' plan but no test saw: an Elder Dragon led
+//   at full strength by a Druid-0 commander whose realm holds Dragon Taming, and at a Druid shortfall of 5 without it,
+//   with no realm or no list of realms; a host's lines behind the front weighted with Flanking Tactics, for a commander
+//   of a realm that holds it only. (Messenger Birds is made sure by the code: nothing reads the set it widens.)
 // Level 1 (unit): the runner on a staged realm, and combatVsNPC, recordBattleGraves, the to-hit chances,
 // pcCharCombatant, extraSkillBonuses and awardHpRoll called directly (on a world the engine makes from a fixed seed, or
 // a staged realm), no turn played; whether the line is written is decided before any die is drawn (a seeded stream
@@ -74,6 +79,8 @@ import { spreadTerror } from '../../src/engine/battle/evil-terror.ts';
 import { applyEvilConquest } from '../../src/engine/realms/relations-and-captures.ts';
 import { computeMovePoolMax } from '../../src/engine/units/movement-pools.ts';
 import { garrisonMoveRate } from '../../src/engine/units/movement.ts';
+import { botBattleForce, botDruidShortfall, botEffForce } from '../../src/engine/bots/intel.ts';
+import { botRecruitableTypes } from '../../src/engine/bots/strategy.ts';
 import {
   DISC_BY_ID,
   doARealmsDiscoveriesWeightTheLinesBehindTheFront,
@@ -1616,5 +1623,56 @@ describe("the turn's end and the new turn, on rows the content doesn't write (P1
       ],
     );
     expect(got).toEqual([1, 5]);
+  });
+});
+
+describe("the bots' strength estimates, with Dragon Taming and Flanking Tactics (P1-19ah: the matrix meets them in the bots' plan; no test saw them)", () => {
+  /** A world of one Good Human realm holding the discoveries given, and its Druid-0 Human commander. */
+  const aRealmHolding = (ids: readonly string[]) => ({
+    G: {
+      players: [{ alignment: 'Good', race: 'Human', discoveries: ids.map((id) => ({ id })) }],
+      turn: -2,
+      world: { provinces: [] },
+    },
+    theCommander: { player: 0, race: 'Human', skills: {}, armies: [] },
+  });
+  const aDragon = [{ type: 'Elder Dragons', race: 'Primal', quality: 'Average' }];
+  const aHost = Array.from({ length: 8 }, () => ({ type: 'Shieldwall Levies', race: 'Human', quality: 'Average' }));
+  const aProvince = { id: 1, race: 'Human', armyTypes: ['Shieldwall Levies', 'Elder Dragons'] };
+
+  test('an Elder Dragon follows a Druid-0 commander whose realm tames it at full strength, and at a shortfall of 5 without', () => {
+    const estimates = (G: object, c: object): unknown[] => [
+      botEffForce(G, c, aDragon),
+      botBattleForce(G, c, aDragon, 'plains', {}),
+      botDruidShortfall(G, c, aDragon),
+      botRecruitableTypes(aProvince, G, c),
+    ];
+    const tamed = aRealmHolding(['sd40']);
+    expect(estimates(tamed.G, tamed.theCommander)).toEqual([38, 38, 0, ['Elder Dragons', 'Shieldwall Levies']]);
+    const untamed = aRealmHolding(['sd09']);
+    const without = estimates(untamed.G, untamed.theCommander);
+    expect(without.slice(2)).toEqual([5, ['Shieldwall Levies', 'Elder Dragons']]);
+    expect(without[0]).toBeCloseTo(3.8, 9);
+    expect(without[1]).toBeCloseTo(3.8, 9);
+    // a commander of no realm, and a world with no list of realms, hold no discovery
+    for (const [G, c] of [
+      [tamed.G, { ...tamed.theCommander, player: null }],
+      [{ turn: -2, world: { provinces: [] } }, tamed.theCommander],
+    ] as const) {
+      const none = estimates(G, c);
+      expect(none.slice(2)).toEqual([5, ['Shieldwall Levies', 'Elder Dragons']]);
+      expect(none[0]).toBeCloseTo(3.8, 9);
+      expect(none[1]).toBeCloseTo(3.8, 9);
+    }
+  });
+
+  test("Flanking Tactics weights a host's lines behind the front, for a commander of a realm that holds it only", () => {
+    const flanking = aRealmHolding(['sd09']);
+    const plain = aRealmHolding([]);
+    expect(botBattleForce(flanking.G, flanking.theCommander, aHost, 'plains', {})).toBeCloseTo(87.12, 9);
+    expect(botBattleForce(plain.G, plain.theCommander, aHost, 'plains', {})).toBeCloseTo(86.4, 9);
+    // a commander of no realm: no flank, and no kinship with a king's folk
+    for (const G of [flanking.G, plain.G])
+      expect(botBattleForce(G, { ...flanking.theCommander, player: null }, aHost, 'plains', {})).toBeCloseTo(72, 9);
   });
 });

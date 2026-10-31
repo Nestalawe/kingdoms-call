@@ -3,7 +3,10 @@ import { KC_HEX_DIRS, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdom
 import { battleFrontWidth, battleLineTotal } from '../battle/lines.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
-import { TAMED_FLYER_TYPES_D } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import {
+  aRealmsDiscoveriesLetABeastFollowWithoutItsDruid,
+  doARealmsDiscoveriesWeightTheLinesBehindTheFront,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { consecratedIds } from '../heroes/fame-and-consecration.ts';
 import {
@@ -392,20 +395,24 @@ export function botSkillsFor(G, pi, e) {
   return botKnownSkills(G, pi, e) || BOT_ASSUMED_SKILLS;
 }
 // Sept 2026 (bot upgrade): the strength a commander REALLY brings — every unit discounted by the
-// Druid shortfall penalty the engine will apply (same-race rule, Druidic realm, sd40 Dragon Taming
-// all honoured via druIdPenaltyMult).
-export function botHasDisc(G, pi, id) {
-  return (((G.players || [])[pi] || {}).discoveries || []).some((d) => d && d.id === id);
-}
+// Druid shortfall penalty the engine will apply (same-race rule, Druidic realm, Dragon Taming
+// all honoured via druIdPenaltyMult). Since plan P1-19ah the bots ask the discoveries' registry's runners, as the
+// battles do ("strength: a realm's discoveries let a beast follow without its Druid", and "… weight the lines behind
+// the front"), handed the commander's realm (none for a realmless commander).
 export function botEffForce(G, c, armies) {
   if (!c) return botForceStrength(armies);
   const align = (c.player != null ? ((G.players || [])[c.player] || {}).alignment : null) || 'Neutral';
-  const tamed = c.player != null && botHasDisc(G, c.player, 'sd40');
+  const theRealm = c.player != null ? (G.players || [])[c.player] : null;
   return (armies || c.armies || []).reduce((s, a) => {
     if (!a) return s;
     let m = 1;
     try {
-      m = druIdPenaltyMult(c, a, align, tamed && TAMED_FLYER_TYPES_D.has(a.type));
+      m = druIdPenaltyMult(
+        c,
+        a,
+        align,
+        aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
+      );
     } catch (e) {
       m = 1;
     }
@@ -467,8 +474,8 @@ export function botBattleForce(G, c, armies, terrain, opts) {
   armies = armies || (c ? c.armies : null) || [];
   if (!armies.length) return 0;
   const align = (c && c.player != null ? ((G.players || [])[c.player] || {}).alignment : null) || 'Neutral';
-  const tamed = !!(c && c.player != null && botHasDisc(G, c.player, 'sd40'));
-  const flank = !!(c && c.player != null && botHasDisc(G, c.player, 'sd09'));
+  const theRealm = c && c.player != null ? (G.players || [])[c.player] : null;
+  const flank = doARealmsDiscoveriesWeightTheLinesBehindTheFront(theRealm);
   const width = battleFrontWidth(terrain);
   const csk =
     c && opts.viewerPi != null && c.player != null && c.player !== opts.viewerPi
@@ -482,7 +489,12 @@ export function botBattleForce(G, c, armies, terrain, opts) {
       let m = 1;
       if (c) {
         try {
-          m = druIdPenaltyMult(c, a, align, tamed && TAMED_FLYER_TYPES_D.has(a.type));
+          m = druIdPenaltyMult(
+            c,
+            a,
+            align,
+            aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
+          );
         } catch (e) {
           m = 1;
         }
@@ -525,13 +537,18 @@ export function botTargetDefence(G, pi, N) {
 export function botDruidShortfall(G, c, armies) {
   if (!c) return 0;
   const align = (c.player != null ? ((G.players || [])[c.player] || {}).alignment : null) || 'Neutral';
-  const tamed = c.player != null && botHasDisc(G, c.player, 'sd40');
+  const theRealm = c.player != null ? (G.players || [])[c.player] : null;
   let worst = 0;
   (armies || c.armies || []).forEach((a) => {
     if (!a) return;
     let m = 1;
     try {
-      m = druIdPenaltyMult(c, a, align, tamed && TAMED_FLYER_TYPES_D.has(a.type));
+      m = druIdPenaltyMult(
+        c,
+        a,
+        align,
+        aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
+      );
     } catch (e) {
       m = 1;
     }

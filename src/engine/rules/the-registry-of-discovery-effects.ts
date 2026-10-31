@@ -86,6 +86,7 @@ import {
   A_REALMS_DISCOVERIES_KEEP_THE_GRAVES,
   A_REALMS_DISCOVERIES_NAME_AN_UNSEEN_CAPTAIN,
   A_REALMS_DISCOVERIES_PROMOTE_THE_CAPITALS_ARMIES,
+  A_REALMS_DISCOVERIES_WIDEN_THE_WARNINGS_IT_HEARS,
 } from './discoveries/a-realms-discoveries-at-the-turns-end-and-the-new-turn.ts';
 import type {
   ABeastACommanderLeads,
@@ -426,6 +427,12 @@ export const THE_REGISTRY_OF_DISCOVERY_EFFECTS = {
       "a realm's discoveries dress a fighter's wounds": A_REALMS_DISCOVERIES_DRESS_A_FIGHTERS_WOUNDS['herbal-lore'],
     },
   },
+  'messenger-birds': {
+    visibility: {
+      "a realm's discoveries widen the warnings it hears":
+        A_REALMS_DISCOVERIES_WIDEN_THE_WARNINGS_IT_HEARS['messenger-birds'],
+    },
+  },
 } satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once. Each stage holds one kind today, so its
@@ -493,6 +500,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
     "a realm's discoveries map the provinces around an explorer": ['ancient-lore'],
     "a realm's discoveries name an unseen captain": ['informant-network'],
     "a realm's discoveries chart a province": ['arcane-observatory'],
+    "a realm's discoveries widen the warnings it hears": ['messenger-birds'],
   },
   turnStart: { "a realm's discoveries dress a fighter's wounds": ['herbal-lore'] },
   turnEnd: {
@@ -1384,6 +1392,17 @@ export function doARealmsDiscoveriesNameAnUnseenCaptain(
  *  realm's effects does. */
 export function doARealmsDiscoveriesChartAProvince(theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined): boolean {
   const theStage = "a realm's discoveries chart a province";
+  return theEffectsOfTheStageARealmHolds(theRealm, VISIBILITY[theStage]).some(
+    ([slug, e]) => ENTRIES[slug].visibility?.[theStage]?.(e) ?? false,
+  );
+}
+
+/** The runner of "visibility: a realm's discoveries widen the warnings it hears" (playerEvents, building the realm's
+ *  report: plan P1-19ah): whether any of the realm's effects does. */
+export function doARealmsDiscoveriesWidenTheWarningsItHears(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): boolean {
+  const theStage = "a realm's discoveries widen the warnings it hears";
   return theEffectsOfTheStageARealmHolds(theRealm, VISIBILITY[theStage]).some(
     ([slug, e]) => ENTRIES[slug].visibility?.[theStage]?.(e) ?? false,
   );

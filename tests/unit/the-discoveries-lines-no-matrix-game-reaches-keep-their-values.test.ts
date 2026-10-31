@@ -37,7 +37,6 @@ import {
   discUnitMult,
   discUpkeepWage,
   dragonTamed,
-  hasDisc,
   realmBaseTax,
   realmRecruitCost,
   taxBonusCap,
@@ -49,6 +48,7 @@ import {
 } from '../../src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { discFanaticApplies } from '../../src/engine/rules/discoveries/a-realms-discoveries-in-its-armys-strength.ts';
 import {
+  doARealmsDiscoveriesWidenTheWarningsItHears,
   theChanceARealmsDiscoveriesPromoteTheCapitalsArmies,
   theEffectsOfAKindARealmHolds,
   theShareARealmsDiscoveriesDressAFightersWoundsBy,
@@ -315,9 +315,11 @@ describe("the discoveries' lines no matrix game reaches keep their values", () =
   });
 
   test('a discovery asked of no realm; Dragon Taming asked with no hero or a hero of no realm', () => {
-    const turn = { G: { players: [{ discoveries: [{ id: 'sd40' }] }] } } as never;
-    expect(hasDisc(turn, 3, 'sd40')).toBe(false);
-    expect(hasDisc(turn, 0, 'sd40')).toBe(true);
+    // since P1-19ah a discovery is asked by its effect's kind through the registry (hasDisc went): Messenger Birds'
+    const players = [{ discoveries: [{ id: 'sd40' }, { id: 'sd20' }] }];
+    const turn = { G: { players } } as never;
+    expect(doARealmsDiscoveriesWidenTheWarningsItHears(players[3])).toBe(false);
+    expect(doARealmsDiscoveriesWidenTheWarningsItHears(players[0])).toBe(true);
     expect(dragonTamed(turn, undefined, { type: 'Elder Dragons' })).toBe(false);
     expect(dragonTamed(turn, { player: null }, { type: 'Elder Dragons' })).toBe(false);
   });
