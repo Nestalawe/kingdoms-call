@@ -17,6 +17,8 @@
 //   turn's minor titles of its own heroes only, and the bonuses they give); its books; the portal's lookup tables;
 // - (P1-19ae) what it is quoted, by its discoveries: an Undead wanderer's wage for a Divine realm with Diplomatic
 //   Protocols (none without), and in its report a band's price and the corpse-carters' (no game's realm holds them).
+// - (P1-19af) how fast its units march, by its discoveries: its king's column in its report and its garrison's unit in
+//   the view, each a point faster for a march discovery that reaches it (the skeletal dead's: the garrison's only).
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
 // refactor-only: P1-12b4 adds the function (the base has none), and P1-12b5 its second part; each case is red on a
 // sight fault planted in it.
@@ -46,7 +48,8 @@
 // turn's minor titles of its own heroes only, and the bonuses they give; its books (by the provinces' records); the
 // portal's lookup tables (every realm, every named hero but the cloaked). P1-19ae's cases: what it is quoted by its
 // discoveries (Diplomatic Protocols' wage for an Undead wanderer it sees or could hire; in its report, a band's price
-// by the discoveries for its class, and the corpse-carters' cost). Level 1 because the function is called on a
+// by the discoveries for its class, and the corpse-carters' cost). P1-19af's: how fast its units march by its
+// discoveries (its king's column in the report, its garrison's unit in the view). Level 1 because the function is called on a
 // world made in the test; the every-realm half of `npm run balance` checks the report built from it. Each case is red
 // on a sight fault planted in the view (16 plants in P1-12b4, 19 in P1-12b5, one or more cases each); several of
 // P1-12b5's change no report, because the report's own sections still ask the same of what they read: only this test
@@ -681,6 +684,43 @@ describe("what realm 0 is quoted, by its discoveries (P1-19ae: the view and the 
       [4, 2],
       [4, 2],
       [1, 0],
+    ]);
+  });
+});
+
+describe("how fast realm 0's units march, by its discoveries (P1-19af: the report and the view ask the move pools' rule)", () => {
+  /** Its king's column's rate in its report, and its capital's garrison unit's in the view, its units of the dead or
+   *  not. */
+  const rates = (ids: readonly string[], skeletal = false) => {
+    const state = worldWithDiscoveries(ids);
+    const s = state as unknown as {
+      characters: { armies: Record<string, unknown>[] }[];
+      world: { provinces: { garrisonArmies: Record<string, unknown>[] }[] };
+    };
+    for (const unit of [...(s.characters[0]?.armies ?? []), ...(s.world.provinces[7]?.garrisonArmies ?? [])])
+      if (skeletal) unit['_isSkeletal'] = true;
+    const view = playerView(state, 0, itsLines);
+    const report = buildTurnReport(view);
+    const king = (report.characters as { id: number; armies: { moveRate: number }[] }[]).find((c) => c.id === 0);
+    return [king?.armies[0]?.moveRate, province(view, 7).garrison?.[0]?.movement?.moveRate];
+  };
+
+  test('Toll Roads speed its Human levies a point, Deep Roads (Dwarven) not', () => {
+    expect([rates([]), rates(['rh09']), rates(['rd15']), rates(['sd13', 'rh09'])]).toEqual([
+      [2, 2],
+      [3, 3],
+      [2, 2],
+      [4, 4],
+    ]);
+  });
+
+  test("Tireless March speeds its skeletal garrison, but its report doesn't show it for the king's column", () => {
+    // as the report shows it today: its unit carries `skeletal`, not `_isSkeletal` (Parked: the report's march speed
+    // leaves out a march discovery for the skeletal dead), while the king's move pool counts it
+    expect([rates(['az04'], true), rates(['az04']), rates([], true)]).toEqual([
+      [2, 3],
+      [2, 2],
+      [2, 2],
     ]);
   });
 });

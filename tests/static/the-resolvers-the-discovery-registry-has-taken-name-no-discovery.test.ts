@@ -9,8 +9,10 @@
 // page's code.
 //
 // Red on its row's base by design (applyPreBattleMagic held 1 check, discUnitMult 1 and dragonTamed 1 on P1-19aa's
-// base; pcCharCombatant 5 on P1-19ac's; resolveSpyOrder 6 on P1-19ad's; each of P1-19ae's ten 1), as the unit-name, item-effect and spell tests were: the one exception to refactor-only's rule that new tests
-// pass before and after (Theo, 2026-10-25; the discoveries family's Decision 6).
+// base; pcCharCombatant 5 on P1-19ac's; resolveSpyOrder 6 on P1-19ad's; each of P1-19ae's ten 1; P1-19af's
+// spreadTerror and resolveMoveOrder 2, its other four 1), as the unit-name, item-effect and spell tests were: the one
+// exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25; the discoveries family's
+// Decision 6).
 // Level 0 (static): the files' syntax trees and the content's discoveries as written; nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,6 +43,15 @@ function theExploreLines(n: number): readonly string[] {
   return Array<string>(n).fill('explore');
 }
 
+/** The type of a march's lines and of an ally's order the unify rolls read, `'move'`, and of the lines of what the
+ *  march maps, `'explore'`: the words of the kinds of a march's and an explorer's discoveries, but no discovery's
+ *  (resolveMoveOrder, 34 and 2 times, in the order written). */
+const THE_MARCHS_LINES_AND_ORDERS: readonly string[] = [
+  ...Array<string>(23).fill('move'),
+  'explore',
+  ...Array<string>(11).fill('move'),
+  'explore',
+];
 /** Each function the discoveries' registry has taken, by its file, from the row that took it, with the strings in it
  *  that name something else (none, unless given). */
 const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSomethingElse?: readonly string[]])[] = [
@@ -208,6 +219,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     "P1-19ae, a realm's discoveries add to a Bless",
     theExploreLines(1),
   ],
+  [
+    'src/engine/battle/blood-harvest-and-iron-throne.ts',
+    'bloodHarvest',
+    "P1-19af, a realm's discoveries add to a blood harvest",
+  ],
+  [
+    'src/engine/battle/evil-terror.ts',
+    'spreadTerror',
+    "P1-19af, a realm's discoveries add to the terror a victory leaves",
+  ],
+  [
+    'src/engine/realms/relations-and-captures.ts',
+    'applyEvilConquest',
+    "P1-19af, a realm's discoveries add to a conquest's plunder",
+    // the Evil doctrine a conqueror's plan names when it names none, 'terror'
+    ['terror'],
+  ],
+  [
+    'src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts',
+    'resolveMoveOrder',
+    "P1-19af, a realm's discoveries help converging columns unite",
+    THE_MARCHS_LINES_AND_ORDERS,
+  ],
+  ['src/engine/units/movement-pools.ts', 'computeMovePoolMax', "P1-19af, a realm's discoveries add to a march"],
+  ['src/engine/units/movement.ts', 'garrisonMoveRate', "P1-19af, a realm's discoveries add to a march"],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

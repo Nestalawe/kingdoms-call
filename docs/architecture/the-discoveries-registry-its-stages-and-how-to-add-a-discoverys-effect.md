@@ -136,6 +136,18 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - **… raise a recruit's quality** (`recruitQ`; `discRecruitQChance`, at most 1) and **… add to a Bless** (Rites of
   Plenty, `bless`): the runners add the shares; the Recruit order rolls as before.
 
+**War's spoils and the march** (P1-19af, `discoveries/a-realms-discoveries-in-wars-spoils-and-the-march.ts`):
+
+- `fate`'s **a realm's discoveries add to a blood harvest** (Skull Tithe, `bloodHarvest`; `bloodHarvest`): the gold for
+  each enemy unit destroyed. **… add to the terror a victory leaves** (Reign of Terror, `terror`; `spreadTerror`): the
+  share each stack costs, for the provinces gripped and for the line. **… add to a conquest's plunder** (`plunder`;
+  `applyEvilConquest`): handed the province's ground; its share on any ground, or on the terrains its row names.
+- `movementCost`'s first stages: **a realm's discoveries add to a march** (`move`), handed the unit. Its `extra`, if
+  its row's race, class (the skeletal dead too) or types reach it. The callers keep their own guards (a land unit of
+  Speed 1–2, no flyer, no ship): `computeMovePoolMax`, `garrisonMoveRate` (the view's garrisons) and the report's
+  speeds. The report hands its own copy of the unit, as before, so its speeds are unchanged. **… help converging
+  columns unite** (Signal Fires, `unify`): the points it adds to both of `resolveMoveOrder`'s unify rolls.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
@@ -144,7 +156,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae): the functions taken name no
+  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae, 23 after P1-19af): the functions taken name no
   discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
   but means something else (the Evil doctrine `'terror'` in both battles; the Spy skill `'spy'`, a line's type
   `'explore'`) is listed beside its function.
@@ -153,9 +165,9 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games
   meet 0 times or can't show (the own ground, P1-19aa; Homeward Song, P1-19ab; an aim against the undead, Veteran
   Training in a fight and on the card, P1-19ac; each spy's, explorer's, scholar's and rester's effect on and off its
-  ground, coast or home, P1-19ad; each recruit's and realm's work's, P1-19ae), and the effects on rows the content
-  doesn't write. `tests/unit/what-each-realm-may-see-of-the-world.test.ts` checks the wages and prices the view and
-  the report quote with the discoveries of P1-19ae. Each later row adds
+  ground, coast or home, P1-19ad; each recruit's and realm's work's, P1-19ae; war's spoils and the march, P1-19af), and
+  the effects on rows the content doesn't write. `tests/unit/what-each-realm-may-see-of-the-world.test.ts` checks the
+  wages and prices the view and the report quote with the discoveries of P1-19ae, and the march rates of P1-19af. Each later row adds
   its own.
 
 ## How to add a discovery's effect

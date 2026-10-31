@@ -33,6 +33,11 @@
 //   quality and chance, the corpse-carters' cost, a band's price by class (no game meets these four), a unit's price
 //   (each effect in turn: its gold added, then its factor, rounded up), a recruit's grade by type and class (capped at
 //   1 by discRecruitQChance), Rites of Plenty; and each kind on a row with no number.
+// - P1-19af: war's spoils and the march, in their runners on a staged realm and in the functions that ask them: Skull
+//   Tithe in a Pagan victor's blood harvest (bloodHarvest), Reign of Terror in the stacks an Evil victory leaves and its
+//   line (spreadTerror), the plunder discoveries on the ground they name (applyEvilConquest; no game meets these three
+//   but Skull Tithe, once, and no test saw it), the march's discoveries for each unit they reach (a land unit of Speed
+//   1–2: computeMovePoolMax and garrisonMoveRate), Signal Fires' unify points; and each kind on a row with no number.
 // Level 1 (unit): the runner on a staged realm, and combatVsNPC, recordBattleGraves, the to-hit chances,
 // pcCharCombatant, extraSkillBonuses and awardHpRoll called directly (on a world the engine makes from a fixed seed, or
 // a staged realm), no turn played; whether the line is written is decided before any die is drawn (a seeded stream
@@ -58,6 +63,11 @@ import {
 } from '../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts';
 import { extraSkillBonuses } from '../../src/engine/titles/reckoning.ts';
 import { awardHpRoll } from '../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts';
+import { bloodHarvest } from '../../src/engine/battle/blood-harvest-and-iron-throne.ts';
+import { spreadTerror } from '../../src/engine/battle/evil-terror.ts';
+import { applyEvilConquest } from '../../src/engine/realms/relations-and-captures.ts';
+import { computeMovePoolMax } from '../../src/engine/units/movement-pools.ts';
+import { garrisonMoveRate } from '../../src/engine/units/movement.ts';
 import {
   DISC_BY_ID,
   doARealmsDiscoveriesWeightTheLinesBehindTheFront,
@@ -99,6 +109,11 @@ import {
   whatARealmsDiscoveriesAddToARecruitsChanceOfAHigherGrade,
   whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold,
   whatARealmsDiscoveriesAddToTheCorpseCartersCost,
+  whatARealmsDiscoveriesAddToABloodHarvest,
+  whatARealmsDiscoveriesAddToAConquestsPlunder,
+  whatARealmsDiscoveriesAddToAMarch,
+  whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite,
+  whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves,
 } from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
@@ -1130,5 +1145,176 @@ describe("the recruits' and the realm's works' effects on rows the content doesn
       consecrations(undefined, 0),
       consecrations(undefined, 1),
     ]).toEqual([0, 2, 0, 2]);
+  });
+});
+
+/** The discoveries of P1-19af's cases, by id (their rows' numbers in SAGE_DISCOVERIES_P). */
+const SPOILS = {
+  skullTithe: { id: 'ap09' }, // a blood harvest +1g for each enemy unit destroyed
+  reignOfTerror: { id: 'ae03' }, // each terror stack +0.15
+  raidingParties: { id: 'ap16' }, // plunder +0.3 in forest, jungle or mountains
+  sackAndBurn: { id: 'ae09' }, // plunder +0.2 anywhere
+  roadNetwork: { id: 'sd13' }, // +1 move point, every unit (of Speed 1–2)
+  tollRoads: { id: 'rh09' }, // +1, Human units
+  greatMigrations: { id: 'au03' }, // +1, Creature armies
+  tirelessMarch: { id: 'az04' }, // +1, skeletal armies
+  signalFires: { id: 'sd04' }, // +75 points to unify
+} as const;
+
+/** A unit as the march's discoveries read it. */
+const aUnit = (type: string, race: string | undefined, extra: { readonly _isSkeletal?: boolean } = {}) => ({
+  type,
+  quality: 'Average',
+  ...(race === undefined ? {} : { race }),
+  ...extra,
+});
+
+/** A turn on a fresh copy of the world of two bot realms, realm 0 of the alignment given and holding the discoveries
+ *  given. */
+function aTurnWith(alignment: string, held: readonly { readonly id: string }[]) {
+  const G = JSON.parse(THE_WORLD) as World;
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
+  const realm = G.players[0];
+  if (!realm) throw new Error('the world has no realm 0');
+  Object.assign(realm, { alignment, gold: 10, discoveries: held.map((d) => ({ ...d })) });
+  return { G, tc, realm };
+}
+
+describe("war's spoils and the march, in their runners (P1-19af: no game meets a plunder discovery or Reign of Terror)", () => {
+  test('Skull Tithe adds its gold to a blood harvest, Reign of Terror its share to each terror stack', () => {
+    expect(whatARealmsDiscoveriesAddToABloodHarvest(holding(SPOILS.skullTithe, SPOILS.sackAndBurn))).toBe(1);
+    expect(whatARealmsDiscoveriesAddToABloodHarvest(holding(SPOILS.sackAndBurn))).toBe(0);
+    expect(whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves(holding(SPOILS.reignOfTerror))).toBe(0.15);
+    expect(whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves(holding(SPOILS.skullTithe))).toBe(0);
+  });
+
+  test("the plunder: Sack and Burn's share on any ground, Raiding Parties' on the ground it names only", () => {
+    const realm = holding(SPOILS.raidingParties, SPOILS.sackAndBurn);
+    const plunder = (theGround: string) => whatARealmsDiscoveriesAddToAConquestsPlunder(realm, { theGround });
+    expect([plunder('forest'), plunder('jungle'), plunder('mountain'), plunder('plain')]).toEqual([0.5, 0.5, 0.5, 0.2]);
+  });
+
+  test('the march: each discovery adds its point to the units it reaches, by race, class or the skeletal dead', () => {
+    const realm = holding(SPOILS.roadNetwork, SPOILS.tollRoads, SPOILS.greatMigrations, SPOILS.tirelessMarch);
+    const march = (theUnit: ReturnType<typeof aUnit>) => whatARealmsDiscoveriesAddToAMarch(realm, { theUnit });
+    expect([
+      march(aUnit('Shieldwall Levies', 'Human')),
+      march(aUnit('Dwarven Guard', 'Dwarven')),
+      march(aUnit('Forest Ents', undefined)),
+      march(aUnit('Shieldwall Levies', 'Human', { _isSkeletal: true })),
+      march(aUnit('Dwarven Guard', 'Dwarven', { _isSkeletal: true })),
+    ]).toEqual([2, 1, 2, 3, 2]);
+    expect(whatARealmsDiscoveriesAddToAMarch(holding(), { theUnit: aUnit('Shieldwall Levies', 'Human') })).toBe(0);
+  });
+
+  test("Signal Fires add their points to a converging column's chance to unite", () => {
+    expect(whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(holding(SPOILS.signalFires))).toBe(75);
+    expect(whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(holding(SPOILS.roadNetwork))).toBe(0);
+    expect(whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(undefined)).toBe(0);
+  });
+});
+
+describe("war's spoils and the march, in the functions that ask the runners (P1-19af)", () => {
+  test("Skull Tithe: a Pagan victor's blood harvest takes 2g, not 1g, for each enemy unit destroyed", () => {
+    const harvest = (held: readonly { readonly id: string }[]) => {
+      const { G, realm } = aTurnWith('Pagan', held);
+      const narrative: NarrativeLine[] = [];
+      bloodHarvest({ G } as never, { player: 0 }, 3, narrative);
+      return [realm.gold, narrative.map((l) => theWordsOf(l))];
+    };
+    const [withTithe, without] = [harvest([SPOILS.skullTithe]), harvest([])];
+    expect([withTithe[0], without[0]]).toEqual([16, 13]);
+    expect(String(withTithe[1])).toContain('3 fallen enemy units: +6g in offerings');
+    expect(String(without[1])).toContain('3 fallen enemy units: +3g in offerings');
+  });
+
+  test('Reign of Terror: each province the terror grips costs 25%, not 10%, a stack, and the line says so', () => {
+    const terror = (held: readonly { readonly id: string }[]) => {
+      const { G, tc } = aTurnWith('Evil', held);
+      const field = G.world.provinces.find((p) => p.terrain !== 'sea');
+      if (!field) throw new Error('the world has no land province');
+      const narrative: NarrativeLine[] = [];
+      spreadTerror(tc, field as never, 0, narrative);
+      const gripped = G.world.provinces.filter((p) => p['_terrorisedBy'] === 0).map((p) => p['_terrorPct']);
+      return { shares: [...new Set(gripped)], line: narrative.map((l) => theWordsOf(l)).join(' ') };
+    };
+    const [withReign, without] = [terror([SPOILS.reignOfTerror]), terror([])];
+    expect(withReign.shares).toEqual([0.25]);
+    expect(without.shares).toEqual([0.1]);
+    expect(withReign.line).toContain('25%');
+    expect(without.line).toContain('10%');
+  });
+
+  test("the plunder: an Evil conqueror's gold from a province of 10g tax, by the ground and the discoveries held", () => {
+    const loot = (held: readonly { readonly id: string }[], terrain: string) => {
+      const { tc, realm } = aTurnWith('Evil', held);
+      const prov = { id: 2, name: 'Wendmeadow', terrain, tax: 10 };
+      applyEvilConquest(tc, { name: 'Thorn', player: 0 }, prov as never, realm as never);
+      return realm.gold - 10;
+    };
+    const both = [SPOILS.raidingParties, SPOILS.sackAndBurn];
+    expect([
+      loot(both, 'forest'),
+      loot(both, 'plain'),
+      loot([SPOILS.raidingParties], 'plain'),
+      loot([], 'forest'),
+    ]).toEqual([10, 7, 5, 5]);
+  });
+
+  test("the march: a hero's land pace, and an unled unit's, gain each point that reaches a unit of Speed 1–2", () => {
+    const paces = (held: readonly { readonly id: string }[], unit: ReturnType<typeof aUnit>) => {
+      const { G, tc, realm } = aTurnWith('Undead', held);
+      const king = G.characters.find((c) => c.alive && c.player === 0 && c.isKing);
+      if (!king) throw new Error('the world has no king in realm 0');
+      king.armies = [{ ...unit, unitName: 'the Column' }] as never;
+      const led = (computeMovePoolMax(tc, king) as { land: number }).land;
+      const alone = garrisonMoveRate({ ...unit, unitName: 'the Column' } as never, realm as never).moveRate;
+      return [led, alone];
+    };
+    const skeletalLevies = aUnit('Shieldwall Levies', 'Human', { _isSkeletal: true });
+    const marches = [SPOILS.roadNetwork, SPOILS.tirelessMarch];
+    const [none, held] = [paces([], skeletalLevies), paces(marches, skeletalLevies)];
+    expect([(held[0] ?? 0) - (none[0] ?? 0), none[1], held[1]]).toEqual([2, 2, 4]);
+    // a unit of Speed 3 or more, a flyer and a ship gain nothing
+    for (const unit of [
+      aUnit('Free Lances', 'Human'),
+      aUnit('Eagle Riders', 'Human'),
+      aUnit('Elven Galleys', 'Elven'),
+    ]) {
+      const [a, b] = [paces([], unit), paces(marches, unit)];
+      expect(b).toEqual(a);
+    }
+  });
+});
+
+describe("war's spoils and the march, on rows the content doesn't write (P1-19af)", () => {
+  test('no number: each adds nothing; a plunder row with no terrains reaches any ground', () => {
+    const got = withPlantedRows(
+      {
+        harvest: { kind: 'bloodHarvest' },
+        terror: { kind: 'terror' },
+        plunder: { kind: 'plunder' },
+        march: { kind: 'move' },
+        unify: { kind: 'unify' },
+      },
+      (realm) => [
+        whatARealmsDiscoveriesAddToABloodHarvest(realm),
+        whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves(realm),
+        whatARealmsDiscoveriesAddToAConquestsPlunder(realm, { theGround: 'plain' }),
+        whatARealmsDiscoveriesAddToAMarch(realm, { theUnit: aUnit('Shieldwall Levies', 'Human') }),
+        whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(realm),
+      ],
+    );
+    expect(got).toEqual([0, 0, 0, 0, 0]);
+    const plunder = (terrains: readonly string[] | undefined, theGround: string) =>
+      withPlantedRows({ loot: { kind: 'plunder', pct: 0.4, terrains } }, (realm) =>
+        whatARealmsDiscoveriesAddToAConquestsPlunder(realm, { theGround }),
+      );
+    expect([
+      plunder(undefined, 'sea'),
+      plunder([], 'plain'),
+      plunder(['plain'], 'plain'),
+      plunder(['hill'], 'plain'),
+    ]).toEqual([0.4, 0, 0.4, 0]);
   });
 });
