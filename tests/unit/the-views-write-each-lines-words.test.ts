@@ -11,7 +11,9 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The views write each line's words (P1-12c3; plan P1-12's Decisions of 2026-10-24, 2 and 3): `theWordsOf` a force
 // drawn up for battle is the header's machine form the engine wrote before, its keys in their order (a chieftain's
-// force too; since P1-12d20 its verb written from its values, and empty for a force with none), and the place of a battle's tally has no words of its own; `theTurnsLinesInWords` gives a battle's lines
+// force too; since P1-12d20 its verb written from its values, and empty for a force with none; since P1-12d29 its name
+// written from the force's record in every form, the leaderless check's copy of those words the same, and a fallen
+// commander's host named "<his name>'s leaderless host" as the check finds him), and the place of a battle's tally has no words of its own; `theTurnsLinesInWords` gives a battle's lines
 // the tiers their words give and puts its losses tally where its casualty lists begin, every line with the fight's
 // audience, hero and place; a battle with nothing to tally has no tally line, one whose lines are all for one realm
 // alone files no tally place, two battles side by side keep their own; the GM's log in words has the 17 keys in their
