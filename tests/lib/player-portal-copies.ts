@@ -198,10 +198,11 @@ export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   return made as Copies;
 }
 
-/** The order form's Cast Spell tables, as it declares them (plan P1-11c1): every school's spells, each spell's
- *  school and the mastery spells' levels (order-chances.ts, at top level), the action spells and those offered a hero
- *  of unseen levels (buildTargetField), the combat spells by school an Encounter plan offers (the Encounter's plan),
- *  and the spells aimed at a province or at a hero (spellSecondaryHtml). A Set as its list, in its order. */
+/** The order form's Cast Spell tables, as it declares them (plan P1-11c1; since P1-11c3 each is the call of the engine
+ *  folder's function that makes it, and these are the answers): every school's spells, each spell's school and the
+ *  mastery spells' levels (order-chances.ts, at top level), the action spells and those offered a hero of unseen levels
+ *  (buildTargetField), the combat spells by school an Encounter plan offers (the Encounter's plan), and the spells
+ *  aimed at a province or at a hero (spellSecondaryHtml). A Set as its list, in its order. */
 export interface TheOrderFormsSpellTables {
   readonly SPELLS_BY_SCHOOL: Record<string, string[]>;
   readonly SPELL_TO_SCHOOL: Record<string, string>;

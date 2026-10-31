@@ -16,7 +16,9 @@
 // there) and declares nothing of its own; no file of `src/ui/player/` imports an engine or a views file, or declares
 // (at any depth) a copy P1-11a4, P1-11b3 or P1-11b4 retired (`floorNumP`, `unitBaseStrengthP`, … `beastCommandCountP`,
 // `DRUID_LEVEL_OF_P`, `TAMED_FLYERS_P`, `PO_FLYING_TYPES`, `PO_LIGHT_TYPES`, and the tables only they read) or a name
-// `src/shared/` hands it; and the player page's modules hold no engine file outside the folder, and no views file.
+// `src/shared/` hands it; the order form's eight Cast Spell tables are each declared once in the portal, as the call of
+// the folder's function that makes it (P1-11c3); and the player page's modules hold no engine file outside the
+// folder, and no views file.
 // Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
 // 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
 // plants)
@@ -70,6 +72,19 @@ const RETIRED = [
   'PO_LIGHT_TYPES',
 ];
 
+/** The order form's eight Cast Spell tables (P1-11c3), each by the name the form gives it and the folder's function
+ *  that makes it (src/engine/rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts):
+ *  the form declares each once, by calling the function, and writes no table of spells of its own. */
+const THE_ORDER_FORMS_SPELL_TABLES: readonly (readonly [string, string])[] = [
+  ['SPELLS_BY_SCHOOL', 'everySpellBySchool'],
+  ['SPELL_TO_SCHOOL', 'theSchoolOfEachSpell'],
+  ['SPELL_REQ_LEVEL', 'theLevelEachMasterySpellNeeds'],
+  ['PHASE_SPELLS', 'theActionSpells'],
+  ['_hsPhase', 'theActionSpellsNoMasteryLevelGates'],
+  ['ENCOUNTER_VALID', 'theCombatSpellsBySchool'],
+  ['NEEDS_PROV', 'theActionSpellsAimedAtAProvince'],
+  ['NEEDS_CHAR', 'theActionSpellsAimedAtAHero'],
+];
 const filesIn = (folder: string) => filesUnder(SRC).filter((f) => f.startsWith(folder));
 
 /** Each import of `file` (relative to src/): what it names, and where that is relative to src/ (null: not a file of
@@ -99,6 +114,21 @@ function namesDeclaredIn(file: string): string[] {
   };
   visit(tree);
   return names;
+}
+
+/** What `file` declares under `name`, at any depth, each as the text of its initializer (null: none, a parameter or
+ *  a bare `let`). */
+function initializersDeclaredIn(file: string, name: string): (string | null)[] {
+  const text = fs.readFileSync(path.join(SRC, file), 'utf8');
+  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const found: (string | null)[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name)
+      found.push(node.initializer ? node.initializer.getText(tree) : null);
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return found;
 }
 
 /** The names src/shared/ hands the portal (each `export { … } from`). */
@@ -170,6 +200,20 @@ describe('the player portal reaches the engine only through src/shared/', () => 
       expect(copies).toEqual([]);
     },
   );
+
+  test("the order form's eight Cast Spell tables are each made by the folder's function, once, with no table of spells of its own", () => {
+    // (P1-11c3) The tables were written out in four files; each is now the call of the folder's function that makes it
+    // (a call with no argument), declared once in the portal: a name declared twice, or by a list, a set or an
+    // object, is a table written again.
+    const declared = THE_ORDER_FORMS_SPELL_TABLES.flatMap(([name]) =>
+      files.flatMap((file) => initializersDeclaredIn(file, name).map((init) => [name, init] as const)),
+    );
+    const wanted = THE_ORDER_FORMS_SPELL_TABLES.map(([name, make]) => [name, `${make}()`]);
+    expect(declared).toEqual(wanted);
+    // and the functions are handed the portal, from the folder's file
+    const handed = new Set(namesSharedExports());
+    expect(THE_ORDER_FORMS_SPELL_TABLES.filter(([, make]) => !handed.has(make))).toEqual([]);
+  });
 
   test('the player page loads no engine file outside the folder, and no views file', () => {
     const modules = pageModules(PLAYER_PAGE);

@@ -293,6 +293,8 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
     // Each as the form reads it: a list it shows in its order (every spell by school, the action spells, those offered
     // a hero of unseen levels), a map (each spell's school, the mastery spells' levels), a set it asks (the spells
     // aimed at a province, at a hero), and the combat spells an Encounter plan offers, by school.
+    // Since P1-11c3 the form makes each by the engine folder's function (the static test names which): this case runs
+    // the form's own declarations, so a table made by another function than its own reads as a difference here.
     const list = theFormsSpellTablesAgainstTheContent(theForm());
     expect(list).toHaveLength(8);
     expect(differences(list)).toEqual([]);

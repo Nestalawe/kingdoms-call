@@ -4,9 +4,9 @@
 // share them (P1-11a). These are the Cast Spell order's tables as the order form reads them, made from the content's
 // spells (SPELL_DEFS_P, src/content/kingdoms-call-data.ts): each school's spells, each spell's school, the mastery
 // spells' levels, the action spells, the combat spells by school and what each action spell is aimed at. Every table
-// keeps the content's order but the combat spells' (below). Until P1-11c3 the form keeps its own copies of the tables
-// (tests/lib/player-portal-copies.ts checks them against these). The one check of the order the form makes too, where
-// a spell's mark must stand, is beside this file (whether-a-spells-mark-must-stand-in-the-casters-province.ts).
+// keeps the content's order but the combat spells' (below). The form (src/ui/player/) makes its tables from these
+// (P1-11c3). The one check of the order the form makes too, where a spell's mark must stand, is beside this file
+// (whether-a-spells-mark-must-stand-in-the-casters-province.ts).
 //
 // Each table is made when it is asked for, a new one each time (the caller may keep it, or change its copy), and this
 // file runs nothing as it loads: so a page that loads src/shared/ but asks for none of them loads none of the content's
