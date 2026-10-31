@@ -34,6 +34,7 @@ import {
   type TheFortuneAsTheLineTellsIt,
   type TheSeverityOfABattle,
   type HowAForceComesOnInItsHeader,
+  type TheForceABattlesHeaderNames,
   type WhyACommandersForceIsDemoralised,
 } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
 import { describeArmy } from '../../engine/dice-and-army-names.ts';
@@ -96,6 +97,37 @@ function theLabelOfTheDefenders(defenders: TheDefendersOfAProvince, afterTheGuar
 /** A defending side, as its label names it: a hero's side (a battle between heroes), or a province's defenders. */
 function theLabelOfASideOrTheDefenders(defenders: ASideOfABattle | TheDefendersOfAProvince): string {
   return 'kind' in defenders ? theLabelOfTheDefenders(defenders) : theLabelOfASide(defenders);
+}
+
+/** The name a force's header gives (plan P1-12d29; the engine wrote it so: battles-between-heroes.ts and
+ *  battles-against-province-defenders.ts, the realm's brackets only for a hero who serves one since P1-23a, and
+ *  forceMarker the leaderless host): the hero and his realm, the guard, a realm's garrison at the province, or the
+ *  province's defenders, " (wandering)" cut; "<his name>'s leaderless host" in place of the fallen commander's name
+ *  where forceMarker found one. forceMarker's leaderless check reads a copy of these words
+ *  (theNameAForcesHeaderIsCheckedBy). */
+function theNameOfTheForceAHeaderNames(
+  theForce: TheForceABattlesHeaderNames,
+  fallenCommandersName: string | null,
+): string {
+  let name: string;
+  switch (theForce.kind) {
+    case 'a hero, with the realm he serves':
+      name = `${theForce.heroName}${theForce.servesARealm ? ` (${String(theForce.realmName)})` : ''}`;
+      break;
+    case "a province's guard at the head of its force":
+      name = theForce.guardName;
+      break;
+    case "a realm's garrison at a province":
+      name = `${theForce.ownerName}'s garrison at ${theForce.provName}`;
+      break;
+    case "a province's own defenders with no one to lead them":
+      name = `The defenders of ${theForce.provName}`;
+      break;
+  }
+  name = name.replace(' (wandering)', '');
+  return fallenCommandersName === null
+    ? name
+    : `${fallenCommandersName}'s leaderless host` + name.slice(fallenCommandersName.length);
 }
 
 /** A unit as a line names it (plan P1-12d25): its owner's label, then unitRef's form, ownedUnitName's, or its name or
@@ -913,7 +945,8 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'a force drawn up for battle': {
       // The header's machine form, its keys in this order: the player page, the GM page, the battle's tiers and its
       // tally read it back (join-and-chronicle.ts, turn-log.ts, engine/battle/fates.ts).
-      const { name, color, neutral, guard, role, howItComesOn, armies } = fact;
+      const { color, neutral, guard, role, howItComesOn, armies } = fact;
+      const name = theNameOfTheForceAHeaderNames(fact.theForce, fact.fallenCommandersName);
       const verb = howItComesOn ? theWordsOfHowAForceComesOn(howItComesOn) : '';
       return '⚑FORCE⚑' + JSON.stringify({ name, color, neutral, guard, role, verb, armies });
     }

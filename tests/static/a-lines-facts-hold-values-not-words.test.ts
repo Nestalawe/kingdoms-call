@@ -34,9 +34,8 @@
 // The scoping's scanner (P1-12d) counted every string inside a field's expression, so it counted numbers (a damage
 // dealt by a call that names its spell) and missed a field handed a variable that a template built.
 //
-// What it lets through, by kind and field (Decision 2): the fighters' labels ("The Barrow Wight", a hero's name: the
-// facts-by-sense slice names a side) and a battle's side's, guard's, realm's or unit's label ("Aldric's leaderless
-// host", "the defenders of Highmoor", a realm's tag, "Aldric's Free Lances (Free Lances, Veteran)"), the order's
+// What it lets through, by kind and field (Decision 2): no label since P1-12d29 (until then the fighters', a battle's
+// side's, guard's, realm's or unit's labels, the last the force header's name), the order's
 // action (a slug: P1-12d6), five slugs or names a string literal gives
 // (a strike's class, its channel, a guardian's grade as the content names it, a school's name as the content names it,
 // a realm's alignment, a unit's quality, the line an ability places a unit in; since P1-12d11 the way a hero slain
@@ -55,7 +54,9 @@
 // and defenders, a hero's newly gathered host, and a beaten guard and his victor in his surviving units' lines; since
 // P1-12d28 the owner rollUnitFates and battleFacedClauses are handed is a record (TheOwnerOfABattlesUnits), and so are
 // a unit's reference in its fate's line and the enemy unit it faced (AUnitAsALineNamesIt), and a disbanding unit's
-// owner, so those two fields leave LABELS.
+// owner, so those two fields leave LABELS; since P1-12d29 the force a battle's header names is a record
+// (TheForceABattlesHeaderNames: a hero and the realm he serves, a guard, a realm's garrison at a province, a province's
+// own defenders), and the fallen commander forceMarker's leaderless check found his name, so LABELS goes.
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,
@@ -84,9 +85,10 @@
 // `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
 // `toFixed`), a table of words of the same file, or a variable of the same file by its declaration or a later
 // assignment (`=`, `+=`); a call's argument or a comparison's operand isn't the value's words. It lets through, by kind
-// and field, the force header's `name` (until P1-12d25 the fighters', the realm's tag and the units' labels too, now
-// records; since P1-12d22 to d24 no battle's side, guard, host or defenders, records; until P1-12d28 the enemy unit a
-// unit faced, `theEnemyUnit`, and a disbanding unit's owner, `ownerName`, now records), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
+// and field, no label (until P1-12d25 the fighters', the realm's tag and the units' labels, now records; since
+// P1-12d22 to d24 no battle's side, guard, host or defenders, records; until P1-12d28 the enemy unit a unit faced,
+// `theEnemyUnit`, and a disbanding unit's owner, `ownerName`, and until P1-12d29 the force header's `name`, now
+// records), and seven slugs or names (`strikeClass`, `channel`, `tier`, `schoolLabel`, `attackersAlignment`, a unit's
 // `quality`, the line an ability places a unit in, `itsLine`; since P1-12d6 the order's `action`, a slug; since P1-12d7
 // a company raised's `quality`, `unitType` and `unitName` as the world or the content holds them, Call to Arms' and
 // Harvest the Field's (since P1-12d17 an Evil conquest's enslaved folk's `unitType` too); since P1-12d8 the class
@@ -221,14 +223,6 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/bots/the-facts-a-bots-concession-line-records.ts',
   'src/engine/turn/the-facts-the-spy-stealth-line-records.ts',
 ];
-
-/** A label still a field's words (plan P1-12d25 left three; since P1-12d28 one: the force header's name), by its field,
- *  with the kinds that hold it. */
-const LABELS: Readonly<Record<string, readonly string[]>> = {
-  // A battle's side, as the battle names it: a hero, "Aldric's leaderless host" when he fell, "Aldric's host" (the
-  // battles' tally and the tiers find a side by these words; the facts-by-sense slice names a side)
-  name: ['a force drawn up for battle'],
-};
 
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
 const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
@@ -511,7 +505,7 @@ function fieldsHoldingWords(file: string, text: string, kinds: ReadonlySet<strin
               ? field.name
               : null;
           const why = value ? whyItHoldsWords(sf, value, node.getStart(sf), new Set()) : 'a spread: its fields unseen';
-          if (why && !LABELS[name]?.includes(kind) && !NOT_WORDS[name]?.includes(kind)) {
+          if (why && !NOT_WORDS[name]?.includes(kind)) {
             const line = sf.getLineAndCharacterOfPosition(field.getStart(sf)).line + 1;
             found.push(`${String(line)} ${kind} ${name}: ${why}`);
           }

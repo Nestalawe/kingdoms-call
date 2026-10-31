@@ -303,7 +303,12 @@ export function combatVsChar(turnContext, atk, def, prov) {
       narrative,
       forceMarker(
         turnContext,
-        `${atk.name}${atk.player != null ? ` (${G.players[atk.player]?.name})` : ''}`,
+        {
+          kind: 'a hero, with the realm he serves',
+          heroName: atk.name,
+          servesARealm: atk.player != null,
+          realmName: G.players[atk.player]?.name,
+        },
         atk.player,
         'attacker',
         atkArmies,
@@ -320,7 +325,12 @@ export function combatVsChar(turnContext, atk, def, prov) {
       narrative,
       forceMarker(
         turnContext,
-        `${def.name}${def.player != null ? ` (${G.players[def.player]?.name})` : ''}`,
+        {
+          kind: 'a hero, with the realm he serves',
+          heroName: def.name,
+          servesARealm: def.player != null,
+          realmName: G.players[def.player]?.name,
+        },
         def.player,
         'defender',
         defArmies,

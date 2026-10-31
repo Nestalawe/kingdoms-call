@@ -20,7 +20,15 @@
 // `forceMarker`, `emitBattle` and the words pass on a context made in the test
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
-import { emitBattle, forceMarker } from '../../src/engine/battle/battle-report-lines-and-force-markers.ts';
+import {
+  emitBattle,
+  forceMarker,
+  theNameAForcesHeaderIsCheckedBy,
+} from '../../src/engine/battle/battle-report-lines-and-force-markers.ts';
+import type {
+  AForceDrawnUpForBattle,
+  TheForceABattlesHeaderNames,
+} from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 import { battleTallyLine } from '../../src/engine/battle/fates.ts';
 import {
   emit,
@@ -32,7 +40,7 @@ import {
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theTurnsLinesInWords, theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { theNameOfAPlayersRealm } from '../../src/engine/turn/log-line-helpers.ts';
-import type { Army, Province } from '../../src/schemas/saved-game-state.ts';
+import type { Army, Character, Province } from '../../src/schemas/saved-game-state.ts';
 
 // emit echoes each line on the console: quiet while the tests write lines.
 const consoleLog = console.log;
@@ -71,6 +79,25 @@ function newContext(): TurnContext {
 const company = (unitName: string): Army => ({ type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName });
 const FORD = { id: 4, name: 'Greyford' } as unknown as Province;
 
+/** The forces the headers name (P1-12d29: records; the prose writes the names): Aldric of Red, Brann of Blue, and the
+ *  chieftain who guards Greyford. */
+const ALDRIC_OF_RED = {
+  kind: 'a hero, with the realm he serves',
+  heroName: 'Aldric',
+  servesARealm: true,
+  realmName: 'Red',
+} as const;
+const BRANN_OF_BLUE = {
+  kind: 'a hero, with the realm he serves',
+  heroName: 'Brann',
+  servesARealm: true,
+  realmName: 'Blue',
+} as const;
+const THE_CHIEFTAIN_OF_GREYFORD = {
+  kind: "a province's guard at the head of its force",
+  guardName: 'The Chieftain of Greyford',
+} as const;
+
 /** How Aldric's host comes on at Greyford, and how Brann's and the chieftain's stand there, as the headers' verbs tell
  *  it (P1-12d20: its values; the prose writes the words). */
 const ATTACKS_GREYFORD = {
@@ -98,8 +125,8 @@ const THE_CHIEFTAIN_GUARDS_GREYFORD = {
 /** Aldric's attack on Brann at Greyford: both forces drawn up, the blows, and (unless `noLosses`) both casualty lists. */
 function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
   const narrative: NarrativeLine[] = [];
-  narrate(narrative, forceMarker(tc, 'Aldric (Red)', 0, 'attacker', [company('Shieldwall')], ATTACKS_GREYFORD));
-  narrate(narrative, forceMarker(tc, 'Brann (Blue)', 1, 'defender', [company('Ford Watch')], HOLDS_GREYFORD));
+  narrate(narrative, forceMarker(tc, ALDRIC_OF_RED, 0, 'attacker', [company('Shieldwall')], ATTACKS_GREYFORD));
+  narrate(narrative, forceMarker(tc, BRANN_OF_BLUE, 1, 'defender', [company('Ford Watch')], HOLDS_GREYFORD));
   narrate(narrative, { kind: 'the battle for a province begins', provName: 'Greyford' });
   narrate(narrative, {
     kind: "the defender's feigned retreat springs shut",
@@ -147,7 +174,7 @@ const fileTheBattle = (tc: TurnContext, narrative: NarrativeLine[]) => {
 describe("a fact's words are the engine's words before P1-12c3", () => {
   test("a force drawn up for battle: the header's machine form, its keys in their order", () => {
     const tc = newContext();
-    const fact = forceMarker(tc, 'Aldric (Red)', 0, 'attacker', [company('Shieldwall')], ATTACKS_GREYFORD, {
+    const fact = forceMarker(tc, ALDRIC_OF_RED, 0, 'attacker', [company('Shieldwall')], ATTACKS_GREYFORD, {
       guard: false,
     });
     expect(theWordsOf(fact)).toBe(
@@ -156,7 +183,7 @@ describe("a fact's words are the engine's words before P1-12c3", () => {
         '"armies":[{"type":"Men-at-Arms","quality":"Veteran","unitName":"Shieldwall","race":"Human",' +
         '"phantom":false,"skeletal":false,"wildHunt":false,"wildHuntUntil":null}]}',
     );
-    const guard = forceMarker(tc, 'The Chieftain of Greyford', null, 'defender', [], THE_CHIEFTAIN_GUARDS_GREYFORD, {
+    const guard = forceMarker(tc, THE_CHIEFTAIN_OF_GREYFORD, null, 'defender', [], THE_CHIEFTAIN_GUARDS_GREYFORD, {
       guard: true,
     });
     expect(theWordsOf(guard)).toBe(
@@ -167,11 +194,78 @@ describe("a fact's words are the engine's words before P1-12c3", () => {
 
   test("a force drawn up with no verb: the header's verb is empty", () => {
     // No battle draws up a force without one (the matrix never reaches it); the header still has its verb key.
-    const fact = forceMarker(newContext(), 'Brann (Blue)', 1, 'defender', []);
+    const fact = forceMarker(newContext(), BRANN_OF_BLUE, 1, 'defender', []);
     expect(theWordsOf(fact)).toBe(
       '⚑FORCE⚑{"name":"Brann (Blue)","color":"#33c","neutral":false,"guard":false,"role":"defender","verb":"",' +
         '"armies":[]}',
     );
+  });
+
+  // P1-12d29: the force a header names is a record, and the prose writes its name; forceMarker's leaderless check reads
+  // a copy of those words (theNameAForcesHeaderIsCheckedBy), pinned here to the prose's over every form.
+  const theNameInTheHeader = (fact: AForceDrawnUpForBattle): unknown =>
+    (JSON.parse(theWordsOf(fact).slice('⚑FORCE⚑'.length)) as { name: unknown }).name;
+
+  test('each force a header names: the name the battles composed, and the check reads the same words', () => {
+    const tc = newContext();
+    const forms: [TheForceABattlesHeaderNames, string][] = [
+      [ALDRIC_OF_RED, 'Aldric (Red)'],
+      // a hero who serves no realm: no brackets (P1-23a), and " (wandering)" cut
+      [
+        {
+          kind: 'a hero, with the realm he serves',
+          heroName: 'Garreth (wandering)',
+          servesARealm: false,
+          realmName: '',
+        },
+        'Garreth',
+      ],
+      [THE_CHIEFTAIN_OF_GREYFORD, 'The Chieftain of Greyford'],
+      [
+        { kind: "a realm's garrison at a province", ownerName: 'Blue', provName: 'Greyford' },
+        "Blue's garrison at Greyford",
+      ],
+      [
+        { kind: "a province's own defenders with no one to lead them", provName: 'Greyford' },
+        'The defenders of Greyford',
+      ],
+    ];
+    for (const [force, name] of forms) {
+      const fact = forceMarker(tc, force, null, 'defender', []);
+      expect(fact.fallenCommandersName).toBeNull();
+      expect(theNameInTheHeader(fact)).toBe(name);
+      expect(theNameAForcesHeaderIsCheckedBy(force)).toBe(name);
+    }
+  });
+
+  test("a host whose commander fell: its header names his leaderless host, as the check finds him in the header's words", () => {
+    const tc = newContext();
+    // three heroes who fell: two whose hosts fight on leaderless, and one whose host does not
+    tc.G.characters.push(
+      ...([
+        { id: 9, name: 'Garreth (wandering)', player: null, alive: false, _leaderlessHost: true },
+        { id: 10, name: 'Bran', player: 1, alive: false, _leaderlessHost: true },
+        { id: 11, name: 'Osric', player: 1, alive: false },
+      ] as unknown as Character[]),
+    );
+    const aHeroOf = (heroName: string, realmName: string | null): TheForceABattlesHeaderNames => ({
+      kind: 'a hero, with the realm he serves',
+      heroName,
+      servesARealm: realmName !== null,
+      realmName: realmName ?? undefined,
+    });
+    const header = (force: TheForceABattlesHeaderNames) => forceMarker(tc, force, null, 'attacker', []);
+    // " (wandering)" cut on both sides
+    const garreth = header(aHeroOf('Garreth (wandering)', null));
+    expect(garreth.fallenCommandersName).toBe('Garreth');
+    expect(theNameInTheHeader(garreth)).toBe("Garreth's leaderless host");
+    // a realm's hero: the realm's brackets stay after the rename
+    expect(theNameInTheHeader(header(aHeroOf('Bran', 'Blue')))).toBe("Bran's leaderless host (Blue)");
+    // the check finds the fallen by the start of the header's name (Parked: a living Brannoc is renamed as today)
+    expect(theNameInTheHeader(header(aHeroOf('Brannoc', 'Blue')))).toBe("Bran's leaderless hostnoc (Blue)");
+    // a name that says "leaderless" already is left as it is, and a hero who fell with no leaderless host renames none
+    expect(header(aHeroOf('Bran the Leaderless', 'Blue')).fallenCommandersName).toBeNull();
+    expect(header(aHeroOf('Osric', 'Blue')).fallenCommandersName).toBeNull();
   });
 
   test("the place of a battle's tally has no words of its own", () => {

@@ -21,6 +21,7 @@ import {
   type AUnitTheTerrainMarks,
   type AUnitsDruidShortfall,
   type HowAForceComesOnInItsHeader,
+  type TheForceABattlesHeaderNames,
 } from './the-facts-a-battles-lines-record.ts';
 
 // ── BATTLE REPORT LINES AND FORCE MARKERS (plan P1-08c: lifted out of resolveTurn) ────
@@ -32,11 +33,12 @@ import {
 // Chronicle expands into: a header coloured in the owner's map colour (neutral = dark grey) + one
 // icon row per unit (same look as "Your Realm"). Since P1-12c3 it returns the fact, and the views write its words
 // ('⚑FORCE⚑' and the header as JSON: src/views/prose/the-words-of-a-battles-lines.ts).
-// playerIdx null → neutral. role: 'attacker' | 'defender'. howItComesOn: its header's verb as its values (P1-12d20: the
-// prose writes the words), or none for an empty verb.
+// theForce: the force the header names, as a record (P1-12d29: the prose writes its name). playerIdx null → neutral.
+// role: 'attacker' | 'defender'. howItComesOn: its header's verb as its values (P1-12d20: the prose writes the words),
+// or none for an empty verb.
 export function forceMarker(
   turnContext: TurnContext,
-  name: string | null | undefined,
+  theForce: TheForceABattlesHeaderNames,
   playerIdx: number | null | undefined,
   role: string | null | undefined,
   armies: Army[] | null | undefined,
@@ -57,8 +59,11 @@ export function forceMarker(
     wildHuntUntil: a._wildHuntUntilTurn != null ? a._wildHuntUntilTurn : null,
   })); // Wild Hunt tag rides into battle rows too
   // 2026-09-23 (Toby item 10): a host whose commander fell earlier in the battle series fights
-  // on under a captain (_leaderlessHost) — its header must not present the dead man as leading it.
-  let _nm = (name || '').replace(' (wandering)', '');
+  // on under a captain (_leaderlessHost) — its header must not present the dead man as leading it. The check reads the
+  // name as the header writes it (P1-12d29: a copy of the prose's words, below), and the fact holds the fallen
+  // commander it found; the prose writes "<his name>'s leaderless host".
+  const _nm = theNameAForcesHeaderIsCheckedBy(theForce);
+  let fallenCommandersName: string | null = null;
   {
     const _dead = (G.characters || []).find(
       (ch) =>
@@ -69,13 +74,13 @@ export function forceMarker(
         _nm.startsWith(ch.name.replace(' (wandering)', '')),
     );
     if (_dead && !/leaderless/i.test(_nm)) {
-      const _dn = _dead.name.replace(' (wandering)', '');
-      _nm = `${_dn}'s leaderless host` + _nm.slice(_dn.length);
+      fallenCommandersName = _dead.name.replace(' (wandering)', '');
     }
   }
   return {
     kind: 'a force drawn up for battle',
-    name: _nm,
+    theForce,
+    fallenCommandersName,
     color,
     neutral: playerIdx == null,
     guard,
@@ -83,6 +88,30 @@ export function forceMarker(
     howItComesOn: howItComesOn ?? null,
     armies: arr,
   };
+}
+
+/** The name a force's header gives before the leaderless check, " (wandering)" cut: a copy of the prose's words
+ *  (theNameOfTheForceAHeaderNames, src/views/prose/the-words-of-a-battles-lines.ts) for forceMarker's leaderless check
+ *  alone, word for word as the battles composed it before P1-12d29 (the realm's brackets only for a hero who serves one:
+ *  P1-23a). A unit case pins it to the prose's words over every form (the views test); it goes with the Parked fix of
+ *  the check (the battle telling forceMarker its side is leaderless). */
+export function theNameAForcesHeaderIsCheckedBy(theForce: TheForceABattlesHeaderNames): string {
+  let name: string;
+  switch (theForce.kind) {
+    case 'a hero, with the realm he serves':
+      name = `${theForce.heroName}${theForce.servesARealm ? ` (${String(theForce.realmName)})` : ''}`;
+      break;
+    case "a province's guard at the head of its force":
+      name = theForce.guardName;
+      break;
+    case "a realm's garrison at a province":
+      name = `${theForce.ownerName}'s garrison at ${theForce.provName}`;
+      break;
+    case "a province's own defenders with no one to lead them":
+      name = `The defenders of ${theForce.provName}`;
+      break;
+  }
+  return name.replace(' (wandering)', '');
 }
 
 export function qualityAdj(quality: Quality) {
