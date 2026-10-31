@@ -317,7 +317,7 @@ export function druIdPenaltyMult(
 export const TEMPERS_P = KC_TEMPERS.slice();
 /** A temper's traits as the fights read them: a row of TEMPER_TRAITS, its rage the [min, max] extra hit points the
  *  table's notes give it, or null (no row has one today). temperOf's return type, written for its typed callers
- *  (plan P1-10b11), so it is checked once this file is freed. */
+ *  (plan P1-10b11), checked since P1-10b19: every row reads as it. */
 type TheTraitsOfATemper = Omit<(typeof TEMPER_TRAITS)['Brave'], 'rageHp'> & {
   readonly rageHp: readonly [min: number, max: number] | null;
 };
