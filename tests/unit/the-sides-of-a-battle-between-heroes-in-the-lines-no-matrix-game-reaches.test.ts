@@ -11,6 +11,9 @@
 // to the whole army (whatARealmsDiscoveriesAddToTheWholeArmy, discoveryArmyBonus before P1-19aa) is always 0 (Parked).
 // Since the mutation session of 2026-10-31, also a line the matrix reaches but no test read: an Evil defender's monsters'
 // savage fury names the defender's side (every die at 0.99, so neither side is seized by zeal, which takes its place).
+// Since the mutation session of 2026-11-01: a defender's fanatical zeal comes from his own realm's fanaticism
+// discoveries, never the attacker's (Righteous Fervour, +30% defending, held by one realm or the other; both realms
+// Neutral, 10%, and every die at 0.3, so a side is seized at 40% and not at 10%).
 // Since P1-12d31, the pursuits' lines (no game reaches a Shield Fort leaving the Manticore Pride or the Shark Shoals
 // nothing, nor the Shark Shoals tearing into the beaten): each names the winner and the loser, with the War-Horn's and
 // the no-room lines before them naming each side. Which pursuits each force makes and whether a Shield Fort holds are
@@ -272,4 +275,35 @@ describe.each([false, true])('a battle between heroes, both commanders slain bef
     const fury = shown.words.filter((w) => w.includes('driven to savage fury'));
     expect(fury).toEqual([`${sideOf(shown.def, slain)}'s monsters are driven to savage fury! (+25% strength)`]);
   });
+
+  test.each([
+    ['the defender', 1, true],
+    ['the attacker', 0, false],
+  ] as const)(
+    "a defender's fanatical zeal comes from his own realm's discoveries: Righteous Fervour held by %s's realm",
+    (_, theRealmThatHoldsIt, theDefenderIsSeized) => {
+      // Both realms Neutral (10% each); Righteous Fervour (ag09) adds 30% to its realm's side when it defends. Every die
+      // at 0.3: a side with 40% is seized by zeal, a side with 10% is not, so the defender is seized only when his own
+      // realm holds it, and the attacker never (the discovery adds nothing to the side that attacks).
+      const shown = aBattle(
+        { atk: companies(2, 'Average'), def: companies(2, 'Average') },
+        slain,
+        (G) => {
+          const realms = (G as unknown as { players: { alignment?: string; discoveries?: { id: string }[] }[] })
+            .players;
+          realms.forEach((realm, i) => {
+            realm.alignment = 'Neutral';
+            realm.discoveries = i === theRealmThatHoldsIt ? [{ id: 'ag09' }] : [];
+          });
+        },
+        () => 0.3,
+      );
+      const zeal = shown.words.filter((w) => w.includes('fanatical zeal'));
+      expect(zeal).toEqual(
+        theDefenderIsSeized
+          ? [`${sideOf(shown.def, slain)}'s forces fight with fanatical zeal! (+30% defending strength)`]
+          : [],
+      );
+    },
+  );
 });
