@@ -271,11 +271,6 @@ export const INVARIANTS: readonly { name: string; check: (t: Turn) => string[] }
  *  request removes the entry. `line` matches one line of what broke. */
 export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string }[] = [
   {
-    check: 'no NaN or undefined',
-    line: /^GM log line \d+: "⚑FORCE⚑\{"name":"[^"()]+ \(undefined\)","color":null,"neutral":true,"guard":false,"role":"defender",/,
-    why: "A hero with no realm defends a province: the battle header's realm name is undefined (the GM portal's defender forceMarker)",
-  },
-  {
     check: 'the dead take no actions',
     line: /^(?<hero>[^"(),]+) \(id \d+\), dead in phase \d, acts in phase \d: "\k<hero> \((?:Human|Elven|Dwarven|Orcish), (?:Divine|Good|Druidic|Neutral|Pagan|Evil|Undead)\) agrees to serve [^"]+"$/,
     why: "A wanderer who died earlier in the turn can still be hired: the hire order checks that he serves no realm and stands in the province, not that he is alive (the GM portal's hire case)",

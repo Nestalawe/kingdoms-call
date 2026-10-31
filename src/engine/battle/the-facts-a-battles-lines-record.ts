@@ -415,7 +415,8 @@ export type TheFactOfOneOfABattlesSentences =
   | {
       kind: 'the attacker moves into the province and a battle is initiated';
       atkName: string;
-      attackersRealmName: string;
+      /** None when the attacker serves no realm: the words then name no realm. */
+      attackersRealmName: string | undefined;
       provName: string;
       heldByName: string;
     }

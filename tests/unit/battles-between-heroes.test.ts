@@ -6,7 +6,9 @@
 //     counted among its losses, or is told as leaving ("…disbands for good"), and no company joins a host;
 //   • the report is whole: every line is text with no "NaN" or "undefined", and the summary names the side that won;
 //   • the turn's statistics get exactly one record of the battle, with its result, its losses and its carry-on round:
-//     a fresh clash starts the count at 0, a resumed battle adds 1, and a war's opening clash starts it again.
+//     a fresh clash starts the count at 0, a resumed battle adds 1, and a war's opening clash starts it again;
+//   • a hero who serves no realm, attacking or defending, is named in his host's header and the "moves into" line
+//     without a realm's brackets, and his foe with his realm's name (one staged battle each).
 // Level 1 (unit): combatVsChar called directly in the bare vm (tests/lib/engine.ts), on a fresh turn's context for
 // each battle (a battle changes the world). The matrix runs it about 840 times a set; these say what holds for any
 // battle staged here, not only the matrix's games.
@@ -212,6 +214,35 @@ test('the report is whole, and its summary names the side that won', () => {
   );
   expect(seen.won).toBeGreaterThan(0);
   expect(seen.held).toBeGreaterThan(0);
+});
+
+// A hero who serves no realm (a wanderer holding his ground, say) is named in his host's header, and in the "moves
+// into" line when he attacks, without a realm's brackets; a realm's hero keeps his realm's name there (P1-23a: the
+// realmless side read "(undefined)"). No matrix game meets a realmless hero in this battle, so these stage one.
+test.each(['defender', 'attacker'] as const)("a realmless %s's lines name no realm, and his foe's name his", (side) => {
+  const oneHost: BattleInput['attacker'] = { companies: [{ kind: 0, quality: 1 }], tactical: 2, stance: 'accept' };
+  const { tc, atk, def, prov } = stage({
+    attacker: oneHost,
+    defender: oneHost,
+    ground: 'open ground',
+    terrain: 'plain',
+    round: 'fresh clash',
+    roundsBefore: 0,
+  });
+  const realmOf = (c: Character) => (tc.G as { players: { name: string }[] }).players[c.player ?? -1]?.name;
+  const [realmless, foe] = side === 'attacker' ? [atk, def] : [def, atk];
+  realmless.player = null;
+  const foesHeader = `${foe.name} (${String(realmOf(foe))})`;
+  const words = combatVsChar(tc, atk, def, prov).narrative.map((l) => String(wordsOf(l)));
+  const headers = words
+    .filter((w) => w.startsWith('⚑FORCE⚑'))
+    .map((w) => (JSON.parse(w.slice('⚑FORCE⚑'.length)) as { name: string }).name);
+  expect(headers).toEqual(side === 'attacker' ? [atk.name, foesHeader] : [foesHeader, def.name]);
+  const movesInto = words.find((w) => w.startsWith('➡️'));
+  expect(movesInto).toMatch(
+    side === 'attacker' ? `➡️ ${atk.name} moves into ${String(prov['name'])}` : `➡️ ${foesHeader} moves into`,
+  );
+  expect(words.join('\n')).not.toMatch(/undefined|NaN/);
 });
 
 test("the turn's statistics record the battle once, with its result, its losses and its carry-on round", () => {
