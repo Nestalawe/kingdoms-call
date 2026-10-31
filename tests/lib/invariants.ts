@@ -271,11 +271,6 @@ export const INVARIANTS: readonly { name: string; check: (t: Turn) => string[] }
  *  request removes the entry. `line` matches one line of what broke. */
 export const KNOWN_BREACHES: readonly { check: string; line: RegExp; why: string }[] = [
   {
-    check: 'the dead take no actions',
-    line: /^(?<hero>[^"(),]+) \(id \d+\), dead in phase \d, acts in phase \d: "\k<hero> \((?:Human|Elven|Dwarven|Orcish), (?:Divine|Good|Druidic|Neutral|Pagan|Evil|Undead)\) agrees to serve [^"]+"$/,
-    why: "A wanderer who died earlier in the turn can still be hired: the hire order checks that he serves no realm and stands in the province, not that he is alive (the GM portal's hire case)",
-  },
-  {
     check: 'an unseen hero',
     line: /^realm \d+ reads of [^"]+ \(id \d+, invisible from phase \d\) in phase \d+, in a line of its own order, at lastTurnLog\[\d+\]: "[^"]*"(?: \(and \d+ more lines like it that phase\))?$/,
     why: "Enemy orders and reactions still reach a hero after he turns invisible (the Defend ambush, Encounter and Pursue, a chase under way, Spy on a hero, Steal, Curse: they check cloaks and Vanish, not Invisibility), and the acting realm's report tells it so",
