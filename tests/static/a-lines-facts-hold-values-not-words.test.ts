@@ -58,7 +58,8 @@
 // (TheForceABattlesHeaderNames: a hero and the realm he serves, a guard, a realm's garrison at a province, a province's
 // own defenders), and the fallen commander forceMarker's leaderless check found his name, so LABELS goes; since P1-12d30
 // the side the battle's report lines take is a record (ASideAsABattlesReportLinesNameIt); since P1-12d31 the side the
-// lines before the volleys take (the same record) and the pursuit lines' (ASideOfABattle).
+// lines before the volleys take (the same record) and the pursuit lines' (ASideOfABattle); since P1-12d32 the sea lift's
+// (ASideOfABattle), and the hulls' hold's claimant (a realm's name or that record).
 //
 // Red on its base by design (P1-12d2's base: 139 fields of personal combat's facts; P1-12d3's: 121
 // fields of the battles' facts; P1-12d4's: the 10 the list of the ladder's and the grid's let through; P1-12d5's,

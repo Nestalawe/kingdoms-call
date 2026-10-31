@@ -5,12 +5,13 @@
 // left to fall back, hold or scatter (navalSplitRetreat, _navalLeaveBehind). Each kind holds plain values: a name as the
 // world holds it, the units a line names copied as it is told (theUnitsAsTheLineNamesThem), and why units were left
 // behind as a reason, never its words; the prose writes every word (src/views/prose/the-words-of-the-sea-lifts-battle-
-// lines.ts). A side's label stays a field in this slice (Decision 2: the facts-by-sense slice names a side), listed by
-// the static test (tests/static/a-lines-facts-hold-values-not-words.test.ts).
+// lines.ts). Since P1-12d32 the beaten side is a record (ASideOfABattle: its commander's name and whether he fell), and
+// so is the claimant the hulls hold a province against when the battle names him by his side, not his realm.
 // Each is told in a battle's narrative (the fight's audience) or filed on its own by a stalled battle, a host gained in
 // a province, a pursuit or a march (its event's): its audience is its event's (Decision 6).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
+import type { ASideOfABattle } from '../battle/the-facts-a-battles-lines-record.ts';
 
 /** Why units of a beaten fleet's column are left behind on the shore: no room aboard and no ground of the realm's
  *  beside it (the fleet sails), or no friendly water beside it (the column marches inland). */
@@ -22,7 +23,7 @@ export type WhyUnitsAreLeftBehind =
 export type TheFactOfASeaLiftsBattleLine =
   | {
       kind: 'a beaten force at sea has too few hulls left to fall back';
-      sideName: string;
+      sideName: ASideOfABattle;
       provinceName: string;
     }
   | {
@@ -31,12 +32,13 @@ export type TheFactOfASeaLiftsBattleLine =
       holdersRealmName: string | null;
       units: AUnitAsDescribeArmyNamesIt[];
       provinceName: string;
-      /** Whose the ground is not while they lie there (a realm's name, or a side's label); null: the hunter's. */
-      claimantName: string | null;
+      /** Whose the ground is not while they lie there (a realm's name, or a side: a stalled battle's winner with no realm's
+       *  name to give); null: the hunter's. */
+      claimantName: string | ASideOfABattle | null;
     }
   | {
       kind: 'a beaten fleet puts to sea with what its hulls can carry';
-      sideName: string;
+      sideName: ASideOfABattle;
       provinceName: string;
       destinationName: string;
       /** The units the fleet carries off (none: the hulls alone). */
@@ -44,42 +46,42 @@ export type TheFactOfASeaLiftsBattleLine =
     }
   | {
       kind: 'bound units the fleet cannot carry dissolve';
-      sideName: string;
+      sideName: ASideOfABattle;
       units: AUnitAsDescribeArmyNamesIt[];
     }
   | {
       kind: 'units the fleet cannot carry fall back overland and join a garrison';
-      sideName: string;
+      sideName: ASideOfABattle;
       units: AUnitAsDescribeArmyNamesIt[];
       shoreName: string;
     }
   | {
       kind: 'a beaten force with ships retreats overland and leaves its ships behind';
-      sideName: string;
+      sideName: ASideOfABattle;
       destinationName: string;
       units: AUnitAsDescribeArmyNamesIt[];
     }
   | {
       kind: 'a beaten fleet with no friendly water holds the province';
-      sideName: string;
+      sideName: ASideOfABattle;
       provinceName: string;
     }
   | {
       kind: 'bound units left behind on the shore dissolve';
-      sideName: string;
+      sideName: ASideOfABattle;
       units: AUnitAsDescribeArmyNamesIt[];
       why: WhyUnitsAreLeftBehind;
     }
   | {
       kind: "units left behind on the realm's own ground hold it";
-      sideName: string;
+      sideName: ASideOfABattle;
       units: AUnitAsDescribeArmyNamesIt[];
       provinceName: string;
       why: WhyUnitsAreLeftBehind;
     }
   | {
       kind: 'units left behind on ground the realm does not hold scatter as mercenaries';
-      sideName: string;
+      sideName: ASideOfABattle;
       units: AUnitAsDescribeArmyNamesIt[];
       why: WhyUnitsAreLeftBehind;
     };
