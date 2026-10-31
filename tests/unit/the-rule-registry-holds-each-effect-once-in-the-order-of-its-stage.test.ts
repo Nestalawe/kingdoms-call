@@ -371,22 +371,7 @@ const THE_KINDS_IN_CONTENT: ReadonlySet<string> = new Set(
 
 /** The kinds of SAGE_DISCOVERIES_P the discoveries' registry hasn't taken yet: each row of the family takes its own off
  *  (plan P1-19's discoveries family, rows ab to ah), to none. */
-const THE_KINDS_NOT_YET_TAKEN: readonly string[] = [
-  'homePromotion',
-  'upkeep',
-  'tax',
-  'interest',
-  'taxPct',
-  'heroWage',
-  'extendedIntel',
-  'informants',
-  'autoHeal',
-  'regen',
-  'heroWageCap',
-  'maxHp',
-  'turnReveal',
-  'graveDecay',
-];
+const THE_KINDS_NOT_YET_TAKEN: readonly string[] = ['extendedIntel'];
 
 /** What a kind's row breaks: its kind a kind of an effect of SAGE_DISCOVERIES_P. */
 function whatADiscoveryKindsRowBreaks(slug: string, row: { readonly name: string }): string[] {
@@ -435,7 +420,7 @@ test("planted in the discoveries' registry, an entry left out of its order, a ro
     ...DISCOVERY_ROWS,
     fanaticism: { kind: 'plantedFervour' },
     casting: { kind: 'siege' },
-    'planted-kind': { kind: 'tax' },
+    'planted-kind': { kind: 'extendedIntel' },
   };
   expect(DISCOVERIES_REGISTRY(DISCOVERY_ENTRIES, orders, rows)).toEqual([
     "siegecraft is in the order of strength: a realm's discoveries add to a siege 0 times",
@@ -443,15 +428,13 @@ test("planted in the discoveries' registry, an entry left out of its order, a ro
     'casting and siegecraft share the name siege',
     'planted-kind has a content row and no entry',
   ]);
-  expect(
-    whereTheKindsAndTheRowsPart(
-      rows,
-      THE_KINDS_NOT_YET_TAKEN.filter((kind) => kind !== 'extendedIntel'),
-    ),
-  ).toEqual([
-    "extendedIntel has no row and isn't listed as not yet taken",
+  expect(whereTheKindsAndTheRowsPart(rows, THE_KINDS_NOT_YET_TAKEN)).toEqual([
     "cast has no row and isn't listed as not yet taken",
     "fanatic has no row and isn't listed as not yet taken",
-    'tax is listed as not yet taken, and has a row',
+    'extendedIntel is listed as not yet taken, and has a row',
+  ]);
+  // the last kind not yet taken, left off the list (since P1-19ag a planted row can't take one and leave another)
+  expect(whereTheKindsAndTheRowsPart(DISCOVERY_ROWS, [])).toEqual([
+    "extendedIntel has no row and isn't listed as not yet taken",
   ]);
 });

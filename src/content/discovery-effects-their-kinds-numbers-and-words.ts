@@ -205,6 +205,33 @@ export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
   marching: { kind: 'move' },
   // what the chance that columns converging on one battle unite gains (P1-19af)
   'converging-columns': { kind: 'unify' },
+  // the gold a province pays more, on the provinces its row names; each effect capped at the realm's ceiling (5% of its
+  // base tax: discoveries.ts' TAX_BONUS_CAP_PCT, shared with the items' tax gold) and its row's own `max` (P1-19ag)
+  'province-tax': { kind: 'tax' },
+  // Taxation Records (sd14): a share more of the provinces' income, under the same ceiling (P1-19ag)
+  'taxation-records': { kind: 'taxPct' },
+  // the interest a realm's treasury earns at the collection, each effect under the same ceiling (P1-19ag)
+  interest: { kind: 'interest' },
+  // what a unit's wage is cut by, for the units the row names, each effect under the same ceiling (P1-19ag)
+  'a-units-wage-cut': { kind: 'upkeep' },
+  // what a hero's wage is cut by, for heroes of the alignments the row names, under the same ceiling (P1-19ag)
+  'a-heros-wage-cut': { kind: 'heroWage' },
+  // the wage no hero of the realm is paid above, under the same ceiling (P1-19ag)
+  'a-heros-wage-ceiling': { kind: 'heroWageCap' },
+  // the hit points a hero's maximum gains, for the king, the heroes or a trained skill the row names (P1-19ag)
+  'maximum-hp': { kind: 'maxHp' },
+  // the hit points a wounded hero of the realm recovers at the turn's end (P1-19ag)
+  'healing-the-wounded': { kind: 'regen' },
+  // the rate the graves of the realm's provinces rot at, if lower than the ground's own (P1-19ag)
+  'grave-keeping': { kind: 'graveDecay' },
+  // War Academy (sd08): the chance each company at the realm's capital trains up a grade at the new turn (P1-19ag)
+  'war-academy': { kind: 'homePromotion' },
+  // Informant Network (sd22): an unseen enemy captain named at the new turn (P1-19ag)
+  'informant-network': { kind: 'informants' },
+  // Arcane Observatory (sd39): an uncharted province charted in full at the new turn (P1-19ag)
+  'arcane-observatory': { kind: 'turnReveal' },
+  // Herbal Lore (sd29): the share of last season's wounds dressed as a phase begins (P1-19ag)
+  'herbal-lore': { kind: 'autoHeal' },
 } as const satisfies Record<string, AKindOfDiscoveryEffect>;
 
 /** A kind of effect's slug (a key of DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS). */

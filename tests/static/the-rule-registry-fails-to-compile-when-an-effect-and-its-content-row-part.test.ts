@@ -9,8 +9,9 @@
 //   until their family's first row writes them: plan P1-19's Choice 1; TS2322). Since P1-19d every stage of `strength`
 //   and `fate` has its signature, so the copy plants a stage typed `never` in `fate` beside the entry on it: the check
 //   is of the mechanism a later family's first row leans on while it writes its stages. Since P1-19g `volley` has its
-//   signature too, so the hook point's plant was on `movementCost`; since P1-19af that has its signature, so the plant is
-//   on `turnStart`, still `never`.
+//   signature too, so the hook point's plant was on `movementCost`; since P1-19af that has its signature, so the plant
+//   was on `turnStart`; since P1-19ag every hook point has its signature, so the copy plants a hook point typed `never`
+//   beside `turnStart`, as it plants the stage, and the entry on it.
 // Since P1-19m the items' registry (src/engine/rules/the-registry-of-magic-item-effects.ts) ends the same way, `satisfies
 // Record<MagicItemEffectSlug, MagicItemEffectEntry>`, on the keys of its content rows (src/content/magic-item-effects-
 // their-names-numbers-and-words.ts), and the copies plant the same two faults in it: an item's effect row with no entry
@@ -114,9 +115,13 @@ const PLANTS: Record<string, Record<string, string>> = {
   },
   'an effect at a hook point with no signature yet': {
     [REGISTRY]: replacedOnce(
-      read(REGISTRY),
+      replacedOnce(
+        read(REGISTRY),
+        '  readonly turnStart: {',
+        '  readonly aPlantedHookPointWithNoSignatureYet: never;\n  readonly turnStart: {',
+      ),
       WYRMSCALE_ENTRY,
-      "  wyrmscale: {\n    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale },\n    turnStart: { \"a unit's step\": () => 1 },\n  },\n",
+      "  wyrmscale: {\n    strength: { 'the whole force': THE_STRENGTH_OF_A_UNIT_IN_ITS_FORCE.wyrmscale },\n    aPlantedHookPointWithNoSignatureYet: { \"a unit's step\": () => 1 },\n  },\n",
     ),
   },
   "an item's effect row with no entry": {

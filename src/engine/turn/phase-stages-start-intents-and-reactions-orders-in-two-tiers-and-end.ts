@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { discParam, hasDisc } from '../discoveries.ts';
+import { theShareARealmsDiscoveriesDressAFightersWoundsBy } from '../rules/the-registry-of-discovery-effects.ts';
 import { noteSilentHeroes } from './log-line-helpers.ts';
 import { defendSpentThisPhase } from './mercenary-ids-and-battle-records.ts';
 import { settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.ts';
@@ -58,19 +58,21 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   // (rounded, never less than 1). `_hpAtPhaseStart` is the HP snapshot taken here each phase; it
   // persists in the saved state, so wounds taken in the final phase of a turn heal at the start
   // of the next. Only the wounds of that one fight are treated — it is not a standing
-  // regeneration.
+  // regeneration. (The share: the discoveries' registry's since plan P1-19ag, "turnStart: a realm's discoveries dress
+  // a fighter's wounds", asked last, as the check of its id was, or nothing.)
   (G.characters || []).forEach((c) => {
-    if (
+    const _herbalShare =
       c.alive &&
       c.player != null &&
       c.hp != null &&
       c._hpAtPhaseStart != null &&
       c.hp < c._hpAtPhaseStart &&
-      c.hp < (c.maxHp || 20) &&
-      hasDisc(turnContext, c.player, 'sd29')
-    ) {
+      c.hp < (c.maxHp || 20)
+        ? theShareARealmsDiscoveriesDressAFightersWoundsBy(G.players[c.player])
+        : null;
+    if (_herbalShare !== null) {
       const _dmg = c._hpAtPhaseStart - c.hp;
-      const _heal = Math.min(Math.max(1, Math.round(_dmg * discParam('sd29', 'pct', 0.4))), (c.maxHp || 20) - c.hp);
+      const _heal = Math.min(Math.max(1, Math.round(_dmg * _herbalShare)), (c.maxHp || 20) - c.hp);
       if (_heal > 0) {
         c.hp = c.hp + _heal;
         // filed under the CHARACTER for THIS phase. It is the first line of the phase, before any

@@ -13,6 +13,9 @@
 // Since P1-19aa discUnitIs and discUnitMatch are in src/engine/rules-on-plain-values/, discFanaticApplies and the rule of
 // discEffectsOf (and the table of the discoveries by id, which the cases plant rows in) in the discoveries' registry,
 // moved as they were; discUnitMult and dragonTamed ask the registry's runners. The cases call them where they are.
+// Since P1-19ag discEffectsOf, discParam, discSumOf and discTaxMatch are gone with their last callers: their cases ask
+// the registry's finder (theEffectsOfAKindARealmHolds), the fallbacks the effects keep (Taxation Records' 99g, War
+// Academy's 50%, Herbal Lore's 40%), discTaxAdd (the tax effect's filters) and discMaxHpFor (a row with no `hp`).
 // Level 1 (unit): each is a plain function on staged values, called directly on the engine's modules (plan P1-14a). The
 // staged values carry only the fields each reads, so their type is given by assertion (`as never`), as the views' unit
 // cases give a staged world's.
@@ -24,17 +27,13 @@ import {
   capItemTaxGold,
   discBlockedIds,
   discDeathMult,
-  discEffectsOf,
   discEligible,
   discExploreMult,
   discHeroWage,
   discMaxHpFor,
-  discParam,
   discPromo,
   discProvCoastal,
-  discSumOf,
   discTaxAdd,
-  discTaxMatch,
   discUnitMult,
   discUpkeepWage,
   dragonTamed,
@@ -49,6 +48,11 @@ import {
   discUnitMatch,
 } from '../../src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { discFanaticApplies } from '../../src/engine/rules/discoveries/a-realms-discoveries-in-its-armys-strength.ts';
+import {
+  theChanceARealmsDiscoveriesPromoteTheCapitalsArmies,
+  theEffectsOfAKindARealmHolds,
+  theShareARealmsDiscoveriesDressAFightersWoundsBy,
+} from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 
 type Obj = Record<string, unknown>;
 
@@ -90,21 +94,30 @@ describe("the discoveries' lines no matrix game reaches keep their values", () =
   });
 
   test("a realm's effects: no list of discoveries, a gap among them, an id no row holds, a row with no effect", () => {
-    expect(discEffectsOf({}, 'tax')).toEqual([]);
+    expect(theEffectsOfAKindARealmHolds({}, 'tax')).toEqual([]);
     const taxRow = Object.values(DISC_BY_ID).find((d) => d.effect?.kind === 'tax');
     if (!taxRow) throw new Error('no tax discovery in the table');
     const held = { discoveries: [null, { id: 'sd34' }, { id: 'no-such-row' }, { id: taxRow.id }] };
-    const effects = discEffectsOf(held, 'tax');
+    const effects = theEffectsOfAKindARealmHolds(held, 'tax');
     expect(effects).toHaveLength(1);
     expect(effects[0]).toBe(taxRow.effect);
-    expect(withPlantedRows({ bare: undefined }, (realm) => discEffectsOf(realm as never, 'tax'))).toEqual([]);
+    expect(
+      withPlantedRows({ bare: undefined }, (realm) => theEffectsOfAKindARealmHolds(realm as never, 'tax')),
+    ).toEqual([]);
   });
 
-  test("a number read by a discovery's id: no row, a row with no effect, a field the row doesn't set", () => {
-    expect(discParam('no-such-row', 'pct', 0.4)).toBe(0.4);
-    expect(withPlantedRows({ bare: undefined }, () => discParam('test-bare', 'pct', 0.3))).toBe(0.3);
-    // Taxation Records' row sets a share but no `max`
-    expect(discParam('sd14', 'max', 99)).toBe(99);
+  test("a number a discovery's row doesn't set: War Academy's 50%, Herbal Lore's 40%; none with no such row held", () => {
+    const got = withPlantedRows({ academy: { kind: 'homePromotion' }, herbs: { kind: 'autoHeal' } }, (realm) => [
+      theChanceARealmsDiscoveriesPromoteTheCapitalsArmies(realm as never),
+      theShareARealmsDiscoveriesDressAFightersWoundsBy(realm as never),
+    ]);
+    expect(got).toEqual([0.5, 0.4]);
+    expect(
+      withPlantedRows({ bare: undefined }, (realm) => [
+        theChanceARealmsDiscoveriesPromoteTheCapitalsArmies(realm as never),
+        theShareARealmsDiscoveriesDressAFightersWoundsBy(realm as never),
+      ]),
+    ).toEqual([null, null]);
   });
 
   test('Taxation Records with no ceiling given (its fixed 99g) and with no income', () => {
@@ -137,9 +150,12 @@ describe("the discoveries' lines no matrix game reaches keep their values", () =
 
   test('a tax discovery that asks for a garrison, on a province with no garrison list', () => {
     const province = { id: 0, row: 0, col: 0, tax: 2, terrain: 'plains', race: 'Human' };
-    expect(discTaxMatch({ kind: 'tax', garrisoned: true }, province as never, undefined, 0, undefined)).toBe(false);
     const garrisoned = { ...province, garrisonArmies: [{}] };
-    expect(discTaxMatch({ kind: 'tax', garrisoned: true }, garrisoned as never, undefined, 0, undefined)).toBe(true);
+    const paid = withPlantedRows({ held: { kind: 'tax', bonus: 1, garrisoned: true } }, (realm) => [
+      discTaxAdd(realm, province as never, undefined, 0, new Map<unknown, number>(), 10),
+      discTaxAdd(realm, garrisoned as never, undefined, 0, new Map<unknown, number>(), 10),
+    ]);
+    expect(paid).toEqual([0, 1]);
   });
 
   test('a coastal province asked with no state, no world or no province', () => {
@@ -219,12 +235,12 @@ describe("the discoveries' lines no matrix game reaches keep their values", () =
     expect(
       withPlantedRows({ explore: { kind: 'explore' } }, (realm) => discExploreMult(realm as never, 'forest')),
     ).toBe(1);
-    expect(withPlantedRows({ sum: { kind: 'testSum' } }, (realm) => discSumOf(realm as never, 'testSum', 'pct'))).toBe(
-      0,
-    );
     expect(
-      withPlantedRows({ sum: { kind: 'testSum', pct: 0.2 } }, (realm) => discSumOf(realm as never, 'testSum', 'pct')),
-    ).toBe(0.2);
+      withPlantedRows({ sum: { kind: 'maxHp' } }, (realm) => discMaxHpFor(realm as never, { isKing: false })),
+    ).toBe(0);
+    expect(
+      withPlantedRows({ sum: { kind: 'maxHp', hp: 2 } }, (realm) => discMaxHpFor(realm as never, { isKing: false })),
+    ).toBe(2);
   });
 
   test("a unit's class: no unit, a unit with no type, a skeleton asked of a type, a class no set holds", () => {

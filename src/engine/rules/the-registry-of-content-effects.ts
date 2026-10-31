@@ -1480,6 +1480,78 @@ export interface AUnitARealmsDiscoveriesMaySpeed {
   readonly theUnit: AUnitAsTheDiscoveriesReadIt;
 }
 
+/** A province a realm's discoveries may add to the tax of, as they read it (discTaxAdd, which the collection and the
+ *  views ask: plan P1-19ag). Its coast and whether it is the realm's home are questions, asked only by an effect that
+ *  needs them, in the order the filters read them. */
+export interface AProvinceARealmsDiscoveriesMayTax {
+  /** The province's own tax (none read as 0). */
+  readonly theTax: number;
+  /** Its terrain. */
+  readonly theGround: string;
+  /** Its folk's race, if it has one. */
+  readonly theFolk: string | null | undefined;
+  /** The realm's own race. */
+  readonly theRealmsRace: string | undefined;
+  /** Whether a garrison stands in it. */
+  readonly isItGarrisoned: boolean;
+  readonly isItCoastal: () => boolean;
+  readonly isItTheRealmsHome: () => boolean;
+}
+
+/** What one effect of a realm's discoveries adds to a province's tax, or cuts off a wage, and its row's own ceiling,
+ *  if it writes one (the runner caps it, with the realm's, and keeps the account). */
+export interface WhatAnEffectPaysAndItsOwnCeiling {
+  readonly theGold: number;
+  readonly itsOwnCeiling: number | undefined;
+}
+
+/** The ceiling a discovery a realm holds puts on a hero's wage, and its row's own ceiling on what it saves. */
+export interface AWageCeilingAndItsOwnCeiling {
+  readonly theWagesCeiling: number;
+  readonly itsOwnCeiling: number | undefined;
+}
+
+/** What each capped effect of a realm's discoveries has paid (or saved) so far this collection: a Map, one per realm
+ *  per collection, kept by the caller (discTaxAdd's, discUpkeepWage's and discHeroWage's `acc`). */
+export interface WhatEachCappedEffectHasPaid {
+  get(effect: TheEffectOfADiscovery): number | undefined;
+  set(effect: TheEffectOfADiscovery, paid: number): unknown;
+}
+
+/** The provinces' income and the realm's ceiling, as Taxation Records reads them (taxRecordsGold: plan P1-19ag). */
+export interface TheIncomeTaxationRecordsAddsTo {
+  readonly theIncome: number | null | undefined;
+  /** The realm's ceiling (5% of its base tax), or none given (the row's own `max`, else 99g). */
+  readonly theCeiling: number | null | undefined;
+}
+
+/** A realm's treasury and its ceiling, as the interest discoveries read them (the collection and the report). */
+export interface ATreasuryARealmsDiscoveriesMayEarnInterestOn {
+  readonly theTreasury: number;
+  readonly theCeiling: number;
+}
+
+/** A unit whose wage a realm's discoveries may cut (discUpkeepWage, after its guards: plan P1-19ag). */
+export interface AUnitWhoseWageARealmsDiscoveriesMayCut {
+  readonly theUnit: AUnitAsTheDiscoveriesReadIt;
+}
+
+/** A hero whose wage a realm's discoveries may cut (discHeroWage: plan P1-19ag). */
+export interface AHeroWhoseWageARealmsDiscoveriesMayCut {
+  readonly theHerosAlignment: string;
+}
+
+/** A hero as the discoveries that heal the wounded or add to his maximum HP read him (plan P1-19ag). */
+export interface AHeroARealmsDiscoveriesMayHeal {
+  readonly isHeTheKing: boolean;
+}
+
+/** A hero whose maximum HP a realm's discoveries may raise (discMaxHpFor: plan P1-19ag). */
+export interface AHeroWhoseMaximumHpARealmsDiscoveriesMayRaise extends AHeroARealmsDiscoveriesMayHeal {
+  /** His skills' levels (a skill he hasn't, none). */
+  readonly theLevelsOfHisSkills: Readonly<Partial<Record<string, number>>>;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1739,8 +1811,20 @@ export interface TheStagesOfEachHookPoint {
     /** The share of each province around him a discovery an explorer's realm holds maps as he explores; the runner
      *  gives the first effect's, or nothing if the realm holds none (resolveExploreOrder). */
     readonly "a realm's discoveries map the provinces around an explorer": (theEffect: TheEffectOfADiscovery) => number;
+    /** Whether a discovery a realm holds names one enemy captain it can't see, at the new turn; the runner asks whether
+     *  any does (the new turn's informants: plan P1-19ag). */
+    readonly "a realm's discoveries name an unseen captain": (theEffect: TheEffectOfADiscovery) => boolean;
+    /** Whether a discovery a realm holds charts one province it hasn't charted in full, at the new turn; the runner asks
+     *  whether any does (the new turn's Observatory: plan P1-19ag). */
+    readonly "a realm's discoveries chart a province": (theEffect: TheEffectOfADiscovery) => boolean;
   };
-  readonly turnStart: never;
+  /** The start of a phase (plan P1-19's discoveries family: its row P1-19ag typed it). */
+  readonly turnStart: {
+    /** The share of the wounds his last fight cost him that a discovery a hero's realm holds dresses as the next phase
+     *  begins; the runner gives the first effect's, or nothing if the realm holds none
+     *  (startPhaseHealingSnapshotsAndStalledBattles, which rounds it and writes the line). */
+    readonly "a realm's discoveries dress a fighter's wounds": (theEffect: TheEffectOfADiscovery) => number;
+  };
   readonly turnEnd: {
     /** The unit a province raises into its garrison, or nothing (Early Winter, after the wages: plan P1-19's second
      *  slice, Choice 3, the effect returns what the turn must do, and the turn does it and writes the line). */
@@ -1748,6 +1832,56 @@ export interface TheStagesOfEachHookPoint {
     /** What a held item adds to its realm's tax (Early Winter, after the provinces' own tax; the items' registry: the
      *  runner sums them over the realm's heroes, and capItemTaxGold caps the sum as before). */
     readonly "a hero's items add to the realm's tax": (theItem: AHeldCopysOwnNumbers) => WhatAnItemAddsToTheRealmsTax;
+    /** The gold a discovery a realm holds adds to a province's tax, with its row's own ceiling, or nothing (its row
+     *  names other provinces); the runner caps each effect and keeps its account (discTaxAdd, which Early Winter's
+     *  collection and the views ask: plan P1-19ag). */
+    readonly "a realm's discoveries add to a province's tax": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AProvinceARealmsDiscoveriesMayTax,
+    ) => WhatAnEffectPaysAndItsOwnCeiling | null;
+    /** The gold a discovery adds to its realm's tax from the provinces' income, under the ceiling; the runner gives the
+     *  first discovery's of the content (taxRecordsGold, which Early Winter and the report ask of a realm that holds
+     *  one: whether it does, the runner below). */
+    readonly "a realm's discoveries add to the realm's tax": (
+      theEffect: TheEffectOfADiscovery,
+      facts: TheIncomeTaxationRecordsAddsTo,
+    ) => number;
+    /** The interest a discovery a realm holds earns on its treasury, under the ceiling; the runner adds them (Early
+     *  Winter, and the report's forecast). */
+    readonly "a realm's discoveries earn interest": (
+      theEffect: TheEffectOfADiscovery,
+      facts: ATreasuryARealmsDiscoveriesMayEarnInterestOn,
+    ) => number;
+    /** The gold a discovery a realm holds cuts off a unit's wage, with its row's own ceiling, or nothing (it doesn't
+     *  reach the unit); the runner cuts each in turn, never below 1g, and keeps its account (discUpkeepWage). */
+    readonly "a realm's discoveries cut a unit's wage": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AUnitWhoseWageARealmsDiscoveriesMayCut,
+    ) => WhatAnEffectPaysAndItsOwnCeiling | null;
+    /** The gold a discovery a realm holds cuts off a hero's wage, with its row's own ceiling, or nothing (it names
+     *  other alignments); the runner cuts each in turn, never below 1g, and keeps its account (discHeroWage). */
+    readonly "a realm's discoveries cut a hero's wage": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AHeroWhoseWageARealmsDiscoveriesMayCut,
+    ) => WhatAnEffectPaysAndItsOwnCeiling | null;
+    /** The wage a discovery a realm holds lets no hero be paid above, with its row's own ceiling, or nothing (it
+     *  writes none); the runner cuts a wage above it in turn, after the cuts, and keeps its account (discHeroWage). */
+    readonly "a realm's discoveries cap a hero's wage": (
+      theEffect: TheEffectOfADiscovery,
+    ) => AWageCeilingAndItsOwnCeiling | null;
+    /** The hit points a discovery a realm holds heals a wounded hero of it at the turn's end, or nothing (it is the
+     *  king's alone); the runner adds them (the new turn's gardens, which heal him to his maximum and write the
+     *  line). */
+    readonly "a realm's discoveries heal the wounded": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AHeroARealmsDiscoveriesMayHeal,
+    ) => number | null;
+    /** The rate the graves of a province a realm holds rot at under a discovery it holds, or nothing (its row writes
+     *  none: the ground's own); the runner keeps the lowest (the new turn's graves, which roll each). */
+    readonly "a realm's discoveries keep the graves": (theEffect: TheEffectOfADiscovery) => number | null;
+    /** The chance a discovery a realm holds gives each company at its capital to train up a grade at the new turn; the
+     *  runner gives the first effect's, or nothing if the realm holds none (the new turn's War Academy, which rolls). */
+    readonly "a realm's discoveries promote the capital's armies": (theEffect: TheEffectOfADiscovery) => number;
   };
   /** An order's outcome a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19o, typed it). */
   readonly orderOutcome: {
@@ -1891,6 +2025,12 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's discoveries add to a caster's chance": (
       theEffect: TheEffectOfADiscovery,
       facts: ACastARealmsDiscoveriesMayHelp,
+    ) => number | null;
+    /** The hit points a discovery a hero's realm holds adds to his maximum, or nothing (it names the king, the heroes or
+     *  a skill he isn't or hasn't); the runner adds them (discMaxHpFor: plan P1-19ag). */
+    readonly "a realm's discoveries add to maximum HP": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AHeroWhoseMaximumHpARealmsDiscoveriesMayRaise,
     ) => number | null;
   };
   /** A fighter in a personal combat (plan P1-19's items family, Choice 1: its first row, P1-19q, typed it). A guardian's

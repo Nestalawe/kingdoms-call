@@ -72,6 +72,21 @@ import {
   A_REALMS_DISCOVERIES_ADD_TO_THE_TERROR_A_VICTORY_LEAVES,
   A_REALMS_DISCOVERIES_HELP_CONVERGING_COLUMNS_UNITE,
 } from './discoveries/a-realms-discoveries-in-wars-spoils-and-the-march.ts';
+import {
+  A_REALMS_DISCOVERIES_ADD_TO_A_PROVINCES_TAX,
+  A_REALMS_DISCOVERIES_ADD_TO_MAXIMUM_HP,
+  A_REALMS_DISCOVERIES_ADD_TO_THE_REALMS_TAX,
+  A_REALMS_DISCOVERIES_CAP_A_HEROS_WAGE,
+  A_REALMS_DISCOVERIES_CHART_A_PROVINCE,
+  A_REALMS_DISCOVERIES_CUT_A_HEROS_WAGE,
+  A_REALMS_DISCOVERIES_CUT_A_UNITS_WAGE,
+  A_REALMS_DISCOVERIES_DRESS_A_FIGHTERS_WOUNDS,
+  A_REALMS_DISCOVERIES_EARN_INTEREST,
+  A_REALMS_DISCOVERIES_HEAL_THE_WOUNDED,
+  A_REALMS_DISCOVERIES_KEEP_THE_GRAVES,
+  A_REALMS_DISCOVERIES_NAME_AN_UNSEEN_CAPTAIN,
+  A_REALMS_DISCOVERIES_PROMOTE_THE_CAPITALS_ARMIES,
+} from './discoveries/a-realms-discoveries-at-the-turns-end-and-the-new-turn.ts';
 import type {
   ABeastACommanderLeads,
   AConsecrationARealmsDiscoveriesMayAllow,
@@ -79,6 +94,15 @@ import type {
   AUnitARealmRaises,
   AProvinceARealmsDiscoveriesMayPlunder,
   AUnitARealmsDiscoveriesMaySpeed,
+  AHeroARealmsDiscoveriesMayHeal,
+  AHeroWhoseMaximumHpARealmsDiscoveriesMayRaise,
+  AHeroWhoseWageARealmsDiscoveriesMayCut,
+  AProvinceARealmsDiscoveriesMayTax,
+  ATreasuryARealmsDiscoveriesMayEarnInterestOn,
+  AUnitWhoseWageARealmsDiscoveriesMayCut,
+  TheIncomeTaxationRecordsAddsTo,
+  WhatAnEffectPaysAndItsOwnCeiling,
+  WhatEachCappedEffectHasPaid,
   ABeatenUnitARealmsDiscoveriesMaySpare,
   ACastARealmsDiscoveriesMayHelp,
   AFoeARealmsDiscoveriesSteadyAFightersAimAt,
@@ -350,6 +374,58 @@ export const THE_REGISTRY_OF_DISCOVERY_EFFECTS = {
         A_REALMS_DISCOVERIES_HELP_CONVERGING_COLUMNS_UNITE['converging-columns'],
     },
   },
+  'province-tax': {
+    turnEnd: {
+      "a realm's discoveries add to a province's tax": A_REALMS_DISCOVERIES_ADD_TO_A_PROVINCES_TAX['province-tax'],
+    },
+  },
+  'taxation-records': {
+    turnEnd: {
+      "a realm's discoveries add to the realm's tax": A_REALMS_DISCOVERIES_ADD_TO_THE_REALMS_TAX['taxation-records'],
+    },
+  },
+  interest: { turnEnd: { "a realm's discoveries earn interest": A_REALMS_DISCOVERIES_EARN_INTEREST.interest } },
+  'a-units-wage-cut': {
+    turnEnd: { "a realm's discoveries cut a unit's wage": A_REALMS_DISCOVERIES_CUT_A_UNITS_WAGE['a-units-wage-cut'] },
+  },
+  'a-heros-wage-cut': {
+    turnEnd: { "a realm's discoveries cut a hero's wage": A_REALMS_DISCOVERIES_CUT_A_HEROS_WAGE['a-heros-wage-cut'] },
+  },
+  'a-heros-wage-ceiling': {
+    turnEnd: {
+      "a realm's discoveries cap a hero's wage": A_REALMS_DISCOVERIES_CAP_A_HEROS_WAGE['a-heros-wage-ceiling'],
+    },
+  },
+  'maximum-hp': {
+    aHerosStanding: { "a realm's discoveries add to maximum HP": A_REALMS_DISCOVERIES_ADD_TO_MAXIMUM_HP['maximum-hp'] },
+  },
+  'healing-the-wounded': {
+    turnEnd: { "a realm's discoveries heal the wounded": A_REALMS_DISCOVERIES_HEAL_THE_WOUNDED['healing-the-wounded'] },
+  },
+  'grave-keeping': {
+    turnEnd: { "a realm's discoveries keep the graves": A_REALMS_DISCOVERIES_KEEP_THE_GRAVES['grave-keeping'] },
+  },
+  'war-academy': {
+    turnEnd: {
+      "a realm's discoveries promote the capital's armies":
+        A_REALMS_DISCOVERIES_PROMOTE_THE_CAPITALS_ARMIES['war-academy'],
+    },
+  },
+  'informant-network': {
+    visibility: {
+      "a realm's discoveries name an unseen captain": A_REALMS_DISCOVERIES_NAME_AN_UNSEEN_CAPTAIN['informant-network'],
+    },
+  },
+  'arcane-observatory': {
+    visibility: {
+      "a realm's discoveries chart a province": A_REALMS_DISCOVERIES_CHART_A_PROVINCE['arcane-observatory'],
+    },
+  },
+  'herbal-lore': {
+    turnStart: {
+      "a realm's discoveries dress a fighter's wounds": A_REALMS_DISCOVERIES_DRESS_A_FIGHTERS_WOUNDS['herbal-lore'],
+    },
+  },
 } satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once. Each stage holds one kind today, so its
@@ -363,7 +439,10 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
     "a realm's discoveries let a beast follow without its Druid": ['dragon-taming'],
     "a realm's discoveries weight the lines behind the front": ['flanking-tactics'],
   },
-  aHerosStanding: { "a realm's discoveries add to a caster's chance": ['casting'] },
+  aHerosStanding: {
+    "a realm's discoveries add to a caster's chance": ['casting'],
+    "a realm's discoveries add to maximum HP": ['maximum-hp'],
+  },
   fate: {
     "a realm's discoveries spare a beaten unit": ['a-beaten-units-death-cut'],
     "a realm's discoveries promote a unit": ['promotion'],
@@ -412,6 +491,20 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
   visibility: {
     "a realm's discoveries spot a hero lurking in its province": ['watching-for-lurkers'],
     "a realm's discoveries map the provinces around an explorer": ['ancient-lore'],
+    "a realm's discoveries name an unseen captain": ['informant-network'],
+    "a realm's discoveries chart a province": ['arcane-observatory'],
+  },
+  turnStart: { "a realm's discoveries dress a fighter's wounds": ['herbal-lore'] },
+  turnEnd: {
+    "a realm's discoveries add to a province's tax": ['province-tax'],
+    "a realm's discoveries add to the realm's tax": ['taxation-records'],
+    "a realm's discoveries earn interest": ['interest'],
+    "a realm's discoveries cut a unit's wage": ['a-units-wage-cut'],
+    "a realm's discoveries cut a hero's wage": ['a-heros-wage-cut'],
+    "a realm's discoveries cap a hero's wage": ['a-heros-wage-ceiling'],
+    "a realm's discoveries heal the wounded": ['healing-the-wounded'],
+    "a realm's discoveries keep the graves": ['grave-keeping'],
+    "a realm's discoveries promote the capital's armies": ['war-academy'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -428,6 +521,7 @@ const EXPERIENCE = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.experience;
 const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.orderOutcome;
 const VISIBILITY = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.visibility;
 const MOVEMENT_COST = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.movementCost;
+const TURN_END = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.turnEnd;
 
 /** The effects of the kind of each entry of a stage's order the realm holds, with the entry's slug. */
 function theEffectsOfTheStageARealmHolds(
@@ -1052,5 +1146,245 @@ export function whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(
   const theStage = "a realm's discoveries help converging columns unite";
   return addTheNumbersOfTheStage(theRealm, MOVEMENT_COST[theStage], (slug, e) =>
     ENTRIES[slug].movementCost?.[theStage]?.(e),
+  );
+}
+
+/** The runner of "turnEnd: a realm's discoveries add to a province's tax" (discTaxAdd, which Early Winter's collection
+ *  and the views ask): the gold the realm's effects add to the province, each capped at `theCeiling` (5% of the realm's
+ *  base tax) and its row's own `max` if it writes one (or, given no ceiling, at its `max` alone), what each has paid so
+ *  far kept in `theAccount`. */
+export function whatARealmsDiscoveriesAddToAProvincesTax(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AProvinceARealmsDiscoveriesMayTax,
+  theAccount: WhatEachCappedEffectHasPaid,
+  theCeiling: number | null | undefined,
+): number {
+  const theStage = "a realm's discoveries add to a province's tax";
+  let add = 0;
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage])) {
+    const pays = ENTRIES[slug].turnEnd?.[theStage]?.(e, facts) ?? null;
+    if (pays === null) continue;
+    let b = pays.theGold;
+    const lim = theCeiling != null ? Math.min(theCeiling, pays.itsOwnCeiling ?? theCeiling) : pays.itsOwnCeiling;
+    if (lim != null) {
+      const u = Number(theAccount.get(e)) || 0;
+      b = Math.max(0, Math.min(b, lim - u));
+      theAccount.set(e, u + b);
+    }
+    add += b;
+  }
+  return add;
+}
+
+/** The runner of "turnEnd: a realm's discoveries add to the realm's tax", for a realm (Early Winter and the report,
+ *  before they ask taxRecordsGold): whether it holds an effect of the stage. */
+export function doARealmsDiscoveriesAddToTheRealmsTax(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): boolean {
+  return theEffectsOfTheStageARealmHolds(theRealm, TURN_END["a realm's discoveries add to the realm's tax"]).length > 0;
+}
+
+/** The runner of "turnEnd: a realm's discoveries add to the realm's tax", for the gold (taxRecordsGold, which is asked
+ *  with no realm): the gold the first discovery of the content (the table of the discoveries by id, in its order) with
+ *  an effect of the stage adds; if none has one, what an effect with no numbers adds (its fallbacks, as discParam's
+ *  were for a row it couldn't find). */
+export function theGoldADiscoveryAddsToTheRealmsTax(facts: TheIncomeTaxationRecordsAddsTo): number {
+  const theStage = "a realm's discoveries add to the realm's tax";
+  const [slug] = TURN_END[theStage];
+  const theEffect: TheEffectOfADiscovery =
+    Object.values(DISC_BY_ID)
+      .flatMap((d) => [d.effect, d.effect2])
+      .find((e) => e?.kind === ROWS[slug].kind) ?? {};
+  return ENTRIES[slug].turnEnd?.[theStage]?.(theEffect, facts) ?? 0;
+}
+
+/** The runner of "turnEnd: a realm's discoveries earn interest" (Early Winter's collection, and the report's
+ *  forecast): the interest the realm's effects earn on its treasury, each under the ceiling, added. */
+export function whatARealmsDiscoveriesEarnInInterest(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: ATreasuryARealmsDiscoveriesMayEarnInterestOn,
+): number {
+  const theStage = "a realm's discoveries earn interest";
+  return addTheNumbersOfTheStage(theRealm, TURN_END[theStage], (slug, e) =>
+    ENTRIES[slug].turnEnd?.[theStage]?.(e, facts),
+  );
+}
+
+/** A wage after each cut in turn (the effects of a realm's discoveries that cut a unit's or a hero's wage): a cut never
+ *  takes the wage below 1g, and is capped at `theCeiling` (or, given none, its row's own `max`), what each effect has
+ *  saved so far kept in `theAccount`. */
+function aWageAfterEachCut(
+  theCuts: readonly (readonly [theEffect: TheEffectOfADiscovery, theCut: WhatAnEffectPaysAndItsOwnCeiling | null])[],
+  theWage: number,
+  theAccount: WhatEachCappedEffectHasPaid,
+  theCeiling: number | null | undefined,
+): number {
+  let out = theWage;
+  for (const [e, theCut] of theCuts) {
+    if (theCut === null) continue;
+    let cut = Math.min(theCut.theGold, out - 1);
+    if (cut <= 0) continue;
+    const lim = theCeiling ?? theCut.itsOwnCeiling;
+    if (lim != null) {
+      const u = Number(theAccount.get(e)) || 0;
+      cut = Math.min(cut, lim - u);
+      if (cut <= 0) continue;
+      theAccount.set(e, u + cut);
+    }
+    out -= cut;
+  }
+  return out;
+}
+
+/** The runner of "turnEnd: a realm's discoveries cut a unit's wage" (discUpkeepWage, which Early Winter and the report
+ *  ask, after its guards): the wage `theWage` the realm's effects that reach the unit leave, each cut in turn. */
+export function theWageARealmsDiscoveriesLeaveAUnit(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AUnitWhoseWageARealmsDiscoveriesMayCut,
+  theWage: number,
+  theAccount: WhatEachCappedEffectHasPaid,
+  theCeiling: number | null | undefined,
+): number {
+  const theStage = "a realm's discoveries cut a unit's wage";
+  const theCuts = theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage]).map(
+    ([slug, e]) => [e, ENTRIES[slug].turnEnd?.[theStage]?.(e, facts) ?? null] as const,
+  );
+  return aWageAfterEachCut(theCuts, theWage, theAccount, theCeiling);
+}
+
+/** The runner of "turnEnd: a realm's discoveries cut a hero's wage" (discHeroWage, before the ceilings): the wage
+ *  `theWage` the realm's effects for the hero's alignment leave, each cut in turn. */
+export function theWageARealmsDiscoveriesCutsLeaveAHero(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AHeroWhoseWageARealmsDiscoveriesMayCut,
+  theWage: number,
+  theAccount: WhatEachCappedEffectHasPaid,
+  theCeiling: number | null | undefined,
+): number {
+  const theStage = "a realm's discoveries cut a hero's wage";
+  const theCuts = theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage]).map(
+    ([slug, e]) => [e, ENTRIES[slug].turnEnd?.[theStage]?.(e, facts) ?? null] as const,
+  );
+  return aWageAfterEachCut(theCuts, theWage, theAccount, theCeiling);
+}
+
+/** The runner of "turnEnd: a realm's discoveries cap a hero's wage" (discHeroWage, after the cuts): the wage `theWage`
+ *  the realm's ceilings leave, each in turn cutting a wage above it down to it (never below 1g), the cut capped at
+ *  `theCeiling` (or, given none, its row's own `max`), what each has saved so far kept in `theAccount`. */
+export function theWageARealmsDiscoveriesCeilingsLeaveAHero(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  theWage: number,
+  theAccount: WhatEachCappedEffectHasPaid,
+  theCeiling: number | null | undefined,
+): number {
+  const theStage = "a realm's discoveries cap a hero's wage";
+  let w = theWage;
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage])) {
+    const theCap = ENTRIES[slug].turnEnd?.[theStage]?.(e) ?? null;
+    if (theCap === null || w <= theCap.theWagesCeiling) continue;
+    let cut = w - Math.max(1, theCap.theWagesCeiling);
+    const lim = theCeiling ?? theCap.itsOwnCeiling;
+    if (lim != null) {
+      const u = Number(theAccount.get(e)) || 0;
+      cut = Math.min(cut, lim - u);
+      if (cut <= 0) continue;
+      theAccount.set(e, u + cut);
+    }
+    w -= cut;
+  }
+  return w;
+}
+
+/** The runner of "aHerosStanding: a realm's discoveries add to maximum HP" (discMaxHpFor, which a hero's maximum
+ *  asks): the hit points the hero's realm's effects add, added. */
+export function whatARealmsDiscoveriesAddToAHerosMaximumHp(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AHeroWhoseMaximumHpARealmsDiscoveriesMayRaise,
+): number {
+  const theStage = "a realm's discoveries add to maximum HP";
+  return addTheNumbersOfTheStage(
+    theRealm,
+    THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.aHerosStanding[theStage],
+    (slug, e) => ENTRIES[slug].aHerosStanding?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "turnEnd: a realm's discoveries heal the wounded", for a realm (the new turn's gardens, before they
+ *  look at its heroes): whether it holds an effect of the stage. */
+export function doARealmsDiscoveriesHealTheWounded(theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined): boolean {
+  return theEffectsOfTheStageARealmHolds(theRealm, TURN_END["a realm's discoveries heal the wounded"]).length > 0;
+}
+
+/** The runner of "turnEnd: a realm's discoveries heal the wounded", for a wounded hero (the new turn's gardens): the hit
+ *  points the realm's effects heal him, added. */
+export function theHpARealmsDiscoveriesHealAWoundedHeroBy(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AHeroARealmsDiscoveriesMayHeal,
+): number {
+  const theStage = "a realm's discoveries heal the wounded";
+  return addTheNumbersOfTheStage(theRealm, TURN_END[theStage], (slug, e) =>
+    ENTRIES[slug].turnEnd?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "turnEnd: a realm's discoveries keep the graves" (the new turn's graves, on a province the realm
+ *  holds): the lowest of `theRate` (the ground's own) and the rates the realm's effects write. */
+export function theRateARealmsDiscoveriesLetTheGravesRotAt(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  theRate: number,
+): number {
+  const theStage = "a realm's discoveries keep the graves";
+  let r = theRate;
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage])) {
+    r = Math.min(r, ENTRIES[slug].turnEnd?.[theStage]?.(e) ?? theRate);
+  }
+  return r;
+}
+
+/** The runner of "turnEnd: a realm's discoveries promote the capital's armies" (the new turn's War Academy, which
+ *  rolls each company): the first of the realm's effects' chance, or nothing if the realm holds none. */
+export function theChanceARealmsDiscoveriesPromoteTheCapitalsArmies(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number | null {
+  const theStage = "a realm's discoveries promote the capital's armies";
+  const [first] = theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage]);
+  if (!first) return null;
+  const [slug, e] = first;
+  return ENTRIES[slug].turnEnd?.[theStage]?.(e) ?? null;
+}
+
+/** The runner of "turnStart: a realm's discoveries dress a fighter's wounds" (startPhaseHealingSnapshotsAndStalledBattles,
+ *  for a hero his last fight wounded): the share of those wounds the first of his realm's effects dresses, or nothing if
+ *  the realm holds none. */
+export function theShareARealmsDiscoveriesDressAFightersWoundsBy(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number | null {
+  const theStage = "a realm's discoveries dress a fighter's wounds";
+  const [first] = theEffectsOfTheStageARealmHolds(
+    theRealm,
+    THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.turnStart[theStage],
+  );
+  if (!first) return null;
+  const [slug, e] = first;
+  return ENTRIES[slug].turnStart?.[theStage]?.(e) ?? null;
+}
+
+/** The runner of "visibility: a realm's discoveries name an unseen captain" (the new turn's informants): whether any of
+ *  the realm's effects does. */
+export function doARealmsDiscoveriesNameAnUnseenCaptain(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): boolean {
+  const theStage = "a realm's discoveries name an unseen captain";
+  return theEffectsOfTheStageARealmHolds(theRealm, VISIBILITY[theStage]).some(
+    ([slug, e]) => ENTRIES[slug].visibility?.[theStage]?.(e) ?? false,
+  );
+}
+
+/** The runner of "visibility: a realm's discoveries chart a province" (the new turn's Observatory): whether any of the
+ *  realm's effects does. */
+export function doARealmsDiscoveriesChartAProvince(theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined): boolean {
+  const theStage = "a realm's discoveries chart a province";
+  return theEffectsOfTheStageARealmHolds(theRealm, VISIBILITY[theStage]).some(
+    ([slug, e]) => ENTRIES[slug].visibility?.[theStage]?.(e) ?? false,
   );
 }
