@@ -10,8 +10,8 @@
 // The Move's own function (`resolveMoveOrder`, P1-08j1), called directly on the same cases one phase at a time, then on
 // what the dice decide (fixed) and what the balance matrix never reaches: Forced March slipping past a guard, a hero, a
 // garrison and a leaderless garrison on a low roll (contested, no battle) and fighting on a high one; a friend marching
-// on the same province joining the assault, or missing it; an enemy blockade; a flood that turns a column back or
-// strands one; no road to a far target; a target that names nowhere; a hero whose move points were never worked out;
+// on the same province joining the assault, or missing it (and joining on a roll Signal Fires' 75 points lift:
+// P1-19af); an enemy blockade; a flood that turns a column back or strands one; no road to a far target; a target that names nowhere; a hero whose move points were never worked out;
 // the Veil (no battle); a leaderless neutral garrison fighting on; a coastal raid's plunder; lairs hidden by a rival's
 // illusion; Pathfinder spotting one lair more. 46 planted faults in the function each turn at least one of the two
 // tests red but one (its missing-pool safety net, which changes nothing: Parked)
@@ -138,6 +138,35 @@ describe('Forced March: on a low roll the column slips in without giving battle,
 });
 
 describe('a friend marching on the same province in the same season may join the assault', () => {
+  /** A column of realm 0 marches on a province held by the holder named, a friend one province from its start marching
+   *  on it too, every die `die`, realm 0 holding the discoveries given: its lines, the friend, and the friend's order. */
+  const aFriendMarchesOn = (holder: string, die: number, discoveries: readonly { readonly id: string }[] = []) => {
+    const b = board(engine, world, 0);
+    must(b.G.players[0], 'realm 0')['discoveries'] = discoveries.map((d) => ({ ...d }));
+    const to = ring1(b, 0);
+    if (holder === 'a neutral guard')
+      hero(b, { player: null, at: to, troops: 1, quality: 'Green' })._isNeutralGuard = true;
+    else {
+      b.own(to, 1);
+      b.own(beyond(b, to), 1);
+      hero(b, { player: 1, at: to, troops: 1, quality: 'Green' });
+    }
+    const A = column(b, 0, b.X);
+    // a friend one province from the column's start (a 60% chance at March 1, 75% for a Good realm)
+    const at = must(
+      b.ring1.find((p) => p !== to && b.nbrs(p).includes(to)),
+      'a neighbour of both',
+    );
+    const friend = hero(b, { player: 0, at, troops: 2 });
+    b.G.turnOrders[friend.id] = [{ action: 'move', target: String(to.id) }, null, null, null, null];
+    startTheTurn(b);
+    // every die the same: the march's own skill rolls come before the friend's
+    withDice(engine, [die], () => {
+      move(b, A, to.id);
+    });
+    const friendsOrder = (b.G.turnOrders[friend.id]?.[0] ?? {}) as { _unifiedWith?: number };
+    return { t: textOf(b, A), A, to, at, friend, friendsOrder };
+  };
   test.each([
     ['a neutral guard', 'Contingent unify: ', 'cannot link up with'],
     ['an enemy hero', ' unifies with ', 'misses the timing'],
@@ -146,30 +175,7 @@ describe('a friend marching on the same province in the same season may join the
       [0, true],
       [0.995, false],
     ] as const) {
-      const b = board(engine, world, 0);
-      const to = ring1(b, 0);
-      if (holder === 'a neutral guard')
-        hero(b, { player: null, at: to, troops: 1, quality: 'Green' })._isNeutralGuard = true;
-      else {
-        b.own(to, 1);
-        b.own(beyond(b, to), 1);
-        hero(b, { player: 1, at: to, troops: 1, quality: 'Green' });
-      }
-      const A = column(b, 0, b.X);
-      // a friend one province from the column's start (a 60% chance at March 1, 75% for a Good realm)
-      const at = must(
-        b.ring1.find((p) => p !== to && b.nbrs(p).includes(to)),
-        'a neighbour of both',
-      );
-      const friend = hero(b, { player: 0, at, troops: 2 });
-      b.G.turnOrders[friend.id] = [{ action: 'move', target: String(to.id) }, null, null, null, null];
-      startTheTurn(b);
-      // every die the same: the march's own skill rolls come before the friend's
-      withDice(engine, [die], () => {
-        move(b, A, to.id);
-      });
-      const t = textOf(b, A);
-      const friendsOrder = (b.G.turnOrders[friend.id]?.[0] ?? {}) as { _unifiedWith?: number };
+      const { t, A, to, at, friend, friendsOrder } = aFriendMarchesOn(holder, die);
       expect({
         joins: t.includes(joins),
         misses: t.includes(misses),
@@ -183,6 +189,17 @@ describe('a friend marching on the same province in the same season may join the
       });
     }
   });
+  // P1-19af: Signal Fires (sd04) add 75 points, through the discoveries' registry, to both rolls
+  test.each(['a neutral guard', 'an enemy hero'])(
+    'against %s, Signal Fires: a roll of 91 joins (100%), and misses without (60%)',
+    (holder) => {
+      const joined = (discoveries: readonly { readonly id: string }[]) => {
+        const { A, friendsOrder } = aFriendMarchesOn(holder, 0.9, discoveries);
+        return friendsOrder._unifiedWith === A.id;
+      };
+      expect([joined([{ id: 'sd04' }]), joined([])]).toEqual([true, false]);
+    },
+  );
 });
 
 describe('the ways a Move is barred', () => {
