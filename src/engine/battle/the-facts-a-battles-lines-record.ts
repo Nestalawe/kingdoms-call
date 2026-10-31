@@ -127,13 +127,14 @@ export interface WhyAUnitFacesAsItDoes {
   readonly marks: readonly AnAbilityAsTheLadderNamesIt[];
 }
 
-/** Whom a unit faced, as its fate's line tells it (battleFacedClauses): an enemy unit by its label (ownedUnitName: a
- *  unit's label stays words in this slice, Decision 2) and how it met it, or where it stood. */
+/** Whom a unit faced, as its fate's line tells it (battleFacedClauses): an enemy unit by its record (since plan
+ *  P1-12d28 the record ownedUnitName's form is written from, its owner the enemy's side or the defenders) and how it met
+ *  it, or where it stood. */
 export type WhomAUnitFaced =
   | {
       readonly kind: 'an enemy unit';
       readonly how: 'faces' | 'met' | 'wraps' | 'shoots' | 'duel' | 'guards';
-      readonly theEnemyUnit: string;
+      readonly theEnemyUnit: AUnitAsALineNamesIt;
     }
   | { readonly kind: 'it rode free' }
   | { readonly kind: "it wrapped the line's end" }
@@ -334,10 +335,14 @@ export type TheDefendersOfAProvince =
   | { readonly kind: 'defenders with no guard to name them' }
   | { readonly kind: 'the realm that holds the province'; readonly realmName: string | undefined };
 
+/** The owner of a battle's units, as their lines name him (plan P1-12d28: rollUnitFates' owner and battleFacedClauses'
+ *  enemy owner): a side of the battle, or a province's defenders. */
+export type TheOwnerOfABattlesUnits = ASideOfABattle | TheDefendersOfAProvince;
+
 /** The values a unit's label is written from: its owner as the line names him (a side, the defenders, or none), and its
  *  name, type and quality as the world holds them as the line is told. */
 interface TheValuesAUnitIsNamedFrom {
-  readonly owner: ASideOfABattle | TheDefendersOfAProvince | null;
+  readonly owner: TheOwnerOfABattlesUnits | null;
   readonly unitName: string;
   readonly type: string;
   readonly quality: string;
@@ -1038,12 +1043,12 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'a unit is cut down and rises again by its regenerating hide';
-      unitReference: string;
+      unitReference: AUnitAsALineNamesIt;
       whomItFaced: WhomAUnitFaced | null;
     }
   | {
       kind: 'a unit dies in the battle';
-      unitReference: string;
+      unitReference: AUnitAsALineNamesIt;
       whomItFaced: WhomAUnitFaced | null;
       /** The rout a beaten host's companies die in (a battle's loser that fled the field), told as an annihilation. */
       inTheRout: boolean;
@@ -1052,7 +1057,7 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'a unit is promoted after the battle';
-      unitReferenceAtItsOldQuality: string;
+      unitReferenceAtItsOldQuality: AUnitAsALineNamesIt;
       whomItFaced: WhomAUnitFaced | null;
       /** A victorious defender's company, told as hardened by victory; else it earns its promotion. */
       hardenedByVictory: boolean;
@@ -1060,30 +1065,31 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | {
       kind: 'a unit falls back behind the shield wall in good order';
-      unitReference: string;
+      unitReference: AUnitAsALineNamesIt;
       whomItFaced: WhomAUnitFaced | null;
     }
   | {
       kind: 'a unit keeps its nerve under the knightly example';
-      unitReference: string;
+      unitReference: AUnitAsALineNamesIt;
       whomItFaced: WhomAUnitFaced | null;
     }
   | {
       kind: 'a unit loses heart in defeat and is reduced a tier';
-      unitReferenceAtItsOldQuality: string;
+      unitReferenceAtItsOldQuality: AUnitAsALineNamesIt;
       whomItFaced: WhomAUnitFaced | null;
       unitQuality: string;
     }
   | {
       kind: 'a unit improves a tier despite defeat';
-      unitReferenceAtItsOldQuality: string;
+      unitReferenceAtItsOldQuality: AUnitAsALineNamesIt;
       whomItFaced: WhomAUnitFaced | null;
       unitQuality: string;
     }
   | {
       kind: 'a beaten unit has had enough and disbands';
-      /** The units' owner, as the battle names him (a side's or a guard's label); '' or null: none named. */
-      ownerName: string | null;
+      /** The units' owner, as the battle names him (since plan P1-12d28 a side's record or the defenders', a beaten
+       *  guard's among them); null: none named. */
+      ownerName: TheOwnerOfABattlesUnits | null;
       unitName: string | null | undefined;
       unitType: string;
       whomItFaced: WhomAUnitFaced | null;

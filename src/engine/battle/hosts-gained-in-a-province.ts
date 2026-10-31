@@ -619,7 +619,6 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
   // The victor's name, " (wandering)" cut; the prose writes "<name>'s host" (plan P1-12d24).
   const _vh = victor ? String(victor).replace(' (wandering)', '') : null;
   (survivors || []).forEach((a) => {
-    const gname = ((guard && guard.name) || 'the defenders').replace(' (wandering)', '');
     // The same guard as the lines' facts hold him (plan P1-12d24): by his name, or the defenders with none to give.
     const theGuard =
       guard && guard.name
@@ -656,7 +655,7 @@ export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASu
       if (demoteOrDisband(a)) {
         tellASurvivingUnitsFate({
           kind: 'a beaten unit has had enough and disbands',
-          ownerName: gname,
+          ownerName: theGuard,
           unitName: a.unitName,
           unitType: a.type,
           whomItFaced: null,

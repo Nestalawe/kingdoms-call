@@ -688,7 +688,7 @@ function theSideAsTheGridShowsIt(label: string | null | undefined): string {
 export function theClauseOfWhomAUnitFaced(w: WhomAUnitFaced): string {
   switch (w.kind) {
     case 'an enemy unit':
-      return theClauseOfHowAUnitMetAnEnemyUnit(w.how, w.theEnemyUnit);
+      return theClauseOfHowAUnitMetAnEnemyUnit(w.how, theLabelOfAUnit(w.theEnemyUnit));
     case 'it rode free':
       return 'riding free round the flank';
     case "it wrapped the line's end":
@@ -742,9 +742,10 @@ export function disbandLine(
       : `${owner ? owner + "'s " : ''}${a.unitName ? a.unitName + ' (' + a.type + ')' : a.type}`;
   return `— ${_core}${clause ? `, ${clause},` : ''} have had enough — the survivors slip away to their villages and the unit disbands for good.`;
 }
-/** A unit as its fate's line names it: its reference, then whom it faced, between commas. */
-function aUnitAndWhomItFaced(reference: string, whomItFaced: WhomAUnitFaced | null): string {
-  return reference + (whomItFaced ? `, ${theClauseOfWhomAUnitFaced(whomItFaced)},` : '');
+/** A unit as its fate's line names it: its reference (its label: since plan P1-12d28 the line holds its record), then
+ *  whom it faced, between commas. */
+function aUnitAndWhomItFaced(reference: AUnitAsALineNamesIt, whomItFaced: WhomAUnitFaced | null): string {
+  return theLabelOfAUnit(reference) + (whomItFaced ? `, ${theClauseOfWhomAUnitFaced(whomItFaced)},` : '');
 }
 
 /** A grid's place, five wide: the unit's short code, or "·" for an empty place. */
@@ -1219,7 +1220,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
       return `— Despite defeat, ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} improved to ${fact.unitQuality}!`;
     case 'a beaten unit has had enough and disbands':
       return disbandLine(
-        fact.ownerName,
+        fact.ownerName ? theLabelOfASideOrTheDefenders(fact.ownerName) : null,
         { type: fact.unitType, unitName: fact.unitName },
         fact.whomItFaced ? theClauseOfWhomAUnitFaced(fact.whomItFaced) : '',
       );
