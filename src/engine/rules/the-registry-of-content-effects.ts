@@ -65,6 +65,8 @@ import {
   WHO_SHOOTS,
   WHO_SHOOTS_FIRST,
 } from './unit-abilities/the-volley-before-the-battle.ts';
+import type { TheEffectOfADiscovery } from '../../content/discovery-effects-their-kinds-numbers-and-words.ts';
+import type { AUnitAsTheDiscoveriesReadIt } from '../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -1305,6 +1307,53 @@ export type AStepOfACombatSpell =
   /** A line alone. */
   | { readonly kind: 'a line'; readonly theLine: TheLineOfACombatSpell };
 
+/** A unit a realm's discoveries may strengthen, and its battle (discUnitMult, which armStr asks: plan P1-19aa). */
+export interface AUnitARealmsDiscoveriesMayStrengthen {
+  readonly theUnit: AUnitAsTheDiscoveriesReadIt;
+  /** The ground it fights on, or none given. */
+  readonly theGround: string | null | undefined;
+  /** Whether its side attacks (true), defends (false), or neither is given. */
+  readonly isItsSideTheAttacker: boolean | null | undefined;
+  /** Whether the realm's king leads it in person. */
+  readonly isItLedByTheKing: boolean;
+  /** Whether a commander leads it (a garrison standing alone has none). */
+  readonly hasItACommander: boolean;
+}
+
+/** The attacker's units, as a realm's siegecraft reads them (both battles, before the defenders' bonus is counted). */
+export interface TheAttackersUnitsAtASiege {
+  readonly theAttackersUnits: readonly (Pick<AUnitAsTheDiscoveriesReadIt, 'type'> | null | undefined)[];
+}
+
+/** The province a realm defends, as its own-ground discoveries read it (both battles). */
+export interface TheGroundARealmDefends {
+  /** Whether the province is the realm's home: asked only by an effect that reads it (asking may fix a realm's home,
+   *  as homeProvinceIdFor does the first time, so it is asked when the resolver asked it before). */
+  readonly isItTheRealmsHome: () => boolean;
+}
+
+/** A side of a battle, as a realm's fanaticism discoveries read it (both battles, before the fanaticism rolls). */
+export interface ASideAsItsFanaticismIsRolled {
+  readonly theSide: 'atk' | 'def';
+  readonly theGround: string | null | undefined;
+  readonly theForce: readonly (AUnitAsTheDiscoveriesReadIt | null | undefined)[] | null | undefined;
+}
+
+/** Where a hero casts, as a discovery's `ctx` names it: before a battle, in an order, in a personal combat. */
+export type WhereAHeroCasts = 'battle' | 'action' | 'duel';
+
+/** A caster's cast, as a realm's discoveries read it (applyPreBattleMagic and the hero's cast in combatVsNPC: plan
+ *  P1-19aa; castChanceFor's and pcCastCombatSpell's are its row P1-19ac's). */
+export interface ACastARealmsDiscoveriesMayHelp {
+  readonly theSchool: string;
+  readonly whereHeCasts: WhereAHeroCasts;
+}
+
+/** A unit a commander leads, as Dragon Taming reads it (dragonTamed). */
+export interface ABeastACommanderLeads {
+  readonly theUnitsType: string;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1378,6 +1427,41 @@ export interface TheStagesOfEachHookPoint {
     /** What an item a commander carries adds to the chance of his units' strikes before an army battle (the three
      *  copies, through primalStrikeChance; the items' registry: the runner adds every item's, item by item). */
     readonly "a commander's items add to a strike's chance": (theItem: AHeldCopysOwnNumbers) => number;
+    /** The factor a discovery the unit's realm holds strengthens a unit by, or nothing (it doesn't reach the unit, or
+     *  not in this battle); the runner multiplies them, then caps the product at the kind's ceiling (discUnitMult:
+     *  the discoveries' registry, plan P1-19aa). */
+    readonly "a realm's discoveries strengthen a unit": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AUnitARealmsDiscoveriesMayStrengthen,
+    ) => number | null;
+    /** What a discovery the attacker's realm holds takes off the defenders' bonus, or nothing (both battles; the
+     *  runner adds them). */
+    readonly "a realm's discoveries add to a siege": (
+      theEffect: TheEffectOfADiscovery,
+      facts: TheAttackersUnitsAtASiege,
+    ) => number | null;
+    /** The share a discovery the defending realm holds adds to its defence on its own ground, or nothing (both
+     *  battles; the runner adds them, then caps the sum at the kind's ceiling). */
+    readonly "a realm's discoveries fortify its own ground": (
+      theEffect: TheEffectOfADiscovery,
+      facts: TheGroundARealmDefends,
+    ) => number | null;
+    /** The share a discovery a side's realm holds adds to its chance of fanaticism, or nothing (both battles; the
+     *  runner adds them). */
+    readonly "a realm's discoveries stir a side's fanaticism": (
+      theEffect: TheEffectOfADiscovery,
+      facts: ASideAsItsFanaticismIsRolled,
+    ) => number | null;
+    /** Whether a discovery the commander's realm holds lets a winged beast he leads follow him without his Druid
+     *  (dragonTamed: the runner asks each effect of the kind the realm holds). */
+    readonly "a realm's discoveries let a beast follow without its Druid": (
+      theEffect: TheEffectOfADiscovery,
+      facts: ABeastACommanderLeads,
+    ) => boolean;
+    /** The share a discovery a realm holds adds to its whole army's strength (both battles). No entry holds it: War
+     *  Drums, the one such discovery, is an ordinary unit strength effect since 2026-09-21, so the runner adds
+     *  nothing (Parked "Three dead paths in discoveries.ts"). */
+    readonly "a realm's discoveries add to the whole army": (theEffect: TheEffectOfADiscovery) => number;
   };
   readonly volley: {
     /** Whether a unit that is no ranged unit shoots in the volley (abilityMissileUnits, after the ranged units). */
@@ -1495,6 +1579,12 @@ export interface TheStagesOfEachHookPoint {
      *  (skillBonusBreakdown, after a hero's items and curses; the items' registry: the first such bearer among the
      *  heroes, his first such effect). */
     readonly "a skill's aura in the province": () => TheAuraAnItemSpreads | null;
+    /** The percentage points a discovery the caster's realm holds adds to his chance to cast, or nothing (the
+     *  discoveries' registry: plan P1-19aa, the runner adds them). */
+    readonly "a realm's discoveries add to a caster's chance": (
+      theEffect: TheEffectOfADiscovery,
+      facts: ACastARealmsDiscoveriesMayHelp,
+    ) => number | null;
   };
   /** A fighter in a personal combat (plan P1-19's items family, Choice 1: its first row, P1-19q, typed it). A guardian's
    *  perks reach the same effects at "what a fighter wears" as a hero's items: one applier for both (pcApplyFx). */

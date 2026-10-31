@@ -231,14 +231,6 @@
       "count": 8
     }
   },
-  "src/engine/discoveries.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "prefer-const": {
-      "count": 1
-    }
-  },
   "src/engine/espionage/what-a-spy-learns.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1

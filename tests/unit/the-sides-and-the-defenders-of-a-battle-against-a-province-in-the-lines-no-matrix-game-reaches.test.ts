@@ -11,11 +11,12 @@
 // attacker's Dwarven Guard holding a Shield Fort with no road out. This plays each, the attacker (or both commanders)
 // alive and slain before the battle (each side then fights on as "<name>'s leaderless host"), and reads each line's
 // words. What no bot order sets is stood in (vi.spyOn): a force that holds the sea lanes (no realm raises Corsairs any
-// more: Parked), where a beaten force can fall back to, a realm's defOwn discovery, a Shield Fort and the losses a
-// beaten force takes (so that it keeps a company to hold the fort with); Control Undead's dice are fed in order from
+// more: Parked), where a beaten force can fall back to, a realm's defOwn discovery (since P1-19aa the share the
+// discoveries' registry's runner gives, stood in where discSum's was), a Shield Fort and the losses a beaten force takes (so that it keeps a company to hold the fort with); Control Undead's dice are fed in order from
 // the moment the hero's spell is chosen (pickBattleSpell, stood in, which calls the real one): the cast roll, then the
 // unit drawn. Every other die is a seeded stream's.
-// The battles keep their names and signatures, so this passes on the code before the row (P1-12d23's base), as after.
+// The battles keep their names and signatures, so this passes on the code before the row (P1-12d23's base), as after
+// (but the defOwn case, restaged by P1-19aa on the runner, which its base doesn't have).
 // Level 1 (unit): combatVsNPC and combatVsChar called directly on a world the engine makes from a fixed seed; no turn
 // is played. Not lower: the lines sit inside the two battles, and their words in the views. Not higher: a whole turn
 // adds dice and orders before the battle, and the flags these lines read are set by orders no bot gives.
@@ -33,7 +34,7 @@ import * as theRegistry from '../../src/engine/rules/the-registry-of-content-eff
 import * as retreats from '../../src/engine/units/sea-lift-stranding-and-retreats.ts';
 import * as movement from '../../src/engine/units/movement.ts';
 import * as fates from '../../src/engine/battle/fates.ts';
-import * as discoveries from '../../src/engine/discoveries.ts';
+import * as theDiscoveries from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 import * as spellChoice from '../../src/engine/magic/pre-battle-spell-choice.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
@@ -290,8 +291,7 @@ test("a battle against a province's defenders: the attacker's Control Undead tur
 
 describe.each([false, true])('a battle between heroes, both commanders slain before it: %s', (slain) => {
   test("the defender's realm holds its own ground the harder", () => {
-    const realSum = discoveries.discSum;
-    vi.spyOn(discoveries, 'discSum').mockImplementation((...args) => (args[2] === 'defOwn' ? 0.1 : realSum(...args)));
+    vi.spyOn(theDiscoveries, 'theShareARealmsDiscoveriesFortifyItsOwnGroundBy').mockReturnValue(0.1);
     const shown = aBattle({ atk: companies(2, 'Average'), def: companies(2, 'Average') }, slain, (_, __, ___, f) => {
       f.owner = 1;
     });

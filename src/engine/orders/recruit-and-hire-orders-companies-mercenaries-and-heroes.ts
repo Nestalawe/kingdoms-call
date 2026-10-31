@@ -21,12 +21,12 @@ import {
   applyPendingSynthPlan,
   discRecruitQChance,
   discSum,
-  discUnitIs,
   gdActive,
   hasDisc,
   isGarrisonUnitType,
   realmRecruitCost,
 } from '../discoveries.ts';
+import { discUnitIs } from '../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { emit, notifyTarget, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.ts';

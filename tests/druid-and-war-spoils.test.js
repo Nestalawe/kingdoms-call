@@ -5,7 +5,7 @@ const vm=require('vm'); const {sourceOf,scriptOf}=require('./lib/source.ts');
 const parts=[
   sourceOf('engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts',['FLYING_TYPES','CREATURE_ARMIES','MONSTER_ARMIES']),
   sourceOf('engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts',['DRUID_ARMY_LEVELS_P','getDruidLevel']),
-  sourceOf('engine/discoveries.ts',['DISC_CLS_SETS','discUnitIs','ARMY_RACE_OF_TYPE','discUnitMatch']),
+  sourceOf('engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts',['DISC_CLS_SETS','discUnitIs','discUnitMatch','ARMY_RACE_OF_TYPE']),
 ];
 const ctx={console};
 vm.createContext(ctx);

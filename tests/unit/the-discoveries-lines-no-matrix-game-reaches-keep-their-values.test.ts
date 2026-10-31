@@ -24,7 +24,6 @@ import {
   discEffectsOf,
   discEligible,
   discExploreMult,
-  discFanaticApplies,
   discHeroWage,
   discMaxHpFor,
   discParam,
@@ -33,8 +32,6 @@ import {
   discSumOf,
   discTaxAdd,
   discTaxMatch,
-  discUnitIs,
-  discUnitMatch,
   discUnitMult,
   discUpkeepWage,
   dragonTamed,
@@ -44,6 +41,11 @@ import {
   taxBonusCap,
   taxRecordsGold,
 } from '../../src/engine/discoveries.ts';
+import {
+  discUnitIs,
+  discUnitMatch,
+} from '../../src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
+import { discFanaticApplies } from '../../src/engine/rules/discoveries/a-realms-discoveries-in-its-armys-strength.ts';
 
 type Obj = Record<string, unknown>;
 

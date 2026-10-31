@@ -1,0 +1,122 @@
+// The discoveries' effects the rule registry holds (plan P1-19's discoveries family, Decision 2): one row per kind of
+// effect, keyed by its slug, naming the kind as SAGE_DISCOVERIES_P writes it (an effect's `kind`), with the numbers the
+// code writes for that kind, each with how a text would write it. The discoveries' registry (src/engine/rules/the-
+// registry-of-discovery-effects.ts) has one entry for each row and no other: a row with no entry, or an entry with no
+// row, fails to compile. A row exists only for a kind whose effect the registry holds, so no row waits for its code;
+// the kinds not yet taken are listed by tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-
+// stage.test.ts.
+//
+// Each discovery's own numbers stay in its row of SAGE_DISCOVERIES_P (its effect's `pct`, `delta`, filters, …): a
+// realm holds its discoveries by id, and every number is read from that row, so an old save's discoveries work as
+// content says today. No text states a number of these rows: the rulebook keeps the discoveries secret by design, and
+// a discovery's `desc` states its own numbers (tests/static/each-discoverys-numbers-are-in-its-text.test.ts). The
+// player page doesn't import this file.
+
+/** One effect of a discovery (its row's `effect` or `effect2`, SAGE_DISCOVERIES_P): its `kind`, then every field a
+ *  row may set, each read by the effect of its kind. The compiler checks every row against it where the registry's
+ *  DISC_BY_ID is filled. The lists are read, never written; `quality` is a list or a single name. */
+export interface TheEffectOfADiscovery {
+  // the kind its effect is found by (since plan P1-19aa every row names one: the fifteen read by their discovery's id
+  // named a `type` before)
+  readonly kind?: string;
+  readonly amount?: number;
+  readonly bonus?: number;
+  readonly cap?: number;
+  readonly charRace?: string;
+  readonly cls?: string;
+  readonly coastal?: boolean;
+  readonly ctx?: string;
+  readonly delta?: number;
+  readonly extra?: number;
+  readonly factor?: number;
+  readonly field?: string;
+  readonly foreign?: boolean;
+  readonly garrisoned?: boolean;
+  readonly gold?: number;
+  readonly heroAlign?: readonly string[];
+  readonly heroOnly?: boolean;
+  readonly home?: boolean;
+  readonly hp?: number;
+  readonly king?: boolean;
+  readonly led?: string;
+  readonly lines?: readonly number[];
+  readonly max?: number;
+  readonly maxTax?: number;
+  readonly minTax?: number;
+  readonly minWhite?: number;
+  readonly mult?: number;
+  readonly ownRace?: boolean;
+  readonly owned?: boolean;
+  readonly pct?: number;
+  // a list as written (not readonly: Array.isArray, which discUnitMatch asks, can't narrow a readonly list)
+  readonly quality?: string | string[];
+  readonly race?: string;
+  readonly rate?: number;
+  readonly school?: string;
+  readonly side?: string;
+  readonly skill?: string;
+  readonly skills?: readonly string[];
+  readonly terrain?: readonly string[];
+  readonly terrains?: readonly string[];
+  readonly turns?: number;
+  readonly types?: readonly string[];
+  readonly vs?: string;
+  readonly withCls?: string;
+  readonly withTypes?: readonly string[];
+}
+
+/** A discovery's row in SAGE_DISCOVERIES_P. */
+export interface ADiscoverysRow {
+  readonly id: string;
+  readonly name: string;
+  readonly category: string;
+  readonly desc: string;
+  readonly race?: string;
+  readonly alignment?: string;
+  readonly effect?: TheEffectOfADiscovery;
+  readonly effect2?: TheEffectOfADiscovery;
+}
+
+/** How a text would write a number of a kind: a multiplier as a figure (1.3 as `×1.30`), or a share added as a
+ *  percentage (0.3 as `+30%`). */
+export type HowADiscoveryEffectsNumberIsWritten = 'a multiplier, as a figure' | 'a share added, as a percentage';
+
+/** One number the code writes for a kind of effect, and how a text would write it. */
+export interface ANumberOfAKindOfDiscoveryEffect {
+  readonly value: number;
+  readonly aTextWouldWriteIt: HowADiscoveryEffectsNumberIsWritten;
+}
+
+/** A row: what the discoveries' registry reads of one kind of effect. */
+export interface AKindOfDiscoveryEffect {
+  /** The kind, as an effect of SAGE_DISCOVERIES_P names it (its `kind`). */
+  readonly kind: string;
+  /** The numbers the code writes for every effect of the kind, by name. */
+  readonly numbers?: Readonly<Record<string, ANumberOfAKindOfDiscoveryEffect>>;
+}
+
+/** The kinds of effect the discoveries' registry holds, by slug. */
+export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
+  // a unit's strength in a battle (plan P1-19aa): however many of these effects a realm stacks, the multiplier they
+  // give any one unit never exceeds ×1.30 (Toby, 2026-09-21)
+  'unit-strength': {
+    kind: 'unitStr',
+    numbers: { theCeiling: { value: 1.3, aTextWouldWriteIt: 'a multiplier, as a figure' } },
+  },
+  // what the attacker's siegecraft takes off the defenders' bonus (P1-19aa)
+  siegecraft: { kind: 'siege' },
+  // a realm's own ground fortified when it defends: never more than +30% (Toby, 2026-09-21; P1-19aa)
+  'own-ground': {
+    kind: 'defOwn',
+    numbers: { theCeiling: { value: 0.3, aTextWouldWriteIt: 'a share added, as a percentage' } },
+  },
+  // what a side's fanaticism gains in a battle (P1-19aa)
+  fanaticism: { kind: 'fanatic' },
+  // what a caster's chance gains (P1-19aa: in a battle)
+  casting: { kind: 'cast' },
+  // Dragon Taming (sd40): a winged beast follows its commander without his Druid (P1-19aa)
+  'dragon-taming': { kind: 'flyingNoDruid' },
+} as const satisfies Record<string, AKindOfDiscoveryEffect>;
+
+/** A kind of effect's slug (a key of DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS). */
+export type DiscoveryEffectSlug = keyof typeof DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS;
