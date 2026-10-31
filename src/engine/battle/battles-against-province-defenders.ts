@@ -65,15 +65,14 @@ import {
   magicL8CastBonus,
   primalStrikeItemBonus,
 } from '../chances-and-lair-grades.ts';
+import { discDeathMult, discPromo, hasDisc } from '../discoveries.ts';
 import {
-  DISC_DEFOWN_CAP,
-  discDeathMult,
-  discFanaticApplies,
-  discPromo,
-  discSum,
-  discoveryArmyBonus,
-  hasDisc,
-} from '../discoveries.ts';
+  theShareARealmsDiscoveriesFortifyItsOwnGroundBy,
+  whatARealmsDiscoveriesAddToACastersChance,
+  whatARealmsDiscoveriesAddToASidesFanaticism,
+  whatARealmsDiscoveriesAddToASiege,
+  whatARealmsDiscoveriesAddToTheWholeArmy,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { telSpell } from '../turn/log-line-helpers.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
@@ -404,13 +403,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // bonus
   let defBonus = 1.25; // sd03 Siege Engines is now an ordinary `siege` effect (below)
   {
-    const _sg = discSum(
-      turnContext,
-      c.player,
-      'siege',
-      'delta',
-      (e) => !e.withTypes || (c.armies || []).some((a) => a && e.withTypes.includes(a.type)),
-    );
+    const _sg = whatARealmsDiscoveriesAddToASiege(G.players[c.player], { theAttackersUnits: c.armies || [] });
     if (_sg > 0) {
       defBonus = Math.max(1, defBonus - _sg);
       narrate(narrative, {
@@ -460,16 +453,9 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   {
     const _dOwn =
       prov.owner != null && prov.owner !== c.player
-        ? Math.min(
-            DISC_DEFOWN_CAP,
-            discSum(
-              turnContext,
-              prov.owner,
-              'defOwn',
-              'pct',
-              (e) => !e.home || homeFounderOf(G, prov.id) === prov.owner,
-            ),
-          )
+        ? theShareARealmsDiscoveriesFortifyItsOwnGroundBy(G.players[prov.owner], {
+            isItTheRealmsHome: () => homeFounderOf(G, prov.id) === prov.owner,
+          })
         : 0;
     if (_dOwn > 0) {
       defBonus *= 1 + _dOwn;
@@ -512,13 +498,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         SPELL_CAST_BASE +
           spellLvl * 10 +
           magicL8CastBonus(c) +
-          discSum(
-            turnContext,
-            c.player,
-            'cast',
-            'pct',
-            (e) => (!e.school || e.school === school) && (!e.ctx || e.ctx === 'battle'),
-          ),
+          whatARealmsDiscoveriesAddToACastersChance(G.players[c.player], { theSchool: school, whereHeCasts: 'battle' }),
       ); // cast discoveries · 2026-09-11: base 30
       const castRoll = d100();
       telSpell(turnContext, c, spellName, school, spellLvl, castChance, castRoll, 'battle');
@@ -1297,7 +1277,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const fanatic =
     kcRng() <
     (FANATIC_CHANCE[align] ?? 0.1) +
-      discSum(turnContext, c.player, 'fanatic', 'pct', (e) => discFanaticApplies(e, 'atk', prov.terrain, armies)); // fanatic discoveries
+      whatARealmsDiscoveriesAddToASidesFanaticism(G.players[c.player], {
+        theSide: 'atk',
+        theGround: prov.terrain,
+        theForce: armies,
+      }); // fanatic discoveries
   // Skeletal armies are always fanatical ONLY when led by the Undead king in person — other
   // heroes serving the Undead realm do not inspire the same undying zeal.
   const skeletalFanatic = align === 'Undead' && c.isKing && armies.some((a) => a._isSkeletal);
@@ -1332,7 +1316,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       sideName: atkSide,
       undeadHeroFanaticismPct: Math.round((UNDEAD_SKEL_HERO_FAN - 1) * 100),
     });
-  const discArmyBonus = 1 + discoveryArmyBonus(c.player);
+  const discArmyBonus = 1 + whatARealmsDiscoveriesAddToTheWholeArmy();
   if (discArmyBonus > 1)
     narrate(narrative, {
       kind: "the attacker's realm discoveries strengthen his army",

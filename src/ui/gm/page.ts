@@ -61,6 +61,7 @@ import '../../engine/heroes/charms-and-neutrals.ts';
 import '../../engine/chances-and-lair-grades.ts';
 import '../../engine/titles/reckoning.ts';
 import '../../views/turn-report.ts';
+import '../../engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import '../../engine/discoveries.ts';
 import '../../engine/turn/context.ts';
 import '../../engine/turn/log-line-helpers.ts';

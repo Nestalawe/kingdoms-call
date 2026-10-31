@@ -12,7 +12,13 @@
 // (THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS), each order naming only entries with an effect there, each content row with
 // its entry and each entry with its row; each row's name is a spell of SPELL_DEFS_P and its fn that spell's, and no two
 // rows share a name. Since P1-19y each stage of "orderValidity" (the Cast Spell order's checks) holds the spells whose
-// row sets its flag (`asAnOrder`), and no other, so a flag and its entry can't part.
+// row sets its flag (`asAnOrder`), and no other, so a flag and its entry can't part. Since P1-19aa the discoveries'
+// registry (src/engine/rules/the-registry-of-discovery-effects.ts) is held to the same: each effect once in its stage's
+// order (THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES), each order naming only entries with an effect there, each content
+// row (a kind of effect) with its entry and each entry with its row; each row's kind is a kind of an effect of
+// SAGE_DISCOVERIES_P, and no two rows share a kind; and every kind of SAGE_DISCOVERIES_P has its row or is listed as
+// not yet taken (THE_KINDS_NOT_YET_TAKEN, which each row of the family shortens, to none), so a kind added to content
+// with no entry is found.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -20,10 +26,13 @@
 // entry with no effect at its stage, a row with no entry, a unit reached that isn't a unit type, a realm's alignment
 // that isn't one, two rows' name; in the spells' registry, an entry left out of its order, a row with no entry, a
 // row's name that is no spell, a row's fn that isn't its spell's, two rows' name, a flag of the order's checks with
-// no entry and an entry with no flag.
+// no entry and an entry with no flag; in the discoveries' registry, an entry left out of its order, a row with no
+// entry, a row's kind no discovery has, two rows of one kind, a kind of content with no row and not listed, and a kind
+// listed that has a row.
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
-import { KC_ALIGNMENTS, KC_UNIT_TYPE, SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
+import { KC_ALIGNMENTS, KC_UNIT_TYPE, SAGE_DISCOVERIES_P, SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
+import { DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS } from '../../src/content/discovery-effects-their-kinds-numbers-and-words.ts';
 import { SPELL_EFFECTS_THE_REGISTRY_HOLDS } from '../../src/content/spell-effects-their-names-numbers-and-words.ts';
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS } from '../../src/content/unit-abilities-their-names-numbers-and-words.ts';
 import { MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS } from '../../src/content/magic-item-effects-their-names-numbers-and-words.ts';
@@ -39,6 +48,10 @@ import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_SPELLS,
   THE_REGISTRY_OF_SPELL_EFFECTS,
 } from '../../src/engine/rules/the-registry-of-spell-effects.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES,
+  THE_REGISTRY_OF_DISCOVERY_EFFECTS,
+} from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 
 /** The registry as this test reads it: each entry's effects by hook point and stage, and each stage's order. */
 type Entries = Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, unknown>>>>>>;
@@ -341,5 +354,142 @@ test("planted, a flag of the order's checks with no entry, and an entry with no 
   expect(whereTheChecksAndTheFlagsPart(SPELL_ORDERS, rows)).toEqual([
     'oratory sets aCloakedMarkIsShieldedFromIt, not in a cloaked mark is shielded from it',
     'flood is in a Bless ward may turn it aside, not setting aBlessWardMayTurnItAside',
+  ]);
+});
+
+/** A kind of discovery effect's row as this test reads it (its kind as any string, so a planted row may name one that
+ *  no discovery has). */
+type DiscoveryRows = Readonly<Record<string, { readonly kind: string }>>;
+
+/** Every kind of effect SAGE_DISCOVERIES_P's rows name (`effect` and `effect2`). */
+const THE_KINDS_IN_CONTENT: ReadonlySet<string> = new Set(
+  SAGE_DISCOVERIES_P.flatMap((d): readonly { readonly kind?: string }[] => [
+    ...('effect' in d ? [d.effect] : []),
+    ...('effect2' in d ? [d.effect2] : []),
+  ]).flatMap((e) => (e.kind === undefined ? [] : [e.kind])),
+);
+
+/** The kinds of SAGE_DISCOVERIES_P the discoveries' registry hasn't taken yet: each row of the family takes its own off
+ *  (plan P1-19's discoveries family, rows ab to ah), to none. */
+const THE_KINDS_NOT_YET_TAKEN: readonly string[] = [
+  'recruitQ',
+  'unify',
+  'deathRed',
+  'promo',
+  'homePromotion',
+  'flankBonus',
+  'explore',
+  'lairGold',
+  'upkeep',
+  'tax',
+  'interest',
+  'move',
+  'taxPct',
+  'recruitCost',
+  'heroWage',
+  'counterSpy',
+  'extendedIntel',
+  'spy',
+  'informants',
+  'spyDisguise',
+  'skillGain',
+  'spotLurker',
+  'practice',
+  'spyChar',
+  'catchSpy',
+  'itemChance',
+  'restFull',
+  'autoHeal',
+  'alignmentHire',
+  'adjacentReveal',
+  'regen',
+  'duelHit',
+  'kingKillHpX2',
+  'nearDeathSurvival',
+  'skillBonusCombat',
+  'heroWageCap',
+  'maxHp',
+  'turnReveal',
+  'elvenEscape',
+  'mithril',
+  'consecrate',
+  'rest',
+  'bless',
+  'research',
+  'ctaQuality',
+  'merc',
+  'wildHunt',
+  'bloodHarvest',
+  'plunder',
+  'terror',
+  'harvestCost',
+  'graveDecay',
+];
+
+/** What a kind's row breaks: its kind a kind of an effect of SAGE_DISCOVERIES_P. */
+function whatADiscoveryKindsRowBreaks(slug: string, row: { readonly name: string }): string[] {
+  return THE_KINDS_IN_CONTENT.has(row.name) ? [] : [`${slug}'s kind, ${row.name}, is no discovery's`];
+}
+
+/** Where the kinds of content and the rows part: a kind with no row that isn't listed as not yet taken, and a kind
+ *  listed that has a row. */
+const whereTheKindsAndTheRowsPart = (rows: DiscoveryRows, notYetTaken: readonly string[]) => {
+  const taken = new Set(Object.values(rows).map((row) => row.kind));
+  return [
+    ...[...THE_KINDS_IN_CONTENT]
+      .filter((kind) => !taken.has(kind) && !notYetTaken.includes(kind))
+      .map((kind) => `${kind} has no row and isn't listed as not yet taken`),
+    ...notYetTaken.filter((kind) => taken.has(kind)).map((kind) => `${kind} is listed as not yet taken, and has a row`),
+  ];
+};
+
+const DISCOVERY_ENTRIES: Entries = THE_REGISTRY_OF_DISCOVERY_EFFECTS;
+const DISCOVERY_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES;
+const DISCOVERY_ROWS: DiscoveryRows = DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS;
+/** The registry's rows by their kind, as the shared check reads a row's name (no two may share one). */
+const byTheirKind = (rows: DiscoveryRows) =>
+  Object.fromEntries(Object.entries(rows).map(([slug, row]) => [slug, { name: row.kind }]));
+const DISCOVERIES_REGISTRY = (entries: Entries, orders: Orders, rows: DiscoveryRows) =>
+  whatTheRegistryBreaks(entries, orders, byTheirKind(rows), whatADiscoveryKindsRowBreaks);
+
+test("the discoveries' registry holds each effect once, in the order of its stage, and each content row is sound", () => {
+  expect(DISCOVERIES_REGISTRY(DISCOVERY_ENTRIES, DISCOVERY_ORDERS, DISCOVERY_ROWS)).toEqual([]);
+  expect(Object.keys(DISCOVERY_ENTRIES).length).toBeGreaterThan(0);
+  const ordered = new Set(Object.values(DISCOVERY_ORDERS).flatMap((stages) => Object.values(stages).flat()));
+  expect([...ordered].sort()).toEqual(Object.keys(DISCOVERY_ENTRIES).sort());
+});
+
+test("every kind of the discoveries' effects has its row in the registry's content, or is listed as not yet taken", () => {
+  expect(THE_KINDS_IN_CONTENT.size).toBe(58);
+  expect(whereTheKindsAndTheRowsPart(DISCOVERY_ROWS, THE_KINDS_NOT_YET_TAKEN)).toEqual([]);
+});
+
+test("planted in the discoveries' registry, an entry left out of its order, a row with no entry, a kind no discovery has, two rows of one kind, a kind with no row unlisted, and a kind listed with a row, are found", () => {
+  const orders: Orders = {
+    ...DISCOVERY_ORDERS,
+    strength: { ...DISCOVERY_ORDERS['strength'], "a realm's discoveries add to a siege": [] },
+  };
+  const rows: DiscoveryRows = {
+    ...DISCOVERY_ROWS,
+    fanaticism: { kind: 'plantedFervour' },
+    casting: { kind: 'siege' },
+    'planted-kind': { kind: 'tax' },
+  };
+  expect(DISCOVERIES_REGISTRY(DISCOVERY_ENTRIES, orders, rows)).toEqual([
+    "siegecraft is in the order of strength: a realm's discoveries add to a siege 0 times",
+    "fanaticism's kind, plantedFervour, is no discovery's",
+    'casting and siegecraft share the name siege',
+    'planted-kind has a content row and no entry',
+  ]);
+  expect(
+    whereTheKindsAndTheRowsPart(
+      rows,
+      THE_KINDS_NOT_YET_TAKEN.filter((kind) => kind !== 'merc'),
+    ),
+  ).toEqual([
+    "cast has no row and isn't listed as not yet taken",
+    "fanatic has no row and isn't listed as not yet taken",
+    "merc has no row and isn't listed as not yet taken",
+    'tax is listed as not yet taken, and has a row',
   ]);
 });

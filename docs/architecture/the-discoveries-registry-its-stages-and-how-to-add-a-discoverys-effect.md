@@ -1,0 +1,90 @@
+# The discoveries' registry: its stages, and how to add a discovery's effect
+
+The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
+This file is its part for the discoveries (plan P1-19's discoveries family, from P1-19aa).
+
+## What a discovery's effect is
+
+A **discovery** is a row of `SAGE_DISCOVERIES_P` (`src/content/kingdoms-call-data.ts`): its id (`'sd40'`), name,
+field of study, text (`desc`), and the race or alignment it needs, if any. It has one or two **effects** (`effect`,
+`effect2`). Each effect names its **kind** (`'unitStr'`) and holds its numbers and filters (`pct`, `delta`, `types`,
+`terrain`, `side`, `home`, …). Since P1-19aa every effect names a kind: the 15 discoveries the engine read by their id
+(War Academy, Flanking Tactics, Dragon Taming, …) named a `type` before.
+
+A realm holds its discoveries by id (`discoveries`, each `{ id, … }`), and every number is read from the discovery's
+row by that id. So a save never holds an effect, and an old save's discoveries work as content says today.
+
+A **kind of effect** is one row in `src/content/discovery-effects-their-kinds-numbers-and-words.ts` and one entry in
+`src/engine/rules/the-registry-of-discovery-effects.ts`, keyed by the same slug (`'unit-strength'` for `unitStr`). Its
+effects are in `src/engine/rules/discoveries/`, a file per group of stages.
+
+- **A row** names the kind as `SAGE_DISCOVERIES_P` writes it, and holds the numbers the code writes for every effect of
+  the kind, each with how a text would write it: the ceilings (a unit's strength ×1.30 at most, however many effects a
+  realm stacks; the own ground +30% at most). No text states them: the rulebook keeps the discoveries secret by design.
+  A row exists only for a kind whose effect the registry holds.
+- **The registry** ends `satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>`, both ways, as the other
+  registries do: a row with no entry, or an entry with no row, fails to compile. Its stages are the hook points' own
+  (one union, `TheStagesOfEachHookPoint`, in `the-registry-of-content-effects.ts`); its orders are its own list,
+  `THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES`. Each stage holds one kind so far.
+- **A runner is handed the realm.** It finds the realm's effects of its stage's kind by the realm's discoveries' ids
+  (`theEffectsOfAKindARealmHolds`, in the table `DISC_BY_ID`): in the order the realm holds its discoveries, `effect`
+  before `effect2`, the order a product or a sum of decimals runs in. It hands each effect, with the stage's facts, to
+  the kind's effect, which returns its number (or nothing, where its filters don't hold), and adds, multiplies or asks
+  them as the old reader did. The old readers of `src/engine/discoveries.ts` (`discEffectsOf`, `discSum`, …) ask the
+  same finder, so a kind not yet taken is found the same way.
+- **The unit-class tests** the filters need (`discUnitIs`, `discUnitMatch`, the class sets `DISC_CLS_SETS`,
+  `ARMY_RACE_OF_TYPE`) are in `src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts`,
+  which the engine, the views and the registry's effects all read.
+- **No effect draws a die.** An effect that rolls returns its chance, and the resolver draws where it drew before.
+
+## The stages written so far
+
+**The army's strength** (P1-19aa, `discoveries/a-realms-discoveries-in-its-armys-strength.ts`):
+
+- `strength`'s **a realm's discoveries strengthen a unit** (`unitStr`; `discUnitMult`, which `armStr` asks). It is
+  handed the unit (its type, race and quality, and whether it is risen dead), the ground, whether its side attacks,
+  whether the king leads it, and whether a commander leads it (a garrison standing alone has none). It returns the
+  factor, `1 + pct`, or nothing. The runner multiplies them and caps the product at the kind's ceiling.
+- **A realm's discoveries add to a siege** (`siege`; both battles): handed the attacker's units. It returns its `delta`
+  if it names no unit types, or the attacker has one of them. The runner adds them.
+- **A realm's discoveries fortify its own ground** (`defOwn`; both battles, the defending realm's): handed whether the
+  province is the realm's home, as a question. Only an effect that needs the answer asks it, because asking may fix a
+  realm's home (`homeProvinceIdFor` writes it the first time). The runner adds the shares and caps the sum at the
+  kind's ceiling.
+- **A realm's discoveries stir a side's fanaticism** (`fanatic`; both battles, before each side's roll): handed the
+  side, the ground and the force (`discFanaticApplies`, now the effect's file's). The runner adds them; the battle rolls
+  as before.
+- **A realm's discoveries let a beast follow without its Druid** (Dragon Taming, `flyingNoDruid`; `dragonTamed`):
+  handed the unit's type. The player portal's copy stays (P1-11); the parity test compares them.
+- **A realm's discoveries add to the whole army** (both battles): no entry holds it. War Drums, the one such discovery,
+  has been an ordinary unit strength effect since 2026-09-21, so its runner returns 0, as `discoveryArmyBonus` did
+  (Parked "Three dead paths in `discoveries.ts`").
+- `aHerosStanding`'s **a realm's discoveries add to a caster's chance** (`cast`): handed the school and where he casts,
+  as the effect's `ctx` names it (`'battle'`, `'action'`, `'duel'`). Asked by `applyPreBattleMagic` and the hero's cast
+  in `combatVsNPC`; `castChanceFor` and `pcCastCombatSpell` still read `discSum` until row P1-19ac.
+
+## How it is checked
+
+- `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
+  stage's order, each row's kind a kind of `SAGE_DISCOVERIES_P`, no two rows of one kind, and every kind of content with
+  its row or listed as not yet taken (each row of the family shortens the list, to none).
+- `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
+  entry, and an entry with no row, fail to compile.
+- `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
+  `discoveryChecksInEngine` (94 before P1-19aa, 83 after): the functions taken name no discovery's id and no kind, and
+  the engine's checks outside the registry only fall.
+- `tests/static/each-discoverys-numbers-are-in-its-text.test.ts`: each number of each effect is in its discovery's
+  `desc` (365 of 368; the 3 gaps listed with why).
+- `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games
+  meet 0 times (the own ground, P1-19aa), and the effects on rows the content doesn't write. Each later row adds its own.
+
+## How to add a discovery's effect
+
+1. **Of a kind the registry holds:** write the discovery's row in `SAGE_DISCOVERIES_P`, its effect with the kind, its
+   numbers and its filters, and its `desc` stating every number (the words test reads it). Nothing else changes.
+2. **Of a new kind, or one not yet taken:** add its row to the kinds' content file (the kind, and any number the code
+   writes for every effect of it), its effect to the stage's file under `src/engine/rules/discoveries/`, and its entry
+   and its place in the stage's order. Take it off the registry test's list of kinds not yet taken. A new stage's
+   signature goes into `TheStagesOfEachHookPoint`, with its runner in the discoveries' registry, and the resolver asks
+   the runner.
+3. **A new id is never an old one:** see [retired discovery ids](adding-or-changing-content-units-orders-and-discoveries.md#retired-discovery-ids-are-never-reused).

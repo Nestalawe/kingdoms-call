@@ -47,13 +47,15 @@ import {
   discExploreMult,
   discHeroWage,
   discSumOf,
-  discUnitIs,
-  discUnitMatch,
   discUpkeepWage,
   realmRecruitCost,
   taxBonusCap,
   taxRecordsGold,
 } from '../engine/discoveries.ts';
+import {
+  discUnitIs,
+  discUnitMatch,
+} from '../engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../engine/battle/evil-terror.ts';
 
 // ── EVIL TERROR: the reading (2026-10-12, Toby items 21 and 23) ── The constants (−10% a stack, at most three stacks)
