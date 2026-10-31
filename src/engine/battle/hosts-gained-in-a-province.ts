@@ -136,19 +136,15 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
     claim();
     emit(turnContext, {
       type: 'combat',
-      fact: c._warFront
-        ? {
-            kind: 'no one stands to defend a province and the hero takes control of it',
-            provName: prov.name,
-            cName: c.name,
-            playerName: player.name,
-          }
-        : {
-            kind: 'with fresh troops the hero takes control of a province',
-            cName: c.name,
-            provName: prov.name,
-            playerName: player.name,
-          },
+      fact: {
+        kind: 'a contest for a province is decided',
+        contest: 'a host gathered in the province',
+        whatBecomesOfTheProvince: 'taken with no one to defend it',
+        onAWarFront: !!c._warFront,
+        cName: c.name,
+        provName: prov.name,
+        playerName: player.name,
+      },
       audience: { actor: c.player, realms: [], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
@@ -474,8 +470,11 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       emit(turnContext, {
         type: 'combat',
         fact: {
-          kind: 'the hero has the better of the fighting but the guard still holds the field',
-          hostName: { heroName: c.name, leaderless: c.alive === false },
+          kind: 'a contest for a province is decided',
+          contest: 'a host gathered in the province',
+          whatBecomesOfTheProvince: 'still held',
+          heldBy: 'its guard',
+          theHost: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
           guardName: neutralGuard.name.replace(' (wandering)', ''),
           guardUnitCount: guardLeft,
@@ -489,8 +488,11 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       emit(turnContext, {
         type: 'combat',
         fact: {
-          kind: 'the hero has the better of the fighting but leaderless defenders still hold the field',
-          hostName: { heroName: c.name, leaderless: c.alive === false },
+          kind: 'a contest for a province is decided',
+          contest: 'a host gathered in the province',
+          whatBecomesOfTheProvince: 'still held',
+          heldBy: 'leaderless defenders',
+          theHost: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
           leaderlessUnitCount: llLeft,
         },
@@ -503,8 +505,11 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       emit(turnContext, {
         type: 'combat',
         fact: {
-          kind: 'the hero has the better of the fighting but enemy forces still hold their ground',
-          hostName: { heroName: c.name, leaderless: c.alive === false },
+          kind: 'a contest for a province is decided',
+          contest: 'a host gathered in the province',
+          whatBecomesOfTheProvince: 'still held',
+          heldBy: 'enemy forces',
+          theHost: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
@@ -525,8 +530,11 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       emit(turnContext, {
         type: 'combat',
         fact: {
-          kind: "the hero has the better of the fighting but the province's garrison still holds",
-          hostName: { heroName: c.name, leaderless: c.alive === false },
+          kind: 'a contest for a province is decided',
+          contest: 'a host gathered in the province',
+          whatBecomesOfTheProvince: 'still held',
+          heldBy: 'its garrison',
+          theHost: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
           atSea: prov.terrain === 'sea',
         },
@@ -542,8 +550,10 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       emit(turnContext, {
         type: 'combat',
         fact: {
-          kind: 'the hero overcomes the defenders and claims the province for his realm',
-          hostName: { heroName: c.name, leaderless: c.alive === false },
+          kind: 'a contest for a province is decided',
+          contest: 'a host gathered in the province',
+          whatBecomesOfTheProvince: 'claimed',
+          theHost: { heroName: c.name, leaderless: c.alive === false },
           provName: prov.name,
           playerName: player.name,
         },
