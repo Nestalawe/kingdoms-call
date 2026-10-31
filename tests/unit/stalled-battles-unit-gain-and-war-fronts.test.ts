@@ -138,6 +138,11 @@ describe('a beaten guard’s survivors (erodeGuardSurvivors)', () => {
     const e = erode([0]);
     for (const l of e.lines) expect(l).toMatch(/break ranks and flee — they now roam as mercenaries near /);
   });
+  test('survivors who hold, with no victor named, rally around the guard (plan P1-12d27: no game reaches it)', () => {
+    const e = erode([0.999]);
+    expect(e.lines).toHaveLength(3);
+    for (const l of e.lines) expect(l).toMatch(/^— Ulric's .+ hold their ground unbroken and rally around Ulric\.$/);
+  });
   test('every survivor has exactly one fate, as the dice say, and is told once', () => {
     const survivor = fc.record({
       quality: fc.constantFrom(...QUALITY_TIERS),
