@@ -125,9 +125,8 @@
   `turn-fuzz` and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
   `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (Theo, 2026-10-17: no
   engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: enemy orders
-  and reactions still reach a hero after he turns invisible, and
-  the acting realm's report says so; another realm's private line in the report's spy activity section (waits for
-  P1-23); a wanderer who died earlier in the turn can still be hired.
+  and reactions still reach a hero after he turns invisible, and the acting realm's report says so; another realm's
+  private line in the report's spy activity section (waits for P1-23).
 - **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
   rule and let fast-check make up the inputs: heroes, guardians, hits, small worlds, orders. Every dice roll in the
   page comes from a seed that is part of the input (the page's dice are reseeded, `kcRng.seed`, and its clock starts again,

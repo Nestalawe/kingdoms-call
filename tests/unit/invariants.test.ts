@@ -7,9 +7,10 @@
 // in a log line, an `undefined` in a name, HP above the maximum or below 0, two characters, provinces, bands or items
 // with one id, a found item in two places or off the ledger, a hero or band off the map, a dead hero acting after their
 // death or before the turn, a player's realm still marked as submitted) breaks only its own invariant, saying what
-// broke; what they allow (a leaderless host's battle lines, a hero raised in the turn, a bot realm's flag);
-// `KNOWN_BREACHES` lets through only its own line. Level 1: a lower level can't run a check; turn-fuzz and the matrix
-// run them over games. TypeScript, in `unit/`
+// broke; what they allow (a leaderless host's battle lines, a hero raised in the turn, a bot realm's flag); a
+// realmless header and a dead wanderer's hire break their checks (P1-23a, P1-23b); each `KNOWN_BREACHES` entry names a
+// check and says why. Level 1: a lower level can't run a check; turn-fuzz and the matrix run them over games.
+// TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import {
   checkTurn,
@@ -339,29 +340,30 @@ test('a header that names its realm "undefined" breaks the check', () => {
     expect(checksBroken(withLine(text)), text).toEqual(['no NaN or undefined']);
 });
 
+// Wren died in phase 2 of the made-up turn; Odo before it began. The engine's hire line, cut short as the check
+// quotes the line (seen with KC_SEED=7 and KC_SEED=3 in turn-fuzz at 16 games of 12 turns, before P1-23b): no known
+// breach lets one through.
+test("a dead wanderer's hire breaks the check", () => {
+  const withLine = (text: string, charId = 12) => turn((x) => x.gmLog.push({ type: 'hire', text, charId, phase: 3 }));
+  const hire = (who: string, kin = 'Human, Neutral') =>
+    `${who} (${kin}) agrees to serve Realm2 for 2g/turn (close in outlook — base rate). Skills: Melee 1.`;
+  for (const [text, charId] of [
+    [hire('Wren the Swift'), 12],
+    [hire('Wren the Swift', 'Orcish, Undead'), 12],
+    [hire('Aldo the Bold'), 12],
+    [hire('Odo the Grim'), 13],
+    [hire('Wren the Swift', 'Gnomish, Neutral'), 12],
+    ['Wren the Swift (Human, Neutral) recoils from the offer.', 12],
+    ['Wren the Swift moves to the Fens.', 12],
+  ] as const)
+    expect(checksBroken(withLine(text, charId)), text).toEqual(['the dead take no actions']);
+});
+
 describe('the known breaches', () => {
   test('each names an invariant or a leak check and says why', () => {
     for (const k of KNOWN_BREACHES) {
       expect([...INVARIANTS, ...LEAK_CHECKS].map((i) => i.name)).toContain(k.check);
       expect(k.why.length).toBeGreaterThan(20);
     }
-  });
-
-  // Wren died in phase 2 of the made-up turn; Odo before it began. The engine's hire line, cut short as the check
-  // quotes it (seen with KC_SEED=7 and KC_SEED=3 in turn-fuzz at 16 games of 12 turns).
-  test("a dead wanderer's hire is let through, and nothing else like it", () => {
-    const withLine = (text: string, charId = 12) => turn((x) => x.gmLog.push({ type: 'hire', text, charId, phase: 3 }));
-    const hire = (who: string, kin = 'Human, Neutral') =>
-      `${who} (${kin}) agrees to serve Realm2 for 2g/turn (close in outlook — base rate). Skills: Melee 1.`;
-    expect(checksBroken(withLine(hire('Wren the Swift')))).toEqual([]);
-    expect(checksBroken(withLine(hire('Wren the Swift', 'Orcish, Undead')))).toEqual([]);
-    for (const [text, charId] of [
-      [hire('Aldo the Bold'), 12],
-      [hire('Odo the Grim'), 13],
-      [hire('Wren the Swift', 'Gnomish, Neutral'), 12],
-      ['Wren the Swift (Human, Neutral) recoils from the offer.', 12],
-      ['Wren the Swift moves to the Fens.', 12],
-    ] as const)
-      expect(checksBroken(withLine(text, charId)), text).toEqual(['the dead take no actions']);
   });
 });
