@@ -793,7 +793,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the attacker's lightning advance catches the defender unready":
       return `⚡ ${String(fact.atkName)}'s Lightning Advance catches ${String(fact.defName)} completely unready — no terrain advantage, no pre-battle magic and no answering volley.`;
     case 'the attacker moves into the province and a battle is initiated':
-      return `➡️ ${fact.atkName} (${fact.attackersRealmName}) moves into ${fact.provName}, held by ${fact.heldByName} — a battle is initiated.`;
+      return `➡️ ${fact.atkName}${fact.attackersRealmName != null ? ` (${fact.attackersRealmName})` : ''} moves into ${fact.provName}, held by ${fact.heldByName} — a battle is initiated.`;
     case 'the battle for a province begins':
       return `⚔ **Battle for ${fact.provName}**`;
     case 'the province still cowers under a reign of fear':

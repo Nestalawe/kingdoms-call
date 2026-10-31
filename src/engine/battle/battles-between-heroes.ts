@@ -288,7 +288,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
         (t, a) =>
           t +
           (a && !a._phantom
-            ? armStr(turnContext, a, def, G.players[def.player]?.alignment, prov.terrain, {
+            ? armStr(turnContext, a, def, def.player != null ? G.players[def.player]?.alignment : null, prov.terrain, {
                 force: defArmies,
                 enemyForce: atkArmies,
                 isAttacker: false,
@@ -301,23 +301,37 @@ export function combatVsChar(turnContext, atk, def, prov) {
     );
     narrate(
       narrative,
-      forceMarker(turnContext, `${atk.name} (${G.players[atk.player]?.name})`, atk.player, 'attacker', atkArmies, {
-        itsVerbs: 'an attack',
-        verbIndex: THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
-        provName: prov.name,
-        armyStrength: _aS,
-        tacticalLevel: atkTact,
-      }),
+      forceMarker(
+        turnContext,
+        `${atk.name}${atk.player != null ? ` (${G.players[atk.player]?.name})` : ''}`,
+        atk.player,
+        'attacker',
+        atkArmies,
+        {
+          itsVerbs: 'an attack',
+          verbIndex: THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
+          provName: prov.name,
+          armyStrength: _aS,
+          tacticalLevel: atkTact,
+        },
+      ),
     );
     narrate(
       narrative,
-      forceMarker(turnContext, `${def.name} (${G.players[def.player]?.name})`, def.player, 'defender', defArmies, {
-        itsVerbs: 'a defence',
-        verbIndex: THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
-        provName: prov.name,
-        armyStrength: _dS,
-        tacticalLevel: defTact,
-      }),
+      forceMarker(
+        turnContext,
+        `${def.name}${def.player != null ? ` (${G.players[def.player]?.name})` : ''}`,
+        def.player,
+        'defender',
+        defArmies,
+        {
+          itsVerbs: 'a defence',
+          verbIndex: THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
+          provName: prov.name,
+          armyStrength: _dS,
+          tacticalLevel: defTact,
+        },
+      ),
     );
   }
   // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now

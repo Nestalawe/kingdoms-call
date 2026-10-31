@@ -314,29 +314,37 @@ describe('what each invariant allows', () => {
   });
 });
 
-describe('the known breaches', () => {
-  // A realmless hero's battle header, as the engine writes it today (the armies cut short).
+// A battle header with "(undefined)" for a realm's name, as the engine wrote a realmless hero's before P1-23a (the
+// armies cut short): no known breach lets one through.
+test('a header that names its realm "undefined" breaks the check', () => {
   const header = (name: string, neutral: boolean, role: string) =>
     '⚑FORCE⚑' +
-    JSON.stringify({ name, color: neutral ? null : '#906090', neutral, guard: false, role, verb: 'holds', armies: [] });
+    JSON.stringify({
+      name,
+      color: neutral ? null : '#906090',
+      neutral,
+      guard: false,
+      role,
+      verb: 'holds',
+      armies: [],
+    });
+  const withLine = (text: string) => turn((x) => x.gmLog.push({ type: 'combat', text, charId: 10, phase: 1 }));
+  for (const text of [
+    header('Camael the Sacred (undefined)', true, 'defender'),
+    header('Camael the Sacred (undefined)', false, 'defender'),
+    header('Camael the Sacred (undefined)', true, 'attacker'),
+    header('undefined (Realm0)', true, 'defender'),
+    'Camael the Sacred (undefined) holds Wistreach.',
+  ])
+    expect(checksBroken(withLine(text)), text).toEqual(['no NaN or undefined']);
+});
 
+describe('the known breaches', () => {
   test('each names an invariant or a leak check and says why', () => {
     for (const k of KNOWN_BREACHES) {
       expect([...INVARIANTS, ...LEAK_CHECKS].map((i) => i.name)).toContain(k.check);
       expect(k.why.length).toBeGreaterThan(20);
     }
-  });
-
-  test("a realmless defender's header is let through, and nothing else like it", () => {
-    const withLine = (text: string) => turn((x) => x.gmLog.push({ type: 'combat', text, charId: 10, phase: 1 }));
-    expect(checksBroken(withLine(header('Camael the Sacred (undefined)', true, 'defender')))).toEqual([]);
-    for (const text of [
-      header('Camael the Sacred (undefined)', false, 'defender'),
-      header('Camael the Sacred (undefined)', true, 'attacker'),
-      header('undefined (Realm0)', true, 'defender'),
-      'Camael the Sacred (undefined) holds Wistreach.',
-    ])
-      expect(checksBroken(withLine(text)), text).toEqual(['no NaN or undefined']);
   });
 
   // Wren died in phase 2 of the made-up turn; Odo before it began. The engine's hire line, cut short as the check
