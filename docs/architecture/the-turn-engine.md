@@ -93,7 +93,7 @@
   one it
   still calls (`fmtRoll`, `monsterCatLabel`, `hpGainLine`, `describeArmy`, `strandLabel`) the prose imports from the engine, on plain
   values, and a unit ability's name comes from its content row. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
-  checks each area done (its list grows a row at a time), but the labels it lists (P1-12d's next slice). The
+  checks each area done (its list grows a row at a time); since P1-12d29 it lets no label through. The
   rest of the engine's lines still carry their words, and in this run a line's words are the same for every
   reader. Then it works out, for each played
   slot, the lines the realm reads (from the lines in words) and what it may see of the world, and builds its report

@@ -260,7 +260,12 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       narrative,
       forceMarker(
         turnContext,
-        `${c.name}${c.player != null ? ` (${G.players[c.player]?.name})` : ''}`,
+        {
+          kind: 'a hero, with the realm he serves',
+          heroName: c.name,
+          servesARealm: c.player != null,
+          realmName: G.players[c.player]?.name,
+        },
         c.player,
         'attacker',
         armies,
@@ -298,7 +303,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         narrative,
         forceMarker(
           turnContext,
-          neutralGuardHero.name,
+          { kind: "a province's guard at the head of its force", guardName: neutralGuardHero.name },
           null,
           'defender',
           defenders,
@@ -317,7 +322,9 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         narrative,
         forceMarker(
           turnContext,
-          _npcOwnerName ? `${_npcOwnerName}'s garrison at ${prov.name}` : `The defenders of ${prov.name}`,
+          _npcOwnerName
+            ? { kind: "a realm's garrison at a province", ownerName: _npcOwnerName, provName: prov.name }
+            : { kind: "a province's own defenders with no one to lead them", provName: prov.name },
           prov.owner != null ? prov.owner : null,
           'defender',
           defenders,
