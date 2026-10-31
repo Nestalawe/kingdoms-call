@@ -7,7 +7,10 @@ import type { AHeroAsHisItemsAreRead, AnItemAsTheSlotsReadIt } from './items/equ
 import { effSkillOf } from './heroes/skills-and-hp.ts';
 import { hexDistP } from './world/map-helpers.ts';
 import { skillLevel } from './titles/perks.ts';
-import { discSumOf } from './discoveries.ts';
+import {
+  whatARealmsDiscoveriesAddToACastersChance,
+  type ARealmAsTheDiscoveriesReadIt,
+} from './rules/the-registry-of-discovery-effects.ts';
 import {
   whatTheCommandersItemsAddToAStrikesChance,
   type AMagicItemAsTheRegistryReadsIt,
@@ -329,7 +332,7 @@ export const SPELL_CAST_BASE = 30;
 export function castChanceFor(
   c: AHeroAsTheCastChanceReadsHim,
   school: string,
-  player: Parameters<typeof discSumOf>[0],
+  player: ARealmAsTheDiscoveriesReadIt | null | undefined,
   opts?: {
     readonly itemCast?: boolean | undefined;
     readonly necroAuto?: boolean | undefined;
@@ -346,12 +349,8 @@ export function castChanceFor(
   if (opts.necroAuto) return { level: lvl, chance: 100, reason: 'necroAuto' };
   const arcane = 0; // sd27 Arcane Codex is now an ordinary `cast` effect (kept as a field for old callers)
   const l8 = typeof magicL8CastBonus === 'function' ? magicL8CastBonus(c) : 0;
-  const disc = discSumOf(
-    player,
-    'cast',
-    'pct',
-    (e) => (!e.school || e.school === school) && (!e.ctx || e.ctx === 'action'),
-  );
+  // the discoveries' registry's since plan P1-19ac: "aHerosStanding: a realm's discoveries add to a caster's chance"
+  const disc = whatARealmsDiscoveriesAddToACastersChance(player, { theSchool: school, whereHeCasts: 'action' });
   return {
     level: lvl,
     chance: Math.min(95, SPELL_CAST_BASE + Number(lvl) * 10 + arcane + l8 + disc),

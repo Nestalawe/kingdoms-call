@@ -9,7 +9,7 @@
 // page's code.
 //
 // Red on its row's base by design (applyPreBattleMagic held 1 check, discUnitMult 1 and dragonTamed 1 on P1-19aa's
-// base), as the unit-name, item-effect and spell tests were: the one exception to refactor-only's rule that new tests
+// base; pcCharCombatant 5 on P1-19ac's), as the unit-name, item-effect and spell tests were: the one exception to refactor-only's rule that new tests
 // pass before and after (Theo, 2026-10-25; the discoveries family's Decision 6).
 // Level 0 (static): the files' syntax trees and the content's discoveries as written; nothing runs.
 import fs from 'node:fs';
@@ -66,6 +66,38 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'src/engine/heroes/hero-death-and-leaderless-hosts.ts',
     'handleHeroDeath',
     "P1-19ab, a realm's discoveries drag a hero from the field",
+  ],
+  ['src/engine/chances-and-lair-grades.ts', 'castChanceFor', "P1-19ac, a realm's discoveries add to a caster's chance"],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'pcCastCombatSpell',
+    "P1-19ac, a realm's discoveries add to a caster's chance",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcHitChance',
+    "P1-19ac, a realm's discoveries steady a fighter's aim",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcArrowHitChance',
+    "P1-19ac, a realm's discoveries steady a fighter's aim",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcCharCombatant',
+    "P1-19ac, a realm's discoveries add to a fighter's skills and strengthen his Mithril",
+  ],
+  ['src/engine/titles/reckoning.ts', 'extraSkillBonuses', "P1-19ac, a realm's discoveries add to a fighter's skills"],
+  [
+    'src/engine/heroes/experience-skill-rises-and-earned-hp.ts',
+    'trySkillGain',
+    "P1-19ac, a realm's discoveries add to a skill's rise",
+  ],
+  [
+    'src/engine/heroes/experience-skill-rises-and-earned-hp.ts',
+    'awardHpRoll',
+    "P1-19ac, a realm's discoveries harden the king",
   ],
 ];
 

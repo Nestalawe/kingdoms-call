@@ -14,7 +14,8 @@ import {
 } from './helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
-import { discDuelVs, discSum } from '../discoveries.ts';
+import { whatARealmsDiscoveriesAddToAFightersAim } from '../rules/the-registry-of-discovery-effects.ts';
+import { pcFoeCat } from '../titles/perks.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import {
   aFightersPerkNameAsTheLineTellsIt,
@@ -151,7 +152,11 @@ export function pcHitChance(
   chance -= Number(defender.status.toHitReduce) || 0; // Invisibility: flat \u221225 to hit (floored at 40 below)
   chance -= whatAFightersWardsTakeOffAChanceToHitHim(defender.arm); // Quicksilver Mail: −10% to be hit
   if (attacker.player != null)
-    chance += discSum(turnContext, attacker.player, 'duelHit', 'pct', (e) => discDuelVs(e, defender)); // duelHit discoveries (sd33 Duelling Code …)
+    // the discoveries' registry's since plan P1-19ac: "personalCombat: a realm's discoveries steady a fighter's aim"
+    chance += whatARealmsDiscoveriesAddToAFightersAim(turnContext.G.players[attacker.player], {
+      whatTheFoeIs: defender.kind,
+      theFoesKind: () => pcFoeCat(defender),
+    }); // duelHit discoveries (Duelling Code …)
   chance = chance * (defender.status.dodge || 1); // (no effect currently sets status.dodge — kept as a hook)
   // ── The defender's STANCE lowers the ceiling itself ────
   // Testing found the +14 Cautious guard was doing nothing above about Melee 4: a Melee 6 Berserk

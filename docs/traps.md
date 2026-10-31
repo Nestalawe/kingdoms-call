@@ -176,7 +176,8 @@ through `src/shared/` is written once; it is still restated in the portal's proj
 and in the words players read. Checks: `the-player-portals-copies-agree-with-the-engine`, the scripted realm's page
 test and the `*-words` tests, for what they cover. Battle magic is one stage of the spells' registry, asked by three
 copies that keep two rules apart (Parked: a guards' commander's Lightning Bolt, a storm at sea); the units' strikes are
-another, asked by three copies that each keep their own roll. [Where](architecture/adding-or-changing-content-units-orders-and-discoveries.md#a-rule-written-twice-must-change-twice).
+another, asked by three copies that each keep their own roll. Veteran Training's +1 is one stage of the discoveries'
+registry, asked by the fight (`pcCharCombatant`) and the hero's card (`extraSkillBonuses`). [Where](architecture/adding-or-changing-content-units-orders-and-discoveries.md#a-rule-written-twice-must-change-twice).
 
 ## HTML is built only through `kcHtml`
 

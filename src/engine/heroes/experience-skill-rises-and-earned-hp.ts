@@ -2,7 +2,10 @@
 import { kcRng } from '../rng.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { rollHpGain, syncMaxHp } from './skills-and-hp.ts';
-import { discSum, hasDisc } from '../discoveries.ts';
+import {
+  theFactorARealmsDiscoveriesHardenTheKingBy,
+  whatARealmsDiscoveriesAddToASkillsRise,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { recalcHeroPay, theSkillInPlayAsALineTellsIt } from './effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
 import {
@@ -117,7 +120,7 @@ export function trySkillGain(turnContext, char, skill, base, narr?, mult?): void
   // experience path (experience, moves…) flows through here; Practice applies the same ×1.5 itself.
   const _humanLearn =
     (real.race === 'Human' && G.players[real.player] && G.players[real.player].race === 'Human' ? 1.5 : 1) *
-    (1 + discSum(turnContext, real.player, 'skillGain', 'pct', (e) => !e.skills || e.skills.includes(skill))); // skillGain discoveries (all skills, or a listed few)
+    (1 + whatARealmsDiscoveriesAddToASkillsRise(G.players[real.player], { theSkill: skill })); // skillGain discoveries (all skills, or a listed few: the discoveries' registry's since plan P1-19ac)
   // diminishing returns — every time this skill has ALREADY risen this turn, the next chance to
   // raise it through experience is ×0.8 (cumulative). Reset each turn with _sgLog.
   const _gainsThisTurn = (real._sgLog.turnGains && real._sgLog.turnGains[skill]) || 0;
@@ -310,11 +313,14 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
     r.winBonus = 1;
   }
   r.wound = !isWin;
-  if (r.gain > 0 && real.isKing && hasDisc(turnContext, real.player, 'sd35')) {
+  // the discoveries' registry's since plan P1-19ac: "experience: a realm's discoveries harden the king", its factor
+  const _kingsFactor =
+    r.gain > 0 && real.isKing ? theFactorARealmsDiscoveriesHardenTheKingBy(G.players[real.player]) : null;
+  if (_kingsFactor !== null) {
     // sd35 Order of the Golden Shield: the king's hardening is doubled
-    real.hpEarned += r.gain;
+    real.hpEarned += r.gain * (_kingsFactor - 1);
     syncMaxHp(real, G.players);
-    r.gain *= 2;
+    r.gain *= _kingsFactor;
     r.maxHp = real.maxHp;
     r.sd35 = true;
   }

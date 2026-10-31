@@ -7,7 +7,7 @@ import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { pcFoeCat, skillLevel } from '../titles/perks.ts';
 import { SPELL_CAST_BASE, magicL8CastBonus } from '../chances-and-lair-grades.ts';
-import { discSum } from '../discoveries.ts';
+import { whatARealmsDiscoveriesAddToACastersChance } from '../rules/the-registry-of-discovery-effects.ts';
 import { telSpell } from '../turn/log-line-helpers.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { pcNewStatus } from './speed-encounter-plans-and-combatants.ts';
@@ -156,13 +156,10 @@ export function pcCastCombatSpell(
           lvl * 10 +
           magicL8CastBonus(theCastersHeroOrGuardian) +
           (caster.player != null
-            ? discSum(
-                turnContext,
-                caster.player,
-                'cast',
-                'pct',
-                (e) => (!e.school || e.school === school) && (!e.ctx || e.ctx === 'duel'),
-              )
+            ? whatARealmsDiscoveriesAddToACastersChance(G.players[caster.player], {
+                theSchool: school,
+                whereHeCasts: 'duel',
+              })
             : 0),
       ); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
   // ── SCHOOL WARD (2026-10-14, batch item 7) ── a guardian's ward against this school takes its
