@@ -1189,8 +1189,16 @@ export function combatVsChar(turnContext, atk, def, prov) {
   _gD.grid = _dep.gD;
   pvpFront = _dep.W;
   // Who each company fought, for the fate lines (2026-10-12, Toby): read now, while the rows carry the deploy's facing.
-  const _facedA = battleFacedClauses(_dep.gA, String(def.name || defName || '').replace(' (wandering)', '')),
-    _facedD = battleFacedClauses(_dep.gD, String(atk.name || atkName || '').replace(' (wandering)', '')); // the commanders' plain names, not "X's leaderless host"
+  // Each enemy side as the clauses name it (plan P1-12d28: a side's record; the prose writes the label): its commander's
+  // plain name, " (wandering)" cut, never "X's leaderless host".
+  const _facedA = battleFacedClauses(_dep.gA, {
+      heroName: String(def.name || defName || '').replace(' (wandering)', ''),
+      leaderless: false,
+    }),
+    _facedD = battleFacedClauses(_dep.gD, {
+      heroName: String(atk.name || atkName || '').replace(' (wandering)', ''),
+      leaderless: false,
+    });
   const atkBaseStr = _gA.grid.face.total,
     defBaseStr = _gD.grid.face.total;
   narrate(narrative, battleWidthLine(pvpTerrain, pvpFront));
@@ -1559,7 +1567,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: atkSide }); // Winning attacker
     const _cas0 = narrative.length;
     rollUnitFates(atkArmies, {
-      owner: atkName,
+      owner: atkSide,
       won: true,
       dieAt: (a) => winDeathPvP * atkSteelMultOf(a),
       promoteTo: (a) =>
@@ -1575,7 +1583,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     // Losing defender
     const _cas1 = narrative.length;
     rollUnitFates(defArmies, {
-      owner: defName,
+      owner: defSide,
       won: false,
       dieAt: (a) => loseDeathPvP * defSteelMultOf(a) * defTacMult + _rideAtkEff,
       demoteAt: (a) => loseDemotePvP * defTacMult,
@@ -1746,7 +1754,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     _pursuitLines(_pursuitsDef, _sfAtk, defName, atkName, narrative);
     const _cas2 = narrative.length;
     rollUnitFates(atkArmies, {
-      owner: atkName,
+      owner: atkSide,
       won: false,
       inTheRout: true,
       dieAt: (a) => loseDeathPvP * atkSteelMultOf(a) * atkTacMult + _rideDefEff,
@@ -1762,7 +1770,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     // Winning defender — small death chance, good XP chance
     const _cas3 = narrative.length;
     rollUnitFates(defArmies, {
-      owner: defName,
+      owner: defSide,
       won: true,
       hardenedByVictory: true,
       dieAt: (a) => winDeathPvP * defSteelMultOf(a),

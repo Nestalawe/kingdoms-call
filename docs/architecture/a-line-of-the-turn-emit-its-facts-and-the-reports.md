@@ -183,8 +183,10 @@ check finds were made.
   role and what becomes of the province, as slugs; a head line rewritten in place when the beaten side holds the field
   sets that value) and `a contest for a province is decided` (its event's: a newly gathered host's or a stalled
   battle's, each filed on its own); the prose switches on the slugs to the same 22 sentences
-  (`theWordsOfABattleDecided`, `theWordsOfAContestForAProvinceDecided`), and the static test lists them as slugs. The
-  helpers' lines, the force header's name, a disbanding unit's owner and the enemy unit a unit faced still take words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
+  (`theWordsOfABattleDecided`, `theWordsOfAContestForAProvinceDecided`), and the static test lists them as slugs. Since
+  P1-12d28 the owner `rollUnitFates` and `battleFacedClauses` take is a side or the defenders
+  (`TheOwnerOfABattlesUnits`), and a fate's line holds its unit, the enemy unit it faced and a disbanding unit's owner
+  as records. The helpers' lines and the force header's name still take words. The compiler refuses words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
   freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-

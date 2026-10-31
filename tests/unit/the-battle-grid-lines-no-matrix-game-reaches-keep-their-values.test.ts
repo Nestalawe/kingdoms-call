@@ -9,7 +9,8 @@
 // - the grid print's side label when there is none;
 // - a cell or a grid with a part missing (typeOfX, abilityHas), a facing table that is missing, and a shot at a unit
 //   with no type (abilityBack);
-// - battleFacedClauses on a grid with no units, or with holes and rows without a unit;
+// - battleFacedClauses on a grid with no units, or with holes and rows without a unit, and (since plan P1-12d28, which
+//   hands the enemy's side as a record) an enemy company when no enemy side is handed: named alone;
 // - battleScout on exploration figures that are missing or not numbers;
 // - battleLineTotal told a ground that is ''.
 // Level 1 (unit): pure functions called directly on the engine's modules (plan P1-14a), with no turn played. Since plan
@@ -170,9 +171,11 @@ describe('a cell or a grid with a part missing, and a facing table that is missi
 
 describe('battleFacedClauses on a grid with no units, holes, or rows without a unit', () => {
   test('no grid, or no list of units, gives an empty map', () => {
-    expect(battleFacedClauses(null, 'Gorbash').size).toBe(0);
-    expect(battleFacedClauses({}, 'Gorbash').size).toBe(0);
-    expect(battleFacedClauses({ units: null }, 'Gorbash').size).toBe(0);
+    /** The enemy side, as the battle hands it (a side's record since plan P1-12d28). */
+    const gorbash = { heroName: 'Gorbash', leaderless: false };
+    expect(battleFacedClauses(null, gorbash).size).toBe(0);
+    expect(battleFacedClauses({}, gorbash).size).toBe(0);
+    expect(battleFacedClauses({ units: null }, gorbash).size).toBe(0);
   });
   test('a hole, a row with no unit and a facing with no enemy unit are read as they always were', () => {
     const a1 = army('Men-at-Arms'),
@@ -211,6 +214,31 @@ describe('battleFacedClauses on a grid with no units, holes, or rows without a u
       'with nobody opposite',
     ]);
     expect([...clauses.keys()]).toEqual([a1, a2, a3]);
+  });
+  test('an enemy company faced when no enemy side is handed is named alone', () => {
+    const mine = army('Men-at-Arms'),
+      theirs = { ...army('Yeoman Longbows'), unitName: 'Bow B1' };
+    const why = { theUnit: { a: { type: 'Men-at-Arms' } }, meets: null, itsOwnAbilities: [], marks: [] };
+    /** The clauses of a grid of one company facing theirs, with no enemy side handed (`none`). */
+    const theClauses = (none: null | undefined) =>
+      battleFacedClauses(
+        {
+          units: [
+            {
+              row: { a: mine, _faced: { m: 1, kind: 'faces', vs: { a: theirs, base: 2 }, why } },
+              place: 'front',
+              col: 0,
+              mult: 1,
+              why: { kind: 'a unit in the front line' },
+            },
+          ],
+        },
+        none,
+      );
+    expect([null, undefined].map((none) => [...theClauses(none).values()].map(theClauseOfWhomAUnitFaced))).toEqual([
+      ['facing Bow B1'],
+      ['facing Bow B1'],
+    ]);
   });
 });
 

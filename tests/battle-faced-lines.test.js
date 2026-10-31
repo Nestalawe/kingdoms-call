@@ -46,6 +46,8 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // Whom a unit faced is a record since plan P1-12d4; the clause's words are theClauseOfWhomAUnitFaced's.
   const clauseWords=ev('theClauseOfWhomAUnitFaced'), words=c=>c&&clauseWords(c);
   const clauseOf=(map,force,name)=>words(map.get(armyOf(force,name)));
+  // The enemy side a clause names, as the battle hands it (a side's record since plan P1-12d28; the prose writes its label)
+  const side=heroName=>({heroName,leaderless:false});
 
   // ── the clauses, one per kind of place ──
   // A plain, front of 3: Aldric's five Levies, two Longbows, a Free Lance and an Eagle company against Gorbash's
@@ -53,7 +55,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const A=rows([['Shieldwall Levies',['Levy A1','Levy A2','Levy A3','Levy A4','Levy A5']],['Yeoman Longbows',['Bow A1','Bow A2']],['Free Lances',['the Red Hand']],['Eagle Riders',['the Sky Host']]]);
   const B=rows([['Shieldwall Levies',['Levy B1','Levy B2','Levy B3']],['Warg Riders',['Warg B1','Warg B2']]]);
   let r=fight(A,B,3,'plain',0,1);
-  let ca=clauses(r.me,'Gorbash'), cb=clauses(r.them,'Aldric');
+  let ca=clauses(r.me,side('Gorbash')), cb=clauses(r.them,side('Aldric'));
   ok(ca instanceof w.Map||typeof ca.get==='function','battleFacedClauses returns a map keyed by the army objects');
   const frontLevies=r.me.front.filter(Boolean).map(x=>x.r.a.unitName);
   ok(frontLevies.length===3&&frontLevies.every(nm=>/^facing Gorbash's Levy B\d$/.test(clauseOf(ca,A,nm))),`a front Levy faces the Levy opposite: ${frontLevies.map(nm=>`"${clauseOf(ca,A,nm)}"`).join(', ')}`);
@@ -69,7 +71,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const C=rows([['Shieldwall Levies',['Levy C1','Levy C2','Levy C3','Levy C4','Levy C5']]]);
   const D=rows([['Shieldwall Levies',['Levy D1','Levy D2','Levy D3']],['Free Lances',['Lance D']]]);
   r=fight(C,D,5,'plain');
-  ca=clauses(r.me,'Gorbash'); cb=clauses(r.them,'Aldric');
+  ca=clauses(r.me,side('Gorbash')); cb=clauses(r.them,side('Aldric'));
   { const kinds=['Levy C1','Levy C2','Levy C3','Levy C4','Levy C5'].map(nm=>clauseOf(ca,C,nm));
     ok(kinds.filter(s=>/^facing Gorbash's Levy D\d$/.test(s)).length===3,`three Levies face: ${kinds.map(s=>`"${s}"`).join(', ')}`);
     ok(kinds.some(s=>s==="met at the end of the line by Gorbash's Lance D"),'the wrapping Levy the rider meets is "met at the end of the line by" it');
@@ -79,12 +81,12 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   // no front at all a Levy stands with nobody opposite
   const E=rows([['Shieldwall Levies',['Levy E1','Levy E2']],['Yeoman Longbows',['Bow E1','Bow E2']]]);
   r=fight(E,rows([['Shieldwall Levies',['Levy F1']]]),2,'plain');
-  ca=clauses(r.me,'Gorbash');
+  ca=clauses(r.me,side('Gorbash'));
   { const bows=['Bow E1','Bow E2'].map(nm=>clauseOf(ca,E,nm)).sort();
     ok(bows.join('|')===["shooting Gorbash's Levy F1 over the line",'shooting at an empty column'].sort().join('|'),`one Longbow shoots the Levy, the other an empty column: ${bows.map(s=>`"${s}"`).join(', ')}`); }
   r=fight(rows([['Shieldwall Levies',['Levy G1']]]),rows([['Eagle Riders',['the Talons']]]),2,'plain');
-  ok(words(clauses(r.me,'Gorbash').get(r.me.front.filter(Boolean)[0].r.a))==='with nobody opposite','against a side with no front a Levy stands "with nobody opposite"');
-  ok(clauses(null,'Gorbash').size===0&&clauses({units:[]},'Gorbash').size===0,'no grid, no clauses');
+  ok(words(clauses(r.me,side('Gorbash')).get(r.me.front.filter(Boolean)[0].r.a))==='with nobody opposite','against a side with no front a Levy stands "with nobody opposite"');
+  ok(clauses(null,side('Gorbash')).size===0&&clauses({units:[]},side('Gorbash')).size===0,'no grid, no clauses');
 
   // ── the fate lines carry the clause ──
   const dice=seq=>{ let i=0; return ()=>{ if(i>=seq.length) throw new Error('more dice than planned'); return seq[i++]; }; };
@@ -92,30 +94,32 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const run=(force,o,seq,faced)=>{ const lines=[]; fates(force,Object.assign({rng:dice(seq),say:l=>lines.push(wordsOf(l)),faced},o)); return lines; };
   let f=[unit('Shieldwall Levies','Average','Levy A1'),unit('Yeoman Longbows','Average','Bow A1'),unit('Eagle Riders','Veteran','the Sky Host')];
   const facing=(how,theEnemyUnit)=>({kind:'an enemy unit',how,theEnemyUnit});
-  let faced=new w.Map([[f[0],facing('faces',"Gorbash's Levy B1")],[f[1],facing('shoots',"Gorbash's Levy B2")],[f[2],{kind:'it fought from the air'}]]);
-  let lines=run(f,{owner:'Aldric',won:true,dieAt:()=>0.10,promoteTo:()=>0.40},[0.05,0.30,0.30],faced);
+  // the enemy company a clause names, as the battle hands it: its record, ownedUnitName's form (plan P1-12d28)
+  const enemy=(owner,unitName,type)=>({kind:'a unit named without its quality',owner:side(owner),unitName,type,quality:'Average'});
+  let faced=new w.Map([[f[0],facing('faces',enemy('Gorbash','Levy B1','Shieldwall Levies'))],[f[1],facing('shoots',enemy('Gorbash','Levy B2','Shieldwall Levies'))],[f[2],{kind:'it fought from the air'}]]);
+  let lines=run(f,{owner:side('Aldric'),won:true,dieAt:()=>0.10,promoteTo:()=>0.40},[0.05,0.30,0.30],faced);
   ok(lines[0]==="— Aldric's Levy A1 (Shieldwall Levies, Average), facing Gorbash's Levy B1, were destroyed in the fighting.",`a winner's death names whom it faced: "${lines[0]}"`);
   ok(lines[1]==="— Aldric's Bow A1 (Yeoman Longbows, Average), shooting Gorbash's Levy B2 over the line, earn promotion to Veteran!",`a winner's promotion names whom it shot: "${lines[1]}"`);
   ok(lines[2]==="— the Sky Host (Aldric's Eagle Riders, Veteran), fighting from the air, earn promotion to Crack!",`a named company keeps its form, clause after it: "${lines[2]}"`);
   f=[unit('Orc Berserkers','Veteran','Zog'),unit('Goblin Horde','Average','Gob 1'),unit('Goblin Horde','Green','Gob 2'),unit('Warg Riders','Average','Fang'),unit('Dwarven Guard','Veteran','Durn'),unit('Shieldwall Levies','Average','Levy X')];
-  faced=new w.Map(f.map((a,i)=>[a,facing('faces',`Aldric's Levy A${i+1}`)]));
-  lines=run(f,{owner:'Gorbash',won:false,inTheRout:true,dieAt:()=>0.20,demoteAt:()=>0.30,promoteTo:()=>0.45},[0.10, 0.50,0.10, 0.50,0.20, 0.50,0.40, 0.50,0.10, 0.50,0.10],faced);
+  faced=new w.Map(f.map((a,i)=>[a,facing('faces',enemy('Aldric',`Levy A${i+1}`,'Shieldwall Levies'))]));
+  lines=run(f,{owner:side('Gorbash'),won:false,inTheRout:true,dieAt:()=>0.20,demoteAt:()=>0.30,promoteTo:()=>0.45},[0.10, 0.50,0.10, 0.50,0.20, 0.50,0.40, 0.50,0.10, 0.50,0.10],faced);
   ok(lines[0]==="— Gorbash's Zog (Orc Berserkers, Veteran), facing Aldric's Levy A1, were annihilated in the rout!",`a loser's death: "${lines[0]}"`);
   ok(lines[1]==="— Gorbash's Gob 1 (Goblin Horde, Average), facing Aldric's Levy A2, lost heart in defeat, reduced to Green.",`a demotion: "${lines[1]}"`);
   ok(lines[2]==="— Gorbash's Gob 2 (Goblin Horde), facing Aldric's Levy A3, have had enough — the survivors slip away to their villages and the unit disbands for good.",`a disbanding: "${lines[2]}"`);
   ok(lines[3]==="— Despite defeat, Gorbash's Fang (Warg Riders, Average), facing Aldric's Levy A4, improved to Veteran!",`a rise despite defeat: "${lines[3]}"`);
   ok(lines[4]==="— Gorbash's Durn (Dwarven Guard, Veteran), facing Aldric's Levy A5, lost heart in defeat, reduced to Average.",`the Guard, outside a Shield Fort: "${lines[4]}"`);
-  lines=run([f[4]],{owner:'Gorbash',won:false,dieAt:()=>0,demoteAt:()=>0.5,promoteTo:()=>0.6,shieldFort:true},[0.9,0.1],faced);
+  lines=run([f[4]],{owner:side('Gorbash'),won:false,dieAt:()=>0,demoteAt:()=>0.5,promoteTo:()=>0.6,shieldFort:true},[0.9,0.1],faced);
   ok(lines[0]==="— Gorbash's Durn (Dwarven Guard, Average), facing Aldric's Levy A5, fall back behind the shield wall in good order.",`the Shield Fort's fall-back: "${lines[0]}"`);
-  { const lk=unit('Shieldwall Levies','Average','Levy K'); faced.set(lk,facing('faces',"Aldric's Levy A6")); // a fresh company: Levy X was demoted above
-    lines=run([lk],{owner:'Gorbash',won:false,dieAt:()=>0,demoteAt:()=>0.5,promoteTo:()=>0.6,knightly:true},[0.9,0.1],faced);
+  { const lk=unit('Shieldwall Levies','Average','Levy K'); faced.set(lk,facing('faces',enemy('Aldric','Levy A6','Shieldwall Levies'))); // a fresh company: Levy X was demoted above
+    lines=run([lk],{owner:side('Gorbash'),won:false,dieAt:()=>0,demoteAt:()=>0.5,promoteTo:()=>0.6,knightly:true},[0.9,0.1],faced);
     ok(lines[0]==="— Gorbash's Levy K (Shieldwall Levies, Average), facing Aldric's Levy A6, keep their nerve under the Knightly Example of the Gilded Lances and lose nothing in defeat.",`the Knightly Example: "${lines[0]}"`); }
   // a company the map does not know, and no map at all, read as before
-  lines=run([unit('Shieldwall Levies','Average','Levy Z')],{owner:'Aldric',won:true,dieAt:()=>1,promoteTo:()=>1},[0.5],faced);
+  lines=run([unit('Shieldwall Levies','Average','Levy Z')],{owner:side('Aldric'),won:true,dieAt:()=>1,promoteTo:()=>1},[0.5],faced);
   ok(lines[0]==="— Aldric's Levy Z (Shieldwall Levies, Average) were destroyed in the fighting.",`a company with no clause reads as before: "${lines[0]}"`);
-  lines=run([unit('Shieldwall Levies','Average','Levy Z')],{owner:'Aldric',won:true,dieAt:()=>1,promoteTo:()=>1},[0.5]);
+  lines=run([unit('Shieldwall Levies','Average','Levy Z')],{owner:side('Aldric'),won:true,dieAt:()=>1,promoteTo:()=>1},[0.5]);
   ok(lines[0]==="— Aldric's Levy Z (Shieldwall Levies, Average) were destroyed in the fighting.",'with no faced map the wording is unchanged');
-  lines=run([unit('Shieldwall Levies','Average','Levy Y')],{owner:'Aldric',won:true,dieAt:()=>1,promoteTo:()=>1},[0.5],a=>a.unitName==='Levy Y'?{kind:'nobody stood opposite'}:null);
+  lines=run([unit('Shieldwall Levies','Average','Levy Y')],{owner:side('Aldric'),won:true,dieAt:()=>1,promoteTo:()=>1},[0.5],a=>a.unitName==='Levy Y'?{kind:'nobody stood opposite'}:null);
   ok(lines[0]==="— Aldric's Levy Y (Shieldwall Levies, Average), with nobody opposite, were destroyed in the fighting.",'faced may be a function');
   ok(disband('Aldric',unit('Shieldwall Levies','Green','Levy Q'),"facing Gorbash's Gob 1")==="— Aldric's Levy Q (Shieldwall Levies), facing Gorbash's Gob 1, have had enough — the survivors slip away to their villages and the unit disbands for good.",'disbandLine takes the clause after the company');
   ok(disband('Aldric',unit('Shieldwall Levies','Green','Levy Q'))==="— Aldric's Levy Q (Shieldwall Levies) have had enough — the survivors slip away to their villages and the unit disbands for good.",'…and reads as before without one');
