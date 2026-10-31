@@ -7,6 +7,9 @@
 //   the kind's ceiling (+30%), none when the attacker holds the province, and the realm's home asked only by an effect
 //   that needs it (asking may fix a realm's home). Between two heroes' hosts the line is
 //   tests/unit/the-sides-and-the-defenders-of-a-battle-against-a-province-in-the-lines-no-matrix-game-reaches.test.ts's.
+//   And the army's other effects on rows the content doesn't write (planted in the table of the discoveries by id for
+//   their case, and taken out after): a siege, own-ground, fanaticism or casting effect with no number, a siege's unit
+//   types met by no unit, a gap among the attacker's units, a unit's strength stacked past its ceiling (×1.30).
 // Level 1 (unit): the runner on a staged realm, and combatVsNPC called directly on a world the engine makes from a
 // fixed seed, no turn played; whether the line is written is decided before any die is drawn (a seeded stream feeds
 // the rest of the battle). Not lower: the effects read the content's rows and the battle writes the line. Not higher: a
@@ -20,7 +23,14 @@ import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { createTurnContext } from '../../src/engine/turn/context.ts';
 import { homeProvinceIdFor } from '../../src/engine/grand-design.ts';
 import { combatVsNPC } from '../../src/engine/battle/battles-against-province-defenders.ts';
-import { theShareARealmsDiscoveriesFortifyItsOwnGroundBy } from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
+import {
+  DISC_BY_ID,
+  theFactorARealmsDiscoveriesStrengthenAUnitBy,
+  theShareARealmsDiscoveriesFortifyItsOwnGroundBy,
+  whatARealmsDiscoveriesAddToACastersChance,
+  whatARealmsDiscoveriesAddToASidesFanaticism,
+  whatARealmsDiscoveriesAddToASiege,
+} from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
@@ -71,6 +81,84 @@ describe("a realm's own-ground discoveries, in the registry's runner", () => {
       { isItTheRealmsHome },
     );
     expect(isItTheRealmsHome).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** Runs `fn` with rows planted in the discoveries' table (each id `test-<key>`, its effect as given), and a realm that
+ *  holds them; the rows are taken out after. */
+function withPlantedRows<T>(effects: Record<string, object>, fn: (realm: { discoveries: { id: string }[] }) => T): T {
+  const ids = Object.keys(effects).map((k) => `test-${k}`);
+  Object.entries(effects).forEach(([k, effect]) => {
+    Reflect.set(DISC_BY_ID, `test-${k}`, { id: `test-${k}`, name: k, category: 'Test', desc: '', effect });
+  });
+  try {
+    return fn({ discoveries: ids.map((id) => ({ id })) });
+  } finally {
+    ids.forEach((id) => Reflect.deleteProperty(DISC_BY_ID, id));
+  }
+}
+
+describe("the army's effects on rows the content doesn't write", () => {
+  test("a siege: no delta, unit types no unit has, a gap among the attacker's units", () => {
+    const added = withPlantedRows(
+      {
+        bare: { kind: 'siege' },
+        rams: { kind: 'siege', delta: 0.1, withTypes: ['Ironhoof Rams'] },
+        guns: { kind: 'siege', delta: 0.2, withTypes: ['Mountain Guns'] },
+      },
+      (realm) =>
+        whatARealmsDiscoveriesAddToASiege(realm, { theAttackersUnits: [null, undefined, { type: 'Mountain Guns' }] }),
+    );
+    expect(added).toBeCloseTo(0.2, 12);
+  });
+
+  test('own ground, fanaticism and casting: no pct', () => {
+    const got = withPlantedRows(
+      {
+        ground: { kind: 'defOwn' },
+        walls: { kind: 'defOwn', pct: 0.1 },
+        zeal: { kind: 'fanatic' },
+        fury: { kind: 'fanatic', pct: 0.1 },
+        cast: { kind: 'cast' },
+        lore: { kind: 'cast', pct: 4 },
+      },
+      (realm) => [
+        theShareARealmsDiscoveriesFortifyItsOwnGroundBy(realm, { isItTheRealmsHome: () => true }),
+        whatARealmsDiscoveriesAddToASidesFanaticism(realm, { theSide: 'atk', theGround: 'plain', theForce: [] }),
+        whatARealmsDiscoveriesAddToACastersChance(realm, { theSchool: 'white', whereHeCasts: 'battle' }),
+      ],
+    );
+    expect(got).toEqual([0.1, 0.1, 4]);
+  });
+
+  test("a unit's strength stacked past the kind's ceiling: ×1.30", () => {
+    const factor = withPlantedRows(
+      { drums: { kind: 'unitStr', pct: 0.2 }, horns: { kind: 'unitStr', pct: 0.2 } },
+      (realm) =>
+        theFactorARealmsDiscoveriesStrengthenAUnitBy(realm, {
+          theUnit: { type: 'Free Lances' },
+          theGround: 'plain',
+          isItsSideTheAttacker: true,
+          isItLedByTheKing: false,
+          hasItACommander: true,
+        }),
+    );
+    expect(factor).toBe(1.3);
+  });
+
+  test("casting: a school or a place that isn't his", () => {
+    const got = withPlantedRows(
+      {
+        fire: { kind: 'cast', pct: 3, school: 'elemental' },
+        duel: { kind: 'cast', pct: 5, ctx: 'duel' },
+        any: { kind: 'cast', pct: 7, school: 'white', ctx: 'battle' },
+      },
+      (realm) => [
+        whatARealmsDiscoveriesAddToACastersChance(realm, { theSchool: 'white', whereHeCasts: 'battle' }),
+        whatARealmsDiscoveriesAddToACastersChance(realm, { theSchool: 'elemental', whereHeCasts: 'duel' }),
+      ],
+    );
+    expect(got).toEqual([7, 8]);
   });
 });
 
