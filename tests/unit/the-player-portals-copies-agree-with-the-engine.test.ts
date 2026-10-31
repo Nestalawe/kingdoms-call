@@ -62,9 +62,11 @@
 // Warlock, where its answer is the engine's without either (pinned; question 28 (a), Parked); the army card's strength
 // of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, but under a leader short of Druid,
 // where it is the battle's figure for a leader with Druid enough, the shortfall then taken off rounded to the nearest
-// and at least 1 (pinned; question 28 (b)). Level 1: pure functions on values; no page is needed, and a static test
+// and at least 1 (pinned; question 28 (b)). Since P1-11c4 the target field's six lists that look in the caster's
+// province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
+// at a hero offers on the staged report. Level 1: pure functions on values; no page is needed, and a static test
 // can't compare what two functions answer. Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3,
-// P1-11b4, P1-11c1)
+// P1-11b4, P1-11c1, P1-11c4)
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   armyCardKinAgainstTheBattle,
@@ -90,6 +92,7 @@ import {
   theFormsSpellTablesAgainstTheContent,
   theFormsTargetsAgainstTheMarkCheck,
   theGamePlayed,
+  theHeroesEachSpellAimedAtAHeroOffers,
   theOrderFormsSpells,
   worldSamples,
   type WorldSamples,
@@ -324,6 +327,29 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
     // Armies offer him too)
     const atAHero = theContentsSpellTables().NEEDS_CHAR;
     expect(list.filter((x) => atAHero.includes(String(x.on)) && !x.othersOffered.length).map((x) => x.on)).toEqual([]);
+  });
+
+  test('each of the 13 spells aimed at a hero offers exactly these heroes on the staged report, in the caster’s province and out of it (pinned)', () => {
+    // Since P1-11c4 the field's six lists that look in the caster's province ask the engine's mark check (through
+    // src/shared/), so the case above compares the check with itself there: this one pins what each list offers. The
+    // staged report has the caster and a hero of each kind in province 100, and one of each in province 200. A spell
+    // whose row lost its flag would offer the heroes of province 200 too.
+    const here = ['Lone 100', 'Leader 100', 'Wanderer 100'];
+    expect(theHeroesEachSpellAimedAtAHeroOffers(theForm())).toEqual({
+      Resurrect: ['Fallen 100'],
+      Charm: ['Lone 100', 'Wanderer 100'],
+      Oratory: ['Ysolde Fen', 'Ally 100'],
+      Clairvoyance: ['Leader 100', 'Leader 200', 'Lone 100', 'Lone 200'],
+      'Psychic Blast': here,
+      'Telekinetic Storm': ['Leader 100'],
+      'Phantasmal Armies': ['Ysolde Fen', 'Ally 100'],
+      'Control Undead': here,
+      Curse: here,
+      'Divine Judgment': here,
+      'Mass Confusion': here,
+      Dominate: here,
+      'Chain Lightning': here,
+    });
   });
 
   test("the form's casting count is the engine's, but in a realm with a Grand Cathedral and for the Warlock, where it is the engine's without either", () => {

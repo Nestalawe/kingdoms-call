@@ -104,7 +104,7 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   - **a spell's mark must stand in the province** (before the cast roll: a mark gone is refused, no slot spent; so is a
     mark of another realm whose Invisibility holds, R-119, with a line that names no one: `isHiddenByInvisibilityFrom`).
     Its effects ask `theMarkOfThisSpellMustStandInTheCastersProvince` (`engine/rules-on-plain-values/`, P1-11c2), which
-    reads the row's flag, so the order form can ask the same function (through `src/shared/`, from P1-11c4);
+    reads the row's flag; the order form's target field asks the same function (through `src/shared/`, P1-11c4);
   - **a cloaked mark is shielded from it** (once the cast lands: Psychic Blast and Curse; the Cloak's own check,
     `isHiddenChar`, waits for P1-23);
   - **a Bless ward may turn it aside** (asked by `blessWardNegates`, before the ward's roll: Part Sea, Earthquake, Flood

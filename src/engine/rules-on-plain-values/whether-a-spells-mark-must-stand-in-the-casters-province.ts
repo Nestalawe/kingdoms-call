@@ -4,9 +4,9 @@
 // share them (P1-11a). This is the one check of the Cast Spell order the order form makes too (its target field lists a
 // mark from the caster's province only), read from the spell's row in the content
 // (src/content/spell-effects-their-names-numbers-and-words.ts). The spells' registry asks it (src/engine/rules/spells/
-// the-checks-the-cast-spell-order-makes-of-a-spell.ts); src/shared/ hands it to the form from P1-11c4, the row in which
-// the form asks it (until then the player page would load the rows' file and use none of it). The tables the form
-// offers are beside it (spells-the-order-form-offers-each-school-aim-and-mastery-level.ts).
+// the-checks-the-cast-spell-order-makes-of-a-spell.ts), and so does the form's target field (spellSecondaryHtml, in
+// src/ui/player/titles.ts), through src/shared/ (P1-11c4): so the player page loads the rows' file too. The tables the
+// form offers are beside it (spells-the-order-form-offers-each-school-aim-and-mastery-level.ts).
 import {
   SPELL_EFFECTS_THE_REGISTRY_HOLDS,
   type ASpellAsItsTextsWriteIt,

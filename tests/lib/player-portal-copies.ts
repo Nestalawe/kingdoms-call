@@ -1263,7 +1263,12 @@ export type WhereTheFormLooks = "the caster's province" | 'anywhere' | 'no hero'
  *  province 200; and in each of the two provinces, a lone hero of realm 1, one of realm 1 leading armies, a lone
  *  wanderer, and the body of a fallen hero of realm 0 (every one of them seen, and every one a mark some spell may
  *  take). */
-function aReportToAimSpellsIn(): { report: Obj; caster: Obj; whereEachStands: Map<string, number> } {
+function aReportToAimSpellsIn(): {
+  report: Obj;
+  caster: Obj;
+  whereEachStands: Map<string, number>;
+  nameOfEach: Map<string, string>;
+} {
   const HERE = 100;
   const caster: Obj = { id: 1, name: 'Ysolde Fen', player: 0, locationId: HERE, alive: true, skills: {} };
   const own: Obj[] = [caster];
@@ -1291,7 +1296,23 @@ function aReportToAimSpellsIn(): { report: Obj; caster: Obj; whereEachStands: Ma
   const whereEachStands = new Map(
     [...own, ...others, ...bodies].map((x) => [String(x['id']), Number(x['locationId'])]),
   );
-  return { report: deepFreeze(report), caster, whereEachStands };
+  const nameOfEach = new Map([...own, ...others, ...bodies].map((x) => [String(x['id']), String(x['name'])]));
+  return { report: deepFreeze(report), caster, whereEachStands, nameOfEach };
+}
+/** For each spell aimed at a hero (the content's), the heroes and bodies its target field offers on the staged report,
+ *  by their names, in the field's order (the caster himself among them where the field offers him). Since P1-11c4 the
+ *  field's lists that look in the caster's province ask the engine's mark check, so this pins what they offer. */
+export function theHeroesEachSpellAimedAtAHeroOffers(form: TheOrderFormsSpells): Record<string, string[]> {
+  const { report, caster, nameOfEach } = aReportToAimSpellsIn();
+  return Object.fromEntries(
+    theContentsSpellTables().NEEDS_CHAR.map((spell) => [
+      spell,
+      [...form.targetField(report, caster, spell).matchAll(/<option value="([^"]*)"/g)].flatMap((m) => {
+        const name = nameOfEach.get(m[1] ?? '');
+        return name === undefined ? [] : [name];
+      }),
+    ]),
+  );
 }
 /** One spell's target field: where the form looks for its mark, against whether the engine's Cast Spell order holds
  *  that its mark must stand in the caster's province (the spells' registry's "a spell's mark must stand in the

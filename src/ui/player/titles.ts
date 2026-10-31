@@ -5,6 +5,7 @@ import {
   dispFloor,
   theActionSpellsAimedAtAHero,
   theActionSpellsAimedAtAProvince,
+  theMarkOfThisSpellMustStandInTheCastersProvince,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP } from './items-and-heroes.ts';
 import { SPELL_HINTS } from './order-chances.ts';
@@ -423,6 +424,11 @@ export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
           <div style="font-size:.72rem;color:var(--stone);margin-top:2px">${SPELL_HINTS[selSpell] || ''}</div>`;
   } else if (NEEDS_CHAR.has(selSpell)) {
     const casterLoc = predictedLocation(c.id, ph)?.id ?? c.locationId;
+    // The six lists below that look for the mark in the caster's province ask the Cast Spell order's own check, which
+    // reads the spell's row (plan P1-11c4): a hero may be its mark where he stands if the spell needs none, or if he
+    // stands in the caster's province. (Resurrect's bodies and Clairvoyance's sightings follow their own rules.)
+    const theMarkMustStandHere = theMarkOfThisSpellMustStandInTheCastersProvince(selSpell);
+    const standsWhereTheMarkMust = (whereHeStands) => !theMarkMustStandHere || whereHeStands === casterLoc;
     let charOpts = '';
     if (selSpell === 'Resurrect') {
       // Resurrect shows dead heroes the player knows of. Kings can never be resurrected, and
@@ -468,7 +474,7 @@ export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
       const targets = (report.visibleChars || []).filter(
         (x) =>
           x.alive !== false &&
-          x.locationId === casterLoc &&
+          standsWhereTheMarkMust(x.locationId) &&
           !x.isKing &&
           !leadsArmiesP(x) &&
           !x.charmImmune &&
@@ -484,7 +490,7 @@ export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
       // Oratory: self, or own characters predicted to be in the same province this phase.
       const selfOpt = kcHtml`<option value="${c.id}" ${extra == c.id ? 'selected' : ''}>${c.name} (self)</option>`;
       const allies = orderTargetCharsP(report, ph, { allowCharmEnemy: true }).filter(
-        (x) => x.id !== c.id && (predictedLocation(x.id, ph)?.id ?? x.locationId) === casterLoc,
+        (x) => x.id !== c.id && standsWhereTheMarkMust(predictedLocation(x.id, ph)?.id ?? x.locationId),
       );
       charOpts = [
         selfOpt,
@@ -499,7 +505,7 @@ export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
       // next battle, so it still helps if they pick up or recruit armies in a later phase.
       const selfOpt = kcHtml`<option value="${c.id}" ${extra == c.id ? 'selected' : ''}>${c.name} (self)</option>`;
       const allies = orderTargetCharsP(report, ph, { allowCharmEnemy: true }).filter(
-        (x) => x.id !== c.id && (predictedLocation(x.id, ph)?.id ?? x.locationId) === casterLoc,
+        (x) => x.id !== c.id && standsWhereTheMarkMust(predictedLocation(x.id, ph)?.id ?? x.locationId),
       );
       charOpts = [
         selfOpt,
@@ -530,7 +536,9 @@ export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
       // obvious reading of "cast Control Undead here" is also what happens.
       const _cuNoTarget = extra === '' || extra == null;
       const scanOpt = kcHtml`<option value="__scan__" ${extra === '__scan__' || _cuNoTarget ? 'selected' : ''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
-      const targets = (report.visibleChars || []).filter((x) => x.player !== c.player && x.locationId === casterLoc);
+      const targets = (report.visibleChars || []).filter(
+        (x) => x.player !== c.player && standsWhereTheMarkMust(x.locationId),
+      );
       const enemyOpts = targets.map(
         (x) =>
           kcHtml`<option value="${x.id}"${realmOptStyleP(x.player, report)} ${extra == x.id ? 'selected' : ''}>${x.name}${x.player === null ? ' (wandering)' : ` ⚔ (${realmNameP(x.player, report)})`} — seize one undead unit from them</option>`,
@@ -540,7 +548,7 @@ export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
       // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
       // there is nothing to scatter around a hero marching alone.
       const targets = (report.visibleChars || []).filter(
-        (x) => x.player !== c.player && x.locationId === casterLoc && leadsArmiesP(x),
+        (x) => x.player !== c.player && standsWhereTheMarkMust(x.locationId) && leadsArmiesP(x),
       );
       charOpts = targets.map(
         (x) =>
@@ -551,7 +559,9 @@ export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
     } else {
       // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
       // Target visible enemy/neutral characters in the same province.
-      const targets = (report.visibleChars || []).filter((x) => x.player !== c.player && x.locationId === casterLoc);
+      const targets = (report.visibleChars || []).filter(
+        (x) => x.player !== c.player && standsWhereTheMarkMust(x.locationId),
+      );
       charOpts = targets.map(
         (x) =>
           kcHtml`<option value="${x.id}"${realmOptStyleP(x.player, report)} ${extra == x.id ? 'selected' : ''}>${x.name}${x.player === null ? ' (wandering)' : ` ⚔ (${realmNameP(x.player, report)})`} — ${x.locationName || '?'}</option>`,
