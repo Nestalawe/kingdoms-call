@@ -1,7 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
-import { dispFloor } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  dispFloor,
+  theActionSpellsAimedAtAHero,
+  theActionSpellsAimedAtAProvince,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP } from './items-and-heroes.ts';
 import { SPELL_HINTS } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
@@ -373,32 +377,8 @@ export function renderReckoningOrders() {
 // the spell-target (secondary) field builder, extracted from the Cast Spell form so the Use Item
 // form can offer the same province / character targeting for spell items.
 export function spellSecondaryHtml(report, c, ph, selSpell, extra, target) {
-  const NEEDS_PROV = new Set([
-    'Bless Province',
-    'Part Sea',
-    'Illusory Terrain',
-    'Hide Lairs',
-    'Earthquake',
-    'Flood',
-    'Plague',
-    'Sanctuary',
-    'Cataclysm',
-  ]);
-  const NEEDS_CHAR = new Set([
-    'Resurrect',
-    'Psychic Blast',
-    'Telekinetic Storm',
-    'Clairvoyance',
-    'Phantasmal Armies',
-    'Control Undead',
-    'Curse',
-    'Charm',
-    'Oratory',
-    'Divine Judgment',
-    'Mass Confusion',
-    'Dominate',
-    'Chain Lightning',
-  ]);
+  const NEEDS_PROV = theActionSpellsAimedAtAProvince();
+  const NEEDS_CHAR = theActionSpellsAimedAtAHero();
   let secondaryHtml = '';
   if (NEEDS_PROV.has(selSpell)) {
     // All province spells reach only the province the caster occupies THIS PHASE or one

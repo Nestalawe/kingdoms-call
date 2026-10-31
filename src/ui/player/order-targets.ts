@@ -9,6 +9,8 @@ import {
   isLegendaryItem,
   itemSlot,
   itemUsableBy,
+  theActionSpells,
+  theActionSpellsNoMasteryLevelGates,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import {
@@ -1225,28 +1227,7 @@ export function buildTargetField(c, ph, saved) {
       // (Lightning Bolt, Fireball, Spiritwrack, Mirror Image, Hand of Death) are never phase orders.
       // Holy Symbol has an action form (cleanses the caster's province of its graves). A spell the hero has not learned simply fails.
       if (skillsUnseenP(c)) {
-        const _hsPhase = new Set([
-          'Resurrect',
-          'Part Sea',
-          'Bless Province',
-          'Holy Symbol',
-          'Charm',
-          'Oratory',
-          'Clairvoyance',
-          'Psychic Blast',
-          'Telekinetic Storm',
-          'Illusory Terrain',
-          'Phantasmal Armies',
-          'Hide Lairs',
-          'Invisibility',
-          'Earthquake',
-          'Flood',
-          'Elemental Summon',
-          'Control Undead',
-          'Skeletal Armies',
-          'Curse',
-          'Plague',
-        ]);
+        const _hsPhase = theActionSpellsNoMasteryLevelGates();
         const _hsList = Object.entries(SPELLS_BY_SCHOOL).flatMap(([school, list]) =>
           list.filter((sp) => _hsPhase.has(sp) && !SPELL_REQ_LEVEL[sp]).map((sp) => [sp, school]),
         );
@@ -1258,38 +1239,7 @@ export function buildTargetField(c, ph, saved) {
           <div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills ? `${c.name}'s training is unknown until they have joined — every base spell is offered; one from a school they have not learned simply fails.` : `You cannot see this hero's skills — a spell from a school they have not learned simply fails.`}</div>${spellSecondaryHtml(report, c, ph, _hsSel, _hsSel === target ? extra : '', target)}`;
       }
       // Only show spells that are usable as phase orders
-      const PHASE_SPELLS = new Set([
-        'Resurrect',
-        'Part Sea',
-        'Bless Province',
-        'Holy Symbol',
-        'Charm',
-        'Oratory',
-        'Clairvoyance',
-        'Psychic Blast',
-        'Telekinetic Storm',
-        'Illusory Terrain',
-        'Phantasmal Armies',
-        'Hide Lairs',
-        'Invisibility',
-        'Earthquake',
-        'Flood',
-        'Elemental Summon',
-        'Control Undead',
-        'Skeletal Armies',
-        'Curse',
-        'Plague',
-        'Sanctuary',
-        'Divine Judgment',
-        'Mass Confusion',
-        'Dominate',
-        'Phantom Host',
-        'Veil',
-        'Chain Lightning',
-        'Cataclysm',
-        'Raise Wraiths',
-        "Death's Dominion",
-      ]);
+      const PHASE_SPELLS = theActionSpells();
 
       // Also include schools being practised in an earlier phase this turn. The practice may or may
       // not succeed, but the player should be able to pre-order a cast in case it does. If the

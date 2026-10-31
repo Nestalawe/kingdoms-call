@@ -8,8 +8,11 @@ import {
 } from '../../content/kingdoms-call-data.ts';
 import {
   dispFloor,
+  everySpellBySchool,
   itemSlot,
   itemUsableBy,
+  theLevelEachMasterySpellNeeds,
+  theSchoolOfEachSpell,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
@@ -19,29 +22,7 @@ import { buildTargetField } from './order-targets.ts';
 
 // ── ORDERS FORM ────
 // ── SPELLS LIST ────
-export const SPELLS_BY_SCHOOL = {
-  white: ['Resurrect', 'Part Sea', 'Bless Province', 'Holy Symbol', 'Spiritwrack', 'Sanctuary', 'Divine Judgment'],
-  psychic: ['Charm', 'Oratory', 'Clairvoyance', 'Psychic Blast', 'Telekinetic Storm', 'Mass Confusion', 'Dominate'],
-  illusory: [
-    'Illusory Terrain',
-    'Phantasmal Armies',
-    'Hide Lairs',
-    'Invisibility',
-    'Mirror Image',
-    'Phantom Host',
-    'Veil',
-  ],
-  elemental: ['Lightning Bolt', 'Fireball', 'Earthquake', 'Flood', 'Elemental Summon', 'Chain Lightning', 'Cataclysm'],
-  necromancy: [
-    'Control Undead',
-    'Skeletal Armies',
-    'Curse',
-    'Hand of Death',
-    'Plague',
-    'Raise Wraiths',
-    "Death's Dominion",
-  ],
-};
+export const SPELLS_BY_SCHOOL = everySpellBySchool();
 // ── CAST CHANCE NOTE ────
 // What the player is quoted before ordering a spell. The GM ships `castChance` per school, computed
 // by the same castChanceFor() the action phase rolls against, so this is not an estimate — it is
@@ -168,25 +149,9 @@ export function orderChanceNote(c, action, ph) {
 }
 
 // Reverse lookup: spell name → school
-export const SPELL_TO_SCHOOL = {};
-Object.entries(SPELLS_BY_SCHOOL).forEach(([school, list]) =>
-  list.forEach((s) => {
-    SPELL_TO_SCHOOL[s] = school;
-  }),
-);
+export const SPELL_TO_SCHOOL = theSchoolOfEachSpell();
 // L7/L9 mastery spells require the caster's RAW school level (past-5 comes from experience only).
-export const SPELL_REQ_LEVEL = {
-  Sanctuary: 7,
-  'Divine Judgment': 9,
-  'Mass Confusion': 7,
-  Dominate: 9,
-  'Phantom Host': 7,
-  Veil: 9,
-  'Chain Lightning': 7,
-  Cataclysm: 9,
-  'Raise Wraiths': 7,
-  "Death's Dominion": 9,
-};
+export const SPELL_REQ_LEVEL = theLevelEachMasterySpellNeeds();
 export const rawMagicLvl = (charObj, school) => ((charObj && charObj.skills) || {})[school] || 0;
 
 // Effective magic-skill level for a character = base skill + any magic-item bonuses to that school,
