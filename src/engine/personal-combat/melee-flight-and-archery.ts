@@ -39,6 +39,12 @@ import { narrate } from '../turn/events-and-their-audiences.ts';
 // first roll that succeeds ends it: no further experience rolls for that combatant in this fight.
 // (The success becomes a phase candidate in trySkillGain; the one-rise-per-phase draw and every
 // other guard there still apply.)
+// PROTOTYPE Divine (master list): Holy wrath — a Divine hero's blows against a hero of the realm the Crusade names do
+// 25% more harm (the combatant carries the flag from pcCharCombatant)
+export const HOLY_WRATH_DMG = 1.25;
+export function holyWrathDmg(actor, dmg) {
+  return actor && actor.holyWrath ? Math.max(1, Math.round(dmg * HOLY_WRATH_DMG)) : dmg;
+}
 export function pcCombatXP(turnContext, cbt, skill, narrative) {
   if (!cbt || cbt.kind !== 'character' || !cbt.ref || cbt._xpGained) return;
   const _had = !!(cbt.ref._sgPending && (cbt.ref._sgPending.list || []).some((e) => e && e.skill === skill));
@@ -60,7 +66,7 @@ export function pcTryCounter(turnContext, hero, foe, narrative, chan) {
   if (roll < hit) {
     hero._didMelee = true;
     pcCombatXP(turnContext, hero, 'melee', narrative);
-    const dmg = pcMeleeDamage(hero, foe);
+    const dmg = holyWrathDmg(hero, pcMeleeDamage(hero, foe));
     // 2026-09-23 (Toby item 8): announce the riposte BEFORE the blow is resolved. pcTakeHit
     // writes any ward / armour / parry line as it computes the damage, so with the announcement
     // coming after it, "🜏 Dracolich's Bone Plate turns aside 4 of the blow." sat directly under
@@ -114,7 +120,7 @@ export function pcMeleeStrike(turnContext, actor, foe, narrative) {
   if (roll <= hitI) {
     actor._didMelee = true;
     pcCombatXP(turnContext, actor, 'melee', narrative);
-    const dmg = pcMeleeDamage(actor, foe);
+    const dmg = holyWrathDmg(actor, pcMeleeDamage(actor, foe));
     const dealt = pcTakeHit(turnContext, foe, dmg, narrative, actor.name, 'blow');
     if (dealt)
       narrate(narrative, {

@@ -1175,7 +1175,8 @@ export function runBotMovement(G, botIdxSet, hooks) {
         }
       }
       // A Divine king with holy ground still to claim walks to the richest consecratable province (review §2).
-      if ((c.isKing || (kitTactics(G, pi) === 'Divine' && (c.skills || {}).white >= 1)) && maxHops >= 1) {
+      if ((c.isKing || (kitTactics(G, pi) === 'Divine' && (c.skills || {}).white >= 2)) && maxHops >= 1) {
+        // (master list: Consecrate needs White 3; the signature +1 lifts a hero's White 2)
         const ct = botConsecrateTarget(G, pi, c, maxHops - 1); // PROTOTYPE tactics: any White hero carries the light
         if (ct && ct.d > 0) {
           const path = botPathDirs(G, pi, P, ct.X.id, maxHops - 1, false) || [];

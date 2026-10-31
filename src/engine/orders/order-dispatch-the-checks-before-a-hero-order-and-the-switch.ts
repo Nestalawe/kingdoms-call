@@ -5,11 +5,12 @@ import {
   resolveDespoilOrder,
   resolveEmbargoOrder,
   resolveGoodWorksOrder,
-  resolveGreatSacrificeOrder,
+  resolveCallDownTheStormOrder,
+  resolveBindTheBonesOrder,
+  resolveSpreadDreadOrder,
   resolveGrowTheWildOrder,
   resolveLightTheBeaconsOrder,
   resolveProclaimCrusadeOrder,
-  resolveSpreadPlagueOrder,
   resolveTradePactOrder,
 } from './alignment-prototype-orders.ts';
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
@@ -99,6 +100,7 @@ import { botPracticeSkill } from '../bots/strategy.ts';
 export function processOrder(turnContext, c, o, ph) {
   const { G, _botPlayerIdx } = turnContext;
   if (!c || !c.alive || !o) return;
+  if (c._captiveOf != null) return; // PROTOTYPE Neutral (master list): a hero held to ransom gives no orders
   // If this hero was unified into another's battle this phase, their own order is superseded
   if (o._unifiedWith != null) {
     // filed under the hero himself (2026-10-09, Toby item 1): with no charId it fell into Realm Events
@@ -403,14 +405,17 @@ export function processOrder(turnContext, c, o, ph) {
     case 'embargo':
       resolveEmbargoOrder(turnContext, c, target, player);
       break;
-    case 'great_sacrifice':
-      resolveGreatSacrificeOrder(turnContext, c, prov);
+    case 'call_storm':
+      resolveCallDownTheStormOrder(turnContext, c, target, prov, player);
       break;
     case 'dark_pact':
       resolveDarkPactOrder(turnContext, c, target, prov, player);
       break;
-    case 'spread_plague':
-      resolveSpreadPlagueOrder(turnContext, c, target, prov, player);
+    case 'bind_bones':
+      resolveBindTheBonesOrder(turnContext, c, prov, player);
+      break;
+    case 'spread_dread':
+      resolveSpreadDreadOrder(turnContext, c, prov);
       break;
     case 'research':
       resolveResearchOrder(turnContext, c, ph, target, player);

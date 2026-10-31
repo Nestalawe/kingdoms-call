@@ -547,7 +547,20 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   // ── HUMANOID RACE AFFINITY ── Two INDEPENDENT, STACKING ×1.2 base-strength boosts:
   // • King's race: units of the same race as the owning player's king. • Leader's race: units led by
   // a character (king or hero) of the same race. A king personally leading his own-race troops → ×1.44.
-  if (_unitRace) {
+  // PROTOTYPE Neutral (master list): Open ranks — a Neutral kit realm's kings and heroes lead a humanoid company of any
+  // race with the full kin bonus (×1.44), and never suffer the old grudges
+  const _openRanks =
+    heroChar &&
+    heroChar.player != null &&
+    protoAlignOf(G, heroChar.player) === 'Neutral' &&
+    _unitRace &&
+    !CREATURE_ARMIES.has(army.type) &&
+    !MONSTER_ARMIES.has(army.type) &&
+    !army._isSkeletal;
+  if (_openRanks) {
+    str = Math.round(str * 1.44);
+    if (_tr) _tr.push({ label: 'Open ranks ×1.44' });
+  } else if (_unitRace) {
     if (_ownerRace && _unitRace === _ownerRace) str = Math.round(str * 1.2); // king's-race affinity
     if (_leaderRace && _unitRace === _leaderRace) str = Math.round(str * 1.2); // leader's-race affinity
     if (_tr) {
@@ -557,7 +570,7 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
   }
   // ── RACIAL ANIMOSITY ── Elves & Dwarves, and Humans & Orcs, bear an ancient grudge: an army
   // led by a commander of the RIVAL kin fights at −20%. Keyed on unit-vs-leader race.
-  if (_unitRace && _leaderRace) {
+  if (_unitRace && _leaderRace && !_openRanks) {
     const _RIVAL_RACE = { ...KC_RIVAL_RACE };
     if (_RIVAL_RACE[_unitRace] === _leaderRace) {
       str = Math.round(str * 0.8);

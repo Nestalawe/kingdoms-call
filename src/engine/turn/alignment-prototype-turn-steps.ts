@@ -1,34 +1,43 @@
-// ── THE PROTOTYPE KITS' TURN STEPS (alignment ideas rounds 1 and 2, 2026-10-25) ────
+// ── THE PROTOTYPE KITS' TURN STEPS (alignment ideas rounds 1 and 2, 2026-10-25; the master list, round 19) ────
 // What a kit does between the phases, once a turn, after the turn counter has advanced (the new-turn step calls it
 // before the graves decay): beasts bred in a held wild province (Druidic, Evil), the dead rising in an Undead realm's
-// graveyards and despoiled lands, Terror fading (Evil), the green healing a Druidic realm's heroes, mercenary bands drawn
-// to a Neutral realm's markets. Nothing here is a decided rule (src/engine/alignment-prototypes.ts).
+// blighted land and the barrows' graves refilled, the green healing a Druidic realm's heroes, the faith's Absolution
+// (Divine), bound souls freed and captives ransomed. Terror no longer fades (master list). Nothing here is a decided
+// rule (src/engine/alignment-prototypes.ts).
 import { KC_QUALITY_TIERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
-import type { Army, Province } from '../../schemas/saved-game-state.ts';
+import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
 import {
   alignProto,
-  BARROW_RISE_PER_TURN,
+  BARROW_GRAVES_HUMANOID,
+  BARROW_GRAVES_WILD,
+  DIVINE_POWER_ABSOLUTION,
+  DIVINE_POWER_REVELATION,
+  divinePower,
   isBarrow,
+  isHolySite,
   isWild,
   protoAlignOf,
   UNDEAD_GARRISON_CAP,
 } from '../alignment-prototypes.ts';
 import { armyUnitNameOf } from '../dice-and-army-names.ts';
+import { clearTerrorAndPlague } from '../orders/alignment-prototype-orders.ts';
 import { kcRng } from '../rng.ts';
+import { discoverFeat } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
+import { hexDistP } from '../world/map-helpers.ts';
 import type { TurnContext } from './context.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
-import { newMercId } from './mercenary-ids-and-battle-records.ts';
 
 const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
 const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
-/** A held wild province breeds a beast into its garrison every this many turns (round 2: Druidic every 4th, Evil every 3rd). */
-export const WILD_BREED_EVERY = 7; // round 12 (round 8-11: 5; rounds 1-7: 3)
-export const WILD_BREED_EVERY_DRUIDIC = 6; // round 8 (rounds 2-7: 4)
-/** The most companies a kit will raise into one garrison on its own. */
+/** A held wild province breeds a beast into its garrison every this many turns (master list: Druidic every 3rd, Evil
+ *  every 4th; rounds 8-18 Evil 5 then 7, Druidic 4 then 6). */
+export const WILD_BREED_EVERY = 4;
+export const WILD_BREED_EVERY_DRUIDIC = 3;
+/** The most companies a kit will raise into one garrison on its own (the Druids' beasts have no cap: master list). */
 export const KIT_GARRISON_CAP = 3;
 export const FOREST_HEAL_SHARE = 0.25;
-export const NEUTRAL_MERC_CHANCE = 0.5; // round 9: every other turn again (round 8's every turn overshot)
 const TIERS: readonly string[] = KC_QUALITY_TIERS;
+const fieldUnit = (t: string): boolean => !/garrison|fleet|galley|ironclad|longship/i.test(t);
 /** The most experienced of a province's battlefield dead, taken from its graves (as the dead are raised everywhere). */
 function takeTheBestGrave(pv: Province): Army | null {
   const graves = pv.battleGraves ?? [];
@@ -40,44 +49,35 @@ function takeTheBestGrave(pv: Province): Army | null {
   const [g] = graves.splice(best, 1);
   return g ?? null;
 }
-const fieldUnit = (t: string): boolean => !/garrison|fleet|galley|ironclad|longship/i.test(t);
 
 export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
   const { G } = turnContext;
   if (!Array.isArray(G.alignmentPrototypes) || !G.alignmentPrototypes.length) return;
   const provinces = G.world.provinces;
-  const line = (pi: number, text: string, pv: Province | null): void => {
+  const line = (pi: number, text: string, pv: Province | null, type = 'hire'): void => {
     emit(turnContext, {
-      type: 'hire',
+      type,
       text,
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: pv ? pv.id : undefined,
     });
   };
+  // master list (Pilgrim roads): remember where every hero stands as the turn begins
+  for (const c of G.characters) if (c.alive) c._turnStartLoc = c.location;
 
   for (const pv of provinces) {
     if (pv.terrain === 'sea') continue;
     const pi = pv.owner;
-
-    // ── EVIL: Terror fades ── a stack set before the turn just played fades by one each turn it is not renewed.
-    if (pv._terrorStacks && pv._terrorisedBy != null && alignProto(G, 'Evil') && pv._terrorTurn !== G.turn - 1) {
-      pv._terrorStacks -= 1;
-      if (pv._terrorStacks <= 0) {
-        delete pv._terrorStacks;
-        delete pv._terrorTurn;
-        delete pv._terrorisedBy;
-        delete pv._terrorPct;
-      }
-    }
     const align = pi == null ? null : protoAlignOf(G, pi);
     if (pi == null || align == null) continue;
 
-    // ── DRUIDIC / EVIL: a held wild province breeds ── every third turn a beast of its kind joins the garrison.
+    // ── DRUIDIC / EVIL: a held wild province breeds ── every 3rd (Druidic) or 4th (Evil) turn a beast of its kind joins
+    // the garrison; the Druids' beasts gather without cap, the Evil pits to three.
     const breedEvery = align === 'Druidic' ? WILD_BREED_EVERY_DRUIDIC : WILD_BREED_EVERY;
     if ((align === 'Druidic' || align === 'Evil') && isWild(pv) && G.turn % breedEvery === 0) {
       const kind = pv.armyTypes.find((t) => (align === 'Druidic' ? CREATURES.has(t) : MONSTERS.has(t)));
-      if (kind && pv.garrisonArmies.length < KIT_GARRISON_CAP) {
+      if (kind && (align === 'Druidic' || pv.garrisonArmies.length < KIT_GARRISON_CAP)) {
         const u: Army = { type: kind, quality: 'Average', race: pv.race ?? 'Primal', unitName: armyUnitNameOf(kind) };
         pv.garrisonArmies.push(u);
         line(
@@ -90,31 +90,22 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
       }
     }
 
-    // ── UNDEAD: the dead rise unbidden ── (round 2: only in dead land) a grave in a held despoiled province or at a held
-    // barrow rises as a skeletal garrison company; a despoiled province raises one from its own blackened soil whether
-    // graves lie there or not.
-    const barrow = pv.features.some(isBarrow);
-    const deadLand = pv._despoiled != null || barrow;
-    const rises = barrow ? BARROW_RISE_PER_TURN : 1; // round 3: a barrow raises two a turn
-    for (let k = 0; k < rises; k++) {
-      if (
-        align !== 'Undead' ||
-        !deadLand ||
-        pv.garrisonArmies.filter((a) => a._isSkeletal).length >= UNDEAD_GARRISON_CAP
-      )
-        break;
-      let u: Army | null = null;
-      if ((pv.battleGraves ?? []).length) {
-        const g = takeTheBestGrave(pv);
-        if (g)
-          u = {
-            type: g.type,
-            quality: g.quality,
-            race: 'Undead',
-            _isSkeletal: true,
-            unitName: `${g.unitName || armyUnitNameOf(g.type)} (Skeletal)`,
-          };
-      } else if (pv._despoiled != null) {
+    if (align !== 'Undead') continue;
+    // ── UNDEAD: the dead of this soil ── a blighted province raises an Average skeletal company into its garrison each
+    // turn (to three), from its graves first, else from its own blackened soil; they hold the province and cannot be led
+    // away (_kitGarrison).
+    if (pv._despoiled != null && pv.garrisonArmies.filter((a) => a._isSkeletal).length < UNDEAD_GARRISON_CAP) {
+      let u: Army;
+      const g = (pv.battleGraves ?? []).length ? takeTheBestGrave(pv) : null;
+      if (g)
+        u = {
+          type: g.type,
+          quality: g.quality,
+          race: 'Undead',
+          _isSkeletal: true,
+          unitName: `${g.unitName || armyUnitNameOf(g.type)} (Skeletal)`,
+        };
+      else
         u = {
           type: 'Shieldwall Levies',
           quality: 'Average',
@@ -122,42 +113,31 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
           _isSkeletal: true,
           unitName: `${armyUnitNameOf('Shieldwall Levies')} (Skeletal)`,
         };
-      }
-      if (!u) break;
-      u._kitGarrison = true; // the dead land holds them: no master needed while they garrison an Undead province
+      u._kitGarrison = true;
       pv.garrisonArmies.push(u);
-      line(pi, `💀 The dead rise in ${pv.name}: ${u.unitName} (${u.quality}) joins the garrison unbidden.`, pv);
+      line(pi, `💀 The dead of this soil rise in ${pv.name}: ${u.unitName} (${u.quality}) joins the garrison unbidden.`, pv);
     }
-  }
-
-  // ── UNDEAD (round 2): the Plague runs its course ── each turn a company in the plagued province dies and lies in the
-  // grave (a garrison company first, else a neutral defender), and its tax falls by one, to 1 at least.
-  for (const pv of provinces) {
-    const pk = pv._kitPlague;
-    if (!pk) continue;
-    if (pk.until < G.turn || !alignProto(G, 'Undead')) {
-      delete pv._kitPlague;
-      continue;
-    }
-    let dead: Army | null = null;
-    const gi = pv.garrisonArmies.findIndex((a) => !a._isSkeletal);
-    if (gi >= 0) dead = pv.garrisonArmies.splice(gi, 1)[0] ?? null;
-    else if (pv.neutralDefenders.length) {
-      const d = pv.neutralDefenders.shift();
-      if (d) {
-        dead = { type: d.type, quality: d.quality, race: d.race, unitName: d.unitName || armyUnitNameOf(d.type) };
-        pv.npcArmies = Math.max(0, pv.npcArmies - 1);
-      }
-    }
-    if (dead) {
+    // ── UNDEAD: the barrow dead ── (master list) a held barrow keeps its graves filled: a humanoid barrow three graves,
+    // each an Average unit of a kind the province can recruit; a creature or monster barrow one grave of its kind. The
+    // necromancers raise them with the Necromancy spells (no company rises on its own any more).
+    if (pv.features.some(isBarrow)) {
+      const wild = isWild(pv);
+      const kinds = wild ? pv.armyTypes.filter((t) => CREATURES.has(t) || MONSTERS.has(t)) : pv.armyTypes.filter(fieldUnit);
+      const want = wild ? BARROW_GRAVES_WILD : BARROW_GRAVES_HUMANOID;
       pv.battleGraves = pv.battleGraves ?? [];
-      pv.battleGraves.push({ type: dead.type, quality: dead.quality, race: dead.race, unitName: dead.unitName });
+      let added = 0;
+      while (pv.battleGraves.length < want && kinds.length) {
+        const kind = kinds[Math.floor(kcRng() * kinds.length)] ?? kinds[0] ?? 'Shieldwall Levies';
+        pv.battleGraves.push({ type: kind, quality: 'Average', race: pv.race ?? 'Human', unitName: armyUnitNameOf(kind) });
+        added += 1;
+      }
+      if (added)
+        line(
+          pi,
+          `⚰ The barrow of ${pv.name} fills again: ${String(added)} grave${added !== 1 ? 's' : ''} lie ready for the necromancers (${String(pv.battleGraves.length)} in all).`,
+          pv,
+        );
     }
-    const tax0 = pv.tax;
-    pv.tax = Math.max(1, pv.tax - 1);
-    const words = `${dead ? `${dead.unitName || dead.type} (${dead.quality}) dies and is laid in the grave` : 'no soldier is left to die'}; tax ${String(tax0)} → ${String(pv.tax)}.`;
-    line(pk.by, `☠ The Plague in ${pv.name}: ${words}`, pv);
-    if (pv.owner != null && pv.owner !== pk.by) line(pv.owner, `☠ The Plague in ${pv.name}: ${words}`, pv);
   }
 
   // ── DRUIDIC: the green heals ── a hero of the realm who ends the turn in forest or jungle recovers a quarter of their
@@ -177,28 +157,152 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     );
   }
 
-  // ── NEUTRAL: the markets draw sell-swords ── each turn a Neutral realm has an even chance that a mercenary band of a
-  // held humanoid province's own kind appears there, for hire at the realm's discount.
+  // ── DIVINE: Absolution (Divine Power 5) ── every plague and stack of Terror on the realm's provinces is lifted. (The
+  // design lifts curses and charms from its heroes too; the heroes' part is not modelled yet.)
   G.players.forEach((p, pi) => {
-    if (protoAlignOf(G, pi) !== 'Neutral' || kcRng() >= NEUTRAL_MERC_CHANCE) return;
-    const towns = p.provinces
-      .map((id) => provinces[id])
-      .filter((pv): pv is Province => !!pv && pv.owner === pi && pv.terrain !== 'sea' && !isWild(pv))
-      .filter((pv) => pv.armyTypes.some(fieldUnit));
-    const pv = towns[Math.floor(kcRng() * towns.length)];
-    if (!pv) return;
-    const types = pv.armyTypes.filter(fieldUnit);
-    const type = types[Math.floor(kcRng() * types.length)];
-    if (!type) return;
-    G.mercenaries.push({
-      type,
-      quality: 'Average',
-      race: pv.race ?? 'Human',
-      unitName: armyUnitNameOf(type),
-      location: pv.id,
-      isSea: false,
-      id: newMercId(turnContext),
-    });
-    line(pi, `💰 Sell-swords come to market: a band of ${type} (Average) offers its services in ${pv.name}.`, pv);
+    if (protoAlignOf(G, pi) !== 'Divine' || divinePower(G, pi) < DIVINE_POWER_ABSOLUTION) return;
+    let terror = 0;
+    let plagues = 0;
+    for (const id of p.provinces) {
+      const pv = provinces[id];
+      if (pv?.owner !== pi) continue;
+      const r = clearTerrorAndPlague(pv);
+      terror += r.terror;
+      plagues += r.plague ? 1 : 0;
+    }
+    if (terror || plagues)
+      line(
+        pi,
+        `✨ Absolution: the faith washes the realm clean — ${String(terror)} stack${terror !== 1 ? 's' : ''} of Terror and ${String(plagues)} plague${plagues !== 1 ? 's' : ''} lifted.`,
+        null,
+        'explore',
+      );
   });
+
+  // ── DIVINE: Revelation (Power 3) / DRUIDIC: Earth-speech ── the realm knows the old sites: every holy site on the map
+  // (Divine), or every ritual site, holy site and barrow within 2 hexes of its land (Druidic; the design tells the realm
+  // only that something sleeps there, which the bots cannot use, so here they learn the site itself)
+  G.players.forEach((p, pi) => {
+    const kit = protoAlignOf(G, pi);
+    if (kit === 'Divine' && divinePower(G, pi) >= DIVINE_POWER_REVELATION)
+      for (const pv of provinces) for (const f of pv.features) if (isHolySite(f)) discoverFeat(f, pi);
+    if (kit === 'Druidic' && p.provinces.length) {
+      const land = p.provinces.map((id) => provinces[id]).filter((x): x is Province => !!x && x.owner === pi);
+      for (const pv of provinces) {
+        if (pv.terrain === 'sea' || !pv.features.some((f) => f.ritualSite)) continue;
+        if (!land.some((l) => hexDistP(l, pv, G.world.cols) <= 2)) continue;
+        for (const f of pv.features) if (f.ritualSite) discoverFeat(f, pi);
+      }
+    }
+  });
+
+  // ── UNDEAD: the soul is taken ── a bound soul is freed when the Undead king who held it is slain (no living king).
+  for (const c of G.characters) {
+    if (c._soulBoundBy == null) continue;
+    const kingLives = G.characters.some((k) => k.alive && k.isKing && k.player === c._soulBoundBy);
+    if (kingLives && alignProto(G, 'Undead')) continue;
+    delete c._soulBoundBy;
+    if (c.player != null) line(c.player, `✨ The reliquary is broken: ${c.name}'s soul is free, and the Grace may reach them again.`, null, 'explore');
+  }
+
+  // ── NEUTRAL: Ransom ── a captive travels with his captor; at the start of each turn his realm may buy him back (a bot
+  // pays when it can), and a captor slain sets him free where he fell.
+  for (const c of G.characters) {
+    if (c._captiveOf == null) continue;
+    const captor = G.characters.find((h) => h.id === c._captiveOf);
+    const owner = c.player == null ? null : G.players[c.player];
+    const league = captor?.player == null ? null : G.players[captor.player];
+    const free = (where: Character['location'], why: string): void => {
+      delete c._captiveOf;
+      delete c._ransom;
+      c.location = where;
+      const pv = provinces[where];
+      if (pv && !pv.characters.includes(c.id)) pv.characters.push(c.id);
+      if (c.player != null) line(c.player, `${why} ${c.name} stands in ${pv?.name ?? 'the field'} again.`, pv ?? null, 'explore');
+    };
+    if (!captor || !captor.alive || !league || !alignProto(G, 'Neutral')) {
+      free(captor?.location ?? c.location, `🔓 ${c.name}'s captor is gone:`);
+      continue;
+    }
+    const ransom = c._ransom ?? 0;
+    if (owner && owner.gold >= ransom && (!owner._isBot || owner.gold >= ransom + 5)) {
+      owner.gold -= ransom;
+      league.gold += ransom;
+      line(captor.player ?? 0, `💰 ${owner.name} pays ${String(ransom)}g to the League for ${c.name}'s freedom.`, null);
+      free(captor.location, `💰 The ransom of ${String(ransom)}g is paid:`);
+      continue;
+    }
+    // still held: the captive travels with his captor
+    const from = provinces[c.location];
+    if (from) from.characters = from.characters.filter((id) => id !== c.id);
+    c.location = captor.location;
+    const to = provinces[captor.location];
+    if (to && !to.characters.includes(c.id)) to.characters.push(c.id);
+  }
+}
+
+/** Master list (Condottieri): every mercenary band moves toward the nearest Neutral kit realm's home province, one step
+ *  a turn, and waits there until hired. Returns false when no Neutral kit realm stands, so the old wandering applies. */
+export function kitMercenaryDrift(turnContext: TurnContext): boolean {
+  const { G } = turnContext;
+  const homes: Province[] = [];
+  G.players.forEach((p, pi) => {
+    if (protoAlignOf(G, pi) !== 'Neutral' || !p.provinces.length) return;
+    const home = G.world.provinces[p.homeProvinceId];
+    if (home?.owner === pi) homes.push(home);
+  });
+  if (!homes.length) return false;
+  const { cols } = G.world;
+  const nearestHome = (pv: Province): Province =>
+    homes.reduce((best, h) => (hexDistP(h, pv, cols) < hexDistP(best, pv, cols) ? h : best), homes[0] ?? pv);
+  for (const merc of G.mercenaries) {
+    const here = G.world.provinces[merc.location];
+    if (!here || merc.isSea) continue;
+    const goal = nearestHome(here);
+    if (goal.id === here.id) continue;
+    const d0 = hexDistP(here, goal, cols);
+    const step = neighboursOfP(G, here)
+      .filter((n) => n.terrain !== 'sea')
+      .sort((a, b) => hexDistP(a, goal, cols) - hexDistP(b, goal, cols))[0];
+    if (step && hexDistP(step, goal, cols) < d0) merc.location = step.id;
+  }
+  return true;
+}
+function neighboursOfP(G: TurnContext['G'], pv: Province): Province[] {
+  const { cols, rows, provinces } = G.world;
+  const offs: [number, number][] =
+    pv.row % 2 === 0
+      ? [
+          [-1, -1],
+          [-1, 0],
+          [0, -1],
+          [0, 1],
+          [1, -1],
+          [1, 0],
+        ]
+      : [
+          [-1, 0],
+          [-1, 1],
+          [0, -1],
+          [0, 1],
+          [1, 0],
+          [1, 1],
+        ];
+  const out: Province[] = [];
+  for (const [dr, dc] of offs) {
+    const r = pv.row + dr;
+    if (r < 0 || r >= rows) continue;
+    const c = (((pv.col + dc) % cols) + cols) % cols;
+    const n = provinces[r * cols + c];
+    if (n) out.push(n);
+  }
+  return out;
+}
+/** Master list (Last Rites, Divine Grace): is `c` a hero whose return the design refuses — his soul taken, or his body
+ *  on blighted land? */
+export function graceRefused(G: TurnContext['G'], c: Character, bodyAt: number | null | undefined): string | null {
+  if (!alignProto(G, 'Divine')) return null;
+  if (c._soulBoundBy != null) return 'soul';
+  const pv = bodyAt == null ? null : G.world.provinces[bodyAt];
+  return pv?._despoiled != null ? 'blight' : null;
 }

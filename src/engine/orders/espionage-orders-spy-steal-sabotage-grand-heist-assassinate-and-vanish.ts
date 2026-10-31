@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { inSanctuary } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { COMBAT_ONLY_TACTICS, SKILL_LABELS } from '../army-tables.ts';
 import { homeFounderOf, homeProvinceIdFor } from '../grand-design.ts';
@@ -890,6 +891,16 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
     emit(turnContext, {
       type: 'system',
       text: `${c.name} finds no enemy hero to assassinate in ${prov.name} this phase.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    });
+    return;
+  }
+  // PROTOTYPE Divine (master list): Sanctuary — a Divine hero on consecrated ground of his realm cannot be assassinated
+  if (inSanctuary(G, victim)) {
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name} cannot reach ${victim.name}: the holy ground of ${prov.name} is a Sanctuary, and no blade finds them there.`,
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });

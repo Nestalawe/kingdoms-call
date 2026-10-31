@@ -3,20 +3,24 @@
 // that kit is switched on for the game and the hero's realm is of that alignment. Round 1: Good Works (Good), Grow the
 // Wild and Tend the Grove (Druidic), Trade Pact (Neutral), Lay Waste (Evil), Despoil and Bind the Bones (Undead). Round 2,
 // the kings' own orders: Proclaim Crusade (Divine), Light the Beacons (Good), Call of the Wild (Druidic), Embargo
-// (Neutral), Great Sacrifice (Pagan), Dark Pact (Evil), Plague (Undead). The Pagan kit's new rites live with Perform Rite
-// (explore-and-search-orders…); the Divine kit reshapes Consecrate in place.
+// (Neutral), Dark Pact (Evil). The master list (round 19): Call down the storm (Pagan) and Bind the Bones (Undead) for
+// the kings, Spread Dread (Evil) for any hero; Despoil is Blight the Land; Great Sacrifice and Plague are gone. The Pagan
+// kit's rites live with Perform Rite (explore-and-search-orders…); the Divine kit reshapes Consecrate in place.
 import { KC_QUALITY_TIERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
 import {
   alignProto,
   BEACONS_CAP,
+  BIND_BONES_COST,
   CALL_OF_THE_WILD_RANGE,
+  CALL_STORM_COST,
   CALL_WILD_COST,
   CRUSADE_TURNS,
   DARK_PACT_COST_MULT,
-  DARK_PACT_HP,
+  DARK_PACT_HP_SHARE,
   DARK_PACT_QUALITY,
   DESPOIL_COST,
+  EMBARGO_BEAST_COST_MULT,
   EMBARGO_COST,
   EMBARGO_TAX_MULT,
   EMBARGO_TURNS,
@@ -30,12 +34,11 @@ import {
   LIGHT_BEACONS_COST_PER_COMPANY,
   neighboursOf,
   noteKingOrder,
-  PLAGUE_COST,
-  PLAGUE_TURNS,
   PROCLAIM_CRUSADE_COST,
   protoBeastRoomExtra,
-  SACRIFICE_TURNS,
 } from '../alignment-prototypes.ts';
+import { TERROR_PCT_PER_STACK } from '../battle/evil-terror.ts';
+import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { armyUnitNameOf } from '../dice-and-army-names.ts';
 import { homeProvinceIdFor } from '../grand-design.ts';
@@ -45,6 +48,7 @@ import { areEnemies, realmHasMet, setProvinceOwner } from '../realms/relations-a
 import type { TurnContext } from '../turn/context.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { hexDistP } from '../world/map-helpers.ts';
+import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { beastCommandRoom } from '../world/tables.ts';
 
 type Prov = Province | null | undefined;
@@ -92,26 +96,48 @@ function told(turnContext: TurnContext, c: Character, type: string, text: string
   });
 }
 
-// ── GOOD: Good Works ── a hero in an owned humanoid province: its tax rises by 1 for good, up to 2 above where it began.
-export const GOOD_WORKS_CAP = 2;
+// ── GOOD: Good Works ── (master list) a hero sits in judgement in a province of the realm: every stack of Terror and
+// every plague on it is lifted, and no new Terror or plague can touch it for the rest of the turn (spreadTerror and the
+// plague spell read _goodWorksTurn). Once a province a turn.
+/** The plague and Terror fields Good Works clears; Absolution (Divine Power 5) clears the same. */
+export function clearTerrorAndPlague(pv: Province): { terror: number; plague: boolean } {
+  const terror = pv._terrorStacks ?? 0;
+  const plague = pv._plaguedTurn != null || pv._kitPlague != null;
+  delete pv._terrorStacks;
+  delete pv._terrorTurn;
+  delete pv._terrorisedBy;
+  delete pv._terrorPct;
+  delete pv._plaguedTurn;
+  delete pv._plagueLevel;
+  delete pv._plagueCaster;
+  delete pv._kitPlague;
+  return { terror, plague };
+}
 export function resolveGoodWorksOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
+  const { G } = turnContext;
   if (kitOff(turnContext, c, 'Good', 'do Good Works')) return;
   if (!ownedBy(prov, c, humanoidLand)) {
     refuse(turnContext, c, `${c.name}: Good Works need a humanoid province of your own realm to work in.`);
     return;
   }
-  if ((prov._goodWorks ?? 0) >= GOOD_WORKS_CAP) {
-    refuse(turnContext, c, `${c.name}: ${prov.name} already prospers as much as good works can make it.`);
+  if (prov._goodWorksTurn === G.turn) {
+    refuse(turnContext, c, `${c.name}: judgement has been given in ${prov.name} once already this turn.`);
     return;
   }
-  if (!pay(turnContext, c, player, GOOD_WORKS_COST, 'Good Works (seed, timber and wages)')) return; // round 5
-  prov._goodWorks = (prov._goodWorks ?? 0) + 1;
-  prov.tax += 1;
+  if (!pay(turnContext, c, player, GOOD_WORKS_COST, 'Good Works')) return;
+  const cleared = clearTerrorAndPlague(prov);
+  prov._goodWorksTurn = G.turn;
+  const what = [
+    cleared.terror ? `${String(cleared.terror)} stack${cleared.terror !== 1 ? 's' : ''} of Terror lifted` : '',
+    cleared.plague ? 'the plague lifted' : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
   told(
     turnContext,
     c,
     'explore',
-    `🌾 Good Works: ${c.name} spends the season among the folk of ${prov.name} — roads mended, granaries filled, disputes settled (${String(GOOD_WORKS_COST)}g). The province pays ${String(prov.tax)} tax from now on (+1, ${String(prov._goodWorks)}/${String(GOOD_WORKS_CAP)}).`,
+    `🌾 Good Works: ${c.name} sits in judgement among the folk of ${prov.name}${what ? ` — ${what}` : ''}. No Terror or plague can touch the province for the rest of the turn.`,
     prov,
   );
 }
@@ -121,8 +147,8 @@ const openCountry = (pv: Province): boolean => pv.terrain === 'plain' || pv.terr
 export function resolveGrowTheWildOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
   const { G } = turnContext;
   if (kitOff(turnContext, c, 'Druidic', 'Grow the Wild')) return;
-  if (effStat(turnContext, c, 'druid') < 1) {
-    refuse(turnContext, c, `${c.name} has no Druid craft — the green will not answer.`);
+  if (effStat(turnContext, c, 'druid') < 3) {
+    refuse(turnContext, c, `${c.name}: the green answers only a Druid of the third circle or higher (Druid 3).`); // master list
     return;
   }
   if (!ownedBy(prov, c, openCountry)) {
@@ -148,9 +174,19 @@ export const TRADE_PACT_PER_DEFENDER = 3; // round 4 (rounds 1-3: 2)
 export function tradePactPrice(pv: Province): number {
   return TRADE_PACT_PER_TAX * pv.tax + TRADE_PACT_PER_DEFENDER * (pv.neutralDefenders.length || pv.npcArmies);
 }
-export function tradePactTargets(G: GameState, _c: Character, prov: Prov): Province[] {
+export function tradePactPriceOwned(pv: Province): number {
+  return TRADE_PACT_PER_TAX * pv.tax + TRADE_PACT_PER_DEFENDER * pv.garrisonArmies.length;
+}
+/** The provinces a Trade Pact may buy from where the hero stands: unclaimed humanoid land here or next door, and
+ *  (master list) another realm's humanoid province, never a capital. */
+export function tradePactTargets(G: GameState, c: Character, prov: Prov): Province[] {
   if (!prov) return [];
-  return [prov, ...neighboursOf(G, prov)].filter((pv) => humanoidLand(pv) && pv.owner == null);
+  return [prov, ...neighboursOf(G, prov)].filter(
+    (pv) =>
+      humanoidLand(pv) &&
+      (pv.owner == null ||
+        (pv.owner !== c.player && G.players[pv.owner] != null && homeProvinceIdFor(G, pv.owner) !== pv.id)),
+  );
 }
 export function resolveTradePactOrder(
   turnContext: TurnContext,
@@ -172,7 +208,8 @@ export function resolveTradePactOrder(
     );
     return;
   }
-  const price = tradePactPrice(pv);
+  const prevOwner = pv.owner;
+  const price = prevOwner == null ? tradePactPrice(pv) : tradePactPriceOwned(pv);
   if (player.gold < price) {
     refuse(
       turnContext,
@@ -182,6 +219,34 @@ export function resolveTradePactOrder(
     return;
   }
   player.gold -= price;
+  // master list: the defenders are turned loose as a mercenary band standing in the province
+  const loose: Army[] = prevOwner == null ? [] : pv.garrisonArmies.splice(0, pv.garrisonArmies.length);
+  for (const a of loose) {
+    if (a._isSkeletal || a._phantom) continue;
+    G.mercenaries.push({
+      type: a.type,
+      quality: a.quality,
+      race: a.race,
+      unitName: a.unitName || armyUnitNameOf(a.type),
+      location: pv.id,
+      isSea: false,
+      id: newMercId(turnContext),
+    });
+  }
+  if (prevOwner != null) {
+    const prevPl = G.players[prevOwner];
+    if (prevPl) {
+      const at = prevPl.provinces.indexOf(pv.id);
+      if (at >= 0) prevPl.provinces.splice(at, 1);
+      realmLine(
+        turnContext,
+        prevOwner,
+        'system',
+        `🤝 The League has bought ${pv.name} from under you: its elders took ${player.name}'s coin, and its garrison is turned loose as sell-swords.`,
+        pv,
+      );
+    }
+  }
   // the chieftain, if one holds the province, takes his purse and wanders off
   for (const h of G.characters) {
     if (h.alive && h.player === null && h._isNeutralGuard && h.location === pv.id) {
@@ -196,7 +261,7 @@ export function resolveTradePactOrder(
       race: d.race,
       unitName: d.unitName || armyUnitNameOf(d.type),
     });
-  const n = pv.neutralDefenders.length;
+  const n = prevOwner == null ? pv.neutralDefenders.length : loose.length;
   pv.neutralDefenders = [];
   pv.npcArmies = 0;
   delete pv._leaderlessDefenders;
@@ -207,19 +272,22 @@ export function resolveTradePactOrder(
     turnContext,
     c,
     'explore',
-    `🤝 Trade Pact: ${c.name}'s envoys buy the allegiance of ${pv.name} for ${String(price)}g — its ${String(n)} compan${n !== 1 ? 'ies' : 'y'} take the realm's coin and stand as its garrison. The province is ${player.name}'s without a blow struck.`,
+    prevOwner == null
+      ? `🤝 Trade Pact: ${c.name}'s envoys buy the allegiance of ${pv.name} for ${String(price)}g — its ${String(n)} compan${n !== 1 ? 'ies' : 'y'} take the realm's coin and stand as its garrison. The province is ${player.name}'s without a blow struck.`
+      : `🤝 Trade Pact: ${c.name}'s envoys buy ${pv.name} from ${G.players[prevOwner]?.name ?? 'its lord'} for ${String(price)}g — its ${String(n)} compan${n !== 1 ? 'ies' : 'y'} are turned loose as a mercenary band standing in the province. The province is ${player.name}'s without a blow struck.`,
     pv,
   );
 }
 
-// ── UNDEAD: Despoil ── a hero in an owned humanoid province (not the capital): the land dies. Tax 1 for good, whoever
-// holds it; nothing left to recruit; while an Undead realm holds it, a skeletal company rises into its garrison every
-// turn (to three). Three despoiled provinces held lift every Undead commander's skeletal host to ×1.5.
+// ── UNDEAD: Blight the Land (the master list's name for Despoil) ── a hero in an owned humanoid province (not the
+// capital): the land dies. Tax 1 for good, whoever holds it; nothing left to recruit; while an Undead realm holds it, a
+// skeletal company rises into its garrison every turn (to three) and it pays Grave Goods; every blighted province held
+// adds 0.05 to the skeletal hosts' multiplier.
 export function resolveDespoilOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
   const { G } = turnContext;
-  if (kitOff(turnContext, c, 'Undead', 'Despoil')) return;
+  if (kitOff(turnContext, c, 'Undead', 'Blight the Land')) return;
   if (!ownedBy(prov, c, humanoidLand)) {
-    refuse(turnContext, c, `${c.name}: Despoil needs a living humanoid province of your own to kill.`);
+    refuse(turnContext, c, `${c.name}: Blight the Land needs a living humanoid province of your own to kill.`);
     return;
   }
   if (prov.id === homeProvinceIdFor(G, c.player)) {
@@ -230,7 +298,7 @@ export function resolveDespoilOrder(turnContext: TurnContext, c: Character, prov
     refuse(turnContext, c, `${c.name}: ${prov.name} is dead land already.`);
     return;
   }
-  if (!pay(turnContext, c, player, DESPOIL_COST, 'Despoil (grave-dust and plague-bearers)')) return; // round 5
+  if (!pay(turnContext, c, player, DESPOIL_COST, 'Blight the Land (grave-dust and plague-bearers)')) return; // round 5
   prov._despoiled = G.turn;
   prov.tax = 1;
   prov.armyTypes = [];
@@ -238,7 +306,7 @@ export function resolveDespoilOrder(turnContext: TurnContext, c: Character, prov
     turnContext,
     c,
     'explore',
-    `☠ Despoil: ${c.name} lets the plague loose in ${prov.name} (${String(DESPOIL_COST)}g). The fields blacken and the living flee or fall: the province pays 1 tax for ever, raises no living companies, and the dead of its soil rise to garrison it, one company a turn.`,
+    `☠ Blight the Land: ${c.name} lets the plague loose in ${prov.name} (${String(DESPOIL_COST)}g). The fields blacken and the living flee or fall: the province pays 1 tax for ever, raises no living companies, and the dead of its soil rise to garrison it, one company a turn.`,
     prov,
   );
 }
@@ -281,8 +349,9 @@ function realmLine(turnContext: TurnContext, pi: number, type: string, text: str
   });
 }
 
-// ── DIVINE: Proclaim Crusade ── 5g; a realm at war with the crown is named; for three turns every Divine host fights it
-// at ×1.5 wherever they meet.
+// ── DIVINE: Proclaim Crusade ── 6g; a realm at war with the crown is named; for three turns every province taken from
+// it is consecrated at once (the sword consecrates: setProvinceOwner), the realm counts +1 Divine Power, and its heroes
+// are the Hounds of God and carry Holy wrath against the named realm's heroes (master list).
 export function resolveProclaimCrusadeOrder(
   turnContext: TurnContext,
   c: Character,
@@ -310,18 +379,18 @@ export function resolveProclaimCrusadeOrder(
     turnContext,
     c.player,
     'explore',
-    `✝ ${c.name} proclaims a Crusade against ${foe.name}! Until the end of turn ${String(pl._crusadeUntil)} every host of the realm fights ${foe.name}'s forces at ×1.5.`,
+    `✝ ${c.name} proclaims a Crusade against ${foe.name}! Until the end of turn ${String(pl._crusadeUntil)} every province taken from ${foe.name} is consecrated the moment it falls, the realm counts one more point of Divine Power, and its heroes run ${foe.name}'s heroes down without fail and strike them in duels with holy wrath.`,
   );
   realmLine(
     turnContext,
     vs,
     'system',
-    `✝ ${pl.name} has proclaimed a Crusade against you — its hosts come with a fervour that lasts three turns.`,
+    `✝ ${pl.name} has proclaimed a Crusade against you — for three turns every province it takes from you is consecrated at once, and its heroes hunt yours.`,
   );
 }
 
-// ── GOOD: Light the Beacons ── the shires muster: every humanoid province of the realm (the nearest to the king first,
-// to six) raises an Average company of its own first field kind into its garrison, for nothing.
+// ── GOOD: Light the Beacons ── the shires muster: every humanoid province of the realm within 3 hexes of the king (the
+// nearest first, to six) raises a Veteran company of its own first field kind into its garrison, 2g a company.
 export function resolveLightTheBeaconsOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
   const { G } = turnContext;
   const pl = kingMay(turnContext, c, 'Good', 'light_beacons', 'Light the Beacons');
@@ -332,6 +401,7 @@ export function resolveLightTheBeaconsOrder(turnContext: TurnContext, c: Charact
   const shires = pl.provinces
     .map((id) => G.world.provinces[id])
     .filter((pv): pv is Province => humanoidLand(pv) && pv.owner === pi && pv.armyTypes.some(fieldUnit))
+    .filter((pv) => hexDistP(pv, prov, G.world.cols) <= 3) // master list: within 3 hexes of the king
     .sort((a, b) => hexDistP(a, prov, G.world.cols) - hexDistP(b, prov, G.world.cols))
     .slice(0, Math.min(BEACONS_CAP, affordable));
   if (!shires.length) {
@@ -350,7 +420,7 @@ export function resolveLightTheBeaconsOrder(turnContext: TurnContext, c: Charact
   for (const pv of shires) {
     const kind = pv.armyTypes.find(fieldUnit);
     if (!kind) continue;
-    const u: Army = { type: kind, quality: 'Average', race: pv.race ?? pl.race, unitName: armyUnitNameOf(kind) };
+    const u: Army = { type: kind, quality: 'Veteran', race: pv.race ?? pl.race, unitName: armyUnitNameOf(kind) }; // master list: Veterans
     pv.garrisonArmies.push(u);
     raised.push(`${pv.name} (${kind})`);
   }
@@ -358,7 +428,7 @@ export function resolveLightTheBeaconsOrder(turnContext: TurnContext, c: Charact
     turnContext,
     pi,
     'hire',
-    `🔥 ${c.name} lights the beacons from ${prov.name}, and the shires answer the muster (${String(shires.length * LIGHT_BEACONS_COST_PER_COMPANY)}g): ${raised.join(', ')} each raise an Average company into the garrison. They draw wages from next turn like any other.`,
+    `🔥 ${c.name} lights the beacons from ${prov.name}, and the shires answer the muster (${String(shires.length * LIGHT_BEACONS_COST_PER_COMPANY)}g): ${raised.join(', ')} each raise a Veteran company into the garrison. They draw wages from next turn like any other.`,
     prov,
   );
 }
@@ -370,9 +440,12 @@ export function resolveCallOfTheWildOrder(turnContext: TurnContext, c: Character
   const pl = kingMay(turnContext, c, 'Druidic', 'call_wild', 'sound the Call of the Wild');
   if (!pl || c.player == null || !prov) return; // round 6: any Druidic king may sound it (round 2-5: Druid 1+)
   const pi = c.player;
-  let room = beastCommandRoom(c, G.characters, protoBeastRoomExtra(G, c));
+  let room = Math.min(
+    beastCommandRoom(c, G.characters, protoBeastRoomExtra(G, c)),
+    Math.floor(player.gold / CALL_WILD_COST), // master list: 2g a company that comes
+  );
   if (room <= 0) {
-    refuse(turnContext, c, `${c.name} can lead no more beasts than march with him already.`);
+    refuse(turnContext, c, `${c.name} can lead no more beasts than march with him already, or cannot pay the horn's price.`);
     return;
   }
   const came: string[] = [];
@@ -398,13 +471,13 @@ export function resolveCallOfTheWildOrder(turnContext: TurnContext, c: Character
     );
     return;
   }
-  player.gold = Math.max(0, player.gold - CALL_WILD_COST); // round 5: the horn-call's offering (the beasts came already)
+  player.gold = Math.max(0, player.gold - CALL_WILD_COST * came.length); // master list: 2g a company that comes
   noteKingOrder(G, pl, 'call_wild');
   realmLine(
     turnContext,
     pi,
     'hire',
-    `🐾 ${c.name} sounds the Call of the Wild in ${prov.name}, and the beasts come down from the realm's garrisons: ${came.join('; ')} join the king's host.`,
+    `🐾 ${c.name} sounds the Call of the Wild in ${prov.name}, and the beasts come down from the realm's garrisons (${String(CALL_WILD_COST * came.length)}g): ${came.join('; ')} join the king's host.`,
     prov,
   );
 }
@@ -429,7 +502,7 @@ export function resolveEmbargoOrder(turnContext: TurnContext, c: Character, targ
     turnContext,
     c.player,
     'explore',
-    `⚖ ${c.name} declares an Embargo on ${foe.name}: the League's factors close their counting-houses to it. Until the end of turn ${String(foe._embargoUntil)} its provinces pay ${String(Math.round((1 - EMBARGO_TAX_MULT) * 100))}% less tax.`,
+    `⚖ ${c.name} declares an Embargo on ${foe.name}: the League's factors close their counting-houses to it. Until the end of turn ${String(foe._embargoUntil)} its provinces pay ${String(Math.round((1 - EMBARGO_TAX_MULT) * 100))}% less tax and its beasts cost ×${String(EMBARGO_BEAST_COST_MULT)} to recruit.`,
   );
   realmLine(
     turnContext,
@@ -439,37 +512,99 @@ export function resolveEmbargoOrder(turnContext: TurnContext, c: Character, targ
   );
 }
 
-// ── PAGAN: Great Sacrifice ── the king at stones in a province of the realm gives his weakest company to the old gods;
-// for three turns every host of the realm fights at ×1.5.
-export function resolveGreatSacrificeOrder(turnContext: TurnContext, c: Character, prov: Prov): void {
+// ── PAGAN: Call down the storm ── (master list) the king calls the sky down on a province that holds stones the realm
+// has woken, or one next to such a province, whoever holds it now. Every company standing there, the realm's own
+// included, has a 1 in 4 chance of being destroyed, and every company not destroyed a 1 in 2 chance of falling one
+// quality tier (a Green company cannot fall). 4g, once a turn. (The halved movement and scattered fleets of the design
+// are not modelled yet.)
+export const STORM_DESTROY_CHANCE = 0.25;
+export const STORM_DEMOTE_CHANCE = 0.5;
+const wokenStones = (G: GameState, pi: number, pv: Province): boolean =>
+  pv.features.some(isPaganStones) && pv._riteActivatedBy === pi;
+/** The provinces realm `pi`'s king may call the storm down on. */
+export function stormTargets(G: GameState, pi: number): Province[] {
+  const out = new Set<Province>();
+  for (const pv of G.world.provinces) {
+    if (pv.terrain === 'sea' || !wokenStones(G, pi, pv)) continue;
+    out.add(pv);
+    for (const n of neighboursOf(G, pv)) if (n.terrain !== 'sea') out.add(n);
+  }
+  return [...out];
+}
+export function resolveCallDownTheStormOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: string,
+  prov: Prov,
+  player: Realm,
+): void {
   const { G } = turnContext;
-  const pl = kingMay(turnContext, c, 'Pagan', 'great_sacrifice', 'make the Great Sacrifice');
+  const pl = kingMay(turnContext, c, 'Pagan', 'call_storm', 'call down the storm');
   if (!pl || c.player == null) return;
-  if (!ownedBy(prov, c, (pv) => pv.features.some(isPaganStones))) {
-    refuse(turnContext, c, `${c.name}: the Great Sacrifice is made at the old stones, on the realm's own ground.`);
+  const pi = c.player;
+  const m = /^prov:(\d+)$/.exec(target.trim());
+  const wanted = m ? parseInt(m[1] ?? '', 10) : prov ? prov.id : null;
+  const pv = stormTargets(G, pi).find((x) => x.id === wanted);
+  if (!pv) {
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: the storm falls only on a province holding stones the realm has woken, or one beside such a province — none answers.`,
+    );
     return;
   }
-  const real = c.armies.filter((a) => !a._phantom);
-  if (real.length < 2) {
-    refuse(turnContext, c, `${c.name} needs two companies at least — one to give, and one to march on with.`);
-    return;
-  }
-  const victim = [...real].sort((a, b) => TIERS.indexOf(a.quality) - TIERS.indexOf(b.quality))[0];
-  if (!victim) return;
-  c.armies.splice(c.armies.indexOf(victim), 1);
-  pl._sacrificeUntil = G.turn + SACRIFICE_TURNS - 1;
-  noteKingOrder(G, pl, 'great_sacrifice');
+  if (!pay(turnContext, c, player, CALL_STORM_COST, 'the storm (the offering burned on the stones)')) return;
+  noteKingOrder(G, pl, 'call_storm');
+  pv._stormTurn = G.turn;
+  let destroyed = 0;
+  let fell = 0;
+  const struck = new Set<number>();
+  const strike = (list: Army[], owner: number | null): Army[] => {
+    const kept: Army[] = [];
+    for (const a of list) {
+      if (a._phantom) {
+        kept.push(a);
+        continue;
+      }
+      if (owner != null) struck.add(owner);
+      if (kcRng() < STORM_DESTROY_CHANCE) {
+        destroyed += 1;
+        continue;
+      }
+      const qi = TIERS.indexOf(a.quality);
+      if (qi > 0 && !a._isSkeletal && kcRng() < STORM_DEMOTE_CHANCE) {
+        a.quality = TIERS[qi - 1] ?? a.quality;
+        fell += 1;
+      }
+      kept.push(a);
+    }
+    return kept;
+  };
+  pv.garrisonArmies = strike(pv.garrisonArmies, pv.owner);
+  pv.neutralDefenders = strike(pv.neutralDefenders, null);
+  pv.npcArmies = pv.neutralDefenders.length;
+  for (const h of G.characters) if (h.alive && h.location === pv.id) h.armies = strike(h.armies, h.player);
   realmLine(
     turnContext,
-    c.player,
-    'explore',
-    `🩸 Great Sacrifice: at the ${prov.features.find(isPaganStones)?.name ?? 'stones'} of ${prov.name}, ${c.name} gives ${victim.unitName || victim.type} (${victim.quality}) to the old gods. Until the end of turn ${String(pl._sacrificeUntil)} every host of the realm fights at ×1.5.`,
-    prov,
+    pi,
+    'combat',
+    `⛈ ${c.name} calls the sky down on ${pv.name} (${String(CALL_STORM_COST)}g): ${String(destroyed)} compan${destroyed !== 1 ? 'ies are' : 'y is'} destroyed and ${String(fell)} fall${fell !== 1 ? '' : 's'} a quality tier.`,
+    pv,
   );
+  for (const o of struck)
+    if (o !== pi)
+      realmLine(
+        turnContext,
+        o,
+        'combat',
+        `⛈ A storm called by ${pl.name} breaks over ${pv.name}: your companies there are scattered and battered (${String(destroyed)} destroyed in all, ${String(fell)} fallen a tier).`,
+        pv,
+      );
 }
 
-// ── EVIL: Dark Pact ── (round 5) the king names a monster of a kind his monster provinces breed and pays twice its
-// recruit cost in gold and five of his own hit points; a Veteran company of it joins his host. No waiting between pacts.
+// ── EVIL: Dark Pact ── the king names a monster of a kind his monster provinces breed and pays one and a half times its
+// recruit cost in gold and 40% of his current HP (master list; rounds 2-18: 5 HP); an Average company of it joins his
+// host. No waiting between pacts.
 export function darkPactKinds(G: GameState, pi: number): string[] {
   const pl = G.players[pi];
   if (!pl) return [];
@@ -483,6 +618,8 @@ export function darkPactKinds(G: GameState, pi: number): string[] {
 }
 const ARMY_COST: Record<string, number> = ARMY_COST_MASTER;
 export const darkPactCost = (kind: string): number => DARK_PACT_COST_MULT * (ARMY_COST[kind] ?? 5);
+/** The blood the pact asks: 40% of the king's current HP, rounded down, at least 1. */
+export const darkPactBlood = (c: Character): number => Math.max(1, Math.floor(c.hp * DARK_PACT_HP_SHARE));
 export function resolveDarkPactOrder(
   turnContext: TurnContext,
   c: Character,
@@ -510,12 +647,9 @@ export function resolveDarkPactOrder(
     return;
   }
   const cost = darkPactCost(kind);
-  if (c.hp <= DARK_PACT_HP) {
-    refuse(
-      turnContext,
-      c,
-      `${c.name}: the pact asks ${String(DARK_PACT_HP)} of the king's own blood — he has none to spare.`,
-    );
+  const blood = darkPactBlood(c);
+  if (c.hp <= blood || c.hp <= 1) {
+    refuse(turnContext, c, `${c.name}: the pact asks ${String(blood)} of the king's own blood — he has none to spare.`);
     return;
   }
   if (beastCommandRoom(c, G.characters, protoBeastRoomExtra(G, c)) <= 0) {
@@ -523,7 +657,7 @@ export function resolveDarkPactOrder(
     return;
   }
   if (!pay(turnContext, c, player, cost, `the pact for ${kind}`)) return;
-  c.hp -= DARK_PACT_HP;
+  c.hp -= blood;
   const u: Army = { type: kind, quality: DARK_PACT_QUALITY, race: 'Primal', unitName: armyUnitNameOf(kind) };
   c.armies.push(u);
   noteKingOrder(G, pl, 'dark_pact');
@@ -531,54 +665,80 @@ export function resolveDarkPactOrder(
     turnContext,
     c.player,
     'hire',
-    `😈 Dark Pact: ${c.name} cuts the bargain in his own blood (${String(cost)}g, −${String(DARK_PACT_HP)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, ${DARK_PACT_QUALITY}) joins the king's host.`,
+    `😈 Dark Pact: ${c.name} cuts the bargain in his own blood (${String(cost)}g, −${String(blood)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, ${DARK_PACT_QUALITY}) joins the king's host.`,
     prov,
   );
 }
 
-// ── UNDEAD: Plague ── the king lets the plague loose on a humanoid province next door that another realm holds (or none):
-// for three turns a company there dies each turn and lies in the grave, and its tax falls by one (to 1 at least).
-export function resolveSpreadPlagueOrder(
-  turnContext: TurnContext,
-  c: Character,
-  target: string,
-  prov: Prov,
-  player: Realm,
-): void {
+// ── UNDEAD: Bind the Bones ── (master list) the king raises every skeletal company in the province he stands in (his
+// own host, the garrison, and other heroes' hosts of the realm) one quality tier, to Elite, at 2g a company, as many as
+// the treasury pays, the best first. Once a turn.
+export function resolveBindTheBonesOrder(turnContext: TurnContext, c: Character, prov: Prov, player: Realm): void {
   const { G } = turnContext;
-  const pl = kingMay(turnContext, c, 'Undead', 'spread_plague', 'spread the Plague');
+  const pl = kingMay(turnContext, c, 'Undead', 'bind_bones', 'Bind the Bones');
   if (!pl || c.player == null || !prov) return;
-  const m = /^prov:(\d+)$/.exec(target.trim());
-  const wanted = m ? parseInt(m[1] ?? '', 10) : null;
-  const pv = neighboursOf(G, prov).find((x) => x.id === wanted && humanoidLand(x) && x.owner !== c.player);
-  if (!pv) {
-    refuse(
-      turnContext,
-      c,
-      `${c.name}: the Plague is loosed on a living humanoid province next door that is not the realm's own — none answers.`,
-    );
+  const pi = c.player;
+  const here: Army[] = [...c.armies];
+  if (prov.owner === pi) here.push(...prov.garrisonArmies);
+  for (const h of G.characters) if (h.alive && h.id !== c.id && h.player === pi && h.location === prov.id) here.push(...h.armies);
+  const bones = here
+    .filter((a) => a._isSkeletal && !a._phantom && TIERS.indexOf(a.quality) < TIERS.length - 1)
+    .sort((a, b) => TIERS.indexOf(b.quality) - TIERS.indexOf(a.quality));
+  if (!bones.length) {
+    refuse(turnContext, c, `${c.name}: no skeletal company here can be bound any tighter.`);
     return;
   }
-  if (pv._kitPlague && pv._kitPlague.until >= G.turn) {
-    refuse(turnContext, c, `${c.name}: ${pv.name} sickens already.`);
+  const n = Math.min(bones.length, Math.floor(player.gold / BIND_BONES_COST));
+  if (n < 1) {
+    refuse(turnContext, c, `${c.name}: Bind the Bones costs ${String(BIND_BONES_COST)}g a company — the treasury cannot pay.`);
     return;
   }
-  if (!pay(turnContext, c, player, PLAGUE_COST, 'the Plague (its bearers and their rags)')) return; // round 5
-  pv._kitPlague = { by: c.player, until: G.turn + PLAGUE_TURNS };
-  noteKingOrder(G, pl, 'spread_plague');
+  player.gold -= n * BIND_BONES_COST;
+  noteKingOrder(G, pl, 'bind_bones');
+  const rose: string[] = [];
+  for (const a of bones.slice(0, n)) {
+    const q0 = a.quality;
+    a.quality = TIERS[TIERS.indexOf(a.quality) + 1] ?? a.quality;
+    rose.push(`${a.unitName || a.type} ${q0} → ${a.quality}`);
+  }
   realmLine(
     turnContext,
-    c.player,
-    'explore',
-    `☠ ${c.name} sends the Plague into ${pv.name}: for ${String(PLAGUE_TURNS)} turns a company there dies each turn and is laid in the grave, and the province's tax falls by one a turn.`,
-    pv,
+    pi,
+    'hire',
+    `💀 Bind the Bones: ${c.name} binds the dead of ${prov.name} tighter (${String(n * BIND_BONES_COST)}g): ${rose.join('; ')}.`,
+    prov,
   );
-  if (pv.owner != null)
-    realmLine(
-      turnContext,
-      pv.owner,
-      'system',
-      `☠ A plague breaks out in ${pv.name} — your soldiers there sicken and die, a company a turn, and the fields go untended.`,
-      pv,
-    );
+}
+
+// ── EVIL: Spread Dread ── (master list) a hero in a province of the realm sends out his fearmongers: the province and
+// every province next to it takes one stack of Terror, unless it already carries Terror. Free, once a turn per hero (a
+// second use lays nothing new, so it needs no stamp).
+export function resolveSpreadDreadOrder(turnContext: TurnContext, c: Character, prov: Prov): void {
+  const { G } = turnContext;
+  if (kitOff(turnContext, c, 'Evil', 'Spread Dread')) return;
+  if (c.player == null || prov?.owner !== c.player || prov.terrain === 'sea') {
+    refuse(turnContext, c, `${c.name}: Spread Dread needs a province of your own realm to send the fearmongers out from.`);
+    return;
+  }
+  const pi = c.player;
+  const touched: string[] = [];
+  for (const pv of [prov, ...neighboursOf(G, prov)]) {
+    if (pv.terrain === 'sea' || pv._terrorStacks || pv._goodWorksTurn === G.turn) continue;
+    pv._terrorStacks = 1;
+    pv._terrorTurn = G.turn;
+    pv._terrorisedBy = pi;
+    pv._terrorPct = TERROR_PCT_PER_STACK;
+    touched.push(pv.name);
+  }
+  if (!touched.length) {
+    refuse(turnContext, c, `${c.name}: dread already grips ${prov.name} and every province around it.`);
+    return;
+  }
+  told(
+    turnContext,
+    c,
+    'explore',
+    `😱 Spread Dread: ${c.name}'s fearmongers go out from ${prov.name} — Terror takes hold in ${touched.join(', ')}.`,
+    prov,
+  );
 }

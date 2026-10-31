@@ -328,7 +328,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
   }
   // Evil Terror: a province terrorised on a previous turn demoralises whoever defends it now
   // (stacking).
-  consumeTerror(prov, defArmies, narrative);
+  consumeTerror(prov, defArmies, narrative, { G, atkPi: atk.player }); // PROTOTYPE Evil: the kit's Terror (master list)
   for (const [_f, _h, _hn, _ar] of [
     [_fearAtk, atk, atk.name, atkArmies],
     [_fearDef, def, def.name, defArmies],

@@ -57,9 +57,10 @@ export type OrderKind =
   | 'light_beacons'
   | 'call_wild'
   | 'embargo'
-  | 'great_sacrifice'
+  | 'call_storm'
   | 'dark_pact'
-  | 'spread_plague'
+  | 'bind_bones'
+  | 'spread_dread'
   | 'encounter'
   | 'steal'
   | 'use_item'
@@ -160,12 +161,14 @@ export const PHASE_ACTION_MAP = {
   call_wild: 'call_wild',
   'call of the wild': 'call_wild',
   embargo: 'embargo',
-  great_sacrifice: 'great_sacrifice',
-  'great sacrifice': 'great_sacrifice',
+  call_storm: 'call_storm',
+  'call down the storm': 'call_storm',
   dark_pact: 'dark_pact',
   'dark pact': 'dark_pact',
-  spread_plague: 'spread_plague',
-  'spread plague': 'spread_plague',
+  bind_bones: 'bind_bones',
+  'bind the bones': 'bind_bones',
+  spread_dread: 'spread_dread',
+  'spread dread': 'spread_dread',
   encounter: 'encounter',
   'encounter character': 'encounter',
   steal: 'steal',

@@ -2,12 +2,10 @@
 import {
   alignProto,
   embargoTaxMult,
-  isWild,
   protoAlignOf,
   protoProvinceTaxAdd,
   protoRealmGold,
   WOOD_WAGE_MULT,
-  YEOMANRY_WAGE_MULT,
 } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
@@ -139,7 +137,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       return s + t;
     }, 0);
     // PROTOTYPE round 2: a Neutral Embargo takes a share of the province tax (20% since round 3); a kit may pay the realm gold of its own
-    // (Pilgrims' Coin, the counting-houses, Tribute of Fear, grave goods)
+    // (healers' fees, Tribute of Fear, grave goods)
     const _embargo = embargoTaxMult(G, p);
     if (_embargo < 1) income = Math.floor(income * _embargo);
     const _kitGold = protoRealmGold(G, pi);
@@ -248,16 +246,10 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           if (CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a);
         });
     }); // + GRAND DESIGN Druidic
-    // PROTOTYPE round 2: the Yeomanry (Good): a garrison company in a humanoid province of the realm pays half; the Wood
-    // Provides (Druidic): a creature company in a host standing in forest or jungle pays nothing.
+    // PROTOTYPE: the Wood Provides (Druidic): a creature company in a host standing in forest or jungle pays half its wage
+    // (the Good kit's Yeomanry went in the master list)
     const _kit = protoAlignOf(G, pi);
-    const _yeomanry = new Set();
     const _woodFed = new Set();
-    if (_kit === 'Good')
-      (G.world.provinces || []).forEach((pv) => {
-        if (pv.owner === pi && pv.terrain !== 'sea' && !isWild(pv))
-          (pv.garrisonArmies || []).forEach((a) => _yeomanry.add(a));
-      });
     if (_kit === 'Druidic')
       playerChars.forEach((ch) => {
         const at = G.world.provinces[ch.location];
@@ -288,7 +280,6 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (a._slave) return s; // PROTOTYPE Evil: slaves are paid nothing
       if (a._isSkeletal) return s + 1;
       let w = ARMY_COST[a.type] || 2;
-      if (_yeomanry.has(a)) w = Math.max(1, Math.round(w * YEOMANRY_WAGE_MULT)); // PROTOTYPE Good: the Yeomanry (two-thirds since round 4)
       if (_woodFed.has(a)) w = Math.max(1, Math.floor(w * WOOD_WAGE_MULT)); // PROTOTYPE Druidic: the wood provides half (round 3)
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
         const _w0 = w,

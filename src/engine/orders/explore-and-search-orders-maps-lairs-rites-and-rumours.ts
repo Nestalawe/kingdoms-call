@@ -1,11 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   RITE_OF_AWAKENING_COST,
-  OMENS_MIN_EXPLORER,
   RITE_OF_AWAKENING_TAX,
   activatedSites,
   alignProto,
-  protoAlignOf,
 } from '../alignment-prototypes.ts';
 import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
@@ -81,8 +79,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
   discEff(turnContext, c.player, 'explore').forEach((e) => {
     if (!e.terrains || e.terrains.includes(prov.terrain)) _discExpl *= e.mult || 1;
   }); // explore discoveries
-  const _omens = protoAlignOf(G, c.player) === 'Pagan' && explorerSkill >= OMENS_MIN_EXPLORER ? 2 : 1; // PROTOTYPE Pagan: Omens — twice the ground for a seer of Explorer 2+ (round 3)
-  const gain = Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * loreMult * _discExpl * _omens));
+  const gain = Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * loreMult * _discExpl)); // (the Pagan kit's Omens went in the master list)
   if (!prov.exploredBy) prov.exploredBy = {};
   const before = prov.exploredBy[c.player] || 0;
   prov.exploredBy[c.player] = Math.min(100, before + gain);
@@ -257,6 +254,17 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
     return;
   }
   const _rite = (target || '').toLowerCase();
+  // PROTOTYPE Pagan (master list): the Wild Hunt, the Blood Offering and the Ley are unlocked only once the realm has
+  // woken a site with the Rite of Awakening
+  if (alignProto(G, 'Pagan') && !_rite.startsWith('awaken') && activatedSites(G, c.player) < 1) {
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: the old gods answer only a realm that has woken its stones — perform the Rite of Awakening first.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    });
+    return;
+  }
   // PROTOTYPE Pagan: a rite performed at stones the realm holds activates them (the Favour of the Old Gods counts them).
   const _activate = () => {
     if (alignProto(G, 'Pagan') && prov.owner === c.player && prov._riteActivatedBy !== c.player) {
@@ -339,16 +347,15 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
       return;
     }
     const _to = G.world.provinces[parseInt(_rite.split(':')[1])];
+    // master list: the Ley runs only between stones the realm has woken
     const _toStones =
-      _to && _to.id !== prov.id
-        ? (_to.features || []).find(
-            (f) => f && f.ritualSite && !f.siteKind && (featDiscovered(f, c.player) || _to.owner === c.player),
-          )
+      _to && _to.id !== prov.id && _to._riteActivatedBy === c.player && prov._riteActivatedBy === c.player
+        ? (_to.features || []).find((f) => f && f.ritualSite && !f.siteKind)
         : null;
     if (!_toStones) {
       emit(turnContext, {
         type: 'system',
-        text: `${c.name}: the ley lines run only between stones the realm has found — name another ritual site.`,
+        text: `${c.name}: the ley lines run only between stones the realm has woken — name another woken ritual site.`,
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });

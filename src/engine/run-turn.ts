@@ -213,6 +213,7 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // 2026-10-13 (item 6, Toby): while a pre-battle duel is fought, each duellist's id → the foe's name,
     // so a skill rise earned in it can say so (resolveDuel sets it; trySkillGain reads it).
     turnContext._duelFoes = null;
+    turnContext._duelFoeIds = null;
     turnContext._battleSeq = 0; // 2026-09-23d: numbers each emitted battle so the player portal can fold it (emitBattle)
     // The Defend step (see flushDefendStep in the phase loop): true while the phase's non-moving orders
     // are still resolving; hosts raised meanwhile where a Defend general would answer wait in the queue.

@@ -3,6 +3,7 @@ import { protoAlignOf } from '../alignment-prototypes.ts';
 import { spreadTerror } from '../battle/evil-terror.ts';
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import { hexDistP } from '../world/map-helpers.ts';
 import { monarchRestProvId } from '../grand-design.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { recordBattleGraves, recordHeroGrave } from '../graves.ts';
@@ -287,23 +288,36 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     });
     return false;
   }
-  // PROTOTYPE Good: Guarded by the Folk — a hero of a Good realm struck down inside a province the realm owns is carried
-  // off by the villagers and lives, at 1 HP, three times in four.
+  // PROTOTYPE Good: Hearts of Oak (master list) — a hero of a Good realm struck down inside a province the realm owns is
+  // carried off by the villagers and lives, at 1 HP, half the time (rounds 1-18: three times in four); he is carried to the
+  // closest other province of the realm, and the rest of his orders this turn are cancelled (killedThisTurn stays set).
   if (
     deadChar.player != null &&
     protoAlignOf(G, deadChar.player) === 'Good' &&
     deadChar.location != null &&
     G.world.provinces[deadChar.location]?.owner === deadChar.player &&
     !deadChar.killedThisTurn &&
-    kcRng() < 0.75
+    kcRng() < 0.5
   ) {
     if (opts) opts.outcome = 'escaped';
     deadChar.hp = 1;
     deadChar.alive = true;
-    deadChar.killedThisTurn = false;
+    deadChar.killedThisTurn = true; // the rest of the turn's orders are cancelled
+    const _fromP = G.world.provinces[deadChar.location];
+    const _pl = G.players[deadChar.player];
+    const _refuge = (_pl.provinces || [])
+      .map((id) => G.world.provinces[id])
+      .filter((X) => X && X.owner === deadChar.player && X.id !== _fromP.id && X.terrain !== 'sea')
+      .sort((a, b) => hexDistP(a, _fromP, G.world.cols) - hexDistP(b, _fromP, G.world.cols))[0];
+    if (_refuge) {
+      _fromP.characters = (_fromP.characters || []).filter((id) => id !== deadChar.id);
+      deadChar.location = _refuge.id;
+      _refuge.characters = _refuge.characters || [];
+      if (!_refuge.characters.includes(deadChar.id)) _refuge.characters.push(deadChar.id);
+    }
     emit(turnContext, {
       type: 'combat',
-      text: `🛡 The folk of ${G.world.provinces[deadChar.location]?.name || 'the province'} carry ${deadChar.name} from the field and hide them until the danger passes — alive, at 1 HP.`,
+      text: `🛡 Hearts of Oak: the folk of ${_fromP?.name || 'the province'} carry ${deadChar.name} from the field${_refuge ? ` to ${_refuge.name}` : ' and hide them'} — alive, at 1 HP, and out of the fight for the rest of the turn.`,
       audience: {
         actor: killerChar && killerChar.player != null ? killerChar.player : null,
         realms: [deadChar.player],
@@ -592,6 +606,24 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   deadChar.alive = false;
   deadChar.killedThisTurn = true;
   // PROTOTYPE Evil: Dread — an Evil realm's hero who slays another realm's hero spreads Terror where the body falls.
+  // PROTOTYPE Undead (master list): the soul is taken — a Divine hero slain by an Undead kit realm's hero has his soul
+  // bound in the necromancer's reliquary until that realm's king is slain (no Grace, no Resurrect)
+  if (
+    killerChar &&
+    killerChar.player != null &&
+    deadChar.player != null &&
+    protoAlignOf(G, killerChar.player) === 'Undead' &&
+    G.players[deadChar.player]?.alignment === 'Divine'
+  ) {
+    deadChar._soulBoundBy = killerChar.player;
+    emit(turnContext, {
+      type: 'combat',
+      text: `💀 The soul is taken: ${killerChar.name} binds ${deadChar.name}'s soul in a reliquary — no Grace and no Resurrect can reach it while ${G.players[killerChar.player]?.name || 'the Undead realm'}'s king lives.`,
+      audience: { actor: killerChar.player, realms: [deadChar.player, killerChar.player], seen: 'battle' },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      province: deadChar.location != null ? deadChar.location : undefined,
+    });
+  }
   if (
     killerChar &&
     killerChar.player != null &&

@@ -25,6 +25,34 @@ import {
 import { emitBattle } from '../battle/battle-report-lines-and-force-markers.ts';
 import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.ts';
+import { crusadeQuarry, protoAlignOf } from '../alignment-prototypes.ts';
+import { KC_SKILLS } from '../../content/kingdoms-call-data.ts';
+
+// PROTOTYPE Neutral (master list): Ransom — a Neutral kit hero who set out to capture (encounterPlan.ransom) spares the
+// hero he beats in a personal encounter and holds him to ransom: 1g for every skill level the captive has. The captive
+// travels with his captor and gives no orders; his realm may pay at the start of any turn (alignment-prototype-turn-steps).
+export function ransomCapture(turnContext, winner, loser, prov, targetsPi, duelChars) {
+  const { G } = turnContext;
+  if (!winner || !loser || winner.player == null || loser.player == null) return false;
+  if (protoAlignOf(G, winner.player) !== 'Neutral' || !(winner.encounterPlan || {}).ransom) return false;
+  if (loser.isKing || loser._captiveOf != null || _escapesTheEnd(loser)) return false;
+  const ransom = Math.max(1, (KC_SKILLS || []).reduce((s, k) => s + ((loser.skills || {})[k] || 0), 0));
+  loser.hp = 1;
+  loser.alive = true;
+  loser.killedThisTurn = true;
+  loser._captiveOf = winner.id;
+  loser._ransom = ransom;
+  loser.armies = []; // his column scatters
+  emit(turnContext, {
+    type: 'combat',
+    text: `⛓ Ransom: ${winner.name} spares ${loser.name} and holds them to ransom — ${String(ransom)}g to the League buys their freedom.`,
+    audience: { actor: winner.player, realms: targetsPi, seen: 'battle' },
+    hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    province: prov.id,
+    heroes: duelChars,
+  });
+  return true;
+}
 import { reportHeroFall } from './hero-death-and-leaderless-hosts.ts';
 import { combatVsChar } from '../battle/battles-between-heroes.ts';
 import { normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
@@ -58,6 +86,7 @@ export const ENC_BREAK_RANKS_BASE = 60,
 // Clamped 5–100. A friendly quarry is always caught (a rendezvous, not a hunt).
 export function pursuitCatchChance(turnContext, c, quarry) {
   if (quarry.player != null && quarry.player === c.player) return 100;
+  if (crusadeQuarry(turnContext.G, c.player, quarry)) return 100; // PROTOTYPE Divine (master list): the Hounds of God
   const spy = effStat(turnContext, c, 'spy'),
     qSpy = effStat(turnContext, quarry, 'spy');
   const pct = 70 + 5 * spy - 5 * qSpy; // 2026-09-24: no ×2 for a quarry leading an army · 2026-10-13 (item 11): base 70%
@@ -105,7 +134,7 @@ export function advancePursuit(turnContext, c, ph) {
   }
   // THIEF L9 Vanish: a Vanished character cannot be run down NOR brought to an Encounter — the
   // chase simply ends, wherever in it we are.
-  if (quarry._vanishTurn === G.turn && quarry.player !== c.player) {
+  if (quarry._vanishTurn === G.turn && quarry.player !== c.player && !crusadeQuarry(G, c.player, quarry)) {
     emit(turnContext, {
       type: 'move',
       text: `${c.name} presses the chase after ${quarry.name}, but the quarry melts into the shadows and is gone. (Vanish)`,
@@ -553,7 +582,9 @@ export function advancePursuit(turnContext, c, ph) {
     c.hp = Math.max(1, enc.atkHp);
     if (quarry.player !== null) quarry.hp = Math.max(1, enc.defHp);
     if (enc.atkKilled || enc.atkHp <= 0) {
-      if (_escapesTheEnd(c)) {
+      if (ransomCapture(turnContext, quarry, c, prov, targetsPi, _duelChars)) {
+        // PROTOTYPE Neutral (master list): the League holds the beaten hero to ransom instead
+      } else if (_escapesTheEnd(c)) {
         if (c.hp != null && c.hp <= 0) c.hp = 1;
         emit(turnContext, {
           type: 'combat',
@@ -574,7 +605,9 @@ export function advancePursuit(turnContext, c, ph) {
       }
     }
     if (enc.defKilled || enc.defHp <= 0) {
-      if (_escapesTheEnd(quarry)) {
+      if (ransomCapture(turnContext, c, quarry, prov, targetsPi, _duelChars)) {
+        // PROTOTYPE Neutral (master list): the League holds the beaten hero to ransom instead
+      } else if (_escapesTheEnd(quarry)) {
         if (quarry.hp != null && quarry.hp <= 0) quarry.hp = 1;
         emit(turnContext, {
           type: 'combat',

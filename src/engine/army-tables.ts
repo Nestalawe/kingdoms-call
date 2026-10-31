@@ -303,9 +303,10 @@ export const ALIGNMENT_ORDER_KEYS = new Set([
   'light_beacons',
   'call_wild',
   'embargo',
-  'great_sacrifice',
+  'call_storm',
   'dark_pact',
-  'spread_plague',
+  'bind_bones',
+  'spread_dread',
 ]); // Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22)
 // the character-targeted hostile spells a seized enemy hero will not aim at their ORIGINAL lord's
 // characters (the Encounter order is refused on the same grounds).

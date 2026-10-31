@@ -1,8 +1,8 @@
-import { protoAlignOf } from '../alignment-prototypes.ts';
+import { neighboursOf, protoAlignOf } from '../alignment-prototypes.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { discSum } from '../discoveries.ts';
-import type { Army, Province } from '../../schemas/saved-game-state.ts';
+import type { Army, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
@@ -30,11 +30,12 @@ export function spreadTerror(
   narrative: NarrativeLine[] | null | undefined,
 ) {
   const { G } = turnContext;
-  const targets = [battleProv, ...getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)];
+  const targets: Province[] = [battleProv, ...neighboursOf(G, battleProv)];
   const seen = new Set<number>();
   targets.forEach((tp) => {
-    if (!tp || seen.has(tp.id)) return;
+    if (seen.has(tp.id)) return;
     seen.add(tp.id);
+    if (tp._goodWorksTurn === G.turn) return; // PROTOTYPE Good (master list): Good Works keeps Terror off for the turn
     // PROTOTYPE Evil (round 2): Fearmongers — Terror lays two stacks at once
     tp._terrorStacks = Math.min(
       TERROR_MAX_STACKS,
@@ -58,6 +59,38 @@ export function spreadTerror(
 }
 // Consume any lingering terror in a province at the start of a battle: returns true if applied.
 export function consumeTerror(
+  prov: Province,
+  defenders: Army[] | null | undefined,
+  narrative: NarrativeLine[] | null | undefined,
+  kit?: { G: GameState; atkPi: number | null | undefined },
+): boolean {
+  // PROTOTYPE Evil (master list): under the kit Terror never fades and is never spent by a battle; it weakens the
+  // defenders only against the hosts of the Evil realm that laid it and of its allies
+  if (kit && prov._terrorisedBy != null && protoAlignOf(kit.G, prov._terrorisedBy) === 'Evil') {
+    if (!prov._terrorStacks || prov.owner === prov._terrorisedBy) return false;
+    const by = prov._terrorisedBy;
+    const atk = kit.atkPi;
+    const allied = atk != null && atk !== by && kit.G.relations[by < atk ? `${String(by)}-${String(atk)}` : `${String(atk)}-${String(by)}`] === 'allied';
+    if (atk !== by && !allied) return false;
+    const stacks = Math.min(TERROR_MAX_STACKS, prov._terrorStacks);
+    const _tp = prov._terrorPct ?? TERROR_PCT_PER_STACK;
+    const frac = Math.min(_tp * stacks, _tp * TERROR_MAX_STACKS);
+    (defenders ?? []).forEach((d) => {
+      d._terrorMult = Math.max(0, 1 - frac);
+    });
+    if (narrative)
+      narrate(narrative, {
+        kind: 'terror lingers in a province and its defenders fight demoralised',
+        provName: prov.name,
+        terrorPct: dispFloor(frac * 100),
+        terrorStacks: stacks,
+        terrorStacksPlural: stacks !== 1 ? 's' : '',
+      });
+    return true;
+  }
+  return consumeTerrorOld(prov, defenders, narrative);
+}
+function consumeTerrorOld(
   prov: Province,
   defenders: Army[] | null | undefined,
   narrative: NarrativeLine[] | null | undefined,

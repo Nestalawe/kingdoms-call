@@ -100,6 +100,10 @@ export function resolveDuel(turnContext, atk, def, narrative) {
     _ib = magicItemsLine(def); // item 5
   if (_ia) narrate(narrative, _ia);
   if (_ib) narrate(narrative, _ib);
+  turnContext._duelFoeIds = new Map([
+    [atk.id, def.id],
+    [def.id, atk.id],
+  ]); // PROTOTYPE Divine (master list): Holy wrath reads who faces whom
   const A = pcCharCombatant(turnContext, atk),
     B = pcCharCombatant(turnContext, def);
   turnContext._duelFoes = new Map([
@@ -111,6 +115,7 @@ export function resolveDuel(turnContext, atk, def, narrative) {
     res = resolvePersonalCombat(turnContext, A, B, { maxRounds: 20, heldFieldWins: true });
   } finally {
     turnContext._duelFoes = null;
+    turnContext._duelFoeIds = null;
   } // a duel's field held is a win (preBattleDuel awards it)
   narrateAll(narrative, res.narrative);
   if (res.fledBy) {

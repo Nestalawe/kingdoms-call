@@ -55,10 +55,10 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       });
       return;
     }
-    if (effStat(turnContext, c, 'white') < 1) {
+    if (effStat(turnContext, c, 'white') < 3) {
       emit(turnContext, {
         type: 'system',
-        text: `${c.name}: consecration flows from the White arts — learn White magic before you can sanctify ground.`,
+        text: `${c.name}: consecration flows from the White arts — White 3 is needed to sanctify ground (master list).`,
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -102,7 +102,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
     const _shine = (prov.features || []).some((f) => f && f.ritualSite && f.siteKind === 'holy');
     emit(turnContext, {
       type: 'explore',
-      text: `✨ ${c.name} consecrates ${prov.name} (${CONSECRATE_COST}g)! Holy ground: +50% tax, its defenders fight at ×1.5, and your fallen can return here.${_shine ? ` The holy site here shines: the realm's Divine Power is ${divinePower(G, c.player)}.` : ''} (${_list.length} consecrated.)`,
+      text: `✨ ${c.name} consecrates ${prov.name} (${CONSECRATE_COST}g)! Holy ground: +50% tax, its defenders fight at ×1.5, its levies muster as Veterans, the fallen leave no graves, and your fallen heroes can return here.${_shine ? ` The holy site here shines: the realm's Divine Power is ${divinePower(G, c.player)}.` : ''} (${_list.length} consecrated.)`,
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,

@@ -215,7 +215,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // Evil Terror: if this province was terrorised on a previous turn, demoralise its defenders
   // (stacking). Reign of Fear is read first: the attacker's Monsters fight ×1.5 on ground its Terror grips.
   const _fearAtk = reignOfFearHere(prov, c.player);
-  consumeTerror(prov, defenders, narrative);
+  consumeTerror(prov, defenders, narrative, { G, atkPi: c.player }); // PROTOTYPE Evil: the kit's Terror (master list)
   if (
     _fearAtk &&
     (c.player != null ? G.players[c.player]?.alignment : null) === 'Evil' &&

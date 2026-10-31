@@ -261,6 +261,11 @@ export const CharacterSchema = z.object({
   _botPost: z.number().optional(),
   _defendReactedPhase: z.number().optional(),
   _charmedTurn: z.number().optional(),
+  // PROTOTYPE (master list, round 19, src/engine/alignment-prototypes.ts): what the kits leave on a hero
+  _turnStartLoc: z.number().optional(), // where the hero stood as the turn began (Divine: Pilgrim roads)
+  _soulBoundBy: z.number().optional(), // Divine hero slain by an Undead kit hero: the realm whose reliquary holds his soul
+  _captiveOf: z.number().optional(), // Neutral (Ransom): the id of the hero who holds this one to ransom
+  _ransom: z.number().optional(), // Neutral (Ransom): the gold that frees him
   _charmImmuneTurn: z.number().optional(),
   _charmResist: z.number().optional(),
   _invisTurn: z.number().optional(),
@@ -425,6 +430,8 @@ export const ProvinceSchema = z.object({
   _lostFrom: z.number().optional(), // Good: the realm this province was last taken from (Reclaim)
   _lostTurn: z.number().optional(), // Good: the turn it was taken
   _kitPlague: z.object({ by: z.number(), until: z.number() }).optional(), // Undead: the king's Plague on this province
+  _goodWorksTurn: z.number().optional(), // Good (master list): the turn Good Works cleared this province (no Terror or plague for the rest of it)
+  _stormTurn: z.number().optional(), // Pagan (master list): the turn Call down the storm struck here
   _earthquakeNoTax: z.number().optional(),
   _terrorStacks: z.number().optional(),
   _terrorTurn: z.number().optional(),

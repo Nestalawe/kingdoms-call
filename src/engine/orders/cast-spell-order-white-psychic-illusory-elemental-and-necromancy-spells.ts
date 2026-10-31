@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { protoAlignOf } from '../alignment-prototypes.ts';
+import { alignProto, inSanctuary, protoAlignOf } from '../alignment-prototypes.ts';
 import { KC_QUALITY_UP, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
@@ -497,6 +497,17 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       });
       return;
     }
+    // PROTOTYPE Undead (master list): a soul the necromancers hold cannot be called back
+    const _boundHero = (G.characters || []).find((h) => h && h.id === grave.id);
+    if (_boundHero && _boundHero._soulBoundBy != null && alignProto(G, 'Undead')) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name} casts Resurrect over ${_boundHero.name}, but the soul does not answer — the necromancers of ${G.players[_boundHero._soulBoundBy]?.name || 'the Undead'} hold it in a reliquary while their king lives.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
     // MONARCH grave: only the realm that the king ruled may recall him, and only the MOST
     // RECENTLY fallen monarch of that line — earlier kings have passed beyond recall.
     if (grave._monarch) {
@@ -824,6 +835,16 @@ export function resolveCastSpellOrder(turnContext, c, o, ph, target, extra, prov
       emit(turnContext, {
         type: 'system',
         text: `Charm cannot be used on your own heroes.`,
+        audience: { actor: c.player, realms: [c.player] },
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      });
+      return;
+    }
+    // PROTOTYPE Divine (master list): Sanctuary — a Divine hero on consecrated ground of his realm cannot be charmed
+    if (inSanctuary(G, t)) {
+      emit(turnContext, {
+        type: 'system',
+        text: `${c.name}'s Charm breaks on the holy ground ${t.name} stands on — Sanctuary.`,
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });

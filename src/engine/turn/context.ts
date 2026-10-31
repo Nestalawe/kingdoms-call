@@ -123,6 +123,8 @@ export interface TurnContext {
   _combatSkillProv: number | null;
   /** While a duel is fought: each duellist's foe's name, by duellist. */
   _duelFoes: Map<number, string> | null;
+  /** the other party of the duel each hero is in (PROTOTYPE Divine, Holy wrath) */
+  _duelFoeIds: Map<number, number> | null;
   /** The number of the last battle emitted. */
   _battleSeq: number;
   /** While a duel against a local chieftain is fought: whether it has trained a skill yet. */

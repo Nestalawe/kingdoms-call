@@ -40,7 +40,7 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
     prov.armyTypes = [];
     emit(turnContext, {
       type: 'combat',
-      text: `☠ Desecrate: the altars of ${prov.name} are thrown down and its fields salted with grave-dust — the land is dead, and pays 1 tax for ever.`,
+      text: `☠ Desecrate: the altars of ${prov.name} are thrown down and its fields salted with grave-dust — the land is blighted, and pays 1 tax for ever.`,
       audience: { actor: newOwner, realms: [newOwner, prev] },
       province: prov.id,
       hero: byChar ? byChar.id : null,
@@ -115,6 +115,31 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
       byChar,
       ph != null ? ph : turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,
     );
+  // PROTOTYPE Evil (master list): Terror is wiped the moment the province changes hands
+  if (prev !== newOwner && prov._terrorStacks && alignProto(G, 'Evil')) {
+    delete prov._terrorStacks;
+    delete prov._terrorTurn;
+    delete prov._terrorisedBy;
+    delete prov._terrorPct;
+  }
+  // PROTOTYPE Divine (master list): the sword consecrates — a province taken from the realm the Crusade names is
+  // consecrated the moment it falls, free
+  if (prev != null && newOwner != null && prev !== newOwner && protoAlignOf(G, newOwner) === 'Divine') {
+    const _dp = G.players[newOwner];
+    if (_dp && _dp._crusadeVs === prev && (_dp._crusadeUntil ?? -1) >= G.turn && prov.terrain !== 'sea') {
+      const _cl = consecratedIds(_dp);
+      if (!_cl.includes(prov.id)) {
+        _cl.push(prov.id);
+        emit(turnContext, {
+          type: 'explore',
+          text: `✝ The sword consecrates: ${prov.name}, taken from ${G.players[prev]?.name || 'the enemy'} on Crusade, is holy ground at once.`,
+          audience: { actor: newOwner, realms: [newOwner], seen: 'there' },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          province: prov.id,
+        });
+      }
+    }
+  }
   // PROTOTYPE round 5: a Druidic kit realm taking an unclaimed creature province, or an Evil one an unclaimed monster
   // province, is joined by a company of its beasts (into the captor's host if he has room to lead it, else the garrison)
   if (prev == null && newOwner != null && byChar && byChar.alive) {

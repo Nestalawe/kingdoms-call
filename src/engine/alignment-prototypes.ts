@@ -23,43 +23,47 @@ export function protoAlignOf(G: GameState, pi: number | null | undefined): strin
 // ── The map's sites. A holy site (Divine) or a barrow (Undead) is a feature carrying `ritualSite: true` so every path
 // that finds, shows and remembers the old stones treats it alike, plus `siteKind: 'holy' | 'barrow'`. A Pagan rite is
 // answered only by a site with no `siteKind`.
-export const SITE_SHARE_OF_LAND = 1 / 7; // about one land province in seven holds a barrow
+export const SITE_SHARE_OF_LAND = 1 / 5; // master list: about one land province in five holds a barrow (rounds 1-18: one in seven)
 export const HOLY_SITE_SHARE_OF_LAND = 1 / 5; // round 2: and one in five a holy site
-export const RITE_OF_AWAKENING_COST = 10;
+export const RITE_OF_AWAKENING_COST = 5; // master list (rounds 1-18: 10g)
 export const RITE_OF_AWAKENING_TAX = 3; // round 2 (Votive Hoards): an awakened site pays +3 tax (round 1: +1)
 // round 2: the Divine Power thresholds (a held holy site counts 1, a held AND consecrated one 2)
-export const DIVINE_POWER_RETURN = 2; // a fallen hero's return spends no consecration (round 2: 3)
-export const DIVINE_POWER_UNLEASHED = 3; // the Crusade's ×1.5 in every battle (round 7; rounds 3-6: 4; round 2: 5)
+// master list (round 19): the gifts of the faith, one at each level of Divine Power
+export const DIVINE_POWER_SANCTUARY = 1; // a hero on consecrated ground cannot be assassinated, charmed or robbed; healing doubled
+export const DIVINE_POWER_RETURN = 2; // Grace abounding: a fallen hero's return spends no consecration (round 2: 3)
+export const DIVINE_POWER_REVELATION = 3; // the realm sees every holy site on the map
+export const DIVINE_POWER_PILGRIM_ROADS = 4; // a hero leading armies from consecrated ground marches as if March were 3 higher
+export const DIVINE_POWER_ABSOLUTION = 5; // every curse, charm, plague and Terror on the realm is lifted at the end of the turn
+export const DIVINE_POWER_TRIUMPHANT = 6; // every province counts as consecrated for Grace, the Last Rites and Sanctuary
+export const PILGRIM_ROADS_MARCH = 3;
 // round 2: the kings' orders and how long their effects hold
 // round 5 (Toby): no king's order waits more than 3 turns; a cost decides instead
 export const KING_ORDER_EVERY: Record<string, number> = {
   proclaim_crusade: 3,
   light_beacons: 3,
-  embargo: 3,
-  great_sacrifice: 3,
+  embargo: 0, // master list: no waiting between Embargoes (rounds 2-18: 3)
+  call_storm: 1, // master list: Call down the storm, once a turn
   dark_pact: 0, // every turn, at a price set by the monster
-  spread_plague: 3,
+  bind_bones: 1, // master list: Bind the Bones, once a turn
 };
 export const CRUSADE_TURNS = 3;
 export const EMBARGO_TURNS = 2; // round 4 (rounds 2-3: 3)
 export const EMBARGO_TAX_MULT = 0.8; // round 3: −20% (round 2: −30%)
-export const SACRIFICE_TURNS = 3; // round 5 (round 3: 4): it comes round every 3 turns now
-export const PLAGUE_TURNS = 3;
 // round 5 (Toby): what the kits' orders cost. Those that were free cost now; see the round 5 document's review.
 export const PROCLAIM_CRUSADE_COST = 6; // round 7 (rounds 5-6: 8; rounds 2-4: 5)
 export const CONSECRATE_COST = 5; // Divine (was free)
-export const GOOD_WORKS_COST = 2; // Good (was free)
+export const GOOD_WORKS_COST = 0; // Good: master list makes it free again (rounds 5-18: 2g)
 export const LIGHT_BEACONS_COST_PER_COMPANY = 2; // Good (was free)
 export const GROW_WILD_COST = 8; // Druidic (was free)
-export const CALL_WILD_COST = 3; // Druidic (was free)
-export const EMBARGO_COST = 4; // Neutral (round 5: 6; was free)
-export const DESPOIL_COST = 3; // Undead (was free)
-export const PLAGUE_COST = 6; // Undead (was free)
+export const CALL_WILD_COST = 2; // Druidic: master list, 2g a company that comes (rounds 5-18: 3g flat)
+export const EMBARGO_COST = 5; // Neutral: master list (rounds 6-18: 4; round 5: 6; was free)
+export const DESPOIL_COST = 5; // Undead: Blight the Land (master list; rounds 5-18: 3g)
+export const BIND_BONES_COST = 2; // Undead: Bind the Bones, 2g a company
+export const CALL_STORM_COST = 4; // Pagan: Call down the storm
 export const DARK_PACT_COST_MULT = 1.5; // Evil: 1.5 × the monster's recruit cost (round 5: 2 ×; rounds 2-4: a flat 10g)
-export const DARK_PACT_HP = 5;
+export const DARK_PACT_HP_SHARE = 0.4; // Evil: master list, 40% of the king's current HP (rounds 2-18: 5 HP)
 // round 5: the mutual enemies and the beast provinces
 export const CRUSADE_VS_UNDEAD_MULT = 1.75; // Divine against Undead forces (rounds 1-4: 1.5)
-export const HATRED_MULT = 1.5; // Undead against Divine forces (round 14; rounds 5-13: 1.3; rounds 2-4: 1.5)
 export const UNDEAD_GARRISON_CAP = 3; // skeletal companies the dead land raises into one garrison (round 7; rounds 5-6: 2)
 export const PARLEY_MULT = 1.5; // Druidic storming an unclaimed creature province; Evil an unclaimed monster province
 const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
@@ -68,22 +72,18 @@ export const isCreatureProvince = (pv: Province): boolean => isWild(pv) && pv.ar
 export const isMonsterProvince = (pv: Province): boolean => isWild(pv) && pv.armyTypes.some((t) => MONSTERS.has(t));
 export const BEACONS_CAP = 6; // round 7 (rounds 3-6: 4; round 2: 6)
 export const CALL_OF_THE_WILD_RANGE = 3;
-export const RECLAIM_TURNS = 5;
-export const PILGRIMS_COIN_PER_SITE = 4; // round 7 (rounds 2-6: 3)
-export const COUNTING_HOUSE_CAP = 3; // round 3 (round 2: 5)
+export const RECLAIM_TURNS = 3; // master list (rounds 2-18: 5)
 export const GRAVE_GOODS_PER_PROVINCE = 4; // round 7 (rounds 3-6: 3; round 2: 2)
 // round 3's other tunings
-export const TRIBUTE_OF_FEAR_CAP = 5; // Evil: the most Tribute of Fear pays a turn
 export const CONDOTTIERI_MULT = 1.5; // Neutral: a hired company's strength (round 8; rounds 3-7: 1.3)
 export const CONDOTTIERI_VS_BEASTS_MULT = 1.75; // Neutral (round 10): against a host with a creature or monster company in it
 export const EMBARGO_BEAST_COST_MULT = 2; // Neutral (round 10): an embargoed realm's beasts cost double to recruit
 export const DARK_PACT_QUALITY = 'Average'; // Evil: what the pact brings (round 8; rounds 3-7: Veteran; round 2: Elite)
-export const BARROW_RISE_PER_TURN = 3; // Undead: companies a held barrow raises a turn (round 10; rounds 8-9: 2; rounds 4-7: 1)
-export const OMENS_MIN_EXPLORER = 2; // Pagan: Omens double Explore only for a hero of Explorer 2 or more
-export const WOOD_WAGE_MULT = 2 / 3; // Druidic: what a beast in the woods pays of its wage (round 6; rounds 3-5: half; round 2: nothing)
-export const YEOMANRY_WAGE_MULT = 1 / 2; // Good (round 7): what a garrison company pays of its wage (rounds 4-6: two-thirds)
+export const BARROW_GRAVES_HUMANOID = 3; // Undead (master list): a held humanoid barrow keeps three graves filled
+export const BARROW_GRAVES_WILD = 1; // and a creature or monster barrow one
+export const WOOD_WAGE_MULT = 1 / 2; // Druidic: what a beast in the woods pays of its wage (master list: half; round 6: two-thirds)
 export const BLOOD_HARVEST_KIT_EXTRA = 2; // Pagan (round 8): +2g a unit on Blood Harvest (3g a unit in all; rounds 4-7: 2g)
-export const OFFERINGS_PER_WARRIOR = 15; // Pagan (round 10; round 9: 10g): every 15g of offerings raises a company into the victor's host
+export const BLOOD_HARVEST_RISE_CHANCE = 0.5; // Pagan (master list): per unit slain, the chance one winning company rises a tier
 export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
   'Shrine of the First Light',
@@ -196,8 +196,15 @@ export function protoBeastRoomExtra(G: GameState, c: Character | null | undefine
 export function barrowsHeld(G: GameState, pi: number): number {
   return kitRealm(G, pi, 'Undead') ? heldSites(G, pi, isBarrow).length : 0;
 }
-/** round 13: the Rising Tide needs this many despoiled provinces held (rounds 1-12: 3) */
-export const RISING_TIDE_PROVINCES = 2;
+/** Master list: every blighted province adds this to the skeletal hosts' multiplier, to UNDEAD_FEAR_CAP. */
+export const UNDEAD_FEAR_PER_BLIGHT = 0.05;
+export const UNDEAD_FEAR_CAP = 2.0;
+export const UNDEAD_FEAR_KING = 1.5;
+export const UNDEAD_FEAR_HERO = 1.3;
+export function undeadFearMult(G: GameState, pi: number, king: boolean): number {
+  const base = king ? UNDEAD_FEAR_KING : UNDEAD_FEAR_HERO;
+  return Math.min(UNDEAD_FEAR_CAP, Math.round((base + UNDEAD_FEAR_PER_BLIGHT * despoiledHeld(G, pi)) * 100) / 100);
+}
 export function despoiledHeld(G: GameState, pi: number): number {
   const pl = kitRealm(G, pi, 'Undead');
   if (!pl) return 0;
@@ -222,10 +229,38 @@ export function paganFavourPoints(G: GameState, pi: number): number {
   if (!kitRealm(G, pi, 'Pagan')) return 0;
   return heldSites(G, pi, isPaganStones).length + activatedSites(G, pi);
 }
-/** The Favour of the Old Gods: the Pagan host's strength multiplier (2 points ×1.3, 3 points ×1.5, 4 points ×1.75). */
+export const FAVOUR_PER_POINT = 0.15;
+export const FAVOUR_CAP = 1.9;
+/** The Favour of the Old Gods (master list): ×(1 + 0.15 × points), to ×1.9 at 6 points. */
 export function paganFavourMult(G: GameState, pi: number): number {
   const n = paganFavourPoints(G, pi);
-  return n >= 3 ? 1.75 : n >= 2 ? 1.3 : 1; // round 9: ×1.75 at 3 points (round 8: at 4, never reached); 2 points ×1.3
+  return Math.min(FAVOUR_CAP, Math.round((1 + FAVOUR_PER_POINT * n) * 100) / 100);
+}
+
+/** Master list: does `pv` count as consecrated for realm `pi` — consecrated, or any province it holds at Divine Power 6? */
+export function countsConsecrated(G: GameState, pi: number | null | undefined, pv: Province | null | undefined): boolean {
+  const pl = pi == null ? null : kitRealm(G, pi, 'Divine');
+  if (!pl || !pv || pv.owner !== pi) return false;
+  if ((pl.consecratedProvIds ?? []).includes(pv.id)) return true;
+  return divinePower(G, pl.id) >= DIVINE_POWER_TRIUMPHANT && pv.terrain !== 'sea';
+}
+/** Master list (Sanctuary, Divine Power 1): is this Divine hero standing on consecrated ground of his realm? */
+export function inSanctuary(G: GameState, c: Character | null | undefined): boolean {
+  if (c?.player == null || protoAlignOf(G, c.player) !== 'Divine') return false;
+  if (divinePower(G, c.player) < DIVINE_POWER_SANCTUARY) return false;
+  return countsConsecrated(G, c.player, G.world.provinces[c.location]);
+}
+/** Master list (Pilgrim roads, Divine Power 4): the hero began this turn on consecrated ground of his realm. */
+export function pilgrimRoads(G: GameState, c: Character): boolean {
+  if (c.player == null || divinePower(G, c.player) < DIVINE_POWER_PILGRIM_ROADS) return false;
+  const start = c._turnStartLoc ?? c.location;
+  return countsConsecrated(G, c.player, G.world.provinces[start]);
+}
+/** Master list (the Crusade's Hounds of God and Holy wrath): is `quarry` a hero of the realm `pi` is on Crusade against? */
+export function crusadeQuarry(G: GameState, pi: number | null | undefined, quarry: Character | null | undefined): boolean {
+  const pl = pi == null ? null : kitRealm(G, pi, 'Divine');
+  if (!pl || quarry?.player == null) return false;
+  return pl._crusadeVs === quarry.player && (pl._crusadeUntil ?? -1) >= G.turn;
 }
 
 // ── Skills a kit lifts: the level a hero's skill counts as, over the trained and equipped level. Read by effStat.
@@ -246,9 +281,11 @@ export function protoSkillLift(G: GameState, c: Character | null | undefined, st
   // Round 15 (the cut to six): one general rule in place of seven abilities. Every realm's heroes count one level
   // higher in their alignment's own skill, where they have it at all.
   if (stat === SIGNATURE_SKILL[align] && base >= 1)
-    return 1 + (align === 'Undead' ? Math.min(2, barrowsHeld(G, c.player)) : 0);
-  if (align === 'Undead' && stat === 'necromancy') return Math.min(2, barrowsHeld(G, c.player)); // the barrows lift even a hero with none
+    return 1 + (align === 'Undead' ? barrowsHeld(G, c.player) : 0); // master list: a barrow each, no cap
+  if (align === 'Undead' && stat === 'necromancy') return barrowsHeld(G, c.player); // the barrows lift even a hero with none
   if (align === 'Neutral' && (stat === 'spy' || stat === 'thief') && base >= 1) return 1; // Guilds
+  // master list, Divine Power 4 (Pilgrim roads): a hero leading armies who began the turn on consecrated ground
+  if (align === 'Divine' && stat === 'march' && c.armies.length && pilgrimRoads(G, c)) return PILGRIM_ROADS_MARCH;
   return 0;
 }
 
@@ -285,16 +322,15 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
     case 'Divine': {
       const wild = !!prov && isWild(prov) && prov.owner == null;
       const monsterWild = wild && prov.armyTypes.some((t) => monsterTypes.has(t));
-      const dark = enemyAlign === 'Undead' || enemyAlign === 'Evil';
+      const dark = enemyAlign === 'Evil';
       const holy = !isAttacker && !!prov && prov.owner === pi && (pl.consecratedProvIds ?? []).includes(prov.id);
-      const unleashed = divinePower(G, pi) >= DIVINE_POWER_UNLEASHED;
-      const proclaimed = enemyPi != null && pl._crusadeVs === enemyPi && (pl._crusadeUntil ?? -1) >= G.turn; // round 2
+      // master list: the Proclaimed Crusade no longer carries a battle bonus of its own, and Divine Power 3 no longer
+      // puts the ×1.5 in every battle (the gifts of the faith are elsewhere now)
       if (enemyAlign === 'Undead') return { mult: CRUSADE_VS_UNDEAD_MULT, label: 'Crusade against the Undead ×1.75' }; // round 5
-      if (proclaimed) return { mult: 1.5, label: 'Proclaimed Crusade ×1.5' };
       // round 8: the Crusade is against the wild too — any host with a creature or monster company in it
       if ((side.enemyArmies ?? []).some((a) => CREATURES.has(a.type) || MONSTERS.has(a.type)))
         return { mult: 1.5, label: 'Crusade against the wild ×1.5' };
-      if (dark || (isAttacker && monsterWild) || holy || unleashed)
+      if (dark || (isAttacker && monsterWild) || holy)
         return { mult: 1.5, label: holy && !dark ? 'Crusade: holy ground ×1.5' : 'Crusade ×1.5' };
       return nothing;
     }
@@ -315,33 +351,34 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
     case 'Neutral':
       return nothing;
     case 'Pagan': {
-      if ((pl._sacrificeUntil ?? -1) >= G.turn) return { mult: 1.5, label: 'Great Sacrifice ×1.5' }; // round 2
-      // round 4: the Old Stones — a host defending a stones province of the realm fights ×1.5 whatever the Favour
+      // round 4: the Old Stones — a host defending a stones province of the realm fights at the Favour's maximum
       if (!isAttacker && !!prov && prov.owner === pi && prov.features.some(isPaganStones))
-        return { mult: 1.75, label: 'The Old Stones ×1.75' }; // round 9 (rounds 4-8: ×1.5)
+        return { mult: FAVOUR_CAP, label: `The Old Stones ×${String(FAVOUR_CAP)}` }; // master list: ×1.9 (round 9: ×1.75)
       const m = paganFavourMult(G, pi);
-      return m > 1 ? { mult: m, label: `Favour of the Old Gods ×${m.toFixed(1)}` } : nothing;
+      return m > 1 ? { mult: m, label: `Favour of the Old Gods ×${String(m)}` } : nothing;
     }
     case 'Evil': {
       // round 5: Dominion of the Pits — storming an unclaimed monster province, with or without monsters of your own;
       // round 6: and defending a monster province of the realm's
-      if (
+      const pits =
         !!prov &&
         isMonsterProvince(prov) &&
-        ((isAttacker && prov.owner == null) || (!isAttacker && prov.owner === pi))
-      )
-        return { mult: PARLEY_MULT, label: 'Dominion of the Pits ×1.5' };
+        ((isAttacker && prov.owner == null) || (!isAttacker && prov.owner === pi));
       const monsters = armies.some((a) => monsterTypes.has(a.type));
-      if (!monsters) return nothing;
-      return isAttacker ? { mult: 1.5, label: 'Savage Fury ×1.5' } : { mult: 1.25, label: 'Savage Fury ×1.25' }; // round 2: ×1.25 defending
+      const fury = monsters ? (isAttacker ? 1.5 : 1.25) : 1; // round 2: ×1.25 defending
+      // master list: the Dominion of the Pits stacks with Savage Fury (as the Druids' Parley stacks with Home of the Wild)
+      const mult = Math.round((pits ? PARLEY_MULT : 1) * fury * 100) / 100;
+      if (mult <= 1) return nothing;
+      const parts = [pits ? 'Dominion of the Pits ×1.5' : '', monsters ? `Savage Fury ×${String(fury)}` : ''].filter(Boolean);
+      return { mult, label: parts.join(' and ') };
     }
     case 'Undead': {
-      // the king's x1.5 and a hero's x1.3 stay as they are; 3 despoiled provinces lift every commander to x1.5
-      if (enemyAlign === 'Divine') return { mult: HATRED_MULT, label: `Hatred of the Light ×${String(HATRED_MULT)}` }; // round 2 (×1.5), round 5 ×1.3, round 14 ×1.5
+      // master list (The dead fear nothing): the king's ×1.5 and a hero's ×1.3, + 0.05 for every blighted province the
+      // realm holds, to ×2.0. (Hatred of the Light and the Rising Tide are gone.)
       const skel = armies.some((a) => a._isSkeletal);
-      if (skel && leader && !leader.isKing && despoiledHeld(G, pi) >= RISING_TIDE_PROVINCES)
-        return { mult: 1.5, label: 'The Rising Tide ×1.5' };
-      return null;
+      if (!skel) return nothing;
+      const m = undeadFearMult(G, pi, !!leader?.isKing);
+      return { mult: m, label: `The dead fear nothing ×${String(m)}` };
     }
     default:
       return null;
@@ -362,27 +399,33 @@ export function protoProvinceTaxAdd(G: GameState, pl: Realm, pv: Province, taxSo
 export function embargoTaxMult(G: GameState, pl: Realm): number {
   return (pl._embargoUntil ?? -1) >= G.turn && alignProto(G, 'Neutral') ? EMBARGO_TAX_MULT : 1;
 }
-/** Round 2: the gold a kit pays a realm at tax time beyond its provinces' tax, itemised. Pilgrims' Coin (Divine),
- *  Counting-houses (Neutral), Tribute of Fear (Evil), Grave Goods (Undead). */
+/** Master list (Healers' fees): what a Druidic hero standing in a humanoid province earns the realm this turn, or 0. */
+export function healersFee(G: GameState, c: Character): number {
+  if (c.player == null || !c.alive || protoAlignOf(G, c.player) !== 'Druidic') return 0;
+  const pv = G.world.provinces[c.location];
+  if (!pv || pv.terrain === 'sea' || isWild(pv)) return 0;
+  if (pv._despoiled != null || pv._terrorStacks) return 0; // the blighted and the terrified have worse to think of
+  if (pv.owner != null && (G.players[pv.owner]?.consecratedProvIds ?? []).includes(pv.id)) return 0; // the Church distrusts the druids
+  const druid = c.skills.druid ?? 0;
+  return druid > 0 ? Math.ceil((druid + 1) / 2) : 0; // half the Druid skill (the signature +1 counted), rounded up
+}
+/** Round 2: the gold a kit pays a realm at tax time beyond its provinces' tax, itemised. Healers' fees (Druidic),
+ *  Tribute of Fear (Evil), Grave Goods (Undead). */
 export function protoRealmGold(G: GameState, pi: number): { gold: number; note: string } {
   const align = protoAlignOf(G, pi);
   const pl = realmOf(G, pi);
   if (!align || !pl) return { gold: 0, note: '' };
   switch (align) {
-    case 'Divine': {
-      const g = PILGRIMS_COIN_PER_SITE * shiningSites(G, pi);
-      return { gold: g, note: g ? ` (+${String(g)}g Pilgrims' Coin)` : '' };
-    }
-    case 'Neutral': {
-      const g = Math.min(COUNTING_HOUSE_CAP, Math.floor(pl.gold / 10));
-      return { gold: g, note: g ? ` (+${String(g)}g the counting-houses)` : '' };
+    case 'Druidic': {
+      let g = 0;
+      for (const c of G.characters) if (c.player === pi) g += healersFee(G, c);
+      return { gold: g, note: g ? ` (+${String(g)}g healers' fees)` : '' };
     }
     case 'Evil': {
       let g = 0;
       for (const pv of G.world.provinces)
         if (pv.owner != null && pv.owner !== pi && pv._terrorisedBy === pi && pv._terrorStacks) g += pv._terrorStacks;
-      g = Math.min(TRIBUTE_OF_FEAR_CAP, g); // round 3
-      return { gold: g, note: g ? ` (+${String(g)}g Tribute of Fear)` : '' };
+      return { gold: g, note: g ? ` (+${String(g)}g Tribute of Fear)` : '' }; // master list: no cap (round 3: 5g)
     }
     case 'Undead': {
       const g = GRAVE_GOODS_PER_PROVINCE * despoiledHeld(G, pi);

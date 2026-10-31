@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { crusadeQuarry } from '../alignment-prototypes.ts';
 import { NPC_SCHOOL_SPELL } from '../army-tables.ts';
 import { temperOf } from '../world/tables.ts';
 import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd, monsterCat } from '../names.ts';
@@ -237,9 +238,16 @@ export function pcCharCombatant(turnContext, ch) {
   // Rage (AK §2.4): a Berserker shrugs off pain.
   const rg = temperOf(effTemper(ch)).rageHp;
   const rageHp = rg ? rng(rg[0], rg[1]) : 0;
+  // PROTOTYPE Divine (master list): Holy wrath — while the Crusade lasts, against a hero of the named realm (the duel's
+  // other party, named by resolveDuel / resolveCharVsChar in turnContext._duelFoeIds) Melee counts two higher and every
+  // blow does 25% more harm (holyWrath is read by the damage roll)
+  const _foeId = turnContext._duelFoeIds ? turnContext._duelFoeIds.get(ch.id) : null;
+  const _foe = _foeId != null ? (turnContext.G.characters || []).find((x) => x && x.id === _foeId) : null;
+  const _holyWrath = _foe && crusadeQuarry(turnContext.G, ch.player, _foe) ? 2 : 0;
   const cbt = {
     kind: 'character',
     ref: ch,
+    holyWrath: _holyWrath > 0,
     name: ch.name,
     player: ch.player,
     // the unkillable wanderer never enters a fight at 0 HP (a stale 0 from a past escape would
@@ -260,6 +268,7 @@ export function pcCharCombatant(turnContext, ch) {
     // holds can put Melee or Archery above 9 in a duel — for the hit chance OR for the damage.
     melee: pcSkillCap(
       effStat(turnContext, ch, 'melee') +
+        _holyWrath + // PROTOTYPE Divine (master list): Holy wrath, +2 Melee against a hero of the realm the Crusade names
         (charMinor(turnContext, ch, 'duelist') ? 1 : 0) +
         (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
         (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
@@ -279,6 +288,7 @@ export function pcCharCombatant(turnContext, ch) {
       Math.max(
         skillLevel(ch, 'melee'),
         effStat(turnContext, ch, 'melee') +
+          _holyWrath +
           (charMinor(turnContext, ch, 'duelist') ? 1 : 0) +
           (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
           (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +

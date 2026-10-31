@@ -1,6 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { isConsecrated } from './heroes/fame-and-consecration.ts';
-import { protoAlignOf } from './alignment-prototypes.ts';
+import { countsConsecrated } from './alignment-prototypes.ts';
 import { kcRng } from './rng.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './turn/events-and-their-audiences.ts';
 import { QUALITY_TIERS } from './army-tables.ts';
@@ -188,16 +187,11 @@ export function elvenEscapeChance(terrain) {
 export function recordBattleGraves(turnContext, prov, killedArmies, ownerPlayer) {
   const { G, _elvenEscapeQueue } = turnContext;
   if (!killedArmies || !killedArmies.length) return;
-  // PROTOTYPE Divine (round 2, widened in round 5): Last Rites — where a Divine realm's hero stands at the battle's end,
-  // or on its consecrated ground, the fallen are buried with rites and leave no grave for any necromancer.
-  const _rites =
-    (prov.owner != null &&
-      protoAlignOf(G, prov.owner) === 'Divine' &&
-      G.players[prov.owner] &&
-      isConsecrated(G.players[prov.owner], prov.id)) ||
-    (G.characters || []).find((h) => h && h.alive && h.location === prov.id && protoAlignOf(G, h.player) === 'Divine');
+  // PROTOTYPE Divine (master list): Last Rites — on a Divine realm's consecrated ground (every province it holds at
+  // Divine Power 6) the fallen are buried with rites and leave no grave for any necromancer.
+  const _rites = prov.owner != null && countsConsecrated(G, prov.owner, prov);
   if (_rites) {
-    const _pi = typeof _rites === 'object' ? _rites.player : prov.owner;
+    const _pi = prov.owner;
     emit(turnContext, {
       type: 'system',
       text: `✝ Last Rites: the fallen of ${prov.name} are given to the earth with prayers — no grave is left for any necromancer to open.`,

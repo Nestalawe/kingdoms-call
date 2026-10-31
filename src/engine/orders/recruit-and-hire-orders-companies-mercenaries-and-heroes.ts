@@ -8,6 +8,7 @@ import {
 } from '../alignment-prototypes.ts';
 import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import { isConsecrated } from '../heroes/fame-and-consecration.ts';
 import { ARMY_COST_MASTER, SKILL_LABELS } from '../army-tables.ts';
 import {
   CREATURE_ARMIES,
@@ -343,8 +344,16 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         String(prov.race || '').startsWith('Primal') &&
         ((protoAlignOf(G, c.player) === 'Druidic' && CREATURE_ARMIES.has(armyType)) ||
           (protoAlignOf(G, c.player) === 'Evil' && MONSTER_ARMIES.has(armyType)));
+      // PROTOTYPE Divine (master list): Blessed levies — a humanoid company recruited in a consecrated province of the realm
+      const _blessed =
+        protoAlignOf(G, c.player) === 'Divine' &&
+        !CREATURE_ARMIES.has(armyType) &&
+        !MONSTER_ARMIES.has(armyType) &&
+        isConsecrated(G.players[c.player], prov.id) &&
+        prov.owner === c.player;
       const startQuality =
         _kitVet ||
+        _blessed ||
         (gdActive(turnContext, c.player, 'Druidic') &&
           (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType))) ||
         kcRng() < discRecruitQChance(G.players[c.player], armyType)

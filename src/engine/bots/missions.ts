@@ -4,23 +4,31 @@ import {
   CALL_OF_THE_WILD_RANGE,
   CALL_WILD_COST,
   CONSECRATE_COST,
-  DARK_PACT_HP,
   DESPOIL_COST,
   EMBARGO_COST,
   GOOD_WORKS_COST,
   GROW_WILD_COST,
-  isPaganStones,
   kingOrderReady,
   kitTactics,
   kitTargetBonus,
   LIGHT_BEACONS_COST_PER_COMPANY,
   neighboursOf,
-  PLAGUE_COST,
+  RITE_OF_AWAKENING_COST,
+  BIND_BONES_COST,
+  CALL_STORM_COST,
   PROCLAIM_CRUSADE_COST,
   protoBeastRoomExtra,
 } from '../alignment-prototypes.ts';
 import { hexDistP } from '../world/map-helpers.ts';
-import { darkPactCost, darkPactKinds, tradePactPrice, tradePactTargets } from '../orders/alignment-prototype-orders.ts';
+import {
+  darkPactBlood,
+  darkPactCost,
+  darkPactKinds,
+  stormTargets,
+  tradePactPrice,
+  tradePactPriceOwned,
+  tradePactTargets,
+} from '../orders/alignment-prototype-orders.ts';
 import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
 import { beastCommandCount, beastCommandRoom } from '../world/tables.ts';
@@ -208,7 +216,7 @@ export function botConsecrateOK(G, pi, c, X) {
   if (alignProto(G, 'Divine')) {
     // PROTOTYPE Divine: any hero with White 1+, on a province of the realm's bordering the home or holy ground, and the
     // rite's price in the chest (round 5)
-    if (effSkillOf(c, 'white', G.characters || []) < 1 || (pl.gold || 0) < CONSECRATE_COST) return false;
+    if (effSkillOf(c, 'white', G.characters || []) < 2 || (pl.gold || 0) < CONSECRATE_COST) return false; // master list: White 3 (the signature +1 counts)
     const home = botHomeId(G, pi);
     const list = consecratedIds(pl) || [];
     if (X.id === home || list.includes(X.id)) return false;
@@ -1777,6 +1785,11 @@ export function botKitPre(G, pi, c, P, L) {
     const po = botPickupOrder(G, pi, c, P);
     if (po) return po;
   }
+  // PROTOTYPE tactics (Neutral, master list): the League's heroes fight to capture — a captive is sold back
+  if (pl.alignment === 'Neutral') {
+    c.encounterPlan = c.encounterPlan || {};
+    c.encounterPlan.ransom = true;
+  }
   // PROTOTYPE tactics (Neutral): hire the sell-swords standing here, at the realm's discount
   if (tactics && pl.alignment === 'Neutral') {
     const toks = [];
@@ -1828,11 +1841,18 @@ export function botKitPre(G, pi, c, P, L) {
   };
   switch (pl.alignment) {
     case 'Good':
-      if (owned && humanoid && (P._goodWorks || 0) < 2 && !c._isHeir && spendIf(GOOD_WORKS_COST))
+      // master list: Good Works lifts Terror and plague — given where either sits on a province of the realm
+      if (
+        owned &&
+        humanoid &&
+        P._goodWorksTurn !== G.turn &&
+        (P._terrorStacks || P._plaguedTurn != null || P._kitPlague) &&
+        spendIf(GOOD_WORKS_COST)
+      )
         return { action: 'good_works', target: '', extra: '', desc: 'Good Works in ' + P.name };
       return null;
     case 'Druidic':
-      if (!owned || (sk.druid || 0) < 1) return null;
+      if (!owned || (sk.druid || 0) < 2) return null; // master list: Grow the Wild needs Druid 3 (the signature +1 counts)
       if (
         (P.terrain === 'plain' || P.terrain === 'desert') &&
         L.budget >= GROW_WILD_COST + 4 &&
@@ -1845,9 +1865,11 @@ export function botKitPre(G, pi, c, P, L) {
       let best = null;
       tradePactTargets(G, c, P).forEach((X) => {
         if (!botKnows(G, pi, X.id)) return;
-        const price = tradePactPrice(X);
+        // master list: another realm's province may be bought too — a bot buys only from a realm it is at war with
+        if (X.owner != null && botRelationRaw(G, pi, X.owner) !== 'enemy') return;
+        const price = X.owner == null ? tradePactPrice(X) : tradePactPriceOwned(X);
         if (price > L.budget) return;
-        const v = (X.tax || 0) * 3 - price * 0.5;
+        const v = (X.tax || 0) * 3 - price * 0.5 + (X.owner != null ? 4 : 0);
         if (!best || v > best.v) best = { X, price, v };
       });
       if (!best) return null;
@@ -1864,6 +1886,14 @@ export function botKitPre(G, pi, c, P, L) {
       // enslave with a small column, plunder and terrorise with a large one
       c.encounterPlan = c.encounterPlan || {};
       c.encounterPlan.evilMode = (c.armies || []).length <= 3 ? 'enslave' : 'terror';
+      // master list: Spread Dread — from a province of the realm, when dread does not yet grip it or a neighbour
+      if (
+        tactics &&
+        owned &&
+        !c.isKing &&
+        (!P._terrorStacks || neighboursOf(G, P).some((X) => X.terrain !== 'sea' && !X._terrorStacks))
+      )
+        return { action: 'spread_dread', target: '', extra: '', desc: 'Spread Dread from ' + P.name };
       return null;
     }
     case 'Undead': {
@@ -1887,9 +1917,9 @@ export function botKitPre(G, pi, c, P, L) {
         stones &&
         P._riteActivatedBy !== pi &&
         P._riteTurn !== G.turn &&
-        (tactics ? G.turn >= 5 && L.budget >= 20 : L.budget >= 14) // tactics: soldiers first, the stones from turn 5
+        (tactics ? G.turn >= 4 && L.budget >= 12 : L.budget >= 9) // tactics: soldiers first, the stones from turn 4 (master list: 5g)
       ) {
-        L.budget -= 10;
+        L.budget -= RITE_OF_AWAKENING_COST;
         return { action: 'rite', target: 'awakening', extra: '', desc: 'Perform Rite — the Awakening at ' + P.name };
       }
       return null;
@@ -1964,13 +1994,31 @@ export function botKingKitOrder(G, pi, c, P, L) {
       };
     }
     case 'Pagan': {
-      if (!war || !owned || !ready('great_sacrifice')) return null;
-      if (!(P.features || []).some(isPaganStones) || (c.armies || []).length < 3) return null;
-      return { action: 'great_sacrifice', target: '', extra: '', desc: 'Make the Great Sacrifice at ' + P.name };
+      // master list: Call down the storm on the enemy host standing on or beside the realm's woken stones, where the
+      // enemy has more companies there than the realm has
+      if (!ready('call_storm') || !botCanAfford(L, CALL_STORM_COST)) return null;
+      let best = null;
+      stormTargets(G, pi).forEach((X) => {
+        let foe = 0;
+        let own = X.owner === pi ? (X.garrisonArmies || []).length : 0;
+        (G.characters || []).forEach((h) => {
+          if (!h || !h.alive || h.location !== X.id) return;
+          const n = (h.armies || []).filter((a) => a && !a._phantom).length;
+          if (h.player === pi) own += n;
+          else if (h.player != null && botRelationRaw(G, pi, h.player) === 'enemy') foe += n;
+        });
+        if (X.owner != null && X.owner !== pi && botRelationRaw(G, pi, X.owner) === 'enemy') foe += (X.garrisonArmies || []).length;
+        const gain = foe - own;
+        if (foe >= 3 && gain >= 2 && (!best || gain > best.gain)) best = { X, gain };
+      });
+      if (!best) return null;
+      botSpend(L, CALL_STORM_COST);
+      return { action: 'call_storm', target: 'prov:' + String(best.X.id), extra: '', desc: 'Call down the storm on ' + best.X.name };
     }
     case 'Evil': {
       // round 5: the dearest monster of the realm's pits the chest can pay for, every turn the king can spare the blood
-      if ((c.hp || 0) <= DARK_PACT_HP + 5) return null;
+      // (master list: the pact takes 40% of his current HP, so only a king above half health pays it)
+      if ((c.hp || 0) <= Math.max(10, Math.ceil((c.maxHp || 20) * 0.5)) || darkPactBlood(c) >= (c.hp || 0)) return null;
       if (beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) <= 0) return null;
       const kinds = darkPactKinds(G, pi)
         .filter((k) => L.budget >= darkPactCost(k) + 4)
@@ -1981,23 +2029,19 @@ export function botKingKitOrder(G, pi, c, P, L) {
       return { action: 'dark_pact', target: 'type:' + kind, extra: '', desc: 'Make a Dark Pact for ' + kind };
     }
     case 'Undead': {
-      if (!war || !ready('spread_plague') || !botCanAfford(L, PLAGUE_COST)) return null;
-      let best = null;
-      neighboursOf(G, P).forEach((X) => {
-        if (X.terrain === 'sea' || String(X.race || '').startsWith('Primal') || X.owner === pi) return;
-        if (X.owner == null || botRelationRaw(G, pi, X.owner) !== 'enemy') return;
-        if (X._kitPlague && X._kitPlague.until >= G.turn) return;
-        if ((X.tax || 0) < 3) return;
-        if (!best || (X.tax || 0) > (best.tax || 0)) best = X;
+      // master list: Bind the Bones — when two or more skeletal companies here can still rise a tier and the chest can
+      // pay for them beyond its wages
+      if (!ready('bind_bones')) return null;
+      let n = (c.armies || []).filter((a) => a && a._isSkeletal && !a._phantom && a.quality !== 'Elite').length;
+      if (owned) n += (P.garrisonArmies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
+      (G.characters || []).forEach((h) => {
+        if (h && h.alive && h.id !== c.id && h.player === pi && h.location === P.id)
+          n += (h.armies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
       });
-      if (!best) return null;
-      botSpend(L, PLAGUE_COST);
-      return {
-        action: 'spread_plague',
-        target: 'prov:' + String(best.id),
-        extra: '',
-        desc: 'Spread the Plague into ' + best.name,
-      };
+      const affordable = Math.min(n, Math.floor(Math.max(0, L.budget - 6) / BIND_BONES_COST));
+      if (affordable < 2) return null;
+      botSpend(L, affordable * BIND_BONES_COST);
+      return { action: 'bind_bones', target: '', extra: '', desc: 'Bind the Bones in ' + P.name };
     }
   }
   return null;

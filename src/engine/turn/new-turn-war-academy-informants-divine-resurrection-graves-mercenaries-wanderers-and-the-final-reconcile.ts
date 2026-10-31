@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { DIVINE_POWER_RETURN, divinePower } from '../alignment-prototypes.ts';
-import { alignmentPrototypeNewTurnSteps } from './alignment-prototype-turn-steps.ts';
+import { DIVINE_POWER_RETURN, divinePower, isBarrow, protoAlignOf } from '../alignment-prototypes.ts';
+import { alignmentPrototypeNewTurnSteps, graceRefused, kitMercenaryDrift } from './alignment-prototype-turn-steps.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
@@ -177,6 +177,22 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       // Resurrect spell can still reach it) and is never tried again.
       const playerP = G.players[grave.player];
       if (grave._divineLost) return;
+      // PROTOTYPE Divine (master list): no Grace for a soul the Undead hold, nor for a body on blighted land
+      const _refused = graceRefused(G, hero, grave.location != null ? grave.location : hero.location);
+      if (_refused) {
+        grave._divineLost = true;
+        if (_wasKing) delete hero._divineReturn;
+        emit(turnContext, {
+          type: 'explore',
+          text:
+            _refused === 'soul'
+              ? `✨ ${hero.name} does not return: the necromancers hold their soul in a reliquary, and the Grace cannot reach it while the Undead king lives. (A Resurrect spell cannot either.)`
+              : `✨ ${hero.name} does not return: they fell on blighted land, and the Grace does not reach the dead soil. (The body lies where it fell; a Resurrect spell may yet reach it.)`,
+          audience: { actor: grave.player, realms: [grave.player] },
+          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        });
+        return;
+      }
       const homeProv = nearestConsecratedProv(G, grave.player, grave.location != null ? grave.location : hero.location);
       if (!homeProv) {
         grave._divineLost = true;
@@ -230,6 +246,8 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // provinces owned by an UNDEAD realm (necromantic preservation — the advertised perk, now real).
   G.world.provinces.forEach((p) => {
     if (!p.battleGraves || p.battleGraves.length === 0) return;
+    // PROTOTYPE Undead (master list): graves never decay in a barrow province the realm holds
+    if (p.owner != null && protoAlignOf(G, p.owner) === 'Undead' && (p.features || []).some(isBarrow)) return;
     let decay = p.owner != null && G.players[p.owner]?.alignment === 'Undead' ? 0.05 : 0.1;
     if (p.owner != null) {
       const _gd = discEff(turnContext, p.owner, 'graveDecay');
@@ -238,8 +256,9 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     p.battleGraves = p.battleGraves.filter(() => kcRng() > decay);
   });
 
-  // 7f. Mercenary army movement and retirement
-  if (G.mercenaries && G.mercenaries.length > 0) {
+  // 7f. Mercenary army movement and retirement (PROTOTYPE Neutral, master list: with a Neutral kit realm in the game the
+  // bands drift to its home province and wait there instead)
+  if (G.mercenaries && G.mercenaries.length > 0 && !kitMercenaryDrift(turnContext)) {
     const { cols, rows, provinces } = G.world;
     const offEven = [
       [-1, -1],

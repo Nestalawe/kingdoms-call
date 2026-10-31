@@ -84,14 +84,8 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 8
+      "count": 1
     },
     "@typescript-eslint/no-unsafe-return": {
       "count": 1
@@ -100,9 +94,6 @@
       "count": 4
     },
     "@typescript-eslint/prefer-optional-chain": {
-      "count": 1
-    },
-    "@typescript-eslint/restrict-plus-operands": {
       "count": 1
     }
   },
