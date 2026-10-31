@@ -146,11 +146,13 @@ test('hardened outside a fight: told to his realm, with no deed; a neutral’s t
   const from = L.length;
   call('awardWinHp', s, null, 'lair');
   call('awardWinHp', n, null, 'lair');
-  const [his, neutrals] = [/Gerd the Hewer/, /Old Mott/].map((re) => hardLines(from).find((l) => re.test(String(l.text))));
+  const [his, neutrals] = [/Gerd the Hewer/, /Old Mott/].map((re) =>
+    hardLines(from).find((l) => re.test(String(l.text))),
+  );
   expect(who(his)).toBe(who({ text: '', public: false, actor: null, targets: [1] }));
   expect(who(neutrals)).toBe(who({ text: '', public: false, actor: null, targets: [] }));
   // each fact names his realm (the leak check's "a line for one realm alone" reads it), a neutral's none
-  const factsRealm = (id: number) =>
+  const factsRealm = (id: unknown) =>
     (L.slice(from) as { charId?: unknown; fact?: { kind?: unknown; realm?: unknown } }[]).find(
       (l) => l.charId === id && l.fact?.kind === 'a hero is hardened after a fight',
     )?.fact?.realm;

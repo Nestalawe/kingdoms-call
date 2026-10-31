@@ -784,7 +784,12 @@ describe('the audience check: every line a realm reads comes from an event whose
     // planted with a deed, as before R-118: a kind for one realm alone is still kept from the spy
     const oneRealms = perceived((_, r, p) => {
       p.events.push(
-        ev(hardened, 3, { actor: 2, realms: [2] }, { hero: 13, province: 2, kind: 'a hero is hardened after a fight', factsRealm: 2 }),
+        ev(
+          hardened,
+          3,
+          { actor: 2, realms: [2] },
+          { hero: 13, province: 2, kind: 'a hero is hardened after a fight', factsRealm: 2 },
+        ),
       );
       spied(r, 0, 2, hardened, 3);
     });
