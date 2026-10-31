@@ -4,6 +4,7 @@ import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.t
 import {
   combatSpellsAllowedPerSchoolEachFight,
   itemUsableBy,
+  theCombatSpellsBySchool,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import {
@@ -755,13 +756,7 @@ export function addEncounterTactic(charId, code) {
     const char = (currentReport?.characters || []).find((c) => String(c.id) === String(charId));
     const skills = char?.skills || {};
     // Encounter-valid spells: direct damage, debuffs, or Mirror Image
-    const ENCOUNTER_VALID = {
-      white: ['Holy Symbol', 'Spiritwrack'],
-      psychic: ['Psychic Blast', 'Telekinetic Storm', 'Charm'],
-      illusory: ['Mirror Image', 'Invisibility'],
-      elemental: ['Lightning Bolt', 'Fireball'],
-      necromancy: ['Curse', 'Hand of Death', 'Control Undead'],
-    };
+    const ENCOUNTER_VALID = theCombatSpellsBySchool();
 
     // Also include schools being practised in any phase this turn
     // (same logic as Cast Spell phase orders — the player sets their plan after their orders)
