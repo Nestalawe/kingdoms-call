@@ -18,6 +18,7 @@ import {
   whyAUnitMayNotBeShotAt,
 } from '../rules/the-registry-of-content-effects.ts';
 import type { WhyAShotGlancesOffAUnit } from '../rules/the-registry-of-content-effects.ts';
+import type { ASideAsABattlesReportLinesNameIt } from './the-facts-a-battles-lines-record.ts';
 
 /** A unit of a force as the battle code hands it: an army, or a hole the guards skip. */
 type ForceUnit = ArmyInABattle | null | undefined;
@@ -127,12 +128,13 @@ export function archeryBlockedBy(
   });
 }
 // The line the report shows when the shooters see what hides and so lift a volley the force shot at would stop (Eyes
-// of the Forest lifts an Ambush; null when it does not apply).
+// of the Forest lifts an Ambush; null when it does not apply). The shooters' side is a record (plan P1-12d31); the
+// prose writes its label.
 export function eyesOfTheForestLine(
   defenderForce: readonly ForceUnit[] | null | undefined,
   terrain: string | null | undefined,
   shooters: readonly ForceUnit[] | null | undefined,
-  shooterName: string,
+  shooterName: ASideAsABattlesReportLinesNameIt,
 ) {
   if (!theShootersSeeWhatHides(shooters ?? [])) return null;
   const stoppedIfUnseen = theVolleyIsStopped({
@@ -187,11 +189,12 @@ export function abilityVolleys(firer: ForceUnit, isAtk: boolean): number {
 // _laNoTerrain, and not by the snapshot copier — so it persisted on the army object, was serialised
 // with game state, and a winged rider harried once was immune to Flak Screen for the rest of the
 // GAME. It is now deleted alongside those flags at every one of those five sites. If a new
-// battle-only flag is added, add it to all five.
+// battle-only flag is added, add it to all five. The gyrocopters' side is a record (plan P1-12d31); the prose writes its
+// label.
 export function applyFlakScreen(
   myForce: readonly ForceUnit[] | null | undefined,
   enemyForce: readonly ForceUnit[] | null | undefined,
-  myName: string,
+  myName: ASideAsABattlesReportLinesNameIt,
   narr: NarrativeLine[],
 ): void {
   const flyers = (enemyForce ?? []).filter(
