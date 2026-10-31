@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_CARRIER_BERTHS, KC_RIVAL_RACE, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_CARRIER_BERTHS, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
   countsAgainstBeastCommand,
   dispFloor,
@@ -9,6 +9,7 @@ import {
   itemUsableBy,
   skillFameLabelM,
   strengthLeftByADruidShortfall,
+  theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
@@ -385,21 +386,16 @@ export function renderReportView(report) {
               druidShort = 0;
             const lines = arr.map((a) => {
               // humanoid race affinity — a unit of the same race as your KING gets +20%, and a unit
-              // led by a character of the same race gets +20% (they STACK → +44% when both apply). Same
-              // base-strength boost the engine applies; a character's race is always humanoid, so
-              // Creatures/ Monsters/skeletons never match. Shown before terrain/tactics, like
-              // everything else here.
+              // led by a character of the same race gets +20% (they STACK → +44% when both apply) — and
+              // racial animosity: Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin
+              // commander. The engine's own rule (theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt, as the
+              // battle's armStr asks it; plan P1-11c5). Shown before terrain/tactics, like everything else here.
               const rawBs = unitBaseStrength(a);
-              const kingRaceMatch = !!(a.race && kingdom.race && a.race === kingdom.race);
-              const leadRaceMatch = !!(a.race && a.race === c.race);
-              // Racial animosity: Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin
-              // commander.
-              const _RIVAL_RACE_UI = { ...KC_RIVAL_RACE };
-              const feudLed = !!(a.race && c.race && _RIVAL_RACE_UI[a.race] === c.race);
-              let bs = rawBs;
-              if (kingRaceMatch) bs = Math.round(bs * 1.2);
-              if (leadRaceMatch) bs = Math.round(bs * 1.2);
-              if (feudLed) bs = Math.round(bs * 0.8);
+              const _kin = theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt(rawBs, a.race, kingdom.race, c.race);
+              const kingRaceMatch = _kin.itsKingIsOfItsKin;
+              const leadRaceMatch = _kin.itsLeaderIsOfItsKin;
+              const feudLed = _kin.aLeaderOfItsRivalKinLeadsIt;
+              let bs = _kin.strength;
               const creature = CREATURE_ARMIES_UI.has(a.type),
                 monster = MONSTER_ARMIES_UI.has(a.type);
               const _dn = druidNeedP(a, c, report); // skeleton / Druidic-creature / sd40 waivers, same-race Druid 1

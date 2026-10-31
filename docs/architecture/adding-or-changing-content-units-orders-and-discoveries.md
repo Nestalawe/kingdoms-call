@@ -25,10 +25,12 @@ rule there, once. Rules are still restated:
   `tests/lib/player-portal-copies.ts` checks (`effMagicLvl`, the army card's sea-transport line, the
   Explore forecast `exploreGainFor`; the level of a hero's Druid that `druidNeedP` and the army card's Druid lines
   feed the engine's Druid rule; and the Naval 8 the Move notice works out from the report's skills to feed the sea
-  lift, `seaLiftOfAColumn`; since P1-11c1 the order form's casting count, and the army card's kin and feud; its Cast
-  Spell tables are the engine folder's, made by calls since P1-11c3, and its target field's "the caster's province
-  only" asks the engine's mark check since P1-11c4: the parity test checks the form's eight declarations and pins each
-  target list), and the other forecasts and order checks
+  lift, `seaLiftOfAColumn`; since P1-11c1 the order form's casting count; its Cast Spell tables are the engine
+  folder's, made by calls since P1-11c3, and its target field's "the caster's province only" asks the engine's mark
+  check since P1-11c4: the parity test checks the form's eight declarations and pins each target list; the army card's
+  kin and feud ask the battle's own rule since P1-11c5, `theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt`, and the card
+  takes a Druid shortfall off after it, where the battle takes it off before: the parity test pins that rounding), and
+  the other forecasts and order checks
   whose engine rule is written inline (P1-11b, P1-19);
 - at order time and again at resolution time in the engine;
 - in the balance matrix's scripted realm: what the player portal sends, `doSubmitOrders`
