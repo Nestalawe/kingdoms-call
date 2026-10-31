@@ -217,7 +217,7 @@ export function botConsecrateOK(G, pi, c, X) {
   if (alignProto(G, 'Divine')) {
     // PROTOTYPE Divine: any hero with White 1+, on a province of the realm's bordering the home or holy ground, and the
     // rite's price in the chest (round 5)
-    if (effSkillOf(c, 'white', G.characters || []) < 2 || (pl.gold || 0) < CONSECRATE_COST) return false; // master list: White 3 (the signature +1 counts)
+    if (effSkillOf(c, 'white', G.characters || []) < 1 || (pl.gold || 0) < CONSECRATE_COST) return false; // round 21: White 2 (the signature +1 counts)
     const home = botHomeId(G, pi);
     const list = consecratedIds(pl) || [];
     if (X.id === home || list.includes(X.id)) return false;
@@ -298,7 +298,6 @@ export function botSignaturePre(G, pi, c, P, L) {
     case 'Undead': {
       // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it); round 20: under the kit, at a held barrow only
       if ((sk.necromancy || 0) < 1 || !botSees(G, pi, P.id) || !(P.battleGraves || []).length) return null;
-      if (alignProto(G, 'Undead') && !(P.owner === pi && (P.features || []).some(isBarrow))) return null;
       if (L.budget < 2) return null;
       L.budget -= 2;
       L.upkeep += 1;

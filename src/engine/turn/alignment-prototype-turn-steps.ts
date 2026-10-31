@@ -33,7 +33,7 @@ const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
  *  every 4th; rounds 8-18 Evil 5 then 7, Druidic 4 then 6). */
 export const WILD_BREED_EVERY = 4;
 export const WILD_BREED_EVERY_DRUIDIC = 3;
-/** The most companies a kit will raise into one garrison on its own (the Druids' beasts have no cap: master list). */
+/** The most companies a kit will raise into one garrison on its own (round 21: the Druids' beasts too). */
 export const KIT_GARRISON_CAP = 3;
 export const FOREST_HEAL_SHARE = 0.25;
 export const TERROR_FADE_EVERY = 3;
@@ -94,7 +94,7 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     const breedEvery = align === 'Druidic' ? WILD_BREED_EVERY_DRUIDIC : WILD_BREED_EVERY;
     if ((align === 'Druidic' || align === 'Evil') && isWild(pv) && G.turn % breedEvery === 0) {
       const kind = pv.armyTypes.find((t) => (align === 'Druidic' ? CREATURES.has(t) : MONSTERS.has(t)));
-      if (kind && (align === 'Druidic' || pv.garrisonArmies.length < KIT_GARRISON_CAP)) {
+      if (kind && pv.garrisonArmies.length < KIT_GARRISON_CAP) { // round 21: the Druids' beasts to 3 a province too (master list: no cap)
         const u: Army = { type: kind, quality: 'Average', race: pv.race ?? 'Primal', unitName: armyUnitNameOf(kind) };
         pv.garrisonArmies.push(u);
         line(

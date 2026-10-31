@@ -55,10 +55,10 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
       });
       return;
     }
-    if (effStat(turnContext, c, 'white') < 3) {
+    if (effStat(turnContext, c, 'white') < 2) {
       emit(turnContext, {
         type: 'system',
-        text: `${c.name}: consecration flows from the White arts — White 3 is needed to sanctify ground (master list).`,
+        text: `${c.name}: consecration flows from the White arts — White 2 is needed to sanctify ground (round 21; the master list said 3).`,
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       });
@@ -469,16 +469,9 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   const { G } = turnContext;
   // PROTOTYPE Undead (round 20): the corpse-carters work only at a barrow the realm holds (the master list had removed the
   // order altogether; round 19 showed the kit cannot live on the spell alone). 2g a company, one grave a phase.
+  // round 21: everywhere, as today (round 20: at a held barrow only; the master list removed the order)
   const _kitUndead = protoAlignOf(G, c.player) === 'Undead';
-  if (_kitUndead && !(prov.owner === c.player && (prov.features || []).some((f) => f && f.ritualSite && f.siteKind === 'barrow'))) {
-    emit(turnContext, {
-      type: 'system',
-      text: `${c.name}: the corpse-carters work only the barrows of the realm — elsewhere the dead are raised by Necromancy alone.`,
-      audience: { actor: c.player, realms: [c.player] },
-      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-    });
-    return;
-  }
+  void _kitUndead;
   if (G.players[c.player]?.alignment !== 'Undead') {
     emit(turnContext, {
       type: 'system',

@@ -72,7 +72,7 @@ export const isCreatureProvince = (pv: Province): boolean => isWild(pv) && pv.ar
 export const isMonsterProvince = (pv: Province): boolean => isWild(pv) && pv.armyTypes.some((t) => MONSTERS.has(t));
 export const BEACONS_CAP = 6; // round 7 (rounds 3-6: 4; round 2: 6)
 export const CALL_OF_THE_WILD_RANGE = 3;
-export const RECLAIM_TURNS = 3; // master list (rounds 2-18: 5)
+export const RECLAIM_TURNS = 5; // round 21 (master list: 3; rounds 2-18: 5)
 export const GRAVE_GOODS_PER_PROVINCE = 4; // round 7 (rounds 3-6: 3; round 2: 2)
 // round 3's other tunings
 export const CONDOTTIERI_MULT = 1.5; // Neutral: a hired company's strength (round 8; rounds 3-7: 1.3)
@@ -82,7 +82,7 @@ export const DARK_PACT_QUALITY = 'Average'; // Evil: what the pact brings (round
 export const BARROW_GRAVES_HUMANOID = 3; // Undead (master list): a held humanoid barrow keeps three graves filled
 export const BARROW_GRAVES_WILD = 1; // and a creature or monster barrow one
 export const WOOD_WAGE_MULT = 1 / 2; // Druidic: what a beast in the woods pays of its wage (master list: half; round 6: two-thirds)
-export const BLOOD_HARVEST_KIT_EXTRA = 2; // Pagan (round 8): +2g a unit on Blood Harvest (3g a unit in all; rounds 4-7: 2g)
+export const BLOOD_HARVEST_KIT_EXTRA = 1; // Pagan (round 21): +1g a unit on Blood Harvest (2g a unit in all; rounds 8-20: 3g)
 export const BLOOD_HARVEST_RISE_CHANCE = 0.5; // Pagan (master list): per unit slain, the chance one winning company rises a tier
 export const BEAST_FRIEND_EXTRA = 2;
 export const HOLY_SITE_NAMES = [
@@ -230,7 +230,7 @@ export function paganFavourPoints(G: GameState, pi: number): number {
   return heldSites(G, pi, isPaganStones).length + activatedSites(G, pi);
 }
 export const FAVOUR_PER_POINT = 0.1; // round 20 (master list: 0.15)
-export const FAVOUR_CAP = 1.6; // round 20 (master list: 1.9)
+export const FAVOUR_CAP = 1.5; // round 21 (round 20: 1.6; master list: 1.9)
 export const OLD_STONES_MULT = 1.9; // defending a stones province of the realm
 /** The Favour of the Old Gods (round 20): ×(1 + 0.1 × points), to ×1.6 at 6 points (master list: 0.15 a point, to ×1.9). */
 export function paganFavourMult(G: GameState, pi: number): number {
@@ -393,7 +393,7 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
 export function protoProvinceTaxAdd(G: GameState, pl: Realm, pv: Province, taxSoFar: number): number {
   if (pv.terrain === 'sea' || !alignProto(G, pl.alignment)) return 0;
   const base = pv.tax;
-  if (pl.alignment === 'Good' && base <= 3 && !isWild(pv)) return 3; // round 8: +3 (rounds 1-7: +2)
+  if (pl.alignment === 'Good' && base <= 4 && !isWild(pv)) return 3; // round 21: tax 4 or less (master list: 3 or less); round 8: +3
   if (pl.alignment === 'Neutral' && base >= 4) return Math.round(taxSoFar * 0.5);
   return 0;
 }
