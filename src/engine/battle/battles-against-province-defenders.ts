@@ -1591,18 +1591,26 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     const _noDefLeft = defenders.length === 0;
     if (_noDefLeft)
       narrate(narrative, {
-        kind: 'the attacker sweeps into a province with no one left to stand against him',
-        cName: atkSide,
+        kind: 'a battle is decided',
+        battle: "against a province's defenders",
+        winnersRole: 'the attacker',
+        whatBecomesOfTheProvince: 'swept into, with no one left to stand',
+        attackersSide: atkSide,
+        theDefenders: guardName,
         provName: prov.name,
       });
     else
       narrate(narrative, {
-        kind: 'the attacker wins the battle against the defenders',
+        kind: 'a battle is decided',
+        battle: "against a province's defenders",
+        winnersRole: 'the attacker',
+        whatBecomesOfTheProvince: 'the defenders are beaten',
         severity,
         margRatio,
-        cName: atkSide,
         winVerbIndex: Math.floor(kcRng() * THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH),
-        guardName,
+        attackersSide: atkSide,
+        theDefenders: guardName,
+        provName: prov.name,
       });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: atkSide });
     for (const p of _npcPursuitsAtk)
@@ -1747,13 +1755,17 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     // combatVsNPC also fights a PLAYER's unled garrison — that garrison holds its walls; it is
     // not a neutral band, so the 'neutral defenders never retreat' tag is wrong there.
     narrate(narrative, {
-      kind: 'the attacker is repelled by the defenders',
-      cName: atkSide,
+      kind: 'a battle is decided',
+      battle: "against a province's defenders",
+      winnersRole: 'the defender',
+      whatBecomesOfTheProvince: 'held by its defenders',
       severity,
       margRatio,
-      defName2: _defSide2(defHero?.name),
+      attackersSide: atkSide,
+      theDefenders: _defSide2(defHero?.name),
       aPlayersGarrison: prov.owner != null && !neutralGuardHero,
       atSea: prov.terrain === 'sea', // no walls at sea (2026-09-23b)
+      provName: prov.name,
     });
     narrate(narrative, {
       kind: "the defender's casualties begin",

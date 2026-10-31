@@ -355,6 +355,171 @@ export type AUnitAsALineNamesIt =
  *  ("a pyrrhic battle", "an annihilating engagement"). */
 export type TheSeverityOfABattle = 'pyrrhic' | 'narrow' | 'clear' | 'decisive' | 'crushing' | 'annihilating';
 
+// ── A BATTLE'S OUTCOME, ONE KIND FOR EACH AUDIENCE (plan P1-12d26: P1-12's Decisions of 2026-10-31, Decision 2) ──
+// A battle's outcome was 22 kinds, one for each sentence; it is two, merged by sense within one audience: a battle is
+// decided (the fight's: a battle between two hosts or against a province's defenders, told in the fight's narrative)
+// and a contest for a province is decided (its event's: a hero's newly gathered host, a stalled battle, each filed on
+// its own). Each holds which battle or contest it was, its sides, the winner's role or what becomes of the province, as
+// slugs, and the values its sentence is written from; the prose switches on them to the same 22 sentences
+// (theWordsOfABattleDecided, theWordsOfAContestForAProvinceDecided). A reader of the outcome reads one kind for each
+// audience.
+
+/** A battle between two hosts or against a province's defenders is decided, as the fight's narrative tells it: which
+ *  battle, the two sides (the attacker's, and the defender's or the defenders), the winner's role, and what becomes of
+ *  the province: seized, held by the defender's survivors (the head line rewritten in place when the beaten side holds
+ *  the field), the attacker driven out or not, the beaten host staying on as the stronger (a line of its own after the
+ *  casualties), the attacker sweeping in with no one left to stand, the defenders beaten (what becomes of the province
+ *  is told after), the defenders holding their ground. Its audience: the fight's. */
+export type ABattleIsDecided = { kind: 'a battle is decided' } & (
+  | {
+      battle: 'between two hosts';
+      winnersRole: 'the attacker';
+      whatBecomesOfTheProvince: 'seized' | "held by the defender's survivors";
+      severity: TheSeverityOfABattle;
+      winVerbIndex: number;
+      attackersSide: ASideOfABattle;
+      defendersSide: ASideOfABattle;
+      provName: string;
+    }
+  | {
+      battle: 'between two hosts';
+      winnersRole: 'the defender';
+      whatBecomesOfTheProvince: 'the attacker is driven out' | 'the attacker is not driven out';
+      severity: TheSeverityOfABattle;
+      attackersSide: ASideOfABattle;
+      defendersSide: ASideOfABattle;
+      provName: string;
+    }
+  | {
+      battle: 'between two hosts';
+      winnersRole: 'the attacker' | 'the defender';
+      whatBecomesOfTheProvince: 'the beaten host stays, still the stronger';
+      attackersSide: ASideOfABattle;
+      defendersSide: ASideOfABattle;
+      stayingHostStrength: number;
+      victorsStrength: number;
+      provName: string;
+    }
+  | {
+      battle: "against a province's defenders";
+      winnersRole: 'the attacker';
+      whatBecomesOfTheProvince: 'swept into, with no one left to stand';
+      attackersSide: ASideOfABattle;
+      theDefenders: TheDefendersOfAProvince;
+      provName: string;
+    }
+  | {
+      battle: "against a province's defenders";
+      winnersRole: 'the attacker';
+      whatBecomesOfTheProvince: 'the defenders are beaten';
+      severity: TheSeverityOfABattle;
+      margRatio: number;
+      winVerbIndex: number;
+      attackersSide: ASideOfABattle;
+      theDefenders: TheDefendersOfAProvince;
+      provName: string;
+    }
+  | {
+      battle: "against a province's defenders";
+      winnersRole: 'the defender';
+      whatBecomesOfTheProvince: 'held by its defenders';
+      severity: TheSeverityOfABattle;
+      margRatio: number;
+      attackersSide: ASideOfABattle;
+      theDefenders: TheDefendersOfAProvince;
+      aPlayersGarrison: boolean;
+      atSea: boolean;
+      provName: string;
+    }
+);
+
+/** A contest for a province is decided, as a line filed on its own tells it: which contest (a hero's newly gathered
+ *  host in the province, a stalled battle against its defenders, a stalled battle between two hosts), and what becomes
+ *  of the province: taken with no one to defend it (on a war front, or with fresh troops), still held (by its guard, by
+ *  leaderless defenders, by enemy forces, by its garrison), claimed, the attacker breaking off and retreating, secured
+ *  by the winner, secured unopposed. Its audience: its event's. */
+export type AContestForAProvinceIsDecided = { kind: 'a contest for a province is decided' } & (
+  | {
+      contest: 'a host gathered in the province';
+      whatBecomesOfTheProvince: 'taken with no one to defend it';
+      onAWarFront: boolean;
+      cName: string;
+      provName: string;
+      playerName: string;
+    }
+  | {
+      contest: 'a host gathered in the province';
+      whatBecomesOfTheProvince: 'still held';
+      heldBy: 'its guard';
+      theHost: ASideOfABattle;
+      provName: string;
+      guardName: string;
+      guardUnitCount: number;
+    }
+  | {
+      contest: 'a host gathered in the province';
+      whatBecomesOfTheProvince: 'still held';
+      heldBy: 'leaderless defenders';
+      theHost: ASideOfABattle;
+      provName: AValueInALinesWords;
+      leaderlessUnitCount: number;
+    }
+  | {
+      contest: 'a host gathered in the province';
+      whatBecomesOfTheProvince: 'still held';
+      heldBy: 'enemy forces';
+      theHost: ASideOfABattle;
+      provName: string;
+    }
+  | {
+      contest: 'a host gathered in the province';
+      whatBecomesOfTheProvince: 'still held';
+      heldBy: 'its garrison';
+      theHost: ASideOfABattle;
+      provName: AValueInALinesWords;
+      atSea: boolean;
+    }
+  | {
+      contest: 'a host gathered in the province';
+      whatBecomesOfTheProvince: 'claimed';
+      theHost: ASideOfABattle;
+      provName: string;
+      playerName: string;
+    }
+  | {
+      contest: "a stalled battle against a province's defenders";
+      whatBecomesOfTheProvince: 'still held';
+      heldBy: 'its guard';
+      guardName: string;
+      provName: string;
+    }
+  | {
+      contest: "a stalled battle against a province's defenders";
+      whatBecomesOfTheProvince: 'still held';
+      heldBy: 'leaderless defenders';
+      leaderlessUnitCount: number;
+      provName: AValueInALinesWords;
+    }
+  | {
+      contest: "a stalled battle against a province's defenders";
+      whatBecomesOfTheProvince: 'claimed';
+      theHost: ASideOfABattle;
+      provName: string;
+    }
+  | {
+      contest: "a stalled battle against a province's defenders";
+      whatBecomesOfTheProvince: 'the attacker breaks off and retreats';
+      theHost: ASideOfABattle;
+      retreatToName: AValueInALinesWords;
+    }
+  | {
+      contest: 'a stalled battle between two hosts';
+      whatBecomesOfTheProvince: 'secured by the winner' | 'secured unopposed';
+      theHost: ASideOfABattle;
+      provName: string;
+    }
+);
+
 /** One unit of a force drawn up for battle, as its header row shows it. */
 export interface AUnitOfAForceDrawnUp {
   type: string;
@@ -407,6 +572,8 @@ export type WhyACommandersForceIsDemoralised =
 /** One sentence of a battle's lines, each with its kind: one kind per sentence, one field per value it was written
  *  with. Their audience: the fight's, or for those filed on their own (not in a fight's narrative), their event's. */
 export type TheFactOfOneOfABattlesSentences =
+  | ABattleIsDecided
+  | AContestForAProvinceIsDecided
   | {
       kind: "the attacker's lightning advance catches the defender unready";
       atkName: AValueInALinesWords;
@@ -614,14 +781,6 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: 'a unit is cut down with no escape'; unitName: AUnitAsALineNamesIt }
   | { kind: "a side's other forces survive the engagement"; someUnitsFateIsToldAbove: boolean }
   | { kind: 'no units were left on the field to count' }
-  | {
-      kind: 'the attacker wins the battle and seizes the province';
-      severity: TheSeverityOfABattle;
-      atkName: ASideOfABattle;
-      winVerbIndex: number;
-      defName: ASideOfABattle;
-      provName: string;
-    }
   | { kind: "the attacker's casualties begin"; atkName: ASideOfABattle }
   | { kind: "the defender's casualties begin"; defName: ASideOfABattle | TheDefendersOfAProvince }
   | { kind: "the loser's dwarven guard leave the free lances no broken backs"; loserName: string; winnerName: string }
@@ -654,49 +813,12 @@ export type TheFactOfOneOfABattlesSentences =
       provName: string;
     }
   | { kind: 'the defender has nowhere to retreat'; defName: ASideOfABattle }
-  | {
-      kind: "the defender's stronger host is pushed back but stays";
-      defName: ASideOfABattle;
-      stayingHostStrength: number;
-      victorsStrength: number;
-      provName: string;
-    }
   | { kind: "the loser's force is destroyed to the last"; loserName: ASideOfABattle }
   | { kind: "the loser's dwarven guard withdraw behind a shield fort"; loserName: ASideOfABattle }
   | { kind: 'the loser retreats to a province'; loserName: ASideOfABattle; retreatToName: string }
   | { kind: "the loser's surviving forces"; loserName: ASideOfABattle; survivingForces: AUnitAsDescribeArmyNamesIt[] }
   | { kind: "the loser's forces are completely destroyed and he retreats alone"; loserName: ASideOfABattle }
-  | {
-      kind: "the attacker wins the battle but the defender's survivors hold the province";
-      severity: TheSeverityOfABattle;
-      atkName: ASideOfABattle;
-      winVerbIndex: number;
-      defName: ASideOfABattle;
-      defName2: ASideOfABattle;
-      provName: string;
-    }
-  | {
-      kind: "the attacker's assault is repelled and driven from the province";
-      atkName: ASideOfABattle;
-      severity: TheSeverityOfABattle;
-      defName: ASideOfABattle;
-      provName: string;
-    }
   | { kind: 'the attacker has nowhere to retreat'; atkName: ASideOfABattle; atSea: boolean }
-  | {
-      kind: "the attacker's stronger host is thrown back but stays";
-      atkName: ASideOfABattle;
-      stayingHostStrength: number;
-      victorsStrength: number;
-      provName: string;
-    }
-  | {
-      kind: "the attacker's assault is repelled but not driven from the province";
-      atkName: ASideOfABattle;
-      severity: TheSeverityOfABattle;
-      defName: ASideOfABattle;
-      provName: string;
-    }
   | { kind: "a commander's force is demoralised"; commanderName: string; why: WhyACommandersForceIsDemoralised }
   | {
       kind: 'a commander rides out and challenges the other to single combat';
@@ -846,19 +968,6 @@ export type TheFactOfOneOfABattlesSentences =
   | { kind: "the attacker's troops fight with fanatical zeal"; cName: ASideOfABattle }
   | { kind: "the attacker's realm discoveries strengthen his army"; discoveriesArmyBonus: number }
   | { kind: "the attacker's free lances find no room to ride"; cName: ASideOfABattle; terrain: string }
-  | {
-      kind: 'the attacker sweeps into a province with no one left to stand against him';
-      cName: ASideOfABattle;
-      provName: string;
-    }
-  | {
-      kind: 'the attacker wins the battle against the defenders';
-      severity: TheSeverityOfABattle;
-      margRatio: number;
-      cName: ASideOfABattle;
-      winVerbIndex: number;
-      guardName: TheDefendersOfAProvince;
-    }
   | { kind: "the attacker's warg riders halve his losses"; cName: ASideOfABattle }
   | { kind: 'every defending unit was lost before the lines closed' }
   | { kind: "the defenders' dwarven guard leave the attacker's free lances no broken backs"; cName: ASideOfABattle }
@@ -874,15 +983,6 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | { kind: 'the defenders have nowhere to retreat and hold a shield fort'; provName: string }
   | { kind: 'the defenders have nowhere to retreat and take further losses'; provName: string }
-  | {
-      kind: 'the attacker is repelled by the defenders';
-      cName: ASideOfABattle;
-      severity: TheSeverityOfABattle;
-      margRatio: number;
-      defName2: TheDefendersOfAProvince;
-      aPlayersGarrison: boolean;
-      atSea: boolean;
-    }
   | {
       kind: 'a defending unit is destroyed in the fighting';
       defendingUnitName: AUnitAsALineNamesIt;
@@ -999,18 +1099,6 @@ export type TheFactOfOneOfABattlesSentences =
     }
   | { kind: "a hero's new host is still forming up in a province"; cName: string; provName: string }
   | {
-      kind: 'no one stands to defend a province and the hero takes control of it';
-      provName: string;
-      cName: string;
-      playerName: string;
-    }
-  | {
-      kind: 'with fresh troops the hero takes control of a province';
-      cName: string;
-      provName: string;
-      playerName: string;
-    }
-  | {
       kind: 'the hero turns a newly gathered host on a province and a battle is initiated';
       cName: string;
       realmTag: string | null;
@@ -1067,36 +1155,6 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "the province's garrison is overwhelmed as the province falls";
       provName: string;
       overrunUnits: AUnitAsDescribeArmyNamesIt[];
-    }
-  | {
-      kind: 'the hero has the better of the fighting but the guard still holds the field';
-      hostName: ASideOfABattle;
-      provName: string;
-      guardName: string;
-      guardUnitCount: number;
-    }
-  | {
-      kind: 'the hero has the better of the fighting but leaderless defenders still hold the field';
-      hostName: ASideOfABattle;
-      provName: AValueInALinesWords;
-      leaderlessUnitCount: number;
-    }
-  | {
-      kind: 'the hero has the better of the fighting but enemy forces still hold their ground';
-      hostName: ASideOfABattle;
-      provName: string;
-    }
-  | {
-      kind: "the hero has the better of the fighting but the province's garrison still holds";
-      hostName: ASideOfABattle;
-      provName: AValueInALinesWords;
-      atSea: boolean;
-    }
-  | {
-      kind: 'the hero overcomes the defenders and claims the province for his realm';
-      hostName: ASideOfABattle;
-      provName: string;
-      playerName: string;
     }
   | {
       kind: "the province's owner learns his defenders still hold against the hero";
@@ -1230,22 +1288,6 @@ export type TheFactOfOneOfABattlesSentences =
       attackersHostName: ASideOfABattle;
       defendersName: TheDefendersOfAProvince;
     }
-  | { kind: 'the guard still holds a contested province with survivors'; guardName: string; provName: string }
-  | {
-      kind: 'commanderless survivors still contest a province';
-      survivingUnitCount: number;
-      provName: AValueInALinesWords;
-    }
-  | {
-      kind: 'the attacker finally overcomes the defenders and claims a province';
-      attackersHostName: ASideOfABattle;
-      provName: string;
-    }
-  | {
-      kind: 'the attacker breaks off a stalled battle and retreats';
-      attackersHostName: ASideOfABattle;
-      retreatToName: AValueInALinesWords;
-    }
   | {
       kind: 'the attacker is pinned in a province with no way out';
       attackersHostName: ASideOfABattle;
@@ -1272,8 +1314,6 @@ export type TheFactOfOneOfABattlesSentences =
       attackersHostName: ASideOfABattle;
       defendersHostName: ASideOfABattle;
     }
-  | { kind: 'the winner of a stalled battle secures a province'; winnersHostName: ASideOfABattle; provName: string }
-  | { kind: 'a host holds a province unopposed and secures it'; hostName: ASideOfABattle; provName: string }
   | { kind: 'the eagle riders mark the forest wardens and spoil the ambush'; shooterName: string }
   | { kind: 'the gyrocopters harry a flying unit off its line'; targetUnitName: string; strengthLost: number }
   | { kind: "a side's gyrocopters climb to meet the enemy's flyers"; sideName: string; engagedCount: number }
@@ -1310,6 +1350,8 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   Record<TheFactOfABattlesLine['kind'], Extract<TheAudienceOfAKindOfLine, "the fight's" | "its event's">>
 > = {
   'a force drawn up for battle': "the fight's",
+  'a battle is decided': "the fight's",
+  'a contest for a province is decided': "its event's",
   "a battle's losses, tallied from its lines": "the fight's",
   "the attacker's lightning advance catches the defender unready": "the fight's",
   'the attacker moves into the province and a battle is initiated': "the fight's",
@@ -1377,7 +1419,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   'a unit is cut down with no escape': "the fight's",
   "a side's other forces survive the engagement": "the fight's",
   'no units were left on the field to count': "the fight's",
-  'the attacker wins the battle and seizes the province': "the fight's",
   "the attacker's casualties begin": "the fight's",
   "the defender's casualties begin": "the fight's",
   "the loser's dwarven guard leave the free lances no broken backs": "the fight's",
@@ -1388,17 +1429,12 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "the loser's skeletal host stands its ground in a deathless march": "the fight's",
   "the loser's dwarven guard hold a shield fort with no road out": "the fight's",
   'the defender has nowhere to retreat': "the fight's",
-  "the defender's stronger host is pushed back but stays": "the fight's",
   "the loser's force is destroyed to the last": "the fight's",
   "the loser's dwarven guard withdraw behind a shield fort": "the fight's",
   'the loser retreats to a province': "the fight's",
   "the loser's surviving forces": "the fight's",
   "the loser's forces are completely destroyed and he retreats alone": "the fight's",
-  "the attacker wins the battle but the defender's survivors hold the province": "the fight's",
-  "the attacker's assault is repelled and driven from the province": "the fight's",
   'the attacker has nowhere to retreat': "the fight's",
-  "the attacker's stronger host is thrown back but stays": "the fight's",
-  "the attacker's assault is repelled but not driven from the province": "the fight's",
   "a commander's force is demoralised": "the fight's",
   'a commander rides out and challenges the other to single combat': "the fight's",
   'the challenged commander will not answer the call': "the fight's",
@@ -1460,8 +1496,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "the attacker's troops fight with fanatical zeal": "the fight's",
   "the attacker's realm discoveries strengthen his army": "the fight's",
   "the attacker's free lances find no room to ride": "the fight's",
-  'the attacker sweeps into a province with no one left to stand against him': "the fight's",
-  'the attacker wins the battle against the defenders': "the fight's",
   "the attacker's warg riders halve his losses": "the fight's",
   'every defending unit was lost before the lines closed': "the fight's",
   "the defenders' dwarven guard leave the attacker's free lances no broken backs": "the fight's",
@@ -1469,7 +1503,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   'a defending unit is destroyed in the rout': "the fight's",
   'the defenders have nowhere to retreat and hold a shield fort': "the fight's",
   'the defenders have nowhere to retreat and take further losses': "the fight's",
-  'the attacker is repelled by the defenders': "the fight's",
   'a defending unit is destroyed in the fighting': "the fight's",
   "the guard's host is destroyed and he is a masterless hero": "the fight's",
   "the attacker's dwarven guard leave the defenders' free lances no broken backs": "the fight's",
@@ -1495,8 +1528,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   'a beaten unit has had enough and disbands': "the fight's",
   "a hero not at war with the province's realm gains a host inside it": "its event's",
   "a hero's new host is still forming up in a province": "its event's",
-  'no one stands to defend a province and the hero takes control of it': "its event's",
-  'with fresh troops the hero takes control of a province': "its event's",
   'the hero turns a newly gathered host on a province and a battle is initiated': "the fight's",
   'the defenders riding in were keeping watch and are already in the line': "the fight's",
   'the defender is reinforced by other heroes in the defence of a province': "the fight's",
@@ -1506,11 +1537,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "the province's standing troops fall back with the defender": "its event's",
   "the province's standing troops fall in with the defender as the battle continues": "its event's",
   "the province's garrison is overwhelmed as the province falls": "its event's",
-  'the hero has the better of the fighting but the guard still holds the field': "its event's",
-  'the hero has the better of the fighting but leaderless defenders still hold the field': "its event's",
-  'the hero has the better of the fighting but enemy forces still hold their ground': "its event's",
-  "the hero has the better of the fighting but the province's garrison still holds": "its event's",
-  'the hero overcomes the defenders and claims the province for his realm': "its event's",
   "the province's owner learns his defenders still hold against the hero": "its event's",
   "the province's owner learns the hero was beaten back": "its event's",
   "a beaten guard's surviving unit breaks ranks and flees as mercenaries": "its event's",
@@ -1531,16 +1557,10 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   'the scouting side chooses the front': "the fight's",
   'each side shifts its battle line': "the fight's",
   "an unfinished battle against a province's defenders resumes": "its event's",
-  'the guard still holds a contested province with survivors': "its event's",
-  'commanderless survivors still contest a province': "its event's",
-  'the attacker finally overcomes the defenders and claims a province': "its event's",
-  'the attacker breaks off a stalled battle and retreats': "its event's",
   'the attacker is pinned in a province with no way out': "its event's",
   'a contest for a province lapses as the realms are no longer at war': "its event's",
   "war comes to a province two realms' hosts share": "its event's",
   'an unfinished battle between two hosts resumes': "its event's",
-  'the winner of a stalled battle secures a province': "its event's",
-  'a host holds a province unopposed and secures it': "its event's",
   'the eagle riders mark the forest wardens and spoil the ambush': "the fight's",
   'the gyrocopters harry a flying unit off its line': "the fight's",
   "a side's gyrocopters climb to meet the enemy's flyers": "the fight's",

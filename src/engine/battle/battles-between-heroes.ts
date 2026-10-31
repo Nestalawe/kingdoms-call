@@ -1546,11 +1546,14 @@ export function combatVsChar(turnContext, atk, def, prov) {
     const _winVerbIndex = Math.floor(kcRng() * THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH),
       _headIdx = narrative.length;
     narrate(narrative, {
-      kind: 'the attacker wins the battle and seizes the province',
+      kind: 'a battle is decided',
+      battle: 'between two hosts',
+      winnersRole: 'the attacker',
+      whatBecomesOfTheProvince: 'seized',
       severity,
-      atkName: atkSide,
       winVerbIndex: _winVerbIndex,
-      defName: defSide,
+      attackersSide: atkSide,
+      defendersSide: defSide,
       provName: prov.name,
     });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: atkSide }); // Winning attacker
@@ -1671,8 +1674,12 @@ export function combatVsChar(turnContext, atk, def, prov) {
     } else if (_defStays) {
       // still the stronger host — the defender refuses to yield and fights on.
       narrate(narrative, {
-        kind: "the defender's stronger host is pushed back but stays",
-        defName: defSide,
+        kind: 'a battle is decided',
+        battle: 'between two hosts',
+        winnersRole: 'the attacker',
+        whatBecomesOfTheProvince: 'the beaten host stays, still the stronger',
+        attackersSide: atkSide,
+        defendersSide: defSide,
         stayingHostStrength: _stayLo,
         victorsStrength: _stayWi,
         provName: prov.name,
@@ -1721,23 +1728,17 @@ export function combatVsChar(turnContext, atk, def, prov) {
       if (!defRetreatTo.characters.includes(def.id)) defRetreatTo.characters.push(def.id);
       def.location = defRetreatTo.id; // a forced retreat does NOT consume the character's move points.
     }
-    if (_heldField)
-      narrative[_headIdx] = {
-        kind: "the attacker wins the battle but the defender's survivors hold the province",
-        severity,
-        atkName: atkSide,
-        winVerbIndex: _winVerbIndex,
-        defName: defSide,
-        defName2: defSide,
-        provName: prov.name,
-      };
+    if (_heldField) narrative[_headIdx].whatBecomesOfTheProvince = "held by the defender's survivors";
   } else {
     const _headIdx = narrative.length;
     narrate(narrative, {
-      kind: "the attacker's assault is repelled and driven from the province",
-      atkName: atkSide,
+      kind: 'a battle is decided',
+      battle: 'between two hosts',
+      winnersRole: 'the defender',
+      whatBecomesOfTheProvince: 'the attacker is driven out',
       severity,
-      defName: defSide,
+      attackersSide: atkSide,
+      defendersSide: defSide,
       provName: prov.name,
     });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: atkSide }); // Losing attacker
@@ -1859,8 +1860,12 @@ export function combatVsChar(turnContext, atk, def, prov) {
     } else if (_atkStays) {
       // still the stronger host — the attacker refuses to break off and fights on.
       narrate(narrative, {
-        kind: "the attacker's stronger host is thrown back but stays",
-        atkName: atkSide,
+        kind: 'a battle is decided',
+        battle: 'between two hosts',
+        winnersRole: 'the defender',
+        whatBecomesOfTheProvince: 'the beaten host stays, still the stronger',
+        attackersSide: atkSide,
+        defendersSide: defSide,
         stayingHostStrength: _stayLo,
         victorsStrength: _stayWi,
         provName: prov.name,
@@ -1908,14 +1913,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
       if (!retreatTo.characters.includes(atk.id)) retreatTo.characters.push(atk.id);
       atk.location = retreatTo.id; // a forced retreat does NOT consume the character's move points.
     }
-    if (_heldField)
-      narrative[_headIdx] = {
-        kind: "the attacker's assault is repelled but not driven from the province",
-        atkName: atkSide,
-        severity,
-        defName: defSide,
-        provName: prov.name,
-      };
+    if (_heldField) narrative[_headIdx].whatBecomesOfTheProvince = 'the attacker is not driven out';
   }
 
   // Battle-magic strength reductions last only for this battle — units recover afterward.

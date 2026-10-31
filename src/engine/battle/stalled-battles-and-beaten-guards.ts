@@ -183,13 +183,19 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             type: 'combat',
             fact: liveGuard
               ? {
-                  kind: 'the guard still holds a contested province with survivors',
+                  kind: 'a contest for a province is decided',
+                  contest: "a stalled battle against a province's defenders",
+                  whatBecomesOfTheProvince: 'still held',
+                  heldBy: 'its guard',
                   guardName: guard.name.replace(' (wandering)', ''),
                   provName: prov.name,
                 }
               : {
-                  kind: 'commanderless survivors still contest a province',
-                  survivingUnitCount: surv.length,
+                  kind: 'a contest for a province is decided',
+                  contest: "a stalled battle against a province's defenders",
+                  whatBecomesOfTheProvince: 'still held',
+                  heldBy: 'leaderless defenders',
+                  leaderlessUnitCount: surv.length,
                   provName: prov.name,
                 },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
@@ -217,8 +223,10 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           emit(turnContext, {
             type: 'combat',
             fact: {
-              kind: 'the attacker finally overcomes the defenders and claims a province',
-              attackersHostName: theSideOfAForce(attacker),
+              kind: 'a contest for a province is decided',
+              contest: "a stalled battle against a province's defenders",
+              whatBecomesOfTheProvince: 'claimed',
+              theHost: theSideOfAForce(attacker),
               provName: prov.name,
             },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
@@ -269,8 +277,10 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             emit(turnContext, {
               type: 'combat',
               fact: {
-                kind: 'the attacker breaks off a stalled battle and retreats',
-                attackersHostName: theSideOfAForce(attacker),
+                kind: 'a contest for a province is decided',
+                contest: "a stalled battle against a province's defenders",
+                whatBecomesOfTheProvince: 'the attacker breaks off and retreats',
+                theHost: theSideOfAForce(attacker),
                 retreatToName: dest.name,
               },
               audience: { actor: attacker.player, realms: [attacker.player] },
@@ -488,8 +498,10 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         emit(turnContext, {
           type: 'combat',
           fact: {
-            kind: 'the winner of a stalled battle secures a province',
-            winnersHostName: theSideOfAForce(winner),
+            kind: 'a contest for a province is decided',
+            contest: 'a stalled battle between two hosts',
+            whatBecomesOfTheProvince: 'secured by the winner',
+            theHost: theSideOfAForce(winner),
             provName: prov.name,
           },
           audience: { actor: winner.player, realms: [], seen: 'battle' },
@@ -550,8 +562,10 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       emit(turnContext, {
         type: 'combat',
         fact: {
-          kind: 'a host holds a province unopposed and secures it',
-          hostName: theSideOfAForce(lone),
+          kind: 'a contest for a province is decided',
+          contest: 'a stalled battle between two hosts',
+          whatBecomesOfTheProvince: 'secured unopposed',
+          theHost: theSideOfAForce(lone),
           provName: prov.name,
         },
         audience: { actor: lone.player, realms: [], seen: 'battle' },
