@@ -376,8 +376,8 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // command, not the fallen leader — the setup lines and the death notice above keep the name.
   const cName = atkCmdrSlain ? `${c.name}'s leaderless host` : c.name; // slain → the host acts, not the dead commander
   // The attacker's side as the facts hold it (plan P1-12d23): the record the label above is written from; the prose
-  // writes the label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too, and since P1-12d31 the lines
-  // before the volleys.
+  // writes the label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too, since P1-12d31 the lines
+  // before the volleys, and since P1-12d32 the sea lift's.
   const atkSide = { heroName: c.name, leaderless: atkCmdrSlain };
   // A slain commander's skills die with them: the stand-in provides no Tactical, Archery, Naval,
   // Druid or spellcraft for the rest of this battle.
@@ -1899,7 +1899,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     prov._hadBattleThisTurn = true;
     // the items' registry's "fate: the beaten force may retreat" (plan P1-19n: the Shield-Wall Rune refuses it)
     const infStay = !theBeatenForceMayRetreatByTheCommandersItems(activeItems(c));
-    const _npcSeaTrap = friendlyAdj.length === 0 && !infStay ? seaTrapLine(cName, c, prov, _retLive) : null;
+    const _npcSeaTrap = friendlyAdj.length === 0 && !infStay ? seaTrapLine(atkSide, c, prov, _retLive) : null;
     // HUMAN — Keep the Sea Lanes: a corsair-heavy force always has boats waiting, so long as
     // there is water to reach. They withdraw to the ships rather than being cut down.
     const _seaEscape = _npcCorsairs && adjProvs.some((p2) => p2 && p2.terrain === 'sea');
@@ -1914,7 +1914,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     // holds the ground. Tried before the trapped branch, because a mixed column that cannot carry
     // itself reads as "nowhere to retreat" to retreatOptions while its hulls could still sail.
     // The Shield-Wall Rune (infStay) refuses every retreat, so it is honoured first.
-    const _navalSplitNPC = infStay ? '' : navalSplitRetreat(turnContext, c, prov, _retLive, narrative, cName);
+    const _navalSplitNPC = infStay ? '' : navalSplitRetreat(turnContext, c, prov, _retLive, narrative, atkSide);
     if (_navalSplitNPC) {
       /* handled above — no further retreat or rout */
     } else if (friendlyAdj.length === 0 || infStay) {

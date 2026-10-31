@@ -413,8 +413,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const atkName = atkCmdrSlain ? `${atk.name}'s leaderless host` : atk.name; // item 12
   const defName = defCmdrSlain ? `${def.name}'s leaderless host` : def.name; // item 12
   // Each side as the facts hold it (plan P1-12d22): the record the label above is written from; the prose writes the
-  // label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too, since P1-12d31 the pursuit lines; the
-  // sea lift lines still take the label.
+  // label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too, since P1-12d31 the pursuit lines, and
+  // since P1-12d32 the sea lift's.
   const atkSide = { heroName: atk.name, leaderless: atkCmdrSlain };
   const defSide = { heroName: def.name, leaderless: defCmdrSlain };
 
@@ -1666,7 +1666,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     const _navalDef =
       _defStays || def.alive === false || def.killedThisTurn
         ? ''
-        : navalSplitRetreat(turnContext, def, prov, def.armies, narrative, defName, _cutAtk);
+        : navalSplitRetreat(turnContext, def, prov, def.armies, narrative, defSide, _cutAtk);
     if (_navalDef) {
       if (_navalDef === 'stay') {
         prov._battleUnresolved = true;
@@ -1674,7 +1674,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
       }
     } else if (defFriendlyAdj.length === 0) {
       {
-        const _st = seaTrapLine(defName, def, prov, def.armies);
+        const _st = seaTrapLine(defSide, def, prov, def.armies);
         if (_st) narrate(narrative, _st);
       }
       if (_dmDef) {
@@ -1850,7 +1850,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
     const _navalAtk =
       _atkStays || atk.alive === false || atk.killedThisTurn
         ? ''
-        : navalSplitRetreat(turnContext, atk, prov, atk.armies, narrative, atkName, _cutDef);
+        : navalSplitRetreat(turnContext, atk, prov, atk.armies, narrative, atkSide, _cutDef);
     if (_navalAtk) {
       if (_navalAtk === 'stay') {
         prov._battleUnresolved = true;
@@ -1858,7 +1858,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
       }
     } else if (atkFriendlyAdj.length === 0) {
       {
-        const _st = seaTrapLine(atkName, atk, prov, atk.armies);
+        const _st = seaTrapLine(atkSide, atk, prov, atk.armies);
         if (_st) narrate(narrative, _st);
       }
       if (_dmAtk) {
