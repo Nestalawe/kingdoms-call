@@ -7,7 +7,8 @@ import {
   getFlyCapability,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { seaLiftOfAColumn } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
-import { discEff, discUnitMatch } from '../discoveries.ts';
+import { discEff } from '../discoveries.ts';
+import { discUnitMatch } from '../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { perkTier } from '../titles/perks.ts';

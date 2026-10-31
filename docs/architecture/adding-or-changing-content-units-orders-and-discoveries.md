@@ -1,6 +1,7 @@
 # Adding or changing content: units, orders and discoveries
 
 What adding or changing a unit, an order, a discovery or another rule of the content touches, and the places a rule is still written twice. Each section is a trap's full text; the trap in brief is under the same title in [traps.md](../traps.md).
+How to add a discovery's effect, kind by kind: [the discoveries' registry](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md#how-to-add-a-discoverys-effect) (from P1-19aa).
 
 ## A refactor that changes a container's type needs a test that calls the consumers
 
@@ -159,5 +160,6 @@ company's own reference coming **first**:
 `RETIRED_DISCOVERY_IDS` lists Sage discoveries that have been removed. `retireDiscoveries(G)` strips them
 from live saves at the start of every turn. Reusing an id would hand the new power to every realm whose
 save still carries the old one. Add to that set; never remove from it. Removing a discovery touches
-three places: its row in the data file, its effect in the GM portal (check every branch), and anything
-the player portal shows for it.
+three places: its row in the data file, its effect in the engine (the discoveries' registry, for a kind it holds; the
+readers in `src/engine/discoveries.ts` that still name its id or its kind, for the rest), and anything the player
+portal shows for it.

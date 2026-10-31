@@ -55,15 +55,14 @@ import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-r
 import { applyWraithTouch, clearPhantomCopies, getNeighborsP, injectPhantoms } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeItemBonus } from '../chances-and-lair-grades.ts';
+import { discDeathMult, discPromo, hasDisc } from '../discoveries.ts';
 import {
-  DISC_DEFOWN_CAP,
-  discDeathMult,
-  discFanaticApplies,
-  discPromo,
-  discSum,
-  discoveryArmyBonus,
-  hasDisc,
-} from '../discoveries.ts';
+  theShareARealmsDiscoveriesFortifyItsOwnGroundBy,
+  whatARealmsDiscoveriesAddToACastersChance,
+  whatARealmsDiscoveriesAddToASidesFanaticism,
+  whatARealmsDiscoveriesAddToASiege,
+  whatARealmsDiscoveriesAddToTheWholeArmy,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { telSpell } from '../turn/log-line-helpers.ts';
 import {
   completeDefendWatches,
@@ -437,13 +436,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // sd03 Siege Engines (and the race `siege` discoveries rd09 / ro10) — previously sd03 was
   // honoured only in battles against neutral guards, never in realm-vs-realm battles.
   {
-    let _sg = discSum(
-      turnContext,
-      atk.player,
-      'siege',
-      'delta',
-      (e) => !e.withTypes || atkArmies.some((a) => a && e.withTypes.includes(a.type)),
-    );
+    let _sg = whatARealmsDiscoveriesAddToASiege(G.players[atk.player], { theAttackersUnits: atkArmies });
     if (_sg > 0) {
       defBonus = Math.max(1, defBonus - _sg);
       narrate(narrative, {
@@ -461,16 +454,9 @@ export function combatVsChar(turnContext, atk, def, prov) {
   {
     const _dOwnP =
       prov.owner != null && prov.owner === def.player
-        ? Math.min(
-            DISC_DEFOWN_CAP,
-            discSum(
-              turnContext,
-              def.player,
-              'defOwn',
-              'pct',
-              (e) => !e.home || homeFounderOf(G, prov.id) === def.player,
-            ),
-          )
+        ? theShareARealmsDiscoveriesFortifyItsOwnGroundBy(G.players[def.player], {
+            isItTheRealmsHome: () => homeFounderOf(G, prov.id) === def.player,
+          })
         : 0;
     if (_dOwnP > 0) {
       defBonus *= 1 + _dOwnP;
@@ -514,12 +500,20 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const _atkFanPct = Math.max(
     0,
     (atkFanChance[atkAlign] ?? 0.1) +
-      discSum(turnContext, atk.player, 'fanatic', 'pct', (e) => discFanaticApplies(e, 'atk', prov.terrain, atkArmies)),
+      whatARealmsDiscoveriesAddToASidesFanaticism(G.players[atk.player], {
+        theSide: 'atk',
+        theGround: prov.terrain,
+        theForce: atkArmies,
+      }),
   ); // fanatic discoveries
   let _defFanPct = Math.max(
     0,
     (defFanChance[defAlign] ?? 0.1) +
-      discSum(turnContext, def.player, 'fanatic', 'pct', (e) => discFanaticApplies(e, 'def', prov.terrain, defArmies)),
+      whatARealmsDiscoveriesAddToASidesFanaticism(G.players[def.player], {
+        theSide: 'def',
+        theGround: prov.terrain,
+        theForce: defArmies,
+      }),
   );
   // DIVINE — Consecrate: defenders on consecrated ground are TWICE as likely to be seized by
   // fanatical zeal (they fight before the altars of their gods).
@@ -690,13 +684,10 @@ export function combatVsChar(turnContext, atk, def, prov) {
       SPELL_CAST_BASE +
         spellLvl * 10 +
         magicL8CastBonus(caster) +
-        discSum(
-          turnContext,
-          caster.player,
-          'cast',
-          'pct',
-          (e) => (!e.school || e.school === school) && (!e.ctx || e.ctx === 'battle'),
-        ),
+        whatARealmsDiscoveriesAddToACastersChance(G.players[caster.player], {
+          theSchool: school,
+          whereHeCasts: 'battle',
+        }),
     ); // cast discoveries · 2026-09-11: base 30
     const castRoll = d100();
     telSpell(turnContext, caster, spellName, school, spellLvl, castChance, castRoll, 'battle');
@@ -1074,8 +1065,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   }
 
   // Discovery bonus
-  const atkDiscBonus = 1 + discoveryArmyBonus(atk.player);
-  const defDiscBonus = 1 + discoveryArmyBonus(def.player);
+  const atkDiscBonus = 1 + whatARealmsDiscoveriesAddToTheWholeArmy();
+  const defDiscBonus = 1 + whatARealmsDiscoveriesAddToTheWholeArmy();
   if (atkDiscBonus > 1)
     narrate(narrative, {
       kind: "a side's realm discoveries strengthen its army",
