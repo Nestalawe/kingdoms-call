@@ -7,7 +7,10 @@
 // on the report's value, against the level the report sends. For the copies that read the realm, the report's shape or
 // the world (P1-11b1: the Druid a hero needs, the army card's Druid and sea lines, the turn report's flying carry, the
 // Explore forecast), the truth too, with the differences known to Toby's questions pinned exactly (since P1-11b3 the Druid ones call the
-// engine's rule with the portal's level of the hero's Druid). And each engine function leaves its input as it was.
+// engine's rule with the portal's level of the hero's Druid). Since P1-11c1, the order form's Cast Spell tables against
+// the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
+// card's kin and feud against the battle's armStr, with question 28's two differences pinned. And each engine function
+// leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -47,19 +50,35 @@
 // forecast (`exploreGainFor`) is what `resolveExploreOrder` maps but for the Loremaster, 5% more (pinned; question 15);
 // the army card's sea note is `getSeaCapability`'s answer but for a Naval 8 hero, for whom it is the answer without the
 // mastery (pinned; question 15). Every engine function leaves its input as it was (the values are frozen, so a write
-// throws). Level 1: pure functions on values; no page is needed, and a static test can't compare what two functions
-// answer. Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3, P1-11b4)
+// throws). P1-11c1 (plan P1-11c, before the form takes its tables and its check from the engine's side): the order
+// form's eight Cast Spell tables (`order-chances.ts` run whole, the others read by their declarations) are the ones
+// `SPELL_DEFS_P` makes, each as the form reads it (a list in its order, a map, a set), but an Encounter plan lists the
+// combat spells of three schools in its own order (pinned); the target field (`spellSecondaryHtml`, on a staged report
+// with a hero of each kind in the caster's province and in another) offers a hero in the caster's province alone for
+// exactly the 11 spells of the spells' registry's "a spell's mark must stand in the province", and for Resurrect (its
+// body's province, its own rule: pinned); the form's casting count (`buildTargetField`'s statements, the page's fields
+// stood in) greys a spell out exactly where `resolveCastSpellOrder` blocks it (White Magic 1 to 5, every list of up to
+// three earlier casts of Holy Symbol, Bless Province and Oratory) but in a realm with a Grand Cathedral and for the
+// Warlock, where its answer is the engine's without either (pinned; question 28 (a), Parked); the army card's strength
+// of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, but under a leader short of Druid,
+// where it is the battle's figure for a leader with Druid enough, the shortfall then taken off rounded to the nearest
+// and at least 1 (pinned; question 28 (b)). Level 1: pure functions on values; no page is needed, and a static test
+// can't compare what two functions answer. Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3,
+// P1-11b4, P1-11c1)
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
+  armyCardKinAgainstTheBattle,
   armyCardMasteryAgainstTheTurn,
   armyCardSeaNoteAgainstTheEngine,
   armyCardShortfallAgainstTheBattle,
+  castingLimitAgainstTheOrder,
   type Comparison,
   type Copies,
   druidNeedAgainstTheBattle,
   effMagicLvlAgainstTheReport,
   exploreForecastAgainstTheOrder,
   flyingCarryAgainstTheEngine,
+  kinWorld,
   oneUnitTypePerDruidLevelAndClass,
   playerPortalCopies,
   type ProjectionComparison,
@@ -67,16 +86,22 @@ import {
   sameAnswer,
   samples,
   type Samples,
+  theContentsSpellTables,
+  theFormsSpellTablesAgainstTheContent,
+  theFormsTargetsAgainstTheMarkCheck,
   theGamePlayed,
+  theOrderFormsSpells,
   worldSamples,
   type WorldSamples,
 } from '../lib/player-portal-copies.ts';
 import {
   ALL_MAGIC_ITEMS_P,
   KC_QUALITY_TIERS,
+  KC_RIVAL_RACE,
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
 } from '../../src/content/kingdoms-call-data.ts';
+import { unitBaseStrength } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 
 let copies: Copies;
 let values: Samples;
@@ -100,6 +125,9 @@ const armyCardMastery = lazily(() => armyCardMasteryAgainstTheTurn(copies, world
 const flyingCarry = lazily(() => flyingCarryAgainstTheEngine(copies, values));
 const exploreForecast = lazily(() => exploreForecastAgainstTheOrder(copies, worldValues));
 const seaNote = lazily(() => armyCardSeaNoteAgainstTheEngine(copies, values));
+const theForm = lazily(() => theOrderFormsSpells());
+const castingLimit = lazily(() => castingLimitAgainstTheOrder(theForm()));
+const kin = lazily(() => armyCardKinAgainstTheBattle(copies, kinWorld()));
 const casesOf = (p: (typeof PROJECTIONS)[number]) => once(`${p.engine} projection`, () => p.cases(values));
 let worldValues: WorldSamples;
 // The values in three hooks, each with Vitest's limit for itself (a hook's 10 s; on a busy runner the three together
@@ -260,6 +288,106 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
   });
 });
 
+describe('the order form’s Cast Spell tables and checks, and the army card’s kin and feud (P1-11c1)', () => {
+  test("each of the order form's eight Cast Spell tables is the one the content's spells make of it", () => {
+    // Each as the form reads it: a list it shows in its order (every spell by school, the action spells, those offered
+    // a hero of unseen levels), a map (each spell's school, the mastery spells' levels), a set it asks (the spells
+    // aimed at a province, at a hero), and the combat spells an Encounter plan offers, by school.
+    const list = theFormsSpellTablesAgainstTheContent(theForm());
+    expect(list).toHaveLength(8);
+    expect(differences(list)).toEqual([]);
+  });
+
+  test('an Encounter plan lists the combat spells of three schools in an order of its own, not the content’s', () => {
+    // The plan's options come in ENCOUNTER_VALID's order (Psychic Blast, Telekinetic Storm, Charm), which is not the
+    // content's (Charm first) in the Psychic, Illusory and Necromancy schools: the same spells, in another order.
+    const form = theForm().tables.ENCOUNTER_VALID;
+    const content = theContentsSpellTables().ENCOUNTER_VALID;
+    const inAnotherOrder = Object.keys(content).filter((school) => !sameAnswer(form[school], content[school]));
+    expect(inAnotherOrder).toEqual(['psychic', 'illusory', 'necromancy']);
+  });
+
+  test("the target field offers a hero in the caster's province alone for the 11 spells whose mark the engine's order says must stand there, and for Resurrect", () => {
+    // On a staged report: for every spell, the heroes its target field offers, by the province each stands in, against
+    // the spells' registry's "a spell's mark must stand in the province" (the check the Cast Spell order makes before
+    // the cast roll). Resurrect's field offers only the bodies lying in the caster's province: its own rule (the body
+    // must lie there), which its spell checks itself, not this check. Clairvoyance's offers every hero once seen.
+    const list = theFormsTargetsAgainstTheMarkCheck(theForm());
+    expect(differences(list.filter((x) => x.on !== 'Resurrect'))).toEqual([]);
+    expect(list.filter((x) => x.engine === true)).toHaveLength(11);
+    const where = (spell: string) => list.find((x) => x.on === spell)?.where;
+    expect([where('Resurrect'), where('Clairvoyance')]).toEqual(["the caster's province", 'anywhere']);
+    expect(list.find((x) => x.on === 'Resurrect')?.engine).toBe(false);
+    // every spell aimed at a hero finds one on the staged report besides the caster himself (Oratory and Phantasmal
+    // Armies offer him too)
+    const atAHero = theContentsSpellTables().NEEDS_CHAR;
+    expect(list.filter((x) => atAHero.includes(String(x.on)) && !x.othersOffered.length).map((x) => x.on)).toEqual([]);
+  });
+
+  test("the form's casting count is the engine's, but in a realm with a Grand Cathedral and for the Warlock, where it is the engine's without either", () => {
+    // The form greys a spell out when its school's casts so far this turn reach the limit; the Cast Spell order blocks
+    // it there. The form counts a Grand Cathedral's free Bless Province as a cast and greys it out at the limit (the
+    // engine never does: plan P1-11c, question 28 (a) for Toby), and leaves out the Warlock's extra cast in his best
+    // school (Parked): in those cases its answer is the engine's for the same cast in a realm without the Wonder, by a
+    // hero without the title.
+    const list = castingLimit();
+    const plain = list.filter((x) => !x.cathedral && !x.warlock);
+    expect(differences(plain)).toEqual([]);
+    expect(list.filter((x) => !sameAnswer(x.copy, x.engineWithNeither))).toEqual([]);
+    // and the engine's answer is what its two rules make of the casts: the pin holds on both sides
+    expect(list.filter((x) => !sameAnswer(x.engine, x.engineAsTheTwoRulesSay))).toEqual([]);
+    expect(list.filter((x) => x.cathedral && !x.warlock && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    expect(list.filter((x) => x.warlock && !x.cathedral && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    // the values reach a cast the limit blocks and one it lets through, at every level of White Magic
+    for (const blocked of [true, false])
+      for (const white of [1, 2, 3, 4, 5])
+        expect(
+          plain.filter((x) => x.engine === blocked && (x.on as { white: number }).white === white).length,
+        ).toBeGreaterThan(0);
+  });
+
+  test("the army card's strength of a unit is the battle's, its kin and a rival kin's leader with it, but where its leader falls short of Druid", () => {
+    // The card's line ("str …") counts the unit's kin (its king's, its leader's: ×1.2 each) and a rival kin's leader
+    // (×0.8) as the battle's armStr does, each rounded. Under a leader short of Druid, the battle floors the shortfall
+    // first; the card takes it off last, rounded to the nearest and never below 1 (plan P1-11c, question 28 (b) for
+    // Toby): there its figure is the battle's for a leader with Druid enough, the shortfall then taken off as the card
+    // takes it. Veteran Shieldwall Levies (12) of the Elves, under a Human with no Druid: the battle 9, the card 10.
+    const list = kin();
+    const short = list.filter((x) => x.druidMultiplier < 1);
+    expect(differences(list.filter((x) => x.druidMultiplier === 1))).toEqual([]);
+    expect(
+      short.filter((x) => x.copy !== Math.max(1, Math.round(Number(x.engineWithoutTheShortfall) * x.druidMultiplier))),
+    ).toEqual([]);
+    expect(short.filter((x) => !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    // and the battle's figure there is its own order: the shortfall floored off the unit's base strength first, then
+    // its kin (×1.2 its realm's king's, a Human; ×1.2 its leader's) and a rival kin's leader (×0.8), each rounded
+    const rival: Record<string, string> = KC_RIVAL_RACE;
+    const floorFirst = (x: (typeof short)[number]) => {
+      const [type, quality, race, leader] = x.on as [string, string, string | null, string];
+      let strength = Math.floor(unitBaseStrength({ type, quality }) * x.druidMultiplier);
+      if (race === 'Human') strength = Math.round(strength * 1.2);
+      if (race === leader) strength = Math.round(strength * 1.2);
+      if (race && rival[race] === leader) strength = Math.round(strength * 0.8);
+      return strength;
+    };
+    expect(short.filter((x) => x.engine !== floorFirst(x))).toEqual([]);
+    // the values reach each kin and feud the card and the battle count (the realm's king a Human), with a shortfall and
+    // without (a leader of the unit's own race needs none)
+    const kinds = new Set(
+      list.map((x) => {
+        const [, , race, leader] = x.on as [string, string, string | null, string];
+        return JSON.stringify([
+          race === 'Human',
+          race === leader,
+          race ? rival[race] === leader : false,
+          x.druidMultiplier < 1,
+        ]);
+      }),
+    );
+    expect(kinds.size).toBe(10);
+  });
+});
+
 test('each engine function leaves its input as it was (the values are frozen: a write throws)', () => {
   const changed = [
     ...PROJECTIONS.flatMap((p) => casesOf(p)),
@@ -268,6 +396,7 @@ test('each engine function leaves its input as it was (the values are frozen: a 
     ...armyCardMastery(),
     ...flyingCarry().columns,
     ...seaNote(),
+    ...kin(),
   ]
     .filter((c) => c.engineChangedItsInput)
     .map((c) => `on ${JSON.stringify(c.on).slice(0, 160)}`);
