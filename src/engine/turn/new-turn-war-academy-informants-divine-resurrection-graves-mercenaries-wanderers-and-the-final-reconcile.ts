@@ -2,7 +2,14 @@
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
-import { discEff, discParam, discSum, hasDisc } from '../discoveries.ts';
+import {
+  doARealmsDiscoveriesChartAProvince,
+  doARealmsDiscoveriesHealTheWounded,
+  doARealmsDiscoveriesNameAnUnseenCaptain,
+  theChanceARealmsDiscoveriesPromoteTheCapitalsArmies,
+  theHpARealmsDiscoveriesHealAWoundedHeroBy,
+  theRateARealmsDiscoveriesLetTheGravesRotAt,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { isHiddenByInvisibilityFrom } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
@@ -32,9 +39,11 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   turnContext,
 ) {
   const { G } = turnContext;
-  // 7d. sd08 War Academy: promote one random army in each player's home province
+  // 7d. sd08 War Academy: promote one random army in each player's home province (the discoveries' registry's since
+  // plan P1-19ag: "turnEnd: a realm's discoveries promote the capital's armies", its chance or nothing)
   G.players.forEach((p, pi) => {
-    if (!hasDisc(turnContext, pi, 'sd08')) return;
+    const _waChance = theChanceARealmsDiscoveriesPromoteTheCapitalsArmies(G.players[pi]);
+    if (_waChance === null) return;
     const homeProv = G.world.provinces.find((pv) => pv.owner === pi && pv.tax >= 10);
     if (!homeProv) return;
     const charsAtHome = (G.characters || []).filter((c) => c.alive && c.player === pi && c.location === homeProv.id);
@@ -46,7 +55,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (eligible.length === 0) return;
     // Each eligible army independently has a chance (sd08 row, pct) to train up one tier this turn.
     let _waPromoted = 0;
-    const _waPct = discParam('sd08', 'pct', 0.5);
+    const _waPct = _waChance;
     eligible.forEach((army) => {
       if (kcRng() < _waPct) {
         const idx = tiers.indexOf(army.quality);
@@ -76,14 +85,15 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   });
 
   // 7d-bis. `regen` discoveries (sd65 Physick Gardens): every wounded living character of the realm
-  // recovers a few HP at the end of the turn.
+  // recovers a few HP at the end of the turn (the discoveries' registry's since plan P1-19ag: "turnEnd: a realm's
+  // discoveries heal the wounded", whether it holds any, then for each wounded hero, the king's effects for the king).
   G.players.forEach((p, pi) => {
-    if (!discEff(turnContext, pi, 'regen').length) return;
+    if (!doARealmsDiscoveriesHealTheWounded(G.players[pi])) return;
     (G.characters || []).forEach((c) => {
       if (!c || !c.alive || c.player !== pi || c.hp == null) return;
       const mx = c.maxHp || 20;
       if (c.hp >= mx) return;
-      const _rg = discSum(turnContext, pi, 'regen', 'hp', (e) => !e.king || !!c.isKing);
+      const _rg = theHpARealmsDiscoveriesHealAWoundedHeroBy(G.players[pi], { isHeTheKing: !!c.isKing });
       if (_rg <= 0) return;
       const h = Math.min(_rg, mx - c.hp);
       c.hp += h;
@@ -99,7 +109,8 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
 
   // 7e. sd22 Informant Network: reveal one random enemy character location
   G.players.forEach((p, pi) => {
-    if (!hasDisc(turnContext, pi, 'sd22')) return;
+    // (the discoveries' registry's since plan P1-19ag: "visibility: a realm's discoveries name an unseen captain")
+    if (!doARealmsDiscoveriesNameAnUnseenCaptain(G.players[pi])) return;
     // Provinces the player can already see this turn: those they own, or that hold one of their
     // characters.
     const _seen = new Set();
@@ -146,7 +157,8 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // `return`s — so it only ever fired for a player who ALSO held sd22 and had an unseen enemy. It is
   // now its own pass. The line is filed (no charId) so it lands in the player's Realm Events.
   G.players.forEach((p, pi) => {
-    if (!hasDisc(turnContext, pi, 'sd39')) return;
+    // (the discoveries' registry's since plan P1-19ag: "visibility: a realm's discoveries chart a province")
+    if (!doARealmsDiscoveriesChartAProvince(G.players[pi])) return;
     const _unseen = (G.world.provinces || []).filter((pv) => ((pv.exploredBy && pv.exploredBy[pi]) || 0) < 100);
     if (_unseen.length === 0) {
       emit(turnContext, {
@@ -257,10 +269,9 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   G.world.provinces.forEach((p) => {
     if (!p.battleGraves || p.battleGraves.length === 0) return;
     let decay = p.owner != null && G.players[p.owner]?.alignment === 'Undead' ? 0.05 : 0.1;
-    if (p.owner != null) {
-      const _gd = discEff(turnContext, p.owner, 'graveDecay');
-      if (_gd.length) decay = Math.min(decay, Math.min(..._gd.map((e) => (e.rate != null ? e.rate : decay))));
-    } // az08 Embalmers
+    // az08 Embalmers (the discoveries' registry's since plan P1-19ag: "turnEnd: a realm's discoveries keep the graves",
+    // the lowest rate)
+    if (p.owner != null) decay = theRateARealmsDiscoveriesLetTheGravesRotAt(G.players[p.owner], decay);
     p.battleGraves = p.battleGraves.filter(() => kcRng() > decay);
   });
 

@@ -42,7 +42,6 @@ import {
   RESEARCH_HIDDEN_CATS,
   capItemTaxGold,
   discBlockedIds,
-  discEffectsOf,
   discEligible,
   discExploreMult,
   discHeroWage,
@@ -52,6 +51,8 @@ import {
   taxRecordsGold,
 } from '../engine/discoveries.ts';
 import {
+  doARealmsDiscoveriesAddToTheRealmsTax,
+  whatARealmsDiscoveriesEarnInInterest,
   whatARealmsDiscoveriesAddToAMarch,
   whatARealmsDiscoveriesAddToAMercenaryBandsPrice,
   whatARealmsDiscoveriesAddToTheCorpseCartersCost,
@@ -736,7 +737,6 @@ export function buildTurnReport(view, itsLines = null) {
   // deliberately do NOT fold in the two SAME-TURN transient effects (Bless Province / Earthquake
   // no-tax), since those depend on orders not yet given this turn and can't be forecast at turn
   // start.
-  const hasDiscR = (id) => (player.discoveries || []).some((d) => d.id === id);
   // track each income modifier separately so the Tax Income box can itemise WHAT is lifting
   // (or cutting) the realm's revenue — mirroring the end-of-turn collection engine.
   let _sdAgri = 0,
@@ -808,11 +808,14 @@ export function buildTurnReport(view, itsLines = null) {
   const _itemTaxR = capItemTaxGold(_taxBonusRaw, _perProvRaw, _taxCapR);
   const taxBonus = _itemTaxR.taxBonus,
     perProvBonus = _itemTaxR.perProvBonus;
-  const interestBonus = discEffectsOf(player, 'interest').reduce(
-    (s2, e) => s2 + Math.min(_taxCapR, Math.floor((player.gold || 0) * (e.pct || 0))),
-    0,
-  ); // Merchant Guilds + creed interest discoveries (as collected)
-  _sdRecords = hasDiscR('sd14') ? taxRecordsGold(provTaxIncome, _taxCapR) : 0; // sd14 Taxation Records — keep in step with the collector
+  // Merchant Guilds + creed interest discoveries (as collected: the discoveries' registry's since plan P1-19ag, "turnEnd:
+  // a realm's discoveries earn interest", the collector's rule)
+  const interestBonus = whatARealmsDiscoveriesEarnInInterest(player, {
+    theTreasury: player.gold || 0,
+    theCeiling: _taxCapR,
+  });
+  // sd14 Taxation Records — keep in step with the collector (whether the realm holds it: the registry's since P1-19ag)
+  _sdRecords = doARealmsDiscoveriesAddToTheRealmsTax(player) ? taxRecordsGold(provTaxIncome, _taxCapR) : 0;
   const neutralTradeBonus = neutralTradeGold(player, provTaxIncome);
   // title perks that add tax-season gold (mirrors the end-of-turn collection). computeStandings /
   // computeMinorTitles are module-level and already used above, so the report builder can read the
