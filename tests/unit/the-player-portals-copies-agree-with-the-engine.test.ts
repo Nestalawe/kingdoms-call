@@ -101,6 +101,7 @@ import {
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
 } from '../../src/content/kingdoms-call-data.ts';
+import { unitBaseStrength } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 
 let copies: Copies;
 let values: Samples;
@@ -332,6 +333,8 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
     const plain = list.filter((x) => !x.cathedral && !x.warlock);
     expect(differences(plain)).toEqual([]);
     expect(list.filter((x) => !sameAnswer(x.copy, x.engineWithNeither))).toEqual([]);
+    // and the engine's answer is what its two rules make of the casts: the pin holds on both sides
+    expect(list.filter((x) => !sameAnswer(x.engine, x.engineAsTheTwoRulesSay))).toEqual([]);
     expect(list.filter((x) => x.cathedral && !x.warlock && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
     expect(list.filter((x) => x.warlock && !x.cathedral && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
     // the values reach a cast the limit blocks and one it lets through, at every level of White Magic
@@ -355,9 +358,20 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
       short.filter((x) => x.copy !== Math.max(1, Math.round(Number(x.engineWithoutTheShortfall) * x.druidMultiplier))),
     ).toEqual([]);
     expect(short.filter((x) => !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    // and the battle's figure there is its own order: the shortfall floored off the unit's base strength first, then
+    // its kin (×1.2 its realm's king's, a Human; ×1.2 its leader's) and a rival kin's leader (×0.8), each rounded
+    const rival: Record<string, string> = KC_RIVAL_RACE;
+    const floorFirst = (x: (typeof short)[number]) => {
+      const [type, quality, race, leader] = x.on as [string, string, string | null, string];
+      let strength = Math.floor(unitBaseStrength({ type, quality }) * x.druidMultiplier);
+      if (race === 'Human') strength = Math.round(strength * 1.2);
+      if (race === leader) strength = Math.round(strength * 1.2);
+      if (race && rival[race] === leader) strength = Math.round(strength * 0.8);
+      return strength;
+    };
+    expect(short.filter((x) => x.engine !== floorFirst(x))).toEqual([]);
     // the values reach each kin and feud the card and the battle count (the realm's king a Human), with a shortfall and
     // without (a leader of the unit's own race needs none)
-    const rival: Record<string, string> = KC_RIVAL_RACE;
     const kinds = new Set(
       list.map((x) => {
         const [, , race, leader] = x.on as [string, string, string | null, string];

@@ -1329,10 +1329,16 @@ export interface CastingLimitComparison extends Comparison {
   readonly cathedral: boolean;
   readonly warlock: boolean;
   readonly engineWithNeither: unknown;
+  /** The engine's answer with neither, on the casts as the two rules leave them: under a Grand Cathedral a Bless
+   *  Province is never blocked and an earlier one is not counted; for the Warlock, in his best school, one earlier cast
+   *  of it is not counted (his limit one higher). */
+  readonly engineAsTheTwoRulesSay: unknown;
 }
 /** The spells each cast and earlier cast is made of: a White spell, the White spell a Grand Cathedral frees, and a
  *  Psychic spell. */
 const SPELLS_CAST = ['Holy Symbol', 'Bless Province', 'Oratory'] as const;
+/** A spell's school, as the content's table writes it. */
+const schoolOf = (spell: string) => THE_SPELLS.find(([n]) => n === spell)?.[1].school ?? '(no school)';
 /** Every list of earlier casts of SPELLS_CAST, from none to three (the phases before the cast's). */
 function earlierCasts(): string[][] {
   const lists: string[][] = [[]];
@@ -1408,6 +1414,17 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
           return theOrderBlocks(G, c, earlier, spell);
         };
         const engineWithNeither = blocks(false, false);
+        const asTheTwoRulesSay = (cathedral: boolean, warlock: boolean) => {
+          if (cathedral && spell === 'Bless Province') return false;
+          const counted = cathedral ? earlier.filter((s) => s !== 'Bless Province') : [...earlier];
+          const school = schoolOf(spell);
+          const at = counted.findIndex((s) => schoolOf(s) === school);
+          if (warlock && skillOf(c, school) === Math.max(...SCHOOLS.map((s) => skillOf(c, s))) && at >= 0)
+            counted.splice(at, 1);
+          realmInG['discoveries'] = [];
+          G['_minorHolders'] = {};
+          return theOrderBlocks(G, c, counted, spell);
+        };
         for (const cathedral of [false, true])
           for (const warlock of [false, true])
             out.push({
@@ -1418,6 +1435,7 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
               cathedral,
               warlock,
               engineWithNeither,
+              engineAsTheTwoRulesSay: asTheTwoRulesSay(cathedral, warlock),
             });
       }
     }
