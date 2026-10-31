@@ -1186,16 +1186,16 @@ export function doARealmsDiscoveriesAddToTheRealmsTax(
 
 /** The runner of "turnEnd: a realm's discoveries add to the realm's tax", for the gold (taxRecordsGold, which is asked
  *  with no realm): the gold the first discovery of the content (the table of the discoveries by id, in its order) with
- *  an effect of the stage adds, or none if no discovery has one. */
+ *  an effect of the stage adds; if none has one, what an effect with no numbers adds (its fallbacks, as discParam's
+ *  were for a row it couldn't find). */
 export function theGoldADiscoveryAddsToTheRealmsTax(facts: TheIncomeTaxationRecordsAddsTo): number {
   const theStage = "a realm's discoveries add to the realm's tax";
-  for (const slug of TURN_END[theStage]) {
-    for (const d of Object.values(DISC_BY_ID)) {
-      const e = [d.effect, d.effect2].find((effect) => effect?.kind === ROWS[slug].kind);
-      if (e) return ENTRIES[slug].turnEnd?.[theStage]?.(e, facts) ?? 0;
-    }
-  }
-  return 0;
+  const [slug] = TURN_END[theStage];
+  const theEffect: TheEffectOfADiscovery =
+    Object.values(DISC_BY_ID)
+      .flatMap((d) => [d.effect, d.effect2])
+      .find((e) => e?.kind === ROWS[slug].kind) ?? {};
+  return ENTRIES[slug].turnEnd?.[theStage]?.(theEffect, facts) ?? 0;
 }
 
 /** The runner of "turnEnd: a realm's discoveries earn interest" (Early Winter's collection, and the report's
