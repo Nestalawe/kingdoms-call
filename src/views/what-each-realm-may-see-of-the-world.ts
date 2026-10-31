@@ -40,6 +40,7 @@ import {
 } from '../engine/titles/reckoning.ts';
 import { topSkillOf } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { doARealmsDiscoveriesWaiveTheHiringBan } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import {
   armySizeBand,
   encounterUntargetableReason,
@@ -496,7 +497,9 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   const spiedByItsLines = new Set(Object.keys(itsLines?.spiedProvincesAndTheirFirstPhase ?? {}).map(Number));
   const provincesOfItsProvinceEvents = new Set((itsLines?.provinceEvents ?? []).map((e) => e.provinceId));
   const evil = player.alignment === 'Evil';
-  const sd31 = (player.discoveries ?? []).some((d: AsItIs<{ id: string }>) => d?.id === 'sd31');
+  // sd31 Diplomatic Protocols: the hiring ban waived (the discoveries' registry's since plan P1-19ae: "orderValidity: a
+  // realm's discoveries waive the hiring ban", the rule the hire reads)
+  const sd31 = doARealmsDiscoveriesWaiveTheHiringBan(me);
 
   // ── The sight rule's three questions (as each section has always asked it) ──
   const mapSight: SightContext = { ownedProvIds, ownCharLocs, spiedThisTurn, nearSpied };

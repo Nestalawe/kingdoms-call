@@ -14,7 +14,9 @@
 //   sight, the Charm card); the heroes it has ever seen still alive in a realm's service; the dead it knows of; the
 //   mercenaries where it sees; the realms (named once met, its diplomacy only with those it has encountered, every
 //   realm named once the game is over); the titles (hidden before turn 5, then worked out from the whole world; last
-//   turn's minor titles of its own heroes only, and the bonuses they give); its books; the portal's lookup tables.
+//   turn's minor titles of its own heroes only, and the bonuses they give); its books; the portal's lookup tables;
+// - (P1-19ae) what it is quoted, by its discoveries: an Undead wanderer's wage for a Divine realm with Diplomatic
+//   Protocols (none without), and in its report a band's price and the corpse-carters' (no game's realm holds them).
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
 // refactor-only: P1-12b4 adds the function (the base has none), and P1-12b5 its second part; each case is red on a
 // sight fault planted in it.
@@ -42,7 +44,9 @@
 // now; the realms (named once met, its diplomacy only with one it has encountered, every realm named once the game is
 // over); the titles (hidden before turn 5, then worked out from the whole world, with their holders' names); last
 // turn's minor titles of its own heroes only, and the bonuses they give; its books (by the provinces' records); the
-// portal's lookup tables (every realm, every named hero but the cloaked). Level 1 because the function is called on a
+// portal's lookup tables (every realm, every named hero but the cloaked). P1-19ae's cases: what it is quoted by its
+// discoveries (Diplomatic Protocols' wage for an Undead wanderer it sees or could hire; in its report, a band's price
+// by the discoveries for its class, and the corpse-carters' cost). Level 1 because the function is called on a
 // world made in the test; the every-realm half of `npm run balance` checks the report built from it. Each case is red
 // on a sight fault planted in the view (16 plants in P1-12b4, 19 in P1-12b5, one or more cases each); several of
 // P1-12b5's change no report, because the report's own sections still ask the same of what they read: only this test
@@ -628,4 +632,55 @@ test('it writes nothing to the world', () => {
   freeze(state);
   expect(() => playerView(state, 0, itsLines)).not.toThrow();
   expect(JSON.stringify(state)).toBe(before);
+});
+
+/** The world with realm 0 holding the discoveries given (as a save holds them, by id), its alignment and the
+ *  wanderers' (5, beside the province it spied; 6, beside its hero in 16) as given, and the band in its capital of the
+ *  type given. */
+function worldWithDiscoveries(
+  ids: readonly string[],
+  { alignment = 'Good', wanderers = 'Good', band = 'Shieldwall Levies' } = {},
+): GameState {
+  const { state } = world();
+  const s = state as unknown as {
+    players: Record<string, unknown>[];
+    characters: Record<string, unknown>[];
+    mercenaries: Record<string, unknown>[];
+  };
+  Object.assign(s.players[0] ?? {}, { alignment, discoveries: ids.map((id) => ({ id })) });
+  for (const id of [5, 6]) Object.assign(s.characters[id] ?? {}, { alignment: wanderers });
+  Object.assign(s.mercenaries[0] ?? {}, { type: band });
+  return state;
+}
+
+describe("what realm 0 is quoted, by its discoveries (P1-19ae: the view and the report ask the order's rules)", () => {
+  test('Diplomatic Protocols: a Divine realm is quoted the most for an Undead wanderer it sees or could hire, and nothing without', () => {
+    const quotes = (ids: readonly string[]) => {
+      const view = playerView(worldWithDiscoveries(ids, { alignment: 'Divine', wanderers: 'Undead' }), 0, itsLines);
+      return [
+        view.heroesItSees.find((h) => h.id === 5)?.hireWage,
+        province(view, 16).wanderersItCouldHire[0]?.hireWage,
+      ];
+    };
+    expect([quotes([]), quotes(['ad03']), quotes(['sd31'])]).toEqual([
+      [null, null],
+      [null, null],
+      [5, 6],
+    ]);
+  });
+
+  test("its report: a band's price after the discoveries for its class, and the corpse-carters' after Corpse-Carters", () => {
+    const prices = (ids: readonly string[]) => {
+      const report = buildTurnReport(playerView(worldWithDiscoveries(ids, { band: 'Great Bears' }), 0, itsLines));
+      return [
+        (report.mercIntel as { id: string; cost: number }[]).find((m) => m.id === 'm1')?.cost,
+        (report.orderPrices as { harvest: number }).harvest,
+      ];
+    };
+    expect([prices([]), prices(['ag18']), prices(['ae20', 'az06'])]).toEqual([
+      [4, 2],
+      [4, 2],
+      [1, 0],
+    ]);
+  });
 });

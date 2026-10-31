@@ -1439,6 +1439,34 @@ export interface AProvinceARealmsDiscoveriesWatch {
   readonly isItCoastal: () => boolean;
 }
 
+/** A Consecrate order, as a realm's discoveries that add to the consecrated provinces a crown may hold read it
+ *  (resolveConsecrateOrder: plan P1-19ae). */
+export interface AConsecrationARealmsDiscoveriesMayAllow {
+  /** The consecrating hero's White skill level. */
+  readonly theConsecratorsWhiteSkill: number;
+}
+
+/** The quality a discovery lets a Call to Arms raise its company at, and the chance it does (resolveCallToArmsOrder,
+ *  which rolls: plan P1-19ae), each as its row writes it. */
+export interface AQualityACallToArmsMayRaise {
+  /** The chance, as a share; none: it always does. */
+  readonly theChance: number | undefined;
+  readonly theQuality: string | readonly string[] | undefined;
+}
+
+/** A unit a realm recruits or a band it hires, as a realm's discoveries that change its price or its grade read it
+ *  (resolveRecruitArmiesOrder, and the report's prices: plan P1-19ae). */
+export interface AUnitARealmRaises {
+  /** The unit's type. */
+  readonly theUnitsType: string;
+}
+
+/** A unit a realm recruits, as a realm's discoveries that change its price read it, with its price so far (each
+ *  effect in turn: realmRecruitCost, plan P1-19ae). */
+export interface AUnitARealmRecruitsAndItsPriceSoFar extends AUnitARealmRaises {
+  readonly thePriceSoFar: number;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1645,6 +1673,10 @@ export interface TheStagesOfEachHookPoint {
     /** Whether an enemy's Bless ward over the province the spell is aimed at may turn it aside (blessWardNegates, where
      *  the spell asks it, before the ward's own roll). */
     readonly 'a Bless ward may turn it aside': () => boolean;
+    /** Whether a discovery a realm holds waives the ban on hiring a hero across the gulf between Divine and Undead
+     *  (heroHireWage then asks the most; plan P1-19ae: resolveHireHeroOrder, resolveBrokerOrder, the Charm, and
+     *  playerView's wages for the report). */
+    readonly "a realm's discoveries waive the hiring ban": (theEffect: TheEffectOfADiscovery) => boolean;
   };
   /** A hero's experience (plan P1-19's discoveries family: its row P1-19ac typed it). */
   readonly experience: {
@@ -1769,6 +1801,41 @@ export interface TheStagesOfEachHookPoint {
     ) => number | null;
     /** Whether a discovery a resting hero's realm holds restores every hit point he lacks (resolveRestOrder). */
     readonly "a realm's discoveries heal a resting hero in full": (theEffect: TheEffectOfADiscovery) => boolean;
+    /** The consecrated provinces a discovery the crown holds adds to those it may hold at once, or nothing (the
+     *  consecrator's White skill is short of its row's); the runner adds them (resolveConsecrateOrder: plan P1-19ae). */
+    readonly "a realm's discoveries add to the consecrations a crown may hold": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AConsecrationARealmsDiscoveriesMayAllow,
+    ) => number | null;
+    /** The quality a discovery a realm holds may raise a Call to Arms' company at, and its chance; the runner lists
+     *  them, and the order rolls each chance in turn and takes the first quality that is one (resolveCallToArmsOrder). */
+    readonly "a realm's discoveries raise a call to arms' quality": (
+      theEffect: TheEffectOfADiscovery,
+    ) => AQualityACallToArmsMayRaise;
+    /** The gold a discovery a realm holds adds to the corpse-carters' cost (a cut is less than 0); the runner adds them
+     *  (resolveHarvestTheFieldOrder, and the report's price). */
+    readonly "a realm's discoveries cut the corpse-carters' cost": (theEffect: TheEffectOfADiscovery) => number;
+    /** The gold a discovery a realm holds adds to a mercenary band's price, or nothing (it names another class of
+     *  unit); the runner adds them (resolveRecruitArmiesOrder, and the report's price). */
+    readonly "a realm's discoveries cut a company's price": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AUnitARealmRaises,
+    ) => number | null;
+    /** A unit's price once a discovery a realm holds has changed it, or nothing (it doesn't reach the unit); the
+     *  runner hands each effect the price so far (realmRecruitCost, which the order and the report's prices ask). */
+    readonly "a realm's discoveries cut a unit's price": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AUnitARealmRecruitsAndItsPriceSoFar,
+    ) => number | null;
+    /** The share a discovery a realm holds adds to the chance a unit recruited starts a grade higher, or nothing; the
+     *  runner adds them (discRecruitQChance, which resolveRecruitArmiesOrder asks before it rolls). */
+    readonly "a realm's discoveries raise a recruit's quality": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AUnitARealmRaises,
+    ) => number | null;
+    /** The share of the province's tax a discovery the caster's realm holds adds to a Bless; the runner adds them
+     *  (workBlessProvince). */
+    readonly "a realm's discoveries add to a Bless": (theEffect: TheEffectOfADiscovery) => number;
   };
   /** A hero's own figures a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19p, typed it). */
   readonly aHerosStanding: {

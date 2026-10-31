@@ -9,7 +9,8 @@ import { claimWandererName } from '../../heroes/fame-and-consecration.ts';
 import { getNeighborsP } from '../../world/map-helpers.ts';
 import { TM } from '../../titles/perks.ts';
 import { graveServedOther } from '../../heroes/charms-and-neutrals.ts';
-import { applyPendingSynthPlan, discSum } from '../../discoveries.ts';
+import { applyPendingSynthPlan } from '../../discoveries.ts';
+import { whatARealmsDiscoveriesAddToABless } from '../../rules/the-registry-of-discovery-effects.ts';
 import {
   emit,
   logSplit,
@@ -419,8 +420,10 @@ export function workBlessProvince({ turnContext, G, c, targetProv }: TheNamesAnA
   // KING himself blesses at +100% — the gods answer their anointed in full.
   const _divineKingdom = G.players[c.player]?.alignment === 'Divine';
   const _divineKingBless = c.isKing && _divineKingdom;
+  // ad09 Rites of Plenty (+0.2; the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries add
+  // to a Bless")
   targetProv._blessedMult =
-    (_divineKingBless ? 2.0 : _divineKingdom ? 1.8 : 1.6) + discSum(turnContext, c.player, 'bless', 'pct'); // ad09 Rites of Plenty (+0.2)
+    (_divineKingBless ? 2.0 : _divineKingdom ? 1.8 : 1.6) + whatARealmsDiscoveriesAddToABless(G.players[c.player]);
   emit(turnContext, {
     type: 'explore',
     fact: {

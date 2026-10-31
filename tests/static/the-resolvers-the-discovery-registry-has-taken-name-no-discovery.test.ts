@@ -9,7 +9,7 @@
 // page's code.
 //
 // Red on its row's base by design (applyPreBattleMagic held 1 check, discUnitMult 1 and dragonTamed 1 on P1-19aa's
-// base; pcCharCombatant 5 on P1-19ac's; resolveSpyOrder 6 on P1-19ad's), as the unit-name, item-effect and spell tests were: the one exception to refactor-only's rule that new tests
+// base; pcCharCombatant 5 on P1-19ac's; resolveSpyOrder 6 on P1-19ad's; each of P1-19ae's ten 1), as the unit-name, item-effect and spell tests were: the one exception to refactor-only's rule that new tests
 // pass before and after (Theo, 2026-10-25; the discoveries family's Decision 6).
 // Level 0 (static): the files' syntax trees and the content's discoveries as written; nothing runs.
 import fs from 'node:fs';
@@ -157,6 +157,57 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     "P1-19ad, a realm's discoveries spot a hero lurking in its province",
   ],
   ['src/engine/discoveries.ts', 'discExploreMult', "P1-19ad, a realm's discoveries add to exploring"],
+  [
+    'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    'resolveHireHeroOrder',
+    "P1-19ae, a realm's discoveries waive the hiring ban",
+  ],
+  [
+    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'resolveBrokerOrder',
+    "P1-19ae, a realm's discoveries waive the hiring ban",
+    // the Broker's spying, `'spy'`: the word of the kind of a spy's discoveries, but no discovery's
+    ['spy'],
+  ],
+  [
+    'src/engine/orders/spells/psychic-spells-the-cast-spell-order-works-and-the-charms-backlash.ts',
+    'workCharm',
+    "P1-19ae, a realm's discoveries waive the hiring ban",
+  ],
+  [
+    'src/views/what-each-realm-may-see-of-the-world.ts',
+    'playerView',
+    "P1-19ae, a realm's discoveries waive the hiring ban",
+  ],
+  [
+    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'resolveConsecrateOrder',
+    "P1-19ae, a realm's discoveries add to the consecrations a crown may hold",
+    theExploreLines(1),
+  ],
+  [
+    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'resolveCallToArmsOrder',
+    "P1-19ae, a realm's discoveries raise a call to arms' quality",
+  ],
+  [
+    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'resolveHarvestTheFieldOrder',
+    "P1-19ae, a realm's discoveries cut the corpse-carters' cost",
+  ],
+  [
+    'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    'resolveRecruitArmiesOrder',
+    "P1-19ae, a realm's discoveries cut a company's price",
+  ],
+  ['src/engine/discoveries.ts', 'realmRecruitCost', "P1-19ae, a realm's discoveries cut a unit's price"],
+  ['src/engine/discoveries.ts', 'discRecruitQChance', "P1-19ae, a realm's discoveries raise a recruit's quality"],
+  [
+    'src/engine/orders/spells/white-magic-spells-the-cast-spell-order-works.ts',
+    'workBlessProvince',
+    "P1-19ae, a realm's discoveries add to a Bless",
+    theExploreLines(1),
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

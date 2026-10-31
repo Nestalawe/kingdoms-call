@@ -15,7 +15,13 @@ import { grantMithrilTo } from '../personal-combat/helpers.ts';
 import { armyUnitName, d100 } from '../dice-and-army-names.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM, skillLevel } from '../titles/perks.ts';
-import { discEff, discSum, gdActive, hasDisc } from '../discoveries.ts';
+import { gdActive } from '../discoveries.ts';
+import {
+  doARealmsDiscoveriesWaiveTheHiringBan,
+  theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt,
+  whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold,
+  whatARealmsDiscoveriesAddToTheCorpseCartersCost,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { emit, logSplit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -114,7 +120,10 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
   // the crown may hold up to its WHITE skill level in consecrated provinces at once.
   const _cLimit =
     skillLevel(c, 'white') +
-    discSum(turnContext, c.player, 'consecrate', 'cap', (e) => skillLevel(c, 'white') >= (e.minWhite || 1)); // ad03 Holy Sites (+1; still needs White 1+)
+    whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(G.players[c.player], {
+      theConsecratorsWhiteSkill: skillLevel(c, 'white'),
+    }); // ad03 Holy Sites (+1; still needs White 1+; the discoveries' registry's since plan P1-19ae: "orderOutcome: a
+  // realm's discoveries add to the consecrations a crown may hold")
   if (_cLimit <= 0) {
     emit(turnContext, {
       type: 'system',
@@ -225,10 +234,12 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
     'Human Garrison';
   ctaProv.garrisonArmies = ctaProv.garrisonArmies || [];
   const _ctaQ =
-    discEff(turnContext, c.player, 'ctaQuality')
-      .filter((e) => e.pct == null || kcRng() < e.pct)
-      .map((e) => e.quality)
-      .find((q) => q && QUALITY_TIERS.includes(q)) || 'Green'; // ag05 Muster Rolls (a chance per muster)
+    theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt(G.players[c.player])
+      .filter((e) => e.theChance == null || kcRng() < e.theChance)
+      .map((e) => e.theQuality)
+      .find((q) => q && QUALITY_TIERS.includes(q)) || 'Green'; // ag05 Muster Rolls (a chance per muster; the discoveries'
+  // registry's since plan P1-19ae: "orderOutcome: a realm's discoveries raise a call to arms' quality", each chance
+  // rolled here, in turn, as before)
   ctaProv.garrisonArmies.push({
     type: ctaType,
     quality: _ctaQ,
@@ -289,10 +300,12 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       });
       return;
     } // same rule as Hire Hero
+    // sd31 Diplomatic Protocols (the discoveries' registry's since plan P1-19ae: "orderValidity: a realm's discoveries
+    // waive the hiring ban")
     const bWage = heroHireWage(
       G.players[c.player]?.alignment || 'Neutral',
       bh.alignment,
-      hasDisc(turnContext, c.player, 'sd31'),
+      doARealmsDiscoveriesWaiveTheHiringBan(G.players[c.player]),
       bh,
     );
     if (bWage == null) {
@@ -438,7 +451,9 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
     });
     return;
   }
-  const _hCost = Math.max(0, 2 + discSum(turnContext, c.player, 'harvestCost', 'delta')); // az06 Corpse-Carters
+  // az06 Corpse-Carters (the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries cut the
+  // corpse-carters' cost", which the report's price asks too)
+  const _hCost = Math.max(0, 2 + whatARealmsDiscoveriesAddToTheCorpseCartersCost(G.players[c.player]));
   if ((player.gold || 0) < _hCost) {
     emit(turnContext, {
       type: 'system',
