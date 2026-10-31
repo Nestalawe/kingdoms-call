@@ -11,7 +11,7 @@
 // Red on its row's base by design (applyPreBattleMagic held 1 check, discUnitMult 1 and dragonTamed 1 on P1-19aa's
 // base; pcCharCombatant 5 on P1-19ac's; resolveSpyOrder 6 on P1-19ad's; each of P1-19ae's ten 1; P1-19af's
 // spreadTerror and resolveMoveOrder 2, its other four 1; P1-19ag's new turn 7, Early Winter, Herbal Lore's stage,
-// taxRecordsGold and discHeroWage 2, its other three 1), as the unit-name, item-effect and spell tests were: the one
+// taxRecordsGold and discHeroWage 2, its other three 1; P1-19ah's botBattleForce 2, its other four 1), as the unit-name, item-effect and spell tests were: the one
 // exception to refactor-only's rule that new tests pass before and after (Theo, 2026-10-25; the discoveries family's
 // Decision 6).
 // Level 0 (static): the files' syntax trees and the content's discoveries as written; nothing runs.
@@ -266,6 +266,27 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts',
     'startPhaseHealingSnapshotsAndStalledBattles',
     "P1-19ag, a realm's discoveries dress a fighter's wounds",
+  ],
+  ['src/engine/bots/intel.ts', 'botEffForce', "P1-19ah, a realm's discoveries let a beast follow without its Druid"],
+  [
+    'src/engine/bots/intel.ts',
+    'botBattleForce',
+    "P1-19ah, a realm's discoveries let a beast follow without its Druid and weight the lines behind the front",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botDruidShortfall',
+    "P1-19ah, a realm's discoveries let a beast follow without its Druid",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'botRecruitableTypes',
+    "P1-19ah, a realm's discoveries let a beast follow without its Druid",
+  ],
+  [
+    'src/views/every-realms-report-and-the-lines-each-realm-reads.ts',
+    'playerEvents',
+    "P1-19ah, a realm's discoveries widen the warnings it hears",
   ],
 ];
 

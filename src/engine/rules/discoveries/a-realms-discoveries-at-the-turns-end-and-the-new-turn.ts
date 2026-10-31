@@ -2,7 +2,7 @@
 // the kinds that add to a province's tax and the realm's, earn interest, cut a unit's or a hero's wage or cap it, heal
 // the wounded, keep the graves and promote the capital's armies (stages of "turnEnd"), dress a fighter's wounds as a
 // phase begins ("turnStart"), add to a hero's maximum HP ("aHerosStanding"), and name an unseen captain or chart a
-// province ("visibility"). Each is handed one effect the realm holds (its row's numbers and filters, in
+// province ("visibility"); and, from row P1-19ah, widen the warnings a realm hears in its report ("visibility"). Each is handed one effect the realm holds (its row's numbers and filters, in
 // SAGE_DISCOVERIES_P) and the facts of its stage; the runners (the-registry-of-discovery-effects.ts) find the realm's
 // effects of the kind and fold them, as the resolvers' and the report's reads did. No effect draws a die: the resolver
 // rolls where it rolled before. A number a row may not write falls back as discParam's did (War Academy's 50%, Herbal
@@ -118,3 +118,8 @@ export const A_REALMS_DISCOVERIES_NAME_AN_UNSEEN_CAPTAIN = {
 export const A_REALMS_DISCOVERIES_CHART_A_PROVINCE = {
   'arcane-observatory': () => true,
 } satisfies Partial<Record<DiscoveryEffectSlug, TheSightsStages["a realm's discoveries chart a province"]>>;
+
+/** "visibility: a realm's discoveries widen the warnings it hears" (Messenger Birds, P1-19ah): it does. */
+export const A_REALMS_DISCOVERIES_WIDEN_THE_WARNINGS_IT_HEARS = {
+  'messenger-birds': () => true,
+} satisfies Partial<Record<DiscoveryEffectSlug, TheSightsStages["a realm's discoveries widen the warnings it hears"]>>;

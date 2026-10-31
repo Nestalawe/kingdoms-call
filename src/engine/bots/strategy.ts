@@ -3,7 +3,7 @@ import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.t
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
-import { TAMED_FLYER_TYPES_D } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import { aRealmsDiscoveriesLetABeastFollowWithoutItsDruid } from '../rules/the-registry-of-discovery-effects.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { graveServedOther } from '../heroes/charms-and-neutrals.ts';
@@ -19,7 +19,6 @@ import {
   botEffForce,
   botForceStrength,
   botGuessDefence,
-  botHasDisc,
   botNeighbourProv,
   botRaceTerrainMult,
   botRelationRaw,
@@ -856,10 +855,15 @@ export function botRecruitableTypes(prov, G, cmdr) {
     const base = UNIT_BASE_STR[t] || 4;
     if (!G || !cmdr) return base;
     const align = (cmdr.player != null ? ((G.players || [])[cmdr.player] || {}).alignment : null) || 'Neutral';
-    const tamed = cmdr.player != null && botHasDisc(G, cmdr.player, 'sd40');
+    const theRealm = cmdr.player != null ? (G.players || [])[cmdr.player] : null;
     let m = 1;
     try {
-      m = druIdPenaltyMult(cmdr, { type: t, race: prov.race || 'Human' }, align, tamed && TAMED_FLYER_TYPES_D.has(t));
+      m = druIdPenaltyMult(
+        cmdr,
+        { type: t, race: prov.race || 'Human' },
+        align,
+        aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: t }),
+      );
     } catch (e) {
       m = 1;
     }

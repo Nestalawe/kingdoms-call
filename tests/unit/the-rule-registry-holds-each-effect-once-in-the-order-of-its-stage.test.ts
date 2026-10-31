@@ -369,9 +369,9 @@ const THE_KINDS_IN_CONTENT: ReadonlySet<string> = new Set(
   ]).flatMap((e) => (e.kind === undefined ? [] : [e.kind])),
 );
 
-/** The kinds of SAGE_DISCOVERIES_P the discoveries' registry hasn't taken yet: each row of the family takes its own off
+/** The kinds of SAGE_DISCOVERIES_P the discoveries' registry hasn't taken yet: each row of the family took its own off
  *  (plan P1-19's discoveries family, rows ab to ah), to none. */
-const THE_KINDS_NOT_YET_TAKEN: readonly string[] = ['extendedIntel'];
+const THE_KINDS_NOT_YET_TAKEN: readonly string[] = [];
 
 /** What a kind's row breaks: its kind a kind of an effect of SAGE_DISCOVERIES_P. */
 function whatADiscoveryKindsRowBreaks(slug: string, row: { readonly name: string }): string[] {
@@ -416,8 +416,13 @@ test("planted in the discoveries' registry, an entry left out of its order, a ro
     ...DISCOVERY_ORDERS,
     strength: { ...DISCOVERY_ORDERS['strength'], "a realm's discoveries add to a siege": [] },
   };
+  // every kind has its row since P1-19ah, so a row with no entry whose kind is a discovery's is Messenger Birds' row
+  // under another slug (its entry left with no row), and the planted list names its kind
+  const withoutMessengerBirds: DiscoveryRows = Object.fromEntries(
+    Object.entries(DISCOVERY_ROWS).filter(([slug]) => slug !== 'messenger-birds'),
+  );
   const rows: DiscoveryRows = {
-    ...DISCOVERY_ROWS,
+    ...withoutMessengerBirds,
     fanaticism: { kind: 'plantedFervour' },
     casting: { kind: 'siege' },
     'planted-kind': { kind: 'extendedIntel' },
@@ -427,14 +432,15 @@ test("planted in the discoveries' registry, an entry left out of its order, a ro
     "fanaticism's kind, plantedFervour, is no discovery's",
     'casting and siegecraft share the name siege',
     'planted-kind has a content row and no entry',
+    'messenger-birds has an entry and no content row',
   ]);
-  expect(whereTheKindsAndTheRowsPart(rows, THE_KINDS_NOT_YET_TAKEN)).toEqual([
+  expect(whereTheKindsAndTheRowsPart(rows, ['extendedIntel'])).toEqual([
     "cast has no row and isn't listed as not yet taken",
     "fanatic has no row and isn't listed as not yet taken",
     'extendedIntel is listed as not yet taken, and has a row',
   ]);
-  // the last kind not yet taken, left off the list (since P1-19ag a planted row can't take one and leave another)
-  expect(whereTheKindsAndTheRowsPart(DISCOVERY_ROWS, [])).toEqual([
+  // a kind's row taken away, and the kind left off the list
+  expect(whereTheKindsAndTheRowsPart(withoutMessengerBirds, THE_KINDS_NOT_YET_TAKEN)).toEqual([
     "extendedIntel has no row and isn't listed as not yet taken",
   ]);
 });
