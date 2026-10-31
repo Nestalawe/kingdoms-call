@@ -9,7 +9,8 @@
 //   tests/unit/the-sides-and-the-defenders-of-a-battle-against-a-province-in-the-lines-no-matrix-game-reaches.test.ts's.
 //   And the army's other effects on rows the content doesn't write (planted in the table of the discoveries by id for
 //   their case, and taken out after): a siege, own-ground, fanaticism or casting effect with no number, a siege's unit
-//   types met by no unit, a gap among the attacker's units, a unit's strength stacked past its ceiling (×1.30).
+//   types met by no unit, a gap among the attacker's units (none but gaps: nothing), a gap in a force asked for a class
+//   of unit (no unit of it, a humanoid's neither), a unit's strength stacked past its ceiling (×1.30).
 // Level 1 (unit): the runner on a staged realm, and combatVsNPC called directly on a world the engine makes from a
 // fixed seed, no turn played; whether the line is written is decided before any die is drawn (a seeded stream feeds
 // the rest of the battle). Not lower: the effects read the content's rows and the battle writes the line. Not higher: a
@@ -110,6 +111,25 @@ describe("the army's effects on rows the content doesn't write", () => {
         whatARealmsDiscoveriesAddToASiege(realm, { theAttackersUnits: [null, undefined, { type: 'Mountain Guns' }] }),
     );
     expect(added).toBeCloseTo(0.2, 12);
+  });
+
+  test("a siege whose unit types only a gap among the attacker's units could hold: nothing", () => {
+    const added = withPlantedRows({ guns: { kind: 'siege', delta: 0.2, withTypes: ['Mountain Guns'] } }, (realm) =>
+      whatARealmsDiscoveriesAddToASiege(realm, { theAttackersUnits: [null, undefined] }),
+    );
+    expect(added).toBe(0);
+  });
+
+  test("fanaticism with a class of unit in the force: a gap in the force is no unit of it, a humanoid's neither", () => {
+    const added = withPlantedRows({ kin: { kind: 'fanatic', pct: 0.1, withCls: 'humanoid' } }, (realm) => [
+      whatARealmsDiscoveriesAddToASidesFanaticism(realm, { theSide: 'def', theGround: 'plain', theForce: [null] }),
+      whatARealmsDiscoveriesAddToASidesFanaticism(realm, {
+        theSide: 'def',
+        theGround: 'plain',
+        theForce: [null, { type: 'Men-at-Arms' }],
+      }),
+    ]);
+    expect(added).toEqual([0, 0.1]);
   });
 
   test('own ground, fanaticism and casting: no pct', () => {
