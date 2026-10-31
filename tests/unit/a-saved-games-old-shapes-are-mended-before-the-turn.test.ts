@@ -221,7 +221,7 @@ const OLD_SHAPES: OldShape[] = [
       const realm = must(s.players[0], 'realm 0');
       const home = homeOf(s, 0);
       home.race = realm.race;
-      const unit = must((fullRaceLandRoster(realm.race) as string[])[0], 'unit of the roster');
+      const unit = must(fullRaceLandRoster(realm.race)[0], 'unit of the roster');
       home.armyTypes = home.armyTypes.filter((t) => t !== unit);
       return unit;
     },

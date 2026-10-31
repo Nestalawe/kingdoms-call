@@ -18,8 +18,10 @@
 // not the hero's own (the empty province taken); rumours paid by grade until the purse runs dry, a guardian with no
 // weakness, a hoard a thief has stripped; and what follows a fight at a lair, the fight stood in for (`fightEndsIn`): a
 // thief's haul and relic, an emptied or bare hoard, a beast pacified, the challengers' kit, a hero beaten back or fled,
-// Battlefield Surgery, and the fight's statistics record. 96 planted faults in the six functions, their calls and
+// Battlefield Surgery, and the fight's statistics record; and an older save's lair stocked when first read (a
+// clearer's gold from its guardian's band, its items before hoards, one item rolled). 96 planted faults in the six functions, their calls and
 // `processOrder`'s checks each turn at least one of the two tests red, and every test goes red for at least one
+import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {
@@ -448,6 +450,60 @@ describe('Search Lair, called directly: what follows the fight', () => {
     };
     expect(fall(0.01)).toEqual({ alive: true, carried: ['Boots of the Wind'], hoard: [] });
     expect(fall(0.99)).toEqual({ alive: false, carried: [], hoard: ['Boots of the Wind'] });
+  });
+});
+
+// A lair stocked at world generation holds its hoard already (every matrix game's): an older save's lair is stocked the
+// first time it is read, its gold from its guardian's band and its one item rolled then (plan P1-10b19).
+describe("an older save's lair, stocked when it is first read (encounterClearGold, ensureLairHoard)", () => {
+  const encounterClearGold = fn('encounterClearGold');
+  const ensureLairHoard = fn('ensureLairHoard');
+  const goldOf = (monster: Record<string, unknown> | null, die: number) => {
+    const f: Record<string, unknown> = { name: 'Old Barrow', monster, treasure: 0, cleared: false };
+    return { gold: withDice(engine, [die], () => encounterClearGold(f)), f };
+  };
+
+  test("a clearer's gold is rolled once from the guardian's band (Weak with no guardian, 1 to 5 for a power no band has)", () => {
+    expect(goldOf(null, 0).gold).toBe(5);
+    expect(goldOf(null, 0.99).gold).toBe(8);
+    expect(goldOf({ power: 'Mythic' }, 0.99).gold).toBe(5);
+    const { gold, f } = goldOf({ power: 'Moderate' }, 0.5);
+    expect(gold).toBe(15);
+    expect(withDice(engine, [0.99], () => encounterClearGold(f))).toBe(15);
+  });
+
+  test('its hoard takes the items it held before hoards, then rolls one item no other lair holds, with the next id', () => {
+    const names = JSON.parse(
+      vm.runInContext('JSON.stringify(ALL_MAGIC_ITEMS_P.map((i) => i.name))', engine) as string,
+    ) as string[];
+    const b = board(engine, world, 0);
+    const older = { name: 'Old Lamp', id: 7000 }; // an item a lair held before hoards (made up)
+    const f: Record<string, unknown> = {
+      name: 'Old Barrow',
+      monster: { power: 'Weak' },
+      treasure: 0,
+      cleared: false,
+      lairItems: [older],
+    };
+    const awarded = names.filter((n) => n !== 'Boots of the Wind');
+    const gs = { _awardedItems: awarded, nextItemId: 7 };
+    withDice(engine, [0.5], () => ensureLairHoard(f, gs));
+    const hoard = f['hoardItems'] as Record<string, unknown>[];
+    expect(hoard.map((i) => [i['name'], i['id']])).toEqual([
+      ['Old Lamp', 7000],
+      ['Boots of the Wind', 7],
+    ]);
+    expect([f['lairItems'], f['treasure'], f['_hoardGoldOrig'], f['_hoardV2']]).toEqual([[], 7, 7, true]);
+    expect(gs._awardedItems).toBe(awarded);
+    expect(awarded.slice(-1)).toEqual(['Boots of the Wind']);
+    expect(gs.nextItemId).toBe(8);
+    const theRow = magicItem(b, 'Boots of the Wind');
+    expect(must(hoard[1], 'the item rolled')['effect']).toEqual(theRow['effect']);
+    const rowsEffect: unknown = vm.runInContext(
+      "ALL_MAGIC_ITEMS_P.find((i) => i.name === 'Boots of the Wind').effect",
+      engine,
+    );
+    expect(must(hoard[1], 'the item rolled')['effect']).not.toBe(rowsEffect);
   });
 });
 
