@@ -1,4 +1,4 @@
-import { KC_QUALITY_UP, KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
+import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import {
@@ -14,6 +14,7 @@ import {
   theSeasPenaltyIsWaivedForALandUnit,
 } from '../rules/the-registry-of-content-effects.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT, unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt } from '../rules-on-plain-values/the-strength-a-units-kin-and-a-rival-kins-leader-leave-it.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
 import {
   druidLevelTheMasteryCounts,
@@ -600,25 +601,15 @@ export function armStr(
   const _unitRace = army.race || null;
   const _ownerRace = ctx?.ownerRace ?? (heroChar?.player != null ? G.players[heroChar.player]?.race : null);
   const _leaderRace = (heroChar?.race ?? '') || null;
-  // ── HUMANOID RACE AFFINITY ── Two INDEPENDENT, STACKING ×1.2 base-strength boosts:
-  // • King's race: units of the same race as the owning player's king. • Leader's race: units led by
-  // a character (king or hero) of the same race. A king personally leading his own-race troops → ×1.44.
-  if (_unitRace) {
-    if (_ownerRace && _unitRace === _ownerRace) str = Math.round(str * 1.2); // king's-race affinity
-    if (_leaderRace && _unitRace === _leaderRace) str = Math.round(str * 1.2); // leader's-race affinity
-    if (_tr) {
-      const _k = (_ownerRace && _unitRace === _ownerRace ? 1 : 0) + (_leaderRace && _unitRace === _leaderRace ? 1 : 0);
-      if (_k) _tr.push({ reason: { kind: 'its kin', bothTheKingsAndTheLeaders: _k === 2 } });
-    }
-  }
-  // ── RACIAL ANIMOSITY ── Elves & Dwarves, and Humans & Orcs, bear an ancient grudge: an army
-  // led by a commander of the RIVAL kin fights at −20%. Keyed on unit-vs-leader race.
-  if (_unitRace && _leaderRace) {
-    const _RIVAL_RACE: Record<string, string | undefined> = { ...KC_RIVAL_RACE };
-    if (_RIVAL_RACE[_unitRace] === _leaderRace) {
-      str = Math.round(str * 0.8);
-      if (_tr) _tr.push({ reason: { kind: 'a racial animosity' } });
-    }
+  // ── HUMANOID RACE AFFINITY and RACIAL ANIMOSITY ── ×1.2 for the king's race, ×1.2 for the leader's (a king
+  // personally leading his own-race troops → ×1.44), then ×0.8 under a commander of the RIVAL kin (Elves & Dwarves,
+  // Humans & Orcs), each rounded: one rule, which the army card on the player's report asks too (plan P1-11c5).
+  const _kin = theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt(str, _unitRace, _ownerRace, _leaderRace);
+  str = _kin.strength;
+  if (_tr) {
+    const _k = (_kin.itsKingIsOfItsKin ? 1 : 0) + (_kin.itsLeaderIsOfItsKin ? 1 : 0);
+    if (_k) _tr.push({ reason: { kind: 'its kin', bothTheKingsAndTheLeaders: _k === 2 } });
+    if (_kin.aLeaderOfItsRivalKinLeadsIt) _tr.push({ reason: { kind: 'a racial animosity' } });
   }
   // Apply terrain modifier
   if (terrain) {
