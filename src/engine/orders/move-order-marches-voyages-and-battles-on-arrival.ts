@@ -699,7 +699,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       // directions.
       const unifyDist = Math.min(2, provDistance(turnContext, ally.location, prov.id));
       // GOOD — Banner of Fellowship: allies rally to an honourable cause (+15pp unify).
-      // + ag08 Common Cause (the discoveries' registry's since plan P1-19af: "movementCost: a realm's discoveries help
+      // + sd04 Signal Fires (the discoveries' registry's since plan P1-19af: "movementCost: a realm's discoveries help
       // converging columns unite")
       const _goodUnify =
         (G.players[c.player]?.alignment === 'Good' ? 15 : 0) +
@@ -1083,7 +1083,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           contingentUnifyChance(marchLvl, unifyDist, false) +
             (G.players[c.player]?.alignment === 'Good' ? 15 : 0) +
             whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(G.players[c.player]),
-        ); // GOOD — Banner of Fellowship; + ag08 Common Cause (the discoveries' registry's, P1-19af)
+        ); // GOOD — Banner of Fellowship; + sd04 Signal Fires (the discoveries' registry's, P1-19af)
         const roll = d100();
         if (roll <= unifyPct) {
           pvpReinforcements.push(ally);
