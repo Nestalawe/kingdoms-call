@@ -1817,6 +1817,10 @@ export interface TheStagesOfEachHookPoint {
     /** Whether a discovery a realm holds charts one province it hasn't charted in full, at the new turn; the runner asks
      *  whether any does (the new turn's Observatory: plan P1-19ag). */
     readonly "a realm's discoveries chart a province": (theEffect: TheEffectOfADiscovery) => boolean;
+    /** Whether a discovery a realm holds widens the provinces its warnings reach to two steps from its own; the runner
+     *  asks whether any does (playerEvents, building the realm's report: plan P1-19ah; the set it widens is read by
+     *  nothing, Parked). */
+    readonly "a realm's discoveries widen the warnings it hears": (theEffect: TheEffectOfADiscovery) => boolean;
   };
   /** The start of a phase (plan P1-19's discoveries family: its row P1-19ag typed it). */
   readonly turnStart: {

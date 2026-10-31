@@ -292,11 +292,8 @@ export function applyPendingSynthPlan(
 // (discFanaticApplies, and discoveryArmyBonus's body, are the discoveries' registry's since plan P1-19aa; discDuelVs's
 // rule, since P1-19ac).
 // ── DISCOVERY EFFECT HELPERS ────
-// Returns true if player has a specific discovery
-export function hasDisc(turnContext: Pick<TurnContext, 'G'>, playerIdx: number, discId: string) {
-  const { G } = turnContext;
-  return (G.players[playerIdx]?.discoveries ?? []).some((d) => d.id === discId);
-}
+// (hasDisc, which asked whether a realm held a discovery by its id, went with its last caller in plan P1-19ah: every
+// discovery's effect is found by its kind, through the discoveries' registry.)
 export function gdActive(turnContext: Pick<TurnContext, 'G'>, playerIdx: number, align: string | null | undefined) {
   const { G } = turnContext;
   return gdActiveFor(G, playerIdx, align);

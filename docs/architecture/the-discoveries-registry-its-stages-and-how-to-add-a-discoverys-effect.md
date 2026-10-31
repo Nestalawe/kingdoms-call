@@ -30,9 +30,8 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   (`theEffectsOfAKindARealmHolds`, in the table `DISC_BY_ID`): in the order the realm holds its discoveries, `effect`
   before `effect2`, the order a product or a sum of decimals runs in. It hands each effect, with the stage's facts, to
   the kind's effect, which returns its number (or nothing, where its filters don't hold), and adds, multiplies or asks
-  them as the old reader did. The old readers of `src/engine/discoveries.ts` (`discEffectsOf`, `discSum`, `discEff`,
-  `discSumOf`, `discParam`) went with their last callers in P1-19ag; the one kind not yet taken, Messenger Birds'
-  `extendedIntel`, is still read by its id (`hasDisc`) until P1-19ah.
+  them as the old reader did. The old readers (`discEffectsOf`, `discSum`, `discEff`, `discSumOf`, `discParam`,
+  `hasDisc`, the bots' `botHasDisc`) went with their last callers; every kind of content has its row.
 - **The unit-class tests** the filters need (`discUnitIs`, `discUnitMatch`, the class sets `DISC_CLS_SETS`,
   `ARMY_RACE_OF_TYPE`) are in `src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts`,
   which the engine, the views and the registry's effects all read.
@@ -175,15 +174,20 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   levels. `visibility`'s **… name an unseen captain** (Informant Network, `informants`) and **… chart a province**
   (Arcane Observatory, `turnReveal`): yes or no; the new turn draws whom and where, as before.
 
+**Messenger Birds and the bots** (P1-19ah): `visibility`'s **… widen the warnings it hears** (Messenger Birds,
+`extendedIntel`; `playerEvents`, building a realm's report): yes or no. Moved as it was: nothing reads the set it
+widens (Parked). The bots' strength estimates (`botEffForce`, `botBattleForce`, `botDruidShortfall`,
+`botRecruitableTypes`) ask the battles' runners for Dragon Taming and Flanking Tactics, handed the commander's realm.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order, each row's kind a kind of `SAGE_DISCOVERIES_P`, no two rows of one kind, and every kind of content with
-  its row or listed as not yet taken (each row of the family shortens the list, to none).
+  its row or listed as not yet taken (none since P1-19ah).
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae, 23 after P1-19af, 5 after P1-19ag): the functions taken name no
+  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae, 23 after P1-19af, 5 after P1-19ag, 0 after P1-19ah): the functions taken name no
   discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
   but means something else (the Evil doctrine `'terror'` in both battles; the Spy skill `'spy'`, a line's type
   `'explore'`) is listed beside its function.

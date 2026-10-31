@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { buildTurnReport } from './turn-report.ts';
 import { playerView } from './what-each-realm-may-see-of-the-world.ts';
-import { hasDisc } from '../engine/discoveries.ts';
+import { doARealmsDiscoveriesWidenTheWarningsItHears } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import { theTurnsLinesInWords } from './prose/the-words-of-each-line.ts';
 
 // ── THE LINES EACH REALM READS (plan P1-12b3: P1-12's Decision 10, out of buildReports) ────
@@ -32,9 +32,10 @@ export function playerEvents(turnLog, G, pi, sight) {
     if ((p.visitedBy || []).includes(pi)) playerVisitedProvs.add(p.id);
   });
   (G.characters || []).filter((c) => c.player === pi && c.alive).forEach((c) => playerVisitedProvs.add(c.location));
-  // sd20 Messenger Birds: receive intel from provinces 2 steps from owned provinces
-  // (hasDisc reads only the world, G, of the turn's context it is given: here there is no turn's context.)
-  if (hasDisc({ G }, pi, 'sd20')) {
+  // Messenger Birds: receive intel from provinces 2 steps from owned provinces (the discoveries' registry's since plan
+  // P1-19ah: "visibility: a realm's discoveries widen the warnings it hears", moved as it was: nothing below reads the
+  // set it widens, Parked)
+  if (doARealmsDiscoveriesWidenTheWarningsItHears(G.players[pi])) {
     const offEven = [
       [-1, -1],
       [-1, 0],

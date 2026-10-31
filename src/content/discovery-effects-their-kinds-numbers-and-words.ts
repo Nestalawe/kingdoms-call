@@ -232,6 +232,9 @@ export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
   'arcane-observatory': { kind: 'turnReveal' },
   // Herbal Lore (sd29): the share of last season's wounds dressed as a phase begins (P1-19ag)
   'herbal-lore': { kind: 'autoHeal' },
+  // Messenger Birds (sd20): the provinces two steps from the realm's that its warnings reach (P1-19ah; the set they
+  // widen is read by nothing: Parked)
+  'messenger-birds': { kind: 'extendedIntel' },
 } as const satisfies Record<string, AKindOfDiscoveryEffect>;
 
 /** A kind of effect's slug (a key of DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS). */
