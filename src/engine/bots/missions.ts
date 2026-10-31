@@ -8,6 +8,7 @@ import {
   EMBARGO_COST,
   GOOD_WORKS_COST,
   GROW_WILD_COST,
+  isBarrow,
   kingOrderReady,
   kitTactics,
   kitTargetBonus,
@@ -2038,8 +2039,8 @@ export function botKingKitOrder(G, pi, c, P, L) {
         if (h && h.alive && h.id !== c.id && h.player === pi && h.location === P.id)
           n += (h.armies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
       });
-      const affordable = Math.min(n, Math.floor(Math.max(0, L.budget - 6) / BIND_BONES_COST));
-      if (affordable < 2) return null;
+      const affordable = Math.min(n, Math.floor(Math.max(0, L.budget - 4) / BIND_BONES_COST));
+      if (affordable < 1) return null;
       botSpend(L, affordable * BIND_BONES_COST);
       return { action: 'bind_bones', target: '', extra: '', desc: 'Bind the Bones in ' + P.name };
     }
@@ -2083,6 +2084,26 @@ export function botDespoilPlan(G, pi, c, P, L, maxHops) {
   const path = botPathDirs(G, pi, P, best.X.id, maxHops, false) || [];
   if (path.length !== best.d) return null;
   L.budget -= DESPOIL_COST;
+  return { X: best.X, d: best.d, path };
+}
+/** PROTOTYPE tactics (master list): the nearest held barrow with graves lying in it that an Undead necromancer can walk
+ *  to within `maxHops` through the realm's land, to raise them there. {X, d, path}. */
+export function botBarrowPlan(G, pi, c, P, L, maxHops) {
+  const pl = (G.players || [])[pi];
+  if (!pl || !P || (c.skills || {}).necromancy < 1) return null;
+  let best = null;
+  (pl.provinces || []).forEach((id) => {
+    const X = G.world.provinces[id];
+    if (!X || X.owner !== pi || X.id === P.id || !(X.features || []).some(isBarrow)) return;
+    if ((X.battleGraves || []).length < 1) return;
+    const d = botPathLen(G, pi, P, X.id, false);
+    if (d == null || d > maxHops) return;
+    const sc = d * 2 - (X.battleGraves || []).length;
+    if (!best || sc < best.sc) best = { X, d, sc };
+  });
+  if (!best) return null;
+  const path = botPathDirs(G, pi, P, best.X.id, maxHops, false) || [];
+  if (path.length !== best.d) return null;
   return { X: best.X, d: best.d, path };
 }
 /** PROTOTYPE tactics (round 11): the nearest sell-swords in the realm's own land a Neutral hero can walk to within

@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { isBarrow, kitTactics } from '../alignment-prototypes.ts';
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../army-tables.ts';
@@ -65,6 +66,16 @@ export function botCastPlan(G, pi, c, prov, opts) {
     out.push({ action: 'cast_spell', target: spell, extra: extra == null ? '' : String(extra), desc });
     return true;
   };
+  // PROTOTYPE Undead (master list): a necromancer standing at a held barrow raises its dead before anything else — the
+  // barrows refill their graves every turn, and nothing else raises them now that Harvest the Field is gone
+  if (
+    lvl('necromancy') >= 1 &&
+    kitTactics(G, pi) === 'Undead' &&
+    prov.owner === pi &&
+    (prov.features || []).some(isBarrow) &&
+    (prov.battleGraves || []).length > 0
+  )
+    push('necromancy', 'Skeletal Armies', '', 'Raise the barrow dead of ' + prov.name);
   const enemyRel = (j) => j != null && j !== pi && botRelationRaw(G, pi, j) === 'enemy';
   // targets are drawn from what this realm can see. charsIn goes through botVisibleCharsIn (so a
   // cloaked or unspotted hero is not picked as a target at all, rather than being targeted and

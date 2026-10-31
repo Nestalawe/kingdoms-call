@@ -72,6 +72,7 @@ import {
   botAirStrike,
   botBeastMusterPlan,
   botConsecrateTarget,
+  botBarrowPlan,
   botDespoilPlan,
   botInfiltrateOrders,
   botInfiltrateSchool,
@@ -693,6 +694,24 @@ export function runBotMovement(G, botIdxSet, hooks) {
               const mv = [
                 ...dp.path.map((d) => botMoveOrder(d, 'To despoil ' + dp.X.name)),
                 { action: 'despoil', target: '', extra: '', desc: 'Despoil ' + dp.X.name, prov: dp.X.id },
+              ];
+              G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, mv);
+              assigned.add(c.id);
+              return;
+            }
+            // ── BARROW MARCH (PROTOTYPE, master list): an Undead necromancer walks to the nearest held barrow whose graves
+            // lie full and raises them there ──
+            const bp = _bk === 'Undead' ? botBarrowPlan(G, pi, c, P, L, 3) : null;
+            if (bp && pre.length + bp.path.length < 5) {
+              const mv = [
+                ...bp.path.map((d) => botMoveOrder(d, 'To the barrow of ' + bp.X.name)),
+                {
+                  action: 'cast_spell',
+                  target: 'Skeletal Armies',
+                  extra: '',
+                  desc: 'Raise the barrow dead of ' + bp.X.name,
+                  prov: bp.X.id,
+                },
               ];
               G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, mv);
               assigned.add(c.id);
