@@ -32,6 +32,8 @@ check finds were made.
   hero (else the fight's). A new line the man across the field must not read is a new kind of that audience, and the
   leak check's own list of them (`KINDS_FOR_ONE_REALM_ALONE`, `tests/lib/report-leaks.ts`) gains it: the check "a line
   for one realm alone" reads every realm's report against the recorded events, whatever audience the engine gave them.
+  The list holds one kind filed on its own as well: a hero's maximum-HP rise outside a fight (`syncAllMaxHp`, R-117),
+  whose event tells his realm alone (no deed, no sight) and whose fact names its `realm`.
   The engine reads a fight's line by its kind, never its words: the mercy that stays a killing blow keeps a skill rise's
   words, a line for one realm alone and another area's fact, and drops the fight's own lines
   (`isAPersonalCombatsLine`, `isALineForEveryoneInTheFight`); the two searches for a battle's header find a battle

@@ -19,7 +19,7 @@
 //   not where the province was fought over already, or once he has gone; two hosts on ground nobody owns, the stronger
 //   attacks; on a third realm's land they fight each other and the owner keeps it.
 // - syncAllMaxHp (a property): every living hero's maximum HP is brought in line, each change told once; a second pass
-//   finds nothing.
+//   finds nothing. And a rise, in a province or in none, is told to his realm alone, its fact naming it (R-117).
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The balance
 // matrix runs all of them, but never the war front's battle, a leaderless neutral garrison fighting on, a repelled
 // attacker's retreat, a contest between realms at peace, or a lone host on an ally's ground (V8 block coverage,
@@ -623,6 +623,46 @@ describe('every hero’s maximum HP kept in step (syncAllMaxHp)', () => {
         },
       ),
     );
+  });
+
+  // R-117 (Toby, 2026-10-31): a rise is his own realm's alone, told to it (no deed, no sight), in a province or in none,
+  // and its fact names that realm (the leak check's KINDS_FOR_ONE_REALM_ALONE reads it).
+  test.each([
+    ['in a province', true],
+    ['in no province', false],
+  ])('a rise %s is told to his realm alone, and its fact names his realm', (_where, inAProvince) => {
+    const b = fresh();
+    const c = hero(b, { player: 1, at: b.X });
+    if (!inAProvince) c.location = null as never;
+    c.maxHp = computeMaxHp(c, b.G.players) - 4;
+    c.hp = c.maxHp - 3;
+    const from = b.tc.turnLog.length;
+    syncAllMaxHp(b.tc);
+    const told = b.tc.turnLog.slice(from).filter((l) => l['charId'] === c.id);
+    expect(
+      told.map((l) => ({
+        fact: l['fact'],
+        actor: l['actor'],
+        targets: l['targets'],
+        public: l['public'],
+        at: l['provinceId'],
+      })),
+    ).toEqual([
+      {
+        fact: {
+          kind: "a hero's maximum hit points rise as the phase ends",
+          realm: 1,
+          heroName: c.name,
+          by: 4,
+          maxHp: c.maxHp,
+          hp: c.hp,
+        },
+        actor: null,
+        targets: [1],
+        public: false,
+        at: inAProvince ? b.X.id : null,
+      },
+    ]);
   });
 });
 
