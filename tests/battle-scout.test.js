@@ -32,10 +32,11 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
   await new Promise(r=>setTimeout(r,1200));
   const w=dom.window; const ev=expr=>w.eval(expr);
   const wordsOf=l=>l==null||typeof l==='string'?l:ev('theWordsOf')(l); // a line's words: its words, or a fact's (the views write them, P1-12c6)
+  const side=heroName=>({heroName,leaderless:false}); // a side as the lines take it (P1-12d30: a record; the views write its label)
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
   for(const f of ['battleScout','battleWidthChoices','battleLegal','battleBestSwap','battleDeploy','battleRegrid','battleScoutLine','battleMovesLine']) ok(ev(`typeof ${f}`)==='function',`${f}() is declared at module level`);
   if(fail){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
-  const G=ev('battleGrid'), scout=ev('battleScout'), choices=ev('battleWidthChoices'), legal=ev('battleLegal'), deploy=ev('battleDeploy'), scoutLine=(...a)=>wordsOf(ev('battleScoutLine')(...a)), movesLine=(...a)=>wordsOf(ev('battleMovesLine')(...a));
+  const G=ev('battleGrid'), scout=ev('battleScout'), choices=ev('battleWidthChoices'), legal=ev('battleLegal'), deploy=ev('battleDeploy'), scoutLine=(d,a,b,...x)=>wordsOf(ev('battleScoutLine')(d,side(a),side(b),...x)), movesLine=(d,a,b)=>wordsOf(ev('battleMovesLine')(d,side(a),side(b)));
   const BASE={'Shieldwall Levies':8,'Yeoman Longbows':8,'Free Lances':10,'Warg Riders':10,'Eagle Riders':12,'Dwarven Guard':12};
   const row=type=>({a:{type,quality:'Average',unitName:type},base:BASE[type]||8,fly:type==='Eagle Riders'});
   const rows=spec=>[].concat(...spec.map(([t,n])=>Array.from({length:n},()=>row(t))));

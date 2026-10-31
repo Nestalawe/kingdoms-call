@@ -40,6 +40,7 @@ import type { BattleGrid, BattleGridOptions } from './lines.ts';
 import type {
   ACommandMultiplierInTheLadder,
   AModifierOfAUnitInTheLadder,
+  ASideAsABattlesReportLinesNameIt,
   TheFactOfOneOfABattlesSentences,
   WhatLiftsAUnitsQuality,
 } from './the-facts-a-battles-lines-record.ts';
@@ -476,7 +477,7 @@ export function kinNarrative(
   force: readonly ForceUnit[] | null | undefined,
   leader: Character | null | undefined,
   ownerRace: string | null | undefined,
-  sideName: string,
+  sideName: ASideAsABattlesReportLinesNameIt,
 ): TheFactOfOneOfABattlesSentences | null {
   const f = (force ?? []).filter((a): a is ArmyInABattle => Boolean(a?.race));
   if (!f.length) return null;

@@ -249,9 +249,15 @@ export function combatVsChar(turnContext, atk, def, prov) {
     if (_id) narrate(narrative, _id);
   } // item 5
   {
-    const _kA = kinNarrative(atkArmies, atk, G.players[atk.player]?.race || null, `${atk.name}'s host`);
+    const _kA = kinNarrative(atkArmies, atk, G.players[atk.player]?.race || null, {
+      kind: "a hero's host in the battle",
+      heroName: atk.name,
+    });
     if (_kA) narrate(narrative, _kA); // item 7
-    const _kD = kinNarrative(defArmies, def, G.players[def.player]?.race || null, `${def.name}'s host`);
+    const _kD = kinNarrative(defArmies, def, G.players[def.player]?.race || null, {
+      kind: "a hero's host in the battle",
+      heroName: def.name,
+    });
     if (_kD) narrate(narrative, _kD);
   }
   // each side's army strength on the ground: every per-unit modifier (terrain, kinship, Dwarven
@@ -407,7 +413,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const atkName = atkCmdrSlain ? `${atk.name}'s leaderless host` : atk.name; // item 12
   const defName = defCmdrSlain ? `${def.name}'s leaderless host` : def.name; // item 12
   // Each side as the facts hold it (plan P1-12d22): the record the label above is written from; the prose writes the
-  // label (theLabelOfASide). The helpers' lines still take the label.
+  // label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too; the pursuit and sea lift lines still
+  // take the label.
   const atkSide = { heroName: atk.name, leaderless: atkCmdrSlain };
   const defSide = { heroName: def.name, leaderless: defCmdrSlain };
 
@@ -1057,9 +1064,9 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // free)
   // 2026-09-23d: one line per side (was one per unit).
   {
-    const _dl = druidShortfallLine(turnContext, atkName, atk, atkArmies, atkAlign2);
+    const _dl = druidShortfallLine(turnContext, atkSide, atk, atkArmies, atkAlign2);
     if (_dl) narrate(narrative, _dl);
-    const _dd = druidShortfallLine(turnContext, defName, def, defArmies, defAlign2);
+    const _dd = druidShortfallLine(turnContext, defSide, def, defArmies, defAlign2);
     if (_dd) narrate(narrative, _dd);
   }
 
@@ -1212,12 +1219,12 @@ export function combatVsChar(turnContext, atk, def, prov) {
   const atkBaseStr = _gA.grid.face.total,
     defBaseStr = _gD.grid.face.total;
   narrate(narrative, battleWidthLine(pvpTerrain, pvpFront));
-  narrate(narrative, battleScoutLine(_dep, atkName, defName, _explA, _explD));
+  narrate(narrative, battleScoutLine(_dep, atkSide, defSide, _explA, _explD));
   {
-    const _mv = battleMovesLine(_dep, atkName, defName);
+    const _mv = battleMovesLine(_dep, atkSide, defSide);
     if (_mv) narrate(narrative, _mv);
   }
-  narrateAll(narrative, [...battleGridLines(defName, _gD.grid, true), ...battleGridLines(atkName, _gA.grid, false)]);
+  narrateAll(narrative, [...battleGridLines(defSide, _gD.grid, true), ...battleGridLines(atkSide, _gA.grid, false)]);
   // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
   // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
   // Item 9: fortune of battle — one swing, applied as a pair of luck multipliers (see
@@ -1243,7 +1250,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
   narrate(narrative, { kind: "the battle's statistics begin" });
   narrateAll(
     narrative,
-    ladderLines('attacker', atkName, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {
+    ladderLines('attacker', atkSide, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {
       grid: _gA.grid,
       tact:
         pvpIsLand && atkTactBonus > 1
@@ -1256,7 +1263,7 @@ export function combatVsChar(turnContext, atk, def, prov) {
   );
   narrateAll(
     narrative,
-    ladderLines('defender', defName, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {
+    ladderLines('defender', defSide, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {
       grid: _gD.grid,
       tact:
         pvpIsLand && defTactBonus > 1

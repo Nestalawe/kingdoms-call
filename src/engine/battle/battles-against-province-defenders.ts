@@ -228,13 +228,16 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     if (_ic) narrate(narrative, _ic);
   } // commander's magic items in play
   {
-    const _kA = kinNarrative(armies, c, c.player != null ? G.players[c.player]?.race : null, `${c.name}'s host`);
+    const _kA = kinNarrative(armies, c, c.player != null ? G.players[c.player]?.race : null, {
+      kind: "a hero's host in the battle",
+      heroName: c.name,
+    });
     if (_kA) narrate(narrative, _kA); // item 7
     const _kD = kinNarrative(
       defenders,
       neutralGuardHero || null,
       prov.owner != null ? G.players[prov.owner]?.race : null,
-      `the defenders of ${prov.name}`,
+      { kind: "a province's defenders, whoever leads them", provName: prov.name },
     );
     if (_kD) narrate(narrative, _kD);
   }
@@ -373,7 +376,8 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // command, not the fallen leader — the setup lines and the death notice above keep the name.
   const cName = atkCmdrSlain ? `${c.name}'s leaderless host` : c.name; // slain → the host acts, not the dead commander
   // The attacker's side as the facts hold it (plan P1-12d23): the record the label above is written from; the prose
-  // writes the label (theLabelOfASide). The helpers' lines still take the label.
+  // writes the label (theLabelOfASide). Since P1-12d30 the battle's report lines take it too; the pre-battle and pursuit
+  // lines still take the label.
   const atkSide = { heroName: c.name, leaderless: atkCmdrSlain };
   // A slain commander's skills die with them: the stand-in provides no Tactical, Archery, Naval,
   // Druid or spellcraft for the rest of this battle.
@@ -1191,7 +1195,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // Battle-stats ladder names it on the units it reached.) Show Druid shortfall warnings
   const druIdLvl = effStat(turnContext, c, 'druid');
   {
-    const _dl = druidShortfallLine(turnContext, cName, c, armies, playerAlign);
+    const _dl = druidShortfallLine(turnContext, atkSide, c, armies, playerAlign);
     if (_dl) narrate(narrative, _dl);
   } // 2026-09-23d: one line, not one per unit
   void druIdLvl;
@@ -1416,16 +1420,26 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
     });
   const atkBaseStr = _gA.grid.face.total,
     defBaseStr = _gD.grid.face.total;
-  const _defNm = defHero ? defHero.name : `the defenders of ${prov.name}`;
+  // The defenders as the report lines name them (plan P1-12d30: a record; the prose writes the label): their guard, or
+  // the defenders of the province with no guard to lead them; the grid names a side with no guard "Guards".
+  const _defSideStat = defHero
+    ? { kind: 'the defenders led by their guard', guardName: defHero.name }
+    : { kind: 'the defenders of a province with no guard to lead them', provName: prov.name, capitalised: false };
   narrate(narrative, battleWidthLine(prov.terrain, lineWidth));
-  narrate(narrative, battleScoutLine(_dep, cName, _defNm, _explA, _explD));
+  narrate(narrative, battleScoutLine(_dep, atkSide, _defSideStat, _explA, _explD));
   {
-    const _mv = battleMovesLine(_dep, cName, _defNm);
+    const _mv = battleMovesLine(_dep, atkSide, _defSideStat);
     if (_mv) narrate(narrative, _mv);
   }
   narrateAll(narrative, [
-    ...battleGridLines(defHero ? defHero.name : 'Guards', _gD.grid, true),
-    ...battleGridLines(cName, _gA.grid, false),
+    ...battleGridLines(
+      defHero
+        ? { kind: 'the defenders led by their guard', guardName: defHero.name }
+        : { kind: "a province's guards with no guard to name them" },
+      _gD.grid,
+      true,
+    ),
+    ...battleGridLines(atkSide, _gA.grid, false),
   ]);
   // Roll with variance — each side rolls 0 to 70% of the stronger side's POST-multiplier
   // strength. Dice basis unified with the PvP path: both scale the random swing off the FULL
@@ -1448,23 +1462,19 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   // re-multiply. (Per-factor lines above give the full breakdown.)
   // 2026-09-23b: strength LADDER per side (see ladderLines) replaces the one-line "(incl. …)"
   // summary. The Whole-force lists MUST mirror atkBaseStr / defBaseStr above.
-  const _defLabelStat = defHero ? defHero.name : `the defenders of ${prov.name}`;
-  const _defSideStat = defHero
-    ? { kind: 'the defenders led by their guard', guardName: defHero.name }
-    : { kind: 'the defenders of a province with no guard to lead them', provName: prov.name, capitalised: false };
   const _nAtkTm = tacMulted(effectiveTactBonus, c),
     _nDefTm = tacMulted(defTactBonus, defHero);
   narrate(narrative, { kind: "the battle's statistics begin" });
   narrateAll(
     narrative,
-    ladderLines('attacker', cName, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {
+    ladderLines('attacker', atkSide, armiesWithStr, lineWidth, atkFlankDisc, _nAtkFM, atkBaseStr, {
       grid: _gA.grid,
       tact: isLandBattle && _nAtkTm > 1 ? { mult: _nAtkTm, reason: { kind: 'tactical', multiplier: _nAtkTm } } : null,
     }),
   );
   narrateAll(
     narrative,
-    ladderLines('defender', _defLabelStat, defsWithStr, defLineWidth, defFlankDisc, _nDefFM, defBaseStr, {
+    ladderLines('defender', _defSideStat, defsWithStr, defLineWidth, defFlankDisc, _nDefFM, defBaseStr, {
       grid: _gD.grid,
       tact:
         prov.terrain !== 'sea' && _nDefTm > 1

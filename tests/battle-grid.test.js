@@ -36,7 +36,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-6;
     ok(ev(`typeof ${f}`)==='function',`${f}() is declared at module level`);
   }
   if(fail){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
-  const G=ev('battleGrid'), role=ev('battleRole'), roll=ev('rollBattleWidth'), mid=ev('battleFrontWidth'), lines=(...a)=>ev('battleGridLines')(...a).map(wordsOf), stage=ev('battleGridStage'), total=ev('battleLineTotal');
+  const G=ev('battleGrid'), role=ev('battleRole'), roll=ev('rollBattleWidth'), mid=ev('battleFrontWidth'), lines=(n,...a)=>ev('battleGridLines')({heroName:n,leaderless:false},...a).map(wordsOf) /* a side as the lines take it: P1-12d30, a record; the views write its label */, stage=ev('battleGridStage'), total=ev('battleLineTotal');
   const row=(type,base)=>({a:{type,quality:'Average',unitName:type},base,fly:['Eagle Riders','Noble Griffons','Gnomish Gyrocopters','Wyvern Riders'].includes(type)});
   const rows=(spec,base)=>[].concat(...spec.map(([t,n,b])=>Array.from({length:n},()=>row(t,b||base||8))));
 
