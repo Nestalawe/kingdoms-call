@@ -1,6 +1,6 @@
 // The report-leak check (plan P1-04c): what a realm's turn report must never show it. Four pure checks on one turn,
 // which checkTurn (invariants.ts) runs with the invariants wherever a harness has the realms' reports:
-// - another realm's private line: a chronicle line that is one realm's own business (PRIVATE_LINES) reaches another;
+// - another realm's private line: a line that is one realm's own business (PRIVATE_LINES) reaches another;
 // - an unmet realm: a report names a realm its reader hasn't met, before the game is over (ruling R-046);
 // - an unseen hero: a hero under Invisibility is seen by another realm (only Clairvoyance pierces it);
 // - a line its audience does not admit (P1-12b3, P1-12's Decision 12): a line a realm reads comes from no event of the
@@ -17,9 +17,11 @@
 import type { Character, SavedState, Turn } from './invariants.ts';
 
 /** A line that is one realm's own business. `line` names the hero whose realm it belongs to (group `hero`); a line
- *  that names none belongs to the one realm that reads it, so a second reader is a leak. */
-export const PRIVATE_LINES: readonly { name: string; line: RegExp }[] = [
-  { name: 'a hit-point rise', line: /💪 (?<hero>.+?) is hardened by the (?:wounds|victory)/ },
+ *  that names none belongs to the one realm that reads it, so a second reader is a leak. A spy who stays in a province
+ *  sees what rival heroes do there (R-118: their Call to Arms, their Resurrect), so in a spy's feed only the lines
+ *  marked `inASpysFeedToo` are checked: news, not a deed. */
+export const PRIVATE_LINES: readonly { name: string; line: RegExp; inASpysFeedToo?: true }[] = [
+  { name: 'a hit-point rise', line: /💪 (?<hero>.+?) is hardened by the (?:wounds|victory)/, inASpysFeedToo: true },
   { name: 'Invisibility', line: /✨ (?<hero>.+?) weaves Invisibility about themself/ },
   { name: 'moving unseen', line: /\[Intelligence\] 🕶 (?<hero>.+?) moved unseen this turn/ },
   { name: 'Call to Arms', line: /📯 Call to Arms!/ },
@@ -32,13 +34,15 @@ export const PRIVATE_LINES: readonly { name: string; line: RegExp }[] = [
   { name: 'Phantom Host', line: /✨ (?<hero>.+?) conjures a Phantom Host/ },
 ];
 
-/** The kinds of line that are one realm's alone (P1-12c4, P1-12's Decision 6; R-117), listed here apart from the
- *  engine's audience of each kind: a hero's hit-point rise in a fight, the surgeons' word to a fallen duellist's own
- *  realm, and a hero's maximum-HP rise outside a fight. Each names its realm (its fact's `realm`). */
+/** The kinds of line that are one realm's alone (P1-12c4, P1-12's Decision 6; R-117; R-118), listed here apart from
+ *  the engine's audience of each kind: a hero's hit-point rise in a fight, the surgeons' word to a fallen duellist's
+ *  own realm, a hero's maximum-HP rise outside a fight, and a hero hardened after a fight outside one. Each names its
+ *  realm (its fact's `realm`). */
 export const KINDS_FOR_ONE_REALM_ALONE: readonly string[] = [
   "a hero's hit points rise in a fight, for his realm alone",
   'the surgeons reach a fallen duellist too late, for his realm alone',
   "a hero's maximum hit points rise as the phase ends",
+  'a hero is hardened after a fight',
 ];
 
 /** A chronicle line scried by Clairvoyance starts with this. The rulebook gives the caster everything that happens to
@@ -147,8 +151,9 @@ function heroesByName(t: Turn): Map<string, Character> {
 }
 
 /** No realm reads another realm's private line in any of its report's lines (LINES: the chronicle, province events and
- *  spy activity): a PRIVATE_LINES line naming a hero is read only by the realms he served this turn, and one naming none
- *  by one realm only. A name two heroes share isn't checked. Clairvoyance's lines are let through (CLAIRVOYANCE). */
+ *  spy activity, where only the lines marked `inASpysFeedToo` count): a PRIVATE_LINES line naming a hero is read only
+ *  by the realms he served this turn, and one naming none by one realm only. A name two heroes share isn't checked.
+ *  Clairvoyance's lines are let through (CLAIRVOYANCE). */
 function privateLines(t: Turn): string[] {
   const byName = heroesByName(t);
   const readers = new Map<string, Set<number>>();
@@ -158,6 +163,7 @@ function privateLines(t: Turn): string[] {
       const text = textOf(value);
       if (typeof text !== 'string' || text.startsWith(CLAIRVOYANCE)) continue;
       for (const p of PRIVATE_LINES) {
+        if (at.startsWith('spyActivity[') && !p.inASpysFeedToo) continue;
         const m = p.line.exec(text);
         if (!m) continue;
         const hero = m.groups?.['hero'];
@@ -358,8 +364,9 @@ const phaseOf = (v: unknown): number | null => (isNumber(v) ? v : null);
  *  - a battle's lines: read by those who fought in it, who are told (realms); seen in the battle grants no one else;
  *  - nobody else (the GM's own lines);
  *  and through perception:
- *  - a spy's lingering sight (its report's spyActivity): in a province the realm spied, from the next phase on, what
- *    anyone there might see: an event seen by the world, there or in the battle, that doesn't except it;
+ *  - a spy's lingering sight (its report's spyActivity; R-118): in a province the realm spied, from the next phase on,
+ *    what rival heroes do there or anyone there could see: an event with a deed (an actor) or seen by the world, there
+ *    or in the battle, that doesn't except it and isn't of a kind for one realm alone (KINDS_FOR_ONE_REALM_ALONE);
  *  - Clairvoyance (a chronicle line starting CLAIRVOYANCE): every event about the hero the realm watches (his, or among
  *    its heroes), from the phase the watch began; and, with no phase, where he stands as the turn ends.
  *  In a line the realm reads, an unmet realm's name may be "an unknown realm" (R-046). Each breach says which line
@@ -477,7 +484,11 @@ function linesTheirAudienceDoesNotAdmit(t: Turn): string[] {
         const lingering = events.filter(
           (e) => e.province === province && from !== undefined && phase != null && phase > from,
         );
-        if (lingering.some((e) => e.audience.seen !== undefined && !excepted(e))) continue;
+        const aSpyThereSees = (e: EventAsEmitted) =>
+          (e.audience.actor != null || e.audience.seen !== undefined) &&
+          !excepted(e) &&
+          !KINDS_FOR_ONE_REALM_ALONE.includes(String(e.kind));
+        if (lingering.some(aSpyThereSees)) continue;
         out.push(
           lingering.length
             ? `realm ${String(realm)} reads, through its spy, a line its audience keeps from it at ${where}: ${quote(text)}`

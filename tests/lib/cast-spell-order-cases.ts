@@ -1887,12 +1887,14 @@ export const CHARM_CASES: CastSpellOrderCase[] = [
             o,
             `⚠ ${m.name} is ensorcelled by an enemy Charm and slips your command until the season turns.`,
           ),
+          // his realm's news, no one's deed: a spy who stays in the province doesn't read it (R-118)
+          warningsDeed: o.all.find((l) => l.text.includes(`⚠ ${m.name} is ensorcelled by an enemy Charm`))?.actor,
           mind: readsMind(o, s, 'Melee 1, Tactical 2, March 1', 'none'),
           home: after.player,
           immune: after['_charmImmuneTurn'],
           resist: after['_charmResist'],
         },
-        want: { grips: true, warned: [1], mind: true, home: 1, immune: o.turn + 1, resist: 30 },
+        want: { grips: true, warned: [1], warningsDeed: null, mind: true, home: 1, immune: o.turn + 1, resist: 30 },
       };
     },
   },

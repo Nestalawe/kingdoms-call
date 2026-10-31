@@ -125,8 +125,7 @@
   `turn-fuzz` and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
   `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (Theo, 2026-10-17: no
   engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: enemy orders
-  and reactions still reach a hero after he turns invisible, and the acting realm's report says so; another realm's
-  private line in the report's spy activity section (waits for P1-23).
+  and reactions still reach a hero after he turns invisible, and the acting realm's report says so.
 - **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
   rule and let fast-check make up the inputs: heroes, guardians, hits, small worlds, orders. Every dice roll in the
   page comes from a seed that is part of the input (the page's dice are reseeded, `kcRng.seed`, and its clock starts again,
@@ -144,8 +143,9 @@
   - **another realm's private line**: a line on the `PRIVATE_LINES` list (a hit-point rise, Invisibility, moving
     unseen, Call to Arms, Resurrect, Divine Resurrection, Phantasmal Armies, Phantom Host), in any part of the report
     that holds lines (the chronicle, province events and spy activity: P1-12a1), read by a realm the hero it names
-    didn't serve this turn (his realm before or after it, or a Charm's caster), or, naming none, by two realms.
-    Clairvoyance's scried lines are allowed (the rulebook);
+    didn't serve this turn (his realm before or after it, or a Charm's caster), or, naming none, by two realms. In spy
+    activity only the hit-point rise counts (`inASpysFeedToo`): a spy who stays sees a rival's deeds, his Call to Arms
+    or his Resurrect among them (R-118). Clairvoyance's scried lines are allowed (the rulebook);
   - **an unmet realm**: before the game is over, a realm's name anywhere in the report of a realm that hasn't met it
     (`_encountered`, or a hero of it in the report's sightings), but in a chronicle line the reader is a party to
     (R-046). A met realm's name that holds an unmet one is matched first;
@@ -158,17 +158,17 @@
     it, by the audience model stated there again, apart from the views' `playerEvents`: told, its own deed, its hero
     (a line that names none, filed under the hero whose order was resolving, only when its audience reached the realm he
     served then, or he served none: P1-12c1, as `emit` files it), the world, eyes there (its own province, a hero of its own there that phase, a spy on it that phase or before), a
-    battle's lines to those told; a spy's lingering sight (in a province it spied, from the next phase, what anyone there
-    might see); Clairvoyance (the watched hero's events from the watch's phase, and where he ends the turn); an unmet
+    battle's lines to those told; a spy's lingering sight (R-118: in a province it spied, from the next phase, a deed or
+    what anyone there could see, never a kind for one realm alone or a line that excepts it); Clairvoyance (the watched hero's events from the watch's phase, and where he ends the turn); an unmet
     realm's name read as "an unknown realm". It runs only where the harness records the turn's events
-    (`Turn.perception`: the matrix's every-realm half, and `report-privacy` since P1-21b). Another realm's private line in a spy's feed is let through by
-    its `KNOWN_BREACHES` entry ("through its spy");
+    (`Turn.perception`: the matrix's every-realm half, and `report-privacy` since P1-21b). A line of a spied province
+    that its audience keeps from the spy reads "through its spy";
   - **a line for one realm alone** (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
     (`KINDS_FOR_ONE_REALM_ALONE`, the check's own list: a hero's hit-point rise in a fight, the surgeons' word to a
-    fallen duellist's realm, and a hero's maximum-HP rise outside a fight, R-117) is read by another realm than the one its fact names or one its hero served this turn,
+    fallen duellist's realm, a hero's maximum-HP rise outside a fight, R-117, and a hero hardened after a fight outside
+    one, R-118) is read by another realm than the one its fact names or one its hero served this turn,
     whatever audience the engine gave it (the recorder notes each event's kind and the realm its fact names).
-    Clairvoyance's lines are allowed; in a spy's feed it is let through by its `KNOWN_BREACHES` entry, as above. It
-    runs where the harness records the turn's events.
+    Clairvoyance's lines are allowed. It runs where the harness records the turn's events.
 
   What they can't see yet: in a harness that doesn't record the events (`turn-fuzz`, the page's matrix), a private line not on the list (a skill rise, say); whether the engine gave an event the right
   audience, but for the kinds for one realm alone (the audience check takes it as given: every realm's report against its baseline sees a change); the
