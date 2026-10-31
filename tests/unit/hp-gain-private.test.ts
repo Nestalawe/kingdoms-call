@@ -6,6 +6,8 @@
 //     realm.
 //   • A neutral hero's rise is shown to no realm.
 //   • With no narrative (a lair cleared alone) the line is still the hero's own realm's news.
+// 2026-10-31 (R-117, P1-23c): a maximum-HP rise outside a fight (an item, a title, a discovery), told as the phase
+// ends, is his own realm's alone too: a rival hero standing beside him does not read it.
 // Level 1 (unit): the fight engine, the HP award and the narrative emitters called directly on the engine's modules
 // (tests/lib/personal-combat.ts), with the turn's own log, which is what each realm's report is cut from (an entry's
 // targets and its public flag). Plan P1-08e: this was a script that took them from the "  // 4. Run all 5 phases" hook
@@ -15,7 +17,8 @@
 // Item 20 (2026-10-12): in a fight report a realm reads its own heroes' maximum-HP rises and never an enemy's. Two
 // rival heroes wounded in one fight each harden, and each line reaches its own realm only while the rest of the fight
 // stays shared; a battle winner's rise is private to the winner's realm; a neutral's rise is shown to nobody; a lair
-// cleared alone still tells the hero's realm. `unit/hp-gain-private.test.ts`: `resolvePersonalCombat`, `awardWinHp` and
+// cleared alone still tells the hero's realm; a rise outside a fight is his realm's alone too (R-117).
+// `unit/hp-gain-private.test.ts`: `resolvePersonalCombat`, `awardWinHp` and
 // the line emitters called directly on the engine's modules (`lib/personal-combat.ts`; P1-08e: it was a code-anchor
 // test that ran a turn on the GM portal first), reading the context's log in words (`theTurnsLinesInWords`: the rise in
 // a fight records a fact since P1-12c4)
@@ -130,4 +133,17 @@ test("a lair cleared alone: the hero's own realm reads the rise, nobody else", (
   call('awardWinHp', s, null, 'lair');
   const line = hardLines(from)[0];
   expect(sees(line, 1) && !sees(line, 0)).toBe(true);
+});
+
+// R-117 (Toby, 2026-10-31): a maximum-HP rise outside a fight (an item, a title, a discovery) is his own realm's alone.
+test('a rise outside a fight, as the phase ends: his own realm reads it; a rival beside him does not', () => {
+  const e = hero('Edric Fairhand', 0, 3, 20);
+  hero('Fenna the Watchful', 1, 3, 20);
+  e.maxHp = (call('computeMaxHp', e, turnContext.G['players']) as number) - 4;
+  e.hp = e.maxHp - 3;
+  const from = L.length;
+  call('syncAllMaxHp');
+  const line = inWords(from).find((l) => String(l.text).includes("Edric Fairhand's maximum HP rises by 4"));
+  expect(line, 'staged: his maximum HP rises by 4').toBeTruthy();
+  expect(sees(line, 0) && !sees(line, 1), `his realm reads it; the rival's does not (${who(line)})`).toBe(true);
 });

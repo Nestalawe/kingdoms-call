@@ -32,12 +32,13 @@ export const PRIVATE_LINES: readonly { name: string; line: RegExp }[] = [
   { name: 'Phantom Host', line: /✨ (?<hero>.+?) conjures a Phantom Host/ },
 ];
 
-/** The kinds of a fight's line that are one realm's alone (P1-12c4, P1-12's Decision 6), listed here apart from the
- *  engine's audience of each kind: a hero's hit-point rise in a fight, and the surgeons' word to a fallen duellist's own
- *  realm. Each names its realm (its fact's `realm`). */
+/** The kinds of line that are one realm's alone (P1-12c4, P1-12's Decision 6; R-117), listed here apart from the
+ *  engine's audience of each kind: a hero's hit-point rise in a fight, the surgeons' word to a fallen duellist's own
+ *  realm, and a hero's maximum-HP rise outside a fight. Each names its realm (its fact's `realm`). */
 export const KINDS_FOR_ONE_REALM_ALONE: readonly string[] = [
   "a hero's hit points rise in a fight, for his realm alone",
   'the surgeons reach a fallen duellist too late, for his realm alone',
+  "a hero's maximum hit points rise as the phase ends",
 ];
 
 /** A chronicle line scried by Clairvoyance starts with this. The rulebook gives the caster everything that happens to

@@ -165,7 +165,7 @@
     its `KNOWN_BREACHES` entry ("through its spy");
   - **a line for one realm alone** (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
     (`KINDS_FOR_ONE_REALM_ALONE`, the check's own list: a hero's hit-point rise in a fight, the surgeons' word to a
-    fallen duellist's realm) is read by another realm than the one its fact names or one its hero served this turn,
+    fallen duellist's realm, and a hero's maximum-HP rise outside a fight, R-117) is read by another realm than the one its fact names or one its hero served this turn,
     whatever audience the engine gave it (the recorder notes each event's kind and the realm its fact names).
     Clairvoyance's lines are allowed; in a spy's feed it is let through by its `KNOWN_BREACHES` entry, as above. It
     runs where the harness records the turn's events.

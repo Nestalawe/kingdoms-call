@@ -366,6 +366,8 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
 // whenever a character's maximum HP rises for ANY reason (item picked up, bought or received, a
 // discovery, a title…) the current HP rises by the same amount at once — syncMaxHp already heals
 // into new headroom, so the rule is: resync everyone after EVERY phase, not just at turn end.
+// A rise is his own realm's news alone (R-117, as a rise in a fight is, R-101): told to it, with no deed and no sight,
+// in a province or in none, and its fact names that realm. A fall keeps its audience until Toby rules on it.
 export function syncAllMaxHp(turnContext) {
   const { G } = turnContext;
   (G.characters || []).forEach((ch) => {
@@ -376,7 +378,10 @@ export function syncAllMaxHp(turnContext) {
     const tgt =
       ch.player != null
         ? {
-            audience: { actor: ch.player, realms: [ch.player], seen: prov ? 'there' : 'world' },
+            audience:
+              d > 0
+                ? { realms: [ch.player] }
+                : { actor: ch.player, realms: [ch.player], seen: prov ? 'there' : 'world' },
             hero: ch.id,
             province: prov ? prov.id : undefined,
           }
@@ -387,6 +392,7 @@ export function syncAllMaxHp(turnContext) {
         d > 0
           ? {
               kind: "a hero's maximum hit points rise as the phase ends",
+              realm: ch.player,
               heroName: ch.name,
               by: d,
               maxHp: ch.maxHp,

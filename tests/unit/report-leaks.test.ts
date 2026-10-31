@@ -26,9 +26,10 @@
 // him as the report is built; one of a hero who served no realm, P1-12c1; a line seen in a battle through a spy's
 // lingering sight, an unmet realm read as "an unknown realm"); with no events recorded it checks nothing; its entry
 // lets another realm's private line through in a spy's feed, not in the chronicle. The check of a line for one realm
-// alone (P1-12c4, P1-12's Decision 6) on the same turn: its own list names the two kinds; read by its own realm, no
-// breach; planted, each breaks it alone (the surgeons' word given the battle's audience and read across the field,
-// which the audience check admits; given the world, in province events); let through: Clairvoyance, the same words from
+// alone (P1-12c4, P1-12's Decision 6; R-117) on the same turn: its own list names the three kinds; read by its own
+// realm, no breach; planted, each breaks it alone (the surgeons' word given the battle's audience and read across the
+// field, which the audience check admits; given the world, in province events; a maximum-HP rise outside a fight seen
+// there, read by the province's owner); let through: Clairvoyance, the same words from
 // a line for everyone, the realm its hero joined, no events recorded, and, by its entry, a spy's feed. Level 1: a lower
 // level can't run a check; turn-fuzz, report-privacy and the matrix (every realm's report, since P1-12a1; with the
 // audience check, since P1-12b3) run them over games. TypeScript, in `unit/`
@@ -786,18 +787,32 @@ const surgeons = (audience: EventAsEmitted['audience']) =>
     factsRealm: 0,
   });
 
+/** R-117 (P1-23c): Aldo's maximum-HP rise outside a fight, as he stands in Fenwick in phase 2, recorded with `audience`
+ *  (Ashmark's alone, or, planted, what anyone there sees, as before R-117). */
+const RISES = "💪 Aldo the Bold's maximum HP rises by 4 to 22 (current HP 15).";
+const rises = (audience: EventAsEmitted['audience']) =>
+  ev(RISES, 2, audience, {
+    province: 1,
+    hero: 10,
+    kind: "a hero's maximum hit points rise as the phase ends",
+    factsRealm: 0,
+  });
+
 describe('a line for one realm alone is read by that realm and no other', () => {
-  test('its own list names the two kinds for one realm alone', () => {
+  test('its own list names the three kinds for one realm alone', () => {
     expect(KINDS_FOR_ONE_REALM_ALONE).toEqual([
       "a hero's hit points rise in a fight, for his realm alone",
       'the surgeons reach a fallen duellist too late, for his realm alone',
+      "a hero's maximum hit points rise as the phase ends",
     ]);
   });
 
   test('read by its own realm, with its own audience: no breach', () => {
     const t = perceived((_, r, p) => {
       p.events.push(surgeons({ realms: [0], actor: null }));
+      p.events.push(rises({ realms: [0] }));
       read(r, 0, SURGEONS, 2);
+      read(r, 0, RISES, 2);
     });
     expect(checkLeaks(t)).toEqual([]);
   });
@@ -819,6 +834,15 @@ describe('a line for one realm alone is read by that realm and no other', () => 
         read(r, 1, SURGEONS, 2, 'provinceEvents');
       },
       'realm 1 reads a line for realm 0 alone at provinceEvents[0]',
+    ],
+    [
+      "a maximum-HP rise outside a fight, seen there, read by the province's owner (the audience check admits it)",
+      (_, r, p) => {
+        p.events.push(rises({ actor: 0, realms: [0], seen: 'there' }));
+        read(r, 0, RISES, 2);
+        read(r, 1, RISES, 2);
+      },
+      'realm 1 reads a line for realm 0 alone at lastTurnLog[10]',
     ],
   ])('%s', (_what, plant, at) => {
     const breaches = checkLeaks(perceived(plant));
