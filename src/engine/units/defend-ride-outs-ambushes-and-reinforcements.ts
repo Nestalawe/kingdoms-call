@@ -9,7 +9,12 @@ import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/e
 import { completeDefendWatches } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
-import { effStat, isHiddenChar, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import {
+  effStat,
+  isHiddenByInvisibilityFrom,
+  isHiddenChar,
+  isVeiled,
+} from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { canStepBetween } from './movement-pools.ts';
 import { armyTotalStr, commandHandoverLine, pickBattleCommander, syncLeaderCopy } from '../battle/best-commander.ts';
 import {
@@ -635,6 +640,7 @@ export function runDefendAmbush(turnContext, ph) {
       if (e._enteredProvThisPhase !== e.location) return false; // must have MARCHED IN this phase (a real incursion)
       if (e._encounteredThisPhase != null) return false;
       if (e._vanishTurn === G.turn) return false; // THIEF L9 Vanish: no ambush lands on a vanished quarry
+      if (isHiddenByInvisibilityFrom(turnContext, e, c.player)) return false; // R-119: Invisibility passes him by
       if (e.isKing && !c.isKing) return false; // a crowned head is not waylaid by a lone hero — only a king may ambush a king
       if (isHiddenChar(turnContext, e)) return false; // Cloak of Many Faces & the like leave no trail
       return true;

@@ -97,6 +97,14 @@ export const chase = (o: Outcome, c: Character) => char(o, c)['_pursuit'];
 export const there = (s: Staged) => must(s.there, 'the province');
 export const mark = (s: Staged) => must(s.mark, 'the mark');
 
+/** An enemy hero in the middle whose Invisibility holds this turn (R-119: another realm's order aimed at him finds no
+ *  one). */
+export const unseen = (b: Board) => {
+  const q = rival(b);
+  q['_invisTurn'] = b.G.turn;
+  return q;
+};
+
 // ── Encounter Character ─────────────────────────────────────────────────────────────────────────────────────────
 /** An Encounter Character order on `q`. */
 export const hunt = (q: Character | number) => order('encounter', typeof q === 'number' ? q : q.id);
@@ -270,6 +278,23 @@ export const ENCOUNTER_ORDER_CASES: WarOrderCase[] = [
         got: { told: told(o, line), ...nothingHunted(o, s) },
         want: {
           told: { type: 'system', targets: [0], provinceId: there(s).id, public: false, phase: 0 },
+          ...NOTHING_HUNTED(s),
+        },
+      };
+    },
+  },
+  {
+    name: 'a quarry of another realm whose Invisibility holds leaves no trail at all (R-119): the line names no one, and no chase',
+    stage(b) {
+      return hunter(b, unseen(b));
+    },
+    check(o, s) {
+      const line = `${s.hero.name} casts about for a quarry to hunt down but finds no trail to follow.`;
+      return {
+        got: { told: told(o, line), namesHim: says(o, mark(s).name), ...nothingHunted(o, s) },
+        want: {
+          told: { type: 'system', targets: [0], provinceId: there(s).id, public: false, phase: 0 },
+          namesHim: false,
           ...NOTHING_HUNTED(s),
         },
       };
@@ -949,6 +974,7 @@ export const CHALLENGE_ORDER_CASES: WarOrderCase[] = [
       ['an enemy hero not beside him', (b: Board) => rival(b, { at: ring1(b, 0) })],
       ['a hero of his own realm', (b: Board) => at(b)],
       ['a hero who has fallen', (b: Board) => fallen(b, b.X, { player: 1, troops: 0 })],
+      ['an enemy hero whose Invisibility holds (R-119)', unseen],
     ] as const
   ).map(([who, foe]) =>
     refused(
@@ -1357,6 +1383,7 @@ export const SNIPERS_MARK_ORDER_CASES: WarOrderCase[] = [
     [
       ['an enemy hero not beside him', (b: Board) => rival(b, { at: ring1(b, 0) })],
       ['a hero of his own realm', (b: Board) => at(b)],
+      ['an enemy hero whose Invisibility holds (R-119)', unseen],
     ] as const
   ).map(([who, foe]) =>
     refused(

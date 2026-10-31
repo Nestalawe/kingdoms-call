@@ -22,6 +22,9 @@
 // no gold or item and never move Mithril; a caught thief or a realm's victim keeps at least 1 HP; Assassinate kills
 // exactly within the chance; Sabotage burns at most one company, only where it is aimed. Planted faults: in the PR
 // (P1-08j6)
+// Since P1-23e (R-119): Spy on a hero, Steal and Assassinate aimed at another realm's hero whose Invisibility holds find
+// no one (no roll, a line naming no one); a realm that watches him by Clairvoyance, his own realm and last turn's
+// Invisibility are passed through.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -1029,6 +1032,71 @@ describe('Assassinate, called directly', () => {
     const h = at(b, { spy: 9 });
     play(b, h, o('assassinate', 'nobody'));
     expect(textOf(b, h)).toContain('finds no enemy hero to assassinate');
+  });
+});
+
+// ── Invisibility (R-119) ────────────────────────────────────────────────────────────────────────────────────────
+describe('a hero whose Invisibility holds (R-119): another realm’s Spy, Steal or Assassinate finds no one', () => {
+  /** A rival at the spy's side, his Invisibility holding this turn. */
+  const unseen = (b: Board) => {
+    const m = rival(b);
+    m['_invisTurn'] = b.G.turn;
+    return m;
+  };
+  /** The order, with no d100 to draw: one drawn throws. */
+  const noRoll = (b: Board, h: Character, order: Order) => {
+    rolls([], () => {
+      play(b, h, order);
+    });
+  };
+  test('Spy on a hero: the spy looks for his quarry and finds no one, and the line names no one', () => {
+    const b = fresh();
+    const m = unseen(b);
+    const h = at(b, { spy: 3 });
+    noRoll(b, h, o('spy', `char:${String(m.id)}`));
+    expect(textOf(b, h)).toBe(
+      `${h.name} looks for their quarry in ${b.X.name}, but they are not to be found here — the spying comes to nothing.`,
+    );
+    expect(realm(b, 0)['_spiedHeroSkills']).toBeUndefined();
+  });
+  test('Steal: the thief finds no target, and the rival’s pack and purse are untouched', () => {
+    const b = fresh();
+    const m = unseen(b);
+    m.items = [item(b, 'Tome of Tactics')];
+    const h = at(b, { thief: 3 });
+    noRoll(b, h, o('steal', m.id));
+    expect(textOf(b, h)).toBe(`${h.name} finds no suitable target to steal from in ${b.X.name}.`);
+    expect([pack(m), pack(h)]).toEqual([['Tome of Tactics'], []]);
+  });
+  test('Assassinate: the assassin finds no enemy hero, and the mark lives', () => {
+    const b = fresh();
+    const m = unseen(b);
+    const h = at(b, { spy: 9 });
+    noRoll(b, h, o('assassinate', m.id));
+    expect(textOf(b, h)).toBe(`${h.name} finds no enemy hero to assassinate in ${b.X.name} this phase.`);
+    expect(m.alive).toBe(true);
+  });
+  test('a realm that watches him by Clairvoyance still finds him; his own realm’s thief knows a comrade; last turn’s Invisibility hides no one', () => {
+    const watched = fresh();
+    const m = unseen(watched);
+    realm(watched, 0)['_clairCharThisTurn'] = m.id;
+    rolls([79], () => {
+      play(watched, at(watched, { spy: 9 }), o('assassinate', m.id));
+    });
+    expect(m.alive).toBe(false);
+    const own = fresh();
+    const friend = at(own);
+    friend['_invisTurn'] = own.G.turn;
+    const thief = at(own, { thief: 3 });
+    noRoll(own, thief, o('steal', friend.id));
+    expect(textOf(own, thief)).toBe(`${thief.name} will not rob a comrade.`);
+    const stale = fresh();
+    const s = rival(stale);
+    s['_invisTurn'] = stale.G.turn - 1;
+    rolls([79], () => {
+      play(stale, at(stale, { spy: 9 }), o('assassinate', s.id));
+    });
+    expect(s.alive).toBe(false);
   });
 });
 

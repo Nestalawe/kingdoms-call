@@ -32,6 +32,8 @@
 // Lightning make and lose no company; Divine Judgment's damage and its floor; Skeletal Armies and Death's Dominion
 // raise as their level allows, the best first; Bless Province's ward and tax; a hostile spell never touches his own
 // realm's hero. Planted faults: in the PR (P1-08j7)
+// Since P1-23e (R-119): a Curse and a Charm at another realm's hero whose Invisibility holds are refused before the
+// roll, with a line naming no one (the cases); a realm that watches him by Clairvoyance still works its spell on him.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

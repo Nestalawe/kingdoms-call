@@ -103,6 +103,8 @@ export function theWordsOfTheCastSpellOrdersLine(fact: TheFactOfTheCastSpellOrde
       return `${fact.heroName} has already invoked ${fact.spellName} this turn — such mastery may be worked but once per turn.`;
     case "a spell's mark has gone from the province":
       return `${fact.heroName} looks for ${fact.targetName} to work ${fact.spellName} upon, and finds them gone — ${fact.theMarkServesTheCastersRealm ? 'they had already marched' : 'they had already moved'} on to ${fact.whereTheMarkWentName ?? 'another province'} before the spell could be shaped. It is never worked, and costs ${fact.heroName} nothing.`;
+    case "a spell's mark is nowhere to be found":
+      return `${fact.heroName} looks for the one ${fact.spellName} was to be worked upon, and finds no one; it is never worked, and costs ${fact.heroName} nothing.`;
     case 'a hero invokes an item to work a spell':
       return `🔮 ${fact.heroName} invokes the ${fact.itemName} to work ${fact.spellName}.`;
     case "a spell's cast is rolled":

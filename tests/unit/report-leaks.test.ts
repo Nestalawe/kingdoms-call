@@ -15,7 +15,7 @@
 // through its hero, the game over, a Charm's caster, a namesake, the longest name first, lines before the cast, the
 // hero's deeds on the reader and what follows, title intelligence); in spy activity (R-118) another realm's hit-point
 // rise breaks it, as in the chronicle, and a rival's deed (his Call to Arms) doesn't, though two chronicles reading it
-// do; `KNOWN_BREACHES` lets through only its own lines (a line of the reader's own order naming an invisible hero). The
+// do; a line of the reader's own order naming an invisible hero breaks it as any other line does (R-119). The
 // audience check (P1-12b3, P1-12's Decision 12) on a made-up turn of its own, with its events and
 // sight, that passes: each line read that no event admits breaks it alone (another realm's private line; a line seen
 // there where the reader had no eyes that phase; the public half of a pair by the realm it excepts; a battle it didn't
@@ -390,31 +390,27 @@ test("another realm's hit-point rise in spy activity breaks the check; a rival's
   expect(leaks(turn((_, r) => (line(r, 0, call), line(r, 1, call))))).toEqual(["another realm's private line"]);
 });
 
-describe('the known breaches of the leak checks', () => {
-  test("a line of the reader's own order naming an invisible hero is let through; any other line is not", () => {
-    // Aldo's ambush, as realm 0's own order logs it, and the fight it starts.
-    const ambush = '📊 Ambush — Aldo the Bold (Spy 0) lies in wait for Corin the Grey: 10% [roll 9 ✓]';
-    const fight = '⚔ Aldo the Bold springs from cover and sets upon Corin the Grey in Fenwick!';
-    const own = (t: Turn, r: RealmReport[]) => {
-      for (const text of [ambush, fight]) {
-        t.gmLog.push({ text, actor: 0, targets: [0], phase: 2 });
-        line(r, 0, text);
-      }
-    };
-    expect(leaks(turn(own))).toEqual([]);
-    // The same lines, logged for another realm's action (Brightvale's) or not in the GM log at all.
-    const others = (t: Turn, r: RealmReport[]) => {
-      t.gmLog.push({ text: ambush, actor: 1, targets: [0, 1], phase: 2 });
-      line(r, 0, ambush);
-      line(r, 0, fight);
-    };
-    expect(leaks(turn(others))).toEqual(['an unseen hero']);
-    // A line of another kind in the same phase isn't hidden behind the parked kind.
-    const both = (t: Turn, r: RealmReport[]) => (own(t, r), line(r, 0, 'Aldo the Bold glimpses Corin the Grey.'));
-    expect(checkLeaks(turn(both)).flatMap((b) => b.what)).toEqual([
-      'realm 0 reads of Corin the Grey (id 12, invisible from phase 1) in phase 2 at lastTurnLog[6]: "Aldo the Bold glimpses Corin the Grey."',
-    ]);
-  });
+test("a line of the reader's own order naming an invisible hero breaks the check, as any other line does (R-119)", () => {
+  // Aldo's ambush, as realm 0's own order logs it, and the fight it starts: R-119's every enemy order aimed at him
+  // finds no one, so the reader's own order may not name him either.
+  const ambush = '📊 Ambush — Aldo the Bold (Spy 0) lies in wait for Corin the Grey: 10% [roll 9 ✓]';
+  const fight = '⚔ Aldo the Bold springs from cover and sets upon Corin the Grey in Fenwick!';
+  const own = (t: Turn, r: RealmReport[]) => {
+    for (const text of [ambush, fight]) {
+      t.gmLog.push({ text, actor: 0, targets: [0], phase: 2 });
+      line(r, 0, text);
+    }
+  };
+  expect(checkLeaks(turn(own)).flatMap((b) => b.what)).toEqual([
+    `realm 0 reads of Corin the Grey (id 12, invisible from phase 1) in phase 2, in a line of its own order, at lastTurnLog[4]: "${ambush}" (and 1 more lines like it that phase)`,
+  ]);
+  // The same lines, logged for another realm's action (Brightvale's) or not in the GM log at all.
+  const others = (t: Turn, r: RealmReport[]) => {
+    t.gmLog.push({ text: ambush, actor: 1, targets: [0, 1], phase: 2 });
+    line(r, 0, ambush);
+    line(r, 0, fight);
+  };
+  expect(leaks(turn(others))).toEqual(['an unseen hero']);
 });
 
 // ── THE AUDIENCE CHECK (P1-12b3) ────

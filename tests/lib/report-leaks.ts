@@ -240,8 +240,9 @@ export const TITLE_INTEL = /^\[The [^\]]+\] /;
  *  moment he cast it (his "weaves Invisibility" line: its phase, and within it, its place in the GM log). Let through:
  *  title intelligence (TITLE_INTEL), and every line from the phase he first acts on the reader, his deeds being the
  *  lines that name him and were logged for the action of a realm he served or as a notice of what was done to the
- *  reader (no actor); after a deed come its consequences ("…'s possessions pass to him"). Whether acting on a realm
- *  reveals an invisible hero to it is for Toby to rule (Theo, 2026-10-17). One breach per realm, hero, phase and kind
+ *  reader (no actor); after a deed come its consequences ("…'s possessions pass to him"). Acting on a realm reveals an
+ *  invisible hero to it (R-119, part 2); every other order and reaction of the reader's aimed at him finds no one
+ *  (R-119), so a line of its own order naming him is a breach like any other. One breach per realm, hero, phase and kind
  *  of line (one of the reader's own orders or reactions, its actor the reader; or any other): the first, and a count. A name two heroes share isn't checked. The state saves the turn he cast it, one before the
  *  state's. */
 function unseenHeroes(t: Turn): string[] {

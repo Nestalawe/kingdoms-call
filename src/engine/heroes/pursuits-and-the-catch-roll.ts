@@ -15,6 +15,7 @@ import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relat
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
 import {
   effStat,
+  isHiddenByInvisibilityFrom,
   isHiddenChar,
   theOddsShownAsALineTellsIt,
   theStatShownAsALineTellsIt,
@@ -81,7 +82,8 @@ export function advancePursuit(turnContext, c, ph) {
   if (!p || !p.active) return;
   const quarry = (G.characters || []).find((x) => x && x.id === p.targetId);
   const here = G.world.provinces[c.location];
-  if (!quarry || !quarry.alive) {
+  // R-119: a quarry whose Invisibility holds is beyond catching too, and the line names no one
+  if (!quarry || !quarry.alive || isHiddenByInvisibilityFrom(turnContext, quarry, c.player)) {
     emit(turnContext, {
       type: 'move',
       fact: { kind: "a chaser's quarry is beyond catching", heroName: c.name },
