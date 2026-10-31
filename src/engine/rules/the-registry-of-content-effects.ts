@@ -323,9 +323,9 @@ export interface AUnitThatFailedItsDeathRoll {
   readonly theChanceOfRegeneratingHideTheCallGives: number | null | undefined;
 }
 
-/** The line of the battle by which a unit that failed its death roll lives (the kind of the fact the views word; the
- *  resolver gives it the unit's reference). */
-export type TheLineOfAUnitThatLivesThroughItsDeathRoll = 'a unit is cut down and rises again by its regenerating hide';
+/** The fate by which a unit that failed its death roll lives (plan P1-12d27: a slug of a unit's fate in the battle,
+ *  which the resolver tells with the unit's record and the views word). */
+export type TheLineOfAUnitThatLivesThroughItsDeathRoll = 'is cut down and rises again by its regenerating hide';
 
 /** What the stage "a beaten unit fails its demotion roll" hands an effect (rollUnitFates): a unit of the beaten side
  *  whose second roll fell below its chance of losing a tier (no Shield Fort holding it), its force, itself among them,
@@ -336,9 +336,9 @@ export interface AUnitThatFailedItsDemotionRoll {
   readonly theKnightlyExampleTheCallGives: boolean | null | undefined;
 }
 
-/** The line of the battle by which a unit that failed its demotion roll holds its tier (the kind of the fact the views
- *  word; the resolver gives it the unit's reference). */
-export type TheLineOfAUnitThatHoldsThroughItsDemotionRoll = 'a unit keeps its nerve under the knightly example';
+/** The fate by which a unit that failed its demotion roll holds its tier (plan P1-12d27: a slug of a unit's fate in the
+ *  battle, which the resolver tells with the unit's record and the views word). */
+export type TheLineOfAUnitThatHoldsThroughItsDemotionRoll = 'keeps its nerve under the knightly example';
 
 /** What the stage "who shoots" hands an effect (abilityMissileUnits): a unit of the shooters' force that is no ranged
  *  unit, and the battle's ground. */
@@ -2158,8 +2158,8 @@ export function theStrengthOfAFlyer(facts: AFlyerAndTheEnemysFlyers): AMultiplie
   return soFar;
 }
 
-/** The runner of "a beaten unit fails its death roll" (rollUnitFates): the line of the first of the unit's abilities,
- *  in the stage's order, by which it lives, or nothing (it dies). An effect that rolls draws its die only when it runs,
+/** The runner of "a beaten unit fails its death roll" (rollUnitFates): the fate (a slug, P1-12d27) of the first of the
+ *  unit's abilities, in the stage's order, by which it lives, or nothing (it dies). An effect that rolls draws its die only when it runs,
  *  so a unit with no such ability draws none. */
 export function theLineByWhichAUnitLivesThroughItsDeathRoll(
   facts: AUnitThatFailedItsDeathRoll,
@@ -2171,8 +2171,8 @@ export function theLineByWhichAUnitLivesThroughItsDeathRoll(
   return null;
 }
 
-/** The runner of "a beaten unit fails its demotion roll" (rollUnitFates): the line of the first ability reaching the
- *  unit, in the stage's order, by which it holds its tier, or nothing (it loses one). */
+/** The runner of "a beaten unit fails its demotion roll" (rollUnitFates): the fate (a slug, P1-12d27) of the first
+ *  ability reaching the unit, in the stage's order, by which it holds its tier, or nothing (it loses one). */
 export function theLineByWhichABeatenUnitHoldsItsTier(
   facts: AUnitThatFailedItsDemotionRoll,
 ): TheLineOfAUnitThatHoldsThroughItsDemotionRoll | null {

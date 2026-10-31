@@ -1690,8 +1690,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         a._died = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
         narrate(narrative, {
-          kind: 'a defending unit is destroyed in the rout',
-          defendingUnitName: {
+          kind: "a unit's fate in the battle",
+          itsSideWon: false,
+          fate: 'dies',
+          theUnit: {
             kind: 'a unit named with its quality',
             owner: _defOwner,
             unitName: a.unitName,
@@ -1699,6 +1701,8 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
             quality: a.quality,
           },
           whomItFaced: _fc ?? null,
+          inTheRout: false,
+          itsBonesCrumble: false,
         });
       }
     });
@@ -1722,8 +1726,11 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
           if (kcRng() < 0.15) {
             a._died = true;
             narrate(narrative, {
-              kind: 'a unit is cut down with no escape',
-              unitName: {
+              kind: "a unit's fate in the battle",
+              itsSideWon: false,
+              fate: 'is cut down with no escape',
+              inTheRout: false,
+              theUnit: {
                 kind: 'a unit named by its name or type alone',
                 owner: null,
                 unitName: a.unitName,
@@ -1784,8 +1791,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
         a._defDied = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
         narrate(narrative, {
-          kind: 'a defending unit is destroyed in the fighting',
-          defendingUnitName: {
+          kind: "a unit's fate in the battle",
+          itsSideWon: true,
+          fate: 'dies',
+          theUnit: {
             kind: 'a unit named with its quality',
             owner: _defSide2(defHero?.name.replace(' (wandering)', '')),
             unitName: a.unitName,
@@ -1793,6 +1802,8 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
             quality: a.quality,
           },
           whomItFaced: _fc ?? null,
+          inTheRout: false,
+          itsBonesCrumble: false,
         }); // item 8
       }
     });
@@ -1917,8 +1928,17 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
             // Stoop on the Horses and Eyes of the Forest.)
             if (kcRng() < 0.15) {
               narrate(narrative, {
-                kind: 'an attacking unit is cut down in the rout with no escape',
-                unitName: a.unitName || a.type,
+                kind: "a unit's fate in the battle",
+                itsSideWon: false,
+                fate: 'is cut down with no escape',
+                inTheRout: true,
+                theUnit: {
+                  kind: 'a unit named by its name or type alone',
+                  owner: null,
+                  unitName: a.unitName,
+                  type: a.type,
+                  quality: a.quality,
+                },
                 itsBonesCrumble: a._isSkeletal,
               });
               a._died = true;

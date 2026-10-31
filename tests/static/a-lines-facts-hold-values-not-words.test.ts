@@ -304,6 +304,9 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   contest: ['a contest for a province is decided'],
   whatBecomesOfTheProvince: ['a battle is decided', 'a contest for a province is decided'],
   heldBy: ['a contest for a province is decided'],
+  // a unit's fate by sense (P1-12d27): what becomes of the unit ('dies', 'rises a tier', 'has had enough and disbands',
+  // …), the fate the rule registry returns among them: a slug the prose reads
+  fate: ["a unit's fate in the battle", "a beaten guard's surviving unit's fate"],
 };
 
 const WORD_HELPER =

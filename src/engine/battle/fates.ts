@@ -25,7 +25,8 @@ import {
 //                demoteAt(a) it falls back in good order (o.shieldFort) or loses a tier / disbands; else
 //                below promoteTo(a) it rises a tier despite defeat.
 //   o.inTheRout / o.hardenedByVictory  how the site's lines tell a death and a promotion (P1-12d20: the words "were
-//                annihilated in the rout!" and "are hardened by victory to" are the prose's); o.notable stamps a._notable on a demoted or promoted unit (the NPC loser's
+//                annihilated in the rout!" and "are hardened by victory to" are the prose's; since P1-12d27 each line is
+//                one kind, a unit's fate in the battle, its fate a slug); o.notable stamps a._notable on a demoted or promoted unit (the NPC loser's
 //                "All other forces survive" line reads it); o.say receives each unit's line.
 //   o.faced      (2026-10-12, Toby: who beat whom) a Map army → whom it faced, or a function of the army, from
 //                battleFacedClauses: each line holds it beside the company's own reference, and its words put the
@@ -119,17 +120,24 @@ export function rollUnitFates(
       });
       if (lives) {
         r.survived++;
-        say({ kind: lives, unitReference: head(a), whomItFaced: whomItFaced(a) });
+        say({
+          kind: "a unit's fate in the battle",
+          itsSideWon: o.won,
+          fate: lives,
+          theUnit: head(a),
+          whomItFaced: whomItFaced(a),
+        });
         return;
       }
       a._died = true;
       r.died++;
       say({
-        kind: 'a unit dies in the battle',
-        unitReference: head(a),
+        kind: "a unit's fate in the battle",
+        itsSideWon: o.won,
+        fate: 'dies',
+        theUnit: head(a),
         whomItFaced: whomItFaced(a),
         inTheRout: o.inTheRout ?? false,
-        itsSideWon: o.won,
         itsBonesCrumble: a._isSkeletal,
       });
       return;
@@ -145,11 +153,13 @@ export function rollUnitFates(
         r.promoted++;
         if (o.notable) a._notable = true;
         say({
-          kind: 'a unit is promoted after the battle',
-          unitReferenceAtItsOldQuality: head(a, q0),
+          kind: "a unit's fate in the battle",
+          itsSideWon: o.won,
+          fate: 'rises a tier',
+          theUnit: head(a, q0),
           whomItFaced: whomItFaced(a),
           hardenedByVictory: o.hardenedByVictory ?? false,
-          unitQuality: a.quality,
+          itsQualityAfter: a.quality,
         });
       } else r.survived++;
       return;
@@ -159,8 +169,10 @@ export function rollUnitFates(
       if (o.shieldFort) {
         r.held++;
         say({
-          kind: 'a unit falls back behind the shield wall in good order',
-          unitReference: head(a),
+          kind: "a unit's fate in the battle",
+          itsSideWon: o.won,
+          fate: 'falls back behind the shield wall in good order',
+          theUnit: head(a),
           whomItFaced: whomItFaced(a),
         });
         return;
@@ -173,15 +185,23 @@ export function rollUnitFates(
       });
       if (holds) {
         r.held++;
-        say({ kind: holds, unitReference: head(a), whomItFaced: whomItFaced(a) });
+        say({
+          kind: "a unit's fate in the battle",
+          itsSideWon: o.won,
+          fate: holds,
+          theUnit: head(a),
+          whomItFaced: whomItFaced(a),
+        });
       } else {
         const q0 = a.quality;
         if (demoteOrDisband(a)) {
           r.disbanded++;
           const whom = whomItFaced(a);
           say({
-            kind: 'a beaten unit has had enough and disbands',
-            ownerName: who,
+            kind: "a unit's fate in the battle",
+            itsSideWon: o.won,
+            fate: 'has had enough and disbands',
+            theUnitsOwner: who,
             unitName: a.unitName,
             unitType: a.type,
             whomItFaced: whom,
@@ -190,10 +210,12 @@ export function rollUnitFates(
           r.demoted++;
           if (o.notable) a._notable = true;
           say({
-            kind: 'a unit loses heart in defeat and is reduced a tier',
-            unitReferenceAtItsOldQuality: head(a, q0),
+            kind: "a unit's fate in the battle",
+            itsSideWon: o.won,
+            fate: 'loses heart and falls a tier',
+            theUnit: head(a, q0),
             whomItFaced: whomItFaced(a),
-            unitQuality: a.quality,
+            itsQualityAfter: a.quality,
           });
         }
       }
@@ -203,10 +225,13 @@ export function rollUnitFates(
       r.promoted++;
       if (o.notable) a._notable = true;
       say({
-        kind: 'a unit improves a tier despite defeat',
-        unitReferenceAtItsOldQuality: head(a, q0),
+        kind: "a unit's fate in the battle",
+        itsSideWon: o.won,
+        fate: 'rises a tier',
+        theUnit: head(a, q0),
         whomItFaced: whomItFaced(a),
-        unitQuality: a.quality,
+        hardenedByVictory: false,
+        itsQualityAfter: a.quality,
       });
     } else r.survived++;
   });

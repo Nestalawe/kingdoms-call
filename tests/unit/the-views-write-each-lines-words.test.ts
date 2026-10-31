@@ -110,8 +110,11 @@ function aBattle(tc: TurnContext, noLosses = false): NarrativeLine[] {
     narrate(narrative, { kind: "a side's other forces survive the engagement", someUnitsFateIsToldAbove: false });
     narrate(narrative, { kind: "the defender's casualties begin", defName: { heroName: 'Brann', leaderless: false } });
     narrate(narrative, {
-      kind: 'a unit is cut down with no escape',
-      unitName: {
+      kind: "a unit's fate in the battle",
+      itsSideWon: false,
+      fate: 'is cut down with no escape',
+      inTheRout: false,
+      theUnit: {
         kind: 'a unit named without its quality',
         owner: { heroName: 'Brann', leaderless: false },
         unitName: 'Ford Watch',
@@ -304,8 +307,11 @@ describe('a label no game writes, as the engine wrote it (plan P1-12d25: the lab
     const unit = { owner: null, unitName: '', type: 'Men-at-Arms', quality: 'Veteran' };
     expect(
       theWordsOf({
-        kind: 'a unit is cut down with no escape',
-        unitName: { kind: 'a unit named by its name or type alone', ...unit },
+        kind: "a unit's fate in the battle",
+        itsSideWon: false,
+        fate: 'is cut down with no escape',
+        inTheRout: false,
+        theUnit: { kind: 'a unit named by its name or type alone', ...unit },
       }),
     ).toBe('— Men-at-Arms are cut down with no escape!');
   });

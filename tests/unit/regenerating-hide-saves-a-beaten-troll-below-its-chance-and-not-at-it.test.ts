@@ -27,14 +27,14 @@ function theNumberJustUnder(x: number): number {
 
 const aCompany = (type: string): ArmyInABattle => ({ type, quality: 'Veteran', race: 'Primal', unitName: '' });
 
-/** One company's fate after a battle, with the dice given: whether it died, the kinds of the lines said, and how many
- *  dice it drew. Every roll fails the death roll (dieAt 1), and nothing demotes or promotes. */
+/** One company's fate after a battle, with the dice given: whether it died, the fates of the lines said (each a unit's
+ *  fate in the battle since plan P1-12d27, its fate a slug), and how many dice it drew. Every roll fails the death roll (dieAt 1), and nothing demotes or promotes. */
 function theFateOf(type: string, won: boolean, dice: readonly number[]) {
   let drawn = 0;
   const rng = () => dice[drawn++] ?? Number.NaN;
   const said: string[] = [];
   const say = (line: string | TheFactOfOneOfABattlesSentences) =>
-    said.push(typeof line === 'string' ? line : line.kind);
+    said.push(typeof line === 'string' ? line : line.kind === "a unit's fate in the battle" ? line.fate : line.kind);
   const company = aCompany(type);
   const rolls: UnitFateOptions = won
     ? { won: true, dieAt: () => 1, promoteTo: () => 0 }
@@ -43,8 +43,8 @@ function theFateOf(type: string, won: boolean, dice: readonly number[]) {
   return { died: company._died === true, tally, said, drawn };
 }
 
-const LIVES = 'a unit is cut down and rises again by its regenerating hide';
-const DIES = 'a unit dies in the battle';
+const LIVES = 'is cut down and rises again by its regenerating hide';
+const DIES = 'dies';
 
 describe('Regenerating Hide, after a lost battle', () => {
   test('a die just under 30% saves the trolls', () => {

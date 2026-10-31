@@ -42,8 +42,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   line** (Shieldwall, Town Watch, Sergeants, Driven Before Them, on the multiplier so far); for a shooter, **a shooter
   picks its target** (Marksmen: its place in the enemy front's list, or nothing); for a unit in the air, **what a flyer
   does** (Flak Gunners, from ×1). The fates, two stages in `rollUnitFates`
-  (`src/engine/rules/unit-abilities/a-units-fate-after-a-battle.ts`), each returning the line by which a unit is spared,
-  or nothing: **a beaten unit fails its death roll** (Regenerating Hide: the stage hands the dice, and the effect draws
+  (`src/engine/rules/unit-abilities/a-units-fate-after-a-battle.ts`), each returning the fate (a slug) by which a unit is
+  spared, or nothing: **a beaten unit fails its death roll** (Regenerating Hide: the stage hands the dice, and the effect draws
   its die only after a lost battle, where the code drew it before), then, for a beaten unit that fails its demotion roll
   with no Shield Fort holding it, **a beaten unit fails its demotion roll** (Knightly Example, which reaches the Levies
   and the Men-at-Arms). The volley, the nine stages of `volley`, in the volley's helpers of

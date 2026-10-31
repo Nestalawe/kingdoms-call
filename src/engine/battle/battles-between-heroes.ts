@@ -1439,8 +1439,11 @@ export function combatVsChar(turnContext, atk, def, prov) {
       if (kcRng() < 0.15) {
         a._died = true;
         narrate(narr, {
-          kind: 'a unit is cut down with no escape',
-          unitName: {
+          kind: "a unit's fate in the battle",
+          itsSideWon: false,
+          fate: 'is cut down with no escape',
+          inTheRout: false,
+          theUnit: {
             kind: 'a unit named without its quality',
             owner: { heroName: name, leaderless: false },
             unitName: a.unitName,
