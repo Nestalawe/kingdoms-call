@@ -10,6 +10,9 @@
 //   that has no effect: the content writes none, so each is planted in the table for its case and taken out after;
 // - a unit's type asked of a unit and a unit asked as a type (discUnitIs and discUnitMatch, whose types now say which
 //   their callers pass: no caller passes the other), and a class no set holds.
+// Since P1-19aa discUnitIs and discUnitMatch are in src/engine/rules-on-plain-values/, discFanaticApplies and the rule of
+// discEffectsOf (and the table of the discoveries by id, which the cases plant rows in) in the discoveries' registry,
+// moved as they were; discUnitMult and dragonTamed ask the registry's runners. The cases call them where they are.
 // Level 1 (unit): each is a plain function on staged values, called directly on the engine's modules (plan P1-14a). The
 // staged values carry only the fields each reads, so their type is given by assertion (`as never`), as the views' unit
 // cases give a staged world's.

@@ -2,8 +2,8 @@
 
 ## The rule registry
 
-A **content effect** (a unit ability, and since P1-19m a magic item's effect, [below](#the-items-registry); then
-discoveries, spells, guardian perks and alignment orders, P1-19) is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
+A **content effect** (a unit ability; since P1-19m a magic item's effect, [below](#the-items-registry); then spells,
+discoveries, guardian perks and alignment orders, P1-19) is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
 books write them, and the units it counts or reaches when more than its own) and **one entry in the registry**
 (`src/engine/rules/the-registry-of-content-effects.ts`), keyed by the same slug (`'sheer-numbers'`). The entry names the
 ability's **effect** at each **stage** it acts in; the effects are in `src/engine/rules/<family>/`, a file per group of
@@ -113,8 +113,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   `PRIMAL_ARMY_DEFS_P`, and the winged riders' Screech Dive and Acid Spit in `BATTLE_ARMY_SPELLS`, beside it in
   `src/content/kingdoms-call-data.ts` since P1-19l), Island Back (the Great Turtles' two berths, `KC_CARRIER_BERTHS`) and
   Forest Runners (the Stag Riders' forest and jungle cells of `TERRAIN_MODS`, in `battle/terrain-and-unit-strength.ts`).
-  A strike's casting is battle magic's code (in `combatVsChar`, and twice in `combatVsNPC`), which the spells family
-  takes with the heroes' battle spells. The words test reads each table: a strike's name and damage range (`2–4`, with
+  Their casting is the spells' registry's (P1-19v). The words test reads each table: a strike's name and damage range (`2–4`, with
   the books' en dash), Island Back's count with what it counts ("two land units"), Forest Runners' factors with their
   ground ("×1.1 in forest", "no penalty in jungle"; `TERRAIN_MODS` by its syntax tree). A bare "one" or "×1" would be
   in the books' words already ("where a fleet carries one", "×1.1"), so a table's number is matched with its words.
@@ -230,7 +229,8 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   (the words test reads them). A new stage's signature goes into `TheStagesOfEachHookPoint`, with its runner in the
   items' registry.
 
-**The spells' registry** (P1-19u): [its file](the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md).
+**The spells' registry** (P1-19u): [its file](the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md). **The
+discoveries'** (P1-19aa): [its file](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md).
 
 ## `kingdoms-call-data.ts`: the one source for shared rules
 

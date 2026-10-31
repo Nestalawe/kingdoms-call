@@ -67,7 +67,9 @@ JavaScript files, quarantined tests, tests on `tests/lib/stub-db.js`, tests on t
 (`vmLoaderTests`, P1-09d: P1-14 moves them to the engine's modules), the engine's checks of a unit by its type's name
 outside the rule registry (`unitNameChecksInEngine`, P1-19a: each row of P1-19 lowers it), and of an item's effect by
 its key or an item by its name outside it (`itemEffectChecksInEngine`, P1-19m: each row of the items family lowers it), and of a
-spell by its name or its `fn` outside it (`spellChecksInEngine`, P1-19u: each row of the spells family lowers it), ESLint's suppressed findings
+spell by its name or its `fn` outside it (`spellChecksInEngine`, P1-19u: each row of the spells family lowers it), and of a
+discovery by its id or an effect by its kind outside it (`discoveryChecksInEngine`, P1-19aa: each row of the discoveries
+family lowers it), ESLint's suppressed findings
 (`eslintSuppressions`, P1-13b; the site's lint warnings, `eslintWarnings`, before it), the import rules' known violations (`knownArchitectureViolations`) and what knip finds unused (`unusedCode`,
 both P1-13a). `tests/static/harness.test.ts` fails if any
 of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a
