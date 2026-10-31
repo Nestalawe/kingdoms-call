@@ -178,6 +178,22 @@ export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
   'watching-for-lurkers': { kind: 'spotLurker' },
   // Ancient Lore (sd32): an Explore order also maps a share of each province around (P1-19ad)
   'ancient-lore': { kind: 'adjacentReveal' },
+  // Diplomatic Protocols (sd31): the ban on hiring across the gulf between Divine and Undead waived (P1-19ae)
+  'diplomatic-protocols': { kind: 'alignmentHire' },
+  // the consecrated provinces a crown may hold more, for a consecrator of the White skill its row names (P1-19ae)
+  consecrations: { kind: 'consecrate' },
+  // the quality a Call to Arms may raise its company at, and its chance (P1-19ae)
+  'muster-rolls': { kind: 'ctaQuality' },
+  // what the corpse-carters of Harvest the Field cost more or less (P1-19ae)
+  'corpse-carters': { kind: 'harvestCost' },
+  // what a mercenary band costs more or less to hire (P1-19ae)
+  mercenaries: { kind: 'merc' },
+  // what a unit costs to recruit, its gold added, then multiplied (P1-19ae)
+  'recruit-cost': { kind: 'recruitCost' },
+  // the chance a unit recruited starts a grade higher (P1-19ae)
+  'recruit-quality': { kind: 'recruitQ' },
+  // what a Bless adds to the province's tax (P1-19ae)
+  'rites-of-plenty': { kind: 'bless' },
 } as const satisfies Record<string, AKindOfDiscoveryEffect>;
 
 /** A kind of effect's slug (a key of DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS). */

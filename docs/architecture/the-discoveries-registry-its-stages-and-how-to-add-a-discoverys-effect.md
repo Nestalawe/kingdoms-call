@@ -120,6 +120,22 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   **… map the provinces around an explorer** (Ancient Lore, `adjacentReveal`): the share, 10 for a row with none (the
   old fallback, Parked). What a realm sees is unchanged: every realm's report is identical.
 
+**The recruits and the realm's works** (P1-19ae, `discoveries/a-realms-discoveries-in-its-recruits-and-its-works.ts`):
+
+- `orderValidity`'s **a realm's discoveries waive the hiring ban** (Diplomatic Protocols, `alignmentHire`): yes or no.
+  Asked by the Hire Hero order, the Broker, the Charm, and `playerView` for the wages the report quotes: one rule.
+- `orderOutcome`'s **… add to the consecrations a crown may hold** (`consecrate`; Consecrate): handed the consecrator's
+  White skill. It returns its `cap` if he has the White its row needs (a row's 0, or none, is read as 1, as before).
+- **… raise a call to arms' quality** (Muster Rolls, `ctaQuality`): the quality and its chance, as the row writes them.
+  The runner lists them; the Call to Arms order rolls each chance in turn and takes the first quality, as before.
+- **… cut the corpse-carters' cost** (`harvestCost`) and **… cut a company's price** (`merc`, handed the band's type):
+  the gold each adds (a cut is less than 0). The runners add them, for the order and for the report's prices.
+- **… cut a unit's price** (`recruitCost`; `realmRecruitCost`, which the order and the report ask): handed the unit's
+  type and the price so far. Each effect that reaches the unit adds its gold, then multiplies by its factor and rounds
+  up; the runner hands each the price the one before left, in the order they are found.
+- **… raise a recruit's quality** (`recruitQ`; `discRecruitQChance`, at most 1) and **… add to a Bless** (Rites of
+  Plenty, `bless`): the runners add the shares; the Recruit order rolls as before.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
@@ -128,7 +144,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad): the functions taken name no
+  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae): the functions taken name no
   discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
   but means something else (the Evil doctrine `'terror'` in both battles; the Spy skill `'spy'`, a line's type
   `'explore'`) is listed beside its function.
@@ -137,7 +153,9 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games
   meet 0 times or can't show (the own ground, P1-19aa; Homeward Song, P1-19ab; an aim against the undead, Veteran
   Training in a fight and on the card, P1-19ac; each spy's, explorer's, scholar's and rester's effect on and off its
-  ground, coast or home, P1-19ad), and the effects on rows the content doesn't write. Each later row adds
+  ground, coast or home, P1-19ad; each recruit's and realm's work's, P1-19ae), and the effects on rows the content
+  doesn't write. `tests/unit/what-each-realm-may-see-of-the-world.test.ts` checks the wages and prices the view and
+  the report quote with the discoveries of P1-19ae. Each later row adds
   its own.
 
 ## How to add a discovery's effect

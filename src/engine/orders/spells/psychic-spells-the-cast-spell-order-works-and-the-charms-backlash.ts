@@ -12,7 +12,8 @@ import { claimWandererName } from '../../heroes/fame-and-consecration.ts';
 import { d100, rng } from '../../dice-and-army-names.ts';
 import { markProvinceCombat } from '../../bots/intel.ts';
 import { perkTier, skillLevel } from '../../titles/perks.ts';
-import { applyPendingSynthPlan, hasDisc } from '../../discoveries.ts';
+import { applyPendingSynthPlan } from '../../discoveries.ts';
+import { doARealmsDiscoveriesWaiveTheHiringBan } from '../../rules/the-registry-of-discovery-effects.ts';
 import {
   emit,
   emitNarrLine,
@@ -386,7 +387,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
     const _chWage = heroHireWage(
       (G.players[c.player]?.alignment ?? '') || 'Neutral',
       t.alignment,
-      hasDisc(turnContext, c.player, 'sd31'),
+      doARealmsDiscoveriesWaiveTheHiringBan(G.players[c.player]), // sd31 Diplomatic Protocols (the registry's, P1-19ae)
       t,
     );
     if (_chWage == null) {

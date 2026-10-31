@@ -55,8 +55,21 @@ import {
   A_REALMS_DISCOVERIES_MAP_THE_PROVINCES_AROUND_AN_EXPLORER,
   A_REALMS_DISCOVERIES_SPOT_A_HERO_LURKING_IN_ITS_PROVINCE,
 } from './discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
+import {
+  A_REALMS_DISCOVERIES_ADD_TO_A_BLESS,
+  A_REALMS_DISCOVERIES_ADD_TO_THE_CONSECRATIONS_A_CROWN_MAY_HOLD,
+  A_REALMS_DISCOVERIES_CUT_A_COMPANYS_PRICE,
+  A_REALMS_DISCOVERIES_CUT_A_UNITS_PRICE,
+  A_REALMS_DISCOVERIES_CUT_THE_CORPSE_CARTERS_COST,
+  A_REALMS_DISCOVERIES_RAISE_A_CALL_TO_ARMS_QUALITY,
+  A_REALMS_DISCOVERIES_RAISE_A_RECRUITS_QUALITY,
+  A_REALMS_DISCOVERIES_WAIVE_THE_HIRING_BAN,
+} from './discoveries/a-realms-discoveries-in-its-recruits-and-its-works.ts';
 import type {
   ABeastACommanderLeads,
+  AConsecrationARealmsDiscoveriesMayAllow,
+  AQualityACallToArmsMayRaise,
+  AUnitARealmRaises,
   ABeatenUnitARealmsDiscoveriesMaySpare,
   ACastARealmsDiscoveriesMayHelp,
   AFoeARealmsDiscoveriesSteadyAFightersAimAt,
@@ -261,6 +274,48 @@ export const THE_REGISTRY_OF_DISCOVERY_EFFECTS = {
         A_REALMS_DISCOVERIES_MAP_THE_PROVINCES_AROUND_AN_EXPLORER['ancient-lore'],
     },
   },
+  'diplomatic-protocols': {
+    orderValidity: {
+      "a realm's discoveries waive the hiring ban": A_REALMS_DISCOVERIES_WAIVE_THE_HIRING_BAN['diplomatic-protocols'],
+    },
+  },
+  consecrations: {
+    orderOutcome: {
+      "a realm's discoveries add to the consecrations a crown may hold":
+        A_REALMS_DISCOVERIES_ADD_TO_THE_CONSECRATIONS_A_CROWN_MAY_HOLD.consecrations,
+    },
+  },
+  'muster-rolls': {
+    orderOutcome: {
+      "a realm's discoveries raise a call to arms' quality":
+        A_REALMS_DISCOVERIES_RAISE_A_CALL_TO_ARMS_QUALITY['muster-rolls'],
+    },
+  },
+  'corpse-carters': {
+    orderOutcome: {
+      "a realm's discoveries cut the corpse-carters' cost":
+        A_REALMS_DISCOVERIES_CUT_THE_CORPSE_CARTERS_COST['corpse-carters'],
+    },
+  },
+  mercenaries: {
+    orderOutcome: {
+      "a realm's discoveries cut a company's price": A_REALMS_DISCOVERIES_CUT_A_COMPANYS_PRICE.mercenaries,
+    },
+  },
+  'recruit-cost': {
+    orderOutcome: {
+      "a realm's discoveries cut a unit's price": A_REALMS_DISCOVERIES_CUT_A_UNITS_PRICE['recruit-cost'],
+    },
+  },
+  'recruit-quality': {
+    orderOutcome: {
+      "a realm's discoveries raise a recruit's quality":
+        A_REALMS_DISCOVERIES_RAISE_A_RECRUITS_QUALITY['recruit-quality'],
+    },
+  },
+  'rites-of-plenty': {
+    orderOutcome: { "a realm's discoveries add to a Bless": A_REALMS_DISCOVERIES_ADD_TO_A_BLESS['rites-of-plenty'] },
+  },
 } satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once. Each stage holds one kind today, so its
@@ -304,7 +359,15 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
     "a realm's discoveries add to practice": ['practice'],
     "a realm's discoveries add to a rest's heal": ['resting'],
     "a realm's discoveries heal a resting hero in full": ['medical-arts'],
+    "a realm's discoveries add to the consecrations a crown may hold": ['consecrations'],
+    "a realm's discoveries raise a call to arms' quality": ['muster-rolls'],
+    "a realm's discoveries cut the corpse-carters' cost": ['corpse-carters'],
+    "a realm's discoveries cut a company's price": ['mercenaries'],
+    "a realm's discoveries cut a unit's price": ['recruit-cost'],
+    "a realm's discoveries raise a recruit's quality": ['recruit-quality'],
+    "a realm's discoveries add to a Bless": ['rites-of-plenty'],
   },
+  orderValidity: { "a realm's discoveries waive the hiring ban": ['diplomatic-protocols'] },
   visibility: {
     "a realm's discoveries spot a hero lurking in its province": ['watching-for-lurkers'],
     "a realm's discoveries map the provinces around an explorer": ['ancient-lore'],
@@ -797,4 +860,103 @@ export function theShareARealmsDiscoveriesMapAroundAnExplorer(
   if (!first) return null;
   const [slug, e] = first;
   return ENTRIES[slug].visibility?.[theStage]?.(e) ?? null;
+}
+
+/** The runner of "orderValidity: a realm's discoveries waive the hiring ban" (resolveHireHeroOrder, resolveBrokerOrder,
+ *  the Charm, and playerView's wages for the report): whether any of the hiring realm's effects waives it. */
+export function doARealmsDiscoveriesWaiveTheHiringBan(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): boolean {
+  const theStage = "a realm's discoveries waive the hiring ban";
+  return theEffectsOfTheStageARealmHolds(
+    theRealm,
+    THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.orderValidity[theStage],
+  ).some(([slug, e]) => ENTRIES[slug].orderValidity?.[theStage]?.(e) ?? false);
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to the consecrations a crown may hold"
+ *  (resolveConsecrateOrder, beside the consecrator's White skill): the provinces the crown's effects add. */
+export function whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AConsecrationARealmsDiscoveriesMayAllow,
+): number {
+  const theStage = "a realm's discoveries add to the consecrations a crown may hold";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries raise a call to arms' quality" (resolveCallToArmsOrder, which
+ *  rolls each chance in turn): each of the realm's effects' quality and chance, in the order they are found. */
+export function theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): AQualityACallToArmsMayRaise[] {
+  const theStage = "a realm's discoveries raise a call to arms' quality";
+  const out: AQualityACallToArmsMayRaise[] = [];
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, ORDER_OUTCOME[theStage])) {
+    const theQuality = ENTRIES[slug].orderOutcome?.[theStage]?.(e);
+    if (theQuality) out.push(theQuality);
+  }
+  return out;
+}
+
+/** The runner of "orderOutcome: a realm's discoveries cut the corpse-carters' cost" (resolveHarvestTheFieldOrder, and
+ *  the report's price): the gold the realm's effects add to it, added (a cut is less than 0). */
+export function whatARealmsDiscoveriesAddToTheCorpseCartersCost(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number {
+  const theStage = "a realm's discoveries cut the corpse-carters' cost";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries cut a company's price" (resolveRecruitArmiesOrder's bands, and
+ *  the report's price): the gold the hiring realm's effects add to the band's price, added (a cut is less than 0). */
+export function whatARealmsDiscoveriesAddToAMercenaryBandsPrice(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AUnitARealmRaises,
+): number {
+  const theStage = "a realm's discoveries cut a company's price";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries cut a unit's price" (realmRecruitCost, which the order and the
+ *  report's prices ask): the price each of the recruiting realm's effects leaves, from `theBasePrice`, in the order
+ *  they are found. */
+export function theUnitsPriceARealmsDiscoveriesLeave(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AUnitARealmRaises,
+  theBasePrice: number,
+): number {
+  const theStage = "a realm's discoveries cut a unit's price";
+  let c = theBasePrice;
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, ORDER_OUTCOME[theStage])) {
+    const after = ENTRIES[slug].orderOutcome?.[theStage]?.(e, { ...facts, thePriceSoFar: c }) ?? null;
+    if (after !== null) c = after;
+  }
+  return c;
+}
+
+/** The runner of "orderOutcome: a realm's discoveries raise a recruit's quality" (discRecruitQChance, which
+ *  resolveRecruitArmiesOrder asks before it rolls): the shares the recruiting realm's effects add. */
+export function whatARealmsDiscoveriesAddToARecruitsChanceOfAHigherGrade(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AUnitARealmRaises,
+): number {
+  const theStage = "a realm's discoveries raise a recruit's quality";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to a Bless" (workBlessProvince): the shares of the province's
+ *  tax the caster's realm's effects add. */
+export function whatARealmsDiscoveriesAddToABless(theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined): number {
+  const theStage = "a realm's discoveries add to a Bless";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e),
+  );
 }

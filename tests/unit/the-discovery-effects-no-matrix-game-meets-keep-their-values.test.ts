@@ -28,6 +28,11 @@
 //   meets them), each question asked only by an effect that needs it, the report's odds (no province, field or skill
 //   named), Disguise Techniques' and Ancient Lore's chance and share, The Long Hunt's turn (its order's case is
 //   tests/lib/explore-and-search-order-cases.ts'), Medical Arts; and each kind on a row with no number.
+// - P1-19ae: the recruits' and the realm's works' discoveries in their runners on a staged realm: Diplomatic
+//   Protocols' waiver, Holy Sites for a consecrator of White 3 and less (and a row's White 0, read as 1), Muster Rolls'
+//   quality and chance, the corpse-carters' cost, a band's price by class (no game meets these four), a unit's price
+//   (each effect in turn: its gold added, then its factor, rounded up), a recruit's grade by type and class (capped at
+//   1 by discRecruitQChance), Rites of Plenty; and each kind on a row with no number.
 // Level 1 (unit): the runner on a staged realm, and combatVsNPC, recordBattleGraves, the to-hit chances,
 // pcCharCombatant, extraSkillBonuses and awardHpRoll called directly (on a world the engine makes from a fixed seed, or
 // a staged realm), no turn played; whether the line is written is decided before any die is drawn (a seeded stream
@@ -86,13 +91,21 @@ import {
   whatARealmsDiscoveriesAddToSpottingALurker,
   whatARealmsDiscoveriesAddToSpyingOnAHero,
   whatARealmsDiscoveriesCutARivalSpysChanceBy,
+  doARealmsDiscoveriesWaiveTheHiringBan,
+  theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt,
+  theUnitsPriceARealmsDiscoveriesLeave,
+  whatARealmsDiscoveriesAddToABless,
+  whatARealmsDiscoveriesAddToAMercenaryBandsPrice,
+  whatARealmsDiscoveriesAddToARecruitsChanceOfAHigherGrade,
+  whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold,
+  whatARealmsDiscoveriesAddToTheCorpseCartersCost,
 } from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
   THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
 } from '../../src/engine/rules/discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
-import { discExploreMult } from '../../src/engine/discoveries.ts';
+import { discExploreMult, discRecruitQChance, realmRecruitCost } from '../../src/engine/discoveries.ts';
 import { detRoll, spotEnemyInOwnedProvince } from '../../src/engine/heroes/fame-and-consecration.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { AFighterInAPersonalCombat } from '../../src/engine/personal-combat/helpers.ts';
@@ -982,5 +995,140 @@ describe("the orders' and the sight's effects on rows the content doesn't write 
       },
     );
     expect(got).toEqual([0, 0, 0, 0, 0.5, 1, 0, 0, 0, 0, 0, 0, 0, 10]);
+  });
+});
+
+/** The discoveries of P1-19ae's cases, by id (their rows' numbers in SAGE_DISCOVERIES_P). */
+const WORKS = {
+  diplomaticProtocols: { id: 'sd31' }, // the ban on hiring across the gulf between Divine and Undead waived
+  holySites: { id: 'ad03' }, // +1 consecrated province, for a consecrator of White 3 or more
+  musterRolls: { id: 'ag05' }, // a Call to Arms raises Average, at a chance of 0.4
+  corpseCarters: { id: 'az06' }, // Harvest the Field −2g
+  freeSwords: { id: 'ag18' }, // a humanoid band −3g (and a humanoid recruit +0.05 to start Veteran)
+  hiredBlades: { id: 'an08' }, // any band −3g
+  blackMarket: { id: 'ae20' }, // a band of beasts (primal) −3g (and a primal recruit +0.15)
+  shipbuilding: { id: 'sd16' }, // a fleet's price ×0.5
+  yeomanMusters: { id: 'rh02' }, // Shieldwall Levies and Yeoman Longbows −1g (and +0.3 to start Veteran)
+  superiorForging: { id: 'sd01' }, // any recruit +0.05
+  levyTraining: { id: 'sd46' }, // a garrison recruit +0.3
+  ritesOfPlenty: { id: 'ad09' }, // a Bless +0.45 of the province's tax
+} as const;
+
+/** A realm holding the discoveries given. */
+const holding = (...held: readonly { readonly id: string }[]) => ({ discoveries: [...held] });
+
+describe("the recruits' and the realm's works' discoveries, in their runners (P1-19ae: no game meets Holy Sites, the carters' cost or a band's price)", () => {
+  test('Diplomatic Protocols waive the hiring ban; no other discovery does, nor no realm', () => {
+    expect(doARealmsDiscoveriesWaiveTheHiringBan(holding(WORKS.musterRolls, WORKS.diplomaticProtocols))).toBe(true);
+    expect(doARealmsDiscoveriesWaiveTheHiringBan(holding(WORKS.musterRolls, WORKS.holySites))).toBe(false);
+    expect(doARealmsDiscoveriesWaiveTheHiringBan(holding())).toBe(false);
+    expect(doARealmsDiscoveriesWaiveTheHiringBan(undefined)).toBe(false);
+  });
+
+  test('Holy Sites: one more consecrated province for a consecrator of White 3 or more, none below', () => {
+    const more = (white: number) =>
+      whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(holding(WORKS.holySites), {
+        theConsecratorsWhiteSkill: white,
+      });
+    expect([more(2), more(3), more(5)]).toEqual([0, 1, 1]);
+  });
+
+  test('Muster Rolls: the quality and its chance, as the row writes them, for the order to roll', () => {
+    expect(theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt(holding(WORKS.musterRolls))).toEqual([
+      { theChance: 0.4, theQuality: 'Average' },
+    ]);
+    expect(theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt(holding(WORKS.holySites))).toEqual([]);
+  });
+
+  test("the corpse-carters' cost and a band's price: the gold each adds, a band's only for the class it names", () => {
+    expect(whatARealmsDiscoveriesAddToTheCorpseCartersCost(holding(WORKS.corpseCarters))).toBe(-2);
+    expect(whatARealmsDiscoveriesAddToTheCorpseCartersCost(holding(WORKS.freeSwords))).toBe(0);
+    const band = (theUnitsType: string) =>
+      whatARealmsDiscoveriesAddToAMercenaryBandsPrice(holding(WORKS.freeSwords, WORKS.hiredBlades, WORKS.blackMarket), {
+        theUnitsType,
+      });
+    expect([band('Shieldwall Levies'), band('Great Bears'), band('Elven Galleys')]).toEqual([-6, -6, -3]);
+  });
+
+  test("a unit's price: each effect in turn, its gold added, then its factor, rounded up; at least 1g", () => {
+    const price = (ids: readonly { readonly id: string }[], type: string, base: number) =>
+      realmRecruitCost(holding(...ids), type, base);
+    expect(price([WORKS.shipbuilding], 'Elven Galleys', 3)).toBe(2);
+    expect(price([WORKS.yeomanMusters], 'Shieldwall Levies', 2)).toBe(1);
+    expect(price([WORKS.yeomanMusters, WORKS.shipbuilding], 'Free Lances', 3)).toBe(3);
+    // a gold cut and a factor on one row, then a second row's factor on the price the first left
+    const left = withPlantedRows(
+      {
+        cut: { kind: 'recruitCost', delta: -2, factor: 0.5 },
+        half: { kind: 'recruitCost', factor: 0.5, types: ['Free Lances'] },
+        none: { kind: 'recruitCost', delta: -1, types: ['Great Bears'] },
+      },
+      (realm) => [
+        theUnitsPriceARealmsDiscoveriesLeave(realm, { theUnitsType: 'Free Lances' }, 5),
+        theUnitsPriceARealmsDiscoveriesLeave(realm, { theUnitsType: 'Shieldwall Levies' }, 5),
+        realmRecruitCost(realm, 'Free Lances', 1),
+      ],
+    );
+    // 5 − 2 = 3, × 0.5 = 1.5 → 2, × 0.5 = 1; 3 → 2; 1 − 2 = −1, × 0.5 → 0, × 0.5 → 0, then at least 1
+    expect(left).toEqual([1, 2, 1]);
+  });
+
+  test("a recruit's chance of a higher grade: each effect that reaches the unit, added, at most 1", () => {
+    const realm = holding(WORKS.superiorForging, WORKS.levyTraining, WORKS.yeomanMusters);
+    expect(discRecruitQChance(realm, 'Human Garrison')).toBeCloseTo(0.35, 12);
+    expect(discRecruitQChance(realm, 'Shieldwall Levies')).toBeCloseTo(0.35, 12);
+    expect(discRecruitQChance(realm, 'Free Lances')).toBeCloseTo(0.05, 12);
+    const stacked = withPlantedRows(
+      { a: { kind: 'recruitQ', pct: 0.7 }, b: { kind: 'recruitQ', pct: 0.6 } },
+      (planted) => [
+        whatARealmsDiscoveriesAddToARecruitsChanceOfAHigherGrade(planted, { theUnitsType: 'Free Lances' }),
+        discRecruitQChance(planted, 'Free Lances'),
+      ],
+    );
+    expect(stacked[0]).toBeCloseTo(1.3, 12);
+    expect(stacked[1]).toBe(1);
+  });
+
+  test('Rites of Plenty add their share to a Bless', () => {
+    expect(whatARealmsDiscoveriesAddToABless(holding(WORKS.ritesOfPlenty, WORKS.holySites))).toBe(0.45);
+    expect(whatARealmsDiscoveriesAddToABless(holding(WORKS.holySites))).toBe(0);
+  });
+});
+
+describe("the recruits' and the realm's works' effects on rows the content doesn't write (P1-19ae)", () => {
+  test("no number: each adds nothing or leaves the price; a consecration's White 0 is read as 1", () => {
+    const got = withPlantedRows(
+      {
+        waive: { kind: 'alignmentHire' },
+        holy: { kind: 'consecrate' },
+        muster: { kind: 'ctaQuality' },
+        carters: { kind: 'harvestCost' },
+        band: { kind: 'merc' },
+        price: { kind: 'recruitCost' },
+        grade: { kind: 'recruitQ' },
+        bless: { kind: 'bless' },
+      },
+      (realm) => [
+        doARealmsDiscoveriesWaiveTheHiringBan(realm),
+        whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(realm, { theConsecratorsWhiteSkill: 9 }),
+        theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt(realm),
+        whatARealmsDiscoveriesAddToTheCorpseCartersCost(realm),
+        whatARealmsDiscoveriesAddToAMercenaryBandsPrice(realm, { theUnitsType: 'Free Lances' }),
+        theUnitsPriceARealmsDiscoveriesLeave(realm, { theUnitsType: 'Free Lances' }, 3),
+        whatARealmsDiscoveriesAddToARecruitsChanceOfAHigherGrade(realm, { theUnitsType: 'Free Lances' }),
+        whatARealmsDiscoveriesAddToABless(realm),
+      ],
+    );
+    expect(got).toEqual([true, 0, [{ theChance: undefined, theQuality: undefined }], 0, 0, 3, 0, 0]);
+    const consecrations = (minWhite: number | undefined, white: number) =>
+      withPlantedRows({ holy: { kind: 'consecrate', cap: 2, minWhite } }, (realm) =>
+        whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(realm, { theConsecratorsWhiteSkill: white }),
+      );
+    expect([
+      consecrations(0, 0),
+      consecrations(0, 1),
+      consecrations(undefined, 0),
+      consecrations(undefined, 1),
+    ]).toEqual([0, 2, 0, 2]);
   });
 });

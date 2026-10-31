@@ -8,6 +8,8 @@ import {
   aRealmsDiscoveriesLetABeastFollowWithoutItsDruid,
   theEffectsOfAKindARealmHolds,
   theFactorARealmsDiscoveriesMultiplyExploringBy,
+  theUnitsPriceARealmsDiscoveriesLeave,
+  whatARealmsDiscoveriesAddToARecruitsChanceOfAHigherGrade,
   theFactorARealmsDiscoveriesStrengthenAUnitBy,
   theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath,
   whatARealmsDiscoveriesAddToAUnitsPromotion,
@@ -301,10 +303,8 @@ export function discMaxHpFor(
 }
 // Chance (0..1) that a newly raised unit of this type starts one tier higher (`recruitQ`).
 export function discRecruitQChance(pl: ARealmAsTheDiscoveriesReadIt | null | undefined, armyType: string) {
-  return Math.min(
-    1,
-    discSumOf(pl, 'recruitQ', 'pct', (e) => discUnitMatch(e, armyType, true)),
-  );
+  // (the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries raise a recruit's quality")
+  return Math.min(1, whatARealmsDiscoveriesAddToARecruitsChanceOfAHigherGrade(pl, { theUnitsType: armyType }));
 }
 // Per-terrain explore multiplier from `explore` discoveries (shipped in the report so the player
 // portal's preview no longer parses description text).
@@ -339,12 +339,9 @@ export function realmRecruitCost(
   armyType: string,
   baseCost: number | null | undefined,
 ) {
-  let c = Number(baseCost) || 2; // sd16 Shipbuilding is now an ordinary `recruitCost` factor effect (cls fleet)
-  discEffectsOf(pl, 'recruitCost').forEach((e) => {
-    if (!discUnitMatch(e, armyType, true)) return;
-    if (e.delta) c += e.delta;
-    if (e.factor) c = Math.ceil(c * e.factor);
-  });
+  // sd16 Shipbuilding is now an ordinary `recruitCost` factor effect (cls fleet); each effect in turn (the discoveries'
+  // registry's since plan P1-19ae: "orderOutcome: a realm's discoveries cut a unit's price")
+  const c = theUnitsPriceARealmsDiscoveriesLeave(pl, { theUnitsType: armyType }, Number(baseCost) || 2);
   return Math.max(1, c);
 }
 
