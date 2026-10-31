@@ -3,7 +3,8 @@
 // row), no game reaches, in a battle against a province's defenders: a province held by its neutral defenders with no
 // guard to lead them, nor by a realm's garrison with none, that repels the attacker (the line and the defenders'
 // casualties name "the defenders of <province>" and "the garrison of <province>", and, since P1-12d28, so does the
-// clause of whom the attacker's company faced, "facing the defenders of <province>'s Company 0"); an attacker storming
+// clause of whom the attacker's company faced, "facing the defenders of <province>'s Company 0", and since P1-12d29 the
+// defenders' force header, "The defenders of <province>" or "<realm>'s garrison at <province>"); an attacker storming
 // ashore in a Raid the Coast; his corsairs taking his beaten force back to the ships; his Control Undead turning a
 // defending unit.
 // Nor, in a battle between two heroes' hosts: the defender's realm holding its own ground the harder, or the beaten
@@ -184,6 +185,13 @@ function aBattle(
   };
 }
 
+/** The names the battle's force headers give (the header's machine form: the force a header names, a record since
+ *  P1-12d29, written by the prose). */
+const theHeadersNames = (words: readonly string[]): unknown[] =>
+  words
+    .filter((w) => w.startsWith('⚑FORCE⚑'))
+    .map((w) => (JSON.parse(w.slice('⚑FORCE⚑'.length)) as { name: unknown }).name);
+
 /** A side's name in a line: its commander's, or his host's once he fell before the battle. */
 const sideOf = (name: string, slain: boolean) => (slain ? `${name}'s leaderless host` : name);
 
@@ -217,6 +225,8 @@ describe.each([false, true])('a battle against a province with no guard, the att
         `⛵ ${atk}'s corsairs stand off the shore with boats ready — the beaten force pulls back to the ships in good order rather than being cut down.`,
       ]),
     );
+    // the defenders' force header names them as "The defenders of <province>" (no game reaches it)
+    expect(theHeadersNames(shown.words)).toContain(`The defenders of ${shown.province}`);
   });
 
   test("held by a realm's garrison, it repels the attacker as the garrison of the province", () => {
@@ -235,6 +245,8 @@ describe.each([false, true])('a battle against a province with no guard, the att
         `🛡 **the garrison of ${shown.province}'s forces** (defender):`,
       ]),
     );
+    // and the garrison's force header as "<realm>'s garrison at <province>"
+    expect(theHeadersNames(shown.words)).toContain(`${shown.realm1}'s garrison at ${shown.province}`);
   });
 
   // Whom the attacker's company faced (battleFacedClauses, read at the deploy and handed to rollUnitFates as `faced`):
