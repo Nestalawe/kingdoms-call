@@ -53,6 +53,17 @@ import {
   taxRecordsGold,
 } from '../engine/discoveries.ts';
 import {
+  whatARealmsDiscoveriesAddToASpysChance,
+  whatARealmsDiscoveriesAddToPractice,
+  whatARealmsDiscoveriesAddToResearch,
+  theSharesARealmsDiscoveriesAddToPracticeSkillBySkill,
+} from '../engine/rules/the-registry-of-discovery-effects.ts';
+import {
+  THE_REPORTS_ODDS_NAME_NO_PROVINCE,
+  THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
+  THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
+} from '../engine/rules/discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
+import {
   discUnitIs,
   discUnitMatch,
 } from '../engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
@@ -281,9 +292,11 @@ export function buildTurnReport(view, itsLines = null) {
               : '',
           level: eff('spy'),
           chance: dispFloor(
-            (0.2 + eff('spy') * 0.2 + discSumOf(pl, 'spy', 'pct', (e) => !e.terrains && !e.coastal)) * 100,
+            (0.2 + eff('spy') * 0.2 + whatARealmsDiscoveriesAddToASpysChance(pl, THE_REPORTS_ODDS_NAME_NO_PROVINCE)) *
+              100,
           ),
-        }; // unscoped spy discoveries only (terrain/coastal ones depend on the target)
+        }; // unscoped spy discoveries only (terrain/coastal ones depend on the target; the discoveries' registry's since
+        // plan P1-19ad: "orderOutcome: a realm's discoveries add to a spy's chance", the rule the Spy order reads)
         // RESEARCH — Sage level x 5%, doubled for Neutral realms, + Loreseeker.
         {
           const per = 5;
@@ -297,7 +310,7 @@ export function buildTurnReport(view, itsLines = null) {
               c.id
                 ? per
                 : 0) +
-              discSumOf(pl, 'research', 'pct', (e) => !e.field),
+              whatARealmsDiscoveriesAddToResearch(pl, THE_REPORTS_RESEARCH_NAMES_NO_FIELD), // (the registry's, P1-19ad)
           };
         }
         // ASSASSINATE (Spy 9) — 25% + 6% per RAW Spy level, cap 80, less 25 against a king.
@@ -318,17 +331,16 @@ export function buildTurnReport(view, itsLines = null) {
         out.practice = {
           byLevel: [25, 20, 15, 10, 5],
           astro: 0,
-          discovery: discSumOf(pl, 'practice', 'pct', (e) => !e.skills) * 100,
+          discovery: whatARealmsDiscoveriesAddToPractice(pl, THE_REPORTS_PRACTICE_NAMES_NO_SKILL) * 100,
           bySkill: (() => {
             const m = {};
-            discEffectsOf(pl, 'practice').forEach((e) => {
-              (e.skills || []).forEach((k) => {
-                m[k] = (m[k] || 0) + (e.pct || 0) * 100;
-              });
+            theSharesARealmsDiscoveriesAddToPracticeSkillBySkill(pl).forEach(([k, share]) => {
+              m[k] = (m[k] || 0) + share * 100;
             });
             return m;
           })(),
-        }; // sd26 is now a `practice` effect; skill-scoped practice discoveries itemised per skill
+        }; // sd26 is now a `practice` effect; skill-scoped practice discoveries itemised per skill (the discoveries'
+        // registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to practice", as the order reads it)
         // BLOCKADE (Naval 7) — the blockade forms half the time.
         out.blockade = { chance: 50 };
         return out;

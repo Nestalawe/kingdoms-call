@@ -148,6 +148,36 @@ export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
     kind: 'kingKillHpX2',
     numbers: { theFactor: { value: 2, aTextWouldWriteIt: 'a multiplier, as a figure' } },
   },
+  // what a spy's chance gains, wherever he spies or on the ground, coast or home its row names (P1-19ad)
+  spying: { kind: 'spy' },
+  // what a realm's ground takes off a rival spy's chance there (P1-19ad)
+  'counter-spying': { kind: 'counterSpy' },
+  // what a spy's chance to read a hero beside him gains (P1-19ad)
+  'spying-on-a-hero': { kind: 'spyChar' },
+  // what a hero's chance to catch a spy reading him gains (P1-19ad)
+  'catching-a-spy': { kind: 'catchSpy' },
+  // Disguise Techniques (sd23): the chance a spy's success raises no alarm (P1-19ad)
+  'disguise-techniques': { kind: 'spyDisguise' },
+  // what an explorer maps of a province, multiplied (P1-19ad)
+  exploring: { kind: 'explore' },
+  // the turns the Wild Hunt's bound beasts serve longer (P1-19ad)
+  'the-long-hunt': { kind: 'wildHunt' },
+  // what a cleared lair's gold gains (P1-19ad)
+  'lair-gold': { kind: 'lairGold' },
+  // the chance of an extra find in a cleared lair (P1-19ad)
+  'lair-items': { kind: 'itemChance' },
+  // what a scholar's chance to make a discovery gains (P1-19ad)
+  research: { kind: 'research' },
+  // what a hero's chance to raise a skill by practice gains (P1-19ad)
+  practice: { kind: 'practice' },
+  // the hit points a resting hero gains more (P1-19ad)
+  resting: { kind: 'rest' },
+  // Medical Arts (sd28): a single Rest restores every hit point (P1-19ad)
+  'medical-arts': { kind: 'restFull' },
+  // what a realm's chance to spot an enemy hero lurking in a province it holds gains (P1-19ad)
+  'watching-for-lurkers': { kind: 'spotLurker' },
+  // Ancient Lore (sd32): an Explore order also maps a share of each province around (P1-19ad)
+  'ancient-lore': { kind: 'adjacentReveal' },
 } as const satisfies Record<string, AKindOfDiscoveryEffect>;
 
 /** A kind of effect's slug (a key of DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS). */

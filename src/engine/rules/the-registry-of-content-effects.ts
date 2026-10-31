@@ -1382,6 +1382,63 @@ export interface ASkillARealmsDiscoveriesMayRaise {
   readonly theSkill: string;
 }
 
+/** The province a spy spies in or on, as a realm's discoveries that help or hinder him read it (resolveSpyOrder, and
+ *  the report's odds: plan P1-19ad). Each question is asked only by an effect that needs it. */
+export interface WhereASpyActsAsARealmsDiscoveriesReadIt {
+  /** The province's ground, or none (the report's odds name no province). */
+  readonly theGround: string | null | undefined;
+  /** Whether the province touches the sea. */
+  readonly isItCoastal: () => boolean;
+  /** Whether it is the home of the realm whose discoveries these are (asking may fix a realm's home:
+   *  homeProvinceIdFor writes it the first time). */
+  readonly isItTheRealmsHome: () => boolean;
+}
+
+/** The province an explorer maps, or a lair is cleared in, as a realm's discoveries read its ground (plan P1-19ad). */
+export interface TheGroundAHeroWorks {
+  readonly theGround: string;
+}
+
+/** A cleared lair's hoard, as a realm's discoveries that add to its gold read it (resolveSearchLairOrder: plan
+ *  P1-19ad). */
+export interface ALairsHoardARealmsDiscoveriesMayEnrich {
+  readonly theGround: string;
+  /** The race of the hero who cleared it. */
+  readonly theHerosRace: string | null | undefined;
+}
+
+/** A Research order, as a realm's discoveries that add to its chance read it (resolveResearchOrder, and the report's
+ *  odds: plan P1-19ad). */
+export interface AResearchARealmsDiscoveriesMayHelp {
+  /** Whether the field studied is the realm's own creed, asked only by an effect for that field. */
+  readonly isTheFieldStudiedItsOwnCreed: () => boolean;
+}
+
+/** A skill practised, as a realm's discoveries that add to its chance read it (resolvePracticeSkillOrder, and the
+ *  report's odds with no skill: plan P1-19ad). */
+export interface ASkillARealmsDiscoveriesMayDrill {
+  readonly theSkill: string | null | undefined;
+}
+
+/** Where a hero rests, as a realm's discoveries that add to his heal read it (resolveRestOrder: plan P1-19ad). */
+export interface WhereAHeroRestsAsARealmsDiscoveriesReadIt {
+  /** Whether the province is his realm's. */
+  readonly isItHisRealmsGround: boolean;
+  /** Whether it is his realm's home, asked only by an effect for the home (asking may fix a realm's home). */
+  readonly isItHisRealmsHome: () => boolean;
+  readonly theGround: string;
+}
+
+/** A province a realm holds, as its discoveries that help it spot an enemy hero lurking there read it
+ *  (spotEnemyInOwnedProvince: plan P1-19ad). Each question is asked only by an effect that needs it. */
+export interface AProvinceARealmsDiscoveriesWatch {
+  readonly theGround: string;
+  /** Whether it is the watching realm's home (asking may fix a realm's home). */
+  readonly isItTheRealmsHome: () => boolean;
+  /** Whether it touches the sea. */
+  readonly isItCoastal: () => boolean;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1601,7 +1658,19 @@ export interface TheStagesOfEachHookPoint {
      *  or a wound earns him); the runner gives the first effect's, or nothing if the realm holds none (awardHpRoll). */
     readonly "a realm's discoveries harden the king": (theEffect: TheEffectOfADiscovery) => number;
   };
-  readonly visibility: never;
+  /** What a realm sees (plan P1-19's discoveries family: its row P1-19ad typed it). */
+  readonly visibility: {
+    /** The percentage points a discovery a realm holds adds to its chance to spot an enemy hero lurking in a province
+     *  it holds, or nothing (it names other ground); the runner adds them (spotEnemyInOwnedProvince, before the
+     *  chance's bounds). */
+    readonly "a realm's discoveries spot a hero lurking in its province": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AProvinceARealmsDiscoveriesWatch,
+    ) => number | null;
+    /** The share of each province around him a discovery an explorer's realm holds maps as he explores; the runner
+     *  gives the first effect's, or nothing if the realm holds none (resolveExploreOrder). */
+    readonly "a realm's discoveries map the provinces around an explorer": (theEffect: TheEffectOfADiscovery) => number;
+  };
   readonly turnStart: never;
   readonly turnEnd: {
     /** The unit a province raises into its garrison, or nothing (Early Winter, after the wages: plan P1-19's second
@@ -1631,6 +1700,75 @@ export interface TheStagesOfEachHookPoint {
     /** Whether an item the caster carries makes the cast of a spell sure (resolveCastSpellOrder, before the cast chance:
      *  plan P1-19y; the items' registry: any of his items, in the stage's order). */
     readonly "a spell's cast cannot fail": (facts: ASpellAboutToBeCast) => boolean;
+    /** The share a discovery a spy's realm holds adds to his chance, or nothing (it names other ground); the runner
+     *  adds them (resolveSpyOrder, both his rolls; the report's odds, where no province is named: plan P1-19ad). */
+    readonly "a realm's discoveries add to a spy's chance": (
+      theEffect: TheEffectOfADiscovery,
+      facts: WhereASpyActsAsARealmsDiscoveriesReadIt,
+    ) => number | null;
+    /** The share a discovery the realm that holds the province spied on takes off a rival spy's chance, or nothing; the
+     *  runner adds them (resolveSpyOrder, a province of another realm's: its scope as before, Parked). */
+    readonly "a realm's discoveries cut a rival spy's chance": (
+      theEffect: TheEffectOfADiscovery,
+      facts: WhereASpyActsAsARealmsDiscoveriesReadIt,
+    ) => number | null;
+    /** The share a discovery a spy's realm holds adds to his chance to read a hero beside him, or nothing; the runner adds
+     *  them (resolveSpyOrder). */
+    readonly "a realm's discoveries add to spying on a hero": (
+      theEffect: TheEffectOfADiscovery,
+      facts: WhereASpyActsAsARealmsDiscoveriesReadIt,
+    ) => number | null;
+    /** The points a discovery the realm of a hero spied on adds to his chance to catch the spy, or nothing; the runner
+     *  adds them (resolveSpyOrder, before the chance's bounds). */
+    readonly "a realm's discoveries add to catching a spy": (
+      theEffect: TheEffectOfADiscovery,
+      facts: WhereASpyActsAsARealmsDiscoveriesReadIt,
+    ) => number | null;
+    /** The chance, as its row writes it (a share), that a discovery a spy's realm holds keeps his success from raising
+     *  the alarm; the runner gives the first effect's, or nothing (resolveSpyOrder, which rolls). */
+    readonly "a realm's discoveries keep a spy's success quiet": (theEffect: TheEffectOfADiscovery) => number;
+    /** The factor a discovery an explorer's realm holds multiplies what he maps by, or nothing (it names other
+     *  ground); the runner multiplies them (resolveExploreOrder, and discExploreMult, which the report ships). */
+    readonly "a realm's discoveries add to exploring": (
+      theEffect: TheEffectOfADiscovery,
+      facts: TheGroundAHeroWorks,
+    ) => number | null;
+    /** The turns a discovery a hero's realm holds adds to the service of the beasts the Wild Hunt binds; the runner adds
+     *  them (resolvePerformRiteOrder). */
+    readonly "a realm's discoveries lengthen the wild hunt": (theEffect: TheEffectOfADiscovery) => number;
+    /** The share a discovery a hero's realm holds adds to a cleared lair's gold, or nothing; the runner adds them
+     *  (resolveSearchLairOrder). */
+    readonly "a realm's discoveries add to a lair's gold": (
+      theEffect: TheEffectOfADiscovery,
+      facts: ALairsHoardARealmsDiscoveriesMayEnrich,
+    ) => number | null;
+    /** The chance a discovery a hero's realm holds adds of an extra find in a cleared lair, or nothing; the runner adds
+     *  them (resolveSearchLairOrder, which rolls). */
+    readonly "a realm's discoveries add to a lair's item": (
+      theEffect: TheEffectOfADiscovery,
+      facts: TheGroundAHeroWorks,
+    ) => number | null;
+    /** The points a discovery a scholar's realm holds adds to his chance of a discovery, or nothing (it names another
+     *  field); the runner adds them (resolveResearchOrder; the report's odds). */
+    readonly "a realm's discoveries add to research": (
+      theEffect: TheEffectOfADiscovery,
+      facts: AResearchARealmsDiscoveriesMayHelp,
+    ) => number | null;
+    /** The share a discovery a hero's realm holds adds to his chance to raise a skill by practice, or nothing (it
+     *  names other skills); the runner adds them (resolvePracticeSkillOrder; the report's odds, every skill and each
+     *  named). */
+    readonly "a realm's discoveries add to practice": (
+      theEffect: TheEffectOfADiscovery,
+      facts: ASkillARealmsDiscoveriesMayDrill,
+    ) => number | null;
+    /** The hit points a discovery a resting hero's realm holds adds to his heal, or nothing; the runner adds them
+     *  (resolveRestOrder, before the items'). */
+    readonly "a realm's discoveries add to a rest's heal": (
+      theEffect: TheEffectOfADiscovery,
+      facts: WhereAHeroRestsAsARealmsDiscoveriesReadIt,
+    ) => number | null;
+    /** Whether a discovery a resting hero's realm holds restores every hit point he lacks (resolveRestOrder). */
+    readonly "a realm's discoveries heal a resting hero in full": (theEffect: TheEffectOfADiscovery) => boolean;
   };
   /** A hero's own figures a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19p, typed it). */
   readonly aHerosStanding: {

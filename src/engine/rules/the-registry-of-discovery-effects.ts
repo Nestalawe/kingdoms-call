@@ -38,19 +38,43 @@ import {
   A_REALMS_DISCOVERIES_STEADY_A_FIGHTERS_AIM,
   A_REALMS_DISCOVERIES_STRENGTHEN_HIS_MITHRIL,
 } from './discoveries/a-realms-discoveries-in-its-heroes-fights-and-their-rise.ts';
+import {
+  A_REALMS_DISCOVERIES_ADD_TO_A_LAIRS_GOLD,
+  A_REALMS_DISCOVERIES_ADD_TO_A_LAIRS_ITEM,
+  A_REALMS_DISCOVERIES_ADD_TO_A_RESTS_HEAL,
+  A_REALMS_DISCOVERIES_ADD_TO_A_SPYS_CHANCE,
+  A_REALMS_DISCOVERIES_ADD_TO_CATCHING_A_SPY,
+  A_REALMS_DISCOVERIES_ADD_TO_EXPLORING,
+  A_REALMS_DISCOVERIES_ADD_TO_PRACTICE,
+  A_REALMS_DISCOVERIES_ADD_TO_RESEARCH,
+  A_REALMS_DISCOVERIES_ADD_TO_SPYING_ON_A_HERO,
+  A_REALMS_DISCOVERIES_CUT_A_RIVAL_SPYS_CHANCE,
+  A_REALMS_DISCOVERIES_HEAL_A_RESTING_HERO_IN_FULL,
+  A_REALMS_DISCOVERIES_KEEP_A_SPYS_SUCCESS_QUIET,
+  A_REALMS_DISCOVERIES_LENGTHEN_THE_WILD_HUNT,
+  A_REALMS_DISCOVERIES_MAP_THE_PROVINCES_AROUND_AN_EXPLORER,
+  A_REALMS_DISCOVERIES_SPOT_A_HERO_LURKING_IN_ITS_PROVINCE,
+} from './discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
 import type {
   ABeastACommanderLeads,
   ABeatenUnitARealmsDiscoveriesMaySpare,
   ACastARealmsDiscoveriesMayHelp,
   AFoeARealmsDiscoveriesSteadyAFightersAimAt,
+  ALairsHoardARealmsDiscoveriesMayEnrich,
+  AProvinceARealmsDiscoveriesWatch,
+  AResearchARealmsDiscoveriesMayHelp,
+  ASkillARealmsDiscoveriesMayDrill,
   ASkillARealmsDiscoveriesMayRaise,
   ASideAsItsFanaticismIsRolled,
   AUnitARealmsDiscoveriesMayPromote,
   AUnitARealmsDiscoveriesMayStrengthen,
   HookPointName,
   TheAttackersUnitsAtASiege,
+  TheGroundAHeroWorks,
   TheGroundARealmDefends,
   TheStagesOfEachHookPoint,
+  WhereAHeroRestsAsARealmsDiscoveriesReadIt,
+  WhereASpyActsAsARealmsDiscoveriesReadIt,
 } from './the-registry-of-content-effects.ts';
 
 /** A realm as the discoveries read it: its race and alignment, its discoveries, the ones it forgot and the pairs
@@ -168,6 +192,75 @@ export const THE_REGISTRY_OF_DISCOVERY_EFFECTS = {
   'golden-shield': {
     experience: { "a realm's discoveries harden the king": A_REALMS_DISCOVERIES_HARDEN_THE_KING['golden-shield'] },
   },
+  spying: {
+    orderOutcome: { "a realm's discoveries add to a spy's chance": A_REALMS_DISCOVERIES_ADD_TO_A_SPYS_CHANCE.spying },
+  },
+  'counter-spying': {
+    orderOutcome: {
+      "a realm's discoveries cut a rival spy's chance": A_REALMS_DISCOVERIES_CUT_A_RIVAL_SPYS_CHANCE['counter-spying'],
+    },
+  },
+  'spying-on-a-hero': {
+    orderOutcome: {
+      "a realm's discoveries add to spying on a hero": A_REALMS_DISCOVERIES_ADD_TO_SPYING_ON_A_HERO['spying-on-a-hero'],
+    },
+  },
+  'catching-a-spy': {
+    orderOutcome: {
+      "a realm's discoveries add to catching a spy": A_REALMS_DISCOVERIES_ADD_TO_CATCHING_A_SPY['catching-a-spy'],
+    },
+  },
+  'disguise-techniques': {
+    orderOutcome: {
+      "a realm's discoveries keep a spy's success quiet":
+        A_REALMS_DISCOVERIES_KEEP_A_SPYS_SUCCESS_QUIET['disguise-techniques'],
+    },
+  },
+  exploring: {
+    orderOutcome: { "a realm's discoveries add to exploring": A_REALMS_DISCOVERIES_ADD_TO_EXPLORING.exploring },
+  },
+  'the-long-hunt': {
+    orderOutcome: {
+      "a realm's discoveries lengthen the wild hunt": A_REALMS_DISCOVERIES_LENGTHEN_THE_WILD_HUNT['the-long-hunt'],
+    },
+  },
+  'lair-gold': {
+    orderOutcome: {
+      "a realm's discoveries add to a lair's gold": A_REALMS_DISCOVERIES_ADD_TO_A_LAIRS_GOLD['lair-gold'],
+    },
+  },
+  'lair-items': {
+    orderOutcome: {
+      "a realm's discoveries add to a lair's item": A_REALMS_DISCOVERIES_ADD_TO_A_LAIRS_ITEM['lair-items'],
+    },
+  },
+  research: {
+    orderOutcome: { "a realm's discoveries add to research": A_REALMS_DISCOVERIES_ADD_TO_RESEARCH.research },
+  },
+  practice: {
+    orderOutcome: { "a realm's discoveries add to practice": A_REALMS_DISCOVERIES_ADD_TO_PRACTICE.practice },
+  },
+  resting: {
+    orderOutcome: { "a realm's discoveries add to a rest's heal": A_REALMS_DISCOVERIES_ADD_TO_A_RESTS_HEAL.resting },
+  },
+  'medical-arts': {
+    orderOutcome: {
+      "a realm's discoveries heal a resting hero in full":
+        A_REALMS_DISCOVERIES_HEAL_A_RESTING_HERO_IN_FULL['medical-arts'],
+    },
+  },
+  'watching-for-lurkers': {
+    visibility: {
+      "a realm's discoveries spot a hero lurking in its province":
+        A_REALMS_DISCOVERIES_SPOT_A_HERO_LURKING_IN_ITS_PROVINCE['watching-for-lurkers'],
+    },
+  },
+  'ancient-lore': {
+    visibility: {
+      "a realm's discoveries map the provinces around an explorer":
+        A_REALMS_DISCOVERIES_MAP_THE_PROVINCES_AROUND_AN_EXPLORER['ancient-lore'],
+    },
+  },
 } satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once. Each stage holds one kind today, so its
@@ -197,6 +290,25 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES = {
     "a realm's discoveries add to a skill's rise": ['a-skills-rise'],
     "a realm's discoveries harden the king": ['golden-shield'],
   },
+  orderOutcome: {
+    "a realm's discoveries add to a spy's chance": ['spying'],
+    "a realm's discoveries cut a rival spy's chance": ['counter-spying'],
+    "a realm's discoveries add to spying on a hero": ['spying-on-a-hero'],
+    "a realm's discoveries add to catching a spy": ['catching-a-spy'],
+    "a realm's discoveries keep a spy's success quiet": ['disguise-techniques'],
+    "a realm's discoveries add to exploring": ['exploring'],
+    "a realm's discoveries lengthen the wild hunt": ['the-long-hunt'],
+    "a realm's discoveries add to a lair's gold": ['lair-gold'],
+    "a realm's discoveries add to a lair's item": ['lair-items'],
+    "a realm's discoveries add to research": ['research'],
+    "a realm's discoveries add to practice": ['practice'],
+    "a realm's discoveries add to a rest's heal": ['resting'],
+    "a realm's discoveries heal a resting hero in full": ['medical-arts'],
+  },
+  visibility: {
+    "a realm's discoveries spot a hero lurking in its province": ['watching-for-lurkers'],
+    "a realm's discoveries map the provinces around an explorer": ['ancient-lore'],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly DiscoveryEffectSlug[];
@@ -209,6 +321,8 @@ const STRENGTH = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.strength;
 const FATE = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.fate;
 const PERSONAL_COMBAT = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.personalCombat;
 const EXPERIENCE = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.experience;
+const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.orderOutcome;
+const VISIBILITY = THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES.visibility;
 
 /** The effects of the kind of each entry of a stage's order the realm holds, with the entry's slug. */
 function theEffectsOfTheStageARealmHolds(
@@ -469,4 +583,218 @@ export function theFactorARealmsDiscoveriesHardenTheKingBy(
   if (!first) return null;
   const [slug, e] = first;
   return ENTRIES[slug].experience?.["a realm's discoveries harden the king"]?.(e) ?? null;
+}
+
+/** The numbers the effects of a stage the realm holds give (nothing where an effect's filters don't hold), added in the
+ *  order the effects are found (P1-19ad's runners that add). */
+function addTheNumbersOfTheStage(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  theOrder: readonly DiscoveryEffectSlug[],
+  theNumberOf: (slug: DiscoveryEffectSlug, theEffect: TheEffectOfADiscovery) => number | null | undefined,
+): number {
+  let s = 0;
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, theOrder)) {
+    const added = theNumberOf(slug, e) ?? null;
+    if (added !== null) s += added;
+  }
+  return s;
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to a spy's chance" (resolveSpyOrder, both his rolls; the
+ *  report's odds, with THE_REPORTS_ODDS_NAME_NO_PROVINCE): the shares the spy's realm's effects add. */
+export function whatARealmsDiscoveriesAddToASpysChance(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: WhereASpyActsAsARealmsDiscoveriesReadIt,
+): number {
+  const theStage = "a realm's discoveries add to a spy's chance";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries cut a rival spy's chance" (resolveSpyOrder, in a province of
+ *  another realm's): the shares the effects of the realm that holds it take off. */
+export function whatARealmsDiscoveriesCutARivalSpysChanceBy(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: WhereASpyActsAsARealmsDiscoveriesReadIt,
+): number {
+  const theStage = "a realm's discoveries cut a rival spy's chance";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to spying on a hero" (resolveSpyOrder): the shares the spy's
+ *  realm's effects add to his chance to read a hero beside him. */
+export function whatARealmsDiscoveriesAddToSpyingOnAHero(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: WhereASpyActsAsARealmsDiscoveriesReadIt,
+): number {
+  const theStage = "a realm's discoveries add to spying on a hero";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to catching a spy" (resolveSpyOrder): the points the effects
+ *  of the realm of the hero spied on add to his chance to catch the spy. */
+export function whatARealmsDiscoveriesAddToCatchingASpy(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: WhereASpyActsAsARealmsDiscoveriesReadIt,
+): number {
+  const theStage = "a realm's discoveries add to catching a spy";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries keep a spy's success quiet" (resolveSpyOrder, which rolls): the
+ *  first of the spy's realm's effects' chance, or nothing if the realm holds none. */
+export function theChanceARealmsDiscoveriesKeepASpysSuccessQuiet(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number | null {
+  const theStage = "a realm's discoveries keep a spy's success quiet";
+  const [first] = theEffectsOfTheStageARealmHolds(theRealm, ORDER_OUTCOME[theStage]);
+  if (!first) return null;
+  const [slug, e] = first;
+  return ENTRIES[slug].orderOutcome?.[theStage]?.(e) ?? null;
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to exploring" (resolveExploreOrder, and discExploreMult, which
+ *  the report ships): the product of the factors of the explorer's realm's effects that reach the ground. */
+export function theFactorARealmsDiscoveriesMultiplyExploringBy(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: TheGroundAHeroWorks,
+): number {
+  const theStage = "a realm's discoveries add to exploring";
+  let m = 1;
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, ORDER_OUTCOME[theStage])) {
+    const factor = ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts) ?? null;
+    if (factor !== null) m *= factor;
+  }
+  return m;
+}
+
+/** The runner of "orderOutcome: a realm's discoveries lengthen the wild hunt" (resolvePerformRiteOrder): the turns the
+ *  hero's realm's effects add to the bound beasts' service. */
+export function theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number {
+  const theStage = "a realm's discoveries lengthen the wild hunt";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to a lair's gold" (resolveSearchLairOrder): the shares the
+ *  hero's realm's effects add to the hoard's gold. */
+export function whatARealmsDiscoveriesAddToALairsGold(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: ALairsHoardARealmsDiscoveriesMayEnrich,
+): number {
+  const theStage = "a realm's discoveries add to a lair's gold";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to a lair's item" (resolveSearchLairOrder, which rolls): the
+ *  chance of an extra find the hero's realm's effects add. */
+export function whatARealmsDiscoveriesAddToALairsItemChance(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: TheGroundAHeroWorks,
+): number {
+  const theStage = "a realm's discoveries add to a lair's item";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to research" (resolveResearchOrder; the report's odds, with
+ *  THE_REPORTS_RESEARCH_NAMES_NO_FIELD): the points the scholar's realm's effects add. */
+export function whatARealmsDiscoveriesAddToResearch(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AResearchARealmsDiscoveriesMayHelp,
+): number {
+  const theStage = "a realm's discoveries add to research";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to practice" (resolvePracticeSkillOrder; the report's odds,
+ *  with THE_REPORTS_PRACTICE_NAMES_NO_SKILL): the shares the hero's realm's effects add for the skill. */
+export function whatARealmsDiscoveriesAddToPractice(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: ASkillARealmsDiscoveriesMayDrill,
+): number {
+  const theStage = "a realm's discoveries add to practice";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The second runner of "orderOutcome: a realm's discoveries add to practice" (the report's odds, skill by skill): for
+ *  each of the realm's effects, in the order they are found, each skill it lists with the share it adds for that skill
+ *  (an effect for every skill lists none). The report adds them up per skill. */
+export function theSharesARealmsDiscoveriesAddToPracticeSkillBySkill(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): (readonly [theSkill: string, theShare: number])[] {
+  const theStage = "a realm's discoveries add to practice";
+  const out: (readonly [theSkill: string, theShare: number])[] = [];
+  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, ORDER_OUTCOME[theStage])) {
+    for (const theSkill of e.skills ?? []) {
+      const added = ENTRIES[slug].orderOutcome?.[theStage]?.(e, { theSkill }) ?? null;
+      if (added !== null) out.push([theSkill, added]);
+    }
+  }
+  return out;
+}
+
+/** The runner of "orderOutcome: a realm's discoveries add to a rest's heal" (resolveRestOrder, before the items'): the
+ *  hit points the resting hero's realm's effects add. */
+export function whatARealmsDiscoveriesAddToARestsHeal(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: WhereAHeroRestsAsARealmsDiscoveriesReadIt,
+): number {
+  const theStage = "a realm's discoveries add to a rest's heal";
+  return addTheNumbersOfTheStage(theRealm, ORDER_OUTCOME[theStage], (slug, e) =>
+    ENTRIES[slug].orderOutcome?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "orderOutcome: a realm's discoveries heal a resting hero in full" (resolveRestOrder): whether any of
+ *  the resting hero's realm's effects restores every hit point he lacks. */
+export function aRealmsDiscoveriesHealARestingHeroInFull(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): boolean {
+  const theStage = "a realm's discoveries heal a resting hero in full";
+  return theEffectsOfTheStageARealmHolds(theRealm, ORDER_OUTCOME[theStage]).some(
+    ([slug, e]) => ENTRIES[slug].orderOutcome?.[theStage]?.(e) ?? false,
+  );
+}
+
+/** The runner of "visibility: a realm's discoveries spot a hero lurking in its province" (spotEnemyInOwnedProvince):
+ *  the points the watching realm's effects add to its chance. */
+export function whatARealmsDiscoveriesAddToSpottingALurker(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  facts: AProvinceARealmsDiscoveriesWatch,
+): number {
+  const theStage = "a realm's discoveries spot a hero lurking in its province";
+  return addTheNumbersOfTheStage(theRealm, VISIBILITY[theStage], (slug, e) =>
+    ENTRIES[slug].visibility?.[theStage]?.(e, facts),
+  );
+}
+
+/** The runner of "visibility: a realm's discoveries map the provinces around an explorer" (resolveExploreOrder): the
+ *  share of each province around him the first of the explorer's realm's effects maps, or nothing if the realm holds
+ *  none. */
+export function theShareARealmsDiscoveriesMapAroundAnExplorer(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): number | null {
+  const theStage = "a realm's discoveries map the provinces around an explorer";
+  const [first] = theEffectsOfTheStageARealmHolds(theRealm, VISIBILITY[theStage]);
+  if (!first) return null;
+  const [slug, e] = first;
+  return ENTRIES[slug].visibility?.[theStage]?.(e) ?? null;
 }

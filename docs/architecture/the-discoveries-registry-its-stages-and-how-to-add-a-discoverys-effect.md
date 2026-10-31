@@ -96,6 +96,30 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   The runner gives the first effect's factor, or nothing; the king's gain and his earned hit points are multiplied by
   it.
 
+**The heroes' orders and the realm's sight** (P1-19ad, `discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts`):
+
+- `orderOutcome`'s **spy stages**: a realm's discoveries **add to a spy's chance** (`spy`), **cut a rival spy's chance**
+  (`counterSpy`, the realm that holds the province spied on), **add to spying on a hero** (`spyChar`) and **add to
+  catching a spy** (`catchSpy`, the realm of the hero spied on). All four are asked by `resolveSpyOrder` and handed where
+  the spy acts: the ground, and whether it is coastal or the realm's home, as questions only an effect scoped to them
+  asks. Each effect returns its share, and the runner adds them. The report's odds ask the spy's stage with no province
+  (`THE_REPORTS_ODDS_NAME_NO_PROVINCE`): an effect for a ground or a coast doesn't count, one for a home does, as before.
+- **A realm's discoveries keep a spy's success quiet** (Disguise Techniques, `spyDisguise`): the chance, as its row
+  writes it (0.5 for a row with none: the old fallback, Parked). The runner gives the first effect's; the order rolls.
+- **A realm's discoveries add to exploring** (`explore`): the factor on the ground it lists. The runner multiplies them,
+  for the Explore order and for `discExploreMult`, which the report ships: one rule.
+- **… lengthen the wild hunt** (`wildHunt`), **… add to a lair's gold** (`lairGold`, handed the hero's race too) and
+  **… add to a lair's item** (`itemChance`): the runners add them.
+- **… add to research** (`research`): handed whether the field studied is the realm's own creed, as a question. The
+  report's odds name no field. **… add to practice** (`practice`): handed the skill. The report's odds name none, and
+  list each named skill's share from a second runner.
+- **… add to a rest's heal** (`rest`): handed whether he rests on his realm's ground, whether it is its home (a
+  question, asked only there), and the ground. **… heal a resting hero in full** (Medical Arts, `restFull`): yes or no.
+- `visibility`'s first stages: **a realm's discoveries spot a hero lurking in its province** (`spotLurker`;
+  `spotEnemyInOwnedProvince`, before the chance's bounds), handed the ground, and its home and coast as questions; and
+  **… map the provinces around an explorer** (Ancient Lore, `adjacentReveal`): the share, 10 for a row with none (the
+  old fallback, Parked). What a realm sees is unchanged: every realm's report is identical.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
@@ -104,14 +128,16 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac): the functions taken name no
+  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad): the functions taken name no
   discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
-  but means something else (the Evil doctrine `'terror'` in both battles) is listed beside its function.
+  but means something else (the Evil doctrine `'terror'` in both battles; the Spy skill `'spy'`, a line's type
+  `'explore'`) is listed beside its function.
 - `tests/static/each-discoverys-numbers-are-in-its-text.test.ts`: each number of each effect is in its discovery's
   `desc` (365 of 368; the 3 gaps listed with why).
 - `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games
   meet 0 times or can't show (the own ground, P1-19aa; Homeward Song, P1-19ab; an aim against the undead, Veteran
-  Training in a fight and on the card, P1-19ac), and the effects on rows the content doesn't write. Each later row adds
+  Training in a fight and on the card, P1-19ac; each spy's, explorer's, scholar's and rester's effect on and off its
+  ground, coast or home, P1-19ad), and the effects on rows the content doesn't write. Each later row adds
   its own.
 
 ## How to add a discovery's effect

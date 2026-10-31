@@ -11,7 +11,13 @@ import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { TM, noteEspionage, perkTier, skillLevel } from '../titles/perks.ts';
-import { discParam, discSum, hasDisc } from '../discoveries.ts';
+import {
+  theChanceARealmsDiscoveriesKeepASpysSuccessQuiet,
+  whatARealmsDiscoveriesAddToASpysChance,
+  whatARealmsDiscoveriesAddToCatchingASpy,
+  whatARealmsDiscoveriesAddToSpyingOnAHero,
+  whatARealmsDiscoveriesCutARivalSpysChanceBy,
+} from '../rules/the-registry-of-discovery-effects.ts';
 import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
@@ -230,16 +236,23 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
   // sd21 Forgery Arts: +15% spy success chance
   const targetProvForSpy = G.world.provinces[parseInt(target)];
   // spy / counterSpy discoveries — optionally scoped to the TARGET province's terrain, to coastal
-  // ground or (counterSpy) to the defender's capital. sd21 / sd19 are now ordinary effects.
+  // ground or (counterSpy) to the defender's capital. sd21 / sd19 are now ordinary effects. (The discoveries'
+  // registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to a spy's chance", "… cut a rival spy's
+  // chance", "… add to spying on a hero" and "… add to catching a spy", each handed where he spies; the coast and the
+  // home are questions, asked only by an effect scoped to them, as before.)
   const _spyProv = String(target || '').startsWith('char:') ? prov : targetProvForSpy || prov;
-  const _spyScope = (e, ownerPi) =>
-    (!e.terrains || (_spyProv && e.terrains.includes(_spyProv.terrain))) &&
-    (!e.coastal || (_spyProv && provIsCoastal(G, _spyProv))) &&
-    (!e.home || (_spyProv && ownerPi != null && homeFounderOf(G, _spyProv.id) === ownerPi));
-  const spyBonus = discSum(turnContext, c.player, 'spy', 'pct', (e) => _spyScope(e, null)); // spy discoveries
+  const _whereHeSpies = (ownerPi) => ({
+    theGround: _spyProv ? _spyProv.terrain : undefined,
+    isItCoastal: () => !!(_spyProv && provIsCoastal(G, _spyProv)),
+    isItTheRealmsHome: () => !!(_spyProv && ownerPi != null && homeFounderOf(G, _spyProv.id) === ownerPi),
+  });
+  const spyBonus = whatARealmsDiscoveriesAddToASpysChance(G.players[c.player], _whereHeSpies(null)); // spy discoveries
   const cipherPenalty =
     targetProvForSpy && targetProvForSpy.owner !== null && targetProvForSpy.owner !== c.player
-      ? discSum(turnContext, targetProvForSpy.owner, 'counterSpy', 'pct', (e) => _spyScope(e, targetProvForSpy.owner))
+      ? whatARealmsDiscoveriesCutARivalSpysChanceBy(
+          G.players[targetProvForSpy.owner],
+          _whereHeSpies(targetProvForSpy.owner),
+        )
       : 0; // counterSpy discoveries
   // ── Item 10: SPY ON A CHARACTER ── target 'char:<id>' names a non-own character standing
   // in the same province. Success 25% +10%/Spy level (Master Spy / Crystal Orb: automatic)
@@ -297,7 +310,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
           (0.25 +
             0.1 * _mySpy +
             spyBonus +
-            discSum(turnContext, c.player, 'spyChar', 'pct', (e) => _spyScope(e, null))) *
+            whatARealmsDiscoveriesAddToSpyingOnAHero(G.players[c.player], _whereHeSpies(null))) *
             100,
         ),
       ),
@@ -386,7 +399,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
       if (_tgRealmLand) _catch += 15;
       if (_myLand) _catch -= 15;
       if (_tgt.player != null)
-        _catch += discSum(turnContext, _tgt.player, 'catchSpy', 'pct', (e) => _spyScope(e, _tgt.player)); // catchSpy discoveries (sd63 Informer Rewards)
+        _catch += whatARealmsDiscoveriesAddToCatchingASpy(G.players[_tgt.player], _whereHeSpies(_tgt.player)); // catchSpy discoveries (sd63 Informer Rewards)
       _catch = Math.max(5, Math.min(95, _catch));
       const _cr = d100();
       emit(turnContext, {
@@ -459,11 +472,14 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
-  // sd23 Disguise Techniques: 50% HARDER to be discovered — the counter-intelligence alert
-  // that would otherwise always fire is turned aside half the time.
-  if (success && !c._spyDisguised && hasDisc(turnContext, c.player, 'sd23')) {
+  // Disguise Techniques: 50% HARDER to be discovered — the counter-intelligence alert
+  // that would otherwise always fire is turned aside half the time. (The discoveries' registry's since plan P1-19ad:
+  // "orderOutcome: a realm's discoveries keep a spy's success quiet", its row's chance.)
+  const _dgChance =
+    success && !c._spyDisguised ? theChanceARealmsDiscoveriesKeepASpysSuccessQuiet(G.players[c.player]) : null;
+  if (_dgChance !== null) {
     const _dgRoll = d100();
-    const _dgPct = Math.round(discParam('sd23', 'pct', 0.5) * 100);
+    const _dgPct = Math.round(_dgChance * 100);
     if (_dgRoll <= _dgPct) c._spyDisguised = true;
     emit(turnContext, {
       type: 'system',
