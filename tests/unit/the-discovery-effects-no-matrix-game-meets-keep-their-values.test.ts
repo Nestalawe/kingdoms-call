@@ -1174,9 +1174,9 @@ const aUnit = (type: string, race: string | undefined, extra: { readonly _isSkel
 function aTurnWith(alignment: string, held: readonly { readonly id: string }[]) {
   const G = JSON.parse(THE_WORLD) as World;
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
-  const realm = G.players[0];
-  if (!realm) throw new Error('the world has no realm 0');
-  Object.assign(realm, { alignment, gold: 10, discoveries: held.map((d) => ({ ...d })) });
+  const realm0 = G.players[0];
+  if (!realm0) throw new Error('the world has no realm 0');
+  const realm = Object.assign(realm0, { alignment, gold: 10, discoveries: held.map((d) => ({ ...d })) });
   return { G, tc, realm };
 }
 
@@ -1220,12 +1220,12 @@ describe("war's spoils and the march, in the functions that ask the runners (P1-
       const { G, realm } = aTurnWith('Pagan', held);
       const narrative: NarrativeLine[] = [];
       bloodHarvest({ G } as never, { player: 0 }, 3, narrative);
-      return [realm.gold, narrative.map((l) => theWordsOf(l))];
+      return { gold: realm.gold, words: narrative.map((l) => theWordsOf(l)).join(' ') };
     };
     const [withTithe, without] = [harvest([SPOILS.skullTithe]), harvest([])];
-    expect([withTithe[0], without[0]]).toEqual([16, 13]);
-    expect(String(withTithe[1])).toContain('3 fallen enemy units: +6g in offerings');
-    expect(String(without[1])).toContain('3 fallen enemy units: +3g in offerings');
+    expect([withTithe.gold, without.gold]).toEqual([16, 13]);
+    expect(withTithe.words).toContain('3 fallen enemy units: +6g in offerings');
+    expect(without.words).toContain('3 fallen enemy units: +3g in offerings');
   });
 
   test('Reign of Terror: each province the terror grips costs 25%, not 10%, a stack, and the line says so', () => {
@@ -1234,7 +1234,7 @@ describe("war's spoils and the march, in the functions that ask the runners (P1-
       const field = G.world.provinces.find((p) => p.terrain !== 'sea');
       if (!field) throw new Error('the world has no land province');
       const narrative: NarrativeLine[] = [];
-      spreadTerror(tc, field as never, 0, narrative);
+      spreadTerror(tc as never, field as never, 0, narrative);
       const gripped = G.world.provinces.filter((p) => p['_terrorisedBy'] === 0).map((p) => p['_terrorPct']);
       return { shares: [...new Set(gripped)], line: narrative.map((l) => theWordsOf(l)).join(' ') };
     };
@@ -1249,7 +1249,7 @@ describe("war's spoils and the march, in the functions that ask the runners (P1-
     const loot = (held: readonly { readonly id: string }[], terrain: string) => {
       const { tc, realm } = aTurnWith('Evil', held);
       const prov = { id: 2, name: 'Wendmeadow', terrain, tax: 10 };
-      applyEvilConquest(tc, { name: 'Thorn', player: 0 }, prov as never, realm as never);
+      applyEvilConquest(tc as never, { name: 'Thorn', player: 0 }, prov, realm);
       return realm.gold - 10;
     };
     const both = [SPOILS.raidingParties, SPOILS.sackAndBurn];
@@ -1275,8 +1275,9 @@ describe("war's spoils and the march, in the functions that ask the runners (P1-
     const marches = [SPOILS.roadNetwork, SPOILS.tirelessMarch];
     const [none, held] = [paces([], skeletalLevies), paces(marches, skeletalLevies)];
     expect([(held[0] ?? 0) - (none[0] ?? 0), none[1], held[1]]).toEqual([2, 2, 4]);
-    // a unit of Speed 3 or more, a flyer and a ship gain nothing
+    // a unit of Speed 3 or 4, a flyer and a ship gain nothing
     for (const unit of [
+      aUnit('Gilded Lances', 'Human'),
       aUnit('Free Lances', 'Human'),
       aUnit('Eagle Riders', 'Human'),
       aUnit('Elven Galleys', 'Elven'),

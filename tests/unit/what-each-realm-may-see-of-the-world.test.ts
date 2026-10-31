@@ -691,19 +691,27 @@ describe("what realm 0 is quoted, by its discoveries (P1-19ae: the view and the 
 describe("how fast realm 0's units march, by its discoveries (P1-19af: the report and the view ask the move pools' rule)", () => {
   /** Its king's column's rate in its report, and its capital's garrison unit's in the view, its units of the dead or
    *  not. */
-  const rates = (ids: readonly string[], skeletal = false) => {
+  const rates = (ids: readonly string[], skeletal = false, type = 'Shieldwall Levies'): number[] => {
     const state = worldWithDiscoveries(ids);
     const s = state as unknown as {
       characters: { armies: Record<string, unknown>[] }[];
       world: { provinces: { garrisonArmies: Record<string, unknown>[] }[] };
     };
     for (const unit of [...(s.characters[0]?.armies ?? []), ...(s.world.provinces[7]?.garrisonArmies ?? [])])
-      if (skeletal) unit['_isSkeletal'] = true;
+      Object.assign(unit, { type, ...(skeletal ? { _isSkeletal: true } : {}) });
     const view = playerView(state, 0, itsLines);
     const report = buildTurnReport(view);
     const king = (report.characters as { id: number; armies: { moveRate: number }[] }[]).find((c) => c.id === 0);
-    return [king?.armies[0]?.moveRate, province(view, 7).garrison?.[0]?.movement?.moveRate];
+    const garrison = province(view, 7).garrison?.[0]?.movement as { readonly moveRate?: number } | undefined;
+    return [Number(king?.armies[0]?.moveRate), Number(garrison?.moveRate)];
   };
+
+  test('Road Network speeds a unit of Speed 3 in neither its report nor the view', () => {
+    expect([rates([], false, 'Gilded Lances'), rates(['sd13'], false, 'Gilded Lances')]).toEqual([
+      [3, 3],
+      [3, 3],
+    ]);
+  });
 
   test('Toll Roads speed its Human levies a point, Deep Roads (Dwarven) not', () => {
     expect([rates([]), rates(['rh09']), rates(['rd15']), rates(['sd13', 'rh09'])]).toEqual([
