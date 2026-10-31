@@ -2,7 +2,9 @@
 // on a coastal shore sails what its hulls can carry to friendly water, and the rest falls back overland to the realm's
 // own ground, holds the province, or scatters on a hostile shore; with no friendly water the hero and the troops march
 // inland and the ships stay. 4,000 fuzzed coastal retreats: no crash, no malformed line, and every unit ends up
-// somewhere.
+// somewhere. Since P1-12d32 the beaten side is handed as a record (ASideOfABattle), and each line of the split, the sea
+// trap's and the hulls' hold name it, led or leaderless; the hold names its claimant (a realm, a side, or none). No game
+// reaches the units the fleet can't carry nor the bound units left on the shore.
 // Level 1 (unit): navalSplitRetreat (src/engine/units/sea-lift-stranding-and-retreats.ts, plan P1-08b) is called
 // directly on a world the engine makes in the bare vm (tests/lib/engine.ts). It was tests/naval-retreat.test.js,
 // which ran one turn on the GM portal for the anchor hook to hand the function back; the checks are the same.
@@ -11,9 +13,11 @@
 // The naval retreat split, staged cases plus 4,000 fuzzed retreats. `unit/naval-retreat.test.ts`: `navalSplitRetreat`
 // called directly in the bare `vm` (P1-08b; it was a level-2 code-anchor test that ran a turn first). Its lines are
 // facts since P1-12d5: it reads their words through the engine's `theWordsOf` (the fuzz's check for a malformed line
-// read the facts as `[object Object]` until then)
+// read the facts as `[object Object]` until then). Since P1-12d32 each kind of the split, `seaTrapLine` and
+// `navalHoldLine` name the beaten side as a record's label, led or leaderless, and the hold its claimant
 import { afterAll, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import type { ASideOfABattle } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 
 interface Unit {
   type: string;
@@ -57,12 +61,24 @@ type SplitRetreat = (
   prov: Province,
   live: Unit[],
   narrative: unknown[],
-  cName: string,
+  cName: ASideOfABattle,
   noSea?: boolean,
 ) => string;
 const navalSplitRetreat = engineFn(engine, 'navalSplitRetreat') as SplitRetreat;
 /** The words the prose writes of a line's fact (plan P1-12d5: the naval split's lines are facts). */
 const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const seaTrapLine = engineFn(engine, 'seaTrapLine') as (
+  side: ASideOfABattle,
+  ch: Hero,
+  prov: Province,
+  force: Unit[],
+) => unknown;
+const navalHoldLine = engineFn(engine, 'navalHoldLine') as (
+  tc: TurnContext,
+  prov: Province,
+  units: Unit[],
+  claimant: string | ASideOfABattle | null,
+) => unknown;
 const seaLiftShortfall = engineFn(engine, 'seaLiftShortfall') as (armies: Unit[], leadChar: Hero) => number;
 const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
   p: Province,
@@ -127,7 +143,7 @@ const liveUnits = (ch: Hero) => ({
 });
 const retreat = (ch: Hero, noSea?: boolean) => {
   const told: unknown[] = [];
-  const r = navalSplitRetreat(tc, ch, site, ch.armies, told, 'Admiral Test', noSea);
+  const r = navalSplitRetreat(tc, ch, site, ch.armies, told, { heroName: 'Admiral Test', leaderless: false }, noSea);
   return { r, narr: told.map(theWordsOf) };
 };
 
@@ -272,6 +288,138 @@ describe('the staged cases', () => {
   });
 });
 
+// ── The beaten side each line names (plan P1-12d32: a record, ASideOfABattle; the prose writes its label) ────
+const SIDES = [
+  ['led', { heroName: 'Admiral Test', leaderless: false }, 'Admiral Test'],
+  ['leaderless', { heroName: 'Admiral Test', leaderless: true }, "Admiral Test's leaderless host"],
+] as const;
+/** How each kind of the split's lines begins, with the side's label (every unit here is unnamed: "a <quality> <type>"). */
+const BEGINS: Readonly<Record<string, (label: string) => string>> = {
+  'a beaten fleet puts to sea with what its hulls can carry': (l) => `⛵ ${l} puts to sea — `,
+  'bound units the fleet cannot carry dissolve': (l) => `— ✨ ${l}'s a `,
+  'units the fleet cannot carry fall back overland and join a garrison': (l) => `— ⚓ ${l}'s a `,
+  'a beaten force with ships retreats overland and leaves its ships behind': (l) => `${l} retreats overland to `,
+  'a beaten fleet with no friendly water holds the province': (l) => `⚓ ${l}'s ships have `,
+  'bound units left behind on the shore dissolve': (l) => `— ✨ ${l}'s a `,
+  "units left behind on the realm's own ground hold it": (l) => `— ⚓ ${l}'s a `,
+  'units left behind on ground the realm does not hold scatter as mercenaries': (l) => `— ⚓ ${l}'s a `,
+};
+const lances = (bound: boolean): Unit[] =>
+  [1, 2, 3, 4].map(() => ({ ...unit('Gilded Lances'), ...(bound ? { _temporary: true } : {}) }));
+const SPLITS: readonly (readonly [string, Parameters<typeof reset>[0], boolean, readonly string[]])[] = [
+  [
+    'the fleet sails with all it carries',
+    {
+      siteOwned: true,
+      friendlySea: true,
+      friendlyLand: true,
+      armies: [unit('Galleon Fleet'), unit('Shieldwall Levies')],
+    },
+    false,
+    ['a beaten fleet puts to sea with what its hulls can carry'],
+  ],
+  [
+    'bound units the fleet cannot carry dissolve',
+    { siteOwned: true, friendlySea: true, friendlyLand: true, armies: [unit('Galleon Fleet'), ...lances(true)] },
+    false,
+    ['a beaten fleet puts to sea with what its hulls can carry', 'bound units the fleet cannot carry dissolve'],
+  ],
+  [
+    'units the fleet cannot carry fall back overland',
+    { siteOwned: true, friendlySea: true, friendlyLand: true, armies: [unit('Galleon Fleet'), ...lances(false)] },
+    false,
+    [
+      'a beaten fleet puts to sea with what its hulls can carry',
+      'units the fleet cannot carry fall back overland and join a garrison',
+    ],
+  ],
+  [
+    'no room aboard and no friendly ground: bound units left on the shore dissolve',
+    { siteOwned: true, friendlySea: true, friendlyLand: false, armies: [unit('Galleon Fleet'), ...lances(true)] },
+    false,
+    ['a beaten fleet puts to sea with what its hulls can carry', 'bound units left behind on the shore dissolve'],
+  ],
+  [
+    "no room aboard and no friendly ground: the rest hold the realm's own ground",
+    { siteOwned: true, friendlySea: true, friendlyLand: false, armies: [unit('Galleon Fleet'), ...lances(false)] },
+    false,
+    ['a beaten fleet puts to sea with what its hulls can carry', "units left behind on the realm's own ground hold it"],
+  ],
+  [
+    'no room aboard on a coast the realm does not hold: the rest scatter',
+    { siteOwned: false, friendlySea: true, friendlyLand: false, armies: [unit('Galleon Fleet'), ...lances(false)] },
+    false,
+    [
+      'a beaten fleet puts to sea with what its hulls can carry',
+      'units left behind on ground the realm does not hold scatter as mercenaries',
+    ],
+  ],
+  [
+    'no friendly water: the column marches inland and the ships hold',
+    {
+      siteOwned: true,
+      friendlySea: false,
+      friendlyLand: true,
+      armies: [unit('Galleon Fleet'), unit('Shieldwall Levies')],
+    },
+    false,
+    [
+      'a beaten force with ships retreats overland and leaves its ships behind',
+      "units left behind on the realm's own ground hold it",
+    ],
+  ],
+  [
+    'Cut the Line: the column marches inland and the bound ships dissolve',
+    {
+      siteOwned: true,
+      friendlySea: true,
+      friendlyLand: true,
+      armies: [{ ...unit('Galleon Fleet'), _temporary: true }, unit('Shieldwall Levies')],
+    },
+    true,
+    [
+      'a beaten force with ships retreats overland and leaves its ships behind',
+      'bound units left behind on the shore dissolve',
+    ],
+  ],
+  [
+    'a fleet alone with no friendly water holds',
+    { siteOwned: true, friendlySea: false, friendlyLand: true, armies: [unit('Galleon Fleet')] },
+    false,
+    ['a beaten fleet with no friendly water holds the province'],
+  ],
+];
+
+describe.each(SIDES)('the beaten side each line names (%s)', (_, side, label) => {
+  test.each(SPLITS)('%s', (_name, staged, noSea, kinds) => {
+    const ch = reset(staged);
+    const told: { kind: string }[] = [];
+    navalSplitRetreat(tc, ch, site, ch.armies, told, side, noSea);
+    expect(told.map((f) => f.kind)).toEqual(kinds);
+    for (const fact of told) {
+      const begins = BEGINS[fact.kind]?.(label) ?? '(no kind)';
+      expect(theWordsOf(fact).slice(0, begins.length)).toBe(begins);
+    }
+  });
+  test('the sea trap: too few hulls to sail the column off', () => {
+    const ch = reset({ siteOwned: true, friendlySea: false, friendlyLand: false, armies: [unit('Shieldwall Levies')] });
+    expect(theWordsOf(seaTrapLine(side, ch, seaN, ch.armies))).toBe(
+      `⚓ ${label} has too few hulls left afloat to sail the column off ${seaN.name}, and no friendly shore lies alongside to land on — there is no falling back.`,
+    );
+  });
+  test('the hulls left ashore hold the province against a side, a realm or the hunter', () => {
+    reset({ siteOwned: true, friendlySea: false, friendlyLand: false, armies: [] });
+    const held = [{ ...unit('Galleon Fleet'), _navalHold: PI }];
+    const against = (claimant: string | ASideOfABattle | null) =>
+      theWordsOf(navalHoldLine(tc, site, held, claimant)).split(' — ')[1];
+    expect([against(side), against('Westmarch'), against(null)]).toEqual([
+      `the ground is not ${label}'s while it is there, and the fight resumes next phase.`,
+      "the ground is not Westmarch's while it is there, and the fight resumes next phase.",
+      "the ground is not the hunter's while it is there, and the fight resumes next phase.",
+    ]);
+  });
+});
+
 test('fuzz: 4,000 coastal retreats, no crash, no malformed line, every unit ends up somewhere', () => {
   const TYPES = [
     'Galleon Fleet',
@@ -333,7 +481,7 @@ test('fuzz: 4,000 coastal retreats, no crash, no malformed line, every unit ends
     sp.characters = [ch.id];
     try {
       const told: unknown[] = [];
-      navalSplitRetreat(tc, ch, sp, ch.armies, told, 'Fz', i % 7 === 0);
+      navalSplitRetreat(tc, ch, sp, ch.armies, told, { heroName: 'Fz', leaderless: false }, i % 7 === 0);
       const narr = told.map(theWordsOf);
       const after =
         ch.armies.length +

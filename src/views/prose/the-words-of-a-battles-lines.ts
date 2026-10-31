@@ -62,11 +62,12 @@ function theNameOfTheAbility(slug: UnitAbilitySlug): string {
 }
 
 /** A side of a battle, as its label names it (plan P1-12d22; since P1-12d23 a hero's side against a province's
- *  defenders too; since P1-12d24 a host in a stalled battle and a hero's newly gathered host): its commander's name, or
- *  "<name>'s leaderless host" when he fell before the lines joined (the engine wrote it so: battles-between-heroes.ts,
- *  battles-against-province-defenders.ts, stalled-battles-and-beaten-guards.ts' forceLabel,
- *  hosts-gained-in-a-province.ts). */
-function theLabelOfASide(side: ASideOfABattle): string {
+ *  defenders too; since P1-12d24 a host in a stalled battle and a hero's newly gathered host; since P1-12d32 the sea
+ *  lift's beaten side, the-words-of-the-sea-lifts-battle-lines.ts): its commander's name, or "<name>'s leaderless host"
+ *  when he fell before the lines joined (the engine wrote it so: battles-between-heroes.ts,
+ *  battles-against-province-defenders.ts, stalled-battles-and-beaten-guards.ts' forceLabel, which P1-12d32 took out
+ *  with its last engine caller, hosts-gained-in-a-province.ts). */
+export function theLabelOfASide(side: ASideOfABattle): string {
   return side.leaderless ? `${side.heroName}'s leaderless host` : side.heroName;
 }
 

@@ -29,7 +29,9 @@
 //   (P1-12d26) a leaderless garrison beaten again whose survivors, commanderless, still contest the province; war
 //   coming to shared ground; a host gained beating a leaderless garrison whose survivors hold, or a third realm's column
 //   while the garrison never fought; a beaten guard's survivors with no guard to name and a victor "(wandering)". Each
-//   with the host led and leaderless, its words read whole (passes on P1-12d24's base, as after).
+//   with the host led and leaderless, its words read whole (passes on P1-12d24's base, as after). Since P1-12d32, a
+//   stalled battle's winner whose realm has no name, held off by the beaten side's hulls left ashore: the hold names
+//   his host (passes on P1-12d32's base, as after).
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -768,6 +770,32 @@ describe('the hosts and defenders a stalled battle names, in the lines no game r
       expect(lines(b)).toContain(
         `⚔ War has come to ${b.X.name}: ${c.name} (${String(r0)}) and ${label(d, fallen)} (${String(r1)}) have stood on the same ground since the season opened, and with ${String(season)}'s orders done they fall upon each other.`,
       );
+    });
+    test(`the winner's realm has no name to give, and the beaten side's hulls ashore hold the province against his host (${who})`, () => {
+      const b = fresh();
+      b.own(b.X, 1);
+      const c = hero(b, { player: 0, at: b.X, troops: 2, land: 2 });
+      hero(b, { player: 1, at: b.X, troops: 2, land: 2 });
+      if (fallen) Object.assign(c, { _leaderlessHost: true });
+      must(b.G.players[0], 'a realm').name = '';
+      b.X._battleUnresolved = true;
+      // the battle won by the attacker; the beaten side's column is gone, its hulls left ashore in the province
+      aBattle(true, (...a: unknown[]) => {
+        (a[2] as Character).armies = [];
+        b.X.garrisonArmies = [
+          { type: 'Galleon Fleet', quality: 'Average', race: 'Human', unitName: 'the Harbour Fleet', _navalHold: 1 },
+        ];
+      });
+      resolveStalledBattles(b.tc, PH);
+      const r1 = must(b.G.players[1], 'a realm').name;
+      const hold = lines(b).find((l) => l.startsWith('⚓'));
+      expect(hold?.startsWith(`⚓ ${r1}'s `)).toBe(true);
+      expect(
+        hold?.endsWith(
+          ` still lies off ${b.X.name} — the ground is not ${label(c, fallen)}'s while it is there, and the fight resumes next phase.`,
+        ),
+      ).toBe(true);
+      expect(b.X.owner).toBe(1);
     });
   }
 });

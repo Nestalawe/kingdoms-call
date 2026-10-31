@@ -546,7 +546,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       claim();
       // 2026-09-21: the commander can have fallen in this battle's pre-battle duel while his
       // leaderless host fought on and won — name the host, not the corpse (same idiom as the
-      // move case's PvP branch and resolveStalledBattles' forceLabel).
+      // move case's PvP branch and resolveStalledBattles' theSideOfAForce).
       emit(turnContext, {
         type: 'combat',
         fact: {

@@ -6,6 +6,7 @@
 // functions back; the checks are the same.
 import { afterAll, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
+import type { ASideOfABattle } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 
 interface Province {
   id: number;
@@ -49,7 +50,7 @@ const navalSplitRetreat = engineFn(engine, 'navalSplitRetreat') as (
   prov: Province,
   live: unknown[],
   narrative: string[],
-  cName: string,
+  cName: ASideOfABattle,
 ) => string;
 const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
   p: Province,
@@ -166,6 +167,6 @@ test('(4) the naval split: ships with no friendly water march their troops inlan
     .forEach((n) => {
       n.owner = null;
     });
-  navalSplitRetreat(tc, ch, site, ch.armies, [], 'Captain Test');
+  navalSplitRetreat(tc, ch, site, ch.armies, [], { heroName: 'Captain Test', leaderless: false });
   expect(ch.location).toBe(P1.id);
 });

@@ -82,11 +82,10 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
     // banner instead, matching the "stand-in captain" wording combatVsChar already uses below the
     // duel. combatVsNPC/combatVsChar handle the fine-grained battle text; this covers the
     // top-level lines resolveStalledBattles writes itself.
-    const forceLabel = (f) =>
-      f && (f._leaderlessHost || f.alive === false) ? `${f.name}'s leaderless host` : f ? f.name : 'the host';
-    // The same host as a line's fact holds it (plan P1-12d24): its commander's name and whether he fell; the prose writes
-    // forceLabel's words. Every fact that names a host names one the line's audience reads (attacker.player, …), so no
-    // fact meets forceLabel's 'the host'.
+    // A host as a line's fact holds it (plan P1-12d24): its commander's name and whether he fell; the prose writes the
+    // label (theLabelOfASide: "<name>'s leaderless host", or his name). Since P1-12d32 the sea lift's lines take it too,
+    // and forceLabel, which wrote the label here, is gone (its 'the host', for no force, no line ever met: every host
+    // these lines name is the attacker or the winner of a battle found here).
     const theSideOfAForce = (f) => ({ heroName: f.name, leaderless: Boolean(f._leaderlessHost || f.alive === false) });
 
     // CASE A — neutral defenders still hold an unowned province with an enemy force present. Two
@@ -249,7 +248,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             prov,
             attacker.armies || [],
             _nrLines,
-            forceLabel(attacker),
+            theSideOfAForce(attacker),
           );
           _nrLines.forEach((l) =>
             emit(turnContext, {
@@ -291,7 +290,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           } else {
             prov._battleUnresolved = true;
             {
-              const _st = seaTrapLine(forceLabel(attacker), attacker, prov, attacker.armies);
+              const _st = seaTrapLine(theSideOfAForce(attacker), attacker, prov, attacker.armies);
               if (_st)
                 emit(turnContext, {
                   type: 'combat',
@@ -477,7 +476,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             turnContext,
             prov,
             _navalBlockSB,
-            (G.players[winner.player] || {}).name || forceLabel(winner),
+            (G.players[winner.player] || {}).name || theSideOfAForce(winner),
           ),
           audience: { actor: winner.player, realms: [], seen: 'battle' },
           hero: _ctxCharId,

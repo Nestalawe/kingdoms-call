@@ -309,7 +309,8 @@ export function preferDryGround(list) {
 // garrison to join and no commander left, so they scatter as mercenaries: the same fate the
 // engine already gives a fallen commander's host on hostile ground.
 // The lines of the split are facts (units/the-facts-the-sea-lifts-battle-lines-record.ts, plan P1-12d5):
-// `whyTheyAreLeftBehind` is the reason (WhyUnitsAreLeftBehind), whose words the prose writes.
+// `whyTheyAreLeftBehind` is the reason (WhyUnitsAreLeftBehind), whose words the prose writes, and since P1-12d32 `cName`
+// is the beaten side as a record (ASideOfABattle), whose label the prose writes.
 export function _navalLeaveBehind(turnContext, ch, prov, units, whyTheyAreLeftBehind, narrative, cName) {
   const { G } = turnContext;
   if (!units || !units.length) return false;
@@ -396,7 +397,8 @@ export function clearNavalHold(prov) {
     if (a && a._navalHold != null) delete a._navalHold;
   });
 }
-// claimant: whose the ground is not while the hulls lie there (a realm's name, or a side's label); null: the hunter's.
+// claimant: whose the ground is not while the hulls lie there (a realm's name, or a side as a record, ASideOfABattle,
+// since P1-12d32: the prose writes its label); null: the hunter's.
 export function navalHoldLine(turnContext, prov, units, claimant) {
   const { G } = turnContext;
   const who =
@@ -411,6 +413,7 @@ export function navalHoldLine(turnContext, prov, units, claimant) {
     claimantName: claimant,
   };
 }
+// The naval split itself (its rule above): `cName` is the beaten side as a record (ASideOfABattle, since P1-12d32).
 export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName, noSea) {
   const { G } = turnContext;
   if (!ch || !prov || prov.terrain === 'sea' || ch.alive === false || ch.killedThisTurn) return '';
@@ -528,7 +531,8 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
   }
   return ''; // nothing to fall back on at all — the ordinary rules decide
 }
-// The line (its fact) that explains WHY a beaten force at sea cannot fall back (null when that is not why).
+// The line (its fact) that explains WHY a beaten force at sea cannot fall back (null when that is not why). `name` is the
+// beaten side as a record (ASideOfABattle, since P1-12d32), whose label the prose writes.
 export function seaTrapLine(name, ch, prov, force) {
   if (!isOpenSea(prov)) return null;
   force = (force || []).filter((a) => a && !a._died && !a._disbanded);
