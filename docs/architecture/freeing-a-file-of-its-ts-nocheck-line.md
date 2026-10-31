@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-93 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(59: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+91 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(57: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b18 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b19 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -107,6 +107,11 @@ added under its kind.
   test (`it?.effect?.use === use`); a list looked up with a value that may be missing (`includes`, `has`) through a
   local `readonly (string | undefined)[]` or `ReadonlySet<string | undefined>`. `x == null || !list.includes(x)` in a
   filter that returns on a miss; a swap that may meet `undefined` checks `k in list`.
+- **`(table[a] || {})[b]`** is read in two steps, `const cell = table[a] ?? {};` then `cell[b] ?? …`: lint's
+  `table[a]?.[b]` reads `undefined` where the old read a field of the empty object (a `b` such as `constructor`).
+- **A list read by a key in words** (a province by a key of a realm's grave lore) is read as JavaScript reads `list[k]`
+  for any key, `Reflect.get(list, k)` into an `unknown`, and its field so too, `Reflect.get(Object(v), 'name')`
+  (`theProvinceALoreKeyNames`).
 - **A filter that keeps a kind** needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`;
   `filter(Boolean)` a type predicate. A callback whose result is read only as true or false is typed `: boolean`, so
   the compiler doesn't infer a predicate over a large union.
@@ -139,6 +144,8 @@ added under its kind.
   `continue` for the callback's `return`; or, where it is handed back, the function's return type written.
 - **A value a closure reads later** (`pcDeferEffect`'s rider) is read into a `const` before it, so the test before it
   narrows it inside too. A table read by the same key several times is read once into a `const`.
+- **A `try` whose `catch` gave a value where a missing element threw** checks for none first inside the `try`, with
+  the same value (`if (!g) return 0;`, `takeBestGrave`).
 - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
   its test still reads it.
 
@@ -157,6 +164,9 @@ added under its kind.
 - **A shape whose fields are all optional** is refused for a value that has none of them (TypeScript's weak-type
   check): type it `object & { … }`. A fighter's `ref` is a hero or a guardian: a hero's fields are read through a
   reader typed `object & { … }` with only the fields read, so the guardian passes.
+- **A field the code tests with `typeof x !== 'object'` and `Array.isArray` before writing it whole** (a realm's
+  grave lore) is typed as wide as those tests: its record, a list (not `readonly`), words, a number, a flag or none
+  (`TheGraveLoreAsItsGuardsReadIt`), so each test narrows it to the record.
 - **A parameter whose kind a flag says** is a rest tuple (`...[army, typeOnly]: [string, true] | [AUnit, false?]`); a
   callback option only one case calls is required only there (`{ won: true } | { won: false; demoteAt }`).
 - **A function that reads an old save** takes the old save's shape, every field it reads optional. A function that

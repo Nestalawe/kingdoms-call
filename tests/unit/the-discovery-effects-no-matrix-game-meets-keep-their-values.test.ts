@@ -61,10 +61,11 @@ import { KC_SEASONS } from '../../src/content/kingdoms-call-data.ts';
 import { kcRng, kcRngStream } from '../../src/engine/rng.ts';
 import { generateBotSetups, isBotRow } from '../../src/engine/bots/setup.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
-import { createTurnContext } from '../../src/engine/turn/context.ts';
+import { createTurnContext, type ElvenEscape } from '../../src/engine/turn/context.ts';
 import { homeProvinceIdFor } from '../../src/engine/grand-design.ts';
 import { combatVsNPC } from '../../src/engine/battle/battles-against-province-defenders.ts';
 import { recordBattleGraves } from '../../src/engine/graves.ts';
+import type { Army } from '../../src/schemas/saved-game-state.ts';
 import { pcHitChance } from '../../src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts';
 import { pcArrowHitChance } from '../../src/engine/personal-combat/melee-flight-and-archery.ts';
 import {
@@ -321,9 +322,9 @@ function anElvenCompanyFalls(
   terrain: string,
   theDie: number,
 ): 'it slips away home' | 'it leaves a grave' {
-  const queue: unknown[] = [];
+  const queue: ElvenEscape[] = [];
   const tc = { G: { players: [{ race: 'Elven', discoveries }] }, _elvenEscapeQueue: queue };
-  const field: { terrain: string; battleGraves?: unknown[] } = { terrain };
+  const field: { terrain: string; battleGraves?: Army[] } = { terrain };
   const was = kcRng.use(() => theDie);
   try {
     recordBattleGraves(

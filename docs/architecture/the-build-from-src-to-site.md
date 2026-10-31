@@ -93,8 +93,10 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   (`orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts`: the Cast Spell order, every
   spell a hero works as a phase order) and the two P1-10b18 freed (`heroes/effective-skills-and-hidden-heroes.ts`: a
   hero's skill in play, what a line may show a rival of it, and the Veil, Vanish and Invisibility tests; and
-  `turn/log-line-helpers.ts`: the spell records, the silent heroes' line and the telemetry's snapshots). The other 59
-  of those 108 files
+  `turn/log-line-helpers.ts`: the spell records, the silent heroes' line and the telemetry's snapshots) and the two
+  P1-10b19 freed (`world/tables.ts`: a province's units, the beast command, the battle's Druid check, a temper's traits
+  and a lair's hoard; and `graves.ts`: the realms' grave lore, the graves a battle leaves and a fallen hero's grave). The
+  other 57 of those 108 files
   still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file)).
