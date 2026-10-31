@@ -37,7 +37,12 @@ import { kcRng } from '../../src/engine/rng.ts';
 import { MASTERY_ORDER_KEYS } from '../../src/engine/army-tables.ts';
 import { applyPendingSynthPlan } from '../../src/engine/discoveries.ts';
 import { recordHeroGrave } from '../../src/engine/graves.ts';
-import { CharacterSchema, GameStateSchema } from '../../src/schemas/saved-game-state.ts';
+import {
+  CharacterSchema,
+  GameStateSchema,
+  type Character,
+  type GameState,
+} from '../../src/schemas/saved-game-state.ts';
 import { MAP_SIZES, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { GAME, SETUPS, slotRowsJson } from '../lib/matrix-game.ts';
 import { strictIssues } from '../lib/strict-schema.ts';
@@ -191,7 +196,9 @@ const fieldsTheRareOrdersSave: [string, string, (s: Obj) => void][] = [
       hero['_releasedBy'] = realmIndex;
       const fallen = copyOf(hero);
       fallen['alive'] = false;
-      recordHeroGrave({ G: s }, fallen);
+      // the save's copy and its hero, given the types the engine meets them as (the staged save is one the schema
+      // parses, and the hero one of its heroes)
+      recordHeroGrave({ G: s as unknown as GameState }, fallen as unknown as Character);
     },
   ],
   [

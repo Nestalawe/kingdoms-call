@@ -71,10 +71,12 @@ export interface IntrusionSighting {
   forceByPhase: Record<number, string>;
 }
 
-/** An Elven unit that slipped the field, delivered home at the end of the turn (graves.ts, flushElvenEscapes). */
+/** An Elven unit that slipped the field, delivered home at the end of the turn (graves.ts, flushElvenEscapes). Its
+ *  unit's name is the one it fell with, or one drawn for it (armyUnitName's, which its type gives as `undefined` where
+ *  a pool's draw misses). */
 export interface ElvenEscape {
   player: number;
-  unit: { type: string; quality: string; race: string; unitName: string; strength?: number | undefined };
+  unit: { type: string; quality: string; race: string; unitName: string | undefined; strength?: number | undefined };
 }
 
 /** The turn's context: createTurnContext makes the first four fields; resolveTurn and the helpers it calls add
