@@ -8,6 +8,8 @@ import {
   THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH,
   type ABattleIsDecided,
   type AContestForAProvinceIsDecided,
+  type AUnitsFateInTheBattle,
+  type ABeatenGuardsSurvivingUnitsFate,
   type ACommandMultiplierInTheLadder,
   type ASideOfABattle,
   type AUnitAsALineNamesIt,
@@ -847,6 +849,56 @@ function theWordsOfAContestForAProvinceDecided(fact: AContestForAProvinceIsDecid
   }
 }
 
+/** The words of a unit's fate in the battle, as the fight's narrative tells it (plan P1-12d27): one sentence for each
+ *  fate, its side's role and its flags, the same sentences its twelve kinds had. */
+function theWordsOfAUnitsFateInTheBattle(fact: AUnitsFateInTheBattle): string {
+  switch (fact.fate) {
+    case 'dies':
+      return `— ${aUnitAndWhomItFaced(fact.theUnit, fact.whomItFaced)} ${fact.inTheRout ? 'were annihilated in the rout!' : fact.itsSideWon ? 'were destroyed in the fighting.' : 'were destroyed in the rout!'}${fact.itsBonesCrumble ? ' Their bones crumble to dust — gone forever.' : ''}`;
+    case 'is cut down with no escape':
+      return fact.inTheRout
+        ? `— ${theLabelOfAUnit(fact.theUnit)} are cut down in the rout — no escape!${fact.itsBonesCrumble ? ' Their bones crumble to dust.' : ''}`
+        : `— ${theLabelOfAUnit(fact.theUnit)} are cut down with no escape!`;
+    case 'is cut down and rises again by its regenerating hide':
+      return `— ${aUnitAndWhomItFaced(fact.theUnit, fact.whomItFaced)} are cut down — and rise again, the ${theNameOfTheAbility('regenerating-hide')} knitting flesh as they stagger clear.`;
+    case 'rises a tier':
+      return fact.itsSideWon
+        ? `— ${aUnitAndWhomItFaced(fact.theUnit, fact.whomItFaced)} ${fact.hardenedByVictory ? 'are hardened by victory to' : 'earn promotion to'} ${fact.itsQualityAfter}!`
+        : `— Despite defeat, ${aUnitAndWhomItFaced(fact.theUnit, fact.whomItFaced)} improved to ${fact.itsQualityAfter}!`;
+    case 'falls back behind the shield wall in good order':
+      return `— ${aUnitAndWhomItFaced(fact.theUnit, fact.whomItFaced)} fall back behind the shield wall in good order.`;
+    case 'keeps its nerve under the knightly example':
+      return `— ${aUnitAndWhomItFaced(fact.theUnit, fact.whomItFaced)} keep their nerve under the ${theNameOfTheAbility('knightly-example')} of the Gilded Lances and lose nothing in defeat.`;
+    case 'loses heart and falls a tier':
+      return `— ${aUnitAndWhomItFaced(fact.theUnit, fact.whomItFaced)} lost heart in defeat, reduced to ${fact.itsQualityAfter}.`;
+    case 'has had enough and disbands':
+      return disbandLine(
+        fact.theUnitsOwner ? theLabelOfASideOrTheDefenders(fact.theUnitsOwner) : null,
+        { type: fact.unitType, unitName: fact.unitName },
+        fact.whomItFaced ? theClauseOfWhomAUnitFaced(fact.whomItFaced) : '',
+      );
+  }
+}
+
+/** The words of a beaten guard's surviving unit's fate, as a line filed on its own tells it (plan P1-12d27): one
+ *  sentence for each fate, the same sentences its three kinds and the disbanding had. */
+function theWordsOfABeatenGuardsSurvivingUnitsFate(fact: ABeatenGuardsSurvivingUnitsFate): string {
+  switch (fact.fate) {
+    case 'breaks ranks and flees as mercenaries':
+      return `— ${theLabelOfAUnit(fact.theUnit)} break ranks and flee${fact.victorsHost ? ` before ${fact.victorsHost}'s host` : ''} — they now roam as mercenaries near ${fact.provName}.`;
+    case 'loses heart and falls a tier':
+      return `— ${theLabelOfAUnit(fact.theUnit)} lost heart in defeat, reduced to ${fact.itsQualityAfter} — ${fact.victorsHost ? `beaten by ${fact.victorsHost}'s host, ` : ''}they rally around ${theLabelOfTheDefenders(fact.theGuard)}.`;
+    case 'holds its ground unbroken':
+      return `— ${theLabelOfAUnit(fact.theUnit)} hold their ground unbroken${fact.victorsHost ? ` against ${fact.victorsHost}'s host` : ''} and rally around ${theLabelOfTheDefenders(fact.theGuard)}.`;
+    case 'has had enough and disbands':
+      return disbandLine(
+        theLabelOfASideOrTheDefenders(fact.theGuard),
+        { type: fact.unitType, unitName: fact.unitName },
+        '',
+      );
+  }
+}
+
 /** The words of one fact of a battle's lines. */
 export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
   switch (fact.kind) {
@@ -854,6 +906,10 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
       return theWordsOfABattleDecided(fact);
     case 'a contest for a province is decided':
       return theWordsOfAContestForAProvinceDecided(fact);
+    case "a unit's fate in the battle":
+      return theWordsOfAUnitsFateInTheBattle(fact);
+    case "a beaten guard's surviving unit's fate":
+      return theWordsOfABeatenGuardsSurvivingUnitsFate(fact);
     case 'a force drawn up for battle': {
       // The header's machine form, its keys in this order: the player page, the GM page, the battle's tiers and its
       // tally read it back (join-and-chronicle.ts, turn-log.ts, engine/battle/fates.ts).
@@ -1000,8 +1056,6 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
       return `🛡 ${String(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${String(fact.winnerName)}'s Shark Shoals find nothing in the water.`;
     case "the winner's shark shoals tear into the beaten crews":
       return `🦈 ${theNameOfTheAbility('feeding-frenzy')} — ${String(fact.winnerName)}'s Shark Shoals tear into ${String(fact.loserName)}'s beaten crews as they founder (+${String(fact.runThemDownPct)}% losses to ${String(fact.loserName2)}).`;
-    case 'a unit is cut down with no escape':
-      return `— ${theLabelOfAUnit(fact.unitName)} are cut down with no escape!`;
     case "a side's other forces survive the engagement":
       return `— ${allOrAllOther(fact.someUnitsFateIsToldAbove)} forces survive the engagement.`;
     case 'no units were left on the field to count':
@@ -1168,14 +1222,10 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
       return `🛡 The defenders' Dwarven Guard lock shields where they stand — ${theLabelOfASide(fact.cName)}'s Free Lances find no broken backs to ride down.`;
     case "the attacker's free lances ride down the defenders' broken companies":
       return `🐎 ${theLabelOfASide(fact.cName)}'s Free Lances ride down the broken companies across open ground (+${String(fact.extraLossesPct)}% losses).`;
-    case 'a defending unit is destroyed in the rout':
-      return `— ${theLabelOfAUnit(fact.defendingUnitName)}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the rout!`;
     case 'the defenders have nowhere to retreat and hold a shield fort':
       return `🛡 ${theNameOfTheAbility('shield-fort')} — the defenders of ${fact.provName} have nowhere to retreat, so they lock shields where they stand. None are cut down.`;
     case 'the defenders have nowhere to retreat and take further losses':
       return `The defenders of ${fact.provName} have nowhere to retreat — they are pinned against their own ground and take further losses!`;
-    case 'a defending unit is destroyed in the fighting':
-      return `— ${theLabelOfAUnit(fact.defendingUnitName)}${fact.whomItFaced ? `, ${theClauseOfWhomAUnitFaced(fact.whomItFaced)},` : ''} were destroyed in the fighting.`;
     case "the guard's host is destroyed and he is a masterless hero":
       return `— but every soldier of ${fact.guardName}'s band lies dead. With no host left to command, they are ${fact.provName}'s guardian no more — a masterless hero now.`;
     case "the attacker's dwarven guard leave the defenders' free lances no broken backs":
@@ -1188,8 +1238,6 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
       return `${theLabelOfASide(fact.cName)}'s Shield-Wall holds — the infantry refuse to retreat and stand their ground, come what may.`;
     case 'the attacker has nowhere to retreat and takes further losses':
       return `${theLabelOfASide(fact.cName)}'s forces have nowhere to retreat — they rally desperately but take heavy additional losses!`;
-    case 'an attacking unit is cut down in the rout with no escape':
-      return `— ${fact.unitName} are cut down in the rout — no escape!${fact.itsBonesCrumble ? ' Their bones crumble to dust.' : ''}`;
     case "the attacker's forces retreat to a province":
       return `${theLabelOfASide(fact.cName)}'s forces retreat to ${fact.retreatToName}.`;
     case "the onlookers' summary of a battle":
@@ -1204,26 +1252,6 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
       return `💀 Terror radiates from ${fact.provName}${fact.surroundingLands.length ? ` into the surrounding lands (${fact.surroundingLands.join(', ')})` : ''} — any army that next defends there fights demoralised (−${String(fact.terrorPctPerStack)}% per terror, stacking).`;
     case 'terror lingers in a province and its defenders fight demoralised':
       return `💀 Terror lingers in ${fact.provName} — defenders fight at −${String(fact.terrorPct)}% strength (${String(fact.terrorStacks)} terror stack${fact.terrorStacks !== 1 ? 's' : ''} from earlier Evil victories nearby).`;
-    case 'a unit is cut down and rises again by its regenerating hide':
-      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} are cut down — and rise again, the ${theNameOfTheAbility('regenerating-hide')} knitting flesh as they stagger clear.`;
-    case 'a unit dies in the battle':
-      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} ${fact.inTheRout ? 'were annihilated in the rout!' : fact.itsSideWon ? 'were destroyed in the fighting.' : 'were destroyed in the rout!'}${fact.itsBonesCrumble ? ' Their bones crumble to dust — gone forever.' : ''}`;
-    case 'a unit is promoted after the battle':
-      return `— ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} ${fact.hardenedByVictory ? 'are hardened by victory to' : 'earn promotion to'} ${fact.unitQuality}!`;
-    case 'a unit falls back behind the shield wall in good order':
-      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} fall back behind the shield wall in good order.`;
-    case 'a unit keeps its nerve under the knightly example':
-      return `— ${aUnitAndWhomItFaced(fact.unitReference, fact.whomItFaced)} keep their nerve under the ${theNameOfTheAbility('knightly-example')} of the Gilded Lances and lose nothing in defeat.`;
-    case 'a unit loses heart in defeat and is reduced a tier':
-      return `— ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} lost heart in defeat, reduced to ${fact.unitQuality}.`;
-    case 'a unit improves a tier despite defeat':
-      return `— Despite defeat, ${aUnitAndWhomItFaced(fact.unitReferenceAtItsOldQuality, fact.whomItFaced)} improved to ${fact.unitQuality}!`;
-    case 'a beaten unit has had enough and disbands':
-      return disbandLine(
-        fact.ownerName ? theLabelOfASideOrTheDefenders(fact.ownerName) : null,
-        { type: fact.unitType, unitName: fact.unitName },
-        fact.whomItFaced ? theClauseOfWhomAUnitFaced(fact.whomItFaced) : '',
-      );
     case "a hero not at war with the province's realm gains a host inside it":
       return `👁 ${fact.cName}${theRealmsTag(fact.realmTag)} now leads ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''} inside your province of ${fact.provName}, but makes no move against it — ${fact.theRealmsAreAllied ? 'your realms are allied' : 'your realms are not at war'}. ${fact.provName2} remains yours.`;
     case "a hero's new host is still forming up in a province":
@@ -1250,12 +1278,6 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
       return `⚔ ${fact.cName}${theRealmsTag(fact.realmTag)} fought for ${fact.provName} this phase and had the better of it, but your defenders still hold the ground — ${fact.provName2} is not yet taken. ${fact.heroFell ? `${fact.cName} fell in the fighting; his leaderless host` : fact.cName} stands there with ${String(fact.unitCount)} unit${fact.unitCount !== 1 ? 's' : ''}.`;
     case "the province's owner learns the hero was beaten back":
       return `🛡 ${fact.cName}${theRealmsTag(fact.realmTag)} fought for ${fact.provName} this phase and was beaten back — ${fact.provName2} remains yours.`;
-    case "a beaten guard's surviving unit breaks ranks and flees as mercenaries":
-      return `— ${theLabelOfAUnit(fact.unitName)} break ranks and flee${fact.victorsHost ? ` before ${fact.victorsHost}'s host` : ''} — they now roam as mercenaries near ${fact.provName}.`;
-    case "a beaten guard's surviving unit loses heart and is reduced a tier":
-      return `— ${theLabelOfAUnit(fact.unitNameAtItsOldQuality)} lost heart in defeat, reduced to ${fact.unitQuality} — ${fact.victorsHost ? `beaten by ${fact.victorsHost}'s host, ` : ''}they rally around ${theLabelOfTheDefenders(fact.guardName)}.`;
-    case "a beaten guard's surviving unit holds its ground unbroken":
-      return `— ${theLabelOfAUnit(fact.unitName)} hold their ground unbroken${fact.victorsHost ? ` against ${fact.victorsHost}'s host` : ''} and rally around ${theLabelOfTheDefenders(fact.guardName)}.`;
     case "a side's strength ladder begins":
       return `  ${fact.side === 'attacker' ? 'Attacker' : 'Defender'} (${fact.sideName}): ${pl(fact.unitCount, 'unit')} — strength **${String(fact.strength)}**`;
     case "the strength ladder's units":

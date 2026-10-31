@@ -1,7 +1,7 @@
 // The unit abilities at the two stages of a unit's fate after a battle (plan P1-19d), in rollUnitFates
 // (src/engine/battle/fates.ts): a beaten unit fails its death roll, and a beaten unit fails its demotion roll. Each is
-// handed what its stage hands it (the registry's stage types) and returns a value: the line by which the unit is spared,
-// or nothing; its numbers come from the content's row. The runners (the-registry-of-content-effects.ts) run them in
+// handed what its stage hands it (the registry's stage types) and returns a value: the fate by which the unit is spared
+// (plan P1-12d27: a slug of a unit's fate in the battle), or nothing; its numbers come from the content's row. The runners (the-registry-of-content-effects.ts) run them in
 // their stages' order. Until P1-19d they were written inline in rollUnitFates.
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS as ROWS } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
 import type { UnitAbilitySlug } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
@@ -19,7 +19,7 @@ export const A_BEATEN_UNIT_FAILS_ITS_DEATH_ROLL = {
     !facts.itsSideWon &&
     facts.theDice() <
       (facts.theChanceOfRegeneratingHideTheCallGives ?? ROWS['regenerating-hide'].numbers.afterALostBattle.value)
-      ? 'a unit is cut down and rises again by its regenerating hide'
+      ? 'is cut down and rises again by its regenerating hide'
       : null,
 } satisfies Partial<Record<UnitAbilitySlug, TheFateStages['a beaten unit fails its death roll']>>;
 
@@ -30,6 +30,6 @@ export const A_BEATEN_UNIT_FAILS_ITS_DEMOTION_ROLL = {
   // overrides it (o.knightly).
   'knightly-example': (facts) =>
     (facts.theKnightlyExampleTheCallGives ?? facts.itsForce.some((u) => u?.type === ROWS['knightly-example'].unit))
-      ? 'a unit keeps its nerve under the knightly example'
+      ? 'keeps its nerve under the knightly example'
       : null,
 } satisfies Partial<Record<UnitAbilitySlug, TheFateStages['a beaten unit fails its demotion roll']>>;
