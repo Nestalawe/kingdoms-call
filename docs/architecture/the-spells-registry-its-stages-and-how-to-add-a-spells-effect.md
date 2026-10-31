@@ -96,8 +96,8 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   Blast stuns a round longer, after any doubling; his Hand of Death bites ×1.1). Its runner,
   `whatAHerosItemsChangeInHisCombatSpells`, is handed the caster's active items. Since P1-19x the **Mirror Shard** is
   there too: the chance his Mirror Image is seen through is halved.
-- **The Cast Spell order's checks** (P1-19y, `spells/the-checks-the-cast-spell-order-makes-of-a-spell.ts`), the five
-  stages of `orderValidity`, each true where the spell's row sets its flag (`asAnOrder`), in the order
+- **The Cast Spell order's checks** (P1-19y, `spells/the-checks-the-cast-spell-order-makes-of-a-spell.ts`), five of
+  the stages of `orderValidity`, each true where the spell's row sets its flag (`asAnOrder`), in the order
   `resolveCastSpellOrder` asks them:
   - **a charmed hero will not turn it on his lord** (before the casting limit, unrolled, no slot spent);
   - **a spell that costs no casting slot** (handed whether the caster's realm has a Grand Cathedral: Bless Province);
