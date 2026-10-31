@@ -467,6 +467,16 @@ export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, 
 // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.
 export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   const { G } = turnContext;
+  // PROTOTYPE Undead (master list): Harvest the Field is removed from the game; the barrows' dead are raised by Necromancy
+  if (protoAlignOf(G, c.player) === 'Undead') {
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: the corpse-carters are gone — the dead are raised by Necromancy alone now (Skeletal Armies).`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    });
+    return;
+  }
   if (G.players[c.player]?.alignment !== 'Undead') {
     emit(turnContext, {
       type: 'system',

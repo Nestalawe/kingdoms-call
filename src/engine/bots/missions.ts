@@ -269,7 +269,7 @@ export function botSignaturePre(G, pi, c, P, L) {
   if (alignProto(G, pl.alignment)) {
     const kit = botKitPre(G, pi, c, P, L);
     if (kit) return kit;
-    if (pl.alignment === 'Good' || pl.alignment === 'Druidic' || pl.alignment === 'Evil') return null; // their old orders are gone
+    if (pl.alignment === 'Good' || pl.alignment === 'Druidic' || pl.alignment === 'Evil' || pl.alignment === 'Undead') return null; // their old orders are gone (master list: Harvest the Field too)
   }
   switch (pl.alignment) {
     case 'Divine': // CONSECRATE the ground the king stands on
