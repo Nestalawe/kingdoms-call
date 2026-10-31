@@ -18,7 +18,7 @@ import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
 import { TM, creditMapped, perkTier } from '../titles/perks.ts';
-import { discSum } from '../discoveries.ts';
+import { whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite } from '../rules/the-registry-of-discovery-effects.ts';
 import {
   emit,
   narrateAt,
@@ -699,8 +699,11 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       // directions.
       const unifyDist = Math.min(2, provDistance(turnContext, ally.location, prov.id));
       // GOOD — Banner of Fellowship: allies rally to an honourable cause (+15pp unify).
+      // + ag08 Common Cause (the discoveries' registry's since plan P1-19af: "movementCost: a realm's discoveries help
+      // converging columns unite")
       const _goodUnify =
-        (G.players[c.player]?.alignment === 'Good' ? 15 : 0) + discSum(turnContext, c.player, 'unify', 'pct'); // ag08 Common Cause
+        (G.players[c.player]?.alignment === 'Good' ? 15 : 0) +
+        whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(G.players[c.player]);
       const unifyChancePct = Math.min(100, contingentUnifyChance(marchLvl, unifyDist, false) + _goodUnify); // sd04 Signal Fires is now a `unify` effect
       const unifyRoll = d100();
       if (unifyRoll <= unifyChancePct) {
@@ -1079,8 +1082,8 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           100,
           contingentUnifyChance(marchLvl, unifyDist, false) +
             (G.players[c.player]?.alignment === 'Good' ? 15 : 0) +
-            discSum(turnContext, c.player, 'unify', 'pct'),
-        ); // GOOD — Banner of Fellowship; + ag08 Common Cause
+            whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(G.players[c.player]),
+        ); // GOOD — Banner of Fellowship; + ag08 Common Cause (the discoveries' registry's, P1-19af)
         const roll = d100();
         if (roll <= unifyPct) {
           pvpReinforcements.push(ally);

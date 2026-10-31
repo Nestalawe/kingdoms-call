@@ -52,6 +52,7 @@ import {
   taxRecordsGold,
 } from '../engine/discoveries.ts';
 import {
+  whatARealmsDiscoveriesAddToAMarch,
   whatARealmsDiscoveriesAddToAMercenaryBandsPrice,
   whatARealmsDiscoveriesAddToTheCorpseCartersCost,
   whatARealmsDiscoveriesAddToASpysChance,
@@ -64,7 +65,6 @@ import {
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
   THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
 } from '../engine/rules/discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
-import { discUnitMatch } from '../engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../engine/battle/evil-terror.ts';
 
 // ── EVIL TERROR: the reading (2026-10-12, Toby items 21 and 23) ── The constants (−10% a stack, at most three stacks)
@@ -141,12 +141,12 @@ export function buildTurnReport(view, itsLines = null) {
       // add to Speed 1–2 land units in the engine (computeMovePoolMax) but were missing here, so
       // the order form showed a Road-Network Dwarven Guard column at 2 while it actually marched at
       // 3.
+      // sd13 Road Network is now a `move` effect (the discoveries' registry's since plan P1-19af: "movementCost: a
+      // realm's discoveries add to a march", handed the report's unit as the speeds read it)
       let _road = 0;
       if (base <= 2 && _repPl) {
-        discEffectsOf(_repPl, 'move').forEach((e) => {
-          if (discUnitMatch(e, a)) _road += e.extra || 0;
-        });
-      } // sd13 Road Network is now a `move` effect
+        _road = whatARealmsDiscoveriesAddToAMarch(_repPl, { theUnit: a });
+      }
       return base + marchSpeedBonus(marchLvl) + _road;
     }
     const SEA_UNIT_TYPES = new Set(KC_UNIT_CLASS.sea);

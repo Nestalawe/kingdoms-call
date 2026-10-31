@@ -7,8 +7,7 @@ import {
   getFlyCapability,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { seaLiftOfAColumn } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
-import { discEff } from '../discoveries.ts';
-import { discUnitMatch } from '../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
+import { whatARealmsDiscoveriesAddToAMarch } from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { perkTier } from '../titles/perks.ts';
@@ -95,12 +94,11 @@ export function computeMovePoolMax(turnContext, c) {
         const base = ARMY_SPEED_R[a.type] || 3;
         if (AERIAL_TYPES.has(a.type)) return base; // no flyer (rider or winged beast) is sped by March (item 14)
         // sd13 Road Network (+1 for speed 1-2 land armies) and Item 5 `move` discoveries (race /
-        // cls filtered), same speed band.
+        // cls filtered), same speed band (the discoveries' registry's since plan P1-19af: "movementCost: a realm's
+        // discoveries add to a march").
         let _road = 0;
         if (c.player != null && base <= 2) {
-          discEff(turnContext, c.player, 'move').forEach((e) => {
-            if (discUnitMatch(e, a)) _road += e.extra || 0;
-          });
+          _road = whatARealmsDiscoveriesAddToAMarch(turnContext.G.players[c.player], { theUnit: a });
         }
         return base + marchSpeedBonus(marchLevel) + _road;
       });
