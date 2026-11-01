@@ -15,7 +15,7 @@
     "itemEffectChecksInEngine": 8,
     "spellChecksInEngine": 13,
     "discoveryChecksInEngine": 0,
-    "guardianPerkChecksInEngine": 19,
+    "guardianPerkChecksInEngine": 0,
     "eslintSuppressions": 676,
     "knownArchitectureViolations": 105,
     "unusedCode": 23

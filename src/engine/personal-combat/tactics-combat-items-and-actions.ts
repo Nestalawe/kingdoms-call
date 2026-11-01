@@ -4,6 +4,7 @@ import { encounterClearGold, ensureLairHoard, temperOf } from '../world/tables.t
 import { activeItems, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 import {
   aFighterReachesForTheCombatItemNow,
+  hisBonusToHitOnceACombatItemAddsItsOwn,
   theChanceAThiefsItemsAddToHisSteal,
   theMultiplierOfACombatItemsBlowAgainst,
   theUsesOfTheCombatItemsInTheOrderAFighterReachesForThem,
@@ -401,7 +402,11 @@ export function pcUseCombatItem(
       break;
     }
     case 'sharpens his eye': {
-      st.hitBonus = (Number(st.hitBonus) || 0) + does.theBonus;
+      // the items' registry's since plan P1-19ak: "personalCombat: a combat item adds to his bonus to hit"
+      st.hitBonus = hisBonusToHitOnceACombatItemAddsItsOwn({
+        theBonusSoFar: st.hitBonus,
+        theBonusAdded: does.theBonus,
+      });
       narrate(narrative, { kind: "a fighter's eye sharpens", who, eHitBonus: does.theBonus });
       break;
     }

@@ -711,6 +711,52 @@ export interface TheHarmAWardBitesBackWith {
   readonly theWardTheLineNames: string;
 }
 
+/** What the stage "personalCombat: the fight opens: a fighter's aura hinders his foe" hands an effect: the riders he
+ *  wears, and the aura's penalty his foe carries so far (plan P1-19ak). */
+export interface AFightersAuraAsTheFightOpens {
+  readonly theRiders: TheRidersAFighterWears;
+  readonly theFoesAuraPenaltySoFar: number | undefined;
+}
+
+/** A striker's marks as his chance to hit reads them (his status): the aura's penalty his foe laid on him, and his
+ *  bonus to hit (his riders', and a combat item's: plan P1-19ak). */
+export interface AStrikersMarksAsHisChanceToHitReadsThem {
+  readonly auraPenalty?: number | undefined;
+  readonly hitBonus?: number | undefined;
+}
+
+/** The harm a fighter's burn sears his foe with each melee round, and the rider the line names (plan P1-19ak). */
+export interface TheHarmAFightersBurnSearsWith {
+  readonly theHarm: number;
+  readonly theRiderTheLineNames: string;
+}
+
+/** What the stage "personalCombat: a blow lands: his drain" hands an effect (pcMeleeStrike, once his blow deals
+ *  damage): his riders, the damage dealt, his hit points, and the fade of a guardian's sustain, asked only when he
+ *  drinks (plan P1-19ak). */
+export interface ABlowAsTheStrikersDrainMeetsIt {
+  readonly theRiders: TheRidersAFighterWears;
+  readonly theDamageDealt: number;
+  readonly hisHp: number;
+  readonly hisMaxHp: number;
+  readonly theSustainsFade: () => number;
+}
+
+/** What a striker's drain drinks of the wound he dealt: the hit points, the sustain's fade it was drunk at, and the
+ *  rider the line names (plan P1-19ak). */
+export interface WhatAStrikersDrainDrinks {
+  readonly theHpDrunk: number;
+  readonly theFade: number;
+  readonly theRiderTheLineNames: string;
+}
+
+/** What the stage "personalCombat: a combat item adds to his bonus to hit" hands an effect (pcUseCombatItem's
+ *  focus): his bonus so far, and the item's (plan P1-19ak). */
+export interface ABonusToHitACombatItemAdds {
+  readonly theBonusSoFar: number | undefined;
+  readonly theBonusAdded: number;
+}
+
 /** A combat item's own numbers, as its effects read them (its saved `effect`, plan P1-19s): each guarded, as a copy may
  *  lack any (where it carries none, or 0, an effect takes its row's). */
 export interface ACombatItemsOwnNumbers {
@@ -2165,6 +2211,32 @@ export interface TheStagesOfEachHookPoint {
     /** The percentage a ward cuts a spell's burn by (pcCastCombatSpell's Fireball: the burn ticks outside pcTakeHit),
      *  or nothing. */
     readonly "a spell's burn takes hold": (theWards: TheWardsAsTheirEffectsReadThem) => number | undefined;
+    /** The aura's penalty his foe carries once his aura is laid on him, or nothing (no aura worn); the fight opens
+     *  (resolvePersonalCombat, each fighter in turn: plan P1-19ak wrote this stage and the five after it, each holding
+     *  one rider's effect, a guardian's perk of the same rider's too). */
+    readonly "the fight opens: a fighter's aura hinders his foe": (
+      facts: AFightersAuraAsTheFightOpens,
+    ) => number | null;
+    /** What the aura laid on a striker takes off his blow's or his arrow's chance to hit (pcHitChance,
+     *  pcArrowHitChance: after his other penalties, before his bonus). */
+    readonly "a blow's or an arrow's chance to hit: the aura's penalty": (
+      theStrikersMarks: AStrikersMarksAsHisChanceToHitReadsThem,
+    ) => number;
+    /** What a striker's bonus to hit adds to his blow's or his arrow's chance (pcHitChance, pcArrowHitChance: after the
+     *  aura's penalty, before the foe's wards). */
+    readonly "a blow's or an arrow's chance to hit: his bonus": (
+      theStrikersMarks: AStrikersMarksAsHisChanceToHitReadsThem,
+    ) => number;
+    /** The damage a striker's rider adds to a melee blow (pcMeleeDamage, after his items'; a guardian's special
+     *  multiplies the blow, this with it), 0 for none. */
+    readonly "a blow's damage: his bonus": (theRiders: TheRidersAFighterWears) => number;
+    /** The harm a fighter's burn sears his foe with as a melee round starts (resolvePersonalCombat, at melee range,
+     *  each fighter in turn, both standing), or nothing. */
+    readonly 'a melee round: his burn': (theRiders: TheRidersAFighterWears) => TheHarmAFightersBurnSearsWith | null;
+    /** What a striker's drain drinks of the wound his melee blow dealt (pcMeleeStrike), or nothing. */
+    readonly 'a blow lands: his drain': (theBlow: ABlowAsTheStrikersDrainMeetsIt) => WhatAStrikersDrainDrinks | null;
+    /** His bonus to hit once a combat item adds its own (pcUseCombatItem's focus: the Elixir of Focus and kin). */
+    readonly 'a combat item adds to his bonus to hit': (facts: ABonusToHitACombatItemAdds) => number;
     /** Whether a fighter reaches for a combat item now (pcCombatItemWanted, asked by pcTryCombatItem in the stage's
      *  order, the item's use's: plan P1-19s wrote this stage and the five after it). */
     readonly 'a fighter reaches for a combat item': (

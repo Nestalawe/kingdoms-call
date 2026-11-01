@@ -49,6 +49,15 @@ import {
   A_WARD_A_FIGHTER_WEARS,
 } from './magic-items/what-a-fighter-wears-in-a-personal-combat.ts';
 import {
+  A_COMBAT_ITEMS_BONUS_TO_HIT,
+  A_FIGHTERS_AURA_AS_THE_FIGHT_OPENS,
+  A_FIGHTERS_BURN_IN_A_MELEE_ROUND,
+  A_STRIKERS_BONUS_TO_A_BLOWS_DAMAGE,
+  A_STRIKERS_BONUS_TO_A_CHANCE_TO_HIT,
+  A_STRIKERS_DRAIN_AS_HIS_BLOW_LANDS,
+  THE_AURAS_PENALTY_ON_A_CHANCE_TO_HIT,
+} from './magic-items/what-a-rider-does-in-a-personal-combat.ts';
+import {
   A_BLOWS_DAMAGE,
   A_COMBAT_ITEM_IS_USED,
   A_COMBAT_ITEMS_BLOW_LANDS,
@@ -76,6 +85,12 @@ import {
   THE_DAMAGE_A_MITHRIL_SUIT_TURNS_ASIDE,
 } from './magic-items/what-a-ward-does-in-a-personal-combat.ts';
 import type {
+  ABlowAsTheStrikersDrainMeetsIt,
+  ABonusToHitACombatItemAdds,
+  AFightersAuraAsTheFightOpens,
+  AStrikersMarksAsHisChanceToHitReadsThem,
+  TheHarmAFightersBurnSearsWith,
+  WhatAStrikersDrainDrinks,
   AnEffectAsTheTreasuryWeighsIt,
   AWardAsTheTreasuryWeighsIt,
   TheRidersAsTheTreasuryWeighsThem,
@@ -341,23 +356,40 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
     treasury: { "an item's worth: a ward": A_WARDS_WORTH['stun-immunity'] },
   },
   'aura-rider': {
-    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['aura-rider'] },
+    personalCombat: {
+      'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['aura-rider'],
+      "the fight opens: a fighter's aura hinders his foe": A_FIGHTERS_AURA_AS_THE_FIGHT_OPENS['aura-rider'],
+      "a blow's or an arrow's chance to hit: the aura's penalty": THE_AURAS_PENALTY_ON_A_CHANCE_TO_HIT['aura-rider'],
+    },
     treasury: { "an item's worth: a rider": A_RIDERS_WORTH['aura-rider'] },
   },
   'burn-rider': {
-    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['burn-rider'] },
+    personalCombat: {
+      'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['burn-rider'],
+      'a melee round: his burn': A_FIGHTERS_BURN_IN_A_MELEE_ROUND['burn-rider'],
+    },
     treasury: { "an item's worth: a rider": A_RIDERS_WORTH['burn-rider'] },
   },
   'drain-rider': {
-    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['drain-rider'] },
+    personalCombat: {
+      'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['drain-rider'],
+      'a blow lands: his drain': A_STRIKERS_DRAIN_AS_HIS_BLOW_LANDS['drain-rider'],
+    },
     treasury: { "an item's worth: a rider": A_RIDERS_WORTH['drain-rider'] },
   },
   'hit-bonus-rider': {
-    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['hit-bonus-rider'] },
+    personalCombat: {
+      'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['hit-bonus-rider'],
+      "a blow's or an arrow's chance to hit: his bonus": A_STRIKERS_BONUS_TO_A_CHANCE_TO_HIT['hit-bonus-rider'],
+      'a combat item adds to his bonus to hit': A_COMBAT_ITEMS_BONUS_TO_HIT['hit-bonus-rider'],
+    },
     treasury: { "an item's worth: a rider": A_RIDERS_WORTH['hit-bonus-rider'] },
   },
   'damage-bonus-rider': {
-    personalCombat: { 'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['damage-bonus-rider'] },
+    personalCombat: {
+      'what a fighter wears: a rider': A_RIDER_A_FIGHTER_WEARS['damage-bonus-rider'],
+      "a blow's damage: his bonus": A_STRIKERS_BONUS_TO_A_BLOWS_DAMAGE['damage-bonus-rider'],
+    },
     treasury: { "an item's worth: a rider": A_RIDERS_WORTH['damage-bonus-rider'] },
   },
   'mithril-armour': {
@@ -650,6 +682,14 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     'a round starts': ['round-ward', 'lingering-harm-turned-aside', 'regeneration', 'resist'],
     'a stun or a terror takes hold': ['stun-immunity'],
     "a spell's burn takes hold": ['spell-damage-cut'],
+    // what each rider does in the fight (plan P1-19ak): one effect a stage
+    "the fight opens: a fighter's aura hinders his foe": ['aura-rider'],
+    "a blow's or an arrow's chance to hit: the aura's penalty": ['aura-rider'],
+    "a blow's or an arrow's chance to hit: his bonus": ['hit-bonus-rider'],
+    "a blow's damage: his bonus": ['damage-bonus-rider'],
+    'a melee round: his burn': ['burn-rider'],
+    'a blow lands: his drain': ['drain-rider'],
+    'a combat item adds to his bonus to hit': ['hit-bonus-rider'],
     // the combat items (plan P1-19s): the order a fighter reaches for them in (pcTryCombatItem's), then the order of
     // pcUseCombatItem's cases (an item has one use, so one effect acts)
     'a fighter reaches for a combat item': [
@@ -1348,6 +1388,71 @@ export function theShareAFightersWardsCutASpellsBurnBy(
     if (cut) return cut;
   }
   return 0;
+}
+
+// ── What each rider does in the fight (plan P1-19ak): a runner a stage, each stage holding one effect, which the runner
+// asks by the first kind of the stage's order, typed from the registry itself (an order naming a kind with no effect at
+// the stage fails to compile); personal combat applies what it returns. A guardian's perk of the same rider reaches
+// the same effect. ──
+const THE_REGISTRY = THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS;
+
+/** The runner of "personalCombat: the fight opens: a fighter's aura hinders his foe" (resolvePersonalCombat): the aura's
+ *  penalty his foe carries once his aura is laid on him, or nothing (no aura worn). */
+export function theAuraPenaltyAFightersAuraLaysOnHisFoe(facts: AFightersAuraAsTheFightOpens): number | null {
+  const [theKind] = THE_WARDS_STAGES["the fight opens: a fighter's aura hinders his foe"];
+  return THE_REGISTRY[theKind].personalCombat["the fight opens: a fighter's aura hinders his foe"](facts);
+}
+
+/** The runner of "personalCombat: a blow's or an arrow's chance to hit: the aura's penalty" (pcHitChance,
+ *  pcArrowHitChance): what the aura laid on the striker takes off his chance (none: 0). */
+export function whatTheAuraOnAStrikerTakesOffHisChanceToHit(
+  theStrikersMarks: AStrikersMarksAsHisChanceToHitReadsThem,
+): number {
+  const [theKind] = THE_WARDS_STAGES["a blow's or an arrow's chance to hit: the aura's penalty"];
+  return THE_REGISTRY[theKind].personalCombat["a blow's or an arrow's chance to hit: the aura's penalty"](
+    theStrikersMarks,
+  );
+}
+
+/** The runner of "personalCombat: a blow's or an arrow's chance to hit: his bonus" (pcHitChance, pcArrowHitChance):
+ *  what the striker's bonus to hit adds to his chance (none: 0). */
+export function whatAStrikersBonusAddsToHisChanceToHit(
+  theStrikersMarks: AStrikersMarksAsHisChanceToHitReadsThem,
+): number {
+  const [theKind] = THE_WARDS_STAGES["a blow's or an arrow's chance to hit: his bonus"];
+  return THE_REGISTRY[theKind].personalCombat["a blow's or an arrow's chance to hit: his bonus"](theStrikersMarks);
+}
+
+/** The runner of "personalCombat: a blow's damage: his bonus" (pcMeleeDamage): the damage the striker's rider adds to
+ *  his blow (none: 0). */
+export function theDamageAStrikersRiderAddsToHisBlow(theRiders: TheRidersAFighterWears): number {
+  const [theKind] = THE_WARDS_STAGES["a blow's damage: his bonus"];
+  return THE_REGISTRY[theKind].personalCombat["a blow's damage: his bonus"](theRiders);
+}
+
+/** The runner of "personalCombat: a melee round: his burn" (resolvePersonalCombat): the harm his burn sears his foe
+ *  with, and the rider the line names, or nothing (no burn worn). */
+export function theHarmAFightersBurnSearsHisFoeWith(
+  theRiders: TheRidersAFighterWears,
+): TheHarmAFightersBurnSearsWith | null {
+  const [theKind] = THE_WARDS_STAGES['a melee round: his burn'];
+  return THE_REGISTRY[theKind].personalCombat['a melee round: his burn'](theRiders);
+}
+
+/** The runner of "personalCombat: a blow lands: his drain" (pcMeleeStrike): what the striker's drain drinks of the
+ *  wound his blow dealt, or nothing. */
+export function whatAStrikersDrainDrinksOfHisBlow(
+  theBlow: ABlowAsTheStrikersDrainMeetsIt,
+): WhatAStrikersDrainDrinks | null {
+  const [theKind] = THE_WARDS_STAGES['a blow lands: his drain'];
+  return THE_REGISTRY[theKind].personalCombat['a blow lands: his drain'](theBlow);
+}
+
+/** The runner of "personalCombat: a combat item adds to his bonus to hit" (pcUseCombatItem's focus): his bonus to hit
+ *  once the item's is added. */
+export function hisBonusToHitOnceACombatItemAddsItsOwn(facts: ABonusToHitACombatItemAdds): number {
+  const [theKind] = THE_WARDS_STAGES['a combat item adds to his bonus to hit'];
+  return THE_REGISTRY[theKind].personalCombat['a combat item adds to his bonus to hit'](facts);
 }
 
 // ── The combat items, a steal and a blow (plan P1-19s): a runner a stage; personal combat applies what they return. ──
