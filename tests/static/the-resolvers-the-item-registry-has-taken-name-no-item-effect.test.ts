@@ -179,10 +179,6 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   combatVsNPC: ['terror', 'terror'],
   // the kind of source the portals colour a skill's bonus by ({ kind: 'aura' }), not the Crown of Command's key
   skillBonusBreakdown: ['aura'],
-  // the key a guardian's perk is named by in the drain's line (`_perkName.drain`), not a check of an item: what a
-  // drain rider does in the fight (`actor.drain`, a field of his riders) no row of the items family takes (Parked
-  // "What an item's riders do in a personal combat is read inline: no row of P1-19's items family takes it")
-  pcMeleeStrike: ['drain'],
   // the armour slot the Mithril suit is worn in (`return 'armour'`), not an armour's stat
   itemSlot: ['armour'],
   // the reason a fighter flees, his temper's panic (`pcAttemptFlee(…, 'temper')`), not a temper item's stat

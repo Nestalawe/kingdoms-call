@@ -73,6 +73,26 @@ handed no kind of perk:
 The stages with one effect (the stun, the tick, the cast) have runners that ask the first kind of the stage's order,
 typed from the registry itself: an order naming a kind with no effect at the stage fails to compile.
 
+## What a rider does in a fight
+
+The five riders are the items' (P1-19ak, in the items' registry, on the rider rows of P1-19q, in
+`src/engine/rules/magic-items/what-a-rider-does-in-a-personal-combat.ts`). A guardian's perk of a rider reaches the
+same effect, as a hero's item does. Each stage holds one effect, and its runner asks it as the stages above do:
+
+- **the fight opens: a fighter's aura hinders his foe** (`resolvePersonalCombat`): the aura's penalty his foe carries
+  once his aura is added to any the foe already carries, or nothing (no aura worn).
+- **a blow's or an arrow's chance to hit: the aura's penalty** and **…: his bonus** (`pcHitChance`,
+  `pcArrowHitChance`): what the aura laid on the striker takes off his chance, and what his bonus to hit adds (his
+  riders' and a combat item's).
+- **a blow's damage: his bonus** (`pcMeleeDamage`, after his items'): a guardian's special multiplies the whole blow by
+  its weight, this bonus with it (as the rulebook reads: Toby's question 34).
+- **a melee round: his burn** (`resolvePersonalCombat`, at melee range only, both standing): the harm, and the rider
+  the line names.
+- **a blow lands: his drain** (`pcMeleeStrike`): his share of the wound he dealt, at the sustain's fade (asked only as
+  he drinks), up to his maximum (20 for a fighter of none), and the rider the line names.
+- **a combat item adds to his bonus to hit** (`pcUseCombatItem`'s focus: the Elixir of Focus and kin): his bonus so
+  far, with the item's added.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
@@ -82,8 +102,8 @@ typed from the registry itself: an order naming a kind with no effect at the sta
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-guardian-registry-has-taken-name-no-perk.test.ts`, with the ratchet's
-  `guardianPerkChecksInEngine` (42 before P1-19ai, 37 after it, 19 after P1-19aj): the functions taken name no kind of perk, and the
-  engine's checks of a perk outside the registry only fall.
+  `guardianPerkChecksInEngine` (42 before P1-19ai, 37 after it, 19 after P1-19aj, 0 after P1-19ak): the functions taken
+  name no kind of perk, and no check of a perk is left in the engine outside the registries.
 - `tests/static/each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table.test.ts`: every perk's `desc` is its
   kind's form with its number, and each kind's value at each grade is in the rulebook's table; the grade's cap, the
   sustain's fade and a second wind's share are in the rulebook. Question 34's form (a damage perk on a special) is
@@ -91,7 +111,8 @@ typed from the registry itself: an order naming a kind with no effect at the sta
 - `tests/unit/guardian-perks.test.ts`: every perk carries its grade's value from the rows' table.
 - `tests/unit/the-guardian-perks-no-matrix-game-meets-keep-their-values.test.ts`: the lines no matrix game reaches, or
   reaches in part (the card's spell resistance, the older form, a missing perk; the grade's cap; a ward against one
-  school's floor and its weakness rule). Each later row adds its own.
+  school's floor and its weakness rule), and what a rider does that no test saw before: the burn's range, the drain's
+  fade, the damage bonus on a blow and a special, the aura and the bonus to hit on an arrow.
 
 ## How to add a perk
 

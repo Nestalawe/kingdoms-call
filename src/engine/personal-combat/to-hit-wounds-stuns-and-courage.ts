@@ -32,6 +32,9 @@ import {
   whatAFightersWardsDoToAHitBeforeAllElse,
   whatAFightersWardsLeaveOfAHit,
   whatAFightersWardsTakeOffAChanceToHitHim,
+  theDamageAStrikersRiderAddsToHisBlow,
+  whatAStrikersBonusAddsToHisChanceToHit,
+  whatTheAuraOnAStrikerTakesOffHisChanceToHit,
 } from '../rules/the-registry-of-magic-item-effects.ts';
 import {
   theLingeringHarmWardAGuardiansPerksGiveHim,
@@ -153,8 +156,10 @@ export function pcHitChance(
   chance -= temperOf(defender.temper).defence;
   chance -= attacker.status.hitPenalty || 0;
   chance -= attacker.status.hitPenaltyFixed || 0; // "for the rest of the fight" penalties (Flash Powder, Clinging Pitch)
-  chance -= Number(attacker.status.auraPenalty) || 0; // a guardian's passive aura (Dread / Petrifying…) — never decays
-  chance += Number(attacker.status.hitBonus) || 0; // Elixir of Focus and kin
+  // the items' registry's since plan P1-19ak: "personalCombat: a blow's or an arrow's chance to hit: the aura's
+  // penalty" and "… his bonus"
+  chance -= whatTheAuraOnAStrikerTakesOffHisChanceToHit(attacker.status); // a guardian's passive aura (Dread / Petrifying…) — never decays
+  chance += whatAStrikersBonusAddsToHisChanceToHit(attacker.status); // Elixir of Focus and kin
   chance -= Number(defender.status.toHitReduce) || 0; // Invisibility: flat \u221225 to hit (floored at 40 below)
   chance -= whatAFightersWardsTakeOffAChanceToHitHim(defender.arm); // Quicksilver Mail: −10% to be hit
   if (attacker.player != null)
@@ -205,7 +210,9 @@ export function pcMeleeDamage(attacker: AFighterAsHisBlowIsRead, defender: unkno
     attacker.ref ? activeItems(attacker.ref) : [],
     attacker.gauntlets === true,
   ); // Warbringer Gauntlets: +2 damage per successful melee attack (a guardian wielding them too; the items' registry, plan P1-19s)
-  if (attacker.dmgBonus) dmg += attacker.dmgBonus; // guardian passive (Brute Strength, Savage Jaws…)
+  // the items' registry's since plan P1-19ak: "personalCombat: a blow's damage: his bonus"
+  const _riderBonus = theDamageAStrikersRiderAddsToHisBlow(attacker);
+  if (_riderBonus) dmg += _riderBonus; // guardian passive (Brute Strength, Savage Jaws…)
   return dmg;
 }
 // Which damage channel a hit belongs to, so a monster's vulnerabilities/resistances

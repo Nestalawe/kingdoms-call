@@ -32,7 +32,11 @@ import type {
 } from './the-facts-a-personal-combats-lines-record.ts';
 import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
 import { theChanceAMirrorImageIsSeenThrough } from '../rules/the-registry-of-spell-effects.ts';
-import { whatAHerosItemsChangeInHisCombatSpells } from '../rules/the-registry-of-magic-item-effects.ts';
+import {
+  theAuraPenaltyAFightersAuraLaysOnHisFoe,
+  theHarmAFightersBurnSearsHisFoeWith,
+  whatAHerosItemsChangeInHisCombatSpells,
+} from '../rules/the-registry-of-magic-item-effects.ts';
 import type { Character, Item } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
@@ -208,8 +212,13 @@ export function resolvePersonalCombat(
         pName: me.passiveName,
         pDesc: me.passiveDesc,
       });
-    if (me.aura !== undefined && me.aura > 0) {
-      foe.status.auraPenalty = ((foe.status.auraPenalty ?? 0) || 0) + me.aura;
+    // the items' registry's since plan P1-19ak: "personalCombat: the fight opens: a fighter's aura hinders his foe"
+    const theFoesAuraPenalty = theAuraPenaltyAFightersAuraLaysOnHisFoe({
+      theRiders: me,
+      theFoesAuraPenaltySoFar: foe.status.auraPenalty,
+    });
+    if (theFoesAuraPenalty !== null) {
+      foe.status.auraPenalty = theFoesAuraPenalty;
     }
   }
   if (A.druidBeastWard)
@@ -333,13 +342,15 @@ export function resolvePersonalCombat(
     // soaked).
     if (state.range === 'melee')
       for (const [me, foe] of eachFighterAndHisFoe) {
-        if (me.burn !== undefined && me.burn > 0 && me.hp > 0 && foe.hp > 0) {
-          foe.hp -= me.burn;
+        // the items' registry's since plan P1-19ak: "personalCombat: a melee round: his burn"
+        const theBurn = theHarmAFightersBurnSearsHisFoeWith(me);
+        if (theBurn !== null && me.hp > 0 && foe.hp > 0) {
+          foe.hp -= theBurn.theHarm;
           narrate(narrative, {
             kind: "a guardian's aura sears the foe",
-            meBurnPerk: aFightersPerkNameAsTheLineTellsIt(me, 'burn'),
+            meBurnPerk: aFightersPerkNameAsTheLineTellsIt(me, theBurn.theRiderTheLineNames),
             foeName: foe.name,
-            meBurn: me.burn,
+            meBurn: theBurn.theHarm,
             foeHp: Math.max(0, Math.round(foe.hp)),
           });
         }

@@ -27,6 +27,9 @@ import {
 import {
   whatAFightersWardsBiteBackWith,
   whatAFightersWardsTakeOffAChanceToHitHim,
+  whatAStrikersBonusAddsToHisChanceToHit,
+  whatAStrikersDrainDrinksOfHisBlow,
+  whatTheAuraOnAStrikerTakesOffHisChanceToHit,
 } from '../rules/the-registry-of-magic-item-effects.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
@@ -187,20 +190,24 @@ export function pcMeleeStrike(
     // guardian passive (Undying Thirst, Sanguine Feeding…) 2026-09-15: the thirst fades with the
     // fight, exactly as regeneration does — see pcSustainMult. A vampire drinks deep early and
     // runs dry if the duel is drawn out.
-    if (dealt && actor.drain !== undefined && actor.drain > 0 && actor.hp < (actor.maxHp || 20)) {
-      const _sm = pcSustainMult(actor),
-        _dr = Math.min(Math.round(dealt * actor.drain * _sm), (actor.maxHp || 20) - actor.hp);
-      if (_dr > 0) {
-        actor.hp += _dr;
-        narrate(narrative, {
-          kind: 'a fighter drinks the wound',
-          actorName: actor.name,
-          dr: _dr,
-          sm: _sm,
-          actorDrainPerk: aFightersPerkNameAsTheLineTellsIt(actor, 'drain'),
-          actorHp: dispFloor(actor.hp),
-        });
-      }
+    // (the items' registry's since plan P1-19ak: "personalCombat: a blow lands: his drain")
+    const _drunk = whatAStrikersDrainDrinksOfHisBlow({
+      theRiders: actor,
+      theDamageDealt: dealt,
+      hisHp: actor.hp,
+      hisMaxHp: actor.maxHp,
+      theSustainsFade: () => pcSustainMult(actor),
+    });
+    if (_drunk !== null) {
+      actor.hp += _drunk.theHpDrunk;
+      narrate(narrative, {
+        kind: 'a fighter drinks the wound',
+        actorName: actor.name,
+        dr: _drunk.theHpDrunk,
+        sm: _drunk.theFade,
+        actorDrainPerk: aFightersPerkNameAsTheLineTellsIt(actor, _drunk.theRiderTheLineNames),
+        actorHp: dispFloor(actor.hp),
+      });
     }
     // Brimstone-style shields bite back at whoever lands a blow.
     if (dealt && foe.status.reflect > 0) {
@@ -465,9 +472,13 @@ export function pcArrowHitChance(
 ) {
   let chance = pcSkillHitPct(pcHitSkill(actor, 'archery'));
   chance += temperOf(actor.temper).archeryHit;
+  // the items' registry's since plan P1-19ak: "personalCombat: a blow's or an arrow's chance to hit: the aura's
+  // penalty" and "… his bonus"
   chance -=
-    (actor.status.hitPenalty || 0) + (actor.status.hitPenaltyFixed || 0) + (Number(actor.status.auraPenalty) || 0);
-  chance += Number(actor.status.hitBonus) || 0;
+    (actor.status.hitPenalty || 0) +
+    (actor.status.hitPenaltyFixed || 0) +
+    whatTheAuraOnAStrikerTakesOffHisChanceToHit(actor.status);
+  chance += whatAStrikersBonusAddsToHisChanceToHit(actor.status);
   chance -= Number(foe.status.toHitReduce) || 0;
   chance -= whatAFightersWardsTakeOffAChanceToHitHim(foe.arm);
   if (actor.player != null)

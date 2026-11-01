@@ -9,7 +9,8 @@
 // falls: the helper counts each such check planted, and none in src/engine/rules/ or a page's code.
 //
 // Red on its row's base by design (monsterTraits held 3 checks and pcMonsterCombatant 2 on P1-19ai's base; pcArmourMerge
-// 9, pcRoundStart 5, pcCastCombatSpell 2, pcStunWard 1 and pcStunTurned 1 on P1-19aj's), as the
+// 9, pcRoundStart 5, pcCastCombatSpell 2, pcStunWard 1 and pcStunTurned 1 on P1-19aj's; resolvePersonalCombat 8,
+// pcMeleeStrike 4, pcHitChance, pcArrowHitChance and pcMeleeDamage 2 each and pcUseCombatItem 1 on P1-19ak's), as the
 // unit-name, item-effect, spell and discovery tests were: the one exception to refactor-only's rule that new tests pass
 // before and after (Theo, 2026-10-25; the guardian perks' Decision 5).
 // Level 0 (static): the files' syntax trees and the content's perks as written; nothing runs.
@@ -63,6 +64,36 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
     'pcCastCombatSpell',
     "P1-19aj, a guardian's perks: a combat spell's chance: a ward against its school",
+  ],
+  [
+    'src/engine/personal-combat/resolve-personal-combat.ts',
+    'resolvePersonalCombat',
+    "P1-19ak, the items' riders: the fight opens: a fighter's aura hinders his foe, and a melee round: his burn",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcMeleeStrike',
+    "P1-19ak, the items' riders: a blow lands: his drain",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcHitChance',
+    "P1-19ak, the items' riders: a blow's or an arrow's chance to hit: the aura's penalty, and his bonus",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcArrowHitChance',
+    "P1-19ak, the items' riders: a blow's or an arrow's chance to hit: the aura's penalty, and his bonus",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcMeleeDamage',
+    "P1-19ak, the items' riders: a blow's damage: his bonus",
+  ],
+  [
+    'src/engine/personal-combat/tactics-combat-items-and-actions.ts',
+    'pcUseCombatItem',
+    "P1-19ak, the items' riders: a combat item adds to his bonus to hit",
   ],
 ];
 
