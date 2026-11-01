@@ -367,8 +367,8 @@ export function botRitePre(G, pi, c, P, L, fightAhead) {
       return { action: 'rite', target: 'wild hunt', extra: '', desc: 'Perform Rite — the Wild Hunt' };
     }
   }
-  if (army.length >= 4) {
-    // round 23: from four companies (was six)
+  if (army.length >= (alignProto(G, 'Pagan') ? 4 : 6)) {
+    // round 23: the kit offers from four companies (today's bots: six)
     const idx = (c.armies || [])
       .map((a, i) => ({ a, i }))
       .filter((x) => x.a && army.includes(x.a))
