@@ -334,6 +334,15 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { stat: 'necroAuto' },
     numbers: {},
   },
+  // ── What a realm sees (visibility, plan P1-19am). ──
+  // His face is hidden: no Spy order fixes on him, and no Encounter Character order, Psychic Blast or Curse of another
+  // realm names him. Only an older save's copy carries `hidden`: the relic a lair deals today carries `untargetable`,
+  // which nothing reads (Parked "Three more relics never work").
+  'cloak-of-many-faces': {
+    name: 'Cloak of Many Faces',
+    carriedAs: { stat: 'hidden' },
+    numbers: {},
+  },
   // ── A hero's standing (aHerosStanding): his maximum hit points, the temper he fights with, and his skills. ──
   // His maximum hit points rise by each copy's own `effect.bonus` (the copy's number, not content's: no number here); two
   // copies of one name count once.

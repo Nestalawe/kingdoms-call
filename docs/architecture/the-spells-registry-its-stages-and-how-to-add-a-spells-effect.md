@@ -106,7 +106,7 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
     Its effects ask `theMarkOfThisSpellMustStandInTheCastersProvince` (`engine/rules-on-plain-values/`, P1-11c2), which
     reads the row's flag; the order form's target field asks the same function (through `src/shared/`, P1-11c4);
   - **a cloaked mark is shielded from it** (once the cast lands: Psychic Blast and Curse; the Cloak's own check,
-    `isHiddenChar`, waits for P1-23);
+    `isHiddenChar`, is the items' `visibility` stage, P1-19am);
   - **a Bless ward may turn it aside** (asked by `blessWardNegates`, before the ward's roll: Part Sea, Earthquake, Flood
     and Plague, whose code still calls it where it did).
 

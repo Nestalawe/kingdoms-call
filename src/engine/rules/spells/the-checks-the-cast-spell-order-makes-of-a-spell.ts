@@ -61,8 +61,8 @@ export const A_SPELLS_MARK_MUST_STAND_IN_THE_PROVINCE = {
   'chain-lightning': theSharedCheckSays('chain-lightning'),
 } satisfies Partial<Record<SpellSlug, TheChecks["a spell's mark must stand in the province"]>>;
 
-// The Cloak of Many Faces shields its wearer from a hostile Psychic Blast and Curse (its own check, isHiddenChar, waits
-// for P1-23's `visibility`).
+// The Cloak of Many Faces shields its wearer from a hostile Psychic Blast and Curse (its own check, isHiddenChar, asks
+// the items' registry's `visibility`: plan P1-19am).
 export const A_CLOAKED_MARK_IS_SHIELDED_FROM_IT = {
   'psychic-blast': itsRowSays('psychic-blast', 'aCloakedMarkIsShieldedFromIt'),
   curse: itsRowSays('curse', 'aCloakedMarkIsShieldedFromIt'),

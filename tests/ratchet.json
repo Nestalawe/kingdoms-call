@@ -12,11 +12,11 @@
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 82,
     "unitNameChecksInEngine": 9,
-    "itemEffectChecksInEngine": 3,
+    "itemEffectChecksInEngine": 0,
     "spellChecksInEngine": 13,
     "discoveryChecksInEngine": 0,
     "guardianPerkChecksInEngine": 0,
-    "eslintSuppressions": 676,
+    "eslintSuppressions": 673,
     "knownArchitectureViolations": 105,
     "unusedCode": 23
   }
