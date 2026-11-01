@@ -81,6 +81,7 @@ import {
   botTargetTitles,
 } from './spellcraft.ts';
 import { botPins } from './phase-one.ts';
+import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ── MAGE (2026-09-26, Toby): a specialist who focuses on TWO schools of magic — his strongest, and the next
 // strongest (a complementary pick when he holds only one: Elemental with White, otherwise White with Elemental).
@@ -422,9 +423,12 @@ export function botRoamOrders(G, pi, c, pre) {
 // ours casts Invisibility before setting out — twice as hard to hit, +30% to flee, +15% to steal.
 export function botCloakPre(G, pi, c, pre, destProv) {
   if (((c.skills || {}).illusory || 0) < 1 || pre.length >= 4) return pre;
-  if (pre.some((o) => o && o.action === 'cast_spell' && o.target === 'Invisibility')) return pre;
+  if (pre.some((o) => o && o.action === 'cast_spell' && o.target === theNameOfTheSpell('invisibility'))) return pre;
   if (destProv && destProv.owner === pi) return pre;
-  return [...pre, { action: 'cast_spell', target: 'Invisibility', extra: '', desc: 'Cast Invisibility' }];
+  return [
+    ...pre,
+    { action: 'cast_spell', target: theNameOfTheSpell('invisibility'), extra: '', desc: 'Cast Invisibility' },
+  ];
 }
 export function botSpyOrders(G, pi, c, pre) {
   const P = G.world.provinces[c.location];
@@ -500,7 +504,7 @@ export function botSpyOrders(G, pi, c, pre) {
     p._botSpyMemo[t.X.id] = G.turn;
   }
   pre = botCloakPre(G, pi, c, pre, t.X);
-  if (pre.length + path.length >= 5) pre = pre.filter((o) => !(o && o.target === 'Invisibility'));
+  if (pre.length + path.length >= 5) pre = pre.filter((o) => !(o && o.target === theNameOfTheSpell('invisibility')));
   const out = [...pre, ...path.map((d) => botMoveOrder(d, 'Slip into ' + t.X.name))];
   const spy = { action: 'spy', target: '', extra: '', desc: 'Spy on ' + t.X.name };
   // two attempts, then lie in wait (a Defend with no column is an ambush watch)
@@ -626,7 +630,7 @@ export function botThiefOrders(G, pi, c, pre) {
   if (pre.length + path.length >= 5) return null;
   const X = G.world.provinces[t.provId];
   pre = botCloakPre(G, pi, c, pre, X);
-  if (pre.length + path.length >= 5) pre = pre.filter((o) => !(o && o.target === 'Invisibility'));
+  if (pre.length + path.length >= 5) pre = pre.filter((o) => !(o && o.target === theNameOfTheSpell('invisibility')));
   const steal =
     t.kind === 'char'
       ? { action: 'steal', target: String(t.e.id), extra: '', desc: 'Rob ' + t.e.name }
@@ -810,7 +814,12 @@ export function botMageOrders(G, pi, c, pre, L) {
         const out = [
           ...pre,
           ...path.map((d) => botMoveOrder(d, 'Seek ' + bestW.h.name + ' to charm')),
-          { action: 'cast_spell', target: 'Charm', extra: String(bestW.h.id), desc: 'Charm ' + bestW.h.name },
+          {
+            action: 'cast_spell',
+            target: theNameOfTheSpell('charm'),
+            extra: String(bestW.h.id),
+            desc: 'Charm ' + bestW.h.name,
+          },
         ];
         while (out.length < 5) out.push({ ...prac });
         return out.slice(0, 5);
@@ -837,7 +846,11 @@ export function botMageOrders(G, pi, c, pre, L) {
       const path = bestG.d > 0 ? botPathAny(G, P, bestG.X.id, 3) || [] : [];
       if (path.length === bestG.d) {
         const hexes = botCastPlan(G, pi, c, bestG.X, { max: 3 }).filter((o) =>
-          ['Curse', 'Psychic Blast', 'Telekinetic Storm'].includes(o.target),
+          [
+            theNameOfTheSpell('curse'),
+            theNameOfTheSpell('psychic-blast'),
+            theNameOfTheSpell('telekinetic-storm'),
+          ].includes(o.target),
         );
         if (hexes.length) {
           let pre2 = pre;
@@ -884,7 +897,12 @@ export function botMageOrders(G, pi, c, pre, L) {
         const out = [...pre, ...path.map((d) => botMoveOrder(d, 'To the battlefield dead of ' + bestX.X.name))];
         const lim = botSchoolLimit(sk.necromancy || 0);
         for (let i = 0; i < lim && out.length < 5; i++)
-          out.push({ action: 'cast_spell', target: 'Skeletal Armies', extra: '', desc: 'Cast Skeletal Armies' });
+          out.push({
+            action: 'cast_spell',
+            target: theNameOfTheSpell('skeletal-armies'),
+            extra: '',
+            desc: 'Cast Skeletal Armies',
+          });
         while (out.length < 5) out.push({ ...prac });
         return out;
       }
@@ -909,7 +927,9 @@ export function botMageOrders(G, pi, c, pre, L) {
     if (bestR && bestR.d > 0) {
       const path = botPathDirs(G, pi, P, bestR.X.id, 3, true) || [];
       if (path.length === bestR.d) {
-        const bl = botCastPlan(G, pi, c, bestR.X, { max: 2 }).filter((o) => o.target === 'Bless Province');
+        const bl = botCastPlan(G, pi, c, bestR.X, { max: 2 }).filter(
+          (o) => o.target === theNameOfTheSpell('bless-province'),
+        );
         const out = [...pre, ...path.map((d) => botMoveOrder(d, 'To bless ' + bestR.X.name)), ...bl];
         while (out.length < 5) out.push({ ...prac });
         return out.slice(0, 5);
@@ -1103,13 +1123,13 @@ export function botDefenderOrders(G, pi, c, pre, post, L) {
     const casts = botCastPlan(G, pi, c, P, { max: 2, fighting: threat && armed ? c : null, threat: !!threat }).filter(
       (o) =>
         [
-          'Bless Province',
-          'Illusory Terrain',
-          'Resurrect',
-          'Oratory',
-          'Curse',
-          'Psychic Blast',
-          'Telekinetic Storm',
+          theNameOfTheSpell('bless-province'),
+          theNameOfTheSpell('illusory-terrain'),
+          theNameOfTheSpell('resurrect'),
+          theNameOfTheSpell('oratory'),
+          theNameOfTheSpell('curse'),
+          theNameOfTheSpell('psychic-blast'),
+          theNameOfTheSpell('telekinetic-storm'),
         ].includes(o.target),
     );
     casts.forEach((o) => {

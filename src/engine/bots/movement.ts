@@ -97,6 +97,7 @@ import {
   botPracticeFallback,
   botRaidTarget,
 } from './spellcraft.ts';
+import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ══ RAISE THE FALLEN (2026-09-28, Toby: bots with white mages resurrect their heroes) ════
 // Before any other plan, each body the realm may raise — one of ITS OWN fallen heroes whose death it knows of (never
@@ -136,7 +137,12 @@ export function botResurrectErrands(G, pi, all, roles, assigned) {
     if (best.path.length <= 4) {
       const casts = Math.min(botSchoolLimit((c.skills || {}).white || 0), 5 - mv.length);
       for (let i = 0; i < casts; i++)
-        mv.push({ action: 'cast_spell', target: 'Resurrect', extra: String(g.id), desc: 'Resurrect ' + g.name });
+        mv.push({
+          action: 'cast_spell',
+          target: theNameOfTheSpell('resurrect'),
+          extra: String(g.id),
+          desc: 'Resurrect ' + g.name,
+        });
     }
     G.turnOrders[c.id] = botFillOrders(G, pi, c, [], mv);
     assigned.add(c.id);
@@ -461,7 +467,7 @@ export function runBotMovement(G, botIdxSet, hooks) {
               siege: genAttacks ? botPlannedAttackTarget(G, gen) : null,
               threat: botNearbyThreat(G, pi, c),
             })
-              .filter((o) => !(genAttacks && o.target === 'Flood'))
+              .filter((o) => !(genAttacks && o.target === theNameOfTheSpell('flood')))
               .filter((o, i) => o.extra !== String(gen.id) || pre.length + i < firstMovePh); // Sept 2026: a Flood would strand OUR assault too
             // Follow the general's path one phase behind, only into ground that is ours / allied,
             // land he simply walks into, or his first assault when the battle model gives him a 2×
@@ -562,7 +568,14 @@ export function runBotMovement(G, botIdxSet, hooks) {
                   dest.owner != null && dest.owner !== pi && botRelationRaw(G, pi, dest.owner) === 'enemy';
                 const cloak =
                   inEnemy && ((c.skills || {}).illusory || 0) >= 1 && pre.length + mv.length < 5
-                    ? [{ action: 'cast_spell', target: 'Invisibility', extra: '', desc: 'Cast Invisibility' }]
+                    ? [
+                        {
+                          action: 'cast_spell',
+                          target: theNameOfTheSpell('invisibility'),
+                          extra: '',
+                          desc: 'Cast Invisibility',
+                        },
+                      ]
                     : [];
                 const casts = botCastPlan(G, pi, c, dest, { max: 5 - pre.length - mv.length - cloak.length });
                 if (casts.length || mv.length) {
@@ -875,7 +888,7 @@ export function runBotMovement(G, botIdxSet, hooks) {
             const buff =
               (c.armies || []).length >= 3 && pre.length <= 2
                 ? botCastPlan(G, pi, c, P, { max: 1, fighting: c }).find((o) =>
-                    ['Oratory', 'Phantasmal Armies'].includes(o.target),
+                    [theNameOfTheSpell('oratory'), theNameOfTheSpell('phantasmal-armies')].includes(o.target),
                   )
                 : null;
             const pre2 = buff ? [...pre, buff] : pre;
@@ -973,7 +986,11 @@ export function runBotMovement(G, botIdxSet, hooks) {
             if (mo && pre.length <= 2) pre.push(mo);
           } // review II A7
           const buff = botCastPlan(G, pi, c, P, { max: 1, fighting: c }).find((o) =>
-            ['Oratory', 'Elemental Summon', 'Phantasmal Armies'].includes(o.target),
+            [
+              theNameOfTheSpell('oratory'),
+              theNameOfTheSpell('elemental-summon'),
+              theNameOfTheSpell('phantasmal-armies'),
+            ].includes(o.target),
           );
           if (buff && pre.length <= 3) pre.push(buff);
         }

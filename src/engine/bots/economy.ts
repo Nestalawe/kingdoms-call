@@ -24,6 +24,7 @@ import { skillLevel } from '../titles/perks.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 import { botPracticeFallback } from './spellcraft.ts';
+import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ══ BOT PLAYERS — Phase 3b: economy (recruit / hire) ════
 // Runs AFTER runBotMovement: any bot character still HOLDING (no movement order) in an owned
@@ -404,7 +405,7 @@ export function runBotOrderHygiene(G, botIdxSet) {
         if (!(x && x.action === 'cast_spell')) continue;
         const d = SPELL_DEFS_P[x.target];
         if (!d || !d.school) continue;
-        if (x.target === 'Elemental Summon') {
+        if (x.target === theNameOfTheSpell('elemental-summon')) {
           if (summoned) {
             dead.push([c, p]);
             bump('summonTwice');

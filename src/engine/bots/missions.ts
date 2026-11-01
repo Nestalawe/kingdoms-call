@@ -65,6 +65,7 @@ import { botDuelRating, botFillOrders, botPathAny, botPathLenAny, botSpyTarget }
 import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
 import { DISC_BY_ID } from '../discoveries.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ══ INFILTRATOR — conjure a host behind the enemy line ════
 // A caster with Necromancy or Elemental magic takes provinces by himself, with no army at all. He
@@ -161,7 +162,7 @@ export function botInfiltrateOrders(G, pi, c, pre, school, range) {
   if (!P) return null;
   const tgt = botInfiltrateTarget(G, pi, c, school, range);
   if (!tgt) return null;
-  const spell = school === 'necromancy' ? 'Skeletal Armies' : 'Elemental Summon';
+  const spell = school === 'necromancy' ? theNameOfTheSpell('skeletal-armies') : theNameOfTheSpell('elemental-summon');
   const path = tgt.d > 0 ? botPathAny(G, P, tgt.P.id, range) || [] : [];
   if (tgt.d > 0 && path.length !== tgt.d) return null; // could not reconstruct the walk
   if (pre.length + path.length >= 5) return null; // no phase left to cast in
@@ -854,7 +855,7 @@ export function botLairPlan(G, pi, c, pre, L) {
       if (searches === 0 && (sk.illusory || 0) >= 1 && left() >= 2)
         mv.push({
           action: 'cast_spell',
-          target: 'Invisibility',
+          target: theNameOfTheSpell('invisibility'),
           extra: '',
           desc: 'Cast Invisibility (before the lair)',
         });

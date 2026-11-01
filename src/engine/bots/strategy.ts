@@ -35,6 +35,7 @@ import {
   BOT_ASSUMED_SKILLS,
 } from './intel.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
+import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ════
 // Design (BOT_PLAYERS_DESIGN §8, v2.4): ONE big field army under the bot's BEST GENERAL is both its
@@ -819,9 +820,20 @@ export const BOT_P1 = {
   levyWages: 8,
   chestPerHost: 10,
   chestShare: 0.5,
-  strike: new Set(['Flood', 'Plague', 'Curse', 'Psychic Blast', 'Telekinetic Storm', 'Charm']),
-  guard: new Set(['Illusory Terrain', 'Oratory', 'Phantasmal Armies']),
-  gainSpell: new Set(['Elemental Summon', 'Skeletal Armies']),
+  strike: new Set([
+    theNameOfTheSpell('flood'),
+    theNameOfTheSpell('plague'),
+    theNameOfTheSpell('curse'),
+    theNameOfTheSpell('psychic-blast'),
+    theNameOfTheSpell('telekinetic-storm'),
+    theNameOfTheSpell('charm'),
+  ]),
+  guard: new Set([
+    theNameOfTheSpell('illusory-terrain'),
+    theNameOfTheSpell('oratory'),
+    theNameOfTheSpell('phantasmal-armies'),
+  ]),
+  gainSpell: new Set([theNameOfTheSpell('elemental-summon'), theNameOfTheSpell('skeletal-armies')]),
   reloc: new Set(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']),
 };
 export function botEnemyHostsIn(G, pi, X) {
