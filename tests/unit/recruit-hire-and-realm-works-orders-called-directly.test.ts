@@ -14,7 +14,8 @@
 // `resolveRemovedAwakenTheWildAndCallFromThePitOrders`, `resolveHarvestTheFieldOrder`, `resolveAwakenGroveOrder`,
 // `resolveWildCallingOrder`, `resolveGrandDesignOrder`, P1-08j3), called directly on the same cases one phase at a
 // time, then on what the dice decide (fixed) and what the balance matrix never reaches: a recruit's grade from Superior
-// Forging or the Druidic Wonder, the Druid's rise from a beast raised, the running cost of an order, a garrison two a
+// Forging or the Druidic Wonder, the Druid's rise from a beast raised, a Whale Cohort or Shark Shoals raised Primal
+// whatever folk the province holds (P1-19ao), the running cost of an order, a garrison two a
 // season, bands hired by a Recruit (named four ways, a band not named passed over, Black Market's discount, a band
 // unpaid staying, a stale one skipped by its old id), the written orders' cards (the hirer's own first, never a
 // rival's), a wanderer dead earlier in the turn or a hero already serving not hired, the Broker's refusals, its
@@ -231,6 +232,26 @@ describe('Recruit Armies, called directly', () => {
     expect(rolls('Human')).toEqual([[true, 'druid', SKILLGAIN.common]]);
     expect(rolls('Primal:Bear')).toEqual([[true, 'druid', SKILLGAIN.std]]);
     expect(rolls('Primal:Bear', ',to:garrison')).toEqual([[true, 'druid', SKILLGAIN.common]]);
+  });
+
+  test('a Whale Cohort or Shark Shoals is raised Primal whatever folk the province holds; other companies are its folk', () => {
+    const raced = (terrain: string, armyTypes: string[]) => {
+      const b = fresh();
+      holds(b, b.X, armyTypes);
+      Object.assign(b.X, { race: 'Elven', terrain });
+      realm(b)['gold'] = 100;
+      const h = at(b, { skills: skilled({ druid: 6 }) });
+      play(b, h, o('recruit', armyTypes.map((t) => t + '|1').join(',')));
+      return h.armies.map((u) => [u.type, u.race]);
+    };
+    expect(raced('forest', ['Whale Cohort', 'Elven Bowmen'])).toEqual([
+      ['Whale Cohort', 'Primal'],
+      ['Elven Bowmen', 'Elven'],
+    ]);
+    expect(raced('sea', ['Shark Shoals', 'Great Turtles'])).toEqual([
+      ['Shark Shoals', 'Primal'],
+      ['Great Turtles', 'Elven'],
+    ]);
   });
 
   test('a Druid of 6 pays half for beasts only, never for men', () => {
