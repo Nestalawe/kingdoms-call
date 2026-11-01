@@ -140,8 +140,14 @@ false. (Reign of Fear fires only for the attacker since 2026-10-12, so the defen
 
 ## An alignment order is written in a dozen places
 
+Each order is one row of `THE_ALIGNMENT_ORDERS` (`src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts`):
+its key, its name, the other names the turn reads, its creed, whether the king alone gives it, and the numbers the books
+state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows, and
+`tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts` reads each row
+against both rulebooks. The ratchet's `alignmentOrderChecksInEngine` counts the keys the engine still writes itself.
+
 Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 22) touched: the engine's `case` in the order switch, the order-name map
-(`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate), the short label map, the
+(`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS`, the short label map, the
 bots' `botSignaturePre` case and their two lists of muster-like orders; the player portal's `ACTIONS`,
 `ALIGN_ACTIONS`, `ACTION_DISPLAY_ORDER`, the target widget `case`, the army projection and the gold ledger; the
 rulebook's orders table and alignment section, the intro's table and the player portal's three alignment
