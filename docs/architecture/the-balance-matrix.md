@@ -84,16 +84,20 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   some games; `-- --out <file>` writes the run in the baseline's form, e.g. to compare two runs.
 - When a change is meant to change play, or a realm's report, `npm run balance:update` rewrites the baselines (both
   sets, and both sets of `reports.json`); commit them with it.
-- **In CI** (the `balance` job in `ci.yml`, P1-02b; `ci` needs it). Its first step,
+- **In CI** (the `balance-part` and `balance` jobs in `ci.yml`, P1-02b; `ci` needs both). Each job's first step,
   `tools/balance/engine-paths.ts`, runs in plain Node before `npm ci`. It compares the commit with the one before: a
   pull request's base, or, in `deploy.yml`'s run on `main`, the commit before the push. If no **engine path** changed,
   the job ends there, in seconds. The engine paths are the GM portal and every script its page loads, the data file,
   `tools/balance/`, `tests/balance/`, the helpers in `lib/` that the balance code imports, and the tools the matrix
   runs on (`package-lock.json`, `.nvmrc`: a jsdom or Node bump can change the games). The helpers include those the
   helpers import (the every-realm half loads the engine through `lib/engine.ts`). The runner refuses to
-  play if its page loads a file that isn't on the list. Otherwise the job plays set A, one game per core, and fails if
-  any game differs from the committed baseline: commit the new baseline with a change that is meant to change play. A
-  pull request labelled `refactor-only` fails at the first step if it changes `balance/baseline/` at all. CI plays
+  play if its page loads a file that isn't on the list. Otherwise three `balance-part` jobs side by side each play a
+  third of set A, one game per core, on the page and for every realm's report (`npm run balance -- --shard 2/3 --out
+  FILE`; part 1 plays the required scenarios too), and judge nothing; the `balance` job joins them (`--join DIR`,
+  `tools/balance/parts.ts`) and judges them as one run, with every check above, so it fails if any game differs from
+  the committed baseline: commit the new baseline with a change that is meant to change play. A joined run's `--out`
+  files are byte for byte one unsplit run's. A pull request labelled `refactor-only` fails at the first step of each
+  job if it changes `balance/baseline/` at all. CI plays
   only the branch: the base branch's figures are its committed baseline. Adding or removing a label runs CI again.
 - **The balance report** (`tools/balance/report.ts`, `npm run balance:report`, P1-03a). On a pull request the
   `balance` job compares its games with the base branch's committed baseline, game by game, and writes the report CI

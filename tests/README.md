@@ -135,8 +135,10 @@ before it fails. It never fails a run.
   (`npm run ratchet -- --update` only lowers). `harness` runs the same comparison, so `npm test` fails too.
 - **In CI** (`.github/workflows/ci.yml`) each part runs in its own job, side by side, each building `site/` from
   `src/` first: the static checks (type check, lint, the import rules, format, ratchet and the `static` level),
-  `unit` and `scenario`, `simulation`, `page`, the browser specs, the balance matrix ([below](#the-balance-matrix-in-brief)),
-  and `db`. The job named `ci` passes only when all but `db` passed; `ci` and `db` are the required checks.
+  `unit` and `scenario` in two halves (Vitest's `--shard`), `simulation`, `page`, the browser specs, the balance matrix
+  in three parts and the job that joins them ([below](#the-balance-matrix-in-brief)), and `db`. Each takes
+  `node_modules` from a cache keyed on the lock file, `.npmrc`, Node and the runner, and runs `npm ci` only on a miss.
+  The job named `ci` passes only when all but `db` passed; `ci` and `db` are the required checks.
 
 ## Browser specs
 
