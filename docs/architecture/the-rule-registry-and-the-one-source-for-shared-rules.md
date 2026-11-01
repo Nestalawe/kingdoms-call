@@ -116,7 +116,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   the books' en dash), Island Back's count with what it counts ("two land units"), Forest Runners' factors with their
   ground ("×1.1 in forest", "no penalty in jungle"; `TERRAIN_MODS` by its syntax tree). A bare "one" or "×1" would be
   in the books' words already ("where a fleet carries one", "×1.1"), so a table's number is matched with its words.
-- **Where the books write an ability** (a trap until P1-19l): every unit ability is also in its unit's blurb
+- **Where the books write an ability**: every unit ability is also in its unit's blurb
   (`UNIT_ABILITIES`, in the content file beside the rows), in the rulebook's roster row and in the battle report's lines;
   change a number in its row or its table and in both books. A unit appears in `UNIT_ABILITIES` once: an object literal
   keeps the last key, so a second entry fails `npm run typecheck` (TS1117), and the words tests check it too. The words
@@ -199,6 +199,8 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   takes hold**. Each is handed his wards and its moment and returns what it does; the fight applies it, rolls where it
   rolled and tells the line. Low HP's half, the second wind's 30%, resist's half and Mithril's 2 are the rows'. A
   guardian's own wards are the perks' registry's.
+- **What a rider does** (P1-19ak, `magic-items/what-a-rider-does-in-a-personal-combat.ts`): seven stages of one effect
+  each (the aura, the bonuses to hit and to damage, the burn, the drain), named in the perks' file.
 - **The combat items, a steal and a blow** (P1-19s, `magic-items/the-combat-items-a-steal-and-a-blow-in-a-personal-combat.ts`):
   `personalCombat`'s **a fighter reaches for a combat item** (`pcCombatItemWanted`; its order is
   `pcTryCombatItem`'s), **a combat item is used** (`pcUseCombatItem`: 19 uses keyed `{ use }`, each
@@ -245,8 +247,7 @@ perks'** (P1-19ai): [its file](the-guardian-perks-registry-its-stages-and-how-to
 - **Shared rule tables** (the block headed `SHARED RULE TABLES`): every `KC_*` table, e.g.
   `KC_UNIT_CLASS` (unit classes as ordered lists), `KC_UNIT_TYPE` (each unit's one type word: infantry,
   ranged, cavalry, flyer or naval), `KC_DRUID_LEVELS`, `KC_UNIT_BASE_STR`, `KC_SKILLS`,
-  `KC_SEASONS`, `KC_GRAND_DESIGNS`. Until 27 Sept each lived in two to eleven hand-typed copies,
-  several of which had drifted. Now each portal builds its own local copy **from** these
+  `KC_SEASONS`, `KC_GRAND_DESIGNS`. Each portal builds its own local copy **from** these
   (`new Set(KC_UNIT_CLASS.creature)`, `KC_SEASONS.slice()`, `{...KC_SKILL_LABELS}`), so no consumer can
   mutate another's. The editing rules are at the top of that block: change a rule there; append, never
   re-sort; plain data only; `KC_` names only.
@@ -262,9 +263,8 @@ perks'** (P1-19ai): [its file](the-guardian-perks-registry-its-stages-and-how-to
 - **A few deliberate near-copies stay in the GM portal**, because the *order* is a tie-break priority
   (each is commented `NOT a copy`). Don't collapse them.
 
-**No stamp, no guard** (since P1-06c). The data file is bundled into each page that uses it, so it can't be missing
-or older than the page, and a table a page imports that the data file lacks stops the build. Its stamps and the two
-portals' start-up guards are gone.
+**No stamp, no guard.** The data file is bundled into each page that uses it, so it can't be missing or older than the
+page, and a table a page imports that the data file lacks stops the build.
 
 ## An effect reads only what its hook hands it
 
