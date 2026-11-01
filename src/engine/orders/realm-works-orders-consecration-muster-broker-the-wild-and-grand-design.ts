@@ -1,4 +1,8 @@
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import {
+  THE_ALIGNMENT_ORDERS,
+  type AnAlignmentOrder,
+} from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import {
@@ -20,6 +24,7 @@ import {
   theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt,
   whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold,
   whatARealmsDiscoveriesAddToTheCorpseCartersCost,
+  type ARealmAsTheDiscoveriesReadIt,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import { emit, logSplit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
@@ -73,6 +78,10 @@ interface WhereAsAWildCallingComparesIt {
 function theSamePlaceAsNamed(h: WhereAsAWildCallingComparesIt, from: WhereAsAWildCallingComparesIt) {
   return h.kind === from.kind && h.provinceName === from.provinceName && h.heroName === from.heroName;
 }
+/** Whether the king alone gives an alignment order, as its row says (read as any row's mark, a yes or a no). */
+function theKingAloneGives(order: AnAlignmentOrder): boolean {
+  return order.theKingAlone;
+}
 // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
 export function resolveConsecrateOrder(
   turnContext: TurnContext,
@@ -84,7 +93,7 @@ export function resolveConsecrateOrder(
   // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
   // hero who gives it, for the phases after), so he serves one; for none, a TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm consecrates');
-  if (!c.isKing) {
+  if (theKingAloneGives(THE_ALIGNMENT_ORDERS.consecrate) && !c.isKing) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'only the king can consecrate ground', heroName: c.name },
@@ -93,7 +102,7 @@ export function resolveConsecrateOrder(
     });
     return;
   }
-  if (G.players[c.player]?.alignment !== 'Divine') {
+  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS.consecrate.creed) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'the gods answer a consecration only from a Divine crown', heroName: c.name },
@@ -221,7 +230,7 @@ export function resolveCallToArmsOrder(
   // TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm calls to arms');
   theRealmIsHanded(player);
-  if (G.players[c.player]?.alignment !== 'Good') {
+  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS['call-to-arms'].creed) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: "only a Good realm's folk answer a Call to Arms", heroName: c.name },
@@ -230,7 +239,7 @@ export function resolveCallToArmsOrder(
     });
     return;
   }
-  if (!c.isKing) {
+  if (theKingAloneGives(THE_ALIGNMENT_ORDERS['call-to-arms']) && !c.isKing) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: "only the king's voice carries the Call to Arms", heroName: c.name },
@@ -292,7 +301,7 @@ export function resolveCallToArmsOrder(
       .map((e) => e.theQuality)
       .find((q): q is string => Boolean(q && tiers.includes(q))) ??
       '') ||
-    'Green'; // ag05 Muster Rolls (a chance per muster; the discoveries'
+    THE_ALIGNMENT_ORDERS['call-to-arms'].theNumbers.theGradeMustered.value; // ag05 Muster Rolls (a chance per muster; the discoveries'
   // registry's since plan P1-19ae: "orderOutcome: a realm's discoveries raise a call to arms' quality", each chance
   // rolled here, in turn, as before)
   ctaProv.garrisonArmies.push({
@@ -324,7 +333,7 @@ export function resolveBrokerOrder(
   // TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm keeps brokers');
   theRealmIsHanded(player);
-  if (G.players[c.player]?.alignment !== 'Neutral') {
+  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS.broker.creed) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'only a Neutral crown keeps brokers', heroName: c.name },
@@ -333,7 +342,7 @@ export function resolveBrokerOrder(
     });
     return;
   }
-  if (!c.isKing) {
+  if (theKingAloneGives(THE_ALIGNMENT_ORDERS.broker) && !c.isKing) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: "only the king commands the realm's brokers", heroName: c.name },
@@ -457,7 +466,7 @@ export function resolveBrokerOrder(
       });
       return;
     }
-    if ((player.gold || 0) < 2) {
+    if ((player.gold || 0) < THE_ALIGNMENT_ORDERS.broker.theNumbers.thePriceOfWordFromAProvince.value) {
       emit(turnContext, {
         type: 'system',
         fact: { kind: 'the treasury cannot pay for brokered word', heroName: c.name },
@@ -466,7 +475,7 @@ export function resolveBrokerOrder(
       });
       return;
     }
-    player.gold -= 2;
+    player.gold -= THE_ALIGNMENT_ORDERS.broker.theNumbers.thePriceOfWordFromAProvince.value;
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'the brokers buy word from a province', heroName: c.name, provinceName: sp2.name },
@@ -503,6 +512,16 @@ export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(
   });
   return;
 }
+/** The corpse-carters' price for a realm, as Harvest the Field charges it and the report shows it: its row's price, plus
+ *  what the realm's discoveries add (a cut is less than 0: az06 Corpse-Carters, the discoveries' registry's since plan
+ *  P1-19ae: "orderOutcome: a realm's discoveries cut the corpse-carters' cost"), never below nothing. */
+export function theCorpseCartersPriceForARealm(realm: ARealmAsTheDiscoveriesReadIt | null | undefined): number {
+  return Math.max(
+    0,
+    THE_ALIGNMENT_ORDERS['harvest-the-field'].theNumbers.thePrice.value +
+      whatARealmsDiscoveriesAddToTheCorpseCartersCost(realm),
+  );
+}
 // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.
 export function resolveHarvestTheFieldOrder(
   turnContext: TurnContext,
@@ -516,7 +535,7 @@ export function resolveHarvestTheFieldOrder(
   // TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm harvests the field');
   theRealmIsHanded(player);
-  if (G.players[c.player]?.alignment !== 'Undead') {
+  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS['harvest-the-field'].creed) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'only Undead realms keep corpse-carters', heroName: c.name },
@@ -536,9 +555,7 @@ export function resolveHarvestTheFieldOrder(
     });
     return;
   }
-  // az06 Corpse-Carters (the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries cut the
-  // corpse-carters' cost", which the report's price asks too)
-  const _hCost = Math.max(0, 2 + whatARealmsDiscoveriesAddToTheCorpseCartersCost(G.players[c.player]));
+  const _hCost = theCorpseCartersPriceForARealm(G.players[c.player]);
   if ((player.gold || 0) < _hCost) {
     emit(turnContext, {
       type: 'system',

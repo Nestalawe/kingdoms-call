@@ -6,6 +6,7 @@ import {
   SAGE_DISCOVERIES_P,
   TITLE_DEFS,
 } from '../content/kingdoms-call-data.ts';
+import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import {
   ARMY_COST_MASTER,
   ARMY_SPEED_MASTER,
@@ -55,7 +56,6 @@ import {
   whatARealmsDiscoveriesEarnInInterest,
   whatARealmsDiscoveriesAddToAMarch,
   whatARealmsDiscoveriesAddToAMercenaryBandsPrice,
-  whatARealmsDiscoveriesAddToTheCorpseCartersCost,
   whatARealmsDiscoveriesAddToASpysChance,
   whatARealmsDiscoveriesAddToPractice,
   whatARealmsDiscoveriesAddToResearch,
@@ -67,6 +67,7 @@ import {
   THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
 } from '../engine/rules/discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
 import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../engine/battle/evil-terror.ts';
+import { theCorpseCartersPriceForARealm } from '../engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
 
 // ── EVIL TERROR: the reading (2026-10-12, Toby items 21 and 23) ── The constants (−10% a stack, at most three stacks)
 // are the engine's (src/engine/battle/evil-terror.ts, plan P1-12b1), so the engine (spreadTerror, consumeTerror) and the
@@ -1265,8 +1266,8 @@ export function buildTurnReport(view, itsLines = null) {
       return {
         unitWage,
         unitCost: { ...ARMY_COST_MASTER },
-        harvest: Math.max(0, 2 + whatARealmsDiscoveriesAddToTheCorpseCartersCost(player)), // (the registry's, P1-19ae: the order's rule)
-        brokerSpy: 2,
+        harvest: theCorpseCartersPriceForARealm(player), // (the order's rule: its row's price, less the registry's cut)
+        brokerSpy: THE_ALIGNMENT_ORDERS.broker.theNumbers.thePriceOfWordFromAProvince.value,
       };
     })(),
     lastTurnLog: [{ type: 'system', text: `Turn ${view.turn} begins. ${player.name} stands ready.` }],

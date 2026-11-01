@@ -11,7 +11,8 @@
 // Red on its row's base by design (army-tables.ts' top level held 5 keys on P1-19ap's base: ALIGNMENT_ORDER_KEYS; the
 // order-name map's file's top level 9 and processOrder 5 on P1-19aq's: PHASE_ACTION_MAP and the switch's cases), as
 // the unit-name, item-effect, spell, discovery and perk tests were: the one exception to refactor-only's rule that new
-// tests pass before and after (Theo, 2026-10-25; the alignment orders' Decision 4).
+// tests pass before and after (Theo, 2026-10-25; the alignment orders' Decision 4). The five resolvers (P1-19ar's) held
+// no key on their base: they compare a realm's creed, and their entries keep it so now they read their rows.
 // Level 0 (static): the files' syntax trees and the content's rows as written; nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,6 +35,9 @@ const TOP = '(top)';
  *  (the plan's Decision 5: P1-10 derives or checks them), in the order written. */
 const ORDER_KINDS_LITERAL_TYPES = ['consecrate', 'call_to_arms', 'broker', 'harvest_field', 'rite'];
 
+/** The file of the realm's works: four of the five resolvers. */
+const REALM_WORKS = 'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
+
 /** Each function (or a file's top level) the alignment orders' rows have taken, by its file, from the row that took it,
  *  and the strings naming a key it still holds (a literal type's, which the ratchet's helper doesn't count). */
 const TAKEN: readonly (readonly [file: string, fn: string, row: string, left: readonly string[]])[] = [
@@ -48,6 +52,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, left: re
     'src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts',
     'processOrder',
     "P1-19aq, the dispatch: the switch's five cases",
+    [],
+  ],
+  [REALM_WORKS, 'resolveConsecrateOrder', 'P1-19ar, Consecrate: its creed and the king, from its row', []],
+  [REALM_WORKS, 'resolveCallToArmsOrder', "P1-19ar, Call to Arms: its creed, the king, the muster's grade", []],
+  [REALM_WORKS, 'resolveBrokerOrder', 'P1-19ar, the Broker: its creed, the king, the price of word', []],
+  [REALM_WORKS, 'resolveHarvestTheFieldOrder', "P1-19ar, Harvest the Field: its creed, the carters' price", []],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolvePerformRiteOrder',
+    "P1-19ar, Perform Rite: its creed, the Blood Offering's grades",
     [],
   ],
 ];

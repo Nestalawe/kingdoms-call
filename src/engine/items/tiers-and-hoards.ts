@@ -1,4 +1,5 @@
 import { ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS } from '../../content/kingdoms-call-data.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS, monsterCat } from '../names.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
@@ -63,7 +64,7 @@ export function guardianCanUseItem(m: Parameters<typeof monsterCat>[0], it: Item
 export const RITUAL_SITE_NAMES = ['Standing Stones', 'Blood Altar', 'Circle of the Old Gods'];
 export const RITUAL_SITE_CHANCE_HUMANOID = 0.25; // share of humanoid land provinces with one (Blood Offering only there)
 export const WILD_HUNT_COST = 6; // fallback price if a bound type is missing from ARMY_COST_MASTER
-export const WILD_HUNT_UNITS = 2; // units bound per rite
+export const WILD_HUNT_UNITS = THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.theWildHuntsBeasts.value; // units bound per rite (its row's)
 // the rite is priced at the cost of ONE of the beasts bound, however many answer the horn — bind
 // two Stone Giants (5g each) and the offering is 5g, not 6g and not 10g. Declared as a
 // function so the ARMY_COST_MASTER lookup happens at call time, not at load (see the ITEMS_BY_TIER
@@ -72,7 +73,7 @@ export function wildHuntPrice(type: string) {
   return Number(ARMY_COST_MASTER[type]) || WILD_HUNT_COST;
 }
 export const GRAND_HEIST_RICH_TAX = 7; // tax base at/above which a province is rich enough to stage a Grand Heist in (a realm's home capital always qualifies)
-export const WILD_HUNT_TURNS = 1; // extra full turns the bound creatures serve beyond this one
+export const WILD_HUNT_TURNS = THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.theWildHuntsTurnsMore.value; // extra full turns the bound creatures serve beyond this one (its row's)
 export const BLOOD_HARVEST_PER_UNIT = 1; // gold per enemy unit destroyed in a Pagan victory
 export const FEATURE_POOLS_P = {
   plain: [
