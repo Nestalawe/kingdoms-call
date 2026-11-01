@@ -107,7 +107,7 @@ import tseslint from 'typescript-eslint';
 import ts from 'typescript';
 import { z } from 'zod';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 import archConfig from '../../.dependency-cruiser.mts';
 import knipConfig from '../../knip.ts';
 import config from '../../vitest.config.mts';
@@ -122,6 +122,7 @@ import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
 import {
   BASELINE_FILE,
   compare,
+  type Counts,
   countsFromTheCodeFiles,
   ENGINE_SIDE_FOLDERS,
   ESLINT_SUPPRESSIONS_FILE,
@@ -2051,6 +2052,18 @@ describe('dangerous paths', () => {
 });
 
 describe('the ratchet', () => {
+  // This tree's counts and its code files, made once for the tests below that read them, as they are (measure() runs
+  // knip; each test used to make them again: four runs of knip, fifteen reads of every code file).
+  let counted: Counts = {};
+  let files: ReturnType<typeof theCodeFiles> = [];
+  beforeAll(
+    () => {
+      counted = measure();
+      files = theCodeFiles();
+    },
+    timeLimitForTheWork({ toolRuns: 1, everyFileReads: 1 }).timeout,
+  );
+
   test('npm run ratchet reads tests/ratchet.json', () => {
     expect(pkg.scripts['ratchet']).toBe('tsx tools/ratchet.ts');
     expect(path.relative(ROOT, BASELINE_FILE)).toBe('tests/ratchet.json');
@@ -2059,28 +2072,23 @@ describe('the ratchet', () => {
   // The ts-nocheck line is counted in two (plan P1-10, Decision 9; P1-10b's Decision 5): the engine's side, which P1-10b
   // takes to 0, and the UI's (P1-16), so neither may rise while the other falls. One planted line in each folder raises
   // its own count alone, and the ratchet fails on it.
-  test(
-    'the ts-nocheck line is counted on the engine side and in the UI, apart, and no longer as one',
-    timeLimitForTheWork({ toolRuns: 1 }),
-    () => {
-      const baseline = readBaseline();
-      const now = measure();
-      for (const counts of [baseline, now]) {
-        expect(counts).not.toHaveProperty('tsNocheck');
-        expect(counts['tsNocheckEngineSide']).toBeGreaterThan(0);
-        expect(counts['tsNocheckUi']).toBeGreaterThan(0);
-      }
-      expect([...ENGINE_SIDE_FOLDERS]).toEqual([
-        'src/engine/',
-        'src/views/',
-        'src/db/',
-        'src/ui/shared/',
-        'src/content/',
-        'src/schemas/',
-        'src/shared/',
-      ]);
-    },
-  );
+  test('the ts-nocheck line is counted on the engine side and in the UI, apart, and no longer as one', () => {
+    const baseline = readBaseline();
+    for (const counts of [baseline, counted]) {
+      expect(counts).not.toHaveProperty('tsNocheck');
+      expect(counts['tsNocheckEngineSide']).toBeGreaterThan(0);
+      expect(counts['tsNocheckUi']).toBeGreaterThan(0);
+    }
+    expect([...ENGINE_SIDE_FOLDERS]).toEqual([
+      'src/engine/',
+      'src/views/',
+      'src/db/',
+      'src/ui/shared/',
+      'src/content/',
+      'src/schemas/',
+      'src/shared/',
+    ]);
+  });
   const NOCHECK_LINE = '// @ts-' + 'nocheck: planted, to show the ratchet counts it\n';
   test.for([
     ['src/engine/battle/x.ts', 'tsNocheckEngineSide'],
@@ -2096,7 +2104,6 @@ describe('the ratchet', () => {
     ['tests/unit/x.test.ts', 'tsNocheckUi'],
     ['tools/x.ts', 'tsNocheckUi'],
   ] as const)('a ts-nocheck line planted in %s raises %s alone, and the ratchet fails', ([file, count]) => {
-    const files = theCodeFiles();
     const asTheyAre = { ...readBaseline(), ...countsFromTheCodeFiles(files) };
     expect(compare(asTheyAre, asTheyAre).rose).toEqual([]);
     const planted = { ...asTheyAre, ...countsFromTheCodeFiles([...files, [file, NOCHECK_LINE + 'export {};\n']]) };
@@ -2113,7 +2120,6 @@ describe('the ratchet', () => {
     ['src/engine/rules/x.ts', 0],
     ['src/ui/gm/x.ts', 0],
   ] as const)('a unit-name comparison planted in %s raises unitNameChecksInEngine by %i', ([file, rise]) => {
-    const files = theCodeFiles();
     const asTheyAre = { ...readBaseline(), unitNameChecksInEngine: unitNameChecksInEngine(files) };
     expect(asTheyAre.unitNameChecksInEngine).toBe(readBaseline()['unitNameChecksInEngine']);
     const planted = {
@@ -2129,16 +2135,15 @@ describe('the ratchet', () => {
     expect(rose.filter((r) => /^unitNameChecksInEngine rose from \d+ to \d+\./.test(r))).toEqual(rose);
   });
 
-  // measure() runs knip for unusedCode: a few seconds, more on a slow runner.
-  test('no count is above its baseline', timeLimitForTheWork({ toolRuns: 1 }), () => {
-    const { rose } = compare(readBaseline(), measure());
+  test('no count is above its baseline', () => {
+    const { rose } = compare(readBaseline(), counted);
     expect(rose, 'Lower what rose, or, if the rise is right, talk it through with Theo.').toEqual([]);
   });
 
   // P1-09e: src/ has no JavaScript left but public/'s two classic scripts (copied as they are). P1-13b: ESLint's
   // suppressions are counted from their file (above), so they only fall; its warnings no longer, since no rule warns.
-  test("it counts ESLint's suppressions and public/'s two scripts", timeLimitForTheWork({ toolRuns: 1 }), () => {
-    const now = measure();
+  test("it counts ESLint's suppressions and public/'s two scripts", () => {
+    const now = counted;
     expect(now['eslintSuppressions']).toBe(eslintSuppressions());
     expect(now['eslintSuppressions']).toBeGreaterThan(0);
     expect(now).not.toHaveProperty('eslintWarnings');
@@ -2148,17 +2153,13 @@ describe('the ratchet', () => {
   // P1-13a: the import rules' known violations and knip's findings are counted, so they only fall (plan P1-13,
   // Decision 4). The known violations are the entries of dependency-cruiser's own list, the one npm run lint:arch lets
   // through.
-  test(
-    "it counts the import rules' known violations and what knip finds unused",
-    timeLimitForTheWork({ toolRuns: 1 }),
-    () => {
-      const now = measure();
-      const known = JSON.parse(read(KNOWN_ARCHITECTURE_VIOLATIONS_FILE)) as unknown[];
-      expect(now['knownArchitectureViolations']).toBe(known.length);
-      expect(now['unusedCode']).toBeGreaterThan(0);
-      for (const key of ['knownArchitectureViolations', 'unusedCode']) expect(readBaseline()[key], key).toBeDefined();
-    },
-  );
+  test("it counts the import rules' known violations and what knip finds unused", () => {
+    const now = counted;
+    const known = JSON.parse(read(KNOWN_ARCHITECTURE_VIOLATIONS_FILE)) as unknown[];
+    expect(now['knownArchitectureViolations']).toBe(known.length);
+    expect(now['unusedCode']).toBeGreaterThan(0);
+    for (const key of ['knownArchitectureViolations', 'unusedCode']) expect(readBaseline()[key], key).toBeDefined();
+  });
 });
 
 // The architecture rules (plan P1-13a, Decisions 2 to 4): dependency-cruiser's layers and no cycle, every rule an error,

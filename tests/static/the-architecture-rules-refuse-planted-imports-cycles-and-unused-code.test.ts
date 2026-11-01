@@ -28,7 +28,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { KNOWN_ARCHITECTURE_VIOLATIONS_FILE, unusedCode } from '../../tools/ratchet.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
@@ -310,13 +310,24 @@ describe('knip: unused files, exports and dependencies (npm run knip), counted b
     );
   }
 
-  // knip five times (unusedCode runs it too) and a copy of the repository
+  // knip on this tree, and the ratchet's count of it (unusedCode runs knip too), made once: the test reads them as they
+  // are, beside the planted copy's own two runs.
+  let before: string[] = [];
+  let unusedHere = 0;
+  beforeAll(
+    () => {
+      before = knip(ROOT);
+      unusedHere = unusedCode(ROOT);
+    },
+    timeLimitForTheWork({ toolRuns: 2 }).timeout,
+  );
+
+  // knip twice on the planted copy (unusedCode runs it too), and the copy of the repository
   test(
     'finds a planted unused file, export and dependency, and unusedCode rises by three',
-    timeLimitForTheWork({ toolRuns: 5, everyFileReads: 1 }),
+    timeLimitForTheWork({ toolRuns: 2, everyFileReads: 1 }),
     () => {
-      const before = knip(ROOT);
-      expect(unusedCode(ROOT)).toBe(before.length);
+      expect(unusedHere).toBe(before.length);
       const dir = copyOfTheRepository();
       plant(dir, 'src/engine/planted-file-nothing-imports.ts', 'export const planted = 1;\n');
       const clock = fs.readFileSync(path.join(dir, 'src/engine/clock.ts'), 'utf8');
@@ -332,7 +343,7 @@ describe('knip: unused files, exports and dependencies (npm run knip), counted b
         'exports src/engine/clock.ts plantedNothingCalls',
         'files src/engine/planted-file-nothing-imports.ts src/engine/planted-file-nothing-imports.ts',
       ]);
-      expect(unusedCode(dir)).toBe(unusedCode(ROOT) + 3);
+      expect(unusedCode(dir)).toBe(unusedHere + 3);
     },
   );
 });
