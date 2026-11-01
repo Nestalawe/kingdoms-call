@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
+import { whatAMarchsOrderNames } from '../rules-on-plain-values/what-a-marchs-order-names.ts';
 import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { totalInit } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -197,19 +198,15 @@ export function intendedDestination(turnContext, c, order) {
   const t = order.target || '';
   const from = G.world.provinces[c.location];
   if (!from) return null;
-  if (t.startsWith('dir:')) return neighborInDir(turnContext, from, t.slice(4));
-  if (t.startsWith('prov:')) {
-    // Absolute target: the province itself if adjacent, else the first step toward it (mirrors
-    // the move case so phase intents / interceptions see where the column will actually go).
-    const want = G.world.provinces[parseInt(t.slice(5))];
-    if (!want || want.id === from.id) return null;
-    if (getNeighborsP(from, G.world.cols, G.world.rows, G.world.provinces).some((n) => n && n.id === want.id))
-      return want;
-    return stepTowardPreferSafe(turnContext, c, want.id);
-  }
-  const id = parseInt(t);
-  if (isNaN(id)) return null;
-  return G.world.provinces[id] || null;
+  const named = whatAMarchsOrderNames(t);
+  if (named.by === 'compass') return neighborInDir(turnContext, from, named.direction);
+  // A province, by `prov:<id>` or the bare number alike: the province itself if adjacent, else the first step toward
+  // it (mirrors the move case so phase intents / interceptions see where the column will actually go).
+  const want = G.world.provinces[named.provinceId];
+  if (!want || want.id === from.id) return null;
+  if (getNeighborsP(from, G.world.cols, G.world.rows, G.world.provinces).some((n) => n && n.id === want.id))
+    return want;
+  return stepTowardPreferSafe(turnContext, c, want.id);
 }
 
 export function normaliseAction(order) {

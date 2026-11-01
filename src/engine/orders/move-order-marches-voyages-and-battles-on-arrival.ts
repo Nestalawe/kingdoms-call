@@ -17,6 +17,7 @@ import { theExplorationTheMoversItemsAdd } from '../rules/the-registry-of-magic-
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
+import { whatAMarchsOrderNames } from '../rules-on-plain-values/what-a-marchs-order-names.ts';
 import { TM, creditMapped, perkTier } from '../titles/perks.ts';
 import { whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite } from '../rules/the-registry-of-discovery-effects.ts';
 import {
@@ -99,8 +100,9 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
   // the consequence (what was noticed on arrival) follows it.
   const _discoveryLines = [];
   let toProv = null;
-  if (target.startsWith('dir:')) {
-    const dir = target.slice(4);
+  const named = whatAMarchsOrderNames(target);
+  if (named.by === 'compass') {
+    const dir = named.direction;
     toProv = neighborInDir(turnContext, prov, dir);
     if (!toProv) {
       emit(turnContext, {
@@ -112,7 +114,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       });
       return;
     }
-  } else if (target.startsWith('prov:')) {
+  } else {
     // ABSOLUTE move target (player portal, v2026.09.10+): the order names the specific
     // province chosen at order time rather than a compass direction, so a character displaced
     // earlier in the turn (a retreat after a lost battle, a Terror-Walker rout) still heads
@@ -121,7 +123,9 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
     // passable route toward it (terrain-aware BFS — the same stepToward the wandering-hero
     // code uses); the step is then subject to every normal movement rule below (pools,
     // borders, sea/land capability) exactly like a direct move.
-    const _wantId = parseInt(target.slice(5));
+    // `prov:<id>` or the bare number (a Forced March's, a bot's joint assault's) alike (rules-on-plain-values/
+    // what-a-marchs-order-names.ts): a province named either way is reached one step at a time.
+    const _wantId = named.provinceId;
     const _want = isNaN(_wantId) ? null : G.world.provinces[_wantId];
     if (!_want) {
       emit(turnContext, {
@@ -181,9 +185,6 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         province: toProv.id,
       });
     }
-  } else {
-    const id = parseInt(target);
-    if (!isNaN(id)) toProv = G.world.provinces[id];
   }
   if (!toProv) {
     emit(turnContext, {
