@@ -6,7 +6,9 @@ import {
   PRIMAL_ARMY_DEFS_P,
 } from '../content/kingdoms-call-data.ts';
 import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
+import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import type { Army, Character, GameState, Grave, Province } from '../schemas/saved-game-state.ts';
+import type { OrderKind } from './turn/phase-intents-and-dependency-ordering.ts';
 
 // ── A UNIT AND A HERO IN A BATTLE ────
 // A battle writes marks on its units and its commanders that last for that battle only, and wipes them at the battle's
@@ -337,9 +339,12 @@ export const MASTERY_ORDER_LABEL = {
   chart_unknown: 'Chart the Unknown',
   discover_ruin: 'Discover Lost Ruin',
 };
-// Alignment-signature orders, by engine action key. Used with MASTERY_ORDER_KEYS to decide what a
-// charmed enemy hero may not be made to do.
-export const ALIGNMENT_ORDER_KEYS = new Set(['consecrate', 'call_to_arms', 'broker', 'harvest_field', 'rite']); // Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22)
+// Alignment-signature orders, by engine action key: the content's rows' keys, in their order (plan P1-19's alignment
+// orders, Decision 3). Used with MASTERY_ORDER_KEYS to decide what a charmed enemy hero may not be made to do. A row's
+// key that is no kind of order fails to compile. Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22).
+export const ALIGNMENT_ORDER_KEYS = new Set<string>(
+  Object.values(THE_ALIGNMENT_ORDERS).map((order) => order.key) satisfies readonly OrderKind[],
+);
 // SAFE START (2026-09-29): a setup option. While on, no realm may Treat or declare war until the
 // orders for Turn SAFE_START_TURN — player declarations are discarded (with a private notice) and bots
 // make none. `turn` is the turn being resolved (games.turn when its orders are run).
