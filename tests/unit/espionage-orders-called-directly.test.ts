@@ -25,6 +25,11 @@
 // Since P1-23e (R-119): Spy on a hero, Steal and Assassinate aimed at another realm's hero whose Invisibility holds find
 // no one (no roll, a line naming no one); a realm that watches him by Clairvoyance, his own realm and last turn's
 // Invisibility are passed through.
+// Since P1-10b22 (the file freed of its ts-nocheck line), the cases its changed lines no matrix game reaches asked for:
+// an item of a tier the weights don't list weighs as a Weak one; a plan with no tactics fights on Melee; a wandering
+// victim who can't be killed, left at 0 HP, escapes at 1; a second read keeps the first copy, and a company of no name
+// is copied with none; the heist's item joins the thief's pack; each assassin's line is filed under the heroes it is
+// about.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -425,6 +430,23 @@ describe('Spy, called directly: the dice, The Shadow and the odds', () => {
     expect(textOf(b, h)).toContain(`(Human, Divine, king): skills — Thief 4, Melee 2, Tactical 2, Spy 2, March 1.`);
   });
 
+  test('a second read keeps the first hero’s copy; a company of no name is copied with none', () => {
+    const b = fresh();
+    const first = rival(b);
+    const second = rival(b);
+    const company: Record<string, unknown> = { ...must(companies(1)[0], 'a company') };
+    delete company['unitName'];
+    second.armies = [company] as Character['armies'];
+    const h = at(b, { spy: 6 });
+    rolls([100, 100, 100, 100], () => {
+      play(b, h, o('spy', `char:${String(first.id)}`), 0);
+      play(b, h, o('spy', `char:${String(second.id)}`), 1);
+    });
+    const kept = realm(b, 0)['_spiedHeroSkills'] as Record<string, { armies: { unitName: string }[] }>;
+    expect(Object.keys(kept).sort()).toEqual([String(first.id), String(second.id)].sort());
+    expect(kept[String(second.id)]?.armies.map((a) => a.unitName)).toEqual(['']);
+  });
+
   test('an older save’s Cloak of Many Faces hides its wearer from a read; an older Crystal Orb needs no roll', () => {
     const b = fresh();
     const m = rival(b);
@@ -643,6 +665,16 @@ describe('the item lifted (liftRandomItem, nested in processOrder until P1-08j6)
     const h = at(b, { thief: 1 });
     expect((withDice(engine, [die], () => lift(b.tc, h, m)) as Item).name).toBe(name);
   });
+  test.each([
+    [7.99 / 9, 'Tome of Tactics'],
+    [8 / 9, 'Crystal Orb'],
+  ])('an item of a tier the weights don’t list weighs as a Weak one (die %f: the %s)', (die, name) => {
+    const b = fresh();
+    const m = rival(b);
+    m.items = [tiered(b, 'Tome of Tactics', 5), tiered(b, 'Crystal Orb', 4)];
+    const h = at(b, { thief: 1 });
+    expect((withDice(engine, [die], () => lift(b.tc, h, m)) as Item).name).toBe(name);
+  });
   test('nothing to lift but Mithril is nothing; a master thief’s pack is guarded', () => {
     const b = fresh();
     const m = rival(b);
@@ -727,6 +759,15 @@ describe('a thief caught in the act (thiefCaughtScuffle, nested in processOrder 
       expect(plans).toEqual([[['ME'], ['ME']]]);
     });
   });
+  test('a plan with no tactics, or none at all, fights on Melee', () => {
+    const { b, thief, victim } = stage();
+    thief['encounterPlan'] = { duelStance: 'accept' };
+    victim['encounterPlan'] = { duelStance: 'accept' };
+    duelEndsIn({ atkHp: 7, defHp: 9 }, (plans) => {
+      scuffle(b.tc, b.X, thief, victim, 'red-handed');
+      expect(plans).toEqual([[['ME'], ['ME']]]);
+    });
+  });
   test('a thief cut down dies, and the victim is credited the kill', () => {
     const { b, thief, victim } = stage();
     const kills = killsIn(() => {
@@ -765,6 +806,14 @@ describe('a thief caught in the act (thiefCaughtScuffle, nested in processOrder 
       [0, 1],
       [0, 1],
     ]);
+  });
+  test('a wandering victim who can’t be killed, left at 0 HP, escapes the end at 1 HP', () => {
+    const { b, thief } = stage();
+    const wanderer = rival(b, { player: null });
+    wanderer['_unkillable'] = true;
+    wanderer.hp = 0;
+    duelEndsIn({ atkHp: 4, defHp: 0, defKilled: true }, () => scuffle(b.tc, b.X, thief, wanderer, 'red-handed'));
+    expect([wanderer.alive, wanderer.hp]).toEqual([true, 1]);
   });
   test('a wandering victim’s HP is left as the duel left it', () => {
     const { b, thief } = stage();
@@ -879,6 +928,19 @@ describe('Grand Heist, called directly', () => {
       [],
       ['Ring of the Explorer'],
     ]);
+  });
+  test('the item cut from a parcel joins what the thief already carries', () => {
+    const { b, h } = stage(7, 0);
+    h.items = [item(b, 'Kingsteel Longsword')];
+    G_(b)['_itemDeliveries'] = [{ toId: rival(b, { at: ring1(b, 0) }).id, items: [item(b, 'Tome of Tactics')] }];
+    rolls(
+      [1],
+      () => {
+        play(b, h, o('grand_heist'), 1);
+      },
+      0,
+    );
+    expect(pack(h)).toEqual(['Kingsteel Longsword', 'Tome of Tactics']);
   });
   test('the parcel’s line names its sender and addressee only when it knows them', () => {
     const { b, h } = stage(7, 0);
@@ -1026,6 +1088,21 @@ describe('Assassinate, called directly', () => {
       play(b, h, o('assassinate', m.id));
     });
     expect([m.alive, merits(h), spyActions(h)]).toEqual([true, 0, 0]);
+  });
+  test.each([
+    [79, 'lands'],
+    [80, 'misses'],
+  ])('each line is filed under the heroes it is about (roll %i: the blade %s)', (roll, outcome) => {
+    const b = fresh();
+    const m = rival(b);
+    const h = at(b, { spy: 9 });
+    rolls([roll], () => {
+      play(b, h, o('assassinate', m.id));
+    });
+    const filed = (words: string) => b.lines().find((l) => l.text.includes(words))?.['charIds'];
+    expect(filed('📊 Assassination')).toEqual([h.id, m.id]);
+    expect(filed('🗡 An attempt is made')).toEqual([m.id]);
+    expect(filed('the mark slips the knife')).toEqual(outcome === 'misses' ? [h.id, m.id] : undefined);
   });
   test('a target that names no hero finds no mark', () => {
     const b = fresh();
