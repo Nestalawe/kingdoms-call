@@ -4,6 +4,10 @@ import { playerView } from './what-each-realm-may-see-of-the-world.ts';
 import { doARealmsDiscoveriesWidenTheWarningsItHears } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import { theTurnsLinesInWords } from './prose/the-words-of-each-line.ts';
 import { theStatisticsOfTheTurn } from './the-statistics-of-the-turn.ts';
+import {
+  THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE,
+  THE_KINDS_OF_A_ROLL_LINE,
+} from './the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
 
 // ── THE LINES EACH REALM READS (plan P1-12b3: P1-12's Decision 10, out of buildReports) ────
 // playerEvents works out, from the turn's events (the GM's log, as emit stores them), which of them one realm reads,
@@ -19,9 +23,13 @@ import { theStatisticsOfTheTurn } from './the-statistics-of-the-turn.ts';
 //   G        the world after the turn, with the Spy stealth's stamps
 //   pi       the realm reading
 //   sight    { presenceByPhase, battleCommanders, clairWatch }: the turn's sight facts (whatTheReportsRead)
+//   theKindOfEachLine  each line's kind, in turnLog's order (null: no fact), as the words pass hands it beside the log
+//                      (theTurnsLinesInWords' theKindOfEachStoredLine, never stored; P1-12d36): the spy and
+//                      Clairvoyance feeds pass over a line by its kind (the-kinds-of-line-the-spy-and-scrying-feeds-
+//                      pass-over.ts)
 // Returns { lastTurnLog, provinceEvents, spyActivity, spiedProvincesAndTheirFirstPhase,
 //           provincesWithABattleLineItRead, provincesItStoodOnAtSomePhase }; provinceEvents: { text, phase, provinceId }.
-export function playerEvents(turnLog, G, pi, sight) {
+export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
   const { presenceByPhase, battleCommanders, clairWatch } = sight;
   const playerOwnedProvs = new Set(G.players[pi]?.provinces || []);
   const playerCharProvs = new Set(
@@ -201,7 +209,7 @@ export function playerEvents(turnLog, G, pi, sight) {
   // ── Spy Activity — for each province this player SPIED, what OTHER realms' characters did
   // there in the phases AFTER the spy arrived (the agent's lingering line of sight). Rebuilt from
   // the resolved turnLog: entries in the spied province, at a LATER phase, attributed to a
-  // character this player does not own. Machine-format battle force markers are skipped.
+  // character this player does not own. A force drawn up for battle is passed over, by its kind (P1-12d36).
   // R-118 (Toby, 2026-10-31, question 8): the spy sees what rival heroes do there (a line with a deed, its actor) and
   // what anyone there could see (a public line: seen by the world, there or in a battle), never their realm's own news
   // (a line told to a realm with no deed: a hit-point rise, a curse felt, the plague's toll), nor a line that excepts
@@ -213,12 +221,12 @@ export function playerEvents(turnLog, G, pi, sight) {
     const afterPh = spyPhaseByProv[pid];
     const seen = new Set();
     const lines = [];
-    turnLog.forEach((e) => {
+    turnLog.forEach((e, at) => {
       if (e.provinceId !== pid) return;
       if (e.phase == null || e.phase <= afterPh) return;
       if (e.charId == null || ownCharIds.has(e.charId)) return;
       if (!aSpyThereSees(e)) return;
-      if (/^\u2691FORCE\u2691/.test(e.text || '')) return; // skip ⚑FORCE⚑ battle markers
+      if (theKindOfEachLine[at] === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE) return;
       const key = e.phase + '|' + e.text;
       if (seen.has(key)) return;
       seen.add(key);
@@ -301,20 +309,21 @@ export function playerEvents(turnLog, G, pi, sight) {
   // If this player watched an enemy character via Clairvoyance, surface everything that character
   // did (or that befell them) from the cast phase onward — filed into KINGDOM EVENTS (charId
   // null, not env), prefixed so it reads as scried intelligence. Deduped against what the player
-  // already sees, and internal battle-force markers / raw roll lines are skipped.
+  // already sees. A force drawn up for battle and the roll lines (too noisy for a scry feed) are passed over, by their
+  // kind (P1-12d36).
   {
     const _watch = clairWatch[pi];
     if (_watch && _watch.charId != null) {
       const W = _watch.charId,
         F = _watch.fromPhase || 0;
       const _seenKeys = new Set(lastTurnLog.map((e) => (e.phase == null ? 'x' : e.phase) + '|' + (e.text || '')));
-      turnLog.forEach((e) => {
+      turnLog.forEach((e, at) => {
         if (e.phase == null || e.phase < F) return;
         const aboutW = e.charId === W || (Array.isArray(e.charIds) && e.charIds.includes(W));
         if (!aboutW) return;
+        const kind = theKindOfEachLine[at];
+        if (kind === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE || THE_KINDS_OF_A_ROLL_LINE.has(kind)) return;
         const t = e.text || '';
-        if (t.startsWith('\u2691FORCE\u2691')) return; // internal battle-force marker
-        if (t.startsWith('\u{1F4CA}')) return; // 📊 raw roll lines — too noisy for a scry feed
         const key = (e.phase == null ? 'x' : e.phase) + '|' + t;
         if (_seenKeys.has(key)) return; // already visible to this player
         _seenKeys.add(key);
@@ -371,18 +380,18 @@ export function playerEvents(turnLog, G, pi, sight) {
 // over for it (whatTheReportsRead, src/engine/run-turn.ts): the slot rows, the world after the turn (the working
 // copy), the turn's log, the turn's sight and the telemetry (_tel: the realms' snapshots and the facts for the
 // statistics). It writes every line's words first (theTurnsLinesInWords, src/views/prose/: P1-12c3), and every realm's
-// lines are picked from the lines in words. Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the
+// lines are picked from the lines in words, each line's kind beside them (P1-12d36). Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the
 // slot row it is for), tel what telemetry reads (its lists built from the facts: theStatisticsOfTheTurn, P1-12d33)
 // and gmLog the GM's log of the turn in words, in its stored form, which the shell saves.
 export function buildReports(whatTheReportsRead) {
   const { freshPlayers, G, sight, _tel } = whatTheReportsRead;
-  const { gmLog: turnLog } = theTurnsLinesInWords(whatTheReportsRead.turnLog);
+  const { gmLog: turnLog, theKindOfEachStoredLine } = theTurnsLinesInWords(whatTheReportsRead.turnLog);
   const activePlayers = freshPlayers.filter((p) => p.user_id);
   const reports = [];
   for (const gp of activePlayers) {
     // Build a per-player chronicle using the structured log metadata
     const pi = gp.player_index;
-    const itsLines = playerEvents(turnLog, G, pi, sight);
+    const itsLines = playerEvents(turnLog, G, pi, sight, theKindOfEachStoredLine);
     // What the realm may see of the world (playerView), its lines of the turn (itsLines) beside it: the report reads
     // only these two.
     const view = playerView(G, pi, itsLines);

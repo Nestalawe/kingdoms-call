@@ -17,8 +17,9 @@
 // the facts of the battle's lines (theWordsOfABattlesLossesTally, the-words-of-a-battles-losses-tally.ts); the onlookers'
 // one-line summary is 's' (shown only to a realm with nothing else of the battle). The result is the GM's log
 // as it is stored (turn_logs, player index −1), in the same form as before, key for key: the shell saves it, and the
-// GM page and the player page's fallback read an old turn's lines and a new one's alike. In this run a line's words are
-// the same for every reader.
+// GM page and the player page's fallback read an old turn's lines and a new one's alike. Beside it, each stored line's
+// kind, never stored (since P1-12d36: the spy and Clairvoyance feeds pass over a line by its kind). In this run a line's
+// words are the same for every reader.
 import {
   A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   type LineFact,
@@ -217,11 +218,13 @@ export function theWordsOf(fact: LineFact): string {
   return words(fact);
 }
 
-/** The GM's log of the turn with every line's words, as it is stored and as the realms' lines are read from it; and
- *  the words of each line of the engine's log, in its order (null: a battle's tally place left empty, which is no
- *  line). */
+/** The GM's log of the turn with every line's words, as it is stored and as the realms' lines are read from it; the
+ *  kind of each of its lines, in its order, beside it and never stored (null: a line with no fact; plan P1-12d36: the
+ *  spy and Clairvoyance feeds pass over a line by its kind); and the words of each line of the engine's log, in its
+ *  order (null: a battle's tally place left empty, which is no line). */
 export interface TheTurnsLinesInWords {
   gmLog: LogLine[];
+  theKindOfEachStoredLine: (LineFact['kind'] | null)[];
   wordsOfEachLine: (string | null)[];
 }
 
@@ -289,6 +292,11 @@ function asStored(line: LogLine, text: string | null, tier?: string): LogLine {
  *  casualty lists begin (else after its lines, or nowhere when there is none to tally). */
 export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLinesInWords {
   const gmLog: LogLine[] = [];
+  const theKindOfEachStoredLine: (LineFact['kind'] | null)[] = [];
+  const stored = (line: LogLine, text: string | null, tier?: string) => {
+    gmLog.push(asStored(line, text, tier));
+    theKindOfEachStoredLine.push(line.fact?.kind ?? null);
+  };
   const wordsOfEachLine: (string | null)[] = turnLog.map(() => null);
   const wordsOfLine = (line: LogLine): string | null => (line.fact === undefined ? line.text : theWordsOf(line.fact));
   // A battle's lines, as emitBattle files them one after the other, each with its index in the engine's log.
@@ -301,14 +309,14 @@ export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLines
     let tallyWritten = false;
     const theTally = () => {
       if (!tallysPlace || !tally || tallyWritten) return;
-      gmLog.push(asStored(tallysPlace.line, tally, 't'));
+      stored(tallysPlace.line, tally, 't');
       wordsOfEachLine[tallysPlace.at] = tally;
       tallyWritten = true;
     };
     battlesLines.forEach(({ at, line }, k) => {
       if (k === whereTheCasualtyListsBegin) theTally();
       const words = texts[k] ?? null;
-      gmLog.push(asStored(line, words, tiers[k]));
+      stored(line, words, tiers[k]);
       wordsOfEachLine[at] = words;
     });
     theTally();
@@ -329,13 +337,14 @@ export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLines
     theBattlesLinesWritten(null);
     if (line.fact === undefined) {
       gmLog.push(line);
+      theKindOfEachStoredLine.push(null);
       wordsOfEachLine[at] = line.text;
       return;
     }
     const words = theWordsOf(line.fact);
-    gmLog.push(asStored(line, words));
+    stored(line, words);
     wordsOfEachLine[at] = words;
   });
   theBattlesLinesWritten(null);
-  return { gmLog, wordsOfEachLine };
+  return { gmLog, theKindOfEachStoredLine, wordsOfEachLine };
 }
