@@ -129,7 +129,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 
 ### The items' registry
 
-A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
+A **magic item's effect** (from P1-19m) is one row in
 `src/content/magic-item-effects-their-names-numbers-and-words.ts` and one entry in
 `src/engine/rules/the-registry-of-magic-item-effects.ts`, keyed by the same slug (`'cavalry-bonus'`); its effects are in
 `src/engine/rules/magic-items/`, a file per group of stages. Its stages are the hook points' own (one union,
@@ -150,7 +150,7 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   force: handed the unit's type, its quality, whether it is skeletal and the realm's alignment, each effect returns a
   step (strength added, or a multiplier, and for the Kraken Figurehead's step up a tier the tier's multiplier it is
   divided by), and the runner applies them in the stage's order, each rounded as it goes (the ladder records their sum,
-  one line): ten items, from the Battle Standard's +2 to the Black Sceptre, in the stage's order. And `strength`'s **a land unit at sea, led** (the Tide-Caller's Horn: whether the sea's penalty to a land
+  one line): ten items. And `strength`'s **a land unit at sea, led** (the Tide-Caller's Horn: whether the sea's penalty to a land
   unit the bearer leads is waived; `armStr` asks it beside Naval's eighth level).
 - **The battles' stages** (P1-19n, `magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts`):
   `strength`'s **the defenders' fortifications** (both battles, after the province's and the realm's own bonuses):
@@ -172,7 +172,9 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   Philosopher's Lens: the order still draws which lair), **a rest's heal** (the Iron Heart Talisman: a tenth of his
   maximum, rounded, once however many he carries), **a move's exploration** (the Traveller's Cloak: the copy's own
   `exploreMove`, every item's added) and **an item's power used** (an older save's Philosopher's Stone, `massPromote`:
-  the Use Item order and the bots' plan both ask it, and the order does the promoting).
+  the Use Item order and the bots' plan both ask it, and the order does the promoting). `visibility`'s **a hero's items
+  hide his face** (P1-19am, `magic-items/a-heros-items-in-what-a-realm-sees.ts`: an older save's Cloak of Many Faces),
+  for `isHiddenChar`, the Spy order and the Encounter.
 - **A hero's standing's stages** (P1-19p, `magic-items/a-heros-items-in-his-standing.ts`): `aHerosStanding`'s **maximum
   HP** (`itemMaxHpBonus`: handed each held copy, the Amulet of Fortitude and its kin give the copy's own `effect.bonus`;
   the runner counts two copies of one name once; `applyItemMaxHp` asks whether an item granted or lost carries an effect
@@ -215,11 +217,11 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   `theWorthOfItInTheTreasury`; a key no row holds stays `equipment.ts`'s. `itemSlot` reads content's keys.
 - **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
   desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
-  unit, since the items in play exist only after the engine's load-time pass; the known gaps listed with their Parked
+  the known gaps listed with their Parked
   entries); no item effect key or item named, no item field of its own and no ward's field read, in a function the
   registry has taken (`tests/static/the-resolvers-the-item-registry-has-taken-name-no-item-effect.test.ts`), and,
   outside the registry, the ratchet's `itemEffectChecksInEngine`, which only falls; the effects no matrix game meets, by
-  a case each: the commander's items, the battles' (a whole turn each, in `tests/scenario/`), the orders' (their orders'
+  a case each: the commander's items, the battles', the orders' (their orders'
   cases), a hero's standing (the hit points' and skills' cases, and the portal's parity test on the Crown; the temper
   items by the matrix alone), what a fighter wears, what a ward does, and the combat items, a steal, a blow and a
   guardian's hoard (`tests/unit/the-combat-item-and-guardian-lines-no-matrix-game-reaches-keep-their-values.test.ts`);
