@@ -12,6 +12,7 @@ import {
   notifyProvinceOwner,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../turn/events-and-their-audiences.ts';
 import { blessWardNegates } from '../../magic/plague-and-bless-ward.ts';
 import { resolveUnitGainInProvince } from '../../battle/hosts-gained-in-a-province.ts';
@@ -38,6 +39,7 @@ export function workEarthquake({ turnContext, G, c, ph, targetProv }: TheNamesAn
       fact: { kind: 'Earthquake is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -52,6 +54,7 @@ export function workEarthquake({ turnContext, G, c, ph, targetProv }: TheNamesAn
       seen: 'battle',
     },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetProv.id,
     env: true,
   });
@@ -80,6 +83,7 @@ export function workFlood({ turnContext, G, c, ph, targetProv }: TheNamesAnActio
       fact: { kind: 'Flood is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -89,6 +93,7 @@ export function workFlood({ turnContext, G, c, ph, targetProv }: TheNamesAnActio
       fact: { kind: 'Flood is cast on the sea', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -108,6 +113,7 @@ export function workFlood({ turnContext, G, c, ph, targetProv }: TheNamesAnActio
       seen: 'battle',
     },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetProv.id,
     env: true,
   });
@@ -130,6 +136,7 @@ export function workElementalSummon({ turnContext, G, c, ph, prov }: TheNamesAnA
       fact: { kind: 'a hero has already summoned an elemental this turn', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -170,7 +177,12 @@ export function workElementalSummon({ turnContext, G, c, ph, prov }: TheNamesAnA
       elementalName: pick.unitName,
       elementalType: pick.type,
     },
-    { audience: { actor: c.player }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, province: prov.id },
+    {
+      audience: { actor: c.player },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+      province: prov.id,
+    },
   );
   resolveUnitGainInProvince(turnContext, c, prov, ph);
 
@@ -185,6 +197,7 @@ export function workChainLightning({ turnContext, c, ph, prov, targetChar }: The
       fact: { kind: 'Chain Lightning finds no enemy hero in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -194,6 +207,7 @@ export function workChainLightning({ turnContext, c, ph, prov, targetChar }: The
       fact: { kind: "Chain Lightning cannot be turned on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -204,6 +218,7 @@ export function workChainLightning({ turnContext, c, ph, prov, targetChar }: The
       fact: { kind: 'Chain Lightning finds no troops to strike', targetName: targetChar.name },
       audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       heroes: [c.id, targetChar.id].filter((v) => asItsGuardReadsIt(v) != null),
       province: prov.id,
     });
@@ -220,6 +235,7 @@ export function workChainLightning({ turnContext, c, ph, prov, targetChar }: The
       },
       audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       heroes: [c.id, targetChar.id].filter((v) => asItsGuardReadsIt(v) != null),
       province: prov.id,
     });
@@ -246,6 +262,7 @@ export function workChainLightning({ turnContext, c, ph, prov, targetChar }: The
     },
     audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   notifyTarget(
@@ -285,6 +302,7 @@ export function workCataclysm({
       fact: { kind: 'Cataclysm is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -321,6 +339,7 @@ export function workCataclysm({
     },
     audience: { actor: c.player, realms: [..._ccVictims], seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetProv.id,
   });
   notifyProvinceOwner(

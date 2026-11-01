@@ -20,6 +20,7 @@ import {
   logSplit,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../turn/events-and-their-audiences.ts';
 import { effStat, recalcHeroPay } from '../../heroes/effective-skills-and-hidden-heroes.ts';
 import { setMovePool } from '../../units/movement-pools.ts';
@@ -77,6 +78,7 @@ export function charmBacklash(
     },
     audience: { actor: caster.player, realms: [caster.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   if (roll > CHARM_BACKLASH_PCT) return;
@@ -99,6 +101,7 @@ export function charmBacklash(
       },
       audience: { actor: caster.player, realms: targetsPi },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       heroes: [caster.id, t.id],
     });
@@ -124,6 +127,7 @@ export function charmBacklash(
     },
     audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
     heroes: _duelChars,
   });
@@ -144,6 +148,7 @@ export function charmBacklash(
       type: 'combat',
       audience: { actor: caster.player, realms: targetsPi },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       heroes: _duelChars,
     });
@@ -159,6 +164,7 @@ export function charmBacklash(
         fact: _garrethEscapeLine(t),
         audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
         heroes: _duelChars,
       });
@@ -176,6 +182,7 @@ export function charmBacklash(
         {
           audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
           heroes: _duelChars,
         },
@@ -192,6 +199,7 @@ export function charmBacklash(
         fact: _garrethEscapeLine(caster),
         audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
         heroes: _duelChars,
       });
@@ -209,6 +217,7 @@ export function charmBacklash(
         {
           audience: { actor: caster.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
           heroes: _duelChars,
         },
@@ -227,6 +236,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       fact: { kind: 'Charm finds no hero to sway in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -236,6 +246,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       fact: { kind: "Charm cannot be used on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -245,6 +256,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       fact: { kind: 'Charm cannot sway a king' },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -259,6 +271,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       fact: { kind: 'a Charm slides off a mind lately swayed', heroName: c.name, targetName: t.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     charmBacklash(turnContext, prov, c, t, { kind: 'the mind is closed to enchantment this season' });
@@ -279,6 +292,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     if (_rr <= t._charmResist) {
@@ -287,6 +301,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
         fact: { kind: 'a Charm breaks against a mind swayed before', heroName: c.name, targetName: t.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       if (t.player != null)
@@ -295,6 +310,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
           fact: { kind: 'a hero throws off an enchantment', targetName: t.name },
           audience: { actor: t.player, realms: [t.player] },
           hero: t.id,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       charmBacklash(turnContext, prov, c, t, { kind: 'the Charm was resisted' });
@@ -320,6 +336,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   };
@@ -332,6 +349,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       fact: { kind: 'a Charm finds no living mind to sway', heroName: c.name, targetName: t.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -343,6 +361,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       fact: { kind: 'a Charm cannot grip a hero leading troops', heroName: c.name, targetName: t.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -380,6 +399,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
         fact: { kind: 'a Charm finds a hero just dismissed unmoved', heroName: c.name, targetName: t.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return false;
     }
@@ -402,6 +422,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return false;
     }
@@ -426,6 +447,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     _charmIntel(t); // 2026-09-18
@@ -441,6 +463,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
   } else {
     // Enemy hero leading no armies — command seized for the REST OF THE TURN. Implemented
@@ -475,6 +498,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     _charmIntel(t); // 2026-09-18
@@ -488,6 +512,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
       // told to his realm, with no deed: its own news, which a spy in the province doesn't read (R-118)
       audience: { realms: [_origOwner] },
       hero: t.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -507,6 +532,7 @@ export function workOratory({ turnContext, c, prov, targetChar }: TheNamesAnActi
       fact: { kind: "Oratory cannot stir another realm's troops", heroName: c.name, targetName: targetChar.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return false;
@@ -525,6 +551,7 @@ export function workOratory({ turnContext, c, prov, targetChar }: TheNamesAnActi
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: c.location,
   });
 
@@ -560,6 +587,7 @@ export function workClairvoyance({
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         spy: true,
         province: bodyLoc,
       });
@@ -570,6 +598,7 @@ export function workClairvoyance({
       fact: { kind: 'Clairvoyance needs a hero to watch' },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -585,6 +614,7 @@ export function workClairvoyance({
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: c.location,
     });
     return false;
@@ -631,6 +661,7 @@ export function workClairvoyance({
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     spy: true,
     province: targetChar.location,
   });
@@ -646,6 +677,7 @@ export function workPsychicBlast({ turnContext, c, ph, prov, targetChar }: TheNa
       fact: { kind: 'Psychic Blast finds no hero in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -655,6 +687,7 @@ export function workPsychicBlast({ turnContext, c, ph, prov, targetChar }: TheNa
       fact: { kind: "Psychic Blast cannot be turned on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -682,6 +715,7 @@ export function workPsychicBlast({ turnContext, c, ph, prov, targetChar }: TheNa
       },
       audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       heroes: [c.id, targetChar.id].filter((v) => asItsGuardReadsIt(v) != null),
       province: prov.id,
     });
@@ -697,6 +731,7 @@ export function workPsychicBlast({ turnContext, c, ph, prov, targetChar }: TheNa
     },
     audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   notifyTarget(
@@ -750,6 +785,7 @@ export function workTelekineticStorm({
       fact: { kind: 'Telekinetic Storm finds no hero in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -759,6 +795,7 @@ export function workTelekineticStorm({
       fact: { kind: "Telekinetic Storm cannot be turned on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -769,6 +806,7 @@ export function workTelekineticStorm({
       fact: { kind: 'a Telekinetic Storm finds no armies to scatter', targetName: targetChar.name },
       audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       heroes: [c.id, targetChar.id].filter((v) => asItsGuardReadsIt(v) != null),
       province: prov.id,
     });
@@ -823,6 +861,7 @@ export function workTelekineticStorm({
     },
     audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   notifyTarget(
@@ -851,6 +890,7 @@ export function workMassConfusion({ turnContext, G, c, ph, prov, targetChar }: T
       fact: { kind: 'Mass Confusion finds no enemy hero in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -860,6 +900,7 @@ export function workMassConfusion({ turnContext, G, c, ph, prov, targetChar }: T
       fact: { kind: "Mass Confusion cannot be turned on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -869,6 +910,7 @@ export function workMassConfusion({ turnContext, G, c, ph, prov, targetChar }: T
     fact: { kind: "Mass Confusion is sown through a hero's ranks", heroName: c.name, targetName: targetChar.name },
     audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   notifyTarget(
@@ -890,6 +932,7 @@ export function workDominate({ turnContext, G, c, ph, prov, targetChar }: TheNam
       fact: { kind: 'Dominate finds no enemy hero in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -899,6 +942,7 @@ export function workDominate({ turnContext, G, c, ph, prov, targetChar }: TheNam
       fact: { kind: "Dominate cannot be turned on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -909,6 +953,7 @@ export function workDominate({ turnContext, G, c, ph, prov, targetChar }: TheNam
       fact: { kind: 'Dominate finds no troops to turn', heroName: c.name, targetName: targetChar.name },
       audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null) },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       heroes: [c.id, targetChar.id].filter((v) => asItsGuardReadsIt(v) != null),
       province: prov.id,
     });
@@ -942,6 +987,7 @@ export function workDominate({ turnContext, G, c, ph, prov, targetChar }: TheNam
     {
       audience: { actor: c.player },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       alsoNotFor: [targetChar.player],
     },

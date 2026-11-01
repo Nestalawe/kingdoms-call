@@ -17,6 +17,7 @@ import {
   notifyProvinceOwner,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../turn/events-and-their-audiences.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
 import { blessWardNegates } from '../../magic/plague-and-bless-ward.ts';
@@ -67,6 +68,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -83,6 +85,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return false;
     }
@@ -96,6 +99,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return false;
     }
@@ -105,6 +109,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       fact: { kind: 'a fallen king cannot be resurrected', heroName: c.name, fallenName: grave.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   } else if (graveServedOther(grave, c.player)) {
@@ -118,6 +123,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -127,6 +133,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       fact: { kind: 'a fallen hero has already been raised this turn', heroName: c.name, fallenName: grave.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -137,6 +144,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       fact: { kind: "a fallen hero's spirit cannot be found", heroName: c.name, fallenName: grave.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -146,6 +154,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       fact: { kind: 'kings cannot be resurrected', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -179,6 +188,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
         },
         audience: { actor: grave.player, realms: [grave.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -207,6 +217,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       },
       audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   } else {
@@ -221,6 +232,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       },
       audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -258,6 +270,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
     }
     // Step 3 of order ingestion only defaults LIVING characters to Defend, and this hero
@@ -293,6 +306,7 @@ export function workPartSea({ turnContext, G, c, ph, targetProv }: TheNamesAnAct
       fact: { kind: 'Part Sea is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -308,6 +322,7 @@ export function workPartSea({ turnContext, G, c, ph, targetProv }: TheNamesAnAct
       fact: { kind: 'the waters of a province draw back', heroName: c.name, provinceName: targetProv.name },
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: targetProv.id,
       env: true,
     });
@@ -333,6 +348,7 @@ export function workPartSea({ turnContext, G, c, ph, targetProv }: TheNamesAnAct
       fact: { kind: 'Part Sea finds no sea to part', heroName: c.name, provinceName: targetProv.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: targetProv.id,
       env: true,
     });
@@ -357,6 +373,7 @@ export function workHolySymbol({ turnContext, G, c, ph, prov }: TheNamesAnAction
       fact: { kind: 'the Holy Symbol finds no dead to cleanse', heroName: c.name, provinceName: _hsProv.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: _hsProv.id,
     });
   } else {
@@ -393,6 +410,7 @@ export function workBlessProvince({ turnContext, G, c, targetProv }: TheNamesAnA
       fact: { kind: 'Bless Province is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -402,6 +420,7 @@ export function workBlessProvince({ turnContext, G, c, targetProv }: TheNamesAnA
       fact: { kind: 'a province is already blessed this turn', heroName: c.name, provinceName: targetProv.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -437,6 +456,7 @@ export function workBlessProvince({ turnContext, G, c, targetProv }: TheNamesAnA
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetProv.id,
     env: true,
   });
@@ -458,6 +478,7 @@ export function workSanctuary({ turnContext, G, c, ph, targetProv }: TheNamesAnA
       fact: { kind: 'Sanctuary is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -468,6 +489,7 @@ export function workSanctuary({ turnContext, G, c, ph, targetProv }: TheNamesAnA
     fact: { kind: 'a Sanctuary is raised over a province', heroName: c.name, provinceName: targetProv.name },
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetProv.id,
   });
   notifyProvinceOwner(
@@ -501,6 +523,7 @@ export function workDivineJudgment({
       fact: { kind: 'Divine Judgment finds no enemy hero in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -510,6 +533,7 @@ export function workDivineJudgment({
       fact: { kind: "Divine Judgment cannot be turned on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -532,6 +556,7 @@ export function workDivineJudgment({
     },
     audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   notifyTarget(

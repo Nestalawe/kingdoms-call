@@ -26,7 +26,12 @@ import {
   whatARealmsDiscoveriesAddToTheCorpseCartersCost,
   type ARealmAsTheDiscoveriesReadIt,
 } from '../rules/the-registry-of-discovery-effects.ts';
-import { emit, logSplit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  logSplit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
@@ -99,6 +104,7 @@ export function resolveConsecrateOrder(
       fact: { kind: 'only the king can consecrate ground', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -108,6 +114,7 @@ export function resolveConsecrateOrder(
       fact: { kind: 'the gods answer a consecration only from a Divine crown', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -118,6 +125,7 @@ export function resolveConsecrateOrder(
       fact: { kind: 'only a province of the realm can be consecrated', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -135,6 +143,7 @@ export function resolveConsecrateOrder(
       fact: { kind: 'the home marches were anointed at the coronation', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -145,6 +154,7 @@ export function resolveConsecrateOrder(
       fact: { kind: 'the province is already consecrated', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -165,6 +175,7 @@ export function resolveConsecrateOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -181,6 +192,7 @@ export function resolveConsecrateOrder(
       fact: { kind: 'consecration flows from the White arts', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -196,6 +208,7 @@ export function resolveConsecrateOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -213,6 +226,7 @@ export function resolveConsecrateOrder(
     },
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
     env: true,
   });
@@ -236,6 +250,7 @@ export function resolveCallToArmsOrder(
       fact: { kind: "only a Good realm's folk answer a Call to Arms", heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -245,6 +260,7 @@ export function resolveCallToArmsOrder(
       fact: { kind: "only the king's voice carries the Call to Arms", heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -254,6 +270,7 @@ export function resolveCallToArmsOrder(
       fact: { kind: 'the realm has already answered a Call to Arms this turn', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -264,6 +281,7 @@ export function resolveCallToArmsOrder(
       fact: { kind: 'a Call to Arms must name a province of the realm', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -277,6 +295,7 @@ export function resolveCallToArmsOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -316,6 +335,7 @@ export function resolveCallToArmsOrder(
     fact: { kind: 'the folk answer a Call to Arms', provinceName: ctaProv.name, quality: _ctaQ, unitType: ctaType },
     audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: ctaProv.id,
   });
   return;
@@ -339,6 +359,7 @@ export function resolveBrokerOrder(
       fact: { kind: 'only a Neutral crown keeps brokers', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -348,6 +369,7 @@ export function resolveBrokerOrder(
       fact: { kind: "only the king commands the realm's brokers", heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -363,6 +385,7 @@ export function resolveBrokerOrder(
         fact: { kind: 'the brokers find no such hero within reach', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -372,6 +395,7 @@ export function resolveBrokerOrder(
         fact: { kind: 'a hero just released from service hears no offers this turn', heroName: bh.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     } // same rule as Hire Hero
@@ -389,6 +413,7 @@ export function resolveBrokerOrder(
         fact: { kind: 'a hero will not treat with the brokers across the alignment gulf', heroName: bh.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -398,6 +423,7 @@ export function resolveBrokerOrder(
         fact: { kind: 'a king cannot afford a brokered hero', heroName: c.name, wantedName: bh.name, wage: bWage },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -439,6 +465,7 @@ export function resolveBrokerOrder(
       fact: _brokerFact,
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: bhProv.id,
     });
     // mirror into the brokered hero's own Chronicle section at the hire phase.
@@ -463,6 +490,7 @@ export function resolveBrokerOrder(
         fact: { kind: 'the brokers reach only provinces the realm has seen', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -472,6 +500,7 @@ export function resolveBrokerOrder(
         fact: { kind: 'the treasury cannot pay for brokered word', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -481,6 +510,7 @@ export function resolveBrokerOrder(
       fact: { kind: 'the brokers buy word from a province', heroName: c.name, provinceName: sp2.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     applySpySuccess(turnContext, c, sp2);
   } else {
@@ -489,6 +519,7 @@ export function resolveBrokerOrder(
       fact: { kind: 'a Broker order names no target', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   }
   return;
@@ -509,6 +540,7 @@ export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   return;
 }
@@ -541,6 +573,7 @@ export function resolveHarvestTheFieldOrder(
       fact: { kind: 'only Undead realms keep corpse-carters', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -552,6 +585,7 @@ export function resolveHarvestTheFieldOrder(
       fact: { kind: 'no battlefield dead lie here to raise', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -562,6 +596,7 @@ export function resolveHarvestTheFieldOrder(
       fact: { kind: 'the treasury cannot pay the corpse-carters', heroName: c.name, cost: _hCost },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -593,6 +628,7 @@ export function resolveHarvestTheFieldOrder(
     },
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   // Harvest the Field is the ONE way to raise the dead without any Necromancy — an Undead
@@ -610,6 +646,7 @@ export function resolveHarvestTheFieldOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   resolveUnitGainInProvince(turnContext, c, prov, ph);
@@ -628,6 +665,7 @@ export function resolveAwakenGroveOrder(
       fact: { kind: 'a hero lacks the Druid mastery to Awaken a Grove', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -639,6 +677,7 @@ export function resolveAwakenGroveOrder(
       fact: { kind: 'Awaken Grove works only in an owned forest, jungle or wild province', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -662,7 +701,12 @@ export function resolveAwakenGroveOrder(
       realmName: aRealmsNameOrNone(turnContext.G.players, c.player),
       provinceName: prov.name,
     },
-    { audience: { actor: c.player }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, province: prov.id },
+    {
+      audience: { actor: c.player },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+      province: prov.id,
+    },
   );
   resolveUnitGainInProvince(turnContext, c, prov, ph);
   trySkillGain(turnContext, c, 'druid', SKILLGAIN_STD);
@@ -688,6 +732,7 @@ export function resolveWildCallingOrder(
       fact: { kind: 'a hero lacks the Druid mastery to sound a Wild Calling', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -737,6 +782,7 @@ export function resolveWildCallingOrder(
         audience: { actor: o.player, realms: [o.player] },
         province: prov.id,
         hero: o.id,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       if (typeof refreshMovePool === 'function') refreshMovePool(turnContext, o);
     }
@@ -747,6 +793,7 @@ export function resolveWildCallingOrder(
       fact: { kind: 'nothing wild stands here to answer a Wild Calling', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -762,6 +809,7 @@ export function resolveWildCallingOrder(
       },
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     trySkillGain(turnContext, c, 'druid', SKILLGAIN_STD);
@@ -786,7 +834,12 @@ export function resolveWildCallingOrder(
       provinceName: prov.name,
       won: _wcWon.length,
     },
-    { audience: { actor: c.player }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, province: prov.id },
+    {
+      audience: { actor: c.player },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+      province: prov.id,
+    },
   );
   if (typeof refreshMovePool === 'function') refreshMovePool(turnContext, c);
   resolveUnitGainInProvince(turnContext, c, prov, ph);
@@ -802,6 +855,7 @@ export function resolveGrandDesignOrder(turnContext: TurnContext, c: Character, 
       fact: { kind: 'a hero lacks the Sage mastery to realise a Grand Design', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -817,6 +871,7 @@ export function resolveGrandDesignOrder(turnContext: TurnContext, c: Character, 
       fact: { kind: 'the realm has already completed its Grand Design', realmName: player.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -855,6 +910,7 @@ export function resolveGrandDesignOrder(turnContext: TurnContext, c: Character, 
     },
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);

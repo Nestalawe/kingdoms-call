@@ -70,7 +70,11 @@ import {
   resolveRampageOrder,
   resolveSnipersMarkOrder,
 } from './war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { botPracticeSkill } from '../bots/strategy.ts';
 import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
 import { thePowerAnItemWorksWhenUsed } from '../rules/the-registry-of-magic-item-effects.ts';
@@ -211,6 +215,7 @@ export function processOrder(
       fact: { kind: 'a hero too badly hurt to face another guardian rests instead', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: c.location,
     });
     action = 'rest';
@@ -238,6 +243,7 @@ export function processOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: c.location,
       });
       action = 'rest';
@@ -266,6 +272,7 @@ export function processOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: c.location,
     });
     action = 'rest';
@@ -342,6 +349,7 @@ export function processOrder(
         fact: { kind: 'a charmed hero will not carry out an order of his captor', heroName: c.name, action },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       turnContext._logCtx = { charId: null, phase: null };
       return;
@@ -359,6 +367,7 @@ export function processOrder(
         fact: { kind: 'a hero has already used a mastery this turn', heroName: c.name, action },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       turnContext._logCtx = { charId: null, phase: null };
       return;
@@ -376,6 +385,7 @@ export function processOrder(
         fact: { kind: 'a hero lacks the March mastery for a Forced March', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       turnContext._logCtx = { charId: null, phase: null };
       return;

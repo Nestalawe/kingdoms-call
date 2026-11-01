@@ -3,7 +3,12 @@ import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { whatARealmsDiscoveriesAddToAConquestsPlunder } from '../rules/the-registry-of-discovery-effects.ts';
-import { emit, recordForTheStatistics, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  recordForTheStatistics,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { AUnitThatRoseAsTheLineNamesIt } from './the-facts-relations-and-captures-lines-record.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
@@ -113,7 +118,7 @@ export function breakConsecrationOnCapture(
     audience: { actor: newOwner, realms: [newOwner] },
     province: prov.id,
     hero: byChar.id,
-    phase: _ph,
+    phase: _ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
 }
 export function setProvinceOwner(
@@ -268,6 +273,7 @@ export function applyEvilConquest(
       },
       audience: { actor: cc.player, realms: [cc.player], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   } else {
@@ -281,6 +287,7 @@ export function applyEvilConquest(
         },
         audience: { actor: cc.player, realms: [cc.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     const loot = Math.floor(
@@ -300,6 +307,7 @@ export function applyEvilConquest(
         },
         audience: { actor: cc.player, realms: [cc.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }

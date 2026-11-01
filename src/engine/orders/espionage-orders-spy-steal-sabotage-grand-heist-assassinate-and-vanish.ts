@@ -17,7 +17,12 @@ import {
   whatARealmsDiscoveriesAddToSpyingOnAHero,
   whatARealmsDiscoveriesCutARivalSpysChanceBy,
 } from '../rules/the-registry-of-discovery-effects.ts';
-import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  emitNarrLine,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import {
@@ -92,6 +97,7 @@ export function thiefCaughtScuffle(
       },
       audience: { actor: thief.player, realms: targetsPi },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       heroes: [thief.id, victim.id],
     });
@@ -109,6 +115,7 @@ export function thiefCaughtScuffle(
       },
       audience: { actor: thief.player, realms: targetsPi },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       heroes: [thief.id, victim.id],
     });
@@ -136,6 +143,7 @@ export function thiefCaughtScuffle(
     },
     audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
     heroes: _duelChars,
   });
@@ -156,6 +164,7 @@ export function thiefCaughtScuffle(
       type: 'combat',
       audience: { actor: thief.player, realms: targetsPi },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       heroes: _duelChars,
     });
@@ -171,6 +180,7 @@ export function thiefCaughtScuffle(
         fact: _garrethEscapeLine(thief),
         audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
         heroes: _duelChars,
       });
@@ -183,6 +193,7 @@ export function thiefCaughtScuffle(
         {
           audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
           heroes: _duelChars,
         },
@@ -199,6 +210,7 @@ export function thiefCaughtScuffle(
         fact: _garrethEscapeLine(victim),
         audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
         heroes: _duelChars,
       });
@@ -216,6 +228,7 @@ export function thiefCaughtScuffle(
         {
           audience: { actor: thief.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
           heroes: _duelChars,
         },
@@ -313,6 +326,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -329,6 +343,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -364,6 +379,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     if (_ok) {
@@ -411,6 +427,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
         spy: true,
       });
@@ -425,6 +442,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       trySkillGain(turnContext, c, 'spy', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
@@ -453,6 +471,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       if (_cr <= _catch) {
@@ -469,6 +488,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
             audience: { actor: c.player, realms: [_tgt.player] },
             province: prov.id,
             hero: _tgt.id,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         thiefCaughtScuffle(turnContext, prov, c, _tgt, { kind: 'caught spying on a hero' });
       }
@@ -478,6 +498,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
         fact: { kind: 'a spy slips away unseen as The Shadow', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     return;
@@ -508,6 +529,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   // Disguise Techniques: 50% HARDER to be discovered — the counter-intelligence alert
@@ -530,6 +552,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -543,6 +566,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
       fact: { kind: "a spy's espionage in a province yields little", heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     trySkillGain(turnContext, c, 'spy', SKILLGAIN_COMMON);
   } // batch item 11: a failed attempt is a small chance to learn
@@ -574,6 +598,7 @@ export function resolveStealOrder(
       fact: { kind: 'a hero with no Thief skill cannot steal', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -593,6 +618,7 @@ export function resolveStealOrder(
         fact: { kind: 'a thief finds no enemy paymaster to rob', heroName: c.name, provinceName: prov.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -613,6 +639,7 @@ export function resolveStealOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     if (roll <= chance) {
@@ -636,6 +663,7 @@ export function resolveStealOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       if (take > 0)
@@ -650,6 +678,7 @@ export function resolveStealOrder(
           },
           audience: { actor: c.player, realms: [prov.owner] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
@@ -666,6 +695,7 @@ export function resolveStealOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       emit(turnContext, {
@@ -678,6 +708,7 @@ export function resolveStealOrder(
         },
         audience: { actor: c.player, realms: [prov.owner] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else
@@ -686,6 +717,7 @@ export function resolveStealOrder(
         fact: { kind: "a thief's attempt on a paymaster fails unnoticed", heroName: c.name, provinceName: prov.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     if (roll > chance) trySkillGain(turnContext, c, 'thief', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
@@ -706,6 +738,7 @@ export function resolveStealOrder(
       fact: { kind: 'a thief finds no target to steal from', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -715,6 +748,7 @@ export function resolveStealOrder(
       fact: { kind: 'a thief will not rob a comrade', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -724,6 +758,7 @@ export function resolveStealOrder(
       fact: { kind: "a thief reaches for a vanished hero's purse", heroName: c.name, victimName: victim.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -740,6 +775,7 @@ export function resolveStealOrder(
       fact: { kind: 'a thief finds nothing worth stealing on a hero', heroName: c.name, victimName: victim.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -762,6 +798,7 @@ export function resolveStealOrder(
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   if (stealRoll <= stealChance) {
@@ -777,6 +814,7 @@ export function resolveStealOrder(
           fact: { kind: "a thief picks a hero's empty purse", heroName: c.name, victimName: victim.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       } else {
@@ -796,6 +834,7 @@ export function resolveStealOrder(
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         emit(turnContext, {
@@ -810,6 +849,7 @@ export function resolveStealOrder(
           audience: { actor: c.player, realms: [victim.player] },
           province: prov.id,
           hero: victim.id,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       }
     } else {
@@ -820,6 +860,7 @@ export function resolveStealOrder(
           fact: { kind: "a master thief's own pockets cannot be picked", heroName: c.name, victimName: victim.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       } else {
@@ -837,6 +878,7 @@ export function resolveStealOrder(
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         emit(turnContext, {
@@ -847,6 +889,7 @@ export function resolveStealOrder(
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         }); // item 10
         if (victim.player !== null)
@@ -862,6 +905,7 @@ export function resolveStealOrder(
             audience: { actor: c.player, realms: [victim.player] },
             province: prov.id,
             hero: victim.id,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
       }
     }
@@ -879,6 +923,7 @@ export function resolveStealOrder(
         fact: { kind: "a thief's attempt on a hero fails unnoticed", heroName: c.name, victimName: victim.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     trySkillGain(turnContext, c, 'thief', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
   }
@@ -893,6 +938,7 @@ export function resolveSabotageOrder(turnContext: TurnContext, c: Character, tar
       fact: { kind: 'a hero lacks the Spy mastery to attempt Sabotage', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -903,6 +949,7 @@ export function resolveSabotageOrder(turnContext: TurnContext, c: Character, tar
       fact: { kind: 'Sabotage needs an enemy province the hero has seen', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -916,6 +963,7 @@ export function resolveSabotageOrder(turnContext: TurnContext, c: Character, tar
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -930,6 +978,7 @@ export function resolveSabotageOrder(turnContext: TurnContext, c: Character, tar
     fact: { kind: "a spy's agents sabotage a province", heroName: c.name, provinceName: tp.name, torchedCompany },
     audience: { actor: c.player, realms: [c.player, tp.owner].filter((x) => x != null) },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: tp.id,
   });
   TM(c).spyActions = (TM(c).spyActions || 0) + 1; // TITLE MERIT: Spymaster
@@ -964,6 +1013,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
       fact: { kind: 'a hero lacks the Thief mastery for a Grand Heist', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -973,6 +1023,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
       fact: { kind: 'a thief has already attempted a Grand Heist this turn', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -984,6 +1035,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
       fact: { kind: 'a Grand Heist needs ground a rival crown holds', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -998,6 +1050,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -1016,6 +1069,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -1047,6 +1101,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   if (_hRoll <= _hChance) {
@@ -1107,6 +1162,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
       fact: { kind: 'a thief pulls off a Grand Heist', heroName: c.name, provinceName: prov.name, haul },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     if (_heistItem) {
@@ -1117,6 +1173,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
           fact: { kind: 'a thief notes how he carries what he took', theItemsHeGained: _gn },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
     } // item 10
@@ -1131,6 +1188,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
       },
       audience: { actor: c.player, realms: [vp] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);
@@ -1143,6 +1201,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
         fact: { kind: 'a Grand Heist comes to nothing unnoticed', heroName: c.name, provinceName: prov.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -1167,6 +1226,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       emit(turnContext, {
@@ -1179,6 +1239,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
         },
         audience: { actor: c.player, realms: [vp] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -1199,6 +1260,7 @@ export function resolveAssassinateOrder(
       fact: { kind: 'a hero lacks the Spy mastery to Assassinate', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -1218,6 +1280,7 @@ export function resolveAssassinateOrder(
       fact: { kind: 'a hero finds no enemy hero to assassinate', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -1232,6 +1295,7 @@ export function resolveAssassinateOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -1246,6 +1310,7 @@ export function resolveAssassinateOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -1270,6 +1335,7 @@ export function resolveAssassinateOrder(
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     heroes: [c.id, victim.id].filter((v: number | null | undefined) => v != null), // ids guarded as if missing
     province: prov.id,
   });
@@ -1283,6 +1349,7 @@ export function resolveAssassinateOrder(
       },
       audience: { actor: victim.player, realms: [victim.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       heroes: [victim.id].filter((v: number | null | undefined) => v != null), // ids guarded as if missing
       province: prov.id,
     });
@@ -1293,6 +1360,7 @@ export function resolveAssassinateOrder(
         fact: _garrethEscapeLine(victim),
         audience: { actor: c.player, realms: [c.player].filter((x) => x != null), seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else {
@@ -1309,6 +1377,7 @@ export function resolveAssassinateOrder(
         {
           audience: { actor: c.player, realms: [c.player, victim.player].filter((x) => x != null), seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         },
       );
@@ -1323,6 +1392,7 @@ export function resolveAssassinateOrder(
       fact: { kind: "an assassin's attempt fails", heroName: c.name, victimName: victim.name },
       audience: { actor: c.player, realms: [c.player, victim.player].filter((x) => x != null) },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       heroes: [c.id, victim.id].filter((v: number | null | undefined) => v != null), // ids guarded as if missing
       province: prov.id,
     });
@@ -1339,6 +1409,7 @@ export function resolveVanishOrder(turnContext: TurnContext, c: Character, prov:
       fact: { kind: 'a hero lacks the Thief mastery to Vanish', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -1349,6 +1420,7 @@ export function resolveVanishOrder(turnContext: TurnContext, c: Character, prov:
     fact: { kind: 'a thief melts into the shadows', heroName: c.name },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'thief', SKILLGAIN_STD);

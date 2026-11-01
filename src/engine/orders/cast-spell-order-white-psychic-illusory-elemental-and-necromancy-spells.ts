@@ -14,7 +14,12 @@ import { isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { castChanceFor } from '../chances-and-lair-grades.ts';
 import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 import { gdActive } from '../discoveries.ts';
-import { emit, recordForTheStatistics, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  recordForTheStatistics,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import {
   effStat,
@@ -76,6 +81,7 @@ export function resolveCastSpellOrder(
       fact: { kind: 'a hero names a spell there is none of', heroName: c.name, spellName: spellName },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -85,6 +91,7 @@ export function resolveCastSpellOrder(
       fact: { kind: 'a spell cannot be worked as a phase order', heroName: c.name, spellName: spellName },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -103,6 +110,7 @@ export function resolveCastSpellOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       o._castNotWorked = true;
@@ -149,6 +157,7 @@ export function resolveCastSpellOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -174,6 +183,7 @@ export function resolveCastSpellOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -189,6 +199,7 @@ export function resolveCastSpellOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   } // Item 6
@@ -206,6 +217,7 @@ export function resolveCastSpellOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -222,6 +234,7 @@ export function resolveCastSpellOrder(
         fact: { kind: 'a mastery spell is worked but once a turn', heroName: c.name, spellName: spellName },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -316,6 +329,7 @@ export function resolveCastSpellOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_COMMON);
@@ -335,6 +349,7 @@ export function resolveCastSpellOrder(
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
 
@@ -344,6 +359,7 @@ export function resolveCastSpellOrder(
       fact: { kind: 'a spell fizzles without effect', heroName: c.name, spellName: spellName },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     if (!_itemCast) trySkillGain(turnContext, c, school, SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn (an item's cast teaches nothing when it fails)
     // a fizzled Charm may bring its intended victim down on the caster.
@@ -375,6 +391,7 @@ export function resolveCastSpellOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -391,6 +408,7 @@ export function resolveCastSpellOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -411,6 +429,7 @@ export function resolveCastSpellOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
