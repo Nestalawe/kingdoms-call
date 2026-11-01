@@ -38,6 +38,7 @@ import {
   botSchoolLimit,
   botSkillsUnknown,
 } from './strategy.ts';
+import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ══ BOT SPELLCRAFT (Sept 2026 self-play batch) ════
 // Replaces the single-cast botActionCast. botCastPlan builds an ORDERED list of action-phase casts
@@ -84,7 +85,13 @@ export function botCastPlan(G, pi, c, prov, opts) {
   const armyLeader = [...hereEnemies]
     .filter((e) => (e.armies || []).length >= 2)
     .sort((a, b) => (b.armies || []).length - (a.armies || []).length)[0];
-  if (armyLeader) push('psychic', 'Telekinetic Storm', armyLeader.id, 'Cast Telekinetic Storm on ' + armyLeader.name);
+  if (armyLeader)
+    push(
+      'psychic',
+      theNameOfTheSpell('telekinetic-storm'),
+      armyLeader.id,
+      'Cast Telekinetic Storm on ' + armyLeader.name,
+    );
   const juiciest = [...hereEnemies].sort(
     (a, b) => (b.isKing ? 100 : 0) + skillTotal(b) - ((a.isKing ? 100 : 0) + skillTotal(a)),
   )[0];
@@ -93,11 +100,11 @@ export function botCastPlan(G, pi, c, prov, opts) {
   // An enemy KING here takes it first (a cursed king is a king who can fall); else the enemy leading the
   // biggest host here; else the most valuable hero.
   if (juiciest) {
-    push('psychic', 'Psychic Blast', juiciest.id, 'Cast Psychic Blast on ' + juiciest.name);
+    push('psychic', theNameOfTheSpell('psychic-blast'), juiciest.id, 'Cast Psychic Blast on ' + juiciest.name);
     const _cz = juiciest.isKing ? juiciest : armyLeader || juiciest;
     push(
       'necromancy',
-      'Curse',
+      theNameOfTheSpell('curse'),
       _cz.id,
       'Cast Curse on ' + _cz.name + (_cz === armyLeader ? ' (break the general before the battle)' : ''),
     );
@@ -115,28 +122,34 @@ export function botCastPlan(G, pi, c, prov, opts) {
       );
     const _pins = botPins(G, pi);
     const fl = withArmies.find((N) => !N._flood && N.id !== opts.siege && !oursThere(N) && !_pins.has(N.id));
-    if (fl) push('elemental', 'Flood', fl.id, 'Cast Flood on ' + fl.name);
+    if (fl) push('elemental', theNameOfTheSpell('flood'), fl.id, 'Cast Flood on ' + fl.name);
   }
   const plagueT = withArmies.find((N) => N._flood) || withArmies[0];
-  if (plagueT) push('necromancy', 'Plague', plagueT.id, 'Cast Plague on ' + plagueT.name);
+  if (plagueT) push('necromancy', theNameOfTheSpell('plague'), plagueT.id, 'Cast Plague on ' + plagueT.name);
   const rich = [...enemyProvs].sort((a, b) => (b.tax || 0) - (a.tax || 0))[0];
-  if (rich && (rich.tax || 0) >= 4) push('elemental', 'Earthquake', rich.id, 'Cast Earthquake on ' + rich.name);
+  if (rich && (rich.tax || 0) >= 4)
+    push('elemental', theNameOfTheSpell('earthquake'), rich.id, 'Cast Earthquake on ' + rich.name);
   // ── CHARM: a wandering hero here is a free hire; a lone enemy hero can be turned for the turn ──
   const wanderer = charsIn(prov).find(
     (h) => h.player === null && !h._isNeutralGuard && !h._justDefeated && !h.isKing && !(h.armies || []).length,
   );
-  if (wanderer) push('psychic', 'Charm', wanderer.id, 'Charm ' + wanderer.name);
+  if (wanderer) push('psychic', theNameOfTheSpell('charm'), wanderer.id, 'Charm ' + wanderer.name);
   else {
     const lone = hereEnemies.find((e) => !e.isKing && !(e.armies || []).length);
-    if (lone) push('psychic', 'Charm', lone.id, 'Charm ' + lone.name);
+    if (lone) push('psychic', theNameOfTheSpell('charm'), lone.id, 'Charm ' + lone.name);
   }
   // ── BUFFS for a host about to fight (opts.fighting: the caster or a co-located friendly leader
   // attacks this turn) ──
   if (opts.fighting) {
     const host = opts.fighting;
-    push('psychic', 'Oratory', host.id === c.id ? '' : host.id, 'Oratory for ' + host.name);
-    if (host.id === c.id) push('elemental', 'Elemental Summon', '', 'Summon an elemental');
-    push('illusory', 'Phantasmal Armies', host.id === c.id ? '' : host.id, 'Phantasmal Armies for ' + host.name);
+    push('psychic', theNameOfTheSpell('oratory'), host.id === c.id ? '' : host.id, 'Oratory for ' + host.name);
+    if (host.id === c.id) push('elemental', theNameOfTheSpell('elemental-summon'), '', 'Summon an elemental');
+    push(
+      'illusory',
+      theNameOfTheSpell('phantasmal-armies'),
+      host.id === c.id ? '' : host.id,
+      'Phantasmal Armies for ' + host.name,
+    );
   }
   // ── SIEGE MAGIC (2026-09-26, Toby ideas 2 / 4): opts.siege is the enemy province a friendly host attacks this
   // turn, when it lies in this caster's reach. Illusory Terrain there makes the defenders fight at 80%; Plague
@@ -146,8 +159,8 @@ export function botCastPlan(G, pi, c, prov, opts) {
     const S = G.world.provinces[opts.siege];
     if (S && near.some((N) => N.id === S.id)) {
       if (S._illusoryTurn !== G.turn)
-        push('illusory', 'Illusory Terrain', S.id, 'Illusory Terrain over ' + S.name + ' (siege)');
-      push('necromancy', 'Plague', S.id, 'Plague on ' + S.name + ' (siege)');
+        push('illusory', theNameOfTheSpell('illusory-terrain'), S.id, 'Illusory Terrain over ' + S.name + ' (siege)');
+      push('necromancy', theNameOfTheSpell('plague'), S.id, 'Plague on ' + S.name + ' (siege)');
     }
   }
   // ── DEFENCE: false terrain over an owned province an enemy host stands beside — and (idea 2) over the
@@ -158,16 +171,27 @@ export function botCastPlan(G, pi, c, prov, opts) {
         (N) => N.owner === pi && N.terrain !== 'sea' && N._illusoryTurn !== G.turn && botDefenceNeed(G, N, pi) > 0,
       )
       .sort((a, b) => (b.tax || 0) - (a.tax || 0))[0];
-    if (threatened) push('illusory', 'Illusory Terrain', threatened.id, 'Cast Illusory Terrain on ' + threatened.name);
+    if (threatened)
+      push(
+        'illusory',
+        theNameOfTheSpell('illusory-terrain'),
+        threatened.id,
+        'Cast Illusory Terrain on ' + threatened.name,
+      );
     else if (opts.threat && prov.owner === pi && prov.terrain !== 'sea' && prov._illusoryTurn !== G.turn)
-      push('illusory', 'Illusory Terrain', prov.id, 'Cast Illusory Terrain on ' + prov.name + ' (a host draws near)');
+      push(
+        'illusory',
+        theNameOfTheSpell('illusory-terrain'),
+        prov.id,
+        'Cast Illusory Terrain on ' + prov.name + ' (a host draws near)',
+      );
   }
   // ── RESURRECT a known fallen hero lying here (never one who served another realm — a raised hero serves the raiser) ──
   if (lvl('white') >= 1) {
     const known = new Set((G.players[pi] || {}).knownDeadHeroIds || []);
     const grave = botRaiseTargets(G, pi).find((x) => x.loc === prov.id);
     void known; // 2026-09-28: the same bodies the errand pass raises (own heroes, own recallable monarch)
-    if (grave) push('white', 'Resurrect', grave.g.id, 'Resurrect ' + grave.g.name);
+    if (grave) push('white', theNameOfTheSpell('resurrect'), grave.g.id, 'Resurrect ' + grave.g.name);
   }
   // ── ECONOMY ──
   if (lvl('white') >= 1) {
@@ -187,7 +211,8 @@ export function botCastPlan(G, pi, c, prov, opts) {
           k.location === c.location &&
           ((k.skills || {}).white || 0) >= 1,
       );
-    if (own && !kingHere) push('white', 'Bless Province', own.id, 'Cast Bless Province on ' + own.name);
+    if (own && !kingHere)
+      push('white', theNameOfTheSpell('bless-province'), own.id, 'Cast Bless Province on ' + own.name);
   }
   // Skeletal Armies: the caster is STANDING here, so he feels the dead underfoot if he has the
   // Necromancy to feel them — but the realm's own grave lore is the record, not prov.battleGraves.
@@ -195,7 +220,7 @@ export function botCastPlan(G, pi, c, prov, opts) {
     lvl('necromancy') >= 1 &&
     (botKnowsGraves(G, pi, prov.id) || (botSees(G, pi, prov.id) && (prov.battleGraves || []).length > 0))
   )
-    push('necromancy', 'Skeletal Armies', '', 'Cast Skeletal Armies');
+    push('necromancy', theNameOfTheSpell('skeletal-armies'), '', 'Cast Skeletal Armies');
   return out;
 }
 // The enemy province a character's written plan attacks this turn (first Move tagged Attack / Assault /
@@ -670,13 +695,13 @@ export function runBotActions(G, botIdxSet) {
         const _castPlan = botCastPlan(G, pi, c, G.world.provinces[c.location], { max: 4 });
         const castOrder = _castPlan[0] || null;
         const OFFENSIVE_CAST = new Set([
-          'Curse',
-          'Psychic Blast',
-          'Earthquake',
-          'Plague',
-          'Flood',
-          'Telekinetic Storm',
-          'Charm',
+          theNameOfTheSpell('curse'),
+          theNameOfTheSpell('psychic-blast'),
+          theNameOfTheSpell('earthquake'),
+          theNameOfTheSpell('plague'),
+          theNameOfTheSpell('flood'),
+          theNameOfTheSpell('telekinetic-storm'),
+          theNameOfTheSpell('charm'),
         ]);
         // Sept 2026: discoveries now come from the Research order, not Practice Sage. A bot scholar
         // (Sage 1+) whose pick is Sage researches instead — always once Sage is maxed at 5, otherwise

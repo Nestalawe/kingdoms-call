@@ -36,6 +36,7 @@ import {
   botSchoolLimit,
 } from './strategy.ts';
 import { skillLevel } from '../titles/perks.ts';
+import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ══ PHASE-ONE PASS (2026-09-29, Toby: "use phase 1 orders wisely") ═════════════════════════════════
 // Engine facts it relies on: within a phase every NON-MOVING order (recruit, hand-over, cast,
@@ -287,7 +288,7 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
             // the caster floods, then goes with the host
             const fl = {
               action: 'cast_spell',
-              target: 'Flood',
+              target: theNameOfTheSpell('flood'),
               extra: String(worst.N.id),
               desc: 'Flood ' + worst.N.name + ' — strand the enemy host',
             };
@@ -298,7 +299,7 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           } else if (k && k.id === c.id) {
             out[0] = {
               action: 'cast_spell',
-              target: 'Flood',
+              target: theNameOfTheSpell('flood'),
               extra: String(worst.N.id),
               desc: 'Flood ' + worst.N.name + ' — strand the enemy host',
             };
@@ -384,10 +385,13 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           }
         }
         if (!danger) return;
-        if (((c.skills || {}).illusory || 0) >= 1 && !o.some((x) => x && x.target === 'Invisibility')) {
+        if (
+          ((c.skills || {}).illusory || 0) >= 1 &&
+          !o.some((x) => x && x.target === theNameOfTheSpell('invisibility'))
+        ) {
           o.unshift({
             action: 'cast_spell',
-            target: 'Invisibility',
+            target: theNameOfTheSpell('invisibility'),
             extra: '',
             desc: 'Cast Invisibility (evacuate: an enemy host is at hand)',
           });
@@ -453,7 +457,8 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
     mine.forEach((c) => {
       const o = G.turnOrders[c.id];
       o.forEach((x, i) => {
-        if (x && x.action === 'cast_spell' && x.target === 'Flood' && entered.has(Number(x.extra))) o[i] = hold();
+        if (x && x.action === 'cast_spell' && x.target === theNameOfTheSpell('flood') && entered.has(Number(x.extra)))
+          o[i] = hold();
       });
     });
     // P: every pin is cast in Spring by its caster
@@ -464,12 +469,23 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       const o = G.turnOrders[k.id];
       const X = G.world.provinces[Xid];
       if (!X) return;
-      if (o[0] && o[0].action === 'cast_spell' && o[0].target === 'Flood' && Number(o[0].extra) === Xid) return;
+      if (
+        o[0] &&
+        o[0].action === 'cast_spell' &&
+        o[0].target === theNameOfTheSpell('flood') &&
+        Number(o[0].extra) === Xid
+      )
+        return;
       o.forEach((x, i) => {
-        if (x && x.action === 'cast_spell' && x.target === 'Flood' && Number(x.extra) === Xid) o[i] = hold();
+        if (x && x.action === 'cast_spell' && x.target === theNameOfTheSpell('flood') && Number(x.extra) === Xid)
+          o[i] = hold();
       });
       const lim = botSchoolLimit((k.skills || {}).elemental || 0),
-        EL = new Set(['Flood', 'Earthquake', 'Elemental Summon']);
+        EL = new Set([
+          theNameOfTheSpell('flood'),
+          theNameOfTheSpell('earthquake'),
+          theNameOfTheSpell('elemental-summon'),
+        ]);
       let n = o.filter((x) => x && x.action === 'cast_spell' && EL.has(x.target)).length;
       for (let i = 4; i >= 0 && n >= lim; i--) {
         const x = o[i];
@@ -477,7 +493,7 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           x &&
           x.action === 'cast_spell' &&
           EL.has(x.target) &&
-          !(x.target === 'Flood' && pins.has(Number(x.extra)))
+          !(x.target === theNameOfTheSpell('flood') && pins.has(Number(x.extra)))
         ) {
           o[i] = hold();
           n--;
@@ -486,7 +502,7 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       if (n >= lim) return;
       botPutSpring(o, {
         action: 'cast_spell',
-        target: 'Flood',
+        target: theNameOfTheSpell('flood'),
         extra: String(Xid),
         desc: 'Flood ' + X.name + ' — strand the enemy host',
       });
@@ -518,8 +534,16 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
     const castsOf = (k, school, spells) =>
       (G.turnOrders[k.id] || []).filter((x) => x && x.action === 'cast_spell' && spells.has(x.target)).length;
     const SCH = {
-      illusory: new Set(['Illusory Terrain', 'Invisibility', 'Phantasmal Armies']),
-      necromancy: new Set(['Plague', 'Curse', 'Skeletal Armies']),
+      illusory: new Set([
+        theNameOfTheSpell('illusory-terrain'),
+        theNameOfTheSpell('invisibility'),
+        theNameOfTheSpell('phantasmal-armies'),
+      ]),
+      necromancy: new Set([
+        theNameOfTheSpell('plague'),
+        theNameOfTheSpell('curse'),
+        theNameOfTheSpell('skeletal-armies'),
+      ]),
     };
     const softened = new Set();
     mine
@@ -530,8 +554,12 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           const enemyThere = (N.owner != null && N.owner !== pi) || botEnemyHostsIn(G, pi, N).length;
           if (!enemyThere) return;
           [
-            ['illusory', 'Illusory Terrain', N._illusoryTerrain && N._illusoryTerrain.appliedTurn === G.turn],
-            ['necromancy', 'Plague', N._plaguedTurn === G.turn],
+            [
+              'illusory',
+              theNameOfTheSpell('illusory-terrain'),
+              N._illusoryTerrain && N._illusoryTerrain.appliedTurn === G.turn,
+            ],
+            ['necromancy', theNameOfTheSpell('plague'), N._plaguedTurn === G.turn],
           ].forEach(([school, spell, done]) => {
             if (done || softened.has(spell + ':' + N.id)) return;
             const k = mine.find((m) => {
@@ -607,9 +635,9 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       const urgency = (x) => {
         if (!x) return 0;
         const a = x.action;
-        if (a === 'cast_spell' && x.target === 'Invisibility') return 5; // the cloak stays ahead of the strikes it covers
+        if (a === 'cast_spell' && x.target === theNameOfTheSpell('invisibility')) return 5; // the cloak stays ahead of the strikes it covers
         if (a === 'cast_spell' && BOT_P1.strike.has(x.target))
-          return x.target === 'Charm' && !isEnemyChar(x.extra) ? 1 : 5; // a wanderer's Charm is a hire
+          return x.target === theNameOfTheSpell('charm') && !isEnemyChar(x.extra) ? 1 : 5; // a wanderer's Charm is a hire
         if (a === 'challenge') return 5;
         if (a === 'steal' && x.target !== 'garrison') return 5;
         if (contact) {
