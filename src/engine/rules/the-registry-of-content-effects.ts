@@ -1406,6 +1406,55 @@ export interface WhatAGuardiansGradesCapDoes {
   readonly whatHisOwnTighterCapKeeps: WhatAWardSets | null;
 }
 
+/** A guardian's stun ward as a stun meets it (pcStunWard, pcStunTurned: plan P1-19aj): the chance, 0 to a full ward's
+ *  100, that his perks turn a stun as it lands (none worn: 0), and the ward the line names. */
+export interface AGuardiansStunWard {
+  readonly theChance: number;
+  readonly theWardTheLineNames: string;
+}
+
+/** What the stage "a guardian's perks: a round starts" hands an effect (pcRoundStart, when he wears wards: plan
+ *  P1-19aj): the wards he wears, the chance his wards turn a stun (pcStunWard: his items' refusal, else his perks'
+ *  chance), and whether his items slough off every lingering harm (the items' registry's round start). */
+export interface AFightersWardsAsAGuardiansPerksMeetARound {
+  readonly theWards: TheWardsAsTheirEffectsReadThem;
+  readonly theChanceHisWardsTurnAStun: number;
+  readonly hisItemsSloughOffEveryLingeringHarm: boolean;
+}
+
+/** What a guardian's perks do as a round starts, each with the ward the line names: a stun he is under cleared (his
+ *  wards turn every stun), every lingering harm sloughed off (his items', or his perk's whole ward). Each effect sets its
+ *  own field. */
+export interface WhatAGuardiansPerksDoAsARoundStarts {
+  readonly theStunHeIsUnderIsCleared?: { readonly theWardTheLineNames: string };
+  readonly everyLingeringHarmSloughsOff?: { readonly theWardTheLineNames: string };
+}
+
+/** A guardian's lingering-harm ward as each tick of a lingering harm meets it (pcRoundStart, any fighter: plan
+ *  P1-19aj): the share of each tick it turns, 0 to a full ward's 100 (none worn: 0), and the ward the line names. */
+export interface AGuardiansLingeringHarmWard {
+  readonly theShareItTurns: number;
+  readonly theWardTheLineNames: string;
+}
+
+/** What the stage "a guardian's perks: a combat spell's chance: a ward against its school" hands an effect
+ *  (pcCastCombatSpell, once the chance is capped: plan P1-19aj): the target's wards (none: null), the spell's school,
+ *  whether the target is a guardian weak to that school, and the cast's chance so far. */
+export interface ACastAsAGuardiansWardAgainstItsSchoolMeetsIt {
+  readonly theTargetsWards: TheWardsAsTheirEffectsReadThem | null | undefined;
+  readonly theSchool: string;
+  readonly heIsWeakToTheSchool: boolean;
+  readonly theChanceSoFar: number;
+}
+
+/** What a guardian's ward against a spell's school does to its cast: the points it takes off (none: 0), the cast's
+ *  chance after, and the ward the line names. */
+export interface WhatAWardAgainstASchoolDoesToACast {
+  readonly thePointsOff: number;
+  readonly theChanceAfter: number;
+  readonly theWardTheLineNames: string;
+}
+
 /** A skill about to roll to rise through experience, as a realm's discoveries that add to its chance read it
  *  (trySkillGain: plan P1-19ac). */
 export interface ASkillARealmsDiscoveriesMayRaise {
@@ -2171,6 +2220,32 @@ export interface TheStagesOfEachHookPoint {
     readonly "a guardian's perks: his grade's cap beside his own": (
       facts: AGuardiansGradesCapAndTheWardsHisPerksGaveHim,
     ) => WhatAGuardiansGradesCapDoes | null;
+    /** What a guardian's perk's own ward (one no item carries) sets in the wards he wears, from the wards so far
+     *  (pcArmourMerge, asked after the items' registry finds no effect of the ward's kind: plan P1-19aj); the runner
+     *  asks the effect of the ward's own kind. */
+    readonly "a guardian's perks: what he wears: a ward of his own": (
+      theWard: AWardAsTheMergeReadsIt,
+      theWardsSoFar: Readonly<TheWardsAFighterWears>,
+    ) => WhatAWardSets;
+    /** The chance his perks turn a stun as it lands, and the ward the line names (pcStunWard, beside his items'
+     *  refusal; pcStunTurned's line: plan P1-19aj). The stage holds one effect. */
+    readonly "a guardian's perks: a stun takes hold": (
+      theWards: TheWardsAsTheirEffectsReadThem | null | undefined,
+    ) => AGuardiansStunWard;
+    /** What his perks do as a round starts, beside his items (pcRoundStart: plan P1-19aj): the fields each sets. */
+    readonly "a guardian's perks: a round starts": (
+      facts: AFightersWardsAsAGuardiansPerksMeetARound,
+    ) => WhatAGuardiansPerksDoAsARoundStarts;
+    /** The share of each tick of a lingering harm his perks turn, and the ward the line names (pcRoundStart, every
+     *  fighter: plan P1-19aj). The stage holds one effect. */
+    readonly "a guardian's perks: a lingering harm bites": (
+      theWards: TheWardsAsTheirEffectsReadThem | null | undefined,
+    ) => AGuardiansLingeringHarmWard;
+    /** What a guardian's ward against a spell's school does to its cast (pcCastCombatSpell: plan P1-19aj). The stage
+     *  holds one effect. */
+    readonly "a guardian's perks: a combat spell's chance: a ward against its school": (
+      facts: ACastAsAGuardiansWardAgainstItsSchoolMeetsIt,
+    ) => WhatAWardAgainstASchoolDoesToACast;
   };
   /** The treasury (plan P1-19's items family, Choice 1: its first row, P1-19t, typed it): what an item is for and what
    *  it is worth, read as the engine loads (the load-time pass tiers each item by them, so which lairs hold it) and by a

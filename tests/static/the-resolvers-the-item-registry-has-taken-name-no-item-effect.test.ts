@@ -7,9 +7,9 @@
 // `effect` (`fleetStr`, `landFullAtSea`, `emberTwo`, `exploreMove`, `primalStrike`, `drumTierUp`), which no string
 // names, but the reads listed with the step each is left to; and, from P1-19r, it uses no field of the wards a fighter
 // wears (`x.arm.meleeDR`, `x.arm?.dodge`, or through a name bound to `x.arm` in the function: the table pcArmourMerge
-// builds, whose names alone are the lines'), but a guardian's perks' own wards (stunWard, dotWard, schoolWard), listed
-// with the step each is left to; nor does any other function of src/engine/ outside rules/ (the guardian's build, listed
-// until P1-19ai took it). Its
+// builds, whose names alone are the lines'); nor does any other function of src/engine/ outside rules/ (the guardian's
+// build, listed until P1-19ai took it, and a guardian's perks' own wards, stunWard, dotWard and schoolWard, until
+// P1-19aj did). Its
 // effects find what an item carries by the key the content's row gives, in src/engine/rules/. Each row of the family
 // adds the functions it takes. With them, the ratchet's count of the engine's checks of an item outside the registry
 // (tools/ratchet.ts's itemEffectChecksInEngine, by its helper itemEffectChecksByFunction: a string of the vocabulary
@@ -209,17 +209,10 @@ const CHECKS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> =
 };
 
 /** The uses of a field of the wards a fighter wears that a function of src/engine/ outside rules/ still holds, by the
- *  function, each left to a later step: a guardian's perks' own wards, with the guardian family (the items family's
- *  "Parked for later"; P1-19q left their merge in pcArmourMerge; a guardian's grade's cap went into the guardian perks'
- *  registry with P1-19ai). Every other function holds none: one more, or one gone, turns it red. */
-const WARD_USES_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {
-  // a guardian's perk's chance to shrug off a stun
-  pcStunWard: ['stunWard'],
-  // a guardian's perk's share off a lingering harm, and its whole (100)
-  pcRoundStart: ['dotWard', 'dotWard'],
-  // a guardian's perk's ward against one school of magic (read once since P1-10b16: `?.arm?.schoolWard?.[school]`)
-  pcCastCombatSpell: ['schoolWard'],
-};
+ *  function, each left to a later step: none since P1-19aj (a guardian's perks' own wards went into the guardian perks'
+ *  registry: P1-19q had left their merge in pcArmourMerge, and P1-19ai took a guardian's grade's cap). Every function
+ *  holds none: one more turns it red. */
+const WARD_USES_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {};
 
 /** The effects an item carries on itself, beside its `effect` (Parked: one key per effect, later). */
 const AN_ITEMS_OWN_FIELDS: ReadonlySet<string> = new Set([
@@ -389,7 +382,7 @@ test.for(THE_SETS_OF_STATS_ITEM_ROLE_READS)('%s: %s names no item effect (P1-19t
 
 // No function of src/engine/ outside rules/ uses a field of the wards a fighter wears, but the ones listed: what each
 // ward does is its entry's in the items' registry (src/engine/rules/, not counted), and the table is read by its runners.
-test("no function of the engine outside the registries uses a ward's field, but the guardian's listed", () => {
+test("no function of the engine outside the registries uses a ward's field", () => {
   const uses: Record<string, string[]> = {};
   for (const [file, text] of theCodeFiles())
     if (file.startsWith('src/engine/') && !file.startsWith('src/engine/rules/'))

@@ -188,8 +188,8 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   carries none, are the rows'), **a rider** (`pcApplyFx`: the aura and drain the best, the burn, hit bonus and damage
   bonus added, each carried above 0, keyed `{ rider }`) and **Mithril** (`pcCharCombatant`'s flag). `pcArmourOf` asks
   whether an item is worn as armour. A guardian's perk of the same ward or rider reaches the same effect (`pcApplyFx` is
-  the one applier); a guardian's perks' own three wards (`stunWard`, `dotWard`, `schoolWard`) stay in `pcArmourMerge`
-  for the guardian family. The fighter's ward table, a ward and the riders (`TheWardsAFighterWears`,
+  the one applier); a guardian's perks' own three wards (`stunWard`, `dotWard`, `schoolWard`) are the perks'
+  registry's (P1-19aj). The fighter's ward table, a ward and the riders (`TheWardsAFighterWears`,
   `AWardAsTheMergeReadsIt`, `TheRidersOfAnItemOrAPerk`) are this stage's types, in the registry's file, and
   `personal-combat/helpers.ts` exports them by the same names.
 - **What a ward does** (P1-19r, `magic-items/what-a-ward-does-in-a-personal-combat.ts`): `personalCombat`'s **a blow's
@@ -197,8 +197,8 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   round ward, Mithril), **his wards cut it** (flat and spell cuts, low HP, open guard), **his wards cap it**, **after
   it** (second wind); **a blow lands** (thorns); **a round starts**; **a stun or a terror takes hold**; **a spell's burn
   takes hold**. Each is handed his wards and its moment and returns what it does; the fight applies it, rolls where it
-  rolled and tells the line. Low HP's half, the second wind's 30%, resist's half and Mithril's 2 are the rows'. The
-  guardian's own wards are still read in the fight, listed.
+  rolled and tells the line. Low HP's half, the second wind's 30%, resist's half and Mithril's 2 are the rows'. A
+  guardian's own wards are the perks' registry's.
 - **The combat items, a steal and a blow** (P1-19s, `magic-items/the-combat-items-a-steal-and-a-blow-in-a-personal-combat.ts`):
   `personalCombat`'s **a fighter reaches for a combat item** (`pcCombatItemWanted`; its order is
   `pcTryCombatItem`'s), **a combat item is used** (`pcUseCombatItem`: 19 uses keyed `{ use }`, each

@@ -7,6 +7,7 @@ import {
   anItemIsWornAsArmour,
   whatAWardSetsInTheWardsAFighterWears,
 } from '../rules/the-registry-of-magic-item-effects.ts';
+import { whatAGuardiansOwnWardSetsInTheWardsHeWears } from '../rules/the-registry-of-guardian-perks.ts';
 import type { Character, GameState, Item, Realm } from '../../schemas/saved-game-state.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type {
@@ -503,27 +504,11 @@ export function pcArmourMerge(
 ): TheWardsAFighterWears {
   a ??= { names: [] };
   e ??= {};
-  const set = whatAWardSetsInTheWardsAFighterWears(e, a);
-  if (set) Object.assign(a, set);
-  else
-    switch (e.ward) {
-      // guardian perks (2026-10-14, batch item 7): graded wards
-      case 'stunWard':
-        a.stunWard = Math.max(Number(a.stunWard) || 0, e.pct ?? 0);
-        break; // % of stuns turned as they land (100: never stunned)
-      case 'dotWard':
-        a.dotWard = Math.max(Number(a.dotWard) || 0, e.pct ?? 0);
-        break; // % off every tick of lingering harm (100: immune)
-      case 'schoolWard':
-        if (e.school) {
-          const schoolWard: Partial<Record<string, number>> = { ...(a.schoolWard ?? {}) };
-          a.schoolWard = schoolWard;
-          schoolWard[e.school] = Math.max(Number(schoolWard[e.school]) || 0, e.pct ?? 0);
-        }
-        break; // −N to that school's cast chance
-      default:
-        return a;
-    }
+  // the items' registry (plan P1-19q), then a guardian perk's own graded ward (2026-10-14, batch item 7: the guardian
+  // perks' registry, plan P1-19aj); a ward of neither is not worn
+  const set = whatAWardSetsInTheWardsAFighterWears(e, a) ?? whatAGuardiansOwnWardSetsInTheWardsHeWears(e, a);
+  if (!set) return a;
+  Object.assign(a, set);
   if (name && !a.names.includes(name)) a.names.push(name);
   return a;
 }

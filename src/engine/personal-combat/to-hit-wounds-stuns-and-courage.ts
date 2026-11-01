@@ -33,6 +33,11 @@ import {
   whatAFightersWardsLeaveOfAHit,
   whatAFightersWardsTakeOffAChanceToHitHim,
 } from '../rules/the-registry-of-magic-item-effects.ts';
+import {
+  theLingeringHarmWardAGuardiansPerksGiveHim,
+  theStunWardAGuardiansPerksGiveHim,
+  whatAGuardiansPerksDoAsARoundStarts,
+} from '../rules/the-registry-of-guardian-perks.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type {
@@ -221,7 +226,8 @@ export const PC_CHANNEL = {
 export function pcStunWard(t: AFighterAsHisStunWardIsRead) {
   const a = t?.arm;
   if (!a) return 0;
-  return aFightersWardsRefuseAStunOrATerror(a) ? 100 : Math.max(0, Math.min(100, Number(a.stunWard) || 0));
+  // his items' refusal, else his perks' chance (the guardian perks' registry, plan P1-19aj)
+  return aFightersWardsRefuseAStunOrATerror(a) ? 100 : theStunWardAGuardiansPerksGiveHim(a).theChance;
 }
 // pcStunTurned rolls the ward once and says so when it turns the stun, naming what the daze comes from (its source, a
 // record: plan P1-12d19).
@@ -237,7 +243,10 @@ export function pcStunTurned(
       kind: 'the target cannot be held',
       targetIsAGuardian: target.kind === 'monster',
       targetName: target.name,
-      targetStunPerk: aFightersPerkNameAsTheLineTellsIt(target, 'stunWard'),
+      targetStunPerk: aFightersPerkNameAsTheLineTellsIt(
+        target,
+        theStunWardAGuardiansPerksGiveHim(target.arm).theWardTheLineNames,
+      ),
       targetArmourNames: target.arm?.names ? aListAsTheLineTellsIt(target.arm.names) : null,
       w,
       what,
@@ -634,24 +643,28 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
   if (cbt.arm) {
     const _wards = whatAFightersWardsDoAsARoundStarts(cbt.arm); // each ward's effect in the items' registry (plan P1-19r)
     if (_wards.theFreshWardThisRound !== undefined) cbt._roundWardLeft = _wards.theFreshWardThisRound; // Shield of the Ward-Saints: a fresh ward each round
-    if (pcStunWard(cbt) >= 100 && cbt.status.stun > 0) {
+    // a guardian's perks beside his items: wards that turn every stun clear a stun he is under, and a whole
+    // lingering-harm ward sloughs off every lingering harm (the guardian perks' registry, plan P1-19aj)
+    const _perks = whatAGuardiansPerksDoAsARoundStarts({
+      theWards: cbt.arm,
+      theChanceHisWardsTurnAStun: pcStunWard(cbt),
+      hisItemsSloughOffEveryLingeringHarm: _wards.everyLingeringHarmSloughsOff === true,
+    });
+    if (_perks.theStunHeIsUnderIsCleared && cbt.status.stun > 0) {
       cbt.status.stun = 0;
       narrate(narrative, {
         kind: 'a fighter ignores the daze',
         cbtIsAGuardian: cbt.kind === 'monster',
         cbtName: cbt.name,
-        cbtStunPerk: aFightersPerkNameAsTheLineTellsIt(cbt, 'stunWard'),
+        cbtStunPerk: aFightersPerkNameAsTheLineTellsIt(cbt, _perks.theStunHeIsUnderIsCleared.theWardTheLineNames),
       });
     }
-    if (
-      (_wards.everyLingeringHarmSloughsOff || (Number(cbt.arm.dotWard) || 0) >= 100) &&
-      (cbt.status.dot ?? []).length
-    ) {
+    if (_perks.everyLingeringHarmSloughsOff && (cbt.status.dot ?? []).length) {
       cbt.status.dot = [];
       narrate(narrative, {
         kind: "a fighter's armour sloughs off every burn poison and bleeding",
         cbtIsAGuardian: cbt.kind === 'monster',
-        cbtsWard: aFightersWardAsTheLineTellsIt(cbt, 'dotWard'),
+        cbtsWard: aFightersWardAsTheLineTellsIt(cbt, _perks.everyLingeringHarmSloughsOff.theWardTheLineNames),
       });
     }
     // a GUARDIAN's regeneration fades as the fight runs long (pcSustainMult); a character's worn
@@ -685,8 +698,10 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
     }
   }
   // Damage-over-time
-  // a guardian's lingering-harm ward (dotWard, batch item 7) takes its share off every tick
-  const _dw = Math.min(100, Number(cbt.arm?.dotWard) || 0);
+  // a guardian's lingering-harm ward (dotWard, batch item 7) takes its share off every tick (the guardian perks'
+  // registry, plan P1-19aj)
+  const _harmWard = theLingeringHarmWardAGuardiansPerksGiveHim(cbt.arm);
+  const _dw = _harmWard.theShareItTurns;
   (cbt.status.dot ?? []).forEach((d) => {
     if (d.rounds > 0) {
       const _t = _dw > 0 ? Math.round(d.dmg * (1 - _dw / 100)) : d.dmg;
@@ -698,7 +713,7 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
         cbtName: cbt.name,
         harmDealt: _t,
         dotWard: _dw,
-        cbtsWard: aFightersWardAsTheLineTellsIt(cbt, 'dotWard'),
+        cbtsWard: aFightersWardAsTheLineTellsIt(cbt, _harmWard.theWardTheLineNames),
         cbtHp: Math.max(0, Math.round(cbt.hp)),
       });
     }

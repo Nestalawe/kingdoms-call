@@ -25,8 +25,7 @@ effects are in `src/engine/rules/guardian-perks/`.
   the same applier as a hero's item (`pcApplyFx`), and does in a fight what the item's effect does. So its effect lives
   once, in the items' registry, and its row names it there. Its entry here holds only a guardian's own stages.
 - **Three kinds are a guardian's alone:** the stun ward, the lingering-harm ward and the ward against one school. Their
-  effects are still read inline (`pcArmourMerge`, `pcStunWard`, `pcRoundStart`, `pcCastCombatSpell`); their entries
-  hold no stage yet.
+  effects are this registry's own (P1-19aj, below): what each sets in the wards he wears, and what each does in a fight.
 - **The numbers the code writes**, beside each perk's own, are in `THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS`:
   the cap on a single hit each grade gives (Legendary 20%: `GUARDIAN_BODY_CAP_PCT` reads it), the sustain's fade (a
   guardian's regeneration and drain at full strength for 4 rounds, at half to the 8th, then spent:
@@ -51,16 +50,39 @@ effects are in `src/engine/rules/guardian-perks/`.
   cap ward to merge (the merge keeps the looser of two caps), and his own cap to set back where it is tighter (Elder
   Titan, Kraken: 15%), or nothing for a grade with no cap.
 
+**A guardian's own wards** (P1-19aj, `guardian-perks/a-guardians-own-wards-what-he-wears-and-what-they-turn.ts`). Each
+effect gives the ward its line names (`theWardTheLineNames`), as the items' wards do, so the lines' perk finders are
+handed no kind of perk:
+
+- `personalCombat`'s **a guardian's perks: what he wears: a ward of his own** (`pcArmourMerge`, asked once the items'
+  registry finds no effect of the ward's kind): handed the ward and the wards so far, it returns what the ward sets.
+  The stun and lingering-harm wards keep the best of his perks'; a ward against one school keeps the best for its
+  school, and a ward that names no school sets nothing (its name is still worn). The runner asks the kind carried as
+  that ward.
+- **a guardian's perks: a stun takes hold** (`pcStunWard`, beside his items' refusal, and `pcStunTurned`'s line): his
+  chance, 0 to a full ward's 100, to turn a stun as it lands.
+- **a guardian's perks: a round starts** (`pcRoundStart`, when he wears wards): handed the chance his wards turn a stun
+  (`pcStunWard`) and whether his items slough off every lingering harm. Wards that turn every stun clear a stun he is
+  under; a whole lingering-harm ward, or his items, slough off every lingering harm.
+- **a guardian's perks: a lingering harm bites** (`pcRoundStart`, each tick, any fighter): the share of each tick his
+  ward turns, up to 100 (none worn: 0).
+- **a guardian's perks: a combat spell's chance: a ward against its school** (`pcCastCombatSpell`, once the chance is
+  capped): the points his ward against the spell's school takes off, never below 5, and none against the school he is
+  weak to.
+
+The stages with one effect (the stun, the tick, the cast) have runners that ask the first kind of the stage's order,
+typed from the registry itself: an order naming a kind with no effect at the stage fails to compile.
+
 ## How it is checked
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order; each row's kind a kind of `MONSTERS_P`'s perks, no two rows of one kind, and every kind with its row;
   a row names the items' effect of its own ward or rider exactly when an item carries it; and an entry with no stage
-  names the items' effect, or is listed as still read inline.
+  names the items' effect (the list of kinds still read inline is empty since P1-19aj).
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-guardian-registry-has-taken-name-no-perk.test.ts`, with the ratchet's
-  `guardianPerkChecksInEngine` (42 before P1-19ai, 37 after it): the functions taken name no kind of perk, and the
+  `guardianPerkChecksInEngine` (42 before P1-19ai, 37 after it, 19 after P1-19aj): the functions taken name no kind of perk, and the
   engine's checks of a perk outside the registry only fall.
 - `tests/static/each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table.test.ts`: every perk's `desc` is its
   kind's form with its number, and each kind's value at each grade is in the rulebook's table; the grade's cap, the
@@ -68,8 +90,8 @@ effects are in `src/engine/rules/guardian-perks/`.
   listed with it.
 - `tests/unit/guardian-perks.test.ts`: every perk carries its grade's value from the rows' table.
 - `tests/unit/the-guardian-perks-no-matrix-game-meets-keep-their-values.test.ts`: the lines no matrix game reaches, or
-  reaches in part (the card's spell resistance, the older form, a missing perk; the grade's cap). Each later row adds
-  its own.
+  reaches in part (the card's spell resistance, the older form, a missing perk; the grade's cap; a ward against one
+  school's floor and its weakness rule). Each later row adds its own.
 
 ## How to add a perk
 
