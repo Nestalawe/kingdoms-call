@@ -2,7 +2,8 @@
 // GM's log through emit. Refused: a write to turnLog (a mutating call on it, an assignment to it or inside it, delete,
 // ++), a log() call (but console's and Math's), a push, unshift or splice on a fight's narrative, an object literal
 // with an onlyPlayer key, an event written without its hero (emit's event, or a place with an audience, with no hero
-// and no spread: P1-12c2), and a line handed as words (P1-12d18: such an event with a text key, and a string handed to
+// and no spread: P1-12c2), an event written without its phase (P1-12d38: the same literals, once it names its hero),
+// and a line handed as words (P1-12d18: such an event with a text key, and a string handed to
 // narrate, emitNarrLine, narrateAll or narrateAt), and a write to the turn's telemetry's lists but its two snapshots
 // (P1-12d33: a record for the statistics goes through recordForTheStatistics). Allowed: emit, narrate, narrateTo,
 // narrateAll, narrateAt, takeBackLinesFrom, each handed a fact, recordForTheStatistics, _tel.pre and _tel.orders
@@ -19,7 +20,8 @@
 // `X.narrative`, an object literal with an `onlyPlayer` key (the option that refused only the writes to the GM's log,
 // for the folders not yet converted, went in P1-12a4), and an event written without its hero (P1-12c2: `emit`'s event,
 // or an event's place, an object literal with an `audience` as handed to `logSplit` or held in a `const` or an array,
-// with no `hero` and no spread), and a line handed as words (P1-12d18: such an event with a `text` key, once it names
+// with no `hero` and no spread), an event written without its phase (P1-12d38: the same literals and the same spread
+// exemption, once it names its hero), and a line handed as words (P1-12d18: such an event with a `text` key, once it names
 // its hero, and a string, a template, a `+` or a choice with one, handed to `narrate`, `emitNarrLine`, `narrateAll` or
 // `narrateAt`, alone or in an array written there), and a write to the turn's telemetry's lists (P1-12d33: a mutating
 // call, an assignment, `delete` or `++` on `_tel.<list>` or `X._tel.<list>`, but `pre` and `orders`, the realms'
@@ -44,6 +46,7 @@ const log = [{ messageId: 'log' }];
 const narrative = [{ messageId: 'narrative' }];
 const onlyPlayer = [{ messageId: 'onlyPlayer' }];
 const hero = [{ messageId: 'hero' }];
+const phase = [{ messageId: 'phase' }];
 const text = [{ messageId: 'text' }];
 const words = [{ messageId: 'words' }];
 const statistics = [{ messageId: 'statistics' }];
@@ -51,15 +54,22 @@ const statistics = [{ messageId: 'statistics' }];
 tester.run('kc/narrative-lines-go-through-emit', rule, {
   valid: [
     // the door, and the narrative's two helpers
-    "emit(turnContext, { type: 'system', fact, audience: { realms: [pi] }, hero: c.id });",
+    "emit(turnContext, { type: 'system', fact, audience: { realms: [pi] }, hero: c.id, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });",
     // every event names its hero: a hero's id, null for no hero, the hero whose order is resolving; a place with an
     // audience names it too; an event spreading a place carries the place's
-    "emit(turnContext, { type: 'system', fact, audience: {}, hero: null });",
-    "emit(turnContext, { type: 'system', fact, audience: { actor: pi }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING });",
-    "logSplit(turnContext, 'system', mine, theirs, { audience: { actor: pi }, hero: c.id, province: p.id });",
-    'const place = { audience: { realms: [owner] }, hero: null, province: prov.id };',
+    "emit(turnContext, { type: 'system', fact, audience: {}, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });",
+    "emit(turnContext, { type: 'system', fact, audience: { actor: pi }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });",
+    "logSplit(turnContext, 'system', mine, theirs, { audience: { actor: pi }, hero: c.id, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN, province: p.id });",
+    'const place = { audience: { realms: [owner] }, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN, province: prov.id };',
     "emit(turnContext, { type: 'combat', fact: slainLine, ...place });",
-    "lines.push([msg, { audience: { actor: pi }, 'hero': THE_HERO_WHOSE_ORDER_IS_RESOLVING }]);",
+    "lines.push([msg, { audience: { actor: pi }, 'hero': THE_HERO_WHOSE_ORDER_IS_RESOLVING, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN }]);",
+    // every event names its phase (P1-12d38): a number, 'none', the named one, or an expression; a place with an
+    // audience names it too; an event spreading a place carries the place's
+    "emit(turnContext, { type: 'system', fact, audience: {}, hero: null, phase: 2 });",
+    "emit(turnContext, { type: 'system', fact, audience: {}, hero: null, phase: 'none' });",
+    "emit(turnContext, { type: 'system', fact, audience: {}, hero: c.id, phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN });",
+    "const place = { audience: { realms: [owner] }, hero: null, phase: 'none', province: prov.id };",
+    'emit(turnContext, { ...fight, fact, audience: { realms: [pi] }, hero: c.id });',
     // an object that is no event: no audience, not handed to emit
     'const opts = { actor: c.player, charId: c.id };',
     "narrate(narrative, { kind: 'the hosts close', province: prov.name });",
@@ -98,7 +108,7 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
     'const r = Math.log(Math.max(a, 1e-9) / Math.max(b, 1e-9));',
     'const small = Math.abs(S) < globalThis.Math.log(1.15);',
     {
-      code: 'emit(turnContext, { type: "move", fact: f as LineFact, audience: {}, hero: null });',
+      code: 'emit(turnContext, { type: "move", fact: f as LineFact, audience: {}, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });',
       languageOptions: { parser: tseslint.parser },
     },
     // the turn's statistics (P1-12d33): a record filed through its door; the realms' two snapshots written where they
@@ -174,17 +184,44 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
       languageOptions: { parser: tseslint.parser },
       errors: hero,
     },
-    // a line handed as words (P1-12d18): an event or a place with a text key, once it names its hero
-    { code: "emit(turnContext, { type: 'system', text, audience: { realms: [pi] }, hero: c.id });", errors: text },
-    { code: "emit(turnContext, { type: 'system', text: 'A line.', audience: {}, hero: null });", errors: text },
-    { code: "emit(turnContext, { type: 'combat', text: slainLine, ...place });", errors: text },
-    { code: 'emit(turnContext, { ...fight, text: line });', errors: text },
-    { code: "emit(turnContext, { type: 'system', 'text': t, audience: {}, hero: null });", errors: text },
+    // an event written without its phase (P1-12d38): emit's, or a place with an audience, once it names its hero
+    { code: "emit(turnContext, { type: 'system', fact, audience: { realms: [pi] }, hero: c.id });", errors: phase },
+    { code: "emit(turnContext, { type: 'system', fact, audience: {}, hero: null, province: p.id });", errors: phase },
     {
-      code: "logSplit(turnContext, 'system', a, b, { audience: { actor: pi }, hero: c.id, text: line });",
+      code: "logSplit(turnContext, 'system', mine, theirs, { audience: { actor: pi }, hero: c.id, province: p.id });",
+      errors: phase,
+    },
+    { code: 'const place = { audience: { realms: [owner] }, hero: null, province: prov.id };', errors: phase },
+    // an event with no phase and words too: refused for its phase first (one fault at a time)
+    { code: "emit(turnContext, { type: 'system', text, audience: {}, hero: null });", errors: phase },
+    {
+      code: 'emit(turnContext, { type: "move", fact: f as LineFact, audience: {}, hero: null });',
+      languageOptions: { parser: tseslint.parser },
+      errors: phase,
+    },
+    // a line handed as words (P1-12d18): an event or a place with a text key, once it names its hero
+    {
+      code: "emit(turnContext, { type: 'system', text, audience: { realms: [pi] }, hero: c.id, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });",
       errors: text,
     },
-    { code: 'const place = { audience: { realms: [owner] }, hero: null, text: line };', errors: text },
+    {
+      code: "emit(turnContext, { type: 'system', text: 'A line.', audience: {}, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });",
+      errors: text,
+    },
+    { code: "emit(turnContext, { type: 'combat', text: slainLine, ...place });", errors: text },
+    { code: 'emit(turnContext, { ...fight, text: line });', errors: text },
+    {
+      code: "emit(turnContext, { type: 'system', 'text': t, audience: {}, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });",
+      errors: text,
+    },
+    {
+      code: "logSplit(turnContext, 'system', a, b, { audience: { actor: pi }, hero: c.id, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN, text: line });",
+      errors: text,
+    },
+    {
+      code: 'const place = { audience: { realms: [owner] }, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN, text: line };',
+      errors: text,
+    },
     // and a string handed to a fight's narrative: a string, a template, a + or a choice with one, in an array too
     { code: "narrate(narrative, 'The hosts close.');", errors: words },
     { code: 'narrate(narr, `— ${name} falls.`);', errors: words },
@@ -201,7 +238,7 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
       errors: words,
     },
     {
-      code: 'emit(turnContext, { type: "move", text: t as string, audience: {}, hero: null });',
+      code: 'emit(turnContext, { type: "move", text: t as string, audience: {}, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });',
       languageOptions: { parser: tseslint.parser },
       errors: text,
     },

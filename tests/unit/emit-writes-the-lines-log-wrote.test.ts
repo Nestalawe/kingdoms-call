@@ -4,8 +4,9 @@
 // (the views write its words in its place, and the stored line has no fact); an audience grants what the line's fields
 // say; every event names its hero (P1-12c2): a hero left out throws, null is no hero, and
 // THE_HERO_WHOSE_ORDER_IS_RESOLVING is that hero, but only when the line already reaches his realm (P1-12c1); a phase
-// named THE_PHASE_THE_LINE_IS_WRITTEN_IN (or, from a file not yet type-checked, left out or null) is the phase of the
-// order resolving (else the phase resolving, else 99 once the phases are over), 'none' a real null; narrate adds a line to a fight: for everyone in it, or, a fact of a kind whose audience is its
+// named THE_PHASE_THE_LINE_IS_WRITTEN_IN (or, from a file not type-checked, null) is the phase of the
+// order resolving (else the phase resolving, else 99 once the phases are over), 'none' a real null, and a phase left out
+// throws (P1-12d38); narrate adds a line to a fight: for everyone in it, or, a fact of a kind whose audience is its
 // hero's realm alone (P1-12c4), one that emitNarrLine files to that realm under its hero; and an event records a fact,
 // never words (P1-12d18): an event handed as words, or a fight's line as a string, throws and writes no line.
 // (The oracle that checked emit against copies of the code before it, for any input, ran from P1-12a2 to P1-12a4 and
@@ -18,8 +19,7 @@
 // Decisions 2 to 5), writes today's stored forms: 17 keys, a `'bare'` line's 14, `notFor`, the fact last; what each
 // part of an audience writes; every event names its hero (P1-12c2): a hero left out throws and writes no line, `null`
 // is no hero (even while a hero's order resolves and the line reaches his realm), and
-// `THE_HERO_WHOSE_ORDER_IS_RESOLVING` takes the hero of the order resolving; `phase`, named `THE_PHASE_THE_LINE_IS_WRITTEN_IN` (or left out or null by a file not yet
-// type-checked), takes the phase of the order resolving (else the phase resolving, else 99 once the phases are over) and `'none'` is a real null; the
+// `THE_HERO_WHOSE_ORDER_IS_RESOLVING` takes the hero of the order resolving; `phase`, named `THE_PHASE_THE_LINE_IS_WRITTEN_IN` (or null, from a file not type-checked), takes the phase of the order resolving (else the phase resolving, else 99 once the phases are over) and `'none'` is a real null, and one left out throws and writes no line (P1-12d38); the
 // hero of the order resolving only when the line already reaches his realm (told it, its deed, seen by the world or
 // there; a battle's line only by being told), else no hero, and a hero who serves no realm keeps his lines (P1-12c1);
 // `narrate`, and `emitNarrLine` filing a fact of a kind for its hero's realm alone to that realm alone under its hero
@@ -162,7 +162,7 @@ describe("emit's forms", () => {
     expect(tc.turnLog[2]).toMatchObject({ public: true, provinceId: 3, battleId: 2, bTier: 'd' });
   });
 
-  test("hero, the order resolving's when named so; phase, left out or null, the order resolving's (else the phase's, else 99); 'none', a real null", () => {
+  test("hero, the order resolving's when named so; phase, named so or null, the order resolving's (else the phase's, else 99); 'none', a real null", () => {
     const after: ContextState = { charId: 7, phase: null, currentPhase: null, afterPhases: true };
     const tc = newContext(after);
     emit(tc, {
@@ -191,12 +191,16 @@ describe("emit's forms", () => {
     ]);
   });
 
-  test("a phase left out, from an engine file not yet type-checked, is the order resolving's phase, as the named one is", () => {
+  test('a phase left out throws, and writes no line; the named one, a number and none write one', () => {
     const tc = newContext({ charId: 7, phase: 2, currentPhase: 3, afterPhases: false });
+    // An engine file not yet type-checked can hand such an event: the type refuses it, emit throws.
     const leftOut: unknown = { type: 'system', fact: A_LINE, audience: {}, hero: null };
-    emit(tc, leftOut as TurnEvent);
+    expect(() => {
+      emit(tc, leftOut as TurnEvent);
+    }).toThrow(/names no phase/);
+    expect(tc.turnLog).toEqual([]);
     emit(tc, { type: 'system', fact: A_LINE, audience: {}, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });
-    expect(tc.turnLog.map((l) => l.phase)).toEqual([2, 2]);
+    expect(tc.turnLog.map((l) => l.phase)).toEqual([2]);
   });
 
   test("narrate: a line for everyone in the fight, and a fact for its hero's realm alone that emitNarrLine files to that realm", () => {

@@ -27,7 +27,10 @@
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
-import { THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../../src/engine/turn/events-and-their-audiences.ts';
+import {
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../../src/engine/turn/events-and-their-audiences.ts';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
@@ -166,6 +169,7 @@ describe('What the plan hands the passes', () => {
           fact: A_LINE,
           audience: { actor: null, realms: [] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
         });
       },

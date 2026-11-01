@@ -27,8 +27,8 @@
 //          else no hero (P1-12c1). Left out, emit throws (and the lint rule refuses an event written without it)
 //   phase  a number; THE_PHASE_THE_LINE_IS_WRITTEN_IN: the phase of that order, else the phase resolving, else 99 once
 //          the phases are over; 'none': no phase (the lines that were pushed straight into turnLog, which never had
-//          the 99). Every event in a type-checked file names it (P1-12d37); until the other files do (P1-12d38), emit
-//          reads one left out or null as THE_PHASE_THE_LINE_IS_WRITTEN_IN
+//          the 99). Every event names it (P1-12d37, P1-12d38): left out, emit throws (and the lint rule refuses an
+//          event written without it); an expression that may be null takes `?? THE_PHASE_THE_LINE_IS_WRITTEN_IN`
 //
 // A line records a fact (fact: one kind of LineFact, the union of every area's kinds, each typed in its area's module
 // beside its code; src/engine/battle/the-facts-a-battles-lines-record.ts is the first), never its words: since
@@ -492,6 +492,13 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
     );
   if (wordsAsHanded !== undefined)
     throw new Error(`emit: the event ${wordsOrFact} has words as well: the views write a fact's words.`);
+  // Read as the engine may hand it, too: a phase left out is a file that does not name it.
+  const phaseAsHanded: unknown = event.phase;
+  if (phaseAsHanded === undefined)
+    throw new Error(
+      `emit: the event ${wordsOrFact} names no phase. Every event names its phase: a number, 'none', or ` +
+        'THE_PHASE_THE_LINE_IS_WRITTEN_IN (docs/traps.md, "Every event names its hero", which covers the phase too).',
+    );
   const line: LogLine = {
     type: event.type,
     text: null,

@@ -55,6 +55,7 @@ import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts'
 import { at, leads, rival, wanderer } from '../lib/cast-spell-order-cases.ts';
 import { companies, item, skeletal } from '../lib/item-and-army-order-cases.ts';
 import type { WhatTheSavesUpgradeFound } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
+import { THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
@@ -291,7 +292,7 @@ describe('After the phases: what it calls', () => {
       resolveAllPendingSkillGains: () => {
         (tc(b)['_deferredSkillLogs'] as unknown[]).push([
           aRise(2),
-          { audience: { actor: 0, realms: [0] }, hero: h.id },
+          { audience: { actor: 0, realms: [0] }, hero: h.id, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN },
         ]);
       },
     });
@@ -388,7 +389,7 @@ describe('After the phases: what only a direct call can stage', () => {
     const h = at(b);
     tc(b)['_deferredSkillLogs'] = [
       [aRise(2), { audience: { actor: 0, realms: [0] }, hero: h.id, phase: 3 }],
-      [aRise(3), { audience: { actor: 0, realms: [0] }, hero: h.id }],
+      [aRise(3), { audience: { actor: 0, realms: [0] }, hero: h.id, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN }],
     ];
     after(b);
     const ls = b.lines().filter((l) => l.text.startsWith('📈 '));

@@ -76,10 +76,10 @@ check finds were made.
   (`hero: dest ? dest.id : THE_HERO_WHOSE_ORDER_IS_RESOLVING`, or `?? THE_HERO_WHOSE_ORDER_IS_RESOLVING`). The cases:
   `tests/unit/emit-writes-the-lines-log-wrote.test.ts`; the audience check (`tests/lib/report-leaks.ts`) states the
   same rule apart. The area rows of P1-12c replace the constant with the hero each fact names. Every event
-  names its `phase` too (P1-12d37, the typed files; the untyped files follow in P1-12d38): a number,
-  `THE_PHASE_THE_LINE_IS_WRITTEN_IN` (the phase of that order, else the phase resolving, else 99 once the phases are
-  over) or `'none'` (no phase); an expression that may be null takes `?? THE_PHASE_THE_LINE_IS_WRITTEN_IN`. Until the
-  untyped files name it, `emit` still reads a phase left out or `null` as the constant.
+  names its `phase` too (P1-12d37 and d38): a number, `THE_PHASE_THE_LINE_IS_WRITTEN_IN` (the phase of that order, else
+  the phase resolving, else 99 once the phases are over) or `'none'` (no phase); an expression that may be null takes
+  `?? THE_PHASE_THE_LINE_IS_WRITTEN_IN`. `emit` throws on an event with no `phase`, and the lint rule refuses one
+  written without it (the same two literals, with the same spread exemption, once it names its hero).
 - **A line records a fact, and the views write its words**. An event carries `fact` (one kind of `LineFact`), never
   its words: since P1-12d18 `TurnEvent` has no `text` and `NarrativeLine` is `LineFact`, and `emit` throws on an event
   handed as words (a `text`, or a string in the fact's place), as it throws on one with no hero. An area's kinds are typed beside its code

@@ -25,7 +25,10 @@ import { types } from 'node:util';
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
-import { THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../../src/engine/turn/events-and-their-audiences.ts';
+import {
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../../src/engine/turn/events-and-their-audiences.ts';
 import { engineFn, loadEngine, turnContext, type TurnContext } from '../lib/engine.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
@@ -70,7 +73,14 @@ describe('createTurnContext', () => {
     // A line is a fact (P1-12d18): one of a kind that holds no values.
     const A_LINE = { kind: "a battle's losses, tallied from its lines" };
     const line = (place?: Record<string, unknown>) => {
-      emit(tc, { type: 'combat', fact: A_LINE, audience: {}, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, ...place });
+      emit(tc, {
+        type: 'combat',
+        fact: A_LINE,
+        audience: {},
+        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+        ...place,
+      });
       return tc.turnLog[tc.turnLog.length - 1];
     };
     try {
