@@ -20,7 +20,9 @@
 // fallen one or no order does nothing; the superseded order (the leader named, or "another hero"); the battle lock's
 // foes one by one (an enemy, a wanderer, a leaderless host: held; a fallen enemy, one with no companies or elsewhere,
 // an ally, his own realm's: not), a neutral garrison (not on his own ground), the line's fields, a stale flag, no
-// companies, other orders; each charm refusal (and not spent, and told before a spent mastery); each mastery's charge
+// companies, other orders; each charm refusal (and not spent, and told before a spent mastery); a hero under a charm
+// this turn not released and his spell item not cast; a mastery order or spell refused to a hero who joined this turn
+// (and to a seized one: its spell too), not to one who joined earlier; each mastery's charge
 // to this turn and second refusal; the Forced March (handed on to slip, refused below March 7 or with no skills in the
 // save, still spent); a spell item by id, number or name (and an unknown spell, another power, none, one not carried);
 // a bot's Practice read from the season's start, a comrade's level too, a fallen or idle comrade, the order copied not
@@ -33,7 +35,7 @@ import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { recordExperienceRolls, withCaseDice } from '../lib/espionage-order-cases.ts';
-import { companies } from '../lib/item-and-army-order-cases.ts';
+import { companies, item } from '../lib/item-and-army-order-cases.ts';
 import {
   board,
   hero,
@@ -549,6 +551,123 @@ describe('a charmed enemy hero: an enchantment, not an oath', () => {
       dispatch(b, c, o('vanish'));
     });
     expect(textOf(b, c)).toEqual([refusal(c, 'spend their own mastery for a crown that merely holds their mind')]);
+  });
+});
+
+describe('a hero held by a charm, or new to the realm this turn, is refused the orders the form hides from him', () => {
+  // The order form hides Release Hero and Use Item from a hero under a charm (the rulebook: "While charmed they will
+  // not send their items away, nor be released from service"; R-049), and the mastery orders and mastery spells from a
+  // hero whose levels his realm has not seen: one hired this turn (R-048) or seized by a charm.
+  const seized = (b: Board) =>
+    Object.assign(at(b, ALL_NINE), { _charmTempControl: true, _charmOriginalPlayer: 1, _charmedTurn: b.G.turn });
+  const swayed = (b: Board) => Object.assign(at(b, ALL_NINE), { _charmedTurn: b.G.turn, hiredInPhase: 0 });
+  const joined = (b: Board) => Object.assign(at(b, ALL_NINE), { hiredInPhase: 0 });
+  const UNDER_A_CHARM = [
+    ['seized from an enemy', seized],
+    ['swayed from the wilds', swayed],
+  ] as const;
+  const SPELLS = vm.runInContext('SPELL_DEFS_P', engine) as Record<string, { reqLevel?: number; phase?: boolean }>;
+  const MASTERY_SPELLS = Object.entries(SPELLS)
+    .filter(([, s]) => s.reqLevel && s.phase)
+    .map(([name]) => name);
+  const castOf = (spell: string) => o('cast_spell', spell);
+  const enlist = (b: Board, c: Character) => {
+    must(b.G.players[0], 'his realm')['heroes'] = [c.id];
+    return c;
+  };
+
+  test.each(UNDER_A_CHARM)('a hero %s by a charm this turn is not released: he stays in the realm', (_, make) => {
+    const b = fresh();
+    const c = enlist(b, make(b));
+    dispatch(b, c, o('release'), 1);
+    expect({ realm: c.player, told: textOf(b, c) }).toEqual({
+      realm: 0,
+      told: [
+        `${c.name} is held by an enchantment this season and cannot be released from service. The order comes to nothing.`,
+      ],
+    });
+  });
+
+  test('a hero won over by a charm in an earlier turn may be released', () => {
+    const b = fresh();
+    const c = enlist(b, Object.assign(at(b), { _charmedTurn: b.G.turn - 1, hiredInPhase: -1 }));
+    dispatch(b, c, o('release'), 1);
+    expect(c.player).toBe(null);
+  });
+
+  test.each(UNDER_A_CHARM)("a spell item's Use Item by a hero %s is the item order's, not a cast", (_, make) => {
+    const b = fresh();
+    const c = make(b);
+    c.items = [{ ...item(b, 'Censer of Plenty'), id: 7000 }];
+    const ord = o('use_item', '7000');
+    expect(
+      standIn(() => {
+        dispatch(b, c, ord, 1);
+      }),
+    ).toEqual([handed(b, c, ord, 1, 'use_item')]);
+  });
+
+  test.each([...MASTERIES.map((m) => [m, o(m)] as const), ...MASTERY_SPELLS.map((s) => [s, castOf(s)] as const)])(
+    '%s by a hero who joined the realm this turn: refused, not handed on, not spent, told to his realm',
+    (_, ord) => {
+      const b = fresh();
+      const c = joined(b);
+      const calls = standIn(() => {
+        dispatch(b, c, ord, 1);
+      });
+      expect({
+        calls,
+        lines: linesOf(b, c).map((l) => [l.type, l.text, l.targets, l.phase]),
+        spent: c['_masteryOrderUsed'],
+        ctx: b.tc._logCtx,
+      }).toEqual({
+        calls: [],
+        lines: [
+          [
+            'system',
+            `${c.name} has only just joined the realm — a mastery must wait until next turn. The order comes to nothing.`,
+            [0],
+            1,
+          ],
+        ],
+        spent: undefined,
+        ctx: { charId: null, phase: null },
+      });
+    },
+  );
+
+  test.each(MASTERY_SPELLS)('%s by a hero seized by a charm: refused as his other masteries are', (spell) => {
+    const b = fresh();
+    const c = seized(b);
+    const calls = standIn(() => {
+      dispatch(b, c, castOf(spell), 1);
+    });
+    expect({ calls, told: textOf(b, c) }).toEqual({
+      calls: [],
+      told: [
+        `${c.name} is held by an enchantment, not an oath — they will not spend their own mastery for a crown that merely holds their mind. The order comes to nothing.`,
+      ],
+    });
+  });
+
+  test('a hero who joined in an earlier turn spends his masteries; one who joined this turn gives every other order', () => {
+    const b = fresh();
+    const earlier = Object.assign(at(b, ALL_NINE), { hiredInPhase: -1 });
+    const now = joined(b);
+    const spell = must(MASTERY_SPELLS[0], 'a mastery spell');
+    const others = ['move', 'practice', 'explore', 'rest', 'use_item', 'release'];
+    const calls = standIn(() => {
+      dispatch(b, earlier, o('vanish'));
+      dispatch(b, earlier, castOf(spell));
+      for (const a of others) dispatch(b, now, o(a));
+      dispatch(b, now, castOf('Bless Province'));
+    });
+    expect(calls.map((x) => x.fn)).toEqual([
+      'resolveVanishOrder',
+      'resolveCastSpellOrder',
+      ...others.map((a) => must(HANDED[a], a)[0]),
+      'resolveCastSpellOrder',
+    ]);
   });
 });
 

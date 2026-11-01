@@ -83,6 +83,7 @@ export type TheFactOfTheArmyOrdersLine =
       seaMovePoints: number;
     }
   | { kind: 'a king cannot release himself from his own service'; heroName: string }
+  | { kind: 'a hero held by a charm this season cannot be released'; heroName: string }
   | { kind: 'a hero leading companies cannot be released'; heroName: string; companies: number }
   | {
       kind: "a hero is released from the realm's service";
@@ -178,6 +179,7 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_ARMY_ORDERS_LINE: Readonly<
   'a hero leaves companies in the garrison': "its event's",
   'a hero who left every company behind travels light': "its event's",
   'a king cannot release himself from his own service': "its event's",
+  'a hero held by a charm this season cannot be released': "its event's",
   'a hero leading companies cannot be released': "its event's",
   "a hero is released from the realm's service": "its event's",
   'a hero has no companies to disband': "its event's",
