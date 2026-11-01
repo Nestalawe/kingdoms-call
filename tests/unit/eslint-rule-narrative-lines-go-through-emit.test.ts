@@ -192,6 +192,7 @@ tester.run('kc/narrative-lines-go-through-emit', rule, {
       errors: phase,
     },
     { code: 'const place = { audience: { realms: [owner] }, hero: null, province: prov.id };', errors: phase },
+    { code: "emit(turnContext, { type: 'system', fact, audience: {}, hero: null, phases: [1] });", errors: phase },
     // an event with no phase and words too: refused for its phase first (one fault at a time)
     { code: "emit(turnContext, { type: 'system', text, audience: {}, hero: null });", errors: phase },
     {
