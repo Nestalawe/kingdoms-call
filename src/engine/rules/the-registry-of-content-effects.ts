@@ -1376,6 +1376,36 @@ export interface AFoeARealmsDiscoveriesSteadyAFightersAimAt {
   readonly theFoesKind: () => string;
 }
 
+/** A guardian's perk as his card's rule reads it (monsterTraits: plan P1-19ai): its ward, or a field of the ward's own
+ *  name set (the form the rule has always read too; no perk of MONSTERS_P writes it). */
+export interface APerkAsAGuardiansCardReadsIt {
+  readonly ward?: string | undefined;
+  readonly meleeDR?: unknown;
+  readonly arrowDR?: unknown;
+  readonly spellPct?: unknown;
+}
+
+/** An approach to a guardian a perk on his card may turn (monsterTraits' hidden multipliers: blades, arrows, magic). */
+export type AnApproachAGuardiansCardMayTurn = 'melee' | 'archery' | 'spell';
+
+/** The approaches a guardian's perks turn, so no hidden multiplier of his nature leaves him weaker to them. */
+export type TheApproachesAGuardiansPerksTurn = Readonly<Record<AnApproachAGuardiansCardMayTurn, boolean>>;
+
+/** What the stage "a guardian's perks: his grade's cap beside his own" hands an effect (pcMonsterCombatant, once his
+ *  perks are on him: plan P1-19ai): the cap on a single hit his grade gives him (GUARDIAN_BODY_CAP_PCT; 0 for none),
+ *  and the wards his perks gave him (none: no table). */
+export interface AGuardiansGradesCapAndTheWardsHisPerksGaveHim {
+  readonly theCapOfHisGrade: number;
+  readonly theWardsHisPerksGaveHim: Readonly<TheWardsAFighterWears> | null | undefined;
+}
+
+/** What a guardian's grade's cap does to the wards his perks gave him: the ward merged into them (the looser of the two
+ *  caps is kept, as the merge keeps a percentage), then what his own tighter cap sets back (none: null). */
+export interface WhatAGuardiansGradesCapDoes {
+  readonly theWardHisGradeAdds: AWardAsTheMergeReadsIt;
+  readonly whatHisOwnTighterCapKeeps: WhatAWardSets | null;
+}
+
 /** A skill about to roll to rise through experience, as a realm's discoveries that add to its chance read it
  *  (trySkillGain: plan P1-19ac). */
 export interface ASkillARealmsDiscoveriesMayRaise {
@@ -2130,6 +2160,17 @@ export interface TheStagesOfEachHookPoint {
     /** The damage a discovery a hero's realm holds adds to what his Mithril turns aside of a melee blow; the runner
      *  adds them (pcCharCombatant, after the suit's own). */
     readonly "a realm's discoveries strengthen his Mithril": (theEffect: TheEffectOfADiscovery) => number;
+    /** The approach a guardian's perk turns on his card, or nothing; the runner gathers them over his perks, and
+     *  monsterTraits keeps each hidden multiplier of an approach turned at 1 or below (the guardian perks' registry:
+     *  plan P1-19ai). */
+    readonly "a guardian's perks: what his card turns": (
+      thePerk: APerkAsAGuardiansCardReadsIt,
+    ) => AnApproachAGuardiansCardMayTurn | null;
+    /** What a guardian's grade's cap does to the wards his perks gave him, or nothing (his grade gives none); the
+     *  runner gives the first effect's (pcMonsterCombatant, once his perks are on him: plan P1-19ai). */
+    readonly "a guardian's perks: his grade's cap beside his own": (
+      facts: AGuardiansGradesCapAndTheWardsHisPerksGaveHim,
+    ) => WhatAGuardiansGradesCapDoes | null;
   };
   /** The treasury (plan P1-19's items family, Choice 1: its first row, P1-19t, typed it): what an item is for and what
    *  it is worth, read as the engine loads (the load-time pass tiers each item by them, so which lairs hold it) and by a

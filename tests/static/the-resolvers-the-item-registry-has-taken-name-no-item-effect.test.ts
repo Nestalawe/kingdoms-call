@@ -8,8 +8,8 @@
 // names, but the reads listed with the step each is left to; and, from P1-19r, it uses no field of the wards a fighter
 // wears (`x.arm.meleeDR`, `x.arm?.dodge`, or through a name bound to `x.arm` in the function: the table pcArmourMerge
 // builds, whose names alone are the lines'), but a guardian's perks' own wards (stunWard, dotWard, schoolWard), listed
-// with the step each is left to; nor does any other function of src/engine/ outside rules/, but the guardian's build,
-// listed. Its
+// with the step each is left to; nor does any other function of src/engine/ outside rules/ (the guardian's build, listed
+// until P1-19ai took it). Its
 // effects find what an item carries by the key the content's row gives, in src/engine/rules/. Each row of the family
 // adds the functions it takes. With them, the ratchet's count of the engine's checks of an item outside the registry
 // (tools/ratchet.ts's itemEffectChecksInEngine, by its helper itemEffectChecksByFunction: a string of the vocabulary
@@ -209,9 +209,9 @@ const CHECKS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> =
 };
 
 /** The uses of a field of the wards a fighter wears that a function of src/engine/ outside rules/ still holds, by the
- *  function, each left to a later step: a guardian's perks' own wards and a guardian's grade's cap, with the guardian
- *  family (the items family's "Parked for later"; P1-19q left their merge in pcArmourMerge). Every other function holds
- *  none: one more, or one gone, turns it red. */
+ *  function, each left to a later step: a guardian's perks' own wards, with the guardian family (the items family's
+ *  "Parked for later"; P1-19q left their merge in pcArmourMerge; a guardian's grade's cap went into the guardian perks'
+ *  registry with P1-19ai). Every other function holds none: one more, or one gone, turns it red. */
 const WARD_USES_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {
   // a guardian's perk's chance to shrug off a stun
   pcStunWard: ['stunWard'],
@@ -219,8 +219,6 @@ const WARD_USES_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>
   pcRoundStart: ['dotWard', 'dotWard'],
   // a guardian's perk's ward against one school of magic (read once since P1-10b16: `?.arm?.schoolWard?.[school]`)
   pcCastCombatSpell: ['schoolWard'],
-  // a guardian's own cap beside its grade's bulk (the guardian's build)
-  pcMonsterCombatant: ['cap', 'cap'],
 };
 
 /** The effects an item carries on itself, beside its `effect` (Parked: one key per effect, later). */

@@ -69,7 +69,9 @@ outside the rule registry (`unitNameChecksInEngine`, P1-19a: each row of P1-19 l
 its key or an item by its name outside it (`itemEffectChecksInEngine`, P1-19m: each row of the items family lowers it), and of a
 spell by its name or its `fn` outside it (`spellChecksInEngine`, P1-19u: each row of the spells family lowers it), and of a
 discovery by its id or an effect by its kind outside it (`discoveryChecksInEngine`, P1-19aa: the discoveries family's rows
-lowered it to 0), ESLint's suppressed findings
+lowered it to 0), and of a guardian's perk outside it (`guardianPerkChecksInEngine`, P1-19ai: a kind of perk compared or
+looked up, a field of the wards a fighter wears or a ward only a perk sets, a rider read in personal combat; each row of
+the perks lowers it), ESLint's suppressed findings
 (`eslintSuppressions`, P1-13b; the site's lint warnings, `eslintWarnings`, before it), the import rules' known violations (`knownArchitectureViolations`) and what knip finds unused (`unusedCode`,
 both P1-13a). `tests/static/harness.test.ts` fails if any
 of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a

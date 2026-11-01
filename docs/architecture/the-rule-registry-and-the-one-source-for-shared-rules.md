@@ -2,8 +2,8 @@
 
 ## The rule registry
 
-A **content effect** (a unit ability; since P1-19m a magic item's effect, [below](#the-items-registry); then spells,
-discoveries, guardian perks and alignment orders, P1-19) is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
+A **content effect** (a unit ability; since P1-19m a magic item's effect, [below](#the-items-registry); then the other
+families, each with its file, below) is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
 books write them, and the units it counts or reaches when more than its own) and **one entry in the registry**
 (`src/engine/rules/the-registry-of-content-effects.ts`), keyed by the same slug (`'sheer-numbers'`). The entry names the
 ability's **effect** at each **stage** it acts in; the effects are in `src/engine/rules/<family>/`, a file per group of
@@ -16,8 +16,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   worth: P1-19t) (the union `HookPointName`). Each is a set of named
   stages, in the order the engine runs them (`TheStagesOfEachHookPoint`). A stage's effect type says exactly what the
   stage hands the effect, read-only, and what it returns; an effect changes nothing, at the turn's end too (it returns
-  what the turn must do, and the turn does it: plan P1-19's second slice, Choice 3). A stage or a hook point typed `never` has no signature yet: its family's first row writes it, and an entry
-  on it fails to compile meanwhile.
+  what the turn must do, and the turn does it). A stage or a hook point typed `never` has no signature yet: its family's
+  first row writes it, and an entry on it fails to compile meanwhile.
 - **Within a stage, the effects run in the order its list gives** (`THE_ORDER_OF_EACH_STAGE`), not by a number: a product
   of decimals, and the ladder's words, depend on the order ([traps.md](../traps.md#order-is-data)). The runner finds a unit's
   effects by its type, from a `Map` built once from content as the file loads (an ability whose row says it reaches
@@ -229,7 +229,8 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   items' registry.
 
 **The spells' registry** (P1-19u): [its file](the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md). **The
-discoveries'** (P1-19aa): [its file](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md).
+discoveries'** (P1-19aa): [its file](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md). **The
+perks'** (P1-19ai): [its file](the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md).
 
 ## `kingdoms-call-data.ts`: the one source for shared rules
 

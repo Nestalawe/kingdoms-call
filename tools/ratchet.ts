@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the hand-written database stand-in, tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn` and of a discovery by its id or its effect's kind, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind and of a guardian's perk, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -18,6 +18,7 @@ import {
   KC_SKILLS,
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
+  MONSTERS_P,
   SAGE_DISCOVERIES_P,
   SPELL_DEFS_P,
 } from '../src/content/kingdoms-call-data.ts';
@@ -380,6 +381,136 @@ export function discoveryChecksInEngine(codeFiles: readonly (readonly [file: str
   return n;
 }
 
+// The engine's checks of a guardian's perk (plan P1-19's guardian perks, Decision 5): in the files of src/engine/
+// outside src/engine/rules/, counted by syntax tree (the scoping's perk-checks.mts rule): (a) a string naming a kind of
+// perk (a perk's `fx.ward`, or its rider's key, as MONSTERS_P writes them) that the code compares (===, !==, ==, !=),
+// switches on (a case), or passes to has, includes, get or indexOf (a method, or a function of that name) or to the
+// lines' perk finders; (b) a use of a field of the wards a fighter wears (`x.arm.f`, `x.arm?.f`, `x.arm['f']`, or
+// through a name the function binds to `x.arm`; not `names`, the lines'), or of a ward only a guardian's perk sets
+// (`stunWard`, `dotWard`, `schoolWard`: a perk's ward no item carries) on anything; (c) in src/engine/personal-combat/
+// only (a hero's skill aura is an `aura` elsewhere), a read of a fighter's rider (a perk's rider key, or the aura's
+// mark on his foe, `auraPenalty`): not a write (`=`), nor a field handed whole to a call. The guardian perks' registry
+// takes them out row by row (an effect reads a perk's ward or rider, in src/engine/rules/), so the count only falls.
+// tests/static/the-resolvers-the-guardian-registry-has-taken-name-no-perk.test.ts counts the functions the registry has
+// taken, with guardianPerkChecksByFunction, at 0 each.
+/** A guardian's perks' effects as content writes them (`fx`): a ward, or a rider by its key. */
+const THE_PERKS_EFFECTS: readonly Readonly<Record<string, unknown>>[] = MONSTERS_P.flatMap((guardian) =>
+  guardian.passives.map((perk): Readonly<Record<string, unknown>> => perk.fx),
+);
+/** The fields of a perk's effect that hold its number or its school, not its kind. */
+const A_PERKS_OTHER_FIELDS: ReadonlySet<string> = new Set(['ward', 'pct', 'amt', 'school']);
+/** Every kind of guardian perk: a perk's ward, or its rider's key (above). */
+export const GUARDIAN_PERK_VOCABULARY: ReadonlySet<string> = new Set(
+  THE_PERKS_EFFECTS.flatMap((fx) =>
+    typeof fx['ward'] === 'string' ? [fx['ward']] : Object.keys(fx).filter((key) => !A_PERKS_OTHER_FIELDS.has(key)),
+  ),
+);
+/** The wards only a guardian's perk sets: a perk's ward that no item carries (as an armour's or a rider's ward). */
+const A_GUARDIANS_OWN_WARDS: ReadonlySet<string> = new Set(
+  THE_PERKS_EFFECTS.flatMap((fx) => (typeof fx['ward'] === 'string' ? [fx['ward']] : [])).filter(
+    (ward) =>
+      ![...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P].some((item) => {
+        const effect: { ward?: string; pc?: { ward?: string } } = item.effect;
+        return effect.ward === ward || effect.pc?.ward === ward;
+      }),
+  ),
+);
+/** A fighter's riders as the fight reads them: a perk's rider keys, and the aura's mark on his foe. */
+const A_FIGHTERS_RIDERS: ReadonlySet<string> = new Set([
+  ...THE_PERKS_EFFECTS.flatMap((fx) =>
+    typeof fx['ward'] === 'string' ? [] : Object.keys(fx).filter((key) => !A_PERKS_OTHER_FIELDS.has(key)),
+  ),
+  'auraPenalty',
+]);
+/** The calls a kind of perk handed to is a check: a lookup, or one of the lines' perk finders. */
+const A_PERKS_LOOKUPS = new Set([
+  'has',
+  'includes',
+  'get',
+  'indexOf',
+  'aFightersPerkNameAsTheLineTellsIt',
+  'aFightersWardAsTheLineTellsIt',
+]);
+/** An expression without its parentheses and its `!`. */
+function withoutItsParentheses(node: ts.Expression): ts.Expression {
+  return ts.isParenthesizedExpression(node) || ts.isNonNullExpression(node)
+    ? withoutItsParentheses(node.expression)
+    : node;
+}
+/** Each function of a file, by its name, with the checks of a guardian's perk in it (0 for a function with none); a
+ *  check inside a nested function that has no name counts for the named one around it, and one outside any function
+ *  for '(top)'. A name bound to a fighter's wards is the named function's. */
+export function guardianPerkChecksByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const inPersonalCombat = file.startsWith('src/engine/personal-combat/');
+  const add = (fn: string): void => {
+    counts.set(fn, (counts.get(fn) ?? 0) + 1);
+  };
+  const isTheWards = (node: ts.Expression, bound: ReadonlySet<string>): boolean => {
+    const b = withoutItsParentheses(node);
+    return (ts.isPropertyAccessExpression(b) && b.name.text === 'arm') || (ts.isIdentifier(b) && bound.has(b.text));
+  };
+  const visit = (node: ts.Node, inside: string, bound: Set<string>): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    const theBound = named ? new Set<string>() : bound;
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      isTheWards(node.initializer, theBound)
+    )
+      theBound.add(node.name.text);
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      GUARDIAN_PERK_VOCABULARY.has(node.text)
+    ) {
+      const p = node.parent;
+      if ((ts.isBinaryExpression(p) && COMPARISONS.has(p.operatorToken.kind)) || ts.isCaseClause(p)) add(fn);
+      else if (ts.isCallExpression(p) && p.arguments.some((argument) => argument === node)) {
+        const callee = p.expression;
+        if (A_PERKS_LOOKUPS.has(ts.isPropertyAccessExpression(callee) ? callee.name.text : callee.getText())) add(fn);
+      }
+    }
+    if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+      const field = ts.isPropertyAccessExpression(node)
+        ? node.name.text
+        : ts.isStringLiteral(node.argumentExpression)
+          ? node.argumentExpression.text
+          : null;
+      if (field !== null && field !== 'names' && isTheWards(node.expression, theBound)) add(fn);
+      else if (field !== null && A_GUARDIANS_OWN_WARDS.has(field)) add(fn);
+      else if (field !== null && inPersonalCombat && A_FIGHTERS_RIDERS.has(field)) {
+        const p = node.parent;
+        const written =
+          ts.isBinaryExpression(p) && p.left === node && p.operatorToken.kind === ts.SyntaxKind.EqualsToken;
+        const handedWhole =
+          ts.isPropertyAssignment(p) &&
+          p.initializer === node &&
+          ts.isObjectLiteralExpression(p.parent) &&
+          ts.isCallExpression(p.parent.parent);
+        if (!written && !handedWhole) add(fn);
+      }
+    }
+    ts.forEachChild(node, (child) => {
+      visit(child, fn, theBound);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)', new Set());
+  return counts;
+}
+/** The checks of a guardian's perk in the files of src/engine/ outside src/engine/rules/ (the files
+ *  unitNameChecksInEngine counts), for the files given as [path from the repository's root, text]. */
+export function guardianPerkChecksInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    if (!countsUnitNameChecks(file)) continue;
+    for (const count of guardianPerkChecksByFunction(file, text).values()) n += count;
+  }
+  return n;
+}
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -467,6 +598,7 @@ export function measure(): Counts {
     itemEffectChecksInEngine: itemEffectChecksInEngine(codeFiles),
     spellChecksInEngine: spellChecksInEngine(codeFiles),
     discoveryChecksInEngine: discoveryChecksInEngine(codeFiles),
+    guardianPerkChecksInEngine: guardianPerkChecksInEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),

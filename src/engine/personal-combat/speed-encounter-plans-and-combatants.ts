@@ -4,6 +4,7 @@ import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd, monsterCat } from '../names.ts';
 import { activeItems, effTemper } from '../items/equipment.ts';
 import { dedupeItemsByName, guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, pcArmourOf } from './helpers.ts';
+import { whatAGuardiansGradesCapDoesBesideHisOwn } from '../rules/the-registry-of-guardian-perks.ts';
 import {
   anItemIsACombatItem,
   theDamageAMithrilSuitTurnsAside,
@@ -534,10 +535,16 @@ export function pcMonsterCombatant(m: AGuardianAsHisFighterIsBuilt) {
   {
     const bodyCapOfGrade: Readonly<Partial<Record<string, number>>> = GUARDIAN_BODY_CAP_PCT;
     const _bandCap = Number(bodyCapOfGrade[String(m.power)]) || 0;
-    const _ownCap = Number(cbt.arm?.cap) || 0;
-    if (_bandCap > 0) cbt.arm = pcArmourMerge(cbt.arm, { ward: 'cap', pct: _bandCap }, 'its sheer bulk');
-    // the band's cap has just been merged, so there is a table
-    if (_ownCap > 0 && _ownCap < _bandCap && cbt.arm) cbt.arm.cap = _ownCap;
+    // the guardian perks' registry (plan P1-19ai): his own cap is read before the merge
+    const _capped = whatAGuardiansGradesCapDoesBesideHisOwn({
+      theCapOfHisGrade: _bandCap,
+      theWardsHisPerksGaveHim: cbt.arm,
+    });
+    if (_capped) {
+      cbt.arm = pcArmourMerge(cbt.arm, _capped.theWardHisGradeAdds, 'its sheer bulk');
+      // the band's cap has just been merged, so there is a table
+      if (_capped.whatHisOwnTighterCapKeeps) Object.assign(cbt.arm, _capped.whatHisOwnTighterCapKeeps);
+    }
   } // a perk's tighter cap (Elder Titan, Kraken: 15%) is never loosened by the grade's
   return cbt;
 }

@@ -2,6 +2,7 @@
 
 What adding or changing a unit, an order, a discovery or another rule of the content touches, and the places a rule is still written twice. Each section is a trap's full text; the trap in brief is under the same title in [traps.md](../traps.md).
 How to add a discovery's effect, kind by kind: [the discoveries' registry](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md#how-to-add-a-discoverys-effect) (from P1-19aa).
+How to add a guardian perk, or a kind of perk: [the guardian perks' registry](the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md#how-to-add-a-perk) (from P1-19ai).
 
 ## A refactor that changes a container's type needs a test that calls the consumers
 
