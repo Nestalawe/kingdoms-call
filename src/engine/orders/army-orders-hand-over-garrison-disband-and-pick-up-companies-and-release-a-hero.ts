@@ -3,7 +3,12 @@ import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { beastCommandCount, beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';
-import { emit, notifyTarget, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  notifyTarget,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isOpenSea, seaLiftShortfall } from '../units/sea-lift-stranding-and-retreats.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
@@ -30,6 +35,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       fact: { kind: 'a hero has no companies to hand over', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -61,6 +67,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
             },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -77,6 +84,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -109,6 +117,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       fact: { kind: 'the companies named to hand over are not in the column', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -133,6 +142,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -160,6 +170,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     removed = removed.filter((a) => !a._isSkeletal); // remove skeletal from transfer
@@ -191,6 +202,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       if (!removed.length) {
@@ -211,6 +223,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     // notify the receiving commander in their own section.
@@ -245,6 +258,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   // Recompute the move pool from the REMAINING force. Dropping a slow unit correctly frees up
@@ -264,6 +278,7 @@ export function resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extr
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -284,6 +299,7 @@ export function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
       fact: { kind: 'a king cannot release himself from his own service', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -296,6 +312,7 @@ export function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
       fact: { kind: 'a hero leading companies cannot be released', heroName: c.name, companies: c.armies.length },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -328,7 +345,7 @@ export function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
     audience: { actor: _relPi, realms: [_relPi] },
     province: prov.id,
     hero: c.id,
-    phase: ph,
+    phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   return;
 }
@@ -342,6 +359,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       fact: { kind: 'a hero has no companies to disband', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -365,6 +383,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       fact: { kind: 'the companies named to disband are not in the column', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -380,6 +399,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     disbanding = disbanding.filter((a) => !a._isSkeletal);
@@ -412,6 +432,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   });
@@ -431,6 +452,7 @@ export function resolveDisbandArmyOrder(turnContext, c, target, prov) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -450,6 +472,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         fact: { kind: 'a hero finds no garrison companies to take up', heroName: c.name, provinceName: prov.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -469,6 +492,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   } else if (
@@ -486,6 +510,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
       fact: { kind: 'mercenaries are not taken up with a Pick Up order', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -512,6 +537,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -532,6 +558,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   } else {
@@ -557,6 +584,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
           fact: { kind: "a hero cannot take up a comrade's company", heroName: c.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         return;
       }
@@ -576,6 +604,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else {
@@ -586,6 +615,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
           fact: { kind: 'a hero finds no garrison companies to take up', heroName: c.name, provinceName: prov.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         return;
       }
@@ -603,6 +633,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -636,6 +667,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -665,6 +697,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -684,6 +717,7 @@ export function resolvePickUpArmyOrder(turnContext, c, target, prov) {
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   return;
 }

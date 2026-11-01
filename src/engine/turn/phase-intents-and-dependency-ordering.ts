@@ -4,7 +4,11 @@ import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { totalInit } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { stepTowardPreferSafe } from '../world/routes-and-distances.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 
 // ── THE PHASE PIPELINE: INTENTS, DEPENDENCY ORDERING, MOVEMENT INTERLOCKS (plan P1-08i1: lifted out of resolveTurn) ────
@@ -466,6 +470,7 @@ export function applyMoveInterlocks(turnContext, ph, intents) {
         },
         audience: { actor: def.player, realms: [def.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: def.fromId,
       });
     } else {
@@ -479,6 +484,7 @@ export function applyMoveInterlocks(turnContext, ph, intents) {
         },
         audience: { actor: def.player, realms: [def.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: def.fromId,
       });
     }

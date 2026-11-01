@@ -5,7 +5,11 @@ import { getNeighborsP } from '../world/map-helpers.ts';
 import { _isHumanoidRace } from '../discoveries.ts';
 import { aBlessWardMayTurnThisSpellAside } from '../rules/the-registry-of-spell-effects.ts';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 
 // ── PLAGUE AND THE BLESS WARD (plan P1-08b: lifted out of resolveTurn) ────
 // The Plague's toll on a province's humanoid troops and its spread to the neighbours, and the Bless ward that may turn
@@ -38,6 +42,7 @@ export function blessWardNegates(turnContext, prov, caster, spellName) {
       seen: 'battle',
     },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
     env: true,
   });
@@ -91,6 +96,7 @@ export function applyPlague(turnContext, prov, level, ph) {
     const place = {
       audience: { actor: null, realms: [rec.owner] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     };
     if (rec.charId != null) place.hero = rec.charId;
@@ -142,6 +148,7 @@ export function spreadPlagues(turnContext, ph) {
             seen: 'battle',
           },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: nb.id,
           env: true,
         });

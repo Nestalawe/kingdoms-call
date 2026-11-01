@@ -5,7 +5,11 @@ import { TEMPERS_P } from '../world/tables.ts';
 import { nextHeroName } from '../names.ts';
 import { ownedConsecratedProvs } from '../heroes/fame-and-consecration.ts';
 import { discBlockedIds, discEligible, gdActive } from '../discoveries.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 
 // ── THE NEW TURN, FIRST PART (plan P1-08k5a: one stage taken out of resolveTurn's own body) ─────────────────────────
 // Once the turn's diplomacy and victory are settled (diplomacy-resolution-and-victory-….js), the turn counter moves on
@@ -44,6 +48,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
           fact: { kind: 'a Divine king cannot return with no consecrated ground left', kingName: k.name },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       });
   });
@@ -91,6 +96,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       }
       return;
@@ -147,6 +153,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       fact: { kind: 'an heir is crowned', heirName: heir.name, provinceName: heirProv.name },
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: heirProv.id,
     });
     // NOT public. This line is an instruction to one player — name your heir, set their temper,
@@ -187,6 +194,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
         },
         audience: { actor: c.player, realms: [c.player].filter((x) => x !== null) },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: c.location,
       });
     }
@@ -206,6 +214,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
         },
         audience: { actor: c.player, realms: [c.player].filter((x) => x !== null) },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: c.location,
       });
     }
@@ -327,6 +336,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
         fact: { kind: 'the Grand Library has no discovery left to unlock' },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -342,6 +352,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       },
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   });
 }

@@ -19,7 +19,11 @@ import {
 } from '../titles/reckoning.ts';
 import { areAllied, realmHasMet, relKeyOf } from '../realms/relations-and-captures.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 
 // ── DIPLOMACY RESOLUTION AND VICTORY (plan P1-08k4: two stages taken out of resolveTurn's own body) ────────────────
 // Once the turn has settled what its seasons left (after-the-phases-….js) and the bots have made any late declaration,
@@ -121,6 +125,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             },
             audience: { actor: null, realms: [to] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             system: true,
           });
         };
@@ -136,6 +141,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             },
             audience: { actor: null, realms: [a] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             system: true,
           });
           emit(turnContext, {
@@ -147,6 +153,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             },
             audience: { actor: null, realms: [b] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             system: true,
           });
           continue;
@@ -165,6 +172,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               },
               audience: { actor: null, realms: [a] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               system: true,
             });
           if (db === 'treat')
@@ -178,6 +186,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               },
               audience: { actor: null, realms: [b] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               system: true,
             });
           continue;
@@ -224,6 +233,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           fact: mA,
           audience: { actor: null, realms: [a] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
         });
         emit(turnContext, {
@@ -231,6 +241,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           fact: mB,
           audience: { actor: null, realms: [b] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
         });
         // WAR FRONTS: hosts already standing on the new enemy's ground (or beside his host) will turn
@@ -261,6 +272,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               },
               audience: { actor: null, realms: [c.player] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               system: true,
               province: pv.id,
             });
@@ -277,6 +289,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
                 },
                 audience: { actor: null, realms: [foe] },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+                phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
                 system: true,
                 province: pv.id,
               });
@@ -304,6 +317,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           },
           audience: { actor: null, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
         });
       }
@@ -317,6 +331,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             fact: { kind: 'a realm with no living king calls the Reckoning' },
             audience: { actor: null, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             system: true,
           });
           continue;
@@ -354,6 +369,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             },
             audience: { actor: null, realms: [], seen: 'world' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             system: true,
           });
           break;
@@ -371,6 +387,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             },
             audience: { actor: null, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             system: true,
           });
         } else {
@@ -384,6 +401,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             },
             audience: { actor: null, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             system: true,
           });
         }
@@ -412,6 +430,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           },
           audience: { actor: null, realms: [], seen: 'world' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
         });
         delete G.reckoning;
@@ -426,6 +445,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           },
           audience: { actor: null, realms: [], seen: 'world' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
         });
         delete G.reckoning;
@@ -463,6 +483,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           },
           audience: { actor: null, realms: [], seen: 'world' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
         });
       }
@@ -523,6 +544,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
         },
         audience: { actor: null, realms: [], seen: 'world' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         system: true,
         gameEnd: true,
       });
@@ -544,6 +566,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       },
       audience: { actor: null, realms: [], seen: 'world' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       system: true,
       gameEnd: true,
     });
@@ -563,6 +586,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           },
           audience: { actor: null, realms: [], seen: 'world' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
           gameEnd: true,
         });

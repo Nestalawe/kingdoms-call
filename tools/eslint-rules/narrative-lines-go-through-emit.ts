@@ -13,6 +13,8 @@
 //   key: what logSplit, reportHeroFall and the held-back skill rises are handed), with no hero key and no spread. Every
 //   event names its hero: a hero's id, null for no hero, or THE_HERO_WHOSE_ORDER_IS_RESOLVING. A spread place carries
 //   its own (its literal is checked where it is written; emit throws on one left out);
+// - an event written without its phase (P1-12d38), the same two literals and the same spread exemption, once it names its
+//   hero. Every event names its phase: a number, 'none', or THE_PHASE_THE_LINE_IS_WRITTEN_IN (emit throws on one left out);
 // - a line handed as words (P1-12d18): an event, or an event's place, with a text key (once it names its hero: an event
 //   is refused for one fault at a time), and a string handed to narrate, emitNarrLine, narrateAll or narrateAt as the
 //   line, or as one of the lines in an array written there. A string is one by its syntax: a string literal, a
@@ -123,6 +125,9 @@ const rule: Rule.RuleModule = {
       hero:
         "Every event names its hero: hero: <a hero's id>, hero: null for no hero, or hero: " +
         'THE_HERO_WHOSE_ORDER_IS_RESOLVING (docs/traps.md, "Every event names its hero").',
+      phase:
+        "Every event names its phase: phase: <a number>, phase: 'none' for no phase, or phase: " +
+        'THE_PHASE_THE_LINE_IS_WRITTEN_IN (docs/traps.md, "Every event names its hero", which covers the phase too).',
       text:
         "An event records the fact its line's words are written from, never the words: fact: <one kind of LineFact> " +
         '(the views write the words: docs/traps.md, "A line goes through emit").',
@@ -192,6 +197,8 @@ const rule: Rule.RuleModule = {
         if (!isEmitsEvent && !keys.includes('audience')) return;
         if (!keys.includes('hero') && !node.properties.some((p) => p.type === 'SpreadElement'))
           context.report({ node, messageId: 'hero' });
+        else if (!keys.includes('phase') && !node.properties.some((p) => p.type === 'SpreadElement'))
+          context.report({ node, messageId: 'phase' });
         else if (keys.includes('text')) context.report({ node, messageId: 'text' });
       },
     };

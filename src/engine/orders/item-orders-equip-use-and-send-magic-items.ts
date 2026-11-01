@@ -6,7 +6,12 @@ import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { applyItemMaxHp, isMithril } from '../personal-combat/helpers.ts';
 import { isCharmedNow, isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
-import { emit, notifyTarget, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  notifyTarget,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 
 // ── THE ITEM ORDERS (plan P1-08j5: the fifth family taken out of processOrder in resolveTurn) ──
@@ -33,6 +38,7 @@ export function resolveEquipItemsOrder(turnContext, c, target) {
       fact: { kind: 'a hero carries nothing that can be worn or wielded', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -63,6 +69,7 @@ export function resolveEquipItemsOrder(turnContext, c, target) {
     fact: { kind: 'a hero arms and dresses for the season', heroName: c.name, worn, refused: [...refused] },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   return;
 }
@@ -80,6 +87,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       fact: { kind: 'a charmed hero will not spend what he carries', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -90,6 +98,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       fact: { kind: 'a hero has no such item to use', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -99,6 +108,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       fact: { kind: 'an item has already been used', itemName: it.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -155,6 +165,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -193,6 +204,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
         // realm would read it)
         audience: { actor: null, realms: [] },
         hero: null,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     G._destroyedItems = (G._destroyedItems || []).concat([
       { name: _stoneName, turn: G.turn, by: c.name, player: c.player },
@@ -212,6 +224,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       audience: { actor: c.player, realms: [c.player] },
       province: prov.id,
       hero: c.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_COMMON); // 2026-09-21: using a magic item may teach Sage
     // ...and the whole world sees the sky change. Every realm is told, by name — an artefact
@@ -231,6 +244,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
         },
         audience: { actor: null, realms: [_pi], seen: 'world' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     });
   } else {
@@ -239,6 +253,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
       fact: { kind: 'a passive item needs no using', itemName: it.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   }
   return;
@@ -266,6 +281,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       fact: { kind: 'a charmed hero will part with nothing', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -276,6 +292,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       fact: { kind: 'a hero cannot send items: there is no such recipient', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -289,6 +306,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -303,6 +321,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -312,6 +331,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       fact: { kind: "items can be sent only to the realm's own living heroes", heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -321,6 +341,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       fact: { kind: 'a hero cannot send items to himself', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -365,6 +386,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       fact: { kind: 'Mithril Armour is forged to its wearer and cannot be sent', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   }
   if (uniq.length === 0) {
@@ -373,6 +395,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       fact: { kind: 'a hero cannot send the item', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -399,7 +422,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
-      phase: ph,
+      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     // tell the recipient, in their own section.
     notifyTarget(
@@ -439,7 +462,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
-      phase: ph,
+      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     // the recipient's send-phase "a courier is on the way" notice was removed — it duplicated
     // the end-of-turn delivery line (see the COURIER DELIVERIES flush), which already tells

@@ -12,7 +12,11 @@ import {
 } from '../rules/the-registry-of-discovery-effects.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { isHiddenByInvisibilityFrom } from '../heroes/effective-skills-and-hidden-heroes.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
 // Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts:
@@ -72,6 +76,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       }
     });
@@ -81,6 +86,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         fact: { kind: "the War Academy's drills produce no promotion", provinceName: homeProv.name },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
   });
 
@@ -137,6 +143,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         fact: { kind: 'the informants surface no enemy captain unseen' },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -152,6 +159,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       },
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   });
   // `return`s — so it only ever fired for a player who ALSO held sd22 and had an unseen enemy. It is
@@ -222,6 +230,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           fact: { kind: 'a Divine hero does not return with no consecrated ground held', heroName: hero.name },
           audience: { actor: grave.player, realms: [grave.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         return;
       }
@@ -260,6 +269,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           realms: [grave.player],
         }, // 2026-09-27 (Toby item 6): realm-private — never public
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: homeProv.id,
       });
     });
@@ -306,6 +316,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           },
           audience: { actor: null, realms: [] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         return false; // remove
       }
@@ -351,6 +362,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       fact: { kind: "the heroes' wandering tags are corrected", heroes: G._nameRepairs },
       audience: { actor: null, realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   }
   G._nameRepairs = 0;
@@ -365,6 +377,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       },
       audience: { actor: null, realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   }
   // where the save differs from this build's schema (the save's check, engine/saves/, plan P1-15d): the turn ran on it
@@ -376,6 +389,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       fact: { kind: "the save the turn loaded differs from this build's schema", places: [...whereTheSaveDiffers] },
       audience: { actor: null, realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   }
   // graveyard sweep — a grave whose character record is ALIVE is a doppelganger (dead in the
@@ -393,6 +407,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           fact: { kind: 'a stale grave of a living hero is removed', heroName: g.name },
           audience: { actor: null, realms: [] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         (G.players || []).forEach((p) => {
           if (p && p._resurrectableMonarchId === g.id) p._resurrectableMonarchId = null;

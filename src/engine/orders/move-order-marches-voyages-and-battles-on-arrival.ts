@@ -24,6 +24,7 @@ import {
   narrateAt,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from '../realms/relations-and-captures.ts';
@@ -89,6 +90,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       fact: { kind: 'a hero has no movement points left this turn', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -106,6 +108,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         fact: { kind: 'a march to the edge of the world finds the icy wastes', heroName: c.name, direction: dir },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -126,6 +129,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         fact: { kind: 'a move names no province to march to', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -135,6 +139,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         fact: { kind: 'a hero is already in the province his move names', heroName: c.name, provinceName: _want.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -157,6 +162,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         return;
       }
@@ -171,6 +177,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: toProv.id,
       });
     }
@@ -184,6 +191,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       fact: { kind: 'a move names no province to march to', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -219,6 +227,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: toProv.id,
     });
     return;
@@ -269,6 +278,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -288,6 +298,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           fact: { kind: 'a column is turned back at a flooded province', heroName: c.name, provinceName: toProv.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         return;
@@ -329,6 +340,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         fact: seaBlocked,
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -347,6 +359,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       else if (prov._flood)
         emit(turnContext, {
@@ -358,6 +371,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       else
         emit(turnContext, {
@@ -365,6 +379,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           fact: { kind: 'a hero has no sea movement points left this turn', heroName: c.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       return;
     }
@@ -376,6 +391,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       fact: { kind: 'a hero moves across the sea', heroName: c.name, provinceName: toProv.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: toProv.id,
     });
   } else if (coastalLanding) {
@@ -395,6 +411,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       else
         emit(turnContext, {
@@ -402,6 +419,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           fact: { kind: 'a hero has no sea movement points left to land', heroName: c.name, provinceName: toProv.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       return;
     }
@@ -429,6 +447,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: toProv.id,
       });
     } else {
@@ -437,6 +456,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         fact: { kind: 'a hero makes a coastal landing', heroName: c.name, provinceName: toProv.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: toProv.id,
       });
     }
@@ -460,6 +480,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -477,6 +498,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         return;
       }
@@ -490,6 +512,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -499,6 +522,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         fact: { kind: 'a hero has no land movement points left this turn', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -538,6 +562,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
       fact: { kind: 'a necromancer senses graves underfoot on the march', heroName: c.name, provinceName: pv.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: pv.id,
     }),
   );
@@ -630,6 +655,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           {
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           },
         ]);
@@ -649,6 +675,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           {
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           },
         ]);
@@ -663,6 +690,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           {
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           },
         ]);
@@ -721,6 +749,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
         // Move ally into province and mark as having used their move this phase
@@ -746,6 +775,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       }
     });
@@ -769,6 +799,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           fact: commandHandoverLine(_aLead, c, toProv.name),
           audience: { actor: c.player, realms: [c.player], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
       emit(turnContext, {
@@ -781,6 +812,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: toProv.id,
       });
     }
@@ -799,6 +831,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         },
         audience: { actor: c.player, realms: [c.player], seen: 'there' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: toProv.id,
       });
       return;
@@ -878,6 +911,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             fact: line,
             audience: { actor: c.player, realms: [] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           }),
         c.name,
@@ -901,6 +935,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [], seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
         }
@@ -920,6 +955,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [], seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
           emit(turnContext, {
@@ -931,6 +967,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [], seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
         } else {
@@ -963,6 +1000,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
                 },
                 audience: { actor: c.player, realms: [], seen: 'battle' },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+                phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
                 province: toProv.id,
               });
             } else {
@@ -971,6 +1009,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
                 fact: { kind: 'a beaten guard retreats into the wilderness', guardName: neutralGuard.name },
                 audience: { actor: c.player, realms: [], seen: 'battle' },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+                phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
                 province: toProv.id,
               });
             }
@@ -996,6 +1035,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
         if (!player.provinces.includes(toProv.id)) player.provinces.push(toProv.id);
@@ -1015,6 +1055,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             fact: { kind: "a fallen guard's garrison holds the province", provinceName: toProv.name },
             audience: { actor: c.player, realms: [], seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
       }
@@ -1060,6 +1101,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           fact: { kind: 'leaderless troops form up with the garrison', provinceName: toProv.name },
           audience: { actor: toProv.owner, realms: [toProv.owner], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
       }
@@ -1099,6 +1141,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [c.player], seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
           prov.characters = (prov.characters || []).filter((id) => id !== ally.id);
@@ -1117,6 +1160,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         }
       });
@@ -1206,6 +1250,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           fact: commandHandoverLine(_atkLead, c, toProv.name),
           audience: { actor: c.player, realms: [c.player], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
       if (_dP.changed) _defFormupLines.push(commandHandoverLine(_defLead, defChar, toProv.name));
@@ -1226,6 +1271,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player], seen: 'there' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
         return;
@@ -1384,6 +1430,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
               },
               audience: { actor: defChar.player, realms: targets, seen: 'battle' },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: _defFellBackTo.id,
             });
           }
@@ -1412,6 +1459,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
               },
               audience: { actor: defChar.player, realms: targets, seen: 'battle' },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: _defFellBackTo.id,
             });
           }
@@ -1461,6 +1509,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: targets, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
           if (!_hostileLeft && _navalBlock.length > 0)
@@ -1469,6 +1518,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
               fact: navalHoldLine(turnContext, toProv, _navalBlock, player.name),
               audience: { actor: c.player, realms: targets, seen: 'battle' },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: toProv.id,
             });
         } else {
@@ -1491,6 +1541,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: targets, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
           applyEvilConquest(turnContext, c, toProv, player);
@@ -1556,6 +1607,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: defChar.player, realms: targets, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
       }
@@ -1597,6 +1649,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [c.player], seen: 'there' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
           return;
@@ -1649,6 +1702,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
                   seen: 'battle',
                 },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+                phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
                 province: _dest.id,
               });
               G.players.forEach((p, pi) => {
@@ -1668,6 +1722,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
                 },
                 audience: { actor: c.player, realms: [], seen: 'battle' },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+                phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
                 province: toProv.id,
               });
               applyEvilConquest(turnContext, c, toProv, player);
@@ -1687,6 +1742,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
                   seen: 'battle',
                 },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+                phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
                 province: toProv.id,
               });
             }
@@ -1708,6 +1764,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
               },
               audience: { actor: c.player, realms: [], seen: 'battle' },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: toProv.id,
             });
             applyEvilConquest(turnContext, c, toProv, player);
@@ -1729,6 +1786,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [c.player, toProv.owner].filter((x) => x !== null), seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
           if (_stoodGround) toProv._battleUnresolved = true;
@@ -1758,6 +1816,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: _prevOwnerIdx != null ? [_prevOwnerIdx] : [], seen: 'there' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
         applyEvilConquest(turnContext, c, toProv, player);
@@ -1787,6 +1846,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player], seen: 'there' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
         return;
@@ -1817,6 +1877,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
               fact: line,
               audience: { actor: c.player, realms: [] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: toProv.id,
             }),
           c.name,
@@ -1835,6 +1896,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [], seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
         } else {
@@ -1854,6 +1916,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
             },
             audience: { actor: c.player, realms: [], seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: toProv.id,
           });
           applyEvilConquest(turnContext, c, toProv, player);
@@ -1871,6 +1934,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           fact: { kind: 'a leaderless garrison throws a hero back', provinceName: toProv.name, heroName: c.name },
           audience: { actor: c.player, realms: [], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
       }
@@ -1897,6 +1961,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player], seen: 'there' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
         _moveLineLogged = true;
@@ -1911,6 +1976,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: toProv.id,
         });
         _moveLineLogged = true;
@@ -1930,6 +1996,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: toProv.id,
       });
     }
@@ -1959,6 +2026,7 @@ export function resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, play
           seen: 'there',
         },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: toProv.id,
       });
     }

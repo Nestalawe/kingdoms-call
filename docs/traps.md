@@ -115,7 +115,7 @@ fact (values, never words or a live part of the world), and `src/views/prose/` w
 made. In full, with "Every event names its hero" and "A line for one realm alone inside a fight":
 [a line of the turn](architecture/a-line-of-the-turn-emit-its-facts-and-the-reports.md). Checks: the lint rule `kc/narrative-lines-go-through-emit` (it also refuses an
 event with a `text` key and a string handed to `narrate`, `emitNarrLine`, `narrateAll` or `narrateAt`); `emit` throws
-on an event with no `hero` or handed as words; `a-lines-facts-hold-values-not-words`; the report-leak check (`tests/lib/report-leaks.ts`).
+on an event with no `hero` or no `phase`, or handed as words; `a-lines-facts-hold-values-not-words`; the report-leak check (`tests/lib/report-leaks.ts`).
 
 ## Views never write
 

@@ -13,7 +13,7 @@ import { perkTier } from '../titles/perks.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isFriendlyProvFor, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { canEnterTerrain, getSeaCapability, refreshMovePool } from './movement-pools.ts';
-import { emit, narrate } from '../turn/events-and-their-audiences.ts';
+import { emit, narrate, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their-audiences.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
 
 // ── SEA LIFT, STRANDING AND RETREATS (plan P1-08b: lifted out of resolveTurn) ────
@@ -134,7 +134,7 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
     const place = {
       audience: { actor: owner, realms: [owner] },
       hero: c.id,
-      phase: ph != null ? ph : turnContext._currentPhase,
+      phase: (ph != null ? ph : turnContext._currentPhase) ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     };
     const temps = out.filter((a) => a._temporary),

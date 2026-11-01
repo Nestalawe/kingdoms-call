@@ -13,6 +13,7 @@ import {
   emit,
   writeDeferredSkillLines,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { aHitPointRiseAsTheLineTellsIt } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 
@@ -231,13 +232,19 @@ export function resolvePendingSkillGain(turnContext, real) {
       fact: { kind: 'a wandering hero learns from the fighting', heroName: real.name || '', skill, level: lvl + 1 },
       audience: { realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: e.prov != null ? e.prov : real.location,
       system: true,
     });
   } else {
     turnContext._deferredSkillLogs.push([
       line,
-      { audience: { actor: real.player, realms: [real.player] }, hero: _skCharId, phase: _skPhase, ..._after },
+      {
+        audience: { actor: real.player, realms: [real.player] },
+        hero: _skCharId,
+        phase: _skPhase ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+        ..._after,
+      },
     ]);
     // crossing a mastery threshold (6/7/8/9) earns a congratulation that spells out the new
     // level's benefits — the passive that deepens, and any new mastery order or spell now
@@ -247,7 +254,12 @@ export function resolvePendingSkillGain(turnContext, real) {
       const _mline = { kind: 'a hero attains mastery of a skill', heroName: real.name, skill, level: _newLvl };
       turnContext._deferredSkillLogs.push([
         _mline,
-        { audience: { actor: real.player, realms: [real.player] }, hero: _skCharId, phase: _skPhase, ..._after },
+        {
+          audience: { actor: real.player, realms: [real.player] },
+          hero: _skCharId,
+          phase: _skPhase ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          ..._after,
+        },
       ]);
     }
   }
@@ -262,7 +274,12 @@ export function resolvePendingSkillGain(turnContext, real) {
     };
     turnContext._deferredSkillLogs.push([
       wline,
-      { audience: { actor: real.player, realms: [real.player] }, hero: _skCharId, phase: _skPhase, ..._after },
+      {
+        audience: { actor: real.player, realms: [real.player] },
+        hero: _skCharId,
+        phase: _skPhase ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+        ..._after,
+      },
     ]);
   }
 }
@@ -370,6 +387,7 @@ export function awardHpRoll(turnContext, ch, narrative, why, isWin) {
       },
       audience: { realms: real.player != null ? [real.player] : [] },
       hero: real.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov ? prov.id : undefined,
     });
   }
@@ -396,9 +414,14 @@ export function syncAllMaxHp(turnContext) {
                 ? { realms: [ch.player] }
                 : { actor: ch.player, realms: [ch.player], seen: prov ? 'there' : 'world' },
             hero: ch.id,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov ? prov.id : undefined,
           }
-        : { audience: { actor: -1, realms: [] }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING };
+        : {
+            audience: { actor: -1, realms: [] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          };
     emit(turnContext, {
       type: 'system',
       fact:
