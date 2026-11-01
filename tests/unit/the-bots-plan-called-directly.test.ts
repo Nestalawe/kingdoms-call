@@ -23,7 +23,8 @@
 // (off or on), a failure in any helper or a hero who can't be copied giving no forecast; a real forecast on the board.
 // Properties (fast-check): a forecast leaves any two heroes as they were, writes no line, gives experience back and
 // gives two shares of its fights, never more than all; for any bot realms every pass is handed exactly those, in the
-// plan's order. Planted faults: in the PR (P1-08l2)
+// plan's order. Planted faults: in the PR (P1-08l2). Then the Spring orders pass (`runBotPhaseOne`) called directly: a
+// bot host in contact ranks Harvest the Field and Perform Rite, by the order's key, ahead of slower orders (P1-21f).
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -50,7 +51,7 @@ import {
   type Staged,
 } from '../lib/the-bots-plan-cases.ts';
 import { STAGES, rows } from '../lib/before-the-first-phase-cases.ts';
-import { board, must, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
+import { board, hero as standAHero, must, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -456,6 +457,33 @@ describe('The forecast: experience, and a forecast that fails', () => {
       q = weakling(b, 0);
     const r = withCaseDice(engine, LANDS, () => forecast(tc, h, q, 5));
     expect(r).toEqual({ win: 1, felled: 0 });
+  });
+});
+
+// ── The Spring orders pass: what a host in contact does first ────────────────────────────────────────────────────
+// runBotPhaseOne's Spring stage ranks each hero's orders before his first march by urgency: a host in contact with an
+// enemy puts Harvest the Field and Perform Rite ahead of slower orders. It compares the order's key (what the realm
+// sends: 'harvest_field', 'rite'), never the row's name; no game of the matrix makes a test red when it does not.
+describe('The Spring orders pass: what a host in contact does first', () => {
+  const runBotPhaseOne = engineFn(engine, 'runBotPhaseOne') as Fn;
+  const hold = (): Raw => ({ action: 'defend', target: '', extra: '', desc: 'Hold' });
+  test.for([
+    ['Harvest the Field', 'harvest_field'],
+    ['Perform Rite', 'rite'],
+  ] as const)('a bot host on enemy ground puts its %s ahead of the orders written before it', ([, key]) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(b.X, 0); // realm 0's land, and realms 0 and 1 are at war: the host is in contact
+    const h = standAHero(b, { player: 1, at: b.X, troops: 1 });
+    const orders = b.G.turnOrders as unknown as Record<number, Raw[]>;
+    orders[h.id] = [hold(), hold(), { action: key, target: '', extra: '', desc: '' }, hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    expect(must(orders[h.id], 'his orders').map((o) => o['action'])).toEqual([
+      key,
+      'defend',
+      'defend',
+      'defend',
+      'defend',
+    ]);
   });
 });
 

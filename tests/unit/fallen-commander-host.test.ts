@@ -12,8 +12,9 @@
 // and then clears the note, keeps the old wording with no killer known, and `handleHeroDeath` stamps the killer for it
 // (the lines are facts since P1-12d5: it reads their words through the engine's `theWordsOf`), and since P1-12d11 who
 // slew him is a record: a lair's guardian is named with its province ("the Barrow Wight of Highmoor"), or "the guardian
-// of Highmoor" when it has no name (no game reaches it). Called directly in the bare `vm` on a staged world (P1-08f: it
-// was `battle-faced-turn`'s last part, through the code-anchor hook after a turn)
+// of Highmoor" when it has no name (no game reaches it); and `handleHeroDeath` files the death for the turn's
+// statistics, the fallen hero's realm and his slayer's realm and id (P1-21f). Called directly in the bare `vm` on a
+// staged world (P1-08f: it was `battle-faced-turn`'s last part, through the code-anchor hook after a turn)
 import { expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
 
@@ -139,6 +140,49 @@ test("handleHeroDeath stamps the killer, and the slain commander's host names th
   const lines = linesOf(() => handleHeroDeath(tc, ch, killer, {}));
   expect(ch.alive).toBe(false);
   expect(lines).toContain(`Rowan's armies garrison in ${homeProv.name} after their commander fell to Gorbash.`);
+});
+
+// The turn's statistics keep each hero's death (P1-12d33: a fact of its own, filed inside a try, so a slip there is
+// silent): whose hero fell, and the realm and hero who slew him. Only the balance matrix's hash of the statistics
+// read the killer's realm before this test.
+const theStatisticsOfTheTurn = engineFn(engine, 'theStatisticsOfTheTurn') as (telemetry: unknown) => {
+  deaths: Record<string, unknown>[];
+};
+test("handleHeroDeath keeps the death in the turn's statistics: the fallen hero's realm, and his slayer's realm and id", () => {
+  const ch = {
+    id: 9105,
+    name: 'Wenna',
+    player: 0,
+    alive: true,
+    hp: 0,
+    maxHp: 15,
+    race: 'Human',
+    temper: 'Brave',
+    skills: {},
+    items: [],
+    armies: [],
+    location: homeProv.id,
+    tm: {},
+  };
+  const killer = {
+    id: 9106,
+    name: 'Skarn',
+    player: 1,
+    alive: true,
+    hp: 10,
+    maxHp: 15,
+    race: 'Orcish',
+    skills: {},
+    items: [],
+    armies: [],
+    location: homeProv.id,
+  };
+  G.characters = G.characters.filter((c) => c['id'] !== 9105 && c['id'] !== 9106).concat([ch, killer]);
+  homeProv.characters = [...(homeProv.characters ?? []), ch.id, killer.id];
+  delete homeProv._battleUnresolved;
+  handleHeroDeath(tc, ch, killer, {});
+  const deaths = theStatisticsOfTheTurn(tc['_tel']).deaths.filter((d) => d['charId'] === ch.id);
+  expect(deaths.map((d) => [d['pi'], d['killerPi'], d['killerId'], d['how']])).toEqual([[0, 1, 9106, 'character']]);
 });
 
 // P1-12d11 (P1-12's Decisions of 2026-10-29, Choice 2): a lair's guardian is a record, its name and its province, and
