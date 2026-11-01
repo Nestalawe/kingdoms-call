@@ -23,10 +23,19 @@ const INTRO = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules-intro.
 const ROWS: readonly AnAlignmentOrder[] = Object.values(THE_ALIGNMENT_ORDERS);
 const KING = '<span class="pill k">king</span>';
 
+/** The markup dropped, again until none is left (a tag a first pass would leave behind is dropped too). */
+function withoutItsTags(html: string): string {
+  let text = html;
+  for (let before = ''; before !== text;) {
+    before = text;
+    text = text.replace(/<[^>]*>/g, '');
+  }
+  return text;
+}
+
 /** The words a reader sees: the markup dropped, the page's entities written out, the spaces made one. */
 const asAReaderSeesIt = (html: string): string =>
-  html
-    .replace(/<[^>]*>/g, '')
+  withoutItsTags(html)
     .replace(/&mdash;/g, '—')
     .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
