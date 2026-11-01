@@ -27,6 +27,11 @@ import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { engineFn, loadEngine, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const engine = loadEngine({ seed: 1 });
 // emit echoes each line to the console: quiet it while a test writes lines.
@@ -136,20 +141,24 @@ describe('relations', () => {
     fc.constantFrom('enemy', 'allied'),
   );
 
-  test('two realms stand to each other as they do the other way round, never both at war and allied', () => {
-    fc.assert(
-      fc.property(relations, realm, realm, (rel, a, b) => {
-        const tc = turnContext(engine, { relations: rel });
-        const r = relationBetween(tc, a, b);
-        expect(relationBetween(tc, b, a)).toBe(r);
-        expect(r).toBe(a === b ? 'self' : (rel[`${String(Math.min(a, b))}-${String(Math.max(a, b))}`] ?? 'neutral'));
-        expect(areEnemies(tc, a, b) && areAllied(tc, a, b)).toBe(false);
-        expect(areEnemies(tc, a, b)).toBe(r === 'enemy');
-        expect(areAllied(tc, a, b)).toBe(r === 'allied');
-      }),
-      { examples: [[{ '1-2': 'enemy' }, 2, 1]] },
-    );
-  });
+  test(
+    'two realms stand to each other as they do the other way round, never both at war and allied',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(relations, realm, realm, (rel, a, b) => {
+          const tc = turnContext(engine, { relations: rel });
+          const r = relationBetween(tc, a, b);
+          expect(relationBetween(tc, b, a)).toBe(r);
+          expect(r).toBe(a === b ? 'self' : (rel[`${String(Math.min(a, b))}-${String(Math.max(a, b))}`] ?? 'neutral'));
+          expect(areEnemies(tc, a, b) && areAllied(tc, a, b)).toBe(false);
+          expect(areEnemies(tc, a, b)).toBe(r === 'enemy');
+          expect(areAllied(tc, a, b)).toBe(r === 'allied');
+        }),
+        { examples: [[{ '1-2': 'enemy' }, 2, 1]] },
+      );
+    },
+  );
 
   test('a missing realm is neutral to everyone', () => {
     const tc = turnContext(engine, { relations: { '0-1': 'enemy' } });

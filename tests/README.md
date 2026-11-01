@@ -105,12 +105,16 @@ A test's outcome must not depend on luck (CLAUDE.md, "A test's outcome must not 
 
 ## Time limits sized to the work, never a retry
 
-Vitest stops a test after 5 s. A test that builds the site, builds a TypeScript program, runs a tool over the tree
-(knip, dependency-cruiser, ESLint) or reads every file of `src/` gets a limit from `lib/time-limits.ts`: an allowance
-for each piece of that work, about five times the longest it has taken on GitHub's runners
-(`timeLimitForTheWork({ siteBuilds: 3 })`). A property test gets one from its run count
-(`timeLimitForPropertyRuns(RUNS, 2.5)`), so `KC_FULL`'s ten times the runs get ten times the time. The static tests
-type in no limit of their own.
+Vitest stops a test after 5 s, a hook after 10 s. A test or hook that builds the site, builds a TypeScript program,
+runs a tool over the tree (knip, dependency-cruiser, ESLint), reads every file of `src/` or plays a whole matrix game
+gets a limit from `lib/time-limits.ts`: an allowance for each piece of that work, about five times the longest it has
+taken on GitHub's runners (`timeLimitForTheWork({ siteBuilds: 3 })`; a hook: `beforeAll(fn, timeLimitForTheWork({
+matrixGamesPlayed: 1 }).timeout)`). A property test whose inputs grow with `KC_FULL` gets one from its run count
+(`timeLimitForPropertyRuns(RUNS, 50)`), so the nightly's ten times the runs get ten times the time. `harness` and
+`static/a-hook-or-test-that-plays-a-whole-matrix-game-…` check both. The static tests type in no limit of their own.
+Every run's footer (`setup/reporter.ts`) names each test or hook that used more than half its limit ("Near its limit:
+…, 9.4 s of 10 s"; a hook timed by `setup/hook-times.ts`), or says none did: read it on the nightly, and size the work
+before it fails. It never fails a run.
 
 ## The quick check, the ratchet and CI
 
@@ -131,8 +135,10 @@ type in no limit of their own.
   (`npm run ratchet -- --update` only lowers). `harness` runs the same comparison, so `npm test` fails too.
 - **In CI** (`.github/workflows/ci.yml`) each part runs in its own job, side by side, each building `site/` from
   `src/` first: the static checks (type check, lint, the import rules, format, ratchet and the `static` level),
-  `unit` and `scenario`, `simulation`, `page`, the browser specs, the balance matrix ([below](#the-balance-matrix-in-brief)),
-  and `db`. The job named `ci` passes only when all but `db` passed; `ci` and `db` are the required checks.
+  `unit` and `scenario` in two halves (Vitest's `--shard`), `simulation`, `page`, the browser specs, the balance matrix
+  in three parts and the job that joins them ([below](#the-balance-matrix-in-brief)), and `db`. Each takes
+  `node_modules` from a cache keyed on the lock file, `.npmrc`, Node and the runner, and runs `npm ci` only on a miss.
+  The job named `ci` passes only when all but `db` passed; `ci` and `db` are the required checks.
 
 ## Browser specs
 

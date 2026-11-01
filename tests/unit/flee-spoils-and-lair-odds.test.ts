@@ -11,6 +11,11 @@
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Character } from '../lib/personal-combat.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const { call, pinned, turnContext, MON } = await personalCombatEngine();
 const { ALL_MAGIC_ITEMS_P, LEGENDARY_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
@@ -27,50 +32,58 @@ const MITHRIL = ITEMS.findIndex((it) => it.effect?.stat === 'mithrilArmour');
 const [runner, stayer] = G.characters.filter((c) => c.alive && c.player != null);
 const names = (items: Item[]) => items.map((it) => `${it.name}|${String(it.tier)}`).sort();
 
-test('flee spoils: no item is made or lost, at most one changes hands, Mithril never does', () => {
-  if (!runner || !stayer || MITHRIL < 0) throw new Error('no two heroes, or no Mithril in the item tables');
-  const index = fc.oneof(fc.constant(MITHRIL), fc.integer({ min: 0, max: ITEMS.length - 1 }));
-  fc.assert(
-    fc.property(
-      fc.uniqueArray(index, { maxLength: 6 }),
-      fc.uniqueArray(index, { maxLength: 3 }),
-      fc.integer({ min: 1, max: 100 }),
-      fc.double({ min: 0, max: 0.9999, noNaN: true }),
-      (mine, theirs, roll, pick) => {
-        runner.items = mine.map((i) => clone(ITEMS[i] as Item));
-        stayer.items = theirs.map((i) => clone(ITEMS[i] as Item));
-        const before = names([...(runner.items as Item[]), ...(stayer.items as Item[])]);
-        const runnerHad = (runner.items as Item[]).slice();
-        // the d100 roll (the dice's next value, made to give it), then which item drops
-        const dropped = pinned([(roll - 0.5) / 100, pick], () =>
-          call('duelFleeItemDrop', { kind: 'character', ref: runner }, { kind: 'character', ref: stayer }, []),
-        ) as Item | null;
-        const after = names([...(runner.items as Item[]), ...(stayer.items as Item[])]);
-        expect(after).toEqual(before);
-        const moved = runnerHad.filter((it) => !(runner.items as Item[]).includes(it));
-        expect(moved).toEqual(dropped ? [dropped] : []);
-        expect(dropped?.effect?.stat).not.toBe('mithrilArmour');
-        expect(dropped == null || (stayer.items as Item[]).includes(dropped)).toBe(true);
-        const couldDrop = runnerHad.some((it) => it.effect?.stat !== 'mithrilArmour');
-        expect(dropped != null).toBe(couldDrop && roll <= 50);
-      },
-    ),
-  );
-});
+test(
+  'flee spoils: no item is made or lost, at most one changes hands, Mithril never does',
+  timeLimitForPropertyRuns(RUNS, 50),
+  () => {
+    if (!runner || !stayer || MITHRIL < 0) throw new Error('no two heroes, or no Mithril in the item tables');
+    const index = fc.oneof(fc.constant(MITHRIL), fc.integer({ min: 0, max: ITEMS.length - 1 }));
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(index, { maxLength: 6 }),
+        fc.uniqueArray(index, { maxLength: 3 }),
+        fc.integer({ min: 1, max: 100 }),
+        fc.double({ min: 0, max: 0.9999, noNaN: true }),
+        (mine, theirs, roll, pick) => {
+          runner.items = mine.map((i) => clone(ITEMS[i] as Item));
+          stayer.items = theirs.map((i) => clone(ITEMS[i] as Item));
+          const before = names([...(runner.items as Item[]), ...(stayer.items as Item[])]);
+          const runnerHad = (runner.items as Item[]).slice();
+          // the d100 roll (the dice's next value, made to give it), then which item drops
+          const dropped = pinned([(roll - 0.5) / 100, pick], () =>
+            call('duelFleeItemDrop', { kind: 'character', ref: runner }, { kind: 'character', ref: stayer }, []),
+          ) as Item | null;
+          const after = names([...(runner.items as Item[]), ...(stayer.items as Item[])]);
+          expect(after).toEqual(before);
+          const moved = runnerHad.filter((it) => !(runner.items as Item[]).includes(it));
+          expect(moved).toEqual(dropped ? [dropped] : []);
+          expect(dropped?.effect?.stat).not.toBe('mithrilArmour');
+          expect(dropped == null || (stayer.items as Item[]).includes(dropped)).toBe(true);
+          const couldDrop = runnerHad.some((it) => it.effect?.stat !== 'mithrilArmour');
+          expect(dropped != null).toBe(couldDrop && roll <= 50);
+        },
+      ),
+    );
+  },
+);
 
-test('the Hunting Rumours reading: one band for every kill rate, and a higher rate never reads worse', () => {
-  const BANDS = RUMOUR_ODDS_BANDS as unknown[];
-  const band = (pct: number) => BANDS.indexOf(call('rumourOddsBand', pct));
-  fc.assert(
-    fc.property(fc.integer({ min: 0, max: 100 }), fc.integer({ min: 0, max: 100 }), (a, b) => {
-      const [lower, higher] = [Math.min(a, b), Math.max(a, b)];
-      expect(band(lower)).toBeGreaterThanOrEqual(0);
-      expect(band(lower)).toBeLessThanOrEqual(band(higher));
-    }),
-  );
-  expect(band(0)).toBe(0);
-  expect(band(100)).toBe(BANDS.length - 1);
-});
+test(
+  'the Hunting Rumours reading: one band for every kill rate, and a higher rate never reads worse',
+  timeLimitForPropertyRuns(RUNS, 50),
+  () => {
+    const BANDS = RUMOUR_ODDS_BANDS as unknown[];
+    const band = (pct: number) => BANDS.indexOf(call('rumourOddsBand', pct));
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 100 }), fc.integer({ min: 0, max: 100 }), (a, b) => {
+        const [lower, higher] = [Math.min(a, b), Math.max(a, b)];
+        expect(band(lower)).toBeGreaterThanOrEqual(0);
+        expect(band(lower)).toBeLessThanOrEqual(band(higher));
+      }),
+    );
+    expect(band(0)).toBe(0);
+    expect(band(100)).toBe(BANDS.length - 1);
+  },
+);
 
 test('the Hunting Rumours sandbox writes nothing, and the odds are a whole percentage of the fights won', () => {
   if (!runner) throw new Error('no hero');

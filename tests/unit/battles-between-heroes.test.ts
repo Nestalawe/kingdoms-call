@@ -16,6 +16,11 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 interface Unit {
   type: string;
@@ -171,7 +176,7 @@ const toldLeaving = (narrative: unknown[], brought: Unit[]) =>
     }),
   );
 
-test('no company is lost without being counted, and none joins a host', () => {
+test('no company is lost without being counted, and none joins a host', timeLimitForPropertyRuns(RUNS, 50), () => {
   const seen = { lost: 0, left: 0, stood: 0 };
   fc.assert(
     fc.property(battleInput, (input) => {
@@ -197,7 +202,7 @@ test('no company is lost without being counted, and none joins a host', () => {
   expect(seen.stood).toBeGreaterThan(0);
 });
 
-test('the report is whole, and its summary names the side that won', () => {
+test('the report is whole, and its summary names the side that won', timeLimitForPropertyRuns(RUNS, 50), () => {
   const seen = { won: 0, held: 0 };
   fc.assert(
     fc.property(battleInput, (input) => {
@@ -245,23 +250,27 @@ test.each(['defender', 'attacker'] as const)("a realmless %s's lines name no rea
   expect(words.join('\n')).not.toMatch(/undefined|NaN/);
 });
 
-test("the turn's statistics record the battle once, with its result, its losses and its carry-on round", () => {
-  fc.assert(
-    fc.property(battleInput, (input) => {
-      const { tc, atk, def, prov } = stage(input);
-      const r = combatVsChar(tc, atk, def, prov);
-      const battles = (tc['_tel'] as { battles: BattleRecord[] }).battles;
-      expect(battles).toHaveLength(1);
-      const [record] = battles;
-      const round = input.round === 'carry-on' ? input.roundsBefore + 1 : 0;
-      expect(record && [record.kind, record.won, record.atkLost, record.defLost, record.carry]).toEqual([
-        'pvp',
-        r.won,
-        r.atkLost,
-        r.defLost,
-        round,
-      ]);
-      expect(prov._carryOnRounds).toBe(round);
-    }),
-  );
-});
+test(
+  "the turn's statistics record the battle once, with its result, its losses and its carry-on round",
+  timeLimitForPropertyRuns(RUNS, 50),
+  () => {
+    fc.assert(
+      fc.property(battleInput, (input) => {
+        const { tc, atk, def, prov } = stage(input);
+        const r = combatVsChar(tc, atk, def, prov);
+        const battles = (tc['_tel'] as { battles: BattleRecord[] }).battles;
+        expect(battles).toHaveLength(1);
+        const [record] = battles;
+        const round = input.round === 'carry-on' ? input.roundsBefore + 1 : 0;
+        expect(record && [record.kind, record.won, record.atkLost, record.defLost, record.carry]).toEqual([
+          'pvp',
+          r.won,
+          r.atkLost,
+          r.defLost,
+          round,
+        ]);
+        expect(prov._carryOnRounds).toBe(round);
+      }),
+    );
+  },
+);

@@ -23,6 +23,11 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
 import { engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 interface Unit {
   type: string;
@@ -248,108 +253,122 @@ describe('normaliseAction', () => {
 });
 
 describe('the phase pipeline on any phase', () => {
-  test('buildPhaseIntents: one intent for each hero who may act, with its action; only a Move has a destination', () => {
-    const seen = { moves: 0, barred: 0 };
-    fc.assert(
-      fc.property(phaseArb, (p) => {
-        const { tc, provinces, characters } = stage(p);
-        const intents = buildPhaseIntents(tc, p.ph);
-        const mayAct = characters.filter(
-          (c) =>
-            c.player !== null && c.alive && !(c.hiredInPhase != null && c.hiredInPhase >= 0 && p.ph <= c.hiredInPhase),
-        );
-        expect([...intents.keys()]).toEqual(mayAct.map((c) => c.id));
-        const got = [...intents.values()].map((it) => {
-          const nbrs = getNeighborsP(provinces[it.fromId] as Province, COLS, ROWS, provinces).map((n) => n.id);
-          const target = it.order?.target ?? '';
-          const want = target.startsWith('prov:') ? Number(target.slice(5)) : null;
-          return {
-            action: it.action,
-            leadsArmy: it.leadsArmy,
-            fromId: it.fromId,
-            // a Move's destination is a neighbour, and the province named when it is one
-            dest:
-              it.toId == null
-                ? null
-                : nbrs.includes(it.toId) && (want == null || !nbrs.includes(want) || want === it.toId),
-          };
-        });
-        expect(got).toEqual(
-          mayAct.map((c, i) => {
-            const it = [...intents.values()][i];
-            const action = normaliseAction(it?.order ?? null);
-            const target = it?.order?.target ?? '';
-            const noStep = action !== 'move' || target === `prov:${String(c.location)}`;
-            return { action, leadsArmy: c.armies.length > 0, fromId: c.location, dest: noStep ? null : true };
-          }),
-        );
-        seen.moves += got.filter((g) => g.dest).length;
-        seen.barred += characters.length - mayAct.length;
-      }),
-    );
-    expect(seen.moves).toBeGreaterThan(0);
-    expect(seen.barred).toBeGreaterThan(0);
-  });
+  test(
+    'buildPhaseIntents: one intent for each hero who may act, with its action; only a Move has a destination',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const seen = { moves: 0, barred: 0 };
+      fc.assert(
+        fc.property(phaseArb, (p) => {
+          const { tc, provinces, characters } = stage(p);
+          const intents = buildPhaseIntents(tc, p.ph);
+          const mayAct = characters.filter(
+            (c) =>
+              c.player !== null &&
+              c.alive &&
+              !(c.hiredInPhase != null && c.hiredInPhase >= 0 && p.ph <= c.hiredInPhase),
+          );
+          expect([...intents.keys()]).toEqual(mayAct.map((c) => c.id));
+          const got = [...intents.values()].map((it) => {
+            const nbrs = getNeighborsP(provinces[it.fromId] as Province, COLS, ROWS, provinces).map((n) => n.id);
+            const target = it.order?.target ?? '';
+            const want = target.startsWith('prov:') ? Number(target.slice(5)) : null;
+            return {
+              action: it.action,
+              leadsArmy: it.leadsArmy,
+              fromId: it.fromId,
+              // a Move's destination is a neighbour, and the province named when it is one
+              dest:
+                it.toId == null
+                  ? null
+                  : nbrs.includes(it.toId) && (want == null || !nbrs.includes(want) || want === it.toId),
+            };
+          });
+          expect(got).toEqual(
+            mayAct.map((c, i) => {
+              const it = [...intents.values()][i];
+              const action = normaliseAction(it?.order ?? null);
+              const target = it?.order?.target ?? '';
+              const noStep = action !== 'move' || target === `prov:${String(c.location)}`;
+              return { action, leadsArmy: c.armies.length > 0, fromId: c.location, dest: noStep ? null : true };
+            }),
+          );
+          seen.moves += got.filter((g) => g.dest).length;
+          seen.barred += characters.length - mayAct.length;
+        }),
+      );
+      expect(seen.moves).toBeGreaterThan(0);
+      expect(seen.barred).toBeGreaterThan(0);
+    },
+  );
 
-  test('phaseInitCompare: the same both ways, transitive, in tiers (stay put, then Move and Encounter, then Defend)', () => {
-    fc.assert(
-      fc.property(phaseArb, (p) => {
-        const { tc, characters } = stage(p);
-        const cmp = phaseInitCompare(tc, p.ph);
-        const action = (c: Character) =>
-          normaliseAction(((tc.G['turnOrders'] as Record<number, Order[]>)[c.id] ?? [])[p.ph] ?? null);
-        const sign = (x: number) => Math.sign(x) || 0;
-        const pairs = characters.flatMap((a) => characters.map((b) => [a, b] as const));
-        expect(pairs.every(([a, b]) => sign(cmp(a, b)) === -sign(cmp(b, a)) && (a !== b || cmp(a, b) === 0))).toBe(
-          true,
-        );
-        expect(
-          pairs.every(([a, b]) => characters.every((c) => !(cmp(a, b) <= 0 && cmp(b, c) <= 0) || cmp(a, c) <= 0)),
-        ).toBe(true);
-        expect(
-          pairs.every(
-            ([a, b]) =>
-              tierOf(action(a)) === tierOf(action(b)) ||
-              sign(cmp(a, b)) === sign(tierOf(action(a)) - tierOf(action(b))),
-          ),
-        ).toBe(true);
-      }),
-    );
-  });
+  test(
+    'phaseInitCompare: the same both ways, transitive, in tiers (stay put, then Move and Encounter, then Defend)',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(phaseArb, (p) => {
+          const { tc, characters } = stage(p);
+          const cmp = phaseInitCompare(tc, p.ph);
+          const action = (c: Character) =>
+            normaliseAction(((tc.G['turnOrders'] as Record<number, Order[]>)[c.id] ?? [])[p.ph] ?? null);
+          const sign = (x: number) => Math.sign(x) || 0;
+          const pairs = characters.flatMap((a) => characters.map((b) => [a, b] as const));
+          expect(pairs.every(([a, b]) => sign(cmp(a, b)) === -sign(cmp(b, a)) && (a !== b || cmp(a, b) === 0))).toBe(
+            true,
+          );
+          expect(
+            pairs.every(([a, b]) => characters.every((c) => !(cmp(a, b) <= 0 && cmp(b, c) <= 0) || cmp(a, c) <= 0)),
+          ).toBe(true);
+          expect(
+            pairs.every(
+              ([a, b]) =>
+                tierOf(action(a)) === tierOf(action(b)) ||
+                sign(cmp(a, b)) === sign(tierOf(action(a)) - tierOf(action(b))),
+            ),
+          ).toBe(true);
+        }),
+      );
+    },
+  );
 
-  test('orderPhaseActors: every hero who acts, once; each dependency first when they do not loop; else initiative', () => {
-    const seen = { kept: 0, plain: 0 };
-    fc.assert(
-      fc.property(phaseArb, (p) => {
-        const { tc } = stage(p);
-        const intents = buildPhaseIntents(tc, p.ph);
-        const order = orderPhaseActors(tc, p.ph, intents).map((c) => c.id);
-        expect([...order].sort((a, b) => a - b)).toEqual([...intents.keys()].sort((a, b) => a - b));
-        const edges = phaseDependencies(tc, p.ph, intents).filter(
-          ([u, v]) => intents.has(u) && intents.has(v) && u !== v,
-        );
-        const at = (id: number) => order.indexOf(id);
-        // do the dependencies loop? (a hero who must come after himself, through the others)
-        const after = (u: number): number[] => edges.filter(([a]) => a === u).map(([, b]) => b);
-        const loops = [...intents.keys()].some((start) => {
-          const seenIds = new Set<number>();
-          const walk = (u: number): boolean =>
-            after(u).some((v) => v === start || (!seenIds.has(v) && (seenIds.add(v), walk(v))));
-          return walk(start);
-        });
-        expect(loops || edges.every(([u, v]) => at(u) < at(v))).toBe(true);
-        const cmp = phaseInitCompare(tc, p.ph);
-        const byInitiative = [...intents.values()]
-          .map((it) => it.c)
-          .sort(cmp)
-          .map((c) => c.id);
-        expect(edges.length > 0 || order.join() === byInitiative.join()).toBe(true);
-        seen[edges.length > 0 && !loops ? 'kept' : 'plain']++;
-      }),
-    );
-    expect(seen.kept).toBeGreaterThan(0);
-    expect(seen.plain).toBeGreaterThan(0);
-  });
+  test(
+    'orderPhaseActors: every hero who acts, once; each dependency first when they do not loop; else initiative',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const seen = { kept: 0, plain: 0 };
+      fc.assert(
+        fc.property(phaseArb, (p) => {
+          const { tc } = stage(p);
+          const intents = buildPhaseIntents(tc, p.ph);
+          const order = orderPhaseActors(tc, p.ph, intents).map((c) => c.id);
+          expect([...order].sort((a, b) => a - b)).toEqual([...intents.keys()].sort((a, b) => a - b));
+          const edges = phaseDependencies(tc, p.ph, intents).filter(
+            ([u, v]) => intents.has(u) && intents.has(v) && u !== v,
+          );
+          const at = (id: number) => order.indexOf(id);
+          // do the dependencies loop? (a hero who must come after himself, through the others)
+          const after = (u: number): number[] => edges.filter(([a]) => a === u).map(([, b]) => b);
+          const loops = [...intents.keys()].some((start) => {
+            const seenIds = new Set<number>();
+            const walk = (u: number): boolean =>
+              after(u).some((v) => v === start || (!seenIds.has(v) && (seenIds.add(v), walk(v))));
+            return walk(start);
+          });
+          expect(loops || edges.every(([u, v]) => at(u) < at(v))).toBe(true);
+          const cmp = phaseInitCompare(tc, p.ph);
+          const byInitiative = [...intents.values()]
+            .map((it) => it.c)
+            .sort(cmp)
+            .map((c) => c.id);
+          expect(edges.length > 0 || order.join() === byInitiative.join()).toBe(true);
+          seen[edges.length > 0 && !loops ? 'kept' : 'plain']++;
+        }),
+      );
+      expect(seen.kept).toBeGreaterThan(0);
+      expect(seen.plain).toBeGreaterThan(0);
+    },
+  );
 
   test('an invasion is an armed Move on a realm at war with the mover; only a column it beats out is pinned, told once', () => {
     const seen = { invasions: 0, pinned: 0 };
@@ -437,91 +456,99 @@ describe('the phase pipeline on any phase', () => {
 });
 
 describe('province bookkeeping', () => {
-  test('reconcileProvinceCharacters: each province lists exactly the characters standing in it, the fallen too', () => {
-    fc.assert(
-      fc.property(phaseArb, (p) => {
-        const { tc, provinces, characters } = stage(p);
-        // stale lists, as a turn's moves leave them
-        provinces.forEach((pv, i) => (pv.characters = [i, 99]));
-        reconcileProvinceCharacters(tc);
-        expect(provinces.map((pv) => pv.characters)).toEqual(
-          provinces.map((pv) => characters.filter((c) => c.location === pv.id).map((c) => c.id)),
-        );
-      }),
-    );
-  });
-
-  test('settleRalliedGarrisons: no company made or lost; home to the garrison if its hero won and holds it, else with him', () => {
-    const seen = { home: 0, waiting: 0, stays: 0 };
-    fc.assert(
-      fc.property(
-        phaseArb,
-        fc.array(fc.record({ home: fc.integer({ min: 0, max: COLS * ROWS }), contested: fc.boolean() }), {
-          minLength: 1,
-          maxLength: 12,
-        }),
-        (p, marks) => {
+  test(
+    'reconcileProvinceCharacters: each province lists exactly the characters standing in it, the fallen too',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(phaseArb, (p) => {
           const { tc, provinces, characters } = stage(p);
-          // rally companies: mark each company in turn with a home (the last value names no province), and some
-          // homes still contested; heroes standing at home and holding it are the winners
-          const units = characters.flatMap((c) => c.armies.map((u) => [c, u] as const));
-          units.forEach(([, u], i) => {
-            const m = marks[i % marks.length];
-            if (m && i % 3 !== 2) u._garrisonOf = m.home;
-          });
-          marks.forEach((m) => {
-            const home = provinces[m.home];
-            if (home && m.contested) home._battleUnresolved = true;
-          });
-          characters.forEach((c, i) => {
-            const home = c.armies.find((u) => u._garrisonOf != null)?._garrisonOf;
-            const pv = home == null ? undefined : provinces[home];
-            if (pv && i % 2 === 0) {
-              c.location = pv.id;
-              pv.owner = c.player;
-            }
-          });
-          const where = () => [
-            ...characters.flatMap((c) =>
-              c.armies.map((u) => [u.unitName, `hero ${String(c.id)}`, u._garrisonOf ?? null]),
-            ),
-            ...provinces.flatMap((pv) =>
-              (pv.garrisonArmies ?? []).map((u) => [u.unitName, `garrison ${String(pv.id)}`, u._garrisonOf ?? null]),
-            ),
-          ];
-          const want = units.map(([c, u]) => {
-            const home = u._garrisonOf == null ? undefined : provinces[u._garrisonOf];
-            if (u._garrisonOf == null) return [u.unitName, `hero ${String(c.id)}`, null];
-            if (home?._battleUnresolved) return [u.unitName, `hero ${String(c.id)}`, u._garrisonOf];
-            if (home && c.alive && c.location === home.id && home.owner === c.player)
-              return [u.unitName, `garrison ${String(home.id)}`, null];
-            return [u.unitName, `hero ${String(c.id)}`, null];
-          });
-          settleRalliedGarrisons(tc);
-          const byName = (rows: unknown[][]) => [...rows].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-          expect(byName(where())).toEqual(byName(want));
-          // one line for each province whose troops went home, with how many
-          const homeCount = new Map<string, number>();
-          want.forEach(
-            (w) =>
-              String(w[1]).startsWith('garrison') &&
-              homeCount.set(String(w[1]), (homeCount.get(String(w[1])) ?? 0) + 1),
+          // stale lists, as a turn's moves leave them
+          provinces.forEach((pv, i) => (pv.characters = [i, 99]));
+          reconcileProvinceCharacters(tc);
+          expect(provinces.map((pv) => pv.characters)).toEqual(
+            provinces.map((pv) => characters.filter((c) => c.location === pv.id).map((c) => c.id)),
           );
-          expect(lines(tc).map((l) => [l.provinceId, l.text.match(/\((\d+) units?\)/)?.[1]])).toEqual(
-            [...homeCount]
-              .sort((a, b) => Number(a[0].slice(9)) - Number(b[0].slice(9)))
-              .map(([g, n]) => [Number(g.slice(9)), String(n)]),
-          );
-          want.forEach((w) =>
-            String(w[1]).startsWith('garrison') ? seen.home++ : w[2] != null ? seen.waiting++ : seen.stays++,
-          );
-        },
-      ),
-    );
-    expect(seen.home).toBeGreaterThan(0);
-    expect(seen.waiting).toBeGreaterThan(0);
-    expect(seen.stays).toBeGreaterThan(0);
-  });
+        }),
+      );
+    },
+  );
+
+  test(
+    'settleRalliedGarrisons: no company made or lost; home to the garrison if its hero won and holds it, else with him',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const seen = { home: 0, waiting: 0, stays: 0 };
+      fc.assert(
+        fc.property(
+          phaseArb,
+          fc.array(fc.record({ home: fc.integer({ min: 0, max: COLS * ROWS }), contested: fc.boolean() }), {
+            minLength: 1,
+            maxLength: 12,
+          }),
+          (p, marks) => {
+            const { tc, provinces, characters } = stage(p);
+            // rally companies: mark each company in turn with a home (the last value names no province), and some
+            // homes still contested; heroes standing at home and holding it are the winners
+            const units = characters.flatMap((c) => c.armies.map((u) => [c, u] as const));
+            units.forEach(([, u], i) => {
+              const m = marks[i % marks.length];
+              if (m && i % 3 !== 2) u._garrisonOf = m.home;
+            });
+            marks.forEach((m) => {
+              const home = provinces[m.home];
+              if (home && m.contested) home._battleUnresolved = true;
+            });
+            characters.forEach((c, i) => {
+              const home = c.armies.find((u) => u._garrisonOf != null)?._garrisonOf;
+              const pv = home == null ? undefined : provinces[home];
+              if (pv && i % 2 === 0) {
+                c.location = pv.id;
+                pv.owner = c.player;
+              }
+            });
+            const where = () => [
+              ...characters.flatMap((c) =>
+                c.armies.map((u) => [u.unitName, `hero ${String(c.id)}`, u._garrisonOf ?? null]),
+              ),
+              ...provinces.flatMap((pv) =>
+                (pv.garrisonArmies ?? []).map((u) => [u.unitName, `garrison ${String(pv.id)}`, u._garrisonOf ?? null]),
+              ),
+            ];
+            const want = units.map(([c, u]) => {
+              const home = u._garrisonOf == null ? undefined : provinces[u._garrisonOf];
+              if (u._garrisonOf == null) return [u.unitName, `hero ${String(c.id)}`, null];
+              if (home?._battleUnresolved) return [u.unitName, `hero ${String(c.id)}`, u._garrisonOf];
+              if (home && c.alive && c.location === home.id && home.owner === c.player)
+                return [u.unitName, `garrison ${String(home.id)}`, null];
+              return [u.unitName, `hero ${String(c.id)}`, null];
+            });
+            settleRalliedGarrisons(tc);
+            const byName = (rows: unknown[][]) => [...rows].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+            expect(byName(where())).toEqual(byName(want));
+            // one line for each province whose troops went home, with how many
+            const homeCount = new Map<string, number>();
+            want.forEach(
+              (w) =>
+                String(w[1]).startsWith('garrison') &&
+                homeCount.set(String(w[1]), (homeCount.get(String(w[1])) ?? 0) + 1),
+            );
+            expect(lines(tc).map((l) => [l.provinceId, l.text.match(/\((\d+) units?\)/)?.[1]])).toEqual(
+              [...homeCount]
+                .sort((a, b) => Number(a[0].slice(9)) - Number(b[0].slice(9)))
+                .map(([g, n]) => [Number(g.slice(9)), String(n)]),
+            );
+            want.forEach((w) =>
+              String(w[1]).startsWith('garrison') ? seen.home++ : w[2] != null ? seen.waiting++ : seen.stays++,
+            );
+          },
+        ),
+      );
+      expect(seen.home).toBeGreaterThan(0);
+      expect(seen.waiting).toBeGreaterThan(0);
+      expect(seen.stays).toBeGreaterThan(0);
+    },
+  );
 
   test('noteEntered: the provinces each realm entered this phase, once each; nothing for no realm or no province', () => {
     const { tc } = stage({ heroes: [], owner: [], ph: 0 });

@@ -26,6 +26,11 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 interface Unit {
   type: string;
@@ -301,29 +306,33 @@ describe('the watch zone and the battle that holds a general', () => {
     state: fc.constantFrom('alive', 'alive', 'fallen', 'leaderless host'),
     troops: fc.nat(2),
   });
-  test('defendBattleLocked: only an unresolved battle with an armed foe still standing there holds him', () => {
-    const seen = { held: 0, free: 0 };
-    fc.assert(
-      fc.property(fc.array(other, { maxLength: 4 }), fc.boolean(), (others, unresolved) => {
-        const b = board();
-        const c = hero(b, { player: 0, at: b.X, troops: 1, watch: true });
-        if (unresolved) b.X._battleUnresolved = true;
-        const foes = others.map((o) => {
-          const e = hero(b, { player: o.player, at: b.X, troops: o.troops });
-          if (o.state !== 'alive') e.alive = false;
-          if (o.state === 'leaderless host') e._leaderlessHost = true;
-          return { e, o };
-        });
-        const want =
-          unresolved &&
-          foes.some(({ o }) => o.state !== 'fallen' && o.troops > 0 && (o.player === null || o.player === 1));
-        expect(defendBattleLocked(b.tc, c, b.X)).toBe(want);
-        seen[want ? 'held' : 'free']++;
-      }),
-    );
-    expect(seen.held).toBeGreaterThan(0);
-    expect(seen.free).toBeGreaterThan(0);
-  });
+  test(
+    'defendBattleLocked: only an unresolved battle with an armed foe still standing there holds him',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const seen = { held: 0, free: 0 };
+      fc.assert(
+        fc.property(fc.array(other, { maxLength: 4 }), fc.boolean(), (others, unresolved) => {
+          const b = board();
+          const c = hero(b, { player: 0, at: b.X, troops: 1, watch: true });
+          if (unresolved) b.X._battleUnresolved = true;
+          const foes = others.map((o) => {
+            const e = hero(b, { player: o.player, at: b.X, troops: o.troops });
+            if (o.state !== 'alive') e.alive = false;
+            if (o.state === 'leaderless host') e._leaderlessHost = true;
+            return { e, o };
+          });
+          const want =
+            unresolved &&
+            foes.some(({ o }) => o.state !== 'fallen' && o.troops > 0 && (o.player === null || o.player === 1));
+          expect(defendBattleLocked(b.tc, c, b.X)).toBe(want);
+          seen[want ? 'held' : 'free']++;
+        }),
+      );
+      expect(seen.held).toBeGreaterThan(0);
+      expect(seen.free).toBeGreaterThan(0);
+    },
+  );
 });
 
 // ── A host raised in the watch: the generals next door ride in at once ────

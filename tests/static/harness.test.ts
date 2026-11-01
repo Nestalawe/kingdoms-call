@@ -107,7 +107,7 @@ import tseslint from 'typescript-eslint';
 import ts from 'typescript';
 import { z } from 'zod';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 import archConfig from '../../.dependency-cruiser.mts';
 import knipConfig from '../../knip.ts';
 import config from '../../vitest.config.mts';
@@ -122,6 +122,7 @@ import { decide, STOP_LIMIT } from '../../tools/hooks/before-stop.ts';
 import {
   BASELINE_FILE,
   compare,
+  type Counts,
   countsFromTheCodeFiles,
   ENGINE_SIDE_FOLDERS,
   ESLINT_SUPPRESSIONS_FILE,
@@ -843,6 +844,9 @@ describe('the test run', () => {
     expect(timeLimitForTheWork({ toolRuns: 2, everyFileReads: 1 }).timeout).toBe(
       2 * ALLOWANCE_MS.toolRuns + ALLOWANCE_MS.everyFileReads,
     );
+    expect(timeLimitForTheWork({ typeScriptPrograms: 1, matrixGamesPlayed: 2 }).timeout).toBe(
+      ALLOWANCE_MS.typeScriptPrograms + 2 * ALLOWANCE_MS.matrixGamesPlayed,
+    );
     expect(() => timeLimitForTheWork({})).toThrow(/names the work/);
     // npm test's 2,000 runs keep Vitest's 5 s; KC_FULL's ten times the runs get ten times the time
     expect(timeLimitForPropertyRuns(2_000, 2.5).timeout).toBe(5_000);
@@ -853,6 +857,92 @@ describe('the test run', () => {
       expect(read(`tests/static/${f}`), f).not.toMatch(typedIn);
     for (const f of ['tests/unit/combat-properties.test.ts', 'tests/unit/realm-reports.test.ts'])
       expect(read(f), f).toMatch(/timeLimitForPropertyRuns\(RUNS, [\d.]+\)/);
+  });
+
+  // A property test whose inputs grow with KC_FULL takes its limit from timeLimitForPropertyRuns, so the nightly's ten
+  // times the inputs get ten times the time (the two files above were the only ones checked, so seven of the nightly's
+  // properties came near Vitest's 5 s without one). Found by the syntax tree: a test whose function calls fc.assert with
+  // no numRuns (fast-check's own count, 100 or 1,000) or with one not written in as a number (a count of its own, set
+  // from KC_FULL); its limit is a timeLimitForPropertyRuns call, or a top-level const set to one. A property with its
+  // count written in (numRuns: 60) tries as many inputs in both runs, and keeps Vitest's 5 s. It can't see fc.assert
+  // in a helper the test calls.
+  function propertiesWithoutTheirLimit(file: string, text: string): string[] {
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+    const consts = new Map<string, string>();
+    for (const st of sf.statements)
+      if (ts.isVariableStatement(st))
+        for (const d of st.declarationList.declarations)
+          if (ts.isIdentifier(d.name) && d.initializer) consts.set(d.name.text, d.initializer.getText());
+    const isTheLimit = (a: ts.Node) =>
+      /\btimeLimitForPropertyRuns\(/.test(a.getText()) ||
+      (ts.isIdentifier(a) && /\btimeLimitForPropertyRuns\(/.test(consts.get(a.text) ?? ''));
+    const growsWithKcFull = (assert: ts.CallExpression) => {
+      const options = assert.arguments[1];
+      if (!options || !ts.isObjectLiteralExpression(options)) return true;
+      const runs = options.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === 'numRuns');
+      return !runs || !ts.isPropertyAssignment(runs) || !ts.isNumericLiteral(runs.initializer);
+    };
+    const wrong: string[] = [];
+    const visit = (n: ts.Node): void => {
+      ts.forEachChild(n, visit);
+      if (!ts.isCallExpression(n)) return;
+      let callee: ts.Expression = n.expression;
+      while (ts.isPropertyAccessExpression(callee) || ts.isCallExpression(callee)) callee = callee.expression;
+      if (!ts.isIdentifier(callee) || !['test', 'it'].includes(callee.text)) return;
+      const fn = n.arguments.find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a));
+      if (!fn) return;
+      const asserts: ts.CallExpression[] = [];
+      const find = (m: ts.Node): void => {
+        if (ts.isCallExpression(m) && m.expression.getText() === 'fc.assert') asserts.push(m);
+        ts.forEachChild(m, find);
+      };
+      find(fn);
+      if (!asserts.some(growsWithKcFull)) return;
+      if (n.arguments.some((a, i) => i > 0 && a !== fn && isTheLimit(a))) return;
+      const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+      wrong.push(`${file}:${String(line)}`);
+    };
+    visit(sf);
+    return wrong;
+  }
+  const testFiles = (dir: string): string[] =>
+    fs
+      .readdirSync(path.join(ROOT, dir), { withFileTypes: true })
+      .flatMap((e) =>
+        e.isDirectory()
+          ? e.name === 'quarantine' || e.name === 'fixtures'
+            ? []
+            : testFiles(`${dir}/${e.name}`)
+          : e.name.endsWith('.test.ts')
+            ? [`${dir}/${e.name}`]
+            : [],
+      );
+
+  test(
+    'every property test whose inputs grow with KC_FULL takes its limit from timeLimitForPropertyRuns',
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    () => {
+      const files = testFiles('tests');
+      expect(files).toContain('tests/unit/pre-battle-duels.test.ts');
+      expect(files.flatMap((f) => propertiesWithoutTheirLimit(f, read(f)))).toEqual([]);
+    },
+  );
+
+  test('planted: a property without its limit is found; one with its count written in is not', () => {
+    const file = 'tests/unit/pre-battle-duels.test.ts';
+    const text = read(file);
+    expect(propertiesWithoutTheirLimit(file, text)).toEqual([]);
+    const without = text.replace(/^ {2}timeLimitForPropertyRuns\(RUNS, 50\),\n/m, '');
+    expect(without).not.toBe(text);
+    expect(propertiesWithoutTheirLimit(file, without)).toEqual([
+      expect.stringMatching(/^tests\/unit\/pre-battle-duels\.test\.ts:\d+$/),
+    ]);
+    const planted = (options: string) =>
+      `test('p', () => { fc.assert(fc.property(fc.nat(), () => true)${options}); });\n`;
+    expect(propertiesWithoutTheirLimit('p.test.ts', planted(''))).toEqual(['p.test.ts:1']);
+    expect(propertiesWithoutTheirLimit('p.test.ts', planted(', { examples: [[1]] }'))).toEqual(['p.test.ts:1']);
+    expect(propertiesWithoutTheirLimit('p.test.ts', planted(', { numRuns: RUNS }'))).toEqual(['p.test.ts:1']);
+    expect(propertiesWithoutTheirLimit('p.test.ts', planted(', { numRuns: 60 }'))).toEqual([]);
   });
 });
 
@@ -996,7 +1086,15 @@ describe('CI', () => {
   test('every job that tests builds the site first', () => {
     const testing = /^(npm test|npx playwright test|npm run balance)/;
     const jobsThatTest = ids.filter((id) => runs(id).some((r) => testing.test(r)));
-    expect([...jobsThatTest].sort()).toEqual(['balance', 'browser', 'page', 'simulation', 'static', 'unit-scenario']);
+    expect([...jobsThatTest].sort()).toEqual([
+      'balance',
+      'balance-part',
+      'browser',
+      'page',
+      'simulation',
+      'static',
+      'unit-scenario',
+    ]);
     for (const id of jobsThatTest) {
       const r = runs(id);
       const build = r.indexOf('npm run build');
@@ -1005,12 +1103,51 @@ describe('CI', () => {
     }
   });
 
+  // A job may run its levels in halves (Vitest's --shard): then its matrix runs every half, 1 to N, once each, so each
+  // level still runs in full, once.
+  function testLevelProblems(text: string): string[] {
+    const problems: string[] = [];
+    const levels: string[] = [];
+    for (const block of (text.split(/^jobs:\n/m)[1] ?? '').split(/^(?= {2}[\w-]+:\n)/m)) {
+      const id = /^ {2}([\w-]+):\n/.exec(block)?.[1] ?? '';
+      for (const [, r = ''] of block.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)) {
+        const m = /^npm test -- --project \w+(?: --project \w+)*(?: --shard \$\{\{ matrix\.shard \}\}\/(\d+))?$/.exec(
+          r,
+        );
+        if (!m) {
+          problems.push(`${id}: ${r}`);
+          continue;
+        }
+        const halves = Number(m[1] ?? 0);
+        const shards = /^ {6}matrix:\n {8}shard: \[([\d, ]+)\]\n/m.exec(block)?.[1]?.split(', ').map(Number);
+        const every = Array.from({ length: halves }, (_, i) => i + 1);
+        if (halves && String(shards) !== String(every))
+          problems.push(`${id}: not every half of ${String(halves)} runs`);
+        levels.push(...[...r.matchAll(/--project (\w+)/g)].map((x) => x[1] ?? ''));
+      }
+    }
+    if (String([...levels].sort()) !== String([...LEVELS].sort()))
+      problems.push(`the levels run: ${levels.join(', ')}`);
+    return problems;
+  }
+
   test('every test level runs in exactly one job, and the browser specs in theirs', () => {
-    const tests = ids.flatMap((id) => runs(id).filter((r) => r.startsWith('npm test')));
-    for (const r of tests) expect(r).toMatch(/^npm test -- --project \w+( --project \w+)*$/);
-    const levels = tests.flatMap((r) => [...r.matchAll(/--project (\w+)/g)].map((m) => m[1]));
-    expect([...levels].sort()).toEqual([...LEVELS].sort());
+    expect(testLevelProblems(ci)).toEqual([]);
+    expect(runs('unit-scenario')).toContain(
+      'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2',
+    );
     expect(ids.filter((id) => runs(id).includes('npx playwright test'))).toEqual(['browser']);
+    // Planted copies: a half left out; a level run twice; another option.
+    expect(testLevelProblems(ci.replace('shard: [1, 2]', 'shard: [1]'))).toEqual([
+      'unit-scenario: not every half of 2 runs',
+    ]);
+    expect(testLevelProblems(ci.replace('--project simulation', '--project simulation --project page'))).toEqual([
+      'the levels run: static, unit, scenario, simulation, page, page',
+    ]);
+    expect(testLevelProblems(ci.replace('--project page', '--project page --bail 1'))).toEqual([
+      'page: npm test -- --project page --bail 1',
+      'the levels run: static, unit, scenario, simulation',
+    ]);
   });
 
   test('ci needs every job but db, runs even when one failed, and passes only if all of them passed', () => {
@@ -1066,39 +1203,85 @@ describe('CI', () => {
     expect(concurrencyProblems(perJob)).toEqual(['a job sets a concurrency group of its own']);
   });
 
-  test('the balance job decides first, in plain Node, and plays the matrix only when an engine path changed', () => {
+  // The balance matrix in three parts side by side, then joined and judged as one run (tools/balance/parts.ts). Each
+  // job decides first, in plain Node, whether to play at all (and fails a refactor-only change to the baseline).
+  const DECIDES = [
+    'EVENT: ${{ github.event_name }}',
+    'BEFORE: ${{ github.event.before }}',
+    "REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}",
+  ];
+  const PLAYS = "steps.engine.outputs.play == 'true'";
+  const ON_A_MISS = `${PLAYS} && steps.modules.outputs.cache-hit != 'true'`;
+  const stepConditions = (id: string) =>
+    (jobs.get(id) ?? '').match(/^ {6}- (?:id: \w+\n {8})?if: (.+)$/gm)?.map((l) => l.replace(/^.*if: /s, ''));
+
+  test('the balance matrix is played in three parts side by side, each deciding first, judging nothing', () => {
+    const job = jobs.get('balance-part') ?? '';
+    expect(job).toMatch(/^ {4}strategy:\n {6}fail-fast: false\n {6}matrix:\n {8}part: \[1, 2, 3\]\n/m);
+    expect(runs('balance-part')).toEqual([
+      'node tools/balance/engine-paths.ts',
+      'npm ci',
+      'npm run build',
+      'npm run balance -- --shard ${{ matrix.part }}/3 --out balance-parts/part-${{ matrix.part }}.json',
+    ]);
+    // After the decision, every step on its play=true (the install, and the cache's save, on a miss too); the part
+    // handed on once played.
+    expect(stepConditions('balance-part')).toEqual([
+      PLAYS,
+      ON_A_MISS,
+      ON_A_MISS,
+      PLAYS,
+      PLAYS,
+      "steps.play.outcome == 'success'",
+    ]);
+    expect(job).toMatch(/^ {6}- id: engine\n {8}run: node tools\/balance\/engine-paths\.ts\n/m);
+    expect(job).toMatch(
+      /uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: balance-part-\$\{\{ matrix\.part \}\}\n {10}path: balance-parts\/part-\$\{\{ matrix\.part \}\}\.json\n {10}if-no-files-found: error\n/,
+    );
+    expect(job).toMatch(/^ {10}fetch-depth: 2$/m);
+    for (const env of DECIDES) expect(job).toContain(env);
+  });
+
+  test('the balance job decides first, joins the parts and judges them as one run, then makes the report', () => {
     const job = jobs.get('balance') ?? '';
     expect(runs('balance')).toEqual([
       'node tools/balance/engine-paths.ts',
       'npm ci',
       'npm run build',
-      'npm run balance -- --out balance-report/played.json',
+      'npm run balance -- --join balance-parts --out balance-report/played.json',
       'npm run balance:report -- --base HEAD^1 --head balance-report/played.json',
     ]);
-    // The two steps after the decision run only on its play=true. The report runs only on a pull request, and only
-    // once the games were played (even if they differ from the baseline); the upload only after the report.
-    expect(job.match(/^ {6}- (?:id: \w+\n {8})?if: (.+)$/gm)?.map((l) => l.replace(/^.*if: /s, ''))).toEqual([
-      "steps.engine.outputs.play == 'true'",
-      "steps.engine.outputs.play == 'true'",
-      "steps.engine.outputs.play == 'true'",
+    // After the parts, even when one failed (so this job fails itself, saying why), unless the run was cancelled.
+    expect(field('balance', 'needs')).toBe('balance-part');
+    expect(field('balance', 'if')).toBe('${{ !cancelled() }}');
+    // The steps after the decision run only on its play=true (the install, and the cache's save, on a miss too). The
+    // report runs only on a pull request, and only once the games were judged (even if they differ from the
+    // baseline); the upload only after the report.
+    expect(stepConditions('balance')).toEqual([
+      PLAYS,
+      ON_A_MISS,
+      ON_A_MISS,
+      PLAYS,
+      PLAYS,
+      PLAYS,
       "${{ !cancelled() && github.event_name == 'pull_request' && (steps.play.outcome == 'success' || steps.play.outcome == 'failure') }}",
       "${{ !cancelled() && steps.report.outcome == 'success' }}",
     ]);
+    expect(job).toMatch(
+      /uses: actions\/download-artifact@v\d+\n {8}with:\n {10}pattern: balance-part-\*\n {10}merge-multiple: true\n {10}path: balance-parts\n/,
+    );
     expect(job).toMatch(/^ {6}- id: engine\n {8}run: node tools\/balance\/engine-paths\.ts\n/m);
     expect(job).toMatch(/^ {6}- id: play\n {8}if: .*\n {8}run: npm run balance -- /m);
     expect(job).toMatch(/^ {6}- id: report\n {8}if: .*\n {8}run: npm run balance:report /m);
     expect(job).toMatch(/uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: balance-report\n/);
     // The commit to compare with: a pull request's base is HEAD^1 of its merge commit; a push's is the commit before.
     expect(job).toMatch(/^ {10}fetch-depth: 2$/m);
-    expect(job).toContain('EVENT: ${{ github.event_name }}');
-    expect(job).toContain('BEFORE: ${{ github.event.before }}');
-    expect(job).toContain("REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}");
+    for (const env of DECIDES) expect(job).toContain(env);
     // CI itself may only read: the comment is posted by balance-report.yml.
     expect(ci).toMatch(/^permissions:\n {2}contents: read\n\n/m);
     expect(ci).toMatch(/^name: CI$/m);
   });
 
-  // The report comes from the pull request's own code, so the workflow that may comment never runs that code.
   test("the balance report is posted by a workflow that never checks out or runs the pull request's code", () => {
     const wf = read('.github/workflows/balance-report.yml');
     expect(wf).toMatch(
@@ -1195,6 +1378,61 @@ describe('CI', () => {
       expect(runner).toMatch(/^ {2}buildSite\(\);$/m);
     },
   );
+
+  // node_modules from a cache (ci.yml's header): in each job that installs, restored first, npm ci only on a miss,
+  // and saved straight after it, before any other step can write into node_modules; keyed on the runner, Node's
+  // version, the lock file and .npmrc, so a change to any of them installs afresh.
+  const NODE_MODULES_KEY =
+    "node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}";
+  function nodeModulesCacheProblems(text: string): string[] {
+    const problems: string[] = [];
+    for (const block of (text.split(/^jobs:\n/m)[1] ?? '').split(/^(?= {2}[\w-]+:\n)/m)) {
+      const id = /^ {2}([\w-]+):\n/.exec(block)?.[1] ?? '';
+      const steps = block.split(/^(?= {6}- )/m).slice(1);
+      const install = steps.findIndex((st) => /run: npm ci$/m.test(st));
+      if (install < 0) continue;
+      const [restore = '', npmCi = '', save = ''] = [steps[install - 1], steps[install], steps[install + 1]];
+      if (!steps.some((st) => /^ {6}- id: node\n {8}uses: actions\/setup-node@/.test(st)))
+        problems.push(`${id}: setup-node has no id "node"`);
+      if (!/^ {6}- id: modules\n(?: {8}if: .*\n)? {8}uses: actions\/cache\/restore@v\d+\n/.test(restore))
+        problems.push(`${id}: node_modules isn't restored just before npm ci`);
+      else if (!restore.includes(`path: node_modules\n`) || !restore.includes(`key: ${NODE_MODULES_KEY}\n`))
+        problems.push(`${id}: the restore's path or key is another`);
+      if (!/if: .*steps\.modules\.outputs\.cache-hit != 'true'/.test(npmCi))
+        problems.push(`${id}: npm ci runs on a hit`);
+      if (
+        !/uses: actions\/cache\/save@v\d+\n/.test(save) ||
+        !/if: .*steps\.modules\.outputs\.cache-hit != 'true'/.test(save) ||
+        !save.includes('path: node_modules\n') ||
+        !save.includes('key: ${{ steps.modules.outputs.cache-primary-key }}')
+      )
+        problems.push(`${id}: node_modules isn't saved straight after npm ci, on a miss, under the restore's key`);
+    }
+    return problems;
+  }
+
+  test('every job that installs takes node_modules from a cache, and saves it before anything else runs', () => {
+    expect(ids.filter((id) => runs(id).includes('npm ci')).sort()).toEqual(
+      ['balance', 'balance-part', 'browser', 'page', 'simulation', 'static', 'unit-scenario'].sort(),
+    );
+    expect(nodeModulesCacheProblems(ci)).toEqual([]);
+    // Planted copies: unit-scenario's save moved after its build; npm ci on every run; a key without the lock file.
+    const unitScenario = /^ {2}unit-scenario:\n[\s\S]*?(?=^ {2}[\w-]+:\n)/m.exec(ci)?.[0] ?? '';
+    const save =
+      /\n {6}- if: steps\.modules\.outputs\.cache-hit != 'true'\n {8}uses: actions\/cache\/save@v\d+\n(?: {8,}.+\n)+/.exec(
+        unitScenario,
+      )?.[0] ?? '';
+    expect(save).not.toBe('');
+    const moved = unitScenario.replace(save, '\n').replace(/(\n {6}- run: npm run build\n)/, `$1${save}`);
+    expect(moved).not.toBe(unitScenario);
+    expect(nodeModulesCacheProblems(ci.replace(unitScenario, moved))).toEqual([
+      "unit-scenario: node_modules isn't saved straight after npm ci, on a miss, under the restore's key",
+    ]);
+    const always = ci.replace(/(- if: )steps\.modules\.outputs\.cache-hit != 'true'(\n {8}run: npm ci\n)/, '$1true$2');
+    expect(nodeModulesCacheProblems(always)).toEqual(['unit-scenario: npm ci runs on a hit']);
+    const noLock = ci.replace("hashFiles('package-lock.json', '.npmrc')", "hashFiles('.npmrc')");
+    expect(nodeModulesCacheProblems(noLock)).toEqual(["static: the restore's path or key is another"]);
+  });
 
   test('no job lets a failure through, retries or repeats', () => {
     for (const weak of ['continue-on-error', '|| true', '--retries', '--retry', '--repeat-each', '--bail', '--pass']) {
@@ -1814,6 +2052,18 @@ describe('dangerous paths', () => {
 });
 
 describe('the ratchet', () => {
+  // This tree's counts and its code files, made once for the tests below that read them, as they are (measure() runs
+  // knip; each test used to make them again: four runs of knip, fifteen reads of every code file).
+  let counted: Counts = {};
+  let files: ReturnType<typeof theCodeFiles> = [];
+  beforeAll(
+    () => {
+      counted = measure();
+      files = theCodeFiles();
+    },
+    timeLimitForTheWork({ toolRuns: 1, everyFileReads: 1 }).timeout,
+  );
+
   test('npm run ratchet reads tests/ratchet.json', () => {
     expect(pkg.scripts['ratchet']).toBe('tsx tools/ratchet.ts');
     expect(path.relative(ROOT, BASELINE_FILE)).toBe('tests/ratchet.json');
@@ -1822,28 +2072,23 @@ describe('the ratchet', () => {
   // The ts-nocheck line is counted in two (plan P1-10, Decision 9; P1-10b's Decision 5): the engine's side, which P1-10b
   // takes to 0, and the UI's (P1-16), so neither may rise while the other falls. One planted line in each folder raises
   // its own count alone, and the ratchet fails on it.
-  test(
-    'the ts-nocheck line is counted on the engine side and in the UI, apart, and no longer as one',
-    timeLimitForTheWork({ toolRuns: 1 }),
-    () => {
-      const baseline = readBaseline();
-      const now = measure();
-      for (const counts of [baseline, now]) {
-        expect(counts).not.toHaveProperty('tsNocheck');
-        expect(counts['tsNocheckEngineSide']).toBeGreaterThan(0);
-        expect(counts['tsNocheckUi']).toBeGreaterThan(0);
-      }
-      expect([...ENGINE_SIDE_FOLDERS]).toEqual([
-        'src/engine/',
-        'src/views/',
-        'src/db/',
-        'src/ui/shared/',
-        'src/content/',
-        'src/schemas/',
-        'src/shared/',
-      ]);
-    },
-  );
+  test('the ts-nocheck line is counted on the engine side and in the UI, apart, and no longer as one', () => {
+    const baseline = readBaseline();
+    for (const counts of [baseline, counted]) {
+      expect(counts).not.toHaveProperty('tsNocheck');
+      expect(counts['tsNocheckEngineSide']).toBeGreaterThan(0);
+      expect(counts['tsNocheckUi']).toBeGreaterThan(0);
+    }
+    expect([...ENGINE_SIDE_FOLDERS]).toEqual([
+      'src/engine/',
+      'src/views/',
+      'src/db/',
+      'src/ui/shared/',
+      'src/content/',
+      'src/schemas/',
+      'src/shared/',
+    ]);
+  });
   const NOCHECK_LINE = '// @ts-' + 'nocheck: planted, to show the ratchet counts it\n';
   test.for([
     ['src/engine/battle/x.ts', 'tsNocheckEngineSide'],
@@ -1859,7 +2104,6 @@ describe('the ratchet', () => {
     ['tests/unit/x.test.ts', 'tsNocheckUi'],
     ['tools/x.ts', 'tsNocheckUi'],
   ] as const)('a ts-nocheck line planted in %s raises %s alone, and the ratchet fails', ([file, count]) => {
-    const files = theCodeFiles();
     const asTheyAre = { ...readBaseline(), ...countsFromTheCodeFiles(files) };
     expect(compare(asTheyAre, asTheyAre).rose).toEqual([]);
     const planted = { ...asTheyAre, ...countsFromTheCodeFiles([...files, [file, NOCHECK_LINE + 'export {};\n']]) };
@@ -1876,7 +2120,6 @@ describe('the ratchet', () => {
     ['src/engine/rules/x.ts', 0],
     ['src/ui/gm/x.ts', 0],
   ] as const)('a unit-name comparison planted in %s raises unitNameChecksInEngine by %i', ([file, rise]) => {
-    const files = theCodeFiles();
     const asTheyAre = { ...readBaseline(), unitNameChecksInEngine: unitNameChecksInEngine(files) };
     expect(asTheyAre.unitNameChecksInEngine).toBe(readBaseline()['unitNameChecksInEngine']);
     const planted = {
@@ -1892,16 +2135,15 @@ describe('the ratchet', () => {
     expect(rose.filter((r) => /^unitNameChecksInEngine rose from \d+ to \d+\./.test(r))).toEqual(rose);
   });
 
-  // measure() runs knip for unusedCode: a few seconds, more on a slow runner.
-  test('no count is above its baseline', timeLimitForTheWork({ toolRuns: 1 }), () => {
-    const { rose } = compare(readBaseline(), measure());
+  test('no count is above its baseline', () => {
+    const { rose } = compare(readBaseline(), counted);
     expect(rose, 'Lower what rose, or, if the rise is right, talk it through with Theo.').toEqual([]);
   });
 
   // P1-09e: src/ has no JavaScript left but public/'s two classic scripts (copied as they are). P1-13b: ESLint's
   // suppressions are counted from their file (above), so they only fall; its warnings no longer, since no rule warns.
-  test("it counts ESLint's suppressions and public/'s two scripts", timeLimitForTheWork({ toolRuns: 1 }), () => {
-    const now = measure();
+  test("it counts ESLint's suppressions and public/'s two scripts", () => {
+    const now = counted;
     expect(now['eslintSuppressions']).toBe(eslintSuppressions());
     expect(now['eslintSuppressions']).toBeGreaterThan(0);
     expect(now).not.toHaveProperty('eslintWarnings');
@@ -1911,17 +2153,13 @@ describe('the ratchet', () => {
   // P1-13a: the import rules' known violations and knip's findings are counted, so they only fall (plan P1-13,
   // Decision 4). The known violations are the entries of dependency-cruiser's own list, the one npm run lint:arch lets
   // through.
-  test(
-    "it counts the import rules' known violations and what knip finds unused",
-    timeLimitForTheWork({ toolRuns: 1 }),
-    () => {
-      const now = measure();
-      const known = JSON.parse(read(KNOWN_ARCHITECTURE_VIOLATIONS_FILE)) as unknown[];
-      expect(now['knownArchitectureViolations']).toBe(known.length);
-      expect(now['unusedCode']).toBeGreaterThan(0);
-      for (const key of ['knownArchitectureViolations', 'unusedCode']) expect(readBaseline()[key], key).toBeDefined();
-    },
-  );
+  test("it counts the import rules' known violations and what knip finds unused", () => {
+    const now = counted;
+    const known = JSON.parse(read(KNOWN_ARCHITECTURE_VIOLATIONS_FILE)) as unknown[];
+    expect(now['knownArchitectureViolations']).toBe(known.length);
+    expect(now['unusedCode']).toBeGreaterThan(0);
+    for (const key of ['knownArchitectureViolations', 'unusedCode']) expect(readBaseline()[key], key).toBeDefined();
+  });
 });
 
 // The architecture rules (plan P1-13a, Decisions 2 to 4): dependency-cruiser's layers and no cycle, every rule an error,

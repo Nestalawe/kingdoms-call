@@ -30,11 +30,13 @@ import { expect, test } from 'vitest';
 import type { KcRng } from '../lib/boot.js';
 import { checkLeaks, describeBreaches, type SavedState } from '../lib/invariants.ts';
 import { scenarioInTheVm, type Order } from '../lib/scenario-in-the-vm.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 const full = process.env['KC_FULL'] === '1';
 /** A turn takes about 80 ms: half the default inputs (about 4 s a property). */
 const RUNS = full ? 500 : 50;
-const TIMEOUT = (full ? 600 : 60) * 1000;
+/** 1.2 s an input: 60 s for npm test's 50, 600 s for KC_FULL's 500. */
+const TIMEOUT = timeLimitForPropertyRuns(RUNS, 1_200).timeout;
 
 const sc = scenarioInTheVm({ seed: 1 });
 const W = sc.W;

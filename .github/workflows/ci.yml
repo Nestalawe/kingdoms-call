@@ -1,15 +1,24 @@
 # Runs every check on every pull request, in jobs side by side, so the fastest failure shows first (P1-01c). Each job
 # that tests builds site/ from src/ first (npm run build, P1-05), so every test opens the pages this commit makes:
 #   static         the type check, lint, the import rules, format check, ratchet and the static tests (a minute or less)
-#   unit-scenario  the unit and scenario tests;  simulation;  page   (npm test, one Vitest project or two each)
+#   unit-scenario  the unit and scenario tests, in two halves;  simulation;  page   (npm test, one Vitest project or
+#                  two each)
 #   browser        the browser specs in Chromium (npx playwright test)
-#   balance        the balance matrix (P1-02b), played only when an engine path changed (tools/balance/engine-paths.ts),
-#                  and on a pull request its report (P1-03a), posted by balance-report.yml
+#   balance-part   the balance matrix (P1-02b) in three parts side by side, played only when an engine path changed
+#                  (tools/balance/engine-paths.ts);  balance  joins and judges them, and on a pull request makes its
+#                  report (P1-03a), posted by balance-report.yml
 #   db             the database's access-rule tests (pgTAP) and its function lint
 # and "ci", which passes only when every job but db passed. Branch protection on main requires "ci" and "db", so
 # those two names must not change; the other jobs can be added to or split without touching the settings.
 # deploy.yml calls this workflow before every publish and waits for the whole run, so each commit that goes live is
 # tested first, and a merge runs the tests once (inside Deploy), not twice. That's why there's no push trigger here.
+#
+# node_modules comes from a cache when the lock file, .npmrc, Node's version and the runner are unchanged: restored
+# before npm ci, which runs only on a miss, then saved at once, before anything else runs (a test or a tool writes its
+# own caches into node_modules, which must not carry over to the next run). npm ci's install scripts (esbuild's) write
+# only inside node_modules, so a restored copy is the one npm ci made; its engine-strict check passed for this same Node
+# when the copy was made, and tests/setup/global.ts still stops the tests on any other Node. Caches made on main (by
+# Deploy's run) are read by every pull request; a pull request's own are read only by its later runs.
 name: CI
 
 # A label added or removed runs it again: the balance job checks a refactor-only pull request (its label is read from
@@ -41,57 +50,91 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      # engine-strict (.npmrc): stops here if Node isn't exactly .nvmrc's version.
+      # engine-strict (.npmrc): npm ci stops here if Node isn't exactly .nvmrc's version.
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
       - id: install
+        if: steps.modules.outputs.cache-hit != 'true'
         run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       # Each check runs even when one before it failed, so one run shows every problem.
       - run: npm run typecheck
 
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run lint
 
       # The layers of src/ and no import cycle (P1-13, .dependency-cruiser.mts); the known violations are let through.
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run lint:arch
 
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run format:check
 
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run ratchet
 
       - id: build
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run build
 
       - if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: npm test -- --project static
 
+  # In two halves side by side, by Vitest's own --shard (by file: each level's old scripts run as one file,
+  # tests/legacy.test.ts, so both land in one half; the halves still came out nearest even of the ways measured).
   unit-scenario:
-    name: unit and scenario tests
+    name: unit and scenario tests, half ${{ matrix.shard }} of 2
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       - run: npm run build
 
-      - run: npm test -- --project unit --project scenario
+      - run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2
 
   simulation:
     name: simulation tests
@@ -102,12 +145,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       - run: npm run build
 
@@ -122,12 +179,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       - run: npm run build
 
@@ -142,12 +213,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       # Playwright's Chromium is kept between runs, one copy per Playwright version. The system libraries it needs
       # are installed every time (they aren't in the cache).
@@ -178,24 +263,32 @@ jobs:
           path: test-results/
           retention-days: 7
 
-  # The balance matrix (plan P1-02, Decisions), a key control for the engine refactor. The first step, in plain Node
-  # (before npm ci), compares this commit with the one before it: a pull request's base (HEAD^1 of GitHub's merge
-  # commit), or, in deploy.yml's run on main, the commit before the push. If no engine path changed, the job ends
-  # there. Otherwise it plays the 60 games (one per core) and fails if any differs from the committed baseline
-  # (tests/balance/baseline/): a change meant to change play commits its new baseline (npm run balance:update). A pull
-  # request labelled refactor-only fails at the first step if it changes the baseline at all. Only the branch is
-  # played in full: the base branch's figures are its committed baseline (the report replays a few of its games).
-  balance:
-    name: balance matrix
+  # The balance matrix (plan P1-02, Decisions), a key control for the engine refactor, played in three parts side by
+  # side (balance-part), then judged as one run (balance). Each job's first step, in plain Node (before npm ci),
+  # compares this commit with the one before it: a pull request's base (HEAD^1 of GitHub's merge commit), or, in
+  # deploy.yml's run on main, the commit before the push. If no engine path changed, the job ends there. Otherwise each
+  # part plays a third of the 60 games (one per core; part 1 the required named scenarios too) and hands them on, judging
+  # nothing (tools/balance/parts.ts); the balance job joins them and fails if any game differs from the committed
+  # baseline (tests/balance/baseline/), as one run of npm run balance does: a change meant to change play commits its
+  # new baseline (npm run balance:update). A pull request labelled refactor-only fails at the first step of each job if
+  # it changes the baseline at all. Only the branch is played in full: the base branch's figures are its committed
+  # baseline (the report replays a few of its games).
+  balance-part:
+    name: balance matrix, part ${{ matrix.part }} of 3
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 2
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -207,15 +300,93 @@ jobs:
           BEFORE: ${{ github.event.before }}
           REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}
 
-      - if: steps.engine.outputs.play == 'true'
+      - id: modules
+        if: steps.engine.outputs.play == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'
         run: npm ci
+
+      - if: steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       - if: steps.engine.outputs.play == 'true'
         run: npm run build
 
       - id: play
         if: steps.engine.outputs.play == 'true'
-        run: npm run balance -- --out balance-report/played.json
+        run: npm run balance -- --shard ${{ matrix.part }}/3 --out balance-parts/part-${{ matrix.part }}.json
+
+      - if: steps.play.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: balance-part-${{ matrix.part }}
+          path: balance-parts/part-${{ matrix.part }}.json
+          if-no-files-found: error
+          retention-days: 1
+
+  # It runs even when a part failed, so it fails itself, saying why: a refactor-only change to the baseline at its first
+  # step, a part missing (its job failed) at the join.
+  balance:
+    name: balance matrix
+    needs: balance-part
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - id: node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - id: engine
+        run: node tools/balance/engine-paths.ts
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}
+
+      - id: modules
+        if: steps.engine.outputs.play == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
+
+      - if: steps.engine.outputs.play == 'true'
+        run: npm run build
+
+      - if: steps.engine.outputs.play == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: balance-part-*
+          merge-multiple: true
+          path: balance-parts
+
+      - id: play
+        if: steps.engine.outputs.play == 'true'
+        run: npm run balance -- --join balance-parts --out balance-report/played.json
 
       # On a pull request, the balance report (P1-03a): this branch's games against the base branch's committed
       # baseline, with up to 12 changed games replayed on both sides to find where they first differ. It runs even
@@ -238,7 +409,7 @@ jobs:
   # would count as passed), and passes only if every job it needs passed.
   ci:
     name: ci
-    needs: [static, unit-scenario, simulation, page, browser, balance]
+    needs: [static, unit-scenario, simulation, page, browser, balance-part, balance]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -247,7 +418,7 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          echo "$NEEDS" | jq -e 'length == 6 and all(.[]; .result == "success")' > /dev/null
+          echo "$NEEDS" | jq -e 'length == 7 and all(.[]; .result == "success")' > /dev/null
 
   # pgTAP against a throwaway local database built from supabase/migrations/ (no other Supabase
   # services, no secrets, never the live or staging database). See supabase/README.md.

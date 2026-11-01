@@ -45,6 +45,11 @@ import {
   type TurnContext,
   firstDie,
 } from '../lib/middle-of-a-bot-world.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -70,24 +75,30 @@ const BATTLE = /^⚔ \*\*Battle for /m;
 const caught = <T>(body: () => T) => firstDie(engine, 0, body);
 
 describe('the catch roll (pursuitCatchChance)', () => {
-  test('70% + 5% a level of the hunter’s Spy − 5% a level of the quarry’s (each counted to 5), 5–100%; his own realm’s quarry always met', () => {
-    fc.assert(
-      fc.property(
-        fc.nat(9),
-        fc.nat(9),
-        fc.constantFrom<number | null>(0, 1, 1, 2, null),
-        (spy, theirSpy, theirRealm) => {
-          const b = fresh();
-          const c = hero(b, { player: 0, at: b.X, skills: { spy } });
-          const q = hero(b, { player: theirRealm, at: b.X, skills: { spy: theirSpy } });
-          // a skill counts to 5 (effStat)
-          const want =
-            theirRealm === 0 ? 100 : Math.max(5, Math.min(100, 70 + 5 * Math.min(5, spy) - 5 * Math.min(5, theirSpy)));
-          expect(pursuitCatchChance(b.tc, c, q)).toBe(want);
-        },
-      ),
-    );
-  });
+  test(
+    '70% + 5% a level of the hunter’s Spy − 5% a level of the quarry’s (each counted to 5), 5–100%; his own realm’s quarry always met',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(
+          fc.nat(9),
+          fc.nat(9),
+          fc.constantFrom<number | null>(0, 1, 1, 2, null),
+          (spy, theirSpy, theirRealm) => {
+            const b = fresh();
+            const c = hero(b, { player: 0, at: b.X, skills: { spy } });
+            const q = hero(b, { player: theirRealm, at: b.X, skills: { spy: theirSpy } });
+            // a skill counts to 5 (effStat)
+            const want =
+              theirRealm === 0
+                ? 100
+                : Math.max(5, Math.min(100, 70 + 5 * Math.min(5, spy) - 5 * Math.min(5, theirSpy)));
+            expect(pursuitCatchChance(b.tc, c, q)).toBe(want);
+          },
+        ),
+      );
+    },
+  );
 });
 
 describe('a chase called off', () => {
@@ -160,31 +171,37 @@ describe('a chase called off', () => {
 });
 
 describe('one battle per phase binds a chase under way', () => {
-  test('an armed hunter with a battle on his hands this phase holds the chase over; an unarmed one rides on', () => {
-    const seen = { held: 0, rode: 0 };
-    fc.assert(
-      fc.property(fc.boolean(), fc.boolean(), fc.boolean(), fc.boolean(), (armed, stalled, field, contested) => {
-        const b = fresh();
-        const c = hero(b, { player: 0, at: b.X, troops: armed ? 2 : 0 });
-        const q = hero(b, { player: 1, at: must(b.ring2[0], 'two provinces away') });
-        chase(c, q);
-        if (stalled) c._foughtStalledBattlePhase = PH;
-        if (field) (b.tc['fieldBattlePhase'] as Record<number, number>)[c.id] = PH;
-        if (contested) b.X._battleUnresolved = true;
-        dice(0.999, () => {
-          advancePursuit(b.tc, c, PH);
-        });
-        const held = armed && (stalled || field || contested);
-        const waited = /has a battle on their hands in .* this season — the chase after .* must wait/.test(allText(b));
-        expect([waited, c.location === b.X.id, c._pursuit?.active, points(b, c).land]).toEqual(
-          held ? [true, true, true, 1] : [false, false, true, 0],
-        );
-        seen[held ? 'held' : 'rode']++;
-      }),
-    );
-    expect(seen.held).toBeGreaterThan(0);
-    expect(seen.rode).toBeGreaterThan(0);
-  });
+  test(
+    'an armed hunter with a battle on his hands this phase holds the chase over; an unarmed one rides on',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const seen = { held: 0, rode: 0 };
+      fc.assert(
+        fc.property(fc.boolean(), fc.boolean(), fc.boolean(), fc.boolean(), (armed, stalled, field, contested) => {
+          const b = fresh();
+          const c = hero(b, { player: 0, at: b.X, troops: armed ? 2 : 0 });
+          const q = hero(b, { player: 1, at: must(b.ring2[0], 'two provinces away') });
+          chase(c, q);
+          if (stalled) c._foughtStalledBattlePhase = PH;
+          if (field) (b.tc['fieldBattlePhase'] as Record<number, number>)[c.id] = PH;
+          if (contested) b.X._battleUnresolved = true;
+          dice(0.999, () => {
+            advancePursuit(b.tc, c, PH);
+          });
+          const held = armed && (stalled || field || contested);
+          const waited = /has a battle on their hands in .* this season — the chase after .* must wait/.test(
+            allText(b),
+          );
+          expect([waited, c.location === b.X.id, c._pursuit?.active, points(b, c).land]).toEqual(
+            held ? [true, true, true, 1] : [false, false, true, 0],
+          );
+          seen[held ? 'held' : 'rode']++;
+        }),
+      );
+      expect(seen.held).toBeGreaterThan(0);
+      expect(seen.rode).toBeGreaterThan(0);
+    },
+  );
   test('an earlier phase’s battle does not hold him', () => {
     const b = fresh();
     const c = hero(b, { player: 0, at: b.X, troops: 2 });
@@ -200,42 +217,46 @@ describe('one battle per phase binds a chase under way', () => {
 });
 
 describe('closing on the quarry', () => {
-  test('one province a phase along the road, for one point of movement; with none left the chase stalls', () => {
-    fc.assert(
-      fc.property(fc.nat(2), fc.nat(17), fc.boolean(), (land, slot, armed) => {
-        const b = fresh();
-        const c = hero(b, { player: 0, at: b.X, troops: armed ? 1 : 0, land });
-        const far = must(b.ring2[slot % b.ring2.length], 'two provinces away');
-        const q = hero(b, { player: 1, at: far });
-        chase(c, q);
-        dice(0.999, () => {
-          advancePursuit(b.tc, c, PH);
-        });
-        const text = allText(b);
-        const step = must(b.G.world.provinces[c.location], 'where he is');
-        const got = {
-          at:
-            c.location === b.X.id
-              ? 'stayed'
-              : b.ring1.includes(step) && b.nbrs(step).includes(far)
-                ? 'closer'
-                : 'astray',
-          land: points(b, c).land,
-          active: c._pursuit?.active,
-          listed: [step.characters.includes(c.id), c.location === b.X.id || !b.X.characters.includes(c.id)],
-          seen: step.visitedBy?.includes(0) ?? false,
-          said: land
-            ? text.includes(`${c.name} presses on into ${step.name}, hard on the trail of ${q.name}.`)
-            : /can drive their horses no further this year — the chase after .* stalls/.test(text),
-        };
-        expect(got).toEqual(
-          land
-            ? { at: 'closer', land: land - 1, active: true, listed: [true, true], seen: true, said: true }
-            : { at: 'stayed', land: 0, active: false, listed: [true, true], seen: false, said: true },
-        );
-      }),
-    );
-  });
+  test(
+    'one province a phase along the road, for one point of movement; with none left the chase stalls',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(fc.nat(2), fc.nat(17), fc.boolean(), (land, slot, armed) => {
+          const b = fresh();
+          const c = hero(b, { player: 0, at: b.X, troops: armed ? 1 : 0, land });
+          const far = must(b.ring2[slot % b.ring2.length], 'two provinces away');
+          const q = hero(b, { player: 1, at: far });
+          chase(c, q);
+          dice(0.999, () => {
+            advancePursuit(b.tc, c, PH);
+          });
+          const text = allText(b);
+          const step = must(b.G.world.provinces[c.location], 'where he is');
+          const got = {
+            at:
+              c.location === b.X.id
+                ? 'stayed'
+                : b.ring1.includes(step) && b.nbrs(step).includes(far)
+                  ? 'closer'
+                  : 'astray',
+            land: points(b, c).land,
+            active: c._pursuit?.active,
+            listed: [step.characters.includes(c.id), c.location === b.X.id || !b.X.characters.includes(c.id)],
+            seen: step.visitedBy?.includes(0) ?? false,
+            said: land
+              ? text.includes(`${c.name} presses on into ${step.name}, hard on the trail of ${q.name}.`)
+              : /can drive their horses no further this year — the chase after .* stalls/.test(text),
+          };
+          expect(got).toEqual(
+            land
+              ? { at: 'closer', land: land - 1, active: true, listed: [true, true], seen: true, said: true }
+              : { at: 'stayed', land: 0, active: false, listed: [true, true], seen: false, said: true },
+          );
+        }),
+      );
+    },
+  );
   test('no road brings him closer: the trail goes cold', () => {
     const b = fresh();
     const c = hero(b, { player: 0, at: b.X, troops: 1 });

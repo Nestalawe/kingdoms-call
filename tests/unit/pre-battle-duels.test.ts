@@ -25,6 +25,12 @@ import { expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50 ms
+// an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s. An input stages a fresh turn and writes the
+// world out twice: 1.6 ms on a laptop, 5.4 ms in CI's unit job, and over 5.1 ms on the nightly run (1,000 timed out at
+// 5 s, run 40176607802: tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
+
 interface Character {
   id: number | string;
   name: string;
@@ -99,41 +105,39 @@ const wordsOf = (narrative: unknown[]) => narrative.map((l) => (typeof l === 'st
 const shaken = (narrative: unknown[]) => wordsOf(narrative).filter((l) => /'s force is demoralised — /.test(l)).length;
 const duelFought = (narrative: unknown[]) => wordsOf(narrative).some((l) => l.startsWith('⚔ — Personal duel: '));
 
-test('one host at most loses heart, each shaken host is told once, and a slain commander is dead', () => {
-  const seen = { duels: 0, slain: 0, shaken: 0 };
-  fc.assert(
-    fc.property(side, side, fc.boolean(), (a, d, chieftain) => {
-      const { tc, atk, def, atkRecord, defRecord } = stage(a, d, { chieftain });
-      const narrative: unknown[] = [];
-      const r = preBattleDuel(tc, atk, def, narrative);
-      expect([1, 0.8]).toContain(r.atkMorale);
-      expect([1, 0.8]).toContain(r.defMorale);
-      expect(r.atkMorale === 0.8 && r.defMorale === 0.8).toBe(false);
-      expect(shaken(narrative)).toBe((r.atkMorale === 0.8 ? 1 : 0) + (r.defMorale === 0.8 ? 1 : 0));
-      expect(Boolean(r.atkSlain) && Boolean(r.defSlain)).toBe(false);
-      const slain = [
-        ...(r.atkSlain ? [[r.atkMorale, atkRecord.alive, atk.alive]] : []),
-        ...(r.defSlain ? [[r.defMorale, defRecord.alive, def.alive]] : []),
-      ];
-      expect(slain).toEqual(slain.map(() => [0.8, false, false]));
-      // and a commander whose record died in the duel is the one reported slain (both rode in alive)
-      expect([!atkRecord.alive, !defRecord.alive]).toEqual([Boolean(r.atkSlain), Boolean(r.defSlain)]);
-      seen.duels += duelFought(narrative) ? 1 : 0;
-      seen.slain += slain.length;
-      seen.shaken += shaken(narrative);
-    }),
-  );
-  // the inputs reached the duel itself, not only the early returns (about two in five fight one, and most duels kill)
-  expect(seen.duels).toBeGreaterThan(0);
-  expect(seen.shaken).toBeGreaterThan(0);
-  expect(seen.slain).toBeGreaterThan(0);
-});
-
-// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. This property's time limit is 50 ms
-// an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s. An input stages a fresh turn and writes the
-// world out twice: 1.6 ms on a laptop, 5.4 ms in CI's unit job, and over 5.1 ms on the nightly run (1,000 timed out at
-// 5 s, run 40176607802: tests/lib/time-limits.ts).
-const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
+test(
+  'one host at most loses heart, each shaken host is told once, and a slain commander is dead',
+  timeLimitForPropertyRuns(RUNS, 50),
+  () => {
+    const seen = { duels: 0, slain: 0, shaken: 0 };
+    fc.assert(
+      fc.property(side, side, fc.boolean(), (a, d, chieftain) => {
+        const { tc, atk, def, atkRecord, defRecord } = stage(a, d, { chieftain });
+        const narrative: unknown[] = [];
+        const r = preBattleDuel(tc, atk, def, narrative);
+        expect([1, 0.8]).toContain(r.atkMorale);
+        expect([1, 0.8]).toContain(r.defMorale);
+        expect(r.atkMorale === 0.8 && r.defMorale === 0.8).toBe(false);
+        expect(shaken(narrative)).toBe((r.atkMorale === 0.8 ? 1 : 0) + (r.defMorale === 0.8 ? 1 : 0));
+        expect(Boolean(r.atkSlain) && Boolean(r.defSlain)).toBe(false);
+        const slain = [
+          ...(r.atkSlain ? [[r.atkMorale, atkRecord.alive, atk.alive]] : []),
+          ...(r.defSlain ? [[r.defMorale, defRecord.alive, def.alive]] : []),
+        ];
+        expect(slain).toEqual(slain.map(() => [0.8, false, false]));
+        // and a commander whose record died in the duel is the one reported slain (both rode in alive)
+        expect([!atkRecord.alive, !defRecord.alive]).toEqual([Boolean(r.atkSlain), Boolean(r.defSlain)]);
+        seen.duels += duelFought(narrative) ? 1 : 0;
+        seen.slain += slain.length;
+        seen.shaken += shaken(narrative);
+      }),
+    );
+    // the inputs reached the duel itself, not only the early returns (about two in five fight one, and most duels kill)
+    expect(seen.duels).toBeGreaterThan(0);
+    expect(seen.shaken).toBeGreaterThan(0);
+    expect(seen.slain).toBeGreaterThan(0);
+  },
+);
 
 test(
   'nobody rides out when neither commander challenges, or against a commander already dead',
@@ -161,19 +165,23 @@ test(
   },
 );
 
-test("a bot realm's commander never duels a local chieftain, and his host is shaken when he refuses one", () => {
-  fc.assert(
-    fc.property(side, side, fc.boolean(), (a, d, botAttacks) => {
-      // the bot's commander attacks the chieftain's province, or (the sides swapped) the chieftain attacks him
-      const { tc, atk, def } = stage(a, d, { chieftain: true, botRealm: 0 });
-      const [bot, chief] = [atk, def];
-      const narrative: unknown[] = [];
-      const r = botAttacks ? preBattleDuel(tc, bot, chief, narrative) : preBattleDuel(tc, chief, bot, narrative);
-      const botMorale = botAttacks ? r.atkMorale : r.defMorale;
-      const chiefMorale = botAttacks ? r.defMorale : r.atkMorale;
-      expect(duelFought(narrative)).toBe(false);
-      const chiefChallenges = d.temper === 'Berserk' || d.temper === 'Brave';
-      expect([botMorale, chiefMorale]).toEqual([chiefChallenges ? 0.8 : 1, 1]);
-    }),
-  );
-});
+test(
+  "a bot realm's commander never duels a local chieftain, and his host is shaken when he refuses one",
+  timeLimitForPropertyRuns(RUNS, 50),
+  () => {
+    fc.assert(
+      fc.property(side, side, fc.boolean(), (a, d, botAttacks) => {
+        // the bot's commander attacks the chieftain's province, or (the sides swapped) the chieftain attacks him
+        const { tc, atk, def } = stage(a, d, { chieftain: true, botRealm: 0 });
+        const [bot, chief] = [atk, def];
+        const narrative: unknown[] = [];
+        const r = botAttacks ? preBattleDuel(tc, bot, chief, narrative) : preBattleDuel(tc, chief, bot, narrative);
+        const botMorale = botAttacks ? r.atkMorale : r.defMorale;
+        const chiefMorale = botAttacks ? r.defMorale : r.atkMorale;
+        expect(duelFought(narrative)).toBe(false);
+        const chiefChallenges = d.temper === 'Berserk' || d.temper === 'Brave';
+        expect([botMorale, chiefMorale]).toEqual([chiefChallenges ? 0.8 : 1, 1]);
+      }),
+    );
+  },
+);

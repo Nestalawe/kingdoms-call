@@ -105,6 +105,7 @@ import {
   LEGENDARY_ITEMS_P,
 } from '../../src/content/kingdoms-call-data.ts';
 import { unitBaseStrength } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 let copies: Copies;
 let values: Samples;
@@ -133,18 +134,17 @@ const castingLimit = lazily(() => castingLimitAgainstTheOrder(theForm()));
 const kin = lazily(() => armyCardKinAgainstTheBattle(copies, kinWorld()));
 const casesOf = (p: (typeof PROJECTIONS)[number]) => once(`${p.engine} projection`, () => p.cases(values));
 let worldValues: WorldSamples;
-// The values in three hooks, each with Vitest's limit for itself (a hook's 10 s; on a busy runner the three together
-// can take more): the game, then the samples with the staged world, then the staged worlds of P1-11b1.
-beforeAll(() => {
-  copies = playerPortalCopies();
-  theGamePlayed();
-});
-beforeAll(() => {
-  values = samples();
-});
-beforeAll(() => {
-  worldValues = worldSamples();
-});
+// The values, in one hook with a whole game's limit (the game, then the samples with the staged world, then the staged
+// worlds of P1-11b1: 12.1 s together on a runner, past a hook's 10 s).
+beforeAll(
+  () => {
+    copies = playerPortalCopies();
+    theGamePlayed();
+    values = samples();
+    worldValues = worldSamples();
+  },
+  timeLimitForTheWork({ matrixGamesPlayed: 1 }).timeout,
+);
 
 /** A value in a line short enough to read (cut to 160 characters). */
 const short = (x: unknown) =>

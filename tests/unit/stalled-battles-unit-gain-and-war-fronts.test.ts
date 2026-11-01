@@ -49,6 +49,11 @@ import {
   type TurnContext,
   type Unit,
 } from '../lib/middle-of-a-bot-world.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -145,51 +150,61 @@ describe('a beaten guard’s survivors (erodeGuardSurvivors)', () => {
     expect(e.lines).toHaveLength(3);
     for (const l of e.lines) expect(l).toMatch(/^— Ulric's .+ hold their ground unbroken and rally around Ulric\.$/);
   });
-  test('every survivor has exactly one fate, as the dice say, and is told once', () => {
-    const survivor = fc.record({
-      quality: fc.constantFrom(...QUALITY_TIERS),
-      flee: DIE,
-    });
-    fc.assert(
-      fc.property(fc.array(survivor, { maxLength: 6 }), fc.array(DIE, { minLength: 6, maxLength: 6 }), (ss, demote) => {
-        const b = fresh();
-        const surv = ss.map((s, i): Unit => ({
-          type: 'Men-at-Arms',
-          quality: s.quality,
-          race: 'Human',
-          unitName: `the Band ${String(i)}`,
-        }));
-        // each survivor draws its flight die, then (if it stays) its heart die
-        const dice: number[] = [];
-        ss.forEach((s, i) => {
-          dice.push(s.flee);
-          if (s.flee >= 0.35) dice.push(must(demote[i], 'a die'));
-        });
-        const lines: string[] = [];
-        const kept = withDice(engine, dice.length ? dice : [0.5], () =>
-          erodeGuardSurvivors(b.tc, { name: 'Ulric' }, b.X, surv, (l) => lines.push(wordsOf(l)), 'Aldric'),
-        );
-        const fate = ss.map((s, i) =>
-          s.flee < 0.35
-            ? 'fled'
-            : must(demote[i], 'a die') < 0.5
-              ? s.quality === QUALITY_TIERS[0]
-                ? 'disbanded'
-                : 'demoted'
-              : 'held',
-        );
-        expect(lines).toHaveLength(ss.length);
-        // a disbanded company's line doesn't name the victor (disbandLine)
-        expect(lines.filter((_, i) => fate[i] !== 'disbanded').every((l) => l.includes("Aldric's host"))).toBe(true);
-        expect(kept).toEqual(surv.filter((_, i) => fate[i] === 'demoted' || fate[i] === 'held'));
-        expect(b.G.mercenaries?.length).toBe(fate.filter((f) => f === 'fled').length);
-        expect(surv.map((a) => !!a._disbanded)).toEqual(fate.map((f) => f === 'disbanded'));
-        expect(
-          surv.map((a, i) => QUALITY_TIERS.indexOf(a.quality) - QUALITY_TIERS.indexOf(must(ss[i], 's').quality)),
-        ).toEqual(fate.map((f) => (f === 'demoted' ? -1 : 0)));
-      }),
-    );
-  });
+  test(
+    'every survivor has exactly one fate, as the dice say, and is told once',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const survivor = fc.record({
+        quality: fc.constantFrom(...QUALITY_TIERS),
+        flee: DIE,
+      });
+      fc.assert(
+        fc.property(
+          fc.array(survivor, { maxLength: 6 }),
+          fc.array(DIE, { minLength: 6, maxLength: 6 }),
+          (ss, demote) => {
+            const b = fresh();
+            const surv = ss.map((s, i): Unit => ({
+              type: 'Men-at-Arms',
+              quality: s.quality,
+              race: 'Human',
+              unitName: `the Band ${String(i)}`,
+            }));
+            // each survivor draws its flight die, then (if it stays) its heart die
+            const dice: number[] = [];
+            ss.forEach((s, i) => {
+              dice.push(s.flee);
+              if (s.flee >= 0.35) dice.push(must(demote[i], 'a die'));
+            });
+            const lines: string[] = [];
+            const kept = withDice(engine, dice.length ? dice : [0.5], () =>
+              erodeGuardSurvivors(b.tc, { name: 'Ulric' }, b.X, surv, (l) => lines.push(wordsOf(l)), 'Aldric'),
+            );
+            const fate = ss.map((s, i) =>
+              s.flee < 0.35
+                ? 'fled'
+                : must(demote[i], 'a die') < 0.5
+                  ? s.quality === QUALITY_TIERS[0]
+                    ? 'disbanded'
+                    : 'demoted'
+                  : 'held',
+            );
+            expect(lines).toHaveLength(ss.length);
+            // a disbanded company's line doesn't name the victor (disbandLine)
+            expect(lines.filter((_, i) => fate[i] !== 'disbanded').every((l) => l.includes("Aldric's host"))).toBe(
+              true,
+            );
+            expect(kept).toEqual(surv.filter((_, i) => fate[i] === 'demoted' || fate[i] === 'held'));
+            expect(b.G.mercenaries?.length).toBe(fate.filter((f) => f === 'fled').length);
+            expect(surv.map((a) => !!a._disbanded)).toEqual(fate.map((f) => f === 'disbanded'));
+            expect(
+              surv.map((a, i) => QUALITY_TIERS.indexOf(a.quality) - QUALITY_TIERS.indexOf(must(ss[i], 's').quality)),
+            ).toEqual(fate.map((f) => (f === 'demoted' ? -1 : 0)));
+          },
+        ),
+      );
+    },
+  );
 });
 
 // ── Stalled battles ────
@@ -460,47 +475,55 @@ const visible = (c: Character) => c.alive && c['_veilTurn'] == null;
 const armedReal = (c: Character) => c.armies.some((a) => !a['_phantom']);
 
 describe('war fronts and enemy stand-offs', () => {
-  test('warFrontThreats: exactly the armed, unveiled hosts on enemy-owned ground or beside an armed enemy host', () => {
-    fc.assert(
-      fc.property(field, (f) => {
-        const { b, hs } = stageField(f);
-        const want = hs.flatMap((c) => {
-          if (!visible(c) || c.player == null || !armedReal(c)) return [];
-          const p = must(b.G.world.provinces[c.location], 'his province');
-          const onEnemyLand = ENEMIES(c.player, p.owner);
-          const facesEnemyHost = hs.some(
-            (o) => o !== c && visible(o) && o.location === p.id && armedReal(o) && ENEMIES(c.player, o.player),
-          );
-          return onEnemyLand || facesEnemyHost ? [{ id: c.id, prov: p.id, onEnemyLand, facesEnemyHost }] : [];
-        });
-        expect(
-          warFrontThreats(b.tc).map((t) => ({
-            id: t.c.id,
-            prov: t.prov.id,
-            onEnemyLand: t.onEnemyLand,
-            facesEnemyHost: t.facesEnemyHost,
-          })),
-        ).toEqual(want);
-      }),
-    );
-  });
-  test('flagEnemyStandoffs: a province where two warring realms’ armed, unveiled forces stand is a battle waiting', () => {
-    fc.assert(
-      fc.property(field, (f) => {
-        const { b, seven, hs } = stageField(f);
-        const except = new Set(seven.filter((_, i) => f.except[i]).map((p) => p.id));
-        const was = seven.map((p) => p._battleUnresolved ?? false);
-        flagEnemyStandoffs(b.tc, except);
-        const want = seven.map((p, i) => {
-          if (was[i]) return true;
-          if (except.has(p.id)) return false;
-          const here = hs.filter((c) => visible(c) && c.location === p.id && c.armies.length > 0 && c.player != null);
-          return here.some((c) => here.some((o) => ENEMIES(c.player, o.player)));
-        });
-        expect(seven.map((p) => p._battleUnresolved ?? false)).toEqual(want);
-      }),
-    );
-  });
+  test(
+    'warFrontThreats: exactly the armed, unveiled hosts on enemy-owned ground or beside an armed enemy host',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(field, (f) => {
+          const { b, hs } = stageField(f);
+          const want = hs.flatMap((c) => {
+            if (!visible(c) || c.player == null || !armedReal(c)) return [];
+            const p = must(b.G.world.provinces[c.location], 'his province');
+            const onEnemyLand = ENEMIES(c.player, p.owner);
+            const facesEnemyHost = hs.some(
+              (o) => o !== c && visible(o) && o.location === p.id && armedReal(o) && ENEMIES(c.player, o.player),
+            );
+            return onEnemyLand || facesEnemyHost ? [{ id: c.id, prov: p.id, onEnemyLand, facesEnemyHost }] : [];
+          });
+          expect(
+            warFrontThreats(b.tc).map((t) => ({
+              id: t.c.id,
+              prov: t.prov.id,
+              onEnemyLand: t.onEnemyLand,
+              facesEnemyHost: t.facesEnemyHost,
+            })),
+          ).toEqual(want);
+        }),
+      );
+    },
+  );
+  test(
+    'flagEnemyStandoffs: a province where two warring realms’ armed, unveiled forces stand is a battle waiting',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(field, (f) => {
+          const { b, seven, hs } = stageField(f);
+          const except = new Set(seven.filter((_, i) => f.except[i]).map((p) => p.id));
+          const was = seven.map((p) => p._battleUnresolved ?? false);
+          flagEnemyStandoffs(b.tc, except);
+          const want = seven.map((p, i) => {
+            if (was[i]) return true;
+            if (except.has(p.id)) return false;
+            const here = hs.filter((c) => visible(c) && c.location === p.id && c.armies.length > 0 && c.player != null);
+            return here.some((c) => here.some((o) => ENEMIES(c.player, o.player)));
+          });
+          expect(seven.map((p) => p._battleUnresolved ?? false)).toEqual(want);
+        }),
+      );
+    },
+  );
 
   test('flagEnemyStandoffs: a veiled host stands with an enemy host unseen, and no battle waits', () => {
     for (const veiled of [false, true]) {
@@ -589,49 +612,53 @@ describe('war fronts and enemy stand-offs', () => {
 
 // ── The max-HP resync ────
 describe('every hero’s maximum HP kept in step (syncAllMaxHp)', () => {
-  test('each living hero’s maximum is brought in line and told once; a second pass finds nothing', () => {
-    fc.assert(
-      fc.property(
-        fc.array(
-          fc.record({
-            off: fc.integer({ min: -6, max: 6 }),
-            hp: fc.nat(40),
-            dead: fc.boolean(),
-            realm: fc.constantFrom<number | null>(0, 1, null),
-          }),
-          { minLength: 1, maxLength: 5 },
+  test(
+    'each living hero’s maximum is brought in line and told once; a second pass finds nothing',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(
+          fc.array(
+            fc.record({
+              off: fc.integer({ min: -6, max: 6 }),
+              hp: fc.nat(40),
+              dead: fc.boolean(),
+              realm: fc.constantFrom<number | null>(0, 1, null),
+            }),
+            { minLength: 1, maxLength: 5 },
+          ),
+          (hs) => {
+            const b = fresh();
+            const cs = hs.map((h) => {
+              const c = hero(b, { player: h.realm, at: b.X });
+              const right = computeMaxHp(c, b.G.players);
+              c.maxHp = right + h.off;
+              c.hp = Math.min(h.hp, c.maxHp);
+              if (h.dead) c.alive = false;
+              return { c, right, was: { maxHp: c.maxHp, hp: c.hp } };
+            });
+            syncAllMaxHp(b.tc);
+            for (const { c, right, was } of cs) {
+              const changed = c.alive && was.maxHp !== right;
+              expect(c.maxHp).toBe(c.alive ? right : was.maxHp);
+              const told = b.lines().filter((l) => l.text.includes(`${c.name}'s maximum HP`));
+              expect(told).toHaveLength(changed ? 1 : 0);
+              expect(c.hp).toBe(
+                !changed
+                  ? was.hp
+                  : right > was.maxHp
+                    ? Math.min(right, was.hp + right - was.maxHp)
+                    : Math.max(Math.min(1, was.hp), Math.min(was.hp, right)),
+              );
+            }
+            const n = b.lines().length;
+            syncAllMaxHp(b.tc);
+            expect(b.lines()).toHaveLength(n);
+          },
         ),
-        (hs) => {
-          const b = fresh();
-          const cs = hs.map((h) => {
-            const c = hero(b, { player: h.realm, at: b.X });
-            const right = computeMaxHp(c, b.G.players);
-            c.maxHp = right + h.off;
-            c.hp = Math.min(h.hp, c.maxHp);
-            if (h.dead) c.alive = false;
-            return { c, right, was: { maxHp: c.maxHp, hp: c.hp } };
-          });
-          syncAllMaxHp(b.tc);
-          for (const { c, right, was } of cs) {
-            const changed = c.alive && was.maxHp !== right;
-            expect(c.maxHp).toBe(c.alive ? right : was.maxHp);
-            const told = b.lines().filter((l) => l.text.includes(`${c.name}'s maximum HP`));
-            expect(told).toHaveLength(changed ? 1 : 0);
-            expect(c.hp).toBe(
-              !changed
-                ? was.hp
-                : right > was.maxHp
-                  ? Math.min(right, was.hp + right - was.maxHp)
-                  : Math.max(Math.min(1, was.hp), Math.min(was.hp, right)),
-            );
-          }
-          const n = b.lines().length;
-          syncAllMaxHp(b.tc);
-          expect(b.lines()).toHaveLength(n);
-        },
-      ),
-    );
-  });
+      );
+    },
+  );
 
   // R-117 (Toby, 2026-10-31): a rise is his own realm's alone, told to it (no deed, no sight), in a province or in none,
   // and its fact names that realm (the leak check's KINDS_FOR_ONE_REALM_ALONE reads it).

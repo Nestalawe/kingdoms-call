@@ -51,6 +51,11 @@ import {
   type Unit,
 } from '../lib/middle-of-a-bot-world.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -371,46 +376,50 @@ describe('Send Item, called directly', () => {
     expect({ giver: before.giver - h.maxHp, taker: r.maxHp - before.taker }).toEqual({ giver: 8, taker: 8 });
   });
 
-  test('property: the items change hands, none is lost or made, and Mithril Armour never leaves its wearer', () => {
-    const NAMES = [
-      'Ring of the Explorer',
-      'Tome of Tactics',
-      'Bronze Buckler',
-      'Kingsteel Longsword',
-      'Mithril Armour',
-    ];
-    const token = fc.oneof(
-      fc.constant('all'),
-      fc.nat(6).map(String),
-      fc.constantFrom(...NAMES),
-      fc.constant('Nothing'),
-    );
-    const seen = { here: 0, courier: 0, none: 0 };
-    fc.assert(
-      fc.property(
-        fc.array(fc.constantFrom(...NAMES), { maxLength: 5 }),
-        fc.array(token, { maxLength: 4 }),
-        fc.boolean(),
-        (held, tokens, far) => {
-          const b = fresh();
-          realm(b)['race'] = 'Dwarven';
-          const h = at(b, { king: true });
-          h['race'] = 'Dwarven';
-          h.items = held.map((n) => item(b, n));
-          const r = at(b, far ? { at: ring1(b, 2) } : {});
-          const ids = (is: Record<string, unknown>[]) => is.map((i) => Number(i['id'])).sort();
-          const before = ids(h.items);
-          const mithril = ids(h.items.filter((i) => i['name'] === 'Mithril Armour'));
-          play(b, h, o('give_item', tokens.join(','), String(r.id)));
-          const queued = ((G_(b)['_itemDeliveries'] ?? []) as { items: Item[] }[]).flatMap((d) => d.items);
-          expect(ids([...h.items, ...r.items, ...queued])).toEqual(before);
-          expect(ids(h.items.filter((i) => i['name'] === 'Mithril Armour'))).toEqual(mithril);
-          seen[h.items.length === held.length ? 'none' : far ? 'courier' : 'here']++;
-        },
-      ),
-    );
-    expect(Object.values(seen).every((n) => n > 0)).toBe(true);
-  });
+  test(
+    'property: the items change hands, none is lost or made, and Mithril Armour never leaves its wearer',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const NAMES = [
+        'Ring of the Explorer',
+        'Tome of Tactics',
+        'Bronze Buckler',
+        'Kingsteel Longsword',
+        'Mithril Armour',
+      ];
+      const token = fc.oneof(
+        fc.constant('all'),
+        fc.nat(6).map(String),
+        fc.constantFrom(...NAMES),
+        fc.constant('Nothing'),
+      );
+      const seen = { here: 0, courier: 0, none: 0 };
+      fc.assert(
+        fc.property(
+          fc.array(fc.constantFrom(...NAMES), { maxLength: 5 }),
+          fc.array(token, { maxLength: 4 }),
+          fc.boolean(),
+          (held, tokens, far) => {
+            const b = fresh();
+            realm(b)['race'] = 'Dwarven';
+            const h = at(b, { king: true });
+            h['race'] = 'Dwarven';
+            h.items = held.map((n) => item(b, n));
+            const r = at(b, far ? { at: ring1(b, 2) } : {});
+            const ids = (is: Record<string, unknown>[]) => is.map((i) => Number(i['id'])).sort();
+            const before = ids(h.items);
+            const mithril = ids(h.items.filter((i) => i['name'] === 'Mithril Armour'));
+            play(b, h, o('give_item', tokens.join(','), String(r.id)));
+            const queued = ((G_(b)['_itemDeliveries'] ?? []) as { items: Item[] }[]).flatMap((d) => d.items);
+            expect(ids([...h.items, ...r.items, ...queued])).toEqual(before);
+            expect(ids(h.items.filter((i) => i['name'] === 'Mithril Armour'))).toEqual(mithril);
+            seen[h.items.length === held.length ? 'none' : far ? 'courier' : 'here']++;
+          },
+        ),
+      );
+      expect(Object.values(seen).every((n) => n > 0)).toBe(true);
+    },
+  );
 });
 
 // ── Leave/Transfer Army ─────────────────────────────────────────────────────────────────────────────────────────
@@ -515,45 +524,49 @@ describe('Leave/Transfer Army, called directly', () => {
     }).toEqual({ told: true, led: ['Galleon Fleet c0', 'Men-at-Arms c0'], garrison: [] });
   });
 
-  test('property: every company stays with the giver, goes to the comrade or the garrison, or is one of the dead lost', () => {
-    const kind = fc.constantFrom('Men-at-Arms', 'Yeoman Longbows', 'Great Bears', 'dead');
-    const seen = { comrade: 0, garrison: 0, lost: 0 };
-    fc.assert(
-      fc.property(
-        fc.array(kind, { minLength: 1, maxLength: 5 }),
-        fc.array(fc.constantFrom('all', 'Men-at-Arms', 'Yeoman Longbows', 'Great Bears', 'Shieldwall Levies'), {
-          minLength: 1,
-          maxLength: 3,
-        }),
-        fc.nat(3),
-        fc.boolean(),
-        (kinds, targets, room, toGarrison) => {
-          const b = fresh();
-          const h = at(b, { king: true, skills: druid(5) });
-          h.armies = kinds.map((k, i) =>
-            k === 'dead'
-              ? skeletal(`Bone ${String(i)}`)
-              : must(companies(1, k, 'Average', `${k} ${String(i)}`)[0], 'a company'),
-          );
-          const r = at(b, { skills: druid(room) });
-          const all = names(h.armies).sort();
-          play(b, h, o('leave_army', targets.join(','), toGarrison ? '-1' : place(b, r)));
-          // the dead handed to a living commander are named in the line that says they are lost
-          const lost = (/💀 (.*) refuse to follow a non-Undead commander/.exec(textOf(b, h))?.[1] ?? '')
-            .split(', ')
-            .filter(Boolean).length;
-          const gone = [...names(h.armies), ...names(r.armies), ...names(b.X.garrisonArmies)];
-          expect(gone.length + lost).toBe(all.length);
-          expect([...new Set(gone)].length).toBe(gone.length);
-          expect(r.armies.filter((a) => a.type === 'Great Bears').length).toBeLessThanOrEqual(room);
-          if (lost) seen.lost++;
-          else if (r.armies.length) seen.comrade++;
-          else if (b.X.garrisonArmies.length) seen.garrison++;
-        },
-      ),
-    );
-    expect(Object.values(seen).every((n) => n > 0)).toBe(true);
-  });
+  test(
+    'property: every company stays with the giver, goes to the comrade or the garrison, or is one of the dead lost',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const kind = fc.constantFrom('Men-at-Arms', 'Yeoman Longbows', 'Great Bears', 'dead');
+      const seen = { comrade: 0, garrison: 0, lost: 0 };
+      fc.assert(
+        fc.property(
+          fc.array(kind, { minLength: 1, maxLength: 5 }),
+          fc.array(fc.constantFrom('all', 'Men-at-Arms', 'Yeoman Longbows', 'Great Bears', 'Shieldwall Levies'), {
+            minLength: 1,
+            maxLength: 3,
+          }),
+          fc.nat(3),
+          fc.boolean(),
+          (kinds, targets, room, toGarrison) => {
+            const b = fresh();
+            const h = at(b, { king: true, skills: druid(5) });
+            h.armies = kinds.map((k, i) =>
+              k === 'dead'
+                ? skeletal(`Bone ${String(i)}`)
+                : must(companies(1, k, 'Average', `${k} ${String(i)}`)[0], 'a company'),
+            );
+            const r = at(b, { skills: druid(room) });
+            const all = names(h.armies).sort();
+            play(b, h, o('leave_army', targets.join(','), toGarrison ? '-1' : place(b, r)));
+            // the dead handed to a living commander are named in the line that says they are lost
+            const lost = (/💀 (.*) refuse to follow a non-Undead commander/.exec(textOf(b, h))?.[1] ?? '')
+              .split(', ')
+              .filter(Boolean).length;
+            const gone = [...names(h.armies), ...names(r.armies), ...names(b.X.garrisonArmies)];
+            expect(gone.length + lost).toBe(all.length);
+            expect([...new Set(gone)].length).toBe(gone.length);
+            expect(r.armies.filter((a) => a.type === 'Great Bears').length).toBeLessThanOrEqual(room);
+            if (lost) seen.lost++;
+            else if (r.armies.length) seen.comrade++;
+            else if (b.X.garrisonArmies.length) seen.garrison++;
+          },
+        ),
+      );
+      expect(Object.values(seen).every((n) => n > 0)).toBe(true);
+    },
+  );
 });
 
 // ── Release Hero ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -636,32 +649,36 @@ describe('Disband Army, called directly', () => {
     });
   });
 
-  test('property: each company disbanded is one band, the dead none, and what is not named stays', () => {
-    const kind = fc.constantFrom('Men-at-Arms', 'Yeoman Longbows', 'dead');
-    fc.assert(
-      fc.property(
-        fc.array(kind, { minLength: 1, maxLength: 5 }),
-        fc.array(fc.constantFrom('all', 'Men-at-Arms', 'Yeoman Longbows', 'Shieldwall Levies'), {
-          minLength: 1,
-          maxLength: 3,
-        }),
-        (kinds, targets) => {
-          const b = fresh();
-          const h = at(b, { king: true });
-          h.armies = kinds.map((k, i) =>
-            k === 'dead'
-              ? skeletal(`Bone ${String(i)}`)
-              : must(companies(1, k, 'Average', `${k} ${String(i)}`)[0], 'a company'),
-          );
-          const before = names(h.armies);
-          play(b, h, o('disband_army', targets.join(',')));
-          const gone = before.filter((n) => !names(h.armies).includes(n));
-          const bands = (b.G.mercenaries ?? []).map((m) => String(m['unitName']));
-          expect(bands.sort()).toEqual(gone.filter((n) => !n.startsWith('Bone')).sort());
-        },
-      ),
-    );
-  });
+  test(
+    'property: each company disbanded is one band, the dead none, and what is not named stays',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const kind = fc.constantFrom('Men-at-Arms', 'Yeoman Longbows', 'dead');
+      fc.assert(
+        fc.property(
+          fc.array(kind, { minLength: 1, maxLength: 5 }),
+          fc.array(fc.constantFrom('all', 'Men-at-Arms', 'Yeoman Longbows', 'Shieldwall Levies'), {
+            minLength: 1,
+            maxLength: 3,
+          }),
+          (kinds, targets) => {
+            const b = fresh();
+            const h = at(b, { king: true });
+            h.armies = kinds.map((k, i) =>
+              k === 'dead'
+                ? skeletal(`Bone ${String(i)}`)
+                : must(companies(1, k, 'Average', `${k} ${String(i)}`)[0], 'a company'),
+            );
+            const before = names(h.armies);
+            play(b, h, o('disband_army', targets.join(',')));
+            const gone = before.filter((n) => !names(h.armies).includes(n));
+            const bands = (b.G.mercenaries ?? []).map((m) => String(m['unitName']));
+            expect(bands.sort()).toEqual(gone.filter((n) => !n.startsWith('Bone')).sort());
+          },
+        ),
+      );
+    },
+  );
 });
 
 // ── Pick Up Army ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -744,24 +761,30 @@ describe('Pick Up Army, called directly', () => {
     expect(p).toEqual(pace(b, h));
   });
 
-  test('property: every company stays in the garrison or goes to him, and he takes no beast beyond his Druid', () => {
-    const kind = fc.constantFrom('Shieldwall Levies', 'Great Bears');
-    const target = fc.oneof(
-      fc.constantFrom('all', '-1'),
-      fc.array(fc.nat(5), { minLength: 1, maxLength: 3 }).map((is) => is.map((i) => `g:${String(i)}`).join(',')),
-    );
-    fc.assert(
-      fc.property(fc.array(kind, { maxLength: 5 }), target, fc.nat(3), (kinds, t, room) => {
-        const b = fresh();
-        const h = at(b, { king: true, skills: druid(room) });
-        b.X.garrisonArmies = kinds.map((k, i) => must(companies(1, k, 'Average', `${k} ${String(i)}`)[0], 'a company'));
-        const before = names(b.X.garrisonArmies).sort();
-        play(b, h, o('pickup_army', t));
-        expect([...names(h.armies), ...names(b.X.garrisonArmies)].sort()).toEqual(before);
-        expect(h.armies.filter((a) => a.type === 'Great Bears').length).toBeLessThanOrEqual(room);
-      }),
-    );
-  });
+  test(
+    'property: every company stays in the garrison or goes to him, and he takes no beast beyond his Druid',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const kind = fc.constantFrom('Shieldwall Levies', 'Great Bears');
+      const target = fc.oneof(
+        fc.constantFrom('all', '-1'),
+        fc.array(fc.nat(5), { minLength: 1, maxLength: 3 }).map((is) => is.map((i) => `g:${String(i)}`).join(',')),
+      );
+      fc.assert(
+        fc.property(fc.array(kind, { maxLength: 5 }), target, fc.nat(3), (kinds, t, room) => {
+          const b = fresh();
+          const h = at(b, { king: true, skills: druid(room) });
+          b.X.garrisonArmies = kinds.map((k, i) =>
+            must(companies(1, k, 'Average', `${k} ${String(i)}`)[0], 'a company'),
+          );
+          const before = names(b.X.garrisonArmies).sort();
+          play(b, h, o('pickup_army', t));
+          expect([...names(h.armies), ...names(b.X.garrisonArmies)].sort()).toEqual(before);
+          expect(h.armies.filter((a) => a.type === 'Great Bears').length).toBeLessThanOrEqual(room);
+        }),
+      );
+    },
+  );
 });
 
 // ── Equip Items ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -774,42 +797,46 @@ describe('Equip Items, called directly', () => {
     expect(textOf(b, h)).toContain(`${h.name} arms and dresses for the season — now wearing: nothing.`);
   });
 
-  test('property: no slot holds more than its limit, and the first named of a slot is worn', () => {
-    const NAMES = [
-      'Sundered Greatsword',
-      'Kingsteel Longsword',
-      'Ring of the Explorer',
-      "Death's Finger Ring",
-      "Siege Master's Ring",
-      'Bronze Buckler',
-      'Potion of Healing',
-      'Elixir of Vigour',
-      'Draught of the Phoenix',
-      'Tome of Tactics',
-    ];
-    const slotOf = fn('itemSlot');
-    const CAP = vm.runInContext('({...ITEM_SLOT_CAP})', engine) as Record<string, number>;
-    fc.assert(
-      fc.property(
-        fc.uniqueArray(fc.constantFrom(...NAMES), { minLength: 1 }),
-        fc.array(fc.constantFrom(...NAMES), { maxLength: 5 }),
-        (held, named) => {
-          const b = fresh();
-          const h = at(b, { king: true });
-          h.items = held.map((n) => item(b, n));
-          play(b, h, o('equip_items', named.join(',')));
-          const wornIn = (sl: string) => h.items.filter((i) => i['equipped'] === true && slotOf(i) === sl);
-          for (const [sl, cap] of Object.entries(CAP)) expect(wornIn(sl).length).toBeLessThanOrEqual(cap);
-          const first = new Map<string, string>();
-          named
-            .filter((n) => held.includes(n))
-            .forEach((n) => {
-              const sl = slotOf(item(b, n)) as string | null;
-              if (sl && !first.has(sl)) first.set(sl, n);
-            });
-          for (const [sl, n] of first) expect(wornIn(sl).map((i) => i['name'])).toContain(n);
-        },
-      ),
-    );
-  });
+  test(
+    'property: no slot holds more than its limit, and the first named of a slot is worn',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const NAMES = [
+        'Sundered Greatsword',
+        'Kingsteel Longsword',
+        'Ring of the Explorer',
+        "Death's Finger Ring",
+        "Siege Master's Ring",
+        'Bronze Buckler',
+        'Potion of Healing',
+        'Elixir of Vigour',
+        'Draught of the Phoenix',
+        'Tome of Tactics',
+      ];
+      const slotOf = fn('itemSlot');
+      const CAP = vm.runInContext('({...ITEM_SLOT_CAP})', engine) as Record<string, number>;
+      fc.assert(
+        fc.property(
+          fc.uniqueArray(fc.constantFrom(...NAMES), { minLength: 1 }),
+          fc.array(fc.constantFrom(...NAMES), { maxLength: 5 }),
+          (held, named) => {
+            const b = fresh();
+            const h = at(b, { king: true });
+            h.items = held.map((n) => item(b, n));
+            play(b, h, o('equip_items', named.join(',')));
+            const wornIn = (sl: string) => h.items.filter((i) => i['equipped'] === true && slotOf(i) === sl);
+            for (const [sl, cap] of Object.entries(CAP)) expect(wornIn(sl).length).toBeLessThanOrEqual(cap);
+            const first = new Map<string, string>();
+            named
+              .filter((n) => held.includes(n))
+              .forEach((n) => {
+                const sl = slotOf(item(b, n)) as string | null;
+                if (sl && !first.has(sl)) first.set(sl, n);
+              });
+            for (const [sl, n] of first) expect(wornIn(sl).map((i) => i['name'])).toContain(n);
+          },
+        ),
+      );
+    },
+  );
 });
