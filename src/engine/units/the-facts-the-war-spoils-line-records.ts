@@ -5,7 +5,7 @@
 // prose writes the plurals); the prose writes the words (src/views/prose/the-words-of-the-war-spoils-line.ts). It is
 // told in the battle's narrative, as the words were (the battle's tiers read the same words): its audience is the
 // fight's.
-import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type { TheAudienceOfAKindOfLine, TheTierOfAKindOfABattlesLine } from '../turn/events-and-their-audiences.ts';
 
 /** What the war-spoils line records. */
 export interface TheFactOfTheWarSpoilsLine {
@@ -19,4 +19,12 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE: Readonly<
   Record<TheFactOfTheWarSpoilsLine['kind'], Extract<TheAudienceOfAKindOfLine, "the fight's">>
 > = {
   'Orcish units plunder the field of a battle won attacking': "the fight's",
+};
+
+/** Each kind's tier in a battle's lines (plan P1-12d34): the short account's, as its words gave when the views read the
+ *  tiers from them. */
+export const THE_TIER_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE: Readonly<
+  Record<TheFactOfTheWarSpoilsLine['kind'], Extract<TheTierOfAKindOfABattlesLine, 'k'>>
+> = {
+  'Orcish units plunder the field of a battle won attacking': 'k',
 };

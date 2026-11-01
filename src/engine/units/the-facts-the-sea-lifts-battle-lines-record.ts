@@ -9,7 +9,7 @@
 // so is the claimant the hulls hold a province against when the battle names him by his side, not his realm.
 // Each is told in a battle's narrative (the fight's audience) or filed on its own by a stalled battle, a host gained in
 // a province, a pursuit or a march (its event's): its audience is its event's (Decision 6).
-import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type { TheAudienceOfAKindOfLine, TheTierOfAKindOfABattlesLine } from '../turn/events-and-their-audiences.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
 import type { ASideOfABattle } from '../battle/the-facts-a-battles-lines-record.ts';
 
@@ -100,4 +100,26 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE: Readonly<
   'bound units left behind on the shore dissolve': "its event's",
   "units left behind on the realm's own ground hold it": "its event's",
   'units left behind on ground the realm does not hold scatter as mercenaries': "its event's",
+};
+
+/** Each kind's tier in a battle's lines (plan P1-12d34): what each kind's words gave when the views read the tiers from
+ *  them, for the names a game writes; a unit left behind is one of the casualty lists'. */
+export const THE_TIER_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE: Readonly<
+  Record<
+    TheFactOfASeaLiftsBattleLine['kind'],
+    Extract<TheTierOfAKindOfABattlesLine, 'k' | "'d' once the casualty lists have begun, 'k' before">
+  >
+> = {
+  'a beaten force at sea has too few hulls left to fall back': 'k',
+  'hulls left ashore still hold a province against its claimant': 'k',
+  'a beaten fleet puts to sea with what its hulls can carry': 'k',
+  'bound units the fleet cannot carry dissolve': "'d' once the casualty lists have begun, 'k' before",
+  'units the fleet cannot carry fall back overland and join a garrison':
+    "'d' once the casualty lists have begun, 'k' before",
+  'a beaten force with ships retreats overland and leaves its ships behind': 'k',
+  'a beaten fleet with no friendly water holds the province': 'k',
+  'bound units left behind on the shore dissolve': "'d' once the casualty lists have begun, 'k' before",
+  "units left behind on the realm's own ground hold it": "'d' once the casualty lists have begun, 'k' before",
+  'units left behind on ground the realm does not hold scatter as mercenaries':
+    "'d' once the casualty lists have begun, 'k' before",
 };

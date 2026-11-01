@@ -6,7 +6,7 @@
 // The line is filed on its own by every caller but the duel before a battle, which tells it in the battle's
 // narrative: its audience is its event's (in a fight's narrative, the fight's), as a kind filed on its own (Decision 6).
 // No rules or help text mentions him: an Easter egg only.
-import type { TheAudienceOfAKindOfLine } from './turn/events-and-their-audiences.ts';
+import type { TheAudienceOfAKindOfLine, TheTierOfAKindOfABattlesLine } from './turn/events-and-their-audiences.ts';
 
 /** How many sentences the wanderer's escape is told with (the prose's): the engine draws which, the prose writes it. */
 export const THE_NUMBER_OF_WAYS_THE_WANDERER_ESCAPES = 5;
@@ -24,4 +24,12 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE: Readonly<
   Record<TheFactOfTheWanderersEscape['kind'], Extract<TheAudienceOfAKindOfLine, "its event's">>
 > = {
   'the wanderer slips a killing blow': "its event's",
+};
+
+/** Each kind's tier when it is told in a battle's lines (the duel before it; plan P1-12d34): the short account's, as
+ *  its words gave when the views read the tiers from them. */
+export const THE_TIER_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE: Readonly<
+  Record<TheFactOfTheWanderersEscape['kind'], Extract<TheTierOfAKindOfABattlesLine, 'k'>>
+> = {
+  'the wanderer slips a killing blow': 'k',
 };

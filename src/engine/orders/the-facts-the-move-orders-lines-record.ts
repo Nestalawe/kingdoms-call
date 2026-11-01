@@ -12,7 +12,7 @@
 // words-of-the-move-orders-lines.ts). Each is filed on its own, or in a battle's narrative, with the audience its event
 // names (Decision 6: its event's; in a battle's narrative, the battle's): no audience, hero or province changes, so every
 // realm is told exactly what it was told before.
-import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type { TheAudienceOfAKindOfLine, TheTierOfAKindOfABattlesLine } from '../turn/events-and-their-audiences.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
 
 /** A site a hero spots as he marches into a province, as the line names it: its name, whether it is a ritual site or
@@ -360,4 +360,19 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE: Readonly<
   'a hero without armies ventures in to explore': "its event's",
   'a hero moves to a province': "its event's",
   "a hero's coastal raid sacks a province": "its event's",
+};
+
+/** The tier of each kind a battle's lines tell (a defender's forming-up, before the battle's header; plan P1-12d34):
+ *  the short account's, as their words gave when the views read the tiers from them. */
+export const THE_TIER_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE_A_BATTLE_TELLS: Readonly<
+  Record<
+    Extract<
+      TheFactOfTheMoveOrdersLine['kind'],
+      'a defender is reinforced by the heroes beside him' | "a province's standing troops rally to its defender"
+    >,
+    Extract<TheTierOfAKindOfABattlesLine, 'k'>
+  >
+> = {
+  'a defender is reinforced by the heroes beside him': 'k',
+  "a province's standing troops rally to its defender": 'k',
 };

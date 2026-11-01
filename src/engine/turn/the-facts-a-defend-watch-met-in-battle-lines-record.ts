@@ -5,7 +5,7 @@
 // (src/views/prose/the-words-of-a-defend-watch-met-in-battle-lines.ts). Each is told in the battle's narrative when the
 // battle hands one (as the words were: the battle's tiers read the same words; its audience there is the fight's), else
 // filed on its own, with the audience its event names: its event's. No audience changes.
-import type { TheAudienceOfAKindOfLine } from './events-and-their-audiences.ts';
+import type { TheAudienceOfAKindOfLine, TheTierOfAKindOfABattlesLine } from './events-and-their-audiences.ts';
 
 /** What a line of a Defend watch met in battle records. */
 export type TheFactOfADefendWatchMetInBattlesLine =
@@ -24,4 +24,13 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE: Re
 > = {
   "a defender's Defend order is fulfilled once the threat is met in battle": "its event's",
   "a defender's watch is broken by a defeat": "its event's",
+};
+
+/** Each kind's tier in a battle's lines (plan P1-12d34): the short account's, as their words gave when the views read
+ *  the tiers from them. */
+export const THE_TIER_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE: Readonly<
+  Record<TheFactOfADefendWatchMetInBattlesLine['kind'], Extract<TheTierOfAKindOfABattlesLine, 'k'>>
+> = {
+  "a defender's Defend order is fulfilled once the threat is met in battle": 'k',
+  "a defender's watch is broken by a defeat": 'k',
 };

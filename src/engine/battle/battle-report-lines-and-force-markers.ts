@@ -218,11 +218,11 @@ export function emitBattle(
   };
   // 2026-09-23d (Toby item 1): every line is tagged with this battle's id and its tier, and a
   // losses tally is added (short view only) where the casualty sections begin — see
-  // battleLineTiers / battleTallyLine. The player portal folds the full report behind a button.
-  // Since P1-12c3 the tiers and the tally are worked out from the lines' words, so in the views, once they have written
-  // them (theTurnsLinesInWords, src/views/prose/the-words-of-each-line.ts): each line is filed with its tier still to
-  // work out, and the tally's place after them, with the fight's event (its audience, hero and place, as the tally
-  // had). A tally is made from lines for everyone in the fight (the casualty lists, a breach), so a battle with none
+  // theTiersOfABattlesLines / battleTallyLine. The player portal folds the full report behind a button.
+  // Since P1-12c3 the tiers and the tally are worked out in the views, once the battle's lines are all filed (since
+  // P1-12d34 the tiers from the lines' kinds, the tally from their words: theTurnsLinesInWords,
+  // src/views/prose/the-words-of-each-line.ts): each line is filed with its tier still to work out, and the tally's
+  // place after them, with the fight's event (its audience, hero and place, as the tally had). A tally is made from lines for everyone in the fight (the casualty lists, a breach), so a battle with none
   // has no place for one.
   const _bid = ++turnContext._battleSeq;
   const _lines = (battle && battle.narrative) || [];

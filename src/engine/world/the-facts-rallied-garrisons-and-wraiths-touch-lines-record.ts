@@ -7,7 +7,7 @@
 // quality before and after. The prose writes every word (src/views/prose/the-words-of-rallied-garrisons-and-wraiths-
 // touch-lines.ts). The garrison's line is filed on its own, with the audience its event names (its event's); Wraith's
 // Touch is told in a battle's narrative, as its words were (the fight's): no audience changes.
-import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type { TheAudienceOfAKindOfLine, TheTierOfAKindOfABattlesLine } from '../turn/events-and-their-audiences.ts';
 
 /** What a line of a rallied garrison or of Wraith's Touch records. */
 export type TheFactOfARalliedGarrisonOrWraithsTouchLine =
@@ -36,4 +36,15 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LI
 } = {
   "a held province's standing troops resume their post as its garrison": "its event's",
   "Wraith's Touch withers the enemy's best unit": "the fight's",
+};
+
+/** The tier of the kind a battle's lines tell (Wraith's Touch, at the battle's start; plan P1-12d34): the full
+ *  report's, as its words gave when the views read the tiers from them. */
+export const THE_TIER_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE_A_BATTLE_TELLS: Readonly<
+  Record<
+    Extract<TheFactOfARalliedGarrisonOrWraithsTouchLine['kind'], "Wraith's Touch withers the enemy's best unit">,
+    Extract<TheTierOfAKindOfABattlesLine, 'd'>
+  >
+> = {
+  "Wraith's Touch withers the enemy's best unit": 'd',
 };
