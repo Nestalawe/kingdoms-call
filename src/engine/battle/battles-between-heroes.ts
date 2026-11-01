@@ -945,8 +945,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
   // ── PRIMAL — Breach and Swamp ── Whale Cohorts rise beneath a hull and roll it over. 25% per
   // cohort to sink one enemy fleet unit outright, before either side's strength is counted. The rule
   // registry's "fate: a hull is sunk before the battle" picks the hull, with the dice it is handed
-  // (plan P1-19i); this sinks it and writes the line.
-  function applyBreachAndSwamp(myForce, enemyForce, myName, narr) {
+  // (plan P1-19i); this sinks it and writes the line (the side whose hull sinks: the enemy's role, plan P1-12d35).
+  function applyBreachAndSwamp(myForce, enemyForce, myName, theEnemysRole, narr) {
     (myForce || []).forEach((a) => {
       if (!a) return;
       const hulls = (enemyForce || []).filter((e) => e && SEA_TYPES.has(e.type) && !e._died);
@@ -958,11 +958,13 @@ export function combatVsChar(turnContext, atk, def, prov) {
         kind: "a side's whale cohort sinks an enemy ship",
         sideName: myName,
         targetUnitName: t.unitName || t.type,
+        targetUnitType: t.type,
+        theSideWhoseShipSinks: theEnemysRole,
       });
     });
   }
-  applyBreachAndSwamp(atkArmies, defArmies, atk.name, narrative);
-  applyBreachAndSwamp(defArmies, atkArmies, def.name, narrative);
+  applyBreachAndSwamp(atkArmies, defArmies, atk.name, 'defender', narrative);
+  applyBreachAndSwamp(defArmies, atkArmies, def.name, 'attacker', narrative);
   // Remove anything sunk before strengths are counted.
   if (atkArmies.some((a) => a._died) || defArmies.some((a) => a._died)) {
     recordBattleGraves(

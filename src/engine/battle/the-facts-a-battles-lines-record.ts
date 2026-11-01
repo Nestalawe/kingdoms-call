@@ -692,7 +692,7 @@ export interface AForceDrawnUpForBattle {
 }
 
 /** Where a battle's losses tally goes (emitBattle files it after the battle's lines): the views work the tally out from
- *  the words of the battle's lines, and put it where the casualty lists begin, or leave it out when there is none to
+ *  the facts of the battle's lines, and put it where the casualty lists begin, or leave it out when there is none to
  *  tally. It has no words of its own. Its audience: the fight's. */
 export interface ABattlesLossesTalliedFromItsLines {
   kind: "a battle's losses, tallied from its lines";
@@ -840,6 +840,10 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "a side's whale cohort sinks an enemy ship";
       sideName: AValueInALinesWords;
       targetUnitName: AValueInALinesWords;
+      /** The sunk hull's type (the losses tally counts it). */
+      targetUnitType: string;
+      /** The side whose hull sinks: the other side's whale cohort sinks it (the losses tally counts it there). */
+      theSideWhoseShipSinks: 'attacker' | 'defender';
     }
   | {
       kind: "the terrain's effect on each side";
@@ -1046,7 +1050,12 @@ export type TheFactOfOneOfABattlesSentences =
       struckUnitName: string;
       damage: number;
     }
-  | { kind: 'a whale cohort sinks a defending ship before a shot is fired'; targetUnitName: string }
+  | {
+      kind: 'a whale cohort sinks a defending ship before a shot is fired';
+      targetUnitName: string;
+      /** The sunk hull's type (the losses tally counts it, the defender's). */
+      targetUnitType: string;
+    }
   | {
       kind: "the attacker's archery volley begins";
       missileUnitCount: number;

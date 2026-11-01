@@ -77,14 +77,6 @@
       "count": 4
     }
   },
-  "src/engine/battle/fates.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "no-empty": {
-      "count": 1
-    }
-  },
   "src/engine/battle/hosts-gained-in-a-province.ts": {
     "no-useless-assignment": {
       "count": 1

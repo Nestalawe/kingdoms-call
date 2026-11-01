@@ -32,7 +32,6 @@ import type {
   AForceDrawnUpForBattle,
   TheForceABattlesHeaderNames,
 } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
-import { battleTallyLine } from '../../src/engine/battle/fates.ts';
 import {
   emit,
   narrate,
@@ -288,8 +287,7 @@ describe("a battle's lines in words", () => {
     fileTheBattle(tc, narrative);
     const { gmLog } = theTurnsLinesInWords(tc.turnLog);
     const words = narrative.map((line) => theWordsOf(line));
-    const tally = battleTallyLine(words);
-    expect(tally).toContain('Men-at-Arms');
+    const tally = '⚰ Losses — **Aldric**: no units lost · **Brann**: 1 of 1 unit lost (Men-at-Arms).';
     expect(gmLog.map((l) => [l.bTier, l.text])).toEqual([
       ['k', words[0]],
       ['k', words[1]],

@@ -7,7 +7,9 @@
 //   when no hull is afloat (a second cohort, once the one hull is sunk), and a unit without the ability draws none. The
 //   battle's other dice come from a seeded stream; the dice of Breach and Swamp are fed in order (kcRng.use), from the
 //   moment Flak Screen has run (applyFlakScreen, stood in by vi.spyOn, which calls the real one) to the next step of the
-//   battle (terrainNoteList in combatVsChar, eyesOfTheForestLine in combatVsNPC), and counted.
+//   battle (terrainNoteList in combatVsChar, eyesOfTheForestLine in combatVsNPC), and counted. Since P1-12d35 each
+//   sinking's fact holds the hull's type, and between two hosts the side whose hull sinks (the attacker's cohort sinks
+//   the defender's hull, the defender's cohort the attacker's): the losses tally counts the hull there.
 // - Flak Screen: a Gyrocopter harries one enemy winged rider, which loses 30% of its base strength (at least 1), as both
 //   books write it; no two gyrocopters harry the same flyer, nor one harried already this battle, and one die is drawn
 //   for each gyrocopter while a flyer is left (applyFlakScreen called directly; since P1-12d31 it is handed the side's
@@ -109,6 +111,9 @@ interface WhatTheBattleShows {
   readonly kinds: readonly string[];
   readonly sunk: readonly string[];
   readonly drawn: number;
+  /** Each sinking line's side whose hull sinks (between two hosts; against the defenders the kind says the
+   *  defender's) and the hull's type, as its fact holds them (plan P1-12d35: the losses tally counts them). */
+  readonly sinkings: readonly { readonly theSideWhoseShipSinks?: string; readonly targetUnitType: string }[];
 }
 
 /** A battle at sea between `attackers` and `defenders`: two kings' hosts (combatVsChar), or a king's host against the
@@ -192,6 +197,13 @@ function aBattleAtSea(
     kinds: lines.map((l) => l.kind),
     sunk: lines.flatMap((l) => (SINKS.has(l.kind) && 'targetUnitName' in l ? [String(l.targetUnitName)] : [])),
     drawn: count.drawn ?? Number.NaN,
+    sinkings: lines.flatMap((l) => {
+      if (l.kind === "a side's whale cohort sinks an enemy ship")
+        return [{ theSideWhoseShipSinks: l.theSideWhoseShipSinks, targetUnitType: l.targetUnitType }];
+      if (l.kind === 'a whale cohort sinks a defending ship before a shot is fired')
+        return [{ targetUnitType: l.targetUnitType }];
+      return [];
+    }),
   };
 }
 
@@ -221,10 +233,27 @@ describe.for(['between two hosts', 'against the defenders'] as const)('Breach an
     expect(shown.drawn).toBe(2);
   });
 
+  test("the sinking's fact holds the hull's type, and between two hosts the side whose hull sinks: the defender's", () => {
+    const shown = aBattleAtSea(battle, ['Whale Cohort'], ['Orcish Longships'], [JUST_UNDER, 0]);
+    expect(shown.sinkings).toEqual([
+      battle === 'between two hosts'
+        ? { theSideWhoseShipSinks: 'defender', targetUnitType: 'Orcish Longships' }
+        : { targetUnitType: 'Orcish Longships' },
+    ]);
+  });
+
   test('a unit without the ability draws no die and sinks nothing', () => {
     const shown = aBattleAtSea(battle, ['Great Turtles'], ['Orcish Longships'], [0, 0]);
     expect(shown.sunk).toEqual([]);
     expect(shown.drawn).toBe(0);
+  });
+});
+
+describe("Breach and Swamp, the defender's cohort in a battle between two hosts", () => {
+  test("it sinks the attacker's hull: the fact names the attacker's side and the hull's type", () => {
+    const shown = aBattleAtSea('between two hosts', ['Dwarf Ironclads'], ['Whale Cohort'], [JUST_UNDER, 0]);
+    expect(shown.sunk).toEqual([expect.stringMatching(/^Dwarf Ironclads #/)]);
+    expect(shown.sinkings).toEqual([{ theSideWhoseShipSinks: 'attacker', targetUnitType: 'Dwarf Ironclads' }]);
   });
 });
 

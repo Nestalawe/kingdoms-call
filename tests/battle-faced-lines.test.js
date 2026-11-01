@@ -1,5 +1,5 @@
 // 2026-10-12 (Toby, the battle reports: who beat whom) — every company's fate line says whom it fought.
-// Level 1 (unit): battleFacedClauses, rollUnitFates, disbandLine and battleTallyLine are module-level
+// Level 1 (unit): battleFacedClauses, rollUnitFates and disbandLine are module-level
 // functions of the booted GM portal, and a grid staged with battleGrid/battleFacing gives every kind of
 // place; a scenario would only add a battle's luck on top.
 //   • battleFacedClauses(grid, enemyOwner): army → "facing X" / "shooting X over the line" / "in a flank duel
@@ -8,8 +8,9 @@
 //     "shooting at an empty column" / "with nobody opposite" — X as ownedUnitName writes the enemy company;
 //   • rollUnitFates(force, {faced}) puts the clause after the company's own reference in every line; without
 //     `faced` the lines read exactly as before (tests/unit-fates holds that wording);
-//   • disbandLine takes the clause the same way;
-//   • battleTallyLine credits a line to the company named FIRST, whatever the clause names after it.
+//   • disbandLine takes the clause the same way.
+// (Since plan P1-12d35 the losses tally is written from the battle's facts: its case, the company credited to its own
+// side and not to the one its clause names, is tests/unit/a-battles-losses-tally-is-written-from-the-facts-of-its-lines.test.ts.)
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Who beat whom in the fate lines (module level, booted GM portal): `battleFacedClauses` turns a faced grid into one
@@ -18,8 +19,7 @@
 // "in the second line", "in the reserve", "shooting at an empty column", "with nobody opposite"); `rollUnitFates` puts
 // the clause after the company's own reference in every branch (death, promotion, demotion, disbanding, the Shield
 // Fort's fall-back, the Knightly Example, a rise despite defeat) and reads as before without one; `disbandLine` (the
-// prose's since P1-12d5) takes it too; `battleTallyLine` credits a line to the company named first, not to the enemy
-// its clause names; it reads each fate line's words with the page's `theWordsOf` (facts since P1-12c6), and whom a
+// prose's since P1-12d5) takes it too; it reads each fate line's words with the page's `theWordsOf` (facts since P1-12c6), and whom a
 // company faced (a record since P1-12d4) through the page's `theClauseOfWhomAUnitFaced` (the prose's since P1-12d5)
 const {readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -32,9 +32,9 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const w=dom.window; const ev=expr=>w.eval(expr);
   const wordsOf=l=>l==null||typeof l==='string'?l:ev('theWordsOf')(l); // a line's words: its words, or a fact's (the views write them, P1-12c6)
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
-  for(const f of ['battleFacedClauses','rollUnitFates','disbandLine','battleTallyLine','battleGrid','battleFacing']) ok(ev(`typeof ${f}`)==='function',`${f}() is declared at module level`);
+  for(const f of ['battleFacedClauses','rollUnitFates','disbandLine','battleGrid','battleFacing']) ok(ev(`typeof ${f}`)==='function',`${f}() is declared at module level`);
   if(fail){ console.log(`\n${pass} pass, ${fail} fail`); process.exit(1); }
-  const G=ev('battleGrid'), F=ev('battleFacing'), clauses=ev('battleFacedClauses'), fates=ev('rollUnitFates'), disband=ev('disbandLine'), tally=ev('battleTallyLine');
+  const G=ev('battleGrid'), F=ev('battleFacing'), clauses=ev('battleFacedClauses'), fates=ev('rollUnitFates'), disband=ev('disbandLine');
   const BASE={'Shieldwall Levies':8,'Yeoman Longbows':8,'Free Lances':10,'Warg Riders':10,'Eagle Riders':12,'Men-at-Arms':12};
   const row=(type,name)=>({a:{type,quality:'Average',unitName:name},base:BASE[type]||8,fly:type==='Eagle Riders'});
   const rows=spec=>[].concat(...spec.map(([t,names])=>names.map(nm=>row(t,nm))));
@@ -124,23 +124,6 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(disband('Aldric',unit('Shieldwall Levies','Green','Levy Q'),"facing Gorbash's Gob 1")==="— Aldric's Levy Q (Shieldwall Levies), facing Gorbash's Gob 1, have had enough — the survivors slip away to their villages and the unit disbands for good.",'disbandLine takes the clause after the company');
   ok(disband('Aldric',unit('Shieldwall Levies','Green','Levy Q'))==="— Aldric's Levy Q (Shieldwall Levies) have had enough — the survivors slip away to their villages and the unit disbands for good.",'…and reads as before without one');
 
-  // ── the losses tally reads the company named first ──
-  const force=(name,role,armies)=>'⚑FORCE⚑'+JSON.stringify({name,color:null,neutral:false,guard:false,role,verb:'',armies:armies.map(([type,unitName])=>({type,quality:'Average',unitName,race:null,phantom:false,skeletal:false,wildHunt:false,wildHuntUntil:null}))});
-  const texts=[
-    force('Aldric Ironhand','attacker',[['Shieldwall Levies','Levy A1'],['Gnomish Gyrocopters','the Red Hand'],['Yeoman Longbows','Bow A1']]),
-    force('Gorbash','defender',[['Shieldwall Levies','Levy B1'],['Goblin Horde','Gob B1'],['Gnomish Gyrocopters','Gyro B1']]),
-    "After a decisive battle, Aldric Ironhand's forces rout Gorbash's army and seize Thornfield!",
-    "⚔ **Aldric Ironhand's forces** (attacker):",
-    "— Aldric Ironhand's Levy A1 (Shieldwall Levies, Average), facing Gorbash's Levy B1, were destroyed in the fighting.",
-    "— the Red Hand (Aldric Ironhand's Gnomish Gyrocopters, Average), fighting from the air, earn promotion to Veteran!",
-    "— All other forces survive the engagement.",
-    "🛡 **Gorbash's forces** (defender):",
-    "— Gorbash's Gob B1 (Goblin Horde, Average), facing the Red Hand (Aldric Ironhand's Gnomish Gyrocopters), were annihilated in the rout!",
-    "— Gorbash's Levy B1 (Shieldwall Levies), facing Aldric Ironhand's Levy A1, have had enough — the survivors slip away to their villages and the unit disbands for good.",
-    "— Despite defeat, Gorbash's Gyro B1 (Gnomish Gyrocopters, Average), fighting from the air, improved to Veteran!",
-  ];
-  const t=tally(texts);
-  ok(t==='⚰ Losses — **Aldric Ironhand**: 1 of 3 units lost (Shieldwall Levies), 1 promoted · **Gorbash**: 1 of 3 units lost (Goblin Horde), 1 disbanded (Shieldwall Levies), 1 promoted.',`the tally credits each line to the company named first, not to the enemy its clause names: "${t}"`);
   dom.window.close();
   console.log(`\n${pass} pass, ${fail} fail`);
   process.exit(fail?1:0);
