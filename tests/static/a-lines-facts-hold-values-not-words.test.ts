@@ -230,7 +230,11 @@ const FACTS_MODULES: readonly string[] = [
 /** Not words, though a string literal gives them, by field, with the kinds that hold it. */
 const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   // the order's action as the order names it ('disband_army', 'rampage', …): a slug the prose reads
-  action: ['a charmed hero will not carry out an order of his captor', 'a hero has already used a mastery this turn'],
+  action: [
+    'a charmed hero will not carry out an order of his captor',
+    'a hero who joined the realm this turn has no mastery to give yet',
+    'a hero has already used a mastery this turn',
+  ],
   // the class of the killing strike, 'melee', 'ranged' or 'power': a slug the prose reads
   strikeClass: [
     'as the foe readies a power for the killing stroke a fighter begs',

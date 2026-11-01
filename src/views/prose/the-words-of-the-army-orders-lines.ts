@@ -65,6 +65,8 @@ export function theWordsOfTheArmyOrdersLine(fact: TheFactOfTheArmyOrdersLine): s
       return `${fact.heroName} left all armies behind in ${fact.provinceName} — now travelling light (land ${String(fact.landMovePoints)}, sea ${String(fact.seaMovePoints)} move points).`;
     case 'a king cannot release himself from his own service':
       return `${fact.heroName} wears the crown — a king cannot release himself from his own service.`;
+    case 'a hero held by a charm this season cannot be released':
+      return `${fact.heroName} is held by an enchantment this season and cannot be released from service. The order comes to nothing.`;
     case 'a hero leading companies cannot be released':
       return `${fact.heroName} cannot be released while leading ${String(fact.companies)} unit${fact.companies !== 1 ? 's' : ''} — transfer, garrison or disband the troops first.`;
     case "a hero is released from the realm's service": {

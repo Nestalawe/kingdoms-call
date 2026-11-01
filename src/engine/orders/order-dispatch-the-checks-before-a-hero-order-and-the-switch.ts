@@ -5,6 +5,8 @@ import { botDrillUseful } from '../bots/economy.ts';
 import { provOf } from '../world/map-helpers.ts';
 import { skillLevel } from '../titles/perks.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
+import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
+import { theLevelEachMasterySpellNeeds } from '../rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts';
 import { PHASE_ACTION_MAP, normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
 import { resolveMoveOrder } from './move-order-marches-voyages-and-battles-on-arrival.ts';
 import {
@@ -340,9 +342,14 @@ export function processOrder(
   // mastery for a stranger. A WANDERING hero Charmed into permanent service is not restricted —
   // they have genuinely joined the realm and act as any other hero of it. This sits ABOVE the
   // once-per-turn charge below so a refused mastery order is not also spent.
+  // a mastery order, or a Cast Spell of a mastery spell (the list the order form leaves off a hero whose levels his realm
+  // can't see: rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts)
+  const aMastery =
+    MASTERY_ORDER_KEYS.has(action) ||
+    (action === 'cast_spell' && Object.hasOwn(theLevelEachMasterySpellNeeds(), aTargetInWords(target)));
   if (c._charmTempControl) {
     // disbanding companies, an alignment's rite, or a mastery: what he will not do (the prose says it, by the action)
-    const _refused = action === 'disband_army' || ALIGNMENT_ORDER_KEYS.has(action) || MASTERY_ORDER_KEYS.has(action);
+    const _refused = action === 'disband_army' || ALIGNMENT_ORDER_KEYS.has(action) || aMastery;
     if (_refused) {
       emit(turnContext, {
         type: 'system',
@@ -354,6 +361,22 @@ export function processOrder(
       turnContext._logCtx = { charId: null, phase: null };
       return;
     }
+  }
+
+  // ── A HERO WHO JOINED THE REALM THIS TURN ── (R-048) his levels are not his realm's to see until he has joined, and
+  // the order form offers him no mastery order and no mastery spell; from the next turn he is an ordinary hero. Above
+  // the once-per-turn charge, so a refused mastery is not also spent. A wanderer swayed by a charm this turn is not this
+  // rule's (the rulebook: he "keeps every order"); one seized from an enemy is refused above.
+  if (c.hiredInPhase != null && c.hiredInPhase >= 0 && !isCharmedNow(G, c) && aMastery) {
+    emit(turnContext, {
+      type: 'system',
+      fact: { kind: 'a hero who joined the realm this turn has no mastery to give yet', heroName: c.name, action },
+      audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+    });
+    turnContext._logCtx = { charId: null, phase: null };
+    return;
   }
 
   // ── ONCE PER TURN ── a mastery order may be attempted only once per turn per character.
@@ -396,7 +419,8 @@ export function processOrder(
 
   // ── a SPELL ITEM used via Use Item becomes a cast of its spell at a flat 95%. ──
   let _itemCast: { item: string; spell: string | undefined } | null = null;
-  if (action === 'use_item') {
+  // a hero under a charm uses no item (R-049): his Use Item stays the item order's, which refuses it
+  if (action === 'use_item' && !isCharmedNow(G, c)) {
     const theItems: readonly (AnItemAsTheSpellItemReadsIt | null | undefined)[] = asItsGuardReadsIt(c.items) ?? [];
     const _sit = theItems.find((x) => x && (String(x.id) === aTargetInWords(target) || x.name === target));
     // the spells' rows by any name an item gives (the key "undefined" for none, as JavaScript reads it)

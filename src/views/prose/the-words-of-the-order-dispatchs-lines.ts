@@ -36,6 +36,8 @@ export function theWordsOfTheOrderDispatchsLine(fact: TheFactOfTheOrderDispatchs
       return `${fact.heroName} is still locked in the unresolved battle for ${fact.provinceName} and cannot march away — the enemy is on the field and the fight must be seen through before the column can move on.`;
     case 'a charmed hero will not carry out an order of his captor':
       return `${fact.heroName} is held by an enchantment, not an oath — they will not ${whatACharmedHeroWillNotDo(fact.action)}. The order comes to nothing.`;
+    case 'a hero who joined the realm this turn has no mastery to give yet':
+      return `${fact.heroName} has only just joined the realm — a mastery must wait until next turn. The order comes to nothing.`;
     case 'a hero has already used a mastery this turn':
       return `${fact.heroName} has already used their ${theWordsInATableFor(MASTERY_ORDER_LABEL, fact.action) ?? fact.action} mastery this turn — it may be commanded but once per turn.`;
     case 'a hero lacks the March mastery for a Forced March':

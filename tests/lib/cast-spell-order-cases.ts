@@ -242,13 +242,13 @@ const mage = (b: Board, skills: Record<string, number>, ...os: Order[]): Staged 
 const NOTHING_TO_CLEANSE = (s: Staged) =>
   `✝ ${s.hero.name} raises the Holy Symbol over ${must(s.there, 'the province').name}, but no battlefield dead lie unquiet here — there is nothing to cleanse.`;
 /** The other hostile spells a hero charmed from an enemy realm will not turn on his own lord's heroes (Psychic Blast's
- *  case is written out below), each refused before it is worked (plan P1-19y: each spell's flag in its content row). */
+ *  case is written out below), each refused before it is worked (plan P1-19y: each spell's flag in its content row).
+ *  Dominate, a mastery spell, is refused before that, as his every mastery is (its case is written out below). */
 const THE_OTHER_SPELLS_A_CHARMED_HERO_WILL_NOT_TURN_ON_HIS_LORD = [
   'Telekinetic Storm',
   'Curse',
   'Charm',
   'Control Undead',
-  'Dominate',
 ];
 /** The other spells whose mark must stand in the caster's province (Psychic Blast's and Oratory's cases are written out
  *  below), each with the school and level that let a hero work it: a mark gone is refused before the roll (plan P1-19y:
@@ -1053,6 +1053,38 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
       };
     },
   })),
+  {
+    name: "a charmed enemy hero will not turn Dominate on his own lord's people: refused as a mastery, unrolled",
+    wholeTurnOnly: true,
+    stage(b) {
+      const m = rival(b, {}, { psychic: 2 });
+      const lord = rival(b, {}, { melee: 1 });
+      const s = mage(b, { psychic: 3 }, cast('Charm', m.id));
+      return {
+        ...s,
+        mark: m,
+        other: lord,
+        written: {
+          0: { [`charm_${String(m.id)}_via_${String(s.hero.id)}_ph0`]: plan(order('rest'), cast('Dominate', lord.id)) },
+        },
+      };
+    },
+    check(o, s) {
+      const m = must(s.mark, 'the charmed hero');
+      const lord = must(s.other, 'his lord');
+      return {
+        got: {
+          refused: anySays(
+            o,
+            `${m.name} is held by an enchantment, not an oath — they will not spend their own mastery for a crown that merely holds their mind. The order comes to nothing.`,
+          ),
+          rolled: anySays(o, `📊 ${m.name} casts`),
+          lordSkills: char(o, lord).skills,
+        },
+        want: { refused: true, rolled: false, lordSkills: { melee: 1, tactical: 2, march: 1 } },
+      };
+    },
+  },
 ];
 /** The name of the province a hero stands in after the turn. */
 const ring1Name = (o: Outcome, c: Character) => must(o.world.world.provinces[char(o, c).location], 'his province').name;

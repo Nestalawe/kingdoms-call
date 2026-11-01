@@ -38,6 +38,12 @@ export type TheFactOfTheOrderDispatchsLine =
       action: string;
     }
   | {
+      kind: 'a hero who joined the realm this turn has no mastery to give yet';
+      heroName: string;
+      /** The order's action (a slug): a mastery order, or a Cast Spell of a mastery spell. */
+      action: string;
+    }
+  | {
       kind: 'a hero has already used a mastery this turn';
       heroName: string;
       /** The order's action (a slug): the prose names its mastery. */
@@ -55,6 +61,7 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_ORDER_DISPATCHS_LINE: Readonly<
   'a hero never reaches the lair he set out for and rests instead': "its event's",
   'a hero locked in an unresolved battle cannot march away': "its event's",
   'a charmed hero will not carry out an order of his captor': "its event's",
+  'a hero who joined the realm this turn has no mastery to give yet': "its event's",
   'a hero has already used a mastery this turn': "its event's",
   'a hero lacks the March mastery for a Forced March': "its event's",
 };

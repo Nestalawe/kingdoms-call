@@ -2,7 +2,7 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { beastCommandCount, beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
-import { isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';
+import { isCharmedNow, isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import {
   emit,
   notifyTarget,
@@ -304,6 +304,18 @@ export function resolveReleaseHeroOrder(turnContext, c, ph, prov, player) {
     return;
   }
   if (c.player == null) {
+    return;
+  }
+  // The rulebook's Charm: "While charmed they will not send their items away, nor be released from service" — a hero
+  // seized from an enemy, or swayed from the wilds this turn (isCharmedNow), as the order form, which hides the order.
+  if (isCharmedNow(G, c)) {
+    emit(turnContext, {
+      type: 'system',
+      fact: { kind: 'a hero held by a charm this season cannot be released', heroName: c.name },
+      audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+    });
     return;
   }
   if ((c.armies || []).length > 0) {
