@@ -1,4 +1,7 @@
-import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_HUMANOID_RACES,
+  KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM,
+} from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
 import {
@@ -53,6 +56,10 @@ import type { TurnContext, TurnOrder } from '../turn/context.ts';
 // became a return.
 // The humanoid races, as a Set: a recruit of any other race may raise the Druid skill of the hero it joins.
 export const HUMANOID_RACES_SG: ReadonlySet<string> = new Set(KC_HUMANOID_RACES);
+// The wild sea beasts a recruit raises as the Primal race, whoever raises them (content's fact), as a Set.
+const SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM: ReadonlySet<string> = new Set(
+  KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM,
+);
 /** The orders a realm wrote for a hero it means to hire, held by the merge until the hire lands (each field compared
  *  as it is; the orders a list of the phases', with gaps). */
 interface OrdersHeldForAHeroToBeHired {
@@ -415,8 +422,9 @@ export function resolveRecruitArmiesOrder(
           ? 'Veteran'
           : 'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
       // Whale Cohorts and Shark Shoals are wild sea beasts — always the Primal race, whoever raises them.
-      const recruitRace =
-        armyType === 'Whale Cohort' || armyType === 'Shark Shoals' ? 'Primal' : (prov.race ?? '') || 'Human';
+      const recruitRace = SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM.has(armyType)
+        ? 'Primal'
+        : (prov.race ?? '') || 'Human';
       _pushRecruit({
         type: armyType,
         quality: startQuality,

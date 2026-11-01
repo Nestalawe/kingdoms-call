@@ -14786,6 +14786,29 @@ export const KC_UNIT_CLASS = {
   ],
 };
 
+// Three facts about single units, each its own (plan P1-19ao): no rule joins two of them.
+// The types a province raises TWO of in a turn besides the garrisons and the humanoid fleets: 2026-10-11 (Toby, the army
+// roster, decision 9), the Goblin Horde wherever it is offered (the horde's numbers are its point). Read by twoATurn.
+export const KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS: readonly UnitType[] = [
+  'Goblin Horde',
+];
+// The wild sea beasts a Recruit order raises as the Primal race, whoever raises them and whatever folk the province
+// holds.
+export const KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM: readonly UnitType[] = [
+  'Whale Cohort',
+  'Shark Shoals',
+];
+// The poor seas' beasts, each with the race tag its sea carries: world generation deals them to the poor seas turn
+// about, in this order (2026-10-13, Toby: the Shark Shoals are the Monsters' weak sea-beast as the Whale Cohort is the
+// Creatures'). The prosperous seas deal the primal sea beasts (KC_UNIT_CLASS.primalSea) without these.
+export const KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS: readonly {
+  readonly type: UnitType;
+  readonly raceTag: string;
+}[] = [
+  { type: 'Whale Cohort', raceTag: 'Primal:Whale' },
+  { type: 'Shark Shoals', raceTag: 'Primal:Shark' },
+];
+
 // Unit TYPE (2026-10-11, Toby): the ONE word every player-facing table, blurb and report uses for a
 // unit — infantry, ranged, cavalry, flyer or naval. The engine's rules keep running on the class lists
 // above (their order is data); this is the vocabulary, and tests/unit-types holds the two in agreement:
