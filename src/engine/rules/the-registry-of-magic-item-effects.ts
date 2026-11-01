@@ -28,6 +28,7 @@ import {
   A_SPYS_SURE_SUCCESS,
   AN_ITEMS_POWER_USED,
 } from './magic-items/a-heros-items-in-the-realms-tax-and-in-his-orders.ts';
+import { A_HEROS_ITEMS_HIDE_HIS_FACE } from './magic-items/a-heros-items-in-what-a-realm-sees.ts';
 import {
   A_HEROS_MAXIMUM_HP,
   A_SKILLS_AURA_IN_THE_PROVINCE,
@@ -195,6 +196,9 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
   'philosophers-stone': { orderOutcome: { "an item's power used": AN_ITEMS_POWER_USED['philosophers-stone'] } },
   'wailing-phylactery': {
     orderOutcome: { "a spell's cast cannot fail": A_SPELLS_CAST_CANNOT_FAIL['wailing-phylactery'] },
+  },
+  'cloak-of-many-faces': {
+    visibility: { "a hero's items hide his face": A_HEROS_ITEMS_HIDE_HIS_FACE['cloak-of-many-faces'] },
   },
   'maximum-hp': {
     aHerosStanding: { 'maximum HP': A_HEROS_MAXIMUM_HP['maximum-hp'] },
@@ -618,6 +622,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
     "an item's power used": ['philosophers-stone', 'a-spell-charm'],
     "a spell's cast cannot fail": ['wailing-phylactery'],
   },
+  visibility: { "a hero's items hide his face": ['cloak-of-many-faces'] },
   aHerosStanding: {
     'maximum HP': ['maximum-hp'],
     'the temper he fights with': ['temper'],
@@ -1102,6 +1107,15 @@ export function theSpysItemsMakeHisSpySure(theSpysItems: readonly AMagicItemAsTh
   const carried = theEffectsTheseItemsCarry(theSpysItems);
   return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.orderOutcome["a spy's sure success"].some(
     (slug) => carried.has(slug) && ENTRIES[slug].orderOutcome?.["a spy's sure success"]?.() === true,
+  );
+}
+
+/** The runner of "visibility: a hero's items hide his face" (isHiddenChar, resolveSpyOrder,
+ *  encounterUntargetableReason): whether an effect the hero's items carry, in the stage's order, hides his face. */
+export function theHerosItemsHideHisFace(theHerosItems: readonly AMagicItemAsTheRegistryReadsIt[]): boolean {
+  const carried = theEffectsTheseItemsCarry(theHerosItems);
+  return THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.visibility["a hero's items hide his face"].some(
+    (slug) => carried.has(slug) && ENTRIES[slug].visibility?.["a hero's items hide his face"]?.() === true,
   );
 }
 

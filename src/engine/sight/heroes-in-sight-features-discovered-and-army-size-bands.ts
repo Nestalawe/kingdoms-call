@@ -5,6 +5,7 @@
 // src/views applies them. The engine may not import src/views, so they live here, in one copy.
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { activeItems } from '../items/equipment.ts';
+import { theHerosItemsHideHisFace } from '../rules/the-registry-of-magic-item-effects.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import type { Character, GameState, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 
@@ -88,7 +89,8 @@ export function enemyCharVisibleTo(
 }
 // Why a VISIBLE character still cannot be the target of an Encounter Character order (null = can).
 export function encounterUntargetableReason(c: Character | null | undefined) {
-  if (c && activeItems(c).some((it) => it && it.effect && it.effect.stat === 'hidden')) return 'faceless';
+  // the items' registry (plan P1-19am)
+  if (c && theHerosItemsHideHisFace(activeItems(c))) return 'faceless';
   return null;
 }
 

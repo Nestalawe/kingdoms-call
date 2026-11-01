@@ -1,6 +1,7 @@
 import { SKILL_LABELS } from '../army-tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { activeItems } from '../items/equipment.ts';
+import { theHerosItemsHideHisFace } from '../rules/the-registry-of-magic-item-effects.ts';
 import { effSkillOf, skillBonusBreakdown } from './skills-and-hp.ts';
 import type { ASourceOfASkillsBonus } from './skills-and-hp.ts';
 import { fmtRoll } from '../dice-and-army-names.ts';
@@ -226,7 +227,8 @@ export function isHiddenChar(
   turnContext: TheContextAsTheseReadIt,
   ch: AHeroAsTheHidingTestsReadHim | null | undefined,
 ) {
-  return !!(ch && (isVeiled(turnContext, ch) || activeItems(ch).some((it) => it.effect?.stat === 'hidden')));
+  // the items' registry (plan P1-19am)
+  return !!(ch && (isVeiled(turnContext, ch) || theHerosItemsHideHisFace(activeItems(ch))));
 }
 // THIEF L9 Vanish: a vanished character is untouchable for the REST OF THE TURN — nothing may
 // bring them to bay and nothing may harm them. Distinct from Veil, which is phase-scoped and

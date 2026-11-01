@@ -4,7 +4,7 @@ import { homeFounderOf, homeProvinceIdFor } from '../grand-design.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.ts';
 import { activeItems, settleTheItemsAHeroGained } from '../items/equipment.ts';
-import { theSpysItemsMakeHisSpySure } from '../rules/the-registry-of-magic-item-effects.ts';
+import { theHerosItemsHideHisFace, theSpysItemsMakeHisSpySure } from '../rules/the-registry-of-magic-item-effects.ts';
 import { applyItemMaxHp, transferableItems } from '../personal-combat/helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -56,10 +56,6 @@ import type { TurnContext } from '../turn/context.ts';
 
 /** A parcel on the road, as Send Item queues it this turn and the heist guards it (as if one may be missing). */
 type AParcelOnTheRoad = NonNullable<GameState['_itemDeliveries']>[number];
-/** A hero's item as the cloaked face's check reads it: its effect guarded, as if an item may have none. */
-interface AnItemItsEffectGuarded {
-  readonly effect?: { readonly stat?: string | undefined } | null | undefined;
-}
 
 // ── THE ESPIONAGE ORDERS (plan P1-08j6: the sixth family taken out of processOrder in resolveTurn) ──
 // Spy (on the province he stands in, or on a hero beside him), Steal (a magic item or gold from a hero beside him, or
@@ -321,7 +317,8 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
       });
       return;
     }
-    if (activeItems(_tgt).some((it: AnItemItsEffectGuarded | null | undefined) => it?.effect?.stat === 'hidden')) {
+    // the items' registry (plan P1-19am)
+    if (theHerosItemsHideHisFace(activeItems(_tgt))) {
       emit(turnContext, {
         type: 'system',
         fact: {

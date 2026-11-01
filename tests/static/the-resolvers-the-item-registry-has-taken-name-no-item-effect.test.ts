@@ -161,6 +161,12 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ],
   ['src/engine/personal-combat/helpers.ts', 'grantMithrilTo', "P1-19al, the Mithril suit's identity"],
   ['src/engine/personal-combat/helpers.ts', 'isMithril', "P1-19al, the Mithril suit's identity"],
+  ['src/engine/heroes/effective-skills-and-hidden-heroes.ts', 'isHiddenChar', "P1-19am, the old Cloak's hidden face"],
+  [
+    'src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts',
+    'encounterUntargetableReason',
+    "P1-19am, the old Cloak's hidden face",
+  ],
 ];
 
 /** The passes that build the treasury as the engine loads, each a named function run at once (`(function name()
@@ -203,14 +209,11 @@ const READS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = 
   combatVsNPC: ['.drumTierUp'],
 };
 
-/** The checks of an item's effect a taken function still holds, by the function, each left to a later step (the items
- *  family's Decisions don't take them): the ratchet's helper counts exactly these, and their words are matched with
- *  the words above, so one more, or one gone, turns it red. */
-const CHECKS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {
-  // `'hidden'`: an older save's Cloak of Many Faces, which a spy can't fix on, with P1-23's `visibility` (the items
-  // family's Decision 5)
-  resolveSpyOrder: ['hidden'],
-};
+/** The checks of an item's effect a taken function still holds, by the function, each left to a later step: none since
+ *  P1-19am (resolveSpyOrder's `'hidden'`, an older save's Cloak of Many Faces, went to `visibility`'s "a hero's items
+ *  hide his face"). The ratchet's helper counts exactly these, and their words are matched with the words above, so
+ *  one more turns it red. */
+const CHECKS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {};
 
 /** The uses of a field of the wards a fighter wears that a function of src/engine/ outside rules/ still holds, by the
  *  function, each left to a later step: none since P1-19aj (a guardian's perks' own wards went into the guardian perks'

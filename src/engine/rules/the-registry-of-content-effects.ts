@@ -1946,6 +1946,10 @@ export interface TheStagesOfEachHookPoint {
      *  asks whether any does (playerEvents, building the realm's report: plan P1-19ah; the set it widens is read by
      *  nothing, Parked). */
     readonly "a realm's discoveries widen the warnings it hears": (theEffect: TheEffectOfADiscovery) => boolean;
+    /** Whether a held item hides its bearer's face (no Spy order fixes on him, and no Encounter Character order,
+     *  Psychic Blast or Curse of another realm names him); the runner asks whether any effect his active items carry
+     *  does (isHiddenChar, resolveSpyOrder, encounterUntargetableReason: the items' registry, plan P1-19am). */
+    readonly "a hero's items hide his face": () => boolean;
   };
   /** The start of a phase (plan P1-19's discoveries family: its row P1-19ag typed it). */
   readonly turnStart: {
