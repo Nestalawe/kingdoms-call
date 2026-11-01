@@ -11,23 +11,40 @@
 // diplomacy's and victory's, and Early Winter's, since P1-12d17 the other folders': what a spy learns, relations and
 // captures, the Plague and the Bless ward, a rallied garrison and Wraith's Touch, a bot's concession, the Spy
 // stealth's), each kind routed to its area's (theWordsOf, below). A battle's
-// lines take their tiers ('k' key, 'd' detail) and its losses tally its place from those words, as emitBattle did
-// before (battleLineTiers and battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
+// lines take their tiers ('k' key, 'd' detail) from their kinds, each area's table beside its audience table (since
+// P1-12d34; theTiersOfABattlesLines, below), and its losses tally its place where its casualty lists begin; the tally's
+// words are read from the lines' words (battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
 // as it is stored (turn_logs, player index −1), in the same form as before, key for key: the shell saves it, and the
 // GM page and the player page's fallback read an old turn's lines and a new one's alike. In this run a line's words are
 // the same for every reader.
-import { battleLineTiers, battleTallyLine } from '../../engine/battle/fates.ts';
+import { battleTallyLine } from '../../engine/battle/fates.ts';
 import {
   A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   type LineFact,
   type LogLine,
   type TheAudienceOfAKindOfLine,
+  type TheTierOfAKindOfABattlesLine,
 } from '../../engine/turn/events-and-their-audiences.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE } from '../../engine/personal-combat/the-facts-a-personal-combats-lines-record.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE } from '../../engine/units/the-facts-the-sea-lifts-battle-lines-record.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE } from '../../engine/heroes/the-facts-a-heros-death-lines-record.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE } from '../../engine/the-facts-the-wanderers-escape-line-records.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE,
+  THE_TIER_OF_EACH_KIND_OF_A_BATTLES_LINE,
+} from '../../engine/battle/the-facts-a-battles-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE,
+  THE_TIER_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE,
+} from '../../engine/personal-combat/the-facts-a-personal-combats-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE,
+  THE_TIER_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE,
+} from '../../engine/units/the-facts-the-sea-lifts-battle-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE,
+  THE_TIER_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE,
+} from '../../engine/heroes/the-facts-a-heros-death-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE,
+  THE_TIER_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE,
+} from '../../engine/the-facts-the-wanderers-escape-line-records.ts';
 import { theWordsOfABattlesLine } from './the-words-of-a-battles-lines.ts';
 import { theWordsOfAPersonalCombatsLine } from './the-words-of-a-personal-combats-lines.ts';
 import { theWordsOfASeaLiftsBattleLine } from './the-words-of-the-sea-lifts-battle-lines.ts';
@@ -55,7 +72,10 @@ import { theWordsOfTheEspionageOrdersLine } from './the-words-of-the-espionage-o
 import { theWordsOfTheExploreAndSearchOrdersLine } from './the-words-of-the-explore-and-search-orders-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_CAST_SPELL_ORDERS_LINE } from '../../engine/orders/the-facts-the-cast-spell-orders-lines-record.ts';
 import { theWordsOfTheCastSpellOrdersLine } from './the-words-of-the-cast-spell-orders-lines.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE } from '../../engine/orders/the-facts-the-move-orders-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE,
+  THE_TIER_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE_A_BATTLE_TELLS,
+} from '../../engine/orders/the-facts-the-move-orders-lines-record.ts';
 import { theWordsOfTheMoveOrdersLine } from './the-words-of-the-move-orders-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_CHASES_LINE } from '../../engine/heroes/the-facts-a-chases-lines-record.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE } from '../../engine/heroes/the-facts-a-heros-experience-lines-record.ts';
@@ -65,7 +85,10 @@ import { THE_AUDIENCE_OF_EACH_KIND_OF_A_TITLE_INTELLIGENCE_LINE } from '../../en
 import { theWordsOfATitleIntelligenceLine } from './the-words-of-the-title-intelligence-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCHS_LINE } from '../../engine/units/the-facts-the-defend-watchs-lines-record.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_STRANDING_AT_SEAS_LINE } from '../../engine/units/the-facts-a-stranding-at-seas-lines-record.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE } from '../../engine/units/the-facts-the-war-spoils-line-records.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE,
+  THE_TIER_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE,
+} from '../../engine/units/the-facts-the-war-spoils-line-records.ts';
 import { theWordsOfADefendWatchsLine } from './the-words-of-the-defend-watchs-lines.ts';
 import { theWordsOfAStrandingAtSeasLine } from './the-words-of-a-stranding-at-seas-lines.ts';
 import { theWordsOfTheWarSpoilsLine } from './the-words-of-the-war-spoils-line.ts';
@@ -77,7 +100,10 @@ import { THE_AUDIENCE_OF_EACH_KIND_OF_A_PHASES_LINE } from '../../engine/turn/th
 import { theWordsOfAPhasesLine } from './the-words-of-a-phases-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_AN_INTRUSION_WARNINGS_LINE } from '../../engine/turn/the-facts-the-intrusion-warnings-lines-record.ts';
 import { theWordsOfAnIntrusionWarningsLine } from './the-words-of-the-intrusion-warnings-lines.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE } from '../../engine/turn/the-facts-a-defend-watch-met-in-battle-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE,
+  THE_TIER_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE,
+} from '../../engine/turn/the-facts-a-defend-watch-met-in-battle-lines-record.ts';
 import { theWordsOfADefendWatchMetInBattlesLine } from './the-words-of-a-defend-watch-met-in-battle-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_SILENT_HEROS_SEASON_LINE } from '../../engine/turn/the-facts-a-silent-heros-season-line-records.ts';
 import { theWordsOfASilentHerosSeasonLine } from './the-words-of-a-silent-heros-season-line.ts';
@@ -93,7 +119,10 @@ import { THE_AUDIENCE_OF_EACH_KIND_OF_A_RELATIONS_AND_CAPTURES_LINE } from '../.
 import { theWordsOfARelationsAndCapturesLine } from './the-words-of-relations-and-captures-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_PLAGUE_OR_BLESS_WARD_LINE } from '../../engine/magic/the-facts-plague-and-bless-ward-lines-record.ts';
 import { theWordsOfAPlagueOrBlessWardLine } from './the-words-of-plague-and-bless-ward-lines.ts';
-import { THE_AUDIENCE_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE } from '../../engine/world/the-facts-rallied-garrisons-and-wraiths-touch-lines-record.ts';
+import {
+  THE_AUDIENCE_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE,
+  THE_TIER_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE_A_BATTLE_TELLS,
+} from '../../engine/world/the-facts-rallied-garrisons-and-wraiths-touch-lines-record.ts';
 import { theWordsOfARalliedGarrisonOrWraithsTouchLine } from './the-words-of-rallied-garrisons-and-wraiths-touch-lines.ts';
 import { THE_AUDIENCE_OF_EACH_KIND_OF_A_BOTS_CONCESSION_LINE } from '../../engine/bots/the-facts-a-bots-concession-line-records.ts';
 import { theWordsOfABotsConcessionLine } from './the-words-of-a-bots-concession-line.ts';
@@ -194,6 +223,58 @@ export interface TheTurnsLinesInWords {
   wordsOfEachLine: (string | null)[];
 }
 
+// ── A BATTLE'S TIERS, BY KIND (plan P1-12d34: P1-12d's Decisions of 2026-11-01, Decision 2) ──
+// Each kind a battle's lines may hold has its tier in its area's table, beside its audience table: a battle's, personal
+// combat's (a duel before the battle, a chase fought as one), the sea lift's, a hero's death's and the wanderer's escape's
+// (the duel before the battle), a Defend watch met in battle's, the war-spoils', and the kinds of the move order's and of
+// Wraith's Touch a battle tells. Each is what the kind's words gave when the tiers were read from them, for the names a
+// game writes.
+
+/** Each kind's tier in a battle's lines, by its area's table. */
+const THE_TIER_OF_EACH_KIND: ReadonlyMap<string, TheTierOfAKindOfABattlesLine> = new Map<
+  string,
+  TheTierOfAKindOfABattlesLine
+>([
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_A_BATTLES_LINE),
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE),
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE),
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE),
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE),
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_A_DEFEND_WATCH_MET_IN_BATTLES_LINE),
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_THE_WAR_SPOILS_LINE),
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_THE_MOVE_ORDERS_LINE_A_BATTLE_TELLS),
+  ...Object.entries(THE_TIER_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE_A_BATTLE_TELLS),
+]);
+
+/** A battle's lines' tiers ('k' key, 'd' detail), each its kind's (a kind no table lists, or a line with no fact: 'k'),
+ *  and where its casualty lists begin: the first casualty list's header (-1: none). A line of the casualty lists is
+ *  'd' once a header is before it, else 'k'; the fortune of the battle is 'd' when a side brings no strength. */
+export function theTiersOfABattlesLines(lines: readonly LogLine[]): {
+  tiers: ('k' | 'd')[];
+  whereTheCasualtyListsBegin: number;
+} {
+  let whereTheCasualtyListsBegin = -1;
+  const tiers = lines.map((line, k): 'k' | 'd' => {
+    const fact = line.fact;
+    if (fact === undefined) return 'k';
+    const tier = THE_TIER_OF_EACH_KIND.get(fact.kind) ?? 'k';
+    switch (tier) {
+      case 'k':
+      case 'd':
+        return tier;
+      case "a casualty list's header: 'd', and the casualty lists begin":
+        if (whereTheCasualtyListsBegin < 0) whereTheCasualtyListsBegin = k;
+        return 'd';
+      case "'d' once the casualty lists have begun, 'k' before":
+        return whereTheCasualtyListsBegin >= 0 ? 'd' : 'k';
+      case "the fortune's: 'k', but 'd' when a side brings no strength":
+        if (fact.kind !== 'the fortune of the battle') throw new Error(`"${fact.kind}" has the fortune's tier`);
+        return fact.defBase > 0 && fact.atkBase > 0 ? 'k' : 'd';
+    }
+  });
+  return { tiers, whereTheCasualtyListsBegin };
+}
+
 /** A line as the GM's log stores it: its words in place of its fact, and its tier when it is a battle's. */
 function asStored(line: LogLine, text: string | null, tier?: string): LogLine {
   const stored: LogLine = { ...line, text };
@@ -213,12 +294,7 @@ export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLines
   const theBattlesLinesWritten = (tallysPlace: { at: number; line: LogLine } | null) => {
     if (!battlesLines.length && !tallysPlace) return;
     const texts = battlesLines.map(({ line }) => wordsOfLine(line));
-    const { t: tiers, casIdx } = battleLineTiers(texts);
-    // Each tier as battleLineTiers gives it ('k' or 'd'), else 'k'.
-    const tierOf = (k: number): string => {
-      const tier: unknown = tiers[k];
-      return typeof tier === 'string' && tier !== '' ? tier : 'k';
-    };
+    const { tiers, whereTheCasualtyListsBegin } = theTiersOfABattlesLines(battlesLines.map(({ line }) => line));
     let tally: string | null = null;
     if (tallysPlace) {
       try {
@@ -235,9 +311,9 @@ export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLines
       tallyWritten = true;
     };
     battlesLines.forEach(({ at, line }, k) => {
-      if (k === casIdx) theTally();
+      if (k === whereTheCasualtyListsBegin) theTally();
       const words = texts[k] ?? null;
-      gmLog.push(asStored(line, words, tierOf(k)));
+      gmLog.push(asStored(line, words, tiers[k]));
       wordsOfEachLine[at] = words;
     });
     theTally();

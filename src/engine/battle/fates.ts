@@ -240,46 +240,14 @@ export function rollUnitFates(
 
 // ── BATTLE SUMMARY vs FULL REPORT (2026-09-23d, Toby item 1) ────
 // Every battle is still written as ONE narrative array. emitBattle tags each line with the battle's
-// id and a tier, and the player portal shows the SHORT account by default with the full report one
+// id, and the player portal shows the SHORT account by default with the full report one
 // click away:  'k' key (short AND full) · 'd' detail (full only) · 't' the losses tally (short only)
 // · 's' the onlookers' one-line summary (shown only when the viewer has nothing else of the battle).
-// The rule is a BLACKLIST of known technical lines — anything unrecognised stays in the short view,
-// so a new narrative line can never silently vanish from what the player reads.
+// Since P1-12d34 each line's tier is its kind's, from its area's table beside its audience table (the views:
+// theTiersOfABattlesLines, src/views/prose/the-words-of-each-line.ts); a kind no table lists stays in the short view,
+// so a new narrative line can never silently vanish from what the player reads. The tally below reads the casualty
+// lists' headers from their words.
 export const BATTLE_CAS_HEAD_RE = /^(⚔|🛡) \*\*(.+?)(?:'s|') forces\*\* \((attacker|defender)\):\s*$/;
-/** A battle line's tier, as battleLineTiers gives it: 'k' in the short account and the full report, 'd' in the full
- *  report only (the views add 't', the tally, and 's', the onlookers' summary). */
-export type ABattleLinesTier = 'k' | 'd';
-export function battleLineTiers(texts: readonly (string | null | undefined)[] | null | undefined): {
-  t: ABattleLinesTier[];
-  casIdx: number;
-} {
-  const t: ABattleLinesTier[] = [];
-  let inCas = false,
-    casIdx = -1;
-  (texts ?? []).forEach((raw, i) => {
-    const s = raw ?? '';
-    let tier: ABattleLinesTier = 'k';
-    if (s.startsWith('\u2691FORCE\u2691'))
-      tier = 'k'; // deployment — shown compact in the short view
-    else if (BATTLE_CAS_HEAD_RE.test(s)) {
-      inCas = true;
-      if (casIdx < 0) casIdx = i;
-      tier = 'd';
-    } else if (inCas && s.startsWith('— '))
-      tier = /masterless hero|None left to fight/.test(s) ? 'k' : 'd'; // unit fates → the tally
-    else if (/^\s/.test(s))
-      tier = s.includes('Fortune of battle') ? 'k' : 'd'; // duel blows, volleys, ladder rows, spell hits
-    else if (s.startsWith('📊'))
-      tier = s.includes('completely destroyed') ? 'k' : 'd'; // stats, ladder heads, outcome band, survivors
-    else if (/^(🤝 Kinship|🏹|⚠|〰)/.test(s)) tier = 'd';
-    else if (/^The \w+ terrain sets a /.test(s)) tier = 'd';
-    else if (/^✨ .+ — \*\*[^*]+\*\*: /.test(s))
-      tier = 'd'; // a unit's own pre-battle strike (the hit line follows)
-    else if (s.includes('find no room to ride')) tier = 'd';
-    t.push(tier);
-  });
-  return { t, casIdx };
-}
 // One line per side: "Vervain: 1 of 6 units lost (Shadow Archers)". Built from the casualty
 // sections of the narrative, the unit type read off the side's own ⚑FORCE⚑ roster (by unit name,
 // else by the longest type name in the line), so it survives any rewording of a casualty line.

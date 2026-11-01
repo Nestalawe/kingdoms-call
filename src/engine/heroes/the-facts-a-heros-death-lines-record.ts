@@ -16,7 +16,7 @@
 // the dead hero as `_slainBy`, and his host's lines hold it), so a lair's guardian is its name and its province.
 // Since P1-12d12: the note of how a hero carries a fallen foe's possessions he takes is a kind too, holding
 // how he carries each of them (since P1-12d21 a record, TheItemsAHeroGained: the prose writes the note).
-import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type { TheAudienceOfAKindOfLine, TheTierOfAKindOfABattlesLine } from '../turn/events-and-their-audiences.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../dice-and-army-names.ts';
 import type { TheItemsAHeroGained } from '../items/equipment.ts';
 
@@ -161,6 +161,33 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE: Readonly<
   "a fallen hero's possessions are lost with no heir": "its event's",
   'a fallen Divine monarch will rise again on holy ground': "its event's",
   'a fallen Divine monarch has no holy ground to return to': "its event's",
+};
+
+/** Each kind's tier when it is told in a battle's lines (a commander slain in the duel before it; plan P1-12d34): the
+ *  short account's, as each kind's words gave when the views read the tiers from them. */
+export const THE_TIER_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE: Readonly<
+  Record<TheFactOfAHerosDeathsLine['kind'], Extract<TheTierOfAKindOfABattlesLine, 'k'>>
+> = {
+  'the surgeons reach a fallen hero too late': 'k',
+  'a hero is slain outside a battle': 'k',
+  "the binding of a fallen hero's summoned units fails": 'k',
+  "a fallen hero's armies scatter as mercenaries": 'k',
+  "a fallen hero's armies garrison his realm's province": 'k',
+  "a fallen hero's armies hold the open sea and claim it for his realm": 'k',
+  "a fallen hero's leaderless armies retreat to his realm's ground": 'k',
+  "a spared coward's host falls in under another commander": 'k',
+  "a spared coward's host takes its place in the province's garrison": 'k',
+  'a spared coward slips away and leaves his host leaderless': 'k',
+  "a hero is struck down at death's door but not slain": 'k',
+  'the blow meant for a vanished hero passes through shadow': 'k',
+  'Battlefield Surgery saves a fallen hero': 'k',
+  "a fallen commander's host fights on under its senior captain": 'k',
+  "a fallen hero's possessions pass on": 'k',
+  "a hero takes a fallen foe's possessions": 'k',
+  "a hero notes how he carries a fallen foe's possessions": 'k',
+  "a fallen hero's possessions are lost with no heir": 'k',
+  'a fallen Divine monarch will rise again on holy ground': 'k',
+  'a fallen Divine monarch has no holy ground to return to': 'k',
 };
 
 // ── A HERO'S DEATH, FOR THE STATISTICS (plan P1-12d33: P1-12d's last slice, Decision 1) ──

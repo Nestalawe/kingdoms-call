@@ -9,11 +9,12 @@
 //   throws;
 // - battleTallyLine's lines the matrix's battles don't hold: a whale cohort's breach, a company named only by its
 //   name, two types or names at the same place in a line, a fate before any side's casualty list;
-// - battleLineTiers on a line that is missing, and battleMarginBand past its last band.
+// - battleMarginBand past its last band (P1-12d34 moved battleLineTiers' case, a line that is missing, to
+//   tests/unit/the-views-write-each-lines-words.test.ts: the tiers are read from the lines' kinds there).
 // Level 1 (unit): pure functions called directly on the engine's modules (plan P1-14a), with no turn played.
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
-import { battleLineTiers, battleMarginBand, battleTallyLine } from '../../src/engine/battle/fates.ts';
+import { battleMarginBand, battleTallyLine } from '../../src/engine/battle/fates.ts';
 
 const FORCE = '⚑FORCE⚑';
 /** A force's row, as its line's words hold it. */
@@ -219,14 +220,7 @@ describe("battleTallyLine: lines the matrix's battles don't hold", () => {
   });
 });
 
-describe('battleLineTiers and battleMarginBand', () => {
-  test('a missing line is read as empty, in the short account; no lines give no tiers', () => {
-    expect(battleLineTiers([null, undefined, '', attackersHead, aLevyDies])).toEqual({
-      t: ['k', 'k', 'k', 'd', 'd'],
-      casIdx: 3,
-    });
-    expect(battleLineTiers(null)).toEqual({ t: [], casIdx: -1 });
-  });
+describe('battleMarginBand', () => {
   test('a margin past the last band, or none, takes the last band, or the first', () => {
     expect(battleMarginBand(10)?.slug).toBe('annihilating');
     expect(battleMarginBand(Infinity)?.slug).toBe('annihilating');

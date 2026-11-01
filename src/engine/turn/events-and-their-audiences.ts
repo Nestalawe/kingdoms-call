@@ -339,10 +339,22 @@ export function isALineForEveryoneInTheFight(line: NarrativeLine): boolean {
   return !isForItsHerosRealmAlone(line);
 }
 
-/** A battle's line whose tier ('k' key or 'd' detail) the views work out from the words of the battle's lines, as
- *  emitBattle did before P1-12c3 (theTurnsLinesInWords, src/views/prose/the-words-of-each-line.ts). The GM's log is
+/** A battle's line whose tier ('k' key or 'd' detail) the views work out once the battle's lines are all filed, from
+ *  each line's kind (since P1-12d34; theTurnsLinesInWords, src/views/prose/the-words-of-each-line.ts). The GM's log is
  *  stored with the tier in its place. */
 export const A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES = "worked out from the words of the battle's lines";
+
+/** The tier a kind of line takes in a battle's lines (plan P1-12d34), as its area's module says beside the kind: 'k'
+ *  key (the short account and the full report) or 'd' detail (the full report only); a casualty list's header, 'd',
+ *  where the battle's casualty lists begin (its losses tally goes there); a line of the casualty lists, 'd' once they
+ *  have begun and 'k' before; or the fortune of the battle's, 'k' but 'd' when a side brings no strength. A kind no
+ *  area's table lists takes 'k': no line vanishes from the short account. */
+export type TheTierOfAKindOfABattlesLine =
+  | 'k'
+  | 'd'
+  | "a casualty list's header: 'd', and the casualty lists begin"
+  | "'d' once the casualty lists have begun, 'k' before"
+  | "the fortune's: 'k', but 'd' when a side brings no strength";
 
 /** Who may read a line (each left out grants nothing). */
 export interface LineAudience {

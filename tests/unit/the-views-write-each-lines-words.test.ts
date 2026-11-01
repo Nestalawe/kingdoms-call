@@ -1,8 +1,8 @@
 // The views write each line's words (plan P1-12c3: P1-12's Decisions of 2026-10-24, Decisions 2 and 3). A typed line
 // records a fact (src/engine/battle/the-facts-a-battles-lines-record.ts: a force drawn up for battle, the place of a
 // battle's losses tally), and theTurnsLinesInWords (src/views/prose/the-words-of-each-line.ts) writes the turn's lines
-// in words: a fact's words as the engine wrote them before, a battle's lines with the tiers their words give ('k' key,
-// 'd' detail), its losses tally where its casualty lists begin, and every line in the form the GM's log is stored in,
+// in words: a fact's words as the engine wrote them before, a battle's lines with their kinds' tiers ('k' key,
+// 'd' detail; since P1-12d34), its losses tally where its casualty lists begin, and every line in the form the GM's log is stored in,
 // key for key, with no fact left in it.
 // Level 1 (unit): forceMarker, emitBattle and the words pass are called on a context made in the test; nothing else of
 // the turn runs, and every case is a staged battle the test writes. Whole games (the balance matrix and every realm's
@@ -14,8 +14,9 @@
 // force too; since P1-12d20 its verb written from its values, and empty for a force with none; since P1-12d29 its name
 // written from the force's record in every form, the leaderless check's copy of those words the same, and a fallen
 // commander's host named "<his name>'s leaderless host" as the check finds him), and the place of a battle's tally has no words of its own; `theTurnsLinesInWords` gives a battle's lines
-// the tiers their words give and puts its losses tally where its casualty lists begin, every line with the fight's
-// audience, hero and place; a battle with nothing to tally has no tally line, one whose lines are all for one realm
+// their kinds' tiers (since P1-12d34: a casualty list's line 'k' before the first header and 'd' after, the fortune 'd'
+// when a side brings no strength, whatever words the names hold; a line with no fact 'k') and puts its losses tally
+// where its casualty lists begin, every line with the fight's audience, hero and place; a battle with nothing to tally has no tally line, one whose lines are all for one realm
 // alone files no tally place, two battles side by side keep their own; the GM's log in words has the 17 keys in their
 // order, no fact and no tier left to work out, and a line that holds its words already is stored as it is. Red on the
 // plants of the row's PR (a force's words without `guard`, the tally always last, every tier `'k'`). Level 1:
@@ -40,7 +41,12 @@ import {
   type LogLine,
   type NarrativeLine,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
-import { theTurnsLinesInWords, theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
+import {
+  theTiersOfABattlesLines,
+  theTurnsLinesInWords,
+  theWordsOf,
+} from '../../src/views/prose/the-words-of-each-line.ts';
+import { THE_TIER_OF_EACH_KIND_OF_A_BATTLES_LINE } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 import { theNameOfAPlayersRealm } from '../../src/engine/turn/log-line-helpers.ts';
 import type { Army, Character, Province } from '../../src/schemas/saved-game-state.ts';
 
@@ -276,7 +282,7 @@ describe("a fact's words are the engine's words before P1-12c3", () => {
 });
 
 describe("a battle's lines in words", () => {
-  test('each takes the tier its words give, and the losses tally goes where the casualty lists begin', () => {
+  test("each takes its kind's tier, and the losses tally goes where the casualty lists begin", () => {
     const tc = newContext();
     const narrative = aBattle(tc);
     fileTheBattle(tc, narrative);
@@ -326,6 +332,94 @@ describe("a battle's lines in words", () => {
       ['k', [0]],
       ['s', [0, 1]],
     ]);
+  });
+
+  test("a casualty list's line is in the short account before the first header, and in the full report after", () => {
+    const tc = newContext();
+    const aCompanyCutDown = aBattle(tc).at(-1);
+    if (aCompanyCutDown === undefined) throw new Error('no line');
+    const narrative: NarrativeLine[] = [];
+    narrate(narrative, aCompanyCutDown);
+    narrate(narrative, { kind: "the attacker's casualties begin", atkName: { heroName: 'Aldric', leaderless: false } });
+    narrate(narrative, aCompanyCutDown);
+    fileTheBattle(tc, narrative);
+    expect(theTurnsLinesInWords(tc.turnLog).gmLog.map((l) => l.bTier)).toEqual(['k', 't', 'd', 'd', 's']);
+  });
+
+  test('the fortune of the battle is in the short account, and in the full report when a side brings no strength', () => {
+    const tc = newContext();
+    const fortune = (atkBase: number, defBase: number): NarrativeLine => ({
+      kind: 'the fortune of the battle',
+      atkLabel: { heroName: 'Aldric', leaderless: false },
+      defLabel: { heroName: 'Brann', leaderless: false },
+      atkBase,
+      defBase,
+      fortune: { atk: 1.2, def: 0.9, S: 0.3 },
+    });
+    const narrative: NarrativeLine[] = [];
+    for (const [atkBase, defBase] of [
+      [12, 9],
+      [0, 9],
+      [12, 0],
+      [NaN, 9],
+    ] as const)
+      narrate(narrative, fortune(atkBase, defBase));
+    fileTheBattle(tc, narrative);
+    const { gmLog } = theTurnsLinesInWords(tc.turnLog);
+    expect(gmLog.map((l) => l.bTier)).toEqual(['k', 'd', 'd', 'd', 's']);
+    // the fortune's tier is that kind's alone
+    const theFortunes = Object.entries(THE_TIER_OF_EACH_KIND_OF_A_BATTLES_LINE).filter(([, tier]) =>
+      tier.startsWith("the fortune's"),
+    );
+    expect(theFortunes.map(([kind]) => kind)).toEqual(['the fortune of the battle']);
+  });
+
+  test("a battle's line takes its kind's tier, whatever words its names hold", () => {
+    const tc = newContext();
+    const legionsOf = (heroName: string): NarrativeLine => ({
+      kind: "a side's skeletal legions know no fear",
+      sideName: { heroName, leaderless: false },
+      undeadHeroFanaticismPct: 20,
+    });
+    const volleyOf = (heroName: string): NarrativeLine => ({
+      kind: "the hero's archery volley begins",
+      heroName,
+      missileUnitCount: 2,
+      doubleVolleys: false,
+      oneMoreShot: false,
+      preparedGround: false,
+    });
+    const narrative: NarrativeLine[] = [];
+    for (const name of ['📊 Aldric', '  Aldric', '— Aldric']) narrate(narrative, legionsOf(name));
+    narrate(narrative, volleyOf('Aldric'));
+    fileTheBattle(tc, narrative);
+    expect(theTurnsLinesInWords(tc.turnLog).gmLog.map((l) => l.bTier)).toEqual(['k', 'k', 'k', 'd', 's']);
+  });
+
+  test("a battle's line with no fact, or of a kind no area's table lists, is in the short account; no lines give no tiers", () => {
+    const tc = newContext();
+    const narrative = aBattle(tc);
+    narrate(narrative, {
+      kind: 'a Forced March slips into a province without giving battle',
+      heroName: 'Aldric',
+      provinceName: 'Greyford',
+    });
+    fileTheBattle(tc, narrative);
+    expect(
+      theTurnsLinesInWords(tc.turnLog)
+        .gmLog.map((l) => l.bTier)
+        .slice(-3),
+    ).toEqual(['d', 'k', 's']);
+    const lines = tc.turnLog.slice(3, 6);
+    const [aLineInWords, ...rest] = lines;
+    if (aLineInWords === undefined) throw new Error('no line');
+    const inWords: LogLine = { ...aLineInWords, text: 'The levy holds.' };
+    delete inWords.fact;
+    expect(theTiersOfABattlesLines([inWords, ...rest])).toEqual({
+      tiers: ['k', 'd', 'd'],
+      whereTheCasualtyListsBegin: 1,
+    });
+    expect(theTiersOfABattlesLines([])).toEqual({ tiers: [], whereTheCasualtyListsBegin: -1 });
   });
 
   test('two battles side by side each take their own tiers and tally', () => {

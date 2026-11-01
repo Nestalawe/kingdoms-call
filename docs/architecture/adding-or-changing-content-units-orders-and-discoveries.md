@@ -177,6 +177,10 @@ company's own reference coming **first**:
 
 `tests/battle-faced-lines.test.js` holds the wording of every branch and the tally's crediting.
 
+A new fate line, like any new kind a battle's lines hold, also takes a tier in its area's table beside its audience
+(`THE_TIER_OF_EACH_KIND_OF_A_BATTLES_LINE` and its neighbours): a casualty list's line is 'd' once the lists begin and
+'k' before ([the lines' topic file](a-line-of-the-turn-emit-its-facts-and-the-reports.md)).
+
 ## Retired discovery ids are never reused
 
 `RETIRED_DISCOVERY_IDS` lists Sage discoveries that have been removed. `retireDiscoveries(G)` strips them
