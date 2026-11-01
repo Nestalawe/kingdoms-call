@@ -8,7 +8,9 @@
 //
 // Options (after `--`): --set B (play the noise set and compare its statistics), --jobs N (games side by side; default
 // one per core), --only id,id (some games; no baseline check of the scripted cases), --out FILE (also write this run
-// in the baseline's form, e.g. to compare two runs). It builds site/ from src/ first (tools/build.ts); KC_SITE plays
+// in the baseline's form, e.g. to compare two runs). In parts side by side (CI's balance jobs, parts.ts): --shard 2/3
+// --out FILE plays part 2 of 3 of the set's games (part 1 the required scenarios too) and writes them to FILE, judging
+// nothing; then --join DIR judges the parts in DIR as one run, with every check above, and --out as one run writes it. It builds site/ from src/ first (tools/build.ts); KC_SITE plays
 // another copy of the site instead, as it is. A game fails on the save's check (P1-15e1, play.ts): with KC_SITE, its
 // `[Save check]` lines are that copy's and the last save's check is this checkout's.
 // npm run balance -- <scenario> plays a named scenario on the base branch's site and on this one instead (scenario-run.ts;
@@ -50,6 +52,7 @@ import {
 import { isEnginePath } from './engine-paths.ts';
 import { matrix, type GameSpec, type SeedSet } from './matrix.ts';
 import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
+import { joinParts, parseShard, readParts, theShare, writePart, type RequiredScenarios, type Shard } from './parts.ts';
 import { CASE_NAMES, type Cases, type GameResult } from './play.ts';
 import { show, showDiff, showRange } from './report.ts';
 import { playRuns, playScenario } from './scenario-run.ts';
@@ -134,9 +137,9 @@ export function theScriptedCasesThatNeverHappened(cases: Cases): string[] {
     .map(([, name]) => name);
 }
 
-/** Plays every named scenario with requirements, `jobs` runs at a time, on this site (or KC_SITE's), one line each.
- *  True if one missed a requirement, or if a scenario CASES_A_REQUIRED_SCENARIO_GIVES names requires nothing. */
-async function playTheRequiredScenarios(jobs: number): Promise<boolean> {
+/** Plays every named scenario with requirements, `jobs` runs at a time, on this site (or KC_SITE's): a line each, and
+ *  failed if one missed a requirement, or if a scenario CASES_A_REQUIRED_SCENARIO_GIVES names requires nothing. */
+async function playTheRequiredScenarios(jobs: number): Promise<RequiredScenarios> {
   const all = await Promise.all(
     scenarioNames().map(async (name) => ({
       name,
@@ -144,24 +147,31 @@ async function playTheRequiredScenarios(jobs: number): Promise<boolean> {
     })),
   );
   const required = all.filter((s) => s.scenario.requires?.length);
+  const lines: string[] = [];
   let failed = false;
   for (const name of Object.values(CASES_A_REQUIRED_SCENARIO_GIVES))
     if (!required.some((s) => s.name === name)) {
-      console.log(`The scenario "${name}" is to give a scripted case, but it isn't there or requires nothing.`);
+      lines.push(`The scenario "${name}" is to give a scripted case, but it isn't there or requires nothing.`);
       failed = true;
     }
   const where = process.env['KC_SITE'] ? ` on ${process.env['KC_SITE']}` : '';
   for (const { name, scenario } of required) {
     const played = await playRuns(name, scenario.runs, jobs);
     const missed = whatAScenariosRunsMissed(scenario, played.stats, played.errors);
-    console.log(
+    lines.push(
       `Required scenario "${name}"${where}: ${String(scenario.runs)} runs in ${played.secs.toFixed(1)} s: ${
         missed.length ? `MISSED\n  ${missed.join('\n  ')}` : 'every requirement met'
       }`,
     );
     if (missed.length) failed = true;
   }
-  return failed;
+  return { lines, failed };
+}
+
+/** The required scenarios' lines printed: true if one failed. */
+function printed(required: RequiredScenarios): boolean {
+  for (const line of required.lines) console.log(line);
+  return required.failed;
 }
 
 const keep = (r: GameResult): KeptGame => {
@@ -210,11 +220,20 @@ async function main(): Promise<number> {
       jobs: { type: 'string' },
       only: { type: 'string' },
       out: { type: 'string' },
+      shard: { type: 'string' },
+      join: { type: 'string' },
     },
   });
   const jobs = Number(values.jobs) || os.availableParallelism();
   const sets: SeedSet[] = values.update ? ['A', 'B'] : [values.set === 'B' ? 'B' : 'A'];
   const only = values.only?.split(',');
+  const [set = 'A'] = sets;
+  if ((values.shard != null || values.join != null) && (values.update || only || positionals.length)) {
+    console.log('--shard and --join play or join one set of games: not with --update, --only or a named scenario.');
+    return 1;
+  }
+  // Nothing is played: the parts were.
+  if (values.join != null) return joinTheParts(values.join, set, values.out);
   let failed = false;
   buildSite();
   const unlisted = unlistedPageFiles();
@@ -229,123 +248,220 @@ async function main(): Promise<number> {
     const runs = Number(values.runs) || undefined;
     return playScenario(scenario, { base: values.base, jobs, ...(runs ? { runs } : {}) });
   }
-  if (!only) failed = (await playTheRequiredScenarios(jobs)) || failed;
+  if (values.shard != null) return playAPart(parseShard(values.shard), set, jobs, values.out);
+  if (!only) failed = printed(await playTheRequiredScenarios(jobs)) || failed;
 
   for (const set of sets) {
     const games = matrix(set).filter((g) => !only || only.includes(g.id));
     const t0 = performance.now();
     const { results, errors } = await playAll(games, jobs);
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
-    const slowest = Math.max(...results.map((r) => r.ms));
-    console.log(
-      `Balance matrix, set ${set}${process.env['KC_SITE'] ? ' on ' + process.env['KC_SITE'] : ''}: ${String(results.length)} games in ${secs} s, ${String(Math.min(jobs, games.length))} at a time (slowest game ${(slowest / 1000).toFixed(1)} s)`,
+    const judged = await judgeTheSet(
+      {
+        set,
+        results,
+        errors,
+        line: `Balance matrix, set ${set}${process.env['KC_SITE'] ? ' on ' + process.env['KC_SITE'] : ''}: ${String(results.length)} games in ${secs} s, ${String(Math.min(jobs, games.length))} at a time (slowest game ${slowest(results)} s)`,
+        everyRealm: () => playEveryRealmNow(games, jobs),
+      },
+      { ...values, only },
     );
-    if (errors.length) {
-      console.log(`\n${String(errors.length)} game(s) failed:\n${errors.join('\n')}`);
-      return 1;
-    }
-    const cases = totalCases(results);
-    console.log(
-      'Scripted cases: ' +
-        Object.entries(CASE_NAMES)
-          .map(([k, name]) => `${name} ${String(cases[k as keyof typeof cases])}`)
-          .join(', '),
-    );
-    if (!only) {
-      const never = theScriptedCasesThatNeverHappened(cases);
-      if (never.length) {
-        console.log(`A scripted case never happened: ${never.join(', ')}.`);
-        failed = true;
-      }
-    }
-    const kept = results.map(keep);
-    if (values.out) writeRun(values.out, kept);
-    if (values.update) {
-      writeBaseline(set, kept);
-      console.log(`Rewrote ${path.relative(process.cwd(), BASELINE_FILE[set])}: commit it with the change.\n`);
-      failed = (await everyRealm(set, games, results, jobs, values)) || failed;
-      continue;
-    }
-
-    // Game by game against the baseline.
-    const baseline = readBaseline(set);
-    const notKept = columnsNotKept(baseline);
-    if (notKept.length) {
-      console.log(
-        `\n${path.relative(process.cwd(), BASELINE_FILE[set])} has no ${notKept.join(', ')} column, so this run can't be compared with it in full: npm run balance:update, and commit the baseline.`,
-      );
-      failed = true;
-    }
-    const base = new Map(baseline.map((g) => [g.id, g]));
-    const diffs = kept.flatMap((g) => {
-      const b = base.get(g.id);
-      if (!b) return [{ id: g.id, line: 'not in the baseline' }];
-      const d = set === 'A' ? diffGame(b, g) : diffGame(statsOnly(b), statsOnly(g));
-      if (!d) return [];
-      const parts = [
-        d.firstTurn != null ? `from turn ${String(d.firstTurn)}` : '',
-        d.columns.length ? d.columns.join(', ') : '',
-        d.turns ? `${String(d.turns[0])} turns → ${String(d.turns[1])}` : '',
-        d.results ? 'results' : '',
-        d.sections.length > 4
-          ? `${String(d.sections.length)} report sections`
-          : d.sections.length
-            ? `report sections: ${d.sections.join(', ')}`
-            : '',
-        d.stats.length ? `${String(d.stats.length)} statistics` : '',
-      ].filter(Boolean);
-      return [{ id: g.id, line: parts.join('; ') }];
-    });
-    console.log(
-      `\nCompared with ${path.relative(process.cwd(), BASELINE_FILE[set])}: ${String(kept.length - diffs.length)} of ${String(kept.length)} games identical.`,
-    );
-    for (const d of diffs) console.log(`  ${d.id}: ${d.line}`);
-    if (diffs.length) {
-      failed = true;
-      console.log('\nStatistics beyond the noise (paired by seed):');
-      let headline: Change[] = [];
-      for (const group of ['bots', 'scripted']) {
-        const ids = kept.filter((g) => g.id.startsWith(group)).map((g) => g.id);
-        const changes = compareRuns(
-          ids.map((id) => base.get(id)?.stats ?? {}),
-          ids.map((id) => kept.find((g) => g.id === id)?.stats ?? {}),
-        );
-        if (group === 'bots') headline = meaningfulChanges(changes);
-        const lines = describeChanges(group, changes);
-        console.log(lines.length ? lines.join('\n') : `  ${group}: none`);
-      }
-      console.log(
-        headline.length
-          ? `Overall: a meaningful change in ${headline.map((c) => c.key).join('; ')}.`
-          : "Overall: no meaningful change in the bot games' headline statistics.",
-      );
-      console.log('\nIf this change is meant to change play: npm run balance:update, and commit the baseline.');
-    }
-    failed = (await everyRealm(set, games, results, jobs, values)) || failed;
+    if (judged === 'a game failed') return 1;
+    failed = judged || failed;
   }
   return failed ? 1 : 0;
 }
 
-/** The second half: `games` with every realm's report, against reports.json's set `set` (or rewriting it), and their
- *  saved states against the page's `page`. True if it fails. */
+const slowest = (results: GameResult[]) => (Math.max(...results.map((r) => r.ms)) / 1000).toFixed(1);
+
+/** Every realm's report of `games`, played now in this checkout's src/; null (not played) when KC_SITE names another
+ *  copy of the site. */
+async function playEveryRealmNow(
+  games: GameSpec[],
+  jobs: number,
+): Promise<{ results: ReportsResult[]; errors: string[]; secs: number } | null> {
+  if (process.env['KC_SITE']) return null;
+  const t0 = performance.now();
+  const played = await playAllEveryRealm(games, jobs);
+  return { ...played, secs: (performance.now() - t0) / 1000 };
+}
+
+/** Part `shard` of set `set`'s games played, on the page and for every realm's report (part 1: the required scenarios
+ *  first), and written to `out` for --join to judge (parts.ts). It judges nothing: 0 once the part is written. */
+async function playAPart(shard: Shard, set: SeedSet, jobs: number, out: string | undefined): Promise<number> {
+  if (!out) {
+    console.log('--shard writes its part to the file --out names.');
+    return 1;
+  }
+  const required = shard.part === 1 ? await playTheRequiredScenarios(jobs) : null;
+  if (required) printed(required);
+  const games = theShare(matrix(set), shard);
+  const t0 = performance.now();
+  const page = await playAll(games, jobs);
+  const secs = (performance.now() - t0) / 1000;
+  const vm = await playEveryRealmNow(games, jobs);
+  writePart(out, {
+    kind: 'a part of the balance matrix',
+    set,
+    ...shard,
+    ids: games.map((g) => g.id),
+    required,
+    page: { ...page, secs, jobs: Math.min(jobs, games.length) },
+    vm,
+  });
+  console.log(
+    `Balance matrix, set ${set}, part ${String(shard.part)} of ${String(shard.of)}: ${String(games.length)} games in ${secs.toFixed(1)} s${
+      vm ? `, every realm's report in ${vm.secs.toFixed(1)} s` : ''
+    }${page.errors.length ? `, ${String(page.errors.length)} failed` : ''}. Wrote ${out}: npm run balance -- --join judges the parts.`,
+  );
+  return 0;
+}
+
+/** The parts in `dir` judged as one run of set `set` (parts.ts): 1 if it fails. */
+async function joinTheParts(dir: string, set: SeedSet, out: string | undefined): Promise<number> {
+  const games = matrix(set);
+  const parts = readParts(dir);
+  const join = joinParts(parts, set, games);
+  if (!('joined' in join)) {
+    console.log(`The parts in ${dir} don't make one run of set ${set}:\n  ${join.problems.join('\n  ')}`);
+    return 1;
+  }
+  const { required, page, vm } = join.joined;
+  const failed = required ? printed(required) : false;
+  const judged = await judgeTheSet(
+    {
+      set,
+      results: page.results,
+      errors: page.errors,
+      line: `Balance matrix, set ${set}, joined from ${String(parts.length)} parts: ${String(page.results.length)} games, the longest part ${page.secs.toFixed(1)} s, ${String(page.jobs)} at a time in each (slowest game ${slowest(page.results)} s)`,
+      everyRealm: () => Promise.resolve(vm),
+    },
+    { update: false, out, only: undefined },
+  );
+  if (judged === 'a game failed') return 1;
+  return judged || failed ? 1 : 0;
+}
+
+/** One set's games, played on the page (`results`, and `errors` for those that failed), and how to get every realm's
+ *  report of them: played now, or a joined run's (null: not played, KC_SITE). */
+interface PlayedSet {
+  set: SeedSet;
+  results: GameResult[];
+  errors: string[];
+  /** The line that says what was played. */
+  line: string;
+  everyRealm: () => Promise<{ results: ReportsResult[]; errors: string[]; secs: number } | null>;
+}
+
+/** One set's games judged, as one run does: 'a game failed' (then nothing else is judged), or whether it fails. With
+ *  `update`, the baselines rewritten instead of compared. */
+async function judgeTheSet(
+  { set, results, errors, line, everyRealm: playEveryRealm }: PlayedSet,
+  values: { update: boolean; out?: string | undefined; only: string[] | undefined },
+): Promise<'a game failed' | boolean> {
+  let failed = false;
+  console.log(line);
+  if (errors.length) {
+    console.log(`\n${String(errors.length)} game(s) failed:\n${errors.join('\n')}`);
+    return 'a game failed';
+  }
+  const cases = totalCases(results);
+  console.log(
+    'Scripted cases: ' +
+      Object.entries(CASE_NAMES)
+        .map(([k, name]) => `${name} ${String(cases[k as keyof typeof cases])}`)
+        .join(', '),
+  );
+  if (!values.only) {
+    const never = theScriptedCasesThatNeverHappened(cases);
+    if (never.length) {
+      console.log(`A scripted case never happened: ${never.join(', ')}.`);
+      failed = true;
+    }
+  }
+  const kept = results.map(keep);
+  if (values.out) writeRun(values.out, kept);
+  if (values.update) {
+    writeBaseline(set, kept);
+    console.log(`Rewrote ${path.relative(process.cwd(), BASELINE_FILE[set])}: commit it with the change.\n`);
+    return (await everyRealm(set, results, playEveryRealm, values)) || failed;
+  }
+
+  // Game by game against the baseline.
+  const baseline = readBaseline(set);
+  const notKept = columnsNotKept(baseline);
+  if (notKept.length) {
+    console.log(
+      `\n${path.relative(process.cwd(), BASELINE_FILE[set])} has no ${notKept.join(', ')} column, so this run can't be compared with it in full: npm run balance:update, and commit the baseline.`,
+    );
+    failed = true;
+  }
+  const base = new Map(baseline.map((g) => [g.id, g]));
+  const diffs = kept.flatMap((g) => {
+    const b = base.get(g.id);
+    if (!b) return [{ id: g.id, line: 'not in the baseline' }];
+    const d = set === 'A' ? diffGame(b, g) : diffGame(statsOnly(b), statsOnly(g));
+    if (!d) return [];
+    const parts = [
+      d.firstTurn != null ? `from turn ${String(d.firstTurn)}` : '',
+      d.columns.length ? d.columns.join(', ') : '',
+      d.turns ? `${String(d.turns[0])} turns → ${String(d.turns[1])}` : '',
+      d.results ? 'results' : '',
+      d.sections.length > 4
+        ? `${String(d.sections.length)} report sections`
+        : d.sections.length
+          ? `report sections: ${d.sections.join(', ')}`
+          : '',
+      d.stats.length ? `${String(d.stats.length)} statistics` : '',
+    ].filter(Boolean);
+    return [{ id: g.id, line: parts.join('; ') }];
+  });
+  console.log(
+    `\nCompared with ${path.relative(process.cwd(), BASELINE_FILE[set])}: ${String(kept.length - diffs.length)} of ${String(kept.length)} games identical.`,
+  );
+  for (const d of diffs) console.log(`  ${d.id}: ${d.line}`);
+  if (diffs.length) {
+    failed = true;
+    console.log('\nStatistics beyond the noise (paired by seed):');
+    let headline: Change[] = [];
+    for (const group of ['bots', 'scripted']) {
+      const ids = kept.filter((g) => g.id.startsWith(group)).map((g) => g.id);
+      const changes = compareRuns(
+        ids.map((id) => base.get(id)?.stats ?? {}),
+        ids.map((id) => kept.find((g) => g.id === id)?.stats ?? {}),
+      );
+      if (group === 'bots') headline = meaningfulChanges(changes);
+      const lines = describeChanges(group, changes);
+      console.log(lines.length ? lines.join('\n') : `  ${group}: none`);
+    }
+    console.log(
+      headline.length
+        ? `Overall: a meaningful change in ${headline.map((c) => c.key).join('; ')}.`
+        : "Overall: no meaningful change in the bot games' headline statistics.",
+    );
+    console.log('\nIf this change is meant to change play: npm run balance:update, and commit the baseline.');
+  }
+  return (await everyRealm(set, results, playEveryRealm, values)) || failed;
+}
+
+/** The second half: the games with every realm's report (`play`: played now, or a joined run's), against
+ *  reports.json's set `set` (or rewriting it), and their saved states against the page's `page`. True if it fails. */
 async function everyRealm(
   set: SeedSet,
-  games: GameSpec[],
   page: GameResult[],
-  jobs: number,
+  play: PlayedSet['everyRealm'],
   values: { update: boolean; out?: string | undefined },
 ): Promise<boolean> {
-  if (process.env['KC_SITE']) {
+  const played = await play();
+  if (!played) {
     console.log(
       "\nEvery realm's report: not played, because KC_SITE names another copy of the site and this half reads src/ (prove it on a planted copy of the branch).",
     );
     return false;
   }
-  const t0 = performance.now();
-  const { results, errors } = await playAllEveryRealm(games, jobs);
-  const secs = ((performance.now() - t0) / 1000).toFixed(1);
+  const { results, errors } = played;
   console.log(
-    `\nEvery realm's report, set ${set}: ${String(reportsIn(results))} reports in ${String(results.length)} games, in the engine's vm, in ${secs} s`,
+    `\nEvery realm's report, set ${set}: ${String(reportsIn(results))} reports in ${String(results.length)} games, in the engine's vm, in ${played.secs.toFixed(1)} s`,
   );
   let failed = false;
   if (errors.length) {

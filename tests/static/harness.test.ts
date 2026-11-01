@@ -1085,7 +1085,15 @@ describe('CI', () => {
   test('every job that tests builds the site first', () => {
     const testing = /^(npm test|npx playwright test|npm run balance)/;
     const jobsThatTest = ids.filter((id) => runs(id).some((r) => testing.test(r)));
-    expect([...jobsThatTest].sort()).toEqual(['balance', 'browser', 'page', 'simulation', 'static', 'unit-scenario']);
+    expect([...jobsThatTest].sort()).toEqual([
+      'balance',
+      'balance-part',
+      'browser',
+      'page',
+      'simulation',
+      'static',
+      'unit-scenario',
+    ]);
     for (const id of jobsThatTest) {
       const r = runs(id);
       const build = r.indexOf('npm run build');
@@ -1155,42 +1163,85 @@ describe('CI', () => {
     expect(concurrencyProblems(perJob)).toEqual(['a job sets a concurrency group of its own']);
   });
 
-  test('the balance job decides first, in plain Node, and plays the matrix only when an engine path changed', () => {
+  // The balance matrix in three parts side by side, then joined and judged as one run (tools/balance/parts.ts). Each
+  // job decides first, in plain Node, whether to play at all (and fails a refactor-only change to the baseline).
+  const DECIDES = [
+    'EVENT: ${{ github.event_name }}',
+    'BEFORE: ${{ github.event.before }}',
+    "REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}",
+  ];
+  const PLAYS = "steps.engine.outputs.play == 'true'";
+  const ON_A_MISS = `${PLAYS} && steps.modules.outputs.cache-hit != 'true'`;
+  const stepConditions = (id: string) =>
+    (jobs.get(id) ?? '').match(/^ {6}- (?:id: \w+\n {8})?if: (.+)$/gm)?.map((l) => l.replace(/^.*if: /s, ''));
+
+  test('the balance matrix is played in three parts side by side, each deciding first, judging nothing', () => {
+    const job = jobs.get('balance-part') ?? '';
+    expect(job).toMatch(/^ {4}strategy:\n {6}fail-fast: false\n {6}matrix:\n {8}part: \[1, 2, 3\]\n/m);
+    expect(runs('balance-part')).toEqual([
+      'node tools/balance/engine-paths.ts',
+      'npm ci',
+      'npm run build',
+      'npm run balance -- --shard ${{ matrix.part }}/3 --out balance-parts/part-${{ matrix.part }}.json',
+    ]);
+    // After the decision, every step on its play=true (the install, and the cache's save, on a miss too); the part
+    // handed on once played.
+    expect(stepConditions('balance-part')).toEqual([
+      PLAYS,
+      ON_A_MISS,
+      ON_A_MISS,
+      PLAYS,
+      PLAYS,
+      "steps.play.outcome == 'success'",
+    ]);
+    expect(job).toMatch(/^ {6}- id: engine\n {8}run: node tools\/balance\/engine-paths\.ts\n/m);
+    expect(job).toMatch(
+      /uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: balance-part-\$\{\{ matrix\.part \}\}\n {10}path: balance-parts\/part-\$\{\{ matrix\.part \}\}\.json\n {10}if-no-files-found: error\n/,
+    );
+    expect(job).toMatch(/^ {10}fetch-depth: 2$/m);
+    for (const env of DECIDES) expect(job).toContain(env);
+  });
+
+  test('the balance job decides first, joins the parts and judges them as one run, then makes the report', () => {
     const job = jobs.get('balance') ?? '';
     expect(runs('balance')).toEqual([
       'node tools/balance/engine-paths.ts',
       'npm ci',
       'npm run build',
-      'npm run balance -- --out balance-report/played.json',
+      'npm run balance -- --join balance-parts --out balance-report/played.json',
       'npm run balance:report -- --base HEAD^1 --head balance-report/played.json',
     ]);
-    // The steps after the decision run only on its play=true (the install, and the cache's save, only on a miss too).
-    // The report runs only on a pull request, and only once the games were played (even if they differ from the
+    // After the parts, even when one failed (so this job fails itself, saying why), unless the run was cancelled.
+    expect(field('balance', 'needs')).toBe('balance-part');
+    expect(field('balance', 'if')).toBe('${{ !cancelled() }}');
+    // The steps after the decision run only on its play=true (the install, and the cache's save, on a miss too). The
+    // report runs only on a pull request, and only once the games were judged (even if they differ from the
     // baseline); the upload only after the report.
-    expect(job.match(/^ {6}- (?:id: \w+\n {8})?if: (.+)$/gm)?.map((l) => l.replace(/^.*if: /s, ''))).toEqual([
-      "steps.engine.outputs.play == 'true'",
-      "steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'",
-      "steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'",
-      "steps.engine.outputs.play == 'true'",
-      "steps.engine.outputs.play == 'true'",
+    expect(stepConditions('balance')).toEqual([
+      PLAYS,
+      ON_A_MISS,
+      ON_A_MISS,
+      PLAYS,
+      PLAYS,
+      PLAYS,
       "${{ !cancelled() && github.event_name == 'pull_request' && (steps.play.outcome == 'success' || steps.play.outcome == 'failure') }}",
       "${{ !cancelled() && steps.report.outcome == 'success' }}",
     ]);
+    expect(job).toMatch(
+      /uses: actions\/download-artifact@v\d+\n {8}with:\n {10}pattern: balance-part-\*\n {10}merge-multiple: true\n {10}path: balance-parts\n/,
+    );
     expect(job).toMatch(/^ {6}- id: engine\n {8}run: node tools\/balance\/engine-paths\.ts\n/m);
     expect(job).toMatch(/^ {6}- id: play\n {8}if: .*\n {8}run: npm run balance -- /m);
     expect(job).toMatch(/^ {6}- id: report\n {8}if: .*\n {8}run: npm run balance:report /m);
     expect(job).toMatch(/uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: balance-report\n/);
     // The commit to compare with: a pull request's base is HEAD^1 of its merge commit; a push's is the commit before.
     expect(job).toMatch(/^ {10}fetch-depth: 2$/m);
-    expect(job).toContain('EVENT: ${{ github.event_name }}');
-    expect(job).toContain('BEFORE: ${{ github.event.before }}');
-    expect(job).toContain("REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}");
+    for (const env of DECIDES) expect(job).toContain(env);
     // CI itself may only read: the comment is posted by balance-report.yml.
     expect(ci).toMatch(/^permissions:\n {2}contents: read\n\n/m);
     expect(ci).toMatch(/^name: CI$/m);
   });
 
-  // The report comes from the pull request's own code, so the workflow that may comment never runs that code.
   test("the balance report is posted by a workflow that never checks out or runs the pull request's code", () => {
     const wf = read('.github/workflows/balance-report.yml');
     expect(wf).toMatch(
@@ -1322,7 +1373,7 @@ describe('CI', () => {
 
   test('every job that installs takes node_modules from a cache, and saves it before anything else runs', () => {
     expect(ids.filter((id) => runs(id).includes('npm ci')).sort()).toEqual(
-      ['balance', 'browser', 'page', 'simulation', 'static', 'unit-scenario'].sort(),
+      ['balance', 'balance-part', 'browser', 'page', 'simulation', 'static', 'unit-scenario'].sort(),
     );
     expect(nodeModulesCacheProblems(ci)).toEqual([]);
     // Planted copies: unit-scenario's save moved after its build; npm ci on every run; a key without the lock file.
