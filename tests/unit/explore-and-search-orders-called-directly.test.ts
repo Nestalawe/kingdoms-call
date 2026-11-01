@@ -13,14 +13,18 @@
 // `resolveHuntingRumoursOrder`, `resolveSearchLairOrder`, `resolveChartTheUnknownOrder`,
 // `resolveDiscoverLostRuinOrder`, P1-08j2), called directly on the same cases one phase at a time, then on what the
 // dice decide (fixed) and what the balance matrix never reaches: the Explorer 8 survey of richer land (an even chance,
-// once a province, the tax base never above 10), Ancient Lore, the Philosopher's Lens, an unlisted terrain and a
-// nameless guardian; the Blood Offering's graves, borrowed and skeletal companies, the Wild Hunt unpaid or on ground
-// not the hero's own (the empty province taken); rumours paid by grade until the purse runs dry, a guardian with no
+// once a province, the tax base never above 10), Ancient Lore, the Philosopher's Lens (a site known or glamoured passed
+// over, its die's pick), an unlisted terrain and a nameless guardian; the Blood Offering's graves, borrowed and skeletal
+// companies, the Wild Hunt unpaid or on ground not the hero's own (the empty province taken); rumours paid by grade until
+// the purse runs dry, a guardian of no grade or of one no price lists, an order naming no lair, a guardian with no
 // weakness, a hoard a thief has stripped; and what follows a fight at a lair, the fight stood in for (`fightEndsIn`): a
-// thief's haul and relic, an emptied or bare hoard, a beast pacified, the challengers' kit, a hero beaten back or fled,
-// Battlefield Surgery, and the fight's statistics record; and an older save's lair stocked when first read (a
-// clearer's gold from its guardian's band, its items before hoards, one item rolled). 96 planted faults in the six functions, their calls and
-// `processOrder`'s checks each turn at least one of the two tests red, and every test goes red for at least one
+// thief's haul and relic, an emptied or bare hoard (a realm that knew it bare kept), a beast pacified, a guardian of no
+// grade counted at his lair's, the challengers' kit, a hero beaten back or fled, Battlefield Surgery, and the fight's
+// statistics record; a search naming no lair past a gap in the list; Discover Lost Ruin's empty order, a guardian of no
+// grade, two sites in one province; and an older save's lair stocked when first read (a clearer's gold from its
+// guardian's band, its items before hoards, one item rolled). 96 planted faults in the six functions, their calls and
+// `processOrder`'s checks each turn at least one of the two tests red, and every test goes red for at least one of them
+// (plan P1-08j2); P1-10b21's cases are each red on a fault planted in the line they guard.
 import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -82,6 +86,7 @@ const textOf = (b: Board, c: Character) =>
 const at = (b: Board, s: Partial<HeroSpec> = {}) => hero(b, { player: 0, at: b.X, ...s });
 const skilled = (skills: Record<string, number>) => ({ melee: 2, tactical: 2, march: 1, spy: 0, ...skills });
 const realm0 = (b: Board) => must(b.G.players[0], 'realm 0');
+const guardianOf = (f: Feature) => must(f.monster, 'a guardian');
 const features = (p: Province) => (p['features'] ?? []) as Feature[];
 const withFeatures = (p: Province, ...fs: Feature[]) => {
   p['features'] = fs;
@@ -144,6 +149,31 @@ describe('Explore, called directly', () => {
     // 35% of two lairs reaches neither by the map alone
     expect(features(b.X).filter((f) => (f.discoveredBy ?? []).includes(0)).length).toBe(1);
     expect(textOf(b, h)).toContain("The Philosopher's Lens shows");
+  });
+
+  test("the Philosopher's Lens passes over a site his realm knows and one a rival's glamour hides; its die picks among the rest", () => {
+    for (const [die, shown] of [
+      [0.1, 'Old Sluice'],
+      [0.9, 'Reed Barrow'],
+    ] as const) {
+      const b = board(engine, world, 0);
+      withFeatures(
+        b.X,
+        { ...lair('Drowned Mill', 'Weak'), discoveredBy: [0] },
+        { ...lair('Hidden Fen', 'Weak'), _hidden: true, _hiddenBy: 1 },
+        lair('Old Sluice', 'Weak'),
+        lair('Reed Barrow', 'Weak'),
+      );
+      b.X.terrain = 'jungle'; // 15% of four sites reaches none by the map alone
+      const h = at(b);
+      h.items = [{ ...magicItem(b, "Philosopher's Lens"), equipped: true }];
+      h['_sgLog'] = { turn: b.G.turn, turnSkills: { explorer: 1 } }; // risen this turn: no Explorer rise is rolled
+      withDice(engine, [die], () => {
+        play(b, h, o('explore'));
+      });
+      expect(features(b.X).map((f) => (f.discoveredBy ?? []).includes(0))).toEqual([true, false, die < 0.5, die > 0.5]);
+      expect(textOf(b, h)).toContain(`shows ${h.name} what the ground itself hides — the ${shown}.`);
+    }
   });
 
   test('a terrain the table does not list is explored at 15%; a lair whose guardian has no name is guarded by "a creature"', () => {
@@ -250,6 +280,42 @@ describe('Hunting Rumours, called directly', () => {
     );
   });
 
+  test("a guardian of no grade is priced by his lair's, else as Weak; a grade the prices don't list costs 1g", () => {
+    const b = board(engine, world, 0);
+    const graded = (name: string, power: string, tier?: string) => {
+      const f = { ...lair(name, 'Weak'), discoveredBy: [0], monster: { ...guardianOf(lair(name, 'Weak')), power } };
+      if (tier === undefined) delete f.tier;
+      else f.tier = tier;
+      return f;
+    };
+    withFeatures(
+      b.X,
+      graded('Drowned Mill', '', 'Moderate'),
+      graded('Old Sluice', ''),
+      graded('Reed Barrow', 'Mythic'),
+    );
+    realm0(b)['gold'] = 9;
+    const h = at(b);
+    play(b, h, o('hunt_rumours', '0,1,2'));
+    expect(realm0(b)['gold']).toBe(5);
+    const t = textOf(b, h);
+    expect(t).toContain('2g buys the talk of the Drowned Mill — Marsh Rat (Vermin), a moderate guardian.');
+    expect(t).toContain('1g buys the talk of the Old Sluice — Marsh Rat (Vermin), a weak guardian.');
+    expect(t).toContain('1g buys the talk of the Reed Barrow — Marsh Rat (Vermin), a mythic guardian.');
+  });
+
+  test('an order that names no lair asks after none, and costs nothing', () => {
+    const b = board(engine, world, 0);
+    withFeatures(b.X, { ...lair('Drowned Mill', 'Weak'), discoveredBy: [0] });
+    realm0(b)['gold'] = 9;
+    const h = at(b);
+    play(b, h, o('hunt_rumours', ''));
+    expect({ gold: realm0(b)['gold'], bought: textOf(b, h).includes('buys the talk') }).toEqual({
+      gold: 9,
+      bought: false,
+    });
+  });
+
   test('a guardian with no weakness, a hoard a thief has stripped, and one he has robbed of part of it', () => {
     const b = board(engine, world, 0);
     const bare = { ...lair('Drowned Mill', 'Weak'), discoveredBy: [0], _stolenItems: ['Old Lamp'] };
@@ -341,6 +407,53 @@ describe('Search Lair, called directly: what follows the fight', () => {
         said: true,
       });
     }
+  });
+
+  test("a lair whose guardian has no grade is counted cleared at its lair's grade", () => {
+    const noGrade = {
+      ...lair('Drowned Mill', 'Moderate'),
+      monster: { ...guardianOf(lair('Drowned Mill', 'Weak')), power: '' },
+    };
+    const { b, h } = searchOne(noGrade);
+    fightEndsIn({ won: true }, () => {
+      play(b, h, o('search', '0'));
+    });
+    expect(h['_botLairKills']).toEqual({ Moderate: 1 });
+  });
+
+  test('a realm that knew a hoard was bare keeps knowing it; another realm learns it beside it', () => {
+    for (const gold of [3, 0]) {
+      const { b, h, f } = searchOne(lair('Drowned Mill', 'Weak', { gold }), { skills: skilled({ thief: 5 }) });
+      f['_hoardGoldOrig'] = 10;
+      f['_pickedCleanBy'] = [1];
+      fightEndsIn({ stole: true }, () => {
+        play(b, h, o('search', '0'));
+      });
+      expect(f['_pickedCleanBy']).toEqual([1, 0]);
+    }
+  });
+
+  test('a search that names no lair, its first site a gap in the list: the first lair standing, else the first lair, else nothing', () => {
+    // (a save the schema reads holds no gap; the fallbacks are what the search keeps for one)
+    const searchWithAGap = (...sites: Feature[]) => {
+      const b = board(engine, world, 0);
+      withFeatures(b.X);
+      b.X['features'] = [null, ...sites];
+      realm0(b)['gold'] = 0;
+      const h = at(b);
+      fightEndsIn({ won: true }, () => {
+        play(b, h, o('search', ''));
+      });
+      return { b, h, t: textOf(b, h) };
+    };
+    const cleared = () => ({ ...lair('Drowned Mill', 'Weak'), cleared: true });
+    const first = searchWithAGap(cleared(), ritualSite(), lair('Old Sluice', 'Weak', { gold: 7 }));
+    expect({ gold: realm0(first.b)['gold'], revisits: first.t.includes('revisits') }).toEqual({
+      gold: 7,
+      revisits: false,
+    });
+    expect(searchWithAGap(ritualSite(), cleared()).t).toContain('revisits the cleared Drowned Mill');
+    expect(searchWithAGap(ritualSite()).t).toBe('');
   });
 
   test("a thief lifts one of the hoard's relics on a low roll, not on a high one, and never a Legendary one", () => {
@@ -517,6 +630,33 @@ describe('Chart the Unknown, called directly', () => {
       play(b, h, o('chart_unknown', target === 'here' ? String(b.X.id) : target));
       expect(mapped(b.X)).toBe(100);
     }
+  });
+});
+
+describe('Discover Lost Ruin, called directly', () => {
+  const layBare = (target: string, ...sites: Feature[]) => {
+    const b = board(engine, world, 0);
+    withFeatures(b.X, ...sites);
+    b.ring1.forEach((p) => {
+      withFeatures(p);
+    });
+    const h = at(b, { skills: skilled({ explorer: 9 }) });
+    play(b, h, o('discover_ruin', target));
+    return { known: features(b.X).map((f) => (f.discoveredBy ?? []).includes(0)), t: textOf(b, h), here: b.X.name };
+  };
+
+  test('an empty order reads as Weak, and a guardian of no grade is a Weak lair', () => {
+    const noGrade = {
+      ...lair('Reed Barrow', 'Weak'),
+      monster: { ...guardianOf(lair('Reed Barrow', 'Weak')), power: '' },
+    };
+    expect(layBare('', lair('Drowned Mill', 'Weak'), lair('Old Sluice', 'Moderate')).known).toEqual([true, false]);
+    expect(layBare('Weak', noGrade).known).toEqual([true]);
+  });
+
+  test("two sites of the class in one province are named together, under the province's name", () => {
+    const { t, here } = layBare('Weak', lair('Drowned Mill', 'Weak'), lair('Old Sluice', 'Weak'));
+    expect(t).toContain(`lays bare 2 sites across 1 province — Drowned Mill, Old Sluice in ${here}.`);
   });
 });
 

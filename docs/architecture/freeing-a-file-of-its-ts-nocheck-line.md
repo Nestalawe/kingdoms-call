@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-89 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(55: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+88 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(54: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b20 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b21 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -121,6 +121,14 @@ added under its kind.
   `Object.entries(skills).filter(([, v]) => v > 0)` takes a typed predicate, `Number(v) > 0` (`aLevelAboveNothing`).
 - **Records of a union compared field by field** (where a Wild Calling tore beasts from: a garrison's province, a
   hero's name) are compared through a shape with every field optional (`theSamePlaceAsNamed`).
+- **`[a[0]]` and `[a[1]]` from a list just found to hold two** are `a.slice(0, 1)` and `a.slice(1, 2)`, the same lists. A
+  regular expression's group that always takes part in a match is read `String(m[1])`, the same words.
+- **A filter whose kept elements a later read needs narrower** (a lair with a guardian, read unguarded after) takes a
+  type predicate on what it keeps: `.filter((x): x is { f: ALairWithAGuardian; i: number } => …)`. A filter's callback
+  typed wider than the list's element (`(it: AnItemItsEffectGuarded) => …`) keeps a guard on a field the schema
+  requires and still returns the list's own kind; two such checks stay two (the ratchet counts each).
+- **An object grouped by a number** (`(o[k] = o[k] || v).list.push(x)`) is read, then written back:
+  `const here = o[k] ?? v;`, `o[k] = here;`, `here.list.push(x)` (lint reads `o[k] ??= v` as never missing).
 - **A filter that keeps a kind** needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`;
   `filter(Boolean)` a type predicate. A callback whose result is read only as true or false is typed `: boolean`, so
   the compiler doesn't infer a predicate over a large union.
@@ -155,6 +163,8 @@ added under its kind.
   is read by a plain `const` key (`const hiredsId = h.id`), and `if (!x) x = []` on it is `x ??= []`, which narrows.
 - **A branch the check above makes dead** (`h.player === null ? wage : h.pay || 1` after a check that every hired
   hero is a wanderer) is dropped: lint refuses the always-true test, and the value is the same.
+- **A value read back from a table just after it is written there by a key** (`p.exploredBy[i] = x; p.explored =
+  p.exploredBy[i]`) is the `const` written, read again (`mappedNow`): the same number.
 - **A value a closure reads later** (`pcDeferEffect`'s rider) is read into a `const` before it, so the test before it
   narrows it inside too. A table read by the same key several times is read once into a `const`.
 - **A `try` whose `catch` gave a value where a missing element threw** checks for none first inside the `try`, with
@@ -185,6 +195,11 @@ added under its kind.
   his realm and his province are made sure by `theRealmIsHanded` and `theProvinceIsHanded` (assertion functions, which
   throw for none), before their first read. Not through a check in the dispatch's call when a test pins the call's
   form (`[^)]*` in the order family's own tests).
+- **Where the body guards a hero who serves no realm** (`c.player != null`), no `servesARealm` check: each read of his
+  realm by its index is `c.player === null ? undefined : G.players[c.player]`, as JavaScript reads `G.players[null]`
+  (`hisRealm`, the Search). A rest-spread arrow handing its arguments on after the turn's context is typed
+  `(...a: AfterTheTurnsContext<typeof f>)`. A field a test's stand-in gives a typed callee's result and the callee never
+  does (a pacified fight) is read through a type that adds it, optional (`TheFightAsTheSearchReadsIt`).
 - **A parameter whose kind a flag says** is a rest tuple (`...[army, typeOnly]: [string, true] | [AUnit, false?]`); a
   callback option only one case calls is required only there (`{ won: true } | { won: false; demoteAt }`).
 - **A function that reads an old save** takes the old save's shape, every field it reads optional. A function that
