@@ -95,8 +95,9 @@ export type TheFactOfTheEspionageOrdersLine =
       kind: "a spy's report on a hero";
       heroName: string;
       targetName: string;
-      /** The realm the hero serves, as the world names it; null: he serves none. */
-      targetsRealmName: string | null;
+      /** The realm the hero serves, as the world names it; null: he serves none; undefined: his realm's index names
+       *  none (the prose writes "undefined", as before). */
+      targetsRealmName: string | null | undefined;
       /** His race and alignment as the world names them; null: none (the prose writes "?"). */
       race: string | null;
       alignment: string | null;
@@ -125,8 +126,9 @@ export type TheFactOfTheEspionageOrdersLine =
   | {
       kind: 'a realm learns a spy was caught on its hero';
       spyName: string;
-      /** The realm the spy serves, as the world names it; null: he serves none. */
-      spysRealmName: string | null;
+      /** The realm the spy serves, as the world names it; null: he serves none; undefined: his realm's index names none
+       *  (the prose writes "undefined", as before). */
+      spysRealmName: string | null | undefined;
       targetName: string;
       provinceName: string;
     }
@@ -163,7 +165,8 @@ export type TheFactOfTheEspionageOrdersLine =
       provinceName: string;
       gold: number;
       thiefName: string;
-      thiefsRealmName: string;
+      /** The thief's realm, as the world names it; undefined: his realm's index names none (the prose writes "undefined"). */
+      thiefsRealmName: string | undefined;
     }
   | {
       kind: "a thief is caught and beaten back by a garrison's guards";
@@ -174,7 +177,8 @@ export type TheFactOfTheEspionageOrdersLine =
   | {
       kind: "a realm learns a thief was caught at its garrison's paymaster";
       thiefName: string;
-      thiefsRealmName: string;
+      /** The thief's realm, as the world names it; undefined: his realm's index names none (the prose writes "undefined"). */
+      thiefsRealmName: string | undefined;
       provinceName: string;
     }
   | { kind: "a thief's attempt on a paymaster fails unnoticed"; heroName: string; provinceName: string }
@@ -199,7 +203,8 @@ export type TheFactOfTheEspionageOrdersLine =
   | {
       kind: 'a realm learns a thief stole its gold';
       thiefName: string;
-      thiefsRealmName: string;
+      /** The thief's realm, as the world names it; undefined: his realm's index names none (the prose writes "undefined"). */
+      thiefsRealmName: string | undefined;
       gold: number;
       victimName: string;
     }
@@ -214,7 +219,8 @@ export type TheFactOfTheEspionageOrdersLine =
   | {
       kind: 'a realm learns a thief stole a magic item';
       thiefName: string;
-      thiefsRealmName: string;
+      /** The thief's realm, as the world names it; undefined: his realm's index names none (the prose writes "undefined"). */
+      thiefsRealmName: string | undefined;
       itemName: string;
       victimName: string;
     }
@@ -262,7 +268,8 @@ export type TheFactOfTheEspionageOrdersLine =
     }
   | {
       kind: "a realm's courier is waylaid on the road";
-      realmName: string;
+      /** The robbed realm, as the world names it; undefined: its index names none (the prose writes "undefined"). */
+      realmName: string | undefined;
       itemName: string;
       /** Who sent the parcel, as it names him; null: it names none. */
       senderName: string | null;
@@ -273,7 +280,8 @@ export type TheFactOfTheEspionageOrdersLine =
   | {
       kind: 'a realm learns a Grand Heist was staged on it';
       thiefName: string;
-      thiefsRealmName: string;
+      /** The thief's realm, as the world names it; undefined: his realm's index names none (the prose writes "undefined"). */
+      thiefsRealmName: string | undefined;
       provinceName: string;
       haul: TheHaulOfAGrandHeist;
     }
@@ -282,7 +290,8 @@ export type TheFactOfTheEspionageOrdersLine =
   | {
       kind: 'a realm learns a thief was driven off its vaults';
       thiefName: string;
-      thiefsRealmName: string;
+      /** The thief's realm, as the world names it; undefined: his realm's index names none (the prose writes "undefined"). */
+      thiefsRealmName: string | undefined;
       provinceName: string;
     }
   | { kind: 'a hero lacks the Spy mastery to Assassinate'; heroName: string }

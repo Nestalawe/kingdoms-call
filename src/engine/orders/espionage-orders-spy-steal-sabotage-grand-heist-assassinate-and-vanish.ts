@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { homeFounderOf, homeProvinceIdFor } from '../grand-design.ts';
@@ -40,6 +39,27 @@ import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-enco
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.ts';
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import {
+  servesARealm,
+  theOneThePickFell,
+  theOneTakenOut,
+} from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import {
+  aLevelAboveNothing,
+  theProvinceIsHanded,
+  theRealmIsHanded,
+} from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+import type { WhatAThiefWasCaughtAt } from './the-facts-the-espionage-orders-lines-record.ts';
+import type { Character, GameState, Item, Province, Realm } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+
+/** A parcel on the road, as Send Item queues it this turn and the heist guards it (as if one may be missing). */
+type AParcelOnTheRoad = NonNullable<GameState['_itemDeliveries']>[number];
+/** A hero's item as the cloaked face's check reads it: its effect guarded, as if an item may have none. */
+interface AnItemItsEffectGuarded {
+  readonly effect?: { readonly stat?: string | undefined } | null | undefined;
+}
 
 // ── THE ESPIONAGE ORDERS (plan P1-08j6: the sixth family taken out of processOrder in resolveTurn) ──
 // Spy (on the province he stands in, or on a hero beside him), Steal (a magic item or gold from a hero beside him, or
@@ -57,7 +77,13 @@ import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-
 // the victim lets the thief go and merely raises the alarm. A Vanished thief (Thief 9) is never
 // brought to bay at all. What he was caught at is a record of its values (WhatAThiefWasCaughtAt, the facts module beside
 // this file): the victim's line tells it.
-export function thiefCaughtScuffle(turnContext, prov, thief, victim, caughtAt) {
+export function thiefCaughtScuffle(
+  turnContext: TurnContext,
+  prov: Province,
+  thief: Character,
+  victim: Character,
+  caughtAt: WhatAThiefWasCaughtAt,
+) {
   const { G } = turnContext;
   const targetsPi = [thief.player, victim.player].filter((x) => x != null);
   if (thief._vanishTurn === G.turn) {
@@ -93,9 +119,10 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, caughtAt) {
     return;
   }
   const COMBAT_ONLY = COMBAT_ONLY_TACTICS;
-  const filterPlan = (plan) =>
-    ((plan && plan.tactics) || ['ME']).filter(
-      (t) => COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase()) || String(t).toUpperCase().startsWith('CA:'),
+  const filterPlan = (plan: Character['encounterPlan']) =>
+    (plan?.tactics ?? ['ME']).filter(
+      // split gives at least one piece: `?? ''` never holds
+      (t) => COMBAT_ONLY.has((t.split(':')[0] ?? '').toUpperCase()) || t.toUpperCase().startsWith('CA:'),
     );
   ensureEncounterPlan(turnContext, thief);
   const atkPlan = filterPlan(thief.encounterPlan);
@@ -124,24 +151,25 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, caughtAt) {
     atkPlan,
     defPlan,
     prov,
-    (...a) => effStat(turnContext, ...a),
+    (...a: [hero: Parameters<typeof effStat>[1], stat: string]) => effStat(turnContext, ...a),
     rng,
     G,
   );
-  enc.narrative.forEach((line) =>
+  enc.narrative.forEach((line) => {
     emitNarrLine(turnContext, line, {
       type: 'combat',
       audience: { actor: thief.player, realms: targetsPi },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: _duelChars,
-    }),
-  );
+    });
+  });
   thief.hp = Math.max(1, enc.atkHp);
   if (victim.player !== null) victim.hp = Math.max(1, enc.defHp);
   if (enc.atkKilled || enc.atkHp <= 0) {
     if (_escapesTheEnd(thief)) {
-      if (thief.hp != null && thief.hp <= 0) thief.hp = 1;
+      const theThiefsHp = asItsGuardReadsIt(thief.hp);
+      if (theThiefsHp != null && theThiefsHp <= 0) thief.hp = 1;
       emit(turnContext, {
         type: 'combat',
         fact: _garrethEscapeLine(thief),
@@ -168,7 +196,8 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, caughtAt) {
   }
   if (enc.defKilled || enc.defHp <= 0) {
     if (_escapesTheEnd(victim)) {
-      if (victim.hp != null && victim.hp <= 0) victim.hp = 1;
+      const theVictimsHp = asItsGuardReadsIt(victim.hp);
+      if (theVictimsHp != null && theVictimsHp <= 0) victim.hp = 1;
       emit(turnContext, {
         type: 'combat',
         fact: _garrethEscapeLine(victim),
@@ -201,21 +230,25 @@ export function thiefCaughtScuffle(turnContext, prov, thief, victim, caughtAt) {
 }
 // Shared: lift a random magic item from a victim (null if none, or if the victim is a master
 // thief).
-export function liftRandomItem(turnContext, thief, victim) {
+export function liftRandomItem(
+  turnContext: TurnContext,
+  thief: Character,
+  victim: Character,
+): (Item & { readonly guarded?: undefined }) | { readonly guarded: true } | null {
   const { G } = turnContext;
-  const items = victim.items || [];
+  const items = asItsGuardReadsIt(victim.items) ?? [];
   const pool = transferableItems(items); // a granted Mithril suit cannot be lifted off its wearer
   if (!pool.length) return null;
   if (perkTier(victim, 'thief') >= 3) return { guarded: true }; // THIEF L8: a master thief's own pockets cannot be picked
   // the thief grabs what comes to hand — the pick is weighted TOWARD the lesser trinkets. Weak
   // 8: Moderate 4: Powerful 2: Legendary 1, so a hero carrying one item of each tier loses the
   // Weak one 53% of the time and the Legendary one under 7%.
-  const STEAL_TIER_W = { 1: 8, 2: 4, 3: 2, 4: 1 };
-  const wsum = pool.reduce((t, x) => t + (STEAL_TIER_W[x.tier || 1] || 8), 0);
+  const STEAL_TIER_W: Readonly<Partial<Record<number, number>>> = { 1: 8, 2: 4, 3: 2, 4: 1 }; // read by any tier
+  const wsum = pool.reduce((t, x) => t + ((STEAL_TIER_W[x.tier || 1] ?? 0) || 8), 0);
   let r = kcRng() * wsum,
-    it = pool[pool.length - 1];
+    it = theOneThePickFell(pool[pool.length - 1]); // the last of a pool just found not empty
   for (const x of pool) {
-    r -= STEAL_TIER_W[x.tier || 1] || 8;
+    r -= (STEAL_TIER_W[x.tier || 1] ?? 0) || 8;
     if (r < 0) {
       it = x;
       break;
@@ -223,15 +256,17 @@ export function liftRandomItem(turnContext, thief, victim) {
   }
   items.splice(items.indexOf(it), 1);
   applyItemMaxHp(victim, it);
-  thief.items = thief.items || [];
+  thief.items = asItsGuardReadsIt(thief.items) ?? [];
   thief.items.push(it);
   applyItemMaxHp(thief, it);
   it._stolenTurn = G.turn; // a charmed hero's automatic Send Item hands over this turn's loot first
   return it;
 }
 // Spy: the province he stands in (what it holds, and the realm's secrets if it is a capital), or a hero beside him (every skill, item and company); a hero spied on may catch the spy.
-export function resolveSpyOrder(turnContext, c, target, prov) {
+export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: string, prov: Province | undefined) {
   const { G } = turnContext;
+  // his realm, as the spy reads it by his realm's index: none for a hero who serves none (the code guards one)
+  const hisRealm = () => (c.player === null ? undefined : G.players[c.player]);
   const hasCrystalOrb = theSpysItemsMakeHisSpySure(activeItems(c)); // the items' registry (plan P1-19o)
   // sd21 Forgery Arts: +15% spy success chance
   const targetProvForSpy = G.world.provinces[parseInt(target)];
@@ -240,13 +275,13 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
   // registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to a spy's chance", "… cut a rival spy's
   // chance", "… add to spying on a hero" and "… add to catching a spy", each handed where he spies; the coast and the
   // home are questions, asked only by an effect scoped to them, as before.)
-  const _spyProv = String(target || '').startsWith('char:') ? prov : targetProvForSpy || prov;
-  const _whereHeSpies = (ownerPi) => ({
-    theGround: _spyProv ? _spyProv.terrain : undefined,
+  const _spyProv = (target || '').startsWith('char:') ? prov : (targetProvForSpy ?? prov);
+  const _whereHeSpies = (ownerPi: number | null) => ({
+    theGround: _spyProv?.terrain,
     isItCoastal: () => !!(_spyProv && provIsCoastal(G, _spyProv)),
     isItTheRealmsHome: () => !!(_spyProv && ownerPi != null && homeFounderOf(G, _spyProv.id) === ownerPi),
   });
-  const spyBonus = whatARealmsDiscoveriesAddToASpysChance(G.players[c.player], _whereHeSpies(null)); // spy discoveries
+  const spyBonus = whatARealmsDiscoveriesAddToASpysChance(hisRealm(), _whereHeSpies(null)); // spy discoveries
   const cipherPenalty =
     targetProvForSpy && targetProvForSpy.owner !== null && targetProvForSpy.owner !== c.player
       ? whatARealmsDiscoveriesCutARivalSpysChanceBy(
@@ -262,13 +297,16 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
   // −15% in this realm's own land (clamped 5–95; The Shadow is never caught). Caught → a personal
   // combat, unless the target's Encounter Plan stance is Refuse (same scuffle as a caught
   // thief).
-  if (String(target || '').startsWith('char:')) {
-    const _tid = String(target).slice(5);
+  // processOrder hands him the province he stands in; for none, a TypeError
+  theProvinceIsHanded(prov);
+  if ((target || '').startsWith('char:')) {
+    const _tid = target.slice(5);
     // R-119: a hero whose Invisibility holds is not to be found by another realm's spy (the line names no one)
-    const _tgt = (G.characters || []).find(
-      (x) => x && String(x.id) === _tid && x.alive && !isHiddenByInvisibilityFrom(turnContext, x, c.player),
+    const _tgt = (asItsGuardReadsIt(G.characters) ?? []).find(
+      (x: Character | null | undefined) =>
+        x && String(x.id) === _tid && x.alive && !isHiddenByInvisibilityFrom(turnContext, x, c.player),
     );
-    if (!_tgt || _tgt.location !== c.location || _tgt.player === c.player) {
+    if (_tgt?.location !== c.location || _tgt.player === c.player) {
       emit(turnContext, {
         type: 'system',
         fact: {
@@ -283,7 +321,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
       });
       return;
     }
-    if (activeItems(_tgt).some((it) => it && it.effect && it.effect.stat === 'hidden')) {
+    if (activeItems(_tgt).some((it: AnItemItsEffectGuarded | null | undefined) => it?.effect?.stat === 'hidden')) {
       emit(turnContext, {
         type: 'system',
         fact: {
@@ -307,10 +345,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
       Math.min(
         95,
         dispFloor(
-          (0.25 +
-            0.1 * _mySpy +
-            spyBonus +
-            whatARealmsDiscoveriesAddToSpyingOnAHero(G.players[c.player], _whereHeSpies(null))) *
+          (0.25 + 0.1 * _mySpy + spyBonus + whatARealmsDiscoveriesAddToSpyingOnAHero(hisRealm(), _whereHeSpies(null))) *
             100,
         ),
       ),
@@ -338,20 +373,26 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
       TM(c).spyActions = (TM(c).spyActions || 0) + 1; // TITLE MERIT: Spymaster
       noteEspionage(G, c, prov.id, 'read one of your heroes');
       trySkillGain(turnContext, c, 'spy', SKILLGAIN_STD);
-      const _ap = G.players[c.player];
+      const _ap = hisRealm();
       // 2026-10-15 (Toby, D2/D9): every skill, the magic items carried and the army units led, kept for
       // the report's hero sightings — for a wandering hero or a local chieftain as for a rival's hero.
       if (_ap) {
-        _ap._spiedHeroSkills = _ap._spiedHeroSkills || {};
+        _ap._spiedHeroSkills ??= {};
         _ap._spiedHeroSkills[_tgt.id] = {
           name: _tgt.name,
-          isKing: !!_tgt.isKing,
+          isKing: _tgt.isKing,
           alignment: _tgt.alignment || null,
           race: _tgt.race || null,
-          kingdom: _tgt.player != null ? G.players[_tgt.player]?.name || null : null,
-          skills: { ...(_tgt.skills || {}) },
-          items: (_tgt.items || []).map((it) => it && it.name).filter(Boolean),
-          armies: (_tgt.armies || []).map((a) => ({ type: a.type, quality: a.quality, unitName: a.unitName || '' })),
+          kingdom: _tgt.player != null ? (G.players[_tgt.player]?.name ?? '') || null : null,
+          skills: { ..._tgt.skills },
+          items: (asItsGuardReadsIt(_tgt.items) ?? [])
+            .map((it: Item | null | undefined) => it?.name)
+            .filter((n): n is string => Boolean(n)),
+          armies: (asItsGuardReadsIt(_tgt.armies) ?? []).map((a) => ({
+            type: a.type,
+            quality: a.quality,
+            unitName: a.unitName || '',
+          })),
           turn: G.turn,
         };
       }
@@ -364,12 +405,12 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
           targetsRealmName: _tgt.player != null ? G.players[_tgt.player]?.name : null,
           race: _tgt.race || null,
           alignment: _tgt.alignment || null,
-          isKing: !!_tgt.isKing,
-          skills: Object.entries(_tgt.skills || {})
-            .filter(([, v]) => v > 0)
+          isKing: _tgt.isKing,
+          skills: Object.entries(asItsGuardReadsIt(_tgt.skills) ?? {})
+            .filter(aLevelAboveNothing)
             .sort((a, b) => b[1] - a[1]),
-          itemNames: (_tgt.items || []).map((it) => it.name),
-          units: theUnitsAsTheLineNamesThem(_tgt.armies || []),
+          itemNames: (asItsGuardReadsIt(_tgt.items) ?? []).map((it) => it.name),
+          units: theUnitsAsTheLineNamesThem(asItsGuardReadsIt(_tgt.armies) ?? []),
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -407,7 +448,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
         fact: {
           kind: "a hero's chance to notice a spy",
           targetName: _tgt.name,
-          targetsSpy: theStatShownAsALineTellsIt(turnContext, c.player, _tgt, 'spy'),
+          targetsSpy: theStatShownAsALineTellsIt(turnContext, c.player, _tgt, 'spy', undefined),
           heroName: c.name,
           inTheirOwnLand: _tgRealmLand,
           inYourLand: _myLand,
@@ -475,8 +516,7 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
   // Disguise Techniques: 50% HARDER to be discovered — the counter-intelligence alert
   // that would otherwise always fire is turned aside half the time. (The discoveries' registry's since plan P1-19ad:
   // "orderOutcome: a realm's discoveries keep a spy's success quiet", its row's chance.)
-  const _dgChance =
-    success && !c._spyDisguised ? theChanceARealmsDiscoveriesKeepASpysSuccessQuiet(G.players[c.player]) : null;
+  const _dgChance = success && !c._spyDisguised ? theChanceARealmsDiscoveriesKeepASpysSuccessQuiet(hisRealm()) : null;
   if (_dgChance !== null) {
     const _dgRoll = d100();
     const _dgPct = Math.round(_dgChance * 100);
@@ -512,8 +552,17 @@ export function resolveSpyOrder(turnContext, c, target, prov) {
   return;
 }
 // Steal: a magic item (or, failing one, gold) from a hero beside him, or the pay of a rival's garrison; a thief who fails may be caught.
-export function resolveStealOrder(turnContext, c, target, prov, player) {
+export function resolveStealOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: string,
+  prov: Province | undefined,
+  player: Realm | undefined,
+) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
+  // hero who gives it, for the phases after), so he serves one; for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm steals');
   // ── STEAL ── Needs Thief 1+. Targets: a character in the province (magic item, or 5% of
   // their realm's treasury — the player chooses via `extra`, defaulting to an item when one
   // is carried), or the province GARRISON paymaster (target 'garrison': 1g per garrison unit
@@ -531,9 +580,8 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
     });
     return;
   }
-  const _tgtRaw = String(target || '')
-    .trim()
-    .toLowerCase();
+  theProvinceIsHanded(prov);
+  const _tgtRaw = (target || '').trim().toLowerCase();
   // cap at 95%. 50 + 10×5 reached a flat 100 at Thief 5, and nothing in this engine is ever
   // certain — every other roll is clamped short of it. The halved variants (a target leading
   // troops, a guarded paymaster) floor out of this figure, so they cap at 47%.
@@ -541,7 +589,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
   const escapeChance = Math.min(95, thiefLevel * 20); // chance to slip away unnoticed on a failure
   if (_tgtRaw === 'garrison') {
     // (e) The garrison paymaster: 1g per unit standing garrison here, from the province's owner.
-    const _gN = (prov.garrisonArmies || []).length;
+    const _gN = (asItsGuardReadsIt(prov.garrisonArmies) ?? []).length;
     if (prov.owner == null || prov.owner === c.player || _gN === 0) {
       emit(turnContext, {
         type: 'system',
@@ -572,9 +620,12 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
     });
     if (roll <= chance) {
       noteEspionage(G, c, prov.id, 'robbed the garrison paymaster');
+      // every realm's index names a realm of the state, so the owner's is one; for none, the TypeError its read throws
+      if (!ownerP) throw new TypeError("Cannot read properties of undefined (reading 'gold')");
       const take = Math.min(ownerP.gold || 0, _gN);
       if (take > 0) {
         ownerP.gold -= take;
+        theRealmIsHanded(player);
         player.gold = (player.gold || 0) + take;
         c.merits = (c.merits || 0) + 1;
       }
@@ -684,7 +735,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
   // A magic item is lifted if one can be (random, weighted toward the weaker tiers — see
   // liftRandomItem); a target with nothing liftable is robbed of gold instead. The saved
   // `extra` ('item'/'gold') from older order forms is ignored.
-  const hasItems = transferableItems(victim.items || []).length > 0;
+  const hasItems = transferableItems(asItsGuardReadsIt(victim.items) ?? []).length > 0;
   const wantGold = !hasItems;
   if (wantGold && victim.player == null) {
     emit(turnContext, {
@@ -696,7 +747,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
     });
     return;
   }
-  const leadsArmies = (victim.armies || []).length > 0;
+  const leadsArmies = (asItsGuardReadsIt(victim.armies) ?? []).length > 0;
   let stealChance = stealBase;
   if (leadsArmies) stealChance = Math.floor(stealChance / 2);
   const stealRoll = d100();
@@ -719,7 +770,9 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
   if (stealRoll <= stealChance) {
     noteEspionage(G, c, prov.id, wantGold ? 'picked a hero\u2019s purse' : 'lifted a magic item from a hero');
     if (wantGold) {
-      const purse = G.players[victim.player]?.gold || 0;
+      // the victim's realm, as JavaScript reads it by his realm's index (a hero of none was turned away above)
+      const victimsRealm = victim.player === null ? undefined : G.players[victim.player];
+      const purse = (victimsRealm?.gold ?? 0) || 0;
       const take = Math.min(purse, Math.max(1, Math.floor(purse * 0.05)));
       if (purse <= 0) {
         emit(turnContext, {
@@ -730,7 +783,10 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
           province: prov.id,
         });
       } else {
-        G.players[victim.player].gold -= take;
+        // a purse above nothing is a realm's; for none, the TypeError its read throws
+        if (!victimsRealm) throw new TypeError("Cannot read properties of undefined (reading 'gold')");
+        victimsRealm.gold -= take;
+        theRealmIsHanded(player);
         player.gold = (player.gold || 0) + take;
         c.merits = (c.merits || 0) + 1;
         emit(turnContext, {
@@ -761,7 +817,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
       }
     } else {
       const stolen = liftRandomItem(turnContext, c, victim);
-      if (stolen && stolen.guarded) {
+      if (stolen?.guarded) {
         emit(turnContext, {
           type: 'system',
           fact: { kind: "a master thief's own pockets cannot be picked", heroName: c.name, victimName: victim.name },
@@ -770,6 +826,9 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
           province: prov.id,
         });
       } else {
+        // a victim with an item a thief may lift loses one (liftRandomItem gives none only for an empty pool); for none,
+        // the TypeError the read of its name throws
+        if (!stolen) throw new TypeError("Cannot read properties of null (reading 'name')");
         c.merits = (c.merits || 0) + 2;
         emit(turnContext, {
           type: 'hire',
@@ -829,7 +888,7 @@ export function resolveStealOrder(turnContext, c, target, prov, player) {
   return;
 }
 // Sabotage (Spy 7): an enemy province yields no tax this turn, and one company of its garrison is put to the torch.
-export function resolveSabotageOrder(turnContext, c, target) {
+export function resolveSabotageOrder(turnContext: TurnContext, c: Character, target: string) {
   const { G } = turnContext;
   if (skillLevel(c, 'spy') < 7) {
     emit(turnContext, {
@@ -841,7 +900,7 @@ export function resolveSabotageOrder(turnContext, c, target) {
     return;
   }
   const tp = G.world.provinces[parseInt(target)];
-  if (!tp || tp.owner == null || tp.owner === c.player) {
+  if (tp?.owner == null || tp.owner === c.player) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'Sabotage needs an enemy province the hero has seen', heroName: c.name },
@@ -865,7 +924,7 @@ export function resolveSabotageOrder(turnContext, c, target) {
   }
   tp._sabotagedForTurn = G.turn;
   let torchedCompany = null;
-  if ((tp.garrisonArmies || []).length > 0) {
+  if ((asItsGuardReadsIt(tp.garrisonArmies) ?? []).length > 0) {
     const u = tp.garrisonArmies.splice(Math.floor(kcRng() * tp.garrisonArmies.length), 1)[0];
     torchedCompany = u ? { quality: u.quality || null, type: u.type } : null;
   }
@@ -882,8 +941,11 @@ export function resolveSabotageOrder(turnContext, c, target) {
   return;
 }
 // Grand Heist (Thief 7): a quarter of an enemy's treasury from the vaults of its capital or rich country he stands in, and a parcel cut from its couriers.
-export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
+export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, ph: number, prov: Province | undefined) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
+  // hero who gives it, for the phases after), so he serves one; for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm stages a Grand Heist');
   // ── GRAND HEIST ────
   // The TARGET is the PROVINCE the thief is standing in, not any one hero — the job is
   // breaking into a realm's vaults, and the realm robbed is whoever holds the ground.
@@ -917,6 +979,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
     });
     return;
   }
+  theProvinceIsHanded(prov);
   const vp = prov.owner;
   if (vp == null || vp === c.player) {
     emit(turnContext, {
@@ -934,7 +997,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       fact: {
         kind: 'a Grand Heist on a realm not at war is refused',
         heroName: c.name,
-        realmName: G.players[vp]?.name || null,
+        realmName: (G.players[vp]?.name ?? '') || null,
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -962,8 +1025,12 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
   }
   c._grandHeistTurn = G.turn; // the attempt is spent, win or lose
   // Who could catch him, and how well watched are the vaults?
-  const _ghWardens = (G.characters || []).filter((x) => x && x.alive && x.player === vp && x.location === prov.id);
-  const _ghGuarded = (prov.garrisonArmies || []).length > 0 || _ghWardens.some((x) => (x.armies || []).length > 0);
+  const _ghWardens = (asItsGuardReadsIt(G.characters) ?? []).filter(
+    (x: Character | null | undefined) => x && x.alive && x.player === vp && x.location === prov.id,
+  );
+  const _ghGuarded =
+    (asItsGuardReadsIt(prov.garrisonArmies) ?? []).length > 0 ||
+    _ghWardens.some((x) => (asItsGuardReadsIt(x.armies) ?? []).length > 0);
   const _hLvl = skillLevel(c, 'thief');
   let _hChance = Math.min(95, 60 + 5 * (_hLvl - 5));
   if (_ghGuarded) _hChance = Math.floor(_hChance / 2);
@@ -976,7 +1043,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       thiefLevel: _hLvl,
       isTheEnemyCapital: _ghHome,
       provinceName: prov.name,
-      realmName: G.players[vp]?.name || null,
+      realmName: (G.players[vp]?.name ?? '') || null,
       chance: _hChance,
       roll: _hRoll,
       theVaultsAreGuarded: _ghGuarded,
@@ -987,36 +1054,46 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
   });
   if (_hRoll <= _hChance) {
     noteEspionage(G, c, prov.id, 'cracked the vaults');
-    const purse = G.players[vp]?.gold || 0;
+    const theRobbedRealm = G.players[vp]; // read once: the same realm each read below names
+    const purse = (theRobbedRealm?.gold ?? 0) || 0;
     let take = Math.floor(purse * 0.25);
     if (perkTier(c, 'thief') >= 3) take *= 2; // THIEF L8: gold stolen doubled — the thief takes the full amount even if the realm cannot cover it (floored at 0 below)
-    let _heistItem = null;
+    let _heistItem: Item | null = null;
     if (take > 0) {
-      G.players[vp].gold = Math.max(0, purse - take);
-      G.players[c.player].gold = (G.players[c.player].gold || 0) + take;
+      // a purse above nothing is a realm's, and every realm's index names a realm of the state (the thief's too); for
+      // none, the TypeError its read throws
+      if (!theRobbedRealm) throw new TypeError("Cannot set properties of undefined (setting 'gold')");
+      theRobbedRealm.gold = Math.max(0, purse - take);
+      const theThiefsRealm = G.players[c.player];
+      if (!theThiefsRealm) throw new TypeError("Cannot read properties of undefined (reading 'gold')");
+      theThiefsRealm.gold = (theThiefsRealm.gold || 0) + take;
     }
     // ── COURIER INTERCEPT ── one item from a parcel still on the road inside the robbed
     // realm.
-    const _ghParcels = (G._itemDeliveries || []).filter((d) => {
+    const _ghParcels = (G._itemDeliveries ?? []).filter((d: AParcelOnTheRoad | null | undefined) => {
       if (!d || !Array.isArray(d.items) || !d.items.length) return false;
-      const dest = (G.characters || []).find((ch) => ch && ch.id === d.toId);
+      const dest = (asItsGuardReadsIt(G.characters) ?? []).find(
+        (ch: Character | null | undefined) => ch?.id === d.toId,
+      );
       return !!dest && dest.player === vp;
     });
     if (_ghParcels.length) {
-      const _p = _ghParcels[Math.floor(kcRng() * _ghParcels.length)];
-      const _it = _p.items.splice(Math.floor(kcRng() * _p.items.length), 1)[0];
-      c.items = c.items || [];
+      const _p = theOneThePickFell(_ghParcels[Math.floor(kcRng() * _ghParcels.length)]);
+      const _it = theOneTakenOut(_p.items, Math.floor(kcRng() * _p.items.length));
+      c.items = asItsGuardReadsIt(c.items) ?? [];
       c.items.push(_it);
       applyItemMaxHp(c, _it);
       _heistItem = _it;
-      const _dest = (G.characters || []).find((ch) => ch && ch.id === _p.toId); // the parcel's intended recipient
+      const _dest = (asItsGuardReadsIt(G.characters) ?? []).find(
+        (ch: Character | null | undefined) => ch?.id === _p.toId,
+      ); // the parcel's intended recipient
       emit(turnContext, {
         type: 'system',
         fact: {
           kind: "a realm's courier is waylaid on the road",
           realmName: G.players[vp]?.name,
           itemName: _it.name,
-          senderName: _p.fromName || null,
+          senderName: (_p.fromName ?? '') || null,
           recipientName: _dest ? _dest.name : null,
         },
         audience: { actor: null, realms: [vp] },
@@ -1074,7 +1151,7 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
       return;
     }
     // A hero of the robbed realm gives chase; failing that, the guards do.
-    const _ghCatcher = _ghWardens.find((x) => !x.isKing) || _ghWardens[0] || null;
+    const _ghCatcher = _ghWardens.find((x) => !x.isKing) ?? _ghWardens[0] ?? null;
     if (_ghCatcher)
       thiefCaughtScuffle(turnContext, prov, c, _ghCatcher, {
         kind: 'caught breaking into the vaults of a province',
@@ -1112,7 +1189,12 @@ export function resolveGrandHeistOrder(turnContext, c, ph, prov) {
   return;
 }
 // Assassinate (Spy 9): a knife in the dark for an enemy hero beside him.
-export function resolveAssassinateOrder(turnContext, c, target, prov) {
+export function resolveAssassinateOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: string,
+  prov: Province | undefined,
+) {
   const { G } = turnContext;
   if (skillLevel(c, 'spy') < 9) {
     emit(turnContext, {
@@ -1123,6 +1205,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
     });
     return;
   }
+  theProvinceIsHanded(prov);
   // R-119: a hero whose Invisibility holds is no mark for another realm's assassin
   const victim = G.characters.find(
     (ch) =>
@@ -1186,11 +1269,11 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       victimName: victim.name,
       chance: chance,
       roll: roll,
-      theMarkIsAKing: !!victim.isKing,
+      theMarkIsAKing: victim.isKing,
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-    heroes: [c.id, victim.id].filter((v) => v != null),
+    heroes: [c.id, victim.id].filter((v: number | null | undefined) => v != null), // ids guarded as if missing
     province: prov.id,
   });
   if (victim.player != null && victim.player !== c.player)
@@ -1199,11 +1282,11 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       fact: {
         kind: "a realm learns an attempt was made on its hero's life",
         victimName: victim.name,
-        theMarkIsAKing: !!victim.isKing,
+        theMarkIsAKing: victim.isKing,
       },
       audience: { actor: victim.player, realms: [victim.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-      heroes: [victim.id].filter((v) => v != null),
+      heroes: [victim.id].filter((v: number | null | undefined) => v != null), // ids guarded as if missing
       province: prov.id,
     });
   if (roll <= chance) {
@@ -1243,7 +1326,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
       fact: { kind: "an assassin's attempt fails", heroName: c.name, victimName: victim.name },
       audience: { actor: c.player, realms: [c.player, victim.player].filter((x) => x != null) },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-      heroes: [c.id, victim.id].filter((v) => v != null),
+      heroes: [c.id, victim.id].filter((v: number | null | undefined) => v != null), // ids guarded as if missing
       province: prov.id,
     });
   }
@@ -1251,7 +1334,7 @@ export function resolveAssassinateOrder(turnContext, c, target, prov) {
   return;
 }
 // Vanish (Thief 9): for the rest of the turn nothing can bring him to bay or harm him.
-export function resolveVanishOrder(turnContext, c, prov) {
+export function resolveVanishOrder(turnContext: TurnContext, c: Character, prov: Province | undefined) {
   const { G } = turnContext;
   if (skillLevel(c, 'thief') < 9) {
     emit(turnContext, {
@@ -1263,6 +1346,7 @@ export function resolveVanishOrder(turnContext, c, prov) {
     return;
   }
   c._vanishTurn = G.turn;
+  theProvinceIsHanded(prov);
   emit(turnContext, {
     type: 'move',
     fact: { kind: 'a thief melts into the shadows', heroName: c.name },

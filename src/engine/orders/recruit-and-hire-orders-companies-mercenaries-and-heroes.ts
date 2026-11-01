@@ -86,7 +86,7 @@ export function theNameDrawn(name: string | undefined): string {
   return name;
 }
 /** A skill held above 0, as the hire's line copies it (`v > 0`, as before: a level missing is not). */
-function aLevelAboveNothing(skill: [string, number | undefined]): skill is [string, number] {
+export function aLevelAboveNothing(skill: [string, number | undefined]): skill is [string, number] {
   return Number(skill[1]) > 0;
 }
 // ── HIRE PRE-ORDERS LAND (shared by Hire Hero and the Neutral BROKER hire) ────

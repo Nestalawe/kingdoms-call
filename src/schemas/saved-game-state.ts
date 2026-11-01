@@ -906,7 +906,11 @@ export const GameStateSchema = z.object({
     })
     .optional(),
   _phSeq: z.number().optional(),
-  _itemDeliveries: z.array(z.unknown()).optional(),
+  // (P1-10b22: read by the Grand Heist) the parcels Send Item puts on the road this turn, which the couriers deliver
+  // after the phases (a save holds the list empty): whom each is bound for, its items and who sent it
+  _itemDeliveries: z
+    .array(z.object({ toId: CharacterIdSchema, items: z.array(ItemSchema), fromName: z.string().optional() }))
+    .optional(),
   reckoningDecaySteps: z.number().optional(),
   reckoning: z
     .object({
