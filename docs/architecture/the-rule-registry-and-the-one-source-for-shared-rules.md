@@ -2,8 +2,8 @@
 
 ## The rule registry
 
-A **content effect** (a unit ability; since P1-19m a magic item's effect, [below](#the-items-registry); then the other
-families, each with its file, below) is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
+A **content effect** (a unit ability, a magic item's effect, [below](#the-items-registry), and the other
+families', each with its file) is written once: **one row in `src/content/`** (its unit, its name as the books write it, its numbers each with how the
 books write them, and the units it counts or reaches when more than its own) and **one entry in the registry**
 (`src/engine/rules/the-registry-of-content-effects.ts`), keyed by the same slug (`'sheer-numbers'`). The entry names the
 ability's **effect** at each **stage** it acts in; the effects are in `src/engine/rules/<family>/`, a file per group of
@@ -11,9 +11,9 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 
 - **Hook points** are the engine's real decisions, thirteen of them: `strength`, `volley`, `fate`, `movementCost`,
   `orderValidity`, `experience`, `visibility`, `turnStart`, `turnEnd`, `orderOutcome` (an order's outcome a hero's
-  item changes: P1-19o, the first of the items family's four new ones), `aHerosStanding` (a hero's own figures his
-  item changes: P1-19p), `personalCombat` (a fighter in a personal combat: P1-19q) and `treasury` (what an item is for and
-  worth: P1-19t) (the union `HookPointName`). Each is a set of named
+  item changes), `aHerosStanding` (a hero's own figures his
+  item changes), `personalCombat` (a fighter in a personal combat) and `treasury` (what an item is for and
+  worth) (the union `HookPointName`). Each is a set of named
   stages, in the order the engine runs them (`TheStagesOfEachHookPoint`). A stage's effect type says exactly what the
   stage hands the effect, read-only, and what it returns; an effect changes nothing, at the turn's end too (it returns
   what the turn must do, and the turn does it). A stage or a hook point typed `never` has no signature yet: its family's
@@ -92,7 +92,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   quality and race) or nothing, and Early Winter names it (a die, as before), adds it to the garrison and writes the
   line. Reaver Crews' landing mark, which the move order sets for a column its longships put ashore, asks the content
   row's unit (`reaver-crews`), with no stage of its own. Every stage of `strength`, `volley` and `fate`, and `turnEnd`'s
-  one, has its signature (and the other families', below); since P1-19ag every hook point has one.
+  one, has its signature (and the other families', below); every hook point has one.
 - **What checks it:** the compiler, both ways (the registry ends `satisfies Record<UnitAbilitySlug, UnitAbilityEntry>`: a
   content row with no entry fails, TS1360, an entry with no row too, TS2353:
   `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`); each effect in its
@@ -104,13 +104,13 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   `src/content/unit-abilities-their-names-numbers-and-words.ts`; its effect in the stage's file under
   `src/engine/rules/unit-abilities/`, reading its numbers from its row (another ability is asked by its slug, never by a
   unit's name); its entry in the registry and its place in the stage's order; its name and numbers in the unit's blurb
-  (`UNIT_ABILITIES`, in the same content file since P1-19e: the player portal imports it, and the player page's entry
+  (`UNIT_ABILITIES`, in the content file: the player portal imports it, and the player page's entry
   lists the file so that the words tests read it as the page's) and its roster row (the words test reads them). The hook points' types live in the registry's file, which holds code:
   a file only `import type` reaches is in no bundle ([traps.md](../traps.md#an-effect-reads-only-what-its-hook-hands-it)).
 - **The abilities a table holds** (P1-19's second slice, Choice 2): 17 abilities stay in the tables the battle code
   reads by the unit's type, and no resolver names them: the 15 pre-battle strikes (each beast's `spells` in
   `PRIMAL_ARMY_DEFS_P`, and the winged riders' Screech Dive and Acid Spit in `BATTLE_ARMY_SPELLS`, beside it in
-  `src/content/kingdoms-call-data.ts` since P1-19l), Island Back (the Great Turtles' two berths, `KC_CARRIER_BERTHS`) and
+  `src/content/kingdoms-call-data.ts`), Island Back (the Great Turtles' two berths, `KC_CARRIER_BERTHS`) and
   Forest Runners (the Stag Riders' forest and jungle cells of `TERRAIN_MODS`, in `battle/terrain-and-unit-strength.ts`).
   Their casting is the spells' registry's (P1-19v). The words test reads each table: a strike's name and damage range (`2–4`, with
   the books' en dash), Island Back's count with what it counts ("two land units"), Forest Runners' factors with their
@@ -122,8 +122,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   keeps the last key, so a second entry fails `npm run typecheck` (TS1117), and the words tests check it too. The words
   tests find the blurbs as the player page's because its entry (`src/ui/player/page.ts`) lists the content file: keep
   that import, or `fileDeclaring(PLAYER, 'UNIT_ABILITIES')` finds no file. `tests/abilities-words.test.js` and
-  `tests/primal-abilities-words.test.js` name no ability since P1-19l: they check each unit's blurb and roster row, and
-  a few of the books' sentences. The race and beast tests (`tests/abilities-human.test.js` and its elven, dwarven,
+  `tests/primal-abilities-words.test.js` name no ability: they check each unit's blurb, roster row and a few of the books' sentences. The race and beast tests (`tests/abilities-human.test.js` and its elven, dwarven,
   orcish and beasts siblings, `tests/abilities-beasts-turn.test.js`, `tests/abilities-turn.test.js`) check the numbers in
   play. The grid's flyer set is `KC_UNIT_CLASS.aerial` (the riders and the flying beasts); the archers' first-target set
   is `KC_UNIT_CLASS.flying` (the riders only).
@@ -187,7 +186,8 @@ A **magic item's effect** (P1-19's items family, from P1-19m) is one row in
   added, a percentage the best, a flag set; the buckler's 1 and 5, and the open guard's 2 hits and 50% for a copy that
   carries none, are the rows'), **a rider** (`pcApplyFx`: the aura and drain the best, the burn, hit bonus and damage
   bonus added, each carried above 0, keyed `{ rider }`) and **Mithril** (`pcCharCombatant`'s flag). `pcArmourOf` asks
-  whether an item is worn as armour. A guardian's perk of the same ward or rider reaches the same effect (`pcApplyFx` is
+  whether an item is worn as armour, and `anItemIsTheMithrilSuit` (P1-19al) whether it is the suit: `itemLore`, a lair's
+  keeping of a fallen hero's kit, the grant and `isMithril` ask it. A guardian's perk of the same ward or rider reaches the same effect (`pcApplyFx` is
   the one applier); a guardian's perks' own three wards (`stunWard`, `dotWard`, `schoolWard`) are the perks'
   registry's (P1-19aj). The fighter's ward table, a ward and the riders (`TheWardsAFighterWears`,
   `AWardAsTheMergeReadsIt`, `TheRidersOfAnItemOrAPerk`) are this stage's types, in the registry's file, and

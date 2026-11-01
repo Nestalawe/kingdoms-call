@@ -4,6 +4,7 @@ import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-w
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import {
   anItemChangesAHerosMaximumHp,
+  anItemIsTheMithrilSuit,
   anItemIsWornAsArmour,
   whatAWardSetsInTheWardsAFighterWears,
 } from '../rules/the-registry-of-magic-item-effects.ts';
@@ -542,7 +543,7 @@ export function grantMithrilTo(
 ) {
   if (!ch || ch.alive === false) return;
   ch.items ??= [];
-  if (ch.items.some((it: AnItemAsTheseReadIt) => it.effect?.stat === 'mithrilArmour')) return; // already suited
+  if (ch.items.some((it: AnItemAsTheseReadIt) => anItemIsTheMithrilSuit(it))) return; // already suited
   const id = Number(gs.nextItemId) || 0;
   gs.nextItemId = (Number(gs.nextItemId) || 0) + 1;
   ch.items.push({ ...MITHRIL_ARMOUR, effect: { ...MITHRIL_ARMOUR.effect }, id });
@@ -555,7 +556,7 @@ export function grantMithrilTo(
 // the sweep below is the self-healing net for saves made before that was true: at most ONE suit per
 // character, and none at all in hands that do not qualify.
 export function isMithril(it: AnItemAsTheseReadIt | null | undefined) {
-  return it?.effect?.stat === 'mithrilArmour';
+  return anItemIsTheMithrilSuit(it);
 }
 // The part of a pack that is free to change hands — everything except the granted relics.
 export function transferableItems<AnItem extends AnItemAsTheseReadIt | null | undefined>(
