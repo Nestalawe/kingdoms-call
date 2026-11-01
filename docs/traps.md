@@ -164,7 +164,9 @@ inside `resolveTurn`.
 Telemetry and Hall-of-Fame writes inside `runTurn` are each wrapped in `try { … } catch {}`: a statistics bug must
 never cost a turn, so a broken hook is silent, and hooks are tested by the rows they write. Example: coerce numbers with
 `Number()` and `isFinite`, not `|| 0`: `'nonsense' || 0` is `'nonsense'`, which reaches the page as "NaN". Checks:
-page tests scan the rendered HTML for `undefined`, `NaN` and `[object Object]`.
+page tests scan the rendered HTML for `undefined`, `NaN` and `[object Object]`; a record for the statistics is a fact
+filed with `recordForTheStatistics`, in its caller's `try`, and the lint rule refuses a write to `_tel`'s lists
+elsewhere ([the statistics' one door](architecture/the-database-and-what-it-holds.md#hooks-in-the-turn-path-must-never-fail-a-turn)).
 
 ## A rule written twice must change twice
 

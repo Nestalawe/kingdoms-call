@@ -19,7 +19,9 @@
   reports' turn, on the working copy, once, on the turn's dice; and `whatTheReportsRead()`, which hands over,
   once, after the stealth step, what the reports are built from: the slot rows, the working copy, the turn's log, the
   turn's sight (whose heroes stood where in each phase, who fought in each battle, whom each realm watches by
-  Clairvoyance) and the telemetry's collectors. Both are called only after the save. The engine imports no
+  Clairvoyance) and the telemetry (`_tel`: the realms' snapshots, and the facts for the statistics that
+  `recordForTheStatistics` files beside `emit`, which the views turn into the writer's lists: `theStatisticsOfTheTurn`).
+  Both are called only after the save. The engine imports no
   view: the reports are the views' (below). `tests/unit/engine-purity.test.ts` plays a whole game through it in Node,
   with no page.
 - **Every realm's report** is built in `src/views/every-realms-report-and-the-lines-each-realm-reads.ts`:

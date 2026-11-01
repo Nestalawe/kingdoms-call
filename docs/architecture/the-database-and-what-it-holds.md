@@ -203,6 +203,17 @@ Telemetry and Hall-of-Fame writes inside `runTurn` are each wrapped in `try { â€
 contract: a statistics bug must never cost a turn. The price is that a broken hook is silent, so test
 hooks by checking the rows they write.
 
+**The statistics' one door** (P1-12d33). What `turn_events` records of a turn's battles, lair fights, captures, deaths
+and spells is a fact of its own, typed in its area's facts module beside the lines' kinds (a battle fought, a hero's
+death, a province changing hands, a spell worked in a fight or cast by the order, a lair fought): not a line, with no
+audience and no words. Each hook files its fact with `recordForTheStatistics(turnContext, fact)`
+(`engine/turn/events-and-their-audiences.ts`, beside `emit`), inside its own `try`, into `turnContext._tel`'s
+`factsInTheTurnsOrder`; never into the GM's log. The realms' two snapshots (`_tel.pre`, `_tel.orders`) are taken
+where they are. `buildReports` hands the writer `theStatisticsOfTheTurn(_tel)` (`views/the-statistics-of-the-turn.ts`):
+the snapshots, then one list a kind (`battles`, `encounters`, `captures`, `deaths`, `spells`), each record key for key
+in the turn's order, so the rows are the same. The lint rule `kc/narrative-lines-go-through-emit` refuses a write to
+`_tel`'s lists anywhere else.
+
 - Read hook values from the scope they're in. The NPC and player-vs-player combat paths name the same
   thing differently.
 - Coerce numbers with `Number()` and `isFinite`, not `|| 0`: `NaN || 0` is `0`, but `'nonsense' || 0`

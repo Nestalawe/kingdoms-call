@@ -20,6 +20,9 @@
 // unit drawn. Every other die is a seeded stream's.
 // The battles keep their names and signatures, so this passes on the code before the row (P1-12d23's base), as after
 // (but the defOwn case, restaged by P1-19aa on the runner, which its base doesn't have).
+// Since P1-12d33, also the record the turn's statistics keep of a battle against a province's defenders, in the two
+// forms no game reaches ('pvp': a realm's hero leading them, stood in as realm 1's king; 'neutral') and the garrison's,
+// read through the views' theStatisticsOfTheTurn, which P1-12d33 adds (so those cases need its code).
 // Level 1 (unit): combatVsNPC and combatVsChar called directly on a world the engine makes from a fixed seed; no turn
 // is played. Not lower: the lines sit inside the two battles, and their words in the views. Not higher: a whole turn
 // adds dice and orders before the battle, and the flags these lines read are set by orders no bot gives.
@@ -319,10 +322,10 @@ describe.each([false, true])('a battle against a province with no guard, the att
 // realm holding it, or held by the attacker's own realm ('neutral').
 describe("the turn's statistics record a battle against a province's defenders by who defends it", () => {
   test.each([
-    ['its own defenders, the province held by no realm', null, 'neutral'],
-    ["its own defenders, the province held by the attacker's realm", 0, 'neutral'],
-    ["a realm's garrison", 1, 'garrison'],
-  ] as const)('%s: %s', (_, owner, kind) => {
+    ['its own defenders, the province held by no realm', 'neutral', null],
+    ["its own defenders, the province held by the attacker's realm", 'neutral', 0],
+    ["a realm's garrison", 'garrison', 1],
+  ] as const)('%s: recorded as %s', (_, kind, owner) => {
     const shown = aBattle({ atk: companies(8, 'Elite'), defenders: companies(1, 'Green') }, false, (_G, _a, _d, f) => {
       f.owner = owner;
     });
