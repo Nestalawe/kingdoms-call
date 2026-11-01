@@ -989,24 +989,27 @@ describe('Grand Design, called directly', () => {
   });
 });
 
+/** A case's text as written, for a pattern (each character a pattern reads otherwise, escaped). */
+const asWritten = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 test('every order of the family is a function of its own, processOrder only calls it, and landHirePreOrders is top-level', () => {
   // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
   const src = compactDeclaration(DISPATCH, 'processOrder');
   const turn = compactDeclaration('engine/run-turn.ts', 'resolveTurn');
-  for (const [key, name] of [
-    ['recruit', 'resolveRecruitArmiesOrder'],
-    ['hire', 'resolveHireHeroOrder'],
-    ['consecrate', 'resolveConsecrateOrder'],
-    ['call_to_arms', 'resolveCallToArmsOrder'],
-    ['broker', 'resolveBrokerOrder'],
-    ['call_pit', 'resolveRemovedAwakenTheWildAndCallFromThePitOrders'],
-    ['harvest_field', 'resolveHarvestTheFieldOrder'],
-    ['awaken_grove', 'resolveAwakenGroveOrder'],
-    ['wild_calling', 'resolveWildCallingOrder'],
-    ['grand_design', 'resolveGrandDesignOrder'],
+  for (const [theCase, name] of [
+    ["'recruit'", 'resolveRecruitArmiesOrder'],
+    ["'hire'", 'resolveHireHeroOrder'],
+    ['THE_ALIGNMENT_ORDERS.consecrate.key', 'resolveConsecrateOrder'],
+    ["THE_ALIGNMENT_ORDERS['call-to-arms'].key", 'resolveCallToArmsOrder'],
+    ['THE_ALIGNMENT_ORDERS.broker.key', 'resolveBrokerOrder'],
+    ["'call_pit'", 'resolveRemovedAwakenTheWildAndCallFromThePitOrders'],
+    ["THE_ALIGNMENT_ORDERS['harvest-the-field'].key", 'resolveHarvestTheFieldOrder'],
+    ["'awaken_grove'", 'resolveAwakenGroveOrder'],
+    ["'wild_calling'", 'resolveWildCallingOrder'],
+    ["'grand_design'", 'resolveGrandDesignOrder'],
   ] as const) {
     expect(typeof fn(name)).toBe('function');
-    expect(src).toMatch(new RegExp(`case '${key}':${name}\\(turnContext,c[^)]*\\);break;`));
+    expect(src).toMatch(new RegExp(`case ${asWritten(theCase)}:${name}\\(turnContext,c[^)]*\\);break;`));
   }
   expect(src).toContain("case 'awaken_wild':case 'call_pit':resolveRemovedAwakenTheWildAndCallFromThePitOrders(");
   expect(typeof fn('landHirePreOrders')).toBe('function');

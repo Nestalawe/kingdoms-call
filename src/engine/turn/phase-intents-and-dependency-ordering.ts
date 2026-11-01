@@ -5,6 +5,7 @@ import { areEnemies } from '../realms/relations-and-captures.ts';
 import { totalInit } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { stepTowardPreferSafe } from '../world/routes-and-distances.ts';
 import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 
 // ── THE PHASE PIPELINE: INTENTS, DEPENDENCY ORDERING, MOVEMENT INTERLOCKS (plan P1-08i1: lifted out of resolveTurn) ────
 // Before anyone acts in a phase: what every acting character intends to do (buildPhaseIntents), the order they act in
@@ -123,17 +124,17 @@ export const PHASE_ACTION_MAP = {
   rest: 'rest',
   'rest & heal': 'rest',
   'rest and heal': 'rest',
-  consecrate: 'consecrate',
-  'consecrate province': 'consecrate',
-  'call to arms': 'call_to_arms',
-  call_to_arms: 'call_to_arms',
-  broker: 'broker',
+  // the alignment orders: each row's key, its name as the form writes it (in lower case) and the other names the turn
+  // reads, to its key (plan P1-19's alignment orders, Decision 3; the rows: src/content/alignment-orders-…)
+  ...Object.fromEntries(
+    Object.values(THE_ALIGNMENT_ORDERS).flatMap((order) =>
+      [order.key, order.name.toLowerCase(), ...order.theOtherNamesTheTurnReads].map((name) => [name, order.key]),
+    ),
+  ),
   'awaken the wild': 'awaken_wild',
   awaken_wild: 'awaken_wild',
   'call from the pit': 'call_pit',
   call_pit: 'call_pit',
-  'harvest the field': 'harvest_field',
-  harvest_field: 'harvest_field',
   encounter: 'encounter',
   'encounter character': 'encounter',
   steal: 'steal',
@@ -148,8 +149,6 @@ export const PHASE_ACTION_MAP = {
   'equip item': 'equip_items',
   pursue: 'encounter',
   'pursue character': 'encounter', // Pursue is folded into Encounter
-  rite: 'rite',
-  'perform rite': 'rite',
   sabotage: 'sabotage',
   'forced march': 'forced_march',
   forced_march: 'forced_march',

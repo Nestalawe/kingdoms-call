@@ -2,12 +2,14 @@
 // function (or file's top level) the content's rows (src/content/alignment-orders-their-keys-names-creeds-numbers-and-
 // words.ts) have taken holds no string naming an alignment order's key (`'consecrate'`, `'harvest_field'`), whatever
 // the code does with it (compared, a `case`, a lookup, an order written, a list, a map's value, a literal type, or in a
-// function nested inside). It reads a row's key instead. Each row of the family adds what it takes. With them, the
+// function nested inside), but the literal types its entry lists as left (OrderKind's, in the order-name map's file).
+// It reads a row's key instead. Each row of the family adds what it takes. With them, the
 // ratchet's count of the keys the engine names outside src/engine/rules/ (tools/ratchet.ts's
 // alignmentOrderChecksInEngine, by its helper alignmentOrderChecksByFunction: a key anywhere but a literal type), so that
 // count only falls: the helper counts each key planted, and none in src/engine/rules/ or a page's code.
 //
-// Red on its row's base by design (army-tables.ts' top level held 5 keys on P1-19ap's base: ALIGNMENT_ORDER_KEYS), as
+// Red on its row's base by design (army-tables.ts' top level held 5 keys on P1-19ap's base: ALIGNMENT_ORDER_KEYS; the
+// order-name map's file's top level 9 and processOrder 5 on P1-19aq's: PHASE_ACTION_MAP and the switch's cases), as
 // the unit-name, item-effect, spell, discovery and perk tests were: the one exception to refactor-only's rule that new
 // tests pass before and after (Theo, 2026-10-25; the alignment orders' Decision 4).
 // Level 0 (static): the files' syntax trees and the content's rows as written; nothing runs.
@@ -28,9 +30,26 @@ import {
 /** The top level of a file: what no function holds. */
 const TOP = '(top)';
 
-/** Each function (or a file's top level) the alignment orders' rows have taken, by its file, from the row that took it. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
-  ['src/engine/army-tables.ts', TOP, "P1-19ap, the rows: ALIGNMENT_ORDER_KEYS, the charmed hero's gate"],
+/** OrderKind's literal types, the only strings naming a key left at the top level of the turn's order-name map's file
+ *  (the plan's Decision 5: P1-10 derives or checks them), in the order written. */
+const ORDER_KINDS_LITERAL_TYPES = ['consecrate', 'call_to_arms', 'broker', 'harvest_field', 'rite'];
+
+/** Each function (or a file's top level) the alignment orders' rows have taken, by its file, from the row that took it,
+ *  and the strings naming a key it still holds (a literal type's, which the ratchet's helper doesn't count). */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string, left: readonly string[]])[] = [
+  ['src/engine/army-tables.ts', TOP, "P1-19ap, the rows: ALIGNMENT_ORDER_KEYS, the charmed hero's gate", []],
+  [
+    'src/engine/turn/phase-intents-and-dependency-ordering.ts',
+    TOP,
+    "P1-19aq, the turn's order-name map: PHASE_ACTION_MAP",
+    ORDER_KINDS_LITERAL_TYPES,
+  ],
+  [
+    'src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts',
+    'processOrder',
+    "P1-19aq, the dispatch: the switch's five cases",
+    [],
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
@@ -78,12 +97,12 @@ function everyOrdersKeyIn(file: string, text: string, fn: string): string[] | nu
   return found;
 }
 
-test.for(TAKEN)("%s: %s names no alignment order's key (%s)", ([file, fn]) => {
+test.for(TAKEN)("%s: %s names no alignment order's key (%s)", ([file, fn, , left]) => {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
   const counts = alignmentOrderChecksByFunction(file, text);
   expect(fn === TOP || counts.has(fn), `${file} declares ${fn}`).toBe(true);
   expect(counts.get(fn) ?? 0, `${fn}'s keys of an alignment order (the ratchet's helper)`).toBe(0);
-  expect(everyOrdersKeyIn(file, text, fn), `every string in ${fn} naming an alignment order's key`).toEqual([]);
+  expect(everyOrdersKeyIn(file, text, fn), `every string in ${fn} naming an alignment order's key`).toEqual(left);
 });
 
 test("the vocabulary holds the five orders' keys, and no other word", () => {

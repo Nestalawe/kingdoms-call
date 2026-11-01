@@ -660,18 +660,21 @@ describe('Discover Lost Ruin, called directly', () => {
   });
 });
 
+/** A case's text as written, for a pattern (each character a pattern reads otherwise, escaped). */
+const asWritten = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 test('every order of the family is a function of its own, and processOrder only calls it', () => {
   // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
   const src = compactDeclaration(DISPATCH, 'processOrder');
-  for (const [key, name] of [
-    ['explore', 'resolveExploreOrder'],
-    ['rite', 'resolvePerformRiteOrder'],
-    ['hunt_rumours', 'resolveHuntingRumoursOrder'],
-    ['search', 'resolveSearchLairOrder'],
-    ['chart_unknown', 'resolveChartTheUnknownOrder'],
-    ['discover_ruin', 'resolveDiscoverLostRuinOrder'],
+  for (const [theCase, name] of [
+    ["'explore'", 'resolveExploreOrder'],
+    ["THE_ALIGNMENT_ORDERS['perform-rite'].key", 'resolvePerformRiteOrder'],
+    ["'hunt_rumours'", 'resolveHuntingRumoursOrder'],
+    ["'search'", 'resolveSearchLairOrder'],
+    ["'chart_unknown'", 'resolveChartTheUnknownOrder'],
+    ["'discover_ruin'", 'resolveDiscoverLostRuinOrder'],
   ] as const) {
     expect(typeof fn(name)).toBe('function');
-    expect(src).toMatch(new RegExp(`case '${key}':${name}\\(turnContext,c[^)]*\\);break;`));
+    expect(src).toMatch(new RegExp(`case ${asWritten(theCase)}:${name}\\(turnContext,c[^)]*\\);break;`));
   }
 });

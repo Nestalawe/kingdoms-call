@@ -1,4 +1,5 @@
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, SKILL_LABELS } from '../army-tables.ts';
 import { botDrillUseful } from '../bots/economy.ts';
 import { provOf } from '../world/map-helpers.ts';
@@ -408,7 +409,7 @@ export function processOrder(
     case 'explore':
       resolveExploreOrder(turnContext, c, prov);
       break;
-    case 'rite':
+    case THE_ALIGNMENT_ORDERS['perform-rite'].key:
       resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov, player);
       break;
     case 'hunt_rumours':
@@ -427,20 +428,20 @@ export function processOrder(
     case 'spy':
       resolveSpyOrder(turnContext, c, target, prov);
       break;
-    case 'consecrate':
+    case THE_ALIGNMENT_ORDERS.consecrate.key:
       resolveConsecrateOrder(turnContext, c, prov, player);
       break;
-    case 'call_to_arms':
+    case THE_ALIGNMENT_ORDERS['call-to-arms'].key:
       resolveCallToArmsOrder(turnContext, c, target, player);
       break;
-    case 'broker':
+    case THE_ALIGNMENT_ORDERS.broker.key:
       resolveBrokerOrder(turnContext, c, ph, target, player);
       break;
     case 'awaken_wild':
     case 'call_pit':
       resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, c, action);
       break;
-    case 'harvest_field':
+    case THE_ALIGNMENT_ORDERS['harvest-the-field'].key:
       resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player);
       break;
     case 'research':
