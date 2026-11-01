@@ -1,7 +1,8 @@
 # Runs every check on every pull request, in jobs side by side, so the fastest failure shows first (P1-01c). Each job
 # that tests builds site/ from src/ first (npm run build, P1-05), so every test opens the pages this commit makes:
 #   static         the type check, lint, the import rules, format check, ratchet and the static tests (a minute or less)
-#   unit-scenario  the unit and scenario tests;  simulation;  page   (npm test, one Vitest project or two each)
+#   unit-scenario  the unit and scenario tests, in two halves;  simulation;  page   (npm test, one Vitest project or
+#                  two each)
 #   browser        the browser specs in Chromium (npx playwright test)
 #   balance-part   the balance matrix (P1-02b) in three parts side by side, played only when an engine path changed
 #                  (tools/balance/engine-paths.ts);  balance  joins and judges them, and on a pull request makes its
@@ -95,10 +96,16 @@ jobs:
       - if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: npm test -- --project static
 
+  # In two halves side by side, by Vitest's own --shard (by file: each level's old scripts run as one file,
+  # tests/legacy.test.ts, so both land in one half; the halves still came out nearest even of the ways measured).
   unit-scenario:
-    name: unit and scenario tests
+    name: unit and scenario tests, half ${{ matrix.shard }} of 2
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -127,7 +134,7 @@ jobs:
 
       - run: npm run build
 
-      - run: npm test -- --project unit --project scenario
+      - run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2
 
   simulation:
     name: simulation tests

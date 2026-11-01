@@ -1102,12 +1102,51 @@ describe('CI', () => {
     }
   });
 
+  // A job may run its levels in halves (Vitest's --shard): then its matrix runs every half, 1 to N, once each, so each
+  // level still runs in full, once.
+  function testLevelProblems(text: string): string[] {
+    const problems: string[] = [];
+    const levels: string[] = [];
+    for (const block of (text.split(/^jobs:\n/m)[1] ?? '').split(/^(?= {2}[\w-]+:\n)/m)) {
+      const id = /^ {2}([\w-]+):\n/.exec(block)?.[1] ?? '';
+      for (const [, r = ''] of block.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)) {
+        const m = /^npm test -- --project \w+(?: --project \w+)*(?: --shard \$\{\{ matrix\.shard \}\}\/(\d+))?$/.exec(
+          r,
+        );
+        if (!m) {
+          problems.push(`${id}: ${r}`);
+          continue;
+        }
+        const halves = Number(m[1] ?? 0);
+        const shards = /^ {6}matrix:\n {8}shard: \[([\d, ]+)\]\n/m.exec(block)?.[1]?.split(', ').map(Number);
+        const every = Array.from({ length: halves }, (_, i) => i + 1);
+        if (halves && String(shards) !== String(every))
+          problems.push(`${id}: not every half of ${String(halves)} runs`);
+        levels.push(...[...r.matchAll(/--project (\w+)/g)].map((x) => x[1] ?? ''));
+      }
+    }
+    if (String([...levels].sort()) !== String([...LEVELS].sort()))
+      problems.push(`the levels run: ${levels.join(', ')}`);
+    return problems;
+  }
+
   test('every test level runs in exactly one job, and the browser specs in theirs', () => {
-    const tests = ids.flatMap((id) => runs(id).filter((r) => r.startsWith('npm test')));
-    for (const r of tests) expect(r).toMatch(/^npm test -- --project \w+( --project \w+)*$/);
-    const levels = tests.flatMap((r) => [...r.matchAll(/--project (\w+)/g)].map((m) => m[1]));
-    expect([...levels].sort()).toEqual([...LEVELS].sort());
+    expect(testLevelProblems(ci)).toEqual([]);
+    expect(runs('unit-scenario')).toContain(
+      'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2',
+    );
     expect(ids.filter((id) => runs(id).includes('npx playwright test'))).toEqual(['browser']);
+    // Planted copies: a half left out; a level run twice; another option.
+    expect(testLevelProblems(ci.replace('shard: [1, 2]', 'shard: [1]'))).toEqual([
+      'unit-scenario: not every half of 2 runs',
+    ]);
+    expect(testLevelProblems(ci.replace('--project simulation', '--project simulation --project page'))).toEqual([
+      'the levels run: static, unit, scenario, simulation, page, page',
+    ]);
+    expect(testLevelProblems(ci.replace('--project page', '--project page --bail 1'))).toEqual([
+      'page: npm test -- --project page --bail 1',
+      'the levels run: static, unit, scenario, simulation',
+    ]);
   });
 
   test('ci needs every job but db, runs even when one failed, and passes only if all of them passed', () => {
