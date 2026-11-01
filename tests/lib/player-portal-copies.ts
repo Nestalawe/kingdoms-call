@@ -1112,7 +1112,9 @@ function exploreOrderGain(state: Obj, heroId: unknown, provinceId: unknown): num
   tc._logCtx = { charId: c['id'], phase: 0 };
   kcRng.seed(1);
   quietly(() => {
-    resolveExploreOrder(tc, c, prov);
+    // (the staged world's hero and his province, given the types the order takes, by assertion as the staged worlds
+    // give the saved state's: the turn's context is made by the engine's own createTurnContext)
+    resolveExploreOrder(tc as unknown as TurnContext, c as never, prov as never);
   });
   const by = prov['exploredBy'];
   const gain = isObj(by) ? by[String(c['player'])] : undefined;
