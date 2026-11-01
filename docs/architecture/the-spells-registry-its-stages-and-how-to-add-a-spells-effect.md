@@ -138,7 +138,9 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   texts (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`).
 - No spell's name or `fn` in a function the registry has taken
   (`tests/static/the-resolvers-the-spell-registry-has-taken-name-no-spell.test.ts`), and, outside the registry, the
-  ratchet's `spellChecksInEngine`, which only falls.
+  ratchet's `spellChecksInEngine`, which is 0 and only falls.
+- No spell's name or `fn` in `src/engine/bots/` (`tests/static/the-bots-name-no-spell.test.ts`), and the lookup the bots
+  use throws for a slug the content lacks (`tests/unit/the-name-of-a-spell-by-its-slug-throws-for-a-slug-content-lacks.test.ts`).
 - Each spell's values in each copy, and the battles' lines no matrix game reaches (a hero's Control Undead and Holy
   Symbol against undead guards, a Fireball with an Ember Rune in both battles)
   (`tests/unit/the-battle-spells-each-copy-casts-keep-their-values.test.ts`).
@@ -169,3 +171,8 @@ A new stage's signature goes into `TheStagesOfEachHookPoint`, with its runner in
 For an action spell (the Cast Spell order's): write its work in its school's file under `src/engine/orders/spells/`, add
 its slug to `ActionSpellSlug` and its work to the table, and, for a spell with no row yet, its slug, name and `fn` to
 `ACTION_SPELLS_THE_REGISTRY_HOLDS_NO_EFFECT_FOR`.
+
+For a bot that names a spell (to cast it, to find its cast in an order, to put it in a list): write
+`theNameOfTheSpell('flood')`, from `src/engine/bots/the-name-of-a-spell-by-its-slug.ts`, never the name. The bots'
+files are untyped, so the compiler can't check the slug: a slug the content lacks throws the first time that line
+runs, and the static test refuses a name written in any file of `src/engine/bots/`.
