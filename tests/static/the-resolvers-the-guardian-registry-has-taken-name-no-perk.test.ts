@@ -8,7 +8,8 @@
 // field of the wards a fighter wears, or a ward only a perk sets; a rider read in personal combat), so that count only
 // falls: the helper counts each such check planted, and none in src/engine/rules/ or a page's code.
 //
-// Red on its row's base by design (monsterTraits held 3 checks and pcMonsterCombatant 2 on P1-19ai's base), as the
+// Red on its row's base by design (monsterTraits held 3 checks and pcMonsterCombatant 2 on P1-19ai's base; pcArmourMerge
+// 9, pcRoundStart 5, pcCastCombatSpell 2, pcStunWard 1 and pcStunTurned 1 on P1-19aj's), as the
 // unit-name, item-effect, spell and discovery tests were: the one exception to refactor-only's rule that new tests pass
 // before and after (Theo, 2026-10-25; the guardian perks' Decision 5).
 // Level 0 (static): the files' syntax trees and the content's perks as written; nothing runs.
@@ -37,6 +38,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
     'pcMonsterCombatant',
     "P1-19ai, a guardian's perks: his grade's cap beside his own",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'pcArmourMerge',
+    "P1-19aj, a guardian's perks: what he wears: a ward of his own",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcStunWard',
+    "P1-19aj, a guardian's perks: a stun takes hold",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcStunTurned',
+    "P1-19aj, a guardian's perks: a stun takes hold (the ward its line names)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcRoundStart',
+    "P1-19aj, a guardian's perks: a round starts, and a lingering harm bites",
+  ],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'pcCastCombatSpell',
+    "P1-19aj, a guardian's perks: a combat spell's chance: a ward against its school",
   ],
 ];
 

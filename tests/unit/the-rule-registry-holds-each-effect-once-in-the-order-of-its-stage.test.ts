@@ -24,7 +24,7 @@
 // row; each row's kind is a kind of a perk of MONSTERS_P, no two rows share a kind, and every kind of MONSTERS_P has its
 // row; a row names the items' effect of its own ward or rider exactly when an item carries it; and an entry with no
 // stage is a kind whose row names the items' effect, or one listed as still read inline (THE_PERKS_STILL_READ_INLINE,
-// which the family's next row empties), and no listed kind has a stage.
+// which P1-19aj emptied), and no listed kind has a stage.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -497,13 +497,9 @@ const THE_ITEMS_EFFECT_OF_EACH_WARD_AND_RIDER: ReadonlyMap<string, string> = new
   }),
 );
 
-/** The kinds of perk whose effect is still read inline, with no stage in the registry and no items' effect: the
- *  guardian's own wards (plan P1-19's guardian perks, row aj, takes them). */
-const THE_PERKS_STILL_READ_INLINE: readonly string[] = [
-  'a-ward-against-one-school',
-  'a-stun-ward',
-  'a-lingering-harm-ward',
-];
+/** The kinds of perk whose effect is still read inline, with no stage in the registry and no items' effect: none since
+ *  P1-19aj took the guardian's own wards (the stun ward, the lingering-harm ward, the ward against one school). */
+const THE_PERKS_STILL_READ_INLINE: readonly string[] = [];
 
 /** What a perk kind's row breaks: its kind a kind of a perk of MONSTERS_P, and the items' effect it names that of its
  *  own ward or rider, exactly when an item carries it. */
@@ -582,7 +578,13 @@ test("planted in the guardian perks' registry, an entry left out of its order, a
     'planted-perk has a content row and no entry',
     'thorns has an entry and no content row',
   ]);
-  expect(whereTheStagesAndTheListPart(PERK_ENTRIES, rows, ['a-stun-ward', 'a-tough-hide'])).toEqual([
+  // the guardian's own wards' stages taken away again, as before P1-19aj
+  const withTheOwnWardsInline: Entries = {
+    ...PERK_ENTRIES,
+    'a-ward-against-one-school': {},
+    'a-lingering-harm-ward': {},
+  };
+  expect(whereTheStagesAndTheListPart(withTheOwnWardsInline, rows, ['a-stun-ward', 'a-tough-hide'])).toEqual([
     "a-ward-against-one-school has no stage, names no item effect, and isn't listed as still read inline",
     "a-lingering-harm-ward has no stage, names no item effect, and isn't listed as still read inline",
     "hard-to-hit has no stage, names no item effect, and isn't listed as still read inline",

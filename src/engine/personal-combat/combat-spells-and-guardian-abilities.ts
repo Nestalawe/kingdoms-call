@@ -29,6 +29,7 @@ import {
   whatAHerosItemsChangeInHisCombatSpells,
 } from '../rules/the-registry-of-magic-item-effects.ts';
 import { whatACombatSpellDoesAsItTakesHold } from '../rules/the-registry-of-spell-effects.ts';
+import { whatAGuardiansWardAgainstASchoolDoesToACast } from '../rules/the-registry-of-guardian-perks.ts';
 import type {
   AStepOfACombatSpell,
   TheLineOfACombatSpell,
@@ -164,9 +165,15 @@ export function pcCastCombatSpell(
       ); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
   // ── SCHOOL WARD (2026-10-14, batch item 7) ── a guardian's ward against this school takes its
   // points off the (already capped) cast chance; never below 5. A guardian is never warded against
-  // the school it is weak to.
-  const _sw = (_wkSch ? 0 : (targetAsGuarded?.arm?.schoolWard?.[school] ?? 0)) || 0;
-  const castChance = _sw > 0 ? Math.max(5, _castBase - _sw) : _castBase;
+  // the school it is weak to. (The guardian perks' registry, plan P1-19aj.)
+  const _schoolWard = whatAGuardiansWardAgainstASchoolDoesToACast({
+    theTargetsWards: targetAsGuarded?.arm,
+    theSchool: school,
+    heIsWeakToTheSchool: _wkSch,
+    theChanceSoFar: _castBase,
+  });
+  const _sw = _schoolWard.thePointsOff;
+  const castChance = _schoolWard.theChanceAfter;
   // narrate the cast as a deliberate ATTEMPT, so both outcomes read clearly — the reader sees the
   // character reach for the spell, then whether the weave holds or collapses.
   // show the roll alongside the chance, and say what the chance IS (a cast, not a "hold").
@@ -181,7 +188,7 @@ export function pcCastCombatSpell(
     spellName,
     castChance,
     schoolWard: _sw,
-    targetsWard: aFightersWardAsTheLineTellsIt(target, 'schoolWard'),
+    targetsWard: aFightersWardAsTheLineTellsIt(target, _schoolWard.theWardTheLineNames),
     castRoll: _castRoll,
   });
   if (_castRoll > castChance) {
