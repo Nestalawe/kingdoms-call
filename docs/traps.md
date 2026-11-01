@@ -277,12 +277,12 @@ context (`ctx.reignOfFear`); read after, it is always false. Checks: `terror-thr
 
 ## An alignment order is written in a dozen places
 
-Adding or removing an alignment order touches the engine's `case` in the order switch, the order-name map,
-`ALIGNMENT_ORDER_KEYS`, the short label map, the bots' `botSignaturePre` case and muster-like lists; the player portal's
-`ACTIONS`, `ALIGN_ACTIONS`, `ACTION_DISPLAY_ORDER`, the target widget, the army projection and the gold ledger; both
-rulebooks and the portal's alignment texts. Copy Harvest the Field's occurrences (grep `harvest_field`). A removed
-order keeps its `case` as a plain refusal, so an order a save still holds is answered. Example: a missed place
-refuses, hides or misprices the order, and throws nothing. Checks: nothing checks every place.
+An alignment order is a row of `THE_ALIGNMENT_ORDERS` (`src/content/`), which the charmed hero's gate and the words
+test read. The rest still writes its key or name: the order switch's `case`, the order-name map, the label map, the bots'
+`botSignaturePre` and muster-like lists; the portal's `ACTIONS`, `ALIGN_ACTIONS`, `ACTION_DISPLAY_ORDER`, target widget,
+army projection and gold ledger; its alignment texts. Grep `harvest_field`. A removed order keeps its `case` as a
+refusal, for saves. Example: a missed place refuses, hides or misprices the order, and throws nothing. Checks: the
+words test (row against books); nothing else.
 
 ## A fate line names two companies
 

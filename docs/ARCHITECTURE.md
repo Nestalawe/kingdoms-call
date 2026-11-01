@@ -28,7 +28,9 @@ writes each realm's report. Players only submit orders and read what they're giv
   `the-registry-of-discovery-effects.ts`:
   [its file](architecture/the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md); a perk's,
   `the-registry-of-guardian-perks.ts`: [its file](architecture/the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md)), naming its effect at each
-  stage of a hook point; the resolvers ask the stage's runner. `src/content/kingdoms-call-data.ts`
+  stage of a hook point; the resolvers ask the stage's runner. An alignment order is one row of
+  `src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts` and no registry entry: its resolver is
+  its rule (P1-19ap). `src/content/kingdoms-call-data.ts`
   is the one source of the tables both portals read, and `src/shared/` is the player portal's one door to the engine's
   rules on plain values.
 - **A saved game** ([a-saved-game-its-version-its-upgrade-its-check.md](architecture/a-saved-game-its-version-its-upgrade-its-check.md)).
