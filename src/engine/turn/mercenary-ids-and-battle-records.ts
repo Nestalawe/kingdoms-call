@@ -6,7 +6,7 @@
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from './context.ts';
 import type { NarrativeLine } from './events-and-their-audiences.ts';
-import { emit, narrate } from './events-and-their-audiences.ts';
+import { emit, narrate, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from './events-and-their-audiences.ts';
 export const newMercId = (turnContext: TurnContext) =>
   `merc_t${turnContext.expectedTurnToRun}_${++turnContext._mercIds.n}`;
 
@@ -82,6 +82,7 @@ export function completeDefendWatches(
           },
           audience: { actor: real.player, realms: [real.player] },
           hero: real.id,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: real.location ?? null,
         });
     }
@@ -108,6 +109,7 @@ export function noteBattleLoss(
       fact: { kind: "a defender's watch is broken by a defeat", heroName: real.name },
       audience: { actor: real.player, realms: [real.player] },
       hero: real.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: real.location ?? null,
     }); // file under the beaten general, not whoever's order was resolving
 }

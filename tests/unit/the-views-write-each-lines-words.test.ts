@@ -39,6 +39,7 @@ import {
   type EventButItsWords,
   type LogLine,
   type NarrativeLine,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import {
   theTiersOfABattlesLines,
@@ -469,7 +470,11 @@ describe("the GM's log in words is stored in the form it had", () => {
     // emit files every line as a fact (P1-12d18); a line holding its words, as the GM's log stores it, is made here
     // from one emit filed.
     const tc = newContext();
-    const told: EventButItsWords = { audience: { realms: [0] }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING };
+    const told: EventButItsWords = {
+      audience: { realms: [0] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+    };
     const aLine = { kind: 'the battle for a province begins', provName: 'Greyford' } as const;
     const inWords = (text: string) => {
       const line = tc.turnLog.pop();
@@ -491,7 +496,11 @@ describe("the GM's log in words is stored in the form it had", () => {
 
   test("beside it, each stored line's kind in its order (none for a line that holds its words), never stored", () => {
     const tc = newContext();
-    const told: EventButItsWords = { audience: { realms: [0] }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING };
+    const told: EventButItsWords = {
+      audience: { realms: [0] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+    };
     const aLine = { kind: 'the battle for a province begins', provName: 'Greyford' } as const;
     emit(tc, { type: 'system', fact: aLine, ...told });
     const narrative = aBattle(tc);

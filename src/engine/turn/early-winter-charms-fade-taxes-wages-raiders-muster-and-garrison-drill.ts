@@ -26,7 +26,11 @@ import {
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { isOpenSea, seaLiftShortfall, settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { setMovePool } from '../units/movement-pools.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 import { theUnitsAProvinceRaisesAtTheTurnsEnd } from '../rules/the-registry-of-content-effects.ts';
 import { theTaxTheHeroesItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
 import {
@@ -108,6 +112,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           fact: { kind: "a hero's enchantment fades and he returns to his own lord", heroName: hc.name },
           audience: { actor: back, realms: [back] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
     }
   });
@@ -123,6 +128,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     fact: { kind: 'the tax collection begins' },
     audience: {},
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   G.players.forEach((p) => {
     const pi = p.id;
@@ -139,6 +145,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         fact: { kind: "a realm's treasury before the taxes", realmName: p.name, gold: p.gold || 0 },
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     }
     const _taxAcc = new Map<unknown, number>(); // capped `tax` discoveries: gold paid so far this collection
@@ -254,6 +261,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         },
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
   });
   emit(turnContext, {
@@ -261,6 +269,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     fact: { kind: 'the wages are reckoned' },
     audience: {},
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   G.players.forEach((p) => {
     const pi = p.id;
@@ -388,6 +397,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         fact: { kind: 'a realm has no wages to pay', realmName: p.name },
         audience: {},
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -407,6 +417,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       },
       audience: { actor: p.id, realms: [p.id] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
 
     if ((p.gold || 0) >= totalWages) {
@@ -416,6 +427,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         fact: { kind: 'a realm pays its wages', realmName: p.name, wages: totalWages, treasury: p.gold },
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     } else {
       // Can't pay in full — armies disband first (cheapest first), then heroes desert
@@ -424,6 +436,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         fact: { kind: 'a realm cannot pay its wages', realmName: p.name, wages: totalWages, available: p.gold || 0 },
         audience: { actor: p.id, realms: [p.id] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       let deficit = totalWages - (p.gold || 0);
       p.gold = 0;
@@ -481,6 +494,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
             },
             audience: { actor: p.id, realms: [p.id] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         }
       };
@@ -553,6 +567,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
             },
             audience: { actor: p.id, realms: [p.id] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
           if (_sparedHulls.length) _revisitSpared(); // a ship kept for these troops may now be free to go
         }
@@ -564,6 +579,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           fact: { kind: 'ships carrying troops at sea are kept at the oars unpaid', shipCount: _sparedHulls.length },
           audience: { actor: p.id, realms: [p.id] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       // If still in deficit, heroes desert
       if (deficit > 0) {
@@ -582,6 +598,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
                 fact: { kind: "a hero abandons a realm's service unpaid", heroName: h.name, realmName: p.name },
                 audience: { actor: p.id, realms: [p.id] },
                 hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+                phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               });
             }
           });
@@ -621,6 +638,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         },
         audience: { actor: owner, realms: [owner] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: pv.id,
       });
     }
@@ -657,6 +675,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         fact: { kind: "a province's garrison drills", provinceName: pv.name, drilled: _up },
         audience: { actor: pv.owner, realms: [pv.owner] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: pv.id,
       });
   });

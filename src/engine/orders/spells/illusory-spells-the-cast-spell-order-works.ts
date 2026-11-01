@@ -11,7 +11,11 @@ import {
 import { shuffleP } from '../../battle/fortune.ts';
 import { d100 } from '../../dice-and-army-names.ts';
 import { getNeighborsP } from '../../world/map-helpers.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../../turn/events-and-their-audiences.ts';
 import { asItsGuardReadsIt } from '../../personal-combat/to-hit-wounds-stuns-and-courage.ts';
 import type { ArmyInABattle } from '../../army-tables.ts';
 import {
@@ -35,6 +39,7 @@ export function workIllusoryTerrain({ turnContext, G, c, targetProv }: TheNamesA
       fact: { kind: 'Illusory Terrain is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -53,6 +58,7 @@ export function workIllusoryTerrain({ turnContext, G, c, targetProv }: TheNamesA
     fact: { kind: 'Illusory Terrain cloaks a province', heroName: c.name, provinceName: targetProv.name },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetProv.id,
   });
 
@@ -78,6 +84,7 @@ export function workPhantasmalArmies({
       fact: { kind: 'Phantasmal Armies is cast on a hero beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -96,6 +103,7 @@ export function workPhantasmalArmies({
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -126,6 +134,7 @@ export function workPhantasmalArmies({
     },
     audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: t.location,
   });
 
@@ -146,6 +155,7 @@ export function workHideLairs({ turnContext, G, c, targetProv }: TheNamesAnActio
       fact: { kind: 'Hide Lairs is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -156,6 +166,7 @@ export function workHideLairs({ turnContext, G, c, targetProv }: TheNamesAnActio
       fact: { kind: 'Hide Lairs finds no lairs left to hide', heroName: c.name, provinceName: targetProv.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -173,6 +184,7 @@ export function workHideLairs({ turnContext, G, c, targetProv }: TheNamesAnActio
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetProv.id,
   });
 
@@ -191,6 +203,7 @@ export function workPhantomHost({ turnContext, G, c, prov, spellLevel }: TheName
       fact: { kind: 'Phantom Host finds no beasts to duplicate', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -215,6 +228,7 @@ export function workPhantomHost({ turnContext, G, c, prov, spellLevel }: TheName
     fact: { kind: 'Phantom Host conjures duplicates of beasts', heroName: c.name, duplicates: _nH },
     audience: { actor: c.player, realms: [c.player] }, // 2026-09-27 (Toby item 6): realm-private — never public
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
 
@@ -235,6 +249,7 @@ export function workInvisibility({ turnContext, G, c, prov }: TheNamesAnActionSp
       fact: { kind: 'Invisibility holds', heroName: c.name, chance: 80, roll: _ivRoll },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   } else
@@ -243,6 +258,7 @@ export function workInvisibility({ turnContext, G, c, prov }: TheNamesAnActionSp
       fact: { kind: 'Invisibility fails to hold', heroName: c.name, chance: 80, roll: _ivRoll },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
 
@@ -258,6 +274,7 @@ export function workVeil({ turnContext, G, c, ph, prov }: TheNamesAnActionSpellI
     fact: { kind: 'a Veil of illusion is drawn over a host', heroName: c.name },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
 

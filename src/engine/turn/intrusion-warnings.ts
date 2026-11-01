@@ -1,6 +1,10 @@
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { armySizeBand } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 import type { TurnContext } from './context.ts';
 import type { Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
 
@@ -119,6 +123,7 @@ export function flushIntrusionNotifications(turnContext: TurnContext) {
         },
         audience: { actor: null, realms: [rec.targetPi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: rec.provId,
       });
     } else {
@@ -136,6 +141,7 @@ export function flushIntrusionNotifications(turnContext: TurnContext) {
         },
         audience: { actor: null, realms: [rec.targetPi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: rec.provId,
       });
     }

@@ -33,6 +33,7 @@ import {
   emitNarrLine,
   recordForTheStatistics,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -149,6 +150,7 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
   }
@@ -202,6 +204,7 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
         fact: { kind: "the Philosopher's Lens shows a hero a hidden site", heroName: c.name, siteName: _lf.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -216,6 +219,7 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
       fact: { kind: "a veiling illusion clouds a hero's exploring", heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -236,6 +240,7 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else {
@@ -251,6 +256,7 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -269,6 +275,7 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -296,6 +303,7 @@ export function resolvePerformRiteOrder(
       fact: { kind: 'a hero who does not keep the old faith cannot perform rites', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -312,6 +320,7 @@ export function resolvePerformRiteOrder(
       fact: { kind: 'a hero finds no ritual site for a rite', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -331,6 +340,7 @@ export function resolvePerformRiteOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -352,6 +362,7 @@ export function resolvePerformRiteOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -364,6 +375,7 @@ export function resolvePerformRiteOrder(
         fact: { kind: 'a hero cannot afford the Wild Hunt offerings', heroName: c.name, price: _huntCost },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -397,6 +409,7 @@ export function resolvePerformRiteOrder(
       },
       audience: { actor: c.player, realms: [c.player], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     // Gaining a force in a province you don't own is resolved like any other unit gain:
@@ -454,6 +467,7 @@ export function resolvePerformRiteOrder(
         fact: { kind: 'a hero makes no Blood Offering', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -487,6 +501,7 @@ export function resolvePerformRiteOrder(
     },
     audience: { actor: c.player, realms: [c.player], seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   return;
@@ -541,6 +556,7 @@ export function resolveHuntingRumoursOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -555,6 +571,7 @@ export function resolveHuntingRumoursOrder(
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   theRealmIsHanded(player);
@@ -574,6 +591,7 @@ export function resolveHuntingRumoursOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       break;
@@ -660,6 +678,7 @@ export function resolveHuntingRumoursOrder(
         fact: t,
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     });
@@ -689,6 +708,7 @@ export function resolveSearchLairOrder(
       fact: { kind: 'a hero searches a province with no sites', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -701,6 +721,7 @@ export function resolveSearchLairOrder(
       fact: { kind: 'the lair a hero meant to search is not here', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -731,6 +752,7 @@ export function resolveSearchLairOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -741,6 +763,7 @@ export function resolveSearchLairOrder(
       fact: { kind: 'a hero revisits a cleared lair', heroName: c.name, siteName: f.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -786,6 +809,7 @@ export function resolveSearchLairOrder(
       type: 'explore',
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   });
@@ -818,6 +842,7 @@ export function resolveSearchLairOrder(
       {
         audience: { actor: c.player, realms: [c.player], seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       },
       { slainBy: { guardianName: (f.monster?.name ?? '') || null, provinceName: prov.name } },
@@ -838,6 +863,7 @@ export function resolveSearchLairOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -869,6 +895,7 @@ export function resolveSearchLairOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else {
@@ -899,6 +926,7 @@ export function resolveSearchLairOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -920,6 +948,7 @@ export function resolveSearchLairOrder(
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       if (_hi.length) {
@@ -946,6 +975,7 @@ export function resolveSearchLairOrder(
             },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           });
           emit(turnContext, {
@@ -956,6 +986,7 @@ export function resolveSearchLairOrder(
             },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           }); // item 10
         } else
@@ -964,6 +995,7 @@ export function resolveSearchLairOrder(
             fact: { kind: "a thief cannot get near a hoard's magic", heroName: c.name, chance: _ch, roll: _r },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           });
       }
@@ -1049,6 +1081,7 @@ export function resolveSearchLairOrder(
             fact: { kind: "the realm's lore yields an extra find", itemName: bonus.name },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           });
           emit(turnContext, {
@@ -1056,6 +1089,7 @@ export function resolveSearchLairOrder(
             fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([bonus]) },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           });
         }
@@ -1083,6 +1117,7 @@ export function resolveSearchLairOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       baseDrops.forEach((it) => {
@@ -1091,6 +1126,7 @@ export function resolveSearchLairOrder(
           fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([it]) },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       }); // one lore line per relic won
@@ -1104,6 +1140,7 @@ export function resolveSearchLairOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       }); // item 10: worn at once, or no room
     // recover any items earlier challengers left behind when the guardian slew them.
@@ -1124,6 +1161,7 @@ export function resolveSearchLairOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       _recovered.forEach((it) => {
@@ -1132,6 +1170,7 @@ export function resolveSearchLairOrder(
           fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([it]) },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       }); // lore line per recovered relic
@@ -1143,6 +1182,7 @@ export function resolveSearchLairOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       }); // item 10
     }
@@ -1160,6 +1200,7 @@ export function resolveSearchLairOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
   } else if (!encounter.fled) {
@@ -1176,6 +1217,7 @@ export function resolveSearchLairOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -1201,6 +1243,7 @@ export function resolveChartTheUnknownOrder(
       fact: { kind: 'a hero lacks the Explorer mastery to Chart the Unknown', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -1220,6 +1263,7 @@ export function resolveChartTheUnknownOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -1260,6 +1304,7 @@ export function resolveChartTheUnknownOrder(
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: _cuProv.id,
   });
   trySkillGain(turnContext, c, 'explorer', SKILLGAIN_STD);
@@ -1283,6 +1328,7 @@ export function resolveDiscoverLostRuinOrder(
       fact: { kind: 'a hero lacks the Explorer mastery to Discover a Lost Ruin', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -1324,6 +1370,7 @@ export function resolveDiscoverLostRuinOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     trySkillGain(turnContext, c, 'explorer', SKILLGAIN_STD);
@@ -1348,6 +1395,7 @@ export function resolveDiscoverLostRuinOrder(
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   trySkillGain(turnContext, c, 'explorer', SKILLGAIN_STD);

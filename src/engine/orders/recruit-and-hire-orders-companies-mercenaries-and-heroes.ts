@@ -30,7 +30,12 @@ import {
   doARealmsDiscoveriesWaiveTheHiringBan,
   whatARealmsDiscoveriesAddToAMercenaryBandsPrice,
 } from '../rules/the-registry-of-discovery-effects.ts';
-import { emit, notifyTarget, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  notifyTarget,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
@@ -241,6 +246,7 @@ export function resolveRecruitArmiesOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else {
@@ -279,6 +285,7 @@ export function resolveRecruitArmiesOrder(
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         continue;
@@ -304,6 +311,7 @@ export function resolveRecruitArmiesOrder(
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         continue;
       }
@@ -324,6 +332,7 @@ export function resolveRecruitArmiesOrder(
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: c.location,
       });
     }
@@ -363,6 +372,7 @@ export function resolveRecruitArmiesOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -456,6 +466,7 @@ export function resolveRecruitArmiesOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     // if the muster went to ANOTHER of the player's characters, notify them in their section.
@@ -488,6 +499,7 @@ export function resolveRecruitArmiesOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   }
   return;
@@ -520,6 +532,7 @@ export function resolveHireHeroOrder(
       fact: { kind: 'no hero of that description is to be hired here', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -533,6 +546,7 @@ export function resolveHireHeroOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -542,6 +556,7 @@ export function resolveHireHeroOrder(
       fact: { kind: 'a hero driven from his home refuses to be hired this turn', heroName: h.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -551,6 +566,7 @@ export function resolveHireHeroOrder(
       fact: { kind: 'a hero just released from service hears no offers this turn', heroName: h.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -574,6 +590,7 @@ export function resolveHireHeroOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -589,6 +606,7 @@ export function resolveHireHeroOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -640,6 +658,7 @@ export function resolveHireHeroOrder(
     fact: _hireFact,
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   // also file the same line under the HIRED hero's own Chronicle section, at the hire phase,

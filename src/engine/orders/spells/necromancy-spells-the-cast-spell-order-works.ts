@@ -16,6 +16,7 @@ import {
   notifyProvinceOwner,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../turn/events-and-their-audiences.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
 import { applyPlague, blessWardNegates } from '../../magic/plague-and-bless-ward.ts';
@@ -62,6 +63,7 @@ export function workControlUndead({
         fact: { kind: 'Control Undead senses no dead in the province', heroName: c.name, provinceName: prov.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else {
@@ -76,6 +78,7 @@ export function workControlUndead({
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -110,6 +113,7 @@ export function workControlUndead({
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       else if (_nbrs.length > 0)
@@ -118,6 +122,7 @@ export function workControlUndead({
           fact: { kind: 'the sending finds the provinces around quiet', heroName: c.name, provinceName: prov.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
     }
@@ -130,6 +135,7 @@ export function workControlUndead({
       fact: { kind: 'Control Undead finds no hero in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -139,6 +145,7 @@ export function workControlUndead({
       fact: { kind: "Control Undead cannot be turned on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -160,6 +167,7 @@ export function workControlUndead({
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return false;
@@ -190,6 +198,7 @@ export function workControlUndead({
     {
       audience: { actor: c.player },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       alsoNotFor: [targetChar.player],
     },
@@ -223,6 +232,7 @@ export function workSkeletalArmies({ turnContext, c, ph, prov }: TheNamesAnActio
       fact: { kind: 'Skeletal Armies finds no dead to answer', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return false;
@@ -258,6 +268,7 @@ export function workSkeletalArmies({ turnContext, c, ph, prov }: TheNamesAnActio
       },
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -276,6 +287,7 @@ export function workCurse({ turnContext, c, ph, prov, targetChar }: TheNamesAnAc
       fact: { kind: 'Curse finds no hero in the province', provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -285,6 +297,7 @@ export function workCurse({ turnContext, c, ph, prov, targetChar }: TheNamesAnAc
       fact: { kind: "Curse cannot be turned on the realm's own heroes" },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -299,6 +312,7 @@ export function workCurse({ turnContext, c, ph, prov, targetChar }: TheNamesAnAc
       fact: { kind: 'a hero has no skills to curse', targetName: targetChar.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -320,6 +334,7 @@ export function workCurse({ turnContext, c, ph, prov, targetChar }: TheNamesAnAc
     },
     audience: { actor: c.player, realms: [c.player, targetChar.player].filter((x) => x != null), seen: 'battle' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   notifyTarget(
@@ -360,6 +375,7 @@ export function workPlague({
       fact: { kind: 'Plague is cast beyond its reach', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -369,6 +385,7 @@ export function workPlague({
       fact: { kind: 'a province is already stricken with plague this turn', provinceName: targetProv.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return false;
   }
@@ -392,6 +409,7 @@ export function workPlague({
       seen: 'battle',
     },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetProv.id,
     env: true,
   });
@@ -419,6 +437,7 @@ export function workRaiseWraiths({ turnContext, G, c, ph, prov }: TheNamesAnActi
       fact: { kind: 'Raise Wraiths finds no dead to answer', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return false;
@@ -454,7 +473,12 @@ export function workRaiseWraiths({ turnContext, G, c, ph, prov }: TheNamesAnActi
       provinceName: prov.name,
       unitName: wraith.unitName,
     },
-    { audience: { actor: c.player }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, province: prov.id },
+    {
+      audience: { actor: c.player },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+      province: prov.id,
+    },
   );
   resolveUnitGainInProvince(turnContext, c, prov, ph);
 
@@ -476,6 +500,7 @@ export function workDeathsDominion({
       fact: { kind: "Death's Dominion finds no fallen army to raise", heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return false;
@@ -513,6 +538,7 @@ export function workDeathsDominion({
     },
     audience: { actor: c.player, realms: [c.player], seen: 'there' },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   resolveUnitGainInProvince(turnContext, c, prov, ph);

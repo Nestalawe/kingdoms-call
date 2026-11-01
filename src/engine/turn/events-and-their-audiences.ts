@@ -25,8 +25,10 @@
 //          (turnContext._logCtx.charId), but only when the line already reaches his realm (it is told to it, is its
 //          deed, or is seen by the world or there; a battle's line reaches those who fought in it by being told),
 //          else no hero (P1-12c1). Left out, emit throws (and the lint rule refuses an event written without it)
-//   phase  left out or null: the phase of that order, else the phase resolving, else 99 once the phases are over;
-//          'none': no phase (the lines that were pushed straight into turnLog, which never had the 99)
+//   phase  a number; THE_PHASE_THE_LINE_IS_WRITTEN_IN: the phase of that order, else the phase resolving, else 99 once
+//          the phases are over; 'none': no phase (the lines that were pushed straight into turnLog, which never had
+//          the 99). Every event in a type-checked file names it (P1-12d37); until the other files do (P1-12d38), emit
+//          reads one left out or null as THE_PHASE_THE_LINE_IS_WRITTEN_IN
 //
 // A line records a fact (fact: one kind of LineFact, the union of every area's kinds, each typed in its area's module
 // beside its code; src/engine/battle/the-facts-a-battles-lines-record.ts is the first), never its words: since
@@ -210,6 +212,11 @@ import {
  *  hero each fact names. */
 export const THE_HERO_WHOSE_ORDER_IS_RESOLVING = 'the hero whose order is resolving';
 
+/** An event's phase when the line is written in the phase of the order resolving: emit takes that order's phase, else
+ *  the phase resolving, else 99 once the phases are over (and no phase before the first). Every event names its phase,
+ *  a number, 'none', or this. */
+export const THE_PHASE_THE_LINE_IS_WRITTEN_IN = 'the phase the line is written in';
+
 /** Each area's facts, one per area, each typed beside its code (P1-12's Decisions of 2026-10-26, Decision 6): a
  *  battle's, personal combat's, the sea lift's in a battle, a hero's death's, the wanderer's escape's; since P1-12d6
  *  the Encounter and Defend orders', the order dispatch's, the item orders', the Research and Practice orders' and the
@@ -374,8 +381,9 @@ export interface LineAudience {
 export interface EventButItsWords {
   audience: LineAudience;
   province?: number | null | undefined;
-  /** 0 to 4, or 99 for the end of the turn; left out or null: the phase resolving; 'none': no phase. */
-  phase?: number | null | 'none' | undefined;
+  /** 0 to 4, or 99 for the end of the turn; THE_PHASE_THE_LINE_IS_WRITTEN_IN: the order's phase, else the phase
+   *  resolving; 'none': no phase. */
+  phase: number | 'none' | typeof THE_PHASE_THE_LINE_IS_WRITTEN_IN;
   /** The hero whose deed it is; null: no hero; THE_HERO_WHOSE_ORDER_IS_RESOLVING: the hero whose order is resolving,
    *  when the line already reaches his realm (else no hero). Every event names it: emit throws on one left out. */
   hero: number | null | typeof THE_HERO_WHOSE_ORDER_IS_RESOLVING;
@@ -505,7 +513,7 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
     phase:
       event.phase === 'none'
         ? null
-        : (event.phase ??
+        : ((event.phase === THE_PHASE_THE_LINE_IS_WRITTEN_IN ? null : event.phase) ??
           turnContext._logCtx.phase ??
           turnContext._currentPhase ??
           (turnContext._afterPhases ? 99 : null)),
@@ -629,7 +637,7 @@ export function notifyTarget(
     fact: line,
     audience: { actor: null, realms: targetChar.player != null ? [targetChar.player] : [] },
     hero: targetChar.id,
-    phase: _ph,
+    phase: _ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: targetChar.location ?? null,
   });
 }

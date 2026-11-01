@@ -3,7 +3,11 @@ import { isHiddenByInvisibilityFrom, isHiddenChar } from '../heroes/effective-sk
 import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext, TurnOrder } from '../turn/context.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 
 // ── THE ENCOUNTER AND DEFEND ORDERS (plan P1-08j8: the eighth family taken out of processOrder in resolveTurn) ──
 // Encounter Character sets a hero after a quarry he may hunt (never himself, a hero of the lord who holds him by a
@@ -41,6 +45,7 @@ export function resolveEncounterCharacterOrder(
       fact: { kind: 'a hunter finds no quarry to hunt down', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -51,6 +56,7 @@ export function resolveEncounterCharacterOrder(
       fact: { kind: 'a hero cannot set out to encounter himself', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -68,6 +74,7 @@ export function resolveEncounterCharacterOrder(
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -81,6 +88,7 @@ export function resolveEncounterCharacterOrder(
       fact: { kind: 'a common hero may not run down a rival king', heroName: c.name, quarryName: quarry.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -91,6 +99,7 @@ export function resolveEncounterCharacterOrder(
       fact: { kind: 'a hunter finds no trail of a cloaked quarry', heroName: c.name, quarryName: quarry.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -106,6 +115,7 @@ export function resolveEncounterCharacterOrder(
       fact: { kind: 'a hunter finds no trail of a quarry who has vanished', heroName: c.name, quarryName: quarry.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -117,6 +127,7 @@ export function resolveEncounterCharacterOrder(
     fact: { kind: 'a hunter sets out to run down his quarry', heroName: c.name, quarryName: quarry.name },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   advancePursuit(turnContext, c, ph);
@@ -135,6 +146,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       fact: { kind: "a defender's watch is spent in this season's battle", heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return;
@@ -169,6 +181,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   } else if ((c.armies || []).length === 0) {
@@ -177,6 +190,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       fact: { kind: 'a defender with no column lies in wait to ambush', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   } else if (centreProv.id === prov.id) {
@@ -185,6 +199,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       fact: { kind: 'a defender makes camp and sets a watch', heroName: c.name, provinceName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   } else {
@@ -198,6 +213,7 @@ export function resolveDefendOrder(turnContext: TurnContext, c: Character, o: Tu
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
