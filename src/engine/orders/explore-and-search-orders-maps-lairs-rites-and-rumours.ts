@@ -1,4 +1,5 @@
 import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import {
@@ -284,7 +285,7 @@ export function resolvePerformRiteOrder(
   // an Explore); for none, a TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm performs a rite');
   // ── PAGAN: Perform Rite ── Only Pagan realms; only at a DISCOVERED ritual site.
-  if (G.players[c.player]?.alignment !== 'Pagan') {
+  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS['perform-rite'].creed) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero who does not keep the old faith cannot perform rites', heroName: c.name },
@@ -461,7 +462,9 @@ export function resolvePerformRiteOrder(
   _ben.forEach((b) => {
     const cur = _tiers.indexOf(b.quality);
     if (cur > -1) {
-      const risen = _tiers[Math.min(4, cur + 2)]; // two tiers up, Elite at most: a tier of the five
+      // its row's tiers up (two), Elite at most: a tier of the five
+      const risen =
+        _tiers[Math.min(4, cur + THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.theBloodOfferingsGrades.value)];
       if (risen === undefined) throw new TypeError('a quality two tiers up is none');
       b.quality = risen;
     }
