@@ -33,7 +33,7 @@
 // P1-12d18 emit throws on an event handed as words, and the lint rule refuses one (a text key, a string narrated). The
 // views write a fact's words after the turn (src/views/prose/; docs/traps.md, "A line goes through emit"), and the GM's
 // log is stored with every line's words, in the form above: a fact never reaches the store. A battle's lines take their
-// tiers, and its losses tally its place, from those words, in the views too (emitBattle).
+// tiers from their kinds, and its losses tally its place and its words from their facts, in the views too (emitBattle).
 //
 // Each kind of fact has its audience, written once beside it in its area's module (Decision 6): the fight's, for most
 // of a fight's lines; its hero's realm alone (THE_AUDIENCE_OF_EACH_KIND, which emitNarrLine reads); or, for a kind

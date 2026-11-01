@@ -50,8 +50,8 @@
   is a compile error. **The route by kind**: `theWordsOf` reads, for a fact's kind, its area's words, from a
   table built from the areas' audience tables (each lists every kind its area has); a kind belongs to one area, and one
   declared in two is a compile error where `LineFact` is (`engine/turn/events-and-their-audiences.ts`). A new area adds
-  its facts to `LineFact`'s list there, its audience table to the route and its words module beside the others. A battle's lines take their tiers (key or detail) and its losses tally its place from those words,
-  as `emitBattle` did before. The result is the GM's log in words, in the form it was always stored in: `buildReports`
+  its facts to `LineFact`'s list there, its audience table to the route and its words module beside the others. A battle's lines take their tiers (key or detail) from their kinds, and its losses tally is written
+  from their facts. The result is the GM's log in words, in the form it was always stored in: `buildReports`
   returns it as `gmLog`, and the shell saves it. `engine/battle/` and `engine/personal-combat/` write no
   line's words: every line they tell is a kind (the force markers, personal combat, a battle between heroes and the duel
   before it, a battle against a province's own defenders, a host gained in a province, a stalled battle, a war front,
@@ -173,8 +173,8 @@
   thresholds and verbs, and a test passes its own dice. Each line names whom the company fought
   (`battleFacedClauses`, a map read from the deploy's grids right after the deploy, before the stay-or-retreat
   estimate faces the survivors afresh: whom it faced as a record, read from the facing's kind, never its words; the
-  line holds it beside the company's reference, and `theClauseOfWhomAUnitFaced` writes the clause); the losses tally (`battleTallyLine`) reads a line's owner and unit
-  type from the company named first in it, which is always the company's own reference.
+  line holds it beside the company's reference, and `theClauseOfWhomAUnitFaced` writes the clause); the losses tally (the views') reads each fate's owner, type
+  and name from its fact.
 - **Dice and the clock**. Every random number the GM portal's code draws (dice, shuffles, bot choices, the
   world map, id suffixes) comes from `kcRng()` (`src/engine/rng.ts`): one sfc32 generator, the first file of the
   page's main script, seeded once per page load from `crypto.getRandomValues`, or from the seed a test gives the page.

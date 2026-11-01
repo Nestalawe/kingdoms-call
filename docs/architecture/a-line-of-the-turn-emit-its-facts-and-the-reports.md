@@ -215,7 +215,7 @@ check finds were made.
   `e.text || ''`, `l.text === words`) passes for nothing once its line becomes a fact, and an assertion that a line is
   absent stays green whatever the engine writes; read the words pass. In this run a
   line's words are the same for every reader (the masking of unmet realms stays on them, R-046).
-- **A battle's tiers come from its lines' kinds, and its tally from their words, in the views.** `emitBattle` files
+- **A battle's tiers come from its lines' kinds, and its tally from their facts, in the views.** `emitBattle` files
   each line with its tier still to work out (`A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES`) and, after them,
   the place of its losses tally (a fact with no words, filed with the fight's event, so it keeps the fight's audience,
   hero and place; none when every line is for one realm alone). Since P1-12d34 each kind a battle's lines may hold has
@@ -225,10 +225,13 @@ check finds were made.
   header ('d'; the casualty lists begin at the first), a line of the casualty lists ('d' once they have begun, 'k'
   before), or the fortune's ('d' when a side brings no strength). A kind no table lists takes 'k'. A new kind a
   battle's lines hold takes a tier in its area's table (the three big areas' tables don't compile without one). The words
-  pass reads them (`theTiersOfABattlesLines`) and writes the tally (`battleTallyLine`, `src/engine/battle/fates.ts`, from
-  the words) where the casualty lists begin, else after the lines, else nowhere. Nothing in the engine may read a
+  pass reads them (`theTiersOfABattlesLines`) and writes the tally where the casualty lists begin, else after the
+  lines, else nowhere. Since P1-12d35 the tally is written from the facts (`theWordsOfABattlesLossesTally`,
+  `src/views/prose/`): each side's units from its force (phantoms out), its name from its casualty list's header, each
+  fate credited to the side whose header names its owner, else the list it follows, and found on that side's force by
+  its type or its name; a whale cohort's breach names the side whose hull sinks. Nothing in the engine may read a
   line's tier, or the tally, as the turn goes on: they aren't there yet. The cases:
-  `tests/unit/the-views-write-each-lines-words.test.ts`.
+  `tests/unit/the-views-write-each-lines-words.test.ts`, `a-battles-losses-tally-is-written-from-the-facts-of-its-lines`.
 - Nothing stored changes in P1-12a, P1-12b or this run of P1-12c: the GM's log in words is today's line forms, key for
   key and in the same order (the old `log()`'s 17 keys; `form: 'bare'`, the 14 of the lines once pushed directly;
   `notFor` last when `except` is given), with no fact in it. The stored form changes once, declared, when the last area

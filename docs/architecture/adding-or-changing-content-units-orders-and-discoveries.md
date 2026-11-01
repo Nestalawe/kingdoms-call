@@ -166,16 +166,19 @@ keep its `case` as a plain refusal, so an order a save still holds is answered r
 ## A fate line names two companies
 
 Since 2026-10-12 a casualty line names the enemy company too: "— Aldric's Levies (Shieldwall Levies, Average),
-facing the Red Hand (Gorbash's Gnomish Gyrocopters), were annihilated in the rout!". Two readers depend on the
-company's own reference coming **first**:
+facing the Red Hand (Gorbash's Gnomish Gyrocopters), were annihilated in the rout!". The line opens with the
+company's own reference (`unitRef`) and puts the clause after it. Two things follow:
 
-- the losses tally (`battleTallyLine`) reads the owner and the unit type from the first match in the line, so a
-  new fate line must open with the company's own reference (`unitRef`) and put the clause after it;
+- the losses tally reads the line's fact, not its words (since P1-12d35: `theWordsOfABattlesLossesTally`,
+  `src/views/prose/`): the owner its reference names, its type and its name. A new fate (or a new fate kind) is
+  counted only once the tally's switch says how (lost, disbanded, demoted, promoted or not at all): lint refuses a
+  fate the switch leaves out;
 - the clause comes from `battleFacedClauses`, read from the deploy's grids right after `battleDeploy`. Anything
   that faces the rows again later (the stay-or-retreat estimate does) overwrites the rows' `_faced` stamps, so
   read the map once, early, and pass it to `rollUnitFates` as `faced`.
 
-`tests/battle-faced-lines.test.js` holds the wording of every branch and the tally's crediting.
+`tests/battle-faced-lines.test.js` holds the wording of every branch;
+`tests/unit/a-battles-losses-tally-is-written-from-the-facts-of-its-lines.test.ts` the tally's crediting.
 
 A new fate line, like any new kind a battle's lines hold, also takes a tier in its area's table beside its audience
 (`THE_TIER_OF_EACH_KIND_OF_A_BATTLES_LINE` and its neighbours): a casualty list's line is 'd' once the lists begin and

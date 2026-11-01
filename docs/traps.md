@@ -289,10 +289,12 @@ words test (row against books); nothing else.
 ## A fate line names two companies
 
 A new casualty (fate) line opens with the company's own reference (`unitRef`) and puts the clause about the enemy
-after it, and the faced map is read once, early, and passed to `rollUnitFates` as `faced`. Example: "— Aldric's Levies
-(Shieldwall Levies, Average), facing the Red Hand (Gorbash's Gnomish Gyrocopters), were annihilated in the rout!": the
-losses tally (`battleTallyLine`) reads the owner and type from the first match, and anything that faces the rows again
-(the stay-or-retreat estimate) overwrites their `_faced` stamps. Checks: `tests/battle-faced-lines.test.js`.
+after it, and the faced map is read once, early, and passed to `rollUnitFates` as `faced`. A new fate is counted in the
+losses tally only once the tally's switch names it (`theWordsOfABattlesLossesTally` reads the fact: its owner, type
+and name; lint refuses a fate it leaves out). Example: "— Aldric's Levies (Shieldwall Levies, Average), facing the Red
+Hand (Gorbash's Gnomish Gyrocopters), were annihilated in the rout!" is credited to Aldric by its fact's owner, and
+anything that faces the rows again (the stay-or-retreat estimate) overwrites their `_faced` stamps. Checks:
+`tests/battle-faced-lines.test.js`, `tests/unit/a-battles-losses-tally-is-written-from-the-facts-of-its-lines.test.ts`.
 
 ## Other realms' slots come only from `get_game_slots`
 

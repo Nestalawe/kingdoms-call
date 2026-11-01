@@ -692,7 +692,7 @@ export interface AForceDrawnUpForBattle {
 }
 
 /** Where a battle's losses tally goes (emitBattle files it after the battle's lines): the views work the tally out from
- *  the words of the battle's lines, and put it where the casualty lists begin, or leave it out when there is none to
+ *  the facts of the battle's lines, and put it where the casualty lists begin, or leave it out when there is none to
  *  tally. It has no words of its own. Its audience: the fight's. */
 export interface ABattlesLossesTalliedFromItsLines {
   kind: "a battle's losses, tallied from its lines";

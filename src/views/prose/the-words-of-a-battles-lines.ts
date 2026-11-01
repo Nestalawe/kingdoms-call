@@ -967,8 +967,8 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a beaten guard's surviving unit's fate":
       return theWordsOfABeatenGuardsSurvivingUnitsFate(fact);
     case 'a force drawn up for battle': {
-      // The header's machine form, its keys in this order: the player page, the GM page, the battle's tiers and its
-      // tally read it back (join-and-chronicle.ts, turn-log.ts, engine/battle/fates.ts).
+      // The header's machine form, its keys in this order: the player page and the GM page read it back
+      // (join-and-chronicle.ts, turn-log.ts); the battle's tiers and its tally read its fact (P1-12d34, P1-12d35).
       const { color, neutral, guard, role, howItComesOn, armies } = fact;
       const name = theNameOfTheForceAHeaderNames(fact.theForce, fact.fallenCommandersName);
       const verb = howItComesOn ? theWordsOfHowAForceComesOn(howItComesOn) : '';
@@ -976,7 +976,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     }
     case "a battle's losses, tallied from its lines":
       throw new Error(
-        "a battle's losses tally is written from the words of the battle's lines (theTurnsLinesInWords), not on its own",
+        "a battle's losses tally is written from the facts of the battle's lines (theTurnsLinesInWords), not on its own",
       );
     case "the attacker's lightning advance catches the defender unready":
       return `⚡ ${String(fact.atkName)}'s Lightning Advance catches ${String(fact.defName)} completely unready — no terrain advantage, no pre-battle magic and no answering volley.`;
