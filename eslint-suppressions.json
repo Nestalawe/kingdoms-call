@@ -289,9 +289,6 @@
     },
     "no-empty": {
       "count": 1
-    },
-    "prefer-const": {
-      "count": 1
     }
   },
   "src/engine/orders/item-orders-equip-use-and-send-magic-items.ts": {

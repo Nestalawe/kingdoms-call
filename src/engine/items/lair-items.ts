@@ -67,7 +67,9 @@ export function noteItemFound(gs, playerIndex, it) {
 // A lair-tier roll for a NAMED player: same tier odds as rollMagicItem, but among the categories
 // this realm has found least of. Falls back to the plain roll when no category has stock in the
 // chosen tier.
-export function rollMagicItemFor(gs, playerIndex, monsterPower, taken, takenEff) {
+// (Its return type is written for a freed caller, the search's bonus find: an item of the treasury's, or none when it is
+// spent, as rollMagicItem's; plan P1-10b21.)
+export function rollMagicItemFor(gs, playerIndex, monsterPower, taken, takenEff?): ReturnType<typeof rollMagicItem> {
   taken = taken || new Set();
   if (!takenEff) takenEff = awardedEffectSet(gs);
   const pl = ((gs && gs.players) || [])[playerIndex];

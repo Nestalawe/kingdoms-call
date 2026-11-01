@@ -1260,7 +1260,8 @@ export function botRumourFor(G, pi, c, f) {
   if (BOT_LAIR_REASK_GAIN > 0 && r.rating != null && botLairRating(c) >= r.rating + BOT_LAIR_REASK_GAIN) return null;
   return r;
 } // 2026-09-28: stale only if he has WEAKENED since (a level gained no longer voids it)
-export function botLairRating(c) {
+// (Its return type is written for a freed caller, Hunting Rumours' note of the odds told; plan P1-10b21.)
+export function botLairRating(c): number {
   const sk = c.skills || {};
   return (
     (c.maxHp || 20) +

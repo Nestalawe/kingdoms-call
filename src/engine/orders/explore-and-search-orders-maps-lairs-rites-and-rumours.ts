@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -50,6 +49,19 @@ import {
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.ts';
 import { botLairRating } from '../bots/strategy.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { servesARealm, theOneThePickFell } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import {
+  theNameDrawn,
+  theProvinceIsHanded,
+  theRealmIsHanded,
+} from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+import type {
+  ABeastBoundAsTheLineNamesIt,
+  TheFactOfTheExploreAndSearchOrdersLine,
+} from './the-facts-the-explore-and-search-orders-lines-record.ts';
+import type { Army, Character, Item, Province, ProvinceFeature, Realm } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
 
 // ── THE EXPLORE AND SEARCH ORDERS (plan P1-08j2: the second family taken out of processOrder in resolveTurn) ──
 // Six orders a hero spends a phase on where he stands: Explore, Perform Rite, Hunting Rumours, Search Lair, Chart the
@@ -58,16 +70,42 @@ import { botLairRating } from '../bots/strategy.ts';
 // (src/engine/turn/context.ts), then the values processOrder worked out before it that it reads, in the order
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break
 // became a return.
+/** A company as the Blood Offering reads it: a hero's, and whether it is borrowed for a while (summoned, charmed). */
+type ACompanyAsTheBloodOfferingReadsIt = Army & { readonly _temporary?: boolean | undefined };
+/** A lair with a guardian, as Hunting Rumours asks after it. */
+type ALairWithAGuardian = ProvinceFeature & { readonly monster: NonNullable<ProvinceFeature['monster']> };
+/** A site as the search reads it: its guardian marked when a thief has made off with part of his hoard (the fight's
+ *  mark), and the kit of challengers its guardian slew, as an older save may hold it. */
+type ALairAsTheSearchReadsIt = Omit<ProvinceFeature, 'monster'> & {
+  monster: (NonNullable<ProvinceFeature['monster']> & { _treasureStolen?: boolean | undefined }) | null;
+  lairItems?: Item[] | null | undefined;
+};
+/** The province a search is made in, its sites as the search reads them. */
+type TheProvinceAsTheSearchReadsIt = Omit<Province, 'features'> & { features: ALairAsTheSearchReadsIt[] };
+/** The fight at a lair as the search reads it: resolveEncounter's, and whether the beast was pacified (a stand-in's: the
+ *  fight itself never says so). */
+type TheFightAsTheSearchReadsIt = ReturnType<typeof resolveEncounter> & { readonly pacified?: boolean | undefined };
+/** A hero's item as the lair's keeping of a fallen hero's kit reads it: its effect guarded, as if an item may have none. */
+interface AnItemItsEffectGuarded {
+  readonly effect?: { readonly stat?: string | undefined } | null | undefined;
+}
+/** A function's parameters after the turn's context. */
+type AfterTheTurnsContext<Fn> = Fn extends (turnContext: never, ...rest: infer Rest) => unknown ? Rest : never;
 // Explore: the province he stands in mapped further, and the lairs and ritual sites that come to light as it fills.
-export function resolveExploreOrder(turnContext, c, prov) {
+export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov: Province | undefined) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
+  // hero who gives it, for the phases after), so he serves one, and processOrder hands him the province he stands in;
+  // for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm explores');
   trySkillGain(turnContext, c, 'explorer', SKILLGAIN_COMMON); // Explorer: performing an Explore order
+  theProvinceIsHanded(prov);
   // AK 3.2: Basic Exploration Number × (Explorer skill + 1)% Terrain table: Plain 50%, Desert
   // 25%, Forest 15%, Mountain 15%, Jungle 10%, Sea 25% Base explore rate per terrain, cut 15
   // percentage points from the original
   // {plain:50,desert:40,forest:35,mountain:35,jungle:30,sea:40} to slow the early land-grab.
-  const BASIC_EXPLORE = { ...KC_BASIC_EXPLORE };
-  const basicRate = BASIC_EXPLORE[prov.terrain] || 15;
+  const BASIC_EXPLORE: Readonly<Partial<Record<string, number>>> = { ...KC_BASIC_EXPLORE }; // read by any ground
+  const basicRate = (BASIC_EXPLORE[prov.terrain] ?? 0) || 15;
   // sd24 The Compass: Explorer treated as 1 level higher
   const explorerSkill = Math.min(5, effStat(turnContext, c, 'explorer'));
   // sd10 Scouts & Rangers: +20% explore bonus
@@ -80,11 +118,12 @@ export function resolveExploreOrder(turnContext, c, prov) {
   // exploring", the rule discExploreMult ships to the report)
   const _discExpl = theFactorARealmsDiscoveriesMultiplyExploringBy(G.players[c.player], { theGround: prov.terrain });
   const gain = Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * loreMult * _discExpl));
-  if (!prov.exploredBy) prov.exploredBy = {};
-  const before = prov.exploredBy[c.player] || 0;
-  prov.exploredBy[c.player] = Math.min(100, before + gain);
-  prov.explored = prov.exploredBy[c.player]; // keep legacy field for compatibility
-  creditMapped(c, before, prov.exploredBy[c.player]); // TITLE MERIT: Cartographer
+  prov.exploredBy ??= {};
+  const before = Number(prov.exploredBy[c.player]) || 0;
+  const mappedNow = Math.min(100, before + gain); // the share his realm has mapped now, read back below as written
+  prov.exploredBy[c.player] = mappedNow;
+  prov.explored = mappedNow; // keep legacy field for compatibility
+  creditMapped(c, before, mappedNow); // TITLE MERIT: Cartographer
   // EXPLORER L8 — surveying the ground sometimes reveals richer land: 50% chance to +2 tax
   // base (max 10), permanent. EXPLORER L8: the rich-land survey can only pay off ONCE per
   // province — repeated Explore orders on the same ground no longer keep rolling the tax base
@@ -112,18 +151,18 @@ export function resolveExploreOrder(turnContext, c, prov) {
   const _alPct = theShareARealmsDiscoveriesMapAroundAnExplorer(G.players[c.player]);
   if (_alPct !== null) {
     getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).forEach((nb) => {
-      if (!nb) return;
-      if (!nb.exploredBy) nb.exploredBy = {};
-      const _ab = nb.exploredBy[c.player] || 0;
-      nb.exploredBy[c.player] = Math.min(100, _ab + _alPct);
-      nb.explored = nb.exploredBy[c.player];
-      creditMapped(c, _ab, nb.exploredBy[c.player]);
+      nb.exploredBy ??= {};
+      const _ab = Number(nb.exploredBy[c.player]) || 0;
+      const _abNow = Math.min(100, _ab + _alPct); // read back below as written
+      nb.exploredBy[c.player] = _abNow;
+      nb.explored = _abNow;
+      creditMapped(c, _ab, _abNow);
     });
   }
   // Feature discovery: proportional thresholds based on how many features exist At 100%
   // explored, all features visible. 1 feature=100%, 2=50%/100%, 4=25%/50%/75%/100% etc.
-  const totalFeatures = (prov.features || []).length;
-  const newlyDiscovered = [];
+  const totalFeatures = (asItsGuardReadsIt(prov.features) ?? []).length;
+  const newlyDiscovered: ProvinceFeature[] = [];
   if (totalFeatures > 0) {
     const threshold = 100 / totalFeatures; // % per feature
     prov.features.forEach((f, idx) => {
@@ -141,11 +180,13 @@ export function resolveExploreOrder(turnContext, c, prov) {
   }
   // Philosopher's Lens: reveals one random still-undiscovered lair here (the items' registry, plan P1-19o).
   if (theExplorersItemsRevealALair(activeItems(c))) {
-    const _lensPool = (prov.features || []).filter(
-      (f) => f && !featDiscovered(f, c.player) && !(f._hidden && f._hiddenBy !== c.player),
+    // the sites here, as the Lens's pass guards them (a gap in the list is passed over)
+    const _sitesHere: readonly (ProvinceFeature | null | undefined)[] = asItsGuardReadsIt(prov.features) ?? [];
+    const _lensPool = _sitesHere.filter((f): f is ProvinceFeature =>
+      Boolean(f && !featDiscovered(f, c.player) && !(f._hidden && f._hiddenBy !== c.player)),
     );
     if (_lensPool.length) {
-      const _lf = _lensPool[Math.floor(kcRng() * _lensPool.length)];
+      const _lf = theOneThePickFell(_lensPool[Math.floor(kcRng() * _lensPool.length)]);
       discoverFeat(_lf, c.player);
       c.merits = (c.merits || 0) + 1;
       TM(c).featuresFound += 1;
@@ -159,7 +200,11 @@ export function resolveExploreOrder(turnContext, c, prov) {
       });
     }
   }
-  if ((prov.features || []).some((f) => f._hidden && f._hiddenBy !== c.player && !featDiscovered(f, c.player))) {
+  if (
+    (asItsGuardReadsIt(prov.features) ?? []).some(
+      (f) => f._hidden && f._hiddenBy !== c.player && !featDiscovered(f, c.player),
+    )
+  ) {
     emit(turnContext, {
       type: 'explore',
       fact: { kind: "a veiling illusion clouds a hero's exploring", heroName: c.name, provinceName: prov.name },
@@ -171,6 +216,8 @@ export function resolveExploreOrder(turnContext, c, prov) {
   if (newlyDiscovered.length > 0) {
     // a ritual site has no guardian: the line reports it as a ritual site (the prose's words).
     if (newlyDiscovered.length === 1) {
+      const [theSiteFound] = theSitesFoundAsTheLineNamesThem(newlyDiscovered);
+      if (!theSiteFound) throw new TypeError('one site found, and none named'); // the list holds one
       emit(turnContext, {
         type: 'explore',
         fact: {
@@ -179,7 +226,7 @@ export function resolveExploreOrder(turnContext, c, prov) {
           provinceName: prov.name,
           gain,
           explored: prov.explored,
-          site: theSitesFoundAsTheLineNamesThem(newlyDiscovered)[0],
+          site: theSiteFound,
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -223,8 +270,19 @@ export function resolveExploreOrder(turnContext, c, prov) {
   return;
 }
 // Perform Rite (Pagan realms, at a ritual site): the Rite of the Wild Hunt, or the Blood Offering.
-export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov, player) {
+export function resolvePerformRiteOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  target: string,
+  extra: string,
+  prov: Province | undefined,
+  player: Realm | undefined,
+) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase, and processOrder hands him his realm and the province he stands in (as for
+  // an Explore); for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm performs a rite');
   // ── PAGAN: Perform Rite ── Only Pagan realms; only at a DISCOVERED ritual site.
   if (G.players[c.player]?.alignment !== 'Pagan') {
     emit(turnContext, {
@@ -238,7 +296,8 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
   // a ritual site in your OWN province is always known to you (it shows on your map), so the
   // rite may be performed there without first Exploring. Elsewhere, the site must be
   // discovered.
-  const _riteSite = (prov.features || []).find(
+  theProvinceIsHanded(prov);
+  const _riteSite = (asItsGuardReadsIt(prov.features) ?? []).find(
     (f) => f.ritualSite && (featDiscovered(f, c.player) || prov.owner === c.player),
   );
   if (!_riteSite) {
@@ -274,7 +333,8 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
   if (_rite.startsWith('wild')) {
     // ── Rite of the Wild Hunt ── Bind the province's native primal creatures for this turn
     // and WILD_HUNT_TURNS more. The ONLY way to field Creatures/Monsters without Druid magic.
-    const _wildType = (prov.armyTypes || []).find((t) => PRIMAL_ARMY_DEFS_P[t]);
+    const primalDefs: Readonly<Partial<Record<string, object>>> = PRIMAL_ARMY_DEFS_P; // read by any unit's type
+    const _wildType = (asItsGuardReadsIt(prov.armyTypes) ?? []).find((t) => primalDefs[t]);
     if (!_wildType) {
       emit(turnContext, {
         type: 'system',
@@ -291,6 +351,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
       return;
     }
     const _huntCost = wildHuntPrice(_wildType);
+    theRealmIsHanded(player);
     if ((player.gold || 0) < _huntCost) {
       emit(turnContext, {
         type: 'system',
@@ -302,16 +363,16 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
     }
     player.gold -= _huntCost;
     prov._riteTurn = G.turn; // the province's one rite this turn is spent
-    c.armies = c.armies || [];
-    const _bound = [];
+    c.armies = asItsGuardReadsIt(c.armies) ?? [];
+    const _bound: ABeastBoundAsTheLineNamesIt[] = [];
     for (let wi = 0; wi < WILD_HUNT_UNITS; wi++) {
       // the bound beasts are VETERAN. _wildHuntUntilTurn is the LAST turn they serve
       // (released by the end-of-turn sweep once G.turn has advanced PAST it).
-      const _u = {
+      const _u: Army = {
         type: _wildType,
         quality: 'Veteran',
-        race: prov.race || 'Primal',
-        unitName: armyUnitName(_wildType),
+        race: (prov.race ?? '') || 'Primal',
+        unitName: theNameDrawn(armyUnitName(_wildType)),
         _wildHuntUntilTurn:
           G.turn + WILD_HUNT_TURNS + theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(G.players[c.player]),
       }; // + ap08 The Long Hunt (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries
@@ -343,18 +404,24 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
   // "S:i,j|E:a,b" — indices into the character's army. Borrowed/temporary/skeletal units can
   // be neither offered nor raised.
   const _tiers = QUALITY_TIERS.slice();
-  const _army = c.armies || [];
-  const _bOffElig = (i) => {
+  const _army: ACompanyAsTheBloodOfferingReadsIt[] = asItsGuardReadsIt(c.armies) ?? [];
+  const _bOffElig = (i: number) => {
     const a = _army[i];
     return !!a && !a._temporary && a._wildHuntUntilTurn == null && !a._isSkeletal;
   };
-  let _sacI = [],
-    _benI = [];
+  // a company the offering names, by an index _bOffElig has passed (so there is one); for none, a TypeError
+  const theCompanyNamed = (i: number) => {
+    const a = _army[i];
+    if (!a) throw new TypeError('a company the Blood Offering names is none');
+    return a;
+  };
+  let _sacI: number[] = [],
+    _benI: number[] = [];
   const _bm = /S:([0-9,]*)\|E:([0-9,]*)/.exec((extra || '').trim());
   if (_bm) {
     _sacI = [
       ...new Set(
-        _bm[1]
+        String(_bm[1]) // the group always takes part in a match (its words, '' for none)
           .split(',')
           .filter((x) => x !== '')
           .map(Number),
@@ -362,7 +429,7 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
     ].filter((i) => Number.isInteger(i) && _bOffElig(i));
     _benI = [
       ...new Set(
-        _bm[2]
+        String(_bm[2])
           .split(',')
           .filter((x) => x !== '')
           .map(Number),
@@ -373,8 +440,8 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
   if (_sacI.length === 0 || _benI.length === 0) {
     const _own = _army.map((a, i) => i).filter(_bOffElig);
     if (_own.length >= 2) {
-      _sacI = [_own[0]];
-      _benI = [_own[1]];
+      _sacI = _own.slice(0, 1); // the first, as [_own[0]]
+      _benI = _own.slice(1, 2); // the second, as [_own[1]]
     } else {
       emit(turnContext, {
         type: 'system',
@@ -386,14 +453,18 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
     }
   }
   const _bn = Math.min(_sacI.length, _benI.length); // each sacrifice funds exactly one empowerment
-  const _sac = _sacI.slice(0, _bn).map((i) => _army[i]);
-  const _ben = _benI.slice(0, _bn).map((i) => _army[i]);
+  const _sac = _sacI.slice(0, _bn).map(theCompanyNamed);
+  const _ben = _benI.slice(0, _bn).map(theCompanyNamed);
   prov._riteTurn = G.turn; // the province's one rite this turn is spent
   c.armies = _army.filter((a) => !_sac.includes(a));
   recordBattleGraves(turnContext, prov, _sac);
   _ben.forEach((b) => {
     const cur = _tiers.indexOf(b.quality);
-    if (cur > -1) b.quality = _tiers[Math.min(4, cur + 2)];
+    if (cur > -1) {
+      const risen = _tiers[Math.min(4, cur + 2)]; // two tiers up, Elite at most: a tier of the five
+      if (risen === undefined) throw new TypeError('a quality two tiers up is none');
+      b.quality = risen;
+    }
   });
   if (typeof refreshMovePool === 'function') refreshMovePool(turnContext, c); // the host is smaller now — pace may change
   emit(turnContext, {
@@ -421,22 +492,33 @@ export function resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov,
 // (learned for good, exactly as a Scout would learn it), the hoard behind it (exact gold and
 // the magic that lies there), and the hero's own odds — measured by simulateLairOdds and read
 // back as one of five narrative bands.
-export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player) {
+export function resolveHuntingRumoursOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: string,
+  prov: Province | undefined,
+  player: Realm | undefined,
+) {
   const { G } = turnContext;
-  const _cost = RUMOUR_COST_BY_POWER;
+  // Only a hero of a realm acts in a phase, and processOrder hands him his realm and the province he stands in (as for
+  // an Explore); for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm hunts rumours');
+  const _cost: Readonly<Partial<Record<string, number>>> = RUMOUR_COST_BY_POWER; // read by any grade
   const _idxs = [
     ...new Set(
-      String(target || '')
+      (target || '') // words (the order's target)
         .split(',')
-        .map((s) => parseInt(String(s).trim()))
+        .map((s) => parseInt(s.trim()))
         .filter((n) => !isNaN(n) && n >= 0),
     ),
   ];
-  const _total = (prov.features || []).length,
-    _explHere = (prov.exploredBy && prov.exploredBy[c.player]) || 0;
+  theProvinceIsHanded(prov);
+  const _total = (asItsGuardReadsIt(prov.features) ?? []).length,
+    _explHere = Number(prov.exploredBy?.[c.player]) || 0;
   const _feats = _idxs
-    .map((i) => ({ f: (prov.features || [])[i], i }))
-    .filter(({ f, i }) => {
+    .map((i) => ({ f: (asItsGuardReadsIt(prov.features) ?? [])[i], i }))
+    .filter((x): x is { f: ALairWithAGuardian; i: number } => {
+      const { f, i } = x;
       if (!f || f.cleared || f.ritualSite || !f.monster) return false;
       const thr = _total > 0 ? Math.ceil(100 / _total) * (i + 1) : 100; // the order form's own visibility rule
       return featDiscovered(f, c.player) || _explHere >= thr;
@@ -467,10 +549,11 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     province: prov.id,
   });
+  theRealmIsHanded(player);
   for (const { f, i: _fi } of _feats) {
-    const m = f.monster;
-    const grade = (m && m.power) || f.tier || 'Weak';
-    const price = _cost[grade] || 1;
+    const m = f.monster; // a guardian: the lairs above are those with one
+    const grade = m.power || (f.tier ?? '') || 'Weak';
+    const price = (_cost[grade] ?? 0) || 1;
     if ((player.gold || 0) < price) {
       emit(turnContext, {
         type: 'explore',
@@ -489,24 +572,25 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
     }
     player.gold -= price;
     // the guardian's kind keeps its capital (the prose's words): "(elemental)" read as a magic school written in lower case
-    const lines = [
+    const lines: TheFactOfTheExploreAndSearchOrdersLine[] = [
       {
         kind: "a lair's rumours are bought",
         price,
         siteName: f.name,
         guardianName: m.name,
         guardianKind: aGuardianAsItsKindIsRead(m),
-        grade: (m && m.power) || f.tier || null,
+        grade: m.power || (f.tier ?? '') || null,
       },
     ];
     // 1) the weakness
     {
-      if (m.weak) {
+      const weak = asItsGuardReadsIt(m.weak); // a guardian staged with none has none to tell
+      if (weak) {
         const fresh = pcLearnWeakness(G, c.player, m.name);
         lines.push({
           kind: "the rumours tell a guardian's weakness",
-          weaknessName: m.weak.name,
-          weaknessDesc: m.weak.desc,
+          weaknessName: weak.name,
+          weaknessDesc: weak.desc,
           theRealmMarksItNow: fresh,
           guardianName: m.name,
         });
@@ -516,8 +600,8 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
     {
       ensureLairHoard(f, G);
       const gold = encounterClearGold(f);
-      const _hi = f.hoardItems || [],
-        _st = f._stolenItems || [];
+      const _hi = f.hoardItems ?? [],
+        _st = f._stolenItems ?? [];
       const _wield = _hi.filter((it) => guardianCanUseItem(m, it));
       lines.push({
         kind: "the rumours tell a lair's hoard",
@@ -544,11 +628,13 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
       // Sept 2026: the band the hero was told is kept on the feature (per realm, per hero, with the hero's
       // fighting rating at the time) so a bot can act on exactly what a player reads — nothing more.
       if (odds) {
-        f._rumourOdds = f._rumourOdds || {};
+        f._rumourOdds ??= {};
+        const theBand = rumourOddsBand(odds.pct); // the band its share falls in, else the last: there is always one
+        if (!theBand) throw new TypeError("Cannot read properties of undefined (reading 'max')");
         f._rumourOdds[c.player] = {
           turn: G.turn,
           charId: c.id,
-          band: rumourOddsBand(odds.pct).max,
+          band: theBand.max,
           rating: botLairRating(c),
         };
       }
@@ -560,26 +646,36 @@ export function resolveHuntingRumoursOrder(turnContext, c, target, prov, player)
         });
       } else lines.push({ kind: 'nobody could say how a hero would fare against a guardian', heroName: c.name });
     }
-    lines.forEach((t) =>
+    lines.forEach((t) => {
       emit(turnContext, {
         type: 'explore',
         fact: t,
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
-      }),
-    );
+      });
+    });
   }
   trySkillGain(turnContext, c, 'spy', SKILLGAIN_COMMON); // a season of asking questions is Spy fieldwork, at the common (move/explore) rate
   return;
 }
 // Search Lair: the fight with a lair's guardian, and what the hero carries off, or leaves behind.
-export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player) {
+export function resolveSearchLairOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  target: string,
+  prov: TheProvinceAsTheSearchReadsIt | undefined,
+  player: Realm | undefined,
+) {
   const { G, _tel } = turnContext;
+  // his realm, as the search reads it by his realm's index: none for a hero who serves none (the code guards one)
+  const hisRealm = () => (c.player === null ? undefined : G.players[c.player]);
   // Find the feature
   let fi = 0;
   if (target && !isNaN(parseInt(target))) fi = parseInt(target);
-  if (!prov.features || prov.features.length === 0) {
+  theProvinceIsHanded(prov);
+  if (!asItsGuardReadsIt(prov.features) || prov.features.length === 0) {
     emit(turnContext, {
       type: 'explore',
       fact: { kind: 'a hero searches a province with no sites', heroName: c.name, provinceName: prov.name },
@@ -601,11 +697,13 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     });
     return;
   }
-  let f =
-    prov.features[fi] ||
-    prov.features.find((fe) => fe && !fe.cleared && !fe.ritualSite) ||
-    prov.features.find((fe) => fe && !fe.ritualSite) ||
-    prov.features[0];
+  // the sites, as the search's fallbacks guard them (a gap in the list is passed over)
+  const theSites: readonly (ALairAsTheSearchReadsIt | null | undefined)[] = prov.features;
+  const f =
+    theSites[fi] ??
+    theSites.find((fe) => fe && !fe.cleared && !fe.ritualSite) ??
+    theSites.find((fe) => fe && !fe.ritualSite) ??
+    theSites[0];
   if (!f) {
     return;
   }
@@ -613,7 +711,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
   // the order form no longer offers one. An old saved order that names one is refused here.
   if (f.ritualSite) {
     // Nothing lairs at a ritual site — there is no guardian to fight and no treasure to lift.
-    const isPagan = G.players[c.player]?.alignment === 'Pagan';
+    const isPagan = hisRealm()?.alignment === 'Pagan';
     emit(turnContext, {
       type: 'explore',
       fact: {
@@ -643,15 +741,15 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     discoverFeat(f, c.player);
     TM(c).featuresFound += 1;
   } // TITLE MERIT: Loremaster
-  const plan = c.encounterPlan || { tactics: ['ME'] };
+  const plan = c.encounterPlan ?? { tactics: ['ME'] };
   markProvinceCombat(prov, [c.player]); // purple swords: a personal combat, not a field battle
-  const encounter = resolveEncounter(
+  const encounter: TheFightAsTheSearchReadsIt = resolveEncounter(
     turnContext,
     c,
     f,
     prov,
-    plan.tactics || ['ME'],
-    (...a) => effStat(turnContext, ...a),
+    plan.tactics ?? ['ME'],
+    (...a: AfterTheTurnsContext<typeof effStat>) => effStat(turnContext, ...a),
     rng,
     player,
   );
@@ -662,14 +760,14 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       charId: c.id,
       prov: prov.id,
       feature: f.name || null,
-      guardian: (f.monster && f.monster.name) || null,
-      power: (f.monster && f.monster.power) || null,
-      won: !!encounter.won,
-      fled: !!encounter.fled,
+      guardian: (f.monster?.name ?? '') || null,
+      power: (f.monster?.power ?? '') || null,
+      won: encounter.won,
+      fled: encounter.fled,
       dmg: encounter.damageToHero || 0,
       hpAfter: encounter.heroHpAfter,
-      killed: !!encounter.heroKilled,
-      tactics: (plan.tactics || ['ME']).slice(0, 12),
+      killed: encounter.heroKilled,
+      tactics: (plan.tactics ?? ['ME']).slice(0, 12),
     });
   } catch (_te) {}
   encounter.narrative.forEach((line) => {
@@ -690,10 +788,15 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     // they become extra treasure for whoever finally slays the guardian. (Mithril Armour is a
     // personal granted relic that re-issues each turn, so it is not left behind.) Clearing
     // c.items before handleHeroDeath stops the possessions passing to the king/heir instead.
-    const _lairLeft = (c.items || []).filter((it) => !(it.effect && it.effect.stat === 'mithrilArmour'));
-    const _lairHeld = (c.items || []).slice();
-    if (_lairLeft.length > 0) c.items = (c.items || []).filter((it) => it.effect && it.effect.stat === 'mithrilArmour');
-    const _lairDied = reportHeroFall(
+    const _lairLeft = (asItsGuardReadsIt(c.items) ?? []).filter(
+      (it: AnItemItsEffectGuarded) => !(it.effect?.stat === 'mithrilArmour'),
+    );
+    const _lairHeld = (asItsGuardReadsIt(c.items) ?? []).slice();
+    if (_lairLeft.length > 0)
+      c.items = (asItsGuardReadsIt(c.items) ?? []).filter(
+        (it: AnItemItsEffectGuarded) => it.effect?.stat === 'mithrilArmour',
+      );
+    const _lairDied: unknown = reportHeroFall(
       turnContext,
       c,
       null,
@@ -701,26 +804,26 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         kind: 'a hero is slain outside a battle',
         heroName: c.name,
         how: "by a lair's guardian",
-        killerName: f.monster?.name || null,
+        killerName: (f.monster?.name ?? '') || null,
       },
       {
         audience: { actor: c.player, realms: [c.player], seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       },
-      { slainBy: { guardianName: f.monster?.name || null, provinceName: prov.name } },
+      { slainBy: { guardianName: (f.monster?.name ?? '') || null, provinceName: prov.name } },
     ); // the host is told what slew its commander (2026-10-12)
     if (_lairDied === false) {
       c.items = _lairHeld;
       return;
     } // saved, or escaped: nothing is left among the bones
     if (_lairLeft.length > 0) {
-      f.hoardItems = (f.hoardItems || []).concat(_lairLeft); // joins the lair's hoard
+      f.hoardItems = (f.hoardItems ?? []).concat(_lairLeft); // joins the lair's hoard
       emit(turnContext, {
         type: 'explore',
         fact: {
           kind: "a guardian drags a fallen hero's possessions into its hoard",
-          guardianName: f.monster?.name || null,
+          guardianName: (f.monster?.name ?? '') || null,
           heroName: c.name,
           itemNames: _lairLeft.map((it) => it.name),
         },
@@ -741,10 +844,10 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     if (f.monster) delete f.monster._treasureStolen;
     ensureLairHoard(f, G);
     const hoard = featureTreasure(f);
-    if (f._hoardGoldOrig == null) f._hoardGoldOrig = hoard; // back-compat for pre-revision saves
+    f._hoardGoldOrig ??= hoard; // back-compat for pre-revision saves
     if (hoard <= 0) {
       if (c.player != null) {
-        f._pickedCleanBy = f._pickedCleanBy || [];
+        f._pickedCleanBy ??= [];
         if (!f._pickedCleanBy.includes(c.player)) f._pickedCleanBy.push(c.player);
       } // 2026-09-29: this realm now KNOWS the hoard is empty (bots stop robbing it)
       emit(turnContext, {
@@ -752,7 +855,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         fact: {
           kind: 'a thief finds a hoard already picked clean',
           heroName: c.name,
-          guardianName: f.monster?.name || null,
+          guardianName: (f.monster?.name ?? '') || null,
           siteName: f.name,
         },
         audience: { actor: c.player, realms: [c.player] },
@@ -764,13 +867,14 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       // hoard's ORIGINAL size, so skill decides the haul and a full-strength thief empties a
       // lair in two visits. Never more than what is actually left.
       const _thLvl = Math.min(5, effStat(turnContext, c, 'thief'));
-      const gold = Math.max(1, Math.min(hoard, Math.round((f._hoardGoldOrig || hoard) * 0.1 * _thLvl)));
+      const gold = Math.max(1, Math.min(hoard, Math.round(((f._hoardGoldOrig ?? 0) || hoard) * 0.1 * _thLvl)));
       setFeatureTreasure(f, hoard - gold);
+      theRealmIsHanded(player);
       player.gold = (player.gold || 0) + gold;
       c.merits = (c.merits || 0) + gold;
       const left = featureTreasure(f);
       if (left <= 0 && c.player != null) {
-        f._pickedCleanBy = f._pickedCleanBy || [];
+        f._pickedCleanBy ??= [];
         if (!f._pickedCleanBy.includes(c.player)) f._pickedCleanBy.push(c.player);
       } // 2026-09-29: emptied it — known to this realm
       emit(turnContext, {
@@ -781,7 +885,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
           gold,
           siteName: f.name,
           thiefLevel: _thLvl,
-          guardianName: f.monster?.name || null,
+          guardianName: (f.monster?.name ?? '') || null,
           left,
         },
         audience: { actor: c.player, realms: [c.player] },
@@ -795,7 +899,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     // beating the guardian. (They can still be stolen from another character.)
     {
       ensureLairHoard(f, G);
-      const _hiAll = f.hoardItems || [];
+      const _hiAll = f.hoardItems ?? [];
       const _hi = _hiAll.filter((it) => !isLegendaryItem(it));
       if (!_hi.length && _hiAll.length)
         emit(turnContext, {
@@ -803,7 +907,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
           fact: {
             kind: 'a Legendary relic cannot be lifted from a lair',
             heroName: c.name,
-            guardianName: f.monster?.name || null,
+            guardianName: (f.monster?.name ?? '') || null,
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -814,12 +918,12 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         const _ch = Math.min(80, 30 + 10 * _th);
         const _r = d100();
         if (_r <= _ch) {
-          const _it = _hi[Math.floor(kcRng() * _hi.length)];
+          const _it = theOneThePickFell(_hi[Math.floor(kcRng() * _hi.length)]);
           _hiAll.splice(_hiAll.indexOf(_it), 1);
-          c.items = c.items || [];
+          c.items = asItsGuardReadsIt(c.items) ?? [];
           c.items.push(_it);
           applyItemMaxHp(c, _it);
-          f._stolenItems = (f._stolenItems || []).concat(_it.name);
+          f._stolenItems = (f._stolenItems ?? []).concat(_it.name);
           emit(turnContext, {
             type: 'explore',
             fact: {
@@ -858,29 +962,32 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
   } else if (encounter.won) {
     f.cleared = true;
     if (c.player != null) {
-      const _g = (f.monster && f.monster.power) || f.tier || 'Weak';
-      c._botLairKills = c._botLairKills || {};
-      c._botLairKills[_g] = (c._botLairKills[_g] || 0) + 1;
+      const _g = (f.monster?.power ?? '') || (f.tier ?? '') || 'Weak';
+      // the lairs he has cleared, by any grade (a count only `+ 1` writes)
+      const kills: Partial<Record<string, number>> = (c._botLairKills ??= {});
+      kills[_g] = (kills[_g] ?? 0) + 1;
     } // 2026-09-26: the slayer's grade ladder reads this (botLairPlan)
     // TITLE MERIT: Monster-Bane — HP of the beast overcome (half credit if
     // pacified/parleyed).
     if (f.monster) TM(c).monster += Math.round((f.monster.hp || 0) * (encounter.pacified ? 0.5 : 1));
-    const tier = f.monster?.power || 'Weak';
+    const tier = (f.monster?.power ?? '') || 'Weak';
     // Reward ladder — tougher monsters are meaningfully more worthwhile (gold + item odds +
     // HP).
-    const T = { gold: ENCOUNTER_CLEAR_GOLD_BANDS[tier] || [1, 5] }; // Sept 2026 redesign: one gold table; no HP reward
+    const bands: Readonly<Partial<Record<string, readonly [number, number]>>> = ENCOUNTER_CLEAR_GOLD_BANDS; // by any power
+    const T = { gold: bands[tier] ?? [1, 5] }; // Sept 2026 redesign: one gold table; no HP reward
     // pay out the cached clear-gold roll so a scouted figure is exactly honoured; if the site
     // was never scouted, encounterClearGold rolls it now from the same tier band (T.gold).
     const gold = encounterClearGold(f);
     const goldFinal = Math.round(
       gold *
         (1 +
-          whatARealmsDiscoveriesAddToALairsGold(G.players[c.player], {
+          whatARealmsDiscoveriesAddToALairsGold(hisRealm(), {
             theGround: prov.terrain,
             theHerosRace: c.race,
           })),
     ); // lairGold discoveries (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add
     // to a lair's gold"). Monster-Bane +50% hoard removed \u2014 the title is now an intel line
+    theRealmIsHanded(player);
     player.gold = (player.gold || 0) + goldFinal;
     c.merits = (c.merits || 0) + goldFinal;
     setFeatureTreasure(f, 0); // the hoard is lifted
@@ -902,7 +1009,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
     // ALL (any kit left by slain challengers is already merged in). Discovery bonus finds
     // still roll fresh.
     ensureLairHoard(f, G);
-    const drops = [];
+    const drops: Item[] = [];
     if (!Array.isArray(G._awardedItems)) G._awardedItems = [];
     const _taken = new Set(G._awardedItems);
     // bonus finds are drawn from the category this realm has found LEAST of.
@@ -910,18 +1017,20 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
       const base = rollMagicItemFor(G, c.player, tier, _taken);
       if (!base) return null;
       _taken.add(base.name);
-      G._awardedItems.push(base.name);
+      const awarded = asItsGuardReadsIt(G._awardedItems); // made a list above
+      if (!awarded) throw new TypeError("Cannot read properties of undefined (reading 'push')");
+      awarded.push(base.name);
       const itemId = G.nextItemId || 0;
       G.nextItemId = (G.nextItemId || 0) + 1;
       return { ...base, id: itemId };
     };
-    (f.hoardItems || []).forEach((it) => drops.push(it));
+    (f.hoardItems ?? []).forEach((it) => drops.push(it));
     f.hoardItems = [];
     const baseDrops = drops.slice(); // the hoard's own magic, narrated below; bonus finds announce themselves.
     // sd25 Alchemical Theory: 10% chance of an extra find.
     {
       // (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to a lair's item")
-      const _dIC = whatARealmsDiscoveriesAddToALairsItemChance(G.players[c.player], { theGround: prov.terrain });
+      const _dIC = whatARealmsDiscoveriesAddToALairsItemChance(hisRealm(), { theGround: prov.terrain });
       if (_dIC > 0 && kcRng() < _dIC) {
         const bonus = rollItem();
         if (bonus) {
@@ -943,7 +1052,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         }
       }
     } // itemChance discoveries
-    c.items = c.items || [];
+    c.items = asItsGuardReadsIt(c.items) ?? [];
     drops.forEach((it) => {
       c.items.push(it);
       applyItemMaxHp(c, it);
@@ -967,15 +1076,15 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
-      baseDrops.forEach((it) =>
+      baseDrops.forEach((it) => {
         emit(turnContext, {
           type: 'explore',
           fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([it]) },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
-        }),
-      ); // one lore line per relic won
+        });
+      }); // one lore line per relic won
     }
     if (drops.length > 0)
       emit(turnContext, {
@@ -989,8 +1098,9 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         province: prov.id,
       }); // item 10: worn at once, or no room
     // recover any items earlier challengers left behind when the guardian slew them.
-    if ((f.lairItems || []).length > 0) {
-      const _recovered = f.lairItems.slice();
+    const _leftByTheFallen = f.lairItems ?? [];
+    if (_leftByTheFallen.length > 0) {
+      const _recovered = _leftByTheFallen.slice();
       _recovered.forEach((it) => {
         c.items.push(it);
         applyItemMaxHp(c, it); /* item 6 */
@@ -1007,15 +1117,15 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: prov.id,
       });
-      _recovered.forEach((it) =>
+      _recovered.forEach((it) => {
         emit(turnContext, {
           type: 'explore',
           fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([it]) },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
-        }),
-      ); // lore line per recovered relic
+        });
+      }); // lore line per recovered relic
       emit(turnContext, {
         type: 'explore',
         fact: {
@@ -1037,7 +1147,7 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
           heroName: c.name,
           gold: gold,
           siteName: f.name,
-          stolenItemNames: (f._stolenItems || []).slice(),
+          stolenItemNames: (f._stolenItems ?? []).slice(),
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -1063,8 +1173,16 @@ export function resolveSearchLairOrder(turnContext, c, ph, target, prov, player)
   return;
 }
 // Chart the Unknown (Explorer 7, once a turn): one province mapped in full, and a glimpse of the ring round it.
-export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
+export function resolveChartTheUnknownOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: string,
+  prov: Province | undefined,
+) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase, and processOrder hands him the province he stands in (as for an Explore);
+  // for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm charts the unknown');
   // Explorer L7: the survey may be run on the province the character stands in OR any
   // province adjacent to it — a cartographer works a horizon, not just the ground under their
   // boots. An empty or unrecognised target still means "here".
@@ -1077,6 +1195,7 @@ export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
     });
     return;
   }
+  theProvinceIsHanded(prov);
   const _cuHereNbrs = getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).filter(Boolean);
   const _cuId = parseInt(target);
   let _cuProv = prov;
@@ -1098,10 +1217,10 @@ export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
     }
     _cuProv = _cand;
   }
-  if (!_cuProv.exploredBy) _cuProv.exploredBy = {};
+  _cuProv.exploredBy ??= {};
   _cuProv.exploredBy[c.player] = 100;
   _cuProv.explored = 100;
-  (_cuProv.features || []).forEach((f) => {
+  (asItsGuardReadsIt(_cuProv.features) ?? []).forEach((f) => {
     if (!featDiscovered(f, c.player)) {
       discoverFeat(f, c.player);
       c.merits = (c.merits || 0) + 1;
@@ -1112,10 +1231,11 @@ export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
   const nbrs = getNeighborsP(_cuProv, G.world.cols, G.world.rows, G.world.provinces).filter(Boolean);
   let revealed = 0;
   nbrs.forEach((nb) => {
-    if (!nb.exploredBy) nb.exploredBy = {};
-    if ((nb.exploredBy[c.player] || 0) < 25) {
-      nb.exploredBy[c.player] = 25;
-      nb.explored = Math.max(nb.explored || 0, nb.exploredBy[c.player]);
+    nb.exploredBy ??= {};
+    if ((Number(nb.exploredBy[c.player]) || 0) < 25) {
+      const glimpsed = 25; // read back below as written
+      nb.exploredBy[c.player] = glimpsed;
+      nb.explored = Math.max(nb.explored || 0, glimpsed);
       revealed++;
     }
   });
@@ -1137,7 +1257,12 @@ export function resolveChartTheUnknownOrder(turnContext, c, target, prov) {
   return;
 }
 // Discover Lost Ruin (Explorer 9, once a turn): every lair of one class here and next door laid bare.
-export function resolveDiscoverLostRuinOrder(turnContext, c, target, prov) {
+export function resolveDiscoverLostRuinOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: string,
+  prov: Province | undefined,
+) {
   const { G } = turnContext;
   // Explorer L9: the order now names a CLASS of lair — Weak, Moderate, Powerful or Legendary
   // — and lays bare EVERY lair of that class in this province and in each province bordering
@@ -1157,15 +1282,19 @@ export function resolveDiscoverLostRuinOrder(turnContext, c, target, prov) {
     _drTiers.find(
       (t) =>
         t.toLowerCase() ===
-        String(target || '')
+        (target || '') // words (the order's target)
           .trim()
           .toLowerCase(),
-    ) || 'Weak';
-  const _drClassOf = (f) => (f && f.ritualSite ? 'Ritual' : (f && f.monster && f.monster.power) || 'Weak');
+    ) ?? 'Weak'; // a class of the five, never ''
+  const _drClassOf = (f: ProvinceFeature | null | undefined) =>
+    f?.ritualSite ? 'Ritual' : (f?.monster?.power ?? '') || 'Weak';
+  theProvinceIsHanded(prov);
   const _drScope = [prov, ...getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).filter(Boolean)];
-  const _drFound = [];
+  const _drFound: { name: string | null; prov: Province }[] = [];
   _drScope.forEach((pv) => {
-    (pv.features || []).forEach((f) => {
+    // its sites, as the pass guards them (a gap in the list is passed over)
+    const theSites: readonly (ProvinceFeature | null | undefined)[] = asItsGuardReadsIt(pv.features) ?? [];
+    theSites.forEach((f) => {
       if (!f || featDiscovered(f, c.player)) return;
       if (f._hidden && f._hiddenBy !== c.player) return; // a rival's Hide Lairs glamour still holds
       if (_drClassOf(f) !== _drWant) return;
@@ -1191,9 +1320,13 @@ export function resolveDiscoverLostRuinOrder(turnContext, c, target, prov) {
     trySkillGain(turnContext, c, 'explorer', SKILLGAIN_STD);
     return;
   }
-  const _drByProv = {};
+  // the sites laid bare, by each province's id (in the order of the ids, as an object's keys are read)
+  const _drByProv: Record<number, { name: string; list: (string | null)[] }> = {};
   _drFound.forEach((x) => {
-    (_drByProv[x.prov.id] = _drByProv[x.prov.id] || { name: x.prov.name, list: [] }).list.push(x.name);
+    const _drId = x.prov.id;
+    const _drHere = _drByProv[_drId] ?? { name: x.prov.name, list: [] };
+    _drByProv[_drId] = _drHere;
+    _drHere.list.push(x.name);
   });
   emit(turnContext, {
     type: 'explore',
