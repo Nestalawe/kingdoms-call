@@ -8,6 +8,7 @@ import {
   EMBARGO_COST,
   GOOD_WORKS_COST,
   GROW_WILD_COST,
+  activatedSites,
   isBarrow,
   kingOrderReady,
   kitTactics,
@@ -356,6 +357,7 @@ export function botRitePre(G, pi, c, P, L, fightAhead) {
     (f) => f && f.ritualSite && !f.siteKind && (featDiscovered(f, pi) || P.owner === pi),
   );
   if (!site) return null;
+  if (alignProto(G, 'Pagan') && activatedSites(G, pi) < 1) return null; // the kit: the rites need a woken site first
   const army = (c.armies || []).filter((a) => a && !a._temporary && a._wildHuntUntilTurn == null && !a._isSkeletal);
   const wild = (P.armyTypes || []).find((t) => PRIMAL_ARMY_DEFS_P[t]);
   if (wild) {
@@ -365,7 +367,8 @@ export function botRitePre(G, pi, c, P, L, fightAhead) {
       return { action: 'rite', target: 'wild hunt', extra: '', desc: 'Perform Rite — the Wild Hunt' };
     }
   }
-  if (army.length >= 6) {
+  if (army.length >= 4) {
+    // round 23: from four companies (was six)
     const idx = (c.armies || [])
       .map((a, i) => ({ a, i }))
       .filter((x) => x.a && army.includes(x.a))
@@ -1856,7 +1859,7 @@ export function botKitPre(G, pi, c, P, L) {
       if (!owned || (sk.druid || 0) < 2) return null; // master list: Grow the Wild needs Druid 3 (the signature +1 counts)
       if (
         (P.terrain === 'plain' || P.terrain === 'desert') &&
-        L.budget >= GROW_WILD_COST + 4 &&
+        L.budget >= GROW_WILD_COST + 2 && // round 23
         spendIf(GROW_WILD_COST)
       )
         return { action: 'grow_wild', target: '', extra: '', desc: 'Grow the Wild in ' + P.name };
@@ -1923,6 +1926,40 @@ export function botKitPre(G, pi, c, P, L) {
         L.budget -= RITE_OF_AWAKENING_COST;
         return { action: 'rite', target: 'awakening', extra: '', desc: 'Perform Rite — the Awakening at ' + P.name };
       }
+      // round 23: at woken stones of the realm, a hero with a host uses the other rites
+      if (tactics && owned && stones && P._riteActivatedBy === pi && P._riteTurn !== G.turn) {
+        const host = (c.armies || []).filter((a) => a && !a._temporary && a._wildHuntUntilTurn == null && !a._isSkeletal);
+        // the Ley: step to another woken stones province of the realm that an enemy threatens, with the host
+        if (host.length >= 2) {
+          let goal = null;
+          (pl.provinces || []).forEach((id) => {
+            const X = G.world.provinces[id];
+            if (!X || X.id === P.id || X.owner !== pi || X._riteActivatedBy !== pi) return;
+            if (!(X.features || []).some((f) => f && f.ritualSite && !f.siteKind)) return;
+            const own = (X.garrisonArmies || []).length + (G.characters || []).filter((h) => h && h.alive && h.player === pi && h.location === X.id).reduce((s, h) => s + (h.armies || []).length, 0);
+            let threat = 0;
+            neighboursOf(G, X).forEach((N) => {
+              (G.characters || []).forEach((h) => {
+                if (h && h.alive && h.player != null && h.player !== pi && h.location === N.id && botRelationRaw(G, pi, h.player) === 'enemy')
+                  threat += (h.armies || []).length;
+              });
+            });
+            if (threat > own && (!goal || threat - own > goal.gain)) goal = { X, gain: threat - own };
+          });
+          if (goal) return { action: 'rite', target: 'ley:' + String(goal.X.id), extra: '', desc: 'Perform Rite — the Ley to ' + goal.X.name };
+        }
+        // a Blood Offering when the host is big enough to spare its two weakest, at war
+        if (host.length >= 5 && botAtWar(G, pi)) {
+          const idx = (c.armies || []).map((a, i) => ({ a, i })).filter((x) => x.a && host.includes(x.a)).map((x) => ({ i: x.i, v: unitBaseStrength(x.a) })).sort((x, y) => x.v - y.v);
+          const Sx = idx.slice(0, 2).map((x) => x.i), Ex = idx.slice(-2).map((x) => x.i);
+          if (!Sx.some((i) => Ex.includes(i)))
+            return { action: 'rite', target: 'blood offering', extra: `S:${Sx.join(',')}|E:${Ex.join(',')}`, desc: 'Perform Rite — a Blood Offering' };
+        }
+        // the Wild Hunt where beasts roam, with room to lead them
+        const wild = (P.armyTypes || []).find((t) => PRIMAL_ARMY_DEFS_P[t]);
+        if (wild && beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) >= 2 && spendIf(wildHuntPrice(wild)))
+          return { action: 'rite', target: 'wild hunt', extra: '', desc: 'Perform Rite — the Wild Hunt' };
+      }
       return null;
     }
   }
@@ -1961,11 +1998,25 @@ export function botKingKitOrder(G, pi, c, P, L) {
         desc: 'Proclaim a Crusade against ' + ((G.players || [])[foe] || {}).name,
       };
     }
-    case 'Good':
-      if ((!war && G.turn < 6) || !ready('light_beacons') || !botCanAfford(L, 2 * LIGHT_BEACONS_COST_PER_COMPANY)) // round 22: at war, or from turn 6
-        return null;
-      botSpend(L, Math.min(L.budget, 4 * LIGHT_BEACONS_COST_PER_COMPANY));
+    case 'Good': {
+      // round 23: whenever two or more humanoid provinces of the realm within 3 hexes of the king stand without a garrison
+      // company and the chest can pay for them (war or no war)
+      if (!ready('light_beacons') || !botCanAfford(L, 2 * LIGHT_BEACONS_COST_PER_COMPANY)) return null;
+      const bare = (pl.provinces || []).filter((id) => {
+        const X = G.world.provinces[id];
+        return (
+          X &&
+          X.owner === pi &&
+          X.terrain !== 'sea' &&
+          !String(X.race || '').startsWith('Primal') &&
+          hexDistP(X, P, G.world.cols) <= 3 &&
+          !(X.garrisonArmies || []).length
+        );
+      }).length;
+      if (bare < 2) return null;
+      botSpend(L, Math.min(L.budget, Math.min(6, bare) * LIGHT_BEACONS_COST_PER_COMPANY));
       return { action: 'light_beacons', target: '', extra: '', desc: 'Light the Beacons' };
+    }
     case 'Druidic': {
       if (!owned) return null; // round 6: any Druidic king
       const room = beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c));
@@ -1983,8 +2034,21 @@ export function botKingKitOrder(G, pi, c, P, L) {
       return { action: 'call_wild', target: '', extra: '', desc: 'Sound the Call of the Wild' };
     }
     case 'Neutral': {
-      if (!war || !ready('embargo') || !botCanAfford(L, EMBARGO_COST)) return null;
-      const foe = botWarFoe(G, pi);
+      // round 23: the League embargoes the strongest realm it has met (an enemy first), every other turn, when the chest
+      // holds 12g or more
+      if (!ready('embargo') || L.budget < EMBARGO_COST + 7) return null;
+      if (((pl._kingOrderLast || {}).embargo ?? -9) > G.turn - 2) return null;
+      let foe = botWarFoe(G, pi);
+      if (foe == null) {
+        let best = null;
+        (G.players || []).forEach((p, j) => {
+          if (j === pi || !p || !(pl._encountered || []).includes(j)) return;
+          if (!(G.characters || []).some((k) => k && k.alive && k.isKing && k.player === j)) return;
+          const land = (p.provinces || []).length;
+          if (land > (pl.provinces || []).length * 0.8 && (!best || land > best.land)) best = { j, land };
+        });
+        foe = best ? best.j : null;
+      }
       if (foe == null) return null;
       botSpend(L, EMBARGO_COST);
       return {
@@ -2010,7 +2074,7 @@ export function botKingKitOrder(G, pi, c, P, L) {
         });
         if (X.owner != null && X.owner !== pi && botRelationRaw(G, pi, X.owner) === 'enemy') foe += (X.garrisonArmies || []).length;
         const gain = foe - own;
-        if (foe >= 3 && gain >= 2 && (!best || gain > best.gain)) best = { X, gain };
+        if (foe >= 2 && gain >= 1 && (!best || gain > best.gain)) best = { X, gain }; // round 23: looser
       });
       if (!best) return null;
       botSpend(L, CALL_STORM_COST);
@@ -2019,10 +2083,10 @@ export function botKingKitOrder(G, pi, c, P, L) {
     case 'Evil': {
       // round 5: the dearest monster of the realm's pits the chest can pay for, every turn the king can spare the blood
       // (master list: the pact takes 40% of his current HP, so only a king above half health pays it)
-      if ((c.hp || 0) <= Math.max(10, Math.ceil((c.maxHp || 20) * 0.5)) || darkPactBlood(c) >= (c.hp || 0)) return null;
+      if ((c.hp || 0) < Math.ceil((c.maxHp || 20) * 0.6) || darkPactBlood(c) >= (c.hp || 0)) return null; // round 23: from 60% HP
       if (beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) <= 0) return null;
       const kinds = darkPactKinds(G, pi)
-        .filter((k) => L.budget >= darkPactCost(k) + 4)
+        .filter((k) => L.budget >= darkPactCost(k) + 2)
         .sort((a, b) => darkPactCost(b) - darkPactCost(a));
       const kind = kinds[0];
       if (!kind) return null;

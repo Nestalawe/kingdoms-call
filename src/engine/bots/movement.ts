@@ -526,7 +526,8 @@ export function runBotMovement(G, botIdxSet, hooks) {
             // copies with both sides' real plans, items and tempers; the hunt goes ahead only at
             // >=65% wins and <=20% risk of being felled. The rating pre-filter keeps the sim cheap.
             // Hunters also set out only at >=85% health.
-            const hunt = hp >= mhp * 0.85 ? botHuntTarget(G, pi, c, 4, hooks.duelSim) : null;
+            const _ransomer = kitTactics(G, pi) === 'Neutral'; // round 23: the League's heroes hunt for ransoms
+            const hunt = hp >= mhp * (_ransomer ? 0.7 : 0.85) ? botHuntTarget(G, pi, c, _ransomer ? 5 : 4, hooks.duelSim) : null;
             if (hunt && hunt.mem) {
               const path = (botPathAny(G, P, hunt.loc, 4) || []).slice(0, Math.max(0, 4 - pre.length));
               if (path.length) {

@@ -558,8 +558,8 @@ export function armStr(turnContext, army, heroChar, playerAlignment, terrain, ct
     !MONSTER_ARMIES.has(army.type) &&
     !army._isSkeletal;
   if (_openRanks) {
-    str = Math.round(str * 1.3); // round 22 (round 21: ×1.2; master list: ×1.44)
-    if (_tr) _tr.push({ label: 'Open ranks ×1.3' });
+    str = Math.round(str * 1.25); // round 23 (round 22: ×1.3; round 21: ×1.2; master list: ×1.44)
+    if (_tr) _tr.push({ label: 'Open ranks ×1.25' });
   } else if (_unitRace) {
     if (_ownerRace && _unitRace === _ownerRace) str = Math.round(str * 1.2); // king's-race affinity
     if (_leaderRace && _unitRace === _leaderRace) str = Math.round(str * 1.2); // leader's-race affinity

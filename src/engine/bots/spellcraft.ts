@@ -356,7 +356,7 @@ export function botHuntTarget(G, pi, c, maxD, duelSim) {
       const f = duelSim(c, botAssumedChar(G, pi, cand.e), 24);
       if (!f || f.felled > 0.1 || f.win < 0.4) continue;
       cand.forecast = f; // Sept 2026 (review II A3): a tenth, not a fifth
-      cand.bet = f.win * 10 - f.felled * 20 + (cand.e.isKing ? 4 : 0) - cand.d;
+      cand.bet = f.win * 10 - f.felled * 20 + (cand.e.isKing ? 4 : 0) - cand.d + (kitTactics(G, pi) === 'Neutral' ? 3 : 0); // round 23: a ransom is worth the chase
     } else {
       if (mine < botDuelRating(botAssumedChar(G, pi, cand.e)) * 1.5) continue;
       cand.bet = cand.sc;

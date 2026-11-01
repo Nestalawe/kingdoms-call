@@ -1465,13 +1465,16 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
     });
     // Undead kings get one skeletal starter army in addition to normal starting armies
     if (sp.alignment === 'Undead') {
-      king.armies.push({
-        type: 'Shieldwall Levies',
-        quality: 'Average',
-        race: 'Undead',
-        _isSkeletal: true,
-        unitName: armyUnitName('Shieldwall Levies') + ' (Skeletal)',
-      });
+      // PROTOTYPE Undead (round 23): a kit realm begins with two skeletal companies, not one
+      const _skelStart = _protoList.includes('Undead') ? 2 : 1;
+      for (let _k = 0; _k < _skelStart; _k++)
+        king.armies.push({
+          type: 'Shieldwall Levies',
+          quality: 'Average',
+          race: 'Undead',
+          _isSkeletal: true,
+          unitName: armyUnitName('Shieldwall Levies') + ' (Skeletal)',
+        });
     }
     allChars.push(king);
     best.characters.push(kingId);

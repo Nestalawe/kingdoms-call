@@ -64,7 +64,7 @@ export const DARK_PACT_COST_MULT = 1.5; // Evil: 1.5 × the monster's recruit co
 export const DARK_PACT_HP_SHARE = 0.4; // Evil: master list, 40% of the king's current HP (rounds 2-18: 5 HP)
 // round 5: the mutual enemies and the beast provinces
 export const CRUSADE_VS_UNDEAD_MULT = 1.75; // Divine against Undead forces (rounds 1-4: 1.5)
-export const UNDEAD_GARRISON_CAP = 3; // skeletal companies the dead land raises into one garrison (round 7; rounds 5-6: 2)
+export const UNDEAD_GARRISON_CAP = 4; // skeletal companies the dead land raises into one garrison (round 23; rounds 7-22: 3)
 export const PARLEY_MULT = 1.5; // Druidic storming an unclaimed creature province; Evil an unclaimed monster province
 const CREATURES = new Set<string>(KC_UNIT_CLASS.creature);
 const MONSTERS = new Set<string>(KC_UNIT_CLASS.monster);
