@@ -126,10 +126,10 @@ export const ritualSite = (name = 'Circle of Test Stones'): Feature => ({
   cleared: false,
   treasure: 0,
 });
-/** A real magic item of the game's, by name, as a hoard holds it. */
+/** A real magic item of the game's (or the Mithril Armour), by name, as a hoard holds it. */
 export const magicItem = (b: Board, name: string): Record<string, unknown> => {
   const json = vm.runInContext(
-    `JSON.stringify(ALL_MAGIC_ITEMS_P.find(i=>i.name===${JSON.stringify(name)}))`,
+    `JSON.stringify([...ALL_MAGIC_ITEMS_P, MITHRIL_ARMOUR].find(i=>i.name===${JSON.stringify(name)}))`,
     b.engine,
   ) as string | undefined;
   return { ...(JSON.parse(must(json, 'the item ' + name)) as Record<string, unknown>), id: 7000 };
@@ -673,6 +673,31 @@ export const SEARCH_ORDER_CASES: ExploreAndSearchOrderCase[] = [
           slain: says(o, 'has been slain by the Barrow Colossus!'),
         },
         want: { alive: false, hoard: ['Boots of the Wind'], carriedByAnyone: 0, cleared: false, slain: true },
+      };
+    },
+  },
+  {
+    name: 'Search Lair: a hero slain by the guardian leaves his magic in its hoard, but not his Mithril Armour (a granted suit)',
+    stage(b) {
+      withFeatures(b.X, lair('Drowned Mill', 'Legendary', { gold: 40, strong: true }));
+      // as the case above, with a Mithril suit among his things (in the pack: a worn suit would turn some of the giant's blows)
+      const h = at(b, { skills: skilled({ melee: 0 }), hp: 16 });
+      h['temper'] = 'Brave';
+      h.items = [{ ...magicItem(b, 'Boots of the Wind'), equipped: true }, magicItem(b, 'Mithril Armour')];
+      hero(b, { player: 0, at: ring2(b, 0), king: true });
+      return { hero: h, here: b.X, orders: plan(order('search', '0')) };
+    },
+    check(o, { hero: h, here }) {
+      const f = feature(o, here, 0);
+      return {
+        got: {
+          alive: char(o, h).alive,
+          hoard: (f.hoardItems ?? []).map((i) => i['name']),
+          suitsInTheWorld: o.world.characters.flatMap((c) => c.items).filter((i) => i['name'] === 'Mithril Armour')
+            .length,
+          told: says(o, ' — Boots of the Wind now lie among the bones, waiting for a stronger hand.'),
+        },
+        want: { alive: false, hoard: ['Boots of the Wind'], suitsInTheWorld: 0, told: true },
       };
     },
   },
