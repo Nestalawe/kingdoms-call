@@ -115,7 +115,10 @@ consumers read. A unit listed in `sea` alone is a land unit the moment it is at 
 stranded by `settleStrandedAtSea` and blocks the column's move. Put a new swimmer in `primalSea` (it swims,
 carries nothing, is raised only at sea and cannot march inland) or, if it ferries troops, in `carrier` (one
 berth, or its `KC_CARRIER_BERTHS` entry); the first run of `tests/shark-waters.test.js` showed the shoal left behind as
-a garrison for exactly this reason. World generation's prosperous-seas pool is `primalSea` less the Shark Shoals.
+a garrison for exactly this reason. World generation's prosperous-seas pool is `primalSea` less the poor seas' beasts
+(`KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS`, dealt turn about). A sea beast raised Primal whoever
+raises it is in `KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM`; a unit raised two a turn besides the
+garrisons and the humanoid fleets, in `KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS`.
 
 ## A beast joining a column checks its leader's Druid
 
