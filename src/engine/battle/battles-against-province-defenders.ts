@@ -719,6 +719,7 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
       narrate(narrative, {
         kind: 'a whale cohort sinks a defending ship before a shot is fired',
         targetUnitName: t.unitName || t.type,
+        targetUnitType: t.type,
       });
     });
     if (defenders.some((a) => a._sunk)) {

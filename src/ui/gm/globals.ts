@@ -18,7 +18,7 @@ import {
   ownedUnitName,
   unitRef,
 } from '../../engine/army-tables.ts';
-import { battleTallyLine, rollUnitFates } from '../../engine/battle/fates.ts';
+import { rollUnitFates } from '../../engine/battle/fates.ts';
 import {
   BATTLE_FACING,
   BATTLE_FRONT_RANGE,
@@ -211,7 +211,6 @@ Object.assign(window, {
   battleRole, // engine/battle/lines.ts
   battleScout, // engine/battle/lines.ts
   battleScoutLine, // engine/battle/lines.ts
-  battleTallyLine, // engine/battle/fates.ts
   battleWidthChoices, // engine/battle/lines.ts
   battleWidthLine, // engine/battle/lines.ts
   BOT_SKILL_BUILD, // engine/bots/setup.ts

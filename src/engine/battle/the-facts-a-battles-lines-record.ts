@@ -840,6 +840,10 @@ export type TheFactOfOneOfABattlesSentences =
       kind: "a side's whale cohort sinks an enemy ship";
       sideName: AValueInALinesWords;
       targetUnitName: AValueInALinesWords;
+      /** The sunk hull's type (the losses tally counts it). */
+      targetUnitType: string;
+      /** The side whose hull sinks: the other side's whale cohort sinks it (the losses tally counts it there). */
+      theSideWhoseShipSinks: 'attacker' | 'defender';
     }
   | {
       kind: "the terrain's effect on each side";
@@ -1046,7 +1050,12 @@ export type TheFactOfOneOfABattlesSentences =
       struckUnitName: string;
       damage: number;
     }
-  | { kind: 'a whale cohort sinks a defending ship before a shot is fired'; targetUnitName: string }
+  | {
+      kind: 'a whale cohort sinks a defending ship before a shot is fired';
+      targetUnitName: string;
+      /** The sunk hull's type (the losses tally counts it, the defender's). */
+      targetUnitType: string;
+    }
   | {
       kind: "the attacker's archery volley begins";
       missileUnitCount: number;

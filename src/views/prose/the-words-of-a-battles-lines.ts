@@ -97,7 +97,7 @@ function theLabelOfTheDefenders(defenders: TheDefendersOfAProvince, afterTheGuar
 }
 
 /** A defending side, as its label names it: a hero's side (a battle between heroes), or a province's defenders. */
-function theLabelOfASideOrTheDefenders(defenders: ASideOfABattle | TheDefendersOfAProvince): string {
+export function theLabelOfASideOrTheDefenders(defenders: ASideOfABattle | TheDefendersOfAProvince): string {
   return 'kind' in defenders ? theLabelOfTheDefenders(defenders) : theLabelOfASide(defenders);
 }
 

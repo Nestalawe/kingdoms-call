@@ -11,13 +11,14 @@
 // diplomacy's and victory's, and Early Winter's, since P1-12d17 the other folders': what a spy learns, relations and
 // captures, the Plague and the Bless ward, a rallied garrison and Wraith's Touch, a bot's concession, the Spy
 // stealth's), each kind routed to its area's (theWordsOf, below). A battle's
-// lines take their tiers ('k' key, 'd' detail) from their kinds, each area's table beside its audience table (since
-// P1-12d34; theTiersOfABattlesLines, below), and its losses tally its place where its casualty lists begin; the tally's
-// words are read from the lines' words (battleTallyLine, src/engine/battle/fates.ts, unchanged). The result is the GM's log
+// lines take their tiers ('k' key: the short account and the full report; 'd' detail: the full report only) from their
+// kinds, each area's table beside its audience table (since P1-12d34; theTiersOfABattlesLines, below), and its losses
+// tally ('t': the short account only) its place where its casualty lists begin; since P1-12d35 the tally is written from
+// the facts of the battle's lines (theWordsOfABattlesLossesTally, the-words-of-a-battles-losses-tally.ts); the onlookers'
+// one-line summary is 's' (shown only to a realm with nothing else of the battle). The result is the GM's log
 // as it is stored (turn_logs, player index −1), in the same form as before, key for key: the shell saves it, and the
 // GM page and the player page's fallback read an old turn's lines and a new one's alike. In this run a line's words are
 // the same for every reader.
-import { battleTallyLine } from '../../engine/battle/fates.ts';
 import {
   A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   type LineFact,
@@ -46,6 +47,7 @@ import {
   THE_TIER_OF_EACH_KIND_OF_THE_WANDERERS_ESCAPE,
 } from '../../engine/the-facts-the-wanderers-escape-line-records.ts';
 import { theWordsOfABattlesLine } from './the-words-of-a-battles-lines.ts';
+import { theWordsOfABattlesLossesTally } from './the-words-of-a-battles-losses-tally.ts';
 import { theWordsOfAPersonalCombatsLine } from './the-words-of-a-personal-combats-lines.ts';
 import { theWordsOfASeaLiftsBattleLine } from './the-words-of-the-sea-lifts-battle-lines.ts';
 import { theWordsOfAHerosDeathsLine } from './the-words-of-a-heros-deaths-lines.ts';
@@ -295,14 +297,7 @@ export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLines
     if (!battlesLines.length && !tallysPlace) return;
     const texts = battlesLines.map(({ line }) => wordsOfLine(line));
     const { tiers, whereTheCasualtyListsBegin } = theTiersOfABattlesLines(battlesLines.map(({ line }) => line));
-    let tally: string | null = null;
-    if (tallysPlace) {
-      try {
-        tally = battleTallyLine(texts);
-      } catch {
-        tally = null;
-      }
-    }
+    const tally = tallysPlace ? theWordsOfABattlesLossesTally(battlesLines.map(({ line }) => line.fact)) : null;
     let tallyWritten = false;
     const theTally = () => {
       if (!tallysPlace || !tally || tallyWritten) return;
