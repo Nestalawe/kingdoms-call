@@ -290,7 +290,6 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
       theTallyOf([
         aForce('Gorbash', 'defender', [['Goblin Horde', 'Gob']]),
         theAttackersList('Aldric'),
-        theDefendersList(side('Gorbash')),
         dies(aUnit(null, 'Gob', 'Goblin Horde')),
         {
           kind: "a unit's fate in the battle",
@@ -301,10 +300,9 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
           unitType: 'Goblin Horde',
           whomItFaced: null,
         },
+        theDefendersList(side('Gorbash')),
       ]),
-    ).toBe(
-      '⚰ Losses — **Aldric**: no units lost · **Gorbash**: 1 of 1 unit lost (Goblin Horde), 1 disbanded (Goblin Horde).',
-    );
+    ).toBe('⚰ Losses — **Aldric**: 1 unit lost (unit), 1 disbanded (unit) · **Gorbash**: no units lost.');
   });
 
   test('a force with no units gives no total, and one whose role is neither side is not counted', () => {
