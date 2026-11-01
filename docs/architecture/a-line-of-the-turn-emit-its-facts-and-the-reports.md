@@ -36,7 +36,11 @@ check finds were made.
   R-117) and a hero hardened after a fight outside its narrative (`awardHpRoll` with no narrative, R-118), whose events
   tell his realm alone (no deed, no sight) and whose facts name its `realm`. A line told to a realm with no deed is that
   realm's news: a spy who stays in the province reads a rival's deeds and what anyone there could see, never that
-  (`playerEvents`' spy feed, R-118).
+  (`playerEvents`' spy feed, R-118). Since P1-12d36 the spy feed and the Clairvoyance feed pass over a line by its
+  kind, which the words pass hands beside each stored line (`theKindOfEachStoredLine`, never stored): both a force
+  drawn up for battle, the Clairvoyance feed the roll lines too (`THE_KINDS_OF_A_ROLL_LINE`,
+  `src/views/the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts`). A new kind whose words open with 📊 joins
+  that list: a static test refuses the list and the words out of step.
   The engine reads a fight's line by its kind, never its words: the mercy that stays a killing blow keeps a skill rise's
   words, a line for one realm alone and another area's fact, and drops the fight's own lines
   (`isAPersonalCombatsLine`, `isALineForEveryoneInTheFight`); the two searches for a battle's header find a battle
