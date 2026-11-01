@@ -2,7 +2,7 @@
 // bare vm (tests/lib/engine.ts). Properties (fast-check, seeded from KC_SEED) over made-up phases: a few realms (0 and 1
 // at war, 0 and 2 allied, 1 and 2 at peace), their heroes on a small map with orders of every kind the ordering reads.
 // - normaliseAction: every order name in PHASE_ACTION_MAP gives its action, whatever its case and spacing; anything
-//   else, or no order, is Defend.
+//   else, or no order, is Defend. Each alignment order's name as the form writes it gives its key (staged).
 // - buildPhaseIntents: one intent for each hero who may act this phase (alive, a realm's, not hired or charmed this
 //   phase or later), with its order's action; only a Move has a destination, and a Move to a province is a step to a
 //   neighbour (the province itself when it is next door).
@@ -249,6 +249,20 @@ describe('normaliseAction', () => {
 
   test('Pursue is folded into Encounter', () => {
     expect(normaliseAction({ action: 'Pursue' })).toBe('encounter');
+  });
+
+  // The alignment orders' names, written here as the order form and the books write them (not read from the content's
+  // rows the map is built from): no game reads them, as the bots write the keys.
+  test('each alignment order, by the name the order form writes, gives its key', () => {
+    expect(
+      ['Consecrate', 'Call to Arms', 'Broker', 'Harvest the Field', 'Perform Rite'].map((action) =>
+        normaliseAction({ action }),
+      ),
+    ).toEqual(['consecrate', 'call_to_arms', 'broker', 'harvest_field', 'rite']);
+  });
+
+  test("Consecrate's older name, which a form once wrote, still gives its key", () => {
+    expect(normaliseAction({ action: 'Consecrate Province' })).toBe('consecrate');
   });
 });
 
