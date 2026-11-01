@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_HUMANOID_RACES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
@@ -33,6 +32,16 @@ import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { servesARealm } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import type {
+  CompaniesRaisedAsTheLineCountsThem,
+  TheFactOfTheRecruitAndHireOrdersLine,
+  WhereTheCompaniesMuster,
+  WhyACompanyWasNotRaised,
+} from './the-facts-the-recruit-and-hire-orders-lines-record.ts';
+import type { Army, Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
+import type { TurnContext, TurnOrder } from '../turn/context.ts';
 
 // ── THE RECRUIT AND HIRE ORDERS (plan P1-08j3: the third family taken out of processOrder in resolveTurn) ──
 // Recruit Armies (companies raised in a province the realm holds, and mercenary bands hired where they roam) and Hire
@@ -43,7 +52,43 @@ import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break
 // became a return.
 // The humanoid races, as a Set: a recruit of any other race may raise the Druid skill of the hero it joins.
-export const HUMANOID_RACES_SG = new Set(KC_HUMANOID_RACES);
+export const HUMANOID_RACES_SG: ReadonlySet<string> = new Set(KC_HUMANOID_RACES);
+/** The orders a realm wrote for a hero it means to hire, held by the merge until the hire lands (each field compared
+ *  as it is; the orders a list of the phases', with gaps). */
+interface OrdersHeldForAHeroToBeHired {
+  readonly heroId?: unknown;
+  readonly viaId?: unknown;
+  readonly player?: unknown;
+  readonly orders?: (TurnOrder | null | undefined)[] | null | undefined;
+}
+/** The state as the hire's written orders read it: the heroes' orders for the turn (the saved state holds them
+ *  cleared), and the turn's lists of the orders held for a hero a realm means to hire and the plans held for him. */
+export type TheStateAsTheHireReadsIt = Omit<GameState, 'turnOrders'> & {
+  turnOrders: Record<string, (TurnOrder | null | undefined)[] | undefined>;
+  _pendingHireOrders?: readonly OrdersHeldForAHeroToBeHired[] | undefined;
+  _pendingSynthPlans?: unknown;
+};
+/** The realm processOrder hands a hero of a realm: his own (every realm's index names a realm of the state), so there
+ *  is one; for none, a TypeError. */
+export function theRealmIsHanded(player: Realm | undefined): asserts player is Realm {
+  if (!player) throw new TypeError('a hero of a realm is handed no realm');
+}
+/** The province processOrder hands a hero whose order resolves, the one he stands in: every living hero stands in a
+ *  province of the map (the matrix's invariant "armies in real provinces"), so there is one; for none, a TypeError, as
+ *  the first read of it throws. */
+export function theProvinceIsHanded(prov: Province | undefined): asserts prov is Province {
+  if (!prov) throw new TypeError("Cannot read properties of undefined (reading 'owner')");
+}
+/** A company's name as armyUnitName draws it: always one (a die's pick from a pool that is never empty, or a name it
+ *  composes), though its type allows none; for none, a TypeError. */
+export function theNameDrawn(name: string | undefined): string {
+  if (name === undefined) throw new TypeError('armyUnitName drew no name');
+  return name;
+}
+/** A skill held above 0, as the hire's line copies it (`v > 0`, as before: a level missing is not). */
+function aLevelAboveNothing(skill: [string, number | undefined]): skill is [string, number] {
+  return Number(skill[1]) > 0;
+}
 // ── HIRE PRE-ORDERS LAND (shared by Hire Hero and the Neutral BROKER hire) ────
 // The hirer's pre-written orders are applied only once the hire has landed. Matched on hero + this
 // realm (an exact match on the hiring character wins if two cards were somehow submitted), so a
@@ -52,22 +97,28 @@ export const HUMANOID_RACES_SG = new Set(KC_HUMANOID_RACES);
 // called this — since hire pre-orders became PENDING (09-21) a brokered hero's pre-written orders
 // were silently dropped, his remaining phases were left empty, and his encounter plan was never
 // set. Both paths now share this one function.
-export function landHirePreOrders(turnContext, h, c, ph, player) {
-  const { G } = turnContext;
+export function landHirePreOrders(
+  turnContext: TurnContext,
+  h: Character,
+  c: Character,
+  ph: number,
+  player: Pick<Realm, 'name'>,
+) {
+  const { G }: { readonly G: TheStateAsTheHireReadsIt } = turnContext;
   // Matched on hero + this realm (an exact match on the hiring character wins if two cards
   // were somehow submitted), so a rival's pre-orders for the same hero are ignored. Phases are
   // bounded by the ACTUAL hire phase, not the phase the player planned to hire in — if the
   // hire slipped a phase, the orders for the phases he was not yet sworn are dropped.
   {
-    const _ph = G._pendingHireOrders || [];
+    const _ph = G._pendingHireOrders ?? [];
     const _pend =
-      _ph.find((x) => x.heroId === h.id && x.player === c.player && x.viaId === String(c.id)) ||
+      _ph.find((x) => x.heroId === h.id && x.player === c.player && x.viaId === String(c.id)) ??
       _ph.find((x) => x.heroId === h.id && x.player === c.player);
     let _applied = 0;
     if (_pend && Array.isArray(_pend.orders)) {
-      const slots = G.turnOrders[h.id] || [null, null, null, null, null];
+      const slots = G.turnOrders[h.id] ?? [null, null, null, null, null];
       _pend.orders.forEach((o, pi2) => {
-        if (pi2 > ph && o && o.action && o.action !== 'Defend' && o.action !== 'defend') {
+        if (pi2 > ph && o?.action && o.action !== 'Defend' && o.action !== 'defend') {
           slots[pi2] = o;
           _applied++;
         }
@@ -78,7 +129,7 @@ export function landHirePreOrders(turnContext, h, c, ph, player) {
     // hero belonged to nobody when it ran, so his post-hire phases were left empty and he
     // simply did nothing (no watch) for the rest of the turn. Fill them in like everyone else
     // — the same closing step Resurrect and Charm already do.
-    const fin = G.turnOrders[h.id] || [null, null, null, null, null];
+    const fin = G.turnOrders[h.id] ?? [null, null, null, null, null];
     for (let pz = 0; pz < 5; pz++) {
       if (pz > ph && !fin[pz]) fin[pz] = { action: 'defend', target: '', extra: '', desc: 'Defend' };
     }
@@ -100,15 +151,29 @@ export function landHirePreOrders(turnContext, h, c, ph, player) {
   }
 }
 // Recruit Armies: mercenary bands hired where they roam, then companies raised in a province the realm holds, to the recruiter, a comrade or the garrison.
-export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, prov, player) {
+export function resolveRecruitArmiesOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  target: string,
+  extra: string,
+  prov: Province | undefined,
+  player: Realm | undefined,
+) {
   const { G, recruitedThisTurn } = turnContext;
-  const ARMY_COST_P = ARMY_COST_MASTER; // alias → master table at top of script
+  // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
+  // hero who gives it, for the phases after), so he serves one, and processOrder hands him it and the province he
+  // stands in; for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm recruits');
+  theRealmIsHanded(player);
+  theProvinceIsHanded(prov);
+  const ARMY_COST_P: Readonly<Partial<Record<string, number>>> = ARMY_COST_MASTER; // alias → master table at top of script
   // ── First: mercenary bands roaming this province ── The order form now lists mercenaries
   // alongside native units, tagged 'merc:<id>'. A single Recruit Armies order may therefore
   // mix the two, so mercenary tokens are consumed here and stripped from the list before
   // native recruitment runs on the remainder. (The older bare id / type / unitName tokens are
   // still accepted so orders saved by an earlier build resolve.)
-  const mercsHere = (G.mercenaries || []).filter((m) => m.location === c.location);
+  const mercsHere = (asItsGuardReadsIt(G.mercenaries) ?? []).filter((m) => m.location === c.location);
   let _rawSel = (target || '')
     .split(',')
     .map((t) => t.trim())
@@ -116,16 +181,16 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
   // ── Recruit destination ── 'to:self' (default), 'to:garrison', or 'to:<charId>' (a
   // FRIENDLY character standing in this province this phase). The token may arrive in either
   // the target or the extra list; it is stripped before unit tokens are processed.
-  let _destTok =
-    _rawSel.find((t) => t.startsWith('to:')) ||
+  const _destTok =
+    (_rawSel.find((t) => t.startsWith('to:')) ?? '') ||
     (extra || '')
       .split(',')
       .map((t) => t.trim())
       .find((t) => t.startsWith('to:'));
   _rawSel = _rawSel.filter((t) => !t.startsWith('to:'));
-  let _destChar = c,
+  let _destChar: Character = c,
     _destGarrison = false,
-    _destination = null; // where the companies muster, when not his own column: the prose says it (P1-12d6)
+    _destination: WhereTheCompaniesMuster | null = null; // where the companies muster, when not his own column: the prose says it (P1-12d6)
   if (_destTok && _destTok !== 'to:self') {
     if (_destTok === 'to:garrison') {
       if (prov.owner === c.player) {
@@ -134,14 +199,14 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       } else _destination = { kind: "the garrison is not the realm's to muster into" };
     } else {
       const _r = orderCharRef(G, _destTok.slice(3)); // plain id or pre-order hero
-      if (_r && _r.alive && _r.player === c.player && _r.location === c.location) {
+      if (_r?.alive && _r.player === c.player && _r.location === c.location) {
         _destChar = _r;
         _destination = { kind: "the companies muster under a comrade's banner", heroName: _r.name };
       } else _destination = { kind: 'the comrade named to receive the companies is not here' };
     }
   }
-  const _autoGarr = []; // garrison-type recruits diverted from a character's column
-  const _pushRecruit = (unit) => {
+  const _autoGarr: string[] = []; // garrison-type recruits diverted from a character's column
+  const _pushRecruit = (unit: Army) => {
     // GARRISON UNITS GO STRAIGHT TO THE GARRISON (2026-09-23c, Toby): a Human / Elven / Dwarf /
     // Orc Garrison unit never joins a column when recruited — it musters into the garrison of the
     // province it was raised in, whatever "Muster to" names (native recruiting already needs the
@@ -152,11 +217,11 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     const _overCmd =
       !_toGarr && prov.owner === c.player && beastCommandCount(unit) && beastCommandRoom(_destChar, G.characters) <= 0;
     if (_toGarr) {
-      prov.garrisonArmies = prov.garrisonArmies || [];
+      prov.garrisonArmies = asItsGuardReadsIt(prov.garrisonArmies) ?? [];
       prov.garrisonArmies.push(unit);
       if (!_destGarrison) _autoGarr.push(unit.type);
     } else if (_overCmd) {
-      prov.garrisonArmies = prov.garrisonArmies || [];
+      prov.garrisonArmies = asItsGuardReadsIt(prov.garrisonArmies) ?? [];
       prov.garrisonArmies.push(unit);
       emit(turnContext, {
         type: 'hire',
@@ -172,7 +237,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         province: prov.id,
       });
     } else {
-      _destChar.armies = _destChar.armies || [];
+      _destChar.armies = asItsGuardReadsIt(_destChar.armies) ?? [];
       _destChar.armies.push(unit);
     }
     // TITLE MERIT: Beastlord / Wildwarden. Credited to the RECRUITER `c`, not the recipient:
@@ -181,14 +246,14 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     // count.
     creditBeastUnit(TM(c), unit, 1);
   };
-  const _mercTokens = new Set();
+  const _mercTokens = new Set<string>();
   let mHired = false;
   if (mercsHere.length > 0 && _rawSel.length > 0) {
-    mercsHere.forEach((merc) => {
+    for (const merc of mercsHere) {
       const tok = _rawSel.find(
-        (t) => t === `merc:${merc.id}` || t === String(merc.id) || t === merc.type || t === merc.unitName,
+        (t) => t === `merc:${merc.id}` || t === merc.id || t === merc.type || t === merc.unitName,
       );
-      if (!tok) return;
+      if (!tok) continue;
       _mercTokens.add(tok);
       // Item 24: a mercenary beast is not hired into a full column where there is no garrison to take it.
       if (
@@ -209,9 +274,9 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           province: prov.id,
         });
-        return;
+        continue;
       }
-      const baseMercCost = ARMY_COST_P[merc.type] || 2;
+      const baseMercCost = (ARMY_COST_P[merc.type] ?? 0) || 2;
       // Neutral alignment: mercenaries cost 2g less (min 1g)
       const mCost = Math.max(
         1,
@@ -233,7 +298,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         });
-        return;
+        continue;
       }
       player.gold -= mCost;
       _pushRecruit({ type: merc.type, quality: merc.quality, race: merc.race, unitName: merc.unitName });
@@ -254,10 +319,10 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         province: c.location,
       });
-    });
+    }
     if (mHired) {
       resolveUnitGainInProvince(turnContext, _destGarrison ? c : _destChar, prov, ph);
-      if (!_destGarrison && _destChar) refreshMovePool(turnContext, _destChar);
+      if (!_destGarrison) refreshMovePool(turnContext, _destChar);
     } // mercenaries joined a column — recompute its pace
   }
   // Whatever is left of the order after the mercenary tokens are removed is native
@@ -296,16 +361,17 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
   }
   const selections = _nativeSel;
   let totalCost = 0;
-  let recruited = [];
-  let blocked = [];
+  const recruited: CompaniesRaisedAsTheLineCountsThem[] = [];
+  const blocked: WhyACompanyWasNotRaised[] = [];
 
   for (const sel of selections) {
     const [armyType, qtyStr] = sel.split('|');
+    if (armyType === undefined) throw new TypeError('a split holds no first part'); // never: a split holds one at least
     // A mercenary token that reached this far is stale (the band was already hired or has
     // moved on) — it must never be treated as a native army type, or it spawns a phantom "the
     // Guard (merc:merc_…, Average)" unit.
-    if (armyType.startsWith('merc:') || /^merc_/.test(armyType)) continue;
-    const qty = parseInt(qtyStr) || 1;
+    if (armyType.startsWith('merc:') || armyType.startsWith('merc_')) continue;
+    const qty = parseInt(String(qtyStr)) || 1;
     // Primal sea beasts are called out of deep water — they can only be raised in a sea
     // province, never on a coast. (Fleets remain recruitable wherever the province offers
     // them.)
@@ -318,7 +384,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     // phase somewhere else — without this guard a character shoved into a different province
     // would still raise units that province never offered. armyTypes is the province's own
     // recruitable list (racial field units + its garrison).
-    if (!(prov.armyTypes || []).includes(armyType)) {
+    if (!(asItsGuardReadsIt(prov.armyTypes) ?? []).includes(armyType)) {
       blocked.push({ kind: 'the province does not raise the unit', type: armyType, provinceName: prov.name });
       continue;
     }
@@ -328,9 +394,9 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       continue;
     }
     const limit = getRecruitLimit(turnContext, armyType, prov, c.player);
-    const alreadyDone = recruitedThisTurn[`${prov.id}:${armyType}`] || 0;
+    const alreadyDone = Number(recruitedThisTurn[`${String(prov.id)}:${armyType}`]) || 0;
     const actualQty = Math.min(qty, limit - alreadyDone);
-    let _unitCost = realmRecruitCost(G.players[c.player], armyType, ARMY_COST_P[armyType] || 2); // sd16 + recruitCost discoveries
+    let _unitCost = realmRecruitCost(G.players[c.player], armyType, (ARMY_COST_P[armyType] ?? 0) || 2); // sd16 + recruitCost discoveries
     if (perkTier(c, 'druid') > 0 && (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType)))
       _unitCost = Math.floor(_unitCost * 0.5); // DRUID L6: creatures/monsters cost half (rounded down)
     const unitCost = _unitCost;
@@ -349,8 +415,14 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
           ? 'Veteran'
           : 'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
       // Whale Cohorts and Shark Shoals are wild sea beasts — always the Primal race, whoever raises them.
-      const recruitRace = armyType === 'Whale Cohort' || armyType === 'Shark Shoals' ? 'Primal' : prov.race || 'Human';
-      _pushRecruit({ type: armyType, quality: startQuality, race: recruitRace, unitName: armyUnitName(armyType) });
+      const recruitRace =
+        armyType === 'Whale Cohort' || armyType === 'Shark Shoals' ? 'Primal' : (prov.race ?? '') || 'Human';
+      _pushRecruit({
+        type: armyType,
+        quality: startQuality,
+        race: recruitRace,
+        unitName: theNameDrawn(armyUnitName(armyType)),
+      });
       if (!HUMANOID_RACES_SG.has(recruitRace) && !_destGarrison)
         trySkillGain(turnContext, _destChar, 'druid', SKILLGAIN_STD); // Druid: led a non-humanoid recruit
       else if (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType))
@@ -379,7 +451,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       province: prov.id,
     });
     // if the muster went to ANOTHER of the player's characters, notify them in their section.
-    if (!_destGarrison && _destChar && _destChar.id !== c.id)
+    if (!_destGarrison && _destChar.id !== c.id)
       notifyTarget(
         turnContext,
         _destChar,
@@ -396,7 +468,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     // Newly-mustered units join the destination character's column — recompute their pace (a
     // slow recruit can only reduce it), preserving points already spent. Garrison musters
     // don't march.
-    if (!_destGarrison && _destChar) refreshMovePool(turnContext, _destChar);
+    if (!_destGarrison) refreshMovePool(turnContext, _destChar);
   } else {
     emit(turnContext, {
       type: 'system',
@@ -413,14 +485,28 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
   return;
 }
 // Hire Hero: a wandering hero where the hirer stands, for a wage set by the distance between their alignments.
-export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
-  const { G, SEASONS } = turnContext;
+export function resolveHireHeroOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  target: string,
+  prov: Province | undefined,
+  player: Realm | undefined,
+) {
+  const { G, SEASONS }: Pick<TurnContext, 'SEASONS'> & { readonly G: TheStateAsTheHireReadsIt } = turnContext;
+  // Only a hero of a realm acts in a phase, and processOrder hands him his realm and his province (as for a Recruit);
+  // for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm hires');
+  theRealmIsHanded(player);
+  theProvinceIsHanded(prov);
   // resolve the hero by id, not by array position (defensive — the id==index invariant holds
   // today, but a positional lookup would silently hire the WRONG hero if it ever broke).
   const heroId = parseInt(target);
-  const h = Number.isInteger(heroId) ? (G.characters || []).find((x) => x && x.id === heroId) || null : null;
+  const h = Number.isInteger(heroId)
+    ? ((asItsGuardReadsIt(G.characters) ?? []).find((x: Character | null | undefined) => x?.id === heroId) ?? null)
+    : null;
   // the dead take no actions: a wanderer slain earlier in the turn is none to be hired (P1-23b)
-  if (!h || h.player !== null || !h.alive || h.location !== c.location) {
+  if (h?.player !== null || !h.alive || h.location !== c.location) {
     emit(turnContext, {
       type: 'hire',
       fact: { kind: 'no hero of that description is to be hired here', heroName: c.name, provinceName: prov.name },
@@ -464,10 +550,10 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   // per 2 steps between the hero's alignment and the hiring KINGDOM's alignment on the
   // Divine…Undead spectrum. Divine realms cannot hire Undead heroes and vice versa (distance
   // 6) — unless sd31 Diplomatic Protocols waives the ban (at 5g).
-  const kingdomAlign = G.players[c.player]?.alignment || 'Neutral';
+  const kingdomAlign = (G.players[c.player]?.alignment ?? '') || 'Neutral';
   // (the discoveries' registry's since plan P1-19ae: "orderValidity: a realm's discoveries waive the hiring ban")
   const _waiveBan = doARealmsDiscoveriesWaiveTheHiringBan(G.players[c.player]);
-  const hireWage = h.player === null ? heroHireWage(kingdomAlign, h.alignment, _waiveBan, h) : h.pay || 1;
+  const hireWage = heroHireWage(kingdomAlign, h.alignment, _waiveBan, h); // (a wanderer's, the check above made sure)
   if (hireWage == null) {
     emit(turnContext, {
       type: 'hire',
@@ -508,15 +594,16 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   h.player = c.player;
   h.name = h.name.replace(' (wandering)', '');
   if (h.race === 'Dwarven' && G.players[c.player]?.race === 'Dwarven') grantMithrilTo(h, G); // mithril on hire into a dwarf realm
-  player.heroes = player.heroes || [];
+  player.heroes = asItsGuardReadsIt(player.heroes) ?? [];
   player.heroes.push(h.id);
   // Hero can receive orders starting the phase AFTER they were hired (AK 3.5) We mark the
   // hire phase so the turn report knows which phases they can act in
   h.hiredInPhase = ph;
-  if (!G.turnOrders[h.id]) G.turnOrders[h.id] = [null, null, null, null, null];
+  const hiredsId = h.id; // (a plain name as the key: the compiler sees his orders made sure below)
+  G.turnOrders[hiredsId] ??= [null, null, null, null, null];
   // Default unfilled phases (before hire) to a "not yet hired" placeholder
   for (let p2 = 0; p2 <= ph; p2++)
-    G.turnOrders[h.id][p2] = G.turnOrders[h.id][p2] || {
+    G.turnOrders[hiredsId][p2] = G.turnOrders[hiredsId][p2] ?? {
       action: 'defend',
       target: '',
       extra: '',
@@ -529,7 +616,7 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
   const _aDist = alignDistP(kingdomAlign, h.alignment);
   // Both hire paths now say which it is.
   // the hire's line, filed twice (the prose writes it): his skills above 0, copied as the line is told
-  const _hireFact = {
+  const _hireFact: Extract<TheFactOfTheRecruitAndHireOrdersLine, { kind: 'a hero agrees to serve the realm' }> = {
     kind: 'a hero agrees to serve the realm',
     heroName: h.name,
     race: h.race,
@@ -537,8 +624,8 @@ export function resolveHireHeroOrder(turnContext, c, ph, target, prov, player) {
     realmName: player.name,
     wage: h.pay,
     alignmentSteps: _aDist,
-    skills: Object.entries(h.skills || {}).filter(([, v]) => v > 0),
-    seasonTheyMayActFrom: SEASONS[ph + 1] || null,
+    skills: Object.entries(asItsGuardReadsIt(h.skills) ?? {}).filter(aLevelAboveNothing),
+    seasonTheyMayActFrom: (SEASONS[ph + 1] ?? '') || null,
   };
   emit(turnContext, {
     type: 'hire',

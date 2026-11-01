@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -29,7 +28,25 @@ import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { applySpySuccess } from '../espionage/what-a-spy-learns.ts';
 import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.ts';
-import { landHirePreOrders } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+import {
+  landHirePreOrders,
+  theNameDrawn,
+  theProvinceIsHanded,
+  theRealmIsHanded,
+  type TheStateAsTheHireReadsIt,
+} from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import {
+  aRealmsNameOrNone,
+  servesARealm,
+  theOneTakenOut,
+} from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import type {
+  TheFactOfTheRealmWorksOrdersLine,
+  WhereAWildCallingToreBeastsFrom,
+} from './the-facts-the-realm-works-orders-lines-record.ts';
+import type { Army, Character, Province, Realm } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
 
 // ── THE REALM'S WORKS (plan P1-08j3: the third family taken out of processOrder in resolveTurn) ──
 // The orders of a realm's creed (Consecrate, Call to Arms, Broker, Harvest the Field, and the refusal of the removed
@@ -38,9 +55,35 @@ import { landHirePreOrders } from './recruit-and-hire-orders-companies-mercenari
 // or a mastery). Each takes the turn's context first (src/engine/turn/context.ts), then the values processOrder worked
 // out before it that it reads, in the order processOrder declares them. Each body keeps processOrder's indent (plan
 // P1-08's Decisions); a case-level break became a return.
+/** A province of the map a realm's home names: every realm's home is one, so there is one; for none, the TypeError the
+ *  reading of its neighbours throws. */
+function theHomeOnTheMap(home: Province | undefined): Province {
+  if (!home) throw new TypeError("Cannot destructure property 'row' of 'prov' as it is undefined.");
+  return home;
+}
+/** Where a Wild Calling tore beasts from, as its check for one named already compares it (a field the kind lacks is
+ *  none). */
+interface WhereAsAWildCallingComparesIt {
+  readonly kind: string;
+  readonly provinceName?: string;
+  readonly heroName?: string;
+}
+/** Whether a place a Wild Calling tore beasts from is one it has named already: the same kind, province and hero, each
+ *  compared as it is. */
+function theSamePlaceAsNamed(h: WhereAsAWildCallingComparesIt, from: WhereAsAWildCallingComparesIt) {
+  return h.kind === from.kind && h.provinceName === from.provinceName && h.heroName === from.heroName;
+}
 // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
-export function resolveConsecrateOrder(turnContext, c, prov, player) {
+export function resolveConsecrateOrder(
+  turnContext: TurnContext,
+  c: Character,
+  prov: Province | undefined,
+  player: Realm | undefined,
+) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
+  // hero who gives it, for the phases after), so he serves one; for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm consecrates');
   if (!c.isKing) {
     emit(turnContext, {
       type: 'system',
@@ -59,6 +102,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
     });
     return;
   }
+  theProvinceIsHanded(prov); // the province he stands in (processOrder's: there is one)
   if (prov.owner !== c.player) {
     emit(turnContext, {
       type: 'system',
@@ -71,9 +115,9 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
   const _homeId = homeProvinceIdFor(G, c.player);
   const _homeAdj = new Set(
     _homeId != null
-      ? getNeighborsP(G.world.provinces[_homeId], G.world.cols, G.world.rows, G.world.provinces)
-          .map((x) => x && x.id)
-          .filter((x) => x != null)
+      ? getNeighborsP(theHomeOnTheMap(G.world.provinces[_homeId]), G.world.cols, G.world.rows, G.world.provinces).map(
+          (x) => x.id,
+        )
       : [],
   );
   if (prov.id === _homeId || _homeAdj.has(prov.id)) {
@@ -97,10 +141,8 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
   }
   // holy ground must be spread across the realm — two consecrated provinces may not lie side
   // by side. Reject if any neighbour of this province is already consecrated.
-  const _provAdjC = new Set(
-    getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces)
-      .map((x) => x && x.id)
-      .filter((x) => x != null),
+  const _provAdjC = new Set<number>(
+    getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).map((x) => x.id),
   );
   const _adjConsecId = _cList.find((id) => _provAdjC.has(id));
   if (_adjConsecId != null) {
@@ -110,7 +152,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
         kind: 'two consecrated provinces may not lie side by side',
         heroName: c.name,
         provinceName: prov.name,
-        neighbourName: G.world.provinces[_adjConsecId]?.name || null,
+        neighbourName: (G.world.provinces[_adjConsecId]?.name ?? '') || null,
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -140,7 +182,7 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
         kind: 'the White faith can sustain no more consecrated provinces',
         heroName: c.name,
         limit: _cLimit,
-        consecratedNames: _cList.map((id) => G.world.provinces[id]?.name).filter(Boolean),
+        consecratedNames: _cList.map((id) => G.world.provinces[id]?.name).filter((n): n is string => Boolean(n)),
         provinceName: prov.name,
       },
       audience: { actor: c.player, realms: [c.player] },
@@ -168,8 +210,17 @@ export function resolveConsecrateOrder(turnContext, c, prov, player) {
   return;
 }
 // GOOD — Call to Arms: the folk answer the king; a free Green garrison unit musters.
-export function resolveCallToArmsOrder(turnContext, c, target, player) {
+export function resolveCallToArmsOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: string,
+  player: Realm | undefined,
+) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase, and processOrder hands him his realm (as for a Consecration); for none, a
+  // TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm calls to arms');
+  theRealmIsHanded(player);
   if (G.players[c.player]?.alignment !== 'Good') {
     emit(turnContext, {
       type: 'system',
@@ -198,7 +249,7 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
     return;
   }
   const ctaProv = G.world.provinces[parseInt(target)];
-  if (!ctaProv || ctaProv.owner !== c.player) {
+  if (ctaProv?.owner !== c.player) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a Call to Arms must name a province of the realm', heroName: c.name },
@@ -207,7 +258,7 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
     });
     return;
   }
-  if (ctaProv.terrain === 'sea' || (ctaProv.race || '').startsWith('Primal')) {
+  if (ctaProv.terrain === 'sea' || (ctaProv.race ?? '').startsWith('Primal')) {
     emit(turnContext, {
       type: 'system',
       fact: {
@@ -222,29 +273,33 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
   }
   // Elven Bowmen). Take the province's garrison type from its own pool; fall back to the
   // racial garrison, then a plain levy.
-  const GARRISON_BY_RACE_CTA = {
+  const GARRISON_BY_RACE_CTA: Readonly<Partial<Record<string, string>>> = {
     Human: 'Human Garrison',
     Elven: 'Elven Garrison',
     Dwarven: 'Dwarf Garrison',
     Orcish: 'Orc Garrison',
   };
   const ctaType =
-    (ctaProv.armyTypes || []).find((t) => String(t).toLowerCase().includes('garrison')) ||
-    GARRISON_BY_RACE_CTA[ctaProv.race] ||
+    ((asItsGuardReadsIt(ctaProv.armyTypes) ?? []).find((t) => t.toLowerCase().includes('garrison')) ?? '') ||
+    (GARRISON_BY_RACE_CTA[String(ctaProv.race)] ?? '') ||
     'Human Garrison';
-  ctaProv.garrisonArmies = ctaProv.garrisonArmies || [];
+  ctaProv.garrisonArmies = asItsGuardReadsIt(ctaProv.garrisonArmies) ?? [];
+  // the tiers, looked up by a quality of any form a discovery gives (a list of them is none)
+  const tiers: readonly unknown[] = QUALITY_TIERS;
   const _ctaQ =
-    theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt(G.players[c.player])
+    (theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt(G.players[c.player])
       .filter((e) => e.theChance == null || kcRng() < e.theChance)
       .map((e) => e.theQuality)
-      .find((q) => q && QUALITY_TIERS.includes(q)) || 'Green'; // ag05 Muster Rolls (a chance per muster; the discoveries'
+      .find((q): q is string => Boolean(q && tiers.includes(q))) ??
+      '') ||
+    'Green'; // ag05 Muster Rolls (a chance per muster; the discoveries'
   // registry's since plan P1-19ae: "orderOutcome: a realm's discoveries raise a call to arms' quality", each chance
   // rolled here, in turn, as before)
   ctaProv.garrisonArmies.push({
     type: ctaType,
     quality: _ctaQ,
-    race: ctaProv.race || 'Human',
-    unitName: armyUnitName(ctaType),
+    race: (ctaProv.race ?? '') || 'Human',
+    unitName: theNameDrawn(armyUnitName(ctaType)),
   });
   player._calledToArmsTurn = G.turn;
   emit(turnContext, {
@@ -257,8 +312,18 @@ export function resolveCallToArmsOrder(turnContext, c, target, player) {
   return;
 }
 // NEUTRAL — Broker: money moves what armies cannot. Remote hire, or a paid remote spy.
-export function resolveBrokerOrder(turnContext, c, ph, target, player) {
-  const { G, SEASONS } = turnContext;
+export function resolveBrokerOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  target: string,
+  player: Realm | undefined,
+) {
+  const { G, SEASONS }: Pick<TurnContext, 'SEASONS'> & { readonly G: TheStateAsTheHireReadsIt } = turnContext;
+  // Only a hero of a realm acts in a phase, and processOrder hands him his realm (as for a Consecration); for none, a
+  // TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm keeps brokers');
+  theRealmIsHanded(player);
   if (G.players[c.player]?.alignment !== 'Neutral') {
     emit(turnContext, {
       type: 'system',
@@ -279,10 +344,11 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
   }
   const _bk = (target || '').split(':');
   if (_bk[0] === 'hire') {
-    const bh = G.characters[parseInt(_bk[1])];
+    const bh = G.characters[parseInt(String(_bk[1]))];
     const bhProv = bh ? G.world.provinces[bh.location] : null;
-    const _visible = bhProv && (bhProv.owner === c.player || (bhProv.visitedBy || []).includes(c.player));
-    if (!bh || bh.player !== null || !bh.alive || bh._isNeutralGuard || bh._justDefeated || !_visible) {
+    const _visible =
+      bhProv && (bhProv.owner === c.player || (asItsGuardReadsIt(bhProv.visitedBy) ?? []).includes(c.player));
+    if (bh?.player !== null || !bh.alive || bh._isNeutralGuard || bh._justDefeated || !_visible) {
       emit(turnContext, {
         type: 'hire',
         fact: { kind: 'the brokers find no such hero within reach', heroName: c.name },
@@ -303,7 +369,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
     // sd31 Diplomatic Protocols (the discoveries' registry's since plan P1-19ae: "orderValidity: a realm's discoveries
     // waive the hiring ban")
     const bWage = heroHireWage(
-      G.players[c.player]?.alignment || 'Neutral',
+      (G.players[c.player]?.alignment ?? '') || 'Neutral',
       bh.alignment,
       doARealmsDiscoveriesWaiveTheHiringBan(G.players[c.player]),
       bh,
@@ -332,12 +398,13 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
     bh.name = bh.name.replace(' (wandering)', '');
     // a brokered hire is a HIRE.
     if (bh.race === 'Dwarven' && G.players[c.player]?.race === 'Dwarven') grantMithrilTo(bh, G); // mithril on hire into a dwarf realm
-    player.heroes = player.heroes || [];
+    player.heroes = asItsGuardReadsIt(player.heroes) ?? [];
     player.heroes.push(bh.id);
     bh.hiredInPhase = ph;
-    if (!G.turnOrders[bh.id]) G.turnOrders[bh.id] = [null, null, null, null, null];
+    const brokeredsId = bh.id; // (a plain name as the key: the compiler sees his orders made sure below)
+    G.turnOrders[brokeredsId] ??= [null, null, null, null, null];
     for (let p2 = 0; p2 <= ph; p2++)
-      G.turnOrders[bh.id][p2] = G.turnOrders[bh.id][p2] || {
+      G.turnOrders[brokeredsId][p2] = G.turnOrders[brokeredsId][p2] ?? {
         action: 'defend',
         target: '',
         extra: '',
@@ -345,7 +412,10 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       };
     landHirePreOrders(turnContext, bh, c, ph, player); // 2026-09-23: the brokered hero's pre-written orders + plan
     setMovePool(turnContext, bh);
-    const _brokerFact = {
+    const _brokerFact: Extract<
+      TheFactOfTheRealmWorksOrdersLine,
+      { kind: "a wandering hero accepts the realm's terms by courier" }
+    > = {
       kind: "a wandering hero accepts the realm's terms by courier",
       heroName: bh.name,
       race: bh.race,
@@ -353,7 +423,7 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       provinceName: bhProv.name,
       realmName: player.name,
       wage: bWage,
-      seasonName: SEASONS[ph + 1] || null,
+      seasonName: (SEASONS[ph + 1] ?? '') || null,
     };
     emit(turnContext, {
       type: 'hire',
@@ -372,12 +442,12 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
       phase: ph,
     });
   } else if (_bk[0] === 'spy') {
-    const sp2 = G.world.provinces[parseInt(_bk[1])];
+    const sp2 = G.world.provinces[parseInt(String(_bk[1]))];
     const _seen =
       sp2 &&
       (sp2.owner === c.player ||
-        (sp2.visitedBy || []).includes(c.player) ||
-        ((sp2.exploredBy || {})[c.player] || 0) > 0);
+        (asItsGuardReadsIt(sp2.visitedBy) ?? []).includes(c.player) ||
+        (sp2.exploredBy?.[c.player] ?? 0) > 0);
     if (!sp2 || !_seen) {
       emit(turnContext, {
         type: 'system',
@@ -416,7 +486,11 @@ export function resolveBrokerOrder(turnContext, c, ph, target, player) {
 }
 // DRUIDIC Awaken the Wild and EVIL Call from the Pit: REMOVED 2026-10-12 (Toby item 22 — they made Creatures
 // and Monsters too easy to come by). An order a save still holds from before is refused in plain words.
-export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, c, action) {
+export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(
+  turnContext: TurnContext,
+  c: Pick<Character, 'name' | 'player'>,
+  action: string,
+) {
   emit(turnContext, {
     type: 'system',
     fact: {
@@ -430,8 +504,18 @@ export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, 
   return;
 }
 // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.
-export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
+export function resolveHarvestTheFieldOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  prov: Province | undefined,
+  player: Realm | undefined,
+) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase, and processOrder hands him his realm (as for a Consecration); for none, a
+  // TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm harvests the field');
+  theRealmIsHanded(player);
   if (G.players[c.player]?.alignment !== 'Undead') {
     emit(turnContext, {
       type: 'system',
@@ -441,7 +525,8 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
     });
     return;
   }
-  const hGraves = prov.battleGraves || [];
+  theProvinceIsHanded(prov); // the province he stands in (processOrder's: there is one)
+  const hGraves = prov.battleGraves ?? [];
   if (hGraves.length === 0) {
     emit(turnContext, {
       type: 'system',
@@ -465,15 +550,19 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   }
   player.gold -= _hCost;
   const hGrave = takeBestGrave(prov); // the most experienced dead are worked first
+  // the graves just found not empty give one (a gap among them none: the TypeError its read throws)
+  if (!hGrave) throw new TypeError("Cannot read properties of null (reading 'type')");
+  // the qualities a tier up, by any quality's name
+  const qualityUp: Readonly<Partial<Record<string, string>>> = KC_QUALITY_UP;
   const _uTierH = gdActive(turnContext, c.player, 'Undead'); // GRAND DESIGN — Undead
   const hSkel = {
     type: hGrave.type,
-    quality: _uTierH ? KC_QUALITY_UP[hGrave.quality] || hGrave.quality : hGrave.quality,
+    quality: _uTierH ? (qualityUp[hGrave.quality] ?? '') || hGrave.quality : hGrave.quality,
     race: 'Undead',
     _isSkeletal: true,
-    unitName: `${hGrave.unitName || armyUnitName(hGrave.type)} (Skeletal)`,
+    unitName: `${String(hGrave.unitName || armyUnitName(hGrave.type))} (Skeletal)`,
   };
-  c.armies = c.armies || [];
+  c.armies = asItsGuardReadsIt(c.armies) ?? [];
   c.armies.push(hSkel);
   emit(turnContext, {
     type: 'hire',
@@ -510,7 +599,12 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   return;
 }
 // Awaken Grove (Druid 7, once a turn): Forest Ents march with the druid until the turn's end.
-export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
+export function resolveAwakenGroveOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  prov: Province | undefined,
+) {
   if (skillLevel(c, 'druid') < 7) {
     emit(turnContext, {
       type: 'system',
@@ -520,8 +614,8 @@ export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
     });
     return;
   }
-  const okTerrain =
-    prov.terrain === 'forest' || prov.terrain === 'jungle' || String(prov.race || '').startsWith('Primal');
+  theProvinceIsHanded(prov); // the province he stands in (processOrder's: there is one)
+  const okTerrain = prov.terrain === 'forest' || prov.terrain === 'jungle' || (prov.race ?? '').startsWith('Primal');
   if (prov.owner !== c.player || !okTerrain) {
     emit(turnContext, {
       type: 'system',
@@ -539,7 +633,7 @@ export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
     _temporary: true,
     _expiresAfterPhase: -1,
   };
-  c.armies = c.armies || [];
+  c.armies = asItsGuardReadsIt(c.armies) ?? [];
   c.armies.push(grove);
   logSplit(
     turnContext,
@@ -548,7 +642,7 @@ export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
     {
       kind: 'onlookers see a druid awaken the grove',
       heroName: c.name,
-      realmName: c.player != null && turnContext.G.players[c.player] ? turnContext.G.players[c.player].name : null,
+      realmName: aRealmsNameOrNone(turnContext.G.players, c.player),
       provinceName: prov.name,
     },
     { audience: { actor: c.player }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING, province: prov.id },
@@ -558,8 +652,15 @@ export function resolveAwakenGroveOrder(turnContext, c, ph, prov) {
   return;
 }
 // Wild Calling (Druid 9, once a turn): wild beasts in the province that serve another may break and follow the caller.
-export function resolveWildCallingOrder(turnContext, c, ph, prov) {
+export function resolveWildCallingOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  prov: Province | undefined,
+) {
   const { G } = turnContext;
+  // the wild's units, by any unit's type
+  const primalDefs: Readonly<Partial<Record<string, object>>> = PRIMAL_ARMY_DEFS_P;
   // ── WILD CALLING ── every primal creature or monster in this province that does not
   // already serve you — a neutral primal host, an enemy commander's beasts, or unled garrison
   // beasts — has a 50% chance to defect and fall in behind the caller. Humanoid troops,
@@ -573,15 +674,17 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
     });
     return;
   }
-  const _wcIsBeast = (u) =>
-    !!u &&
-    !u._isSkeletal &&
-    (CREATURE_ARMIES.has(u.type) || MONSTER_ARMIES.has(u.type) || !!PRIMAL_ARMY_DEFS_P[u.type]);
-  const _wcWon = [];
-  const _wcHeard = [];
+  theProvinceIsHanded(prov); // the province he stands in (processOrder's: there is one)
+  const _wcIsBeast = (u: Army | null | undefined) =>
+    !!u && !u._isSkeletal && (CREATURE_ARMIES.has(u.type) || MONSTER_ARMIES.has(u.type) || !!primalDefs[u.type]);
+  const _wcWon: Army[] = [];
+  const _wcHeard: WhereAWildCallingToreBeastsFrom[] = [];
   let _wcCalled = 0;
   const _wcRoom = beastCommandRoom(c, G.characters); // item 24: no more answer than the caller's Druid has room for
-  const _wcSift = (arr, from) => {
+  const _wcSift = (
+    arr: (Army | null | undefined)[] | null | undefined,
+    from: WhereAWildCallingToreBeastsFrom | null,
+  ) => {
     if (!Array.isArray(arr)) return;
     for (let i = arr.length - 1; i >= 0; i--) {
       const u = arr[i];
@@ -589,15 +692,9 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
       _wcCalled++;
       if (_wcWon.filter(beastCommandCount).length >= _wcRoom) continue;
       if (d100() <= 50) {
-        _wcWon.push(Object.assign({}, arr.splice(i, 1)[0], { _pacified: true }));
+        _wcWon.push(Object.assign({}, theOneTakenOut(arr, i), { _pacified: true }));
         // named once however many of its beasts answer (the same garrison, or a hero of the same name)
-        if (
-          from &&
-          !_wcHeard.some(
-            (h) => h.kind === from.kind && h.provinceName === from.provinceName && h.heroName === from.heroName,
-          )
-        )
-          _wcHeard.push(from);
+        if (from && !_wcHeard.some((h) => theSamePlaceAsNamed(h, from))) _wcHeard.push(from);
       }
     }
   };
@@ -605,8 +702,8 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
   if (prov.owner != null && prov.owner !== c.player)
     _wcSift(prov.garrisonArmies, { kind: 'the garrison of a province', provinceName: prov.name });
   else if (prov.owner == null) _wcSift(prov.garrisonArmies, null);
-  (G.characters || []).forEach((o) => {
-    if (!o || !o.alive || o.id === c.id || o.location !== c.location) return;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((o: Character | null | undefined) => {
+    if (!o?.alive || o.id === c.id || o.location !== c.location) return;
     if (o.player === c.player) return; // never poached from your own commanders
     if (o.player != null && !areEnemies(turnContext, c.player, o.player)) return; // and never from a realm you are not at war with
     const before = _wcWon.length;
@@ -653,7 +750,7 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
     trySkillGain(turnContext, c, 'druid', SKILLGAIN_STD);
     return;
   }
-  c.armies = (c.armies || []).concat(_wcWon);
+  c.armies = (asItsGuardReadsIt(c.armies) ?? []).concat(_wcWon);
   logSplit(
     turnContext,
     'explore',
@@ -668,7 +765,7 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
     {
       kind: 'onlookers see wild creatures answer a Wild Calling',
       heroName: c.name,
-      realmName: c.player != null && G.players[c.player] ? G.players[c.player].name : null,
+      realmName: aRealmsNameOrNone(G.players, c.player),
       provinceName: prov.name,
       won: _wcWon.length,
     },
@@ -680,7 +777,7 @@ export function resolveWildCallingOrder(turnContext, c, ph, prov) {
   return;
 }
 // Grand Design (Sage 9, once a realm): the Wonder of the realm's alignment, raised in the province he stands in.
-export function resolveGrandDesignOrder(turnContext, c, prov) {
+export function resolveGrandDesignOrder(turnContext: TurnContext, c: Character, prov: Province | undefined) {
   const { G } = turnContext;
   if (skillLevel(c, 'sage') < 9) {
     emit(turnContext, {
@@ -691,24 +788,31 @@ export function resolveGrandDesignOrder(turnContext, c, prov) {
     });
     return;
   }
+  // Only a hero of a realm acts in a phase, and every realm's index names a realm of the state; for none, the TypeError
+  // the read of his realm's discoveries throws.
+  if (!servesARealm(c)) throw new TypeError("Cannot read properties of undefined (reading 'discoveries')");
   const player = G.players[c.player];
-  if (!player.discoveries) player.discoveries = [];
+  if (!player) throw new TypeError("Cannot read properties of undefined (reading 'discoveries')");
+  player.discoveries ??= [];
   if (player.discoveries.some((d) => d.id === 'gd')) {
     emit(turnContext, {
       type: 'system',
-      fact: { kind: 'the realm has already completed its Grand Design', realmName: G.players[c.player]?.name },
+      fact: { kind: 'the realm has already completed its Grand Design', realmName: player.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     });
     return;
   }
-  const _GD_DEFS = { ...KC_GRAND_DESIGNS };
-  const _gdA = (G.players[c.player] && G.players[c.player].alignment) || 'Neutral';
-  const _gdD = _GD_DEFS[_gdA] || { name: 'The Great Work', desc: 'A unique realm-wide Wonder.' };
+  const _GD_DEFS: Readonly<Partial<Record<string, { readonly name: string; readonly desc: string }>>> = {
+    ...KC_GRAND_DESIGNS,
+  };
+  const _gdA = (G.players[c.player]?.alignment ?? '') || 'Neutral';
+  const _gdD = _GD_DEFS[_gdA] ?? { name: 'The Great Work', desc: 'A unique realm-wide Wonder.' };
   // the Wonder now STANDS SOMEWHERE. Its province is recorded on the realm and on the
   // province itself; every benefit is gated on the builder still holding that ground
   // (gdActive), and is regained in full the moment the province is retaken. The Wonder itself is
   // never destroyed and never changes hands — a conqueror gains nothing but the view.
+  theProvinceIsHanded(prov); // the province he stands in (processOrder's: there is one)
   player.gdProvinceId = prov.id;
   player.gdName = _gdD.name;
   prov.grandDesign = { owner: c.player, name: _gdD.name, alignment: _gdA, builtTurn: G.turn };
@@ -727,7 +831,7 @@ export function resolveGrandDesignOrder(turnContext, c, prov) {
     fact: {
       kind: "a hero completes the realm's Grand Design",
       heroName: c.name,
-      realmName: G.players[c.player]?.name,
+      realmName: player.name,
       wonderName: _gdD.name,
       wonderDescription: _gdD.desc,
       provinceName: prov.name,

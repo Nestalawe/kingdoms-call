@@ -313,11 +313,6 @@
       "count": 1
     }
   },
-  "src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts": {
-    "prefer-const": {
-      "count": 3
-    }
-  },
   "src/engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 6
