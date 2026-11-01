@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-91 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(57: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+89 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(55: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b19 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b20 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -65,6 +65,8 @@ added under its kind.
   then `bc || 'x'`. `x != null ? x : y` is `x ?? y`; `(h && h.race) || null` is `(h?.race ?? '') || null`.
 - **`a && a.b`** is `a?.b`, and `!(fm && fm.arr === n)` is `!(fm?.arr === n)` when `n` is never `undefined`;
   `!t || t.location !== n` is `t?.location !== n`, which narrows `t` after it.
+- **`a.find(…) || b` on words** is `(a.find(…) ?? '') || b`; **`(table || {})[n]` keyed by a number** (a realm's index)
+  is `table?.[n]`: no field of an empty object has a number's name.
 - **`if (!x) x = v` on words** (a unit's phantom tag) is `if (x === undefined || x === '') x = v`: lint's `x ??= v`
   would keep a `''`.
 
@@ -83,6 +85,8 @@ added under its kind.
 - **A `String()` a test shows is needed** (an order's target, an item's id held as a number) stays, through a reader
   typed as wide (`aTargetInWords`), though the type says words. One the saved schema makes needless (a guardian's
   power's words) goes. `!!x` on a flag is `x`.
+- **`/^merc_/.test(s)` on words** is `s.startsWith('merc_')`. A company's name `armyUnitName` draws is read through
+  `theNameDrawn`, which throws for none (its type allows none; it always draws or composes one).
 - **A number a typed callee may give as `undefined`** (`effSkillOf` for no hero) is read `Number(x)` where it is counted
   or compared, and kept as it is where it is handed back.
 
@@ -112,6 +116,11 @@ added under its kind.
 - **A list read by a key in words** (a province by a key of a realm's grave lore) is read as JavaScript reads `list[k]`
   for any key, `Reflect.get(list, k)` into an `unknown`, and its field so too, `Reflect.get(Object(v), 'name')`
   (`theProvinceALoreKeyNames`).
+- **`list.find((q) => q && TIERS.includes(q))` over values of mixed forms** (a quality, or a list of them) reads the
+  tiers through a local `readonly unknown[]` and keeps a kind: `(q): q is string => Boolean(q && tiers.includes(q))`.
+  `Object.entries(skills).filter(([, v]) => v > 0)` takes a typed predicate, `Number(v) > 0` (`aLevelAboveNothing`).
+- **Records of a union compared field by field** (where a Wild Calling tore beasts from: a garrison's province, a
+  hero's name) are compared through a shape with every field optional (`theSamePlaceAsNamed`).
 - **A filter that keeps a kind** needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`;
   `filter(Boolean)` a type predicate. A callback whose result is read only as true or false is typed `: boolean`, so
   the compiler doesn't infer a predicate over a large union.
@@ -142,6 +151,10 @@ added under its kind.
   after the call isn't read as always false.
 - **A `let` set inside a `forEach` callback** is still its first value to the compiler: a `for … of` over the same list,
   `continue` for the callback's `return`; or, where it is handed back, the function's return type written.
+- **A table's element made sure by a key that is a field** (`if (!G.turnOrders[h.id]) …; G.turnOrders[h.id][p]`)
+  is read by a plain `const` key (`const hiredsId = h.id`), and `if (!x) x = []` on it is `x ??= []`, which narrows.
+- **A branch the check above makes dead** (`h.player === null ? wage : h.pay || 1` after a check that every hired
+  hero is a wanderer) is dropped: lint refuses the always-true test, and the value is the same.
 - **A value a closure reads later** (`pcDeferEffect`'s rider) is read into a `const` before it, so the test before it
   narrows it inside too. A table read by the same key several times is read once into a `const`.
 - **A `try` whose `catch` gave a value where a missing element threw** checks for none first inside the `try`, with
@@ -167,6 +180,11 @@ added under its kind.
 - **A field the code tests with `typeof x !== 'object'` and `Array.isArray` before writing it whole** (a realm's
   grave lore) is typed as wide as those tests: its record, a list (not `readonly`), words, a number, a flag or none
   (`TheGraveLoreAsItsGuardsReadIt`), so each test narrows it to the record.
+- **A hero, his realm and his province as processOrder hands them** (`Character`, `Realm | undefined`, `Province |
+  undefined`): where the order indexes by his realm, it starts with `servesARealm`'s check, as the Cast Spell order does;
+  his realm and his province are made sure by `theRealmIsHanded` and `theProvinceIsHanded` (assertion functions, which
+  throw for none), before their first read. Not through a check in the dispatch's call when a test pins the call's
+  form (`[^)]*` in the order family's own tests).
 - **A parameter whose kind a flag says** is a rest tuple (`...[army, typeOnly]: [string, true] | [AUnit, false?]`); a
   callback option only one case calls is required only there (`{ won: true } | { won: false; demoteAt }`).
 - **A function that reads an old save** takes the old save's shape, every field it reads optional. A function that

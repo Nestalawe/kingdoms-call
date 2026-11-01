@@ -14,11 +14,15 @@
 // `resolveRemovedAwakenTheWildAndCallFromThePitOrders`, `resolveHarvestTheFieldOrder`, `resolveAwakenGroveOrder`,
 // `resolveWildCallingOrder`, `resolveGrandDesignOrder`, P1-08j3), called directly on the same cases one phase at a
 // time, then on what the dice decide (fixed) and what the balance matrix never reaches: a recruit's grade from Superior
-// Forging or the Druidic Wonder, the Druid's rise from a beast raised, the running cost of an order, bands hired by a
-// Recruit (named four ways, Black Market's discount, a band unpaid staying), the written orders' cards (the hirer's own
-// first, never a rival's), a wanderer dead earlier in the turn not hired, the Broker's refusals and its last-season hire, Holy Sites, Muster Rolls, the province's own
+// Forging or the Druidic Wonder, the Druid's rise from a beast raised, the running cost of an order, a garrison two a
+// season, bands hired by a Recruit (named four ways, a band not named passed over, Black Market's discount, a band
+// unpaid staying, a stale one skipped by its old id), the written orders' cards (the hirer's own first, never a
+// rival's), a wanderer dead earlier in the turn or a hero already serving not hired, the Broker's refusals, its
+// last-season hire and its word bought from a province only explored, Holy Sites, Muster Rolls, the province's own
 // garrison company, the carters' discount and the Undead Wonder, the Grove's Ents, Wild Calling's even chance per beast
-// with the room it leaves (the settling of the province after it stood in for), and the Grand Design's Wonder by creed.
+// (a die of 50 wins, 51 loses) with the room it leaves and each place it tears beasts from named once (the settling of
+// the province after it stood in for), the onlookers told the realm by name, and the Grand Design's Wonder by creed,
+// once (P1-10b20 added the cases its proof asked for).
 // 192 planted faults in the functions and their calls: 191 turn at least one of the two tests red, and every test goes
 // red for at least one; the one left can't change the game (the Wild Calling's own-realm guard, which the next guard
 // covers)
@@ -319,6 +323,43 @@ describe('Recruit Armies, called directly', () => {
     });
   });
 
+  test('a band the order does not name is passed over for the next one it names', () => {
+    const b = fresh();
+    band(b, b.X);
+    must(b.G.mercenaries, 'the mercenaries').push({
+      id: 'merc_second',
+      type: 'Black Arrows',
+      quality: 'Veteran',
+      race: 'Human',
+      unitName: 'Second Company',
+      location: b.X.id,
+    });
+    const h = at(b);
+    play(b, h, o('recruit', 'merc:merc_second'));
+    expect({ led: units(h.armies), bands: b.G.mercenaries?.map((m) => m.id) }).toEqual({
+      led: ['Veteran Black Arrows'],
+      bands: ['merc_test'],
+    });
+  });
+
+  test('a stale band named by its bare old id in the second list is skipped too, never raised as a kind of unit', () => {
+    const b = fresh();
+    holds(b, b.X);
+    const h = at(b);
+    play(b, h, o('recruit', '', 'merc_gone'));
+    expect({ led: units(h.armies), gold: realm(b)['gold'] }).toEqual({ led: [], gold: 20 });
+    expect(textOf(b, h)).toContain('was entirely blocked: .');
+  });
+
+  test('a garrison is raised two a season: a second order raises only what the first left', () => {
+    const b = fresh();
+    holds(b, b.X);
+    const h = at(b);
+    play(b, h, o('recruit', 'Human Garrison|1'));
+    play(b, h, o('recruit', 'Human Garrison|2'), 1);
+    expect(units(b.X.garrisonArmies)).toEqual(['Average Human Garrison', 'Average Human Garrison']);
+  });
+
   test('a stale mercenary token in the second list is skipped, and with nothing else there nothing is raised', () => {
     const b = fresh();
     holds(b, b.X);
@@ -423,6 +464,15 @@ describe('Hire Hero, called directly', () => {
     expect(textOf(b, h)).toContain('none matching that description');
   });
 
+  test('a hero already serving a realm is none to be hired: no gold spent', () => {
+    const b = fresh();
+    const s = hero(b, { player: 1, at: b.X });
+    const h = at(b);
+    play(b, h, o('hire', s.id));
+    expect({ player: s.player, gold: realm(b)['gold'] }).toEqual({ player: 1, gold: 20 });
+    expect(textOf(b, h)).toContain('none matching that description');
+  });
+
   // P1-23b: a wanderer slain earlier in the turn still stood in the province, unsworn, and was hired (seen with
   // KC_SEED=7 and KC_SEED=3 in turn-fuzz, and in the balance matrix's set A, bots-27, turn 15)
   test('a wanderer who died earlier in the turn is none to be hired: no gold spent, no oath', () => {
@@ -517,6 +567,25 @@ describe('Broker, called directly', () => {
       gold: 18,
       spied: [b.X.id],
     });
+  });
+
+  test('word bought from a province the realm only explored, never held or entered; one it never saw is beyond reach', () => {
+    const word = (explored: Record<number, number>) => {
+      const { b, k } = broker();
+      const p = must(b.ring2[0], 'a province two steps away');
+      p.visitedBy = [];
+      p['exploredBy'] = explored;
+      play(b, k, o('broker', `spy:${String(p.id)}`));
+      return {
+        gold: realm(b)['gold'],
+        spied: ((realm(b)['_spiedProvincesThisTurn'] ?? []) as number[]).includes(p.id),
+        told: textOf(b, k).includes('can only reach provinces the realm has seen'),
+      };
+    };
+    expect([word({ 0: 5 }), word({})]).toEqual([
+      { gold: 18, spied: true, told: false },
+      { gold: 20, spied: false, told: true },
+    ]);
   });
 });
 
@@ -634,6 +703,14 @@ describe('Harvest the Field, called directly', () => {
 });
 
 describe('Awaken Grove, called directly', () => {
+  test('the onlookers are told the druid’s realm by its name', () => {
+    const b = fresh();
+    holds(b, b.X);
+    b.X.terrain = 'forest';
+    const h = at(b, { skills: skilled({ druid: 7 }) });
+    play(b, h, o('awaken_grove'));
+    expect(b.lines().some((l) => l.text.includes(`${h.name} (${realm(b).name}) awakens the grove of`))).toBe(true);
+  });
   test('Forest Ents, Veteran, until the turn’s end, and a chance at the Druid skill; jungle wakes too', () => {
     for (const terrain of ['forest', 'jungle']) {
       const b = fresh();
@@ -712,6 +789,13 @@ describe('Wild Calling, called directly', () => {
     });
     expect(textOf(b, h)).toContain('2 of 3 wild creatures answer and fall in behind your banner!');
   });
+  test('the even chance at its edge: a die of 50 wins the beast, 51 loses it', () => {
+    const one = (die: number) => calling((bb) => (bb.X.neutralDefenders = beasts(1)), [die]);
+    expect([one(0.495), one(0.505)].map(({ b, h }) => [h.armies.length, b.X.neutralDefenders.length])).toEqual([
+      [1, 0],
+      [0, 1],
+    ]);
+  });
   test('a druid already leading as many beasts as his Druid allows calls them, and none follows', () => {
     const { b, h } = calling(
       (bb) => {
@@ -785,6 +869,34 @@ describe('Wild Calling, called directly', () => {
       `🐾 The beasts of ${f.name}'s host break their bonds and answer a Wild Calling in ${b.X.name} — 1 unit lost.`,
     );
   });
+  test('each place beasts are torn from is named once, however many answer: a garrison, and each hero by his name', () => {
+    const named: Character[] = [];
+    const { b } = calling(
+      (bb) => {
+        bb.own(bb.X, 1);
+        bb.X.garrisonArmies = beasts(2);
+        for (const name of ['Ser Alda', 'Ser Brin']) {
+          const foe = hero(bb, { player: 1, at: bb.X });
+          foe.name = name;
+          foe.armies = beasts(2);
+          named.push(foe);
+        }
+      },
+      [0.1],
+    );
+    const line = (b.tc.turnLog as unknown as { fact?: { kind?: string; tornFrom?: unknown } }[]).find(
+      (l) => l.fact?.kind === 'wild creatures answer a Wild Calling',
+    );
+    expect(line?.fact?.tornFrom).toEqual([
+      { kind: 'the garrison of a province', provinceName: b.X.name },
+      { kind: "a hero's host", heroName: 'Ser Alda' },
+      { kind: "a hero's host", heroName: 'Ser Brin' },
+    ]);
+  });
+  test('the onlookers are told the caller’s realm by its name', () => {
+    const { b, h } = calling((bb) => (bb.X.neutralDefenders = beasts(1)), [0.1]);
+    expect(b.lines().some((l) => l.text.includes(`${h.name} (${realm(b).name}) sounds a Wild Calling in`))).toBe(true);
+  });
   test('an unled garrison on ground nobody holds answers too; the realm’s own garrison never does', () => {
     const open = calling(
       (bb) => {
@@ -836,6 +948,17 @@ describe('Grand Design, called directly', () => {
       merit: (h['tm'] as Record<string, number> | undefined)?.['discoveries'],
       rolls: rolls.map((r) => [r.skill, r.base]),
     }).toEqual({ name: 'Deathless Legion', merit: 1, rolls: [['sage', SKILLGAIN.std]] });
+  });
+  test('a realm whose Wonder stands already is told so by its name, and keeps its discoveries', () => {
+    const b = fresh();
+    realm(b)['discoveries'] = [{ id: 'gd' }];
+    const h = at(b, { skills: skilled({ sage: 9 }) });
+    play(b, h, o('grand_design'));
+    expect({ discoveries: realm(b)['discoveries'], wonder: b.X['grandDesign'] ?? null }).toEqual({
+      discoveries: [{ id: 'gd' }],
+      wonder: null,
+    });
+    expect(textOf(b, h)).toContain(`${realm(b).name} has already completed its Grand Design`);
   });
   test('a realm of no creed raises the Neutral Wonder; a creed with none of its own, the Great Work', () => {
     expect([realm(design(undefined).b)['gdName'], realm(design('Wandering').b)['gdName']]).toEqual([
