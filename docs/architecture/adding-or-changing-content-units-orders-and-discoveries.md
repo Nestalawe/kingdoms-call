@@ -144,7 +144,11 @@ Each order is one row of `THE_ALIGNMENT_ORDERS` (`src/content/alignment-orders-t
 its key, its name, the other names the turn reads, its creed, whether the king alone gives it, and the numbers the books
 state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows, and so are the
 order-name map's entries for them (`PHASE_ACTION_MAP`: each row's key, its name in lower case and its other names);
-the order switch's `case`s read their row's key. A new row's order still needs its own `case` and resolver.
+the order switch's `case`s read their row's key. Each resolver compares its row's creed, the three the king alone gives
+read its mark, and the numbers the books state come from the row (the price of word, the muster's grade, the carters'
+price, the Wild Hunt's beasts and turns, the Blood Offering's tiers): the turn and the report price the carters with one
+function (`theCorpseCartersPriceForARealm`), and the report's price of word is the row's. A new row's order still needs
+its own `case` and resolver.
 `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts` reads each row
 against both rulebooks. The ratchet's `alignmentOrderChecksInEngine` counts the keys the engine still writes itself.
 
