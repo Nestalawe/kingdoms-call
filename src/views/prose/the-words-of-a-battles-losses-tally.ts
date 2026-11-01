@@ -55,9 +55,7 @@ interface ASidesLossesInTheTally {
 /** The owner a company's line names: his label, or null when the line names none (a company named by its name or type
  *  alone, or one with no owner). */
 function theOwnerItsLineNames(owner: TheOwnerOfABattlesUnits | null): string | null {
-  if (!owner) return null;
-  const label = theLabelOfASideOrTheDefenders(owner);
-  return label === '' ? null : label;
+  return owner ? theLabelOfASideOrTheDefenders(owner) : null;
 }
 
 /** The owner a unit's record names, as its line writes it. */

@@ -272,6 +272,41 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
     );
   });
 
+  test('a company named by its name alone goes to the list it follows, whatever owner its record holds', () => {
+    expect(
+      theTallyOf([
+        aForce('Aldric', 'attacker', [['Shieldwall Levies', 'the Grey Legion']]),
+        theAttackersList('Aldric'),
+        theDefendersList(side('Gorbash')),
+        isCutDownWithNoEscape(
+          aUnit(side('Aldric'), 'the Grey Legion', 'Shieldwall Levies', 'a unit named by its name or type alone'),
+        ),
+      ]),
+    ).toBe('⚰ Losses — **Aldric**: no units lost · **Gorbash**: 1 unit lost (unit).');
+  });
+
+  test('a company whose line names no owner goes to the list it follows, as one disbanding with none named', () => {
+    expect(
+      theTallyOf([
+        aForce('Gorbash', 'defender', [['Goblin Horde', 'Gob']]),
+        theAttackersList('Aldric'),
+        theDefendersList(side('Gorbash')),
+        dies(aUnit(null, 'Gob', 'Goblin Horde')),
+        {
+          kind: "a unit's fate in the battle",
+          itsSideWon: false,
+          fate: 'has had enough and disbands',
+          theUnitsOwner: null,
+          unitName: 'Gob',
+          unitType: 'Goblin Horde',
+          whomItFaced: null,
+        },
+      ]),
+    ).toBe(
+      '⚰ Losses — **Aldric**: no units lost · **Gorbash**: 1 of 1 unit lost (Goblin Horde), 1 disbanded (Goblin Horde).',
+    );
+  });
+
   test('a force with no units gives no total, and one whose role is neither side is not counted', () => {
     const aLevyDies = dies(ofAldric('Shieldwall Levies', 'Shieldwall Levies'));
     expect(theTallyOf([aForce('Aldric', 'attacker', []), theAttackersList('Aldric'), aLevyDies])).toBe(
@@ -337,6 +372,14 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
         aForce('Aldric', 'attacker', [['', 'Levy']]),
         theAttackersList('Aldric'),
         dies(ofAldric('Levy', '')),
+      ]),
+    ).toBe('⚰ Losses — **Aldric**: 1 of 1 unit lost (unit).');
+    // a company with no name, of a type its side's force doesn't list
+    expect(
+      theTallyOf([
+        aForce('Aldric', 'attacker', [['Shieldwall Levies', 'Levy']]),
+        theAttackersList('Aldric'),
+        isCutDownWithNoEscape(aUnit(side('Aldric'), '', 'Skeletal Legion', 'a unit named by its name or type alone')),
       ]),
     ).toBe('⚰ Losses — **Aldric**: 1 of 1 unit lost (unit).');
   });
