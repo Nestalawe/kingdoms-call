@@ -35,7 +35,7 @@ function aTurn(G: Obj): TurnContext {
     _logCtx: { charId: null, phase: null },
     _currentPhase: 1,
     _afterPhases: false,
-    _tel: { captures: [] },
+    _tel: { pre: {}, orders: {}, factsInTheTurnsOrder: [] },
   });
   return tc;
 }

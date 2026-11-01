@@ -114,7 +114,7 @@ import {
   THE_VERB_A_PROVINCES_DEFENDERS_STAND_WITH,
   theFortuneAsTheLineTellsIt,
 } from './the-facts-a-battles-lines-record.ts';
-import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
+import { narrateAll, narrate, recordForTheStatistics } from '../turn/events-and-their-audiences.ts';
 
 // ── BATTLES AGAINST A PROVINCE'S DEFENDERS (plan P1-08g: lifted out of resolveTurn) ────
 // A host's battle against the defenders of a province that no hero of a realm holds: its neutral defenders, a local
@@ -143,7 +143,7 @@ export const SEA_AIRBORNE_LAND_PENALTY = 0.25,
 export const LOSE_VERBS = ['is repulsed by', 'retreats before', 'cannot break', 'is driven back by'];
 
 export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
-  const { G, _tel } = turnContext;
+  const { G } = turnContext;
   turnContext._combatSkillProv = prov && prov.id != null ? prov.id : null; // battle-series key (cleared at each loop boundary)
   // a resumed battle is another carry-on round (deadlier); a fresh clash resets the count.
   if (prov) {
@@ -2054,36 +2054,39 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
   const _telAtkLost = (armies || []).filter((a) => a && a._died && !a._phantom).length,
     _telDefLost = (defenders || []).filter((a) => a && a._died && !a._phantom).length + _npcSunkLost + _npcDefWinLost;
   try {
-    _tel.battles.push({
-      ph: turnContext._logCtx.phase ?? turnContext._currentPhase,
-      prov: prov.id,
-      terrain: prov.terrain,
-      kind: defHero
-        ? defHero.player != null
-          ? 'pvp'
-          : 'guard'
-        : prov.owner != null && prov.owner !== c.player
-          ? 'garrison'
-          : 'neutral',
-      atkPi: c.player,
-      atkChar: c.id,
-      defPi: defHero
-        ? defHero.player != null
-          ? defHero.player
-          : null
-        : prov.owner != null && prov.owner !== c.player
-          ? prov.owner
-          : null,
-      defChar: defHero ? defHero.id : null,
-      atkStr: Math.round(atkBaseStr),
-      defStr: Math.round(defBaseStr),
-      S: Math.round((_fort.S || 0) * 1000) / 1000,
-      atkUnits: (armies || []).filter((a) => a && !a._phantom).length,
-      defUnits: (defenders || []).filter((a) => a && !a._phantom).length,
-      won,
-      atkLost: _telAtkLost,
-      defLost: _telDefLost,
-      carry: prov._carryOnRounds || 0,
+    recordForTheStatistics(turnContext, {
+      kind: 'a battle fought, for the statistics',
+      record: {
+        ph: turnContext._logCtx.phase ?? turnContext._currentPhase,
+        prov: prov.id,
+        terrain: prov.terrain,
+        kind: defHero
+          ? defHero.player != null
+            ? 'pvp'
+            : 'guard'
+          : prov.owner != null && prov.owner !== c.player
+            ? 'garrison'
+            : 'neutral',
+        atkPi: c.player,
+        atkChar: c.id,
+        defPi: defHero
+          ? defHero.player != null
+            ? defHero.player
+            : null
+          : prov.owner != null && prov.owner !== c.player
+            ? prov.owner
+            : null,
+        defChar: defHero ? defHero.id : null,
+        atkStr: Math.round(atkBaseStr),
+        defStr: Math.round(defBaseStr),
+        S: Math.round((_fort.S || 0) * 1000) / 1000,
+        atkUnits: (armies || []).filter((a) => a && !a._phantom).length,
+        defUnits: (defenders || []).filter((a) => a && !a._phantom).length,
+        won,
+        atkLost: _telAtkLost,
+        defLost: _telDefLost,
+        carry: prov._carryOnRounds || 0,
+      },
     });
   } catch (_te) {}
   return { won, narrative, summaryText, atkLost: _telAtkLost, defLost: _telDefLost };

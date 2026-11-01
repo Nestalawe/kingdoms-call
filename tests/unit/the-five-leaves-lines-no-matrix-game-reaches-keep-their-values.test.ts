@@ -64,6 +64,7 @@ import {
   setProvinceOwner,
 } from '../../src/engine/realms/relations-and-captures.ts';
 import { bloodHarvest, ironThroneRaise } from '../../src/engine/battle/blood-harvest-and-iron-throne.ts';
+import { theStatisticsOfTheTurn } from '../../src/views/the-statistics-of-the-turn.ts';
 
 type Obj = Record<string, unknown>;
 
@@ -83,17 +84,7 @@ function aTurn(G: Obj, more: Obj = {}): TurnContext {
     _logCtx: { charId: null, phase: null },
     _currentPhase: null,
     _afterPhases: false,
-    _tel: {
-      pre: {},
-      orders: {},
-      battles: [],
-      encounters: [],
-      captures: [],
-      deaths: [],
-      spells: [],
-      hires: [],
-      recruits: [],
-    },
+    _tel: { pre: {}, orders: {}, factsInTheTurnsOrder: [] },
     SEASONS: ['Spring', 'Summer', 'Autumn', 'Late Autumn', 'Winter'],
     _intrusionAcc: new Map(),
     ...more,
@@ -422,7 +413,9 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
       const tc = aTurn(g, { _logCtx: { charId: null, phase: 2 }, _currentPhase: 4 });
       const prov = g.world.provinces[0];
       setProvinceOwner(tc, prov, 5, { id: 9, name: 'Thorn' });
-      expect(tc._tel.captures).toEqual([{ ph: 2, prov: 0, terrain: 'plain', tax: 0, from: 0, to: 5, charId: 9 }]);
+      expect(theStatisticsOfTheTurn(tc._tel).captures).toEqual([
+        { ph: 2, prov: 0, terrain: 'plain', tax: 0, from: 0, to: 5, charId: 9 },
+      ]);
       // the lines in words, as the views write them and the GM's log stores them (since P1-12d17 they are facts)
       expect(theTurnsLinesInWords(tc.turnLog).gmLog.map((l) => [l.phase, l.text])).toEqual([
         [2, expect.stringContaining('The consecration of Wendmeadow is broken')],
@@ -431,7 +424,9 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
       const g2 = G();
       const tc2 = aTurn(g2, { _currentPhase: 4 });
       setProvinceOwner(tc2, g2.world.provinces[0], 1, null);
-      expect(tc2._tel.captures).toEqual([{ ph: 4, prov: 0, terrain: 'plain', tax: 0, from: 0, to: 1, charId: null }]);
+      expect(theStatisticsOfTheTurn(tc2._tel).captures).toEqual([
+        { ph: 4, prov: 0, terrain: 'plain', tax: 0, from: 0, to: 1, charId: null },
+      ]);
       expect(tc2.turnLog.map((l) => l.phase)).toEqual([4, 4]);
     });
 

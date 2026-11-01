@@ -45,6 +45,12 @@
 // owner it happened to (notifyTarget, notifyProvinceOwner), a private line with a public twin (logSplit), and the
 // placement of the skill rises held back to the end of the phase (writeDeferredSkillLines).
 import type { TurnContext } from './context.ts';
+import type { TheFactOfABattleForTheStatistics } from '../battle/the-facts-a-battles-lines-record.ts';
+import type { TheFactOfAHerosDeathForTheStatistics } from '../heroes/the-facts-a-heros-death-lines-record.ts';
+import type { TheFactOfAProvinceChangingHandsForTheStatistics } from '../realms/the-facts-relations-and-captures-lines-record.ts';
+import type { TheFactOfASpellCastByTheOrderForTheStatistics } from '../orders/the-facts-the-cast-spell-orders-lines-record.ts';
+import type { TheFactOfALairFoughtForTheStatistics } from '../orders/the-facts-the-explore-and-search-orders-lines-record.ts';
+import type { TheFactOfASpellWorkedInAFightForTheStatistics } from './log-line-helpers.ts';
 import {
   THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE,
   type TheFactOfABattlesLine,
@@ -503,6 +509,34 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
   line.fact = event.fact;
   turnContext.turnLog.push(line);
   console.log(`[${event.type}] ${event.fact.kind}`);
+}
+
+// ── THE TURN'S STATISTICS: THEIR ONE DOOR (plan P1-12d33: P1-12d's last slice, Decision 1) ────
+// What the turn's statistics record (db/telemetry.ts writes it into turn_events, and the balance matrix hashes those
+// rows) is a fact of its own, typed in its area's module: a battle fought, a hero's death, a province changing hands, a
+// spell worked in a fight or cast by the order, a lair fought. Not a line: no audience, no words, no hero it is filed
+// under, never in the GM's log. recordForTheStatistics files each in the turn's order (turnContext._tel's
+// factsInTheTurnsOrder), and the views build the writer's lists from them after the turn (theStatisticsOfTheTurn,
+// src/views/the-statistics-of-the-turn.ts). Each caller keeps its own try: a statistics bug never costs a turn. The
+// lint rule kc/narrative-lines-go-through-emit refuses a write to _tel's lists anywhere but here (the realms'
+// snapshots, pre and orders, are written where they are taken).
+
+/** Each area's facts for the statistics, one per area, each typed beside its code. */
+type TheFactsForTheStatisticsOfEachArea = [
+  TheFactOfABattleForTheStatistics,
+  TheFactOfAHerosDeathForTheStatistics,
+  TheFactOfAProvinceChangingHandsForTheStatistics,
+  TheFactOfASpellWorkedInAFightForTheStatistics,
+  TheFactOfASpellCastByTheOrderForTheStatistics,
+  TheFactOfALairFoughtForTheStatistics,
+];
+
+/** What the turn's statistics record, of every area's kinds. */
+export type TheFactForTheStatistics = TheFactsForTheStatisticsOfEachArea[number];
+
+/** Files a fact for the turn's statistics, in the turn's order: the one way a record reaches them. */
+export function recordForTheStatistics(turnContext: Pick<TurnContext, '_tel'>, fact: TheFactForTheStatistics): void {
+  turnContext._tel.factsInTheTurnsOrder.push(fact);
 }
 
 // ── A FIGHT'S NARRATIVE ────

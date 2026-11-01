@@ -28,7 +28,12 @@ import {
   whatARealmsDiscoveriesAddToALairsGold,
   whatARealmsDiscoveriesAddToALairsItemChance,
 } from '../rules/the-registry-of-discovery-effects.ts';
-import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  emitNarrLine,
+  recordForTheStatistics,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+} from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool } from '../units/movement-pools.ts';
@@ -671,7 +676,7 @@ export function resolveSearchLairOrder(
   prov: TheProvinceAsTheSearchReadsIt | undefined,
   player: Realm | undefined,
 ) {
-  const { G, _tel } = turnContext;
+  const { G } = turnContext;
   // his realm, as the search reads it by his realm's index: none for a hero who serves none (the code guards one)
   const hisRealm = () => (c.player === null ? undefined : G.players[c.player]);
   // Find the feature
@@ -757,20 +762,23 @@ export function resolveSearchLairOrder(
     player,
   );
   try {
-    _tel.encounters.push({
-      ph,
-      pi: c.player,
-      charId: c.id,
-      prov: prov.id,
-      feature: f.name || null,
-      guardian: (f.monster?.name ?? '') || null,
-      power: (f.monster?.power ?? '') || null,
-      won: encounter.won,
-      fled: encounter.fled,
-      dmg: encounter.damageToHero || 0,
-      hpAfter: encounter.heroHpAfter,
-      killed: encounter.heroKilled,
-      tactics: (plan.tactics ?? ['ME']).slice(0, 12),
+    recordForTheStatistics(turnContext, {
+      kind: 'a lair fought, for the statistics',
+      record: {
+        ph,
+        pi: c.player,
+        charId: c.id,
+        prov: prov.id,
+        feature: f.name || null,
+        guardian: (f.monster?.name ?? '') || null,
+        power: (f.monster?.power ?? '') || null,
+        won: encounter.won,
+        fled: encounter.fled,
+        dmg: encounter.damageToHero || 0,
+        hpAfter: encounter.heroHpAfter,
+        killed: encounter.heroKilled,
+        tactics: (plan.tactics ?? ['ME']).slice(0, 12),
+      },
     });
   } catch (_te) {}
   encounter.narrative.forEach((line) => {

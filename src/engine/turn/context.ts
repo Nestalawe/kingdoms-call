@@ -16,7 +16,13 @@
 // events file's.
 import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
-import type { EventButItsWords, LogLine, NarrativeLine } from './events-and-their-audiences.ts';
+import type {
+  EventButItsWords,
+  LogLine,
+  NarrativeLine,
+  TheFactForTheStatistics,
+} from './events-and-their-audiences.ts';
+import type { telOrdersFor, telRealmSnapshot } from './log-line-helpers.ts';
 import type { WhatTheSavesUpgradeFound } from '../saves/upgrade-a-saved-game-and-check-it.ts';
 
 export function createTurnContext(G, freshPlayers, expectedTurnToRun) {
@@ -43,18 +49,13 @@ export interface TheGamesSlotRow {
  *  the engine writes (a march the invasion interlock cancelled becomes a Defend, `_pinned`). */
 export type TurnOrder = PhaseOrder & { _pinned?: boolean | undefined };
 
-/** The turn's telemetry: each realm's situation and orders before anything happens, and what the turn's hooks
- *  collect (db/telemetry.ts writes it; its entries are its own shapes). */
+/** The turn's telemetry: each realm's situation and orders before anything happens (snapshots, by realm), and the
+ *  facts for the statistics in the turn's order (recordForTheStatistics files them; the views build db/telemetry.ts's
+ *  lists from them: src/views/the-statistics-of-the-turn.ts). */
 export interface TurnTelemetry {
-  pre: Record<number, unknown>;
-  orders: Record<number, unknown>;
-  battles: unknown[];
-  encounters: unknown[];
-  captures: unknown[];
-  deaths: unknown[];
-  spells: unknown[];
-  hires: unknown[];
-  recruits: unknown[];
+  pre: Record<number, ReturnType<typeof telRealmSnapshot>>;
+  orders: Record<number, ReturnType<typeof telOrdersFor>>;
+  factsInTheTurnsOrder: TheFactForTheStatistics[];
 }
 
 /** A hero seen where a realm will hear of it, gathered over the phases into one warning (intrusion-warnings.ts). */

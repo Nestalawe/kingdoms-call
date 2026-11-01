@@ -63,6 +63,10 @@ const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);
 type Fn = (...a: unknown[]) => unknown;
 const fn = (name: string) => engineFn(engine, name) as Fn;
+/** The turn's statistics as the writer reads them, built by the views from the facts the turn filed (P1-12d33). */
+const theStatisticsOfTheTurn = engineFn(engine, 'theStatisticsOfTheTurn') as (telemetry: unknown) => {
+  spells: Record<string, unknown>[];
+};
 const provOf = fn('provOf');
 const SPELL_DEFS = vm.runInContext('SPELL_DEFS_P', engine) as Record<string, unknown>;
 
@@ -229,7 +233,7 @@ describe('Cast Spell, called directly: the casting', () => {
     rolls([1], () => {
       play(b, w, o('use_item', String(censer['id']), b.X.id), 1);
     });
-    const tel = (b.tc['_tel'] as { spells: Record<string, unknown>[] }).spells;
+    const tel = theStatisticsOfTheTurn(b.tc['_tel']).spells;
     expect(tel).toEqual([
       { ph: 2, pi: 0, charId: h.id, spell: 'Holy Symbol', school: 'white', lvl: 3, chance: 60, ok: true, item: false },
       { ph: 3, pi: 0, charId: h.id, spell: 'Holy Symbol', school: 'white', lvl: 3, chance: 60, ok: false, item: false },
@@ -1075,7 +1079,7 @@ describe('Cast Spell, called directly: the details', () => {
     const b = fresh();
     const h = at(b, { white: 2 });
     rolls([50], () => casts(b, h, 'Holy Symbol'));
-    expect((b.tc['_tel'] as { spells: { ok: boolean }[] }).spells.map((x) => x.ok)).toEqual([true]);
+    expect(theStatisticsOfTheTurn(b.tc['_tel']).spells.map((x) => x['ok'])).toEqual([true]);
   });
 
   test("a pre-order reference to a hero nobody knows aims a province spell at the caster's own ground", () => {

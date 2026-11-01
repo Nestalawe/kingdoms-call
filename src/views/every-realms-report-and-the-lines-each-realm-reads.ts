@@ -3,6 +3,7 @@ import { buildTurnReport } from './turn-report.ts';
 import { playerView } from './what-each-realm-may-see-of-the-world.ts';
 import { doARealmsDiscoveriesWidenTheWarningsItHears } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import { theTurnsLinesInWords } from './prose/the-words-of-each-line.ts';
+import { theStatisticsOfTheTurn } from './the-statistics-of-the-turn.ts';
 
 // ── THE LINES EACH REALM READS (plan P1-12b3: P1-12's Decision 10, out of buildReports) ────
 // playerEvents works out, from the turn's events (the GM's log, as emit stores them), which of them one realm reads,
@@ -368,9 +369,10 @@ export function playerEvents(turnLog, G, pi, sight) {
 // (P1-12b2; tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts), and draws no dice. The shell
 // (src/ui/gm/turn-shell.ts) calls it once the turn is saved and the Spy stealth rolled, with what resolveTurn hands
 // over for it (whatTheReportsRead, src/engine/run-turn.ts): the slot rows, the world after the turn (the working
-// copy), the turn's log, the turn's sight and the telemetry's collectors (_tel). It writes every line's words first
-// (theTurnsLinesInWords, src/views/prose/: P1-12c3), and every realm's lines are picked from the lines in words.
-// Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the slot row it is for), tel what telemetry reads
+// copy), the turn's log, the turn's sight and the telemetry (_tel: the realms' snapshots and the facts for the
+// statistics). It writes every line's words first (theTurnsLinesInWords, src/views/prose/: P1-12c3), and every realm's
+// lines are picked from the lines in words. Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the
+// slot row it is for), tel what telemetry reads (its lists built from the facts: theStatisticsOfTheTurn, P1-12d33)
 // and gmLog the GM's log of the turn in words, in its stored form, which the shell saves.
 export function buildReports(whatTheReportsRead) {
   const { freshPlayers, G, sight, _tel } = whatTheReportsRead;
@@ -389,5 +391,5 @@ export function buildReports(whatTheReportsRead) {
   }
   // The battle flags (_hadBattleThisTurn, _combatPlayersThisTurn) stay on the working copy: the world was saved before
   // the reports, and the next turn's start clears them (lastTurnsBattleAndDuelSwordsClearedFromTheMap).
-  return { reports, tel: { gs: G, collected: _tel }, gmLog: turnLog };
+  return { reports, tel: { gs: G, collected: theStatisticsOfTheTurn(_tel) }, gmLog: turnLog };
 }

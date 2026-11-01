@@ -5,7 +5,7 @@
 // events-and-their-audiences.ts (plan P1-12a2), beside emit, the one door into the GM's log. At the end, the
 // telemetry's two snapshots of a realm, its situation and its orders (telRealmSnapshot, telOrdersFor: moved from
 // src/views/turn-report.ts in plan P1-12b1, so the engine imports no view), which read no turn context.
-import { emit } from './events-and-their-audiences.ts';
+import { emit, recordForTheStatistics } from './events-and-their-audiences.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { consecratedIds, relOfReport } from '../heroes/fame-and-consecration.ts';
 import { LEGENDARY_NAMES_P } from '../items/equipment.ts';
@@ -111,8 +111,28 @@ interface APhaseAsTheOrdersRecordHoldsIt {
   pinned?: number;
   unified?: number;
 }
+/** A spell worked in a battle or a duel, as the statistics record it: its phase; the caster's realm and id (as his
+ *  copy holds it); the spell, its school and the caster's level in it; the chance, whether the roll landed, and where
+ *  it was worked ('battle' or 'duel'). Not a line: db/telemetry.ts writes it into turn_events (plan P1-12d33). */
+export interface ASpellWorkedInAFightAsTheStatisticsRecordIt {
+  ph: number | null;
+  pi: number;
+  charId: number | string | null | undefined;
+  spell: string;
+  school: string | null | undefined;
+  lvl: number;
+  chance: number;
+  ok: boolean;
+  ctx: string;
+}
+/** A spell worked in a battle or a duel, for the statistics: the record, as it was kept before it was a fact. */
+export interface TheFactOfASpellWorkedInAFightForTheStatistics {
+  kind: 'a spell worked in a battle or a duel, for the statistics';
+  record: ASpellWorkedInAFightAsTheStatisticsRecordIt;
+}
 // A spell worked inside a battle or a duel (2026-10-09, Toby item 5): only the Cast order logged its
-// casts, so pre-battle, defender and duel magic never reached the spell records. ctx says where.
+// casts, so pre-battle, defender and duel magic never reached the spell records. ctx says where. Filed through
+// recordForTheStatistics (plan P1-12d33).
 export const telSpell = (
   turnContext: Pick<TurnContext, '_tel' | '_logCtx' | '_currentPhase'>,
   ch: (object & AHeroAsASpellRecordNamesHim) | null | undefined,
@@ -123,19 +143,21 @@ export const telSpell = (
   roll: number,
   ctx: string,
 ) => {
-  const { _tel } = turnContext;
   try {
     if (ch?.player != null)
-      _tel.spells.push({
-        ph: turnContext._logCtx.phase ?? turnContext._currentPhase,
-        pi: ch.player,
-        charId: ch.id,
-        spell,
-        school,
-        lvl,
-        chance,
-        ok: roll <= chance,
-        ctx,
+      recordForTheStatistics(turnContext, {
+        kind: 'a spell worked in a battle or a duel, for the statistics',
+        record: {
+          ph: turnContext._logCtx.phase ?? turnContext._currentPhase,
+          pi: ch.player,
+          charId: ch.id,
+          spell,
+          school,
+          lvl,
+          chance,
+          ok: roll <= chance,
+          ctx,
+        },
       });
   } catch (_te) {}
 };

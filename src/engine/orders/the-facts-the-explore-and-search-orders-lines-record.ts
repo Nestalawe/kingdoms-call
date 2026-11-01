@@ -354,3 +354,33 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_EXPLORE_AND_SEARCH_ORDERS_LINE: Re
   'a hero finds no site of a class left to lay bare': "its event's",
   'a hero lays bare the sites of a class': "its event's",
 };
+
+// ── A LAIR FOUGHT, FOR THE STATISTICS (plan P1-12d33: P1-12d's last slice, Decision 1) ──
+// Not a line: the record the turn's statistics keep of each lair a Search Lair order fights (db/telemetry.ts writes it
+// into turn_events). The order files it through recordForTheStatistics (turn/events-and-their-audiences.ts), never
+// into the GM's log.
+
+/** A lair fought, as the statistics record it: its phase; the hero's realm and id; the province; the site's name, its
+ *  guardian's name and power (none where it has none); whether he won or fled, the damage he took, his hit points after
+ *  and whether he was killed; his plan's first twelve tactics. */
+export interface ALairFoughtAsTheStatisticsRecordIt {
+  ph: number;
+  pi: number | null;
+  charId: number;
+  prov: number;
+  feature: string | null;
+  guardian: string | null;
+  power: string | number | null;
+  won: boolean;
+  fled: boolean;
+  dmg: number;
+  hpAfter: number;
+  killed: boolean;
+  tactics: string[];
+}
+
+/** A lair fought, for the statistics: the record, as it was kept before it was a fact. */
+export interface TheFactOfALairFoughtForTheStatistics {
+  kind: 'a lair fought, for the statistics';
+  record: ALairFoughtAsTheStatisticsRecordIt;
+}

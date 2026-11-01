@@ -18,6 +18,10 @@
 //   line, or as one of the lines in an array written there. A string is one by its syntax: a string literal, a
 //   template, a + with one, a choice (?:, ||, ??) with one. A line is a fact; the views write its words (emit throws on
 //   words, on the paths that run: the compiler checks the typed files, this rule the untyped ones too).
+// - a write to the turn's telemetry's lists (P1-12d33): a mutating call on _tel.<list> or X._tel.<list> (or on
+//   anything inside it), an assignment to it or inside it, `delete` or `++` there, but its two snapshots by realm
+//   (_tel.pre, _tel.orders), written where they are taken. A record for the statistics is a fact of its own, filed
+//   through recordForTheStatistics(turnContext, fact), in the events file.
 // Reading a narrative, emit and the events file's narrative helpers, handed a fact, are allowed.
 import type { Rule } from 'eslint';
 
@@ -49,6 +53,19 @@ function isInTurnLog(node: Expression | { type: string }): boolean {
   if (node.type === 'Identifier') return 'name' in node && node.name === 'turnLog';
   if (node.type !== 'MemberExpression' || !('object' in node)) return false;
   return memberName(node) === 'turnLog' || isInTurnLog(node.object);
+}
+
+/** The realms' two snapshots in the turn's telemetry, written where they are taken: its only lists a write may reach. */
+const THE_TELEMETRYS_SNAPSHOTS = new Set(['pre', 'orders']);
+
+/** Whether a node is one of the turn's telemetry's lists but its snapshots (_tel.battles, X._tel.factsInTheTurnsOrder,
+ *  a list named by a computed key), or anything inside one. */
+function isInTheTelemetrysLists(node: Expression | { type: string }): boolean {
+  if (node.type !== 'MemberExpression' || !('object' in node)) return false;
+  const { object } = node;
+  const isTheTelemetry = (object.type === 'Identifier' && object.name === '_tel') || memberName(object) === '_tel';
+  if (isTheTelemetry) return !THE_TELEMETRYS_SNAPSHOTS.has(memberName(node) ?? '');
+  return isInTheTelemetrysLists(object);
 }
 
 /** Whether a node is a fight's narrative: narrative, narr or X.narrative. */
@@ -112,6 +129,10 @@ const rule: Rule.RuleModule = {
       words:
         "A fight's line is the fact its words are written from, never a string: a kind of LineFact, typed in its " +
         'area\'s module (the views write the words: docs/traps.md, "A line goes through emit").',
+      statistics:
+        "A record for the turn's statistics is a fact of its own, filed with recordForTheStatistics(turnContext, " +
+        "fact) (src/engine/turn/events-and-their-audiences.ts); only the realms' snapshots (_tel.pre, _tel.orders) " +
+        'are written where they are taken.',
     },
     schema: [],
   },
@@ -123,6 +144,10 @@ const rule: Rule.RuleModule = {
         if (callee.type === 'MemberExpression' && name !== null) {
           if (TURN_LOG_WRITES.has(name) && isInTurnLog(callee.object)) {
             context.report({ node, messageId: 'turnLog' });
+            return;
+          }
+          if (TURN_LOG_WRITES.has(name) && isInTheTelemetrysLists(callee.object)) {
+            context.report({ node, messageId: 'statistics' });
             return;
           }
           if (NARRATIVE_WRITES.has(name) && isNarrative(callee.object))
@@ -141,12 +166,16 @@ const rule: Rule.RuleModule = {
       },
       AssignmentExpression(node) {
         if (isInTurnLog(node.left)) context.report({ node, messageId: 'turnLog' });
+        else if (isInTheTelemetrysLists(node.left)) context.report({ node, messageId: 'statistics' });
       },
       UpdateExpression(node) {
         if (isInTurnLog(node.argument)) context.report({ node, messageId: 'turnLog' });
+        else if (isInTheTelemetrysLists(node.argument)) context.report({ node, messageId: 'statistics' });
       },
       UnaryExpression(node) {
-        if (node.operator === 'delete' && isInTurnLog(node.argument)) context.report({ node, messageId: 'turnLog' });
+        if (node.operator !== 'delete') return;
+        if (isInTurnLog(node.argument)) context.report({ node, messageId: 'turnLog' });
+        else if (isInTheTelemetrysLists(node.argument)) context.report({ node, messageId: 'statistics' });
       },
       Property(node) {
         if (node.parent.type !== 'ObjectExpression' || node.computed) return;

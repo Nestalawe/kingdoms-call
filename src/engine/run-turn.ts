@@ -115,18 +115,13 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     const _mercIds = { n: 0 };
     turnContext._mercIds = _mercIds;
     // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn, and
-    // the collectors the hooks below fill (battles, lair fights, captures, deaths, spells). Written to
-    // turn_events after the save, one row per realm — see writeTurnTelemetry at the end of runTurn.
+    // the facts for the statistics the turn files in its order (battles, lair fights, captures, deaths, spells:
+    // recordForTheStatistics, plan P1-12d33). Written to turn_events after the save, one row per realm — see
+    // writeTurnTelemetry at the end of runTurn.
     const _tel = {
       pre: {},
       orders: {},
-      battles: [],
-      encounters: [],
-      captures: [],
-      deaths: [],
-      spells: [],
-      hires: [],
-      recruits: [],
+      factsInTheTurnsOrder: [],
     };
     turnContext._tel = _tel;
     try {
@@ -374,7 +369,7 @@ export function spyStealthAndInvisibilityStampedForTheReports(turnContext) {
 // the world after the turn (G, the working copy, with the stealth's stamps); the turn's log (its events, as the GM's
 // log stores them); the turn's sight, recorded as it was resolved (presenceByPhase: whose heroes stood where in each
 // phase; battleCommanders: who fought in each battle; clairWatch: whom each realm watches by Clairvoyance, and from
-// which phase); and the telemetry's collectors (_tel).
+// which phase); and the telemetry (_tel: the realms' snapshots and the facts for the statistics, P1-12d33).
 export function whatTheReportsRead(turnContext) {
   const { _reports, freshPlayers, G, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;
   if (_reports.built) throw new Error('buildReports() runs once a turn');

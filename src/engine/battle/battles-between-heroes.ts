@@ -109,7 +109,7 @@ import {
   SEA_AIRBORNE_LAND_PENALTY,
 } from './battles-against-province-defenders.ts';
 import { preBattleDuel } from './pre-battle-duels.ts';
-import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
+import { narrateAll, narrate, recordForTheStatistics } from '../turn/events-and-their-audiences.ts';
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
   THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
@@ -125,7 +125,7 @@ import {
 // province's own defenders is combatVsNPC (battle/battles-against-province-defenders.ts), with the constants both read.
 // Returns {won, narrative:[strings]}
 export function combatVsChar(turnContext, atk, def, prov) {
-  const { G, _tel } = turnContext;
+  const { G } = turnContext;
   turnContext._combatSkillProv = prov && prov.id != null ? prov.id : null; // battle-series key (cleared at each loop boundary)
   // a resumed battle is another carry-on round (deadlier); a fresh clash resets the count.
   if (prov) {
@@ -1981,24 +1981,27 @@ export function combatVsChar(turnContext, atk, def, prov) {
   };
   _tallyLost();
   try {
-    _tel.battles.push({
-      ph: turnContext._logCtx.phase ?? turnContext._currentPhase,
-      prov: prov.id,
-      terrain: prov.terrain,
-      kind: 'pvp',
-      atkPi: atk.player,
-      atkChar: atk.id,
-      defPi: def.player,
-      defChar: def.id,
-      atkStr: Math.round(atkBaseStr),
-      defStr: Math.round(defBaseStr),
-      S: Math.round((_fortP.S || 0) * 1000) / 1000,
-      atkUnits: (atk.armies || []).filter((a) => a && !a._phantom).length + _mAtkLost,
-      defUnits: (def.armies || []).filter((a) => a && !a._phantom).length + _mDefLost,
-      won,
-      atkLost: _mAtkLost,
-      defLost: _mDefLost,
-      carry: prov._carryOnRounds || 0,
+    recordForTheStatistics(turnContext, {
+      kind: 'a battle fought, for the statistics',
+      record: {
+        ph: turnContext._logCtx.phase ?? turnContext._currentPhase,
+        prov: prov.id,
+        terrain: prov.terrain,
+        kind: 'pvp',
+        atkPi: atk.player,
+        atkChar: atk.id,
+        defPi: def.player,
+        defChar: def.id,
+        atkStr: Math.round(atkBaseStr),
+        defStr: Math.round(defBaseStr),
+        S: Math.round((_fortP.S || 0) * 1000) / 1000,
+        atkUnits: (atk.armies || []).filter((a) => a && !a._phantom).length + _mAtkLost,
+        defUnits: (def.armies || []).filter((a) => a && !a._phantom).length + _mDefLost,
+        won,
+        atkLost: _mAtkLost,
+        defLost: _mDefLost,
+        carry: prov._carryOnRounds || 0,
+      },
     });
   } catch (_te) {}
   return { won, narrative, summaryText, atkLost: _mAtkLost, defLost: _mDefLost };
