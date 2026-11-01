@@ -4,7 +4,8 @@
 //
 // The same answer every time: Node pinned (tests/setup/global.ts), time zone and locale fixed, the seed fixed
 // (KC_SEED; the default in tests/setup/fixed.mts; fast-check's too, tests/setup/fast-check.ts), no retries and no .only. A test that logs console.error fails
-// (tests/setup/each.ts). The footer prints the seed and how to repeat each failure (tests/setup/reporter.ts).
+// (tests/setup/each.ts). The footer prints the seed, how to repeat each failure, and each test or hook that used more
+// than half its time limit (tests/setup/reporter.ts; the hooks timed by tests/setup/hook-times.ts).
 //
 // This file is .mts and imports only types and constants from tests/: package.json has no "type" (the test scripts
 // are CommonJS), so this is how Node and Vite load the config as an ES module without warnings.
@@ -39,7 +40,7 @@ export default defineConfig({
     restoreMocks: true,
     env: { ...FIXED, KC_SEED: process.env['KC_SEED'] },
     globalSetup: ['tests/setup/global.ts'],
-    setupFiles: ['tests/setup/each.ts', 'tests/setup/fast-check.ts'],
+    setupFiles: ['tests/setup/hook-times.ts', 'tests/setup/each.ts', 'tests/setup/fast-check.ts'],
     reporters: ['default', './tests/setup/reporter.ts'],
     maxConcurrency: jobs,
     maxWorkers: Math.min(2, jobs),

@@ -112,6 +112,9 @@ taken on GitHub's runners (`timeLimitForTheWork({ siteBuilds: 3 })`; a hook: `be
 matrixGamesPlayed: 1 }).timeout)`). A property test whose inputs grow with `KC_FULL` gets one from its run count
 (`timeLimitForPropertyRuns(RUNS, 50)`), so the nightly's ten times the runs get ten times the time. `harness` and
 `static/a-hook-or-test-that-plays-a-whole-matrix-game-…` check both. The static tests type in no limit of their own.
+Every run's footer (`setup/reporter.ts`) names each test or hook that used more than half its limit ("Near its limit:
+…, 9.4 s of 10 s"; a hook timed by `setup/hook-times.ts`), or says none did: read it on the nightly, and size the work
+before it fails. It never fails a run.
 
 ## The quick check, the ratchet and CI
 
