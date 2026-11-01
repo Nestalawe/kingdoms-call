@@ -12,6 +12,8 @@
 // garrison and a leaderless garrison on a low roll (contested, no battle) and fighting on a high one; a friend marching
 // on the same province joining the assault, or missing it (and joining on a roll Signal Fires' 75 points lift:
 // P1-19af); an enemy blockade; a flood that turns a column back or strands one; no road to a far target; a target that names nowhere; a hero whose move points were never worked out;
+// a march's target named by `prov:<id>` or the bare number, two away, far, next door or his own, for a Move and a
+// Forced March, one step at a time (and the phase's intents reading both forms the same way);
 // the Veil (no battle); a leaderless neutral garrison fighting on; a coastal raid's plunder; lairs hidden by a rival's
 // illusion; Pathfinder spotting one lair more. 46 planted faults in the function each turn at least one of the two
 // tests red but one (its missing-pool safety net, which changes nothing: Parked)
@@ -264,6 +266,83 @@ describe('the ways a Move is barred', () => {
     move(b, A, to.id);
     expect(A.location).toBe(to.id);
     expect(pools['movePoints']?.[A.id]).toBe(1);
+  });
+});
+
+describe("a march's target is reached step by step, whatever form names it", () => {
+  // The order form's Move writes `prov:<id>`, its Forced March and a bot's joint assault the bare number, a bot's
+  // other marches `dir:<compass>`: the column takes one step at a time towards the province, however it is named.
+  const FORMS = [
+    ['prov:<id>', (id: number) => 'prov:' + String(id)],
+    ['the bare number', (id: number) => String(id)],
+  ] as const;
+  const MARCHES = [
+    ['a Move', false],
+    ['a Forced March', true],
+  ] as const;
+  const intendedDestination = engineFn(engine, 'intendedDestination') as (
+    tc: Board['tc'],
+    c: Character,
+    o: Order,
+  ) => Province | null;
+  describe.each(MARCHES)('%s', (_, fmSlip) => {
+    test.each(FORMS)('%s two provinces away: one step, to a neighbour on the way', (_form, named) => {
+      const b = board(engine, world, 0);
+      const far = must(b.ring2[0], 'a province two away');
+      const A = hero(b, { player: 0, at: b.X, troops: 2 });
+      startTheTurn(b);
+      move(b, A, named(far.id), { fmSlip });
+      const stepped = must(b.G.world.provinces[A.location], 'the province he stands in');
+      expect({
+        aNeighbourOfWhereHeSetOut: b.ring1.includes(stepped),
+        aNeighbourOfTheTarget: b.nbrs(far).includes(stepped),
+        told: textOf(b, A).includes(`the column turns toward it by way of ${stepped.name}.`),
+      }).toEqual({ aNeighbourOfWhereHeSetOut: true, aNeighbourOfTheTarget: true, told: true });
+    });
+    test.each(FORMS)('%s far across the map: one step, never more', (_form, named) => {
+      const b = board(engine, world, 0);
+      const far = must(
+        b.G.world.provinces.find((p) => p.terrain !== 'sea' && p !== b.X && !b.near.includes(p)),
+        'a land province beyond the middle',
+      );
+      const A = hero(b, { player: 0, at: b.X });
+      startTheTurn(b);
+      move(b, A, named(far.id), { fmSlip });
+      expect(A.location === b.X.id || b.ring1.some((p) => p.id === A.location)).toBe(true);
+    });
+    test.each(FORMS)('%s next door: straight in', (_form, named) => {
+      const b = board(engine, world, 0);
+      const to = ring1(b, 0);
+      const A = hero(b, { player: 0, at: b.X, troops: 2 });
+      startTheTurn(b);
+      move(b, A, named(to.id), { fmSlip });
+      expect(A.location).toBe(to.id);
+    });
+    test.each(FORMS)('%s of his own province: he is already there', (_form, named) => {
+      const b = board(engine, world, 0);
+      const A = hero(b, { player: 0, at: b.X, troops: 2 });
+      startTheTurn(b);
+      move(b, A, named(b.X.id), { fmSlip });
+      expect({ at: A.location, told: textOf(b, A).includes(` is already in ${b.X.name}`) }).toEqual({
+        at: b.X.id,
+        told: true,
+      });
+    });
+  });
+  test.each(FORMS)("the phase's intents read %s the same way: the first step, or none for his own", (_form, named) => {
+    const b = board(engine, world, 0);
+    const far = must(b.ring2[0], 'a province two away');
+    const to = ring1(b, 0);
+    const A = hero(b, { player: 0, at: b.X, troops: 2 });
+    startTheTurn(b);
+    const where = (id: number) =>
+      intendedDestination(b.tc, A, { action: 'move', target: named(id), extra: '', desc: '' })?.id ?? null;
+    const step = where(far.id);
+    expect({
+      far: step != null && b.ring1.some((p) => p.id === step) && b.nbrs(far).some((p) => p.id === step),
+      next: where(to.id),
+      own: where(b.X.id),
+    }).toEqual({ far: true, next: to.id, own: null });
   });
 });
 
