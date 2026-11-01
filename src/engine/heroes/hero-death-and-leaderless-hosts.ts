@@ -18,7 +18,7 @@ import { setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { effStat, isVanished } from './effective-skills-and-hidden-heroes.ts';
 import { isOpenSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { flushDeferredSkillLogsFor } from './experience-skill-rises-and-earned-hp.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import { emit, recordForTheStatistics, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import type { AHeroIsSlainOutsideABattle } from './the-facts-a-heros-death-lines-record.ts';
 
 // ── HERO DEATH AND LEADERLESS HOSTS (plan P1-08f: lifted out of resolveTurn) ────
@@ -280,7 +280,7 @@ export function reportHeroFall(turnContext, dead, killer, slain: AHeroIsSlainOut
   return res;
 }
 export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
-  const { G, _tel } = turnContext;
+  const { G } = turnContext;
   if (!deadChar) return;
   // DOPPELGANGER GUARD. Battles are fought on shallow COPIES ({...char}); if any caller hands a
   // copy in here, the grave/items/flags were written on the copy while the REAL record in
@@ -623,16 +623,19 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   deadChar.alive = false;
   deadChar.killedThisTurn = true;
   try {
-    _tel.deaths.push({
-      ph: turnContext._logCtx.phase ?? turnContext._currentPhase,
-      charId: deadChar.id,
-      name: deadChar.name,
-      pi: deadChar.player,
-      king: !!deadChar.isKing,
-      prov: deadChar.location,
-      killerPi: killerChar && killerChar.player != null ? killerChar.player : null,
-      killerId: killerChar ? killerChar.id : null,
-      how: (opts && opts.cause) || (killerChar ? (killerChar.player != null ? 'character' : 'neutral') : 'other'),
+    recordForTheStatistics(turnContext, {
+      kind: "a hero's death, for the statistics",
+      record: {
+        ph: turnContext._logCtx.phase ?? turnContext._currentPhase,
+        charId: deadChar.id,
+        name: deadChar.name,
+        pi: deadChar.player,
+        king: !!deadChar.isKing,
+        prov: deadChar.location,
+        killerPi: killerChar && killerChar.player != null ? killerChar.player : null,
+        killerId: killerChar ? killerChar.id : null,
+        how: (opts && opts.cause) || (killerChar ? (killerChar.player != null ? 'character' : 'neutral') : 'other'),
+      },
     });
   } catch (_te) {}
   flushDeferredSkillLogsFor(turnContext, deadChar.id); // rises earned before death are reported now, not after the fight

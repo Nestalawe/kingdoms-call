@@ -44,6 +44,9 @@ import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audie
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { theClauseOfWhomAUnitFaced } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
 import { addTheFieldsResolveTurnAdds } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
+import { theStatisticsOfTheTurn } from '../../src/views/the-statistics-of-the-turn.ts';
+import type { TurnTelemetry } from '../../src/engine/turn/context.ts';
+import type { ABattleAsTheStatisticsRecordIt } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 
 // The GM's log echoes each line on the console: quiet while the battles write lines.
 const consoleLog = console.log;
@@ -115,6 +118,10 @@ interface WhatTheBattleShows {
   readonly def: string;
   readonly realm1: string;
   readonly province: string;
+  /** The battles the turn's statistics record (P1-12d33), and the two commanders' ids. */
+  readonly battles: readonly ABattleAsTheStatisticsRecordIt[];
+  readonly atkId: number | string;
+  readonly defId: number | string;
 }
 
 /** A battle on a plain with a sea beside it, free of anyone else, fought by realm 0's king (attacking) at the head of
@@ -123,7 +130,13 @@ interface WhatTheBattleShows {
  *  battle; `stage` sets what the battle reads before it is fought; the dice a seeded stream's, but for `dice`, fed in
  *  order from the moment the attacker's battle spell is chosen. */
 function aBattle(
-  hosts: { readonly atk: ArmyInABattle[]; readonly defenders?: ArmyInABattle[]; readonly def?: ArmyInABattle[] },
+  hosts: {
+    readonly atk: ArmyInABattle[];
+    readonly defenders?: ArmyInABattle[];
+    readonly def?: ArmyInABattle[];
+    /** In a battle against the province's defenders, realm 1's king leads them, as a guard would. */
+    readonly ledByRealm1sKing?: boolean;
+  },
   slain: boolean,
   stage: (G: World, atk: Character, def: Character, field: Province) => void,
   dice: readonly number[] = [],
@@ -173,7 +186,9 @@ function aBattle(
   let narrative: NarrativeLine[];
   try {
     narrative = (
-      (hosts.def ? combatVsChar(tc, atk, def, field) : combatVsNPC(tc, atk, field, null)) as {
+      (hosts.def
+        ? combatVsChar(tc, atk, def, field)
+        : combatVsNPC(tc, atk, field, hosts.ledByRealm1sKing ? def : null)) as {
         narrative: NarrativeLine[];
       }
     ).narrative;
@@ -186,6 +201,9 @@ function aBattle(
     def: def.name,
     realm1: G.players[1]?.name ?? '',
     province: field.name,
+    battles: theStatisticsOfTheTurn(tc['_tel'] as TurnTelemetry).battles,
+    atkId: atk.id,
+    defId: def.id,
   };
 }
 
@@ -291,6 +309,36 @@ describe.each([false, true])('a battle against a province with no guard, the att
     expect(shown.words.filter((w) => w.startsWith('— '))).toEqual([
       '— All forces survive the engagement.',
       '— Company 0 are cut down in the rout — no escape!',
+    ]);
+  });
+});
+
+// The turn's statistics keep each battle's record (db/telemetry.ts writes it into turn_events), its kind and the
+// defending realm by who defends the province (P1-12d33). By the matrix's coverage, no game reaches two of its forms: a
+// realm's hero leading the defenders ('pvp', his realm defending) and a province's own defenders with no guard and no
+// realm holding it, or held by the attacker's own realm ('neutral').
+describe("the turn's statistics record a battle against a province's defenders by who defends it", () => {
+  test.each([
+    ['its own defenders, the province held by no realm', null, 'neutral'],
+    ["its own defenders, the province held by the attacker's realm", 0, 'neutral'],
+    ["a realm's garrison", 1, 'garrison'],
+  ] as const)('%s: %s', (_, owner, kind) => {
+    const shown = aBattle({ atk: companies(8, 'Elite'), defenders: companies(1, 'Green') }, false, (_G, _a, _d, f) => {
+      f.owner = owner;
+    });
+    expect(shown.battles.map((b) => [b.kind, b.atkPi, b.atkChar, b.defPi, b.defChar])).toEqual([
+      [kind, 0, shown.atkId, owner === 1 ? 1 : null, null],
+    ]);
+  });
+
+  test("a realm's hero leading the defenders: 'pvp', his realm and he defending", () => {
+    const shown = aBattle(
+      { atk: companies(8, 'Elite'), defenders: companies(1, 'Green'), ledByRealm1sKing: true },
+      false,
+      () => undefined,
+    );
+    expect(shown.battles.map((b) => [b.kind, b.atkPi, b.atkChar, b.defPi, b.defChar])).toEqual([
+      ['pvp', 0, shown.atkId, 1, shown.defId],
     ]);
   });
 });

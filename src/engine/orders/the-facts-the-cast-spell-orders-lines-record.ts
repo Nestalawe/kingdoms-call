@@ -616,3 +616,28 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_CAST_SPELL_ORDERS_LINE: Readonly<
   "Death's Dominion finds no fallen army to raise": "its event's",
   "Death's Dominion raises skeletal companies from the graves": "its event's",
 };
+
+// ── A SPELL CAST BY THE ORDER, FOR THE STATISTICS (plan P1-12d33: P1-12d's last slice, Decision 1) ──
+// Not a line: the record the turn's statistics keep of each spell the Cast Spell order rolls (db/telemetry.ts writes
+// it into turn_events). The order files it through recordForTheStatistics (turn/events-and-their-audiences.ts), never
+// into the GM's log. A spell worked in a battle or a duel has its own (turn/log-line-helpers.ts, telSpell).
+
+/** A spell the Cast Spell order rolls, as the statistics record it: its phase; the caster's realm and id; the spell, its
+ *  school and the caster's level in it; the chance, whether the roll landed, and whether an item worked it. */
+export interface ASpellCastByTheOrderAsTheStatisticsRecordIt {
+  ph: number;
+  pi: number | null;
+  charId: number;
+  spell: string;
+  school: string;
+  lvl: number;
+  chance: number;
+  ok: boolean;
+  item: boolean;
+}
+
+/** A spell cast by the Cast Spell order, for the statistics: the record, as it was kept before it was a fact. */
+export interface TheFactOfASpellCastByTheOrderForTheStatistics {
+  kind: 'a spell cast by the Cast Spell order, for the statistics';
+  record: ASpellCastByTheOrderAsTheStatisticsRecordIt;
+}

@@ -69,7 +69,8 @@ interface Resolved {
 /** What the views' buildReports returns. */
 interface Built {
   reports: { gp: { player_index: number }; report: Record<string, unknown> }[];
-  tel: { gs: unknown; collected: Record<string, unknown> };
+  /** collected: the turn's statistics as the views build them (theStatisticsOfTheTurn, P1-12d33). */
+  tel: { gs: unknown; collected: object };
   /** The GM's log in words (P1-12c3). */
   gmLog: unknown;
 }
@@ -202,7 +203,7 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
       S2: JSON.parse(resolved.state) as World,
       log,
       reports,
-      collected: plain(built.tel.collected),
+      collected: plain(built.tel.collected) as Record<string, unknown>,
       seed: turnSeed,
       text: (charId?: unknown) =>
         log

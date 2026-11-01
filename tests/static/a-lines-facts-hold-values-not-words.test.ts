@@ -304,6 +304,14 @@ const NOT_WORDS: Readonly<Record<string, readonly string[]>> = {
   // a unit's fate by sense (P1-12d27): what becomes of the unit ('dies', 'rises a tier', 'has had enough and disbands',
   // …), the fate the rule registry returns among them: a slug the prose reads
   fate: ["a unit's fate in the battle", "a beaten guard's surviving unit's fate"],
+  // the record a fact for the turn's statistics holds (P1-12d33: not a line, no prose reads it), whose slugs a string
+  // literal gives: a battle's kind ('pvp', 'guard', 'garrison', 'neutral'), how a hero died ('character', 'neutral',
+  // 'other'), a lair fight's tactics when the plan has none (['ME'])
+  record: [
+    'a battle fought, for the statistics',
+    "a hero's death, for the statistics",
+    'a lair fought, for the statistics',
+  ],
 };
 
 const WORD_HELPER =

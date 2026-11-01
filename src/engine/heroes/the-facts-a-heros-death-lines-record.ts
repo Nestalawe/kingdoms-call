@@ -162,3 +162,28 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_DEATHS_LINE: Readonly<
   'a fallen Divine monarch will rise again on holy ground': "its event's",
   'a fallen Divine monarch has no holy ground to return to': "its event's",
 };
+
+// ── A HERO'S DEATH, FOR THE STATISTICS (plan P1-12d33: P1-12d's last slice, Decision 1) ──
+// Not a line: the record the turn's statistics keep of each hero's death (db/telemetry.ts writes it into turn_events).
+// handleHeroDeath files it through recordForTheStatistics (turn/events-and-their-audiences.ts), never into the GM's log.
+
+/** A hero's death, as the statistics record it: its phase; the hero (his id, name and realm, whether he was king, where
+ *  he fell); his killer's realm and id (none for no killer); and how he fell (the cause handed, else 'character' for a
+ *  realm's hero, 'neutral' for a hero of none, 'other' for no killer). */
+export interface AHerosDeathAsTheStatisticsRecordIt {
+  ph: number | null;
+  charId: number;
+  name: string;
+  pi: number | null;
+  king: boolean;
+  prov: number | null;
+  killerPi: number | null;
+  killerId: number | null;
+  how: string;
+}
+
+/** A hero's death, for the statistics: the record, as it was kept before it was a fact. */
+export interface TheFactOfAHerosDeathForTheStatistics {
+  kind: "a hero's death, for the statistics";
+  record: AHerosDeathAsTheStatisticsRecordIt;
+}

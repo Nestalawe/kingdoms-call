@@ -25,7 +25,7 @@ export interface TurnContext {
 export const THE_FIELDS_RESOLVE_TURN_ADDS = `tc._logCtx={charId:null,phase:null}; tc._currentPhase=null; tc._afterPhases=false;
       tc.whatTheSavesUpgradeFound={retiredSageDiscoveriesRemoved:0, heroesCarriedOverToTheEarnedHpPool:[], whereTheSaveDiffersFromThisBuildsSchema:[]};
       tc._mercIds={n:0};
-      tc._tel={pre:{}, orders:{}, battles:[], encounters:[], captures:[], deaths:[], spells:[], hires:[], recruits:[]};
+      tc._tel={pre:{}, orders:{}, factsInTheTurnsOrder:[]};
       tc.battleCommanders={}; tc.fieldBattlePhase={};
       tc.movePoints={}; tc.seaMovePoints={}; tc.seaMoveActive={}; tc.seaCap={}; tc.moveMax={}; tc.seaMoveMax={};
       tc.SEASONS=KC_SEASONS.slice(); tc.recruitedThisTurn={}; tc._intrusionAcc=new Map();

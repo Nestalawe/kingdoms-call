@@ -81,6 +81,10 @@ const getNeighbors = engineFn(engine, 'getNeighborsP') as (
 /** A report line's words: a line is its words, or a fact whose words the views write (theWordsOf, src/views/prose/,
  *  P1-12c3). */
 const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+/** The turn's statistics as the writer reads them, built by the views from the facts the turn filed (P1-12d33). */
+const theStatisticsOfTheTurn = engineFn(engine, 'theStatisticsOfTheTurn') as (telemetry: unknown) => {
+  battles: BattleRecord[];
+};
 const wordsOf = (line: unknown): unknown =>
   typeof line === 'object' && line !== null && 'kind' in line ? theWordsOf(line) : line;
 
@@ -258,7 +262,7 @@ test(
       fc.property(battleInput, (input) => {
         const { tc, atk, def, prov } = stage(input);
         const r = combatVsChar(tc, atk, def, prov);
-        const battles = (tc['_tel'] as { battles: BattleRecord[] }).battles;
+        const { battles } = theStatisticsOfTheTurn(tc['_tel']);
         expect(battles).toHaveLength(1);
         const [record] = battles;
         const round = input.round === 'carry-on' ? input.roundsBefore + 1 : 0;

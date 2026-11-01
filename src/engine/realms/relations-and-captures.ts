@@ -3,7 +3,7 @@ import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { whatARealmsDiscoveriesAddToAConquestsPlunder } from '../rules/the-registry-of-discovery-effects.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import { emit, recordForTheStatistics, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { AUnitThatRoseAsTheLineNamesIt } from './the-facts-relations-and-captures-lines-record.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
@@ -123,20 +123,23 @@ export function setProvinceOwner(
   byChar: TheConqueror | null | undefined,
   ph?: number | null,
 ) {
-  const { _tel, G } = turnContext;
+  const { G } = turnContext;
   if (!prov) return;
   const prev = prov.owner;
   prov.owner = newOwner;
   if (prev !== newOwner) {
     try {
-      _tel.captures.push({
-        ph: ph ?? turnContext._logCtx.phase ?? turnContext._currentPhase,
-        prov: prov.id,
-        terrain: prov.terrain,
-        tax: Number(prov.tax) || 0,
-        from: prev,
-        to: newOwner,
-        charId: byChar ? byChar.id : null,
+      recordForTheStatistics(turnContext, {
+        kind: 'a province changing hands, for the statistics',
+        record: {
+          ph: ph ?? turnContext._logCtx.phase ?? turnContext._currentPhase,
+          prov: prov.id,
+          terrain: prov.terrain,
+          tax: Number(prov.tax) || 0,
+          from: prev,
+          to: newOwner,
+          charId: byChar ? byChar.id : null,
+        },
       });
     } catch (_te) {}
   }

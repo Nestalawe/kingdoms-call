@@ -57,6 +57,10 @@ quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
 const fn = (name: string) => engineFn(engine, name) as Fn;
+/** The turn's statistics as the writer reads them, built by the views from the facts the turn filed (P1-12d33). */
+const theStatisticsOfTheTurn = engineFn(engine, 'theStatisticsOfTheTurn') as (telemetry: unknown) => {
+  encounters: Record<string, unknown>[];
+};
 const provOf = fn('provOf');
 
 /** One order, as processOrder hands it over in phase `ph`: each function takes the context, then the values it reads
@@ -501,7 +505,7 @@ describe('Search Lair, called directly: what follows the fight', () => {
     fightEndsIn({ won: true }, () => {
       play(b, h, o('search', '0'));
     });
-    const tel = b.tc['_tel'] as { encounters: Record<string, unknown>[] };
+    const tel = theStatisticsOfTheTurn(b.tc['_tel']);
     expect(tel.encounters.map((e) => [e['charId'], e['feature'], e['guardian'], e['won']])).toEqual([
       [h.id, 'Drowned Mill', 'Marsh Rat', true],
     ]);

@@ -14,7 +14,7 @@ import { isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { castChanceFor } from '../chances-and-lair-grades.ts';
 import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 import { gdActive } from '../discoveries.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import { emit, recordForTheStatistics, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import {
   effStat,
@@ -61,8 +61,7 @@ export function resolveCastSpellOrder(
   player: Realm | undefined,
   _itemCast: { item: string; spell: string | undefined } | null,
 ) {
-  const { G, _tel, clairWatch }: Pick<TurnContext, '_tel' | 'clairWatch'> & { readonly G: TheStateAsTheCastReadsIt } =
-    turnContext;
+  const { G, clairWatch }: Pick<TurnContext, 'clairWatch'> & { readonly G: TheStateAsTheCastReadsIt } = turnContext;
   // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
   // hero who gives it, for the phases after), so the caster always serves one; for none, a TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm casts a spell');
@@ -291,16 +290,19 @@ export function resolveCastSpellOrder(
   }
   const castRoll = d100();
   try {
-    _tel.spells.push({
-      ph,
-      pi: c.player,
-      charId: c.id,
-      spell: spellName,
-      school,
-      lvl: spellLevel,
-      chance: castChance,
-      ok: castRoll <= castChance,
-      item: !!_itemCast,
+    recordForTheStatistics(turnContext, {
+      kind: 'a spell cast by the Cast Spell order, for the statistics',
+      record: {
+        ph,
+        pi: c.player,
+        charId: c.id,
+        spell: spellName,
+        school,
+        lvl: spellLevel,
+        chance: castChance,
+        ok: castRoll <= castChance,
+        item: !!_itemCast,
+      },
     });
   } catch (_te) {}
   if (_itemCast) {

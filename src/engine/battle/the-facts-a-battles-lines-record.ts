@@ -1625,3 +1625,38 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "a side's units fight beside their own kin": "the fight's",
   "a hero's host turns on a province it has shared with a realm at war": "its event's",
 };
+
+// ── A BATTLE, FOR THE STATISTICS (plan P1-12d33: P1-12d's last slice, Decision 1) ──
+// Not a line: the record the turn's statistics keep of each battle (db/telemetry.ts writes it into turn_events, and the
+// balance matrix hashes those rows). Both battles file it through recordForTheStatistics
+// (turn/events-and-their-audiences.ts), never into the GM's log: it has no audience and no words.
+
+/** A battle fought, as the statistics record it: its phase, province and ground; its kind ('pvp' a realm's hero
+ *  defending, 'guard' a province's guard, 'garrison' a realm's garrison, 'neutral' a province's own defenders); each
+ *  side's realm and commander (none for the defenders with no realm), base strength (rounded) and units; the fortune
+ *  (to three places); who won, each side's companies lost, and the rounds the battle carried on. */
+export interface ABattleAsTheStatisticsRecordIt {
+  ph: number | null;
+  prov: number;
+  terrain: string;
+  kind: 'pvp' | 'guard' | 'garrison' | 'neutral';
+  atkPi: number | null;
+  atkChar: number;
+  defPi: number | null;
+  defChar: number | null;
+  atkStr: number;
+  defStr: number;
+  S: number;
+  atkUnits: number;
+  defUnits: number;
+  won: boolean;
+  atkLost: number;
+  defLost: number;
+  carry: number;
+}
+
+/** A battle fought, for the statistics: the record, as it was kept before it was a fact. */
+export interface TheFactOfABattleForTheStatistics {
+  kind: 'a battle fought, for the statistics';
+  record: ABattleAsTheStatisticsRecordIt;
+}

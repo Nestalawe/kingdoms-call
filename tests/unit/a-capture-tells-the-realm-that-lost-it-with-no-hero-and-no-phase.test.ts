@@ -35,17 +35,7 @@ describe('the lines a capture writes', () => {
     tc._logCtx = { charId: 7, phase: null };
     tc._currentPhase = null;
     tc._afterPhases = true;
-    tc._tel = {
-      pre: {},
-      orders: {},
-      battles: [],
-      encounters: [],
-      captures: [],
-      deaths: [],
-      spells: [],
-      hires: [],
-      recruits: [],
-    };
+    tc._tel = { pre: {}, orders: {}, factsInTheTurnsOrder: [] };
     setProvinceOwner(tc, G.world.provinces[0], 1, null, undefined);
     // the lines as the GM's log stores them, in words (since P1-12d17 they are facts, written by the views)
     return theTurnsLinesInWords(tc.turnLog).gmLog;
