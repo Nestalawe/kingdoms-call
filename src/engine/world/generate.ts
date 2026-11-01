@@ -2,6 +2,7 @@
 import {
   KC_HUMANOID_RACES,
   KC_RIVAL_RACE,
+  KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
   KC_UNIT_CLASS,
   MONSTERS_P,
   PRIMAL_ARMY_DEFS_P,
@@ -896,8 +897,9 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
   // half shark waters, turn about, so every world gets an even share — 2026-10-13, Toby: the Shark
   // Shoals are the Monsters' weak sea-beast as the Whale Cohort is the Creatures'), 60% open water
   // (no armies, tax 1).
-  const PRIMAL_SEA_TYPES = KC_UNIT_CLASS.primalSea.filter((t) => t !== 'Shark Shoals'); // the prosperous seas' beasts; the Shark Shoals are the poor seas' (below)
-  let _poorSeaShark = false;
+  const POOR_SEAS = KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS;
+  const PRIMAL_SEA_TYPES = KC_UNIT_CLASS.primalSea.filter((t) => !POOR_SEAS.some((sea) => sea.type === t)); // the prosperous seas' beasts; the Shark Shoals are the poor seas' (below)
+  let _poorSeasDealt = 0;
   provinces
     .filter((p) => p.terrain === 'sea')
     .forEach((p) => {
@@ -924,10 +926,11 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
         p.explored = 0;
       } else if (r < 0.4) {
         // Poor waters: whale waters and shark waters, turn about.
-        const beast = _poorSeaShark ? 'Shark Shoals' : 'Whale Cohort';
-        _poorSeaShark = !_poorSeaShark;
+        const poorSea = POOR_SEAS[_poorSeasDealt % POOR_SEAS.length];
+        _poorSeasDealt++;
+        const beast = poorSea.type;
         p.armyTypes = [beast];
-        p.race = beast === 'Shark Shoals' ? 'Primal:Shark' : 'Primal:Whale';
+        p.race = poorSea.raceTag;
         p.tax = rP(2, 3); // Poor waters — 2-3, matching the poor land band (2026-09-21: no 1-tax band province)
         const defCount = neutralDefCount(p.tax);
         p.neutralDefenders = Array.from({ length: defCount }, () => ({

@@ -11,7 +11,7 @@
     "quarantinedTests": 4,
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 82,
-    "unitNameChecksInEngine": 9,
+    "unitNameChecksInEngine": 4,
     "itemEffectChecksInEngine": 0,
     "spellChecksInEngine": 0,
     "discoveryChecksInEngine": 0,

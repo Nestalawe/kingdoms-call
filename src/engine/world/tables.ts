@@ -3,6 +3,7 @@ import {
   KC_TEMPERS,
   KC_TERRAIN_COLORS,
   KC_UNIT_CLASS,
+  KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS,
   PROVINCE_ARMIES_P,
   TEMPER_TRAITS,
 } from '../../content/kingdoms-call-data.ts';
@@ -224,12 +225,19 @@ export const HUMANOID_FLEET_TYPES = new Set([
 ]);
 // The types a province raises TWO of in a turn: garrison units, the humanoid fleets, and — 2026-10-11
 // (Toby, the army roster, decision 9) — the Goblin Horde wherever it is offered (the horde's numbers are
-// its point). Everything else is one a turn outside the founder's own capital, which turns out two of
-// anything. Read by getRecruitLimit (the engine's gate) and by the order form's `maxPerTurn` payload
+// its point: content's KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS).
+// Everything else is one a turn outside the founder's own capital, which turns out two of anything. Read by getRecruitLimit (the engine's gate) and by the order form's `maxPerTurn` payload
 // (buildTurnReport); tests/goblins-two-a-turn holds the two together.
+const UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS: ReadonlySet<string> = new Set(
+  KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS,
+);
 export function twoATurn(armyType: string | null | undefined) {
   const t = armyType ?? '';
-  return t.toLowerCase().includes('garrison') || HUMANOID_FLEET_TYPES.has(t) || t === 'Goblin Horde';
+  return (
+    t.toLowerCase().includes('garrison') ||
+    HUMANOID_FLEET_TYPES.has(t) ||
+    UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS.has(t)
+  );
 }
 export const SEA_TYPES_GEN = new Set(KC_UNIT_CLASS.sea);
 
