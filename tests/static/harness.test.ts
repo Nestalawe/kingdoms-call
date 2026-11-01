@@ -1164,10 +1164,13 @@ describe('CI', () => {
       'npm run balance -- --out balance-report/played.json',
       'npm run balance:report -- --base HEAD^1 --head balance-report/played.json',
     ]);
-    // The two steps after the decision run only on its play=true. The report runs only on a pull request, and only
-    // once the games were played (even if they differ from the baseline); the upload only after the report.
+    // The steps after the decision run only on its play=true (the install, and the cache's save, only on a miss too).
+    // The report runs only on a pull request, and only once the games were played (even if they differ from the
+    // baseline); the upload only after the report.
     expect(job.match(/^ {6}- (?:id: \w+\n {8})?if: (.+)$/gm)?.map((l) => l.replace(/^.*if: /s, ''))).toEqual([
       "steps.engine.outputs.play == 'true'",
+      "steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'",
+      "steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'",
       "steps.engine.outputs.play == 'true'",
       "steps.engine.outputs.play == 'true'",
       "${{ !cancelled() && github.event_name == 'pull_request' && (steps.play.outcome == 'success' || steps.play.outcome == 'failure') }}",
@@ -1284,6 +1287,61 @@ describe('CI', () => {
       expect(runner).toMatch(/^ {2}buildSite\(\);$/m);
     },
   );
+
+  // node_modules from a cache (ci.yml's header): in each job that installs, restored first, npm ci only on a miss,
+  // and saved straight after it, before any other step can write into node_modules; keyed on the runner, Node's
+  // version, the lock file and .npmrc, so a change to any of them installs afresh.
+  const NODE_MODULES_KEY =
+    "node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}";
+  function nodeModulesCacheProblems(text: string): string[] {
+    const problems: string[] = [];
+    for (const block of (text.split(/^jobs:\n/m)[1] ?? '').split(/^(?= {2}[\w-]+:\n)/m)) {
+      const id = /^ {2}([\w-]+):\n/.exec(block)?.[1] ?? '';
+      const steps = block.split(/^(?= {6}- )/m).slice(1);
+      const install = steps.findIndex((st) => /run: npm ci$/m.test(st));
+      if (install < 0) continue;
+      const [restore = '', npmCi = '', save = ''] = [steps[install - 1], steps[install], steps[install + 1]];
+      if (!steps.some((st) => /^ {6}- id: node\n {8}uses: actions\/setup-node@/.test(st)))
+        problems.push(`${id}: setup-node has no id "node"`);
+      if (!/^ {6}- id: modules\n(?: {8}if: .*\n)? {8}uses: actions\/cache\/restore@v\d+\n/.test(restore))
+        problems.push(`${id}: node_modules isn't restored just before npm ci`);
+      else if (!restore.includes(`path: node_modules\n`) || !restore.includes(`key: ${NODE_MODULES_KEY}\n`))
+        problems.push(`${id}: the restore's path or key is another`);
+      if (!/if: .*steps\.modules\.outputs\.cache-hit != 'true'/.test(npmCi))
+        problems.push(`${id}: npm ci runs on a hit`);
+      if (
+        !/uses: actions\/cache\/save@v\d+\n/.test(save) ||
+        !/if: .*steps\.modules\.outputs\.cache-hit != 'true'/.test(save) ||
+        !save.includes('path: node_modules\n') ||
+        !save.includes('key: ${{ steps.modules.outputs.cache-primary-key }}')
+      )
+        problems.push(`${id}: node_modules isn't saved straight after npm ci, on a miss, under the restore's key`);
+    }
+    return problems;
+  }
+
+  test('every job that installs takes node_modules from a cache, and saves it before anything else runs', () => {
+    expect(ids.filter((id) => runs(id).includes('npm ci')).sort()).toEqual(
+      ['balance', 'browser', 'page', 'simulation', 'static', 'unit-scenario'].sort(),
+    );
+    expect(nodeModulesCacheProblems(ci)).toEqual([]);
+    // Planted copies: unit-scenario's save moved after its build; npm ci on every run; a key without the lock file.
+    const unitScenario = /^ {2}unit-scenario:\n[\s\S]*?(?=^ {2}[\w-]+:\n)/m.exec(ci)?.[0] ?? '';
+    const save =
+      /\n {6}- if: steps\.modules\.outputs\.cache-hit != 'true'\n {8}uses: actions\/cache\/save@v\d+\n(?: {8,}.+\n)+/.exec(
+        unitScenario,
+      )?.[0] ?? '';
+    expect(save).not.toBe('');
+    const moved = unitScenario.replace(save, '\n').replace(/(\n {6}- run: npm run build\n)/, `$1${save}`);
+    expect(moved).not.toBe(unitScenario);
+    expect(nodeModulesCacheProblems(ci.replace(unitScenario, moved))).toEqual([
+      "unit-scenario: node_modules isn't saved straight after npm ci, on a miss, under the restore's key",
+    ]);
+    const always = ci.replace(/(- if: )steps\.modules\.outputs\.cache-hit != 'true'(\n {8}run: npm ci\n)/, '$1true$2');
+    expect(nodeModulesCacheProblems(always)).toEqual(['unit-scenario: npm ci runs on a hit']);
+    const noLock = ci.replace("hashFiles('package-lock.json', '.npmrc')", "hashFiles('.npmrc')");
+    expect(nodeModulesCacheProblems(noLock)).toEqual(["static: the restore's path or key is another"]);
+  });
 
   test('no job lets a failure through, retries or repeats', () => {
     for (const weak of ['continue-on-error', '|| true', '--retries', '--retry', '--repeat-each', '--bail', '--pass']) {

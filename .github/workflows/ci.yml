@@ -10,6 +10,13 @@
 # those two names must not change; the other jobs can be added to or split without touching the settings.
 # deploy.yml calls this workflow before every publish and waits for the whole run, so each commit that goes live is
 # tested first, and a merge runs the tests once (inside Deploy), not twice. That's why there's no push trigger here.
+#
+# node_modules comes from a cache when the lock file, .npmrc, Node's version and the runner are unchanged: restored
+# before npm ci, which runs only on a miss, then saved at once, before anything else runs (a test or a tool writes its
+# own caches into node_modules, which must not carry over to the next run). npm ci's install scripts (esbuild's) write
+# only inside node_modules, so a restored copy is the one npm ci made; its engine-strict check passed for this same Node
+# when the copy was made, and tests/setup/global.ts still stops the tests on any other Node. Caches made on main (by
+# Deploy's run) are read by every pull request; a pull request's own are read only by its later runs.
 name: CI
 
 # A label added or removed runs it again: the balance job checks a refactor-only pull request (its label is read from
@@ -41,33 +48,47 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      # engine-strict (.npmrc): stops here if Node isn't exactly .nvmrc's version.
+      # engine-strict (.npmrc): npm ci stops here if Node isn't exactly .nvmrc's version.
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
       - id: install
+        if: steps.modules.outputs.cache-hit != 'true'
         run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       # Each check runs even when one before it failed, so one run shows every problem.
       - run: npm run typecheck
 
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run lint
 
       # The layers of src/ and no import cycle (P1-13, .dependency-cruiser.mts); the known violations are let through.
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run lint:arch
 
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run format:check
 
-      - if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run ratchet
 
       - id: build
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.modules.outputs.cache-hit == 'true') }}
         run: npm run build
 
       - if: ${{ !cancelled() && steps.build.outcome == 'success' }}
@@ -82,12 +103,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       - run: npm run build
 
@@ -102,12 +137,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       - run: npm run build
 
@@ -122,12 +171,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       - run: npm run build
 
@@ -142,12 +205,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       # Playwright's Chromium is kept between runs, one copy per Playwright version. The system libraries it needs
       # are installed every time (they aren't in the cache).
@@ -195,7 +272,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 2
 
-      - uses: actions/setup-node@v7
+      - id: node
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -207,8 +285,21 @@ jobs:
           BEFORE: ${{ github.event.before }}
           REFACTOR_ONLY: ${{ contains(github.event.pull_request.labels.*.name, 'refactor-only') }}
 
-      - if: steps.engine.outputs.play == 'true'
+      - id: modules
+        if: steps.engine.outputs.play == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'
         run: npm ci
+
+      - if: steps.engine.outputs.play == 'true' && steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
 
       - if: steps.engine.outputs.play == 'true'
         run: npm run build
