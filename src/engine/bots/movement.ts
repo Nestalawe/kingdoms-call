@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
@@ -1127,7 +1128,7 @@ export function runBotMovement(G, botIdxSet, hooks) {
           if (path.length === ct.d) {
             G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, [
               ...path.map((d) => botMoveOrder(d, 'Carry the light to ' + ct.X.name)),
-              { action: 'consecrate', target: '', extra: '', desc: 'Consecrate ' + ct.X.name },
+              { action: THE_ALIGNMENT_ORDERS.consecrate.key, target: '', extra: '', desc: 'Consecrate ' + ct.X.name },
             ]);
             return;
           }

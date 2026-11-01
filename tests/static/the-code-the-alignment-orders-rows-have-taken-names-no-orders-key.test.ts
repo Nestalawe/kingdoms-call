@@ -13,6 +13,7 @@
 // the unit-name, item-effect, spell, discovery and perk tests were: the one exception to refactor-only's rule that new
 // tests pass before and after (Theo, 2026-10-25; the alignment orders' Decision 4). The five resolvers (P1-19ar's) held
 // no key on their base: they compare a realm's creed, and their entries keep it so now they read their rows.
+// The bots' five functions (P1-19as's) held the last 11 keys: the orders they write, the busy list, urgency's two.
 // Level 0 (static): the files' syntax trees and the content's rows as written; nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -37,6 +38,9 @@ const ORDER_KINDS_LITERAL_TYPES = ['consecrate', 'call_to_arms', 'broker', 'harv
 
 /** The file of the realm's works: four of the five resolvers. */
 const REALM_WORKS = 'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
+
+/** The bots' file of missions: three of the five functions the bots' row has taken. */
+const BOTS_MISSIONS = 'src/engine/bots/missions.ts';
 
 /** Each function (or a file's top level) the alignment orders' rows have taken, by its file, from the row that took it,
  *  and the strings naming a key it still holds (a literal type's, which the ratchet's helper doesn't count). */
@@ -64,6 +68,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, left: re
     "P1-19ar, Perform Rite: its creed, the Blood Offering's grades",
     [],
   ],
+  [BOTS_MISSIONS, 'botSignaturePre', "P1-19as, the bots' orders: each creed's order written, the two prices", []],
+  [BOTS_MISSIONS, 'botRitePre', "P1-19as, the bots' Perform Rite: the order written twice", []],
+  [BOTS_MISSIONS, 'botRunSlayerSchool', "P1-19as, the bots' busy list: Consecrate", []],
+  ['src/engine/bots/movement.ts', 'runBotMovement', "P1-19as, the bots' march to consecrate: the order written", []],
+  ['src/engine/bots/phase-one.ts', 'urgency', "P1-19as, the bots' urgency: Harvest the Field and the Rite", []],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
