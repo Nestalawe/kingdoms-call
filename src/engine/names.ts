@@ -4,6 +4,7 @@ import {
   LAIR_POOLS_CAT_P,
   LAIR_POOLS_MONSTER_P,
 } from '../content/kingdoms-call-data.ts';
+import { THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS } from '../content/guardian-perks-their-kinds-numbers-and-words.ts';
 import { kcRng } from './rng.ts';
 import { shuffleP } from './battle/fortune.ts';
 import type { Character } from '../schemas/saved-game-state.ts';
@@ -264,7 +265,8 @@ export const GUARDIAN_MELEE_BASE = { Weak: [1, 3], Moderate: [2, 5], Powerful: [
 // total blunts exactly that burst and leaves an ordinary sword arm alone, which turns the top band
 // back into a long fight. Applied in pcMonsterCombatant and merged as a ward, so a creature that
 // already declares a cap of its own (Kraken, Elder Titan) is unaffected.
-export const GUARDIAN_BODY_CAP_PCT = { Legendary: 20 };
+// Its figure is the guardian perks' content (plan P1-19ai).
+export const GUARDIAN_BODY_CAP_PCT = THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.theCapOfEachGrade;
 // One name for one lair, drawn from the guardian's own pool, never repeated in the world. `used` is
 // the live set of names already given out. Falls back to a place-suffixed form
 // ("Wolf Den of Karnholt") when a guardian's pools are exhausted, so uniqueness always holds.

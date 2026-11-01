@@ -1,6 +1,7 @@
 import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { GUARDIAN_MELEE_BASE, PC_HIT_CAP_FRAC } from '../names.ts';
+import { THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS } from '../../content/guardian-perks-their-kinds-numbers-and-words.ts';
 import { activeItems, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 import {
   PC_DMG_FLOOR_FRACTION,
@@ -289,8 +290,10 @@ export function pcCourageChance(
 // grinding one down is a race against the clock and the curve is a slope instead of a cliff.
 // Deliberately NOT applied to characters: a hero's Troll-Hide, Carapace or Ninefold Band is worn
 // equipment the player paid for, and this is a fix for guardian pacing, not an item nerf.
-export const PC_SUSTAIN_FULL_ROUNDS = 4,
-  PC_SUSTAIN_HALF_ROUNDS = 8;
+// Their figures are the guardian perks' content (plan P1-19ai).
+export const PC_SUSTAIN_FULL_ROUNDS =
+    THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.theSustainsFade.theRoundsAtFullStrength,
+  PC_SUSTAIN_HALF_ROUNDS = THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.theSustainsFade.theRoundsAtHalfStrength;
 export function pcSustainMult(cbt: Pick<AFighterInAPersonalCombat, 'kind' | '_roundNo'> | null | undefined) {
   if (cbt?.kind !== 'monster') return 1;
   const r = Number(cbt._roundNo) || 1;

@@ -8,6 +8,7 @@ import {
   anItemIsWornAsArmour,
   whatAHoardsItemDoesForTheGuardianWhoWieldsIt,
 } from '../rules/the-registry-of-magic-item-effects.ts';
+import { theApproachesAGuardiansPerksTurn } from '../rules/the-registry-of-guardian-perks.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, transferableItems } from './helpers.ts';
 import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
@@ -38,13 +39,6 @@ type AGuardianAsItsTraitsAreRead = Pick<
   AGuardianAsHisFighterIsBuilt,
   'name' | 'cat' | 'passives' | 'passive' | 'weak' | 'speed'
 >;
-/** A perk's riders as the hidden multipliers test them: its ward, or the ward's own field. */
-interface APerksRidersAsTheTraitsTestThem {
-  readonly ward?: string | undefined;
-  readonly meleeDR?: unknown;
-  readonly arrowDR?: unknown;
-  readonly spellPct?: unknown;
-}
 /** A lair's guardian as a fight at his lair reads and writes him (pcBuildGuardian, simulateLairOdds, resolveEncounter):
  *  a lair's guardian, a copy of one, or the creature a lair of none is fought as. His hit points are written back after
  *  a fight, and his treasure marked stolen. */
@@ -142,13 +136,14 @@ export function monsterTraits(m: AGuardianAsItsTraitsAreRead) {
   // against the creature's passive (its hide turns blows, it shrugs off arrows or spells) or
   // against its weakness (arrows, a school of magic), the hidden one is dropped.
   {
-    // guardianPassives keeps only the perks that have riders, so each `fx` is there
-    const _fxs: readonly (APerksRidersAsTheTraitsTestThem | null | undefined)[] = guardianPassives(m).map((p) => p.fx),
+    // guardianPassives keeps only the perks that have riders, so each `fx` is there; the approaches his perks turn are
+    // the guardian perks' registry's (plan P1-19ai)
+    const _fxs = guardianPassives(m).map((p) => p.fx),
       kind = m.weak?.kind,
-      has = (k: 'meleeDR' | 'arrowDR' | 'spellPct') => _fxs.some((fx) => fx?.ward === k || fx?.[k]);
-    if (has('meleeDR')) mods.melee = Math.min(1, mods.melee);
-    if (has('arrowDR')) mods.archery = Math.min(1, mods.archery);
-    if (has('spellPct')) mods.spell = Math.min(1, mods.spell);
+      turned = theApproachesAGuardiansPerksTurn(_fxs);
+    if (turned.melee) mods.melee = Math.min(1, mods.melee);
+    if (turned.archery) mods.archery = Math.min(1, mods.archery);
+    if (turned.spell) mods.spell = Math.min(1, mods.spell);
     if (kind === 'archery') mods.archery = Math.max(1, mods.archery);
     if (kind === 'school') mods.spell = Math.max(1, mods.spell);
   }
