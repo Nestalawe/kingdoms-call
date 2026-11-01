@@ -22,11 +22,12 @@ writes each realm's report. Players only submit orders and read what they're giv
 - **The rule registry and the shared rules**
   ([the-rule-registry-and-the-one-source-for-shared-rules.md](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md)).
   A content effect (a unit ability; since P1-19m a magic item's; since P1-19u a spell's; since P1-19aa a kind of a
-  discovery's effect) is one row in `src/content/` and one entry in `src/engine/rules/the-registry-of-content-effects.ts`
+  discovery's effect; since P1-19ai a kind of guardian perk) is one row in `src/content/` and one entry in `src/engine/rules/the-registry-of-content-effects.ts`
   (an item's, `the-registry-of-magic-item-effects.ts`; a spell's, `the-registry-of-spell-effects.ts`:
   [its file](architecture/the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md); a discovery's,
   `the-registry-of-discovery-effects.ts`:
-  [its file](architecture/the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md)), naming its effect at each
+  [its file](architecture/the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md); a perk's,
+  `the-registry-of-guardian-perks.ts`: [its file](architecture/the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md)), naming its effect at each
   stage of a hook point; the resolvers ask the stage's runner. `src/content/kingdoms-call-data.ts`
   is the one source of the tables both portals read, and `src/shared/` is the player portal's one door to the engine's
   rules on plain values.
@@ -85,7 +86,7 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   `engine/rules-on-plain-values/` and `content/`: an effect reaches the dice, the turn's state, a report or a hero's
   items only through what its stage and its runner are handed (P1-19a; the items' registry and `magic-items/`, P1-19m;
   the spells' registry and `spells/`, P1-19u; the discoveries' registry and `discoveries/`, P1-19aa, whose unit-class
-  tests are in `engine/rules-on-plain-values/`).
+  tests are in `engine/rules-on-plain-values/`; the guardian perks' registry and `guardian-perks/`, P1-19ai).
 - **`views/`** imports only `views/`, `engine/` and `content/`; **`shared/`** only `shared/`, `views/`,
   `engine/rules-on-plain-values/` and `content/`.
 - **`schemas/`** holds the world's types: any folder may import it with `import type` (TypeScript erases it), and none
