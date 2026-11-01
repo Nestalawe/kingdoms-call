@@ -496,16 +496,22 @@ describe("the GM's log in words is stored in the form it had", () => {
     emit(tc, { type: 'system', fact: aLine, ...told });
     const narrative = aBattle(tc);
     fileTheBattle(tc, narrative);
-    const line = tc.turnLog.pop();
-    if (line === undefined) throw new Error('no line filed');
-    const inWords: LogLine = { ...line, text: 'The onlookers saw it.' };
-    delete inWords.fact;
-    tc.turnLog.push(inWords);
+    // the battle's first line and its onlookers' summary hold their words
+    const inWords = (at: number, text: string) => {
+      const line = tc.turnLog[at];
+      if (line === undefined) throw new Error('no line filed');
+      const stored: LogLine = { ...line, text };
+      delete stored.fact;
+      tc.turnLog[at] = stored;
+    };
+    inWords(1, 'The levy marches out.');
+    inWords(tc.turnLog.length - 1, 'The onlookers saw it.');
     const { gmLog, theKindOfEachStoredLine } = theTurnsLinesInWords(tc.turnLog);
     const kinds = narrative.map((l) => l.kind);
     expect(theKindOfEachStoredLine).toEqual([
       'the battle for a province begins',
-      ...kinds.slice(0, 4),
+      null,
+      ...kinds.slice(1, 4),
       "a battle's losses, tallied from its lines",
       ...kinds.slice(4),
       null,
