@@ -10,6 +10,7 @@ import {
   emitNarrLine,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
@@ -89,6 +90,7 @@ export function advancePursuit(turnContext, c, ph) {
       fact: { kind: "a chaser's quarry is beyond catching", heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: here ? here.id : null,
     });
     endPursuit(c);
@@ -112,6 +114,7 @@ export function advancePursuit(turnContext, c, ph) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: here ? here.id : null,
     });
     endPursuit(c);
@@ -125,6 +128,7 @@ export function advancePursuit(turnContext, c, ph) {
       fact: { kind: "a chaser's quarry vanishes into the shadows", heroName: c.name, quarryName: quarry.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: here ? here.id : null,
     });
     endPursuit(c);
@@ -153,6 +157,7 @@ export function advancePursuit(turnContext, c, ph) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: here ? here.id : null,
     });
     return;
@@ -168,6 +173,7 @@ export function advancePursuit(turnContext, c, ph) {
         fact: { kind: "a chaser's horses can go no further this year", heroName: c.name, quarryName: quarry.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: here ? here.id : null,
       });
       endPursuit(c);
@@ -180,6 +186,7 @@ export function advancePursuit(turnContext, c, ph) {
         fact: { kind: 'a chaser finds no road closer to his quarry', heroName: c.name, quarryName: quarry.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: here ? here.id : null,
       });
       endPursuit(c);
@@ -197,6 +204,7 @@ export function advancePursuit(turnContext, c, ph) {
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: here ? here.id : null,
         });
         endPursuit(c);
@@ -210,6 +218,7 @@ export function advancePursuit(turnContext, c, ph) {
           fact: { kind: "a chaser's column is spent", heroName: c.name, quarryName: quarry.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: here ? here.id : null,
         });
         endPursuit(c);
@@ -238,6 +247,7 @@ export function advancePursuit(turnContext, c, ph) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: step.id,
       });
       return; // still chasing — try again next phase
@@ -252,6 +262,7 @@ export function advancePursuit(turnContext, c, ph) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: step.id,
     });
   }
@@ -277,6 +288,7 @@ export function advancePursuit(turnContext, c, ph) {
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   if (roll > chance) {
     emit(turnContext, {
@@ -289,6 +301,7 @@ export function advancePursuit(turnContext, c, ph) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return; // pursuit stays live into the next phase
@@ -306,6 +319,7 @@ export function advancePursuit(turnContext, c, ph) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     endPursuit(c);
@@ -327,6 +341,7 @@ export function advancePursuit(turnContext, c, ph) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     endPursuit(c);
@@ -347,6 +362,7 @@ export function advancePursuit(turnContext, c, ph) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       return;
@@ -374,6 +390,7 @@ export function advancePursuit(turnContext, c, ph) {
       },
       audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       heroes: [c.id, quarry.id],
     });
@@ -459,6 +476,7 @@ export function advancePursuit(turnContext, c, ph) {
           },
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         if (!_hostileLeft && _hulls.length)
@@ -467,6 +485,7 @@ export function advancePursuit(turnContext, c, ph) {
             fact: navalHoldLine(turnContext, prov, _hulls, G.players[c.player]?.name || null),
             audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           });
       } else {
@@ -489,6 +508,7 @@ export function advancePursuit(turnContext, c, ph) {
           },
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         if (_wp) applyEvilConquest(turnContext, c, prov, _wp);
@@ -536,6 +556,7 @@ export function advancePursuit(turnContext, c, ph) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       if (_roll > _pct) {
@@ -549,6 +570,7 @@ export function advancePursuit(turnContext, c, ph) {
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: c.id,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         notifyTarget(
@@ -577,6 +599,7 @@ export function advancePursuit(turnContext, c, ph) {
         },
         audience: { actor: c.player, realms: [c.player, quarry.player].filter((x) => x != null) },
         hero: c.id,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         heroes: [c.id, quarry.id],
         province: prov.id,
       });
@@ -602,6 +625,7 @@ export function advancePursuit(turnContext, c, ph) {
           },
           audience: { actor: c.player, realms: [c.player, quarry.player].filter((x) => x != null) },
           hero: c.id,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           heroes: [c.id, quarry.id],
           province: prov.id,
         });
@@ -631,6 +655,7 @@ export function advancePursuit(turnContext, c, ph) {
       },
       audience: { actor: c.player, realms: targetsPi, seen: prov.owner !== null ? 'battle' : undefined },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       heroes: _duelChars,
     });
@@ -651,6 +676,7 @@ export function advancePursuit(turnContext, c, ph) {
         type: 'combat',
         audience: { actor: c.player, realms: targetsPi },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
         heroes: _duelChars,
       }),
@@ -668,6 +694,7 @@ export function advancePursuit(turnContext, c, ph) {
           fact: _garrethEscapeLine(c),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
           heroes: _duelChars,
         });
@@ -685,6 +712,7 @@ export function advancePursuit(turnContext, c, ph) {
           {
             audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
             heroes: _duelChars,
           },
@@ -700,6 +728,7 @@ export function advancePursuit(turnContext, c, ph) {
           fact: _garrethEscapeLine(quarry),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
           heroes: _duelChars,
         });
@@ -717,6 +746,7 @@ export function advancePursuit(turnContext, c, ph) {
           {
             audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
             heroes: _duelChars,
           },

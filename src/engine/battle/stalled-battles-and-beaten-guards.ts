@@ -18,7 +18,7 @@ import { emitBattle } from './battle-report-lines-and-force-markers.ts';
 import { combatVsNPC } from './battles-against-province-defenders.ts';
 import { combatVsChar } from './battles-between-heroes.ts';
 import { erodeGuardSurvivors, resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their-audiences.ts';
 
 // ── STALLED BATTLES AND A BEATEN GUARD'S SURVIVORS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where a battle was left unresolved (the loser could not retreat) is fought over again at the start of
@@ -108,7 +108,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         },
         audience: { actor: attacker.player, realms: [attacker.player], seen: 'battle' },
         hero: _ctxCharId,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       // 2026-10-08 (Toby item 6): pressing on against neutral defenders spends a movement point when
@@ -167,7 +167,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               fact: line,
               audience: { actor: attacker.player, realms: [], seen: 'battle' },
               hero: _ctxCharId,
-              phase: ph,
+              phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: prov.id,
             }),
           attacker.name,
@@ -199,7 +199,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
                 },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
             hero: _ctxCharId,
-            phase: ph,
+            phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           });
         } else {
@@ -230,7 +230,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
             hero: _ctxCharId,
-            phase: ph,
+            phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           });
         }
@@ -256,7 +256,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               fact: l,
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
-              phase: ph,
+              phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: prov.id,
             }),
           );
@@ -284,7 +284,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               },
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
-              phase: ph,
+              phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: dest.id,
             });
           } else {
@@ -297,7 +297,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
                   fact: _st,
                   audience: { actor: attacker.player, realms: [attacker.player] },
                   hero: _ctxCharId,
-                  phase: ph,
+                  phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
                   province: prov.id,
                 });
             }
@@ -310,7 +310,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               },
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
-              phase: ph,
+              phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: prov.id,
             });
           }
@@ -389,7 +389,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           },
           audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
           hero: _ctxCharId,
-          phase: ph,
+          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         return;
@@ -427,7 +427,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             },
         audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
         hero: _ctxCharId,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
       const atkCopy = { ...attacker, armies: [...(attacker.armies || [])] };
@@ -480,7 +480,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           ),
           audience: { actor: winner.player, realms: [], seen: 'battle' },
           hero: _ctxCharId,
-          phase: ph,
+          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       } else if (!enemyStillHere && prov.owner !== winner.player) {
@@ -505,7 +505,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           },
           audience: { actor: winner.player, realms: [], seen: 'battle' },
           hero: _ctxCharId,
-          phase: ph,
+          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       }
@@ -569,7 +569,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         },
         audience: { actor: lone.player, realms: [], seen: 'battle' },
         hero: _ctxCharId,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }

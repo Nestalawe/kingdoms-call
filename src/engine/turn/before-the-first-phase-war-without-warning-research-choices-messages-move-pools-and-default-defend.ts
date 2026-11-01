@@ -14,7 +14,11 @@ import { DISC_BY_ID, gdActive } from '../discoveries.ts';
 import { relKeyOf } from '../realms/relations-and-captures.ts';
 import { setMovePool } from '../units/movement-pools.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 
 // ── BEFORE THE FIRST PHASE: WAR WITHOUT WARNING, RESEARCH CHOICES, MESSAGES, MOVE POOLS AND DEFAULT DEFEND (plan
 // P1-08k8: four stages taken out of resolveTurn's own body, before the phase loop) ──────────────────────────────────
@@ -130,6 +134,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
           },
           audience: { actor: null, realms: [a, b] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           system: true,
         });
       }
@@ -166,6 +171,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
       fact: { kind: "a realm's diplomacy is set aside before the Safe Start ends", safeStartTurn: SAFE_START_TURN },
       audience: { actor: null, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       system: true,
     }),
   );
@@ -176,6 +182,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         fact: { kind: "a line the order merge held until the turn's log was ready", words: w },
         audience: { actor: -1, realms: [], seen: w.startsWith('\u{1F3F3}') ? 'world' : undefined },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         system: true,
       }),
     );
@@ -194,6 +201,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
         fact: { kind: 'a realm the GM removed withdraws and concedes', realmName: _pl.name },
         audience: { actor: -1, realms: [], seen: 'world' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         system: true,
       });
     });
@@ -387,6 +395,7 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
         fact: { kind: 'the chronicles record the lairs under fitting names', lairs: _rn },
         audience: { actor: null, realms: [] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
   }
   // EVERY GUARDIAN IS 5 HP FRAILER. The table was re-statted, but a live world keeps its own copy
@@ -413,6 +422,7 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
         fact: { kind: "the world's guardians are re-measured five hit points frailer", guardians: _gh },
         audience: { actor: null, realms: [] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
   }
 

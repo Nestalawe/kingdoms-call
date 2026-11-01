@@ -6,7 +6,12 @@ import { settleStrandedAtSea } from '../units/sea-lift-stranding-and-retreats.ts
 import { generateIntrusionNotifications } from './intrusion-warnings.ts';
 import { spreadPlagues } from '../magic/plague-and-bless-ward.ts';
 import { resolveAllPendingSkillGains } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit, writeDeferredSkillLines, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  writeDeferredSkillLines,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 import { disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { applyMoveInterlocks, normaliseAction, orderPhaseActors } from './phase-intents-and-dependency-ordering.ts';
 import {
@@ -52,6 +57,7 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
     fact: { kind: 'a phase begins', seasonName: SEASONS[ph] },
     audience: {},
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   // sd29 Herbal Lore: a character who took wounds in the PREVIOUS phase has them dressed at the
   // start of this one, recovering 40% of the damage that fight cost them
@@ -89,7 +95,7 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: c.id,
-          phase: ph,
+          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: c.location != null ? c.location : undefined,
         });
       }
@@ -146,6 +152,7 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
         fact: { kind: 'a hero hired this phase will act from the next', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     }
   });
@@ -186,7 +193,7 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
       audience: { actor: it.player, realms: [it.player] },
       province: it.fromId,
       hero: it.id,
-      phase: ph,
+      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       pinNotice: true,
     });
   });
@@ -311,7 +318,7 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph,
           fact: { kind: "a fallen hero's remaining orders go unanswered", heroName: c.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: c.id,
-          phase: ph,
+          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       }
       turnContext._logCtx = { charId: null, phase: null };

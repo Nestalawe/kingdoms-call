@@ -26,7 +26,11 @@ import {
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, recalcHeroPay, theSkillInPlayAsALineTellsIt } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 
 // ── THE RESEARCH AND PRACTICE ORDERS (plan P1-08j4: the fourth family taken out of processOrder in resolveTurn) ──
 // Research (a Sage's roll for a discovery of the realm, or an unlooked-for find in a hidden field), Practice Skill (a
@@ -48,6 +52,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       fact: { kind: 'a hero without Sage learning cannot research', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -83,6 +88,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         return;
       }
@@ -97,6 +103,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       _rcat = _to;
     }
@@ -178,6 +185,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
         trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);
         _sideFound = true;
@@ -201,6 +209,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   c._researchFailStreak = { turn: G.turn, n: dRoll <= discoveryChance ? 0 : _rStreak + 1 }; // item 18: the next Research this turn is ×1.2 likelier after a failure
   if (dRoll <= discoveryChance) {
@@ -246,6 +255,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD); // Sage: made a discovery
     } else if (available.length > 0) {
@@ -279,6 +289,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD); // Sage: made a discovery
     } else {
@@ -287,6 +298,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         fact: { kind: 'the research roll succeeds but every discovery is already made', heroName: c.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     }
   } else {
@@ -295,6 +307,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       fact: { kind: 'research makes no discovery this turn', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_COMMON); // 2026-09-21 (Toby): even a fruitless season in the archives teaches a little
   }
@@ -333,6 +346,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
       fact: { kind: 'a skill is drilled as far as practice can take it', heroName: c.name, skill },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   }
   if (!_practiceMaxed) {
@@ -459,6 +473,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       if (_prPayAfter > _prPayBefore)
         emit(turnContext, {
@@ -471,6 +486,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         }); // 2026-09-21: practice raised the wage silently
     } else {
       c._practiceFailStreak = { turn: G.turn, n: _streak + 1 }; // the next practice this turn is ×1.2 likelier
@@ -491,6 +507,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     }
   } // end !_practiceMaxed
@@ -531,6 +548,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
             },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
           trainedAny = true;
         }
@@ -544,6 +562,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
         fact: { kind: "a commander's drills advance no unit this season", heroName: c.name, isNaval },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     } else {
       emit(turnContext, {
@@ -551,6 +570,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
         fact: { kind: 'a commander drills theory alone with no troops to train', heroName: c.name, isNaval },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     }
   }
@@ -593,6 +613,7 @@ export function resolveRestOrder(turnContext, c, prov) {
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   return;
 }
@@ -605,6 +626,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
       fact: { kind: 'a hero lacks the Sage mastery for a Research Breakthrough', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     return;
   }
@@ -618,6 +640,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
       fact: { kind: 'a Research Breakthrough finds every discovery already made', heroName: c.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);
     return;
@@ -642,6 +665,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);
   return;

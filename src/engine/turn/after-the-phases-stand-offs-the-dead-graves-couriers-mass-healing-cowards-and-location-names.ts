@@ -11,7 +11,12 @@ import { MASS_HEALING_PCT, healFeatureMonsters } from '../chances-and-lair-grade
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { flushIntrusionNotifications } from './intrusion-warnings.ts';
 import { resolveAllPendingSkillGains, syncAllMaxHp } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit, writeDeferredSkillLines, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from './events-and-their-audiences.ts';
+import {
+  emit,
+  writeDeferredSkillLines,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from './events-and-their-audiences.ts';
 import { abandonHostOnFlight, disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.ts';
@@ -95,6 +100,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         fact: { kind: 'skeletal companies crumble with no necromancer to hold them', crumbled: _crumbled[k] },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         system: true,
       });
     });
@@ -119,6 +125,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         fact: { kind: 'a necromancer senses graves underfoot', heroName: c.name, provinceName: p2.name },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: p2.id,
       }),
     );
@@ -142,6 +149,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       fact: { kind: 'a neutral hero learns a skill', words: txt },
       audience: { realms: [] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: pv ? pv.id : null,
       system: true,
     }),
@@ -173,6 +181,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
               },
               audience: { actor: pi, realms: [pi], seen: 'there' },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               province: pid,
               env: true,
             });
@@ -351,6 +360,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
             },
             audience: { actor: t.player, realms: [t.player] },
             hero: t.id,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: t.location,
           });
         } else {
@@ -379,6 +389,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       },
       audience: { actor: r.player, realms: [r.player], seen: 'world' },
       hero: ch.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
   });
   syncAllMaxHp(turnContext); // end-of-turn pass (also run after every phase — see the phase loop)
@@ -409,6 +420,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: c.id,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: dest,
       });
     }

@@ -7,7 +7,11 @@ import { noteGraveIntel } from '../graves.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { TITLES_PUBLIC_FROM_TURN, TITLE_CREATURE_ARMIES, TITLE_MONSTER_ARMIES } from './perks.ts';
 import { MINOR_TITLES, computeMinorTitles, computeStandings } from './reckoning.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 
 // ── THE TITLES AT THE TURN'S END (plan P1-08k6: the last stages taken out of the end of resolveTurn's body) ─────────
 // Once the new turn is done (new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-
@@ -63,6 +67,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         fact: { kind: "a title's holder learns how many realms his crown has not met", title, count: n },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
   };
   const isNaval = (t) => SEA_TYPES.has(t);
@@ -100,6 +105,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         fact: { kind: "the Throne's holder learns his realm's share of the world tax base", percent: own },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       G.players.forEach((pl, i) => {
         if (i === pi || !met(pi, i)) return;
@@ -113,6 +119,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       });
       unmetLine(pi, 'throne');
@@ -127,6 +134,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         fact: { kind: "the Vaultkeeper's holder learns his realm's treasury", gold: G.players[pi]?.gold || 0 },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       G.players.forEach((pl, i) => {
         if (i === pi || !met(pi, i)) return;
@@ -139,6 +147,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       });
       unmetLine(pi, 'vault');
@@ -161,6 +170,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       }
       G.players.forEach((pl, i) => {
@@ -181,6 +191,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         }
       });
@@ -190,6 +201,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Grand Marshal's holder learns no rival fields a land army" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       unmetLine(pi, 'marshal');
     }
@@ -211,6 +223,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       }
       G.players.forEach((pl, i) => {
@@ -231,6 +244,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         }
       });
@@ -240,6 +254,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Sea Lord's holder learns no rival fields a fleet" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       unmetLine(pi, 'sea');
     }
@@ -277,6 +292,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       let any = false;
       G.players.forEach((pl, i) => {
@@ -293,6 +309,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         }
       });
@@ -302,6 +319,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Monster-Bane's holder learns no rival's hero has drawn monster-blood" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       unmetLine(pi, 'monster');
     }
@@ -330,6 +348,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         } else
           emit(turnContext, {
@@ -340,6 +359,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         ds.forEach((d) => {
           if (d.turnDiscovered === tt) fresh.push({ d, i });
@@ -351,6 +371,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Loremaster's holder learns no rival has learned anything worth copying" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       const lp = G.players[pi];
       if (lp && fresh.length) {
@@ -370,6 +391,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             fact: { kind: "the Loremaster's scholars copy a rival's fresh discovery", discoveryName: pk.name },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         }
       }
@@ -411,6 +433,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         else
           emit(turnContext, {
@@ -418,6 +441,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             fact: { kind: "the Archmage's holder learns of no mage of a school outside his realm", school: sk },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
       });
       unmetLine(pi, 'arch');
@@ -461,6 +485,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         });
       } else
@@ -469,6 +494,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Hierophant's holder finds no fallen hero to read" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
     }
   }
@@ -500,6 +526,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         }
       });
@@ -509,6 +536,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Deathpriest's Grave-sight finds no crack or elite dead" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
     }
   }
@@ -541,6 +569,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         });
         // A hero who worked twice in one turn is ONE name on the roll, with a count — the per-act
@@ -568,6 +597,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       } else
         emit(turnContext, {
@@ -575,6 +605,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Spymaster's holder learns no hand was raised against his lands" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
     }
   }
@@ -612,6 +643,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       let any = false;
       G.players.forEach((pl, i) => {
@@ -628,6 +660,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       });
       if (!any)
@@ -636,6 +669,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Cartographer's holder finds no rival realm to survey" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       unmetLine(pi, 'carto');
     }
@@ -674,6 +708,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             fact: { kind: "the Beastlord's holder learns a realm has no monsters under arms", realm },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
           return;
         }
@@ -689,6 +724,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       };
       line(pi, null);
@@ -704,6 +740,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Beastlord's holder finds no rival realm to reckon" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       unmetLine(pi, 'beast');
     }
@@ -741,6 +778,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             fact: { kind: "the Wildwarden's holder learns the wild answers to no one in a realm", realm },
             audience: { actor: pi, realms: [pi] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
           return;
         }
@@ -756,6 +794,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       };
       line(pi, null);
@@ -771,6 +810,7 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
           fact: { kind: "the Wildwarden's holder finds no rival realm to reckon" },
           audience: { actor: pi, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
       unmetLine(pi, 'wild');
     }

@@ -8,7 +8,11 @@ import { TM } from '../titles/perks.ts';
 import { DISC_BY_ID, discBlockedIds, discEligible } from '../discoveries.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { botTaxIncome } from '../bots/strategy.ts';
 import { theDefendersAsTheSpyNamesThem } from './the-facts-what-a-spy-learns-lines-record.ts';
 
@@ -45,6 +49,7 @@ export function applySpySuccess(turnContext, c, sprov) {
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     spy: true,
     province: sprov.id,
   });
@@ -74,6 +79,7 @@ export function applySpySuccess(turnContext, c, sprov) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: sprov.id,
       });
       const _spyLvl = effStat(turnContext, c, 'spy');
@@ -97,6 +103,7 @@ export function applySpySuccess(turnContext, c, sprov) {
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: sprov.id,
         });
         if (_sr <= _stealPct) {
@@ -122,6 +129,7 @@ export function applySpySuccess(turnContext, c, sprov) {
             },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: sprov.id,
           });
         }
@@ -156,6 +164,7 @@ export function applySpySuccess(turnContext, c, sprov) {
       },
       audience: { actor: null, realms: [sprov.owner] },
       hero: null,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: sprov.id,
     });
   }

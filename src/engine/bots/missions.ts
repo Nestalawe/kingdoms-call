@@ -65,7 +65,11 @@ import { BOT_SCHOOLS } from './schools.ts';
 import { botDuelRating, botFillOrders, botPathAny, botPathLenAny, botSpyTarget } from './spellcraft.ts';
 import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
 import { DISC_BY_ID } from '../discoveries.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ══ INFILTRATOR — conjure a host behind the enemy line ════
@@ -1414,6 +1418,7 @@ export function runBotConcessions(G, botIdxSet, turnContext) {
         fact: { kind: 'a bot realm with no province concedes the game', realmName: p.name },
         audience: { actor: null, realms: [], seen: 'world' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         system: true,
       });
   });

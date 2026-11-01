@@ -6,7 +6,7 @@ import { armyTotalStr } from './best-commander.ts';
 import { settleRalliedGarrisons } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { resolveStalledBattles } from './stalled-battles-and-beaten-guards.ts';
 import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
-import { emit } from '../turn/events-and-their-audiences.ts';
+import { emit, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their-audiences.ts';
 
 // ── WAR FRONTS AND ENEMY STAND-OFFS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where the armed hosts of two warring realms stand together is flagged as a battle waiting to happen
@@ -117,7 +117,7 @@ export function resolveWarFronts(turnContext, ph) {
         audience: { actor: c.player, realms: [c.player, prov.owner].filter((x) => x != null), seen: 'battle' },
         province: prov.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       c._warFront = true;
       try {

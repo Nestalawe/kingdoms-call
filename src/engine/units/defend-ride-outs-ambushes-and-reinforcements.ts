@@ -5,7 +5,12 @@ import { d100, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { theNameOfAPlayersRealm } from '../turn/log-line-helpers.ts';
-import { emit, emitNarrLine, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  emitNarrLine,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import { completeDefendWatches } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
@@ -104,7 +109,7 @@ export function runDefendReactions(turnContext, ph, intents) {
         audience: { actor: c.player, realms: [c.player] },
         province: here.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -122,7 +127,7 @@ export function runDefendReactions(turnContext, ph, intents) {
         audience: { actor: c.player, realms: [c.player] },
         province: here.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       c._defendReactedPhase = ph; // holding his own gate IS his reaction — he will not also ride out to a host raised next door this phase
       return;
@@ -152,7 +157,7 @@ export function runDefendReactions(turnContext, ph, intents) {
         audience: { actor: c.player, realms: [c.player] },
         province: here.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -200,7 +205,7 @@ export function runDefendReactions(turnContext, ph, intents) {
       audience: { actor: c.player, realms: [c.player], seen: 'there' },
       province: P.id,
       hero: c.id,
-      phase: ph,
+      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     }); // 2026-09-09 item 1: runs OUTSIDE any order context, so file it explicitly
     // Reacting is a march: the same skill gain a normal move would give (a sea crossing trains Naval).
     if (_bySea) rollNavalVoyage(turnContext, c, SKILLGAIN_COMMON);
@@ -256,7 +261,7 @@ export function reconcileDefendRideOuts(turnContext, ph) {
         audience: { actor: c.player, realms: [c.player] },
         province: P.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     } else if (c.location === P.id && enemyHere) {
       emit(turnContext, {
@@ -269,7 +274,7 @@ export function reconcileDefendRideOuts(turnContext, ph) {
         audience: { actor: c.player, realms: [c.player] },
         province: P.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     }
   });
@@ -355,7 +360,7 @@ export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
       audience: { actor: d.player, realms: [d.player], seen: 'there' },
       province: prov.id,
       hero: d.id,
-      phase: ph,
+      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     if (bySea) rollNavalVoyage(turnContext, d, SKILLGAIN_STD);
     else trySkillGain(turnContext, d, 'march', SKILLGAIN_COMMON);
@@ -393,7 +398,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
         audience: { actor: c.player, realms: [c.player] },
         province: here.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       return;
     }
@@ -462,7 +467,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
         audience: { actor: c.player, realms: [c.player], seen: 'there' },
         province: prov.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       if (toSea) rollNavalVoyage(turnContext, c, SKILLGAIN_COMMON);
       else trySkillGain(turnContext, c, 'march', SKILLGAIN_COMMON);
@@ -477,7 +482,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
         audience: { actor: c.player, realms: [c.player], seen: 'there' },
         province: prov.id,
         hero: c.id,
-        phase: ph,
+        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     }
     c._defendReactedPhase = ph;
@@ -509,7 +514,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       province: prov.id,
       heroes: [c.id, quarry.id, ...defReinf.map((d) => d.id)],
-      phase: ph,
+      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     });
     if (_hP.changed)
       emit(turnContext, {
@@ -517,6 +522,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
         fact: commandHandoverLine(_hP.leader, quarry, prov.name),
         audience: { actor: quarry.player, realms: targetsPi, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     const battle = combatVsChar(turnContext, combinedAtk, combinedDef, prov);
@@ -598,6 +604,7 @@ export function runDefendMaterializedReactions(turnContext, ph) {
           },
           audience: { actor: c.player, realms: [], seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
       }
@@ -679,6 +686,7 @@ export function runDefendAmbush(turnContext, ph) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: quarryProv.id,
     });
     if (roll > chance) {
@@ -692,6 +700,7 @@ export function runDefendAmbush(turnContext, ph) {
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: quarryProv.id,
       });
       c._defendReactedPhase = ph; // the attempt spends his watch for this phase
@@ -733,6 +742,7 @@ export function runDefendAmbush(turnContext, ph) {
       },
       audience: { actor: c.player, realms: targetsPi, seen: prov.owner !== null ? 'battle' : undefined },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
       heroes: _duelChars,
     });
@@ -753,6 +763,7 @@ export function runDefendAmbush(turnContext, ph) {
         type: 'combat',
         audience: { actor: c.player, realms: targetsPi },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
         heroes: _duelChars,
       }),
@@ -767,6 +778,7 @@ export function runDefendAmbush(turnContext, ph) {
           fact: _garrethEscapeLine(c),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
           heroes: _duelChars,
         });
@@ -784,6 +796,7 @@ export function runDefendAmbush(turnContext, ph) {
           {
             audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
             heroes: _duelChars,
           },
@@ -799,6 +812,7 @@ export function runDefendAmbush(turnContext, ph) {
           fact: _garrethEscapeLine(quarry),
           audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
           heroes: _duelChars,
         });
@@ -811,6 +825,7 @@ export function runDefendAmbush(turnContext, ph) {
           {
             audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
             heroes: _duelChars,
           },
@@ -878,6 +893,7 @@ export function runReinforcementArrivals(turnContext, ph, intents) {
       fact: { kind: 'a column is hurried in ahead of the enemy', heroName: it.c.name, provinceName: P.name },
       audience: { actor: it.player, realms: [it.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: P.id,
     });
   });

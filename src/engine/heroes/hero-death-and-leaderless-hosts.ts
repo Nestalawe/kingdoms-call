@@ -18,7 +18,12 @@ import { setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { effStat, isVanished } from './effective-skills-and-hidden-heroes.ts';
 import { isOpenSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { flushDeferredSkillLogsFor } from './experience-skill-rises-and-earned-hp.ts';
-import { emit, recordForTheStatistics, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import {
+  emit,
+  recordForTheStatistics,
+  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+} from '../turn/events-and-their-audiences.ts';
 import type { AHeroIsSlainOutsideABattle } from './the-facts-a-heros-death-lines-record.ts';
 
 // ── HERO DEATH AND LEADERLESS HOSTS (plan P1-08f: lifted out of resolveTurn) ────
@@ -51,6 +56,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         seen: prov?.id != null ? 'there' : 'world',
       },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov?.id,
     });
   }
@@ -85,6 +91,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         },
         audience: { actor: deadChar.player, realms: deadChar.player != null ? [deadChar.player] : [] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     };
     if (deadChar.player === null) {
@@ -103,6 +110,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else if (isOpenSea(prov) && prov.owner == null && !(prov.neutralDefenders || []).length) {
@@ -127,6 +135,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else {
@@ -157,6 +166,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
           },
           audience: { actor: deadChar.player, realms: [deadChar.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: safeProv.id,
         });
       } else {
@@ -217,6 +227,7 @@ export function abandonHostOnFlight(turnContext, c) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: heir.id,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return left.length;
@@ -233,6 +244,7 @@ export function abandonHostOnFlight(turnContext, c) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return left.length;
@@ -247,6 +259,7 @@ export function abandonHostOnFlight(turnContext, c) {
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     province: prov.id,
   });
   disperseDeadCharArmies(turnContext, {
@@ -319,6 +332,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         seen: deadChar.location != null ? 'battle' : 'world',
       },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: deadChar.location != null ? deadChar.location : undefined,
     });
     return false;
@@ -338,6 +352,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         seen: deadChar.location != null ? 'battle' : 'world',
       },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: deadChar.location != null ? deadChar.location : undefined,
     });
     return false;
@@ -389,7 +404,9 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
           },
           hero: deadChar.id,
           heroes: [deadChar.id, killerChar && killerChar.id != null ? killerChar.id : null].filter((x) => x != null),
-          phase: turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,
+          phase:
+            (turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase) ??
+            THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: deadChar.location != null ? deadChar.location : undefined,
         },
       );
@@ -401,7 +418,9 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
           audience: { actor: deadChar.player, realms: [deadChar.player] },
           hero: deadChar.id,
           heroes: [deadChar.id, killerChar && killerChar.id != null ? killerChar.id : null].filter((x) => x != null),
-          phase: turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,
+          phase:
+            (turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase) ??
+            THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: deadChar.location != null ? deadChar.location : undefined,
         },
         deadChar.player,
@@ -451,6 +470,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
       },
       audience: { actor: deadChar.player, realms: deadChar.player != null ? [deadChar.player] : [], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
   }
@@ -505,6 +525,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
       if (recipient.player != null && recipient.player !== deadChar.player)
         emit(turnContext, {
@@ -517,7 +538,9 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
           },
           audience: { actor: recipient.player, realms: [recipient.player] },
           hero: recipient.id,
-          phase: turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,
+          phase:
+            (turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase) ??
+            THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: recipient.location != null ? recipient.location : undefined,
         });
       if (recipient.player != null) {
@@ -528,7 +551,9 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
             fact: { kind: "a hero notes how he carries a fallen foe's possessions", theItemsHeGained: _gn },
             audience: { actor: recipient.player, realms: [recipient.player] },
             hero: recipient.id,
-            phase: turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase,
+            phase:
+              (turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase) ??
+              THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: recipient.location != null ? recipient.location : undefined,
           });
       } // item 10
@@ -538,6 +563,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         fact: { kind: "a fallen hero's possessions are lost with no heir", heroName: deadChar.name },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
     }
   }
@@ -585,6 +611,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
           seen: deadChar.location != null ? 'there' : 'world',
         },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: deadChar.location != null ? deadChar.location : undefined,
       });
     } else if (pKing && pKing.alignment === 'Divine') {
@@ -593,6 +620,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         fact: { kind: 'a fallen Divine monarch has no holy ground to return to', heroName: deadChar.name },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: deadChar.location != null ? deadChar.location : undefined,
       });
     }

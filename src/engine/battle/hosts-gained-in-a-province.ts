@@ -12,6 +12,7 @@ import {
   notifyProvinceOwner,
   notifyTarget,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { newMercId, noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { applyEvilConquest, areAllied, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
@@ -79,6 +80,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       fact: { kind: "a hero's new host is still forming up in a province", cName: c.name, provName: prov.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return false;
@@ -147,6 +149,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       },
       audience: { actor: c.player, realms: [], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
     return false;
@@ -312,6 +315,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
             },
             audience: { actor: enemyChar.player, realms: targets, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: _defFellBackTo.id,
           });
         }
@@ -343,6 +347,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         },
         audience: { actor: enemyChar.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
@@ -401,6 +406,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           },
           audience: { actor: c.player, realms: [c.player, prov.owner].filter((x) => x != null), seen: 'battle' },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
         _overrun.forEach((a) => recordBattleGraves(turnContext, prov, [a]));
@@ -427,6 +433,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
             fact: line,
             audience: { actor: c.player, realms: targets },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           }),
         c.name,
@@ -444,6 +451,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
             fact: line,
             audience: { actor: c.player, realms: targets },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           }),
         c.name,
@@ -481,6 +489,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else if (llLeft > 0) {
@@ -498,6 +507,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else if (_hostileLeft) {
@@ -514,6 +524,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else if (_navalBlockUG.length > 0) {
@@ -523,6 +534,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         fact: navalHoldLine(turnContext, prov, _navalBlockUG, player.name),
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else if (_garrisonUnfought && (prov.garrisonArmies || []).length > 0) {
@@ -540,6 +552,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     } else {
@@ -559,6 +572,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
     }
