@@ -18,38 +18,35 @@ import {
 const EVERY_ROW = { ...SPELL_EFFECTS_THE_REGISTRY_HOLDS, ...ACTION_SPELLS_THE_REGISTRY_HOLDS_NO_EFFECT_FOR };
 
 test('every slug the content holds answers with its spell name, and every spell of the game has one', () => {
-  const slugs = Object.keys(EVERY_ROW);
+  const slugs = Object.keys(EVERY_ROW) as ASpellsSlugInTheContent[];
   expect(slugs).toHaveLength(Object.keys(SPELL_DEFS_P).length);
   for (const slug of slugs) {
     const name = theNameOfTheSpell(slug);
     expect(Object.hasOwn(SPELL_DEFS_P, name), `${slug} gives ${name}`).toBe(true);
-    expect(name).toBe(EVERY_ROW[slug as ASpellsSlugInTheContent].name);
+    expect(name).toBe(EVERY_ROW[slug].name);
   }
   expect(new Set(slugs.map((slug) => theNameOfTheSpell(slug))).size).toBe(slugs.length);
 });
 
 test('the fifteen spells the bots name read as their names', () => {
-  expect(
-    Object.fromEntries(
-      [
-        'bless-province',
-        'charm',
-        'curse',
-        'earthquake',
-        'elemental-summon',
-        'flood',
-        'illusory-terrain',
-        'invisibility',
-        'oratory',
-        'phantasmal-armies',
-        'plague',
-        'psychic-blast',
-        'resurrect',
-        'skeletal-armies',
-        'telekinetic-storm',
-      ].map((slug) => [slug, theNameOfTheSpell(slug)]),
-    ),
-  ).toEqual({
+  const THE_FIFTEEN: ASpellsSlugInTheContent[] = [
+    'bless-province',
+    'charm',
+    'curse',
+    'earthquake',
+    'elemental-summon',
+    'flood',
+    'illusory-terrain',
+    'invisibility',
+    'oratory',
+    'phantasmal-armies',
+    'plague',
+    'psychic-blast',
+    'resurrect',
+    'skeletal-armies',
+    'telekinetic-storm',
+  ];
+  expect(Object.fromEntries(THE_FIFTEEN.map((slug) => [slug, theNameOfTheSpell(slug)]))).toEqual({
     'bless-province': 'Bless Province',
     charm: 'Charm',
     curse: 'Curse',
