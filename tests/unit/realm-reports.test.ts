@@ -14,6 +14,9 @@
 //   heroes do there (a line with a deed) or anyone there could see (a public line, a battle's included), never their
 //   realm's own news (a line told to it with no deed: a hit-point rise, a curse felt), a line with no reader, or a line
 //   that excepts it. No game of the matrix writes a line that excepts a spying realm in its feed.
+// - Both feeds pass over a line by its kind, as the words pass hands it beside each stored line (P1-12d36): a force
+//   drawn up for battle, and in the Clairvoyance feed the roll lines too; any other kind is read, whatever its words
+//   open with. Every other line here is staged with no kind (null), as a line with no fact.
 // Level 1 (unit): the function is called on a world and a turn's sight made in the test; nothing else of the turn runs.
 // The property describes the game as it is; a fault planted in a copy of the function turns it red (the PR shows it).
 // Over whole turns, the balance matrix's every-realm half and the page tests (report-privacy, concede) cover it.
@@ -42,6 +45,7 @@ const playerEvents = engineFn(engine, 'playerEvents') as (
   state: TurnContext['G'],
   realm: number,
   sight: { presenceByPhase: unknown; battleCommanders: unknown; clairWatch: unknown },
+  theKindOfEachLine: (string | null)[],
 ) => { lastTurnLog: Line[]; spyActivity: { provId: number; lines: { phase: number; text: string }[] }[] };
 /** The turn's sight, as the context starts it: nobody has stood anywhere in a phase, fought or watched yet. */
 const sight = {
@@ -49,6 +53,8 @@ const sight = {
   battleCommanders: tc['battleCommanders'],
   clairWatch: tc['clairWatch'],
 };
+/** Each staged line's kind, beside the log as the words pass hands it: none (null), as a line with no fact. */
+const noKinds = (log: readonly Entry[]) => log.map(() => null);
 
 type Line = { text: string; charId: unknown; phase: unknown };
 type Entry = {
@@ -102,6 +108,7 @@ test('each realm reads exactly the lines the visibility rule allows, in the log�
           tc.G,
           pi,
           sight,
+          noKinds(log),
         );
         const ownHeroes = new Set(G.characters.filter((c) => c.player === pi).map((c) => c.id));
         const ownProvinces = new Set(G.players[pi]?.provinces ?? []);
@@ -177,6 +184,7 @@ describe('the Clairvoyance feed', () => {
       tc.G,
       0,
       watching,
+      noKinds(log),
     ).lastTurnLog.map((l) => ({ text: l.text, phase: l.phase }));
   const where = G.world.provinces[watched.location]?.name;
 
@@ -201,8 +209,30 @@ describe('the Clairvoyance feed', () => {
       tc.G,
       2,
       watching,
+      noKinds(log),
     ).lastTurnLog.filter((l) => l.text.includes('Clairvoyance') || l.text.includes('[about'));
     expect(lines).toEqual([]);
+  });
+  test('it passes over a line by its kind: a force drawn up for battle and the roll lines; any other kind is read, whatever its words open with', () => {
+    const staged: [Entry, string][] = [
+      [about(7, 3, { text: '[a force drawn up]' }), 'a force drawn up for battle'],
+      [about(8, 3, { text: '[a spell rolled]' }), "a spell's cast is rolled"],
+      [about(9, 3, { text: '[a battle’s outcome]' }), "the battle's outcome and its margin"],
+      [about(10, 3, { text: '[an ambush’s odds]' }), "the odds of a lone defender's ambush"],
+      [about(11, 3, { text: '📊 [a spell fizzles]' }), 'a spell fizzles without effect'],
+      [about(12, 3, { text: '⚑FORCE⚑ [a battle decided]' }), 'a battle is decided'],
+    ];
+    const scried = playerEvents(
+      staged.map(([e]) => ({ ...e })),
+      tc.G,
+      0,
+      watching,
+      staged.map(([, kind]) => kind),
+    ).lastTurnLog.filter((l) => l.phase !== null);
+    expect(scried.map((l) => l.text)).toEqual([
+      '🔮 Clairvoyance — 📊 [a spell fizzles]',
+      '🔮 Clairvoyance — ⚑FORCE⚑ [a battle decided]',
+    ]);
   });
 });
 
@@ -224,8 +254,12 @@ describe("the spy feed: what rival heroes do there, never their realm's news (R-
     phase: 2,
     ...extra,
   });
+  const theSpyLooks: Entry = {
+    ...there('[the spy looks]', { actor: 0, targets: [0], spy: true, phase: 1 }),
+    charId: null,
+  };
   const log: Entry[] = [
-    { ...there('[the spy looks]', { actor: 0, targets: [0], spy: true, phase: 1 }), charId: null },
+    theSpyLooks,
     there('[his deed]', { actor: 1, targets: [1] }),
     there('[his deed, told to others too]', { actor: 1, targets: [1, 2] }),
     there('[seen there]', { public: true }),
@@ -242,9 +276,27 @@ describe("the spy feed: what rival heroes do there, never their realm's news (R-
       tc.G,
       0,
       sight,
+      noKinds(log),
     ).spyActivity.flatMap((s) => s.lines.map((l) => l.text));
 
   test('it reads his deeds and what anyone there could see after the spy came; never his realm’s news, a line with no reader, or one that excepts it', () => {
     expect(feed()).toEqual(['[his deed]', '[his deed, told to others too]', '[seen there]', '[a battle line]']);
+  });
+  test('it passes over a force drawn up for battle by its kind; any other kind is read, whatever its words open with', () => {
+    const staged: [Entry, string][] = [
+      [theSpyLooks, "a spy's roll to spy out a province"],
+      [there('[a force drawn up]', { type: 'combat', public: true, targets: [1] }), 'a force drawn up for battle'],
+      [there('⚑FORCE⚑ [a battle decided]', { type: 'combat', public: true, targets: [1] }), 'a battle is decided'],
+      [there('📊 [a spell rolled]', { actor: 1, targets: [1] }), "a spell's cast is rolled"],
+    ];
+    expect(
+      playerEvents(
+        staged.map(([e]) => ({ ...e })),
+        tc.G,
+        0,
+        sight,
+        staged.map(([, kind]) => kind),
+      ).spyActivity.flatMap((s) => s.lines.map((l) => l.text)),
+    ).toEqual(['⚑FORCE⚑ [a battle decided]', '📊 [a spell rolled]']);
   });
 });

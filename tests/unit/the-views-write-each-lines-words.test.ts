@@ -488,6 +488,37 @@ describe("the GM's log in words is stored in the form it had", () => {
     expect(gmLog.at(-1)).toBe(tc.turnLog.at(-1));
     expect(gmLog).toHaveLength(tc.turnLog.length);
   });
+
+  test("beside it, each stored line's kind in its order (none for a line that holds its words), never stored", () => {
+    const tc = newContext();
+    const told: EventButItsWords = { audience: { realms: [0] }, hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING };
+    const aLine = { kind: 'the battle for a province begins', provName: 'Greyford' } as const;
+    emit(tc, { type: 'system', fact: aLine, ...told });
+    const narrative = aBattle(tc);
+    fileTheBattle(tc, narrative);
+    // the battle's first line and its onlookers' summary hold their words
+    const inWords = (at: number, text: string) => {
+      const line = tc.turnLog[at];
+      if (line === undefined) throw new Error('no line filed');
+      const stored: LogLine = { ...line, text };
+      delete stored.fact;
+      tc.turnLog[at] = stored;
+    };
+    inWords(1, 'The levy marches out.');
+    inWords(tc.turnLog.length - 1, 'The onlookers saw it.');
+    const { gmLog, theKindOfEachStoredLine } = theTurnsLinesInWords(tc.turnLog);
+    const kinds = narrative.map((l) => l.kind);
+    expect(theKindOfEachStoredLine).toEqual([
+      'the battle for a province begins',
+      null,
+      ...kinds.slice(1, 4),
+      "a battle's losses, tallied from its lines",
+      ...kinds.slice(4),
+      null,
+    ]);
+    expect(theKindOfEachStoredLine).toHaveLength(gmLog.length);
+    for (const l of gmLog) expect(Object.keys(l)).not.toContain('kind');
+  });
 });
 
 describe('a label no game writes, as the engine wrote it (plan P1-12d25: the labels as records)', () => {

@@ -100,7 +100,7 @@
   reader. Then it works out, for each played
   slot, the lines the realm reads (from the lines in words) and what it may see of the world, and builds its report
   from those two alone: **perception** comes first, in two functions, and the report
-  reads nothing else. `playerEvents(turnLog, G, realm, sight)` works out the lines: its own deeds, the lines
+  reads nothing else. `playerEvents(turnLog, G, realm, sight, theKindOfEachLine)` works out the lines: its own deeds, the lines
   sent to it or about its heroes, the world's announcements and what happened where it had eyes at the time, unmet
   realms left nameless, its spies' lingering sight (a rival's deeds and what anyone there could see, never his realm's
   news: R-118) and its Clairvoyance feed. `playerView(G, realm, itsLines)`
