@@ -21,6 +21,11 @@
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
 import { engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 interface Province {
   id: number;
@@ -247,21 +252,25 @@ const staged = (m: Map) => {
 };
 
 describe('provDistance', () => {
-  test('0 to itself, 1 to a neighbour, the same both ways; a neighbour is at most one step nearer or farther', () => {
-    fc.assert(
-      fc.property(map, (m) => {
-        const { tc, provinces } = staged(m);
-        expect(provDistance(tc, m.from, m.from)).toBe(0);
-        const d = provDistance(tc, m.from, m.to);
-        expect(provDistance(tc, m.to, m.from)).toBe(d);
-        // every province is on the map, so it is always reachable over the map's provinces
-        expect(Number.isInteger(d)).toBe(true);
-        const nbrs = getNeighborsP(provinces[m.from] as Province, m.cols, m.rows, provinces);
-        expect(nbrs.map((n) => provDistance(tc, m.from, n.id))).toEqual(nbrs.map(() => 1));
-        expect(nbrs.every((n) => Math.abs(provDistance(tc, n.id, m.to) - d) <= 1)).toBe(true);
-      }),
-    );
-  });
+  test(
+    '0 to itself, 1 to a neighbour, the same both ways; a neighbour is at most one step nearer or farther',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(map, (m) => {
+          const { tc, provinces } = staged(m);
+          expect(provDistance(tc, m.from, m.from)).toBe(0);
+          const d = provDistance(tc, m.from, m.to);
+          expect(provDistance(tc, m.to, m.from)).toBe(d);
+          // every province is on the map, so it is always reachable over the map's provinces
+          expect(Number.isInteger(d)).toBe(true);
+          const nbrs = getNeighborsP(provinces[m.from] as Province, m.cols, m.rows, provinces);
+          expect(nbrs.map((n) => provDistance(tc, m.from, n.id))).toEqual(nbrs.map(() => 1));
+          expect(nbrs.every((n) => Math.abs(provDistance(tc, n.id, m.to) - d) <= 1)).toBe(true);
+        }),
+      );
+    },
+  );
 
   test('no province, no distance', () => {
     const { tc } = world(2, 1, [], [], []);
@@ -271,36 +280,40 @@ describe('provDistance', () => {
 });
 
 describe('stepTowardPath, stepToward and stepTowardPreferSafe on any map', () => {
-  test("a land column's first step is a land neighbour on a shortest route over land, or none when there is no route", () => {
-    const seen = { routed: 0, none: 0 };
-    fc.assert(
-      fc.property(map, (m) => {
-        const { tc, provinces, characters } = staged(m);
-        const c = characters[0] as Character;
-        const land = (p: Province) => p.terrain !== 'sea';
-        const steps = stepsFrom(m, provinces, m.to, land); // steps from the target back: the land route's length
-        const r = stepTowardPath(tc, c, m.to);
-        const nbrs = getNeighborsP(provinces[m.from] as Province, m.cols, m.rows, provinces).map((p) => p.id);
-        const length = steps[m.from] as number;
-        const routed = m.from !== m.to && land(provinces[m.to] as Province) && length !== Infinity;
-        // what the step is: whether it is a land neighbour, the route's length, the steps left after it
-        const got = r && {
-          neighbour: nbrs.includes(r.first.id),
-          land: land(r.first),
-          length: r.depth + 1,
-          left: steps[r.first.id],
-        };
-        const want = routed ? { neighbour: true, land: true, length, left: length - 1 } : null;
-        expect({ step: got, stepToward: stepToward(tc, c, m.to)?.id ?? null }).toEqual({
-          step: want,
-          stepToward: routed ? (r?.first.id ?? 'a step') : null,
-        });
-        seen[routed ? 'routed' : 'none']++;
-      }),
-    );
-    expect(seen.routed).toBeGreaterThan(0);
-    expect(seen.none).toBeGreaterThan(0);
-  });
+  test(
+    "a land column's first step is a land neighbour on a shortest route over land, or none when there is no route",
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const seen = { routed: 0, none: 0 };
+      fc.assert(
+        fc.property(map, (m) => {
+          const { tc, provinces, characters } = staged(m);
+          const c = characters[0] as Character;
+          const land = (p: Province) => p.terrain !== 'sea';
+          const steps = stepsFrom(m, provinces, m.to, land); // steps from the target back: the land route's length
+          const r = stepTowardPath(tc, c, m.to);
+          const nbrs = getNeighborsP(provinces[m.from] as Province, m.cols, m.rows, provinces).map((p) => p.id);
+          const length = steps[m.from] as number;
+          const routed = m.from !== m.to && land(provinces[m.to] as Province) && length !== Infinity;
+          // what the step is: whether it is a land neighbour, the route's length, the steps left after it
+          const got = r && {
+            neighbour: nbrs.includes(r.first.id),
+            land: land(r.first),
+            length: r.depth + 1,
+            left: steps[r.first.id],
+          };
+          const want = routed ? { neighbour: true, land: true, length, left: length - 1 } : null;
+          expect({ step: got, stepToward: stepToward(tc, c, m.to)?.id ?? null }).toEqual({
+            step: want,
+            stepToward: routed ? (r?.first.id ?? 'a step') : null,
+          });
+          seen[routed ? 'routed' : 'none']++;
+        }),
+      );
+      expect(seen.routed).toBeGreaterThan(0);
+      expect(seen.none).toBeGreaterThan(0);
+    },
+  );
 
   test('stepTowardPreferSafe never takes a longer route, and takes a safe one whenever one is as short', () => {
     const seen = { safe: 0, unsafe: 0, differs: 0 };

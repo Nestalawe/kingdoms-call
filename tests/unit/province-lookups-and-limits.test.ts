@@ -21,6 +21,11 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
@@ -64,29 +69,33 @@ describe('neighborInDir', () => {
     expect(DIRS).toEqual(['NW', 'NE', 'W', 'E', 'SW', 'SE']);
   });
 
-  test("on any map, the six directions name exactly a province's neighbours, in getNeighborsP's order", () => {
-    fc.assert(
-      fc.property(map, ([{ cols, rows }, at]) => {
-        const provinces: Prov[] = Array.from({ length: cols * rows }, (_, id) => ({
-          id,
-          row: Math.floor(id / cols),
-          col: id % cols,
-        }));
-        const tc = turnContext(engine, { world: { cols, rows, provinces } });
-        const ps = (tc.G['world'] as { provinces: Prov[] }).provinces;
-        const p = ps[at];
-        if (!p) throw new Error('no province ' + String(at));
-        const byDir = DIRS.map((d) => neighborInDir(tc, p, d));
-        expect(byDir.filter(Boolean)).toEqual(getNeighborsP(p, cols, rows, ps));
-        for (const [i, n] of byDir.entries()) {
-          if (!n) continue;
-          expect(Math.abs(n.row - p.row), `${DIRS[i] ?? ''} is a row away at most`).toBeLessThanOrEqual(1);
-        }
-        expect(neighborInDir(tc, p, 'N'), 'no such direction').toBeNull();
-      }),
-      { examples: [[[{ cols: 2, rows: 1 }, 0]], [[{ cols: 3, rows: 3 }, 4]]] },
-    );
-  });
+  test(
+    "on any map, the six directions name exactly a province's neighbours, in getNeighborsP's order",
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(map, ([{ cols, rows }, at]) => {
+          const provinces: Prov[] = Array.from({ length: cols * rows }, (_, id) => ({
+            id,
+            row: Math.floor(id / cols),
+            col: id % cols,
+          }));
+          const tc = turnContext(engine, { world: { cols, rows, provinces } });
+          const ps = (tc.G['world'] as { provinces: Prov[] }).provinces;
+          const p = ps[at];
+          if (!p) throw new Error('no province ' + String(at));
+          const byDir = DIRS.map((d) => neighborInDir(tc, p, d));
+          expect(byDir.filter(Boolean)).toEqual(getNeighborsP(p, cols, rows, ps));
+          for (const [i, n] of byDir.entries()) {
+            if (!n) continue;
+            expect(Math.abs(n.row - p.row), `${DIRS[i] ?? ''} is a row away at most`).toBeLessThanOrEqual(1);
+          }
+          expect(neighborInDir(tc, p, 'N'), 'no such direction').toBeNull();
+        }),
+        { examples: [[[{ cols: 2, rows: 1 }, 0]], [[{ cols: 3, rows: 3 }, 4]]] },
+      );
+    },
+  );
 });
 
 describe('pre-battle damage', () => {
@@ -95,7 +104,7 @@ describe('pre-battle damage', () => {
   const strength = fc.double({ min: 1, max: 500, noNaN: true });
   const loss = fc.option(fc.double({ min: 0, max: 1000, noNaN: true }), { nil: undefined });
 
-  test('a strength of at least 1 never rises and never falls below 1', () => {
+  test('a strength of at least 1 never rises and never falls below 1', timeLimitForPropertyRuns(RUNS, 50), () => {
     fc.assert(
       fc.property(strength, loss, loss, (str, battle, turn) => {
         const after = applyPrebattleDamage({ _tempStrReduction: battle, _turnStrReduction: turn }, str);
@@ -106,15 +115,19 @@ describe('pre-battle damage', () => {
     );
   });
 
-  test("from this battle's damage alone, never below a quarter of the strength", () => {
-    expect(FLOOR).toBe(0.25);
-    fc.assert(
-      fc.property(strength, fc.double({ min: 0, max: 1000, noNaN: true }), (str, battle) => {
-        const after = applyPrebattleDamage({ _tempStrReduction: battle }, str);
-        expect(after).toBeGreaterThanOrEqual(Math.max(1, Math.floor(str * FLOOR)));
-      }),
-    );
-  });
+  test(
+    "from this battle's damage alone, never below a quarter of the strength",
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      expect(FLOOR).toBe(0.25);
+      fc.assert(
+        fc.property(strength, fc.double({ min: 0, max: 1000, noNaN: true }), (str, battle) => {
+          const after = applyPrebattleDamage({ _tempStrReduction: battle }, str);
+          expect(after).toBeGreaterThanOrEqual(Math.max(1, Math.floor(str * FLOOR)));
+        }),
+      );
+    },
+  );
 
   test('no damage leaves the strength as it is', () => {
     expect(applyPrebattleDamage({}, 17.5)).toBe(17.5);
@@ -142,30 +155,34 @@ describe('recruit limits', () => {
   const homeProvinceIdFor = engineFn(engine, 'homeProvinceIdFor') as (gs: object, pi: number) => number;
   const homes = [homeProvinceIdFor(tc.G, 0), homeProvinceIdFor(tc.G, 1)];
 
-  test('a province raises a unit type up to its limit for the turn, then no more, touching nothing else', () => {
-    fc.assert(
-      fc.property(
-        fc.constantFrom(...TYPES),
-        fc.constantFrom(...provinces.map((p) => p.id)),
-        fc.integer({ min: 0, max: 1 }),
-        (type, provId, pi) => {
-          tc['recruitedThisTurn'] = {};
-          const prov = provinces[provId];
-          if (!prov) throw new Error('no province ' + String(provId));
-          const limit = getRecruitLimit(tc, type, prov, pi);
-          expect([1, 2]).toContain(limit);
-          let raised = 0;
-          while (canRecruit(tc, type, provId, prov, pi) && raised < 5) {
-            recordRecruit(tc, type, provId);
-            raised++;
-          }
-          expect(raised).toBe(limit);
-          expect(Object.keys(tc['recruitedThisTurn'] as object)).toEqual([`${String(provId)}:${type}`]);
-        },
-      ),
-      { examples: [['Goblin Horde', homes[0] ?? 0, 0]] },
-    );
-  });
+  test(
+    'a province raises a unit type up to its limit for the turn, then no more, touching nothing else',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom(...TYPES),
+          fc.constantFrom(...provinces.map((p) => p.id)),
+          fc.integer({ min: 0, max: 1 }),
+          (type, provId, pi) => {
+            tc['recruitedThisTurn'] = {};
+            const prov = provinces[provId];
+            if (!prov) throw new Error('no province ' + String(provId));
+            const limit = getRecruitLimit(tc, type, prov, pi);
+            expect([1, 2]).toContain(limit);
+            let raised = 0;
+            while (canRecruit(tc, type, provId, prov, pi) && raised < 5) {
+              recordRecruit(tc, type, provId);
+              raised++;
+            }
+            expect(raised).toBe(limit);
+            expect(Object.keys(tc['recruitedThisTurn'] as object)).toEqual([`${String(provId)}:${type}`]);
+          },
+        ),
+        { examples: [['Goblin Horde', homes[0] ?? 0, 0]] },
+      );
+    },
+  );
 
   test("two a turn of anything in a founder's own home, one elsewhere", () => {
     const home = provinces.find((p) => p.id === homes[0] && p.owner === 0);

@@ -843,6 +843,9 @@ describe('the test run', () => {
     expect(timeLimitForTheWork({ toolRuns: 2, everyFileReads: 1 }).timeout).toBe(
       2 * ALLOWANCE_MS.toolRuns + ALLOWANCE_MS.everyFileReads,
     );
+    expect(timeLimitForTheWork({ typeScriptPrograms: 1, matrixGamesPlayed: 2 }).timeout).toBe(
+      ALLOWANCE_MS.typeScriptPrograms + 2 * ALLOWANCE_MS.matrixGamesPlayed,
+    );
     expect(() => timeLimitForTheWork({})).toThrow(/names the work/);
     // npm test's 2,000 runs keep Vitest's 5 s; KC_FULL's ten times the runs get ten times the time
     expect(timeLimitForPropertyRuns(2_000, 2.5).timeout).toBe(5_000);
@@ -853,6 +856,92 @@ describe('the test run', () => {
       expect(read(`tests/static/${f}`), f).not.toMatch(typedIn);
     for (const f of ['tests/unit/combat-properties.test.ts', 'tests/unit/realm-reports.test.ts'])
       expect(read(f), f).toMatch(/timeLimitForPropertyRuns\(RUNS, [\d.]+\)/);
+  });
+
+  // A property test whose inputs grow with KC_FULL takes its limit from timeLimitForPropertyRuns, so the nightly's ten
+  // times the inputs get ten times the time (the two files above were the only ones checked, so seven of the nightly's
+  // properties came near Vitest's 5 s without one). Found by the syntax tree: a test whose function calls fc.assert with
+  // no numRuns (fast-check's own count, 100 or 1,000) or with one not written in as a number (a count of its own, set
+  // from KC_FULL); its limit is a timeLimitForPropertyRuns call, or a top-level const set to one. A property with its
+  // count written in (numRuns: 60) tries as many inputs in both runs, and keeps Vitest's 5 s. It can't see fc.assert
+  // in a helper the test calls.
+  function propertiesWithoutTheirLimit(file: string, text: string): string[] {
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+    const consts = new Map<string, string>();
+    for (const st of sf.statements)
+      if (ts.isVariableStatement(st))
+        for (const d of st.declarationList.declarations)
+          if (ts.isIdentifier(d.name) && d.initializer) consts.set(d.name.text, d.initializer.getText());
+    const isTheLimit = (a: ts.Node) =>
+      /\btimeLimitForPropertyRuns\(/.test(a.getText()) ||
+      (ts.isIdentifier(a) && /\btimeLimitForPropertyRuns\(/.test(consts.get(a.text) ?? ''));
+    const growsWithKcFull = (assert: ts.CallExpression) => {
+      const options = assert.arguments[1];
+      if (!options || !ts.isObjectLiteralExpression(options)) return true;
+      const runs = options.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === 'numRuns');
+      return !runs || !ts.isPropertyAssignment(runs) || !ts.isNumericLiteral(runs.initializer);
+    };
+    const wrong: string[] = [];
+    const visit = (n: ts.Node): void => {
+      ts.forEachChild(n, visit);
+      if (!ts.isCallExpression(n)) return;
+      let callee: ts.Expression = n.expression;
+      while (ts.isPropertyAccessExpression(callee) || ts.isCallExpression(callee)) callee = callee.expression;
+      if (!ts.isIdentifier(callee) || !['test', 'it'].includes(callee.text)) return;
+      const fn = n.arguments.find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a));
+      if (!fn) return;
+      const asserts: ts.CallExpression[] = [];
+      const find = (m: ts.Node): void => {
+        if (ts.isCallExpression(m) && m.expression.getText() === 'fc.assert') asserts.push(m);
+        ts.forEachChild(m, find);
+      };
+      find(fn);
+      if (!asserts.some(growsWithKcFull)) return;
+      if (n.arguments.some((a, i) => i > 0 && a !== fn && isTheLimit(a))) return;
+      const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+      wrong.push(`${file}:${String(line)}`);
+    };
+    visit(sf);
+    return wrong;
+  }
+  const testFiles = (dir: string): string[] =>
+    fs
+      .readdirSync(path.join(ROOT, dir), { withFileTypes: true })
+      .flatMap((e) =>
+        e.isDirectory()
+          ? e.name === 'quarantine' || e.name === 'fixtures'
+            ? []
+            : testFiles(`${dir}/${e.name}`)
+          : e.name.endsWith('.test.ts')
+            ? [`${dir}/${e.name}`]
+            : [],
+      );
+
+  test(
+    'every property test whose inputs grow with KC_FULL takes its limit from timeLimitForPropertyRuns',
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    () => {
+      const files = testFiles('tests');
+      expect(files).toContain('tests/unit/pre-battle-duels.test.ts');
+      expect(files.flatMap((f) => propertiesWithoutTheirLimit(f, read(f)))).toEqual([]);
+    },
+  );
+
+  test('planted: a property without its limit is found; one with its count written in is not', () => {
+    const file = 'tests/unit/pre-battle-duels.test.ts';
+    const text = read(file);
+    expect(propertiesWithoutTheirLimit(file, text)).toEqual([]);
+    const without = text.replace(/^ {2}timeLimitForPropertyRuns\(RUNS, 50\),\n/m, '');
+    expect(without).not.toBe(text);
+    expect(propertiesWithoutTheirLimit(file, without)).toEqual([
+      expect.stringMatching(/^tests\/unit\/pre-battle-duels\.test\.ts:\d+$/),
+    ]);
+    const planted = (options: string) =>
+      `test('p', () => { fc.assert(fc.property(fc.nat(), () => true)${options}); });\n`;
+    expect(propertiesWithoutTheirLimit('p.test.ts', planted(''))).toEqual(['p.test.ts:1']);
+    expect(propertiesWithoutTheirLimit('p.test.ts', planted(', { examples: [[1]] }'))).toEqual(['p.test.ts:1']);
+    expect(propertiesWithoutTheirLimit('p.test.ts', planted(', { numRuns: RUNS }'))).toEqual(['p.test.ts:1']);
+    expect(propertiesWithoutTheirLimit('p.test.ts', planted(', { numRuns: 60 }'))).toEqual([]);
   });
 });
 

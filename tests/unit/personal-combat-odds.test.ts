@@ -10,6 +10,11 @@
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const { call, base, MON } = await personalCombatEngine();
 const { TEMPERS_P, temperOf } = await import('../../src/engine/world/tables.ts');
@@ -47,7 +52,7 @@ describe('the courage test (pcCourageChance)', () => {
     expect(courage(foe(4, 'Cautious'), null)).toBe(30); // no creature: no stature
   });
 
-  test('the chance is a whole number from 10% to 70%, whoever faces whom', () => {
+  test('the chance is a whole number from 10% to 70%, whoever faces whom', timeLimitForPropertyRuns(RUNS, 50), () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 0, max: 9 }),
@@ -108,20 +113,24 @@ describe('the chances every fight rolls', () => {
   };
   const pair = fc.tuple(fighterArb, statusArb, fighterArb, statusArb);
 
-  test('a melee blow lands from 5% to 80%, and never above 80% less the defender’s guard', () => {
-    fc.assert(
-      fc.property(pair, ([a, sa, d, sd]) => {
-        const A = fighter(a, sa);
-        const D = fighter(d, sd);
-        const c = call('pcHitChance', A, D) as number;
-        expect(Number.isInteger(c)).toBe(true);
-        expect(c).toBeGreaterThanOrEqual(HIT_MIN);
-        expect(c).toBeLessThanOrEqual(Math.max(HIT_MIN, HIT_MAX - guardOf(D['temper'])));
-      }),
-    );
-  });
+  test(
+    'a melee blow lands from 5% to 80%, and never above 80% less the defender’s guard',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(pair, ([a, sa, d, sd]) => {
+          const A = fighter(a, sa);
+          const D = fighter(d, sd);
+          const c = call('pcHitChance', A, D) as number;
+          expect(Number.isInteger(c)).toBe(true);
+          expect(c).toBeGreaterThanOrEqual(HIT_MIN);
+          expect(c).toBeLessThanOrEqual(Math.max(HIT_MIN, HIT_MAX - guardOf(D['temper'])));
+        }),
+      );
+    },
+  );
 
-  test('an arrow lands from 5% to 80%', () => {
+  test('an arrow lands from 5% to 80%', timeLimitForPropertyRuns(RUNS, 50), () => {
     fc.assert(
       fc.property(pair, ([a, sa, d, sd]) => {
         const c = call('pcArrowHitChance', fighter(a, sa), fighter(d, sd)) as number;
@@ -132,20 +141,24 @@ describe('the chances every fight rolls', () => {
     );
   });
 
-  test('a flight succeeds from 5% to 95%; a change of range from 10% to 90%', () => {
-    fc.assert(
-      fc.property(pair, fc.constantFrom('advance', 'withdraw'), ([a, sa, d, sd], mode) => {
-        const A = fighter(a, sa);
-        const D = fighter(d, sd);
-        const flee = call('pcFleeChance', A, D) as number;
-        expect(Number.isInteger(flee)).toBe(true);
-        expect(flee).toBeGreaterThanOrEqual(5);
-        expect(flee).toBeLessThanOrEqual(95);
-        const move = call('pcMoveCheck', A, D, mode) as number;
-        expect(Number.isFinite(move)).toBe(true);
-        expect(move).toBeGreaterThanOrEqual(10);
-        expect(move).toBeLessThanOrEqual(90);
-      }),
-    );
-  });
+  test(
+    'a flight succeeds from 5% to 95%; a change of range from 10% to 90%',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(pair, fc.constantFrom('advance', 'withdraw'), ([a, sa, d, sd], mode) => {
+          const A = fighter(a, sa);
+          const D = fighter(d, sd);
+          const flee = call('pcFleeChance', A, D) as number;
+          expect(Number.isInteger(flee)).toBe(true);
+          expect(flee).toBeGreaterThanOrEqual(5);
+          expect(flee).toBeLessThanOrEqual(95);
+          const move = call('pcMoveCheck', A, D, mode) as number;
+          expect(Number.isFinite(move)).toBe(true);
+          expect(move).toBeGreaterThanOrEqual(10);
+          expect(move).toBeLessThanOrEqual(90);
+        }),
+      );
+    },
+  );
 });

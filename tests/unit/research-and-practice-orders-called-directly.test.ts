@@ -51,6 +51,11 @@ import {
   type ResearchAndPracticeOrderCase,
 } from '../lib/research-and-practice-order-cases.ts';
 import { compactDeclaration } from '../lib/source.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
 
@@ -673,41 +678,45 @@ describe('Practice Skill, called directly', () => {
     expect({ pay: h['pay'], told: textOf(b, h).includes('wage') }).toEqual({ pay: undefined, told: false });
   });
 
-  test('property: a practice raises the skill by one at most, never past 5, and certainly beside a better comrade', () => {
-    const comrade = fc.record({
-      level: fc.nat(6),
-      realm: fc.constantFrom(0, 0, 2),
-      skill: fc.constantFrom('spy', 'thief'),
-    });
-    const seen = { taught: 0, rose: 0, stayed: 0 };
-    fc.assert(
-      fc.property(
-        fc.nat(7),
-        fc.array(comrade, { maxLength: 3 }),
-        fc.integer({ min: 1, max: 100 }),
-        (level, others, roll) => {
-          const b = fresh();
-          const h = elf(b, { spy: level });
-          const os = others.map((x) => {
-            const c = hero(b, { player: x.realm, at: b.X, skills: skilled({ spy: x.level, thief: x.level }) });
-            return { c, ...x };
-          });
-          b.G.turnOrders = Object.fromEntries(os.map(({ c, skill }) => [c.id, [o('practice', skill)]]));
-          startPhase(b, 0);
-          rolls([roll], () => {
-            play(b, h, o('practice', 'spy'));
-          });
-          const after = h.skills['spy'] ?? 0;
-          const taught = level < 5 && os.some((x) => x.realm === 0 && x.skill === 'spy' && x.level > level);
-          expect(after - level).toBeGreaterThanOrEqual(0);
-          expect(after - level).toBeLessThanOrEqual(level < 5 ? 1 : 0);
-          expect(taught ? after : level + 1).toBe(level + 1);
-          seen[taught ? 'taught' : after > level ? 'rose' : 'stayed']++;
-        },
-      ),
-    );
-    expect(Object.values(seen).every((n) => n > 0)).toBe(true);
-  });
+  test(
+    'property: a practice raises the skill by one at most, never past 5, and certainly beside a better comrade',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const comrade = fc.record({
+        level: fc.nat(6),
+        realm: fc.constantFrom(0, 0, 2),
+        skill: fc.constantFrom('spy', 'thief'),
+      });
+      const seen = { taught: 0, rose: 0, stayed: 0 };
+      fc.assert(
+        fc.property(
+          fc.nat(7),
+          fc.array(comrade, { maxLength: 3 }),
+          fc.integer({ min: 1, max: 100 }),
+          (level, others, roll) => {
+            const b = fresh();
+            const h = elf(b, { spy: level });
+            const os = others.map((x) => {
+              const c = hero(b, { player: x.realm, at: b.X, skills: skilled({ spy: x.level, thief: x.level }) });
+              return { c, ...x };
+            });
+            b.G.turnOrders = Object.fromEntries(os.map(({ c, skill }) => [c.id, [o('practice', skill)]]));
+            startPhase(b, 0);
+            rolls([roll], () => {
+              play(b, h, o('practice', 'spy'));
+            });
+            const after = h.skills['spy'] ?? 0;
+            const taught = level < 5 && os.some((x) => x.realm === 0 && x.skill === 'spy' && x.level > level);
+            expect(after - level).toBeGreaterThanOrEqual(0);
+            expect(after - level).toBeLessThanOrEqual(level < 5 ? 1 : 0);
+            expect(taught ? after : level + 1).toBe(level + 1);
+            seen[taught ? 'taught' : after > level ? 'rose' : 'stayed']++;
+          },
+        ),
+      );
+      expect(Object.values(seen).every((n) => n > 0)).toBe(true);
+    },
+  );
 });
 
 // ── Rest ────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -737,36 +746,40 @@ describe('Rest, called directly', () => {
     expect({ healed: healed(b, h), hp: h.hp }).toEqual({ healed: 12, hp: 17 });
   });
 
-  test('property: a Rest never takes HP away and never heals past the maximum', () => {
-    const restDiscoveries = ['sd28', 'ad06', 'ag06', 'au07', 'ap20'];
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 1, max: 60 }),
-        fc.nat(60),
-        fc.constantFrom('Divine', 'Good', 'Druidic', 'Pagan', 'Neutral'),
-        fc.subarray(restDiscoveries),
-        fc.boolean(),
-        fc.constantFrom('plain', 'forest', 'jungle'),
-        (max, hp0, alignment, known, own, terrain) => {
-          const b = fresh();
-          realm(b)['alignment'] = alignment;
-          b.X.terrain = terrain;
-          knows(b, (d) => known.includes(d.id));
-          if (own) {
-            b.own(b.X, 0);
-            realm(b)['homeProvinceId'] = b.X.id;
-          }
-          const h = at(b, { king: true, hp: max });
-          h.hp = Math.min(hp0, max);
-          const was = h.hp;
-          play(b, h, o('rest'));
-          expect(h.hp).toBeGreaterThanOrEqual(was);
-          expect(h.hp).toBeLessThanOrEqual(max);
-          expect(healed(b, h)).toBeGreaterThanOrEqual(known.includes('sd28') ? 0 : 1);
-        },
-      ),
-    );
-  });
+  test(
+    'property: a Rest never takes HP away and never heals past the maximum',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      const restDiscoveries = ['sd28', 'ad06', 'ag06', 'au07', 'ap20'];
+      fc.assert(
+        fc.property(
+          fc.integer({ min: 1, max: 60 }),
+          fc.nat(60),
+          fc.constantFrom('Divine', 'Good', 'Druidic', 'Pagan', 'Neutral'),
+          fc.subarray(restDiscoveries),
+          fc.boolean(),
+          fc.constantFrom('plain', 'forest', 'jungle'),
+          (max, hp0, alignment, known, own, terrain) => {
+            const b = fresh();
+            realm(b)['alignment'] = alignment;
+            b.X.terrain = terrain;
+            knows(b, (d) => known.includes(d.id));
+            if (own) {
+              b.own(b.X, 0);
+              realm(b)['homeProvinceId'] = b.X.id;
+            }
+            const h = at(b, { king: true, hp: max });
+            h.hp = Math.min(hp0, max);
+            const was = h.hp;
+            play(b, h, o('rest'));
+            expect(h.hp).toBeGreaterThanOrEqual(was);
+            expect(h.hp).toBeLessThanOrEqual(max);
+            expect(healed(b, h)).toBeGreaterThanOrEqual(known.includes('sd28') ? 0 : 1);
+          },
+        ),
+      );
+    },
+  );
 });
 
 // ── Research Breakthrough ───────────────────────────────────────────────────────────────────────────────────────
@@ -801,30 +814,34 @@ describe('Research Breakthrough, called directly', () => {
     expect(sageRolls(xp)).toEqual([SKILLGAIN.std]);
   });
 
-  test('property: one order makes one discovery, of the realm’s table, never one it knew', () => {
-    fc.assert(
-      fc.property(
-        fc.constantFrom('Divine', 'Good', 'Undead', 'Neutral'),
-        fc.constantFrom('Human', 'Elven', 'Dwarven', 'Orcish'),
-        fc.double({ min: 0, max: 0.999, noNaN: true }),
-        fc.nat(296),
-        (alignment, race, die, knownCount) => {
-          const b = fresh();
-          Object.assign(realm(b), { alignment, race });
-          const table = discoveries(b).filter((d) => eligible(d, alignment, race));
-          const knew = new Set(table.slice(0, Math.min(knownCount, table.length)).map((d) => d.id));
-          knows(b, (d) => knew.has(d.id));
-          const h = at(b, { king: true, skills: skilled({ sage: 7 }) });
-          withDice(engine, [die, 0.999], () => {
-            play(b, h, o('research_breakthrough'));
-          });
-          const fresh2 = ids(b).filter((id) => !knew.has(id));
-          expect(fresh2.length).toBe(knew.size < table.length ? 1 : 0);
-          for (const id of fresh2) expect(table.some((d) => d.id === id)).toBe(true);
-        },
-      ),
-    );
-  });
+  test(
+    'property: one order makes one discovery, of the realm’s table, never one it knew',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(
+          fc.constantFrom('Divine', 'Good', 'Undead', 'Neutral'),
+          fc.constantFrom('Human', 'Elven', 'Dwarven', 'Orcish'),
+          fc.double({ min: 0, max: 0.999, noNaN: true }),
+          fc.nat(296),
+          (alignment, race, die, knownCount) => {
+            const b = fresh();
+            Object.assign(realm(b), { alignment, race });
+            const table = discoveries(b).filter((d) => eligible(d, alignment, race));
+            const knew = new Set(table.slice(0, Math.min(knownCount, table.length)).map((d) => d.id));
+            knows(b, (d) => knew.has(d.id));
+            const h = at(b, { king: true, skills: skilled({ sage: 7 }) });
+            withDice(engine, [die, 0.999], () => {
+              play(b, h, o('research_breakthrough'));
+            });
+            const fresh2 = ids(b).filter((id) => !knew.has(id));
+            expect(fresh2.length).toBe(knew.size < table.length ? 1 : 0);
+            for (const id of fresh2) expect(table.some((d) => d.id === id)).toBe(true);
+          },
+        ),
+      );
+    },
+  );
 });
 
 test('every order of the family is a function of its own, and processOrder only calls it', () => {

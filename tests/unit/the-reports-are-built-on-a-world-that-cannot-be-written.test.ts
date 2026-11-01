@@ -27,6 +27,7 @@ import { playHash, proseHash, withoutStamps } from '../../tools/balance/hash.ts'
 import { MAP_SIZES, matrix, MAX_TURNS } from '../../tools/balance/matrix.ts';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 import { PAGE_DRAWS_AS_IT_LOADS, setupsOf, slotRowsJsonOf, stampedAsTheShellSaves } from '../lib/matrix-game.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const GAME_ID = 'bots-32';
 const SPEC = matrix('A').find((g) => g.id === GAME_ID);
@@ -96,94 +97,97 @@ describe(`a whole game (${GAME_ID}), every report built on a world that refuses 
     afterTheStealth: '',
   };
 
-  beforeAll(async () => {
-    const spec = SPEC;
-    const sc = await aStagedTurnOnTheEnginesModules({ seed: spec.seed });
-    const { kcRng } = await import('../../src/engine/rng.ts');
-    const { generateNewGame } = await import('../../src/engine/world/generate.ts');
-    const { resolveTurn } = await import('../../src/engine/run-turn.ts');
-    const reportsModule = await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
-    // Every realm's report (as the harness's reportEveryRealm), each built on the guarded world and log, and on dice that
-    // count each draw (the ones in use, given back after).
-    const build = reportsModule.buildReports;
-    vi.spyOn(reportsModule, 'buildReports').mockImplementation((whatTheReportsRead: TurnContext) => {
-      const was = kcRng.use(() => {
-        played.draws += 1;
-        return was();
-      });
-      try {
-        return build({
-          ...whatTheReportsRead,
-          freshPlayers: whatTheReportsRead.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),
-          G: refusingEveryWrite(whatTheReportsRead.G, 'G', (w) => played.writes.push(w)),
-          turnLog: refusingEveryWrite(whatTheReportsRead.turnLog, 'log', (w) => played.writes.push(w)),
+  beforeAll(
+    async () => {
+      const spec = SPEC;
+      const sc = await aStagedTurnOnTheEnginesModules({ seed: spec.seed });
+      const { kcRng } = await import('../../src/engine/rng.ts');
+      const { generateNewGame } = await import('../../src/engine/world/generate.ts');
+      const { resolveTurn } = await import('../../src/engine/run-turn.ts');
+      const reportsModule = await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
+      // Every realm's report (as the harness's reportEveryRealm), each built on the guarded world and log, and on dice that
+      // count each draw (the ones in use, given back after).
+      const build = reportsModule.buildReports;
+      vi.spyOn(reportsModule, 'buildReports').mockImplementation((whatTheReportsRead: TurnContext) => {
+        const was = kcRng.use(() => {
+          played.draws += 1;
+          return was();
         });
-      } finally {
-        kcRng.use(was);
-      }
-    });
-    // The matrix's world (tests/lib/matrix-game.ts's newWorldOf, on the modules): the page's draw as it loads first.
-    for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) kcRng();
-    const world = generateNewGame(setupsOf(spec), MAP_SIZES[spec.realms], 0, { seaPct: spec.seaPct }) as Record<
-      string,
-      unknown
-    >;
-    world['turnMode'] = { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null };
-    world['botDifficulty'] = 'hard';
-    world['botDiplomacy'] = spec.diplomacy;
-    const first = JSON.stringify(world);
-    let state = first;
-    try {
-      for (let t = 1; t <= MAX_TURNS; t++) {
-        const before = JSON.parse(state) as { turn: number; gameOver?: unknown };
-        if (before.gameOver) break;
-        const turn = sc.play(state, JSON.parse(slotRowsJsonOf(spec, state, before.turn)) as unknown[]);
-        state = stampedAsTheShellSaves(JSON.stringify(turn.S2));
-        const realms = Object.keys(turn.reports)
-          .map(Number)
-          .sort((a, b) => a - b);
-        played.turns.push(
-          realms
-            .map((realm) => {
-              const r = withoutStamps(turn.reports[realm]);
-              return `${String(realm)}:${playHash(r)}/${proseHash(r)}`;
-            })
-            .join(' '),
-        );
-        const r = played.reached;
-        for (const realm of realms) {
-          const report = turn.reports[realm] as Report;
-          r.battlesMarked += (report.worldMeta?.provinces ?? []).filter((p) => p?.hadBattle).length;
-          r.heroesWearingItems += (report.characters ?? []).filter((c) =>
-            (c.items ?? []).some((it) => it?.equipped === true),
-          ).length;
-          r.clairvoyance += (report.lastTurnLog ?? []).filter((e) => (e.text ?? '').includes('Clairvoyance')).length;
-          r.spied += (report.spyActivity ?? []).length;
+        try {
+          return build({
+            ...whatTheReportsRead,
+            freshPlayers: whatTheReportsRead.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),
+            G: refusingEveryWrite(whatTheReportsRead.G, 'G', (w) => played.writes.push(w)),
+            turnLog: refusingEveryWrite(whatTheReportsRead.turnLog, 'log', (w) => played.writes.push(w)),
+          });
+        } finally {
+          kcRng.use(was);
         }
-        r.movedUnseen += turn.log.filter((e) => (e.text ?? '').includes('moved unseen this turn')).length;
-        const after = turn.S2 as { turn: number; characters?: ({ _invisTurn?: number } | null)[] };
-        r.invisibleThisTurn += (after.characters ?? []).filter((c) => c?._invisTurn === after.turn - 1).length;
+      });
+      // The matrix's world (tests/lib/matrix-game.ts's newWorldOf, on the modules): the page's draw as it loads first.
+      for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) kcRng();
+      const world = generateNewGame(setupsOf(spec), MAP_SIZES[spec.realms], 0, { seaPct: spec.seaPct }) as Record<
+        string,
+        unknown
+      >;
+      world['turnMode'] = { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null };
+      world['botDifficulty'] = 'hard';
+      world['botDiplomacy'] = spec.diplomacy;
+      const first = JSON.stringify(world);
+      let state = first;
+      try {
+        for (let t = 1; t <= MAX_TURNS; t++) {
+          const before = JSON.parse(state) as { turn: number; gameOver?: unknown };
+          if (before.gameOver) break;
+          const turn = sc.play(state, JSON.parse(slotRowsJsonOf(spec, state, before.turn)) as unknown[]);
+          state = stampedAsTheShellSaves(JSON.stringify(turn.S2));
+          const realms = Object.keys(turn.reports)
+            .map(Number)
+            .sort((a, b) => a - b);
+          played.turns.push(
+            realms
+              .map((realm) => {
+                const r = withoutStamps(turn.reports[realm]);
+                return `${String(realm)}:${playHash(r)}/${proseHash(r)}`;
+              })
+              .join(' '),
+          );
+          const r = played.reached;
+          for (const realm of realms) {
+            const report = turn.reports[realm] as Report;
+            r.battlesMarked += (report.worldMeta?.provinces ?? []).filter((p) => p?.hadBattle).length;
+            r.heroesWearingItems += (report.characters ?? []).filter((c) =>
+              (c.items ?? []).some((it) => it?.equipped === true),
+            ).length;
+            r.clairvoyance += (report.lastTurnLog ?? []).filter((e) => (e.text ?? '').includes('Clairvoyance')).length;
+            r.spied += (report.spyActivity ?? []).length;
+          }
+          r.movedUnseen += turn.log.filter((e) => (e.text ?? '').includes('moved unseen this turn')).length;
+          const after = turn.S2 as { turn: number; characters?: ({ _invisTurn?: number } | null)[] };
+          r.invisibleThisTurn += (after.characters ?? []).filter((c) => c?._invisTurn === after.turn - 1).length;
+        }
+      } catch (err) {
+        played.error = String((err as { message?: unknown }).message ?? err);
       }
-    } catch (err) {
-      played.error = String((err as { message?: unknown }).message ?? err);
-    }
-    // The order: the game's first turn again, its reports asked for before the stealth, then after it. The engine's
-    // console quiet, as the harness has it.
-    vi.spyOn(console, 'log').mockImplementation(() => undefined);
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const resolved = resolveTurn(first, JSON.parse(slotRowsJsonOf(spec, first, 1)), 1, null) as Resolved;
-    try {
-      build(resolved.whatTheReportsRead());
-    } catch (err) {
-      played.beforeTheStealth = String((err as { message?: unknown }).message);
-    }
-    try {
-      resolved.spyStealthAndInvisibilityStampedForTheReports();
-      played.afterTheStealth = typeof build(resolved.whatTheReportsRead());
-    } catch (err) {
-      played.afterTheStealth = String((err as { message?: unknown }).message);
-    }
-  });
+      // The order: the game's first turn again, its reports asked for before the stealth, then after it. The engine's
+      // console quiet, as the harness has it.
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const resolved = resolveTurn(first, JSON.parse(slotRowsJsonOf(spec, first, 1)), 1, null) as Resolved;
+      try {
+        build(resolved.whatTheReportsRead());
+      } catch (err) {
+        played.beforeTheStealth = String((err as { message?: unknown }).message);
+      }
+      try {
+        resolved.spyStealthAndInvisibilityStampedForTheReports();
+        played.afterTheStealth = typeof build(resolved.whatTheReportsRead());
+      } catch (err) {
+        played.afterTheStealth = String((err as { message?: unknown }).message);
+      }
+    },
+    timeLimitForTheWork({ matrixGamesPlayed: 1 }).timeout,
+  );
   afterAll(() => {
     vi.restoreAllMocks();
   });

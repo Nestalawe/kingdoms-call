@@ -105,12 +105,13 @@ A test's outcome must not depend on luck (CLAUDE.md, "A test's outcome must not 
 
 ## Time limits sized to the work, never a retry
 
-Vitest stops a test after 5 s. A test that builds the site, builds a TypeScript program, runs a tool over the tree
-(knip, dependency-cruiser, ESLint) or reads every file of `src/` gets a limit from `lib/time-limits.ts`: an allowance
-for each piece of that work, about five times the longest it has taken on GitHub's runners
-(`timeLimitForTheWork({ siteBuilds: 3 })`). A property test gets one from its run count
-(`timeLimitForPropertyRuns(RUNS, 2.5)`), so `KC_FULL`'s ten times the runs get ten times the time. The static tests
-type in no limit of their own.
+Vitest stops a test after 5 s, a hook after 10 s. A test or hook that builds the site, builds a TypeScript program,
+runs a tool over the tree (knip, dependency-cruiser, ESLint), reads every file of `src/` or plays a whole matrix game
+gets a limit from `lib/time-limits.ts`: an allowance for each piece of that work, about five times the longest it has
+taken on GitHub's runners (`timeLimitForTheWork({ siteBuilds: 3 })`; a hook: `beforeAll(fn, timeLimitForTheWork({
+matrixGamesPlayed: 1 }).timeout)`). A property test whose inputs grow with `KC_FULL` gets one from its run count
+(`timeLimitForPropertyRuns(RUNS, 50)`), so the nightly's ten times the runs get ten times the time. `harness` and
+`static/a-hook-or-test-that-plays-a-whole-matrix-game-…` check both. The static tests type in no limit of their own.
 
 ## The quick check, the ratchet and CI
 

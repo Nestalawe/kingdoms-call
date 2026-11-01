@@ -51,6 +51,7 @@ import { engineEntryFiles } from '../../tools/pages.ts';
 import { loadEngine } from '../lib/engine.ts';
 import { GAME, newWorld, PAGE_DRAWS_AS_IT_LOADS, slotRows, stampedAsTheShellSaves } from '../lib/matrix-game.ts';
 import { plantBefore } from '../lib/source.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 /** The caches a turn seeds afresh at its start, so they carry nothing from one turn to the next. */
 const RESEEDED = ['_usedHeroNames', '_usedHeroFirsts', '_usedHeroEpithets', '_usedArmyUnitNames', 'maxHpPlayers'];
@@ -174,50 +175,53 @@ describe('a whole game, played in the bare vm', () => {
     said: [] as string[],
   };
 
-  beforeAll(() => {
-    const e = pureEngine();
-    const names = engineVariables();
-    const snapshot = snapshotOf(e, names);
-    const globals = vm.runInContext('()=>Object.getOwnPropertyNames(globalThis)', e.engine) as () => string[];
-    for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) vm.runInContext('kcRng()', e.engine);
-    let state = newWorld(e.engine);
-    const before = new Set(globals());
-    let was = snapshot();
-    for (let turn = 1; turn <= MAX_TURNS; turn++) {
-      if ((JSON.parse(state) as { gameOver?: unknown }).gameOver) break;
-      const resolved = e.resolveTurn(state, slotRows(e.engine, state, turn), turn, shellSeed(e.engine));
-      resolved.spyStealthAndInvisibilityStampedForTheReports();
-      const { reports, gmLog } = e.buildReports(resolved.whatTheReportsRead());
-      if (turn === 1) {
-        try {
-          e.buildReports(resolved.whatTheReportsRead());
-        } catch (err) {
-          played.secondCall = String((err as { message?: unknown }).message); // the vm's own Error, not this realm's
+  beforeAll(
+    () => {
+      const e = pureEngine();
+      const names = engineVariables();
+      const snapshot = snapshotOf(e, names);
+      const globals = vm.runInContext('()=>Object.getOwnPropertyNames(globalThis)', e.engine) as () => string[];
+      for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) vm.runInContext('kcRng()', e.engine);
+      let state = newWorld(e.engine);
+      const before = new Set(globals());
+      let was = snapshot();
+      for (let turn = 1; turn <= MAX_TURNS; turn++) {
+        if ((JSON.parse(state) as { gameOver?: unknown }).gameOver) break;
+        const resolved = e.resolveTurn(state, slotRows(e.engine, state, turn), turn, shellSeed(e.engine));
+        resolved.spyStealthAndInvisibilityStampedForTheReports();
+        const { reports, gmLog } = e.buildReports(resolved.whatTheReportsRead());
+        if (turn === 1) {
+          try {
+            e.buildReports(resolved.whatTheReportsRead());
+          } catch (err) {
+            played.secondCall = String((err as { message?: unknown }).message); // the vm's own Error, not this realm's
+          }
         }
+        played.turns++;
+        played.reports.push(reports.map((r) => [r.gp.player_index, r.report.playerIndex]));
+        played.nextTurns.push((JSON.parse(resolved.state) as { turn: number }).turn);
+        played.logLines.push(gmLog.length);
+        const now = snapshot();
+        for (const n of names) if (now[n] !== was[n]) played.changed.set(n, [...(played.changed.get(n) ?? []), turn]);
+        was = now;
+        state = stampedAsTheShellSaves(resolved.state);
+        const mine = reports.find((r) => r.gp.player_index === SCRIPTED_REALM);
+        played.hashes.push(
+          turnHashes({
+            state: JSON.parse(state) as unknown,
+            gmLog: JSON.parse(JSON.stringify(gmLog)) as unknown[],
+            telemetry: [],
+            report: mine ? (JSON.parse(JSON.stringify(mine.report)) as Record<string, unknown>) : null,
+            writes: [],
+          }),
+        );
       }
-      played.turns++;
-      played.reports.push(reports.map((r) => [r.gp.player_index, r.report.playerIndex]));
-      played.nextTurns.push((JSON.parse(resolved.state) as { turn: number }).turn);
-      played.logLines.push(gmLog.length);
-      const now = snapshot();
-      for (const n of names) if (now[n] !== was[n]) played.changed.set(n, [...(played.changed.get(n) ?? []), turn]);
-      was = now;
-      state = stampedAsTheShellSaves(resolved.state);
-      const mine = reports.find((r) => r.gp.player_index === SCRIPTED_REALM);
-      played.hashes.push(
-        turnHashes({
-          state: JSON.parse(state) as unknown,
-          gmLog: JSON.parse(JSON.stringify(gmLog)) as unknown[],
-          telemetry: [],
-          report: mine ? (JSON.parse(JSON.stringify(mine.report)) as Record<string, unknown>) : null,
-          writes: [],
-        }),
-      );
-    }
-    played.added = globals().filter((n) => !before.has(n));
-    played.reaches = e.reaches;
-    played.said = e.said;
-  });
+      played.added = globals().filter((n) => !before.has(n));
+      played.reaches = e.reaches;
+      played.said = e.said;
+    },
+    timeLimitForTheWork({ matrixGamesPlayed: 1 }).timeout,
+  );
 
   test('every turn resolves and builds its reports, and the reports are built once', () => {
     expect(played.turns, 'the game played on past its first turn').toBeGreaterThan(1);

@@ -14,6 +14,11 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+
+// fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
+// ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
+const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
@@ -65,31 +70,35 @@ describe('spreadTerror', () => {
       ) => (Province | null)[]
     )(p, G.world.cols, G.world.rows, G.world.provinces).filter((n): n is Province => n != null);
 
-  test('the battle province and each neighbour hold one stack a victory, up to TERROR_MAX_STACKS', () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 0, max: G.world.provinces.length - 1 }),
-        fc.integer({ min: 0, max: 8 }),
-        fc.integer({ min: 0, max: 1 }),
-        (at, victories, byPlayer) => {
-          G.world.provinces.forEach((p) => {
-            delete p['_terrorStacks'];
-            delete p['_terrorTurn'];
-            delete p['_terrorisedBy'];
-            delete p['_terrorPct'];
-          });
-          const P = G.world.provinces[at];
-          if (!P) throw new Error('no province ' + String(at));
-          for (let i = 0; i < victories; i++) spreadTerror(tc, P, byPlayer, null);
-          for (const q of [P, ...neighbours(P)]) {
-            expect(q['_terrorStacks'] ?? 0).toBe(Math.min(max, victories));
-            expect(q['_terrorisedBy'] ?? byPlayer).toBe(byPlayer);
-          }
-        },
-      ),
-      { examples: [[0, 5, 0]] },
-    );
-  });
+  test(
+    'the battle province and each neighbour hold one stack a victory, up to TERROR_MAX_STACKS',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(
+          fc.integer({ min: 0, max: G.world.provinces.length - 1 }),
+          fc.integer({ min: 0, max: 8 }),
+          fc.integer({ min: 0, max: 1 }),
+          (at, victories, byPlayer) => {
+            G.world.provinces.forEach((p) => {
+              delete p['_terrorStacks'];
+              delete p['_terrorTurn'];
+              delete p['_terrorisedBy'];
+              delete p['_terrorPct'];
+            });
+            const P = G.world.provinces[at];
+            if (!P) throw new Error('no province ' + String(at));
+            for (let i = 0; i < victories; i++) spreadTerror(tc, P, byPlayer, null);
+            for (const q of [P, ...neighbours(P)]) {
+              expect(q['_terrorStacks'] ?? 0).toBe(Math.min(max, victories));
+              expect(q['_terrorisedBy'] ?? byPlayer).toBe(byPlayer);
+            }
+          },
+        ),
+        { examples: [[0, 5, 0]] },
+      );
+    },
+  );
 });
 
 describe('resolvePendingSkillGain', () => {
@@ -100,31 +109,35 @@ describe('resolvePendingSkillGain', () => {
   const levels = fc.dictionary(fc.constantFrom(...SKILLS), fc.integer({ min: 0, max: 9 }));
   const candidates = fc.uniqueArray(fc.constantFrom(...SKILLS), { minLength: 1, maxLength: 4 });
 
-  test('at most one skill rises, a candidate, by one level, never past 9, and is closed for the turn', () => {
-    fc.assert(
-      fc.property(levels, candidates, fc.integer({ min: 0, max: 4 }), (skills, list, phase) => {
-        hero.skills = { ...skills };
-        delete hero['_sgLog'];
-        hero['_sgPending'] = { turn: G.turn, phase, list: list.map((skill) => ({ skill, phase })), done: false };
-        resolvePendingSkillGain(tc, hero);
-        const risen = SKILLS.filter((s) => (hero.skills[s] ?? 0) !== (skills[s] ?? 0));
-        expect(risen.length).toBeLessThanOrEqual(1);
-        expect(hero['_sgPending']).toBeNull();
-        for (const s of risen) {
-          expect(list).toContain(s);
-          expect(hero.skills[s]).toBe((skills[s] ?? 0) + 1);
-          expect(hero.skills[s]).toBeLessThanOrEqual(9);
-          expect((hero['_sgLog'] as { turnSkills: Record<string, boolean> }).turnSkills[s]).toBe(true);
-        }
-      }),
-      {
-        examples: [
-          [{ melee: 9 }, ['melee'], 0],
-          [{ march: 2 }, ['march', 'naval'], 3],
-        ],
-      },
-    );
-  });
+  test(
+    'at most one skill rises, a candidate, by one level, never past 9, and is closed for the turn',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(levels, candidates, fc.integer({ min: 0, max: 4 }), (skills, list, phase) => {
+          hero.skills = { ...skills };
+          delete hero['_sgLog'];
+          hero['_sgPending'] = { turn: G.turn, phase, list: list.map((skill) => ({ skill, phase })), done: false };
+          resolvePendingSkillGain(tc, hero);
+          const risen = SKILLS.filter((s) => (hero.skills[s] ?? 0) !== (skills[s] ?? 0));
+          expect(risen.length).toBeLessThanOrEqual(1);
+          expect(hero['_sgPending']).toBeNull();
+          for (const s of risen) {
+            expect(list).toContain(s);
+            expect(hero.skills[s]).toBe((skills[s] ?? 0) + 1);
+            expect(hero.skills[s]).toBeLessThanOrEqual(9);
+            expect((hero['_sgLog'] as { turnSkills: Record<string, boolean> }).turnSkills[s]).toBe(true);
+          }
+        }),
+        {
+          examples: [
+            [{ melee: 9 }, ['melee'], 0],
+            [{ march: 2 }, ['march', 'naval'], 3],
+          ],
+        },
+      );
+    },
+  );
 });
 
 describe('recordBattleGraves', () => {
@@ -152,40 +165,44 @@ describe('recordBattleGraves', () => {
     _temporary: fc.boolean(),
   });
 
-  test('each fallen unit leaves a grave or slips away home, never both; skeletons and doubles leave neither', () => {
-    fc.assert(
-      fc.property(
-        fc.array(unit, { maxLength: 8 }),
-        fc.constantFrom('Elven', 'Human'),
-        fc.constantFrom('forest', 'plain', 'mountain'),
-        (generated, ownerRace, terrain) => {
-          const killed: Fallen[] = generated.map((a) => ({ ...a }));
-          const owner = G.players[0];
-          if (!owner) throw new Error('no realm 0');
-          const was = owner.race;
-          owner.race = ownerRace;
-          const prov: Province = { id: 0, name: 'Testmere', terrain, battleGraves: [] };
-          const queue = tc['_elvenEscapeQueue'] as unknown[];
-          queue.length = 0;
-          try {
-            recordBattleGraves(tc, prov, killed, 0);
-          } finally {
-            owner.race = was;
-          }
-          const graves = prov['battleGraves'] as unknown[];
-          const left = killed.filter((a) => !a._isSkeletal && !a._phantom);
-          const fled = killed.filter((a) => a._elvenEscaped === true);
-          expect(graves.length + queue.length).toBe(left.length);
-          expect(queue.length).toBe(fled.length);
-          for (const a of fled) {
-            expect(ownerRace).toBe('Elven');
-            expect(a.race).toBe('Elven');
-            expect(a._temporary || a._isSkeletal || a._phantom).toBe(false);
-          }
-        },
-      ),
-    );
-  });
+  test(
+    'each fallen unit leaves a grave or slips away home, never both; skeletons and doubles leave neither',
+    timeLimitForPropertyRuns(RUNS, 50),
+    () => {
+      fc.assert(
+        fc.property(
+          fc.array(unit, { maxLength: 8 }),
+          fc.constantFrom('Elven', 'Human'),
+          fc.constantFrom('forest', 'plain', 'mountain'),
+          (generated, ownerRace, terrain) => {
+            const killed: Fallen[] = generated.map((a) => ({ ...a }));
+            const owner = G.players[0];
+            if (!owner) throw new Error('no realm 0');
+            const was = owner.race;
+            owner.race = ownerRace;
+            const prov: Province = { id: 0, name: 'Testmere', terrain, battleGraves: [] };
+            const queue = tc['_elvenEscapeQueue'] as unknown[];
+            queue.length = 0;
+            try {
+              recordBattleGraves(tc, prov, killed, 0);
+            } finally {
+              owner.race = was;
+            }
+            const graves = prov['battleGraves'] as unknown[];
+            const left = killed.filter((a) => !a._isSkeletal && !a._phantom);
+            const fled = killed.filter((a) => a._elvenEscaped === true);
+            expect(graves.length + queue.length).toBe(left.length);
+            expect(queue.length).toBe(fled.length);
+            for (const a of fled) {
+              expect(ownerRace).toBe('Elven');
+              expect(a.race).toBe('Elven');
+              expect(a._temporary || a._isSkeletal || a._phantom).toBe(false);
+            }
+          },
+        ),
+      );
+    },
+  );
 });
 
 // What no matrix game reaches in the graves' own functions (plan P1-10b19): a gap among a province's graves, a
