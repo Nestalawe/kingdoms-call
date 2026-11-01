@@ -14,7 +14,7 @@ import { recordBattleGraves, recordDeadHeroSighting } from '../graves.ts';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.ts';
 import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { activeItems, settleTheItemsAHeroGained } from '../items/equipment.ts';
-import { theExplorersItemsRevealALair } from '../rules/the-registry-of-magic-item-effects.ts';
+import { anItemIsTheMithrilSuit, theExplorersItemsRevealALair } from '../rules/the-registry-of-magic-item-effects.ts';
 import { RUMOUR_COST_BY_POWER, applyItemMaxHp, noteLairRumour, pcLearnWeakness } from '../personal-combat/helpers.ts';
 import { armyUnitName, d100, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
@@ -789,13 +789,11 @@ export function resolveSearchLairOrder(
     // personal granted relic that re-issues each turn, so it is not left behind.) Clearing
     // c.items before handleHeroDeath stops the possessions passing to the king/heir instead.
     const _lairLeft = (asItsGuardReadsIt(c.items) ?? []).filter(
-      (it: AnItemItsEffectGuarded) => !(it.effect?.stat === 'mithrilArmour'),
+      (it: AnItemItsEffectGuarded) => !anItemIsTheMithrilSuit(it),
     );
     const _lairHeld = (asItsGuardReadsIt(c.items) ?? []).slice();
     if (_lairLeft.length > 0)
-      c.items = (asItsGuardReadsIt(c.items) ?? []).filter(
-        (it: AnItemItsEffectGuarded) => it.effect?.stat === 'mithrilArmour',
-      );
+      c.items = (asItsGuardReadsIt(c.items) ?? []).filter((it: AnItemItsEffectGuarded) => anItemIsTheMithrilSuit(it));
     const _lairDied: unknown = reportHeroFall(
       turnContext,
       c,

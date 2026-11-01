@@ -3,7 +3,7 @@ import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS, monsterCat } from '../names.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { isLegendaryItem, itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
-import { anItemIsACombatItem } from '../rules/the-registry-of-magic-item-effects.ts';
+import { anItemIsACombatItem, anItemIsTheMithrilSuit } from '../rules/the-registry-of-magic-item-effects.ts';
 import type { ItemOfTheseRules } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import type { Item } from '../../schemas/saved-game-state.ts';
 
@@ -198,7 +198,7 @@ export function itemLore(it: AnItemAsItsLoreIsRead | null | undefined) {
   return (
     (it.lore ?? '') ||
     (ITEM_LORE_BY_NAME[it.name] ?? '') ||
-    (it.effect?.stat === 'mithrilArmour' ? MITHRIL_ARMOUR.lore : '') ||
+    (anItemIsTheMithrilSuit(it) ? MITHRIL_ARMOUR.lore : '') ||
     (it.desc ?? '')
   );
 }

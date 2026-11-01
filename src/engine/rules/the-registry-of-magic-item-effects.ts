@@ -893,6 +893,12 @@ export function anItemIsWornAsArmour(item: AMagicItemAsTheRegistryReadsIt): bool
   return item.effect?.stat === THE_STAT_OF_AN_ITEM_WORN_AS_ARMOUR;
 }
 
+/** Whether a held item is the Mithril suit: its effect carries the key of the `mithril-armour` row. A granted relic, so
+ *  it is never loot (the engine's Mithril passes), is kept out of a lair's hoard, and has a lore of its own. */
+export function anItemIsTheMithrilSuit(item: AMagicItemAsTheRegistryReadsIt | null | undefined): boolean {
+  return item?.effect?.stat === MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS['mithril-armour'].carriedAs.stat;
+}
+
 /** Whether a held item is a combat item: a potion, scroll or device a fighter carries into a personal combat (a hero
  *  his active ones, pcCharCombatant; a guardian those of its lair's hoard it wields, pcBuildGuardian). */
 export function anItemIsACombatItem(item: AMagicItemAsTheRegistryReadsIt): boolean {

@@ -153,6 +153,14 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'resolveCastSpellOrder',
     "P1-19y, the Wailing Phylactery's sure cast (with the spells family)",
   ],
+  ['src/engine/items/tiers-and-hoards.ts', 'itemLore', "P1-19al, the Mithril suit's identity"],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolveSearchLairOrder',
+    "P1-19al, the Mithril suit's identity",
+  ],
+  ['src/engine/personal-combat/helpers.ts', 'grantMithrilTo', "P1-19al, the Mithril suit's identity"],
+  ['src/engine/personal-combat/helpers.ts', 'isMithril', "P1-19al, the Mithril suit's identity"],
 ];
 
 /** The passes that build the treasury as the engine loads, each a named function run at once (`(function name()
