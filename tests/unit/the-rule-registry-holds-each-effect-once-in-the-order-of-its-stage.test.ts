@@ -18,7 +18,13 @@
 // row (a kind of effect) with its entry and each entry with its row; each row's kind is a kind of an effect of
 // SAGE_DISCOVERIES_P, and no two rows share a kind; and every kind of SAGE_DISCOVERIES_P has its row or is listed as
 // not yet taken (THE_KINDS_NOT_YET_TAKEN, which each row of the family shortens, to none), so a kind added to content
-// with no entry is found.
+// with no entry is found. Since P1-19ai the guardian perks' registry (src/engine/rules/the-registry-of-guardian-perks.ts)
+// is held to the same: each effect once in its stage's order (THE_ORDER_OF_EACH_STAGE_OF_THE_GUARDIAN_PERKS), each order
+// naming only entries with an effect there, each content row (a kind of perk) with its entry and each entry with its
+// row; each row's kind is a kind of a perk of MONSTERS_P, no two rows share a kind, and every kind of MONSTERS_P has its
+// row; a row names the items' effect of its own ward or rider exactly when an item carries it; and an entry with no
+// stage is a kind whose row names the items' effect, or one listed as still read inline (THE_PERKS_STILL_READ_INLINE,
+// which the family's next row empties), and no listed kind has a stage.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -28,10 +34,19 @@
 // row's name that is no spell, a row's fn that isn't its spell's, two rows' name, a flag of the order's checks with
 // no entry and an entry with no flag; in the discoveries' registry, an entry left out of its order, a row with no
 // entry, a row's kind no discovery has, two rows of one kind, a kind of content with no row and not listed, and a kind
-// listed that has a row.
+// listed that has a row; in the guardian perks', an entry left out of its order, a row with no entry, a kind no perk
+// has, two rows of one kind, a row naming another kind's item effect, a shared kind naming none, an own kind naming
+// one, a kind of content with no row, an entry with no stage unlisted, and a kind listed with a stage.
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
-import { KC_ALIGNMENTS, KC_UNIT_TYPE, SAGE_DISCOVERIES_P, SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
+import {
+  KC_ALIGNMENTS,
+  KC_UNIT_TYPE,
+  MONSTERS_P,
+  SAGE_DISCOVERIES_P,
+  SPELL_DEFS_P,
+} from '../../src/content/kingdoms-call-data.ts';
+import { GUARDIAN_PERKS_THE_REGISTRY_HOLDS } from '../../src/content/guardian-perks-their-kinds-numbers-and-words.ts';
 import { DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS } from '../../src/content/discovery-effects-their-kinds-numbers-and-words.ts';
 import { SPELL_EFFECTS_THE_REGISTRY_HOLDS } from '../../src/content/spell-effects-their-names-numbers-and-words.ts';
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS } from '../../src/content/unit-abilities-their-names-numbers-and-words.ts';
@@ -52,6 +67,10 @@ import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES,
   THE_REGISTRY_OF_DISCOVERY_EFFECTS,
 } from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_GUARDIAN_PERKS,
+  THE_REGISTRY_OF_GUARDIAN_PERKS,
+} from '../../src/engine/rules/the-registry-of-guardian-perks.ts';
 
 /** The registry as this test reads it: each entry's effects by hook point and stage, and each stage's order. */
 type Entries = Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, unknown>>>>>>;
@@ -442,5 +461,136 @@ test("planted in the discoveries' registry, an entry left out of its order, a ro
   // a kind's row taken away, and the kind left off the list
   expect(whereTheKindsAndTheRowsPart(withoutMessengerBirds, THE_KINDS_NOT_YET_TAKEN)).toEqual([
     "extendedIntel has no row and isn't listed as not yet taken",
+  ]);
+});
+
+/** A kind of perk's row as this test reads it (its ward or rider and the items' effect it names as any string, so a
+ *  planted row may name one no perk has, or another kind's effect). */
+type PerkRows = Readonly<
+  Record<
+    string,
+    {
+      readonly carriedAs: { readonly ward: string } | { readonly rider: string };
+      readonly theItemsEffectItReaches?: string;
+    }
+  >
+>;
+
+/** A kind of perk as MONSTERS_P writes it: its `fx.ward`, or its rider's key. */
+const aPerksKind = (fx: Readonly<Record<string, unknown>>): string =>
+  typeof fx['ward'] === 'string' ? fx['ward'] : (Object.keys(fx)[0] ?? '');
+/** A row's kind: its ward, or its rider. */
+const aRowsKind = (carriedAs: PerkRows[string]['carriedAs']): string =>
+  'ward' in carriedAs ? carriedAs.ward : carriedAs.rider;
+
+/** Every kind of perk MONSTERS_P's guardians carry. */
+const THE_PERKS_KINDS_IN_CONTENT: ReadonlySet<string> = new Set(
+  MONSTERS_P.flatMap((guardian) => guardian.passives.map((perk) => aPerksKind(perk.fx))),
+);
+
+/** The items' effects by the ward or rider they are carried as (the items' rows' `carriedAs`). */
+const THE_ITEMS_EFFECT_OF_EACH_WARD_AND_RIDER: ReadonlyMap<string, string> = new Map(
+  Object.entries(MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS).flatMap(([slug, row]): [string, string][] => {
+    const carriedAs: Readonly<Record<string, unknown>> = row.carriedAs;
+    const key = carriedAs['ward'] ?? carriedAs['rider'];
+    return typeof key === 'string' ? [[key, slug]] : [];
+  }),
+);
+
+/** The kinds of perk whose effect is still read inline, with no stage in the registry and no items' effect: the
+ *  guardian's own wards (plan P1-19's guardian perks, row aj, takes them). */
+const THE_PERKS_STILL_READ_INLINE: readonly string[] = [
+  'a-ward-against-one-school',
+  'a-stun-ward',
+  'a-lingering-harm-ward',
+];
+
+/** What a perk kind's row breaks: its kind a kind of a perk of MONSTERS_P, and the items' effect it names that of its
+ *  own ward or rider, exactly when an item carries it. */
+function whatAPerkKindsRowBreaks(rows: PerkRows) {
+  return (slug: string, row: { readonly name: string }): string[] => {
+    const broken = THE_PERKS_KINDS_IN_CONTENT.has(row.name) ? [] : [`${slug}'s kind, ${row.name}, is no perk's`];
+    const named = rows[slug]?.theItemsEffectItReaches;
+    const itsOwn = THE_ITEMS_EFFECT_OF_EACH_WARD_AND_RIDER.get(row.name);
+    if (named !== itsOwn) broken.push(`${slug} names ${named ?? 'no item effect'}, not ${itsOwn ?? 'none'}`);
+    return broken;
+  };
+}
+
+/** Where the entries with no stage and the list part: an entry with no stage whose row names no items' effect and that
+ *  isn't listed, and a kind listed that has a stage or names an items' effect. Then every kind of content with no row. */
+const whereTheStagesAndTheListPart = (entries: Entries, rows: PerkRows, stillInline: readonly string[]) => [
+  ...Object.entries(entries)
+    .filter(
+      ([slug, hooks]) =>
+        Object.keys(hooks).length === 0 &&
+        rows[slug]?.theItemsEffectItReaches === undefined &&
+        !stillInline.includes(slug),
+    )
+    .map(([slug]) => `${slug} has no stage, names no item effect, and isn't listed as still read inline`),
+  ...stillInline
+    .filter((slug) => Object.keys(entries[slug] ?? {}).length > 0 || rows[slug]?.theItemsEffectItReaches !== undefined)
+    .map((slug) => `${slug} is listed as still read inline, and has a stage or an item effect`),
+  ...[...THE_PERKS_KINDS_IN_CONTENT]
+    .filter((kind) => !Object.values(rows).some((row) => aRowsKind(row.carriedAs) === kind))
+    .map((kind) => `${kind} has no row`),
+];
+
+const PERK_ENTRIES: Entries = THE_REGISTRY_OF_GUARDIAN_PERKS;
+const PERK_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_GUARDIAN_PERKS;
+const PERK_ROWS: PerkRows = GUARDIAN_PERKS_THE_REGISTRY_HOLDS;
+const PERKS_REGISTRY = (entries: Entries, orders: Orders, rows: PerkRows) =>
+  whatTheRegistryBreaks(
+    entries,
+    orders,
+    Object.fromEntries(Object.entries(rows).map(([slug, row]) => [slug, { name: aRowsKind(row.carriedAs) }])),
+    whatAPerkKindsRowBreaks(rows),
+  );
+
+test("the guardian perks' registry holds each effect once, in the order of its stage, and each content row is sound", () => {
+  expect(PERKS_REGISTRY(PERK_ENTRIES, PERK_ORDERS, PERK_ROWS)).toEqual([]);
+  expect(Object.keys(PERK_ENTRIES)).toHaveLength(17);
+});
+
+test("every kind of the guardians' perks has its row, and an entry with no stage names the items' effect or is listed as still read inline", () => {
+  expect(THE_PERKS_KINDS_IN_CONTENT.size).toBe(17);
+  expect(whereTheStagesAndTheListPart(PERK_ENTRIES, PERK_ROWS, THE_PERKS_STILL_READ_INLINE)).toEqual([]);
+});
+
+test("planted in the guardian perks' registry, an entry left out of its order, a row with no entry, a kind no perk has, two rows of one kind, a wrong item effect, and the list's two partings, are found", () => {
+  const orders: Orders = {
+    ...PERK_ORDERS,
+    personalCombat: { ...PERK_ORDERS['personalCombat'], "a guardian's perks: what his card turns": ['a-tough-hide'] },
+  };
+  const withoutThorns: PerkRows = Object.fromEntries(Object.entries(PERK_ROWS).filter(([slug]) => slug !== 'thorns'));
+  const rows: PerkRows = {
+    ...withoutThorns,
+    'hard-to-hit': { carriedAs: { ward: 'plantedDodge' } },
+    'a-dread-aura': { carriedAs: { rider: 'burn' }, theItemsEffectItReaches: 'burn-rider' },
+    'a-keen-eye': { carriedAs: { rider: 'hitBonus' }, theItemsEffectItReaches: 'damage-bonus-rider' },
+    'a-stun-ward': { carriedAs: { ward: 'stunWard' }, theItemsEffectItReaches: 'stun-immunity' },
+    'planted-perk': { carriedAs: { ward: 'thorns' } },
+  };
+  expect(PERKS_REGISTRY(PERK_ENTRIES, orders, rows)).toEqual([
+    "spell-resistance is in the order of personalCombat: a guardian's perks: what his card turns 0 times",
+    "arrow-proof is in the order of personalCombat: a guardian's perks: what his card turns 0 times",
+    'a-stun-ward names stun-immunity, not none',
+    "hard-to-hit's kind, plantedDodge, is no perk's",
+    'a-keen-eye names damage-bonus-rider, not hit-bonus-rider',
+    'a-fire-or-frost-aura and a-dread-aura share the name burn',
+    'planted-perk names no item effect, not thorns',
+    'planted-perk has a content row and no entry',
+    'thorns has an entry and no content row',
+  ]);
+  expect(whereTheStagesAndTheListPart(PERK_ENTRIES, rows, ['a-stun-ward', 'a-tough-hide'])).toEqual([
+    "a-ward-against-one-school has no stage, names no item effect, and isn't listed as still read inline",
+    "a-lingering-harm-ward has no stage, names no item effect, and isn't listed as still read inline",
+    "hard-to-hit has no stage, names no item effect, and isn't listed as still read inline",
+    // its row taken away (above)
+    "thorns has no stage, names no item effect, and isn't listed as still read inline",
+    'a-stun-ward is listed as still read inline, and has a stage or an item effect',
+    'a-tough-hide is listed as still read inline, and has a stage or an item effect',
+    'dodge has no row',
+    'aura has no row',
   ]);
 });

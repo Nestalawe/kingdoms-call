@@ -21,7 +21,9 @@
 // same two faults in it. Since P1-19aa the discoveries' registry (src/engine/rules/the-registry-of-discovery-effects.ts)
 // ends the same way, `satisfies Record<DiscoveryEffectSlug, DiscoveryEffectEntry>`, on the keys of its content rows (the
 // kinds of effect it holds: src/content/discovery-effects-their-kinds-numbers-and-words.ts), and the copies plant the
-// same two faults in it.
+// same two faults in it. Since P1-19ai the guardian perks' registry (src/engine/rules/the-registry-of-guardian-perks.ts)
+// ends the same way, `satisfies Record<GuardianPerkSlug, GuardianPerkEntry>`, on the keys of its content rows (the kinds
+// of perk: src/content/guardian-perks-their-kinds-numbers-and-words.ts), and the copies plant the same two faults in it.
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
 // lower level has nothing to read. The copies hold only src/content/, src/engine/rules/ and (since P1-19m)
 // src/engine/rules-on-plain-values/ (the registries import nothing else: npm run lint:arch), so each compiles on its own
@@ -43,9 +45,11 @@ const SPELLS_REGISTRY = 'src/engine/rules/the-registry-of-spell-effects.ts';
 const SPELLS_ROWS = 'src/content/spell-effects-their-names-numbers-and-words.ts';
 const DISCOVERIES_REGISTRY = 'src/engine/rules/the-registry-of-discovery-effects.ts';
 const DISCOVERIES_ROWS = 'src/content/discovery-effects-their-kinds-numbers-and-words.ts';
+const PERKS_REGISTRY = 'src/engine/rules/the-registry-of-guardian-perks.ts';
+const PERKS_ROWS = 'src/content/guardian-perks-their-kinds-numbers-and-words.ts';
 /** The files a copy holds, whose errors it reads: the content and the registry's folder (since P1-19j, the rows of a
  *  unit no longer raised, which the content's rows read; since P1-19m, the items' rows; since P1-19u, the spells';
- *  since P1-19aa, the discoveries' kinds). */
+ *  since P1-19aa, the discoveries' kinds; since P1-19ai, the guardian perks' kinds). */
 const COPIED = [
   'src/content/kingdoms-call-data.ts',
   'src/content/the-abilities-of-a-unit-no-longer-raised.ts',
@@ -53,6 +57,7 @@ const COPIED = [
   ITEMS_ROWS,
   SPELLS_ROWS,
   DISCOVERIES_ROWS,
+  PERKS_ROWS,
   ...filesUnder(path.join(ROOT, 'src', 'engine', 'rules')).map((f) => `src/engine/rules/${f}`),
 ];
 /** And, since P1-19m, the rules on plain values, which the items' effects read (they import only themselves and the
@@ -86,6 +91,7 @@ const SPIRITWRACK_ENTRY = `  spiritwrack: {
 `;
 const SIEGECRAFT_ENTRY =
   '  siegecraft: { strength: { "a realm\'s discoveries add to a siege": A_REALMS_DISCOVERIES_ADD_TO_A_SIEGE.siegecraft } },\n';
+const THORNS_ENTRY = '  thorns: {},\n';
 const UNDEAD_BONUS_ENTRY =
   "  'undead-bonus': { strength: { \"the commander's items\": THE_COMMANDERS_ITEMS['undead-bonus'] } },\n";
 
@@ -166,6 +172,16 @@ const PLANTS: Record<string, Record<string, string>> = {
       SIEGECRAFT_ENTRY + "  'planted-kind': {},\n",
     ),
   },
+  "a guardian perk kind's row with no entry": {
+    [PERKS_ROWS]: replacedOnce(
+      read(PERKS_ROWS),
+      '} as const satisfies Readonly<Record<string, AKindOfGuardianPerk>>;',
+      "  'planted-perk': { carriedAs: { ward: 'plantedWard' }, theValueAtEachGrade: [1, 2, 3, 4], itsNumberIsWritten: 'as it is', itsWords: '{N}', inTheRulebook: { row: 'Planted', aCellWritesIt: '{N}' } },\n} as const satisfies Readonly<Record<string, AKindOfGuardianPerk>>;",
+    ),
+  },
+  "a guardian perk kind's entry with no row": {
+    [PERKS_REGISTRY]: replacedOnce(read(PERKS_REGISTRY), THORNS_ENTRY, THORNS_ENTRY + "  'planted-perk': {},\n"),
+  },
 };
 
 /** The slug a compiler message is about: the key a `satisfies` found missing, or the key it doesn't know; else, for a
@@ -200,6 +216,7 @@ function errorsIn(copies: Record<string, Record<string, string>>): Record<string
       path.join(dirOf(name), ITEMS_REGISTRY),
       path.join(dirOf(name), SPELLS_REGISTRY),
       path.join(dirOf(name), DISCOVERIES_REGISTRY),
+      path.join(dirOf(name), PERKS_REGISTRY),
     ]),
     config.options,
   );
@@ -233,6 +250,7 @@ test(
     const atTheItems = (declaration: string) => `${path.basename(ITEMS_REGISTRY)}, ${declaration}`;
     const atTheSpells = (declaration: string) => `${path.basename(SPELLS_REGISTRY)}, ${declaration}`;
     const atTheDiscoveries = (declaration: string) => `${path.basename(DISCOVERIES_REGISTRY)}, ${declaration}`;
+    const atThePerks = (declaration: string) => `${path.basename(PERKS_REGISTRY)}, ${declaration}`;
     expect(errorsIn(PLANTS)).toEqual({
       'as they are': [],
       'a content row with no entry': [
@@ -266,6 +284,13 @@ test(
       ],
       "a discovery kind's entry with no row": [
         `TS2353 in ${atTheDiscoveries('THE_REGISTRY_OF_DISCOVERY_EFFECTS')}: planted-kind`,
+      ],
+      "a guardian perk kind's row with no entry": [
+        `TS1360 in ${atThePerks('THE_REGISTRY_OF_GUARDIAN_PERKS')}: planted-perk`,
+        `TS2741 in ${atThePerks('ENTRIES')}: planted-perk`,
+      ],
+      "a guardian perk kind's entry with no row": [
+        `TS2353 in ${atThePerks('THE_REGISTRY_OF_GUARDIAN_PERKS')}: planted-perk`,
       ],
     });
   },

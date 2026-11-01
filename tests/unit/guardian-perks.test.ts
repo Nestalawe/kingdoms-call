@@ -1,5 +1,5 @@
 // 2026-10-14 (batch item 7) — every guardian has one perk per grade (Weak 1, Moderate 2, Powerful 3,
-// Legendary 4), each perk stronger the higher the grade (the decided table below), and a good share of
+// Legendary 4), each perk stronger the higher the grade (the decided table, the perks' content rows'), and a good share of
 // them are wards against magic: a ward against one school makes that school's spells less likely to
 // take hold. Checked on the table (MONSTERS_P and the migration are module level) and in the engine
 // (pcMonsterCombatant, pcCastCombatSpell, pcRoundStart and resolvePersonalCombat).
@@ -16,6 +16,7 @@
 // 2026-10-14). `unit/guardian-perks.test.ts`: every function called directly on the engine's modules
 // (`lib/personal-combat.ts`; P1-08e: it was a code-anchor test that ran a turn on the GM portal first)
 import { expect, test } from 'vitest';
+import { GUARDIAN_PERKS_THE_REGISTRY_HOLDS } from '../../src/content/guardian-perks-their-kinds-numbers-and-words.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import {
   clone,
@@ -27,26 +28,14 @@ import {
 
 const { call, base, MON, pinned, wordsOf, wordsForEveryoneInTheFight } = await personalCombatEngine();
 type Fx = Record<string, unknown> & { ward?: string; pct?: number; amt?: number; school?: string };
-// The decided table: a perk's value at Weak / Moderate / Powerful / Legendary (cap: a lower ceiling is stronger).
-const DECIDED: Record<string, number[]> = {
-  dodge: [5, 10, 15, 20],
-  meleeDR: [1, 2, 3, 4],
-  arrowDR: [1, 2, 3, 4],
-  spellPct: [15, 25, 35, 45],
-  schoolWard: [20, 30, 40, 50],
-  stunWard: [40, 60, 80, 100],
-  dotWard: [40, 60, 80, 100],
-  thorns: [1, 2, 3, 4],
-  regen: [1, 2, 3, 4],
-  secondWind: [15, 20, 25, 30],
-  lowHp: [15, 20, 25, 30],
-  cap: [40, 35, 25, 15],
-  aura: [5, 8, 12, 15],
-  burn: [1, 2, 3, 4],
-  drain: [0.15, 0.25, 0.35, 0.5],
-  hitBonus: [5, 10, 15, 20],
-  dmgBonus: [1, 2, 3, 4],
-};
+// The decided table: a perk's value at Weak / Moderate / Powerful / Legendary (cap: a lower ceiling is stronger), by
+// its kind (its ward, or its rider's key), as the perks' content rows hold it (plan P1-19ai: the test's own copy before).
+const DECIDED: Record<string, number[]> = Object.fromEntries(
+  Object.values(GUARDIAN_PERKS_THE_REGISTRY_HOLDS).map((row) => [
+    'ward' in row.carriedAs ? row.carriedAs.ward : row.carriedAs.rider,
+    [...row.theValueAtEachGrade],
+  ]),
+);
 const TIERS = ['Weak', 'Moderate', 'Powerful', 'Legendary'];
 const kindOf = (fx: Fx) => fx.ward ?? Object.keys(fx)[0] ?? '';
 const valOf = (fx: Fx) => (fx.ward ? (fx.pct ?? fx.amt) : fx[Object.keys(fx)[0] ?? '']);
