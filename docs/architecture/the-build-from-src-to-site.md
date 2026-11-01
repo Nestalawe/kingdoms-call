@@ -99,7 +99,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   the two P1-10b20 freed (`orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts`: Recruit Armies and Hire
   Hero; and `orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts`: the creeds' orders and
   three masteries) and the one P1-10b21 freed (`orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts`:
-  Explore, Perform Rite, Hunting Rumours, Search Lair and two masteries). The other 54 of those 108 files
+  Explore, Perform Rite, Hunting Rumours, Search Lair and two masteries) and the one P1-10b22 freed
+  (`orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts`: Spy, Steal and four masteries).
+  The other 53 of those 108 files
   still say `@ts-nocheck`:
   each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
   balance matrix proves ([traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file)).

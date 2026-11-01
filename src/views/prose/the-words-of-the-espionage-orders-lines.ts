@@ -77,14 +77,14 @@ export function theWordsOfTheEspionageOrdersLine(fact: TheFactOfTheEspionageOrde
         'no skills to speak of';
       const _it = fact.itemNames.join(', ') || 'no magic items';
       const _ar = fact.units.length ? describeArmy(fact.units) : 'no armies';
-      return `[Intelligence] 🔍 ${fact.heroName}'s report on ${fact.targetName}${fact.targetsRealmName !== null ? ` of ${fact.targetsRealmName}` : ''} (${fact.race ?? '?'}, ${fact.alignment ?? '?'}${fact.isKing ? ', king' : ''}): skills — ${_sk}. Items — ${_it}. Leads — ${_ar}.`;
+      return `[Intelligence] 🔍 ${fact.heroName}'s report on ${fact.targetName}${fact.targetsRealmName !== null ? ` of ${String(fact.targetsRealmName)}` : ''} (${fact.race ?? '?'}, ${fact.alignment ?? '?'}${fact.isKing ? ', king' : ''}): skills — ${_sk}. Items — ${_it}. Leads — ${_ar}.`;
     }
     case 'a spy learns nothing of a hero':
       return `${fact.heroName} watches ${fact.targetName} closely in ${fact.provinceName}, but learns nothing of use.`;
     case "a hero's chance to notice a spy":
       return `📊 Detection — ${fact.targetName}${theWordsOfAStatShown(fact.targetsSpy)} noticing ${fact.heroName}${fact.inTheirOwnLand ? ' in their own land' : fact.inYourLand ? ' in your land' : ''}: ${theWordsOfTheOddsShown(fact.odds)}`;
     case 'a realm learns a spy was caught on its hero':
-      return `[Intelligence] ${fact.spyName}${fact.spysRealmName !== null ? ` (${fact.spysRealmName})` : ''} was caught spying on ${fact.targetName} in ${fact.provinceName}.`;
+      return `[Intelligence] ${fact.spyName}${fact.spysRealmName !== null ? ` (${String(fact.spysRealmName)})` : ''} was caught spying on ${fact.targetName} in ${fact.provinceName}.`;
     case 'a spy slips away unseen as The Shadow':
       return `${fact.heroName} slips away unseen. (The Shadow)`;
     case "a spy's roll to spy out a province":
@@ -102,11 +102,11 @@ export function theWordsOfTheEspionageOrdersLine(fact: TheFactOfTheEspionageOrde
     case "a thief lifts gold from a garrison's paymaster":
       return `💰 ${fact.heroName} lifts ${String(fact.gold)}g from the garrison paymaster's strongbox in ${fact.provinceName}.`;
     case "a realm learns its garrison's paymaster was robbed":
-      return `[Intelligence] The garrison paymaster of ${fact.provinceName} was robbed of ${String(fact.gold)}g — ${fact.thiefName} (${fact.thiefsRealmName}) is suspected.`;
+      return `[Intelligence] The garrison paymaster of ${fact.provinceName} was robbed of ${String(fact.gold)}g — ${fact.thiefName} (${String(fact.thiefsRealmName)}) is suspected.`;
     case "a thief is caught and beaten back by a garrison's guards":
       return `${fact.heroName} is caught by the garrison guards of ${fact.provinceName} and beaten back — ${String(fact.damage)} damage taken.`;
     case "a realm learns a thief was caught at its garrison's paymaster":
-      return `[Intelligence] ${fact.thiefName} (${fact.thiefsRealmName}) was caught trying to rob the garrison paymaster of ${fact.provinceName}.`;
+      return `[Intelligence] ${fact.thiefName} (${String(fact.thiefsRealmName)}) was caught trying to rob the garrison paymaster of ${fact.provinceName}.`;
     case "a thief's attempt on a paymaster fails unnoticed":
       return `${fact.heroName}'s attempt on the paymaster of ${fact.provinceName} fails, but the thief slips away unnoticed.`;
     case 'a thief finds no target to steal from':
@@ -124,7 +124,7 @@ export function theWordsOfTheEspionageOrdersLine(fact: TheFactOfTheEspionageOrde
     case "a thief lifts gold from a hero's strongbox":
       return `💰 ${fact.heroName} deftly lifts ${String(fact.gold)}g from ${fact.victimName}'s strongbox (5% of the realm's treasury).`;
     case 'a realm learns a thief stole its gold':
-      return `[Intelligence] ${fact.thiefName} (${fact.thiefsRealmName}) has stolen ${String(fact.gold)}g from ${fact.victimName}!`;
+      return `[Intelligence] ${fact.thiefName} (${String(fact.thiefsRealmName)}) has stolen ${String(fact.gold)}g from ${fact.victimName}!`;
     case "a master thief's own pockets cannot be picked":
       return `${fact.heroName}'s fingers find nothing — ${fact.victimName} keeps every trinket sewn tight; a master thief cannot be robbed of their own.`;
     case 'a thief lifts a magic item from a hero':
@@ -132,7 +132,7 @@ export function theWordsOfTheEspionageOrdersLine(fact: TheFactOfTheEspionageOrde
     case 'a thief notes how he carries what he took':
       return theWordsOfTheItemsAHeroGained(fact.theItemsHeGained);
     case 'a realm learns a thief stole a magic item':
-      return `[Intelligence] ${fact.thiefName} (${fact.thiefsRealmName}) has stolen the ${fact.itemName} from ${fact.victimName}!`;
+      return `[Intelligence] ${fact.thiefName} (${String(fact.thiefsRealmName)}) has stolen the ${fact.itemName} from ${fact.victimName}!`;
     case "a thief's attempt on a hero fails unnoticed":
       return `${fact.heroName}'s theft attempt on ${fact.victimName} fails but the thief slips away undetected.`;
     case 'a hero lacks the Spy mastery to attempt Sabotage':
@@ -159,21 +159,21 @@ export function theWordsOfTheEspionageOrdersLine(fact: TheFactOfTheEspionageOrde
     case "a thief's roll to crack the vaults":
       return `📊 Grand Heist — ${fact.heroName} (Thief ${String(fact.thiefLevel)}) cracks the vaults of ${fact.isTheEnemyCapital ? 'the enemy capital of ' : 'the rich province of '}${fact.provinceName} (${fact.realmName ?? 'an enemy realm'}): ${fmtRoll(fact.chance, fact.roll)}${fact.theVaultsAreGuarded ? ' (halved — the vaults are guarded)' : ''}`;
     case "a realm's courier is waylaid on the road":
-      return `📦 A courier of ${fact.realmName} is waylaid on the road — ${fact.itemName}${fact.senderName !== null ? `, sent by ${fact.senderName}` : ''}${fact.recipientName !== null ? ` and bound for ${fact.recipientName}` : ''}, never arrives.`;
+      return `📦 A courier of ${String(fact.realmName)} is waylaid on the road — ${fact.itemName}${fact.senderName !== null ? `, sent by ${fact.senderName}` : ''}${fact.recipientName !== null ? ` and bound for ${fact.recipientName}` : ''}, never arrives.`;
     case 'a thief pulls off a Grand Heist': {
       const msg = theHaul(fact.haul);
       return `💰 ${fact.heroName} pulls off a Grand Heist in ${fact.provinceName}${msg ? ` — ${msg}!` : ', but finds little worth taking.'}`;
     }
     case 'a realm learns a Grand Heist was staged on it': {
       const msg = theHaul(fact.haul);
-      return `[Intelligence] ${fact.thiefName} (${fact.thiefsRealmName}) staged a Grand Heist in ${fact.provinceName}${msg ? `: ${msg}` : ''}.`;
+      return `[Intelligence] ${fact.thiefName} (${String(fact.thiefsRealmName)}) staged a Grand Heist in ${fact.provinceName}${msg ? `: ${msg}` : ''}.`;
     }
     case 'a Grand Heist comes to nothing unnoticed':
       return `${fact.heroName}'s Grand Heist in ${fact.provinceName} comes to nothing, but the thief slips away undetected.`;
     case 'a thief is caught at the vaults and beaten back':
       return `${fact.heroName} is caught at the vaults of ${fact.provinceName} and beaten back by the guards — ${String(fact.damage)} damage taken.`;
     case 'a realm learns a thief was driven off its vaults':
-      return `[Intelligence] A thief — ${fact.thiefName} (${fact.thiefsRealmName}) — was driven off the vaults of ${fact.provinceName}.`;
+      return `[Intelligence] A thief — ${fact.thiefName} (${String(fact.thiefsRealmName)}) — was driven off the vaults of ${fact.provinceName}.`;
     case 'a hero lacks the Spy mastery to Assassinate':
       return `${fact.heroName} lacks the Spy mastery (9) to Assassinate.`;
     case 'a hero finds no enemy hero to assassinate':
