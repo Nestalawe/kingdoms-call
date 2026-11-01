@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import {
   BOT_DEF_BONUS,
@@ -642,7 +643,12 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         if (a === 'steal' && x.target !== 'garrison') return 5;
         if (contact) {
           if (a === 'recruit' && !/to:garrison/.test(x.target)) return 4;
-          if (a === 'pickup_army' || a === 'harvest_field' || a === 'rite') return 4;
+          if (
+            a === 'pickup_army' ||
+            a === THE_ALIGNMENT_ORDERS['harvest-the-field'].key ||
+            a === THE_ALIGNMENT_ORDERS['perform-rite'].key
+          )
+            return 4;
           if (a === 'leave_army' && leaderIds.has(Number(x.extra))) return 4;
           if (a === 'cast_spell' && BOT_P1.gainSpell.has(x.target)) return 4;
         }

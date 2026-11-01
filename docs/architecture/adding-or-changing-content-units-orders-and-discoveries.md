@@ -147,10 +147,11 @@ order-name map's entries for them (`PHASE_ACTION_MAP`: each row's key, its name 
 the order switch's `case`s read their row's key. Each resolver compares its row's creed, the three the king alone gives
 read its mark, and the numbers the books state come from the row (the price of word, the muster's grade, the carters'
 price, the Wild Hunt's beasts and turns, the Blood Offering's tiers): the turn and the report price the carters with one
-function (`theCorpseCartersPriceForARealm`), and the report's price of word is the row's. A new row's order still needs
-its own `case` and resolver.
+function (`theCorpseCartersPriceForARealm`), and the report's price of word is the row's. The bots write each key from
+its row and read the two prices they budget (word, the carters) from it: the engine names no key outside
+`src/engine/rules/`. A new row's order still needs its own `case` and resolver.
 `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts` reads each row
-against both rulebooks. The ratchet's `alignmentOrderChecksInEngine` counts the keys the engine still writes itself.
+against both rulebooks. The ratchet's `alignmentOrderChecksInEngine` (0) counts the keys the engine writes itself.
 
 Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 22) touched: the engine's `case` in the order switch, the order-name map
 (`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS`, the short label map, the

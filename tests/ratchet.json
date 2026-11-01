@@ -16,7 +16,7 @@
     "spellChecksInEngine": 0,
     "discoveryChecksInEngine": 0,
     "guardianPerkChecksInEngine": 0,
-    "alignmentOrderChecksInEngine": 11,
+    "alignmentOrderChecksInEngine": 0,
     "eslintSuppressions": 673,
     "knownArchitectureViolations": 105,
     "unusedCode": 23

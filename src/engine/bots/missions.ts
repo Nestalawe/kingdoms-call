@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -220,7 +221,7 @@ export function botSignaturePre(G, pi, c, P, L) {
   switch (pl.alignment) {
     case 'Divine': // CONSECRATE the ground the king stands on
       if (botConsecrateOK(G, pi, c, P))
-        return { action: 'consecrate', target: '', extra: '', desc: 'Consecrate ' + P.name };
+        return { action: THE_ALIGNMENT_ORDERS.consecrate.key, target: '', extra: '', desc: 'Consecrate ' + P.name };
       return null;
     case 'Good': {
       // CALL TO ARMS: a free Green garrison, king only, once a turn
@@ -237,16 +238,27 @@ export function botSignaturePre(G, pi, c, P, L) {
       });
       if (!best) return null;
       L.sig.cta = 1;
-      return { action: 'call_to_arms', target: String(best.X.id), extra: '', desc: 'Call to Arms in ' + best.X.name };
+      return {
+        action: THE_ALIGNMENT_ORDERS['call-to-arms'].key,
+        target: String(best.X.id),
+        extra: '',
+        desc: 'Call to Arms in ' + best.X.name,
+      };
     }
     // Druidic and Evil: no signature order since 2026-10-12 (Toby item 22: Awaken the Wild and Call from the Pit removed).
     case 'Undead': {
       // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it)
       if ((sk.necromancy || 0) < 1 || !botSees(G, pi, P.id) || !(P.battleGraves || []).length) return null;
-      if (L.budget < 2) return null;
-      L.budget -= 2;
+      const thePrice = THE_ALIGNMENT_ORDERS['harvest-the-field'].theNumbers.thePrice.value;
+      if (L.budget < thePrice) return null;
+      L.budget -= thePrice;
       L.upkeep += 1;
-      return { action: 'harvest_field', target: '', extra: '', desc: 'Harvest the Field in ' + P.name };
+      return {
+        action: THE_ALIGNMENT_ORDERS['harvest-the-field'].key,
+        target: '',
+        extra: '',
+        desc: 'Harvest the Field in ' + P.name,
+      };
     }
     case 'Neutral': {
       // BROKER: hire a seen wanderer from afar, else buy a Spy report (2g)
@@ -272,17 +284,28 @@ export function botSignaturePre(G, pi, c, P, L) {
           botSpend(L, best.w);
           L.hired.add(best.h.id);
           L.sig.broker = 1;
-          return { action: 'broker', target: 'hire:' + best.h.id, extra: '', desc: 'Broker — hire ' + best.h.name };
+          return {
+            action: THE_ALIGNMENT_ORDERS.broker.key,
+            target: 'hire:' + best.h.id,
+            extra: '',
+            desc: 'Broker — hire ' + best.h.name,
+          };
         }
       }
-      if (L.budget >= 2) {
+      const thePriceOfWord = THE_ALIGNMENT_ORDERS.broker.theNumbers.thePriceOfWordFromAProvince.value;
+      if (L.budget >= thePriceOfWord) {
         const t = botSpyTarget(G, pi, c, 99);
         if (t && botKnows(G, pi, t.X.id)) {
-          L.budget -= 2;
+          L.budget -= thePriceOfWord;
           L.sig.broker = 1;
           pl._botSpyMemo = pl._botSpyMemo || {};
           pl._botSpyMemo[t.X.id] = G.turn;
-          return { action: 'broker', target: 'spy:' + t.X.id, extra: '', desc: 'Broker — buy word from ' + t.X.name };
+          return {
+            action: THE_ALIGNMENT_ORDERS.broker.key,
+            target: 'spy:' + t.X.id,
+            extra: '',
+            desc: 'Broker — buy word from ' + t.X.name,
+          };
         }
       }
       return null;
@@ -305,7 +328,12 @@ export function botRitePre(G, pi, c, P, L, fightAhead) {
     const cost = wildHuntPrice(wild);
     if (L.budget >= cost) {
       L.budget -= cost;
-      return { action: 'rite', target: 'wild hunt', extra: '', desc: 'Perform Rite — the Wild Hunt' };
+      return {
+        action: THE_ALIGNMENT_ORDERS['perform-rite'].key,
+        target: 'wild hunt',
+        extra: '',
+        desc: 'Perform Rite — the Wild Hunt',
+      };
     }
   }
   if (army.length >= 6) {
@@ -318,7 +346,7 @@ export function botRitePre(G, pi, c, P, L, fightAhead) {
       E = idx.slice(-2).map((x) => x.i);
     if (S.some((i) => E.includes(i))) return null;
     return {
-      action: 'rite',
+      action: THE_ALIGNMENT_ORDERS['perform-rite'].key,
       target: 'blood offering',
       extra: `S:${S.join(',')}|E:${E.join(',')}`,
       desc: 'Perform Rite — a Blood Offering',
@@ -1454,7 +1482,7 @@ export function botRunSlayerSchool(G, pi, roles) {
     'steal',
     'spy',
     'research',
-    'consecrate',
+    THE_ALIGNMENT_ORDERS.consecrate.key,
     'chart_unknown',
     'leave_army',
     'recruit',
