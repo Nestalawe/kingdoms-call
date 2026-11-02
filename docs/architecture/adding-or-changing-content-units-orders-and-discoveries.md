@@ -29,8 +29,8 @@ rule there, once. Rules are still restated:
   lift, `seaLiftOfAColumn`; since P1-11c1 the order form's casting count; its Cast Spell tables are the engine
   folder's, made by calls since P1-11c3, and its target field's "the caster's province only" asks the engine's mark
   check since P1-11c4: the parity test checks the form's eight declarations and pins each target list; the army card's
-  kin and feud ask the battle's own rule since P1-11c5, `theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt`, and the card
-  takes a Druid shortfall off after it, where the battle takes it off before: the parity test pins that rounding), and
+  kin and feud ask the battle's own rule since P1-11c5, `theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt`, after a Druid
+  shortfall taken off in the battle's order since R-122: the parity test holds them in agreement), and
   the other forecasts and order checks
   whose engine rule is written inline (P1-11b, P1-19);
 - at order time and again at resolution time in the engine;

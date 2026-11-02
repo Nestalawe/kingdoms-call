@@ -385,17 +385,10 @@ export function renderReportView(report) {
               druidUnits = 0,
               druidShort = 0;
             const lines = arr.map((a) => {
-              // humanoid race affinity — a unit of the same race as your KING gets +20%, and a unit
-              // led by a character of the same race gets +20% (they STACK → +44% when both apply) — and
-              // racial animosity: Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin
-              // commander. The engine's own rule (theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt, as the
-              // battle's armStr asks it; plan P1-11c5). Shown before terrain/tactics, like everything else here.
-              const rawBs = unitBaseStrength(a);
-              const _kin = theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt(rawBs, a.race, kingdom.race, c.race);
-              const kingRaceMatch = _kin.itsKingIsOfItsKin;
-              const leadRaceMatch = _kin.itsLeaderIsOfItsKin;
-              const feudLed = _kin.aLeaderOfItsRivalKinLeadsIt;
-              let bs = _kin.strength;
+              // The unit's strength in the battle's order (armStr's; R-122): the Druid shortfall first, then
+              // its kin and a rival kin's leader, then the Druid mastery. Shown before terrain/tactics, like
+              // everything else here.
+              let bs = unitBaseStrength(a);
               const creature = CREATURE_ARMIES_UI.has(a.type),
                 monster = MONSTER_ARMIES_UI.has(a.type);
               const _dn = druidNeedP(a, c, report); // skeleton / Druidic-creature / sd40 waivers, same-race Druid 1
@@ -405,19 +398,29 @@ export function renderReportView(report) {
               const shortfall = _dn.shortfall;
               // a Druid shortfall actually REDUCES the unit's strength — apply it to the shown
               // figure and the panel total (the engine's own strengthLeftByADruidShortfall:
-              // max(0.1, 1−0.2×shortfall)), instead of only tagging the penalty beside a
-              // full-strength number.
+              // max(0.1, 1−0.2×shortfall)), off the unit's base strength and rounded down, as the
+              // battle takes it, instead of only tagging the penalty beside a full-strength number.
               if (shortfall > 0) {
                 druidShort++;
-                bs = Math.max(1, Math.round(bs * strengthLeftByADruidShortfall(shortfall)));
+                bs = Math.floor(bs * strengthLeftByADruidShortfall(shortfall));
               }
               // DRUID MASTERY (2026-09-24; the engine's own rule, as druidMasteryGain asks it): +20% per
               // Druid level over the unit's minimum (0 where the requirement is waived), Druid counted to
-              // 9, capped +100%; shown in percent.
+              // 9, capped +100%; shown in percent, and applied after the kin below, as in the battle.
               const mastery =
                 !a.skeletal && (creature || monster)
                   ? Math.round(druidMasteryGainOver(druidLevelTheMasteryCounts(druLevel), req) * 100)
                   : 0;
+              // humanoid race affinity — a unit of the same race as your KING gets +20%, and a unit
+              // led by a character of the same race gets +20% (they STACK → +44% when both apply) — and
+              // racial animosity: Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin
+              // commander. The engine's own rule (theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt, as the
+              // battle's armStr asks it; plan P1-11c5), on the strength the shortfall leaves.
+              const _kin = theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt(bs, a.race, kingdom.race, c.race);
+              const kingRaceMatch = _kin.itsKingIsOfItsKin;
+              const leadRaceMatch = _kin.itsLeaderIsOfItsKin;
+              const feudLed = _kin.aLeaderOfItsRivalKinLeadsIt;
+              bs = _kin.strength;
               if (mastery > 0) bs = Math.round(bs * (1 + mastery / 100));
               totalStr += bs;
               totalCost += a.cost != null ? a.cost : 2;

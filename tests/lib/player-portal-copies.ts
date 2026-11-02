@@ -129,7 +129,8 @@ const TURN_REPORT = 'views/turn-report.ts';
  *  P1-11b2, where it kept a copy of it and of isAirCarriable). */
 const statementCopies = (opts: SourceOptions) => `
 // The army card's Druid lines for one unit \`a\` of the hero \`c\`: the strength left of a unit of 1,000 by a Druid
-// shortfall (the card's own sum), the Druid mastery bonus in percent, and the shortfall.
+// shortfall (the card's own sum, rounded down as the battle rounds it: R-122), the Druid mastery bonus in percent, and
+// the shortfall.
 function armyCardDruidLines(a, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel', opts)}
   let bs = 1000, druidUnits = 0, druidShort = 0;
@@ -143,13 +144,13 @@ function armyCardSeaNote(arr, c) {
   return String(_seaNote);
 }
 // The army card's strength for one unit \`a\` of the hero \`c\`, as its line shows it ("str …"): the unit's kin (its
-// realm's king's and its leader's), a rival kin's leader, a Druid shortfall and the Druid mastery, in the card's order
-// (plan P1-11c1).
+// realm's king's and its leader's), a rival kin's leader, a Druid shortfall and the Druid mastery, in the battle's
+// order since R-122 (plan P1-11c1): the shortfall off the unit's base strength first, then its kin, then the mastery.
 function armyCardUnitStrength(a, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom', opts)}
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel', opts)}
   let totalStr = 0, druidUnits = 0, druidShort = 0;
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'rawBs', 'totalStr+=bs;', opts)}
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'bs', 'totalStr+=bs;', opts)}
   return bs;
 }
 // The turn report's flying carry, on the column \`armies\` as the report projects it.
@@ -1020,7 +1021,7 @@ export function druidNeedAgainstTheBattle(c: Copies, w: WorldSamples): DruidComp
 }
 
 /** The army card's Druid shortfall line, read by its statements: the strength it shows a unit of 1,000 after a
- *  shortfall, against the battle's (druIdPenaltyMult, rounded as the card rounds). */
+ *  shortfall, against the battle's (druIdPenaltyMult, rounded down as armStr and the card round it: R-122). */
 export function armyCardShortfallAgainstTheBattle(c: Copies, w: WorldSamples): DruidComparison[] {
   return w.druid.map(({ world, hero, unit }) => {
     const card = c.armyCardDruidLines(unit.report, hero.report, world.report);
@@ -1031,7 +1032,7 @@ export function armyCardShortfallAgainstTheBattle(c: Copies, w: WorldSamples): D
       hero.state,
       unit.state,
       auraIn(hero.report, 'druid'),
-      (h, u) => Math.round(1000 * multiplier(h, u)),
+      (h, u) => Math.floor(1000 * multiplier(h, u)),
     );
   });
 }
@@ -1176,8 +1177,8 @@ export function armyCardSeaNoteAgainstTheEngine(c: Copies, s: Samples): SeaNoteC
 // ── The order form's Cast Spell tables and checks, and the army card's kin and feud (P1-11c1) ────
 // Plan P1-11c's parity cases, before the form takes its tables and its check from the engine's side (P1-11c2 to c5).
 // The truth, as above: the form's copy on what the realm's report holds, against the content's spells (SPELL_DEFS_P)
-// or the engine's function on the state. Where the two are known to disagree (plan P1-11c, question 28 for Toby, and the
-// Warlock's extra cast, Parked), the difference is pinned exactly.
+// or the engine's function on the state. Where the two are known to disagree (plan P1-11c, question 28 (a) for Toby, and
+// the Warlock's extra cast, Parked), the difference is pinned exactly; the army card's kin and feud agree since R-122.
 
 /** A spell as the content's table (SPELL_DEFS_P) writes what the order form reads of it. */
 interface ASpellAsTheFormReadsIt {
