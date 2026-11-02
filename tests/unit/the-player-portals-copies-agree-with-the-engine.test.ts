@@ -6,9 +6,9 @@
 // command, which P1-11b3 swapped, and the sea lift, P1-11b4's). For effMagicLvl, a copy that stays, the truth: the copy
 // on the report's value, against the level the report sends. For the copies that read the realm, the report's shape or
 // the world (P1-11b1: the Druid a hero needs, the army card's Druid and sea lines, the turn report's flying carry, the
-// Explore forecast), the truth too, with the differences known to Toby's questions pinned exactly (since P1-11b3 the
-// Druid ones call the engine's rule with the portal's level of the hero's Druid; since R-120 they agree beside a
-// Crown). Since P1-11c1, the order form's Cast Spell tables against
+// Explore forecast and its march-in share), the truth too (since P1-11b3 the Druid ones call the engine's rule with the
+// portal's level of the hero's Druid; since R-120 they agree beside a Crown; since R-125 the Explore forecast, the
+// march-in share and the sea note agree). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
 // card's kin and feud against the battle's armStr. And each engine function
 // leaves its input as it was.
@@ -48,9 +48,10 @@
 // it); the turn report's own flying carry (read by its statements) agrees
 // with `isAirCarriable` and `getFlyCapability` (P1-11b2: the report calls `getFlyCapability` now, so its statement that
 // gives a column the flyers' pace is checked on every column, and the unit types' half went with the copy); the Explore
-// forecast (`exploreGainFor`) is what `resolveExploreOrder` maps but for the Loremaster, 5% more (pinned; question 15);
-// the army card's sea note is `getSeaCapability`'s answer but for a Naval 8 hero, for whom it is the answer without the
-// mastery (pinned; question 15). Every engine function leaves its input as it was (the values are frozen, so a write
+// forecast (`exploreGainFor`) is what `resolveExploreOrder` maps, the Loremaster's too (R-125); its march-in share
+// (`exploreMoveGainBefore`, on a staged march into the capital) is what `resolveMoveOrder` maps, for a hero with no
+// Traveller's Cloak, one worn and one carried as a spare (R-125: a worn one alone); the army card's sea note is
+// `getSeaCapability`'s answer, a Naval 8 hero's too (R-125). Every engine function leaves its input as it was (the values are frozen, so a write
 // throws). P1-11c1 (plan P1-11c, before the form takes its tables and its check from the engine's side): the order
 // form's eight Cast Spell tables (`order-chances.ts` run whole, the others read by their declarations) are the ones
 // `SPELL_DEFS_P` makes, each as the form reads it (a list in its order, a map, a set), but an Encounter plan lists the

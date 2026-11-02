@@ -36,7 +36,8 @@
 // every kind of unit, led by heroes with and without the naval mastery that doubles a hull. The checks read the
 // realm's own heroes, their units and their items: the values the report makes from the state. (Until P1-11a4 the swap
 // cases also took every alignment pair, every level, games rows and every number the reports hold.) For the Druid
-// rule, six more staged worlds (druidWorlds) and for the Explore order one more (exploreWorld), each sized so the whole
+// rule, six more staged worlds (druidWorlds), for the Explore order one more (exploreWorld) and for the march-in share
+// one more (marchWorld, P1-23t: the forecast's exploreMoveGainBefore against the Move order), each sized so the whole
 // test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
 // report staged for the target field, a world of five casters and one of the kin (kinWorld).
 import vm from 'node:vm';
