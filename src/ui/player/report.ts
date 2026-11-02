@@ -464,13 +464,13 @@ export function renderReportView(report) {
             // hull each); light foot (levies, Men-at-Arms, archers incl. Black Arrows, gun-crews,
             // garrisons, Goblin Horde, Forest Wardens, Dwarven Guard, Orc Berserkers:
             // KC_UNIT_CLASS.lightFoot) take ½ a hull, everything else on foot takes
-            // a full hull; flyers and sea units need none; Naval mastery (level 8+) halves the
-            // need; a fully airborne column needs no ships at all.
+            // a full hull; flyers and sea units need none; Naval mastery (a trained level of 8+, as
+            // the turn reads it: R-125) halves the need; a fully airborne column needs no ships at all.
             const _CARRIER_UI2 = new Set(KC_UNIT_CLASS.carrier);
             const _LIGHT_UI2 = new Set(KC_UNIT_CLASS.lightFoot);
             const _landUnits = arr.filter((a) => !_AER_UI2.has(a.type) && !_SEA_UI2.has(a.type));
             let _hullNeed = _landUnits.reduce((n, a) => n + (_LIGHT_UI2.has(a.type) ? 0.5 : 1), 0);
-            if (effSkillP(c, 'naval') >= 8) _hullNeed /= 2;
+            if (((c.skills || {}).naval || 0) >= 8) _hullNeed /= 2;
             const _hullNeedShown = Math.ceil(_hullNeed);
             const _hullHave = arr.reduce(
               (n, a) => n + (_CARRIER_UI2.has(a.type) ? (KC_CARRIER_BERTHS && KC_CARRIER_BERTHS[a.type]) || 1 : 0),
