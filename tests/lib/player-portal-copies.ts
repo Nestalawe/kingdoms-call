@@ -39,7 +39,9 @@
 // rule, six more staged worlds (druidWorlds), for the Explore order one more (exploreWorld) and for the march-in share
 // one more (marchWorld, P1-23t: the forecast's exploreMoveGainBefore against the Move order), and for the march's
 // forecasts one more with no guards (marchingWorld, P1-11d1: predictedLocation and exploreMoveGainBefore against
-// processOrder) and every province of a staged map (the hex tables), each sized so the whole test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
+// processOrder) and every province of a staged map (the hex tables), and for what a hero holds one more (holdingWorld,
+// P1-11d2: predictedItems, projectedLedArmies and projectedGarrison against the turn's phases), each sized so the whole
+// test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
 // report staged for the target field, a world of five casters and one of the kin (kinWorld).
 import vm from 'node:vm';
 import {
@@ -60,7 +62,7 @@ import {
   SPELL_DEFS_P,
 } from '../../src/content/kingdoms-call-data.ts';
 import { SKILL_LABELS, type ArmyInABattle, type HeroInABattle } from '../../src/engine/army-tables.ts';
-import { getSeaCapability } from '../../src/engine/units/movement-pools.ts';
+import { getSeaCapability, setMovePool } from '../../src/engine/units/movement-pools.ts';
 import { seaLiftOfAColumn } from '../../src/engine/rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
 import { perkTier } from '../../src/engine/titles/perks.ts';
 import {
@@ -90,6 +92,14 @@ import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-
 import { resolveMoveOrder } from '../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts';
 import { getNeighborsP, neighborInDir } from '../../src/engine/world/map-helpers.ts';
 import { processOrder } from '../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
+import { buildPhaseIntents } from '../../src/engine/turn/phase-intents-and-dependency-ordering.ts';
+import {
+  endPhaseSkillRisesFallenCommandersAndProvinceMemory,
+  pinAndReactToPhaseIntents,
+  resolvePhaseOrdersInTwoTiersAroundTheDefendStep,
+  startPhaseHealingSnapshotsAndStalledBattles,
+} from '../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts';
+import { anItemIsTheMithrilSuit } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
 import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
@@ -122,11 +132,22 @@ const COPIES: Record<string, string[]> = {
   // a hero's skill as the report counts it (skillEff): druidNeedP, exploreGainFor and the army card read it
   'ui/player/briefing-and-submit.ts': ['effSkillP'],
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); the army card reads
-  // the two sets
-  'ui/player/skills-and-projections.ts': ['CREATURE_ARMIES_UI', 'MONSTER_ARMIES_UI', 'druidNeedP'],
+  // the two sets; and what a hero will carry and lead, and a province's garrison hold, after his realm's orders so far
+  // (P1-11d2: the forms of the later phases read them), with the units a Recruit musters and which go to the garrison
+  'ui/player/skills-and-projections.ts': [
+    'CREATURE_ARMIES_UI',
+    'MONSTER_ARMIES_UI',
+    'druidNeedP',
+    'predictedItems',
+    'GARRISON_UNIT_TYPES_P',
+    '_isAutoGarrisonRecruit',
+    '_projRecruitUnits',
+    'projectedGarrison',
+  ],
   // the Explore order's forecast, and the share of the province a march into it maps first (P1-23t); where a hero will
-  // stand after his orders so far (P1-11d1), which that share and the Move field read
-  'ui/player/order-targets.ts': ['exploreGainFor', 'exploreMoveGainBefore', 'predictedLocation'],
+  // stand after his orders so far (P1-11d1), which that share and the Move field read; the companies he will lead
+  // (P1-11d2)
+  'ui/player/order-targets.ts': ['exploreGainFor', 'exploreMoveGainBefore', 'predictedLocation', 'projectedLedArmies'],
   // the order a page's field holds (P1-11d1: the fields stood in below), the Move field's compass words, and the
   // direction a fresh Move opens on (the hex table of each)
   'ui/player/pre-orders.ts': ['getOrderTarget'],
@@ -178,13 +199,32 @@ function exploreGainOn(report, c, terrain) {
   try { return exploreGainFor(c, terrain); } finally { currentReport = null; }
 }
 // The forecasts on movement read the page's order fields (po-action-<hero>-<phase>, po-target-<hero>-<phase>): here
-// they stand in for the orders staged, by hero, then by phase, each { action, target } (P1-11d1).
+// they stand in for the orders staged, by hero, then by phase, each { action, target } (P1-11d1); and since P1-11d2 its
+// recipient or comrade (po-extra-…, an order's extra: none read as '') and a Recruit's widget (po-target-wrap-…), which
+// the projections of what a hero holds read: its ticks and its "Muster to", as the target updateRecruitTarget writes
+// holds them (the ticks, then the destination unless it is the hero himself).
 let theOrdersStaged = {};
+function recruitWidget(target) {
+  const tokens = String(target || '').split(',').map((t) => t.trim()).filter(Boolean);
+  const ticked = tokens.filter((t) => !t.startsWith('to:'));
+  const musterTo = tokens.find((t) => t.startsWith('to:')) || 'to:self';
+  return {
+    querySelector: (selector) => (selector === '.po-recruit-dest' ? { value: musterTo } : null),
+    querySelectorAll: (selector) =>
+      selector === 'input[type="checkbox"]:checked' ? ticked.map((value) => ({ value })) : [],
+  };
+}
 const document = {
   getElementById: (id) => {
-    const field = /^po-(action|target)-(.+)-(\\d+)$/.exec(id);
+    const wrap = /^po-target-wrap-(.+)-(\\d+)$/.exec(id);
+    if (wrap) {
+      const order = (theOrdersStaged[wrap[1]] || [])[Number(wrap[2])];
+      return order && order.action === 'Recruit Armies' ? recruitWidget(order.target) : null;
+    }
+    const field = /^po-(action|target|extra)-(.+)-(\\d+)$/.exec(id);
     const order = field ? (theOrdersStaged[field[2]] || [])[Number(field[3])] : null;
-    return order ? { value: field[1] === 'action' ? order.action : order.target } : null;
+    if (!order) return null;
+    return { value: field[1] === 'action' ? order.action : field[1] === 'target' ? order.target : order.extra || '' };
   },
 };
 function onTheOrders(report, orders, fn) {
@@ -203,6 +243,19 @@ function exploreMoveGainOn(report, orders, c, upTo, provId) {
 // the compass direction a fresh Move of the phase \`ph\` opens on, from his Moves before it
 function lastMoveDirOn(report, orders, heroId, ph) {
   return onTheOrders(report, orders, () => lastMoveDirOf(heroId, ph));
+}
+// what the hero \`heroId\` will carry once his realm's orders of the phases before \`upTo\` are carried out (P1-11d2):
+// each item's name, in the order of his pack
+function predictedItemsOn(report, orders, heroId, upTo) {
+  return onTheOrders(report, orders, () => predictedItems(heroId, upTo).map((it) => it.name));
+}
+// the companies the hero \`heroId\` will lead, and those the province \`provId\` will hold unled, as each phase \`upTo\`
+// begins (P1-11d2): each as the projection writes it
+function projectedLedArmiesOn(report, orders, heroId, upTo) {
+  return onTheOrders(report, orders, () => projectedLedArmies(heroId, upTo));
+}
+function projectedGarrisonOn(report, orders, provId, upTo) {
+  return onTheOrders(report, orders, () => projectedGarrison(provId, upTo));
 }
 // The Move field's directions for the hero \`c\` in the phase \`ph\` (buildTargetField's statements, for a fresh Move):
 // each option as the field writes it, its value (prov:<id>) and its words.
@@ -223,6 +276,9 @@ const COPY_FUNCTIONS = [
   'predictedLocationOn',
   'lastMoveDirOn',
   'theMoveFieldsDirectionsOn',
+  'predictedItemsOn',
+  'projectedLedArmiesOn',
+  'projectedGarrisonOn',
   'armyCardDruidLines',
   'armyCardSeaNote',
   'armyCardUnitStrength',
@@ -1646,6 +1702,581 @@ export function theMarchForecastAgainstTheTurn(c: Copies): MarchForecastComparis
     named,
     nextDoorToBoth: nextTo(from).filter((id) => nextTo(named).includes(id)),
   }));
+}
+// ── What a hero holds (P1-11d2) ────
+// Plan P1-11d's parity cases on what a hero will carry and lead, before any of it is shared: the items in his pack
+// (predictedItems, which every later phase's Send Item, Equip Items and Use Item fields read), the companies he leads
+// (projectedLedArmies, which the Leave/Transfer, Disband and Blood Offering fields and the Move note read) and those a
+// province holds unled (projectedGarrison, which the Pick Up field reads), with the units a Recruit musters
+// (_projRecruitUnits) and which of them go to the garrison (_isAutoGarrisonRecruit). Each runs as the portal's own code,
+// on the orders staged in its fields; the turn's side is its phases, played one at a time as its loop plays them. Where
+// the forecast disagrees with the turn (question 42), the difference is pinned exactly: each case says which kind it is.
+
+/** The kinds of staged holding: those the forecast and the turn agree on, and those it is known to get wrong (question
+ *  42): a Mithril suit sent with "all" (forged to its wearer: the turn keeps it on him), an item handed to a comrade
+ *  who marches in that phase (the turn hands it over at once, the form sends it by courier), a chain of hand-overs in
+ *  one phase (the turn hands over in its own order, the form by the heroes' order), the Philosopher's Stone used (the
+ *  turn destroys it), a beast recruited, handed over or taken up past a leader's beast command (the turn puts it in
+ *  the garrison or leaves it where it was), a band of garrison troops hired (the turn musters it into the garrison),
+ *  companies taken up from the garrison (the turn adds them last first), and risen dead handed to a comrade of a realm
+ *  that is not Undead (the turn keeps them with the giver; the form's companies carry no risen mark). */
+export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
+  'items handed to a comrade beside him',
+  'an item sent by courier to a comrade elsewhere',
+  'an item handed over, then passed on',
+  'a mercenary band and a company of the province recruited',
+  'a garrison company recruited',
+  'companies recruited into the garrison',
+  "companies recruited under a comrade's banner",
+  'a company handed to a comrade beside him',
+  'a company left in the garrison, then taken up by a comrade next season',
+  'a company taken up as a comrade leaves it, in the same phase',
+  'a company disbanded',
+] as const;
+export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = [
+  'Mithril Armour sent with "all"',
+  'an item handed to a comrade marching in',
+  'a chain of hand-overs in one phase',
+  "the Philosopher's Stone used",
+  'a beast recruited past his beast command',
+  'a band of garrison troops hired',
+  'companies taken up from the garrison by their places',
+  'the whole garrison taken up',
+  'risen dead handed to a comrade',
+  'a beast handed to a comrade at his beast command',
+  'a beast taken up past his beast command',
+] as const;
+export type AKindOfHolding =
+  (typeof THE_HOLDINGS_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_HOLDINGS_THE_FORECAST_GETS_WRONG)[number];
+/** An order of a phase, as the page's fields hold it and the turn reads it: its action, its target and its extra (a
+ *  recipient or a comrade; none, the empty field). */
+interface AnOrderOfWhatAHeroHolds {
+  readonly action:
+    | 'Send Item'
+    | 'Use Item'
+    | 'Move'
+    | 'Recruit Armies'
+    | 'Leave/Transfer Army'
+    | 'Pick Up Army'
+    | 'Disband Army'
+    | 'Rest';
+  readonly target: string;
+  readonly extra?: string;
+}
+/** What a staged holding reads: for each of its heroes (by his part in the case) his items or his companies, and the
+ *  garrison of its province. */
+export type WhatTheyHold = Record<string, string[]>;
+/** A staged holding: its kind, whether it reads items or companies, its heroes by their part (realm 0's), their
+ *  orders by hero then phase, and the province whose garrison it reads (or none). */
+export interface AStagedHolding {
+  readonly kind: AKindOfHolding;
+  readonly reads: 'items' | 'companies';
+  readonly heroes: Record<string, unknown>;
+  readonly orders: Record<string, readonly AnOrderOfWhatAHeroHolds[]>;
+  readonly province: unknown;
+}
+/** A company, as both sides are read: its type and quality, and "(risen)" when it is marked as risen dead. */
+function aCompany(a: unknown): string {
+  const u = isObj(a) ? a : {};
+  return `${String(u['type'])} (${String(u['quality'])})${u['_isSkeletal'] ? ' (risen)' : ''}`;
+}
+/** The world staged for what a hero holds (P1-11d2): as marchingWorld's (every land province no realm holds realm 0's,
+ *  its guards and neutral heroes gone), realm 0 rich enough for any Recruit, and each case on its own province (two
+ *  next door for the comrade marching in), its heroes copies of realm 0's king (a Human of a Good realm, Druid 0)
+ *  standing there. */
+export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
+  const { g, king } = aWorldToStageIn();
+  const map = isObj(g['world']) ? g['world'] : {};
+  const [cols, rows] = [Number(map['cols']), Number(map['rows'])];
+  const provinces = objects(map['provinces']);
+  const isLand = (p: Obj) => p['terrain'] !== 'sea';
+  for (const p of provinces.filter(isLand)) {
+    p['owner'] ??= 0;
+    p['npcArmies'] = [];
+    p['neutralDefenders'] = [];
+  }
+  // (in place: the staged heroes join this list, each at the place his id names, as the army orders read a comrade by
+  // it; so the heroes no realm holds keep their places, gone from the map as marchingWorld's are: no case meets one)
+  const characters: unknown[] = Array.isArray(g['characters']) ? g['characters'] : [];
+  if (objects(characters).some((h, i) => h['id'] !== i))
+    throw new Error("the staged world's heroes are not in id order");
+  const realmless = new Set(
+    objects(characters)
+      .filter((h) => h['player'] == null)
+      .map((h) => h['id']),
+  );
+  for (const h of objects(characters)) if (realmless.has(h['id'])) h['alive'] = false;
+  for (const p of provinces)
+    p['characters'] = (Array.isArray(p['characters']) ? p['characters'] : []).filter((id) => !realmless.has(id));
+  const realm = objects(g['players'])[0];
+  if (!realm) throw new Error('the staged world has no realm 0');
+  realm['gold'] = 1000;
+  realm['provinces'] = provinces.filter((p) => isLand(p) && p['owner'] === 0).map((p) => p['id']);
+  const free = provinces.filter((p) => isLand(p) && p['owner'] === 0 && p['id'] !== king['location']);
+  const take = (p: Obj) => {
+    free.splice(free.indexOf(p), 1);
+    p['garrisonArmies'] = [];
+    return p;
+  };
+  const aProvince = () => {
+    const p = free[0];
+    if (!p) throw new Error('the staged world has too few provinces for the holdings');
+    return take(p);
+  };
+  // the province he hands an item over in, and the one next door his comrade marches in from
+  const nextTo = (p: Obj) => getNeighborsP({ row: Number(p['row']), col: Number(p['col']) }, cols, rows, provinces);
+  const pair = free.flatMap((p) =>
+    nextTo(p)
+      .filter((q) => free.includes(q) && q !== p)
+      .map((q) => [p, q]),
+  )[0];
+  if (!pair) throw new Error('the staged world has no two free provinces next door');
+  const [meeting, nextDoor] = [take(pair[0] ?? {}), take(pair[1] ?? {})];
+  const items = catalogue().filter((it) => !anItemIsTheMithrilSuit(it) && it['name'] !== "Philosopher's Stone");
+  let itemId = 63_000;
+  const anItem = (it: Obj | undefined) => {
+    if (!it) throw new Error('the catalogue has too few items');
+    return { ...copyOf(it), id: itemId++ };
+  };
+  const [first, second, third, fourth] = [anItem(items[0]), anItem(items[1]), anItem(items[2]), anItem(items[3])];
+  // the Philosopher's Stone as an older save's copy carries it, the copy Use Item works (the relic a lair deals today
+  // carries a power nothing reads: Parked "A Philosopher's Stone can never be worked")
+  const stone = {
+    ...anItem(catalogue().find((it) => it['name'] === "Philosopher's Stone")),
+    effect: { stat: 'massPromote' },
+  };
+  const mithril = anItem(catalogue().find(anItemIsTheMithrilSuit));
+  const classes: Record<string, readonly string[]> = KC_UNIT_CLASS;
+  const beast = classes['creature']?.[0];
+  const garrisonType = 'Human Garrison';
+  if (!beast || !(classes['garrison'] ?? []).includes(garrisonType))
+    throw new Error('the unit classes have no creature or no Human Garrison');
+  let unitN = 0;
+  const unit = (type: string, quality = 'Average', fields: Obj = {}): Obj => ({
+    type,
+    quality,
+    race: 'Human',
+    unitName: `${type} ${String(unitN++)}`,
+    ...fields,
+  });
+  // the province's companies a Recruit may raise, and a band roaming it
+  const offering = (p: Obj, ...types: string[]) => {
+    p['armyTypes'] = types;
+    return p;
+  };
+  const band = (p: Obj, type: string, quality: string) => {
+    const m = { ...unit(type, quality), id: `merc_staged_${String(unitN)}`, location: p['id'], isSea: false };
+    g['mercenaries'] = [...objects(g['mercenaries']), m];
+    return m.id;
+  };
+  // a hero of realm 0 standing in the province: a copy of its king, his id his place in the list
+  const at = (p: Obj, fields: Obj = {}): number => {
+    const id = characters.length;
+    const h: Obj = { ...copyOf(king), isKing: false, items: [], armies: [], skills: {}, ...fields, id };
+    h['name'] = `Staged ${String(id)}`;
+    h['location'] = p['id'];
+    characters.push(h);
+    p['characters'] = [...(Array.isArray(p['characters']) ? (p['characters'] as unknown[]) : []), id];
+    return id;
+  };
+  const id = (x: unknown) => String(x);
+  const send = (target: string, to: unknown): AnOrderOfWhatAHeroHolds => ({
+    action: 'Send Item',
+    target,
+    extra: id(to),
+  });
+  const recruit = (...ticks: string[]): AnOrderOfWhatAHeroHolds => ({
+    action: 'Recruit Armies',
+    target: ticks.join(','),
+  });
+  const leave = (target: string, to = ''): AnOrderOfWhatAHeroHolds => ({
+    action: 'Leave/Transfer Army',
+    target,
+    extra: to,
+  });
+  const pickUp = (target: string): AnOrderOfWhatAHeroHolds => ({ action: 'Pick Up Army', target });
+  const rest: AnOrderOfWhatAHeroHolds = { action: 'Rest', target: '' };
+  const holdings: AStagedHolding[] = [];
+  const stage = (
+    kind: AKindOfHolding,
+    reads: AStagedHolding['reads'],
+    province: Obj | null,
+    heroes: Record<string, unknown>,
+    orders: Record<string, readonly AnOrderOfWhatAHeroHolds[]>,
+  ) => holdings.push({ kind, reads, heroes, orders, province: province ? province['id'] : null });
+  {
+    const p = aProvince();
+    const [giver, comrade] = [at(p, { items: [first, second, third] }), at(p)];
+    stage(
+      'items handed to a comrade beside him',
+      'items',
+      null,
+      { giver, comrade },
+      { [id(giver)]: [send('0,2', comrade)] },
+    );
+  }
+  {
+    const [p, q] = [aProvince(), aProvince()];
+    const [giver, comrade] = [at(p, { items: [anItem(items[0])] }), at(q)];
+    stage(
+      'an item sent by courier to a comrade elsewhere',
+      'items',
+      null,
+      { giver, comrade },
+      {
+        [id(giver)]: [send('0', comrade)],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    const [giver, comrade, third_] = [
+      at(p, { items: [anItem(items[0])] }),
+      at(p, { items: [anItem(items[1])] }),
+      at(p),
+    ];
+    stage(
+      'an item handed over, then passed on',
+      'items',
+      null,
+      { giver, comrade, 'the third': third_ },
+      {
+        [id(giver)]: [send('0', comrade)],
+        [id(comrade)]: [rest, send('1', third_)],
+      },
+    );
+  }
+  {
+    const p = offering(aProvince(), 'Shieldwall Levies');
+    const merc = band(p, 'Men-at-Arms', 'Veteran');
+    const recruiter = at(p);
+    stage(
+      'a mercenary band and a company of the province recruited',
+      'companies',
+      p,
+      { recruiter },
+      {
+        [id(recruiter)]: [recruit('Shieldwall Levies|1', `merc:${merc}`)],
+      },
+    );
+  }
+  {
+    const p = offering(aProvince(), garrisonType, 'Shieldwall Levies');
+    const recruiter = at(p);
+    stage(
+      'a garrison company recruited',
+      'companies',
+      p,
+      { recruiter },
+      {
+        [id(recruiter)]: [recruit(`${garrisonType}|1`, 'Shieldwall Levies|1')],
+      },
+    );
+  }
+  {
+    const p = offering(aProvince(), 'Shieldwall Levies');
+    const recruiter = at(p);
+    stage(
+      'companies recruited into the garrison',
+      'companies',
+      p,
+      { recruiter },
+      {
+        [id(recruiter)]: [recruit('Shieldwall Levies|1', 'to:garrison')],
+      },
+    );
+  }
+  {
+    const p = offering(aProvince(), 'Shieldwall Levies');
+    const [recruiter, comrade] = [at(p), at(p)];
+    stage(
+      "companies recruited under a comrade's banner",
+      'companies',
+      p,
+      { recruiter, comrade },
+      {
+        [id(recruiter)]: [recruit('Shieldwall Levies|1', `to:${id(comrade)}`)],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    const handed = unit('Men-at-Arms');
+    const [giver, comrade] = [
+      at(p, { armies: [unit('Shieldwall Levies'), handed] }),
+      at(p, { armies: [unit('Longbowmen')] }),
+    ];
+    stage(
+      'a company handed to a comrade beside him',
+      'companies',
+      p,
+      { giver, comrade },
+      {
+        [id(giver)]: [leave(String(handed['unitName']), id(comrade))],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    p['garrisonArmies'] = [unit('Longbowmen')];
+    const left = unit('Men-at-Arms');
+    const [leader, comrade] = [at(p, { armies: [unit('Shieldwall Levies'), left] }), at(p)];
+    stage(
+      'a company left in the garrison, then taken up by a comrade next season',
+      'companies',
+      p,
+      { leader, comrade },
+      {
+        [id(leader)]: [leave(String(left['unitName']))],
+        [id(comrade)]: [rest, pickUp('g:1')],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    const left = unit('Men-at-Arms');
+    // (the one who takes it up is the earlier hero: the turn's wait alone puts the one who leaves it first)
+    const taker = at(p);
+    const leaver = at(p, { armies: [left] });
+    stage(
+      'a company taken up as a comrade leaves it, in the same phase',
+      'companies',
+      p,
+      { leaver, taker },
+      {
+        [id(leaver)]: [leave(String(left['unitName']))],
+        [id(taker)]: [pickUp('g:0')],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    const gone = unit('Men-at-Arms');
+    const leader = at(p, { armies: [gone, unit('Shieldwall Levies')] });
+    stage(
+      'a company disbanded',
+      'companies',
+      p,
+      { leader },
+      {
+        [id(leader)]: [{ action: 'Disband Army', target: String(gone['unitName']) }],
+      },
+    );
+  }
+  // the ones the forecast gets wrong (question 42)
+  {
+    const p = aProvince();
+    const [giver, comrade] = [at(p, { items: [mithril, anItem(items[0])] }), at(p)];
+    stage('Mithril Armour sent with "all"', 'items', null, { giver, comrade }, { [id(giver)]: [send('all', comrade)] });
+  }
+  {
+    const [giver, comrade] = [at(meeting, { items: [fourth] }), at(nextDoor)];
+    stage(
+      'an item handed to a comrade marching in',
+      'items',
+      null,
+      { giver, comrade },
+      {
+        [id(giver)]: [send('0', comrade)],
+        [id(comrade)]: [{ action: 'Move', target: `prov:${id(meeting['id'])}` }],
+      },
+    );
+  }
+  {
+    // the first to hand over is the later hero (the form takes them in the report's order, by their ids)
+    const p = aProvince();
+    const [between, last] = [at(p, { items: [anItem(items[1])] }), at(p)];
+    const firstToHand = at(p, { items: [anItem(items[0])] });
+    stage(
+      'a chain of hand-overs in one phase',
+      'items',
+      null,
+      { 'the first to hand over': firstToHand, between, last },
+      {
+        [id(firstToHand)]: [send('all', between)],
+        [id(between)]: [send('all', last)],
+      },
+    );
+  }
+  {
+    // (a company of the realm for it to raise a tier, so it is spent)
+    const p = aProvince();
+    const bearer = at(p, { items: [stone], armies: [unit('Men-at-Arms')] });
+    stage(
+      "the Philosopher's Stone used",
+      'items',
+      null,
+      { bearer },
+      {
+        [id(bearer)]: [{ action: 'Use Item', target: id(stone.id) }],
+      },
+    );
+  }
+  {
+    const p = offering(aProvince(), beast);
+    const recruiter = at(p);
+    stage(
+      'a beast recruited past his beast command',
+      'companies',
+      p,
+      { recruiter },
+      {
+        [id(recruiter)]: [recruit(`${beast}|1`)],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    const merc = band(p, garrisonType, 'Veteran');
+    const recruiter = at(p);
+    stage(
+      'a band of garrison troops hired',
+      'companies',
+      p,
+      { recruiter },
+      {
+        [id(recruiter)]: [recruit(`merc:${merc}`)],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    p['garrisonArmies'] = [unit('Men-at-Arms'), unit('Shieldwall Levies')];
+    const taker = at(p);
+    stage(
+      'companies taken up from the garrison by their places',
+      'companies',
+      p,
+      { taker },
+      {
+        [id(taker)]: [pickUp('g:0,g:1')],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    p['garrisonArmies'] = [unit('Men-at-Arms'), unit('Shieldwall Levies')];
+    const taker = at(p);
+    stage('the whole garrison taken up', 'companies', p, { taker }, { [id(taker)]: [pickUp('all')] });
+  }
+  {
+    const p = aProvince();
+    const risen = unit('Men-at-Arms', 'Average', { _isSkeletal: true });
+    const [giver, comrade] = [at(p, { armies: [risen] }), at(p)];
+    stage(
+      'risen dead handed to a comrade',
+      'companies',
+      p,
+      { giver, comrade },
+      {
+        [id(giver)]: [leave(String(risen['unitName']), id(comrade))],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    const wild = unit(beast);
+    const [giver, comrade] = [at(p, { armies: [wild] }), at(p)];
+    stage(
+      'a beast handed to a comrade at his beast command',
+      'companies',
+      p,
+      { giver, comrade },
+      {
+        [id(giver)]: [leave(String(wild['unitName']), id(comrade))],
+      },
+    );
+  }
+  {
+    const p = aProvince();
+    p['garrisonArmies'] = [unit(beast)];
+    const taker = at(p);
+    stage('a beast taken up past his beast command', 'companies', p, { taker }, { [id(taker)]: [pickUp('g:0')] });
+  }
+  return { world: quietly(() => savedAndReported(g)), holdings };
+}
+/** What the heroes of `holding` and its province's garrison hold in the state `G`: each item's name, or each
+ *  company. */
+function whatTheyHoldIn(G: Obj, holding: AStagedHolding): WhatTheyHold {
+  const heroes = new Map(objects(G['characters']).map((h) => [h['id'], h]));
+  const out: WhatTheyHold = {};
+  for (const [part, heroId] of Object.entries(holding.heroes)) {
+    const h = heroes.get(heroId) ?? {};
+    out[part] =
+      holding.reads === 'items'
+        ? objects(h['items']).map((it) => String(it['name']))
+        : objects(h['armies']).map(aCompany);
+  }
+  if (holding.province != null) {
+    const p = objects(isObj(G['world']) ? G['world']['provinces'] : []).find((x) => x['id'] === holding.province);
+    out['the garrison'] = objects(p?.['garrisonArmies']).map(aCompany);
+  }
+  return out;
+}
+/** The phases a holding's orders fill. */
+const phasesOf = (holding: AStagedHolding) => Math.max(...Object.values(holding.orders).map((list) => list.length));
+/** The state once the turn has played the phases of the holding's orders, one a phase, as its loop plays them (the
+ *  four stages of each: its start, the heroes' intents and the reactions to them, their orders in two tiers around the
+ *  Defend step, its end), on a copy of the state: its heroes' move pools set as the turn sets them first. */
+function theTurnPlaysTheHolding(state: Obj, holding: AStagedHolding): Obj {
+  const G = copyOf(state);
+  G['turnOrders'] = Object.fromEntries(
+    Object.entries(holding.orders).map(([heroId, list]) => [
+      heroId,
+      list.map((o) => ({ action: o.action, target: o.target, extra: o.extra ?? '', desc: o.action })),
+    ]),
+  );
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], Number(G['turn']) || 1), { KC_SEASONS, isBotRow });
+  kcRng.seed(1);
+  quietly(() => {
+    for (const c of objects(G['characters']).filter((h) => h['player'] != null && h['alive'])) setMovePool(tc, c);
+    for (let ph = 0; ph < phasesOf(holding); ph++) {
+      tc._currentPhase = ph;
+      const startedAt = Object.fromEntries(objects(G['characters']).map((h) => [String(h['id']), h['location']]));
+      startPhaseHealingSnapshotsAndStalledBattles(tc, ph);
+      const intents: unknown = buildPhaseIntents(tc, ph);
+      pinAndReactToPhaseIntents(tc, ph, intents);
+      resolvePhaseOrdersInTwoTiersAroundTheDefendStep(tc, ph, intents);
+      endPhaseSkillRisesFallenCommandersAndProvinceMemory(tc, ph, startedAt);
+    }
+  });
+  return G;
+}
+/** One staged holding compared: what the forecast says its heroes and its garrison hold once its orders are carried
+ *  out, and what the turn leaves them; with its kind and what they held before. */
+export interface HoldingComparison extends Comparison {
+  readonly kind: AKindOfHolding;
+  readonly before: WhatTheyHold;
+}
+/** What the order form says each staged holding's heroes and garrison will hold after their orders (predictedItems,
+ *  projectedLedArmies, projectedGarrison, as the phase after them begins), against what the turn leaves them. */
+export function whatAHeroHoldsAgainstTheTurn(c: Copies): HoldingComparison[] {
+  const { world, holdings } = holdingWorld();
+  return holdings.map((holding) => {
+    const upTo = phasesOf(holding);
+    const forecast: WhatTheyHold = {};
+    for (const [part, heroId] of Object.entries(holding.heroes)) {
+      const held =
+        holding.reads === 'items'
+          ? c.predictedItemsOn(world.report, holding.orders, heroId, upTo)
+          : c.projectedLedArmiesOn(world.report, holding.orders, heroId, upTo);
+      forecast[part] = (Array.isArray(held) ? held : []).map((x) =>
+        holding.reads === 'items' ? String(x) : aCompany(x),
+      );
+    }
+    if (holding.province != null) {
+      const held = c.projectedGarrisonOn(world.report, holding.orders, holding.province, upTo);
+      forecast['the garrison'] = (Array.isArray(held) ? held : []).map(aCompany);
+    }
+    return {
+      ...compare([holding.kind, holding.orders], forecast, {
+        answer: whatTheyHoldIn(theTurnPlaysTheHolding(world.state, holding), holding),
+        changed: false,
+      }),
+      kind: holding.kind,
+      before: whatTheyHoldIn(world.state, holding),
+    };
+  });
 }
 /** What the army card's sea note tells the player, in the engine's words (getSeaCapability's answers): 'all' (every
  *  unit sails or flies on its own), 'sea' (the column can put to sea: its hulls carry it, or its flyers lift it and

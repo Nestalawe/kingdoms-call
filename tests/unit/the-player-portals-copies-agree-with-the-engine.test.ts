@@ -12,8 +12,9 @@
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
 // card's kin and feud against the battle's armStr. Since P1-11d1, the march: the portal's three hex tables against the
 // engine's step, where the form says a hero will stand after his Moves and Forced Marches against where the turn leaves
-// him, and the share marching in maps against the turn's (each known difference pinned: question 44). And each engine
-// function leaves its input as it was.
+// him, and the share marching in maps against the turn's (each known difference pinned: question 44). Since P1-11d2,
+// what a hero holds: what the form says he will carry and lead, and a garrison hold, after his orders, against the turn's
+// phases (each known difference pinned: question 42). And each engine function leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -78,9 +79,18 @@
 // at a neutral realm's border, past its pace (each refused by the turn), a far province or a far Forced March (one step
 // in the turn), a Forced March by direction (not read by the form); and the share `exploreMoveGainBefore` counts a march
 // as mapping is the turn's at March 6 and 0 leading companies and for a sea sailed into, and pinned for a Travelworn
-// Drape (10 for 30) and Naval 6's charting of the coast (0 for 5). Level 1: pure functions on values; no page is
-// needed, and a static test can't compare what two functions answer. Planted faults: in the PRs (P1-11a2, P1-11a4,
-// P1-11b1, P1-11b2, P1-11b3, P1-11b4, P1-11c1, P1-11c4, P1-11d1)
+// Drape (10 for 30) and Naval 6's charting of the coast (0 for 5). P1-11d2 (plan P1-11d, before any of it is shared):
+// on a staged world with no guards (`holdingWorld`, each case on its own province), what `predictedItems`,
+// `projectedLedArmies` and `projectedGarrison` (with `_projRecruitUnits` and `_isAutoGarrisonRecruit`) say a hero will
+// carry and lead, and a garrison hold, as the season after his orders begins, is what the turn's phases leave them
+// (played one at a time, its loop's four stages each): items handed over beside him, sent by courier and passed on;
+// companies recruited (a band and the province's, a garrison company, into the garrison, under a comrade), handed over,
+// left and taken up, taken up as a comrade leaves them, disbanded; and pinned where it is not (question 42): Mithril
+// sent with "all", a comrade marching in, a chain of hand-overs in one season, the Philosopher's Stone used, a beast
+// past a leader's beast command (recruited, handed over, taken up), a band of garrison troops hired, companies taken up
+// (the turn's last first), risen dead handed to a comrade (to their graves in the turn; no risen mark in the form).
+// Level 1: pure functions on values; no page is needed, and a static test can't compare what two functions answer.
+// Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3, P1-11b4, P1-11c1, P1-11c4, P1-11d1, P1-11d2)
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   armyCardKinAgainstTheBattle,
@@ -112,11 +122,14 @@ import {
   THE_MARCHES_IN_THE_FORECAST_GETS_WRONG,
   THE_MARCHES_THE_FORECAST_GETS_RIGHT,
   THE_MARCHES_THE_FORECAST_GETS_WRONG,
+  THE_HOLDINGS_THE_FORECAST_GETS_RIGHT,
+  THE_HOLDINGS_THE_FORECAST_GETS_WRONG,
   theMarchForecastAgainstTheTurn,
   theMarchInForecastAgainstTheTurn,
   thePortalsHexTablesAgainstTheEngine,
   theOrderFormsSpells,
   theWarlocksTitle,
+  whatAHeroHoldsAgainstTheTurn,
   worldSamples,
   type WorldSamples,
 } from '../lib/player-portal-copies.ts';
@@ -159,6 +172,7 @@ const kin = lazily(() => armyCardKinAgainstTheBattle(copies, kinWorld()));
 const hexSteps = lazily(() => thePortalsHexTablesAgainstTheEngine(copies));
 const marches = lazily(() => theMarchForecastAgainstTheTurn(copies));
 const marchesIn = lazily(() => theMarchInForecastAgainstTheTurn(copies));
+const holdings = lazily(() => whatAHeroHoldsAgainstTheTurn(copies));
 const casesOf = (p: (typeof PROJECTIONS)[number]) => once(`${p.engine} projection`, () => p.cases(values));
 let worldValues: WorldSamples;
 // The values, in one hook with a whole game's limit (the game, then the samples with the staged world, then the staged
@@ -535,6 +549,104 @@ describe('the march: where the order form says a hero will stand, and what march
     expect(list.map((x) => [x.kind, x.copy, x.engine])).toEqual([
       ['a Travelworn Drape worn', 10, 30],
       ['the coast beside the sea he sails into, charted at Naval 6', 0, 5],
+    ]);
+  });
+});
+
+describe('what a hero holds: what the order form says he will carry and lead, and a garrison hold (P1-11d2)', () => {
+  test('what the order form says a hero will carry and lead, and a garrison hold, after his orders is what the turn leaves them: items handed over, sent by courier and passed on, companies recruited, handed over, left, taken up and disbanded', () => {
+    // On a staged world (no guards, no foes; each case on its own province, its heroes realm 0's): the form's
+    // predictedItems, projectedLedArmies and projectedGarrison as the phase after the orders begins, against the turn's
+    // phases played one at a time. Items handed to a comrade beside him (two, by their places: the higher first), one
+    // sent by courier to a comrade elsewhere (gone from the pack, not yet in his), one handed over and passed on next
+    // season; a mercenary band and a company of the province recruited (the band first, whatever the ticks' order), a
+    // garrison company recruited (into the garrison, whoever is named), companies recruited into the garrison and under a
+    // comrade's banner; a company handed to a comrade beside him, one left in the garrison and taken up by a comrade
+    // next season by its place (behind the one there before), one taken up as a comrade leaves it in the same season (the turn makes the Pick Up wait), one
+    // disbanded.
+    const list = holdings().filter((x) => (THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
+    expect(list.map((x) => x.kind)).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_RIGHT]);
+    expect(differences(list)).toEqual([]);
+    // and each order changed what they hold
+    expect(list.filter((x) => sameAnswer(x.engine, x.before)).map((x) => x.kind)).toEqual([]);
+  });
+
+  test('what the forecast gets wrong is pinned: Mithril with "all", a comrade marching in, a chain in one phase, the Stone, the beast command, a garrison band, Pick Up\'s order, risen dead (question 42)', () => {
+    // The form replays the orders, not the turn's checks: a Mithril suit is forged to its wearer (the turn keeps it on
+    // him); a comrade marching in that season is handed the item at once (the form, which places him where the season
+    // began, sends it by courier); a chain of hand-overs in one season goes in the turn's order (a hero handing to a
+    // comrade who hands on goes first), in the form's by the heroes' order; the Philosopher's Stone used is destroyed
+    // (as an older save's copy carries it: the one Use Item works); a beast past a leader's beast command (his Druid
+    // level, here 0) musters into the garrison, stays with the giver or goes back to the garrison; a band of garrison
+    // troops hired musters into the garrison; companies taken up join last first; risen dead handed to a comrade of a
+    // realm that is not Undead go to their graves (the form hands them over, and its companies carry no risen mark).
+    const list = holdings();
+    expect(
+      list.map((x) => x.kind).filter((k) => !(THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
+    ).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_WRONG]);
+    const kind = (k: string) => {
+      const x = list.find((h) => h.kind === k);
+      if (!x) throw new Error(`no staged holding of the kind ${k}`);
+      return { ...x, before: x.before as Record<string, string[] | undefined> };
+    };
+    const one = (x: { before: Record<string, string[] | undefined> }, part: string, i = 0) =>
+      x.before[part]?.[i] ?? `(no ${part} ${String(i)})`;
+    const mithril = kind('Mithril Armour sent with "all"');
+    expect([mithril.copy, mithril.engine]).toEqual([
+      { giver: [], comrade: [one(mithril, 'giver', 1), 'Mithril Armour'] },
+      { giver: ['Mithril Armour'], comrade: [one(mithril, 'giver', 1)] },
+    ]);
+    const marchingIn = kind('an item handed to a comrade marching in');
+    expect([marchingIn.copy, marchingIn.engine]).toEqual([
+      { giver: [], comrade: [] },
+      { giver: [], comrade: [one(marchingIn, 'giver')] },
+    ]);
+    const chain = kind('a chain of hand-overs in one phase');
+    const [handed, between] = [one(chain, 'the first to hand over'), one(chain, 'between')];
+    expect([chain.copy, chain.engine]).toEqual([
+      { 'the first to hand over': [], between: [handed], last: [between] },
+      { 'the first to hand over': [], between: [], last: [handed, between] },
+    ]);
+    const stone = kind("the Philosopher's Stone used");
+    expect([stone.copy, stone.engine]).toEqual([{ bearer: ["Philosopher's Stone"] }, { bearer: [] }]);
+    const beasts = THE_HOLDINGS_THE_FORECAST_GETS_WRONG.filter((k) => k.includes('beast'));
+    const beast = one(kind('a beast taken up past his beast command'), 'the garrison');
+    expect(beasts.map((k) => [k, kind(k).copy, kind(k).engine])).toEqual([
+      [
+        'a beast recruited past his beast command',
+        { recruiter: [beast], 'the garrison': [] },
+        { recruiter: [], 'the garrison': [beast] },
+      ],
+      [
+        'a beast handed to a comrade at his beast command',
+        { giver: [], comrade: [beast], 'the garrison': [] },
+        { giver: [beast], comrade: [], 'the garrison': [] },
+      ],
+      [
+        'a beast taken up past his beast command',
+        { taker: [beast], 'the garrison': [] },
+        { taker: [], 'the garrison': [beast] },
+      ],
+    ]);
+    const band = kind('a band of garrison troops hired');
+    expect([band.copy, band.engine]).toEqual([
+      { recruiter: ['Human Garrison (Veteran)'], 'the garrison': [] },
+      { recruiter: [], 'the garrison': ['Human Garrison (Veteran)'] },
+    ]);
+    for (const k of ['companies taken up from the garrison by their places', 'the whole garrison taken up']) {
+      const x = kind(k);
+      const [a, b] = [one(x, 'the garrison'), one(x, 'the garrison', 1)];
+      expect([k, x.copy, x.engine]).toEqual([
+        k,
+        { taker: [a, b], 'the garrison': [] },
+        { taker: [b, a], 'the garrison': [] },
+      ]);
+    }
+    const risen = kind('risen dead handed to a comrade');
+    expect([risen.before, risen.copy, risen.engine]).toEqual([
+      { giver: ['Men-at-Arms (Average) (risen)'], comrade: [], 'the garrison': [] },
+      { giver: [], comrade: ['Men-at-Arms (Average)'], 'the garrison': [] },
+      { giver: [], comrade: [], 'the garrison': [] },
     ]);
   });
 });
