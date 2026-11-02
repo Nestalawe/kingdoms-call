@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 13, built in PR #366
+- **Source:** Plan question 13, built in PRs #366 and #368
 - **Enforced by:** [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts), [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The Crown of Command raises every skill of its wearer's realm's heroes in his province by 1, and every rule counts
