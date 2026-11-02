@@ -3,8 +3,7 @@
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a). The battle's armStr (src/engine/battle/terrain-and-unit-strength.ts) asks it after a Druid
 // shortfall is taken off; the army card on the player's report (renderReportView, src/ui/player/report.ts) asks it
-// through src/shared/, before the card takes a shortfall off (plan P1-11c, question 28 (b) for Toby: the two orders
-// round differently, and each stays where it was).
+// through src/shared/, in the same order (R-122).
 import { KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
 
 /** A unit's figure once its kin and a rival kin's leader have counted, and which of them did. */
