@@ -1,5 +1,5 @@
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
-import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
+import { actionSpellsAHeroMayCastInASchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
   aCharmedHeroWillNotTurnThisSpellOnHisLord,
   aCloakedMarkIsShieldedFromThisSpell,
@@ -12,7 +12,6 @@ import { d100 } from '../dice-and-army-names.ts';
 import { TM, skillLevel } from '../titles/perks.ts';
 import { isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { castChanceFor } from '../chances-and-lair-grades.ts';
-import { _BEST_SCHOOL } from '../titles/reckoning.ts';
 import { gdActive } from '../discoveries.ts';
 import {
   emit,
@@ -122,9 +121,9 @@ export function resolveCastSpellOrder(
   if (!_itemCast) {
     const _school = spellDef.school;
     const _lvl = effStat(turnContext, c, _school);
-    const _limit =
-      actionSpellsAllowedPerSchoolEachTurn(_lvl) +
-      (charMinor(turnContext, c, 'warlock') && _BEST_SCHOOL(c) === skillLevel(c, _school) ? 1 : 0); // Warlock minor (Archmage +1-cast perk removed \u2014 now an intel line)
+    // the Warlock's extra cast in his best school is the shared rule's (R-123; the Archmage's +1-cast perk was removed:
+    // it is an intel line now)
+    const _limit = actionSpellsAHeroMayCastInASchoolEachTurn(c, _school, _lvl, charMinor(turnContext, c, 'warlock'));
     const _divCath = gdActive(turnContext, c.player, 'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot (the spells' registry, plan P1-19y)
     // NORMALISE the saved action: the player portal writes "Cast Spell", the bots write
     // "cast_spell". Comparing the raw string counted only the bots' casts, so a human caster
