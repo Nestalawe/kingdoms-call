@@ -1,8 +1,9 @@
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import {
-  THE_ALIGNMENT_ORDERS,
-  type AnAlignmentOrder,
-} from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+  aHeroMayGiveTheAlignmentOrderAsKingOrNot,
+  aRealmOfThisCreedMayGiveTheAlignmentOrder,
+} from '../rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import {
@@ -83,10 +84,6 @@ interface WhereAsAWildCallingComparesIt {
 function theSamePlaceAsNamed(h: WhereAsAWildCallingComparesIt, from: WhereAsAWildCallingComparesIt) {
   return h.kind === from.kind && h.provinceName === from.provinceName && h.heroName === from.heroName;
 }
-/** Whether the king alone gives an alignment order, as its row says (read as any row's mark, a yes or a no). */
-function theKingAloneGives(order: AnAlignmentOrder): boolean {
-  return order.theKingAlone;
-}
 // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
 export function resolveConsecrateOrder(
   turnContext: TurnContext,
@@ -98,7 +95,7 @@ export function resolveConsecrateOrder(
   // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
   // hero who gives it, for the phases after), so he serves one; for none, a TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm consecrates');
-  if (theKingAloneGives(THE_ALIGNMENT_ORDERS.consecrate) && !c.isKing) {
+  if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(THE_ALIGNMENT_ORDERS.consecrate, c.isKing)) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'only the king can consecrate ground', heroName: c.name },
@@ -108,7 +105,7 @@ export function resolveConsecrateOrder(
     });
     return;
   }
-  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS.consecrate.creed) {
+  if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS.consecrate, G.players[c.player]?.alignment)) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'the gods answer a consecration only from a Divine crown', heroName: c.name },
@@ -244,7 +241,9 @@ export function resolveCallToArmsOrder(
   // TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm calls to arms');
   theRealmIsHanded(player);
-  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS['call-to-arms'].creed) {
+  if (
+    !aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS['call-to-arms'], G.players[c.player]?.alignment)
+  ) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: "only a Good realm's folk answer a Call to Arms", heroName: c.name },
@@ -254,7 +253,7 @@ export function resolveCallToArmsOrder(
     });
     return;
   }
-  if (theKingAloneGives(THE_ALIGNMENT_ORDERS['call-to-arms']) && !c.isKing) {
+  if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(THE_ALIGNMENT_ORDERS['call-to-arms'], c.isKing)) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: "only the king's voice carries the Call to Arms", heroName: c.name },
@@ -353,7 +352,7 @@ export function resolveBrokerOrder(
   // TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm keeps brokers');
   theRealmIsHanded(player);
-  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS.broker.creed) {
+  if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS.broker, G.players[c.player]?.alignment)) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'only a Neutral crown keeps brokers', heroName: c.name },
@@ -363,7 +362,7 @@ export function resolveBrokerOrder(
     });
     return;
   }
-  if (theKingAloneGives(THE_ALIGNMENT_ORDERS.broker) && !c.isKing) {
+  if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(THE_ALIGNMENT_ORDERS.broker, c.isKing)) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: "only the king commands the realm's brokers", heroName: c.name },
@@ -567,7 +566,12 @@ export function resolveHarvestTheFieldOrder(
   // TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm harvests the field');
   theRealmIsHanded(player);
-  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS['harvest-the-field'].creed) {
+  if (
+    !aRealmOfThisCreedMayGiveTheAlignmentOrder(
+      THE_ALIGNMENT_ORDERS['harvest-the-field'],
+      G.players[c.player]?.alignment,
+    )
+  ) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'only Undead realms keep corpse-carters', heroName: c.name },

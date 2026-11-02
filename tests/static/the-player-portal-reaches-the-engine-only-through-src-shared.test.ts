@@ -19,15 +19,18 @@
 // `src/shared/` hands it; the order form's eight Cast Spell tables are each declared once in the portal, as the call of
 // the folder's function that makes it (P1-11c3); the order form's three hex tables (`predictedLocation`, the Move field
 // in `buildTargetField`, `lastMoveDirOf`) each call the folder's `theHexNextToAProvinceInADirection`, and no portal file
-// holds a table of the six steps from a hex, under any name (P1-11d6); and the player page's modules hold no engine
-// file outside the folder, and no views file.
+// holds a table of the six steps from a hex, under any name (P1-11d6); the order list's alignment orders are the
+// folder's (P1-11d7): `ACTIONS` reads their five names by slug and writes none, `ALIGN_ACTIONS` is the folder's table
+// of their rows by name, `actionsFor` asks its two checks of who may give one, and `KING_ONLY_ACTIONS` is retired; and
+// the player page's modules hold no engine file outside the folder, and no views file.
 // Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
 // 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
-// plants; P1-11d6's in its PR)
+// plants; P1-11d6's and P1-11d7's in their PRs)
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
+import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { filesUnder, ROOT } from '../../tools/build.ts';
 import { pageModules } from '../../tools/pages.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
@@ -81,6 +84,8 @@ const RETIRED = [
   'ODD_OFF',
   'EV',
   'OD',
+  // P1-11d7: the set of the orders the king alone gives (the rows' mark, read by aHeroMayGiveTheAlignmentOrderAsKingOrNot)
+  'KING_ONLY_ACTIONS',
 ];
 
 /** The portal's three hex tables (P1-11d6), each as the file and the function that held a table of the six steps from
@@ -104,6 +109,13 @@ const THE_ORDER_FORMS_SPELL_TABLES: readonly (readonly [string, string])[] = [
   ['NEEDS_PROV', 'theActionSpellsAimedAtAProvince'],
   ['NEEDS_CHAR', 'theActionSpellsAimedAtAHero'],
 ];
+/** The order list's alignment orders (P1-11d7): the folder's two checks of who may give one, which actionsFor asks, and
+ *  the function the list (ACTIONS) reads each one's name from, by its row's slug. */
+const THE_TWO_CHECKS_OF_WHO_MAY_GIVE_AN_ALIGNMENT_ORDER = [
+  'aRealmOfThisCreedMayGiveTheAlignmentOrder',
+  'aHeroMayGiveTheAlignmentOrderAsKingOrNot',
+];
+const THE_NAME_OF_AN_ALIGNMENT_ORDER = 'theNameTheFormWritesOfTheAlignmentOrder';
 const filesIn = (folder: string) => filesUnder(SRC).filter((f) => f.startsWith(folder));
 
 /** Each import of `file` (relative to src/): what it names, and where that is relative to src/ (null: not a file of
@@ -283,6 +295,32 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     ).map(([file, fn]) => `${fn} (${file}) doesn't call theHexNextToAProvinceInADirection`);
     expect(notCalling).toEqual([]);
     expect(files.flatMap((file) => tablesOfSixStepsIn(file).map((t) => `${file} holds the table ${t}`))).toEqual([]);
+  });
+
+  test("the order list's alignment orders: their names, their table and their checks are the folder's", () => {
+    // (P1-11d7) The list wrote the five names, a table of each one's creed and a set of the king's, and compared them
+    // itself; each is the rows' now, through the folder: ACTIONS reads each name by its row's slug, ALIGN_ACTIONS is the
+    // folder's table of the rows by name, and actionsFor asks the folder's two checks, as the turn's resolvers do.
+    const handed = new Set(namesSharedExports());
+    const theFolders = [
+      ...THE_TWO_CHECKS_OF_WHO_MAY_GIVE_AN_ALIGNMENT_ORDER,
+      THE_NAME_OF_AN_ALIGNMENT_ORDER,
+      'theAlignmentOrdersByTheNameTheFormWrites',
+    ];
+    expect(theFolders.filter((name) => !handed.has(name))).toEqual([]);
+    const declared = (name: string) => files.flatMap((file) => initializersDeclaredIn(file, name));
+    expect(declared('ALIGN_ACTIONS')).toEqual(['theAlignmentOrdersByTheNameTheFormWrites()']);
+    const theList = declared('ACTIONS')[0] ?? '';
+    expect(declared('ACTIONS')).toHaveLength(1);
+    const theNames = Object.values(THE_ALIGNMENT_ORDERS).map((order) => order.name);
+    expect(theNames.filter((name) => theList.includes(`'${name}'`) || theList.includes(`"${name}"`))).toEqual([]);
+    expect(
+      Object.keys(THE_ALIGNMENT_ORDERS).filter(
+        (slug) => !theList.includes(`${THE_NAME_OF_AN_ALIGNMENT_ORDER}('${slug}')`),
+      ),
+    ).toEqual([]);
+    const called = namesCalledIn('ui/player/items-and-heroes.ts', 'actionsFor');
+    expect(THE_TWO_CHECKS_OF_WHO_MAY_GIVE_AN_ALIGNMENT_ORDER.filter((check) => !called.includes(check))).toEqual([]);
   });
 
   test('the player page loads no engine file outside the folder, and no views file', () => {

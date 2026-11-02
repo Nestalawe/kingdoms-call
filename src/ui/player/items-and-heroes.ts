@@ -6,7 +6,15 @@ import {
   KC_RUMOUR_COST_BY_POWER,
   KC_SEASONS,
 } from '../../content/kingdoms-call-data.ts';
-import { itemRaceOf, itemSlot, itemUsableBy } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  aHeroMayGiveTheAlignmentOrderAsKingOrNot,
+  aRealmOfThisCreedMayGiveTheAlignmentOrder,
+  itemRaceOf,
+  itemSlot,
+  itemUsableBy,
+  theAlignmentOrdersByTheNameTheFormWrites,
+  theNameTheFormWritesOfTheAlignmentOrder,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import { _tintForDarkTooltip, reportColour } from './map-symbols.ts';
 
@@ -216,11 +224,12 @@ export const ACTIONS = [
   'Spy',
   'Practice Skill',
   'Research',
-  'Perform Rite',
-  'Consecrate',
-  'Call to Arms',
-  'Broker',
-  'Harvest the Field',
+  // the alignment orders' names, from their rows (plan P1-11d7)
+  theNameTheFormWritesOfTheAlignmentOrder('perform-rite'),
+  theNameTheFormWritesOfTheAlignmentOrder('consecrate'),
+  theNameTheFormWritesOfTheAlignmentOrder('call-to-arms'),
+  theNameTheFormWritesOfTheAlignmentOrder('broker'),
+  theNameTheFormWritesOfTheAlignmentOrder('harvest-the-field'),
   'Sabotage',
   'Forced March',
   'Grand Heist',
@@ -246,18 +255,10 @@ export const ACTIONS = [
 ];
 // Alignment-signature actions: shown only to the realm that owns them (and Perform Rite joins the
 // same gating — no more dangling Pagan action in every dropdown). King-only actions are hidden from
-// heroes' dropdowns entirely.
-export const ALIGN_ACTIONS = {
-  'Perform Rite': 'Pagan',
-  Consecrate: 'Divine',
-  'Call to Arms': 'Good',
-  Broker: 'Neutral',
-  'Harvest the Field': 'Undead',
-}; // Druidic and Evil have no signature order since 2026-10-12 (item 22)
-// King-only actions — the engine rejects these from a hero, so they are hidden from heroes'
-// dropdowns entirely (Consecrate is king-only: only the anointed crown can hallow ground — see the
-// engine handler).
-export const KING_ONLY_ACTIONS = new Set(['Call to Arms', 'Broker', 'Consecrate']);
+// heroes' dropdowns entirely: the engine rejects them from a hero. Druidic and Evil have no signature
+// order since 2026-10-12 (item 22). Each by the name the form writes, its row: its creed and whether the
+// king alone gives it, which actionsFor asks the engine's two checks of (plan P1-11d7).
+export const ALIGN_ACTIONS = theAlignmentOrdersByTheNameTheFormWrites();
 // ── THE SEVEN WONDERS ────
 // One per alignment, mirroring _GD_DEFS in the GM engine. Keep the two in step: the engine decides
 // what the Wonder DOES, this decides what the player is told it will do before they spend the order.
@@ -362,8 +363,8 @@ export const _actionRank = (a) => {
 export function actionsFor(c) {
   const align = currentReport?.kingdom?.alignment;
   return ACTIONS.filter((a) => {
-    if (ALIGN_ACTIONS[a] && ALIGN_ACTIONS[a] !== align) return false;
-    if (KING_ONLY_ACTIONS.has(a) && !(c && c.isKing)) return false;
+    if (ALIGN_ACTIONS[a] && !aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS[a], align)) return false;
+    if (ALIGN_ACTIONS[a] && !aHeroMayGiveTheAlignmentOrderAsKingOrNot(ALIGN_ACTIONS[a], c && c.isKing)) return false;
     // 2026-09-24 (Toby): a character whose sheet you cannot read gets NO mastery orders at all.
     // Item 8 had offered the whole L7/L9 set to such a card — since the levels are unseen, filtering
     // by level would have leaked them. But offering all twenty is its own leak in reverse: a player
