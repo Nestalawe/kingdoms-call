@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-02, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 28 (b)
+- **Source:** Plan question 28 (b), built in PR #367
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The army card on a player's report shows each unit's strength as the battle counts it. Where the unit's commander
