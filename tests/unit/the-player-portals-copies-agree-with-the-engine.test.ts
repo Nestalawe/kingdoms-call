@@ -36,8 +36,8 @@
 // own lift (on every column under its leader, the mastery worked out as `getSeaCapability` does: its answer and every
 // figure the Move notice reads, and on the state's side `getSeaCapability`'s answer; until P1-11b4 a truth case of
 // `poSeaAnalysis`'s cap). For a copy that stays, the truth (the copy on the report's value, against what the engine
-// sends): `effMagicLvl` is the report's effective level of each magic school but for the Crown of Command's aura, which
-// it leaves out (Parked). P1-11b1 added the truth of the copies that read the realm, the report's shape or the world,
+// sends): `effMagicLvl` is the report's effective level of each magic school, the Crown of Command's aura too (R-120:
+// it adds the aura the report sends). P1-11b1 added the truth of the copies that read the realm, the report's shape or the world,
 // on six more staged worlds for the Druid rule (realm 0 Good, Druidic or Evil, with and without Dragon Taming; a hero
 // of every race, alignment and Druid level 0 to 5, beside a Crown of Command and away from it, with one unit of each
 // Druid level and class, of his race and of none, alive and skeletal) and one for exploring (a hero of each Explorer
@@ -200,16 +200,14 @@ describe('the 11 rules the portal calls the engine for whose value the report ma
 describe('a copy that stays (it reads the report’s shape)', () => {
   // poSeaAnalysis's cap, the other copy P1-11a2 checked the truth of here, counts through seaLiftOfAColumn since
   // P1-11b4: a projection case above.
-  test("effMagicLvl is the report's effective level of each magic school, but for the Crown of Command's aura", () => {
-    // The order form offers spells by effMagicLvl (a school's level and the hero's items); the turn casts at the
-    // report's skillEff, which also counts the aura of a Crown of Command worn by a hero of his realm in his province
-    // (a Curse too, but a Curse ends with the turn, so no report shows one). Where there is no aura the two agree;
-    // where there is, the form's level is one lower (STATUS, Parked: the Warlock's extra cast; P1-11b).
+  test("effMagicLvl is the report's effective level of each magic school, the Crown of Command's aura too (R-120)", () => {
+    // The order form offers spells by effMagicLvl (a school's level, the hero's items and the aura the report says he
+    // stands in); the turn casts at the report's skillEff, which counts the aura of a Crown of Command worn by a hero
+    // of his realm in his province (a Curse too, but a Curse ends with the turn, so no report shows one). Since R-120
+    // the two agree beside a Crown too.
     const list = effMagicLvlAgainstTheReport(copies, values);
-    const withAura = list.filter((x) => x.aura !== 0);
-    expect(list.filter((x) => x.aura === 0 && x.copy !== x.report)).toEqual([]);
-    expect(withAura.length).toBeGreaterThan(0);
-    expect(withAura.filter((x) => x.copy !== x.report - x.aura)).toEqual([]);
+    expect(list.filter((x) => x.aura !== 0).length).toBeGreaterThan(0);
+    expect(list.filter((x) => x.copy !== x.report)).toEqual([]);
   });
 });
 
