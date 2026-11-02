@@ -532,6 +532,13 @@ describe('the march: where the order form says a hero will stand, and what march
     expect([of('predictedLocation').length, of('the Move field').length, of('lastMoveDirOf').length]).toEqual([
       336, 56, 304,
     ]);
+    // the note under the Move field: the icy wastes bar a way north from the top row, south from the bottom row, none
+    // from the rows between (and a map of 7 rows has a row of each)
+    const wastes = of('the Move field’s icy wastes');
+    expect(wastes.length).toBe(56);
+    expect(new Set(wastes.map((x) => JSON.stringify(x.engine)))).toEqual(
+      new Set(['[true,false]', '[false,true]', '[false,false]']),
+    );
     const on = (x: (typeof list)[number]) => x.on as [number, number, number, string];
     const stays = of('predictedLocation').filter((x) => x.engine === on(x)[0]);
     expect(new Set(stays.map((x) => on(x)[3]))).toEqual(new Set(['NW', 'NE', 'SW', 'SE']));
