@@ -47,7 +47,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(/NAME_SEA_BY_TYPE=\{[\s\S]{0,900}?\bshark:\s*\{pre:\[/.test(gm)&&/race==='Primal:Shark'\)\s*kind='shark'/.test(gm),'shark waters are named from their own pool (NAME_SEA_BY_TYPE.shark, chosen for the race Primal:Shark)');
 
   // ── The Druid shortfall, in the one function that applies it ──
-  const pen=(align,druid)=>W.eval(`druIdPenaltyMult({race:'Orcish',alignment:'Neutral',skills:{druid:${druid}},items:[]},{type:'Shark Shoals',race:'Primal'},${JSON.stringify(align)},false)`);
+  const pen=(align,druid)=>W.eval(`druIdPenaltyMult({race:'Orcish',alignment:'Neutral',skills:{druid:${druid}},items:[]},{type:'Shark Shoals',race:'Primal'},${JSON.stringify(align)},false,[])`);
   ok(pen('Evil',0)===1,`an Evil realm leads Shark Shoals with no Druid (got ×${pen('Evil',0)})`);
   ok(Math.abs(pen('Neutral',0)-0.4)<1e-9,`a Neutral commander at Druid 0 is ${ROSTER['Shark Shoals'].druid} levels short: ×0.4 (got ×${pen('Neutral',0)})`);
   ok(pen('Neutral',3)===1,'…and at Druid 3 leads them in full');

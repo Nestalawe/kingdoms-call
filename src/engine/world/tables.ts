@@ -9,11 +9,11 @@ import {
 } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { shuffleP } from '../battle/fortune.ts';
-import { activeItems, rollMagicItem } from '../items/equipment.ts';
+import { rollMagicItem } from '../items/equipment.ts';
 import { LAIR_ITEM_ODDS, awardedEffectSet, itemEffectKey } from '../items/tiers-and-hoards.ts';
 import { HOME_FLEET_BY_RACE, homeProvinceIdFor } from '../grand-design.ts';
 import { discProvCoastal } from '../discoveries.ts';
-import { dedupeItemsByName, effSkillOf } from '../heroes/skills-and-hp.ts';
+import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import {
   countsAgainstBeastCommand,
   druidALeaderBringsToAUnit,
@@ -22,7 +22,6 @@ import {
   strengthLeftByADruidShortfall,
   unitAsItsRealmSeesIt,
 } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
-import type { AHeroAsHisItemsAreRead, AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 
 // Its types (plan P1-10b19): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
 // stays. A table read by any string is read through a typed local inside its function.
@@ -38,13 +37,13 @@ type AUnitAsTheBeastCommandCountsIt = Parameters<typeof unitAsItsRealmSeesIt>[0]
 interface AHeroAsTheBeastCommandReadsHim extends AHeroAsHisSkillIsRead {
   readonly armies?: readonly (AUnitAsTheBeastCommandCountsIt | null | undefined)[] | null | undefined;
 }
-/** A commander as the battle's Druid check reads him: his race, alignment, Druid and items, and the marks a battle's
- *  magic and a neutral guard leave on him. */
-interface ACommanderAsTheDruidCheckReadsHim extends AHeroAsHisItemsAreRead<AnItemAsTheSlotsReadIt> {
+/** A commander as the battle's Druid check reads him: his race and alignment, his Druid as his skill's level is read
+ *  (his training, items, a Curse spell, an aura beside him), and the marks a battle's magic and a neutral guard leave
+ *  on him. */
+interface ACommanderAsTheDruidCheckReadsHim extends AHeroAsHisSkillIsRead {
   readonly _isNeutralGuard?: boolean | undefined;
   readonly _druidNegated?: boolean | undefined;
   readonly _curseHalveStat?: string | null | undefined;
-  readonly skills?: { readonly druid?: number | undefined } | null | undefined;
 }
 /** A unit as the battle's Druid check reads it: its type and race, and whether it is a skeleton. */
 interface AUnitAsTheDruidCheckReadsIt {
@@ -279,6 +278,7 @@ export function druIdPenaltyMult(
   army: AUnitAsTheDruidCheckReadsIt,
   playerAlignment: string | null | undefined,
   tamed: boolean,
+  chars: TheHeroesAsASkillIsReadBesideThem,
 ) {
   // Skeletal armies never suffer Druid penalties — they are already dead
   if (army._isSkeletal) return 1.0;
@@ -300,20 +300,11 @@ export function druIdPenaltyMult(
   const required = druidLevelALeaderNeeds(armyType, playerAlignment, heroChar.alignment, tamed);
   if (required === 0) return 1.0;
 
-  // Psychic Blast (battle magic): this commander's Druid skill has been negated for the battle.
-  let rawDruid = heroChar._druidNegated
-    ? 0
-    : Math.max(
-        0,
-        Math.min(
-          5,
-          (Number(heroChar.skills?.druid) || 0) +
-            dedupeItemsByName(activeItems(heroChar)).reduce(
-              (s, it) => s + (it.effect?.stat === 'druid' ? Number(it.effect.bonus) : 0),
-              0,
-            ),
-        ),
-      );
+  // His Druid as every rule counts it (effStat's level: his training, his items, a Curse spell's halving and a Crown of
+  // Command's aura beside him; R-120, R-121), counted to 5 here: a battle's Curse below halves what the check counts
+  // (plan question 50). `chars` are the heroes beside whom it is read (the state's, as effStat reads them). Psychic
+  // Blast (battle magic): this commander's Druid skill has been negated for the battle.
+  let rawDruid = heroChar._druidNegated ? 0 : Math.min(5, Number(effSkillOf(heroChar, 'druid', chars)) || 0);
   // Curse (battle magic): if Druid is the commander's cursed ability, it is halved for the battle.
   if (heroChar._curseHalveStat === 'druid') rawDruid = Math.floor(rawDruid / 2);
   // Same-race troops are led as if the commander had at least Druid 1 for that race

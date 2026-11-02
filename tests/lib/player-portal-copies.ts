@@ -975,31 +975,27 @@ const skillOf = (hero: Obj, skill: string): number => {
 };
 
 /** The battle's Druid multiplier on a unit's strength (druIdPenaltyMult, as the battle calls it: the realm's
- *  alignment, and whether its Dragon Taming tames the unit). */
+ *  alignment, whether its Dragon Taming tames the unit, and the state's heroes, beside whom his Druid is read). */
 const battleDruidMultiplier = (world: World) => (hero: Obj, unit: Obj) =>
   // the staged world's state, hero, unit and realm's alignment, given the types the battle hands them, by assertion as
   // the staged worlds give the saved state's (dragonTamed reads the hero's realm, the unit's type and the realm's
-  // discoveries; druIdPenaltyMult the unit's type and race, and takes the hero's fields as they are)
+  // discoveries; druIdPenaltyMult the unit's type and race, and takes the hero's and the state's heroes' fields as
+  // they are)
   druIdPenaltyMult(
     hero,
     unit as ArmyInABattle,
     realmOf(world, hero)['alignment'] as string | undefined,
     dragonTamed({ G: world.state } as unknown as TurnContext, hero as HeroInABattle, unit as ArmyInABattle),
+    objects(world.state['characters']),
   );
 
-/** One Druid case compared, and the Crown's aura in the report's effective Druid of the hero, with the engine's
- *  answer for the hero trained that much higher. */
+/** One Druid case compared, and the Crown's aura in the report's effective Druid of the hero. */
 export interface DruidComparison extends Comparison {
   readonly aura: number;
-  readonly engineWithTheAura: unknown;
 }
-/** The engine's answer `fn` on the state's hero and unit, and on the hero trained higher by the aura. */
+/** The engine's answer `fn` on the state's hero and unit, with the aura beside him. */
 function druidCase(on: unknown, copy: unknown, hero: Obj, unit: Obj, aura: number, fn: (h: Obj, u: Obj) => unknown) {
-  return {
-    ...compare(on, copy, engineOn(fn, [hero, unit])),
-    aura,
-    engineWithTheAura: engineOn(fn, [withSkillAt(hero, 'druid', skillOf(hero, 'druid') + aura), unit]).answer,
-  };
+  return { ...compare(on, copy, engineOn(fn, [hero, unit])), aura };
 }
 
 /** The strength a Druid shortfall of `levels` leaves a unit in battle, as the rule says (each level short costs 20%,

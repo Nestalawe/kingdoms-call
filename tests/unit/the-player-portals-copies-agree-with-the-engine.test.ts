@@ -6,8 +6,9 @@
 // command, which P1-11b3 swapped, and the sea lift, P1-11b4's). For effMagicLvl, a copy that stays, the truth: the copy
 // on the report's value, against the level the report sends. For the copies that read the realm, the report's shape or
 // the world (P1-11b1: the Druid a hero needs, the army card's Druid and sea lines, the turn report's flying carry, the
-// Explore forecast), the truth too, with the differences known to Toby's questions pinned exactly (since P1-11b3 the Druid ones call the
-// engine's rule with the portal's level of the hero's Druid). Since P1-11c1, the order form's Cast Spell tables against
+// Explore forecast), the truth too, with the differences known to Toby's questions pinned exactly (since P1-11b3 the
+// Druid ones call the engine's rule with the portal's level of the hero's Druid; since R-120 they agree beside a
+// Crown). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
 // card's kin and feud against the battle's armStr, with question 28's two differences pinned. And each engine function
 // leaves its input as it was.
@@ -42,9 +43,9 @@
 // Druid level and class, of his race and of none, alive and skeletal) and one for exploring (a hero of each Explorer
 // level, the Loremaster and the Trailblazer, in every land terrain): `druidNeedP`'s shortfall against the battle's
 // `druIdPenaltyMult`, and the army card's Druid shortfall and mastery lines (read by their statements) against it and
-// `druidMasteryGain`, agree but beside a Crown, where the portal counts the hero's Druid exactly the aura higher
-// (pinned; question 13 for Toby; since P1-11b3 both call the engine's Druid rule through `src/shared/`, so these check
-// the level of the hero's Druid each side feeds it); the turn report's own flying carry (read by its statements) agrees
+// `druidMasteryGain`, agree, beside a Crown too (R-120: the battle counts its aura, as the portal does; since P1-11b3
+// both call the engine's Druid rule through `src/shared/`, so these check the level of the hero's Druid each side feeds
+// it); the turn report's own flying carry (read by its statements) agrees
 // with `isAirCarriable` and `getFlyCapability` (P1-11b2: the report calls `getFlyCapability` now, so its statement that
 // gives a column the flyers' pace is checked on every column, and the unit types' half went with the copy); the Explore
 // forecast (`exploreGainFor`) is what `resolveExploreOrder` maps but for the Loremaster, 5% more (pinned; question 15);
@@ -155,12 +156,6 @@ function differences(list: Comparison[]): string[] {
     .filter((c) => !sameAnswer(c.copy, c.engine))
     .map((c) => `on ${short(c.on)}: the copy ${short(c.copy)}, the engine ${short(c.engine)}`);
 }
-/** The pinned cases whose copy is not the engine's answer for the hero trained higher by the aura, each in a line. */
-function pinnedDifferences(list: { on: unknown; copy: unknown; engineWithTheAura: unknown }[]): string[] {
-  return list
-    .filter((c) => !sameAnswer(c.copy, c.engineWithTheAura))
-    .map((c) => `on ${short(c.on)}: the copy ${short(c.copy)}, the engine with the aura ${short(c.engineWithTheAura)}`);
-}
 const objectsOf = (x: unknown): Record<string, unknown>[] =>
   Array.isArray(x) ? x.filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null) : [];
 /** The projection cases that differ, each in a line. */
@@ -239,22 +234,19 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     expect(seaNote().filter((x) => x.naval8).length).toBeGreaterThan(0);
   });
 
-  test("druidNeedP's shortfall leaves a unit the strength the battle's druIdPenaltyMult does, but beside a Crown of Command, where the portal counts the hero's Druid exactly the aura higher", () => {
+  test("druidNeedP's shortfall leaves a unit the strength the battle's druIdPenaltyMult does, beside a Crown of Command too (R-120)", () => {
     // The order form's Druid line and the army card read the hero's effective Druid as the report sends it (skillEff),
-    // which counts the +1 of a Crown of Command worn by a hero of his realm in his province; the battle reads his
-    // training and items only (plan P1-11b, question 13 for Toby). Away from a Crown the two agree; beside one, the
-    // portal's answer is the battle's for the hero trained that much higher.
+    // which counts the +1 of a Crown of Command worn by a hero of his realm in his province; since R-120 the battle
+    // counts it too (his Druid as effStat counts it, to 5).
     const list = druidNeed();
-    expect(differences(list.filter((x) => x.aura === 0))).toEqual([]);
-    expect(pinnedDifferences(list.filter((x) => x.aura !== 0))).toEqual([]);
-    expect(list.filter((x) => x.aura !== 0 && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    expect(list.filter((x) => x.aura !== 0).length).toBeGreaterThan(0);
+    expect(differences(list)).toEqual([]);
   });
 
-  test("the army card's Druid shortfall: the strength it shows is the battle's, but beside a Crown of Command (the same aura)", () => {
+  test("the army card's Druid shortfall: the strength it shows is the battle's, beside a Crown of Command too (R-120)", () => {
     const list = armyCardShortfall();
-    expect(differences(list.filter((x) => x.aura === 0))).toEqual([]);
-    expect(pinnedDifferences(list.filter((x) => x.aura !== 0))).toEqual([]);
-    expect(list.filter((x) => x.aura !== 0 && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    expect(list.filter((x) => x.aura !== 0).length).toBeGreaterThan(0);
+    expect(differences(list)).toEqual([]);
   });
 
   test("the army card's Druid mastery bonus is the turn's (druidMasteryGain), beside a Crown of Command too", () => {

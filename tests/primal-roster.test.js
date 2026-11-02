@@ -85,7 +85,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-9;
   const rocs=g.ev(`unitAbilityMult({type:'Crimson Rocs'},{force:[],enemyForce:[{type:'Yeoman Longbows'}]},'plain')`);
   ok(near(rocs,1.3),`Air Superiority still ×1.3 against ranged (got ×${rocs})`);
   // The two crowns, in the one function that applies the Druid shortfall.
-  const pen=(align,druid,unit,heroAlign)=>g.ev(`druIdPenaltyMult({race:'Orcish',alignment:${JSON.stringify(heroAlign||'Neutral')},skills:{druid:${druid}},items:[]},{type:${JSON.stringify(unit)},race:'Primal'},${JSON.stringify(align)},false)`);
+  const pen=(align,druid,unit,heroAlign)=>g.ev(`druIdPenaltyMult({race:'Orcish',alignment:${JSON.stringify(heroAlign||'Neutral')},skills:{druid:${druid}},items:[]},{type:${JSON.stringify(unit)},race:'Primal'},${JSON.stringify(align)},false,[])`);
   ok(pen('Evil',0,'Cave Trolls')===1,`an Evil realm leads Cave Trolls with no Druid (got ×${pen('Evil',0,'Cave Trolls')})`);
   ok(pen('Evil',0,'Elder Dragons')===1,`…and Elder Dragons (Druid 5) too (got ×${pen('Evil',0,'Elder Dragons')})`);
   ok(pen('Druidic',0,'Forest Ents')===1,'a Druidic realm still leads Creatures free');

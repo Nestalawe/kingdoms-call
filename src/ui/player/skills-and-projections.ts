@@ -212,7 +212,7 @@ export const MONSTER_ARMIES_UI = new Set(KC_UNIT_CLASS.monster);
 // (plan P1-11b3): the Druid a unit needs with its waivers (druidLevelALeaderNeeds, which reads KC_DRUID_LEVELS, the
 // one table), the same-race Druid 1 (druidALeaderBringsToAUnit) and the shortfall (druidShortfall). What stays the
 // portal's is the commander's Druid it feeds in: the report's effective level (effSkillP), which counts a Crown of
-// Command's +1 where the battle's druIdPenaltyMult doesn't (plan P1-11b, question 13 for Toby).
+// Command's +1 as the battle's druIdPenaltyMult does (R-120).
 //   req       — Druid needed after waivers: skeletons 0; a creature under a Druidic realm OR a
 //               personally Druidic commander 0; a monster under an Evil realm OR a personally Evil
 //               commander 0; a winged beast with sd40 Dragon Taming 0
