@@ -8,7 +8,8 @@
 // the world (P1-11b1: the Druid a hero needs, the army card's Druid and sea lines, the turn report's flying carry, the
 // Explore forecast and its march-in share), the truth too (since P1-11b3 the Druid ones call the engine's rule with the
 // portal's level of the hero's Druid; since R-120 they agree beside a Crown; since R-125 the Explore forecast, the
-// march-in share and the sea note agree). Since P1-11c1, the order form's Cast Spell tables against
+// march-in share and the sea note agree; since P1-11d14 the Explore forecast asks the engine's rule, with what the
+// report gives it). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
 // card's kin and feud against the battle's armStr. Since P1-11d1, the march: the portal's three hex steps (the engine's
 // own since P1-11d6, handed through src/shared/: projection cases) against the engine's step, where the form says a hero
@@ -49,14 +50,16 @@
 // on six more staged worlds for the Druid rule (realm 0 Good, Druidic or Evil, with and without Dragon Taming; a hero
 // of every race, alignment and Druid level 0 to 5, beside a Crown of Command and away from it, with one unit of each
 // Druid level and class, of his race and of none, alive and skeletal) and one for exploring (a hero of each Explorer
-// level, the Loremaster and the Trailblazer, in every land terrain): `druidNeedP`'s shortfall against the battle's
+// level, the Loremaster and the Trailblazer, in every land terrain, under three realms): `druidNeedP`'s shortfall against the battle's
 // `druIdPenaltyMult`, and the army card's Druid shortfall and mastery lines (read by their statements) against it and
 // `druidMasteryGain`, agree, beside a Crown too (R-120: the battle counts its aura, as the portal does; since P1-11b3
 // both call the engine's Druid rule through `src/shared/`, so these check the level of the hero's Druid each side feeds
 // it); the turn report's own flying carry (read by its statements) agrees
 // with `isAirCarriable` and `getFlyCapability` (P1-11b2: the report calls `getFlyCapability` now, so its statement that
 // gives a column the flyers' pace is checked on every column, and the unit types' half went with the copy); the Explore
-// forecast (`exploreGainFor`) is what `resolveExploreOrder` maps, the Loremaster's too (R-125); its march-in share
+// forecast (`exploreGainFor`) is what `resolveExploreOrder` maps, the Loremaster's too (R-125), in a realm with no
+// discovery that adds to exploring, with The Compass and with Star Charts (since P1-11d14 both ask the folder's
+// `theShareOfAProvinceAnExploreOrderMaps`, so these check what each feeds it); its march-in share
 // (`exploreMoveGainBefore`, on a staged march into the capital) is what `resolveMoveOrder` maps, for a hero with no
 // Traveller's Cloak, one worn and one carried as a spare (R-125: a worn one alone); the army card's sea note is
 // `getSeaCapability`'s answer, a Naval 8 hero's too (R-125). Every engine function leaves its input as it was (the values are frozen, so a write
@@ -123,7 +126,7 @@
 // same skill, of any level.
 // Level 1: pure functions on values; no page is needed, and a static test can't compare what two functions answer.
 // Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3, P1-11b4, P1-11c1, P1-11c4, P1-11d1, P1-11d2,
-// P1-11d3, P1-11d4)
+// P1-11d3, P1-11d4, P1-11d14)
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   armyCardKinAgainstTheBattle,

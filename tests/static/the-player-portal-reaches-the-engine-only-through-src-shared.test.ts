@@ -14,9 +14,9 @@
 // The player portal reaches the engine's rules only through `src/shared/` (P1-11a, Decisions 2 and 7): `src/shared/`
 // re-exports only from `src/engine/rules-on-plain-values/` (every import, of every kind, of a folder file that is
 // there) and declares nothing of its own; no file of `src/ui/player/` imports an engine or a views file, or declares
-// (at any depth) a copy P1-11a4, P1-11b3, P1-11b4 or P1-11d12 retired (`floorNumP`, `unitBaseStrengthP`, …
+// (at any depth) a copy P1-11a4, P1-11b3, P1-11b4, P1-11d12 or P1-11d14 retired (`floorNumP`, `unitBaseStrengthP`, …
 // `beastCommandCountP`, `DRUID_LEVEL_OF_P`, `TAMED_FLYERS_P`, `PO_FLYING_TYPES`, `PO_LIGHT_TYPES`, `CREATURE_ARMIES_UI`,
-// `MONSTER_ARMIES_UI`, and the tables only they read) or a name
+// `MONSTER_ARMIES_UI`, `BASIC_EXPLORE_P`, and the tables only they read) or a name
 // `src/shared/` hands it; the order form's eight Cast Spell tables are each declared once in the portal, as the call of
 // the folder's function that makes it (P1-11c3); the order form's three hex tables (`predictedLocation`, the Move field
 // in `buildTargetField`, `lastMoveDirOf`) each call the folder's `theHexNextToAProvinceInADirection`, and no portal file
@@ -27,11 +27,13 @@
 // widget's words, the Move note's bound beasts, the Blood Offering's hint, the ledger's fallback) read the row's, while
 // `ONCE_PER_TURN_ACTIONS` names Call to Arms by its row (P1-11d8); the mastery orders' table (`L79_ORDERS`) imports
 // the content's rows, builds each order's name, skill and level from its row, writes none out, and holds the form's
-// own fields of every row once (P1-11d10), each hint opening with its row's skill and level (P1-11d13); and
-// the player page's modules hold no engine file outside the folder, and no views file.
+// own fields of every row once (P1-11d10), each hint opening with its row's skill and level (P1-11d13); the Explore
+// forecast (`exploreGainFor`) asks the folder's `theShareOfAProvinceAnExploreOrderMaps`, and no portal file reads the
+// content's `KC_BASIC_EXPLORE` (P1-11d14); and the player page's modules hold no engine file outside the folder, and
+// no views file.
 // Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
 // 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
-// plants; P1-11d6's, P1-11d7's, P1-11d8's and P1-11d10's in their PRs)
+// plants; P1-11d6's, P1-11d7's, P1-11d8's, P1-11d10's and P1-11d14's in their PRs)
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -96,6 +98,8 @@ const RETIRED = [
   // P1-11d12: the portal's two sets of beasts (the engine's CREATURE_ARMIES and MONSTER_ARMIES, through src/shared/)
   'CREATURE_ARMIES_UI',
   'MONSTER_ARMIES_UI',
+  // P1-11d14: the Explore forecast's table of each ground's share (exploreGainFor asks theShareOfAProvinceAnExploreOrderMaps)
+  'BASIC_EXPLORE_P',
 ];
 
 /** The portal's three hex tables (P1-11d6), each as the file and the function that held a table of the six steps from
@@ -388,6 +392,19 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     ).map(([file, fn]) => `${fn} (${file}) doesn't call theHexNextToAProvinceInADirection`);
     expect(notCalling).toEqual([]);
     expect(files.flatMap((file) => tablesOfSixStepsIn(file).map((t) => `${file} holds the table ${t}`))).toEqual([]);
+  });
+
+  test("the Explore forecast asks the folder's rule of the share an Explore order maps, and no file of the portal reads the grounds' shares", () => {
+    // (P1-11d14) exploreGainFor wrote the order's sum out, with its own table of each ground's share; it asks
+    // theShareOfAProvinceAnExploreOrderMaps now (the turn's resolveExploreOrder asks it too), handed the portal by
+    // src/shared/, with what the report gives. The content's table read by a portal file is the sum written again.
+    expect(namesSharedExports()).toContain('theShareOfAProvinceAnExploreOrderMaps');
+    expect(namesCalledIn('ui/player/order-targets.ts', 'exploreGainFor')).toContain(
+      'theShareOfAProvinceAnExploreOrderMaps',
+    );
+    expect(files.filter((file) => fs.readFileSync(path.join(SRC, file), 'utf8').includes('KC_BASIC_EXPLORE'))).toEqual(
+      [],
+    );
   });
 
   test("the order list's alignment orders: their names, their table and their checks are the folder's", () => {

@@ -766,7 +766,7 @@
   },
   "src/ui/player/order-targets.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 9
+      "count": 8
     },
     "no-empty": {
       "count": 1
