@@ -26,7 +26,8 @@ import { buildTargetField, predictedLocation, refreshExploreNotes } from './orde
 import { leadsArmiesP, provLinkHtml } from './map-symbols.ts';
 
 // ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
-// L7/L9 mastery order (GM MASTERY_ORDER_KEYS — exactly the L79_ORDERS set) and of Call to Arms. Once a
+// L7/L9 mastery order (GM MASTERY_ORDER_KEYS — exactly the L79_ORDERS set: both are the content's rows, P1-11d10)
+// and of Call to Arms. Once a
 // character has one of them in a phase, every LATER phase's action dropdown stops offering it. Each
 // select remembers its full option list (data-all-opts) so an option comes back the moment the earlier
 // phase is changed; a later phase already holding the order is cleared (with a note) rather than

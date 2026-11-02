@@ -7,6 +7,7 @@ import {
 } from '../content/kingdoms-call-data.ts';
 import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_MASTERY_ORDERS } from '../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import type { Army, Character, GameState, Grave, Province } from '../schemas/saved-game-state.ts';
 import type { OrderKind } from './turn/phase-intents-and-dependency-ordering.ts';
 
@@ -294,51 +295,15 @@ export const NPC_SCHOOL_SPELL = {
 };
 
 // ── ONCE PER TURN (mastery) ── the 20 L7/L9 mastery ORDERS; each may be attempted only once per
-// turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler).
-export const MASTERY_ORDER_KEYS = new Set([
-  'challenge',
-  'rampage',
-  'rain_of_arrows',
-  'snipers_mark',
-  'feigned_retreat',
-  'grand_stratagem',
-  'forced_march',
-  'lightning_advance',
-  'blockade',
-  'raid_coast',
-  'research_breakthrough',
-  'grand_design',
-  'sabotage',
-  'assassinate',
-  'grand_heist',
-  'vanish',
-  'awaken_grove',
-  'wild_calling',
-  'chart_unknown',
-  'discover_ruin',
-]);
-export const MASTERY_ORDER_LABEL = {
-  challenge: 'Challenge',
-  rampage: 'Rampage',
-  rain_of_arrows: 'Rain of Arrows',
-  snipers_mark: "Sniper's Mark",
-  feigned_retreat: 'Feigned Retreat',
-  grand_stratagem: 'Grand Stratagem',
-  forced_march: 'Forced March',
-  lightning_advance: 'Lightning Advance',
-  blockade: 'Blockade',
-  raid_coast: 'Raid the Coast',
-  research_breakthrough: 'Research Breakthrough',
-  grand_design: 'Grand Design',
-  sabotage: 'Sabotage',
-  assassinate: 'Assassinate',
-  grand_heist: 'Grand Heist',
-  vanish: 'Vanish',
-  awaken_grove: 'Awaken Grove',
-  wild_calling: 'Wild Calling',
-  chart_unknown: 'Chart the Unknown',
-  discover_ruin: 'Discover Lost Ruin',
-};
+// turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler). The content's rows' keys and
+// names, in their order (src/content/mastery-orders-their-keys-names-skills-and-levels.ts, P1-11d10): a row's key that
+// is no kind of order fails to compile.
+export const MASTERY_ORDER_KEYS = new Set<string>(
+  Object.values(THE_MASTERY_ORDERS).map((order) => order.key) satisfies readonly OrderKind[],
+);
+export const MASTERY_ORDER_LABEL: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.values(THE_MASTERY_ORDERS).map((order) => [order.key, order.name]),
+);
 // Alignment-signature orders, by engine action key: the content's rows' keys, in their order (plan P1-19's alignment
 // orders, Decision 3). Used with MASTERY_ORDER_KEYS to decide what a charmed enemy hero may not be made to do. A row's
 // key that is no kind of order fails to compile. Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22).
