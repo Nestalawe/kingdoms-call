@@ -21,11 +21,14 @@
 // in `buildTargetField`, `lastMoveDirOf`) each call the folder's `theHexNextToAProvinceInADirection`, and no portal file
 // holds a table of the six steps from a hex, under any name (P1-11d6); the order list's alignment orders are the
 // folder's (P1-11d7): `ACTIONS` reads their five names by slug and writes none, `ALIGN_ACTIONS` is the folder's table
-// of their rows by name, `actionsFor` asks its two checks of who may give one, and `KING_ONLY_ACTIONS` is retired; and
+// of their rows by name, `actionsFor` asks its two checks of who may give one, and `KING_ONLY_ACTIONS` is retired; the target
+// widget (`buildTargetField`) asks the same two checks, and the places that state a number of an alignment order (the
+// widget's words, the Move note's bound beasts, the Blood Offering's hint, the ledger's fallback) read the row's, while
+// `ONCE_PER_TURN_ACTIONS` names Call to Arms by its row (P1-11d8); and
 // the player page's modules hold no engine file outside the folder, and no views file.
 // Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
 // 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
-// plants; P1-11d6's and P1-11d7's in their PRs)
+// plants; P1-11d6's, P1-11d7's and P1-11d8's in their PRs)
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -116,6 +119,33 @@ const THE_TWO_CHECKS_OF_WHO_MAY_GIVE_AN_ALIGNMENT_ORDER = [
   'aHeroMayGiveTheAlignmentOrderAsKingOrNot',
 ];
 const THE_NAME_OF_AN_ALIGNMENT_ORDER = 'theNameTheFormWritesOfTheAlignmentOrder';
+/** The target widget's (buildTargetField's) alignment orders (P1-11d8): the creeds' orders it gates, each by the
+ *  folder's creed check, and the three the king alone gives by the king check too. */
+const THE_WIDGETS_CREED_ORDERS = 5;
+const THE_WIDGETS_KINGS_ORDERS = 3;
+/** The words the portal wrote a number of an alignment order in (P1-11d8): each is the order's row's now, so none of
+ *  these may be written again: Call to Arms' grade (twice), the Broker's price (twice, and the ledger's fallback), the
+ *  Wild Hunt's beasts, and the Blood Offering's tiers (four), in the files that read them (the report's and the join
+ *  form's summaries of the same orders are P1-11d9's). The literals that stay (decision 5: Harvest's 2g and its
+ *  fallback, "until end of NEXT turn", "VETERAN", Call to Arms' company, Consecrate's home and limit) are not here. */
+const THE_FILES_THAT_READ_THE_ROWS_NUMBERS = [
+  'ui/player/order-targets.ts',
+  'ui/player/pre-orders.ts',
+  'ui/player/orders-form.ts',
+  'ui/player/move-analysis.ts',
+];
+const THE_ROWS_NUMBERS_WRITTEN_OUT = [
+  '— raises a Green ',
+  'Free Green garrison unit',
+  '(2g — full Spy result)',
+  'seen — 2g.',
+  'P.brokerSpy : 2',
+  'bind 2 VETERAN',
+  'Empower +2',
+  '(+2 tiers each)',
+  '(+2 quality tiers each',
+  'by +2 tiers',
+];
 const filesIn = (folder: string) => filesUnder(SRC).filter((f) => f.startsWith(folder));
 
 /** Each import of `file` (relative to src/): what it names, and where that is relative to src/ (null: not a file of
@@ -177,6 +207,19 @@ function namesCalledIn(file: string, fn: string): string[] {
   };
   find(tree);
   return called;
+}
+
+/** The text of the function `fn` of `file`, as it is written. */
+function textOfFunction(file: string, fn: string): string {
+  const text = fs.readFileSync(path.join(SRC, file), 'utf8');
+  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const found: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === fn) found.push(node.getText(tree));
+    else ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return found.join('\n');
 }
 
 /** Every array of `file` that is a table of steps: six elements, each an array of two steps of 0 or 1 either way (`[-1, 0]`, `[1, 1]`). */
@@ -321,6 +364,52 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     ).toEqual([]);
     const called = namesCalledIn('ui/player/items-and-heroes.ts', 'actionsFor');
     expect(THE_TWO_CHECKS_OF_WHO_MAY_GIVE_AN_ALIGNMENT_ORDER.filter((check) => !called.includes(check))).toEqual([]);
+  });
+
+  test("the target widget's creed and king checks are the folder's, its numbers of the alignment orders are their rows', and the once-a-turn list names Call to Arms by its row", () => {
+    // (P1-11d8) buildTargetField gated each creed order by a comparison of the realm's creed with a literal and the
+    // king's three by `c.isKing`; it asks the folder's two checks now (d7's, as actionsFor does), through the row
+    // ALIGN_ACTIONS holds by name. The numbers its words, the ledger's fallback, the Move note's column and the Blood
+    // Offering's hint state are the rows' (read, not written again); ONCE_PER_TURN_ACTIONS names Call to Arms by its row.
+    const widget = 'ui/player/order-targets.ts';
+    const called = namesCalledIn(widget, 'buildTargetField');
+    const [creedCheck, kingCheck] = THE_TWO_CHECKS_OF_WHO_MAY_GIVE_AN_ALIGNMENT_ORDER;
+    expect(called.filter((name) => name === creedCheck)).toHaveLength(THE_WIDGETS_CREED_ORDERS);
+    expect(called.filter((name) => name === kingCheck)).toHaveLength(THE_WIDGETS_KINGS_ORDERS);
+    // and no comparison of the realm's creed with the name of one
+    const creeds = Object.values(THE_ALIGNMENT_ORDERS).map((order) => order.creed);
+    const comparing = new RegExp(`alignment[^\\n]*?!==?\\s*['"](${creeds.join('|')})['"]`);
+    expect(comparing.exec(textOfFunction(widget, 'buildTargetField'))).toBeNull();
+    // the numbers
+    const writtenOut = THE_FILES_THAT_READ_THE_ROWS_NUMBERS.flatMap((file) => {
+      const text = fs.readFileSync(path.join(SRC, file), 'utf8').replace(/\s+/g, ' ');
+      return THE_ROWS_NUMBERS_WRITTEN_OUT.filter((words) => text.includes(words)).map(
+        (words) => `${file} writes ${words}`,
+      );
+    });
+    expect(writtenOut).toEqual([]);
+    // and each place that states one reads the row's number by its name
+    const readsTheRow = [
+      [widget, 'buildTargetField', 'theGradeMustered'],
+      [widget, 'buildTargetField', 'thePriceOfWordFromAProvince'],
+      [widget, 'buildTargetField', 'theWildHuntsBeasts'],
+      [widget, 'buildTargetField', 'theBloodOfferingsGrades'],
+      ['ui/player/pre-orders.ts', 'updateBloodOffering', 'theBloodOfferingsGrades'],
+      ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePriceOfWordFromAProvince'],
+      ['ui/player/move-analysis.ts', 'projectedMoveHost', 'theWildHuntsBeasts'],
+    ] as const;
+    expect(
+      readsTheRow
+        .filter(([file, fn, number]) => !textOfFunction(file, fn).includes(number))
+        .map(([file, fn, number]) => `${fn} (${file}) doesn't read ${number}`),
+    ).toEqual([]);
+    // the Wild Hunt's beasts are made once, in a loop of the row's number, not once for each
+    const column = textOfFunction('ui/player/move-analysis.ts', 'projectedMoveHost');
+    expect(column.split('(bound by the Wild Hunt)')).toHaveLength(2);
+    // the once-a-turn list
+    const once = initializersDeclaredIn('ui/player/pre-orders.ts', 'ONCE_PER_TURN_ACTIONS').join('\n');
+    expect(once).toContain(`${THE_NAME_OF_AN_ALIGNMENT_ORDER}('call-to-arms')`);
+    expect(once).not.toMatch(/['"]Call to Arms['"]/);
   });
 
   test('the player page loads no engine file outside the folder, and no views file', () => {

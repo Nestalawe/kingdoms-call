@@ -281,9 +281,9 @@ context (`ctx.reignOfFear`); read after, it is always false. Checks: `terror-thr
 
 An alignment order is a row of `THE_ALIGNMENT_ORDERS` (`src/content/`), which the charmed hero's gate, the order-name
 map, the switch's `case`, its resolver (creed, king, numbers), the report's prices, the bots (the orders they write, their
-prices), the portal's order list (`ACTIONS`, `ALIGN_ACTIONS`, its creed and king checks) and the words test read. The rest
-still writes its key or name: the label map; the portal's `ACTION_DISPLAY_ORDER`, target widget,
-army projection and gold ledger; its alignment texts. Grep `harvest_field`. A removed order keeps its `case` as a
+prices), the portal's order list and target widget (`ACTIONS`, `ALIGN_ACTIONS`, the creed and king checks, the grade, the price of word, the
+Wild Hunt's beasts, the Blood Offering's tiers) and the words test read. The rest still writes its key, name or number: the label
+map; `ACTION_DISPLAY_ORDER`; the widget's Harvest 2g, Wild Hunt term, Call to Arms company, Consecrate home; its alignment texts. Grep `harvest_field`. A removed order keeps its `case` as a
 refusal, for saves. Example: a missed place refuses, hides or misprices the order, and throws nothing. Checks: the
 words test (row against books); the door's static test (the order list reads the rows); nothing else.
 

@@ -806,7 +806,8 @@ describe('the orders: what the order form offers a hero, and what the creed orde
     // is a garrison (a Green Human Garrison), word bought from a province (2g), Harvest the Field (2g), the Rite of the
     // Wild Hunt (two Veteran Stone Giants at the price of one, serving one turn beyond this), a Blood Offering marked on
     // two companies (the first given, the second raised two grades), a Consecrate in a province of the realm (it
-    // consecrates) and in the capital (the home marches).
+    // consecrates) and in the capital (the home marches). And the Move note, the phase after a Rite of the Wild Hunt,
+    // counts as many bound beasts in the column as the rite binds (P1-11d8: the row's number).
     const list = creedFields().filter((x) =>
       (THE_CREED_FIELDS_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind),
     );
@@ -858,6 +859,8 @@ describe('gold and practice: what the treasury ledger and the Practice Skill not
   test('the treasury ledger says what the turn spends and adds to the wages: companies of the province, at the capital and for the garrison, a mercenary band, a wandering hero, Supply Depots under its cap, a Druid 5 hero’s beast, Harvest the Field, the Wild Hunt', () => {
     // On realm 0's report as the engine builds it from each world, the form's computeOrderLedgerP (its spend, and its
     // new wages) against the turn: the gold its phase takes from the treasury, and what Early Winter's wages rise by.
+    // The Broker's word from a province is two gold on a report that prices it, and on an older one that names no
+    // price (the row's number is the ledger's fallback: P1-11d8).
     const list = ledgers().filter((x) => (THE_LEDGERS_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_LEDGERS_THE_TURN_AGREES_WITH]);
     expect(differences(list)).toEqual([]);

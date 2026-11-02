@@ -151,8 +151,8 @@ order-name map's entries for them (`PHASE_ACTION_MAP`: each row's key, its name 
 the order switch's `case`s read their row's key. Who may give one is two checks of
 `src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts` (a realm of
 the row's creed; the king, where the row marks it his alone): each resolver asks them, and so does the player portal's
-order list (`actionsFor`), whose `ACTIONS` and `ALIGN_ACTIONS` read the names and rows from that file too. The numbers the books state come from the row (the price of word, the muster's grade, the carters'
-price, the Wild Hunt's beasts and turns, the Blood Offering's tiers): the turn and the report price the carters with one
+order list (`actionsFor`), whose `ACTIONS` and `ALIGN_ACTIONS` read the names and rows from that file too, and so does its target widget (`buildTargetField`: the same two checks). The numbers the books state come from the row (the price of word, the muster's grade, the carters'
+price, the Wild Hunt's beasts and turns, the Blood Offering's tiers); the target widget's words, the Move note's bound beasts, the Blood Offering's hint and the gold ledger's price of word read them there, but Harvest's 2g, the Wild Hunt's term, Call to Arms' company and Consecrate's home and limit stay its literals (questions 36 and 41): the turn and the report price the carters with one
 function (`theCorpseCartersPriceForARealm`), and the report's price of word is the row's. The bots write each key from
 its row and read the two prices they budget (word, the carters) from it: the engine names no key outside
 `src/engine/rules/`. A new row's order still needs its own `case` and resolver.
