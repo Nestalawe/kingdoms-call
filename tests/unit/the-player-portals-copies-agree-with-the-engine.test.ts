@@ -83,6 +83,7 @@ import {
   exploreForecastAgainstTheOrder,
   flyingCarryAgainstTheEngine,
   kinWorld,
+  marchInGainAgainstTheMoveOrder,
   oneUnitTypePerDruidLevelAndClass,
   playerPortalCopies,
   type ProjectionComparison,
@@ -132,6 +133,7 @@ const armyCardMastery = lazily(() => armyCardMasteryAgainstTheTurn(copies, world
 const flyingCarry = lazily(() => flyingCarryAgainstTheEngine(copies, values));
 const exploreForecast = lazily(() => exploreForecastAgainstTheOrder(copies, worldValues));
 const seaNote = lazily(() => armyCardSeaNoteAgainstTheEngine(copies, values));
+const marchIn = lazily(() => marchInGainAgainstTheMoveOrder(copies));
 const theForm = lazily(() => theOrderFormsSpells());
 const castingLimit = lazily(() => castingLimitAgainstTheOrder(theForm()));
 const kin = lazily(() => armyCardKinAgainstTheBattle(copies, kinWorld()));
@@ -260,26 +262,30 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     expect(differences(columns)).toEqual([]);
   });
 
-  test("the Explore order's forecast is what the order maps, but for the Loremaster, whose forecast adds 5% the turn no longer gives", () => {
-    // exploreGainFor multiplies by 1.05 for a holder of the Loremaster; the engine's order no longer does ("Loremaster
-    // explore bonus removed"): plan P1-11b, question 15 (a) for Toby. In the staged world (no discovery that adds to
-    // exploring) the forecast is the order's gain with 5% more, rounded down: Explorer 2 in desert, 78 for 75.
+  test("the Explore order's forecast is what the order maps, the Loremaster's too (R-125)", () => {
+    // The turn's Explore order gives the Loremaster no more ("Loremaster explore bonus removed"); since R-125 the
+    // forecast doesn't either (it added 5%: Explorer 2 in desert, 78 for 75).
     const list = exploreForecast();
-    expect(differences(list.filter((x) => !x.loremaster))).toEqual([]);
-    const lore = list.filter((x) => x.loremaster);
-    expect(lore.filter((x) => x.copy !== Math.min(100, Math.floor(Number(x.engine) * 1.05)))).toEqual([]);
-    expect(lore.filter((x) => x.copy !== x.engine).length).toBeGreaterThan(0);
+    expect(list.filter((x) => x.loremaster).length).toBeGreaterThan(0);
+    expect(differences(list)).toEqual([]);
   });
 
-  test("the army card's sea note is getSeaCapability's answer, but for a hero of Naval 8, for whom it is the answer without the mastery", () => {
-    // The card halves the hulls a column needs when the hero's effective Naval is 8, but an effective Naval stops at 5,
-    // so it never does: for a Naval 8 hero it says "needs 2 hulls, has 1" where the turn lets the column sail (plan
-    // P1-11b, question 15 (c) for Toby). Its answer is the engine's for the column under a leader of Naval 7.
+  test("the march-in share the Explore forecast counts is what the Move order maps, a Traveller's Cloak only when worn (R-125)", () => {
+    // The Move order counts a worn item's +20% alone (activeItems); the forecast counted any Traveller's Cloak the hero
+    // held, a spare in his pack too (30 for 10 at Explorer 0). Since R-125 it counts a worn one alone, by its name (a
+    // cloak of another name: question 44).
+    const list = marchIn();
+    for (const cloak of ['none', 'worn', 'carried']) expect(list.filter((x) => x.cloak === cloak).length).toBe(2);
+    expect(differences(list)).toEqual([]);
+  });
+
+  test("the army card's sea note is getSeaCapability's answer, a Naval 8 hero's too (R-125)", () => {
+    // The card halved the hulls a column needs at an effective Naval of 8, which stops at 5, so it never did: a Naval 8
+    // hero read "needs 2 hulls, has 1" where the turn let the column sail. Since R-125 it reads his trained Naval, as
+    // the turn's mastery does.
     const list = seaNote();
-    expect(differences(list.filter((x) => !x.naval8))).toEqual([]);
-    const naval8 = list.filter((x) => x.naval8);
-    expect(naval8.filter((x) => !sameAnswer(x.copy, x.engineWithoutTheMastery))).toEqual([]);
-    expect(naval8.filter((x) => !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    expect(list.filter((x) => x.naval8).length).toBeGreaterThan(0);
+    expect(differences(list)).toEqual([]);
   });
 });
 

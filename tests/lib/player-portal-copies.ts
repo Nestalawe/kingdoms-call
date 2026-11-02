@@ -84,6 +84,8 @@ import { resolveCastSpellOrder } from '../../src/engine/orders/cast-spell-order-
 import { theMarkOfThisSpellMustStandInTheProvince } from '../../src/engine/rules/the-registry-of-spell-effects.ts';
 import { dragonTamed } from '../../src/engine/discoveries.ts';
 import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
+import { resolveMoveOrder } from '../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts';
+import { getNeighborsP } from '../../src/engine/world/map-helpers.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
 import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
@@ -118,7 +120,8 @@ const COPIES: Record<string, string[]> = {
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); the army card reads
   // the two sets
   'ui/player/skills-and-projections.ts': ['CREATURE_ARMIES_UI', 'MONSTER_ARMIES_UI', 'druidNeedP'],
-  'ui/player/order-targets.ts': ['exploreGainFor'],
+  // the Explore order's forecast, and the share of the province a march into it maps first (P1-23t)
+  'ui/player/order-targets.ts': ['exploreGainFor', 'exploreMoveGainBefore'],
 };
 const ARMY_CARD = 'ui/player/report.ts';
 const TURN_REPORT = 'views/turn-report.ts';
@@ -163,12 +166,29 @@ function turnReportFlyingCarry(armies) {
 function exploreGainOn(report, c, terrain) {
   currentReport = report;
   try { return exploreGainFor(c, terrain); } finally { currentReport = null; }
+}
+// exploreMoveGainBefore reads the page's order fields (the action chosen in each phase) and where the hero will stand
+// in each (predictedLocation): here they stand in for one Move, in the first phase, from the province \`from\` into \`to\`.
+let theMarchStaged = null;
+const document = {
+  getElementById: (id) =>
+    theMarchStaged && id === 'po-action-' + theMarchStaged.heroId + '-0' ? { value: 'Move' } : null,
+};
+function predictedLocation(heroId, ph) {
+  if (!theMarchStaged || String(heroId) !== String(theMarchStaged.heroId)) return null;
+  return { id: ph === 0 ? theMarchStaged.from : theMarchStaged.to };
+}
+function exploreMoveGainOn(report, c, from, to) {
+  currentReport = report;
+  theMarchStaged = { heroId: c.id, from, to };
+  try { return exploreMoveGainBefore(c, 1, to); } finally { currentReport = null; theMarchStaged = null; }
 }`;
 /** The functions the checks call: the portal's copies, and those made of a copy's statements. */
 const COPY_FUNCTIONS = [
   'effMagicLvl',
   'druidNeedP',
   'exploreGainOn',
+  'exploreMoveGainOn',
   'armyCardDruidLines',
   'armyCardSeaNote',
   'armyCardUnitStrength',
@@ -966,10 +986,6 @@ export const auraIn = (reportHero: Obj, skill: string): number => {
   return isObj(e) && typeof e['aura'] === 'number' ? e['aura'] : 0;
 };
 /** The hero with his trained level of `skill` set to `level`. */
-const withSkillAt = (hero: Obj, skill: string, level: number): Obj => ({
-  ...hero,
-  skills: { ...(isObj(hero['skills']) ? hero['skills'] : {}), [skill]: level },
-});
 const skillOf = (hero: Obj, skill: string): number => {
   const v = isObj(hero['skills']) ? hero['skills'][skill] : 0;
   return typeof v === 'number' ? v : 0;
@@ -1138,6 +1154,99 @@ export function exploreForecastAgainstTheOrder(c: Copies, w: WorldSamples): Expl
   }));
 }
 
+/** What a staged marcher holds of a Traveller's Cloak (P1-23t). */
+export type TheCloakHeHolds = 'none' | 'worn' | 'carried';
+/** The world staged for a march (P1-23t): beside realm 0's capital, in a land province, a hero of realm 0 of Explorer
+ *  0 and of 3 with no Traveller's Cloak, one wearing it, and one carrying it in his pack while he wears a Shadowcloak (a
+ *  slot holds one item, and the turn puts an only cloak on, so a carried one is a spare). Each marches into the
+ *  capital, where he meets no foe. */
+export function marchWorld(): {
+  world: World;
+  marchers: { id: unknown; cloak: TheCloakHeHolds }[];
+  from: unknown;
+  to: unknown;
+} {
+  const { g, king, hero } = aWorldToStageIn();
+  const map = isObj(g['world']) ? g['world'] : {};
+  const provinces = objects(map['provinces']);
+  const capital = provinces.find((p) => p['id'] === king['location']);
+  const row = capital?.['row'];
+  const col = capital?.['col'];
+  if (typeof row !== 'number' || typeof col !== 'number') throw new Error('the staged world has no capital on its map');
+  const beside = getNeighborsP({ row, col }, Number(map['cols']), Number(map['rows']), provinces).find(
+    (p) => p['terrain'] !== 'sea',
+  );
+  if (!beside) throw new Error("the staged world's capital has no land beside it");
+  const named = (name: string) => {
+    const it = catalogue().find((x) => x['name'] === name);
+    if (!it) throw new Error(`the catalogue has no ${name}`);
+    return it;
+  };
+  let itemId = 61_000;
+  // (as a saved game holds them once the turn has put them on: so reading his items changes nothing)
+  const held = (name: string, equipped: boolean): Obj => ({ ...copyOf(named(name)), id: itemId++, equipped });
+  const items: Record<TheCloakHeHolds, () => Obj[]> = {
+    none: () => [],
+    worn: () => [held("Traveller's Cloak", true)],
+    carried: () => [held('Shadowcloak', true), held("Traveller's Cloak", false)],
+  };
+  const marchers = [0, 3].flatMap((explorer) =>
+    (['none', 'worn', 'carried'] as const).map((cloak) => ({
+      id: hero({ location: beside['id'], skills: { explorer }, items: items[cloak]() })['id'],
+      cloak,
+    })),
+  );
+  return { world: savedAndReported(g), marchers, from: beside['id'], to: king['location'] };
+}
+/** The share of the province `to` the engine's Move order maps as the hero marches into it, in the first phase of the
+ *  next turn, on a copy of the state (the province unmapped by his realm). */
+function theShareAMarchInMaps(state: Obj, heroId: unknown, to: unknown): number {
+  const G = copyOf(state);
+  const turn = typeof G['turn'] === 'number' ? G['turn'] : 1;
+  const c = objects(G['characters']).find((x) => x['id'] === heroId);
+  const provinces = objects(isObj(G['world']) ? G['world']['provinces'] : []);
+  const from = provinces.find((p) => p['id'] === c?.['location']);
+  const into = provinces.find((p) => p['id'] === to);
+  const realm = objects(G['players'])[Number(c?.['player'])];
+  if (!c || !from || !into || !realm) throw new Error('the march case has no hero, province or realm');
+  into['exploredBy'] = {};
+  into['explored'] = 0;
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], turn), { KC_SEASONS, isBotRow });
+  tc._currentPhase = 0;
+  tc._logCtx = { charId: c['id'], phase: 0 };
+  kcRng.seed(1);
+  quietly(() => {
+    // (the Move order's file is not yet typed: it takes the staged world's hero, his province and his realm as they are)
+    resolveMoveOrder(tc, c, 0, false, `prov:${String(to)}`, from, realm);
+  });
+  if (c['location'] !== to) throw new Error(`the staged march of ${String(c['name'])} did not arrive`);
+  const by = into['exploredBy'];
+  const gain = isObj(by) ? by[String(c['player'])] : undefined;
+  return typeof gain === 'number' ? gain : 0;
+}
+/** One march compared, and what the marcher holds of a Traveller's Cloak. */
+export interface MarchComparison extends Comparison {
+  readonly cloak: TheCloakHeHolds;
+}
+/** The share of a province the Explore forecast counts a march into it as mapping first (exploreMoveGainBefore), against
+ *  what the engine's Move order maps (P1-23t), on the world staged for a march. */
+export function marchInGainAgainstTheMoveOrder(c: Copies): MarchComparison[] {
+  const { world, marchers, from, to } = quietly(marchWorld);
+  const inTheReport = new Map(objects(world.report['characters']).map((h) => [h['id'], h]));
+  return marchers.map(({ id, cloak }) => {
+    const hero = inTheReport.get(id);
+    if (!hero) throw new Error('a staged marcher is not in the report');
+    return {
+      ...compare(
+        [hero['name'], cloak, (isObj(hero['skills']) ? hero['skills'] : {})['explorer']],
+        c.exploreMoveGainOn(world.report, hero, from, to),
+        { answer: theShareAMarchInMaps(world.state, id, to), changed: false },
+      ),
+      cloak,
+    };
+  });
+}
+
 /** What the army card's sea note tells the player, in the engine's words (getSeaCapability's answers): 'all' (every
  *  unit sails or flies on its own), 'sea' (the column can put to sea: its hulls carry it, or its flyers lift it and
  *  the card shows no note), 'land' (it needs more fleet units). */
@@ -1149,11 +1258,9 @@ function seaNoteVerdict(note: unknown): string {
   if (words.includes('more fleet unit')) return 'land';
   return `(a note the check doesn't know: ${words})`;
 }
-/** One sea case compared, whether the hero has the naval mastery that doubles a hull (Naval 8), and the engine's
- *  answer for the column under a leader one level short of it. */
+/** One sea case compared, and whether the hero has the naval mastery that doubles a hull (Naval 8). */
 export interface SeaNoteComparison extends Comparison {
   readonly naval8: boolean;
-  readonly engineWithoutTheMastery: unknown;
 }
 /** The army card's sea-transport note, read by its statements, against getSeaCapability, on every column of the
  *  realm's heroes. */
@@ -1169,7 +1276,6 @@ export function armyCardSeaNoteAgainstTheEngine(c: Copies, s: Samples): SeaNoteC
           engineOn(getSeaCapability, [armies, h.state]),
         ),
         naval8: skillOf(h.state, 'naval') >= 8,
-        engineWithoutTheMastery: engineOn(getSeaCapability, [armies, withSkillAt(h.state, 'naval', 7)]).answer,
       };
     });
 }
