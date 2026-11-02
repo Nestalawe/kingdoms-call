@@ -434,7 +434,8 @@ export interface TheOrderFormsSpells {
 
 /** The order form's Cast Spell tables, and its two functions that read them, read from `src` (default: this
  *  checkout's src/) by their statements and run beside the data file and kc-safe, with the names src/shared/ hands the
- *  portal: order-chances.ts whole (its tables, effMagicLvl and projectedMagicLevels), the helpers the target field
+ *  portal: order-chances.ts whole (its tables, effMagicLvl and projectedMagicLevels), the spells' hints and the rows
+ *  they read (P1-11d13: until then order-chances.ts held the hints), the helpers the target field
  *  calls as the portal declares them, and a stand-in for the page's fields (document.getElementById, which the form's
  *  count and getOrderTarget read). Apart from playerPortalCopies: order-chances.ts runs whole here. */
 export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpells {
@@ -451,6 +452,9 @@ export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpel
     scriptOf('content/kingdoms-call-data.ts', opts),
     scriptOf('ui/shared/kc-safe.ts', opts),
     scriptOf('ui/player/order-chances.ts', opts),
+    // the spells' hints, which the target field shows, and the content's rows some of them read (P1-11d13)
+    scriptOf('content/spell-effects-their-names-numbers-and-words.ts', opts),
+    scriptOf('ui/player/the-hints-the-order-form-shows-below-each-spell.ts', opts),
     sourceOf('ui/player/pre-orders.ts', ['getOrderTarget'], opts),
     sourceOf('ui/player/order-targets.ts', ['predictedLocation', 'provDirectionLabel'], opts),
     sourceOf(

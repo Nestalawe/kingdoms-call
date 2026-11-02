@@ -15,7 +15,8 @@
 import { expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
-import { entriesOf, fileDeclaring, stringsOf } from '../lib/source.ts';
+import { stringsOf } from '../lib/source.ts';
+import { SPELL_HINTS } from '../../src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts';
 
 const { call, base, MON, pinned } = await personalCombatEngine();
 const st = () => ({ fledBy: null, parley: false, stoleBy: null, range: 'melee', mirror: null, feature: null });
@@ -77,12 +78,10 @@ test("the rulebook's Spiritwrack row says at most 3, or 4 against a weak guardia
 });
 
 test("the player portal's text says max 3 and max 4", () => {
-  // its spell hint, read from src/ by its syntax tree (tests/lib/source.ts, plan P1-09a: until then matched in the built
-  // page's text)
-  const pp =
-    entriesOf(fileDeclaring('kingdoms-call-player-portal.html', 'SPELL_HINTS'), 'SPELL_HINTS').find(
-      (e) => e.key === 'Spiritwrack',
-    )?.value ?? '';
+  // its spell hint as the page shows it, imported from its module (plan P1-11d13: it reads its numbers from the content's
+  // row, so its source isn't its words; P1-09a to P1-11d13 read it from src/ by its syntax tree, and until P1-09a matched
+  // it in the built page's text)
+  const pp = SPELL_HINTS.Spiritwrack;
   expect(pp).toMatch(/\(max 3\)/);
   expect(pp).toMatch(/\(max 4\)/);
 });

@@ -6,15 +6,16 @@
 // (R-119), Invisibility's texts (the data file, the order form, the rulebook's two lines) say every enemy order and
 // ambush aimed at its caster misses him.
 //
-// Level 0 (static): the words. The rulebook as built (site/); the player portal's spell hints from src/ by their syntax
-// tree (tests/lib/source.ts); the data file's descriptions from its module, imported with the whole engine loaded
+// Level 0 (static): the words. The rulebook as built (site/); the player portal's spell hints as the page shows them,
+// imported from their module (since P1-11d13 some read their numbers from the content's rows, so their source isn't
+// their words); the data file's descriptions from its module, imported with the whole engine loaded
 // (tests/lib/the-whole-engine.ts); nothing runs. Until plan P1-14b this was tests/spell-words.test.js, which read the
 // descriptions in the engine's bare vm.
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
 import { readPage } from '../lib/boot.js';
-import { entriesOf, fileDeclaring } from '../lib/source.ts';
+import { SPELL_HINTS } from '../../src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const stripTags = (s: string) => {
@@ -28,6 +29,9 @@ const stripTags = (s: string) => {
 const R = stripTags(readPage('kingdoms-call-rules.html'));
 const SPELLS = SPELL_DEFS_P as Record<string, { desc?: string } | undefined>;
 const dd = (n: string) => SPELLS[n]?.desc ?? '';
+const HINTS: Readonly<Record<string, string | undefined>> = SPELL_HINTS;
+/** A spell's hint below the order form, as the page shows it. */
+const hint = (n: string) => HINTS[n] ?? '';
 
 test.for([
   ['Hand of Death', [/40%/, /60%/], [/50%/], 'a 40% bite, at most a 60% chance'],
@@ -45,8 +49,7 @@ test.for([
   '%s: the player portal and the data file say so',
   timeLimitForTheWork({ everyFileReads: 1 }),
   ([n, good, bad, what]) => {
-    const HINTS = entriesOf(fileDeclaring('kingdoms-call-player-portal.html', 'SPELL_HINTS'), 'SPELL_HINTS');
-    const pp = HINTS.find((e) => e.key === n)?.value ?? '';
+    const pp = hint(n);
     for (const [w, t] of [
       ['player portal', pp],
       ['data file', dd(n)],
@@ -63,12 +66,11 @@ test(
   'Invisibility: the data file, the order form and the rulebook’s two lines say an enemy order aimed at you misses you (R-119)',
   timeLimitForTheWork({ everyFileReads: 1 }),
   () => {
-    const HINTS = entriesOf(fileDeclaring('kingdoms-call-player-portal.html', 'SPELL_HINTS'), 'SPELL_HINTS');
     const said = /every enemy order and ambush aimed at (?:you|him) misses (?:you|him)/;
     const rulebook = R.replace(/\s+/g, ' ');
     for (const [w, t] of [
       ['data file', dd('Invisibility')],
-      ['order form', HINTS.find((e) => e.key === 'Invisibility')?.value ?? ''],
+      ['order form', hint('Invisibility')],
       ['rulebook, the spell', /80% chance that no enemy player sees you[^.]*\./.exec(rulebook)?.[0] ?? ''],
       ['rulebook, what a realm sees', /Invisibility is the one exception to both:[^.]*\./.exec(rulebook)?.[0] ?? ''],
     ] as const) {

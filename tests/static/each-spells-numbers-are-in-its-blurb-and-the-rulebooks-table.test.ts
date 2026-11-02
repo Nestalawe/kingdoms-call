@@ -18,7 +18,15 @@
 // combat, and the rows with no combat number are listed with why. The known gaps are listed by name, each with where
 // and why (a Parked entry where the text is at fault), and checked to be still gaps (so the exception leaves with the
 // fix).
-// Level 0 (static): the content's spells and the rulebook's source are files; nothing of the engine runs.
+// Since P1-11d13, each number is stated the same way in the order form's hint for the spell (SPELL_HINTS, its "Battle:"
+// part, and its "Combat:" part up to its "Battle:" or "Action:"), where the hint also writes the most rounds as "max 3",
+// rounds longer as "1 round longer" and one strongest unit as "strongest enemy unit". Some hints read their numbers
+// from the row, the rest write them in words; each figure a hint reads, and its figures at a level ("12% at 1, 20% at 5",
+// its row's sums), stand in their places among its words.
+// A row whose spell has no hint is listed with why; a hint's known gaps are listed as the other texts' are (the hints
+// that say otherwise than the turn: Parked "Six texts say otherwise than the turn").
+// Level 0 (static): the content's spells, the hints' module (it imports only the content) and the rulebook's source are
+// files; nothing of the engine runs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
@@ -28,6 +36,7 @@ import {
   type ANumberOfASpellsEffect,
   type SpellSlug,
 } from '../../src/content/spell-effects-their-names-numbers-and-words.ts';
+import { SPELL_HINTS } from '../../src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts';
 import { ROOT } from '../../tools/build.ts';
 
 const BLURBS = 'Parked "Two spell blurbs misstate their battle magic"';
@@ -36,8 +45,10 @@ const MIRROR_AND_INVISIBILITY =
   "Parked \"Mirror Image's and Invisibility's texts leave out numbers, and the Mirror Shard's its half\"";
 /** A Mirror Image's chance to be seen through, as no text gives it yet: a guardian's, and its bounds. */
 const A_GUARDIANS_DISBELIEF = `a guardian's chance to see through it, and its bounds, are in neither text (${MIRROR_AND_INVISIBILITY})`;
-/** Where a text states a spell's numbers: its blurb's or its rulebook row's part for a use. */
-type AText = 'blurb' | 'rulebook';
+/** The hints that say otherwise than the turn (P1-11d13 leaves them as they are). */
+const SIX_TEXTS = 'Parked "Six texts say otherwise than the turn"';
+/** Where a text states a spell's numbers: its blurb's, its rulebook row's or its order-form hint's part for a use. */
+type AText = 'blurb' | 'rulebook' | 'hint';
 /** The numbers of a use a text doesn't state yet, by the row's slug and the number's name, each with where and why. */
 type TheGaps = Partial<Record<SpellSlug, Readonly<Record<string, Partial<Record<AText, string>>>>>>;
 /** The numbers a text doesn't state yet, of the spells' battle magic. */
@@ -47,10 +58,14 @@ const KNOWN_GAPS: TheGaps = {
       blurb: `its Battle magic says "a number of enemy armies equal to your level" (${BLURBS})`,
       rulebook:
         'its Battle part says "several enemy units": the spellbook states the rule once for every spell ("Spell EFFECTS are worked out on your level counted to 5")',
+      hint: `its Battle part says "your-level enemy armies" (${SIX_TEXTS})`,
     },
   },
   'telekinetic-storm': {
-    theTacticalMultiplier: { blurb: `its Battle magic says it "negates" the Tactical bonus (${BLURBS})` },
+    theTacticalMultiplier: {
+      blurb: `its Battle magic says it "negates" the Tactical bonus (${BLURBS})`,
+      hint: `its Battle part says it "negates" the commander's Tactical (${SIX_TEXTS})`,
+    },
   },
 };
 /** The numbers a text doesn't state yet, of the spells' combat. */
@@ -60,8 +75,14 @@ const KNOWN_COMBAT_GAPS: TheGaps = {
     theRoundsLongerAgainstAGuardianWeakToWhite: {
       blurb: `its Combat part leaves out a guardian weak to White (${SPIRITWRACKS_BLURB})`,
     },
-    theChanceAPowerfulGuardianShrugsItOff: { blurb: `its Combat part leaves out the shrug (${SPIRITWRACKS_BLURB})` },
-    theChanceALegendaryGuardianShrugsItOff: { blurb: `its Combat part leaves out the shrug (${SPIRITWRACKS_BLURB})` },
+    theChanceAPowerfulGuardianShrugsItOff: {
+      blurb: `its Combat part leaves out the shrug (${SPIRITWRACKS_BLURB})`,
+      hint: 'its Combat part says such a guardian "may shrug it off", with no chance',
+    },
+    theChanceALegendaryGuardianShrugsItOff: {
+      blurb: `its Combat part leaves out the shrug (${SPIRITWRACKS_BLURB})`,
+      hint: 'its Combat part says such a guardian "may shrug it off", with no chance',
+    },
   },
   'mirror-image': {
     theShareOfHisHealthTheImageCarries: {
@@ -76,6 +97,10 @@ const KNOWN_COMBAT_GAPS: TheGaps = {
   invisibility: {
     theStealAdded: { blurb: `its Combat part leaves out the steal (${MIRROR_AND_INVISIBILITY})` },
   },
+};
+/** The rows whose spell has no hint below the order form, each with why. */
+const ROWS_WITH_NO_HINT: Partial<Record<SpellSlug, string>> = {
+  'mirror-image': 'no hint is written for it',
 };
 /** The rows with no number in their combat, each with why. */
 const ROWS_WITH_NO_COMBAT_NUMBER: Partial<Record<SpellSlug, string>> = {
@@ -140,6 +165,16 @@ function asTheTextsWriteIt(n: ANumberOfASpellsEffect): string[] {
       return n.value === 2 ? ['halve', 'halved', 'halves'] : [String(n.value)];
   }
 }
+/** A number as the order form's hint writes it: as the other texts do, or the most rounds as "max 3", rounds longer as
+ *  "1 round longer", the strongest unit as "strongest enemy unit". */
+function asTheHintWritesIt(n: ANumberOfASpellsEffect): string[] {
+  const forms = asTheTextsWriteIt(n);
+  const more = n.value === 1 ? '' : 's';
+  if (n.theTextsWriteIt === 'the most rounds') return [...forms, `max ${String(n.value)}`];
+  if (n.theTextsWriteIt === 'rounds longer') return [...forms, `${String(n.value)} round${more} longer`];
+  if (n.theTextsWriteIt === 'the strongest units, in words' && n.value === 1) return [...forms, 'strongest enemy unit'];
+  return forms;
+}
 /** A number as the texts write it, with no digit or letter just before it, nor a digit, a letter, a `%` or a decimal
  *  part just after; but a half of a range (`1–`, `–3`) is whole on its dash's side, where the other half's digits
  *  stand. */
@@ -177,6 +212,17 @@ const theRulebooksCombatOf = (name: string) =>
     ?.replace(/<[^>]*>/g, '')
     .trim() ?? null;
 
+/** The hints by any spell's name, as the page shows them. */
+const HINTS: Readonly<Record<string, string | undefined>> = SPELL_HINTS;
+/** The part of a hint after "Battle:", or none. */
+const theHintsBattleOf = (name: string) => HINTS[name]?.split('Battle:')[1]?.trim() ?? null;
+/** The part of a hint after "Combat:", up to its "Battle:" or "Action:", or none. */
+const theHintsCombatOf = (name: string) =>
+  HINTS[name]
+    ?.split('Combat:')[1]
+    ?.split(/Battle:|Action:/)[0]
+    ?.trim() ?? null;
+
 /** The rows as the content writes them (each use's numbers by any name). */
 type ARow = Readonly<{
   name: string;
@@ -193,9 +239,12 @@ const rowsOf = (use: 'battleMagic' | 'combat') =>
       {
         slug: slug as SpellSlug,
         name: row.name,
-        numbers: Object.entries(numbers).map(([name, n]) => [name, asTheTextsWriteIt(n)] as const),
+        numbers: Object.entries(numbers).map(
+          ([name, n]) => [name, asTheTextsWriteIt(n), asTheHintWritesIt(n)] as const,
+        ),
         blurb: use === 'battleMagic' ? theBattleMagicOf(row.name) : theCombatOf(row.name),
         rulebook: use === 'battleMagic' ? theRulebooksBattleOf(row.name) : theRulebooksCombatOf(row.name),
+        hint: use === 'battleMagic' ? theHintsBattleOf(row.name) : theHintsCombatOf(row.name),
       },
     ];
   });
@@ -203,14 +252,18 @@ const ROWS = rowsOf('battleMagic');
 const COMBAT_ROWS = rowsOf('combat');
 type ARowOfAUse = (typeof ROWS)[number];
 
+/** The texts a row's numbers are read in: its blurb and its rulebook row, and its hint unless its spell has none. */
+const theTextsOf = (row: ARowOfAUse): readonly AText[] =>
+  ROWS_WITH_NO_HINT[row.slug] === undefined ? ['blurb', 'rulebook', 'hint'] : ['blurb', 'rulebook'];
 /** The numbers a row's texts leave out, but its known gaps. */
 const whatTheTextsLeaveOut = (row: ARowOfAUse, gaps: TheGaps) =>
-  row.numbers.flatMap(([name, forms]) =>
-    (['blurb', 'rulebook'] as const).flatMap((where) =>
-      gaps[row.slug]?.[name]?.[where] === undefined && !states(row[where] ?? '', forms)
-        ? [`${where}: ${forms.join(' or ')}`]
-        : [],
-    ),
+  row.numbers.flatMap(([name, forms, hintForms]) =>
+    theTextsOf(row).flatMap((where) => {
+      const theForms = where === 'hint' ? hintForms : forms;
+      return gaps[row.slug]?.[name]?.[where] === undefined && !states(row[where] ?? '', theForms)
+        ? [`${where}: ${theForms.join(' or ')}`]
+        : [];
+    }),
   );
 /** Each known gap, as [slug, number, where]. */
 const theGapsOf = (gaps: TheGaps) =>
@@ -223,22 +276,26 @@ const theGapsOf = (gaps: TheGaps) =>
  *  it. */
 const theGap = (rows: readonly ARowOfAUse[], [slug, name, where]: readonly [string, string, string]) => {
   const row = rows.find((r) => r.slug === slug);
-  const forms = row?.numbers.find(([n]) => n === name)?.[1];
-  return { forms, stated: states((where === 'blurb' ? row?.blurb : row?.rulebook) ?? '', forms ?? []) };
+  const number = row?.numbers.find(([n]) => n === name);
+  const forms = where === 'hint' ? number?.[2] : number?.[1];
+  const text = where === 'blurb' ? row?.blurb : where === 'hint' ? row?.hint : row?.rulebook;
+  return { forms, stated: states(text ?? '', forms ?? []) };
 };
 
-describe("each spell's battle magic states its numbers, in its blurb and its rulebook row", () => {
+describe("each spell's battle magic states its numbers, in its blurb, its rulebook row and its hint", () => {
   test.for(ROWS.filter((row) => row.numbers.length))('%s', (row) => {
     expect(row.blurb, `${row.name}'s blurb has a Battle magic part`).not.toBeNull();
     expect(row.rulebook, `${row.name}'s rulebook row has a Battle part`).not.toBeNull();
+    expect(theTextsOf(row).includes('hint') && row.hint === null, `${row.name}'s hint has a Battle part`).toBe(false);
     expect(whatTheTextsLeaveOut(row, KNOWN_GAPS), `the numbers ${row.name}'s texts leave out`).toEqual([]);
   });
 });
 
-describe("each spell's combat states its numbers, in its blurb and its rulebook row", () => {
+describe("each spell's combat states its numbers, in its blurb, its rulebook row and its hint", () => {
   test.for(COMBAT_ROWS)('%s', (row) => {
     expect(row.blurb, `${row.name}'s blurb has a Combat part`).not.toBeNull();
     expect(row.rulebook, `${row.name}'s rulebook row has a Combat part`).not.toBeNull();
+    expect(theTextsOf(row).includes('hint') && row.hint === null, `${row.name}'s hint has a Combat part`).toBe(false);
     expect(whatTheTextsLeaveOut(row, KNOWN_COMBAT_GAPS), `the numbers ${row.name}'s texts leave out`).toEqual([]);
   });
 });
@@ -306,4 +363,79 @@ test('a divisor of 2 is matched as "halve", "halved" or "halves", whole', () => 
   ]);
   expect(states('halve (round down) the best', ['halve'])).toBe(true);
   expect(states('it halved', ['halve']) || states('behalves', ['halves'])).toBe(false);
+});
+
+test('the rows whose spell has no hint are the ones listed, and none has one', () => {
+  const noHint = [...ROWS, ...COMBAT_ROWS].filter((row) => HINTS[row.name] === undefined).map((row) => row.slug);
+  expect([...new Set(noHint)].sort()).toEqual(Object.keys(ROWS_WITH_NO_HINT).sort());
+});
+
+test('a hint writes the most rounds as "max 3", rounds longer as "1 round longer" and one strongest unit as "strongest enemy unit", whole', () => {
+  expect(asTheHintWritesIt({ value: 1, theTextsWriteIt: 'the strongest units, in words' })).toContain(
+    'strongest enemy unit',
+  );
+  expect(asTheHintWritesIt({ value: 2, theTextsWriteIt: 'the strongest units, in words' })).toEqual(['two strongest']);
+  expect(asTheHintWritesIt({ value: 3, theTextsWriteIt: 'the most rounds' })).toEqual([
+    'at most 3',
+    'up to 3',
+    'max 3',
+  ]);
+  expect(asTheHintWritesIt({ value: 1, theTextsWriteIt: 'rounds longer' })).toEqual([
+    'one round longer',
+    '1 round longer',
+  ]);
+  expect(
+    states('(max 3)', ['max 3']) && !states('(max 30)', ['max 3']) && !states('11 round longer', ['1 round longer']),
+  ).toBe(true);
+});
+
+/** The combat numbers of a row, by name (none: NaN, so its case is red). */
+const combatOf = (slug: SpellSlug) => (name: string) => {
+  const numbers: Readonly<Record<string, ANumberOfASpellsEffect>> = THE_ROWS[slug].combat ?? {};
+  return numbers[name]?.value ?? Number.NaN;
+};
+const FIREBALL = combatOf('fireball');
+const HOLY_SYMBOL = combatOf('holy-symbol');
+const SPIRITWRACK = combatOf('spiritwrack');
+const BLAST = combatOf('psychic-blast');
+const STORM = combatOf('telekinetic-storm');
+const INVISIBILITY = combatOf('invisibility');
+/** A share and a share more a level, at levels 1 and 5 (the level counted to 5), as a hint writes them: `12% at 1`. */
+const atOneAndFive = (share: number, more: number, sign = '') =>
+  `${sign}${String(share + more)}% at 1, ${sign}${String(share + 5 * more)}% at 5`;
+const LONGER = SPIRITWRACK('theRoundsLongerAgainstAGuardianWeakToWhite');
+
+// Each figure of a hint that reads its row, and of a hint's figures at a level, in its place among the hint's words, as
+// its row gives it (the sums are the engine's, src/engine/rules/spells/): so a hint that reads the wrong number, or a
+// number changed in a row and not in the hint's words, turns this red, even where the same figure stands elsewhere in
+// the hint (Spiritwrack's "1 round", Invisibility's "30%").
+test.for([
+  [
+    'Fireball',
+    `burns the target for ${String(FIREBALL('theShareOfMaximumHpItBurnsARound'))}% of its health each round, +${String(FIREBALL('theShareMoreALevel'))}% per Elemental level (${atOneAndFive(FIREBALL('theShareOfMaximumHpItBurnsARound'), FIREBALL('theShareMoreALevel'))}), for ${String(FIREBALL('theRoundsItBurns'))} rounds.`,
+  ],
+  [
+    'Holy Symbol',
+    `enemy \u2212${String(HOLY_SYMBOL('theCutToTheTargetsAimALevel'))}%/level to hit and seared for ${String(HOLY_SYMBOL('theShareOfMaximumHpItSears'))}% of its health, both \u00d7${String(HOLY_SYMBOL('theMultiplierAgainstTheUndeadAndFiends'))} against undead and fiends; you recover ${String(HOLY_SYMBOL('theShareOfHisOwnMaximumHpTheCasterRecovers'))}% of your health.`,
+  ],
+  [
+    'Spiritwrack',
+    `silences the target for ${String(SPIRITWRACK('theRoundsItSilences'))} round + 1 per two White levels (max ${String(SPIRITWRACK('theMostRounds'))})`,
+  ],
+  ['Spiritwrack', `lasts ${String(LONGER)} round longer (max ${String(SPIRITWRACK('theMostRounds') + LONGER)})`],
+  [
+    'Psychic Blast',
+    `for ${String(BLAST('theRoundsItStuns'))} round + 1 per two Psychic levels (${String(BLAST('theRoundsItStuns') + Math.floor(5 / BLAST('theLevelsForEachRoundMore')))} at Psychic 5;`,
+  ],
+  ['Telekinetic Storm', `(${atOneAndFive(STORM('theShareOfMaximumHpItDeals'), STORM('theShareMoreALevel'))})`],
+  [
+    'Invisibility',
+    `enemies suffer \u2212${String(INVISIBILITY('theCutToHisFoesAim'))}%, and a further \u2212${String(INVISIBILITY('theCutMoreALevel'))}% per Illusory level (${atOneAndFive(INVISIBILITY('theCutToHisFoesAim'), INVISIBILITY('theCutMoreALevel'), '\u2212')})`,
+  ],
+  [
+    'Invisibility',
+    `+${String(INVISIBILITY('theFlightAdded'))}% to Flee, and +${String(INVISIBILITY('theStealAdded'))}% to a following Steal.`,
+  ],
+] as const)("%s's hint states its row's figures in their places: %s", ([name, words]) => {
+  expect(HINTS[name]).toContain(words);
 });
