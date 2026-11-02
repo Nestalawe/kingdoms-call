@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { homeFounderOf } from '../grand-design.ts';
@@ -620,7 +621,7 @@ export function resolveRestOrder(turnContext, c, prov) {
 // Research Breakthrough (Sage 7): a discovery the realm can make, chosen by the dice, with no roll to fail.
 export function resolveResearchBreakthroughOrder(turnContext, c) {
   const { G } = turnContext;
-  if (skillLevel(c, 'sage') < 7) {
+  if (skillLevel(c, 'sage') < THE_MASTERY_ORDERS.research_breakthrough.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Sage mastery for a Research Breakthrough', heroName: c.name },

@@ -27,6 +27,7 @@
 // save, still spent); a spell item by id, number or name (and an unknown spell, another power, none, one not carried);
 // a bot's Practice read from the season's start, a comrade's level too, a fallen or idle comrade, the order copied not
 // changed, a fleet to drill, a player's hero, a wanderer or no skill named; a bot's Search on a save missing his HP.
+// each mastery's level as a number (P1-11d11: a hero one level short of the 20 refused, told; one at it not refused);
 // Properties: at most one order function runs for any order and none after a refusal, which clears the log's context; a
 // mastery runs at most once a turn however five seasons are given; a bot's switched Practice names a skill below 5, or
 // is a Defend. Planted faults: in the PR (P1-08j9)
@@ -789,6 +790,52 @@ describe('Forced March', () => {
       ctx: { charId: null, phase: null },
       charged: { forced_march: b.G.turn },
     });
+  });
+});
+
+// The level each mastery order needs, as a number (the content's rows, src/content/mastery-orders-their-keys-names-
+// skills-and-levels.ts, and each resolver's own check both give it): a hero one level short is refused, told, with his
+// order not carried out; a hero at the level is not refused for want of the mastery. The real resolvers run here.
+const MASTERY_LEVELS: [action: string, skill: string, level: number][] = [
+  ['challenge', 'melee', 7],
+  ['rampage', 'melee', 9],
+  ['rain_of_arrows', 'archery', 7],
+  ['snipers_mark', 'archery', 9],
+  ['feigned_retreat', 'tactical', 7],
+  ['grand_stratagem', 'tactical', 9],
+  ['forced_march', 'march', 7],
+  ['lightning_advance', 'march', 9],
+  ['blockade', 'naval', 7],
+  ['raid_coast', 'naval', 9],
+  ['research_breakthrough', 'sage', 7],
+  ['grand_design', 'sage', 9],
+  ['sabotage', 'spy', 7],
+  ['assassinate', 'spy', 9],
+  ['grand_heist', 'thief', 7],
+  ['vanish', 'thief', 9],
+  ['awaken_grove', 'druid', 7],
+  ['wild_calling', 'druid', 9],
+  ['chart_unknown', 'explorer', 7],
+  ['discover_ruin', 'explorer', 9],
+];
+describe('the level each mastery order needs', () => {
+  const refusals = (b: Board, c: Character) => textOf(b, c).filter((t) => /lacks the \w+ mastery \(\d\)/.test(t));
+  const given = (action: string, skill: string, level: number) => {
+    const b = fresh();
+    const c = at(b, { [skill]: level });
+    dispatch(b, c, o(action, ring1(b, 0).id), 0);
+    return refusals(b, c).map((t) => t.replace(c.name, 'HERO'));
+  };
+  test('the 20 masteries are the table below, each once', () => {
+    expect(MASTERY_LEVELS.map(([action]) => action).sort()).toEqual([...MASTERIES].sort());
+  });
+  test.each(MASTERY_LEVELS)('%s: one level short of %s %i is refused', (action, skill, level) => {
+    const told = given(action, skill, level - 1);
+    expect(told).toHaveLength(1);
+    expect(told[0]).toContain(`mastery (${String(level)})`);
+  });
+  test.each(MASTERY_LEVELS)('%s: at %s %i is not refused for want of the mastery', (action, skill, level) => {
+    expect(given(action, skill, level)).toEqual([]);
   });
 });
 

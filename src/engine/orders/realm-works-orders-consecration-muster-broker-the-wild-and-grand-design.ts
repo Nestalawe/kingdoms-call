@@ -1,5 +1,6 @@
 import { KC_GRAND_DESIGNS, KC_QUALITY_UP, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import {
   aHeroMayGiveTheAlignmentOrderAsKingOrNot,
   aRealmOfThisCreedMayGiveTheAlignmentOrder,
@@ -663,7 +664,7 @@ export function resolveAwakenGroveOrder(
   ph: number,
   prov: Province | undefined,
 ) {
-  if (skillLevel(c, 'druid') < 7) {
+  if (skillLevel(c, 'druid') < THE_MASTERY_ORDERS.awaken_grove.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Druid mastery to Awaken a Grove', heroName: c.name },
@@ -730,7 +731,7 @@ export function resolveWildCallingOrder(
   // already serve you — a neutral primal host, an enemy commander's beasts, or unled garrison
   // beasts — has a 50% chance to defect and fall in behind the caller. Humanoid troops,
   // fleets, machines and the walking dead are deaf to it.
-  if (skillLevel(c, 'druid') < 9) {
+  if (skillLevel(c, 'druid') < THE_MASTERY_ORDERS.wild_calling.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Druid mastery to sound a Wild Calling', heroName: c.name },
@@ -853,7 +854,7 @@ export function resolveWildCallingOrder(
 // Grand Design (Sage 9, once a realm): the Wonder of the realm's alignment, raised in the province he stands in.
 export function resolveGrandDesignOrder(turnContext: TurnContext, c: Character, prov: Province | undefined) {
   const { G } = turnContext;
-  if (skillLevel(c, 'sage') < 9) {
+  if (skillLevel(c, 'sage') < THE_MASTERY_ORDERS.grand_design.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Sage mastery to realise a Grand Design', heroName: c.name },

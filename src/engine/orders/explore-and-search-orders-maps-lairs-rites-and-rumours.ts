@@ -1,5 +1,6 @@
 import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import {
@@ -1240,7 +1241,7 @@ export function resolveChartTheUnknownOrder(
   // Explorer L7: the survey may be run on the province the character stands in OR any
   // province adjacent to it — a cartographer works a horizon, not just the ground under their
   // boots. An empty or unrecognised target still means "here".
-  if (skillLevel(c, 'explorer') < 7) {
+  if (skillLevel(c, 'explorer') < THE_MASTERY_ORDERS.chart_unknown.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Explorer mastery to Chart the Unknown', heroName: c.name },
@@ -1325,7 +1326,7 @@ export function resolveDiscoverLostRuinOrder(
   // — and lays bare EVERY lair of that class in this province and in each province bordering
   // it. A ritual site counts as its own class ('Ritual'). A rival's Hide Lairs glamour still
   // holds against it; those lairs stay concealed.
-  if (skillLevel(c, 'explorer') < 9) {
+  if (skillLevel(c, 'explorer') < THE_MASTERY_ORDERS.discover_ruin.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Explorer mastery to Discover a Lost Ruin', heroName: c.name },

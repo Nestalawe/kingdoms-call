@@ -1,5 +1,6 @@
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, SKILL_LABELS } from '../army-tables.ts';
 import { botDrillUseful } from '../bots/economy.ts';
 import { provOf } from '../world/map-helpers.ts';
@@ -402,7 +403,7 @@ export function processOrder(
   // phase. Remap it to the move handler (keeping the once-per-turn charge above) and flag the
   // slip locally.
   if (action === 'forced_march') {
-    if (skillLevel(c, 'march') < 7) {
+    if (skillLevel(c, 'march') < THE_MASTERY_ORDERS.forced_march.level) {
       emit(turnContext, {
         type: 'system',
         fact: { kind: 'a hero lacks the March mastery for a Forced March', heroName: c.name },
