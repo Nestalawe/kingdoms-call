@@ -1,12 +1,12 @@
 // The battle spells each copy casts keep their values (plan P1-19's spells family, row P1-19u). Battle magic is written
 // in three copies (a hero's between two heroes' hosts, a hero's against a province's neutral guards, the guards'
-// commander's against him), and each keeps its own rule (Parked "Battle magic's three copies disagree on two rules").
+// commander's against him), each with its own lines, and one rule (R-126).
 // What each of the eight spells does is the spells' registry's effect at "strength: a battle spell is cast before the
 // battle", and whether it has something to strike its effect at "strength: a battle spell has something to strike";
 // the Ember Rune's second Fireball is the items' registry's "strength: a hero's items change his battle spell". This
 // reads the effects through their runners, on staged fields: each spell's numbers (half, 20%, a quarter rounded up,
 // half rounded up, Tactical ×0.5), its rounding and its floor of 1, the strongest units it strikes, the level it counts
-// to (5, but by a guards' commander), the undead and the missile units each reads, and the line each copy writes. The
+// to (5, in every copy), the undead and the missile units each reads, and the line each copy writes. The
 // battles' lines that apply them, where no matrix game reaches, are
 // tests/unit/the-battle-magic-lines-no-matrix-game-reaches-keep-their-values.test.ts.
 // Level 1 (unit): the effects and runners are plain functions, called directly. Not lower: the values are what the
@@ -100,7 +100,7 @@ describe('Lightning Bolt: as many units as the level, each loses 20% of its base
   test.for([
     ['between heroes', 5, 'a lightning bolt weakens enemy units'],
     ['a hero against the guards', 5, 'a lightning bolt sears the defending units'],
-    ["the guards' commander", 7, 'a lightning bolt sears the attacking units'],
+    ["the guards' commander", 5, 'a lightning bolt sears the attacking units'],
   ] as const)('%s: level 7 strikes %i', ([copy, howMany, theLine]) => {
     expect(
       whatABattleSpellDoesBeforeTheBattle('Lightning Bolt', aCast(copy, { theEnemysUnits: eight, theCastersLevel: 7 })),
@@ -122,26 +122,24 @@ describe('Lightning Bolt: as many units as the level, each loses 20% of its base
 describe("Telekinetic Storm: the enemy commander's Tactical ×0.5", () => {
   const SCATTERS = "a telekinetic storm scatters the enemy commander's formations";
   const cut = { kind: "the enemy commander's Tactical is cut", theMultiplier: 0.5, theLine: SCATTERS };
-  test('between heroes: cut if he has Tactical and not at sea, else only marked; no commander, no line', () => {
+  const marked = {
+    kind: "the enemy commander's Tactical is marked, with none to cut",
+    theLine: 'a telekinetic storm finds no tactical command to disrupt',
+  };
+  test.for(COPIES)('%s: cut if he has Tactical and not at sea, else only marked (R-126)', (copy) => {
     const storm = (more: Partial<ABattleSpellCastBeforeTheBattle>) =>
-      whatABattleSpellDoesBeforeTheBattle('Telekinetic Storm', aCast('between heroes', more));
-    const marked = {
-      kind: "the enemy commander's Tactical is marked, with none to cut",
-      theLine: 'a telekinetic storm finds no tactical command to disrupt',
-    };
+      whatABattleSpellDoesBeforeTheBattle('Telekinetic Storm', aCast(copy, more));
     expect(storm({ theEnemyCommander: aCommander(2) })).toEqual(cut);
     expect(storm({ theEnemyCommander: aCommander(0) })).toEqual(marked);
     expect(storm({ theEnemyCommander: aCommander(2), atSea: true })).toEqual(marked);
-    expect(storm({})).toEqual({ kind: 'nothing to strike', theLine: null });
+    expect(storm({ theEnemyCommander: aCommander(0), atSea: true })).toEqual(marked);
   });
-  test('against guards, and by their commander: cut whatever his Tactical, at sea too', () => {
-    for (const copy of ['a hero against the guards', "the guards' commander"] as const)
-      expect(
-        whatABattleSpellDoesBeforeTheBattle(
-          'Telekinetic Storm',
-          aCast(copy, { theEnemyCommander: aCommander(0), atSea: true }),
-        ),
-      ).toEqual(cut);
+  test('no commander: no line, but against leaderless guards', () => {
+    for (const copy of ['between heroes', "the guards' commander"] as const)
+      expect(whatABattleSpellDoesBeforeTheBattle('Telekinetic Storm', aCast(copy))).toEqual({
+        kind: 'nothing to strike',
+        theLine: null,
+      });
     expect(whatABattleSpellDoesBeforeTheBattle('Telekinetic Storm', aCast('a hero against the guards'))).toEqual({
       kind: 'nothing to strike',
       theLine: 'a telekinetic storm finds no command among leaderless defenders',

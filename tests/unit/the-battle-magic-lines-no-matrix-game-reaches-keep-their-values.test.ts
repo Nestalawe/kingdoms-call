@@ -22,7 +22,7 @@
 // turn: its cast roll can't be fed, so it would pass by luck).
 import '../lib/the-whole-engine.ts';
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
-import { ALL_MAGIC_ITEMS_P, KC_SEASONS } from '../../src/content/kingdoms-call-data.ts';
+import { ALL_MAGIC_ITEMS_P, KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../src/content/kingdoms-call-data.ts';
 import { kcRng, kcRngStream } from '../../src/engine/rng.ts';
 import { generateBotSetups, isBotRow } from '../../src/engine/bots/setup.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
@@ -101,24 +101,49 @@ const aCompany = (quality: string, unitName: string, more: Partial<ArmyInABattle
  *  units, with what this battle took off each, when Flak Screen first runs. */
 interface WhatTheBattleShows {
   readonly lines: readonly Record<string, unknown>[];
+  /** The lines of each side's battle spell cast (its name and level, its chance and roll). */
+  readonly theCasts: readonly Record<string, unknown>[];
   /** The lines of the units' strikes before the battle (plan P1-19v). */
   readonly theStrikes: readonly Record<string, unknown>[];
   readonly theAttackers: readonly (readonly [unitName: string, lost: number])[];
   readonly theDefenders: readonly (readonly [unitName: string, lost: number])[];
+  /** Whether a Telekinetic Storm marked each commander, and the share of his Tactical bonus it left him, after the
+   *  battle: the hero's, and realm 1's king's (the guards' commander, or the other host's). */
+  readonly theTacticalLeft: Readonly<Record<'ofTheHero' | 'ofTheirCommander', readonly [unknown, unknown]>>;
 }
 
-/** A battle on land in which realm 0's king (Elemental, White and Necromancy 5) casts the battle spell his plan names
- *  (`CA:<spell>`; none for ''), carrying the item named, at the head of his host (the First Shields, or the host given,
- *  with the Druid given; slain before the battle, if so): against `defenders`, either neutral guards with no commander
- *  (combatVsNPC), or realm 1's king's host, who casts nothing (combatVsChar). From the moment his spell is chosen the
- *  next dice are `dice`, in order (the cast roll first: 0 rolls a 1); every other die is a seeded stream's. */
+/** The guards' commander (realm 1's king, made a warlord of no realm, at the head of the guards): his skills (every
+ *  magic school 0 but those given, so he casts only the battle spell his plan names, `CA:<spell>`, or none for ''),
+ *  refusing any challenge, wearing the item named, if any. And whether the battle is fought at sea. */
+interface TheGuardsSide {
+  readonly theirCommander?: {
+    readonly skills: Readonly<Record<string, number>>;
+    readonly spell: string;
+    /** An item he wears, by its name. */
+    readonly item?: string;
+  };
+  readonly atSea?: boolean;
+}
+
+/** A battle on land (or at sea) in which realm 0's king (Elemental, White and Necromancy 5, and any skills given)
+ *  casts the battle spell his plan names (`CA:<spell>`; none for ''), carrying the item named, at the head of his host
+ *  (the First Shields, or the host given, with the Druid given; slain before the battle, if so): against `defenders`,
+ *  either neutral guards (combatVsNPC) with no commander or the one given, or realm 1's king's host, who casts nothing
+ *  (combatVsChar). From the moment his spell is chosen the next dice are `dice`, in order (the cast roll first: 0 rolls
+ *  a 1; his, or with none his foe's); every other die is a seeded stream's. */
 function aBattle(
   battle: 'against the guards' | 'between two hosts',
   spell: string,
   defenders: readonly ArmyInABattle[],
   dice: readonly number[],
   item?: string,
-  theHero: { readonly host?: readonly ArmyInABattle[]; readonly isSlain?: boolean; readonly druid?: number } = {},
+  theHero: {
+    readonly host?: readonly ArmyInABattle[];
+    readonly isSlain?: boolean;
+    readonly druid?: number;
+    readonly skills?: Readonly<Record<string, number>>;
+  } = {},
+  theGuards: TheGuardsSide = {},
 ): WhatTheBattleShows {
   const G = JSON.parse(THE_WORLD) as World;
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
@@ -126,9 +151,10 @@ function aBattle(
   tc._logCtx.phase = 1;
   G.relations['0-1'] = 'enemy';
   const [atk, def] = [0, 1].map((p) => G.characters.find((c) => c.alive && c.player === p && c.isKing));
-  // a free plain, emptied: no one else stands there, and it holds nothing of its own
-  const field = G.world.provinces.find((p) => p.terrain === 'plain' && p.owner === null);
-  if (!atk || !def || !field) throw new Error('the world has no king in realm 0 or 1, or no free plain');
+  // a free plain (or a free sea), emptied: no one else stands there, and it holds nothing of its own
+  const terrain = theGuards.atSea ? 'sea' : 'plain';
+  const field = G.world.provinces.find((p) => p.terrain === terrain && p.owner === null);
+  if (!atk || !def || !field) throw new Error(`the world has no king in realm 0 or 1, or no free ${terrain}`);
   Object.assign(field, { characters: [], features: [], garrisonArmies: [], npcArmies: 0 });
   const moveTo = (c: Character) => {
     const from = G.world.provinces[c.location];
@@ -145,6 +171,7 @@ function aBattle(
     white: 5,
     necromancy: 5,
     ...(theHero.druid === undefined ? {} : { druid: theHero.druid }),
+    ...theHero.skills,
   };
   if (theHero.isSlain) atk.alive = false;
   atk.encounterPlan = { tactics: [spell ? `CA:${spell}` : 'ME', 'ME', 'ME', 'ME', 'ME'], duelStance: 'refuse' };
@@ -180,7 +207,26 @@ function aBattle(
     } else {
       field.owner = null;
       field.neutralDefenders = [...defenders];
-      narrative = (combatVsNPC(tc, atk, field, null) as { narrative: NarrativeLine[] }).narrative;
+      const theirs = theGuards.theirCommander;
+      if (theirs) {
+        moveTo(def);
+        const theirItem = theirs.item ? ALL_MAGIC_ITEMS_P.find((it) => it.name === theirs.item) : undefined;
+        Object.assign(def, {
+          player: null,
+          armies: [],
+          items: theirItem ? [{ ...theirItem, id: 2, equipped: true }] : [],
+        });
+        def.skills = {
+          ...def.skills,
+          ...Object.fromEntries(KC_MAGIC_SCHOOLS.map((school) => [school, 0])),
+          ...theirs.skills,
+        };
+        def.encounterPlan = {
+          tactics: [theirs.spell ? `CA:${theirs.spell}` : 'ME', 'ME', 'ME', 'ME', 'ME'],
+          duelStance: 'refuse',
+        };
+      }
+      narrative = (combatVsNPC(tc, atk, field, theirs ? def : null) as { narrative: NarrativeLine[] }).narrative;
     }
   } finally {
     kcRng.use(was);
@@ -188,10 +234,22 @@ function aBattle(
   if (fed.count === null) throw new Error('the spell choice was never stood in');
   if (!seen.at) throw new Error('Flak Screen never ran');
   const lines = narrative.flatMap((l) =>
-    typeof l === 'object' && /fireball|control undead|holy symbol/.test(l.kind) ? [{ ...l }] : [],
+    typeof l === 'object' && /fireball|lightning bolt|telekinetic storm|control undead|holy symbol/.test(l.kind)
+      ? [{ ...l }]
+      : [],
   );
   const theStrikes = narrative.flatMap((l) => (typeof l === 'object' && l.kind.includes('power') ? [{ ...l }] : []));
-  return { lines, theStrikes, ...seen.at };
+  const theCasts = narrative.flatMap((l) =>
+    typeof l === 'object' && l.kind.includes('casts a spell before the battle') ? [{ ...l }] : [],
+  );
+  const theTacticalLeft = (c: Character) => [c['_tacticalHalved'], c['_tacticalMult']] as const;
+  return {
+    lines,
+    theStrikes,
+    theCasts,
+    ...seen.at,
+    theTacticalLeft: { ofTheHero: theTacticalLeft(atk), ofTheirCommander: theTacticalLeft(def) },
+  };
 }
 
 describe("a hero's battle magic against neutral guards, in the lines no game reaches", () => {
@@ -292,5 +350,82 @@ describe("a hero's units' strikes against neutral guards, in the lines no game r
       isSlain: true,
     });
     expect(shown.theStrikes).toEqual([theMiss(30)]);
+  });
+});
+
+describe('battle magic against neutral guards follows the rule between heroes, in the lines no game reaches (R-126)', () => {
+  // Their commander (realm 1's king, a warlord of no realm) refuses the hero's challenge, as the hero refuses his.
+  const theGuards = [aCompany('Average', 'the Mill Watch')];
+  const SCATTERS = "a telekinetic storm scatters the enemy commander's formations";
+  const FINDS_NONE = 'a telekinetic storm finds no tactical command to disrupt';
+  const aStormLine = (kind: string) => ({
+    kind,
+    enemyCommanderName: { heroName: expect.any(String) as unknown, leaderless: false },
+  });
+
+  test("their commander's Lightning Bolt at Elemental 7 (5 and an Orb of the Storm) strikes 5 of the hero's 8 companies", () => {
+    // The hero casts nothing, so the first die fed is their commander's cast roll.
+    const theHost = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'].map((n) =>
+      aCompany('Average', `the ${n} Shields`),
+    );
+    const shown = aBattle(
+      'against the guards',
+      '',
+      theGuards,
+      [0],
+      undefined,
+      { host: theHost },
+      {
+        theirCommander: { skills: { elemental: 5 }, spell: 'Lightning Bolt', item: 'Orb of the Storm' },
+      },
+    );
+    expect(shown.theCasts).toMatchObject([
+      { kind: 'the defender casts a spell before the battle', spellName: 'Lightning Bolt', spellLevel: 7 },
+    ]);
+    expect(shown.lines).toEqual([{ kind: 'a lightning bolt sears the attacking units', unitCount: 5 }]);
+  });
+
+  // The hero's Telekinetic Storm at their commander (Psychic 5): it halves a Tactical he has, on land; a commander with
+  // none, or at sea, is only marked, and the line says the storm finds no command to disrupt.
+  test.for([
+    ['with Tactical 3, on land: cut to half', 3, false, SCATTERS, 0.5],
+    ['with no Tactical, on land: marked, nothing cut', 0, false, FINDS_NONE, 1],
+    ['with Tactical 3, at sea: marked, nothing cut', 3, true, FINDS_NONE, 1],
+  ] as const)("the hero's storm at their commander %s", ([, tactical, atSea, line, left]) => {
+    const shown = aBattle(
+      'against the guards',
+      'Telekinetic Storm',
+      theGuards,
+      [0],
+      undefined,
+      {
+        skills: { psychic: 5 },
+      },
+      { theirCommander: { skills: { tactical }, spell: '' }, atSea },
+    );
+    expect(shown.lines).toEqual([aStormLine(line)]);
+    expect(shown.theTacticalLeft.ofTheirCommander).toEqual([true, left]);
+  });
+
+  // Their commander's Telekinetic Storm (Psychic 5) at the hero, who casts nothing: the first die fed is its cast roll.
+  test.for([
+    ['with Tactical 2, on land: cut to half', 2, false, SCATTERS, 0.5],
+    ['with no Tactical, on land: marked, nothing cut', 0, false, FINDS_NONE, 1],
+    ['with Tactical 2, at sea: marked, nothing cut', 2, true, FINDS_NONE, 1],
+  ] as const)("their commander's storm at the hero %s", ([, tactical, atSea, line, left]) => {
+    const shown = aBattle(
+      'against the guards',
+      '',
+      theGuards,
+      [0],
+      undefined,
+      { skills: { tactical } },
+      {
+        theirCommander: { skills: { psychic: 5 }, spell: 'Telekinetic Storm' },
+        atSea,
+      },
+    );
+    expect(shown.lines).toEqual([aStormLine(line)]);
+    expect(shown.theTacticalLeft.ofTheHero).toEqual([true, left]);
   });
 });
