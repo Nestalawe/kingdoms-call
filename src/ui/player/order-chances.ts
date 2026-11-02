@@ -7,6 +7,8 @@ import {
   KC_UNIT_CLASS,
 } from '../../content/kingdoms-call-data.ts';
 import {
+  CREATURE_ARMIES,
+  MONSTER_ARMIES,
   dispFloor,
   everySpellBySchool,
   itemSlot,
@@ -17,7 +19,7 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
 import { getOrderExtra, getOrderTarget, syncCharmCard, syncResurrectCard } from './pre-orders.ts';
-import { CREATURE_ARMIES_UI, HUMANOID_RACES_UI, MONSTER_ARMIES_UI, formatRace } from './skills-and-projections.ts';
+import { HUMANOID_RACES_UI, formatRace } from './skills-and-projections.ts';
 import { buildTargetField } from './order-targets.ts';
 
 // ── ORDERS FORM ────
@@ -334,7 +336,7 @@ export function armyLabel(a, opts = {}) {
   // the full word 'Creature' or 'Monster' (derived from the unit TYPE, so it shows even when the
   // army carries no race field — e.g. awakened/recruited beasts), and no separate [C]/[M] tag is
   // used.
-  const primalWord = CREATURE_ARMIES_UI.has(a.type) ? 'Creature' : MONSTER_ARMIES_UI.has(a.type) ? 'Monster' : null;
+  const primalWord = CREATURE_ARMIES.has(a.type) ? 'Creature' : MONSTER_ARMIES.has(a.type) ? 'Monster' : null;
   const race = a.race ? formatRace(a.race, a.type) : null;
   // a unit with a HUMANOID race leads with that race — "Orcish (Monster), Wyvern Riders" — so an
   // Orc garrison of wyverns is not mistaken for a primal band. Only raceless / primal units lead

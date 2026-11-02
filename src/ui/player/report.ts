@@ -2,6 +2,8 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_CARRIER_BERTHS, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
+  CREATURE_ARMIES,
+  MONSTER_ARMIES,
   countsAgainstBeastCommand,
   dispFloor,
   druidLevelTheMasteryCounts,
@@ -9,6 +11,7 @@ import {
   itemUsableBy,
   skillFameLabelM,
   strengthLeftByADruidShortfall,
+  theDruidMasteryLiftsAUnitOfThisType,
   theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
@@ -30,14 +33,7 @@ import { armyLabel, unitEmoji } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
 import { buildOrdersForm } from './orders-form.ts';
 import { effSkillP, itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.ts';
-import {
-  CREATURE_ARMIES_UI,
-  MONSTER_ARMIES_UI,
-  capitalise,
-  druidNeedP,
-  formatRace,
-  skillRowHTML,
-} from './skills-and-projections.ts';
+import { capitalise, druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.ts';
 import {
   CHIEFTAIN_MARKER_COLOR,
   _lairName,
@@ -389,8 +385,8 @@ export function renderReportView(report) {
               // its kin and a rival kin's leader, then the Druid mastery. Shown before terrain/tactics, like
               // everything else here.
               let bs = unitBaseStrength(a);
-              const creature = CREATURE_ARMIES_UI.has(a.type),
-                monster = MONSTER_ARMIES_UI.has(a.type);
+              const creature = CREATURE_ARMIES.has(a.type),
+                monster = MONSTER_ARMIES.has(a.type);
               const _dn = druidNeedP(a, c, report); // skeleton / Druidic-creature / sd40 waivers, same-race Druid 1
               const req = _dn.req;
               if (_dn.counts) druidUnits++;
@@ -404,13 +400,13 @@ export function renderReportView(report) {
                 druidShort++;
                 bs = Math.floor(bs * strengthLeftByADruidShortfall(shortfall));
               }
-              // DRUID MASTERY (2026-09-24; the engine's own rule, as druidMasteryGain asks it): +20% per
-              // Druid level over the unit's minimum (0 where the requirement is waived), Druid counted to
-              // 9, capped +100%; shown in percent, and applied after the kin below, as in the battle.
-              const mastery =
-                !a.skeletal && (creature || monster)
-                  ? Math.round(druidMasteryGainOver(druidLevelTheMasteryCounts(druLevel), req) * 100)
-                  : 0;
+              // DRUID MASTERY (2026-09-24; the engine's own rule, as druidMasteryGain asks it): on a living
+              // Creature or Monster, +20% per Druid level over the unit's minimum (0 where the requirement is
+              // waived), Druid counted to 9, capped +100%; shown in percent, and applied after the kin below, as
+              // in the battle.
+              const mastery = theDruidMasteryLiftsAUnitOfThisType(a.type, a.skeletal)
+                ? Math.round(druidMasteryGainOver(druidLevelTheMasteryCounts(druLevel), req) * 100)
+                : 0;
               // humanoid race affinity — a unit of the same race as your KING gets +20%, and a unit
               // led by a character of the same race gets +20% (they STACK → +44% when both apply) — and
               // racial animosity: Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin

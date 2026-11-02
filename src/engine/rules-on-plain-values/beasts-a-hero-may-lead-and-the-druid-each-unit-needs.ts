@@ -137,3 +137,11 @@ export function druidLevelTheMasteryCounts(druidLevel: number): number {
 export function druidMasteryGainOver(levelCounted: number, levelNeeded: number): number {
   return Math.min(DRUID_MASTERY_CAP, DRUID_MASTERY_PER_LVL * Math.max(0, levelCounted - levelNeeded));
 }
+/** Whether the Druid mastery lifts a unit of this type: a Creature or a Monster, and not a skeleton (the dead follow no
+ *  Druid). The battle's druidMasteryGain and the army card ask it (plan P1-11d12). */
+export function theDruidMasteryLiftsAUnitOfThisType(
+  unitType: string,
+  itIsSkeletal: boolean | null | undefined,
+): boolean {
+  return !itIsSkeletal && (CREATURE_ARMIES.has(unitType) || MONSTER_ARMIES.has(unitType));
+}

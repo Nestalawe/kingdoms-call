@@ -7,10 +7,12 @@ import {
   alignDistP,
   ALL_SKILLS,
   aRealmOfThisCreedMayGiveTheAlignmentOrder,
+  CREATURE_ARMIES,
   heroHireWage,
   isLegendaryItem,
   itemSlot,
   itemUsableBy,
+  MONSTER_ARMIES,
   theActionSpells,
   theActionSpellsNoMasteryLevelGates,
   theHexNextToAProvinceInADirection,
@@ -59,8 +61,6 @@ import {
 import { getOrderTarget } from './pre-orders.ts';
 import { effSkillP } from './briefing-and-submit.ts';
 import {
-  CREATURE_ARMIES_UI,
-  MONSTER_ARMIES_UI,
   _isAutoGarrisonRecruit,
   _projRecruitUnits,
   capitalise,
@@ -1475,9 +1475,9 @@ export function buildTargetField(c, ph, saved) {
             return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
               <input type="checkbox" value="${val}" ${chk} onchange="updateRecruitTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
               1× ${at.type} (${costEach}g)${
-                CREATURE_ARMIES_UI.has(at.type)
+                CREATURE_ARMIES.has(at.type)
                   ? kcHtml` <span style="color:#1d5a1d;font-size:.72rem">[Creature]</span>`
-                  : MONSTER_ARMIES_UI.has(at.type)
+                  : MONSTER_ARMIES.has(at.type)
                     ? kcHtml` <span style="color:#701010;font-size:.72rem">[Monster]</span>`
                     : ''
               }
