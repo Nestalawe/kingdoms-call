@@ -976,6 +976,8 @@ export function buildTurnReport(view, itsLines = null) {
       alignment: player.alignment,
       race: player.race,
       color: player.color,
+      // R-124: while its Grand Cathedral stands (as the turn counts it), the order form counts Bless Province as free
+      ...(view.books.wonderBlesses.Divine ? { itsGrandCathedralStands: true } : {}),
     },
     exploreDiscMult: Object.fromEntries(
       ['plain', 'desert', 'forest', 'mountain', 'jungle', 'sea'].map((t) => [t, discExploreMult(player, t)]),

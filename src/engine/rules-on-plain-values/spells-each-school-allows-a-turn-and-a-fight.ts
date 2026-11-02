@@ -1,10 +1,16 @@
-// ── How many spells of one school a hero may cast (plan P1-11a1; the Warlock's extra cast, P1-23s) ────
+// ── How many spells of one school a hero may cast (plan P1-11a1; the Warlock's extra cast, P1-23s; the Grand
+// Cathedral's free Bless, P1-23ad) ────
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a). These are the two casting limits, by the hero's effective level in the school, and the one rule
 // of a school's action spells a turn with the Warlock's extra cast (R-123), which the Cast Spell order, the bots' order
-// check and the order form ask (the form through src/shared/).
+// check and the order form ask (the form through src/shared/); and whether a spell costs its caster no slot at all
+// (R-124), which the spells' registry and the order form ask.
 import { KC_MAGIC_SCHOOLS } from '../../content/kingdoms-call-data.ts';
+import {
+  SPELL_EFFECTS_THE_REGISTRY_HOLDS,
+  type ASpellAsItsTextsWriteIt,
+} from '../../content/spell-effects-their-names-numbers-and-words.ts';
 
 /** Action spells of one school a hero may cast in a turn, by his effective level in it: 1 at level 1 or 2, 2 at
  *  level 3, 3 at level 4 or more (AK rules). The Warlock's extra cast is actionSpellsAHeroMayCastInASchoolEachTurn's. */
@@ -43,6 +49,19 @@ export function actionSpellsAHeroMayCastInASchoolEachTurn(
     actionSpellsAllowedPerSchoolEachTurn(hisEffectiveLevelInTheSchool) +
     (heHoldsTheWarlocksTitle && hisBestSchool ? 1 : 0)
   );
+}
+
+/** Whether the spell named costs its caster no casting slot (R-124): never counted among his casts of its school, nor
+ *  ever blocked by them. So it is where its row in the content says a Grand Cathedral frees its slot
+ *  (`asAnOrder.aGrandCathedralFreesItsSlot`: Bless Province) and the caster's realm's Grand Cathedral stands. A name with
+ *  no row costs a slot. */
+export function theSpellCostsItsCasterNoCastingSlot(
+  theSpellsName: string,
+  theCastersRealmHasAGrandCathedral: boolean,
+): boolean {
+  const everyRow: readonly ASpellAsItsTextsWriteIt[] = Object.values(SPELL_EFFECTS_THE_REGISTRY_HOLDS);
+  const row = everyRow.find((r) => r.name === theSpellsName);
+  return theCastersRealmHasAGrandCathedral && row?.asAnOrder?.aGrandCathedralFreesItsSlot === true;
 }
 
 /** Combat spells of one school a hero may cast in one personal combat, by his level in it: 1 at level 1, 2 at

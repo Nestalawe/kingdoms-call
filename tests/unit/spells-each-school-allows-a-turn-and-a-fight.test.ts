@@ -3,16 +3,19 @@
 // may cast in one personal combat, by his level in the school. Every level the callers can hand them, from below 0 to
 // past 9 (a bot's plan asks before it checks the hero has the school at all). And the one rule with the Warlock's
 // extra cast (R-123, P1-23s): one more in his best school, the one his trained level is highest in (each tied school),
-// and the Warlock title's measure. The file imports only the content, so the test imports it as it is, with no engine
-// loaded. The whole-turn cases (lib/cast-spell-order-cases.ts, "the casting limits,
+// and the Warlock title's measure. And whether a spell costs its caster no casting slot (R-124, P1-23ad): Bless Province
+// in a realm whose Grand Cathedral stands, read from its row. The file imports only the content, so the test imports it
+// as it is, with no engine loaded. The whole-turn cases (lib/cast-spell-order-cases.ts, "the casting limits,
 // at each level") show the Cast Spell order and personal combat read these limits.
 // Level 1 (unit): two functions of a number.
 import { expect, test } from 'vitest';
+import { SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
 import {
   actionSpellsAHeroMayCastInASchoolEachTurn,
   actionSpellsAllowedPerSchoolEachTurn,
   combatSpellsAllowedPerSchoolEachFight,
   theHighestLevelAHeroHasTrainedInAMagicSchool,
+  theSpellCostsItsCasterNoCastingSlot,
 } from '../../src/engine/rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 
 const LEVELS = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -56,6 +59,15 @@ test('the Warlock casts one more spell of his best school a turn (R-123), and on
   expect(theHighestLevelAHeroHasTrainedInAMagicSchool({ skills: { white: Number.NaN, elemental: 5 } })).toBe(5);
   expect(actionSpellsAHeroMayCastInASchoolEachTurn({ skills: { white: 12, psychic: 9 } }, 'psychic', 5, true)).toBe(4);
   expect(actionSpellsAHeroMayCastInASchoolEachTurn({ skills: { white: -2 } }, 'white', 1, true)).toBe(2);
+});
+
+test('a Grand Cathedral frees Bless Province of its casting slot (R-124), and only it, and only while it stands', () => {
+  const spells = Object.keys(SPELL_DEFS_P);
+  expect(spells.filter((name) => theSpellCostsItsCasterNoCastingSlot(name, true))).toEqual(['Bless Province']);
+  expect(spells.filter((name) => theSpellCostsItsCasterNoCastingSlot(name, false))).toEqual([]);
+  // a name with no row costs a slot
+  expect(theSpellCostsItsCasterNoCastingSlot('Fire Rain', true)).toBe(false);
+  expect(theSpellCostsItsCasterNoCastingSlot('', true)).toBe(false);
 });
 
 test('combat spells a fight: 1 up to level 1, 2 from level 2', () => {

@@ -10,7 +10,7 @@
 // Druid ones call the engine's rule with the portal's level of the hero's Druid; since R-120 they agree beside a
 // Crown). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
-// card's kin and feud against the battle's armStr, with question 28 (a)'s difference pinned. And each engine function
+// card's kin and feud against the battle's armStr. And each engine function
 // leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
@@ -60,9 +60,9 @@
 // body's province, its own rule: pinned); the form's casting count (`buildTargetField`'s statements, the page's fields
 // stood in) greys a spell out exactly where `resolveCastSpellOrder` blocks it (White Magic 1 to 5, every list of up to
 // three earlier casts of Holy Symbol, Bless Province and Oratory), the Warlock's extra cast too (R-123: both ask the one
-// rule, the form with the title its hero's minorHeld lists, which the report writes on the holder the turn counts), but
-// in a realm with a Grand Cathedral, where its answer is the engine's without the Wonder (pinned; question 28 (a),
-// Parked); the army card's strength
+// rule, the form with the title its hero's minorHeld lists, which the report writes on the holder the turn counts), and
+// in a realm with a Grand Cathedral (R-124: both ask the one rule of a spell that costs no slot, the form with the Wonder
+// its realm's report says stands, the report built by the engine from a world with and without it); the army card's strength
 // of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
 // battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
@@ -353,19 +353,24 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
     expect(warlock.asTheReportWritesIt['key']).toBe('warlock');
   });
 
-  test("the form's casting count is the engine's, the Warlock's extra cast too (R-123), but in a realm with a Grand Cathedral, where it is the engine's without the Wonder", () => {
+  test("the form's casting count is the engine's, the Warlock's extra cast (R-123) and a Grand Cathedral's free Bless Province (R-124) too", () => {
     // The form greys a spell out when its school's casts so far this turn reach the limit; the Cast Spell order blocks
     // it there. Both ask the one rule of a school's casts (R-123: the Warlock's extra cast in his best school), the form
-    // with the title the report writes in its hero's minorHeld. The form counts a Grand Cathedral's free Bless Province
-    // as a cast and greys it out at the limit (the engine never does: plan P1-11c, question 28 (a) for Toby): in those
-    // cases its answer is the engine's for the same cast in a realm without the Wonder.
+    // with the title the report writes in its hero's minorHeld; and the one rule of a spell that costs no slot (R-124: a
+    // Grand Cathedral's Bless Province is never counted nor blocked), the form with the Wonder its realm's report says
+    // stands, as the engine builds the report from each world.
     const list = castingLimit();
-    const plain = list.filter((x) => !x.cathedral);
-    expect(differences(plain)).toEqual([]);
-    expect(list.filter((x) => !sameAnswer(x.copy, x.engineWithoutTheWonder))).toEqual([]);
-    // and the engine's answer is what its two rules make of the casts: the pin holds on both sides
+    expect(differences(list)).toEqual([]);
+    // and the engine's answer is what its two rules make of the casts
     expect(list.filter((x) => !sameAnswer(x.engine, x.engineAsTheTwoRulesSay))).toEqual([]);
-    expect(list.filter((x) => x.cathedral && !x.warlock && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    // the values reach the free Bless: a cast the Wonder lets through, with the title and without
+    for (const warlock of [false, true])
+      expect(
+        list.filter(
+          (x) => x.cathedral && x.warlock === warlock && x.engine === false && x.engineWithoutTheWonder === true,
+        ).length,
+      ).toBeGreaterThan(0);
+    const plain = list.filter((x) => !x.cathedral);
     // the values reach the Warlock's extra cast: a cast the limit lets through for him alone
     expect(plain.filter((x) => x.warlock && x.engine === false && x.engineWithNeither === true).length).toBeGreaterThan(
       0,

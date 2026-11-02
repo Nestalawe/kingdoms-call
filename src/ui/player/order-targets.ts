@@ -11,6 +11,7 @@ import {
   itemUsableBy,
   theActionSpells,
   theActionSpellsNoMasteryLevelGates,
+  theSpellCostsItsCasterNoCastingSlot,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import {
@@ -1260,12 +1261,18 @@ export function buildTargetField(c, ph, saved) {
           _warlock,
         );
 
+      // R-124: while the realm's Grand Cathedral stands (its report's kingdom says so), Bless Province costs no slot: the
+      // turn never counts it among a school's casts, nor ever blocks it.
+      const _cathedral = !!(report.kingdom && report.kingdom.itsGrandCathedralStands);
+      const _costsNoSlot = (spell) => theSpellCostsItsCasterNoCastingSlot(spell, _cathedral);
+
       // Count how many Cast Spell orders from each school already exist in earlier phases
       const schoolCastCount = {};
       for (let prevPh = 0; prevPh < ph; prevPh++) {
         const prevAction = document.getElementById(`po-action-${c.id}-${prevPh}`)?.value || '';
         if (prevAction !== 'Cast Spell') continue;
         const prevSpell = getOrderTarget(c.id, prevPh);
+        if (prevSpell && _costsNoSlot(prevSpell)) continue;
         const prevSchool = prevSpell ? SPELL_TO_SCHOOL[prevSpell] : null;
         if (prevSchool) schoolCastCount[prevSchool] = (schoolCastCount[prevSchool] || 0) + 1;
       }
@@ -1293,7 +1300,7 @@ export function buildTargetField(c, ph, saved) {
               const isPractising = practisingSchools.has(school) && currentLvl === 0;
               const limit = _castsAllowed(school);
               const used = schoolCastCount[school] || 0;
-              const atLimit = used >= limit;
+              const atLimit = used >= limit && !_costsNoSlot(s);
               const lvlTxt =
                 projLvl > currentLvl ? `Lv${currentLvl}→${projLvl} if practice succeeds` : `Lv${currentLvl}`;
               let label;
@@ -1322,9 +1329,11 @@ export function buildTargetField(c, ph, saved) {
       const knownOrPractisingSchools = Object.entries(SPELLS_BY_SCHOOL).filter(
         ([school]) => effMagicLvl(c, school) >= 1 || practisingSchools.has(school),
       );
+      // (a spell that costs no slot is still offered when every school is at its limit)
       const allAtLimit =
         knownOrPractisingSchools.length > 0 &&
-        knownOrPractisingSchools.every(([school]) => (schoolCastCount[school] || 0) >= _castsAllowed(school));
+        knownOrPractisingSchools.every(([school]) => (schoolCastCount[school] || 0) >= _castsAllowed(school)) &&
+        _spellRows.every((r) => r.atLimit);
 
       if (!spells.length)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1, or practise one earlier this turn" disabled>`;

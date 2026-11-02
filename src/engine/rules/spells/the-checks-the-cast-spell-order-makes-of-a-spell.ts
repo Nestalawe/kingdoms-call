@@ -13,6 +13,7 @@ import {
   type SpellSlug,
   type TheChecksTheCastSpellOrderMakesOfASpell,
 } from '../../../content/spell-effects-their-names-numbers-and-words.ts';
+import { theSpellCostsItsCasterNoCastingSlot } from '../../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { theMarkOfThisSpellMustStandInTheCastersProvince } from '../../rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
 import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effects.ts';
 
@@ -35,10 +36,11 @@ export const A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD = {
   dominate: itsRowSays('dominate', 'aCharmedHeroWillNotTurnItOnHisLord'),
 } satisfies Partial<Record<SpellSlug, TheChecks['a charmed hero will not turn it on his lord']>>;
 
-// GRAND DESIGN, Divine (the Grand Cathedral): Bless Province uses no casting slot, and is never blocked.
+// GRAND DESIGN, Divine (the Grand Cathedral): Bless Province uses no casting slot, and is never blocked. It asks the
+// check the order form shares (src/engine/rules-on-plain-values/, R-124), which reads the spell's row.
 export const A_SPELL_THAT_COSTS_NO_CASTING_SLOT = {
   'bless-province': (facts) =>
-    facts.theCastersRealmHasAGrandCathedral && itsRowSays('bless-province', 'aGrandCathedralFreesItsSlot')(),
+    theSpellCostsItsCasterNoCastingSlot(ROWS['bless-province'].name, facts.theCastersRealmHasAGrandCathedral),
 } satisfies Partial<Record<SpellSlug, TheChecks['a spell that costs no casting slot']>>;
 
 // The spells whose named hero must be standing in the caster's own province, refused before the cast roll (a guard

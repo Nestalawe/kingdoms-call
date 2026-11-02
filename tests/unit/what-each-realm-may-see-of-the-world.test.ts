@@ -19,6 +19,8 @@
 //   Protocols (none without), and in its report a band's price and the corpse-carters' (no game's realm holds them).
 // - (P1-19af) how fast its units march, by its discoveries: its king's column in its report and its garrison's unit in
 //   the view, each a point faster for a march discovery that reaches it (the skeletal dead's: the garrison's only).
+// - (P1-23ad, R-124) whether its Grand Cathedral stands, as the turn counts it: in the view's books, and in its report's
+//   kingdom only while it stands (the order form counts its free Bless Province), never in another realm's report.
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
 // refactor-only: P1-12b4 adds the function (the base has none), and P1-12b5 its second part; each case is red on a
 // sight fault planted in it.
@@ -49,7 +51,9 @@
 // portal's lookup tables (every realm, every named hero but the cloaked). P1-19ae's cases: what it is quoted by its
 // discoveries (Diplomatic Protocols' wage for an Undead wanderer it sees or could hire; in its report, a band's price
 // by the discoveries for its class, and the corpse-carters' cost). P1-19af's: how fast its units march by its
-// discoveries (its king's column in the report, its garrison's unit in the view). Level 1 because the function is called on a
+// discoveries (its king's column in the report, its garrison's unit in the view). P1-23ad's: whether its Grand Cathedral
+// stands (sited and held, or raised before Wonders were sited), in its books and in its report's kingdom, and nothing
+// there once lapsed, before it is raised, for another alignment's Wonder, or in another realm's report. Level 1 because the function is called on a
 // world made in the test; the every-realm half of `npm run balance` checks the report built from it. Each case is red
 // on a sight fault planted in the view (16 plants in P1-12b4, 19 in P1-12b5, one or more cases each); several of
 // P1-12b5's change no report, because the report's own sections still ask the same of what they read: only this test
@@ -685,6 +689,47 @@ describe("what realm 0 is quoted, by its discoveries (P1-19ae: the view and the 
       [4, 2],
       [1, 0],
     ]);
+  });
+});
+
+describe("whether realm 0's Grand Cathedral stands (P1-23ad: the order form counts its free Bless Province, R-124)", () => {
+  /** Realm 0's view and report, a Divine realm unless said, with the discoveries given and its Wonder sited in the
+   *  province given (null: raised before Wonders were sited), that province held by the realm given; and realm 1's
+   *  report of the same world. */
+  const cathedral = (
+    ids: readonly string[],
+    {
+      alignment = 'Divine',
+      sitedIn = 7,
+      heldBy = 0,
+    }: { alignment?: string; sitedIn?: number | null; heldBy?: number } = {},
+  ): { stands: unknown; inItsReport: unknown; inRealm1s: boolean } => {
+    const state = worldWithDiscoveries(ids, { alignment });
+    const s = state as unknown as { players: Record<string, unknown>[]; world: { provinces: { owner: number }[] } };
+    Object.assign(s.players[0] ?? {}, { gdProvinceId: sitedIn });
+    if (sitedIn != null) Object.assign(s.world.provinces[sitedIn] ?? {}, { owner: heldBy });
+    const view = playerView(state, 0, itsLines);
+    const kingdomOf = (realm: number) =>
+      buildTurnReport(realm === 0 ? view : playerView(state, realm, itsLines)).kingdom as Record<string, unknown>;
+    const kingdom = kingdomOf(0);
+    return {
+      stands: view.books.wonderBlesses.Divine,
+      inItsReport: 'itsGrandCathedralStands' in kingdom ? kingdom['itsGrandCathedralStands'] : '(none)',
+      inRealm1s: 'itsGrandCathedralStands' in kingdomOf(1),
+    };
+  };
+
+  test('while it stands, its view says so and its report carries it; never another realm’s report', () => {
+    expect(cathedral(['gd'])).toEqual({ stands: true, inItsReport: true, inRealm1s: false });
+    // a Wonder raised before Wonders were sited always stands (gdActiveFor)
+    expect(cathedral(['gd'], { sitedIn: null })).toEqual({ stands: true, inItsReport: true, inRealm1s: false });
+  });
+
+  test('its report carries nothing once it has lapsed, before it is raised, or for another alignment’s Wonder', () => {
+    const none = { stands: false, inItsReport: '(none)', inRealm1s: false };
+    expect(cathedral(['gd'], { heldBy: 1 })).toEqual(none); // the province it stands in taken
+    expect(cathedral([])).toEqual(none);
+    expect(cathedral(['gd'], { alignment: 'Good' })).toEqual(none); // the Free City Charter
   });
 });
 

@@ -410,12 +410,12 @@ export interface PlayerView {
   /** Its books: what its tax forecast and its wages need of the world. The bare tax of the provinces whose record names
    *  it their owner (realmBaseTax), the discoveries' tax gold of each of its provinces in its list's order (discTaxAdd,
    *  capped as the collector caps it; null where the province is missing), whether its Wonder blesses it (Good: tax;
-   *  Druidic: wages), and the provinces whose record names it their owner (how many; their garrisons' units, which it
+   *  Druidic: wages; Divine: the Grand Cathedral's free Bless Province, which its report carries for the order form), and the provinces whose record names it their owner (how many; their garrisons' units, which it
    *  pays). */
   books: {
     baseTax: unknown;
     discoveryTaxGoldOfEachOfItsProvinces: unknown[];
-    wonderBlesses: { Good: boolean; Druidic: boolean };
+    wonderBlesses: { Good: boolean; Druidic: boolean; Divine: boolean };
     provincesItHoldsByTheirRecord: number;
     unitsGarrisonedInTheProvincesItHolds: Army[];
   };
@@ -975,7 +975,11 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     books: {
       baseTax,
       discoveryTaxGoldOfEachOfItsProvinces,
-      wonderBlesses: { Good: gdActiveFor(state, realm, 'Good'), Druidic: gdActiveFor(state, realm, 'Druidic') },
+      wonderBlesses: {
+        Good: gdActiveFor(state, realm, 'Good'),
+        Druidic: gdActiveFor(state, realm, 'Druidic'),
+        Divine: gdActiveFor(state, realm, 'Divine'),
+      },
       provincesItHoldsByTheirRecord: provincesItHoldsByTheirRecord.length,
       unitsGarrisonedInTheProvincesItHolds: provincesItHoldsByTheirRecord.flatMap(
         (p) => asSaved(p).garrisonArmies ?? [],
