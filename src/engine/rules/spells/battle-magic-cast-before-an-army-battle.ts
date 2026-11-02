@@ -3,10 +3,10 @@
 // something to strike on the field (which the choice of a battle spell asks). Each takes its numbers from the content's
 // row (src/content/spell-effects-their-names-numbers-and-words.ts) and returns what it does: the resolver draws where
 // the battle drew (Lightning Bolt's units, Control Undead's unit), applies it and writes the line the effect names. Each
-// copy keeps its own rule (Parked "Battle magic's three copies disagree on two rules": the guards' commander counts his
-// level past 5 for Lightning Bolt; Telekinetic Storm between heroes halves only a Tactical he has, and not at sea) and
-// its own lines. Until P1-19u they were written inline in applyPreBattleMagic (src/engine/battle/battles-between-
-// heroes.ts), twice in combatVsNPC (src/engine/battle/battles-against-province-defenders.ts) and in battleSpellUseful
+// copy writes its own lines; the rule is one for all three (R-126: Lightning Bolt counts the level to 5, and Telekinetic
+// Storm halves only a Tactical the commander has, and not at sea). Until P1-19u they were written inline in
+// applyPreBattleMagic (src/engine/battle/battles-between-heroes.ts), twice in combatVsNPC
+// (src/engine/battle/battles-against-province-defenders.ts) and in battleSpellUseful
 // (src/engine/magic/pre-battle-spell-choice.ts).
 import {
   SPELL_EFFECTS_THE_REGISTRY_HOLDS as ROWS,
@@ -145,13 +145,10 @@ export const A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE = {
       theLine: FIREBALLS_LINE[facts.theCopy],
     };
   },
-  // As many enemy units as the caster's level (at least one; counted to 5, but by a guards' commander), drawn at random
-  // by the resolver, each lose 20% of its base strength, rounded, at least 1.
+  // As many enemy units as the caster's level (at least one; counted to 5), drawn at random by the resolver, each lose
+  // 20% of its base strength, rounded, at least 1.
   'lightning-bolt': (facts) => {
-    const theLevel =
-      facts.theCopy === "the guards' commander"
-        ? facts.theCastersLevel
-        : Math.min(facts.theCastersLevel, LIGHTNING_BOLTS.theLevelItCountsTo.value);
+    const theLevel = Math.min(facts.theCastersLevel, LIGHTNING_BOLTS.theLevelItCountsTo.value);
     return {
       kind: 'units drawn at random lose strength',
       howMany: Math.min(facts.theEnemysUnits.length, Math.max(1, theLevel)),
@@ -161,12 +158,12 @@ export const A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE = {
       theLine: LIGHTNING_BOLTS_LINE[facts.theCopy],
     };
   },
-  // The enemy commander's Tactical is halved for the battle; between heroes only if he has some and not at sea (else he
-  // is only marked, so no second storm is chosen).
+  // The enemy commander's Tactical is halved for the battle, if he has some and not at sea (else he is only marked, so
+  // no second storm is chosen).
   'telekinetic-storm': (facts) => {
     const commander = facts.theEnemyCommander;
     if (commander === null) return nothingToStrike(A_TELEKINETIC_STORM_FINDS_NO_COMMANDER, facts);
-    if (facts.theCopy === 'between heroes' && !(commander.tactical > 0 && !facts.atSea))
+    if (!(commander.tactical > 0 && !facts.atSea))
       return {
         kind: "the enemy commander's Tactical is marked, with none to cut",
         theLine: 'a telekinetic storm finds no tactical command to disrupt',

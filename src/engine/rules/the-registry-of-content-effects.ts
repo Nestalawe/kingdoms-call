@@ -915,8 +915,7 @@ export interface TheWorthOfAnItemsParts {
 
 /** Which of the battle code's three copies of battle magic casts the spell: a hero's between two heroes' hosts
  *  (applyPreBattleMagic), a hero's against a province's neutral guards, or the guards' commander's against him (both in
- *  combatVsNPC). Each copy keeps its own rule and writes its own lines (Parked "Battle magic's three copies disagree on
- *  two rules"). */
+ *  combatVsNPC). Each copy writes its own lines; the rule is one for all three (R-126). */
 export type ACopyOfBattleMagic = 'between heroes' | 'a hero against the guards' | "the guards' commander";
 
 /** An enemy unit as a battle spell reads it. */
