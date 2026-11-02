@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS, TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
+import { KC_UNIT_CLASS, TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
+import { theHighestLevelAHeroHasTrainedInAMagicSchool } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
@@ -358,7 +359,6 @@ export const MINOR_HEAVY = new Set([
   'Great Turtles',
   'Siege Towers',
 ]); // the ferries count (the turtles since Island Back, 2026-10-13)
-export const _BEST_SCHOOL = (c) => Math.max(0, ...KC_MAGIC_SCHOOLS.map((s) => skillLevel(c, s)));
 export const MINOR_TITLES = [
   {
     key: 'duelist',
@@ -499,7 +499,7 @@ export const MINOR_TITLES = [
     name: 'The Warlock',
     perk: '+1 spell of your best school/turn',
     req: 'Highest single magic-school level.',
-    metric: (c) => _BEST_SCHOOL(c),
+    metric: (c) => theHighestLevelAHeroHasTrainedInAMagicSchool(c),
   },
 ];
 export function computeMinorTitles(state) {

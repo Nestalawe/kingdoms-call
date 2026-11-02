@@ -2,7 +2,7 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_BASIC_EXPLORE, KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 import {
-  actionSpellsAllowedPerSchoolEachTurn,
+  actionSpellsAHeroMayCastInASchoolEachTurn,
   alignDistP,
   ALL_SKILLS,
   heroHireWage,
@@ -1248,7 +1248,17 @@ export function buildTargetField(c, ph, saved) {
       // the casting limit quoted (and enforced in the dropdown) is the one the hero may have reached
       // by this phase. The engine counts the limit from the level at the moment of casting, so a
       // practice that lands does raise it.
-      const { practising: practisingSchools, projected: _projLvl } = projectedMagicLevels(c, ph);
+      const { practising: practisingSchools, projected: _projLvl, trained: _trainedLvl } = projectedMagicLevels(c, ph);
+      // R-123: the Warlock (the minor title the report lists in his minorHeld) casts one more spell of his best school
+      // a turn, read from the levels he may have trained by this phase, as the turn reads them at the cast.
+      const _warlock = ((c && c.minorHeld) || []).some((t) => t && t.key === 'warlock');
+      const _castsAllowed = (school) =>
+        actionSpellsAHeroMayCastInASchoolEachTurn(
+          { skills: { ...((c && c.skills) || {}), ..._trainedLvl } },
+          school,
+          _projLvl[school],
+          _warlock,
+        );
 
       // Count how many Cast Spell orders from each school already exist in earlier phases
       const schoolCastCount = {};
@@ -1281,7 +1291,7 @@ export function buildTargetField(c, ph, saved) {
               const currentLvl = effMagicLvl(c, school);
               const projLvl = _projLvl[school];
               const isPractising = practisingSchools.has(school) && currentLvl === 0;
-              const limit = actionSpellsAllowedPerSchoolEachTurn(projLvl);
+              const limit = _castsAllowed(school);
               const used = schoolCastCount[school] || 0;
               const atLimit = used >= limit;
               const lvlTxt =
@@ -1314,9 +1324,7 @@ export function buildTargetField(c, ph, saved) {
       );
       const allAtLimit =
         knownOrPractisingSchools.length > 0 &&
-        knownOrPractisingSchools.every(
-          ([school]) => (schoolCastCount[school] || 0) >= actionSpellsAllowedPerSchoolEachTurn(_projLvl[school]),
-        );
+        knownOrPractisingSchools.every(([school]) => (schoolCastCount[school] || 0) >= _castsAllowed(school));
 
       if (!spells.length)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No spells known — need a magic skill ≥ 1, or practise one earlier this turn" disabled>`;

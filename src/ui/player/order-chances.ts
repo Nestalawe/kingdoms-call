@@ -202,14 +202,17 @@ export function projectedMagicLevels(c, ph) {
     const t = getOrderTarget(c.id, prevPh);
     if (t && KC_MAGIC_SCHOOLS.includes(t)) practice[t] = (practice[t] || 0) + 1;
   }
-  const projected = {};
+  const projected = {},
+    trained = {};
   KC_MAGIC_SCHOOLS.forEach((school) => {
     const raw = rawMagicLvl(c, school),
       n = practice[school] || 0;
     const rawProj = raw >= 5 ? raw : Math.min(5, raw + n);
+    trained[school] = rawProj;
     projected[school] = effMagicLvl({ ...c, skills: { ...((c && c.skills) || {}), [school]: rawProj } }, school);
   });
-  return { practising: new Set(Object.keys(practice)), projected, practice };
+  // `trained`: each school's trained level after those practices (the Warlock's best school is read from it, R-123)
+  return { practising: new Set(Object.keys(practice)), projected, practice, trained };
 }
 
 // After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every

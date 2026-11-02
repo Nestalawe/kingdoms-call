@@ -21,8 +21,7 @@ import {
 import { BOT_SCHOOLS } from './schools.ts';
 import { botOrderLocs, botPickupOrder } from './missions.ts';
 import { skillLevel } from '../titles/perks.ts';
-import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
-import { _BEST_SCHOOL } from '../titles/reckoning.ts';
+import { actionSpellsAHeroMayCastInASchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { botPracticeFallback } from './spellcraft.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
@@ -362,14 +361,9 @@ export function botCastLimit(G, c, school, practised) {
     school,
     G.characters || [],
   );
-  const w =
-    G._minorHolders &&
-    G._minorHolders.warlock &&
-    G._minorHolders.warlock.charId === c.id &&
-    _BEST_SCHOOL(c) === skillLevel(c, school)
-      ? 1
-      : 0;
-  return actionSpellsAllowedPerSchoolEachTurn(l) + w;
+  // the Warlock's extra cast in his best school as he stands before the practice: the Cast Spell order's rule (R-123)
+  const warlock = !!(G._minorHolders && G._minorHolders.warlock && G._minorHolders.warlock.charId === c.id);
+  return actionSpellsAHeroMayCastInASchoolEachTurn(c, school, l, warlock);
 }
 export function runBotOrderHygiene(G, botIdxSet) {
   const tally = typeof window !== 'undefined' && window.__botHyg ? window.__botHyg : null;

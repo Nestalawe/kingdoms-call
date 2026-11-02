@@ -1,5 +1,5 @@
 // ── The engine's rules the player portal shares (plan P1-11a4; beasts and Druid, P1-11b3; the sea lift, P1-11b4; the
-// order form's spells, P1-11c2; the mark check, P1-11c4; kin and feud, P1-11c5) ────
+// order form's spells, P1-11c2; the mark check, P1-11c4; kin and feud, P1-11c5; the Warlock's extra cast, P1-23s) ────
 // The player portal's one door to the engine (plan P1-11a, Decision 2): the rules of a hero, an army, an item, a level
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
@@ -41,7 +41,7 @@ export {
   topSkillOf,
 } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 export {
-  actionSpellsAllowedPerSchoolEachTurn,
+  actionSpellsAHeroMayCastInASchoolEachTurn,
   combatSpellsAllowedPerSchoolEachFight,
 } from '../engine/rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 export {

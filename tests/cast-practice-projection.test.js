@@ -7,7 +7,10 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The Cast Spell dropdown counts each earlier Practice Skill order on a school as a success: it quotes the projected
 // level (`Lv2→3 if practice succeeds`) and opens that many spells (a school at 5 projects no rise); turning or
-// re-aiming an earlier Practice, or changing an earlier spell, rebuilds the later dropdowns at once
+// re-aiming an earlier Practice, or changing an earlier spell, rebuilds the later dropdowns at once; and (R-123, P1-23s)
+// a Warlock (the minor title his report lists in minorHeld) at Elemental 4 is offered a fourth Elemental spell in
+// Winter after three, which a hero without the title is not. Level 4 (page): the dropdown as the live form builds it;
+// the copies test compares the form's count with the engine's on staged worlds
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
@@ -70,6 +73,35 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(!opt(2,psy).disabled,'Spring back to a Psychic practice reopens it');
   target(0,'elemental');
   ok(opt(2,psy).disabled,'re-aiming Spring\'s practice at Elemental closes it again');
+
+  // R-123: the Warlock (the minor title, in the report's minorHeld) casts one more spell of his best school a turn.
+  // Two heroes at Elemental 4 cast Earthquake in Spring, Summer and Autumn; in Winter the Warlock is offered a fourth.
+  const warlockTitle={key:'warlock',name:'The Warlock',perk:'+1 spell of your best school/turn',req:'Highest single magic-school level.'};
+  const mage=(id,minorHeld)=>({id,name:'Mage '+id,player:0,locationId:11,locationName:'Ashford',hp:20,maxHp:20,armies:[],items:[],
+    skills:{elemental:4},effectiveSpeed:3,effectiveSeaSpeed:3,isKing:false,minorHeld});
+  P.eval(`currentReport=${JSON.stringify({turn:6,_liveTurn:6,characters:[mage('w1',[warlockTitle]),mage('w2',[])],kingdom:{gold:100,alignment:'Good'},worldMeta:{provinces:[{id:11,name:'Ashford'}]}})};`);
+  P.buildOrdersForm(P.eval('currentReport.characters'),false,null,6);
+  await new Promise(r=>setTimeout(r,50));
+  const fourth={}, field={};
+  for(const id of ['w1','w2']){
+    for(let ph=0;ph<4;ph++){ const a=doc.getElementById(`po-action-${id}-${ph}`); a.value='Cast Spell'; P.onActionChange(id,ph,0); }
+    for(let ph=0;ph<3;ph++){ const t=doc.getElementById(`po-target-${id}-${ph}`); t.value=ele; P.onSpellChange(id,ph,ele); }
+    const s=field[id]=doc.getElementById(`po-target-${id}-3`); fourth[id]=s&&s.options?[...s.options].find(o=>o.value===ele):null;
+  }
+  ok(fourth.w1&&!fourth.w1.disabled&&/Lv4 — 3\/4 used/.test(fourth.w1.textContent),`the Warlock at Elemental 4 is offered a fourth Elemental spell (${fourth.w1&&fourth.w1.textContent})`);
+  ok(!fourth.w2&&field.w2&&field.w2.disabled&&/casting limits reached/.test(field.w2.placeholder),`a hero without the title is not: his field says the limits are reached (${field.w2&&field.w2.placeholder})`);
+  // His best school is read from the levels he may have trained by then: a Warlock at Elemental 4 and Psychic 4 who
+  // practises Psychic in Spring counts on Psychic 5 as his best, so Winter's fourth Elemental spell is closed.
+  P.eval(`currentReport=${JSON.stringify({turn:6,_liveTurn:6,characters:[{...mage('w3',[warlockTitle]),skills:{elemental:4,psychic:4}}],kingdom:{gold:100,alignment:'Good'},worldMeta:{provinces:[{id:11,name:'Ashford'}]}})};`);
+  P.buildOrdersForm(P.eval('currentReport.characters'),false,null,6);
+  await new Promise(r=>setTimeout(r,50));
+  const a3=(ph,v)=>{ const a=doc.getElementById(`po-action-w3-${ph}`); a.value=v; P.onActionChange('w3',ph,0); };
+  a3(0,'Practice Skill'); { const t=doc.getElementById('po-target-w3-0'); t.value='psychic'; P.rebuildTargetWrap('w3',0); }
+  for(let ph=1;ph<5;ph++) a3(ph,'Cast Spell');
+  for(let ph=1;ph<4;ph++){ const t=doc.getElementById(`po-target-w3-${ph}`); t.value=ele; P.onSpellChange('w3',ph,ele); }
+  const w3s=doc.getElementById('po-target-w3-4'), w3e=w3s&&w3s.options?[...w3s.options].find(o=>o.value===ele):null, w3p=w3s&&w3s.options?[...w3s.options].find(o=>o.value===psy):null;
+  ok(w3e&&w3e.disabled&&/limit reached: 3\/3/.test(w3e.textContent),`after a Psychic practice, Elemental is not his best: Winter's fourth Elemental spell is closed (${w3e&&w3e.textContent})`);
+  ok(w3p&&!w3p.disabled&&/0\/4 used/.test(w3p.textContent),`and Psychic, his best, may cast four (${w3p&&w3p.textContent})`);
 
   const html=doc.getElementById('orders-form')?doc.getElementById('orders-form').innerHTML:'';
   ok(!/undefined|NaN|\[object Object\]/.test(html),'no undefined / NaN in the orders form');
