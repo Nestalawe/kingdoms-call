@@ -200,7 +200,8 @@ export function projectedLedArmies(charId, upToPhaseExclusive, _memo) {
 
 // projected exploration gain for ONE Explore order — mirror of the GM engine's explore formula
 // (terrainBase × (Explorer+1) × Scouts&Rangers × Compass × race/alignment explore discoveries ×
-// Loremaster/Trailblazer, capped at 100). Explorer-boosting items aren't visible here.
+// Trailblazer, capped at 100). Explorer-boosting items aren't visible here. R-125: the Loremaster
+// adds nothing, as in the turn.
 export function exploreGainFor(c, terr) {
   const report = currentReport || {};
   const BASIC_EXPLORE_P = { ...KC_BASIC_EXPLORE };
@@ -219,9 +220,8 @@ export function exploreGainFor(c, terr) {
       const m = /map(?:s)? (\d+)% more/i.exec(d.desc || '');
       if (m && (!/mountain/i.test(d.desc) || terr === 'mountain')) discMult *= 1 + parseInt(m[1]) / 100;
     });
-  const hasLore = (c.titlesHeld || []).some((t) => /Loremaster/i.test(t.name || ''));
   const hasTrail = (c.minorHeld || []).some((t) => /Trailblazer/i.test(t.name || ''));
-  const loreMult = (hasLore ? 1.05 : 1) * (hasTrail ? 1.05 : 1);
+  const loreMult = hasTrail ? 1.05 : 1;
   return Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * compass * discMult * loreMult));
 }
 // Sum of exploration already queued for a province by EARLIER Explore orders (this hero's earlier
@@ -246,7 +246,7 @@ export function exploreQueuedBefore(charId, ph, provId) {
   return sum;
 }
 // Exploration a character gains simply by MARCHING INTO a province — the engine grants it on every
-// move in, before any Explore order resolves (10% + 5% per Explorer level, + a Traveller's Cloak, +
+// move in, before any Explore order resolves (10% + 5% per Explorer level, + a worn Traveller's Cloak, +
 // 2% per army led at March 6+). Mirrors the engine's explGainMove so the projection below counts
 // ground the hero will have mapped on arrival. Returns 0 if they do not move in during `upTo`
 // phases.
@@ -261,7 +261,16 @@ export function exploreMoveGainBefore(c, upToPhaseExclusive, provId) {
     const from = predictedLocation(c.id, p);
     if (!dest || !from || dest.id === from.id || dest.id !== provId) continue;
     const lvl = Math.min(5, effSkillP(c, 'explorer'));
-    const cloak = (c.items || []).some((it) => it && /Traveller's Cloak/i.test(it.name || '')) ? 20 : 0;
+    // R-125: a worn cloak only, as the turn counts it (a spare in his pack adds nothing)
+    const cloak = (c.items || []).some(
+      (it) =>
+        it &&
+        /Traveller's Cloak/i.test(it.name || '') &&
+        itemUsableBy(it, c) &&
+        (!itemSlot(it) || it.equipped !== false),
+    )
+      ? 20
+      : 0;
     const marchPerk = ((c.skills || {}).march || 0) >= 6 ? 2 * (c.armies || []).length : 0;
     gain += 10 + 5 * lvl + cloak + marchPerk;
   }

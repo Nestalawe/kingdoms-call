@@ -6,9 +6,9 @@
 // command, which P1-11b3 swapped, and the sea lift, P1-11b4's). For effMagicLvl, a copy that stays, the truth: the copy
 // on the report's value, against the level the report sends. For the copies that read the realm, the report's shape or
 // the world (P1-11b1: the Druid a hero needs, the army card's Druid and sea lines, the turn report's flying carry, the
-// Explore forecast), the truth too, with the differences known to Toby's questions pinned exactly (since P1-11b3 the
-// Druid ones call the engine's rule with the portal's level of the hero's Druid; since R-120 they agree beside a
-// Crown). Since P1-11c1, the order form's Cast Spell tables against
+// Explore forecast and its march-in share), the truth too (since P1-11b3 the Druid ones call the engine's rule with the
+// portal's level of the hero's Druid; since R-120 they agree beside a Crown; since R-125 the Explore forecast, the
+// march-in share and the sea note agree). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
 // card's kin and feud against the battle's armStr. And each engine function
 // leaves its input as it was.
@@ -26,7 +26,7 @@
 // projection (`buildTurnReport`): every catalogue item (and each race-bound one under the race's old name), held by a
 // hero of every race and alignment; every unit type at every quality, plain, skeletal, summoned for the turn or of the
 // Wild Hunt; every column of one to three units of each kind (flyers, winged beasts, fleets, sea beasts, cavalry, light
-// and heavy foot, creatures, monsters), led with and without Naval 8; a hero beside one wearing the Crown of Command.
+// and heavy foot, creatures, monsters), led with and without Naval 8 (and at Naval 7, a fleet among them); a hero beside one wearing the Crown of Command.
 // P1-11a4 swapped the 16 copies that agreed for the engine's functions, so their swap cases went; for the 9 whose value
 // the report makes from the state (`unitTypeOf`, `unitBaseStrength`, `isLegendaryItem`, `itemSlot`, `itemRaceOf`,
 // `itemUsableBy`, `topSkillOf` with `skillFameLabelM`, `isAirCarriable`, `getFlyCapability`), a projection case: the
@@ -48,9 +48,10 @@
 // it); the turn report's own flying carry (read by its statements) agrees
 // with `isAirCarriable` and `getFlyCapability` (P1-11b2: the report calls `getFlyCapability` now, so its statement that
 // gives a column the flyers' pace is checked on every column, and the unit types' half went with the copy); the Explore
-// forecast (`exploreGainFor`) is what `resolveExploreOrder` maps but for the Loremaster, 5% more (pinned; question 15);
-// the army card's sea note is `getSeaCapability`'s answer but for a Naval 8 hero, for whom it is the answer without the
-// mastery (pinned; question 15). Every engine function leaves its input as it was (the values are frozen, so a write
+// forecast (`exploreGainFor`) is what `resolveExploreOrder` maps, the Loremaster's too (R-125); its march-in share
+// (`exploreMoveGainBefore`, on a staged march into the capital) is what `resolveMoveOrder` maps, for a hero with no
+// Traveller's Cloak, one worn and one carried as a spare (R-125: a worn one alone); the army card's sea note is
+// `getSeaCapability`'s answer, a Naval 8 hero's too (R-125). Every engine function leaves its input as it was (the values are frozen, so a write
 // throws). P1-11c1 (plan P1-11c, before the form takes its tables and its check from the engine's side): the order
 // form's eight Cast Spell tables (`order-chances.ts` run whole, the others read by their declarations) are the ones
 // `SPELL_DEFS_P` makes, each as the form reads it (a list in its order, a map, a set), but an Encounter plan lists the
@@ -83,6 +84,7 @@ import {
   exploreForecastAgainstTheOrder,
   flyingCarryAgainstTheEngine,
   kinWorld,
+  marchInGainAgainstTheMoveOrder,
   oneUnitTypePerDruidLevelAndClass,
   playerPortalCopies,
   type ProjectionComparison,
@@ -132,6 +134,7 @@ const armyCardMastery = lazily(() => armyCardMasteryAgainstTheTurn(copies, world
 const flyingCarry = lazily(() => flyingCarryAgainstTheEngine(copies, values));
 const exploreForecast = lazily(() => exploreForecastAgainstTheOrder(copies, worldValues));
 const seaNote = lazily(() => armyCardSeaNoteAgainstTheEngine(copies, values));
+const marchIn = lazily(() => marchInGainAgainstTheMoveOrder(copies));
 const theForm = lazily(() => theOrderFormsSpells());
 const castingLimit = lazily(() => castingLimitAgainstTheOrder(theForm()));
 const kin = lazily(() => armyCardKinAgainstTheBattle(copies, kinWorld()));
@@ -231,7 +234,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
       worldValues.explore.filter((x) => objectsOf(x.hero.report['minorHeld']).some((t) => t['key'] === 'trailblazer'))
         .length,
     ).toBeGreaterThan(0);
-    expect(seaNote().filter((x) => x.naval8).length).toBeGreaterThan(0);
+    expect(seaNote().filter((x) => x.naval >= 8).length).toBeGreaterThan(0);
   });
 
   test("druidNeedP's shortfall leaves a unit the strength the battle's druIdPenaltyMult does, beside a Crown of Command too (R-120)", () => {
@@ -260,26 +263,30 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     expect(differences(columns)).toEqual([]);
   });
 
-  test("the Explore order's forecast is what the order maps, but for the Loremaster, whose forecast adds 5% the turn no longer gives", () => {
-    // exploreGainFor multiplies by 1.05 for a holder of the Loremaster; the engine's order no longer does ("Loremaster
-    // explore bonus removed"): plan P1-11b, question 15 (a) for Toby. In the staged world (no discovery that adds to
-    // exploring) the forecast is the order's gain with 5% more, rounded down: Explorer 2 in desert, 78 for 75.
+  test("the Explore order's forecast is what the order maps, the Loremaster's too (R-125)", () => {
+    // The turn's Explore order gives the Loremaster no more ("Loremaster explore bonus removed"); since R-125 the
+    // forecast doesn't either (it added 5%: Explorer 2 in desert, 78 for 75).
     const list = exploreForecast();
-    expect(differences(list.filter((x) => !x.loremaster))).toEqual([]);
-    const lore = list.filter((x) => x.loremaster);
-    expect(lore.filter((x) => x.copy !== Math.min(100, Math.floor(Number(x.engine) * 1.05)))).toEqual([]);
-    expect(lore.filter((x) => x.copy !== x.engine).length).toBeGreaterThan(0);
+    expect(list.filter((x) => x.loremaster).length).toBeGreaterThan(0);
+    expect(differences(list)).toEqual([]);
   });
 
-  test("the army card's sea note is getSeaCapability's answer, but for a hero of Naval 8, for whom it is the answer without the mastery", () => {
-    // The card halves the hulls a column needs when the hero's effective Naval is 8, but an effective Naval stops at 5,
-    // so it never does: for a Naval 8 hero it says "needs 2 hulls, has 1" where the turn lets the column sail (plan
-    // P1-11b, question 15 (c) for Toby). Its answer is the engine's for the column under a leader of Naval 7.
+  test("the march-in share the Explore forecast counts is what the Move order maps, a Traveller's Cloak only when worn (R-125)", () => {
+    // The Move order counts a worn item's +20% alone (activeItems); the forecast counted any Traveller's Cloak the hero
+    // held, a spare in his pack too (30 for 10 at Explorer 0). Since R-125 it counts a worn one alone, by its name (a
+    // cloak of another name: question 44).
+    const list = marchIn();
+    for (const cloak of ['none', 'worn', 'carried']) expect(list.filter((x) => x.cloak === cloak).length).toBe(2);
+    expect(differences(list)).toEqual([]);
+  });
+
+  test("the army card's sea note is getSeaCapability's answer, a Naval 8 hero's too (R-125)", () => {
+    // The card halved the hulls a column needs at an effective Naval of 8, which stops at 5, so it never did: a Naval 8
+    // hero read "needs 2 hulls, has 1" where the turn let the column sail. Since R-125 it reads his trained Naval, as
+    // the turn's mastery does.
     const list = seaNote();
-    expect(differences(list.filter((x) => !x.naval8))).toEqual([]);
-    const naval8 = list.filter((x) => x.naval8);
-    expect(naval8.filter((x) => !sameAnswer(x.copy, x.engineWithoutTheMastery))).toEqual([]);
-    expect(naval8.filter((x) => !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    for (const naval of [7, 8]) expect(list.filter((x) => x.naval === naval).length).toBeGreaterThan(0);
+    expect(differences(list)).toEqual([]);
   });
 });
 
