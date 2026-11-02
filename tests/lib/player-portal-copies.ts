@@ -37,8 +37,9 @@
 // realm's own heroes, their units and their items: the values the report makes from the state. (Until P1-11a4 the swap
 // cases also took every alignment pair, every level, games rows and every number the reports hold.) For the Druid
 // rule, six more staged worlds (druidWorlds), for the Explore order one more (exploreWorld) and for the march-in share
-// one more (marchWorld, P1-23t: the forecast's exploreMoveGainBefore against the Move order), each sized so the whole
-// test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
+// one more (marchWorld, P1-23t: the forecast's exploreMoveGainBefore against the Move order), and for the march's
+// forecasts one more with no guards (marchingWorld, P1-11d1: predictedLocation and exploreMoveGainBefore against
+// processOrder) and every province of a staged map (the hex tables), each sized so the whole test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
 // report staged for the target field, a world of five casters and one of the kin (kinWorld).
 import vm from 'node:vm';
 import {
@@ -46,6 +47,7 @@ import {
   KC_ALIGNMENTS,
   KC_CARRIER_BERTHS,
   KC_DRUID_LEVELS,
+  KC_HEX_DIRS,
   KC_HUMANOID_RACES,
   KC_ITEM_RACE_ALIAS,
   KC_MAGIC_SCHOOLS,
@@ -86,7 +88,8 @@ import { theMarkOfThisSpellMustStandInTheProvince } from '../../src/engine/rules
 import { dragonTamed } from '../../src/engine/discoveries.ts';
 import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
 import { resolveMoveOrder } from '../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts';
-import { getNeighborsP } from '../../src/engine/world/map-helpers.ts';
+import { getNeighborsP, neighborInDir } from '../../src/engine/world/map-helpers.ts';
+import { processOrder } from '../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
 import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
@@ -97,7 +100,7 @@ import { buildReports } from '../../src/views/every-realms-report-and-the-lines-
 import { kcRng } from '../../src/engine/rng.ts';
 import { buildTurnReport } from '../../src/views/turn-report.ts';
 import { playerView } from '../../src/views/what-each-realm-may-see-of-the-world.ts';
-import type { GameState } from '../../src/schemas/saved-game-state.ts';
+import type { GameState, Province } from '../../src/schemas/saved-game-state.ts';
 import * as theRulesTheSharedDoorHandsThePortal from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { GAME, SETUPS, slotRowsJson } from './matrix-game.ts';
@@ -121,8 +124,14 @@ const COPIES: Record<string, string[]> = {
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); the army card reads
   // the two sets
   'ui/player/skills-and-projections.ts': ['CREATURE_ARMIES_UI', 'MONSTER_ARMIES_UI', 'druidNeedP'],
-  // the Explore order's forecast, and the share of the province a march into it maps first (P1-23t)
-  'ui/player/order-targets.ts': ['exploreGainFor', 'exploreMoveGainBefore'],
+  // the Explore order's forecast, and the share of the province a march into it maps first (P1-23t); where a hero will
+  // stand after his orders so far (P1-11d1), which that share and the Move field read
+  'ui/player/order-targets.ts': ['exploreGainFor', 'exploreMoveGainBefore', 'predictedLocation'],
+  // the order a page's field holds (P1-11d1: the fields stood in below), the Move field's compass words, and the
+  // direction a fresh Move opens on (the hex table of each)
+  'ui/player/pre-orders.ts': ['getOrderTarget'],
+  'ui/player/items-and-heroes.ts': ['DIRECTIONS'],
+  'ui/player/move-analysis.ts': ['lastMoveDirOf'],
 };
 const ARMY_CARD = 'ui/player/report.ts';
 const TURN_REPORT = 'views/turn-report.ts';
@@ -168,21 +177,42 @@ function exploreGainOn(report, c, terrain) {
   currentReport = report;
   try { return exploreGainFor(c, terrain); } finally { currentReport = null; }
 }
-// exploreMoveGainBefore reads the page's order fields (the action chosen in each phase) and where the hero will stand
-// in each (predictedLocation): here they stand in for one Move, in the first phase, from the province \`from\` into \`to\`.
-let theMarchStaged = null;
+// The forecasts on movement read the page's order fields (po-action-<hero>-<phase>, po-target-<hero>-<phase>): here
+// they stand in for the orders staged, by hero, then by phase, each { action, target } (P1-11d1).
+let theOrdersStaged = {};
 const document = {
-  getElementById: (id) =>
-    theMarchStaged && id === 'po-action-' + theMarchStaged.heroId + '-0' ? { value: 'Move' } : null,
+  getElementById: (id) => {
+    const field = /^po-(action|target)-(.+)-(\\d+)$/.exec(id);
+    const order = field ? (theOrdersStaged[field[2]] || [])[Number(field[3])] : null;
+    return order ? { value: field[1] === 'action' ? order.action : order.target } : null;
+  },
 };
-function predictedLocation(heroId, ph) {
-  if (!theMarchStaged || String(heroId) !== String(theMarchStaged.heroId)) return null;
-  return { id: ph === 0 ? theMarchStaged.from : theMarchStaged.to };
-}
-function exploreMoveGainOn(report, c, from, to) {
+function onTheOrders(report, orders, fn) {
   currentReport = report;
-  theMarchStaged = { heroId: c.id, from, to };
-  try { return exploreMoveGainBefore(c, 1, to); } finally { currentReport = null; theMarchStaged = null; }
+  theOrdersStaged = orders;
+  try { return fn(); } finally { currentReport = null; theOrdersStaged = {}; }
+}
+// where the hero \`heroId\` will stand once his orders of the phases before \`upTo\` are carried out (its id, or null)
+function predictedLocationOn(report, orders, heroId, upTo) {
+  return onTheOrders(report, orders, () => { const at = predictedLocation(heroId, upTo); return at ? at.id : null; });
+}
+// the share of the province \`provId\` the hero \`c\` maps marching in, in the phases before \`upTo\`
+function exploreMoveGainOn(report, orders, c, upTo, provId) {
+  return onTheOrders(report, orders, () => exploreMoveGainBefore(c, upTo, provId));
+}
+// the compass direction a fresh Move of the phase \`ph\` opens on, from his Moves before it
+function lastMoveDirOn(report, orders, heroId, ph) {
+  return onTheOrders(report, orders, () => lastMoveDirOf(heroId, ph));
+}
+// The Move field's directions for the hero \`c\` in the phase \`ph\` (buildTargetField's statements, for a fresh Move):
+// each option as the field writes it, its value (prov:<id>) and its words.
+function theMoveFieldsDirectionsOn(theReport, orders, c, ph) {
+  return onTheOrders(theReport, orders, () => {
+    const action = 'Move', target = '';
+    const report = currentReport || {};
+    ${statementsBetween('ui/player/order-targets.ts', 'buildTargetField', 'HEX_DIRS_BUILD', 'dirOpts', opts)}
+    return dirOpts.map(String);
+  });
 }`;
 /** The functions the checks call: the portal's copies, and those made of a copy's statements. */
 const COPY_FUNCTIONS = [
@@ -190,6 +220,9 @@ const COPY_FUNCTIONS = [
   'druidNeedP',
   'exploreGainOn',
   'exploreMoveGainOn',
+  'predictedLocationOn',
+  'lastMoveDirOn',
+  'theMoveFieldsDirectionsOn',
   'armyCardDruidLines',
   'armyCardSeaNote',
   'armyCardUnitStrength',
@@ -1168,7 +1201,6 @@ export type TheCloakHeHolds = 'none' | 'worn' | 'carried';
 export function marchWorld(): {
   world: World;
   marchers: { id: unknown; cloak: TheCloakHeHolds }[];
-  from: unknown;
   to: unknown;
 } {
   const { g, king, hero } = aWorldToStageIn();
@@ -1201,7 +1233,7 @@ export function marchWorld(): {
       cloak,
     })),
   );
-  return { world: savedAndReported(g), marchers, from: beside['id'], to: king['location'] };
+  return { world: savedAndReported(g), marchers, to: king['location'] };
 }
 /** The share of the province `to` the engine's Move order maps as the hero marches into it, in the first phase of the
  *  next turn, on a copy of the state (the province unmapped by his realm). */
@@ -1236,7 +1268,7 @@ export interface MarchComparison extends Comparison {
 /** The share of a province the Explore forecast counts a march into it as mapping first (exploreMoveGainBefore), against
  *  what the engine's Move order maps (P1-23t), on the world staged for a march. */
 export function marchInGainAgainstTheMoveOrder(c: Copies): MarchComparison[] {
-  const { world, marchers, from, to } = quietly(marchWorld);
+  const { world, marchers, to } = quietly(marchWorld);
   const inTheReport = new Map(objects(world.report['characters']).map((h) => [h['id'], h]));
   return marchers.map(({ id, cloak }) => {
     const hero = inTheReport.get(id);
@@ -1244,7 +1276,13 @@ export function marchInGainAgainstTheMoveOrder(c: Copies): MarchComparison[] {
     return {
       ...compare(
         [hero['name'], cloak, (isObj(hero['skills']) ? hero['skills'] : {})['explorer']],
-        c.exploreMoveGainOn(world.report, hero, from, to),
+        c.exploreMoveGainOn(
+          world.report,
+          { [String(id)]: [{ action: 'Move', target: `prov:${String(to)}` }] },
+          hero,
+          1,
+          to,
+        ),
         { answer: theShareAMarchInMaps(world.state, id, to), changed: false },
       ),
       cloak,
@@ -1252,6 +1290,363 @@ export function marchInGainAgainstTheMoveOrder(c: Copies): MarchComparison[] {
   });
 }
 
+// ── The march (P1-11d1) ────
+// Plan P1-11d's parity cases on movement, before any of it is shared: where the order form says a hero will stand after
+// his Moves and Forced Marches (predictedLocation, which every later phase's form reads), the Move field's directions,
+// the direction a fresh Move opens on (lastMoveDirOf), and the share of a province marching in maps
+// (exploreMoveGainBefore). Each runs as the portal's own code, on the orders staged in its fields. Where the forecast
+// disagrees with the turn (question 44), the difference is pinned exactly: each case says which kind it is.
+
+/** The compass words of the Move field (its DIRECTIONS), by the direction each names. */
+const THE_MOVE_FIELDS_WORDS: Record<string, string> = {
+  'North West': 'NW',
+  'North East': 'NE',
+  West: 'W',
+  East: 'E',
+  'South West': 'SW',
+  'South East': 'SE',
+};
+/** Each option of the Move field, as [the direction its words name, its value]. */
+function theMoveFieldsOptions(options: unknown): [string, string][] {
+  return (Array.isArray(options) ? options : []).map((html) => {
+    const option = /value="([^"]*)"[^>]*>([^<(]*)/.exec(String(html));
+    const words = (option?.[2] ?? '').trim();
+    return [THE_MOVE_FIELDS_WORDS[words] ?? `(words the check doesn't know: ${words})`, option?.[1] ?? '(no value)'];
+  });
+}
+/** Which of the portal's three hex tables a case reads. */
+export type TheHexTable = 'predictedLocation' | 'the Move field' | 'lastMoveDirOf';
+/** One hex step compared, and the table the portal read it from. */
+export interface HexStepComparison extends Comparison {
+  readonly table: TheHexTable;
+}
+/** The portal's three hex tables, each run as the page runs it, against the engine's step to a neighbour
+ *  (neighborInDir, which the Move order takes for a compass step, and getNeighborsP, by which it reads a province next
+ *  door), from every province of the staged world's map, each row's parity and the map's edges and its wrap with
+ *  them: predictedLocation after a Move in each direction (off the map's top or bottom he stays), the Move field's
+ *  directions (each the province one step that way, which the turn reads as next door; none off the map), and the
+ *  direction a fresh Move opens on after a Move one step each way. */
+export function thePortalsHexTablesAgainstTheEngine(c: Copies): HexStepComparison[] {
+  const { g } = aWorldToStageIn();
+  const world = quietly(() => savedAndReported(g));
+  const map = isObj(world.state['world']) ? world.state['world'] : {};
+  const [cols, rows] = [Number(map['cols']), Number(map['rows'])];
+  const provinces = objects(map['provinces']);
+  const tc = createTurnContext(copyOf(world.state), [], Number(world.state['turn']) || 1);
+  // (the staged world's province, given the type the engine's step takes, by assertion as the saved state's)
+  const step = (from: Obj, dir: string) =>
+    neighborInDir(tc as unknown as TurnContext, from as unknown as Province, dir);
+  const heroId = 'the marcher';
+  return provinces.flatMap((from): HexStepComparison[] => {
+    const report = { ...world.report, characters: [{ id: heroId, name: 'The Marcher', locationId: from['id'] }] };
+    const on = (dir: string) => [from['id'], from['row'], from['col'], dir];
+    const moves = (target: string) => ({ [heroId]: [{ action: 'Move', target }] });
+    const afterAMove = KC_HEX_DIRS.map((dir) => ({
+      table: 'predictedLocation' as const,
+      ...compare(on(dir), c.predictedLocationOn(report, moves(`dir:${dir}`), heroId, 1), {
+        answer: step(from, dir)?.id ?? from['id'],
+        changed: false,
+      }),
+    }));
+    // the provinces the turn's Move reads as next door (a prov:<id> of another is a far one: a step toward it)
+    const nextDoor = getNeighborsP({ row: Number(from['row']), col: Number(from['col']) }, cols, rows, provinces).map(
+      (p) => p['id'],
+    );
+    const theField = {
+      table: 'the Move field' as const,
+      ...compare(
+        on('every direction'),
+        theMoveFieldsOptions(c.theMoveFieldsDirectionsOn(report, {}, { id: heroId }, 0)),
+        {
+          answer: KC_HEX_DIRS.flatMap((dir) => {
+            const to = step(from, dir);
+            return to && nextDoor.includes(to.id) ? [[dir, `prov:${String(to.id)}`]] : [];
+          }),
+          changed: false,
+        },
+      ),
+    };
+    const opensOn = KC_HEX_DIRS.flatMap((dir) => {
+      const to = step(from, dir);
+      if (!to) return [];
+      return [
+        {
+          table: 'lastMoveDirOf' as const,
+          ...compare(
+            [from['id'], from['row'], from['col'], `prov:${String(to.id)}`],
+            c.lastMoveDirOn(report, moves(`prov:${String(to.id)}`), heroId, 1),
+            { answer: dir, changed: false },
+          ),
+        },
+      ];
+    });
+    return [...afterAMove, theField, ...opensOn];
+  });
+}
+
+/** The kinds of staged march: those the forecast and the turn agree on, and those it is known to get wrong (question
+ *  44): a march the turn refuses (a column with ships over land, one with too little lift to put to sea, one at a
+ *  neutral realm's border, one past its pace), a far province (the turn takes one step toward it), and a Forced March's
+ *  compass step (the forecast reads only a province's number). */
+export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
+  'a compass step',
+  'a province next door',
+  'a Forced March next door',
+  'a march into his own province',
+] as const;
+export const THE_MARCHES_THE_FORECAST_GETS_WRONG = [
+  'ships over land',
+  'too little lift to put to sea',
+  "a neutral realm's border",
+  'past his pace',
+  'a far province',
+  'a far Forced March',
+  "a Forced March's compass step",
+] as const;
+export type AKindOfMarch =
+  (typeof THE_MARCHES_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_MARCHES_THE_FORECAST_GETS_WRONG)[number];
+/** An order of a phase, as the page's fields hold it and the turn reads it. */
+interface AnOrder {
+  readonly action: 'Move' | 'Forced March';
+  readonly target: string;
+}
+/** A staged march: its kind, the hero who marches (realm 0's), his orders by phase, where he sets out and where his
+ *  orders name. */
+export interface AStagedMarch {
+  readonly kind: AKindOfMarch;
+  readonly heroId: unknown;
+  readonly orders: readonly AnOrder[];
+  readonly from: unknown;
+  readonly named: unknown;
+}
+/** The kinds of staged march into a province whose share the march maps is read: those the forecast and the turn
+ *  agree on, and those it is known to get wrong (question 44): a cloak of another name (the forecast knows a
+ *  Traveller's Cloak by its name), and the coast Naval 6 charts beside a sea sailed into (the forecast counts only the
+ *  province entered). */
+export const THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT = [
+  'March 6, leading two companies',
+  'March 0, leading two companies',
+  'a sea sailed into at Naval 6, leading a fleet',
+] as const;
+export const THE_MARCHES_IN_THE_FORECAST_GETS_WRONG = [
+  'a Travelworn Drape worn',
+  'the coast beside the sea he sails into, charted at Naval 6',
+] as const;
+export type TheMarchInKind =
+  (typeof THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_MARCHES_IN_THE_FORECAST_GETS_WRONG)[number];
+/** A staged march into a province: its kind, the hero (realm 0's), his orders by phase and the province whose share is
+ *  read. */
+export interface AStagedMarchIn {
+  readonly kind: TheMarchInKind;
+  readonly heroId: unknown;
+  readonly orders: readonly AnOrder[];
+  readonly mapped: unknown;
+}
+/** The world staged for marching (P1-11d1): every land province no realm holds made realm 0's, its guards and neutral
+ *  heroes gone (so no march meets a battle), and one province next door to the start made realm 1's (neutral: no
+ *  treaty). From one land province with the sea beside it and a road of three land provinces out of it (the second two
+ *  steps away), heroes of realm 0 each march one kind: alone, or leading Men-at-Arms (a pace of 2), or Men-at-Arms and
+ *  Orcish Longships. */
+export function marchingWorld(): { world: World; marches: AStagedMarch[]; marchesIn: AStagedMarchIn[] } {
+  const { g, hero } = aWorldToStageIn();
+  const map = isObj(g['world']) ? g['world'] : {};
+  const [cols, rows] = [Number(map['cols']), Number(map['rows'])];
+  const provinces = objects(map['provinces']);
+  const isLand = (p: Obj) => p['terrain'] !== 'sea';
+  for (const p of provinces.filter(isLand)) {
+    p['owner'] ??= 0;
+    p['npcArmies'] = [];
+    p['neutralDefenders'] = [];
+  }
+  // (in place: the staged heroes join this list)
+  const heroes: unknown[] = Array.isArray(g['characters']) ? g['characters'] : [];
+  for (let i = heroes.length - 1; i >= 0; i--) {
+    const h = heroes[i];
+    if (!isObj(h) || h['player'] == null) heroes.splice(i, 1);
+  }
+  const alive = new Set(objects(heroes).map((h) => h['id']));
+  for (const p of provinces)
+    p['characters'] = (Array.isArray(p['characters']) ? p['characters'] : []).filter((id) => alive.has(id));
+  const nextTo = (p: Obj) => getNeighborsP({ row: Number(p['row']), col: Number(p['col']) }, cols, rows, provinces);
+  const ours = (p: Obj) => isLand(p) && p['owner'] === 0;
+  // the start, its sea, its road (two steps, then a third) and the province next door the neutral realm is given
+  const staged = provinces.filter(ours).flatMap((start) => {
+    const beside = nextTo(start);
+    const sea = beside.find((p) => !isLand(p));
+    // the sea beyond it, and a coast beside that
+    const open = sea ? nextTo(sea).find((p) => !isLand(p)) : undefined;
+    const coast = open ? nextTo(open).find(isLand) : undefined;
+    return beside.filter(ours).flatMap((first) =>
+      nextTo(first)
+        .filter((second) => ours(second) && second !== start && !beside.includes(second))
+        .flatMap((second) => {
+          const third = nextTo(second).find((p) => ours(p) && p !== first && p !== start);
+          const border = beside.find((p) => ours(p) && p !== first && p !== second && p !== third);
+          return sea && open && coast && third && border
+            ? [{ start, sea, open, coast, first, second, third, border }]
+            : [];
+        }),
+    );
+  })[0];
+  if (!staged) throw new Error('the staged world has no province to march from with the sea and a road beside it');
+  const { start, sea, open, coast, first, second, third, border } = staged;
+  border['owner'] = 1;
+  const tc = createTurnContext(g, [], Number(g['turn']) || 1);
+  // (the staged world's province, given the type the engine's step takes, by assertion as the saved state's)
+  const compass = KC_HEX_DIRS.find(
+    (dir) => neighborInDir(tc as unknown as TurnContext, start as unknown as Province, dir) === first,
+  );
+  if (!compass) throw new Error("the staged world's road has no compass step");
+  const men = () => [{ type: 'Men-at-Arms', quality: 'Average', unitName: 'Men-at-Arms 0' }];
+  const withShips = () => [...men(), { type: 'Orcish Longships', quality: 'Average', unitName: 'Orcish Longships 0' }];
+  const id = (p: Obj) => String(p['id']);
+  const move = (target: string): AnOrder => ({ action: 'Move', target });
+  const forced = (target: string): AnOrder => ({ action: 'Forced March', target });
+  const kinds: [AKindOfMarch, AnOrder[], Obj, Obj[]][] = [
+    ['a compass step', [move(`dir:${compass}`)], first, []],
+    ['a province next door', [move(`prov:${id(first)}`)], first, men()],
+    ['a Forced March next door', [forced(id(first))], first, men()],
+    ['a march into his own province', [move(`prov:${id(start)}`)], start, men()],
+    ['ships over land', [move(`prov:${id(first)}`)], first, withShips()],
+    ['too little lift to put to sea', [move(`prov:${id(sea)}`)], sea, men()],
+    ["a neutral realm's border", [move(`prov:${id(border)}`)], border, men()],
+    ['past his pace', [move(`prov:${id(first)}`), move(`prov:${id(second)}`), move(`prov:${id(third)}`)], third, men()],
+    ['a far province', [move(`prov:${id(second)}`)], second, men()],
+    ['a far Forced March', [forced(id(second))], second, men()],
+    ["a Forced March's compass step", [forced(`dir:${compass}`)], first, men()],
+  ];
+  const marches = kinds.map(([kind, orders, named, armies]) => ({
+    kind,
+    // (March 7 for a Forced March, which the turn refuses below it; March 0 else, so a column of Men-at-Arms keeps
+    // their pace of 2)
+    heroId: hero({
+      location: start['id'],
+      skills: { march: orders.some((o) => o.action === 'Forced March') ? 7 : 0 },
+      armies,
+    })['id'],
+    orders,
+    from: start['id'],
+    named: named['id'],
+  }));
+  const worn = (name: string) => {
+    const it = catalogue().find((x) => x['name'] === name);
+    if (!it) throw new Error(`the catalogue has no ${name}`);
+    // (as a saved game holds it once the turn has put it on)
+    return [{ ...copyOf(it), id: 62_000, equipped: true }];
+  };
+  const fleet = () => [{ type: 'Galleon Fleet', quality: 'Average', unitName: 'Galleon Fleet 0' }];
+  const into = (p: Obj) => [move(`prov:${id(p)}`)];
+  const marchesIn: [TheMarchInKind, Obj, Obj][] = [
+    ['a Travelworn Drape worn', { items: worn('Travelworn Drape') }, first],
+    ['March 6, leading two companies', { skills: { march: 6 }, armies: [...men(), ...men()] }, first],
+    ['March 0, leading two companies', { armies: [...men(), ...men()] }, first],
+    [
+      'a sea sailed into at Naval 6, leading a fleet',
+      { location: sea['id'], skills: { naval: 6 }, armies: fleet() },
+      open,
+    ],
+  ];
+  const sailed = marchesIn.map(([kind, fields, to]) => ({
+    kind,
+    heroId: hero({ location: start['id'], ...fields })['id'],
+    orders: into(to),
+    mapped: to['id'],
+  }));
+  // the coast beside the sea he sails into (Naval 6's charting): the province the share is read of, not the one entered
+  const charting = sailed.find((x) => x.kind === 'a sea sailed into at Naval 6, leading a fleet');
+  if (!charting) throw new Error('the staged world has no sailor');
+  const everyMarchIn: AStagedMarchIn[] = [
+    ...sailed,
+    { ...charting, kind: 'the coast beside the sea he sails into, charted at Naval 6', mapped: coast['id'] },
+  ];
+  return { world: quietly(() => savedAndReported(g)), marches, marchesIn: everyMarchIn };
+}
+/** Where the turn leaves the hero `heroId` after `orders`, one a phase (processOrder, as the phase loop calls it), on a
+ *  copy of the state (or on the state itself, `inPlace`): the id of his province. */
+function whereTheTurnLeavesHim(
+  state: Obj,
+  heroId: unknown,
+  orders: readonly AnOrder[],
+  { inPlace = false }: { inPlace?: boolean } = {},
+): unknown {
+  const G = inPlace ? state : copyOf(state);
+  const c = objects(G['characters']).find((h) => h['id'] === heroId);
+  if (!c) throw new Error('the staged march has no hero');
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], Number(G['turn']) || 1), { KC_SEASONS, isBotRow });
+  kcRng.seed(1);
+  quietly(() => {
+    orders.forEach((order, ph) => {
+      tc._currentPhase = ph;
+      // (the staged world's context, hero and order, given the types the dispatch takes, by assertion as above)
+      processOrder(tc as unknown as TurnContext, c as never, { ...order } as never, ph);
+    });
+  });
+  return c['location'];
+}
+/** The share of the province `mapped` realm 0 has mapped once the turn has carried out the hero's `orders` (as
+ *  whereTheTurnLeavesHim), on a copy of the state where his realm had mapped none of it. */
+function theShareTheTurnMaps(state: Obj, heroId: unknown, orders: readonly AnOrder[], mapped: unknown): number {
+  const G = copyOf(state);
+  const p = objects(isObj(G['world']) ? G['world']['provinces'] : []).find((x) => x['id'] === mapped);
+  if (!p) throw new Error('the staged march has no province to map');
+  p['exploredBy'] = {};
+  p['explored'] = 0;
+  whereTheTurnLeavesHim(G, heroId, orders, { inPlace: true });
+  const by = p['exploredBy'];
+  const share = isObj(by) ? by['0'] : undefined;
+  return typeof share === 'number' ? share : 0;
+}
+/** One staged march into a province compared: the share of it the Explore forecast counts the march as mapping
+ *  (exploreMoveGainBefore), and the share the turn maps; with its kind. */
+export interface MarchInForecastComparison extends Comparison {
+  readonly kind: TheMarchInKind;
+}
+/** The share of a province the Explore forecast counts each staged march as mapping, against what the turn maps. */
+export function theMarchInForecastAgainstTheTurn(c: Copies): MarchInForecastComparison[] {
+  const { world, marchesIn } = marchingWorld();
+  const inTheReport = new Map(objects(world.report['characters']).map((h) => [h['id'], h]));
+  return marchesIn.map(({ kind, heroId, orders, mapped }) => ({
+    ...compare(
+      [kind, orders, mapped],
+      c.exploreMoveGainOn(world.report, { [String(heroId)]: orders }, inTheReport.get(heroId), orders.length, mapped),
+      { answer: theShareTheTurnMaps(world.state, heroId, orders, mapped), changed: false },
+    ),
+    kind,
+  }));
+}
+/** One staged march compared: the province the forecast says he stands in after his orders, and the one the turn
+ *  leaves him in; with its kind, where he set out and the province his orders name. */
+export interface MarchForecastComparison extends Comparison {
+  readonly kind: AKindOfMarch;
+  readonly from: unknown;
+  readonly named: unknown;
+  /** The provinces next door both to where he set out and to the one his orders name (a step toward it). */
+  readonly nextDoorToBoth: unknown[];
+}
+/** Where the order form says each staged hero will stand after his orders (predictedLocation, which every later
+ *  phase's form reads), against where the turn leaves him. */
+export function theMarchForecastAgainstTheTurn(c: Copies): MarchForecastComparison[] {
+  const { world, marches } = marchingWorld();
+  const map = isObj(world.state['world']) ? world.state['world'] : {};
+  const provinces = objects(map['provinces']);
+  const nextTo = (id: unknown): unknown[] => {
+    const p = provinces.find((x) => x['id'] === id);
+    if (!p) return [];
+    const at = { row: Number(p['row']), col: Number(p['col']) };
+    return getNeighborsP(at, Number(map['cols']), Number(map['rows']), provinces).map((x) => x['id']);
+  };
+  return marches.map(({ kind, heroId, orders, from, named }) => ({
+    ...compare(
+      [kind, orders],
+      c.predictedLocationOn(world.report, { [String(heroId)]: orders }, heroId, orders.length),
+      { answer: whereTheTurnLeavesHim(world.state, heroId, orders), changed: false },
+    ),
+    kind,
+    from,
+    named,
+    nextDoorToBoth: nextTo(from).filter((id) => nextTo(named).includes(id)),
+  }));
+}
 /** What the army card's sea note tells the player, in the engine's words (getSeaCapability's answers): 'all' (every
  *  unit sails or flies on its own), 'sea' (the column can put to sea: its hulls carry it, or its flyers lift it and
  *  the card shows no note), 'land' (it needs more fleet units). */
