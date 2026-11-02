@@ -14,7 +14,10 @@
 // engine's step, where the form says a hero will stand after his Moves and Forced Marches against where the turn leaves
 // him, and the share marching in maps against the turn's (each known difference pinned: question 44). Since P1-11d2,
 // what a hero holds: what the form says he will carry and lead, and a garrison hold, after his orders, against the turn's
-// phases (each known difference pinned: question 42). And each engine function leaves its input as it was.
+// phases (each known difference pinned: question 42). Since P1-11d3, the orders: the order list's names against the
+// turn's, the orders it offers a hero against those the turn lets him give, and the creed orders' fields against their
+// rows and the turn (each known difference pinned: questions 36, 39, 40 and 41). And each engine function leaves
+// its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -89,8 +92,22 @@
 // sent with "all", a comrade marching in, a chain of hand-overs in one season, the Philosopher's Stone used, a beast
 // past a leader's beast command (recruited, handed over, taken up), a band of garrison troops hired, companies taken up
 // (the turn's last first), risen dead handed to a comrade (to their graves in the turn; no risen mark in the form).
+// P1-11d3 (plan P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
+// order list (`ACTIONS`) is the order `normaliseAction` reads it as, none read as a Defend but Defend; on staged heroes of
+// realm 0 (its report as the engine builds it under each creed, and with its Wonder raised), the list `actionsFor`
+// offers is what `processOrder` lets him give (no refusal the list restates): each of the 20 masteries from its level
+// and not one below, the five creeds' orders to their own realm and the king's to the king, Steal and Research by their
+// trained level, Release Hero but by the king, the Grand Design until it is raised, and every order of a hero seized by
+// a charm or hired this turn (each with the card the page makes him); pinned where it is not: Steal by a hero whose Thief
+// is his gloves' (question 40); the creed
+// orders' fields (`buildTargetField`, its words and its marks) say what the rows and the turn say: Call to Arms' grade
+// and company, the Broker's price, the carters' price, the Wild Hunt's beasts, grade, price and term, the Blood
+// Offering's marks and grades, where a king may consecrate; pinned where they do not: Consecrate's home (a captured seat
+// of tax 10) and limit (White counted to 5), the carters' price with Corpse-Carters, the Wild Hunt's term with The Long
+// Hunt (question 41), Call to Arms' company (question 36), a Blood Offering marked on a bound beast (question 39).
 // Level 1: pure functions on values; no page is needed, and a static test can't compare what two functions answer.
-// Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3, P1-11b4, P1-11c1, P1-11c4, P1-11d1, P1-11d2)
+// Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3, P1-11b4, P1-11c1, P1-11c4, P1-11d1, P1-11d2,
+// P1-11d3)
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   armyCardKinAgainstTheBattle,
@@ -128,6 +145,12 @@ import {
   theMarchInForecastAgainstTheTurn,
   thePortalsHexTablesAgainstTheEngine,
   theOrderFormsSpells,
+  theOrderEachNameOfTheListGives,
+  theOrderListAgainstTheTurn,
+  theCreedFieldsAgainstTheRowsAndTheTurn,
+  THE_CREED_FIELDS_THE_TURN_AGREES_WITH,
+  THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH,
+  THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES,
   theWarlocksTitle,
   whatAHeroHoldsAgainstTheTurn,
   worldSamples,
@@ -173,6 +196,8 @@ const hexSteps = lazily(() => thePortalsHexTablesAgainstTheEngine(copies));
 const marches = lazily(() => theMarchForecastAgainstTheTurn(copies));
 const marchesIn = lazily(() => theMarchInForecastAgainstTheTurn(copies));
 const holdings = lazily(() => whatAHeroHoldsAgainstTheTurn(copies));
+const orderList = lazily(() => theOrderListAgainstTheTurn(copies));
+const creedFields = lazily(() => theCreedFieldsAgainstTheRowsAndTheTurn(copies));
 const casesOf = (p: (typeof PROJECTIONS)[number]) => once(`${p.engine} projection`, () => p.cases(values));
 let worldValues: WorldSamples;
 // The values, in one hook with a whole game's limit (the game, then the samples with the staged world, then the staged
@@ -647,6 +672,147 @@ describe('what a hero holds: what the order form says he will carry and lead, an
       { giver: ['Men-at-Arms (Average) (risen)'], comrade: [], 'the garrison': [] },
       { giver: [], comrade: ['Men-at-Arms (Average)'], 'the garrison': [] },
       { giver: [], comrade: [], 'the garrison': [] },
+    ]);
+  });
+});
+
+describe('the orders: what the order form offers a hero, and what the creed orders’ fields say (P1-11d3)', () => {
+  test('every name the order list holds is the order the turn reads it as: all 46, none of them read as a Defend but Defend', () => {
+    // The form sends an order by its name in the list (ACTIONS); the turn reads it through its table of names
+    // (normaliseAction), and a name the table doesn't hold is read as a Defend (P1-19's item 6).
+    expect(theOrderEachNameOfTheListGives(copies)).toEqual([
+      ['Move', 'move'],
+      ['Explore', 'explore'],
+      ['Search Lair', 'search'],
+      ['Hunting Rumours', 'hunt_rumours'],
+      ['Recruit Armies', 'recruit'],
+      ['Hire Hero', 'hire'],
+      ['Release Hero', 'release'],
+      ['Encounter Character', 'encounter'],
+      ['Steal', 'steal'],
+      ['Disband Army', 'disband_army'],
+      ['Leave/Transfer Army', 'leave_army'],
+      ['Pick Up Army', 'pickup_army'],
+      ['Send Item', 'give_item'],
+      ['Cast Spell', 'cast_spell'],
+      ['Use Item', 'use_item'],
+      ['Equip Items', 'equip_items'],
+      ['Spy', 'spy'],
+      ['Practice Skill', 'practice'],
+      ['Research', 'research'],
+      ['Perform Rite', 'rite'],
+      ['Consecrate', 'consecrate'],
+      ['Call to Arms', 'call_to_arms'],
+      ['Broker', 'broker'],
+      ['Harvest the Field', 'harvest_field'],
+      ['Sabotage', 'sabotage'],
+      ['Forced March', 'forced_march'],
+      ['Grand Heist', 'grand_heist'],
+      ['Awaken Grove', 'awaken_grove'],
+      ['Chart the Unknown', 'chart_unknown'],
+      ['Discover Lost Ruin', 'discover_ruin'],
+      ['Blockade', 'blockade'],
+      ['Research Breakthrough', 'research_breakthrough'],
+      ['Assassinate', 'assassinate'],
+      ['Vanish', 'vanish'],
+      ['Challenge', 'challenge'],
+      ['Rampage', 'rampage'],
+      ['Rain of Arrows', 'rain_of_arrows'],
+      ["Sniper's Mark", 'snipers_mark'],
+      ['Feigned Retreat', 'feigned_retreat'],
+      ['Grand Stratagem', 'grand_stratagem'],
+      ['Lightning Advance', 'lightning_advance'],
+      ['Raid the Coast', 'raid_coast'],
+      ['Wild Calling', 'wild_calling'],
+      ['Grand Design', 'grand_design'],
+      ['Defend', 'defend'],
+      ['Rest', 'rest'],
+    ]);
+  });
+
+  test('the order list offers a hero exactly the orders the turn lets him give: each mastery from its level, each creed’s orders to its realm (the king’s to the king), Steal, Research, Release Hero, the Grand Design once, and a hero held by a charm or new to the realm', () => {
+    // On staged heroes of realm 0 (its report as the engine builds it, under each creed and with its Wonder raised):
+    // the form's actionsFor against processOrder's refusals the list restates. Each mastery of the form's table by a
+    // hero one level below it (refused) and one at it; the five creeds' orders by the king and a hero of each of the
+    // seven creeds; Steal and Research at levels 0 and 1, and at 0 wearing a Sage +2 item (Research reads the trained
+    // Sage); Release Hero by a hero, not the king; the Grand Design until the realm has raised its Wonder; every order
+    // by a hero seized from an enemy by a charm and one hired this turn, each with the card the page makes him.
+    const list = orderList();
+    const agreeing = list.filter((x) => !(x.kind === 'Steal' && x.who.includes('wearing')));
+    expect(differences(agreeing)).toEqual([]);
+    expect(agreeing.length).toBe(211);
+    // every refusal the list restates is met, each mastery's too, and each order is both offered and hidden somewhere
+    const met = new Set(list.map((x) => x.refusal));
+    expect(THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES.filter((k) => !met.has(k))).toEqual([]);
+    expect([...met].filter((k) => k?.startsWith('a hero lacks the ')).length).toBe(20);
+    const gated = [
+      ...new Set(list.filter((x) => x.kind !== 'a hero under a charm, or new to the realm').map((x) => x.order)),
+    ];
+    expect(
+      gated.filter(
+        (o) => !(agreeing.some((x) => x.order === o && x.copy) && agreeing.some((x) => x.order === o && !x.copy)),
+      ),
+    ).toEqual([]);
+  });
+
+  test('what the order list gets wrong is pinned: Steal hidden from a hero whose Thief is his gloves’ (question 40)', () => {
+    // The form gates Steal on the trained Thief; the turn counts the items' too (effStat).
+    const list = orderList();
+    expect(list.filter((x) => !sameAnswer(x.copy, x.engine)).map((x) => [x.who, x.order, x.copy, x.engine])).toEqual([
+      ['thief 0, wearing Gloves of the Nightcrawler', 'Steal', false, true],
+    ]);
+  });
+
+  test('the creed orders’ fields say what their rows and the turn say: Call to Arms’ grade, the Broker’s and the carters’ price, the Wild Hunt’s beasts and term, the Blood Offering’s marks and grades, where a king may consecrate', () => {
+    // On realm 0's report under each creed, the form's buildTargetField (its words and its marks) against the rows
+    // (src/content/alignment-orders-…) and processOrder on the state: a Call to Arms in a province whose first company
+    // is a garrison (a Green Human Garrison), word bought from a province (2g), Harvest the Field (2g), the Rite of the
+    // Wild Hunt (two Veteran Stone Giants at the price of one, serving one turn beyond this), a Blood Offering marked on
+    // two companies (the first given, the second raised two grades), a Consecrate in a province of the realm (it
+    // consecrates) and in the capital (the home marches).
+    const list = creedFields().filter((x) =>
+      (THE_CREED_FIELDS_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind),
+    );
+    expect(list.map((x) => x.kind)).toEqual([...THE_CREED_FIELDS_THE_TURN_AGREES_WITH]);
+    expect(differences(list)).toEqual([]);
+    // and each number the field states is its row's
+    const fromTheRows = (x: (typeof list)[number]) =>
+      Object.fromEntries(Object.keys(x.rows).map((k) => [k, (x.copy as Record<string, unknown>)[k]]));
+    expect(list.map((x) => [x.kind, fromTheRows(x)])).toEqual(list.map((x) => [x.kind, x.rows]));
+  });
+
+  test('what the creed orders’ fields get wrong is pinned: Consecrate’s home and limit, the carters’ price, the Long Hunt (question 41), Call to Arms’ company (question 36), the Blood Offering’s marks (question 39)', () => {
+    // The field takes the first province of tax 10 for the home (the turn: the seat the realm was founded on) and
+    // counts the king's White to 5 (the turn: to 9); it says 2g with Corpse-Carters (the turn takes nothing) and "until
+    // end of NEXT turn" with The Long Hunt (the turn: a turn more); it names a province's first company (the turn
+    // musters a garrison); it offers a bound beast to give (the turn takes no bound beast, so it gives the first company
+    // it may and raises the one marked).
+    const list = creedFields();
+    expect(
+      list.map((x) => x.kind).filter((k) => !(THE_CREED_FIELDS_THE_TURN_AGREES_WITH as readonly string[]).includes(k)),
+    ).toEqual([...THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH]);
+    const kind = (k: string) => {
+      const x = list.find((f) => f.kind === k);
+      if (!x) throw new Error(`no staged field of the kind ${k}`);
+      return [x.copy, x.engine];
+    };
+    expect(kind('a Consecrate in a captured seat of tax 10')).toEqual(['the home marches', 'it consecrates']);
+    expect(kind('a Consecrate by a king of White 7 at five consecrations')).toEqual(['the limit', 'it consecrates']);
+    expect(kind('Harvest the Field, with Corpse-Carters')).toEqual([{ price: 2 }, { price: 0 }]);
+    const hunt = { beasts: 2, grade: 'Veteran', type: 'Stone Giants', price: 5 };
+    expect(kind('the Rite of the Wild Hunt, with The Long Hunt')).toEqual([
+      { ...hunt, 'turns beyond this one': 1 },
+      { ...hunt, 'turns beyond this one': 2 },
+    ]);
+    expect(kind('a Call to Arms in a province whose first company is not a garrison')).toEqual([
+      { grade: 'Green', company: 'Free Lances', 'the grade its note gives': 'Green' },
+      { grade: 'Green', company: 'Human Garrison', 'the grade its note gives': 'Green' },
+    ]);
+    // his companies: Men-at-Arms (Staged Company 2), Yeoman Longbows (3), bound Stone Giants (4); marked: give the
+    // beasts, raise the bowmen
+    expect(kind('a Blood Offering marked on a bound beast')).toEqual([
+      { given: ['Staged Company 4'], raised: ['Staged Company 3'], 'the grades each rises': [2, 2, 2] },
+      { given: ['Staged Company 2'], raised: ['Staged Company 3'], 'the grades each rises': [2, 2, 2] },
     ]);
   });
 });
