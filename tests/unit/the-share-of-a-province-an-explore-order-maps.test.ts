@@ -40,3 +40,10 @@ test("× the realm's discoveries' factor on the ground, after the Trailblazer, r
   expect(share('mountain', 0, true, 3)).toBe(63);
   expect(share('desert', 1, false, 3)).toBe(100);
 });
+
+test("a Trailblazer whose realm holds The Compass: the 5% and the discoveries' factor multiplied before one rounding down", () => {
+  // Plain: 35 × 1.05 × 2.4 = 88.2, so 88 (rounding 36.75 down first would give 36 × 2.4 = 86.4, so 86).
+  expect(share('plain', 0, true, 2.4)).toBe(88);
+  // Desert: 25 × 1.05 × 2.4 = 63 (rounding 26.25 down first would give 26 × 2.4 = 62.4, so 62).
+  expect(share('desert', 0, true, 2.4)).toBe(63);
+});
