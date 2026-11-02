@@ -21,6 +21,7 @@ import {
   druidMasteryGainOver,
   druidNeedWaivedByAlignment,
   getDruidLevel,
+  theDruidMasteryLiftsAUnitOfThisType,
 } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { activeItems } from '../items/equipment.ts';
 import {
@@ -521,8 +522,7 @@ export function druidMasteryGain(
   playerAlignment: string | null | undefined,
 ) {
   const none = { gain: 0, lvl: 0, min: 0 };
-  if (!heroChar || !army || army._isSkeletal) return none;
-  if (!(CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type))) return none;
+  if (!heroChar || !army || !theDruidMasteryLiftsAUnitOfThisType(army.type, army._isSkeletal)) return none;
   let lvl = heroChar._druidNegated ? 0 : effStat(turnContext, heroChar, 'druid') || 0;
   if (heroChar._curseHalveStat === 'druid') lvl = Math.floor(lvl / 2);
   lvl = druidLevelTheMasteryCounts(lvl);

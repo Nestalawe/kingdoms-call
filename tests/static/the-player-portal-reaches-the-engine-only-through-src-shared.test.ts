@@ -14,8 +14,9 @@
 // The player portal reaches the engine's rules only through `src/shared/` (P1-11a, Decisions 2 and 7): `src/shared/`
 // re-exports only from `src/engine/rules-on-plain-values/` (every import, of every kind, of a folder file that is
 // there) and declares nothing of its own; no file of `src/ui/player/` imports an engine or a views file, or declares
-// (at any depth) a copy P1-11a4, P1-11b3 or P1-11b4 retired (`floorNumP`, `unitBaseStrengthP`, … `beastCommandCountP`,
-// `DRUID_LEVEL_OF_P`, `TAMED_FLYERS_P`, `PO_FLYING_TYPES`, `PO_LIGHT_TYPES`, and the tables only they read) or a name
+// (at any depth) a copy P1-11a4, P1-11b3, P1-11b4 or P1-11d12 retired (`floorNumP`, `unitBaseStrengthP`, …
+// `beastCommandCountP`, `DRUID_LEVEL_OF_P`, `TAMED_FLYERS_P`, `PO_FLYING_TYPES`, `PO_LIGHT_TYPES`, `CREATURE_ARMIES_UI`,
+// `MONSTER_ARMIES_UI`, and the tables only they read) or a name
 // `src/shared/` hands it; the order form's eight Cast Spell tables are each declared once in the portal, as the call of
 // the folder's function that makes it (P1-11c3); the order form's three hex tables (`predictedLocation`, the Move field
 // in `buildTargetField`, `lastMoveDirOf`) each call the folder's `theHexNextToAProvinceInADirection`, and no portal file
@@ -92,6 +93,9 @@ const RETIRED = [
   'OD',
   // P1-11d7: the set of the orders the king alone gives (the rows' mark, read by aHeroMayGiveTheAlignmentOrderAsKingOrNot)
   'KING_ONLY_ACTIONS',
+  // P1-11d12: the portal's two sets of beasts (the engine's CREATURE_ARMIES and MONSTER_ARMIES, through src/shared/)
+  'CREATURE_ARMIES_UI',
+  'MONSTER_ARMIES_UI',
 ];
 
 /** The portal's three hex tables (P1-11d6), each as the file and the function that held a table of the six steps from

@@ -141,12 +141,11 @@ const COPIES: Record<string, string[]> = {
   'ui/player/order-chances.ts': ['chanceLine', 'orderChanceNote', 'ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl', 'armyLabel'],
   // a hero's skill as the report counts it (skillEff): druidNeedP, exploreGainFor and the army card read it
   'ui/player/briefing-and-submit.ts': ['effSkillP'],
-  // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); the army card reads
-  // the two sets; and what a hero will carry and lead, and a province's garrison hold, after his realm's orders so far
-  // (P1-11d2: the forms of the later phases read them), with the units a Recruit musters and which go to the garrison
+  // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); and what a hero will
+  // carry and lead, and a province's garrison hold, after his realm's orders so far (P1-11d2: the forms of the later
+  // phases read them), with the units a Recruit musters and which go to the garrison (the army card reads the engine's
+  // two sets of beasts, and asks its Druid mastery's guard, through src/shared/ since P1-11d12)
   'ui/player/skills-and-projections.ts': [
-    'CREATURE_ARMIES_UI',
-    'MONSTER_ARMIES_UI',
     'druidNeedP',
     'predictedItems',
     'GARRISON_UNIT_TYPES_P',

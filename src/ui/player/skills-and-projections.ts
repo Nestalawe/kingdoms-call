@@ -2,6 +2,7 @@
 import { kcHtml } from '../shared/kc-safe.ts';
 import { KC_HUMANOID_RACES, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import {
+  MONSTER_ARMIES,
   TAMED_FLYER_TYPES_D,
   druidALeaderBringsToAUnit,
   druidLevelALeaderNeeds,
@@ -199,14 +200,11 @@ export function skillRowHTML(c, style) {
 export function capitalise(s) {
   return s ? s[0].toUpperCase() + s.slice(1) : '';
 }
-// Every primal sub-race is either a Creature or a Monster (mirrors the GM engine's CREATURE_ARMIES
-// / MONSTER_ARMIES sets — Druidic favours Creatures, Evil favours Monsters). "Primal" is an
-// internal engine term; players only ever see Creature or Monster. Player-facing class of each
-// primal unit TYPE, mirroring the engine's CREATURE_ARMIES / MONSTER_ARMIES sets. Used where only
-// the unit type is known (race stored as a bare 'Primal').
+// Every primal sub-race is either a Creature or a Monster (the engine's CREATURE_ARMIES / MONSTER_ARMIES sets, which
+// src/shared/ hands the portal since P1-11d12 — Druidic favours Creatures, Evil favours Monsters). "Primal" is an
+// internal engine term; players only ever see Creature or Monster. Where only the unit type is known (race stored as a
+// bare 'Primal'), formatRace reads the unit's class from those sets.
 export const HUMANOID_RACES_UI = new Set(KC_HUMANOID_RACES);
-export const CREATURE_ARMIES_UI = new Set(KC_UNIT_CLASS.creature);
-export const MONSTER_ARMIES_UI = new Set(KC_UNIT_CLASS.monster);
 // ── DRUID: WHAT DOES THIS COMMANDER NEED TO LEAD THIS UNIT? (2026-09-27) ────────────────────────
 // The order form's Druid line and the army card ask this. The rule is the engine's own, shared through src/shared/
 // (plan P1-11b3): the Druid a unit needs with its waivers (druidLevelALeaderNeeds, which reads KC_DRUID_LEVELS, the
@@ -265,7 +263,7 @@ export function formatRace(race, unitType) {
     // fall back to classifying the UNIT TYPE — otherwise every Kraken and Leviathan read
     // "Creature".
     if (sub) return PRIMAL_SUBRACE_CLASS[sub] || 'Creature';
-    if (unitType) return MONSTER_ARMIES_UI.has(unitType) ? 'Monster' : 'Creature';
+    if (unitType) return MONSTER_ARMIES.has(unitType) ? 'Monster' : 'Creature';
     return 'Creature';
   }
   return race;
