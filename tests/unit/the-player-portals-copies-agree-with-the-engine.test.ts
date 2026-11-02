@@ -16,8 +16,10 @@
 // what a hero holds: what the form says he will carry and lead, and a garrison hold, after his orders, against the turn's
 // phases (each known difference pinned: question 42). Since P1-11d3, the orders: the order list's names against the
 // turn's, the orders it offers a hero against those the turn lets him give, and the creed orders' fields against their
-// rows and the turn (each known difference pinned: questions 36, 39, 40 and 41). And each engine function leaves
-// its input as it was.
+// rows and the turn (each known difference pinned: questions 36, 39, 40 and 41). Since P1-11d4, gold and practice: the
+// treasury ledger against what the turn spends and Early Winter charges, the Practice Skill note against the chance
+// the turn rolls, and the comrades a hero's field counts as practising beside him against the turn's (each known
+// difference pinned: question 43). And each engine function leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -105,9 +107,22 @@
 // Offering's marks and grades, where a king may consecrate; pinned where they do not: Consecrate's home (a captured seat
 // of tax 10) and limit (White counted to 5), the carters' price with Corpse-Carters, the Wild Hunt's term with The Long
 // Hunt (question 41), Call to Arms' company (question 36), a Blood Offering marked on a bound beast (question 39).
+// P1-11d4 (plan P1-11d, before the ledger's wages, the practice chance and the co-trainer are shared): on staged heroes
+// of realm 0 (its report as the engine builds it from each world), what the treasury ledger (`computeOrderLedgerP`)
+// says the orders will spend and add to the wages is what the turn takes from the treasury in their phase and adds to
+// Early Winter's wages (each hero who served before at his wage without them): a company of the province, two at the
+// capital, a garrison company, a mercenary band, a wandering hero, Supply Depots under its cap, a Druid 5 hero's beast,
+// Harvest the Field, the Wild Hunt; pinned where it is not (question 43): Supply Depots past its cap (its saving shared
+// in the turn), a company under the Host-Leader (1g less in the turn), a Druid 6 hero's beast (half price and half wage
+// in the turn), a hero hired by a realm with Granaries (1g less in the turn); the Practice Skill note (`orderChanceNote`)
+// quotes the chance `processOrder` rolls at Melee 0 to 4, for a Human hero of another realm and with the practice
+// discoveries, and is pinned for a Human of a Human realm (the turn's x1.5) and at Melee 5 (no roll in the turn); and the
+// comrades a hero's Practice Skill field counts as practising beside him (`practiceCompanionSkill`) are the turn's
+// co-trainers: of his realm, alive, in his province that season (marched there or away the season before too), at the
+// same skill, of any level.
 // Level 1: pure functions on values; no page is needed, and a static test can't compare what two functions answer.
 // Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3, P1-11b4, P1-11c1, P1-11c4, P1-11d1, P1-11d2,
-// P1-11d3)
+// P1-11d3, P1-11d4)
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   armyCardKinAgainstTheBattle,
@@ -150,6 +165,14 @@ import {
   theCreedFieldsAgainstTheRowsAndTheTurn,
   THE_CREED_FIELDS_THE_TURN_AGREES_WITH,
   THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH,
+  theCoTrainersAgainstTheTurn,
+  THE_COMRADES_AT_PRACTICE,
+  theLedgerAgainstTheTurn,
+  THE_LEDGERS_THE_TURN_AGREES_WITH,
+  THE_LEDGERS_THE_TURN_DISAGREES_WITH,
+  thePracticeNoteAgainstTheTurn,
+  THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH,
+  THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH,
   THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES,
   theWarlocksTitle,
   whatAHeroHoldsAgainstTheTurn,
@@ -198,6 +221,9 @@ const marchesIn = lazily(() => theMarchInForecastAgainstTheTurn(copies));
 const holdings = lazily(() => whatAHeroHoldsAgainstTheTurn(copies));
 const orderList = lazily(() => theOrderListAgainstTheTurn(copies));
 const creedFields = lazily(() => theCreedFieldsAgainstTheRowsAndTheTurn(copies));
+const ledgers = lazily(() => theLedgerAgainstTheTurn(copies));
+const practiceNotes = lazily(() => thePracticeNoteAgainstTheTurn(copies));
+const coTrainers = lazily(() => theCoTrainersAgainstTheTurn(copies));
 const casesOf = (p: (typeof PROJECTIONS)[number]) => once(`${p.engine} projection`, () => p.cases(values));
 let worldValues: WorldSamples;
 // The values, in one hook with a whole game's limit (the game, then the samples with the staged world, then the staged
@@ -813,6 +839,101 @@ describe('the orders: what the order form offers a hero, and what the creed orde
     expect(kind('a Blood Offering marked on a bound beast')).toEqual([
       { given: ['Staged Company 4'], raised: ['Staged Company 3'], 'the grades each rises': [2, 2, 2] },
       { given: ['Staged Company 2'], raised: ['Staged Company 3'], 'the grades each rises': [2, 2, 2] },
+    ]);
+  });
+});
+
+describe('gold and practice: what the treasury ledger and the Practice Skill note say, and who practises together (P1-11d4)', () => {
+  test('the treasury ledger says what the turn spends and adds to the wages: companies of the province, at the capital and for the garrison, a mercenary band, a wandering hero, Supply Depots under its cap, a Druid 5 hero’s beast, Harvest the Field, the Wild Hunt', () => {
+    // On realm 0's report as the engine builds it from each world, the form's computeOrderLedgerP (its spend, and its
+    // new wages) against the turn: the gold its phase takes from the treasury, and what Early Winter's wages rise by.
+    const list = ledgers().filter((x) => (THE_LEDGERS_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind));
+    expect(list.map((x) => x.kind)).toEqual([...THE_LEDGERS_THE_TURN_AGREES_WITH]);
+    expect(differences(list)).toEqual([]);
+    // each order is carried out: the turn takes gold for it
+    const spent = (x: (typeof list)[number]) => Number((x.engine as Record<string, unknown>)['spend']);
+    expect(list.filter((x) => !(spent(x) > 0)).map((x) => x.kind)).toEqual([]);
+  });
+
+  test('what the treasury ledger gets wrong is pinned: Supply Depots past its cap, the Host-Leader, a Druid 6 hero’s beast, Granaries (question 43)', () => {
+    // The ledger counts an upkeep discovery's saving afresh for each new company (the turn shares it, to 5% of the
+    // realm's base tax), leaves out the Host-Leader's 1g a company he leads and a Druid 6 leader's half price and half
+    // wage for a beast, and counts a hired hero's wage before a hero-wage discovery's saving.
+    const list = ledgers();
+    expect(
+      list.map((x) => x.kind).filter((k) => !(THE_LEDGERS_THE_TURN_AGREES_WITH as readonly string[]).includes(k)),
+    ).toEqual([...THE_LEDGERS_THE_TURN_DISAGREES_WITH]);
+    const kind = (k: string) => {
+      const x = list.find((l) => l.kind === k);
+      if (!x) throw new Error(`no staged ledger of the kind ${k}`);
+      return [x.copy, x.engine];
+    };
+    expect(kind('a company raised by a realm with Supply Depots, past its cap')).toEqual([
+      { spend: 3, 'new wages': 2 },
+      { spend: 3, 'new wages': 3 },
+    ]);
+    expect(kind("a company raised into the Host-Leader's column")).toEqual([
+      { spend: 3, 'new wages': 3 },
+      { spend: 3, 'new wages': 2 },
+    ]);
+    expect(kind('a beast raised by a Druid 6 hero')).toEqual([
+      { spend: 4, 'new wages': 4 },
+      { spend: 2, 'new wages': 2 },
+    ]);
+    expect(kind('a wandering hero hired by a realm with Granaries')).toEqual([
+      { spend: 3, 'new wages': 3 },
+      { spend: 3, 'new wages': 2 },
+    ]);
+  });
+
+  test('the Practice Skill note quotes the chance the turn rolls: Melee 0 to 4, a Human hero of another realm, a practice discovery of the realm and one of other skills', () => {
+    // The form's orderChanceNote (its "Improvement: N% at <skill> L.") against the chance processOrder's line gives,
+    // each hero practising alone: an Elven hero of a Human realm at each level a practice can raise, a Human hero of an
+    // Elven realm, and a realm with Astronomical Tables (+3), Blooded Retinues (Melee +10) and Tradecraft Manuals (Spy
+    // and Thief: none for Melee).
+    const list = practiceNotes().filter((x) =>
+      (THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind),
+    );
+    expect(list.map((x) => x.kind)).toEqual([...THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH]);
+    expect(differences(list)).toEqual([]);
+    expect(list.map((x) => (x.copy as Record<string, unknown>)['chance'])).toEqual([25, 20, 15, 10, 5, 15, 28, 30, 20]);
+  });
+
+  test('what the Practice Skill note gets wrong is pinned: a Human hero of a Human realm (the turn’s ×1.5), Melee 5 (the turn makes no roll) (question 43)', () => {
+    const list = practiceNotes();
+    expect(
+      list
+        .map((x) => x.kind)
+        .filter((k) => !(THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH as readonly string[]).includes(k)),
+    ).toEqual([...THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH]);
+    const kind = (k: string) => {
+      const x = list.find((l) => l.kind === k);
+      if (!x) throw new Error(`no staged note of the kind ${k}`);
+      return [x.copy, x.engine];
+    };
+    expect(kind('a Human hero of a Human realm at Melee 2')).toEqual([
+      { chance: 15, level: 2 },
+      { chance: 22, level: 2 },
+    ]);
+    expect(kind('an Elven hero of a Human realm at Melee 5')).toEqual([
+      { chance: 5, level: 4 },
+      { chance: '(no roll: drilled as far as practice can take it)', level: 5 },
+    ]);
+  });
+
+  test('a hero’s Practice Skill field counts as practising beside him the comrades the turn trains him with: of his realm, alive, in his province that season, at the same skill, of any level', () => {
+    // The form's practiceCompanionSkill (the skill a comrade practises beside him, which his field opens on) against
+    // the turn's co-trainers (the peers, the mentor and the pupils its line names): a comrade beside him that season (at
+    // his level, above it, below it), at another skill, in another season, next door, marched to him or away the
+    // season before; a fallen comrade; a hero of another realm.
+    const list = coTrainers();
+    expect(list.map((x) => x.kind)).toEqual([...THE_COMRADES_AT_PRACTICE]);
+    expect(differences(list)).toEqual([]);
+    expect(list.filter((x) => x.copy === true).map((x) => x.kind)).toEqual([
+      'a comrade practising Melee beside him in the same season',
+      'a comrade of a higher level practising Melee beside him',
+      'a comrade of a lower level practising Melee beside him',
+      'a comrade who marched to him the season before',
     ]);
   });
 });

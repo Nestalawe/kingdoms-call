@@ -42,7 +42,8 @@
 // processOrder) and every province of a staged map (the hex tables), and for what a hero holds one more (holdingWorld,
 // P1-11d2: predictedItems, projectedLedArmies and projectedGarrison against the turn's phases), and for the orders one
 // more under each creed (aWorldForTheOrders, P1-11d3: actionsFor and the creed orders' fields against processOrder),
-// each sized so the whole test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
+// and for gold and practice its worlds again (P1-11d4: computeOrderLedgerP, orderChanceNote and practiceCompanionSkill
+// against the turn's phases and Early Winter's wages), each sized so the whole test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
 // report staged for the target field, a world of five casters and one of the kin (kinWorld).
 import vm from 'node:vm';
 import {
@@ -106,6 +107,7 @@ import {
 } from '../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts';
 import { anItemIsTheMithrilSuit } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
+import { earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill } from '../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
@@ -134,8 +136,9 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 
 /** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
-  // (and the label of a company, which the Blood Offering's rows show: P1-11d3)
-  'ui/player/order-chances.ts': ['ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl', 'armyLabel'],
+  // (and the label of a company, which the Blood Offering's rows show: P1-11d3; and the note under an order that
+  // quotes its chance, which the Practice Skill field shows: P1-11d4)
+  'ui/player/order-chances.ts': ['chanceLine', 'orderChanceNote', 'ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl', 'armyLabel'],
   // a hero's skill as the report counts it (skillEff): druidNeedP, exploreGainFor and the army card read it
   'ui/player/briefing-and-submit.ts': ['effSkillP'],
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); the army card reads
@@ -158,14 +161,20 @@ const COPIES: Record<string, string[]> = {
   ],
   // the Explore order's forecast, and the share of the province a march into it maps first (P1-23t); where a hero will
   // stand after his orders so far (P1-11d1), which that share and the Move field read; the companies he will lead
-  // (P1-11d2); and the target field of an order (P1-11d3: the creed orders' fields)
+  // (P1-11d2); the target field of an order (P1-11d3: the creed orders' fields); and the skill a comrade practises
+  // beside a hero, which his Practice Skill field opens on (P1-11d4: the co-trainers), with the order it reads
   'ui/player/order-targets.ts': [
     'exploreGainFor',
     'exploreMoveGainBefore',
     'predictedLocation',
     'projectedLedArmies',
+    '_draftOrdersSnapshot',
+    'draftOrderAt',
+    'practiceCompanionSkill',
     'buildTargetField',
   ],
+  // the treasury ledger at the top of the orders (P1-11d4): what the orders will spend and add to the wages
+  'ui/player/orders-form.ts': ['computeOrderLedgerP'],
   // the order a page's field holds (P1-11d1: the fields stood in below), the Move field's compass words, and the
   // direction a fresh Move opens on (the hex table of each)
   'ui/player/pre-orders.ts': ['getOrderTarget'],
@@ -173,6 +182,7 @@ const COPIES: Record<string, string[]> = {
   'ui/player/l79-orders.ts': ['L79_ORDERS'],
   // and the order list a hero's form offers (P1-11d3), with the tables and checks it reads
   'ui/player/items-and-heroes.ts': [
+    'RUMOUR_COST_BY_POWER_P',
     'DIRECTIONS',
     'ACTIONS',
     'ALIGN_ACTIONS',
@@ -184,7 +194,8 @@ const COPIES: Record<string, string[]> = {
     '_actionRank',
     'actionsFor',
   ],
-  'ui/player/move-analysis.ts': ['lastMoveDirOf'],
+  // (and the skills' names, which the Practice Skill note gives: P1-11d4)
+  'ui/player/move-analysis.ts': ['lastMoveDirOf', 'SKILL_LABELS'],
 };
 const ARMY_CARD = 'ui/player/report.ts';
 const TURN_REPORT = 'views/turn-report.ts';
@@ -305,6 +316,21 @@ function theMasteryOrdersOfTheList() {
 function theTargetFieldOn(report, orders, c, ph, saved) {
   return onTheOrders(report, orders, () => String(buildTargetField(c, ph, saved)));
 }
+// What the treasury ledger says the orders staged will spend, and add to the wages (P1-11d4): its two sums.
+function theLedgerOn(report, orders) {
+  return onTheOrders(report, orders, () => {
+    const L = computeOrderLedgerP();
+    return { spend: L.spend, 'new wages': L.newWages };
+  });
+}
+// The note under the Practice Skill order of the hero \`c\` in the phase \`ph\`, its skill as staged (P1-11d4): its markup.
+function thePracticeNoteOn(report, orders, c, ph) {
+  return onTheOrders(report, orders, () => String(orderChanceNote(c, 'Practice Skill', ph)));
+}
+// The skill a comrade practises beside the hero \`c\` in the phase \`ph\`, as his field reads it (P1-11d4), or ''.
+function thePracticeCompanionOn(report, orders, c, ph) {
+  return onTheOrders(report, orders, () => practiceCompanionSkill(c, ph));
+}
 // The Move field's directions for the hero \`c\` in the phase \`ph\` (buildTargetField's statements, for a fresh Move):
 // each option as the field writes it, its value (prov:<id>) and its words.
 function theMoveFieldsDirectionsOn(theReport, orders, c, ph) {
@@ -331,6 +357,9 @@ const COPY_FUNCTIONS = [
   'theOrderListsNames',
   'theMasteryOrdersOfTheList',
   'theTargetFieldOn',
+  'theLedgerOn',
+  'thePracticeNoteOn',
+  'thePracticeCompanionOn',
   'armyCardDruidLines',
   'armyCardSeaNote',
   'armyCardUnitStrength',
@@ -2267,22 +2296,33 @@ function whatTheyHoldIn(G: Obj, holding: AStagedHolding): WhatTheyHold {
 }
 /** The phases a holding's orders fill. */
 const phasesOf = (holding: AStagedHolding) => Math.max(...Object.values(holding.orders).map((list) => list.length));
-/** The state once the turn has played the phases of the holding's orders, one a phase, as its loop plays them (the
- *  four stages of each: its start, the heroes' intents and the reactions to them, their orders in two tiers around the
- *  Defend step, its end), on a copy of the state: its heroes' move pools set as the turn sets them first. */
-function theTurnPlaysTheHolding(state: Obj, holding: AStagedHolding): Obj {
+/** An order of a hero, by phase, as the page's fields hold it (its extra: none, the empty field). */
+interface AnOrderInItsFields {
+  readonly action: string;
+  readonly target: string;
+  readonly extra?: string;
+}
+/** The state once the turn has played the phases of the orders (each hero's, by phase), one a phase, as its loop
+ *  plays them (the four stages of each: its start, the heroes' intents and the reactions to them, their orders in two
+ *  tiers around the Defend step, its end), on a copy of the state: its heroes' move pools set as the turn sets them
+ *  first; and the facts of the lines it writes. */
+function theTurnPlaysThePhases(
+  state: Obj,
+  orders: Readonly<Record<string, readonly AnOrderInItsFields[]>>,
+): { G: Obj; facts: Obj[] } {
   const G = copyOf(state);
   G['turnOrders'] = Object.fromEntries(
-    Object.entries(holding.orders).map(([heroId, list]) => [
+    Object.entries(orders).map(([heroId, list]) => [
       heroId,
       list.map((o) => ({ action: o.action, target: o.target, extra: o.extra ?? '', desc: o.action })),
     ]),
   );
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], Number(G['turn']) || 1), { KC_SEASONS, isBotRow });
   kcRng.seed(1);
+  const phases = Math.max(0, ...Object.values(orders).map((list) => list.length));
   quietly(() => {
     for (const c of objects(G['characters']).filter((h) => h['player'] != null && h['alive'])) setMovePool(tc, c);
-    for (let ph = 0; ph < phasesOf(holding); ph++) {
+    for (let ph = 0; ph < phases; ph++) {
       tc._currentPhase = ph;
       const startedAt = Object.fromEntries(objects(G['characters']).map((h) => [String(h['id']), h['location']]));
       startPhaseHealingSnapshotsAndStalledBattles(tc, ph);
@@ -2292,7 +2332,11 @@ function theTurnPlaysTheHolding(state: Obj, holding: AStagedHolding): Obj {
       endPhaseSkillRisesFallenCommandersAndProvinceMemory(tc, ph, startedAt);
     }
   });
-  return G;
+  return { G, facts: tc.turnLog.map((l) => (isObj(l['fact']) ? l['fact'] : {})) };
+}
+/** The state once the turn has played the phases of the holding's orders (theTurnPlaysThePhases). */
+function theTurnPlaysTheHolding(state: Obj, holding: AStagedHolding): Obj {
+  return theTurnPlaysThePhases(state, holding.orders).G;
 }
 /** One staged holding compared: what the forecast says its heroes and its garrison hold once its orders are carried
  *  out, and what the turn leaves them; with its kind and what they held before. */
@@ -3430,4 +3474,458 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
     );
   }
   return out;
+}
+
+// ── Gold and practice (P1-11d4) ────
+// The order form's treasury ledger (computeOrderLedgerP), the note under a Practice Skill order (orderChanceNote) and
+// the comrades a hero's Practice Skill field counts as practising beside him (practiceCompanionSkill), each run as the
+// page runs it on realm 0's report as the engine builds it, its fields holding the orders staged; the turn's side is its
+// phases played on a copy of the state the report was built from (theTurnPlaysThePhases), and for the wages, Early
+// Winter's reckoning after them. Where the form disagrees with the turn (question 43), the difference is pinned exactly.
+
+/** The orders the ledger cases stage, each in a world of its own: those the ledger and the turn agree on, and those it
+ *  is known to get wrong (question 43): the upkeep discovery's saving counted fresh for each company (the turn's is
+ *  shared, to a cap), the Host-Leader's 1g a company, a Druid 6 leader's half price and half wage for a beast, and a
+ *  hero-wage discovery's saving on a hero hired. */
+export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
+  'a company of the province raised into his column',
+  'two companies of one kind raised at the capital',
+  'a garrison company raised',
+  'a mercenary band hired',
+  'a wandering hero hired',
+  'a company raised by a realm with Supply Depots, under its cap',
+  'a beast raised by a Druid 5 hero',
+  'Harvest the Field',
+  'the Rite of the Wild Hunt',
+] as const;
+export const THE_LEDGERS_THE_TURN_DISAGREES_WITH = [
+  'a wandering hero hired by a realm with Granaries',
+  'a company raised by a realm with Supply Depots, past its cap',
+  "a company raised into the Host-Leader's column",
+  'a beast raised by a Druid 6 hero',
+] as const;
+export type AKindOfLedger =
+  (typeof THE_LEDGERS_THE_TURN_AGREES_WITH)[number] | (typeof THE_LEDGERS_THE_TURN_DISAGREES_WITH)[number];
+/** One staged ledger compared: what the ledger says the orders will spend and add to the wages, and what the turn
+ *  takes from the treasury in their phase and adds to the wages Early Winter charges; with its kind. */
+export interface ALedgerComparison extends Comparison {
+  readonly kind: AKindOfLedger;
+}
+
+/** Realm 0 of a state. */
+function realmZeroIn(G: Obj): Obj {
+  const r = objects(G['players'])[0];
+  if (!r) throw new Error('the staged world has no realm 0');
+  return r;
+}
+/** The hero of a state with the id the hero `x` has. */
+function heroIn(G: Obj, x: Obj): Obj {
+  const h = objects(G['characters']).find((c) => c['id'] === x['id']);
+  if (!h) throw new Error(`the staged state has no hero ${String(x['id'])}`);
+  return h;
+}
+/** The wages Early Winter charges realm 0 (its companies' and its heroes'), on a copy of `G`. */
+function theWagesEarlyWinterCharges(G: Obj): number {
+  const W = copyOf(G);
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(W, [], Number(W['turn']) || 1), { KC_SEASONS, isBotRow });
+  kcRng.seed(1);
+  quietly(() => {
+    earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tc as unknown as TurnContext);
+  });
+  const charged = realmZeroIn(W)['_lastWages'];
+  if (!isObj(charged)) throw new Error('Early Winter charged realm 0 no wages');
+  return Number(charged['armyWages']) + Number(charged['heroWages']);
+}
+/** A staged world's copy of `g` with `edit` made to it, as saved, and realm 0's report on it. */
+function editedAndReported(g: Obj, edit: (G: Obj) => void): World {
+  const G = copyOf(g);
+  edit(G);
+  return quietly(() => savedAndReported(G));
+}
+/** A discovery of the content, as a realm holds it. */
+function aDiscovery(id: string): Obj {
+  const d = objects(SAGE_DISCOVERIES_P).find((x) => x['id'] === id);
+  if (!d) throw new Error(`the discoveries have no ${id}`);
+  return copyOf(d);
+}
+
+/** The treasury ledger (computeOrderLedgerP, on realm 0's report as the engine builds it from each world) against the
+ *  turn: what it takes from realm 0's treasury as the orders' phase is played (the treasury after the phase played
+ *  without them, less the treasury after it with them), and what they add to the wages Early Winter charges (its
+ *  reckoning after the phase with them, less after it without them, each hero who served before at his wage without
+ *  them: the companies and heroes they bring). Each kind of THE_LEDGERS_THE_TURN_AGREES_WITH and
+ *  THE_LEDGERS_THE_TURN_DISAGREES_WITH is one hero's order, in a province of his own, in a world of its own. */
+export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
+  const { g, capital, land, at } = aWorldForTheOrders();
+  const free = land.filter((p) => p !== capital);
+  // (settled by Humans, its garrison empty: a seeded world's races differ after another world is made in the process)
+  const take = (...types: string[]): Obj => {
+    const p = free.shift();
+    if (!p) throw new Error('the staged world has too few provinces for the ledgers');
+    p['race'] = 'Human';
+    p['garrisonArmies'] = [];
+    p['armyTypes'] = types;
+    return p;
+  };
+  let unitN = 0;
+  const company = (type: string): Obj => ({
+    type,
+    quality: 'Average',
+    race: 'Human',
+    unitName: `Ledger Company ${String(unitN++)}`,
+  });
+  const recruit = (...ticks: string[]): AnOrderInItsFields => ({ action: 'Recruit Armies', target: ticks.join(',') });
+  const beast = 'Great Bears';
+  if (!(KC_UNIT_CLASS as Record<string, readonly string[]>)['creature']?.includes(beast))
+    throw new Error(`${beast} are no creature`);
+  interface AStagedLedger {
+    readonly kind: AKindOfLedger;
+    readonly hero: Obj;
+    readonly orders: readonly AnOrderInItsFields[];
+    readonly edit?: (G: Obj) => void;
+  }
+  const staged: AStagedLedger[] = [];
+  const stage = (kind: AKindOfLedger, hero: Obj, orders: readonly AnOrderInItsFields[], edit?: (G: Obj) => void) =>
+    staged.push({ kind, hero, orders, ...(edit ? { edit } : {}) });
+  stage('a company of the province raised into his column', at(take('Men-at-Arms')), [recruit('Men-at-Arms|1')]);
+  // the founder's capital raises two of a kind a turn (its armyTypes staged)
+  capital['armyTypes'] = ['Yeoman Longbows'];
+  stage('two companies of one kind raised at the capital', at(capital), [recruit('Yeoman Longbows|2')]);
+  stage('a garrison company raised', at(take('Human Garrison')), [recruit('Human Garrison|1')]);
+  {
+    const p = take();
+    const band = { ...company('Free Lances'), id: 'merc_staged_ledger', location: p['id'], isSea: false };
+    g['mercenaries'] = [...objects(g['mercenaries']), band];
+    stage('a mercenary band hired', at(p), [recruit(`merc:${band.id}`)]);
+  }
+  // a wandering hero of the realm's creed, of some renown, in a province of his own; and the hero who hires him
+  const wanderer = (p: Obj) => at(p, { player: null, alignment: 'Good', skills: { melee: 3, tactical: 2 } });
+  {
+    const p = take();
+    const w = wanderer(p);
+    stage('a wandering hero hired', at(p), [{ action: 'Hire Hero', target: String(w['id']) }]);
+  }
+  {
+    const p = take();
+    const w = wanderer(p);
+    stage(
+      'a wandering hero hired by a realm with Granaries',
+      at(p),
+      [{ action: 'Hire Hero', target: String(w['id']) }],
+      (G) => {
+        realmZeroIn(G)['discoveries'] = [aDiscovery('sd17')];
+      },
+    );
+  }
+  const supplyDepots = (G: Obj) => {
+    realmZeroIn(G)['discoveries'] = [aDiscovery('sd55')];
+  };
+  stage(
+    'a company raised by a realm with Supply Depots, under its cap',
+    at(take('Men-at-Arms')),
+    [recruit('Men-at-Arms|1')],
+    supplyDepots,
+  );
+  {
+    // in its world, a hero of the realm elsewhere leading a hundred levies: their savings fill the cap (5% of the
+    // realm's base tax)
+    const host = at(take());
+    const levies = Array.from({ length: 100 }, () => company('Shieldwall Levies'));
+    stage(
+      'a company raised by a realm with Supply Depots, past its cap',
+      at(take('Men-at-Arms')),
+      [recruit('Men-at-Arms|1')],
+      (G) => {
+        supplyDepots(G);
+        heroIn(G, host)['armies'] = copyOf(levies);
+      },
+    );
+  }
+  {
+    const hostLeader = at(take('Men-at-Arms'));
+    stage("a company raised into the Host-Leader's column", hostLeader, [recruit('Men-at-Arms|1')], (G) => {
+      G['_minorHolders'] = { hostleader: { charId: hostLeader['id'] } };
+    });
+  }
+  stage('a beast raised by a Druid 5 hero', at(take(beast), { skills: { druid: 5 } }), [recruit(`${beast}|1`)]);
+  stage('a beast raised by a Druid 6 hero', at(take(beast), { skills: { druid: 6 } }), [recruit(`${beast}|1`)]);
+  {
+    const p = take();
+    p['battleGraves'] = [{ type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName: 'The Fallen Spears' }];
+    stage('Harvest the Field', at(p), [{ action: 'Harvest the Field', target: '' }], (G) => {
+      realmZeroIn(G)['alignment'] = 'Undead';
+    });
+  }
+  {
+    const p = take('Stone Giants');
+    p['features'] = [{ name: 'Staged Stones', index: 0, ritualSite: true, discovered: true }];
+    stage('the Rite of the Wild Hunt', at(p), [{ action: 'Perform Rite', target: 'Wild Hunt' }], (G) => {
+      realmZeroIn(G)['alignment'] = 'Pagan';
+    });
+  }
+  const goldOf = (G: Obj) => Number(realmZeroIn(G)['gold']);
+  return staged.map((s) => {
+    const world = editedAndReported(g, s.edit ?? (() => undefined));
+    const orders = { [String(s.hero['id'])]: s.orders };
+    const without = theTurnPlaysThePhases(world.state, {}).G;
+    const withThem = theTurnPlaysThePhases(world.state, orders).G;
+    // (the wage of each hero who served before, as it was without the orders: a skill he gains by them, at the dice's
+    // will, raises his wage, which is no wage the orders bring)
+    const served = new Map(
+      objects(without['characters'])
+        .filter((h) => h['player'] === 0)
+        .map((h) => [h['id'], h['pay']]),
+    );
+    for (const h of objects(withThem['characters'])) if (served.has(h['id'])) h['pay'] = served.get(h['id']);
+    const turn = {
+      spend: goldOf(without) - goldOf(withThem),
+      'new wages': theWagesEarlyWinterCharges(withThem) - theWagesEarlyWinterCharges(without),
+    };
+    return { ...compare(s.kind, c.theLedgerOn(world.report, orders), { answer: turn, changed: false }), kind: s.kind };
+  });
+}
+
+/** The Practice Skill orders the note cases stage, each by a hero practising Melee alone in a province of his own, in a
+ *  world of its own: those the note and the turn agree on, and those it is known to get wrong (question 43): a Human of
+ *  a Human realm (the turn's quick learner, ×1.5) and a hero at level 5 (the turn makes no roll). */
+export const THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH = [
+  'an Elven hero of a Human realm at Melee 0',
+  'an Elven hero of a Human realm at Melee 1',
+  'an Elven hero of a Human realm at Melee 2',
+  'an Elven hero of a Human realm at Melee 3',
+  'an Elven hero of a Human realm at Melee 4',
+  'a Human hero of an Elven realm at Melee 2',
+  'an Elven hero at Melee 0, his realm with Astronomical Tables',
+  'an Elven hero at Melee 1, his realm with Blooded Retinues (Melee and Archery)',
+  'an Elven hero at Melee 1, his realm with Tradecraft Manuals (Spy and Thief)',
+] as const;
+export const THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH = [
+  'a Human hero of a Human realm at Melee 2',
+  'an Elven hero of a Human realm at Melee 5',
+] as const;
+export type AKindOfPracticeNote =
+  | (typeof THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH)[number]
+  | (typeof THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH)[number];
+/** One staged Practice Skill order compared: the chance the note quotes and the level it names, and the chance the
+ *  turn rolls against at the level it reads (none: it makes no roll); with its kind. */
+export interface APracticeNoteComparison extends Comparison {
+  readonly kind: AKindOfPracticeNote;
+}
+/** The chance a Practice Skill note quotes and the level it names ("Improvement: N% at <skill> L."), from its words. */
+function theNotesChance(markup: string): Obj {
+  const said = /Improvement: (\d+)% at \S+ (\d+)\./.exec(theWordsOf(markup));
+  return said ? { chance: Number(said[1]), level: Number(said[2]) } : { '(the note says)': theWordsOf(markup) };
+}
+const THE_PRACTICE_ROLLS = ['a hero practises a skill and improves', 'a hero practises a skill but makes no progress'];
+/** The chance the turn rolls a hero's practice against, and the level it reads, from the line it writes of him. */
+function theTurnsChance(facts: readonly Obj[], heroName: unknown): Obj {
+  const his = facts.filter((f) => f['heroName'] === heroName);
+  const rolled = his.find((f) => THE_PRACTICE_ROLLS.includes(String(f['kind'])));
+  if (rolled) {
+    const why = isObj(rolled['theChance']) ? rolled['theChance'] : {};
+    return { chance: rolled['chance'], level: why['level'] };
+  }
+  if (his.some((f) => f['kind'] === 'a skill is drilled as far as practice can take it'))
+    return { chance: '(no roll: drilled as far as practice can take it)', level: 5 };
+  return { '(the turn says)': his.map((f) => String(f['kind'])).join('; ') };
+}
+
+/** The Practice Skill note (orderChanceNote, on realm 0's report as the engine builds it from each world) against the
+ *  chance the turn rolls (its phase played on a copy of the state): each kind of
+ *  THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH and THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH, its race, its realm's race
+ *  and its discoveries staged. */
+export function thePracticeNoteAgainstTheTurn(c: Copies): APracticeNoteComparison[] {
+  const { g, capital, land, at } = aWorldForTheOrders();
+  const free = land.filter((p) => p !== capital);
+  const take = (): Obj => {
+    const p = free.shift();
+    if (!p) throw new Error('the staged world has too few provinces for the practice notes');
+    return p;
+  };
+  const realmOf =
+    (race: string, discoveries: readonly string[] = []) =>
+    (G: Obj) => {
+      const r = realmZeroIn(G);
+      r['race'] = race;
+      r['discoveries'] = discoveries.map(aDiscovery);
+    };
+  const staged: [AKindOfPracticeNote, string, number, (G: Obj) => void][] = [
+    ...[0, 1, 2, 3, 4].map((l): [AKindOfPracticeNote, string, number, (G: Obj) => void] => [
+      // (each name of the list, as its level makes it)
+      THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH[l] ?? 'an Elven hero of a Human realm at Melee 0',
+      'Elven',
+      l,
+      realmOf('Human'),
+    ]),
+    ['a Human hero of an Elven realm at Melee 2', 'Human', 2, realmOf('Elven')],
+    ['an Elven hero at Melee 0, his realm with Astronomical Tables', 'Elven', 0, realmOf('Human', ['sd26'])],
+    [
+      'an Elven hero at Melee 1, his realm with Blooded Retinues (Melee and Archery)',
+      'Elven',
+      1,
+      realmOf('Human', ['sd76']),
+    ],
+    [
+      'an Elven hero at Melee 1, his realm with Tradecraft Manuals (Spy and Thief)',
+      'Elven',
+      1,
+      realmOf('Human', ['sd61']),
+    ],
+    ['a Human hero of a Human realm at Melee 2', 'Human', 2, realmOf('Human')],
+    ['an Elven hero of a Human realm at Melee 5', 'Elven', 5, realmOf('Human')],
+  ];
+  const heroes = staged.map(([, race, level]) => at(take(), { race, skills: { melee: level } }));
+  return staged.map(([kind, , , edit], i) => {
+    const hero = heroes[i] ?? {};
+    const world = editedAndReported(g, edit);
+    const card = objects(world.report['characters']).find((h) => h['id'] === hero['id']);
+    if (!card) throw new Error(`the staged report has no hero for ${kind}`);
+    const orders = { [String(hero['id'])]: [{ action: 'Practice Skill', target: 'melee' }] };
+    const note: unknown = c.thePracticeNoteOn(world.report, orders, card, 0);
+    const turn = theTurnsChance(theTurnPlaysThePhases(world.state, orders).facts, hero['name']);
+    return { ...compare(kind, theNotesChance(String(note)), { answer: turn, changed: false }), kind };
+  });
+}
+
+/** The comrades the co-trainer cases stage, each beside (or near) a hero practising Melee 1 in a season, in a province
+ *  of his own: whether his Practice Skill field reads the comrade's Melee as the skill practised beside him, and
+ *  whether the turn counts the comrade as one he practises with (a peer, a mentor or a pupil). */
+export const THE_COMRADES_AT_PRACTICE = [
+  'a comrade practising Melee beside him in the same season',
+  'a comrade of a higher level practising Melee beside him',
+  'a comrade of a lower level practising Melee beside him',
+  'a comrade practising Archery beside him',
+  'a comrade practising Melee beside him in another season',
+  'a comrade practising Melee in the province next door',
+  'a comrade who marched to him the season before',
+  'a comrade who marched away the season before',
+  'a fallen comrade practising Melee beside him',
+  'a hero of another realm practising Melee beside him',
+] as const;
+export type AKindOfComradeAtPractice = (typeof THE_COMRADES_AT_PRACTICE)[number];
+/** One staged comrade compared: whether the form and the turn count him as practising Melee with the hero; with its
+ *  kind. */
+export interface AComradeAtPracticeComparison extends Comparison {
+  readonly kind: AKindOfComradeAtPractice;
+}
+/** Whether the turn counts the hero `comrade` as one `heroName` practises with: named among his peers, as his mentor
+ *  or among his pupils, in the line it writes of his practice. */
+function theTurnCountsHimBeside(facts: readonly Obj[], heroName: unknown, comrade: unknown): boolean {
+  const rolled = facts.find((f) => f['heroName'] === heroName && THE_PRACTICE_ROLLS.includes(String(f['kind'])));
+  if (!rolled) throw new Error(`the turn rolled no practice for ${String(heroName)}`);
+  const why = isObj(rolled['theChance']) ? rolled['theChance'] : {};
+  const peers: unknown[] = Array.isArray(why['peerNames']) ? why['peerNames'] : [];
+  return (
+    peers.includes(comrade) ||
+    why['mentorName'] === comrade ||
+    objects(rolled['pupils']).some((p) => p['name'] === comrade)
+  );
+}
+
+/** The comrades a hero's Practice Skill field counts as practising beside him (practiceCompanionSkill, on realm 0's
+ *  report as the engine builds it, its fields holding the orders staged) against the co-trainers the turn counts (its
+ *  phases played on a copy of the state): each kind of THE_COMRADES_AT_PRACTICE, the hero and his comrade each in a
+ *  province of their own (and the one next door). */
+export function theCoTrainersAgainstTheTurn(c: Copies): AComradeAtPracticeComparison[] {
+  const { g, capital, land, at, nextTo } = aWorldForTheOrders();
+  const used = new Set<unknown>([capital['id']]);
+  /** A province of the realm and one next door, neither used before (the heroes of another case stand there with no
+   *  orders: they practise beside no one). */
+  const aPair = (): [Obj, Obj] => {
+    for (const p of land) {
+      if (used.has(p['id'])) continue;
+      const next = nextTo(p).find((q) => land.includes(q) && !used.has(q['id']));
+      if (!next) continue;
+      used.add(p['id']).add(next['id']);
+      return [p, next];
+    }
+    throw new Error('the staged world has too few provinces for the co-trainers');
+  };
+  const practise = (skill = 'melee'): AnOrderInItsFields => ({ action: 'Practice Skill', target: skill });
+  const rest: AnOrderInItsFields = { action: 'Rest', target: '' };
+  const march = (to: Obj): AnOrderInItsFields => ({ action: 'Move', target: `prov:${String(to['id'])}` });
+  interface AStagedComrade {
+    readonly kind: AKindOfComradeAtPractice;
+    readonly hero: Obj;
+    readonly comrade: Obj;
+    /** The season the hero practises in. */
+    readonly ph: number;
+    readonly orders: Record<string, readonly AnOrderInItsFields[]>;
+  }
+  const staged: AStagedComrade[] = [];
+  const stage = (
+    kind: AKindOfComradeAtPractice,
+    where: (here: Obj, next: Obj) => [Obj, Obj],
+    heroOrders: readonly AnOrderInItsFields[],
+    comradeOrders: readonly AnOrderInItsFields[],
+    comradeFields: Obj = {},
+  ) => {
+    const [here, next] = aPair();
+    const [heroAt, comradeAt] = where(here, next);
+    const hero = at(heroAt, { race: 'Elven', skills: { melee: 1, archery: 1 } });
+    const comrade = at(comradeAt, { race: 'Elven', skills: { melee: 1, archery: 1 }, ...comradeFields });
+    staged.push({
+      kind,
+      hero,
+      comrade,
+      ph: heroOrders.length - 1,
+      orders: { [String(hero['id'])]: heroOrders, [String(comrade['id'])]: comradeOrders },
+    });
+  };
+  const beside = (here: Obj): [Obj, Obj] => [here, here];
+  const apart = (here: Obj, next: Obj): [Obj, Obj] => [here, next];
+  stage('a comrade practising Melee beside him in the same season', beside, [practise()], [practise()]);
+  stage('a comrade of a higher level practising Melee beside him', beside, [practise()], [practise()], {
+    skills: { melee: 3 },
+  });
+  stage('a comrade of a lower level practising Melee beside him', beside, [practise()], [practise()], {
+    skills: { melee: 0 },
+  });
+  stage('a comrade practising Archery beside him', beside, [practise()], [practise('archery')]);
+  stage('a comrade practising Melee beside him in another season', beside, [practise()], [rest, practise()]);
+  stage('a comrade practising Melee in the province next door', apart, [practise()], [practise()]);
+  {
+    const [here, next] = aPair();
+    const hero = at(here, { race: 'Elven', skills: { melee: 1 } });
+    const comrade = at(next, { race: 'Elven', skills: { melee: 1 } });
+    staged.push({
+      kind: 'a comrade who marched to him the season before',
+      hero,
+      comrade,
+      ph: 1,
+      orders: { [String(hero['id'])]: [rest, practise()], [String(comrade['id'])]: [march(here), practise()] },
+    });
+  }
+  {
+    const [here, next] = aPair();
+    const hero = at(here, { race: 'Elven', skills: { melee: 1 } });
+    const comrade = at(here, { race: 'Elven', skills: { melee: 1 } });
+    staged.push({
+      kind: 'a comrade who marched away the season before',
+      hero,
+      comrade,
+      ph: 1,
+      orders: { [String(hero['id'])]: [rest, practise()], [String(comrade['id'])]: [march(next), practise()] },
+    });
+  }
+  // (fallen in the turn just played: the report still lists him, as fallen)
+  stage('a fallen comrade practising Melee beside him', beside, [practise()], [practise()], {
+    alive: false,
+    killedThisTurn: true,
+  });
+  stage('a hero of another realm practising Melee beside him', beside, [practise()], [practise()], { player: 1 });
+  const world = quietly(() => savedAndReported(g));
+  return staged.map((s) => {
+    const card = objects(world.report['characters']).find((h) => h['id'] === s.hero['id']);
+    if (!card) throw new Error(`the staged report has no hero for ${s.kind}`);
+    const companion: unknown = c.thePracticeCompanionOn(world.report, s.orders, card, s.ph);
+    const facts = theTurnPlaysThePhases(world.state, s.orders).facts;
+    return {
+      ...compare(s.kind, companion === 'melee', {
+        answer: theTurnCountsHimBeside(facts, s.hero['name'], s.comrade['name']),
+        changed: false,
+      }),
+      kind: s.kind,
+    };
+  });
 }
