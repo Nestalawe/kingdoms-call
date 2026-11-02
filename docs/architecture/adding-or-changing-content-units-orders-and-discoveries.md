@@ -31,7 +31,7 @@ rule there, once. Rules are still restated:
   check since P1-11c4: the parity test checks the form's eight declarations and pins each target list; the army card's
   kin and feud ask the battle's own rule since P1-11c5, `theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt`, after a Druid
   shortfall taken off in the battle's order since R-122: the parity test holds them in agreement; since P1-11d1 the
-  march's forecasts, `predictedLocation` and the hex tables of the Move field and `lastMoveDirOf`, and since P1-11d2
+  march's forecasts, `predictedLocation` and `lastMoveDirOf` (their hex step, and the Move field's, is the engine's since P1-11d6), and since P1-11d2
   what a hero will hold, `predictedItems`, `projectedLedArmies` and `projectedGarrison`, since P1-11d3 the order
   list, `actionsFor`, and the creed orders' target fields, and since P1-11d4 the treasury ledger,
   `computeOrderLedgerP`, the Practice Skill note and the comrades it counts beside a hero, each difference from the

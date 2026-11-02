@@ -337,7 +337,7 @@ function theMoveFieldsDirectionsOn(theReport, orders, c, ph) {
   return onTheOrders(theReport, orders, () => {
     const action = 'Move', target = '';
     const report = currentReport || {};
-    ${statementsBetween('ui/player/order-targets.ts', 'buildTargetField', 'HEX_DIRS_BUILD', 'dirOpts', opts)}
+    ${statementsBetween('ui/player/order-targets.ts', 'buildTargetField', 'worldMeta_', 'dirOpts', opts)}
     return dirOpts.map(String);
   });
 }`;
@@ -1457,7 +1457,8 @@ export type TheHexTable = 'predictedLocation' | 'the Move field' | 'lastMoveDirO
 export interface HexStepComparison extends Comparison {
   readonly table: TheHexTable;
 }
-/** The portal's three hex tables, each run as the page runs it, against the engine's step to a neighbour
+/** The portal's three hex tables, each run as the page runs it (since P1-11d6 each calls the engine's hex step, so these
+ *  are projection cases: what the portal makes of it), against the engine's step to a neighbour
  *  (neighborInDir, which the Move order takes for a compass step, and getNeighborsP, by which it reads a province next
  *  door), from every province of the staged world's map, each row's parity and the map's edges and its wrap with
  *  them: predictedLocation after a Move in each direction (off the map's top or bottom he stays), the Move field's

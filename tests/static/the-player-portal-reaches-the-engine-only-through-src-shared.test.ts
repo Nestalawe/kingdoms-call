@@ -17,11 +17,13 @@
 // (at any depth) a copy P1-11a4, P1-11b3 or P1-11b4 retired (`floorNumP`, `unitBaseStrengthP`, … `beastCommandCountP`,
 // `DRUID_LEVEL_OF_P`, `TAMED_FLYERS_P`, `PO_FLYING_TYPES`, `PO_LIGHT_TYPES`, and the tables only they read) or a name
 // `src/shared/` hands it; the order form's eight Cast Spell tables are each declared once in the portal, as the call of
-// the folder's function that makes it (P1-11c3); and the player page's modules hold no engine file outside the
-// folder, and no views file.
+// the folder's function that makes it (P1-11c3); the order form's three hex tables (`predictedLocation`, the Move field
+// in `buildTargetField`, `lastMoveDirOf`) each call the folder's `theHexNextToAProvinceInADirection`, and no portal file
+// holds a table of the six steps from a hex, under any name (P1-11d6); and the player page's modules hold no engine
+// file outside the folder, and no views file.
 // Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
 // 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
-// plants)
+// plants; P1-11d6's in its PR)
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -70,6 +72,23 @@ const RETIRED = [
   // P1-11b4: the sea lift's tables (poSeaAnalysis counts through seaLiftOfAColumn)
   'PO_FLYING_TYPES',
   'PO_LIGHT_TYPES',
+  // P1-11d6: the hex step's tables (predictedLocation, the Move field and lastMoveDirOf step by theHexNextToAProvinceInADirection)
+  'HEX_DIRS',
+  'HEX_DIRS_BUILD',
+  'even',
+  'odd',
+  'EVEN_OFF',
+  'ODD_OFF',
+  'EV',
+  'OD',
+];
+
+/** The portal's three hex tables (P1-11d6), each as the file and the function that held a table of the six steps from
+ *  a hex: they step by the folder's function now. */
+const THE_THREE_HEX_TABLES: readonly (readonly [string, string])[] = [
+  ['ui/player/order-targets.ts', 'predictedLocation'],
+  ['ui/player/order-targets.ts', 'buildTargetField'],
+  ['ui/player/move-analysis.ts', 'lastMoveDirOf'],
 ];
 
 /** The order form's eight Cast Spell tables (P1-11c3), each by the name the form gives it and the folder's function
@@ -125,6 +144,45 @@ function initializersDeclaredIn(file: string, name: string): (string | null)[] {
   const visit = (node: ts.Node) => {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name)
       found.push(node.initializer ? node.initializer.getText(tree) : null);
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return found;
+}
+
+/** The names `fn` of `file` calls (at any depth of it), as the identifiers called. */
+function namesCalledIn(file: string, fn: string): string[] {
+  const text = fs.readFileSync(path.join(SRC, file), 'utf8');
+  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const called: string[] = [];
+  const inside = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) called.push(node.expression.text);
+    ts.forEachChild(node, inside);
+  };
+  const find = (node: ts.Node) => {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === fn) inside(node);
+    else ts.forEachChild(node, find);
+  };
+  find(tree);
+  return called;
+}
+
+/** Every array of `file` that is a table of steps: six elements, each an array of two steps of 0 or 1 either way (`[-1, 0]`, `[1, 1]`). */
+function tablesOfSixStepsIn(file: string): string[] {
+  const text = fs.readFileSync(path.join(SRC, file), 'utf8');
+  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  // (a step is -1, 0 or 1: a hexagon's corners drawn on the map are further out)
+  const isAStep = (n: ts.Expression) =>
+    (ts.isNumericLiteral(n) && Number(n.text) <= 1) ||
+    (ts.isPrefixUnaryExpression(n) && ts.isNumericLiteral(n.operand) && Number(n.operand.text) <= 1);
+  const found: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isArrayLiteralExpression(node) &&
+      node.elements.length === 6 &&
+      node.elements.every((e) => ts.isArrayLiteralExpression(e) && e.elements.length === 2 && e.elements.every(isAStep))
+    )
+      found.push(node.getText(tree).replace(/\s+/g, ' '));
     ts.forEachChild(node, visit);
   };
   visit(tree);
@@ -213,6 +271,18 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     // and the functions are handed the portal, from the folder's file
     const handed = new Set(namesSharedExports());
     expect(THE_ORDER_FORMS_SPELL_TABLES.filter(([, make]) => !handed.has(make))).toEqual([]);
+  });
+
+  test("the order form's three hex tables step by the folder's function, and no file of the portal holds a table of the six steps", () => {
+    // (P1-11d6) predictedLocation, the Move field (buildTargetField) and lastMoveDirOf each kept a table of the six steps
+    // from a hex, by the parity of its row; each calls theHexNextToAProvinceInADirection now (the folder's: one table,
+    // with the wrap and the icy wastes), handed the portal by src/shared/. A table under any name is a table again.
+    expect(namesSharedExports()).toContain('theHexNextToAProvinceInADirection');
+    const notCalling = THE_THREE_HEX_TABLES.filter(
+      ([file, fn]) => !namesCalledIn(file, fn).includes('theHexNextToAProvinceInADirection'),
+    ).map(([file, fn]) => `${fn} (${file}) doesn't call theHexNextToAProvinceInADirection`);
+    expect(notCalling).toEqual([]);
+    expect(files.flatMap((file) => tablesOfSixStepsIn(file).map((t) => `${file} holds the table ${t}`))).toEqual([]);
   });
 
   test('the player page loads no engine file outside the folder, and no views file', () => {

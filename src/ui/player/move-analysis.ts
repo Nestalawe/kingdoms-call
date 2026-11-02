@@ -1,7 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_HEX_DIRS, KC_SKILL_LABELS, KC_TEMPERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
-import { seaLiftOfAColumn, takesHalfAHullAboard } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  seaLiftOfAColumn,
+  takesHalfAHullAboard,
+  theHexNextToAProvinceInADirection,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
 import { SKILL_COLUMNS } from './join-and-chronicle.ts';
 import { getOrderTarget } from './pre-orders.ts';
@@ -373,22 +377,6 @@ export function lastMoveDirOf(charId, beforePhase) {
     rows = wm.rows,
     provs = wm.provinces || [];
   const HEX = KC_HEX_DIRS.slice();
-  const EV = [
-    [-1, -1],
-    [-1, 0],
-    [0, -1],
-    [0, 1],
-    [1, -1],
-    [1, 0],
-  ];
-  const OD = [
-    [-1, 0],
-    [-1, 1],
-    [0, -1],
-    [0, 1],
-    [1, 0],
-    [1, 1],
-  ];
   let found = null;
   for (let ph = 0; ph < beforePhase; ph++) {
     const action = document.getElementById(`po-action-${charId}-${ph}`)?.value;
@@ -408,13 +396,9 @@ export function lastMoveDirOf(charId, beforePhase) {
     const fp = provs.find((p) => p.id === from.id);
     if (!fp || fp.row == null) continue;
     if (toId === fp.id) continue; // "stay here" is not a direction
-    const offs = fp.row % 2 === 0 ? EV : OD;
-    for (let i = 0; i < 6; i++) {
-      const nr = fp.row + offs[i][0];
-      if (nr < 0 || nr >= rows) continue;
-      const nc = (((fp.col + offs[i][1]) % cols) + cols) % cols;
-      if (nr * cols + nc === toId) {
-        found = HEX[i];
+    for (const d of HEX) {
+      if (theHexNextToAProvinceInADirection(fp, d, cols, rows) === toId) {
+        found = d;
         break;
       }
     }

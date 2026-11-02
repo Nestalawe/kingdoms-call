@@ -10,9 +10,9 @@
 // portal's level of the hero's Druid; since R-120 they agree beside a Crown; since R-125 the Explore forecast, the
 // march-in share and the sea note agree). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
-// card's kin and feud against the battle's armStr. Since P1-11d1, the march: the portal's three hex tables against the
-// engine's step, where the form says a hero will stand after his Moves and Forced Marches against where the turn leaves
-// him, and the share marching in maps against the turn's (each known difference pinned: question 44). Since P1-11d2,
+// card's kin and feud against the battle's armStr. Since P1-11d1, the march: the portal's three hex steps (the engine's
+// own since P1-11d6, handed through src/shared/: projection cases) against the engine's step, where the form says a hero
+// will stand after his Moves and Forced Marches against where the turn leaves him, and the share marching in maps against the turn's (each known difference pinned: question 44). Since P1-11d2,
 // what a hero holds: what the form says he will carry and lead, and a garrison hold, after his orders, against the turn's
 // phases (each known difference pinned: question 42). Since P1-11d3, the orders: the order list's names against the
 // turn's, the orders it offers a hero against those the turn lets him give, and the creed orders' fields against their
@@ -75,10 +75,11 @@
 // of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
 // battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
-// at a hero offers on the staged report. P1-11d1 (plan P1-11d, before the hex step is shared): the portal's three hex
-// tables (`predictedLocation`, the Move field's `buildTargetField` statements, `lastMoveDirOf`, each run as the page runs
-// it on the orders staged in its fields) step where `neighborInDir` and `getNeighborsP` do, from every province of a
-// staged map; on a staged world with no guards (`marchingWorld`), where `predictedLocation` says a hero will stand is
+// at a hero offers on the staged report. P1-11d1 (plan P1-11d; since P1-11d6 the three call the engine's hex step, so
+// these are projection cases: what the portal makes of it): the portal's three hex tables (`predictedLocation`, the
+// Move field's `buildTargetField` statements, `lastMoveDirOf`, each run as the page runs it on the orders staged in
+// its fields) step where `neighborInDir` and `getNeighborsP` do, from every province of a staged map; on a staged
+// world with no guards (`marchingWorld`), where `predictedLocation` says a hero will stand is
 // where `processOrder` leaves him for a compass step, a province next door, a Forced March next door and his own
 // province, and pinned where it is not (question 44): a column with ships over land, with too little lift for the sea,
 // at a neutral realm's border, past its pace (each refused by the turn), a far province or a far Forced March (one step
@@ -518,10 +519,13 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
 describe('the march: where the order form says a hero will stand, and what marching in maps (P1-11d1)', () => {
   test("the portal's three hex tables step where the engine's does, from every province of the map", () => {
     // predictedLocation (where every later phase's form says he stands), the Move field (its six directions, each the
-    // province one step that way, none off the map) and lastMoveDirOf (the direction a fresh Move opens on) each keep a
-    // table of the six steps by the parity of a row; the turn steps by neighborInDir, and reads a province next door by
-    // getNeighborsP. From every province of the staged map (8 by 7): its rows of each parity, the top and bottom rows
-    // (a step off the map: the turn's "icy wastes", where he stays) and both ends of a row (the map wraps east to west).
+    // province one step that way, none off the map) and lastMoveDirOf (the direction a fresh Move opens on) each called
+    // a table of the six steps by the parity of a row of their own until P1-11d6; they call the engine's hex step now
+    // (src/shared/), so this is a projection case: each hands it the province, the map's size and the direction, and
+    // reads its answer (a place, or null past the top or bottom row) as the turn does, which steps by neighborInDir and
+    // reads a province next door by getNeighborsP. From every province of the staged map (8 by 7): its rows of each
+    // parity, the top and bottom rows (a step off the map: the turn's "icy wastes", where he stays) and both ends of a
+    // row (the map wraps east to west).
     const list = hexSteps();
     expect(differences(list)).toEqual([]);
     const of = (table: string) => list.filter((x) => x.table === table);
