@@ -5,7 +5,8 @@
 // an alignment order is an order, not an effect at a hook point; its resolver is its rule, and reads its row. The
 // engine checks each row's key is a kind of order (army-tables.ts). The words test
 // (tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts) reads each row
-// against the rulebook's orders table and creed sections and the intro's table. The removed orders (Awaken the Wild and
+// against the rulebook's orders table and creed sections, the intro's table, and the player page's two texts of its
+// creed (the turn report's summary, the join form's description). The removed orders (Awaken the Wild and
 // Call from the Pit, 2026-10-12) have no row: the turn keeps their refusal. The player page reads the names, creeds and
 // king's marks through src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-
 // each.ts (P1-11d7), as the resolvers' checks do.
@@ -24,6 +25,10 @@ export interface ANumberOfAnAlignmentOrder {
   readonly inItsCreedsSection: string;
   /** In the order's cell of the intro's table "The seven alignments", where it states the number. */
   readonly inTheIntrosTable?: string;
+  /** In its creed's summary on the player's turn report (the report's `ALIGNMENT_SUMMARIES`), where it states it. */
+  readonly inTheReportsSummary?: string;
+  /** In its creed's description on the join form (the alignment's `DESCS`, its bold marks dropped), where it states it. */
+  readonly inTheJoinForm?: string;
 }
 
 /** A row: what the turn, the bots, the report and the books read of one alignment order. */
@@ -60,7 +65,12 @@ export const THE_ALIGNMENT_ORDERS = {
     theKingAlone: true,
     theNumbers: {
       // the grade a mustered company has, unless the realm's discoveries raise it (Muster Rolls)
-      theGradeMustered: { value: 'Green', writtenAs: 'as it is', inItsCreedsSection: 'a free {N} garrison unit' },
+      theGradeMustered: {
+        value: 'Green',
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'a free {N} garrison unit',
+        inTheReportsSummary: 'a free {N} garrison unit',
+      },
     },
   },
   broker: {
@@ -70,7 +80,12 @@ export const THE_ALIGNMENT_ORDERS = {
     creed: 'Neutral',
     theKingAlone: true,
     theNumbers: {
-      thePriceOfWordFromAProvince: { value: 2, writtenAs: 'as it is', inItsCreedsSection: 'has ever seen for {N}g' },
+      thePriceOfWordFromAProvince: {
+        value: 2,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'has ever seen for {N}g',
+        inTheReportsSummary: 'has ever seen for {N}g',
+      },
     },
   },
   'harvest-the-field': {
@@ -86,6 +101,8 @@ export const THE_ALIGNMENT_ORDERS = {
         writtenAs: 'as it is',
         inItsCreedsSection: 'as a Skeletal unit for {N}g',
         inTheIntrosTable: 'from a grave for {N} gold',
+        inTheReportsSummary: 'as a Skeletal unit for {N}g',
+        inTheJoinForm: 'raises a grave as a soldier for {N}g',
       },
     },
   },
@@ -103,7 +120,12 @@ export const THE_ALIGNMENT_ORDERS = {
         writtenAs: 'as the turn it lasts until',
         inItsCreedsSection: 'serve until the end of {N}',
       },
-      theBloodOfferingsGrades: { value: 2, writtenAs: 'as it is', inItsCreedsSection: 'by +{N} quality tiers' },
+      theBloodOfferingsGrades: {
+        value: 2,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'by +{N} quality tiers',
+        inTheReportsSummary: '(+{N} quality tiers each',
+      },
     },
   },
 } as const satisfies Readonly<Record<string, AnAlignmentOrder>>;

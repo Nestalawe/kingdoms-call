@@ -157,7 +157,10 @@ function (`theCorpseCartersPriceForARealm`), and the report's price of word is t
 its row and read the two prices they budget (word, the carters) from it: the engine names no key outside
 `src/engine/rules/`. A new row's order still needs its own `case` and resolver.
 `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts` reads each row
-against both rulebooks. The ratchet's `alignmentOrderChecksInEngine` (0) counts the keys the engine writes itself.
+against both rulebooks and the player page's two texts of its creed (the turn report's `ALIGNMENT_SUMMARIES`, the join
+form's `DESCS`): a number's optional phrase for a place (`inTheReportsSummary`, `inTheJoinForm`) says where that text
+states it. The GM's statistics label Consecrate, Call to Arms and the Broker by their rows' names ("Harvest Field" and
+"Rite" are its own words). The ratchet's `alignmentOrderChecksInEngine` (0) counts the keys the engine writes itself.
 
 Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 22) touched: the engine's `case` in the order switch, the order-name map
 (`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS`, the short label map, the

@@ -126,8 +126,9 @@ const THE_WIDGETS_KINGS_ORDERS = 3;
 /** The words the portal wrote a number of an alignment order in (P1-11d8): each is the order's row's now, so none of
  *  these may be written again: Call to Arms' grade (twice), the Broker's price (twice, and the ledger's fallback), the
  *  Wild Hunt's beasts, and the Blood Offering's tiers (four), in the files that read them (the report's and the join
- *  form's summaries of the same orders are P1-11d9's). The literals that stay (decision 5: Harvest's 2g and its
- *  fallback, "until end of NEXT turn", "VETERAN", Call to Arms' company, Consecrate's home and limit) are not here. */
+ *  form's texts of the same orders are the words test's, each-alignment-orders-…-as-its-row-says.test.ts: P1-11d9).
+ *  The literals that stay (decision 5: Harvest's 2g and its fallback, "until end of NEXT turn", "VETERAN", Call to
+ *  Arms' company, Consecrate's home and limit) are not here. */
 const THE_FILES_THAT_READ_THE_ROWS_NUMBERS = [
   'ui/player/order-targets.ts',
   'ui/player/pre-orders.ts',

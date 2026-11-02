@@ -5,9 +5,14 @@
 // if the king alone gives it; the rulebook's creed section ("The Seven Alignments") has an entry of that name, marked
 // "(king" if and only if the king alone gives it, stating each of its numbers in the words its row gives; and the
 // intro's table "The seven alignments" gives its name as its creed's signature action, with the numbers its row says
-// the intro states. Neither table names a signature order with no row. So a number, a name, a creed or the king's
-// mark changed in content, and not in the books (or in the books, and not in content), turns this red.
-// Level 0 (static): the content's rows imported (plain data), both books read as written in src/; nothing runs.
+// the intro states. Neither table names a signature order with no row. The player page's two texts of its creed (the
+// turn report's summary, ALIGNMENT_SUMMARIES; the join form's description, the alignment's DESCS, read by scan: the one
+// string that opens on the creed in bold) name it, and state each number in the words its row gives for that place
+// (P1-11d9). The GM's statistics label Consecrate, Call to Arms and the Broker by their rows' names; "Harvest Field" and
+// "Rite" are the GM's own words. So a number, a name, a creed or the king's mark changed in content, and not in the
+// books or the page's texts (or there, and not in content), turns this red.
+// Level 0 (static): the content's rows imported (plain data), both books read as written in src/, the page's texts and
+// the GM's labels read by their syntax trees (tests/lib/source.ts); nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from 'vitest';
@@ -17,6 +22,7 @@ import {
   type AnAlignmentOrder,
 } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { ROOT } from '../../tools/build.ts';
+import { entriesOf, stringsOf } from '../lib/source.ts';
 
 const RULEBOOK = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules.html'), 'utf8');
 const INTRO = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules-intro.html'), 'utf8');
@@ -125,6 +131,44 @@ function whatARowBreaks(row: AnAlignmentOrder, b: TheBooks): string[] {
   return broken;
 }
 
+/** The player page's two texts of each creed: the turn report's summaries (`ALIGNMENT_SUMMARIES`, by creed) and the
+ *  join form's strings (its alignments' descriptions among them, each opening on its creed in bold: `**Divine:**`). */
+interface ThePagesTexts {
+  readonly theReportsSummaries: Readonly<Record<string, string>>;
+  readonly theJoinFormsStrings: readonly string[];
+}
+const THE_REPORTS_SUMMARIES = 'ui/player/report.ts';
+const THE_JOIN_FORM = 'ui/player/briefing-and-submit.ts';
+/** The words a reader sees in a page's text: the join form's bold marks (`**`) dropped, the spaces made one. */
+const asAReaderSeesThePagesText = (text: string): string => text.split('**').join('').replace(/\s+/g, ' ').trim();
+
+/** What a row breaks in the page's texts: each place its name or a number isn't as the row says. */
+function whatARowBreaksInThePagesTexts(row: AnAlignmentOrder, texts: ThePagesTexts): string[] {
+  const broken: string[] = [];
+  const summary = texts.theReportsSummaries[row.creed];
+  if (summary === undefined) broken.push('the report has no summary of its creed');
+  const descriptions = texts.theJoinFormsStrings.filter((s) => s.includes(`**${row.creed}:**`));
+  const [description] = descriptions;
+  if (descriptions.length !== 1)
+    broken.push(`the join form has ${String(descriptions.length)} descriptions of its creed`);
+  const places = [
+    ["the report's summary", summary, 'inTheReportsSummary'],
+    ["the join form's description", descriptions.length === 1 ? description : undefined, 'inTheJoinForm'],
+  ] as const;
+  for (const [place, text, field] of places) {
+    if (text === undefined) continue;
+    const seen = asAReaderSeesThePagesText(text);
+    if (!seen.includes(row.name)) broken.push(`${place}'s name`);
+    for (const [what, n] of Object.entries(row.theNumbers)) {
+      const phrase = n[field];
+      if (phrase === undefined) continue;
+      const words = phrase.replace('{N}', written(n));
+      if (!seen.includes(words)) broken.push(`${place}'s ${what}: "${words}"`);
+    }
+  }
+  return broken;
+}
+
 /** The names of the signature orders a table gives (a cell that opens with a name in bold). */
 const theOrdersNamed = (rows: readonly string[][], cell: (cells: string[]) => string | undefined): string[] =>
   rows.flatMap((cells) => {
@@ -133,6 +177,19 @@ const theOrdersNamed = (rows: readonly string[][], cell: (cells: string[]) => st
   });
 
 const BOOKS: TheBooks = { rulebook: RULEBOOK, intro: INTRO };
+const TEXTS: ThePagesTexts = {
+  theReportsSummaries: Object.fromEntries(
+    entriesOf(THE_REPORTS_SUMMARIES, 'ALIGNMENT_SUMMARIES').map((e) => [e.key, e.value]),
+  ),
+  theJoinFormsStrings: stringsOf(THE_JOIN_FORM),
+};
+
+/** A row with one of its numbers planted as another value. */
+const aRowWithTheNumber = (row: AnAlignmentOrder, what: string, value: number): AnAlignmentOrder => {
+  const n = row.theNumbers[what];
+  if (!n) throw new Error(`no ${what}`);
+  return { ...row, theNumbers: { ...row.theNumbers, [what]: { ...n, value } } };
+};
 
 test.for(ROWS.map((row) => [row.name, row] as const))(
   '%s: its name, creed, king mark and numbers are in both books as its row says',
@@ -140,6 +197,25 @@ test.for(ROWS.map((row) => [row.name, row] as const))(
     expect(whatARowBreaks(row, BOOKS)).toEqual([]);
   },
 );
+
+test.for(ROWS.map((row) => [row.name, row] as const))(
+  "%s: its name and numbers are in its creed's summary on the report and description on the join form as its row says",
+  ([, row]) => {
+    expect(whatARowBreaksInThePagesTexts(row, TEXTS)).toEqual([]);
+  },
+);
+
+test("the GM's statistics label Consecrate, Call to Arms and the Broker by their rows' names; Harvest Field and Rite are its own words", () => {
+  // (P1-11d9, choice 3's option 1) a value read from a row is its source; a literal, its words
+  const labels = new Map(entriesOf('ui/gm/stats-tab.ts', 'STATS_ACTION_LABEL').map((e) => [e.key, e.value]));
+  expect(ROWS.map((row) => [row.key, labels.get(row.key)])).toEqual([
+    ['consecrate', 'THE_ALIGNMENT_ORDERS.consecrate.name'],
+    ['call_to_arms', "THE_ALIGNMENT_ORDERS['call-to-arms'].name"],
+    ['broker', 'THE_ALIGNMENT_ORDERS.broker.name'],
+    ['harvest_field', 'Harvest Field'],
+    ['rite', 'Rite'],
+  ]);
+});
 
 test('neither table names a signature order with no row, and each creed has one order at most', () => {
   const names = ROWS.map((row) => row.name);
@@ -168,11 +244,7 @@ test('planted, a number, a king mark or a creed in a row alone, or a number in a
   const broker = THE_ALIGNMENT_ORDERS.broker;
   const harvest = THE_ALIGNMENT_ORDERS['harvest-the-field'];
   const rite = THE_ALIGNMENT_ORDERS['perform-rite'];
-  const aPrice = (row: AnAlignmentOrder, what: string, value: number): AnAlignmentOrder => {
-    const n = row.theNumbers[what];
-    if (!n) throw new Error(`no ${what}`);
-    return { ...row, theNumbers: { ...row.theNumbers, [what]: { ...n, value } } };
-  };
+  const aPrice = aRowWithTheNumber;
   expect(whatARowBreaks(aPrice(broker, 'thePriceOfWordFromAProvince', 3), BOOKS)).toEqual([
     `its creed's section's thePriceOfWordFromAProvince: "has ever seen for 3g"`,
   ]);
@@ -206,5 +278,56 @@ test('planted, a number, a king mark or a creed in a row alone, or a number in a
   ]);
   expect(whatARowBreaks(rite, aBookWith('+2 quality tiers', '+1 quality tier'))).toEqual([
     `its creed's section's theBloodOfferingsGrades: "by +2 quality tiers"`,
+  ]);
+});
+
+// Planted (P1-11d9): another number ("3g") in each of the page's texts that states one, or a number or a name in a row
+// alone; each is found, in the place it was planted.
+test('planted, a "3g" in each of the page\'s texts, or a number or a name in a row alone, are found', () => {
+  const callToArms = THE_ALIGNMENT_ORDERS['call-to-arms'];
+  const broker = THE_ALIGNMENT_ORDERS.broker;
+  const harvest = THE_ALIGNMENT_ORDERS['harvest-the-field'];
+  const rite = THE_ALIGNMENT_ORDERS['perform-rite'];
+  const aSummaryWith = (creed: string, from: string, to: string): ThePagesTexts => {
+    const summary = TEXTS.theReportsSummaries[creed] ?? '';
+    expect(summary.split(from)).toHaveLength(2);
+    return { ...TEXTS, theReportsSummaries: { ...TEXTS.theReportsSummaries, [creed]: summary.replace(from, to) } };
+  };
+  const aJoinFormWith = (from: string, to: string): ThePagesTexts => {
+    expect(TEXTS.theJoinFormsStrings.filter((s) => s.includes(from))).toHaveLength(1);
+    return { ...TEXTS, theJoinFormsStrings: TEXTS.theJoinFormsStrings.map((s) => s.replace(from, to)) };
+  };
+  expect(whatARowBreaksInThePagesTexts(broker, aSummaryWith('Neutral', 'seen for 2g', 'seen for 3g'))).toEqual([
+    `the report's summary's thePriceOfWordFromAProvince: "has ever seen for 2g"`,
+  ]);
+  expect(whatARowBreaksInThePagesTexts(harvest, aSummaryWith('Undead', 'unit for 2g', 'unit for 3g'))).toEqual([
+    `the report's summary's thePrice: "as a Skeletal unit for 2g"`,
+  ]);
+  expect(whatARowBreaksInThePagesTexts(harvest, aJoinFormWith('soldier for 2g', 'soldier for 3g'))).toEqual([
+    `the join form's description's thePrice: "raises a grave as a soldier for 2g"`,
+  ]);
+  expect(whatARowBreaksInThePagesTexts(rite, aSummaryWith('Pagan', '(+2 quality', '(+3 quality'))).toEqual([
+    `the report's summary's theBloodOfferingsGrades: "(+2 quality tiers each"`,
+  ]);
+  expect(whatARowBreaksInThePagesTexts(callToArms, aSummaryWith('Good', 'free Green', 'free Veteran'))).toEqual([
+    `the report's summary's theGradeMustered: "a free Green garrison unit"`,
+  ]);
+  expect(whatARowBreaksInThePagesTexts(aRowWithTheNumber(harvest, 'thePrice', 3), TEXTS)).toEqual([
+    `the report's summary's thePrice: "as a Skeletal unit for 3g"`,
+    `the join form's description's thePrice: "raises a grave as a soldier for 3g"`,
+  ]);
+  expect(whatARowBreaksInThePagesTexts(aRowWithTheNumber(broker, 'thePriceOfWordFromAProvince', 3), TEXTS)).toEqual([
+    `the report's summary's thePriceOfWordFromAProvince: "has ever seen for 3g"`,
+  ]);
+  expect(whatARowBreaksInThePagesTexts({ ...broker, name: 'Brokerage' }, TEXTS)).toEqual([
+    "the report's summary's name",
+    "the join form's description's name",
+  ]);
+  expect(
+    whatARowBreaksInThePagesTexts({ ...broker, creed: 'Druidic' }, aJoinFormWith('**Druidic:**', 'Druidic:')),
+  ).toEqual([
+    'the join form has 0 descriptions of its creed',
+    "the report's summary's name",
+    `the report's summary's thePriceOfWordFromAProvince: "has ever seen for 2g"`,
   ]);
 });
