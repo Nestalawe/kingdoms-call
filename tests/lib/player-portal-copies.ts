@@ -468,7 +468,7 @@ export function stagedWorld(): { state: Obj; report: Obj } {
   for (const armies of stagedColumns())
     for (const naval of [0, 8]) hero({ location: elsewhere, armies: copyOf(armies), skills: { melee: 1, naval } });
   // In a third province, a hero wearing the Crown of Command beside a hero of every magic school at level 2: the
-  // aura the report's effective levels count and effMagicLvl doesn't (STATUS, Parked: the Warlock's extra cast).
+  // aura the report's effective levels count, and effMagicLvl with them (R-120).
   const crown = catalogue().find((it) => isObj(it['effect']) && it['effect']['stat'] === 'aura');
   if (!crown) throw new Error('the catalogue has no item with an aura');
   hero({ location: third, items: [item(crown)] });
