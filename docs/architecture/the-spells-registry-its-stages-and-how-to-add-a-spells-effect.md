@@ -100,7 +100,10 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   the stages of `orderValidity`, each true where the spell's row sets its flag (`asAnOrder`), in the order
   `resolveCastSpellOrder` asks them:
   - **a charmed hero will not turn it on his lord** (before the casting limit, unrolled, no slot spent);
-  - **a spell that costs no casting slot** (handed whether the caster's realm has a Grand Cathedral: Bless Province);
+  - **a spell that costs no casting slot** (handed whether the caster's realm has a Grand Cathedral: Bless Province).
+    Its effect asks `theSpellCostsItsCasterNoCastingSlot` (`engine/rules-on-plain-values/`, R-124), which reads the
+    row's flag; the order form's casting count asks the same function (through `src/shared/`), with the Wonder its
+    realm's report says stands (`kingdom.itsGrandCathedralStands`);
   - **a spell's mark must stand in the province** (before the cast roll: a mark gone is refused, no slot spent; so is a
     mark of another realm whose Invisibility holds, R-119, with a line that names no one: `isHiddenByInvisibilityFrom`).
     Its effects ask `theMarkOfThisSpellMustStandInTheCastersProvince` (`engine/rules-on-plain-values/`, P1-11c2), which

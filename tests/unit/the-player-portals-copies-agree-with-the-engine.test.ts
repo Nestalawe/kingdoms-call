@@ -10,7 +10,7 @@
 // Druid ones call the engine's rule with the portal's level of the hero's Druid; since R-120 they agree beside a
 // Crown). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
-// card's kin and feud against the battle's armStr, with question 28 (a)'s difference pinned. And each engine function
+// card's kin and feud against the battle's armStr. And each engine function
 // leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
@@ -60,9 +60,9 @@
 // body's province, its own rule: pinned); the form's casting count (`buildTargetField`'s statements, the page's fields
 // stood in) greys a spell out exactly where `resolveCastSpellOrder` blocks it (White Magic 1 to 5, every list of up to
 // three earlier casts of Holy Symbol, Bless Province and Oratory), the Warlock's extra cast too (R-123: both ask the one
-// rule, the form with the title its hero's minorHeld lists, which the report writes on the holder the turn counts), but
-// in a realm with a Grand Cathedral, where its answer is the engine's without the Wonder (pinned; question 28 (a),
-// Parked); the army card's strength
+// rule, the form with the title its hero's minorHeld lists, which the report writes on the holder the turn counts), and
+// in a realm with a Grand Cathedral (R-124: both ask the one rule of a spell that costs no slot, the form with the Wonder
+// its realm's report says stands, the report built by the engine from a world with and without it); the army card's strength
 // of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
 // battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
