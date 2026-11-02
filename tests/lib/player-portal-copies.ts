@@ -1468,11 +1468,9 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
 }
 
 /** One unit's strength on the army card compared with the battle's, and what the battle makes of the Druid its leader
- *  falls short of: its multiplier (1: none short), and its figure for the unit under the same leader trained in Druid
- *  enough to lead it. */
+ *  falls short of: its multiplier (1: none short). */
 export interface KinComparison extends Comparison {
   readonly druidMultiplier: number;
-  readonly engineWithoutTheShortfall: unknown;
 }
 /** The world staged for the kin and feud: realm 0 (a Good realm whose king is a Human) with a hero of every humanoid
  *  race, of Druid 0 and 1, away from the king; the king leads a unit of every type a race can raise (neither a creature
@@ -1531,7 +1529,6 @@ export function armyCardKinAgainstTheBattle(c: Copies, world: World): KinCompari
               engineOn(battle, [h.state, u.state]),
             ),
             druidMultiplier: multiplier(h.state, u.state),
-            engineWithoutTheShortfall: engineOn(battle, [withSkillAt(h.state, 'druid', 5), u.state]).answer,
           },
         ];
       }),

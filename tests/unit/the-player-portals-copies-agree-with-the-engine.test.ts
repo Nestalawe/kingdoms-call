@@ -10,7 +10,7 @@
 // Druid ones call the engine's rule with the portal's level of the hero's Druid; since R-120 they agree beside a
 // Crown). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
-// card's kin and feud against the battle's armStr, with question 28's two differences pinned. And each engine function
+// card's kin and feud against the battle's armStr, with question 28 (a)'s difference pinned. And each engine function
 // leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
@@ -61,9 +61,8 @@
 // stood in) greys a spell out exactly where `resolveCastSpellOrder` blocks it (White Magic 1 to 5, every list of up to
 // three earlier casts of Holy Symbol, Bless Province and Oratory) but in a realm with a Grand Cathedral and for the
 // Warlock, where its answer is the engine's without either (pinned; question 28 (a), Parked); the army card's strength
-// of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, but under a leader short of Druid,
-// where it is the battle's figure for a leader with Druid enough, the shortfall then taken off rounded to the nearest
-// and at least 1 (pinned; question 28 (b)). Since P1-11c4 the target field's six lists that look in the caster's
+// of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
+// battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
 // at a hero offers on the staged report. Level 1: pure functions on values; no page is needed, and a static test
 // can't compare what two functions answer. Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3,
@@ -366,19 +365,16 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
         ).toBeGreaterThan(0);
   });
 
-  test("the army card's strength of a unit is the battle's, its kin and a rival kin's leader with it, but where its leader falls short of Druid", () => {
+  test("the army card's strength of a unit is the battle's: its kin, a rival kin's leader and a Druid shortfall, in the battle's order (R-122)", () => {
     // The card's line ("str …") counts the unit's kin (its king's, its leader's: ×1.2 each) and a rival kin's leader
-    // (×0.8) as the battle's armStr does, each rounded. Under a leader short of Druid, the battle floors the shortfall
-    // first; the card takes it off last, rounded to the nearest and never below 1 (plan P1-11c, question 28 (b) for
-    // Toby): there its figure is the battle's for a leader with Druid enough, the shortfall then taken off as the card
-    // takes it. Veteran Shieldwall Levies (12) of the Elves, under a Human with no Druid: the battle 9, the card 10.
+    // (×0.8) as the battle's armStr does, each rounded. Under a leader short of Druid, it takes the shortfall off the
+    // unit's base strength first, rounded down, then its kin and feud, as the battle does (R-122, Toby's answer to
+    // question 28 (b)). Veteran Shieldwall Levies (12) of the Elves, under a Human with no Druid: 9 on both.
     const list = kin();
     const short = list.filter((x) => x.druidMultiplier < 1);
-    expect(differences(list.filter((x) => x.druidMultiplier === 1))).toEqual([]);
-    expect(
-      short.filter((x) => x.copy !== Math.max(1, Math.round(Number(x.engineWithoutTheShortfall) * x.druidMultiplier))),
-    ).toEqual([]);
-    expect(short.filter((x) => !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    expect(differences(list)).toEqual([]);
+    const levies = list.find((x) => sameAnswer(x.on, ['Shieldwall Levies', 'Veteran', 'Elven', 'Human', 0]));
+    expect([levies?.copy, levies?.engine]).toEqual([9, 9]);
     // and the battle's figure there is its own order: the shortfall floored off the unit's base strength first, then
     // its kin (×1.2 its realm's king's, a Human; ×1.2 its leader's) and a rival kin's leader (×0.8), each rounded
     const rival: Record<string, string> = KC_RIVAL_RACE;
