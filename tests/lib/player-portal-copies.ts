@@ -1349,10 +1349,11 @@ export function theFormsTargetsAgainstTheMarkCheck(form: TheOrderFormsSpells): W
 
 /** One cast compared: whether the form greys the spell out at its school's casting limit, and whether the engine's
  *  Cast Spell order blocks it there; with the engine's answer for the same cast in a realm without the Grand Cathedral
- *  and by a hero without the Warlock's title. */
+ *  (by the same hero, with or without the Warlock's title), and with neither. */
 export interface CastingLimitComparison extends Comparison {
   readonly cathedral: boolean;
   readonly warlock: boolean;
+  readonly engineWithoutTheWonder: unknown;
   readonly engineWithNeither: unknown;
   /** The engine's answer with neither, on the casts as the two rules leave them: under a Grand Cathedral a Bless
    *  Province is never blocked and an earlier one is not counted; for the Warlock, in his best school, one earlier cast
@@ -1403,11 +1404,40 @@ function theOrderBlocks(G: Obj, c: Obj, earlier: readonly string[], spell: strin
   });
   return tc.turnLog.some((l) => isObj(l['fact']) && l['fact']['kind'] === "a school's casting limit blocks a spell");
 }
+/** The Warlock's minor title in a staged world at the turn the titles go public, where one hero of realm 0 has trained
+ *  a magic school highest: the title as the report writes it in his `minorHeld` (what the order form reads), the hero
+ *  the report names holding it, the hero the turn counts as its holder (computeMinorTitles, as the turn works out
+ *  `_minorHolders` before its first phase), and the mage (his id). */
+export function theWarlocksTitle(): {
+  asTheReportWritesIt: Obj;
+  theHeroesTheReportNames: unknown[];
+  theHeroTheTurnCounts: unknown;
+  theMage: unknown;
+} {
+  const { g, hero } = aWorldToStageIn();
+  g['turn'] = TITLES_PUBLIC_FROM_TURN;
+  const mage = hero({ skills: { elemental: 9, white: 2 } });
+  const { state, report } = quietly(() => savedAndReported(g));
+  const held = (h: Obj) => objects(h['minorHeld']).filter((t) => t['key'] === 'warlock');
+  const named = objects(report['characters']).filter((h) => held(h).length > 0);
+  const asTheReportWritesIt = named.flatMap(held)[0];
+  if (!asTheReportWritesIt) throw new Error('the staged report names no Warlock');
+  const holders: unknown = computeMinorTitles(state);
+  const warlock = isObj(holders) ? holders['warlock'] : null;
+  return {
+    asTheReportWritesIt: deepFreeze(asTheReportWritesIt),
+    theHeroesTheReportNames: named.map((h) => h['id']),
+    theHeroTheTurnCounts: isObj(warlock) ? warlock['charId'] : null,
+    theMage: mage['id'],
+  };
+}
 /** The form's casting count against the engine's: a hero of realm 0 (a Divine realm) of White Magic 1 to 5 and Psychic
  *  1 casts each of SPELLS_CAST after every list of earlier casts, in a realm with and without a Grand Cathedral, and
- *  holding the Warlock's title or not. The form greys a spell out at its school's limit (its rows' `atLimit`); the
- *  engine blocks it ("a school's casting limit blocks a spell"). */
+ *  holding the Warlock's title or not (the report's hero with the title as the report writes it, theWarlocksTitle; the
+ *  state's `_minorHolders` naming him, as the turn sets it before its first phase). The form greys a spell out at its
+ *  school's limit (its rows' `atLimit`); the engine blocks it ("a school's casting limit blocks a spell"). */
 export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingLimitComparison[] {
+  const warlocksTitle = theWarlocksTitle().asTheReportWritesIt;
   const { g, king, hero } = aWorldToStageIn();
   const realm = objects(g['players'])[0];
   if (!realm) throw new Error('the staged world has no realm 0');
@@ -1424,15 +1454,15 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
     const reported = objects(world.report['characters']).find((x) => x['id'] === caster['id']);
     if (!saved || !reported) throw new Error('a staged caster is missing from the state or the report');
     const c = deepFreeze(copyOf(saved));
+    const asReported = (warlock: boolean): Obj => ({ ...reported, minorHeld: warlock ? [warlocksTitle] : [] });
     for (const earlier of earlierCasts()) {
       const fields: Record<string, string> = {};
       earlier.forEach((s, ph) => {
         fields[`po-action-${String(c['id'])}-${String(ph)}`] = 'Cast Spell';
         fields[`po-target-${String(c['id'])}-${String(ph)}`] = s;
       });
-      const rows = form.castSpellRows(reported, earlier.length, fields);
+      const rowsOf = [false, true].map((warlock) => form.castSpellRows(asReported(warlock), earlier.length, fields));
       for (const spell of SPELLS_CAST) {
-        const row = rows.find((r) => r.spell === spell);
         const blocks = (cathedral: boolean, warlock: boolean) => {
           realmInG['discoveries'] = cathedral ? [{ id: 'gd' }] : [];
           G['_minorHolders'] = warlock ? { warlock: { charId: c['id'] } } : {};
@@ -1451,17 +1481,21 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
           return theOrderBlocks(G, c, counted, spell);
         };
         for (const cathedral of [false, true])
-          for (const warlock of [false, true])
+          for (const warlock of [false, true]) {
+            const row = rowsOf[warlock ? 1 : 0]?.find((r) => r.spell === spell);
+            const engineWithoutTheWonder = warlock ? blocks(false, true) : engineWithNeither;
             out.push({
               ...compare({ white: skillOf(c, 'white'), earlier, spell }, row ? row.atLimit : '(not offered)', {
-                answer: cathedral || warlock ? blocks(cathedral, warlock) : engineWithNeither,
+                answer: cathedral ? blocks(cathedral, warlock) : engineWithoutTheWonder,
                 changed: false,
               }),
               cathedral,
               warlock,
+              engineWithoutTheWonder,
               engineWithNeither,
               engineAsTheTwoRulesSay: asTheTwoRulesSay(cathedral, warlock),
             });
+          }
       }
     }
   }

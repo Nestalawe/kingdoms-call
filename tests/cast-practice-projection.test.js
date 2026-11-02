@@ -71,6 +71,23 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   target(0,'elemental');
   ok(opt(2,psy).disabled,'re-aiming Spring\'s practice at Elemental closes it again');
 
+  // R-123: the Warlock (the minor title, in the report's minorHeld) casts one more spell of his best school a turn.
+  // Two heroes at Elemental 4 cast Earthquake in Spring, Summer and Autumn; in Winter the Warlock is offered a fourth.
+  const warlockTitle={key:'warlock',name:'The Warlock',perk:'+1 spell of your best school/turn',req:'Highest single magic-school level.'};
+  const mage=(id,minorHeld)=>({id,name:'Mage '+id,player:0,locationId:11,locationName:'Ashford',hp:20,maxHp:20,armies:[],items:[],
+    skills:{elemental:4},effectiveSpeed:3,effectiveSeaSpeed:3,isKing:false,minorHeld});
+  P.eval(`currentReport=${JSON.stringify({turn:6,_liveTurn:6,characters:[mage('w1',[warlockTitle]),mage('w2',[])],kingdom:{gold:100,alignment:'Good'},worldMeta:{provinces:[{id:11,name:'Ashford'}]}})};`);
+  P.buildOrdersForm(P.eval('currentReport.characters'),false,null,6);
+  await new Promise(r=>setTimeout(r,50));
+  const fourth={}, field={};
+  for(const id of ['w1','w2']){
+    for(let ph=0;ph<4;ph++){ const a=doc.getElementById(`po-action-${id}-${ph}`); a.value='Cast Spell'; P.onActionChange(id,ph,0); }
+    for(let ph=0;ph<3;ph++){ const t=doc.getElementById(`po-target-${id}-${ph}`); t.value=ele; P.onSpellChange(id,ph,ele); }
+    const s=field[id]=doc.getElementById(`po-target-${id}-3`); fourth[id]=s&&s.options?[...s.options].find(o=>o.value===ele):null;
+  }
+  ok(fourth.w1&&!fourth.w1.disabled&&/Lv4 — 3\/4 used/.test(fourth.w1.textContent),`the Warlock at Elemental 4 is offered a fourth Elemental spell (${fourth.w1&&fourth.w1.textContent})`);
+  ok(!fourth.w2&&field.w2&&field.w2.disabled&&/casting limits reached/.test(field.w2.placeholder),`a hero without the title is not: his field says the limits are reached (${field.w2&&field.w2.placeholder})`);
+
   const html=doc.getElementById('orders-form')?doc.getElementById('orders-form').innerHTML:'';
   ok(!/undefined|NaN|\[object Object\]/.test(html),'no undefined / NaN in the orders form');
   console.log(`\n${pass} pass, ${fail} fail · page errors ${errs.length}`);
