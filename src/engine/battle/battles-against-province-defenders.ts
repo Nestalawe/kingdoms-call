@@ -578,6 +578,13 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
               enemyCommanderName: { heroName: defHero.name, leaderless: false },
             });
             break;
+          case "the enemy commander's Tactical is marked, with none to cut":
+            defHero._tacticalHalved = true;
+            narrate(narrative, {
+              kind: done.theLine,
+              enemyCommanderName: { heroName: defHero.name, leaderless: false },
+            });
+            break;
           case "the enemy commander's Druid is negated":
             defHero._druidNegated = true;
             narrate(narrative, {
@@ -901,6 +908,10 @@ export function combatVsNPC(turnContext, c, prov, neutralGuardHero) {
             case "the enemy commander's Tactical is cut":
               c._tacticalHalved = true;
               c._tacticalMult = done.theMultiplier;
+              narrate(narrative, { kind: done.theLine, enemyCommanderName: atkSide });
+              break;
+            case "the enemy commander's Tactical is marked, with none to cut":
+              c._tacticalHalved = true;
               narrate(narrative, { kind: done.theLine, enemyCommanderName: atkSide });
               break;
             case "the enemy commander's Druid is negated":
