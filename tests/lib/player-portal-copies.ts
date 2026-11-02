@@ -223,10 +223,10 @@ export interface ASpellTheFormOffers {
 }
 export interface TheOrderFormsSpells {
   readonly tables: TheOrderFormsSpellTables;
-  /** The spells the Cast Spell field offers the hero `c` (as his realm's report holds him) in phase `ph`, the form's
+  /** The spells the Cast Spell field offers the hero `c` (as his realm's `report` holds him) in phase `ph`, the form's
    *  fields (`po-action-<id>-<phase>`, `po-target-<id>-<phase>`) holding `fields`: buildTargetField's statements from
    *  the action spells through the rows it builds. */
-  readonly castSpellRows: (c: Obj, ph: number, fields: Record<string, string>) => ASpellTheFormOffers[];
+  readonly castSpellRows: (report: Obj, c: Obj, ph: number, fields: Record<string, string>) => ASpellTheFormOffers[];
   /** The target field spellSecondaryHtml builds for the spell, the caster `c` in phase 0 of `report`'s orders, with no
    *  target chosen: its markup. */
   readonly targetField: (report: Obj, c: Obj, spell: string) => string;
@@ -261,7 +261,7 @@ export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpel
     sourceOf('ui/player/map-symbols.ts', ['leadsArmiesP'], opts),
     sourceOf('ui/player/move-analysis.ts', ['SKILL_LABELS'], opts),
     sourceOf('ui/player/titles.ts', ['spellSecondaryHtml'], opts),
-    `function castSpellRows(c, ph, fields) {
+    `function castSpellRows(report, c, ph, fields) {
       theFields = fields;
       try {
         ${statementsBetween('ui/player/order-targets.ts', 'buildTargetField', 'PHASE_SPELLS', '_spellRows', opts)}
@@ -1432,10 +1432,11 @@ export function theWarlocksTitle(): {
   };
 }
 /** The form's casting count against the engine's: a hero of realm 0 (a Divine realm) of White Magic 1 to 5 and Psychic
- *  1 casts each of SPELLS_CAST after every list of earlier casts, in a realm with and without a Grand Cathedral, and
- *  holding the Warlock's title or not (the report's hero with the title as the report writes it, theWarlocksTitle; the
- *  state's `_minorHolders` naming him, as the turn sets it before its first phase). The form greys a spell out at its
- *  school's limit (its rows' `atLimit`); the engine blocks it ("a school's casting limit blocks a spell"). */
+ *  1 casts each of SPELLS_CAST after every list of earlier casts, in a realm with and without a Grand Cathedral (the
+ *  form handed its realm's report as the engine builds it from each world), and holding the Warlock's title or not (the
+ *  report's hero with the title as the report writes it, theWarlocksTitle; the state's `_minorHolders` naming him, as
+ *  the turn sets it before its first phase). The form greys a spell out at its school's limit (its rows' `atLimit`);
+ *  the engine blocks it ("a school's casting limit blocks a spell"). */
 export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingLimitComparison[] {
   const warlocksTitle = theWarlocksTitle().asTheReportWritesIt;
   const { g, king, hero } = aWorldToStageIn();
@@ -1445,6 +1446,11 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
   realm['gdProvinceId'] = null; // a Wonder raised before Wonders were sited: always on (gdActiveFor)
   const casters = [1, 2, 3, 4, 5].map((white) => hero({ location: king['location'], skills: { white, psychic: 1 } }));
   const world = quietly(() => savedAndReported(g));
+  // realm 0's report with its Wonder raised (the Grand Design discovered), as the engine builds it from that world
+  const discoveries = realm['discoveries'];
+  realm['discoveries'] = [{ id: 'gd' }];
+  const reportWithTheWonder = quietly(() => savedAndReported(g)).report;
+  realm['discoveries'] = discoveries;
   const G = copyOf(world.state);
   const realmInG = objects(G['players'])[0] ?? {};
   const out: CastingLimitComparison[] = [];
@@ -1461,7 +1467,9 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
         fields[`po-action-${String(c['id'])}-${String(ph)}`] = 'Cast Spell';
         fields[`po-target-${String(c['id'])}-${String(ph)}`] = s;
       });
-      const rowsOf = [false, true].map((warlock) => form.castSpellRows(asReported(warlock), earlier.length, fields));
+      const rowsOf = (cathedral: boolean, warlock: boolean) =>
+        form.castSpellRows(cathedral ? reportWithTheWonder : world.report, asReported(warlock), earlier.length, fields);
+      const rows = [false, true].map((cathedral) => [false, true].map((warlock) => rowsOf(cathedral, warlock)));
       for (const spell of SPELLS_CAST) {
         const blocks = (cathedral: boolean, warlock: boolean) => {
           realmInG['discoveries'] = cathedral ? [{ id: 'gd' }] : [];
@@ -1482,7 +1490,7 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
         };
         for (const cathedral of [false, true])
           for (const warlock of [false, true]) {
-            const row = rowsOf[warlock ? 1 : 0]?.find((r) => r.spell === spell);
+            const row = rows[cathedral ? 1 : 0]?.[warlock ? 1 : 0]?.find((r) => r.spell === spell);
             const engineWithoutTheWonder = warlock ? blocks(false, true) : engineWithNeither;
             out.push({
               ...compare({ white: skillOf(c, 'white'), earlier, spell }, row ? row.atLimit : '(not offered)', {

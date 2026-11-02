@@ -9,7 +9,9 @@
 // level (`Lv2→3 if practice succeeds`) and opens that many spells (a school at 5 projects no rise); turning or
 // re-aiming an earlier Practice, or changing an earlier spell, rebuilds the later dropdowns at once; and (R-123, P1-23s)
 // a Warlock (the minor title his report lists in minorHeld) at Elemental 4 is offered a fourth Elemental spell in
-// Winter after three, which a hero without the title is not. Level 4 (page): the dropdown as the live form builds it;
+// Winter after three, which a hero without the title is not; and (R-124, P1-23ad) in a Divine realm whose report says its
+// Grand Cathedral stands, a White 1 priest's Bless in Spring spends no slot (Summer's Holy Symbol open) and Bless is open
+// after Spring's Holy Symbol, both closed without the Wonder. Level 4 (page): the dropdown as the live form builds it;
 // the copies test compares the form's count with the engine's on staged worlds
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -102,6 +104,29 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const w3s=doc.getElementById('po-target-w3-4'), w3e=w3s&&w3s.options?[...w3s.options].find(o=>o.value===ele):null, w3p=w3s&&w3s.options?[...w3s.options].find(o=>o.value===psy):null;
   ok(w3e&&w3e.disabled&&/limit reached: 3\/3/.test(w3e.textContent),`after a Psychic practice, Elemental is not his best: Winter's fourth Elemental spell is closed (${w3e&&w3e.textContent})`);
   ok(w3p&&!w3p.disabled&&/0\/4 used/.test(w3p.textContent),`and Psychic, his best, may cast four (${w3p&&w3p.textContent})`);
+
+  // R-124: a Divine realm's Grand Cathedral frees Bless Province of its casting slot (its report's kingdom says so while
+  // it stands). Two priests at White 1 (one White spell a turn): one blesses in Spring, and Summer still offers his White
+  // spells; the other casts Holy Symbol in Spring, and Summer still offers Bless. Without the Wonder, both are closed.
+  const priest=(id)=>({id,name:'Priest '+id,player:0,locationId:11,locationName:'Ashford',hp:20,maxHp:20,armies:[],items:[],
+    skills:{white:1},effectiveSpeed:3,effectiveSeaSpeed:3,isKing:false});
+  for(const stands of [true,false]){
+    P.eval(`currentReport=${JSON.stringify({turn:6,_liveTurn:6,characters:[priest('p1'),priest('p2')],kingdom:{gold:100,alignment:'Divine',...(stands?{itsGrandCathedralStands:true}:{})},worldMeta:{provinces:[{id:11,name:'Ashford'}]}})};`);
+    P.buildOrdersForm(P.eval('currentReport.characters'),false,null,6);
+    await new Promise(r=>setTimeout(r,50));
+    const cast=(id,ph,spell)=>{ const a=doc.getElementById(`po-action-${id}-${ph}`); a.value='Cast Spell'; P.onActionChange(id,ph,0);
+      if(spell){ const t=doc.getElementById(`po-target-${id}-${ph}`); t.value=spell; P.onSpellChange(id,ph,spell); } };
+    cast('p1',0,'Bless Province'); cast('p1',1); cast('p2',0,'Holy Symbol'); cast('p2',1);
+    const offered=(id,spell)=>{ const f=doc.getElementById(`po-target-${id}-1`); const o=f&&f.options?[...f.options].find(x=>x.value===spell):null; return {open:!!(o&&!o.disabled),text:o?o.textContent:(f&&f.placeholder)}; };
+    const afterBless=offered('p1','Holy Symbol'), atTheLimit=offered('p2','Bless Province');
+    if(stands){
+      ok(afterBless.open&&/0\/1 used/.test(afterBless.text),`with the Cathedral, a Bless in Spring spends no slot: Summer's Holy Symbol is open (${afterBless.text})`);
+      ok(atTheLimit.open,`with the Cathedral, Bless is open in Summer after Spring's Holy Symbol (${atTheLimit.text})`);
+    } else {
+      ok(!afterBless.open,`without it, Spring's Bless spends the slot: Summer's Holy Symbol is closed (${afterBless.text})`);
+      ok(!atTheLimit.open,`without it, Bless is closed in Summer after Spring's Holy Symbol (${atTheLimit.text})`);
+    }
+  }
 
   const html=doc.getElementById('orders-form')?doc.getElementById('orders-form').innerHTML:'';
   ok(!/undefined|NaN|\[object Object\]/.test(html),'no undefined / NaN in the orders form');

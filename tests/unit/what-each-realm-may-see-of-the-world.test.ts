@@ -688,6 +688,43 @@ describe("what realm 0 is quoted, by its discoveries (P1-19ae: the view and the 
   });
 });
 
+describe("whether realm 0's Grand Cathedral stands (P1-23ad: the order form counts its free Bless Province, R-124)", () => {
+  /** Realm 0's view and report, a Divine realm unless said, with the discoveries given and its Wonder sited in the
+   *  province given (null: raised before Wonders were sited), that province held by the realm given; and realm 1's
+   *  report of the same world. */
+  const cathedral = (
+    ids: readonly string[],
+    { alignment = 'Divine', sitedIn = 7 as number | null, heldBy = 0 } = {},
+  ): { stands: unknown; inItsReport: unknown; inRealm1s: boolean } => {
+    const state = worldWithDiscoveries(ids, { alignment });
+    const s = state as unknown as { players: Record<string, unknown>[]; world: { provinces: { owner: number }[] } };
+    Object.assign(s.players[0] ?? {}, { gdProvinceId: sitedIn });
+    if (sitedIn != null) Object.assign(s.world.provinces[sitedIn] ?? {}, { owner: heldBy });
+    const view = playerView(state, 0, itsLines);
+    const kingdomOf = (realm: number) =>
+      buildTurnReport(realm === 0 ? view : playerView(state, realm, itsLines)).kingdom as Record<string, unknown>;
+    const kingdom = kingdomOf(0);
+    return {
+      stands: view.books.wonderBlesses.Divine,
+      inItsReport: 'itsGrandCathedralStands' in kingdom ? kingdom['itsGrandCathedralStands'] : '(none)',
+      inRealm1s: 'itsGrandCathedralStands' in kingdomOf(1),
+    };
+  };
+
+  test('while it stands, its view says so and its report carries it; never another realm’s report', () => {
+    expect(cathedral(['gd'])).toEqual({ stands: true, inItsReport: true, inRealm1s: false });
+    // a Wonder raised before Wonders were sited always stands (gdActiveFor)
+    expect(cathedral(['gd'], { sitedIn: null })).toEqual({ stands: true, inItsReport: true, inRealm1s: false });
+  });
+
+  test('its report carries nothing once it has lapsed, before it is raised, or for another alignment’s Wonder', () => {
+    const none = { stands: false, inItsReport: '(none)', inRealm1s: false };
+    expect(cathedral(['gd'], { heldBy: 1 })).toEqual(none); // the province it stands in taken
+    expect(cathedral([])).toEqual(none);
+    expect(cathedral(['gd'], { alignment: 'Good' })).toEqual(none); // the Free City Charter
+  });
+});
+
 describe("how fast realm 0's units march, by its discoveries (P1-19af: the report and the view ask the move pools' rule)", () => {
   /** Its king's column's rate in its report, and its capital's garrison unit's in the view, its units of the dead or
    *  not. */

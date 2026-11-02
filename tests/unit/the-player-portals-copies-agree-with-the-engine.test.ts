@@ -353,19 +353,24 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
     expect(warlock.asTheReportWritesIt['key']).toBe('warlock');
   });
 
-  test("the form's casting count is the engine's, the Warlock's extra cast too (R-123), but in a realm with a Grand Cathedral, where it is the engine's without the Wonder", () => {
+  test("the form's casting count is the engine's, the Warlock's extra cast (R-123) and a Grand Cathedral's free Bless Province (R-124) too", () => {
     // The form greys a spell out when its school's casts so far this turn reach the limit; the Cast Spell order blocks
     // it there. Both ask the one rule of a school's casts (R-123: the Warlock's extra cast in his best school), the form
-    // with the title the report writes in its hero's minorHeld. The form counts a Grand Cathedral's free Bless Province
-    // as a cast and greys it out at the limit (the engine never does: plan P1-11c, question 28 (a) for Toby): in those
-    // cases its answer is the engine's for the same cast in a realm without the Wonder.
+    // with the title the report writes in its hero's minorHeld; and the one rule of a spell that costs no slot (R-124: a
+    // Grand Cathedral's Bless Province is never counted nor blocked), the form with the Wonder its realm's report says
+    // stands, as the engine builds the report from each world.
     const list = castingLimit();
-    const plain = list.filter((x) => !x.cathedral);
-    expect(differences(plain)).toEqual([]);
-    expect(list.filter((x) => !sameAnswer(x.copy, x.engineWithoutTheWonder))).toEqual([]);
-    // and the engine's answer is what its two rules make of the casts: the pin holds on both sides
+    expect(differences(list)).toEqual([]);
+    // and the engine's answer is what its two rules make of the casts
     expect(list.filter((x) => !sameAnswer(x.engine, x.engineAsTheTwoRulesSay))).toEqual([]);
-    expect(list.filter((x) => x.cathedral && !x.warlock && !sameAnswer(x.copy, x.engine)).length).toBeGreaterThan(0);
+    // the values reach the free Bless: a cast the Wonder lets through, with the title and without
+    for (const warlock of [false, true])
+      expect(
+        list.filter(
+          (x) => x.cathedral && x.warlock === warlock && x.engine === false && x.engineWithoutTheWonder === true,
+        ).length,
+      ).toBeGreaterThan(0);
+    const plain = list.filter((x) => !x.cathedral);
     // the values reach the Warlock's extra cast: a cast the limit lets through for him alone
     expect(plain.filter((x) => x.warlock && x.engine === false && x.engineWithNeither === true).length).toBeGreaterThan(
       0,
