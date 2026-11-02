@@ -332,13 +332,14 @@ function thePracticeCompanionOn(report, orders, c, ph) {
   return onTheOrders(report, orders, () => practiceCompanionSkill(c, ph));
 }
 // The Move field's directions for the hero \`c\` in the phase \`ph\` (buildTargetField's statements, for a fresh Move):
-// each option as the field writes it, its value (prov:<id>) and its words.
+// each option as the field writes it, its value (prov:<id>) and its words, and whether the icy wastes bar a way north
+// or south (the note under the field).
 function theMoveFieldsDirectionsOn(theReport, orders, c, ph) {
   return onTheOrders(theReport, orders, () => {
     const action = 'Move', target = '';
     const report = currentReport || {};
-    ${statementsBetween('ui/player/order-targets.ts', 'buildTargetField', 'HEX_DIRS_BUILD', 'dirOpts', opts)}
-    return dirOpts.map(String);
+    ${statementsBetween('ui/player/order-targets.ts', 'buildTargetField', 'worldMeta_', 'dirOpts', opts)}
+    return { options: dirOpts.map(String), blockedNorth, blockedSouth };
   });
 }`;
 /** The functions the checks call: the portal's copies, and those made of a copy's statements. */
@@ -1452,12 +1453,13 @@ function theMoveFieldsOptions(options: unknown): [string, string][] {
   });
 }
 /** Which of the portal's three hex tables a case reads. */
-export type TheHexTable = 'predictedLocation' | 'the Move field' | 'lastMoveDirOf';
+export type TheHexTable = 'predictedLocation' | 'the Move field' | 'the Move field’s icy wastes' | 'lastMoveDirOf';
 /** One hex step compared, and the table the portal read it from. */
 export interface HexStepComparison extends Comparison {
   readonly table: TheHexTable;
 }
-/** The portal's three hex tables, each run as the page runs it, against the engine's step to a neighbour
+/** The portal's three hex tables, each run as the page runs it (since P1-11d6 each calls the engine's hex step, so these
+ *  are projection cases: what the portal makes of it), against the engine's step to a neighbour
  *  (neighborInDir, which the Move order takes for a compass step, and getNeighborsP, by which it reads a province next
  *  door), from every province of the staged world's map, each row's parity and the map's edges and its wrap with
  *  them: predictedLocation after a Move in each direction (off the map's top or bottom he stays), the Move field's
@@ -1489,19 +1491,28 @@ export function thePortalsHexTablesAgainstTheEngine(c: Copies): HexStepCompariso
     const nextDoor = getNeighborsP({ row: Number(from['row']), col: Number(from['col']) }, cols, rows, provinces).map(
       (p) => p['id'],
     );
+    const theFieldAsMade = c.theMoveFieldsDirectionsOn(report, {}, { id: heroId }, 0);
+    const fieldMade = isObj(theFieldAsMade) ? theFieldAsMade : {};
+    // the note under the field says the icy wastes bar a way north (NW or NE off the map) or south (SW or SE)
+    const theWastes = {
+      table: 'the Move field’s icy wastes' as const,
+      ...compare(on('every direction'), [fieldMade['blockedNorth'], fieldMade['blockedSouth']], {
+        answer: [
+          KC_HEX_DIRS.slice(0, 2).some((dir) => !step(from, dir)),
+          KC_HEX_DIRS.slice(4).some((dir) => !step(from, dir)),
+        ],
+        changed: false,
+      }),
+    };
     const theField = {
       table: 'the Move field' as const,
-      ...compare(
-        on('every direction'),
-        theMoveFieldsOptions(c.theMoveFieldsDirectionsOn(report, {}, { id: heroId }, 0)),
-        {
-          answer: KC_HEX_DIRS.flatMap((dir) => {
-            const to = step(from, dir);
-            return to && nextDoor.includes(to.id) ? [[dir, `prov:${String(to.id)}`]] : [];
-          }),
-          changed: false,
-        },
-      ),
+      ...compare(on('every direction'), theMoveFieldsOptions(fieldMade['options']), {
+        answer: KC_HEX_DIRS.flatMap((dir) => {
+          const to = step(from, dir);
+          return to && nextDoor.includes(to.id) ? [[dir, `prov:${String(to.id)}`]] : [];
+        }),
+        changed: false,
+      }),
     };
     const opensOn = KC_HEX_DIRS.flatMap((dir) => {
       const to = step(from, dir);
@@ -1517,7 +1528,7 @@ export function thePortalsHexTablesAgainstTheEngine(c: Copies): HexStepCompariso
         },
       ];
     });
-    return [...afterAMove, theField, ...opensOn];
+    return [...afterAMove, theField, theWastes, ...opensOn];
   });
 }
 

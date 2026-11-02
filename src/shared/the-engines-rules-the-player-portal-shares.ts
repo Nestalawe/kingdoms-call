@@ -1,12 +1,12 @@
 // ── The engine's rules the player portal shares (plan P1-11a4; beasts and Druid, P1-11b3; the sea lift, P1-11b4; the
 // order form's spells, P1-11c2; the mark check, P1-11c4; kin and feud, P1-11c5; the Warlock's extra cast, P1-23s; the
-// Grand Cathedral's free Bless, P1-23ad; the hex step, P1-11d5) ────
+// Grand Cathedral's free Bless, P1-23ad; the hex step, P1-11d5 and d6) ────
 // The player portal's one door to the engine (plan P1-11a, Decision 2): the rules of a hero, an army, an item, a level
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
 // and runs none of the engine's set-up. The portal calls them by the engine's names (Decision 3); each name here is
 // one the portal uses (the order form's spell tables since P1-11c3, its target field's mark check since P1-11c4, the
-// army card's kin and feud since P1-11c5), but the hex step, which the order form's three hex tables call from P1-11d6.
+// army card's kin and feud since P1-11c5, the hex step since P1-11d6: the order form's three hex tables call it).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';

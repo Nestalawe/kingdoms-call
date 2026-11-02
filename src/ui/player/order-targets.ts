@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_BASIC_EXPLORE, KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
+import { KC_BASIC_EXPLORE } from '../../content/kingdoms-call-data.ts';
 import {
   actionSpellsAHeroMayCastInASchoolEachTurn,
   alignDistP,
@@ -11,6 +11,7 @@ import {
   itemUsableBy,
   theActionSpells,
   theActionSpellsNoMasteryLevelGates,
+  theHexNextToAProvinceInADirection,
   theSpellCostsItsCasterNoCastingSlot,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
@@ -354,32 +355,8 @@ export function predictedLocation(charId, upToPhaseExclusive) {
     const dir = tgt.slice(4);
     const curProv = worldMeta.provinces.find((p) => p.id === locId);
     if (!curProv) continue;
-    const HEX_DIRS = KC_HEX_DIRS.slice();
-    const even = [
-      [-1, -1],
-      [-1, 0],
-      [0, -1],
-      [0, 1],
-      [1, -1],
-      [1, 0],
-    ];
-    const odd = [
-      [-1, 0],
-      [-1, 1],
-      [0, -1],
-      [0, 1],
-      [1, 0],
-      [1, 1],
-    ];
-    const idx = HEX_DIRS.indexOf(dir);
-    if (idx < 0) continue;
-    const [dr, dc] = (curProv.row % 2 === 0 ? even : odd)[idx];
-    const nr = curProv.row + dr;
-    const cols = worldMeta.cols,
-      rows = worldMeta.rows;
-    if (nr < 0 || nr >= rows) continue;
-    const nc = (((curProv.col + dc) % cols) + cols) % cols;
-    const nid = nr * cols + nc;
+    const nid = theHexNextToAProvinceInADirection(curProv, dir, worldMeta.cols, worldMeta.rows);
+    if (nid === null) continue;
     const nbProv = worldMeta.provinces.find((p) => p.id === nid);
     if (nbProv) locId = nid;
   }
@@ -701,23 +678,6 @@ export function buildTargetField(c, ph, saved) {
   }
 
   // Build direction options with adjacent province names where known
-  const HEX_DIRS_BUILD = KC_HEX_DIRS.slice();
-  const EVEN_OFF = [
-    [-1, -1],
-    [-1, 0],
-    [0, -1],
-    [0, 1],
-    [1, -1],
-    [1, 0],
-  ];
-  const ODD_OFF = [
-    [-1, 0],
-    [-1, 1],
-    [0, -1],
-    [0, 1],
-    [1, 0],
-    [1, 1],
-  ];
   const worldMeta_ = report.worldMeta || {};
   const wCols = worldMeta_.cols || 20;
   const wRows = worldMeta_.rows || 10;
@@ -739,23 +699,17 @@ export function buildTargetField(c, ph, saved) {
     .map(([v, l]) => {
       let provLabel = '',
         offMap = false;
+      // the place of the hex one step that way (null past the top or bottom row)
+      const nidOut = curProv_ ? theHexNextToAProvinceInADirection(curProv_, v, wCols, wRows) : null;
       if (curProv_) {
-        const idx2 = HEX_DIRS_BUILD.indexOf(v);
-        if (idx2 >= 0) {
-          const offs = curProv_.row % 2 === 0 ? EVEN_OFF : ODD_OFF;
-          const [dr, dc] = offs[idx2];
-          const nr = curProv_.row + dr;
-          const nc = (((curProv_.col + dc) % wCols) + wCols) % wCols;
-          if (nr >= 0 && nr < wRows) {
-            const nid = nr * wCols + nc;
-            const nbProv = wProvs.find((p) => p.id === nid);
-            if (nbProv && nbProv.name) provLabel = ` (${nbProv.name})`;
-            else if (!nbProv) offMap = true;
-          } else {
-            offMap = true; // beyond the north or south edge of the world
-            if (dr < 0) blockedNorth = true;
-            else blockedSouth = true;
-          }
+        if (nidOut !== null) {
+          const nbProv = wProvs.find((p) => p.id === nidOut);
+          if (nbProv && nbProv.name) provLabel = ` (${nbProv.name})`;
+          else if (!nbProv) offMap = true;
+        } else {
+          offMap = true; // beyond the north or south edge of the world
+          if (v === 'NW' || v === 'NE') blockedNorth = true;
+          else blockedSouth = true;
         }
       }
       if (offMap) return null; // legal moves only
@@ -764,12 +718,6 @@ export function buildTargetField(c, ph, saved) {
       // heads for the province the player actually chose, not "one hex east of wherever they ended
       // up". Legacy dir: orders still parse, so a previously-saved direction is shown as selected
       // too.
-      const nidOut = curProv_
-        ? (curProv_.row + (curProv_.row % 2 === 0 ? EVEN_OFF : ODD_OFF)[HEX_DIRS_BUILD.indexOf(v)][0]) * wCols +
-          ((((curProv_.col + (curProv_.row % 2 === 0 ? EVEN_OFF : ODD_OFF)[HEX_DIRS_BUILD.indexOf(v)][1]) % wCols) +
-            wCols) %
-            wCols)
-        : null;
       const valOut = nidOut != null ? `prov:${nidOut}` : `dir:${v}`;
       const selOut =
         target === valOut || target === 'dir:' + v ? 'selected' : !target && _defaultDir === v ? 'selected' : '';
