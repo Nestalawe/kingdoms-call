@@ -14,8 +14,11 @@
 // Since P1-19v it plays a hero's units' strike against guards too, which no game reaches with a totem carried: his
 // Totem of the Thunderhead adds its 25 to his Stone Giants' chance, and nothing once he is slain before the battle (his
 // host fights on, leaderless), the strike's roll fed so that the miss's line gives the chance.
+// Since R-126 (plan question 27, P1-23af) it plays battle magic's one rule against guards, as between heroes, which no
+// game reaches: their commander's Lightning Bolt past 5 strikes 5 companies, and a Telekinetic Storm either way, at sea
+// or at a commander with no Tactical, marks him, cuts nothing and says it finds no command to disrupt.
 // The battles and the spell choice keep their names and signatures, so this passes on the code before the registry
-// took battle magic (P1-19u's base) and the strikes (P1-19v's), as after.
+// took battle magic (P1-19u's base) and the strikes (P1-19v's), as after; R-126's cases fail before it.
 // Level 1 (unit): the engine's modules called directly (plan P1-14a), with the dice that decide fed in order; no turn
 // is played. Not lower: the lines sit inside combatVsNPC and combatVsChar. Not higher: a whole turn adds dice before
 // the battle, and a cast that succeeds at most 95 times in 100 (the Decisions named a scenario case on the staged

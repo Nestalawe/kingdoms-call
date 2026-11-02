@@ -39,9 +39,9 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   Bolt's units, Control Undead's unit), applies the rest and writes the line with the facts its kind records.
 - **A battle spell has something to strike** (`battleSpellUseful`, which the choice of a battle spell asks): handed the
   enemy commander's figures and the enemy's units. A spell with no effect at this stage strikes any enemy unit.
-- **The copies keep their own rules** (Parked "Battle magic's three copies disagree on two rules", plan `NEXT.md`
-  question 27): a guards' commander's Lightning Bolt counts his level past 5, and Telekinetic Storm between heroes
-  halves only a Tactical the enemy commander has, and not at sea. Each copy also writes its own lines.
+- **One rule for the three copies** ([R-126](../rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md)):
+  Lightning Bolt counts the level to 5, and Telekinetic Storm halves only a Tactical the enemy commander has, and not
+  at sea (else he is only marked). Each copy writes its own lines.
 - **The Ember Rune** is the items' registry's: `strength`'s **a hero's items change his battle spell**
   (`magic-items/a-heros-items-and-his-battle-spell.ts`, keyed `{ field: 'emberTwo' }`: his Fireball strikes the two
   strongest units). Its runner, `theStrongestUnitsAHerosItemsLetHisFireballStrike`, is asked by the two copies a hero
@@ -149,7 +149,8 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   (`tests/unit/the-battle-spells-each-copy-casts-keep-their-values.test.ts`).
 - Each unit's strike in each copy, and the totems on `primalStrikeChance`
   (`tests/unit/the-strikes-each-copy-makes-before-the-battle-keep-their-values.test.ts`); a slain hero's totem against
-  guards, which no game reaches (`tests/unit/the-battle-magic-lines-no-matrix-game-reaches-keep-their-values.test.ts`).
+  guards, and R-126's Lightning Bolt past 5 and Telekinetic Storm each way against guards, which no game reaches
+  (`tests/unit/the-battle-magic-lines-no-matrix-game-reaches-keep-their-values.test.ts`).
 - Each combat spell that harms, called directly with the dice pinned: `bolt-damage`, `fireball-burn`,
   `holy-symbol-unclean`, `spiritwrack-five` and `blast-dreamstone`; Telekinetic Storm's recoil and the Death's Finger
   Ring, which no game meets but in a forecast; the other combat spells' lines no game reaches (Control Undead,
