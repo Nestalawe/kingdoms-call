@@ -412,6 +412,7 @@ export function botEffForce(G, c, armies) {
         a,
         align,
         aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
+        G.characters,
       );
     } catch (e) {
       m = 1;
@@ -494,6 +495,7 @@ export function botBattleForce(G, c, armies, terrain, opts) {
             a,
             align,
             aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
+            G.characters,
           );
         } catch (e) {
           m = 1;
@@ -548,6 +550,7 @@ export function botDruidShortfall(G, c, armies) {
         a,
         align,
         aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
+        G.characters,
       );
     } catch (e) {
       m = 1;

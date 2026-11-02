@@ -588,7 +588,13 @@ export function armStr(
   // Apply Druid penalty
   let str = baseStr;
   if (heroChar) {
-    const penalty = druIdPenaltyMult(heroChar, army, playerAlignment, dragonTamed(turnContext, heroChar, army));
+    const penalty = druIdPenaltyMult(
+      heroChar,
+      army,
+      playerAlignment,
+      dragonTamed(turnContext, heroChar, army),
+      G.characters,
+    );
     if (penalty < 1) {
       str = Math.floor(str * penalty);
       if (_tr) _tr.push({ reason: { kind: "its commander's Druid falls short", multiplier: penalty } });

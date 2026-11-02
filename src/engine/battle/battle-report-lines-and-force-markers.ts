@@ -161,7 +161,7 @@ export function druidShortfallLine(
     if (!a || a._phantom) return;
     const req = getDruidLevel(a.type);
     if (Math.max(0, req - lvl) <= 0) return;
-    const pen = druIdPenaltyMult(ch, a, align, dragonTamed(turnContext, ch, a));
+    const pen = druIdPenaltyMult(ch, a, align, dragonTamed(turnContext, ch, a), turnContext.G.characters);
     if (!(pen < 1)) return;
     shortfalls.push({ unitType: a.type, penalty: pen });
   });

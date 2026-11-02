@@ -875,6 +875,7 @@ export function botRecruitableTypes(prov, G, cmdr) {
         { type: t, race: prov.race || 'Human' },
         align,
         aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: t }),
+        G.characters,
       );
     } catch (e) {
       m = 1;
