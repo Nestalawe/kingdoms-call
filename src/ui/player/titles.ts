@@ -8,7 +8,7 @@ import {
   theMarkOfThisSpellMustStandInTheCastersProvince,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP } from './items-and-heroes.ts';
-import { SPELL_HINTS } from './order-chances.ts';
+import { SPELL_HINTS } from './the-hints-the-order-form-shows-below-each-spell.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
 import { predictedLocation, provDirectionLabel } from './order-targets.ts';
 import { leadsArmiesP, reportColour } from './map-symbols.ts';

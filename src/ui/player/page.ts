@@ -18,6 +18,9 @@ import './join-and-chronicle.ts';
 import './report.ts';
 import './titles.ts';
 import './order-chances.ts';
+// The spells' hints (SPELL_HINTS, moved out of order-chances.ts by plan P1-11d13), which titles.ts reads: listed here so
+// that the tests that read the page's files still read them as the page's.
+import './the-hints-the-order-form-shows-below-each-spell.ts';
 import './move-analysis.ts';
 import './orders-form.ts';
 import './pre-orders.ts';

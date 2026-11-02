@@ -135,9 +135,12 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
 
 - The two registry tests, each extended to the spells' registry (each row's name a spell, its `fn` that spell's, and
   each of the order's checks holding exactly the spells whose row sets its flag).
-- Each row's numbers in the "Battle magic:" part of its blurb and the "Battle:" part of its rulebook row, and its
-  combat's in the "Combat:" parts, the known gaps listed with where and why
-  (`tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts`); the two items' numbers in their
+- Each row's numbers in the "Battle magic:" part of its blurb and the "Battle:" part of its rulebook row and of the
+  order form's hint for the spell, and its combat's in the "Combat:" parts, the known gaps listed with where and why;
+  each hint's figures at a level are its row's sums
+  (`tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts`). The hints
+  (`src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts`) read the figures they write as the row holds them
+  (a percentage, a count of rounds, a multiplier) from the row; the two items' numbers in their
   texts (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`).
 - No spell's name or `fn` in a function the registry has taken
   (`tests/static/the-resolvers-the-spell-registry-has-taken-name-no-spell.test.ts`), and, outside the registry, the

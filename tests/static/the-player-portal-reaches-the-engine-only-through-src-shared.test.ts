@@ -27,7 +27,7 @@
 // widget's words, the Move note's bound beasts, the Blood Offering's hint, the ledger's fallback) read the row's, while
 // `ONCE_PER_TURN_ACTIONS` names Call to Arms by its row (P1-11d8); the mastery orders' table (`L79_ORDERS`) imports
 // the content's rows, builds each order's name, skill and level from its row, writes none out, and holds the form's
-// own fields of every row once (P1-11d10); and
+// own fields of every row once (P1-11d10), each hint opening with its row's skill and level (P1-11d13); and
 // the player page's modules hold no engine file outside the folder, and no views file.
 // Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
 // 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
@@ -481,6 +481,19 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     expect(fields).toHaveLength(1);
     const keys = [...(fields[0] ?? '').matchAll(/\[\s*'([a-z_]+)',\s*\{/g)].map((m) => m[1]);
     expect([...keys].sort()).toEqual(rows.map((row) => row.key).sort());
+  });
+
+  test("each mastery order's hint opens with its row's skill and level", () => {
+    // (P1-11d13) the form's own hint of each order opens with the skill and level it needs, written out ("Spy 7: …"):
+    // its row's. Each hint is the first string after its row's key, in the table's order, that opens so.
+    const strings = stringsWrittenOutIn(THE_MASTERY_ORDERS_TABLE);
+    const rows = Object.values(THE_MASTERY_ORDERS);
+    const opening = /^[A-Z][a-z]+ \d\b/;
+    const hintOf = (key: string) => strings.slice(strings.indexOf(key) + 1).find((t) => opening.test(t)) ?? '';
+    const capital = (skill: string) => skill.charAt(0).toUpperCase() + skill.slice(1);
+    expect(rows.map((row) => `${row.key}: ${opening.exec(hintOf(row.key))?.[0] ?? 'none'}`)).toEqual(
+      rows.map((row) => `${row.key}: ${capital(row.skill)} ${String(row.level)}`),
+    );
   });
 
   test('the player page loads no engine file outside the folder, and no views file', () => {
