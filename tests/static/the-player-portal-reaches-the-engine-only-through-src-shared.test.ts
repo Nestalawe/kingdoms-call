@@ -24,16 +24,19 @@
 // of their rows by name, `actionsFor` asks its two checks of who may give one, and `KING_ONLY_ACTIONS` is retired; the target
 // widget (`buildTargetField`) asks the same two checks, and the places that state a number of an alignment order (the
 // widget's words, the Move note's bound beasts, the Blood Offering's hint, the ledger's fallback) read the row's, while
-// `ONCE_PER_TURN_ACTIONS` names Call to Arms by its row (P1-11d8); and
+// `ONCE_PER_TURN_ACTIONS` names Call to Arms by its row (P1-11d8); the mastery orders' table (`L79_ORDERS`) imports
+// the content's rows, builds each order's name, skill and level from its row, writes none out, and holds the form's
+// own fields of every row once (P1-11d10); and
 // the player page's modules hold no engine file outside the folder, and no views file.
 // Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
 // 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
-// plants; P1-11d6's, P1-11d7's and P1-11d8's in their PRs)
+// plants; P1-11d6's, P1-11d7's, P1-11d8's and P1-11d10's in their PRs)
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_MASTERY_ORDERS } from '../../src/content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { filesUnder, ROOT } from '../../tools/build.ts';
 import { pageModules } from '../../tools/pages.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
@@ -147,6 +150,11 @@ const THE_ROWS_NUMBERS_WRITTEN_OUT = [
   '(+2 quality tiers each',
   'by +2 tiers',
 ];
+/** The mastery orders' table (P1-11d10): the content's rows, which the form's table (L79_ORDERS) is built from, and the
+ *  form's own fields of each order (its target and hint), by the row's key. */
+const THE_MASTERY_ORDERS_ROWS = 'content/mastery-orders-their-keys-names-skills-and-levels.ts';
+const THE_MASTERY_ORDERS_TABLE = 'ui/player/l79-orders.ts';
+const THE_FORMS_FIELDS_OF_EACH_MASTERY_ORDER = 'THE_FORMS_FIELDS_OF_EACH_MASTERY_ORDER';
 const filesIn = (folder: string) => filesUnder(SRC).filter((f) => f.startsWith(folder));
 
 /** Each import of `file` (relative to src/): what it names, and where that is relative to src/ (null: not a file of
@@ -221,6 +229,43 @@ function textOfFunction(file: string, fn: string): string {
   };
   visit(tree);
   return found.join('\n');
+}
+
+/** Every property of `file` named one of `names` (at any depth) whose value is written out: a string, a number, or a
+ *  number with a sign; each as `name: value`. */
+function propertiesWrittenOutIn(file: string, names: readonly string[]): string[] {
+  const text = fs.readFileSync(path.join(SRC, file), 'utf8');
+  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const found: string[] = [];
+  const isWrittenOut = (n: ts.Expression) =>
+    ts.isStringLiteralLike(n) ||
+    ts.isNumericLiteral(n) ||
+    (ts.isPrefixUnaryExpression(n) && ts.isNumericLiteral(n.operand));
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isPropertyAssignment(node) &&
+      ts.isIdentifier(node.name) &&
+      names.includes(node.name.text) &&
+      isWrittenOut(node.initializer)
+    )
+      found.push(`${node.name.text}: ${node.initializer.getText(tree)}`);
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return found;
+}
+
+/** Every string `file` writes out (at any depth), as its value. */
+function stringsWrittenOutIn(file: string): string[] {
+  const text = fs.readFileSync(path.join(SRC, file), 'utf8');
+  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const found: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isStringLiteralLike(node)) found.push(node.text);
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return found;
 }
 
 /** Every array of `file` that is a table of steps: six elements, each an array of two steps of 0 or 1 either way (`[-1, 0]`, `[1, 1]`). */
@@ -411,6 +456,27 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     const once = initializersDeclaredIn('ui/player/pre-orders.ts', 'ONCE_PER_TURN_ACTIONS').join('\n');
     expect(once).toContain(`${THE_NAME_OF_AN_ALIGNMENT_ORDER}('call-to-arms')`);
     expect(once).not.toMatch(/['"]Call to Arms['"]/);
+  });
+
+  test("the mastery orders' table: each order's name, skill and level are its content row's, and every row is in it once", () => {
+    // (P1-11d10) L79_ORDERS wrote each mastery's name, skill and level; it is built from the content's rows now
+    // (THE_MASTERY_ORDERS, which the turn's MASTERY_ORDER_KEYS and MASTERY_ORDER_LABEL read too): its file imports the
+    // rows, writes no skill or level out and no row's name, and holds the form's own fields of each row once, by its key.
+    const table = THE_MASTERY_ORDERS_TABLE;
+    expect(importsOf(table).map(({ resolved }) => resolved)).toContain(THE_MASTERY_ORDERS_ROWS);
+    const declared = (name: string) => files.flatMap((file) => initializersDeclaredIn(file, name));
+    const [theTable, ...more] = initializersDeclaredIn(table, 'L79_ORDERS');
+    expect(more).toEqual([]);
+    expect(declared('L79_ORDERS')).toHaveLength(1);
+    expect(theTable).toContain('THE_MASTERY_ORDERS[');
+    expect(propertiesWrittenOutIn(table, ['skill', 'lvl', 'level', 'name'])).toEqual([]);
+    const rows = Object.values(THE_MASTERY_ORDERS);
+    const written = new Set(stringsWrittenOutIn(table));
+    expect(rows.filter((row) => written.has(row.name)).map((row) => row.name)).toEqual([]);
+    const fields = declared(THE_FORMS_FIELDS_OF_EACH_MASTERY_ORDER);
+    expect(fields).toHaveLength(1);
+    const keys = [...(fields[0] ?? '').matchAll(/\[\s*'([a-z_]+)',\s*\{/g)].map((m) => m[1]);
+    expect([...keys].sort()).toEqual(rows.map((row) => row.key).sort());
   });
 
   test('the player page loads no engine file outside the folder, and no views file', () => {

@@ -172,6 +172,17 @@ throws when one is missed: the order is simply refused, hidden or priced wrong. 
 occurrences (grep `harvest_field` and `Harvest the Field`) and mirror each. Removing one touches the same places;
 keep its `case` as a plain refusal, so an order a save still holds is answered rather than silently dropped.
 
+## A mastery order is one row, and its resolver's level
+
+Each of the 20 mastery orders (a hero's level 7 or 9 of a skill) is one row of `THE_MASTERY_ORDERS`
+(`src/content/mastery-orders-their-keys-names-skills-and-levels.ts`, P1-11d10): its key, its name, its skill and its
+level. The turn's `MASTERY_ORDER_KEYS` (the once-a-turn stamp, the Charmed-hero gate) and `MASTERY_ORDER_LABEL` are
+built from the rows, and so is the order form's `L79_ORDERS` (each order's name, skill and level; its target and hint
+are the form's own, by the row's key). Each resolver still writes its own level (`skillLevel(c, …) < 7`), and each
+hint its skill and level ("Spy 7: …"): change a level in all three. The parity test
+(`tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts`) holds the form's level to the resolver's, a hero
+one level below and one at it; the door's static test checks the form's table reads the rows.
+
 ## A fate line names two companies
 
 Since 2026-10-12 a casualty line names the enemy company too: "— Aldric's Levies (Shieldwall Levies, Average),

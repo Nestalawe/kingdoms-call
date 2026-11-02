@@ -178,8 +178,9 @@ const COPIES: Record<string, string[]> = {
   // the order a page's field holds (P1-11d1: the fields stood in below), the Move field's compass words, and the
   // direction a fresh Move opens on (the hex table of each)
   'ui/player/pre-orders.ts': ['getOrderTarget'],
-  // the mastery orders' table (P1-11d3: the order list's gates read it)
-  'ui/player/l79-orders.ts': ['L79_ORDERS'],
+  // the mastery orders' table (P1-11d3: the order list's gates read it), each order's name, skill and level its row's
+  // (P1-11d10: the content's rows run beside the copies) and its target and hint the form's own
+  'ui/player/l79-orders.ts': ['THE_FORMS_FIELDS_OF_EACH_MASTERY_ORDER', 'L79_ORDERS'],
   // and the order list a hero's form offers (P1-11d3), with the tables and checks it reads
   'ui/player/items-and-heroes.ts': [
     'RUMOUR_COST_BY_POWER_P',
@@ -375,14 +376,16 @@ const COPY_FUNCTIONS = [
 export type CopyName = (typeof COPY_FUNCTIONS)[number];
 export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 
-/** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file and kc-safe
- *  (kcHtml: the army card's notes) beside them, and the names src/shared/ hands the portal (effMagicLvl calls itemSlot
- *  and itemUsableBy). The turn report's flying carry runs beside them too: it reads the data file and
- *  getFlyCapability, which the views import from the folder (the portal no longer does, since P1-11b4). */
+/** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file, the mastery
+ *  orders' rows (L79_ORDERS reads them) and kc-safe (kcHtml: the army card's notes) beside them, and the names
+ *  src/shared/ hands the portal (effMagicLvl calls itemSlot and itemUsableBy). The turn report's flying carry runs
+ *  beside them too: it reads the data file and getFlyCapability, which the views import from the folder (the portal no
+ *  longer does, since P1-11b4). */
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   const code = [
     'let currentReport = null;',
     scriptOf('content/kingdoms-call-data.ts', opts),
+    scriptOf('content/mastery-orders-their-keys-names-skills-and-levels.ts', opts),
     scriptOf('ui/shared/kc-safe.ts', opts),
     ...Object.entries(COPIES).map(([file, names]) => sourceOf(file, names, opts)),
     statementCopies(opts),
