@@ -90,6 +90,18 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   }
   ok(fourth.w1&&!fourth.w1.disabled&&/Lv4 — 3\/4 used/.test(fourth.w1.textContent),`the Warlock at Elemental 4 is offered a fourth Elemental spell (${fourth.w1&&fourth.w1.textContent})`);
   ok(!fourth.w2&&field.w2&&field.w2.disabled&&/casting limits reached/.test(field.w2.placeholder),`a hero without the title is not: his field says the limits are reached (${field.w2&&field.w2.placeholder})`);
+  // His best school is read from the levels he may have trained by then: a Warlock at Elemental 4 and Psychic 4 who
+  // practises Psychic in Spring counts on Psychic 5 as his best, so Winter's fourth Elemental spell is closed.
+  P.eval(`currentReport=${JSON.stringify({turn:6,_liveTurn:6,characters:[{...mage('w3',[warlockTitle]),skills:{elemental:4,psychic:4}}],kingdom:{gold:100,alignment:'Good'},worldMeta:{provinces:[{id:11,name:'Ashford'}]}})};`);
+  P.buildOrdersForm(P.eval('currentReport.characters'),false,null,6);
+  await new Promise(r=>setTimeout(r,50));
+  const a3=(ph,v)=>{ const a=doc.getElementById(`po-action-w3-${ph}`); a.value=v; P.onActionChange('w3',ph,0); };
+  a3(0,'Practice Skill'); { const t=doc.getElementById('po-target-w3-0'); t.value='psychic'; P.rebuildTargetWrap('w3',0); }
+  for(let ph=1;ph<5;ph++) a3(ph,'Cast Spell');
+  for(let ph=1;ph<4;ph++){ const t=doc.getElementById(`po-target-w3-${ph}`); t.value=ele; P.onSpellChange('w3',ph,ele); }
+  const w3s=doc.getElementById('po-target-w3-4'), w3e=w3s&&w3s.options?[...w3s.options].find(o=>o.value===ele):null, w3p=w3s&&w3s.options?[...w3s.options].find(o=>o.value===psy):null;
+  ok(w3e&&w3e.disabled&&/limit reached: 3\/3/.test(w3e.textContent),`after a Psychic practice, Elemental is not his best: Winter's fourth Elemental spell is closed (${w3e&&w3e.textContent})`);
+  ok(w3p&&!w3p.disabled&&/0\/4 used/.test(w3p.textContent),`and Psychic, his best, may cast four (${w3p&&w3p.textContent})`);
 
   const html=doc.getElementById('orders-form')?doc.getElementById('orders-form').innerHTML:'';
   ok(!/undefined|NaN|\[object Object\]/.test(html),'no undefined / NaN in the orders form');

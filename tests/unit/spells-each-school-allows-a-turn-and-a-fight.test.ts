@@ -55,6 +55,7 @@ test('the Warlock casts one more spell of his best school a turn (R-123), and on
   expect(theHighestLevelAHeroHasTrainedInAMagicSchool({ skills: { melee: 7, sage: 6 } })).toBe(0);
   expect(theHighestLevelAHeroHasTrainedInAMagicSchool({ skills: { white: Number.NaN, elemental: 5 } })).toBe(5);
   expect(actionSpellsAHeroMayCastInASchoolEachTurn({ skills: { white: 12, psychic: 9 } }, 'psychic', 5, true)).toBe(4);
+  expect(actionSpellsAHeroMayCastInASchoolEachTurn({ skills: { white: -2 } }, 'white', 1, true)).toBe(2);
 });
 
 test('combat spells a fight: 1 up to level 1, 2 from level 2', () => {
