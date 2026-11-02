@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-02, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 32, built in PR #(this PR)
+- **Source:** Plan question 32, built in PR #366
 - **Enforced by:** [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts)
 
 A Curse spell halves every skill of the hero it strikes for the rest of the turn. In a battle that turn, the Druid

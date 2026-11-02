@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 13, built in PR #(this PR)
+- **Source:** Plan question 13, built in PR #366
 - **Enforced by:** [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts), [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The Crown of Command raises every skill of its wearer's realm's heroes in his province by 1, and every rule counts
@@ -17,7 +17,7 @@ battle his beasts fought as if it weren't there, and the order form offered fewe
 1: "the Crown counts everywhere: the battle's Druid check counts it, and the order form offers spells at the level
 with it".
 
-**Note:** The battle's half is built (PR #(this PR)); the order form's half (the spells it offers) is plan step
+**Note:** The battle's half is built (PR #366); the order form's half (the spells it offers) is plan step
 P1-23r.
 
 In Toby's words: "(1) but if the hero loses the skill advantage during the actual running of the turn, they lose any
