@@ -30,8 +30,9 @@ rule there, once. Rules are still restated:
   folder's, made by calls since P1-11c3, and its target field's "the caster's province only" asks the engine's mark
   check since P1-11c4: the parity test checks the form's eight declarations and pins each target list; the army card's
   kin and feud ask the battle's own rule since P1-11c5, `theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt`, after a Druid
-  shortfall taken off in the battle's order since R-122: the parity test holds them in agreement), and
-  the other forecasts and order checks
+  shortfall taken off in the battle's order since R-122: the parity test holds them in agreement; since P1-11d1 the
+  march's forecasts, `predictedLocation` and the hex tables of the Move field and `lastMoveDirOf`, each difference
+  from the turn pinned), and the other forecasts and order checks
   whose engine rule is written inline (P1-11b, P1-19);
 - at order time and again at resolution time in the engine;
 - in the balance matrix's scripted realm: what the player portal sends, `doSubmitOrders`

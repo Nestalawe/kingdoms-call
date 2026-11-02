@@ -10,8 +10,10 @@
 // portal's level of the hero's Druid; since R-120 they agree beside a Crown; since R-125 the Explore forecast, the
 // march-in share and the sea note agree). Since P1-11c1, the order form's Cast Spell tables against
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
-// card's kin and feud against the battle's armStr. And each engine function
-// leaves its input as it was.
+// card's kin and feud against the battle's armStr. Since P1-11d1, the march: the portal's three hex tables against the
+// engine's step, where the form says a hero will stand after his Moves and Forced Marches against where the turn leaves
+// him, and the share marching in maps against the turn's (each known difference pinned: question 44). And each engine
+// function leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -67,9 +69,18 @@
 // of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
 // battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
-// at a hero offers on the staged report. Level 1: pure functions on values; no page is needed, and a static test
-// can't compare what two functions answer. Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3,
-// P1-11b4, P1-11c1, P1-11c4)
+// at a hero offers on the staged report. P1-11d1 (plan P1-11d, before the hex step is shared): the portal's three hex
+// tables (`predictedLocation`, the Move field's `buildTargetField` statements, `lastMoveDirOf`, each run as the page runs
+// it on the orders staged in its fields) step where `neighborInDir` and `getNeighborsP` do, from every province of a
+// staged map; on a staged world with no guards (`marchingWorld`), where `predictedLocation` says a hero will stand is
+// where `processOrder` leaves him for a compass step, a province next door, a Forced March next door and his own
+// province, and pinned where it is not (question 44): a column with ships over land, with too little lift for the sea,
+// at a neutral realm's border, past its pace (each refused by the turn), a far province or a far Forced March (one step
+// in the turn), a Forced March by direction (not read by the form); and the share `exploreMoveGainBefore` counts a march
+// as mapping is the turn's at March 6 and 0 leading companies and for a sea sailed into, and pinned for a Travelworn
+// Drape (10 for 30) and Naval 6's charting of the coast (0 for 5). Level 1: pure functions on values; no page is
+// needed, and a static test can't compare what two functions answer. Planted faults: in the PRs (P1-11a2, P1-11a4,
+// P1-11b1, P1-11b2, P1-11b3, P1-11b4, P1-11c1, P1-11c4, P1-11d1)
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   armyCardKinAgainstTheBattle,
@@ -97,6 +108,13 @@ import {
   theFormsTargetsAgainstTheMarkCheck,
   theGamePlayed,
   theHeroesEachSpellAimedAtAHeroOffers,
+  THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT,
+  THE_MARCHES_IN_THE_FORECAST_GETS_WRONG,
+  THE_MARCHES_THE_FORECAST_GETS_RIGHT,
+  THE_MARCHES_THE_FORECAST_GETS_WRONG,
+  theMarchForecastAgainstTheTurn,
+  theMarchInForecastAgainstTheTurn,
+  thePortalsHexTablesAgainstTheEngine,
   theOrderFormsSpells,
   theWarlocksTitle,
   worldSamples,
@@ -138,6 +156,9 @@ const marchIn = lazily(() => marchInGainAgainstTheMoveOrder(copies));
 const theForm = lazily(() => theOrderFormsSpells());
 const castingLimit = lazily(() => castingLimitAgainstTheOrder(theForm()));
 const kin = lazily(() => armyCardKinAgainstTheBattle(copies, kinWorld()));
+const hexSteps = lazily(() => thePortalsHexTablesAgainstTheEngine(copies));
+const marches = lazily(() => theMarchForecastAgainstTheTurn(copies));
+const marchesIn = lazily(() => theMarchInForecastAgainstTheTurn(copies));
 const casesOf = (p: (typeof PROJECTIONS)[number]) => once(`${p.engine} projection`, () => p.cases(values));
 let worldValues: WorldSamples;
 // The values, in one hook with a whole game's limit (the game, then the samples with the staged world, then the staged
@@ -426,6 +447,95 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
       }),
     );
     expect(kinds.size).toBe(10);
+  });
+});
+
+describe('the march: where the order form says a hero will stand, and what marching in maps (P1-11d1)', () => {
+  test("the portal's three hex tables step where the engine's does, from every province of the map", () => {
+    // predictedLocation (where every later phase's form says he stands), the Move field (its six directions, each the
+    // province one step that way, none off the map) and lastMoveDirOf (the direction a fresh Move opens on) each keep a
+    // table of the six steps by the parity of a row; the turn steps by neighborInDir, and reads a province next door by
+    // getNeighborsP. From every province of the staged map (8 by 7): its rows of each parity, the top and bottom rows
+    // (a step off the map: the turn's "icy wastes", where he stays) and both ends of a row (the map wraps east to west).
+    const list = hexSteps();
+    expect(differences(list)).toEqual([]);
+    const of = (table: string) => list.filter((x) => x.table === table);
+    expect([of('predictedLocation').length, of('the Move field').length, of('lastMoveDirOf').length]).toEqual([
+      336, 56, 304,
+    ]);
+    const on = (x: (typeof list)[number]) => x.on as [number, number, number, string];
+    const stays = of('predictedLocation').filter((x) => x.engine === on(x)[0]);
+    expect(new Set(stays.map((x) => on(x)[3]))).toEqual(new Set(['NW', 'NE', 'SW', 'SE']));
+    const wraps = of('predictedLocation').filter(
+      (x) => typeof x.engine === 'number' && Math.abs((x.engine % 8) - on(x)[2]) > 1,
+    );
+    expect(new Set(wraps.map((x) => on(x)[3]))).toEqual(new Set(['NW', 'NE', 'W', 'E', 'SW', 'SE']));
+    for (const parity of [0, 1])
+      expect(of('lastMoveDirOf').filter((x) => on(x)[1] % 2 === parity).length).toBeGreaterThan(0);
+  });
+
+  test('where the order form says a hero will stand after a march is where the turn leaves him: a compass step, a province next door, a Forced March next door, his own province', () => {
+    // On a staged world (no guards, no foes on the way): a Move by direction, by a province next door (prov:<id>, as the
+    // form writes it), a Forced March to a province next door (its bare number, as the form writes it) and a Move into
+    // the province he stands in (the form's "Stay in", the turn's "already there").
+    const list = marches().filter((x) => (THE_MARCHES_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
+    expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_THE_FORECAST_GETS_RIGHT]);
+    expect(differences(list)).toEqual([]);
+    expect(list.filter((x) => x.copy !== x.named)).toEqual([]);
+  });
+
+  test('the marches the forecast gets wrong are pinned: a march the turn refuses, a far province, a Forced March by direction (question 44)', () => {
+    // The form follows the orders, not the turn's checks: a column with ships aboard ordered over land, one with too
+    // little lift ordered to sea, one ordered over a neutral realm's border and one ordered past its pace (Men-at-Arms
+    // march 2 a turn: the third Move) stay where the turn stopped them, but every later phase's form puts them where
+    // the order named. A far province (prov:<id> or a Forced March's bare number: since #364 the turn reads both alike)
+    // is one step toward it in the turn, and there in the form. A Forced March by direction (dir:, a bot's) the form
+    // doesn't read: he stays, where the turn takes the step.
+    const list = marches();
+    const kind = (k: string) => {
+      const x = list.find((m) => m.kind === k);
+      if (!x) throw new Error(`no staged march of the kind ${k}`);
+      return x;
+    };
+    expect(
+      list.map((x) => x.kind).filter((k) => !(THE_MARCHES_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
+    ).toEqual([...THE_MARCHES_THE_FORECAST_GETS_WRONG]);
+    for (const refused of ['ships over land', 'too little lift to put to sea', "a neutral realm's border"]) {
+      const x = kind(refused);
+      expect([refused, x.copy, x.engine]).toEqual([refused, x.named, x.from]);
+    }
+    const pace = kind('past his pace');
+    const secondStep = Number(String((pace.on as [string, { target: string }[]])[1][1]?.target).slice(5));
+    expect([pace.copy, pace.engine]).toEqual([pace.named, secondStep]);
+    for (const far of ['a far province', 'a far Forced March']) {
+      const x = kind(far);
+      expect([far, x.copy, x.nextDoorToBoth.includes(x.engine)]).toEqual([far, x.named, true]);
+    }
+    const byDirection = kind("a Forced March's compass step");
+    expect([byDirection.copy, byDirection.engine]).toEqual([byDirection.from, byDirection.named]);
+  });
+
+  test('the share of a province the Explore forecast counts a march as mapping is what the turn maps: March 6 leading companies, March 0, a sea sailed into', () => {
+    // The turn adds 2% for each company led at March 6 or more (its mastery); the forecast does too.
+    const list = marchesIn().filter((x) =>
+      (THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind),
+    );
+    expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT]);
+    expect(differences(list)).toEqual([]);
+    expect(list.map((x) => x.engine)).toEqual([14, 10, 10]);
+  });
+
+  test("the marches in the forecast gets wrong are pinned: a Traveller's Cloak of another name, Naval 6's charting of the coast (question 44)", () => {
+    // A Travelworn Drape is a Traveller's Cloak by another name: the turn counts its 20% (it reads the item's
+    // exploreMove), the forecast knows the cloak by its name. Sailing into a sea at Naval 6 with a fleet charts 5% of
+    // each coast beside it in the turn; the forecast counts only the province entered.
+    const list = marchesIn().filter((x) =>
+      (THE_MARCHES_IN_THE_FORECAST_GETS_WRONG as readonly string[]).includes(x.kind),
+    );
+    expect(list.map((x) => [x.kind, x.copy, x.engine])).toEqual([
+      ['a Travelworn Drape worn', 10, 30],
+      ['the coast beside the sea he sails into, charted at Naval 6', 0, 5],
+    ]);
   });
 });
 
