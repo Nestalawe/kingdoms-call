@@ -247,7 +247,8 @@ are erased, so no code runs in its order.
 
 - **A constant another file reads as it loads lives in a file of its own that imports nothing** (P1-09b:
   `engine/items/hoard-categories.ts`, `engine/bots/specialist-skills.ts`, `engine/bots/schools.ts`,
-  `ui/player/l79-orders.ts`), re-exported from its old file. A file that imports nothing always runs first.
+  `ui/player/l79-orders.ts`, which since P1-11d10 imports only a content file), re-exported from its old file. A file
+  that imports nothing, or only `src/content/`, always runs first.
 - **What files do as they load keeps its order through the page's entry** (`ui/<page>/page.ts` imports every file in
   the order the classic scripts ran). The engine's bundle (`tests/lib/engine.ts`) takes the same order. Don't reorder
   `page.ts`. The item tables no longer hang on it: they are built in `engine/items/tiers-and-hoards.ts` and then

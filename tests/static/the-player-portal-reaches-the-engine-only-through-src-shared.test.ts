@@ -24,11 +24,13 @@
 // of their rows by name, `actionsFor` asks its two checks of who may give one, and `KING_ONLY_ACTIONS` is retired; the target
 // widget (`buildTargetField`) asks the same two checks, and the places that state a number of an alignment order (the
 // widget's words, the Move note's bound beasts, the Blood Offering's hint, the ledger's fallback) read the row's, while
-// `ONCE_PER_TURN_ACTIONS` names Call to Arms by its row (P1-11d8); and
+// `ONCE_PER_TURN_ACTIONS` names Call to Arms by its row (P1-11d8); the mastery orders' table (`L79_ORDERS`) imports
+// the content's rows, builds each order's name, skill and level from its row, writes none out, and holds the form's
+// own fields of every row once (P1-11d10); and
 // the player page's modules hold no engine file outside the folder, and no views file.
 // Level 0 (static): it reads the sources and runs nothing. Red on its base by design (the copies were there; Decision
 // 7, agreed by Theo), and on 13 planted faults (in the PR, P1-11a4; P1-11b3's and P1-11b4's retired names on their own
-// plants; P1-11d6's, P1-11d7's and P1-11d8's in their PRs)
+// plants; P1-11d6's, P1-11d7's, P1-11d8's and P1-11d10's in their PRs)
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
