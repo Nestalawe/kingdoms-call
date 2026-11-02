@@ -3,6 +3,10 @@
 //   and the province a hero stands in.
 // - neighborInDir (property, fast-check): on any map, the six compass directions name exactly a province's neighbours,
 //   in getNeighborsP's order, the columns wrapping round and nothing past the top or bottom row.
+// - The hex step both call (plan P1-11d5: src/engine/rules-on-plain-values/; src/shared/ hands the player portal its
+//   step in a direction): on a staged map 5 wide and 4 high, each direction's neighbour of a hex on an even row and on
+//   an odd row, at the top and bottom rows and across the wrap, by its place in the map's list; and what the two
+//   lookups make of a hole there.
 // - Pre-battle damage (property): whatever a unit lost before the melee, a strength of at least 1 never rises and
 //   never falls below 1; from this battle's damage alone, never below a quarter of it (PREBATTLE_STR_FLOOR).
 // - Recruit limits (property): a province raises a unit type until its limit for the turn (1, or 2 for garrisons,
@@ -13,13 +17,20 @@
 // Helpers lifted in P1-08b, called directly through `lib/engine.ts`: `provName` (the balance matrix never runs it)
 // gives a province's name by id, `unknown` when it has none; `provOf` the province a hero stands in. As properties
 // (fast-check): on any map the six directions of `neighborInDir` name exactly a province's neighbours, in
-// `getNeighborsP`'s order; pre-battle damage never raises a strength of at least 1 and never takes it below 1, nor,
-// from a battle's damage alone, below a quarter (`applyPrebattleDamage`); a province raises a unit type up to its limit
-// for the turn (1, or 2), then no more, touching no other type or province (`getRecruitLimit`, `canRecruit`,
-// `recordRecruit`). Each check fails on a planted fault. Level 1: each function is called on a context made in the test
+// `getNeighborsP`'s order; the hex step both call (P1-11d5) names each direction's neighbour on a staged map, on even
+// and odd rows, at the edges and across the wrap; pre-battle damage never raises a strength of at least 1 and never
+// takes it below 1, nor, from a battle's damage alone, below a quarter (`applyPrebattleDamage`); a province raises a
+// unit type up to its limit for the turn (1, or 2), then no more, touching no other type or province
+// (`getRecruitLimit`, `canRecruit`, `recordRecruit`). Each check fails on a planted fault. Level 1: each function is
+// called on a context made in the test
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
+import {
+  theProvinceNextToAProvinceInADirection,
+  theProvincesNextToAProvince,
+} from '../../src/engine/rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
+import { theHexNextToAProvinceInADirection } from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
@@ -60,7 +71,7 @@ describe('neighborInDir', () => {
     rows: number,
     ps: Prov[],
   ) => Prov[];
-  const DIRS = vm.runInContext('HEX_DIRS.slice()', engine) as string[];
+  const DIRS = vm.runInContext('KC_HEX_DIRS.slice()', engine) as string[];
   const map = fc
     .record({ cols: fc.integer({ min: 2, max: 14 }), rows: fc.integer({ min: 1, max: 10 }) })
     .chain(({ cols, rows }) => fc.tuple(fc.constant({ cols, rows }), fc.integer({ min: 0, max: cols * rows - 1 })));
@@ -96,6 +107,48 @@ describe('neighborInDir', () => {
       );
     },
   );
+});
+
+describe('the hex step (src/engine/rules-on-plain-values/, P1-11d5)', () => {
+  // A map 5 wide and 4 high: a hex's place in the map's list is its row × 5 + its column.
+  //   row 0:   0   1   2   3   4
+  //   row 1:     5   6   7   8   9      (an odd row: half a hex east)
+  //   row 2:  10  11  12  13  14
+  //   row 3:    15  16  17  18  19
+  const [COLS, ROWS] = [5, 4];
+  const at = (id: number) => ({ row: Math.floor(id / COLS), col: id % COLS });
+  const DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
+  const theSixFrom = (id: number) =>
+    Object.fromEntries(DIRS.map((dir) => [dir, theHexNextToAProvinceInADirection(at(id), dir, COLS, ROWS)]));
+
+  test("each direction's neighbour of a hex on an odd row, and on an even row across the wrap", () => {
+    expect(theSixFrom(7)).toEqual({ NW: 2, NE: 3, W: 6, E: 8, SW: 12, SE: 13 });
+    expect(theSixFrom(10)).toEqual({ NW: 9, NE: 5, W: 14, E: 11, SW: 19, SE: 15 });
+  });
+
+  test('none past the top or bottom row; the columns wrap round', () => {
+    expect(theSixFrom(4)).toEqual({ NW: null, NE: null, W: 3, E: 0, SW: 8, SE: 9 });
+    expect(theSixFrom(19)).toEqual({ NW: 14, NE: 10, W: 18, E: 15, SW: null, SE: null });
+  });
+
+  test("none in a direction that isn't one of the six", () => {
+    expect(theHexNextToAProvinceInADirection(at(7), 'N', COLS, ROWS)).toBeNull();
+    expect(theHexNextToAProvinceInADirection(at(7), 'nw', COLS, ROWS)).toBeNull();
+  });
+
+  test("the two lookups read the map's list: the neighbours leave out a hole, the one in a direction gives it", () => {
+    interface Prov {
+      readonly id: number;
+    }
+    const provinces: (Prov | null)[] = Array.from({ length: COLS * ROWS }, (_, id) => ({ id }));
+    provinces[3] = null;
+    expect(theProvincesNextToAProvince(at(4), COLS, ROWS, provinces).map((p) => p.id)).toEqual([0, 8, 9]);
+    expect(theProvincesNextToAProvince(at(7), COLS, ROWS, provinces).map((p) => p.id)).toEqual([2, 6, 8, 12, 13]);
+    expect(theProvinceNextToAProvinceInADirection(at(4), 'E', COLS, ROWS, provinces)).toEqual({ id: 0 });
+    expect(theProvinceNextToAProvinceInADirection(at(4), 'W', COLS, ROWS, provinces)).toBeNull();
+    expect(theProvinceNextToAProvinceInADirection(at(4), 'NW', COLS, ROWS, provinces)).toBeNull();
+    expect(theProvinceNextToAProvinceInADirection(at(4), 'SW', COLS, ROWS, provinces.slice(0, 5))).toBeUndefined();
+  });
 });
 
 describe('pre-battle damage', () => {

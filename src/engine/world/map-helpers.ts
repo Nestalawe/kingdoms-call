@@ -1,5 +1,9 @@
-import { KC_HEX_DIRS, KC_QUALITY_DOWN } from '../../content/kingdoms-call-data.ts';
+import { KC_QUALITY_DOWN } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import {
+  theProvinceNextToAProvinceInADirection,
+  theProvincesNextToAProvince,
+} from '../rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
@@ -9,43 +13,15 @@ import type { Province } from '../../schemas/saved-game-state.ts';
 
 // A place on the map: its row and column.
 type APlaceOnTheMap = Pick<Province, 'row' | 'col'>;
-// The six steps to a hex's neighbours, by the parity of its row.
-type HexSteps = readonly (readonly [number, number])[];
-const isThere = <P>(p: P | null | undefined): p is P => Boolean(p);
 
+// The provinces next to a province, from the map's list (the hex step: src/engine/rules-on-plain-values/, P1-11d5).
 export function getNeighborsP<P>(
   prov: APlaceOnTheMap,
   cols: number,
   rows: number,
   provinces: readonly (P | null | undefined)[],
 ): P[] {
-  const { row, col } = prov;
-  const offsets: HexSteps =
-    row % 2 === 0
-      ? [
-          [-1, -1],
-          [-1, 0],
-          [0, -1],
-          [0, 1],
-          [1, -1],
-          [1, 0],
-        ]
-      : [
-          [-1, 0],
-          [-1, 1],
-          [0, -1],
-          [0, 1],
-          [1, 0],
-          [1, 1],
-        ];
-  return offsets
-    .map(([dr, dc]) => {
-      const nr = row + dr;
-      if (nr < 0 || nr >= rows) return null;
-      const nc = (((col + dc) % cols) + cols) % cols;
-      return provinces[nr * cols + nc];
-    })
-    .filter(isThere);
+  return theProvincesNextToAProvince(prov, cols, rows, provinces);
 }
 
 // Raise Wraiths — "Wraith's Touch": if a force contains a wraith, ONE random highest-experience
@@ -196,36 +172,8 @@ export function provOf(turnContext: TurnContext, c: { readonly location: number 
   return G.world.provinces[c.location];
 }
 
-// Direction → neighbor lookup
-export const HEX_DIRS = KC_HEX_DIRS.slice();
+// The province next to a province in a compass direction (NW, NE, W, E, SW or SE: the hex step, as above).
 export function neighborInDir(turnContext: TurnContext, prov: APlaceOnTheMap, dir: string) {
   const { G } = turnContext;
-  const { row, col } = prov;
-  const cols = G.world.cols,
-    rows = G.world.rows;
-  const even: HexSteps = [
-    [-1, -1],
-    [-1, 0],
-    [0, -1],
-    [0, 1],
-    [1, -1],
-    [1, 0],
-  ];
-  const odd: HexSteps = [
-    [-1, 0],
-    [-1, 1],
-    [0, -1],
-    [0, 1],
-    [1, 0],
-    [1, 1],
-  ];
-  const idx = HEX_DIRS.indexOf(dir);
-  if (idx < 0) return null;
-  const step = (row % 2 === 0 ? even : odd)[idx];
-  if (!step) throw new TypeError('no step to a neighbour in that direction'); // never met: six directions, six steps
-  const [dr, dc] = step;
-  const nr = row + dr;
-  if (nr < 0 || nr >= rows) return null;
-  const nc = (((col + dc) % cols) + cols) % cols;
-  return G.world.provinces[nr * cols + nc];
+  return theProvinceNextToAProvinceInADirection(prov, dir, G.world.cols, G.world.rows, G.world.provinces);
 }

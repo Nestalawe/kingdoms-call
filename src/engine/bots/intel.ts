@@ -136,7 +136,7 @@ export function botTuning(G, pi) {
   }
   return T;
 }
-export const BOT_HEX_DIRS = KC_HEX_DIRS.slice(); // MUST match the engine's HEX_DIRS order
+export const BOT_HEX_DIRS = KC_HEX_DIRS.slice(); // MUST match the engine's order (KC_HEX_DIRS, the hex step's)
 export const BOT_OFF_EVEN = [
   [-1, -1],
   [-1, 0],
