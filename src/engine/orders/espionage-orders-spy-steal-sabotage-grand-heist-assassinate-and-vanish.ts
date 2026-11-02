@@ -1,3 +1,4 @@
+import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { homeFounderOf, homeProvinceIdFor } from '../grand-design.ts';
@@ -932,7 +933,7 @@ export function resolveStealOrder(
 // Sabotage (Spy 7): an enemy province yields no tax this turn, and one company of its garrison is put to the torch.
 export function resolveSabotageOrder(turnContext: TurnContext, c: Character, target: string) {
   const { G } = turnContext;
-  if (skillLevel(c, 'spy') < 7) {
+  if (skillLevel(c, 'spy') < THE_MASTERY_ORDERS.sabotage.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Spy mastery to attempt Sabotage', heroName: c.name },
@@ -1007,7 +1008,7 @@ export function resolveGrandHeistOrder(turnContext: TurnContext, c: Character, p
   // • CAUGHT — a failed heist is noticed unless the thief slips away (Thief × 20%, cap 95%).
   // If a hero of the robbed realm is standing here they run the thief down (a duel, unless
   // their stance is Refuse); otherwise the garrison guards beat him off.
-  if (skillLevel(c, 'thief') < 7) {
+  if (skillLevel(c, 'thief') < THE_MASTERY_ORDERS.grand_heist.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Thief mastery for a Grand Heist', heroName: c.name },
@@ -1254,7 +1255,7 @@ export function resolveAssassinateOrder(
   prov: Province | undefined,
 ) {
   const { G } = turnContext;
-  if (skillLevel(c, 'spy') < 9) {
+  if (skillLevel(c, 'spy') < THE_MASTERY_ORDERS.assassinate.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Spy mastery to Assassinate', heroName: c.name },
@@ -1403,7 +1404,7 @@ export function resolveAssassinateOrder(
 // Vanish (Thief 9): for the rest of the turn nothing can bring him to bay or harm him.
 export function resolveVanishOrder(turnContext: TurnContext, c: Character, prov: Province | undefined) {
   const { G } = turnContext;
-  if (skillLevel(c, 'thief') < 9) {
+  if (skillLevel(c, 'thief') < THE_MASTERY_ORDERS.vanish.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Thief mastery to Vanish', heroName: c.name },

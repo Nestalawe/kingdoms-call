@@ -1,3 +1,4 @@
+import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { shuffleP } from '../battle/fortune.ts';
@@ -31,7 +32,7 @@ import {
 // Blockade (Naval 7): a sea the hero is in or beside, sealed against enemy fleets this turn, half the time.
 export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, target: string) {
   const { G } = turnContext;
-  if (skillLevel(c, 'naval') < 7) {
+  if (skillLevel(c, 'naval') < THE_MASTERY_ORDERS.blockade.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Naval mastery to raise a Blockade', heroName: c.name },
@@ -103,7 +104,7 @@ export function resolveBlockadeOrder(turnContext: TurnContext, c: Character, tar
 // Challenge (Melee 7): single combat with an enemy hero beside him who leads no army.
 export function resolveChallengeOrder(turnContext: TurnContext, c: Character, target: string, prov: Province) {
   const { G } = turnContext;
-  if (skillLevel(c, 'melee') < 7) {
+  if (skillLevel(c, 'melee') < THE_MASTERY_ORDERS.challenge.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Melee mastery to issue a Challenge', heroName: c.name },
@@ -213,7 +214,7 @@ export function resolveChallengeOrder(turnContext: TurnContext, c: Character, ta
 // Rampage (Melee 9): companies of an enemy host beside him cut down, and its commander bloodied.
 export function resolveRampageOrder(turnContext: TurnContext, c: Character, target: string, prov: Province) {
   const { G } = turnContext;
-  if (skillLevel(c, 'melee') < 9) {
+  if (skillLevel(c, 'melee') < THE_MASTERY_ORDERS.rampage.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Melee mastery to Rampage', heroName: c.name },
@@ -274,7 +275,7 @@ export function resolveRampageOrder(turnContext: TurnContext, c: Character, targ
 // Rain of Arrows (Archery 7): companies of an enemy host beside him felled by the volley.
 export function resolveRainOfArrowsOrder(turnContext: TurnContext, c: Character, target: string, prov: Province) {
   const { G } = turnContext;
-  if (skillLevel(c, 'archery') < 7) {
+  if (skillLevel(c, 'archery') < THE_MASTERY_ORDERS.rain_of_arrows.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Archery mastery for a Rain of Arrows', heroName: c.name },
@@ -331,7 +332,7 @@ export function resolveRainOfArrowsOrder(turnContext: TurnContext, c: Character,
 // Sniper's Mark (Archery 9): wounds to an enemy hero beside him, and a chance to slay him.
 export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, target: string, prov: Province) {
   const { G } = turnContext;
-  if (skillLevel(c, 'archery') < 9) {
+  if (skillLevel(c, 'archery') < THE_MASTERY_ORDERS.snipers_mark.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: "a hero lacks the Archery mastery for a Sniper's Mark", heroName: c.name },
@@ -429,7 +430,7 @@ export function resolveSnipersMarkOrder(turnContext: TurnContext, c: Character, 
 // Feigned Retreat (Tactical 7): his counter-attack strikes harder this turn.
 export function resolveFeignedRetreatOrder(turnContext: TurnContext, c: Character, prov: Province) {
   const { G } = turnContext;
-  if (skillLevel(c, 'tactical') < 7) {
+  if (skillLevel(c, 'tactical') < THE_MASTERY_ORDERS.feigned_retreat.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Tactical mastery for a Feigned Retreat', heroName: c.name },
@@ -454,7 +455,7 @@ export function resolveFeignedRetreatOrder(turnContext: TurnContext, c: Characte
 // Grand Stratagem (Tactical 9): his next battle this turn is fought at greater strength.
 export function resolveGrandStratagemOrder(turnContext: TurnContext, c: Character, prov: Province) {
   const { G } = turnContext;
-  if (skillLevel(c, 'tactical') < 9) {
+  if (skillLevel(c, 'tactical') < THE_MASTERY_ORDERS.grand_stratagem.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Tactical mastery for a Grand Stratagem', heroName: c.name },
@@ -479,7 +480,7 @@ export function resolveGrandStratagemOrder(turnContext: TurnContext, c: Characte
 // Lightning Advance (March 9): any enemy he attacks this turn is caught unready.
 export function resolveLightningAdvanceOrder(turnContext: TurnContext, c: Character, prov: Province) {
   const { G } = turnContext;
-  if (skillLevel(c, 'march') < 9) {
+  if (skillLevel(c, 'march') < THE_MASTERY_ORDERS.lightning_advance.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the March mastery for a Lightning Advance', heroName: c.name },
@@ -504,7 +505,7 @@ export function resolveLightningAdvanceOrder(turnContext: TurnContext, c: Charac
 // Raid the Coast (Naval 9): an assault from the sea this turn strikes harder, and plunders the treasury it takes.
 export function resolveRaidTheCoastOrder(turnContext: TurnContext, c: Character, prov: Province) {
   const { G } = turnContext;
-  if (skillLevel(c, 'naval') < 9) {
+  if (skillLevel(c, 'naval') < THE_MASTERY_ORDERS.raid_coast.level) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero lacks the Naval mastery to Raid the Coast', heroName: c.name },
