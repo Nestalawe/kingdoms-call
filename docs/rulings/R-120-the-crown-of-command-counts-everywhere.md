@@ -17,8 +17,5 @@ battle his beasts fought as if it weren't there, and the order form offered fewe
 1: "the Crown counts everywhere: the battle's Druid check counts it, and the order form offers spells at the level
 with it".
 
-**Note:** The battle's half is built (PR #366); the order form's half (the spells it offers) is plan step
-P1-23r.
-
 In Toby's words: "(1) but if the hero loses the skill advantage during the actual running of the turn, they lose any
 benefit, including being able to cast extra spells etc"
