@@ -7,6 +7,7 @@ import { sb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
 import { fortuneWinChance } from '../../engine/battle/fortune.ts';
 import { KC_TEL_V } from '../../db/game-meta.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 
 // ════
 // STATS TAB (2026-09-25) — reads turn_events + game_results and answers the balance questions.
@@ -37,9 +38,10 @@ export const STATS_ACTION_LABEL = {
   equip_items: 'Equip',
   give_item: 'Give item',
   encounter: 'Encounter',
-  consecrate: 'Consecrate',
-  call_to_arms: 'Call to Arms',
-  broker: 'Broker',
+  // three alignment orders by their rows' names; "Harvest Field" and "Rite" below are the GM's own short words
+  consecrate: THE_ALIGNMENT_ORDERS.consecrate.name,
+  call_to_arms: THE_ALIGNMENT_ORDERS['call-to-arms'].name,
+  broker: THE_ALIGNMENT_ORDERS.broker.name,
   awaken_wild: 'Awaken Wild',
   call_pit: 'Call from the Pit',
   harvest_field: 'Harvest Field',
