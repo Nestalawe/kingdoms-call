@@ -485,9 +485,13 @@ export function stagedWorld(): { state: Obj; report: Obj } {
   bound.push(...oldNames);
   for (const race of ['Human', 'Elven', 'Dwarven', 'Orcish'])
     for (const alignment of KC_ALIGNMENTS) hero({ race, alignment, items: bound.map(item) });
-  // A hero leads each staged column, without and with the naval mastery that doubles a hull (Naval 8), elsewhere.
-  for (const armies of stagedColumns())
-    for (const naval of [0, 8]) hero({ location: elsewhere, armies: copyOf(armies), skills: { melee: 1, naval } });
+  // A hero leads each staged column, without and with the naval mastery that doubles a hull (Naval 8), elsewhere; and
+  // each column with a fleet in it under a hero one level short of it (Naval 7: P1-23t), where the hulls count.
+  const carriers: readonly string[] = KC_UNIT_CLASS.carrier;
+  for (const armies of stagedColumns()) {
+    const navals = armies.some((a) => carriers.includes(String(a['type']))) ? [0, 7, 8] : [0, 8];
+    for (const naval of navals) hero({ location: elsewhere, armies: copyOf(armies), skills: { melee: 1, naval } });
+  }
   // In a third province, a hero wearing the Crown of Command beside a hero of every magic school at level 2: the
   // aura the report's effective levels count, and effMagicLvl with them (R-120).
   const crown = catalogue().find((it) => isObj(it['effect']) && it['effect']['stat'] === 'aura');
@@ -1259,9 +1263,9 @@ function seaNoteVerdict(note: unknown): string {
   if (words.includes('more fleet unit')) return 'land';
   return `(a note the check doesn't know: ${words})`;
 }
-/** One sea case compared, and whether the hero has the naval mastery that doubles a hull (Naval 8). */
+/** One sea case compared, and the hero's trained Naval (at 8 or more, his mastery doubles a hull). */
 export interface SeaNoteComparison extends Comparison {
-  readonly naval8: boolean;
+  readonly naval: number;
 }
 /** The army card's sea-transport note, read by its statements, against getSeaCapability, on every column of the
  *  realm's heroes. */
@@ -1276,7 +1280,7 @@ export function armyCardSeaNoteAgainstTheEngine(c: Copies, s: Samples): SeaNoteC
           seaNoteVerdict(c.armyCardSeaNote(h.report['armies'], h.report)),
           engineOn(getSeaCapability, [armies, h.state]),
         ),
-        naval8: skillOf(h.state, 'naval') >= 8,
+        naval: skillOf(h.state, 'naval'),
       };
     });
 }

@@ -26,7 +26,7 @@
 // projection (`buildTurnReport`): every catalogue item (and each race-bound one under the race's old name), held by a
 // hero of every race and alignment; every unit type at every quality, plain, skeletal, summoned for the turn or of the
 // Wild Hunt; every column of one to three units of each kind (flyers, winged beasts, fleets, sea beasts, cavalry, light
-// and heavy foot, creatures, monsters), led with and without Naval 8; a hero beside one wearing the Crown of Command.
+// and heavy foot, creatures, monsters), led with and without Naval 8 (and at Naval 7, a fleet among them); a hero beside one wearing the Crown of Command.
 // P1-11a4 swapped the 16 copies that agreed for the engine's functions, so their swap cases went; for the 9 whose value
 // the report makes from the state (`unitTypeOf`, `unitBaseStrength`, `isLegendaryItem`, `itemSlot`, `itemRaceOf`,
 // `itemUsableBy`, `topSkillOf` with `skillFameLabelM`, `isAirCarriable`, `getFlyCapability`), a projection case: the
@@ -234,7 +234,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
       worldValues.explore.filter((x) => objectsOf(x.hero.report['minorHeld']).some((t) => t['key'] === 'trailblazer'))
         .length,
     ).toBeGreaterThan(0);
-    expect(seaNote().filter((x) => x.naval8).length).toBeGreaterThan(0);
+    expect(seaNote().filter((x) => x.naval >= 8).length).toBeGreaterThan(0);
   });
 
   test("druidNeedP's shortfall leaves a unit the strength the battle's druIdPenaltyMult does, beside a Crown of Command too (R-120)", () => {
@@ -285,7 +285,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     // hero read "needs 2 hulls, has 1" where the turn let the column sail. Since R-125 it reads his trained Naval, as
     // the turn's mastery does.
     const list = seaNote();
-    expect(list.filter((x) => x.naval8).length).toBeGreaterThan(0);
+    for (const naval of [7, 8]) expect(list.filter((x) => x.naval === naval).length).toBeGreaterThan(0);
     expect(differences(list)).toEqual([]);
   });
 });
