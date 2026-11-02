@@ -1,4 +1,4 @@
-import { KC_BASIC_EXPLORE, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
@@ -12,6 +12,7 @@ import {
 } from '../world/tables.ts';
 import { WILD_HUNT_TURNS, WILD_HUNT_UNITS, guardianCanUseItem, wildHuntPrice } from '../items/tiers-and-hoards.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { theShareOfAProvinceAnExploreOrderMaps } from '../rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';
 import { aRealmOfThisCreedMayGiveTheAlignmentOrder } from '../rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
 import { recordBattleGraves, recordDeadHeroSighting } from '../graves.ts';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.ts';
@@ -109,24 +110,17 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm explores');
   trySkillGain(turnContext, c, 'explorer', SKILLGAIN_COMMON); // Explorer: performing an Explore order
   theProvinceIsHanded(prov);
-  // AK 3.2: Basic Exploration Number × (Explorer skill + 1)% Terrain table: Plain 50%, Desert
-  // 25%, Forest 15%, Mountain 15%, Jungle 10%, Sea 25% Base explore rate per terrain, cut 15
-  // percentage points from the original
-  // {plain:50,desert:40,forest:35,mountain:35,jungle:30,sea:40} to slow the early land-grab.
-  const BASIC_EXPLORE: Readonly<Partial<Record<string, number>>> = { ...KC_BASIC_EXPLORE }; // read by any ground
-  const basicRate = (BASIC_EXPLORE[prov.terrain] ?? 0) || 15;
-  // sd24 The Compass: Explorer treated as 1 level higher
-  const explorerSkill = Math.min(5, effStat(turnContext, c, 'explorer'));
-  // sd10 Scouts & Rangers: +20% explore bonus
-  const scoutBonus = 1; // sd10 Scouts & Rangers / sd24 The Compass are now `explore` effects
-  const loreMult = charMinor(turnContext, c, 'trailblazer') ? 1.05 : 1; // Trailblazer minor: +5% (Loremaster explore bonus removed \u2014 now an intel line)
+  // The share of the province he maps: the folder's rule (plan P1-11d14), which the order form's forecast asks too.
+  const explorerSkill = effStat(turnContext, c, 'explorer');
+  // Trailblazer minor: +5% (Loremaster explore bonus removed \u2014 now an intel line)
+  const hasTrail = charMinor(turnContext, c, 'trailblazer');
   // (The old Elven "Pathfinder" double forest/jungle exploration has been REPLACED this session by
   // the Elven escape ability — see recordBattleGraves / flushElvenEscapes. No exploration
   // bonus now.)
   // explore discoveries (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to
   // exploring", the rule discExploreMult ships to the report)
   const _discExpl = theFactorARealmsDiscoveriesMultiplyExploringBy(G.players[c.player], { theGround: prov.terrain });
-  const gain = Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * loreMult * _discExpl));
+  const gain = theShareOfAProvinceAnExploreOrderMaps(prov.terrain, explorerSkill, hasTrail, _discExpl);
   prov.exploredBy ??= {};
   const before = Number(prov.exploredBy[c.player]) || 0;
   const mappedNow = Math.min(100, before + gain); // the share his realm has mapped now, read back below as written

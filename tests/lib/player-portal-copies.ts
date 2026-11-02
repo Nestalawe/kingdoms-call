@@ -20,7 +20,9 @@
 //               difference is pinned exactly. P1-11b2 retired the turn report's copy (it calls getFlyCapability): its
 //               statement that gives a column the flyers' pace is checked against the engine on the state's column.
 //               Since P1-11b3 druidNeedP and the army card's Druid lines call the engine's rule (src/shared/) with the
-//               portal's own level of the hero's Druid, so their truth cases check the level each side feeds it.
+//               portal's own level of the hero's Druid, so their truth cases check the level each side feeds it; since
+//               P1-11d14 the Explore forecast asks the engine's rule of the share an Explore order maps, so its truth
+//               cases check what each side feeds it (the hero's Explorer, his Trailblazer, his realm's discoveries).
 //
 // The copies are read from src/ui/player/ by their syntax tree (tests/lib/source.ts) and run in a context of their
 // own, with the data file run beside them as a script (the content as the player page holds it, before the engine
@@ -36,7 +38,8 @@
 // every kind of unit, led by heroes with and without the naval mastery that doubles a hull. The checks read the
 // realm's own heroes, their units and their items: the values the report makes from the state. (Until P1-11a4 the swap
 // cases also took every alignment pair, every level, games rows and every number the reports hold.) For the Druid
-// rule, six more staged worlds (druidWorlds), for the Explore order one more (exploreWorld) and for the march-in share
+// rule, six more staged worlds (druidWorlds), for the Explore order three more (exploreWorld: a realm with no discovery
+// that adds to exploring, one with The Compass and one with Star Charts, P1-11d14) and for the march-in share
 // one more (marchWorld, P1-23t: the forecast's exploreMoveGainBefore against the Move order), and for the march's
 // forecasts one more with no guards (marchingWorld, P1-11d1: predictedLocation and exploreMoveGainBefore against
 // processOrder) and every province of a staged map (the hex tables), and for what a hero holds one more (holdingWorld,
@@ -158,8 +161,9 @@ const COPIES: Record<string, string[]> = {
     'formatRace',
     'heroHireWageOfP',
   ],
-  // the Explore order's forecast, and the share of the province a march into it maps first (P1-23t); where a hero will
-  // stand after his orders so far (P1-11d1), which that share and the Move field read; the companies he will lead
+  // the Explore order's forecast (since P1-11d14 it feeds the engine's rule what the report gives: not a copy of the
+  // rule, kept to run its truth cases), and the share of the province a march into it maps first (P1-23t); where a
+  // hero will stand after his orders so far (P1-11d1), which that share and the Move field read; the companies he will lead
   // (P1-11d2); the target field of an order (P1-11d3: the creed orders' fields); and the skill a comrade practises
   // beside a hero, which his Practice Skill field opens on (P1-11d4: the co-trainers), with the order it reads
   'ui/player/order-targets.ts': [
@@ -783,15 +787,18 @@ export function druidWorlds(): World[] {
   );
 }
 
-/** The world staged for exploring: titles public (turn 10), realm 0 with no discovery that adds to exploring, and a
- *  hero of each Explorer level 0 to 5, the Loremaster (the best at Sage; Explorer 2) and the Trailblazer (the best at
+/** The world staged for exploring: titles public (turn 10), realm 0 holding the discoveries named (none, or since
+ *  P1-11d14 one that adds to exploring on every ground or on some: the forecast reads their factor from the report), and
+ *  a hero of each Explorer level 0 to 5, the Loremaster (the best at Sage; Explorer 2) and the Trailblazer (the best at
  *  Explorer: 9), each standing in a province of every land terrain in turn (the forecast reads the terrain; the
  *  engine's order explores the province it is handed). */
-export function exploreWorld(): { world: World; provinces: Obj[] } {
+export function exploreWorld(discoveries: readonly string[] = []): { world: World; provinces: Obj[] } {
   const { g, land, hero } = aWorldToStageIn();
   g['turn'] = 10;
   const realm = objects(g['players'])[0];
-  if (realm) realm['discoveries'] = [];
+  const held = objects(SAGE_DISCOVERIES_P).filter((d) => discoveries.includes(String(d['id'])));
+  if (held.length !== discoveries.length) throw new Error(`the data file lacks one of ${discoveries.join(', ')}`);
+  if (realm) realm['discoveries'] = held.map(copyOf);
   for (let explorer = 0; explorer <= 5; explorer++) hero({ skills: { explorer } });
   hero({ skills: { explorer: 2, sage: 9 } });
   hero({ skills: { explorer: 9 } });
@@ -876,9 +883,12 @@ export function worldSamples(): WorldSamples {
       for (const unit of units)
         if (unit.state) druid.push({ world, hero, unit: { report: unit.report, state: unit.state } });
   }
-  const { world, provinces } = quietly(exploreWorld);
-  for (const hero of ownHeroes(world).filter((h) => !h.report['isKing']))
-    for (const province of provinces) explore.push({ world, hero, province });
+  // (and since P1-11d14 with The Compass, which adds to exploring on every ground, and Star Charts, on some)
+  for (const discoveries of [[], ['sd24'], ['sd68']]) {
+    const { world, provinces } = quietly(() => exploreWorld(discoveries));
+    for (const hero of ownHeroes(world).filter((h) => !h.report['isKing']))
+      for (const province of provinces) explore.push({ world, hero, province });
+  }
   madeOfTheWorld = { druid, explore };
   deepFreeze(madeOfTheWorld);
   return madeOfTheWorld;

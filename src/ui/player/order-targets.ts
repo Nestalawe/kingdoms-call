@@ -1,6 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_BASIC_EXPLORE } from '../../content/kingdoms-call-data.ts';
 import {
   actionSpellsAHeroMayCastInASchoolEachTurn,
   aHeroMayGiveTheAlignmentOrderAsKingOrNot,
@@ -16,6 +15,7 @@ import {
   theActionSpells,
   theActionSpellsNoMasteryLevelGates,
   theHexNextToAProvinceInADirection,
+  theShareOfAProvinceAnExploreOrderMaps,
   theSpellCostsItsCasterNoCastingSlot,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
@@ -202,21 +202,16 @@ export function projectedLedArmies(charId, upToPhaseExclusive, _memo) {
   return armies;
 }
 
-// projected exploration gain for ONE Explore order — mirror of the GM engine's explore formula
-// (terrainBase × (Explorer+1) × Scouts&Rangers × Compass × race/alignment explore discoveries ×
-// Trailblazer, capped at 100). Explorer-boosting items aren't visible here. R-125: the Loremaster
-// adds nothing, as in the turn.
+// projected exploration gain for ONE Explore order: the engine's own rule (theShareOfAProvinceAnExploreOrderMaps, through
+// src/shared/ since plan P1-11d14), fed what the report gives: the hero's Explorer (skillEff), his Trailblazer title and
+// his realm's explore discoveries' factor on the ground. R-125: the Loremaster adds nothing, as in the turn.
 export function exploreGainFor(c, terr) {
   const report = currentReport || {};
-  const BASIC_EXPLORE_P = { ...KC_BASIC_EXPLORE };
-  const basicRate = BASIC_EXPLORE_P[terr] || 15;
   const disc = report.discoveries || [];
-  const hasSD = (id) => disc.some((d) => d.id === id);
-  const explorerSkill = Math.min(5, effSkillP(c, 'explorer'));
+  const explorerSkill = effSkillP(c, 'explorer');
   // 2026-09-21: the GM ships the realm's per-terrain explore multiplier (every `explore` discovery,
-  // terrain-scoped ones included). Old reports without it fall back to the old desc parse.
-  const scoutBonus = 1,
-    compass = 1;
+  // terrain-scoped ones included). Old reports without it, and a ground it doesn't name (an earlier
+  // Explore in a province the order data doesn't hold: exploreQueuedBefore), fall back to the old desc parse.
   let discMult = 1;
   if (report.exploreDiscMult && report.exploreDiscMult[terr] != null) discMult = report.exploreDiscMult[terr];
   else
@@ -225,8 +220,7 @@ export function exploreGainFor(c, terr) {
       if (m && (!/mountain/i.test(d.desc) || terr === 'mountain')) discMult *= 1 + parseInt(m[1]) / 100;
     });
   const hasTrail = (c.minorHeld || []).some((t) => /Trailblazer/i.test(t.name || ''));
-  const loreMult = hasTrail ? 1.05 : 1;
-  return Math.min(100, Math.floor(basicRate * (explorerSkill + 1) * scoutBonus * compass * discMult * loreMult));
+  return theShareOfAProvinceAnExploreOrderMaps(terr, explorerSkill, hasTrail, discMult);
 }
 // Sum of exploration already queued for a province by EARLIER Explore orders (this hero's earlier
 // phases, and every other hero's orders in this phase or earlier).

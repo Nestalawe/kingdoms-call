@@ -24,8 +24,8 @@ portal uses: it calls the engine's own function, in `src/engine/rules-on-plain-v
 rule there, once. Rules are still restated:
 - in the player portal's projections (forecasts, order validation, hints): the copies still left are the ones
   `tests/lib/player-portal-copies.ts` checks (`effMagicLvl`, the army card's sea-transport line, the
-  Explore forecast `exploreGainFor` and its march-in share `exploreMoveGainBefore` (since R-125); the level of a hero's Druid that `druidNeedP` and the army card's Druid lines
-  feed the engine's Druid rule; and the Naval 8 the Move notice works out from the report's skills to feed the sea
+  Explore forecast's march-in share `exploreMoveGainBefore` (since R-125); the level of a hero's Druid that `druidNeedP` and the army card's Druid lines
+  feed the engine's Druid rule, and the Explorer, Trailblazer and discoveries' factor `exploreGainFor` feeds the engine's Explore gain (P1-11d14); and the Naval 8 the Move notice works out from the report's skills to feed the sea
   lift, `seaLiftOfAColumn`; since P1-11c1 the order form's casting count; its Cast Spell tables are the engine
   folder's, made by calls since P1-11c3, and its target field's "the caster's province only" asks the engine's mark
   check since P1-11c4: the parity test checks the form's eight declarations and pins each target list; the army card's
