@@ -59,8 +59,10 @@
 // exactly the 11 spells of the spells' registry's "a spell's mark must stand in the province", and for Resurrect (its
 // body's province, its own rule: pinned); the form's casting count (`buildTargetField`'s statements, the page's fields
 // stood in) greys a spell out exactly where `resolveCastSpellOrder` blocks it (White Magic 1 to 5, every list of up to
-// three earlier casts of Holy Symbol, Bless Province and Oratory) but in a realm with a Grand Cathedral and for the
-// Warlock, where its answer is the engine's without either (pinned; question 28 (a), Parked); the army card's strength
+// three earlier casts of Holy Symbol, Bless Province and Oratory), the Warlock's extra cast too (R-123: both ask the one
+// rule, the form with the title its hero's minorHeld lists, which the report writes on the holder the turn counts), but
+// in a realm with a Grand Cathedral, where its answer is the engine's without the Wonder (pinned; question 28 (a),
+// Parked); the army card's strength
 // of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
 // battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed

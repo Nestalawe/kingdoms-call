@@ -7,7 +7,10 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The Cast Spell dropdown counts each earlier Practice Skill order on a school as a success: it quotes the projected
 // level (`Lv2→3 if practice succeeds`) and opens that many spells (a school at 5 projects no rise); turning or
-// re-aiming an earlier Practice, or changing an earlier spell, rebuilds the later dropdowns at once
+// re-aiming an earlier Practice, or changing an earlier spell, rebuilds the later dropdowns at once; and (R-123, P1-23s)
+// a Warlock (the minor title his report lists in minorHeld) at Elemental 4 is offered a fourth Elemental spell in
+// Winter after three, which a hero without the title is not. Level 4 (page): the dropdown as the live form builds it;
+// the copies test compares the form's count with the engine's on staged worlds
 const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{

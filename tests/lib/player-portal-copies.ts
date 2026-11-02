@@ -1177,8 +1177,8 @@ export function armyCardSeaNoteAgainstTheEngine(c: Copies, s: Samples): SeaNoteC
 // ── The order form's Cast Spell tables and checks, and the army card's kin and feud (P1-11c1) ────
 // Plan P1-11c's parity cases, before the form takes its tables and its check from the engine's side (P1-11c2 to c5).
 // The truth, as above: the form's copy on what the realm's report holds, against the content's spells (SPELL_DEFS_P)
-// or the engine's function on the state. Where the two are known to disagree (plan P1-11c, question 28 (a) for Toby, and
-// the Warlock's extra cast, Parked), the difference is pinned exactly; the army card's kin and feud agree since R-122.
+// or the engine's function on the state. Where the two are known to disagree (plan P1-11c, question 28 (a) for Toby), the
+// difference is pinned exactly; the Warlock's extra cast agrees since R-123, the army card's kin and feud since R-122.
 
 /** A spell as the content's table (SPELL_DEFS_P) writes what the order form reads of it. */
 interface ASpellAsTheFormReadsIt {
