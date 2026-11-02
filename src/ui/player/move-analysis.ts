@@ -4,6 +4,7 @@ import { KC_HEX_DIRS, KC_SKILL_LABELS, KC_TEMPERS, KC_UNIT_CLASS } from '../../c
 import {
   seaLiftOfAColumn,
   takesHalfAHullAboard,
+  theAlignmentOrdersByTheNameTheFormWrites,
   theHexNextToAProvinceInADirection,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
@@ -146,8 +147,10 @@ export function projectedMoveHost(charId, ph) {
         const loc = predictedLocation(charId, p);
         const wt = loc ? (pod[loc.id] || {}).wildHuntType : null;
         if (wt) {
-          add({ type: wt, quality: 'Veteran', unitName: `${wt} (bound by the Wild Hunt)`, _projected: true });
-          add({ type: wt, quality: 'Veteran', unitName: `${wt} (bound by the Wild Hunt)`, _projected: true });
+          const theBeasts =
+            theAlignmentOrdersByTheNameTheFormWrites()['Perform Rite'].theNumbers.theWildHuntsBeasts.value; // its row's
+          for (let bound = 0; bound < theBeasts; bound++)
+            add({ type: wt, quality: 'Veteran', unitName: `${wt} (bound by the Wild Hunt)`, _projected: true });
         } else out.uncounted.push('the Wild Hunt');
       } else {
         // Blood Offering — the sacrificed units are gone by the time the column marches.

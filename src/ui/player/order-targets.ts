@@ -3,8 +3,10 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_BASIC_EXPLORE } from '../../content/kingdoms-call-data.ts';
 import {
   actionSpellsAHeroMayCastInASchoolEachTurn,
+  aHeroMayGiveTheAlignmentOrderAsKingOrNot,
   alignDistP,
   ALL_SKILLS,
+  aRealmOfThisCreedMayGiveTheAlignmentOrder,
   heroHireWage,
   isLegendaryItem,
   itemSlot,
@@ -16,6 +18,7 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import {
+  ALIGN_ACTIONS,
   DIRECTIONS,
   ITEM_SLOT_CAP_P,
   ITEM_SLOT_LABEL_P,
@@ -1019,9 +1022,9 @@ export function buildTargetField(c, ph, saved) {
 
     // ── CAST SPELL ── ── DIVINE: CONSECRATE ──
     case 'Consecrate': {
-      if (report.kingdom?.alignment !== 'Divine')
+      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS.Consecrate, report.kingdom?.alignment))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine realms may consecrate" disabled>`;
-      if (!c.isKing)
+      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(ALIGN_ACTIONS.Consecrate, c.isKing))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
       const loc = predictedLocation(c.id, ph);
       const wmP = (report.worldMeta && report.worldMeta.provinces) || [];
@@ -1060,10 +1063,11 @@ export function buildTargetField(c, ph, saved) {
     }
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms': {
-      if (report.kingdom?.alignment !== 'Good')
+      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS['Call to Arms'], report.kingdom?.alignment))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Good realms may call the folk to arms" disabled>`;
-      if (!c.isKing)
+      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(ALIGN_ACTIONS['Call to Arms'], c.isKing))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING's voice carries the Call" disabled>`;
+      const theGrade = ALIGN_ACTIONS['Call to Arms'].theNumbers.theGradeMustered.value; // its row's: the grade a company mustered has
       const human = (report.ownedProvinces || []).filter(
         (p) => p.terrain !== 'sea' && !(p.race || '').startsWith('Primal'),
       );
@@ -1071,17 +1075,18 @@ export function buildTargetField(c, ph, saved) {
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No owned humanoid provinces to raise" disabled>`;
       const ctaOpts = human.map(
         (p) =>
-          kcHtml`<option value="${p.id}" ${target == p.id ? 'selected' : ''}>${p.name} — raises a Green ${(p.armyTypes && p.armyTypes[0] && (p.armyTypes[0].type || p.armyTypes[0])) || 'levy'}</option>`,
+          kcHtml`<option value="${p.id}" ${target == p.id ? 'selected' : ''}>${p.name} — raises a ${theGrade} ${(p.armyTypes && p.armyTypes[0] && (p.armyTypes[0].type || p.armyTypes[0])) || 'levy'}</option>`,
       );
       return kcHtml`<select id="po-target-${c.id}-${ph}">${ctaOpts}</select>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Free Green garrison unit of the province's native type. The king need not be present — the province just has to be yours when the order resolves. Once per turn.</div>`;
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Free ${theGrade} garrison unit of the province's native type. The king need not be present — the province just has to be yours when the order resolves. Once per turn.</div>`;
     }
     // ── NEUTRAL: BROKER ──
     case 'Broker': {
-      if (report.kingdom?.alignment !== 'Neutral')
+      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS.Broker, report.kingdom?.alignment))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Neutral realms keep brokers" disabled>`;
-      if (!c.isKing)
+      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(ALIGN_ACTIONS.Broker, c.isKing))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING commands the brokers" disabled>`;
+      const thePriceOfWord = ALIGN_ACTIONS.Broker.theNumbers.thePriceOfWordFromAProvince.value; // its row's
       const hireOpts = Object.values(provOrderData || {})
         .flatMap((pd) => pd.availableHeroes || [])
         .map((h) => {
@@ -1094,7 +1099,7 @@ export function buildTargetField(c, ph, saved) {
         .filter((p) => p.name && p.terrain)
         .map(
           (p) =>
-            kcHtml`<option value="spy:${p.id}" ${target === 'spy:' + p.id ? 'selected' : ''}>🕵 Buy word from ${p.name} (2g — full Spy result)</option>`,
+            kcHtml`<option value="spy:${p.id}" ${target === 'spy:' + p.id ? 'selected' : ''}>🕵 Buy word from ${p.name} (${thePriceOfWord}g — full Spy result)</option>`,
         );
       if (!hireOpts.length && !spyOpts.length)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Your brokers have nothing within reach" disabled>`;
@@ -1107,11 +1112,11 @@ export function buildTargetField(c, ph, saved) {
       const _bHasPick = typeof target === 'string' && (target.startsWith('hire:') || target.startsWith('spy:'));
       const _bPh = kcHtml`<option value="" ${_bHasPick ? '' : 'selected'}>— choose what the brokers are to buy —</option>`;
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="syncHiredHeroCard(${kcArg(String(c.id))},${kcArg(ph)})">${_bPh}${hireOpts}${spyOpts}</select>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Money moves what armies cannot: hire any wandering hero the realm can see (they stay where they are and act next phase), or buy a guaranteed Spy report on any province the realm has seen — 2g.</div>`;
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Money moves what armies cannot: hire any wandering hero the realm can see (they stay where they are and act next phase), or buy a guaranteed Spy report on any province the realm has seen — ${thePriceOfWord}g.</div>`;
     }
     // ── UNDEAD: HARVEST THE FIELD ──
     case 'Harvest the Field': {
-      if (report.kingdom?.alignment !== 'Undead')
+      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS['Harvest the Field'], report.kingdom?.alignment))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Undead realms keep corpse-carters" disabled>`;
       const loc = predictedLocation(c.id, ph);
       return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Harvests the graves of ${loc ? loc.name : 'current province'}" readonly>
@@ -1120,7 +1125,12 @@ export function buildTargetField(c, ph, saved) {
     case 'Perform Rite': {
       // PAGAN only — rites are performed at a DISCOVERED ritual site (Standing Stones and their
       // kin) in the province the character will be standing in this phase.
-      if ((report.kingdom?.alignment || 'Neutral') !== 'Pagan')
+      if (
+        !aRealmOfThisCreedMayGiveTheAlignmentOrder(
+          ALIGN_ACTIONS['Perform Rite'],
+          report.kingdom?.alignment || 'Neutral',
+        )
+      )
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan realms keep the old rites" disabled>`;
       const loc = predictedLocation(c.id, ph);
       const pd = loc ? (report.provinceOrderData || {})[loc.id] : null;
@@ -1132,6 +1142,7 @@ export function buildTargetField(c, ph, saved) {
       // the engine will bind and its price (the cost of ONE beast, however many answer), so this
       // form never has to re-derive it and drift from the engine.
       const canHunt = !!pd?.wildHuntType;
+      const theRitesNumbers = ALIGN_ACTIONS['Perform Rite'].theNumbers; // its row's: the beasts the Wild Hunt binds, the tiers a Blood Offering raises
       const huntCost = pd?.wildHuntCost;
       // list the armies this character will be LEADING at this phase — start-of- turn units plus
       // anything recruited, picked up, transferred in or otherwise gained earlier in the turn (the
@@ -1160,17 +1171,17 @@ export function buildTargetField(c, ph, saved) {
             <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})" style="font-size:.7rem">
               <option value="K" ${!_boSaved.S.has(i) && !_boSaved.E.has(i) ? 'selected' : ''}>Keep</option>
               <option value="S" ${_boSaved.S.has(i) ? 'selected' : ''}>Sacrifice ✝</option>
-              <option value="E" ${_boSaved.E.has(i) ? 'selected' : ''}>Empower +2</option>
+              <option value="E" ${_boSaved.E.has(i) ? 'selected' : ''}>Empower +${theRitesNumbers.theBloodOfferingsGrades.value}</option>
             </select></div>`,
           )
         : kcHtml`<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})">
-        ${canHunt ? kcHtml`<option value="Wild Hunt" ${target === 'Wild Hunt' ? 'selected' : ''}>\u{1F525} Rite of the Wild Hunt — bind 2 VETERAN ${pd?.wildHuntType || 'wild creatures'} (${huntCost}g — the price of one, no wages, serve until end of NEXT turn)</option>` : ''}
-        <option value="Blood Offering" ${target === 'Blood Offering' || !target ? 'selected' : ''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+2 tiers each)</option>
+        ${canHunt ? kcHtml`<option value="Wild Hunt" ${target === 'Wild Hunt' ? 'selected' : ''}>\u{1F525} Rite of the Wild Hunt — bind ${theRitesNumbers.theWildHuntsBeasts.value} VETERAN ${pd?.wildHuntType || 'wild creatures'} (${huntCost}g — the price of one, no wages, serve until end of NEXT turn)</option>` : ''}
+        <option value="Blood Offering" ${target === 'Blood Offering' || !target ? 'selected' : ''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+${theRitesNumbers.theBloodOfferingsGrades.value} tiers each)</option>
       </select>
       <input id="po-extra-${c.id}-${ph}" type="hidden" value="${extra || ''}">
       <div id="bo-block-${c.id}-${ph}" style="margin-top:5px;border:1px solid var(--parchment-dark);border-radius:3px;padding:6px;background:#fdf5e0">
-        <div style="font-size:.7rem;font-weight:600;color:#7a4a00;margin-bottom:3px">Blood Offering — mark units to Sacrifice, and an equal number to Empower (+2 quality tiers each, max Elite):</div>
+        <div style="font-size:.7rem;font-weight:600;color:#7a4a00;margin-bottom:3px">Blood Offering — mark units to Sacrifice, and an equal number to Empower (+${theRitesNumbers.theBloodOfferingsGrades.value} quality tiers each, max Elite):</div>
         ${_boRows}
         <div id="bo-hint-${c.id}-${ph}" style="font-size:.7rem;color:var(--stone);margin-top:3px"></div>
       </div>

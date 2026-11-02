@@ -8,6 +8,7 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import {
+  ALIGN_ACTIONS,
   RUMOUR_COST_BY_POWER_P,
   SEASONS,
   actionsFor,
@@ -117,7 +118,8 @@ export function computeOrderLedgerP() {
         } else if (act === 'Broker') {
           if (tgt.startsWith('hire:')) hireHero(tgt.slice(5));
           else if (tgt.startsWith('spy:')) {
-            cats.intel.g += P.brokerSpy != null ? P.brokerSpy : 2;
+            cats.intel.g +=
+              P.brokerSpy != null ? P.brokerSpy : ALIGN_ACTIONS.Broker.theNumbers.thePriceOfWordFromAProvince.value;
             cats.intel.n++;
           }
         } else if (act === 'Harvest the Field') {

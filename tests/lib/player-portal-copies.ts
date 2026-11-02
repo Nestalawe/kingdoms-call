@@ -193,8 +193,9 @@ const COPIES: Record<string, string[]> = {
     '_actionRank',
     'actionsFor',
   ],
-  // (and the skills' names, which the Practice Skill note gives: P1-11d4)
-  'ui/player/move-analysis.ts': ['lastMoveDirOf', 'SKILL_LABELS'],
+  // (and the skills' names, which the Practice Skill note gives: P1-11d4; and the column the Move note counts, whose
+  // beasts of the Wild Hunt are the rite's row's number: P1-11d8)
+  'ui/player/move-analysis.ts': ['lastMoveDirOf', 'SKILL_LABELS', 'projectedMoveHost'],
 };
 const ARMY_CARD = 'ui/player/report.ts';
 const TURN_REPORT = 'views/turn-report.ts';
@@ -310,6 +311,11 @@ function theOrderListsNames() {
 function theMasteryOrdersOfTheList() {
   return Object.entries(L79_ORDERS).map(([name, o]) => ({ name, skill: o.skill, level: o.lvl }));
 }
+// The companies the Move note counts in the column of the hero \`heroId\` marching in the phase \`ph\` (P1-11d8): each
+// by its name, those the orders before it raise or bind among them.
+function theMoveNotesColumnOn(report, orders, heroId, ph) {
+  return onTheOrders(report, orders, () => projectedMoveHost(heroId, ph).armies.map((a) => String(a.unitName)));
+}
 // The target field of the order \`saved\` ({ action, target, extra }) the hero \`c\` gives in the phase \`ph\`, as the
 // form builds it, on the orders staged (P1-11d3: the creed orders' fields): its markup.
 function theTargetFieldOn(report, orders, c, ph, saved) {
@@ -356,6 +362,7 @@ const COPY_FUNCTIONS = [
   'actionsForOn',
   'theOrderListsNames',
   'theMasteryOrdersOfTheList',
+  'theMoveNotesColumnOn',
   'theTargetFieldOn',
   'theLedgerOn',
   'thePracticeNoteOn',
@@ -3149,6 +3156,7 @@ export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'Broker: word bought from a province',
   'Harvest the Field',
   'the Rite of the Wild Hunt',
+  'the Move note after the Rite of the Wild Hunt',
   'a Blood Offering marked on two companies',
   'a Consecrate in a province of the realm',
   'a Consecrate in the capital',
@@ -3397,6 +3405,29 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
       },
     );
   }
+  // the Move note's column in the phase after a Rite of the Wild Hunt: the beasts it counts bound (P1-11d8)
+  {
+    const pagan = worldOf('Pagan');
+    const column = c.theMoveNotesColumnOn(
+      pagan.report,
+      { [String(hunter['id'])]: [{ action: 'Perform Rite', target: 'Wild Hunt' }] },
+      hunter['id'],
+      1,
+    );
+    const counted = (Array.isArray(column) ? column : []).filter((name) =>
+      String(name).endsWith('(bound by the Wild Hunt)'),
+    );
+    const played = theTurnPlaysTheOrder(pagan.state, hunter['id'], 'Perform Rite', 'Wild Hunt');
+    const bound = objects(objects(played.G['characters']).find((h) => h['id'] === hunter['id'])?.['armies']).filter(
+      (a) => a['_wildHuntUntilTurn'] != null,
+    );
+    push(
+      'the Move note after the Rite of the Wild Hunt',
+      { beasts: counted.length },
+      { beasts: bound.length },
+      { beasts: theRowsNumber('perform-rite', 'theWildHuntsBeasts') },
+    );
+  }
   // a Blood Offering: the companies its marks give and raise, and the grades it says each rises (in its option, its
   // heading and its mark); what the turn gives and raises
   {
@@ -3507,6 +3538,8 @@ export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   'a beast raised by a Druid 5 hero',
   'Harvest the Field',
   'the Rite of the Wild Hunt',
+  'word bought from a province by the Broker',
+  'word bought from a province, on a report that names no price',
 ] as const;
 export const THE_LEDGERS_THE_TURN_DISAGREES_WITH = [
   'a wandering hero hired by a realm with Granaries',
@@ -3566,7 +3599,7 @@ function aDiscovery(id: string): Obj {
  *  them: the companies and heroes they bring). Each kind of THE_LEDGERS_THE_TURN_AGREES_WITH and
  *  THE_LEDGERS_THE_TURN_DISAGREES_WITH is one hero's order, in a province of his own, in a world of its own. */
 export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
-  const { g, capital, land, at } = aWorldForTheOrders();
+  const { g, king, capital, land, at } = aWorldForTheOrders();
   const free = land.filter((p) => p !== capital);
   // (settled by Humans, its garrison empty: a seeded world's races differ after another world is made in the process)
   const take = (...types: string[]): Obj => {
@@ -3593,10 +3626,17 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
     readonly hero: Obj;
     readonly orders: readonly AnOrderInItsFields[];
     readonly edit?: (G: Obj) => void;
+    /** a change to a copy of the report the ledger reads (an older report: the prices it names left out) */
+    readonly onTheReport?: (report: Obj) => void;
   }
   const staged: AStagedLedger[] = [];
-  const stage = (kind: AKindOfLedger, hero: Obj, orders: readonly AnOrderInItsFields[], edit?: (G: Obj) => void) =>
-    staged.push({ kind, hero, orders, ...(edit ? { edit } : {}) });
+  const stage = (
+    kind: AKindOfLedger,
+    hero: Obj,
+    orders: readonly AnOrderInItsFields[],
+    edit?: (G: Obj) => void,
+    onTheReport?: (report: Obj) => void,
+  ) => staged.push({ kind, hero, orders, ...(edit ? { edit } : {}), ...(onTheReport ? { onTheReport } : {}) });
   stage('a company of the province raised into his column', at(take('Men-at-Arms')), [recruit('Men-at-Arms|1')]);
   // the founder's capital raises two of a kind a turn (its armyTypes staged)
   capital['armyTypes'] = ['Yeoman Longbows'];
@@ -3673,6 +3713,19 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
       realmZeroIn(G)['alignment'] = 'Pagan';
     });
   }
+  {
+    // the Broker buys word from a province of a Neutral realm (the king gives it): its price, from the report's
+    // prices, or its row's on a report that names none (P1-11d8)
+    const spy = [{ action: 'Broker', target: `spy:${String(take()['id'])}` }];
+    const neutral = (G: Obj) => {
+      realmZeroIn(G)['alignment'] = 'Neutral';
+    };
+    stage('word bought from a province by the Broker', king, spy, neutral);
+    stage('word bought from a province, on a report that names no price', king, spy, neutral, (report) => {
+      const prices = report['orderPrices'];
+      if (isObj(prices)) delete prices['brokerSpy'];
+    });
+  }
   const goldOf = (G: Obj) => Number(realmZeroIn(G)['gold']);
   return staged.map((s) => {
     const world = editedAndReported(g, s.edit ?? (() => undefined));
@@ -3691,7 +3744,9 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
       spend: goldOf(without) - goldOf(withThem),
       'new wages': theWagesEarlyWinterCharges(withThem) - theWagesEarlyWinterCharges(without),
     };
-    return { ...compare(s.kind, c.theLedgerOn(world.report, orders), { answer: turn, changed: false }), kind: s.kind };
+    const report = copyOf(world.report);
+    s.onTheReport?.(report);
+    return { ...compare(s.kind, c.theLedgerOn(report, orders), { answer: turn, changed: false }), kind: s.kind };
   });
 }
 

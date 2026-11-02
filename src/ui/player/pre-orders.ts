@@ -1,9 +1,12 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
-import { skillFameLabelM } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  skillFameLabelM,
+  theNameTheFormWritesOfTheAlignmentOrder,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
-import { SEASONS, _pendingDiscChoices, actionsFor } from './items-and-heroes.ts';
+import { ALIGN_ACTIONS, SEASONS, _pendingDiscChoices, actionsFor } from './items-and-heroes.ts';
 import { refreshLaterCastSpells } from './order-chances.ts';
 import {
   DUEL_STANCES,
@@ -28,7 +31,10 @@ import { leadsArmiesP, provLinkHtml } from './map-symbols.ts';
 // select remembers its full option list (data-all-opts) so an option comes back the moment the earlier
 // phase is changed; a later phase already holding the order is cleared (with a note) rather than
 // left to be refused at resolution.
-export const ONCE_PER_TURN_ACTIONS = new Set([...Object.keys(L79_ORDERS), 'Call to Arms']);
+export const ONCE_PER_TURN_ACTIONS = new Set([
+  ...Object.keys(L79_ORDERS),
+  theNameTheFormWritesOfTheAlignmentOrder('call-to-arms'),
+]);
 export function refreshOncePerTurnOptions(charId) {
   const taken = new Set();
   for (let ph = 0; ph < 5; ph++) {
@@ -955,7 +961,7 @@ export function updateBloodOffering(charId, ph) {
       hint.textContent = `⚠ ${sac.length} to sacrifice vs ${ben.length} to empower — only ${Math.min(sac.length, ben.length)} pair(s) will take effect (each sacrifice funds one empowerment).`;
       hint.style.color = '#b04a4a';
     } else {
-      hint.textContent = `✓ ${sac.length} unit(s) sacrificed to empower ${ben.length} other(s) by +2 tiers.`;
+      hint.textContent = `✓ ${sac.length} unit(s) sacrificed to empower ${ben.length} other(s) by +${ALIGN_ACTIONS['Perform Rite'].theNumbers.theBloodOfferingsGrades.value} tiers.`;
       hint.style.color = '#2d6a2d';
     }
   }
