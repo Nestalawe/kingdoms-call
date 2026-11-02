@@ -32,8 +32,9 @@ rule there, once. Rules are still restated:
   kin and feud ask the battle's own rule since P1-11c5, `theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt`, after a Druid
   shortfall taken off in the battle's order since R-122: the parity test holds them in agreement; since P1-11d1 the
   march's forecasts, `predictedLocation` and the hex tables of the Move field and `lastMoveDirOf`, and since P1-11d2
-  what a hero will hold, `predictedItems`, `projectedLedArmies` and `projectedGarrison`, each difference from the turn
-  pinned), and the other forecasts and order checks
+  what a hero will hold, `predictedItems`, `projectedLedArmies` and `projectedGarrison`, and since P1-11d3 the order
+  list, `actionsFor`, and the creed orders' target fields, each difference from the turn pinned), and the other
+  forecasts and order checks
   whose engine rule is written inline (P1-11b, P1-19);
 - at order time and again at resolution time in the engine;
 - in the balance matrix's scripted realm: what the player portal sends, `doSubmitOrders`

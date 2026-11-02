@@ -40,8 +40,9 @@
 // one more (marchWorld, P1-23t: the forecast's exploreMoveGainBefore against the Move order), and for the march's
 // forecasts one more with no guards (marchingWorld, P1-11d1: predictedLocation and exploreMoveGainBefore against
 // processOrder) and every province of a staged map (the hex tables), and for what a hero holds one more (holdingWorld,
-// P1-11d2: predictedItems, projectedLedArmies and projectedGarrison against the turn's phases), each sized so the whole
-// test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
+// P1-11d2: predictedItems, projectedLedArmies and projectedGarrison against the turn's phases), and for the orders one
+// more under each creed (aWorldForTheOrders, P1-11d3: actionsFor and the creed orders' fields against processOrder),
+// each sized so the whole test runs in a few seconds. For the order form's Cast Spell checks and the army card's kin (P1-11c1, at the end): a
 // report staged for the target field, a world of five casters and one of the kin (kinWorld).
 import vm from 'node:vm';
 import {
@@ -92,7 +93,11 @@ import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-
 import { resolveMoveOrder } from '../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts';
 import { getNeighborsP, neighborInDir } from '../../src/engine/world/map-helpers.ts';
 import { processOrder } from '../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
-import { buildPhaseIntents } from '../../src/engine/turn/phase-intents-and-dependency-ordering.ts';
+import {
+  buildPhaseIntents,
+  normaliseAction,
+  PHASE_ACTION_MAP,
+} from '../../src/engine/turn/phase-intents-and-dependency-ordering.ts';
 import {
   endPhaseSkillRisesFallenCommandersAndProvinceMemory,
   pinAndReactToPhaseIntents,
@@ -102,6 +107,7 @@ import {
 import { anItemIsTheMithrilSuit } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../../src/engine/titles/perks.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
@@ -128,7 +134,8 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 
 /** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
-  'ui/player/order-chances.ts': ['ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl'],
+  // (and the label of a company, which the Blood Offering's rows show: P1-11d3)
+  'ui/player/order-chances.ts': ['ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl', 'armyLabel'],
   // a hero's skill as the report counts it (skillEff): druidNeedP, exploreGainFor and the army card read it
   'ui/player/briefing-and-submit.ts': ['effSkillP'],
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); the army card reads
@@ -143,15 +150,40 @@ const COPIES: Record<string, string[]> = {
     '_isAutoGarrisonRecruit',
     '_projRecruitUnits',
     'projectedGarrison',
+    // (the word of a unit's race on its label, and a wandering hero's wage, which the Broker's field shows: P1-11d3)
+    'HUMANOID_RACES_UI',
+    'PRIMAL_SUBRACE_CLASS',
+    'formatRace',
+    'heroHireWageOfP',
   ],
   // the Explore order's forecast, and the share of the province a march into it maps first (P1-23t); where a hero will
   // stand after his orders so far (P1-11d1), which that share and the Move field read; the companies he will lead
-  // (P1-11d2)
-  'ui/player/order-targets.ts': ['exploreGainFor', 'exploreMoveGainBefore', 'predictedLocation', 'projectedLedArmies'],
+  // (P1-11d2); and the target field of an order (P1-11d3: the creed orders' fields)
+  'ui/player/order-targets.ts': [
+    'exploreGainFor',
+    'exploreMoveGainBefore',
+    'predictedLocation',
+    'projectedLedArmies',
+    'buildTargetField',
+  ],
   // the order a page's field holds (P1-11d1: the fields stood in below), the Move field's compass words, and the
   // direction a fresh Move opens on (the hex table of each)
   'ui/player/pre-orders.ts': ['getOrderTarget'],
-  'ui/player/items-and-heroes.ts': ['DIRECTIONS'],
+  // the mastery orders' table (P1-11d3: the order list's gates read it)
+  'ui/player/l79-orders.ts': ['L79_ORDERS'],
+  // and the order list a hero's form offers (P1-11d3), with the tables and checks it reads
+  'ui/player/items-and-heroes.ts': [
+    'DIRECTIONS',
+    'ACTIONS',
+    'ALIGN_ACTIONS',
+    'KING_ONLY_ACTIONS',
+    'gdAlreadyBuiltP',
+    'rawSkillLvl',
+    'skillsUnseenP',
+    'ACTION_DISPLAY_ORDER',
+    '_actionRank',
+    'actionsFor',
+  ],
   'ui/player/move-analysis.ts': ['lastMoveDirOf'],
 };
 const ARMY_CARD = 'ui/player/report.ts';
@@ -257,6 +289,22 @@ function projectedLedArmiesOn(report, orders, heroId, upTo) {
 function projectedGarrisonOn(report, orders, provId, upTo) {
   return onTheOrders(report, orders, () => projectedGarrison(provId, upTo));
 }
+// The order list the form offers the hero (or the card) \`c\` (P1-11d3): each order's name, in the list's order; every
+// name the list may hold (ACTIONS); and the mastery orders' table it reads, each order with its skill and its level.
+function actionsForOn(report, c) {
+  return onTheOrders(report, {}, () => actionsFor(c));
+}
+function theOrderListsNames() {
+  return ACTIONS.slice();
+}
+function theMasteryOrdersOfTheList() {
+  return Object.entries(L79_ORDERS).map(([name, o]) => ({ name, skill: o.skill, level: o.lvl }));
+}
+// The target field of the order \`saved\` ({ action, target, extra }) the hero \`c\` gives in the phase \`ph\`, as the
+// form builds it, on the orders staged (P1-11d3: the creed orders' fields): its markup.
+function theTargetFieldOn(report, orders, c, ph, saved) {
+  return onTheOrders(report, orders, () => String(buildTargetField(c, ph, saved)));
+}
 // The Move field's directions for the hero \`c\` in the phase \`ph\` (buildTargetField's statements, for a fresh Move):
 // each option as the field writes it, its value (prov:<id>) and its words.
 function theMoveFieldsDirectionsOn(theReport, orders, c, ph) {
@@ -279,6 +327,10 @@ const COPY_FUNCTIONS = [
   'predictedItemsOn',
   'projectedLedArmiesOn',
   'projectedGarrisonOn',
+  'actionsForOn',
+  'theOrderListsNames',
+  'theMasteryOrdersOfTheList',
+  'theTargetFieldOn',
   'armyCardDruidLines',
   'armyCardSeaNote',
   'armyCardUnitStrength',
@@ -2713,4 +2765,669 @@ export function armyCardKinAgainstTheBattle(c: Copies, world: World): KinCompari
         ];
       }),
     );
+}
+
+// ── The orders (P1-11d3) ────
+// Plan P1-11d's parity cases on the orders a hero's form offers him, before any of it is shared (d7 to d11 share the
+// creed and king check and the masteries' table): the order list (actionsFor) against the turn's own checks of each
+// order (processOrder and the order's function), each name the list holds against the order the turn reads it as
+// (normaliseAction), and the creed orders' target fields (buildTargetField) against their rows and what the turn does.
+// Each runs as the portal's own code, on a report the engine builds; the turn's side is processOrder on a copy of the
+// state the report was built from. Where the form disagrees with the turn (questions 36, 39, 40 and 41), the
+// difference is pinned exactly.
+
+/** The turn's refusals the order list restates, each by its line's kind: a creed's order outside its creed, a king's
+ *  order by another hero, Steal with no Thief, Research with no Sage, a king releasing himself, a second Grand Design,
+ *  and what a hero held by a charm or new to the realm will not do; and every mastery's ("a hero lacks the …
+ *  mastery …", aMasteryIsLacking). Any other refusal (an order with no target, a province not his) is the order's
+ *  own, which the list doesn't restate. */
+export const THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES: readonly string[] = [
+  'the gods answer a consecration only from a Divine crown',
+  "only a Good realm's folk answer a Call to Arms",
+  'only a Neutral crown keeps brokers',
+  'only Undead realms keep corpse-carters',
+  'a hero who does not keep the old faith cannot perform rites',
+  'only the king can consecrate ground',
+  "only the king's voice carries the Call to Arms",
+  "only the king commands the realm's brokers",
+  'a hero with no Thief skill cannot steal',
+  'a hero without Sage learning cannot research',
+  'a king cannot release himself from his own service',
+  'the realm has already completed its Grand Design',
+  'a charmed hero will not carry out an order of his captor',
+  'a hero who joined the realm this turn has no mastery to give yet',
+  'a hero held by a charm this season cannot be released',
+  'a charmed hero will not spend what he carries',
+  'a charmed hero will part with nothing',
+];
+const aMasteryIsLacking = (kind: string) => /^a hero lacks the \w+ mastery /.test(kind);
+/** The facts of the lines the turn writes as `heroId` gives the order `action` (with its target and extra: none, the
+ *  empty field) in the first phase, as processOrder carries it out, on a copy of `state` (his move pool set as the turn
+ *  sets it first); and the state it leaves. */
+function theTurnPlaysTheOrder(
+  state: Obj,
+  heroId: unknown,
+  action: string,
+  target = '',
+  extra = '',
+): { facts: Obj[]; G: Obj } {
+  const G = copyOf(state);
+  const c = objects(G['characters']).find((h) => h['id'] === heroId);
+  if (!c) throw new Error(`the staged state has no hero ${String(heroId)}`);
+  G['turnOrders'] = { [String(heroId)]: [{ action, target, extra, desc: action }] };
+  const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], Number(G['turn']) || 1), { KC_SEASONS, isBotRow });
+  kcRng.seed(1);
+  tc._currentPhase = 0;
+  quietly(() => {
+    setMovePool(tc, c);
+    // (the staged world's hero and his order, given the types processOrder takes, by assertion as theOrderBlocks's)
+    processOrder(tc as unknown as TurnContext, c as never, { action, target, extra, desc: action }, 0);
+  });
+  return { facts: tc.turnLog.map((l) => (isObj(l['fact']) ? l['fact'] : {})), G };
+}
+/** The refusal the order list restates that the turn gives `heroId` for the order `action`, or none (null). */
+function theRestatedRefusal(state: Obj, heroId: unknown, action: string): string | null {
+  const kinds = theTurnPlaysTheOrder(state, heroId, action).facts.map((f) => String(f['kind']));
+  return kinds.find((k) => THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES.includes(k) || aMasteryIsLacking(k)) ?? null;
+}
+
+/** Each hero's skill at 9: a hero no mastery gate can refuse. */
+const EVERY_SKILL_AT_NINE: Obj = Object.fromEntries(Object.keys(SKILL_LABELS).map((k) => [k, 9]));
+/** A new world staged for the orders: aWorldToStageIn's, the heroes no realm holds gone, every land province no realm
+ *  holds realm 0's (its guards gone) at a tax below 10 but the capital's, realm 0 rich enough for any order; with a
+ *  way to stage a hero of realm 0 in a province (a copy of its king, his id his place in the list: the army orders
+ *  read a comrade by it), and the provinces next to one. */
+function aWorldForTheOrders(): {
+  g: Obj;
+  king: Obj;
+  realm: Obj;
+  capital: Obj;
+  land: Obj[];
+  at: (p: Obj, fields?: Obj) => Obj;
+  nextTo: (p: Obj) => Obj[];
+} {
+  const { g, king } = aWorldToStageIn();
+  const map = isObj(g['world']) ? g['world'] : {};
+  const [cols, rows] = [Number(map['cols']), Number(map['rows'])];
+  const provinces = objects(map['provinces']);
+  const characters: unknown[] = Array.isArray(g['characters']) ? g['characters'] : [];
+  // (aWorldToStageIn's heroes are its realms' kings and heroes, in id order; its staged ones are none yet)
+  if (objects(characters).some((h, i) => h['id'] !== i))
+    throw new Error("the staged world's heroes are not in id order");
+  const realmless = new Set(
+    objects(characters)
+      .filter((h) => h['player'] == null)
+      .map((h) => h['id']),
+  );
+  for (const h of objects(characters)) if (realmless.has(h['id'])) h['alive'] = false;
+  const capital = provinces.find((p) => p['id'] === king['location']);
+  if (!capital) throw new Error("the staged world has no capital for realm 0's king");
+  const land = provinces.filter((p) => p['terrain'] !== 'sea');
+  for (const p of provinces) {
+    p['characters'] = (Array.isArray(p['characters']) ? p['characters'] : []).filter((id) => !realmless.has(id));
+    if (p['terrain'] === 'sea' || (p['owner'] != null && p['owner'] !== 0)) continue;
+    p['owner'] = 0;
+    p['npcArmies'] = [];
+    p['neutralDefenders'] = [];
+    if (p !== capital) p['tax'] = Math.min(Number(p['tax']) || 0, 9);
+  }
+  const realm = objects(g['players'])[0];
+  if (!realm) throw new Error('the staged world has no realm 0');
+  realm['gold'] = 1000;
+  realm['provinces'] = land.filter((p) => p['owner'] === 0).map((p) => p['id']);
+  const at = (p: Obj, fields: Obj = {}): Obj => {
+    const id = characters.length;
+    const h: Obj = { ...copyOf(king), isKing: false, items: [], armies: [], skills: {}, ...fields, id };
+    h['name'] = `Staged ${String(id)}`;
+    h['location'] = p['id'];
+    characters.push(h);
+    p['characters'] = [...(Array.isArray(p['characters']) ? (p['characters'] as unknown[]) : []), id];
+    return h;
+  };
+  const nextTo = (p: Obj) => getNeighborsP({ row: Number(p['row']), col: Number(p['col']) }, cols, rows, provinces);
+  g['characters'] = characters;
+  return { g, king, realm, capital, land: land.filter((p) => p['owner'] === 0), at, nextTo };
+}
+
+/** What each staged case of the order list checks. */
+export type AKindOfOrderListCase =
+  | 'a mastery'
+  | "a creed's order"
+  | 'Steal'
+  | 'Research'
+  | 'Release Hero'
+  | 'the Grand Design'
+  | 'a hero under a charm, or new to the realm';
+/** One order of a staged hero compared: whether the form's order list offers it, and whether the turn lets him give it
+ *  (no refusal the list restates); with what the case checks, the hero, the order, and the turn's refusal (or none). */
+export interface AnOrderListComparison extends Comparison {
+  readonly kind: AKindOfOrderListCase;
+  readonly who: string;
+  readonly order: string;
+  readonly refusal: string | null;
+}
+/** The order list's gates against the turn's, on staged heroes of realm 0 in its capital (a Good realm, but where a
+ *  creed is staged): for each mastery of the form's table, a hero one level below it and one at it; the king and a
+ *  hero under each of the seven creeds, for the five creeds' orders; Steal at Thief 0, 1 and 0 wearing an item of
+ *  Thief +2; Research at Sage 0, 1 and 0 wearing an item of Sage +2; Release Hero by the king and a hero; the Grand
+ *  Design by a Sage 9 hero before and after his realm has raised its Wonder; and every order of the list by a hero
+ *  seized from an enemy by a charm and one hired this turn, each with the card the page makes him
+ *  (src/ui/player/pre-orders.ts: no levels seen) and, in the state, every skill at 9. The form is
+ *  handed the realm's report as the engine builds it from each world (its creed, its Wonder); the turn, a copy of the
+ *  state it was built from. */
+export function theOrderListAgainstTheTurn(c: Copies): AnOrderListComparison[] {
+  const { g, king, realm, capital, at } = aWorldForTheOrders();
+  const listed: unknown = c.theOrderListsNames();
+  const everyOrder = (Array.isArray(listed) ? listed : []).map(String);
+  const table: unknown = c.theMasteryOrdersOfTheList();
+  interface AStagedHero {
+    readonly kind: AKindOfOrderListCase;
+    readonly who: string;
+    readonly hero: Obj;
+    readonly orders: readonly string[];
+    readonly creed?: string;
+    readonly wonder?: boolean;
+    /** The card the page makes him (none: his report's). */
+    readonly card?: Obj;
+  }
+  const staged: AStagedHero[] = [];
+  for (const m of objects(table)) {
+    const [name, skill, level] = [String(m['name']), String(m['skill']), Number(m['level'])];
+    for (const l of [level - 1, level])
+      staged.push({
+        kind: 'a mastery',
+        who: `${skill} ${String(l)}`,
+        hero: at(capital, { skills: { [skill]: l } }),
+        orders: [name],
+      });
+  }
+  const aHero = at(capital, { skills: { white: 1 } });
+  for (const creed of KC_ALIGNMENTS)
+    for (const [who, hero] of [
+      ['the king', king],
+      ['a hero', aHero],
+    ] as const)
+      staged.push({
+        kind: "a creed's order",
+        who: `${who} of a ${creed} realm`,
+        hero,
+        orders: ['Consecrate', 'Call to Arms', 'Broker', 'Harvest the Field', 'Perform Rite'],
+        creed,
+      });
+  let itemId = 64_000;
+  const worn = (name: string): Obj[] => {
+    const it = catalogue().find((x) => x['name'] === name);
+    if (!it) throw new Error(`the catalogue has no ${name}`);
+    return [{ ...copyOf(it), id: itemId++, equipped: true }];
+  };
+  const [thief, sage] = ['Gloves of the Nightcrawler', "Sage's Crown"];
+  for (const [kind, skill, order, item] of [
+    ['Steal', 'thief', 'Steal', thief],
+    ['Research', 'sage', 'Research', sage],
+  ] as const) {
+    staged.push({ kind, who: `${skill} 0`, hero: at(capital, { skills: { [skill]: 0 } }), orders: [order] });
+    staged.push({ kind, who: `${skill} 1`, hero: at(capital, { skills: { [skill]: 1 } }), orders: [order] });
+    staged.push({
+      kind,
+      who: `${skill} 0, wearing ${item}`,
+      hero: at(capital, { items: worn(item) }),
+      orders: [order],
+    });
+  }
+  staged.push({ kind: 'Release Hero', who: 'the king', hero: king, orders: ['Release Hero'] });
+  staged.push({ kind: 'Release Hero', who: 'a hero', hero: aHero, orders: ['Release Hero'] });
+  const designer = at(capital, { skills: { sage: 9 } });
+  for (const wonder of [false, true])
+    staged.push({
+      kind: 'the Grand Design',
+      who: wonder ? 'a Sage 9 hero, his realm’s Wonder raised' : 'a Sage 9 hero',
+      hero: designer,
+      orders: ['Grand Design'],
+      wonder,
+    });
+  // two of the cards the page makes a hero whose levels his realm has not seen, as it writes them
+  const unseen = (fields: Obj): Obj => ({ isKing: false, skills: {}, items: [], armies: [], ...fields });
+  const turn = Number(g['turn']) || 1;
+  for (const [who, fields, card] of [
+    [
+      'seized from an enemy by a charm',
+      { _charmTempControl: true, _charmOriginalPlayer: 1, _charmedTurn: turn },
+      unseen({ _hiddenSkills: true, _charmEnemy: true }),
+    ],
+    ['hired this turn', { hiredInPhase: 0 }, unseen({ _unknownSkills: true })],
+  ] as const) {
+    const hero = at(capital, { skills: { ...EVERY_SKILL_AT_NINE }, ...fields });
+    staged.push({
+      kind: 'a hero under a charm, or new to the realm',
+      who,
+      hero,
+      orders: everyOrder,
+      card: { ...card, id: hero['id'], name: hero['name'] },
+    });
+  }
+  // realm 0's world under each creed, and with its Wonder raised (its Grand Design discovered)
+  const worlds = new Map<string, World>();
+  const worldOf = (creed: string, wonder: boolean): World => {
+    const key = `${creed} ${String(wonder)}`;
+    const kept = worlds.get(key);
+    if (kept) return kept;
+    const [was, discoveries] = [realm['alignment'], realm['discoveries']];
+    realm['alignment'] = creed;
+    if (wonder) realm['discoveries'] = [{ id: 'gd' }];
+    const world = quietly(() => savedAndReported(g));
+    [realm['alignment'], realm['discoveries']] = [was, discoveries];
+    worlds.set(key, world);
+    return world;
+  };
+  return staged.flatMap((s) => {
+    const world = worldOf(s.creed ?? String(realm['alignment']), s.wonder ?? false);
+    const card = s.card ?? objects(world.report['characters']).find((h) => h['id'] === s.hero['id']);
+    if (!card) throw new Error(`the staged report has no ${s.who}`);
+    const offered: unknown = c.actionsForOn(world.report, card);
+    const list = Array.isArray(offered) ? offered.map(String) : [];
+    return s.orders.map((order) => {
+      const refusal = theRestatedRefusal(world.state, s.hero['id'], order);
+      return {
+        ...compare([s.who, order], list.includes(order), { answer: refusal === null, changed: false }),
+        kind: s.kind,
+        who: s.who,
+        order,
+        refusal,
+      };
+    });
+  });
+}
+
+/** Each name the order list may hold (ACTIONS) and the order the turn reads it as (normaliseAction, on an order with
+ *  that action): its kind, or "(none: read as a Defend)" when the turn's names (PHASE_ACTION_MAP) don't hold it, as the
+ *  turn then reads any order. */
+export function theOrderEachNameOfTheListGives(c: Copies): [string, string][] {
+  const listed: unknown = c.theOrderListsNames();
+  const names: Readonly<Partial<Record<string, string>>> = PHASE_ACTION_MAP;
+  return (Array.isArray(listed) ? listed : [])
+    .map(String)
+    .map((name) => [
+      name,
+      names[name.toLowerCase().trim()] === undefined
+        ? '(none: read as a Defend)'
+        : String(normaliseAction({ action: name })),
+    ]);
+}
+
+/** The words of a piece of markup as a reader sees them: its tags taken out (again until none is left, so no tag can
+ *  be made of the pieces of two), its entities read, its spaces made one. */
+function theWordsOf(markup: string): string {
+  let words = markup;
+  for (let was = ''; was !== words;) {
+    was = words;
+    words = words.replace(/<[^<>]*>/g, ' ');
+  }
+  const entities: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", '#x27': "'" };
+  return words
+    .replace(/&(amp|lt|gt|quot|#39|#x27);/g, (_m, e: string) => entities[e] ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+/** The options of a field's select, each its value, its words and whether it is the one selected. */
+function theOptionsOf(markup: string): { value: string; words: string; selected: boolean }[] {
+  return [...markup.matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/g)].map((m) => ({
+    value: /value="([^"]*)"/.exec(m[1] ?? '')?.[1] ?? '',
+    words: theWordsOf(m[2] ?? ''),
+    selected: /\bselected\b/.test(m[1] ?? ''),
+  }));
+}
+/** The numbers of a creed's orders as its row gives them (src/content/alignment-orders-…). */
+const theRowsNumber = (order: keyof typeof THE_ALIGNMENT_ORDERS, n: string): unknown => {
+  const numbers: Readonly<Record<string, { readonly value: unknown } | undefined>> =
+    THE_ALIGNMENT_ORDERS[order].theNumbers;
+  return numbers[n]?.value;
+};
+
+/** The creed orders' target fields the parity cases stage: those the field and the turn agree on, and those it is
+ *  known to get wrong (questions 36, 39 and 41): a Consecrate in a captured seat of tax 10 (the field takes it for
+ *  the home, the turn's home is the seat the realm was founded on), by a king of White 7 at five consecrations (the
+ *  field counts his White to 5), Harvest the Field's price with Corpse-Carters (the field's 2g), the Wild Hunt's term
+ *  with The Long Hunt (the field's next turn), a Call to Arms in a province whose first company is not a garrison (the
+ *  field names that company, the turn musters a garrison), and a Blood Offering marked on companies the rite never
+ *  takes (the field offers bound beasts and risen dead; the turn gives the first company it may and raises the next). */
+export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
+  'a Call to Arms in a province whose first company is a garrison',
+  'Broker: word bought from a province',
+  'Harvest the Field',
+  'the Rite of the Wild Hunt',
+  'a Blood Offering marked on two companies',
+  'a Consecrate in a province of the realm',
+  'a Consecrate in the capital',
+] as const;
+export const THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH = [
+  'a Call to Arms in a province whose first company is not a garrison',
+  'Harvest the Field, with Corpse-Carters',
+  'the Rite of the Wild Hunt, with The Long Hunt',
+  'a Blood Offering marked on a bound beast',
+  'a Consecrate in a captured seat of tax 10',
+  'a Consecrate by a king of White 7 at five consecrations',
+] as const;
+export type AKindOfCreedField =
+  (typeof THE_CREED_FIELDS_THE_TURN_AGREES_WITH)[number] | (typeof THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH)[number];
+/** One creed order's field compared: what the field says the order will do (read from its words and its marks), and
+ *  what the turn does with it; with its kind, and the rows' numbers for what the field states (where a row has one). */
+export interface ACreedFieldComparison extends Comparison {
+  readonly kind: AKindOfCreedField;
+  readonly rows: Obj;
+}
+/** What a Consecrate's field says it will do (its words: "Consecrates …" or the warning it gives), and what the turn
+ *  does (its line), each in the same words: it consecrates, or the rule that refuses it (the home marches: the home and
+ *  the provinces next to it; the limit: the consecrations a king may hold). */
+function theFieldsConsecration(markup: string): string {
+  const said = /placeholder="([^"]*)"/.exec(markup)?.[1] ?? '';
+  const words = theWordsOf(said);
+  if (words.startsWith('Consecrates ')) return 'it consecrates';
+  if (/is your home province|borders your home province/.test(words)) return 'the home marches';
+  if (words.includes('(your White limit)')) return 'the limit';
+  return `(the field says: ${words})`;
+}
+function theTurnsConsecration(facts: readonly Obj[]): string {
+  const kinds = facts.map((f) => String(f['kind']));
+  if (kinds.includes('a king consecrates a province')) return 'it consecrates';
+  if (kinds.includes('the home marches were anointed at the coronation')) return 'the home marches';
+  if (kinds.includes('the White faith can sustain no more consecrated provinces')) return 'the limit';
+  return `(the turn says: ${kinds.join('; ')})`;
+}
+/** The creed orders' fields (buildTargetField, on realm 0's report as the engine builds it from each world) against
+ *  the rows and what the turn does with each order (processOrder, on a copy of the state the report was built from):
+ *  each kind of THE_CREED_FIELDS_THE_TURN_AGREES_WITH and THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH, staged in a world
+ *  of its own (its creed, its discoveries, where its hero stands). */
+export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldComparison[] {
+  const { g, king, capital, land, at, nextTo } = aWorldForTheOrders();
+  const kingId = king['id'];
+  const near = (p: Obj) => new Set([p['id'], ...nextTo(p).map((q) => q['id'])]);
+  const homeMarches = near(capital);
+  const free = land.filter((p) => !homeMarches.has(p['id']));
+  const take = () => {
+    const p = free.shift();
+    if (!p) throw new Error('the staged world has too few provinces for the creed fields');
+    return p;
+  };
+  // a Call to Arms' two provinces: one whose first company is a garrison, one whose first is not
+  const [garrisonFirst, levyFirst] = [take(), take()];
+  // (settled by Humans: a seeded world's races differ after another world is made in the process, as the names its
+  // first draws take do; its map and its capitals don't)
+  for (const [p, types] of [
+    [garrisonFirst, ['Human Garrison', 'Men-at-Arms']],
+    [levyFirst, ['Free Lances', 'Human Garrison']],
+  ] as const) {
+    p['race'] = 'Human';
+    p['armyTypes'] = [...types];
+  }
+  // the graves Harvest the Field raises from
+  const field = take();
+  field['battleGraves'] = [{ type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName: 'The Fallen Spears' }];
+  const harvester = at(field);
+  // the standing stones a Pagan hero performs his rites at, in a province of beasts
+  const stones = take();
+  stones['features'] = [{ name: 'Staged Stones', index: 0, ritualSite: true, discovered: true }];
+  stones['armyTypes'] = ['Stone Giants'];
+  const hunter = at(stones);
+  let unitN = 0;
+  const company = (type: string, fields: Obj = {}): Obj => ({
+    type,
+    quality: 'Average',
+    race: 'Human',
+    unitName: `Staged Company ${String(unitN++)}`,
+    ...fields,
+  });
+  const offerer = at(stones, { armies: [company('Men-at-Arms'), company('Yeoman Longbows')] });
+  const turn = Number(g['turn']) || 1;
+  const markedOnABeast = at(stones, {
+    armies: [
+      company('Men-at-Arms'),
+      company('Yeoman Longbows'),
+      company('Stone Giants', { quality: 'Veteran', race: 'Primal', _wildHuntUntilTurn: turn + 1 }),
+    ],
+  });
+  // the provinces a Consecrate is given in: one of the realm's, and a captured seat of tax 10 the map lists before
+  // the capital; and five more of the realm's, consecrated, none next to the first
+  const consecrated = take();
+  const apart = near(consecrated);
+  const five = free.filter((p) => !apart.has(p['id'])).slice(0, 5);
+  const seat = land.find(
+    (p) =>
+      Number(p['id']) < Number(capital['id']) &&
+      !homeMarches.has(p['id']) &&
+      ![garrisonFirst, levyFirst, field, stones, consecrated].includes(p),
+  );
+  if (five.length < 5 || !seat) throw new Error('the staged world has too few provinces for the Consecrate cases');
+  const discovery = (id: string) => {
+    const d = objects(SAGE_DISCOVERIES_P).find((x) => x['id'] === id);
+    if (!d) throw new Error(`the discoveries have no ${id}`);
+    return copyOf(d);
+  };
+  /** realm 0's world under `creed`, with `edit` made to a copy of the staged one (`G`: the copy; the king's id). */
+  const realmZeroOf = (G: Obj): Obj => {
+    const r = objects(G['players'])[0];
+    if (!r) throw new Error('the staged world has no realm 0');
+    return r;
+  };
+  const worldOf = (creed: string, edit: (G: Obj, theKing: Obj) => void = () => undefined): World => {
+    const G = copyOf(g);
+    realmZeroOf(G)['alignment'] = creed;
+    const theKing = objects(G['characters']).find((h) => h['id'] === kingId) ?? {};
+    edit(G, theKing);
+    return quietly(() => savedAndReported(G));
+  };
+  const provinceIn = (G: Obj, p: Obj) =>
+    objects(isObj(G['world']) ? G['world']['provinces'] : []).find((q) => q['id'] === p['id']) ?? {};
+  /** The king of `G` moved to the province `p`, of White `white`. */
+  const theKingIn = (G: Obj, theKing: Obj, p: Obj, white: number) => {
+    const from = provinceIn(G, capital);
+    from['characters'] = (Array.isArray(from['characters']) ? from['characters'] : []).filter((id) => id !== kingId);
+    const to = provinceIn(G, p);
+    to['characters'] = [...(Array.isArray(to['characters']) ? (to['characters'] as unknown[]) : []), kingId];
+    theKing['location'] = p['id'];
+    theKing['skills'] = { ...(isObj(theKing['skills']) ? theKing['skills'] : {}), white };
+  };
+  const reportHero = (world: World, id: unknown): Obj => {
+    const h = objects(world.report['characters']).find((x) => x['id'] === id);
+    if (!h) throw new Error(`the staged report has no hero ${String(id)}`);
+    return h;
+  };
+  const field_ = (world: World, id: unknown, action: string, target = '', extra = '') =>
+    String(c.theTargetFieldOn(world.report, {}, reportHero(world, id), 0, { action, target, extra }));
+  const out: ACreedFieldComparison[] = [];
+  const push = (kind: AKindOfCreedField, copy: unknown, engine: unknown, rows: Obj = {}) =>
+    out.push({ ...compare(kind, copy, { answer: engine, changed: false }), kind, rows });
+  const factOf = (facts: readonly Obj[], kind: string): Obj => facts.find((f) => f['kind'] === kind) ?? {};
+  const words = (markup: string, re: RegExp) => re.exec(theWordsOf(markup))?.slice(1) ?? ['(not said)'];
+
+  // Call to Arms: the grade and the company the field names, and the grade its note gives; what the turn musters
+  const good = worldOf('Good');
+  for (const [kind, p] of [
+    ['a Call to Arms in a province whose first company is a garrison', garrisonFirst],
+    ['a Call to Arms in a province whose first company is not a garrison', levyFirst],
+  ] as const) {
+    const markup = field_(good, kingId, 'Call to Arms', String(p['id']));
+    const option = theOptionsOf(markup).find((o) => o.value === String(p['id']));
+    const [grade, unit] = /— raises an? (\S+) (.+)$/.exec(option?.words ?? '')?.slice(1) ?? ['(not offered)', ''];
+    const [noteGrade] = words(markup, /Free (\S+) garrison unit/);
+    const mustered = factOf(
+      theTurnPlaysTheOrder(good.state, kingId, 'Call to Arms', String(p['id'])).facts,
+      'the folk answer a Call to Arms',
+    );
+    const row = theRowsNumber('call-to-arms', 'theGradeMustered');
+    push(
+      kind,
+      { grade, company: unit, 'the grade its note gives': noteGrade },
+      { grade: mustered['quality'], company: mustered['unitType'], 'the grade its note gives': mustered['quality'] },
+      { grade: row, 'the grade its note gives': row },
+    );
+  }
+  // Broker: the price of word from a province, in its option and its note; what the turn takes from the treasury
+  {
+    const neutral = worldOf('Neutral');
+    const target = `spy:${String(garrisonFirst['id'])}`;
+    const markup = field_(neutral, kingId, 'Broker', target);
+    const option = theOptionsOf(markup).find((o) => o.value === target);
+    const [inTheOption] = /\((\d+)g — full Spy result\)/.exec(option?.words ?? '')?.slice(1) ?? ['(not offered)'];
+    const [inTheNote] = words(markup, /a guaranteed Spy report on any province the realm has seen — (\d+)g/);
+    const goldOf = (G: Obj) => Number(realmZeroOf(G)['gold']);
+    const spent = goldOf(neutral.state) - goldOf(theTurnPlaysTheOrder(neutral.state, kingId, 'Broker', target).G);
+    const row = theRowsNumber('broker', 'thePriceOfWordFromAProvince');
+    push(
+      'Broker: word bought from a province',
+      { 'in its option': Number(inTheOption), 'in its note': Number(inTheNote) },
+      { 'in its option': spent, 'in its note': spent },
+      { 'in its option': row, 'in its note': row },
+    );
+  }
+  // Harvest the Field: the price its note gives; what the turn charges
+  for (const [kind, discoveries] of [
+    ['Harvest the Field', []],
+    ['Harvest the Field, with Corpse-Carters', [discovery('az06')]],
+  ] as const) {
+    const undead = worldOf('Undead', (G) => {
+      realmZeroOf(G)['discoveries'] = [...discoveries];
+    });
+    const [price] = words(field_(undead, harvester['id'], 'Harvest the Field'), /No magic required: (\d+)g raises/);
+    const raised = factOf(
+      theTurnPlaysTheOrder(undead.state, harvester['id'], 'Harvest the Field').facts,
+      'the corpse-carters raise a skeletal company',
+    );
+    push(
+      kind,
+      { price: Number(price) },
+      { price: raised['cost'] },
+      { price: theRowsNumber('harvest-the-field', 'thePrice') },
+    );
+  }
+  // the Rite of the Wild Hunt: the beasts its option binds, their grade and type, their price and the turns beyond
+  // this one they serve ("until end of NEXT turn": one); what the turn binds
+  for (const [kind, discoveries] of [
+    ['the Rite of the Wild Hunt', []],
+    ['the Rite of the Wild Hunt, with The Long Hunt', [discovery('ap08')]],
+  ] as const) {
+    const pagan = worldOf('Pagan', (G) => {
+      realmZeroOf(G)['discoveries'] = [...discoveries];
+    });
+    const option = theOptionsOf(field_(pagan, hunter['id'], 'Perform Rite', 'Wild Hunt')).find(
+      (o) => o.value === 'Wild Hunt',
+    );
+    const said = /bind (\d+) (\S+) (.+) \((\d+)g — the price of one, no wages, serve until end of (.+?) turn\)/.exec(
+      option?.words ?? '',
+    );
+    const [beasts, grade, type, price, until] = said?.slice(1) ?? [];
+    const played = theTurnPlaysTheOrder(pagan.state, hunter['id'], 'Perform Rite', 'Wild Hunt');
+    const bound = objects(objects(played.G['characters']).find((h) => h['id'] === hunter['id'])?.['armies']).filter(
+      (a) => a['_wildHuntUntilTurn'] != null,
+    );
+    const performed = factOf(played.facts, 'a hero performs the Rite of the Wild Hunt');
+    const grades = [...new Set(bound.map((a) => String(a['quality'])))];
+    push(
+      kind,
+      {
+        beasts: Number(beasts),
+        grade: grade ? grade.charAt(0) + grade.slice(1).toLowerCase() : '(not said)',
+        type,
+        price: Number(price),
+        'turns beyond this one': until === 'NEXT' ? 1 : `(the field says: until end of ${String(until)} turn)`,
+      },
+      {
+        beasts: bound.length,
+        grade: grades.length === 1 ? grades[0] : grades,
+        type: bound[0]?.['type'],
+        price: performed['price'],
+        'turns beyond this one': Math.max(...bound.map((a) => Number(a['_wildHuntUntilTurn']))) - turn,
+      },
+      {
+        beasts: theRowsNumber('perform-rite', 'theWildHuntsBeasts'),
+        'turns beyond this one': theRowsNumber('perform-rite', 'theWildHuntsTurnsMore'),
+      },
+    );
+  }
+  // a Blood Offering: the companies its marks give and raise, and the grades it says each rises (in its option, its
+  // heading and its mark); what the turn gives and raises
+  {
+    const pagan = worldOf('Pagan');
+    for (const [kind, hero, extra] of [
+      ['a Blood Offering marked on two companies', offerer, 'S:0|E:1'],
+      ['a Blood Offering marked on a bound beast', markedOnABeast, 'S:2|E:1'],
+    ] as const) {
+      const markup = field_(pagan, hero['id'], 'Perform Rite', 'Blood Offering', extra);
+      const led = objects(reportHero(pagan, hero['id'])['armies']);
+      const marks = [...markup.matchAll(/<select class="bo-sel"[^>]*data-idx="(\d+)"[^>]*>([\s\S]*?)<\/select>/g)].map(
+        (m) => ({
+          company: String(led[Number(m[1])]?.['unitName']),
+          mark: theOptionsOf(m[2] ?? '').find((o) => o.selected)?.value ?? '',
+        }),
+      );
+      const text = theWordsOf(markup);
+      const grades = [/\(\+(\d+) tiers each\)/, /\(\+(\d+) quality tiers each/, /Empower \+(\d+)/].map((re) =>
+        Number(re.exec(text)?.[1]),
+      );
+      const before = objects(objects(pagan.state['characters']).find((h) => h['id'] === hero['id'])?.['armies']);
+      const after = objects(
+        objects(
+          theTurnPlaysTheOrder(pagan.state, hero['id'], 'Perform Rite', 'Blood Offering', extra).G['characters'],
+        ).find((h) => h['id'] === hero['id'])?.['armies'],
+      );
+      const tiers: readonly string[] = KC_QUALITY_TIERS;
+      const risen = after.filter((a) =>
+        before.some((b) => b['unitName'] === a['unitName'] && b['quality'] !== a['quality']),
+      );
+      const rises = risen.map(
+        (a) =>
+          tiers.indexOf(String(a['quality'])) -
+          tiers.indexOf(String(before.find((b) => b['unitName'] === a['unitName'])?.['quality'])),
+      );
+      const row = theRowsNumber('perform-rite', 'theBloodOfferingsGrades');
+      push(
+        kind,
+        {
+          given: marks.filter((m) => m.mark === 'S').map((m) => m.company),
+          raised: marks.filter((m) => m.mark === 'E').map((m) => m.company),
+          'the grades each rises': grades,
+        },
+        {
+          given: before
+            .filter((b) => !after.some((a) => a['unitName'] === b['unitName']))
+            .map((b) => String(b['unitName'])),
+          raised: risen.map((a) => String(a['unitName'])),
+          'the grades each rises': grades.map(() => (rises.length === 1 ? rises[0] : rises)),
+        },
+        { 'the grades each rises': grades.map(() => row) },
+      );
+    }
+  }
+  // Consecrate: what its field says, and what the turn does, by the king of a Divine realm
+  for (const [kind, p, white, edit] of [
+    ['a Consecrate in a province of the realm', consecrated, 1, () => undefined],
+    ['a Consecrate in the capital', capital, 1, () => undefined],
+    [
+      'a Consecrate in a captured seat of tax 10',
+      seat,
+      1,
+      (G: Obj) => {
+        const q = provinceIn(G, seat);
+        q['tax'] = 10;
+      },
+    ],
+    [
+      'a Consecrate by a king of White 7 at five consecrations',
+      consecrated,
+      7,
+      (G: Obj) => {
+        realmZeroOf(G)['consecratedProvIds'] = five.map((q) => q['id']);
+      },
+    ],
+  ] as const) {
+    const divine = worldOf('Divine', (G, theKing) => {
+      theKingIn(G, theKing, p, white);
+      edit(G);
+    });
+    push(
+      kind,
+      theFieldsConsecration(field_(divine, kingId, 'Consecrate')),
+      theTurnsConsecration(theTurnPlaysTheOrder(divine.state, kingId, 'Consecrate').facts),
+    );
+  }
+  return out;
 }
