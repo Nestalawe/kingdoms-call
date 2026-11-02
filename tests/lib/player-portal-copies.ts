@@ -186,7 +186,6 @@ const COPIES: Record<string, string[]> = {
     'DIRECTIONS',
     'ACTIONS',
     'ALIGN_ACTIONS',
-    'KING_ONLY_ACTIONS',
     'gdAlreadyBuiltP',
     'rawSkillLvl',
     'skillsUnseenP',

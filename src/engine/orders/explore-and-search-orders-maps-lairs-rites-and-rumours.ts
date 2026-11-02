@@ -11,6 +11,7 @@ import {
 } from '../world/tables.ts';
 import { WILD_HUNT_TURNS, WILD_HUNT_UNITS, guardianCanUseItem, wildHuntPrice } from '../items/tiers-and-hoards.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { aRealmOfThisCreedMayGiveTheAlignmentOrder } from '../rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
 import { recordBattleGraves, recordDeadHeroSighting } from '../graves.ts';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.ts';
 import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -297,7 +298,9 @@ export function resolvePerformRiteOrder(
   // an Explore); for none, a TypeError.
   if (!servesARealm(c)) throw new TypeError('a hero who serves no realm performs a rite');
   // ── PAGAN: Perform Rite ── Only Pagan realms; only at a DISCOVERED ritual site.
-  if (G.players[c.player]?.alignment !== THE_ALIGNMENT_ORDERS['perform-rite'].creed) {
+  if (
+    !aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS['perform-rite'], G.players[c.player]?.alignment)
+  ) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero who does not keep the old faith cannot perform rites', heroName: c.name },

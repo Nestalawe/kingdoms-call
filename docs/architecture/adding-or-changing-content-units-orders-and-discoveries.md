@@ -148,8 +148,10 @@ Each order is one row of `THE_ALIGNMENT_ORDERS` (`src/content/alignment-orders-t
 its key, its name, the other names the turn reads, its creed, whether the king alone gives it, and the numbers the books
 state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows, and so are the
 order-name map's entries for them (`PHASE_ACTION_MAP`: each row's key, its name in lower case and its other names);
-the order switch's `case`s read their row's key. Each resolver compares its row's creed, the three the king alone gives
-read its mark, and the numbers the books state come from the row (the price of word, the muster's grade, the carters'
+the order switch's `case`s read their row's key. Who may give one is two checks of
+`src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts` (a realm of
+the row's creed; the king, where the row marks it his alone): each resolver asks them, and so does the player portal's
+order list (`actionsFor`), whose `ACTIONS` and `ALIGN_ACTIONS` read the names and rows from that file too. The numbers the books state come from the row (the price of word, the muster's grade, the carters'
 price, the Wild Hunt's beasts and turns, the Blood Offering's tiers): the turn and the report price the carters with one
 function (`theCorpseCartersPriceForARealm`), and the report's price of word is the row's. The bots write each key from
 its row and read the two prices they budget (word, the carters) from it: the engine names no key outside
@@ -160,7 +162,7 @@ against both rulebooks. The ratchet's `alignmentOrderChecksInEngine` (0) counts 
 Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 22) touched: the engine's `case` in the order switch, the order-name map
 (`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS`, the short label map, the
 bots' `botSignaturePre` case and their two lists of muster-like orders; the player portal's `ACTIONS`,
-`ALIGN_ACTIONS`, `ACTION_DISPLAY_ORDER`, the target widget `case`, the army projection and the gold ledger; the
+`ALIGN_ACTIONS` (both the rows' since P1-11d7), `ACTION_DISPLAY_ORDER`, the target widget `case`, the army projection and the gold ledger; the
 rulebook's orders table and alignment section, the intro's table and the player portal's three alignment
 texts. Nothing
 throws when one is missed: the order is simply refused, hidden or priced wrong. Copy Harvest the Field's

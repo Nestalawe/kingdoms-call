@@ -254,14 +254,14 @@ perks'** (P1-19ai): [its file](the-guardian-perks-registry-its-stages-and-how-to
   mutate another's. The editing rules are at the top of that block: change a rule there; append, never
   re-sort; plain data only; `KC_` names only.
 - **Shared rule functions**: a rule of a hero, an army, an item, a level or a number that both portals need
-  is written once, in `src/engine/rules-on-plain-values/` (its files import only the data file and each other), and the
+  is written once, in `src/engine/rules-on-plain-values/` (its files import only `src/content/` and each other), and the
   player portal imports it by the engine's name through `src/shared/the-engines-rules-the-player-portal-shares.ts`,
   which re-exports only from that folder: e.g. `dispFloor`, `itemSlot`, `heroHireWage`,
-  the casting limits, the beast command, the Druid rule, a column's sea lift and the hex step. So the player page loads no other engine file and runs none of the
+  the casting limits, the beast command, the Druid rule, the sea lift, the hex step and who may give an alignment order. So the player page loads no other engine file and runs none of the
   engine's set-up as it loads. `tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts`
   refuses a portal file that imports an engine or a views file, or declares one of the retired copies (`floorNumP`, …)
-  or a name `src/shared/` hands it. The portal's copies still left (they read the report's shape: P1-11b) are the
-  ones `tests/lib/player-portal-copies.ts` checks.
+  or a name `src/shared/` hands it. The portal's copies still left are the ones `tests/lib/player-portal-copies.ts`
+  checks.
 - **A few deliberate near-copies stay in the GM portal**, because the *order* is a tie-break priority
   (each is commented `NOT a copy`). Don't collapse them.
 

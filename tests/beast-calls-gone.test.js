@@ -65,7 +65,9 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   const data=fs.readFileSync(require('path').join(SRC,'content','kingdoms-call-data.ts'),'utf8'), dataCode=compactOf('content/kingdoms-call-data.ts');
   const listOf=(src,re)=>(re.exec(src)||['',''])[1];
   ok(!/Awaken the Wild|Call from the Pit/.test(listOf(ppCode,/const ACTIONS *= *\[([\s\S]*?)\];/)),"the player portal's order list offers neither order");
-  ok(!/Awaken the Wild|Call from the Pit/.test(listOf(ppCode,/const ALIGN_ACTIONS=\{([^}]*)\}/)),"the player portal's alignment orders no longer name them");
+  // (since P1-11d7 the portal's table of them is the rows', by name, from the engine's folder: so the rows' names)
+  const {THE_ALIGNMENT_ORDERS}=require(require('path').join(SRC,'content','alignment-orders-their-keys-names-creeds-numbers-and-words.ts'));
+  ok(/const ALIGN_ACTIONS=theAlignmentOrdersByTheNameTheFormWrites\(\);/.test(ppCode)&&!/Awaken the Wild|Call from the Pit/.test(Object.values(THE_ALIGNMENT_ORDERS).map(o=>o.name).join(',')),"the player portal's alignment orders no longer name them");
   ok(!/Awaken the Wild|Call from the Pit/.test(listOf(ppCode,/const ACTION_DISPLAY_ORDER=\[([\s\S]*?)\];/)),'…nor its display order');
   ok(!/case 'Awaken the Wild'|case 'Call from the Pit'/.test(ppCode),'the player portal has no target picker for them');
   for(const [page,src] of [['rulebook',rules],['intro',intro],['player portal',pp],['data file',data]]){

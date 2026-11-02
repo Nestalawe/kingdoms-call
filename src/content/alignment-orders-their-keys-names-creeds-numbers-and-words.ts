@@ -6,7 +6,9 @@
 // engine checks each row's key is a kind of order (army-tables.ts). The words test
 // (tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts) reads each row
 // against the rulebook's orders table and creed sections and the intro's table. The removed orders (Awaken the Wild and
-// Call from the Pit, 2026-10-12) have no row: the turn keeps their refusal. The player page doesn't import this file.
+// Call from the Pit, 2026-10-12) have no row: the turn keeps their refusal. The player page reads the names, creeds and
+// king's marks through src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-
+// each.ts (P1-11d7), as the resolvers' checks do.
 import type { KC_ALIGNMENTS, KC_QUALITY_TIERS } from './kingdoms-call-data.ts';
 
 /** How the books write a number of an order: as it is (2 as `2`, a grade as its name), as a word (2 as `two`), or the
