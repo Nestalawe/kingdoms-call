@@ -367,6 +367,60 @@ export const RECRUIT_ORDER_CASES: RecruitHireAndWorksOrderCase[] = [
     },
   },
   {
+    // kept from tests/beast-command.test.js (plan P1-14f), beside the case above: a Druid-1 king of an Evil crown,
+    // leading one troll already, raises another in a troll province of his own
+    name: 'Recruit Armies: a Druid-1 king already leading a troll raises another, which musters into the garrison, and the realm reads why (item 24)',
+    stage(b) {
+      holds(b, b.X, ['Cave Trolls']);
+      b.X['race'] = 'Primal:Cave Troll';
+      creed(b, 'Evil');
+      realm(b)['gold'] = 200;
+      const h = king(b, { skills: skilled({ druid: 1 }) });
+      h.armies = [{ type: 'Cave Trolls', quality: 'Average', race: 'Primal', unitName: "the King's Trolls" }];
+      return { hero: h, here: b.X, orders: plan(order('recruit', 'Cave Trolls|1')) };
+    },
+    check(o, { hero: h, here }) {
+      return {
+        got: {
+          led: led(o, h),
+          garrison: garrison(o, here),
+          told: says(o, 'can lead only 1 Creature or Monster unit'),
+        },
+        want: { led: ['Average Cave Trolls'], garrison: ['Cave Trolls'], told: true },
+      };
+    },
+  },
+  {
+    // kept from tests/goblins-two-a-turn.test.js (plan P1-14f; R-096): in an Orcish province of the realm's, not its
+    // founder's home, three Goblin Hordes and two Orc Berserkers ordered in Spring, and a fourth horde in Early Summer.
+    // The order form's figure for the same province is unit/the-order-form-offers-two-goblin-hordes-a-turn-….
+    name: 'Recruit Armies: Goblin Hordes come two a turn and a third is refused in a later season; Orc Berserkers one (R-096)',
+    stage(b) {
+      holds(b, b.X, ['Goblin Horde', 'Orc Berserkers', 'Orc Garrison']);
+      b.X['race'] = 'Orcish';
+      realm(b)['gold'] = 200;
+      return {
+        hero: at(b),
+        here: b.X,
+        orders: plan(order('recruit', 'Goblin Horde|3,Orc Berserkers|2'), order('recruit', 'Goblin Horde|1')),
+      };
+    },
+    check(o, { hero: h, here }) {
+      return {
+        got: {
+          led: led(o, h).sort(),
+          raised: says(o, `recruits 2× Goblin Horde, 1× Orc Berserkers in ${here.name}`),
+          blocked: says(o, 'entirely blocked: Goblin Horde (already recruited this turn)'),
+        },
+        want: {
+          led: ['Average Goblin Horde', 'Average Goblin Horde', 'Average Orc Berserkers'],
+          raised: true,
+          blocked: true,
+        },
+      };
+    },
+  },
+  {
     name: 'Recruit Armies: a Druid of 6 or more raises beasts at half price',
     stage(b) {
       holds(b, b.X, ['Great Bears']);
@@ -757,6 +811,25 @@ export const CONSECRATE_ORDER_CASES: RecruitHireAndWorksOrderCase[] = [
           told: says(o, `✨`) && says(o, `consecrates ${here.name}! Holy ground: +50% tax`),
         },
         want: { holy: [here.id], told: true },
+      };
+    },
+  },
+  {
+    // kept from tests/hierophant-no-consecrate.test.js (plan P1-14f; R-116), stricter: the old script took any key of
+    // the realm's named "consecrat…" for the province hallowed; here the province is the one hallowed
+    name: 'Consecrate: hallowing a province earns the king no Hierophant merit (R-116)',
+    stage(b) {
+      holds(b, b.X);
+      return { hero: king(b, { skills: skilled({ white: 3 }) }), here: b.X, orders: plan(order('consecrate')) };
+    },
+    check(o, { hero: h, here }) {
+      return {
+        got: {
+          holy: realmOf(o, 0)['consecratedProvIds'],
+          told: says(o, `consecrates ${here.name}`),
+          merit: (char(o, h)['tm'] as { holyCasts?: number } | undefined)?.holyCasts ?? 0,
+        },
+        want: { holy: [here.id], told: true, merit: 0 },
       };
     },
   },

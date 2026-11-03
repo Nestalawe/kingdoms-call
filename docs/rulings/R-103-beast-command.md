@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-12, Toby
 - **Status:** Confirmed
 - **Source:** PR #75 item 24
-- **Enforced by:** [`beast-command`](../../tests/beast-command.test.js)
+- **Enforced by:** [`a-heros-beast-command-counts-his-living-creatures-and-monsters-only`](../../tests/unit/a-heros-beast-command-counts-his-living-creatures-and-monsters-only.test.ts) (what counts), [`recruit-hire-and-realm-works-orders-in-a-whole-turn`](../../tests/scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn.test.ts) (Recruit Armies), [`item-and-army-orders-in-a-whole-turn`](../../tests/scenario/item-and-army-orders-in-a-whole-turn.test.ts) (Pick Up and Leave/Transfer), [`the-books-and-the-hero-card-say-a-hero-leads-as-many-beasts-as-his-druid-level`](../../tests/static/the-books-and-the-hero-card-say-a-hero-leads-as-many-beasts-as-his-druid-level.test.ts)
 
 A hero leads at most as many beasts as his Druid level, checked wherever a beast joins a column (Recruit Armies, Pick Up Army, Leave/Transfer, Wild Calling).
 

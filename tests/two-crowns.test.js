@@ -2,7 +2,7 @@
 // (scenario): world generation and the order and battle paths live inside generateNewGame and runTurn.
 //   • world generation: an Evil king starts at Druid 1 and beside a land Monster province, as a Druidic king
 //     starts at Druid 1 beside a Creature province (three worlds);
-//   • (Call from the Pit was removed on 2026-10-12, Toby item 22: tests/beast-calls-gone holds that.)
+//   • (Call from the Pit was removed on 2026-10-12, Toby item 22: tests/scenario/call-from-the-pit-and-awaken-the-wild-given-in-a-turn-… holds that.)
 //   • Reign of Fear: an Evil host's Monsters fight ×1.5 attacking a province under its Terror (the ladder says so), and
 //     its Druid-1 king leads Cave Trolls with no shortfall warning;
 //   • Wild Ferocity is gone: a Druidic host with Forest Ents gets no ×1.25 line; Evil's savage fury stays.

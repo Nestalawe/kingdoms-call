@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-13, Toby
 - **Status:** Confirmed
 - **Source:** PR #60; PR #75 items A and 22 (2026-10-13)
-- **Enforced by:** [`two-crowns`](../../tests/two-crowns.test.js), [`primal-roster`](../../tests/primal-roster.test.js), [`primal-words`](../../tests/primal-words.test.js), [`beast-calls-gone`](../../tests/beast-calls-gone.test.js)
+- **Enforced by:** [`two-crowns`](../../tests/two-crowns.test.js), [`primal-roster`](../../tests/primal-roster.test.js), [`primal-words`](../../tests/primal-words.test.js), [`call-from-the-pit-and-awaken-the-wild-given-in-a-turn-raise-nothing-and-are-refused-in-plain-words`](../../tests/scenario/call-from-the-pit-and-awaken-the-wild-given-in-a-turn-raise-nothing-and-are-refused-in-plain-words.test.ts), [`no-page-or-table-still-offers-awaken-the-wild-or-call-from-the-pit`](../../tests/static/no-page-or-table-still-offers-awaken-the-wild-or-call-from-the-pit.test.ts)
 
 The Evil king starts with Druid +1, as the Druidic king does, and every Evil home borders a land Monster province (every Druidic home a Creature province). Wild Ferocity is removed. Reign of Fear: an Evil host attacking a province under Terror fights at ×1.5; the defender never has it. Call from the Pit and Awaken the Wild are removed, so the Druidic and Evil crowns have no signature order.
 

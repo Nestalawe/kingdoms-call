@@ -5,7 +5,7 @@
 // unitAbilityMult, the others stay); the two crowns' waivers in the one function that applies the Druid
 // shortfall (Evil leads Monsters free, as Druidic leads Creatures); the player portal's mirror of it, its
 // speeds built from the one primal table. (The summoning tier tables went with Awaken the Wild and Call from the
-// Pit on 2026-10-12, Toby item 22: tests/beast-calls-gone checks they are gone.)
+// Pit on 2026-10-12, Toby item 22: tests/scenario/call-from-the-pit-and-awaken-the-wild-given-in-a-turn-… checks they are gone.)
 // Level 1 (unit): the figures are data in the shared file and in the GM portal's tables (ARMY_COST_MASTER and
 // ARMY_SPEED_MASTER at module level, TERRAIN_MODS inside runTurn and so read by slicing the source); the rules
 // retired or widened here are module-level functions the booted portals answer directly.

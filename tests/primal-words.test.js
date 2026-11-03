@@ -2,7 +2,7 @@
 // Level 0 (static): the comprehensive rulebook's roster rows for every live Creature and Monster (family, type,
 // cost, base strength, move, Druid, terrain), its move-rate table and Druid ladder; the two crowns' sections and
 // the intro's table (Wild Ferocity gone; Evil leads Monsters free, its king at Druid 1, a Monster province beside
-// its home, Reign of Fear; Call from the Pit and Awaken the Wild were removed on 2026-10-12, tests/beast-calls-gone); the orders table; the player portal's alignment texts and order
+// its home, Reign of Fear; Call from the Pit and Awaken the Wild were removed on 2026-10-12, tests/scenario/call-from-the-pit-and-awaken-the-wild-given-in-a-turn-…); the orders table; the player portal's alignment texts and order
 // list; and no page keeps a retired rule (Wild Ferocity, the terrain multipliers now written once, Wyvern Riders
 // named as Monsters).
 // The rulebooks are read as site/ text; the player portal from src/ by its syntax tree (tests/lib/source.ts): its

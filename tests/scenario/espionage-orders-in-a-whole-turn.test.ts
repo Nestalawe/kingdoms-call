@@ -23,12 +23,13 @@
 // Cloak of Many Faces as a lair deals them today do nothing (Parked); older copies work. Steal: no Thief; the
 // garrison's pay (no paymaster in ground nobody, he or no garrison holds; 1 gold a company, halved; an empty treasury;
 // caught and beaten, or slipped away); a hero elsewhere, a comrade, one vanished, a wanderer with nothing; an item
-// lifted, else gold (5%, at least 1, an empty purse), never Mithril, never a master thief's; halved against troops,
+// lifted (and how he carries it told straight after), else gold (5%, at least 1, an empty purse), never Mithril, never a
+// master thief's; halved against troops,
 // capped at 95; a miss is a small chance at Thief (once `xp-small-chances`), driven off, a duel, or slipped away.
 // Sabotage: Spy 7; no province, his own, an ally's refused; an enemy's coffers yield nothing, one company burns; once a
 // turn. Grand Heist: Thief 7; ground nobody, he or an ally holds; neither capital nor rich; 70%, 75% and twice the take
 // for a master thief, halved when guarded (a garrison, a hero leading troops); a quarter of the treasury; a parcel on
-// the realm's roads cut (another realm's not); a miss slips away, is beaten off, or run down by a hero there (not the
+// the realm's roads cut (how he carries it told straight after; another realm's not); a miss slips away, is beaten off, or run down by a hero there (not the
 // king if another stands by); once a turn. Assassinate: Spy 9; a mark elsewhere, a comrade, one vanished, an ally's
 // refused; 79%, a king 54% and his guard told; slain, the field marked, Spymaster credit; a miss; a wanderer; one who
 // can't be killed; once a turn. Vanish: Thief 9; the rest of the turn; once a turn. Level 2: the order is read and

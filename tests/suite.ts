@@ -68,7 +68,6 @@ export function suite(full: boolean): Script[] {
     ['unit', 'battle-scout', 'tests/battle-scout.test.js'],
     ['unit', 'battle-faced-lines', 'tests/battle-faced-lines.test.js'],
     ['unit', 'roster', 'tests/roster.test.js'],
-    ['scenario', 'goblins-two-a-turn', 'tests/goblins-two-a-turn.test.js'],
     ['unit', 'abilities-human', 'tests/abilities-human.test.js'],
     ['unit', 'abilities-elven', 'tests/abilities-elven.test.js'],
     ['unit', 'abilities-dwarven', 'tests/abilities-dwarven.test.js'],
@@ -80,9 +79,7 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'new-creatures', 'tests/new-creatures.test.js'],
     ['unit', 'abilities-beasts', 'tests/abilities-beasts.test.js'],
     ['unit', 'battle-fronts-meet', 'tests/battle-fronts-meet.test.js'],
-    ['scenario', 'beast-calls-gone', 'tests/beast-calls-gone.test.js'],
     ['unit', 'terror-visible', 'tests/terror-visible.test.js'],
-    ['scenario', 'beast-command', 'tests/beast-command.test.js'],
     ['static', 'primal-abilities-words', 'tests/primal-abilities-words.test.js'],
     ['unit', 'leaderboard-records', 'tests/leaderboard-records.test.js', [], { N: full ? '3000' : '100' }],
     ['unit', 'leaderboard-golden', 'tests/leaderboard-golden.test.js'],
@@ -99,17 +96,14 @@ export function suite(full: boolean): Script[] {
     ['simulation', 'lair-province-unique', 'tests/lair-province-unique.test.js'],
     ['simulation', 'lair-effects-spread', 'tests/lair-effects-spread.test.js'],
     ['simulation', 'skill-names-capitalised', 'tests/skill-names-capitalised.test.js'],
-    ['scenario', 'item-equip-note', 'tests/item-equip-note.test.js'],
     ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
-    ['static', 'research-persevere', 'tests/research-persevere.test.js'],
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
     ['static', 'lair-readiness-words', 'tests/lair-readiness-words.test.js'], // batch 2026-10-14
     ['static', 'rulebook-review-words', 'tests/rulebook-review-words.test.js'], // batch 2026-10-15
     ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
     ['unit', 'sight-shared-province', 'tests/sight-shared-province.test.js'], // batch 2026-10-15
     ['scenario', 'spy-reveals', 'tests/spy-reveals.test.js'], // batch 2026-10-15
-    ['scenario', 'hierophant-no-consecrate', 'tests/hierophant-no-consecrate.test.js'], // batch 2026-10-15
     ['scenario', 'intrusion-invisible', 'tests/intrusion-invisible.test.js'], // batch 2026-10-15
     ['scenario', 'intrusion-lurker', 'tests/intrusion-lurker.test.js'], // batch 2026-10-15
     ['static', 'rulebook-order', 'tests/rulebook-order.test.js'], // 2026-10-15
