@@ -16,8 +16,8 @@
 // the end of next turn) or finds nothing wild; Hunting Rumours has nothing to tell of an unknown lair, a ritual site or
 // a cleared one, and on a known lair (or one mapped enough to see) learns the weakness, remembers the hoard and tells
 // the odds; Search Lair finds nothing, or not the lair named, walks a ritual site, revisits a cleared lair, clears a
-// lair (an overwhelming hero) or falls to its guardian, his magic left in its hoard, and is abandoned when written for
-// another province; Chart the Unknown (Explorer 7) charts here or a neighbour and glimpses the ring round it, refuses
+// lair (an overwhelming hero; the fight rolls Melee experience, and the hoard none of Thief) or falls to its guardian,
+// his magic left in its hoard, and is abandoned when written for another province; Chart the Unknown (Explorer 7) charts here or a neighbour and glimpses the ring round it, refuses
 // ground out of reach, and is once a turn; Discover Lost Ruin (Explorer 9) lays bare every lair of the class named here
 // and next door, the old stones for "Ritual", none behind a rival's glamour, and reads an unknown class as Weak. Each
 // is certain (an overwhelming or hopeless fight; a grave left by the Blood Offering may rot at the turn's end, so only
@@ -26,19 +26,24 @@
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { EXPLORE_AND_SEARCH_ORDER_CASES } from '../lib/explore-and-search-order-cases.ts';
+import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';
 import { board, playTurn } from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
+const recording = recordExperienceRolls(engine);
 
 describe.each(EXPLORE_AND_SEARCH_ORDER_CASES)('the %s order, in a whole turn', (_, cases) => {
   test.each(cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
     const b = board(engine, world, 0);
     const s = c.stage(b);
-    const { after, lines } = playTurn(b, { [s.hero.id]: s.orders });
+    const {
+      result: { after, lines },
+      xp,
+    } = recording(() => playTurn(b, { [s.hero.id]: s.orders }));
     const { got, want } = c.check(
-      { world: after, lines: lines.filter((l) => l.charId === s.hero.id), turn: b.G.turn },
+      { world: after, lines: lines.filter((l) => l.charId === s.hero.id), turn: b.G.turn, xp },
       s,
     );
     expect(got).toEqual(want);

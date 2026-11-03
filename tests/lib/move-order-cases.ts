@@ -454,6 +454,56 @@ export const MOVE_ORDER_CASES: MoveOrderCase[] = [
     },
   },
   {
+    // 2026-10-13 (R-106): Island Back. Until plan P1-14e this was the turn of tests/island-back.test.js, played in the
+    // engine's bare vm from the first coast the world had.
+    name: 'a Great Turtle carries two heavy companies out to sea (Island Back), and nobody is left ashore',
+    stage(b) {
+      const to = ring1(b, 1);
+      to.terrain = 'sea';
+      const mover = hero(b, { player: 0, at: b.X });
+      mover.armies = [
+        ...units(1, 'Great Turtles', 'Average').map((a) => ({ ...a, race: 'Primal' })),
+        ...units(2, 'Gilded Lances', 'Average'),
+      ];
+      return { mover, to, from: b.X, orders: plan(order('move', to.id)) };
+    },
+    check(o, { mover, to }) {
+      return {
+        got: {
+          where: whereIs(o, mover),
+          companies: char(o, mover).armies.length,
+          blocked: says(o, /cannot put to sea|too few hulls|left holding/),
+        },
+        want: { where: standing(to), companies: 3, blocked: false },
+      };
+    },
+  },
+  {
+    // the old script's last check took "need 3 hulls" for the berths (Parked "Eleven checks … can't fail"): here the
+    // line must count the turtle's two berths
+    name: "a Great Turtle can't carry three heavy companies: the move is blocked, and the line counts the turtle's two berths",
+    stage(b) {
+      const to = ring1(b, 1);
+      to.terrain = 'sea';
+      const mover = hero(b, { player: 0, at: b.X });
+      mover.armies = [
+        ...units(1, 'Great Turtles', 'Average').map((a) => ({ ...a, race: 'Primal' })),
+        ...units(3, 'Gilded Lances', 'Average'),
+      ];
+      return { mover, to, from: b.X, orders: plan(order('move', to.id)) };
+    },
+    check(o, { mover, from }) {
+      return {
+        got: {
+          where: whereIs(o, mover),
+          blocked: says(o, `${mover.name} cannot put to sea:`),
+          berths: says(o, /need 3 hulls of shipping, but the force has only 2 berths aboard its hulls/),
+        },
+        want: { where: standing(from), blocked: true, berths: true },
+      };
+    },
+  },
+  {
     name: "lairs are spotted on the way in as the realm's map of the province passes their marks, told after the march",
     stage(b) {
       const to = ring1(b, 0);

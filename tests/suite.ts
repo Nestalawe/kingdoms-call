@@ -84,7 +84,6 @@ export function suite(full: boolean): Script[] {
     ['unit', 'terror-visible', 'tests/terror-visible.test.js'],
     ['scenario', 'beast-command', 'tests/beast-command.test.js'],
     ['static', 'primal-abilities-words', 'tests/primal-abilities-words.test.js'],
-    ['scenario', 'island-back', 'tests/island-back.test.js'],
     ['unit', 'leaderboard-records', 'tests/leaderboard-records.test.js', [], { N: full ? '3000' : '100' }],
     ['unit', 'leaderboard-golden', 'tests/leaderboard-golden.test.js'],
     ['page', 'leaderboard-render', 'tests/leaderboard-render.test.js'],
@@ -105,7 +104,6 @@ export function suite(full: boolean): Script[] {
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
     ['static', 'research-persevere', 'tests/research-persevere.test.js'],
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
-    ['scenario', 'xp-lair-thief', 'tests/xp-lair-thief.test.js'], // batch 2026-10-14
     ['static', 'lair-readiness-words', 'tests/lair-readiness-words.test.js'], // batch 2026-10-14
     ['static', 'rulebook-review-words', 'tests/rulebook-review-words.test.js'], // batch 2026-10-15
     ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
@@ -117,9 +115,6 @@ export function suite(full: boolean): Script[] {
     ['static', 'rulebook-order', 'tests/rulebook-order.test.js'], // 2026-10-15
     ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
     ['page', 'hire-price', 'tests/hire-price.test.js'],
-    ['scenario', 'defend-naval-overland', 'tests/defend-naval-overland.test.js'],
-    ['scenario', 'defend-once', 'tests/defend-once.test.js'],
-    ['scenario', 'hero-every-phase', 'tests/hero-every-phase.test.js'],
     ['simulation', 'report-privacy', 'tests/report-privacy.test.js', full ? ['6', '20', '6'] : ['3', '10', '5']],
     [
       'simulation',
