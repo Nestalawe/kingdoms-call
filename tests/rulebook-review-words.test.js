@@ -22,7 +22,7 @@ const num=name=>{ const vs=pageScripts(GM).flatMap(f=>initializersOf(f,name)); r
 ok(R.length>100000&&I.length>20000,'both rulebooks were read');
 
 // Cast chance: 30% + 10% a level, at most 95%; training counts to 5 (80%), and only an item's levels carry it on.
-// (Toby, 2026-10-15: the books follow the game. guard-cast-chance holds the figures.)
+// (Toby, 2026-10-15: the books follow the game. tests/unit/a-guard-casts-battle-magic-at-the-odds-a-players-hero-has holds the figures.)
 const base=num('SPELL_CAST_BASE');
 ok(base===30,`the engine's cast base is 30% (got ${base})`);
 ok(R.includes('80% at 5. Trained levels past 5 do not raise it')&&!R.includes('80% at 5, 90% at 7')&&!R.includes('95% from 7'),'the rulebook stops trained cast chance at 80% (level 5), not 90% or 95% at 7');

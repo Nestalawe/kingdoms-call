@@ -7,7 +7,7 @@
 //   Warg Riders      Wolves Panic Horses (×1.25 facing cavalry) · Run Them Down (unchanged)
 //   Wyvern Riders    Terror From Above (the enemy's strongest front-line unit fights ×0.85) · Acid Spit (unchanged) — Dread,
 //                    the −15% to enemy fanaticism, is gone
-//   Orc Garrison     Bloodthirsty (×1.15 facing foot when defending) · Raiders' Muster (tests/abilities-turn)
+//   Orc Garrison     Bloodthirsty (×1.15 facing foot when defending) · Raiders' Muster (tests/scenario/raiders-muster-…)
 // Level 1 (unit): the grid and the facing are module-level functions of the booted GM portal, as are unitAbilityMult
 // and missileDamageMult. Dread lived inside runTurn and is checked gone in the source.
 const fs=require('fs');

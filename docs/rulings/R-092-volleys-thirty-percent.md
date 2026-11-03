@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-11, Toby
 - **Status:** Confirmed
 - **Source:** PR #43
-- **Enforced by:** [`volley-thirty`](../../tests/volley-thirty.test.js), [`a-volley-is-thirty-percent-of-the-shooting-unit-in-every-book`](../../tests/static/a-volley-is-thirty-percent-of-the-shooting-unit-in-every-book.test.ts)
+- **Enforced by:** [`a-pre-battle-volley-takes-thirty-percent-of-the-shooting-units-strength`](../../tests/unit/a-pre-battle-volley-takes-thirty-percent-of-the-shooting-units-strength.test.ts), [`a-volley-is-thirty-percent-of-the-shooting-unit-in-every-book`](../../tests/static/a-volley-is-thirty-percent-of-the-shooting-unit-in-every-book.test.ts)
 
 A pre-battle volley does 30% of the shooting unit's strength.
 

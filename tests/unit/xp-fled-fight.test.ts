@@ -1,6 +1,7 @@
 // 2026-10-14 (batch item 11) — failing still teaches a little: a hero who loses a personal fight and lives (beaten and
 // spared, or fled) rolls for Melee at the small (frequent-action) rate; the one left standing takes no small roll.
-// The other parts of item 11 (a failed Spy, Steal or Cast Spell, a lost battle) are tests/xp-small-chances.test.js.
+// The other parts of item 11 (a failed Spy, Steal or Cast Spell, a lost battle) are the whole-turn espionage and Cast
+// Spell scenarios and tests/unit/a-general-who-loses-a-battle-and-lives-has-a-small-chance-at-tactical.test.ts.
 // Level 1 (unit): resolvePersonalCombat called directly on the engine's modules (tests/lib/personal-combat.ts), with the
 // flight made certain; every experience roll is recorded by a stand-in for trySkillGain on its module. Plan P1-08e:
 // this was xp-small-chances' last part, which took the function from the "  // 4. Run all 5 phases" hook after a turn

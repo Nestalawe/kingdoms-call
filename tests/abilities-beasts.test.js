@@ -13,8 +13,8 @@
 //   Cave Trolls        Regenerating Hide (a 30% chance to shrug off a death roll after a lost battle) · Hurled Rubble
 //   Titan Warbeasts    Colossal Bulk (fights from the second line at full strength) · World-Shaking Charge
 //   Dread Hydras       Many Heads (×1.25 facing foot) · Venom Breath (unchanged)
-//   Shark Shoals       Shoal Swarm (+10% per other Shark Shoals in the force, to +30%) · Feeding Frenzy (tests/abilities-beasts-turn)
-//   Manticore Pride    Relentless Hunt (unchanged) · the pursuit of a broken foe (tests/abilities-beasts-turn)
+//   Shark Shoals       Shoal Swarm (+10% per other Shark Shoals in the force, to +30%) · Feeding Frenzy (tests/unit/the-manticores-and-the-sharks-run-a-beaten-host-down-in-the-rout)
+//   Manticore Pride    Relentless Hunt (unchanged) · the pursuit of a broken foe (the same)
 // Level 1 (unit): the grid, the facing, the fate rolls, unitAbilityMult and applyMissileHit are top-level functions of
 // the engine, called directly in its bare vm (tests/lib/engine.ts). Until plan P1-09a this test booted the GM portal
 // and ran a real turn so the hook at "  // 4. Run all 5 phases" could hand applyMissileHit back (it was nested inside

@@ -123,7 +123,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   tests find the blurbs as the player page's because its entry (`src/ui/player/page.ts`) lists the content file: keep
   that import, or `fileDeclaring(PLAYER, 'UNIT_ABILITIES')` finds no file. `tests/abilities-words.test.js` and
   `tests/primal-abilities-words.test.js` name no ability: they check each unit's blurb, roster row and a few of the books' sentences. The race and beast tests (`tests/abilities-human.test.js` and its elven, dwarven,
-  orcish and beasts siblings, `tests/abilities-beasts-turn.test.js`, `tests/abilities-turn.test.js`) check the numbers in
+  orcish and beasts siblings, and the unit and scenario tests that fight a battle with them) check the numbers in
   play. The grid's flyer set is `KC_UNIT_CLASS.aerial` (the riders and the flying beasts); the archers' first-target set
   is `KC_UNIT_CLASS.flying` (the riders only).
 

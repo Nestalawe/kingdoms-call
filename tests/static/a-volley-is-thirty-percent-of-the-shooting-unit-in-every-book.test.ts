@@ -1,6 +1,7 @@
 // 2026-10-11 (Toby, volleys at 30%; R-092) — the volley's size is written three times: MISSILE_SHOT_PCT in the engine,
-// the rulebook's Archery text and the player portal's archery blurb. (The shot itself is checked by volley-thirty, a
-// scenario.) A rule written twice must change twice (docs/traps.md).
+// the rulebook's Archery text and the player portal's archery blurb. (The shot itself is checked by
+// tests/unit/a-pre-battle-volley-takes-thirty-percent-of-the-shooting-units-strength.test.ts.) A rule written twice
+// must change twice (docs/traps.md).
 // 2026-10-12 (the wrap-up batch): the rulebook's worked example follows the constants — a shot is round(strength ×
 // MISSILE_SHOT_PCT × (1 + MISSILE_ARCH_PER_LVL × Archery)), minimum 1 (missileShotDamage): Average Longbows (8) do 2,
 // Elite (20) do 6, or 9 at Archery 5 — and the engine comment beside the cap gives the cap's own figure
