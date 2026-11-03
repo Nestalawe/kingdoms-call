@@ -20,6 +20,13 @@ export interface StubClient {
 
 export function makeStub(): Stub;
 
+/** A client that answers every read with what `rows()` holds (`<table>_one` for single(), `<table>_list` for a list;
+ *  nothing else) and pushes every write onto `writes`. */
+export function cannedStub(opts: {
+  rows: () => Record<string, unknown>;
+  writes: { table: string; val: unknown }[];
+}): StubClient;
+
 /** Each stand-in as a script for Chromium (addInitScript, or routeExternal's supabase-js answer). `messaging` also
  *  gives the page window.__DB, to stage rows and inject dispatches. */
 export const browserSource: { messaging: string; null: string };

@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-09, Toby
 - **Status:** Confirmed
 - **Source:** PRs #11 and #19 (Batch 2026-10-09)
-- **Enforced by:** [`warg-run-down`](../../tests/warg-run-down.test.js)
+- **Enforced by:** [`warg-riders-run-the-beaten-down-on-the-field-and-never-take-up-a-chase`](../../tests/scenario/warg-riders-run-the-beaten-down-on-the-field-and-never-take-up-a-chase.test.ts)
 
 Run Them Down gives no chase or follow-up move. Warg Riders on the winning side cut down the beaten army's units on the battlefield instead.
 

@@ -223,7 +223,7 @@
   page that has booted, use the page's own hook, never its `Math.random` (nothing in `src/` draws from it):
   `kcRng.seed(n)` starts again from seed `n` (the property tests, for each input), and `const was=kcRng.use(fn)` …
   `kcRng.use(was)` draws from `fn` for a while (`lib/personal-combat.ts`' `pinned`, `arrow-damage`, `bolt-damage`,
-  `battle-faced-turn`, `abilities-beasts`, the screenshot tour) ([traps.md](../traps.md#dice-come-from-kcrng)).
+  `abilities-beasts`, the screenshot tour) ([traps.md](../traps.md#dice-come-from-kcrng)).
   Around `runTurn` that pins only the turn's seed: each turn plays on dice of its own, made from one number of the
   page's.
   A test that cuts code out of `src/` by its syntax tree and runs it on its own gives it a `kcRng` or `kcClock` of its own
