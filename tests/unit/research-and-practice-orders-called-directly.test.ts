@@ -20,10 +20,11 @@
 // hundred, the five Research orders of `research-persevere` (moved down), Perseverance of this turn only; Practice's
 // boundary, Perseverance, the turn's tally and the phase closed by a rise, a comrade who rose earlier in the phase
 // still a peer, "Practice Skill" written either way, the drills' dice (Human folk doubled, the dead never drilled,
-// Naval for fleets, the new level); the Colossus and the Iron Heart Talisman; the Breakthrough's dice. Properties: a
-// practice raises a skill by one at most, never past 5, certainly beside a better comrade; a Rest never takes HP away
-// or heals past the maximum; a Breakthrough makes one discovery of the realm's table, never one it knew. Planted
-// faults: in the PR (P1-08j4)
+// Naval for fleets, the new level); the Colossus and the Iron Heart Talisman; the Breakthrough's dice; lines no
+// matrix game reaches (P1-10b28): the field's last discovery's point of tax, a Human wanderer no quick learner, a
+// wanderer's Rest with no realm's blessing. Properties: a practice raises a skill by one at most, never past 5,
+// certainly beside a better comrade; a Rest never takes HP away or heals past the maximum; a Breakthrough makes one
+// discovery of the realm's table, never one it knew. Planted faults: in the PR (P1-08j4)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -344,6 +345,27 @@ describe('Research, called directly', () => {
     }).toEqual({ made: true, gold: 5, offered: undefined, told: true, anyCategory: '', anyOptions: 2 });
   });
 
+  test('the field’s last discovery, by a Sage 8, is a point of tax in a province the realm holds, and none elsewhere', () => {
+    const tax = (own: boolean) => {
+      const b = fresh();
+      knowsHidden(b);
+      const military = discoveries(b).filter((d) => d.category === 'Military');
+      const last = must(military[0], 'a Military discovery');
+      knows(b, (d) => d.category === 'Military' && d.id !== last.id);
+      if (own) b.own(b.X, 0);
+      b.X['tax'] = 4;
+      const h = scholar(b, 8);
+      rolls([100, 1], () => {
+        play(b, h, o('research', 'Military'));
+      });
+      return { made: ids(b).includes(last.id), tax: b.X['tax'] };
+    };
+    expect([tax(true), tax(false)]).toEqual([
+      { made: true, tax: 5 },
+      { made: true, tax: 4 },
+    ]);
+  });
+
   test('a roll at the chance finds; one above it doesn’t', () => {
     const finds = (roll: number) => {
       const b = fresh();
@@ -500,6 +522,21 @@ describe('Practice Skill, called directly', () => {
       return h.skills['spy'];
     };
     expect([rise(10), rise(11)]).toEqual([4, 3]);
+  });
+
+  test('a Human wanderer is no quick learner, whatever the folk of the first realm', () => {
+    const rise = (player: number | null) => {
+      const b = fresh();
+      realm(b)['race'] = 'Human';
+      const h = at(b, { player, skills: skilled({ spy: 2 }) });
+      // 15% alone at level 2, and 22% for a Human of a Human realm: a roll of 16 is between
+      rolls([16], () => {
+        b.tc._logCtx = { charId: h.id, phase: 0 };
+        fn('resolvePracticeSkillOrder')(b.tc, h, 0, 'spy');
+      });
+      return h.skills['spy'];
+    };
+    expect([rise(0), rise(null)]).toEqual([3, 2]);
   });
 
   test('Perseverance: each failure this turn ×1.2, cumulatively, for any skill; a rise resets it', () => {
@@ -744,6 +781,16 @@ describe('Rest, called directly', () => {
     h.hp = 5;
     play(b, h, o('rest'));
     expect({ healed: healed(b, h), hp: h.hp }).toEqual({ healed: 12, hp: 17 });
+  });
+
+  test('a wanderer rests with no realm’s blessing, whatever the first realm’s faith', () => {
+    const b = fresh();
+    realm(b)['alignment'] = 'Divine';
+    const h = at(b, { player: null });
+    h.hp = 5;
+    b.tc._logCtx = { charId: h.id, phase: 0 };
+    fn('resolveRestOrder')(b.tc, h, provOf(b.tc, h));
+    expect({ healed: healed(b, h), hp: h.hp }).toEqual({ healed: 6, hp: 11 });
   });
 
   test(

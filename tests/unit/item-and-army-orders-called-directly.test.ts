@@ -20,7 +20,10 @@
 // and leads lines' points (the new force's pace), both heroes' pools after a hand-over, a garrison at sea, beasts a
 // comrade already leads, the dead and beasts left in a garrison; a hero of no realm released, his heir's mark, hire
 // phase and chase dropped; a band's id, place and folk; "all" in a list (Disband Army reads none), "ALL", "G:1",
-// "-1:0". Properties: Send Item loses or makes no item and never moves Mithril; Leave/Transfer Army and Pick Up Army
+// "-1:0". Lines no matrix game reaches (P1-10b28): a garrison at sea taking what the ships that stay can carry; the
+// land and sea points told apart once every company is disbanded; the bands already in the world kept; a company taken
+// up joining those he leads; a beast sent back behind the comrade's others; a company with no room aboard put back
+// behind the garrison's. Properties: Send Item loses or makes no item and never moves Mithril; Leave/Transfer Army and Pick Up Army
 // lose no company but the dead refused, and give no hero beasts beyond his Druid; each company disbanded is one band;
 // no slot holds more than its limit, the first named of a slot worn. Planted faults: in the PR (P1-08j5)
 import vm from 'node:vm';
@@ -524,6 +527,20 @@ describe('Leave/Transfer Army, called directly', () => {
     }).toEqual({ told: true, led: ['Galleon Fleet c0', 'Men-at-Arms c0'], garrison: [] });
   });
 
+  test('at sea, left in the garrison when the ships that stay can carry the rest', () => {
+    const b = fresh();
+    const sea = ring1(b, 0);
+    sea.terrain = 'sea';
+    b.own(sea, 0);
+    const h = at(b, { king: true, at: sea });
+    h.armies = [...companies(1, 'Galleon Fleet'), ...companies(1)];
+    play(b, h, o('leave_army', 'Men-at-Arms', '-1'));
+    expect({ led: names(h.armies), garrison: names(sea.garrisonArmies) }).toEqual({
+      led: ['Galleon Fleet c0'],
+      garrison: ['Men-at-Arms c0'],
+    });
+  });
+
   test(
     'property: every company stays with the giver, goes to the comrade or the garrison, or is one of the dead lost',
     timeLimitForPropertyRuns(RUNS, 50),
@@ -638,6 +655,27 @@ describe('Disband Army, called directly', () => {
     expect(p).toEqual(pace(b, h));
   });
 
+  test('with every company disbanded, the line tells his land points and his sea points apart', () => {
+    const b = fresh();
+    const h = at(b, { king: true, land: 1, troops: 1 });
+    // he has marched two of a pool of three on land this turn: travelling light, land 3 of 5, and sea 5
+    (b.tc as unknown as Record<string, Record<number, number>>)['moveMax'] = { [h.id]: 3 };
+    play(b, h, o('disband_army', 'all'));
+    const p = points(b, h);
+    expect(p.land).not.toBe(p.sea);
+    expect(textOf(b, h)).toContain(`now travelling light (land ${String(p.land)}, sea ${String(p.sea)} move points).`);
+  });
+
+  test('the bands already in the world stay when more are disbanded', () => {
+    const b = fresh();
+    const h = at(b, { king: true });
+    h.armies = companies(1);
+    const band = { id: 'merc_t0_9', type: 'Free Lances', quality: 'Average', race: 'Human', unitName: 'Old Band' };
+    b.G.mercenaries = [{ ...band, location: b.X.id, isSea: false }];
+    play(b, h, o('disband_army', 'all'));
+    expect((b.G.mercenaries ?? []).map((m) => String(m['unitName']))).toEqual(['Old Band', 'Men-at-Arms c0']);
+  });
+
   test('an “all” within a list means nothing to it (unlike Leave/Transfer Army): only the companies named go', () => {
     const b = fresh();
     const h = at(b, { king: true });
@@ -748,6 +786,48 @@ describe('Pick Up Army, called directly', () => {
       led: ['Galleon Fleet c0', 'Men-at-Arms c0', 'Men-at-Arms c1'],
       left: ['His Fleet c0', 'His Foot c0'],
       told: true,
+    });
+  });
+
+  test('from a comrade (an old order), or the garrison (“-1”), the company joins those he already leads', () => {
+    const b = fresh();
+    const h = at(b, { king: true });
+    h.armies = companies(1, 'Men-at-Arms', 'Average', 'His Own');
+    const r = at(b);
+    r.armies = companies(2, 'Men-at-Arms', 'Average', 'Comrade');
+    b.X.garrisonArmies = companies(2, 'Shieldwall Levies', 'Average', 'Keep');
+    play(b, h, o('pickup_army', place(b, r)));
+    play(b, h, o('pickup_army', '-1'));
+    expect({ led: names(h.armies), left: names(r.armies), garrison: names(b.X.garrisonArmies) }).toEqual({
+      led: ['His Own c0', 'Comrade c1', 'Keep c1'],
+      left: ['Comrade c0'],
+      garrison: ['Keep c0'],
+    });
+  });
+
+  test('a beast beyond his Druid goes back to the comrade, behind the companies the comrade still leads', () => {
+    const b = fresh();
+    const h = at(b, { king: true, skills: druid(0) });
+    const r = at(b, { skills: druid(3) });
+    r.armies = [
+      ...companies(1, 'Men-at-Arms', 'Average', 'His Foot'),
+      ...companies(1, 'Great Bears', 'Average', 'His Bears'),
+    ];
+    play(b, h, o('pickup_army', place(b, r)));
+    expect({ led: names(h.armies), left: names(r.armies) }).toEqual({ led: [], left: ['His Foot c0', 'His Bears c0'] });
+  });
+
+  test('at sea, a company chosen from the garrison with no room aboard goes back behind the garrison’s others', () => {
+    const b = fresh();
+    const sea = ring1(b, 0);
+    sea.terrain = 'sea';
+    b.own(sea, 0);
+    const h = at(b, { king: true, at: sea });
+    sea.garrisonArmies = companies(2, 'Men-at-Arms', 'Average', 'Keep');
+    play(b, h, o('pickup_army', 'g:0'));
+    expect({ led: names(h.armies), garrison: names(sea.garrisonArmies) }).toEqual({
+      led: [],
+      garrison: ['Keep c1', 'Keep c0'],
     });
   });
 
