@@ -81,7 +81,6 @@ import {
   updateSeaHint,
 } from './game-list.ts';
 import { openGame } from './game-detail.ts';
-import { homeProvinceIdFor } from '../../engine/grand-design.ts';
 import { backfillHomeRosters } from '../../engine/world/tables.ts';
 import { deleteGame, loadTurnLog } from './turn-log.ts';
 import { commitTurn0, runTurn0 } from './turn-zero.ts';
@@ -129,7 +128,6 @@ import { buildTurnReport } from '../../views/turn-report.ts';
 import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
 import { theWordsOf } from '../../views/prose/the-words-of-each-line.ts';
 import { runTurn } from './turn-shell.ts';
-import { botRaiseTargets } from '../../engine/bots/strategy.ts';
 
 // ── The GM portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // The page's scripts are ES modules (P1-09d), so a top-level name belongs to its own file: an inline on…="…" handler, a
@@ -211,7 +209,6 @@ Object.assign(window, {
   battleWidthLine, // engine/battle/lines.ts
   BOT_SKILL_BUILD, // engine/bots/setup.ts
   botBattleForce, // engine/bots/intel.ts
-  botRaiseTargets, // engine/bots/strategy.ts
   buildGameMeta, // db/game-meta.ts
   buildGameRecords, // ui/gm/hall-of-fame.ts
   buildTurnReport, // views/turn-report.ts
@@ -222,7 +219,6 @@ Object.assign(window, {
   getDruidLevel, // engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts
   getNeighborsP, // engine/world/map-helpers.ts
   hexDistP, // engine/world/map-helpers.ts
-  homeProvinceIdFor, // engine/grand-design.ts
   itemEffectKey, // engine/items/tiers-and-hoards.ts
   KC_BUILD_STAMP, // ui/gm/startup.ts
   KC_UNIT_CLASS, // content/kingdoms-call-data.ts

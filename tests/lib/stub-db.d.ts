@@ -20,6 +20,9 @@ export interface StubClient {
 
 export function makeStub(): Stub;
 
+/** A client whose every read is empty: enough for a page to boot. */
+export function nullStub(): StubClient;
+
 /** A client that answers every read with what `rows()` holds (`<table>_one` for single(), `<table>_list` for a list;
  *  nothing else) and pushes every write onto `writes`. */
 export function cannedStub(opts: {
