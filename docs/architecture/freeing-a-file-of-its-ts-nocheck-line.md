@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-76 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(42: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+75 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(41: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b29 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b30 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -179,6 +179,8 @@ added under its kind.
   hero is a wanderer) is dropped: lint refuses the always-true test, and the value is the same. One whose text a
   static test reads (the march's `'move'` strings) stays, its test read through `asItsGuardReadsIt`; an `if (false) {}`
   before an `else if` goes, its comment kept.
+- **A part the view hands only where it sees it** (a province's garrison) goes through a check that throws for none;
+  a field added to a built object, through `Object.assign`.
 - **A value read back from a table just after it is written there by a key** (`p.exploredBy[i] = x; p.explored =
   p.exploredBy[i]`) is the `const` written, read again (`mappedNow`): the same number. An element just read into a
   `const` and written back spread is spread from the `const` (`{ ...allyOrder, _unifiedWith }`): the same object read.
@@ -278,7 +280,8 @@ added under its kind.
   any unit's type, as a save holds it (a type with no pool of names draws the Guard's), and so does a capture's column
   (`AUnitOfTheColumn`). A hero's id that a function only compares is typed as every caller holds it (`effSkillOf`'s: a
   fight's copy of a Hunting Rumours hero holds it as words). A saved field the code writes `|| null` to is nullable in
-  the schema (a spied hero's alignment and race).
+  the schema (a spied hero's alignment and race). A typed file's `unknown` field a freed file reads takes its
+  callee's return type (the view's titles).
 - **A list the saved state holds as `z.unknown()` that a freed file reads** (the parcels on the road, which the Grand
   Heist cuts an item from) gains its element's schema, written from the code that fills it (Send Item's `{ toId, items,
   fromName }`), so long as every save holds the list empty or holds none (the couriers empty it each turn): a save of
