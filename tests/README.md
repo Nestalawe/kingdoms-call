@@ -25,7 +25,7 @@ npm test -- -t fuzz         # only tests whose name matches "fuzz" (a regular ex
 npm test -- --project unit  # one level: static, unit, scenario, simulation or page
 KC_JOBS=1 npm test          # one test at a time (default: up to one per core in each of two levels at once)
 KC_SEED=123 npm test        # another seed (the default, 20261001, is set in vitest.config.mts)
-KC_SEED=123 npm test -- -t "^concede$"   # repeat one failure exactly (same seed and sizes): the footer prints this
+KC_SEED=123 npm test -- -t "^roster$"    # repeat one failure exactly (same seed and sizes): the footer prints this
 node tests/<name>.test.js   # one test script on its own, after npm run build (unseeded, its own default sizes)
 npx playwright test -g "map"           # only browser specs whose name matches "map"
 npx playwright show-trace test-results/<spec>/trace.zip   # step through a failed spec (kept on failure)
