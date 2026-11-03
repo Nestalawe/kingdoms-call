@@ -277,7 +277,7 @@ export function checkTurn(turn: Turn): Breach[] {
   return run([...INVARIANTS, ...LEAK_CHECKS], turn);
 }
 
-/** The leak checks alone, for a harness without the turn's telemetry or game_players rows (report-privacy). */
+/** The leak checks alone, for a harness without the turn's telemetry or game_players rows (simulation/every-realms-report-…). */
 export function checkLeaks(turn: Turn): Breach[] {
   return run(LEAK_CHECKS, turn);
 }

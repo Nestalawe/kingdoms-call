@@ -96,13 +96,13 @@
   shell plays it (a seed from the dice, `resolveTurn`, the Spy-stealth step, the views' `buildReports` on what the turn
   hands over), with `lib/scenario.js`'s staging; `play(state,
   rows)` plays a saved world on slot rows of the test's own, and `reportEveryRealm()` has every realm reported, bots'
-  too (an all-bot game writes no report otherwise: `report-privacy`). Its `log` (and `text()`) is the GM's
+  too (an all-bot game writes no report otherwise: `simulation/every-realms-report-…`). Its `log` (and `text()`) is the GM's
   log in words, as the views write it for the shell to save (`buildReports`' `gmLog`, P1-12c3), and so is
   `lib/a-staged-turn-on-the-engines-modules.ts`' and the board's `lines()` (`lib/middle-of-a-bot-world.ts`): a typed
   line has no words in the engine's own log. `recordTheEvents()` has
   `play` return `perception` too: each event as it was emitted (its audience, the phase and hero its line was filed
   under, whether it named that hero, and the realm he served then: P1-12c1; `emit` stood in), with its line's words as
-  the views wrote them (a battle's tally place left empty is no event: P1-12c3), and the turn's sight, for the leak check's audience check (`every-realm`, `report-privacy`). Its `W` is the engine's global scope,
+  the views wrote them (a battle's tally place left empty is no event: P1-12c3), and the turn's sight, for the leak check's audience check (`every-realm`, `simulation/every-realms-report-…`). Its `W` is the engine's global scope,
   where a top-level function can be stood in for the turn (`W.trySkillGain = …`): the scenario tests that used a
   code-anchor hook on the page play their turns here.
 - **A page's own names**: its scripts are modules, so in a browser a test reaches only what the page
@@ -166,7 +166,7 @@
     battle's lines to those told; a spy's lingering sight (R-118: in a province it spied, from the next phase, a deed or
     what anyone there could see, never a kind for one realm alone or a line that excepts it); Clairvoyance (the watched hero's events from the watch's phase, and where he ends the turn); an unmet
     realm's name read as "an unknown realm". It runs only where the harness records the turn's events
-    (`Turn.perception`: the matrix's every-realm half, and `report-privacy` since P1-21b). A line of a spied province
+    (`Turn.perception`: the matrix's every-realm half, and `simulation/every-realms-report-…` since P1-21b). A line of a spied province
     that its audience keeps from the spy reads "through its spy";
   - **a line for one realm alone** (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
     (`KINDS_FOR_ONE_REALM_ALONE`, the check's own list: a hero's hit-point rise in a fight, the surgeons' word to a
@@ -179,7 +179,7 @@
   audience, but for the kinds for one realm alone (the audience check takes it as given: every realm's report against its baseline sees a change); the
   portal's name tables (`LOOKUP_TABLES`, for colouring names; until P2-06 trims a report to its reader); Spy stealth and the spotting roll in your own land (only Invisibility is checked); a name two heroes share.
   They read only the reports a harness has: `turn-fuzz`'s human realms, the matrix's scripted realm, every realm in
-  the matrix's every-realm half and in `report-privacy`.
+  the matrix's every-realm half and in `simulation/every-realms-report-…`.
 - **`lib/strict-schema.ts`** is the one way a test parses with the schemas of `src/schemas/`: `strictIssues(schema, value)` lists where a value fails the schema's strict version, `strictVersionOf(schema)` (in `src/schemas/the-strict-version-of-a-schema.ts` since P1-15d, which moved it there for the check of a saved game at load): the same schema with every object `z.strictObject` (the schemas' `z.object` drops a key it doesn't name; this refuses it, at any depth). A kind of schema it doesn't know stops it.
 - **`lib/personal-combat.ts`** (P1-08e; on the engine's modules since P1-14b) gives a test personal combat:
   `await personalCombatEngine()` gives it fresh modules, the dice seeded (1 unless asked), and a turn's context on a

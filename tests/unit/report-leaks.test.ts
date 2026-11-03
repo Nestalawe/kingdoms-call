@@ -3,7 +3,7 @@
 // (P1-12b3, P1-12's Decision 12) on a made-up turn of its own, with the events it was emitted from and its sight: each
 // line read that no event admits is a breach, and what the audience model admits passes; and the check of the kinds for
 // one realm alone (P1-12c4) on the same turn. Level 1 (unit): pure
-// functions on made-up values; turn-fuzz, report-privacy and the balance matrix run the same checks over whole games
+// functions on made-up values; turn-fuzz, simulation/every-realms-report-… and the balance matrix run the same checks over whole games
 // (level 3; the audience check where the turn's events are recorded: the matrix's every-realm half).
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -33,7 +33,7 @@
 // field, which the audience check admits; given the world, in province events; a maximum-HP rise outside a fight seen
 // there, read by the province's owner; in another realm's spy feed); let through: Clairvoyance, the same words from a
 // line for everyone, the realm its hero joined, no events recorded. Level 1: a lower
-// level can't run a check; turn-fuzz, report-privacy and the matrix (every realm's report, since P1-12a1; with the
+// level can't run a check; turn-fuzz, simulation/every-realms-report-… and the matrix (every realm's report, since P1-12a1; with the
 // audience check, since P1-12b3) run them over games. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { checkLeaks, checkTurn, type SavedState, type Turn } from '../lib/invariants.ts';
