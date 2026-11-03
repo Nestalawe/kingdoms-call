@@ -242,7 +242,7 @@ export function aBattleBetweenHeroes(
   def: Character,
   field: Province,
 ): WhatTheBattleWrote {
-  return wrote(quietly(() => combatVsChar(tc, atk, def, field)));
+  return wrote(quietly(() => combatVsChar(...([tc, atk, def, field] as unknown as Parameters<typeof combatVsChar>))));
 }
 
 /** A plan that fights in melee every round and refuses every duel, so no duel or spell comes before the battle. */

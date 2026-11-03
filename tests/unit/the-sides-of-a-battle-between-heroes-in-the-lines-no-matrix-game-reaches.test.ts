@@ -144,7 +144,11 @@ function aBattle(
   const was = kcRng.use(dice);
   let narrative: NarrativeLine[];
   try {
-    narrative = (combatVsChar(tc, atk, def, field) as { narrative: NarrativeLine[] }).narrative;
+    narrative = (
+      combatVsChar(...([tc, atk, def, field] as unknown as Parameters<typeof combatVsChar>)) as {
+        narrative: NarrativeLine[];
+      }
+    ).narrative;
   } finally {
     kcRng.use(was);
   }

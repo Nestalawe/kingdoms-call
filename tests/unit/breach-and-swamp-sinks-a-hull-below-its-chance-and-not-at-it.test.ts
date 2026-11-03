@@ -181,7 +181,11 @@ function aBattleAtSea(
     if (battle === 'between two hosts') {
       moveToTheSea(def);
       def.armies = defenders.map(aCompany);
-      narrative = (combatVsChar(tc, atk, def, sea) as { narrative: NarrativeLine[] }).narrative;
+      narrative = (
+        combatVsChar(...([tc, atk, def, sea] as unknown as Parameters<typeof combatVsChar>)) as {
+          narrative: NarrativeLine[];
+        }
+      ).narrative;
     } else {
       sea.owner = null;
       sea.neutralDefenders = defenders.map(aCompany);

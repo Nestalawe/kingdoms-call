@@ -195,7 +195,7 @@ function aBattle(
   try {
     narrative = (
       (hosts.def
-        ? combatVsChar(tc, atk, def, field)
+        ? combatVsChar(...([tc, atk, def, field] as unknown as Parameters<typeof combatVsChar>))
         : combatVsNPC(
             ...([tc, atk, field, hosts.ledByRealm1sKing ? def : null] as unknown as Parameters<typeof combatVsNPC>),
           )) as {
