@@ -229,7 +229,11 @@ function aBattle(
           duelStance: 'refuse',
         };
       }
-      narrative = (combatVsNPC(tc, atk, field, theirs ? def : null) as { narrative: NarrativeLine[] }).narrative;
+      narrative = (
+        combatVsNPC(...([tc, atk, field, theirs ? def : null] as unknown as Parameters<typeof combatVsNPC>)) as {
+          narrative: NarrativeLine[];
+        }
+      ).narrative;
     }
   } finally {
     kcRng.use(was);

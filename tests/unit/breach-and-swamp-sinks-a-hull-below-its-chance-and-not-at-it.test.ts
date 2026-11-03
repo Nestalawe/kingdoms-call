@@ -183,7 +183,11 @@ function aBattleAtSea(
     } else {
       sea.owner = null;
       sea.neutralDefenders = defenders.map(aCompany);
-      narrative = (combatVsNPC(tc, atk, sea, null) as { narrative: NarrativeLine[] }).narrative;
+      narrative = (
+        combatVsNPC(...([tc, atk, sea, null] as unknown as Parameters<typeof combatVsNPC>)) as {
+          narrative: NarrativeLine[];
+        }
+      ).narrative;
     }
   } finally {
     kcRng.use(was);

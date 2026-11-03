@@ -504,7 +504,11 @@ function aBattleAgainstAGarrison(
   const was = kcRng.use(kcRngStream(7));
   let narrative: NarrativeLine[];
   try {
-    narrative = (combatVsNPC(tc, atk, field, null) as { narrative: NarrativeLine[] }).narrative;
+    narrative = (
+      combatVsNPC(...([tc, atk, field, null] as unknown as Parameters<typeof combatVsNPC>)) as {
+        narrative: NarrativeLine[];
+      }
+    ).narrative;
   } finally {
     kcRng.use(was);
   }
@@ -564,7 +568,11 @@ function theDefendersLinesStrength(
   const was = kcRng.use(kcRngStream(7));
   let narrative: NarrativeLine[];
   try {
-    narrative = (combatVsNPC(tc, atk, field, theGuard) as { narrative: NarrativeLine[] }).narrative;
+    narrative = (
+      combatVsNPC(...([tc, atk, field, theGuard] as unknown as Parameters<typeof combatVsNPC>)) as {
+        narrative: NarrativeLine[];
+      }
+    ).narrative;
   } finally {
     kcRng.use(was);
   }

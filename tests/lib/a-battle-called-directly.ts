@@ -232,7 +232,7 @@ export function aBattleAgainstTheProvince(
   field: Province,
   guard: Character | null,
 ): WhatTheBattleWrote {
-  return wrote(quietly(() => combatVsNPC(tc, atk, field, guard)));
+  return wrote(quietly(() => combatVsNPC(...([tc, atk, field, guard] as unknown as Parameters<typeof combatVsNPC>))));
 }
 
 /** The battle between two heroes' hosts on `field` (combatVsChar), `atk` attacking `def`. */

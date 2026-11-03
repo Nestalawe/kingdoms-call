@@ -139,7 +139,9 @@ test("a spell worked in a battle is in the turn's spell statistics, with its spe
   G.characters.push(guard);
   field.characters.push(guard.id);
   field['neutralDefenders'] = [...(guard.armies ?? [])];
-  const { narrative } = combatVsNPC(tc, king, field, guard) as { narrative: NarrativeLine[] };
+  const { narrative } = combatVsNPC(...([tc, king, field, guard] as unknown as Parameters<typeof combatVsNPC>)) as {
+    narrative: NarrativeLine[];
+  };
   expect(
     narrative.map((l) => theWordsOf(l)).join('\n'),
     'the king worked battle magic before the fight (staging check)',

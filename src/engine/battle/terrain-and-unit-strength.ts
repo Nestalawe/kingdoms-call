@@ -55,7 +55,7 @@ interface TheStateAsProvIsCoastalReadsIt {
 /** What a caller tells armStr of the battle: unitAbilityMult's fields and armStr's own. */
 export interface ArmStrContext extends UnitAbilityContext {
   readonly trace?: AModifierOfAUnitInTheLadder[] | null;
-  readonly ownerRace?: string | null;
+  readonly ownerRace?: string | null | undefined;
   readonly ownerPi?: number | null;
   readonly reignOfFear?: boolean | null;
 }

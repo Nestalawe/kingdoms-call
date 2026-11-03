@@ -1047,7 +1047,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a unit's power gathers but never strikes":
       return `〰 ${fact.unitName} gather for **${fact.powerName}**, but the moment passes — the strike never lands (${String(fact.strikeChancePct)}% chance${theDruidAStrikeIsRolledAt(fact.druidLevel)}).`;
     case 'a unit uses its power in battle':
-      return `✨ ${fact.unitName} — **${fact.powerName}**: "${fact.powerFlavour}"`;
+      return `✨ ${fact.unitName} — **${fact.powerName}**: "${String(fact.powerFlavour)}"`;
     case "a unit's power hits all enemy units":
       return `  Hits all ${String(fact.enemyUnitCount)} enemy units: −${String(fact.damage)} str.`;
     case "a unit's power hits one enemy unit":
@@ -1250,7 +1250,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the defenders' archery volley's total":
       return `📊 Defender archery total: −${String(fact.totalDamage)} strength spread across attackers (each unit softened by at most ${String(fact.arrowSofteningCapPct)}%).`;
     case 'a defending unit uses its power in battle':
-      return `✨ ${fact.unitName} (defending) — **${fact.powerName}**: "${fact.powerFlavour}"`;
+      return `✨ ${fact.unitName} (defending) — **${fact.powerName}**: "${String(fact.powerFlavour)}"`;
     case "a unit's power hits every attacking unit":
       return `  ${fact.powerName} hits all ${String(fact.unitCount)} attacking units: −${String(fact.damage)} strength each.`;
     case "the terrain's effect on the attacker's units":

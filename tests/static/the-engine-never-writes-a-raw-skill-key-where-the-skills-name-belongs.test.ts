@@ -44,13 +44,23 @@ test(
     ];
     for (const re of RAW) expect(found(gm, re), `the code matches ${String(re)}`).toBe('');
     // stricter: the school's name in a battle's magic, "no … skill" and "… spell limit" is the fact's schoolLabel,
-    // which must be the school's label, never its key
+    // which must be the school's label, never its key. Since plan P1-10b24 a typed file reads it in the forms' way
+    // (docs/architecture/freeing-a-file-of-its-ts-nocheck-line.md), through `skillLabels`, SKILL_LABELS typed for any
+    // school: `(skillLabels[school]??'')||school`, the same words.
     const labels = [...gm.matchAll(/schoolLabel:([^,}]*)/g)].map((m) => m[1] ?? '');
     expect(labels.length, "the engine records a school's name as schoolLabel").toBeGreaterThan(0);
+    const THE_FORMS_READ = /^\(skillLabels\[(\w+)\]\?\?''\)\|\|(\w+)$/;
     expect(
-      labels.filter((v) => !v.startsWith('SKILL_LABELS[')),
+      labels.filter((v) => {
+        const read = THE_FORMS_READ.exec(v);
+        return !v.startsWith('SKILL_LABELS[') && !(read && read[1] === read[2]);
+      }),
       'every schoolLabel is read from SKILL_LABELS',
     ).toEqual([]);
+    expect(
+      !labels.some((v) => THE_FORMS_READ.test(v)) || gm.includes('const skillLabels=SKILL_LABELS;'),
+      'skillLabels is SKILL_LABELS',
+    ).toBe(true);
     // stricter: a skill list (the hire line, a spy's, a Charm's) prints each skill's name, never its key, before its
     // level
     expect(found(gm, /\(\[k,[a-z]+\]\)=>`\$\{k\} /), 'a skill list prints the key before its level').toBe('');

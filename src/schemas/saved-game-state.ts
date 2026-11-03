@@ -237,7 +237,21 @@ export const CharacterSchema = z.object({
     .optional(),
   _sgPending: z.null().optional(),
   _xpFirstEntry: z.array(z.number()).optional(),
-  _phantoms: z.array(z.unknown()).optional(),
+  // (P1-10b24: read by the battle against a province's defenders) his spectral doubles, which Phantasmal Armies and
+  // Phantom Host conjure during a turn and the new turn clears before the save (a save holds the list empty): the unit
+  // each copies, the tag of the unit it mirrors, and `_synced` while a battle's copy hands its quality back to it
+  _phantoms: z
+    .array(
+      z.object({
+        type: z.string(),
+        quality: z.string(),
+        race: z.string(),
+        unitName: z.string(),
+        _phantomOf: z.string(),
+        _synced: z.boolean().optional(),
+      }),
+    )
+    .optional(),
   _practiceFailStreak: FailStreakSchema.optional(),
   _botRole2: z.string().optional(),
   _botRole: z.string().optional(),

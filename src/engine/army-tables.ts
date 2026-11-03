@@ -63,6 +63,16 @@ export type HeroInABattle = Character & {
   /** His Tactical counts for nothing this battle (a Mass Confusion this turn, or slain before his army; commandScore
    *  reads it). Cleared at each battle's start and set there, in both battles; wiped by the new turn. */
   _tacticalNegated?: boolean;
+  /** A Telekinetic Storm has struck his Tactical this battle (cut, or marked with none to cut), so no second storm is
+   *  chosen against him. Cleared at each battle's start and set by its pre-battle magic, in both battles; wiped by the
+   *  new turn. */
+  _tacticalHalved?: boolean;
+  /** He is already in the province (a battle carried on, a stalled battle resumed, a ride-out joined): the battle
+   *  writes no "moves into" line. Set by its callers before the battle; cleared by them after. */
+  _resumeBattle?: boolean;
+  /** A resumed battle's first clash (a war front's, a ride-out's), not a carry-on round. Set and cleared with
+   *  `_resumeBattle`. */
+  _openingClash?: boolean;
   // The turn's marks Early Winter reads (plan P1-10b7): the Charm spell sets all three when it seizes an enemy hero's
   // command for the rest of the turn (beside the saved _charmTempControl and _charmOriginalPlayer).
   /** The phase from which he acts on his charmer's orders (actingThisPhase). Wiped by Early Winter, when he returns

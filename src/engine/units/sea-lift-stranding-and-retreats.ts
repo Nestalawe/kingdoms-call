@@ -15,6 +15,8 @@ import { isFriendlyProvFor, setProvinceOwner } from '../realms/relations-and-cap
 import { canEnterTerrain, getSeaCapability, refreshMovePool } from './movement-pools.ts';
 import { emit, narrate, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their-audiences.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { Province } from '../../schemas/saved-game-state.ts';
 
 // ── SEA LIFT, STRANDING AND RETREATS (plan P1-08b: lifted out of resolveTurn) ────
 // How far a column falls short of the lift to stay at sea (seaLiftShortfall; whether it can put to sea,
@@ -253,7 +255,7 @@ export function retreatValue(turnContext, ch, p) {
   return (p.tax || 0) * 1000 + own * 400 + home * 200 + garrison * 100 + (1 - (p.id || 0) / 1e6);
 }
 // Best of a list of candidate retreat provinces (null when the list is empty).
-export function bestRetreat(turnContext, ch, list) {
+export function bestRetreat(turnContext, ch, list): Province | null {
   let best = null,
     bv = -Infinity;
   (list || []).forEach((p) => {
@@ -265,7 +267,7 @@ export function bestRetreat(turnContext, ch, list) {
   });
   return best;
 }
-export function retreatOptions(turnContext, ch, prov, force) {
+export function retreatOptions(turnContext, ch, prov, force): Province[] {
   const { G } = turnContext;
   if (!ch || !prov) return [];
   force = (force || []).filter((a) => a && !a._died && !a._disbanded);
@@ -414,7 +416,7 @@ export function navalHoldLine(turnContext, prov, units, claimant) {
   };
 }
 // The naval split itself (its rule above): `cName` is the beaten side as a record (ASideOfABattle, since P1-12d32).
-export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName, noSea) {
+export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName, noSea?): '' | 'stay' | 'left' {
   const { G } = turnContext;
   if (!ch || !prov || prov.terrain === 'sea' || ch.alive === false || ch.killedThisTurn) return '';
   live = (live || []).filter((a) => a && !a._died && !a._disbanded && !a._phantom);
@@ -533,7 +535,12 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
 }
 // The line (its fact) that explains WHY a beaten force at sea cannot fall back (null when that is not why). `name` is the
 // beaten side as a record (ASideOfABattle, since P1-12d32), whose label the prose writes.
-export function seaTrapLine(name, ch, prov, force) {
+export function seaTrapLine(
+  name,
+  ch,
+  prov,
+  force,
+): Extract<NarrativeLine, { kind: 'a beaten force at sea has too few hulls left to fall back' }> | null {
   if (!isOpenSea(prov)) return null;
   force = (force || []).filter((a) => a && !a._died && !a._disbanded);
   if (getSeaCapability(force, ch) !== 'land') return null;

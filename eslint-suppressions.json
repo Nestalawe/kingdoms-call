@@ -34,17 +34,6 @@
       "count": 5
     }
   },
-  "src/engine/battle/battles-against-province-defenders.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 5
-    },
-    "no-empty": {
-      "count": 1
-    },
-    "prefer-const": {
-      "count": 1
-    }
-  },
   "src/engine/battle/battles-between-heroes.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 14
