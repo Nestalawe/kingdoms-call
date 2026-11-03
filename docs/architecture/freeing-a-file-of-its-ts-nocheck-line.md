@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-84 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(50: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+83 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(49: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b24 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b25 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -173,6 +173,8 @@ added under its kind.
   narrows it inside too. A table read by the same key several times is read once into a `const`.
 - **A `try` whose `catch` gave a value where a missing element threw** checks for none first inside the `try`, with
   the same value (`if (!g) return 0;`, `takeBestGrave`).
+- **Arguments a function never reads, after the ones it reads** (a closure handed the winner's force and the winner
+  beside the loser's), are dropped from the call where each is a plain read: the same call, the same values.
 - **A value read by nothing, kept alive by `void x;`** (lint's `no-meaningless-void-operator`): a pure one goes with its
   `void` (a count, a product); one a call gives keeps the call as a bare statement (`effStat(…);`), its reads and writes
   as they were. A flag a stand-in may leave out (`c.alive === false`) is read `asItsGuardReadsIt(c.alive) === false`.
@@ -265,6 +267,11 @@ added under its kind.
   realm: the fact's field allows it, and the prose writes it `${String(x)}`, the same words.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does.
+- **A line rewritten in place by its index** (`narrative[i].whatBecomesOfTheProvince = …`, the battle's outcome held by
+  the beaten) is read through a check that hands back the line's kind and throws for any other (`theOutcomeLineAt`);
+  reading the list's element so inline is "too complex to represent" (TS2590).
+- **A `for … of` over a literal list of tuples** (each side's pursuits and its record) takes `as const`, so each element
+  keeps its type: a side's words handed where its record belongs then fail `tsc`.
 - **A ternary or a list of many kinds of line** can be "too complex to represent" (TS2590) as `NarrativeLine`: type it
   by the kinds it holds, `Extract<TheFactOfAPersonalCombatsLine, { kind: … }>`, and build a list of them with other
   lines in two steps (a literal of them, then `push`).
