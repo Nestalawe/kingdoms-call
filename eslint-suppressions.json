@@ -248,11 +248,6 @@
       "count": 1
     }
   },
-  "src/engine/orders/item-orders-equip-use-and-send-magic-items.ts": {
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
   "src/engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 6
