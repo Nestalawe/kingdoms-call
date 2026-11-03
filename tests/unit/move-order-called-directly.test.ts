@@ -17,7 +17,13 @@
 // the Veil (no battle); a leaderless neutral garrison fighting on; a coastal raid's plunder; lairs hidden by a rival's
 // illusion; Pathfinder spotting one lair more. 46 planted faults in the function each turn at least one of the two
 // tests red but one (its missing-pool safety net, which changes nothing: Parked)
-import { describe, expect, test } from 'vitest';
+// Since P1-10b27, the lines no game reaches in the Move order freed of its ts-nocheck line, the battle stood in where
+// its outcome must be sure: a fallen hero's leaderless host forming up with the garrison of a province with no living
+// defender, or standing in a defender's line and staying or falling back with him (the slain struck off, no mark
+// kept); a leaderless neutral garrison beaten and fleeing, beaten and holding, or throwing the march back; a coastal
+// raid naming the realm it plundered (pass on P1-10b26's base, as after).
+import vm from 'node:vm';
+import { afterEach, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {
   board,
@@ -437,5 +443,183 @@ describe('what a hero sees on the way in', () => {
     );
     expect(found).toHaveLength(1);
     expect(textOf(b, A)).toContain(`Moving into ${to.name}, ${A.name} discovers the ${must(found[0], 'a lair').name}!`);
+  });
+});
+
+// ── The lines no matrix game reaches in the typed Move order (plan P1-10b27) ────
+// By the matrix's coverage of both sets (npm run proof:unreached on P1-10b27), no game reaches these lines; each case
+// stages what they read and reads what they write. Where the battle's outcome must be sure, the battle is stood in (the
+// vm's globals combatVsNPC, combatVsChar, creditBattle, emitBattle and markOrcAttackWin, put back after each case): a
+// battle won or lost as the case needs, handed its arguments first, so that what follows it is staged directly.
+const g = vm.runInContext('globalThis', engine) as Record<string, unknown>;
+const was: Record<string, unknown> = {};
+function standIn(fns: Record<string, unknown>) {
+  for (const [k, f] of Object.entries(fns)) {
+    if (!(k in was)) was[k] = g[k];
+    g[k] = f;
+  }
+}
+afterEach(() => {
+  for (const [k, f] of Object.entries(was)) g[k] = f;
+  for (const k of Object.keys(was)) Reflect.deleteProperty(was, k);
+});
+const noop = () => undefined;
+/** The battle won or lost, `before` handed its arguments first, and nothing else of it told or credited. */
+const aBattle = (won: boolean, before: (...a: unknown[]) => void = noop) => {
+  standIn({
+    combatVsNPC: (...a: unknown[]) => (before(...a), { won, narrative: [] }),
+    combatVsChar: (...a: unknown[]) => (before(...a), { won, narrative: [] }),
+    creditBattle: noop,
+    emitBattle: noop,
+    markOrcAttackWin: noop,
+  });
+};
+const namesOf = (us: readonly Unit[]) => us.map((u) => u.unitName);
+/** Whether a unit still holds a mark the battle on arrival writes while it stands in a defender's line. */
+const marked = (u: Unit) => '_fromLeaderless' in u || '_fromGarrison' in u;
+
+describe('the lines no matrix game reaches in the Move order (P1-10b27)', () => {
+  test("an enemy province with no living defender: a fallen hero's leaderless host forms up with the garrison, and the march fights them all", () => {
+    const b = board(engine, world, 0);
+    const to = ring1(b, 0);
+    b.own(to, 1);
+    to.garrisonArmies = units(1, 'Men-at-Arms', 'Green');
+    const F = hero(b, { player: 1, at: to, troops: 2 });
+    Object.assign(F, { alive: false, _leaderlessHost: true });
+    const A = column(b, 0, b.X);
+    startTheTurn(b);
+    const theirs = namesOf([...to.garrisonArmies, ...F.armies]);
+    let met: string[] = [];
+    aBattle(false, (_tc, _c, p) => {
+      met = namesOf((p as Province).neutralDefenders);
+    });
+    move(b, A, to.id);
+    expect({
+      met,
+      garrison: namesOf(to.garrisonArmies),
+      hisHost: F.armies.length,
+      stillAHost: F._leaderlessHost,
+      told: b
+        .lines()
+        .some(
+          (l) =>
+            l.text ===
+            `⚑ With no commander to lead them, the leaderless troops in ${to.name} form up with the garrison to hold the ground.`,
+        ),
+    }).toEqual({ met: theirs, garrison: theirs, hisHost: 0, stillAHost: undefined, told: true });
+  });
+  test.each([
+    ['holds the ground', false],
+    ['is routed', true],
+  ] as const)(
+    "a defender with a fallen comrade's leaderless host beside him: it stands in his line, and when he %s its survivors stay or fall back with him, the slain left behind and no mark kept",
+    (_, routed) => {
+      const b = board(engine, world, 0);
+      const to = ring1(b, 0);
+      const back = beyond(b, to);
+      b.own(to, 1);
+      b.own(back, 1);
+      const D = hero(b, { player: 1, at: to, troops: 1 });
+      const F = hero(b, { player: 1, at: to, troops: 3 });
+      Object.assign(F, { alive: false, _leaderlessHost: true });
+      const A = column(b, 0, b.X);
+      startTheTurn(b);
+      const [slain, ...spared] = F.armies;
+      const defence = namesOf([...D.armies, ...F.armies]);
+      let met: string[] = [];
+      aBattle(routed, (_tc, _atk, def) => {
+        const d = def as Character;
+        met = namesOf(d.armies);
+        must(slain, 'a company of his')._died = true;
+        if (routed) d.location = back.id;
+      });
+      move(b, A, to.id);
+      expect({
+        met,
+        stayed: namesOf(to.garrisonArmies),
+        fellBack: namesOf(back.garrisonArmies),
+        defender: D.location,
+        hisHost: F.armies.length,
+        stillAHost: F._leaderlessHost,
+        marked: spared.some(marked),
+      }).toEqual({
+        met: defence,
+        stayed: routed ? [] : namesOf(spared),
+        fellBack: routed ? namesOf(spared) : [],
+        defender: routed ? back.id : to.id,
+        hisHost: 0,
+        stillAHost: undefined,
+        marked: false,
+      });
+    },
+  );
+  test.each([
+    ['is beaten, and every survivor breaks and flees: the province and its merit are his', true, 0],
+    ['is beaten, and every survivor holds: commanderless, they still contest the province', true, 0.999],
+    ['throws him back the way he came', false, 0.999],
+  ] as const)('a leaderless neutral garrison %s; his slain company is struck off', (_, won, die) => {
+    const b = board(engine, world, 0);
+    const to = ring1(b, 0);
+    to['tax'] = 3;
+    to.neutralDefenders = units(2, 'Men-at-Arms', 'Green');
+    to.npcArmies = 2;
+    to._leaderlessDefenders = true;
+    const A = column(b, 0, b.X);
+    const realm = must(b.G.players[0], 'realm 0');
+    const realmsMerit = Number(realm['merits']);
+    startTheTurn(b);
+    const [fell] = A.armies;
+    aBattle(won, () => {
+      must(fell, 'a company of his')._died = true;
+    });
+    withDice(engine, [die], () => {
+      move(b, A, to.id);
+    });
+    const t = textOf(b, A);
+    const claimed = won && die === 0;
+    expect({
+      companies: A.armies.length,
+      at: A.location,
+      inTheProvince: to.characters.includes(A.id),
+      owner: to.owner,
+      leaderless: to._leaderlessDefenders,
+      contested: !!to._battleUnresolved,
+      fled: t.split('\n').filter((l) => l.includes(`break ranks and flee before ${A.name}'s host`)).length,
+      merit: [Number(realm['merits']) - realmsMerit, A['merits']],
+      told: t.includes(
+        claimed
+          ? `${A.name} overcomes the last of the leaderless defenders and claims ${to.name} for ${realm.name}! (+3 merit)`
+          : won
+            ? `The leaderless garrison of ${to.name} refuses to yield — 2 units still contest the province!`
+            : `Even without a commander, the garrison of ${to.name} throws ${A.name} back!`,
+      ),
+    }).toEqual({
+      companies: 7,
+      at: won ? to.id : b.X.id,
+      inTheProvince: won,
+      owner: claimed ? 0 : null,
+      leaderless: claimed ? undefined : true,
+      contested: won && !claimed,
+      fled: claimed ? 2 : 0,
+      merit: claimed ? [3, 3] : [0, 0],
+      told: true,
+    });
+  });
+  test('a coastal raid names the realm whose treasury it plundered', () => {
+    const b = board(engine, world, 0);
+    b.X.terrain = 'sea';
+    const to = ring1(b, 0);
+    b.own(to, 1);
+    to['tax'] = 5;
+    const owner = must(b.G.players[1], 'realm 1');
+    must(b.G.players[0], 'realm 0')['alignment'] = 'Good'; // an Evil crown loots a conquest too
+    const A = hero(b, { player: 0, at: b.X });
+    A.armies = [...units(2, 'Galleon Fleet'), ...units(2, 'Men-at-Arms')];
+    A['_raidCoastTurn'] = b.G.turn;
+    startTheTurn(b);
+    move(b, A, to.id);
+    expect(linesOf(b, A).map((l) => l.text)).toContain(
+      `💰 ${A.name}'s coastal raid sacks ${to.name} — 5g plundered from ${owner.name}.`,
+    );
   });
 });
