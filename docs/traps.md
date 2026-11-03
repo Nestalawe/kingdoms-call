@@ -268,7 +268,8 @@ the column's move, as the first run of `tests/shark-waters.test.js` showed. Chec
 A new path that puts a living beast into a hero's `armies` asks `beastCommandRoom` first: a hero leads at most as many
 Creature and Monster units as his Druid level. Example: Recruit Armies (overflow musters into the garrison), Pick Up
 Army, Leave/Transfer to a hero and Wild Calling all ask; a path that doesn't quietly breaks the cap. Checks:
-`tests/beast-command.test.js` holds the three orders; a new path, nothing.
+the orders' cases marked "(item 24)" in `tests/lib/recruit-hire-and-realm-works-order-cases.ts` and
+`tests/lib/item-and-army-order-cases.ts` hold the three orders; a new path, nothing.
 
 ## Terror is spent at battle start
 

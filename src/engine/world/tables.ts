@@ -226,7 +226,8 @@ export const HUMANOID_FLEET_TYPES = new Set([
 // (Toby, the army roster, decision 9) — the Goblin Horde wherever it is offered (the horde's numbers are
 // its point: content's KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS).
 // Everything else is one a turn outside the founder's own capital, which turns out two of anything. Read by getRecruitLimit (the engine's gate) and by the order form's `maxPerTurn` payload
-// (buildTurnReport); tests/goblins-two-a-turn holds the two together.
+// (buildTurnReport); tests/lib/recruit-hire-and-realm-works-order-cases.ts (its Goblin Hordes case) and
+// tests/unit/the-order-form-offers-two-goblin-hordes-a-turn-and-one-of-the-orc-berserkers hold the two together.
 const UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS: ReadonlySet<string> = new Set(
   KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS,
 );

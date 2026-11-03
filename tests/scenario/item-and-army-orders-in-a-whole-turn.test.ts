@@ -19,14 +19,15 @@
 // spent on nothing, is gone, every realm told, every other copy struck from the hoards. Send Item: refused for a
 // charmed giver or taker, nobody, a hire card not in service, another realm's or a fallen hero, himself, nothing that
 // matches, Mithril Armour; by place, id or name, once each; at once beside him (the taker told, and whether he wears
-// it) or by courier by the turn's end; told in the phase sent. Leave/Transfer Army: to a comrade beside him (by his
+// it, straight after the line that it arrived) or by courier by the turn's end (the same); told in the phase sent. Leave/Transfer Army: to a comrade beside him (by his
 // place in the list of heroes, as the engine reads it) or a held province's garrison; refused for no companies, nothing
 // that matches, a comrade elsewhere (where he went is named), fallen, another realm's, ground not held, and at sea a
 // hand-over that leaves either side unshipped; the dead won't follow a living commander; beasts beyond the comrade's
 // Druid stay. Release Hero: not a king, not while leading; a wanderer with what he carries, his later orders dropped,
 // his asking price a wanderer's. Disband Army: each company a band of its kind and grade (or told retired at the turn's
 // end), a fleet at sea, the dead crumble; refused for a hero held by an enchantment. Pick Up Army: "all", chosen
-// places, the old forms, a band refused, beasts beyond his Druid and what his ships can't carry sent back. Level 2: the
+// places, the old forms, a band refused, beasts beyond his Druid and what his ships can't carry sent back, and a hero
+// over his Druid's cap keeps what he leads. Level 2: the
 // order is read and checked inside `resolveTurn`, a courier's parcel arrives at the turn's end, and the turn's end
 // retires bands and crumbles unled dead
 import { describe, expect, test } from 'vitest';

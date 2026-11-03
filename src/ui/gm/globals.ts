@@ -90,8 +90,6 @@ import { getDruidLevel } from '../../engine/rules-on-plain-values/beasts-a-hero-
 import { unitTypeOf } from '../../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import { pickLairNameP } from '../../engine/names.ts';
 import { itemEffectKey, lairItemTier } from '../../engine/items/tiers-and-hoards.ts';
-import { itemRaceOf, itemSlot } from '../../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
-import { activeItems, settleTheItemsAHeroGained } from '../../engine/items/equipment.ts';
 import { migrateLairGuardiansV2 } from '../../engine/heroes/skills-and-hp.ts';
 import { neutralDefBand } from '../../engine/units/drill-and-spoils.ts';
 import {
@@ -130,7 +128,6 @@ import { primalStrikeChance } from '../../engine/chances-and-lair-grades.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
 import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
 import { theWordsOf } from '../../views/prose/the-words-of-each-line.ts';
-import { theWordsOfTheItemsAHeroGained } from '../../views/prose/the-words-of-the-items-a-hero-gained.ts';
 import { runTurn } from './turn-shell.ts';
 import { botRaiseTargets } from '../../engine/bots/strategy.ts';
 
@@ -188,7 +185,6 @@ Object.assign(window, {
 Object.assign(window, {
   _LB_SEA, // ui/gm/hall-of-fame.ts
   abilityMissileUnits, // engine/battle/strength.ts
-  activeItems, // engine/items/equipment.ts
   ALL_MAGIC_ITEMS_P, // content/kingdoms-call-data.ts
   archeryBlockedBy, // engine/battle/strength.ts
   ARMY_COST_MASTER, // engine/army-tables.ts
@@ -228,8 +224,6 @@ Object.assign(window, {
   hexDistP, // engine/world/map-helpers.ts
   homeProvinceIdFor, // engine/grand-design.ts
   itemEffectKey, // engine/items/tiers-and-hoards.ts
-  itemRaceOf, // engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts
-  itemSlot, // engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts
   KC_BUILD_STAMP, // ui/gm/startup.ts
   KC_UNIT_CLASS, // content/kingdoms-call-data.ts
   kcRng, // engine/rng.ts
@@ -264,11 +258,9 @@ Object.assign(window, {
   rollUnitFates, // engine/battle/fates.ts
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
   sb, // ui/gm/config.ts
-  settleTheItemsAHeroGained, // engine/items/equipment.ts
   shieldFortHolds, // engine/units/movement.ts
   theClauseOfWhomAUnitFaced, // views/prose/the-words-of-a-battles-lines.ts
   theWordsOf, // views/prose/the-words-of-each-line.ts
-  theWordsOfTheItemsAHeroGained, // views/prose/the-words-of-the-items-a-hero-gained.ts
   theWordsOfWhyAUnitFacesAsItDoes, // views/prose/the-words-of-a-battles-lines.ts
   theWordsOfWhyAUnitStandsWhereItDoes, // views/prose/the-words-of-a-battles-lines.ts
   unitAbilityMult, // engine/battle/strength.ts

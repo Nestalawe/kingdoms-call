@@ -132,7 +132,8 @@ where a beast joins a column: Recruit Armies (overflow musters into the garrison
 hero and Wild Calling. A new path that puts a living beast into a hero's `armies` must ask `beastCommandRoom` first,
 or the cap is quietly broken. The player portal's hero card counts with the same `countsAgainstBeastCommand`
 (`engine/rules-on-plain-values/`, through `src/shared/`).
-`tests/beast-command.test.js` holds the three orders.
+The orders' cases marked "(item 24)" in `tests/lib/recruit-hire-and-realm-works-order-cases.ts` and
+`tests/lib/item-and-army-order-cases.ts` hold the three orders.
 
 ## Terror is spent at battle start
 

@@ -9,7 +9,7 @@
 //   • the classes: the Great Turtles swim (primalSea, sea; a carrier too since Island Back); the Unicorn Herd is cavalry;
 //     Whale Lore lifts the Great Turtles with the Whale Cohort;
 //   • a turn: a Neutral king at Druid 4 recruits a Great Turtles company in his own prosperous sea and is not
-//     stranded. (Awaken the Wild was removed on 2026-10-12, Toby item 22: tests/beast-calls-gone.)
+//     stranded. (Awaken the Wild was removed on 2026-10-12, Toby item 22: tests/scenario/call-from-the-pit-and-awaken-the-wild-given-in-a-turn-….)
 const fs=require('fs'), vm=require('vm');
 const {bootScenario, order, plan}=require('./lib/scenario');
 const {sitePath}=require('./lib/boot');

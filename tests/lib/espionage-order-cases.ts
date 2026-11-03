@@ -190,6 +190,12 @@ export const oldCloakOfManyFaces = (b: Board): Item => ({
   effect: { stat: 'hidden', bonus: 1 },
 });
 const one = (c: Character, ...os: Order[]): [Character, Order[]] => [c, plan(...os)];
+/** Whether one of the hero's lines says `what`, and the line straight after it in the turn's log, if it is his too. */
+const noteAfter = (o: Outcome, s: Staged, what: string) => {
+  const at = o.all.findIndex((l) => l.charId === s.hero.id && l.text.includes(what));
+  const next = at < 0 ? undefined : o.all[at + 1];
+  return { said: at >= 0, next: next?.charId === s.hero.id ? next.text : null };
+};
 const ring1 = (b: Board, i: number) => must(b.ring1[i], 'a neighbour of the middle');
 const SMALL = 0.04; // SKILLGAIN_COMMON: a failed attempt's small chance to learn
 const STD = 0.1; // SKILLGAIN_STD
@@ -1181,6 +1187,21 @@ export const STEAL_ORDER_CASES: EspionageOrderCase[] = [
     },
   },
   {
+    // kept from tests/item-equip-note.test.js (plan P1-14f, item 10): its static check that the note follows the line
+    // that a thief lifted a magic item, made a check of the lines themselves
+    name: 'Steal: straight after the lift, the thief is told how he carries what he lifted (item 10)',
+    dice: LUCKY,
+    stage(b) {
+      return stealFrom(b, holding(rival(b), item(b, 'Blade of Fury')), 1);
+    },
+    check(o, s) {
+      return {
+        got: noteAfter(o, s, `${s.hero.name} deftly lifts the Blade of Fury from ${markOf(s).name}!`),
+        want: { said: true, next: `🎒 ${s.hero.name} equips the Blade of Fury at once.` },
+      };
+    },
+  },
+  {
     name: 'Steal: a wandering hero’s item is lifted, and no realm is told',
     dice: LUCKY,
     stage(b) {
@@ -1762,6 +1783,28 @@ export const GRAND_HEIST_ORDER_CASES: EspionageOrderCase[] = [
           addressee: pack(o, addressee),
         },
         want: { pulledOff: true, waylaid: [1], phase: 1, kept: true, thief: ['Tome of Tactics'], addressee: [] },
+      };
+    },
+  },
+  {
+    // kept from tests/item-equip-note.test.js (plan P1-14f, item 10): its static check that the note follows the line
+    // that a thief pulled off a Grand Heist, made a check of the lines themselves
+    name: 'Grand Heist: straight after the haul, the thief is told how he carries the parcel he cut (item 10)',
+    dice: LUCKY,
+    stage(b) {
+      const s = heist(b, 7, { gold: 0 });
+      const sender = holding(rival(b, { at: ring1(b, 0) }), item(b, 'Blade of Fury'));
+      const addressee = rival(b, { at: ring1(b, 1) });
+      s.orders = [
+        one(s.hero, order('rest'), order('grand_heist')),
+        one(sender, order('give_item', 'Blade of Fury', addressee.id)),
+      ];
+      return { ...s, mark: sender, other: addressee };
+    },
+    check(o, s) {
+      return {
+        got: noteAfter(o, s, `💰 ${s.hero.name} pulls off a Grand Heist in ${there(s).name} — `),
+        want: { said: true, next: `🎒 ${s.hero.name} equips the Blade of Fury at once.` },
       };
     },
   },

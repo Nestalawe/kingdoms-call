@@ -132,6 +132,8 @@ const holding = (h: Character, ...items: Item[]) => {
   return h;
 };
 const druid = (n: number) => ({ melee: 2, tactical: 2, march: 1, spy: 0, druid: n });
+/** A company of beasts of `type`, Primal, named `name` (as tests/beast-command.test.js staged them until plan P1-14f). */
+const beast = (type: string, name: string): Unit => ({ type, quality: 'Average', race: 'Primal', unitName: name });
 const one = (c: Character, ...os: Order[]): [Character, Order[]] => [c, plan(...os)];
 /** A sea province beside the middle, open water, held by nobody. */
 const openSea = (b: Board) => {
@@ -544,6 +546,35 @@ const dwarfAndTaker = (b: Board, items: string[]) => {
 };
 const send = (h: Character, target: string, r: Character | string) =>
   one(h, order('give_item', target, typeof r === 'string' ? r : String(r.id)));
+/** What `r`, holding the Sword of the First Emperor, is told on gaining the Blade of Fury and the Ring of the Explorer
+ *  (his first line holding `arrived` and both names), and the line straight after it in the turn's log: how he carries
+ *  them, in his realm's report; the saved world beside it, and realm 0's lines free of a value gone astray. */
+const itemsNoted = (o: Outcome, r: Character, arrived: string) => {
+  const at = o.all.findIndex(
+    (l) =>
+      l.charId === r.id &&
+      l.text.includes(arrived) &&
+      l.text.includes('Blade of Fury') &&
+      l.text.includes('Ring of the Explorer'),
+  );
+  const next = at < 0 ? undefined : o.all[at + 1];
+  const blade = char(o, r).items.find((i) => i['name'] === 'Blade of Fury');
+  return {
+    got: {
+      arrived: at >= 0,
+      nextIsHis: next?.charId === r.id && (next.targets ?? []).includes(0),
+      noRoom:
+        next?.text.startsWith('🎒 ') &&
+        next.text.includes(
+          `${r.name} has no room to equip the Blade of Fury: the weapon slot already holds the Sword of the First Emperor`,
+        ),
+      ringOn: next?.text.includes(`${r.name} equips the Ring of the Explorer at once`),
+      bladeInThePack: blade?.['equipped'],
+      astray: o.all.filter((l) => (l.targets ?? []).includes(0) && /undefined|NaN|\[object Object\]/.test(l.text)),
+    },
+    want: { arrived: true, nextIsHis: true, noRoom: true, ringOn: true, bladeInThePack: false, astray: [] },
+  };
+};
 export const SEND_ITEM_ORDER_CASES: ItemAndArmyOrderCase[] = [
   {
     name: 'Send Item: a hero held by a Charm this turn parts with nothing',
@@ -816,6 +847,34 @@ export const SEND_ITEM_ORDER_CASES: ItemAndArmyOrderCase[] = [
         },
         want: { told: true, kept: [], got: ['Ring of the Explorer'], arrived: true },
       };
+    },
+  },
+  {
+    // kept from tests/item-equip-note.test.js (plan P1-14f, item 10): its whole-turn Send Item, and its static check
+    // that the note follows the line that the items arrived, made a check of the lines themselves
+    name: 'Send Item: the comrade is told, straight after the items arrive, that the blade finds no room and the ring goes on (item 10)',
+    stage(b) {
+      const h = holding(king(b), item(b, 'Blade of Fury'), item(b, 'Ring of the Explorer'));
+      const r = holding(comrade(b), item(b, 'Sword of the First Emperor'));
+      return { hero: h, orders: [send(h, '0,1', r)], other: r };
+    },
+    check(o, s) {
+      const r = must(s.other, 'the comrade');
+      return itemsNoted(o, r, `📦 ${r.name} receives `);
+    },
+  },
+  {
+    // kept from tests/item-equip-note.test.js (plan P1-14f, item 10): its static check that the note follows the line
+    // that a courier's parcel arrived, made a check of the lines themselves
+    name: 'Send Item: by courier, the comrade is told, straight after the parcel arrives, that the blade finds no room and the ring goes on (item 10)',
+    wholeTurnOnly: true,
+    stage(b) {
+      const h = holding(king(b), item(b, 'Blade of Fury'), item(b, 'Ring of the Explorer'));
+      const r = holding(comrade(b, { at: ring1(b, 2) }), item(b, 'Sword of the First Emperor'));
+      return { hero: h, orders: [send(h, '0,1', r)], other: r, there: ring1(b, 2) };
+    },
+    check(o, s) {
+      return itemsNoted(o, must(s.other, 'the comrade'), 'A courier reaches');
     },
   },
 ];
@@ -1114,6 +1173,24 @@ export const LEAVE_ARMY_ORDER_CASES: ItemAndArmyOrderCase[] = [
       return {
         got: { led: led(o, h), took: led(o, must(r, 'the comrade')), transfer: says(o, ' transfers ') },
         want: { led: ['Great Bears c0'], took: [], transfer: false },
+      };
+    },
+  },
+  {
+    // kept from tests/beast-command.test.js (plan P1-14f), beside the two cases above
+    name: 'Leave/Transfer Army: a Druid-0 comrade handed basilisks and goblins takes the goblins, and the basilisks stay with the giver (item 24)',
+    stage(b) {
+      const h = leads(king(b, { skills: druid(2) }), [
+        beast('Basilisk Brood', 'the Test Basilisks'),
+        { type: 'Goblin Horde', quality: 'Average', race: 'Orcish', unitName: 'the Test Goblins' },
+      ]);
+      const r = comrade(b, { skills: druid(0) });
+      return { hero: h, orders: [leave(h, 'all', place(b, r))], other: r };
+    },
+    check(o, { hero: h, other: r }) {
+      return {
+        got: { led: led(o, h), took: led(o, must(r, 'the comrade')) },
+        want: { led: ['the Test Basilisks'], took: ['the Test Goblins'] },
       };
     },
   },
@@ -1632,6 +1709,45 @@ export const PICKUP_ARMY_ORDER_CASES: ItemAndArmyOrderCase[] = [
           ),
         },
         want: { led: [], left: ['Great Bears c0'], told: true },
+      };
+    },
+  },
+  {
+    // kept from tests/beast-command.test.js (plan P1-14f), beside the two cases above
+    name: 'Pick Up Army: a Druid-1 hero already leading a troll picks up none of the garrison’s, and the Gate Trolls stay (item 24)',
+    stage(b) {
+      const h = besideGarrison(b, [beast('Cave Trolls', 'the Gate Trolls')], { skills: druid(1) });
+      leads(h, [beast('Cave Trolls', 'the Test Trolls')]);
+      return { hero: h, orders: [pickUp(h, 'all')] };
+    },
+    check(o, { hero: h }) {
+      return {
+        got: { led: led(o, h), garrison: garrison(o, b0(o, h)) },
+        want: { led: ['the Test Trolls'], garrison: ['the Gate Trolls'] },
+      };
+    },
+  },
+  {
+    // kept from tests/beast-command.test.js (plan P1-14f): a comrade over the cap who Rests all turn keeps what he leads,
+    // as the old script had it; and, stricter, so does a hero over the cap who gives a Pick Up, taking on none
+    name: 'Pick Up Army: a hero already over his Druid’s cap keeps every beast he leads, and takes on none (item 24)',
+    stage(b) {
+      const h = besideGarrison(b, [beast('Cave Trolls', 'the Gate Trolls')], { skills: druid(1) });
+      leads(h, [beast('Cave Trolls', 'the Test Trolls'), beast('Cave Trolls', 'the Deep Trolls')]);
+      const r = leads(comrade(b, { skills: druid(1) }), [
+        beast('Cave Trolls', 'the Old Trolls'),
+        beast('Cave Trolls', 'the Hill Trolls'),
+      ]);
+      return { hero: h, orders: [pickUp(h, 'all'), one(r, order('rest'))], other: r };
+    },
+    check(o, { hero: h, other: r }) {
+      return {
+        got: { led: led(o, h), resting: led(o, must(r, 'the comrade')), garrison: garrison(o, b0(o, h)) },
+        want: {
+          led: ['the Test Trolls', 'the Deep Trolls'],
+          resting: ['the Old Trolls', 'the Hill Trolls'],
+          garrison: ['the Gate Trolls'],
+        },
       };
     },
   },
