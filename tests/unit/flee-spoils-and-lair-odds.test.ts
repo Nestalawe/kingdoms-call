@@ -8,6 +8,8 @@
 //     lair or the GM's log, and the odds are a whole percentage of the fights won.
 // Level 1 (unit): each function called directly on the engine's modules (tests/lib/personal-combat.ts), on a world the engine
 // makes. The matrix runs all three; these say what holds for any input, not only the matrix's games.
+// Since P1-10b23 (the duels' file freed of its ts-nocheck line), the case its changed lines no matrix game reaches asked
+// for: flee spoils on a battle's copies of the two heroes reach the real heroes, and each copy keeps in step.
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
 import { clone, personalCombatEngine, type Character } from '../lib/personal-combat.ts';
@@ -66,6 +68,36 @@ test(
     );
   },
 );
+
+test('flee spoils on a battle’s copies: the item leaves the real runner for the real stayer, and each copy keeps in step', () => {
+  if (!runner || !stayer) throw new Error('no two heroes');
+  const [first] = ITEMS.filter((it) => it.effect?.stat !== 'mithrilArmour');
+  if (!first) throw new Error('no item in the item tables');
+  const had = [runner.items, stayer.items];
+  try {
+    const [lesser, greater] = [
+      { ...clone(first), tier: 1 },
+      { ...clone(first), tier: 2 },
+    ];
+    runner.items = [lesser, greater];
+    stayer.items = [];
+    // the copies a battle fights on, each holding its own copy of his items (as a copy made through JSON does)
+    const runnersCopy = { ...runner, items: runner.items.map((it) => clone(it)) };
+    const stayersCopy = { ...stayer, items: [] as Item[] };
+    // a d100 of 1 (within the 50% chance), then the first of his items drops
+    const dropped = pinned([0.005, 0], () =>
+      call('duelFleeItemDrop', { kind: 'character', ref: runnersCopy }, { kind: 'character', ref: stayersCopy }, []),
+    );
+    expect(dropped).toBe(lesser);
+    expect(runner.items).toEqual([greater]);
+    expect(stayer.items).toEqual([lesser]);
+    // the runner's copy lets go of its copy of the item dropped, and keeps the one of the same name and another tier
+    expect(runnersCopy.items.map((it) => it['tier'])).toEqual([2]);
+    expect(stayersCopy.items).toEqual([lesser]);
+  } finally {
+    [runner.items, stayer.items] = had as [Character['items'], Character['items']];
+  }
+});
 
 test(
   'the Hunting Rumours reading: one band for every kill rate, and a higher rate never reads worse',

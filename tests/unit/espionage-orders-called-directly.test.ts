@@ -1184,9 +1184,11 @@ describe('a hero whose Invisibility holds (R-119): another realm’s Spy, Steal 
 describe('a pocket picked in a personal encounter (resolveCharVsChar, with the fight stood in)', () => {
   const encounter = fn('resolveCharVsChar');
   /** resolveCharVsChar between `atk` and `def`, with personal combat stood in (the top-level resolvePersonalCombat
-   *  replaced in the vm for the call's length) by a fight that ends in a steal by `who`, and the take's die at `take`. */
+   *  replaced in the vm for the call's length) by a fight that ends in a steal by `who`, and the take's die at `take`;
+   *  with the dice thrown for it, as [lowest, highest]. */
   const picked = (b: Board, atk: Character, def: Character, who: 'atk' | 'def', take: number) => {
     const g = engine as unknown as Record<string, unknown>;
+    const dice: number[][] = [];
     const was = g['resolvePersonalCombat'];
     g['resolvePersonalCombat'] = (_tc: unknown, A: unknown, B: unknown) => ({
       winner: null,
@@ -1199,7 +1201,12 @@ describe('a pocket picked in a personal encounter (resolveCharVsChar, with the f
       narrative: [],
     });
     try {
-      return encounter(b.tc, atk, def, ['ME'], ['ME'], b.X, null, () => take, b.G) as { narrative: LineFact[] };
+      const die = (lowest: number, highest: number) => {
+        dice.push([lowest, highest]);
+        return take;
+      };
+      const { narrative } = encounter(b.tc, atk, def, ['ME'], ['ME'], b.X, null, die, b.G) as { narrative: LineFact[] };
+      return { narrative, dice };
     } finally {
       g['resolvePersonalCombat'] = was;
     }
@@ -1210,7 +1217,7 @@ describe('a pocket picked in a personal encounter (resolveCharVsChar, with the f
     stolen,
     defName: victim.name,
   });
-  test('the attacker who steals takes the die’s gold from the defender’s realm into his own', () => {
+  test('the attacker who steals takes a die’s gold, 1 to 5, from the defender’s realm into his own', () => {
     const b = fresh();
     const thief = at(b, { thief: 3 });
     const victim = rival(b);
@@ -1219,6 +1226,7 @@ describe('a pocket picked in a personal encounter (resolveCharVsChar, with the f
     const res = picked(b, thief, victim, 'atk', 3);
     expect([gold(b, 0), gold(b, 1)]).toEqual([3, 7]);
     expect(res.narrative).toContainEqual(lifts(thief, victim, 3));
+    expect(res.dice).toEqual([[1, 5]]);
   });
   test('the defender who steals takes it from the attacker’s realm into his own, and is named as the one who lifts it', () => {
     const b = fresh();
@@ -1229,6 +1237,7 @@ describe('a pocket picked in a personal encounter (resolveCharVsChar, with the f
     const res = picked(b, atk, def, 'def', 3);
     expect([gold(b, 0), gold(b, 1)]).toEqual([7, 3]);
     expect(res.narrative).toContainEqual(lifts(def, atk, 3));
+    expect(res.dice).toEqual([[1, 5]]);
   });
   test('no more than the purse holds, both ways', () => {
     const b = fresh();
