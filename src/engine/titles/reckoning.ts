@@ -19,6 +19,28 @@ import {
   reckoningThreshold,
   skillLevel,
 } from './perks.ts';
+import type { MajorTitleHolder, MinorTitleHolder } from '../../schemas/saved-game-state.ts';
+
+/** A realm's row on the standings board (computeStandings): its name and colour, its score, the titles it holds by key
+ *  and its relics. */
+export interface ARealmsStanding {
+  index: number;
+  name: string;
+  color: string | null;
+  alignment: string | null;
+  score: number;
+  titles: string[];
+  relics: number;
+}
+/** A bonus a hero's skill gets at its point of use (extraSkillBonuses): a minor title's or a discovery's, with the
+ *  kind that colours it, the scope that says when it applies, and the scope's words. */
+export interface ASkillBonusAtItsPointOfUse {
+  label: string;
+  delta: number;
+  kind: string;
+  scope: string;
+  note: string;
+}
 
 export function _legendaryNames() {
   return new Set((ITEMS_BY_TIER[4] || []).map((it) => it.name));
@@ -97,7 +119,16 @@ export function alliedBloc(state, pi) {
   return out;
 }
 // Main scoring — pure function over a game state. Returns titles, relics, per-realm standings, tax.
-export function computeStandings(state) {
+export function computeStandings(state): {
+  titles: Partial<Record<string, MajorTitleHolder>>;
+  relics: { item: string; charId: number; playerIndex: number }[];
+  standings: ARealmsStanding[];
+  taxByPlayer: number[];
+  worldTax: number;
+  goldByPlayer: number[];
+  threshold: number;
+  perChar: Partial<Record<string, unknown>>;
+} {
   const players = state.players || [];
   const chars = (state.characters || []).filter((c) => c && c.player != null && c.alive);
   // Reckoning tax base counts EVERY province — land AND sea (owned sea now carries features,
@@ -502,7 +533,7 @@ export const MINOR_TITLES = [
     metric: (c) => theHighestLevelAHeroHasTrainedInAMagicSchool(c),
   },
 ];
-export function computeMinorTitles(state) {
+export function computeMinorTitles(state): Partial<Record<string, MinorTitleHolder>> {
   const chars = (state.characters || []).filter((c) => c && c.player != null && c.alive);
   const out = {};
   MINOR_TITLES.forEach((t) => {
@@ -556,7 +587,7 @@ export const SKILL_EXTRA_SCOPE_NOTE = {
 };
 // `minorHolders` is the freshly-computed map where one is to hand; the last resolved turn's map is
 // the fallback, so a character still sees their own perk before Titles go public.
-export function extraSkillBonuses(c, state, minorHolders) {
+export function extraSkillBonuses(c, state, minorHolders): Partial<Record<string, ASkillBonusAtItsPointOfUse[]>> {
   const out = {};
   if (!c) return out;
   const mh = minorHolders || (state && state._minorHolders) || {};

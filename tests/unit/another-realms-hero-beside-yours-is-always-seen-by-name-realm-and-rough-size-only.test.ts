@@ -136,7 +136,7 @@ async function stage() {
   const wander = another(wild, { player: null, name: 'Wanderer Test', armies: [], _unspottedTurn: T, isKing: false });
   const viewOf = (itsLines?: Record<string, unknown>) => playerView(S as never, 0, itsLines as never);
   const report = (itsLines?: Record<string, unknown>): Report =>
-    buildTurnReport(viewOf(itsLines), (itsLines ?? null) as never);
+    buildTurnReport(viewOf(itsLines), (itsLines ?? null) as never) as Report;
   const chars = (rep: Report, id: number) => rep.worldMeta?.provinces?.find((r) => r?.id === id)?.characters ?? [];
   return { G, P, T, mine, theirs, wander, wild, home0, moveTo, another, viewOf, report, chars, enemyCharVisibleTo };
 }
