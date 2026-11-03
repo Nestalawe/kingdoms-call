@@ -60,6 +60,9 @@ export type HeroInABattle = Character & {
   /** Psychic Blast has negated his Druid this battle. Cleared at each battle's start and set by its pre-battle magic,
    *  in both battles; wiped by the new turn. */
   _druidNegated?: boolean;
+  /** His Tactical counts for nothing this battle (a Mass Confusion this turn, or slain before his army; commandScore
+   *  reads it). Cleared at each battle's start and set there, in both battles; wiped by the new turn. */
+  _tacticalNegated?: boolean;
   // The turn's marks Early Winter reads (plan P1-10b7): the Charm spell sets all three when it seizes an enemy hero's
   // command for the rest of the turn (beside the saved _charmTempControl and _charmOriginalPlayer).
   /** The phase from which he acts on his charmer's orders (actingThisPhase). Wiped by Early Winter, when he returns
