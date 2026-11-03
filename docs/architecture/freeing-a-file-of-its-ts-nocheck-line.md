@@ -257,9 +257,10 @@ added under its kind.
   and race).
 - **A list the saved state holds as `z.unknown()` that a freed file reads** (the parcels on the road, which the Grand
   Heist cuts an item from) gains its element's schema, written from the code that fills it (Send Item's `{ toId, items,
-  fromName }`), so long as every save holds the list empty or holds none (the couriers empty it each turn; the new turn clears a hero's
-  spectral doubles, `_phantoms`): a save of
-  any version still meets it, and no version is bumped.
+  fromName }`), so long as every save holds the list empty or holds none (the couriers empty it each turn): a save of
+  any version still meets it, and no version is bumped. A `refactor-only` row changes no saved shape: there each value
+  is narrowed where the code reads it, through a check that hands back what the code fills it with and throws for any
+  other (a hero's spectral doubles, `_phantoms`: `theSpectralDoubleStoredThere`, which keeps a gap as it is).
 - **A fact's realm name read by an index** (`G.players[c.player]?.name`) may be `undefined` where the index names no
   realm: the fact's field allows it, and the prose writes it `${String(x)}`, the same words.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
