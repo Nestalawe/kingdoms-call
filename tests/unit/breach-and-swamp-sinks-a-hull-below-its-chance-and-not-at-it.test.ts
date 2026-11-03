@@ -11,7 +11,10 @@
 //   sinking's fact holds the hull's type, and between two hosts the side whose hull sinks (the attacker's cohort sinks
 //   the defender's hull, the defender's cohort the attacker's): the losses tally counts the hull there. Against the
 //   defenders, the hull sunk takes no part in the battle: a lone hull sunk leaves the province swept into, with no one
-//   left to stand (plan P1-10b24: no matrix game sinks a defender's last hull).
+//   left to stand (plan P1-10b24: no matrix game sinks a defender's last hull). Between two hosts (plan P1-10b25: no
+//   matrix game sinks a hull there), the hull sunk leaves the host before the battle: it is graved once, where it sank,
+//   not again among the battle's dead; and its grave is its own realm's, so an Elven realm's sunk galley flees home
+//   (the Homeward Song, its die under 45% at sea) rather than leave a grave.
 // - Flak Screen: a Gyrocopter harries one enemy winged rider, which loses 30% of its base strength (at least 1), as both
 //   books write it; no two gyrocopters harry the same flyer, nor one harried already this battle, and one die is drawn
 //   for each gyrocopter while a flyer is left (applyFlakScreen called directly; since P1-12d31 it is handed the side's
@@ -38,6 +41,7 @@ import * as reportLines from '../../src/engine/battle/battle-report-lines-and-fo
 import { unitBaseStrength } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
+import type { ElvenEscape } from '../../src/engine/turn/context.ts';
 import { addTheFieldsResolveTurnAdds } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
 /** Breach and Swamp's chance, and the share of a flyer's base strength Flak Screen takes, as the books write them. */
@@ -76,10 +80,12 @@ interface Province {
   owner: number | null;
   characters: (number | string)[];
   neutralDefenders?: ArmyInABattle[];
+  battleGraves?: ArmyInABattle[];
   [key: string]: unknown;
 }
 interface World {
   relations: Record<string, string>;
+  players: { race: string }[];
   characters: Character[];
   world: { provinces: Province[] };
 }
@@ -106,6 +112,9 @@ const aCompany = (type: string): ArmyInABattle => ({
   race: 'Primal',
   unitName: `${type} #${String(++companies)}`,
 });
+/** A company of an Elven realm's host: an Elven one, but for a Whale Cohort (Primal). */
+const anElvenRealmsCompany = (type: string): ArmyInABattle =>
+  type === 'Whale Cohort' ? aCompany(type) : { ...aCompany(type), race: 'Elven' };
 
 /** What a staged battle at sea shows of Breach and Swamp: the kinds of its lines, the units the sinking lines name, and
  *  the dice drawn between Flak Screen and the battle's next step (the dice given, then the seeded stream's). */
@@ -116,6 +125,9 @@ interface WhatTheBattleShows {
   /** Each sinking line's side whose hull sinks (between two hosts; against the defenders the kind says the
    *  defender's) and the hull's type, as its fact holds them (plan P1-12d35: the losses tally counts them). */
   readonly sinkings: readonly { readonly theSideWhoseShipSinks?: string; readonly targetUnitType: string }[];
+  /** The names of the companies graved in the sea province, and of those that fled home, with their realm. */
+  readonly graved: readonly string[];
+  readonly fledHome: readonly { readonly realm: number; readonly unitName: string }[];
 }
 
 /** A battle at sea between `attackers` and `defenders`: two kings' hosts (combatVsChar), or a king's host against the
@@ -126,6 +138,8 @@ function aBattleAtSea(
   attackers: readonly string[],
   defenders: readonly string[],
   dice: readonly number[],
+  /** Between two hosts, the side whose realm is Elven (its companies too). */
+  elven?: 'the attacker' | 'the defender',
 ): WhatTheBattleShows {
   const G = JSON.parse(THE_WORLD) as World;
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
@@ -143,7 +157,14 @@ function aBattleAtSea(
   };
   atk['_attackedFrom'] = atk.location;
   moveToTheSea(atk);
-  atk.armies = attackers.map(aCompany);
+  for (const [realm, side] of [
+    [0, 'the attacker'],
+    [1, 'the defender'],
+  ] as const) {
+    const theRealm = G.players[realm];
+    if (theRealm && elven === side) theRealm.race = 'Elven';
+  }
+  atk.armies = attackers.map((type) => (elven === 'the attacker' ? anElvenRealmsCompany : aCompany)(type));
 
   // Flak Screen runs once for each side between two hosts (the attacker's, then the defender's), then each side's
   // volley, then Breach and Swamp; against the defenders, the attacker's Flak Screen, then Breach and Swamp.
@@ -180,7 +201,7 @@ function aBattleAtSea(
   try {
     if (battle === 'between two hosts') {
       moveToTheSea(def);
-      def.armies = defenders.map(aCompany);
+      def.armies = defenders.map((type) => (elven === 'the defender' ? anElvenRealmsCompany : aCompany)(type));
       narrative = (
         combatVsChar(...([tc, atk, def, sea] as unknown as Parameters<typeof combatVsChar>)) as {
           narrative: NarrativeLine[];
@@ -214,6 +235,11 @@ function aBattleAtSea(
         return [{ targetUnitType: l.targetUnitType }];
       return [];
     }),
+    graved: (sea.battleGraves ?? []).map((g) => g.unitName),
+    fledHome: (tc['_elvenEscapeQueue'] as ElvenEscape[]).map((e) => ({
+      realm: e.player,
+      unitName: String(e.unit.unitName),
+    })),
   };
 }
 
@@ -273,6 +299,33 @@ describe('Breach and Swamp against the defenders: the hull sunk takes no part in
     expect(shown.sunk).toEqual([expect.stringMatching(/^Orcish Longships #/)]);
     expect(shown.kinds).toContain('every defending unit was lost before the lines closed');
   });
+});
+
+describe('Breach and Swamp between two hosts: the hull sunk leaves the host before the battle (plan P1-10b25)', () => {
+  test.each([
+    ['the defender', ['Whale Cohort'], ['Elven Galleys', 'Elven Galleys']],
+    ['the attacker', ['Elven Galleys', 'Elven Galleys'], ['Whale Cohort']],
+  ] as const)("%s's hull sunk is graved once, where it sank, not again among the battle's dead", (_, atk, def) => {
+    const shown = aBattleAtSea('between two hosts', atk, def, [JUST_UNDER, 0]);
+    const [sunk] = shown.sunk;
+    if (sunk === undefined) throw new Error('no hull sunk');
+    expect(shown.graved.filter((name) => name === sunk)).toEqual([sunk]);
+  });
+
+  test.each([
+    ['the defender', ['Whale Cohort'], ['Elven Galleys'], 1],
+    ['the attacker', ['Elven Galleys'], ['Whale Cohort'], 0],
+  ] as const)(
+    "%s's realm is Elven: its sunk galley flees home, its realm's, and leaves no grave",
+    (side, atk, def, realm) => {
+      // the cohort's die under its chance, the hull's, then the Homeward Song's under its 45% at sea
+      const shown = aBattleAtSea('between two hosts', atk, def, [JUST_UNDER, 0, 0], side);
+      const [sunk] = shown.sunk;
+      if (sunk === undefined) throw new Error('no hull sunk');
+      expect(shown.fledHome).toEqual([{ realm, unitName: sunk }]);
+      expect(shown.graved).not.toContain(sunk);
+    },
+  );
 });
 
 /** Flak Screen by `gyros` Gyrocopters against `flyers` (each a type, and whether a gyrocopter has harried it this battle
