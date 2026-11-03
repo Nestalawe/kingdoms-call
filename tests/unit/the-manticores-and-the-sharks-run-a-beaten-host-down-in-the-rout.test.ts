@@ -14,8 +14,9 @@
 //
 // Until plan P1-14d this was tests/abilities-beasts-turn.test.js, turns on the GM page (lib/scenario.js) whose
 // staging read the map (realm 0's home and a neighbour of it, or an owned coast and the sea beside it); its six checks
-// are kept as they were, and "no page errors" is "throws nothing" (an unexpected console.error fails the test:
-// setup/each.ts).
+// are kept as they were, and one is stricter: the one-Manticore case now asks for the win first (the old one passed
+// on a battle lost, where no side of the attacker's hunts anyone). "No page errors" is "throws nothing" (an unexpected
+// console.error fails the test: setup/each.ts).
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import {
@@ -80,6 +81,10 @@ test('the Manticores hunt the broken companies down (+15% losses) when they are 
 
 test('one Manticore among two Trolls hunts nobody down', () => {
   const t = aBattle(beasts('Manticore Pride', 1).concat(beasts('Cave Trolls', 2)), aGreen('Shieldwall Levies'), false);
+  expect(
+    /forces defeat|wins\*\*|\*\*wins/.test(t) && !t.includes('repelled'),
+    'the Manticore and the Trolls win (so the beaten are theirs to hunt)',
+  ).toBe(true);
   expect(
     /Battle for|battle is initiated/.test(t) && !t.includes('+15% losses'),
     'one Manticore among two Trolls hunts nobody down',

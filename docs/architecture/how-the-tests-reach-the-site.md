@@ -74,6 +74,11 @@
     `reports`, `collected`, `text`, `extra`, `reportEveryRealm()`), with no `W`: its `prepare(S)` calls what it needs
     from the modules, and a test stands a function in by `vi.spyOn`. Each call gives fresh modules, the dice seeded as
     asked (`scenario/battlefield-surgery-lines-sit-inside-the-battle` seeds them from `KC_SEED`).
+  - **`lib/a-battle-called-directly.ts`** (P1-14d) fights one battle on the modules with no turn: `aWorld(seed)` (two
+    bot realms on a 10×6 map), `theTurnsContext(G)`, `aFieldAndTheGroundBesideIt` (a free province beside free land,
+    cleared), `aGuardMadeByTheTest`, `attackFrom`, then `aBattleAgainstTheProvince` (`combatVsNPC`) or
+    `aBattleBetweenHeroes` (`combatVsChar`), whose lines come back in words (`theWordsOf`). The modules are imported
+    once a file, so a world made after another in the same file has the same dice but the name pools moved on.
 - **`lib/source.ts`** is the one way a test reads the site's code: `src/`, by its syntax tree (TypeScript's
   parser), never by its lines or layout, so a reformat, the module switch or the `.ts` rename
   changes no answer. It gives a file's named declarations as one script (`sourceOf`, `sourceFrom`, `scriptOf`: `export`
