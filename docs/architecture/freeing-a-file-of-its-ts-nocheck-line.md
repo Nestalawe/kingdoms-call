@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-87 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(53: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+85 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(51: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b22 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b23 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -123,6 +123,9 @@ added under its kind.
   hero's name) are compared through a shape with every field optional (`theSamePlaceAsNamed`).
 - **`[a[0]]` and `[a[1]]` from a list just found to hold two** are `a.slice(0, 1)` and `a.slice(1, 2)`, the same lists. A
   regular expression's group that always takes part in a match is read `String(m[1])`, the same words.
+- **A die's pick from a list that may hold a gap** (a hero's pack, read as a battle's copy holds it) is checked just
+  after the pick, throwing for a gap, so the reads after it narrow; `!(x && x.a === it.a)` is then `!(x?.a ===
+  it.a)`, `it.a` never missing.
 - **A filter whose kept elements a later read needs narrower** (a lair with a guardian, read unguarded after) takes a
   type predicate on what it keeps: `.filter((x): x is { f: ALairWithAGuardian; i: number } => …)`. A filter's callback
   typed wider than the list's element (`(it: AnItemItsEffectGuarded) => …`) keeps a guard on a field the schema
@@ -169,6 +172,9 @@ added under its kind.
   narrows it inside too. A table read by the same key several times is read once into a `const`.
 - **A `try` whose `catch` gave a value where a missing element threw** checks for none first inside the `try`, with
   the same value (`if (!g) return 0;`, `takeBestGrave`).
+- **A `let` that a `try` and its `catch` (or its `finally`) always set** is declared with its type and no first value
+  (`let base: number;`): the compiler sees it set after them, and lint's `no-useless-assignment` no longer finds a first
+  value nobody reads. A `catch (e)` whose `e` is unread is `catch {`.
 - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
   its test still reads it.
 
@@ -200,6 +206,15 @@ added under its kind.
   (`hisRealm`, the Search; the Spy too, whose body reads his realm both ways). A rest-spread arrow handing its arguments on after the turn's context is typed
   `(...a: AfterTheTurnsContext<typeof f>)`. A field a test's stand-in gives a typed callee's result and the callee never
   does (a pacified fight) is read through a type that adds it, optional (`TheFightAsTheSearchReadsIt`).
+- **A parameter the body never reads** (a callee handed the province and a skill reader it no longer uses) is typed
+  `unknown`, with a comment that says so.
+- **A field written back by any key** (`real[k] = copy[k]` over `Object.keys(copy)`) is
+  `Object.assign(real, { [k]: v })`, `v` read `Reflect.get(copy, k)` into an `unknown`: the same write, which throws
+  where a strict assignment would.
+- **A result typed as one of the heroes a function was handed** (`resolveDuel`'s winner, a fighter's `ref`, a hero or a
+  guardian to the compiler) goes through a check that hands back the one it is (`theDuellistTheFighterIs`), throwing
+  for any other; a winner and a loser the callee names together or not at all, through a check that throws for one
+  without the other.
 - **A result of two kinds told apart by a flag** (an item lifted, or `{ guarded: true }`) is typed so the flag reads on
   both, `(Item & { readonly guarded?: undefined }) | { readonly guarded: true } | null` (`liftRandomItem`): its
   caller's `stolen?.guarded` narrows it, as `stolen && stolen.guarded` read it.

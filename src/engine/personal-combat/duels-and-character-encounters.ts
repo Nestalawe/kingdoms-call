@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { activeItems, settleTheItemsAHeroGained } from '../items/equipment.ts';
@@ -7,11 +6,33 @@ import { d100 } from '../dice-and-army-names.ts';
 import { perkTier } from '../titles/perks.ts';
 import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.ts';
 import { pcCharCombatant } from './speed-encounter-plans-and-combatants.ts';
-import { resolvePersonalCombat } from './resolve-personal-combat.ts';
+import { hisNameIsWords, resolvePersonalCombat } from './resolve-personal-combat.ts';
 import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
 import { theItemsAsTheLineNamesThem } from './the-facts-a-personal-combats-lines-record.ts';
-import type { Character } from '../../schemas/saved-game-state.ts';
+import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
+import type { Character, Item } from '../../schemas/saved-game-state.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { AFighterInAPersonalCombat } from './helpers.ts';
+
+/** An item as the fight's announcement tests it: its name, and its effect's stat and combat flag (its effect guarded as
+ *  if missing). */
+interface AnItemAsTheFightsAnnouncementTestsIt {
+  readonly name: string;
+  readonly effect?: { readonly stat: string; readonly combat?: unknown } | null | undefined;
+}
+/** A fighter's hero as the flee spoils read him (only a hero's fighter is a character's; a guardian passes as none of
+ *  these): his id, his name and his items, each guarded as if missing, as a battle's copy may hold them. */
+type AHeroAsTheSpoilsReadHim = object & {
+  readonly id?: Character['id'] | string | null | undefined;
+  readonly name?: string | undefined;
+  items?: (Item | null | undefined)[] | null | undefined;
+};
+/** A fighter as the flee spoils read him: whether he is a hero's, and the hero or guardian he is. */
+interface AFighterAsTheSpoilsReadHim {
+  readonly kind: AFighterInAPersonalCombat['kind'];
+  readonly ref: AHeroAsTheSpoilsReadHim;
+}
 
 // ── PERSONAL COMBAT: DUELS AND CHARACTER ENCOUNTERS (plan P1-08f: lifted out of resolveTurn) ────
 // The magic items a fighter brings to bear (magicItemsLine), the item a character may drop when they break off a fight
@@ -40,9 +61,12 @@ export const _COMBAT_ITEM_STATS = new Set([
   'pc',
   'combatUse',
 ]); // + illusory, pc riders, combat-item riders. consumables
-export function magicItemsLine(ch) {
+export function magicItemsLine(
+  ch: Character,
+): Extract<NarrativeLine, { kind: 'a hero bears magic items into the fight' }> | null {
   const its = activeItems(ch).filter(
-    (it) => it && it.name && (!it.effect || _COMBAT_ITEM_STATS.has(it.effect.stat) || it.effect.combat),
+    (it: AnItemAsTheFightsAnnouncementTestsIt | null | undefined) =>
+      it?.name && (!it.effect || _COMBAT_ITEM_STATS.has(it.effect.stat) || it.effect.combat),
   );
   if (!its.length) return null;
   return {
@@ -56,15 +80,27 @@ export function magicItemsLine(ch) {
 // the field keeps it. Mithril never drops (granted relic). Both ends are resolved on the REAL
 // character records since fights are often fought on pooled copies. Returns the item or null.
 export const DUEL_FLEE_DROP = 0.5; // 2026-09-10 item 2: raised 30% → 50%; the same odds apply to a flight from a lair guardian (lairFleeItemDrop)
-export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
+export function duelFleeItemDrop(
+  turnContext: TurnContext,
+  runnerCbt: AFighterAsTheSpoilsReadHim | null | undefined,
+  stayerCbt: AFighterAsTheSpoilsReadHim | null | undefined,
+  narrative: NarrativeLine[],
+) {
   const { G } = turnContext;
   if (!runnerCbt || !stayerCbt || runnerCbt.kind !== 'character' || stayerCbt.kind !== 'character') return null;
-  const _real = (x) => (x && x.id != null && (G.characters || []).find((r) => r && r.id === x.id)) || x;
+  const _real = (x: AHeroAsTheSpoilsReadHim | null | undefined): AHeroAsTheSpoilsReadHim | null | undefined => {
+    if (!x || x.id == null) return x;
+    // the world's heroes, read as the guard reads them (a gap among them)
+    const theHeroes: readonly (Character | null | undefined)[] = asItsGuardReadsIt(G.characters) ?? [];
+    return theHeroes.find((r) => r && r.id === x.id) ?? x;
+  };
   const runner = _real(runnerCbt.ref),
     stayer = _real(stayerCbt.ref);
   if (!runner || !stayer || runner === stayer) return null;
-  const pool = transferableItems(runner.items || []);
+  const pool = transferableItems(runner.items ?? []);
   if (!pool.length) return null;
+  // every hero's name is words (the saved schema's); a hero of none would be a broken save, refused here
+  if (!hisNameIsWords(runner)) throw new TypeError('a hero of no name');
   const roll = d100(),
     chance = Math.round(DUEL_FLEE_DROP * 100);
   narrate(narrative, {
@@ -75,15 +111,17 @@ export function duelFleeItemDrop(turnContext, runnerCbt, stayerCbt, narrative) {
   });
   if (roll > chance) return null;
   const it = pool[Math.floor(kcRng() * pool.length)];
-  runner.items = (runner.items || []).filter((x) => x !== it);
+  // a pick from a pack just found not empty, of no gap (the saved schema's); for a gap, a TypeError
+  if (!it) throw new TypeError('a pick from a pack fell on a gap');
+  runner.items = (runner.items ?? []).filter((x) => x !== it);
   if (runnerCbt.ref !== runner && Array.isArray(runnerCbt.ref.items))
-    runnerCbt.ref.items = runnerCbt.ref.items.filter(
-      (x) => x !== it && !(x && it && x.name === it.name && x.tier === it.tier),
-    ); // keep the battle copy in step
+    runnerCbt.ref.items = runnerCbt.ref.items.filter((x) => x !== it && !(x?.name === it.name && x.tier === it.tier)); // keep the battle copy in step
   delete it.equipped; // re-slotted by normaliseEquipment on the new owner
-  stayer.items = (stayer.items || []).concat([it]);
+  stayer.items = (stayer.items ?? []).concat([it]);
   if (stayerCbt.ref !== stayer && Array.isArray(stayerCbt.ref.items))
     stayerCbt.ref.items = stayerCbt.ref.items.concat([it]);
+  // every hero's name is words (the saved schema's); a hero of none would be a broken save, refused here
+  if (!hisNameIsWords(stayer)) throw new TypeError('a hero of no name');
   narrate(narrative, {
     kind: 'in the rout the runner drops an item the one who stays claims',
     runnerName: runner.name,
@@ -104,7 +142,20 @@ type HowADuelEnds =
   | { fled: Character; heldField: Character; winner?: undefined; loser?: undefined }
   | { winner: Character; loser: Character; fled?: undefined; heldField?: undefined }
   | { winner: null; loser: null; fled?: undefined; heldField?: undefined };
-export function resolveDuel(turnContext, atk, def, narrative): HowADuelEnds {
+/** One of the two heroes a duel is fought by, as a fighter of the duel holds him (pcCharCombatant makes each fighter's
+ *  `ref` the hero it is built from, and a duel ends only by one of its two fighters); for any other, a TypeError. The
+ *  same object. */
+function theDuellistTheFighterIs(ref: AFighterInAPersonalCombat['ref'], atk: Character, def: Character): Character {
+  if (ref === atk) return atk;
+  if (ref === def) return def;
+  throw new TypeError('a duel ended by a fighter who is neither duellist');
+}
+export function resolveDuel(
+  turnContext: TurnContext,
+  atk: Character,
+  def: Character,
+  narrative: NarrativeLine[],
+): HowADuelEnds {
   const _ia = magicItemsLine(atk),
     _ib = magicItemsLine(def); // item 5
   if (_ia) narrate(narrative, _ia);
@@ -112,10 +163,10 @@ export function resolveDuel(turnContext, atk, def, narrative): HowADuelEnds {
   const A = pcCharCombatant(turnContext, atk),
     B = pcCharCombatant(turnContext, def);
   turnContext._duelFoes = new Map([
-    [atk.id, String(def.name || '').replace(/\s*\(wandering\)/i, '')],
-    [def.id, String(atk.name || '').replace(/\s*\(wandering\)/i, '')],
+    [atk.id, (def.name || '').replace(/\s*\(wandering\)/i, '')],
+    [def.id, (atk.name || '').replace(/\s*\(wandering\)/i, '')],
   ]); // item 6
-  let res;
+  let res: ReturnType<typeof resolvePersonalCombat>;
   try {
     res = resolvePersonalCombat(turnContext, A, B, { maxRounds: 20, heldFieldWins: true });
   } finally {
@@ -123,7 +174,7 @@ export function resolveDuel(turnContext, atk, def, narrative): HowADuelEnds {
   } // a duel's field held is a win (preBattleDuel awards it)
   narrateAll(narrative, res.narrative);
   if (res.fledBy) {
-    const runner = res.fledBy.ref,
+    const runner = theDuellistTheFighterIs(res.fledBy.ref, atk, def),
       stayer = runner === atk ? def : atk;
     narrate(narrative, {
       kind: 'the runner breaks off the duel and slips away',
@@ -134,7 +185,15 @@ export function resolveDuel(turnContext, atk, def, narrative): HowADuelEnds {
     // Nobody is slain, but breaking off IS losing the duel — the caller demoralises their force.
     return { fled: runner, heldField: stayer };
   }
-  return { winner: res.winner ? res.winner.ref : null, loser: res.loser ? res.loser.ref : null };
+  const { winner, loser } = res;
+  if (winner && loser)
+    return {
+      winner: theDuellistTheFighterIs(winner.ref, atk, def),
+      loser: theDuellistTheFighterIs(loser.ref, atk, def),
+    };
+  // resolvePersonalCombat names a winner and a loser together or not at all; one without the other, a TypeError
+  if (winner || loser) throw new TypeError('a duel with a winner and no loser, or a loser and no winner');
+  return { winner: null, loser: null };
 }
 
 // ── ENCOUNTER ENGINE (AK 5.0–5.8) ────
@@ -152,17 +211,17 @@ interface HowAnEncounterBetweenHeroesEnds {
   narrative: NarrativeLine[];
 }
 export function resolveCharVsChar(
-  turnContext,
-  atk,
-  def,
-  atkTactics,
-  defTactics,
-  prov,
-  effStat,
-  rng,
-  G,
+  turnContext: TurnContext,
+  atk: Character,
+  def: Character,
+  atkTactics: string[] | null | undefined,
+  defTactics: string[] | null | undefined,
+  prov: unknown, // handed by every caller, read by none
+  effStat: unknown, // handed by every caller, read by none
+  rng: (lo: number, hi: number) => number,
+  G: TurnContext['G'],
 ): HowAnEncounterBetweenHeroesEnds {
-  const narrative = [];
+  const narrative: NarrativeLine[] = [];
   narrate(narrative, {
     kind: 'the attacker meets the defender in a personal encounter',
     atkName: atk.name,
@@ -171,7 +230,7 @@ export function resolveCharVsChar(
     defName: def.name,
     defRace: def.race,
     defRealm: def.player,
-    defRealmName: G.players[def.player]?.name,
+    defRealmName: (def.player === null ? undefined : G.players[def.player])?.name,
   });
   pushBattlecry(narrative, atk, def.name);
   pushBattlecry(narrative, def, atk.name);
@@ -186,7 +245,7 @@ export function resolveCharVsChar(
 
   // A successful Steal in a character encounter is a pickpocketing of the victim's treasury.
   // THIEF L8: a master thief's own purse cannot be picked.
-  const _pickProof = (x) => perkTier(x, 'thief') >= 3;
+  const _pickProof = (x: Character) => perkTier(x, 'thief') >= 3;
   if (res.stoleBy === A && def.player !== null && atk.player !== null && _pickProof(def)) {
     narrate(narrative, {
       kind: "the attacker goes for the defender's purse and comes away with nothing",
@@ -200,11 +259,17 @@ export function resolveCharVsChar(
       defName: atk.name,
     });
   } else if (res.stoleBy === A && def.player !== null && atk.player !== null) {
-    const purse = G.players[def.player]?.gold || 0;
+    const purse = (G.players[def.player]?.gold ?? 0) || 0;
     const stolen = Math.min(purse, rng(1, 5));
     if (stolen > 0) {
-      G.players[def.player].gold -= stolen;
-      G.players[atk.player].gold = (G.players[atk.player].gold || 0) + stolen;
+      // a purse above nothing is a realm's; for none, the TypeError its read throws
+      const theRobbedRealm = G.players[def.player];
+      if (!theRobbedRealm) throw new TypeError("Cannot read properties of undefined (reading 'gold')");
+      theRobbedRealm.gold -= stolen;
+      // every realm's index names a realm of the state, so the thief's is one; for none, the TypeError its read throws
+      const theThiefsRealm = G.players[atk.player];
+      if (!theThiefsRealm) throw new TypeError("Cannot read properties of undefined (reading 'gold')");
+      theThiefsRealm.gold = (theThiefsRealm.gold || 0) + stolen;
       narrate(narrative, {
         kind: "the attacker lifts gold from the defender's purse",
         atkName: atk.name,
@@ -218,11 +283,17 @@ export function resolveCharVsChar(
         defName: def.name,
       });
   } else if (res.stoleBy === B && atk.player !== null && def.player !== null) {
-    const purse = G.players[atk.player]?.gold || 0;
+    const purse = (G.players[atk.player]?.gold ?? 0) || 0;
     const stolen = Math.min(purse, rng(1, 5));
     if (stolen > 0) {
-      G.players[atk.player].gold -= stolen;
-      G.players[def.player].gold = (G.players[def.player].gold || 0) + stolen;
+      // a purse above nothing is a realm's; for none, the TypeError its read throws
+      const theRobbedRealm = G.players[atk.player];
+      if (!theRobbedRealm) throw new TypeError("Cannot read properties of undefined (reading 'gold')");
+      theRobbedRealm.gold -= stolen;
+      // every realm's index names a realm of the state, so the thief's is one; for none, the TypeError its read throws
+      const theThiefsRealm = G.players[def.player];
+      if (!theThiefsRealm) throw new TypeError("Cannot read properties of undefined (reading 'gold')");
+      theThiefsRealm.gold = (theThiefsRealm.gold || 0) + stolen;
       narrate(narrative, {
         kind: "the attacker lifts gold from the defender's purse",
         atkName: def.name,

@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { battleFrontWidth, battleLineTotal } from './lines.ts';
 import { tacMulted } from '../units/movement.ts';
 import {
@@ -12,6 +11,16 @@ import { doARealmsDiscoveriesWeightTheLinesBehindTheFront } from '../rules/the-r
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { armStr, provIsCoastal } from './terrain-and-unit-strength.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import type { ArmyInABattle, HeroInABattle } from '../army-tables.ts';
+import type { Character, Item, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+
+/** A hero as realCharOf finds his live self: a battle's copy, or the real record (his id guarded as if missing). */
+interface AHeroAsHisLiveSelfIsFound {
+  readonly id?: Character['id'] | string | null | undefined;
+}
 
 // ── THE BEST COMMANDER (plan P1-08b: lifted out of resolveTurn) ────
 // Which of a realm's heroes leads a pooled host (commandScore, pickBattleCommander), the hand-over of command and its
@@ -31,11 +40,17 @@ import { armStr, provIsCoastal } from './terrain-and-unit-strength.ts';
 // battle lines
 // (sd09 Flanking Doctrine included). Curses, Psychic Blast negation and the Strategist minor title
 // are honoured because they are read the same way the battle reads them.
-export function commandScore(turnContext, cand, pooled, prov, isAttacker) {
+export function commandScore(
+  turnContext: TurnContext,
+  cand: HeroInABattle | null | undefined,
+  pooled: readonly (ArmyInABattle | null | undefined)[] | null | undefined,
+  prov: Province | null | undefined,
+  isAttacker: boolean | null | undefined,
+) {
   const { G } = turnContext;
-  if (!cand || !pooled || !pooled.length) return 0;
-  const align = (cand.player != null ? (G.players[cand.player] || {}).alignment : null) || 'Neutral';
-  const terrain = (prov && prov.terrain) || 'plain';
+  if (!cand || !pooled?.length) return 0;
+  const align = (cand.player != null ? (G.players[cand.player]?.alignment ?? '') : '') || 'Neutral';
+  const terrain = (prov?.terrain ?? '') || 'plain';
   let tact = cand._tacticalNegated
     ? 0
     : effStat(turnContext, cand, 'tactical') + (charMinor(turnContext, cand, 'strategist') ? 1 : 0);
@@ -46,9 +61,9 @@ export function commandScore(turnContext, cand, pooled, prov, isAttacker) {
   const navB = 1 + nav * 0.2;
   const _coast = provIsCoastal(G, prov);
   const rows = pooled
-    .filter((a) => a)
+    .filter((a): a is ArmyInABattle => Boolean(a))
     .map((a) => {
-      let base = 0;
+      let base: number;
       try {
         base = armStr(turnContext, a, cand, align, terrain, {
           force: pooled,
@@ -56,7 +71,7 @@ export function commandScore(turnContext, cand, pooled, prov, isAttacker) {
           isAttacker: !!isAttacker,
           coastal: _coast,
         });
-      } catch (e) {
+      } catch {
         base = unitBaseStrength(a);
       }
       const fly = FLYING_TYPES.has(a.type),
@@ -73,9 +88,18 @@ export function commandScore(turnContext, cand, pooled, prov, isAttacker) {
 // Choose the leader of a pooled force. `deflt` is whoever would have led before (the mover, or
 // the standing defender); `joiners` are the characters whose troops are folding in. Returns the
 // winner plus the rest, and whether command actually changed hands (for the narrative line).
-export function pickBattleCommander(turnContext, deflt, joiners, pooled, prov, isAttacker) {
-  const cands = [deflt, ...(joiners || [])].filter((x) => x && x.alive !== false);
-  if (cands.length <= 1) return { leader: deflt, others: (joiners || []).slice(), changed: false };
+export function pickBattleCommander(
+  turnContext: TurnContext,
+  deflt: HeroInABattle | null | undefined,
+  joiners: readonly (HeroInABattle | null | undefined)[] | null | undefined,
+  pooled: readonly (ArmyInABattle | null | undefined)[] | null | undefined,
+  prov: Province | null | undefined,
+  isAttacker: boolean | null | undefined,
+) {
+  const cands = [deflt, ...(joiners ?? [])].filter(
+    (x): x is HeroInABattle => Boolean(x && asItsGuardReadsIt(x.alive) !== false), // a copy may hold none
+  );
+  if (cands.length <= 1) return { leader: deflt, others: (joiners ?? []).slice(), changed: false };
   let best = deflt,
     bestS = commandScore(turnContext, deflt, pooled, prov, isAttacker);
   cands.forEach((x) => {
@@ -90,21 +114,30 @@ export function pickBattleCommander(turnContext, deflt, joiners, pooled, prov, i
 }
 // Battles run on shallow copies; this returns the LIVE character behind one (or the object itself
 // if it is already the real thing, as in the resumed-battle and hunt paths).
-export function realCharOf(turnContext, x) {
+export function realCharOf<AHero extends AHeroAsHisLiveSelfIsFound>(
+  turnContext: TurnContext,
+  x: AHero | null | undefined,
+): AHero | Character | null | undefined {
   const { G } = turnContext;
   if (!x || x.id == null) return x;
-  return (G.characters || []).find((y) => y && y.id === x.id) || x;
+  // the world's heroes, read as the guard reads them (a gap among them)
+  const theHeroes: readonly (Character | null | undefined)[] = asItsGuardReadsIt(G.characters) ?? [];
+  return theHeroes.find((y) => y && y.id === x.id) ?? x;
 }
 // Move a real character to a province, keeping both provinces' character lists straight. Used
 // when a pooled host falls back together after a lost battle.
-export function relocateChar(turnContext, ch, provId) {
+export function relocateChar(
+  turnContext: TurnContext,
+  ch: Character | null | undefined,
+  provId: number | null | undefined,
+) {
   const { G } = turnContext;
   if (!ch || provId == null || ch.location === provId) return;
   const from = G.world.provinces[ch.location],
     to = G.world.provinces[provId];
   if (from && Array.isArray(from.characters)) from.characters = from.characters.filter((id) => id !== ch.id);
   if (to) {
-    to.characters = to.characters || [];
+    to.characters = asItsGuardReadsIt(to.characters) ?? [];
     if (!to.characters.includes(ch.id)) to.characters.push(ch.id);
     ch.location = to.id;
     ch.locationName = to.name;
@@ -114,7 +147,11 @@ export function relocateChar(turnContext, ch, provId) {
 // all back onto the real character. `armies` and `location` are excluded: the pooled army list is
 // split back to its owners by the caller, and the fall-back is applied to the whole party by
 // relocateChar.
-export function syncLeaderCopy(turnContext, real, copy) {
+export function syncLeaderCopy(
+  turnContext: TurnContext,
+  real: HeroInABattle | null | undefined,
+  copy: HeroInABattle | null | undefined,
+) {
   const { G } = turnContext;
   if (!real || !copy || real === copy) return;
   Object.keys(copy).forEach((k) => {
@@ -124,25 +161,30 @@ export function syncLeaderCopy(turnContext, real, copy) {
     // off the real character. Take the larger of the two and the rollback becomes impossible,
     // whatever future code path forgets to mirror it.
     if (k === 'hpEarned') {
-      real.hpEarned = Math.max(real.hpEarned || 0, copy.hpEarned || 0);
+      real.hpEarned = Math.max((real.hpEarned ?? 0) || 0, (copy.hpEarned ?? 0) || 0);
       return;
     }
     // 2026-09-23c: the copy's item list is authoritative (items spent in the fight) EXCEPT for loot
     // handed to the real character during the fight (handleHeroDeath), which the copy may not hold.
     if (k === 'items') {
       const _cp = Array.isArray(copy.items) ? copy.items : [];
-      const _loot = (Array.isArray(real.items) ? real.items : []).filter(
-        (it) => it && _KC_LOOT_GAINED.has(it) && !_cp.includes(it),
-      );
+      // his items, read as the guard reads them (a gap among them)
+      const hisItems: readonly (Item | null | undefined)[] = Array.isArray(real.items) ? real.items : [];
+      const _loot = hisItems.filter((it): it is Item => Boolean(it && _KC_LOOT_GAINED.has(it) && !_cp.includes(it)));
       real.items = _loot.length ? _cp.concat(_loot) : _cp;
       return;
     }
-    real[k] = copy[k];
+    const theCopysValue: unknown = Reflect.get(copy, k);
+    Object.assign(real, { [k]: theCopysValue }); // as `real[k] = copy[k]` writes it, by any key
   });
   syncMaxHp(real, G.players); // keep maxHp in step with whatever the write-back landed on
 }
 // The line the Chronicle prints when command changes hands.
-export function commandHandoverLine(leader, deflt, provName) {
+export function commandHandoverLine(
+  leader: { readonly name: string },
+  deflt: { readonly name: string },
+  provName: string,
+): Extract<NarrativeLine, { kind: 'the most seasoned captain takes command of the combined host' }> {
   return {
     kind: 'the most seasoned captain takes command of the combined host',
     leaderName: leader.name,
@@ -151,10 +193,19 @@ export function commandHandoverLine(leader, deflt, provName) {
   };
 }
 
-export function armyTotalStr(turnContext, ch, prov) {
+export function armyTotalStr(turnContext: TurnContext, ch: HeroInABattle, prov: Province) {
   const { G } = turnContext;
-  return (ch.armies || []).reduce(
-    (s, a) => s + armStr(turnContext, a, ch, G.players[ch.player]?.alignment, prov.terrain),
+  return (asItsGuardReadsIt(ch.armies) ?? []).reduce(
+    (s, a) =>
+      s +
+      armStr(
+        turnContext,
+        a,
+        ch,
+        (ch.player === null ? undefined : G.players[ch.player])?.alignment,
+        prov.terrain,
+        undefined,
+      ),
     0,
   );
 }

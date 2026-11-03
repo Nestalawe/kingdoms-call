@@ -116,7 +116,7 @@ function theFightAsItIsNow(fight: TheFightAsItIsKept): TheFightAsItIsKept {
   return fight;
 }
 /** Whether a hero's name is words, as every hero's is (the saved schema's, and the fight's lines name him by it). */
-function hisNameIsWords<Hero extends { readonly name?: string | undefined }>(
+export function hisNameIsWords<Hero extends { readonly name?: string | undefined }>(
   hero: Hero,
 ): hero is Hero & { readonly name: string } {
   return typeof hero.name === 'string';
