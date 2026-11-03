@@ -126,7 +126,7 @@ import { BOT_SKILL_BUILD, generateBotSetups } from '../../engine/bots/setup.ts';
 import { botBattleForce } from '../../engine/bots/intel.ts';
 import { generateNewGame } from '../../engine/world/generate.ts';
 import { getNeighborsP, hexDistP } from '../../engine/world/map-helpers.ts';
-import { castChanceFor, guardCastChance, primalStrikeChance } from '../../engine/chances-and-lair-grades.ts';
+import { primalStrikeChance } from '../../engine/chances-and-lair-grades.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
 import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
 import { theWordsOf } from '../../views/prose/the-words-of-each-line.ts';
@@ -219,14 +219,12 @@ Object.assign(window, {
   buildGameMeta, // db/game-meta.ts
   buildGameRecords, // ui/gm/hall-of-fame.ts
   buildTurnReport, // views/turn-report.ts
-  castChanceFor, // engine/chances-and-lair-grades.ts
   disbandLine, // views/prose/the-words-of-a-battles-lines.ts
   druIdPenaltyMult, // engine/world/tables.ts
   generateBotSetups, // engine/bots/setup.ts
   generateNewGame, // engine/world/generate.ts
   getDruidLevel, // engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts
   getNeighborsP, // engine/world/map-helpers.ts
-  guardCastChance, // engine/chances-and-lair-grades.ts
   hexDistP, // engine/world/map-helpers.ts
   homeProvinceIdFor, // engine/grand-design.ts
   itemEffectKey, // engine/items/tiers-and-hoards.ts
