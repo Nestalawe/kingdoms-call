@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-79 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(45: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+77 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(43: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b27 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b28 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -122,6 +122,12 @@ added under its kind.
   `Object.entries(skills).filter(([, v]) => v > 0)` takes a typed predicate, `Number(v) > 0` (`aLevelAboveNothing`).
 - **Records of a union compared field by field** (where a Wild Calling tore beasts from: a garrison's province, a
   hero's name) are compared through a shape with every field optional (`theSamePlaceAsNamed`).
+- **`x.pop()` in a loop `while (x.length > 0)`** is `...x.splice(-1, 1)` pushed (a gap stays a gap); `src.armies.pop()` on a
+  list just found not empty is `theOneTakenOut(list, list.length - 1)`. A number a callee has just set in a pool for
+  a hero (`refreshMovePool`'s points) is read through a check that throws for none (`thePointsTheRefreshLeft`).
+- **Levels by skill read and raised by any skill's name** (a hero's skills, a snapshot, his rises this turn) go
+  through a reader that hands back the same object typed `Partial<Record<string, number>>` (`theLevelsByAnyName`):
+  a schema's object type, unlike an interface, takes a record, so the writes reach it.
 - **`[a[0]]` and `[a[1]]` from a list just found to hold two** are `a.slice(0, 1)` and `a.slice(1, 2)`, the same lists. A
   regular expression's group that always takes part in a match is read `String(m[1])`, the same words.
 - **A die's pick from a list that may hold a gap** (a hero's pack, read as a battle's copy holds it) is checked just
@@ -224,6 +230,9 @@ added under its kind.
   (`hisRealm`, the Search; the Spy too, whose body reads his realm both ways). A rest-spread arrow handing its arguments on after the turn's context is typed
   `(...a: AfterTheTurnsContext<typeof f>)`. A field a test's stand-in gives a typed callee's result and the callee never
   does (a pacified fight) is read through a type that adds it, optional (`TheFightAsTheSearchReadsIt`).
+- **A target the body turns into words** (`(t || '').toString()`, `String(t)`, `parseInt(t)`) is typed `string | number |
+  null | undefined`, so each conversion stays; its `t || ''` is `(t ?? '') || ''`, which turns a `0` into `''` too.
+  A phase fallback `ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN` whose callers all pass a number goes.
 - **A parameter the body never reads** (a callee handed the province and a skill reader it no longer uses) is typed
   `unknown`, with a comment that says so.
 - **A field written back by any key** (`real[k] = copy[k]` over `Object.keys(copy)`) is
