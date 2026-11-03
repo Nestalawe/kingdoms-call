@@ -30,6 +30,9 @@
 // victim who can't be killed, left at 0 HP, escapes at 1; a second read keeps the first copy, and a company of no name
 // is copied with none; the heist's item joins the thief's pack; each assassin's line is filed under the heroes it is
 // about.
+// Since P1-10b23 (the duels' file freed of its ts-nocheck line): a pocket picked in a personal encounter
+// (`resolveCharVsChar`, with the fight stood in), both ways: the die's gold from one realm into the other, no more than
+// the purse holds, and an empty purse gives nothing.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -1174,6 +1177,86 @@ describe('a hero whose Invisibility holds (R-119): another realm’s Spy, Steal 
       play(stale, at(stale, { spy: 9 }), o('assassinate', s.id));
     });
     expect(s.alive).toBe(false);
+  });
+});
+
+// ── A pocket picked in a personal encounter ──────────────────────────────────────────────────────────────────
+describe('a pocket picked in a personal encounter (resolveCharVsChar, with the fight stood in)', () => {
+  const encounter = fn('resolveCharVsChar');
+  /** resolveCharVsChar between `atk` and `def`, with personal combat stood in (the top-level resolvePersonalCombat
+   *  replaced in the vm for the call's length) by a fight that ends in a steal by `who`, and the take's die at `take`. */
+  const picked = (b: Board, atk: Character, def: Character, who: 'atk' | 'def', take: number) => {
+    const g = engine as unknown as Record<string, unknown>;
+    const was = g['resolvePersonalCombat'];
+    g['resolvePersonalCombat'] = (_tc: unknown, A: unknown, B: unknown) => ({
+      winner: null,
+      loser: null,
+      fledBy: null,
+      parley: false,
+      stoleBy: who === 'atk' ? A : B,
+      aHp: 10,
+      bHp: 10,
+      narrative: [],
+    });
+    try {
+      return encounter(b.tc, atk, def, ['ME'], ['ME'], b.X, null, () => take, b.G) as { narrative: LineFact[] };
+    } finally {
+      g['resolvePersonalCombat'] = was;
+    }
+  };
+  const lifts = (thief: Character, victim: Character, stolen: number) => ({
+    kind: "the attacker lifts gold from the defender's purse",
+    atkName: thief.name,
+    stolen,
+    defName: victim.name,
+  });
+  test('the attacker who steals takes the die’s gold from the defender’s realm into his own', () => {
+    const b = fresh();
+    const thief = at(b, { thief: 3 });
+    const victim = rival(b);
+    realm(b, 0)['gold'] = 0;
+    realm(b, 1)['gold'] = 10;
+    const res = picked(b, thief, victim, 'atk', 3);
+    expect([gold(b, 0), gold(b, 1)]).toEqual([3, 7]);
+    expect(res.narrative).toContainEqual(lifts(thief, victim, 3));
+  });
+  test('the defender who steals takes it from the attacker’s realm into his own, and is named as the one who lifts it', () => {
+    const b = fresh();
+    const atk = at(b, { thief: 3 });
+    const def = rival(b);
+    realm(b, 0)['gold'] = 10;
+    realm(b, 1)['gold'] = 0;
+    const res = picked(b, atk, def, 'def', 3);
+    expect([gold(b, 0), gold(b, 1)]).toEqual([7, 3]);
+    expect(res.narrative).toContainEqual(lifts(def, atk, 3));
+  });
+  test('no more than the purse holds, both ways', () => {
+    const b = fresh();
+    const atk = at(b, { thief: 3 });
+    const def = rival(b);
+    realm(b, 0)['gold'] = 4;
+    realm(b, 1)['gold'] = 2;
+    expect(picked(b, atk, def, 'atk', 5).narrative).toContainEqual(lifts(atk, def, 2));
+    expect([gold(b, 0), gold(b, 1)]).toEqual([6, 0]);
+    realm(b, 0)['gold'] = 3;
+    expect(picked(b, atk, def, 'def', 5).narrative).toContainEqual(lifts(def, atk, 3));
+    expect([gold(b, 0), gold(b, 1)]).toEqual([0, 3]);
+  });
+  test('an empty purse gives nothing, both ways: the attacker is told it is empty', () => {
+    const b = fresh();
+    const atk = at(b, { thief: 3 });
+    const def = rival(b);
+    realm(b, 0)['gold'] = 0;
+    realm(b, 1)['gold'] = 0;
+    const res = picked(b, atk, def, 'atk', 3);
+    expect(res.narrative).toContainEqual({
+      kind: "the attacker finds the defender's purse empty",
+      atkName: atk.name,
+      defName: def.name,
+    });
+    const back = picked(b, atk, def, 'def', 3);
+    expect(back.narrative.filter((l) => l.kind.includes('purse'))).toEqual([]);
+    expect([gold(b, 0), gold(b, 1)]).toEqual([0, 0]);
   });
 });
 
