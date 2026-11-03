@@ -11,8 +11,10 @@
 // KC_SEED; no turn is played. Not lower: the roll is made inside the battle, once its outcome is known.
 //
 // Until plan P1-14d this was tests/xp-small-chances.test.js, a turn in the engine's bare vm (seed 1 only) that searched
-// the map for a province with defenders and wrapped trySkillGain there by eval; its three checks are kept, and "no page
-// errors" is "throws nothing" (an unexpected console.error fails the test: setup/each.ts).
+// the map for a province with defenders and wrapped trySkillGain there by eval. Its three checks are kept, and two are
+// stricter: "the general loses" also asks the battle's outcome (its words match a won battle's "nowhere to retreat"
+// too), and "no page errors" is "throws nothing" (an unexpected console.error fails the test: setup/each.ts; the vm's
+// list of page errors was always empty).
 import '../lib/the-whole-engine.ts';
 import { afterEach, expect, test, vi } from 'vitest';
 import * as experience from '../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts';
@@ -59,8 +61,9 @@ test('a general who loses a battle and lives has a small chance at Tactical', ()
     tryOne(...args);
   });
 
-  const { text } = aBattleAgainstTheProvince(tc, G2, field, guard);
+  const { text, won } = aBattleAgainstTheProvince(tc, G2, field, guard);
   expect(text, 'the general loses the battle').toMatch(/repelled|hold against|retreat/i);
+  expect(won, '…as the battle tells it').toBe(false);
   expect(
     G.characters.find((c) => c.id === G2.id)?.alive,
     `…and lives (his rolls: ${rolls.map((x) => `${x.skill}@${String(x.base)}`).join(', ')})`,
