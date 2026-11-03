@@ -12,19 +12,16 @@ import {
 import type { TurnContext } from '../turn/context.ts';
 import type { AUnitThatRoseAsTheLineNamesIt } from './the-facts-relations-and-captures-lines-record.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
-import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
 
 // Its types (plan P1-10b9): each parameter typed as wide as the body's guards (plan P1-10b's Decision 3), so each guard
-// stays. Ids are plain numbers (the schema brands them). A unit's type is a UnitType where its name is drawn
-// (armyUnitName takes one), though the schema's is any string.
+// stays. Ids are plain numbers (the schema brands them). A unit's type is any string, as the schema holds it
+// (armyUnitName takes any; plan P1-10b26).
 /** A unit of a conquering column: its battle marks guarded, its quality raised in place. */
 type AUnitOfTheColumn = Pick<
   ArmyInABattle,
-  'quality' | 'unitName' | '_isSkeletal' | '_died' | '_disbanded' | '_phantom'
-> & {
-  readonly type: UnitType;
-};
+  'type' | 'quality' | 'unitName' | '_isSkeletal' | '_died' | '_disbanded' | '_phantom'
+>;
 /** The hero who took a province: his name, and his column guarded. */
 interface TheConqueror {
   readonly id: number;
@@ -44,7 +41,7 @@ type AProvinceConquered = Pick<Province, 'name' | 'terrain' | '_evilConqTurn' | 
   readonly id: number;
   readonly tax?: number | null | undefined;
   readonly race?: string | null | undefined;
-  readonly armyTypes?: readonly UnitType[] | null | undefined;
+  readonly armyTypes?: readonly string[] | null | undefined;
   // a unit pressed into the garrison takes armyUnitName's name, which may be undefined (its pool never is empty)
   garrisonArmies?:
     (Pick<Army, 'type' | 'quality' | 'race'> & { readonly unitName: string | undefined })[] | null | undefined;

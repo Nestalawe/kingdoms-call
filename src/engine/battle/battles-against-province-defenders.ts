@@ -2222,10 +2222,10 @@ export function combatVsNPC(
   // a one-line result that onlookers (a char present but not fighting) may see instead of the
   // full blow-by-blow. The caller can override with a fuller "seized/held" line where it knows
   // more.
-  const _sumDef = defHero
+  const _sumDef: TheDefendersOfAProvince = defHero
     ? { kind: 'the defenders led by their guard', guardName: defHero.name.replace(' (wandering)', '') }
     : { kind: 'the defenders of a province with no guard to lead them', provName: prov.name, capitalised: false };
-  const summaryText = {
+  const summaryText: Extract<NarrativeLine, { kind: "the onlookers' summary of a battle" }> = {
     kind: "the onlookers' summary of a battle",
     provName: prov.name,
     won,

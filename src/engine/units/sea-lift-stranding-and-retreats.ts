@@ -16,7 +16,7 @@ import { canEnterTerrain, getSeaCapability, refreshMovePool } from './movement-p
 import { emit, narrate, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their-audiences.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
-import type { Province } from '../../schemas/saved-game-state.ts';
+import type { Army, Province } from '../../schemas/saved-game-state.ts';
 
 // ── SEA LIFT, STRANDING AND RETREATS (plan P1-08b: lifted out of resolveTurn) ────
 // How far a column falls short of the lift to stay at sea (seaLiftShortfall; whether it can put to sea,
@@ -383,7 +383,7 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, whyTheyAreLeftBe
 // live in prov.garrisonArmies but must be kept out of every "the garrison retreats with the
 // hero" sweep, and they count as forces still holding the ground when the winner tries to claim
 // it. `against` is the would-be claimant: hulls of that same realm are not an obstacle to it.
-export function navalHeldIn(prov, against) {
+export function navalHeldIn(prov, against?): Army[] {
   const out = [];
   ((prov && prov.garrisonArmies) || []).forEach((a) => {
     if (!a || a._navalHold == null || a._died || a._disbanded) return;
@@ -394,14 +394,19 @@ export function navalHeldIn(prov, against) {
 }
 // The tag is a within-phase marker only: once the battle's outcome is logged the hulls are
 // ordinary garrison again (a stalled battle resumes against them through resolveUnitGainInProvince).
-export function clearNavalHold(prov) {
+export function clearNavalHold(prov): void {
   ((prov && prov.garrisonArmies) || []).forEach((a) => {
     if (a && a._navalHold != null) delete a._navalHold;
   });
 }
 // claimant: whose the ground is not while the hulls lie there (a realm's name, or a side as a record, ASideOfABattle,
 // since P1-12d32: the prose writes its label); null: the hunter's.
-export function navalHoldLine(turnContext, prov, units, claimant) {
+export function navalHoldLine(
+  turnContext,
+  prov,
+  units,
+  claimant,
+): Extract<NarrativeLine, { kind: 'hulls left ashore still hold a province against its claimant' }> {
   const { G } = turnContext;
   const who =
     units[0] && units[0]._navalHold != null && G.players[units[0]._navalHold]

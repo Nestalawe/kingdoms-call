@@ -446,7 +446,7 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
           { id: 0, name: 'Wendmeadow' },
           0,
           1,
-          { id: 9, name: 'Thorn', armies: column } as never,
+          { id: 9, name: 'Thorn', armies: column },
           2,
         );
       });
@@ -471,7 +471,7 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
           { id: 0, name: 'Wendmeadow' },
           0,
           1,
-          { id: 9, name: 'Thorn', armies: column } as never,
+          { id: 9, name: 'Thorn', armies: column },
           2,
         );
         expect([column[0]?.quality, theTurnsLinesInWords(tc.turnLog).gmLog[1]?.text]).toEqual([

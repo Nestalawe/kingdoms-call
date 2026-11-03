@@ -35,6 +35,7 @@ import { resolveCharVsChar } from '../personal-combat/duels-and-character-encoun
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { combatVsChar } from '../battle/battles-between-heroes.ts';
 import { isHostileInvasion, phaseInitCompare } from '../turn/phase-intents-and-dependency-ordering.ts';
+import type { Character } from '../../schemas/saved-game-state.ts';
 
 // ── THE DEFEND WATCH: RIDE-OUTS, AMBUSHES AND REINFORCEMENTS (plan P1-08i2: lifted out of resolveTurn) ────
 // What a hero on a Defend order does while he keeps watch, each phase: a general rides out to meet an enemy column
@@ -307,7 +308,7 @@ export function defendBattleLocked(turnContext, c, here) {
 // the old sequence — province falls unopposed, general rides out after every order to retake it
 // as the ATTACKER. runDefendMaterializedReactions remains as the end-of-phase safety net.
 // Returns the generals who rode in.
-export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun) {
+export function defendAnswerUnitGain(turnContext, raiser, prov, ph, dryRun?): Character[] {
   const { G, seaCap, seaMoveActive, seaMovePoints, movePoints } = turnContext;
   const riders = [];
   if (!raiser || !prov || prov.owner == null || prov.owner === raiser.player) return riders;
