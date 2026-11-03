@@ -9,9 +9,12 @@
 // engine/heroes/experience-skill-rises-and-earned-hp.ts, which the duel calls from another file): the hero's Melee
 // rolls at an endless multiplier (a chance of 1), and nobody else rolls at all. The stand-in is shown reached by the
 // rise itself (without it no rise is certain) and by its own record of the hero's roll. The chieftain is chosen and
-// set by the staging, on every world: a neutral guard made by the test (no skill, 2 HP, Brave, so he calls the hero
-// out) alone in a free land province beside a land province, where the hero is put with Melee 3, a Challenge stance
-// and three Elite companies; so the outcome does not depend on the dice.
+// set by the staging, on every world: a neutral guard made by the test (no skill, Brave) alone in a free land province
+// beside a land province, where the hero is put with Melee 3, a Challenge stance, three Elite companies and some 200
+// earned hit points, which the chieftain can't take from him in a duel's 20 rounds (the engine gives the chieftain the
+// hit points his race starts with, whatever the staging sets: 15 for a man); so the hero wins the duel and lives, and
+// the outcome does not depend on the dice. (The old script set the chieftain's hit points to 2, which the engine raised
+// to 15; on seed 12 of 1 to 100 the hero fell in the duel, and his rise was told where he fell, before the battle.)
 //
 // Until plan P1-14c this was tests/duel-skill-rise.test.js, the same turn in the engine's bare vm (seed 1 only), the
 // roll stood in there; and it chose a chieftain the world had.
@@ -110,8 +113,8 @@ test('a Melee risen in the duel before a battle is told straight after the battl
         race: 'Human',
         alignment: 'Neutral',
         temper: 'Brave',
-        hp: 2,
-        maxHp: 2,
+        hp: 15,
+        maxHp: 15,
         hpEarned: 0,
         skills: { melee: 0, archery: 0 },
         aptitude: {},
@@ -132,6 +135,10 @@ test('a Melee risen in the duel before a battle is told straight after the battl
       place(S, H, P);
       H.items = [];
       H.skills = { ...H.skills, melee: 3, archery: 0 };
+      // Far more hit points than the chieftain can take from him in a duel's 20 rounds (the engine brings them in line
+      // with what he has earned, so they are set as earned): a hero who fell would have his rise told where he fell.
+      H['hpEarned'] = 200;
+      H['hp'] = H['maxHp'] = 999;
       H.encounterPlan = { tactics: ['ME', 'ME', 'ME', 'ME', 'ME'], duelStance: 'challenge' };
       H.armies = ['the Red Hand', 'the Grey Company', 'the Oak Shields'].map((unitName) => ({
         type: 'Men-at-Arms',
