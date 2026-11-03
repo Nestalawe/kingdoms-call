@@ -133,7 +133,7 @@ test('a warg-heavy victor runs the beaten down on the field, takes up no chase, 
     .map((e) => e.text)
     .join('\n');
   expect(
-    /Battle for /.test(spring) && spring.includes(`${A.name}'s forces defeat`),
+    spring.includes('Battle for ') && spring.includes(`${A.name}'s forces defeat`),
     `${A.name}'s wargs win the battle for ${X.name} (staging)`,
   ).toBe(true);
   expect(spring, 'the battle report shows the wargs running the beaten army down (+15% losses)').toMatch(
