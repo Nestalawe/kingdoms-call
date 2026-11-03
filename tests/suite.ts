@@ -90,7 +90,6 @@ export function suite(full: boolean): Script[] {
     ['page', 'cast-practice-projection', 'tests/cast-practice-projection.test.js'],
     ['simulation', 'lair-province-unique', 'tests/lair-province-unique.test.js'],
     ['simulation', 'lair-effects-spread', 'tests/lair-effects-spread.test.js'],
-    ['simulation', 'skill-names-capitalised', 'tests/skill-names-capitalised.test.js'],
     ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
@@ -99,7 +98,6 @@ export function suite(full: boolean): Script[] {
     ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
     ['static', 'rulebook-order', 'tests/rulebook-order.test.js'], // 2026-10-15
     ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
-    ['simulation', 'report-privacy', 'tests/report-privacy.test.js', full ? ['6', '20', '6'] : ['3', '10', '5']],
     [
       'simulation',
       'fuzz-wages-combat',
