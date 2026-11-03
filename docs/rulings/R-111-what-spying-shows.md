@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-15, Toby
 - **Status:** Confirmed
 - **Source:** PR #89 item 5 (decisions D2 and D9 on a player's rulebook review)
-- **Enforced by:** [`spy-reveals`](../../tests/spy-reveals.test.js)
+- **Enforced by:** [`a-spy-order-shows-a-provinces-heroes-and-their-armies-and-a-spied-heros-skills-items-and-army`](../../tests/scenario/a-spy-order-shows-a-provinces-heroes-and-their-armies-and-a-spied-heros-skills-items-and-army.test.ts), [`the-rulebook-says-what-a-province-spy-and-a-hero-spy-reveal`](../../tests/static/the-rulebook-says-what-a-province-spy-and-a-hero-spy-reveal.test.ts)
 
 **Spying a province** shows every character there and the army units each leads (type and quality), but no
 hero's skills. It also shows the characters in every neighbouring province, as a hero of the spying realm

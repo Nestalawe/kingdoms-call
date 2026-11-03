@@ -96,7 +96,7 @@
   shell plays it (a seed from the dice, `resolveTurn`, the Spy-stealth step, the views' `buildReports` on what the turn
   hands over), with `lib/scenario.js`'s staging; `play(state,
   rows)` plays a saved world on slot rows of the test's own, and `reportEveryRealm()` has every realm reported, bots'
-  too (an all-bot game writes no report otherwise: `concede`, `report-privacy`). Its `log` (and `text()`) is the GM's
+  too (an all-bot game writes no report otherwise: `report-privacy`). Its `log` (and `text()`) is the GM's
   log in words, as the views write it for the shell to save (`buildReports`' `gmLog`, P1-12c3), and so is
   `lib/a-staged-turn-on-the-engines-modules.ts`' and the board's `lines()` (`lib/middle-of-a-bot-world.ts`): a typed
   line has no words in the engine's own log. `recordTheEvents()` has

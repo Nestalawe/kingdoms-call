@@ -84,10 +84,8 @@ export function suite(full: boolean): Script[] {
     ['page', 'leaderboard-render', 'tests/leaderboard-render.test.js'],
     ['unit', 'leaderboard-events-paging', 'tests/leaderboard-events-paging.test.js'],
     ['page', 'leaderboard-realm-bests', 'tests/leaderboard-realm-bests.test.js'],
-    ['scenario', 'concede', 'tests/concede.test.js'],
     ['unit', 'guardian-traits', 'tests/guardian-traits.test.js'],
     ['unit', 'unit-fates', 'tests/unit-fates.test.js'],
-    ['scenario', 'overtures', 'tests/overtures.test.js'],
     ['page', 'orders-group-by-location', 'tests/orders-group-by-location.test.js'],
     ['page', 'cast-practice-projection', 'tests/cast-practice-projection.test.js'],
     ['simulation', 'lair-province-unique', 'tests/lair-province-unique.test.js'],
@@ -99,9 +97,6 @@ export function suite(full: boolean): Script[] {
     ['static', 'lair-readiness-words', 'tests/lair-readiness-words.test.js'], // batch 2026-10-14
     ['static', 'rulebook-review-words', 'tests/rulebook-review-words.test.js'], // batch 2026-10-15
     ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
-    ['scenario', 'spy-reveals', 'tests/spy-reveals.test.js'], // batch 2026-10-15
-    ['scenario', 'intrusion-invisible', 'tests/intrusion-invisible.test.js'], // batch 2026-10-15
-    ['scenario', 'intrusion-lurker', 'tests/intrusion-lurker.test.js'], // batch 2026-10-15
     ['static', 'rulebook-order', 'tests/rulebook-order.test.js'], // 2026-10-15
     ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
     ['simulation', 'report-privacy', 'tests/report-privacy.test.js', full ? ['6', '20', '6'] : ['3', '10', '5']],
