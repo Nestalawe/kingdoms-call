@@ -9,7 +9,9 @@
 //   moment Flak Screen has run (applyFlakScreen, stood in by vi.spyOn, which calls the real one) to the next step of the
 //   battle (terrainNoteList in combatVsChar, eyesOfTheForestLine in combatVsNPC), and counted. Since P1-12d35 each
 //   sinking's fact holds the hull's type, and between two hosts the side whose hull sinks (the attacker's cohort sinks
-//   the defender's hull, the defender's cohort the attacker's): the losses tally counts the hull there.
+//   the defender's hull, the defender's cohort the attacker's): the losses tally counts the hull there. Against the
+//   defenders, the hull sunk takes no part in the battle: a lone hull sunk leaves the province swept into, with no one
+//   left to stand (plan P1-10b24: no matrix game sinks a defender's last hull).
 // - Flak Screen: a Gyrocopter harries one enemy winged rider, which loses 30% of its base strength (at least 1), as both
 //   books write it; no two gyrocopters harry the same flyer, nor one harried already this battle, and one die is drawn
 //   for each gyrocopter while a flyer is left (applyFlakScreen called directly; since P1-12d31 it is handed the side's
@@ -258,6 +260,14 @@ describe("Breach and Swamp, the defender's cohort in a battle between two hosts"
     const shown = aBattleAtSea('between two hosts', ['Dwarf Ironclads'], ['Whale Cohort'], [JUST_UNDER, 0]);
     expect(shown.sunk).toEqual([expect.stringMatching(/^Dwarf Ironclads #/)]);
     expect(shown.sinkings).toEqual([{ theSideWhoseShipSinks: 'attacker', targetUnitType: 'Dwarf Ironclads' }]);
+  });
+});
+
+describe('Breach and Swamp against the defenders: the hull sunk takes no part in the battle', () => {
+  test('a lone hull sunk before a shot is fired leaves no defender: the province is swept into, with no one to stand', () => {
+    const shown = aBattleAtSea('against the defenders', ['Whale Cohort'], ['Orcish Longships'], [JUST_UNDER, 0]);
+    expect(shown.sunk).toEqual([expect.stringMatching(/^Orcish Longships #/)]);
+    expect(shown.kinds).toContain('every defending unit was lost before the lines closed');
   });
 });
 

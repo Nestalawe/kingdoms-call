@@ -20,6 +20,10 @@
 // unit drawn. Every other die is a seeded stream's.
 // The battles keep their names and signatures, so this passes on the code before the row (P1-12d23's base), as after
 // (but the defOwn case, restaged by P1-19aa on the runner, which its base doesn't have).
+// Since P1-10b24, also two more no game reaches against a province's defenders: under the attacker's Lightning
+// Advance the defenders fight with no terrain bonus (their strength in the turn's record falls; the Men-at-Arms' ×1.1 on
+// the plain), and a guard slain before the battle (the duel's outcome stood in) leaves a sergeant of the garrison to take
+// up the banner.
 // Since P1-12d33, also the record the turn's statistics keep of a battle against a province's defenders, in the two
 // forms no game reaches ('pvp': a realm's hero leading them, stood in as realm 1's king; 'neutral') and the garrison's,
 // read through the views' theStatisticsOfTheTurn, which P1-12d33 adds (so those cases need its code).
@@ -42,6 +46,7 @@ import * as movement from '../../src/engine/units/movement.ts';
 import * as fates from '../../src/engine/battle/fates.ts';
 import * as theDiscoveries from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 import * as spellChoice from '../../src/engine/magic/pre-battle-spell-choice.ts';
+import * as duels from '../../src/engine/battle/pre-battle-duels.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
@@ -396,6 +401,32 @@ describe.each([false, true])('a battle between heroes, both commanders slain bef
       expect.stringContaining(
         ` — with no road out, ${sideOf(shown.atk, slain)}'s Dwarven Guard lock shields where they stand. None are cut down in flight, and ${shown.province} remains contested.`,
       ),
+    );
+  });
+});
+
+describe("a battle against a province's defenders, in the lines no game reaches (plan P1-10b24)", () => {
+  test("under the attacker's Lightning Advance the defenders fight with no terrain bonus: their strength falls", () => {
+    const fight = (advance: boolean) =>
+      aBattle({ atk: companies(8, 'Elite'), defenders: companies(3, 'Average') }, false, (G, atk) => {
+        if (advance) atk['_lightningAdvanceTurn'] = G.turn;
+      }).battles;
+    const [onTheirGround] = fight(false);
+    vi.restoreAllMocks(); // (each battle stands in the spell's choice afresh)
+    const [caughtUnready] = fight(true);
+    if (!onTheirGround || !caughtUnready) throw new Error('a battle the turn did not record');
+    expect(caughtUnready.defStr).toBeLessThan(onTheirGround.defStr);
+  });
+
+  test('their guard slain before the battle: a sergeant of the garrison takes up the banner', () => {
+    vi.spyOn(duels, 'preBattleDuel').mockReturnValue({ atkMorale: 1, defMorale: 1, atkSlain: false, defSlain: true });
+    const shown = aBattle(
+      { atk: companies(8, 'Elite'), defenders: companies(1, 'Green'), ledByRealm1sKing: true },
+      false,
+      () => undefined,
+    );
+    expect(shown.words).toContain(
+      `⚑ With ${shown.def} slain before the host, a battle-worn sergeant of the garrison takes up the fallen banner — the defenders close ranks and fight on, leaderless but unbowed.`,
     );
   });
 });
