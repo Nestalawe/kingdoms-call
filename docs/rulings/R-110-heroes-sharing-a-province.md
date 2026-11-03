@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-15, Toby
 - **Status:** Confirmed
 - **Source:** PR #89 item 4 (decision D1 on a player's rulebook review, with two follow-up answers)
-- **Enforced by:** [`sight-shared-province`](../../tests/sight-shared-province.test.js), [`intrusion-invisible`](../../tests/intrusion-invisible.test.js), [`intrusion-lurker`](../../tests/intrusion-lurker.test.js), [`heroes-in-sight-and-features-discovered-called-directly`](../../tests/unit/heroes-in-sight-and-features-discovered-called-directly.test.ts)
+- **Enforced by:** [`another-realms-hero-beside-yours-is-always-seen-by-name-realm-and-rough-size-only`](../../tests/unit/another-realms-hero-beside-yours-is-always-seen-by-name-realm-and-rough-size-only.test.ts), [`the-player-portals-map-popup-gives-your-heros-count-and-another-realms-rough-size`](../../tests/page/the-player-portals-map-popup-gives-your-heros-count-and-another-realms-rough-size.test.ts), [`the-rulebook-says-another-realms-hero-beside-yours-is-always-seen-and-only-roughly`](../../tests/static/the-rulebook-says-another-realms-hero-beside-yours-is-always-seen-and-only-roughly.test.ts), [`intrusion-invisible`](../../tests/intrusion-invisible.test.js), [`intrusion-lurker`](../../tests/intrusion-lurker.test.js), [`heroes-in-sight-and-features-discovered-called-directly`](../../tests/unit/heroes-in-sight-and-features-discovered-called-directly.test.ts)
 
 A player always sees another realm's heroes who share a province with one of their own characters at the
 end of the turn. Their Spy skill cannot hide them there. Invisibility still can (only Clairvoyance sees

@@ -46,7 +46,6 @@ export function suite(full: boolean): Script[] {
     ['page', 'dispatch-limits', 'tests/dispatch-limits.test.js'],
     ['page', 'report-dispatch', 'tests/report-dispatch.test.js'],
     ['page', 'eliminated-dispatches', 'tests/eliminated-dispatches.test.js'],
-    ['scenario', 'eliminated-report', 'tests/eliminated-report.test.js'],
     ['page', 'overlord-page', 'tests/overlord-page.test.js'],
     ['page', 'overlord-suspend-delete', 'tests/overlord-suspend-delete.test.js'],
     ['page', 'hostile-overlord', 'tests/hostile-overlord.test.js'],
@@ -79,7 +78,6 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'new-creatures', 'tests/new-creatures.test.js'],
     ['unit', 'abilities-beasts', 'tests/abilities-beasts.test.js'],
     ['unit', 'battle-fronts-meet', 'tests/battle-fronts-meet.test.js'],
-    ['unit', 'terror-visible', 'tests/terror-visible.test.js'],
     ['static', 'primal-abilities-words', 'tests/primal-abilities-words.test.js'],
     ['unit', 'leaderboard-records', 'tests/leaderboard-records.test.js', [], { N: full ? '3000' : '100' }],
     ['unit', 'leaderboard-golden', 'tests/leaderboard-golden.test.js'],
@@ -87,7 +85,6 @@ export function suite(full: boolean): Script[] {
     ['unit', 'leaderboard-events-paging', 'tests/leaderboard-events-paging.test.js'],
     ['page', 'leaderboard-realm-bests', 'tests/leaderboard-realm-bests.test.js'],
     ['scenario', 'concede', 'tests/concede.test.js'],
-    ['unit', 'monarch-grave', 'tests/monarch-grave.test.js'],
     ['unit', 'guardian-traits', 'tests/guardian-traits.test.js'],
     ['unit', 'unit-fates', 'tests/unit-fates.test.js'],
     ['scenario', 'overtures', 'tests/overtures.test.js'],
@@ -102,13 +99,11 @@ export function suite(full: boolean): Script[] {
     ['static', 'lair-readiness-words', 'tests/lair-readiness-words.test.js'], // batch 2026-10-14
     ['static', 'rulebook-review-words', 'tests/rulebook-review-words.test.js'], // batch 2026-10-15
     ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
-    ['unit', 'sight-shared-province', 'tests/sight-shared-province.test.js'], // batch 2026-10-15
     ['scenario', 'spy-reveals', 'tests/spy-reveals.test.js'], // batch 2026-10-15
     ['scenario', 'intrusion-invisible', 'tests/intrusion-invisible.test.js'], // batch 2026-10-15
     ['scenario', 'intrusion-lurker', 'tests/intrusion-lurker.test.js'], // batch 2026-10-15
     ['static', 'rulebook-order', 'tests/rulebook-order.test.js'], // 2026-10-15
     ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
-    ['page', 'hire-price', 'tests/hire-price.test.js'],
     ['simulation', 'report-privacy', 'tests/report-privacy.test.js', full ? ['6', '20', '6'] : ['3', '10', '5']],
     [
       'simulation',

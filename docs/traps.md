@@ -276,7 +276,8 @@ the orders' cases marked "(item 24)" in `tests/lib/recruit-hire-and-realm-works-
 Anything that must know whether a province is "under Terror" for a battle reads it **before** `consumeTerror`, which
 runs at the start of every battle and deletes `_terrorStacks`, `_terrorisedBy` and the rest. Example: Reign of Fear
 reads it through `reignOfFearHere` before the call, in both battle paths, and hands the answer on in the strength
-context (`ctx.reignOfFear`); read after, it is always false. Checks: `terror-three-stacks` and `terror-visible`.
+context (`ctx.reignOfFear`); read after, it is always false. Checks: `terror-three-stacks` and
+`an-evil-realms-report-reads-the-terror-gripping-each-province`.
 
 ## An alignment order is written in a dozen places
 

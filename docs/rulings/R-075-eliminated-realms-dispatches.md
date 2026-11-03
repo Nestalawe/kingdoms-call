@@ -3,7 +3,7 @@
 - **Decided:** 2026-09-29, Toby; details 2026-10-15
 - **Status:** Confirmed
 - **Source:** Toby's answer of 2026-09-29 (plan decision D-02); his answers of 2026-10-15 in PR #95
-- **Enforced by:** [`22_block_eliminated_msgs.test.sql`](../../supabase/tests/database/22_block_eliminated_msgs.test.sql) (the switch), [`eliminated-dispatches`](../../tests/eliminated-dispatches.test.js) (the screens), [`eliminated-report`](../../tests/eliminated-report.test.js) (the report tells a realm it is extinguished)
+- **Enforced by:** [`22_block_eliminated_msgs.test.sql`](../../supabase/tests/database/22_block_eliminated_msgs.test.sql) (the switch), [`eliminated-dispatches`](../../tests/eliminated-dispatches.test.js) (the screens), [`a-realms-report-says-whether-it-is-out-or-has-conceded`](../../tests/unit/a-realms-report-says-whether-it-is-out-or-has-conceded.test.ts) (the report tells a realm it is extinguished)
 
 A realm that is eliminated or has conceded sends no private dispatches until the game is over. It may still write in the public channel, unless the GM turns on "Block eliminated realms from sending dispatches" for that game.
 

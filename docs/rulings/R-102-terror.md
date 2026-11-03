@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-12, Toby
 - **Status:** Confirmed
 - **Source:** PR #75 items 21 and 23
-- **Enforced by:** [`terror-visible`](../../tests/terror-visible.test.js), [`terror-three-stacks`](../../tests/unit/terror-three-stacks.test.ts)
+- **Enforced by:** [`an-evil-realms-report-reads-the-terror-gripping-each-province`](../../tests/unit/an-evil-realms-report-reads-the-terror-gripping-each-province.test.ts), [`the-player-portals-terror-note-reads-the-terror-and-its-stacks`](../../tests/page/the-player-portals-terror-note-reads-the-terror-and-its-stacks.test.ts), [`the-player-portals-map-popup-and-provinces-list-write-the-terror-note`](../../tests/static/the-player-portals-map-popup-and-provinces-list-write-the-terror-note.test.ts), [`terror-three-stacks`](../../tests/unit/terror-three-stacks.test.ts)
 
 Terror stacks at most three times on a province (a province holding more in a running game is read as three). Evil realms see each province's Terror: in the map popup, under each of their own provinces, and as a line for a visited province they don't hold. No other crown is told.
 
