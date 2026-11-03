@@ -6,7 +6,8 @@
 // Level 0 (static): the rulebook as built (site/), each row read from its markup, its tags stripped, its curly
 // quotes made straight and its white space made single; nothing runs.
 //
-// Until plan P1-14e these were three checks of tests/island-back.test.js, kept as they were.
+// Until plan P1-14e these were three checks of tests/island-back.test.js, kept as they were but the last, made stricter:
+// it passed on any Sea-beasts row that named the turtles and said they "carry nothing".
 import { expect, test } from 'vitest';
 import { readPage } from '../lib/boot.js';
 
@@ -36,8 +37,10 @@ test('the rulebook: the Naval row, the turtles’ row and the Sea-beasts row say
     `the turtle row names Island Back and no longer says they carry nothing — "${turtles.slice(-200)}"`,
   ).toBe(true);
   const beasts = row('Sea-beasts');
+  // stricter than the old script's check, which any row naming the turtles and saying "carry nothing" passed: the
+  // turtles themselves carry (or ferry) two, in one sentence
   expect(
-    /turtles/i.test(beasts) && /(carr(y|ies)|ferr(y|ies)) /.test(beasts),
-    "the Sea-beasts row makes the turtles the exception to 'they carry nothing'",
+    /turtles[^.;]*?\b(carr(y|ies)|ferr(y|ies)) two\b/i.test(beasts),
+    `the Sea-beasts row makes the turtles the exception to 'they carry nothing' — "${beasts.slice(0, 300)}"`,
   ).toBe(true);
 });
