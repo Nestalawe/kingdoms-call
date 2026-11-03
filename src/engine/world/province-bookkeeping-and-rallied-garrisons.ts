@@ -79,7 +79,7 @@ export function settleRalliedGarrisons(turnContext): void {
   });
 }
 
-export const noteEntered = (turnContext, pi, provId) => {
+export const noteEntered = (turnContext, pi, provId): void => {
   if (pi == null || provId == null) return;
   (turnContext.enteredThisPhase[pi] = turnContext.enteredThisPhase[pi] || new Set()).add(provId);
 };

@@ -154,7 +154,7 @@ export function trySkillGain(turnContext, char, skill, base, narr?, mult?): void
 // by sea with no fleet) learns nothing from the voyage. Every voyage path rolls through here — a sea
 // move, a Defend ride-out by sea, a reinforcement or a pursuit step at sea. (From 2026-09-21 until
 // now a passenger rolled at the frequent-action rate.)
-export function rollNavalVoyage(turnContext, c, base) {
+export function rollNavalVoyage(turnContext, c, base): void {
   if (!c || !(c.armies || []).some((a) => a && !a._died && SEA_TYPES.has(a.type))) return;
   trySkillGain(turnContext, c, 'naval', base);
 }

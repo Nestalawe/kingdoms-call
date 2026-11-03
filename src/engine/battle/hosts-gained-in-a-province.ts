@@ -58,9 +58,9 @@ function theHostsRealm(player: Realm | undefined): Realm {
   if (!player) throw new TypeError("Cannot read properties of undefined (reading 'name')");
   return player;
 }
-/** The commander pickBattleCommander picks for the defence: the defender it is handed or one of the heroes joining
- *  him, so there is one; for none, a TypeError. */
-function theCommanderPicked(leader: HeroInABattle | null | undefined): HeroInABattle {
+/** The commander pickBattleCommander picks for a side: the hero it is handed or one of the heroes joining him, so
+ *  there is one; for none, a TypeError. */
+export function theCommanderPicked(leader: HeroInABattle | null | undefined): HeroInABattle {
   if (!leader) throw new TypeError('pickBattleCommander picked no commander');
   return leader;
 }

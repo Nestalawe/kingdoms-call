@@ -253,20 +253,6 @@
       "count": 1
     }
   },
-  "src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 5
-    },
-    "no-constant-condition": {
-      "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 2
-    },
-    "prefer-const": {
-      "count": 1
-    }
-  },
   "src/engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 6

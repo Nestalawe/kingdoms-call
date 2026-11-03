@@ -1413,8 +1413,10 @@ function theShareAMarchInMaps(state: Obj, heroId: unknown, to: unknown): number 
   tc._logCtx = { charId: c['id'], phase: 0 };
   kcRng.seed(1);
   quietly(() => {
-    // (the Move order's file is not yet typed: it takes the staged world's hero, his province and his realm as they are)
-    resolveMoveOrder(tc, c, 0, false, `prov:${String(to)}`, from, realm);
+    // (the staged world's hero, his province and his realm, handed to the typed Move order as they are)
+    resolveMoveOrder(
+      ...([tc, c, 0, false, `prov:${String(to)}`, from, realm] as unknown as Parameters<typeof resolveMoveOrder>),
+    );
   });
   if (c['location'] !== to) throw new Error(`the staged march of ${String(c['name'])} did not arrive`);
   const by = into['exploredBy'];
@@ -3125,9 +3127,7 @@ export function theOrderEachNameOfTheListGives(c: Copies): [string, string][] {
     .map(String)
     .map((name) => [
       name,
-      names[name.toLowerCase().trim()] === undefined
-        ? '(none: read as a Defend)'
-        : String(normaliseAction({ action: name })),
+      names[name.toLowerCase().trim()] === undefined ? '(none: read as a Defend)' : normaliseAction({ action: name }),
     ]);
 }
 

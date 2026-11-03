@@ -11,6 +11,7 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from './events-and-their-audiences.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import type { Province } from '../../schemas/saved-game-state.ts';
 
 // ── THE PHASE PIPELINE: INTENTS, DEPENDENCY ORDERING, MOVEMENT INTERLOCKS (plan P1-08i1: lifted out of resolveTurn) ────
 // Before anyone acts in a phase: what every acting character intends to do (buildPhaseIntents), the order they act in
@@ -192,7 +193,7 @@ export const PHASE_ACTION_MAP = {
 } satisfies Record<string, OrderKind>;
 
 // Resolve a move order's destination WITHOUT moving anybody.
-export function intendedDestination(turnContext, c, order) {
+export function intendedDestination(turnContext, c, order): Province | null | undefined {
   const { G } = turnContext;
   if (!order) return null;
   const t = order.target || '';
@@ -209,7 +210,8 @@ export function intendedDestination(turnContext, c, order) {
   return stepTowardPreferSafe(turnContext, c, want.id);
 }
 
-export function normaliseAction(order) {
+// (a key Object's prototype holds, such as `constructor`, gives its value: no order's action is one)
+export function normaliseAction(order): string {
   const raw = ((order && order.action) || 'defend').toLowerCase().trim();
   return PHASE_ACTION_MAP[raw] || 'defend';
 }
