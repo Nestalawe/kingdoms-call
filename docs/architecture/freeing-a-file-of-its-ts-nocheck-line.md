@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-77 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(43: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+76 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(42: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b28 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b29 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -97,7 +97,9 @@ added under its kind.
   candidates sorted) is read into a `const` and checked; where the old code would have thrown there, the check throws
   the same kind of error. A die's pick from a list just found not empty goes through a reader that throws for none
   (`theOneThePickFell`), and `list.splice(i, 1)[0]` at an index just drawn through one that takes it out
-  (`theOneTakenOut`). `G.players[c.player].name` after a check doesn't narrow: only a plain variable as the key does.
+  (`theOneTakenOut`); a value a filter has just kept and its map works out again (an item's slot), through one that throws
+  for none (`theSlotTheFilterFound`). `G.players[c.player].name` after a check doesn't narrow: only a plain variable as
+  the key does.
 - **A table read by any string** is typed inside the function that reads it, `Readonly<Partial<Record<string, T>>>`,
   not by a second module-level `const` (`tests/unit/engine-purity.test.ts` watches the engine's module-level names). A
   key that may be `undefined` is read as JavaScript reads it, `table[String(key)]`; an element by an index that may be
@@ -111,7 +113,8 @@ added under its kind.
 - **A list the code tests for a gap or a missing field** is read through a local typed with its element as wide as the
   test (`it?.effect?.use === use`); a list looked up with a value that may be missing (`includes`, `has`) through a
   local `readonly (string | undefined)[]` or `ReadonlySet<string | undefined>`. `x == null || !list.includes(x)` in a
-  filter that returns on a miss; a swap that may meet `undefined` checks `k in list`.
+  filter that returns on a miss; a swap that may meet `undefined` checks `k in list`. A field only an older save holds (an
+  item's `_spent`) is read through a local type that adds it as `unknown`.
 - **`(table[a] || {})[b]`** is read in two steps, `const cell = table[a] ?? {};` then `cell[b] ?? …`: lint's
   `table[a]?.[b]` reads `undefined` where the old read a field of the empty object (a `b` such as `constructor`).
 - **A list read by a key in words** (a province by a key of a realm's grave lore) is read as JavaScript reads `list[k]`
@@ -195,7 +198,8 @@ added under its kind.
   JavaScript reads `table[null]`.
 - **A `let` that a `try` and its `catch` (or its `finally`) always set** is declared with its type and no first value
   (`let base: number;`): the compiler sees it set after them, and lint's `no-useless-assignment` no longer finds a first
-  value nobody reads. A `catch (e)` whose `e` is unread is `catch {`.
+  value nobody reads. A `catch (e)` whose `e` is unread is `catch {`. A `let` set once after its unread first value is a
+  `const` where it is set (the Stone's `already`).
 - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
   its test still reads it.
 
