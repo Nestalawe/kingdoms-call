@@ -23,9 +23,12 @@
 // "-1:0". Lines no matrix game reaches (P1-10b28): a garrison at sea taking what the ships that stay can carry; the
 // land and sea points told apart once every company is disbanded; the bands already in the world kept; a company taken
 // up joining those he leads; a beast sent back behind the comrade's others; a company with no room aboard put back
-// behind the garrison's. Properties: Send Item loses or makes no item and never moves Mithril; Leave/Transfer Army and Pick Up Army
-// lose no company but the dead refused, and give no hero beasts beyond his Druid; each company disbanded is one band;
-// no slot holds more than its limit, the first named of a slot worn. Planted faults: in the PR (P1-08j5)
+// behind the garrison's. Lines no matrix game reaches (P1-10b29): a realm with no name a distant realm to the others
+// when the Stone is worked, and another realm's bearer named by his realm's; his maximum HP brought in line once it
+// leaves his pack; his other items kept, a record under its id struck too. Properties: Send Item loses or makes
+// no item and never moves Mithril; Leave/Transfer Army and Pick Up Army lose no company but the dead refused, and give
+// no hero beasts beyond his Druid; each company disbanded is one band; no slot holds more than its limit, the first
+// named of a slot worn. Planted faults: in the PR (P1-08j5)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -256,6 +259,58 @@ describe('Use Item, called directly: the Philosopher’s Stone (an older save’
         .filter((l) => l.text.startsWith('🌍'))
         .every((l) => l['public'] === true),
     }).toEqual({ own: [true], others: [[true], [true]], public: true });
+  });
+
+  // P1-10b29: a realm left with no name, and the HP the Stone's leaving re-syncs (no matrix game works the Stone)
+  test('a realm with no name is a distant realm to the others', () => {
+    const b = fresh();
+    const h = bearer(b, companies(1, 'Men-at-Arms', 'Green'));
+    realm(b).name = '';
+    play(b, h, o('use_item', STONE));
+    const others = b
+      .lines()
+      .filter((l) => l.targets?.length === 1 && l.targets[0] !== 0 && l.text.startsWith('🌍'))
+      .map((l) => l.text.includes(`, a distant realm has worked the ${STONE}`));
+    expect(others).toEqual([true, true]);
+  });
+
+  test('the Stone leaving his pack brings his maximum HP in line with what he has earned', () => {
+    const b = fresh();
+    const h = bearer(b, companies(1, 'Men-at-Arms', 'Green'));
+    const maxHpNow = () => fn('computeMaxHp')(h, undefined) as number;
+    h.maxHp = maxHpNow(); // in line before, then 7 earned
+    const before = h.maxHp;
+    h['hpEarned'] = Number(h['hpEarned'] ?? 0) + 7;
+    play(b, h, o('use_item', STONE));
+    expect({ rose: h.maxHp - before, synced: h.maxHp === maxHpNow() }).toEqual({
+      rose: 7,
+      synced: true,
+    });
+  });
+
+  test('his other items stay in his pack, and any other record under the Stone’s id goes with it', () => {
+    const b = fresh();
+    const h = bearer(b, companies(1, 'Men-at-Arms', 'Green'));
+    const stone = must(h.items[0], 'the Stone');
+    h.items.push(item(b, 'Ring of the Explorer'), { ...item(b, 'Ring of Wealth'), id: stone['id'] });
+    play(b, h, o('use_item', STONE));
+    expect(pack(h)).toEqual(['Ring of the Explorer']);
+  });
+
+  test('a bearer of another realm: the others are told his realm’s name', () => {
+    const b = fresh();
+    const h = at(b, { player: 1, king: true });
+    h.items = [oldStone(b)];
+    h.armies = companies(1, 'Men-at-Arms', 'Green');
+    play(b, h, o('use_item', STONE));
+    const name = realm(b, 1).name;
+    const told = [0, 2].map((i) =>
+      b
+        .lines()
+        .filter((l) => l.targets?.length === 1 && l.targets[0] === i && l.text.startsWith('🌍'))
+        .map((l) => l.text.includes(`, ${name} has worked the ${STONE}`)),
+    );
+    expect(told).toEqual([[true], [true]]);
   });
 
   test('every copy in the world’s hoards is struck off (two told so, to no realm), and the ledgers kept', () => {
