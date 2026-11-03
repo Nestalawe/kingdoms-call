@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-13, Toby
 - **Status:** Confirmed
 - **Source:** PR #76 item 1
-- **Enforced by:** [`duel-refuse-default`](../../tests/duel-refuse-default.test.js)
+- **Enforced by:** [`a-heros-duel-stance-defaults-to-refuse`](../../tests/unit/a-heros-duel-stance-defaults-to-refuse.test.ts), [`the-orders-forms-duel-stance-selects-open-on-refuse`](../../tests/page/the-orders-forms-duel-stance-selects-open-on-refuse.test.ts)
 
 Every Duel Stance box opens on Refuse, and a player's hero with no stance set refuses.
 

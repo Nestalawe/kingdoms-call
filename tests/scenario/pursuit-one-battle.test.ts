@@ -6,7 +6,7 @@
 //     he leaves the ground he has just held.
 // (2) The chase battle itself: the report said the hunter "seized" the province, but its owner never changed.
 // Both cases are staged so their outcome is overwhelming, not a matter of luck. (The Warg Riders no longer chase at
-// all: see warg-run-down.)
+// all: see scenario/warg-riders-run-the-beaten-down-on-the-field-and-never-take-up-a-chase.test.ts.)
 // Level 2 (scenario): what is checked is a whole turn's order of events (one battle a phase, the chase held over to the
 // next season, the province's owner after it), played in the engine's bare vm (lib/scenario-in-the-vm.ts). The other
 // ways a chase is held over, or met, are staged on the functions directly in unit/pursuits-and-the-catch-roll.test.ts.
