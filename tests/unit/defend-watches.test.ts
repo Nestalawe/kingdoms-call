@@ -18,8 +18,9 @@
 // (reconcileDefendRideOuts).
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The balance
 // matrix calls each of them, but never runs the ride-in to a raised host, the battle with a host standing in the watch,
-// a column hurried in, or a ride-out that met no battle (V8 coverage, P1-08i2); here they are called directly. The page
-// tests defend-once and defend-naval-overland stage some of them in whole turns.
+// a column hurried in, or a ride-out that met no battle (V8 coverage, P1-08i2); here they are called directly. The
+// scenario tests a-defend-order-is-done-once-it-has-brought-its-general-to-battle and
+// a-general-on-defend-who-leads-ships-never-rides-overland stage some of them in whole turns.
 // Since P1-23e (R-119): the lone hero's ambush passes over a hero whose Invisibility holds, and falls on the next quarry;
 // a realm that watches him by Clairvoyance still lies in wait for him.
 import vm from 'node:vm';

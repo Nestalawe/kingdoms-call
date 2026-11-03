@@ -13,8 +13,9 @@
 // an unarmed hero through; an ally's land is walked into; an enemy province is seized when empty, taken from a broken
 // garrison and from a beaten hero (who falls back next door); a beaten neutral guard flees and the province is claimed
 // with its merit, or he rallies and it is contested (the dice decide which: both are checked to hold together); a fleet
-// sails, land troops without ships can't, a fleet lands its troops, a column with ships can't march overland; lairs
-// spotted on the way in are told after the march; Forced March (March 7) is a Move once a turn and refused without
+// sails, land troops without ships can't, a fleet lands its troops, a column with ships can't march overland; a Great
+// Turtle carries two heavy companies out to sea and not three, the block line counting its two berths (Island Back,
+// R-106); lairs spotted on the way in are told after the march; Forced March (March 7) is a Move once a turn and refused without
 // March 7. Each case is certain (overwhelming battles, a beaten defender's own province next door). Level 2: the order
 // is read and turned into a Move inside `resolveTurn`
 import { describe, expect, test } from 'vitest';

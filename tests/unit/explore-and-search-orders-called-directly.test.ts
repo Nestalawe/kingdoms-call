@@ -48,6 +48,7 @@ import {
   type Province,
   withDice,
 } from '../lib/middle-of-a-bot-world.ts';
+import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';
 import { compactDeclaration } from '../lib/source.ts';
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
@@ -55,6 +56,7 @@ const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-an
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
+const recording = recordExperienceRolls(engine);
 type Fn = (...a: unknown[]) => unknown;
 const fn = (name: string) => engineFn(engine, name) as Fn;
 /** The turn's statistics as the writer reads them, built by the views from the facts the turn filed (P1-12d33). */
@@ -104,10 +106,12 @@ describe.each(EXPLORE_AND_SEARCH_ORDER_CASES)('the %s order, called directly: th
   test.each(cases.filter((c) => !c.wholeTurnOnly).map((c) => [c.name, c] as const))('%s', (_name, c) => {
     const b = board(engine, world, 0);
     const s = c.stage(b);
-    s.orders.forEach((x, ph) => {
-      if (x.action !== 'rest') play(b, s.hero, x, ph);
+    const { xp } = recording(() => {
+      s.orders.forEach((x, ph) => {
+        if (x.action !== 'rest') play(b, s.hero, x, ph);
+      });
     });
-    const { got, want } = c.check({ world: b.G, lines: linesOf(b, s.hero), turn: b.G.turn }, s);
+    const { got, want } = c.check({ world: b.G, lines: linesOf(b, s.hero), turn: b.G.turn, xp }, s);
     expect(got).toEqual(want);
   });
 });

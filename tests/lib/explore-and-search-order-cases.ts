@@ -21,6 +21,7 @@ import {
   type Unit,
   type World,
 } from './middle-of-a-bot-world.ts';
+import type { ExperienceRoll } from './espionage-order-cases.ts';
 
 export interface Staged {
   /** The hero whose orders are played. */
@@ -41,6 +42,8 @@ export interface Outcome {
   lines: Line[];
   /** The turn the orders were played in. */
   turn: number;
+  /** Every experience roll started while the orders were played (espionage-order-cases.ts' recordExperienceRolls). */
+  xp: ExperienceRoll[];
 }
 export interface ExploreAndSearchOrderCase {
   name: string;
@@ -644,6 +647,25 @@ export const SEARCH_ORDER_CASES: ExploreAndSearchOrderCase[] = [
           told: says(o, 'Victory! Hero ' + String(h.id) + ' claims 7g from the Drowned Mill and hauls out'),
         },
         want: { cleared: true, known: true, hoardLeft: [0, 0], items: ['Boots of the Wind'], told: true },
+      };
+    },
+  },
+  {
+    // 2026-10-14 (batch item 8): carrying off a lair's hoard no longer trains Thief; the fight still trains Melee.
+    // Until plan P1-14e this was tests/xp-lair-thief.test.js, a turn in the engine's bare vm with the roll recorded
+    // there, on a Weak lair the world had (its guardian set to 1 HP, its spells and passives taken away).
+    name: 'Search Lair: clearing a lair rolls Melee experience for the fight, and none of Thief for carrying off its hoard',
+    stage(b) {
+      withFeatures(b.X, lair('Drowned Mill', 'Weak'));
+      const h = at(b, { skills: skilled({ melee: 5, thief: 0 }), hp: 40 });
+      h['encounterPlan'] = { tactics: ['ME', 'ME', 'ME', 'ME', 'ME'], duelStance: 'refuse' };
+      return { hero: h, here: b.X, orders: plan(order('search', '0')) };
+    },
+    check(o, { hero: h, here }) {
+      const rolls = o.xp.filter((x) => x.id === h.id).map((x) => x.skill);
+      return {
+        got: { cleared: feature(o, here, 0).cleared, melee: rolls.includes('melee'), thief: rolls.includes('thief') },
+        want: { cleared: true, melee: true, thief: false },
       };
     },
   },
