@@ -32,6 +32,11 @@
 //   with the host led and leaderless, its words read whole (passes on P1-12d24's base, as after). Since P1-12d32, a
 //   stalled battle's winner whose realm has no name, held off by the beaten side's hulls left ashore: the hold names
 //   his host (passes on P1-12d32's base, as after).
+// - Since P1-10b26, the lines no game reaches in the three files freed of their ts-nocheck line, each read whole or by
+//   the value it writes: a hero fallen beside the defence's commander, hulls ashore, a garrison falling in, a guard
+//   slain before the battle, a stalled retreat's ground, the guard's count and intel, merit and an Evil conquest, a
+//   naval split's lines and their phase, a war front's realms, its second column and its one province (pass on
+//   P1-10b25's base, as after).
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -897,3 +902,295 @@ describe('a beaten guard’s survivors with no guard to name, and a victor "(wan
     expect(erode([0], 'Aldric (wandering)')[0]).toMatch(/break ranks and flee before Aldric's host — they now roam/);
   });
 });
+
+// ── The lines no matrix game reaches, freed of their ts-nocheck line (plan P1-10b26) ────
+// By npm run proof:unreached on P1-10b26, no game of either set runs these lines; each case stages what the line reads
+// (the battle stood in as above, or a callee the vm's globals hold) and reads what it writes.
+/** A line of the log whose words hold `words`. */
+const theLineThatSays = (b: Board, words: string) => b.lines().find((l) => l.text.includes(words));
+describe('a host gained in a province, in the lines no game reaches (resolveUnitGainInProvince, P1-10b26)', () => {
+  /** A province of realm 1 held by Wulf (a fine tactician) and Odo beside him; Aldric of realm 0 raises a host there. */
+  const twoDefenders = () => {
+    const b = fresh();
+    b.own(b.X, 1);
+    const wulf = hero(b, { player: 1, at: b.X, troops: 2, skills: { melee: 2, tactical: 5, march: 1, spy: 0 } });
+    const odo = hero(b, { player: 1, at: b.X, troops: 2, skills: { melee: 2, tactical: 0, march: 1, spy: 0 } });
+    const c = hero(b, { player: 0, at: b.X, troops: 6, quality: 'Elite' });
+    return { b, wulf, odo, c };
+  };
+  test('a hero who falls in the line beside the commander of the defence is told so, naming him', () => {
+    const { b, wulf, odo, c } = twoDefenders();
+    aBattle(true, () => {
+      odo.alive = false;
+    });
+    resolveUnitGainInProvince(b.tc, c, b.X, PH);
+    expect(theLineThatSays(b, `${odo.name} stood in the battle line`)?.text).toBe(
+      `⚔ ${odo.name} stood in the battle line beside ${wulf.name} in the defence of ${b.X.name}, and fell there — the full account is under ${wulf.name}.`,
+    );
+  });
+  test("a beaten defender's hulls left ashore leave his host, and hold the province against the raiser's realm", () => {
+    const b = fresh();
+    b.own(b.X, 1);
+    const d = hero(b, { player: 1, at: b.X, troops: 1, type: 'Galleon Fleet' });
+    const c = hero(b, { player: 0, at: b.X, troops: 6, quality: 'Elite' });
+    const hull = must(d.armies[0], 'his galleon');
+    aBattle(true, () => {
+      b.X.garrisonArmies = [Object.assign(hull, { _navalHold: 1 })];
+    });
+    resolveUnitGainInProvince(b.tc, c, b.X, PH);
+    const r0 = must(b.G.players[0], 'a realm').name;
+    expect(d.armies).toEqual([]);
+    expect(theLineThatSays(b, '⚓')?.text).toContain(`— the ground is not ${r0}'s while it is there`);
+    expect([b.X.owner, flagged(b.X)]).toEqual([1, true]);
+  });
+  test('a contest left hanging: the standing garrison falls in with the defender, posted from the province', () => {
+    const b = fresh();
+    b.own(b.X, 1);
+    const watch = units('Shieldwall Levies', 'Green', ['the Gate Watch']);
+    b.X.garrisonArmies = [...watch];
+    const d = hero(b, { player: 1, at: b.X, troops: 2 });
+    const c = hero(b, { player: 0, at: b.X, troops: 2 });
+    aBattle(false, () => {
+      b.X._battleUnresolved = true;
+    });
+    resolveUnitGainInProvince(b.tc, c, b.X, PH);
+    expect([d.armies.length, d.armies.includes(must(watch[0], 'the watch')), b.X.garrisonArmies]).toEqual([
+      3,
+      true,
+      [],
+    ]);
+    expect(watch.map((a) => [a['_garrisonOf'], a['_fromGarrison']])).toEqual([[b.X.id, undefined]]);
+    expect(allText(b)).toContain(
+      `🛡 The standing troops of ${b.X.name} fall in with ${d.name} and fight on at their side as the battle continues.`,
+    );
+  });
+  test('a guard slain before the battle leaves his troops as a leaderless garrison: thrown back, or beaten and holding', () => {
+    for (const won of [false, true]) {
+      const b = fresh();
+      const g = hero(b, { player: null, at: b.X, troops: 2, quality: 'Green' });
+      Object.assign(g, { name: 'Ulric', _isNeutralGuard: true });
+      const c = hero(b, { player: 0, at: b.X, troops: 6, quality: 'Elite' });
+      aBattle(won, () => {
+        g.alive = false;
+      });
+      withDice(engine, [0.999], () => resolveUnitGainInProvince(b.tc, c, b.X, PH));
+      expect([g.armies, g._isNeutralGuard, b.X.npcArmies, leaderless(b.X)]).toEqual([[], false, 2, true]);
+      expect(b.X.neutralDefenders.map((a) => a.unitName)).toEqual(
+        b.X.neutralDefenders.map((_, i) => `Men-at-Arms #${String(g.id)}.${String(i)}`),
+      );
+      // beaten, each survivor's fate is told to the raiser's realm
+      const held = b.lines().filter((l) => l.text.includes('hold their ground unbroken'));
+      expect(held.map((l) => l.targets)).toEqual(won ? [[0], [0]] : []);
+    }
+  });
+  test("on ground nobody owns, a battle against another realm's host is told as against that realm's", () => {
+    const b = fresh();
+    hero(b, { player: 1, at: b.X, troops: 2 });
+    const c = hero(b, { player: 0, at: b.X, troops: 2 });
+    const told: unknown[] = [];
+    aBattle(true);
+    standIn({
+      emitBattle: (...a: unknown[]) => {
+        told.push(...(a[1] as { narrative: unknown[] }).narrative);
+      },
+    });
+    resolveUnitGainInProvince(b.tc, c, b.X, PH);
+    const r1 = must(b.G.players[1], 'a realm').name;
+    expect(told.map(wordsOf)).toContain(
+      `➡️ ${c.name} (${must(b.G.players[0], 'a realm').name}) turns a newly-gathered host on ${b.X.name}, held by ${r1} — a battle is initiated.`,
+    );
+  });
+  test('a leaderless garrison gone though the raiser was thrown back is leaderless no longer', () => {
+    const b = fresh();
+    b.X._leaderlessDefenders = true;
+    b.X.neutralDefenders = units('Shieldwall Levies', 'Green', ['Levy L1']);
+    const c = hero(b, { player: 0, at: b.X, troops: 2 });
+    aBattle(false, () => {
+      b.X.neutralDefenders = [];
+    });
+    resolveUnitGainInProvince(b.tc, c, b.X, PH);
+    expect(leaderless(b.X)).toBe(false);
+  });
+});
+
+describe('a stalled battle, in the lines no game reaches (resolveStalledBattles, P1-10b26)', () => {
+  /** Aldric of realm 0 presses Ulric's guard again on unowned ground, beside two provinces of his own. */
+  const aGuardPressedAgain = () => {
+    const b = fresh();
+    const [A, B] = [must(b.ring1[0], 'a neighbour'), must(b.ring1[1], 'a neighbour')];
+    b.ring1.forEach((p) => {
+      b.own(p, 1);
+    });
+    b.own(A, 0);
+    b.own(B, 0);
+    A['tax'] = 9;
+    B['tax'] = 1;
+    const c = hero(b, { player: 0, at: b.X, troops: 3 });
+    const g = hero(b, { player: null, at: b.X, troops: 2, quality: 'Green' });
+    Object.assign(g, { name: 'Ulric', _isNeutralGuard: true });
+    const intel = [...g.armies];
+    b.X.neutralDefenders = intel;
+    b.X.npcArmies = 2;
+    b.X._battleUnresolved = true;
+    return { b, A, B, c, g, intel };
+  };
+  test('thrown back, he falls back to the ground he came from, though the other is richer; else to the richest', () => {
+    for (const from of [true, false]) {
+      const { b, A, B, c } = aGuardPressedAgain();
+      if (from) c['_attackedFrom'] = B.id;
+      const dest = from ? B : A;
+      aBattle(false);
+      resolveStalledBattles(b.tc, PH);
+      expect([c.location, b.X.characters.includes(c.id), dest.characters.includes(c.id)]).toEqual([
+        dest.id,
+        false,
+        true,
+      ]);
+      expect(allText(b)).toContain(`${c.name} breaks off and retreats to ${dest.name}.`);
+    }
+  });
+  test('thrown back, the intel the province held is put back as it was', () => {
+    const { b, intel } = aGuardPressedAgain();
+    aBattle(false);
+    resolveStalledBattles(b.tc, PH);
+    expect(b.X.neutralDefenders).toBe(intel);
+  });
+  test("a guard beaten again whose survivors hold: the province's count of defenders is theirs", () => {
+    const { b, g } = aGuardPressedAgain();
+    aBattle(true);
+    withDice(engine, [0.999], () => {
+      resolveStalledBattles(b.tc, PH);
+    });
+    expect([g.armies.length, b.X.npcArmies, b.X.neutralDefenders.length, flagged(b.X)]).toEqual([2, 2, 2, true]);
+  });
+  test('a guard beaten with none left: the realm gains its tax in merit, its hero too unless he fell, and Evil conquers', () => {
+    for (const fell of [false, true]) {
+      const { b, c } = aGuardPressedAgain();
+      const realm = must(b.G.players[0], 'a realm');
+      Object.assign(realm, { alignment: 'Evil', merits: 0 });
+      b.X['tax'] = 3;
+      if (fell) Object.assign(c, { alive: false, _leaderlessHost: true });
+      aBattle(true, () => {
+        b.X.neutralDefenders = [];
+      });
+      resolveStalledBattles(b.tc, PH);
+      expect([b.X.owner, realm['merits'], c['merits'], b.X['_evilConqTurn']]).toEqual([0, 3, fell ? 0 : 3, b.G.turn]);
+    }
+  });
+  test("thrown back, the lines a naval split writes are told to his realm in the battle's phase", () => {
+    const { b, c } = aGuardPressedAgain();
+    aBattle(false);
+    standIn({
+      navalSplitRetreat: (...a: unknown[]) => {
+        (a[4] as unknown[]).push({
+          kind: 'a beaten force at sea has too few hulls left to fall back',
+          sideName: { heroName: c.name, leaderless: false },
+          provinceName: b.X.name,
+        });
+        return 'stay';
+      },
+    });
+    resolveStalledBattles(b.tc, PH + 1);
+    const l = theLineThatSays(b, 'too few hulls left afloat');
+    expect([l?.phase, l?.targets, l?.charId]).toEqual([PH + 1, [0], c.id]);
+  });
+  test("thrown back and pinned, why he can't fall back by sea is told in the battle's phase", () => {
+    const { b, A, B } = aGuardPressedAgain();
+    b.own(A, 1);
+    b.own(B, 1);
+    aBattle(false);
+    standIn({
+      seaTrapLine: (side: unknown) => ({
+        kind: 'a beaten force at sea has too few hulls left to fall back',
+        sideName: side,
+        provinceName: b.X.name,
+      }),
+    });
+    resolveStalledBattles(b.tc, PH + 1);
+    expect(theLineThatSays(b, 'too few hulls left afloat')?.phase).toBe(PH + 1);
+    expect(flagged(b.X)).toBe(true);
+  });
+  test("the winner's realm by its name, held off by the beaten side's hulls ashore, in the battle's phase", () => {
+    const b = fresh();
+    b.own(b.X, 1);
+    const c = hero(b, { player: 0, at: b.X, troops: 2, land: 2 });
+    hero(b, { player: 1, at: b.X, troops: 2, land: 2 });
+    b.X._battleUnresolved = true;
+    aBattle(true, (...a: unknown[]) => {
+      (a[2] as Character).armies = [];
+      b.X.garrisonArmies = [
+        { type: 'Galleon Fleet', quality: 'Average', race: 'Human', unitName: 'the Harbour Fleet', _navalHold: 1 },
+      ];
+    });
+    resolveStalledBattles(b.tc, PH + 1);
+    const hold = theLineThatSays(b, '⚓');
+    const r0 = must(b.G.players[0], 'a realm').name;
+    expect(hold?.text).toContain(`— the ground is not ${r0}'s while it is there`);
+    expect([hold?.phase, b.X.owner, c.location]).toEqual([PH + 1, 1, b.X.id]);
+  });
+  test('two warring hosts: the winner of the stand-off, of an Evil realm, conquers as he secures it', () => {
+    const b = fresh();
+    b.own(b.X, 1);
+    hero(b, { player: 0, at: b.X, troops: 2, land: 2 });
+    hero(b, { player: 1, at: b.X, troops: 2, land: 2 });
+    must(b.G.players[0], 'a realm')['alignment'] = 'Evil';
+    b.X._battleUnresolved = true;
+    aBattle(true, (...a: unknown[]) => {
+      (a[2] as Character).armies = [];
+    });
+    resolveStalledBattles(b.tc, PH);
+    expect([b.X.owner, b.X['_evilConqTurn']]).toEqual([0, b.G.turn]);
+  });
+});
+
+describe('a war front, in the lines no game reaches (resolveWarFronts, P1-10b26)', () => {
+  test("a host on enemy ground: its realm and the owner's named; a second column waits once the first leaves it hanging", () => {
+    const b = fresh();
+    b.own(b.X, 1);
+    hero(b, { player: 1, at: b.X, troops: 2 });
+    const first = hero(b, { player: 0, at: b.X, troops: 6, quality: 'Elite' });
+    hero(b, { player: 0, at: b.X, troops: 1, quality: 'Green' });
+    startOfTurnAtWar(b);
+    let battles = 0;
+    aBattle(false, () => {
+      battles++;
+      b.X._battleUnresolved = true;
+    });
+    resolveWarFronts(b.tc, 0);
+    const [r0, r1] = [0, 1].map((p) => must(b.G.players[p], 'a realm').name);
+    expect(battles).toBe(1);
+    const told = theLineThatSays(b, 'War stands between')?.text ?? '';
+    expect(
+      told.startsWith(
+        `⚔ War stands between ${String(r0)} and ${String(r1)}, and ${first.name} (${String(r0)}) has held 6 units`,
+      ),
+    ).toBe(true);
+    expect(told.endsWith(`the host turns on the province of ${String(r1)}.`)).toBe(true);
+  });
+  test("on a third realm's land the two hosts fight there, and no other province's contest is fought", () => {
+    const b = fresh();
+    b.own(b.X, 2);
+    hero(b, { player: 0, at: b.X, troops: 6, quality: 'Elite' });
+    hero(b, { player: 1, at: b.X, troops: 1, quality: 'Green' });
+    startOfTurnAtWar(b);
+    const Y = must(b.ring2[0], 'a province further off');
+    hero(b, { player: 0, at: Y, troops: 2 });
+    hero(b, { player: 1, at: Y, troops: 2 });
+    Y._battleUnresolved = true;
+    let battles = 0;
+    aBattle(true, () => {
+      battles++;
+    });
+    resolveWarFronts(b.tc, 0);
+    expect([battles, flagged(Y), allText(b).includes(`unfinished battle for ${Y.name}`)]).toEqual([1, true, false]);
+  });
+});
+/** Lists the war fronts as the turn does when it begins (as `startOfTurn` in the war fronts' cases above). */
+function startOfTurnAtWar(b: Board) {
+  const at = b.tc['_warFrontAtStart'] as Map<number, number>;
+  const provs = b.tc['_warFrontProvs'] as Set<number>;
+  warFrontThreats(b.tc).forEach(({ c, prov }) => {
+    if (!prov._battleUnresolved) at.set(c.id, prov.id);
+  });
+  at.forEach((pid) => provs.add(pid));
+}
