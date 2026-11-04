@@ -203,6 +203,10 @@ describe("winged riders: capped at the enemy's units in line and in the air, nev
       {},
     );
     expect(g.front.filter(Boolean)).toHaveLength(6);
+    // Stricter than the old script, whose six in the front held whoever stood there: the six are the Levies, and
+    // both Eagles are on the open flank (Stoop on the Horses) or in the air.
+    expect(g.front.map((x) => x?.r.a?.type)).toEqual(Array.from({ length: 6 }, () => 'Shieldwall Levies'));
+    expect([...g.flanks, ...g.fly].map((x) => x.r.a?.type)).toEqual(['Eagle Riders', 'Eagle Riders']);
   });
 });
 
