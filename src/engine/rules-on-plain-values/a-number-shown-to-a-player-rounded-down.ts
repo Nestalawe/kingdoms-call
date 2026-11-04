@@ -3,7 +3,8 @@
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a).
 // dispFloor: every number a player is shown is rounded toward zero, and a float a hair under an integer snaps to
-// it. Why, with the dice it is shown beside: fmtRoll and pctRoll, engine/dice-and-army-names.ts.
+// it. Why, with the dice it is shown beside: pctRoll (engine/dice-and-army-names.ts) and fmtRoll
+// (views/prose/the-words-of-a-roll-a-host-and-a-skill-shown.ts).
 export function dispFloor(v: unknown): number {
   const n = Number(v) || 0;
   const r = Math.round(n);

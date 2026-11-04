@@ -1,15 +1,12 @@
 // ── THE WORDS OF A CHASE'S LINES (plan P1-12d12: P1-12's Decisions of 2026-10-29, Decision 3) ──
 // The views write the words of each fact a chase's lines record (src/engine/heroes/the-facts-a-chases-lines-
 // record.ts), in the same words the engine wrote before (heroes/pursuits-and-the-catch-roll.ts). A rival's skill and
-// the odds as a realm is shown them are written by theWordsOfAStatShown and theWordsOfTheOddsShown (heroes/effective-
-// skills-and-hidden-heroes.ts), on the values alone, as the engine's statNote and oddsNote wrote them. A kind with no
+// the odds as a realm is shown them are written by theWordsOfAStatShown and theWordsOfTheOddsShown (the-words-of-a-roll-a-
+// host-and-a-skill-shown.ts), on the values alone, as the engine's statNote and oddsNote wrote them. A kind with no
 // words here is a compile error (the `never` below).
 import { theRealmsTag } from './the-words-of-the-realm-works-orders-lines.ts';
 import type { TheFactOfAChasesLine } from '../../engine/heroes/the-facts-a-chases-lines-record.ts';
-import {
-  theWordsOfAStatShown,
-  theWordsOfTheOddsShown,
-} from '../../engine/heroes/effective-skills-and-hidden-heroes.ts';
+import { theWordsOfAStatShown, theWordsOfTheOddsShown } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 
 /** The words of one fact of a chase's lines. */
 export function theWordsOfAChasesLine(fact: TheFactOfAChasesLine): string {

@@ -8,11 +8,11 @@
 // from its roll and its chance, a clause from the flag that chose it, a fighter's skill, ward or perk from a copy of
 // what the engine's word helpers read (pcSkillLabel, pcWardWord, pcPerkWord and pcWardIcon moved here, as
 // theWordsOfAFightersSkill, theWordsOfAFightersWard and theWardsIcon), and a die drawn for words from the face the
-// engine drew. The word helpers the engine still calls elsewhere (fmtRoll, monsterCatLabel, hpGainLine, itemNameList,
-// isLegendaryItem) are imported from it, on plain values. Only the fighters' labels (who, foeWho: "The Barrow Wight")
+// engine drew. The word helpers fmtRoll (the-words-of-a-roll-a-host-and-a-skill-shown.ts), monsterCatLabel, hpGainLine, itemNameList
+// and isLegendaryItem are imported, on plain values. Only the fighters' labels (who, foeWho: "The Barrow Wight")
 // are still handed as words; an item's equip note is written from its record since P1-12d21
 // (theWordsOfTheItemsAHeroGained).
-import { fmtRoll } from '../../engine/dice-and-army-names.ts';
+import { fmtRoll } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 import { theWordsOfTheSurgeonsComingTooLate } from './the-words-of-a-heros-deaths-lines.ts';
 import { itemNameList } from '../../engine/heroes/fame-and-consecration.ts';
 import { hpGainLine } from '../../engine/heroes/skills-and-hp.ts';

@@ -2,9 +2,9 @@
 // The views write the words of the facts the lines of what a spy learns record (src/engine/espionage/the-facts-what-a-
 // spy-learns-lines-record.ts), in the same words the engine wrote before (espionage/what-a-spy-learns.ts,
 // applySpySuccess): the fallbacks for a realm with no name, the defenders joined, the plurals from the counts, and the
-// roll's mark (fmtRoll, the engine's).
+// roll's mark (fmtRoll).
 import type { TheFactOfWhatASpyLearnsLine } from '../../engine/espionage/the-facts-what-a-spy-learns-lines-record.ts';
-import { fmtRoll } from '../../engine/dice-and-army-names.ts';
+import { fmtRoll } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 
 /** The words of a line of what a spy learns (each of its kinds). */
 export function theWordsOfWhatASpyLearnsLine(fact: TheFactOfWhatASpyLearnsLine): string {

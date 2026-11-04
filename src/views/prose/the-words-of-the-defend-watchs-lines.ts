@@ -1,12 +1,11 @@
 // ── THE WORDS OF THE DEFEND WATCH'S LINES (plan P1-12d14: P1-12's Decisions of 2026-10-29, Decision 3) ──
 // The views write the words of each fact the Defend watch's lines record (src/engine/units/the-facts-the-defend-
 // watchs-lines-record.ts), in the same words the engine wrote before (units/defend-ride-outs-ambushes-and-
-// reinforcements.ts). The heroes a column marches with are joined with "and"; the ambush's mark is fmtRoll's, which the
-// engine still calls elsewhere, on the chance and the roll alone. A kind with no words here is a compile error (the
+// reinforcements.ts). The heroes a column marches with are joined with "and"; the ambush's mark is fmtRoll's, on the chance and the roll alone. A kind with no words here is a compile error (the
 // `never` below).
 import { theRealmsTag } from './the-words-of-the-realm-works-orders-lines.ts';
 import type { TheFactOfADefendWatchsLine } from '../../engine/units/the-facts-the-defend-watchs-lines-record.ts';
-import { fmtRoll } from '../../engine/dice-and-army-names.ts';
+import { fmtRoll } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 
 /** The words of one fact of the Defend watch's lines. */
 export function theWordsOfADefendWatchsLine(fact: TheFactOfADefendWatchsLine): string {

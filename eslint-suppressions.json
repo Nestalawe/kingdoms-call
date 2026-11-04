@@ -182,10 +182,10 @@
       "count": 7
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 2
+      "count": 1
     },
     "@typescript-eslint/restrict-template-expressions": {
-      "count": 8
+      "count": 5
     }
   },
   "src/engine/espionage/what-a-spy-learns.ts": {
@@ -781,6 +781,14 @@
   "src/views/every-realms-report-and-the-lines-each-realm-reads.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
+    }
+  },
+  "src/views/prose/the-words-of-a-roll-a-host-and-a-skill-shown.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 3
     }
   },
   "src/views/turn-report.ts": {
