@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
 import { ITEM_SLOT_CAP, normaliseEquipment, settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { thePowerAnItemWorksWhenUsed } from '../rules/the-registry-of-magic-item-effects.ts';
@@ -13,6 +12,11 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
+import { theProvinceIsHanded } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+import { servesARealm } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import type { Army, Character, Item, Province, Realm } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
 
 // ── THE ITEM ORDERS (plan P1-08j5: the fifth family taken out of processOrder in resolveTurn) ──
 // Equip Items (which of the items a hero carries he wears or wields, a slot's limit kept), Use Item (an active magic
@@ -22,16 +26,29 @@ import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises
 // first (src/engine/turn/context.ts), then the values processOrder worked out before it that it reads, in the order
 // processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break became
 // a return.
+/** An order's target as these bodies turn it into words (`String(t || '')`, `String(t)`): its schema's words, kept as
+ *  wide as the conversions. */
+type ATargetAsTheseTurnItIntoWords = string | number | null | undefined;
+/** An item in a hero's pack as these orders test it: a gap among the items, or (an older save's) a mark that it is spent. */
+type AnItemAsTheseTestIt = (Item & { readonly _spent?: unknown }) | null | undefined;
+/** A company as the Stone counts and raises it: a gap among the companies, his grade, whether he is of the dead. */
+type ACompanyAsTheStoneRaisesIt = Pick<Army, 'quality' | '_isSkeletal'> | null | undefined;
+/** The slot an item is worn in, read where a filter has just found it has one (itemSlot reads the item alone); for
+ *  none, a TypeError. */
+function theSlotTheFilterFound(slot: string | null): string {
+  if (slot === null) throw new TypeError('an item worn in no slot');
+  return slot;
+}
 // Equip Items: the items named are worn or wielded, the rest taken off, a slot's limit kept (the first named wins); a slot left with room is filled again with the first item held.
-export function resolveEquipItemsOrder(turnContext, c, target) {
+export function resolveEquipItemsOrder(turnContext: TurnContext, c: Character, target: ATargetAsTheseTurnItIntoWords) {
   // choose which slot items are worn/wielded. target = comma-separated item names (or ids) to
   // equip. Every slot item NOT named is unequipped; slot caps are enforced (first named
   // wins), and normaliseEquipment then fills any slot left empty with the first item held.
-  const want = String(target || '')
+  const want = String((target ?? '') || '')
     .split(',')
     .map((t) => t.trim())
     .filter(Boolean);
-  const slotItems = (c.items || []).filter((it) => it && itemSlot(it));
+  const slotItems = (asItsGuardReadsIt(c.items) ?? []).filter((it: AnItemAsTheseTestIt) => it && itemSlot(it));
   if (slotItems.length === 0) {
     emit(turnContext, {
       type: 'system',
@@ -45,25 +62,26 @@ export function resolveEquipItemsOrder(turnContext, c, target) {
   slotItems.forEach((it) => {
     it.equipped = false;
   });
-  const cnt = {};
-  const donned = [];
-  const refused = [];
+  const cnt: Partial<Record<string, number>> = {};
+  const caps: Readonly<Partial<Record<string, number>>> = ITEM_SLOT_CAP;
+  const donned: string[] = [];
+  const refused: string[] = [];
   want.forEach((w) => {
     const it = slotItems.find((x) => String(x.id) === w || x.name === w);
     if (!it) return;
     const sl = itemSlot(it);
-    if ((cnt[sl] || 0) >= ITEM_SLOT_CAP[sl]) {
+    if ((cnt[String(sl)] ?? 0) >= Number(caps[String(sl)])) {
       refused.push(it.name);
       return;
     }
     it.equipped = true;
-    cnt[sl] = (cnt[sl] || 0) + 1;
+    cnt[String(sl)] = (cnt[String(sl)] ?? 0) + 1;
     donned.push(it.name);
   });
   normaliseEquipment(c);
-  const worn = (c.items || [])
-    .filter((it) => it && itemSlot(it) && it.equipped)
-    .map((it) => ({ name: it.name, slot: itemSlot(it) }));
+  const worn = (asItsGuardReadsIt(c.items) ?? [])
+    .filter((it: AnItemAsTheseTestIt) => it && itemSlot(it) && it.equipped)
+    .map((it) => ({ name: it.name, slot: theSlotTheFilterFound(itemSlot(it)) }));
   emit(turnContext, {
     type: 'system',
     fact: { kind: 'a hero arms and dresses for the season', heroName: c.name, worn, refused: [...refused] },
@@ -74,8 +92,16 @@ export function resolveEquipItemsOrder(turnContext, c, target) {
   return;
 }
 // Use Item: an active magic item invoked (the Philosopher's Stone); a passive one needs no using.
-export function resolveUseItemOrder(turnContext, c, target, prov) {
+export function resolveUseItemOrder(
+  turnContext: TurnContext,
+  c: Character,
+  target: ATargetAsTheseTurnItIntoWords,
+  prov: Province | undefined,
+) {
   const { G } = turnContext;
+  // Only a hero of a realm acts in a phase (actingThisPhase passes none without one, and Release Hero frees only the
+  // hero who gives it, for the phases after), so he serves one; for none, a TypeError.
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm uses an item');
   // Trigger an ACTIVE magic item (one that must be invoked, not a passive bonus).
   // 2026-09-24 (Toby): not while charmed. An enchanted mind fights with what it carries — its
   // passive magic works as ever — but will not be made to spend a treasure on a stranger's
@@ -91,7 +117,9 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
     });
     return;
   }
-  const it = (c.items || []).find((x) => String(x.id) === String(target) || x.name === target);
+  const it: AnItemAsTheseTestIt = (asItsGuardReadsIt(c.items) ?? []).find(
+    (x) => String(x.id) === String(target) || x.name === target,
+  );
   if (!it) {
     emit(turnContext, {
       type: 'system',
@@ -122,36 +150,39 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
     // engine's unled units live in `pv.garrisonArmies` everywhere else. Garrison troops were
     // therefore NEVER promoted, and a realm whose strength sat in its garrisons could invoke
     // the Stone and see almost nothing happen.
-    const UP = { ...KC_QUALITY_UP };
-    const _promote = (arr) => {
+    const UP: Readonly<Partial<Record<string, string>>> = { ...KC_QUALITY_UP };
+    const _promote = (arr: readonly ACompanyAsTheStoneRaisesIt[] | null | undefined) => {
       let k = 0;
-      (arr || []).forEach((a) => {
-        if (a && !a._isSkeletal && UP[a.quality] && UP[a.quality] !== a.quality) {
-          a.quality = UP[a.quality];
-          k++;
+      (arr ?? []).forEach((a) => {
+        if (a && !a._isSkeletal) {
+          const up = UP[a.quality];
+          if (up && up !== a.quality) {
+            a.quality = up;
+            k++;
+          }
         }
       });
       return k;
     };
     let led = 0,
-      garr = 0,
-      already = 0;
-    const _count = (arr) => (arr || []).filter((a) => a && !a._isSkeletal).length;
+      garr = 0;
+    const _count = (arr: readonly ACompanyAsTheStoneRaisesIt[] | null | undefined) =>
+      (arr ?? []).filter((a) => a && !a._isSkeletal).length;
     let total = 0;
-    (G.characters || [])
+    (asItsGuardReadsIt(G.characters) ?? [])
       .filter((ch) => ch.alive && ch.player === c.player)
       .forEach((ch) => {
         total += _count(ch.armies);
         led += _promote(ch.armies);
       });
-    (G.world.provinces || []).forEach((pv) => {
-      if (pv && pv.owner === c.player) {
+    (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((pv: Province | null | undefined) => {
+      if (pv?.owner === c.player) {
         total += _count(pv.garrisonArmies);
         garr += _promote(pv.garrisonArmies);
       }
     });
     const n = led + garr;
-    already = total - n;
+    const already = total - n;
     // A once-per-game treasure is not spent on nothing: if there is not a single unit it
     // could raise, the Stone stays unused and the player is told why.
     if (n === 0) {
@@ -174,8 +205,8 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
     // corpse or equipped again, and its name stays on G._awardedItems (the permanent ledger
     // every item roll checks) so no lair can ever yield another.
     const _stoneName = it.name;
-    c.items = (c.items || []).filter((x) => x !== it && String(x.id) !== String(it.id));
-    syncMaxHp(c); // an item leaving the pack can change derived stats; re-sync to be safe
+    c.items = (asItsGuardReadsIt(c.items) ?? []).filter((x) => x !== it && String(x.id) !== String(it.id));
+    syncMaxHp(c, undefined); // an item leaving the pack can change derived stats; re-sync to be safe
     if (!Array.isArray(G._awardedItems)) G._awardedItems = [];
     if (!G._awardedItems.includes(_stoneName)) G._awardedItems.push(_stoneName);
     // Lair hoards are decided at world generation, so an unfound copy could still be lying in
@@ -183,12 +214,12 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
     // good — so make that true: strike any undiscovered copy from every hoard as well. (A
     // copy already carried by a character is left alone; that one exists and was won.)
     let _purged = 0;
-    (G.world.provinces || []).forEach((pv) => {
+    (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((pv: Province | null | undefined) => {
       if (!pv) return;
-      (pv.features || []).forEach((f) => {
+      (asItsGuardReadsIt(pv.features) ?? []).forEach((f: Province['features'][number] | null | undefined) => {
         if (!f || !Array.isArray(f.hoardItems)) return;
         const before = f.hoardItems.length;
-        f.hoardItems = f.hoardItems.filter((x) => !(x && x.name === _stoneName));
+        f.hoardItems = f.hoardItems.filter((x: Item | null | undefined) => !(x?.name === _stoneName));
         _purged += before - f.hoardItems.length;
       });
     });
@@ -206,10 +237,11 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
         hero: null,
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
-    G._destroyedItems = (G._destroyedItems || []).concat([
+    G._destroyedItems = (G._destroyedItems ?? []).concat([
       { name: _stoneName, turn: G.turn, by: c.name, player: c.player },
     ]);
     // The owner's own account — what it did for them, and what it cost.
+    theProvinceIsHanded(prov);
     emit(turnContext, {
       type: 'explore',
       fact: {
@@ -230,7 +262,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
     // ...and the whole world sees the sky change. Every realm is told, by name — an artefact
     // of this order leaving the world is news, and its loss is a fact all players should
     // know.
-    (G.players || []).forEach((_pl, _pi) => {
+    (asItsGuardReadsIt(G.players) ?? []).forEach((_pl: Realm | null | undefined, _pi) => {
       if (_pl == null) return;
       emit(turnContext, {
         type: 'system',
@@ -239,7 +271,7 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
           provinceName: prov.name,
           isTheirOwnHero: _pi === c.player,
           heroName: c.name,
-          realmName: G.players[c.player]?.name || null,
+          realmName: (G.players[c.player]?.name ?? '') || null,
           stoneName: _stoneName,
         },
         audience: { actor: null, realms: [_pi], seen: 'world' },
@@ -259,7 +291,13 @@ export function resolveUseItemOrder(turnContext, c, target, prov) {
   return;
 }
 // Send Item (once Give Item): items handed to one of the realm's own living heroes, at once in the same province or by courier by the turn's end.
-export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
+export function resolveSendItemOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  target: ATargetAsTheseTurnItIntoWords,
+  extra: string,
+) {
   const { G } = turnContext;
   // SEND ITEM (was Give Item). A character can hand over MORE THAN ONE
   // item at once (comma-separated indices, or "all"; splice high→low so indices stay aligned) to
@@ -345,10 +383,10 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
     });
     return;
   }
-  const _held = c.items || [];
-  let idxs;
+  const _held: readonly AnItemAsTheseTestIt[] = asItsGuardReadsIt(c.items) ?? [];
+  let idxs: number[];
   if (
-    String(target || '')
+    String((target ?? '') || '')
       .trim()
       .toLowerCase() === 'all'
   ) {
@@ -365,7 +403,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
     // Backward compatible: a token that is a plain integer in range is still positional, so
     // every existing (and in-flight) order behaves identically. `String(n)===t` is what keeps a
     // name that merely STARTS with digits ("3 Rings of Dawn") out of the positional branch.
-    const _toks = String(target || '')
+    const _toks = String((target ?? '') || '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
@@ -399,7 +437,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
     });
     return;
   }
-  const given = [];
+  const given: Item[] = [];
   uniq.forEach((i) => {
     given.push(...c.items.splice(i, 1));
   });
@@ -407,7 +445,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
   const _sameProv = recip.location === c.location;
   if (_sameProv) {
     // Hand over now.
-    recip.items = recip.items || [];
+    recip.items = asItsGuardReadsIt(recip.items) ?? [];
     given.forEach((item) => {
       recip.items.push(item);
       applyItemMaxHp(recip, item); /* item 6 */
@@ -422,7 +460,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
-      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+      phase: ph,
     });
     // tell the recipient, in their own section.
     notifyTarget(
@@ -448,7 +486,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
     } // item 10
   } else {
     // Dispatch by courier — arrives at end of turn (see the end-of-turn delivery flush).
-    G._itemDeliveries = G._itemDeliveries || [];
+    G._itemDeliveries ??= [];
     G._itemDeliveries.push({ toId: recip.id, items: given, fromName: c.name });
     const _rProv = G.world.provinces[recip.location];
     emit(turnContext, {
@@ -462,7 +500,7 @@ export function resolveSendItemOrder(turnContext, c, ph, target, extra) {
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: c.id,
-      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+      phase: ph,
     });
     // the recipient's send-phase "a courier is on the way" notice was removed — it duplicated
     // the end-of-turn delivery line (see the COURIER DELIVERIES flush), which already tells
