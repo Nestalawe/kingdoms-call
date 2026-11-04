@@ -25,8 +25,6 @@ import {
   doARealmsDiscoveriesWaiveTheHiringBan,
   theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt,
   whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold,
-  whatARealmsDiscoveriesAddToTheCorpseCartersCost,
-  type ARealmAsTheDiscoveriesReadIt,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import {
   emit,
@@ -35,6 +33,7 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
+import { theCorpseCartersPriceForARealm } from '../realms/the-corpse-carters-price-for-a-realm.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
@@ -543,16 +542,6 @@ export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(
     phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
   return;
-}
-/** The corpse-carters' price for a realm, as Harvest the Field charges it and the report shows it: its row's price, plus
- *  what the realm's discoveries add (a cut is less than 0: az06 Corpse-Carters, the discoveries' registry's since plan
- *  P1-19ae: "orderOutcome: a realm's discoveries cut the corpse-carters' cost"), never below nothing. */
-export function theCorpseCartersPriceForARealm(realm: ARealmAsTheDiscoveriesReadIt | null | undefined): number {
-  return Math.max(
-    0,
-    THE_ALIGNMENT_ORDERS['harvest-the-field'].theNumbers.thePrice.value +
-      whatARealmsDiscoveriesAddToTheCorpseCartersCost(realm),
-  );
 }
 // UNDEAD — Harvest the Field: no spell, just the grim trade. One grave becomes one soldier.
 export function resolveHarvestTheFieldOrder(

@@ -1,4 +1,5 @@
 import {
+  KC_SKILLS as ABILITIES_P,
   KC_UNIT_CLASS,
   MONSTERS_P,
   PRIMAL_ARMY_DEFS_P,
@@ -26,7 +27,6 @@ import {
 } from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
-import { ABILITIES_P } from '../engine/battle/fortune.ts';
 import { itemLore, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
 import { isConsecrated } from '../engine/heroes/fame-and-consecration.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
@@ -70,7 +70,7 @@ import {
   TERROR_MAX_STACKS,
   TERROR_PCT_PER_STACK,
 } from '../engine/rules-on-plain-values/the-terror-an-evil-victory-leaves-its-share-a-stack-and-its-most-stacks.ts';
-import { theCorpseCartersPriceForARealm } from '../engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
+import { theCorpseCartersPriceForARealm } from '../engine/realms/the-corpse-carters-price-for-a-realm.ts';
 import { asItsGuardReadsIt } from '../engine/personal-combat/to-hit-wounds-stuns-and-courage.ts';
 import type { Army, Character, Item, Realm } from '../schemas/saved-game-state.ts';
 import type { ASkillBonusAtItsPointOfUse } from '../engine/titles/reckoning.ts';
