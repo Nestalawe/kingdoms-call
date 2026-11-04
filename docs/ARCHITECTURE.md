@@ -114,7 +114,7 @@ the explore and search lines' import of `itemLoreLines` from `engine/items/tiers
 agreement; it leaves with the fix of the items' other names the engine adds to the content as it loads). P1-13e broke the
 engine's six cycles by moving code, one cycle a pull request: P1-13e1 the four two-file cycles in one, P1-13e2 the
 core, and P1-13e3 to P1-13e5 the bots' cycle in three steps. **The engine has no import cycle now**, and the no-cycle
-rule keeps it so; the pages' two come later (the GM page's after P1-17 takes `db/`'s page code out). The ratchet counts the list
+rule keeps it so; the pages' two come later (the GM page's after P1-17 takes `db/`'s page code out, the player page's after P1-11e). The ratchet counts the list
 (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no longer
 occurs: when you fix one, remove it in the same pull request with
 `npx depcruise src --baseline --baseline-mode shrink-only`. Never add a finding to it. A cut that leaves part of a
