@@ -38,7 +38,7 @@ a hint by its words or its function's name, not by the file's name.
 | Spells: the cast chance, battle magic, Plague and the Bless ward | `chances-and-lair-grades.ts`, `magic/`, the Cast Spell order's `orders/spells/` |
 | Magic items | `items/`, and their effects in `rules/magic-items/` |
 | Discoveries | `discoveries.ts`, and their effects in `rules/discoveries/` |
-| Imperial titles: who holds one, the reckoning, the merit a hero earns toward one | `titles/` |
+| Imperial titles: who holds one, the reckoning (the merit toward one is added by the order or spell that earns it: search its counter) | `titles/` |
 | Sight: who sees whom, spotting, what a province shows | `sight/`, and `src/views/what-each-realm-may-see-of-the-world.ts` |
 | The warnings of a rival's hero in your land | `turn/intrusion-warnings.ts` |
 | Spies: what a spy learns | `espionage/`, and the espionage orders in `orders/` |
@@ -60,6 +60,8 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   `KC_` tables), or an effect's row in its family's file in `src/content/`, whose names end in `numbers-and-words.ts`.
   A unit's cost and speed are in `src/engine/army-tables.ts`.
 - **The words:** a row's own text, and the tables of both rulebooks (below).
+- **What a game already running holds:** whether a realm that holds the thing, or a save that copied it, gets the new
+  number: [Live saves keep copies](../traps.md#live-saves-keep-copies).
 - **The tests:** the static `tests/static/each-…` family checks that a row's numbers are in its words (and for most,
   in the rulebook's table), one test a family (`each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts`, and the
   discoveries', perks', unit abilities' and alignment orders').
@@ -139,6 +141,7 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
 - **The tests:** the static tests named for what the books say (`tests/static/the-books-say-…`,
   `tests/static/the-rulebook-says-…`, `tests/static/text-players-read-says-what-the-game-does-after-the-rulebook-review.test.ts`)
   and `tests/rulebook-review-words.test.js`. Search for the old words in them: a test may pin the words you change.
+  Each test names the book it reads: where it reads only the full one, search the short one yourself.
 
 ### A page's screen
 
