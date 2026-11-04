@@ -2127,7 +2127,7 @@ export function combatVsChar(
   } // Druid: winner full, loser half
   // onlooker summary (see combatVsNPC). atkName/defName reflect a slain commander's leaderless
   // host.
-  const summaryText = {
+  const summaryText: Extract<NarrativeLine, { kind: "the onlookers' summary of a battle" }> = {
     kind: "the onlookers' summary of a battle",
     provName: prov.name,
     won,

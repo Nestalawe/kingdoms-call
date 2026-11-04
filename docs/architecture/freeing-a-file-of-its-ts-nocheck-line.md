@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-83 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(49: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+80 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(46: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b25 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b26 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -210,6 +210,9 @@ added under its kind.
   his realm and his province are made sure by `theRealmIsHanded` and `theProvinceIsHanded` (assertion functions, which
   throw for none), before their first read. Not through a check in the dispatch's call when a test pins the call's
   form (`[^)]*` in the order family's own tests).
+- **A guard `c.player == null` before a typed callee that needs his realm's index** (`applyEvilConquest`) is a type
+  predicate, `!aHeroOfARealm(c)` (`!= null`), which narrows inside closures too; where his realm is already found by
+  that index (`pl`), the call adds `&& aHeroOfARealm(x)`, always true there.
 - **Where the body guards a hero who serves no realm** (`c.player != null`), no `servesARealm` check: each read of his
   realm by its index is `c.player === null ? undefined : G.players[c.player]`, as JavaScript reads `G.players[null]`
   (`hisRealm`, the Search; the Spy too, whose body reads his realm both ways). A rest-spread arrow handing its arguments on after the turn's context is typed
@@ -252,17 +255,19 @@ added under its kind.
 - **A type that disagrees with the code is corrected, not the code**: a fact's field the engine may leave `undefined`
   (the druid's line's channel, a guardian's perk's words) is `string | undefined` in the facts file, and its words read
   it `${String(x)}`; a shared type its readers show too narrow is widened (a fighter's kind may be a Mirror Image's
-  phantom), and one they show too wide is narrowed (a guardian's weakness has its name and words). `armyUnitName`
-  takes any unit's type, as a save holds it (a type with no pool of names draws the Guard's). A hero's id that a
-  function only compares is typed as every caller holds it (`effSkillOf`'s: a fight's copy of a Hunting Rumours hero
-  holds it as words). A saved field the code writes `|| null` to is nullable in the schema (a spied hero's alignment
-  and race).
+  phantom), and one they show too wide is narrowed (a guardian's weakness has its name and words). `armyUnitName` takes
+  any unit's type, as a save holds it (a type with no pool of names draws the Guard's), and so does a capture's column
+  (`AUnitOfTheColumn`). A hero's id that a function only compares is typed as every caller holds it (`effSkillOf`'s: a
+  fight's copy of a Hunting Rumours hero holds it as words). A saved field the code writes `|| null` to is nullable in
+  the schema (a spied hero's alignment and race).
 - **A list the saved state holds as `z.unknown()` that a freed file reads** (the parcels on the road, which the Grand
   Heist cuts an item from) gains its element's schema, written from the code that fills it (Send Item's `{ toId, items,
   fromName }`), so long as every save holds the list empty or holds none (the couriers empty it each turn): a save of
   any version still meets it, and no version is bumped. A `refactor-only` row changes no saved shape: there each value
   is narrowed where the code reads it, through a check that hands back what the code fills it with and throws for any
   other (a hero's spectral doubles, `_phantoms`: `theSpectralDoubleStoredThere`, which keeps a gap as it is).
+- **A season's name read by a phase** (`SEASONS[ph]`, a fact's words) goes through `theSeasonOfThePhase`, which throws
+  for none (a phase is one of the five seasons): the fact and its prose keep their types.
 - **A fact's realm name read by an index** (`G.players[c.player]?.name`) may be `undefined` where the index names no
   realm: the fact's field allows it, and the prose writes it `${String(x)}`, the same words.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
@@ -278,7 +283,8 @@ added under its kind.
 - **A line a registry names from a union wider than this copy's facts** (a battle spell's line, each copy's own kinds
   in one union) is read through a check that hands back one of the kinds this copy writes there, and throws for any
   other (`theLineThisCopyOfTheBattleWrites(done.theLine, "…")`): the registry's tables name one a copy, so it never
-  throws. A ternary of records (the defenders as a line names them) is typed by its fact type on the `const`.
+  throws. A ternary of records (the defenders as a line names them) is typed by its fact type on the `const`, and so is a
+  fact a battle returns for its caller to hand on (the onlookers' summary: else its kind is `string`).
 - **A test that calls a freed function on its own shapes** (a staged context, hero and province) hands its
   arguments through one cast, `f(...([tc, atk, field, guard] as unknown as Parameters<typeof f>))`.
 - **`{ ...(x || {}) }`** is `{ ...x }`: a spread of a missing or falsy value adds nothing.

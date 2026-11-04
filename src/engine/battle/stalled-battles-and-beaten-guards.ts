@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { theNameOfAPlayersRealm } from '../turn/log-line-helpers.ts';
 import { applyEvilConquest, areEnemies, setProvinceOwner } from '../realms/relations-and-captures.ts';
@@ -18,7 +17,13 @@ import { emitBattle } from './battle-report-lines-and-force-markers.ts';
 import { combatVsNPC } from './battles-against-province-defenders.ts';
 import { combatVsChar } from './battles-between-heroes.ts';
 import { erodeGuardSurvivors, resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
-import { emit, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their-audiences.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
+import { aHeroOfARealm, theSeasonOfThePhase } from './hosts-gained-in-a-province.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import type { HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
+import type { Army, Character } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 
 // ── STALLED BATTLES AND A BEATEN GUARD'S SURVIVORS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where a battle was left unresolved (the loser could not retreat) is fought over again at the start of
@@ -31,20 +36,25 @@ import { emit, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their
 // side is destroyed or manages to break away. Covers neutral-guard and player-vs-player battles
 // alike. Provinces are flagged with _battleUnresolved by the combat code above.
 
-export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
+export function resolveStalledBattles(
+  turnContext: TurnContext,
+  ph: number,
+  onlyProvId?: number | null,
+  freshWar?: boolean,
+): void {
   const { G, seaMovePoints, movePoints, SEASONS } = turnContext;
-  (G.world.provinces || []).forEach((prov) => {
-    if (onlyProvId != null && (!prov || prov.id !== onlyProvId)) return; // resolveWarFronts settles one province
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((prov: ProvinceInABattle | null | undefined) => {
+    if (onlyProvId != null && prov?.id !== onlyProvId) return; // resolveWarFronts settles one province
     turnContext._combatSkillProv = null; // reset before each province; combatVs* re-sets it to this prov
-    if (!prov || !prov._battleUnresolved) return;
+    if (!prov?._battleUnresolved) return;
     // ILLUSORY L9 VEIL: while any armed force here is veiled, the contest is SUSPENDED — keep the
     // flag and do not resolve until the veil parts (battles trigger when the veil ends).
     if (
-      (G.characters || []).some(
+      (asItsGuardReadsIt(G.characters) ?? []).some(
         (ch) =>
           (ch.alive || ch._leaderlessHost) &&
           ch.location === prov.id &&
-          (ch.armies || []).length > 0 &&
+          (asItsGuardReadsIt(ch.armies) ?? []).length > 0 &&
           isVeiled(turnContext, ch),
       )
     )
@@ -53,8 +63,9 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
     // `ch.alive||ch._leaderlessHost` — a commander killed while pinned here keeps his host for
     // the duration of the battle. Filtering on `alive` alone made that host invisible, so the
     // contest looked one-sided and the province was handed over unopposed.
-    const armedHere = (G.characters || []).filter(
-      (ch) => (ch.alive || ch._leaderlessHost) && ch.location === prov.id && (ch.armies || []).length > 0,
+    const armedHere = (asItsGuardReadsIt(G.characters) ?? []).filter(
+      (ch) =>
+        (ch.alive || ch._leaderlessHost) && ch.location === prov.id && (asItsGuardReadsIt(ch.armies) ?? []).length > 0,
     );
     const guard = armedHere.find((ch) => ch.player === null && ch._isNeutralGuard);
     const playerForces = armedHere.filter((ch) => ch.player !== null);
@@ -71,10 +82,12 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
     // phase EXPLICITLY (see _ctxCharId below); the _logCtx assignment only covers anything
     // nested. A leaderless host is sorted LAST for every "who leads this" decision: it holds
     // ground, it does not choose to press an attack.
-    const _rankForce = (a, b) =>
+    const _rankForce = (a: Character, b: Character) =>
       (a._leaderlessHost ? 1 : 0) - (b._leaderlessHost ? 1 : 0) ||
       armyTotalStr(turnContext, b, prov) - armyTotalStr(turnContext, a, prov);
-    const _ctxCharId = [...playerForces].sort(_rankForce)[0].id;
+    const theForceThatLeads = [...playerForces].sort(_rankForce)[0];
+    if (!theForceThatLeads) throw new TypeError("Cannot read properties of undefined (reading 'id')"); // (a force is here)
+    const _ctxCharId = theForceThatLeads.id;
     turnContext._logCtx = { charId: _ctxCharId, phase: ph };
     // a commander (king or hero) who fell in an earlier-phase battle duel keeps his host on the
     // field for the rest of the battle (_leaderlessHost) — but he is DEAD. The resume/secure
@@ -86,16 +99,23 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
     // label (theLabelOfASide: "<name>'s leaderless host", or his name). Since P1-12d32 the sea lift's lines take it too,
     // and forceLabel, which wrote the label here, is gone (its 'the host', for no force, no line ever met: every host
     // these lines name is the attacker or the winner of a battle found here).
-    const theSideOfAForce = (f) => ({ heroName: f.name, leaderless: Boolean(f._leaderlessHost || f.alive === false) });
+    const theSideOfAForce = (f: Character) => ({
+      heroName: f.name,
+      leaderless: (f._leaderlessHost ?? false) || asItsGuardReadsIt(f.alive) === false,
+    });
 
     // CASE A — neutral defenders still hold an unowned province with an enemy force present. Two
     // forms: a live guard commander (fights with skills, may duel), or a LEADERLESS garrison
     // (guard slain in an earlier pre-battle duel — flagged _leaderlessDefenders) which fights on
     // without commander skills.
     const _leaderless =
-      !guard && prov.owner === null && prov._leaderlessDefenders && (prov.neutralDefenders || []).length > 0;
+      !guard &&
+      prov.owner === null &&
+      prov._leaderlessDefenders &&
+      (asItsGuardReadsIt(prov.neutralDefenders) ?? []).length > 0;
     if ((guard || _leaderless) && prov.owner === null) {
       const attacker = [...playerForces].sort(_rankForce)[0];
+      if (!attacker) throw new TypeError("Cannot read properties of undefined (reading 'player')"); // (a force is here)
       emit(turnContext, {
         type: 'combat',
         fact: {
@@ -108,7 +128,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         },
         audience: { actor: attacker.player, realms: [attacker.player], seen: 'battle' },
         hero: _ctxCharId,
-        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+        phase: ph,
         province: prov.id,
       });
       // 2026-10-08 (Toby item 6): pressing on against neutral defenders spends a movement point when
@@ -118,14 +138,14 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         const _pool = prov.terrain === 'sea' ? seaMovePoints : movePoints;
         if ((_pool[attacker.id] ?? 0) > 0) _pool[attacker.id] = Math.max(0, (_pool[attacker.id] ?? 0) - 1);
       }
-      const atkCopy = { ...attacker, armies: [...(attacker.armies || [])] };
-      let savedIntel = null;
+      const atkCopy: HeroInABattle = { ...attacker, armies: [...(asItsGuardReadsIt(attacker.armies) ?? [])] };
+      let savedIntel: Army[] | null = null;
       if (guard) {
         savedIntel = prov.neutralDefenders;
-        prov.neutralDefenders = [...(guard.armies || [])];
+        prov.neutralDefenders = [...(asItsGuardReadsIt(guard.armies) ?? [])];
       }
       atkCopy._resumeBattle = true; // already in the province — suppress the "moves into" line
-      const battle = combatVsNPC(turnContext, atkCopy, prov, guard || null);
+      const battle = combatVsNPC(turnContext, atkCopy, prov, guard ?? null);
       // the resumed fight for a neutral province pays merit like the first one. Credited to the
       // REAL attacker, never `atkCopy` — TM(c) creates the accumulator on whatever object it is
       // handed, so crediting a shallow copy writes the merit somewhere nobody reads.
@@ -138,13 +158,14 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       // a leaderless garrison living on prov.neutralDefenders, not on the corpse.
       const _guardDiedNow = !!guard && !guard.alive;
       if (guard && !_guardDiedNow) {
-        guard.armies = [...(prov.neutralDefenders || [])];
+        guard.armies = [...(asItsGuardReadsIt(prov.neutralDefenders) ?? [])];
+        if (savedIntel === null) throw new TypeError('no intel saved before the re-fight'); // (saved where a guard leads)
         prov.neutralDefenders = savedIntel;
       } else if (guard) {
         guard.armies = [];
         guard._isNeutralGuard = false;
       }
-      attacker.armies = (attacker.armies || []).filter((a) => atkCopy.armies.includes(a));
+      attacker.armies = (asItsGuardReadsIt(attacker.armies) ?? []).filter((a) => atkCopy.armies.includes(a));
       if (atkCopy.location !== attacker.location) {
         attacker.location = atkCopy.location;
         const np = G.world.provinces[attacker.location];
@@ -155,21 +176,24 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       const liveGuard = !!guard && !_guardDiedNow;
       if (battle.won) {
         // Erode the survivors exactly as the first battle does — flee, demote, or disband.
-        const _survPool = liveGuard ? guard.armies || [] : prov.neutralDefenders || [];
+        const _survPool = liveGuard
+          ? (asItsGuardReadsIt(guard.armies) ?? [])
+          : (asItsGuardReadsIt(prov.neutralDefenders) ?? []);
         const surv = erodeGuardSurvivors(
           turnContext,
           liveGuard ? guard : null,
           prov,
           _survPool,
-          (line) =>
+          (line) => {
             emit(turnContext, {
               type: 'combat',
               fact: line,
               audience: { actor: attacker.player, realms: [], seen: 'battle' },
               hero: _ctxCharId,
-              phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+              phase: ph,
               province: prov.id,
-            }),
+            });
+          },
           attacker.name,
         );
         if (liveGuard) guard.armies = surv;
@@ -199,7 +223,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
                 },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
             hero: _ctxCharId,
-            phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+            phase: ph,
             province: prov.id,
           });
         } else {
@@ -212,13 +236,13 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           prov.neutralDefenders = [];
           prov.npcArmies = 0;
           delete prov._leaderlessDefenders;
-          const pl = G.players[attacker.player];
-          if (pl) {
+          const pl = attacker.player === null ? undefined : G.players[attacker.player];
+          if (pl && aHeroOfARealm(attacker)) {
             pl.merits = (pl.merits || 0) + (prov.tax || 0);
             if (!pl.provinces.includes(prov.id)) pl.provinces.push(prov.id);
             applyEvilConquest(turnContext, attacker, prov, pl);
           } // Evil doctrine now fires on this capture path too
-          if (attacker.alive !== false) attacker.merits = (attacker.merits || 0) + (prov.tax || 0); // 2026-09-21: no personal merit for a fallen commander
+          if (asItsGuardReadsIt(attacker.alive) !== false) attacker.merits = (attacker.merits || 0) + (prov.tax || 0); // 2026-09-21: no personal merit for a fallen commander
           emit(turnContext, {
             type: 'combat',
             fact: {
@@ -230,46 +254,47 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             },
             audience: { actor: attacker.player, realms: [], seen: 'battle' },
             hero: _ctxCharId,
-            phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+            phase: ph,
             province: prov.id,
           });
         }
       } else {
-        if (!liveGuard) prov._leaderlessDefenders = (prov.neutralDefenders || []).length > 0;
-        if ((attacker.armies || []).length > 0 && attacker.location === prov.id) {
+        if (!liveGuard) prov._leaderlessDefenders = (asItsGuardReadsIt(prov.neutralDefenders) ?? []).length > 0;
+        if ((asItsGuardReadsIt(attacker.armies) ?? []).length > 0 && attacker.location === prov.id) {
           // Attacker repelled and still here: try to retreat, else stay pinned and fight again
-          const adj = retreatOptions(turnContext, attacker, prov, attacker.armies || []); // 2026-09-23c: the one retreat rule (was own LAND only)
+          const adj = retreatOptions(turnContext, attacker, prov, asItsGuardReadsIt(attacker.armies) ?? []); // 2026-09-23c: the one retreat rule (was own LAND only)
           // 2026-09-27 (Toby item 3): a pinned column with ships tries the naval split first — the
           // fleet sails for friendly water with what it can lift and the rest falls back or holds.
-          const _nrLines = [];
+          const _nrLines: NarrativeLine[] = [];
           const _nrRes = navalSplitRetreat(
             turnContext,
             attacker,
             prov,
-            attacker.armies || [],
+            asItsGuardReadsIt(attacker.armies) ?? [],
             _nrLines,
             theSideOfAForce(attacker),
           );
-          _nrLines.forEach((l) =>
+          _nrLines.forEach((l) => {
             emit(turnContext, {
               type: 'combat',
               fact: l,
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
-              phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+              phase: ph,
               province: prov.id,
-            }),
-          );
+            });
+          });
           if (_nrRes) {
             /* handled by the naval split */
           } else if (adj.length > 0) {
-            const _fromS = G.world.provinces[attacker._attackedFrom];
+            const _fromS = attacker._attackedFrom === undefined ? undefined : G.world.provinces[attacker._attackedFrom];
             const dest =
               _fromS && adj.some((p2) => p2.id === _fromS.id)
                 ? _fromS
-                : bestRetreat(turnContext, attacker, adj) || adj[0]; // with a choice, the most valuable ground wins
-            prov.characters = (prov.characters || []).filter((id) => id !== attacker.id);
-            dest.characters = dest.characters || [];
+                : (bestRetreat(turnContext, attacker, adj) ?? adj[0]); // with a choice, the most valuable ground wins
+            if (!dest) throw new TypeError("Cannot read properties of undefined (reading 'characters')"); // (adj holds one)
+            prov.characters = (asItsGuardReadsIt(prov.characters) ?? []).filter((id) => id !== attacker.id);
+            dest.characters = asItsGuardReadsIt(dest.characters) ?? [];
             if (!dest.characters.includes(attacker.id)) dest.characters.push(attacker.id);
             attacker.location = dest.id;
             attacker.locationName = dest.name;
@@ -284,7 +309,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               },
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
-              phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+              phase: ph,
               province: dest.id,
             });
           } else {
@@ -297,7 +322,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
                   fact: _st,
                   audience: { actor: attacker.player, realms: [attacker.player] },
                   hero: _ctxCharId,
-                  phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+                  phase: ph,
                   province: prov.id,
                 });
             }
@@ -310,7 +335,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               },
               audience: { actor: attacker.player, realms: [attacker.player] },
               hero: _ctxCharId,
-              phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+              phase: ph,
               province: prov.id,
             });
           }
@@ -327,16 +352,17 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       // AK [7.6]: the province still belongs to the defender, and only the INVADER can force the
       // next battle — so the attacker is whoever doesn't own the ground, not simply whoever is
       // strongest.
-      let defender = ranked.find((f) => f.player === prov.owner),
-        attacker;
+      let defender: Character | null | undefined = ranked.find((f) => f.player === prov.owner),
+        attacker: Character | undefined;
       if (defender) {
+        const theOwnersForce = defender;
         attacker = ranked.find(
           (f) =>
             f.player !== prov.owner &&
-            f.player !== defender.player &&
+            f.player !== theOwnersForce.player &&
             f.player != null &&
-            defender.player != null &&
-            areEnemies(turnContext, f.player, defender.player),
+            theOwnersForce.player != null &&
+            areEnemies(turnContext, f.player, theOwnersForce.player),
         );
       }
       if (!attacker) {
@@ -362,10 +388,13 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         // no warring pair at all — the old pairing, which lapses just below
         defender = ranked.find((f) => f.player === prov.owner);
         if (defender) {
-          attacker = ranked.find((f) => f.player !== prov.owner && f.player !== defender.player);
+          const theOwnersForce = defender;
+          attacker = ranked.find((f) => f.player !== prov.owner && f.player !== theOwnersForce.player);
         } else {
-          attacker = ranked[0];
-          defender = ranked.find((f) => f.player !== attacker.player);
+          const theStrongest = ranked[0];
+          if (!theStrongest) throw new TypeError("Cannot read properties of undefined (reading 'player')"); // (two realms here)
+          attacker = theStrongest;
+          defender = ranked.find((f) => f.player !== theStrongest.player);
         }
       }
       if (!attacker || !defender) return;
@@ -389,7 +418,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           },
           audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
           hero: _ctxCharId,
-          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          phase: ph,
           province: prov.id,
         });
         return;
@@ -417,7 +446,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
               attackersRealmTag: theNameOfAPlayersRealm(turnContext, attacker.player),
               defendersHostName: theSideOfAForce(defender),
               defendersRealmTag: theNameOfAPlayersRealm(turnContext, defender.player),
-              seasonName: SEASONS[ph],
+              seasonName: theSeasonOfThePhase(SEASONS, ph),
             }
           : {
               kind: 'an unfinished battle between two hosts resumes',
@@ -427,11 +456,11 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             },
         audience: { actor: attacker.player, realms: [attacker.player, defender.player], seen: 'battle' },
         hero: _ctxCharId,
-        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+        phase: ph,
         province: prov.id,
       });
-      const atkCopy = { ...attacker, armies: [...(attacker.armies || [])] };
-      const defCopy = { ...defender, armies: [...(defender.armies || [])] };
+      const atkCopy: HeroInABattle = { ...attacker, armies: [...(asItsGuardReadsIt(attacker.armies) ?? [])] };
+      const defCopy: HeroInABattle = { ...defender, armies: [...(asItsGuardReadsIt(defender.armies) ?? [])] };
       atkCopy._attackedFrom = attacker._attackedFrom;
       defCopy._attackedFrom = defender._attackedFrom;
       atkCopy._resumeBattle = true; // already in the province — suppress the "moves into" line
@@ -442,8 +471,8 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       // march on to start a second battle later this phase, even if this one resolved.
       attacker._foughtStalledBattlePhase = ph;
       defender._foughtStalledBattlePhase = ph;
-      attacker.armies = (attacker.armies || []).filter((a) => atkCopy.armies.includes(a));
-      defender.armies = (defender.armies || []).filter((a) => defCopy.armies.includes(a));
+      attacker.armies = (asItsGuardReadsIt(attacker.armies) ?? []).filter((a) => atkCopy.armies.includes(a));
+      defender.armies = (asItsGuardReadsIt(defender.armies) ?? []).filter((a) => defCopy.armies.includes(a));
       // combatVsChar moves the retreating COPY and updates prov.characters via the shared id;
       // sync the real characters' locations from the copies.
       if (atkCopy.location !== attacker.location) {
@@ -462,8 +491,12 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         charIds: [attacker.id, defender.id],
       }); // item 5; 2026-09-09 item 1: both sections
       const winner = battle.won ? attacker : defender;
-      const enemyStillHere = (G.characters || []).some(
-        (ch) => ch.alive && ch.location === prov.id && (ch.armies || []).length > 0 && ch.player !== winner.player,
+      const enemyStillHere = (asItsGuardReadsIt(G.characters) ?? []).some(
+        (ch) =>
+          ch.alive &&
+          ch.location === prov.id &&
+          (asItsGuardReadsIt(ch.armies) ?? []).length > 0 &&
+          ch.player !== winner.player,
       );
       // 2026-09-27 (Toby): hulls the beaten side left ashore hold the ground too — the winner does
       // not take a province their ships are still sitting in (see navalHeldIn).
@@ -476,11 +509,11 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
             turnContext,
             prov,
             _navalBlockSB,
-            (G.players[winner.player] || {}).name || theSideOfAForce(winner),
+            ((winner.player === null ? undefined : G.players[winner.player])?.name ?? '') || theSideOfAForce(winner),
           ),
           audience: { actor: winner.player, realms: [], seen: 'battle' },
           hero: _ctxCharId,
-          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          phase: ph,
           province: prov.id,
         });
       } else if (!enemyStillHere && prov.owner !== winner.player) {
@@ -491,9 +524,9 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           }
         });
         setProvinceOwner(turnContext, prov, winner.player, winner, ph);
-        const wp = G.players[winner.player];
+        const wp = winner.player === null ? undefined : G.players[winner.player];
         if (wp && !wp.provinces.includes(prov.id)) wp.provinces.push(prov.id);
-        if (wp) applyEvilConquest(turnContext, winner, prov, wp); // Evil doctrine on stand-off capture (was skipped)
+        if (wp && aHeroOfARealm(winner)) applyEvilConquest(turnContext, winner, prov, wp); // Evil doctrine on stand-off capture (was skipped)
         emit(turnContext, {
           type: 'combat',
           fact: {
@@ -505,7 +538,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
           },
           audience: { actor: winner.player, realms: [], seen: 'battle' },
           hero: _ctxCharId,
-          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          phase: ph,
           province: prov.id,
         });
       }
@@ -515,12 +548,12 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       // contested — re-flag it so the battle resumes next phase (including phase 0 of next turn)
       // instead of the contest silently lapsing.
       const _sidesLeft = new Set(
-        (G.characters || [])
+        (asItsGuardReadsIt(G.characters) ?? [])
           .filter(
             (ch) =>
               (ch.alive || ch._leaderlessHost) &&
               ch.location === prov.id &&
-              (ch.armies || []).length > 0 &&
+              (asItsGuardReadsIt(ch.armies) ?? []).length > 0 &&
               ch.player !== null,
           )
           .map((ch) => ch.player),
@@ -532,6 +565,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
 
     // Only one player's force remains (the other broke away or was destroyed) — secure it
     const lone = playerForces[0];
+    if (!lone) throw new TypeError("Cannot read properties of undefined (reading 'player')"); // (a force is here)
     // a lone survivor may only take ground from an ENEMY (or no one): an ally's or a neutral
     // realm's province is not his to seize, and an enemy's standing garrison must still be beaten
     if (prov.owner != null && prov.owner !== lone.player && !areEnemies(turnContext, lone.player, prov.owner)) return;
@@ -539,7 +573,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       prov.owner != null &&
       prov.owner !== lone.player &&
       !guard &&
-      (prov.garrisonArmies || []).length > 0 &&
+      (asItsGuardReadsIt(prov.garrisonArmies) ?? []).length > 0 &&
       lone.alive
     ) {
       resolveUnitGainInProvince(turnContext, lone, prov, ph);
@@ -556,7 +590,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
       setProvinceOwner(turnContext, prov, lone.player, lone, ph);
       prov.neutralDefenders = [];
       prov.npcArmies = 0;
-      const lp = G.players[lone.player];
+      const lp = lone.player === null ? undefined : G.players[lone.player];
       if (lp && !lp.provinces.includes(prov.id)) lp.provinces.push(prov.id);
       emit(turnContext, {
         type: 'combat',
@@ -569,7 +603,7 @@ export function resolveStalledBattles(turnContext, ph, onlyProvId, freshWar) {
         },
         audience: { actor: lone.player, realms: [], seen: 'battle' },
         hero: _ctxCharId,
-        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+        phase: ph,
         province: prov.id,
       });
     }

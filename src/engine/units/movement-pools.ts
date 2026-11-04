@@ -155,7 +155,7 @@ export function setMovePool(turnContext, c) {
 // are preserved, so dropping a slow unit correctly frees up the extra reach for the rest of the
 // turn, and picking up a slow unit correctly reduces it. (Fixes: army stuck at an old slow speed
 // after a slow unit was transferred out; move rate not rising when March increased mid-turn.)
-export function refreshMovePool(turnContext, c) {
+export function refreshMovePool(turnContext, c): void {
   const { moveMax, movePoints, seaMoveMax, seaMovePoints, seaMoveActive, seaCap } = turnContext;
   if (!c || c.id == null) return;
   const oldLandMax = moveMax[c.id] != null ? moveMax[c.id] : (movePoints[c.id] ?? 0);

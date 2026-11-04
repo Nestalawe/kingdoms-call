@@ -1,12 +1,24 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { theNameOfAPlayersRealm } from '../turn/log-line-helpers.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { armyTotalStr } from './best-commander.ts';
 import { settleRalliedGarrisons } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { resolveStalledBattles } from './stalled-battles-and-beaten-guards.ts';
-import { resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
-import { emit, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their-audiences.ts';
+import { resolveUnitGainInProvince, theSeasonOfThePhase } from './hosts-gained-in-a-province.ts';
+import { emit } from '../turn/events-and-their-audiences.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import type { AHeroAsAHostGainedHasHim } from './hosts-gained-in-a-province.ts';
+import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+
+/** A host caught on a war front (warFrontThreats): the hero, the province he stands in, and why: it is enemy ground, or
+ *  an enemy host stands there too. */
+interface AHostOnAWarFront {
+  c: Character;
+  prov: Province;
+  onEnemyLand: boolean;
+  facesEnemyHost: boolean;
+}
 
 // ── WAR FRONTS AND ENEMY STAND-OFFS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where the armed hosts of two warring realms stand together is flagged as a battle waiting to happen
@@ -19,16 +31,16 @@ import { emit, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their
 // waiting to happen: flag it so resolveStalledBattles joins the fight and the province shows as
 // contested. This is the intermittent "holds armed forces of 2 players but is NOT flagged
 // _battleUnresolved" failure in scenario.js.
-export function flagEnemyStandoffs(turnContext, exceptProvIds) {
+export function flagEnemyStandoffs(turnContext: TurnContext, exceptProvIds?: ReadonlySet<number> | null): void {
   const { G } = turnContext;
-  (G.world.provinces || []).forEach((pv) => {
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((pv: Province | null | undefined) => {
     if (!pv || pv._battleUnresolved) return;
-    if (exceptProvIds && exceptProvIds.has(pv.id)) return; // a fresh war front — settled at the end of Spring (resolveWarFronts)
-    const _vf = (G.characters || []).filter(
+    if (exceptProvIds?.has(pv.id)) return; // a fresh war front — settled at the end of Spring (resolveWarFronts)
+    const _vf = (asItsGuardReadsIt(G.characters) ?? []).filter(
       (ch) =>
         ch.alive &&
         ch.location === pv.id &&
-        (ch.armies || []).length > 0 &&
+        (asItsGuardReadsIt(ch.armies) ?? []).length > 0 &&
         ch.player != null &&
         !isVeiled(turnContext, ch),
     );
@@ -59,25 +71,31 @@ export function flagEnemyStandoffs(turnContext, exceptProvIds) {
 // anything still contested carries on through the ordinary stalled-battle sweep. Contests left
 // over from LAST turn (already flagged _battleUnresolved) are not war fronts — they resume at the
 // top of Spring as before.
-export function warFrontThreats(turnContext) {
+export function warFrontThreats(turnContext: TurnContext): AHostOnAWarFront[] {
   const { G } = turnContext;
-  const out = [];
-  (G.characters || []).forEach((c) => {
-    if (!c || !c.alive || c.player == null || c.location == null || !(c.armies || []).some((a) => a && !a._phantom))
+  const out: AHostOnAWarFront[] = [];
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+    if (
+      !c ||
+      !c.alive ||
+      c.player == null ||
+      asItsGuardReadsIt(c.location) == null ||
+      !(asItsGuardReadsIt(c.armies) ?? []).some((a: Army | null | undefined) => a && !a._phantom)
+    )
       return;
     if (isVeiled(turnContext, c)) return;
     const p = G.world.provinces[c.location];
     if (!p) return;
     const onEnemyLand = p.owner != null && p.owner !== c.player && areEnemies(turnContext, c.player, p.owner);
-    const facesEnemyHost = (G.characters || []).some(
-      (o) =>
+    const facesEnemyHost = (asItsGuardReadsIt(G.characters) ?? []).some(
+      (o: Character | null | undefined) =>
         o &&
         o.alive &&
         o.id !== c.id &&
         o.location === p.id &&
         o.player != null &&
         o.player !== c.player &&
-        (o.armies || []).some((a) => a && !a._phantom) &&
+        (asItsGuardReadsIt(o.armies) ?? []).some((a: Army | null | undefined) => a && !a._phantom) &&
         areEnemies(turnContext, c.player, o.player) &&
         !isVeiled(turnContext, o),
     );
@@ -86,7 +104,12 @@ export function warFrontThreats(turnContext) {
   return out;
 }
 
-export function resolveWarFronts(turnContext, ph) {
+/** Whether the fight for a province is left hanging, read as the province holds it now (an assault may have left it so
+ *  since it was last tested). */
+function theContestIsLeftHanging(prov: Province): boolean | undefined {
+  return prov._battleUnresolved;
+}
+export function resolveWarFronts(turnContext: TurnContext, ph: number): void {
   const { _warFrontAtStart, _warFrontProvs, G, SEASONS } = turnContext;
   if (!_warFrontAtStart.size) return;
   _warFrontProvs.forEach((pid) => {
@@ -97,27 +120,29 @@ export function resolveWarFronts(turnContext, ph) {
     if (prov._battleUnresolved || prov._hadBattleThisTurn) return;
     const here = () =>
       warFrontThreats(turnContext).filter((t) => t.prov.id === pid && _warFrontAtStart.get(t.c.id) === pid);
-    const byStr = (a, b) => armyTotalStr(turnContext, b.c, prov) - armyTotalStr(turnContext, a.c, prov);
-    const assault = (c) => {
-      const ownerNm = prov.owner != null && G.players[prov.owner] ? G.players[prov.owner].name : null;
+    const byStr = (a: AHostOnAWarFront, b: AHostOnAWarFront) =>
+      armyTotalStr(turnContext, b.c, prov) - armyTotalStr(turnContext, a.c, prov);
+    const assault = (c: AHeroAsAHostGainedHasHim) => {
+      const theOwnersRealm = prov.owner != null ? G.players[prov.owner] : undefined;
+      const ownerNm = theOwnersRealm ? theOwnersRealm.name : null;
       turnContext._combatSkillProv = null;
       turnContext._logCtx = { charId: c.id, phase: ph };
       emit(turnContext, {
         type: 'combat',
         fact: {
           kind: "a hero's host turns on a province it has shared with a realm at war",
-          attackersRealmName: G.players[c.player]?.name,
+          attackersRealmName: (c.player === null ? undefined : G.players[c.player])?.name,
           ownersRealmName: ownerNm,
           cName: c.name,
           realmTag: theNameOfAPlayersRealm(turnContext, c.player),
           unitCount: c.armies.length,
           provName: prov.name,
-          seasonName: SEASONS[ph],
+          seasonName: theSeasonOfThePhase(SEASONS, ph),
         },
         audience: { actor: c.player, realms: [c.player, prov.owner].filter((x) => x != null), seen: 'battle' },
         province: prov.id,
         hero: c.id,
-        phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+        phase: ph,
       });
       c._warFront = true;
       try {
@@ -136,8 +161,8 @@ export function resolveWarFronts(turnContext, ph) {
     if (invaders.length) {
       for (const t of invaders) {
         const c = t.c;
-        if (prov._battleUnresolved) break;
-        if (!c.alive || c.location !== pid || !(c.armies || []).length) continue;
+        if (theContestIsLeftHanging(prov)) break;
+        if (!c.alive || c.location !== pid || !(asItsGuardReadsIt(c.armies) ?? []).length) continue;
         if (prov.owner == null || prov.owner === c.player || !areEnemies(turnContext, c.player, prov.owner)) continue;
         assault(c);
       }
@@ -149,7 +174,9 @@ export function resolveWarFronts(turnContext, ph) {
       .sort(byStr);
     if (!facing.length) return;
     if (prov.owner == null) {
-      assault(facing[0].c);
+      const theStrongest = facing[0];
+      if (!theStrongest) throw new TypeError("Cannot read properties of undefined (reading 'c')"); // (one faces here)
+      assault(theStrongest.c);
       return;
     }
     // …a third realm's land (allied or neutral to both): the two hosts fight each other there and

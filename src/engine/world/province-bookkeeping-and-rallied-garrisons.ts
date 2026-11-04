@@ -27,7 +27,7 @@ import {
 // (they retreated at his side), so we simply drop the marker.
 // While the province is still contested (_battleUnresolved) the marker is left in place and the
 // unit keeps fighting as part of the hero's host.
-export function settleRalliedGarrisons(turnContext) {
+export function settleRalliedGarrisons(turnContext): void {
   const { G } = turnContext;
   const _returnedByProv = {}; // provId -> count, for a clean grouped log
   (G.characters || []).forEach((c) => {

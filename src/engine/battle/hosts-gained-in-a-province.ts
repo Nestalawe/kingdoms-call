@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { demoteOrDisband } from '../army-tables.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
@@ -24,6 +23,53 @@ import { emitBattle } from './battle-report-lines-and-force-markers.ts';
 import { combatVsNPC } from './battles-against-province-defenders.ts';
 import { combatVsChar } from './battles-between-heroes.ts';
 import { defendAnswerUnitGain } from '../units/defend-ride-outs-ambushes-and-reinforcements.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
+import type { Army, Character, Province, Realm } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { ABeatenGuardsSurvivingUnitsFate, TheDefendersOfAProvince } from './the-facts-a-battles-lines-record.ts';
+
+/** A hero whose host is settled where he stands: a hero in a battle and the turn's mark a war front writes on him
+ *  (resolveWarFronts sets it for the assault and deletes it after; the lines a host gained writes read it). */
+export type AHeroAsAHostGainedHasHim = HeroInABattle & { _warFront?: boolean };
+/** A unit of a province's standing garrison that rallies to a defender of its realm: the mark it holds while it
+ *  stands in his line (set as it rallies, deleted once the battle is over). */
+type AUnitRalliedFromTheGarrison = ArmyInABattle & { _fromGarrison?: boolean };
+/** The battle a host gained fights: the one between two heroes' hosts, or the one against a province's defenders. */
+type TheBattleAHostGainedFights = ReturnType<typeof combatVsChar> | ReturnType<typeof combatVsNPC>;
+
+/** Whether a hero serves a realm, as the guards read it (a realm's index, not none). */
+export function aHeroOfARealm<Hero extends { readonly player: number | null }>(
+  h: Hero,
+): h is Hero & { readonly player: NonNullable<Hero['player']> } {
+  return h.player != null;
+}
+/** The name of the season a phase falls in: a phase of the turn is one of its five seasons (0 to 4), so there is one;
+ *  for none, a TypeError. */
+export function theSeasonOfThePhase(seasons: readonly string[], ph: number): string {
+  const theSeason = seasons[ph];
+  if (theSeason === undefined) throw new TypeError(`no season for the phase ${String(ph)}`);
+  return theSeason;
+}
+/** The realm of the hero whose host is settled, read where its fields are read: a hero of a realm serves one of the
+ *  state's realms, so there is one; for none, the TypeError the read threw. */
+function theHostsRealm(player: Realm | undefined): Realm {
+  if (!player) throw new TypeError("Cannot read properties of undefined (reading 'name')");
+  return player;
+}
+/** The commander pickBattleCommander picks for the defence: the defender it is handed or one of the heroes joining
+ *  him, so there is one; for none, a TypeError. */
+function theCommanderPicked(leader: HeroInABattle | null | undefined): HeroInABattle {
+  if (!leader) throw new TypeError('pickBattleCommander picked no commander');
+  return leader;
+}
+/** The guard whose survivors still hold the province: guardLeft counts his units only while he stands, so there is
+ *  one; for none, the TypeError the read of his name threw. */
+function theGuardStillStanding(guard: Character | undefined): Character {
+  if (!guard) throw new TypeError("Cannot read properties of undefined (reading 'name')");
+  return guard;
+}
 
 // ── A HOST GAINED IN A PROVINCE (plan P1-08i3: lifted out of resolveTurn) ────
 // When a character gains units in a province he doesn't own (raised, summoned, hired, taken over), the new host is
@@ -38,11 +84,16 @@ import { defendAnswerUnitGain } from '../units/defend-ride-outs-ambushes-and-rei
 // action-phase Control Undead, mercenary hire, …), the new force is resolved the same
 // phase: enemy OR neutral armies present → a battle is fought; none present → the character takes
 // control. Enemy and neutral armies are treated the same. Returns true if a battle was fought.
-export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
+export function resolveUnitGainInProvince(
+  turnContext: TurnContext,
+  c: AHeroAsAHostGainedHasHim | null | undefined,
+  prov: ProvinceInABattle | null | undefined,
+  ph: number,
+): boolean {
   const { G } = turnContext;
-  if (!c || !prov || c.player == null) return false;
+  if (!c || !prov || !aHeroOfARealm(c)) return false;
   if (prov.owner === c.player) return false; // already ours — nothing to contest
-  if ((c.armies || []).length === 0) return false; // no force present to fight or hold
+  if ((asItsGuardReadsIt(c.armies) ?? []).length === 0) return false; // no force present to fight or hold
   // DIPLOMACY: a force raised inside an ally's or a neutral's province cannot seize it or start a
   // war — it simply stands there. Only enemy-owned (or unowned) ground can be contested this way.
   if (prov.owner != null && prov.owner !== c.player && !areEnemies(turnContext, c.player, prov.owner)) {
@@ -55,7 +106,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         kind: "a hero not at war with the province's realm gains a host inside it",
         cName: c.name,
         realmTag: theNameOfAPlayersRealm(turnContext, c.player),
-        unitCount: (c.armies || []).length,
+        unitCount: (asItsGuardReadsIt(c.armies) ?? []).length,
         provName: prov.name,
         theRealmsAreAllied: _allied,
         provName2: prov.name,
@@ -98,19 +149,28 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       d.player != null &&
       d.player !== c.player &&
       areEnemies(turnContext, c.player, d.player) &&
-      (d.armies || []).length > 0,
+      (asItsGuardReadsIt(d.armies) ?? []).length > 0,
   );
   // the owner's own commanders lead the defence of their ground ahead of any third party
-  const enemyChar = _armedFoesHere.find((d) => d.player === prov.owner) || _armedFoesHere[0];
+  const enemyChar = _armedFoesHere.find((d) => d.player === prov.owner) ?? _armedFoesHere[0];
   const neutralGuard = G.characters.find(
-    (d) => d.alive && d.player === null && d.location === prov.id && (d.armies || []).length > 0 && !d._justDefeated,
+    (d) =>
+      d.alive &&
+      d.player === null &&
+      d.location === prov.id &&
+      (asItsGuardReadsIt(d.armies) ?? []).length > 0 &&
+      !d._justDefeated,
   );
-  const garrison = prov.owner != null && prov.owner !== c.player ? prov.garrisonArmies || [] : [];
+  const garrison = prov.owner != null && prov.owner !== c.player ? (asItsGuardReadsIt(prov.garrisonArmies) ?? []) : [];
   // A guard slain in an earlier pre-battle duel leaves his surviving troops as a LEADERLESS
   // neutral garrison (prov._leaderlessDefenders) — they contest the province like anyone else.
-  const llDefs = prov.owner === null && prov._leaderlessDefenders ? prov.neutralDefenders || [] : [];
+  const llDefs =
+    prov.owner === null && prov._leaderlessDefenders ? (asItsGuardReadsIt(prov.neutralDefenders) ?? []) : [];
   const hasDefenders =
-    !!enemyChar || (neutralGuard && (neutralGuard.armies || []).length > 0) || garrison.length > 0 || llDefs.length > 0;
+    !!enemyChar ||
+    (neutralGuard !== undefined && (asItsGuardReadsIt(neutralGuard.armies) ?? []).length > 0) ||
+    garrison.length > 0 ||
+    llDefs.length > 0;
 
   const claim = () => {
     // remember who lost this province to a force that materialised here this phase, so a
@@ -120,7 +180,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       prov._takenByUnitGain = { turn: G.turn, ph: ph, from: prov.owner };
     G.players.forEach((p, pi) => {
       if (pi !== c.player) {
-        const i = (p.provinces || []).indexOf(prov.id);
+        const i = (asItsGuardReadsIt(p.provinces) ?? []).indexOf(prov.id);
         if (i > -1) p.provinces.splice(i, 1);
       }
     });
@@ -128,9 +188,10 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
     prov.neutralDefenders = [];
     prov.npcArmies = 0;
     delete prov._leaderlessDefenders;
-    if (!player.provinces.includes(prov.id)) player.provinces.push(prov.id);
-    applyEvilConquest(turnContext, c, prov, player); // Evil doctrine on this capture path (was skipped)
-    if (!prov.visitedBy) prov.visitedBy = [];
+    const theRealm = theHostsRealm(player);
+    if (!theRealm.provinces.includes(prov.id)) theRealm.provinces.push(prov.id);
+    applyEvilConquest(turnContext, c, prov, theRealm); // Evil doctrine on this capture path (was skipped)
+    prov.visitedBy = asItsGuardReadsIt(prov.visitedBy) ?? [];
     if (!prov.visitedBy.includes(c.player)) prov.visitedBy.push(c.player);
   };
 
@@ -145,7 +206,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         onAWarFront: !!c._warFront,
         cName: c.name,
         provName: prov.name,
-        playerName: player.name,
+        playerName: theHostsRealm(player).name,
       },
       audience: { actor: c.player, realms: [], seen: 'battle' },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -163,8 +224,8 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
   // …but a force that has only just appeared is fighting its OPENING clash, not a carry-on round
   // (unless the province was already contested) — so the carry-on casualty multiplier stays off.
   if (!prov._battleUnresolved) c._openingClash = true;
-  let battle = null,
-    targets = [c.player];
+  let battle: TheBattleAHostGainedFights,
+    targets: (number | null)[] = [c.player];
   let _garrisonUnfought = false;
   if (enemyChar) {
     targets = [c.player, enemyChar.player];
@@ -174,33 +235,40 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         d.id !== enemyChar.id &&
         d.player === enemyChar.player &&
         d.location === prov.id &&
-        (d.armies || []).length > 0,
+        (asItsGuardReadsIt(d.armies) ?? []).length > 0,
     );
     // The standing garrison rallies to a commander of its own realm, as it does when an invader
     // marches in (move handler) — it shares the line, the casualties and the retreat.
-    const _garHere = prov.owner != null && prov.owner === enemyChar.player ? [...(prov.garrisonArmies || [])] : [];
+    const _garHere: AUnitRalliedFromTheGarrison[] =
+      prov.owner != null && prov.owner === enemyChar.player ? [...(asItsGuardReadsIt(prov.garrisonArmies) ?? [])] : [];
     _garHere.forEach((a) => {
       a._fromGarrison = true;
     });
     _garrisonUnfought = _garHere.length === 0 && garrison.length > 0; // a third party fought; the owner's garrison did not
-    const _rbPooled = [...(enemyChar.armies || []), ...defReinf.flatMap((d) => d.armies || []), ..._garHere];
+    const _rbPooled = [
+      ...(asItsGuardReadsIt(enemyChar.armies) ?? []),
+      ...defReinf.flatMap((d) => asItsGuardReadsIt(d.armies) ?? []),
+      ..._garHere,
+    ];
     const _rbP = pickBattleCommander(turnContext, enemyChar, defReinf, _rbPooled, prov, false); // best defender commands
-    const combinedDef = { ..._rbP.leader, armies: _rbPooled };
-    battle = combatVsChar(turnContext, c, combinedDef, prov);
-    syncLeaderCopy(turnContext, _rbP.leader, combinedDef);
-    creditBattle(turnContext, c, _rbP.leader, battle, prov);
-    if (battle && Array.isArray(battle.narrative)) {
-      const _form = [];
+    const theLeader = theCommanderPicked(_rbP.leader);
+    const combinedDef = { ...theLeader, armies: _rbPooled };
+    const theBattleFought = combatVsChar(turnContext, c, combinedDef, prov);
+    battle = theBattleFought;
+    syncLeaderCopy(turnContext, theLeader, combinedDef);
+    creditBattle(turnContext, c, theLeader, theBattleFought, prov);
+    if (Array.isArray(theBattleFought.narrative)) {
+      const _form: NarrativeLine[] = [];
+      const theOwnersRealm = prov.owner != null ? G.players[prov.owner] : undefined;
       if (c._openingClash && !c._warFront)
         _form.push({
           kind: 'the hero turns a newly gathered host on a province and a battle is initiated',
           cName: c.name,
           realmTag: theNameOfAPlayersRealm(turnContext, c.player),
           provName: prov.name,
-          heldByName:
-            prov.owner != null && G.players[prov.owner]
-              ? G.players[prov.owner].name
-              : G.players[enemyChar.player]?.name || enemyChar.name,
+          heldByName: theOwnersRealm
+            ? theOwnersRealm.name
+            : ((enemyChar.player === null ? undefined : G.players[enemyChar.player])?.name ?? '') || enemyChar.name,
         });
       if (_defRiders.length > 0)
         _form.push({
@@ -222,65 +290,70 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         _form.push({
           kind: "the province's standing troops rally to the defender",
           provName: prov.name,
-          leaderName: _rbP.leader.name,
+          leaderName: theLeader.name,
           garrisonUnitCount: _garHere.length,
           garrison: theUnitsAsTheLineNamesThem(_garHere),
         });
-      if (_rbP.changed) _form.push(commandHandoverLine(_rbP.leader, enemyChar, prov.name));
+      if (_rbP.changed) _form.push(commandHandoverLine(theLeader, enemyChar, prov.name));
       if (_form.length) {
         // The "Battle for …" header: a fact (P1-12c5), found by its kind.
-        const _bi = battle.narrative.findIndex((l) => l?.kind === 'the battle for a province begins');
-        narrateAt(battle.narrative, _bi >= 0 ? _bi : 0, _form);
+        const _bi = theBattleFought.narrative.findIndex(
+          (l) => asItsGuardReadsIt(l)?.kind === 'the battle for a province begins',
+        );
+        narrateAt(theBattleFought.narrative, _bi >= 0 ? _bi : 0, _form);
       }
     }
-    emitBattle(turnContext, battle, prov, ph, targets, {
+    emitBattle(turnContext, theBattleFought, prov, ph, targets, {
       actor: c.player,
       charIds: [c.id, enemyChar.id, ...defReinf.map((d) => d.id)],
     }); // item 5; 2026-09-09 item 1
     [enemyChar, ...defReinf]
-      .filter((d) => d.id !== _rbP.leader.id)
-      .forEach((d) =>
+      .filter((d) => d.id !== theLeader.id)
+      .forEach((d) => {
         notifyTarget(
           turnContext,
           d,
-          d.alive === false
+          asItsGuardReadsIt(d.alive) === false
             ? {
                 kind: 'a hero fell in the battle line beside the commander of the defence',
                 heroName: d.name,
-                leaderName: _rbP.leader.name,
+                leaderName: theLeader.name,
                 provName: prov.name,
-                leaderName2: _rbP.leader.name,
+                leaderName2: theLeader.name,
               }
             : {
                 kind: 'a hero stands in the battle line beside the commander of the defence',
                 heroName: d.name,
-                leaderName: _rbP.leader.name,
+                leaderName: theLeader.name,
                 provName: prov.name,
-                leaderName2: _rbP.leader.name,
+                leaderName2: theLeader.name,
               },
           ph,
           'combat',
-        ),
-      );
-    c.armies = (c.armies || []).filter((a) => !a._died && !a._disbanded);
+        );
+      });
+    c.armies = (asItsGuardReadsIt(c.armies) ?? []).filter((a: ArmyInABattle) => !a._died && !a._disbanded);
     [enemyChar, ...defReinf].forEach((d) => {
-      d.armies = (d.armies || []).filter((a) => !a._died && !a._disbanded);
+      d.armies = (asItsGuardReadsIt(d.armies) ?? []).filter((a: ArmyInABattle) => !a._died && !a._disbanded);
     });
-    if (battle && battle.won) [enemyChar, ...defReinf].forEach((d) => noteBattleLoss(turnContext, d.id)); // every beaten defender's watch is broken
+    if (theBattleFought.won)
+      [enemyChar, ...defReinf].forEach((d) => {
+        noteBattleLoss(turnContext, d.id, undefined);
+      }); // every beaten defender's watch is broken
     // 2026-09-27 (Toby): hulls the beaten defender left ashore (navalSplitRetreat) are sitting in
     // prov.garrisonArmies but are not the standing garrison — keep them out of the sweep below.
     const _navalHeldUG = navalHeldIn(prov);
     if (_navalHeldUG.length) {
       // same pooled-copy split as the move handler: hulls left ashore come off the real
       // commanders' lists, or they would march away and hold the ground at the same time.
-      [c, enemyChar, ...defReinf].forEach((d) => {
+      [c, enemyChar, ...defReinf].forEach((d: Character | null | undefined) => {
         if (!d || !Array.isArray(d.armies)) return;
         const _n = d.armies.length;
-        d.armies = d.armies.filter((a) => _navalHeldUG.indexOf(a) < 0);
+        d.armies = d.armies.filter((a) => !_navalHeldUG.includes(a));
         if (d.armies.length !== _n && typeof refreshMovePool === 'function') refreshMovePool(turnContext, d);
       });
     }
-    const _garSurv = _garHere.filter((a) => !a._died && !a._disbanded && _navalHeldUG.indexOf(a) < 0);
+    const _garSurv = _garHere.filter((a) => !a._died && !a._disbanded && !_navalHeldUG.includes(a));
     _garSurv.forEach((a) => {
       delete a._fromGarrison;
     });
@@ -290,12 +363,12 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
     if (combinedDef.location !== enemyChar.location) {
       const _defFellBackTo = G.world.provinces[combinedDef.location];
       if (_defFellBackTo) {
-        if (!_defFellBackTo.characters) _defFellBackTo.characters = [];
+        _defFellBackTo.characters = asItsGuardReadsIt(_defFellBackTo.characters) ?? [];
         [enemyChar, ...defReinf].forEach((d) => {
           if (!d.alive) {
             return;
           } // a commander slain in the pre-battle duel stays where they fell
-          prov.characters = (prov.characters || []).filter((id) => id !== d.id);
+          prov.characters = (asItsGuardReadsIt(prov.characters) ?? []).filter((id) => id !== d.id);
           if (!_defFellBackTo.characters.includes(d.id)) _defFellBackTo.characters.push(d.id);
           d.location = _defFellBackTo.id;
           d.locationName = _defFellBackTo.name;
@@ -303,7 +376,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         });
         // the rallied garrison has no commander of its own — it falls back with the beaten heroes
         if (_garSurv.length > 0) {
-          _defFellBackTo.garrisonArmies = (_defFellBackTo.garrisonArmies || []).concat(_garSurv);
+          _defFellBackTo.garrisonArmies = (asItsGuardReadsIt(_defFellBackTo.garrisonArmies) ?? []).concat(_garSurv);
           prov.garrisonArmies = _navalHeldUG.slice(); // stranded hulls cannot take to the road
           emit(turnContext, {
             type: 'combat',
@@ -327,15 +400,15 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       prov._battleUnresolved &&
       enemyChar.alive &&
       enemyChar.location === prov.id &&
-      (prov.garrisonArmies || []).length > 0 &&
+      (asItsGuardReadsIt(prov.garrisonArmies) ?? []).length > 0 &&
       prov.owner === enemyChar.player
     ) {
       const _join = prov.garrisonArmies;
-      _join.forEach((a) => {
+      _join.forEach((a: AUnitRalliedFromTheGarrison) => {
         delete a._fromGarrison;
         a._garrisonOf = prov.id;
       });
-      enemyChar.armies = (enemyChar.armies || []).concat(_join);
+      enemyChar.armies = (asItsGuardReadsIt(enemyChar.armies) ?? []).concat(_join);
       prov.garrisonArmies = [];
       if (typeof refreshMovePool === 'function') refreshMovePool(turnContext, enemyChar);
       emit(turnContext, {
@@ -355,26 +428,26 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
     // Fight the guard's OWN armies, then sync survivors back to him — the same swap the move case
     // uses. Without it this path fought prov.neutralDefenders (stale intel) instead.
     const _savedDefs = prov.neutralDefenders;
-    prov.neutralDefenders = [...(neutralGuard.armies || [])];
+    prov.neutralDefenders = [...(asItsGuardReadsIt(neutralGuard.armies) ?? [])];
     battle = combatVsNPC(turnContext, c, prov, neutralGuard);
     creditBattle(turnContext, c, null, battle, prov); // a neutral chieftain's guard pays merit here too
     if (neutralGuard.alive) {
-      neutralGuard.armies = [...(prov.neutralDefenders || [])];
+      neutralGuard.armies = [...(asItsGuardReadsIt(prov.neutralDefenders) ?? [])];
       prov.neutralDefenders = _savedDefs;
     } else {
       // Slain in this battle's pre-battle duel — survivors stay on the province as a leaderless
       // garrison; the corpse leads nothing.
       neutralGuard.armies = [];
       neutralGuard._isNeutralGuard = false;
-      prov.npcArmies = (prov.neutralDefenders || []).length;
-      prov._leaderlessDefenders = (prov.neutralDefenders || []).length > 0;
+      prov.npcArmies = (asItsGuardReadsIt(prov.neutralDefenders) ?? []).length;
+      prov._leaderlessDefenders = (asItsGuardReadsIt(prov.neutralDefenders) ?? []).length > 0;
     }
     emitBattle(turnContext, battle, prov, ph, [c.player], { actor: c.player }); // item 5
   } else if (llDefs.length > 0) {
     // Leaderless neutral garrison — fights without commander skills, straight off the province.
     battle = combatVsNPC(turnContext, c, prov, null);
     creditBattle(turnContext, c, null, battle, prov); // a leaderless neutral guard still pays merit
-    prov._leaderlessDefenders = (prov.neutralDefenders || []).length > 0;
+    prov._leaderlessDefenders = (asItsGuardReadsIt(prov.neutralDefenders) ?? []).length > 0;
     if (battle.won) markOrcAttackWin(c, G, battle); // 2026-09-27 (Toby item 8): war-spoils on the resumed leaderless fight
     emitBattle(turnContext, battle, prov, ph, [c.player], { actor: c.player }); // item 5
   } else {
@@ -409,7 +482,9 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
-        _overrun.forEach((a) => recordBattleGraves(turnContext, prov, [a]));
+        _overrun.forEach((a) => {
+          recordBattleGraves(turnContext, prov, [a]);
+        });
       }
       prov.garrisonArmies = [];
     }
@@ -417,17 +492,17 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
   delete c._resumeBattle; // clear the already-here flag — a genuine march later still prints its moves-into line
   delete c._openingClash;
   prov._hadBattleThisTurn = true;
-  if (battle && battle.won) {
+  if (battle.won) {
     // Neutral defenders are no longer annihilated on a loss — survivors hold the ground and the
     // province stays contested, exactly as a trapped player defender would.
     let llLeft = 0;
-    if (neutralGuard && neutralGuard.alive) {
+    if (neutralGuard?.alive) {
       neutralGuard.armies = erodeGuardSurvivors(
         turnContext,
         neutralGuard,
         prov,
-        neutralGuard.armies || [],
-        (line) =>
+        asItsGuardReadsIt(neutralGuard.armies) ?? [],
+        (line) => {
           emit(turnContext, {
             type: 'combat',
             fact: line,
@@ -435,7 +510,8 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
-          }),
+          });
+        },
         c.name,
       );
     } else if ((neutralGuard && !neutralGuard.alive) || llDefs.length > 0) {
@@ -444,8 +520,8 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
         turnContext,
         null,
         prov,
-        prov.neutralDefenders || [],
-        (line) =>
+        asItsGuardReadsIt(prov.neutralDefenders) ?? [],
+        (line) => {
           emit(turnContext, {
             type: 'combat',
             fact: line,
@@ -453,7 +529,8 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
-          }),
+          });
+        },
         c.name,
       );
       prov.neutralDefenders = _surv;
@@ -461,14 +538,18 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       prov._leaderlessDefenders = _surv.length > 0;
       llLeft = _surv.length;
     }
-    const guardLeft = neutralGuard && neutralGuard.alive ? (neutralGuard.armies || []).length : 0;
+    const guardLeft = neutralGuard?.alive ? (asItsGuardReadsIt(neutralGuard.armies) ?? []).length : 0;
     // A beaten PLAYER defender can also still be standing here — trapped (incl. a trapped Dwarven
     // Shield Fort) or trapped with nowhere to retreat. Winning the fighting does not give you
     // ground someone else's army is still occupying, so treat that exactly like surviving neutral
     // guards.
-    const _hostileLeft = (G.characters || []).some(
+    const _hostileLeft = (asItsGuardReadsIt(G.characters) ?? []).some(
       (d) =>
-        d.alive && d.location === prov.id && (d.armies || []).length > 0 && d.player != null && d.player !== c.player,
+        d.alive &&
+        d.location === prov.id &&
+        (asItsGuardReadsIt(d.armies) ?? []).length > 0 &&
+        d.player != null &&
+        d.player !== c.player,
     );
     // …as do hulls a beaten defender left ashore: an armed enemy force on the ground with no
     // commander over it is still an armed enemy force (2026-09-27, Toby).
@@ -482,9 +563,9 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           contest: 'a host gathered in the province',
           whatBecomesOfTheProvince: 'still held',
           heldBy: 'its guard',
-          theHost: { heroName: c.name, leaderless: c.alive === false },
+          theHost: { heroName: c.name, leaderless: asItsGuardReadsIt(c.alive) === false },
           provName: prov.name,
-          guardName: neutralGuard.name.replace(' (wandering)', ''),
+          guardName: theGuardStillStanding(neutralGuard).name.replace(' (wandering)', ''),
           guardUnitCount: guardLeft,
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
@@ -501,7 +582,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           contest: 'a host gathered in the province',
           whatBecomesOfTheProvince: 'still held',
           heldBy: 'leaderless defenders',
-          theHost: { heroName: c.name, leaderless: c.alive === false },
+          theHost: { heroName: c.name, leaderless: asItsGuardReadsIt(c.alive) === false },
           provName: prov.name,
           leaderlessUnitCount: llLeft,
         },
@@ -519,7 +600,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           contest: 'a host gathered in the province',
           whatBecomesOfTheProvince: 'still held',
           heldBy: 'enemy forces',
-          theHost: { heroName: c.name, leaderless: c.alive === false },
+          theHost: { heroName: c.name, leaderless: asItsGuardReadsIt(c.alive) === false },
           provName: prov.name,
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
@@ -531,13 +612,13 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
       prov._battleUnresolved = true;
       emit(turnContext, {
         type: 'combat',
-        fact: navalHoldLine(turnContext, prov, _navalBlockUG, player.name),
+        fact: navalHoldLine(turnContext, prov, _navalBlockUG, theHostsRealm(player).name),
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
-    } else if (_garrisonUnfought && (prov.garrisonArmies || []).length > 0) {
+    } else if (_garrisonUnfought && (asItsGuardReadsIt(prov.garrisonArmies) ?? []).length > 0) {
       // a third party's column was beaten, but the owner's garrison never fought — the walls still stand
       emit(turnContext, {
         type: 'combat',
@@ -546,7 +627,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           contest: 'a host gathered in the province',
           whatBecomesOfTheProvince: 'still held',
           heldBy: 'its garrison',
-          theHost: { heroName: c.name, leaderless: c.alive === false },
+          theHost: { heroName: c.name, leaderless: asItsGuardReadsIt(c.alive) === false },
           provName: prov.name,
           atSea: prov.terrain === 'sea',
         },
@@ -566,9 +647,9 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           kind: 'a contest for a province is decided',
           contest: 'a host gathered in the province',
           whatBecomesOfTheProvince: 'claimed',
-          theHost: { heroName: c.name, leaderless: c.alive === false },
+          theHost: { heroName: c.name, leaderless: asItsGuardReadsIt(c.alive) === false },
           provName: prov.name,
-          playerName: player.name,
+          playerName: theHostsRealm(player).name,
         },
         audience: { actor: c.player, realms: targets, seen: 'battle' },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -582,8 +663,10 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
   // setProvinceOwner; the other two endings — the province held, or the fight left hanging —
   // did not, so a player who watched an enemy raise troops on their land could not tell whether
   // it had fallen. One line in their Realm Events settles it.
-  if (prov.owner != null && prov.owner !== c.player && battle) {
-    const _n = (c.armies || []).filter((a) => a && !a._died && !a._disbanded).length;
+  if (prov.owner != null && prov.owner !== c.player) {
+    const _n = (asItsGuardReadsIt(c.armies) ?? []).filter(
+      (a: ArmyInABattle | null | undefined) => a && !a._died && !a._disbanded,
+    ).length;
     if (battle.won)
       notifyProvinceOwner(
         turnContext,
@@ -594,7 +677,7 @@ export function resolveUnitGainInProvince(turnContext, c, prov, ph) {
           realmTag: theNameOfAPlayersRealm(turnContext, c.player),
           provName: prov.name,
           provName2: prov.name,
-          heroFell: c.alive === false,
+          heroFell: asItsGuardReadsIt(c.alive) === false,
           unitCount: _n,
         },
         c.player,
@@ -629,19 +712,25 @@ export const GUARD_DEMOTE_CHANCE = 0.5;
 // victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
 // Since P1-12d27 each survivor's line is one kind, a beaten guard's surviving unit's fate (its event's), its fate a
 // slug, the disbanding among them.
-export function erodeGuardSurvivors(turnContext, guard, prov, survivors, tellASurvivingUnitsFate, victor) {
+export function erodeGuardSurvivors(
+  turnContext: TurnContext,
+  guard: { readonly name: string } | null | undefined,
+  prov: Province,
+  survivors: readonly Army[] | null | undefined,
+  tellASurvivingUnitsFate: (line: ABeatenGuardsSurvivingUnitsFate) => void,
+  victor: string | null | undefined,
+): Army[] {
   const { G } = turnContext;
-  const kept = [];
+  const kept: Army[] = [];
   // The victor's name, " (wandering)" cut; the prose writes "<name>'s host" (plan P1-12d24).
-  const _vh = victor ? String(victor).replace(' (wandering)', '') : null;
-  (survivors || []).forEach((a) => {
+  const _vh = victor ? victor.replace(' (wandering)', '') : null;
+  (survivors ?? []).forEach((a) => {
     // The same guard as the lines' facts hold him (plan P1-12d24): by his name, or the defenders with none to give.
-    const theGuard =
-      guard && guard.name
-        ? { kind: 'the defenders led by their guard', guardName: guard.name.replace(' (wandering)', '') }
-        : { kind: 'defenders with no guard to name them' };
+    const theGuard: TheDefendersOfAProvince = guard?.name
+      ? { kind: 'the defenders led by their guard', guardName: guard.name.replace(' (wandering)', '') }
+      : { kind: 'defenders with no guard to name them' };
     if (kcRng() < GUARD_FLIGHT_CHANCE) {
-      if (!G.mercenaries) G.mercenaries = [];
+      G.mercenaries = asItsGuardReadsIt(G.mercenaries) ?? [];
       G.mercenaries.push({
         type: a.type,
         quality: a.quality,

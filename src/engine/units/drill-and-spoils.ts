@@ -11,7 +11,7 @@ import { narrate } from '../turn/events-and-their-audiences.ts';
 // 2026-09-24 (Toby item 3): when `battle` is passed, a closing line is appended to its narrative
 // naming how many Orcish units earned the spoils — so it is called BEFORE emitBattle. The line is a fact (since
 // P1-12d14: the-facts-the-war-spoils-line-records.ts), its words written in the views.
-export function markOrcAttackWin(ch, gs, battle) {
+export function markOrcAttackWin(ch, gs, battle): number {
   if (!ch || ch.player == null || !gs.players[ch.player] || gs.players[ch.player].race !== 'Orcish') return 0;
   let n = 0;
   (ch.armies || []).forEach((a) => {
