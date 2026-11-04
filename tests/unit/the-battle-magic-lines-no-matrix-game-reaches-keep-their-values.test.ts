@@ -212,7 +212,11 @@ function aBattle(
       moveTo(def);
       def.armies = [...defenders];
       def.encounterPlan = { tactics: ['ME', 'ME', 'ME', 'ME', 'ME'], duelStance: 'refuse' };
-      narrative = (combatVsChar(tc, atk, def, field) as { narrative: NarrativeLine[] }).narrative;
+      narrative = (
+        combatVsChar(...([tc, atk, def, field] as unknown as Parameters<typeof combatVsChar>)) as {
+          narrative: NarrativeLine[];
+        }
+      ).narrative;
     } else {
       field.owner = null;
       field.neutralDefenders = [...defenders];

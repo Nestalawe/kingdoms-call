@@ -18,6 +18,8 @@
 // nothing, nor the Shark Shoals tearing into the beaten): each names the winner and the loser, with the War-Horn's and
 // the no-room lines before them naming each side. Which pursuits each force makes and whether a Shield Fort holds are
 // stood in (vi.spyOn, movement's pursuitsOfTheBeaten and shieldFortHolds): every pursuit, each adding a tenth.
+// Since P1-10b25, also a mark no game reaches: under the attacker's Lightning Advance the defender's companies fight with
+// no terrain bonus (his strength before the fortune of the battle falls; the Men-at-Arms' ×1.1 on the plain).
 // The battle keeps its name and signature, so this passes on the code before the row (P1-12d22's base), as after.
 // Level 1 (unit): combatVsChar called directly on a world the engine makes from a fixed seed; no turn is played. Not
 // lower: the lines sit inside combatVsChar, and their words in the views. Not higher: a whole turn adds dice and orders
@@ -110,6 +112,8 @@ interface WhatTheBattleShows {
   readonly atk: string;
   readonly def: string;
   readonly province: string;
+  /** The defender's strength before the fortune of the battle, as its line holds it. */
+  readonly defBase: number | undefined;
 }
 
 /** A battle on a free plain between realm 0's king (attacking) and realm 1's, each at the head of the host given, both
@@ -144,11 +148,21 @@ function aBattle(
   const was = kcRng.use(dice);
   let narrative: NarrativeLine[];
   try {
-    narrative = (combatVsChar(tc, atk, def, field) as { narrative: NarrativeLine[] }).narrative;
+    narrative = (
+      combatVsChar(...([tc, atk, def, field] as unknown as Parameters<typeof combatVsChar>)) as {
+        narrative: NarrativeLine[];
+      }
+    ).narrative;
   } finally {
     kcRng.use(was);
   }
-  return { words: narrative.map((l) => theWordsOf(l)), atk: atk.name, def: def.name, province: field.name };
+  return {
+    words: narrative.map((l) => theWordsOf(l)),
+    atk: atk.name,
+    def: def.name,
+    province: field.name,
+    defBase: narrative.flatMap((l) => (l.kind === 'the fortune of the battle' ? [l.defBase] : []))[0],
+  };
 }
 
 /** A side's name in a line: its commander's, or his host's once he fell before the battle. */
@@ -308,4 +322,23 @@ describe.each([false, true])('a battle between heroes, both commanders slain bef
       );
     },
   );
+});
+
+describe('a battle between heroes, in a mark no game reaches (plan P1-10b25)', () => {
+  test("under the attacker's Lightning Advance the defender's companies fight with no terrain bonus: his strength falls", () => {
+    // every die at 0.99: neither side is seized by zeal, and no company fights a tier higher
+    const fight = (advance: boolean) =>
+      aBattle(
+        { atk: companies(2, 'Average'), def: companies(2, 'Average') },
+        false,
+        (G, atk) => {
+          if (advance) atk['_lightningAdvanceTurn'] = G.turn;
+        },
+        () => 0.99,
+      ).defBase;
+    const onHisGround = fight(false),
+      caughtUnready = fight(true);
+    if (onHisGround === undefined || caughtUnready === undefined) throw new Error('a battle with no fortune line');
+    expect(caughtUnready).toBeLessThan(onHisGround);
+  });
 });
