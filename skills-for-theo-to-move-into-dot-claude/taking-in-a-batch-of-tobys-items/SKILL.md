@@ -23,7 +23,7 @@ then fill its row:
 | Its kind, area, folders and files | [By kind of change](../../../docs/architecture/where-a-change-goes-from-an-item-in-game-terms-to-the-files.md#by-kind-of-change) |
 | The rulings it meets | the index, `docs/rulings/README.md`, searched; each ruling's own file read |
 | The traps, by title | [docs/traps.md](../../../docs/traps.md) |
-| Every place the rule is written | the skill `changing-a-rule-everywhere-it-is-written` |
+| Every place the rule is written, both rulebooks too | the skill `changing-a-rule-everywhere-it-is-written` |
 | Its test: level, why not lower, how it fails first | [tests/README.md](../../../tests/README.md#the-levels) |
 | Staging: needed or not, and why | [docs/staging.md](../../../docs/staging.md#when-a-change-needs-staging) |
 | What changes in play, predicted now | [the template](../../../.github/pull_request_template.md) |

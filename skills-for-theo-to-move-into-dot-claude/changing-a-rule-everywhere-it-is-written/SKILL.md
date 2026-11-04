@@ -22,6 +22,8 @@ all before you change one.
 - **A content effect:** its row in `src/content/` and its registry's entry, never a check of its name in a resolver
   ([the guardrails](../../../docs/ARCHITECTURE.md#the-codes-guardrails);
   [the rule registry](../../../docs/architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry)).
+  An effect may act at several stages (a spell in a fight and in a battle): change each
+  ([a spell's stages](../../../docs/architecture/the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md#the-stages-written-so-far)).
 - **A rule the player portal shares:**
   [the one source](../../../docs/architecture/the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules).
 - **The words players read:**
