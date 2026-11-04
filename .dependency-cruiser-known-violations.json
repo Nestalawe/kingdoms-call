@@ -4000,5 +4000,19 @@
       "severity": "error",
       "name": "the-database-code-imports-only-itself-and-the-schemas"
     }
+  },
+  {
+    "type": "dependency",
+    "from": "src/views/prose/the-words-of-the-explore-and-search-orders-lines.ts",
+    "to": "src/engine/items/tiers-and-hoards.ts",
+    "unresolvedTo": "../../engine/items/tiers-and-hoards.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "the-prose-imports-only-itself-the-facts-the-rules-on-plain-values-and-the-content"
+    }
   }
 ]

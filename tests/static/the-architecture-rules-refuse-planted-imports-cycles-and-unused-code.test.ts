@@ -11,17 +11,20 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The architecture rules (P1-13a, plan P1-13 Decisions 2 to 4). dependency-cruiser (`npm run lint:arch`,
 // `.dependency-cruiser.mts`) passes on this tree with its known violations let through, and finds every one of them
-// still there. On a copy of the repository it refuses one planted import for each of its 15 rules (an engine file
+// still there. On a copy of the repository it refuses one planted import for each of its 17 rules (an engine file
 // reading the GM page's code, a cycle of two engine files through imports that bring code, the content, the rules on
 // plain values, the rule registry (`src/engine/rules/` importing the dice, P1-19a), the views, `src/shared/`, `src/db/`
-// and `ui/shared/` each importing outside what they may, a schema imported as code and re-exported with `export *`,
-// `src/rulebook/` reading `src/db/`, the player page reading the GM page's code and the engine, supabase-js outside
-// `src/db/`, a missing file), and nothing else, and `npm run lint:arch` fails there; it lets through a cycle of `import
-// type` only, a schema's type imported or re-exported as a type, the rule registry reading the rules on plain values
-// and the content, and the GM page reading the engine. A known violation fixed but left in the list is found, and `npx
-// depcruise src --baseline --baseline-mode shrink-only` takes it out. knip (`npm run knip`, `knip.ts`) finds a planted
-// unused file, export and dependency, and nothing else, and the ratchet's `unusedCode` rises by three. Red with the
-// cycle rule counting type-only imports, with the engine's rule taken out, or with knip told to skip unused files.
+// and `ui/shared/` each importing outside what they may, the prose reading the dice and the views an order's file
+// (P1-13l), a schema imported as code and re-exported with `export *`, `src/rulebook/` reading `src/db/`, the player
+// page reading the GM page's code and the engine, supabase-js outside `src/db/`, a missing file), and nothing else, and
+// `npm run lint:arch` fails there; it lets through a cycle of `import type` only, a schema's type imported or
+// re-exported as a type, the rule registry reading the rules on plain values and the content, the prose reading a facts
+// file's code and a type from `turn/`, the views a type from `turn/`, and the GM page reading the engine. A known
+// violation fixed but left in the list is found, and `npx depcruise src --baseline --baseline-mode shrink-only` takes it
+// out. knip (`npm run knip`, `knip.ts`) finds a planted unused file, export and dependency, and nothing else, and the
+// ratchet's `unusedCode` rises by three. Red with the cycle rule counting type-only imports, with the engine's rule
+// taken out, with either of P1-13l's rules taken out or counting type-only imports, with the prose's counting the facts
+// files, or with knip told to skip unused files.
 // Level 0: the two tools read the sources of temporary copies and nothing runs (a few seconds a test). TypeScript, in
 // `static/`
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -169,6 +172,30 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
       code: "import { kcEsc } from '../ui/shared/kc-safe.ts';\nexport const planted = kcEsc;\n",
       refused:
         'the-views-import-only-the-views-the-engine-and-the-content: src/views/planted.ts -> src/ui/shared/kc-safe.ts',
+    },
+    {
+      // the prose writes words from the facts (plan P1-13, Decision 1): an engine file outside them is refused…
+      file: 'src/views/prose/planted-reads-the-dice.ts',
+      code: "import { kcRngStream } from '../../engine/rng.ts';\nexport const planted = kcRngStream;\n",
+      refused:
+        'the-prose-imports-only-itself-the-facts-the-rules-on-plain-values-and-the-content: src/views/prose/planted-reads-the-dice.ts -> src/engine/rng.ts',
+    },
+    {
+      // …a facts file's code, and a type from anywhere, are let through
+      file: 'src/views/prose/planted-reads-a-facts-file-and-a-type.ts',
+      code: "import { theUnitsAsTheLineNamesThem } from '../../engine/battle/the-facts-a-battles-lines-record.ts';\nimport type { TurnOrder } from '../../engine/turn/context.ts';\nexport const planted = theUnitsAsTheLineNamesThem;\nexport type Planted = TurnOrder;\n",
+    },
+    {
+      // the views may read the engine's world, but not a file that resolves an order (plan P1-13, Open choice 1)…
+      file: 'src/views/planted-reads-an-order-file.ts',
+      code: "import { theNameDrawn } from '../engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';\nexport const planted = theNameDrawn;\n",
+      refused:
+        'the-views-import-nothing-that-resolves-orders-battles-fights-bots-or-turn-steps-nor-the-saves-the-dice-or-the-clock: src/views/planted-reads-an-order-file.ts -> src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    },
+    {
+      // …and a type from turn/ is let through
+      file: 'src/views/planted-reads-a-type-from-the-turn.ts',
+      code: "import type { TurnOrder } from '../engine/turn/context.ts';\nexport type Planted = TurnOrder;\n",
     },
     {
       file: 'src/shared/planted.ts',

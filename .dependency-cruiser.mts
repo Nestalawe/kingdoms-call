@@ -63,6 +63,33 @@ const config: IConfiguration = {
       to: { path: '^src/', pathNot: mayImport('views', 'engine', 'content') },
     },
     {
+      name: 'the-prose-imports-only-itself-the-facts-the-rules-on-plain-values-and-the-content',
+      comment:
+        "The prose writes each line's words from the facts the engine recorded (plan P1-13, Decision 1): its code comes only from src/views/prose/, the engine's facts files, the rules on plain values and the content. A type-only import may come from anywhere (TypeScript erases it). The facts files' pattern has no nested quantifier: dependency-cruiser refuses one as unsafe.",
+      severity: 'error',
+      from: { path: '^src/views/prose/' },
+      to: {
+        path: '^src/',
+        pathNot: [
+          mayImport('views/prose', 'engine/rules-on-plain-values', 'content'),
+          '^src/engine/[a-z/-]*the-facts-[a-z-]+[.]ts$',
+        ],
+        dependencyTypesNot: ['type-only'],
+      },
+    },
+    {
+      name: 'the-views-import-nothing-that-resolves-orders-battles-fights-bots-or-turn-steps-nor-the-saves-the-dice-or-the-clock',
+      comment:
+        "What a realm sees may call the engine's reads of the world, never the code that resolves an order, a battle or a fight, plays a bot or a turn step, or holds the save code, the dice or the clock (plan P1-13, Open choice 1): their facts files and type-only imports are let through. The prose has its own, stricter rule.",
+      severity: 'error',
+      from: { path: '^src/views/', pathNot: '^src/views/prose/' },
+      to: {
+        path: '^src/engine/((orders|battle|personal-combat|bots|turn|saves)/|run-turn[.]ts$|rng[.]ts$|clock[.]ts$|world/generate[.]ts$)',
+        pathNot: '^src/engine/[a-z/-]*the-facts-[a-z-]+[.]ts$',
+        dependencyTypesNot: ['type-only'],
+      },
+    },
+    {
       name: 'shared-imports-only-the-views-the-rules-on-plain-values-and-the-content',
       comment:
         "src/shared/ is the player portal's one door to the engine (plan P1-11, Decision 2): the rules on plain values only.",
