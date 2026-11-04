@@ -38,6 +38,7 @@ import {
   reckoningCallEligibility,
   titleRaceFor,
 } from '../engine/titles/reckoning.ts';
+import type { ARealmsStanding } from '../engine/titles/reckoning.ts';
 import { topSkillOf } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { doARealmsDiscoveriesWaiveTheHiringBan } from '../engine/rules/the-registry-of-discovery-effects.ts';
@@ -50,7 +51,15 @@ import {
 } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import type { SightContext } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { garrisonMoveRate } from '../engine/units/movement.ts';
-import type { Army, Character, GameState, Grave, Province, Realm } from '../schemas/saved-game-state.ts';
+import type {
+  Army,
+  Character,
+  GameState,
+  Grave,
+  MinorTitleHolder,
+  Province,
+  Realm,
+} from '../schemas/saved-game-state.ts';
 
 /** A record as a saved state may hold it: any field missing or null (an older save). */
 type AsSaved<T> = { readonly [K in keyof T]?: T[K] | null | undefined };
@@ -85,7 +94,7 @@ export interface ArmyAsSeen {
   _isSkeletal?: AsItIs<boolean>;
   _wildHuntUntilTurn?: AsItIs<number>;
   /** How far and how an unled unit of its own moves (garrisonMoveRate): its own garrisons only. */
-  movement?: unknown;
+  movement?: ReturnType<typeof garrisonMoveRate>;
 }
 
 /** A hero as the realm sees him where he stands. */
@@ -351,7 +360,7 @@ export interface PlayerView {
   /** The bonuses each of them gets where he uses a skill, by his id (extraSkillBonuses: the minor titles he holds, the
    *  realm's Veteran Training), as the report has always worked them out: from this turn's minor titles once the
    *  titles are public, else last turn's. */
-  extraSkillBonusesOfItsHeroes: Partial<Record<string, unknown>>;
+  extraSkillBonusesOfItsHeroes: Partial<Record<string, ReturnType<typeof extraSkillBonuses>>>;
   /** The heroes it sees, by the map's sight rule, in the world's order: the hero sightings and the Encounter list. */
   heroesItSees: OtherHeroAsSeen[];
   /** The heroes standing beside its own, by the sight rule as that list has always asked it, in the world's order. */
@@ -384,19 +393,19 @@ export interface PlayerView {
    *  these hold are as the world has them: the report writes "An unknown realm" for one it hasn't met (the Titles card). */
   titles: {
     public: boolean;
-    holders: unknown;
-    standings: unknown;
-    minor: unknown;
-    race: unknown;
+    holders: ReturnType<typeof computeStandings>['titles'] | null;
+    standings: ARealmsStanding[] | null;
+    minor: ReturnType<typeof computeMinorTitles> | null;
+    race: Partial<Record<string, unknown>> | null;
     blocShare: unknown;
-    eligibility: unknown;
-    gains: unknown;
-    losses: unknown;
+    eligibility: ReturnType<typeof reckoningCallEligibility>;
+    gains: NonNullable<GameState['_titleGainsByPlayer']>[string];
+    losses: NonNullable<GameState['_titleLossesByPlayer']>[string];
     /** The name of each hero holding a title or a minor title, by his id (public titles only). */
     heroNames: ReadonlyMap<unknown, AsItIs<string>>;
     /** Last turn's minor titles held by its own heroes (the minor-title perks the report shows before the titles are
      *  public, and the Swift and the Sea-Wolf's march). */
-    lastTurnsMinorHoldersOfItsHeroes: Partial<Record<string, unknown>>;
+    lastTurnsMinorHoldersOfItsHeroes: Partial<Record<string, MinorTitleHolder>>;
   };
   /** The Reckoning called (who called it, who stands with him, when it was called and when it resolves), or null. */
   reckoning: {
@@ -413,8 +422,8 @@ export interface PlayerView {
    *  Druidic: wages; Divine: the Grand Cathedral's free Bless Province, which its report carries for the order form), and the provinces whose record names it their owner (how many; their garrisons' units, which it
    *  pays). */
   books: {
-    baseTax: unknown;
-    discoveryTaxGoldOfEachOfItsProvinces: unknown[];
+    baseTax: number;
+    discoveryTaxGoldOfEachOfItsProvinces: (number | null)[];
     wonderBlesses: { Good: boolean; Druidic: boolean; Divine: boolean };
     provincesItHoldsByTheirRecord: number;
     unitsGarrisonedInTheProvincesItHolds: Army[];
@@ -679,8 +688,8 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   // ── The titles, worked out from the whole world as the report always has (P1-12b5) ──
   const titlesPublic = (state.turn || 1) >= TITLES_PUBLIC_FROM_TURN || !!world.gameOver;
   const standingsNow = computeStandings(state); // worked out whether public or not, as the Titles card always has
-  const minorNow: Partial<Record<string, unknown>> = titlesPublic ? computeMinorTitles(state) : {};
-  const lastTurnsMinor: Partial<Record<string, unknown>> = world._minorHolders ?? {};
+  const minorNow: Partial<Record<string, MinorTitleHolder>> = titlesPublic ? computeMinorTitles(state) : {};
+  const lastTurnsMinor: Partial<Record<string, MinorTitleHolder>> = world._minorHolders ?? {};
   const charIdOf = (h: unknown): unknown =>
     typeof h === 'object' && h !== null && 'charId' in h ? h.charId : undefined;
   const idsOfItsHeroes = new Set<unknown>(ownHeroes.map((c) => c.id));
@@ -691,7 +700,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     const h = minorNow[t.key] ?? lastTurnsMinor[t.key];
     if (h) minorTitlesThatCount[t.key] = h;
   });
-  const extraSkillBonusesOfItsHeroes: Partial<Record<string, unknown>> = {};
+  const extraSkillBonusesOfItsHeroes: PlayerView['extraSkillBonusesOfItsHeroes'] = {};
   ownHeroes.forEach((c) => {
     extraSkillBonusesOfItsHeroes[String(c.id)] = extraSkillBonuses(c, state, minorTitlesThatCount);
   });

@@ -12,7 +12,8 @@ import {
 /** A unit as the discoveries read it (a saved game's army's fields: this folder doesn't import the save's schema). */
 export interface AUnitAsTheDiscoveriesReadIt {
   readonly type: string;
-  readonly race?: string;
+  /** (none: the report's unit of no race, which it shows as null) */
+  readonly race?: string | null | undefined;
   readonly quality?: string;
   readonly _isSkeletal?: boolean | undefined;
 }
