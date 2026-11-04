@@ -22,6 +22,8 @@
 // defender, or standing in a defender's line and staying or falling back with him (the slain struck off, no mark
 // kept); a leaderless neutral garrison beaten and fleeing, beaten and holding, or throwing the march back; a coastal
 // raid naming the realm it plundered (pass on P1-10b26's base, as after).
+// Since P1-21h, a friend who joined the assault on a guarded province is told whether he himself fell there, when
+// only he falls and when only the column's hero does.
 import vm from 'node:vm';
 import { afterEach, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -605,6 +607,38 @@ describe('the lines no matrix game reaches in the Move order (P1-10b27)', () => 
       told: true,
     });
   });
+  test.each([
+    ['the friend falls and the column’s hero lives', true],
+    ['the column’s hero falls and the friend lives', false],
+  ] as const)(
+    'a friend who joined the assault on a guarded province is told whether he himself fell there: %s',
+    (_, theFriendFalls) => {
+      const b = board(engine, world, 0);
+      const to = ring1(b, 0);
+      hero(b, { player: null, at: to, troops: 1, quality: 'Green' })._isNeutralGuard = true;
+      const A = column(b, 0, b.X);
+      const friend = hero(b, { player: 0, at: b.X, troops: 2 });
+      b.G.turnOrders[friend.id] = [{ action: 'move', target: String(to.id) }, null, null, null, null];
+      const fallen = theFriendFalls ? friend : A;
+      startTheTurn(b);
+      aBattle(false, (_tc, host) => {
+        // the host is a copy of whoever leads it: he falls on the copy, which is written back onto him
+        fallen.alive = false;
+        if ((host as Character).id === fallen.id) (host as Character).alive = false;
+      });
+      // every die 0: the march's own skill rolls, then the friend's roll to join (1 against 80%)
+      withDice(engine, [0], () => {
+        move(b, A, to.id);
+      });
+      const fell = `⚔ ${friend.name} marched in ${A.name}'s host against ${to.name}, and fell there — the full account is under ${A.name}.`;
+      const marches = `⚔ ${friend.name} marches in ${A.name}'s host against ${to.name} — the full account is under ${A.name}.`;
+      expect({ friend: friend.alive, mover: A.alive, told: linesOf(b, friend).map((l) => l.text) }).toEqual({
+        friend: !theFriendFalls,
+        mover: theFriendFalls,
+        told: [theFriendFalls ? fell : marches],
+      });
+    },
+  );
   test('a coastal raid names the realm whose treasury it plundered', () => {
     const b = board(engine, world, 0);
     b.X.terrain = 'sea';
