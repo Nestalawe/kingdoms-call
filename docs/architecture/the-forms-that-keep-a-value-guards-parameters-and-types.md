@@ -112,6 +112,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   passes `servesARealm` (only a hero of a realm acts in a phase), so each `c.player` after it is a realm's index. Each check
   never fails on a sound save, and throws if it does. A typed callee that takes a value its caller may lack (a hero's
   province) gets it through a check that throws for none, named for the invariant that makes it sure.
+- **A hero a fight hands on that a typed callee takes by a number's id** (a fighter's `ref` to `syncMaxHp`) passes an
+  assertion that throws for a fight's copy, whose id is words (`theHeroIsNoFightsCopy`: a Hunting Rumours fight is
+  simulated, and rolls no rise); a line that needs his name and maximum, a predicate on the line itself
+  (`aRiseAsItIsTold`), with the throw beside it.
 - **A return type written on a callee that keeps its line** is a claim, checked once that file is freed; write in a
   comment where it doesn't hold. It changes what its other untyped callers give: type their result too, fix the typed
   readers' new findings and prune their cleared suppressions. Freed, a claim that holds only for some values takes
@@ -139,6 +143,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   for none (a phase is one of the five seasons): the fact and its prose keep their types.
 - **A fact's realm name read by an index** (`G.players[c.player]?.name`) may be `undefined` where the index names no
   realm: the fact's field allows it, and the prose writes it `${String(x)}`, the same words.
+- **A saved record the code writes a missing value into** (a realm's memory of a province, its owner's name where the
+  index names no realm) is written through a local view of the same record whose field allows `undefined`
+  (`AProvinceAsItIsRemembered`): the saved schema is unchanged.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does.
 - **A line rewritten in place by its index** (`narrative[i].whatBecomesOfTheProvince = …`, the battle's outcome held by

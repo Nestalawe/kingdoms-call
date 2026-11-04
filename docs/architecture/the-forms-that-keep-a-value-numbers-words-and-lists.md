@@ -23,6 +23,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   is `table?.[n]`: no field of an empty object has a number's name.
 - **`if (!x) x = v` on words** (a unit's phantom tag) is `if (x === undefined || x === '') x = v`: lint's `x ??= v`
   would keep a `''`.
+- **`(x != null && list.find(…)) || y`**, the found element else a fallback, is `(x != null ? list.find(…) : undefined)
+  ?? y`: `??` on the `false` the left can give would keep it.
 
 ## Numbers, words and conversions
 
@@ -107,5 +109,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A load-time pass that marks a content table** reads it through one wide shape, the same array; a derived table is
   filled through a local typed the same way. A spread of an element of a big content table goes through a small
   generic function typed as the item it copies (`underAnotherName`).
+- **The turn's records by a hero's id read by a hero whose id may be words** (a fight's copy's move pools) go through a
+  local view of the same objects typed `Partial<Record<string, number>>`; a `Map` by a number looked up so, through a
+  local `ReadonlyMap<unknown, string>`. A key of `Object.keys` the code wrote from a province's id indexes the provinces
+  as `list[Number(k)]`, the same element.
+- **A `Set` or an empty list iterated** (`(s[pi] || []).forEach(…)`) is read into a local typed `ReadonlySet<number> |
+  readonly number[]`, then `forEach`: the same calls.
 - **`for (k in obj)` over a literal's keys** is a `for … of` over a typed list of them, in the same order. A `Map` a
   caller makes is typed by the methods the function calls.
