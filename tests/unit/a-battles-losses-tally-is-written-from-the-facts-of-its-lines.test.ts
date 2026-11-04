@@ -2,7 +2,7 @@
 // Decision 2): the views put "⚰ Losses — **<side>**: …" where the battle's casualty lists begin
 // (theWordsOfABattlesLossesTally, src/views/prose/the-words-of-a-battles-losses-tally.ts, called by theTurnsLinesInWords).
 // Each case is a staged battle filed by emitBattle and written by the words pass, so it reads the tally line the GM's
-// log stores; the expected tallies are the ones the tally gave before (tests/battle-faced-lines.test.js and
+// log stores; the expected tallies are the ones the tally gave before (the old battle-faced-lines script and
 // tests/unit/the-battle-fate-and-tally-lines-no-matrix-game-reaches-keep-their-values.test.ts held them), and each case
 // but the last passes on the code before this row too.
 // - each company credited to the side whose casualty list's header names its owner (not the side of the company its
@@ -217,7 +217,7 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
         itsQualityAfter: 'Veteran',
       },
     ]);
-    // the lines the tally was read from before (tests/battle-faced-lines.test.js), word for word
+    // the lines the tally was read from before (the old battle-faced-lines script), word for word
     expect(words.slice(2)).toEqual([
       "⚔ **Aldric Ironhand's forces** (attacker):",
       "— Aldric Ironhand's Levy A1 (Shieldwall Levies, Average), facing Gorbash's Levy B1, were destroyed in the fighting.",

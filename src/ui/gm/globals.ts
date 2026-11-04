@@ -15,14 +15,9 @@ import {
   ARMY_SPEED_MASTER,
   LEGACY_UNIT_RENAMES,
   migrateLegacyUnitNames,
-  ownedUnitName,
-  unitRef,
 } from '../../engine/army-tables.ts';
-import { rollUnitFates } from '../../engine/battle/fates.ts';
-import { battleFacedClauses, battleFacing, battleGrid } from '../../engine/battle/lines.ts';
+import { battleFacing, battleGrid } from '../../engine/battle/lines.ts';
 import {
-  disbandLine,
-  theClauseOfWhomAUnitFaced,
   theWordsOfWhyAUnitFacesAsItDoes,
   theWordsOfWhyAUnitStandsWhereItDoes,
 } from '../../views/prose/the-words-of-a-battles-lines.ts';
@@ -106,7 +101,6 @@ import { getNeighborsP, hexDistP } from '../../engine/world/map-helpers.ts';
 import { primalStrikeChance } from '../../engine/chances-and-lair-grades.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
 import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
-import { theWordsOf } from '../../views/prose/the-words-of-each-line.ts';
 import { runTurn } from './turn-shell.ts';
 
 // ── The GM portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
@@ -169,7 +163,6 @@ Object.assign(window, {
   ARMY_SPEED_MASTER, // engine/army-tables.ts
   autoTurnTick, // ui/gm/auto-turn.ts
   backfillHomeRosters, // engine/world/tables.ts
-  battleFacedClauses, // engine/battle/lines.ts
   battleFacing, // engine/battle/lines.ts
   battleGrid, // engine/battle/lines.ts
   BOT_SKILL_BUILD, // engine/bots/setup.ts
@@ -177,7 +170,6 @@ Object.assign(window, {
   buildGameMeta, // db/game-meta.ts
   buildGameRecords, // ui/gm/hall-of-fame.ts
   buildTurnReport, // views/turn-report.ts
-  disbandLine, // views/prose/the-words-of-a-battles-lines.ts
   druIdPenaltyMult, // engine/world/tables.ts
   generateBotSetups, // engine/bots/setup.ts
   generateNewGame, // engine/world/generate.ts
@@ -201,7 +193,6 @@ Object.assign(window, {
   missileTargetPool, // engine/battle/strength.ts
   MONSTERS_P, // content/kingdoms-call-data.ts
   neutralDefBand, // engine/units/drill-and-spoils.ts
-  ownedUnitName, // engine/army-tables.ts
   pickLairNameP, // engine/names.ts
   playerView, // views/what-each-realm-may-see-of-the-world.ts
   PRIMAL_ARMY_DEFS_P, // content/kingdoms-call-data.ts
@@ -215,16 +206,12 @@ Object.assign(window, {
   renderLeaderboardBanner, // ui/gm/hall-of-fame.ts
   renderMessagingBanner, // db/game-meta.ts
   renderTelemetryBanner, // db/game-meta.ts
-  rollUnitFates, // engine/battle/fates.ts
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
   sb, // ui/gm/config.ts
   shieldFortHolds, // engine/units/movement.ts
-  theClauseOfWhomAUnitFaced, // views/prose/the-words-of-a-battles-lines.ts
-  theWordsOf, // views/prose/the-words-of-each-line.ts
   theWordsOfWhyAUnitFacesAsItDoes, // views/prose/the-words-of-a-battles-lines.ts
   theWordsOfWhyAUnitStandsWhereItDoes, // views/prose/the-words-of-a-battles-lines.ts
   unitAbilityMult, // engine/battle/strength.ts
-  unitRef, // engine/army-tables.ts
   unitTypeOf, // engine/rules-on-plain-values/unit-types-and-base-strength.ts
   writeGameRecord, // ui/gm/hall-of-fame.ts
 });

@@ -297,7 +297,8 @@ losses tally only once the tally's switch names it (`theWordsOfABattlesLossesTal
 and name; lint refuses a fate it leaves out). Example: "— Aldric's Levies (Shieldwall Levies, Average), facing the Red
 Hand (Gorbash's Gnomish Gyrocopters), were annihilated in the rout!" is credited to Aldric by its fact's owner, and
 anything that faces the rows again (the stay-or-retreat estimate) overwrites their `_faced` stamps. Checks:
-`tests/battle-faced-lines.test.js`, `tests/unit/a-battles-losses-tally-is-written-from-the-facts-of-its-lines.test.ts`.
+`tests/unit/each-companys-fate-line-names-whom-it-faced-from-its-place-in-the-battle-grid.test.ts`,
+`tests/unit/a-battles-losses-tally-is-written-from-the-facts-of-its-lines.test.ts`.
 
 ## Other realms' slots come only from `get_game_slots`
 
