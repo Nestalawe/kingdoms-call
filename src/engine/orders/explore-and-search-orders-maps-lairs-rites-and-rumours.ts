@@ -47,7 +47,8 @@ import {
   awardWinHp,
   trySkillGain,
 } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { resolveEncounter, rumourOddsBand, simulateLairOdds } from '../personal-combat/lair-guardians-and-the-odds.ts';
+import { resolveEncounter, simulateLairOdds } from '../personal-combat/lair-guardians-and-the-odds.ts';
+import { rumourOddsBand } from '../rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
 import {
   aGuardianAsItsKindIsRead,
   theItemsAsTheLineNamesThem,

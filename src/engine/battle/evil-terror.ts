@@ -1,4 +1,8 @@
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
+import {
+  TERROR_MAX_STACKS,
+  TERROR_PCT_PER_STACK,
+} from '../rules-on-plain-values/the-terror-an-evil-victory-leaves-its-share-a-stack-and-its-most-stacks.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves } from '../rules/the-registry-of-discovery-effects.ts';
 import type { Army, Province } from '../../schemas/saved-game-state.ts';
@@ -13,12 +17,10 @@ import { narrate } from '../turn/events-and-their-audiences.ts';
 // ── EVIL TERROR EFFECT ────
 // A decisive Evil victory terrorises the battle province AND every adjacent province. Terror
 // lingers until the next battle fought there, demoralising whoever defends
-// (−10% strength per stack, at most 3 stacks: −30%; 2026-10-12, Toby item 21 — it was 5, −50%). Repeated terror
-// events stack up to that cap; a save already holding more is read as 3. The two constants below are read by
-// buildTurnReport too (terrorReadingOf), which shows Evil realms the reading: one copy of the figures (moved here from
-// src/views/turn-report.ts in plan P1-12b1, so the engine imports no view). Reign of Terror sets a province's own share.
-export const TERROR_PCT_PER_STACK = 0.1,
-  TERROR_MAX_STACKS = 3;
+// (−10% strength per stack, at most 3 stacks: −30%). Repeated terror events stack up to that cap; a save already
+// holding more is read as 3. The two figures, TERROR_PCT_PER_STACK and TERROR_MAX_STACKS, are on plain values
+// (src/engine/rules-on-plain-values/the-terror-an-evil-victory-leaves-its-share-a-stack-and-its-most-stacks.ts) because
+// buildTurnReport reads them too (terrorReadingOf).
 export function reignOfFearHere(prov: Province | null | undefined, playerIdx: number | null | undefined) {
   return !!(prov && playerIdx != null && (prov._terrorStacks || 0) > 0 && prov._terrorisedBy === playerIdx);
 }

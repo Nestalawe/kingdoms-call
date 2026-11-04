@@ -22,7 +22,8 @@ const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 const { call, pinned, turnContext, MON } = await personalCombatEngine();
 const { ALL_MAGIC_ITEMS_P, LEGENDARY_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
 const { MITHRIL_ARMOUR } = await import('../../src/engine/heroes/fame-and-consecration.ts');
-const { RUMOUR_ODDS_BANDS } = await import('../../src/engine/personal-combat/lair-guardians-and-the-odds.ts');
+const { RUMOUR_ODDS_BANDS } =
+  await import('../../src/engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts');
 const G = turnContext.G as { characters: Character[]; players: Record<string, unknown>[] };
 
 type Item = { name: string; tier?: unknown; effect?: { stat?: string }; [key: string]: unknown };

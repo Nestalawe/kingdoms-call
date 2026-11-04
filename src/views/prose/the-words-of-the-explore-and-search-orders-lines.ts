@@ -2,8 +2,8 @@
 // 7) ──
 // The views write the words of each fact the explore and search orders' lines record (src/engine/orders/the-facts-the-
 // explore-and-search-orders-lines-record.ts), in the same words the engine wrote before (orders/explore-and-search-
-// orders-maps-lairs-rites-and-rumours.ts). a guardian's kind (monsterCatLabel), the odds' bands
-// (rumourOddsBand) and the items' lore (itemLoreLines) are the engine's, and fmtRoll and a list of items (itemNameList) the prose's, on the values a
+// orders-maps-lairs-rites-and-rumours.ts). a guardian's kind (monsterCatLabel) and the items' lore (itemLoreLines) are the
+// engine's, the odds' bands (rumourOddsBand) are on plain values, and fmtRoll and a list of items (itemNameList) the prose's, on the values a
 // fact holds. A kind with no words here is a compile error (the `never` below).
 import type {
   ASiteFoundAsTheLineNamesIt,
@@ -12,7 +12,7 @@ import type {
 import { fmtRoll } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 import { itemNameList } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import { itemLoreLines, monsterCatLabel } from '../../engine/items/tiers-and-hoards.ts';
-import { rumourOddsBand } from '../../engine/personal-combat/lair-guardians-and-the-odds.ts';
+import { rumourOddsBand } from '../../engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
 import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 /** A guardian's name with its article: "a Barrow Wight", "an Ogre", a plural as it is, "a creature" for none. */

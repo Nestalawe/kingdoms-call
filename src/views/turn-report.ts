@@ -32,7 +32,7 @@ import { isConsecrated } from '../engine/heroes/fame-and-consecration.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
 import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { effSkillOf, skillBonusBreakdown } from '../engine/heroes/skills-and-hp.ts';
-import { lairRumourKey } from '../engine/personal-combat/helpers.ts';
+import { lairRumourKey } from '../engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
 import { dispFloor } from '../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN, itemAcquiredThisTurn, perkTier } from '../engine/titles/perks.ts';
 import { MAGIC_L8_SCHOOLS, castChanceFor } from '../engine/chances-and-lair-grades.ts';
@@ -66,7 +66,10 @@ import {
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
   THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
 } from '../engine/rules/discoveries/a-realms-discoveries-in-its-heroes-orders-and-its-sight.ts';
-import { TERROR_MAX_STACKS, TERROR_PCT_PER_STACK } from '../engine/battle/evil-terror.ts';
+import {
+  TERROR_MAX_STACKS,
+  TERROR_PCT_PER_STACK,
+} from '../engine/rules-on-plain-values/the-terror-an-evil-victory-leaves-its-share-a-stack-and-its-most-stacks.ts';
 import { theCorpseCartersPriceForARealm } from '../engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
 import { asItsGuardReadsIt } from '../engine/personal-combat/to-hit-wounds-stuns-and-courage.ts';
 import type { Army, Character, Item, Realm } from '../schemas/saved-game-state.ts';
@@ -259,7 +262,7 @@ function whatTheViewHandsOnceTheTitlesArePublic<Holders>(holders: Holders | null
 }
 
 // ── EVIL TERROR: the reading (2026-10-12, Toby items 21 and 23) ── The constants (−10% a stack, at most three stacks)
-// are the engine's (src/engine/battle/evil-terror.ts, plan P1-12b1), so the engine (spreadTerror, consumeTerror) and the
+// are on plain values (src/engine/rules-on-plain-values/, plan P1-13i), so the engine (spreadTerror, consumeTerror) and the
 // report (an Evil realm sees each province's Terror on the map and in its report) read the same figures.
 // terrorReadingOf(p, viewer) → {pct, stacks, byYou} or null when no Terror grips the province.
 export function terrorReadingOf(p: TerrorAsSeen | null | undefined, viewer: number) {

@@ -31,7 +31,9 @@ const tc = pc.turnContext as unknown as TurnContext;
 const lair = await import('../../src/engine/personal-combat/lair-guardians-and-the-odds.ts');
 const builders = await import('../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts');
 const theFight = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
-const { monsterTraits, pcBuildGuardian, rumourOddsBand, RUMOUR_ODDS_BANDS, simulateLairOdds, resolveEncounter } = lair;
+const { monsterTraits, pcBuildGuardian, simulateLairOdds, resolveEncounter } = lair;
+const { rumourOddsBand, RUMOUR_ODDS_BANDS } =
+  await import('../../src/engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts');
 
 type ALair = Parameters<typeof pcBuildGuardian>[1];
 type AGuardian = Parameters<typeof pcBuildGuardian>[2];
