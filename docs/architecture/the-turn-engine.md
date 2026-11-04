@@ -78,7 +78,8 @@
   `theWordsOfAStatShown` beside `statNote`, `theOddsShownAsALineTellsIt` and `theWordsOfTheOddsShown` beside `oddsNote`:
   the copy holds only what the realm told may know, so a spy's Detection line's fact never holds a rival's hidden
   skill; the three helpers went in P1-12d12 with their last engine callers, the chase's rolls and the skill rise, and
-  the three pairs stay in `heroes/effective-skills-and-hidden-heroes.ts`, their words not yet moved); once
+  the three copies stay in `heroes/effective-skills-and-hidden-heroes.ts`, and since P1-13f their three words helpers
+  are in the prose with `fmtRoll` and `describeArmy`: `views/prose/the-words-of-a-roll-a-host-and-a-skill-shown.ts`); once
   its last engine caller goes, its words move into the prose and the copy stays (`theBeastCommandAsALineTellsIt` in
   `world/tables.ts`, its words `theWordsOfABeastCommand` in the army orders' prose since P1-12d7). `logSplit`'s two
   halves, a line for the realm and its twin for onlookers, may each be words or a fact.
@@ -91,9 +92,10 @@
   (`pcSkillLabel`, `pcWardWord`, `pcPerkWord`, `pcWardIcon`; a battle's `aAn`, `n0`, `curseSkillLabel`,
   `fortuneNarrative` and the verbs a victory is told with, whose die stays in the engine: the fact holds which; the
   ladder's `ladderFm`, the grid's `shortUnit`, `UNIT_SHORT`, `GROUND_WORDS`, `battleGridStage` and `battleFacingStage`;
-  a unit's `disbandLine` and `theClauseOfWhomAUnitFaced`; the wanderer's sentences, `_GARRETH_ESCAPES`);
+  a unit's `disbandLine` and `theClauseOfWhomAUnitFaced`; the wanderer's sentences, `_GARRETH_ESCAPES`; since P1-13f
+  `fmtRoll`, `describeArmy` and the three `theWordsOf…` of a skill, the odds and a skill in play);
   one it
-  still calls (`fmtRoll`, `monsterCatLabel`, `hpGainLine`, `describeArmy`, `strandLabel`) the prose imports from the engine, on plain
+  still calls (`monsterCatLabel`, `hpGainLine`, `strandLabel`) the prose imports from the engine, on plain
   values, and a unit ability's name comes from its content row. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
   checks each area done (its list grows a row at a time); since P1-12d29 it lets no label through. The
   rest of the engine's lines still carry their words, and in this run a line's words are the same for every

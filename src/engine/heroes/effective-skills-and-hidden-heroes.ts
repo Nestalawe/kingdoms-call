@@ -1,11 +1,8 @@
-import { SKILL_LABELS } from '../army-tables.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { activeItems } from '../items/equipment.ts';
 import { theHerosItemsHideHisFace } from '../rules/the-registry-of-magic-item-effects.ts';
 import { effSkillOf, skillBonusBreakdown } from './skills-and-hp.ts';
 import type { ASourceOfASkillsBonus } from './skills-and-hp.ts';
-import { fmtRoll } from '../dice-and-army-names.ts';
-import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { botKnownSkills } from '../bots/intel.ts';
 import { skillLevel } from '../titles/perks.ts';
 import type { HeroOfSkills } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -99,8 +96,8 @@ export function skillsKnownTo(
 // The skill as a line shows it to a viewer (plan P1-12d8): its label as the caller names it (null: the skill's own),
 // its slug and the level it counts at, when this viewer may know it; null when they may not, so the fact a Detection
 // line records never holds what the viewer has not earned. Its words are theWordsOfAStatShown, " (Spy 3)" or none, on
-// these values alone (the prose imports it from here; statNote, its engine caller's helper, went with its last caller
-// in P1-12d12).
+// these values alone (in the prose, src/views/prose/the-words-of-a-roll-a-host-and-a-skill-shown.ts; statNote, its
+// engine caller's helper, went with its last caller in P1-12d12).
 /** A hero's skill as a line shows it to a viewer who may know it: the label the caller gives (null: the skill's own),
  *  the skill's slug and the level it counts at. */
 export interface AStatShownAsALineTellsIt {
@@ -118,13 +115,6 @@ export function theStatShownAsALineTellsIt(
   if (!ch || !skillsKnownTo(turnContext, pi, ch)) return null;
   return { label: (label ?? '') || null, stat, level: effStat(turnContext, ch, stat) };
 }
-/** The words of a skill shown, " (Spy 3)", or none. */
-export function theWordsOfAStatShown(shown: AStatShownAsALineTellsIt | null): string {
-  if (!shown) return '';
-  // the labels read by any skill's slug
-  const labels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
-  return ` (${(shown.label ?? '') || (labels[shown.stat] ?? '') || shown.stat} ${String(shown.level)})`;
-}
 // An OPPOSED roll's percentage is itself a disclosure: pursuit is 50 +5×(my Spy) −5×(their Spy),
 // so a player who knows their own level can read the rival's straight off the number. Hiding the
 // "(Spy N)" label alone would change nothing. When the viewer has not earned the knowledge the
@@ -139,7 +129,8 @@ export function theWordsOfAStatShown(shown: AStatShownAsALineTellsIt | null): st
 // working, unchanged.
 // The odds as a line shows them to a viewer (plan P1-12d8): the chance and the roll, and whether this viewer may know
 // the rival's skill (then the full working, else only whether it landed). Its words are theWordsOfTheOddsShown, on these
-// values alone (the prose imports it from here; oddsNote went with its last engine caller in P1-12d12).
+// values alone (in the prose, src/views/prose/the-words-of-a-roll-a-host-and-a-skill-shown.ts; oddsNote went with its
+// last engine caller in P1-12d12).
 /** An opposed roll as a line shows it to a viewer: the chance, the roll, and whether the viewer may know the rival's
  *  skill (the full working), else only whether it landed. */
 export interface TheOddsShownAsALineTellsIt {
@@ -156,12 +147,6 @@ export function theOddsShownAsALineTellsIt(
 ): TheOddsShownAsALineTellsIt {
   return { theRivalsSkillIsKnown: !ch || skillsKnownTo(turnContext, pi, ch), chance, roll };
 }
-/** The words of the odds shown: "40% [roll 23 ✓]" with the working, else "[✓]". */
-export function theWordsOfTheOddsShown(odds: TheOddsShownAsALineTellsIt): string {
-  const { chance, roll } = odds;
-  if (odds.theRivalsSkillIsKnown) return fmtRoll(chance, roll);
-  return `[${dispFloor(roll) <= Math.max(0, Math.min(100, dispFloor(chance))) ? '✓' : '✗'}]`;
-}
 // 2026-09-21 (Toby: "Illusory 3 … rises to level 1"): every skill-rise line quoted the character's
 // own TRAINED level, while the cast line one row above quoted the level IN PLAY (training + items
 // + aura). A hero with Illusory 0 and a +3 diadem cast "(Illusory 3)" and then "rose to level 1",
@@ -169,8 +154,8 @@ export function theWordsOfTheOddsShown(odds: TheOddsShownAsALineTellsIt): string
 // lift it above the trained level. The skill in play is null (no words) when the two agree.
 // The skill in play, as a line tells it (plan P1-12d6): its slug, the level it counts at, and each source that raises it
 // above his own level, copied as the line is told; null when nothing raises it. A Practice line's fact holds it, and
-// the views write its words (theWordsOfASkillInPlay, on these values alone: the prose imports it from here;
-// skillInPlayNote went with its last engine caller in P1-12d12).
+// the views write its words (theWordsOfASkillInPlay, on these values alone, in src/views/prose/the-words-of-a-roll-a-host-
+// and-a-skill-shown.ts; skillInPlayNote went with its last engine caller in P1-12d12).
 /** A skill raised above a hero's own level, as a line tells it: its slug, the level it counts at, and what raises it. */
 export interface ASkillInPlayAsALineTellsIt {
   readonly skill: string;
@@ -199,15 +184,6 @@ export function theSkillInPlayAsALineTellsIt(
       .filter((s): s is ASourceOfASkillsBonus => !!s && s.delta > 0)
       .map((s) => ({ label: s.label, delta: s.delta })),
   };
-}
-/** The words of a skill in play, " (Melee 6 in play, with Sword of Ages +1)", or none. */
-export function theWordsOfASkillInPlay(inPlay: ASkillInPlayAsALineTellsIt | null): string {
-  if (!inPlay) return '';
-  const { skill } = inPlay;
-  const src = inPlay.sources.map((s) => `${s.label} +${String(s.delta)}`).join(', ');
-  // the labels read by any skill's slug
-  const labels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
-  return ` (${(labels[skill] ?? '') || skill} ${String(inPlay.total)} in play${src ? `, with ${src}` : ''})`;
 }
 
 // Cloak of Many Faces: this hero cannot be targeted by Spy, Psychic Blast, Curse or Encounter

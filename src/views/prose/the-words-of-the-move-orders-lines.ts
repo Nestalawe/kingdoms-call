@@ -3,7 +3,7 @@
 // lines-record.ts), in the same words the engine wrote before (orders/move-order-marches-voyages-and-battles-on-
 // arrival.ts): why a column has too little shipping to put to sea, how far a march mapped the province, the sites a
 // hero spots on the way in and the troops that rally to a defender are written here as the engine wrote them there.
-// describeArmy is the engine's, read here on the units a line copied. A kind with no words here is a compile error (the
+// describeArmy (the-words-of-a-roll-a-host-and-a-skill-shown.ts) is read here on the units a line copied. A kind with no words here is a compile error (the
 // `never` below).
 import type {
   ASiteSpottedOnTheMarchAsTheLineNamesIt,
@@ -11,7 +11,7 @@ import type {
   TheMappingOfAMarchAsTheLineTellsIt,
   TroopsThatRallyToADefender,
 } from '../../engine/orders/the-facts-the-move-orders-lines-record.ts';
-import { describeArmy } from '../../engine/dice-and-army-names.ts';
+import { describeArmy } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 
 /** A guardian's name with its article: "a Barrow Wight", "an Ogre", a plural as it is, "a creature" for none. */
 function _artM(n: string | null): string {

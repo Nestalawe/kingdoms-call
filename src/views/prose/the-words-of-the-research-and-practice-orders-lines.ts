@@ -3,8 +3,8 @@
 // The views write the words of each fact the research and practice orders' lines record (src/engine/orders/the-facts-
 // the-research-and-practice-orders-lines-record.ts), in the same words the engine wrote before (orders/research-and-
 // practice-orders-discoveries-skill-drills-and-rest.ts): the reason for a practice's chance and the comrades a hero
-// trains are written as the engine built them there (bonusReason, pupilNote). The skills' names, fmtRoll and the words
-// of a skill in play are the engine's, read here on plain values. A kind with no words here is a compile error (the
+// trains are written as the engine built them there (bonusReason, pupilNote). The skills' names are the engine's, read here on plain values;
+// fmtRoll and the words of a skill in play are the-words-of-a-roll-a-host-and-a-skill-shown.ts's. A kind with no words here is a compile error (the
 // `never` below).
 import type {
   TheFactOfTheResearchAndPracticeOrdersLine,
@@ -12,8 +12,7 @@ import type {
   APupilAsTheLineNamesHim,
 } from '../../engine/orders/the-facts-the-research-and-practice-orders-lines-record.ts';
 import { SKILL_LABELS } from '../../engine/army-tables.ts';
-import { fmtRoll } from '../../engine/dice-and-army-names.ts';
-import { theWordsOfASkillInPlay } from '../../engine/heroes/effective-skills-and-hidden-heroes.ts';
+import { fmtRoll, theWordsOfASkillInPlay } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 import { theWordsInATableFor } from './the-words-of-the-order-dispatchs-lines.ts';
 
 /** A skill's name, by its slug (the slug itself when the table has none). */

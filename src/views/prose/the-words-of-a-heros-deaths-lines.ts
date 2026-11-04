@@ -1,7 +1,7 @@
 // ── THE WORDS OF A HERO'S DEATH LINES (plan P1-12d5: P1-12's Decisions of 2026-10-26, Decisions 2 and 6) ──
 // The views write the words of each fact a hero's death lines record (src/engine/heroes/the-facts-a-heros-death-lines-
-// record.ts), in the same words the engine wrote before (heroes/hero-death-and-leaderless-hosts.ts). fmtRoll, which the
-// engine still calls elsewhere, is imported from it. A kind with no words here is a compile error (the `never` below).
+// record.ts), in the same words the engine wrote before (heroes/hero-death-and-leaderless-hosts.ts). fmtRoll is in
+// the-words-of-a-roll-a-host-and-a-skill-shown.ts. A kind with no words here is a compile error (the `never` below).
 // Since P1-12d11 (P1-12's Decisions of 2026-10-29, Choices 1 and 2): the line of a hero slain outside a battle, in the
 // words each caller of reportHeroFall handed in before (the chase, the ambush, the thief, the assassin, a failed Charm,
 // a Challenge, a Sniper's Mark, a lair's guardian), and who slew the dead commander, written from its record.
@@ -12,7 +12,7 @@ import type {
   AHeroIsSlainOutsideABattle,
 } from '../../engine/heroes/the-facts-a-heros-death-lines-record.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../../engine/dice-and-army-names.ts';
-import { fmtRoll } from '../../engine/dice-and-army-names.ts';
+import { fmtRoll } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
 
 /** Who slew the dead commander, in words: the killer's name, or "the Barrow Wight of Highmoor" for a lair's guardian

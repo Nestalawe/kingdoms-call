@@ -3,7 +3,7 @@
 // spell-orders-lines-record.ts), in the same words the engine wrote before (orders/cast-spell-order-white-psychic-
 // illusory-elemental-and-necromancy-spells.ts): why a charmed mind turns on its enchanter, the companies a Telekinetic
 // Storm strikes and the graves Control Undead counts are written here as the engine wrote them there. The skills'
-// names, fmtRoll, itemNameList and dispFloor are the engine's, read here on plain values; a realm's tag after its hero's
+// names, itemNameList and dispFloor are the engine's, read here on plain values, and fmtRoll the prose's; a realm's tag after its hero's
 // name is written as realmTag wrote it (theRealmsTag, the realm works' prose). A kind with no words here is a compile
 // error (the `never` below).
 import type {
@@ -14,7 +14,7 @@ import type {
   WhyAnEnchantedHeroMayTurnOnHisEnchanter,
 } from '../../engine/orders/the-facts-the-cast-spell-orders-lines-record.ts';
 import { SKILL_LABELS } from '../../engine/army-tables.ts';
-import { fmtRoll } from '../../engine/dice-and-army-names.ts';
+import { fmtRoll } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 import { itemNameList } from '../../engine/heroes/fame-and-consecration.ts';
 import { dispFloor } from '../../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { theWordsInATableFor } from './the-words-of-the-order-dispatchs-lines.ts';

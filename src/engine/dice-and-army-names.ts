@@ -12,24 +12,9 @@ import type { GameState } from '../schemas/saved-game-state.ts';
 export function d100() {
   return Math.floor(kcRng() * 100) + 1;
 }
-// ONE canonical way to show a percentage roll in the report — the success CHANCE and the actual
-// d100 ROLL, with a ✓/✗. Success is roll<=chance (the d100 convention above). The displayed % is
-// clamped to 0–100; the underlying test should use the raw chance. Roll-display contract (Sept
-// 2026): callers MUST compare an integer d100 roll against Math.round(chance) — never the raw
-// fractional chance — so the tick shown here always matches the outcome. fmtRoll rounds both the
-// same way. 2026-09-12: every number a player is shown is ROUNDED DOWN (toward zero), never to
-// nearest — a 41.6% share must not read "42% (need 42%)", and a 49.6% chance must not read 50% and
-// then miss on a roll of 50. With integer d100 rolls, roll<=floor(chance) is exactly roll<=chance,
-// so the shown figure is the true test. A float a hair under an integer (0.29*100 = 28.999…) snaps
-// to that integer rather than dropping a point.
-export function fmtRoll(chance: number, roll: number) {
-  const c = Math.max(0, Math.min(100, dispFloor(chance)));
-  const r = dispFloor(roll);
-  return `${c}% [roll ${r} ${r <= c ? '✓' : '✗'}]`;
-}
 // 2026-09-10 item 1: pctRoll(chance) — the ONE way to make a displayed percentage check. Rounds the
 // chance to an integer first so the shown "N%" and the pass/fail test agree exactly; a roll equal
-// to the chance succeeds.
+// to the chance succeeds. The roll is shown by fmtRoll (src/views/prose/the-words-of-a-roll-a-host-and-a-skill-shown.ts).
 export function pctRoll(chance: number) {
   const c = Math.max(0, Math.min(100, dispFloor(chance)));
   const roll = d100();
@@ -143,9 +128,9 @@ export function seedUsedArmyNames(gameState: GameState) {
   });
 }
 
-// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── a random whole number from a to b, and a host described for a battle
-// line. They read no turn state. (Its random pick went with its last caller, P1-12d20: an attack's verb is drawn by its
-// index.)
+// ── LIFTED OUT OF resolveTurn (plan P1-08a) ── a random whole number from a to b. It reads no turn state. (Its random
+// pick went with its last caller, P1-12d20: an attack's verb is drawn by its index.) The host described for a battle
+// line is describeArmy's, in the prose (src/views/prose/the-words-of-a-roll-a-host-and-a-skill-shown.ts).
 export function rng(a: number, b: number) {
   return Math.floor(kcRng() * (b - a + 1)) + a;
 }
@@ -156,23 +141,4 @@ export interface AUnitAsDescribeArmyNamesIt {
   readonly type: string;
   readonly quality: string;
   readonly _phantom?: boolean | undefined;
-}
-
-export function describeArmy(armies: readonly AUnitAsDescribeArmyNamesIt[] | null | undefined) {
-  if (!armies || armies.length === 0) return 'no armies';
-  const named: string[] = [];
-  const unnamed: Record<string, number> = {};
-  armies.forEach((a) => {
-    const hasName = a.unitName && a.unitName !== a.type && !a.unitName.startsWith('undefined');
-    if (a._phantom) {
-      named.push(`✨ ${a.unitName} (${a.type}, ${a.quality})`);
-    } else if (hasName) {
-      named.push(`${a.unitName} (${a.type}, ${a.quality})`);
-    } else {
-      const key = `${a.quality} ${a.type}`;
-      unnamed[key] = (unnamed[key] || 0) + 1;
-    }
-  });
-  const unnamedStrs = Object.entries(unnamed).map(([k, n]) => (n > 1 ? `${n}× ${k}` : k));
-  return [...named, ...unnamedStrs].join(', ') || 'no armies';
 }

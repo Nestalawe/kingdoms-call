@@ -38,7 +38,7 @@ import {
   type TheForceABattlesHeaderNames,
   type WhyACommandersForceIsDemoralised,
 } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
-import { describeArmy } from '../../engine/dice-and-army-names.ts';
+import { describeArmy } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 import { ownedUnitName, unitRef } from '../../engine/army-tables.ts';
 import { fortuneCdf, fortuneWinChance } from '../../engine/battle/fortune.ts';
 import { dispFloor } from '../../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
