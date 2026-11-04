@@ -16,19 +16,7 @@ import {
   LEGACY_UNIT_RENAMES,
   migrateLegacyUnitNames,
 } from '../../engine/army-tables.ts';
-import { battleFacing, battleGrid } from '../../engine/battle/lines.ts';
-import {
-  theWordsOfWhyAUnitFacesAsItDoes,
-  theWordsOfWhyAUnitStandsWhereItDoes,
-} from '../../views/prose/the-words-of-a-battles-lines.ts';
-import { shieldFortHolds } from '../../engine/units/movement.ts';
-import {
-  abilityMissileUnits,
-  archeryBlockedBy,
-  missileDamageMult,
-  missileTargetPool,
-  unitAbilityMult,
-} from '../../engine/battle/strength.ts';
+import { unitAbilityMult } from '../../engine/battle/strength.ts';
 import { sb } from './config.ts';
 import {
   changePassword,
@@ -156,15 +144,11 @@ Object.assign(window, {
 // The names its tests reach.
 Object.assign(window, {
   _LB_SEA, // ui/gm/hall-of-fame.ts
-  abilityMissileUnits, // engine/battle/strength.ts
   ALL_MAGIC_ITEMS_P, // content/kingdoms-call-data.ts
-  archeryBlockedBy, // engine/battle/strength.ts
   ARMY_COST_MASTER, // engine/army-tables.ts
   ARMY_SPEED_MASTER, // engine/army-tables.ts
   autoTurnTick, // ui/gm/auto-turn.ts
   backfillHomeRosters, // engine/world/tables.ts
-  battleFacing, // engine/battle/lines.ts
-  battleGrid, // engine/battle/lines.ts
   BOT_SKILL_BUILD, // engine/bots/setup.ts
   botBattleForce, // engine/bots/intel.ts
   buildGameMeta, // db/game-meta.ts
@@ -189,8 +173,6 @@ Object.assign(window, {
   loadTurnLog, // ui/gm/turn-log.ts
   migrateLairGuardiansV2, // engine/heroes/skills-and-hp.ts
   migrateLegacyUnitNames, // engine/army-tables.ts
-  missileDamageMult, // engine/battle/strength.ts
-  missileTargetPool, // engine/battle/strength.ts
   MONSTERS_P, // content/kingdoms-call-data.ts
   neutralDefBand, // engine/units/drill-and-spoils.ts
   pickLairNameP, // engine/names.ts
@@ -208,9 +190,6 @@ Object.assign(window, {
   renderTelemetryBanner, // db/game-meta.ts
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
   sb, // ui/gm/config.ts
-  shieldFortHolds, // engine/units/movement.ts
-  theWordsOfWhyAUnitFacesAsItDoes, // views/prose/the-words-of-a-battles-lines.ts
-  theWordsOfWhyAUnitStandsWhereItDoes, // views/prose/the-words-of-a-battles-lines.ts
   unitAbilityMult, // engine/battle/strength.ts
   unitTypeOf, // engine/rules-on-plain-values/unit-types-and-base-strength.ts
   writeGameRecord, // ui/gm/hall-of-fame.ts
