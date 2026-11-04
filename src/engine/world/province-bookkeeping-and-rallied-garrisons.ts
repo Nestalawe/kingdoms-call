@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { homeProvinceIdFor } from '../grand-design.ts';
 import { spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -11,6 +10,20 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { Army, Character, Province, Realm } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+
+// Its types (plan P1-10b32): each parameter typed from what its callers pass and as wide as the body's guards (plan
+// P1-10's Decision 2), so each guard stays.
+/** A province as a realm remembers it, as the code writes it: the name and colour of a realm its owner's index names
+ *  none of are left undefined, as JavaScript reads them. */
+type AProvinceAsItIsRemembered = Omit<NonNullable<Realm['_provMemory']>[string], 'ownerName' | 'ownerColor'> & {
+  ownerName: string | null | undefined;
+  ownerColor: string | null | undefined;
+};
+/** A hero a realm has seen, as its record holds him. */
+type AHeroAsARealmHasSeenHim = NonNullable<Realm['seenCharIntel']>[string];
 
 // ── PROVINCE BOOKKEEPING AND RALLIED GARRISONS (plan P1-08i1: lifted out of resolveTurn) ────
 // Once a contest ends, the garrison troops a defending hero rallied go home or stay with him (settleRalliedGarrisons).
@@ -27,29 +40,29 @@ import {
 // (they retreated at his side), so we simply drop the marker.
 // While the province is still contested (_battleUnresolved) the marker is left in place and the
 // unit keeps fighting as part of the hero's host.
-export function settleRalliedGarrisons(turnContext): void {
+export function settleRalliedGarrisons(turnContext: TurnContext): void {
   const { G } = turnContext;
-  const _returnedByProv = {}; // provId -> count, for a clean grouped log
-  (G.characters || []).forEach((c) => {
-    if (!c || !Array.isArray(c.armies) || c.armies.length === 0) return;
-    const marked = c.armies.filter((a) => a && a._garrisonOf != null);
+  const _returnedByProv: Partial<Record<string, number>> = {}; // provId -> count, for a clean grouped log
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+    if (!c || !Array.isArray(asItsGuardReadsIt(c.armies)) || c.armies.length === 0) return;
+    const marked = c.armies.filter((a: Army | null | undefined) => a?._garrisonOf != null);
     if (marked.length === 0) return;
     let changed = false;
-    marked.forEach((a) => {
+    for (const a of marked) {
       const homeId = a._garrisonOf;
-      const home = G.world.provinces[homeId];
+      const home = homeId === undefined ? undefined : G.world.provinces[homeId];
       if (!home) {
         delete a._garrisonOf;
         changed = true;
-        return;
+        continue;
       }
-      if (home._battleUnresolved) return; // still contested — fight on with the hero
+      if (home._battleUnresolved) continue; // still contested — fight on with the hero
       if (c.alive && c.location === homeId && home.owner === c.player) {
         // WON and held: the troops fall back into garrison duty in the province they defended.
         delete a._garrisonOf;
         c.armies = c.armies.filter((x) => x !== a);
-        home.garrisonArmies = (home.garrisonArmies || []).concat(a);
-        _returnedByProv[homeId] = (_returnedByProv[homeId] || 0) + 1;
+        home.garrisonArmies = (asItsGuardReadsIt(home.garrisonArmies) ?? []).concat(a);
+        _returnedByProv[homeId] = (_returnedByProv[homeId] ?? 0) + 1;
         changed = true;
       } else {
         // The hero left the province (retreated with them) or lost it — they stay in his host
@@ -57,13 +70,16 @@ export function settleRalliedGarrisons(turnContext): void {
         delete a._garrisonOf;
         changed = true;
       }
-    });
-    if (changed && typeof refreshMovePool === 'function') refreshMovePool(turnContext, c);
+    }
+    if (changed) refreshMovePool(turnContext, c);
   });
   Object.keys(_returnedByProv).forEach((pid) => {
-    const prov = G.world.provinces[pid];
+    // (a key the count above wrote by a province's id: the same number)
+    const prov = G.world.provinces[Number(pid)];
     if (!prov) return;
     const n = _returnedByProv[pid];
+    // (counted just above for every province it names)
+    if (n === undefined) throw new TypeError("a held province's returning troops are not counted");
     emit(turnContext, {
       type: 'combat',
       fact: {
@@ -79,9 +95,13 @@ export function settleRalliedGarrisons(turnContext): void {
   });
 }
 
-export const noteEntered = (turnContext, pi, provId): void => {
+export const noteEntered = (
+  turnContext: Pick<TurnContext, 'enteredThisPhase'>,
+  pi: number | null | undefined,
+  provId: number | null | undefined,
+): void => {
   if (pi == null || provId == null) return;
-  (turnContext.enteredThisPhase[pi] = turnContext.enteredThisPhase[pi] || new Set()).add(provId);
+  (turnContext.enteredThisPhase[pi] = turnContext.enteredThisPhase[pi] ?? new Set()).add(provId);
 };
 
 // ── province.characters is DERIVED STATE — rebuild it, never trust it ── Every province carries
@@ -99,21 +119,24 @@ export const noteEntered = (turnContext, pi, provId): void => {
 // Rather than patch each site (and wait for the next one to drift), `location` is now the single
 // source of truth and this pass rebuilds every array from it. Cheap, total, and it retires the
 // whole class of bug.
-export function reconcileProvinceCharacters(turnContext) {
+export function reconcileProvinceCharacters(turnContext: Pick<TurnContext, 'G'>) {
   const { G } = turnContext;
   // The DEAD are kept, at the location they fell. Nothing previously removed a corpse from this
   // array and one reader (the GM's province panel) lists ids without an alive check, so dropping
   // them here would quietly delete bodies from the map. Readers that want only the living already
   // filter for themselves.
-  const byProv = new Map();
-  (G.characters || []).forEach((c) => {
-    if (!c || c.location == null) return;
+  const byProv = new Map<number, number[]>();
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+    if (!c || asItsGuardReadsIt(c.location) == null) return;
     if (!byProv.has(c.location)) byProv.set(c.location, []);
-    byProv.get(c.location).push(c.id);
+    // (set just above for his province, if it wasn't)
+    const here = byProv.get(c.location);
+    if (!here) throw new TypeError("Cannot read properties of undefined (reading 'push')");
+    here.push(c.id);
   });
-  (G.world.provinces || []).forEach((pv) => {
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((pv: Province | null | undefined) => {
     if (!pv) return;
-    pv.characters = byProv.get(pv.id) || [];
+    pv.characters = byProv.get(pv.id) ?? [];
   });
 }
 
@@ -121,51 +144,54 @@ export function reconcileProvinceCharacters(turnContext) {
 // every province a player can currently see (owned, occupied, their neighbours, or spied that
 // phase) into player._provMemory. Latest observation wins, so the map shows phase-accurate "last
 // seen" info: a player only learns of changes made while they can actually see the province.
-export function updateProvinceMemory(turnContext, ph) {
+export function updateProvinceMemory(turnContext: TurnContext, ph: number) {
   const { G, turnLog, clairWatch } = turnContext;
   const cols = G.world.cols,
     rows = G.world.rows;
-  const spiedThisPhase = {}; // player index -> Set(provinceId)
+  const spiedThisPhase: Partial<Record<number, Set<number>>> = {}; // player index -> Set(provinceId)
   turnLog.forEach((e) => {
     if (e.spy && e.actor != null && e.provinceId != null && e.phase === ph) {
-      (spiedThisPhase[e.actor] = spiedThisPhase[e.actor] || new Set()).add(e.provinceId);
+      (spiedThisPhase[e.actor] = spiedThisPhase[e.actor] ?? new Set()).add(e.provinceId);
     }
   });
   G.players.forEach((pl, pi) => {
-    if (!pl._provMemory) pl._provMemory = {};
+    pl._provMemory ??= {};
     // Core: provinces this player owns or currently occupies.
-    const core = new Set();
-    (G.world.provinces || []).forEach((pv) => {
-      if (pv && pv.owner === pi) core.add(pv.id);
+    const core = new Set<number>();
+    (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((pv: Province | null | undefined) => {
+      if (pv?.owner === pi) core.add(pv.id);
     });
-    (G.characters || []).forEach((c) => {
-      if (c.player === pi && c.alive && c.location != null) core.add(c.location);
+    (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+      if (c.player === pi && c.alive && asItsGuardReadsIt(c.location) != null) core.add(c.location);
     });
     // Observed = core + their neighbours + anything spied this phase.
     const observed = new Set(core);
     core.forEach((pid) => {
       const pv = G.world.provinces[pid];
       if (!pv) return;
-      getNeighborsP(pv, cols, rows, G.world.provinces).forEach((n) => {
+      getNeighborsP(pv, cols, rows, G.world.provinces).forEach((n: Province | null | undefined) => {
         if (n) observed.add(n.id);
       });
     });
-    (spiedThisPhase[pi] || []).forEach((id) => observed.add(id));
+    const spiedHere: ReadonlySet<number> | readonly number[] = spiedThisPhase[pi] ?? [];
+    spiedHere.forEach((id: number) => observed.add(id));
     // CLAIRVOYANCE — from the cast phase on, the watched character's province is observed each
     // phase (so the map keeps the hex) and they are recorded as seen there (Clairvoyance can
     // re-target).
     {
       const _w = clairWatch[pi];
-      if (_w && _w.charId != null && ph >= (_w.fromPhase || 0)) {
-        const _wc = (G.characters || []).find((x) => x && x.id === _w.charId);
-        if (_wc && _wc.alive && _wc.location != null && _wc.player !== pi) {
+      if (_w && asItsGuardReadsIt(_w.charId) != null && ph >= (_w.fromPhase || 0)) {
+        const _wc = (asItsGuardReadsIt(G.characters) ?? []).find(
+          (x: Character | null | undefined) => x?.id === _w.charId,
+        );
+        if (_wc && _wc.alive && asItsGuardReadsIt(_wc.location) != null && _wc.player !== pi) {
           observed.add(_wc.location);
           const _wp = G.world.provinces[_wc.location];
-          if (!pl.seenCharIntel) pl.seenCharIntel = {};
+          pl.seenCharIntel ??= {};
           pl.seenCharIntel[_wc.id] = {
             id: _wc.id,
             name: _wc.name,
-            isKing: !!_wc.isKing,
+            isKing: _wc.isKing,
             race: _wc.race,
             alignment: _wc.alignment,
             player: _wc.player,
@@ -180,15 +206,16 @@ export function updateProvinceMemory(turnContext, ph) {
     // ── Character sightings ── Any living character standing in a province this player owns or
     // occupies right now is recorded into a persistent per-player intel record. Clairvoyance
     // targets "any character seen at any point in the game" — this is that record.
-    if (!pl.seenCharIntel) pl.seenCharIntel = {};
-    (G.characters || []).forEach((sc) => {
-      if (!sc.alive || sc.player === pi || sc.location == null) return;
+    pl.seenCharIntel ??= {};
+    const hisIntel = pl.seenCharIntel;
+    (asItsGuardReadsIt(G.characters) ?? []).forEach((sc) => {
+      if (!sc.alive || sc.player === pi || asItsGuardReadsIt(sc.location) == null) return;
       if (!core.has(sc.location)) return;
       const sp = G.world.provinces[sc.location];
-      pl.seenCharIntel[sc.id] = {
+      hisIntel[sc.id] = {
         id: sc.id,
         name: sc.name,
-        isKing: !!sc.isKing,
+        isKing: sc.isKing,
         race: sc.race,
         alignment: sc.alignment,
         player: sc.player,
@@ -204,24 +231,35 @@ export function updateProvinceMemory(turnContext, ph) {
     // is, by the realm's watchers in neighbouring owned provinces when the ordinary Spy contest
     // (spotEnemyInOwnedProvince) finds him. The best Spy among the spotters rolls for Spy, once per
     // lurker per turn.
-    (G.characters || []).forEach((sc) => {
-      if (!sc || !sc.alive || sc.player == null || sc.player === pi || sc.location == null) return;
-      if ((sc.armies || []).length > 0 || sc._invisTurn === G.turn || ((sc.skills || {}).spy || 0) < 1) return;
+    (asItsGuardReadsIt(G.characters) ?? []).forEach((sc: Character | null | undefined) => {
+      if (!sc || !sc.alive || sc.player == null || sc.player === pi || asItsGuardReadsIt(sc.location) == null) return;
+      if (
+        (asItsGuardReadsIt(sc.armies) ?? []).length > 0 ||
+        sc._invisTurn === G.turn ||
+        ((asItsGuardReadsIt(sc.skills)?.spy ?? 0) || 0) < 1
+      )
+        return;
       const sp = G.world.provinces[sc.location];
-      if (!sp || sp.owner !== pi || !areEnemies(turnContext, pi, sc.player)) return;
-      let watchers = (G.characters || []).filter((w) => w && w.alive && w.player === pi && w.location === sp.id);
+      if (sp?.owner !== pi || !areEnemies(turnContext, pi, sc.player)) return;
+      let watchers = (asItsGuardReadsIt(G.characters) ?? []).filter(
+        (w: Character | null | undefined) => w && w.alive && w.player === pi && w.location === sp.id,
+      );
       if (!watchers.length) {
         if (!spotEnemyInOwnedProvince(G, pi, sp, sc)) return;
         const _nb = new Set(
           getNeighborsP(sp, cols, rows, G.world.provinces)
-            .filter((n) => n && n.owner === pi)
+            .filter((n: Province | null | undefined) => n?.owner === pi)
             .map((n) => n.id),
         );
-        watchers = (G.characters || []).filter((w) => w && w.alive && w.player === pi && _nb.has(w.location));
+        watchers = (asItsGuardReadsIt(G.characters) ?? []).filter(
+          (w: Character | null | undefined) => w && w.alive && w.player === pi && _nb.has(w.location),
+        );
       }
       if (!watchers.length) return;
-      const best = watchers.reduce((a, b) => (((b.skills || {}).spy || 0) > ((a.skills || {}).spy || 0) ? b : a));
-      if (!best._spySpotted || best._spySpotted.turn !== G.turn) best._spySpotted = { turn: G.turn, ids: [] };
+      const best = watchers.reduce((a, b) =>
+        ((asItsGuardReadsIt(b.skills)?.spy ?? 0) || 0) > ((asItsGuardReadsIt(a.skills)?.spy ?? 0) || 0) ? b : a,
+      );
+      if (best._spySpotted?.turn !== G.turn) best._spySpotted = { turn: G.turn, ids: [] };
       if (best._spySpotted.ids.includes(sc.id)) return;
       best._spySpotted.ids.push(sc.id);
       const _prevCtx = turnContext._logCtx;
@@ -235,36 +273,38 @@ export function updateProvinceMemory(turnContext, ph) {
     // Provinces entered this phase — and their neighbours — even if the character was thrown back
     // out again. Marching in and being repelled still buys you the same look at the country that
     // walking in unopposed would have: you learn the province and what borders it.
-    (turnContext.enteredThisPhase[pi] || []).forEach((pid) => {
+    const enteredHere: ReadonlySet<number> | readonly number[] = turnContext.enteredThisPhase[pi] ?? [];
+    enteredHere.forEach((pid: number) => {
       observed.add(pid);
       const pv = G.world.provinces[pid];
       if (!pv) return;
-      getNeighborsP(pv, cols, rows, G.world.provinces).forEach((n) => {
+      getNeighborsP(pv, cols, rows, G.world.provinces).forEach((n: Province | null | undefined) => {
         if (n) observed.add(n.id);
       });
     });
     // Snapshot each observed province's current observable state (frozen at this phase).
+    const hisMemory: Partial<Record<string, AProvinceAsItIsRemembered>> = pl._provMemory;
     observed.forEach((pid) => {
       const pv = G.world.provinces[pid];
       if (!pv) return;
-      pl._provMemory[pid] = {
+      hisMemory[pid] = {
         turn: G.turn,
         phase: ph,
         name: pv.name,
         terrain: pv.terrain,
         race: pv.race,
         tax: pv.tax,
-        armyTypes: (pv.armyTypes || []).slice(),
+        armyTypes: (asItsGuardReadsIt(pv.armyTypes) ?? []).slice(),
         // Retain ritualSite (and guardian power) so a REMEMBERED province keeps its moon icon and
         // popup listing once discovered — a discovered ritual site must stay on the map from then
         // on, regardless of who later owns the ground.
-        features: (pv.features || [])
+        features: (asItsGuardReadsIt(pv.features) ?? [])
           .filter((f) => featDiscovered(f, pi))
           .map((f) => ({
             name: f.name,
-            cleared: !!f.cleared,
+            cleared: f.cleared,
             ritualSite: !!f.ritualSite,
-            power: (f.monster && f.monster.power) || '',
+            power: f.monster?.power ?? '',
           })),
         owner: pv.owner,
         ownerName: pv.owner != null ? G.players[pv.owner]?.name : null,
@@ -278,16 +318,16 @@ export function updateProvinceMemory(turnContext, ph) {
     // they own) or CHARACTER (recorded in seenCharIntel this phase) counts as encountering that
     // realm. Only encountered realms may be treated with. The set is persistent (part of G) and
     // grows.
-    if (!pl._encountered) pl._encountered = [];
-    const _meet = (otherPi) => {
+    if (!asItsGuardReadsIt(pl._encountered)) pl._encountered = [];
+    const _meet = (otherPi: number | null | undefined) => {
       if (otherPi != null && otherPi !== pi && !pl._encountered.includes(otherPi)) pl._encountered.push(otherPi);
     };
     observed.forEach((pid) => {
       const pv = G.world.provinces[pid];
-      if (pv && pv.owner != null) _meet(pv.owner);
+      if (pv?.owner != null) _meet(pv.owner);
     });
-    Object.values(pl.seenCharIntel || {}).forEach((ci) => {
-      if (ci && ci.player != null) _meet(ci.player);
+    Object.values(pl.seenCharIntel ?? {}).forEach((ci: AHeroAsARealmHasSeenHim | null | undefined) => {
+      if (ci?.player != null) _meet(ci.player);
     });
   });
 }
