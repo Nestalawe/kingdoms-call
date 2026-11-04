@@ -19,28 +19,8 @@ import {
   unitRef,
 } from '../../engine/army-tables.ts';
 import { rollUnitFates } from '../../engine/battle/fates.ts';
+import { battleFacedClauses, battleFacing, battleGrid } from '../../engine/battle/lines.ts';
 import {
-  BATTLE_FACING,
-  BATTLE_FRONT_RANGE,
-  battleDeploy,
-  battleFacedClauses,
-  battleFacing,
-  battleFrontWidth,
-  battleGrid,
-  battleGridLines,
-  battleLegal,
-  battleLineTotal,
-  battleMovesLine,
-  battleRole,
-  battleScout,
-  battleScoutLine,
-  battleWidthChoices,
-  battleWidthLine,
-  rollBattleWidth,
-} from '../../engine/battle/lines.ts';
-import {
-  battleFacingStage,
-  battleGridStage,
   disbandLine,
   theClauseOfWhomAUnitFaced,
   theWordsOfWhyAUnitFacesAsItDoes,
@@ -189,24 +169,9 @@ Object.assign(window, {
   ARMY_SPEED_MASTER, // engine/army-tables.ts
   autoTurnTick, // ui/gm/auto-turn.ts
   backfillHomeRosters, // engine/world/tables.ts
-  BATTLE_FACING, // engine/battle/lines.ts
-  BATTLE_FRONT_RANGE, // engine/battle/lines.ts
-  battleDeploy, // engine/battle/lines.ts
   battleFacedClauses, // engine/battle/lines.ts
   battleFacing, // engine/battle/lines.ts
-  battleFacingStage, // views/prose/the-words-of-a-battles-lines.ts
-  battleFrontWidth, // engine/battle/lines.ts
   battleGrid, // engine/battle/lines.ts
-  battleGridLines, // engine/battle/lines.ts
-  battleGridStage, // views/prose/the-words-of-a-battles-lines.ts
-  battleLegal, // engine/battle/lines.ts
-  battleLineTotal, // engine/battle/lines.ts
-  battleMovesLine, // engine/battle/lines.ts
-  battleRole, // engine/battle/lines.ts
-  battleScout, // engine/battle/lines.ts
-  battleScoutLine, // engine/battle/lines.ts
-  battleWidthChoices, // engine/battle/lines.ts
-  battleWidthLine, // engine/battle/lines.ts
   BOT_SKILL_BUILD, // engine/bots/setup.ts
   botBattleForce, // engine/bots/intel.ts
   buildGameMeta, // db/game-meta.ts
@@ -250,7 +215,6 @@ Object.assign(window, {
   renderLeaderboardBanner, // ui/gm/hall-of-fame.ts
   renderMessagingBanner, // db/game-meta.ts
   renderTelemetryBanner, // db/game-meta.ts
-  rollBattleWidth, // engine/battle/lines.ts
   rollUnitFates, // engine/battle/fates.ts
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
   sb, // ui/gm/config.ts

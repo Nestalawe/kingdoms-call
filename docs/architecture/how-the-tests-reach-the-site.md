@@ -79,6 +79,9 @@
     cleared), `aGuardMadeByTheTest`, `attackFrom`, then `aBattleAgainstTheProvince` (`combatVsNPC`) or
     `aBattleBetweenHeroes` (`combatVsChar`), whose lines come back in words (`theWordsOf`). The modules are imported
     once a file, so a world made after another in the same file has the same dice but the name pools moved on.
+  - **`lib/hand-made-battle-lines.ts`** (P1-14j) makes the rows a side brings to the battle grid (`rows`, `aRow`, a
+    table of strengths), places and faces two sides (`fight`), and feeds the width's roll planned dice that throw on
+    a draw past their plan (`plannedDice`, `withTheDice`): the grid's pure functions, with no world and no turn.
 - **`lib/source.ts`** is the one way a test reads the site's code: `src/`, by its syntax tree (TypeScript's
   parser), never by its lines or layout, so a reformat, the module switch or the `.ts` rename
   changes no answer. It gives a file's named declarations as one script (`sourceOf`, `sourceFrom`, `scriptOf`: `export`
