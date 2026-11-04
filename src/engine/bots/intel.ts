@@ -469,7 +469,9 @@ export function botFervourMult(G, c, armies, defending) {
   if (align === 'Good' && defending) m *= 1.1;
   return m;
 }
-export function botBattleForce(G, c, armies, terrain, opts) {
+// Its return type written for a typed caller (plan P1-10b32: drill-and-spoils.ts' bestNeutralMix): every path returns
+// a number.
+export function botBattleForce(G, c, armies, terrain, opts): number {
   opts = opts || {};
   const defending = !!opts.defending;
   armies = armies || (c ? c.armies : null) || [];
