@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
@@ -36,6 +35,28 @@ import { reportHeroFall } from './hero-death-and-leaderless-hosts.ts';
 import { combatVsChar } from '../battle/battles-between-heroes.ts';
 import { normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
 import { stepToward } from '../world/routes-and-distances.ts';
+import { aHeroOfARealm } from '../battle/hosts-gained-in-a-province.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { ArmyInABattle } from '../army-tables.ts';
+import type { Character, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext, TurnOrder } from '../turn/context.ts';
+
+/** A unit of a province's garrison as the chase's claim reads it: the realm whose hulls a naval retreat left ashore
+ *  there (the sea lift's mark), or none. */
+type AGarrisonUnitAsTheClaimReadsIt = ArmyInABattle & { readonly _navalHold?: number | null };
+/** Whether a hero lives, read again after the battle since the test that narrowed it (a battle may slay him): the
+ *  compiler keeps a test's narrowing across a call. */
+function whetherHeLivesNow(hero: Pick<Character, 'alive'>): boolean {
+  return hero.alive;
+}
+/** Whether a province's battle is unresolved, read again after the battle since the test that narrowed it (a battle
+ *  may leave it so): the compiler keeps a test's narrowing across a call. */
+function whetherItsBattleIsUnresolvedNow(prov: Pick<Province, '_battleUnresolved'>): boolean | undefined {
+  return prov._battleUnresolved;
+}
+/** The heroes' orders for the turn as the chase reads them while the turn runs (the saved state holds them cleared,
+ *  as nulls): by hero (or none), then by phase (or none). */
+type TheTurnsOrdersAsTheChaseReadsThem = Readonly<Partial<Record<string, readonly (TurnOrder | null | undefined)[]>>>;
 
 // ── PURSUITS AND THE CATCH ROLL (plan P1-08i3: lifted out of resolveTurn) ────
 // A hero on a Pursue or Encounter Character order chases his quarry from province to province for the rest of the
@@ -65,7 +86,7 @@ export const ENC_BREAK_RANKS_BASE = 60,
 // twice as easy to corner.) The roll is only ever made once the two
 // stand in the same province (advancePursuit), so the old divide-by-distance was dead code.
 // Clamped 5–100. A friendly quarry is always caught (a rendezvous, not a hunt).
-export function pursuitCatchChance(turnContext, c, quarry) {
+export function pursuitCatchChance(turnContext: Pick<TurnContext, 'G'>, c: Character, quarry: Character): number {
   if (quarry.player != null && quarry.player === c.player) return 100;
   const spy = effStat(turnContext, c, 'spy'),
     qSpy = effStat(turnContext, quarry, 'spy');
@@ -73,15 +94,17 @@ export function pursuitCatchChance(turnContext, c, quarry) {
   return Math.max(5, Math.min(100, dispFloor(pct)));
 }
 
-export function endPursuit(c) {
+export function endPursuit(c: Pick<Character, '_pursuit'>): void {
   if (c._pursuit) c._pursuit.active = false;
 }
 
-export function advancePursuit(turnContext, c, ph) {
+export function advancePursuit(turnContext: TurnContext, c: Character, ph: number): void {
   const { G, fieldBattlePhase, seaMovePoints, movePoints } = turnContext;
   const p = c._pursuit;
-  if (!p || !p.active) return;
-  const quarry = (G.characters || []).find((x) => x && x.id === p.targetId);
+  if (!p?.active) return;
+  const quarry = (asItsGuardReadsIt(G.characters) ?? []).find(
+    (x: Character | null | undefined) => x?.id === p.targetId,
+  );
   const here = G.world.provinces[c.location];
   // R-119: a quarry whose Invisibility holds is beyond catching too, and the line names no one
   if (!quarry || !quarry.alive || isHiddenByInvisibilityFrom(turnContext, quarry, c.player)) {
@@ -101,8 +124,8 @@ export function advancePursuit(turnContext, c, ph) {
   // the meeting resolves depends on arms at the moment of the catch (below): both leading columns
   // fight a battle; otherwise it is a personal duel, and a quarry still at the head of a column
   // refuses to break ranks for it.
-  const meArmed = (c.armies || []).length > 0,
-    themArmed = (quarry.armies || []).length > 0;
+  const meArmed = (asItsGuardReadsIt(c.armies) ?? []).length > 0,
+    themArmed = (asItsGuardReadsIt(quarry.armies) ?? []).length > 0;
   if (isHiddenChar(turnContext, quarry) && quarry.player !== c.player) {
     emit(turnContext, {
       type: 'move',
@@ -143,10 +166,7 @@ export function advancePursuit(turnContext, c, ph) {
   // 2026-10-08 (Toby item 7): …or who has fought ANY battle this phase. A chaser whose quarry turned
   // and attacked him first (the quarry acts before his hunter) had defended a province, won, and
   // then rode straight after the beaten foe into a second battle in the same phase.
-  if (
-    meArmed &&
-    (c._foughtStalledBattlePhase === ph || fieldBattlePhase[c.id] === ph || (here && here._battleUnresolved))
-  ) {
+  if (meArmed && (c._foughtStalledBattlePhase === ph || fieldBattlePhase[c.id] === ph || here?._battleUnresolved)) {
     emit(turnContext, {
       type: 'move',
       fact: {
@@ -165,7 +185,7 @@ export function advancePursuit(turnContext, c, ph) {
 
   // Not yet co-located: close one province along a legal route.
   if (c.location !== quarry.location) {
-    const usingSea = (G.world.provinces[c.location] || {}).terrain === 'sea';
+    const usingSea = G.world.provinces[c.location]?.terrain === 'sea';
     const pool = usingSea ? seaMovePoints : movePoints;
     if ((pool[c.id] ?? 0) <= 0 && (movePoints[c.id] ?? 0) <= 0 && (seaMovePoints[c.id] ?? 0) <= 0) {
       emit(turnContext, {
@@ -210,7 +230,7 @@ export function advancePursuit(turnContext, c, ph) {
         endPursuit(c);
         return;
       }
-      seaMovePoints[c.id]--;
+      seaMovePoints[c.id] = Number(seaMovePoints[c.id]) - 1;
     } else {
       if ((movePoints[c.id] ?? 0) <= 0) {
         emit(turnContext, {
@@ -224,16 +244,18 @@ export function advancePursuit(turnContext, c, ph) {
         endPursuit(c);
         return;
       }
-      movePoints[c.id]--;
+      movePoints[c.id] = Number(movePoints[c.id]) - 1;
     }
-    if (here) here.characters = (here.characters || []).filter((id) => id !== c.id);
-    step.characters = step.characters || [];
+    if (here) here.characters = (asItsGuardReadsIt(here.characters) ?? []).filter((id) => id !== c.id);
+    step.characters = asItsGuardReadsIt(step.characters) ?? [];
     if (!step.characters.includes(c.id)) step.characters.push(c.id);
     c.location = step.id;
     c.locationName = step.name;
-    if (!step.visitedBy) step.visitedBy = [];
-    if (!step.visitedBy.includes(c.player)) step.visitedBy.push(c.player);
-    if ((c.armies || []).length > 0 && !toSea) trySkillGain(turnContext, c, 'march', SKILLGAIN_COMMON);
+    step.visitedBy = asItsGuardReadsIt(step.visitedBy) ?? [];
+    const theRealmsThatVisited: (number | null)[] = step.visitedBy; // the chaser's realm, as his type allows none
+    if (!theRealmsThatVisited.includes(c.player)) theRealmsThatVisited.push(c.player);
+    if ((asItsGuardReadsIt(c.armies) ?? []).length > 0 && !toSea)
+      trySkillGain(turnContext, c, 'march', SKILLGAIN_COMMON);
     if (toSea) rollNavalVoyage(turnContext, c, SKILLGAIN_COMMON); // a voyage trains Naval only for a hero leading ships (batch item 9)
     trySkillGain(turnContext, c, 'spy', SKILLGAIN_STD); // AK [3.19]: Spy/Trail/Pursue trains Spy
     if (c.location !== quarry.location) {
@@ -283,13 +305,16 @@ export function advancePursuit(turnContext, c, ph) {
       heroName: c.name,
       spy: effStat(turnContext, c, 'spy'),
       quarryName: quarry.name,
-      quarrysSpy: theStatShownAsALineTellsIt(turnContext, c.player, quarry, 'spy'),
+      quarrysSpy: theStatShownAsALineTellsIt(turnContext, c.player, quarry, 'spy', undefined),
       odds: theOddsShownAsALineTellsIt(turnContext, c.player, quarry, chance, roll),
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
   });
+  // the province he stands in, where his quarry stands too (a hero's location is a province: never none); for none,
+  // the TypeError the first read of its name threw
+  if (!prov) throw new TypeError("Cannot read properties of undefined (reading 'name')");
   if (roll > chance) {
     emit(turnContext, {
       type: 'move',
@@ -336,8 +361,8 @@ export function advancePursuit(turnContext, c, ph) {
         heroName: c.name,
         quarryName: quarry.name,
         provinceName: prov.name,
-        quarrysRealmName: G.players[quarry.player]?.name || null,
-        chasersRealmName: G.players[c.player]?.name || null,
+        quarrysRealmName: (G.players[quarry.player]?.name ?? '') || null,
+        chasersRealmName: ((c.player === null ? undefined : G.players[c.player])?.name ?? '') || null,
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -369,16 +394,22 @@ export function advancePursuit(turnContext, c, ph) {
     }
     // Both lead armies: "the pursuing character will attempt to run him down and defeat him in
     // battle." Defenders in the province unify behind the quarry as in any other battle.
-    const defReinf = (G.characters || []).filter(
+    const defReinf = (asItsGuardReadsIt(G.characters) ?? []).filter(
       (d) =>
         d.alive &&
         d.id !== quarry.id &&
         d.player === quarry.player &&
         d.location === prov.id &&
-        (d.armies || []).length > 0,
+        (asItsGuardReadsIt(d.armies) ?? []).length > 0,
     );
-    const combinedAtk = { ...c, armies: [...(c.armies || [])] };
-    const combinedDef = { ...quarry, armies: [...(quarry.armies || []), ...defReinf.flatMap((d) => d.armies || [])] };
+    const combinedAtk = { ...c, armies: [...(asItsGuardReadsIt(c.armies) ?? [])] };
+    const combinedDef = {
+      ...quarry,
+      armies: [
+        ...(asItsGuardReadsIt(quarry.armies) ?? []),
+        ...defReinf.flatMap((d) => asItsGuardReadsIt(d.armies) ?? []),
+      ],
+    };
     const targetsPi = [c.player, quarry.player].filter((x) => x != null);
     emit(turnContext, {
       type: 'combat',
@@ -403,9 +434,9 @@ export function advancePursuit(turnContext, c, ph) {
     }); // their one battle for the phase
     emitBattle(turnContext, battle, prov, ph, targetsPi, { actor: c.player, charIds: [c.id, quarry.id] }); // into both combatants' sections
     // Write casualties back from the pooled copies to the real characters.
-    c.armies = (c.armies || []).filter((a) => !a._died && !a._disbanded);
+    c.armies = (asItsGuardReadsIt(c.armies) ?? []).filter((a: ArmyInABattle) => !a._died && !a._disbanded);
     [quarry, ...defReinf].forEach((d) => {
-      d.armies = (d.armies || []).filter((a) => !a._died && !a._disbanded);
+      d.armies = (asItsGuardReadsIt(d.armies) ?? []).filter((a: ArmyInABattle) => !a._died && !a._disbanded);
     });
     if (c.alive && combinedAtk.location !== c.location) {
       c.location = combinedAtk.location;
@@ -414,18 +445,18 @@ export function advancePursuit(turnContext, c, ph) {
     } // a slain pursuer stays where they fell
     if (combinedDef.location !== quarry.location) {
       const np = G.world.provinces[combinedDef.location];
-      if (quarry.alive) {
+      if (whetherHeLivesNow(quarry)) {
         quarry.location = combinedDef.location;
         if (np) quarry.locationName = np.name;
       } // a slain quarry stays where they fell
       // The quarry's unified defenders rout with them rather than being left behind alone.
       if (np) {
-        if (!np.characters) np.characters = [];
+        np.characters = asItsGuardReadsIt(np.characters) ?? [];
         defReinf.forEach((d) => {
           if (!d.alive) {
             return;
           } // dead reinforcements do not rout
-          prov.characters = (prov.characters || []).filter((id) => id !== d.id);
+          prov.characters = (asItsGuardReadsIt(prov.characters) ?? []).filter((id) => id !== d.id);
           if (!np.characters.includes(d.id)) np.characters.push(d.id);
           d.location = np.id;
           d.locationName = np.name;
@@ -441,21 +472,20 @@ export function advancePursuit(turnContext, c, ph) {
     // province's own garrison (which did not fight in the chase) keep it contested, and the fight
     // for it resumes next phase.
     if (
-      battle &&
       battle.won &&
       c.alive &&
       c.location === prov.id &&
-      !prov._battleUnresolved &&
+      !whetherItsBattleIsUnresolvedNow(prov) &&
       prov.owner !== c.player &&
       (prov.owner == null || areEnemies(turnContext, c.player, prov.owner)) &&
-      !(prov.owner == null && (prov.neutralDefenders || []).length)
+      !(prov.owner == null && (asItsGuardReadsIt(prov.neutralDefenders) ?? []).length)
     ) {
-      const _hostileLeft = (G.characters || []).some(
-        (ch) =>
-          ch &&
+      const _hostileLeft = (asItsGuardReadsIt(G.characters) ?? []).some(
+        (ch: Character | null | undefined) =>
+          !!ch &&
           (ch.alive || ch._leaderlessHost) &&
           ch.location === prov.id &&
-          (ch.armies || []).length > 0 &&
+          (asItsGuardReadsIt(ch.armies) ?? []).length > 0 &&
           ch.player != null &&
           ch.player !== c.player &&
           areEnemies(turnContext, c.player, ch.player),
@@ -463,7 +493,10 @@ export function advancePursuit(turnContext, c, ph) {
       const _hulls = navalHeldIn(prov, c.player);
       const _garrison =
         prov.owner != null &&
-        (prov.garrisonArmies || []).some((a) => a && !a._died && !a._disbanded && a._navalHold == null);
+        (asItsGuardReadsIt(prov.garrisonArmies) ?? []).some(
+          (a: AGarrisonUnitAsTheClaimReadsIt | null | undefined) =>
+            !!a && !a._died && !a._disbanded && a._navalHold == null,
+        );
       if (_hostileLeft || _hulls.length || _garrison) {
         prov._battleUnresolved = true;
         emit(turnContext, {
@@ -482,17 +515,22 @@ export function advancePursuit(turnContext, c, ph) {
         if (!_hostileLeft && _hulls.length)
           emit(turnContext, {
             type: 'combat',
-            fact: navalHoldLine(turnContext, prov, _hulls, G.players[c.player]?.name || null),
+            fact: navalHoldLine(
+              turnContext,
+              prov,
+              _hulls,
+              ((c.player === null ? undefined : G.players[c.player])?.name ?? '') || null,
+            ),
             audience: { actor: c.player, realms: targetsPi, seen: 'battle' },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
             province: prov.id,
           });
       } else {
-        const _wp = G.players[c.player];
+        const _wp = c.player === null ? undefined : G.players[c.player];
         G.players.forEach((p, pi) => {
           if (pi !== c.player) {
-            const i = (p.provinces || []).indexOf(prov.id);
+            const i = (asItsGuardReadsIt(p.provinces) ?? []).indexOf(prov.id);
             if (i > -1) p.provinces.splice(i, 1);
           }
         });
@@ -511,7 +549,7 @@ export function advancePursuit(turnContext, c, ph) {
           phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           province: prov.id,
         });
-        if (_wp) applyEvilConquest(turnContext, c, prov, _wp);
+        if (_wp && aHeroOfARealm(c)) applyEvilConquest(turnContext, c, prov, _wp);
       }
     }
     clearNavalHold(prov);
@@ -529,7 +567,9 @@ export function advancePursuit(turnContext, c, ph) {
     // turn the challenger away, the chase ends (no free re-roll next phase) and the quarry's realm
     // is told who came for him. Kings are unchanged — the crown-only rules still apply after this.
     if (themArmed) {
-      const _units = (quarry.armies || []).filter((a) => a && !a._died && !a._disbanded && !a._phantom).length;
+      const _units = (asItsGuardReadsIt(quarry.armies) ?? []).filter(
+        (a: ArmyInABattle | null | undefined) => !!a && !a._died && !a._disbanded && !a._phantom,
+      ).length;
       const _spy = effStat(turnContext, c, 'spy'),
         _tac = effStat(turnContext, quarry, 'tactical');
       const _pct = Math.max(
@@ -551,7 +591,7 @@ export function advancePursuit(turnContext, c, ph) {
           spy: _spy,
           quarryName: quarry.name,
           unitCount: _units,
-          quarrysTactical: theStatShownAsALineTellsIt(turnContext, c.player, quarry, 'tactical'),
+          quarrysTactical: theStatShownAsALineTellsIt(turnContext, c.player, quarry, 'tactical', undefined),
           odds: theOddsShownAsALineTellsIt(turnContext, c.player, quarry, _pct, _roll),
         },
         audience: { actor: c.player, realms: [c.player] },
@@ -612,8 +652,9 @@ export function advancePursuit(turnContext, c, ph) {
     // his king" report: the chase resolved, then silently ended in "the King rides on".
     // 2026-09-21: king-on-king now goes to the duel; only a commoner is refused.
     if (quarry.isKing && !c.isKing) {
-      const _their = (G.turnOrders[quarry.id] || [])[ph];
-      const _mutual = normaliseAction(_their) === 'encounter' && parseInt(_their && _their.target) === c.id;
+      const turnOrders: TheTurnsOrdersAsTheChaseReadsThem = G.turnOrders;
+      const _their = (turnOrders[quarry.id] ?? [])[ph];
+      const _mutual = normaliseAction(_their) === 'encounter' && parseInt(String(_their?.target)) === c.id;
       if (!_mutual) {
         emit(turnContext, {
           type: 'system',
@@ -634,9 +675,10 @@ export function advancePursuit(turnContext, c, ph) {
       }
     }
     const COMBAT_ONLY = COMBAT_ONLY_TACTICS;
-    const filterPlan = (plan) =>
-      ((plan && plan.tactics) || ['ME']).filter(
-        (t) => COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase()) || String(t).toUpperCase().startsWith('CA:'),
+    const filterPlan = (plan: Character['encounterPlan']) =>
+      (plan?.tactics ?? ['ME']).filter(
+        // split gives at least one piece: `?? ''` never holds
+        (t) => COMBAT_ONLY.has((t.split(':')[0] ?? '').toUpperCase()) || t.toUpperCase().startsWith('CA:'),
       );
     ensureEncounterPlan(turnContext, quarry);
     const atkPlan = filterPlan(c.encounterPlan);
@@ -667,11 +709,11 @@ export function advancePursuit(turnContext, c, ph) {
       atkPlan,
       defPlan,
       prov,
-      (...a) => effStat(turnContext, ...a),
+      (...a: [hero: Parameters<typeof effStat>[1], stat: string]) => effStat(turnContext, ...a),
       rng,
       G,
     );
-    enc.narrative.forEach((line) =>
+    enc.narrative.forEach((line) => {
       emitNarrLine(turnContext, line, {
         type: 'combat',
         audience: { actor: c.player, realms: targetsPi },
@@ -679,8 +721,8 @@ export function advancePursuit(turnContext, c, ph) {
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
         heroes: _duelChars,
-      }),
-    );
+      });
+    });
     // a hero beaten to 0 HP in the duel DIES outright — the old "capitulates and survives at 1
     // HP" reprieve is gone. atkKilled/defKilled still cover the explicit-slaying path; the hp<=0
     // checks catch every other felling.
@@ -688,7 +730,8 @@ export function advancePursuit(turnContext, c, ph) {
     if (quarry.player !== null) quarry.hp = Math.max(1, enc.defHp);
     if (enc.atkKilled || enc.atkHp <= 0) {
       if (_escapesTheEnd(c)) {
-        if (c.hp != null && c.hp <= 0) c.hp = 1;
+        const theChasersHp = asItsGuardReadsIt(c.hp);
+        if (theChasersHp != null && theChasersHp <= 0) c.hp = 1;
         emit(turnContext, {
           type: 'combat',
           fact: _garrethEscapeLine(c),
@@ -722,7 +765,8 @@ export function advancePursuit(turnContext, c, ph) {
     }
     if (enc.defKilled || enc.defHp <= 0) {
       if (_escapesTheEnd(quarry)) {
-        if (quarry.hp != null && quarry.hp <= 0) quarry.hp = 1;
+        const theQuarrysHp = asItsGuardReadsIt(quarry.hp);
+        if (theQuarrysHp != null && theQuarrysHp <= 0) quarry.hp = 1;
         emit(turnContext, {
           type: 'combat',
           fact: _garrethEscapeLine(quarry),
