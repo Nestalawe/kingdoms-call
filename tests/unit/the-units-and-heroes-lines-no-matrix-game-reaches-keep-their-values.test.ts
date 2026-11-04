@@ -577,31 +577,30 @@ describe("a hero's death: Battlefield Surgery's lines, who slew him, and who tak
     expect(line?.['slainBy']).toBeNull();
   });
 
-  /** Seren, carrying a blade, slain by the killer given: who carries the blade after, and the lines' kinds and phases
+  /** Seren, carrying a blade, slain by the killer given: whether he carries the blade after, and which of the world's
+   *  heroes do; and the lines' kinds and phases
    *  (between orders, in the phase resolving, 3). */
   const theBladeAfter = (S: ReturnType<typeof aStagedWorld>, killer: Record<string, unknown>) => {
     const blade = { id: 77, name: 'the Wolf-Tooth Blade', desc: '', lore: '', effect: { stat: 'melee', bonus: 1 } };
     const seren = serenOf(S, { items: [blade] });
     Object.assign(S.tc, { _logCtx: { charId: null, phase: null }, _currentPhase: 3 });
     handleHeroDeath(S.tc as never, seren as never, killer as never, {});
-    const carrier = [killer, ...S.G.characters].find((c) =>
-      ((c['items'] as unknown[] | undefined) ?? []).includes(blade),
-    );
+    const carries = (c: Record<string, unknown>) => ((c['items'] as unknown[] | undefined) ?? []).includes(blade);
     return [
-      carrier?.['name'],
+      [carries(killer), S.G.characters.filter(carries).map((c) => c.name)],
       S.tc.turnLog
         .filter((l) => (l['fact'] as { kind: string }).kind.includes('possessions'))
         .map((l) => [(l['fact'] as { kind: string }).kind, l['phase']]),
     ];
   };
 
-  test("a slayer the world doesn't hold takes the blade himself; one with no id too", () => {
+  test("a slayer the world doesn't hold takes the blade himself, no hero of the world; one with no id too", () => {
     const S = aStagedWorld();
     const stranger = { ...aStandIn(), player: null, items: [] };
     const nameless = { ...aStandIn(), id: undefined, player: null, name: 'the Nameless', items: [] };
     expect([theBladeAfter(S, stranger)[0], theBladeAfter(aStagedWorld(), nameless)[0]]).toEqual([
-      'Wend the Stranger',
-      'the Nameless',
+      [true, []],
+      [true, []],
     ]);
   });
 
@@ -610,7 +609,7 @@ describe("a hero's death: Battlefield Surgery's lines, who slew him, and who tak
     const wodan = S.G.characters.find((c) => c.id === 4);
     if (!wodan) throw new Error('the world has no Wodan');
     expect(theBladeAfter(S, wodan)).toEqual([
-      wodan.name,
+      [true, [wodan.name]],
       [
         ["a fallen hero's possessions pass on", 3],
         ["a hero takes a fallen foe's possessions", 3],
@@ -706,7 +705,7 @@ describe('a retreat by sea: the water a landing came from, a fleet that leaves u
   });
 
   test('hulls left ashore with no units: the line names no holder; a list missing reads as none', () => {
-    const { S, landing, seren } = aBeatenLanding(false, null, []);
+    const { S, landing, seren, water } = aBeatenLanding(false, null, []);
     const side = { label: 'Seren' };
     clearNavalHold(undefined); // (no province: nothing to clear, and no throw)
     expect({
@@ -733,7 +732,7 @@ describe('a retreat by sea: the water a landing came from, a fleet that leaves u
       ),
       held: navalHeldIn(undefined),
       split: navalSplitRetreat(S.tc as never, seren as never, landing as never, undefined, [], side as never),
-      trapped: seaTrapLine(side as never, seren as never, landing as never, undefined),
+      trapped: seaTrapLine(side as never, seren as never, water as never, undefined),
     }).toEqual({
       noHolder: null,
       holder: S.G.players[1]?.name,
