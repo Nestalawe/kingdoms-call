@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
 import { whatAMarchsOrderNames } from '../rules-on-plain-values/what-a-marchs-order-names.ts';
 import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
@@ -10,8 +9,36 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from './events-and-their-audiences.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
-import type { Province } from '../../schemas/saved-game-state.ts';
+import type { HeroInABattle } from '../army-tables.ts';
+import type { Character, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext, TurnOrder } from './context.ts';
+
+/** What a hero acting this phase intends (buildPhaseIntents): his order and its kind, whether he leads a column, his
+ *  initiative, where he stands and where a march takes him; the interlocks and the reinforcements cancel it, saying
+ *  why. */
+export interface APhaseIntent {
+  readonly c: Character;
+  readonly id: Character['id'];
+  readonly player: Character['player'];
+  readonly order: TurnOrder | null;
+  readonly action: string;
+  readonly leadsArmy: boolean;
+  readonly init: number;
+  readonly fromId: Character['location'];
+  readonly toId: Province['id'] | null;
+  readonly dest: Province | null | undefined;
+  cancelled: boolean;
+  cancelReason: string | null;
+}
+/** The phase's intents, by hero. */
+export type ThePhasesIntents = ReadonlyMap<number, APhaseIntent>;
+/** The heroes' orders for the turn as the pipeline reads them while the turn runs (the saved state holds them
+ *  cleared, as nulls): by hero (or none), then by phase (or none). */
+type TheTurnsOrdersAsThePipelineReadsThem = Readonly<
+  Partial<Record<string, readonly (TurnOrder | null | undefined)[]>>
+>;
 
 // ── THE PHASE PIPELINE: INTENTS, DEPENDENCY ORDERING, MOVEMENT INTERLOCKS (plan P1-08i1: lifted out of resolveTurn) ────
 // Before anyone acts in a phase: what every acting character intends to do (buildPhaseIntents), the order they act in
@@ -193,7 +220,11 @@ export const PHASE_ACTION_MAP = {
 } satisfies Record<string, OrderKind>;
 
 // Resolve a move order's destination WITHOUT moving anybody.
-export function intendedDestination(turnContext, c, order): Province | null | undefined {
+export function intendedDestination(
+  turnContext: TurnContext,
+  c: Character,
+  order: Pick<TurnOrder, 'target'> | null | undefined,
+): Province | null | undefined {
   const { G } = turnContext;
   if (!order) return null;
   const t = order.target || '';
@@ -205,21 +236,21 @@ export function intendedDestination(turnContext, c, order): Province | null | un
   // it (mirrors the move case so phase intents / interceptions see where the column will actually go).
   const want = G.world.provinces[named.provinceId];
   if (!want || want.id === from.id) return null;
-  if (getNeighborsP(from, G.world.cols, G.world.rows, G.world.provinces).some((n) => n && n.id === want.id))
-    return want;
+  if (getNeighborsP(from, G.world.cols, G.world.rows, G.world.provinces).some((n) => n.id === want.id)) return want;
   return stepTowardPreferSafe(turnContext, c, want.id);
 }
 
 // (a key Object's prototype holds, such as `constructor`, gives its value: no order's action is one)
-export function normaliseAction(order): string {
-  const raw = ((order && order.action) || 'defend').toLowerCase().trim();
-  return PHASE_ACTION_MAP[raw] || 'defend';
+export function normaliseAction(order: { readonly action?: string | null | undefined } | null | undefined): string {
+  const raw = ((order?.action ?? '') || 'defend').toLowerCase().trim();
+  const theKindByName: Readonly<Partial<Record<string, string>>> = PHASE_ACTION_MAP;
+  return (theKindByName[raw] ?? '') || 'defend';
 }
 
 // Characters who may act this phase (hired heroes only become active the phase AFTER hiring).
-export function actingThisPhase(turnContext, ph) {
+export function actingThisPhase(turnContext: Pick<TurnContext, 'G'>, ph: number): Character[] {
   const { G } = turnContext;
-  return (G.characters || []).filter((c) => {
+  return (asItsGuardReadsIt(G.characters) ?? []).filter((c: HeroInABattle) => {
     if (c.player === null || !c.alive) return false;
     if (c.hiredInPhase != null && c.hiredInPhase >= 0 && ph <= c.hiredInPhase) return false;
     // A charmed ENEMY hero is under your banner (c.player already swapped) but must not act on
@@ -230,13 +261,14 @@ export function actingThisPhase(turnContext, ph) {
   });
 }
 
-export function buildPhaseIntents(turnContext, ph) {
+export function buildPhaseIntents(turnContext: TurnContext, ph: number): Map<number, APhaseIntent> {
   const { G } = turnContext;
-  const intents = new Map();
+  const intents = new Map<number, APhaseIntent>();
+  const turnOrders: TheTurnsOrdersAsThePipelineReadsThem = G.turnOrders;
   actingThisPhase(turnContext, ph).forEach((c) => {
-    const order = (G.turnOrders[c.id] || [])[ph] || null;
+    const order = (turnOrders[c.id] ?? [])[ph] ?? null;
     const action = normaliseAction(order);
-    const leadsArmy = (c.armies || []).length > 0;
+    const leadsArmy = (asItsGuardReadsIt(c.armies) ?? []).length > 0;
     const dest = action === 'move' ? intendedDestination(turnContext, c, order) : null;
     intents.set(c.id, {
       c,
@@ -257,7 +289,10 @@ export function buildPhaseIntents(turnContext, ph) {
 }
 
 // Does this intent amount to an armed attack on a province held by another player?
-export function isHostileInvasion(turnContext, it) {
+export function isHostileInvasion(
+  turnContext: Pick<TurnContext, 'G' | 'seaMovePoints' | 'movePoints'>,
+  it: APhaseIntent | null | undefined,
+): boolean {
   const { G, seaMovePoints, movePoints } = turnContext;
   if (!it || it.cancelled || it.action !== 'move' || !it.leadsArmy || !it.dest) return false;
   const d = it.dest;
@@ -269,7 +304,7 @@ export function isHostileInvasion(turnContext, it) {
   {
     const from = G.world.provinces[it.fromId];
     const bySea = d.terrain === 'sea' || (!!from && from.terrain === 'sea');
-    const pool = bySea ? seaMovePoints[it.id] : movePoints[it.id];
+    const pool = asItsGuardReadsIt(bySea ? seaMovePoints[it.id] : movePoints[it.id]);
     if (pool !== undefined && pool !== null && pool <= 0) return false;
   }
   // DIPLOMACY: an invasion is hostile only if the mover is at WAR with the province's owner.
@@ -277,11 +312,11 @@ export function isHostileInvasion(turnContext, it) {
   // an invasion — it must not pin defenders or trigger Defend reactions.
   if (d.owner != null && d.owner !== it.player && areEnemies(turnContext, it.player, d.owner)) return true;
   // An armed ENEMY force standing in the province is an invasion even if the land is unowned.
-  return (G.characters || []).some(
+  return (asItsGuardReadsIt(G.characters) ?? []).some(
     (o) =>
       o.alive &&
       o.location === d.id &&
-      (o.armies || []).length > 0 &&
+      (asItsGuardReadsIt(o.armies) ?? []).length > 0 &&
       o.player != null &&
       o.player !== it.player &&
       areEnemies(turnContext, it.player, o.player),
@@ -290,14 +325,18 @@ export function isHostileInvasion(turnContext, it) {
 
 // ── Dependency ordering (AK [3.0] exceptions) ────
 // Returns [charId_before, charId_after] pairs meaning "before" must be processed first.
-export function phaseDependencies(turnContext, ph, intents) {
+export function phaseDependencies(
+  turnContext: Pick<TurnContext, 'G'>,
+  ph: number,
+  intents: ThePhasesIntents,
+): [before: number, after: number][] {
   const { G } = turnContext;
-  const edges = [];
+  const edges: [before: number, after: number][] = [];
   const list = [...intents.values()];
-  const byId = (id) => intents.get(id);
+  const byId = (id: number) => intents.get(id);
 
   list.forEach((it) => {
-    const { c, order, action } = it;
+    const { order, action } = it;
     if (!order) return;
     const tgtId = parseInt(order.target);
     const tgt = isNaN(tgtId) ? null : byId(tgtId);
@@ -307,7 +346,7 @@ export function phaseDependencies(turnContext, ph, intents) {
     // EXCEPTION: if that ally is marching INTO this province this phase, rule (c) below
     // applies instead and the ally arrives first — emitting both edges would make a cycle,
     // and Kahn's algorithm would then fall back to plain initiative and honour neither.
-    const tgtArrivingHere = (t) => !!t && t.action === 'move' && t.toId === it.fromId;
+    const tgtArrivingHere = (t: APhaseIntent | null | undefined) => !!t && t.action === 'move' && t.toId === it.fromId;
     // 2026-09-23: the RECIPIENT of Send Item / Transfer Army is in `extra` (the target holds item
     // indices / unit names). Reading `target` here linked the sender to whichever character's id
     // matched the first item index, and never to the real recipient.
@@ -318,13 +357,13 @@ export function phaseDependencies(turnContext, ph, intents) {
             return r ? byId(r.id) : null;
           })()
         : null;
-    if (_rcp && _rcp.player === it.player && _rcp.id !== it.id && !tgtArrivingHere(_rcp)) {
+    if (_rcp?.player === it.player && _rcp.id !== it.id && !tgtArrivingHere(_rcp)) {
       edges.push([it.id, _rcp.id]);
     }
     if (action === 'cast_spell') {
       const spellTargetId = parseInt(order.extra);
       const st = isNaN(spellTargetId) ? null : byId(spellTargetId);
-      if (st && st.player === it.player && st.id !== it.id && !tgtArrivingHere(st)) edges.push([it.id, st.id]);
+      if (st?.player === it.player && st.id !== it.id && !tgtArrivingHere(st)) edges.push([it.id, st.id]);
     }
     // (b) Pick Up waits for anyone Leaving armies in the same province this phase.
     if (action === 'pickup_army') {
@@ -337,19 +376,20 @@ export function phaseDependencies(turnContext, ph, intents) {
     }
     // (c) A character MOVING IN to a province where an ally intends to hand him something
     // arrives first — the ally waits for him (AK [3.0]).
-    if (action === 'move' && it.dest) {
+    const itsDest = it.dest;
+    if (action === 'move' && itsDest) {
       list.forEach((other) => {
         if (other.id === it.id || other.player !== it.player) return;
-        if (other.fromId !== it.dest.id) return;
+        if (other.fromId !== itsDest.id) return;
         if (other.action !== 'give_item' && other.action !== 'leave_army') return;
-        const _oR = orderCharRef(G, other.order && other.order.extra); // recipient is in extra (2026-09-23)
-        if (!_oR || _oR.id !== it.id) return;
+        const _oR = orderCharRef(G, other.order?.extra); // recipient is in extra (2026-09-23)
+        if (_oR?.id !== it.id) return;
         edges.push([it.id, other.id]);
       });
     }
     // (d) A pursuer acts immediately after the character he is chasing (AK [3.0]).
     if ((action === 'pursue' || action === 'encounter') && tgt && tgt.id !== it.id) edges.push([tgt.id, it.id]); // an Encounter chaser acts right after their quarry
-    if (it.c._pursuit && it.c._pursuit.active) {
+    if (it.c._pursuit?.active) {
       const pt = byId(it.c._pursuit.targetId);
       if (pt && pt.id !== it.id) edges.push([pt.id, it.id]);
     }
@@ -365,14 +405,18 @@ export function phaseDependencies(turnContext, ph, intents) {
 // act. Dependency edges (buildPhaseIntents → phaseDependencies, e.g. a hero marching in to receive
 // an item) still override this tiering through Kahn's topological sort, so the AK [3.0]
 // exceptions that require a specific move-before/after ordering are preserved.
-export function _phaseActionTier(d) {
+export function _phaseActionTier(d: string): number {
   return d === 'defend' ? 2 : d === 'move' || d === 'pursue' || d === 'encounter' ? 1 : 0;
 } // Encounter relocates (chases), so it tiers with Move
-export function phaseInitCompare(turnContext, ph) {
+export function phaseInitCompare(
+  turnContext: Pick<TurnContext, 'G'>,
+  ph: number,
+): (a: Pick<Character, 'id' | 'skills'>, b: Pick<Character, 'id' | 'skills'>) => number {
   const { G } = turnContext;
+  const turnOrders: TheTurnsOrdersAsThePipelineReadsThem = G.turnOrders;
   return (a, b) => {
-    const aD = normaliseAction((G.turnOrders[a.id] || [])[ph]);
-    const bD = normaliseAction((G.turnOrders[b.id] || [])[ph]);
+    const aD = normaliseAction((turnOrders[a.id] ?? [])[ph]);
+    const bD = normaliseAction((turnOrders[b.id] ?? [])[ph]);
     const at = _phaseActionTier(aD),
       bt = _phaseActionTier(bD);
     if (at !== bt) return at - bt; // non-move → move/pursue → defend
@@ -385,29 +429,40 @@ export function phaseInitCompare(turnContext, ph) {
 // Kahn's algorithm over the dependency edges, using initiative order as the tie-break priority.
 // Any characters left in a dependency cycle (e.g. two heroes each Giving to the other) are
 // appended in plain initiative order rather than dropped.
-export function orderPhaseActors(turnContext, ph, intents) {
+export function orderPhaseActors(
+  turnContext: Pick<TurnContext, 'G'>,
+  ph: number,
+  intents: ThePhasesIntents,
+): Character[] {
   const cmp = phaseInitCompare(turnContext, ph);
   const nodes = [...intents.values()].map((it) => it.c).sort(cmp);
   const edges = phaseDependencies(turnContext, ph, intents).filter(
     ([u, v]) => intents.has(u) && intents.has(v) && u !== v,
   );
-  const indeg = new Map(nodes.map((c) => [c.id, 0]));
-  const out = new Map(nodes.map((c) => [c.id, []]));
+  const indeg = new Map<number, number>(nodes.map((c) => [c.id, 0]));
+  const out = new Map<number, number[]>(nodes.map((c) => [c.id, []]));
+  /** The heroes who wait for one (each actor has his list, and the edges join actors alone). */
+  const theOnesWaitingFor = (id: number): number[] => {
+    const waiting = out.get(id);
+    if (waiting === undefined) throw new TypeError(`hero ${String(id)} is none of the phase's actors`);
+    return waiting;
+  };
   edges.forEach(([u, v]) => {
-    out.get(u).push(v);
-    indeg.set(v, indeg.get(v) + 1);
+    theOnesWaitingFor(u).push(v);
+    indeg.set(v, Number(indeg.get(v)) + 1);
   });
   const ready = nodes.filter((c) => indeg.get(c.id) === 0);
-  const result = [];
-  const placed = new Set();
+  const result: Character[] = [];
+  const placed = new Set<number>();
   while (ready.length) {
     ready.sort(cmp);
     const c = ready.shift();
+    if (c === undefined) throw new TypeError('the list of the heroes ready to act held a gap'); // it holds heroes alone
     if (placed.has(c.id)) continue;
     placed.add(c.id);
     result.push(c);
-    out.get(c.id).forEach((v) => {
-      indeg.set(v, indeg.get(v) - 1);
+    theOnesWaitingFor(c.id).forEach((v) => {
+      indeg.set(v, Number(indeg.get(v)) - 1);
       if (indeg.get(v) === 0) {
         const n = nodes.find((x) => x.id === v);
         if (n && !placed.has(v)) ready.push(n);
@@ -430,10 +485,10 @@ export function orderPhaseActors(turnContext, ph, intents) {
 // head-on swap is just the most visible case of the general rule, so both are handled here: a
 // defender is pinned whenever an armed enemy is due to arrive in his province BEFORE he leaves.
 // "Before he leaves" is decided by initiative, so a fast general still gets clear in time.
-export function applyMoveInterlocks(turnContext, ph, intents) {
+export function applyMoveInterlocks(turnContext: TurnContext, ph: number, intents: ThePhasesIntents): void {
   const { G } = turnContext;
   const list = [...intents.values()];
-  const invasions = list.filter((...a) => isHostileInvasion(turnContext, ...a));
+  const invasions = list.filter((it) => isHostileInvasion(turnContext, it));
   if (!invasions.length) return;
   const cmp = phaseInitCompare(turnContext, ph);
 
@@ -448,7 +503,7 @@ export function applyMoveInterlocks(turnContext, ph, intents) {
     const beatsHim = incoming.some((inv) => cmp(inv.c, def.c) < 0);
     if (!beatsHim) return;
     // Exception: a general under Defend orders may still be redirected to an adjacent province.
-    if (def.c._defend && def.c._defend.active) return;
+    if (def.c._defend?.active) return;
 
     def.cancelled = true;
     def.cancelReason = 'pinned';

@@ -2365,7 +2365,7 @@ function theTurnPlaysThePhases(
       tc._currentPhase = ph;
       const startedAt = Object.fromEntries(objects(G['characters']).map((h) => [String(h['id']), h['location']]));
       startPhaseHealingSnapshotsAndStalledBattles(tc, ph);
-      const intents: unknown = buildPhaseIntents(tc, ph);
+      const intents: unknown = buildPhaseIntents(tc as unknown as Parameters<typeof buildPhaseIntents>[0], ph);
       pinAndReactToPhaseIntents(tc, ph, intents);
       resolvePhaseOrdersInTwoTiersAroundTheDefendStep(tc, ph, intents);
       endPhaseSkillRisesFallenCommandersAndProvinceMemory(tc, ph, startedAt);
