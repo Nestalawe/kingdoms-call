@@ -1,5 +1,5 @@
 {
-  "about": "The size budgets of the docs an agent reads, in bytes (and characters a line where it says so). tests/static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts checks them. Change a budget only with a reason written in the pull request, never to make the check pass. This file is on .github/dangerous-paths, so a change to it is seen.",
+  "about": "The size budgets of the docs an agent reads, in bytes (and characters a line where it says so). tests/static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts checks them. Change a budget only with a reason written in the pull request, never to make the check pass. The skills' folder is read by tests/docs.test.js and tests/static/a-skills-frontmatter-holds-only-its-name-and-its-description.test.ts too. This file is on .github/dangerous-paths, so a change to it is seen.",
   "files": {
     "CLAUDE.md": 15000,
     "docs/ARCHITECTURE.md": 15000,
@@ -21,6 +21,10 @@
   "claudeMdLines": {
     "file": "CLAUDE.md",
     "maxCharactersALineOutsideItsTables": 300
+  },
+  "skills": {
+    "folder": ".claude/skills",
+    "maxBytesEach": 3000
   },
   "testList": {
     "file": "tests/every-test-its-level-and-what-it-checks.md",
