@@ -9,7 +9,8 @@
 //   no public line from a province it has no eyes on (no hero stood there and no spy saw it, as on this context).
 // - Its Clairvoyance feed (P1-21b): a realm watching another realm's hero by Clairvoyance reads every line about him
 //   from the phase the watch began (the phase it was cast), not before, each once, and where he stands as the turn
-//   ends. No other test and no game of the balance matrix builds a report with a Clairvoyance watch.
+//   ends (no such line once he has fallen). No other test and no game of the balance matrix builds a report with a
+//   Clairvoyance watch.
 // - Its spy feed (R-118, P1-23d): a realm that spied a province reads, from the next phase on, what another realm's
 //   heroes do there (a line with a deed) or anyone there could see (a public line, a battle's included), never their
 //   realm's own news (a line told to it with no deed: a hit-point rise, a curse felt), a line with no reader, or a line
@@ -207,6 +208,21 @@ describe('the Clairvoyance feed', () => {
         phase: null,
       },
     ]);
+  });
+  test('and nowhere once he has fallen: no line says where he stands', () => {
+    const heFell = {
+      ...tc.G,
+      characters: G.characters.map((c) => (c.id === watched.id ? { ...c, alive: false } : c)),
+    };
+    const read = playerEvents(
+      log.map((e) => ({ ...e })),
+      heFell,
+      0,
+      watching,
+      noKinds(log),
+    ).lastTurnLog;
+    expect(read.filter((l) => l.text.includes('🔮 Clairvoyance — [about'))).toHaveLength(2);
+    expect(read.filter((l) => l.phase === null)).toEqual([]);
   });
   test('a realm watching no hero reads none of those lines', () => {
     const lines = playerEvents(
