@@ -36,7 +36,8 @@ import { lairRumourKey } from '../engine/personal-combat/helpers.ts';
 import { dispFloor } from '../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN, itemAcquiredThisTurn, perkTier } from '../engine/titles/perks.ts';
 import { MAGIC_L8_SCHOOLS, castChanceFor } from '../engine/chances-and-lair-grades.ts';
-import { MINOR_TITLES, _TITLE_LABEL } from '../engine/titles/reckoning.ts';
+import { MINOR_TITLES } from '../engine/titles/reckoning.ts';
+import { _TITLE_LABEL } from './prose/the-words-of-the-major-titles-names.ts';
 import {
   DISC_BY_ID,
   RESEARCH_HIDDEN_CATS,

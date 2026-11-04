@@ -10,7 +10,7 @@ import { writeTurnTelemetry } from '../../db/telemetry.ts';
 import { computeNextDeadline } from './turn-mode.ts';
 import { runningBuildStamp, setAutoTurnStatus } from './auto-turn.ts';
 import { resolveTurn } from '../../engine/run-turn.ts';
-import { whatTheSavesCheckFoundInWords } from '../../engine/saves/what-the-saves-check-found-in-words.ts';
+import { whatTheSavesCheckFoundInWords } from '../../views/prose/what-the-saves-check-found-in-words.ts';
 import { buildReports } from '../../views/every-realms-report-and-the-lines-each-realm-reads.ts';
 
 // ── THE TURN SHELL (plan P1-18d, 2026-10-18) ────

@@ -20,14 +20,14 @@
 // GM page and the player page's fallback read an old turn's lines and a new one's alike. Beside it, each stored line's
 // kind, never stored (since P1-12d36: the spy and Clairvoyance feeds pass over a line by its kind). In this run a line's
 // words are the same for every reader.
-import {
-  A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
-  type LineFact,
-  type LogLine,
-  type TheAudienceOfAKindOfLine,
-  type TheTierOfAKindOfABattlesLine,
+import type {
+  LineFact,
+  LogLine,
+  TheAudienceOfAKindOfLine,
+  TheTierOfAKindOfABattlesLine,
 } from '../../engine/turn/events-and-their-audiences.ts';
 import {
+  A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE,
   THE_TIER_OF_EACH_KIND_OF_A_BATTLES_LINE,
 } from '../../engine/battle/the-facts-a-battles-lines-record.ts';

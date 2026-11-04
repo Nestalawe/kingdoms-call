@@ -40,7 +40,7 @@ import { upgradeGameState } from '../../src/engine/saves/upgrade-a-saved-game-an
 import {
   THE_CHECKS_FINDINGS_NAMED_AT_MOST,
   whatTheSavesCheckFoundInWords,
-} from '../../src/engine/saves/what-the-saves-check-found-in-words.ts';
+} from '../../src/views/prose/what-the-saves-check-found-in-words.ts';
 import { aStagedTurnOnTheEnginesModules, type Line } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;

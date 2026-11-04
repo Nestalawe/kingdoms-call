@@ -2,7 +2,6 @@ import { druIdPenaltyMult } from '../world/tables.ts';
 import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { dragonTamed } from '../discoveries.ts';
 import {
-  A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   emit,
   emitNarrLine,
   isALineForEveryoneInTheFight,
@@ -17,6 +16,7 @@ import type { Army, Character, Province } from '../../schemas/saved-game-state.t
 import type { TurnContext } from '../turn/context.ts';
 import type { FightLine, NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import {
+  A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
   type AForceDrawnUpForBattle,
   type ASideAsABattlesReportLinesNameIt,

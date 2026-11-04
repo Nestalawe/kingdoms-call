@@ -359,21 +359,6 @@ export function runBotReckoning(G, botIdxSet, reckoningCalls) {
     if (kingAlive && reckoningCallEligibility(G, pi).ok) reckoningCalls.add(pi); // bloc bar AND the caller's own floor
   });
 }
-export const _TITLE_LABEL = {
-  throne: 'Throne',
-  vault: 'Vaultkeeper',
-  marshal: 'Grand Marshal',
-  sea: 'Sea Lord',
-  monster: 'Monster-Bane',
-  lore: 'Loremaster',
-  arch: 'Archmage',
-  hiero: 'Hierophant',
-  necro: 'Deathpriest',
-  spy: 'Spymaster',
-  carto: 'Cartographer',
-  beast: 'Beastlord',
-  wild: 'Wildwarden',
-};
 
 // ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
 // character a small perk. Each is awarded every turn to the single best living character by its
