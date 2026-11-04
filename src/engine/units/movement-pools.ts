@@ -16,6 +16,31 @@ import type { PuttingToSea } from '../rules-on-plain-values/ships-and-flyers-tha
 import type { Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 
+/** A hero as his move pools are worked out: as his skills and his minor titles are read, whose he is, and his column;
+ *  a hero of the world, or one a skill rise is drawn for (a fight's copy's id is words). */
+type AHeroAsHisPoolsAreWorkedOut = NonNullable<Parameters<typeof effStat>[1]> &
+  NonNullable<Parameters<typeof charMinor>[1]> & {
+    readonly player?: Character['player'];
+    readonly armies?: Character['armies'];
+  };
+/** A hero as his move pools are refreshed: as they are worked out, his id perhaps missing (the refresh's guard). */
+type AHeroAsHisPoolsAreRefreshed = Omit<AHeroAsHisPoolsAreWorkedOut, 'id'> & {
+  readonly id?: AHeroAsHisPoolsAreWorkedOut['id'] | null | undefined;
+};
+/** The turn's move pools by a hero's id, read by any hero's id (a fight's copy's is words). */
+interface TheMovePoolsByAnyHerosId {
+  readonly movePoints: Partial<Record<string, number>>;
+  readonly seaMovePoints: Partial<Record<string, number>>;
+  readonly seaMoveActive: Partial<Record<string, boolean>>;
+  readonly seaCap: Partial<Record<string, string>>;
+  readonly moveMax: Partial<Record<string, number>>;
+  readonly seaMoveMax: Partial<Record<string, number>>;
+}
+/** Whether the hero whose pools are refreshed holds an id, as every hero of the world does. */
+function hisIdIsHeld(c: AHeroAsHisPoolsAreRefreshed): c is AHeroAsHisPoolsAreRefreshed & AHeroAsHisPoolsAreWorkedOut {
+  return c.id != null;
+}
+
 /** A column as the terrain tests read it: its units (a gap passed over where the step's test guards one), and the Part
  *  Sea mark of this phase (Parked: nothing sets it). */
 interface AColumnAsTheTerrainTestsReadIt {
@@ -97,7 +122,7 @@ export const NAVAL_UNIFY = [
 // Pure computation of a character's move-pool MAXIMUMS from CURRENT army composition + skills.
 // Returns {land, sea, seaActive, cap}. Shared by setMovePool (turn start) and refreshMovePool
 // (mid-turn, after composition or March/Naval changes), so both stay perfectly in step.
-export function computeMovePoolMax(turnContext: TurnContext, c: Character) {
+export function computeMovePoolMax(turnContext: TurnContext, c: AHeroAsHisPoolsAreWorkedOut) {
   const armies = (asItsGuardReadsIt(c.armies) ?? []).filter(
     (a: Character['armies'][number] | null | undefined) => a && !a._phantom,
   ); // illusions set no pace and take no berth
@@ -176,9 +201,10 @@ export function setMovePool(turnContext: TurnContext, c: Character): void {
 // are preserved, so dropping a slow unit correctly frees up the extra reach for the rest of the
 // turn, and picking up a slow unit correctly reduces it. (Fixes: army stuck at an old slow speed
 // after a slow unit was transferred out; move rate not rising when March increased mid-turn.)
-export function refreshMovePool(turnContext: TurnContext, c: Character | null | undefined): void {
-  const { moveMax, movePoints, seaMoveMax, seaMovePoints, seaMoveActive, seaCap } = turnContext;
-  if (!c || asItsGuardReadsIt(c.id) == null) return;
+export function refreshMovePool(turnContext: TurnContext, c: AHeroAsHisPoolsAreRefreshed | null | undefined): void {
+  const { moveMax, movePoints, seaMoveMax, seaMovePoints, seaMoveActive, seaCap }: TheMovePoolsByAnyHerosId =
+    turnContext;
+  if (!c || !hisIdIsHeld(c)) return;
   const oldLandMax = moveMax[c.id] ?? movePoints[c.id] ?? 0;
   const oldSeaMax = seaMoveMax[c.id] ?? seaMovePoints[c.id] ?? 0;
   const oldLandRem = movePoints[c.id] ?? oldLandMax;

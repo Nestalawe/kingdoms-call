@@ -725,7 +725,10 @@ describe('the Order of the Golden Shield: the king hardened twice as much (award
     const before = Number(hero['hpEarned']) || 0;
     const was = kcRng.use(() => 0.5);
     try {
-      const r = awardHpRoll(tc, hero, [], 'kill', true) as { gain: number; sd35?: boolean };
+      const r = awardHpRoll(...([tc, hero, [], 'kill', true] as unknown as Parameters<typeof awardHpRoll>)) as {
+        gain: number;
+        sd35?: boolean;
+      };
       return { gain: r.gain, earned: (Number(hero['hpEarned']) || 0) - before, theOrder: r.sd35 === true };
     } finally {
       kcRng.use(was);
