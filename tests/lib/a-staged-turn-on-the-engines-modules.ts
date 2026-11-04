@@ -24,6 +24,7 @@
 // Every realm is human-held (so no bot plans for it) unless listed in `bots`; every living character not given orders
 // Rests all turn. The console is quiet (its log and its warnings) while the engine makes the world and plays the turn.
 import { vi } from 'vitest';
+import type { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
 
 export interface Order {
   action: string;
@@ -64,7 +65,7 @@ interface Resolved {
   state: string;
   log: Line[];
   spyStealthAndInvisibilityStampedForTheReports(): void;
-  whatTheReportsRead(): unknown;
+  whatTheReportsRead(): Parameters<typeof buildReports>[0];
 }
 /** What the views' buildReports returns. */
 interface Built {
@@ -220,7 +221,7 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
   function reportEveryRealm() {
     const buildFor = reportsModule.buildReports;
     vi.spyOn(reportsModule, 'buildReports').mockImplementation(
-      (whatTheReportsRead: { freshPlayers: { user_id?: unknown }[] }) =>
+      (whatTheReportsRead: Parameters<typeof buildFor>[0]) =>
         buildFor({
           ...whatTheReportsRead,
           freshPlayers: whatTheReportsRead.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),

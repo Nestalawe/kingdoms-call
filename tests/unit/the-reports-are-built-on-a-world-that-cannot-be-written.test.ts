@@ -28,6 +28,7 @@ import { MAP_SIZES, matrix, MAX_TURNS } from '../../tools/balance/matrix.ts';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 import { PAGE_DRAWS_AS_IT_LOADS, setupsOf, slotRowsJsonOf, stampedAsTheShellSaves } from '../lib/matrix-game.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
+import type { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
 
 const GAME_ID = 'bots-32';
 const SPEC = matrix('A').find((g) => g.id === GAME_ID);
@@ -66,11 +67,7 @@ interface Report {
   lastTurnLog?: { text?: string }[];
   spyActivity?: unknown[];
 }
-interface TurnContext {
-  G: unknown;
-  turnLog: unknown;
-  freshPlayers: { user_id?: unknown }[];
-}
+type TurnContext = Parameters<typeof buildReports>[0];
 interface Resolved {
   spyStealthAndInvisibilityStampedForTheReports(): void;
   whatTheReportsRead(): TurnContext;

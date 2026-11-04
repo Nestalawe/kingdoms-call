@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { buildTurnReport } from './turn-report.ts';
 import { playerView } from './what-each-realm-may-see-of-the-world.ts';
 import { doARealmsDiscoveriesWidenTheWarningsItHears } from '../engine/rules/the-registry-of-discovery-effects.ts';
@@ -8,6 +7,35 @@ import {
   THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE,
   THE_KINDS_OF_A_ROLL_LINE,
 } from './the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
+import { asItsGuardReadsIt } from '../engine/personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import type { Character, GameState, Realm } from '../schemas/saved-game-state.ts';
+import type { TurnContext } from '../engine/turn/context.ts';
+import type { LineFact, LogLine } from '../engine/turn/events-and-their-audiences.ts';
+
+/** The turn's sight, as resolveTurn recorded it (whatTheReportsRead, src/engine/run-turn.ts). */
+type TheTurnsSight = Pick<TurnContext, 'presenceByPhase' | 'battleCommanders' | 'clairWatch'>;
+
+/** A line of the turn as the realm's filter reads it: an onlooker's summary flag too, which no line carries today (the
+ *  onlookers' question, plan P1-12's Decision 3: battle-report-lines-and-force-markers.ts). */
+type ALineAsTheFilterReadsIt = LogLine & { readonly summary?: unknown };
+
+/** A line a spy's lingering sight shows its realm: its phase and its words. */
+interface ALineTheSpySees {
+  phase: number;
+  text: string | null;
+}
+
+/** The first phase the realm spied a province, read by a key of the record that holds it: always there (the keys are
+ *  the record's own), so a check that throws for none. */
+function theFirstPhaseItSpiedThere(phase: number | undefined): number {
+  if (phase === undefined) throw new TypeError('no first phase is recorded for a province the realm spied');
+  return phase;
+}
+
+/** What resolveTurn hands over for the reports (whatTheReportsRead, src/engine/run-turn.ts). */
+interface WhatTheReportsRead extends Pick<TurnContext, 'freshPlayers' | 'G' | 'turnLog' | '_tel'> {
+  readonly sight: TheTurnsSight;
+}
 
 // ── THE LINES EACH REALM READS (plan P1-12b3: P1-12's Decision 10, out of buildReports) ────
 // playerEvents works out, from the turn's events (the GM's log, as emit stores them), which of them one realm reads,
@@ -29,23 +57,31 @@ import {
 //                      pass-over.ts)
 // Returns { lastTurnLog, provinceEvents, spyActivity, spiedProvincesAndTheirFirstPhase,
 //           provincesWithABattleLineItRead, provincesItStoodOnAtSomePhase }; provinceEvents: { text, phase, provinceId }.
-export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
+export function playerEvents(
+  turnLog: readonly ALineAsTheFilterReadsIt[],
+  G: GameState,
+  pi: number,
+  sight: TheTurnsSight,
+  theKindOfEachLine: readonly (LineFact['kind'] | null)[],
+) {
   const { presenceByPhase, battleCommanders, clairWatch } = sight;
-  const playerOwnedProvs = new Set(G.players[pi]?.provinces || []);
+  const playerOwnedProvs = new Set(G.players[pi]?.provinces ?? []);
   const playerCharProvs = new Set(
-    (G.characters || []).filter((c) => c.player === pi && c.alive).map((c) => c.location),
+    (asItsGuardReadsIt(G.characters) ?? []).filter((c) => c.player === pi && c.alive).map((c) => c.location),
   );
   // Build the full set of province IDs this player can see
   const playerVisitedProvs = new Set([...playerOwnedProvs]);
   G.world.provinces.forEach((p) => {
-    if ((p.visitedBy || []).includes(pi)) playerVisitedProvs.add(p.id);
+    if ((asItsGuardReadsIt(p.visitedBy) ?? []).includes(pi)) playerVisitedProvs.add(p.id);
   });
-  (G.characters || []).filter((c) => c.player === pi && c.alive).forEach((c) => playerVisitedProvs.add(c.location));
+  (asItsGuardReadsIt(G.characters) ?? [])
+    .filter((c) => c.player === pi && c.alive)
+    .forEach((c) => playerVisitedProvs.add(c.location));
   // Messenger Birds: receive intel from provinces 2 steps from owned provinces (the discoveries' registry's since plan
   // P1-19ah: "visibility: a realm's discoveries widen the warnings it hears", moved as it was: nothing below reads the
   // set it widens, Parked)
   if (doARealmsDiscoveriesWidenTheWarningsItHears(G.players[pi])) {
-    const offEven = [
+    const offEven: readonly (readonly [number, number])[] = [
       [-1, -1],
       [-1, 0],
       [0, -1],
@@ -53,7 +89,7 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
       [1, -1],
       [1, 0],
     ];
-    const offOdd = [
+    const offOdd: readonly (readonly [number, number])[] = [
       [-1, 0],
       [-1, 1],
       [0, -1],
@@ -61,7 +97,7 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
       [1, 0],
       [1, 1],
     ];
-    const extendReach = (id) => {
+    const extendReach = (id: number) => {
       const pv = G.world.provinces[id];
       if (!pv) return;
       const offs = pv.row % 2 === 0 ? offEven : offOdd;
@@ -78,23 +114,25 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
   }
 
   // Build set of this player's own character IDs
-  const ownCharIds = new Set((G.characters || []).filter((c) => c.player === pi).map((c) => c.id));
+  const ownCharIds = new Set<number>(
+    (asItsGuardReadsIt(G.characters) ?? []).filter((c) => c.player === pi).map((c) => c.id),
+  );
 
   // earliest phase this player spied each province this turn (spy sees battles at that phase or
   // later in the same province).
-  const spyPhaseByProv = {};
+  const spyPhaseByProv: Record<string, number> = {};
   turnLog.forEach((e) => {
     if (e.actor === pi && e.spy && e.provinceId != null) {
       const ph = e.phase ?? 0;
-      if (spyPhaseByProv[e.provinceId] === undefined || ph < spyPhaseByProv[e.provinceId])
-        spyPhaseByProv[e.provinceId] = ph;
+      const spiedAt = spyPhaseByProv[e.provinceId];
+      if (spiedAt === undefined || ph < spiedAt) spyPhaseByProv[e.provinceId] = ph;
     }
   });
   // True if this player could witness a battle in prov at phase ph: a character present there at
   // that phase, or a spy on that province in the same phase or earlier.
-  const canSeeBattle = (prov, ph) => {
+  const canSeeBattle = (prov: number | null, ph: number | null) => {
     if (prov == null) return false;
-    if (ph != null && presenceByPhase[ph] && presenceByPhase[ph].get(prov)?.has(pi)) return true;
+    if (ph != null && presenceByPhase[ph]?.get(prov)?.has(pi)) return true;
     const sp = spyPhaseByProv[prov];
     if (sp !== undefined && (ph == null || sp <= ph)) return true;
     return false;
@@ -102,15 +140,15 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
 
   // a non-participant may witness a battle only if a character of theirs was PRESENT in the
   // province at that phase — spies/scouts no longer see battles they weren't near.
-  const charPresentAt = (prov, ph) => {
+  const charPresentAt = (prov: number | null, ph: number | null) => {
     if (prov == null) return false;
-    if (ph != null && presenceByPhase[ph] && presenceByPhase[ph].get(prov)?.has(pi)) return true;
+    if (ph != null && presenceByPhase[ph]?.get(prov)?.has(pi)) return true;
     return false;
   };
   // 2026-09-27 (Toby item 6): can this realm SEE what happens in a province right now? Its own
   // ground, a character of its own standing there at that phase, or a spy on it that phase or
   // earlier. Having once walked through the province is explicitly NOT enough.
-  const canSeeProvinceNow = (prov, ph) => {
+  const canSeeProvinceNow = (prov: number | null, ph: number | null) => {
     if (prov == null) return false;
     if (playerOwnedProvs.has(prov)) return true;
     return canSeeBattle(prov, ph);
@@ -120,7 +158,7 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
     // 0. Written for everyone EXCEPT these realms (the private half of a logSplit pair covers them)
     if (Array.isArray(e.notFor) && e.notFor.includes(pi)) return false;
     // 1. Directly targeted at this player (wages, intel notifications, spell hits etc.)
-    if ((e.targets || []).includes(pi)) return true;
+    if ((asItsGuardReadsIt(e.targets) ?? []).includes(pi)) return true;
     // 2. This player's own character performed the action
     if (e.actor === pi) return true;
     // 4. Entry attributed to one of this player's own characters (charId or charIds match)
@@ -191,18 +229,18 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
           e.battleId != null &&
           e.provinceId != null &&
           !e.env &&
-          !/^\[Intel/i.test(e.text || ''),
+          !/^\[Intel/i.test(e.text ?? ''),
       )
       .map((e) => e.provinceId),
   );
   // …and ground this player's own characters actually STOOD ON at some phase this turn is
   // witnessed by definition, whatever the log looks like — so a battle site can never lose its
   // marker because a path set _hadBattleThisTurn without writing a battle report.
-  const _presentProvsAnyPhase = new Set();
-  presenceByPhase.forEach((m) => {
+  const _presentProvsAnyPhase = new Set<number>();
+  presenceByPhase.forEach((m: Map<number, Set<number>> | null | undefined) => {
     if (m)
-      m.forEach((who, provId) => {
-        if (who && who.has(pi)) _presentProvsAnyPhase.add(provId);
+      m.forEach((who: Set<number> | null | undefined, provId) => {
+        if (who?.has(pi)) _presentProvsAnyPhase.add(provId);
       });
   });
 
@@ -214,20 +252,21 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
   // what anyone there could see (a public line: seen by the world, there or in a battle), never their realm's own news
   // (a line told to a realm with no deed: a hit-point rise, a curse felt, the plague's toll), nor a line that excepts
   // this realm (notFor).
-  const aSpyThereSees = (e) => (e.actor != null || e.public) && !(Array.isArray(e.notFor) && e.notFor.includes(pi));
-  const spyActivity = [];
+  const aSpyThereSees = (e: LogLine) =>
+    (e.actor != null || e.public) && !(Array.isArray(e.notFor) && e.notFor.includes(pi));
+  const spyActivity: { provId: number; provName: string; sincePhase: number; lines: ALineTheSpySees[] }[] = [];
   Object.keys(spyPhaseByProv).forEach((pidStr) => {
     const pid = parseInt(pidStr);
-    const afterPh = spyPhaseByProv[pid];
-    const seen = new Set();
-    const lines = [];
+    const afterPh = theFirstPhaseItSpiedThere(spyPhaseByProv[pid]);
+    const seen = new Set<string>();
+    const lines: ALineTheSpySees[] = [];
     turnLog.forEach((e, at) => {
       if (e.provinceId !== pid) return;
       if (e.phase == null || e.phase <= afterPh) return;
       if (e.charId == null || ownCharIds.has(e.charId)) return;
       if (!aSpyThereSees(e)) return;
       if (theKindOfEachLine[at] === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE) return;
-      const key = e.phase + '|' + e.text;
+      const key = `${String(e.phase)}|${String(e.text)}`;
       if (seen.has(key)) return;
       seen.add(key);
       lines.push({ phase: e.phase, text: e.text });
@@ -236,7 +275,7 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
       lines.sort((a, b) => a.phase - b.phase);
       spyActivity.push({
         provId: pid,
-        provName: G.world.provinces[pid]?.name || 'a distant province',
+        provName: (G.world.provinces[pid]?.name ?? '') || 'a distant province',
         sincePhase: afterPh + 1,
         lines,
       });
@@ -248,7 +287,7 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
   // their own hero so a defended/resumed battle lands in that hero's Chronicle section rather
   // than
   // in Realm Events. Non-participants (line-of-sight viewers) still get null → Realm Events.
-  const _reattributeCharId = (e) => {
+  const _reattributeCharId = (e: LogLine) => {
     if (e.charId != null && ownCharIds.has(e.charId)) return e.charId;
     // an entry naming several characters (a duel/battle names both combatants) is filed under
     // whichever one belongs to THIS viewer.
@@ -257,7 +296,7 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
       if (own != null) return own;
     }
     if (e.type === 'combat' && e.provinceId != null && e.phase != null && e.phase >= 0 && e.phase <= 4) {
-      const cmds = battleCommanders[e.provinceId + '@' + e.phase];
+      const cmds = battleCommanders[`${String(e.provinceId)}@${String(e.phase)}`];
       if (cmds) {
         const own = cmds.find((id) => ownCharIds.has(id));
         if (own != null) return own;
@@ -273,22 +312,27 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
   // left alone (a battle you fought names your foe — you have met them by fighting). Longest names
   // first, so "The Outriders II" is not half-replaced by "The Outriders". Once the game is over the
   // whole field is revealed, as on the Titles card. The ✉ Dispatches tab is unaffected.
-  const _metHere = new Set([pi, ...((G.players[pi] || {})._encountered || [])]);
+  const _metHere = new Set([pi, ...(G.players[pi]?._encountered ?? [])]);
   const _unmetNames = G.gameOver
     ? []
-    : (G.players || [])
-        .map((pl, i) => (pl && pl.name && !_metHere.has(i) ? pl.name : null))
-        .filter(Boolean)
-        .filter((nm) => !(G.players || []).some((pl, i) => pl && pl.name === nm && _metHere.has(i))) // a name shared with a met realm is not a secret
+    : (asItsGuardReadsIt(G.players) ?? [])
+        .map((pl: Realm | null | undefined, i) => (pl?.name && !_metHere.has(i) ? pl.name : null))
+        .filter((nm): nm is string => Boolean(nm))
+        .filter(
+          (nm) =>
+            !(asItsGuardReadsIt(G.players) ?? []).some(
+              (pl: Realm | null | undefined, i) => pl?.name === nm && _metHere.has(i),
+            ),
+        ) // a name shared with a met realm is not a secret
         .sort((a, b) => b.length - a.length);
-  const _reEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const _reEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const _unmetRe = _unmetNames.length
     ? new RegExp('(^|[^A-Za-z0-9])(' + _unmetNames.map(_reEsc).join('|') + ')(?![A-Za-z0-9])', 'g')
     : null;
-  const _maskText = (e) => {
+  const _maskText = (e: LogLine) => {
     if (!_unmetRe || typeof e.text !== 'string') return e.text;
-    if (e.actor === pi || (e.targets || []).includes(pi)) return e.text;
-    return e.text.replace(_unmetRe, (m, pre, nm, off, whole) => {
+    if (e.actor === pi || (asItsGuardReadsIt(e.targets) ?? []).includes(pi)) return e.text;
+    return e.text.replace(_unmetRe, (m: string, pre: string, nm: string, off: number, whole: string) => {
       const before = whole.slice(0, off + pre.length);
       const cap = !/[A-Za-z0-9]/.test(before) || /[.!?:—]\s*$/.test(before);
       return pre + (cap ? 'An unknown realm' : 'an unknown realm');
@@ -300,8 +344,8 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
     text: _maskText(e),
     charId: _reattributeCharId(e),
     phase: e.phase ?? null,
-    pinNotice: !!e.pinNotice, // battle-lock notice — the player portal hoists this to the top of its phase
-    env: !!e.env, // routed to Province Reports, kept OUT of Chronicle / Realm Events
+    pinNotice: Boolean(asItsGuardReadsIt(e.pinNotice)), // battle-lock notice — the player portal hoists this to the top of its phase
+    env: Boolean(asItsGuardReadsIt(e.env)), // routed to Province Reports, kept OUT of Chronicle / Realm Events
     ...(e.gameEnd ? { gameEnd: true } : {}), // 2026-09-28: shown at the TOP of the player report, under the Game-is-Decided banner
     ...(e.battleId != null ? { battleId: e.battleId, bTier: e.bTier } : {}), // 2026-09-23d: battle folding (player portal)
   }));
@@ -312,19 +356,21 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
   // already sees. A force drawn up for battle and the roll lines (too noisy for a scry feed) are passed over, by their
   // kind (P1-12d36).
   {
-    const _watch = clairWatch[pi];
-    if (_watch && _watch.charId != null) {
+    const _watch: { readonly charId: number | null | undefined; readonly fromPhase: number } | undefined =
+      clairWatch[pi];
+    if (_watch?.charId != null) {
       const W = _watch.charId,
         F = _watch.fromPhase || 0;
-      const _seenKeys = new Set(lastTurnLog.map((e) => (e.phase == null ? 'x' : e.phase) + '|' + (e.text || '')));
+      const _seenKeys = new Set(lastTurnLog.map((e) => `${String(e.phase ?? 'x')}|${e.text ?? ''}`));
       turnLog.forEach((e, at) => {
         if (e.phase == null || e.phase < F) return;
         const aboutW = e.charId === W || (Array.isArray(e.charIds) && e.charIds.includes(W));
         if (!aboutW) return;
         const kind = theKindOfEachLine[at];
-        if (kind === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE || THE_KINDS_OF_A_ROLL_LINE.has(kind)) return;
-        const t = e.text || '';
-        const key = (e.phase == null ? 'x' : e.phase) + '|' + t;
+        const theRollLines: ReadonlySet<LineFact['kind'] | null | undefined> = THE_KINDS_OF_A_ROLL_LINE;
+        if (kind === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE || theRollLines.has(kind)) return;
+        const t = e.text ?? '';
+        const key = `${String(e.phase)}|${t}`;
         if (_seenKeys.has(key)) return; // already visible to this player
         _seenKeys.add(key);
         lastTurnLog.push({
@@ -338,8 +384,8 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
       });
       // and where the watched character stands as the turn ends.
       {
-        const _wc = (G.characters || []).find((x) => x && x.id === W);
-        if (_wc && _wc.alive && _wc.location != null) {
+        const _wc = (asItsGuardReadsIt(G.characters) ?? []).find((x: Character | null | undefined) => x?.id === W);
+        if (_wc?.alive && asItsGuardReadsIt(_wc.location) != null) {
           const _wp = G.world.provinces[_wc.location];
           lastTurnLog.push({
             type: 'system',
@@ -383,7 +429,7 @@ export function playerEvents(turnLog, G, pi, sight, theKindOfEachLine) {
 // lines are picked from the lines in words, each line's kind beside them (P1-12d36). Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the
 // slot row it is for), tel what telemetry reads (its lists built from the facts: theStatisticsOfTheTurn, P1-12d33)
 // and gmLog the GM's log of the turn in words, in its stored form, which the shell saves.
-export function buildReports(whatTheReportsRead) {
+export function buildReports(whatTheReportsRead: WhatTheReportsRead) {
   const { freshPlayers, G, sight, _tel } = whatTheReportsRead;
   const { gmLog: turnLog, theKindOfEachStoredLine } = theTurnsLinesInWords(whatTheReportsRead.turnLog);
   const activePlayers = freshPlayers.filter((p) => p.user_id);

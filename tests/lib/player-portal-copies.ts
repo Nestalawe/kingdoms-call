@@ -561,11 +561,11 @@ export function scripted05(): { state: Obj; report: Obj }[] {
     ) as {
       state: string;
       spyStealthAndInvisibilityStampedForTheReports: () => void;
-      whatTheReportsRead: () => unknown;
+      whatTheReportsRead: () => Parameters<typeof buildReports>[0];
     };
     result.spyStealthAndInvisibilityStampedForTheReports();
-    const { reports } = buildReports(result.whatTheReportsRead()) as { reports: { gp: Obj; report: Obj }[] };
-    const ours = reports.find((r) => r.gp['player_index'] === SCRIPTED_REALM);
+    const { reports } = buildReports(result.whatTheReportsRead());
+    const ours = reports.find((r) => r.gp.player_index === SCRIPTED_REALM);
     if (!ours) throw new Error(`turn ${String(turn)}: no report for the scripted realm`);
     state = result.state;
     turns.push({ state: JSON.parse(state) as Obj, report: ours.report });
