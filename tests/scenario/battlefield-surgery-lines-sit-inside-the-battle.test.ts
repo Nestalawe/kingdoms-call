@@ -95,7 +95,7 @@ async function aDuelLostToAChieftain(surgeryRoll: number) {
   vi.spyOn(deaths, 'handleHeroDeath').mockImplementation((...args: Parameters<typeof handleHeroDeath>) => {
     next = surgeryRoll;
     try {
-      return handleHeroDeath(...args) as boolean;
+      return handleHeroDeath(...args);
     } finally {
       next = null;
     }
