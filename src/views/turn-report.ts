@@ -71,10 +71,12 @@ import {
   TERROR_PCT_PER_STACK,
 } from '../engine/rules-on-plain-values/the-terror-an-evil-victory-leaves-its-share-a-stack-and-its-most-stacks.ts';
 import { theCorpseCartersPriceForARealm } from '../engine/realms/the-corpse-carters-price-for-a-realm.ts';
-import { asItsGuardReadsIt } from '../engine/personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import {
+  aLevelAboveNothing,
+  asItsGuardReadsIt,
+} from '../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Army, Character, Item, Realm } from '../schemas/saved-game-state.ts';
 import type { ASkillBonusAtItsPointOfUse } from '../engine/titles/reckoning.ts';
-import { aLevelAboveNothing } from '../engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
 import type {
   FeatureAsKnown,
   GraveAsKnown,

@@ -53,7 +53,7 @@ import { intendedDestination, normaliseAction } from '../turn/phase-intents-and-
 import { provDistance, stepTowardPreferSafe } from '../world/routes-and-distances.ts';
 import { noteEntered } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { erodeGuardSurvivors, theCommanderPicked } from '../battle/hosts-gained-in-a-province.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
 import {
   aSiteSpottedOnTheMarchAsTheLineNamesIt,

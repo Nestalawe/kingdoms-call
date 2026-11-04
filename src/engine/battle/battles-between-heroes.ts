@@ -126,7 +126,7 @@ import type {
   ASideOfABattle,
 } from './the-facts-a-battles-lines-record.ts';
 import type { APursuitOfTheBeaten, AnEnemyUnitStruck } from '../rules/the-registry-of-content-effects.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 
 /** An item as the War Drum's test reads it: its flag, if it has one (only the War Drum does). */
 type AnItemAsTheWarDrumReadsIt = object & { readonly drumTierUp?: unknown };

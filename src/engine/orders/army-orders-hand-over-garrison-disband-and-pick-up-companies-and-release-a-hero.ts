@@ -14,7 +14,7 @@ import { refreshMovePool } from '../units/movement-pools.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
 import { theProvinceIsHanded } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
 import { theOneTakenOut } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Army, Character, Item, Province, Realm } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 

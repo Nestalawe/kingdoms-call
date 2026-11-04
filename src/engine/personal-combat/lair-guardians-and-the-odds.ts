@@ -11,7 +11,7 @@ import {
 import { theApproachesAGuardiansPerksTurn } from '../rules/the-registry-of-guardian-perks.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, transferableItems } from './helpers.ts';
-import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.ts';
 import {

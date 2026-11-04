@@ -162,7 +162,7 @@ added under its kind.
   compiler can't see it; it changes no value. A guard lint calls needless is dropped only where the code would already
   have thrown without it.
 - **A value guarded in one place and read unguarded in another** (a fight's narrative, a foe, a fighter's hero) keeps
-  its type, and the guarded reads go through `asItsGuardReadsIt(value)` (`to-hit-wounds-stuns-and-courage.ts`). A guard
+  its type, and the guarded reads go through `asItsGuardReadsIt(value)` (in `rules-on-plain-values/`). A guard
   on a field the schema requires stays where an untyped caller may still leave it out.
 - **A `const` typed as a wide list is narrowed by its value** (`const l: readonly Army[] | null | undefined =
   hero.armies` is `Army[]`): type the object instead (`const h: AHeroAsEarlyWinterReadsHisArmies = hero`, his `armies`

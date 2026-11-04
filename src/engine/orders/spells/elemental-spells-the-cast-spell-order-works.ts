@@ -16,7 +16,7 @@ import {
 } from '../../turn/events-and-their-audiences.ts';
 import { blessWardNegates } from '../../magic/plague-and-bless-ward.ts';
 import { resolveUnitGainInProvince } from '../../battle/hosts-gained-in-a-province.ts';
-import { asItsGuardReadsIt } from '../../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import {
   aRealmsNameOrNone,
   theProvinceTheCasterStandsIn,

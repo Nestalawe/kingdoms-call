@@ -9,7 +9,7 @@ import { pcCharCombatant } from './speed-encounter-plans-and-combatants.ts';
 import { hisNameIsWords, resolvePersonalCombat } from './resolve-personal-combat.ts';
 import { narrateAll, narrate } from '../turn/events-and-their-audiences.ts';
 import { theItemsAsTheLineNamesThem } from './the-facts-a-personal-combats-lines-record.ts';
-import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Character, Item } from '../../schemas/saved-game-state.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';

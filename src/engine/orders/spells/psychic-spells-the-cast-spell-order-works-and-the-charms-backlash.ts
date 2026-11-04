@@ -30,7 +30,7 @@ import { resolveCharVsChar } from '../../personal-combat/duels-and-character-enc
 import { reportHeroFall } from '../../heroes/hero-death-and-leaderless-hosts.ts';
 import { resolveUnitGainInProvince } from '../../battle/hosts-gained-in-a-province.ts';
 import { theItemsAsTheLineNamesThem } from '../../personal-combat/the-facts-a-personal-combats-lines-record.ts';
-import { asItsGuardReadsIt } from '../../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type {
   ACompanyTheStormStrikes,
   WhyAnEnchantedHeroMayTurnOnHisEnchanter,

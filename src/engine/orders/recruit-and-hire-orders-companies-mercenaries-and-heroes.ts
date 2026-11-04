@@ -40,7 +40,10 @@ import { refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { canRecruit, getRecruitLimit, recordRecruit } from '../units/recruit-limits.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import {
+  aLevelAboveNothing,
+  asItsGuardReadsIt,
+} from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { servesARealm } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
 import type {
   CompaniesRaisedAsTheLineCountsThem,
@@ -96,10 +99,6 @@ export function theProvinceIsHanded(prov: Province | undefined): asserts prov is
 export function theNameDrawn(name: string | undefined): string {
   if (name === undefined) throw new TypeError('armyUnitName drew no name');
   return name;
-}
-/** A skill held above 0, as the hire's line copies it (`v > 0`, as before: a level missing is not). */
-export function aLevelAboveNothing(skill: [string, number | undefined]): skill is [string, number] {
-  return Number(skill[1]) > 0;
 }
 // ── HIRE PRE-ORDERS LAND (shared by Hire Hero and the Neutral BROKER hire) ────
 // The hirer's pre-written orders are applied only once the hire has landed. Matched on hero + this
