@@ -7,7 +7,8 @@
 // one Green company of Levies; at sea, six Elite Shark Shoals against one Green Galleon Fleet. The odds are
 // overwhelming (four times the strength and more: the fortune curve gives the stronger side the win), so the lines are
 // the rule's, not the dice's. Both kings fight in melee and refuse every duel, and carry no item.
-// The beasts' battle-line abilities are tests/abilities-beasts.test.js.
+// The beasts' battle-line abilities are
+// tests/unit/the-beasts-battle-line-abilities-from-the-air-on-the-grid-in-the-volley-and-at-their-fate.test.ts.
 //
 // Level 1 (unit): combatVsChar called directly (tests/lib/a-battle-called-directly.ts) on a world the engine makes from
 // KC_SEED; no turn is played. Not lower: the rout is fought inside the battle, from its outcome.

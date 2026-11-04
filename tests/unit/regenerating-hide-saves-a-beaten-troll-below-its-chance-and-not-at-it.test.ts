@@ -3,7 +3,8 @@
 // (the content's row holds it, and tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts holds the
 // row to the books), and dies when the die falls at 30%. The die is drawn only when its condition holds: after a lost
 // battle, by a Cave Trolls company that failed its death roll; a victory, or another unit, draws one die and no more.
-// abilities-beasts feeds the hide 0.1 and 0.5 only, so a chance anywhere between passed it; this pins the boundary.
+// The beasts' abilities test (the-beasts-battle-line-abilities-…) feeds the hide 0.1 and 0.5 only, so a chance anywhere
+// between passed it; this pins the boundary.
 // Level 1 (unit): rollUnitFates called directly on the engine's modules (plan P1-14a), with its own dice, no turn
 // played. Not lower: the chance is a value the code compares, which a syntax tree can't evaluate; not higher: the
 // balance matrix never reaches it (no Cave Trolls fail a death roll in a lost battle in its games), so a chance of 31%

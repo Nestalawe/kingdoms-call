@@ -216,7 +216,7 @@ check finds were made.
   `middle-of-a-bot-world.ts`, and since P1-12d6 the whole-turn case libraries `before-the-first-phase-cases.ts`,
   `set-up-and-order-merge-cases.ts` and `the-bots-plan-cases.ts`), and a test that reads a narrative, or a line a helper returns, writes a fact's words
   with `theWordsOf` (a personal combat's: `wordsOf` or `wordsForEveryoneInTheFight`, `tests/lib/personal-combat.ts`; on
-  the engine's `vm`, its `theWordsOf`: `tests/abilities-beasts.test.js`). A test that keeps a
+  the engine's `vm`, its `theWordsOf`: `tests/unit/naval-retreat.test.ts`). A test that keeps a
   narrative's strings and drops the rest reads nothing of a typed line: read its words. **Never read `text` loosely**: a read of the engine's log that takes a missing `text` as empty (`e.text ?? ''`, `String(e.text)`,
   `e.text || ''`, `l.text === words`) passes for nothing once its line becomes a fact, and an assertion that a line is
   absent stays green whatever the engine writes; read the words pass. In this run a

@@ -22,7 +22,7 @@ import { describe, expect, test } from 'vitest';
 import { battleFacing, battleGrid, type AFacedSide, type BattleGrid } from '../../src/engine/battle/lines.ts';
 import { theWordsOfWhyAUnitFacesAsItDoes } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
 
-// The units' base strengths, as `abilities-dwarven` gives them: the Ram (12) is stronger than a Free Lance (10), so it
+// The units' base strengths, as the dwarven abilities test gives them: the Ram (12) is stronger than a Free Lance (10), so it
 // takes the first flank slot, which is the one that duels, then the one that guards an end.
 const BASE = {
   'Dwarven Guard': 12,
