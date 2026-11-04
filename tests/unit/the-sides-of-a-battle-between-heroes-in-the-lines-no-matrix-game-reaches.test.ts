@@ -193,7 +193,9 @@ describe.each([false, true])('a battle between heroes, both commanders slain bef
         const sea = G.world.provinces.find((p) => p.terrain === 'sea');
         const land = G.world.provinces.find((p) => p.terrain !== 'sea' && p.id !== field.id);
         if (!sea || !land) throw new Error('the world has no sea, or one province of land only');
-        vi.spyOn(retreats, 'retreatOptions').mockReturnValue([sea, land]);
+        vi.spyOn(retreats, 'retreatOptions').mockReturnValue([sea, land] as unknown as ReturnType<
+          typeof retreats.retreatOptions
+        >);
       },
     );
     const name = { atk: sideOf(shown.atk, slain), def: sideOf(shown.def, slain) };

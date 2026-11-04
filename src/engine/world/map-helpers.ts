@@ -69,10 +69,35 @@ interface ASpectralDouble {
   _phantomOf: string;
   _synced?: boolean | undefined;
 }
-// a hero, or a battle's copy of him, as these read him: his units and his doubles, each list maybe missing
+// a hero, or a battle's copy of him, as these read him: his units and his doubles (which the saved state holds as a
+// list of any values: each is read through theSpectralDoubleStoredThere), each list maybe missing
 interface AHostWithDoubles {
   armies?: (ArmyInABattle | null | undefined)[] | null | undefined;
-  _phantoms?: (ASpectralDouble | null | undefined)[] | null | undefined;
+  _phantoms?: unknown[] | null | undefined;
+}
+// a value with every field of a spectral double, each of its kind
+function isASpectralDouble(v: unknown): v is ASpectralDouble {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    'type' in v &&
+    typeof v.type === 'string' &&
+    'quality' in v &&
+    typeof v.quality === 'string' &&
+    'race' in v &&
+    typeof v.race === 'string' &&
+    'unitName' in v &&
+    typeof v.unitName === 'string' &&
+    '_phantomOf' in v &&
+    typeof v._phantomOf === 'string' &&
+    (!('_synced' in v) || v._synced === undefined || typeof v._synced === 'boolean')
+  );
+}
+// One value of a hero's doubles, as these read it: a gap (null or undefined) as it is, and a double as it is. The
+// Illusory spells store only doubles there, so it throws for any other value, which nothing stores.
+function theSpectralDoubleStoredThere(stored: unknown): ASpectralDouble | null | undefined {
+  if (stored === null || stored === undefined || isASpectralDouble(stored)) return stored;
+  throw new TypeError("a hero's _phantoms holds only the spectral doubles the Illusory spells store");
 }
 export function _phBetterQuality(a: string, b: string) {
   return _PH_TIERS.indexOf(a) >= _PH_TIERS.indexOf(b) ? a : b;
@@ -88,10 +113,14 @@ export function injectPhantoms(ch: AHostWithDoubles | null | undefined, real: AH
   // nothing left to be an illusion OF — it dissipates and is destroyed, rather than fighting on as
   // a free-standing unit. (This filter is the single choke point: every route out of ch.armies
   // passes it.)
-  ch._phantoms = ch._phantoms.filter((ph) => ph && byTag[ph._phantomOf]);
+  ch._phantoms = ch._phantoms.filter((stored) => {
+    const ph = theSpectralDoubleStoredThere(stored);
+    return ph && byTag[ph._phantomOf];
+  });
   if (real && real !== ch) real._phantoms = ch._phantoms; // battles run on shallow copies — keep the real store in step
   const armies = ch.armies;
-  ch._phantoms.forEach((ph) => {
+  ch._phantoms.forEach((stored) => {
+    const ph = theSpectralDoubleStoredThere(stored);
     if (!ph) return; // never met: the filter above kept only doubles
     const o = byTag[ph._phantomOf];
     if (!o) return; // never met: the filter above kept only doubles whose unit is here
@@ -132,14 +161,20 @@ export function clearPhantomCopies(
   if (Array.isArray(ch.armies) && Array.isArray(store)) {
     ch.armies.forEach((a) => {
       if (a?._phantom) {
-        const rec = store.find((ph) => ph && ph._phantomOf === a._phantomOf && !ph._synced);
+        const rec = theSpectralDoubleStoredThere(
+          store.find((stored) => {
+            const ph = theSpectralDoubleStoredThere(stored);
+            return ph && ph._phantomOf === a._phantomOf && !ph._synced;
+          }),
+        );
         if (rec) {
           rec.quality = _phBetterQuality(a.quality, rec.quality || a.quality);
           rec._synced = true;
         }
       }
     });
-    store.forEach((ph) => {
+    store.forEach((stored) => {
+      const ph = theSpectralDoubleStoredThere(stored);
       if (ph) delete ph._synced;
     });
   }

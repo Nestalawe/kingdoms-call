@@ -6,18 +6,17 @@ import { whatARealmsDiscoveriesAddToABloodHarvest } from '../rules/the-registry-
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';
-import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import type { Army } from '../../schemas/saved-game-state.ts';
 
 // Its types (plan P1-10b9): each parameter typed as wide as the body's guards (plan P1-10b's Decision 3), so each guard
-// stays. A unit's type is a UnitType where its name is drawn (armyUnitName takes one), though the schema's is any string.
+// stays. A unit's type is any string, as the schema holds it (armyUnitName takes any, since plan P1-10b's later rows).
 /** A victor: his realm and id, each guarded. */
 interface AVictor {
   readonly id?: number | null | undefined;
   readonly player?: number | null | undefined;
 }
 /** A fallen unit as the Iron Throne reads it. */
-type AFallenUnit = Pick<Army, 'quality' | 'unitName' | '_isSkeletal'> & { readonly type: UnitType };
+type AFallenUnit = Pick<Army, 'type' | 'quality' | 'unitName' | '_isSkeletal'>;
 
 // ── BLOOD HARVEST AND THE IRON THRONE (plan P1-08c: lifted out of resolveTurn) ────
 // What a victory gives back: a Pagan victor's gold from the fallen, and an Evil realm's fallen foes rising as its

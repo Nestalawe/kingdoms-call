@@ -135,7 +135,7 @@ export function eyesOfTheForestLine(
   terrain: string | null | undefined,
   shooters: readonly ForceUnit[] | null | undefined,
   shooterName: ASideAsABattlesReportLinesNameIt,
-) {
+): Extract<NarrativeLine, { kind: 'the eagle riders mark the forest wardens and spoil the ambush' }> | null {
   if (!theShootersSeeWhatHides(shooters ?? [])) return null;
   const stoppedIfUnseen = theVolleyIsStopped({
     theForceTheVolleyIsShotAt: defenderForce ?? [],

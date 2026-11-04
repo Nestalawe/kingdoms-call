@@ -46,7 +46,7 @@ interface TheOptionsOfEveryUnitsFate {
   /** The quality tiers, lowest first; else QUALITY_TIERS. */
   tiers?: readonly string[] | null;
   /** Receives each unit's line. */
-  say?: ((line: string | TheFactOfOneOfABattlesSentences) => void) | null;
+  say?: ((line: TheFactOfOneOfABattlesSentences) => void) | null;
   /** The units' owner, as each line names him (plan P1-12d28: a side's record or the defenders'; the prose writes the
    *  label); none named where it is missing. */
   owner?: TheOwnerOfABattlesUnits | null;

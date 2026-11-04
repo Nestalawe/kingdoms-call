@@ -17,6 +17,8 @@
 // Since R-126 (plan question 27, P1-23af) it plays battle magic's one rule against guards, as between heroes, which no
 // game reaches: their commander's Lightning Bolt past 5 strikes 5 companies, and a Telekinetic Storm either way, at sea
 // or at a commander with no Tactical, marks him, cuts nothing and says it finds no command to disrupt.
+// Since P1-10b24 it plays their commander's Control Undead as a battle's copy of himself, which no game reaches: the
+// world's own commander gains the hero's undead company (twice, as the hero's own does: Parked).
 // The battles and the spell choice keep their names and signatures, so this passes on the code before the registry
 // took battle magic (P1-19u's base) and the strikes (P1-19v's), as after; R-126's cases fail before it.
 // Level 1 (unit): the engine's modules called directly (plan P1-14a), with the dice that decide fed in order; no turn
@@ -113,6 +115,8 @@ interface WhatTheBattleShows {
   /** Whether a Telekinetic Storm marked each commander, and the share of his Tactical bonus it left him, after the
    *  battle: the hero's, and realm 1's king's (the guards' commander, or the other host's). */
   readonly theTacticalLeft: Readonly<Record<'ofTheHero' | 'ofTheirCommander', readonly [unknown, unknown]>>;
+  /** The companies the world's realm 1's king holds after the battle (the guards' commander, or the other host's). */
+  readonly theirCommandersHostInTheWorld: readonly string[];
 }
 
 /** The guards' commander (realm 1's king, made a warlord of no realm, at the head of the guards): his skills (every
@@ -126,6 +130,8 @@ interface TheGuardsSide {
     readonly item?: string;
   };
   readonly atSea?: boolean;
+  /** He leads them as a battle's copy of himself, as a stalled battle hands him (the world keeps the real one). */
+  readonly asABattlesCopy?: boolean;
 }
 
 /** A battle on land (or at sea) in which realm 0's king (Elemental, White and Necromancy 5, and any skills given)
@@ -229,7 +235,15 @@ function aBattle(
           duelStance: 'refuse',
         };
       }
-      narrative = (combatVsNPC(tc, atk, field, theirs ? def : null) as { narrative: NarrativeLine[] }).narrative;
+      narrative = (
+        combatVsNPC(
+          ...([tc, atk, field, theirs ? (theGuards.asABattlesCopy ? { ...def } : def) : null] as unknown as Parameters<
+            typeof combatVsNPC
+          >),
+        ) as {
+          narrative: NarrativeLine[];
+        }
+      ).narrative;
     }
   } finally {
     kcRng.use(was);
@@ -252,6 +266,7 @@ function aBattle(
     theCasts,
     ...seen.at,
     theTacticalLeft: { ofTheHero: theTacticalLeft(atk), ofTheirCommander: theTacticalLeft(def) },
+    theirCommandersHostInTheWorld: def.armies.map((a) => a.unitName),
   };
 }
 
@@ -386,6 +401,35 @@ describe('battle magic against neutral guards follows the rule between heroes, i
       { kind: 'the defender casts a spell before the battle', spellName: 'Lightning Bolt', spellLevel: 7 },
     ]);
     expect(shown.lines).toEqual([{ kind: 'a lightning bolt sears the attacking units', unitCount: 5 }]);
+  });
+
+  // Their commander's Control Undead (Necromancy 5) at the hero, who casts nothing: the first die fed is its cast roll,
+  // the second the undead drawn. Led by a battle's copy of himself (a shallow one, sharing his list of companies), the
+  // world's own commander gains the unit too, twice, as the hero's own does (Parked; no game reaches it: a game's guard is
+  // the world's own; plan P1-10b24).
+  test("their commander's Control Undead, as a battle's copy, turns the hero's undead company to the world's commander (twice: Parked)", () => {
+    const shown = aBattle(
+      'against the guards',
+      '',
+      theGuards,
+      [0, 0],
+      undefined,
+      {
+        host: [
+          aCompany('Average', 'the First Shields'),
+          aCompany('Average', 'the Bone Shields', { _isSkeletal: true }),
+        ],
+      },
+      { theirCommander: { skills: { necromancy: 5 }, spell: 'Control Undead' }, asABattlesCopy: true },
+    );
+    expect(shown.lines).toEqual([
+      {
+        kind: "control undead turns an enemy undead unit to the caster's side",
+        turnedUnitName: 'the Bone Shields',
+        casterName: expect.any(String) as unknown,
+      },
+    ]);
+    expect(shown.theirCommandersHostInTheWorld).toEqual(['the Bone Shields', 'the Bone Shields']);
   });
 
   // The hero's Telekinetic Storm at their commander (Psychic 5): it halves a Tactical he has, on land; a commander with

@@ -153,7 +153,7 @@ export function druidShortfallLine(
   ch: Character | null | undefined,
   force: Army[] | null | undefined,
   align: string,
-) {
+): Extract<NarrativeLine, { kind: "a side's Druid cannot fully command its units" }> | null {
   if (!ch) return null;
   const lvl = effStat(turnContext, ch, 'druid');
   const shortfalls: AUnitsDruidShortfall[] = [];

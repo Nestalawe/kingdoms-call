@@ -539,7 +539,7 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
         { type: 'Shieldwall Levies', quality: 'Green', unitName: 'Bones', _isSkeletal: true },
       ];
       withDice(0, () => {
-        ironThroneRaise({ G } as never, { player: 0, id: 4 }, dead as never, narrative);
+        ironThroneRaise({ G } as never, { player: 0, id: 4 }, dead, narrative);
       });
       const rises = G['_pendingRises'] as { charId: number; unit: Obj }[];
       expect(rises.map((r) => [r.charId, r.unit['quality'], r.unit['race'], r.unit['_isSkeletal']])).toEqual([

@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-85 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(51: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+84 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(50: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b23 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b24 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -76,6 +76,7 @@ added under its kind.
   `` `${String(a)}-${String(b)}` ``.
 - **`parseInt(x)`** on a number or a regular expression's group is `parseInt(String(x))`: `parseInt` reads its argument
   as words. `s.match(re)` with no `g` flag is `re.exec(s)`, the same result.
+- **Flags subtracted in a sort** (`y.fly - x.fly`, flying first) are `Number(y.fly) - Number(x.fly)`: the same order.
 - **A pair read element by element** (`a[0] + a[1]`, a damage range the dice read) is `Number(a[0]) + Number(a[1])`, or
   a small reader that hands back `[Number(a[0]), Number(a[1])]` and, for no pair, throws the `TypeError` the old read
   threw. `x > 0` already reads `x` as a number, so `Number(x) > 0` is the same.
@@ -172,6 +173,12 @@ added under its kind.
   narrows it inside too. A table read by the same key several times is read once into a `const`.
 - **A `try` whose `catch` gave a value where a missing element threw** checks for none first inside the `try`, with
   the same value (`if (!g) return 0;`, `takeBestGrave`).
+- **A value read by nothing, kept alive by `void x;`** (lint's `no-meaningless-void-operator`): a pure one goes with its
+  `void` (a count, a product); one a call gives keeps the call as a bare statement (`effStat(…);`), its reads and writes
+  as they were. A flag a stand-in may leave out (`c.alive === false`) is read `asItsGuardReadsIt(c.alive) === false`.
+- **A list indexed by a key that may be missing** (`G.world.provinces[c._attackedFrom]`) is `k === undefined ?
+  undefined : list[k]`; a record by words indexed by a realm's index that may be `null` is `table?.[String(n)]`, as
+  JavaScript reads `table[null]`.
 - **A `let` that a `try` and its `catch` (or its `finally`) always set** is declared with its type and no first value
   (`let base: number;`): the compiler sees it set after them, and lint's `no-useless-assignment` no longer finds a first
   value nobody reads. A `catch (e)` whose `e` is unread is `catch {`.
@@ -251,7 +258,9 @@ added under its kind.
 - **A list the saved state holds as `z.unknown()` that a freed file reads** (the parcels on the road, which the Grand
   Heist cuts an item from) gains its element's schema, written from the code that fills it (Send Item's `{ toId, items,
   fromName }`), so long as every save holds the list empty or holds none (the couriers empty it each turn): a save of
-  any version still meets it, and no version is bumped.
+  any version still meets it, and no version is bumped. A `refactor-only` row changes no saved shape: there each value
+  is narrowed where the code reads it, through a check that hands back what the code fills it with and throws for any
+  other (a hero's spectral doubles, `_phantoms`: `theSpectralDoubleStoredThere`, which keeps a gap as it is).
 - **A fact's realm name read by an index** (`G.players[c.player]?.name`) may be `undefined` where the index names no
   realm: the fact's field allows it, and the prose writes it `${String(x)}`, the same words.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
@@ -259,4 +268,10 @@ added under its kind.
 - **A ternary or a list of many kinds of line** can be "too complex to represent" (TS2590) as `NarrativeLine`: type it
   by the kinds it holds, `Extract<TheFactOfAPersonalCombatsLine, { kind: … }>`, and build a list of them with other
   lines in two steps (a literal of them, then `push`).
+- **A line a registry names from a union wider than this copy's facts** (a battle spell's line, each copy's own kinds
+  in one union) is read through a check that hands back one of the kinds this copy writes there, and throws for any
+  other (`theLineThisCopyOfTheBattleWrites(done.theLine, "…")`): the registry's tables name one a copy, so it never
+  throws. A ternary of records (the defenders as a line names them) is typed by its fact type on the `const`.
+- **A test that calls a freed function on its own shapes** (a staged context, hero and province) hands its
+  arguments through one cast, `f(...([tc, atk, field, guard] as unknown as Parameters<typeof f>))`.
 - **`{ ...(x || {}) }`** is `{ ...x }`: a spread of a missing or falsy value adds nothing.

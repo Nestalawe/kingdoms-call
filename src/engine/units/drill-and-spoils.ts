@@ -38,7 +38,7 @@ export function markOrcAttackWin(ch, gs, battle) {
 // land and air units as if by Tactical 1, fleets and sea-beasts as if by Naval 1).
 export const UNIT_DRILL_BASE = { Green: 0.05, Average: 0.04, Veteran: 0.03, Crack: 0.02, Elite: 0 };
 export const GARRISON_DRILL_LEVEL = 1;
-export function humanXPMult(a, ownerPi, gs) {
+export function humanXPMult(a, ownerPi, gs): number {
   return a && a.race === 'Human' && ownerPi != null && gs.players[ownerPi] && gs.players[ownerPi].race === 'Human'
     ? 2
     : 1;

@@ -807,7 +807,13 @@ export type TheFactOfOneOfABattlesSentences =
       strikeChancePct: number;
       druidLevel: number;
     }
-  | { kind: 'a unit uses its power in battle'; unitName: string; powerName: string; powerFlavour: string }
+  | {
+      kind: 'a unit uses its power in battle';
+      unitName: string;
+      powerName: string;
+      /** The strike's flavour, as the content's table holds it (a strike may have none). */
+      powerFlavour: string | undefined;
+    }
   | { kind: "a unit's power hits all enemy units"; enemyUnitCount: number; damage: number }
   | { kind: "a unit's power hits one enemy unit"; struckUnitName: string; damage: number }
   | { kind: "the hero's archers find no target among the forest wardens"; heroName: ASideOfABattle }
@@ -1110,7 +1116,13 @@ export type TheFactOfOneOfABattlesSentences =
       targetUnitName: AValueInALinesWords;
     }
   | { kind: "the defenders' archery volley's total"; totalDamage: number; arrowSofteningCapPct: number }
-  | { kind: 'a defending unit uses its power in battle'; unitName: string; powerName: string; powerFlavour: string }
+  | {
+      kind: 'a defending unit uses its power in battle';
+      unitName: string;
+      powerName: string;
+      /** The strike's flavour, as the content's table holds it (a strike may have none). */
+      powerFlavour: string | undefined;
+    }
   | { kind: "a unit's power hits every attacking unit"; powerName: string; unitCount: number; damage: number }
   | {
       kind: "the terrain's effect on the attacker's units";
