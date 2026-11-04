@@ -86,9 +86,10 @@ function itsJsonIsTheOriginals<Value>(copy: unknown, original: Value): copy is V
 
 // ── PERSONAL COMBAT: LAIR GUARDIANS AND THE ODDS (plan P1-08f: lifted out of resolveTurn) ────
 // What a guardian's nature makes it weak or strong against (monsterTraits), the guardian as a combatant
-// (pcBuildGuardian), the odds Hunting Rumours reads to a hero (simulateLairOdds, rumourOddsBand) and a hero's fight with
-// a lair's guardian (resolveEncounter). pcBuildGuardian, simulateLairOdds and resolveEncounter take the turn's context
-// first (src/engine/turn/context.ts); monsterTraits and rumourOddsBand read no turn state.
+// (pcBuildGuardian), the odds Hunting Rumours reads to a hero (simulateLairOdds) and a hero's fight with a lair's
+// guardian (resolveEncounter). pcBuildGuardian, simulateLairOdds and resolveEncounter take the turn's context first
+// (src/engine/turn/context.ts); monsterTraits reads no turn state. The bands the odds are read in (rumourOddsBand) are
+// on plain values (src/engine/rules-on-plain-values/).
 // Derive a monster's combat weaknesses/resistances and closing speed from its nature, so that
 // different strategies suit different monsters (no single dominant encounter plan).
 // mods.melee/archery/spell — <1 resists that approach, >1 is vulnerable to it
@@ -229,40 +230,6 @@ export function pcBuildGuardian(
 // restored, so a weakness that happens to bite in the sandbox teaches the realm nothing.
 export const RUMOUR_SIM_FIGHTS = 300;
 // (`_pcSimulating` itself is declared beside trySkillGain, above every call site, so it can never be read in its TDZ.)
-export const RUMOUR_ODDS_BANDS = [
-  // upper bound of the band (kill %), and the line read to the player
-  {
-    max: 20,
-    text: (g: string) =>
-      `the talk is grim: you would have no real chance against the ${g} — it would leave you in the dust with the rest`,
-  },
-  {
-    max: 40,
-    text: (g: string) =>
-      `the odds are against you: the ${g} would most likely be the end of you, though a lucky hand might yet see it done`,
-  },
-  {
-    max: 60,
-    text: (g: string) =>
-      `it could go either way: you and the ${g} are evenly matched, and the dice will decide who walks out`,
-  },
-  {
-    max: 80,
-    text: (g: string) => `the odds favour you: you would likely bring the ${g} down, but not without real danger`,
-  },
-  {
-    max: 90,
-    text: (g: string) => `the talk is confident: you should bring the ${g} down, though it could still cost you dearly`,
-  }, // Sept 2026: the 80–90 band split out so a 90%+ reading exists
-  {
-    max: 101,
-    text: (g: string) =>
-      `the talk is certain: you are all but sure to defeat the ${g} — only ill fortune could turn it`,
-  },
-];
-export function rumourOddsBand(pct: number) {
-  return RUMOUR_ODDS_BANDS.find((b) => pct < b.max) ?? RUMOUR_ODDS_BANDS[RUMOUR_ODDS_BANDS.length - 1];
-}
 export function simulateLairOdds(
   turnContext: TurnContext,
   c: Character | null | undefined,

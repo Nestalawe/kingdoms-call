@@ -5,7 +5,7 @@ import { KC_BUILD_STAMP } from './startup.ts';
 import { ARMY_COST_MASTER } from '../../engine/army-tables.ts';
 import { sb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
-import { fortuneWinChance } from '../../engine/battle/fortune.ts';
+import { fortuneWinChance } from '../../engine/rules-on-plain-values/the-fortune-of-a-battle-its-curve-and-the-win-chance-it-gives.ts';
 import { KC_TEL_V } from '../../db/game-meta.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 

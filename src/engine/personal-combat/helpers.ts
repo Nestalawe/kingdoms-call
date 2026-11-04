@@ -1,6 +1,7 @@
 import { KC_RUMOUR_COST_BY_POWER } from '../../content/kingdoms-call-data.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { lairRumourKey } from '../rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import {
   anItemChangesAHerosMaximumHp,
@@ -479,10 +480,7 @@ export function pcLearnWeakness(
 // ── LAIR RUMOURS REMEMBERED ── what Hunting Rumours learned about a lair's HOARD, keyed
 // `<provinceId>:<featureIndex>` (the same idx the order forms and the search handler use), so the
 // Known Lairs card can show it every turn after. Only the hoard is kept; a weakness goes to
-// _knownWeak and the odds are never stored.
-export function lairRumourKey(provId: number, idx: number) {
-  return String(provId) + ':' + String(idx);
-}
+// _knownWeak and the odds are never stored. Its key, lairRumourKey, is on plain values (the report reads it too).
 export function noteLairRumour(
   pl: ARealmAsItsLessonsAreRead | null | undefined,
   provId: number,
