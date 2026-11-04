@@ -11,7 +11,7 @@ import type {
   AUnitAsTheNewTurnNamesIt,
   TheFactOfANewTurnsLine,
 } from '../../engine/turn/the-facts-the-new-turns-lines-record.ts';
-import { whatTheSavesCheckFoundInWords } from '../../engine/saves/what-the-saves-check-found-in-words.ts';
+import { whatTheSavesCheckFoundInWords } from './what-the-saves-check-found-in-words.ts';
 
 /** An elemental released, as the line names it: "Storm Lord (Air Elemental)", or its type alone. */
 function anElementalsName(unit: AUnitAsTheNewTurnNamesIt): string {

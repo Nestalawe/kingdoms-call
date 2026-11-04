@@ -1647,6 +1647,11 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE: Readonly<
   "a hero's host turns on a province it has shared with a realm at war": "its event's",
 };
 
+/** A battle's line whose tier ('k' key or 'd' detail) the views work out once the battle's lines are all filed, from
+ *  each line's kind (since P1-12d34; theTurnsLinesInWords, src/views/prose/the-words-of-each-line.ts). The GM's log is
+ *  stored with the tier in its place. */
+export const A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES = "worked out from the words of the battle's lines";
+
 /** Each kind's tier in a battle's lines (plan P1-12d34; TheTierOfAKindOfABattlesLine, src/engine/turn/events-and-their-
  *  audiences.ts): what each kind's words gave when the views read the tiers from them, for the names a game writes.
  *  Every kind but the place of the losses tally, which takes its own ('t'). */

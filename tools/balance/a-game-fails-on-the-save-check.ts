@@ -30,7 +30,7 @@ export const KNOWN_PLACES_THE_SAVE_CHECK_FINDS: readonly AKnownPlaceTheSaveCheck
 /** How the turn's line for the GM begins (engine/turn/new-turn-war-academy-…-the-final-reconcile.ts). */
 export const THE_SAVE_CHECKS_LINE_BEGINS = '[Save check] ';
 
-/** Where the line's list of places begins, in its words (engine/saves/what-the-saves-check-found-in-words.ts). */
+/** Where the line's list of places begins, in its words (views/prose/what-the-saves-check-found-in-words.ts). */
 const THE_LIST_BEGINS = 'Please send this list to the Kingdoms Call team: ';
 /** The line's count of the places it doesn't name (more than ten). */
 const AND_N_MORE = /^and \d+ more$/;

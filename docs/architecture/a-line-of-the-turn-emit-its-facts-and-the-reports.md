@@ -222,7 +222,7 @@ check finds were made.
   absent stays green whatever the engine writes; read the words pass. In this run a
   line's words are the same for every reader (the masking of unmet realms stays on them, R-046).
 - **A battle's tiers come from its lines' kinds, and its tally from their facts, in the views.** `emitBattle` files
-  each line with its tier still to work out (`A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES`) and, after them,
+  each line with its tier still to work out (`A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES`, beside the tier tables) and, after them,
   the place of its losses tally (a fact with no words, filed with the fight's event, so it keeps the fight's audience,
   hero and place; none when every line is for one realm alone). Since P1-12d34 each kind a battle's lines may hold has
   its tier beside its audience table (`THE_TIER_OF_EACH_KIND_OF_A_BATTLES_LINE`; personal combat's, the sea lift's, a

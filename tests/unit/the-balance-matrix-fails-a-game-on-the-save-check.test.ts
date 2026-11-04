@@ -44,7 +44,7 @@ import {
 import {
   THE_CHECKS_FINDINGS_NAMED_AT_MOST,
   whatTheSavesCheckFoundInWords,
-} from '../../src/engine/saves/what-the-saves-check-found-in-words.ts';
+} from '../../src/views/prose/what-the-saves-check-found-in-words.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
 const FIXTURE = fs.readFileSync(path.join(import.meta.dirname, '../fixtures/saves/version-1.json'), 'utf8');

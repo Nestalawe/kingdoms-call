@@ -65,7 +65,7 @@ the turn reads it.
   differs is met is Theo's Choice 1, "tell now, stop later": the turn runs; its end tells the GM in one line of the GM's
   log, which no realm reads (`[Save check] The saved game holds 1 thing this build of Kingdoms Call doesn't know, …`);
   `resolveTurn` returns the list, and the shell's message says the same (at most ten places, then a count;
-  `src/engine/saves/what-the-saves-check-found-in-words.ts`), and shows it again once the page has refreshed the game.
+  `src/views/prose/what-the-saves-check-found-in-words.ts`), and shows it again once the page has refreshed the game.
   A save that isn't a game in play (no provinces, no realms, no list of heroes: the new game's settings before Turn 0)
   is refused first, before anything changes, as a newer save is. Once every live game has run two weeks of turns with
   no place reported, a pull request of its own turns a difference into a stop. What checks it:

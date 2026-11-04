@@ -12,7 +12,7 @@ import type {
   TheFactOfADiplomacyOrVictoryLine,
 } from '../../engine/turn/the-facts-diplomacy-and-victorys-lines-record.ts';
 import { dispFloor } from '../../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
-import { _TITLE_LABEL } from '../../engine/titles/reckoning.ts';
+import { _TITLE_LABEL } from './the-words-of-the-major-titles-names.ts';
 
 /** A realm's name, else "Realm N" by its seat. */
 function theRealmsNameOrItsNumber(realm: ARealmAsDiplomacyOrVictoryNamesIt): string {

@@ -59,7 +59,7 @@ export interface WhatTheSavesUpgradeFound {
   heroesCarriedOverToTheEarnedHpPool: AHeroCarriedOverToTheEarnedHpPool[];
   /** Where the save, upgraded, differs from the saved state's schema made strict (the check): one line each, its path
    *  and its kind, never a value (`characters.17.armies.2: a field this build doesn't know, _flakTargeted`); none if
-   *  it matches. The turn's end tells the GM (what-the-saves-check-found-in-words.ts). */
+   *  it matches. The turn's end tells the GM (views/prose/what-the-saves-check-found-in-words.ts). */
   whereTheSaveDiffersFromThisBuildsSchema: string[];
 }
 
