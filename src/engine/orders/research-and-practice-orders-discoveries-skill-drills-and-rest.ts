@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
@@ -32,6 +31,12 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
+import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { theProvinceIsHanded, theRealmIsHanded } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+import { servesARealm, theOneThePickFell } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import type { Character, Province, Realm } from '../../schemas/saved-game-state.ts';
+import type { TurnContext, TurnOrder } from '../turn/context.ts';
+import type { TheReasonForAPracticesChance } from './the-facts-the-research-and-practice-orders-lines-record.ts';
 
 // ── THE RESEARCH AND PRACTICE ORDERS (plan P1-08j4: the fourth family taken out of processOrder in resolveTurn) ──
 // Research (a Sage's roll for a discovery of the realm, or an unlooked-for find in a hidden field), Practice Skill (a
@@ -41,10 +46,42 @@ import {
 // the turn's context first (src/engine/turn/context.ts), then the values processOrder worked out before it that it
 // reads, in the order processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a
 // case-level break became a return.
+/** Levels by skill (a hero's skills, a season's snapshot of them, his rises this turn) as Practice reads and raises
+ *  them, by the skill's name the order gives: the same object. */
+function theLevelsByAnyName(levels: Character['skills']): Partial<Record<string, number>> {
+  return levels;
+}
+/** A hero's level in a skill his practice has just raised (it has just written a number there); for none, a
+ *  TypeError. */
+function theLevelThePracticeRaised(skills: Readonly<Partial<Record<string, number>>>, skill: string): number {
+  const level = skills[skill];
+  if (level === undefined) throw new TypeError('a practised skill holds no level');
+  return level;
+}
+/** A hero as Practice reads his skills at the start of the phase: by his id in the season's snapshot, else his own
+ *  (or none). */
+interface AHeroAsPracticeReadsHisLevel {
+  readonly id: number;
+  readonly skills?: Character['skills'] | null | undefined;
+}
+/** The heroes' orders for the turn as Practice reads its comrades' (the saved state holds them cleared, as nulls): by
+ *  hero (or none), then by phase (or none). */
+type TheTurnsOrdersAsPracticeReadsThem = Readonly<Partial<Record<string, readonly (TurnOrder | null | undefined)[]>>>;
+/** A hero as a practice's rise closes his phase: the rises from the field waiting to be drawn this phase, which the
+ *  turn holds (the save holds none: they are drawn before it is written). */
+type AHeroAsAPracticesRiseClosesHisPhase = Omit<Character, '_sgPending'> & {
+  _sgPending?: { readonly phase?: number | null | undefined } | null | undefined;
+};
 // ── RESEARCH ── the scholar's own order: a roll for a Sage discovery. Available to any
 // character with Sage 1+ (the player portal hides it below that; the engine re-checks). Does
 // NOT train the Sage skill unless a discovery is actually made.
-export function resolveResearchOrder(turnContext, c, ph, target, player) {
+export function resolveResearchOrder(
+  turnContext: TurnContext,
+  c: Character,
+  ph: number,
+  target: string,
+  player: Realm | undefined,
+) {
   const { G } = turnContext;
   const sageRaw = skillLevel(c, 'sage');
   if (sageRaw < 1) {
@@ -63,13 +100,16 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
   // unlooked-for side result of researching any other field (roll below).
   const _rcatRaw = (target || '').trim();
   let _rcat = RESEARCH_HIDDEN_CATS.has(_rcatRaw) ? '' : _rcatRaw;
+  // only a hero of a realm acts in a phase, and processOrder hands him his realm (the first read of it is just below)
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm researches');
+  theRealmIsHanded(player);
   // 2026-09-23d (Toby): a field with nothing left to find — typically because another Sage of
   // this realm took its last discovery EARLIER THIS TURN — no longer wastes the order. The
   // study shifts to a random other field that still holds something for the realm; only when
   // every field is spent is the order refused. Decided BEFORE the chance is worked out, so a
   // field-scoped research bonus (az10's own-creed field) follows the field actually studied.
   {
-    const _knownPre = new Set((player.discoveries || []).map((d) => d.id));
+    const _knownPre = new Set((player.discoveries ?? []).map((d) => d.id));
     const _avPre = discAvailableFor(turnContext, c.player, _knownPre).filter(
       (d) => !RESEARCH_HIDDEN_CATS.has(d.category),
     );
@@ -93,7 +133,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         });
         return;
       }
-      const _to = _fields[Math.floor(kcRng() * _fields.length)];
+      const _to = theOneThePickFell(_fields[Math.floor(kcRng() * _fields.length)]);
       emit(turnContext, {
         type: 'system',
         fact: {
@@ -120,18 +160,16 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
     (charMinor(turnContext, c, 'loreseeker') ? perLevel : 0) +
     whatARealmsDiscoveriesAddToResearch(G.players[c.player], {
       isTheFieldStudiedItsOwnCreed: () =>
-        String(_rcat || '')
-          .trim()
-          .toLowerCase() === String((player.alignment || '') + ' Creed').toLowerCase(),
+        (_rcat || '').trim().toLowerCase() === ((player.alignment || '') + ' Creed').toLowerCase(),
     }); // + Loreseeker; research discoveries (az10: own creed field only — the field actually studied; the discoveries'
   // registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to research")
   // 2026-10-13 (Toby, item 18): PERSEVERANCE, as Practice has it — every Research order of this
   // hero that has failed earlier this turn makes this one ×1.2 likelier, cumulatively. A
   // discovery (the hidden-field find included) resets it; each turn starts afresh.
-  const _rStreak = c._researchFailStreak && c._researchFailStreak.turn === G.turn ? c._researchFailStreak.n : 0;
+  const _rStreak = c._researchFailStreak?.turn === G.turn ? c._researchFailStreak.n : 0;
   const _rPersevere = Math.pow(1.2, _rStreak);
   const discoveryChance = Math.min(100, dispFloor(_discBase * _rPersevere));
-  const _catFilter = (d) =>
+  const _catFilter = (d: ReturnType<typeof discAvailableFor>[number]) =>
     !RESEARCH_HIDDEN_CATS.has(d.category) &&
     (!_rcat || _rcat.toLowerCase() === 'any' || (d.category || '').toLowerCase() === _rcat.toLowerCase());
   // the HIDDEN-FIELD roll is made FIRST and, when it lands, it is the discovery this research
@@ -150,13 +188,13 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       Math.min(HIDDEN_DISCOVERY_CAP_PCT, Math.floor(discoveryChance / HIDDEN_DISCOVERY_DIVISOR)),
     );
     if (_sRoll <= _sChance) {
-      if (!player.discoveries) player.discoveries = [];
+      player.discoveries ??= [];
       const _known2 = new Set(player.discoveries.map((d) => d.id));
       const _side = discAvailableFor(turnContext, c.player, _known2).filter((d) =>
         RESEARCH_HIDDEN_CATS.has(d.category),
       );
       if (_side.length > 0) {
-        const disc = _side[Math.floor(kcRng() * _side.length)];
+        const disc = theOneThePickFell(_side[Math.floor(kcRng() * _side.length)]);
         player.discoveries.push({
           id: disc.id,
           name: disc.name,
@@ -170,7 +208,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
         }
         if (perkTier(c, 'sage') >= 3) {
           const _sp = provOf(turnContext, c);
-          if (_sp && _sp.owner === c.player) {
+          if (_sp?.owner === c.player) {
             const _sb = _sp.tax || 0;
             _sp.tax = Math.min(10, _sb + 1);
           }
@@ -214,7 +252,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
   });
   c._researchFailStreak = { turn: G.turn, n: dRoll <= discoveryChance ? 0 : _rStreak + 1 }; // item 18: the next Research this turn is ×1.2 likelier after a failure
   if (dRoll <= discoveryChance) {
-    if (!player.discoveries) player.discoveries = [];
+    player.discoveries ??= [];
     const known = new Set(player.discoveries.map((d) => d.id));
     const available = discAvailableFor(turnContext, c.player, known).filter(_catFilter); // race/alignment eligibility; category
     if (available.length >= 2) {
@@ -222,11 +260,11 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       const _i1 = Math.floor(kcRng() * available.length);
       let _i2 = Math.floor(kcRng() * (available.length - 1));
       if (_i2 >= _i1) _i2++;
-      const d1 = available[_i1],
-        d2 = available[_i2];
-      player.pendingDiscoveryChoices = player.pendingDiscoveryChoices || [];
+      const d1 = theOneThePickFell(available[_i1]),
+        d2 = theOneThePickFell(available[_i2]);
+      player.pendingDiscoveryChoices = player.pendingDiscoveryChoices ?? [];
       player.pendingDiscoveryChoices.push({
-        key: `rc${G.turn}_${c.id}_${ph}`,
+        key: `rc${String(G.turn)}_${String(c.id)}_${String(ph)}`,
         turn: G.turn,
         charId: c.id,
         charName: c.name,
@@ -239,7 +277,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       } // SAGE L6: +5g per new discovery
       if (perkTier(c, 'sage') >= 3) {
         const _sp = provOf(turnContext, c);
-        if (_sp && _sp.owner === c.player) {
+        if (_sp?.owner === c.player) {
           const _sb = _sp.tax || 0;
           _sp.tax = Math.min(10, _sb + 1);
         }
@@ -260,7 +298,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       });
       trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD); // Sage: made a discovery
     } else if (available.length > 0) {
-      const disc = available[Math.floor(kcRng() * available.length)];
+      const disc = theOneThePickFell(available[Math.floor(kcRng() * available.length)]);
       player.discoveries.push({
         id: disc.id,
         name: disc.name,
@@ -274,7 +312,7 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
       } // SAGE L6: +5g per new discovery
       if (perkTier(c, 'sage') >= 3) {
         const _sp = provOf(turnContext, c);
-        if (_sp && _sp.owner === c.player) {
+        if (_sp?.owner === c.player) {
           const _sb = _sp.tax || 0;
           _sp.tax = Math.min(10, _sb + 1);
         }
@@ -315,22 +353,23 @@ export function resolveResearchOrder(turnContext, c, ph, target, player) {
   return;
 }
 // Practice Skill: a chance to raise one skill (to 5 at most), likelier beside comrades of the same level, certain beside a better one, and likelier after each failure this turn; Tactical drills the land and air companies he leads, Naval his fleets.
-export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
+export function resolvePracticeSkillOrder(turnContext: TurnContext, c: Character, ph: number, target: string) {
   const { G } = turnContext;
   const skill = target;
   if (!skill) return;
   // Read skill levels frozen at the START of this phase (see G._phaseSkillSnapshot) so that
   // group-training comparisons are all made before anyone has trained up this phase.
-  const _snap = G._phaseSkillSnapshot || {};
+  const _snap = G._phaseSkillSnapshot ?? {};
   // The snapshot is a copy of each character's skills object at phase start. A skill the
   // character had at level 0 is usually ABSENT from that object — it must still read as 0,
   // never fall through to the LIVE value. (The old fallback meant two level-0 characters
   // co-training the same new skill cascaded: the first to succeed instantly became a "more
   // skilled mentor" for the second, guaranteeing a second success in the same phase.)
-  const snapLvl = (ch) => {
+  const snapLvl = (ch: AHeroAsPracticeReadsHisLevel) => {
     const snap = _snap[ch.id];
-    if (snap) return snap[skill] || 0;
-    return (ch.skills || {})[skill] || 0;
+    if (snap) return (theLevelsByAnyName(snap)[skill] ?? 0) || 0;
+    const hisOwn: Readonly<Partial<Record<string, number>>> = ch.skills ?? {};
+    return (hisOwn[skill] ?? 0) || 0;
   };
   const current = snapLvl(c);
   // Sept 2026: the Sage discovery roll no longer rides on Practice — it is its own order,
@@ -354,13 +393,14 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
     // Group training bonus: find all other characters in the same province who are also
     // practising the same skill in this same phase Find co-trainers: same province, same phase,
     // same skill Orders may be stored as 'practice', 'Practice Skill', etc — normalise
-    const coTrainers = (G.characters || []).filter((other) => {
+    const turnOrders: TheTurnsOrdersAsPracticeReadsThem = G.turnOrders;
+    const coTrainers = (asItsGuardReadsIt(G.characters) ?? []).filter((other) => {
       if (!other.alive || other.id === c.id || other.location !== c.location) return false;
       // Only FRIENDLY characters train together: an enemy (or neutral wanderer) drilling in the
       // same province is no mentor and no training partner — soldiers do not share their drills
       // with the other side's officers.
       if (other.player !== c.player) return false;
-      const otherOrder = (G.turnOrders[other.id] || [])[ph];
+      const otherOrder = turnOrders[other.id]?.[ph];
       if (!otherOrder) return false;
       const otherAction = (otherOrder.action || '').toLowerCase().replace(/[^a-z]/g, '');
       const isPractice =
@@ -374,18 +414,19 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
     // progressively harder to attain. These are the solo base rates; the peer group bonus
     // (half the solo chance) and the guaranteed-success mentor rule below apply on top.
     const PRACTICE_BASE_BY_LEVEL = [0.25, 0.2, 0.15, 0.1, 0.05]; // level 0→25% … level 4→5%
-    const baseByLevel = PRACTICE_BASE_BY_LEVEL[Math.min(current, 4)];
+    const baseByLevel = Number(PRACTICE_BASE_BY_LEVEL[Math.min(current, 4)]);
     // practice discoveries (sd26 Astronomical Tables is one; the discoveries' registry's since plan P1-19ad:
     // "orderOutcome: a realm's discoveries add to practice")
-    const astroBonus = whatARealmsDiscoveriesAddToPractice(G.players[c.player], { theSkill: skill });
+    const hisRealm = c.player === null ? undefined : G.players[c.player]; // a wanderer's: none, as JavaScript reads it
+    const astroBonus = whatARealmsDiscoveriesAddToPractice(hisRealm, { theSkill: skill });
     // perseverance. Each FAILED practice this turn multiplies the character's next practice
     // chance by 1.2 (cumulative); a success resets it. The streak is per character, any skill,
     // and starts fresh each turn.
-    const _streak = c._practiceFailStreak && c._practiceFailStreak.turn === G.turn ? c._practiceFailStreak.n : 0;
+    const _streak = c._practiceFailStreak?.turn === G.turn ? c._practiceFailStreak.n : 0;
     const _persevere = Math.pow(1.2, _streak);
     // 2026-10-14 (batch item 10, Toby): QUICK LEARNERS on the Practice ground too — a Human of a
     // Human realm practises at ×1.5, as they learn in the field (trySkillGain).
-    const _prHuman = c.race === 'Human' && G.players[c.player] && G.players[c.player].race === 'Human' ? 1.5 : 1;
+    const _prHuman = c.race === 'Human' && hisRealm?.race === 'Human' ? 1.5 : 1;
     const soloChance = (baseByLevel + astroBonus) * _persevere * _prHuman; // this character's normal (solo) chance to improve
     // Mentor rule: if any co-trainer had a HIGHER level in this skill AT PHASE START, they
     // teach the character — the improvement is automatic (guaranteed). Levels are read from the
@@ -398,7 +439,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
     const pupils = coTrainers.filter((t) => snapLvl(t) < current);
     const _pupils = pupils.map((t) => ({ name: t.name, level: snapLvl(t) }));
     // why the chance is what it is, and the comrades he trains: the prose writes them (P1-12d6)
-    let successChance, theChance;
+    let successChance: number, theChance: TheReasonForAPracticesChance;
     if (mentors.length > 0) {
       successChance = 1.0; // guaranteed — learning from a more skilled mentor
       const bestMentor = mentors.reduce((a, b) => (snapLvl(b) > snapLvl(a) ? b : a));
@@ -432,20 +473,22 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
     const _prRoll = d100();
     if (_prRoll <= _prPct) {
       c._practiceFailStreak = { turn: G.turn, n: 0 }; // success resets the streak
-      c.skills[skill] = (c.skills[skill] || 0) + 1;
+      theLevelsByAnyName(c.skills)[skill] = ((theLevelsByAnyName(c.skills)[skill] ?? 0) || 0) + 1;
       // a practice rise counts toward the same per-turn tally that dampens EXPERIENCE gains
       // (×0.8 per earlier rise of this skill this turn, see trySkillGain), so a skill drilled
       // up in phase 1 is proportionally harder to raise again in the field later on.
-      if (!c._sgLog || c._sgLog.turn !== G.turn)
+      if (c._sgLog?.turn !== G.turn)
         c._sgLog = { turn: G.turn, phaseNo: null, phaseSkills: {}, provSkills: {}, turnGains: {}, turnSkills: {} };
-      c._sgLog.turnGains = c._sgLog.turnGains || {};
-      c._sgLog.turnGains[skill] = (c._sgLog.turnGains[skill] || 0) + 1;
+      c._sgLog.turnGains = asItsGuardReadsIt(c._sgLog.turnGains) ?? {};
+      const theGains = theLevelsByAnyName(c._sgLog.turnGains);
+      theGains[skill] = ((theGains[skill] ?? 0) || 0) + 1;
       // 2026-09-26b (Toby item 7): a Practice rise IS this phase's one skill rise — it closes the phase
       // to experience gains and voids any field candidates already drawn up this phase.
       {
-        const _gp = turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase;
-        (c._sgLog.gainedPhases || (c._sgLog.gainedPhases = {}))[_gp] = true;
-        if (c._sgPending && c._sgPending.phase === _gp) c._sgPending = null;
+        const _gp = turnContext._logCtx.phase ?? turnContext._currentPhase;
+        (c._sgLog.gainedPhases ?? (c._sgLog.gainedPhases = {}))[String(_gp)] = true;
+        const h: AHeroAsAPracticesRiseClosesHisPhase = c;
+        if (h._sgPending?.phase === _gp) h._sgPending = null;
       }
       const _prPayBefore = c.pay || 0;
       recalcHeroPay(c);
@@ -458,7 +501,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
           kind: 'a hero practises a skill and improves',
           heroName: c.name,
           skill,
-          level: c.skills[skill],
+          level: theLevelThePracticeRaised(theLevelsByAnyName(c.skills), skill),
           skillInPlay: theSkillInPlayAsALineTellsIt(turnContext, c, skill),
           mentored: mentors.length > 0,
           chance: _prPct,
@@ -522,21 +565,21 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
   const NAVAL_DRILL_TYPES = new Set(KC_UNIT_CLASS.sea);
   if (skill === 'tactical' || skill === 'naval') {
     const isNaval = skill === 'naval';
-    const drillLvl = c.skills[skill] || 0;
+    const drillLvl = (theLevelsByAnyName(c.skills)[skill] ?? 0) || 0;
     const tiers = QUALITY_TIERS.slice();
-    const DRILL_BASE = UNIT_DRILL_BASE; // module level — the end-of-turn garrison drill reads the same table
+    const DRILL_BASE: Readonly<Partial<Record<string, number>>> = UNIT_DRILL_BASE; // module level — the end-of-turn garrison drill reads the same table
     // Tactical drills land & air units; Naval drills sea units.
-    const trainable = (c.armies || []).filter(
+    const trainable = (asItsGuardReadsIt(c.armies) ?? []).filter(
       (a) => !a._isSkeletal && (isNaval ? NAVAL_DRILL_TYPES.has(a.type) : !NAVAL_DRILL_TYPES.has(a.type)),
     );
     let trainedAny = false;
-    trainable.forEach((army) => {
-      if (army.quality === 'Elite') return;
-      const baseChance = (DRILL_BASE[army.quality] || 0.03) * drillLvl * humanXPMult(army, c.player, G);
+    for (const army of trainable) {
+      if (army.quality === 'Elite') continue;
+      const baseChance = ((DRILL_BASE[army.quality] ?? 0) || 0.03) * drillLvl * humanXPMult(army, c.player, G);
       if (kcRng() < baseChance) {
         const idx = tiers.indexOf(army.quality);
         if (idx >= 0 && idx < 4) {
-          army.quality = tiers[idx + 1];
+          army.quality = theOneThePickFell(tiers[idx + 1]);
           emit(turnContext, {
             type: 'hire',
             fact: {
@@ -554,7 +597,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
           trainedAny = true;
         }
       }
-    });
+    }
     if (trainedAny) {
       // at least one promotion already logged above
     } else if (trainable.length > 0) {
@@ -578,7 +621,7 @@ export function resolvePracticeSkillOrder(turnContext, c, ph, target) {
   return;
 }
 // Rest: hit points back, 30% of his maximum (more for a Divine realm, all of it with Medical Arts).
-export function resolveRestOrder(turnContext, c, prov) {
+export function resolveRestOrder(turnContext: TurnContext, c: Character, prov: Province | undefined) {
   const { G } = turnContext;
   const REST_HEAL_PCT = 0.3;
   // sd28 Medical Arts: better healing on rest
@@ -587,14 +630,16 @@ export function resolveRestOrder(turnContext, c, prov) {
   // "make it a multiplier, but only half of what it was" — the BONUS is halved, from +100% to
   // +50%, so the blessing stays a multiplier rather than becoming a flat addition). Rounded
   // UP, so the blessing is never worth nothing on a small pool.
-  const isDivineKingdom = G.players[c.player]?.alignment === 'Divine';
+  const hisRealm = c.player === null ? undefined : G.players[c.player]; // a wanderer's: none, as JavaScript reads it
+  const isDivineKingdom = hisRealm?.alignment === 'Divine';
   // Medical Arts: a single Rest fully restores HP (the discoveries' registry's since plan P1-19ad: "orderOutcome: a
   // realm's discoveries heal a resting hero in full")
-  const _medArts = aRealmsDiscoveriesHealARestingHeroInFull(G.players[c.player]);
+  const _medArts = aRealmsDiscoveriesHealARestingHeroInFull(hisRealm);
   const baseHeal = Math.max(1, Math.ceil((c.maxHp || 20) * REST_HEAL_PCT)); // 30% of maximum HP (was 2–5)
   let heal = _medArts ? Math.max(0, (c.maxHp || 20) - c.hp) : isDivineKingdom ? Math.ceil(baseHeal * 1.5) : baseHeal;
   if (charMinor(turnContext, c, 'colossus')) heal += 2; // MINOR TITLE — The Colossus
-  heal += whatARealmsDiscoveriesAddToARestsHeal(G.players[c.player], {
+  theProvinceIsHanded(prov);
+  heal += whatARealmsDiscoveriesAddToARestsHeal(hisRealm, {
     isItHisRealmsGround: prov.owner === c.player,
     isItHisRealmsHome: () => homeFounderOf(G, prov.id) === c.player,
     theGround: prov.terrain,
@@ -619,7 +664,7 @@ export function resolveRestOrder(turnContext, c, prov) {
   return;
 }
 // Research Breakthrough (Sage 7): a discovery the realm can make, chosen by the dice, with no roll to fail.
-export function resolveResearchBreakthroughOrder(turnContext, c) {
+export function resolveResearchBreakthroughOrder(turnContext: TurnContext, c: Character) {
   const { G } = turnContext;
   if (skillLevel(c, 'sage') < THE_MASTERY_ORDERS.research_breakthrough.level) {
     emit(turnContext, {
@@ -631,8 +676,11 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
     });
     return;
   }
+  // only a hero of a realm acts in a phase, and his index names a realm of the state
+  if (!servesARealm(c)) throw new TypeError('a hero who serves no realm makes a Research Breakthrough');
   const player = G.players[c.player];
-  if (!player.discoveries) player.discoveries = [];
+  theRealmIsHanded(player);
+  player.discoveries ??= [];
   const known = new Set(player.discoveries.map((d) => d.id));
   const available = discAvailableFor(turnContext, c.player, known); // race/alignment eligibility
   if (available.length === 0) {
@@ -646,7 +694,7 @@ export function resolveResearchBreakthroughOrder(turnContext, c) {
     trySkillGain(turnContext, c, 'sage', SKILLGAIN_STD);
     return;
   }
-  const disc = available[Math.floor(kcRng() * available.length)];
+  const disc = theOneThePickFell(available[Math.floor(kcRng() * available.length)]);
   player.discoveries.push({
     id: disc.id,
     name: disc.name,

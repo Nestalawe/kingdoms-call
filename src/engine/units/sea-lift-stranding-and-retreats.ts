@@ -39,13 +39,13 @@ import type { Army, Province } from '../../schemas/saved-game-state.ts';
 // Skipped: flooded land (a Flood strands a land host by design) and any province whose battle is
 // still unresolved — a beaten column pinned at sea stays aboard and fights on (see retreatOptions).
 // Hulls are never shared between characters: each commander's ships carry his own troops only.
-export function isOpenSea(prov) {
+export function isOpenSea(prov): boolean {
   return !!prov && prov.terrain === 'sea' && !prov._flood;
 }
 // 0 exactly when getSeaCapability(armies) !== 'land'; otherwise a positive measure of the lift
 // missing — berths short for units only a hull can take (in half-hulls, ×1000), then foot left
 // over beyond what the flyers can lift. Mirrors getSeaCapability's pooled hull + flyer rule.
-export function seaLiftShortfall(armies, leadChar) {
+export function seaLiftShortfall(armies, leadChar): number {
   armies = (armies || []).filter((a) => a && !a._phantom);
   if (getSeaCapability(armies, leadChar) !== 'land') return 0;
   const capOf = (a) => (BOT_LIGHT_ARMIES.has(a.type) ? 1 : 2); // half-hulls: light foot 1, everything else 2
