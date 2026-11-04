@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { monarchRestProvId } from '../grand-design.ts';
@@ -24,7 +23,65 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
-import type { AHeroIsSlainOutsideABattle } from './the-facts-a-heros-death-lines-record.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type {
+  AHeroIsSlainOutsideABattle,
+  TheFactOfAHerosDeathsLine,
+  TheOneWhoSlewAHero,
+} from './the-facts-a-heros-death-lines-record.ts';
+import type { EventButItsWords } from '../turn/events-and-their-audiences.ts';
+import type { ArmyInABattle } from '../army-tables.ts';
+import type { Character, Grave } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+
+/** A fallen hero as his host is dispersed: his name, whose he was, where he fell and the ground he came from, who slew
+ *  him (handleHeroDeath stamps it; the dispersal clears it), and his host (a gap read as none). */
+interface AFallenHeroAsHisHostIsDispersed {
+  /** (read by nothing here: a spared coward's stand-in carries it) */
+  readonly id?: number | undefined;
+  readonly name: string;
+  readonly player: number | null;
+  readonly location: Character['location'];
+  readonly _attackedFrom?: number | undefined;
+  armies?: readonly ArmyInABattle[] | null | undefined;
+  _slainBy?: TheOneWhoSlewAHero | undefined;
+}
+/** A spared coward as his host is left behind: a hero of the world, his column perhaps holding a gap or missing. */
+type ASparedCowardAsHisHostIsLeft = Omit<Character, 'armies'> & {
+  armies?: (ArmyInABattle | null | undefined)[] | null | undefined;
+};
+/** A hero as his death is resolved: a hero of the world (or a battle's copy of one), and who slew him (`_slainBy`). */
+type AHeroAsHisDeathIsResolved = Character & { _slainBy?: TheOneWhoSlewAHero | undefined };
+/** A line of a hero's death handed back to its caller, to be told in its place (reportHeroFall; the duel before a
+ *  battle): its type, its fact, its place, and the realm it is told to alone (the surgeons too late). */
+interface ALineOfAHerosDeathHandedBack {
+  readonly type: string;
+  readonly fact: TheFactOfAHerosDeathsLine;
+  readonly place?: EventButItsWords | undefined;
+  readonly priv?: number | null | undefined;
+}
+/** A line of a hero's death that reportHeroFall tells in its place, after its own. */
+interface ALineOfAHerosDeathToldInItsPlace extends ALineOfAHerosDeathHandedBack {
+  readonly place: EventButItsWords;
+}
+/** What a caller of handleHeroDeath asks and is told: keep the host on the field (a duel before a battle), save no one
+ *  (no Battlefield Surgery), who slew him (a lair's guardian), how he died for the statistics, the lines handed back
+ *  instead of told, and what became of him ('vanished', 'escaped', 'surgery' or 'died'). */
+interface TheWayAHerosDeathIsResolved {
+  readonly keepArmies?: boolean | undefined;
+  readonly noSave?: boolean | undefined;
+  readonly slainBy?: TheOneWhoSlewAHero | null | undefined;
+  readonly cause?: string | undefined;
+  readonly lines?: ALineOfAHerosDeathHandedBack[] | undefined;
+  outcome?: string | undefined;
+}
+/** A fallen monarch's grave as his death writes it: a grave, its place the province his body rests in (the dynasty's
+ *  rest, a province's id as the map's list numbers it). */
+type AMonarchsGraveAsItIsWritten = Omit<Grave, 'location'> & { location: number };
+/** A hero's merit towards the titles, read and cut by any title's name (the same object). */
+function theMeritByAnyName(merit: NonNullable<Character['tm']>): Partial<Record<string, number>> {
+  return merit;
+}
 
 // ── HERO DEATH AND LEADERLESS HOSTS (plan P1-08f: lifted out of resolveTurn) ────
 // What becomes of a dead commander's armies (disperseDeadCharArmies) and of the host a spared coward leaves behind
@@ -33,7 +90,10 @@ import type { AHeroIsSlainOutsideABattle } from './the-facts-a-heros-death-lines
 // ── Dispersal of a dead character's armies ── Extracted from handleHeroDeath so battle code can
 // defer it: a commander slain in a PRE-BATTLE DUEL keeps their army on the field (a junior
 // officer takes over) and the survivors are dispersed only AFTER the battle resolves.
-export function disperseDeadCharArmies(turnContext, deadChar) {
+export function disperseDeadCharArmies(
+  turnContext: TurnContext,
+  deadChar: AFallenHeroAsHisHostIsDispersed | null | undefined,
+): void {
   const { G } = turnContext;
   if (!deadChar) return;
   const prov = G.world.provinces[deadChar.location];
@@ -41,7 +101,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
   // summoner dies it dissolves at once — it must NOT be handed off to a garrison, a neighbour, or
   // the mercenary pool (where the end-of-turn expiry sweep, which only scans living characters'
   // armies, would never find it and it would linger forever).
-  const tempArmies = (deadChar.armies || []).filter((a) => a._temporary);
+  const tempArmies = (deadChar.armies ?? []).filter((a) => a._temporary);
   if (tempArmies.length > 0) {
     emit(turnContext, {
       type: 'explore',
@@ -60,15 +120,15 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
       province: prov?.id,
     });
   }
-  const deadArmies = (deadChar.armies || []).filter((a) => !a._isSkeletal && !a._temporary);
-  const skelArmies = (deadChar.armies || []).filter((a) => a._isSkeletal && !a._temporary);
+  const deadArmies = (deadChar.armies ?? []).filter((a) => !a._isSkeletal && !a._temporary);
+  const skelArmies = (deadChar.armies ?? []).filter((a) => a._isSkeletal && !a._temporary);
   // Who slew the commander (handleHeroDeath stamps it; 2026-10-12, Toby): the host's line says so.
-  const _by = deadChar._slainBy || null;
+  const _by = deadChar._slainBy ?? null;
   // Skeletal armies crumble — record to graves
   if (skelArmies.length > 0 && prov) recordBattleGraves(turnContext, prov, skelArmies);
   if (deadArmies.length > 0 && prov) {
     const scatterAsMercs = () => {
-      if (!G.mercenaries) G.mercenaries = [];
+      if (!asItsGuardReadsIt(G.mercenaries)) G.mercenaries = [];
       const SEA_SET = new Set(KC_UNIT_CLASS.sea);
       deadArmies.forEach((army) => {
         G.mercenaries.push({
@@ -87,7 +147,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
           kind: "a fallen hero's armies scatter as mercenaries",
           heroName: deadChar.name,
           slainBy: _by,
-          provinceName: prov?.name,
+          provinceName: prov.name,
         },
         audience: { actor: deadChar.player, realms: deadChar.player != null ? [deadChar.player] : [] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -99,7 +159,7 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
       scatterAsMercs();
     } else if (prov.owner === deadChar.player) {
       // Friendly province — armies garrison
-      prov.garrisonArmies = (prov.garrisonArmies || []).concat(deadArmies);
+      prov.garrisonArmies = (asItsGuardReadsIt(prov.garrisonArmies) ?? []).concat(deadArmies);
       emit(turnContext, {
         type: 'system',
         fact: {
@@ -113,17 +173,17 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: prov.id,
       });
-    } else if (isOpenSea(prov) && prov.owner == null && !(prov.neutralDefenders || []).length) {
+    } else if (isOpenSea(prov) && prov.owner == null && !(asItsGuardReadsIt(prov.neutralDefenders) ?? []).length) {
       // 2026-09-23c (Toby): a commander who falls at SEA leaves his host garrisoning the sea province
       // itself. Own waters are the branch above; unowned, undefended water is claimed for the realm.
       // (Another realm's or defended waters keep the old rule below.)
       setProvinceOwner(turnContext, prov, deadChar.player, null, turnContext._currentPhase);
       const _pl = G.players[deadChar.player];
       if (_pl) {
-        _pl.provinces = _pl.provinces || [];
+        _pl.provinces = asItsGuardReadsIt(_pl.provinces) ?? [];
         if (!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id);
       }
-      prov.garrisonArmies = (prov.garrisonArmies || []).concat(deadArmies);
+      prov.garrisonArmies = (asItsGuardReadsIt(prov.garrisonArmies) ?? []).concat(deadArmies);
       emit(turnContext, {
         type: 'system',
         fact: {
@@ -140,22 +200,21 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
       });
     } else {
       // Enemy/neutral province — armies flee to adjacent friendly province or become mercenaries
-      const neighbors = (prov ? getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces) : []).filter(
+      const neighbors = getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).filter(
         (n) => n.terrain !== 'sea',
-      );
+      ); // (prov is sure here: the branch above tests it)
       // Prefer the ground they actually came from — that is "the province they retreated to".
-      const _cameFrom = G.world.provinces[deadChar._attackedFrom];
+      const _cameFrom = deadChar._attackedFrom === undefined ? undefined : G.world.provinces[deadChar._attackedFrom];
       const safeProv =
-        (_cameFrom &&
-        _cameFrom.owner === deadChar.player &&
+        (_cameFrom?.owner === deadChar.player &&
         _cameFrom.terrain !== 'sea' &&
         neighbors.some((n) => n.id === _cameFrom.id)
           ? _cameFrom
-          : null) ||
-        neighbors.find((n) => n.owner === deadChar.player) ||
+          : null) ??
+        neighbors.find((n) => n.owner === deadChar.player) ??
         null;
       if (safeProv) {
-        safeProv.garrisonArmies = (safeProv.garrisonArmies || []).concat(deadArmies);
+        safeProv.garrisonArmies = (asItsGuardReadsIt(safeProv.garrisonArmies) ?? []).concat(deadArmies);
         emit(turnContext, {
           type: 'system',
           fact: {
@@ -191,20 +250,23 @@ export function disperseDeadCharArmies(turnContext, deadChar) {
 // own schedule; handing them to a garrison would strand them there for ever — the same trap
 // disperseDeadCharArmies guards against).
 // Returns how many units were left behind.
-export function abandonHostOnFlight(turnContext, c) {
+export function abandonHostOnFlight(
+  turnContext: TurnContext,
+  c: ASparedCowardAsHisHostIsLeft | null | undefined,
+): number {
   const { G } = turnContext;
   if (!c) return 0;
   const prov = G.world.provinces[c.location];
-  const all = (c.armies || []).filter(Boolean);
+  const all = (asItsGuardReadsIt(c.armies) ?? []).filter((a): a is ArmyInABattle => Boolean(a));
   if (!prov || all.length === 0) return 0;
   const bound = all.filter((a) => a._temporary),
     left = all.filter((a) => !a._temporary);
   c.armies = bound;
   if (left.length === 0) return 0;
   const _who = c.name.replace(' (wandering)', '');
-  const heir = (G.characters || [])
+  const heir = (asItsGuardReadsIt(G.characters) ?? [])
     .filter(
-      (o) =>
+      (o: Character | null | undefined) =>
         o &&
         o.alive &&
         o.id !== c.id &&
@@ -215,7 +277,7 @@ export function abandonHostOnFlight(turnContext, c) {
     )
     .sort((a, b) => (effStat(turnContext, b, 'tactical') || 0) - (effStat(turnContext, a, 'tactical') || 0))[0];
   if (heir) {
-    heir.armies = (heir.armies || []).concat(left);
+    heir.armies = (asItsGuardReadsIt(heir.armies) ?? []).concat(left);
     emit(turnContext, {
       type: 'system',
       fact: {
@@ -233,7 +295,7 @@ export function abandonHostOnFlight(turnContext, c) {
     return left.length;
   }
   if (prov.owner === c.player) {
-    prov.garrisonArmies = (prov.garrisonArmies || []).concat(left);
+    prov.garrisonArmies = (asItsGuardReadsIt(prov.garrisonArmies) ?? []).concat(left);
     emit(turnContext, {
       type: 'system',
       fact: {
@@ -279,8 +341,18 @@ export function abandonHostOnFlight(turnContext, c) {
 // straight after it; nothing of its own when they vanished or escaped (those write their own
 // line). Returns what handleHeroDeath returns (false = they live). The caller hands the line's fact ("a hero is slain
 // outside a battle", the way he fell a value: P1-12d11) and its place (audience, hero, province), as notifyTarget does.
-export function reportHeroFall(turnContext, dead, killer, slain: AHeroIsSlainOutsideABattle, place, hopts?) {
-  const o = { ...(hopts || {}), lines: [] };
+export function reportHeroFall(
+  turnContext: TurnContext,
+  dead: AHeroAsHisDeathIsResolved,
+  killer: Parameters<typeof handleHeroDeath>[2],
+  slain: AHeroIsSlainOutsideABattle,
+  place: EventButItsWords,
+  hopts?: Pick<TheWayAHerosDeathIsResolved, 'slainBy'>,
+): boolean | undefined {
+  const o: Omit<TheWayAHerosDeathIsResolved, 'lines'> & { lines: ALineOfAHerosDeathToldInItsPlace[] } = {
+    ...hopts,
+    lines: [],
+  };
   const res = handleHeroDeath(turnContext, dead, killer, o);
   if (o.outcome === 'surgery')
     emit(turnContext, {
@@ -289,10 +361,17 @@ export function reportHeroFall(turnContext, dead, killer, slain: AHeroIsSlainOut
       ...place,
     });
   else if (o.outcome === 'died' || o.outcome == null) emit(turnContext, { type: 'combat', fact: slain, ...place });
-  o.lines.forEach((l) => emit(turnContext, { type: l.type, fact: l.fact, ...l.place }));
+  o.lines.forEach((l) => {
+    emit(turnContext, { type: l.type, fact: l.fact, ...l.place });
+  });
   return res;
 }
-export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
+export function handleHeroDeath(
+  turnContext: TurnContext,
+  deadChar: AHeroAsHisDeathIsResolved | null | undefined,
+  killerChar: AHeroAsHisDeathIsResolved | null | undefined,
+  opts?: TheWayAHerosDeathIsResolved | null,
+): boolean | undefined {
   const { G } = turnContext;
   if (!deadChar) return;
   // DOPPELGANGER GUARD. Battles are fought on shallow COPIES ({...char}); if any caller hands a
@@ -300,10 +379,13 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   // G.characters stayed alive — one name dead in the graveyard and alive in the realm. Always
   // resolve to the real record, then mirror the outcome back onto the copy that was passed.
   {
-    const _realRec = deadChar.id != null ? (G.characters || []).find((r) => r && r.id === deadChar.id) : null;
+    const _realRec =
+      asItsGuardReadsIt(deadChar.id) != null
+        ? (asItsGuardReadsIt(G.characters) ?? []).find((r: Character | null | undefined) => r?.id === deadChar.id)
+        : null;
     if (_realRec && _realRec !== deadChar) {
       const _copy = deadChar;
-      if (_copy.hp != null) _realRec.hp = _copy.hp;
+      if (asItsGuardReadsIt(_copy.hp) != null) _realRec.hp = _copy.hp;
       const _res = handleHeroDeath(turnContext, _realRec, killerChar, opts);
       _copy.alive = _realRec.alive;
       _copy.killedThisTurn = _realRec.killedThisTurn;
@@ -319,45 +401,45 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   // duel, assassination, execution — for the rest of the turn he vanished.
   if (isVanished(turnContext, deadChar)) {
     if (opts) opts.outcome = 'vanished';
-    if (deadChar.hp != null && deadChar.hp <= 0)
-      deadChar.hp = Math.max(1, deadChar.maxHp ? Math.round(deadChar.maxHp / 2) : 1);
+    const theHp = asItsGuardReadsIt(deadChar.hp);
+    if (theHp != null && theHp <= 0) deadChar.hp = Math.max(1, deadChar.maxHp ? Math.round(deadChar.maxHp / 2) : 1);
     deadChar.alive = true;
     deadChar.killedThisTurn = false;
     emit(turnContext, {
       type: 'combat',
       fact: { kind: 'the blow meant for a vanished hero passes through shadow', heroName: deadChar.name },
       audience: {
-        actor: killerChar && killerChar.player != null ? killerChar.player : null,
+        actor: killerChar?.player ?? null,
         realms: deadChar.player != null ? [deadChar.player] : [],
-        seen: deadChar.location != null ? 'battle' : 'world',
+        seen: asItsGuardReadsIt(deadChar.location) != null ? 'battle' : 'world',
       },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      province: deadChar.location != null ? deadChar.location : undefined,
+      province: asItsGuardReadsIt(deadChar.location) ?? undefined,
     });
     return false;
   }
   if (_escapesTheEnd(deadChar)) {
     if (opts) opts.outcome = 'escaped';
-    if (deadChar.hp != null && deadChar.hp <= 0)
-      deadChar.hp = Math.max(1, deadChar.maxHp ? Math.round(deadChar.maxHp / 2) : 1);
+    const theHp = asItsGuardReadsIt(deadChar.hp);
+    if (theHp != null && theHp <= 0) deadChar.hp = Math.max(1, deadChar.maxHp ? Math.round(deadChar.maxHp / 2) : 1);
     deadChar.alive = true;
     deadChar.killedThisTurn = false;
     emit(turnContext, {
       type: 'combat',
       fact: _garrethEscapeLine(deadChar),
       audience: {
-        actor: killerChar && killerChar.player != null ? killerChar.player : null,
+        actor: killerChar?.player ?? null,
         realms: [],
-        seen: deadChar.location != null ? 'battle' : 'world',
+        seen: asItsGuardReadsIt(deadChar.location) != null ? 'battle' : 'world',
       },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      province: deadChar.location != null ? deadChar.location : undefined,
+      province: asItsGuardReadsIt(deadChar.location) ?? undefined,
     });
     return false;
   }
-  opts = opts || {};
+  opts = opts ?? {};
   // BATTLEFIELD SURGERY (sd36) — previously defined but never wired. A character of a realm
   // holding it (kings included) has a 20% chance to survive any killing blow with 1 HP. Resolved
   // HERE, on the one real character record, so no copy can be left "dead" while
@@ -368,14 +450,21 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   // logged at once, so the caller can say "at death's door, but not slain" instead of "slain" and
   // put the surgery line straight after it (reportHeroFall; preBattleDuel's battle narrative).
   // `opts.outcome` tells the caller what happened: 'vanished', 'escaped', 'surgery' or 'died'.
-  const _surgLog = (fact, place, priv) => {
+  const _surgLog = (
+    fact: Extract<
+      TheFactOfAHerosDeathsLine,
+      { kind: 'Battlefield Surgery saves a fallen hero' | 'the surgeons reach a fallen hero too late' }
+    >,
+    place: EventButItsWords,
+    priv?: number | null,
+  ) => {
     if (Array.isArray(opts.lines)) opts.lines.push({ type: 'combat', fact, place, priv });
     else emit(turnContext, { type: 'combat', fact, ...place });
   };
   // (the discoveries' registry's since plan P1-19ab: "fate: a realm's discoveries drag a hero from the field", its
   // chance, or nothing if his realm holds none)
   const _bsChance =
-    !opts.noSave && deadChar.player != null && deadChar.alive !== false
+    !opts.noSave && deadChar.player != null && asItsGuardReadsIt(deadChar.alive) !== false
       ? theChanceARealmsDiscoveriesDragAHeroFromTheField(G.players[deadChar.player])
       : null;
   if (_bsChance !== null) {
@@ -390,24 +479,20 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         {
           kind: 'Battlefield Surgery saves a fallen hero',
           heroName: deadChar.name,
-          isKing: !!deadChar.isKing,
+          isKing: Boolean(asItsGuardReadsIt(deadChar.isKing)),
           chance: _bsPct,
           roll: _sRoll,
         },
         {
           audience: {
             actor: deadChar.player,
-            realms: [deadChar.player, killerChar && killerChar.player != null ? killerChar.player : null].filter(
-              (x) => x != null,
-            ),
-            seen: deadChar.location != null ? 'battle' : 'world',
+            realms: [deadChar.player, killerChar?.player ?? null].filter((x) => x != null),
+            seen: asItsGuardReadsIt(deadChar.location) != null ? 'battle' : 'world',
           },
           hero: deadChar.id,
-          heroes: [deadChar.id, killerChar && killerChar.id != null ? killerChar.id : null].filter((x) => x != null),
-          phase:
-            (turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase) ??
-            THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          province: deadChar.location != null ? deadChar.location : undefined,
+          heroes: [deadChar.id, killerChar?.id ?? null].filter((x) => x != null),
+          phase: turnContext._logCtx.phase ?? turnContext._currentPhase ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          province: asItsGuardReadsIt(deadChar.location) ?? undefined,
         },
       );
       return false;
@@ -417,26 +502,25 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         {
           audience: { actor: deadChar.player, realms: [deadChar.player] },
           hero: deadChar.id,
-          heroes: [deadChar.id, killerChar && killerChar.id != null ? killerChar.id : null].filter((x) => x != null),
-          phase:
-            (turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase) ??
-            THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          province: deadChar.location != null ? deadChar.location : undefined,
+          heroes: [deadChar.id, killerChar?.id ?? null].filter((x) => x != null),
+          phase: turnContext._logCtx.phase ?? turnContext._currentPhase ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          province: asItsGuardReadsIt(deadChar.location) ?? undefined,
         },
         deadChar.player,
       );
     }
   }
   opts.outcome = 'died';
-  if (killerChar && killerChar.player != null && deadChar.player != null && deadChar.player !== killerChar.player) {
+  if (killerChar?.player != null && deadChar.player != null && deadChar.player !== killerChar.player) {
     const _tm = TM(killerChar);
-    _tm.duelKills = (_tm.duelKills || 0) + 1;
+    _tm.duelKills = (Number(_tm.duelKills) || 0) + 1;
   } // MINOR TITLE — The Widowmaker
   // VICTORY (#3): a fallen character loses 25% of accumulated Title merit — killing a rival's
   // champion late can knock them out of a Title race. (Applies to Kings and Heroes alike.)
   if (deadChar.tm) {
-    for (const k in deadChar.tm) {
-      deadChar.tm[k] = Math.round((deadChar.tm[k] || 0) * 0.75);
+    const merit = theMeritByAnyName(deadChar.tm);
+    for (const k in merit) {
+      merit[k] = Math.round((Number(merit[k]) || 0) * 0.75);
     }
   }
   const prov = G.world.provinces[deadChar.location];
@@ -444,10 +528,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   // a caller gives (opts.slainBy: a lair's guardian and its province), TheOneWhoSlewAHero (P1-12d11). Read by
   // disperseDeadCharArmies, which clears it.
   {
-    const _by =
-      killerChar && killerChar.name
-        ? { killerName: String(killerChar.name).replace(' (wandering)', '') }
-        : (opts && opts.slainBy) || null;
+    const _by = killerChar?.name ? { killerName: killerChar.name.replace(' (wandering)', '') } : (opts.slainBy ?? null);
     if (_by) deadChar._slainBy = _by;
     else delete deadChar._slainBy;
   }
@@ -458,7 +539,7 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   // The same must hold however the commander died. If the ground under him is contested, the host
   // stays with the colours and fights on under its senior captain; the end-of-phase sweep only
   // disperses it once the fighting there is actually over.
-  const _fellInBattle = !!(prov && prov._battleUnresolved && (deadChar.armies || []).length > 0);
+  const _fellInBattle = !!(prov && prov._battleUnresolved && (asItsGuardReadsIt(deadChar.armies) ?? []).length > 0);
   if (_fellInBattle) {
     deadChar._leaderlessHost = true;
     emit(turnContext, {
@@ -479,11 +560,12 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
   // 2. Items: go to killer if there is one, else to the player's king
   // A Mithril suit is buried with its wearer — it is a granted relic, not spoils (see
   // grantMithrilToDwarves). Passing it on was the route by which a second suit reached a king.
-  const deadItems = transferableItems(deadChar.items || []);
+  const deadItems = transferableItems(asItsGuardReadsIt(deadChar.items) ?? []);
   if (deadItems.length > 0) {
     let recipient =
-      (killerChar && killerChar.id != null && (G.characters || []).find((r) => r && r.id === killerChar.id)) ||
-      killerChar; // the REAL killer, never a battle copy
+      (killerChar && asItsGuardReadsIt(killerChar.id) != null
+        ? (asItsGuardReadsIt(G.characters) ?? []).find((r: Character | null | undefined) => r?.id === killerChar.id)
+        : undefined) ?? killerChar; // the REAL killer, never a battle copy
     if (!recipient && deadChar.player !== null) {
       recipient = G.characters.find((c) => c.isKing && c.player === deadChar.player && c.alive && c.id !== deadChar.id);
     }
@@ -538,10 +620,8 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
           },
           audience: { actor: recipient.player, realms: [recipient.player] },
           hero: recipient.id,
-          phase:
-            (turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase) ??
-            THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          province: recipient.location != null ? recipient.location : undefined,
+          phase: turnContext._logCtx.phase ?? turnContext._currentPhase ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          province: asItsGuardReadsIt(recipient.location) ?? undefined,
         });
       if (recipient.player != null) {
         const _gn = settleTheItemsAHeroGained(recipient, deadItems);
@@ -551,10 +631,8 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
             fact: { kind: "a hero notes how he carries a fallen foe's possessions", theItemsHeGained: _gn },
             audience: { actor: recipient.player, realms: [recipient.player] },
             hero: recipient.id,
-            phase:
-              (turnContext._logCtx.phase != null ? turnContext._logCtx.phase : turnContext._currentPhase) ??
-              THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-            province: recipient.location != null ? recipient.location : undefined,
+            phase: turnContext._logCtx.phase ?? turnContext._currentPhase ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+            province: asItsGuardReadsIt(recipient.location) ?? undefined,
           });
       } // item 10
     } else {
@@ -597,8 +675,9 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
     // The return needs CONSECRATED ground: with none, the king is succeeded like any other.
     if (
       pKing &&
+      deadChar.player != null && // (sure: his realm was found by it)
       pKing.alignment === 'Divine' &&
-      (pKing.provinces || []).length > 0 &&
+      (asItsGuardReadsIt(pKing.provinces) ?? []).length > 0 &&
       ownedConsecratedProvs(G, deadChar.player).length > 0
     ) {
       deadChar._divineReturn = true;
@@ -608,37 +687,42 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         audience: {
           actor: deadChar.player,
           realms: [deadChar.player],
-          seen: deadChar.location != null ? 'there' : 'world',
+          seen: asItsGuardReadsIt(deadChar.location) != null ? 'there' : 'world',
         },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        province: deadChar.location != null ? deadChar.location : undefined,
+        province: asItsGuardReadsIt(deadChar.location) ?? undefined,
       });
-    } else if (pKing && pKing.alignment === 'Divine') {
+    } else if (pKing?.alignment === 'Divine') {
       emit(turnContext, {
         type: 'system',
         fact: { kind: 'a fallen Divine monarch has no holy ground to return to', heroName: deadChar.name },
         audience: { actor: deadChar.player, realms: [deadChar.player] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        province: deadChar.location != null ? deadChar.location : undefined,
+        province: asItsGuardReadsIt(deadChar.location) ?? undefined,
       });
     }
-    if (pKing) {
+    if (pKing && deadChar.player != null) {
+      // (his realm's index is sure: his realm was found by it)
       // The previously-resurrectable monarch (whom this king's line replaced) passes beyond
       // recall.
       if (pKing._resurrectableMonarchId != null && pKing._resurrectableMonarchId !== deadChar.id) {
-        G.heroGraveyard = (G.heroGraveyard || []).filter((g) => g.id !== pKing._resurrectableMonarchId);
+        G.heroGraveyard = (asItsGuardReadsIt(G.heroGraveyard) ?? []).filter(
+          (g) => g.id !== pKing._resurrectableMonarchId,
+        );
       }
       recordHeroGrave(turnContext, deadChar);
-      const grec = (G.heroGraveyard || []).find((g) => g.id === deadChar.id);
+      const grec: AMonarchsGraveAsItIsWritten | undefined = (asItsGuardReadsIt(G.heroGraveyard) ?? []).find(
+        (g) => g.id === deadChar.id,
+      );
       if (grec) {
         grec.isKing = true;
         grec._monarch = true;
-        grec.skills = { ...(deadChar.skills || {}) };
+        grec.skills = { ...deadChar.skills };
         grec.maxHp = deadChar.maxHp || 15;
         const restId = monarchRestProvId(G, deadChar.player);
-        grec.location = restId != null ? restId : deadChar.location;
+        grec.location = restId ?? deadChar.location;
       }
       pKing._resurrectableMonarchId = deadChar.id;
       // The controlling player always knows their own monarch has fallen and where the body lies.
@@ -658,14 +742,16 @@ export function handleHeroDeath(turnContext, deadChar, killerChar, opts) {
         charId: deadChar.id,
         name: deadChar.name,
         pi: deadChar.player,
-        king: !!deadChar.isKing,
+        king: Boolean(asItsGuardReadsIt(deadChar.isKing)),
         prov: deadChar.location,
-        killerPi: killerChar && killerChar.player != null ? killerChar.player : null,
+        killerPi: killerChar?.player ?? null,
         killerId: killerChar ? killerChar.id : null,
-        how: (opts && opts.cause) || (killerChar ? (killerChar.player != null ? 'character' : 'neutral') : 'other'),
+        how: (opts.cause ?? '') || (killerChar ? (killerChar.player != null ? 'character' : 'neutral') : 'other'),
       },
     });
-  } catch (_te) {}
+  } catch {
+    // the statistics never stop a hero's death
+  }
   flushDeferredSkillLogsFor(turnContext, deadChar.id); // rises earned before death are reported now, not after the fight
   delete deadChar._defend;
   delete deadChar._pursuit; // the dead keep no watch and chase nobody
