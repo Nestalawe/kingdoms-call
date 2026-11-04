@@ -13,7 +13,7 @@ import type {
   AStrongestForceATitlesLineNames,
   TheFactOfATitleIntelligenceLine,
 } from '../../engine/titles/the-facts-the-title-intelligence-lines-record.ts';
-import { SKILL_LABELS } from '../../engine/army-tables.ts';
+import { KC_SKILL_LABELS as SKILL_LABELS } from '../../content/kingdoms-call-data.ts';
 import { theWordsInATableFor } from './the-words-of-the-order-dispatchs-lines.ts';
 
 /** Each title's name, as its lines open with it in brackets. */

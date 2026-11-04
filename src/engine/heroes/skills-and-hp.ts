@@ -54,14 +54,6 @@ interface AHeroAsHisHitPointsAreRead
   maxHp?: number | null | undefined;
   hp?: number | null | undefined;
 }
-/** A hero's maximum hit points rising, as its line reads it (rollHpGain's result, or a fight's fact). */
-interface AHitPointRiseAsItsLineReadsIt {
-  readonly gain: number;
-  readonly maxHp?: number | null | undefined;
-  readonly wound?: boolean | undefined;
-  readonly winBonus?: number | undefined;
-  readonly sd35?: boolean | undefined;
-}
 /** A held discovery as the retirement reads and refreshes it: its id, or the row it holds. */
 interface ADiscoveryAsItIsHeld {
   readonly id: string;
@@ -294,18 +286,6 @@ export function rollHpGain(
   ch.hpEarned = Math.max(0, Math.round(Number(ch.hpEarned) || 0)) + gain;
   syncMaxHp(ch, players);
   return { gain, maxHp: ch.maxHp, why: why ?? '' };
-}
-export function hpGainLine(
-  ch: { readonly name?: string | undefined },
-  r: AHitPointRiseAsItsLineReadsIt | null | undefined,
-) {
-  if (!r) return '';
-  // 2026-10-08/09 (Toby item 16): a wounded hero rolls too (r.wound); a winner gets +1 on the roll
-  // (r.winBonus). Every roll gains — there is no longer a chance of nothing.
-  if (!(r.gain > 0)) return '';
-  if (r.wound)
-    return `💪 ${String(ch.name)} is hardened by the wounds of the fight — maximum HP +${String(r.gain)} → ${String(r.maxHp)}.`;
-  return `💪 ${String(ch.name)} is hardened by the victory — maximum HP +${String(r.gain)} → ${String(r.maxHp)}${r.winBonus ? ' (including +1 for the win)' : ''}.${r.sd35 ? ' (Order of the Golden Shield: doubled.)' : ''}`;
 }
 // Bring ch.maxHp in line with the formula. A rise heals current HP by the rise (new headroom is
 // filled); a fall clamps current HP to the new maximum (never below 1 for a living character).

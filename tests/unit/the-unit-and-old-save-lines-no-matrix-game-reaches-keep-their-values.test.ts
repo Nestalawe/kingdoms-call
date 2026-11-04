@@ -18,7 +18,8 @@
 // that changes nothing. Each planted fault in those lines turns it red
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test, vi } from 'vitest';
-import { migrateLegacyUnitNames, ownedUnitName } from '../../src/engine/army-tables.ts';
+import { migrateLegacyUnitNames } from '../../src/engine/army-tables.ts';
+import { ownedUnitName } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import { CharacterIdSchema, ProvinceIdSchema } from '../../src/schemas/ids-of-provinces-heroes-and-realms.ts';
 
 describe("ownedUnitName: an owner and a unit's name or type", () => {

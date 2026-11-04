@@ -2,8 +2,9 @@
 // skill, one row each, keyed by the key the turn dispatches it by, in the order of MASTERY_ORDER_KEYS
 // (src/engine/army-tables.ts): its key, its name as the order form and the turn's lines write it, the skill it needs
 // and the level of that skill. The level is the hero's trained level (past 5 comes from experience only). The engine's
-// set of the masteries' keys and their labels (MASTERY_ORDER_KEYS, MASTERY_ORDER_LABEL) are built from these rows, and
-// so are the player page's (L79_ORDERS, src/ui/player/l79-orders.ts: each order's name, skill and level; the form's
+// set of the masteries' keys (MASTERY_ORDER_KEYS) and the prose's labels (MASTERY_ORDER_LABEL, src/views/prose/the-
+// words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts) are built from these rows, and so are the
+// player page's (L79_ORDERS, src/ui/player/l79-orders.ts: each order's name, skill and level; the form's
 // target and hint are its own). The engine checks each row's key is a kind of order (army-tables.ts). Each resolver
 // reads its level here (P1-11d11: `skillLevel(c, …) < THE_MASTERY_ORDERS.<key>.level`); tests/unit/order-dispatch-called-
 // directly.test.ts pins each level as a number, a hero one level below each and one at it.

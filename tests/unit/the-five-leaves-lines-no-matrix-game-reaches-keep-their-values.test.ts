@@ -32,7 +32,6 @@ import {
   consecCaptureXpPct,
   demoteGuardToWanderer,
   detRoll,
-  itemNameList,
   nearestConsecratedProv,
   normaliseOwnedNames,
   normaliseStrandedGuards,
@@ -41,6 +40,7 @@ import {
   relOfReport,
   spotEnemyInOwnedProvince,
 } from '../../src/engine/heroes/fame-and-consecration.ts';
+import { itemNameList } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import {
   ITEM_LORE_BY_NAME,
   guardianCanUseItem,

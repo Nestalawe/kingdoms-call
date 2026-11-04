@@ -1,10 +1,16 @@
 // ── THE WORDS OF THE ORDER DISPATCH'S LINES (plan P1-12d6: P1-12's Decisions of 2026-10-26, Decisions 6 and 7) ──
 // The views write the words of each fact the order dispatch's lines record (src/engine/orders/the-facts-the-order-
 // dispatchs-lines-record.ts), in the same words the engine wrote before (orders/order-dispatch-the-checks-before-a-
-// hero-order-and-the-switch.ts). The tables of the orders' keys and the masteries' names are the engine's
-// (army-tables.ts), read here on the order's action. A kind with no words here is a compile error (the `never` below).
+// hero-order-and-the-switch.ts). The alignment orders' keys are built here from the content's rows, and the masteries'
+// names are the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts's, read here on the order's
+// action. A kind with no words here is a compile error (the `never` below).
 import type { TheFactOfTheOrderDispatchsLine } from '../../engine/orders/the-facts-the-order-dispatchs-lines-record.ts';
-import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_LABEL } from '../../engine/army-tables.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { MASTERY_ORDER_LABEL } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
+
+/** The alignment orders' keys, from the content's rows (plan P1-13g: each reader builds its lookups from the rows; the
+ *  engine's own set, ALIGNMENT_ORDER_KEYS, checks each key is a kind of order): the rites a charmed hero won't perform. */
+const THE_KEYS_OF_THE_ALIGNMENT_ORDERS = new Set<string>(Object.values(THE_ALIGNMENT_ORDERS).map((order) => order.key));
 
 /** A key's words in a table of the engine's words (the masteries', the skills' names), or undefined when it has
  *  none: the table read as its words are, typed. */
@@ -16,7 +22,7 @@ export function theWordsInATableFor(table: Readonly<Record<string, string>>, key
 function whatACharmedHeroWillNotDo(action: string): string {
   return action === 'disband_army'
     ? 'break up companies that are not theirs to disband'
-    : ALIGNMENT_ORDER_KEYS.has(action)
+    : THE_KEYS_OF_THE_ALIGNMENT_ORDERS.has(action)
       ? 'perform the rites of a realm they do not serve'
       : 'spend their own mastery for a crown that merely holds their mind';
 }

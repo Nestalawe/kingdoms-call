@@ -2,13 +2,13 @@
 // The views write the words of each fact a hero's experience and hit points lines record (src/engine/heroes/the-facts-
 // a-heros-experience-lines-record.ts), in the same words the engine wrote before (heroes/experience-skill-rises-and-
 // earned-hp.ts): a skill's label from SKILL_LABELS (else its slug), a mastery's unlock as the content words it
-// (MASTERY_UNLOCKS), the skill in play by theWordsOfASkillInPlay and a hit-point rise by hpGainLine (which the engine
-// still calls elsewhere), on the values alone. A kind with no words here is a compile error (the `never` below).
+// (MASTERY_UNLOCKS), the skill in play by theWordsOfASkillInPlay and a hit-point rise by hpGainLine (the-words-of-a-unit-a-
+// list-of-items-a-hit-point-rise-and-a-mastery-order.ts), on the values alone. A kind with no words here is a compile error (the `never` below).
 import type { TheFactOfAHerosExperienceLine } from '../../engine/heroes/the-facts-a-heros-experience-lines-record.ts';
-import { SKILL_LABELS } from '../../engine/army-tables.ts';
+import { KC_SKILL_LABELS as SKILL_LABELS } from '../../content/kingdoms-call-data.ts';
 import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
 import { theWordsOfASkillInPlay } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
-import { hpGainLine } from '../../engine/heroes/skills-and-hp.ts';
+import { hpGainLine } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import { dispFloor } from '../../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { theWordsInATableFor } from './the-words-of-the-order-dispatchs-lines.ts';
 

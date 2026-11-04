@@ -1,5 +1,4 @@
 import { homeFounderOf } from '../grand-design.ts';
-import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { hexDistP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { discProvCoastal } from '../discoveries.ts';
@@ -7,12 +6,10 @@ import {
   whatARealmsDiscoveriesAddToSpottingALurker,
   type ARealmAsTheDiscoveriesReadIt,
 } from '../rules/the-registry-of-discovery-effects.ts';
-import type { GameState, Item, Province, SkillLevels } from '../../schemas/saved-game-state.ts';
+import type { GameState, Province, SkillLevels } from '../../schemas/saved-game-state.ts';
 
 // Its types (plan P1-10b9): each parameter typed as wide as the body's guards (plan P1-10b's Decision 3), so each guard
 // stays, though a state the turn hands always holds what it guards. Ids are plain numbers (the schema brands them).
-/** An item as its name is listed: its name, its words and its tier (the LEGENDARY mark). */
-type AnItemAsListed = Pick<Item, 'name'> & Partial<Pick<Item, 'desc' | 'tier'>>;
 /** A realm as consecration reads it: its alignment, and its consecrated provinces (an older save's single one, which
  *  the first read folds into the list). */
 interface ARealmAsConsecrationReadsIt {
@@ -55,13 +52,6 @@ interface TheStateAsTheseReadIt {
   readonly world: Pick<GameState['world'], 'cols' | 'rows'> & {
     readonly provinces: readonly (AProvinceAsTheseRead | null | undefined)[];
   };
-}
-
-export function itemNameList(items: readonly AnItemAsListed[] | null | undefined, withDesc?: boolean) {
-  const wd = withDesc !== false;
-  return (items ?? [])
-    .map((d) => (isLegendaryItem(d) ? 'the LEGENDARY ' : 'the ') + d.name + (wd && d.desc ? ' (' + d.desc + ')' : ''))
-    .join(', ');
 }
 
 // ── MITHRIL ARMOUR ── A GRANTED (never lair-rolled) relic worn by Dwarven characters of a Dwarven

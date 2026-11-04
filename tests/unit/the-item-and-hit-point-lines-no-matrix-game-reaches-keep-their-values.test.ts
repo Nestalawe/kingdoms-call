@@ -48,7 +48,6 @@ import {
   effSkillOf,
   guardianPassives,
   hpEarnedBase,
-  hpGainLine,
   itemMaxHpBonus,
   maxHpIsOrc,
   maxHpPlayers,
@@ -59,6 +58,7 @@ import {
   skillBonusBreakdown,
   syncMaxHp,
 } from '../../src/engine/heroes/skills-and-hp.ts';
+import { hpGainLine } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 
 type Obj = Record<string, unknown>;
 /** A guardian's perk as staged: its name, and its effect if it has one. */

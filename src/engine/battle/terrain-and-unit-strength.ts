@@ -497,7 +497,8 @@ export function kinNarrative(
   };
 }
 // ownedUnitName / unitRef moved to module level beside disbandLine (2026-10-11), so rollUnitFates and the
-// tests can reach them.
+// tests can reach them; since P1-13g they are the prose's (src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-
+// point-rise-and-a-mastery-order.ts).
 // a COASTAL province is a land province with at least one sea neighbour (used by Sea Giants' Tidal
 // Might). Module-level so every battle path and the bot model can share it.
 export function provIsCoastal(G: TheStateAsProvIsCoastalReadsIt | null | undefined, prov: Province | null | undefined) {

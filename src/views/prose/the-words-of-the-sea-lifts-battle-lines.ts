@@ -1,8 +1,8 @@
 // ── THE WORDS OF THE SEA LIFT'S LINES IN A BATTLE (plan P1-12d5: P1-12's Decisions of 2026-10-26, Decisions 2 and 6) ──
 // The views write the words of each fact the sea lift's battle lines record (src/engine/units/the-facts-the-sea-lifts-
 // battle-lines-record.ts), in the same words the engine wrote before (units/sea-lift-stranding-and-retreats.ts:
-// seaTrapLine, navalHoldLine, navalSplitRetreat, _navalLeaveBehind). describeArmy and strandLabel (which the engine
-// still calls for its other lines) are called on the units the fact copied as the line was told.
+// seaTrapLine, navalHoldLine, navalSplitRetreat, _navalLeaveBehind). describeArmy and strandLabel (both the prose's)
+// are called on the units the fact copied as the line was told.
 // Since P1-12d32 the beaten side is a record, whose label the battle's prose writes (theLabelOfASide), and so is a
 // claimant named by his side. A kind with no words here is a compile error (the `never` below).
 import type {
@@ -10,7 +10,7 @@ import type {
   WhyUnitsAreLeftBehind,
 } from '../../engine/units/the-facts-the-sea-lifts-battle-lines-record.ts';
 import { describeArmy } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
-import { strandLabel } from '../../engine/units/sea-lift-stranding-and-retreats.ts';
+import { strandLabel } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import type { ASideOfABattle } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
 import { theLabelOfASide } from './the-words-of-a-battles-lines.ts';
 

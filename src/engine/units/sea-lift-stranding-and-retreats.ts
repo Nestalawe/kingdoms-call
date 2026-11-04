@@ -117,9 +117,6 @@ export function pickStrandedUnits(armies, leadChar) {
     });
   return out;
 }
-export function strandLabel(a) {
-  return a.unitName ? `${a.unitName} (${a.quality} ${a.type})` : `a ${a.quality} ${a.type}`;
-}
 // Called after every order, at the top and end of every phase, and after wages (see the phase loop).
 export function settleStrandedAtSea(turnContext, ph, cause) {
   const { G } = turnContext;
