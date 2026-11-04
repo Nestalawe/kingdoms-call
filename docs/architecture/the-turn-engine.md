@@ -93,9 +93,9 @@
   `fortuneNarrative` and the verbs a victory is told with, whose die stays in the engine: the fact holds which; the
   ladder's `ladderFm`, the grid's `shortUnit`, `UNIT_SHORT`, `GROUND_WORDS`, `battleGridStage` and `battleFacingStage`;
   a unit's `disbandLine` and `theClauseOfWhomAUnitFaced`; the wanderer's sentences, `_GARRETH_ESCAPES`; since P1-13f
-  `fmtRoll`, `describeArmy` and the three `theWordsOf…` of a skill, the odds and a skill in play);
-  one it
-  still calls (`monsterCatLabel`, `hpGainLine`, `strandLabel`) the prose imports from the engine, on plain
+  `fmtRoll`, `describeArmy` and the three `theWordsOf…` of a skill, the odds and a skill in play; since P1-13g
+  `ownedUnitName`, `unitRef`, `MASTERY_ORDER_LABEL`, `hpGainLine`, `itemNameList` and `strandLabel`); one it
+  still calls (`monsterCatLabel`) the prose imports from the engine, on plain
   values, and a unit ability's name comes from its content row. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
   checks each area done (its list grows a row at a time); since P1-12d29 it lets no label through. The
   rest of the engine's lines still carry their words, and in this run a line's words are the same for every

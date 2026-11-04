@@ -184,7 +184,7 @@ check finds were made.
   Since P1-12d25 a personal combat's fighter is a record (`AFighterOfAPersonalCombat`: his name, and whether he is a
   guardian, "the Barrow Wight"), a realm's tag is the realm's name (`theRealmsTag` writes " (Westmarch)"), and a unit a
   battle's line names is a record (`AUnitAsALineNamesIt`: its owner as a side or the defenders, its name, type and
-  quality, and the form: `unitRef`'s, `ownedUnitName`'s, or its name alone). Since P1-12d26 a battle's outcome is two
+  quality, and the form: `unitRef`'s, `ownedUnitName`'s (the prose's, since P1-13g), or its name alone). Since P1-12d26 a battle's outcome is two
   kinds, merged by sense within one audience: `a battle is decided` (the fight's: which battle, the sides, the winner's
   role and what becomes of the province, as slugs; a head line rewritten in place when the beaten side holds the field
   sets that value) and `a contest for a province is decided` (its event's: a newly gathered host's or a stalled

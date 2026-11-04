@@ -147,7 +147,8 @@ false. (Reign of Fear fires only for the attacker since 2026-10-12, so the defen
 
 Each order is one row of `THE_ALIGNMENT_ORDERS` (`src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts`):
 its key, its name, the other names the turn reads, its creed, whether the king alone gives it, and the numbers the books
-state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows, and so are the
+state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows (and so is the
+order dispatch's prose's own set, for the charmed hero's line), and so are the
 order-name map's entries for them (`PHASE_ACTION_MAP`: each row's key, its name in lower case and its other names);
 the order switch's `case`s read their row's key. Who may give one is two checks of
 `src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts` (a realm of
@@ -177,7 +178,8 @@ keep its `case` as a plain refusal, so an order a save still holds is answered r
 
 Each of the 20 mastery orders (a hero's level 7 or 9 of a skill) is one row of `THE_MASTERY_ORDERS`
 (`src/content/mastery-orders-their-keys-names-skills-and-levels.ts`, P1-11d10): its key, its name, its skill and its
-level. The turn's `MASTERY_ORDER_KEYS` (the once-a-turn stamp, the Charmed-hero gate) and `MASTERY_ORDER_LABEL` are
+level. The turn's `MASTERY_ORDER_KEYS` (the once-a-turn stamp, the Charmed-hero gate) and the prose's
+`MASTERY_ORDER_LABEL` (`src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts`) are
 built from the rows, and so is the order form's `L79_ORDERS` (each order's name, skill and level; its target and hint
 are the form's own, by the row's key). Each resolver reads its level from its row (`skillLevel(c, …) <
 THE_MASTERY_ORDERS.<key>.level`, P1-11d11, inside the function), but each hint still writes its skill and level
@@ -190,7 +192,7 @@ resolver's; the door's static test checks the form's table reads the rows.
 
 Since 2026-10-12 a casualty line names the enemy company too: "— Aldric's Levies (Shieldwall Levies, Average),
 facing the Red Hand (Gorbash's Gnomish Gyrocopters), were annihilated in the rout!". The line opens with the
-company's own reference (`unitRef`) and puts the clause after it. Two things follow:
+company's own reference (`unitRef`, in the prose) and puts the clause after it. Two things follow:
 
 - the losses tally reads the line's fact, not its words (since P1-12d35: `theWordsOfABattlesLossesTally`,
   `src/views/prose/`): the owner its reference names, its type and its name. A new fate (or a new fate kind) is
