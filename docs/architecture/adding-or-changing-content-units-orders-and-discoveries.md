@@ -200,7 +200,7 @@ company's own reference (`unitRef`) and puts the clause after it. Two things fol
   that faces the rows again later (the stay-or-retreat estimate does) overwrites the rows' `_faced` stamps, so
   read the map once, early, and pass it to `rollUnitFates` as `faced`.
 
-`tests/battle-faced-lines.test.js` holds the wording of every branch;
+`tests/unit/each-companys-fate-line-names-whom-it-faced-from-its-place-in-the-battle-grid.test.ts` holds the wording of every branch;
 `tests/unit/a-battles-losses-tally-is-written-from-the-facts-of-its-lines.test.ts` the tally's crediting.
 
 A new fate line, like any new kind a battle's lines hold, also takes a tier in its area's table beside its audience
