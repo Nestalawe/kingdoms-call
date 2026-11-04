@@ -48,10 +48,10 @@ import {
   itemLoreLines,
   lairItemTier,
   migrateHoardTally,
-  monsterCatLabel,
   preferFreshEffects,
   wildHuntPrice,
 } from '../../src/engine/items/tiers-and-hoards.ts';
+import { monsterCatLabel } from '../../src/engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import {
   flushIntrusionNotifications,
   generateIntrusionNotifications,

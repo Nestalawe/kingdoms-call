@@ -27,12 +27,12 @@ import {
   ALL_HERO_EPITHETS,
   ALL_HERO_FIRSTS,
   lairBaseNameP,
-  monsterCat,
   nextHeroName,
   pickLairNameP,
   renameLairsThematicP,
   seedUsedHeroNames,
 } from '../../src/engine/names.ts';
+import { monsterCat } from '../../src/engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { creditMapped, itemKeyOf, noteEspionage, snapshotHeldItems } from '../../src/engine/titles/perks.ts';
 import { theWordsOfTheWanderersEscape } from '../../src/views/prose/the-words-of-the-wanderers-escape.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';

@@ -1,7 +1,8 @@
 import { ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS } from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
-import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS, monsterCat } from '../names.ts';
+import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS } from '../names.ts';
+import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { isLegendaryItem, itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { anItemIsACombatItem, anItemIsTheMithrilSuit } from '../rules/the-registry-of-magic-item-effects.ts';
@@ -21,32 +22,6 @@ interface AnItemAsItsEffectIsKeyed {
   readonly effect?: unknown;
 }
 
-// ── GUARDIAN CATEGORY, SHOWN TO THE PLAYER ────
-// The category already decided which hoard items a guardian could wield, and White Magic's double
-// damage against the undead and fiends turns on it — but it was never printed, so a player reading
-// "Guardian: Barrow Wight" had to know the bestiary to tell what kind of thing they were sending a
-// hero against. Every player-facing list now prints it beside the name. Display only; no mechanic
-// moves. Shipped on the feature payloads as `monsterCat` and rendered by the player portal.
-export const MONSTER_CAT_LABELS = {
-  humanoid: 'Humanoid',
-  undead: 'Undead',
-  beast: 'Beast',
-  vermin: 'Vermin',
-  giant: 'Giant',
-  dragon: 'Dragon',
-  fiend: 'Fiend',
-  fey: 'Fey',
-  aberration: 'Aberration',
-  elemental: 'Elemental',
-  construct: 'Construct',
-};
-export function monsterCatLabel(m: Parameters<typeof monsterCat>[0]) {
-  if (!m) return '';
-  const c = monsterCat(m);
-  // the table read by any category's name
-  const labels: Readonly<Partial<Record<string, string>>> = MONSTER_CAT_LABELS;
-  return labels[c] ?? ''; // no label is ''
-}
 // Which of a lair's items this guardian can bring to bear.
 // A guardian's use of its hoard is decided by its TYPE alone (MONSTER_CAT_ITEM_USE). Race- and
 // alignment-bound items are deliberately NOT gated here: itemUsableBy() binds them to characters of

@@ -1,6 +1,7 @@
 import { NPC_SCHOOL_SPELL } from '../army-tables.ts';
 import { temperOf } from '../world/tables.ts';
-import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd, monsterCat } from '../names.ts';
+import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd } from '../names.ts';
+import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { activeItems, effTemper } from '../items/equipment.ts';
 import { dedupeItemsByName, guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, pcArmourOf } from './helpers.ts';

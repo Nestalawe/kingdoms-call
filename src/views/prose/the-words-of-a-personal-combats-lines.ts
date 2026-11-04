@@ -19,7 +19,7 @@ import {
   hpGainLine,
   itemNameList,
 } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
-import { monsterCatLabel } from '../../engine/items/tiers-and-hoards.ts';
+import { monsterCatLabel } from '../../engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import type {
   AFighterOfAPersonalCombat,
   AFightersSkillAsTheLineTellsIt,
