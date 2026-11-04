@@ -62,7 +62,7 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 - **The words:** a row's own text, and the tables of both rulebooks (below).
 - **What a game already running holds:** whether a realm that holds the thing, or a save that copied it, gets the new
   number: [Live saves keep copies](../traps.md#live-saves-keep-copies).
-- **The tests:** the static `tests/static/each-…` family checks that a row's numbers are in its words (and for most,
+- **The tests:** the static `tests/static/each-*` family checks that a row's numbers are in its words (and for most,
   in the rulebook's table), one test a family (`each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts`, and the
   discoveries', perks', unit abilities' and alignment orders').
 - **The detail:** [adding or changing content](adding-or-changing-content-units-orders-and-discoveries.md); a new unit:
@@ -71,7 +71,7 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 
 ### A new or changed content effect (an ability, an item's power, a spell's, a discovery's, a perk)
 
-- **Where:** one row in `src/content/` and one entry in its registry, `src/engine/rules/the-registry-of-….ts`, with the
+- **Where:** one row in `src/content/` and one entry in its registry, `src/engine/rules/the-registry-of-*.ts`, with the
   effect in `src/engine/rules/<family>/`. Never an `if` on the content's name inside a resolver
   ([the guardrails](../ARCHITECTURE.md#the-codes-guardrails)).
 - **The detail:** [the rule registry](the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry); a
@@ -101,8 +101,8 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 - **What a realm sends:** its shape is `src/schemas/orders-a-realm-submits.ts`; the player's form is in `src/ui/player/`.
   The bots give orders too (`src/engine/bots/`), and the balance matrix's scripted realm copies what the form sends
   (`tools/balance/`, a dangerous path).
-- **The tests:** each family's cases, `tests/lib/<family>-cases.ts`, run once called directly (`tests/unit/…-called-directly.test.ts`)
-  and once in a whole turn (`tests/scenario/…-in-a-whole-turn.test.ts`).
+- **The tests:** each family's cases, `tests/lib/<family>-cases.ts`, run once called directly (`tests/unit/*-called-directly.test.ts`)
+  and once in a whole turn (`tests/scenario/*-in-a-whole-turn.test.ts`).
 - **The detail:** [An alignment order is written in a dozen places](../traps.md#an-alignment-order-is-written-in-a-dozen-places),
   [a mastery order](adding-or-changing-content-units-orders-and-discoveries.md#a-mastery-order-is-one-row-and-its-resolvers-level),
   and where the form's copies are ([A rule written twice](../traps.md#a-rule-written-twice-must-change-twice)).
@@ -110,11 +110,11 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 ### What a report says, and who reads it
 
 A line of the report is three things in three places:
-- **the fact:** the engine records what happened, as values, in the `the-facts-…-record.ts` file beside the code that
+- **the fact:** the engine records what happened, as values, in the `the-facts-*-record.ts` file beside the code that
   makes it;
 - **the audience:** who may read it, given when it enters the log through `emit`
   (`src/engine/turn/events-and-their-audiences.ts`);
-- **the words:** written after the turn, in `src/views/prose/the-words-of-….ts`, one file an area.
+- **the words:** written after the turn, in `src/views/prose/the-words-of-*.ts`, one file an area.
 
 Each realm's report is put together in `src/views/every-realms-report-and-the-lines-each-realm-reads.ts`, from what
 that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its sections and forecasts are
@@ -138,8 +138,8 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
   Words players read elsewhere: a content row's text in `src/content/`, the join screen's blurbs
   (`src/ui/player/join-and-chronicle.ts`), the spell hints below the order form
   (`src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts`) and the report's prose.
-- **The tests:** the static tests named for what the books say (`tests/static/the-books-say-…`,
-  `tests/static/the-rulebook-says-…`, `tests/static/text-players-read-says-what-the-game-does-after-the-rulebook-review.test.ts`)
+- **The tests:** the static tests named for what the books say (`tests/static/the-books-say-*`,
+  `tests/static/the-rulebook-says-*`, `tests/static/text-players-read-says-what-the-game-does-after-the-rulebook-review.test.ts`)
   and `tests/rulebook-review-words.test.js`. Search for the old words in them: a test may pin the words you change.
   Each test names the book it reads: where it reads only the full one, search the short one yourself.
 
