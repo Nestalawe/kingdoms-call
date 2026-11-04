@@ -51,6 +51,11 @@ const movesLine = (d: Pick<ABattlesDeployment, 'scout' | 'moves'>, atk: string, 
 };
 /** The front's units by the last word of their type, '·' for an empty place. */
 const front = (g: BattleGrid) => g.front.map((x) => (x ? (x.r.a?.type.split(' ').pop() ?? '?') : '·')).join(' ');
+/** The second line's units, as `front` gives the front's. */
+const second = (g: BattleGrid) => g.second.map((x) => (x ? (x.r.a?.type.split(' ').pop() ?? '?') : '·')).join(' ');
+/** Both sides' lines and faced totals. */
+const layout = (d: ABattlesDeployment) =>
+  [d.gA, d.gD].map((g) => `${front(g)} / ${second(g)} / ${String(total(g))}`).join(' v ');
 /** A grid's faced total. */
 const total = (g: BattleGrid) => {
   if (!g.face) throw new Error('the deploy faced no grid');
@@ -153,6 +158,16 @@ describe('lining up second: the archer moves to shoot the infantry, not the hors
 
   test('the same inputs give the same line-up', () => {
     expect(front(deploy('def', 0).gA)).toBe(front(deploy('def', 0).gA));
+    // Stricter than the old script, which compared only the attacker's front in a scene where it never moves: both
+    // sides' lines and totals, in the three scenes above, two of them with a line that shifts.
+    for (const [scout, tacA] of [
+      ['atk', 0],
+      ['def', 1],
+      ['def', 0],
+    ] as const)
+      expect(layout(deploy(scout, tacA)), `${scout} scouts, Tactical ${String(tacA)}`).toBe(
+        layout(deploy(scout, tacA)),
+      );
   });
 });
 
