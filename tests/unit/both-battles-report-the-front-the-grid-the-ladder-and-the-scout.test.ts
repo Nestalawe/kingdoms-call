@@ -9,7 +9,8 @@
 // The hosts are the old script's: the king's six Levies, three Longbows and two Free Lances against three Dwarven
 // Guard and two Ironwood Crossbows; the hero's four Levies, two Longbows and one Gilded Lances against two Goblin
 // Hordes and one Orc Berserkers. Each commander fights in melee and refuses every duel, and carries no item.
-// How the lines are built from the rows is tests/battle-grid.test.js and tests/battle-facing.test.js.
+// How the lines are built from the rows is tests/unit/the-battle-grid-places-each-unit-by-its-role-… and
+// tests/unit/who-faces-whom-a-units-matchup-….
 //
 // Level 1 (unit): combatVsChar and combatVsNPC called directly (tests/lib/a-battle-called-directly.ts) on a world the
 // engine makes from KC_SEED; no turn is played. Not lower: the two battles each build their own rows and print their
