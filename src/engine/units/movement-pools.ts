@@ -27,7 +27,7 @@ export function getSeaCapability(armies, leadChar) {
   return seaLiftOfAColumn(armies, !!leadChar && perkTier(leadChar, 'naval') >= 3).answer;
 }
 
-export function canEnterTerrain(c, terrain, seaCap) {
+export function canEnterTerrain(c, terrain, seaCap): boolean {
   if (terrain === 'sea') {
     if (seaCap === 'all' || seaCap === 'sea') return true;
     if (c._partSeaThisPhase) return true; // Part Sea spell active this phase
@@ -140,7 +140,7 @@ export function computeMovePoolMax(turnContext, c) {
   if (charMinor(turnContext, c, 'seawolf') && sea > 0) sea += 1;
   return { land, sea, seaActive, cap: getSeaCapability(armies, c) };
 }
-export function setMovePool(turnContext, c) {
+export function setMovePool(turnContext, c): void {
   const { movePoints, seaMovePoints, seaMoveActive, seaCap, moveMax, seaMoveMax } = turnContext;
   const m = computeMovePoolMax(turnContext, c);
   movePoints[c.id] = m.land;
@@ -185,7 +185,7 @@ export function refreshMovePool(turnContext, c): void {
 }
 
 // Contingent unify helper — used when two friendly forces attack same province same phase
-export function contingentUnifyChance(marchOrNaval, distanceProvinces, isNaval) {
+export function contingentUnifyChance(marchOrNaval, distanceProvinces, isNaval): number {
   const table = isNaval ? NAVAL_UNIFY : MARCH_UNIFY;
   const row = table[Math.min(marchOrNaval, 5)] || table[0];
   return row[Math.min(distanceProvinces, 2)] || row[row.length - 1];

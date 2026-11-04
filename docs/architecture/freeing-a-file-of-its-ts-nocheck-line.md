@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-80 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(46: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+79 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(45: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b26 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b27 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -160,15 +160,21 @@ added under its kind.
   optional), or a callback's parameter; an object's optional field isn't narrowed away.
 - **A state the code tests, then hands to a call that changes it** (a fight's state: an action sets who fled, a spell
   conjures a Mirror Image) is read again through a reader typed as the state is kept (`theFightAsItIsNow`), so a test
-  after the call isn't read as always false.
+  after the call isn't read as always false; so is a province's owner after a battle and its bookkeeping
+  (`theOwnerAsItIsNow`).
 - **A `let` set inside a `forEach` callback** is still its first value to the compiler: a `for … of` over the same list,
   `continue` for the callback's `return`; or, where it is handed back, the function's return type written.
 - **A table's element made sure by a key that is a field** (`if (!G.turnOrders[h.id]) …; G.turnOrders[h.id][p]`)
   is read by a plain `const` key (`const hiredsId = h.id`), and `if (!x) x = []` on it is `x ??= []`, which narrows.
 - **A branch the check above makes dead** (`h.player === null ? wage : h.pay || 1` after a check that every hired
-  hero is a wanderer) is dropped: lint refuses the always-true test, and the value is the same.
+  hero is a wanderer) is dropped: lint refuses the always-true test, and the value is the same. One whose text a
+  static test reads (the march's `'move'` strings) stays, its test read through `asItsGuardReadsIt`; an `if (false) {}`
+  before an `else if` goes, its comment kept.
 - **A value read back from a table just after it is written there by a key** (`p.exploredBy[i] = x; p.explored =
-  p.exploredBy[i]`) is the `const` written, read again (`mappedNow`): the same number.
+  p.exploredBy[i]`) is the `const` written, read again (`mappedNow`): the same number. An element just read into a
+  `const` and written back spread is spread from the `const` (`{ ...allyOrder, _unifiedWith }`): the same object read.
+- **An arrow whose body is a call that gives nothing** (lint's `no-confusing-void-expression`: `(pv) => emit(…)`) gets
+  braces, `(pv) => { emit(…); }`: the same call, and the callback still gives `undefined`.
 - **A value a closure reads later** (`pcDeferEffect`'s rider) is read into a `const` before it, so the test before it
   narrows it inside too. A table read by the same key several times is read once into a `const`.
 - **A `try` whose `catch` gave a value where a missing element threw** checks for none first inside the `try`, with
