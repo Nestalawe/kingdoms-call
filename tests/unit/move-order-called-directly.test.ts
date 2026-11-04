@@ -23,7 +23,8 @@
 // kept); a leaderless neutral garrison beaten and fleeing, beaten and holding, or throwing the march back; a coastal
 // raid naming the realm it plundered (pass on P1-10b26's base, as after).
 // Since P1-21h, a friend who joined the assault on a guarded province is told whether he himself fell there, when
-// only he falls and when only the column's hero does.
+// only he falls and when only the column's hero does; and a hero on Defend beside the beaten defender of a rival's
+// province loses his watch, and his realm is told.
 import vm from 'node:vm';
 import { afterEach, describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -639,6 +640,28 @@ describe('the lines no matrix game reaches in the Move order (P1-10b27)', () => 
       });
     },
   );
+  test("a hero on Defend beside the beaten defender of a rival's province loses his watch, and his realm is told", () => {
+    const b = board(engine, world, 0);
+    const to = ring1(b, 0);
+    const back = beyond(b, to);
+    b.own(to, 1);
+    b.own(back, 1);
+    hero(b, { player: 1, at: to, troops: 1 });
+    const W = hero(b, { player: 1, at: to, troops: 1 });
+    Object.assign(W, { _defend: { centre: to.id, active: true, setPhase: 0, carried: false } });
+    const A = column(b, 0, b.X);
+    startTheTurn(b);
+    aBattle(true, (_tc, _atk, def) => {
+      (def as Character).location = back.id;
+    });
+    move(b, A, to.id);
+    expect({ watching: W._defend?.active, told: linesOf(b, W).map((l) => l.text) }).toEqual({
+      watching: false,
+      told: expect.arrayContaining([
+        `${W.name}'s defensive watch is broken by this defeat — they will hold no further ground this turn.`,
+      ]) as unknown,
+    });
+  });
   test('a coastal raid names the realm whose treasury it plundered', () => {
     const b = board(engine, world, 0);
     b.X.terrain = 'sea';

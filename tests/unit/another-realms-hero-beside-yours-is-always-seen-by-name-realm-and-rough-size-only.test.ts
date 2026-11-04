@@ -8,7 +8,8 @@
 //     heroes the one sight rule (enemyCharVisibleTo) passes, in a province where it has a hero or that it spied, the
 //     exact count for its own heroes and the rough size for anyone else's.
 // And the warnings of a hero beside yours (generateIntrusionNotifications, src/engine/turn/intrusion-warnings.ts)
-// give the same rough size, whatever the watcher's Spy. The map popup's words are
+// give the same rough size, whatever the watcher's Spy, and (since P1-21h) name no hero under Invisibility, beside
+// your hero on free ground or in your land. The map popup's words are
 // page/the-player-portals-map-popup-gives-your-heros-count-and-another-realms-rough-size.test.ts; the rulebook's, and
 // the player portal reading whether a target leads troops, static/the-rulebook-says-another-realms-hero-beside-yours-
 // is-always-seen-and-only-roughly.test.ts.
@@ -363,4 +364,38 @@ test("the warnings of a hero beside yours or in your land give his force's rough
   ];
   expect(sizes(0), 'the warnings give the rough size to a watcher of no Spy').toEqual(expected);
   expect(sizes(10), '…and the same to a master spy').toEqual(expected);
+});
+
+test('the warnings name no hero under Invisibility, beside your hero on free ground or in your land', async () => {
+  await import('../lib/the-whole-engine.ts');
+  const { createTurnContext } = await import('../../src/engine/turn/context.ts');
+  const { generateIntrusionNotifications } = await import('../../src/engine/turn/intrusion-warnings.ts');
+  const warned = (invisible: boolean) => {
+    const T = 4;
+    const G = {
+      turn: T,
+      relations: {},
+      players: [
+        { name: 'Esterhold', provinces: [3] },
+        { name: 'Varn', provinces: [] },
+      ],
+      characters: [
+        { id: 0, name: 'Wren', player: 0, alive: true, location: 2, armies: [], skills: {} },
+        { id: 1, name: 'Thorn', player: 1, alive: true, location: 2, armies: army(4), skills: {} },
+        { id: 2, name: 'Bryn', player: 1, alive: true, location: 3, armies: army(7), skills: {} },
+      ].map((c) => (invisible && c.player === 1 ? { ...c, _invisTurn: T } : c)),
+      world: { provinces: [null, null, { id: 2, name: 'Wendmeadow' }, { id: 3, name: 'Esterhold Vale' }] },
+    };
+    const tc = createTurnContext(G, [], 3) as unknown as {
+      _intrusionAcc: Map<string, { targetPi: number; acName: string; branch: string }>;
+    };
+    Object.assign(tc, { SEASONS: ['Spring', 'Summer', 'Autumn', 'Late Autumn', 'Winter'], _intrusionAcc: new Map() });
+    generateIntrusionNotifications(tc as never, 1);
+    return [...tc._intrusionAcc.values()].filter((r) => r.targetPi === 0).map((r) => [r.acName, r.branch]);
+  };
+  expect(warned(false), 'seen, the two are named (staging check)').toEqual([
+    ['Thorn', 'known'],
+    ['Bryn', 'own'],
+  ]);
+  expect(warned(true), 'under Invisibility, neither is').toEqual([]);
 });

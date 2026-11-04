@@ -24,6 +24,8 @@
 // Advance the defenders fight with no terrain bonus (their strength in the turn's record falls; the Men-at-Arms' ×1.1 on
 // the plain), and a guard slain before the battle (the duel's outcome stood in) leaves a sergeant of the garrison to take
 // up the banner.
+// Since P1-21h, a repelled attacker who marched out of the map's first province (its id 0) falls back to it, though the
+// other ground open to him (stood in) is richer.
 // Since P1-12d33, also the record the turn's statistics keep of a battle against a province's defenders, in the two
 // forms no game reaches ('pvp': a realm's hero leading them, stood in as realm 1's king; 'neutral') and the garrison's,
 // read through the views' theStatisticsOfTheTurn, which P1-12d33 adds (so those cases need its code).
@@ -428,5 +430,23 @@ describe("a battle against a province's defenders, in the lines no game reaches 
     expect(shown.words).toContain(
       `⚑ With ${shown.def} slain before the host, a battle-worn sergeant of the garrison takes up the fallen banner — the defenders close ranks and fight on, leaderless but unbowed.`,
     );
+  });
+
+  test("repelled, he falls back to the map's first province he came from, though the other ground open to him is richer", () => {
+    let atk: Character | undefined;
+    let first: Province | undefined;
+    const shown = aBattle({ atk: companies(1, 'Green'), defenders: companies(8, 'Elite') }, false, (G, a, _, f) => {
+      atk = a;
+      first = G.world.provinces[0];
+      const richer = G.world.provinces.find((p) => p.id !== 0 && p.id !== f.id && p.terrain !== 'sea');
+      if (!first || !richer || f.id === 0) throw new Error('could not stage: the field is the first province');
+      Object.assign(first, { tax: 0 });
+      Object.assign(richer, { tax: 9 });
+      a['_attackedFrom'] = first.id;
+      // the ground open to him: the richer first, as the best retreat and the first of the list would take it
+      vi.spyOn(retreats, 'retreatOptions').mockReturnValue([richer, first] as never);
+    });
+    expect(shown.words).toContain(`${shown.atk}'s forces retreat to ${String(first?.name)}.`);
+    expect(atk?.location).toBe(0);
   });
 });
