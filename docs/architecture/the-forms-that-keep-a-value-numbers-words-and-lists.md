@@ -86,7 +86,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   a hero (`refreshMovePool`'s points) is read through a check that throws for none (`thePointsTheRefreshLeft`).
 - **Levels by skill read and raised by any skill's name** (a hero's skills, a snapshot, his rises this turn) go
   through a reader that hands back the same object typed `Partial<Record<string, number>>` (`theLevelsByAnyName`):
-  a schema's object type, unlike an interface, takes a record, so the writes reach it.
+  a schema's object type, unlike an interface, takes a record, so the writes reach it. So does a `for (k in obj)` that
+  cuts each field (a fallen hero's merit towards the titles, `theMeritByAnyName`).
 - **`[a[0]]` and `[a[1]]` from a list just found to hold two** are `a.slice(0, 1)` and `a.slice(1, 2)`, the same lists. A
   regular expression's group that always takes part in a match is read `String(m[1])`, the same words.
 - **A die's pick from a list that may hold a gap** (a hero's pack, read as a battle's copy holds it) is checked just
@@ -117,3 +118,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   readonly number[]`, then `forEach`: the same calls.
 - **`for (k in obj)` over a literal's keys** is a `for … of` over a typed list of them, in the same order. A `Map` a
   caller makes is typed by the methods the function calls.
+- **A parameter set to its own list filtered** (`armies = (armies || []).filter((a) => a && !a._phantom)`) is read
+  into a new `const` (`counted`), each later read of the parameter read from it: the same list, now of the filter's
+  kind. A filter's callback may take the element with a turn's mark the schema lacks, optional (`(p2: Province & {
+  _flood?: unknown })`): the list's element still passes.
