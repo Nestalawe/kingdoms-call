@@ -1105,7 +1105,10 @@ export const PROJECTIONS: Projection[] = [
           [h.report['armies'], skillOf(h.report, 'naval')],
           engineOn(theSeaLiftOf, [h.report['armies'], h.report]),
           engineOn(
-            (armies: unknown, hero: Obj) => ({ ...theSeaLiftOf(armies, hero), answer: getSeaCapability(armies, hero) }),
+            (armies: unknown, hero: Obj) => ({
+              ...theSeaLiftOf(armies, hero),
+              answer: getSeaCapability(...([armies, hero] as unknown as Parameters<typeof getSeaCapability>)),
+            }),
             [h.state['armies'], h.state],
           ),
         ),
@@ -2356,7 +2359,8 @@ function theTurnPlaysThePhases(
   kcRng.seed(1);
   const phases = Math.max(0, ...Object.values(orders).map((list) => list.length));
   quietly(() => {
-    for (const c of objects(G['characters']).filter((h) => h['player'] != null && h['alive'])) setMovePool(tc, c);
+    for (const c of objects(G['characters']).filter((h) => h['player'] != null && h['alive']))
+      setMovePool(tc as unknown as TurnContext, c as never);
     for (let ph = 0; ph < phases; ph++) {
       tc._currentPhase = ph;
       const startedAt = Object.fromEntries(objects(G['characters']).map((h) => [String(h['id']), h['location']]));
@@ -2898,7 +2902,7 @@ function theTurnPlaysTheOrder(
   kcRng.seed(1);
   tc._currentPhase = 0;
   quietly(() => {
-    setMovePool(tc, c);
+    setMovePool(tc as unknown as TurnContext, c as never);
     // (the staged world's hero and his order, given the types processOrder takes, by assertion as theOrderBlocks's)
     processOrder(tc as unknown as TurnContext, c as never, { action, target, extra, desc: action }, 0);
   });

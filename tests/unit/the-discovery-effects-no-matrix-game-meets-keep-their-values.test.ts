@@ -1315,7 +1315,7 @@ describe("war's spoils and the march, in the functions that ask the runners (P1-
       const king = G.characters.find((c) => c.alive && c.player === 0 && c.isKing);
       if (!king) throw new Error('the world has no king in realm 0');
       king.armies = [{ ...unit, unitName: 'the Column' }] as never;
-      const led = (computeMovePoolMax(tc, king) as { land: number }).land;
+      const led = computeMovePoolMax(...([tc, king] as unknown as Parameters<typeof computeMovePoolMax>)).land;
       const alone = garrisonMoveRate({ ...unit, unitName: 'the Column' } as never, realm as never).moveRate;
       return [led, alone];
     };
