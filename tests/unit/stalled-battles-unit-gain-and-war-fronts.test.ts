@@ -37,6 +37,8 @@
 //   slain before the battle, a stalled retreat's ground, the guard's count and intel, merit and an Evil conquest, a
 //   naval split's lines and their phase, a war front's realms, its second column and its one province (pass on
 //   P1-10b25's base, as after).
+// - Since P1-21h, a war front's second column assaults in its turn once the first is thrown back and the fight is
+//   settled, not left hanging.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterEach, describe, expect, test } from 'vitest';
@@ -1166,6 +1168,20 @@ describe('a war front, in the lines no game reaches (resolveWarFronts, P1-10b26)
       ),
     ).toBe(true);
     expect(told.endsWith(`the host turns on the province of ${String(r1)}.`)).toBe(true);
+  });
+  test('a second column assaults in its turn once the first is thrown back and the fight is settled, not left hanging', () => {
+    const b = fresh();
+    b.own(b.X, 1);
+    hero(b, { player: 1, at: b.X, troops: 2 });
+    const first = hero(b, { player: 0, at: b.X, troops: 6, quality: 'Elite' });
+    const second = hero(b, { player: 0, at: b.X, troops: 1, quality: 'Green' });
+    startOfTurnAtWar(b);
+    const assailants: string[] = [];
+    aBattle(false, (_tc, c) => {
+      assailants.push((c as Character).name);
+    });
+    resolveWarFronts(b.tc, 0);
+    expect([assailants, b.X._hadBattleThisTurn, flagged(b.X)]).toEqual([[first.name, second.name], true, false]);
   });
   test("on a third realm's land the two hosts fight there, and no other province's contest is fought", () => {
     const b = fresh();
