@@ -27,7 +27,7 @@ import { graveIntelFor } from '../engine/graves.ts';
 import { graveServedOther } from '../engine/heroes/charms-and-neutrals.ts';
 import { provinceConsecrated } from '../engine/heroes/fame-and-consecration.ts';
 import { activeItems } from '../engine/items/equipment.ts';
-import { monsterCatLabel } from '../engine/items/tiers-and-hoards.ts';
+import { monsterCatLabel } from '../engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../engine/titles/perks.ts';
 import {
   MINOR_TITLES,

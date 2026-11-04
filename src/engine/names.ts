@@ -8,6 +8,7 @@ import { THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS } from '../content/gu
 import { kcRng } from './rng.ts';
 import { shuffleP } from './battle/fortune.ts';
 import type { Character } from '../schemas/saved-game-state.ts';
+import type { AGuardianAsTheseRead } from './rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import {
   THE_NUMBER_OF_WAYS_THE_WANDERER_ESCAPES,
   type TheFactOfTheWanderersEscape,
@@ -22,11 +23,6 @@ type NamePartsOfEachAlignment = Readonly<Record<string, NamePartsOfAnAlignment |
 interface LairNamesOfACategory {
   readonly land?: readonly string[] | undefined;
   readonly sea?: readonly string[] | undefined;
-}
-// A guardian as the lair names read it (a test's may hold its category alone).
-interface AGuardianAsTheseRead {
-  readonly cat?: string | null | undefined;
-  readonly name?: string | undefined;
 }
 
 // ── UNIQUE-NAME OVERFLOW POOLS (KC item: no two characters share a given name OR a descriptor) ──
@@ -485,29 +481,3 @@ export const MONSTER_CAT_ITEM_USE = {
   construct: 'none',
 };
 export const _TRINKET_SLOTS = new Set(['ring', 'amulet', 'cloak', 'helm', 'combat']); // combat items added 2026-09-11 as 'consumable' (they had no slot before, so were always wieldable); renamed to the Combat Item slot 2026-09-14
-export function monsterCat(m: AGuardianAsTheseRead | null | undefined) {
-  if (m?.cat) return m.cat;
-  const n = (m?.name ?? '').toLowerCase();
-  if (
-    /lich|skelet|zombie|wraith|ghoul|vampir|bone|death knight|undead|ghost|spectr|drowned|wight|mumm|banshee|dracolich/.test(
-      n,
-    )
-  )
-    return 'undead';
-  if (/demon|devil|fiend|hell|chaos|brimstone|imp\b|archdemon/.test(n)) return 'fiend';
-  if (/dragon|wyrm|wyvern|drake|hydra/.test(n)) return 'dragon';
-  if (/giant|troll|ogre|titan/.test(n) && !/giant (rat|wasp|spider|centipede|crab|barnacle|toad|sea|octopus)/.test(n))
-    return 'giant';
-  if (/golem|sentinel|construct|statue/.test(n)) return 'construct';
-  if (/harpy|sprite|siren|hag|pixie|dryad/.test(n)) return 'fey';
-  if (/rat|wasp|bat|spider|centipede|piranha|barnacle|crab|leech|mite|jellyfish|swarm/.test(n)) return 'vermin';
-  if (/kraken|horror|octopus|abyssal/.test(n)) return 'aberration';
-  if (/elemental|devil\b/.test(n)) return 'elemental';
-  if (
-    /goblin|bandit|cutthroat|assassin|kobold|pirate|merrow|priest|scout|hobgoblin|orc|gnoll|minotaur|shaman|smuggler|wrecker|medusa|warlord|captain|deckhand/.test(
-      n,
-    )
-  )
-    return 'humanoid';
-  return 'beast';
-}

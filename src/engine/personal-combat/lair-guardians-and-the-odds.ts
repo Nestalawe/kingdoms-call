@@ -1,5 +1,5 @@
 import { kcRng } from '../rng.ts';
-import { monsterCat } from '../names.ts';
+import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { guardianCanUseItem } from '../items/tiers-and-hoards.ts';
 import { ensureLairHoard } from '../world/tables.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';

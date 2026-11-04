@@ -95,9 +95,8 @@
   a unit's `disbandLine` and `theClauseOfWhomAUnitFaced`; the wanderer's sentences, `_GARRETH_ESCAPES`; since P1-13f
   `fmtRoll`, `describeArmy` and the three `theWordsOf…` of a skill, the odds and a skill in play; since P1-13g
   `ownedUnitName`, `unitRef`, `MASTERY_ORDER_LABEL`, `hpGainLine`, `itemNameList` and `strandLabel`; since P1-13h
-  `_TITLE_LABEL` and the save check's words); one it
-  still calls (`monsterCatLabel`) the prose imports from the engine, on plain
-  values, and a unit ability's name comes from its content row. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
+  `_TITLE_LABEL` and the save check's words), a guardian's label (`monsterCatLabel`) moved onto plain values, which the
+  prose imports (P1-13j), and a unit ability's name comes from its content row. `tests/static/a-lines-facts-hold-values-not-words.test.ts`
   checks each area done (its list grows a row at a time); since P1-12d29 it lets no label through. The
   rest of the engine's lines still carry their words, and in this run a line's words are the same for every
   reader. Then it works out, for each played
@@ -223,7 +222,7 @@
   number) import only `src/content` and each other, so the player portal shares them through `src/shared/`
   ([the shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules));
   the static test `rules-on-plain-values-import-only-the-content-and-each-other` refuses any other import there. The
-  engine's callers import them there too. Since P1-13i they hold the fortune's curve and win chance, Hunting Rumours' bands and a lair's key, and the Terror's two figures, which the prose and the report read. Where the portal still feeds in its own figure (the army card's own sea
+  engine's callers import them there too. Since P1-13i they hold the fortune's curve and win chance, Hunting Rumours' bands and a lair's key, and the Terror's two figures; since P1-13j a guardian's kind and label. Where the portal still feeds in its own figure (the army card's own sea
   note), it is an open question for Toby.
 - A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and
   `botWorld` in `tests/lib/engine.ts`, or on the engine's modules
