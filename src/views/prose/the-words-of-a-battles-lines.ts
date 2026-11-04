@@ -39,7 +39,7 @@ import {
   type WhyACommandersForceIsDemoralised,
 } from '../../engine/battle/the-facts-a-battles-lines-record.ts';
 import { describeArmy } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
-import { ownedUnitName, unitRef } from '../../engine/army-tables.ts';
+import { ownedUnitName, unitRef } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import { fortuneCdf, fortuneWinChance } from '../../engine/battle/fortune.ts';
 import { dispFloor } from '../../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';

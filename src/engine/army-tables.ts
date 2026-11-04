@@ -213,24 +213,6 @@ export function demoteOrDisband(a: ArmyInABattle | null | undefined): boolean {
   a._disbanded = true;
   return true;
 }
-// "Atk's Warg Riders" / "the Red Hand (Atk's Eagle Riders)" — an owner plus a unit's name or type,
-// never "Atk's the Red Hand" (2026-09-23d). Module level since 2026-10-11 (they were inside runTurn).
-export function ownedUnitName(
-  ownerName: string | null | undefined,
-  a: Pick<Army, 'type' | 'unitName'> | null | undefined,
-): string {
-  if (a?.unitName && /^the\s/i.test(a.unitName))
-    return `${a.unitName} (${ownerName ? ownerName + "'s " : ''}${a.type})`;
-  const nameOrType = a ? a.unitName || a.type : '';
-  return `${ownerName ? ownerName + "'s " : ''}${nameOrType || 'unit'}`;
-}
-export function unitRef(ownerName: string | null | undefined, a: Pick<Army, 'type' | 'unitName' | 'quality'>): string {
-  // 2026-09-23d: "the Pale Shades (Vervain's Shadow Archers, Average)" — never "Vervain's the Pale Shades".
-  if (a.unitName && /^the\s/i.test(a.unitName))
-    return `${a.unitName} (${ownerName ? ownerName + "'s " : ''}${a.type}, ${a.quality})`;
-  const core = a.unitName ? `${a.unitName} (${a.type}, ${a.quality})` : `${a.quality} ${a.type}`;
-  return ownerName ? `${ownerName}'s ${core}` : core;
-}
 
 // ── SKILLS ────
 // TRAINING gives its benefit up to level 5; levels 6-9 buy mastery perks and mastery orders
@@ -308,14 +290,11 @@ export const NPC_SCHOOL_SPELL = {
 };
 
 // ── ONCE PER TURN (mastery) ── the 20 L7/L9 mastery ORDERS; each may be attempted only once per
-// turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler). The content's rows' keys and
-// names, in their order (src/content/mastery-orders-their-keys-names-skills-and-levels.ts, P1-11d10): a row's key that
+// turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler). The content's rows' keys, in
+// their order (the masteries' names are the prose's: MASTERY_ORDER_LABEL) (src/content/mastery-orders-their-keys-names-skills-and-levels.ts, P1-11d10): a row's key that
 // is no kind of order fails to compile.
 export const MASTERY_ORDER_KEYS = new Set<string>(
   Object.values(THE_MASTERY_ORDERS).map((order) => order.key) satisfies readonly OrderKind[],
-);
-export const MASTERY_ORDER_LABEL: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.values(THE_MASTERY_ORDERS).map((order) => [order.key, order.name]),
 );
 // Alignment-signature orders, by engine action key: the content's rows' keys, in their order (plan P1-19's alignment
 // orders, Decision 3). Used with MASTERY_ORDER_KEYS to decide what a charmed enemy hero may not be made to do. A row's

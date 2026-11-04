@@ -3,7 +3,7 @@
 // lines-record.ts), in the same words the engine wrote before (orders/army-orders-hand-over-garrison-disband-and-pick-
 // up-companies-and-release-a-hero.ts). The words of a commander's beast command moved here from the engine
 // (world/tables.ts) once the army orders, its last engine callers, recorded it as a fact; the Recruit and Hire orders'
-// prose reads them here. strandLabel, which the engine still calls for its own lines, is imported from it and called on
+// prose reads them here. strandLabel (the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts) is called on
 // the units the fact copied as the line was told. A kind with no words here is a compile error (the `never` below).
 import type {
   TheFactOfTheArmyOrdersLine,
@@ -11,7 +11,7 @@ import type {
 } from '../../engine/orders/the-facts-the-army-orders-lines-record.ts';
 import type { AUnitAsDescribeArmyNamesIt } from '../../engine/dice-and-army-names.ts';
 import type { ABeastCommandAsALineTellsIt } from '../../engine/world/tables.ts';
-import { strandLabel } from '../../engine/units/sea-lift-stranding-and-retreats.ts';
+import { strandLabel } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 
 /** The words of a commander's beast command: "Aldric can lead only 2 Creature or Monster units (Druid 2)". */
 export function theWordsOfABeastCommand(command: ABeastCommandAsALineTellsIt): string {

@@ -1,10 +1,10 @@
 // ── THE WORDS OF A STRANDING AT SEA'S LINES (plan P1-12d14: P1-12's Decisions of 2026-10-29, Decision 3) ──
 // The views write the words of each fact a stranding at sea's lines record (src/engine/units/the-facts-a-stranding-at-
 // seas-lines-record.ts), in the same words the engine wrote before (units/sea-lift-stranding-and-retreats.ts,
-// settleStrandedAtSea). strandLabel, which the engine still calls for the army orders' and the sea lift's lines, names
+// settleStrandedAtSea). strandLabel (the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts) names
 // each unit the fact copied as the line was told. A kind with no words here is a compile error (the `never` below).
 import type { TheFactOfAStrandingAtSeasLine } from '../../engine/units/the-facts-a-stranding-at-seas-lines-record.ts';
-import { strandLabel } from '../../engine/units/sea-lift-stranding-and-retreats.ts';
+import { strandLabel } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 
 /** Why the column put units ashore: the words its caller handed in, else "too few hulls left afloat …". */
 function whyTheColumnIsShort(why: string | null): string {

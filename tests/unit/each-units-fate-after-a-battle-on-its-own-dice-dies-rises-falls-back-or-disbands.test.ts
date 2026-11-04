@@ -30,8 +30,8 @@ import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import { rollUnitFates, type UnitFateOptions } from '../../src/engine/battle/fates.ts';
 import { demoteOrDisband, type ArmyInABattle } from '../../src/engine/army-tables.ts';
-import { ownedUnitName } from '../../src/engine/army-tables.ts';
-import { unitRef } from '../../src/engine/army-tables.ts';
+import { ownedUnitName } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
+import { unitRef } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { plannedDice } from '../lib/hand-made-battle-lines.ts';
 

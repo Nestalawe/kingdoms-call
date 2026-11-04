@@ -1,7 +1,7 @@
 // ── THE WORDS OF THE ESPIONAGE ORDERS' LINES (plan P1-12d8: P1-12's Decisions of 2026-10-26, Decisions 6 and 7) ──
 // The views write the words of each fact the espionage orders' lines record (src/engine/orders/the-facts-the-
 // espionage-orders-lines-record.ts), in the same words the engine wrote before (orders/espionage-orders-spy-steal-
-// sabotage-grand-heist-assassinate-and-vanish.ts). The skills' names are the engine's; fmtRoll, describeArmy and the words of a rival's skill and of the odds as a realm
+// sabotage-grand-heist-assassinate-and-vanish.ts). The skills' names are the content's; fmtRoll, describeArmy and the words of a rival's skill and of the odds as a realm
 // is shown them (theWordsOfAStatShown, theWordsOfTheOddsShown) are the-words-of-a-roll-a-host-and-a-skill-shown.ts's. A kind with no words here is a compile error
 // (the `never` below).
 import type {
@@ -9,7 +9,7 @@ import type {
   TheHaulOfAGrandHeist,
   WhatAThiefWasCaughtAt,
 } from '../../engine/orders/the-facts-the-espionage-orders-lines-record.ts';
-import { SKILL_LABELS } from '../../engine/army-tables.ts';
+import { KC_SKILL_LABELS as SKILL_LABELS } from '../../content/kingdoms-call-data.ts';
 import {
   describeArmy,
   fmtRoll,
