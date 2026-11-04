@@ -220,12 +220,11 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
    *  of the rows; the shell writes each report by the row's id and player_index, which the copies keep. */
   function reportEveryRealm() {
     const buildFor = reportsModule.buildReports;
-    vi.spyOn(reportsModule, 'buildReports').mockImplementation(
-      (whatTheReportsRead: Parameters<typeof buildFor>[0]) =>
-        buildFor({
-          ...whatTheReportsRead,
-          freshPlayers: whatTheReportsRead.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),
-        }),
+    vi.spyOn(reportsModule, 'buildReports').mockImplementation((whatTheReportsRead: Parameters<typeof buildFor>[0]) =>
+      buildFor({
+        ...whatTheReportsRead,
+        freshPlayers: whatTheReportsRead.freshPlayers.map((p) => ({ ...p, user_id: p.user_id ?? 'every-realm' })),
+      }),
     );
   }
   return { world, turn, play, reportEveryRealm, rest };
