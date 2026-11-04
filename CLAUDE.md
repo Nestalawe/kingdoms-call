@@ -12,7 +12,8 @@ published.
 
 1. This file.
 2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the overview, one short paragraph a part, and the module map.
-3. The topic file under [docs/architecture/](docs/architecture/) for the part your work touches.
+3. The topic file under `docs/architecture/` for the part your work touches; for a batch, [where a change
+   goes](docs/architecture/where-a-change-goes-from-an-item-in-game-terms-to-the-files.md).
 4. [docs/traps.md](docs/traps.md): the titles, then the entries your work touches (before changing a portal or a test).
 5. When you write a test: [tests/README.md](tests/README.md), and [the list of tests](tests/every-test-its-level-and-what-it-checks.md).
 6. Only then the code you need, in `src/`: **edit `src/`, never `site/`** (it's built). Files run to a few hundred
@@ -31,7 +32,7 @@ Every doc says what is true now; history lives in git and the PRs. A static test
 | The rules and the reading order | `CLAUDE.md` | 15 KB; lines ≤ 300 characters |
 | The overview, the module map | `docs/ARCHITECTURE.md` | 15 KB |
 | One part's detail | `docs/architecture/<topic>.md` | 30 KB each |
-| A trap: its rule, one example, its check | `docs/traps.md` (its full text: the topic file) | 30 KB; 1.5 KB an entry |
+| A trap: its rule, one example, its check | `docs/traps.md` (its full text: the topic file) | 36 KB; 1.5 KB an entry |
 | How to write and prove a test | `tests/README.md` | 20 KB |
 | One line a test (its *why*: its header) | `tests/every-test-its-level-and-what-it-checks.md` | 300 characters a line |
 
@@ -63,7 +64,8 @@ green. **All new code is TypeScript** (P1-09e), type-checked (no new `@ts-nochec
 
 ## How work arrives
 
-- **Toby's batches:** numbered items in game terms, sometimes with pasted battle reports. **One PR per
+- **Toby's batches:** numbered items in game terms, sometimes with pasted battle reports; start with the skill
+  `taking-in-a-batch-of-tobys-items`. **One PR per
   batch, one commit per item** (decision D-06). Commit message `Item N: <short title>`; PR title
   `Batch YYYY-MM-DD: <a few items>`; branch `batch/YYYY-MM-DD` (the date you open it). If one item
   isn't ready, split it out rather than holding the batch.
@@ -163,11 +165,9 @@ A migration PR's rules, a site PR's that needs one, and forward-only migrations:
 
 ## Dangerous paths: talk it through with Theo
 
-Some changes get Theo's eye before Toby merges them (decision D-07). Toby and Theo talk them through;
-nothing on GitHub enforces it.
-- **Paths:** any PR that changes a path in `.github/dangerous-paths` (today `supabase/**`, `.github/**`
-  and `public/vendor/**`) gets a warning comment from `.github/workflows/dangerous-paths.yml`. It never
-  blocks the merge. The list is read from the PR's base branch, so editing it affects later PRs, not the current one.
+Some changes get Theo's eye before Toby merges them (decision D-07); nothing on GitHub enforces it.
+- **Paths:** a PR that changes a path in `.github/dangerous-paths` gets a warning comment that never blocks the merge.
+  The list is read from the PR's base branch, so an edit to it affects later PRs only.
 - **Everything else that needs Theo:** a change to who can see or change data, a plan step whose STATUS row has ✓ in the
   Theo column, or any step of a unit (e.g. the cutover). Say so in the first line of the PR description. If unsure, say
   so.
