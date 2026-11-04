@@ -86,7 +86,7 @@ import type {
  *  lines-each-realm-reads.ts): its chronicle, its spy activity, and the province events it reads, each with its
  *  province's id (none: an event of no province). */
 interface WhatItsLinesShowTheReport {
-  readonly lastTurnLog: { type: string; text: string }[];
+  readonly lastTurnLog: { type: string; text: string | null }[];
   readonly spyActivity: unknown;
   readonly provinceEvents: readonly { readonly provinceId?: number | null | undefined }[];
 }

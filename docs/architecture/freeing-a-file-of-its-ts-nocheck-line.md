@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-75 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(41: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+74 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(40: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form below keeps every value the old statement gave, for every value its type allows; a few keep it for every
-value at all. P1-10b2 to P1-10b30 found them (each row's figures are in its PR). A form a row needs that isn't here is
+value at all. P1-10b2 to P1-10b31 found them (each row's figures are in its PR). A form a row needs that isn't here is
 added under its kind.
 
 ### `||` and `??`
@@ -85,7 +85,7 @@ added under its kind.
   `Math.min(Number(x), y)`, `Number(x) <= Number(y) - 1`.
 - **A `String()` a test shows is needed** (an order's target, an item's id held as a number) stays, through a reader
   typed as wide (`aTargetInWords`), though the type says words. One the saved schema makes needless (a guardian's
-  power's words) goes. `!!x` on a flag is `x`.
+  power's words) goes. `!!x` on a flag is `x` (`Boolean(asItsGuardReadsIt(x))` if it may be missing).
 - **`/^merc_/.test(s)` on words** is `s.startsWith('merc_')`. A company's name `armyUnitName` draws is read through
   `theNameDrawn`, which throws for none (its type allows none; it always draws or composes one).
 - **A number a typed callee may give as `undefined`** (`effSkillOf` for no hero) is read `Number(x)` where it is counted
