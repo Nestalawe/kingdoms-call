@@ -185,14 +185,6 @@
       "count": 5
     }
   },
-  "src/engine/espionage/what-a-spy-learns.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-empty": {
-      "count": 1
-    }
-  },
   "src/engine/graves.ts": {
     "@typescript-eslint/no-dynamic-delete": {
       "count": 1
@@ -202,11 +194,6 @@
     }
   },
   "src/engine/heroes/charms-and-neutrals.ts": {
-    "prefer-const": {
-      "count": 1
-    }
-  },
-  "src/engine/items/lair-items.ts": {
     "prefer-const": {
       "count": 1
     }

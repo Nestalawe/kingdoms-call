@@ -45,6 +45,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   nobody reads (lint's `no-unused-vars`): a pure one goes (a count, a product, a name destructured and never read); one
   a call gives keeps the call as a bare statement (`effStat(…);`, `armyTotalStr(…);`), its reads and writes as they
   were. A flag a stand-in may leave out (`c.alive === false`) is read `asItsGuardReadsIt(c.alive) === false`.
+- **A value the code has made sure, read for a field after a test that may skip the read** (`kb === ka || b.tier !==
+  a.tier`, a lair's one item) goes through its check where the field is read (`madeSureByTheStocking(b).tier`), not
+  where the element is read: a test before it that skips the read keeps its value, and only the read the old code made
+  throws. A call whose typed callee takes a realm's index, made for a hero who may serve none, is made only for a
+  realm's hero where the callee does nothing at `G.players[null]` (`if (c.player !== null) recordDeadHeroSighting(…)`).
 - **A list indexed by a key that may be missing** (`G.world.provinces[c._attackedFrom]`) is `k === undefined ?
   undefined : list[k]`; a record by words indexed by a realm's index that may be `null` is `table?.[String(n)]`, as
   JavaScript reads `table[null]`.
