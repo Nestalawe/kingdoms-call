@@ -1,12 +1,15 @@
-// npm run mutants -- <folder> [--only <patch>,…]: the mutant scorer (plan P1-21a). A script, so the score is the same
-// whoever runs it: no agent judges. Each mutant is a small fault written as a patch, and the question is "would the
-// checks notice it?".
+// npm run mutants -- <folder> [--only <patch>,…] [--resume]: the mutant scorer (plan P1-21a). A script, so the score
+// is the same whoever runs it: no agent judges. Each mutant is a small fault written as a patch, and the question is
+// "would the checks notice it?".
 //
 // - The base is this checkout's HEAD commit, and the tree must be clean (no uncommitted change to a tracked file), so a
 //   test committed for a mutant is in place when that mutant is scored again. The table names the commit.
 // - The folder holds the patches (*.patch, scored in name order), and gets results.json and each stage's output
 //   (logs/<patch>/<stage>.log). It must be one git would never commit (outside the repository, or ignored there:
 //   plan/mutants/<date>-<area>/ by default): the patches say where the tests are weak, and this repository is public.
+// - results.json is written after the control run and again after each patch (to another file, then renamed, so a
+//   killed run never leaves half of one): the base commit, the control's stage times, the limits, and every patch
+//   scored so far, each with the SHA-256 of its patch file.
 // - A patch is a `git diff` of files under src/, after a header with an `Area:` line and an `Imitates:` line (the real
 //   bug it imitates). git apply skips the header. A patch is **broken** (the mutator's mistake, never "survived") when
 //   it has no header, changes a file outside src/ (a test, a tool, a baseline or a config changed could let any fault
@@ -21,12 +24,18 @@
 //   four green. Prettier, the ratchet and knip judge how a change is written, not what it does: not stages.
 // - The control run comes first: the same stages on the base with no patch. Any red, and it stops (on a red base every
 //   mutant would read "caught"). Each stage's time limit is five times its time there, and at least a minute.
+// - --resume carries on a run that stopped: it reads results.json, and refuses (with the reason) when there is none,
+//   when it can't be read, or when it was scored on another base commit. The control isn't run again (its times and
+//   limits come from the file), and a patch already scored whose file is byte for byte the same (the same SHA-256) is
+//   not scored again; a new or changed patch is. A result of a patch outside the run (--only) stays in the file.
+//   Without --resume, a run starts afresh and writes a new results.json.
 // - The environment is the caller's without KC_SITE, KC_FULL, KC_JOBS and KC_SEED, so the run repeats exactly. It stops
 //   when CI is set: the scoring run is never in CI (tests/static/harness.test.ts checks no workflow names it).
 //
 // Exit 0 once every patch is scored, whatever the score; exit 1 when it stops before scoring.
 // Its test: tests/unit/the-mutant-scorer-tells-caught-survived-and-broken-apart.test.ts, on a made-up repository.
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -54,6 +63,8 @@ export interface StageResult {
 export type Verdict = 'caught' | 'survived' | 'broken';
 export interface PatchResult {
   patch: string;
+  /** The SHA-256 of the patch file, in hex: --resume scores a patch again when its file has changed. */
+  patchSha256: string;
   area: string;
   imitates: string;
   result: Verdict;
@@ -66,6 +77,78 @@ export interface PatchResult {
 
 /** Stops the run before anything is scored (exit 1), with a one-line reason. */
 class Stop extends Error {}
+
+/** What results.json holds: written after the control run and after each patch, read by --resume. */
+export interface SavedRun {
+  base: string;
+  control: StageResult[];
+  limits: Partial<Record<StageName, number>>;
+  patches: PatchResult[];
+}
+const stageNameSchema = z.custom<StageName>((v) => STAGES.some((s) => s === v));
+const stageResultSchema = z.object({
+  stage: stageNameSchema,
+  outcome: z.enum(['green', 'red', 'timed out']),
+  ms: z.number(),
+});
+const savedRunSchema = z.object({
+  base: z.string(),
+  control: z.array(stageResultSchema),
+  limits: z.partialRecord(stageNameSchema, z.number()),
+  patches: z.array(
+    z.object({
+      patch: z.string(),
+      patchSha256: z.string(),
+      area: z.string(),
+      imitates: z.string(),
+      result: z.enum(['caught', 'survived', 'broken']),
+      why: z.string(),
+      redStages: z.array(stageNameSchema),
+      failedTests: z.array(z.string()),
+      stages: z.array(stageResultSchema),
+    }),
+  ),
+});
+
+/** A file's SHA-256, in hex. */
+function sha256Of(file: string): string {
+  return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
+/** Writes results.json to another file beside it, then renames that over it: a killed run leaves the old file or the
+ *  new one, never half of one. */
+function writeSavedRun(file: string, run: SavedRun): void {
+  const partial = `${file}.partial`;
+  fs.writeFileSync(partial, JSON.stringify(run, null, 2) + '\n');
+  fs.renameSync(partial, file);
+}
+
+/** The run --resume carries on, read from results.json, with its limits; a Stop when it can't carry it on. */
+function savedRunToResume(file: string, commit: string): { run: SavedRun; limits: Map<StageName, number> } {
+  if (!fs.existsSync(file))
+    throw new Stop(`no results.json in ${path.dirname(file)} to carry on from: run without --resume.`);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    parsed = undefined;
+  }
+  const saved = savedRunSchema.safeParse(parsed);
+  if (!saved.success)
+    throw new Stop(`${file} is not a scorer's results: run without --resume to score every patch again.`);
+  const run = saved.data;
+  if (run.base !== commit)
+    throw new Stop(
+      `results.json was scored on ${run.base}, not on this HEAD (${commit}): run without --resume to score every patch again.`,
+    );
+  const limits = new Map<StageName, number>();
+  for (const stage of STAGES) {
+    const ms = run.limits[stage];
+    if (ms === undefined) throw new Stop(`${file} has no limit for ${stage}: run without --resume.`);
+    limits.set(stage, ms);
+  }
+  return { run, limits };
+}
 
 /** The commands a stage runs, each an argument list (the program first). The tests' writes Vitest's JSON report. */
 export function stageCommands(stage: StageName, logDir: string): string[][] {
@@ -376,10 +459,10 @@ export async function scoreMutants(argv: readonly string[], o: ScorerOptions): P
 async function score(argv: readonly string[], o: ScorerOptions): Promise<number> {
   const { values, positionals } = parseArgs({
     args: [...argv],
-    options: { only: { type: 'string' } },
+    options: { only: { type: 'string' }, resume: { type: 'boolean' } },
     allowPositionals: true,
   });
-  if (positionals.length !== 1) throw new Stop('usage: npm run mutants -- <folder> [--only <patch>,…]');
+  if (positionals.length !== 1) throw new Stop('usage: npm run mutants -- <folder> [--only <patch>,…] [--resume]');
   if (o.env['CI']) throw new Stop('CI is set: the scoring run is never in CI (plan P1-21).');
 
   const top = git(o.cwd, ['rev-parse', '--show-toplevel']);
@@ -420,40 +503,68 @@ async function score(argv: readonly string[], o: ScorerOptions): Promise<number>
   const env = Object.fromEntries(Object.entries(o.env).filter(([name]) => !leftOut.has(name)));
   const tmp = o.tmp ?? os.tmpdir();
   const logs = path.join(folder, 'logs');
+  const resultsFile = path.join(folder, 'results.json');
+  const resumed = values.resume ? savedRunToResume(resultsFile, commit) : undefined;
   removeLeftWorktrees(root, o.log);
 
-  o.log(`Base: ${commit}. The control run (no patch)…`);
-  const control = await inWorktree(root, commit, tmp, undefined, { env, logDir: path.join(logs, 'control') });
-  if ('refused' in control) throw new Stop('the control run applied a patch.');
-  const times = control.stages.map((s) => `${s.stage} ${(s.ms / 1000).toFixed(1)} s`).join(', ');
-  o.log(`Control: ${times}.`);
-  const red = control.stages.filter((s) => s.outcome !== 'green');
-  if (red.length)
-    throw new Stop(
-      `the base is red without any patch (${red.map((s) => `${s.stage} ${s.outcome}`).join(', ')}; logs/control/): every mutant would read "caught".`,
+  let controlStages: StageResult[];
+  let limits: Map<StageName, number>;
+  if (resumed) {
+    controlStages = resumed.run.control;
+    limits = resumed.limits;
+    const scored = resumed.run.patches.filter((p) => patches.includes(p.patch)).length;
+    o.log(
+      `Base: ${commit}. Carrying on the run in results.json (${String(scored)} of these ${String(patches.length)} patches scored before): the control isn't run again.`,
     );
-  const limits = limitsFrom(control.stages);
+  } else {
+    o.log(`Base: ${commit}. The control run (no patch)…`);
+    const control = await inWorktree(root, commit, tmp, undefined, { env, logDir: path.join(logs, 'control') });
+    if ('refused' in control) throw new Stop('the control run applied a patch.');
+    const times = control.stages.map((s) => `${s.stage} ${(s.ms / 1000).toFixed(1)} s`).join(', ');
+    o.log(`Control: ${times}.`);
+    const red = control.stages.filter((s) => s.outcome !== 'green');
+    if (red.length)
+      throw new Stop(
+        `the base is red without any patch (${red.map((s) => `${s.stage} ${s.outcome}`).join(', ')}; logs/control/): every mutant would read "caught".`,
+      );
+    controlStages = control.stages;
+    limits = limitsFrom(control.stages);
+  }
 
+  // What results.json holds: on --resume, every patch it held (one outside this run, --only, stays), each replaced once
+  // it is scored again. Written now (a stop in the first patch then carries on without a control run) and after each.
+  const saved = new Map(resumed?.run.patches.map((p) => [p.patch, p]));
+  const save = () => {
+    writeSavedRun(resultsFile, {
+      base: commit,
+      control: controlStages,
+      limits: Object.fromEntries(limits),
+      patches: [...saved.values()].sort((a, b) => (a.patch < b.patch ? -1 : a.patch > b.patch ? 1 : 0)),
+    });
+  };
+  if (!resumed) save();
   const results: PatchResult[] = [];
   for (const patch of patches) {
     const file = path.join(folder, patch);
+    const patchSha256 = sha256Of(file);
+    const before = saved.get(patch);
+    if (before?.patchSha256 === patchSha256) {
+      results.push(before);
+      o.log(`${patch}: ${before.result}, scored before (the same patch)`);
+      continue;
+    }
     const logDir = path.join(logs, patch.replace(/\.patch$/, ''));
-    const result = await scoreOne(root, commit, tmp, file, { env, logDir, limits });
-    o.log(`${patch}: ${result.result}${result.why ? ` (${result.why})` : ''}`);
+    const result = await scoreOne(root, commit, tmp, file, patchSha256, { env, logDir, limits });
     results.push(result);
+    saved.set(patch, result);
+    save();
+    o.log(`${patch}: ${result.result}${result.why ? ` (${result.why})` : ''}`);
   }
 
-  const written = {
-    base: commit,
-    control: control.stages,
-    limits: Object.fromEntries(limits),
-    patches: results,
-  };
-  fs.writeFileSync(path.join(folder, 'results.json'), JSON.stringify(written, null, 2) + '\n');
   o.log('');
   o.log(table(commit, results));
   o.log('');
-  o.log(`Written: ${path.join(folder, 'results.json')}, and each stage's output in ${logs}.`);
+  o.log(`Written: ${resultsFile}, and each stage's output in ${logs}.`);
   return 0;
 }
 
@@ -462,11 +573,19 @@ async function scoreOne(
   commit: string,
   tmp: string,
   file: string,
+  patchSha256: string,
   o: { env: NodeJS.ProcessEnv; logDir: string; limits: Map<StageName, number> },
 ): Promise<PatchResult> {
   const patch = path.basename(file);
   const header = headerOf(fs.readFileSync(file, 'utf8'));
-  const base = { patch, area: header?.area ?? '', imitates: header?.imitates ?? '', redStages: [], failedTests: [] };
+  const base = {
+    patch,
+    patchSha256,
+    area: header?.area ?? '',
+    imitates: header?.imitates ?? '',
+    redStages: [],
+    failedTests: [],
+  };
   const broken = (why: string, stages: StageResult[] = []): PatchResult => ({
     ...base,
     result: 'broken',
