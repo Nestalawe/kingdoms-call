@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { theShareARealmsDiscoveriesDressAFightersWoundsBy } from '../rules/the-registry-of-discovery-effects.ts';
 import { noteSilentHeroes } from './log-line-helpers.ts';
 import { defendSpentThisPhase } from './mercenary-ids-and-battle-records.ts';
@@ -13,7 +12,13 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from './events-and-their-audiences.ts';
 import { disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
-import { applyMoveInterlocks, normaliseAction, orderPhaseActors } from './phase-intents-and-dependency-ordering.ts';
+import {
+  applyMoveInterlocks,
+  normaliseAction,
+  orderPhaseActors,
+  type ThePhasesIntents,
+} from './phase-intents-and-dependency-ordering.ts';
+import type { TurnContext, TurnOrder } from './context.ts';
 import {
   reconcileProvinceCharacters,
   settleRalliedGarrisons,
@@ -27,7 +32,9 @@ import {
   runReinforcementArrivals,
 } from '../units/defend-ride-outs-ambushes-and-reinforcements.ts';
 import { resolveStalledBattles } from '../battle/stalled-battles-and-beaten-guards.ts';
-import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.ts';
+import { resolveUnitGainInProvince, theSeasonOfThePhase } from '../battle/hosts-gained-in-a-province.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import { advancePursuit } from '../heroes/pursuits-and-the-catch-roll.ts';
 import { flagEnemyStandoffs, resolveWarFronts } from '../battle/war-fronts-and-enemy-stand-offs.ts';
 import { processOrder } from '../orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
@@ -50,11 +57,15 @@ import { processOrder } from '../orders/order-dispatch-the-checks-before-a-hero-
 // intents, where every hero stood as the phase began. The bodies keep the loop's indent (plan P1-08's Decisions). Each
 // line they write is a fact (since P1-12d15: the-facts-a-phases-lines-record.ts), its words written in the views.
 
-export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
+/** The heroes' orders for the turn as the stages read and write them while the turn runs (the saved state holds them
+ *  cleared, as nulls): by hero (or none), then by phase (or none). */
+type TheTurnsOrdersAsTheStagesHoldThem = Partial<Record<string, (TurnOrder | null | undefined)[]>>;
+
+export function startPhaseHealingSnapshotsAndStalledBattles(turnContext: TurnContext, ph: number): void {
   const { SEASONS, G, presenceByPhase, _warFrontProvs } = turnContext;
   emit(turnContext, {
     type: 'system',
-    fact: { kind: 'a phase begins', seasonName: SEASONS[ph] },
+    fact: { kind: 'a phase begins', seasonName: theSeasonOfThePhase(SEASONS, ph) },
     audience: {},
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
@@ -66,21 +77,19 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   // of the next. Only the wounds of that one fight are treated — it is not a standing
   // regeneration. (The share: the discoveries' registry's since plan P1-19ag, "turnStart: a realm's discoveries dress
   // a fighter's wounds", asked last, as the check of its id was, or nothing.)
-  (G.characters || []).forEach((c) => {
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+    // (his HP and his snapshot read once: nothing between the test and the sums changes them)
+    const hpNow = asItsGuardReadsIt(c.hp);
+    const hpAtStart = c._hpAtPhaseStart;
     const _herbalShare =
-      c.alive &&
-      c.player != null &&
-      c.hp != null &&
-      c._hpAtPhaseStart != null &&
-      c.hp < c._hpAtPhaseStart &&
-      c.hp < (c.maxHp || 20)
+      c.alive && c.player != null && hpNow != null && hpAtStart != null && hpNow < hpAtStart && hpNow < (c.maxHp || 20)
         ? theShareARealmsDiscoveriesDressAFightersWoundsBy(G.players[c.player])
         : null;
-    if (_herbalShare !== null) {
-      const _dmg = c._hpAtPhaseStart - c.hp;
-      const _heal = Math.min(Math.max(1, Math.round(_dmg * _herbalShare)), (c.maxHp || 20) - c.hp);
+    if (_herbalShare !== null && hpNow != null && hpAtStart != null) {
+      const _dmg = hpAtStart - hpNow;
+      const _heal = Math.min(Math.max(1, Math.round(_dmg * _herbalShare)), (c.maxHp || 20) - hpNow);
       if (_heal > 0) {
-        c.hp = c.hp + _heal;
+        c.hp = hpNow + _heal;
         // filed under the CHARACTER for THIS phase. It is the first line of the phase, before any
         // order resolves.
         emit(turnContext, {
@@ -95,21 +104,22 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
           },
           audience: { actor: c.player, realms: [c.player] },
           hero: c.id,
-          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          province: c.location != null ? c.location : undefined,
+          phase: ph,
+          province: asItsGuardReadsIt(c.location) ?? undefined,
         });
       }
     }
-    c._hpAtPhaseStart = c.alive && c.hp != null ? c.hp : null;
+    c._hpAtPhaseStart = c.alive && asItsGuardReadsIt(c.hp) != null ? c.hp : null;
   });
   // Snapshot presence at phase start (before this phase's moves/battles).
-  presenceByPhase[ph] = new Map();
-  (G.characters || []).forEach((c) => {
-    if (c.alive && c.location != null && c.player != null) {
-      let s = presenceByPhase[ph].get(c.location);
+  const presentNow = new Map<number, Set<number>>();
+  presenceByPhase[ph] = presentNow;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+    if (c.alive && asItsGuardReadsIt(c.location) != null && c.player != null) {
+      let s = presentNow.get(c.location);
       if (!s) {
         s = new Set();
-        presenceByPhase[ph].set(c.location, s);
+        presentNow.set(c.location, s);
       }
       s.add(c.player);
     }
@@ -119,13 +129,14 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   // trains up earlier this phase can't retroactively become a mentor to a co-trainer who is
   // processed later in the same phase.
   turnContext.enteredThisPhase = {}; // provinces entered during THIS phase only
-  G._phaseSkillSnapshot = {};
-  (G.characters || []).forEach((ch) => {
-    if (ch && Array.isArray(ch.armies) && ch.armies.some((a) => a && a._phantom))
-      ch.armies = ch.armies.filter((a) => !(a && a._phantom));
+  const snapshotNow: NonNullable<GameState['_phaseSkillSnapshot']> = {};
+  G._phaseSkillSnapshot = snapshotNow;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((ch: Character | null | undefined) => {
+    if (ch && Array.isArray(ch.armies) && ch.armies.some((a: Army | null | undefined) => a?._phantom))
+      ch.armies = ch.armies.filter((a: Army | null | undefined) => !a?._phantom);
   }); // PHANTOM safety net: strip any stray fighting-copies
-  (G.characters || []).forEach((c) => {
-    G._phaseSkillSnapshot[c.id] = { ...(c.skills || {}) };
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+    snapshotNow[c.id] = { ...c.skills };
     delete c._encounteredThisPhase;
     delete c._amphibiousAssault;
     delete c._foughtStalledBattlePhase;
@@ -145,7 +156,7 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   spreadPlagues(turnContext, ph);
 
   // Heroes hired this phase can't act yet, but should still be told so.
-  (G.characters || []).forEach((c) => {
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
     if (c.player !== null && c.alive && c.hiredInPhase === ph) {
       emit(turnContext, {
         type: 'hire',
@@ -158,8 +169,9 @@ export function startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph) {
   });
 }
 
-export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
+export function pinAndReactToPhaseIntents(turnContext: TurnContext, ph: number, intents: ThePhasesIntents): void {
   const { G } = turnContext;
+  const turnOrders: TheTurnsOrdersAsTheStagesHoldThem = G.turnOrders;
   // ── STAGE 1b: battle-lock pin (AK: you are stuck in a province until its battle is decided) ──
   // resolveStalledBattles(ph) has just re-fought every contested province. Any province that is
   // STILL flagged _battleUnresolved has an unresolved battle whose outcome pins the forces in it:
@@ -176,7 +188,7 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
     // contested (unresolved) OR resolveStalledBattles just fought a follow-up battle for them
     // this phase (win or lose). Both must cancel a Move/Pursue so they can't march on and start a
     // SECOND battle in the same phase.
-    const _stillContested = !!(here && here._battleUnresolved);
+    const _stillContested = here !== undefined && Boolean(here._battleUnresolved);
     const _foughtFollowUp = it.c._foughtStalledBattlePhase === ph;
     if (!_stillContested && !_foughtFollowUp) return;
     it.cancelled = true;
@@ -193,7 +205,7 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
       audience: { actor: it.player, realms: [it.player] },
       province: it.fromId,
       hero: it.id,
-      phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+      phase: ph,
       pinNotice: true,
     });
   });
@@ -203,9 +215,10 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
   applyMoveInterlocks(turnContext, ph, intents);
   intents.forEach((it) => {
     if (!it.cancelled) return;
-    if (!G.turnOrders[it.id]) G.turnOrders[it.id] = [null, null, null, null, null];
+    const pinnedsId = it.id; // (a plain name as the key: the compiler sees his orders made sure below)
+    turnOrders[pinnedsId] ??= [null, null, null, null, null];
     const _pinDesc = it.cancelReason === 'battleLocked' ? 'Locked in ongoing battle' : 'Defend (held in place)';
-    G.turnOrders[it.id][ph] = { action: 'defend', target: '', extra: '', desc: _pinDesc, _pinned: true };
+    turnOrders[pinnedsId][ph] = { action: 'defend', target: '', extra: '', desc: _pinDesc, _pinned: true };
     it.action = 'defend';
     it.toId = null;
     it.dest = null;
@@ -220,12 +233,12 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
   // order at all (which default to Defend only in name), and live pursuits are left alone.
   intents.forEach((it) => {
     if (it.cancelled || it.action !== 'defend' || !it.order || it.order._pinned) return;
-    const c = it.c;
+    const c = asItsGuardReadsIt(it.c);
     if (!c || !c.alive || c.player == null) return;
-    if (c._pursuit && c._pursuit.active) return;
+    if (c._pursuit?.active) return;
     if (defendSpentThisPhase(turnContext, c, ph)) return; // item 15: already fought this phase (a resumed battle) — no new watch until a later Defend
-    if (c._defend && c._defend.active && c._defend.setPhase === ph) return;
-    const _carried = !!(c._defend && c._defend.active); // a watch already kept from an earlier phase simply continues
+    if (c._defend?.active && c._defend.setPhase === ph) return;
+    const _carried = Boolean(c._defend?.active); // a watch already kept from an earlier phase simply continues
     c._defend = { centre: c.location, active: true, setPhase: ph, preActivated: true, carried: _carried };
     delete c._defendReactedPhase;
   });
@@ -234,8 +247,9 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
   runReinforcementArrivals(turnContext, ph, intents);
   intents.forEach((it) => {
     if (!it.cancelled || it.cancelReason !== 'reinforced') return;
-    if (!G.turnOrders[it.id]) G.turnOrders[it.id] = [null, null, null, null, null];
-    G.turnOrders[it.id][ph] = {
+    const reinforcersId = it.id; // (a plain name as the key: the compiler sees his orders made sure below)
+    turnOrders[reinforcersId] ??= [null, null, null, null, null];
+    turnOrders[reinforcersId][ph] = {
       action: 'defend',
       target: '',
       extra: '',
@@ -248,8 +262,13 @@ export function pinAndReactToPhaseIntents(turnContext, ph, intents) {
   });
 }
 
-export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph, intents) {
+export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(
+  turnContext: TurnContext,
+  ph: number,
+  intents: ThePhasesIntents,
+): void {
   const { G } = turnContext;
+  const turnOrders: TheTurnsOrdersAsTheStagesHoldThem = G.turnOrders;
   // ── STAGE 3: resolve orders, in initiative order adjusted for AK's [3.0] exceptions ──
   const sorted = orderPhaseActors(turnContext, ph, intents);
   // ── THE DEFEND STEP ── sits between the two order tiers. Every non-relocating order (casting,
@@ -270,8 +289,8 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph,
     runDefendReactions(turnContext, ph, intents);
     const q = turnContext._unitGainQueue;
     turnContext._unitGainQueue = [];
-    q.forEach(({ c: rc, prov: rp }) => {
-      if (!rc || !rc.alive || rc.location !== rp.id || (rc.armies || []).length === 0) return; // the host is gone
+    q.forEach(({ c: rc, prov: rp }: { readonly c: Character | null | undefined; readonly prov: Province }) => {
+      if (!rc || !rc.alive || rc.location !== rp.id || (asItsGuardReadsIt(rc.armies) ?? []).length === 0) return; // the host is gone
       turnContext._combatSkillProv = null;
       turnContext._logCtx = { charId: rc.id, phase: ph };
       resolveUnitGainInProvince(turnContext, rc, rp, ph);
@@ -281,19 +300,13 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph,
   };
   sorted.forEach((c) => {
     if (turnContext._tier0Open) {
-      const _a = normaliseAction((G.turnOrders[c.id] || [])[ph]);
-      if (
-        _a === 'move' ||
-        _a === 'pursue' ||
-        _a === 'encounter' ||
-        _a === 'defend' ||
-        (c._pursuit && c._pursuit.active)
-      )
+      const _a = normaliseAction((turnOrders[c.id] ?? [])[ph]);
+      if (_a === 'move' || _a === 'pursue' || _a === 'encounter' || _a === 'defend' || c._pursuit?.active)
         flushDefendStep();
     }
     turnContext._combatSkillProv = null; // between independent actors, no battle-series context is active
     // A live pursuit suspends this character's other orders until the chase resolves.
-    if (c.alive && c._pursuit && c._pursuit.active && c._pursuit.setPhase !== ph) {
+    if (c.alive && c._pursuit?.active && c._pursuit.setPhase !== ph) {
       turnContext._logCtx = { charId: c.id, phase: ph };
       advancePursuit(turnContext, c, ph);
       turnContext._logCtx = { charId: null, phase: null };
@@ -306,11 +319,11 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph,
       turnContext._logCtx = { charId: null, phase: null };
       return;
     }
-    const o = (G.turnOrders[c.id] || [])[ph];
+    const o = (turnOrders[c.id] ?? [])[ph];
     // 2026-09-21: processOrder returns silently for a dead character, so a hero killed in an
     // earlier phase simply stopped mid-Chronicle with no explanation for the orders his player
     // had submitted. Say it plainly instead.
-    if (o && c.alive === false) {
+    if (o && asItsGuardReadsIt(c.alive) === false) {
       if (c.killedThisTurn && !c._fallenOrderNoted) {
         c._fallenOrderNoted = true;
         emit(turnContext, {
@@ -318,7 +331,7 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph,
           fact: { kind: "a fallen hero's remaining orders go unanswered", heroName: c.name },
           audience: { actor: c.player, realms: [c.player] },
           hero: c.id,
-          phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          phase: ph,
         });
       }
       turnContext._logCtx = { charId: null, phase: null };
@@ -342,8 +355,13 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(turnContext, ph,
   reconcileDefendRideOuts(turnContext, ph); // a ride-out that met no battle is explained
 }
 
-export function endPhaseSkillRisesFallenCommandersAndProvinceMemory(turnContext, ph, _phaseStartLoc) {
+export function endPhaseSkillRisesFallenCommandersAndProvinceMemory(
+  turnContext: TurnContext,
+  ph: number,
+  _phaseStartLoc: Parameters<typeof noteSilentHeroes>[2],
+): void {
   const { G } = turnContext;
+  const turnOrders: TheTurnsOrdersAsTheStagesHoldThem = G.turnOrders;
   // all this phase's actions have resolved — now report any incidental skill-rises they earned
   // (Explorer on a move, March on a march, etc.) as the last lines of the phase, so each reads as
   // a consequence of the action that caused it rather than interrupting it.
@@ -354,9 +372,9 @@ export function endPhaseSkillRisesFallenCommandersAndProvinceMemory(turnContext,
   }
 
   // A Move order in a later phase cancels a standing Defend (AK [3.15]).
-  (G.characters || []).forEach((c) => {
-    if (!c._defend || !c._defend.active) return;
-    const nxt = (G.turnOrders[c.id] || [])[ph + 1];
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+    if (!c._defend?.active) return;
+    const nxt = (turnOrders[c.id] ?? [])[ph + 1];
     if (!nxt) return;
     const a = normaliseAction(nxt);
     if (a === 'move' || a === 'pursue' || a === 'encounter') c._defend.active = false; // a later Encounter cancels a standing Defend
@@ -371,11 +389,11 @@ export function endPhaseSkillRisesFallenCommandersAndProvinceMemory(turnContext,
   // over — garrison in a friendly province, retreat to adjacent friendly land, or scatter as
   // mercenaries (always mercenaries for neutral characters). Without this sweep, armies would
   // stay attached to a corpse for the rest of the turn.
-  (G.characters || []).forEach((dc) => {
-    if (dc.alive || (dc.armies || []).length === 0) return;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((dc) => {
+    if (dc.alive || (asItsGuardReadsIt(dc.armies) ?? []).length === 0) return;
     // Still contested? The host stays where it is and fights again next phase.
     const _here = G.world.provinces[dc.location];
-    if (_here && _here._battleUnresolved) {
+    if (_here?._battleUnresolved) {
       dc._leaderlessHost = true;
       return;
     }

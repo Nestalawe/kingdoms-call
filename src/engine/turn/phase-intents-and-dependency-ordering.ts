@@ -17,18 +17,18 @@ import type { TurnContext, TurnOrder } from './context.ts';
 
 /** What a hero acting this phase intends (buildPhaseIntents): his order and its kind, whether he leads a column, his
  *  initiative, where he stands and where a march takes him; the interlocks and the reinforcements cancel it, saying
- *  why. */
+ *  why, and the phase's second stage then writes a Defend in its place (its kind, no march, no destination). */
 export interface APhaseIntent {
   readonly c: Character;
   readonly id: Character['id'];
   readonly player: Character['player'];
   readonly order: TurnOrder | null;
-  readonly action: string;
+  action: string;
   readonly leadsArmy: boolean;
   readonly init: number;
   readonly fromId: Character['location'];
-  readonly toId: Province['id'] | null;
-  readonly dest: Province | null | undefined;
+  toId: Province['id'] | null;
+  dest: Province | null | undefined;
   cancelled: boolean;
   cancelReason: string | null;
 }

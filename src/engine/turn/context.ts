@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 // ── THE TURN'S CONTEXT (plan P1-08a, 2026-10-18) ────
 // What the helpers lifted out of resolveTurn (src/engine/run-turn.ts) used to reach through its closure: the state
 // being changed, the GM's log and its collectors, and the phase being resolved. resolveTurn makes one each turn, just
@@ -25,15 +24,21 @@ import type {
 import type { telOrdersFor, telRealmSnapshot } from './log-line-helpers.ts';
 import type { WhatTheSavesUpgradeFound } from '../saves/upgrade-a-saved-game-and-check-it.ts';
 
-export function createTurnContext(G, freshPlayers, expectedTurnToRun) {
-  return { G, freshPlayers, expectedTurnToRun, turnLog: [] };
+// Generic in the state it is handed (plan P1-10b37): resolveTurn hands it the parsed save, and a test the part of a
+// world it stages. Its return is the four fields it makes, as TypeScript works them out.
+export function createTurnContext<TheState>(
+  G: TheState,
+  freshPlayers: readonly TheGamesSlotRow[],
+  expectedTurnToRun: number,
+) {
+  const turnLog: LogLine[] = [];
+  return { G, freshPlayers, expectedTurnToRun, turnLog };
 }
 
 // ── THE CONTEXT'S TYPES (plan P1-10a2) ────
-// Types only: the build erases them, so the engine's files are the same with them. This file keeps its ts-nocheck
-// line (its function's arguments are untyped), and TypeScript checks nothing in a file with it, these types included: a
-// file that loses its ts-nocheck line (P1-10a3, P1-10b) is where they are first checked against the code that reads
-// them. A key of a hero, a province or a realm here is a plain number (the brands are the saved state's, src/schemas/).
+// Types only: the build erases them, so the engine's files are the same with them. They are checked against the code
+// that reads them in each file freed of its ts-nocheck line (P1-10a3, P1-10b); a file that keeps the line checks none
+// of them. A key of a hero, a province or a realm here is a plain number (the brands are the saved state's, src/schemas/).
 
 /** A slot row of the game (game_players) as the turn reads it: the realm's index; its player's account (a bot has
  *  none); the orders it sent, as JSON or parsed, in the form of src/schemas/orders-a-realm-submits.ts or the older form

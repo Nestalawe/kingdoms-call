@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { monarchRestProvId } from '../grand-design.ts';
 import { senseGravesUnderfoot } from '../graves.ts';
 import { consecratedIds, relOfReport } from '../heroes/fame-and-consecration.ts';
@@ -20,6 +19,10 @@ import {
 import { abandonHostOnFlight, disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { reconcileProvinceCharacters } from '../world/province-bookkeeping-and-rallied-garrisons.ts';
 import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.ts';
+import type { ElvenEscape, TurnContext } from './context.ts';
+import type { SkeletalCompaniesThatCrumbled } from './the-facts-the-lines-after-the-phases-record.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { Army, Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
 
 // ── AFTER THE PHASES (plan P1-08k3: the first stage taken out of resolveTurn's own body) ──────────────────────────
 // Once the turn's five phases are played (no phase is current any more, and every later line is filed after them),
@@ -38,7 +41,15 @@ import { flagEnemyStandoffs } from '../battle/war-fronts-and-enemy-stand-offs.ts
 // Each line is a fact (since P1-12d16: the-facts-the-lines-after-the-phases-record.ts), its words written in the views.
 // The body keeps resolveTurn's indent (plan P1-08's Decisions).
 
-export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames(turnContext) {
+/** A parcel on the road as the couriers read it (a gap in the list is passed over). */
+type AParcelOnTheRoad = NonNullable<GameState['_itemDeliveries']>[number];
+/** A fallen hero as his death marked him: who slew him (`_slainBy`, handleHeroDeath's mark, which the saved state
+ *  lacks), cleared here once his host is told. */
+type AHeroAsHisDeathMarksHim = object & { _slainBy?: unknown };
+
+export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames(
+  turnContext: TurnContext,
+): void {
   const { G, _elvenEscapeQueue } = turnContext;
   // A stand-off struck in the final phase is still a stand-off: flag it now so the state that is
   // SAVED (and every player's map) shows the province as contested, and the fight is joined at the
@@ -61,18 +72,20 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // host mid-handover.
   {
     // playerIndex -> [ the companies that crumbled, each a record of where (since P1-12d16: the line's fact holds them) ]
-    const _crumbled = {};
-    const _note = (pi, where) => {
+    const _crumbled: Record<number, SkeletalCompaniesThatCrumbled[]> = {};
+    const _note = (pi: number | null | undefined, where: SkeletalCompaniesThatCrumbled) => {
       if (pi == null) return;
-      (_crumbled[pi] = _crumbled[pi] || []).push(where);
+      const here = _crumbled[pi] ?? [];
+      _crumbled[pi] = here;
+      here.push(where);
     };
     // (a) led by a character with no Necromancy
-    (G.characters || []).forEach((c) => {
-      if (!c || c.player == null || !Array.isArray(c.armies) || !c.armies.length) return;
+    (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+      if (c?.player == null || !Array.isArray(c.armies) || !c.armies.length) return;
       if (effStat(turnContext, c, 'necromancy') >= 1) return;
-      const dead = c.armies.filter((a) => a && a._isSkeletal);
+      const dead = c.armies.filter((a: Army | null | undefined) => a?._isSkeletal);
       if (!dead.length) return;
-      c.armies = c.armies.filter((a) => !(a && a._isSkeletal));
+      c.armies = c.armies.filter((a: Army | null | undefined) => !a?._isSkeletal);
       const pv = G.world.provinces[c.location];
       _note(c.player, {
         kind: 'skeletal companies crumble under a hero with no Necromancy',
@@ -82,22 +95,22 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       });
     });
     // (b) set down as a garrison, where no character leads them at all
-    (G.world.provinces || []).forEach((pv) => {
+    (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((pv: Province | null | undefined) => {
       if (!pv || !Array.isArray(pv.garrisonArmies) || !pv.garrisonArmies.length) return;
-      const dead = pv.garrisonArmies.filter((a) => a && a._isSkeletal);
+      const dead = pv.garrisonArmies.filter((a: Army | null | undefined) => a?._isSkeletal);
       if (!dead.length) return;
-      pv.garrisonArmies = pv.garrisonArmies.filter((a) => !(a && a._isSkeletal));
+      pv.garrisonArmies = pv.garrisonArmies.filter((a: Army | null | undefined) => !a?._isSkeletal);
       _note(pv.owner, {
         kind: 'skeletal companies left to garrison a province crumble',
         unitCount: dead.length,
         provinceName: pv.name,
       });
     });
-    Object.keys(_crumbled).forEach((k) => {
+    Object.entries(_crumbled).forEach(([k, crumbled]) => {
       const pi = +k;
       emit(turnContext, {
         type: 'hire',
-        fact: { kind: 'skeletal companies crumble with no necromancer to hold them', crumbled: _crumbled[k] },
+        fact: { kind: 'skeletal companies crumble with no necromancer to hold them', crumbled },
         audience: { actor: pi, realms: [pi] },
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
@@ -115,11 +128,11 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // (see senseGravesUnderfoot at the move choke-point), so a necromancer marching three provinces
   // reads all three, not only the one they stop in. This end-of-turn sweep therefore only catches
   // whoever never moved — senseGravesUnderfoot's own per-turn guard skips anyone already read here.
-  (G.characters || []).forEach((c) => {
-    if (!c || !c.alive || c.player == null) return;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+    if (!c?.alive || c.player == null) return;
     const pv = G.world.provinces[c.location];
     if (!pv) return;
-    senseGravesUnderfoot(G, c, pv, (p2) =>
+    senseGravesUnderfoot(G, c, pv, (p2) => {
       emit(turnContext, {
         type: 'explore',
         fact: { kind: 'a necromancer senses graves underfoot', heroName: c.name, provinceName: p2.name },
@@ -127,8 +140,8 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: p2.id,
-      }),
-    );
+      });
+    });
   });
 
   // ── NEUTRAL HERO PROGRESSION (2026-09-17 (late), Toby item 1) ────
@@ -143,7 +156,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // in the peer's best skill falls back to the alone rule rather than wasting the roll. Implemented
   // in progressNeutralHeroes (module scope) so the harness can drive it directly.
   // 2026-09-23 (Toby): 25% a turn (was 50%), and never past level 5 by this route (NEUTRAL_PROG_CAP).
-  progressNeutralHeroes(G, (txt, pv) =>
+  progressNeutralHeroes(G, (txt, pv) => {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a neutral hero learns a skill', words: txt },
@@ -152,19 +165,19 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: pv ? pv.id : null,
       system: true,
-    }),
-  );
+    });
+  });
 
   // ── DE-CONSECRATION ── A consecrated province that has passed out of the Divine king's hands
   // this turn (captured by an enemy, or otherwise no longer owned) loses its blessing — which also
   // frees a slot so the king may hallow new ground next turn (up to his White skill level).
-  (G.players || []).forEach((pl, pi) => {
+  (asItsGuardReadsIt(G.players) ?? []).forEach((pl: Realm | null | undefined, pi) => {
     if (!pl) return;
     const list = consecratedIds(pl);
     if (!list.length) return;
     const kept = list.filter((pid) => {
       const pv = G.world.provinces[pid];
-      return pv && pv.owner === pi;
+      return pv?.owner === pi;
     });
     if (kept.length !== list.length) {
       list
@@ -194,26 +207,36 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // season closes, so the items are in hand from the START of next turn (not usable this turn). If
   // the recipient fell this turn the parcel routes to their king (if one lives), else it is lost.
   if (Array.isArray(G._itemDeliveries) && G._itemDeliveries.length) {
-    G._itemDeliveries.forEach((d) => {
+    G._itemDeliveries.forEach((d: AParcelOnTheRoad | null | undefined) => {
       // A parcel whose contents were cut out by a Grand Heist is no parcel at all — skip it rather
       // than announce an empty courier arriving.
+      // (its items, tested a list here, are read as that list below: no `|| []` can be reached)
       if (!d || !Array.isArray(d.items) || d.items.length === 0) return;
-      let dest = (G.characters || []).find((ch) => ch && ch.id === d.toId && ch.alive);
+      let dest: Character | null | undefined = (asItsGuardReadsIt(G.characters) ?? []).find(
+        (ch: Character | null | undefined) => ch?.id === d.toId && ch.alive,
+      );
       if (!dest) {
-        const _orig = (G.characters || []).find((ch) => ch && ch.id === d.toId);
+        const _orig = (asItsGuardReadsIt(G.characters) ?? []).find(
+          (ch: Character | null | undefined) => ch?.id === d.toId,
+        );
         const pi = _orig ? _orig.player : null;
-        dest = pi != null ? (G.characters || []).find((ch) => ch && ch.alive && ch.player === pi && ch.isKing) : null;
+        dest =
+          pi != null
+            ? (asItsGuardReadsIt(G.characters) ?? []).find(
+                (ch: Character | null | undefined) => ch?.alive && ch.player === pi && ch.isKing,
+              )
+            : null;
       }
       // the parcel's items by name, joined: a lost parcel whose items have no names is told of by no line
-      const nm = (d.items || []).map((it) => it.name).join(', ');
+      const nm = d.items.map((it) => it.name).join(', ');
       if (!dest) {
         if (nm)
           emit(turnContext, {
             type: 'hire',
             fact: {
               kind: "a courier's parcel finds no one left to receive it",
-              itemNames: (d.items || []).map((it) => it.name),
-              senderName: d.fromName || null,
+              itemNames: d.items.map((it) => it.name),
+              senderName: (d.fromName ?? '') || null,
             },
             audience: { actor: null, realms: [] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -221,31 +244,33 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
           });
         return;
       }
-      dest.items = dest.items || [];
-      (d.items || []).forEach((item) => {
-        dest.items.push(item);
-        applyItemMaxHp(dest, item); /* item 6 */
+      const reached = dest; // (read into a const: the closure below reads him too)
+      const hisItems = asItsGuardReadsIt(reached.items) ?? [];
+      reached.items = hisItems;
+      d.items.forEach((item) => {
+        hisItems.push(item);
+        applyItemMaxHp(reached, item); /* item 6 */
       });
       emit(turnContext, {
         type: 'hire',
         fact: {
           kind: "a courier's parcel reaches its hero as the season closes",
-          heroName: dest.name,
-          itemNames: (d.items || []).map((it) => it.name),
-          senderName: d.fromName || null,
+          heroName: reached.name,
+          itemNames: d.items.map((it) => it.name),
+          senderName: (d.fromName ?? '') || null,
         },
-        audience: { actor: dest.player, realms: [dest.player] },
-        hero: dest.id,
+        audience: { actor: reached.player, realms: [reached.player] },
+        hero: reached.id,
         phase: 99,
       });
       {
-        const _gn = settleTheItemsAHeroGained(dest, d.items);
+        const _gn = settleTheItemsAHeroGained(reached, d.items);
         if (_gn)
           emit(turnContext, {
             type: 'hire',
             fact: { kind: "a hero a courier's parcel reaches notes how he carries it", theItemsHeGained: _gn },
-            audience: { actor: dest.player, realms: [dest.player] },
-            hero: dest.id,
+            audience: { actor: reached.player, realms: [reached.player] },
+            hero: reached.id,
             phase: 99,
           });
       } // item 10
@@ -259,13 +284,14 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // all has nowhere to run to, and those survivors are lost. They arrive as garrison of the
   // province.
   if (Array.isArray(_elvenEscapeQueue) && _elvenEscapeQueue.length) {
-    const _byPlayer = {};
+    const _byPlayer: Record<number, ElvenEscape['unit'][]> = {};
     _elvenEscapeQueue.forEach((e) => {
-      (_byPlayer[e.player] = _byPlayer[e.player] || []).push(e.unit);
+      const here = _byPlayer[e.player] ?? [];
+      _byPlayer[e.player] = here;
+      here.push(e.unit);
     });
-    Object.keys(_byPlayer).forEach((pk) => {
+    Object.entries(_byPlayer).forEach(([pk, units]) => {
       const pi = +pk;
-      const units = _byPlayer[pk];
       const destId = monarchRestProvId(G, pi);
       const dest = destId != null ? G.world.provinces[destId] : null;
       if (!dest) {
@@ -274,7 +300,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
           fact: {
             kind: 'Elven companies that slipped a battle scatter with no land to return to',
             unitCount: units.length,
-            realmName: G.players[pi]?.name || null,
+            realmName: (G.players[pi]?.name ?? '') || null,
           },
           audience: { actor: null, realms: [pi] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -282,13 +308,16 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
         });
         return;
       }
-      dest.garrisonArmies = dest.garrisonArmies || [];
-      units.forEach((u) => dest.garrisonArmies.push(u));
+      const garrisonNow = asItsGuardReadsIt(dest.garrisonArmies) ?? [];
+      dest.garrisonArmies = garrisonNow;
+      // (the same list, as the escaped companies join it: each as the queue holds it)
+      const theGarrisonTheEscapesJoin: (Army | ElvenEscape['unit'])[] = garrisonNow;
+      units.forEach((u) => theGarrisonTheEscapesJoin.push(u));
       emit(turnContext, {
         type: 'combat',
         fact: {
           kind: 'Elven companies that slipped a battle find their way home',
-          unitNames: units.map((u) => u.unitName || u.type),
+          unitNames: units.map((u) => (u.unitName ?? '') || u.type),
           provinceName: dest.name,
         },
         audience: { actor: pi, realms: [pi] },
@@ -312,14 +341,15 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // place while its province is still contested. The turn is over now, so nothing is left to fight:
   // whatever survived garrisons, retreats or scatters. This also bounds the state — no army can
   // stay attached to a corpse across a turn boundary, whatever happened during the turn.
-  (G.characters || []).forEach((dc) => {
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((dc) => {
     if (dc.alive) {
       delete dc._leaderlessHost;
       return;
     }
     delete dc._leaderlessHost;
-    if ((dc.armies || []).length > 0) disperseDeadCharArmies(turnContext, dc);
-    delete dc._slainBy; // a commander who fell with no host keeps no note of the killer in the saved state
+    if ((asItsGuardReadsIt(dc.armies) ?? []).length > 0) disperseDeadCharArmies(turnContext, dc);
+    const heAsHisDeathMarkedHim: AHeroAsHisDeathMarksHim = dc;
+    delete heAsHisDeathMarkedHim._slainBy; // a commander who fell with no host keeps no note of the killer in the saved state
   });
 
   // Intel collapse: emit one consolidated intrusion line per (target, hero, province) now that all
@@ -333,18 +363,18 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // year's end mends their wounds: each own/allied living character sharing their province (the
   // healer included) heals HALF their max HP. Runs after all combat.
   {
-    const _mhDone = new Set();
-    (G.characters || []).forEach((healer) => {
-      if (!healer || !healer.alive || healer.player == null || healer.location == null) return;
+    const _mhDone = new Set<number>();
+    (asItsGuardReadsIt(G.characters) ?? []).forEach((healer: Character | null | undefined) => {
+      if (!healer?.alive || healer.player == null || asItsGuardReadsIt(healer.location) == null) return;
       if (perkTier(healer, 'white') < 1) return; // WHITE L6+
-      (G.characters || []).forEach((t) => {
-        if (!t || !t.alive || t.location !== healer.location || _mhDone.has(t.id)) return;
+      (asItsGuardReadsIt(G.characters) ?? []).forEach((t: Character | null | undefined) => {
+        if (!t?.alive || t.location !== healer.location || _mhDone.has(t.id)) return;
         const friendly =
           t.player === healer.player || (t.player != null && relOfReport(G, healer.player, t.player) === 'allied');
         if (!friendly) return;
         const max = t.maxHp || 20;
-        if ((t.hp == null ? max : t.hp) < max) {
-          const _before = t.hp == null ? max : t.hp;
+        if ((asItsGuardReadsIt(t.hp) ?? max) < max) {
+          const _before = asItsGuardReadsIt(t.hp) ?? max;
           t.hp = Math.min(max, _before + Math.max(1, Math.ceil(max * MASS_HEALING_PCT)));
           _mhDone.add(t.id);
           emit(turnContext, {
@@ -377,7 +407,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   maxHpPlayers.players = G.players;
   turnContext.whatTheSavesUpgradeFound.heroesCarriedOverToTheEarnedHpPool.forEach((r) => {
     // one-time note for saves migrated to the earned-HP pool (the save's upgrade found them: engine/saves/)
-    const ch = (G.characters || []).find((c) => c && c.id === r.charId);
+    const ch = (asItsGuardReadsIt(G.characters) ?? []).find((c: Character | null | undefined) => c?.id === r.charId);
     if (!ch) return;
     emit(turnContext, {
       type: 'system',
@@ -405,18 +435,20 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   // there, or takes its place in the province garrison if the realm holds the ground, or — on
   // foreign soil with nobody left to lead it — meets exactly the fate a fallen commander's
   // leaderless host meets (falls back to adjacent friendly land, else scatters as mercenaries).
-  (G.characters || []).forEach((c) => {
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
     if (c._mercyFledTurn !== G.turn || !c.alive) return;
-    const dest = monarchRestProvId(G, c.player);
+    // (asked only for a hero of a realm: for one of none it finds no realm at G.players[null], and gives none)
+    const dest = c.player === null ? null : monarchRestProvId(G, c.player);
     if (dest != null && dest !== c.location) {
       abandonHostOnFlight(turnContext, c); // the host stays on the field he ran from — see the note above
-      c.location = dest;
+      const heAsHeGoesHome: { location: number } = c; // (the same hero: the place found is a plain number)
+      heAsHeGoesHome.location = dest;
       emit(turnContext, {
         type: 'system',
         fact: {
           kind: 'a coward spared on the field makes his way home',
           heroName: c.name,
-          provinceName: G.world.provinces[dest]?.name || null,
+          provinceName: (G.world.provinces[dest]?.name ?? '') || null,
         },
         audience: { actor: c.player, realms: [c.player] },
         hero: c.id,
@@ -428,7 +460,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
   reconcileProvinceCharacters(turnContext); // rebuild province.characters after any mercy relocations
 
   // 6. Update location names for all characters
-  (G.characters || []).forEach((c) => {
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
     const p = G.world.provinces[c.location];
     if (p) c.locationName = p.name;
   });
