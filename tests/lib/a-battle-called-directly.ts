@@ -92,8 +92,8 @@ export function aWorld(seed: number): World {
     generateBotSetups([], 2, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
   ).map((b) => ({
     ...b,
-    gamePlayerId: 'gp' + String(b['id']),
-    name: b['kingdomName'],
+    gamePlayerId: 'gp' + String(b.id),
+    name: b.kingdomName,
   }));
   const G = JSON.parse(
     JSON.stringify(quietly(() => generateNewGame(setups, { cols: 10, rows: 6 }, 999, { seaPct: 10 }))),

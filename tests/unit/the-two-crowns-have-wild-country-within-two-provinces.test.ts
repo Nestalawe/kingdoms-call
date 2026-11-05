@@ -97,8 +97,8 @@ function worldsOf(m: TheEngine, seed: number) {
         ).map((b, i) => ({
           ...b,
           alignment: (i + k) % 2 ? 'Evil' : 'Druidic',
-          gamePlayerId: 'gp' + String(b['id']),
-          name: b['kingdomName'],
+          gamePlayerId: 'gp' + String(b.id),
+          name: b.kingdomName,
         }));
         const S = m.generateNewGame(setup, { cols, rows }, 999, { seaPct: 25 }) as unknown as World;
         const P = S.world.provinces;

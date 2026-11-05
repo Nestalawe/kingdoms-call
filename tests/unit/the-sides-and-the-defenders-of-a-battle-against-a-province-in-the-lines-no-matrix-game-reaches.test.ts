@@ -108,8 +108,8 @@ const THE_WORLD = JSON.stringify(
     (generateBotSetups([], 2, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]).map(
       (b) => ({
         ...b,
-        gamePlayerId: 'gp' + String(b['id']),
-        name: b['kingdomName'],
+        gamePlayerId: 'gp' + String(b.id),
+        name: b.kingdomName,
       }),
     ),
     { cols: 10, rows: 6 },

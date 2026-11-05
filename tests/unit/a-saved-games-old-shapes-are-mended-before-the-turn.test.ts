@@ -73,8 +73,8 @@ function newWorld(realms: number, cols: number, rows: number, seed = SEED): Save
   const setups = (generateBotSetups([], realms, 0) as (Parameters<typeof generateNewGame>[0][number] & Loose)[]).map(
     (b) => ({
       ...b,
-      gamePlayerId: 'gp' + String(b['id']),
-      name: b['kingdomName'],
+      gamePlayerId: 'gp' + String(b.id),
+      name: b.kingdomName,
     }),
   );
   return JSON.parse(JSON.stringify(generateNewGame(setups, { cols, rows }, 0, {}))) as Save;

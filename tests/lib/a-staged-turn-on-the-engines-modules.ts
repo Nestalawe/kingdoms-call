@@ -118,18 +118,18 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
       generateBotSetups([], realms, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
     ).map((b) => ({
       ...b,
-      gamePlayerId: 'gp' + String(b['id']),
-      name: b['kingdomName'],
+      gamePlayerId: 'gp' + String(b.id),
+      name: b.kingdomName,
     }));
     setup.forEach((s, i) => {
       const alignment = alignments[i];
       if (alignment) {
-        s['alignment'] = alignment;
+        s.alignment = alignment;
         const build = builds[alignment];
-        if (build) s['skills'] = { ...build };
+        if (build) s.skills = { ...build };
       }
       const race = races[i];
-      if (race) s['race'] = race;
+      if (race) s.race = race;
     });
     const S = plain(quietly(() => generateNewGame(setup, { cols, rows }, 999, { seaPct }) as World));
     S.safeStart = false;
@@ -164,7 +164,7 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
         forTurn: S.turn,
       });
     const players = setup.map((sp) => {
-      const id = Number(sp['id']);
+      const id = Number(sp.id);
       const bot = bots.includes(id);
       return {
         id: sp.gamePlayerId,

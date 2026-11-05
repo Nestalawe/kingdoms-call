@@ -155,8 +155,8 @@ test('a new world carries the version this build writes', () => {
     generateBotSetups([], 3, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
   ).map((b) => ({
     ...b,
-    gamePlayerId: 'gp' + String(b['id']),
-    name: b['kingdomName'],
+    gamePlayerId: 'gp' + String(b.id),
+    name: b.kingdomName,
   }));
   const world = generateNewGame(setups, { cols: 8, rows: 7 }, 0, {}) as { schemaVersion?: unknown };
   expect(world.schemaVersion).toBe(NOW);

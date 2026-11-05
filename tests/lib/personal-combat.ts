@@ -155,8 +155,8 @@ export async function personalCombatEngine({
     generateBotSetups([], realms, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
   ).map((b) => ({
     ...b,
-    gamePlayerId: 'gp' + String(b['id']),
-    name: b['kingdomName'],
+    gamePlayerId: 'gp' + String(b.id),
+    name: b.kingdomName,
   }));
   const state = JSON.stringify(generateNewGame(setup, clone(size), 999, clone(opts)));
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(JSON.parse(state), [], 1), {
