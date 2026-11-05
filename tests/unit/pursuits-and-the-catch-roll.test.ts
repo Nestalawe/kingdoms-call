@@ -459,11 +459,12 @@ describe('an unarmed hunter and an armed quarry', () => {
 
 // ── P1-10b34: the lines of the chase no game of the balance matrix reaches, each on the value it had before ──
 describe('the chase battle: the hosts, their losses, the rout and the ground (P1-10b34)', () => {
-  /** Hunter (realm 0, `mine` companies of `quality`) and quarry (realm `realm`, `theirs` Green ones) in X, which
-   *  realm 1 holds, on the trail. */
+  /** Hunter (realm 0, Divine, `mine` companies of `quality`) and quarry (realm `realm`, `theirs` Green ones) in X,
+   *  which realm 1 holds, on the trail. */
   const together = (realm: number | null, mine: number, theirs: number, quality = 'Elite') => {
     const b = fresh();
     b.own(b.X, 1);
+    must(b.G.players[0], 'realm 0')['alignment'] = 'Divine';
     const c = hero(b, { player: 0, at: b.X, troops: mine, quality, skills: { spy: 9, melee: 2, tactical: 2 } });
     const q = hero(b, { player: realm, at: b.X, troops: theirs, quality: 'Green', skills: { spy: 0, melee: 1 } });
     chase(c, q);
@@ -628,7 +629,8 @@ describe('the chase battle: the hosts, their losses, the rout and the ground (P1
     const { b, c } = together(1, 12, 1);
     aFallBack(b);
     const realm0 = must(b.G.players[0], 'realm 0');
-    realm0['alignment'] = 'Evil';
+    Object.assign(realm0, { alignment: 'Evil', discoveries: [] });
+    b.X['tax'] = 2; // half of it plundered
     const gold = Number(realm0['gold']);
     dice(0, () => {
       advancePursuit(b.tc, c, PH);
