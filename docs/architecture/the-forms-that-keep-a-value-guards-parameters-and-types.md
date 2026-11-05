@@ -26,6 +26,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `continue` for the callback's `return`; or, where it is handed back, the function's return type written.
   A `let` set in a loop inside a `while` may still read as its first value (`null`: the frontier's best, P1-10b41):
   one `const` object holding it (`best.id`, `best.oc`) is read as its declared type.
+  One set inside a `forEach` callback reads as `null` after the call too: the callback is a `for … of` loop, its
+  `return` a `continue` (the same calls in the same order: the feint's foe, P1-10b42).
 - **A table's element made sure by a key that is a field** (`if (!G.turnOrders[h.id]) …; G.turnOrders[h.id][p]`)
   is read by a plain `const` key (`const hiredsId = h.id`), and `if (!x) x = []` on it is `x ??= []`, which narrows.
 - **A branch the check above makes dead** (`h.player === null ? wage : h.pay || 1` after a check that every hired

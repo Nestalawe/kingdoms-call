@@ -1624,3 +1624,162 @@ describe("The strategy's helpers on what no matrix game hands them (P1-10b41)", 
     );
   });
 });
+
+describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', () => {
+  const runBotPhaseOne = engineFn(engine, 'runBotPhaseOne') as Fn;
+  const step = engineFn(engine, 'botNeighbourProv') as Fn;
+  const DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
+  const hold = (desc = 'Hold'): Raw => ({ action: 'defend', target: '', extra: '', desc });
+  /** The way from `a` to its neighbour `b`, as a march names it. */
+  const way = (b: Board, from: Board['X'], to: Board['X']) =>
+    DIRS[[0, 1, 2, 3, 4, 5].findIndex((i) => (step(b.G, from, i) as Board['X'] | null)?.id === to.id)] ?? '';
+  /** A plan's orders in words, the heroes' numbers left out (they depend on the order the cases run in). */
+  const words = (b: Board, id: number) =>
+    must((b.G.turnOrders as unknown as Record<number, (Raw | null)[] | undefined>)[id], 'a plan').map((o) =>
+      o === null ? '-' : `${String(o['action'])}|${String(o['target'])}|${String(o['desc'])}`.replace(/\d{4}/g, '#'),
+    );
+  const plans = (b: Board) => b.G.turnOrders as unknown as Record<number, Raw[]>;
+  const relief = (more: (b: Board, h: Character, x: Character) => void = () => undefined) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    const B = b.X;
+    const X = must(b.ring1[0], 'a neighbour');
+    (B as unknown as Raw)['_battleUnresolved'] = true;
+    const h = standAHero(b, { player: 1, at: B, troops: 2 });
+    standAHero(b, { player: 0, at: B, troops: 2 });
+    const x = standAHero(b, { player: 1, at: X, troops: 12 });
+    plans(b)[h.id] = [hold(), hold(), hold(), hold(), hold()];
+    plans(b)[x.id] = [hold(), hold(), hold(), hold(), hold()];
+    more(b, h, x);
+    runBotPhaseOne(b.G, new Set([1]), 'muster');
+    return b.G.characters.filter((c) => c.player === 1).map((c) => words(b, c.id));
+  };
+  const feint = (more: (b: Board, g: Character, hero: Character) => void = () => undefined) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    const t1 = b.X;
+    const S = must(b.ring1[0], 'a neighbour');
+    const nbrsOfS = b.nbrs(S);
+    const Xf = must(
+      b.ring1.find((p) => p !== S && nbrsOfS.includes(p)),
+      'a neighbour of both',
+    );
+    const A = must(
+      b.ring2.find((p) => nbrsOfS.includes(p) && b.nbrs(Xf).includes(p)),
+      'the ground beside both',
+    );
+    b.own(t1, 0);
+    b.own(Xf, 0);
+    b.own(A, 0);
+    b.own(S, 1);
+    const g = standAHero(b, { player: 1, at: S, troops: 5, skills: { melee: 2, tactical: 4, march: 1, spy: 0 } });
+    const hero = standAHero(b, { player: 1, at: S });
+    standAHero(b, { player: 0, at: Xf, troops: 14 });
+    plans(b)[standAHero(b, { player: 1, at: Xf }).id] = [hold(), hold(), hold(), hold(), hold()]; // the realm's eyes there
+    plans(b)[g.id] = [
+      { action: 'move', target: 'dir:' + way(b, S, t1), extra: '', desc: 'Attack ' + t1.name },
+      hold(),
+      hold(),
+      hold(),
+      hold(),
+    ];
+    plans(b)[hero.id] = [hold(), hold(), hold(), hold(), hold()];
+    more(b, g, hero);
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    return [words(b, g.id), words(b, hero.id)];
+  };
+  test('a host locked in battle is joined by an armed hero next door, with no list of units or plan beside him', () => {
+    expect(
+      JSON.stringify([
+        relief(),
+        relief((b, _h, x) => {
+          // his march written with no words: he is marching already
+          plans(b)[x.id] = [{ action: 'move', target: 'dir:NW', extra: '' }, hold(), hold(), hold(), hold()];
+        }),
+        relief((b) => {
+          // a bystander of the realm with no list of units, and a plan
+          const y = standAHero(b, { player: 1, at: must(b.ring1[1], 'a neighbour') });
+          delete (y as unknown as Raw)['armies'];
+          plans(b)[y.id] = [hold(), hold(), hold(), hold(), hold()];
+        }),
+      ]),
+    ).toBe(
+      '[[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:SE|Reinforce Hero # in the battle for Wide Waters","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]],[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:NW|undefined","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]],[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:SE|Reinforce Hero # in the battle for Wide Waters","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]]]',
+    );
+  });
+  test('a feint: a unit to a hero at the general’s side, to draw the enemy host off his target', () => {
+    expect(
+      JSON.stringify([
+        feint(),
+        feint((_b, _g, hero) => {
+          delete (hero as unknown as Raw)['hp'];
+        }),
+        feint((b, _g, hero) => {
+          // no host of the foe's beside the target: a second front, by a hero of no hit points listed
+          b.G.characters
+            .filter((c) => c.player === 0)
+            .forEach((c) => {
+              c.alive = false;
+            });
+          delete (hero as unknown as Raw)['hp'];
+        }),
+        feint((b, g) => {
+          // the attack written after the hand-over's place: the feint is struck out
+          plans(b)[g.id] = [hold('Watch'), ...must(plans(b)[g.id], 'his plan').slice(0, 4)];
+        }),
+      ]),
+    ).toBe(
+      '[[["leave_army|Men-at-Arms ##.0|Feint \u2014 Men-at-Arms ##.0 to Hero # to draw Hero # into Teeth Reef","move|dir:SE|Attack Wide Waters","defend||Hold","defend||Hold","defend||Hold"],["move|dir:NE|Feint on Teeth Reef (draw Hero # away from Wide Waters)","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]],[["leave_army|Men-at-Arms ##.0|Feint \u2014 Men-at-Arms ##.0 to Hero # to draw Hero # into Teeth Reef","move|dir:SE|Attack Wide Waters","defend||Hold","defend||Hold","defend||Hold"],["move|dir:NE|Feint on Teeth Reef (draw Hero # away from Wide Waters)","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]],[["leave_army|Men-at-Arms ##.0,Men-at-Arms ##.1|Second front \u2014 2 units to Hero # for Leviathan Abyss","move|dir:SE|Attack Wide Waters","defend||Hold","defend||Hold","defend||Hold"],["move|dir:NW|Attack Leviathan Abyss (second front)","defend||Hold Leviathan Abyss","defend||Hold Leviathan Abyss","defend||Hold Leviathan Abyss","defend||Hold Leviathan Abyss"]],[["leave_army|Men-at-Arms ##.0|Feint \u2014 Men-at-Arms ##.0 to Hero # to draw Hero # into Teeth Reef","defend||Watch","move|dir:SE|Attack Wide Waters","defend||Hold","defend||Hold"],["move|dir:NE|Feint on Teeth Reef (draw Hero # away from Wide Waters)","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]]]',
+    );
+  });
+  test('the pass on no realms and on a world that lacks its lists', () => {
+    const results = (calls: readonly (() => unknown)[]) =>
+      JSON.stringify(
+        calls.map((f) => {
+          try {
+            const v = f();
+            return v instanceof Map ? [...v] : v;
+          } catch (e) {
+            return `throws ${String(e).split(':')[0] ?? ''}`;
+          }
+        }),
+      );
+    const bare = (more: Raw = {}) => ({
+      turn: 3,
+      players: [{}, {}],
+      relations: { '0-1': 'enemy' },
+      turnOrders: {},
+      ...more,
+    });
+    expect(
+      results([
+        () => runBotPhaseOne(bare({ world: { cols: 2, rows: 1, provinces: [] } }), null, 'order'),
+        () => runBotPhaseOne(bare({ world: { cols: 2, rows: 1, provinces: [] } }), new Set(), 'order'),
+        () => runBotPhaseOne(bare(), new Set([1]), 'order'),
+        () => runBotPhaseOne(bare({ world: { cols: 2, rows: 1, provinces: [] } }), new Set([1]), 'muster'),
+        () => runBotPhaseOne(bare({ world: { cols: 2, rows: 1, provinces: [] } }), new Set([1]), 'order'),
+        () => (engineFn(engine, 'botPins') as Fn)(bare({ world: { cols: 2, rows: 1, provinces: [] } }), 1),
+        () =>
+          (engineFn(engine, 'botPins') as Fn)(
+            bare({
+              world: { cols: 2, rows: 1 },
+              characters: [
+                { id: 1, player: 0, alive: true, isKing: true, location: 0 },
+                { id: 2, player: 1, alive: true, location: 0, skills: { elemental: 1 } },
+              ],
+            }),
+            1,
+          ),
+        () =>
+          (engineFn(engine, 'botPins') as Fn)(
+            bare({
+              world: { cols: 2, rows: 1, provinces: [{ id: 0, row: 0, col: 0, owner: 1, terrain: 'plains' }, null] },
+              characters: [
+                { id: 1, player: 0, alive: true, isKing: true, location: 0 },
+                { id: 2, player: 1, alive: true, location: 0, skills: { elemental: 1 } },
+              ],
+            }),
+            1,
+          ),
+      ]),
+    ).toBe('[null,null,null,null,null,{},{},{}]');
+  });
+});

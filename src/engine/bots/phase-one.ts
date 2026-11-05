@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import {
@@ -38,6 +37,42 @@ import {
 } from './strategy.ts';
 import { skillLevel } from '../titles/perks.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
+import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+
+// Its types (plan P1-10b42): each parameter typed as wide as the body's guards, so each guard stays.
+/** A phase's order as the pass reads a plan: an order, or a gap the plan holds. */
+type AnOrderAsThePassReadsIt = PhaseOrder | null | undefined;
+/** The turn's orders as the pass reads and writes them, by hero (G.turnOrders). */
+type TheTurnsOrdersAsThePassHoldsThem = Partial<Record<string, AnOrderAsThePassReadsIt[]>>;
+/** A unit as the pass reads it: a summoned one is `_temporary` (a mark the schema lacks). */
+type AUnitAsThePassReadsIt = Army & { readonly _temporary?: boolean };
+/** A province's flood (a mark the schema lacks): a Flooded province is sea for the rest of the year. */
+function theFloodOn(P: { readonly terrain: string; readonly _flood?: unknown }): boolean {
+  return Boolean(P._flood);
+}
+/** An order's target as words (`String`, as before: a plan another pass wrote may hold its target as a number). */
+function theTargetAsWords(o: { readonly target: unknown }): string {
+  return String(o.target);
+}
+/** A hero's units, where the code guards them as if they may be missing. */
+function theUnitsOf(c: Character): readonly AUnitAsThePassReadsIt[] {
+  return asItsGuardReadsIt(c.armies) ?? [];
+}
+/** A hero's plan, which every hero the pass writes for holds (the pass takes only those with one): for none, the
+ *  TypeError its read threw. */
+function thePlanOf(turnOrders: TheTurnsOrdersAsThePassHoldsThem, id: number): AnOrderAsThePassReadsIt[] {
+  const plan = turnOrders[id];
+  if (plan === undefined) throw new TypeError("Cannot read properties of undefined (reading '0')");
+  return plan;
+}
+/** One of a host's attacks this year, where a count read just before makes sure of it. */
+function theAttackAt<Attack>(atk: readonly Attack[], n: number): Attack {
+  const a = atk[n];
+  if (a === undefined) throw new TypeError("Cannot read properties of undefined (reading 'i')");
+  return a;
+}
 
 // ══ PHASE-ONE PASS (2026-09-29, Toby: "use phase 1 orders wisely") ═════════════════════════════════
 // Engine facts it relies on: within a phase every NON-MOVING order (recruit, hand-over, cast,
@@ -66,14 +101,14 @@ import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 //      guard magic and the watch under threat (3), hire (1), the rest (0).
 // Reordering is confined to the orders before the first move (all resolve in the starting province).
 // The pass's tuning, BOT_P1, and its contact tests, botEnemyHostsIn and botInContact, are in bots/strategy.ts.
-export function botOrderDest(G, cur, o) {
+export function botOrderDest(G: GameState, cur: Province | null | undefined, o: AnOrderAsThePassReadsIt) {
   if (!cur || !o) return null;
-  if (String(o.target).startsWith('dir:'))
-    return botNeighbourProv(G, cur, BOT_HEX_DIRS.indexOf(String(o.target).slice(4)));
+  if (theTargetAsWords(o).startsWith('dir:'))
+    return botNeighbourProv(G, cur, BOT_HEX_DIRS.indexOf(theTargetAsWords(o).slice(4)));
   const n = Number(o.target);
   return Number.isFinite(n) ? G.world.provinces[n] : null;
 }
-export function botIsFiller(o) {
+export function botIsFiller(o: AnOrderAsThePassReadsIt) {
   return (
     !o ||
     (o.action === 'defend' && o.desc !== 'Watch') ||
@@ -88,20 +123,24 @@ export function botIsFiller(o) {
 // The planner treats a pinned province as sea this year — no attack into it, and no longer a "trap"
 // beside a target — so the generals strike the unflooded provinces around it instead.
 export const BOT_PIN_EDGE = 1.2;
-export function botPins(G, pi) {
+export function botPins(G: GameState, pi: number) {
   const cache = botTurnCache(G);
-  cache.pins = cache.pins || {};
-  if (cache.pins[pi]) return cache.pins[pi];
-  const pins = new Map();
+  cache.pins ??= {};
+  const held = cache.pins[pi];
+  if (held) return held;
+  const pins = new Map<number, number>();
   cache.pins[pi] = pins;
   if (!botAtWar(G, pi)) return pins;
-  const mine = (G.characters || []).filter((c) => c && c.alive && c.player === pi && !c._isHeir);
-  const casters = mine.filter((c) => ((c.skills || {}).elemental || 0) >= 1);
+  const mine = (asItsGuardReadsIt(G.characters) ?? []).filter(
+    (c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && !c._isHeir,
+  );
+  const casters = mine.filter((c) => (Number(asItsGuardReadsIt(c.skills)?.elemental) || 0) >= 1);
   if (!casters.length) return pins;
-  const hosts = mine.filter((c) => (c.armies || []).length);
-  const cands = [];
-  (G.world.provinces || []).forEach((X) => {
-    if (!X || X.terrain === 'sea' || X._flood || X.owner === pi || !botSees(G, pi, X.id)) return;
+  const hosts = mine.filter((c) => theUnitsOf(c).length);
+  const cands: { X: Province; s: number }[] = [];
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((X) => {
+    if (!asItsGuardReadsIt(X) || X.terrain === 'sea' || theFloodOn(X) || X.owner === pi || !botSees(G, pi, X.id))
+      return;
     const foes = botEnemyHostsIn(G, pi, X);
     if (!foes.length) return;
     if (hosts.some((h) => h.location === X.id)) return;
@@ -127,7 +166,7 @@ export function botPins(G, pi) {
     cands.push({ X, s });
   });
   cands.sort((a, b) => b.s - a.s);
-  const used = new Map();
+  const used = new Map<number, number>();
   cands.forEach(({ X }) => {
     const cs = casters
       .filter((c) => {
@@ -136,29 +175,29 @@ export function botPins(G, pi) {
           P &&
           P.id !== X.id &&
           botAdj(G, P, X) &&
-          (used.get(c.id) || 0) < botSchoolLimit((c.skills || {}).elemental || 0)
+          (used.get(c.id) ?? 0) < botSchoolLimit(Number(asItsGuardReadsIt(c.skills)?.elemental) || 0)
         );
       })
-      .sort((a, b) => ((a.armies || []).length ? 1 : 0) - ((b.armies || []).length ? 1 : 0))[0]; // an unarmed mage before a general
+      .sort((a, b) => (theUnitsOf(a).length ? 1 : 0) - (theUnitsOf(b).length ? 1 : 0))[0]; // an unarmed mage before a general
     if (cs) {
       pins.set(X.id, cs.id);
-      used.set(cs.id, (used.get(cs.id) || 0) + 1);
+      used.set(cs.id, (used.get(cs.id) ?? 0) + 1);
     }
   });
   return pins;
 }
 // Write "Flood X" into a character's Spring: drop a filler from the pre-move block (or the last
 // phase if it is a filler, shifting the plan a phase); make room in the school's casting limit.
-export function botAdj(G, A, B) {
+export function botAdj(G: GameState, A: Province | null | undefined, B: Province | null | undefined) {
   if (!A || !B) return false;
   if (A.id === B.id) return true;
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, A, i);
-    if (N && N.id === B.id) return true;
+    if (N?.id === B.id) return true;
   }
   return false;
 }
-export function botPutSpring(o, order) {
+export function botPutSpring(o: AnOrderAsThePassReadsIt[], order: PhaseOrder) {
   let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
   if (end < 0) end = 5;
   const fi = o.findIndex((x, i) => i < end && botIsFiller(x));
@@ -174,11 +213,11 @@ export function botPutSpring(o, order) {
   }
   return false;
 }
-export function botSafeStep(G, pi, P, awayFrom) {
-  let best = null;
+export function botSafeStep(G: GameState, pi: number, P: Province, awayFrom: Province | null) {
+  let best: { N: Province; i: number; sc: number } | null = null;
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, P, i);
-    if (!N || N.terrain === 'sea' || N._flood) continue;
+    if (!N || N.terrain === 'sea' || theFloodOn(N)) continue;
     const own = N.owner === pi,
       ally = N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied';
     if (!own && !ally) continue;
@@ -198,9 +237,10 @@ export function botSafeStep(G, pi, P, awayFrom) {
   }
   return best;
 }
-export function runBotPhaseOne(G, botIdxSet, stage) {
+export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | null | undefined, stage: string) {
   const MUSTER = stage === 'muster';
-  if (!botIdxSet || !botIdxSet.size || !G.world) return;
+  if (!botIdxSet?.size || !asItsGuardReadsIt(G.world)) return;
+  const turnOrders: TheTurnsOrdersAsThePassHoldsThem = G.turnOrders;
   botIdxSet.forEach((pi) => {
     if (botConceded(G, pi)) return;
     const L = botLedger(G, pi);
@@ -208,22 +248,23 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       L.budget += L.warChest;
       L.warChest = 0;
     } // W: the chest opens for the hosts in contact
-    const mine = (G.characters || []).filter(
-      (c) => c && c.alive && c.player === pi && !c._isHeir && Array.isArray(G.turnOrders[c.id]),
+    const mine = (asItsGuardReadsIt(G.characters) ?? []).filter(
+      (c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && !c._isHeir && Array.isArray(turnOrders[c.id]),
     );
-    const leaderIds = new Set(botRoles(G, pi).leaders || []);
+    const leaderIds = new Set<number>(asItsGuardReadsIt(botRoles(G, pi).leaders) ?? []);
     const pins = botPins(G, pi),
       pinCasters = new Set(pins.values());
-    const spring = new Set(); // characters whose plans this pass rewrote outright
-    const valuable = (P) => P && P.owner === pi && botIsValuable(G, P, pi);
-    const hold = (d) => ({ action: 'defend', target: '', extra: '', desc: d || 'Hold' });
+    const spring = new Set<number>(); // characters whose plans this pass rewrote outright
+    const valuable = (P: Province) => P.owner === pi && botIsValuable(G, P, pi);
+    const hold = (d?: string): PhaseOrder => ({ action: 'defend', target: '', extra: '', desc: (d ?? '') || 'Hold' });
     if (MUSTER) {
       // ── A: triage ──
       mine.forEach((c) => {
-        const o = G.turnOrders[c.id];
+        const o = thePlanOf(turnOrders, c.id);
         const P = G.world.provinces[c.location];
-        if (!P || !(c.armies || []).length || P._battleUnresolved) return;
-        if (o[0] && o[0].action === 'move' && !/^Advance/.test(o[0].desc || '')) return; // already marching somewhere on purpose
+        if (!P || !theUnitsOf(c).length || P._battleUnresolved) return;
+        const first = o[0];
+        if (first?.action === 'move' && !(first.desc || '').startsWith('Advance')) return; // already marching somewhere on purpose
         let mineStr = 0;
         botVisibleCharsIn(G, pi, P).forEach((x) => {
           if (x.player === pi) mineStr += botBattleForce(G, x, null, P.terrain, {});
@@ -243,20 +284,20 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
               const out = [botMoveOrder(st.i, 'Withdraw from ' + P.name + ' to ' + st.N.name + ' (outmatched)')];
               if (st.N.owner === pi) {
                 const ro = botRecruitOrder(
-                  botFieldRecruitTokens(G, pi, c, st.N, L).filter((t) => !BOT_SEA_ALL.has(t.split('|')[0])),
+                  botFieldRecruitTokens(G, pi, c, st.N, L).filter((t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? '')),
                   null,
                 );
                 if (ro) out.push(ro);
               }
               while (out.length < 5) out.push(hold());
-              G.turnOrders[c.id] = out;
+              turnOrders[c.id] = out;
               spring.add(c.id);
             }
           }
           return;
         }
         // A2 — the strongest enemy host next door
-        let worst = null;
+        let worst: { N: Province; f: number } | null = null;
         for (let i = 0; i < 6; i++) {
           const N = botNeighbourProv(G, P, i);
           if (!N) continue;
@@ -269,7 +310,10 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         if (!worst) return;
         const gar =
           P.owner === pi
-            ? botBattleForce(G, null, P.garrisonArmies || [], P.terrain, { defending: true, ownerPi: pi })
+            ? botBattleForce(G, null, asItsGuardReadsIt(P.garrisonArmies) ?? [], P.terrain, {
+                defending: true,
+                ownerPi: pi,
+              })
             : 0;
         const ratio = (mineStr + gar) / worst.f;
         if (ratio >= BOT_P1.retreatRatio || valuable(P)) return; // hold the capital and Rich land (muster + pin)
@@ -278,13 +322,13 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         const st = botSafeStep(G, pi, P, worst.N);
         if (!st) return;
         const mv = botMoveOrder(st.i, 'Withdraw to ' + st.N.name + (pinned ? ' behind the flood' : ' (outmatched)'));
-        const out = pinned ? [hold('Stand while the flood rises'), mv] : [mv];
+        const out: PhaseOrder[] = pinned ? [hold('Stand while the flood rises'), mv] : [mv];
         while (out.length < 5) out.push(hold());
-        G.turnOrders[c.id] = out;
+        turnOrders[c.id] = out;
         spring.add(c.id);
         if (pinned) {
           const cid = pins.get(worst.N.id);
-          const k = (G.characters || []).find((x) => x && x.id === cid);
+          const k = (asItsGuardReadsIt(G.characters) ?? []).find((x) => asItsGuardReadsIt(x) && x.id === cid);
           if (k && k.id !== c.id && k.location === c.location) {
             // the caster floods, then goes with the host
             const fl = {
@@ -293,11 +337,11 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
               extra: String(worst.N.id),
               desc: 'Flood ' + worst.N.name + ' — strand the enemy host',
             };
-            const ko = [fl, { ...mv, desc: 'Withdraw with ' + c.name }];
+            const ko: PhaseOrder[] = [fl, { ...mv, desc: 'Withdraw with ' + c.name }];
             while (ko.length < 5) ko.push(hold());
-            G.turnOrders[k.id] = ko;
+            turnOrders[k.id] = ko;
             spring.add(k.id);
-          } else if (k && k.id === c.id) {
+          } else if (k?.id === c.id) {
             out[0] = {
               action: 'cast_spell',
               target: theNameOfTheSpell('flood'),
@@ -311,31 +355,31 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       mine
         .filter(
           (h) =>
-            (h.armies || []).length &&
-            G.world.provinces[h.location] &&
-            G.world.provinces[h.location]._battleUnresolved &&
+            theUnitsOf(h).length &&
+            G.world.provinces[h.location]?._battleUnresolved &&
             botEnemyHostsIn(G, pi, G.world.provinces[h.location]).length,
         )
         .forEach((h) => {
           const B = G.world.provinces[h.location];
+          if (!B) return; // the filter found it
           mine.forEach((x) => {
-            if (x.id === h.id || spring.has(x.id) || !(x.armies || []).length || x.location === B.id) return;
+            if (x.id === h.id || spring.has(x.id) || !theUnitsOf(x).length || x.location === B.id) return;
             const X = G.world.provinces[x.location];
             if (!X || X.id === B.id || !botAdj(G, X, B) || X._battleUnresolved) return;
             if (x._botRole === 'defender' && B.owner !== pi) return; // a post leaves only to save our own ground
-            const o = G.turnOrders[x.id] || [];
+            const o = turnOrders[x.id] ?? [];
             if (o.some((y) => y && BOT_P1.reloc.has(y.action))) return; // already marching
             if (botInContact(G, pi, x) && X.owner === pi && botEnemyHostsIn(G, pi, X).length) return; // besieged himself
             let d = -1;
             for (let i = 0; i < 6; i++) {
               const N = botNeighbourProv(G, X, i);
-              if (N && N.id === B.id) {
+              if (N?.id === B.id) {
                 d = i;
                 break;
               }
             }
             if (d < 0) return;
-            const out = [botMoveOrder(d, 'Reinforce ' + h.name + ' in the battle for ' + B.name)];
+            const out: PhaseOrder[] = [botMoveOrder(d, 'Reinforce ' + h.name + ' in the battle for ' + B.name)];
             if (!leaderIds.has(x.id))
               out.push({
                 action: 'leave_army',
@@ -344,14 +388,14 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
                 desc: 'Hand the column to ' + h.name,
               });
             while (out.length < 5) out.push(hold());
-            G.turnOrders[x.id] = out;
+            turnOrders[x.id] = out;
             spring.add(x.id);
           });
         });
       // ── V: evacuate the unarmed ──
       mine.forEach((c) => {
-        if ((c.armies || []).length || spring.has(c.id) || pinCasters.has(c.id)) return;
-        const o = G.turnOrders[c.id];
+        if (theUnitsOf(c).length || spring.has(c.id) || pinCasters.has(c.id)) return;
+        const o = thePlanOf(turnOrders, c.id);
         const P = G.world.provinces[c.location];
         if (!P) return;
         if (
@@ -365,7 +409,7 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           )
         )
           return; // there on purpose
-        if (o[0] && o[0].action === 'move') return;
+        if (o[0]?.action === 'move') return;
         const here = botEnemyHostsIn(G, pi, P).filter((e) => e._invisTurn !== G.turn);
         let danger = here.length > 0;
         if (!danger && c.isKing) {
@@ -387,8 +431,8 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         }
         if (!danger) return;
         if (
-          ((c.skills || {}).illusory || 0) >= 1 &&
-          !o.some((x) => x && x.target === theNameOfTheSpell('invisibility'))
+          (Number(asItsGuardReadsIt(c.skills)?.illusory) || 0) >= 1 &&
+          !o.some((x) => x?.target === theNameOfTheSpell('invisibility'))
         ) {
           o.unshift({
             action: 'cast_spell',
@@ -402,28 +446,28 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         }
         const st = botSafeStep(G, pi, P, P);
         if (!st) return;
-        const out = [botMoveOrder(st.i, 'Evacuate to ' + st.N.name + ' (an enemy host is at hand)')];
+        const out: PhaseOrder[] = [botMoveOrder(st.i, 'Evacuate to ' + st.N.name + ' (an enemy host is at hand)')];
         while (out.length < 5) out.push(hold());
-        G.turnOrders[c.id] = out;
+        turnOrders[c.id] = out;
         spring.add(c.id);
       });
       // ── B: muster in contact (the war chest pays first) ──
       mine.forEach((c) => {
         if (spring.has(c.id) || !botInContact(G, pi, c)) return;
-        const o = G.turnOrders[c.id];
+        const o = thePlanOf(turnOrders, c.id);
         const P = G.world.provinces[c.location];
-        if (!P || P.owner !== pi || !(P.armyTypes || []).length) return; // only in a province we control — a battle there does not stop it
-        if (!(leaderIds.has(c.id) || (c.armies || []).length >= 2)) return;
+        if (P?.owner !== pi || !(asItsGuardReadsIt(P.armyTypes) ?? []).length) return; // only in a province we control — a battle there does not stop it
+        if (!(leaderIds.has(c.id) || theUnitsOf(c).length >= 2)) return;
         let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
         if (end < 0) end = 5;
-        if (end === 0 && /^(Attack|Assault|Lightning strike)/.test((o[0] || {}).desc || '')) return; // striking first outranks mustering
+        if (end === 0 && /^(Attack|Assault|Lightning strike)/.test(o[0]?.desc ?? '')) return; // striking first outranks mustering
         if (o.slice(0, end).some((x) => x && (x.action === 'recruit' || x.action === 'pickup_army'))) return;
         const _cap0 = L.upkeepCap;
         L.upkeepCap = Math.max(_cap0 * BOT_P1.levyCap, (L.upkeep || 0) + BOT_P1.levyWages); // EMERGENCY LEVY
-        let toks = [];
+        let toks: string[];
         try {
           toks = botFieldRecruitTokens(G, pi, c, P, L).filter(
-            (t) => !BOT_SEA_ALL.has(t.split('|')[0]) || c._botRole === 'admiral',
+            (t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? '') || c._botRole === 'admiral',
           );
         } finally {
           L.upkeepCap = _cap0;
@@ -436,13 +480,13 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       return;
     }
     // ═══ stage 'order' ═══
-    const entered = new Set();
+    const entered = new Set<number>();
     mine
-      .filter((c) => (c.armies || []).length)
+      .filter((c) => theUnitsOf(c).length)
       .forEach((c) => {
         let cur = G.world.provinces[c.location];
-        (G.turnOrders[c.id] || []).forEach((o) => {
-          if (o && o.action === 'move') {
+        (turnOrders[c.id] ?? []).forEach((o) => {
+          if (o?.action === 'move') {
             const N = botOrderDest(G, cur, o);
             if (N) {
               entered.add(N.id);
@@ -452,13 +496,13 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         });
       });
     mine.forEach((c) => {
-      if ((c.armies || []).length) entered.add(c.location);
+      if (theUnitsOf(c).length) entered.add(c.location);
     });
     // E: never flood our own march or our own host
     mine.forEach((c) => {
-      const o = G.turnOrders[c.id];
+      const o = thePlanOf(turnOrders, c.id);
       o.forEach((x, i) => {
-        if (x && x.action === 'cast_spell' && x.target === theNameOfTheSpell('flood') && entered.has(Number(x.extra)))
+        if (x?.action === 'cast_spell' && x.target === theNameOfTheSpell('flood') && entered.has(Number(x.extra)))
           o[i] = hold();
       });
     });
@@ -467,32 +511,27 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       if (entered.has(Xid)) return;
       const k = mine.find((x) => x.id === cid);
       if (!k) return;
-      const o = G.turnOrders[k.id];
+      const o = thePlanOf(turnOrders, k.id);
       const X = G.world.provinces[Xid];
       if (!X) return;
-      if (
-        o[0] &&
-        o[0].action === 'cast_spell' &&
-        o[0].target === theNameOfTheSpell('flood') &&
-        Number(o[0].extra) === Xid
-      )
+      const first = o[0];
+      if (first?.action === 'cast_spell' && first.target === theNameOfTheSpell('flood') && Number(first.extra) === Xid)
         return;
       o.forEach((x, i) => {
-        if (x && x.action === 'cast_spell' && x.target === theNameOfTheSpell('flood') && Number(x.extra) === Xid)
+        if (x?.action === 'cast_spell' && x.target === theNameOfTheSpell('flood') && Number(x.extra) === Xid)
           o[i] = hold();
       });
-      const lim = botSchoolLimit((k.skills || {}).elemental || 0),
+      const lim = botSchoolLimit(Number(asItsGuardReadsIt(k.skills)?.elemental) || 0),
         EL = new Set([
           theNameOfTheSpell('flood'),
           theNameOfTheSpell('earthquake'),
           theNameOfTheSpell('elemental-summon'),
         ]);
-      let n = o.filter((x) => x && x.action === 'cast_spell' && EL.has(x.target)).length;
+      let n = o.filter((x) => x?.action === 'cast_spell' && EL.has(x.target)).length;
       for (let i = 4; i >= 0 && n >= lim; i--) {
         const x = o[i];
         if (
-          x &&
-          x.action === 'cast_spell' &&
+          x?.action === 'cast_spell' &&
           EL.has(x.target) &&
           !(x.target === theNameOfTheSpell('flood') && pins.has(Number(x.extra)))
         ) {
@@ -520,10 +559,10 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
     //      turn the battle if it rode to its aid sends one unit with a hero at his side, in Spring, into
     //      ANOTHER province of that realm beside the host but not beside his target: a host on Defend
     //      answers the incursion and can no longer reach his target from where it has gone.
-    const attacksOf = (g) => {
-      const out = [];
-      let cur = G.world.provinces[g.location];
-      (G.turnOrders[g.id] || []).forEach((x, i) => {
+    const attacksOf = (g: Character) => {
+      const out: { N: Province; i: number }[] = [];
+      let cur: Province | null | undefined = G.world.provinces[g.location];
+      (turnOrders[g.id] ?? []).forEach((x, i) => {
         if (!x || !BOT_P1.reloc.has(x.action) || x.action === 'encounter' || x.action === 'pursue') return;
         const N = botOrderDest(G, cur, x);
         if (!N) return;
@@ -532,9 +571,9 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       });
       return out;
     };
-    const castsOf = (k, school, spells) =>
-      (G.turnOrders[k.id] || []).filter((x) => x && x.action === 'cast_spell' && spells.has(x.target)).length;
-    const SCH = {
+    const castsOf = (k: Character, school: string, spells: ReadonlySet<string>) =>
+      (turnOrders[k.id] ?? []).filter((x) => x?.action === 'cast_spell' && spells.has(x.target)).length;
+    const SCH: Readonly<Record<'illusory' | 'necromancy', ReadonlySet<string>>> = {
       illusory: new Set([
         theNameOfTheSpell('illusory-terrain'),
         theNameOfTheSpell('invisibility'),
@@ -546,31 +585,28 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         theNameOfTheSpell('skeletal-armies'),
       ]),
     };
-    const softened = new Set();
+    const softened = new Set<string>();
     mine
-      .filter((g) => (g.armies || []).length)
+      .filter((g) => theUnitsOf(g).length)
       .forEach((g) => {
         attacksOf(g).forEach(({ N }) => {
-          if (N.terrain === 'sea' || N._flood || pins.has(N.id)) return;
+          if (N.terrain === 'sea' || theFloodOn(N) || pins.has(N.id)) return;
           const enemyThere = (N.owner != null && N.owner !== pi) || botEnemyHostsIn(G, pi, N).length;
           if (!enemyThere) return;
-          [
-            [
-              'illusory',
-              theNameOfTheSpell('illusory-terrain'),
-              N._illusoryTerrain && N._illusoryTerrain.appliedTurn === G.turn,
-            ],
+          const softeners: readonly (readonly ['illusory' | 'necromancy', string, boolean])[] = [
+            ['illusory', theNameOfTheSpell('illusory-terrain'), N._illusoryTerrain?.appliedTurn === G.turn],
             ['necromancy', theNameOfTheSpell('plague'), N._plaguedTurn === G.turn],
-          ].forEach(([school, spell, done]) => {
+          ];
+          softeners.forEach(([school, spell, done]) => {
             if (done || softened.has(spell + ':' + N.id)) return;
             const k = mine.find((m) => {
               const P = G.world.provinces[m.location];
               if (!P || !botAdj(G, P, N)) return false;
-              const lv = (m.skills || {})[school] || 0;
+              const lv = Number(asItsGuardReadsIt(m.skills)?.[school]) || 0;
               if (lv < 1) return false;
               if (
-                (G.turnOrders[m.id] || []).some(
-                  (x) => x && x.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id,
+                (turnOrders[m.id] ?? []).some(
+                  (x) => x?.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id,
                 )
               )
                 return true; // already on it
@@ -578,10 +614,10 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
             });
             if (!k) return;
             softened.add(spell + ':' + N.id);
-            const o = G.turnOrders[k.id];
-            if (o.some((x) => x && x.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id)) {
+            const o = thePlanOf(turnOrders, k.id);
+            if (o.some((x) => x?.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id)) {
               const i = o.findIndex(
-                (x) => x && x.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id,
+                (x) => x?.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id,
               );
               const x = o[i];
               o.splice(i, 1);
@@ -599,24 +635,25 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         // T2 forced march
         if (skillLevel(g, 'march') >= 7) {
           const atk = attacksOf(g);
-          const o = G.turnOrders[g.id];
-          if (atk.length >= 2 && !o.some((x) => x && x.action === 'forced_march')) {
+          const o = thePlanOf(turnOrders, g.id);
+          if (atk.length >= 2 && !o.some((x) => x?.action === 'forced_march')) {
             let j = -1;
-            for (let i = atk[0].i + 1; i < atk[atk.length - 1].i; i++) {
-              if (o[i] && o[i].action === 'move') {
+            for (let i = theAttackAt(atk, 0).i + 1; i < theAttackAt(atk, atk.length - 1).i; i++) {
+              if (o[i]?.action === 'move') {
                 j = i;
                 break;
               }
             }
-            if (j < 0) j = atk[1].i; // no march between them: the second assault itself goes in as a forced march
-            if (j >= 0 && o[j] && o[j].action === 'move')
-              o[j] = { ...o[j], action: 'forced_march', desc: 'Forced March — ' + (o[j].desc || 'march') };
+            if (j < 0) j = theAttackAt(atk, 1).i; // no march between them: the second assault itself goes in as a forced march
+            const oj = o[j];
+            if (j >= 0 && oj?.action === 'move')
+              o[j] = { ...oj, action: 'forced_march', desc: 'Forced March — ' + (oj.desc || 'march') };
           }
         }
       });
     // B–D: reorder each pre-move block
     mine.forEach((c) => {
-      const o = G.turnOrders[c.id];
+      const o = thePlanOf(turnOrders, c.id);
       const P = G.world.provinces[c.location];
       if (!P) return;
       const hostsHere = botEnemyHostsIn(G, pi, P);
@@ -629,11 +666,11 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         nearby = contact || botNearbyThreat(G, pi, c);
       let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
       if (end < 0) end = 5;
-      const isEnemyChar = (id) => {
-        const e = (G.characters || []).find((x) => x && x.id === Number(id));
-        return !!(e && e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) !== 'allied');
+      const isEnemyChar = (id: string) => {
+        const e = (asItsGuardReadsIt(G.characters) ?? []).find((x) => asItsGuardReadsIt(x) && x.id === Number(id));
+        return e?.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) !== 'allied';
       };
-      const urgency = (x) => {
+      const urgency = (x: AnOrderAsThePassReadsIt) => {
         if (!x) return 0;
         const a = x.action;
         if (a === 'cast_spell' && x.target === theNameOfTheSpell('invisibility')) return 5; // the cloak stays ahead of the strikes it covers
@@ -642,7 +679,7 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
         if (a === 'challenge') return 5;
         if (a === 'steal' && x.target !== 'garrison') return 5;
         if (contact) {
-          if (a === 'recruit' && !/to:garrison/.test(x.target)) return 4;
+          if (a === 'recruit' && !theTargetAsWords(x).includes('to:garrison')) return 4;
           if (
             a === 'pickup_army' ||
             a === THE_ALIGNMENT_ORDERS['harvest-the-field'].key ||
@@ -652,7 +689,12 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           if (a === 'leave_army' && leaderIds.has(Number(x.extra))) return 4;
           if (a === 'cast_spell' && BOT_P1.gainSpell.has(x.target)) return 4;
         }
-        if (a === 'recruit' && /to:garrison/.test(x.target) && P.owner === pi && (hostsHere.length || hostsAdj))
+        if (
+          a === 'recruit' &&
+          theTargetAsWords(x).includes('to:garrison') &&
+          P.owner === pi &&
+          (hostsHere.length || hostsAdj)
+        )
           return 4;
         if (nearby) {
           if (a === 'cast_spell' && BOT_P1.guard.has(x.target)) return 3;
@@ -674,26 +716,26 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
     {
       const T = botTuning(G, pi);
       mine
-        .filter((g) => leaderIds.has(g.id) && (g.armies || []).length >= 3)
+        .filter((g) => leaderIds.has(g.id) && theUnitsOf(g).length >= 3)
         .forEach((g) => {
           const S = G.world.provinces[g.location];
           if (!S || S._battleUnresolved) return;
           const atk = attacksOf(g);
           if (!atk.length) return;
-          const t1 = atk[0].N;
+          const t1 = theAttackAt(atk, 0).N;
           const mG = botMarginFor(G, pi, g, T),
             def1 = botTargetDefence(G, pi, t1),
             myF = botBattleForce(G, g, null, t1.terrain, {});
           if (myF < def1 * mG) return;
-          let foe = null;
+          let foe: { X: Province; e: Character; f: number } | null = null;
           for (let i = 0; i < 6; i++) {
             const X = botNeighbourProv(G, t1, i);
-            if (!X || X.id === S.id || X.terrain === 'sea' || X._flood || pins.has(X.id)) continue;
-            botEnemyHostsIn(G, pi, X).forEach((e) => {
-              if (X.owner !== e.player) return;
-              const f = botEffForce(G, e);
+            if (!X || X.id === S.id || X.terrain === 'sea' || theFloodOn(X) || pins.has(X.id)) continue;
+            for (const e of botEnemyHostsIn(G, pi, X)) {
+              if (X.owner !== e.player) continue;
+              const f = botEffForce(G, e, undefined);
               if (!foe || f > foe.f) foe = { X, e, f };
-            });
+            }
           }
           if (!foe || myF >= (def1 + foe.f * BOT_DEF_BONUS) * mG) return; // it could not turn the battle anyway
           const hero = mine.find(
@@ -701,22 +743,22 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
               h.id !== g.id &&
               h.location === g.location &&
               !h.isKing &&
-              !(h.armies || []).length &&
+              !theUnitsOf(h).length &&
               !spring.has(h.id) &&
               !pinCasters.has(h.id) &&
-              (h.hp != null ? h.hp : h.maxHp || 20) >= (h.maxHp || 20) * 0.7 &&
-              !(G.turnOrders[h.id] || []).some(
+              (asItsGuardReadsIt(h.hp) ?? (h.maxHp || 20)) >= (h.maxHp || 20) * 0.7 &&
+              !(turnOrders[h.id] ?? []).some(
                 (x) => x && ['steal', 'spy', 'encounter', 'challenge', 'hire'].includes(x.action),
               ),
           );
           if (!hero) return;
-          let A = null;
+          let A: { N: Province; i: number } | null = null;
           for (let i = 0; i < 6; i++) {
             const N = botNeighbourProv(G, S, i);
             if (
               !N ||
               N.terrain === 'sea' ||
-              N._flood ||
+              theFloodOn(N) ||
               N.id === t1.id ||
               N.owner !== foe.e.player ||
               pins.has(N.id) ||
@@ -728,12 +770,12 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
             break;
           }
           if (!A) return;
-          const unit = (g.armies || [])
-            .filter((a) => a && !a._temporary && !BOT_SEA_ALL.has(a.type))
+          const unit = theUnitsOf(g)
+            .filter((a) => asItsGuardReadsIt(a) && !a._temporary && !BOT_SEA_ALL.has(a.type))
             .sort((x, y) => unitBaseStrength(x) - unitBaseStrength(y))[0];
           if (!unit) return;
-          const o = G.turnOrders[g.id];
-          const lv = {
+          const o = thePlanOf(turnOrders, g.id);
+          const lv: PhaseOrder = {
             action: 'leave_army',
             target: unit.unitName || unit.type,
             extra: String(hero.id),
@@ -749,16 +791,17 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           };
           if (!botPutSpring(o, lv)) return;
           const li = o.indexOf(lv);
-          if (attacksOf(g)[0] && attacksOf(g)[0].i <= li) {
+          const blow = attacksOf(g)[0];
+          if (blow && blow.i <= li) {
             o.splice(li, 1);
             while (o.length < 5) o.push(hold());
             return;
           } // the feint must go in before the blow falls
-          const out = [];
+          const out: PhaseOrder[] = [];
           while (out.length < li) out.push(hold('Wait for the column'));
           out.push(botMoveOrder(A.i, 'Feint on ' + A.N.name + ' (draw ' + foe.e.name + ' away from ' + t1.name + ')'));
           while (out.length < 5) out.push(hold('Hold'));
-          G.turnOrders[hero.id] = out.slice(0, 5);
+          turnOrders[hero.id] = out.slice(0, 5);
           spring.add(hero.id);
           entered.add(A.N.id);
         });
@@ -771,13 +814,13 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
       const T = botTuning(G, pi),
         taken = new Set(entered);
       mine
-        .filter((g) => leaderIds.has(g.id) && (g.armies || []).length >= 4 && !spring.has(g.id))
+        .filter((g) => leaderIds.has(g.id) && theUnitsOf(g).length >= 4 && !spring.has(g.id))
         .forEach((g) => {
-          const o = G.turnOrders[g.id];
+          const o = thePlanOf(turnOrders, g.id);
           const P = G.world.provinces[g.location];
           if (!P || P._battleUnresolved) return;
-          let cur = P,
-            t1 = null;
+          let cur: Province = P,
+            t1: Province | null = null;
           for (const x of o) {
             if (!x) continue;
             if (x.action === 'move') {
@@ -795,28 +838,28 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
               h.id !== g.id &&
               h.location === g.location &&
               !h.isKing &&
-              !(h.armies || []).length &&
+              !theUnitsOf(h).length &&
               !spring.has(h.id) &&
               !pinCasters.has(h.id) &&
-              (h.hp != null ? h.hp : h.maxHp || 20) >= (h.maxHp || 20) * 0.7 &&
-              !(G.turnOrders[h.id] || []).some(
+              (asItsGuardReadsIt(h.hp) ?? (h.maxHp || 20)) >= (h.maxHp || 20) * 0.7 &&
+              !(turnOrders[h.id] ?? []).some(
                 (x) => x && ['steal', 'spy', 'encounter', 'challenge', 'hire'].includes(x.action),
               ),
           );
           if (!hero) return;
           const mH = botMarginFor(G, pi, hero, T),
             mG = botMarginFor(G, pi, g, T);
-          let best = null;
+          let best: { N: Province; i: number; d: number; sc: number } | null = null;
           for (let i = 0; i < 6; i++) {
             const N = botNeighbourProv(G, P, i);
             if (
               !N ||
               N.terrain === 'sea' ||
-              N._flood ||
+              theFloodOn(N) ||
               N.owner === pi ||
               taken.has(N.id) ||
               pins.has(N.id) ||
-              (t1 && N.id === t1.id)
+              N.id === t1?.id
             )
               continue;
             if (N.owner != null && botRelationRaw(G, pi, N.owner) !== 'enemy') continue;
@@ -826,29 +869,29 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           }
           if (!best) return;
           // weakest units first until the detachment would take N
-          const ranked = (g.armies || [])
-            .filter((a) => a && !a._temporary && !BOT_SEA_ALL.has(a.type))
+          const ranked = theUnitsOf(g)
+            .filter((a) => asItsGuardReadsIt(a) && !a._temporary && !BOT_SEA_ALL.has(a.type))
             .map((a) => ({ a, v: unitBaseStrength(a) }))
             .sort((x, y) => x.v - y.v);
-          const give = [];
+          const give: AUnitAsThePassReadsIt[] = [];
           for (const r of ranked) {
             if (best.d <= 0 && give.length >= 1) break;
             give.push(r.a);
             if (botBattleForce(G, hero, give, best.N.terrain, {}) >= best.d * mH) break;
           }
-          if (!give.length || give.length >= (g.armies || []).length - 1) return;
+          if (!give.length || give.length >= theUnitsOf(g).length - 1) return;
           if (best.d > 0 && botBattleForce(G, hero, give, best.N.terrain, {}) < best.d * mH) return;
           if (t1) {
-            const keep = (g.armies || []).filter((a) => !give.includes(a));
+            const keep = theUnitsOf(g).filter((a) => !give.includes(a));
             if (botBattleForce(G, g, keep, t1.terrain, {}) < botTargetDefence(G, pi, t1) * mG) return;
           }
-          const lv = {
+          const lv: PhaseOrder = {
             action: 'leave_army',
             target: give.map((a) => a.unitName || a.type).join(','),
             extra: String(hero.id),
             desc:
               'Second front — ' +
-              give.length +
+              String(give.length) +
               ' unit' +
               (give.length !== 1 ? 's' : '') +
               ' to ' +
@@ -858,13 +901,13 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           };
           if (!botPutSpring(o, lv)) return;
           const li = o.indexOf(lv);
-          const ho = G.turnOrders[hero.id] || [];
-          const keepCasts = ho.filter((x, i) => x && x.action === 'cast_spell' && BOT_P1.strike.has(x.target) && i < 3);
-          const out = [...keepCasts];
+          const ho = turnOrders[hero.id] ?? [];
+          const keepCasts = ho.filter((x, i) => x?.action === 'cast_spell' && BOT_P1.strike.has(x.target) && i < 3);
+          const out: AnOrderAsThePassReadsIt[] = [...keepCasts];
           while (out.length < li) out.push(hold('Wait for the column'));
           out.push(botMoveOrder(best.i, (best.d > 0 ? 'Attack ' : 'Advance on ') + best.N.name + ' (second front)'));
           while (out.length < 5) out.push(hold('Hold ' + best.N.name));
-          G.turnOrders[hero.id] = out.slice(0, 5);
+          turnOrders[hero.id] = out.slice(0, 5);
           spring.add(hero.id);
           taken.add(best.N.id);
         });
