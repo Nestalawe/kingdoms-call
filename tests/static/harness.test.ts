@@ -2190,6 +2190,9 @@ describe('the architecture rules', () => {
       // plan P1-19, Decision 6 (P1-19a)
       'the-rule-registry-imports-only-itself-the-rules-on-plain-values-and-the-content',
       'the-views-import-only-the-views-the-engine-and-the-content',
+      // plan P1-13, Decision 1 and Open choice 1 (P1-13l)
+      'the-prose-imports-only-itself-the-facts-the-rules-on-plain-values-and-the-content',
+      'the-views-import-nothing-that-resolves-orders-battles-fights-bots-or-turn-steps-nor-the-saves-the-dice-or-the-clock',
       'shared-imports-only-the-views-the-rules-on-plain-values-and-the-content',
       'the-schemas-are-imported-for-code-by-the-saves-upgrade-alone',
       'the-database-code-imports-only-itself-and-the-schemas',

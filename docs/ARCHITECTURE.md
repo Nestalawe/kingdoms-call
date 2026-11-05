@@ -89,7 +89,11 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   items only through what its stage and its runner are handed (P1-19a; the items' registry and `magic-items/`, P1-19m;
   the spells' registry and `spells/`, P1-19u; the discoveries' registry and `discoveries/`, P1-19aa, whose unit-class
   tests are in `engine/rules-on-plain-values/`; the guardian perks' registry and `guardian-perks/`, P1-19ai).
-- **`views/`** imports only `views/`, `engine/` and `content/`; **`shared/`** only `shared/`, `views/`,
+- **`views/`** imports only `views/`, `engine/` and `content/`, and no file that resolves an order, a battle or a fight,
+  plays a bot or a turn step, or holds the save code, the dice or the clock (`orders/`, `battle/`, `personal-combat/`,
+  `bots/`, `turn/`, `saves/`, `run-turn.ts`, `rng.ts`, `clock.ts`, `world/generate.ts`) but their facts files; the
+  prose, **`views/prose/`**, only itself, the engine's facts files (`the-facts-*.ts`), `engine/rules-on-plain-values/`
+  and `content/` (P1-13l). Both let a type-only import through. **`shared/`** only `shared/`, `views/`,
   `engine/rules-on-plain-values/` and `content/`.
 - **`schemas/`** holds the world's types: any folder may import it with `import type` (TypeScript erases it), and none
   another way but the save's upgrade (`engine/saves/upgrade-a-saved-game-and-check-it.ts`), whose check at load
@@ -102,8 +106,10 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
 **What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (105 findings)
-and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), and the 91 findings of the two
-import cycles left, the GM page's (10 files, both of `db/` among them) and the player page's (18). P1-13e broke the
+and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), the 90 findings of the two
+import cycles left, the GM page's (10 files, both of `db/` among them) and the player page's (18), and the prose's one,
+the explore and search lines' import of `itemLoreLines` from `engine/items/tiers-and-hoards.ts` (P1-13l, Theo's
+agreement; it leaves with the fix of the items' other names the engine adds to the content as it loads). P1-13e broke the
 engine's six cycles by moving code, one cycle a pull request: P1-13e1 the four two-file cycles in one, P1-13e2 the
 core, and P1-13e3 to P1-13e5 the bots' cycle in three steps. **The engine has no import cycle now**, and the no-cycle
 rule keeps it so; the pages' two come later (the GM page's after P1-17 takes `db/`'s page code out, the player page's
