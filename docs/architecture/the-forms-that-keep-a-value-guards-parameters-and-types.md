@@ -19,6 +19,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   after the call isn't read as always false; so is a province's owner after a battle and its bookkeeping
   (`theOwnerAsItIsNow`), and a hero's life or a province's battle after a battle or a fight (`whetherHeLivesNow`,
   `whetherItsBattleIsUnresolvedNow`).
+- **A flag read into a `const` that a later branch reads with its element** (a march locked in a contested province, and
+  the province's name) is `x !== undefined && Boolean(x.flag)`: the compiler narrows `x` where the `const` is true, and
+  the value is `!!(x && x.flag)`'s, a truthy flag that isn't `true` included.
 - **A `let` set inside a `forEach` callback** is still its first value to the compiler: a `for … of` over the same list,
   `continue` for the callback's `return`; or, where it is handed back, the function's return type written.
 - **A table's element made sure by a key that is a field** (`if (!G.turnOrders[h.id]) …; G.turnOrders[h.id][p]`)
@@ -114,8 +117,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A parameter whose kind a flag says** is a rest tuple (`...[army, typeOnly]: [string, true] | [AUnit, false?]`); a
   callback option only one case calls is required only there (`{ won: true } | { won: false; demoteAt }`).
 - **A function that reads an old save** takes the old save's shape, every field it reads optional. A function that
-  hands back what it was given (`activeItems`) is generic in its type; one that adds fields to its argument returns
-  `Object.assign(g, { units, total })`, the same object.
+  hands back what it was given (`activeItems`) is generic in its type (so is `createTurnContext`, in the state it is
+  handed: a test stages part of a world); one that adds fields to its argument returns `Object.assign(g, { units,
+  total })`, the same object.
 - **A type goes in the file whose code it types most** (a file of types alone is in no page's bundle, which
   `tests/static/pages-build.test.ts` refuses): the fighter, `AFighterInAPersonalCombat`, is in `helpers.ts`; the Mirror
   Image, in the combat spells' file. A copy whose id is a string (a Hunting Rumours hero) is `AHeroAsAFightTakesHim`.
@@ -140,12 +144,13 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A type that disagrees with the code is corrected, not the code**: a fact's field the engine may leave `undefined`
   (the druid's line's channel, a guardian's perk's words) is `string | undefined` in the facts file, and its words read
   it `${String(x)}`; a shared type its readers show too narrow is widened (a fighter's kind may be a Mirror Image's
-  phantom), and one they show too wide is narrowed (a guardian's weakness has its name and words). `armyUnitName` takes
-  any unit's type, as a save holds it (a type with no pool of names draws the Guard's), and so does a capture's column
-  (`AUnitOfTheColumn`). A hero's id that a function only compares is typed as every caller holds it (`effSkillOf`'s: a
-  fight's copy of a Hunting Rumours hero holds it as words). A saved field the code writes `|| null` to is nullable in
-  the schema (a spied hero's alignment and race). A typed file's `unknown` field a freed file reads takes its
-  callee's return type (the view's titles).
+  phantom), a field the code writes loses its `readonly` (a phase intent's kind, march and destination, which the
+  phase's second stage rewrites as a Defend), and one they show too wide is narrowed (a guardian's weakness has its name
+  and words). `armyUnitName` takes any unit's type, as a save holds it (a type with no pool of names draws the Guard's),
+  and so does a capture's column (`AUnitOfTheColumn`). A hero's id that a function only compares is typed as every
+  caller holds it (`effSkillOf`'s: a fight's copy of a Hunting Rumours hero holds it as words). A saved field the code
+  writes `|| null` to is nullable in the schema (a spied hero's alignment and race). A typed file's `unknown` field a
+  freed file reads takes its callee's return type (the view's titles).
 - **A list the saved state holds as `z.unknown()` that a freed file reads** (the parcels on the road, which the Grand
   Heist cuts an item from) gains its element's schema, written from the code that fills it (Send Item's `{ toId, items,
   fromName }`), so long as every save holds the list empty or holds none (the couriers empty it each turn): a save of

@@ -133,6 +133,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   [i, pl] of list.entries())`: the same elements in the same order for a list with no holes (a save's lists have none).
 - **A `Set` or an empty list iterated** (`(s[pi] || []).forEach(…)`) is read into a local typed `ReadonlySet<number> |
   readonly number[]`, then `forEach`: the same calls.
+- **`Object.keys(o).forEach((k) => … o[k] …)` over a record by a number**, nothing in the loop writing it, is
+  `Object.entries(o).forEach(([k, v]) => …)`: the same keys in the same order, each value the one `o[k]` read (the
+  companies that crumbled, the Elven escapes, each by realm).
 - **`for (k in obj)` over a literal's keys** is a `for … of` over a typed list of them, in the same order. A `Map` a
   caller makes is typed by the methods the function calls.
 - **A parameter set to its own list filtered** (`armies = (armies || []).filter((a) => a && !a._phantom)`) is read

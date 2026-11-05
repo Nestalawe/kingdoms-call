@@ -6,10 +6,11 @@
 // what the cases leave to a direct call: Herbal Lore's sums, who stands where and every hero's skills as the phase
 // begins, the marks cleared, phantom companies stripped; the lock's conditions one by one, the order written for a
 // cancelled march, a Defend's watch from the season's start; the Defend step's place among the actors, a chase, a
-// coward, a fallen hero; skill rises told, a watch ended, a fallen commander's host kept while its battle lasts.
-// Properties (fast-check): Herbal Lore mends at least 1 and never past the maximum; the Defend step runs once a phase,
-// before the first march or Defend and after every order before it, and every other actor's order is handed over once,
-// in turn; every march cancelled in the second stage leaves a Defend in its place.
+// coward, a fallen hero; skill rises told, a watch ended, a fallen commander's host kept while its battle lasts; a
+// world or a hero missing a list (P1-10b37). Properties (fast-check): Herbal Lore mends at least 1 and never past the
+// maximum; the Defend step runs once a phase, before the first march or Defend and after every order before it, and
+// every other actor's order is handed over once, in turn; every march cancelled in the second stage leaves a Defend in
+// its place.
 // Level 1: four functions, called with what the phase loop hands them.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -21,12 +22,13 @@
 // each actor's chase, mercy or fall, the log's context and the battle series cleared, after a coward or a fallen hero
 // and around each host raised); then the stages' own statements: Herbal Lore's sums (its line his and the phase's
 // whatever the log's context was left on), presence, the skills and the HP recorded as the phase opens, the marks
-// cleared, phantom companies stripped, the hired hero's line; the battle lock's conditions, the Defend written for a
-// cancelled march, a Defend's watch from the phase's start; the skill-rise lines held back, a watch ended by next
-// phase's march, a fallen commander's host kept while its battle is unresolved. Properties (fast-check): Herbal Lore
-// mends at least 1, never past the maximum; every march cancelled in the second stage leaves a pinned Defend; the
-// Defend step runs once, before the first march, chase or Defend and after every order before it, and every other order
-// is handed over once, in turn
+// cleared, phantom companies stripped (a gap kept), the hired hero's line, a hero standing nowhere dressed, a world
+// with no roll of heroes; the battle lock's conditions, the Defend written for a cancelled march, a Defend's watch from
+// the phase's start; a host raised by a hero with no list of companies skipped; the skill-rise lines held back, a watch
+// ended by next phase's march, a fallen commander's host kept while its battle is unresolved, a world with no roll of
+// heroes. Properties (fast-check): Herbal Lore mends at least 1, never past the maximum; every march cancelled in the
+// second stage leaves a pinned Defend; the Defend step runs once, before the first march, chase or Defend and after
+// every order before it, and every other order is handed over once, in turn
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
