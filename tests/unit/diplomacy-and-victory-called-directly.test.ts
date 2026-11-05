@@ -442,6 +442,188 @@ describe('Diplomacy and victory: what a whole turn cannot stage', () => {
     expect((G(b)['gameOver'] as Record<string, unknown>)['winner']).toBe(2);
     expect(said(outcome(b))[1]?.[1]).toBe(decided(name(b, 2), ALL_CONCEDED));
   });
+
+  test('every line of diplomacy and victory holds no name for a realm with an empty name, or none on record', () => {
+    /** The stagings: every kind of line of the two stages that names a realm, each on its own board. */
+    const stagings: [string, 3 | 4, (b: Board) => number[]][] = [
+      [
+        'war, an alliance, a broken pact, peace, overtures and the war fronts',
+        4,
+        (b) => {
+          b.G.players.forEach((p) => {
+            p['alignment'] = 'Neutral';
+          });
+          relate(b, { '0-1': 'allied', '0-2': 'enemy', '0-3': 'enemy', '1-2': 'enemy' });
+          host(b, 1, seatOf(b, 3), 1);
+          merge(b, {
+            0: { diplomacy: { 1: 'enemy', 2: 'treat', 3: 'treat' } },
+            1: { diplomacy: { 3: 'enemy' } },
+            2: { diplomacy: { 0: 'treat', 1: 'treat', 3: 'treat' } },
+            3: { diplomacy: { 2: 'treat' } },
+          });
+          settle(b, [diplomacy]);
+          return [0, 1, 2, 3];
+        },
+      ],
+      [
+        'two allies seeking an alliance so few kings may not forge',
+        3,
+        (b) => {
+          relate(b, { '0-1': 'allied' });
+          merge(b, { 0: { diplomacy: { 1: 'treat' } }, 1: { diplomacy: { 0: 'treat' } } });
+          settle(b, [diplomacy]);
+          return [0, 1];
+        },
+      ],
+      ...(
+        [
+          ['a call before the throne may be claimed', 9, {}, [70, 15, 15], null],
+          ['a claim lodged', 13, {}, [80, 10, 10], null],
+          ["a call on an alliance's strength", 13, { '0-1': 'allied' }, [5, 85, 10], null],
+          ['a call of too little', 13, {}, [10, 45, 45], null],
+          ["a claim that collapses with its bloc's share", 13, { '0-1': 'enemy' }, [10, 45, 45], [0]],
+          ['a claim that collapses with its claimant', 13, { '0-1': 'allied' }, [5, 85, 10], [0, 1]],
+        ] as const
+      ).map(
+        ([what, turn, rel, tax, bloc]) =>
+          [
+            what,
+            3,
+            (b: Board) => {
+              turnIs(b, turn);
+              king(b, 0);
+              relate(b, rel);
+              taxes(b, ...tax);
+              if (bloc) claim(b, 0, [...bloc], 14, 50);
+              else merge(b, { 0: { callReckoning: true } });
+              settle(b, [victory]);
+              return [0];
+            },
+          ] as [string, 3, (b: Board) => number[]],
+      ),
+      [
+        'a winner',
+        3,
+        (b) => {
+          [1, 2].forEach((pi) => {
+            landless(b, pi);
+          });
+          settle(b, [victory]);
+          return [0];
+        },
+      ],
+    ];
+    /** Every realm's name the facts of the log hold, but the standings' (each realm's name as the standings hold it). */
+    const names = (b: Board) => {
+      const held: unknown[] = [];
+      const walk = (v: unknown) => {
+        if (typeof v !== 'object' || v === null) return;
+        for (const [k, x] of Object.entries(v)) {
+          if (k === 'realmName' || k === 'claimantName' || k === 'foeRealmName') held.push(x);
+          else walk(x);
+        }
+      };
+      (b.tc as unknown as { turnLog: { fact?: { kind?: unknown } }[] }).turnLog.forEach((l) => {
+        if (l.fact?.kind !== "a realm's place in the final Legacy standings") walk(l.fact);
+      });
+      return held;
+    };
+    const got = stagings.flatMap(([what, n, stage]) =>
+      (['an empty name', 'no name on record'] as const).map((how) => {
+        const b = fresh(n);
+        b.G.players.forEach((p) => {
+          if (how === 'an empty name') p.name = '';
+          else delete (p as Record<string, unknown>)['name'];
+        });
+        stage(b);
+        const held = names(b);
+        return [what, how, held.length > 0 && held.every((x) => x === null)];
+      }),
+    );
+    expect(got.filter(([, , none]) => !none)).toEqual([]);
+  });
+
+  test('two allies who both seek an alliance in a game so small no alliance may be forged: each is told, and they stay allied', () => {
+    const b = fresh();
+    relate(b, { '0-1': 'allied' });
+    merge(b, { 0: { diplomacy: { 1: 'treat' } }, 1: { diplomacy: { 0: 'treat' } } });
+    settle(b, [diplomacy]);
+    expect([said(outcome(b)).map(([to]) => to), relationOf(b, 0, 1)]).toEqual([[[1], [0], [0], [1]], 'allied']);
+  });
+
+  test('a world with no list of realms: diplomacy does nothing', () => {
+    const b = fresh();
+    merge(b, { 0: { diplomacy: { 1: 'treat' } } });
+    delete (b.G as unknown as Record<string, unknown>)['players'];
+    settle(b, [diplomacy]);
+    expect(said(outcome(b))).toEqual([]);
+  });
+
+  test("a host on a third realm's ground beside a hero of the new foe with no list of companies isn't warned", () => {
+    const b = fresh();
+    relate(b, { '0-2': 'enemy' });
+    const p = seatOf(b, 0);
+    const h = host(b, 2, p, 2);
+    host(b, 0, p, 1);
+    delete (host(b, 1, p, 1) as Record<string, unknown>)['armies'];
+    merge(b, { 1: { diplomacy: { 2: 'enemy' } } });
+    settle(b, [diplomacy]);
+    expect(said(outcome(b)).filter(([, t]) => t.includes(h.name))).toEqual([]);
+  });
+
+  test('a world with no roll of heroes: a call finds no living king, a landless claimant’s claim collapses, the last realm with land wins', () => {
+    const kinds = (b: Board) =>
+      (b.tc as unknown as { turnLog: { fact?: { kind?: unknown } }[] }).turnLog.map((l) => l.fact?.kind);
+    const call = fresh();
+    turnIs(call, 13);
+    merge(call, { 0: { callReckoning: true } });
+    delete (call.G as unknown as Record<string, unknown>)['characters'];
+    settle(call, [victory]);
+    const claimed = fresh();
+    turnIs(claimed, 13);
+    relate(claimed, { '0-1': 'enemy' });
+    claim(claimed, 0, [0], 14, 50);
+    landless(claimed, 0);
+    delete (claimed.G as unknown as Record<string, unknown>)['characters'];
+    settle(claimed, [victory]);
+    const last = fresh();
+    [1, 2].forEach((pi) => {
+      landless(last, pi);
+    });
+    delete (last.G as unknown as Record<string, unknown>)['characters'];
+    settle(last, [victory]);
+    const conceding = fresh();
+    [1, 2].forEach((pi) => {
+      concededBefore(conceding, pi);
+    });
+    delete (conceding.G as unknown as Record<string, unknown>)['characters'];
+    settle(conceding, [victory]);
+    expect([
+      kinds(call).includes('a realm with no living king calls the Reckoning'),
+      kinds(claimed).includes("the claim to the throne collapses as the claimant's bloc falls below the bar"),
+      G(last)['gameOver'] && (G(last)['gameOver'] as Record<string, unknown>)['winner'],
+      G(conceding)['gameOver'] && (G(conceding)['gameOver'] as Record<string, unknown>)['byConcession'],
+    ]).toEqual([true, true, 0, true]);
+  });
+
+  test('a realm with no list of provinces but a living king is still in the game: neither elimination nor concession ends it', () => {
+    const b = fresh();
+    concededBefore(b, 2);
+    king(b, 1);
+    delete (realm(b, 1) as Record<string, unknown>)['provinces'];
+    settle(b, [victory]);
+    expect(G(b)['gameOver']).toBeUndefined();
+  });
+
+  test('a game decided before with no standings on record is announced with no place in them', () => {
+    const b = fresh();
+    G(b)['gameOver'] = { winner: 0, turn: b.G.turn - 1, _announced: false };
+    settle(b, [victory]);
+    const kinds = (b.tc as unknown as { turnLog: { fact?: { kind?: unknown } }[] }).turnLog
+      .map((l) => l.fact?.kind)
+      .filter((k) => k !== undefined);
+    expect(kinds).toEqual(['the game is decided']);
+  });
 });
 
 // ── Properties ──────────────────────────────────────────────────────────────────────────────────────────────────

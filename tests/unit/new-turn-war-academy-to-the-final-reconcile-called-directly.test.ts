@@ -48,6 +48,7 @@ import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   LANDS,
   NEW_TURN_SECOND_PART_CASES,
+  NOTHING_NEW,
   around,
   band,
   discoveriesRetired,
@@ -736,6 +737,30 @@ describe('The new turn’s second part: what only a direct call can stage', () =
     const g = guard(b, ring1(b, 3), [summoned('Blaze')]);
     after(b);
     expect(g._isNeutralGuard).toBe(true);
+  });
+
+  test('a world with no roll of heroes: the Academy, the gardens and the informants find nobody, a grave is noted, nothing fails', () => {
+    const b = fresh();
+    knows(b, 0, 'sd08', 'sd65', 'sd22');
+    creed(b, 1, 'Neutral');
+    ghostGrave(b, standing(b, 1, seatOf(b, 0)));
+    delete (b.G as unknown as Raw)['characters'];
+    after(b);
+    expect([texts(b), realm(b, 0)['knownDeadHeroIds']]).toEqual([[NOTHING_NEW], [graveyard(b)[0]?.['id']]]);
+  });
+
+  test('a hero at home with no list of companies has none for the Academy to drill; the king beside him has his drilled', () => {
+    const b = fresh();
+    knows(b, 0, 'sd08');
+    const bare = standing(b, 0, home(b));
+    delete (bare as Raw)['armies'];
+    const k = leads(kingOf(b, 0), [unit('A', 'Men-at-Arms')]);
+    after(b, 0);
+    expect([grades(k), (bare as Raw)['armies'], texts(b)]).toEqual([
+      ['A (Veteran)'],
+      undefined,
+      [drilled(unit('A', 'Men-at-Arms'), home(b), 'Veteran')],
+    ]);
   });
 });
 

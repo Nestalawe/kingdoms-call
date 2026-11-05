@@ -517,6 +517,51 @@ describe('The new turn: what only a direct call can stage', () => {
     ]);
     expect(h['_crownedTurn']).toBe(o.turn + 1);
   });
+
+  test('a Divine realm with no list of provinces whose fallen king awaits his return holds no land: the dynasty ends', () => {
+    const b = fresh();
+    creed(b, 0, 'Divine');
+    kingFalls(b, 0, { awaitsReturn: true });
+    consecrated(b, 0, seatOf(b, 0));
+    delete (realm(b, 0) as Raw)['provinces'];
+    after(b);
+    expect([texts(b).filter((t) => t === extinguished(realm(b, 0).name)), heirsOf(b)]).toEqual([
+      [extinguished(realm(b, 0).name)],
+      [],
+    ]);
+  });
+
+  test('a Divine realm with land whose fallen king awaits his return, and no graveyard on record: no grave holds him, so an heir is crowned', () => {
+    const b = fresh();
+    creed(b, 0, 'Divine');
+    kingFalls(b, 0, { awaitsReturn: true });
+    consecrated(b, 0, seatOf(b, 0));
+    delete G(b)['heroGraveyard'];
+    after(b);
+    expect(heirsOf(b).map((h) => h.location)).toEqual([seatOf(b, 0).id]);
+  });
+
+  test('an heir crowned in a province with no list of heroes is listed there', () => {
+    const b = fresh();
+    kingFalls(b, 0);
+    delete (seatOf(b, 0) as Raw)['characters'];
+    after(b);
+    expect(seatOf(b, 0).characters).toEqual([must(heirsOf(b)[0], 'the heir').id]);
+  });
+
+  test('a gap in a garrison or among the mercenaries is left as it is; the summoned company beside it leaves, and a Terror is cleared', () => {
+    const b = fresh();
+    const p = ring2(b, 4);
+    const held = { ...unit('Held', 'Men-at-Arms'), _terrorMult: 0.5 };
+    p.garrisonArmies = [null as unknown as Unit, summoned('Called'), held];
+    const save = b.G as unknown as Raw;
+    save['mercenaries'] = [
+      null,
+      { ...unit('Sellswords', 'Men-at-Arms'), location: p.id, isSea: false, id: 'm1', _temporary: true },
+    ];
+    after(b);
+    expect([p.garrisonArmies, save['mercenaries']]).toEqual([[null, unit('Held', 'Men-at-Arms')], [null]]);
+  });
 });
 
 // ── Properties ───────────────────────────────────────────────────────────────────────────────────────────────────
