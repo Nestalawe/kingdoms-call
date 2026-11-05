@@ -310,7 +310,7 @@ describe('the lint rules', () => {
   // on CI.
   test.for([
     ['src/engine/clock.ts', true],
-    ['src/engine/turn/context.ts', false],
+    ['src/engine/run-turn.ts', false],
   ] as const)(
     '%s: a planted type-aware finding is an error: %s',
     timeLimitForTheWork({ typeScriptPrograms: 1 }),

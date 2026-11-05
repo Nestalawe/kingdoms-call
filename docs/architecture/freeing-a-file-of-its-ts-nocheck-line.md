@@ -4,17 +4,17 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-60 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(26: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+57 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(23: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
 an annotation or a `satisfies` written there is a claim nobody checks: a wrong parameter type compiles, and so does a
 table with a key left out.
 
-- **A type is checked where a file without the line reads it.** `TurnContext` and `NarrativeLine`
-  (`engine/turn/context.ts`) live in a file that keeps the line; each freed file that reads them checks them. If a
-  freed file's code disagrees with one, correct the type, not the code (P1-10a3 did so for a log line's `targets`).
+- **A type is checked where a file without the line reads it.** A type written in a file that keeps the line is a
+  claim until a freed file reads it; each freed file that reads it checks it. If a freed file's code disagrees with one,
+  correct the type, not the code (P1-10a3 did so for a log line's `targets`).
 - **A file with the line still gives its callers types.** Its parameters are `any`, but a value it builds keeps the
   type TypeScript works out: `[]` is `never[]`, and `PC_RANGES[i]` is `string | undefined`. A freed caller meets them.
   Only a `?` on a parameter its callers leave out, or a return type written from what the function does
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form in the two files below keeps every value the old statement gave, for every value its type allows; a few
-keep it for every value at all. P1-10b2 to P1-10b36 found them (each row's figures are in its PR). A form a row needs
+keep it for every value at all. P1-10b2 to P1-10b37 found them (each row's figures are in its PR). A form a row needs
 that isn't there is added under its kind.
 
 - **[Numbers, words and lists](the-forms-that-keep-a-value-numbers-words-and-lists.md):** [`||` and `??`](the-forms-that-keep-a-value-numbers-words-and-lists.md#-and-),

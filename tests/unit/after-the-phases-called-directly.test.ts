@@ -6,10 +6,10 @@
 // replaced in the vm by a recorder for the test's length), what it hands them and when; then what the whole turn can't
 // stage: a stand-off still standing at the end, a fallen commander's host still in the field, the lines of skill rises
 // left waiting, the Elven escape queue as battles leave it, an old save's note for a hero who is gone, a hero standing
-// nowhere. Properties (fast-check): no skeletal company is left under a hero with no Necromancy or in a garrison, and
-// no living company is lost; Mass Healing mends each wounded friend of a White master once, by half his maximum, to his
-// maximum, and nobody else; a realm keeps the consecration of exactly the provinces it still holds; every hero standing
-// in a province bears its name.
+// nowhere, a world or a hero missing a list (P1-10b37). Properties (fast-check): no skeletal company is left under a
+// hero with no Necromancy or in a garrison, and no living company is lost; Mass Healing mends each wounded friend of a
+// White master once, by half his maximum, to his maximum, and nobody else; a realm keeps the consecration of exactly
+// the provinces it still holds; every hero standing in a province bears its name.
 // Level 1: one function, called with the context resolveTurn hands it.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -21,10 +21,13 @@
 // whole turn can't stage: a stand-off still standing, a fallen hero's dead, a fallen commander's host still in the
 // field, waiting skill-rise lines, the Elven escape queue for two realms and an unknown one, an unknown consecrated
 // province, a note for a hero who is gone (the notes are what the save's upgrade found, on the turn's context, since
-// P1-15a), unknown HP, a hero standing nowhere, a parcel whose king has fallen too. Properties (fast-check): no
-// skeletal company left under a hero with no Necromancy or in a garrison and no living one lost; Mass Healing mends
-// each wounded friend of a master once, by half, to the maximum, and nobody else; a realm keeps the consecration of
-// exactly what it holds; every hero bears his province's name. Planted faults: in the PR (P1-08k3)
+// P1-15a), unknown HP, a hero standing nowhere, a parcel whose king has fallen too; a world with no roll of heroes, no
+// list of provinces and no list of realms, a parcel for a hero with no list of items, Elven companies reaching a home
+// with no garrison list, a fallen hero with no list of companies, a coward whose home has no name (P1-10b37).
+// Properties (fast-check): no skeletal company left under a hero with no Necromancy or in a garrison and no living one
+// lost; Mass Healing mends each wounded friend of a master once, by half, to the maximum, and nobody else; a realm
+// keeps the consecration of exactly what it holds; every hero bears his province's name. Planted faults: in the PR
+// (P1-08k3)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -514,6 +517,62 @@ describe('After the phases: what only a direct call can stage', () => {
     lost.location = 9999;
     const calls = standIn(b, ['senseGravesUnderfoot'], () => after(b));
     expect(calls).toEqual([]);
+  });
+
+  test("a world with no roll of heroes, no list of provinces and no list of realms: the stage runs through, and a parcel and an old save's note find no one", () => {
+    const b = fresh();
+    parcel(b, 8999, [item(b, 'Iron Heart Talisman')], 'A Sender');
+    found(b).heroesCarriedOverToTheEarnedHpPool = [{ charId: 8999, player: 0, old: 80, nu: 60 }];
+    delete (b.G as Partial<Board['G']>).characters;
+    delete (b.G as Partial<Board['G']>).players;
+    delete (b.G.world as Partial<Board['G']['world']>).provinces;
+    standIn(b, HELPERS, () => after(b));
+    expect(texts(b)).toEqual([
+      '📦 A courier bearing Iron Heart Talisman from A Sender finds no one left to receive it — the parcel is lost.',
+    ]);
+  });
+
+  test('a parcel reaching a hero who holds no list of items: its items become his', () => {
+    const b = fresh();
+    const h = at(b);
+    delete (h as Partial<Character>).items;
+    parcel(b, h.id, [item(b, 'Iron Heart Talisman')]);
+    after(b);
+    expect((h.items as { name: string }[] | undefined)?.map((i) => i.name)).toEqual(['Iron Heart Talisman']);
+  });
+
+  test('Elven companies reaching a home with no list of its garrison become its garrison', () => {
+    const b = fresh();
+    const home0 = ring1(b, 0);
+    holdsOnly(b, 0, [home0, 1]);
+    seat(b, 0, home0);
+    delete (home0 as Partial<Province>).garrisonArmies;
+    (tc(b)['_elvenEscapeQueue'] as unknown[]).push({
+      player: 0,
+      unit: unit('Near Bows', 'Elven Archers', 'Average', 'Elven'),
+    });
+    standIn(b, ['flagEnemyStandoffs', 'reconcileProvinceCharacters'], () => after(b));
+    expect((home0.garrisonArmies as Unit[] | undefined)?.map((u) => u.unitName)).toEqual(['Near Bows']);
+  });
+
+  test('a fallen hero who holds no list of companies has no host to disperse', () => {
+    const b = fresh();
+    const d = at(b);
+    d.alive = false;
+    delete (d as Partial<Character>).armies;
+    const calls = standIn(b, ['disperseDeadCharArmies'], () => after(b));
+    expect(calls).toEqual([]);
+  });
+
+  test('a coward whose home has no name makes his way back to safety', () => {
+    const b = fresh();
+    holdsOnly(b, 0, [b.X, 0]);
+    seat(b, 0, b.X);
+    const c = spared(at(b, {}, { at: ring1(b, 0) }), b.G.turn);
+    delete (b.X as Partial<Province>).name;
+    standIn(b, ['abandonHostOnFlight'], () => after(b));
+    expect(c.location).toBe(b.X.id);
+    expect(texts(b)).toContain(`🏳 ${c.name}, spared on the field, makes their way back to safety.`);
   });
 
   test('a wanderer who begged for mercy has no realm to go home to: he stays', () => {

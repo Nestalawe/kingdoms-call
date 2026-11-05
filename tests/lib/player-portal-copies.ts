@@ -2363,12 +2363,15 @@ function theTurnPlaysThePhases(
       setMovePool(tc as unknown as TurnContext, c as never);
     for (let ph = 0; ph < phases; ph++) {
       tc._currentPhase = ph;
-      const startedAt = Object.fromEntries(objects(G['characters']).map((h) => [String(h['id']), h['location']]));
-      startPhaseHealingSnapshotsAndStalledBattles(tc, ph);
-      const intents: unknown = buildPhaseIntents(tc as unknown as Parameters<typeof buildPhaseIntents>[0], ph);
-      pinAndReactToPhaseIntents(tc, ph, intents);
-      resolvePhaseOrdersInTwoTiersAroundTheDefendStep(tc, ph, intents);
-      endPhaseSkillRisesFallenCommandersAndProvinceMemory(tc, ph, startedAt);
+      const startedAt = Object.fromEntries(
+        objects(G['characters']).map((h) => [String(h['id']), h['location']]),
+      ) as Parameters<typeof endPhaseSkillRisesFallenCommandersAndProvinceMemory>[2];
+      const theStagesContext = tc as unknown as TurnContext;
+      startPhaseHealingSnapshotsAndStalledBattles(theStagesContext, ph);
+      const intents = buildPhaseIntents(theStagesContext, ph);
+      pinAndReactToPhaseIntents(theStagesContext, ph, intents);
+      resolvePhaseOrdersInTwoTiersAroundTheDefendStep(theStagesContext, ph, intents);
+      endPhaseSkillRisesFallenCommandersAndProvinceMemory(theStagesContext, ph, startedAt);
     }
   });
   return { G, facts: tc.turnLog.map((l) => (isObj(l['fact']) ? l['fact'] : {})) };

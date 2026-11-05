@@ -6,10 +6,11 @@
 // what the cases leave to a direct call: Herbal Lore's sums, who stands where and every hero's skills as the phase
 // begins, the marks cleared, phantom companies stripped; the lock's conditions one by one, the order written for a
 // cancelled march, a Defend's watch from the season's start; the Defend step's place among the actors, a chase, a
-// coward, a fallen hero; skill rises told, a watch ended, a fallen commander's host kept while its battle lasts.
-// Properties (fast-check): Herbal Lore mends at least 1 and never past the maximum; the Defend step runs once a phase,
-// before the first march or Defend and after every order before it, and every other actor's order is handed over once,
-// in turn; every march cancelled in the second stage leaves a Defend in its place.
+// coward, a fallen hero; skill rises told, a watch ended, a fallen commander's host kept while its battle lasts; a
+// world or a hero missing a list (P1-10b37). Properties (fast-check): Herbal Lore mends at least 1 and never past the
+// maximum; the Defend step runs once a phase, before the first march or Defend and after every order before it, and
+// every other actor's order is handed over once, in turn; every march cancelled in the second stage leaves a Defend in
+// its place.
 // Level 1: four functions, called with what the phase loop hands them.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -21,12 +22,13 @@
 // each actor's chase, mercy or fall, the log's context and the battle series cleared, after a coward or a fallen hero
 // and around each host raised); then the stages' own statements: Herbal Lore's sums (its line his and the phase's
 // whatever the log's context was left on), presence, the skills and the HP recorded as the phase opens, the marks
-// cleared, phantom companies stripped, the hired hero's line; the battle lock's conditions, the Defend written for a
-// cancelled march, a Defend's watch from the phase's start; the skill-rise lines held back, a watch ended by next
-// phase's march, a fallen commander's host kept while its battle is unresolved. Properties (fast-check): Herbal Lore
-// mends at least 1, never past the maximum; every march cancelled in the second stage leaves a pinned Defend; the
-// Defend step runs once, before the first march, chase or Defend and after every order before it, and every other order
-// is handed over once, in turn
+// cleared, phantom companies stripped (a gap kept), the hired hero's line, a hero standing nowhere dressed, a world
+// with no roll of heroes; the battle lock's conditions, the Defend written for a cancelled march, a Defend's watch from
+// the phase's start; a host raised by a hero with no list of companies skipped; the skill-rise lines held back, a watch
+// ended by next phase's march, a fallen commander's host kept while its battle is unresolved, a world with no roll of
+// heroes. Properties (fast-check): Herbal Lore mends at least 1, never past the maximum; every march cancelled in the
+// second stage leaves a pinned Defend; the Defend step runs once, before the first march, chase or Defend and after
+// every order before it, and every other order is handed over once, in turn
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -347,6 +349,16 @@ describe('Herbal Lore, as the phase opens', () => {
     expect(textOf(b)).toContain(herbalLore(h, 12, 2, 20, 20));
   });
 
+  test('a hero standing nowhere is dressed, his line naming no province', () => {
+    const b = fresh();
+    herbalist(b);
+    const h = woundedNow(b, 10, 20, 20);
+    (h as Record<string, unknown>)['location'] = null;
+    startOnly(b, 1);
+    expect(h.hp).toBe(16);
+    expect(b.lines().find((l) => l.text.startsWith('🌿'))?.provinceId).toBeNull();
+  });
+
   test("every hero's HP is recorded as the phase opens, for the next; a fallen hero's or one with none as none", () => {
     const b = fresh();
     const a = woundedNow(b, 13, 20, null);
@@ -468,6 +480,24 @@ describe('who stands where, and every skill, as the phase opens', () => {
     expect(a.armies.map((u) => u.unitName)).toEqual(['A c0', 'B c0']);
     expect(fallen.armies).toEqual([]);
     expect(none.armies).toBeUndefined();
+  });
+
+  test('a gap among a hero’s companies stays where it was; the phantom beside it goes', () => {
+    const b = fresh();
+    const a = at(b);
+    a.armies = [null, { ...companies(1)[0], _phantom: true }] as never;
+    startOnly(b, 0);
+    expect(a.armies).toEqual([null]);
+  });
+
+  test('a world with no roll of heroes: nobody stands anywhere, no skill is recorded, nobody is dressed or told he waits', () => {
+    const b = fresh();
+    herbalist(b);
+    delete (b.G as Partial<Board['G']>).characters;
+    startOnly(b, 2);
+    expect((tc(b)['presenceByPhase'] as Map<number, unknown>[])[2]?.size).toBe(0); // (a Map of the vm's realm)
+    expect(G(b)['_phaseSkillSnapshot']).toEqual({});
+    expect(textOf(b)).toHaveLength(1);
   });
 
   test('a hero hired this phase is told he waits, once, filed under the phase; not a wanderer, a fallen hero, or one hired in another phase', () => {
@@ -1100,6 +1130,24 @@ describe('the orders in two tiers: what it calls', () => {
     expect(tc(b)['_unitGainQueue']).toEqual([]);
   });
 
+  test('a host raised by a hero who holds no list of companies is skipped', () => {
+    const b = fresh();
+    const [a] = actorsWith(b, 'move');
+    const bare = at(b, {}, { player: 1 });
+    delete (bare as Partial<Character>).armies;
+    const raiser = at(b, {}, { player: 1 });
+    raiser.armies = companies(1);
+    const calls = ordersWith(b, 2, [must(a, 'a')], new Map(), {
+      runDefendReactions: () => {
+        tc(b)['_unitGainQueue'] = [
+          { c: bare, prov: b.X },
+          { c: raiser, prov: b.X },
+        ];
+      },
+    });
+    expect(calls.filter((c) => c.fn === 'resolveUnitGainInProvince').map((c) => c.args[1])).toEqual([raiser]);
+  });
+
   test('the Defend step opens the phase closed: a host raised after it is not held back', () => {
     const b = fresh();
     const [a, z] = actorsWith(b, 'move', 'rest');
@@ -1459,6 +1507,13 @@ describe('the end of the phase: a watch, and the fallen commanders', () => {
     const calls = endWith(b, 2);
     expect(named(calls)).not.toContain('disperseDeadCharArmies');
     expect([d._leaderlessHost, d.armies.length]).toEqual([true, 2]);
+  });
+
+  test('a world with no roll of heroes: no watch ended, no host dispersed', () => {
+    const b = fresh();
+    delete (b.G as Partial<Board['G']>).characters;
+    const calls = endWith(b, 0);
+    expect(calls.filter((c) => c.fn === 'disperseDeadCharArmies')).toEqual([]);
   });
 
   test('nothing for a living commander, a fallen one with no host, or one nowhere on the map', () => {

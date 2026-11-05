@@ -111,12 +111,12 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     `as const`) and `Terrain`. Its tables keyed by unit type end in `satisfies` on the part each covers, so a unit
     left out of one fails to compile ([traps.md](../traps.md#a-new-army-unit-is-a-dozen-tables);
     `tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts`).
-  - **In the engine:** `TurnContext`, the turn's context (every field `resolveTurn` adds), and `LogLine`, a line of
-    the GM's log, in `engine/turn/context.ts`; `OrderKind`, the 48 kinds an order's action reads as, beside
-    `PHASE_ACTION_MAP` (`engine/turn/phase-intents-and-dependency-ordering.ts`). Both files keep `@ts-nocheck`, and
-    TypeScript checks nothing in a file with it, these types and the map's `satisfies` included: a file is checked
-    against them once it loses `@ts-nocheck`. The files freed of it are; where their reads disagreed with
-    `TurnContext`, the type was corrected (a line's `targets` may hold null: callers pass `[c.player]`). Beside them in
+  - **In the engine:** `TurnContext`, the turn's context (every field `resolveTurn` adds), in
+    `engine/turn/context.ts`; `LogLine`, a line of the GM's log, in the events file; `OrderKind`, the 48 kinds an
+    order's action reads as, beside `PHASE_ACTION_MAP` (`engine/turn/phase-intents-and-dependency-ordering.ts`). Each
+    of these files is freed of its ts-nocheck line, so TypeScript checks these types and the map's `satisfies`, and
+    every freed file that reads them is checked against them; where their reads disagreed with `TurnContext`, the
+    type was corrected (a line's `targets` may hold null: callers pass `[c.player]`). Beside them in
     `context.ts`: `TurnOrder` (a hero's order for a phase as the turn holds it); in the events file
     (`engine/turn/events-and-their-audiences.ts`), `NarrativeLine` (a line of a fight's narrative: its words, or the
     fact they are written from). The freed files declare a few shapes of their own
