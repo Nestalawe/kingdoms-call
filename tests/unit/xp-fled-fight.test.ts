@@ -31,14 +31,10 @@ test('a hero who flees a fight has a small chance at Melee; the one left standin
   // a wrapper around it in the bare vm), which calls the real one: the calls from personal combat's files reach it
   const rolls: Roll[] = [];
   const tryOne = experience.trySkillGain;
-  const spy = vi
-    .spyOn(experience, 'trySkillGain')
-    .mockImplementation(
-      (turnContext, char: { id?: unknown } | null, skill: string, base: unknown, narr, mult: unknown) => {
-        rolls.push({ id: char?.id, skill, base, mult });
-        tryOne(turnContext, char, skill, base, narr, mult);
-      },
-    );
+  const spy = vi.spyOn(experience, 'trySkillGain').mockImplementation((turnContext, char, skill, base, narr, mult) => {
+    rolls.push({ id: char?.id, skill, base, mult });
+    tryOne(turnContext, char, skill, base, narr, mult);
+  });
   let res: FightResult;
   try {
     res = pinned(0.01, () => call('resolvePersonalCombat', A, R, { maxRounds: 3 }) as FightResult);

@@ -725,7 +725,10 @@ describe('the Order of the Golden Shield: the king hardened twice as much (award
     const before = Number(hero['hpEarned']) || 0;
     const was = kcRng.use(() => 0.5);
     try {
-      const r = awardHpRoll(tc, hero, [], 'kill', true) as { gain: number; sd35?: boolean };
+      const r = awardHpRoll(...([tc, hero, [], 'kill', true] as unknown as Parameters<typeof awardHpRoll>)) as {
+        gain: number;
+        sd35?: boolean;
+      };
       return { gain: r.gain, earned: (Number(hero['hpEarned']) || 0) - before, theOrder: r.sd35 === true };
     } finally {
       kcRng.use(was);
@@ -1315,7 +1318,7 @@ describe("war's spoils and the march, in the functions that ask the runners (P1-
       const king = G.characters.find((c) => c.alive && c.player === 0 && c.isKing);
       if (!king) throw new Error('the world has no king in realm 0');
       king.armies = [{ ...unit, unitName: 'the Column' }] as never;
-      const led = (computeMovePoolMax(tc, king) as { land: number }).land;
+      const led = computeMovePoolMax(...([tc, king] as unknown as Parameters<typeof computeMovePoolMax>)).land;
       const alone = garrisonMoveRate({ ...unit, unitName: 'the Column' } as never, realm as never).moveRate;
       return [led, alone];
     };

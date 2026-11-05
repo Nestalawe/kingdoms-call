@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ARMY_SPEED_R } from '../battle/ladder.ts';
 import { marchSpeedBonus, navalSpeedBonus } from './movement.ts';
 import {
@@ -11,6 +10,43 @@ import { whatARealmsDiscoveriesAddToAMarch } from '../rules/the-registry-of-disc
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { perkTier } from '../titles/perks.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { UnitOfAType } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import type { PuttingToSea } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
+import type { Character } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+
+/** A hero as his move pools are worked out: as his skills and his minor titles are read, whose he is, and his column;
+ *  a hero of the world, or one a skill rise is drawn for (a fight's copy's id is words). */
+type AHeroAsHisPoolsAreWorkedOut = NonNullable<Parameters<typeof effStat>[1]> &
+  NonNullable<Parameters<typeof charMinor>[1]> & {
+    readonly player?: Character['player'];
+    readonly armies?: Character['armies'];
+  };
+/** A hero as his move pools are refreshed: as they are worked out, his id perhaps missing (the refresh's guard). */
+type AHeroAsHisPoolsAreRefreshed = Omit<AHeroAsHisPoolsAreWorkedOut, 'id'> & {
+  readonly id?: AHeroAsHisPoolsAreWorkedOut['id'] | null | undefined;
+};
+/** The turn's move pools by a hero's id, read by any hero's id (a fight's copy's is words). */
+interface TheMovePoolsByAnyHerosId {
+  readonly movePoints: Partial<Record<string, number>>;
+  readonly seaMovePoints: Partial<Record<string, number>>;
+  readonly seaMoveActive: Partial<Record<string, boolean>>;
+  readonly seaCap: Partial<Record<string, string>>;
+  readonly moveMax: Partial<Record<string, number>>;
+  readonly seaMoveMax: Partial<Record<string, number>>;
+}
+/** Whether the hero whose pools are refreshed holds an id, as every hero of the world does. */
+function hisIdIsHeld(c: AHeroAsHisPoolsAreRefreshed): c is AHeroAsHisPoolsAreRefreshed & AHeroAsHisPoolsAreWorkedOut {
+  return c.id != null;
+}
+
+/** A column as the terrain tests read it: its units (a gap passed over where the step's test guards one), and the Part
+ *  Sea mark of this phase (Parked: nothing sets it). */
+interface AColumnAsTheTerrainTestsReadIt {
+  readonly _partSeaThisPhase?: unknown;
+  readonly armies?: readonly UnitOfAType[] | null | undefined;
+}
 
 // ── MOVEMENT POOLS (plan P1-08b: lifted out of resolveTurn) ────
 // Where a column may step, and each hero's move points for the turn: the land and sea pools (resolveTurn's movePoints,
@@ -21,13 +57,16 @@ import { perkTier } from '../titles/perks.ts';
 // sea-lift-stranding-and-retreats.ts) comes first: canEnterTerrain and the sea pool read its answer.
 // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
 // stored per character for the whole turn
-export function getSeaCapability(armies, leadChar) {
+export function getSeaCapability(
+  armies: readonly (UnitOfAType | null | undefined)[] | null | undefined,
+  leadChar: Parameters<typeof perkTier>[0],
+): PuttingToSea {
   // The rule is seaLiftOfAColumn's (plan P1-11b4 moved the body there, so the player portal's Move notice asks it
   // too); the leader's naval mastery is worked out here. NAVAL L8: one naval hull carries what once needed two.
   return seaLiftOfAColumn(armies, !!leadChar && perkTier(leadChar, 'naval') >= 3).answer;
 }
 
-export function canEnterTerrain(c, terrain, seaCap): boolean {
+export function canEnterTerrain(c: AColumnAsTheTerrainTestsReadIt, terrain: string, seaCap: string): boolean {
   if (terrain === 'sea') {
     if (seaCap === 'all' || seaCap === 'sea') return true;
     if (c._partSeaThisPhase) return true; // Part Sea spell active this phase
@@ -35,7 +74,7 @@ export function canEnterTerrain(c, terrain, seaCap): boolean {
   }
   // Land province: sea-only armies can't move land→land unless adjacent to same sea
   // For simplicity we allow land movement unless they have ONLY sea armies (no land/flying)
-  const armies = c.armies || [];
+  const armies = c.armies ?? [];
   if (armies.length > 0 && armies.every((a) => SEA_TYPES.has(a.type))) return false;
   return true;
 }
@@ -47,9 +86,14 @@ export function canEnterTerrain(c, terrain, seaCap): boolean {
 // reinforcement checked terrain alone, so a general with ships and troops in a coastal province rode
 // out overland to a neighbour on Defend. Every path that marches a column without a Move order now
 // asks this instead.
-export function canStepBetween(c, from, to, cap) {
+export function canStepBetween(
+  c: AColumnAsTheTerrainTestsReadIt,
+  from: { readonly terrain: string } | null | undefined,
+  to: { readonly terrain: string } | null | undefined,
+  cap: string,
+): boolean {
   if (!to || !canEnterTerrain(c, to.terrain, cap)) return false;
-  const naval = (c.armies || []).some((a) => a && SEA_TYPES.has(a.type));
+  const naval = (c.armies ?? []).some((a: UnitOfAType | null | undefined) => a && SEA_TYPES.has(a.type));
   if (naval && from && from.terrain !== 'sea' && to.terrain !== 'sea') return false;
   return true;
 }
@@ -78,11 +122,13 @@ export const NAVAL_UNIFY = [
 // Pure computation of a character's move-pool MAXIMUMS from CURRENT army composition + skills.
 // Returns {land, sea, seaActive, cap}. Shared by setMovePool (turn start) and refreshMovePool
 // (mid-turn, after composition or March/Naval changes), so both stay perfectly in step.
-export function computeMovePoolMax(turnContext, c) {
-  const armies = (c.armies || []).filter((a) => a && !a._phantom); // illusions set no pace and take no berth
+export function computeMovePoolMax(turnContext: TurnContext, c: AHeroAsHisPoolsAreWorkedOut) {
+  const armies = (asItsGuardReadsIt(c.armies) ?? []).filter(
+    (a: Character['armies'][number] | null | undefined) => a && !a._phantom,
+  ); // illusions set no pace and take no berth
   const marchLevel = effStat(turnContext, c, 'march');
   const navalLevel = effStat(turnContext, c, 'naval');
-  let land, sea, seaActive;
+  let land: number, sea: number, seaActive: boolean;
   if (armies.length === 0) {
     land = 5;
     sea = 5;
@@ -91,7 +137,7 @@ export function computeMovePoolMax(turnContext, c) {
     const landArmies = armies.filter((a) => !SEA_TYPES.has(a.type));
     if (landArmies.length > 0) {
       const landSpeeds = landArmies.map((a) => {
-        const base = ARMY_SPEED_R[a.type] || 3;
+        const base = (ARMY_SPEED_R[a.type] ?? 0) || 3;
         if (AERIAL_TYPES.has(a.type)) return base; // no flyer (rider or winged beast) is sped by March (item 14)
         // sd13 Road Network (+1 for speed 1-2 land armies) and Item 5 `move` discoveries (race /
         // cls filtered), same speed band (the discoveries' registry's since plan P1-19af: "movementCost: a realm's
@@ -100,7 +146,7 @@ export function computeMovePoolMax(turnContext, c) {
         if (c.player != null && base <= 2) {
           _road = whatARealmsDiscoveriesAddToAMarch(turnContext.G.players[c.player], { theUnit: a });
         }
-        return base + marchSpeedBonus(marchLevel) + _road;
+        return base + Number(marchSpeedBonus(marchLevel)) + _road;
       });
       land = Math.min(...landSpeeds);
     } else {
@@ -109,8 +155,8 @@ export function computeMovePoolMax(turnContext, c) {
     const seaArmies = armies.filter((a) => SEA_TYPES.has(a.type));
     if (seaArmies.length > 0) {
       const seaSpeeds = seaArmies.map((a) => {
-        const base = ARMY_SPEED_R[a.type] || 3;
-        return base + navalSpeedBonus(base, navalLevel);
+        const base = (ARMY_SPEED_R[a.type] ?? 0) || 3;
+        return base + Number(navalSpeedBonus(base, navalLevel));
       });
       sea = Math.min(...seaSpeeds);
       seaActive = true;
@@ -127,7 +173,7 @@ export function computeMovePoolMax(turnContext, c) {
     // self-flying units (humanoid flyers + primal winged beasts) set the pace; carried infantry
     // ride along at that speed. March does not speed flight (flyers already ignore March above).
     if (getFlyCapability(armies) && !armies.every((a) => AERIAL_TYPES.has(a.type))) {
-      const flyerSpeeds = armies.filter((a) => AERIAL_TYPES.has(a.type)).map((a) => ARMY_SPEED_R[a.type] || 3);
+      const flyerSpeeds = armies.filter((a) => AERIAL_TYPES.has(a.type)).map((a) => (ARMY_SPEED_R[a.type] ?? 0) || 3);
       if (flyerSpeeds.length) {
         land = Math.min(...flyerSpeeds);
         sea = land;
@@ -140,7 +186,7 @@ export function computeMovePoolMax(turnContext, c) {
   if (charMinor(turnContext, c, 'seawolf') && sea > 0) sea += 1;
   return { land, sea, seaActive, cap: getSeaCapability(armies, c) };
 }
-export function setMovePool(turnContext, c): void {
+export function setMovePool(turnContext: TurnContext, c: Character): void {
   const { movePoints, seaMovePoints, seaMoveActive, seaCap, moveMax, seaMoveMax } = turnContext;
   const m = computeMovePoolMax(turnContext, c);
   movePoints[c.id] = m.land;
@@ -155,13 +201,14 @@ export function setMovePool(turnContext, c): void {
 // are preserved, so dropping a slow unit correctly frees up the extra reach for the rest of the
 // turn, and picking up a slow unit correctly reduces it. (Fixes: army stuck at an old slow speed
 // after a slow unit was transferred out; move rate not rising when March increased mid-turn.)
-export function refreshMovePool(turnContext, c): void {
-  const { moveMax, movePoints, seaMoveMax, seaMovePoints, seaMoveActive, seaCap } = turnContext;
-  if (!c || c.id == null) return;
-  const oldLandMax = moveMax[c.id] != null ? moveMax[c.id] : (movePoints[c.id] ?? 0);
-  const oldSeaMax = seaMoveMax[c.id] != null ? seaMoveMax[c.id] : (seaMovePoints[c.id] ?? 0);
-  const oldLandRem = movePoints[c.id] != null ? movePoints[c.id] : oldLandMax;
-  const oldSeaRem = seaMovePoints[c.id] != null ? seaMovePoints[c.id] : oldSeaMax;
+export function refreshMovePool(turnContext: TurnContext, c: AHeroAsHisPoolsAreRefreshed | null | undefined): void {
+  const { moveMax, movePoints, seaMoveMax, seaMovePoints, seaMoveActive, seaCap }: TheMovePoolsByAnyHerosId =
+    turnContext;
+  if (!c || !hisIdIsHeld(c)) return;
+  const oldLandMax = moveMax[c.id] ?? movePoints[c.id] ?? 0;
+  const oldSeaMax = seaMoveMax[c.id] ?? seaMovePoints[c.id] ?? 0;
+  const oldLandRem = movePoints[c.id] ?? oldLandMax;
+  const oldSeaRem = seaMovePoints[c.id] ?? oldSeaMax;
   const m = computeMovePoolMax(turnContext, c);
   // Composition-change accounting WITHOUT retroactive penalties. Remaining points are carried
   // forward and adjusted only by the CHANGE in the pool's maximum:
@@ -185,8 +232,12 @@ export function refreshMovePool(turnContext, c): void {
 }
 
 // Contingent unify helper — used when two friendly forces attack same province same phase
-export function contingentUnifyChance(marchOrNaval, distanceProvinces, isNaval): number {
+export function contingentUnifyChance(marchOrNaval: number, distanceProvinces: number, isNaval: boolean): number {
   const table = isNaval ? NAVAL_UNIFY : MARCH_UNIFY;
-  const row = table[Math.min(marchOrNaval, 5)] || table[0];
-  return row[Math.min(distanceProvinces, 2)] || row[row.length - 1];
+  const row = table[Math.min(marchOrNaval, 5)] ?? table[0];
+  // (each table holds six rows of three chances, so a row and its last chance are always there)
+  if (!row) throw new TypeError('the unify table holds no row');
+  const chance = (row[Math.min(distanceProvinces, 2)] ?? 0) || row[row.length - 1];
+  if (chance === undefined) throw new TypeError('the unify table holds a row of no chance');
+  return chance;
 }

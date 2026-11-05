@@ -29,14 +29,10 @@ type Roll = { id: unknown; skill: string; base: unknown; mult: unknown };
 const recording = (fn: () => void): Roll[] => {
   const rolls: Roll[] = [];
   const tryOne = experience.trySkillGain;
-  const spy = vi
-    .spyOn(experience, 'trySkillGain')
-    .mockImplementation(
-      (turnContext, char: { id?: unknown } | null, skill: string, base: unknown, narr, mult: unknown) => {
-        rolls.push({ id: char?.id, skill, base, mult });
-        tryOne(turnContext, char, skill, base, narr, mult);
-      },
-    );
+  const spy = vi.spyOn(experience, 'trySkillGain').mockImplementation((turnContext, char, skill, base, narr, mult) => {
+    rolls.push({ id: char?.id, skill, base, mult });
+    tryOne(turnContext, char, skill, base, narr, mult);
+  });
   try {
     fn();
   } finally {

@@ -38,14 +38,9 @@ import type { AFighterInAPersonalCombat } from './helpers.ts';
 // Its types (plan P1-10b12): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
 // stays; a fighter is AFighterInAPersonalCombat (helpers.ts). A fighter's status, a foe or the state's range that the
 // code guards here but reads unguarded elsewhere is read through asItsGuardReadsIt (rules-on-plain-values/).
-/** A hero as his experience is rolled (pcCombatXP): the skill rises waiting to be drawn this phase, which a guardian
- *  has none of (the save holds none: they are drawn before it is written). */
-type AHeroAsHisPendingRisesAreRead = object & {
-  readonly _sgPending?:
-    | { readonly list?: readonly ({ readonly skill?: string | undefined } | null | undefined)[] | null | undefined }
-    | null
-    | undefined;
-};
+/** A hero as his experience is rolled (pcCombatXP): as trySkillGain rolls it, the skill rises waiting to be drawn this
+ *  phase among it, which a guardian has none of (the save holds none: they are drawn before it is written). */
+type AHeroAsHisPendingRisesAreRead = NonNullable<Parameters<typeof trySkillGain>[1]>;
 /** A fighter as his experience is rolled: his hero may be missing (the code guards it). */
 interface AFighterAsHisExperienceIsRolled {
   readonly kind: AFighterInAPersonalCombat['kind'];
@@ -87,10 +82,14 @@ export function pcCombatXP(
   narrative: NarrativeLine[],
 ) {
   if (cbt?.kind !== 'character' || !cbt.ref || cbt._xpGained) return;
-  const _had = !!(cbt.ref._sgPending && (cbt.ref._sgPending.list ?? []).some((e) => e?.skill === skill));
+  const _had = !!(
+    cbt.ref._sgPending &&
+    (asItsGuardReadsIt(cbt.ref._sgPending.list) ?? []).some((e) => asItsGuardReadsIt(e)?.skill === skill)
+  );
   trySkillGain(turnContext, cbt.ref, skill, SKILLGAIN_STD, narrative);
   const _p = cbt.ref._sgPending;
-  if (!_had && _p && (_p.list ?? []).some((e) => e?.skill === skill)) cbt._xpGained = true;
+  if (!_had && _p && (asItsGuardReadsIt(_p.list) ?? []).some((e) => asItsGuardReadsIt(e)?.skill === skill))
+    cbt._xpGained = true;
 }
 export function pcTryCounter(
   turnContext: TurnContext,

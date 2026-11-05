@@ -1,9 +1,27 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { SEA_TYPES_GEN } from '../world/tables.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { botBattleForce } from '../bots/intel.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+
+// Its types (plan P1-10b32): each parameter typed from what its callers pass and as wide as the body's guards (plan
+// P1-10's Decision 2), so each guard stays.
+/** A defender's name armyUnitName draws (it always draws or composes one): throws for none. */
+function theDefendersNameDrawn(name: string | undefined): string {
+  if (name === undefined) throw new TypeError('armyUnitName drew no name');
+  return name;
+}
+/** The realms as a unit's drill reads them: each one's race, a gap among them. */
+interface TheRealmsAsADrillReadsThem {
+  readonly players: readonly ({ readonly race?: string | null | undefined } | null | undefined)[];
+}
+/** A battle as its war-spoils line is appended to it: its lines, if it holds them. */
+interface ABattleAsItsSpoilsAreTold {
+  readonly narrative?: NarrativeLine[] | null | undefined;
+}
 
 // ── ORC WAR-SPOILS ── Flag the Orcish units of an Orcish realm that just won a battle as part of
 // an ATTACKING force. The wage pass at end of turn halves that turn's upkeep for any unit stamped
@@ -11,11 +29,17 @@ import { narrate } from '../turn/events-and-their-audiences.ts';
 // 2026-09-24 (Toby item 3): when `battle` is passed, a closing line is appended to its narrative
 // naming how many Orcish units earned the spoils — so it is called BEFORE emitBattle. The line is a fact (since
 // P1-12d14: the-facts-the-war-spoils-line-records.ts), its words written in the views.
-export function markOrcAttackWin(ch, gs, battle): number {
-  if (!ch || ch.player == null || !gs.players[ch.player] || gs.players[ch.player].race !== 'Orcish') return 0;
+export function markOrcAttackWin(
+  ch: Pick<Character, 'player' | 'name' | 'armies'> | null | undefined,
+  gs: Pick<GameState, 'players' | 'turn'>,
+  battle: ABattleAsItsSpoilsAreTold | null | undefined,
+): number {
+  if (ch?.player == null) return 0;
+  const hisRealm = gs.players[ch.player];
+  if (hisRealm?.race !== 'Orcish') return 0;
   let n = 0;
-  (ch.armies || []).forEach((a) => {
-    if (a && a.race === 'Orcish' && !a._phantom) {
+  (asItsGuardReadsIt(ch.armies) ?? []).forEach((a: Army | null | undefined) => {
+    if (a?.race === 'Orcish' && !a._phantom) {
       a._orcAtkWinTurn = gs.turn;
       n++;
     }
@@ -38,13 +62,15 @@ export function markOrcAttackWin(ch, gs, battle): number {
 // land and air units as if by Tactical 1, fleets and sea-beasts as if by Naval 1).
 export const UNIT_DRILL_BASE = { Green: 0.05, Average: 0.04, Veteran: 0.03, Crack: 0.02, Elite: 0 };
 export const GARRISON_DRILL_LEVEL = 1;
-export function humanXPMult(a, ownerPi, gs): number {
-  return a && a.race === 'Human' && ownerPi != null && gs.players[ownerPi] && gs.players[ownerPi].race === 'Human'
-    ? 2
-    : 1;
+export function humanXPMult(
+  a: { readonly race?: string | undefined } | null | undefined,
+  ownerPi: number | null | undefined,
+  gs: TheRealmsAsADrillReadsThem,
+): number {
+  return a?.race === 'Human' && ownerPi != null && gs.players[ownerPi]?.race === 'Human' ? 2 : 1;
 }
 
-export function rP(a, b) {
+export function rP(a: number, b: number) {
   return Math.floor(kcRng() * (b - a + 1)) + a;
 }
 // Starting neutral defender count by wealth tier. MUST use the SAME tax thresholds as the
@@ -58,10 +84,10 @@ export function rP(a, b) {
 // Single source of truth used by every world-gen defender pass (land, sea, primal, home-race
 // conversion). 2026-09-13: the BAND is split out so the count and the audit sweep can never drift
 // apart. neutralDefBand returns [lo,hi] for a tax value; neutralDefCount rolls inside it.
-export function neutralDefBand(tax) {
+export function neutralDefBand(tax: number): [number, number] {
   return tax >= 7 ? [3, 4] : tax >= 4 ? [2, 3] : [1, 2];
 }
-export function neutralDefCount(tax) {
+export function neutralDefCount(tax: number) {
   const b = neutralDefBand(tax);
   return rP(b[0], b[1]);
 }
@@ -70,9 +96,9 @@ export function neutralDefCount(tax) {
 // province's tax AFTER its garrison was rolled (see the sweep's comment). No-ops when the count is
 // already legal, so a province that generated correctly is never re-rolled. Sea is never touched —
 // open water is deliberately undefended and the home coastal guarantee depends on that.
-export function resyncNeutralDefenders(prov) {
+export function resyncNeutralDefenders(prov: Province | null | undefined) {
   if (!prov || prov.terrain === 'sea' || prov.owner != null) return false;
-  const defs = prov.neutralDefenders || (prov.neutralDefenders = []);
+  const defs = asItsGuardReadsIt(prov.neutralDefenders) ?? (prov.neutralDefenders = []);
   const [lo, hi] = neutralDefBand(prov.tax || 0);
   if (defs.length >= lo && defs.length <= hi) return false;
   const want = rP(lo, hi);
@@ -81,18 +107,20 @@ export function resyncNeutralDefenders(prov) {
   } else {
     // Draw extras from the same pool world gen uses: the province's own recruitable types, minus
     // garrison units (no neutral army starts the game as a garrison) and minus sea types on land.
-    const pool = (prov.armyTypes || []).filter(
-      (t) => !String(t).toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t),
+    const pool = (asItsGuardReadsIt(prov.armyTypes) ?? []).filter(
+      (t) => !t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t),
     );
-    const draw = pool.length ? pool : prov.armyTypes || [];
-    const proto = defs[0] || null;
+    const draw = pool.length ? pool : (asItsGuardReadsIt(prov.armyTypes) ?? []);
+    const proto = defs[0] ?? null;
     while (defs.length < want) {
       const dt = draw.length ? draw[Math.floor(kcRng() * draw.length)] : proto ? proto.type : 'Shieldwall Levies';
+      // (a pick from the list just found not empty)
+      if (dt === undefined) throw new TypeError('a pick from a list fell on nothing');
       defs.push({
         type: dt,
         quality: proto ? proto.quality : 'Average',
-        race: proto ? proto.race : prov.race || 'Human',
-        unitName: armyUnitName(dt),
+        race: proto ? proto.race : (prov.race ?? '') || 'Human',
+        unitName: theDefendersNameDrawn(armyUnitName(dt)),
       });
     }
   }
@@ -109,19 +137,26 @@ export function resyncNeutralDefenders(prov) {
 // slots' qualities, kept as they were dealt. Ties keep the first mix in the province's own type
 // order. Draws no dice. Returns the list of types, one per slot, or null when there is nothing to
 // choose.
-export function bestNeutralMix(armyTypes, quals, terrain, race) {
+export function bestNeutralMix(
+  armyTypes: readonly string[] | null | undefined,
+  quals: readonly string[] | null | undefined,
+  terrain: string,
+  race: string | null,
+) {
   const types = [
-    ...new Set((armyTypes || []).filter((t) => !String(t).toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t))),
+    ...new Set((armyTypes ?? []).filter((t) => !t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t))),
   ];
-  const n = (quals || []).length;
+  // (the qualities, or none: the walk below reads them only where there are some)
+  const theQualities = quals ?? [];
+  const n = theQualities.length;
   if (types.length < 2 || !n) return null;
   const G = { players: [], turn: -1 };
-  let best = null,
+  let best: string[] | null = null,
     bestF = -1;
-  const pick = [];
-  const walk = (from) => {
+  const pick: string[] = [];
+  const walk = (from: number) => {
     if (pick.length === n) {
-      const armies = pick.map((t, i) => ({ type: t, quality: quals[i], race }));
+      const armies = pick.map((t, i) => ({ type: t, quality: theQualities[i], race }));
       const f = botBattleForce(G, null, armies, terrain, { defending: true });
       if (f > bestF + 1e-9) {
         bestF = f;
@@ -130,7 +165,10 @@ export function bestNeutralMix(armyTypes, quals, terrain, race) {
       return;
     }
     for (let i = from; i < types.length; i++) {
-      pick.push(types[i]);
+      const theType = types[i];
+      // (an index below the list's length)
+      if (theType === undefined) throw new TypeError('a type of the mix fell on nothing');
+      pick.push(theType);
       walk(i);
       pick.pop();
     }
