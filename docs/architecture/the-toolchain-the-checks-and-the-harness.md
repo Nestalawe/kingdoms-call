@@ -124,7 +124,7 @@ and **broken** (the mutator's mistake, never "survived") when it has no header, 
 apply or doesn't build. It prints a table, and writes each stage's log and `results.json` beside the patches. It
 writes `results.json` after the control run and again after each patch, so a run that stops carries on with
 `--resume`: on the same base commit, it runs no control and skips each patch already scored whose file is unchanged.
-About 2.3 minutes a mutant.
+About 4.6 minutes a mutant the tests miss, 1.5 to 3 one they catch.
 Local only, never in CI: it stops when `CI` is set, and `harness` checks no workflow runs it. The patches say where the
 tests are weak, so they never enter this repository: the scorer refuses a folder git would commit.
 
