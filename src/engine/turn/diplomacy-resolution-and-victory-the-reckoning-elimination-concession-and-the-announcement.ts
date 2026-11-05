@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   RECKONING_CALLER_MIN_FRAC,
   RECKONING_DECAY_FROM_TURN,
@@ -24,6 +23,11 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from './events-and-their-audiences.ts';
+import type { TurnContext } from './context.ts';
+import type { TheFactOfADiplomacyOrVictoryLine } from './the-facts-diplomacy-and-victorys-lines-record.ts';
+import type { ARealmsStanding } from '../titles/reckoning.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { Character, Realm } from '../../schemas/saved-game-state.ts';
 
 // ── DIPLOMACY RESOLUTION AND VICTORY (plan P1-08k4: two stages taken out of resolveTurn's own body) ────────────────
 // Once the turn has settled what its seasons left (after-the-phases-….js) and the bots have made any late declaration,
@@ -44,7 +48,7 @@ import {
 // P1-12d16: the-facts-diplomacy-and-victorys-lines-record.ts), its words written in the views. The bodies keep
 // resolveTurn's indent (plan P1-08's Decisions).
 
-export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings(turnContext) {
+export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings(turnContext: TurnContext): void {
   const { G, diploDeclarations } = turnContext;
   // 6d. DIPLOMACY RESOLUTION (KC alliance system) — the declarations players submitted with THIS
   // turn's orders take effect now, so the new relations are already in force for next turn and the
@@ -53,20 +57,20 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
   // declaration by either side makes both Enemies, overriding a Treat. A one-sided Treat does
   // nothing.
   {
-    const np = (G.players || []).length;
+    const np = (asItsGuardReadsIt(G.players) ?? []).length;
     // 2026-10-08 (Toby item 3c): the overtures each realm received THIS turn, for its Diplomacy card
     // (buildTurnReport → diplomacy.known[].offeredUs). Rebuilt every turn, so it is always last turn's.
-    (G.players || []).forEach((p) => {
+    (asItsGuardReadsIt(G.players) ?? []).forEach((p: Realm | null | undefined) => {
       if (p) p._overturesIn = [];
     });
-    const validDecl = (from, to) => {
-      const d = diploDeclarations[from] && diploDeclarations[from][to];
+    const validDecl = (from: number, to: number) => {
+      const d = diploDeclarations[from]?.[to];
       if (d !== 'treat' && d !== 'enemy') return null;
       if (!realmHasMet(turnContext, from, to)) return null; // must have met them
       // 2026-10-08 (Toby item 3b): in a game of three realms or fewer no alliance can be forged, so
       // a Treat between two NEUTRAL realms can achieve nothing. The portal never offers it; a bot's
       // is dropped here, so nobody is asked to answer an offer that cannot be accepted.
-      if (d === 'treat' && np <= 3 && (G.relations[relKeyOf(from, to)] || 'neutral') === 'neutral') return null;
+      if (d === 'treat' && np <= 3 && ((G.relations[relKeyOf(from, to)] ?? '') || 'neutral') === 'neutral') return null;
       return d;
     };
     for (let a = 0; a < np; a++) {
@@ -75,7 +79,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           db = validDecl(b, a);
         if (!da && !db) continue;
         const key = relKeyOf(a, b);
-        const cur = G.relations[key] || 'neutral';
+        const cur = (G.relations[key] ?? '') || 'neutral';
         // No ALLIANCES in small games (≤3 players): players still start Neutral and may make peace,
         // but the Neutral→Allied step cannot be taken.
         const noAlliances = G.players.length <= 3;
@@ -86,7 +90,10 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         let _brokenPact = false;
         if (da === 'enemy' || db === 'enemy') {
           if (cur === 'allied') {
-            const _dark = (pi) => ['Evil', 'Undead'].includes(G.players[pi]?.alignment);
+            const _dark = (pi: number) => {
+              const theDarkAlignments: readonly (string | undefined)[] = ['Evil', 'Undead'];
+              return theDarkAlignments.includes(G.players[pi]?.alignment);
+            };
             next = (da === 'enemy' && _dark(a)) || (db === 'enemy' && _dark(b)) ? 'enemy' : 'neutral';
             _brokenPact = next === 'neutral';
           } else next = 'enemy';
@@ -101,7 +108,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         // or not it answered in kind. The word used matches what the offer would actually achieve
         // from the current relation (each line's fact holds a realm's name, or its seat where it has none).
         const _mutual = da === 'treat' && db === 'treat';
-        const _tellOffered = (to, from) => {
+        const _tellOffered = (to: number, from: number) => {
           // 2026-10-08 (Toby item 3a/3c): being courted counts as MEETING the realm that sent it, so
           // the courted realm can answer (only met realms are on the Diplomacy card, and only met
           // realms may be treated with). The offer is also kept for the Diplomacy card.
@@ -113,13 +120,12 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           // When both sides treated and the relation actually moved, the pact announcement below
           // says it all — no need to also report the overture that produced it.
           if (_mutual && next !== cur) return;
-          if (_tp && !_mutual)
-            (_tp._overturesIn = _tp._overturesIn || []).push({ from, kind: cur === 'enemy' ? 'peace' : 'alliance' }); // still awaiting an answer
+          if (_tp && !_mutual) (_tp._overturesIn ??= []).push({ from, kind: cur === 'enemy' ? 'peace' : 'alliance' }); // still awaiting an answer
           emit(turnContext, {
             type: 'system',
             fact: {
               kind: 'a realm is sent an overture',
-              from: { realmName: G.players[from]?.name || null, seat: from },
+              from: { realmName: (G.players[from]?.name ?? '') || null, seat: from },
               ofPeace: cur === 'enemy',
               answeredInKind: _mutual,
             },
@@ -136,8 +142,8 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             type: 'system',
             fact: {
               kind: 'two realms both seek an alliance so few kings may not forge',
-              realm: { realmName: G.players[a]?.name || null, seat: a },
-              otherRealm: { realmName: G.players[b]?.name || null, seat: b },
+              realm: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
+              otherRealm: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
             },
             audience: { actor: null, realms: [a] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -148,8 +154,8 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             type: 'system',
             fact: {
               kind: 'two realms both seek an alliance so few kings may not forge',
-              realm: { realmName: G.players[b]?.name || null, seat: b },
-              otherRealm: { realmName: G.players[a]?.name || null, seat: a },
+              realm: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
+              otherRealm: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
             },
             audience: { actor: null, realms: [b] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -166,8 +172,8 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               type: 'system',
               fact: {
                 kind: "a realm's overture goes unanswered",
-                realm: { realmName: G.players[a]?.name || null, seat: a },
-                otherRealm: { realmName: G.players[b]?.name || null, seat: b },
+                realm: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
+                otherRealm: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
                 ofPeace: cur === 'enemy',
               },
               audience: { actor: null, realms: [a] },
@@ -180,8 +186,8 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               type: 'system',
               fact: {
                 kind: "a realm's overture goes unanswered",
-                realm: { realmName: G.players[b]?.name || null, seat: b },
-                otherRealm: { realmName: G.players[a]?.name || null, seat: a },
+                realm: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
+                otherRealm: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
                 ofPeace: cur === 'enemy',
               },
               audience: { actor: null, realms: [b] },
@@ -195,37 +201,37 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         else G.relations[key] = next;
         // the line each realm is told (a fact: both realms read the same one but for an alliance, which names the realm
         // told first)
-        let mA, mB;
+        let mA: TheFactOfADiplomacyOrVictoryLine, mB: TheFactOfADiplomacyOrVictoryLine;
         if (next === 'enemy') {
           mA = mB = {
             kind: 'war now stands between two realms',
-            first: { realmName: G.players[a]?.name || null, seat: a },
-            second: { realmName: G.players[b]?.name || null, seat: b },
+            first: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
+            second: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
           };
         } else if (next === 'allied') {
           mA = {
             kind: 'two realms are now allied',
-            first: { realmName: G.players[a]?.name || null, seat: a },
-            second: { realmName: G.players[b]?.name || null, seat: b },
+            first: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
+            second: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
           };
           mB = {
             kind: 'two realms are now allied',
-            first: { realmName: G.players[b]?.name || null, seat: b },
-            second: { realmName: G.players[a]?.name || null, seat: a },
+            first: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
+            second: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
           };
         } else if (_brokenPact) {
           mA = mB = {
             kind: 'an alliance is broken and two realms are neutral once more',
-            first: { realmName: G.players[a]?.name || null, seat: a },
-            second: { realmName: G.players[b]?.name || null, seat: b },
+            first: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
+            second: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
             brokenByFirst: da === 'enemy',
             brokenBySecond: db === 'enemy',
           };
         } else {
           mA = mB = {
             kind: 'two realms make peace and are neutral',
-            first: { realmName: G.players[a]?.name || null, seat: a },
-            second: { realmName: G.players[b]?.name || null, seat: b },
+            first: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
+            second: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
           };
         }
         emit(turnContext, {
@@ -255,11 +261,12 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             if (pv._battleUnresolved) return; // already a contest — it resumes at the top of Spring
             const foe = c.player === a ? b : a;
             const onFoeLand = pv.owner === foe;
-            const besideFoe = (G.characters || []).some(
-              (o) => o && o.alive && o.location === pv.id && o.player === foe && (o.armies || []).length > 0,
+            const besideFoe = (asItsGuardReadsIt(G.characters) ?? []).some(
+              (o: Character | null | undefined) =>
+                o?.alive && o.location === pv.id && o.player === foe && (asItsGuardReadsIt(o.armies) ?? []).length > 0,
             );
             if (!onFoeLand && !besideFoe) return;
-            const n = (c.armies || []).length;
+            const n = (asItsGuardReadsIt(c.armies) ?? []).length;
             emit(turnContext, {
               type: 'system',
               fact: {
@@ -268,7 +275,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
                 unitCount: n,
                 provinceName: pv.name,
                 onTheFoesLand: onFoeLand,
-                foeRealmName: G.players[foe]?.name || null,
+                foeRealmName: (G.players[foe]?.name ?? '') || null,
               },
               audience: { actor: null, realms: [c.player] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -282,7 +289,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
                 fact: {
                   kind: "a new foe's host stands on the realm's war front",
                   heroName: c.name,
-                  realmName: G.players[c.player]?.name || null,
+                  realmName: (G.players[c.player]?.name ?? '') || null,
                   unitCount: n,
                   provinceName: pv.name,
                   onTheRealmsLand: onFoeLand,
@@ -300,8 +307,26 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
   }
 }
 
-export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnContext) {
+/** The game's end as the victory writes it: the standings as computeStandings gives them (a realm's colour and
+ *  alignment none where it has none on record), a winner none where the end names none, and the announcement's mark
+ *  not yet set (the announcement sets it below). A view of the saved game's own record: its schema is unchanged. */
+interface TheStateAsTheVictoryWritesIt {
+  gameOver?:
+    | {
+        winner: number | null | undefined;
+        byReckoning?: boolean | undefined;
+        byElimination?: boolean | undefined;
+        byConcession?: boolean | undefined;
+        turn: number;
+        standings: ARealmsStanding[];
+        _announced?: boolean | undefined;
+      }
+    | undefined;
+}
+
+export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnContext: TurnContext): void {
   const { G, reckoningCalls } = turnContext;
+  const theStateAsTheVictoryWritesIt: TheStateAsTheVictoryWritesIt = G;
   // 6e. VICTORY — THE RECKONING (KC end-game). Process new claims, grace-period lapse, resolution.
   {
     // the earliest turn a claim may be lodged is RECKONING_MIN_TURN, not the turn titles go public.
@@ -312,7 +337,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           type: 'system',
           fact: {
             kind: 'a realm calls the Reckoning before the throne may be claimed',
-            realmName: G.players[pi]?.name || null,
+            realmName: (G.players[pi]?.name ?? '') || null,
             firstTurn: RECKONING_MIN_TURN,
           },
           audience: { actor: null, realms: [pi] },
@@ -324,7 +349,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
     }
     if (!G.reckoning && reckoningCalls.size > 0 && G.turn >= RECKONING_MIN_TURN) {
       for (const pi of reckoningCalls) {
-        const kingAlive = (G.characters || []).some((c) => c.alive && c.isKing && c.player === pi);
+        const kingAlive = (asItsGuardReadsIt(G.characters) ?? []).some((c) => c.alive && c.isKing && c.player === pi);
         if (!kingAlive) {
           emit(turnContext, {
             type: 'system',
@@ -356,12 +381,12 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           const allies = bloc
             .filter((b) => b !== pi)
             .map((b) => G.players[b]?.name)
-            .filter(Boolean);
+            .filter((n): n is string => Boolean(n));
           emit(turnContext, {
             type: 'system',
             fact: {
               kind: 'the Reckoning is called',
-              claimant: { realmName: G.players[pi]?.name || null, seat: pi },
+              claimant: { realmName: (G.players[pi]?.name ?? '') || null, seat: pi },
               allyNames: allies,
               share,
               bar: thr,
@@ -380,7 +405,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             type: 'system',
             fact: {
               kind: "a realm calls the Reckoning on its alliance's strength but holds too little itself",
-              realmName: G.players[pi]?.name || null,
+              realmName: (G.players[pi]?.name ?? '') || null,
               ownShare: _el.ownShare,
               callerMinimum: _el.callerMin,
               bar: thr,
@@ -395,7 +420,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             type: 'system',
             fact: {
               kind: 'a realm calls the Reckoning but commands too little of the world',
-              realmName: G.players[pi]?.name || null,
+              realmName: (G.players[pi]?.name ?? '') || null,
               share,
               bar: thr,
             },
@@ -410,11 +435,15 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
     if (G.reckoning) {
       // the bar recorded when the claim was lodged. Older saves carrying a live claim with no
       // `thrPct` fall back to the claimant's bar as it stands now, so nothing breaks on load.
-      const thr = G.reckoning.thrPct != null ? G.reckoning.thrPct / 100 : reckoningThresholdFor(G, G.reckoning.by);
+      const thr =
+        asItsGuardReadsIt(G.reckoning.thrPct) != null
+          ? G.reckoning.thrPct / 100
+          : reckoningThresholdFor(G, G.reckoning.by);
       const share = reckoningBlocShare(G, G.reckoning.by);
+      const theClaimantsSeat = G.reckoning.by;
       const claimantAlive =
-        (G.players[G.reckoning.by]?.provinces || []).length > 0 ||
-        (G.characters || []).some((c) => c.alive && c.player === G.reckoning.by);
+        (G.players[G.reckoning.by]?.provinces ?? []).length > 0 ||
+        (asItsGuardReadsIt(G.characters) ?? []).some((c) => c.alive && c.player === theClaimantsSeat);
       // the claimant's PERSONAL floor is held for the life of the claim too, so rivals can break a
       // bloc's claim by striking the claimant himself, not only by shrinking the whole bloc.
       const _ownNow = reckoningOwnShare(G, G.reckoning.by),
@@ -424,7 +453,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           type: 'system',
           fact: {
             kind: "the claim to the throne collapses as the claimant's bloc falls below the bar",
-            claimantName: G.players[G.reckoning.by]?.name || null,
+            claimantName: (G.players[G.reckoning.by]?.name ?? '') || null,
             share,
             bar: thr,
           },
@@ -439,7 +468,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
           type: 'system',
           fact: {
             kind: 'the claim to the throne collapses as the claimant falls below his own floor',
-            claimantName: G.players[G.reckoning.by]?.name || null,
+            claimantName: (G.players[G.reckoning.by]?.name ?? '') || null,
             ownShare: _ownNow,
             ownMinimum: _minNow,
           },
@@ -451,7 +480,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
         delete G.reckoning;
       } else if (G.turn >= G.reckoning.resolveAtTurn) {
         const rw = reckoningWinner(G);
-        G.gameOver = {
+        theStateAsTheVictoryWritesIt.gameOver = {
           winner: rw.winner ? rw.winner.index : null,
           byReckoning: true,
           turn: G.turn,
@@ -466,7 +495,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
     // no step is taken, and the bar the contesting realms must drive the claimant below stays
     // exactly where it was when the throne was claimed.
     if (!G.gameOver && !G.reckoning && G.turn >= RECKONING_DECAY_FROM_TURN) {
-      const nP = (G.players || []).length;
+      const nP = (asItsGuardReadsIt(G.players) ?? []).length;
       const before = reckoningThresholdPct(nP, reckoningDecayOf(G));
       if (before > RECKONING_FLOOR_PCT) {
         G.reckoningDecaySteps = reckoningDecayOf(G) + 1;
@@ -495,12 +524,20 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
     const live = G.players
       .map((p, pi) => ({
         pi,
-        alive: (p.provinces || []).length > 0 || (G.characters || []).some((c) => c.alive && c.player === pi),
+        alive:
+          (asItsGuardReadsIt(p.provinces) ?? []).length > 0 ||
+          (asItsGuardReadsIt(G.characters) ?? []).some((c) => c.alive && c.player === pi),
       }))
       .filter((x) => x.alive);
-    if (live.length === 1) {
+    const theOneLeft = live.length === 1 ? live[0] : undefined;
+    if (theOneLeft !== undefined) {
       const rw = reckoningWinner(G);
-      G.gameOver = { winner: live[0].pi, byElimination: true, turn: G.turn, standings: rw.standings.standings };
+      theStateAsTheVictoryWritesIt.gameOver = {
+        winner: theOneLeft.pi,
+        byElimination: true,
+        turn: G.turn,
+        standings: rw.standings.standings,
+      };
     }
   }
 
@@ -508,13 +545,18 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
   // still-living realm remains — or every such realm is in ONE mutual alliance — the game ends at
   // once: the sole survivor wins, or, for an allied bloc, the bloc member with the highest Legacy
   // score takes the crown and the standings are shown.
-  if (!G.gameOver && G.players.length > 1 && (G.players || []).some((p) => p && p.conceded)) {
+  if (
+    !G.gameOver &&
+    G.players.length > 1 &&
+    (asItsGuardReadsIt(G.players) ?? []).some((p: Realm | null | undefined) => p?.conceded)
+  ) {
     const live = G.players
       .map((p, pi) => ({
         pi,
         alive:
           !p.conceded &&
-          ((p.provinces || []).length > 0 || (G.characters || []).some((c) => c.alive && c.player === pi)),
+          ((asItsGuardReadsIt(p.provinces) ?? []).length > 0 ||
+            (asItsGuardReadsIt(G.characters) ?? []).some((c) => c.alive && c.player === pi)),
       }))
       .filter((x) => x.alive)
       .map((x) => x.pi);
@@ -528,13 +570,13 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       // they would be at a contested Reckoning, so the game ends with a proper final table.
       delete G.reckoning; // any claim in its grace period is overtaken by this
       const rw = reckoningWinner(G);
-      const stand = (rw.standings && rw.standings.standings) || [];
+      const stand = asItsGuardReadsIt(rw.standings)?.standings ?? [];
       let winner = live.length === 1 ? live[0] : null;
       if (winner == null && live.length > 1) {
-        const best = stand.filter((s) => live.includes(s.index ?? s.pi ?? -1)).sort((a, b) => b.score - a.score)[0];
-        winner = best ? (best.index ?? best.pi) : live[0];
+        const best = stand.filter((s) => live.includes(s.index)).sort((a, b) => b.score - a.score)[0];
+        winner = best ? best.index : live[0];
       }
-      const _nOut = (G.players || []).filter((p) => p && p.conceded).length;
+      const _nOut = (asItsGuardReadsIt(G.players) ?? []).filter((p: Realm | null | undefined) => p?.conceded).length;
       emit(turnContext, {
         type: 'system',
         fact: {
@@ -548,7 +590,13 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
         system: true,
         gameEnd: true,
       });
-      G.gameOver = { winner, byConcession: true, byReckoning: true, turn: G.turn, standings: stand };
+      theStateAsTheVictoryWritesIt.gameOver = {
+        winner,
+        byConcession: true,
+        byReckoning: true,
+        turn: G.turn,
+        standings: stand,
+      };
     }
   }
 
@@ -560,7 +608,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       type: 'system',
       fact: {
         kind: 'the game is decided',
-        winner: wi != null ? { realmName: G.players[wi]?.name || null, seat: wi } : null,
+        winner: wi != null ? { realmName: (G.players[wi]?.name ?? '') || null, seat: wi } : null,
         byElimination: Boolean(G.gameOver.byElimination),
         byConcession: Boolean(G.gameOver.byConcession),
       },
@@ -570,7 +618,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       system: true,
       gameEnd: true,
     });
-    (G.gameOver.standings || [])
+    (asItsGuardReadsIt(G.gameOver.standings) ?? [])
       .slice()
       .sort((a, b) => b.score - a.score)
       .forEach((st, i) => {
@@ -581,7 +629,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             place: i + 1,
             realmName: st.name,
             score: st.score,
-            titleKeys: [...(st.titles || [])],
+            titleKeys: [...(asItsGuardReadsIt(st.titles) ?? [])],
             relics: st.relics,
           },
           audience: { actor: null, realms: [], seen: 'world' },

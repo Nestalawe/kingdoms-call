@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
@@ -17,6 +16,31 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from './events-and-their-audiences.ts';
+import type { TurnContext } from './context.ts';
+import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { Character, GameState, Grave, Province, Realm } from '../../schemas/saved-game-state.ts';
+
+/** The state as the new turn's end clears it: the turn's lists of the heroes raised and the orders held for the
+ *  Resurrect, Charm, Hire and Synthesis orders (none in the saved state's schema: each deleted, never read here). */
+type TheStateAsTheNewTurnClearsIt = GameState & {
+  _resurrectedThisTurn?: unknown;
+  _pendingResurrectOrders?: unknown;
+  _pendingCharmOrders?: unknown;
+  _pendingHireOrders?: unknown;
+  _pendingSynthPlans?: unknown;
+};
+/** A Divine realm's grave: its hero's realm is the realm's index (the graves the return reads). */
+type ADivineRealmsGrave = Grave & { player: NonNullable<Grave['player']> };
+/** The six hexes around a province, as row and column steps (by the row's parity). */
+type TheStepsToTheHexesAround = readonly (readonly [row: number, col: number])[];
+/** The grade above a company's, which the War Academy drills it to: the company is below the top grade (the four
+ *  below it), so there is one; for none, a TypeError. */
+function theGradeAbove(tiers: readonly string[], idx: number): string {
+  const above = tiers[idx + 1];
+  if (above === undefined) throw new TypeError('a company below the top grade has a grade above it');
+  return above;
+}
 
 // ── THE NEW TURN, SECOND PART (plan P1-08k5b: one stage taken out of resolveTurn's own body) ────────────────────────
 // Once the new turn's first part is done (new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts:
@@ -40,9 +64,9 @@ import {
 // "[Save check] ", which the balance matrix reads).
 
 export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile(
-  turnContext,
-) {
-  const { G } = turnContext;
+  turnContext: TurnContext,
+): void {
+  const { G }: { readonly G: TheStateAsTheNewTurnClearsIt } = turnContext;
   // 7d. sd08 War Academy: promote one random army in each player's home province (the discoveries' registry's since
   // plan P1-19ag: "turnEnd: a realm's discoveries promote the capital's armies", its chance or nothing)
   G.players.forEach((p, pi) => {
@@ -50,8 +74,10 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (_waChance === null) return;
     const homeProv = G.world.provinces.find((pv) => pv.owner === pi && pv.tax >= 10);
     if (!homeProv) return;
-    const charsAtHome = (G.characters || []).filter((c) => c.alive && c.player === pi && c.location === homeProv.id);
-    const allArmies = charsAtHome.flatMap((c) => c.armies || []);
+    const charsAtHome = (asItsGuardReadsIt(G.characters) ?? []).filter(
+      (c) => c.alive && c.player === pi && c.location === homeProv.id,
+    );
+    const allArmies = charsAtHome.flatMap((c) => asItsGuardReadsIt(c.armies) ?? []);
     if (allArmies.length === 0) return;
     const tiers = QUALITY_TIERS.slice();
     // Skeletal armies never gain experience/quality tiers — the dead don't learn.
@@ -63,7 +89,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     eligible.forEach((army) => {
       if (kcRng() < _waPct) {
         const idx = tiers.indexOf(army.quality);
-        army.quality = tiers[idx + 1];
+        army.quality = theGradeAbove(tiers, idx);
         _waPromoted++;
         emit(turnContext, {
           type: 'system',
@@ -95,11 +121,13 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // discoveries heal the wounded", whether it holds any, then for each wounded hero, the king's effects for the king).
   G.players.forEach((p, pi) => {
     if (!doARealmsDiscoveriesHealTheWounded(G.players[pi])) return;
-    (G.characters || []).forEach((c) => {
-      if (!c || !c.alive || c.player !== pi || c.hp == null) return;
+    (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+      if (!c || !c.alive || c.player !== pi || asItsGuardReadsIt(c.hp) == null) return;
       const mx = c.maxHp || 20;
       if (c.hp >= mx) return;
-      const _rg = theHpARealmsDiscoveriesHealAWoundedHeroBy(G.players[pi], { isHeTheKing: !!c.isKing });
+      const _rg = theHpARealmsDiscoveriesHealAWoundedHeroBy(G.players[pi], {
+        isHeTheKing: Boolean(asItsGuardReadsIt(c.isKing)),
+      });
       if (_rg <= 0) return;
       const h = Math.min(_rg, mx - c.hp);
       c.hp += h;
@@ -119,16 +147,16 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     if (!doARealmsDiscoveriesNameAnUnseenCaptain(G.players[pi])) return;
     // Provinces the player can already see this turn: those they own, or that hold one of their
     // characters.
-    const _seen = new Set();
-    (G.world.provinces || []).forEach((pv, idx) => {
+    const _seen = new Set<number>();
+    (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((pv, idx) => {
       if (pv.owner === pi) _seen.add(idx);
     });
-    (G.characters || []).forEach((c) => {
+    (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
       if (c.alive && c.player === pi) _seen.add(c.location);
     });
     // R-119: the informants pass over a hero whose Invisibility held this turn (the counter has moved on: the turn
     // played is the one before)
-    const enemyChars = (G.characters || []).filter(
+    const enemyChars = (asItsGuardReadsIt(G.characters) ?? []).filter(
       (c) =>
         c.alive &&
         c.player !== null &&
@@ -147,15 +175,15 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       });
       return;
     }
-    const target = enemyChars[Math.floor(kcRng() * enemyChars.length)];
+    const target = theOneThePickFell(enemyChars[Math.floor(kcRng() * enemyChars.length)]);
     const tProv = G.world.provinces[target.location];
     emit(turnContext, {
       type: 'system',
       fact: {
         kind: 'the Informant Network names where an unseen enemy captain was last',
         heroName: target.name,
-        realmName: G.players[target.player]?.name,
-        provinceName: tProv?.name || null,
+        realmName: (target.player === null ? undefined : G.players[target.player])?.name,
+        provinceName: (tProv?.name ?? '') || null,
       },
       audience: { actor: pi, realms: [pi] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -167,7 +195,9 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   G.players.forEach((p, pi) => {
     // (the discoveries' registry's since plan P1-19ag: "visibility: a realm's discoveries chart a province")
     if (!doARealmsDiscoveriesChartAProvince(G.players[pi])) return;
-    const _unseen = (G.world.provinces || []).filter((pv) => ((pv.exploredBy && pv.exploredBy[pi]) || 0) < 100);
+    const _unseen = (asItsGuardReadsIt(G.world.provinces) ?? []).filter(
+      (pv) => ((pv.exploredBy?.[pi] ?? 0) || 0) < 100,
+    );
     if (_unseen.length === 0) {
       emit(turnContext, {
         type: 'explore',
@@ -178,8 +208,8 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       });
       return;
     }
-    const _pk = _unseen[Math.floor(kcRng() * _unseen.length)];
-    if (!_pk.exploredBy) _pk.exploredBy = {};
+    const _pk = theOneThePickFell(_unseen[Math.floor(kcRng() * _unseen.length)]);
+    _pk.exploredBy ??= {};
     _pk.exploredBy[pi] = 100;
     _pk.explored = 100;
     if (!Array.isArray(_pk.visitedBy)) _pk.visitedBy = [];
@@ -202,10 +232,10 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // resolution their grave carries killedOnTurn=N and G.turn is now N+1. Requiring G.turn >=
   // killedOnTurn+2 means the hero is skipped on the N->N+1 pass (out of action for turn N+1) and
   // only rises on the N+1->N+2 pass — i.e. they return at the START of the second turn after death.
-  if (!G.heroGraveyard) G.heroGraveyard = [];
+  if (!asItsGuardReadsIt(G.heroGraveyard)) G.heroGraveyard = [];
   G.heroGraveyard
     .filter(
-      (g) =>
+      (g): g is ADivineRealmsGrave =>
         g.player !== null &&
         G.players[g.player]?.alignment === 'Divine' &&
         (!g._monarch || G.characters.some((h) => h.id === g.id && h._divineReturn)),
@@ -221,7 +251,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       // Resurrect spell can still reach it) and is never tried again.
       const playerP = G.players[grave.player];
       if (grave._divineLost) return;
-      const homeProv = nearestConsecratedProv(G, grave.player, grave.location != null ? grave.location : hero.location);
+      const homeProv = nearestConsecratedProv(G, grave.player, asItsGuardReadsIt(grave.location) ?? hero.location);
       if (!homeProv) {
         grave._divineLost = true;
         if (_wasKing) delete hero._divineReturn;
@@ -254,7 +284,6 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       if (!homeProv.characters.includes(hero.id)) homeProv.characters.push(hero.id);
       G.heroGraveyard = G.heroGraveyard.filter((g) => g.id !== grave.id);
       // Log to turn report
-      const turnLog = G.turnLog || [];
       emit(turnContext, {
         type: 'explore',
         fact: {
@@ -286,9 +315,9 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   });
 
   // 7f. Mercenary army movement and retirement
-  if (G.mercenaries && G.mercenaries.length > 0) {
+  if (asItsGuardReadsIt(G.mercenaries) && G.mercenaries.length > 0) {
     const { cols, rows, provinces } = G.world;
-    const offEven = [
+    const offEven: TheStepsToTheHexesAround = [
       [-1, -1],
       [-1, 0],
       [0, -1],
@@ -296,7 +325,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       [1, -1],
       [1, 0],
     ];
-    const offOdd = [
+    const offOdd: TheStepsToTheHexesAround = [
       [-1, 0],
       [-1, 1],
       [0, -1],
@@ -312,7 +341,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           fact: {
             kind: 'a mercenary band retires and disperses',
             bandName: merc.unitName || merc.type,
-            provinceName: G.world.provinces[merc.location]?.name || null,
+            provinceName: (G.world.provinces[merc.location]?.name ?? '') || null,
           },
           audience: { actor: null, realms: [] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -331,16 +360,16 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           const nc = (((p.col + dc) % cols) + cols) % cols;
           return provinces[nr * cols + nc];
         })
-        .filter((n) => n && (merc.isSea ? n.terrain === 'sea' : n.terrain !== 'sea'));
+        .filter((n): n is Province => n != null && (merc.isSea ? n.terrain === 'sea' : n.terrain !== 'sea'));
       if (!neighbors.length) return true; // stuck, don't move
-      const dest = neighbors[Math.floor(kcRng() * neighbors.length)];
+      const dest = theOneThePickFell(neighbors[Math.floor(kcRng() * neighbors.length)]);
       merc.location = dest.id;
       return true; // keep
     });
   }
 
   // Clear _justDefeated flag now that the turn is over
-  (G.characters || [])
+  (asItsGuardReadsIt(G.characters) ?? [])
     .filter((c) => c._justDefeated)
     .forEach((c) => {
       delete c._justDefeated;
@@ -348,7 +377,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // a neutral hero who is now wandering (no longer a home-guarding _isNeutralGuard) recovers to
   // full HP. A guard driven from home limps away bloodied from the battle; by the time they take up
   // the wanderer's life again they are hale, and hire as a fresh, fully-healed commander.
-  (G.characters || [])
+  (asItsGuardReadsIt(G.characters) ?? [])
     .filter((c) => c.player === null && c.alive && !c._isNeutralGuard)
     .forEach((c) => {
       c.hp = c.maxHp || c.hp;
@@ -356,7 +385,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // (Per-turn battle flags are cleared AFTER the report loop — see below — so buildTurnReport and the
   // hadBattle map-marker derivation can still read which provinces saw fighting this turn.)
   // 2026-09-12: report the turn-start ' (wandering)' name repair here, where `log` exists.
-  if (G._nameRepairs > 0) {
+  if (G._nameRepairs !== undefined && G._nameRepairs > 0) {
     emit(turnContext, {
       type: 'system',
       fact: { kind: "the heroes' wandering tags are corrected", heroes: G._nameRepairs },
@@ -396,8 +425,8 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // graveyard, alive in the realm). Purge it and say so in the GM log.
   if (Array.isArray(G.heroGraveyard) && G.heroGraveyard.length) {
     const _ghosts = G.heroGraveyard.filter((g) => {
-      const ch = (G.characters || []).find((x) => x && x.id === g.id);
-      return ch && ch.alive === true;
+      const ch = (asItsGuardReadsIt(G.characters) ?? []).find((x: Character | null | undefined) => x?.id === g.id);
+      return ch?.alive === true;
     });
     if (_ghosts.length) {
       G.heroGraveyard = G.heroGraveyard.filter((g) => !_ghosts.includes(g));
@@ -409,8 +438,8 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
-        (G.players || []).forEach((p) => {
-          if (p && p._resurrectableMonarchId === g.id) p._resurrectableMonarchId = null;
+        (asItsGuardReadsIt(G.players) ?? []).forEach((p: Realm | null | undefined) => {
+          if (p?._resurrectableMonarchId === g.id) p._resurrectableMonarchId = null;
         });
       });
     }
@@ -419,32 +448,35 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // living character in, is added to that realm's permanent knownDeadHeroIds — so a corpse you can
   // see on your map stays a legal Resurrect target after you march on. Monarch graves are excluded:
   // they are borne home and gated separately (_resurrectableMonarchId).
-  (G.players || []).forEach((p, pi) => {
+  (asItsGuardReadsIt(G.players) ?? []).forEach((p: Realm | null | undefined, pi) => {
     if (!p) return;
     const seeProv = new Set(
-      ((G.world && G.world.provinces) || []).filter((pv) => pv && pv.owner === pi).map((pv) => pv.id),
+      (asItsGuardReadsIt(asItsGuardReadsIt(G.world)?.provinces) ?? [])
+        .filter((pv: Province | null | undefined) => pv?.owner === pi)
+        .map((pv) => pv.id),
     );
-    (G.characters || []).forEach((c) => {
-      if (c && c.alive && c.player === pi && c.location != null) seeProv.add(c.location);
+    (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+      if (c?.alive && c.player === pi && asItsGuardReadsIt(c.location) != null) seeProv.add(c.location);
     });
     if (!Array.isArray(p.knownDeadHeroIds)) p.knownDeadHeroIds = [];
-    (G.heroGraveyard || []).forEach((g) => {
-      if (!g || g._monarch || g.location == null) return;
-      if (seeProv.has(g.location) && !p.knownDeadHeroIds.includes(g.id)) p.knownDeadHeroIds.push(g.id);
+    const theKnownDead = p.knownDeadHeroIds;
+    (asItsGuardReadsIt(G.heroGraveyard) ?? []).forEach((g: Grave | null | undefined) => {
+      if (!g || g._monarch || asItsGuardReadsIt(g.location) == null) return;
+      if (seeProv.has(g.location) && !theKnownDead.includes(g.id)) theKnownDead.push(g.id);
     });
   });
   // Clear per-turn seen-dead-heroes tracking (knownDeadHeroIds persists across turns)
   G.players.forEach((p) => {
     p.seenDeadHeroIds = [];
   });
-  (G.characters || [])
+  (asItsGuardReadsIt(G.characters) ?? [])
     .filter((c) => c.player === null && c.alive && !c._isNeutralGuard)
     .forEach((c) => {
       if (kcRng() > 0.35) return;
       const p = G.world.provinces[c.location];
       if (!p) return;
       const { cols, rows, provinces } = G.world;
-      const offsets =
+      const offsets: TheStepsToTheHexesAround =
         p.row % 2 === 0
           ? [
               [-1, -1],
@@ -469,13 +501,13 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
           const nc = (((p.col + dc) % cols) + cols) % cols;
           return provinces[nr * cols + nc];
         })
-        .filter((n) => n && n.terrain !== 'sea');
+        .filter((n): n is Province => n != null && n.terrain !== 'sea');
       if (!neighbors.length) return;
-      const dest = neighbors[Math.floor(kcRng() * neighbors.length)];
-      p.characters = (p.characters || []).filter((id) => id !== c.id);
+      const dest = theOneThePickFell(neighbors[Math.floor(kcRng() * neighbors.length)]);
+      p.characters = (asItsGuardReadsIt(p.characters) ?? []).filter((id) => id !== c.id);
       c.location = dest.id;
       c.locationName = dest.name;
-      dest.characters = dest.characters || [];
+      dest.characters = asItsGuardReadsIt(dest.characters) ?? [];
       dest.characters.push(c.id);
     });
 
