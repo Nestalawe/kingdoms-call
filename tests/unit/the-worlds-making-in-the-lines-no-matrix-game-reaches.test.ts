@@ -154,9 +154,10 @@ interface TheMaking {
   kcRng: typeof kcRng;
   getNeighborsP: typeof getNeighborsP;
 }
-/** On five maps crowded with realms, made by `m`: every home keeps its ring's promises (a poor and a prosperous
- *  humanoid neighbour, and its own people beside it). */
-function everyHomeKeepsItsRingsPromises(m: TheMaking) {
+/** On five maps crowded with realms, made by `m`: the promises of a home's ring it breaks (a poor and a prosperous
+ *  humanoid neighbour, and its own people beside it), each named by its realm, its map and its seed. */
+function theRingsPromisesBrokenOnCrowdedMaps(m: TheMaking): string[] {
+  const broken: string[] = [];
   for (const [n, cols, rows, seed] of [
     [5, 8, 5, 7],
     [5, 8, 5, 8],
@@ -179,24 +180,16 @@ function everyHomeKeepsItsRingsPromises(m: TheMaking) {
         .filter((q) => q.terrain !== 'sea' && q.owner == null);
       const humanoid = ring.filter((q) => !(q.race ?? '').startsWith('Primal'));
       const where = `realm ${String(pl.id)} of ${String(n)} on ${String(cols)}x${String(rows)}, seed ${String(seed)}`;
-      expect(
-        humanoid.some((q) => q.tax >= 2 && q.tax <= 3),
-        where + ': a poor neighbour',
-      ).toBe(true);
-      expect(
-        humanoid.some((q) => q.tax >= 4 && q.tax <= 6),
-        where + ': a prosperous neighbour',
-      ).toBe(true);
-      expect(
-        ring.some((q) => q.race === pl.race),
-        where + ': its own people beside it',
-      ).toBe(true);
+      if (!humanoid.some((q) => q.tax >= 2 && q.tax <= 3)) broken.push(where + ': a poor neighbour');
+      if (!humanoid.some((q) => q.tax >= 4 && q.tax <= 6)) broken.push(where + ': a prosperous neighbour');
+      if (!ring.some((q) => q.race === pl.race)) broken.push(where + ': its own people beside it');
     }
   }
+  return broken;
 }
 
 test("on maps crowded with realms, every home keeps its ring's promises: a poor and a prosperous neighbour, its own people near", () => {
-  everyHomeKeepsItsRingsPromises({ generateNewGame, kcRng, getNeighborsP });
+  expect(theRingsPromisesBrokenOnCrowdedMaps({ generateNewGame, kcRng, getNeighborsP })).toEqual([]);
 });
 
 describe('a crowded home with no prosperous neighbour (a planted copy of src/ in which no home finds one)', () => {
@@ -227,6 +220,6 @@ describe('a crowded home with no prosperous neighbour (a planted copy of src/ in
 
   test("forcing one never takes an earlier king's promised neighbour: every home keeps its ring's promises", () => {
     if (!made) throw new Error("the planted copy's engine was not imported");
-    everyHomeKeepsItsRingsPromises(made);
+    expect(theRingsPromisesBrokenOnCrowdedMaps(made)).toEqual([]);
   });
 });
