@@ -30,6 +30,12 @@
 // chance never falls below 45%
 // Since P1-23e (R-119): a quarry of another realm whose Invisibility holds is beyond catching (a line naming no one);
 // a realm that watches him by Clairvoyance, or his own, still follows.
+// Since P1-10b34 (the file freed of its ts-nocheck line), each line it changed that no matrix game reaches, on the value
+// it had before (every die pinned): the chase battle's defenders the quarry's and his companions' hosts, the losses
+// taken off each side, the beaten routing together, a quarry slain in the duel before it staying where he fell, ground
+// held by neutral defenders, a leaderless host or hulls left ashore (the line naming them), an Evil hunter's plunder;
+// the pickets counted without a spectral double, a hunter with no plan fighting with his sword, a neutral who escapes
+// the end living on at 1 HP, and a realm listed once among a province's visitors.
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -448,5 +454,259 @@ describe('an unarmed hunter and an armed quarry', () => {
     });
     expect(allText(met.b)).toMatch(/finally corners/);
     expect([refused.c._pursuit?.active, met.c._pursuit?.active]).toEqual([false, false]);
+  });
+});
+
+// ── P1-10b34: the lines of the chase no game of the balance matrix reaches, each on the value it had before ──
+describe('the chase battle: the hosts, their losses, the rout and the ground (P1-10b34)', () => {
+  /** Hunter (realm 0, Divine, `mine` companies of `quality`) and quarry (realm `realm`, `theirs` Green ones) in X,
+   *  which realm 1 holds, on the trail. */
+  const together = (realm: number | null, mine: number, theirs: number, quality = 'Elite') => {
+    const b = fresh();
+    b.own(b.X, 1);
+    must(b.G.players[0], 'realm 0')['alignment'] = 'Divine';
+    const c = hero(b, { player: 0, at: b.X, troops: mine, quality, skills: { spy: 9, melee: 2, tactical: 2 } });
+    const q = hero(b, { player: realm, at: b.X, troops: theirs, quality: 'Green', skills: { spy: 0, melee: 1 } });
+    chase(c, q);
+    return { b, c, q };
+  };
+  /** Each line's fact, in the order told. */
+  const facts = (b: Board) => b.tc.turnLog.map((l) => l['fact'] as Record<string, unknown>);
+  /** Each line's kind, in the order told. */
+  const kinds = (b: Board) => facts(b).map((f) => f['kind']);
+  /** The province next to X that realm 1 holds, where a beaten host of it falls back. */
+  const aFallBack = (b: Board) => {
+    const back = must(b.ring1[0], 'a neighbour');
+    b.own(back, 1);
+    return back;
+  };
+
+  test("the defenders' host is the quarry's and his companions': theirs are the losses, and they rout together", () => {
+    const { b, c, q } = together(1, 12, 1);
+    const back = aFallBack(b);
+    const friend = hero(b, { player: 1, at: b.X, troops: 1, quality: 'Green' });
+    const bystander = hero(b, { player: 1, at: back, troops: 0 });
+    dice(0.5, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect(allText(b)).toContain(`${c.name}'s forces defeat ${q.name}.`);
+    expect({
+      armies: [c.armies.length, q.armies.length, friend.armies.length],
+      where: [q.location, friend.location],
+      inX: b.X.characters,
+      inBack: back.characters,
+    }).toEqual({
+      armies: [12, 0, 0],
+      where: [back.id, back.id],
+      inX: [c.id],
+      inBack: [bystander.id, q.id, friend.id],
+    });
+  });
+
+  test("both hosts cut down: each side's fallen companies are taken off, and the hunter, left standing, claims the ground", () => {
+    const { b, c, q } = together(1, 12, 1);
+    dice(0, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([
+      facts(b).find((f) => f['kind'] === "the onlookers' summary of a battle")?.['won'],
+      c.armies.length,
+      q.armies.length,
+      b.X.owner,
+    ]).toEqual([true, 0, 0, 0]);
+  });
+
+  test("won, but the quarry's trapped host still stands: the ground is contested, not claimed", () => {
+    const { b, c, q } = together(1, 4, 5, 'Green');
+    dice(0.6, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([
+      facts(b).find((f) => f['kind'] === "the onlookers' summary of a battle")?.['won'],
+      c.armies.length,
+      q.armies.length,
+      b.X._battleUnresolved,
+      b.X.owner,
+      kinds(b).includes('a chaser claims the province for his realm'),
+    ]).toEqual([true, 4, 5, true, 1, false]);
+  });
+
+  test("won, with a neutral quarry's trapped host still standing on unowned ground: contested, not claimed", () => {
+    const { b, c, q } = together(null, 4, 5, 'Green');
+    b.own(b.X, null);
+    dice(0.6, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([
+      facts(b).find((f) => f['kind'] === "the onlookers' summary of a battle")?.['won'],
+      q.armies.length,
+      b.X._battleUnresolved,
+      b.X.owner,
+      kinds(b).includes('a chaser claims the province for his realm'),
+    ]).toEqual([true, 5, true, null, false]);
+  });
+
+  test('a quarry slain in the duel before the battle stays where he fell', () => {
+    const { b, c, q } = together(1, 12, 1);
+    aFallBack(b);
+    Object.assign(q, { hp: 6, maxHp: 6, temper: 'Reckless', skills: { melee: 0 } });
+    c.skills['melee'] = 9;
+    q['encounterPlan'] = { tactics: ['ME'], notes: '', duelStance: 'accept' };
+    c['encounterPlan'] = { tactics: ['ME'], notes: '', duelStance: 'challenge' };
+    dice(0, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([q.alive, q.location, kinds(b).includes("the duel's loser is slain")]).toEqual([false, b.X.id, true]);
+  });
+
+  test("unowned ground its neutral defenders hold isn't claimed; with none, it is", () => {
+    const claimed = (withNeutrals: boolean) => {
+      const { b, c } = together(1, 12, 1);
+      b.own(b.X, null);
+      aFallBack(b);
+      if (withNeutrals)
+        b.X.neutralDefenders = [
+          { type: 'Shieldwall Levies', quality: 'Green', race: 'Human', unitName: 'the Old Watch' },
+        ];
+      dice(0, () => {
+        advancePursuit(b.tc, c, PH);
+      });
+      return [b.X.owner, kinds(b).includes('a chaser claims the province for his realm')];
+    };
+    expect([claimed(true), claimed(false)]).toEqual([
+      [null, false],
+      [0, true],
+    ]);
+  });
+
+  test("a leaderless host of the quarry's realm with units left holds the ground; one with none doesn't", () => {
+    const held = (units: number) => {
+      const { b, c } = together(1, 12, 1);
+      aFallBack(b);
+      Object.assign(hero(b, { player: 1, at: b.X, troops: units }), { alive: false, _leaderlessHost: true });
+      dice(0, () => {
+        advancePursuit(b.tc, c, PH);
+      });
+      return [b.X.owner, b.X._battleUnresolved ?? null, kinds(b).at(-1)];
+    };
+    expect([held(1), held(0)]).toEqual([
+      [1, true, 'a chaser carries the field but the province is still held'],
+      [0, null, 'a chaser claims the province for his realm'],
+    ]);
+  });
+
+  test("hulls left ashore hold the province: the line names them, whose they are and the hunter's realm", () => {
+    const { b, c } = together(1, 12, 1);
+    aFallBack(b);
+    b.X.garrisonArmies = [
+      { type: 'Galleon Fleet', quality: 'Green', race: 'Human', unitName: 'the Grey Hulls', _navalHold: 1 },
+    ];
+    dice(0, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([b.X.owner, b.X._battleUnresolved, facts(b).slice(-2)]).toEqual([
+      1,
+      true,
+      [
+        {
+          kind: 'a chaser carries the field but the province is still held',
+          heroName: c.name,
+          provinceName: b.X.name,
+          onlyItsGarrisonHolds: false,
+        },
+        {
+          kind: 'hulls left ashore still hold a province against its claimant',
+          holdersRealmName: b.G.players[1]?.name,
+          units: [{ unitName: 'the Grey Hulls', type: 'Galleon Fleet', quality: 'Green' }],
+          provinceName: b.X.name,
+          claimantName: b.G.players[0]?.name,
+        },
+      ],
+    ]);
+  });
+
+  test("an Evil hunter's claim is plundered by his doctrine", () => {
+    const { b, c } = together(1, 12, 1);
+    aFallBack(b);
+    const realm0 = must(b.G.players[0], 'realm 0');
+    Object.assign(realm0, { alignment: 'Evil', discoveries: [] });
+    b.X['tax'] = 2; // half of it plundered
+    const gold = Number(realm0['gold']);
+    dice(0, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([b.X['_evilConqTurn'], Number(realm0['gold']) - gold, kinds(b).at(-1)]).toEqual([
+      b.G.turn,
+      1,
+      "an Evil conqueror's forces plunder a province",
+    ]);
+  });
+});
+
+describe('an unarmed hunter: the pickets counted, a hunter with no plan, a neutral who escapes the end (P1-10b34)', () => {
+  test("a spectral double in the quarry's camp isn't counted among its companies", () => {
+    const b = fresh();
+    const c = hero(b, { player: 0, at: b.X, troops: 0, skills: { spy: 9, melee: 3 } });
+    const q = hero(b, { player: 1, at: b.X, troops: 3, skills: { spy: 0, melee: 1, tactical: 0 } });
+    must(q.armies[0], 'his first company')['_phantom'] = true;
+    chase(c, q);
+    dice(0, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    const roll = b.tc.turnLog
+      .map((l) => l['fact'] as Record<string, unknown>)
+      .find((f) => f['kind'] === "a lone challenger rolls to break the ranks of his quarry's camp");
+    expect(roll?.['unitCount']).toBe(2);
+  });
+
+  test('a hunter with no plan of his own fights with his sword (Melee)', () => {
+    const b = fresh();
+    const c = hero(b, { player: 0, at: b.X, troops: 0, skills: { spy: 9, melee: 3 } });
+    const q = hero(b, { player: 1, at: b.X, troops: 0, skills: { spy: 0, melee: 1 } });
+    chase(c, q);
+    dice(0, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    const kinds = b.tc.turnLog.map((l) => (l['fact'] as { kind: string }).kind);
+    expect([c['encounterPlan'], kinds.slice(2, 7)]).toEqual([
+      undefined,
+      [
+        'the attacker meets the defender in a personal encounter',
+        'one fighter has the initiative',
+        'a fighter advances and the combatants close',
+        'a fighter advances and the combatants close',
+        'a fighter attacks with a roll to hit',
+      ],
+    ]);
+  });
+
+  test('a neutral quarry who escapes the end, beaten, lives on at 1 HP', () => {
+    const b = fresh();
+    const c = hero(b, { player: 0, at: b.X, troops: 0, skills: { spy: 9, melee: 9 } });
+    const q = hero(b, { player: null, at: b.X, troops: 0, hp: 1, skills: { spy: 0, melee: 0 } });
+    q['_unkillable'] = true;
+    chase(c, q);
+    dice(0, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([q.hp, q.alive, b.tc.turnLog.map((l) => (l['fact'] as { kind: string }).kind).at(-1)]).toEqual([
+      1,
+      true,
+      'the wanderer slips a killing blow',
+    ]);
+  });
+
+  test("closing on the quarry, a realm already among the province's visitors is listed once", () => {
+    const b = fresh();
+    b.own(b.X, 1);
+    const A = must(b.ring1[0], 'a neighbour');
+    const c = hero(b, { player: 0, at: A, troops: 0, skills: { spy: 9 } });
+    const q = hero(b, { player: 1, at: b.X, troops: 0 });
+    chase(c, q);
+    b.X.visitedBy = [0];
+    dice(0.999, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([c.location, b.X.visitedBy]).toEqual([b.X.id, [0]]);
   });
 });

@@ -19,6 +19,8 @@
 // - noteEntered and flushIntrusionNotifications: staged cases (the one line per sighting, its seasons as a range).
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The matrix runs
 // all of them (updateProvinceMemory too, which has no test here: what a realm remembers is the turn report's, P1-12).
+// Since P1-10b34 (the file freed of its ts-nocheck line), staged: a hero with no order this phase (none at all, or none
+// in this phase's slot) intends a Defend and acts in its tier, after a mover however quick he is.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
@@ -612,5 +614,48 @@ describe('province bookkeeping', () => {
         '[Intelligence] A hero of Realm A (Hero 1) shared Highmere with your forces during Spring, Late Summer. Their strength shifted — most recently (Late Summer) leading a great host.',
       ],
     ]);
+  });
+});
+
+// ── P1-10b34: the lines of the pipeline no game of the balance matrix reaches, each on the value it had before ──
+describe('a hero with no order this phase (P1-10b34)', () => {
+  /** Hero 1 (realm 0, the quicker: March 3) and hero 2 (realm 1), side by side, each with a Move this phase; then hero
+   *  1's orders taken away as `orders` says: all of them, or this phase's alone. */
+  const stageTwo = (orders: 'none at all' | 'none this phase') => {
+    const hero = {
+      troops: 1,
+      alive: true,
+      hiredInPhase: undefined,
+      defend: false,
+      action: 'Move',
+      toHero: 0,
+      absolute: true,
+    };
+    const s = stage({
+      heroes: [
+        { ...hero, player: 0, location: 0, skills: { march: 3, melee: 0, tactical: 0 }, toProv: 1 },
+        { ...hero, player: 1, location: 2, skills: { march: 0, melee: 0, tactical: 0 }, toProv: 3 },
+      ],
+      owner: [0, null, 1, null],
+      ph: 2,
+    });
+    const turnOrders = (s.tc.G as unknown as { turnOrders: Record<number, (Order | null)[]> }).turnOrders;
+    if (orders === 'none at all') delete turnOrders[1];
+    else turnOrders[1] = [null, null, null, null, null];
+    return s;
+  };
+  test('his intent holds no order, read as a Defend', () => {
+    for (const orders of ['none at all', 'none this phase'] as const) {
+      const { tc } = stageTwo(orders);
+      const it = buildPhaseIntents(tc, 2).get(1);
+      expect([orders, it?.order, it?.action, it?.toId]).toEqual([orders, null, 'defend', null]);
+    }
+  });
+  test('he acts in the Defend tier, after a mover however quick he is', () => {
+    const { tc, characters } = stageTwo('none at all');
+    const [one, two] = characters;
+    if (!one || !two) throw new Error('the two heroes are staged');
+    const cmp = phaseInitCompare(tc, 2);
+    expect([Math.sign(cmp(one, two)), Math.sign(cmp(two, one))]).toEqual([1, -1]);
   });
 });
