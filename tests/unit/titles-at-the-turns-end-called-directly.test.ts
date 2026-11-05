@@ -7,7 +7,8 @@
 // replaced in the vm by a recorder for the test's length), what they hand them and when, and where resolveTurn calls
 // them; then what the whole turn can't stage: the standings failing, a save with no turn, realms with no name or no
 // record of whom they have met, heroes and provinces the map doesn't place, the dice of the Loremaster's copy in turn,
-// the dead a realm saw fall this turn, every act the Spymaster's ledger can hold, titles held by nobody's hero. Properties
+// the dead a realm saw fall this turn, every act the Spymaster's ledger can hold, titles held by nobody's hero; and the
+// standings, the title race, the minor titles, a hero's bonuses and the Reckoning on plain worlds. Properties
 // (fast-check): the Throne tells its holder its own share and exactly each realm it has met, and how many it hasn't;
 // the Loremaster copies exactly one fresh discovery a met realm holds and the holder lacks, or none; the Archmage names
 // the foremost mage of each school it may; a title is won only by its holder's realm and lost only by the realm that
@@ -36,7 +37,12 @@
 // mapped and a missing one; the beast censuses past the fallen, gaps, other realms' ground and a hero with no companies
 // list; title changes for a hero the roll no longer has, a realm missing from the list, a hero of no realm, a title a
 // save records held by a realm and no hero, a hero who changes realms holding his title, a realm with no living king
-// taking or holding a realm's title. Properties (fast-check): the Throne goes to the first realm of the largest tax
+// taking or holding a realm's title; and the lines no matrix game reaches (P1-10b35): a met realm of no name and heroes
+// and provinces of none on every title's board, a world with no roll of heroes, graveyard, provinces, ledger or record
+// of the titles, a holder of no tax base, a gap among the provinces, a garrison with no companies list; the standings,
+// the title race, the minor titles, a hero's bonuses and the Reckoning's reads on plain worlds that lack a part (a
+// legendary relic's point, a hero of a realm the list doesn't hold, a bot's claim with no bots, turn or heroes).
+// Properties (fast-check): the Throne goes to the first realm of the largest tax
 // base and tells it its own share rounded down, each realm it met rounded and how many it hasn't; the Loremaster copies
 // exactly the fresh discovery the die picks of those a met realm holds and it lacks, or none; the Archmage names, per
 // school, the living mage of the highest level outside its realm, of a met realm or none, the most skilled of equals,
@@ -725,6 +731,382 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
     const o = withMinor(b, { swift: { charId: 99, playerIndex: null } });
     expect([gains(o), losses(o)]).toEqual([{}, {}]);
   });
+
+  // ── The lines no matrix game reaches (plan P1-10b35: the two files freed of their ts-nocheck line) ──
+  test('a met realm with no name is “Player <n>” on every title’s board, and a hero standing nowhere or a province of no name is in “unknown”', () => {
+    const b = fresh();
+    firstPublic(b);
+    allMet(b);
+    realm(b, 1).name = '';
+    realm(b, 2).name = '';
+    const theirs = deeds(titled(b, 1, seatOf(b, 1), { white: 2 }, [men('A'), fleet('B'), troll('C'), bear('D')]), {
+      monster: 3,
+    });
+    theirs.location = 9999;
+    const ours = deeds(titled(b, 0, seatOf(b, 0), {}, [fleet('E')]), { monster: 2 });
+    ours.location = 9999;
+    realm(b, 1)['discoveries'] = [disc('sd04', 1)];
+    realm(b, 2)['discoveries'] = [];
+    const fell = fallenHero(b, 1, seatOf(b, 1), { killedOnTurn: b.G.turn });
+    realm(b, 0)['seenDeadHeroIds'] = [fell.id];
+    const home = seatOf(b, 0);
+    home.name = '';
+    home['battleGraves'] = [{ type: 'Men-at-Arms', quality: 'Elite', race: 'Human', unitName: 'G' }];
+    G(b)['_espionageLedger'] = [
+      { byPi: 1, charId: theirs.id, charName: theirs.name, isKing: false, provId: home.id, kind: 'spied' },
+    ];
+    const o = withStandings(b, Object.fromEntries(MAJOR_KEYS.map((k) => [k, 1])));
+    const shown = (t: string) =>
+      [
+        [theirs.name, 'THEIRS'],
+        [ours.name, 'OURS'],
+        [fell.name, 'FELL'],
+        [seatOf(b, 1).name, 'THEIR SEAT'],
+        ['Player 2', 'SEAT TWO'],
+        ['Player 3', 'SEAT THREE'],
+      ]
+        .reduce((x, [from = '', to = '']) => x.replaceAll(from, to), t)
+        .replace(/\d+/g, '#');
+    expect(
+      said(o)
+        .map(([, t]) => shown(t))
+        .filter((t) => /SEAT T|unknown/.test(t)),
+    ).toEqual([
+      '[The Throne] SEAT TWO: #% of the world tax base.',
+      '[The Throne] SEAT THREE: #% of the world tax base.',
+      '[The Vaultkeeper] SEAT TWO: #g in treasury.',
+      '[The Vaultkeeper] SEAT THREE: #g in treasury.',
+      '[The Grand Marshal] SEAT TWO: strongest land army led by THEIRS in unknown (strength #).',
+      '[The Sea Lord] Your realm: strongest fleet led by OURS in unknown (strength #).',
+      '[The Sea Lord] SEAT TWO: strongest fleet led by THEIRS in unknown (strength #).',
+      '[The Monster-Bane] Your champion: OURS in unknown with # monster-blood to their name.',
+      '[The Monster-Bane] SEAT TWO: THEIRS in unknown — # monster-blood.',
+      '[The Loremaster] SEAT TWO holds # discovery: Signal Fires.',
+      '[The Loremaster] SEAT THREE holds no discoveries at all.',
+      '[The Archmage] White: THEIRS (Level #) of SEAT TWO in unknown.',
+      '[The Hierophant] The dead speak: FELL of SEAT TWO lying in THEIR SEAT — no skills the grave remembers.',
+      '[The Deathpriest] Grave-sight: unknown holds # crack/elite dead. (Filed under Graveyards Known.)',
+      '[The Spymaster] THEIRS of SEAT TWO spied in unknown.',
+      '[The Spymaster] # intrusion into your lands this turn by # hero: THEIRS (SEAT TWO).',
+      '[The Cartographer] SEAT TWO: # province fully charted, #% of the world mapped.',
+      '[The Cartographer] SEAT THREE: # province fully charted, #% of the world mapped.',
+      '[The Beastlord] SEAT TWO: # monster unit under arms, the largest host — # — with THEIRS in unknown.',
+      '[The Beastlord] SEAT THREE: no monsters under arms.',
+      '[The Wildwarden] SEAT TWO: # creature unit in the field, the greatest host — # — with THEIRS in unknown.',
+      '[The Wildwarden] SEAT THREE: the wild answers to no one here.',
+    ]);
+  });
+
+  test('a world with no roll of heroes and no graveyard: no title finds a hero, a mage, a host or a fallen hero, and a title held by no hero is won with no name', () => {
+    const b = fresh();
+    firstPublic(b);
+    allMet(b);
+    delete (b.G as unknown as Raw)['characters'];
+    delete (b.G as unknown as Raw)['heroGraveyard'];
+    const o = withStandings(b, Object.fromEntries(MAJOR_KEYS.map((k) => [k, 1])));
+    const of = (title: string) => intel(o, title).map(([, t]) => t);
+    expect([
+      ...of('The Grand Marshal'),
+      ...of('The Sea Lord'),
+      ...of('The Monster-Bane'),
+      ...of('The Archmage').slice(0, 1),
+      ...of('The Hierophant'),
+      ...of('The Beastlord').slice(0, 1),
+      ...of('The Wildwarden').slice(0, 1),
+    ]).toEqual([
+      '[The Grand Marshal] Your realm: no land army in the field.',
+      '[The Grand Marshal] No rival fields a land army this turn.',
+      '[The Sea Lord] Your realm: no fleet at sea.',
+      '[The Sea Lord] No rival fields a fleet this turn.',
+      '[The Monster-Bane] Your champion: no hero of yours has drawn monster-blood.',
+      '[The Monster-Bane] No rival realm has a hero who has drawn monster-blood worth noting.',
+      '[The Archmage] White: no mage of note outside your own realm.',
+      '[The Hierophant] No fallen hero lies where your priests can read them this turn.',
+      '[The Beastlord] Your realm: no monsters under arms.',
+      '[The Wildwarden] Your realm: the wild answers to no one here.',
+    ]);
+    expect(((gains(o) as Record<string, Raw[]>)[0] ?? []).map((g) => [g['key'], g['charName']])).toEqual(
+      MAJOR_KEYS.map((k) => [k, null]),
+    );
+  });
+
+  test('a world with no list of provinces: a commander is in “unknown”, and Grave-sight finds no dead', () => {
+    const b = fresh();
+    firstPublic(b);
+    const m = titled(b, 0, seatOf(b, 0), { tactical: 1 }, [men('A')]);
+    m.location = 0;
+    kingOf(b, 0).location = 0;
+    delete (b.G.world as unknown as Raw)['provinces'];
+    const o = withStandings(b, { marshal: 1, necro: 1 });
+    expect([intel(o, 'The Grand Marshal')[0]?.[1], intel(o, 'The Deathpriest').map(([, t]) => t)]).toEqual([
+      expect.stringMatching(
+        /^\[The Grand Marshal\] Your realm: strongest land army led by .+ in unknown \(strength \d+\)\.$/,
+      ),
+      ['[The Deathpriest] Grave-sight finds no crack or elite dead lying unclaimed this turn.'],
+    ]);
+  });
+
+  test('standings with no record of the titles tell nothing and keep no holder; standings that leave a title out keep it vacant', () => {
+    const run = (titles: unknown) => {
+      const b = fresh();
+      firstPublic(b);
+      const real = engine['computeStandings'] as Fn;
+      let o: Outcome | undefined;
+      standIn(
+        b,
+        ['computeStandings'],
+        () => {
+          o = after(b);
+        },
+        { computeStandings: (st: unknown) => ({ ...(real(st) as Raw), titles }) },
+      );
+      return must(o, 'the outcome');
+    };
+    const none = run(undefined);
+    expect([said(none), snapshot(none)?.['major']]).toEqual([[], {}]);
+    const left = run({});
+    const majorGains = Object.values(gains(left) as Record<string, Raw[]>)
+      .flat()
+      .filter((g) => g['scope'] === 'major');
+    expect([said(left), majorGains, Object.values(snapshot(left)?.['major'] as Raw)]).toEqual([
+      [],
+      [],
+      MAJOR_KEYS.map((k) => ({ charId: null, playerIndex: null, kingdomLevel: k === 'throne' || k === 'vault' })),
+    ]);
+  });
+
+  test('the Throne held by a realm with no tax base: its own share is 0%', () => {
+    const b = fresh();
+    firstPublic(b);
+    taxes(b, 0, 5, 2);
+    const o = withStandings(b, { throne: 1 });
+    expect(intel(o, 'The Throne')[0]?.[1]).toBe('[The Throne] Your realm: 0% of the world tax base.');
+  });
+
+  test('the Hierophant with no record of the dead it saw fall reads none lying out of its sight; its own fallen hero with no skills record carried none', () => {
+    const b = fresh();
+    firstPublic(b);
+    holdsOnly0(b);
+    titled(b, 0, b.X, { white: 1 });
+    delete realm(b, 0)['seenDeadHeroIds'];
+    const far = fallenHero(b, 1, ring2(b, 3), { killedOnTurn: b.G.turn });
+    const own = fallenHero(b, 0, ring2(b, 4), { killedOnTurn: b.G.turn });
+    (G(b)['heroGraveyard'] as Raw[]).forEach((g) => {
+      if (g['id'] === far.id) g['id'] = 3;
+      if (g['id'] === own.id) delete g['skills'];
+    });
+    expect(intel(after(b), 'The Hierophant').map(([, t]) => t)).toEqual([
+      `[The Hierophant] The dead speak: ${own.name} of ${nameOf(b, 0)} lying in ${ring2(b, 4).name} — no skills the grave remembers.`,
+    ]);
+  });
+
+  test('Grave-sight reads on past a gap in the list of provinces', () => {
+    const b = fresh();
+    firstPublic(b);
+    titled(b, 0, seatOf(b, 0), { necromancy: 1 });
+    const ps = b.G.world.provinces as unknown as (Raw | null)[];
+    const last = must(ps.at(-1), 'the last province');
+    last['battleGraves'] = [{ type: 'Men-at-Arms', quality: 'Crack', race: 'Human', unitName: 'C' }];
+    const k = ps.findIndex((p) => p !== null && p['owner'] == null && (p['characters'] as unknown[]).length === 0);
+    const gone = ps[k] ?? null;
+    ps[k] = null;
+    const o = after(b);
+    ps[k] = gone;
+    expect(k).toBeLessThan(ps.length - 1);
+    expect(intel(o, 'The Deathpriest').map(([, t]) => t)).toEqual([
+      `[The Deathpriest] Grave-sight: ${String(last['name'])} holds 1 crack/elite dead. (Filed under Graveyards Known.)`,
+    ]);
+  });
+
+  test('the Spymaster with no ledger kept this turn: a quiet turn', () => {
+    const b = fresh();
+    firstPublic(b);
+    delete G(b)['_espionageLedger'];
+    expect(intel(withStandings(b, { spy: 1 }), 'The Spymaster').map(([, t]) => t)).toEqual([
+      '[The Spymaster] Your counter-intelligence reports a quiet turn — no hand was raised against your lands.',
+    ]);
+  });
+
+  test('the Beastlord and the Wildwarden count no beast in a garrison or a hero with no list of companies', () => {
+    const b = fresh();
+    firstPublic(b);
+    delete (seatOf(b, 0) as unknown as Raw)['garrisonArmies'];
+    delete (kingOf(b, 0) as unknown as Raw)['armies'];
+    const o = withStandings(b, { beast: 1, wild: 1 });
+    expect([intel(o, 'The Beastlord')[0]?.[1], intel(o, 'The Wildwarden')[0]?.[1]]).toEqual([
+      '[The Beastlord] Your realm: no monsters under arms.',
+      '[The Wildwarden] Your realm: the wild answers to no one here.',
+    ]);
+  });
+});
+
+// ── The standings, the title race, the minor titles, a hero's bonuses and the Reckoning on worlds no game holds ──────
+// (plan P1-10b35: titles/reckoning.ts freed of its ts-nocheck line, each called on a plain world in the vm)
+const standingsOf = engineFn(engine, 'computeStandings') as Fn;
+const raceFor = engineFn(engine, 'titleRaceFor') as Fn;
+const minorOf = engineFn(engine, 'computeMinorTitles') as Fn;
+const bonusesOf = engineFn(engine, 'extraSkillBonuses') as Fn;
+const blocOf = engineFn(engine, 'alliedBloc') as Fn;
+const thresholdOf = (n: number, decay: number, bloc: number) =>
+  vm.runInContext(`reckoningThreshold(${String(n)}, ${String(decay)}, ${String(bloc)})`, engine) as number;
+/** A living hero of realm `player` (or none) as the titles count him, with `extra` (no skill, deed or item but those). */
+const plainHero = (id: number, player: number | null, extra: Raw = {}) => ({
+  id,
+  name: 'Plain ' + String(id),
+  player,
+  alive: true,
+  isKing: false,
+  race: 'Human',
+  alignment: 'Good',
+  maxHp: 0,
+  merits: 0,
+  skills: {},
+  ...extra,
+});
+/** Two realms, realm 1 holding the world's one taxed province and a living king: on turn 12, its claim is ripe. */
+const ripe = (): Raw => ({
+  turn: 12,
+  players: [{ name: 'A' }, { name: 'B' }],
+  relations: {},
+  world: { provinces: [{ owner: 1, tax: 10 }] },
+  characters: [plainHero(1, 1, { isKing: true })],
+});
+describe('The standings and the Reckoning on worlds no game holds', () => {
+  test('a world with no realms, heroes or provinces stands empty; a gap among the realms, and a realm of no name, colour, creed or gold', () => {
+    const none = standingsOf({}) as Raw;
+    expect([none['standings'], none['taxByPlayer'], none['worldTax'], none['goldByPlayer'], none['relics']]).toEqual([
+      [],
+      [],
+      0,
+      [],
+      [],
+    ]);
+    const odd = standingsOf({ players: [null, { name: '', color: '', alignment: '', gold: 0 }] }) as Raw;
+    const row = (index: number) => ({ index, name: `Realm ${String(index + 1)}`, color: null, alignment: null });
+    expect([odd['standings'], odd['taxByPlayer'], odd['worldTax'], odd['goldByPlayer']]).toEqual([
+      [0, 1].map((i) => ({ ...row(i), score: 0, titles: [], relics: 0 })),
+      [0, 0],
+      0,
+      [0, 0],
+    ]);
+  });
+
+  test('a legendary relic a hero of a realm carries scores its realm a point and is counted; a hero with no pack carries none', () => {
+    const relic = vm.runInContext('ITEMS_BY_TIER[4][0].name', engine) as string;
+    const s = standingsOf({
+      players: [{ name: 'A' }, { name: 'B' }],
+      characters: [
+        plainHero(1, 0, { items: [{ name: relic }] }),
+        plainHero(2, 1),
+        plainHero(3, null, { items: [{ name: relic }] }),
+      ],
+    }) as Raw;
+    expect([s['relics'], (s['standings'] as Raw[]).map((r) => [r['score'], r['relics']])]).toEqual([
+      [{ item: relic, charId: 1, playerIndex: 0 }],
+      [
+        [1, 1],
+        [0, 0],
+      ],
+    ]);
+  });
+
+  test('a title won by a hero of a realm the list doesn’t hold leaves the standings unworked: a TypeError', () => {
+    let thrown = '';
+    try {
+      standingsOf({ players: [{ name: 'A' }], characters: [plainHero(1, 5, { skills: { tactical: 3 } })] });
+    } catch (e) {
+      thrown = String(e);
+    }
+    expect(thrown).toMatch(/^TypeError/);
+  });
+
+  test('the title race on standings that lack a part: no titles, no merit, no treasuries, no heroes’ merits, a realm past the lists', () => {
+    const race = (state: Raw, st: Raw, pi: number) => raceFor(state, st, pi) as Record<string, Raw>;
+    const bare = race({}, {}, 0);
+    expect(Object.values(bare)).toEqual(
+      Array.from({ length: MAJOR_KEYS.length }, () => ({
+        charName: null,
+        vacant: true,
+        mine: false,
+        pct: null,
+        leadPct: null,
+        unchallenged: false,
+      })),
+    );
+    const held = { playerIndex: 1, merit: 10 };
+    const lacking = race(
+      { characters: [plainHero(1, 0)] },
+      {
+        titles: { throne: { playerIndex: 1 }, vault: held, sea: { playerIndex: 1, merit: 0 }, marshal: held },
+        taxByPlayer: [5, 9],
+      },
+      0,
+    );
+    const past = race(
+      { characters: [plainHero(1, 0)] },
+      { titles: { throne: held, marshal: held }, taxByPlayer: [], goldByPlayer: [], perChar: {} },
+      0,
+    );
+    expect(
+      [lacking['throne'], lacking['vault'], lacking['sea'], lacking['marshal'], past['throne'], past['marshal']].map(
+        (r) => [r?.['pct'], r?.['charName']],
+      ),
+    ).toEqual([
+      [0, null],
+      [0, null],
+      [0, null],
+      [0, null],
+      [0, null],
+      [0, null],
+    ]);
+  });
+
+  test('the minor titles of heroes with no companies or items list, and a king of a world with no provinces: none but the Colossus', () => {
+    expect(minorOf({})).toEqual({});
+    const held = minorOf({ characters: [plainHero(1, 0, { isKing: true, maxHp: 20 })] }) as Raw;
+    expect(Object.keys(held)).toEqual(['colossus']);
+  });
+
+  test('a hero’s bonuses: the minor titles handed, else the turn’s, else none; a realm’s discoveries only where the world lists realms', () => {
+    const hero = { id: 1, player: 0 };
+    const duel = { duelist: { charId: 1 } };
+    expect(Object.keys(bonusesOf(hero, { _minorHolders: duel }, { swift: { charId: 1 } }) as Raw)).toEqual(['march']);
+    expect(Object.keys(bonusesOf(hero, { _minorHolders: duel }, null) as Raw)).toEqual(['melee']);
+    expect([bonusesOf(hero, null, null), bonusesOf(hero, {}, null)]).toEqual([{}, {}]);
+  });
+
+  test('the Reckoning’s reads of a world with no list of realms or of relations, and of a realm past the list', () => {
+    expect([blocOf({ players: [{}, {}, {}] }, 0), blocOf({ relations: { '0-1': 'allied' } }, 0)]).toEqual([[0], [0]]);
+    const w = { players: [{}, {}, {}], relations: { '0-1': 'allied' }, world: { provinces: [{ owner: 0, tax: 10 }] } };
+    const share = engineFn(engine, 'reckoningBlocShare') as Fn;
+    const own = engineFn(engine, 'reckoningOwnShare') as Fn;
+    const thresholdFor = engineFn(engine, 'reckoningThresholdFor') as Fn;
+    expect([share(w, 9), own(w, 9), share(w, 0), own(w, 1)]).toEqual([0, 0, 1, 0]);
+    expect([thresholdFor({ ...w, reckoningDecaySteps: 1 }, 0), thresholdFor({}, 0)]).toEqual([
+      thresholdOf(3, 1, 2),
+      thresholdOf(0, 0, 1),
+    ]);
+    const eligibility = engineFn(engine, 'reckoningCallEligibility') as Fn;
+    expect(eligibility({}, 0)).toMatchObject({ ok: false, reason: 'tooEarly', threshold: thresholdOf(0, 0, 1) });
+  });
+
+  test('a bot’s claim: none with no bots, no set of claims, no turn or no roll of heroes; a gap in the roll skipped', () => {
+    const run = (G: Raw, bots: Set<number> | null, calls: Set<number> | null) => {
+      (engineFn(engine, 'runBotReckoning') as Fn)(G, bots, calls);
+      return calls ? [...calls] : null;
+    };
+    const noTurn = { ...ripe(), turn: undefined };
+    const { characters, ...noHeroes } = ripe();
+    expect([
+      run(ripe(), new Set([1]), new Set()),
+      run(ripe(), null, new Set()),
+      run(ripe(), new Set(), new Set()),
+      run(ripe(), new Set([1]), null),
+      run(noTurn, new Set([1]), new Set()),
+      run(noHeroes, new Set([1]), new Set()),
+      run({ ...ripe(), characters: [null, ...(characters as Raw[])] }, new Set([1]), new Set()),
+    ]).toEqual([[1], [], [], null, [], [], [1]]);
+  });
 });
 
 // ── Properties ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -960,6 +1342,8 @@ describe('The titles at the turn’s end: properties', () => {
 // ── Helpers for what only a direct call stages ───────────────────────────────────────────────────────────────────
 const troll = (n: string) => ({ type: 'Cave Trolls', quality: 'Average', race: 'Human', unitName: n });
 const bear = (n: string) => ({ type: 'Great Bears', quality: 'Average', race: 'Human', unitName: n });
+const fleet = (n: string) => ({ type: 'Galleon Fleet', quality: 'Average', race: 'Human', unitName: n });
+const men = (n: string) => ({ type: 'Men-at-Arms', quality: 'Average', race: 'Human', unitName: n });
 const holdsOnly0 = (b: Board) => {
   b.own(b.X, 0);
 };

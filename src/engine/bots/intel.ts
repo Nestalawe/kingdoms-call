@@ -635,6 +635,6 @@ export function botMutualFoe(G, pi, j) {
   }
   return false;
 }
-export function botConceded(G, pi) {
+export function botConceded(G, pi): boolean {
   return !!((G.players || [])[pi] || {}).conceded;
 }

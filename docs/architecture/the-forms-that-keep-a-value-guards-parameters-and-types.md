@@ -39,7 +39,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A `try` whose `catch` gave a value where a missing element threw** checks for none first inside the `try`, with
   the same value (`if (!g) return 0;`, `takeBestGrave`).
 - **Arguments a function never reads, after the ones it reads** (a closure handed the winner's force and the winner
-  beside the loser's), are dropped from the call where each is a plain read: the same call, the same values.
+  beside the loser's), are dropped from the call where each is a plain read: the same call, the same values. A last
+  parameter no caller hands and the body never reads (a hero's merit's `ctx`) goes from the signature.
 - **A value read by nothing, kept alive by `void x;`** (lint's `no-meaningless-void-operator`) or held by a `const`
   nobody reads (lint's `no-unused-vars`): a pure one goes (a count, a product, a name destructured and never read); one
   a call gives keeps the call as a bare statement (`effStat(…);`, `armyTotalStr(…);`), its reads and writes as they
@@ -153,7 +154,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A saved record the code writes a missing value into** (a realm's memory of a province, its owner's name where the
   index names no realm) is written through a local view of the same record whose field allows `undefined`
   (`AProvinceAsItIsRemembered`): the saved schema is unchanged. So is one the code writes a plain number into where
-  the schema holds a brand (a monarch's grave's resting place, `AMonarchsGraveAsItIsWritten`).
+  the schema holds a brand (a monarch's grave's resting place, `AMonarchsGraveAsItIsWritten`), and one keyed by a
+  closed set that the code fills by any key, or leaves empty (the titles' snapshot when the standings fail; a title
+  won by a realm the list doesn't name: `TheTitlesRecordAsTheChangesWriteIt`).
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does.
 - **A line rewritten in place by its index** (`narrative[i].whatBecomesOfTheProvince = …`, the battle's outcome held by
