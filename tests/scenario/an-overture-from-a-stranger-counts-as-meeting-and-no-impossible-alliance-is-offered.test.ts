@@ -47,7 +47,7 @@ async function play(n: number, relation: string) {
   const orders = (pi: number) =>
     JSON.stringify({ orders: {}, encounterPlans: {}, forTurn: G.turn, diplomacy: pi === 0 ? { 1: 'treat' } : {} });
   const rows = setup.map((sp) => {
-    const id = Number(sp['id']);
+    const id = Number(sp.id);
     return {
       id: sp.gamePlayerId,
       user_id: id < 2 ? 'u' + String(id) : null,

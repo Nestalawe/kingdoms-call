@@ -83,7 +83,9 @@ async function statesOf(id: string): Promise<{ states: AState[]; reportOn: (stat
       JSON.stringify(buildTurnReport(playerView(structuredClone(state) as unknown as GameState, SCRIPTED_REALM))),
     ) as Report;
   for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) kcRng();
-  const made = generateNewGame(setupsOf(spec), { ...size }, 0, { seaPct: spec.seaPct }) as Record<string, unknown>;
+  const made = generateNewGame(setupsOf(spec) as Parameters<typeof generateNewGame>[0], { ...size }, 0, {
+    seaPct: spec.seaPct,
+  }) as Record<string, unknown>;
   Object.assign(made, {
     turnMode: { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null },
     botDifficulty: 'hard',

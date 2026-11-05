@@ -393,7 +393,7 @@ interface AFeatureAsTheseRead {
   readonly monster?: AGuardianAsTheseRead | null | undefined;
 }
 interface AProvinceAsTheseRead {
-  readonly name: string;
+  readonly name: string | null;
   readonly terrain: string;
   readonly features?: readonly (AFeatureAsTheseRead | null | undefined)[] | null | undefined;
 }

@@ -45,7 +45,12 @@ const objectsIn = (o: Obj, key: string): Obj[] => {
 /** scripted-05's new world, as the matrix makes it. */
 function newWorld(): Obj {
   kcRng.seed(GAME.seed);
-  const g = generateNewGame(copyOf(SETUPS), copyOf(MAP_SIZES[GAME.realms]), 0, { seaPct: GAME.seaPct }) as Obj;
+  const g = generateNewGame(
+    copyOf(SETUPS) as Parameters<typeof generateNewGame>[0],
+    copyOf(MAP_SIZES[GAME.realms]) as Parameters<typeof generateNewGame>[1],
+    0,
+    { seaPct: GAME.seaPct },
+  ) as Obj;
   g['turnMode'] = { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null };
   g['botDifficulty'] = 'hard';
   g['botDiplomacy'] = GAME.diplomacy;

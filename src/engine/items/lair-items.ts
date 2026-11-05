@@ -35,7 +35,8 @@ type ARealmAsItsFindsAreTallied = ARealmAsItsHomeIsRead & {
 type ALairAsTheStockingReadsIt = ProvinceFeature;
 /** A province as the stocking reads it: its id, tax and place on the map, and its features (none: no lairs; a gap
  *  passed over). */
-type AProvinceAsTheStockingReadsIt = Pick<Province, 'id' | 'row' | 'col' | 'tax'> & {
+type AProvinceAsTheStockingReadsIt = Pick<Province, 'row' | 'col' | 'tax'> & {
+  readonly id: number;
   readonly features?: readonly (ALairAsTheStockingReadsIt | null | undefined)[] | null | undefined;
 };
 /** The state as the lairs' stocking and a realm's finds read it: the realms (a gap passed over), the map, the heroes

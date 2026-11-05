@@ -70,11 +70,13 @@ const must = <T>(v: T | undefined | null, what: string): T => {
 /** A new world of `realms` bot realms on a map of `cols` by `rows`, from the seed. */
 function newWorld(realms: number, cols: number, rows: number, seed = SEED): Save {
   kcRng.seed(seed);
-  const setups = (generateBotSetups([], realms, 0) as Loose[]).map((b) => ({
-    ...b,
-    gamePlayerId: 'gp' + String(b['id']),
-    name: b['kingdomName'],
-  }));
+  const setups = (generateBotSetups([], realms, 0) as (Parameters<typeof generateNewGame>[0][number] & Loose)[]).map(
+    (b) => ({
+      ...b,
+      gamePlayerId: 'gp' + String(b.id),
+      name: b.kingdomName,
+    }),
+  );
   return JSON.parse(JSON.stringify(generateNewGame(setups, { cols, rows }, 0, {}))) as Save;
 }
 const WORLD = newWorld(3, 10, 8);

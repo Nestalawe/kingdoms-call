@@ -51,6 +51,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 
 ## Lists, tables, sets and maps
 
+- **A deal from a deck the code has just filled** (`if (!d.length) d = shuffleP(cards); return d.pop()`) goes through
+  a check that throws for none (`theCardDealt`); a table literal whose every value is drawn (`{ plain: rP(4, 9), … }[t]`,
+  six dice a province) keeps its shape, typed by its key, so the same dice fall. A name drawn and read by nothing in an
+  optional chain (`T[k]?.[Math.floor(kcRng() * 5)]`) keeps its die: `if (T[k] != null) kcRng();`.
 - **A list's or a table's element read where the code has just made it sure** (`cav[i]` after `i >= 0`, one of three
   candidates sorted) is read into a `const` and checked; where the old code would have thrown there, the check throws
   the same kind of error. A die's pick from a list just found not empty goes through a reader that throws for none

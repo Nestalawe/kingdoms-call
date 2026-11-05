@@ -91,11 +91,14 @@ function worldsOf(m: TheEngine, seed: number) {
     m.kcRng.seed(seed);
     for (const [realms, cols, rows] of SIZES)
       for (let k = 0; k < WORLDS_A_SIZE; k++) {
-        const setup = (m.generateBotSetups([], realms, 0) as Record<string, unknown>[]).map((b, i) => ({
+        const setup = (
+          m.generateBotSetups([], realms, 0) as (Parameters<typeof m.generateNewGame>[0][number] &
+            Record<string, unknown>)[]
+        ).map((b, i) => ({
           ...b,
           alignment: (i + k) % 2 ? 'Evil' : 'Druidic',
-          gamePlayerId: 'gp' + String(b['id']),
-          name: b['kingdomName'],
+          gamePlayerId: 'gp' + String(b.id),
+          name: b.kingdomName,
         }));
         const S = m.generateNewGame(setup, { cols, rows }, 999, { seaPct: 25 }) as unknown as World;
         const P = S.world.provinces;

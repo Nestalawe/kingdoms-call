@@ -49,10 +49,12 @@ function quietly<T>(body: () => T): T {
 }
 
 kcRng.seed(SEED);
-const setups = (generateBotSetups([], REALMS, 0) as Record<string, unknown>[]).map((b): Record<string, unknown> => ({
+const setups = (
+  generateBotSetups([], REALMS, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
+).map((b) => ({
   ...b,
-  gamePlayerId: 'gp' + String(b['id']),
-  name: b['kingdomName'],
+  gamePlayerId: 'gp' + String(b.id),
+  name: b.kingdomName,
 }));
 // Turn 0, as the GM page makes the world (src/ui/gm/turn-zero.ts): an all-bot game, every turn run by hand
 const world = plain(quietly(() => generateNewGame(setups, MAP, 0, { seaPct: SEA_PCT }) as Save));
@@ -63,11 +65,11 @@ let save = JSON.stringify(world);
 
 // The slot rows, as the shell loads them: every realm a bot's
 const rows = setups.map((s) => ({
-  id: 'G1gp' + String(s['id']),
+  id: 'G1gp' + String(s.id),
   game_id: 'G1',
   user_id: null,
-  player_index: s['id'],
-  display_name: s['name'],
+  player_index: s.id,
+  display_name: s.name,
   orders_submitted: false,
   orders: null,
   turn_report: JSON.stringify({ isBot: true, playerSetup: {} }),

@@ -123,10 +123,12 @@ describe(`a whole game (${GAME_ID}), every report built on a world that refuses 
       });
       // The matrix's world (tests/lib/matrix-game.ts's newWorldOf, on the modules): the page's draw as it loads first.
       for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) kcRng();
-      const world = generateNewGame(setupsOf(spec), MAP_SIZES[spec.realms], 0, { seaPct: spec.seaPct }) as Record<
-        string,
-        unknown
-      >;
+      const world = generateNewGame(
+        setupsOf(spec) as Parameters<typeof generateNewGame>[0],
+        MAP_SIZES[spec.realms] as Parameters<typeof generateNewGame>[1],
+        0,
+        { seaPct: spec.seaPct },
+      ) as Record<string, unknown>;
       world['turnMode'] = { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null };
       world['botDifficulty'] = 'hard';
       world['botDiplomacy'] = spec.diplomacy;
