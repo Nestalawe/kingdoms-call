@@ -598,9 +598,8 @@ describe('Diplomacy and victory: what a whole turn cannot stage', () => {
     delete (last.G as unknown as Record<string, unknown>)['characters'];
     settle(last, [victory]);
     const conceding = fresh();
-    [1, 2].forEach((pi) => {
-      concededBefore(conceding, pi);
-    });
+    concededBefore(conceding, 2);
+    landless(conceding, 1);
     delete (conceding.G as unknown as Record<string, unknown>)['characters'];
     settle(conceding, [victory]);
     expect([
