@@ -516,6 +516,62 @@ describe('After the phases: what only a direct call can stage', () => {
     expect(calls).toEqual([]);
   });
 
+  test("a world with no roll of heroes, no list of provinces and no list of realms: the stage runs through, and a parcel and an old save's note find no one", () => {
+    const b = fresh();
+    parcel(b, 8999, [item(b, 'Iron Heart Talisman')], 'A Sender');
+    found(b).heroesCarriedOverToTheEarnedHpPool = [{ charId: 8999, player: 0, old: 80, nu: 60 }];
+    delete (b.G as Partial<Board['G']>).characters;
+    delete (b.G as Partial<Board['G']>).players;
+    delete (b.G.world as Partial<Board['G']['world']>).provinces;
+    standIn(b, HELPERS, () => after(b));
+    expect(texts(b)).toEqual([
+      '📦 A courier bearing Iron Heart Talisman from A Sender finds no one left to receive it — the parcel is lost.',
+    ]);
+  });
+
+  test('a parcel reaching a hero who holds no list of items: its items become his', () => {
+    const b = fresh();
+    const h = at(b);
+    delete (h as Partial<Character>).items;
+    parcel(b, h.id, [item(b, 'Iron Heart Talisman')]);
+    after(b);
+    expect((h.items as { name: string }[] | undefined)?.map((i) => i.name)).toEqual(['Iron Heart Talisman']);
+  });
+
+  test('Elven companies reaching a home with no list of its garrison become its garrison', () => {
+    const b = fresh();
+    const home0 = ring1(b, 0);
+    holdsOnly(b, 0, [home0, 1]);
+    seat(b, 0, home0);
+    delete (home0 as Partial<Province>).garrisonArmies;
+    (tc(b)['_elvenEscapeQueue'] as unknown[]).push({
+      player: 0,
+      unit: unit('Near Bows', 'Elven Archers', 'Average', 'Elven'),
+    });
+    standIn(b, ['flagEnemyStandoffs', 'reconcileProvinceCharacters'], () => after(b));
+    expect((home0.garrisonArmies as Unit[] | undefined)?.map((u) => u.unitName)).toEqual(['Near Bows']);
+  });
+
+  test('a fallen hero who holds no list of companies has no host to disperse', () => {
+    const b = fresh();
+    const d = at(b);
+    d.alive = false;
+    delete (d as Partial<Character>).armies;
+    const calls = standIn(b, ['disperseDeadCharArmies'], () => after(b));
+    expect(calls).toEqual([]);
+  });
+
+  test('a coward whose home has no name makes his way back to safety', () => {
+    const b = fresh();
+    holdsOnly(b, 0, [b.X, 0]);
+    seat(b, 0, b.X);
+    const c = spared(at(b, {}, { at: ring1(b, 0) }), b.G.turn);
+    delete (b.X as Partial<Province>).name;
+    standIn(b, ['abandonHostOnFlight'], () => after(b));
+    expect(c.location).toBe(b.X.id);
+    expect(texts(b)).toContain(`🏳 ${c.name}, spared on the field, makes their way back to safety.`);
+  });
+
   test('a wanderer who begged for mercy has no realm to go home to: he stays', () => {
     const b = fresh();
     holdsOnly(b, 0, [b.X, 0]);
