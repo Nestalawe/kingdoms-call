@@ -8,6 +8,9 @@
 // - --only scores the patches named; results.json and each stage's log are written; the worktrees are gone (a killed
 //   run's too) and the repository's worktree list and status are as before; node_modules is copied without .cache, and
 //   the stages run without KC_SEED; the table keeps a header's backslashes and bars inside their cell.
+// - --resume (P1-21k): a run stopped after its first patch has written results.json with that patch (and no
+//   half-written file beside it); carried on, it runs no control and scores only the rest; a patch changed since is
+//   scored again, and a result outside --only stays; another base commit, or no results.json, refuses it.
 // - The time limit, at function level: a stage that never ends is stopped, with what it started, and reads "timed
 //   out", against a limit about forty times what an ordinary stage takes here (a Node process: about 50 ms); what a
 //   command leaves running when it ends is stopped with it.
@@ -26,6 +29,7 @@ import {
   table,
   WORKTREE_PREFIX,
   type PatchResult,
+  type SavedRun,
   type StageResult,
 } from '../../tools/mutants/run.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
@@ -165,14 +169,19 @@ const env = (extra: Record<string, string> = {}): NodeJS.ProcessEnv => ({
   ...extra,
 });
 
-async function score(repo: string, args: string[], extraEnv: Record<string, string> = {}) {
+/** Runs the scorer in this process. `stopAt`: the run stops (throws) once it logs a line that starts so, as a run
+ *  killed between two patches stops. */
+async function score(repo: string, args: string[], extraEnv: Record<string, string> = {}, stopAt?: string) {
   const lines: string[] = [];
   const worktrees = path.join(tmp, `worktrees-of-${path.basename(repo)}`);
   fs.mkdirSync(worktrees, { recursive: true });
   const code = await scoreMutants(args, {
     cwd: repo,
     env: env(extraEnv),
-    log: (line) => lines.push(line),
+    log: (line) => {
+      lines.push(line);
+      if (stopAt !== undefined && line.startsWith(stopAt)) throw new Error(`stopped at: ${line}`);
+    },
     tmp: worktrees,
   });
   return { code, out: lines.join('\n'), worktrees };
@@ -317,6 +326,137 @@ describe('it stops, scoring nothing', () => {
   });
 });
 
+/** The folder's results.json as text, or '' when there is none. */
+const resultsTextIn = (folder: string): string =>
+  fs.existsSync(path.join(folder, 'results.json')) ? fs.readFileSync(path.join(folder, 'results.json'), 'utf8') : '';
+/** The folder's results.json, or undefined when there is none. */
+const savedRunIn = (folder: string): SavedRun | undefined =>
+  resultsTextIn(folder) ? (JSON.parse(resultsTextIn(folder)) as SavedRun) : undefined;
+/** A scorer run's exit code and output, or the error it threw (the stopped run, or an option it doesn't know). */
+const settled = (run: ReturnType<typeof score>) =>
+  run.then(
+    ({ code, out }) => ({ code, out }),
+    (e: unknown) => ({ code: undefined, out: String(e) }),
+  );
+
+describe('a run stopped after its first patch, carried on with --resume', () => {
+  type Step = Awaited<ReturnType<typeof settled>> & { run: SavedRun | undefined; logs: string[] };
+  let repo = '';
+  let firstBase = '';
+  let folder = '';
+  let stopped: Step & { files: string[] };
+  let resumed: Step;
+  let rescored: Step;
+  let anotherBase: Step & { fileBefore: string; fileAfter: string; laterBase: string };
+  let nothingToResume: Step;
+  const all = () => patchesFor(repo);
+  const logsIn = (dir: string) =>
+    fs.existsSync(path.join(dir, 'logs')) ? fs.readdirSync(path.join(dir, 'logs')).sort() : [];
+  // Each step's logs folder is emptied first, so what it holds afterwards is what that step ran.
+  const step = async (args: string[], stopAt?: string): Promise<Step> => {
+    fs.rmSync(path.join(folder, 'logs'), { recursive: true, force: true });
+    const r = await settled(score(repo, args, {}, stopAt));
+    return { ...r, run: savedRunIn(folder), logs: logsIn(folder) };
+  };
+
+  beforeAll(async () => {
+    repo = makeRepository();
+    firstBase = git(repo, 'rev-parse', 'HEAD').trim();
+    folder = path.join(tmp, 'resumed');
+    const patches = all();
+    writePatches(folder, {
+      '01-the-tests-catch.patch': patches['01-the-tests-catch.patch'] ?? '',
+      '02-only-the-balance-catches.patch': patches['02-only-the-balance-catches.patch'] ?? '',
+      '04-survives.patch': patches['04-survives.patch'] ?? '',
+    });
+    stopped = { ...(await step([folder], '01-the-tests-catch.patch:')), files: fs.readdirSync(folder).sort() };
+    resumed = await step([folder, '--resume']);
+    // 04 changed: now the compiler catches it.
+    writePatches(folder, { '04-survives.patch': patches['03-only-the-compiler-catches.patch'] ?? '' });
+    rescored = await step([folder, '--resume', '--only', '04-survives.patch']);
+    // A later commit: the base is another.
+    const fileBefore = resultsTextIn(folder);
+    fs.writeFileSync(path.join(repo, 'README.md'), 'a later commit\n');
+    git(repo, 'add', '-A');
+    git(repo, 'commit', '-q', '-m', 'a later commit');
+    const laterBase = git(repo, 'rev-parse', 'HEAD').trim();
+    const refused = await step([folder, '--resume']);
+    anotherBase = {
+      ...refused,
+      fileBefore,
+      fileAfter: resultsTextIn(folder),
+      laterBase,
+    };
+    folder = path.join(tmp, 'nothing-to-resume');
+    writePatches(folder, { '04-survives.patch': patches['04-survives.patch'] ?? '' });
+    nothingToResume = await step([folder, '--resume']);
+  }, SCORER_RUN.timeout);
+
+  test('stopped after its first patch: results.json holds that patch, the base, the control and the limits', () => {
+    expect(stopped.out).toMatch(/^Error: stopped at: 01-the-tests-catch\.patch: caught/);
+    expect(stopped.run?.base).toBe(firstBase);
+    expect(stopped.run?.control.map((s) => [s.stage, s.outcome])).toEqual(STAGES.map((s) => [s, 'green']));
+    expect(Object.keys(stopped.run?.limits ?? {})).toEqual([...STAGES]);
+    expect(stopped.run?.patches.map((p) => [p.patch, p.result, p.patchSha256])).toEqual([
+      ['01-the-tests-catch.patch', 'caught', hashOf(all()['01-the-tests-catch.patch'] ?? '')],
+    ]);
+    // Written to another file and renamed: none is left beside it.
+    expect(stopped.files).toEqual([
+      '01-the-tests-catch.patch',
+      '02-only-the-balance-catches.patch',
+      '04-survives.patch',
+      'logs',
+      'results.json',
+    ]);
+  });
+
+  test('--resume runs no control and scores only the patches not scored, then every result is in results.json', () => {
+    expect(resumed.code, resumed.out).toBe(0);
+    expect(resumed.logs).toEqual(['02-only-the-balance-catches', '04-survives']);
+    expect(resumed.out).not.toContain('The control run');
+    expect(resumed.out).toContain('01-the-tests-catch.patch: caught, scored before (the same patch)');
+    expect(resumed.out).toMatch(/2 caught, 1 survived, 0 broken\./);
+    expect(resumed.run?.base).toBe(firstBase);
+    expect(resumed.run?.control).toEqual(stopped.run?.control);
+    expect(resumed.run?.limits).toEqual(stopped.run?.limits);
+    expect(resumed.run?.patches[0]).toEqual(stopped.run?.patches[0]);
+    expect(resumed.run?.patches.map((p) => [p.patch, p.result])).toEqual([
+      ['01-the-tests-catch.patch', 'caught'],
+      ['02-only-the-balance-catches.patch', 'caught'],
+      ['04-survives.patch', 'survived'],
+    ]);
+  });
+
+  test('a patch changed since it was scored is scored again (here with --only), and the others keep their results', () => {
+    expect(rescored.code, rescored.out).toBe(0);
+    expect(rescored.logs).toEqual(['04-survives']);
+    const changed = rescored.run?.patches.find((p) => p.patch === '04-survives.patch');
+    expect([changed?.result, changed?.redStages, changed?.patchSha256]).toEqual([
+      'caught',
+      ['compiler'],
+      hashOf(all()['03-only-the-compiler-catches.patch'] ?? ''),
+    ]);
+    expect(rescored.run?.patches.slice(0, 2)).toEqual(resumed.run?.patches.slice(0, 2));
+  });
+
+  test('another base commit refuses --resume, with the reason, and leaves results.json as it was', () => {
+    expect(anotherBase.code).toBe(1);
+    expect(anotherBase.out).toContain(
+      `results.json was scored on ${firstBase}, not on this HEAD (${anotherBase.laterBase}): run without --resume to score every patch again.`,
+    );
+    expect(anotherBase.fileAfter).toBe(anotherBase.fileBefore);
+    expect(anotherBase.logs).toEqual([]);
+  });
+
+  test('--resume with no results.json refuses, with the reason', () => {
+    expect(nothingToResume.code).toBe(1);
+    expect(nothingToResume.out).toMatch(
+      /no results\.json in .*nothing-to-resume to carry on from: run without --resume\./,
+    );
+    expect(nothingToResume.logs).toEqual([]);
+  });
+});
+
 test('--only scores the patches named, from a folder the repository ignores', SCORER_RUN, async () => {
   const repo = makeRepository();
   const folder = path.join(repo, 'ignored-mutants');
@@ -335,6 +475,7 @@ test('--only scores the patches named, from a folder the repository ignores', SC
 test("the table keeps a header's backslashes and bars inside their cell", () => {
   const patch: PatchResult = {
     patch: 'a.patch',
+    patchSha256: '',
     area: 'a | b',
     imitates: 'a \\| c\\',
     result: 'survived',

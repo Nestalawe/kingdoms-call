@@ -34,6 +34,7 @@ npm run balance:update      # rewrite the balance baselines, in the PR that chan
 npm run balance -- battle   # a named scenario (battle, lair, encounter) on main's site and here (about 1 min)
 npm run balance:report -- --base main --head <file>   # the balance report of a run (from npm run balance -- --out <file>) against main
 npm run mutants -- <folder>  # score the mutant patches in <folder> (tools/mutants/run.ts): local only, never in CI
+npm run mutants -- <folder> --resume  # carry on a scoring run that stopped, from its results.json
 npm run dev                 # Vite's dev server of src/, against the local Supabase only (npm run dev -- config writes its kc-config.js)
 npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
 ```
