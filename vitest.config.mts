@@ -19,8 +19,11 @@ import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';
 const LEVELS: Level[] = ['page', 'simulation', 'scenario', 'unit', 'static'];
 // Set here as well as in `env`, so the worker processes start with them (the locale is read at start-up).
 Object.assign(process.env, FIXED, { KC_SEED: process.env['KC_SEED'] || DEFAULT_SEED });
-// How many test scripts run at once: up to one per core in each of two projects at a time (more only overloads the
-// machine: the run took 89 s instead of 64 s). KC_JOBS=1 runs one script at a time.
+// How many test files run at once: one per core, up to 8 (maxWorkers); within a file, up to one test script per core
+// (maxConcurrency). Measured (P1-01d, 2026-11-06, npm test three times each on an idle 14-core laptop, 291 files and
+// 8,668 tests, the same names and results every run): 2 at once 189 s, 4 101 s, 8 62 s, 14 59 s; at 14 a page test
+// used more than half its time limit in every run, at 8 none did. On CI's 4-core runners this is 4: see the PR for its
+// jobs' times. KC_JOBS=1 runs one file and one script at a time.
 const jobs = Number(process.env['KC_JOBS']) || os.availableParallelism();
 
 const project = (level: Level | 'quarantine'): TestProjectInlineConfiguration => ({
@@ -43,7 +46,7 @@ export default defineConfig({
     setupFiles: ['tests/setup/hook-times.ts', 'tests/setup/each.ts', 'tests/setup/fast-check.ts'],
     reporters: ['default', './tests/setup/reporter.ts'],
     maxConcurrency: jobs,
-    maxWorkers: Math.min(2, jobs),
+    maxWorkers: Math.min(8, jobs),
     projects: [...LEVELS.map(project), ...(process.env['KC_QUARANTINE'] === '1' ? [project('quarantine')] : [])],
   },
 });

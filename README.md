@@ -41,7 +41,7 @@ You need exactly the Node version in `.nvmrc` (Node 24); `npm ci` and `npm test`
 npm ci                              # install the test tools (exact versions, from package-lock.json)
 npm run build                       # build the site from src/ into site/ with Vite (npm test does it first)
 npx playwright install chromium     # once per machine: the headless browser the browser specs use
-npm test                            # the standard run, about 30 s
+npm test                            # the standard run, about 60 s
 npx playwright test                 # the browser specs, in Chromium, about 20 s
 npm run test:full                   # bigger fuzz runs
 ```

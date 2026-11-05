@@ -52,7 +52,7 @@ Every doc says what is true now; history lives in git and the PRs. A static test
 
 Node exactly as in `.nvmrc` (24.22.0): `npm ci` and `npm test` refuse any other.
 
-Once: `npm ci && npx playwright install chromium`. Then `npm test` (every test, about 30 s; it builds `site/` first),
+Once: `npm ci && npx playwright install chromium`. Then `npm test` (every test, about 60 s; it builds `site/` first),
 `npx playwright test` (the browser specs), `npm run check`, `npm run dev` (local Supabase only), `npm run balance` and
 `npx supabase@2.120.0 test db --local supabase/tests` (the access-rule tests). The rest, with `KC_SITE` for fail-first
 proofs: [tests/README.md](tests/README.md#running-the-tests).

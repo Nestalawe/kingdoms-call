@@ -15,7 +15,7 @@ Paths below without a folder in front (`lib/`, `setup/`, `browser/`, `balance/`)
 ## Running the tests
 
 ```sh
-npm test                    # every test, by level (about 30 s)
+npm test                    # every test, by level (about 60 s)
 npx playwright test         # the browser specs, in Chromium (about 20 s): see "Browser specs" below
 npm run check               # the quick check of what this branch changes (about 20 s; the Stop hook runs it)
 npm run ratchet             # the counts in ratchet.json: none may rise
@@ -23,7 +23,7 @@ npm run test:full           # bigger fuzz runs, and ten times the property tests
 npm run test:quarantine     # the quarantined harnesses below (expected to fail)
 npm test -- -t fuzz         # only tests whose name matches "fuzz" (a regular expression)
 npm test -- --project unit  # one level: static, unit, scenario, simulation or page
-KC_JOBS=1 npm test          # one test at a time (default: up to one per core in each of two levels at once)
+KC_JOBS=1 npm test          # one test file at a time (default: one per core, up to 8 at once)
 KC_SEED=123 npm test        # another seed (the default, 20261001, is set in vitest.config.mts)
 KC_SEED=123 npm test -- -t "^roster$"    # repeat one failure exactly (same seed and sizes): the footer prints this
 node tests/<name>.test.js   # one test script on its own, after npm run build (unseeded, its own default sizes)
@@ -40,8 +40,8 @@ npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (l
 ```
 
 `npm test` is [Vitest](https://vitest.dev) (`vitest.config.mts`). It has one project per level: `static`, `unit`,
-`scenario`, `simulation` and `page`. **Levels run side by side**, two at a time, slowest first; within a level, up to
-one test script per core. More at once only overloads the machine.
+`scenario`, `simulation` and `page`. **Test files run side by side**, one per core up to 8 (the fastest count measured at
+which no test came near its time limit), the slowest level first; within a file, up to one test script per core.
 
 ## The levels
 
@@ -135,7 +135,7 @@ before it fails. It never fails a run.
   finds unused (`unusedCode`) may not rise above `ratchet.json`. When one falls, lower it in the same PR
   (`npm run ratchet -- --update` only lowers). `harness` runs the same comparison, so `npm test` fails too.
 - **In CI** (`.github/workflows/ci.yml`) each part runs in its own job, side by side, each building `site/` from
-  `src/` first: the static checks (type check, lint, the import rules, format, ratchet and the `static` level),
+  `src/` first: the static checks (type check, lint, the import rules, format, ratchet), the `static` level,
   `unit` and `scenario` in two halves (Vitest's `--shard`), `simulation`, `page`, the browser specs, the balance matrix
   in three parts and the job that joins them ([below](#the-balance-matrix-in-brief)), and `db`. Each takes
   `node_modules` from a cache keyed on the lock file, `.npmrc`, Node and the runner, and runs `npm ci` only on a miss.
