@@ -6,8 +6,10 @@
 // the merge of their orders does, but for the one only a whole turn can stage; then, with the helpers they call stood
 // in (each wrapped in the vm by a recorder for the test's length), what they hand them and when; then what a whole turn
 // can't stage: an Evil or Undead realm breaking an alliance with nothing before it (the war without warning comes
-// first in a turn), realms and foes with no name, a realm offered peace with no record of whom it has met, hosts in a
-// contested province or of a realm not party to the new war, phantom companies, a one-realm game. Properties
+// first in a turn), realms and foes with no name (or none on record), a realm offered peace with no record of whom it
+// has met, hosts in a contested province or of a realm not party to the new war, phantom companies, a one-realm game,
+// two allies seeking an alliance so few kings may not forge, a world with no realms or no heroes, a realm with no
+// provinces, a foe's hero with no companies, a game decided with no standings. Properties
 // (fast-check): each pair's relation after the declarations is the rule's (peace, alliance, war, a broken pact, or
 // unchanged), and each realm is left exactly the overtures it was sent and didn't answer; the game ends by elimination
 // exactly when one realm is left with land or a living hero, and otherwise by concession exactly when one realm is left
@@ -28,11 +30,14 @@
 // no name; a realm offered peace with no record of whom it has met; a host in a contested province, of a realm not
 // party to the war, or on a third realm's ground (warned only beside a living host of the new foe); phantom companies
 // counted; a nameless caller, claimant or winner; a claimant with a hero but no land; a one-realm game; a concession's
-// standings by realm index. Properties (fast-check): each pair's relation after the declarations is the rule's, each
-// realm keeps exactly the overtures it didn't answer and has met who courted it; the game ends by elimination exactly
-// when one realm is left with land or a living hero, else by concession when one realm still in it is left or all left
-// are allies, announced once with a line for every realm; the bar falls a step a turn exactly when it may, never below
-// its floor. Planted faults: in the PR (P1-08k4)
+// standings by realm index; every line's realm with an empty name or none on record holding none (P1-10b38); two allies
+// seeking an alliance in a game of three, each told, still allied; no list of realms, no roll of heroes (a call, a
+// claim, an elimination, a concession); a realm with no provinces but a king, still in the game; a foe's hero beside a
+// host with no companies list; a game decided before with no standings. Properties (fast-check): each pair's relation
+// after the declarations is the rule's, each realm keeps exactly the overtures it didn't answer and has met who courted
+// it; the game ends by elimination exactly when one realm is left with land or a living hero, else by concession when
+// one realm still in it is left or all left are allies, announced once with a line for every realm; the bar falls a
+// step a turn exactly when it may, never below its floor. Planted faults: in the PR (P1-08k4)
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';

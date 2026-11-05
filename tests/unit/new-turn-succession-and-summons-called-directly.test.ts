@@ -24,11 +24,13 @@
 // a realm that never had a king; the first fallen king demoted; provinces the map doesn't have or with no tax; a
 // landless Divine realm whose king awaits his return; the dice of fading illusions and lairs, province by province, the
 // first and last of the map; provinces, realms and the save missing a field; a rise owed to a hero with no companies
-// list; one Library die for each realm it serves. Properties (fast-check): every company summoned for the turn or bound
-// past its last turn leaves, every other stays, one line of each kind a hero; a realm with land and no king, none
-// awaiting his return, crowns exactly one heir in its richest province, one with none ends its dynasty, one with a king
-// crowns nobody; the Library gives one discovery the realm may learn and doesn't know, never one forgotten or awaiting
-// a choice, or says there is none; the turn moves on by exactly one. Planted faults: in the PR (P1-08k5a)
+// list; one Library die for each realm it serves; a Divine realm with no provinces or no graveyard; an heir's province
+// with no list of heroes; a gap in a garrison or among the mercenaries. Properties (fast-check): every company summoned
+// for the turn or bound past its last turn leaves, every other stays, one line of each kind a hero; a realm with land
+// and no king, none awaiting his return, crowns exactly one heir in its richest province, one with none ends its
+// dynasty, one with a king crowns nobody; the Library gives one discovery the realm may learn and doesn't know, never
+// one forgotten or awaiting a choice, or says there is none; the turn moves on by exactly one. Planted faults: in the
+// PR (P1-08k5a)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

@@ -28,8 +28,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   is read by a plain `const` key (`const hiredsId = h.id`), and `if (!x) x = []` on it is `x ??= []`, which narrows.
 - **A branch the check above makes dead** (`h.player === null ? wage : h.pay || 1` after a check that every hired
   hero is a wanderer) is dropped: lint refuses the always-true test, and the value is the same. One whose text a
-  static test reads (the march's `'move'` strings) stays, its test read through `asItsGuardReadsIt`; an `if (false) {}`
-  before an `else if` goes, its comment kept.
+  static test reads (the march's `'move'` strings) stays, its test read through `asItsGuardReadsIt`, and so does one a
+  vm test stages (`typeof asItsGuardReadsIt(nextHeroName) === 'function'`: an engine with no name-giver names the heir
+  "Heir of …"); an `if (false) {}` before an `else if` goes, its comment kept. A `??` after a field a typed callee always
+  sets (a standing's `index ?? pi ?? -1`) goes: the value is the field's.
 - **A part the view hands only where it sees it** (a province's garrison) goes through a check that throws for none;
   a field added to a built object, through `Object.assign`.
 - **A value read back from a table just after it is written there by a key** (`p.exploredBy[i] = x; p.explored =
@@ -118,7 +120,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   callback option only one case calls is required only there (`{ won: true } | { won: false; demoteAt }`).
 - **A function that reads an old save** takes the old save's shape, every field it reads optional. A function that
   hands back what it was given (`activeItems`) is generic in its type (so is `createTurnContext`, in the state it is
-  handed: a test stages part of a world); one that adds fields to its argument returns `Object.assign(g, { units,
+  handed: a test stages part of a world, and `nearestConsecratedProv`, in the provinces: the Divine return writes the one
+  it gets); one that adds fields to its argument returns `Object.assign(g, { units,
   total })`, the same object.
 - **A type goes in the file whose code it types most** (a file of types alone is in no page's bundle, which
   `tests/static/pages-build.test.ts` refuses): the fighter, `AFighterInAPersonalCombat`, is in `helpers.ts`; the Mirror
@@ -156,7 +159,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   fromName }`), so long as every save holds the list empty or holds none (the couriers empty it each turn): a save of
   any version still meets it, and no version is bumped. A `refactor-only` row changes no saved shape: there each value
   is narrowed where the code reads it, through a check that hands back what the code fills it with and throws for any
-  other (a hero's spectral doubles, `_phantoms`: `theSpectralDoubleStoredThere`, which keeps a gap as it is).
+  other (a hero's spectral doubles, `_phantoms`: `theSpectralDoubleStoredThere`, which keeps a gap as it is; the Iron
+  Throne's queued rises, `theRiseQueuedThere`).
 - **A season's name read by a phase** (`SEASONS[ph]`, a fact's words) goes through `theSeasonOfThePhase`, which throws
   for none (a phase is one of the five seasons): the fact and its prose keep their types.
 - **A fact's realm name read by an index** (`G.players[c.player]?.name`) may be `undefined` where the index names no
@@ -164,9 +168,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A saved record the code writes a missing value into** (a realm's memory of a province, its owner's name where the
   index names no realm) is written through a local view of the same record whose field allows `undefined`
   (`AProvinceAsItIsRemembered`): the saved schema is unchanged. So is one the code writes a plain number into where
-  the schema holds a brand (a monarch's grave's resting place, `AMonarchsGraveAsItIsWritten`), and one keyed by a
-  closed set that the code fills by any key, or leaves empty (the titles' snapshot when the standings fail; a title
-  won by a realm the list doesn't name: `TheTitlesRecordAsTheChangesWriteIt`).
+  the schema holds a brand (a monarch's grave's resting place, `AMonarchsGraveAsItIsWritten`; an heir's id and realm,
+  `AnHeirAsTheSuccessionCrownsHim`), one keyed by a closed set that the code fills by any key, or leaves empty (the
+  titles' snapshot when the standings fail; a title won by a realm the list doesn't name:
+  `TheTitlesRecordAsTheChangesWriteIt`), and one written with a callee's result its schema is narrower than (the game's
+  end, its standings as `computeStandings` gives them: `TheStateAsTheVictoryWritesIt`).
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does.
 - **A line rewritten in place by its index** (`narrative[i].whatBecomesOfTheProvince = …`, the battle's outcome held by

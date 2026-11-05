@@ -26,7 +26,8 @@
 // hero) and spent from the realm's list. Then what a whole turn can't stage: each company's, grave's, band's and
 // wanderer's die in turn; a nameless company; a fallen hero at home; heroes with no maximum or no HP, or past it; a
 // captain standing nowhere; a province no realm mapped or of no terrain, its list of visitors kept; no graveyard, a
-// grave whose hero is gone or that records no turn, a hero of 1 HP; a body measured from its grave; a king with no
+// grave whose hero is gone or that records no turn, a hero of 1 HP; a world with no roll of heroes; a hero at home with
+// no companies list; a body measured from its grave; a king with no
 // ground left, or no longer marked king; a living hero with a stale grave of the turn before ("raised": Parked); graves
 // on a missing realm's ground, a grave-keeping effect with no rate; bands and wanderers standing nowhere, no mercenary
 // list; the repair counts (the retired discoveries' on the turn's context, as the save's upgrade found them, since
