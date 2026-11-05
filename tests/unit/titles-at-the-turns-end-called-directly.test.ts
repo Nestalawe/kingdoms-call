@@ -927,11 +927,11 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
     ]);
   });
 
-  test('the Beastlord and the Wildwarden count no beast in a garrison with no list of its companies', () => {
+  test('the Beastlord and the Wildwarden count no beast in a garrison or a hero with no list of companies', () => {
     const b = fresh();
     firstPublic(b);
     delete (seatOf(b, 0) as unknown as Raw)['garrisonArmies'];
-    kingOf(b, 0).armies = [];
+    delete (kingOf(b, 0) as unknown as Raw)['armies'];
     const o = withStandings(b, { beast: 1, wild: 1 });
     expect([intel(o, 'The Beastlord')[0]?.[1], intel(o, 'The Wildwarden')[0]?.[1]]).toEqual([
       '[The Beastlord] Your realm: no monsters under arms.',
