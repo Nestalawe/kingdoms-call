@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS, TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { theHighestLevelAHeroHasTrainedInAMagicSchool } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
@@ -19,7 +18,69 @@ import {
   reckoningThreshold,
   skillLevel,
 } from './perks.ts';
-import type { MajorTitleHolder, MinorTitleHolder } from '../../schemas/saved-game-state.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { ARealmAsTheDiscoveriesReadIt } from '../rules/the-registry-of-discovery-effects.ts';
+import type { RealmIndex } from '../../schemas/ids-of-provinces-heroes-and-realms.ts';
+import type {
+  Army,
+  Character,
+  Item,
+  MajorTitleHolder,
+  MinorTitleHolder,
+  Province,
+  Realm,
+} from '../../schemas/saved-game-state.ts';
+
+// Its types (plan P1-10b35): each parameter typed from what its callers pass and as wide as the body's guards (plan
+// P1-10's Decision 2), so each guard stays: the standings read a world whose lists, and a gap in them, may be missing.
+
+/** A hero as the titles count him: the saved hero, his items (a gap among them too) and his companies a list a guard
+ *  may find missing. */
+type AHeroAsTheTitlesCountHim = Omit<Character, 'items' | 'armies'> & {
+  readonly items?: (Item | null | undefined)[] | null | undefined;
+  readonly armies?: readonly Army[] | null | undefined;
+};
+/** A living hero who serves a realm: the only heroes the titles count. */
+type AHeroOfARealmAsTheTitlesCountHim = AHeroAsTheTitlesCountHim & { readonly player: RealmIndex };
+/** Whether a hero counts towards the titles: there (not a gap), alive and serving a realm. */
+function aLivingHeroTheTitlesCount(
+  c: AHeroAsTheTitlesCountHim | null | undefined,
+): c is AHeroOfARealmAsTheTitlesCountHim {
+  return c?.player != null && c.alive;
+}
+/** A realm as the standings read it: its name, colour, creed and treasury. */
+type ARealmAsTheStandingsReadIt = Pick<Realm, 'name' | 'color' | 'alignment' | 'gold'>;
+/** The world as the standings read it: its realms, its heroes and its provinces (a list, or a gap in one, may be
+ *  missing in a staged world), and the Reckoning's decay. */
+interface TheWorldAsTheStandingsReadIt {
+  readonly players?: readonly (ARealmAsTheStandingsReadIt | null | undefined)[] | null | undefined;
+  readonly characters?: readonly (AHeroAsTheTitlesCountHim | null | undefined)[] | null | undefined;
+  readonly world?:
+    | { readonly provinces?: readonly (Pick<Province, 'owner' | 'tax'> | null | undefined)[] | null | undefined }
+    | null
+    | undefined;
+  readonly reckoningDecaySteps?: number | undefined;
+}
+/** The world as the Reckoning reads it: the standings', the realms' relations, the turn and the game's end. */
+interface TheWorldAsTheReckoningReadsIt extends TheWorldAsTheStandingsReadIt {
+  readonly relations?: Readonly<Partial<Record<string, string>>> | null | undefined;
+  readonly turn?: number | undefined;
+  readonly gameOver?: object | null | undefined;
+}
+/** A hero's merit towards each Imperial Title a hero holds (not the Throne's or the Vaultkeeper's), by its key. */
+type AHerosMeritTowardsEachTitle = Readonly<Partial<Record<string, number>>>;
+/** A realm's figure on the board (its tax base, its treasury) at its index: each realm has one. */
+function theRealmsFigureOnTheBoard(figures: readonly number[], index: number): number {
+  const figure = figures[index];
+  if (figure === undefined) throw new TypeError(`reckoningWinner: no figure for realm ${String(index)}`);
+  return figure;
+}
+/** A realm's row on the standings at its index: each realm has one (a hero's realm with none throws, as before). */
+function theRealmsRowOnTheStandings(standings: readonly ARealmsStanding[], index: number): ARealmsStanding {
+  const row = standings[index];
+  if (row === undefined) throw new TypeError(`computeStandings: no realm ${String(index)} on the standings`);
+  return row;
+}
 
 /** A realm's row on the standings board (computeStandings): its name and colour, its score, the titles it holds by key
  *  and its relics. */
@@ -43,17 +104,18 @@ export interface ASkillBonusAtItsPointOfUse {
 }
 
 export function _legendaryNames() {
-  return new Set((ITEMS_BY_TIER[4] || []).map((it) => it.name));
+  return new Set((asItsGuardReadsIt(ITEMS_BY_TIER[4]) ?? []).map((it) => it.name));
 }
 // THE SEA LORD NO LONGER COUNTS THE WAVES. `SEA_LORD_PROVINCE_PTS` gave one merit point per sea
 // province the character's REALM held, folded into every one of that realm's characters. It was the
 // only territorial component in any character title, and it meant a realm that ruled the deep could
 // hold the Sea Lord's baton on geography alone with a mediocre admiral. Withdrawn: the title is now
 // the admiral's own Naval skill and the battles they have actually won at sea.
-export function _charTitleMerit(c, ctx) {
-  const tm = c.tm || {};
+export function _charTitleMerit(c: AHeroAsTheTitlesCountHim) {
+  const tm: Partial<NonNullable<Character['tm']>> = c.tm ?? {};
   const magic = _MAGIC_SCHOOLS.reduce((s, sc) => s + _skillItem(c, sc), 0);
-  const spellItems = activeItems(c).filter((it) => it.effect && _MAGIC_SCHOOLS.includes(it.effect.stat)).length;
+  const schools: readonly (string | undefined)[] = _MAGIC_SCHOOLS;
+  const spellItems = activeItems(c).filter((it) => schools.includes(asItsGuardReadsIt(it.effect)?.stat)).length;
   return {
     // 2026-09-16 \u2014 ROOT CAUSE of "The Grand Marshal shows as vacant even though it is
     // awarded". It was not a display fault: the title really WAS vacant. `marshal` was the only one
@@ -66,31 +128,31 @@ export function _charTitleMerit(c, ctx) {
     // for exactly this reason; the Grand Marshal now carries Tactical the same way. A realm's best
     // general holds the marshal's baton from turn one, and battle merit decides it the moment
     // anyone fights.
-    marshal: (tm.marshal || 0) + _skillItem(c, 'tactical'),
-    sea: (tm.sea || 0) + _skillItem(c, 'naval'),
-    monster: tm.monster || 0,
+    marshal: (Number(tm.marshal) || 0) + _skillItem(c, 'tactical'),
+    sea: (Number(tm.sea) || 0) + _skillItem(c, 'naval'),
+    monster: Number(tm.monster) || 0,
     // the Loremaster was a THREE-SKILL BUNDLE (Explorer + Spy + Sage) that also counted every map
     // feature stumbled across at double weight. It swallowed the whole espionage and exploration
     // space, so no Spy or Explorer character could ever be honoured for what they actually did.
     // Explorer now belongs to the Cartographer and Spy to the Spymaster; the Loremaster keeps the
     // scholar's own skill and the discoveries their research has produced, at one point apiece.
-    lore: _skillItem(c, 'sage') + (tm.discoveries || 0),
+    lore: _skillItem(c, 'sage') + (Number(tm.discoveries) || 0),
     arch: magic + spellItems,
     // Druid withdrawn \u2014 the Hierophant is a title of the White faith, and folding in a second
     // skill let a druid with no holy casts at all out-score a working priest.
-    hiero: _skillItem(c, 'white') + (tm.holyCasts || 0),
-    necro: _skillItem(c, 'necromancy') + (tm.darkCasts || 0),
+    hiero: _skillItem(c, 'white') + (Number(tm.holyCasts) || 0),
+    necro: _skillItem(c, 'necromancy') + (Number(tm.darkCasts) || 0),
     // ── 2026-09-17: the four new titles ────
     // `tm.spyActions` counts SUCCESSES only (see the spy/sabotage/assassination sites); a failed
     // infiltration earns nothing. `tm.explored` banks raw percentage POINTS of ground mapped and is
     // divided down here, so the accumulator keeps its precision and only the score is coarse.
-    spy: _skillItem(c, 'spy') + (tm.spyActions || 0),
-    carto: _skillItem(c, 'explorer') + Math.floor((tm.explored || 0) / 10),
+    spy: _skillItem(c, 'spy') + (Number(tm.spyActions) || 0),
+    carto: _skillItem(c, 'explorer') + Math.floor((Number(tm.explored) || 0) / 10),
     // Pure deed titles, like the Monster-Bane: no standing skill floor, so they sit vacant until
     // somebody actually musters beasts. That is intended \u2014 there is no "beast skill" to stand
     // on.
-    beast: tm.monsterHost || 0,
-    wild: tm.wildHost || 0,
+    beast: Number(tm.monsterHost) || 0,
+    wild: Number(tm.wildHost) || 0,
   };
 }
 // A realm's Reckoning bloc = THAT REALM AND ITS OWN DIRECT ALLIES. Nobody else.
@@ -108,10 +170,10 @@ export function _charTitleMerit(c, ctx) {
 // are that ally's business; they bring themselves to the claim, not their friends. Each of those
 // allies also raises the bar (reckoningAllyStepPct), so a bloc is a real commitment rather than a
 // free ride, and a bloc padded with tiny passengers is worse than no bloc at all.
-export function alliedBloc(state, pi) {
-  const rel = state.relations || {},
-    np = (state.players || []).length;
-  const key = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
+export function alliedBloc(state: Pick<TheWorldAsTheReckoningReadsIt, 'relations' | 'players'>, pi: number): number[] {
+  const rel = state.relations ?? {},
+    np = (state.players ?? []).length;
+  const key = (a: number, b: number) => (a < b ? `${String(a)}-${String(b)}` : `${String(b)}-${String(a)}`);
   const out = [pi];
   for (let y = 0; y < np; y++) {
     if (y !== pi && rel[key(pi, y)] === 'allied') out.push(y);
@@ -119,7 +181,7 @@ export function alliedBloc(state, pi) {
   return out;
 }
 // Main scoring — pure function over a game state. Returns titles, relics, per-realm standings, tax.
-export function computeStandings(state): {
+export function computeStandings(state: TheWorldAsTheStandingsReadIt): {
   titles: Partial<Record<string, MajorTitleHolder>>;
   relics: { item: string; charId: number; playerIndex: number }[];
   standings: ARealmsStanding[];
@@ -127,30 +189,30 @@ export function computeStandings(state): {
   worldTax: number;
   goldByPlayer: number[];
   threshold: number;
-  perChar: Partial<Record<string, unknown>>;
+  perChar: Partial<Record<string, AHerosMeritTowardsEachTitle>>;
 } {
-  const players = state.players || [];
-  const chars = (state.characters || []).filter((c) => c && c.player != null && c.alive);
+  const players = state.players ?? [];
+  const chars = (state.characters ?? []).filter(aLivingHeroTheTitlesCount);
   // Reckoning tax base counts EVERY province — land AND sea (owned sea now carries features,
   // guardians and real tax, so a fleet realm's waters DO count toward the Reckoning). Both the
   // per-player share (numerator) and the world total (denominator) include sea.
   const taxByPlayer = players.map((p, pi) =>
-    ((state.world && state.world.provinces) || []).reduce((s, pv) => s + (pv && pv.owner === pi ? pv.tax || 0 : 0), 0),
+    (state.world?.provinces ?? []).reduce((s, pv) => s + (pv?.owner === pi ? pv.tax || 0 : 0), 0),
   );
   // Denominator = every province in the world (owned or neutral-and-conquerable), sea included.
-  const worldTax = ((state.world && state.world.provinces) || []).reduce((s, pv) => {
+  const worldTax = (state.world?.provinces ?? []).reduce((s, pv) => {
     if (!pv) return s;
     return s + (pv.tax || 0);
   }, 0);
-  const goldByPlayer = players.map((p) => (p && p.gold) || 0);
-  const perChar = {};
+  const goldByPlayer = players.map((p) => (p?.gold ?? 0) || 0);
+  const perChar: Partial<Record<string, AHerosMeritTowardsEachTitle>> = {};
   // the per-alignment \u00d71.25 lane boost is gone (see ALIGN_TITLE_BOOST's obituary above). A
   // character's merit is now exactly what their deeds, skills and holdings come to, whatever creed
   // their realm follows.
   chars.forEach((c) => {
-    perChar[c.id] = _charTitleMerit(c);
+    perChar[String(c.id)] = _charTitleMerit(c);
   });
-  const titles = {};
+  const titles: Partial<Record<string, MajorTitleHolder>> = {};
   TITLE_DEFS.forEach((t) => {
     if (t.key === 'throne' || t.key === 'vault') {
       const metric = t.key === 'throne' ? taxByPlayer : goldByPlayer;
@@ -172,14 +234,16 @@ export function computeStandings(state): {
       };
     } else {
       let best = -Infinity,
-        bc = null;
-      chars.forEach((c) => {
-        const v = perChar[c.id][t.key] || 0;
+        bc: AHeroOfARealmAsTheTitlesCountHim | null = null;
+      for (const c of chars) {
+        const merit = perChar[String(c.id)];
+        if (merit === undefined) throw new TypeError(`computeStandings: no merit worked out for hero ${String(c.id)}`);
+        const v = Number(merit[t.key]) || 0;
         if (v > best) {
           best = v;
           bc = c;
         }
-      });
+      }
       titles[t.key] = {
         playerIndex: bc && best > 0 ? bc.player : null,
         charId: bc && best > 0 ? bc.id : null,
@@ -190,32 +254,34 @@ export function computeStandings(state): {
     }
   });
   const legNames = _legendaryNames(),
-    relics = [];
-  chars.forEach((c) =>
-    (c.items || []).forEach((it) => {
+    relics: { item: string; charId: number; playerIndex: number }[] = [];
+  chars.forEach((c) => {
+    (c.items ?? []).forEach((it) => {
       if (it && legNames.has(it.name)) relics.push({ item: it.name, charId: c.id, playerIndex: c.player });
-    }),
-  );
-  const standings = players.map((p, pi) => ({
+    });
+  });
+  const standings = players.map((p, pi): ARealmsStanding => ({
     index: pi,
-    name: (p && p.name) || 'Realm ' + (pi + 1),
-    color: (p && p.color) || null,
-    alignment: (p && p.alignment) || null,
+    name: (p?.name ?? '') || `Realm ${String(pi + 1)}`,
+    color: (p?.color ?? '') || null,
+    alignment: (p?.alignment ?? '') || null,
     score: 0,
     titles: [],
     relics: 0,
   }));
   TITLE_DEFS.forEach((t) => {
     const h = titles[t.key];
-    if (h && h.playerIndex != null) {
-      standings[h.playerIndex].score += t.prize;
-      standings[h.playerIndex].titles.push(t.key);
+    if (h?.playerIndex != null) {
+      const row = theRealmsRowOnTheStandings(standings, h.playerIndex);
+      row.score += t.prize;
+      row.titles.push(t.key);
     }
   });
   relics.forEach((r) => {
-    if (r.playerIndex != null) {
-      standings[r.playerIndex].score += RELIC_PRIZE_EACH;
-      standings[r.playerIndex].relics++;
+    if (asItsGuardReadsIt(r.playerIndex) != null) {
+      const row = theRealmsRowOnTheStandings(standings, r.playerIndex);
+      row.score += RELIC_PRIZE_EACH;
+      row.relics++;
     }
   });
   return {
@@ -229,6 +295,25 @@ export function computeStandings(state): {
     perChar,
   };
 }
+/** The standings as the title race reads them (computeStandings'; the player page's copy hands its own): who holds
+ *  each title, each realm's tax base and treasury, and each hero's merit towards each title, each of them missing in
+ *  a staged one. */
+interface TheStandingsAsTheTitleRaceReadsThem {
+  readonly titles?: Readonly<Partial<Record<string, MajorTitleHolder>>> | null | undefined;
+  readonly taxByPlayer?: readonly number[] | null | undefined;
+  readonly goldByPlayer?: readonly number[] | null | undefined;
+  readonly perChar?: Readonly<Partial<Record<string, AHerosMeritTowardsEachTitle>>> | null | undefined;
+}
+/** Where a realm stands in a title's race (titleRaceFor): its best hero's name, whether the title is vacant or its
+ *  own, its share of the holder's merit, or its lead over the closest rival and whether anyone challenges it. */
+export interface ARealmsPlaceInATitlesRace {
+  charName: string | null;
+  vacant: boolean;
+  mine: boolean;
+  pct: number | null;
+  leadPct: number | null;
+  unchallenged: boolean;
+}
 // THE TITLE RACE, as one realm sees it. For every Imperial Title: which of this realm's living
 // characters stands highest, and where that puts them —
 //   • not the holder → `pct` = their merit as a whole percentage of the HOLDER's (floored, 0-100);
@@ -237,37 +322,44 @@ export function computeStandings(state): {
 //                       is a character of ANOTHER realm; the holder's own second-best is no rival.
 // Realm titles (Throne, Vaultkeeper) use the realm metric and name the king. Only percentages are
 // shipped — never a rival's name or raw merit — so this leaks nothing the standings board does not.
-export function titleRaceFor(state, st, pi) {
-  const chars = (state.characters || []).filter((c) => c && c.player != null && c.alive);
-  const out = {};
-  const pctOf = (v, top) => (top > 0 ? Math.max(0, Math.min(100, Math.floor((Math.max(0, v) / top) * 100 + 1e-9))) : 0);
+export function titleRaceFor(
+  state: Pick<TheWorldAsTheStandingsReadIt, 'characters'>,
+  st: TheStandingsAsTheTitleRaceReadsThem,
+  pi: number,
+): Partial<Record<string, ARealmsPlaceInATitlesRace>> {
+  const chars = (state.characters ?? []).filter(aLivingHeroTheTitlesCount);
+  const out: Partial<Record<string, ARealmsPlaceInATitlesRace>> = {};
+  const pctOf = (v: number, top: number) =>
+    top > 0 ? Math.max(0, Math.min(100, Math.floor((Math.max(0, v) / top) * 100 + 1e-9))) : 0;
   TITLE_DEFS.forEach((t) => {
-    const h = (st.titles || {})[t.key] || {};
+    const h: Partial<MajorTitleHolder> = st.titles?.[t.key] ?? {};
     const held = h.playerIndex != null,
-      top = held ? h.merit || 0 : 0,
+      top = held ? Number(h.merit) || 0 : 0,
       mine = held && h.playerIndex === pi;
-    let myBest = 0,
-      myChar = null,
+    let myBest: number,
+      myChar: AHeroOfARealmAsTheTitlesCountHim | null = null,
       rivalBest = 0;
     if (t.key === 'throne' || t.key === 'vault') {
-      const metric = (t.key === 'throne' ? st.taxByPlayer : st.goldByPlayer) || [];
-      myBest = metric[pi] || 0;
+      const metric = (t.key === 'throne' ? st.taxByPlayer : st.goldByPlayer) ?? [];
+      myBest = (metric[pi] ?? 0) || 0;
       const k = chars.find((c) => c.isKing && c.player === pi);
-      myChar = k || null;
+      myChar = k ?? null;
       metric.forEach((v, i) => {
         if (i !== pi && (v || 0) > rivalBest) rivalBest = v || 0;
       });
     } else {
       let b = -Infinity;
-      chars.forEach((c) => {
-        const v = ((st.perChar || {})[c.id] || {})[t.key] || 0;
+      for (const c of chars) {
+        const merits = st.perChar ?? {};
+        const itsMerit = merits[String(c.id)] ?? {};
+        const v = Number(itsMerit[t.key]) || 0;
         if (c.player === pi) {
           if (v > b) {
             b = v;
             myChar = c;
           }
         } else if (v > rivalBest) rivalBest = v;
-      });
+      }
       myBest = b > -Infinity ? b : 0;
       if (mine && h.charId != null) {
         const hc = chars.find((c) => c.id === h.charId);
@@ -286,49 +378,57 @@ export function titleRaceFor(state, st, pi) {
   return out;
 }
 // Winner at a Reckoning: highest standing, ties broken by tax base then treasury.
-export function reckoningWinner(state) {
+export function reckoningWinner(state: TheWorldAsTheStandingsReadIt) {
   const s = computeStandings(state);
-  let best = null;
-  s.standings.forEach((st) => {
+  let best: ARealmsStanding | null = null;
+  for (const st of s.standings) {
     if (!best) {
       best = st;
-      return;
+      continue;
     }
-    const a = [st.score, s.taxByPlayer[st.index], s.goldByPlayer[st.index]];
-    const b = [best.score, s.taxByPlayer[best.index], s.goldByPlayer[best.index]];
+    const a = [
+      st.score,
+      theRealmsFigureOnTheBoard(s.taxByPlayer, st.index),
+      theRealmsFigureOnTheBoard(s.goldByPlayer, st.index),
+    ] as const;
+    const b = [
+      best.score,
+      theRealmsFigureOnTheBoard(s.taxByPlayer, best.index),
+      theRealmsFigureOnTheBoard(s.goldByPlayer, best.index),
+    ] as const;
     if (a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] > b[2])))) best = st;
-  });
+  }
   return { winner: best, standings: s };
 }
 // Share of world tax base held by a player's allied bloc (bloc-aware Reckoning threshold).
-export function reckoningBlocShare(state, pi) {
+export function reckoningBlocShare(state: TheWorldAsTheReckoningReadsIt, pi: number) {
   const s = computeStandings(state);
   const bloc = alliedBloc(state, pi);
-  const blocTax = bloc.reduce((sum, b) => sum + (s.taxByPlayer[b] || 0), 0);
+  const blocTax = bloc.reduce((sum, b) => sum + ((s.taxByPlayer[b] ?? 0) || 0), 0);
   return s.worldTax > 0 ? blocTax / s.worldTax : 0;
 }
 // A realm's OWN share of the world tax base — allies excluded.
-export function reckoningOwnShare(state, pi) {
+export function reckoningOwnShare(state: TheWorldAsTheStandingsReadIt, pi: number) {
   const s = computeStandings(state);
-  return s.worldTax > 0 ? (s.taxByPlayer[pi] || 0) / s.worldTax : 0;
+  return s.worldTax > 0 ? ((s.taxByPlayer[pi] ?? 0) || 0) / s.worldTax : 0;
 }
 // The bar THIS realm's claim must carry — its own bloc's size decides it.
-export function reckoningThresholdFor(state, pi) {
-  return reckoningThreshold((state.players || []).length, reckoningDecayOf(state), alliedBloc(state, pi).length);
+export function reckoningThresholdFor(state: TheWorldAsTheReckoningReadsIt, pi: number) {
+  return reckoningThreshold((state.players ?? []).length, reckoningDecayOf(state), alliedBloc(state, pi).length);
 }
 // May THIS realm lodge the claim? Bloc share carries the bar; the caller still has to be a
 // contributor worth naming; and no claim at all stands before RECKONING_MIN_TURN. Returns {ok,
 // blocShare, ownShare, threshold, callerMin, blocSize, soloThreshold, minTurn, reason}.
 // `reason` is one of null | 'tooEarly' | 'blocShort' | 'callerShort'.
-export function reckoningCallEligibility(state, pi) {
-  const nP = (state.players || []).length,
+export function reckoningCallEligibility(state: TheWorldAsTheReckoningReadsIt, pi: number) {
+  const nP = (state.players ?? []).length,
     dec = reckoningDecayOf(state);
   const bloc = alliedBloc(state, pi);
   const thr = reckoningThreshold(nP, dec, bloc.length);
   const callerMin = thr * RECKONING_CALLER_MIN_FRAC;
   const blocShare = reckoningBlocShare(state, pi);
   const ownShare = reckoningOwnShare(state, pi);
-  const tooEarly = (state.turn || 1) < RECKONING_MIN_TURN && !state.gameOver;
+  const tooEarly = (Number(state.turn) || 1) < RECKONING_MIN_TURN && !state.gameOver;
   const reason = tooEarly ? 'tooEarly' : blocShare < thr ? 'blocShort' : ownShare < callerMin ? 'callerShort' : null;
   return {
     ok: !reason,
@@ -349,13 +449,17 @@ export function reckoningCallEligibility(state, pi) {
 // bot kings to the reckoningCalls set built from human orders. During a rival's active Reckoning a
 // trailing bot keeps warring/expanding as usual, which naturally pressures the claimant (focused
 // anti-leader targeting is a later tuning pass).
-export function runBotReckoning(G, botIdxSet, reckoningCalls) {
-  if (!botIdxSet || !botIdxSet.size || !reckoningCalls) return;
+export function runBotReckoning(
+  G: TheWorldAsTheReckoningReadsIt & { readonly reckoning?: object | null | undefined },
+  botIdxSet: ReadonlySet<number> | null | undefined,
+  reckoningCalls: Set<number> | null | undefined,
+) {
+  if (!botIdxSet?.size || !reckoningCalls) return;
   if (G.reckoning || G.gameOver) return; // a claim is already live / game already decided
-  if ((G.turn || 0) < RECKONING_MIN_TURN) return; // no claim before turn 10
+  if ((Number(G.turn) || 0) < RECKONING_MIN_TURN) return; // no claim before turn 10
   botIdxSet.forEach((pi) => {
     if (botConceded(G, pi)) return; // a conceded realm claims nothing
-    const kingAlive = (G.characters || []).some((c) => c && c.alive && c.isKing && c.player === pi);
+    const kingAlive = (G.characters ?? []).some((c) => c?.alive && c.isKing && c.player === pi);
     if (kingAlive && reckoningCallEligibility(G, pi).ok) reckoningCalls.add(pi); // bloc bar AND the caller's own floor
   });
 }
@@ -375,6 +479,20 @@ export const MINOR_HEAVY = new Set([
   'Great Turtles',
   'Siege Towers',
 ]); // the ferries count (the turtles since Island Back, 2026-10-13)
+/** The world as the minor titles read it: its heroes (a list, or a gap in it, may be missing) and its provinces' owners
+ *  (the Castellan's count, which reads each province as there). */
+interface TheWorldAsTheMinorTitlesReadIt {
+  readonly characters?: readonly (AHeroAsTheTitlesCountHim | null | undefined)[] | null | undefined;
+  readonly world?: { readonly provinces?: readonly Pick<Province, 'owner'>[] | null | undefined } | null | undefined;
+}
+/** A minor title: its key, name, perk and requirement, and the measure its best hero is found by. */
+interface AMinorTitle {
+  readonly key: string;
+  readonly name: string;
+  readonly perk: string;
+  readonly req: string;
+  readonly metric: (c: AHeroOfARealmAsTheTitlesCountHim, st: TheWorldAsTheMinorTitlesReadIt) => number;
+}
 export const MINOR_TITLES = [
   {
     key: 'duelist',
@@ -458,7 +576,7 @@ export const MINOR_TITLES = [
     name: 'The Widowmaker',
     perk: '+1 melee & +1 archery in combat',
     req: 'Most enemy characters slain in personal combat.',
-    metric: (c) => (c.tm && c.tm.duelKills) || 0,
+    metric: (c) => Number(c.tm?.duelKills) || 0,
   },
   {
     key: 'champion',
@@ -472,43 +590,42 @@ export const MINOR_TITLES = [
     name: 'The Host-Leader',
     perk: 'army wages −1 per unit (min 1)',
     req: 'Leads the largest number of army units.',
-    metric: (c) => (c.armies || []).length,
+    metric: (c) => (c.armies ?? []).length,
   },
   {
     key: 'cavalier',
     name: 'The Cavalier',
     perk: 'cavalry you lead +5%',
     req: 'Leads the most cavalry units.',
-    metric: (c) => (c.armies || []).filter((a) => MINOR_CAV.has(a.type)).length,
+    metric: (c) => (c.armies ?? []).filter((a) => MINOR_CAV.has(a.type)).length,
   },
   {
     key: 'beastmaster',
     name: 'The Beastmaster',
     perk: 'Creature & Monster armies you lead +5%',
     req: 'Leads the most Creature and Monster units.',
-    metric: (c) => (c.armies || []).filter((a) => CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)).length,
+    metric: (c) => (c.armies ?? []).filter((a) => CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)).length,
   },
   {
     key: 'ironclad',
     name: 'The Ironclad',
     perk: 'heavy & fleet units you lead +5%',
     req: 'Leads the most heavy and fleet units.',
-    metric: (c) => (c.armies || []).filter((a) => MINOR_HEAVY.has(a.type)).length,
+    metric: (c) => (c.armies ?? []).filter((a) => MINOR_HEAVY.has(a.type)).length,
   },
   {
     key: 'relichunter',
     name: 'The Relic-Hunter',
     perk: '+1 melee & +1 archery in combat',
     req: 'Carries the most magic items.',
-    metric: (c) => (c.items || []).length,
+    metric: (c) => (c.items ?? []).length,
   },
   {
     key: 'castellan',
     name: 'The Castellan',
     perk: '+1g per turn for every 5 provinces held',
     req: 'The king holding the most provinces.',
-    metric: (c, st) =>
-      c.isKing ? ((st.world && st.world.provinces) || []).filter((pv) => pv.owner === c.player).length : 0,
+    metric: (c, st) => (c.isKing ? (st.world?.provinces ?? []).filter((pv) => pv.owner === c.player).length : 0),
   },
   {
     key: 'warlock',
@@ -517,20 +634,20 @@ export const MINOR_TITLES = [
     req: 'Highest single magic-school level.',
     metric: (c) => theHighestLevelAHeroHasTrainedInAMagicSchool(c),
   },
-];
-export function computeMinorTitles(state): Partial<Record<string, MinorTitleHolder>> {
-  const chars = (state.characters || []).filter((c) => c && c.player != null && c.alive);
-  const out = {};
+] satisfies readonly AMinorTitle[];
+export function computeMinorTitles(state: TheWorldAsTheMinorTitlesReadIt): Partial<Record<string, MinorTitleHolder>> {
+  const chars = (state.characters ?? []).filter(aLivingHeroTheTitlesCount);
+  const out: Partial<Record<string, MinorTitleHolder>> = {};
   MINOR_TITLES.forEach((t) => {
     let best = 0,
-      bc = null;
-    chars.forEach((c) => {
+      bc: AHeroOfARealmAsTheTitlesCountHim | null = null;
+    for (const c of chars) {
       const v = t.metric(c, state) || 0;
       if (v > best) {
         best = v;
         bc = c;
       }
-    });
+    }
     if (bc) out[t.key] = { charId: bc.id, playerIndex: bc.player, name: t.name, perk: t.perk };
   });
   return out;
@@ -553,7 +670,13 @@ export function computeMinorTitles(state): Partial<Record<string, MinorTitleHold
 // 'move' — movement points only — computeMovePoolMax
 // 'order' — the order's own success roll only (e.g. Sage research)
 // Every entry here must correspond to a REAL engine site; the harness asserts each one.
-export const SKILL_EXTRA_MINORS = [
+export const SKILL_EXTRA_MINORS: readonly (readonly [
+  key: string,
+  skills: readonly string[],
+  delta: number,
+  kind: string,
+  scope: string,
+])[] = [
   // key skills delta kind scope
   ['duelist', ['melee'], 1, 'title', 'combat'],
   ['marksman', ['archery'], 1, 'title', 'combat'],
@@ -572,22 +695,38 @@ export const SKILL_EXTRA_SCOPE_NOTE = {
 };
 // `minorHolders` is the freshly-computed map where one is to hand; the last resolved turn's map is
 // the fallback, so a character still sees their own perk before Titles go public.
-export function extraSkillBonuses(c, state, minorHolders): Partial<Record<string, ASkillBonusAtItsPointOfUse[]>> {
-  const out = {};
+// (A hero's id is only compared: a test's stand-in holds it as words. The holders' map is the turn's, or the view's.)
+export function extraSkillBonuses(
+  c: { readonly id: unknown; readonly player: number | null } | null | undefined,
+  state:
+    | {
+        readonly _minorHolders?: Readonly<Partial<Record<string, unknown>>> | undefined;
+        readonly players?: readonly (ARealmAsTheDiscoveriesReadIt | null | undefined)[] | null | undefined;
+      }
+    | null
+    | undefined,
+  minorHolders: Readonly<Partial<Record<string, unknown>>> | null | undefined,
+): Partial<Record<string, ASkillBonusAtItsPointOfUse[]>> {
+  const out: Partial<Record<string, ASkillBonusAtItsPointOfUse[]>> = {};
   if (!c) return out;
-  const mh = minorHolders || (state && state._minorHolders) || {};
-  const nameOf = (k) => (MINOR_TITLES.find((t) => t.key === k) || {}).name || k;
-  const add = (skill, label, delta, kind, scope) => {
-    (out[skill] = out[skill] || []).push({ label, delta, kind, scope, note: SKILL_EXTRA_SCOPE_NOTE[scope] || '' });
+  const mh = minorHolders ?? state?._minorHolders ?? {};
+  const nameOf = (k: string) => (MINOR_TITLES.find((t) => t.key === k)?.name ?? '') || k;
+  const notes: Readonly<Partial<Record<string, string>>> = SKILL_EXTRA_SCOPE_NOTE;
+  const add = (skill: string, label: string, delta: number, kind: string, scope: string) => {
+    const here = out[skill] ?? [];
+    out[skill] = here;
+    here.push({ label, delta, kind, scope, note: notes[scope] ?? '' });
   };
   SKILL_EXTRA_MINORS.forEach(([key, skills, delta, kind, scope]) => {
     const h = mh[key];
-    if (!(h && h.charId === c.id)) return;
-    skills.forEach((sk) => add(sk, nameOf(key), delta, kind, scope));
+    if (!h || Reflect.get(Object(h), 'charId') !== c.id) return;
+    skills.forEach((sk) => {
+      add(sk, nameOf(key), delta, kind, scope);
+    });
   });
   // Veteran Training — a realm-wide Heroic discovery, +1 melee/archery in personal combat (the discoveries' registry's
   // since plan P1-19ac: "personalCombat: a realm's discoveries add to a fighter's skills", as pcCharCombatant asks it).
-  const pl = state && state.players && c.player != null ? state.players[c.player] : null;
+  const pl = state?.players && c.player != null ? state.players[c.player] : null;
   const _veteranLevels = theLevelsARealmsDiscoveriesAddToAFightersSkills(pl);
   if (_veteranLevels) {
     add('melee', 'Veteran Training', _veteranLevels, 'discovery', 'combat');

@@ -159,7 +159,7 @@ test("the battle cast is in its realm's row, with its spell, chance and outcome"
 });
 
 test("each Imperial Title held is in its holder's row this turn", () => {
-  const standings = computeStandings(r.S2) as {
+  const standings = computeStandings(r.S2 as Parameters<typeof computeStandings>[0]) as {
     titles?: Record<string, { playerIndex?: number | null; merit: number } | null>;
   };
   const held = Object.entries(standings.titles ?? {}).filter(

@@ -362,14 +362,6 @@
       "count": 1
     }
   },
-  "src/engine/titles/reckoning.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
   "src/engine/titles/title-holders-and-battle-merit.ts": {
     "@typescript-eslint/no-confusing-void-expression": {
       "count": 1
@@ -385,11 +377,6 @@
     },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 7
-    }
-  },
-  "src/engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
     }
   },
   "src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts": {
