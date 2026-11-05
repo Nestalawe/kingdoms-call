@@ -340,6 +340,20 @@ describe("the other folders' lines no matrix game reaches keep their words", () 
     const aRow = (cols: number, features: (i: number) => unknown[] | undefined) =>
       Array.from({ length: cols }, (_, i) => ({ id: i, row: 0, col: i, tax: 1, features: features(i) }));
     const tierOne = ALL_MAGIC_ITEMS_P.filter((it) => it.tier === 1 && !isLegendaryItem(it));
+    /** The first tier-1 design held under three names or more (its first three), and another item of its kind. */
+    const aDesignUnderThreeNamesAndAnother = () => {
+      const byDesign = new Map<string, typeof tierOne>();
+      tierOne.forEach((it) => {
+        const k = `${itemHoardCategory(it)}|${itemEffectKey(it)}`;
+        byDesign.set(k, [...(byDesign.get(k) ?? []), it]);
+      });
+      const thrice = ([...byDesign.values()].find((l) => l.length >= 3) ?? []).slice(0, 3);
+      const [first] = thrice;
+      const other = tierOne.find(
+        (it) => itemHoardCategory(it) === itemHoardCategory(first) && itemEffectKey(it) !== itemEffectKey(first),
+      );
+      return [thrice, other] as const;
+    };
 
     test("a lair's region with no state, no realms, no map, or a map of no width (no wrap round)", () => {
       expect(lairRegionOf(null, { row: 0, col: 0 })).toBe(0);
@@ -416,42 +430,95 @@ describe("the other folders' lines no matrix game reaches keep their words", () 
       });
       expect(names(lair['hoardItems'])).toEqual(names(shuffleP(left, () => 0).reverse()));
     });
-    test("two neighbouring lairs left with one effect: the repair swaps one's item with a far lair's of its kind and tier", () => {
-      // the treasury holds two designs: one under two names, and one other of the same kind and tier
-      const byDesign = new Map<string, typeof tierOne>();
-      tierOne.forEach((it) => {
-        const k = `${itemHoardCategory(it)}|${itemEffectKey(it)}`;
-        byDesign.set(k, [...(byDesign.get(k) ?? []), it]);
-      });
-      const twice = [...byDesign.values()].find((l) => l.length >= 2) ?? [];
-      const [first, second] = twice;
-      const other = tierOne.find(
-        (it) => itemHoardCategory(it) === itemHoardCategory(first) && itemEffectKey(it) !== itemEffectKey(first),
-      );
-      const kept = new Set([String(first?.name), String(second?.name), String(other?.name)]);
-      // Ashfell (column 0) and Wendmeadow (1) side by side, Thornwood (6) four provinces away round the map
-      const [ash, wend, thorn] = [aLair('Ashfell Barrow'), aLair('Wendmeadow Den'), aLair('Thornwood Lair')];
-      const lairs = new Map<number, Obj>([
-        [0, ash],
-        [1, wend],
-        [6, thorn],
-      ]);
+    test.each([
+      ['ten provinces wide', 10],
+      ['of no width (it does not wrap round)', undefined],
+    ])(
+      "two neighbouring lairs left with one effect, on a map %s: the repair swaps one's item with a far lair's",
+      (_, cols) => {
+        // the treasury holds two designs: one under two names, and one other of the same kind and tier
+        const byDesign = new Map<string, typeof tierOne>();
+        tierOne.forEach((it) => {
+          const k = `${itemHoardCategory(it)}|${itemEffectKey(it)}`;
+          byDesign.set(k, [...(byDesign.get(k) ?? []), it]);
+        });
+        const twice = [...byDesign.values()].find((l) => l.length >= 2) ?? [];
+        const [first, second] = twice;
+        const other = tierOne.find(
+          (it) => itemHoardCategory(it) === itemHoardCategory(first) && itemEffectKey(it) !== itemEffectKey(first),
+        );
+        const kept = new Set([String(first?.name), String(second?.name), String(other?.name)]);
+        // Ashfell (column 0) and Wendmeadow (1) side by side, Thornwood (6) four provinces away round the map
+        const [ash, wend, thorn] = [aLair('Ashfell Barrow'), aLair('Wendmeadow Den'), aLair('Thornwood Lair')];
+        const lairs = new Map<number, Obj>([
+          [0, ash],
+          [1, wend],
+          [6, thorn],
+        ]);
+        const G: Obj = {
+          players: [],
+          world: { provinces: aRow(10, (i) => [lairs.get(i)].filter(Boolean)), cols, rows: 1 },
+          _awardedItems: everyNameBut(kept),
+        };
+        withDice(0, () => {
+          ensureAllLairHoards(G);
+        });
+        // Wendmeadow's lair was stocked first (the first design), then Thornwood's (the other: unspent), then Ashfell's
+        // (the first design again, nothing else left); the repair gives Wendmeadow Thornwood's item and Thornwood its own
+        expect([ash, wend, thorn].map((l) => names(l['hoardItems']))).toEqual([
+          [second?.name],
+          [other?.name],
+          [first?.name],
+        ]);
+        expect([ash, wend, thorn].map((l) => (l['hoardItems'] as { id: number }[])[0]?.id)).toEqual([2, 1, 0]);
+      },
+    );
+    test('the lairs holding an effect, kept after a swap for the next lair the repair weighs', () => {
+      // one design under three names and one other of its kind, for four lairs at columns 0, 2, 7 and 8
+      const [thrice, other] = aDesignUnderThreeNamesAndAnother();
+      const kept = new Set([...thrice.map((it) => it.name), String(other?.name)]);
+      const lairs = new Map([0, 2, 7, 8].map((c) => [c, aLair(`Lair ${String(c)}`)]));
       const G: Obj = {
         players: [],
-        world: { provinces: aRow(10, (i) => [lairs.get(i)].filter(Boolean)), cols: 10, rows: 1 },
+        world: { provinces: aRow(14, (i) => [lairs.get(i)].filter(Boolean)), cols: 14, rows: 1 },
         _awardedItems: everyNameBut(kept),
+      };
+      withDice(0.6, () => {
+        ensureAllLairHoards(G);
+      });
+      expect([...lairs.values()].map((l) => names(l['hoardItems']))).toEqual([
+        [thrice[1]?.name],
+        [thrice[2]?.name],
+        [thrice[0]?.name],
+        [other?.name],
+      ]);
+    });
+    test('a lair with no guardian is dealt after a Moderate one: the one legendary left goes to the Moderate den', () => {
+      const [theOneLeft] = ALL_MAGIC_ITEMS_P.filter((it) => isLegendaryItem(it));
+      const barrow = aLair('Old Barrow', null);
+      const den = aLair('Wolf Den', 'Moderate');
+      const G: Obj = {
+        players: [],
+        world: { provinces: aRow(2, (i) => [i === 0 ? barrow : den]), cols: 2, rows: 1 },
+        // every legendary handed out but one
+        _awardedItems: ALL_MAGIC_ITEMS_P.filter((it) => isLegendaryItem(it) && it.name !== theOneLeft?.name).map(
+          (it) => it.name,
+        ),
       };
       withDice(0, () => {
         ensureAllLairHoards(G);
       });
-      // Wendmeadow's lair was stocked first (the first design), then Thornwood's (the other: unspent), then Ashfell's
-      // (the first design again, nothing else left); the repair gives Wendmeadow Thornwood's item and Thornwood its own
-      expect([ash, wend, thorn].map((l) => names(l['hoardItems']))).toEqual([
-        [second?.name],
-        [other?.name],
-        [first?.name],
-      ]);
-      expect([ash, wend, thorn].map((l) => (l['hoardItems'] as { id: number }[])[0]?.id)).toEqual([2, 1, 0]);
+      expect(names(den['hoardItems'])).toEqual([theOneLeft?.name]);
+      expect(barrow['hoardItems']).toMatchObject([{ tier: 1 }]);
+    });
+    test('two lairs in a province whose id names no place in the list: both stocked, the bar passing over it', () => {
+      const legendaries = ALL_MAGIC_ITEMS_P.filter((it) => isLegendaryItem(it)).map((it) => it.name);
+      const provinces = [{ id: 5, row: 0, col: 0, tax: 1, features: [aLair('Old Barrow'), aLair('Wolf Den')] }];
+      const G: Obj = { players: [], world: { provinces, cols: 1, rows: 1 }, _awardedItems: legendaries };
+      withDice(0, () => {
+        ensureAllLairHoards(G);
+      });
+      expect(G['nextItemId']).toBe(2);
     });
   });
 });
