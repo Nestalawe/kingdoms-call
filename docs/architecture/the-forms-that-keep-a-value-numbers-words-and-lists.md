@@ -111,7 +111,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   typed wider than the list's element (`(it: AnItemItsEffectGuarded) => …`) keeps a guard on a field the schema
   requires and still returns the list's own kind; two such checks stay two (the ratchet counts each).
 - **An object grouped by a number** (`(o[k] = o[k] || v).list.push(x)`) is read, then written back:
-  `const here = o[k] ?? v;`, `o[k] = here;`, `here.list.push(x)` (lint reads `o[k] ??= v` as never missing).
+  `const here = o[k] ?? v;`, `o[k] = here;`, `here.list.push(x)` (lint reads `o[k] ??= v` as never missing). A `Map`
+  grouped so (`if (!m.has(k)) m.set(k, []); m.get(k).push(w)`, the lairs holding an effect) is the same three steps,
+  `const here = m.get(k) ?? [];`, `m.set(k, here);`, `here.push(w)`: a key already set keeps its place.
 - **A filter that keeps a kind** needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`;
   `filter(Boolean)` a type predicate. A callback whose result is read only as true or false is typed `: boolean`, so
   the compiler doesn't infer a predicate over a large union.

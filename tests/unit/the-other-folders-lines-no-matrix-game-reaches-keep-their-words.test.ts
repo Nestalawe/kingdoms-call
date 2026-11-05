@@ -4,7 +4,14 @@
 // with no list of defenders; a Bless ward against a caster not named; the Plague on a unit of no name; a capture with
 // no conqueror and no realm named; and an Evil conqueror's enslavement of the folk, and of a province with no humanoid
 // folk. The matrix proves the rest (the GM's log byte-identical in all 120 games); each of these is proved here on the
-// words the engine wrote before, whole, as the GM's log stores them (theTurnsLinesInWords).
+// words the engine wrote before, whole, as the GM's log stores them (theTurnsLinesInWords). Since plan P1-10b36 freed
+// the spy's learning, the Plague and the lair items of their ts-nocheck line, it also holds, each on the value it had
+// before: a spy on a king's home in a world with no roll of heroes or a gap in it, the owner's warning of a spy of no
+// realm, of a realm of no name or of none at his index, and a spy of no realm who lifts a secret (a TypeError); a Bless
+// ward of no realm, your own, or of no chance; the Plague of no level, with no heroes, host or garrison listed, on a
+// unit of an empty name, and spreading over no provinces or past a ward of no chance; and the lairs' stocking on what a
+// staged world lacks (a state, realms, a map's width, a guardian, features), the kinds already handed out, a second
+// round of legendaries, and the repair of two neighbouring lairs left with one effect.
 // Level 1 (unit): each is a plain function on a staged world, called directly on the engine's modules (plan P1-14a);
 // a static check can't run them, and no game reaches these lines. The staged values carry only the fields each reads,
 // so their type is given by assertion (`as never`) where the function's own type asks for more. The dice are fixed with kcRng.use where a line draws them.
