@@ -46,7 +46,7 @@ import type { TurnContext, TurnOrder } from '../turn/context.ts';
 type AGarrisonUnitAsTheClaimReadsIt = ArmyInABattle & { readonly _navalHold?: number | null };
 /** Whether a hero lives, read again after the battle since the test that narrowed it (a battle may slay him): the
  *  compiler keeps a test's narrowing across a call. */
-function whetherHeLivesNow(hero: Pick<Character, 'alive'>): boolean {
+function whetherTheQuarryLivesNow(hero: Pick<Character, 'alive'>): boolean {
   return hero.alive;
 }
 /** Whether a province's battle is unresolved, read again after the battle since the test that narrowed it (a battle
@@ -445,7 +445,7 @@ export function advancePursuit(turnContext: TurnContext, c: Character, ph: numbe
     } // a slain pursuer stays where they fell
     if (combinedDef.location !== quarry.location) {
       const np = G.world.provinces[combinedDef.location];
-      if (whetherHeLivesNow(quarry)) {
+      if (whetherTheQuarryLivesNow(quarry)) {
         quarry.location = combinedDef.location;
         if (np) quarry.locationName = np.name;
       } // a slain quarry stays where they fell

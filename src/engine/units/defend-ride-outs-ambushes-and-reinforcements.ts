@@ -34,7 +34,6 @@ import { resolveCharVsChar } from '../personal-combat/duels-and-character-encoun
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { combatVsChar } from '../battle/battles-between-heroes.ts';
 import { isHostileInvasion, phaseInitCompare } from '../turn/phase-intents-and-dependency-ordering.ts';
-import { aHeroOfARealm, theCommanderPicked } from '../battle/hosts-gained-in-a-province.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { AHeroAsAHostGainedHasHim } from '../battle/hosts-gained-in-a-province.ts';
 import type { APhaseIntent, ThePhasesIntents } from '../turn/phase-intents-and-dependency-ordering.ts';
@@ -65,6 +64,17 @@ function theProvinceHeStandsIn(G: TurnContext['G'], hero: Pick<Character, 'locat
   const prov = G.world.provinces[hero.location];
   if (!prov) throw new TypeError("Cannot read properties of undefined (reading 'terrain')");
   return prov;
+}
+/** A hero on the watch who serves a realm (`c.player != null`), as the realm's conquest reads him (applyEvilConquest).
+ *  Written here, not taken from the hosts gained, whose file reads this one. */
+function aHeroOfAWatchingRealm(h: HeroInABattle): h is HeroInABattle & { readonly player: number } {
+  return h.player != null;
+}
+/** The commander pickBattleCommander picks for the host in the watch: the heaviest foe it is handed or one of the foes
+ *  beside him, so there is one; for none, a TypeError. */
+function theHostsCommander(leader: HeroInABattle | null | undefined): HeroInABattle {
+  if (!leader) throw new TypeError('pickBattleCommander picked no commander');
+  return leader;
 }
 /** Whether a hero lives, read again after the calls since the test that narrowed it (a battle or a fight may slay
  *  him): the compiler keeps a test's narrowing across a call. */
@@ -441,7 +451,7 @@ export function defendAnswerUnitGain(
 export function runDefendMaterializedReactions(turnContext: TurnContext, ph: number): void {
   const { G, movePoints, seaMovePoints, seaMoveActive, seaCap } = turnContext;
   (asItsGuardReadsIt(G.characters) ?? []).forEach((c: HeroInABattle) => {
-    if (!c.alive || !aHeroOfARealm(c) || !c._defend?.active) return;
+    if (!c.alive || !aHeroOfAWatchingRealm(c) || !c._defend?.active) return;
     if ((asItsGuardReadsIt(c.armies) ?? []).length === 0) return; // only generals ride out
     if (c._defendReactedPhase === ph) return; // one reaction per phase
     if ((movePoints[c.id] ?? 0) <= 0 && (seaMovePoints[c.id] ?? 0) <= 0) return;
@@ -560,7 +570,7 @@ export function runDefendMaterializedReactions(turnContext: TurnContext, ph: num
       ...defReinf.flatMap((d) => asItsGuardReadsIt(d.armies) ?? []),
     ];
     const _hP = pickBattleCommander(turnContext, quarry, defReinf, _hPooled, prov, false); // best defender commands
-    const theLeader = theCommanderPicked(_hP.leader); // quarry, or one joining him: never none
+    const theLeader = theHostsCommander(_hP.leader); // quarry, or one joining him: never none
     const combinedDef = { ...theLeader, armies: _hPooled };
     const targetsPi = [c.player, quarry.player].filter((x) => x != null);
     emit(turnContext, {
