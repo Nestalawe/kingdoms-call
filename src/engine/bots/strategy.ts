@@ -941,7 +941,9 @@ export function botUpkeep(G, pi) {
   }); // hero wages are real wages too
   return w;
 }
-export function botTaxIncome(G, pi) {
+// Its return type written for a typed caller (plan P1-10b36: what-a-spy-learns.ts' tax income of a king's home): every
+// path returns a number.
+export function botTaxIncome(G, pi): number {
   let inc = 0;
   (G.world.provinces || []).forEach((p) => {
     if (p && p.owner === pi) inc += p.tax || 0;

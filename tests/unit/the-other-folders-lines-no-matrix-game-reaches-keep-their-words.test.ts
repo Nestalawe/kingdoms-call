@@ -67,7 +67,7 @@ describe("the other folders' lines no matrix game reaches keep their words", () 
       const tc = aTurn(G);
       const sprov = { id: 2, name: 'Wendmeadow', owner: 0, tax: 3, features: [] };
       withDice(0.99, () => {
-        applySpySuccess(tc, { id: 7, name: 'Thorn', player, alive: true, skills: { spy: 9 } }, sprov);
+        applySpySuccess(tc, { id: 7, name: 'Thorn', player, alive: true, skills: { spy: 9 } } as never, sprov);
       });
       return wordsOf(tc);
     };
