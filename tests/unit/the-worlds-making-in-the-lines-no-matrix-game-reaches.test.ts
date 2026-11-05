@@ -9,12 +9,18 @@
 // Not lower: each value is made inside the one function, from the dice and the passes before it. The guarantees a
 // world keeps around its homes are tests/unit/the-two-crowns-have-wild-country-within-two-provinces.test.ts, and the
 // spacing of the homes tests/home-placement.test.js.
+// The wide sea's case leaves out the lair stocking (items/lair-items.ts' ensureAllLairHoards, a spy that runs the real
+// one in every other case): it runs after the provinces are named, so their names are the same without it, and on the
+// 60 by 40 world it took nine tenths of the case's time (1.9 s of the case's 2.2 s locally; past 5 s on CI).
 import '../lib/the-whole-engine.ts';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { ensureAllLairHoards } from '../../src/engine/items/lair-items.ts';
 import { kcRng } from '../../src/engine/rng.ts';
 import { REALM_COLOURS, REALM_COLOUR_FALLBACK } from '../../src/engine/bots/intel.ts';
 import { SEA_PCT_DEFAULT, generateNewGame, normSeaPct } from '../../src/engine/world/generate.ts';
 import { getNeighborsP } from '../../src/engine/world/map-helpers.ts';
+
+vi.mock('../../src/engine/items/lair-items.ts', { spy: true });
 
 type TheSetUps = Parameters<typeof generateNewGame>[0];
 type TheWorld = ReturnType<typeof generateNewGame>;
@@ -77,7 +83,9 @@ test('a sea share the homes leave out of reach warns the GM with the nearest sha
 });
 
 test('a sea so wide that its names run out numbers them, in Roman numerals to XII and in figures after', () => {
+  vi.mocked(ensureAllLairHoards).mockImplementationOnce(() => undefined);
   const w = aWorld(realms(2), 60, 40, 80);
+  expect(ensureAllLairHoards).toHaveBeenCalledTimes(1);
   const names = w.world.provinces.map((p) => p.name ?? '');
   expect(new Set(names).size).toBe(names.length);
   expect(names.some((n) => n.endsWith(' II'))).toBe(true);
