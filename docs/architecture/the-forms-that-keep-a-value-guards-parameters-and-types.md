@@ -68,6 +68,12 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 
 ## Parameters, shapes and claims
 
+- **An object the code builds whose ids are plain numbers** (the world's making: a province, a hero, a realm) is typed by a
+  local shape with `id`, `owner` and `player` as `number` (the save's ids are branded, P1-10a1). A typed callee it is
+  handed to takes the fields it reads (`Pick<Province, …>` and a plain `owner`), not the saved type: types only.
+- **A stretch a test cuts out and runs on its own** (`tests/home-placement.test.js`, `statementsBetween`) calls only what
+  the stretch declares: a check it needs is a `function` declared inside it, not an arrow with a type parameter, which a
+  `.js` parse reads as JSX.
 - **A parameter is typed from what its callers pass and as wide as the body's guards**, by what the function reads,
   not the schema's whole type: an interface beside it ("the state as these read it"), each field a guard tests
   optional, a plain `number` where the schema has a brand. A function that reads only the state takes
