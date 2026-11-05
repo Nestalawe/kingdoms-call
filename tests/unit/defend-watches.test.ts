@@ -1052,3 +1052,257 @@ describe('a ride-out that met no battle (reconcileDefendRideOuts)', () => {
     }
   });
 });
+
+// ── P1-10b34: the lines of the watch no game of the balance matrix reaches, each on the value it had before ──
+/** Runs `body` with every die the engine draws pinned to `die` ([0, 1)). */
+function allDice<T>(die: number, body: () => T): T {
+  const was = kcRng.use(() => die);
+  try {
+    return body();
+  } finally {
+    kcRng.use(was);
+  }
+}
+/** Each line of the log: its fact's kind and fields, and its phase. */
+/** A line of the log as these cases read it: its fact's kind and fields, and its phase. */
+interface ALineTold {
+  readonly kind: string;
+  readonly phase: unknown;
+  readonly [field: string]: unknown;
+}
+const told = (b: Board): ALineTold[] =>
+  b.tc.turnLog.map((l) => ({ ...(l['fact'] as { kind: string }), phase: l['phase'] }));
+/** A general of realm 0 on watch in A (realm 0's), the province P beside it realm 0's too, and an enemy column (realm
+ *  1's) marching into P from Q, beside P; the phase's intents. */
+function stageAnInvasion(b: Board, staged: (d: Character, A: Province) => void = () => undefined) {
+  const A = b.X;
+  const P = must(b.ring1[0], 'P');
+  const Q = must(
+    b.nbrs(P).find((p) => p.id !== A.id && !b.nbrs(A).some((n) => n.id === p.id)),
+    'Q',
+  );
+  b.own(A, 0);
+  b.own(P, 0);
+  const d = hero(b, { player: 0, at: A, troops: 3, watch: true, land: 2 });
+  const e = hero(b, { player: 1, at: Q, troops: 2, land: 2 });
+  move(b, e, P);
+  staged(d, A);
+  return { A, P, Q, d, e, intents: buildPhaseIntents(b.tc, PH) };
+}
+
+/** Forgets the crossing recorded for a hero this turn (a hero with none recorded crosses by land). */
+const noCrossingRecorded = (b: Board, c: Character) => {
+  Reflect.deleteProperty(b.tc['seaCap'] as object, c.id);
+};
+
+describe('the watch: the lines of a phase, a hero with no crossing recorded (P1-10b34)', () => {
+  test('a general held by an unresolved battle where he stands is told so, of the province threatened, in the phase', () => {
+    const b = board();
+    const s = stageAnInvasion(b, (_d, A) => {
+      A._battleUnresolved = true;
+      hero(b, { player: 1, at: A, troops: 1 });
+    });
+    runDefendReactions(b.tc, PH, s.intents);
+    expect(told(b)).toEqual([
+      {
+        kind: 'a defender held by an unresolved battle cannot ride out',
+        heroName: s.d.name,
+        provinceName: s.A.name,
+        threatenedProvinceName: s.P.name,
+        phase: PH,
+      },
+    ]);
+  });
+
+  test('a ride-out that faced a column unfought, and a line formed where he stands, are told in the phase', () => {
+    const b = board();
+    const [A, P] = [b.X, must(b.ring1[0], 'P')];
+    b.own(A, 0);
+    b.own(P, 0);
+    const d = hero(b, { player: 0, at: P, troops: 2, watch: true });
+    d._defendRideOut = { ph: PH, provId: P.id, fromId: A.id, names: ['Hero One'] };
+    hero(b, { player: 1, at: P, troops: 1 });
+    reconcileDefendRideOuts(b.tc, PH);
+    const g = board();
+    g.own(g.X, 0);
+    hero(g, { player: 0, at: g.X, troops: 3, watch: true, land: 2 });
+    hero(g, { player: 1, at: g.X, troops: 1 });
+    allDice(0.5, () => {
+      runDefendMaterializedReactions(g.tc, PH);
+    });
+    expect([
+      told(b).map((f) => [f.kind, f.phase]),
+      told(g)
+        .filter((f) => f.kind === 'a defender forms his line against a host taking shape where he stands')
+        .map((f) => f.phase),
+    ]).toEqual([[['a defender rides out and faces a column but no battle is joined', PH]], [PH]]);
+  });
+
+  test('with no crossing recorded he goes by land: he rides out, rides in, and is hurried in', () => {
+    const rides = (() => {
+      const b = board();
+      const s = stageAnInvasion(b, (d) => {
+        noCrossingRecorded(b, d);
+      });
+      runDefendReactions(b.tc, PH, s.intents);
+      return s.d.location === s.P.id;
+    })();
+    const ridesIn = (() => {
+      const b = board();
+      b.own(b.X, 0);
+      const A = must(b.ring1[0], 'A');
+      const d = hero(b, { player: 0, at: A, troops: 2, watch: true });
+      noCrossingRecorded(b, d);
+      const raiser = hero(b, { player: 1, at: b.X, troops: 2 });
+      return (
+        defendAnswerUnitGain(b.tc, raiser, b.X, PH)
+          .map((r) => r.id)
+          .includes(d.id) && d.location === b.X.id
+      );
+    })();
+    const ridesToAHost = (() => {
+      const b = board();
+      const B = must(b.ring1[0], 'B');
+      b.own(b.X, 0);
+      b.own(B, 0);
+      const d = hero(b, { player: 0, at: b.X, troops: 3, watch: true, land: 2 });
+      noCrossingRecorded(b, d);
+      hero(b, { player: 1, at: B, troops: 1 });
+      allDice(0.5, () => {
+        runDefendMaterializedReactions(b.tc, PH);
+      });
+      return d._attackedFrom === b.X.id;
+    })();
+    const hurried = (() => {
+      const b = board();
+      const P = b.X;
+      const [Q, R] = [must(b.ring1[0], 'Q'), must(b.ring1[3], 'R')];
+      b.own(P, 0);
+      const c = hero(b, { player: 0, at: Q, troops: 2, skills: { melee: 0, tactical: 0, march: 0 } });
+      const e = hero(b, { player: 1, at: R, troops: 2, skills: { melee: 9, tactical: 9, march: 9 } });
+      move(b, c, P);
+      move(b, e, P);
+      noCrossingRecorded(b, c);
+      const intents = buildPhaseIntents(b.tc, PH);
+      runReinforcementArrivals(b.tc, PH, intents);
+      return [c.location === P.id, intents.get(c.id)?.cancelReason];
+    })();
+    expect([rides, ridesIn, ridesToAHost, hurried]).toEqual([true, true, true, [true, 'reinforced']]);
+  });
+});
+
+describe('the column hurried in: a realm already listed, a commander fallen since (P1-10b34)', () => {
+  /** A column of realm 0 marching from Q into its own P (X), an enemy column (realm 1's, faster) marching in from R. */
+  const stageARace = () => {
+    const b = board();
+    const P = b.X;
+    const [Q, R] = [must(b.ring1[0], 'Q'), must(b.ring1[3], 'R')];
+    b.own(P, 0);
+    const c = hero(b, { player: 0, at: Q, troops: 2, skills: { melee: 0, tactical: 0, march: 0 } });
+    const e = hero(b, { player: 1, at: R, troops: 2, skills: { melee: 9, tactical: 9, march: 9 } });
+    move(b, c, P);
+    move(b, e, P);
+    return { b, P, Q, c, intents: buildPhaseIntents(b.tc, PH) };
+  };
+  test("a realm already among the province's visitors is listed once", () => {
+    const { b, P, c, intents } = stageARace();
+    P.visitedBy = [0];
+    runReinforcementArrivals(b.tc, PH, intents);
+    expect([c.location, P.visitedBy]).toEqual([P.id, [0]]);
+  });
+  test('a commander who has fallen since the intents were drawn up is never marched', () => {
+    const { b, Q, c, intents } = stageARace();
+    c.alive = false;
+    runReinforcementArrivals(b.tc, PH, intents);
+    expect([c.location, intents.get(c.id)?.cancelled]).toEqual([Q.id, false]);
+  });
+});
+
+describe('a host standing in the watch: who commands it, its rout, the ground won back (P1-10b34)', () => {
+  /** A general of realm 0 (12 companies) on watch in X, his realm's B beside it, where `foes` of realm 1 stand; realm 1
+   *  holds C, beside B, where a beaten host of it falls back. */
+  const stageAHost = () => {
+    const b = board();
+    const B = must(b.ring1[0], 'B');
+    const C = must(
+      b.nbrs(B).find((p) => p.id !== b.X.id && !b.nbrs(b.X).some((n) => n.id === p.id)),
+      'C',
+    );
+    b.own(b.X, 0);
+    b.own(B, 0);
+    b.own(C, 1);
+    const d = hero(b, { player: 0, at: b.X, troops: 12, watch: true, land: 2 });
+    return { b, B, C, d };
+  };
+  test('a companion of the heaviest host who commands better takes command, the line naming both', () => {
+    const { b, B } = stageAHost();
+    const quarry = hero(b, { player: 1, at: B, troops: 3, skills: { melee: 0, tactical: 0, march: 0 } });
+    const captain = hero(b, { player: 1, at: B, troops: 1, skills: { melee: 2, tactical: 9, march: 1 } });
+    allDice(0.5, () => {
+      runDefendMaterializedReactions(b.tc, PH);
+    });
+    expect(told(b).find((f) => f.kind === 'the most seasoned captain takes command of the combined host')).toEqual({
+      kind: 'the most seasoned captain takes command of the combined host',
+      leaderName: captain.name,
+      provName: B.name,
+      previousCommanderName: quarry.name,
+      phase: PH,
+    });
+  });
+  test('the beaten companions rout with the host: they leave the province', () => {
+    const { b, B, C } = stageAHost();
+    hero(b, { player: 1, at: B, troops: 1 });
+    const companion = hero(b, { player: 1, at: B, troops: 1 });
+    allDice(0.5, () => {
+      runDefendMaterializedReactions(b.tc, PH);
+    });
+    expect([companion.location, B.characters.includes(companion.id), C.characters.includes(companion.id)]).toEqual([
+      C.id,
+      false,
+      true,
+    ]);
+  });
+  test('a province a host has just taken is won back from its realm, unless a leaderless host of it still stands there', () => {
+    const wonBack = (leaderless: number | null) => {
+      const { b, B } = stageAHost();
+      b.own(B, 1);
+      B._takenByUnitGain = { turn: b.G.turn, ph: PH, from: 0 };
+      hero(b, { player: 1, at: B, troops: 1 });
+      if (leaderless !== null)
+        Object.assign(hero(b, { player: 1, at: B, troops: leaderless }), { alive: false, _leaderlessHost: true });
+      allDice(0.5, () => {
+        runDefendMaterializedReactions(b.tc, PH);
+      });
+      return [B.owner, b.G.players[1]?.provinces.includes(B.id), !Object.hasOwn(B, '_takenByUnitGain')];
+    };
+    expect([wonBack(null), wonBack(0), wonBack(1)]).toEqual([
+      [0, false, true],
+      [0, false, true],
+      [1, true, false],
+    ]);
+  });
+});
+
+describe('the ambush: an ambusher with no plan of his own (P1-10b34)', () => {
+  test('he sets upon his quarry with his sword (Melee)', () => {
+    const s = stageAmbush(5, [{ player: 1, at: 'B' }]);
+    allDice(0, () => {
+      runDefendAmbush(s.b.tc, PH);
+    });
+    expect([
+      s.c['encounterPlan'],
+      told(s.b)
+        .map((f) => f.kind)
+        .slice(2, 7),
+    ]).toEqual([
+      undefined,
+      [
+        'the attacker meets the defender in a personal encounter',
+        'one fighter has the initiative',
+        'a fighter advances and the combatants close',
+        'a fighter advances and the combatants close',
+        'a fighter attacks with a roll to hit',
+      ],
+    ]);
+  });
+});
