@@ -11,7 +11,7 @@ import { doARealmsDiscoveriesWeightTheLinesBehindTheFront } from '../rules/the-r
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { armStr, provIsCoastal } from './terrain-and-unit-strength.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { ArmyInABattle, HeroInABattle } from '../army-tables.ts';
 import type { Character, Item, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';

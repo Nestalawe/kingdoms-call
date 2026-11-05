@@ -124,7 +124,7 @@ import type {
   TheDefendersOfAProvince,
 } from './the-facts-a-battles-lines-record.ts';
 import type { AnEnemyUnitStruck } from '../rules/the-registry-of-content-effects.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 
 // ── BATTLES AGAINST A PROVINCE'S DEFENDERS (plan P1-08g: lifted out of resolveTurn) ────
 // A host's battle against the defenders of a province that no hero of a realm holds: its neutral defenders, a local

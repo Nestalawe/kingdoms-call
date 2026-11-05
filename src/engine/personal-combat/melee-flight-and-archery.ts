@@ -10,7 +10,6 @@ import { pcHasRanged, pcRangeStep, pcSpeedOf } from './speed-encounter-plans-and
 import {
   PC_HIT_MAX,
   PC_HIT_MIN,
-  asItsGuardReadsIt,
   pcHitChance,
   pcHitSkill,
   pcMeleeDamage,
@@ -18,6 +17,7 @@ import {
   pcSustainMult,
   pcTakeHit,
 } from './to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import {
   aFightersPerkNameAsTheLineTellsIt,
@@ -37,7 +37,7 @@ import type { AFighterInAPersonalCombat } from './helpers.ts';
 
 // Its types (plan P1-10b12): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
 // stays; a fighter is AFighterInAPersonalCombat (helpers.ts). A fighter's status, a foe or the state's range that the
-// code guards here but reads unguarded elsewhere is read through asItsGuardReadsIt (to-hit-wounds-stuns-and-courage.ts).
+// code guards here but reads unguarded elsewhere is read through asItsGuardReadsIt (rules-on-plain-values/).
 /** A hero as his experience is rolled (pcCombatXP): the skill rises waiting to be drawn this phase, which a guardian
  *  has none of (the save holds none: they are drawn before it is written). */
 type AHeroAsHisPendingRisesAreRead = object & {

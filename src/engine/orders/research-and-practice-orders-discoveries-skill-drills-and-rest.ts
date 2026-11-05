@@ -31,7 +31,7 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theProvinceIsHanded, theRealmIsHanded } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
 import { servesARealm, theOneThePickFell } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
 import type { Character, Province, Realm } from '../../schemas/saved-game-state.ts';

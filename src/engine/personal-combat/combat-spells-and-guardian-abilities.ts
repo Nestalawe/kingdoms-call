@@ -12,7 +12,6 @@ import { telSpell } from '../turn/log-line-helpers.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { pcNewStatus } from './speed-encounter-plans-and-combatants.ts';
 import {
-  asItsGuardReadsIt,
   pcCourageChance,
   pcHitSkill,
   pcLandStun,
@@ -20,6 +19,7 @@ import {
   pcStunTurned,
   pcTakeHit,
 } from './to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { pcCombatXP } from './melee-flight-and-archery.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import { aFightersWardAsTheLineTellsIt } from './the-facts-a-personal-combats-lines-record.ts';
@@ -42,7 +42,7 @@ import type { AFighterInAPersonalCombat, AFightersSchools, AGuardiansSpecial } f
 
 // Its types (plan P1-10b16): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
 // stays; a fighter is AFighterInAPersonalCombat (helpers.ts), and a value the code guards here but reads unguarded
-// elsewhere is read through asItsGuardReadsIt (to-hit-wounds-stuns-and-courage.ts).
+// elsewhere is read through asItsGuardReadsIt (rules-on-plain-values/).
 /** A Mirror Image in a fight: who cast it, on whom, the phantom that fights the victim and the rounds it has left. */
 export interface AMirrorImageInAFight {
   readonly caster: AFighterInAPersonalCombat;

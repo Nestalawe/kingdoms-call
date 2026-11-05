@@ -30,7 +30,7 @@ import type {
   AFighterOfAPersonalCombat,
   TheFactOfAPersonalCombatsLine,
 } from './the-facts-a-personal-combats-lines-record.ts';
-import { asItsGuardReadsIt } from './to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theChanceAMirrorImageIsSeenThrough } from '../rules/the-registry-of-spell-effects.ts';
 import {
   theAuraPenaltyAFightersAuraLaysOnHisFoe,
@@ -45,7 +45,7 @@ import type { AMirrorImageInAFight } from './combat-spells-and-guardian-abilitie
 
 // Its types (plan P1-10b16): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
 // stays; a fighter is AFighterInAPersonalCombat (helpers.ts), and a value the code guards here but reads unguarded
-// elsewhere is read through asItsGuardReadsIt (to-hit-wounds-stuns-and-courage.ts).
+// elsewhere is read through asItsGuardReadsIt (rules-on-plain-values/).
 /** The fight's state as an action reads it (pcAct's, tactics-combat-items-and-actions.ts). */
 type TheFightAsAnActionReadsIt = Parameters<typeof pcAct>[4];
 /** The fight's state as the whole fight keeps it: who fled, stole or talked the guardian down, and the Mirror Image,

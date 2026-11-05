@@ -29,7 +29,7 @@ import {
 } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Realm } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import { theWorkOfTheActionSpell } from './spells/the-action-spells-the-cast-spell-order-works-by-slug.ts';

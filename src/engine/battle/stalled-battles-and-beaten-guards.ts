@@ -19,7 +19,7 @@ import { combatVsChar } from './battles-between-heroes.ts';
 import { erodeGuardSurvivors, resolveUnitGainInProvince } from './hosts-gained-in-a-province.ts';
 import { emit } from '../turn/events-and-their-audiences.ts';
 import { aHeroOfARealm, theSeasonOfThePhase } from './hosts-gained-in-a-province.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
 import type { Army, Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';

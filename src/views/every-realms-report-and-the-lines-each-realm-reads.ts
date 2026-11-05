@@ -7,7 +7,7 @@ import {
   THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE,
   THE_KINDS_OF_A_ROLL_LINE,
 } from './the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
-import { asItsGuardReadsIt } from '../engine/personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Character, GameState, Realm } from '../schemas/saved-game-state.ts';
 import type { TurnContext } from '../engine/turn/context.ts';
 import type { LineFact, LogLine } from '../engine/turn/events-and-their-audiences.ts';

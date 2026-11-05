@@ -23,7 +23,7 @@ import { applyPlague, blessWardNegates } from '../../magic/plague-and-bless-ward
 import { SKILLGAIN_STD, trySkillGain } from '../../heroes/experience-skill-rises-and-earned-hp.ts';
 import { resolveUnitGainInProvince } from '../../battle/hosts-gained-in-a-province.ts';
 import { theGravesAsTheLineCountsThem } from '../the-facts-the-cast-spell-orders-lines-record.ts';
-import { asItsGuardReadsIt } from '../../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import {
   aRealmsNameOrNone,
   theProvinceTheCasterStandsIn,

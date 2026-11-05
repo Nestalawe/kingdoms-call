@@ -45,17 +45,16 @@ import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-enco
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.ts';
 import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import {
+  aLevelAboveNothing,
+  asItsGuardReadsIt,
+} from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import {
   servesARealm,
   theOneThePickFell,
   theOneTakenOut,
 } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
-import {
-  aLevelAboveNothing,
-  theProvinceIsHanded,
-  theRealmIsHanded,
-} from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+import { theProvinceIsHanded, theRealmIsHanded } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
 import type { WhatAThiefWasCaughtAt } from './the-facts-the-espionage-orders-lines-record.ts';
 import type { Character, GameState, Item, Province, Realm } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';

@@ -21,7 +21,7 @@ import {
 } from '../../turn/events-and-their-audiences.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
 import { blessWardNegates } from '../../magic/plague-and-bless-ward.ts';
-import { asItsGuardReadsIt } from '../../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Grave } from '../../../schemas/saved-game-state.ts';
 import {
   theCastersRealmsName,

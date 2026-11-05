@@ -14,7 +14,7 @@ import {
 import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { theProvinceIsHanded } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
 import { servesARealm } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Army, Character, Item, Province, Realm } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 

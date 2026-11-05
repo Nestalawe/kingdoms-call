@@ -15,6 +15,7 @@ import {
 } from './helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { whatARealmsDiscoveriesAddToAFightersAim } from '../rules/the-registry-of-discovery-effects.ts';
 import { pcFoeCat } from '../titles/perks.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
@@ -100,11 +101,6 @@ interface AStrikerAsTheWeaknessReadsHim {
 type AFighterAsHisRoundStarts = Omit<AFighterInAPersonalCombat, 'status'> & {
   readonly status: Omit<AFightersStatus, 'dot'> & { dot?: ALingeringHarm[] | null | undefined };
 };
-/** A value where the code guards it as if it may be missing (a narrative, a foe or a status no caller leaves out
- *  today), read as it is: the guard stays, and the value keeps its type where the code reads it unguarded. */
-export function asItsGuardReadsIt<Value>(value: Value): Value | null | undefined {
-  return value;
-}
 
 // ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS AND COURAGE (plan P1-08e: lifted out of resolveTurn) ────
 // The melee to-hit and damage, how a ward or a guardian's passive is named, the one door every stun lands through,

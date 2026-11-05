@@ -23,7 +23,7 @@ import { emitBattle } from './battle-report-lines-and-force-markers.ts';
 import { combatVsNPC } from './battles-against-province-defenders.ts';
 import { combatVsChar } from './battles-between-heroes.ts';
 import { defendAnswerUnitGain } from '../units/defend-ride-outs-ambushes-and-reinforcements.ts';
-import { asItsGuardReadsIt } from '../personal-combat/to-hit-wounds-stuns-and-courage.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
 import type { Army, Character, Province, Realm } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
