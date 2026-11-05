@@ -114,9 +114,7 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
     races = [] as string[],
   } = {}) {
     const builds = BOT_SKILL_BUILD as Record<string, Record<string, number>>;
-    const setup = (
-      generateBotSetups([], realms, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
-    ).map((b) => ({
+    const setup = generateBotSetups([], realms, 0).map((b) => ({
       ...b,
       gamePlayerId: 'gp' + String(b.id),
       name: b.kingdomName,
@@ -164,7 +162,7 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
         forTurn: S.turn,
       });
     const players = setup.map((sp) => {
-      const id = Number(sp.id);
+      const id = sp.id;
       const bot = bots.includes(id);
       return {
         id: sp.gamePlayerId,

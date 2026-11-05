@@ -711,8 +711,7 @@ export function botHireOrder(G, pi, c, L) {
 // guess, never the true garrison.
 export function botEnemyDefence(G, prov, ownerPi, viewerPi) {
   if (!prov) return 0;
-  if (viewerPi != null && !botSees(G, viewerPi, prov.id))
-    return botGuessDefence(G, viewerPi, prov, prov.terrain) / BOT_DEF_BONUS;
+  if (viewerPi != null && !botSees(G, viewerPi, prov.id)) return botGuessDefence(G, viewerPi, prov) / BOT_DEF_BONUS;
   let s = 0;
   const pool =
     viewerPi != null

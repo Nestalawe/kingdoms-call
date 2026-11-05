@@ -68,13 +68,13 @@ function fight(
 }
 
 /** The army of a side's row by its name. */
-function armyOf(force: readonly BattleRow[], name: string): ArmyInABattle {
+function armyOf(force: readonly BattleRow[], name: string | undefined): ArmyInABattle {
   const a = force.find((r) => r.a?.unitName === name)?.a;
-  if (!a) throw new Error(`no company named ${name}`);
+  if (a?.unitName === undefined) throw new Error(`no company named ${String(name)}`);
   return a;
 }
 /** A company's clause in words, or undefined when the map holds none for it. */
-const clauseOf = (map: Map<ArmyInABattle, WhomAUnitFaced>, force: readonly BattleRow[], name: string) => {
+const clauseOf = (map: Map<ArmyInABattle, WhomAUnitFaced>, force: readonly BattleRow[], name: string | undefined) => {
   const c = map.get(armyOf(force, name));
   return c && theClauseOfWhomAUnitFaced(c);
 };

@@ -105,13 +105,11 @@ interface World {
 kcRng.seed(1);
 const THE_WORLD = JSON.stringify(
   generateNewGame(
-    (generateBotSetups([], 2, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]).map(
-      (b) => ({
-        ...b,
-        gamePlayerId: 'gp' + String(b.id),
-        name: b.kingdomName,
-      }),
-    ),
+    generateBotSetups([], 2, 0).map((b) => ({
+      ...b,
+      gamePlayerId: 'gp' + String(b.id),
+      name: b.kingdomName,
+    })),
     { cols: 10, rows: 6 },
     999,
     { seaPct: 10 },

@@ -151,9 +151,7 @@ export async function personalCombatEngine({
 
   // A new world of bot realms, made by the engine itself, as JSON (tests/lib/engine.ts's botWorld), and the turn's
   // context on it (its turnContext): the fields resolveTurn adds, from the one list both roads use.
-  const setup = (
-    generateBotSetups([], realms, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
-  ).map((b) => ({
+  const setup = generateBotSetups([], realms, 0).map((b) => ({
     ...b,
     gamePlayerId: 'gp' + String(b.id),
     name: b.kingdomName,
@@ -161,7 +159,7 @@ export async function personalCombatEngine({
   const state = JSON.stringify(generateNewGame(setup, clone(size), 999, clone(opts)));
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(JSON.parse(state), [], 1), {
     KC_SEASONS,
-    isBotRow: isBotRow as (row: unknown) => boolean,
+    isBotRow,
   });
 
   const bound = new Map<string, (...args: unknown[]) => unknown>();
