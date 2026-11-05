@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_SKILLS, SAGE_DISCOVERIES_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { TEMPERS_P } from '../world/tables.ts';
@@ -10,6 +9,99 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from './events-and-their-audiences.ts';
+import type { TurnContext } from './context.ts';
+import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { Army, Character, Mercenary, Province, Realm, SkillLevels } from '../../schemas/saved-game-state.ts';
+
+/** A hero as the succession crowns him: his id and his realm's index plain numbers (the brands are the saved state's)
+ *  and his aptitudes filled by any skill's name. The roll of heroes is written through a view of it: its schema is
+ *  unchanged. */
+type AnHeirAsTheSuccessionCrownsHim = Omit<Character, 'id' | 'player' | 'aptitude'> & {
+  id: number;
+  player: number | null;
+  aptitude: Partial<Record<string, number>>;
+};
+/** A company as the new turn releases it or clears its battle's marks: summoned for the turn (`_temporary`), and the
+ *  strength a spell or a battle took from it this turn. The saved state's schema lacks them: each is tested and
+ *  deleted, never read for a value. */
+type ACompanyAsTheNewTurnClearsIt = Army & {
+  _temporary?: unknown;
+  _tempStrReduction?: unknown;
+  _turnStrReduction?: unknown;
+  _archeryRed?: unknown;
+  _laNoTerrain?: unknown;
+  _flakTargeted?: unknown;
+};
+/** A hero as the new turn clears the turn's spell marks off him (the saved state's schema lacks them: each is
+ *  deleted, never read). */
+type AHeroAsTheNewTurnClearsHim = Character & {
+  _partSeaThisPhase?: unknown;
+  _elementalSummonedThisTurn?: unknown;
+  _curses?: unknown;
+  _mirrorImages?: unknown;
+  _invisible?: unknown;
+  _charmedByPlayer?: unknown;
+  _charmedForPhase?: unknown;
+  _oratoryBoost?: unknown;
+  _clairvoyantBy?: unknown;
+  _druidNegated?: unknown;
+  _tacticalNegated?: unknown;
+  _tacticalHalved?: unknown;
+  _tacticalMult?: unknown;
+  _phantasmalBonus?: unknown;
+  _curseHalveStat?: unknown;
+  _necroAutoUsed?: unknown;
+};
+/** A province as the new turn clears the turn's spell marks off it (the saved state's schema lacks them): an enemy's
+ *  entry into its Illusory Terrain, and the marks tested and deleted; Part Sea's and a Flood's give back the terrain
+ *  they hold. */
+type AProvinceAsTheNewTurnClearsIt = Province & {
+  _illusoryTerrain?: { _enteredByEnemy?: unknown } | undefined;
+  _blessBonus?: unknown;
+  _phantomArmies?: unknown;
+  _featuresHidden?: unknown;
+  _earthquakeSpeed?: unknown;
+  _flooded?: unknown;
+  _partSea?: { readonly orig: string } | undefined;
+  _flood?: { readonly orig: string } | undefined;
+  _holyBonus?: unknown;
+  _oratoryBonus?: unknown;
+  _tempStrReduction?: unknown;
+  _turnStrReduction?: unknown;
+};
+/** A skeleton's rise the Iron Throne queued this turn (blood-harvest-and-iron-throne.ts): the winner's id and the
+ *  company that rises. */
+interface ARiseTheIronThroneQueued {
+  charId: number;
+  unit: { type: string; quality: string; race: string; _isSkeletal: boolean; unitName: string };
+}
+/** A value with every field the Iron Throne writes in a rise, each of its kind. */
+function isARiseTheIronThroneQueued(v: unknown): v is ARiseTheIronThroneQueued {
+  if (typeof v !== 'object' || v === null || !('charId' in v) || typeof v.charId !== 'number' || !('unit' in v))
+    return false;
+  const u = v.unit;
+  return (
+    typeof u === 'object' &&
+    u !== null &&
+    'type' in u &&
+    typeof u.type === 'string' &&
+    'quality' in u &&
+    typeof u.quality === 'string' &&
+    'race' in u &&
+    typeof u.race === 'string' &&
+    '_isSkeletal' in u &&
+    typeof u._isSkeletal === 'boolean' &&
+    'unitName' in u &&
+    typeof u.unitName === 'string'
+  );
+}
+/** One rise of the turn's queue, as the Grand Design reads it: the Iron Throne queues only rises (and the save holds
+ *  the queue empty), so it throws for any other value, which nothing queues. */
+function theRiseQueuedThere(queued: unknown): ARiseTheIronThroneQueued {
+  if (isARiseTheIronThroneQueued(queued)) return queued;
+  throw new TypeError('the Iron Throne queues only the rises it writes');
+}
 
 // ── THE NEW TURN, FIRST PART (plan P1-08k5a: one stage taken out of resolveTurn's own body) ─────────────────────────
 // Once the turn's diplomacy and victory are settled (diplomacy-resolution-and-victory-….js), the turn counter moves on
@@ -28,7 +120,7 @@ import {
 // body keeps resolveTurn's indent (plan P1-08's Decisions). Each line it writes is a fact (since P1-12d15: the-facts-the-
 // new-turns-lines-record.ts), its words written in the views.
 
-export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns(turnContext) {
+export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns(turnContext: TurnContext): void {
   const { G } = turnContext;
   // 7. Advance turn counter
   G.turn = (G.turn || 1) + 1;
@@ -36,8 +128,8 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
   // 7a-bis. A Divine king awaiting return whose realm no longer holds ANY consecrated ground cannot
   // come back (only a king can consecrate, so none can be made while he lies dead): the grace is
   // lost now and 7b crowns an heir in this same pass.
-  (G.players || []).forEach((p, pi) => {
-    if (!p || p.alignment !== 'Divine') return;
+  (asItsGuardReadsIt(G.players) ?? []).forEach((p: Realm | null | undefined, pi) => {
+    if (p?.alignment !== 'Divine') return;
     G.characters
       .filter((c) => c.isKing && c.player === pi && !c.alive && c._divineReturn)
       .forEach((k) => {
@@ -63,14 +155,14 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     //a Divine king awaiting divine return is NOT replaced by an heir (while the realm holds land).
     if (
       p.alignment === 'Divine' &&
-      (p.provinces || []).length > 0 &&
+      (asItsGuardReadsIt(p.provinces) ?? []).length > 0 &&
       G.characters.some(
         (c) =>
           c.isKing &&
           c.player === pi &&
           !c.alive &&
           c._divineReturn &&
-          (G.heroGraveyard || []).some((g) => g.id === c.id),
+          (asItsGuardReadsIt(G.heroGraveyard) ?? []).some((g) => g.id === c.id),
       )
     ) {
       p.heirPending = false;
@@ -78,10 +170,13 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     }
     // No living king. If we haven't already crowned an heir, do so now so the player has a new king
     // (with skills to allocate) ready for next turn's orders.
-    const wealthiest = (p.provinces || []).reduce((best, pid) => {
-      const pv = G.world.provinces[pid];
-      return !best || (pv && pv.tax > best.tax) ? { id: pid, tax: pv?.tax || 0 } : best;
-    }, null);
+    const wealthiest = (asItsGuardReadsIt(p.provinces) ?? []).reduce<{ id: number; tax: number } | null>(
+      (best, pid) => {
+        const pv = G.world.provinces[pid];
+        return !best || (pv != null && pv.tax > best.tax) ? { id: pid, tax: (pv?.tax ?? 0) || 0 } : best;
+      },
+      null,
+    );
     const heirProv = wealthiest ? G.world.provinces[wealthiest.id] : null;
     if (!heirProv) {
       // No provinces left — the line has ended; the player is effectively eliminated.
@@ -104,26 +199,27 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     p.heirPending = false;
     const deadKing = G.characters.find((c) => c.isKing && c.player === pi && !c.alive);
     if (deadKing) deadKing.isKing = false; // demote the fallen king so the realm has exactly one monarch
-    const heirSkills = { melee: 2, archery: 1, sage: 1 };
-    if (p.alignment === 'Divine') heirSkills.white = (heirSkills.white || 0) + 1;
-    if (p.alignment === 'Druidic') heirSkills.druid = (heirSkills.druid || 0) + 1;
-    if (p.alignment === 'Evil') heirSkills.druid = (heirSkills.druid || 0) + 1; // 2026-10-13: as the king
-    if (p.alignment === 'Pagan') heirSkills.explorer = (heirSkills.explorer || 0) + 1;
-    if (p.alignment === 'Undead') heirSkills.necromancy = (heirSkills.necromancy || 0) + 1;
+    const heirSkills: SkillLevels = { melee: 2, archery: 1, sage: 1 };
+    if (p.alignment === 'Divine') heirSkills.white = (heirSkills.white ?? 0) + 1;
+    if (p.alignment === 'Druidic') heirSkills.druid = (heirSkills.druid ?? 0) + 1;
+    if (p.alignment === 'Evil') heirSkills.druid = (heirSkills.druid ?? 0) + 1; // 2026-10-13: as the king
+    if (p.alignment === 'Pagan') heirSkills.explorer = (heirSkills.explorer ?? 0) + 1;
+    if (p.alignment === 'Undead') heirSkills.necromancy = (heirSkills.necromancy ?? 0) + 1;
+    // (a test stands in an engine with no name-giver: tests/unit/new-turn-succession-and-summons-called-directly.test.ts)
     const heirName =
-      typeof nextHeroName === 'function'
+      typeof asItsGuardReadsIt(nextHeroName) === 'function'
         ? nextHeroName(p.alignment || 'Neutral')
         : deadKing
           ? 'Heir of ' + deadKing.name
           : 'The New Monarch';
-    const heir = {
+    const heir: AnHeirAsTheSuccessionCrownsHim = {
       id: G.characters.length,
       name: heirName,
       isKing: true,
       player: pi,
       race: p.race || 'Human',
       alignment: p.alignment || 'Neutral',
-      temper: TEMPERS_P[Math.floor(kcRng() * TEMPERS_P.length)], // provisional — the player may rename and re-temper their heir
+      temper: theOneThePickFell(TEMPERS_P[Math.floor(kcRng() * TEMPERS_P.length)]), // provisional — the player may rename and re-temper their heir
       hp: 15,
       maxHp: 15,
       skills: heirSkills,
@@ -145,8 +241,9 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     ABILITIES_P2.forEach((ab) => {
       heir.aptitude[ab] = Math.ceil(kcRng() * 4);
     });
-    G.characters.push(heir);
-    heirProv.characters = heirProv.characters || [];
+    const theRollAsTheSuccessionWritesIt: AnHeirAsTheSuccessionCrownsHim[] = G.characters;
+    theRollAsTheSuccessionWritesIt.push(heir);
+    heirProv.characters = asItsGuardReadsIt(heirProv.characters) ?? [];
     if (!heirProv.characters.includes(heir.id)) heirProv.characters.push(heir.id);
     emit(turnContext, {
       type: 'system',
@@ -169,22 +266,35 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
   // host (elemental included) was later folded into a province garrison, or a temp unit that
   // somehow reached the mercenary pool. The per-character sweep below only sees living characters'
   // armies, so these would linger forever.
-  (G.world.provinces || []).forEach((p) => {
-    if (p && (p.garrisonArmies || []).some((a) => a && a._temporary))
-      p.garrisonArmies = p.garrisonArmies.filter((a) => !(a && a._temporary));
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((p: Province | null | undefined) => {
+    if (
+      p &&
+      (asItsGuardReadsIt(p.garrisonArmies) ?? []).some(
+        (a: ACompanyAsTheNewTurnClearsIt | null | undefined) => a?._temporary,
+      )
+    )
+      p.garrisonArmies = p.garrisonArmies.filter(
+        (a: ACompanyAsTheNewTurnClearsIt | null | undefined) => !a?._temporary,
+      );
   });
-  if ((G.mercenaries || []).some((m) => m && m._temporary))
-    G.mercenaries = G.mercenaries.filter((m) => !(m && m._temporary));
-  G.characters.forEach((c) => {
+  if (
+    (asItsGuardReadsIt(G.mercenaries) ?? []).some(
+      (m: (Mercenary & { _temporary?: unknown }) | null | undefined) => m?._temporary,
+    )
+  )
+    G.mercenaries = G.mercenaries.filter(
+      (m: (Mercenary & { _temporary?: unknown }) | null | undefined) => !m?._temporary,
+    );
+  G.characters.forEach((c: AHeroAsTheNewTurnClearsHim) => {
     // Reset hiredInPhase so they act from all phases next turn
     if (c.hiredInPhase != null && c.hiredInPhase >= 0) {
       c.hiredInPhase = -1; // -1 = hired before this turn, fully active
     }
-    if ((c.armies || []).some((a) => a._temporary)) {
+    if ((asItsGuardReadsIt(c.armies) ?? []).some((a: ACompanyAsTheNewTurnClearsIt) => a._temporary)) {
       // Summoned elementals hold together only for the turn that called them. Previously they were
       // filtered out silently and the player simply found them missing next turn.
-      const _gone = c.armies.filter((a) => a._temporary);
-      c.armies = c.armies.filter((a) => !a._temporary);
+      const _gone = c.armies.filter((a: ACompanyAsTheNewTurnClearsIt) => a._temporary);
+      c.armies = c.armies.filter((a: ACompanyAsTheNewTurnClearsIt) => !a._temporary);
       emit(turnContext, {
         type: 'explore',
         fact: {
@@ -202,7 +312,9 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     // G.turn has ALREADY been advanced (step 7 above) by the time this sweep runs, so the old `>=`
     // released the beasts at the end of the very turn they were bound. `>` = they serve through the
     // whole of turn _wildHuntUntilTurn and are released only when that turn ends.
-    if ((c.armies || []).some((a) => a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn)) {
+    if (
+      (asItsGuardReadsIt(c.armies) ?? []).some((a) => a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn)
+    ) {
       const _wild = c.armies.filter((a) => a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn);
       c.armies = c.armies.filter((a) => !(a._wildHuntUntilTurn != null && G.turn > a._wildHuntUntilTurn));
       emit(turnContext, {
@@ -236,12 +348,12 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     delete c._tacticalHalved;
     delete c._tacticalMult;
     delete c._phantasmalBonus;
-    if (c._phantoms && c._phantoms.length) c._phantoms = []; // phantasmal armies fade as the turn ends
+    if (c._phantoms?.length) c._phantoms = []; // phantasmal armies fade as the turn ends
     delete c._curseHalveStat;
     delete c._necroAutoUsed;
     // Units fully recover between turns — clear any lingering battle-scoped strength loss
     // (e.g. a Telekinetic Storm cast in an action phase that saw no ensuing battle).
-    (c.armies || []).forEach((a) => {
+    (asItsGuardReadsIt(c.armies) ?? []).forEach((a: ACompanyAsTheNewTurnClearsIt) => {
       if (a._tempStrReduction) delete a._tempStrReduction;
       if (a._terrorMult != null) delete a._terrorMult;
       if (a._turnStrReduction) delete a._turnStrReduction;
@@ -252,7 +364,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       if (a._flakTargeted) delete a._flakTargeted;
     });
   });
-  G.world.provinces.forEach((p) => {
+  G.world.provinces.forEach((p: AProvinceAsTheNewTurnClearsIt) => {
     if (p._blessBonus) {
       delete p._blessBonus;
     }
@@ -266,7 +378,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     // Clear any battle-scoped strength reductions still sitting on this province's neutral
     // defenders
     // (e.g. a Telekinetic Storm cast with no ensuing battle) so units fully recover between turns.
-    (p.neutralDefenders || []).forEach((a) => {
+    (asItsGuardReadsIt(p.neutralDefenders) ?? []).forEach((a: ACompanyAsTheNewTurnClearsIt) => {
       if (a._tempStrReduction) delete a._tempStrReduction;
       if (a._terrorMult != null) delete a._terrorMult;
       if (a._turnStrReduction) delete a._turnStrReduction;
@@ -277,7 +389,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       if (a._flakTargeted) delete a._flakTargeted;
     });
     // Hidden features persist until they fade (10%/turn).
-    (p.features || []).forEach((f) => {
+    (asItsGuardReadsIt(p.features) ?? []).forEach((f) => {
       if (f._hidden && kcRng() < 0.2) {
         delete f._hidden;
         delete f._hiddenBy;
@@ -302,8 +414,8 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     if (p._oratoryBonus) delete p._oratoryBonus;
     if (p._tempStrReduction) delete p._tempStrReduction;
     if (p._turnStrReduction) delete p._turnStrReduction;
-    (p.garrisonArmies || []).forEach((a) => {
-      if (a && a._terrorMult != null) delete a._terrorMult;
+    (asItsGuardReadsIt(p.garrisonArmies) ?? []).forEach((a: Army | null | undefined) => {
+      if (a?._terrorMult != null) delete a._terrorMult;
     }); // 2026-09-24: Terror is a battle-scoped modifier
   });
 
@@ -312,24 +424,23 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
 
   // GRAND DESIGN — Evil (Iron Throne of Skulls): apply this turn's queued skeleton-rises to the
   // real winners.
-  (G._pendingRises || []).forEach((r) => {
-    const _ch = (G.characters || []).find((c) => c && c.id === r.charId);
-    if (_ch && _ch.alive) {
-      _ch.armies = _ch.armies || [];
+  (G._pendingRises ?? []).forEach((queued) => {
+    const r = theRiseQueuedThere(queued);
+    const _ch = (asItsGuardReadsIt(G.characters) ?? []).find((c: Character | null | undefined) => c?.id === r.charId);
+    if (_ch?.alive) {
+      _ch.armies = asItsGuardReadsIt(_ch.armies) ?? [];
       _ch.armies.push(r.unit);
     }
   });
   G._pendingRises = [];
 
   // GRAND DESIGN — Neutral (Grand Library): one guaranteed Sage discovery each turn, reported.
-  (G.players || []).forEach((pl, pi) => {
+  (asItsGuardReadsIt(G.players) ?? []).forEach((pl, pi) => {
     if (!gdActive(turnContext, pi, 'Neutral')) return;
-    pl.discoveries = pl.discoveries || [];
+    pl.discoveries = asItsGuardReadsIt(pl.discoveries) ?? [];
     const _known = new Set(pl.discoveries.map((d) => d.id));
     const _blkGL = discBlockedIds(pl);
-    const _avail = SAGE_DISCOVERIES_P.filter(
-      (d) => !_known.has(d.id) && !_blkGL.has(String(d.id)) && discEligible(d, pl),
-    ); // race/alignment eligibility; never a forgotten or awaiting-choice discovery
+    const _avail = SAGE_DISCOVERIES_P.filter((d) => !_known.has(d.id) && !_blkGL.has(d.id) && discEligible(d, pl)); // race/alignment eligibility; never a forgotten or awaiting-choice discovery
     if (_avail.length === 0) {
       emit(turnContext, {
         type: 'system',
@@ -340,7 +451,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       });
       return;
     }
-    const _d = _avail[Math.floor(kcRng() * _avail.length)];
+    const _d = theOneThePickFell(_avail[Math.floor(kcRng() * _avail.length)]);
     pl.discoveries.push({ id: _d.id, name: _d.name, category: _d.category, desc: _d.desc, turnDiscovered: G.turn });
     emit(turnContext, {
       type: 'explore',

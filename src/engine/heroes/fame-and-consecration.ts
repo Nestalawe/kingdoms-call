@@ -44,13 +44,13 @@ type AHeroAsSpottingReadsIt = NonNullable<NonNullable<Parameters<typeof homeFoun
   readonly skills?: Partial<SkillLevels> | null | undefined;
 };
 /** The state as these read it: the realms, the heroes (by id), the relations, the turn and the map. */
-interface TheStateAsTheseReadIt {
+interface TheStateAsTheseReadIt<TheProvince extends AProvinceAsTheseRead = AProvinceAsTheseRead> {
   readonly players?: readonly (ARealmAsConsecrationReadsIt & ARealmAsTheDiscoveriesReadIt)[] | null | undefined;
   readonly characters: readonly AHeroAsSpottingReadsIt[];
   readonly relations?: Readonly<Partial<Record<string, string>>> | null | undefined;
   readonly turn: number;
   readonly world: Pick<GameState['world'], 'cols' | 'rows'> & {
-    readonly provinces: readonly (AProvinceAsTheseRead | null | undefined)[];
+    readonly provinces: readonly (TheProvince | null | undefined)[];
   };
 }
 
@@ -94,24 +94,28 @@ export function isConsecrated(pl: ARealmAsConsecrationReadsIt | null | undefined
 }
 // DIVINE RETURN needs holy ground. The consecrated provinces a realm still OWNS — the only places a
 // fallen Divine character can be restored. `nearestConsecratedProv` picks the one closest (hex
-// distance, ties → the richer) to where the body lies.
-export function ownedConsecratedProvs(state: TheStateAsTheseReadIt, pi: number) {
+// distance, ties → the richer) to where the body lies. Each hands back the provinces of the state it is handed
+// (generic in their type, plan P1-10b38: the Divine return writes to the one it is handed).
+export function ownedConsecratedProvs<TheProvince extends AProvinceAsTheseRead>(
+  state: TheStateAsTheseReadIt<TheProvince>,
+  pi: number,
+) {
   const pl = (state.players ?? [])[pi];
   if (!pl) return [];
   return consecratedIds(pl)
     .map((id) => state.world.provinces[id])
-    .filter((pv): pv is AProvinceAsTheseRead => pv?.owner === pi);
+    .filter((pv): pv is TheProvince => pv?.owner === pi);
 }
-export function nearestConsecratedProv(
-  state: TheStateAsTheseReadIt,
+export function nearestConsecratedProv<TheProvince extends AProvinceAsTheseRead>(
+  state: TheStateAsTheseReadIt<TheProvince>,
   pi: number,
   fromProvId: number | null | undefined,
-): AProvinceAsTheseRead | null | undefined {
+): TheProvince | null | undefined {
   const list = ownedConsecratedProvs(state, pi);
   if (!list.length) return null;
   const from = fromProvId != null ? state.world.provinces[fromProvId] : null;
   if (!from) return list[0];
-  let best: AProvinceAsTheseRead | null = null,
+  let best: TheProvince | null = null,
     bd = Infinity;
   list.forEach((pv) => {
     const d = hexDistP(from, pv, state.world.cols);

@@ -26,7 +26,8 @@
 // hero) and spent from the realm's list. Then what a whole turn can't stage: each company's, grave's, band's and
 // wanderer's die in turn; a nameless company; a fallen hero at home; heroes with no maximum or no HP, or past it; a
 // captain standing nowhere; a province no realm mapped or of no terrain, its list of visitors kept; no graveyard, a
-// grave whose hero is gone or that records no turn, a hero of 1 HP; a body measured from its grave; a king with no
+// grave whose hero is gone or that records no turn, a hero of 1 HP; a world with no roll of heroes; a hero at home with
+// no companies list; a body measured from its grave; a king with no
 // ground left, or no longer marked king; a living hero with a stale grave of the turn before ("raised": Parked); graves
 // on a missing realm's ground, a grave-keeping effect with no rate; bands and wanderers standing nowhere, no mercenary
 // list; the repair counts (the retired discoveries' on the turn's context, as the save's upgrade found them, since
@@ -48,6 +49,7 @@ import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   LANDS,
   NEW_TURN_SECOND_PART_CASES,
+  NOTHING_NEW,
   around,
   band,
   discoveriesRetired,
@@ -736,6 +738,30 @@ describe('The new turn’s second part: what only a direct call can stage', () =
     const g = guard(b, ring1(b, 3), [summoned('Blaze')]);
     after(b);
     expect(g._isNeutralGuard).toBe(true);
+  });
+
+  test('a world with no roll of heroes: the Academy, the gardens and the informants find nobody, a grave is noted, nothing fails', () => {
+    const b = fresh();
+    knows(b, 0, 'sd08', 'sd65', 'sd22');
+    creed(b, 1, 'Neutral');
+    ghostGrave(b, standing(b, 1, seatOf(b, 0)));
+    delete (b.G as unknown as Raw)['characters'];
+    after(b);
+    expect([texts(b), realm(b, 0)['knownDeadHeroIds']]).toEqual([[NOTHING_NEW], [graveyard(b)[0]?.['id']]]);
+  });
+
+  test('a hero at home with no list of companies has none for the Academy to drill; the king beside him has his drilled', () => {
+    const b = fresh();
+    knows(b, 0, 'sd08');
+    const bare = standing(b, 0, home(b));
+    delete (bare as Raw)['armies'];
+    const k = leads(kingOf(b, 0), [unit('A', 'Men-at-Arms')]);
+    after(b, 0);
+    expect([grades(k), (bare as Raw)['armies'], texts(b)]).toEqual([
+      ['A (Veteran)'],
+      undefined,
+      [drilled(unit('A', 'Men-at-Arms'), home(b), 'Veteran')],
+    ]);
   });
 });
 

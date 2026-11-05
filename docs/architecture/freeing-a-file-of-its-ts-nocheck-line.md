@@ -4,8 +4,8 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-57 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(23: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
+54 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(20: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, and `src/content/`, `src/schemas/` and `src/shared/`,
 which have none), which P1-10b frees, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
@@ -46,7 +46,7 @@ table with a key left out.
 ## The forms that keep a value, by kind
 
 Each form in the two files below keeps every value the old statement gave, for every value its type allows; a few
-keep it for every value at all. P1-10b2 to P1-10b37 found them (each row's figures are in its PR). A form a row needs
+keep it for every value at all. P1-10b2 to P1-10b38 found them (each row's figures are in its PR). A form a row needs
 that isn't there is added under its kind.
 
 - **[Numbers, words and lists](the-forms-that-keep-a-value-numbers-words-and-lists.md):** [`||` and `??`](the-forms-that-keep-a-value-numbers-words-and-lists.md#-and-),

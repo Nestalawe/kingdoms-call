@@ -49,7 +49,7 @@ test('when every rival but one concedes, the Reckoning is called at once and the
   const theVictoryStep = () => {
     const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
     tc._afterPhases = true;
-    victory(tc);
+    victory(tc as unknown as Parameters<typeof victory>[0]);
     return (tc.turnLog as { fact?: unknown }[]).filter((e) => e.fact).map((e) => theWordsOf(e.fact as never));
   };
 
