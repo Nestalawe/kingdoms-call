@@ -47,8 +47,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   JavaScript reads `table[null]`.
 - **A `let` that a `try` and its `catch` (or its `finally`) always set** is declared with its type and no first value
   (`let base: number;`): the compiler sees it set after them, and lint's `no-useless-assignment` no longer finds a first
-  value nobody reads. A `catch (e)` whose `e` is unread is `catch {`. A `let` set once after its unread first value is a
-  `const` where it is set (the Stone's `already`).
+  value nobody reads. A `catch (e)` whose `e` is unread is `catch {`; an empty one holds a comment saying why
+  (`// the statistics never stop a hero's death`), which lint's `no-empty` asks for. A `let` set once after its unread
+  first value is a `const` where it is set (the Stone's `already`).
 - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
   its test still reads it.
 
@@ -145,7 +146,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   realm: the fact's field allows it, and the prose writes it `${String(x)}`, the same words.
 - **A saved record the code writes a missing value into** (a realm's memory of a province, its owner's name where the
   index names no realm) is written through a local view of the same record whose field allows `undefined`
-  (`AProvinceAsItIsRemembered`): the saved schema is unchanged.
+  (`AProvinceAsItIsRemembered`): the saved schema is unchanged. So is one the code writes a plain number into where
+  the schema holds a brand (a monarch's grave's resting place, `AMonarchsGraveAsItIsWritten`).
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does.
 - **A line rewritten in place by its index** (`narrative[i].whatBecomesOfTheProvince = …`, the battle's outcome held by

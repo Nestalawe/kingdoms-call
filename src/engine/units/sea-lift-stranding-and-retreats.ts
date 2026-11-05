@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { carrierBerths } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
 import {
   AERIAL_TYPES,
@@ -13,10 +12,49 @@ import { perkTier } from '../titles/perks.ts';
 import { newMercId } from '../turn/mercenary-ids-and-battle-records.ts';
 import { isFriendlyProvFor, setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { canEnterTerrain, getSeaCapability, refreshMovePool } from './movement-pools.ts';
-import { emit, narrate, THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../turn/events-and-their-audiences.ts';
+import { emit, narrate } from '../turn/events-and-their-audiences.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
-import type { Army, Province } from '../../schemas/saved-game-state.ts';
+import type { ASideOfABattle } from '../battle/the-facts-a-battles-lines-record.ts';
+import type { WhyUnitsAreLeftBehind } from './the-facts-the-sea-lifts-battle-lines-record.ts';
+import type { UnitOfAType } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import type { ArmyInABattle } from '../army-tables.ts';
+import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
+
+/** A unit as the sea lift, the stranding and a naval retreat read and mark it: a unit in a battle, the realm whose
+ *  hulls a naval retreat left ashore (navalHeldIn reads it; the battle's caller clears it), and where it rallied from
+ *  (the retreat deletes both). */
+type AUnitAsTheSeaLiftMarksIt = ArmyInABattle & {
+  _navalHold?: number | null;
+  _fromGarrison?: boolean;
+  _fromLeaderless?: number;
+};
+/** A column's units as the sea lift reads them: a gap passed over, and none read as no units. */
+type AColumnsUnits = readonly (AUnitAsTheSeaLiftMarksIt | null | undefined)[] | null | undefined;
+/** A column's leader as the sea lift reads him: his naval mastery, or no leader. */
+type ALeaderAsTheSeaLiftReadsHim = Parameters<typeof perkTier>[0];
+/** A province as a retreat reads its ground: its terrain, and the Flood and Part Sea marks of the turn. */
+interface AProvinceAsARetreatReadsIt {
+  readonly terrain: string;
+  readonly _flood?: unknown;
+  readonly _partSea?: unknown;
+}
+/** A province as its hulls left ashore are read and cleared: its garrison (a gap passed over). */
+interface AProvinceAsItsHullsAreRead {
+  readonly garrisonArmies?: readonly (AUnitAsTheSeaLiftMarksIt | null | undefined)[] | null | undefined;
+}
+/** A hero as a retreat reads and moves him: the Part Sea mark of this phase beside the saved hero. */
+type AHeroAsARetreatMovesHim = Character & { readonly _partSeaThisPhase?: unknown };
+/** A unit of the column the lift counts: no gap, and no spectral double (`a && !a._phantom`). */
+function aUnitTheLiftCounts(a: AUnitAsTheSeaLiftMarksIt | null | undefined): a is AUnitAsTheSeaLiftMarksIt {
+  return !!a && !a._phantom;
+}
+/** A unit of a beaten force still standing: no gap, and none fallen or disbanded (`a && !a._died && !a._disbanded`). */
+function aUnitStillStanding(a: AUnitAsTheSeaLiftMarksIt | null | undefined): a is AUnitAsTheSeaLiftMarksIt {
+  return !!a && !a._died && !a._disbanded;
+}
 
 // ── SEA LIFT, STRANDING AND RETREATS (plan P1-08b: lifted out of resolveTurn) ────
 // How far a column falls short of the lift to stay at sea (seaLiftShortfall; whether it can put to sea,
@@ -39,18 +77,21 @@ import type { Army, Province } from '../../schemas/saved-game-state.ts';
 // Skipped: flooded land (a Flood strands a land host by design) and any province whose battle is
 // still unresolved — a beaten column pinned at sea stays aboard and fights on (see retreatOptions).
 // Hulls are never shared between characters: each commander's ships carry his own troops only.
-export function isOpenSea(prov): boolean {
+export function isOpenSea(prov: { readonly terrain: string; readonly _flood?: unknown } | null | undefined): boolean {
   return !!prov && prov.terrain === 'sea' && !prov._flood;
 }
 // 0 exactly when getSeaCapability(armies) !== 'land'; otherwise a positive measure of the lift
 // missing — berths short for units only a hull can take (in half-hulls, ×1000), then foot left
 // over beyond what the flyers can lift. Mirrors getSeaCapability's pooled hull + flyer rule.
-export function seaLiftShortfall(armies, leadChar): number {
-  armies = (armies || []).filter((a) => a && !a._phantom);
-  if (getSeaCapability(armies, leadChar) !== 'land') return 0;
-  const capOf = (a) => (BOT_LIGHT_ARMIES.has(a.type) ? 1 : 2); // half-hulls: light foot 1, everything else 2
-  const land = armies.filter((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type));
-  let hull2 = armies.reduce((s, a) => s + carrierBerths(a), 0) * 2; // half-berths: a turtle offers two berths (Island Back)
+export function seaLiftShortfall(
+  armies: readonly (UnitOfAType | null | undefined)[] | null | undefined,
+  leadChar: ALeaderAsTheSeaLiftReadsHim,
+): number {
+  const counted = (armies ?? []).filter((a): a is UnitOfAType => !!a && !a._phantom);
+  if (getSeaCapability(counted, leadChar) !== 'land') return 0;
+  const capOf = (a: UnitOfAType) => (BOT_LIGHT_ARMIES.has(a.type) ? 1 : 2); // half-hulls: light foot 1, everything else 2
+  const land = counted.filter((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type));
+  let hull2 = counted.reduce((s, a) => s + carrierBerths(a), 0) * 2; // half-berths: a turtle offers two berths (Island Back)
   if (leadChar && perkTier(leadChar, 'naval') >= 3) hull2 *= 2;
   const must = land.filter((a) => !isAirCarriable(a)),
     lift = land.filter((a) => isAirCarriable(a));
@@ -65,22 +106,26 @@ export function seaLiftShortfall(armies, leadChar): number {
       if (room >= c2) room -= c2;
       else byAir++;
     });
-  const flyLift = armies.filter((a) => FLYING_TYPES.has(a.type)).length;
+  const flyLift = counted.filter((a) => FLYING_TYPES.has(a.type)).length;
   return Math.max(1, Math.max(0, mustNeed - hull2) * 1000 + Math.max(0, byAir - flyLift));
 }
 // The land units to put ashore so the rest can be carried: repeatedly the WEAKEST land unit whose
 // removal actually reduces the shortfall (fallback: the weakest outright). Never flyers or hulls.
-export function pickStrandedUnits(armies, leadChar) {
-  const kept = (armies || []).filter((a) => a && !a._phantom),
-    out = [];
+export function pickStrandedUnits(
+  armies: AColumnsUnits,
+  leadChar: ALeaderAsTheSeaLiftReadsHim,
+): AUnitAsTheSeaLiftMarksIt[] {
+  const kept = (armies ?? []).filter(aUnitTheLiftCounts),
+    out: AUnitAsTheSeaLiftMarksIt[] = [];
   let sf = seaLiftShortfall(kept, leadChar),
     guard = 0;
   while (sf > 0 && guard++ < 500) {
     const cands = kept
       .filter((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type))
       .sort((x, y) => unitBaseStrength(x) - unitBaseStrength(y) || (x._temporary ? 1 : 0) - (y._temporary ? 1 : 0));
-    if (!cands.length) break;
-    let pick = null,
+    const weakest = cands[0];
+    if (weakest === undefined) break; // none left to put ashore (the list holds units, never a gap)
+    let pick: AUnitAsTheSeaLiftMarksIt | null = null,
       nsf = sf;
     for (const a of cands) {
       const s2 = seaLiftShortfall(
@@ -94,7 +139,7 @@ export function pickStrandedUnits(armies, leadChar) {
       }
     }
     if (!pick) {
-      pick = cands[0];
+      pick = weakest;
       nsf = seaLiftShortfall(
         kept.filter((x) => x !== pick),
         leadChar,
@@ -118,22 +163,23 @@ export function pickStrandedUnits(armies, leadChar) {
   return out;
 }
 // Called after every order, at the top and end of every phase, and after wages (see the phase loop).
-export function settleStrandedAtSea(turnContext, ph, cause) {
+export function settleStrandedAtSea(turnContext: TurnContext, ph: number, cause?: string): void {
   const { G } = turnContext;
-  (G.characters || []).forEach((c) => {
-    if (!c || c.alive === false || c.player == null || !(c.armies || []).length) return;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+    if (!c || asItsGuardReadsIt(c.alive) === false || c.player == null || !(asItsGuardReadsIt(c.armies) ?? []).length)
+      return;
     const prov = G.world.provinces[c.location];
-    if (!isOpenSea(prov) || prov._battleUnresolved) return;
+    if (!prov || !isOpenSea(prov) || prov._battleUnresolved) return;
     if (seaLiftShortfall(c.armies, c) === 0) return;
     const out = pickStrandedUnits(c.armies, c);
     if (!out.length) return;
-    c.armies = (c.armies || []).filter((a) => !out.includes(a));
+    c.armies = (asItsGuardReadsIt(c.armies) ?? []).filter((a) => !out.includes(a));
     const owner = c._charmTempControl && c._charmOriginalPlayer != null ? c._charmOriginalPlayer : c.player; // a seized hero's troops stay his own lord's
-    const why = cause || null; // the words a caller hands in (the safety net after the wages), else the prose's
+    const why = (cause ?? '') || null; // the words a caller hands in (the safety net after the wages), else the prose's
     const place = {
       audience: { actor: owner, realms: [owner] },
       hero: c.id,
-      phase: (ph != null ? ph : turnContext._currentPhase) ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+      phase: ph, // (every caller hands the phase: a number)
       province: prov.id,
     };
     const temps = out.filter((a) => a._temporary),
@@ -150,9 +196,9 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
       });
     if (units.length) {
       const shore = getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).filter(
-        (p2) => p2 && p2.owner === owner && p2.terrain !== 'sea',
+        (p2: Province | null | undefined) => p2?.owner === owner && p2.terrain !== 'sea',
       );
-      const from = G.world.provinces[c._attackedFrom];
+      const from = c._attackedFrom === undefined ? undefined : G.world.provinces[c._attackedFrom];
       const dest =
         from && shore.some((p2) => p2.id === from.id)
           ? from
@@ -160,12 +206,13 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
               .slice()
               .sort(
                 (x, y) =>
-                  (x.garrisonArmies || []).length - (y.garrisonArmies || []).length ||
+                  (asItsGuardReadsIt(x.garrisonArmies) ?? []).length -
+                    (asItsGuardReadsIt(y.garrisonArmies) ?? []).length ||
                   (y.tax || 0) - (x.tax || 0) ||
                   x.id - y.id,
               )[0];
       if (dest) {
-        dest.garrisonArmies = (dest.garrisonArmies || []).concat(units);
+        dest.garrisonArmies = (asItsGuardReadsIt(dest.garrisonArmies) ?? []).concat(units);
         emit(turnContext, {
           type: 'move',
           fact: {
@@ -178,7 +225,7 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
           ...place,
         });
       } else if (prov.owner === owner) {
-        prov.garrisonArmies = (prov.garrisonArmies || []).concat(units);
+        prov.garrisonArmies = (asItsGuardReadsIt(prov.garrisonArmies) ?? []).concat(units);
         emit(turnContext, {
           type: 'move',
           fact: {
@@ -190,14 +237,14 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
           },
           ...place,
         });
-      } else if (prov.owner == null && !(prov.neutralDefenders || []).length) {
+      } else if (prov.owner == null && !(asItsGuardReadsIt(prov.neutralDefenders) ?? []).length) {
         setProvinceOwner(turnContext, prov, owner, c, place.phase);
         const _pl = G.players[owner];
         if (_pl) {
-          _pl.provinces = _pl.provinces || [];
+          _pl.provinces = asItsGuardReadsIt(_pl.provinces) ?? [];
           if (!_pl.provinces.includes(prov.id)) _pl.provinces.push(prov.id);
         }
-        prov.garrisonArmies = (prov.garrisonArmies || []).concat(units);
+        prov.garrisonArmies = (asItsGuardReadsIt(prov.garrisonArmies) ?? []).concat(units);
         emit(turnContext, {
           type: 'move',
           fact: {
@@ -219,7 +266,7 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
             why,
             units: theUnitsAsTheLineNamesThem(units),
             provinceName: prov.name,
-            waters: prov.owner != null ? { realmName: (G.players[prov.owner] || {}).name || null } : null,
+            waters: prov.owner != null ? { realmName: (G.players[prov.owner]?.name ?? '') || null } : null,
           },
           ...place,
         });
@@ -242,20 +289,28 @@ export function settleStrandedAtSea(turnContext, ph, cause) {
 // first (the one number the game already uses for a province's worth), then own ground ahead of
 // an ally's, then the hero's own capital, then a friendly garrison already standing there, and
 // finally province id so the result is deterministic rather than map-order chance.
-export function retreatValue(turnContext, ch, p) {
+export function retreatValue(
+  turnContext: Pick<TurnContext, 'G'>,
+  ch: { readonly player: number | null } | null | undefined,
+  p: Province | null | undefined,
+): number {
   const { G } = turnContext;
   if (!p) return -Infinity;
-  const own = ch && ch.player != null && p.owner === ch.player ? 1 : 0;
-  const pl = ch && ch.player != null ? (G.players || [])[ch.player] : null;
-  const home = pl && pl.homeProvinceId === p.id ? 1 : 0;
-  const garrison = (p.garrisonArmies || []).length > 0 ? 1 : 0;
+  const own = ch?.player != null && p.owner === ch.player ? 1 : 0;
+  const pl = ch?.player != null ? (asItsGuardReadsIt(G.players) ?? [])[ch.player] : null;
+  const home = pl?.homeProvinceId === p.id ? 1 : 0;
+  const garrison = (asItsGuardReadsIt(p.garrisonArmies) ?? []).length > 0 ? 1 : 0;
   return (p.tax || 0) * 1000 + own * 400 + home * 200 + garrison * 100 + (1 - (p.id || 0) / 1e6);
 }
 // Best of a list of candidate retreat provinces (null when the list is empty).
-export function bestRetreat(turnContext, ch, list): Province | null {
-  let best = null,
+export function bestRetreat(
+  turnContext: Pick<TurnContext, 'G'>,
+  ch: Parameters<typeof retreatValue>[1],
+  list: readonly Province[] | null | undefined,
+): Province | null {
+  let best: Province | null = null,
     bv = -Infinity;
-  (list || []).forEach((p) => {
+  (list ?? []).forEach((p) => {
     const v = retreatValue(turnContext, ch, p);
     if (v > bv) {
       bv = v;
@@ -264,19 +319,28 @@ export function bestRetreat(turnContext, ch, list): Province | null {
   });
   return best;
 }
-export function retreatOptions(turnContext, ch, prov, force): Province[] {
+export function retreatOptions(
+  turnContext: TurnContext,
+  ch: AHeroAsARetreatMovesHim | null | undefined,
+  prov: Province | null | undefined,
+  force: AColumnsUnits,
+): Province[] {
   const { G } = turnContext;
   if (!ch || !prov) return [];
-  force = (force || []).filter((a) => a && !a._died && !a._disbanded);
-  const sc = getSeaCapability(force, ch);
-  const probe = { _partSeaThisPhase: ch._partSeaThisPhase, armies: force };
-  const from = G.world.provinces[ch._attackedFrom];
+  const standing = (force ?? []).filter(aUnitStillStanding);
+  const sc = getSeaCapability(standing, ch);
+  const probe = { _partSeaThisPhase: ch._partSeaThisPhase, armies: standing };
+  const from = ch._attackedFrom === undefined ? undefined : G.world.provinces[ch._attackedFrom];
   return preferDryGround(
-    getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).filter((p2) => {
+    getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).filter((p2: Province | null | undefined) => {
       if (!p2 || p2.id === prov.id || !canEnterTerrain(probe, p2.terrain, sc)) return false;
       if (isFriendlyProvFor(turnContext, p2, ch.player)) return true;
       return (
-        !!from && p2.id === from.id && p2.terrain === 'sea' && p2.owner == null && !(p2.neutralDefenders || []).length
+        !!from &&
+        p2.id === from.id &&
+        p2.terrain === 'sea' &&
+        p2.owner == null &&
+        !(asItsGuardReadsIt(p2.neutralDefenders) ?? []).length
       );
     }),
   );
@@ -284,8 +348,10 @@ export function retreatOptions(turnContext, ch, prov, force): Province[] {
 // 2026-10-09 (Toby item 10): a beaten force NEVER falls back into a FLOODED province. It may fall
 // back onto a sea province PARTED into dry ground, but only when no province of ordinary land is open
 // to it. (Open sea stays open to a fleet: that is not magic ground.)
-export function preferDryGround(list) {
-  const open = (list || []).filter((p) => p && !p._flood);
+export function preferDryGround<P extends AProvinceAsARetreatReadsIt>(
+  list: readonly (P | null | undefined)[] | null | undefined,
+): P[] {
+  const open = (list ?? []).filter((p): p is P => !!p && !p._flood);
   const ordinary = open.filter((p) => p.terrain !== 'sea' && !p._partSea);
   return ordinary.length ? open.filter((p) => !p._partSea) : open;
 }
@@ -310,9 +376,17 @@ export function preferDryGround(list) {
 // The lines of the split are facts (units/the-facts-the-sea-lifts-battle-lines-record.ts, plan P1-12d5):
 // `whyTheyAreLeftBehind` is the reason (WhyUnitsAreLeftBehind), whose words the prose writes, and since P1-12d32 `cName`
 // is the beaten side as a record (ASideOfABattle), whose label the prose writes.
-export function _navalLeaveBehind(turnContext, ch, prov, units, whyTheyAreLeftBehind, narrative, cName) {
+export function _navalLeaveBehind(
+  turnContext: TurnContext,
+  ch: Pick<Character, 'player' | '_charmTempControl' | '_charmOriginalPlayer'>,
+  prov: Province,
+  units: readonly AUnitAsTheSeaLiftMarksIt[] | null | undefined,
+  whyTheyAreLeftBehind: WhyUnitsAreLeftBehind,
+  narrative: NarrativeLine[],
+  cName: ASideOfABattle,
+): boolean {
   const { G } = turnContext;
-  if (!units || !units.length) return false;
+  if (!units?.length) return false;
   const owner = ch._charmTempControl && ch._charmOriginalPlayer != null ? ch._charmOriginalPlayer : ch.player;
   const temps = units.filter((a) => a._temporary),
     real = units.filter((a) => !a._temporary);
@@ -341,9 +415,9 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, whyTheyAreLeftBe
     // A ship that rallied out of this province's own garrison is ALREADY in the array (the rally
     // copies the list, it does not empty it), so concat would duplicate the object. Push only
     // what is not there.
-    prov.garrisonArmies = prov.garrisonArmies || [];
+    prov.garrisonArmies = asItsGuardReadsIt(prov.garrisonArmies) ?? [];
     real.forEach((a) => {
-      if (prov.garrisonArmies.indexOf(a) < 0) prov.garrisonArmies.push(a);
+      if (!prov.garrisonArmies.includes(a)) prov.garrisonArmies.push(a);
     });
     prov._battleUnresolved = true;
     narrate(narrative, {
@@ -355,7 +429,7 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, whyTheyAreLeftBe
     });
     return true;
   }
-  if (!G.mercenaries) G.mercenaries = [];
+  if (!asItsGuardReadsIt(G.mercenaries)) G.mercenaries = [];
   real.forEach((a) =>
     G.mercenaries.push({
       type: a.type,
@@ -380,35 +454,34 @@ export function _navalLeaveBehind(turnContext, ch, prov, units, whyTheyAreLeftBe
 // live in prov.garrisonArmies but must be kept out of every "the garrison retreats with the
 // hero" sweep, and they count as forces still holding the ground when the winner tries to claim
 // it. `against` is the would-be claimant: hulls of that same realm are not an obstacle to it.
-export function navalHeldIn(prov, against?): Army[] {
-  const out = [];
-  ((prov && prov.garrisonArmies) || []).forEach((a) => {
-    if (!a || a._navalHold == null || a._died || a._disbanded) return;
+export function navalHeldIn(prov: AProvinceAsItsHullsAreRead | null | undefined, against?: number | null): Army[] {
+  const out: AUnitAsTheSeaLiftMarksIt[] = [];
+  (prov?.garrisonArmies ?? []).forEach((a) => {
+    if (a?._navalHold == null || a._died || a._disbanded) return;
     if (against != null && a._navalHold === against) return;
-    if (out.indexOf(a) < 0) out.push(a);
+    if (!out.includes(a)) out.push(a);
   });
   return out;
 }
 // The tag is a within-phase marker only: once the battle's outcome is logged the hulls are
 // ordinary garrison again (a stalled battle resumes against them through resolveUnitGainInProvince).
-export function clearNavalHold(prov): void {
-  ((prov && prov.garrisonArmies) || []).forEach((a) => {
-    if (a && a._navalHold != null) delete a._navalHold;
+export function clearNavalHold(prov: AProvinceAsItsHullsAreRead | null | undefined): void {
+  (prov?.garrisonArmies ?? []).forEach((a) => {
+    if (a?._navalHold != null) delete a._navalHold;
   });
 }
 // claimant: whose the ground is not while the hulls lie there (a realm's name, or a side as a record, ASideOfABattle,
 // since P1-12d32: the prose writes its label); null: the hunter's.
 export function navalHoldLine(
-  turnContext,
-  prov,
-  units,
-  claimant,
+  turnContext: Pick<TurnContext, 'G'>,
+  prov: Pick<Province, 'name'>,
+  units: readonly AUnitAsTheSeaLiftMarksIt[],
+  claimant: string | ASideOfABattle | null,
 ): Extract<NarrativeLine, { kind: 'hulls left ashore still hold a province against its claimant' }> {
   const { G } = turnContext;
-  const who =
-    units[0] && units[0]._navalHold != null && G.players[units[0]._navalHold]
-      ? G.players[units[0]._navalHold].name
-      : null;
+  const first = units[0];
+  const holders = first?._navalHold != null ? G.players[first._navalHold] : undefined;
+  const who = holders ? holders.name : null;
   return {
     kind: 'hulls left ashore still hold a province against its claimant',
     holdersRealmName: who,
@@ -418,44 +491,56 @@ export function navalHoldLine(
   };
 }
 // The naval split itself (its rule above): `cName` is the beaten side as a record (ASideOfABattle, since P1-12d32).
-export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName, noSea?): '' | 'stay' | 'left' {
+export function navalSplitRetreat(
+  turnContext: TurnContext,
+  ch: AHeroAsARetreatMovesHim | null | undefined,
+  prov: Province | null | undefined,
+  live: AColumnsUnits,
+  narrative: NarrativeLine[],
+  cName: ASideOfABattle,
+  noSea?: boolean,
+): '' | 'stay' | 'left' {
   const { G } = turnContext;
-  if (!ch || !prov || prov.terrain === 'sea' || ch.alive === false || ch.killedThisTurn) return '';
-  live = (live || []).filter((a) => a && !a._died && !a._disbanded && !a._phantom);
-  const ships = live.filter((a) => SEA_TYPES.has(a.type));
+  if (!ch || !prov || prov.terrain === 'sea' || asItsGuardReadsIt(ch.alive) === false || ch.killedThisTurn) return '';
+  const standing = (live ?? []).filter((a): a is AUnitAsTheSeaLiftMarksIt => aUnitStillStanding(a) && !a._phantom);
+  const ships = standing.filter((a) => SEA_TYPES.has(a.type));
   if (!ships.length) return ''; // no fleet — the ordinary retreat applies
   const adj = getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).filter(
-    (p2) => p2 && p2.id !== prov.id,
+    (p2: Province | null | undefined): p2 is Province => !!p2 && p2.id !== prov.id,
   );
-  const from = G.world.provinces[ch._attackedFrom];
+  const from = ch._attackedFrom === undefined ? undefined : G.world.provinces[ch._attackedFrom];
   // Friendly water: ours or an ally's, plus the unowned, undefended sea a landing came from (the
   // 2026-09-23c ruling — a beaten landing falls back to its ships).
   const seaOk = noSea
     ? []
     : adj.filter(
-        (p2) =>
+        (p2: Province & Pick<AProvinceAsARetreatReadsIt, '_flood'>) =>
           p2.terrain === 'sea' &&
           !p2._flood &&
           (isFriendlyProvFor(turnContext, p2, ch.player) ||
-            (!!from && p2.id === from.id && p2.owner == null && !(p2.neutralDefenders || []).length)),
+            (!!from &&
+              p2.id === from.id &&
+              p2.owner == null &&
+              !(asItsGuardReadsIt(p2.neutralDefenders) ?? []).length)),
       );
   const landFriendly = preferDryGround(
     adj.filter((p2) => p2.terrain !== 'sea' && isFriendlyProvFor(turnContext, p2, ch.player)),
   ); // item 10: parted sea only when no ordinary land
   const landOwn = landFriendly.filter((p2) => p2.owner === ch.player);
-  const move = (dest) => {
-    prov.characters = (prov.characters || []).filter((id) => id !== ch.id);
-    dest.characters = dest.characters || [];
+  const move = (dest: Province) => {
+    prov.characters = (asItsGuardReadsIt(prov.characters) ?? []).filter((id) => id !== ch.id);
+    dest.characters = asItsGuardReadsIt(dest.characters) ?? [];
     if (!dest.characters.includes(ch.id)) dest.characters.push(ch.id);
     ch.location = dest.id;
     ch.locationName = dest.name;
   };
   let stayed = false;
   if (seaOk.length) {
-    const dest = bestRetreat(turnContext, ch, seaOk) || seaOk[0];
-    const ashore = pickStrandedUnits(live, ch); // exactly who the hulls cannot lift
-    const taken = live.filter((a) => !ashore.includes(a));
-    ch.armies = (ch.armies || []).filter((a) => !ashore.includes(a)); // dead/disbanded stay for the caller's own sweep
+    const dest = bestRetreat(turnContext, ch, seaOk) ?? seaOk[0];
+    if (!dest) throw new TypeError("Cannot read properties of undefined (reading 'characters')"); // (a list just found not empty)
+    const ashore = pickStrandedUnits(standing, ch); // exactly who the hulls cannot lift
+    const taken = standing.filter((a) => !ashore.includes(a));
+    ch.armies = (asItsGuardReadsIt(ch.armies) ?? []).filter((a) => !ashore.includes(a)); // dead/disbanded stay for the caller's own sweep
     move(dest);
     narrate(narrative, {
       kind: 'a beaten fleet puts to sea with what its hulls can carry',
@@ -476,7 +561,7 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
             units: theUnitsAsTheLineNamesThem(temps),
           });
         if (real.length) {
-          shore.garrisonArmies = (shore.garrisonArmies || []).concat(real);
+          shore.garrisonArmies = (asItsGuardReadsIt(shore.garrisonArmies) ?? []).concat(real);
           narrate(narrative, {
             kind: 'units the fleet cannot carry fall back overland and join a garrison',
             sideName: cName,
@@ -499,10 +584,11 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
     refreshMovePool(turnContext, ch);
     return stayed ? 'stay' : 'left';
   }
-  const goInland = live.filter((a) => !SEA_TYPES.has(a.type));
+  const goInland = standing.filter((a) => !SEA_TYPES.has(a.type));
   if (landFriendly.length && goInland.length) {
-    const dest = bestRetreat(turnContext, ch, landFriendly) || landFriendly[0];
-    ch.armies = (ch.armies || []).filter((a) => !ships.includes(a));
+    const dest = bestRetreat(turnContext, ch, landFriendly) ?? landFriendly[0];
+    if (!dest) throw new TypeError("Cannot read properties of undefined (reading 'characters')"); // (a list just found not empty)
+    ch.armies = (asItsGuardReadsIt(ch.armies) ?? []).filter((a) => !ships.includes(a));
     move(dest);
     narrate(narrative, {
       kind: 'a beaten force with ships retreats overland and leaves its ships behind',
@@ -538,13 +624,13 @@ export function navalSplitRetreat(turnContext, ch, prov, live, narrative, cName,
 // The line (its fact) that explains WHY a beaten force at sea cannot fall back (null when that is not why). `name` is the
 // beaten side as a record (ASideOfABattle, since P1-12d32), whose label the prose writes.
 export function seaTrapLine(
-  name,
-  ch,
-  prov,
-  force,
+  name: ASideOfABattle,
+  ch: ALeaderAsTheSeaLiftReadsHim,
+  prov: Province | null | undefined,
+  force: AColumnsUnits,
 ): Extract<NarrativeLine, { kind: 'a beaten force at sea has too few hulls left to fall back' }> | null {
-  if (!isOpenSea(prov)) return null;
-  force = (force || []).filter((a) => a && !a._died && !a._disbanded);
-  if (getSeaCapability(force, ch) !== 'land') return null;
+  if (!prov || !isOpenSea(prov)) return null;
+  const standing = (force ?? []).filter(aUnitStillStanding);
+  if (getSeaCapability(standing, ch) !== 'land') return null;
   return { kind: 'a beaten force at sea has too few hulls left to fall back', sideName: name, provinceName: prov.name };
 }
