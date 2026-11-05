@@ -18,10 +18,12 @@
 //   node_modules copied in copy-on-write without its caches; the worktree is removed afterwards, on Ctrl-C too, and a
 //   run that was killed leaves one the next run removes. One patch at a time: each stage already uses every core, and a
 //   test timed out by load would read as "caught".
-// - The stages, every one on every patch: npm run build (red means broken), then the compiler (npm run typecheck),
-//   lint (npm run lint and npm run lint:arch), the tests (npm test, with Vitest's JSON report) and the balance matrix
-//   (npm run balance). **Caught**: any of the four red, or stopped at its time limit ("timed out"). **Survived**: all
-//   four green. Prettier, the ratchet and knip judge how a change is written, not what it does: not stages.
+// - The stages: npm run build (red means broken), then the compiler (npm run typecheck), lint (npm run lint and npm run
+//   lint:arch), the tests (npm test, with Vitest's JSON report, stopping at the first failing test: --bail 1) and the
+//   balance matrix (npm run balance). The first four run on every patch; the balance only when every stage before it
+//   is green, and is "skipped" otherwise (it can't change the verdict then: P1-21l). **Caught**: any stage red, or
+//   stopped at its time limit ("timed out"). **Survived**: all five green. Prettier, the ratchet and knip judge how a
+//   change is written, not what it does: not stages.
 // - The control run comes first: the same stages on the base with no patch. Any red, and it stops (on a red base every
 //   mutant would read "caught"). Each stage's time limit is five times its time there, and at least a minute.
 // - --resume carries on a run that stopped: it reads results.json, and refuses (with the reason) when there is none,
@@ -54,7 +56,8 @@ export const ENVIRONMENT_LEFT_OUT = ['KC_SITE', 'KC_FULL', 'KC_JOBS', 'KC_SEED']
 /** The worktrees' names start with this, in the system's temporary folder. */
 export const WORKTREE_PREFIX = 'kc-mutant-';
 
-export type Outcome = 'green' | 'red' | 'timed out';
+/** "skipped": the balance, not run because a stage before it is red or timed out. */
+export type Outcome = 'green' | 'red' | 'timed out' | 'skipped';
 export interface StageResult {
   stage: StageName;
   outcome: Outcome;
@@ -88,7 +91,7 @@ export interface SavedRun {
 const stageNameSchema = z.custom<StageName>((v) => STAGES.some((s) => s === v));
 const stageResultSchema = z.object({
   stage: stageNameSchema,
-  outcome: z.enum(['green', 'red', 'timed out']),
+  outcome: z.enum(['green', 'red', 'timed out', 'skipped']),
   ms: z.number(),
 });
 const savedRunSchema = z.object({
@@ -150,7 +153,8 @@ function savedRunToResume(file: string, commit: string): { run: SavedRun; limits
   return { run, limits };
 }
 
-/** The commands a stage runs, each an argument list (the program first). The tests' writes Vitest's JSON report. */
+/** The commands a stage runs, each an argument list (the program first). The tests' stops at the first failing test
+ *  (one failing test is enough to triage) and writes Vitest's JSON report. */
 export function stageCommands(stage: StageName, logDir: string): string[][] {
   switch (stage) {
     case 'build':
@@ -168,6 +172,8 @@ export function stageCommands(stage: StageName, logDir: string): string[][] {
           'npm',
           'test',
           '--',
+          '--bail',
+          '1',
           '--reporter=default',
           '--reporter=json',
           `--outputFile.json=${path.join(logDir, 'vitest.json')}`,
@@ -178,9 +184,13 @@ export function stageCommands(stage: StageName, logDir: string): string[][] {
   }
 }
 
-/** Caught if any stage after the build is red or timed out; survived if all are green. */
+/** Red or timed out: a stage that catches. */
+const isRed = (outcome: Outcome): boolean => outcome === 'red' || outcome === 'timed out';
+
+/** Caught if any stage after the build is red or timed out; survived if all are green (a skipped stage follows a red
+ *  one, so it never stands alone). */
 export function verdictOf(stages: readonly StageResult[]): { result: 'caught' | 'survived'; redStages: StageName[] } {
-  const redStages = stages.filter((s) => s.stage !== 'build' && s.outcome !== 'green').map((s) => s.stage);
+  const redStages = stages.filter((s) => s.stage !== 'build' && isRed(s.outcome)).map((s) => s.stage);
   return { result: redStages.length ? 'caught' : 'survived', redStages };
 }
 
@@ -370,6 +380,16 @@ async function inWorktree(
     for (const stage of STAGES) {
       const limitMs = o.limits?.get(stage) ?? 24 * 60 * 60 * 1000;
       const logFile = path.join(o.logDir, `${stage}.log`);
+      // The balance once a stage before it is red: the verdict is "caught" already, whatever it would say.
+      const redBefore = stages.filter((s) => isRed(s.outcome)).map((s) => `${s.stage} ${s.outcome}`);
+      if (stage === 'balance' && redBefore.length) {
+        fs.writeFileSync(
+          logFile,
+          `Skipped: ${redBefore.join(', ')} before it, so the balance cannot change the verdict.\n`,
+        );
+        stages.push({ stage, outcome: 'skipped', ms: 0 });
+        continue;
+      }
       const { outcome, ms } = await runStage(stageCommands(stage, o.logDir), {
         cwd: dir,
         env: o.env,
@@ -522,7 +542,7 @@ async function score(argv: readonly string[], o: ScorerOptions): Promise<number>
     if ('refused' in control) throw new Stop('the control run applied a patch.');
     const times = control.stages.map((s) => `${s.stage} ${(s.ms / 1000).toFixed(1)} s`).join(', ');
     o.log(`Control: ${times}.`);
-    const red = control.stages.filter((s) => s.outcome !== 'green');
+    const red = control.stages.filter((s) => isRed(s.outcome));
     if (red.length)
       throw new Stop(
         `the base is red without any patch (${red.map((s) => `${s.stage} ${s.outcome}`).join(', ')}; logs/control/): every mutant would read "caught".`,
