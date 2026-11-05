@@ -180,7 +180,12 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `TheTitlesRecordAsTheChangesWriteIt`), and one written with a callee's result its schema is narrower than (the game's
   end, its standings as `computeStandings` gives them: `TheStateAsTheVictoryWritesIt`).
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
-  does what `value[key]` does.
+  does what `value[key]` does (for `null`, the TypeError that read throws: a game's setup, `bots/setup.ts`).
+- **A unit an estimate weighs that holds no name** (the bots' estimates of a neutral mix) is a member of the grid row's
+  unit type, `AUnitAnEstimateWeighs`, its `unitName` `undefined`; the facings, which meet only a battle's whole armies,
+  read the unit through `theWholeArmyABattlesGridHolds`, which throws for one of no name.
+- **A cache that other files write fields to** (the bots' scratch state for a turn) is typed with the fields its own
+  file reads and `[field: string]: unknown` for the rest, so an untyped writer's field still passes.
 - **A line rewritten in place by its index** (`narrative[i].whatBecomesOfTheProvince = …`, the battle's outcome held by
   the beaten) is read through a check that hands back the line's kind and throws for any other (`theOutcomeLineAt`);
   reading the list's element so inline is "too complex to represent" (TS2590).
