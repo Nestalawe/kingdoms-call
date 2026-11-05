@@ -44,6 +44,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   power's words) goes. `!!x` on a flag is `x` (`Boolean(asItsGuardReadsIt(x))` if it may be missing).
 - **`/^merc_/.test(s)` on words** is `s.startsWith('merc_')`. A company's name `armyUnitName` draws is read through
   `theNameDrawn`, which throws for none (its type allows none; it always draws or composes one).
+- **`pool[id]--` on a record's number that may be missing** (a hero's move points) is `pool[id] = Number(pool[id]) - 1`:
+  a missing one becomes `NaN` either way.
 - **A number a typed callee may give as `undefined`** (`effSkillOf` for no hero) is read `Number(x)` where it is counted
   or compared, and kept as it is where it is handed back.
 
@@ -73,6 +75,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   item's `_spent`) is read through a local type that adds it as `unknown`.
 - **`(table[a] || {})[b]`** is read in two steps, `const cell = table[a] ?? {};` then `cell[b] ?? …`: lint's
   `table[a]?.[b]` reads `undefined` where the old read a field of the empty object (a `b` such as `constructor`).
+- **`if (!list.length) return;` then `list[0].x`** is one test of the first element, `const first = list[0]; if (first ===
+  undefined) return;`, where the list holds no gap. A list that a value of a wider type is pushed into (an intent's
+  realm, typed as allowing none, into a province's visitors) is written through a local view of the same list typed
+  that wide, `const visitors: (number | null)[] = p.visitedBy`.
 - **A list read by a key in words** (a province by a key of a realm's grave lore) is read as JavaScript reads `list[k]`
   for any key, `Reflect.get(list, k)` into an `unknown`, and its field so too, `Reflect.get(Object(v), 'name')`
   (`theProvinceALoreKeyNames`).

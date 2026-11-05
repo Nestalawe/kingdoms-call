@@ -17,7 +17,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A state the code tests, then hands to a call that changes it** (a fight's state: an action sets who fled, a spell
   conjures a Mirror Image) is read again through a reader typed as the state is kept (`theFightAsItIsNow`), so a test
   after the call isn't read as always false; so is a province's owner after a battle and its bookkeeping
-  (`theOwnerAsItIsNow`).
+  (`theOwnerAsItIsNow`), and a hero's life or a province's battle after a battle or a fight (`whetherHeLivesNow`,
+  `whetherItsBattleIsUnresolvedNow`).
 - **A `let` set inside a `forEach` callback** is still its first value to the compiler: a `for … of` over the same list,
   `continue` for the callback's `return`; or, where it is handed back, the function's return type written.
 - **A table's element made sure by a key that is a field** (`if (!G.turnOrders[h.id]) …; G.turnOrders[h.id][p]`)
@@ -39,9 +40,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   the same value (`if (!g) return 0;`, `takeBestGrave`).
 - **Arguments a function never reads, after the ones it reads** (a closure handed the winner's force and the winner
   beside the loser's), are dropped from the call where each is a plain read: the same call, the same values.
-- **A value read by nothing, kept alive by `void x;`** (lint's `no-meaningless-void-operator`): a pure one goes with its
-  `void` (a count, a product); one a call gives keeps the call as a bare statement (`effStat(…);`), its reads and writes
-  as they were. A flag a stand-in may leave out (`c.alive === false`) is read `asItsGuardReadsIt(c.alive) === false`.
+- **A value read by nothing, kept alive by `void x;`** (lint's `no-meaningless-void-operator`) or held by a `const`
+  nobody reads (lint's `no-unused-vars`): a pure one goes (a count, a product, a name destructured and never read); one
+  a call gives keeps the call as a bare statement (`effStat(…);`, `armyTotalStr(…);`), its reads and writes as they
+  were. A flag a stand-in may leave out (`c.alive === false`) is read `asItsGuardReadsIt(c.alive) === false`.
 - **A list indexed by a key that may be missing** (`G.world.provinces[c._attackedFrom]`) is `k === undefined ?
   undefined : list[k]`; a record by words indexed by a realm's index that may be `null` is `table?.[String(n)]`, as
   JavaScript reads `table[null]`.
@@ -87,6 +89,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A target the body turns into words** (`(t || '').toString()`, `String(t)`, `parseInt(t)`) is typed `string | number |
   null | undefined`, so each conversion stays; its `t || ''` is `(t ?? '') || ''`, which turns a `0` into `''` too.
   A phase fallback `ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN` whose callers all pass a number goes.
+- **A callback that hands every argument on** (`.filter((...a) => isHostileInvasion(tc, ...a))`) to a typed function
+  that takes one is handed that one, `(it) => isHostileInvasion(tc, it)`: the others were never read. A call that
+  leaves out a typed callee's last parameter passes `undefined` there (`theStatShownAsALineTellsIt(…, 'spy',
+  undefined)`), the value it had.
 - **A parameter the body never reads** (a callee handed the province and a skill reader it no longer uses) is typed
   `unknown`, with a comment that says so.
 - **A field written back by any key** (`real[k] = copy[k]` over `Object.keys(copy)`) is
