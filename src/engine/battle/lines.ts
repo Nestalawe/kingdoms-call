@@ -54,10 +54,19 @@ export interface GridPlace {
   why: WhyAUnitStandsWhereItDoes;
   face?: GridFacing;
 }
-/** A unit's row as the grid takes it: the unit (none on some of the bots' estimates, which say `fly` instead), its
- *  final strength (`base`), and the marks the grid stamps on the row, never on the army. */
+/** A unit as a bots' estimate weighs it (plan P1-10b40): its type, quality and race, and a skeleton's mark. A neutral
+ *  mix's unit (bestNeutralMix) holds no name: an estimate reads the grid's total alone, never a facing. */
+export interface AUnitAnEstimateWeighs {
+  type: string;
+  quality?: string | null | undefined;
+  race?: string | null | undefined;
+  _isSkeletal?: boolean | undefined;
+  unitName?: undefined;
+}
+/** A unit's row as the grid takes it: the unit (none on some of the bots' estimates, which say `fly` instead; a unit
+ *  of no name on others), its final strength (`base`), and the marks the grid stamps on the row, never on the army. */
 export interface BattleRow {
-  a?: ArmyInABattle | null | undefined;
+  a?: ArmyInABattle | AUnitAnEstimateWeighs | null | undefined;
   base?: number | null | undefined;
   fly?: boolean | null | undefined;
   name?: string | null | undefined;
@@ -844,13 +853,14 @@ export function battleFacedClauses(
     const r = u?.row,
       f = r?._faced;
     if (!u || !r?.a) return; // u is there whenever its row is
-    const vs: AUnitAsALineNamesIt | null = f?.vs?.a
+    const theUnitFaced = f?.vs?.a;
+    const vs: AUnitAsALineNamesIt | null = theUnitFaced
       ? {
           kind: 'a unit named without its quality',
           owner: enemyOwner ?? null,
-          unitName: f.vs.a.unitName,
-          type: f.vs.a.type,
-          quality: f.vs.a.quality,
+          unitName: theWholeArmyABattlesGridHolds(theUnitFaced).unitName,
+          type: theUnitFaced.type,
+          quality: theWholeArmyABattlesGridHolds(theUnitFaced).quality,
         }
       : null;
     let c: WhomAUnitFaced | null = null;
@@ -882,9 +892,15 @@ export function battleFacedClauses(
             : { kind: 'it stood in the second line' };
       else c = { kind: 'nobody stood opposite' };
     }
-    m.set(r.a, c);
+    m.set(theWholeArmyABattlesGridHolds(r.a), c);
   });
   return m;
+}
+/** A unit of a battle's grid as a whole army (plan P1-10b40): only the bots' estimates weigh a unit of no name, and
+ *  they read the grid's total alone, so a battle's facings meet whole armies; for a unit of no name, a TypeError. */
+function theWholeArmyABattlesGridHolds(a: ArmyInABattle | AUnitAnEstimateWeighs): ArmyInABattle {
+  if (a.unitName === undefined) throw new TypeError("a battle's grid holds a unit of no name");
+  return a;
 }
 // ── THE SCOUT'S ADVANTAGE AND THE LINE-UP (Battle lines III, 2026-10-11, Toby) ── The side that knows
 // the ground better (the higher exploration of the province; a province's own guard or garrison knows

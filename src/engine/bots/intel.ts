@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_HEX_DIRS, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { battleFrontWidth, battleLineTotal } from '../battle/lines.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
@@ -14,6 +13,107 @@ import {
   featDiscovered,
   nearSpiedProvIds,
 } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+import type { ArmyInABattle } from '../army-tables.ts';
+import type { AUnitAnEstimateWeighs } from '../battle/lines.ts';
+
+// Its types (plan P1-10b40): each parameter typed as wide as the body's guards, so each guard stays. The estimates
+// (botEffForce, botBattleForce, botDruidShortfall and the skills they read) are handed staged worlds and units (the
+// neutral mixes, the tests): their state and units are typed by what they read; the intel reads the whole state.
+/** A commander as the Druid check reads him. */
+type ACommanderAsTheDruidCheckReadsHim = Parameters<typeof druIdPenaltyMult>[0];
+/** The heroes beside him, as the Druid check reads them. */
+type TheHeroesAsTheDruidCheckReadsThem = Parameters<typeof druIdPenaltyMult>[4];
+/** A realm as the discoveries read it. */
+type ARealmAsTheDiscoveriesReadIt = NonNullable<Parameters<typeof aRealmsDiscoveriesLetABeastFollowWithoutItsDruid>[0]>;
+/** A unit as the estimates weigh it: a host's army, or a unit of a neutral mix, which holds no name. */
+type AUnitAsTheEstimatesWeighIt = ArmyInABattle | AUnitAnEstimateWeighs;
+/** The units an estimate is handed: a gap among them, or none. */
+type TheUnitsAsTheEstimatesWeighThem = readonly (AUnitAsTheEstimatesWeighIt | null | undefined)[] | null | undefined;
+/** A commander as the estimates read him: as the Druid check reads him, whether he is the king, and his units. */
+interface ACommanderAsTheEstimatesReadHim extends ACommanderAsTheDruidCheckReadsHim {
+  readonly race?: string | null | undefined;
+  readonly isKing?: boolean | undefined;
+  readonly armies?: TheUnitsAsTheEstimatesWeighThem;
+}
+/** What a realm's spies learned of a hero: his skills, and the turn. */
+interface ASpiedHerosSkills {
+  readonly turn?: number | undefined;
+  readonly skills?: Readonly<Partial<Record<string, number>>> | undefined;
+}
+/** A realm as the estimates read it: as the discoveries read it (its alignment and race among them), and what its
+ *  spies learned of other realms' heroes. */
+type ARealmAsTheEstimatesReadIt = object &
+  ARealmAsTheDiscoveriesReadIt & {
+    readonly _spiedHeroSkills?: Readonly<Partial<Record<string, ASpiedHerosSkills>>> | undefined;
+  };
+/** The state as the estimates read it: the realms, the heroes and the turn (a staged world may lack any). */
+interface TheStateAsTheEstimatesReadIt {
+  readonly players?: readonly (ARealmAsTheEstimatesReadIt | null | undefined)[] | null | undefined;
+  readonly characters?: TheHeroesAsTheDruidCheckReadsThem;
+  readonly turn?: number | undefined;
+}
+/** A hero whose skills a realm may know: whose he is, his id and his skills. */
+interface AHeroWhoseSkillsAreKnown {
+  readonly player?: number | null | undefined;
+  readonly id?: number | string | null | undefined;
+  readonly skills?: Readonly<Partial<Record<string, number>>> | null | undefined;
+}
+/** The bots' weights at a difficulty. */
+interface ABotDifficultysWeights {
+  readonly attackMarginMult: number;
+  readonly assaultMarginMult: number;
+  readonly rivalBias: number;
+  readonly upkeepCapFrac: number;
+}
+/** The bots' weights for a game, as botTuning works them out. */
+interface TheBotsWeights {
+  kingAttackMargin: number;
+  heroAttackMargin: number;
+  assaultMargin: number;
+  valuableTax: number;
+  rivalBias: number;
+  taxScoreWeight: number;
+  upkeepCapFrac: number;
+  goldReserve: number;
+  chestShare: number;
+  coalitionTriggerFrac: number;
+}
+/** The bots' scratch state for a turn: the roles, the treasury ledger, the engine's terrain figure the turn hands in,
+ *  and what the other bots files write there. */
+interface TheBotsTurnCache {
+  readonly turn: number | undefined;
+  readonly roles: Record<string, unknown>;
+  readonly ledger: Record<string, unknown>;
+  terrainMult?: ((armyType: string, terrain: string) => unknown) | undefined;
+  [field: string]: unknown;
+}
+/** What a bot realm knows this turn (botIntel). */
+interface WhatABotRealmKnows {
+  readonly owned: Set<number>;
+  readonly occupied: Set<number>;
+  readonly spied: Set<number>;
+  readonly sight: Set<number>;
+  readonly border: Set<number>;
+  readonly remembered: Set<number>;
+  readonly visited: Set<number>;
+  readonly known: Set<number>;
+  readonly ctx: Parameters<typeof enemyCharVisibleTo>[3];
+  readonly mem: NonNullable<GameState['players'][number]['_provMemory']>;
+  readonly graves: NonNullable<GameState['players'][number]['_graveIntel']>;
+}
+/** The step to the neighbour in a direction (one of six): for none, the TypeError its read threw. */
+function theStepInTheDirection(offsets: readonly (readonly [number, number])[], i: number): readonly [number, number] {
+  const off = offsets[i];
+  if (off === undefined) throw new TypeError("Cannot read properties of undefined (reading '0')");
+  return off;
+}
+/** A unit an estimate counts, where the list holds a gap: for a gap, the TypeError the strength's read threw. */
+function theUnitCounted(a: AUnitAsTheEstimatesWeighIt | null | undefined): AUnitAsTheEstimatesWeighIt {
+  if (a === null || a === undefined) throw new TypeError(`Cannot read properties of ${String(a)} (reading 'type')`);
+  return a;
+}
 
 // ══ BOT PLAYERS — Phase 3a: core movement AI (expansion) ════
 // Self-contained, module-top-level so it can run at order-merge time in runTurn with no dependency
@@ -83,16 +183,25 @@ export const BOT_TUNING = {
 // plays at what was the Hard setting — bolder attack margins, the strongest rival bias, and 97% of income
 // on wages. The table keeps one row so botTuning reads the same shape; a game saved with 'easy' or
 // 'normal' (G.botDifficulty) resolves to it too, and telemetry keeps recording the word it finds.
-export const BOT_DIFFICULTY = {
+export const BOT_DIFFICULTY: {
+  hard: ABotDifficultysWeights;
+  easy?: ABotDifficultysWeights;
+  normal?: ABotDifficultysWeights;
+} = {
   hard: { attackMarginMult: 0.92, assaultMarginMult: 0.9, rivalBias: 12, upkeepCapFrac: 0.97 },
 };
 BOT_DIFFICULTY.easy = BOT_DIFFICULTY.normal = BOT_DIFFICULTY.hard;
 export const BOT_DIFFICULTY_DEFAULT = 'hard';
 // Effective weights for this game. Bot decision functions read these instead of BOT_TUNING directly.
 // Difficulty-neutral weights pass straight through.
-export function botTuning(G, pi) {
-  const d = BOT_DIFFICULTY[(G && G.botDifficulty) || BOT_DIFFICULTY_DEFAULT] || BOT_DIFFICULTY.hard;
-  const T = {
+export function botTuning(
+  G: Pick<GameState, 'botDifficulty' | 'players'> | null | undefined,
+  pi: number | null | undefined,
+): TheBotsWeights {
+  // the table read by any difficulty's name
+  const weightsOf: Readonly<Partial<Record<string, ABotDifficultysWeights>>> = BOT_DIFFICULTY;
+  const d = weightsOf[(G?.botDifficulty ?? '') || BOT_DIFFICULTY_DEFAULT] ?? BOT_DIFFICULTY.hard;
+  const T: TheBotsWeights = {
     kingAttackMargin: BOT_TUNING.kingAttackMargin * d.attackMarginMult,
     heroAttackMargin: BOT_TUNING.heroAttackMargin * d.attackMarginMult,
     assaultMargin: BOT_TUNING.assaultMargin * d.assaultMarginMult,
@@ -106,11 +215,11 @@ export function botTuning(G, pi) {
   };
   // Sept 2026 (bot strategy review §2–3): per-realm overlays from the alignment and race the realm was
   // dealt. Each reads a rulebook number, nothing hidden.
-  const pl = pi != null && G && G.players ? G.players[pi] : null;
+  const pl = pi != null && G?.players ? G.players[pi] : null;
   if (!pl) return T;
   switch (pl.alignment) {
     case 'Divine':
-      if ((consecratedIds(pl) || []).length) T.kingAttackMargin *= 0.9;
+      if (consecratedIds(pl).length) T.kingAttackMargin *= 0.9;
       break; // the grace returns a fallen king
     case 'Good':
       T.assaultMargin *= 0.9;
@@ -137,7 +246,7 @@ export function botTuning(G, pi) {
   return T;
 }
 export const BOT_HEX_DIRS = KC_HEX_DIRS.slice(); // MUST match the engine's order (KC_HEX_DIRS, the hex step's)
-export const BOT_OFF_EVEN = [
+export const BOT_OFF_EVEN: readonly (readonly [number, number])[] = [
   [-1, -1],
   [-1, 0],
   [0, -1],
@@ -145,7 +254,7 @@ export const BOT_OFF_EVEN = [
   [1, -1],
   [1, 0],
 ]; // and its even/odd hex offsets
-export const BOT_OFF_ODD = [
+export const BOT_OFF_ODD: readonly (readonly [number, number])[] = [
   [-1, 0],
   [-1, 1],
   [0, -1],
@@ -153,17 +262,21 @@ export const BOT_OFF_ODD = [
   [1, 0],
   [1, 1],
 ];
-export function botNeighbourProv(G, prov, i) {
+export function botNeighbourProv(
+  G: { readonly world: Pick<GameState['world'], 'cols' | 'rows' | 'provinces'> },
+  prov: Pick<Province, 'row' | 'col'>,
+  i: number,
+): Province | null | undefined {
   const cols = G.world.cols,
     rows = G.world.rows;
-  const off = (prov.row % 2 === 0 ? BOT_OFF_EVEN : BOT_OFF_ODD)[i];
+  const off = theStepInTheDirection(prov.row % 2 === 0 ? BOT_OFF_EVEN : BOT_OFF_ODD, i);
   const nr = prov.row + off[0];
   if (nr < 0 || nr >= rows) return null;
   const nc = (((prov.col + off[1]) % cols) + cols) % cols;
   return G.world.provinces[nr * cols + nc];
 }
-export function botForceStrength(armies) {
-  return (armies || []).reduce((s, a) => s + unitBaseStrength(a), 0);
+export function botForceStrength(armies: TheUnitsAsTheEstimatesWeighThem) {
+  return (armies ?? []).reduce((s, a) => s + unitBaseStrength(theUnitCounted(a)), 0);
 }
 
 // ── UNIT-TYPE SETS ── the bots' copies of the content's unit classes, read by every bot file (bots/war.ts's
@@ -175,8 +288,8 @@ export const BOT_SEA_ALL = new Set([...BOT_CARRIER_TYPES, ...BOT_PRIMAL_SEA_TYPE
 export const BOT_MONSTER_ARMIES = new Set(KC_UNIT_CLASS.monster);
 // Per-turn scratch state (roles + treasury ledger), keyed by the live game-state object so it never
 // leaks into the persisted game_state and never survives into the next turn.
-export const _botTurnCache = new WeakMap();
-export function botTurnCache(G) {
+export const _botTurnCache = new WeakMap<object, TheBotsTurnCache>();
+export function botTurnCache(G: object & { readonly turn?: number | undefined }): TheBotsTurnCache {
   let o = _botTurnCache.get(G);
   if (!o || o.turn !== G.turn) {
     o = { turn: G.turn, roles: {}, ledger: {} };
@@ -215,26 +328,31 @@ export function botTurnCache(G) {
 // the same snapshot the human's turn report was built from. Parity is therefore exact, not
 // approximate. _spiedProvincesThisTurn is cleared earlier in runTurn, so the previous turn's spy
 // set is preserved as _spiedProvincesLastTurn at that reset for this layer to read.
-export const _botIntelCache = new WeakMap();
-export function botIntel(G, pi) {
+export const _botIntelCache = new WeakMap<
+  object,
+  { readonly turn: number; readonly by: Partial<Record<number, WhatABotRealmKnows>> }
+>();
+export function botIntel(G: GameState, pi: number): WhatABotRealmKnows {
   let per = _botIntelCache.get(G);
-  if (!per || per.turn !== G.turn) {
+  if (per?.turn !== G.turn) {
     per = { turn: G.turn, by: {} };
     _botIntelCache.set(G, per);
   }
-  if (per.by[pi]) return per.by[pi];
-  const pl = (G.players || [])[pi] || {};
-  const owned = new Set(),
-    occupied = new Set();
-  (G.world.provinces || []).forEach((p) => {
-    if (p && p.owner === pi) owned.add(p.id);
+  const knownAlready = per.by[pi];
+  if (knownAlready) return knownAlready;
+  const pl = (asItsGuardReadsIt(G.players) ?? [])[pi];
+  const owned = new Set<number>(),
+    occupied = new Set<number>();
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((p) => {
+    if (asItsGuardReadsIt(p)?.owner === pi) owned.add(p.id);
   });
-  (G.characters || []).forEach((c) => {
-    if (c && c.alive && c.player === pi && c.location != null) occupied.add(c.location);
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+    if (asItsGuardReadsIt(c)?.alive && c.player === pi && asItsGuardReadsIt(c.location) != null)
+      occupied.add(c.location);
   });
-  const spied = new Set(pl._spiedProvincesLastTurn || pl._spiedProvincesThisTurn || []);
+  const spied = new Set(pl?._spiedProvincesLastTurn ?? pl?._spiedProvincesThisTurn ?? []);
   const sight = new Set([...owned, ...occupied, ...spied]);
-  const border = new Set();
+  const border = new Set<number>();
   sight.forEach((id) => {
     const p = G.world.provinces[id];
     if (!p) return;
@@ -243,20 +361,20 @@ export function botIntel(G, pi) {
       if (N && !sight.has(N.id)) border.add(N.id);
     }
   });
-  const remembered = new Set(),
-    visited = new Set();
-  Object.keys(pl._provMemory || {}).forEach((k) => {
+  const remembered = new Set<number>(),
+    visited = new Set<number>();
+  Object.keys(pl?._provMemory ?? {}).forEach((k) => {
     const n = +k;
     if (!isNaN(n)) remembered.add(n);
   });
-  (G.world.provinces || []).forEach((p) => {
-    if (p && (p.visitedBy || []).includes(pi)) {
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((p) => {
+    if (asItsGuardReadsIt(p) && (asItsGuardReadsIt(p.visitedBy) ?? []).includes(pi)) {
       remembered.add(p.id);
       visited.add(p.id);
     }
   });
   const known = new Set([...sight, ...border, ...remembered]);
-  const o = {
+  const o: WhatABotRealmKnows = {
     owned,
     occupied,
     spied,
@@ -266,44 +384,46 @@ export function botIntel(G, pi) {
     visited,
     known,
     ctx: { ownedProvIds: owned, ownCharLocs: occupied, spiedThisTurn: spied, nearSpied: nearSpiedProvIds(G, spied) },
-    mem: pl._provMemory || {},
-    graves: pl._graveIntel || {},
+    mem: pl?._provMemory ?? {},
+    graves: pl?._graveIntel ?? {},
   };
   per.by[pi] = o;
   return o;
 }
 // Live forces in this province are visible to the realm.
-export function botSees(G, pi, provId) {
+export function botSees(G: GameState, pi: number, provId: number | null | undefined) {
   return provId != null && botIntel(G, pi).sight.has(provId);
 }
 // Current terrain / owner / tax are visible (sight or border) — but NOT the forces standing there.
-export function botScouted(G, pi, provId) {
+export function botScouted(G: GameState, pi: number, provId: number | null | undefined) {
   const I = botIntel(G, pi);
   return provId != null && (I.sight.has(provId) || I.border.has(provId));
 }
 // The realm has seen this ground at some point and may reason about it at all.
-export function botKnows(G, pi, provId) {
+export function botKnows(G: GameState, pi: number, provId: number | null | undefined) {
   return provId != null && botIntel(G, pi).known.has(provId);
 }
 // One rule for "can this realm see that character", shared with the human report.
-export function botSeesChar(G, pi, c) {
-  if (!c || !c.alive) return false;
+export function botSeesChar(G: GameState, pi: number, c: Character | null | undefined) {
+  if (!c?.alive) return false;
   if (c.player === pi) return true;
   try {
     return enemyCharVisibleTo(G, pi, c, botIntel(G, pi).ctx);
-  } catch (e) {
+  } catch {
     return botSees(G, pi, c.location);
   }
 }
 // Every character standing in `prov` that this realm may account for (its own always; others only
 // where it has line of sight and they are not hidden).
-export function botVisibleCharsIn(G, pi, prov) {
+export function botVisibleCharsIn(G: GameState, pi: number, prov: Province | null | undefined) {
   if (!prov) return [];
-  return (G.characters || []).filter((c) => c && c.alive && c.location === prov.id && botSeesChar(G, pi, c));
+  return (asItsGuardReadsIt(G.characters) ?? []).filter(
+    (c) => asItsGuardReadsIt(c)?.alive && c.location === prov.id && botSeesChar(G, pi, c),
+  );
 }
 // The province as this realm believes it to be: live when scouted, else the remembered snapshot,
 // else null (never seen — must not be reasoned about).
-export function botBelief(G, pi, prov) {
+export function botBelief(G: GameState, pi: number, prov: Province | null | undefined) {
   if (!prov) return null;
   if (botScouted(G, pi, prov.id))
     return {
@@ -313,7 +433,7 @@ export function botBelief(G, pi, prov) {
       terrain: prov.terrain,
       owner: prov.owner,
       tax: prov.tax,
-      armyTypes: prov.armyTypes || [],
+      armyTypes: asItsGuardReadsIt(prov.armyTypes) ?? [],
       live: true,
     };
   const m = botIntel(G, pi).mem[prov.id];
@@ -325,13 +445,13 @@ export function botBelief(G, pi, prov) {
       terrain: m.terrain,
       owner: m.owner,
       tax: m.tax,
-      armyTypes: m.armyTypes || [],
+      armyTypes: asItsGuardReadsIt(m.armyTypes) ?? [],
       live: false,
     };
   return null;
 }
 // Owner as believed (live if scouted, else last seen). `undefined` = never seen this ground.
-export function botBelievedOwner(G, pi, prov) {
+export function botBelievedOwner(G: GameState, pi: number, prov: Province | null | undefined) {
   const b = botBelief(G, pi, prov);
   return b ? b.owner : undefined;
 }
@@ -340,7 +460,7 @@ export function botBelievedOwner(G, pi, prov) {
 // spread the world generator uses); a rival's province is guessed from its tax, because a wealthy
 // realm garrisons what it values. Deliberately a rough number: a bot marching on unscouted ground
 // should be able to be unpleasantly surprised, exactly as a human is.
-export function botGuessDefence(G, pi, prov, terrain) {
+export function botGuessDefence(G: GameState, pi: number, prov: Province | null | undefined) {
   const b = botBelief(G, pi, prov);
   if (!b) return 0;
   const AVG_UNIT = 6; // ≈ an average line unit's base strength
@@ -351,10 +471,12 @@ export function botGuessDefence(G, pi, prov, terrain) {
   // they are, and prices them at an average unit.
   if (prov && I.visited.has(prov.id) && (prov.owner == null || prov.owner === b.owner)) {
     if (b.owner == null) {
-      const guard = (prov.characters || [])
-        .map((id) => (G.characters || []).find((x) => x && x.id === id))
-        .find((x) => x && x.alive && x.player === null && (x.armies || []).length);
-      const n = guard ? (guard.armies || []).length : (prov.neutralDefenders || []).length;
+      const guard = (asItsGuardReadsIt(prov.characters) ?? [])
+        .map((id) => (asItsGuardReadsIt(G.characters) ?? []).find((x) => asItsGuardReadsIt(x)?.id === id))
+        .find((x) => x?.alive && x.player === null && (asItsGuardReadsIt(x.armies) ?? []).length);
+      const n = guard
+        ? (asItsGuardReadsIt(guard.armies) ?? []).length
+        : (asItsGuardReadsIt(prov.neutralDefenders) ?? []).length;
       return n * AVG_UNIT * BOT_DEF_BONUS;
     }
   }
@@ -367,14 +489,15 @@ export function botGuessDefence(G, pi, prov, terrain) {
   return units * AVG_UNIT * (owned ? 1.25 : 1) * BOT_DEF_BONUS;
 }
 // Discovered features only — an undiscovered lair is not on this realm's map at all.
-export function botKnownFeatures(G, pi, prov) {
-  return ((prov && prov.features) || []).filter((f) => f && featDiscovered(f, pi));
+export function botKnownFeatures(G: unknown, pi: number, prov: Province | null | undefined) {
+  // (`G` is read by nothing: what a realm discovered is on the feature)
+  return (asItsGuardReadsIt(prov?.features) ?? []).filter((f) => asItsGuardReadsIt(f) && featDiscovered(f, pi));
 }
 // Does this realm know battlefield graves lie here? Reads the very record the report's "Graveyards
 // Known" section is built from, so a bot needs a necromancer on the ground exactly as a player
 // does.
-export function botKnowsGraves(G, pi, provId) {
-  const g = botIntel(G, pi).graves;
+export function botKnowsGraves(G: GameState, pi: number, provId: number | null | undefined) {
+  const g = asItsGuardReadsIt(botIntel(G, pi).graves);
   return !!(g && provId != null && g[provId]);
 }
 // ══ HONEST KNOWLEDGE OF RIVAL CHARACTERS (Sept 2026, Toby / review II A5) ════
@@ -383,29 +506,41 @@ export function botKnowsGraves(G, pi, provId) {
 // ASSUMED profile — a Tactical-2 general, a Melee-3/Archery-2 duellist with a school at 2 — as a human
 // would guess from the report's silence. Spies therefore spy on generals and hunters' marks first.
 export const BOT_ASSUMED_SKILLS = { melee: 3, archery: 2, tactical: 2, elemental: 2 };
-export function botKnownSkills(G, pi, e) {
+export function botKnownSkills(
+  G: Pick<TheStateAsTheEstimatesReadIt, 'players' | 'turn'>,
+  pi: number,
+  e: AHeroWhoseSkillsAreKnown | null | undefined,
+): Readonly<Partial<Record<string, number>>> | null {
   if (!e) return null;
-  if (e.player === pi || e.player == null) return e.skills || {}; // our own; wanderers are hired on sight of their skills
-  const p = (G.players || [])[pi];
-  const r = p && p._spiedHeroSkills && p._spiedHeroSkills[e.id];
-  if (r && (G.turn || 0) - (r.turn || 0) <= 8) return r.skills || {};
+  if (e.player === pi || e.player == null) return e.skills ?? {}; // our own; wanderers are hired on sight of their skills
+  const p = (G.players ?? [])[pi];
+  const r = p?._spiedHeroSkills?.[String(e.id)];
+  if (r && (Number(G.turn) || 0) - (Number(r.turn) || 0) <= 8) return r.skills ?? {};
   return null;
 }
-export function botSkillsFor(G, pi, e) {
-  return botKnownSkills(G, pi, e) || BOT_ASSUMED_SKILLS;
+export function botSkillsFor(
+  G: Pick<TheStateAsTheEstimatesReadIt, 'players' | 'turn'>,
+  pi: number,
+  e: AHeroWhoseSkillsAreKnown | null | undefined,
+) {
+  return botKnownSkills(G, pi, e) ?? BOT_ASSUMED_SKILLS;
 }
 // Sept 2026 (bot upgrade): the strength a commander REALLY brings — every unit discounted by the
 // Druid shortfall penalty the engine will apply (same-race rule, Druidic realm, Dragon Taming
 // all honoured via druIdPenaltyMult). Since plan P1-19ah the bots ask the discoveries' registry's runners, as the
 // battles do ("strength: a realm's discoveries let a beast follow without its Druid", and "… weight the lines behind
 // the front"), handed the commander's realm (none for a realmless commander).
-export function botEffForce(G, c, armies) {
+export function botEffForce(
+  G: TheStateAsTheEstimatesReadIt,
+  c: ACommanderAsTheEstimatesReadHim | null | undefined,
+  armies: TheUnitsAsTheEstimatesWeighThem,
+) {
   if (!c) return botForceStrength(armies);
-  const align = (c.player != null ? ((G.players || [])[c.player] || {}).alignment : null) || 'Neutral';
-  const theRealm = c.player != null ? (G.players || [])[c.player] : null;
-  return (armies || c.armies || []).reduce((s, a) => {
+  const align = (c.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const theRealm = c.player != null ? (G.players ?? [])[c.player] : null;
+  return (armies ?? c.armies ?? []).reduce((s, a) => {
     if (!a) return s;
-    let m = 1;
+    let m: number;
     try {
       m = druIdPenaltyMult(
         c,
@@ -414,7 +549,7 @@ export function botEffForce(G, c, armies) {
         aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
         G.characters,
       );
-    } catch (e) {
+    } catch {
       m = 1;
     }
     return s + unitBaseStrength(a) * m;
@@ -432,16 +567,23 @@ export function botEffForce(G, c, armies) {
 // mirrored for the estimate — kinship (+20% king's race, +20% leader's race), the old grudges (−20%),
 // unit terrain modifiers and the sea penalty, Elven Woodland Mastery (×1.5 in forest/jungle) and Dwarven
 // Bulwark (×1.5 defending). All public: races, terrain and the rulebook's numbers.
-export function botRaceTerrainMult(G, c, a, terrain, defending, ownerPi) {
+export function botRaceTerrainMult(
+  G: TheStateAsTheEstimatesReadIt & object,
+  c: ACommanderAsTheEstimatesReadHim | null | undefined,
+  a: AUnitAsTheEstimatesWeighIt,
+  terrain: string | null | undefined,
+  defending: boolean | null | undefined,
+  ownerPi: number | null | undefined,
+) {
   let m = 1;
-  const uRace = a.race || null;
-  const oPi = ownerPi != null ? ownerPi : c && c.player != null ? c.player : null;
-  const oRace = oPi != null ? ((G.players || [])[oPi] || {}).race || null : null;
-  const lRace = (c && c.race) || null;
+  const uRace = (a.race ?? '') || null;
+  const oPi = ownerPi ?? c?.player ?? null;
+  const oRace = oPi != null ? ((G.players ?? [])[oPi]?.race ?? '') || null : null;
+  const lRace = (c?.race ?? '') || null;
   if (uRace) {
     if (oRace && uRace === oRace) m *= 1.2;
     if (lRace && uRace === lRace) m *= 1.2;
-    const RIV = { ...KC_RIVAL_RACE };
+    const RIV: Readonly<Partial<Record<string, string>>> = { ...KC_RIVAL_RACE };
     if (lRace && RIV[uRace] === lRace) m *= 0.8;
   }
   // terrainMod / seaPenalty are runTurn-LOCAL (the scope trap): runTurn hands them in through hooks.terrainMult
@@ -449,8 +591,10 @@ export function botRaceTerrainMult(G, c, a, terrain, defending, ownerPi) {
     const tf = botTurnCache(G).terrainMult;
     if (typeof tf === 'function') {
       try {
-        m *= tf(a.type, terrain);
-      } catch (e) {}
+        m *= Number(tf(a.type, terrain));
+      } catch {
+        // a figure that fails leaves the unit's multiplier as it is
+      }
     }
   }
   if (uRace === 'Elven' && oRace === 'Elven' && (terrain === 'forest' || terrain === 'jungle')) m *= 1.5;
@@ -460,34 +604,55 @@ export function botRaceTerrainMult(G, c, a, terrain, defending, ownerPi) {
 // Whole-force multipliers the rulebook promises without a roll: Evil ×1.25 with any Monster (the Druidic
 // mirror, Wild Ferocity, was retired 2026-10-13), Undead skeletal fanaticism ×1.5 under the king / ×1.3 under
 // a hero, Good +10% defending its own land. Zeal itself is a roll and is left out, as before.
-export function botFervourMult(G, c, armies, defending) {
-  if (!c || c.player == null) return 1;
-  const align = ((G.players || [])[c.player] || {}).alignment || 'Neutral';
+export function botFervourMult(
+  G: TheStateAsTheEstimatesReadIt,
+  c: ACommanderAsTheEstimatesReadHim | null | undefined,
+  armies: readonly (AUnitAsTheEstimatesWeighIt | null | undefined)[],
+  defending: boolean | null | undefined,
+) {
+  if (c?.player == null) return 1;
+  const align = ((G.players ?? [])[c.player]?.alignment ?? '') || 'Neutral';
   let m = 1;
   if (align === 'Evil' && armies.some((a) => a && BOT_MONSTER_ARMIES.has(a.type))) m = Math.max(m, 1.25);
-  if (align === 'Undead' && armies.some((a) => a && a._isSkeletal)) m = Math.max(m, c.isKing ? 1.5 : 1.3);
+  if (align === 'Undead' && armies.some((a) => a?._isSkeletal)) m = Math.max(m, c.isKing ? 1.5 : 1.3);
   if (align === 'Good' && defending) m *= 1.1;
   return m;
 }
 // Its return type written for a typed caller (plan P1-10b32: drill-and-spoils.ts' bestNeutralMix): every path returns
 // a number.
-export function botBattleForce(G, c, armies, terrain, opts): number {
-  opts = opts || {};
+export function botBattleForce(
+  G: TheStateAsTheEstimatesReadIt & object,
+  c: ACommanderAsTheEstimatesReadHim | null | undefined,
+  armies: TheUnitsAsTheEstimatesWeighThem,
+  terrain: string,
+  opts:
+    | {
+        readonly defending?: boolean | undefined;
+        readonly viewerPi?: number | null | undefined;
+        readonly ownerPi?: number | null | undefined;
+      }
+    | null
+    | undefined,
+): number {
+  opts = opts ?? {};
   const defending = !!opts.defending;
-  armies = armies || (c ? c.armies : null) || [];
+  armies = armies ?? c?.armies ?? [];
   if (!armies.length) return 0;
-  const align = (c && c.player != null ? ((G.players || [])[c.player] || {}).alignment : null) || 'Neutral';
-  const theRealm = c && c.player != null ? (G.players || [])[c.player] : null;
+  const align = (c?.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const theRealm = c?.player != null ? (G.players ?? [])[c.player] : null;
   const flank = doARealmsDiscoveriesWeightTheLinesBehindTheFront(theRealm);
   const width = battleFrontWidth(terrain);
+  const viewerPi = opts.viewerPi;
   const csk =
-    c && opts.viewerPi != null && c.player != null && c.player !== opts.viewerPi
-      ? botSkillsFor(G, opts.viewerPi, c)
-      : (c && c.skills) || {}; // Sept 2026 (A5): a rival's skills only as our spies reported them
-  const tac = terrain === 'sea' ? 1 : Math.min(2.0, 1 + 0.2 * Math.min(5, csk.tactical || 0));
-  const nav = 1 + 0.2 * Math.min(5, csk.naval || 0); // Naval lifts fleets on land and sea
+    c && viewerPi != null && c.player != null && c.player !== viewerPi
+      ? botSkillsFor(G, viewerPi, c)
+      : (c?.skills ?? {}); // Sept 2026 (A5): a rival's skills only as our spies reported them
+  // (the skills read by any skill's name: an assumed profile names no Naval)
+  const theSkillsWeighed: Readonly<Partial<Record<string, number>>> = csk;
+  const tac = terrain === 'sea' ? 1 : Math.min(2.0, 1 + 0.2 * Math.min(5, Number(csk.tactical) || 0));
+  const nav = 1 + 0.2 * Math.min(5, Number(theSkillsWeighed['naval']) || 0); // Naval lifts fleets on land and sea
   const rows = armies
-    .filter((a) => a)
+    .filter((a): a is AUnitAsTheEstimatesWeighIt => Boolean(a))
     .map((a) => {
       let m = 1;
       if (c) {
@@ -499,7 +664,7 @@ export function botBattleForce(G, c, armies, terrain, opts): number {
             aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
             G.characters,
           );
-        } catch (e) {
+        } catch {
           m = 1;
         }
       }
@@ -510,7 +675,8 @@ export function botBattleForce(G, c, armies, terrain, opts): number {
       return { a, base: unitBaseStrength(a) * m * (sea ? nav : tac), fly, sea };
     }); // flyers take Tactical (2026-09-23c); `a` so the grid can place by type
   return (
-    battleLineTotal(rows, width, flank, { terrain, tac: csk.tactical || 0 }) * botFervourMult(G, c, armies, defending)
+    battleLineTotal(rows, width, flank, { terrain, tac: Number(csk.tactical) || 0 }) *
+    botFervourMult(G, c, armies, defending)
   );
 }
 // What an assault on province N is really up against: the standing defenders on N's own terrain
@@ -519,33 +685,40 @@ export const BOT_DEF_BONUS = 1.25;
 // only counted from GROUND THE REALM CAN SEE INTO. On a province it has merely scouted from across
 // the border — or only remembers — it gets botGuessDefence's wealth-band estimate instead of the
 // true order of battle, which is all a human has to go on there.
-export function botTargetDefence(G, pi, N) {
+export function botTargetDefence(G: GameState, pi: number, N: Province | null | undefined) {
   if (!N) return 0;
-  if (!botSees(G, pi, N.id)) return botGuessDefence(G, pi, N, N.terrain);
+  if (!botSees(G, pi, N.id)) return botGuessDefence(G, pi, N);
   const seen = botVisibleCharsIn(G, pi, N);
-  const guard = seen.find((x) => x.player === null && (x.armies || []).length);
+  const guard = seen.find((x) => x.player === null && (asItsGuardReadsIt(x.armies) ?? []).length);
   let s = 0;
   if (N.owner == null) {
     s = guard
       ? botBattleForce(G, guard, guard.armies, N.terrain, { defending: true, viewerPi: pi })
-      : botBattleForce(G, null, N.neutralDefenders || [], N.terrain, { defending: true });
+      : botBattleForce(G, null, asItsGuardReadsIt(N.neutralDefenders) ?? [], N.terrain, { defending: true });
   } else {
     seen.forEach((x) => {
       if (x.player === N.owner) s += botBattleForce(G, x, x.armies, N.terrain, { defending: true, viewerPi: pi });
     });
-    s += botBattleForce(G, null, N.garrisonArmies || [], N.terrain, { defending: true, ownerPi: N.owner });
+    s += botBattleForce(G, null, asItsGuardReadsIt(N.garrisonArmies) ?? [], N.terrain, {
+      defending: true,
+      ownerPi: N.owner,
+    });
   }
   return s * BOT_DEF_BONUS;
 }
 // Does this commander lead any unit at a Druid shortfall? Returns the worst shortfall (0 = none).
-export function botDruidShortfall(G, c, armies) {
+export function botDruidShortfall(
+  G: TheStateAsTheEstimatesReadIt,
+  c: ACommanderAsTheEstimatesReadHim | null | undefined,
+  armies: TheUnitsAsTheEstimatesWeighThem,
+): number {
   if (!c) return 0;
-  const align = (c.player != null ? ((G.players || [])[c.player] || {}).alignment : null) || 'Neutral';
-  const theRealm = c.player != null ? (G.players || [])[c.player] : null;
+  const align = (c.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const theRealm = c.player != null ? (G.players ?? [])[c.player] : null;
   let worst = 0;
-  (armies || c.armies || []).forEach((a) => {
+  (armies ?? c.armies ?? []).forEach((a) => {
     if (!a) return;
-    let m = 1;
+    let m: number;
     try {
       m = druIdPenaltyMult(
         c,
@@ -554,7 +727,7 @@ export function botDruidShortfall(G, c, armies) {
         aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: a.type }),
         G.characters,
       );
-    } catch (e) {
+    } catch {
       m = 1;
     }
     if (m < 1) {
@@ -568,31 +741,42 @@ export function botDruidShortfall(G, c, armies) {
 // eases (−8%/turn) toward a floor — a king never below 1.15×, a hero never below 1.0×. Neutral
 // guards take casualties even when they win, so a near-even assault still wears the garrison down
 // for the next attempt. Reset the moment land grows.
-export function botStallTurns(G, pi) {
-  return ((G.players || [])[pi] || {})._botStall || 0;
+export function botStallTurns(G: Pick<GameState, 'players'>, pi: number) {
+  return Number((asItsGuardReadsIt(G.players) ?? [])[pi]?._botStall) || 0;
 }
-export function botMarginFor(G, pi, c, T) {
-  const base = c && c.isKing ? T.kingAttackMargin : T.heroAttackMargin;
-  const floor = c && c.isKing ? 1.15 : 1.0;
+export function botMarginFor(
+  G: Pick<GameState, 'players'>,
+  pi: number,
+  c: Pick<Character, 'isKing' | 'armies'> | null | undefined,
+  T: Pick<TheBotsWeights, 'kingAttackMargin' | 'heroAttackMargin'>,
+) {
+  const base = c?.isKing ? T.kingAttackMargin : T.heroAttackMargin;
+  const floor = c?.isKing ? 1.15 : 1.0;
   const mult = Math.max(0.6, 1 - 0.08 * botStallTurns(G, pi));
-  const stake = Math.min(0.1, 0.02 * Math.max(0, ((c && c.armies) || []).length - 5)); // Sept 2026 (R5): the bigger the host, the more a loss costs
+  const stake = Math.min(0.1, 0.02 * Math.max(0, (asItsGuardReadsIt(c?.armies) ?? []).length - 5)); // Sept 2026 (R5): the bigger the host, the more a loss costs
   return Math.max(Math.min(base, floor), base * mult) + stake;
 }
-export function botNoteLand(G, pi) {
-  const p = (G.players || [])[pi];
+export function botNoteLand(G: GameState, pi: number) {
+  const p = (asItsGuardReadsIt(G.players) ?? [])[pi];
   if (!p) return;
-  const land = (G.world.provinces || []).filter((x) => x && x.owner === pi && x.terrain !== 'sea').length;
+  const land = (asItsGuardReadsIt(G.world.provinces) ?? []).filter(
+    (x) => asItsGuardReadsIt(x)?.owner === pi && x.terrain !== 'sea',
+  ).length;
   if (p._botLandSeenTurn === G.turn) return; // once per turn
   if (p._botLandPrev != null) {
-    p._botStall = land > p._botLandPrev ? 0 : (p._botStall || 0) + 1;
+    p._botStall = land > p._botLandPrev ? 0 : (Number(p._botStall) || 0) + 1;
   }
   p._botLandPrev = land;
   p._botLandSeenTurn = G.turn;
 }
-export function botRelationRaw(G, a, b) {
+export function botRelationRaw(
+  G: Pick<GameState, 'relations'>,
+  a: number | null | undefined,
+  b: number | null | undefined,
+) {
   if (a == null || b == null || a === b) return 'neutral';
-  const k = a < b ? a + '-' + b : b + '-' + a;
-  return (G.relations || {})[k] || 'neutral';
+  const k = a < b ? `${String(a)}-${String(b)}` : `${String(b)}-${String(a)}`;
+  return (asItsGuardReadsIt(G.relations)?.[k] ?? '') || 'neutral';
 }
 // ── PERSONAL-COMBAT PROVINCE MARKER ────
 // _hadBattleThisTurn drives the map's RED crossed swords and is for ARMY battles only. A personal
@@ -602,10 +786,13 @@ export function botRelationRaw(G, a, b) {
 // PLAYERS were in it and the per-player report only sets hadCombat for those realms, so a covert
 // ambush never advertises itself to a bystander who happens to have the province explored. Cleared
 // with the battle flags at the end of the turn.
-export function markProvinceCombat(prov, players) {
+export function markProvinceCombat(
+  prov: { _combatPlayersThisTurn?: number[] | undefined } | null | undefined,
+  players: readonly (number | null | undefined)[] | null | undefined,
+) {
   if (!prov) return;
-  const arr = prov._combatPlayersThisTurn || (prov._combatPlayersThisTurn = []);
-  (players || []).forEach((pi) => {
+  const arr = prov._combatPlayersThisTurn ?? (prov._combatPlayersThisTurn = []);
+  (players ?? []).forEach((pi) => {
     if (pi != null && !arr.includes(pi)) arr.push(pi);
   });
 }
@@ -618,23 +805,29 @@ export function markProvinceCombat(prov, players) {
 // war-on-contact default and the anti-runaway coalition no longer override it (see
 // botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim, src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts).
 export const BOT_ALLY_ALIGN_DIST = 1;
-export function botAlignOf(G, pi) {
-  return ((G.players || [])[pi] || {}).alignment || 'Neutral';
+export function botAlignOf(G: Pick<GameState, 'players'>, pi: number) {
+  return ((asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment ?? '') || 'Neutral';
 }
-export function botAlignFriendly(G, a, b) {
+export function botAlignFriendly(G: Pick<GameState, 'players'>, a: number, b: number) {
   return alignDistP(botAlignOf(G, a), botAlignOf(G, b)) <= BOT_ALLY_ALIGN_DIST;
 }
 // A rival one of OUR allies is also at war with. Concentrating on the common foe is what an
 // alliance is for — it biases target selection, it does not change who we are at war with.
-export function botMutualFoe(G, pi, j) {
+export function botMutualFoe(G: Pick<GameState, 'players' | 'relations'>, pi: number, j: number | null | undefined) {
   if (j == null || j === pi) return false;
-  const pls = G.players || [];
+  const pls = asItsGuardReadsIt(G.players) ?? [];
   for (let a = 0; a < pls.length; a++) {
     if (a === pi || a === j || !pls[a]) continue;
     if (botRelationRaw(G, pi, a) === 'allied' && botRelationRaw(G, a, j) === 'enemy') return true;
   }
   return false;
 }
-export function botConceded(G, pi): boolean {
-  return !!((G.players || [])[pi] || {}).conceded;
+export function botConceded(
+  G: {
+    readonly players?:
+      readonly ((object & { readonly conceded?: boolean | undefined }) | null | undefined)[] | null | undefined;
+  },
+  pi: number,
+): boolean {
+  return !!(G.players ?? [])[pi]?.conceded;
 }

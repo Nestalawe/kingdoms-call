@@ -23,6 +23,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   is `table?.[n]`: no field of an empty object has a number's name.
 - **`if (!x) x = v` on words** (a unit's phantom tag) is `if (x === undefined || x === '') x = v`: lint's `x ??= v`
   would keep a `''`.
+- **`x || {}` on a value of any type** (a game's setup, held as JSON or parsed) goes through a reader written with an
+  `if` (`aSetUpOrNone`: `if (held) return held; return {};`): lint asks for `??` in place of both `||` and a ternary.
 - **`(x != null && list.find(…)) || y`**, the found element else a fallback, is `(x != null ? list.find(…) : undefined)
   ?? y`: `??` on the `false` the left can give would keep it.
 

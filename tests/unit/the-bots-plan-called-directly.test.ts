@@ -25,6 +25,9 @@
 // gives two shares of its fights, never more than all; for any bot realms every pass is handed exactly those, in the
 // plan's order. Planted faults: in the PR (P1-08l2). Then the Spring orders pass (`runBotPhaseOne`) called directly: a
 // bot host in contact ranks Harvest the Field and Perform Rite, by the order's key, ahead of slower orders (P1-21f).
+// Then the intel and the setup on what no matrix game hands them (P1-10b40): a game's slot and setup as the GM's page
+// reads them, a realm's name once its pool is used, the alignments' spread beside humans, the weights for any
+// difficulty, and the intel, the guesses and the estimates on a world lacking a list or a field.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -551,5 +554,428 @@ describe('Properties of the plan and the forecast', () => {
       }),
       { seed: SEED, numRuns: 20 },
     );
+  });
+});
+
+// The intel's and the setup's lines no matrix game reaches (plan P1-10b40): a game's slot and setup read by the GM's
+// page, a realm's name drawn from a pool all used, the alignments' spread for humans, and the intel, the guesses and the
+// estimates on a world that lacks a list or a field.
+describe('The intel and the setup on what no matrix game hands them', () => {
+  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
+  const json = (v: unknown) => JSON.stringify(v);
+  const thrown = (f: () => unknown) => {
+    try {
+      f();
+      return 'no error';
+    } catch (e) {
+      return String(e).split(':')[0];
+    }
+  };
+  test("a slot is a bot's with no user and a report that says so, as JSON or parsed, or with no report at all", () => {
+    const isBotRow = fn('isBotRow');
+    const slots = [
+      null,
+      0,
+      { user_id: 'u1', turn_report: { isBot: true } },
+      { user_id: null },
+      { user_id: null, turn_report: '{"isBot":true}' },
+      { user_id: null, turn_report: { isBot: true } },
+      { user_id: null, turn_report: '{"isBot":1}' },
+      { user_id: null, turn_report: 'not JSON' },
+      { user_id: null, turn_report: null },
+      { user_id: null, turn_report: 5 },
+      { turn_report: 'null' },
+    ];
+    expect(slots.map((p) => isBotRow(p))).toEqual([
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+  test("a game's bots and its visibility, from its settings or from its setup's game state, JSON or parsed", () => {
+    const botConfigFor = fn('botConfigFor');
+    const gameVisibility = fn('gameVisibility');
+    const games = [
+      { max_players: 4, meta: json({ v: 1, botCount: '2' }), game_state: { allBot: true } },
+      { max_players: 4, game_state: json({ botCount: 9 }) },
+      { max_players: 4, game_state: { allBot: true } },
+      { game_state: { botCount: 2 } },
+      { max_players: 4, game_state: 'not JSON' },
+      { max_players: 4, game_state: 0 },
+      { max_players: 4 },
+      { max_players: 0, game_state: { botCount: 3 } },
+      { max_players: 4, game_state: { botCount: '3 bots' } },
+      { max_players: 4, game_state: { visibility: 'private', invited: ['Ysolde'] } },
+      { max_players: 4, game_state: { visibility: 'private', invited: 'Ysolde' } },
+      { max_players: 4, game_state: { invited: ['Ysolde'] } },
+      { max_players: 4, meta: { v: 1, visibility: 'private', invited: ['Corwin'] } },
+      { max_players: 4, game_state: json({ visibility: 'private', invited: ['Ysolde'] }) },
+    ];
+    expect(json(games.map((g) => [botConfigFor(g), gameVisibility(g)]))).toBe(
+      json([
+        [
+          { botCount: 2, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 4, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 4, allBot: true },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 3, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: true, invited: ['Ysolde'] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: true, invited: [] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: false, invited: [] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: true, invited: ['Corwin'] },
+        ],
+        [
+          { botCount: 0, allBot: false },
+          { private: true, invited: ['Ysolde'] },
+        ],
+      ]),
+    );
+    // a setup whose game state is JSON's null is read as JavaScript reads a field of null
+    expect([
+      thrown(() => botConfigFor({ game_state: 'null' })),
+      thrown(() => gameVisibility({ game_state: 'null' })),
+    ]).toEqual(['TypeError', 'TypeError']);
+  });
+  test("a bot realm's name: its race's pool, Free Lances' for a race of none, each name once, then a numeral", () => {
+    const botKingdomName = fn('botKingdomName');
+    const pool = vm.runInContext("ARMY_UNIT_NAMES['Free Lances'].slice()", engine) as string[];
+    const elven = vm.runInContext("ARMY_UNIT_NAMES['Elven Bowmen'].slice()", engine) as string[];
+    const used = vm.runInContext('[..._usedBotKingdomNames]', engine) as string[];
+    vm.runInContext('_usedBotKingdomNames.clear()', engine);
+    const capped = (n: string) => n.replace(/^the\b/, 'The');
+    const names = pool.map(() => botKingdomName('Nonesuch') as string);
+    const more = [botKingdomName('Nonesuch'), botKingdomName('Nonesuch')] as string[];
+    const anElf = botKingdomName('Elven') as string;
+    vm.runInContext(`_usedBotKingdomNames.clear(); ${json(used)}.forEach((n) => _usedBotKingdomNames.add(n))`, engine);
+    expect([...names].sort()).toEqual(pool.map(capped).sort());
+    expect(more.map((n) => / (II|III)$/.test(n) && pool.map(capped).includes(n.replace(/ (II|III)$/, '')))).toEqual([
+      true,
+      true,
+    ]);
+    expect(more[0]).not.toBe(more[1]);
+    expect(elven.map(capped)).toContain(anElf);
+  });
+  test('the alignments: an unused one first, never a second Divine or Undead, the fewest taken among ties', () => {
+    const pick = fn('pickBotAlignment');
+    const all = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'];
+    const counts = (n: number, but: Record<string, number> = {}) =>
+      Object.fromEntries(all.map((a) => [a, but[a] ?? n]));
+    expect(pick(counts(1, { Undead: 0 }))).toBe('Undead');
+    expect(pick(counts(1, { Divine: 0 }))).toBe('Divine');
+    const many = Array.from({ length: 30 }, () => pick(counts(1, { Good: 2 })) as string);
+    expect([...new Set(many)].every((a) => ['Druidic', 'Neutral', 'Pagan', 'Evil'].includes(a))).toBe(true);
+    expect(all).toContain(pick({}));
+  });
+  test("the alignments for humans: each human's shorter column first, friends as the spectrum reads them", () => {
+    const balanced = fn('pickBotAlignmentBalanced');
+    const friendsOfGood = ['Divine', 'Good', 'Druidic'];
+    const picks = (taken: object, humans: unknown, friends: unknown, foes: unknown) =>
+      [...new Set(Array.from({ length: 30 }, () => balanced(taken, humans, friends, foes) as string))].sort();
+    expect(picks({}, ['Good'], [1], [0])).toEqual(['Evil', 'Neutral', 'Pagan', 'Undead']);
+    expect(picks({}, ['Good'], [], [5])).toEqual(['Divine', 'Druidic', 'Good']);
+    expect(picks({ Divine: 1 }, ['Good'], [0], [1])).toEqual(['Druidic', 'Good']);
+    expect(picks({ Good: 1 }, ['Good'], [0], [1])).toEqual(['Divine', 'Druidic']);
+    expect(picks({ Divine: 0 }, ['Good'], [0], [1])).toEqual(['Divine', 'Druidic', 'Good']);
+    expect(friendsOfGood).toContain(picks({}, ['Good'], [0], [1])[0]);
+    // no human: the plain spread
+    expect(
+      picks(
+        Object.fromEntries(['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil'].map((a) => [a, 1])),
+        [],
+        [],
+        [],
+      ),
+    ).toEqual(['Undead']);
+    expect(picks({ Undead: 1, Divine: 1, Good: 1, Druidic: 1, Neutral: 1, Pagan: 1 }, null, [], [])).toEqual(['Evil']);
+  });
+  test("the bots' setups beside humans: their seats after the humans', no second Divine or Undead, half friends and half foes", () => {
+    const setups = fn('generateBotSetups');
+    const bots = setups([{ alignment: 'Divine' }, { alignment: 'Undead' }, {}, { alignment: null }], 3, 4) as {
+      id: number;
+      isBot: boolean;
+      alignment: string;
+      race: string;
+      temper: string;
+      skills: object;
+    }[];
+    const builds = vm.runInContext('BOT_SKILL_BUILD', engine) as Record<string, object>;
+    expect(bots.map((b) => [b.id, b.isBot])).toEqual([
+      [4, true],
+      [5, true],
+      [6, true],
+    ]);
+    expect(bots.some((b) => b.alignment === 'Divine' || b.alignment === 'Undead')).toBe(false);
+    expect(bots.every((b) => json(b.skills) === json(builds[b.alignment]))).toBe(true);
+    expect(bots.every((b) => ['Human', 'Elven', 'Dwarven', 'Orcish'].includes(b.race))).toBe(true);
+    expect(bots.every((b) => ['Berserk', 'Brave', 'Cautious', 'Cowardly'].includes(b.temper))).toBe(true);
+    const alignDistP = fn('alignDistP');
+    for (let k = 0; k < 10; k++) {
+      const two = setups([{ alignment: 'Good' }], 2, 1) as { alignment: string }[];
+      expect(two.map((b) => Number(alignDistP(b.alignment, 'Good')) <= 1).sort()).toEqual([false, true]);
+    }
+    expect((setups(null, 2, 0) as unknown[]).length).toBe(2);
+    // a gap among the humans' setups is read as JavaScript reads a field of null
+    expect(thrown(() => setups([null], 1, 0))).toBe('TypeError');
+  });
+  test('the weights for a game: the hard ones for any difficulty, none or no realm; the realm’s alignment and race overlays', () => {
+    const botTuning = fn('botTuning');
+    const hard = json(botTuning(null, null));
+    expect([
+      json(botTuning({ botDifficulty: 'easy', players: [] }, 0)),
+      json(botTuning({ botDifficulty: '', players: [] }, 0)),
+      json(botTuning({ botDifficulty: 'nightmare', players: [] }, null)),
+      json(botTuning({ botDifficulty: 'hard' }, 0)),
+    ]).toEqual([hard, hard, hard, hard]);
+    const T = (pl: object) => botTuning({ botDifficulty: 'hard', players: [pl] }, 0) as Record<string, number>;
+    const h = JSON.parse(hard) as Record<string, number>;
+    expect(T({ alignment: 'Divine', consecratedProvIds: [3] })['kingAttackMargin']).toBeCloseTo(
+      Number(h['kingAttackMargin']) * 0.9,
+      12,
+    );
+    expect(T({ alignment: 'Divine', consecratedProvIds: [] })['kingAttackMargin']).toBe(h['kingAttackMargin']);
+    expect(T({ alignment: 'Divine', consecratedProvId: 3 })['kingAttackMargin']).toBeCloseTo(
+      Number(h['kingAttackMargin']) * 0.9,
+      12,
+    );
+  });
+  test('a step to a neighbour in a seventh direction, and a gap among the units an estimate counts, throw as the reads did', () => {
+    const G = { world: { cols: 4, rows: 4, provinces: [] } };
+    expect(thrown(() => fn('botNeighbourProv')(G, { row: 1, col: 1 }, 6))).toBe('TypeError');
+    expect(thrown(() => fn('botForceStrength')([{ type: 'Free Lances', quality: 'Average' }, null]))).toBe('TypeError');
+    expect(fn('botForceStrength')(null)).toBe(0);
+  });
+  test('on a world that lacks its lists: the intel knows nothing, the guesses and estimates count none', () => {
+    const G = { turn: 3, world: { cols: 2, rows: 1 } };
+    const intel = fn('botIntel')(G, 0) as Record<string, unknown>;
+    expect(
+      ['owned', 'occupied', 'spied', 'sight', 'border', 'remembered', 'visited', 'known'].map(
+        (k) => (intel[k] as Set<number>).size,
+      ),
+    ).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(json([intel['mem'], intel['graves']])).toBe('[{},{}]');
+    const c = { id: 9, player: 0, alive: true, race: 'Human' };
+    expect([
+      fn('botVisibleCharsIn')(G, 0, { id: 0 }),
+      fn('botKnownFeatures')(G, 0, undefined),
+      fn('botKnownSkills')(G, 0, { id: 7, player: 1 }),
+      fn('botKnownSkills')(G, 0, { id: 7, player: 0 }),
+      fn('botEffForce')(G, c, null),
+      fn('botBattleForce')(G, c, null, 'plains', null),
+      fn('botDruidShortfall')(G, c, null),
+      fn('botFervourMult')(G, c, [], false),
+      fn('botRaceTerrainMult')(G, null, { type: 'Free Lances' }, null, false, null),
+      fn('botStallTurns')(G, 0),
+      fn('botMarginFor')(G, 0, { isKing: true }, { kingAttackMargin: 2, heroAttackMargin: 1 }),
+      fn('botAlignOf')(G, 0),
+      fn('botMutualFoe')(G, 0, 1),
+      fn('botConceded')(G, 0),
+      fn('botRelationRaw')(G, 0, 1),
+      fn('botNoteLand')(G, 0),
+    ]).toEqual([[], [], null, {}, 0, 0, 0, 1, 1, 0, 2, 'Neutral', false, false, 'neutral', undefined]);
+    // a hero of none, a fallen one, and one standing where the world lists no province (the sight's read throws: the
+    // intel's own sight answers)
+    const seesChar = fn('botSeesChar');
+    expect([
+      seesChar(G, 0, null),
+      seesChar(G, 0, { alive: false, player: 0 }),
+      seesChar(G, 0, { alive: true, player: 0 }),
+      seesChar(G, 0, { alive: true, player: 1, location: 0 }),
+    ]).toEqual([false, false, true, false]);
+    const prov = {};
+    fn('markProvinceCombat')(prov, null);
+    expect(json(prov)).toBe('{"_combatPlayersThisTurn":[]}');
+  });
+  test("a realm's own ground and its memory with no units listed, a walked province with no guard or defenders listed, a spy's report with no turn", () => {
+    const G = {
+      turn: 3,
+      world: {
+        cols: 3,
+        rows: 1,
+        provinces: [
+          { id: 0, row: 0, col: 0, owner: 0, terrain: 'plains', tax: 3, visitedBy: [0] },
+          { id: 1, row: 0, col: 1, owner: null, terrain: 'forest', tax: 2 },
+          { id: 2, row: 0, col: 2, owner: null, terrain: 'hills', tax: 5, visitedBy: [0] },
+        ],
+      },
+      players: [
+        {
+          _provMemory: { 2: { terrain: 'hills', owner: null, tax: 5 } },
+          _spiedHeroSkills: { 7: { skills: { melee: 4 } }, 8: {} },
+          _graveIntel: { 2: { turn: 1 } },
+        },
+      ],
+      characters: [],
+    };
+    const belief = fn('botBelief');
+    expect(json([belief(G, 0, G.world.provinces[0]), belief(G, 0, G.world.provinces[2])])).toBe(
+      json([
+        { id: 0, row: 0, col: 0, terrain: 'plains', owner: 0, tax: 3, armyTypes: [], live: true },
+        { id: 2, row: 0, col: 2, terrain: 'hills', owner: null, tax: 5, armyTypes: [], live: true },
+      ]),
+    );
+    expect(fn('botGuessDefence')(G, 0, G.world.provinces[2])).toBe(0);
+    expect(fn('botTargetDefence')(G, 0, G.world.provinces[0])).toBe(0);
+    expect([
+      fn('botKnownSkills')(G, 0, { id: 7, player: 1 }),
+      fn('botKnownSkills')(G, 0, { id: 8, player: 1 }),
+    ]).toEqual([{ melee: 4 }, {}]);
+    expect([fn('botKnowsGraves')(G, 0, 2), fn('botKnowsGraves')(G, 0, 1)]).toEqual([true, false]);
+  });
+
+  test("ground beyond the border known from memory alone, a walked province's guard listed nowhere, a seen hero of no realm with no units", () => {
+    const prov = (id: number, more: object = {}) => ({
+      id,
+      row: 0,
+      col: id,
+      owner: null,
+      terrain: 'plains',
+      tax: 2,
+      ...more,
+    });
+    const world = (provinces: object[]) => ({ cols: 5, rows: 1, provinces });
+    // realm 0 holds column 0: columns 1 and 4 are its border, column 3 it remembers only
+    const G = {
+      turn: 4,
+      world: world([prov(0, { owner: 0 }), prov(1), prov(2), prov(3), prov(4)]),
+      players: [{ _provMemory: { 3: { terrain: 'hills', owner: 1, tax: 6 } } }],
+      characters: [],
+    };
+    expect(json(fn('botBelief')(G, 0, G.world.provinces[3]))).toBe(
+      json({ id: 3, row: 0, col: 3, terrain: 'hills', owner: 1, tax: 6, armyTypes: [], live: false }),
+    );
+    // a walked neutral province whose guard the world doesn't list, or lists with no units: its defenders are counted
+    const walked = prov(1, {
+      visitedBy: [0],
+      characters: [2],
+      neutralDefenders: [{ type: 'Free Lances' }, { type: 'Free Lances' }],
+    });
+    const guess = fn('botGuessDefence');
+    const noHeroes = { ...G, characters: undefined, world: world([prov(0, { owner: 0 }), walked]) };
+    const aGuardOfNone = {
+      ...G,
+      characters: [{ id: 2, alive: true, player: null }],
+      world: world([prov(0, { owner: 0 }), walked]),
+    };
+    expect([guess(noHeroes, 0, walked), guess(aGuardOfNone, 0, walked)]).toEqual([15, 15]);
+    // a neutral province one of the realm's heroes stands in, beside a hero of no realm with no units listed and no
+    // defenders listed: nothing defends it
+    const seen = {
+      turn: 4,
+      world: world([prov(0, { owner: 0 }), prov(1)]),
+      players: [{}],
+      characters: [
+        { id: 1, player: 0, alive: true, location: 1 },
+        { id: 2, player: null, alive: true, location: 1 },
+      ],
+    };
+    expect(fn('botTargetDefence')(seen, 0, seen.world.provinces[1])).toBe(0);
+    // the land counted on a world that lists no provinces
+    const noLand = { turn: 2, world: {}, players: [{}] };
+    fn('botNoteLand')(noLand, 0);
+    expect(json(noLand.players[0])).toBe('{"_botLandPrev":0,"_botLandSeenTurn":2}');
+    // a spy's report read on a state with no turn
+    expect(
+      fn('botKnownSkills')({ players: [{ _spiedHeroSkills: { 7: { turn: 1, skills: { melee: 2 } } } }] }, 0, {
+        id: 7,
+        player: 1,
+      }),
+    ).toEqual({
+      melee: 2,
+    });
+  });
+  test("the alignments for humans whose foes' column is shorter than the list, and humans of no alignment or an empty one", () => {
+    const balanced = fn('pickBotAlignmentBalanced');
+    const picks = [...new Set(Array.from({ length: 30 }, () => balanced({}, ['Good'], [5], []) as string))].sort();
+    expect(picks).toEqual(['Evil', 'Neutral', 'Pagan', 'Undead']);
+    const setups = fn('generateBotSetups');
+    const alignDistP = fn('alignDistP');
+    for (let k = 0; k < 10; k++) {
+      const two = setups([{ alignment: '' }, { alignment: null }, { alignment: 'Good' }], 2, 3) as {
+        alignment: string;
+      }[];
+      expect(two.map((b) => Number(alignDistP(b.alignment, 'Good')) <= 1).sort()).toEqual([false, true]);
+    }
+  });
+  test('an estimate whose Druid check fails counts the unit whole; a terrain figure that fails leaves it as it is', () => {
+    const dragon = [{ type: 'Elder Dragons', race: 'Primal', quality: 'Average' }];
+    const c = { player: 0, race: 'Human', skills: {}, armies: [] };
+    // a realm's discoveries held as no list: the Druid check's runner throws, and the unit counts whole
+    const G = { players: [{ alignment: 'Good', race: 'Human', discoveries: 5 }], characters: [], turn: -2 };
+    expect([fn('botEffForce')(G, c, dragon), fn('botDruidShortfall')(G, c, dragon)]).toEqual([38, 0]);
+    // a unit whose race can't be read the first time: the battle's estimate's Druid check fails, the unit counts whole
+    let reads = 0;
+    const aStrangeDragon = {
+      type: 'Elder Dragons',
+      quality: 'Average',
+      get race() {
+        reads++;
+        if (reads === 1) throw new Error('unreadable');
+        return 'Primal';
+      },
+    };
+    const plain = { players: [{ alignment: 'Good', race: 'Human', discoveries: [] }], characters: [], turn: -2 };
+    expect(fn('botBattleForce')(plain, c, [aStrangeDragon], 'plains', {})).toBeCloseTo(38, 9);
+    // the engine's terrain figure, handed in by the turn: a figure that fails leaves the unit's multiplier as it is
+    const terrainMult = fn('botRaceTerrainMult');
+    const withAFigure = (figure: Fn) => {
+      const W = { turn: 1 };
+      (fn('botTurnCache')(W) as Record<string, unknown>)['terrainMult'] = figure;
+      return terrainMult(W, null, { type: 'Free Lances' }, 'forest', false, null);
+    };
+    expect([
+      withAFigure(() => 2),
+      withAFigure(() => {
+        throw new Error('no figure');
+      }),
+    ]).toEqual([2, 1]);
   });
 });

@@ -151,9 +151,7 @@ describe('a save from a newer build is refused before anything changes', () => {
 });
 
 test('a new world carries the version this build writes', () => {
-  const setups = (
-    generateBotSetups([], 3, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
-  ).map((b) => ({
+  const setups = generateBotSetups([], 3, 0).map((b) => ({
     ...b,
     gamePlayerId: 'gp' + String(b.id),
     name: b.kingdomName,

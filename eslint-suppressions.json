@@ -105,17 +105,6 @@
       "count": 3
     }
   },
-  "src/engine/bots/intel.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 6
-    },
-    "no-empty": {
-      "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 2
-    }
-  },
   "src/engine/bots/missions.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -132,14 +121,6 @@
   "src/engine/bots/phase-one.ts": {
     "no-useless-assignment": {
       "count": 1
-    }
-  },
-  "src/engine/bots/setup.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    },
-    "no-empty": {
-      "count": 3
     }
   },
   "src/engine/bots/specialists.ts": {
