@@ -545,7 +545,12 @@ export interface ExploreCase {
  *  the turn (as saved) and the scripted realm's report, built from it. */
 export function scripted05(): { state: Obj; report: Obj }[] {
   kcRng.seed(GAME.seed);
-  const g = generateNewGame(copyOf(SETUPS), copyOf(MAP_SIZES[GAME.realms]), 0, { seaPct: GAME.seaPct }) as Obj;
+  const g = generateNewGame(
+    copyOf(SETUPS) as Parameters<typeof generateNewGame>[0],
+    copyOf(MAP_SIZES[GAME.realms]) as Parameters<typeof generateNewGame>[1],
+    0,
+    { seaPct: GAME.seaPct },
+  ) as Obj;
   g['turnMode'] = { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null };
   g['botDifficulty'] = 'hard';
   g['botDiplomacy'] = GAME.diplomacy;
@@ -625,7 +630,12 @@ export function stagedWorld(): { state: Obj; report: Obj } {
     temper: 'Brave',
     skills: { melee: 1 },
   }));
-  const g = generateNewGame(setups, copyOf(MAP_SIZES[3]), 0, { seaPct: 20 }) as Obj;
+  const g = generateNewGame(
+    setups as Parameters<typeof generateNewGame>[0],
+    copyOf(MAP_SIZES[3]) as Parameters<typeof generateNewGame>[1],
+    0,
+    { seaPct: 20 },
+  ) as Obj;
   const characters = objects(g['characters']);
   const king = characters.find((c) => c['player'] === 0 && c['isKing']);
   if (!king) throw new Error('the staged world has no king for realm 0');
@@ -708,7 +718,12 @@ function aWorldToStageIn(): { g: Obj; king: Obj; land: Obj[]; hero: (fields: Obj
     temper: 'Brave',
     skills: { melee: 1 },
   }));
-  const g = generateNewGame(setups, copyOf(MAP_SIZES[3]), 0, { seaPct: 20 }) as Obj;
+  const g = generateNewGame(
+    setups as Parameters<typeof generateNewGame>[0],
+    copyOf(MAP_SIZES[3]) as Parameters<typeof generateNewGame>[1],
+    0,
+    { seaPct: 20 },
+  ) as Obj;
   const characters = objects(g['characters']);
   const king = characters.find((c) => c['player'] === 0 && c['isKing']);
   if (!king) throw new Error('the staged world has no king for realm 0');

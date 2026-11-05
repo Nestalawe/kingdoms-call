@@ -82,7 +82,9 @@ interface World {
 /** A world of two bot realms, made by the engine from KC_SEED. */
 function aWorld(): World {
   kcRng.seed(SEED);
-  const setups = (generateBotSetups([], 2, 0) as Record<string, unknown>[]).map((b) => ({
+  const setups = (
+    generateBotSetups([], 2, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
+  ).map((b) => ({
     ...b,
     gamePlayerId: 'gp' + String(b['id']),
     name: b['kingdomName'],

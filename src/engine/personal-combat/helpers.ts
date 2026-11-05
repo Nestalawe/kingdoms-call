@@ -296,7 +296,14 @@ interface AHeroAsMithrilQualifiesHim {
 }
 /** The state as the Mithril passes read it: its heroes and realms (either may be missing), and the next item's id. */
 interface TheStateAsTheMithrilPassesReadIt {
-  readonly characters?: readonly (Character | null | undefined)[] | null | undefined;
+  readonly characters?:
+    | readonly (
+        | (AHeroAsMithrilQualifiesHim & AHeroAsMithrilIsGrantedHim & NonNullable<Parameters<typeof applyItemMaxHp>[0]>)
+        | null
+        | undefined
+      )[]
+    | null
+    | undefined;
   readonly players?: readonly ({ readonly race?: string | undefined } | null | undefined)[] | null | undefined;
   nextItemId?: GameState['nextItemId'] | null | undefined;
 }

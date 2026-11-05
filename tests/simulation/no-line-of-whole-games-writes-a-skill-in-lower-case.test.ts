@@ -89,7 +89,9 @@ test(
         temper: 'Brave',
         skills: { melee: 1, tactical: 1, march: 1, white: 1, naval: i % 3 === 0 ? 1 : 0, sage: 1, explorer: 1 },
       }));
-      const G = generateNewGame(setups, { cols: M.cols, rows: M.rows }, 0, { seaPct }) as World;
+      const G = generateNewGame(setups as Parameters<typeof generateNewGame>[0], { cols: M.cols, rows: M.rows }, 0, {
+        seaPct,
+      }) as World;
       G['turnMode'] = { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null };
       G['botDifficulty'] = 'hard';
       G['botDiplomacy'] = gi % 2 ? 'hostile' : 'normal';

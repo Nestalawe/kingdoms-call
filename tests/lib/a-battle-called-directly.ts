@@ -88,7 +88,9 @@ function quietly<T>(body: () => T): T {
 /** A world of two bot realms, made by the engine on a 10×6 map, a tenth of it sea, the dice seeded `seed` first. */
 export function aWorld(seed: number): World {
   kcRng.seed(seed);
-  const setups = (generateBotSetups([], 2, 0) as Record<string, unknown>[]).map((b) => ({
+  const setups = (
+    generateBotSetups([], 2, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
+  ).map((b) => ({
     ...b,
     gamePlayerId: 'gp' + String(b['id']),
     name: b['kingdomName'],

@@ -53,7 +53,7 @@ import {
 // colour blindness keeps intact, so it is the fallback cue when hue fails.
 // Names are for the design notes only; nothing in the code reads them.
 // Rose · Straw · Chartreuse · Emerald · Aqua · Slate · Cornflower · Amethyst · Mauve · Fuchsia
-export const REALM_COLOURS = [
+export const REALM_COLOURS: readonly string[] = [
   '#fcb4c0',
   '#d8d890',
   '#b4f000',

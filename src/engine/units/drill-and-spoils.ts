@@ -96,7 +96,14 @@ export function neutralDefCount(tax: number) {
 // province's tax AFTER its garrison was rolled (see the sweep's comment). No-ops when the count is
 // already legal, so a province that generated correctly is never re-rolled. Sea is never touched —
 // open water is deliberately undefended and the home coastal guarantee depends on that.
-export function resyncNeutralDefenders(prov: Province | null | undefined) {
+export function resyncNeutralDefenders(
+  prov:
+    | (Pick<Province, 'terrain' | 'tax' | 'race' | 'npcArmies' | 'neutralDefenders' | 'armyTypes'> & {
+        readonly owner: number | null;
+      })
+    | null
+    | undefined,
+) {
   if (!prov || prov.terrain === 'sea' || prov.owner != null) return false;
   const defs = asItsGuardReadsIt(prov.neutralDefenders) ?? (prov.neutralDefenders = []);
   const [lo, hi] = neutralDefBand(prov.tax || 0);
@@ -142,7 +149,7 @@ export function bestNeutralMix(
   quals: readonly string[] | null | undefined,
   terrain: string,
   race: string | null,
-) {
+): string[] | null {
   const types = [
     ...new Set((armyTypes ?? []).filter((t) => !t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t))),
   ];

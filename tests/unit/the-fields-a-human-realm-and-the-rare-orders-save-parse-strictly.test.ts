@@ -64,7 +64,12 @@ function newWorld(alignment?: string): Obj {
   if (!realm) throw new Error('scripted-05 has no scripted realm');
   if (alignment) realm.alignment = alignment;
   kcRng.seed(GAME.seed);
-  const g = generateNewGame(setups, copyOf(MAP_SIZES[GAME.realms]), 0, { seaPct: GAME.seaPct }) as Obj;
+  const g = generateNewGame(
+    setups as Parameters<typeof generateNewGame>[0],
+    copyOf(MAP_SIZES[GAME.realms]) as Parameters<typeof generateNewGame>[1],
+    0,
+    { seaPct: GAME.seaPct },
+  ) as Obj;
   g['turnMode'] = { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null };
   g['botDifficulty'] = 'hard';
   g['botDiplomacy'] = GAME.diplomacy;

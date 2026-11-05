@@ -49,7 +49,9 @@ function quietly<T>(body: () => T): T {
 }
 
 kcRng.seed(SEED);
-const setups = (generateBotSetups([], REALMS, 0) as Record<string, unknown>[]).map((b): Record<string, unknown> => ({
+const setups = (
+  generateBotSetups([], REALMS, 0) as (Parameters<typeof generateNewGame>[0][number] & Record<string, unknown>)[]
+).map((b) => ({
   ...b,
   gamePlayerId: 'gp' + String(b['id']),
   name: b['kingdomName'],
