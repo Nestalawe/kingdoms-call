@@ -19,6 +19,8 @@
 // - noteEntered and flushIntrusionNotifications: staged cases (the one line per sighting, its seasons as a range).
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The matrix runs
 // all of them (updateProvinceMemory too, which has no test here: what a realm remembers is the turn report's, P1-12).
+// Since P1-10b34 (the file freed of its ts-nocheck line), staged: a hero with no order this phase (none at all, or none
+// in this phase's slot) intends a Defend and acts in its tier, after a mover however quick he is.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';

@@ -23,6 +23,12 @@
 // a-general-on-defend-who-leads-ships-never-rides-overland stage some of them in whole turns.
 // Since P1-23e (R-119): the lone hero's ambush passes over a hero whose Invisibility holds, and falls on the next quarry;
 // a realm that watches him by Clairvoyance still lies in wait for him.
+// Since P1-10b34 (the file freed of its ts-nocheck line), each line it changed that no matrix game reaches, on the value
+// it had before (every die pinned): a general held by an unresolved battle told of the province threatened, the lines
+// of a phase filed in it, a hero with no crossing recorded going by land in all four passes, the column hurried in
+// (a realm listed once, a commander fallen since never marched), a host in the watch commanded by its better captain
+// and routing together, ground a host has just taken won back unless a leaderless host of it stands there, and an
+// ambusher with no plan fighting with his sword.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -1138,56 +1144,58 @@ describe('the watch: the lines of a phase, a hero with no crossing recorded (P1-
     ]).toEqual([[['a defender rides out and faces a column but no battle is joined', PH]], [PH]]);
   });
 
-  test('with no crossing recorded he goes by land: he rides out, rides in, and is hurried in', () => {
+  test('with no crossing recorded he goes by land alone: he never rides out, rides in, or is hurried onto the water', () => {
     const rides = (() => {
       const b = board();
       const s = stageAnInvasion(b, (d) => {
         noCrossingRecorded(b, d);
+        must(b.ring1[0], 'P').terrain = 'sea';
+        (b.tc['seaMovePoints'] as Record<number, number>)[d.id] = 1;
       });
-      runDefendReactions(b.tc, PH, s.intents);
+      (b.tc['seaMovePoints'] as Record<number, number>)[s.e.id] = 1;
+      runDefendReactions(b.tc, PH, buildPhaseIntents(b.tc, PH));
       return s.d.location === s.P.id;
     })();
     const ridesIn = (() => {
       const b = board();
       b.own(b.X, 0);
+      b.X.terrain = 'sea';
       const A = must(b.ring1[0], 'A');
-      const d = hero(b, { player: 0, at: A, troops: 2, watch: true });
+      const d = hero(b, { player: 0, at: A, troops: 2, watch: true, sea: 1 });
       noCrossingRecorded(b, d);
       const raiser = hero(b, { player: 1, at: b.X, troops: 2 });
-      return (
-        defendAnswerUnitGain(b.tc, raiser, b.X, PH)
-          .map((r) => r.id)
-          .includes(d.id) && d.location === b.X.id
-      );
+      return defendAnswerUnitGain(b.tc, raiser, b.X, PH).length > 0 || d.location === b.X.id;
     })();
     const ridesToAHost = (() => {
       const b = board();
       const B = must(b.ring1[0], 'B');
       b.own(b.X, 0);
       b.own(B, 0);
-      const d = hero(b, { player: 0, at: b.X, troops: 3, watch: true, land: 2 });
+      B.terrain = 'sea';
+      const d = hero(b, { player: 0, at: b.X, troops: 3, watch: true, land: 2, sea: 1 });
       noCrossingRecorded(b, d);
       hero(b, { player: 1, at: B, troops: 1 });
       allDice(0.5, () => {
         runDefendMaterializedReactions(b.tc, PH);
       });
-      return d._attackedFrom === b.X.id;
+      return d.location === B.id;
     })();
     const hurried = (() => {
       const b = board();
       const P = b.X;
       const [Q, R] = [must(b.ring1[0], 'Q'), must(b.ring1[3], 'R')];
       b.own(P, 0);
-      const c = hero(b, { player: 0, at: Q, troops: 2, skills: { melee: 0, tactical: 0, march: 0 } });
-      const e = hero(b, { player: 1, at: R, troops: 2, skills: { melee: 9, tactical: 9, march: 9 } });
+      P.terrain = 'sea';
+      const c = hero(b, { player: 0, at: Q, troops: 2, sea: 1, skills: { melee: 0, tactical: 0, march: 0 } });
+      const e = hero(b, { player: 1, at: R, troops: 2, sea: 1, skills: { melee: 9, tactical: 9, march: 9 } });
       move(b, c, P);
       move(b, e, P);
       noCrossingRecorded(b, c);
       const intents = buildPhaseIntents(b.tc, PH);
       runReinforcementArrivals(b.tc, PH, intents);
-      return [c.location === P.id, intents.get(c.id)?.cancelReason];
+      return c.location === P.id;
     })();
-    expect([rides, ridesIn, ridesToAHost, hurried]).toEqual([true, true, true, [true, 'reinforced']]);
+    expect([rides, ridesIn, ridesToAHost, hurried]).toEqual([false, false, false, false]);
   });
 });
 

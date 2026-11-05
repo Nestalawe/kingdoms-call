@@ -30,6 +30,12 @@
 // chance never falls below 45%
 // Since P1-23e (R-119): a quarry of another realm whose Invisibility holds is beyond catching (a line naming no one);
 // a realm that watches him by Clairvoyance, or his own, still follows.
+// Since P1-10b34 (the file freed of its ts-nocheck line), each line it changed that no matrix game reaches, on the value
+// it had before (every die pinned): the chase battle's defenders the quarry's and his companions' hosts, the losses
+// taken off each side, the beaten routing together, a quarry slain in the duel before it staying where he fell, ground
+// held by neutral defenders, a leaderless host or hulls left ashore (the line naming them), an Evil hunter's plunder;
+// the pickets counted without a spectral double, a hunter with no plan fighting with his sword, a neutral who escapes
+// the end living on at 1 HP, and a realm listed once among a province's visitors.
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
@@ -522,6 +528,21 @@ describe('the chase battle: the hosts, their losses, the rout and the ground (P1
       b.X.owner,
       kinds(b).includes('a chaser claims the province for his realm'),
     ]).toEqual([true, 4, 5, true, 1, false]);
+  });
+
+  test("won, with a neutral quarry's trapped host still standing on unowned ground: contested, not claimed", () => {
+    const { b, c, q } = together(null, 4, 5, 'Green');
+    b.own(b.X, null);
+    dice(0.6, () => {
+      advancePursuit(b.tc, c, PH);
+    });
+    expect([
+      facts(b).find((f) => f['kind'] === "the onlookers' summary of a battle")?.['won'],
+      q.armies.length,
+      b.X._battleUnresolved,
+      b.X.owner,
+      kinds(b).includes('a chaser claims the province for his realm'),
+    ]).toEqual([true, 5, true, null, false]);
   });
 
   test('a quarry slain in the duel before the battle stays where he fell', () => {
