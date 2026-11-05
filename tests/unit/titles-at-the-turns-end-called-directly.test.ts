@@ -7,7 +7,8 @@
 // replaced in the vm by a recorder for the test's length), what they hand them and when, and where resolveTurn calls
 // them; then what the whole turn can't stage: the standings failing, a save with no turn, realms with no name or no
 // record of whom they have met, heroes and provinces the map doesn't place, the dice of the Loremaster's copy in turn,
-// the dead a realm saw fall this turn, every act the Spymaster's ledger can hold, titles held by nobody's hero. Properties
+// the dead a realm saw fall this turn, every act the Spymaster's ledger can hold, titles held by nobody's hero; and the
+// standings, the title race, the minor titles, a hero's bonuses and the Reckoning on plain worlds. Properties
 // (fast-check): the Throne tells its holder its own share and exactly each realm it has met, and how many it hasn't;
 // the Loremaster copies exactly one fresh discovery a met realm holds and the holder lacks, or none; the Archmage names
 // the foremost mage of each school it may; a title is won only by its holder's realm and lost only by the realm that
@@ -36,7 +37,12 @@
 // mapped and a missing one; the beast censuses past the fallen, gaps, other realms' ground and a hero with no companies
 // list; title changes for a hero the roll no longer has, a realm missing from the list, a hero of no realm, a title a
 // save records held by a realm and no hero, a hero who changes realms holding his title, a realm with no living king
-// taking or holding a realm's title. Properties (fast-check): the Throne goes to the first realm of the largest tax
+// taking or holding a realm's title; and the lines no matrix game reaches (P1-10b35): a met realm of no name and heroes
+// and provinces of none on every title's board, a world with no roll of heroes, graveyard, provinces, ledger or record
+// of the titles, a holder of no tax base, a gap among the provinces, a garrison with no companies list; the standings,
+// the title race, the minor titles, a hero's bonuses and the Reckoning's reads on plain worlds that lack a part (a
+// legendary relic's point, a hero of a realm the list doesn't hold, a bot's claim with no bots, turn or heroes).
+// Properties (fast-check): the Throne goes to the first realm of the largest tax
 // base and tells it its own share rounded down, each realm it met rounded and how many it hasn't; the Loremaster copies
 // exactly the fresh discovery the die picks of those a met realm holds and it lacks, or none; the Archmage names, per
 // school, the living mage of the highest level outside its realm, of a met realm or none, the most skilled of equals,

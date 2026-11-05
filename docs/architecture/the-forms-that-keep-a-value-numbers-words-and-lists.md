@@ -64,7 +64,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   missing (`SEASONS[s[0]]`), through `(p) => (p === undefined ? undefined : SEASONS[p])`.
 - **A literal table keyed by a closed set** gains `satisfies Record<…>` (`TERRAIN_MODS` by unit type: a misspelt unit
   fails `tsc`; `PC_SPELL_SCHOOL_MAP` by school, so its values keep their literal types and index a fighter's schools).
-  A table of pairs takes a tuple (`readonly [utility: number, combat: number]`). A test that reads such a table by its
+  A table of pairs takes a tuple (`readonly [utility: number, combat: number]`), and so does a table of rows (the
+  minor titles' bonuses, `readonly [key: string, skills: readonly string[], …]`). A list of rows whose callbacks read
+  a hero (the minor titles' measures) takes `satisfies readonly AMinorTitle[]`: each callback's parameters typed, the
+  list's own type kept for its readers. A test that reads such a table by its
   syntax tree (`entriesOf`, `tests/lib/source.ts`) must look through the `satisfies`.
 - **An interface read by any name** (a fighter's schools) is copied into a local `Readonly<Partial<Record<string,
   number>>>` by a spread: an interface has no index signature, a spread's object type has one.
@@ -72,7 +75,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   test (`it?.effect?.use === use`); a list looked up with a value that may be missing (`includes`, `has`) through a
   local `readonly (string | undefined)[]` or `ReadonlySet<string | undefined>`. `x == null || !list.includes(x)` in a
   filter that returns on a miss; a swap that may meet `undefined` checks `k in list`. A field only an older save holds (an
-  item's `_spent`) is read through a local type that adds it as `unknown`.
+  item's `_spent`), or one no code writes (a realm's `eliminated`, Parked), is read through a local type that adds it
+  as `unknown`.
 - **`(table[a] || {})[b]`** is read in two steps, `const cell = table[a] ?? {};` then `cell[b] ?? …`: lint's
   `table[a]?.[b]` reads `undefined` where the old read a field of the empty object (a `b` such as `constructor`).
 - **`if (!list.length) return;` then `list[0].x`** is one test of the first element, `const first = list[0]; if (first ===
@@ -85,6 +89,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **`list.find((q) => q && TIERS.includes(q))` over values of mixed forms** (a quality, or a list of them) reads the
   tiers through a local `readonly unknown[]` and keeps a kind: `(q): q is string => Boolean(q && tiers.includes(q))`.
   `Object.entries(skills).filter(([, v]) => v > 0)` takes a typed predicate, `Number(v) > 0` (`aLevelAboveNothing`).
+- **`Object.values(x || {})` on a schema's object of optional numbers** (a hero's skills, totalled) reads a local typed as
+  the object, `const itsSkills: Character['skills'] = asItsGuardReadsIt(c.skills) ?? {}`: a `{}` in the union makes
+  `Object.values` give `any`.
 - **Records of a union compared field by field** (where a Wild Calling tore beasts from: a garrison's province, a
   hero's name) are compared through a shape with every field optional (`theSamePlaceAsNamed`).
 - **`x.pop()` in a loop `while (x.length > 0)`** is `...x.splice(-1, 1)` pushed (a gap stays a gap); `src.armies.pop()` on a
@@ -120,6 +127,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   local view of the same objects typed `Partial<Record<string, number>>`; a `Map` by a number looked up so, through a
   local `ReadonlyMap<unknown, string>`. A key of `Object.keys` the code wrote from a province's id indexes the provinces
   as `list[Number(k)]`, the same element.
+- **A `let` set inside a `forEach` whose callback reads its index** (`any = true` for each realm met) is a `for (const
+  [i, pl] of list.entries())`: the same elements in the same order for a list with no holes (a save's lists have none).
 - **A `Set` or an empty list iterated** (`(s[pi] || []).forEach(…)`) is read into a local typed `ReadonlySet<number> |
   readonly number[]`, then `forEach`: the same calls.
 - **`for (k in obj)` over a literal's keys** is a `for … of` over a typed list of them, in the same order. A `Map` a
