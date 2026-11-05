@@ -14,6 +14,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { kcRng } from '../../src/engine/rng.ts';
 import { REALM_COLOURS, REALM_COLOUR_FALLBACK } from '../../src/engine/bots/intel.ts';
 import { SEA_PCT_DEFAULT, generateNewGame, normSeaPct } from '../../src/engine/world/generate.ts';
+import { getNeighborsP } from '../../src/engine/world/map-helpers.ts';
 
 type TheSetUps = Parameters<typeof generateNewGame>[0];
 type TheWorld = ReturnType<typeof generateNewGame>;
@@ -133,4 +134,43 @@ test('an eleventh realm, past the ten colours, takes the fallback colour', () =>
   const colours = w.players.map((p) => p.color);
   expect(new Set(colours.slice(0, 10))).toEqual(new Set(REALM_COLOURS));
   expect(colours[10]).toBe(REALM_COLOUR_FALLBACK);
+});
+
+test("on maps crowded with realms, every home keeps its ring's promises: a poor and a prosperous neighbour, its own people near", () => {
+  for (const [n, cols, rows, seed] of [
+    [5, 8, 5, 7],
+    [5, 8, 5, 8],
+    [6, 9, 6, 7],
+    [6, 9, 6, 9],
+    [4, 7, 5, 7],
+  ] as const) {
+    const w = aWorld(
+      realms(n, (i) => ({ race: ['Human', 'Elven', 'Dwarven', 'Orcish'][i % 4] ?? 'Human' })),
+      cols,
+      rows,
+      35,
+      seed,
+    );
+    const at = (id: number) => w.world.provinces[id];
+    for (const pl of w.players) {
+      const home = at(pl.homeProvinceId);
+      const ring = getNeighborsP(home ?? { row: -9, col: -9 }, cols, rows, w.world.provinces).filter(
+        (q) => q.terrain !== 'sea' && q.owner == null,
+      );
+      const humanoid = ring.filter((q) => !(q.race ?? '').startsWith('Primal'));
+      const where = `realm ${String(pl.id)} of ${String(n)} on ${String(cols)}x${String(rows)}, seed ${String(seed)}`;
+      expect(
+        humanoid.some((q) => q.tax >= 2 && q.tax <= 3),
+        where + ': a poor neighbour',
+      ).toBe(true);
+      expect(
+        humanoid.some((q) => q.tax >= 4 && q.tax <= 6),
+        where + ': a prosperous neighbour',
+      ).toBe(true);
+      expect(
+        ring.some((q) => q.race === pl.race),
+        where + ': its own people beside it',
+      ).toBe(true);
+    }
+  }
 });
