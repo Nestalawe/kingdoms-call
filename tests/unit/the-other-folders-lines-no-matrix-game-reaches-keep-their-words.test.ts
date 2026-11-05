@@ -15,7 +15,19 @@ import { createTurnContext, type TurnContext } from '../../src/engine/turn/conte
 import { theTurnsLinesInWords } from '../../src/views/prose/the-words-of-each-line.ts';
 import { applySpySuccess } from '../../src/engine/espionage/what-a-spy-learns.ts';
 import { applyEvilConquest, setProvinceOwner } from '../../src/engine/realms/relations-and-captures.ts';
-import { applyPlague, blessWardNegates } from '../../src/engine/magic/plague-and-bless-ward.ts';
+import { applyPlague, blessWardNegates, spreadPlagues } from '../../src/engine/magic/plague-and-bless-ward.ts';
+import {
+  ensureAllLairHoards,
+  lairRegionOf,
+  noteItemFound,
+  rollMagicItemFor,
+} from '../../src/engine/items/lair-items.ts';
+import { rollMagicItem } from '../../src/engine/items/equipment.ts';
+import { awardedEffectSet, itemEffectKey, itemHoardCategory } from '../../src/engine/items/tiers-and-hoards.ts';
+import { shuffleP } from '../../src/engine/battle/fortune.ts';
+import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
+import { ALL_MAGIC_ITEMS_P } from '../../src/content/kingdoms-call-data.ts';
+import { isLegendaryItem } from '../../src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 
 type Obj = Record<string, unknown>;
 
@@ -148,6 +160,291 @@ describe("the other folders' lines no matrix game reaches keep their words", () 
         '⛓ Thorn would enslave Wendmeadow, but there are no humanoid folk here to press — the forces plunder instead.',
         "⚔ Evil looting: Thorn's forces plunder Wendmeadow — 2g seized immediately!",
       ]);
+    });
+  });
+  // Since plan P1-10b36 freed the three files of their ts-nocheck line: the lines of the spy's learning, the Plague,
+  // the Bless ward and the lairs' stocking that no game reaches, each on the value it had before.
+  describe("what a spy learns, on a king's home and in the owner's warning", () => {
+    /** Thorn, a master spy (Spy 9), of the realm `player`, spies on Wendmeadow (no list of defenders or features),
+     *  Esterhold's home; Varn's home is elsewhere. */
+    const spyOnAHome = (player: number | null, G: Obj, dice = 0.99) => {
+      const tc = aTurn(G);
+      const thorn = { id: 7, name: 'Thorn', player, alive: true, skills: { spy: 9 }, items: [] };
+      withDice(dice, () => {
+        applySpySuccess(tc, thorn as never, { id: 2, name: 'Wendmeadow', owner: 0, tax: 3 });
+      });
+      return wordsOf(tc);
+    };
+    const twoRealms = (): Obj[] => [
+      { name: 'Esterhold', homeProvinceId: 2 },
+      { name: 'Varn', homeProvinceId: 5 },
+    ];
+    test('a world with no roll of heroes: the crown commands none beyond the king', () => {
+      const players = twoRealms();
+      const G = {
+        turn: 4,
+        players,
+        world: {
+          provinces: [
+            { owner: 0, tax: 3 },
+            { owner: 0, tax: 2 },
+          ],
+        },
+      };
+      expect(spyOnAHome(1, G)).toEqual([
+        'Thorn spies on Wendmeadow: controlled by Esterhold, tax 3g, defenders: none.',
+        '[Intelligence] Home-capital intelligence on Esterhold: the crown draws ~5g in tax income each turn and commands 0 heroes beyond the king.',
+        "[Intelligence] 🕵 Counter-intelligence: your watch in Wendmeadow caught Varn's agents prying this turn.",
+      ]);
+      expect(players[0]?.['_spiedOnThisTurn']).toEqual([
+        { provId: 2, provName: 'Wendmeadow', byPlayer: 1, byName: 'Varn', turn: 4 },
+      ]);
+      expect(players[1]?.['_spiedProvincesThisTurn']).toEqual([2]);
+    });
+    test('a gap in the roll of heroes is passed over; a spy of no realm marks no realm and is "unknown agents"', () => {
+      const players = twoRealms();
+      const G = {
+        turn: 4,
+        players,
+        characters: [{ alive: true, player: 0, isKing: false }, null],
+        world: { provinces: [] },
+      };
+      expect(spyOnAHome(null, G)[1]).toBe(
+        '[Intelligence] Home-capital intelligence on Esterhold: the crown draws ~0g in tax income each turn and commands 1 hero beyond the king.',
+      );
+      expect(players[0]?.['_spiedOnThisTurn']).toEqual([
+        { provId: 2, provName: 'Wendmeadow', byPlayer: null, byName: 'unknown agents', turn: 4 },
+      ]);
+      expect(players[0]?.['_spiedProvincesThisTurn']).toBeUndefined();
+      expect(players[1]?.['_spiedProvincesThisTurn']).toBeUndefined();
+    });
+    test('a spy of a realm of no name, or of an index no realm holds: "an unknown power", in the warning too', () => {
+      const unnamed = [
+        { name: 'Esterhold', homeProvinceId: 2 },
+        { name: '', homeProvinceId: 5 },
+      ];
+      expect(spyOnAHome(1, { turn: 4, players: unnamed, characters: [], world: { provinces: [] } })[2]).toBe(
+        "[Intelligence] 🕵 Counter-intelligence: your watch in Wendmeadow caught an unknown power's agents prying this turn.",
+      );
+      expect(unnamed[0]).toMatchObject({ _spiedOnThisTurn: [{ byPlayer: 1, byName: 'an unknown power' }] });
+      const players = twoRealms();
+      expect(spyOnAHome(5, { turn: 4, players, characters: [], world: { provinces: [] } })[2]).toBe(
+        "[Intelligence] 🕵 Counter-intelligence: your watch in Wendmeadow caught an unknown power's agents prying this turn.",
+      );
+      expect(players[0]).toMatchObject({ _spiedOnThisTurn: [{ byPlayer: 5, byName: 'an unknown power' }] });
+    });
+    test("a spy of no realm who lifts a secret from a king's archives: the TypeError the old read threw", () => {
+      const secret = Object.values(DISC_BY_ID).find((d) => !d.race && !d.alignment);
+      const players = [
+        {
+          name: 'Esterhold',
+          homeProvinceId: 2,
+          discoveries: [
+            { id: secret?.id, name: secret?.name, category: secret?.category, desc: '', turnDiscovered: 1 },
+          ],
+        },
+      ];
+      expect(() => spyOnAHome(null, { turn: 4, players, characters: [], world: { provinces: [] } }, 0.5)).toThrow(
+        TypeError,
+      );
+    });
+  });
+
+  describe('the Bless ward and the Plague, on what a staged world lacks', () => {
+    const wendmeadow = (ward: Obj) => ({ id: 2, name: 'Wendmeadow', _blessWardTurn: 4, ...ward });
+    const morwen = { player: 1, name: 'Morwen' };
+    test('a ward of no realm, your own ward, or a ward of no chance turns nothing aside', () => {
+      const tc = aTurn({ turn: 4, players: [], characters: [] });
+      expect(withDice(0, () => blessWardNegates(tc, wendmeadow({ _blessWardPct: 100 }), morwen, 'Flood'))).toBe(false);
+      expect(
+        withDice(0, () => blessWardNegates(tc, wendmeadow({ _blessWardBy: 1, _blessWardPct: 100 }), morwen, 'Flood')),
+      ).toBe(false);
+      expect(withDice(0, () => blessWardNegates(tc, wendmeadow({ _blessWardBy: 0 }), morwen, 'Flood'))).toBe(false);
+      expect(wordsOf(tc)).toEqual([]);
+    });
+    const levies = (unitName?: string) => ({
+      type: 'Shieldwall Levies',
+      quality: 'Veteran',
+      race: 'Human',
+      ...(unitName === undefined ? {} : { unitName }),
+    });
+    test('a Plague of no level: the 10% chance (a roll of 12 spares the unit)', () => {
+      const tc = aTurn({ turn: 4, players: [{ name: 'Esterhold' }], characters: [] });
+      const prov = { id: 2, name: 'Wendmeadow', owner: 0, garrisonArmies: [levies()] };
+      expect(withDice(0.12, () => applyPlague(tc, prov, undefined, 2))).toEqual({ tested: 1, affected: 0 });
+    });
+    test('no roll of heroes, a hero there with no host, no garrison list: nothing to sicken', () => {
+      const tc = aTurn({ turn: 4, players: [{ name: 'Esterhold' }] });
+      expect(withDice(0, () => applyPlague(tc, { id: 2, name: 'Wendmeadow', owner: 0 }, 1, 2))).toEqual({
+        tested: 0,
+        affected: 0,
+      });
+      const withAHero = aTurn({
+        turn: 4,
+        players: [{ name: 'Esterhold' }],
+        characters: [{ id: 3, alive: true, location: 2, player: 0 }],
+      });
+      expect(withDice(0, () => applyPlague(withAHero, { id: 2, name: 'Wendmeadow', owner: 0 }, 1, 2))).toEqual({
+        tested: 0,
+        affected: 0,
+      });
+    });
+    test('the Plague on a garrison unit whose name is empty: its type names it', () => {
+      const tc = aTurn({ turn: 4, players: [{ name: 'Esterhold' }], characters: [] });
+      const prov = { id: 2, name: 'Wendmeadow', owner: 0, garrisonArmies: [levies('')] };
+      expect(withDice(0, () => applyPlague(tc, prov, 1, 2))).toEqual({ tested: 1, affected: 1 });
+      expect(wordsOf(tc)).toEqual([
+        '☠ Plague sickens the garrison of Wendmeadow: Shieldwall Levies (now Average) lose an experience level.',
+      ]);
+    });
+    test('the Plague spreads over a map with no list of provinces (none), and past a ward of no chance', () => {
+      expect(() => {
+        spreadPlagues(aTurn({ turn: 4, players: [], characters: [], world: { cols: 2, rows: 1 } }), 2);
+      }).not.toThrow();
+      // Ashfell, plagued this turn by Varn with no level on record, beside Wendmeadow, blessed by Esterhold this turn
+      // with no chance on record
+      const ashfell = { id: 0, row: 0, col: 0, name: 'Ashfell', _plaguedTurn: 4, _plagueCaster: 1 };
+      const wend = { id: 1, row: 0, col: 1, name: 'Wendmeadow', owner: 0, _blessWardTurn: 4, _blessWardBy: 0 };
+      const tc = aTurn({
+        turn: 4,
+        players: [{ name: 'Esterhold' }, { name: 'Varn' }],
+        characters: [],
+        world: { provinces: [ashfell, wend], cols: 2, rows: 1 },
+      });
+      withDice(0, () => {
+        spreadPlagues(tc, 2);
+      });
+      expect(wend).toMatchObject({ _plaguedTurn: 4, _plagueLevel: 0, _plagueCaster: 1 });
+    });
+  });
+
+  describe("the lairs' stocking and a realm's finds, on what a staged world lacks", () => {
+    const names = (items: unknown) => (items as { name: string }[]).map((it) => it.name);
+    const everyNameBut = (kept: ReadonlySet<string>) =>
+      ALL_MAGIC_ITEMS_P.map((it) => it.name).filter((n) => !kept.has(n));
+    const aLair = (name: string, power: string | null = 'Weak'): Obj => ({
+      name,
+      monster: power === null ? null : { power },
+      cleared: false,
+      discovered: false,
+      treasure: 0,
+    });
+    /** A map one row high, `cols` wide; each province's features as `features` gives them (none: an empty list). */
+    const aRow = (cols: number, features: (i: number) => unknown[] | undefined) =>
+      Array.from({ length: cols }, (_, i) => ({ id: i, row: 0, col: i, tax: 1, features: features(i) }));
+    const tierOne = ALL_MAGIC_ITEMS_P.filter((it) => it.tier === 1 && !isLegendaryItem(it));
+
+    test("a lair's region with no state, no realms, no map, or a map of no width (no wrap round)", () => {
+      expect(lairRegionOf(null, { row: 0, col: 0 })).toBe(0);
+      expect(lairRegionOf({}, { row: 0, col: 0 })).toBe(0);
+      expect(lairRegionOf({ players: [{ homeProvinceId: 3 }] }, { row: 0, col: 0 })).toBe(0);
+      // Esterhold's home at column 9, Varn's at column 3: with no width the map doesn't wrap, so Varn's is nearer
+      const G = { players: [{ homeProvinceId: 9 }, { homeProvinceId: 3 }], world: { provinces: aRow(10, () => []) } };
+      expect(lairRegionOf(G as never, { row: 0, col: 0 })).toBe(1);
+    });
+    test('a find noted in a world with no realms: nothing to tally', () => {
+      expect(() => {
+        noteItemFound({}, 0, tierOne[0]);
+      }).not.toThrow();
+    });
+    test("a realm's draw with no names taken, no realm there, no realms, or nothing left in the treasury", () => {
+      const G = { players: [{ name: 'Esterhold' }], _awardedItems: [] } as never;
+      expect(withDice(0.3, () => rollMagicItemFor(G, 0, 'Weak', null))).toMatchObject({ tier: 1 });
+      const plain = withDice(0.3, () => rollMagicItem('Weak', new Set(), awardedEffectSet(G)));
+      expect(withDice(0.3, () => rollMagicItemFor(G, null, 'Weak', new Set()))).toBe(plain);
+      expect(withDice(0.3, () => rollMagicItemFor({ _awardedItems: [] }, 0, 'Weak', new Set()))).toBe(plain);
+      expect(withDice(0.3, () => rollMagicItemFor(G, 0, 'Weak', new Set(everyNameBut(new Set()))))).toBeNull();
+    });
+    test('no state, or no map: nothing to stock', () => {
+      expect(() => {
+        ensureAllLairHoards(null);
+        ensureAllLairHoards({});
+      }).not.toThrow();
+    });
+    test('a lair with no guardian is stocked as a Weak one; a province with no features, a gap, a guardian of no power stocked, a province whose id names no place', () => {
+      const legendaries = new Set(ALL_MAGIC_ITEMS_P.filter((it) => isLegendaryItem(it)).map((it) => it.name));
+      const barrow = aLair('Old Barrow', null);
+      const mythic = { ...aLair('Sunken Vault', 'Mythic') };
+      // a single province, its id 5: no place 5 in the list
+      const provinces = [
+        { id: 5, row: 0, col: 0, tax: 1, features: [null, barrow, mythic] },
+        { id: 1, row: 0, col: 1, tax: 1 },
+      ];
+      const G: Obj = { players: [], world: { provinces, cols: 2, rows: 1 }, _awardedItems: [...legendaries] };
+      withDice(0, () => {
+        ensureAllLairHoards(G);
+      });
+      expect(barrow['hoardItems']).toMatchObject([{ tier: 1, id: 0 }]);
+      expect(G['nextItemId']).toBe(1);
+      expect(mythic).not.toHaveProperty('hoardItems');
+    });
+    test("the kinds already handed out steer the stocking: the rings are spent, so the lair's item is the weapon", () => {
+      const ring = tierOne.find((it) => itemHoardCategory(it) === 'ring');
+      const weapon = tierOne.find(
+        (it) => itemHoardCategory(it) === 'weapon' && itemEffectKey(it) !== itemEffectKey(ring),
+      );
+      const kept = new Set([String(ring?.name), String(weapon?.name)]);
+      const anotherRing = ALL_MAGIC_ITEMS_P.find((it) => itemHoardCategory(it) === 'ring' && !kept.has(it.name));
+      const lair = aLair('Hollow Hill');
+      const G: Obj = {
+        players: [],
+        world: { provinces: aRow(1, () => [lair]), cols: 1, rows: 1 },
+        _awardedItems: [...everyNameBut(kept), ...Array.from({ length: 1000 }, () => String(anotherRing?.name))],
+      };
+      withDice(0, () => {
+        ensureAllLairHoards(G);
+      });
+      expect(names(lair['hoardItems'])).toEqual([weapon?.name]);
+    });
+    test('more legendaries than lairs: a second round deals the rest, last of the shuffle first', () => {
+      const left = ALL_MAGIC_ITEMS_P.filter((it) => isLegendaryItem(it)).slice(0, 3);
+      const lair = aLair('Dragon Hoard', 'Legendary');
+      const G: Obj = {
+        players: [],
+        world: { provinces: aRow(1, () => [lair]), cols: 1, rows: 1 },
+        _awardedItems: everyNameBut(new Set(left.map((it) => it.name))),
+      };
+      withDice(0, () => {
+        ensureAllLairHoards(G);
+      });
+      expect(names(lair['hoardItems'])).toEqual(names(shuffleP(left, () => 0).reverse()));
+    });
+    test("two neighbouring lairs left with one effect: the repair swaps one's item with a far lair's of its kind and tier", () => {
+      // the treasury holds two designs: one under two names, and one other of the same kind and tier
+      const byDesign = new Map<string, typeof tierOne>();
+      tierOne.forEach((it) => {
+        const k = `${itemHoardCategory(it)}|${itemEffectKey(it)}`;
+        byDesign.set(k, [...(byDesign.get(k) ?? []), it]);
+      });
+      const twice = [...byDesign.values()].find((l) => l.length >= 2) ?? [];
+      const [first, second] = twice;
+      const other = tierOne.find(
+        (it) => itemHoardCategory(it) === itemHoardCategory(first) && itemEffectKey(it) !== itemEffectKey(first),
+      );
+      const kept = new Set([String(first?.name), String(second?.name), String(other?.name)]);
+      // Ashfell (column 0) and Wendmeadow (1) side by side, Thornwood (6) four provinces away round the map
+      const [ash, wend, thorn] = [aLair('Ashfell Barrow'), aLair('Wendmeadow Den'), aLair('Thornwood Lair')];
+      const lairs = new Map<number, Obj>([
+        [0, ash],
+        [1, wend],
+        [6, thorn],
+      ]);
+      const G: Obj = {
+        players: [],
+        world: { provinces: aRow(10, (i) => [lairs.get(i)].filter(Boolean)), cols: 10, rows: 1 },
+        _awardedItems: everyNameBut(kept),
+      };
+      withDice(0, () => {
+        ensureAllLairHoards(G);
+      });
+      // Wendmeadow's lair was stocked first (the first design), then Thornwood's (the other: unspent), then Ashfell's
+      // (the first design again, nothing else left); the repair gives Wendmeadow Thornwood's item and Thornwood its own
+      expect([ash, wend, thorn].map((l) => names(l['hoardItems']))).toEqual([
+        [second?.name],
+        [other?.name],
+        [first?.name],
+      ]);
+      expect([ash, wend, thorn].map((l) => (l['hoardItems'] as { id: number }[])[0]?.id)).toEqual([2, 1, 0]);
     });
   });
 });
