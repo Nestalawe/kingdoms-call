@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
@@ -35,6 +34,42 @@ import {
   BOT_ASSUMED_SKILLS,
 } from './intel.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
+import type { ABotRealmsLedger, ABotRealmsRoles, ABotRealmsSpending, TheBotLedgersTally } from './intel.ts';
+import type {
+  Army,
+  BotIntelHero,
+  Character,
+  GameState,
+  Grave,
+  Province,
+  ProvinceFeature,
+} from '../../schemas/saved-game-state.ts';
+import { aCopyMadeThroughJson } from '../rules-on-plain-values/a-copy-made-through-json-and-typed-as-its-original.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+
+// Its types (plan P1-10b41): each parameter typed as wide as the body's guards, so each guard stays; the ledger's and
+// the roles' shapes are bots/intel.ts', beside the turn's cache that holds them.
+/** A unit as the wages read it: a summoned one is `_temporary` (a mark the schema lacks). */
+type AUnitAsTheWagesReadIt = Army & { readonly _temporary?: boolean | undefined };
+/** A tuning knob that holds one value today (BOT_LAIR_REASK_GAIN: 0 is off), so its test still reads it. */
+type ATuningKnob = number;
+/** A duel's five skills and his level in each, sorted by level (botDrillOrder). */
+type TheDuelSkillsAndTheirLevels = [
+  readonly [string, number],
+  readonly [string, number],
+  readonly [string, number],
+  readonly [string, number],
+  readonly [string, number],
+];
+/** A fallen hero's skills, as the raising totals them (a `{}` for none keeps `Object.values` typed). */
+/** What an ally's records of rival heroes are copied into (botUpdateIntel): by kind, ours and theirs. */
+type TheRecordsAnAllyShares = [
+  readonly [string, Partial<Record<string, BotIntelHero>>, Partial<Record<string, BotIntelHero>> | undefined],
+  readonly [string, Partial<Record<string, BotIntelHero>>, Partial<Record<string, BotIntelHero>> | undefined],
+];
+function theSkillsOfTheGrave(g: Grave): Grave['skills'] {
+  return asItsGuardReadsIt(g.skills) ?? {};
+}
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 
 // ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ════
@@ -46,48 +81,61 @@ import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 // second field army is raised under the next-best general, and so on. Bots hire every wandering
 // hero they can reach, drill their hosts with Tactical while campaigning, and never war one another
 // while a human king reigns.
-export function botIsBotPlayer(G, j) {
-  const p = (G.players || [])[j];
-  return !!(p && (p._isBot || p.isBot));
+/** A realm as the bot flag reads it: its `_isBot`, or an older `isBot`. */
+interface ARealmAsTheBotFlagReadsIt {
+  readonly _isBot?: boolean | undefined;
+  readonly isBot?: boolean | undefined;
+}
+export function botIsBotPlayer(
+  G: { readonly players?: readonly (ARealmAsTheBotFlagReadsIt | null | undefined)[] | null | undefined },
+  j: number,
+) {
+  const p = (G.players ?? [])[j];
+  return !!(p && ((p._isBot ?? false) || p.isBot));
 }
 // Land a column may march through freely: our own, or an ally's (free passage).
-export function botPassable(G, pi, N) {
+export function botPassable(G: GameState, pi: number | null, N: Province | null | undefined) {
   return (
     !!N && N.terrain !== 'sea' && (N.owner === pi || (N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied'))
   );
 }
 // Hex distance with the map's east-west wrap — mirrors generateNewGame's cellDistRC.
-export function botHexDist(G, a, b) {
+export function botHexDist(
+  G: Pick<GameState, 'world'>,
+  a: Pick<Province, 'col' | 'row'>,
+  b: Pick<Province, 'col' | 'row'>,
+) {
   const cols = G.world.cols;
   let dc = Math.abs(a.col - b.col);
   dc = Math.min(dc, cols - dc);
   const dr = Math.abs(a.row - b.row);
   return Math.max(dc, dr, (dc + dr) >> 1);
 }
-export function botHomeId(G, pi) {
-  const p = G.players[pi] || {};
-  const h = G.world.provinces[p.homeProvinceId];
-  if (h && h.owner === pi) return h.id;
-  let best = null;
-  (G.world.provinces || []).forEach((x) => {
-    if (x && x.owner === pi && x.terrain !== 'sea' && (!best || (x.tax || 0) > (best.tax || 0))) best = x;
-  });
+export function botHomeId(G: GameState, pi: number) {
+  const home = G.players[pi]?.homeProvinceId;
+  const h = G.world.provinces[home ?? -1]; // a realm of no home reads no province, as `provinces[undefined]` did
+  if (h?.owner === pi) return h.id;
+  let best: Province | null = null;
+  for (const x of asItsGuardReadsIt(G.world.provinces) ?? []) {
+    if (asItsGuardReadsIt(x) && x.owner === pi && x.terrain !== 'sea' && (!best || (x.tax || 0) > (best.tax || 0)))
+      best = x;
+  }
   return best ? best.id : null;
 }
 // Hops per turn this column can march over land (mirror of computeMovePoolMax's land branch on base
 // stats — flyers ignore March; an unarmed character walks 5). `extraTypes` lets a planner include
 // units it is about to recruit this turn.
-export function botLandReach(c, extraTypes) {
-  const types = (c.armies || [])
-    .filter((a) => a && !BOT_SEA_ALL.has(a.type))
+export function botLandReach(c: Character, extraTypes?: readonly string[] | null) {
+  const types = (asItsGuardReadsIt(c.armies) ?? [])
+    .filter((a) => asItsGuardReadsIt(a) && !BOT_SEA_ALL.has(a.type))
     .map((a) => a.type)
-    .concat(extraTypes || []);
-  if (!types.length) return (c.armies || []).length ? 0 : 5;
-  const ml = Math.min((c.skills || {}).march || 0, 5);
+    .concat(extraTypes ?? []);
+  if (!types.length) return (asItsGuardReadsIt(c.armies) ?? []).length ? 0 : 5;
+  const ml = Math.min(Number(asItsGuardReadsIt(c.skills)?.march) || 0, 5);
   let mn = 99;
   types.forEach((t) => {
-    const base = ARMY_SPEED_MASTER[t] || 3;
-    const sp = BOT_AERIAL_TYPES.has(t) ? base : base + marchSpeedBonus(ml);
+    const base = (ARMY_SPEED_MASTER[t] ?? 0) || 3;
+    const sp = BOT_AERIAL_TYPES.has(t) ? base : base + Number(marchSpeedBonus(ml));
     if (sp < mn) mn = sp;
   });
   return Math.max(0, Math.min(5, mn));
@@ -95,34 +143,36 @@ export function botLandReach(c, extraTypes) {
 // 2026-09-28 (Toby: bots never take the sea): a FLEET'S reach — the slowest ship sets the pace, Naval
 // speeds it (mirrors computeMovePoolMax's sea pool). Before this a hulls-only column read botLandReach = 0
 // and every admiral who had bought his fleet held in harbour for the rest of the game.
-export function botSeaReach(c) {
-  const sh = (c.armies || []).filter((a) => a && BOT_SEA_ALL.has(a.type));
+export function botSeaReach(c: Character) {
+  const sh = (asItsGuardReadsIt(c.armies) ?? []).filter((a) => asItsGuardReadsIt(a) && BOT_SEA_ALL.has(a.type));
   if (!sh.length) return 0;
-  const nl = Math.min((c.skills || {}).naval || 0, 5);
+  const nl = Math.min(Number(asItsGuardReadsIt(c.skills)?.naval) || 0, 5);
   return Math.max(
     0,
     Math.min(
       5,
       Math.min(
         ...sh.map((a) => {
-          const b = ARMY_SPEED_MASTER[a.type] || 3;
-          return b + navalSpeedBonus(b, nl);
+          const b = (ARMY_SPEED_MASTER[a.type] ?? 0) || 3;
+          return b + Number(navalSpeedBonus(b, nl));
         }),
       ),
     ),
   );
 }
 // a column of ships only (nothing that can step ashore) — it may claim or clear water, never land.
-export function botFleetOnly(armies) {
-  armies = armies || [];
+export function botFleetOnly(armies: readonly (Army | null | undefined)[] | null | undefined) {
+  armies = armies ?? [];
   return armies.length > 0 && armies.every((a) => a && BOT_SEA_ALL.has(a.type));
 }
-export function botEmpireDiameter(G, pi) {
-  const own = (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea');
+export function botEmpireDiameter(G: GameState, pi: number) {
+  const own = (asItsGuardReadsIt(G.world.provinces) ?? []).filter(
+    (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea',
+  );
   let d = 0;
-  for (let i = 0; i < own.length; i++)
-    for (let j = i + 1; j < own.length; j++) {
-      const x = botHexDist(G, own[i], own[j]);
+  for (const [i, a] of own.entries())
+    for (const b of own.slice(i + 1)) {
+      const x = botHexDist(G, a, b);
       if (x > d) d = x;
     }
   return d;
@@ -131,35 +181,38 @@ export function botEmpireDiameter(G, pi) {
 // March
 // (reach), then personal combat; the units already under command add a little so the current holder of
 // the host is not displaced by a marginally better tactician every turn.
-export function botGeneralship(c) {
-  const s = c.skills || {};
-  const a = c.armies || [];
+export function botGeneralship(c: Character) {
+  const s = asItsGuardReadsIt(c.skills) ?? {};
+  const a = asItsGuardReadsIt(c.armies) ?? [];
   const n = a.length;
   // Sept 2026 (review §3): a lord of the column's own blood (+20% kinship, no grudge) and a Necromancy king
   // over skeletons (×1.5 fanaticism vs ×1.3) are better generals than the raw skills say.
-  const kin = n ? a.filter((x) => x && x.race === c.race).length / n : 0;
-  const RIV = { ...KC_RIVAL_RACE };
-  const grudge = n ? a.filter((x) => x && RIV[x.race] === c.race).length / n : 0;
-  const skel = n ? a.filter((x) => x && x._isSkeletal).length / n : 0;
+  const kin = n ? a.filter((x) => asItsGuardReadsIt(x) && x.race === c.race).length / n : 0;
+  const RIV: Partial<Record<string, string>> = { ...KC_RIVAL_RACE };
+  const grudge = n ? a.filter((x) => asItsGuardReadsIt(x) && RIV[x.race] === c.race).length / n : 0;
+  const skel = n ? a.filter((x) => asItsGuardReadsIt(x) && x._isSkeletal).length / n : 0;
   return (
-    (s.tactical || 0) * 4 +
-    (s.march || 0) * 2 +
-    (s.melee || 0) +
-    (s.archery || 0) +
+    (Number(s.tactical) || 0) * 4 +
+    (Number(s.march) || 0) * 2 +
+    (Number(s.melee) || 0) +
+    (Number(s.archery) || 0) +
     Math.min(10, n) +
     (n >= 3 ? 8 : 0) +
     Math.round(kin * 4 - grudge * 6) +
-    (c.isKing && (s.necromancy || 0) >= 1 && skel >= 0.5 ? 10 : 0)
+    (c.isKing && (Number(s.necromancy) || 0) >= 1 && skel >= 0.5 ? 10 : 0)
   );
 } // +8 sticky bonus: handing a host to a marginally better general cost a turn of conquest every time a hero was hired
 // ROLES — field-army LEADERS (best generals; one per desired field army) vs FEEDERS (everyone
 // else). Desired field armies = 1 + floor(empire diameter / primary reach): once the realm is wider
 // than the main host can cross in a turn, a second host is raised, and so on.
-export function botRoles(G, pi) {
+export function botRoles(G: GameState, pi: number): ABotRealmsRoles {
   const cache = botTurnCache(G);
-  if (cache.roles[pi]) return cache.roles[pi];
+  const kept = cache.roles[pi];
+  if (kept) return kept;
   botUpdateIntel(G, pi); // Sept 2026: refresh the memory of rival generals and heroes first
-  const all = (G.characters || []).filter((c) => c && c.alive && c.player === pi && !c._isHeir);
+  const all = (asItsGuardReadsIt(G.characters) ?? []).filter(
+    (c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && !c._isHeir,
+  );
   // Sept 2026 (Toby: bot defence): standing DEFENDERS (c._botRole, set below) sit outside the
   // general ranking, so a defender who has raised three units is not pulled off his post as a new
   // field leader.
@@ -167,15 +220,15 @@ export function botRoles(G, pi) {
   let chars = all.filter((c) => !sticky.includes(c));
   if (!chars.length) chars = all;
   const ranked = [...chars].sort((a, b) => botGeneralship(b) - botGeneralship(a));
-  const primary = ranked[0] || null;
+  const primary = ranked[0] ?? null;
   const reach = Math.max(1, primary ? botLandReach(primary) || 1 : 3);
-  const holding = chars.filter((c) => (c.armies || []).length >= 3).length; // a split-off second host keeps its own commander
+  const holding = chars.filter((c) => (asItsGuardReadsIt(c.armies) ?? []).length >= 3).length; // a split-off second host keeps its own commander
   const heroCount = all.filter((c) => !c.isKing).length;
   const want = Math.max(
     1,
     holding,
     Math.min(ranked.length, 1 + Math.floor(botEmpireDiameter(G, pi) / reach)),
-    heroCount >= 3 && primary && primary.isKing ? 2 : 1,
+    heroCount >= 3 && primary?.isKing ? 2 : 1,
   ); // Sept 2026 (Toby): a HERO general beside a king who leads, once the court has three heroes
   const leaders = ranked.slice(0, want).map((c) => c.id);
   // ── ROLE PRIORITY (2026-09-26, Toby item 2/3): General > Slayer > Sage > Explorer > Admiral > Flying
@@ -183,15 +236,15 @@ export function botRoles(G, pi) {
   // whoever is left; the admiral and the flying general are therefore only wanted once the court has
   // FOUR non-king heroes (the general's slot may be the king's), and defenders only from the heroes left
   // after those. The one exception: a realm whose land frontier is spent wants its admiral at any size.
-  const _landSpent = !(G.world.provinces || []).some(
-    (p) => p && p.owner === pi && p.terrain !== 'sea' && botIsEdge(G, pi, p),
+  const _landSpent = !(asItsGuardReadsIt(G.world.provinces) ?? []).some(
+    (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea' && botIsEdge(G, pi, p),
   ); // no owned land borders unowned or enemy land
   // ADMIRAL (Sept 2026, Toby): once there is sea worth taking, the best remaining non-king general (sticky via
   // _botRole) is a leader whose front is the water — see botSeaStrike / botFieldRecruitTokens.
   {
     const wantAdm =
       botSeaWorthTaking(G, pi) && ranked.length > want && (heroCount >= 4 || (_landSpent && heroCount >= 2));
-    let adm = all.find((c) => c._botRole === 'admiral' && c.alive && !c.isKing);
+    let adm: Character | null | undefined = all.find((c) => c._botRole === 'admiral' && c.alive && !c.isKing);
     if (!wantAdm) {
       if (adm) {
         delete adm._botRole;
@@ -205,11 +258,11 @@ export function botRoles(G, pi) {
           )
           .sort(
             (a, b) =>
-              ((b.skills || {}).naval || 0) * 3 +
+              (Number(asItsGuardReadsIt(b.skills)?.naval) || 0) * 3 +
               botGeneralship(b) -
-              ((a.skills || {}).naval || 0) * 3 -
+              (Number(asItsGuardReadsIt(a.skills)?.naval) || 0) * 3 -
               botGeneralship(a),
-          )[0] || null;
+          )[0] ?? null;
     }
     all.forEach((c) => {
       if (c._botRole === 'admiral' && c !== adm) delete c._botRole;
@@ -228,7 +281,7 @@ export function botRoles(G, pi) {
       ranked.length > leaders.length &&
       heroCount >= 5 &&
       (botHasMetPlayers(G, pi) || (G.turn || 0) >= 5);
-    let sky = all.find((c) => c._botRole === 'skygeneral' && c.alive && !c.isKing);
+    let sky: Character | null | undefined = all.find((c) => c._botRole === 'skygeneral' && c.alive && !c.isKing);
     if (!wantSky) {
       if (sky) {
         delete sky._botRole;
@@ -240,11 +293,11 @@ export function botRoles(G, pi) {
           .filter((c) => !c.isKing && !leaders.includes(c.id) && c._botRole !== 'defender' && c._botRole !== 'admiral')
           .sort(
             (a, b) =>
-              ((b.skills || {}).druid || 0) * 2 +
+              (Number(asItsGuardReadsIt(b.skills)?.druid) || 0) * 2 +
               botGeneralship(b) -
-              ((a.skills || {}).druid || 0) * 2 -
+              (Number(asItsGuardReadsIt(a.skills)?.druid) || 0) * 2 -
               botGeneralship(a),
-          )[0] || null;
+          )[0] ?? null;
     }
     all.forEach((c) => {
       if (c._botRole === 'skygeneral' && c !== sky) delete c._botRole;
@@ -267,15 +320,15 @@ export function botRoles(G, pi) {
       ? Math.max(0, Math.min(3, Math.floor(botLandCount(G, pi) / 4), freeHeroes - 3))
       : 0;
   let defenders = sticky.filter((c) => !leaderSet.has(c.id));
-  const defScore = (c) => {
-    const s = c.skills || {};
+  const defScore = (c: Character) => {
+    const s = asItsGuardReadsIt(c.skills) ?? {};
     return (
-      (c.armies || []).length * 5 +
-      (s.tactical || 0) * 3 +
-      (s.melee || 0) +
-      (s.archery || 0) -
+      (asItsGuardReadsIt(c.armies) ?? []).length * 5 +
+      (Number(s.tactical) || 0) * 3 +
+      (Number(s.melee) || 0) +
+      (Number(s.archery) || 0) -
       botMagicScore(c) * 2 -
-      ((s.sage || 0) + (s.spy || 0) + (s.thief || 0) + (s.explorer || 0)) * 2
+      ((Number(s.sage) || 0) + (Number(s.spy) || 0) + (Number(s.thief) || 0) + (Number(s.explorer) || 0)) * 2
     );
   };
   defenders.sort((a, b) => defScore(b) - defScore(a));
@@ -283,7 +336,10 @@ export function botRoles(G, pi) {
   const pool = all
     .filter((c) => !c.isKing && !leaderSet.has(c.id) && !defenders.includes(c))
     .sort((a, b) => defScore(b) - defScore(a));
-  while (defenders.length < wantDef && pool.length) defenders.push(pool.shift());
+  while (defenders.length < wantDef && pool.length) {
+    const next = pool.shift();
+    if (next !== undefined) defenders.push(next);
+  }
   const defIds = defenders.map((c) => c.id);
   all.forEach((c) => {
     if (defIds.includes(c.id)) c._botRole = 'defender';
@@ -296,16 +352,17 @@ export function botRoles(G, pi) {
   cache.roles[pi] = r;
   return r;
 }
-export function botIsLeader(G, pi, id) {
+export function botIsLeader(G: GameState, pi: number, id: number) {
   return botRoles(G, pi).leaders.includes(id);
 }
 // LEDGER — one treasury/upkeep budget per bot per turn, shared by the movement and economy passes
 // so a recruit written in phase 0 by a marching host is not double-spent by an idle holder later.
-export function botLedger(G, pi) {
+export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
   const cache = botTurnCache(G);
-  if (cache.ledger[pi]) return cache.ledger[pi];
+  const kept = cache.ledger[pi];
+  if (kept) return kept;
   const T = botTuning(G, pi),
-    player = G.players[pi] || {};
+    playersGold = G.players[pi]?.gold;
   const income = botTaxIncome(G, pi);
   // WAR FOOTING: at war (or facing a big enemy host) the bot spends its treasury down and lifts its
   // sustainable army ceiling toward 100% of income; in peacetime it keeps the tuned cap + a small
@@ -313,11 +370,11 @@ export function botLedger(G, pi) {
   const warFooting = botAtWar(G, pi) || botMaxEnemyStack(G, pi) > 5;
   const effCapFrac = warFooting ? 1.0 : T.upkeepCapFrac; // Sept 2026 (review II A1): at war the whole income is wages
   const reserve = warFooting ? Math.min(8, Math.max(2, Math.floor(botUpkeep(G, pi) * 0.15))) : T.goldReserve; // Sept 2026 (R9): at war, one quarter-turn of wages stays in the chest so a lost battle does not disband the army
-  const budget = (player.gold || 0) - reserve;
+  const budget = (Number(playersGold) || 0) - reserve;
   // "As much as they can afford": wages are paid from the treasury, not just income, so a chest can
   // carry a deficit. The cap is the income share PLUS a third of the free treasury — a host the
   // realm can pay for four turns while the conquests it makes pay it back.
-  const L = {
+  const L: ABotRealmsLedger = {
     income,
     warFooting,
     upkeepCap: Math.floor(income * effCapFrac + Math.max(0, budget) * (botLandCount(G, pi) < 15 ? 0.6 : T.chestShare)),
@@ -328,7 +385,9 @@ export function botLedger(G, pi) {
   // 2026-09-28 (Toby: slayers must always have the gold to hunt rumours): 4g a slayer (two Moderate or four Weak
   // rumours) is set aside BEFORE any muster can spend it; botRumourAffordable / botSpendRumour draw on it first.
   {
-    const nSl = (G.characters || []).filter((c) => c && c.alive && c.player === pi && c._botRole === 'slayer').length;
+    const nSl = (asItsGuardReadsIt(G.characters) ?? []).filter(
+      (c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && c._botRole === 'slayer',
+    ).length;
     L.rumourFund = Math.max(0, Math.min(Math.max(0, budget), nSl * BOT_RUMOUR_FUND_PER_SLAYER));
     L.budget -= L.rumourFund;
   }
@@ -336,14 +395,14 @@ export function botLedger(G, pi) {
   // half the free treasury, BEFORE the planner and the economy can spend it; runBotPhaseOne('muster') opens
   // it for those hosts' Spring musters and hands back whatever is left.
   {
-    const nC = (G.characters || []).filter(
-      (c) => c && c.alive && c.player === pi && !c._isHeir && botInContact(G, pi, c),
+    const nC = (asItsGuardReadsIt(G.characters) ?? []).filter(
+      (c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && !c._isHeir && botInContact(G, pi, c),
     ).length;
     L.warChest = Math.max(0, Math.min(Math.floor(Math.max(0, L.budget) * BOT_P1.chestShare), nC * BOT_P1.chestPerHost));
     L.budget -= L.warChest;
   }
-  L.diag = {
-    gold: player.gold || 0,
+  const diag: TheBotLedgersTally = {
+    gold: Number(playersGold) || 0,
     income,
     reserve,
     budget0: budget,
@@ -358,39 +417,25 @@ export function botLedger(G, pi) {
     holdersIdle: 0,
     holdersInRecruit: 0,
   }; // Sept 2026 (§99 diagnosis; read by the study through window.__botDiag)
+  L.diag = diag;
   // Sept 2026 (Toby: bot defence): while the realm's DEFENDERS stand under-strength (fewer than three
   // units each), 30% of the wage ceiling is held back from the field hosts' muster so the posts get
   // troops too — otherwise the leaders, who muster first, spent every coin every year.
   const _defs = botRoles(G, pi)
-    .defenders.map((id) => (G.characters || []).find((c) => c && c.id === id))
-    .filter(Boolean);
-  const _defUnits = _defs.reduce((n, c) => n + (c.armies || []).length, 0);
+    .defenders.map((id) => (asItsGuardReadsIt(G.characters) ?? []).find((c) => asItsGuardReadsIt(c) && c.id === id))
+    .filter((c) => c !== undefined);
+  const _defUnits = _defs.reduce((n, c) => n + (asItsGuardReadsIt(c.armies) ?? []).length, 0);
   L.defReserve = _defs.length && _defUnits < 3 * _defs.length ? Math.floor(L.upkeepCap * 0.2) : 0;
   // 2026-09-26 (Toby items 1 / 6 / 8): the same for the NAVY and the AIR — while the admiral has fewer than
   // three hulls, or the flying general fewer than two flyers, a share of the ceiling is held back from every
   // other muster (the land general musters first and was spending every coin before the fleet got a hull).
   {
-    const chars = G.characters || [];
-    const adm = chars.find((c) => c && c.alive && c.player === pi && c._botRole === 'admiral');
-    const sky = chars.find((c) => c && c.alive && c.player === pi && c._botRole === 'skygeneral');
-    const hulls = adm ? (adm.armies || []).filter((a) => a && BOT_CARRIER_TYPES.has(a.type)).length : 9;
-    const wings = sky ? (sky.armies || []).filter((a) => a && BOT_FLYING_TYPES.has(a.type)).length : 9;
-    const atPort =
-      adm &&
-      (() => {
-        const X = G.world.provinces[adm.location];
-        return X && X.owner === pi && !!botCoastalFleetType(X);
-      })(); // only while he stands where hulls are laid down — a reserve nobody can spend this turn is gold idling
-    const atEyrie =
-      sky &&
-      (() => {
-        const X = G.world.provinces[sky.location];
-        return X && X.owner === pi && !!botFlyerType(X);
-      })();
-    void hulls;
-    void wings;
-    void atPort;
-    void atEyrie;
+    const chars = asItsGuardReadsIt(G.characters) ?? [];
+    const adm = chars.find((c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && c._botRole === 'admiral');
+    const sky = chars.find((c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && c._botRole === 'skygeneral');
+    // (The admiral's hulls and the flying general's flyers, and whether each stands at a port or an eyrie, were
+    // counted here for the reserves below and read by nothing once the wage caps replaced them: P1-10b41 dropped
+    // the counts, which call nothing that writes.)
     L.navReserve = 0;
     L.airReserve = 0; // superseded 2026-09-28 by the separate wage caps below
     // ── NAVY and AIR WAGE CAPS (2026-09-28, Toby): the admiral and the flying general each draw on a wage
@@ -399,11 +444,15 @@ export function botLedger(G, pi) {
     // the land hosts, garrisons and hero wages share what is left. Before this the reserves above only held
     // gold back from OTHER musters, which did nothing once the realm's wages already filled the ceiling —
     // the study found the admiral at port with no headroom two years in three.
-    const _wage = (x) =>
-      (x.armies || []).reduce(
-        (w, a) =>
+    const _wage = (x: Character) =>
+      (asItsGuardReadsIt(x.armies) ?? []).reduce(
+        (w, a: AUnitAsTheWagesReadIt | null | undefined) =>
           w +
-          (!a || a._temporary || a._wildHuntUntilTurn != null ? 0 : a._isSkeletal ? 1 : ARMY_COST_MASTER[a.type] || 2),
+          (!a || a._temporary || a._wildHuntUntilTurn != null
+            ? 0
+            : a._isSkeletal
+              ? 1
+              : (ARMY_COST_MASTER[a.type] ?? 0) || 2),
         0,
       );
     const full = L.upkeepCap;
@@ -413,11 +462,12 @@ export function botLedger(G, pi) {
     L.air = sky
       ? { cap: Math.max(BOT_AIR_CAP_MIN, Math.floor(full * BOT_AIR_CAP_FRAC)), upkeep: _wage(sky), id: sky.id }
       : null;
-    L.upkeepCap = Math.max(0, full - (L.nav ? L.nav.cap : 0) - (L.air ? L.air.cap : 0));
-    L.upkeep = L.upkeep - (L.nav ? L.nav.upkeep : 0) - (L.air ? L.air.upkeep : 0);
+    const { nav, air } = L;
+    L.upkeepCap = Math.max(0, full - (nav ? nav.cap : 0) - (air ? air.cap : 0));
+    L.upkeep = L.upkeep - (nav ? nav.upkeep : 0) - (air ? air.upkeep : 0);
     if (L.defReserve) L.defReserve = Math.floor(L.upkeepCap * 0.2); // the defenders' 20% is of the LAND ceiling now
-    L.diag.navCap = L.nav ? L.nav.cap : 0;
-    L.diag.airCap = L.air ? L.air.cap : 0;
+    diag.navCap = nav ? nav.cap : 0;
+    diag.airCap = air ? air.cap : 0;
   }
   cache.ledger[pi] = L;
   return L;
@@ -426,26 +476,26 @@ export const BOT_NAV_CAP_FRAC = 0.2,
   BOT_AIR_CAP_FRAC = 0.15,
   BOT_NAV_CAP_MIN = 4,
   BOT_AIR_CAP_MIN = 4; // 2026-09-28: see botLedger
-export function botCanAfford(L, cost) {
+export function botCanAfford(L: ABotRealmsSpending, cost: number) {
   return L.budget >= cost && L.upkeep + cost <= L.upkeepCap;
 }
-export function botSpend(L, cost) {
+export function botSpend(L: ABotRealmsSpending, cost: number) {
   L.budget -= cost;
   L.upkeep += cost;
 }
 // GARRISONS: one cheap unit per province — enough to make an enemy stop and fight, never meant to
 // hold. Only once a player is actually on our doorstep (in or beside our land) do valuable
 // provinces get 2 and the capital 3.
-export function botUnderAttack(G, pi) {
+export function botUnderAttack(G: GameState, pi: number) {
   // an enemy host counts only once the realm can see it (in our own land, or in ground we have eyes
   // on beside it) — botSeesChar is the same rule the player's map uses.
-  return (G.characters || []).some((e) => {
+  return (asItsGuardReadsIt(G.characters) ?? []).some((e) => {
     if (!(
-      e &&
+      asItsGuardReadsIt(e) &&
       e.alive &&
       e.player != null &&
       e.player !== pi &&
-      (e.armies || []).length &&
+      (asItsGuardReadsIt(e.armies) ?? []).length &&
       botRelationRaw(G, pi, e.player) === 'enemy'
     ))
       return false;
@@ -455,13 +505,13 @@ export function botUnderAttack(G, pi) {
     if (P.owner === pi) return true;
     for (let i = 0; i < 6; i++) {
       const N = botNeighbourProv(G, P, i);
-      if (N && N.owner === pi) return true;
+      if (N?.owner === pi) return true;
     }
     return false;
   });
 }
-export function botGarrisonTarget(G, prov, pi) {
-  if (!prov || prov.owner !== pi || prov.terrain === 'sea') return 0;
+export function botGarrisonTarget(G: GameState, prov: Province | null | undefined, pi: number) {
+  if (prov?.owner !== pi || prov.terrain === 'sea') return 0;
   // Sept 2026 (Toby): garrisons only in Prosperous/Rich land (tax 4+; the capital always), never
   // more than 2 per province. Defence proper is the DEFENDER heroes (botRoles / botDefenderOrders).
   // 2026-09-26 (Toby): FEWER GARRISONS, BIGGER FIELD HOST. Only the capital is garrisoned in peace (one unit);
@@ -472,18 +522,19 @@ export function botGarrisonTarget(G, prov, pi) {
   if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn
   return attacked && (prov.tax || 0) >= 7 ? 1 : 0;
 }
-export function botGarrisonType(prov) {
-  return (prov.armyTypes || []).find((x) => /garrison/i.test(x)) || null;
+export function botGarrisonType(prov: Province) {
+  return ((asItsGuardReadsIt(prov.armyTypes) ?? []).find((x) => /garrison/i.test(x)) ?? '') || null;
 }
-export function botGarrisonOrder(G, pi, prov, L) {
+export function botGarrisonOrder(G: GameState, pi: number, prov: Province, L: ABotRealmsLedger) {
   const tgt = botGarrisonTarget(G, prov, pi),
-    have = (prov.garrisonArmies || []).length;
+    have = (asItsGuardReadsIt(prov.garrisonArmies) ?? []).length;
   if (have >= tgt) return null;
   const gt = botGarrisonType(prov);
   if (!gt) return null;
-  const done = (L.recruitedByProv[prov.id] = L.recruitedByProv[prov.id] || {});
+  const done = L.recruitedByProv[prov.id] ?? {};
+  L.recruitedByProv[prov.id] = done;
   if (done[gt]) return null;
-  const cost = ARMY_COST_MASTER[gt] || 1;
+  const cost = (ARMY_COST_MASTER[gt] ?? 0) || 1;
   let q = 0;
   while (q < Math.min(2, tgt - have) && botCanAfford(L, cost)) {
     q++;
@@ -491,22 +542,39 @@ export function botGarrisonOrder(G, pi, prov, L) {
   }
   if (!q) return null;
   done[gt] = 1;
-  return { action: 'recruit', target: `${gt}|${q},to:garrison`, extra: '', desc: `Garrison ${prov.name} (${q})` };
+  return {
+    action: 'recruit',
+    target: `${gt}|${String(q)},to:garrison`,
+    extra: '',
+    desc: `Garrison ${prov.name} (${String(q)})`,
+  };
 }
 // FIELD RECRUITMENT — one Recruit order packing the strongest affordable, sustainable field units
 // this province offers (2 of a type where tax>=10 allows). Navy first when there is a naval reason
 // here.
 // 2026-09-28 (Toby): troops raised for the ADMIRAL or the FLYING GENERAL are paid from their own wage cap
 // (L.nav / L.air, see botLedger) — the ledger's ceiling is swapped for the pool's while the muster runs.
-export function botRecruitCmdr(G, pi, c) {
-  if (c && (c._botRole === 'admiral' || c._botRole === 'skygeneral')) return c;
+export function botRecruitCmdr(G: GameState, pi: number, c: Character) {
+  if (asItsGuardReadsIt(c) && (c._botRole === 'admiral' || c._botRole === 'skygeneral')) return c;
   return (
-    (G.characters || []).find(
-      (l) => l && l.alive && l.player === pi && l.id !== c.id && l.location === c.location && botIsLeader(G, pi, l.id),
-    ) || c
+    (asItsGuardReadsIt(G.characters) ?? []).find(
+      (l) =>
+        asItsGuardReadsIt(l) &&
+        l.alive &&
+        l.player === pi &&
+        l.id !== c.id &&
+        l.location === c.location &&
+        botIsLeader(G, pi, l.id),
+    ) ?? c
   );
 }
-export function botFieldRecruitTokens(G, pi, c, prov, L) {
+export function botFieldRecruitTokens(
+  G: GameState,
+  pi: number,
+  c: Character,
+  prov: Province | null | undefined,
+  L: ABotRealmsLedger,
+) {
   const cm = botRecruitCmdr(G, pi, c);
   const pool = cm._botRole === 'admiral' ? L.nav : cm._botRole === 'skygeneral' ? L.air : null;
   if (!pool) return botFieldRecruitTokensCore(G, pi, c, prov, L);
@@ -522,9 +590,16 @@ export function botFieldRecruitTokens(G, pi, c, prov, L) {
     L.upkeepCap = sc;
   }
 }
-export function botFieldRecruitTokensCore(G, pi, c, prov, L) {
-  if (!prov || !prov.armyTypes || prov.owner !== pi) return [];
-  const done = (L.recruitedByProv[prov.id] = L.recruitedByProv[prov.id] || {});
+export function botFieldRecruitTokensCore(
+  G: GameState,
+  pi: number,
+  c: Character,
+  prov: Province | null | undefined,
+  L: ABotRealmsLedger,
+) {
+  if (!prov || !asItsGuardReadsIt(prov.armyTypes) || prov.owner !== pi) return [];
+  const done = L.recruitedByProv[prov.id] ?? {};
+  L.recruitedByProv[prov.id] = done;
   const perTypeLimit = L.upkeepCap - L.upkeep >= 12 ? 3 : prov.tax >= 10 || L.budget >= 20 ? 2 : 1; // Sept 2026 (§99): the ledger showed 17g of unused wage ceiling per turn with few holders in recruit provinces — a wide ceiling buys three of a kind
   const tokens = [];
   const fleetType = botCoastalFleetType(prov);
@@ -534,8 +609,8 @@ export function botFieldRecruitTokensCore(G, pi, c, prov, L) {
   const cmdr = botRecruitCmdr(G, pi, c); // who will lead these recruits (the admiral / flying general raise for themselves)
   const adm = cmdr._botRole === 'admiral';
   const sky = cmdr._botRole === 'skygeneral';
-  const D = L.diag || {};
-  D.calls = (D.calls || 0) + 1;
+  const D = L.diag ?? {};
+  D.calls = (D.calls ?? 0) + 1;
   const _navalNeed =
     fleetType &&
     !sky &&
@@ -545,45 +620,58 @@ export function botFieldRecruitTokensCore(G, pi, c, prov, L) {
   // 2026-09-26 (item 1): the cap starts at three hulls and grows a hull per three land provinces (was 2 + land/4).
   const hullCap = adm ? Math.min(10, 3 + Math.floor(botLandCount(G, pi) / 3)) : 3;
   if (_navalNeed && !done[fleetType] && botFleetHullCount(G, pi) < hullCap) {
-    const cost = ARMY_COST_MASTER[fleetType] || 3;
+    const cost = (ARMY_COST_MASTER[fleetType] ?? 0) || 3;
     let q = 0;
-    const myHulls = (cmdr.armies || []).filter((a) => a && BOT_CARRIER_TYPES.has(a.type)).length,
-      myLand = (cmdr.armies || []).filter((a) => a && botLiftable(a.type) && !BOT_SEA_ALL.has(a.type)).length;
+    const myHulls = (asItsGuardReadsIt(cmdr.armies) ?? []).filter(
+        (a) => asItsGuardReadsIt(a) && BOT_CARRIER_TYPES.has(a.type),
+      ).length,
+      myLand = (asItsGuardReadsIt(cmdr.armies) ?? []).filter(
+        (a) => asItsGuardReadsIt(a) && botLiftable(a.type) && !BOT_SEA_ALL.has(a.type),
+      ).length;
     const wantHulls = adm ? Math.max(1, Math.min(hullCap - botFleetHullCount(G, pi), myLand + 1 - myHulls)) : 1;
     while (q < wantHulls && botCanAfford(L, cost)) {
       q++;
       botSpend(L, cost);
     }
     if (q > 0) {
-      tokens.push(`${fleetType}|${q}`);
+      tokens.push(`${fleetType}|${String(q)}`);
       done[fleetType] = 1;
     }
   }
   const hold =
-    adm || sky ? 0 : (c._botRole === 'defender' ? 0 : L.defReserve || 0) + (L.navReserve || 0) + (L.airReserve || 0); // the defenders' share (see botLedger); the navy / air pay from their own caps
-  const canAff = (cost) => botCanAfford(L, cost) && L.upkeep + cost <= L.upkeepCap - hold;
+    adm || sky
+      ? 0
+      : (c._botRole === 'defender' ? 0 : Number(L.defReserve) || 0) +
+        (Number(L.navReserve) || 0) +
+        (Number(L.airReserve) || 0); // the defenders' share (see botLedger); the navy / air pay from their own caps
+  const canAff = (cost: number) => botCanAfford(L, cost) && L.upkeep + cost <= L.upkeepCap - hold;
   // the admiral fills his berths with the most effective LIFTABLE units the port raises, never more than the hulls carry
   let berths = adm
-    ? (cmdr.armies || []).filter((a) => a && BOT_CARRIER_TYPES.has(a.type)).length +
-      tokens.reduce((s, tk) => s + (BOT_CARRIER_TYPES.has(tk.split('|')[0]) ? +tk.split('|')[1] : 0), 0) -
-      (cmdr.armies || []).filter((a) => a && botLiftable(a.type) && !BOT_SEA_ALL.has(a.type)).length
+    ? (asItsGuardReadsIt(cmdr.armies) ?? []).filter((a) => asItsGuardReadsIt(a) && BOT_CARRIER_TYPES.has(a.type))
+        .length +
+      tokens.reduce((s, tk) => s + (BOT_CARRIER_TYPES.has(tk.split('|')[0] ?? '') ? Number(tk.split('|')[1]) : 0), 0) -
+      (asItsGuardReadsIt(cmdr.armies) ?? []).filter(
+        (a) => asItsGuardReadsIt(a) && botLiftable(a.type) && !BOT_SEA_ALL.has(a.type),
+      ).length
     : 99;
   const kinds = botRecruitableTypes(prov, G, cmdr);
   if (!kinds.length) {
-    const landKinds = (prov.armyTypes || []).filter((t) => t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t));
-    if (landKinds.length) D.noKin = (D.noKin || 0) + 1;
-    else D.noTypes = (D.noTypes || 0) + 1;
+    const landKinds = (asItsGuardReadsIt(prov.armyTypes) ?? []).filter(
+      (t) => asItsGuardReadsIt(t) && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t),
+    );
+    if (landKinds.length) D.noKin = (D.noKin ?? 0) + 1;
+    else D.noTypes = (D.noTypes ?? 0) + 1;
   }
   // 2026-09-26 (Toby item 8): the FLYING GENERAL musters an airborne column — the province's humanoid flyers
   // first (they fly and each carries one foot soldier), then liftable foot up to the number of flyers he
   // will have; nothing that would ground the column (horses, hulls, creatures, monsters).
   if (sky) {
     const ft = botFlyerType(prov);
-    const have = cmdr.armies || [];
-    let flyers = have.filter((a) => a && BOT_FLYING_TYPES.has(a.type)).length,
-      foot = have.filter((a) => a && botLiftable(a.type) && !BOT_SEA_ALL.has(a.type)).length;
+    const have = asItsGuardReadsIt(cmdr.armies) ?? [];
+    let flyers = have.filter((a) => asItsGuardReadsIt(a) && BOT_FLYING_TYPES.has(a.type)).length,
+      foot = have.filter((a) => asItsGuardReadsIt(a) && botLiftable(a.type) && !BOT_SEA_ALL.has(a.type)).length;
     if (ft && !done[ft]) {
-      const cost = ARMY_COST_MASTER[ft] || 4;
+      const cost = (ARMY_COST_MASTER[ft] ?? 0) || 4;
       let q = 0;
       const wantF = Math.max(1, Math.min(perTypeLimit, foot + 1 - flyers));
       while (q < wantF && canAff(cost)) {
@@ -592,16 +680,16 @@ export function botFieldRecruitTokensCore(G, pi, c, prov, L) {
         flyers++;
       }
       if (q > 0) {
-        tokens.push(`${ft}|${q}`);
+        tokens.push(`${ft}|${String(q)}`);
         done[ft] = 1;
-        D.tokens = (D.tokens || 0) + q;
+        D.tokens = (D.tokens ?? 0) + q;
       }
     }
     for (const t of kinds) {
       if (done[t] || BOT_FLYING_TYPES.has(t) || !botLiftable(t) || BOT_SEA_ALL.has(t)) continue;
       if (foot >= flyers) break;
       if (!canAff(1)) break;
-      const cost = ARMY_COST_MASTER[t] || 2;
+      const cost = (ARMY_COST_MASTER[t] ?? 0) || 2;
       let q = 0;
       while (q < perTypeLimit && foot < flyers && canAff(cost)) {
         q++;
@@ -609,9 +697,9 @@ export function botFieldRecruitTokensCore(G, pi, c, prov, L) {
         foot++;
       }
       if (q > 0) {
-        tokens.push(`${t}|${q}`);
+        tokens.push(`${t}|${String(q)}`);
         done[t] = 1;
-        D.tokens = (D.tokens || 0) + q;
+        D.tokens = (D.tokens ?? 0) + q;
       }
     }
     return tokens;
@@ -619,12 +707,12 @@ export function botFieldRecruitTokensCore(G, pi, c, prov, L) {
   for (const t of kinds) {
     if (done[t]) continue;
     if (!canAff(1)) {
-      if (L.budget < 1) D.budgetStop = (D.budgetStop || 0) + 1;
-      else D.capStop = (D.capStop || 0) + 1;
+      if (L.budget < 1) D.budgetStop = (D.budgetStop ?? 0) + 1;
+      else D.capStop = (D.capStop ?? 0) + 1;
       break;
     }
     if (adm && (!botLiftable(t) || berths <= 0)) continue;
-    const cost = ARMY_COST_MASTER[t] || 2;
+    const cost = (ARMY_COST_MASTER[t] ?? 0) || 2;
     let q = 0;
     while (q < perTypeLimit && canAff(cost) && (!adm || berths > 0)) {
       q++;
@@ -632,27 +720,29 @@ export function botFieldRecruitTokensCore(G, pi, c, prov, L) {
       if (adm) berths--;
     }
     if (q > 0) {
-      tokens.push(`${t}|${q}`);
+      tokens.push(`${t}|${String(q)}`);
       done[t] = 1;
-      D.tokens = (D.tokens || 0) + q;
+      D.tokens = (D.tokens ?? 0) + q;
     }
   }
   return tokens;
 }
-export function botRecruitOrder(tokens, destId) {
+export function botRecruitOrder(tokens: readonly string[], destId: number | null | undefined) {
   if (!tokens.length) return null;
-  const n = tokens.reduce((s, tk) => s + parseInt(tk.split('|')[1] || 1), 0);
+  const n = tokens.reduce((s, tk) => s + parseInt((tk.split('|')[1] ?? '') || '1'), 0);
   return {
     action: 'recruit',
-    target: tokens.join(',') + (destId != null ? `,to:${destId}` : ''),
+    target: tokens.join(',') + (destId != null ? `,to:${String(destId)}` : ''),
     extra: '',
-    desc: 'Recruit ' + n + ' unit' + (n > 1 ? 's' : ''),
+    desc: 'Recruit ' + String(n) + ' unit' + (n > 1 ? 's' : ''),
   };
 }
-export function botHeroCap(G, pi) {
-  const land = (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea').length;
-  const pl = (G.players || [])[pi] || {};
-  return 4 + land + (pl.alignment === 'Neutral' ? 1 : 0) + ((pl.gold || 0) > 30 ? 2 : 0);
+export function botHeroCap(G: GameState, pi: number) {
+  const land = (asItsGuardReadsIt(G.world.provinces) ?? []).filter(
+    (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea',
+  ).length;
+  const pl = (asItsGuardReadsIt(G.players) ?? [])[pi];
+  return 4 + land + (pl?.alignment === 'Neutral' ? 1 : 0) + ((Number(pl?.gold) || 0) > 30 ? 2 : 0);
 } // Sept 2026 (Toby): hire as much as possible   // §94: a fat chest hires two more   // Neutral: wages capped at 3g, so the widest court   // more heroes = more actions (was 2+land/2)
 // 2026-09-28 (Toby, option 1): a SLAYER must be a fighter — Melee or Archery 2+. While the realm has no fighting
 // slayer, a wandering fighter is worth two hops more than any other wanderer (seek / broker choices).
@@ -660,46 +750,49 @@ export function botHeroCap(G, pi) {
 // 2026-09-28: 2.5× the clears per slayer, but 60% fewer slayers and −14% lairs cleared overall (the trainee
 // slayers grow into hunters and are the group-practice partners), so it ships OFF; the hiring preference stays on.
 export const BOT_SLAYER_FIGHTERS_ONLY = false;
-export function botIsFighter(h) {
-  const s = (h && h.skills) || {};
-  return (s.melee || 0) >= 2 || (s.archery || 0) >= 2;
+export function botIsFighter(h: Character | null | undefined) {
+  const s = h?.skills ?? {};
+  return (Number(s.melee) || 0) >= 2 || (Number(s.archery) || 0) >= 2;
 }
-export function botNeedsSlayer(G, pi) {
-  return !(G.characters || []).some(
-    (c) => c && c.alive && c.player === pi && c._botRole === 'slayer' && botIsFighter(c),
+export function botNeedsSlayer(G: GameState, pi: number) {
+  return !(asItsGuardReadsIt(G.characters) ?? []).some(
+    (c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && c._botRole === 'slayer' && botIsFighter(c),
   );
 }
-export function botHireBias(G, pi, h) {
+export function botHireBias(G: GameState, pi: number, h: Character) {
   return botIsFighter(h) && botNeedsSlayer(G, pi) ? 2 : 0;
 }
-export function botHireOrder(G, pi, c, L) {
-  L.hired = L.hired || new Set(); // one claimant per wanderer per turn
+export function botHireOrder(G: GameState, pi: number, c: Character, L: ABotRealmsLedger) {
+  const hired = L.hired ?? new Set<number>();
+  L.hired = hired; // one claimant per wanderer per turn
   // botSeesChar — a hero standing beside our own character is normally plainly visible, but one who
   // moved in unspotted, is Invisible or wears a Cloak of Many Faces is not, and the human's Hire
   // list would not offer them either.
-  const hh = (G.characters || []).find(
+  const hh = (asItsGuardReadsIt(G.characters) ?? []).find(
     (h) =>
-      h &&
+      asItsGuardReadsIt(h) &&
       h.alive &&
       h.player === null &&
       h.location === c.location &&
       !h._isNeutralGuard &&
       !h._justDefeated &&
-      !L.hired.has(h.id) &&
+      !hired.has(h.id) &&
       botSeesChar(G, pi, h) &&
-      heroHireWage((G.players[pi] || {}).alignment || 'Neutral', h.alignment, false, h) != null,
+      heroHireWage((G.players[pi]?.alignment ?? '') || 'Neutral', h.alignment, false, h) != null,
   );
   if (!hh) return null;
   // Self-play finding: an uncapped court (15 heroes, no army) ate the whole wage budget. Cap heroes
   // to the realm's size so wages stay with the field army.
-  const heroes = (G.characters || []).filter((x) => x && x.alive && x.player === pi && !x.isKing && !x._isHeir).length;
+  const heroes = (asItsGuardReadsIt(G.characters) ?? []).filter(
+    (x) => asItsGuardReadsIt(x) && x.alive && x.player === pi && !x.isKing && !x._isHeir,
+  ).length;
   if (heroes >= botHeroCap(G, pi)) return null;
-  const wage = heroHireWage((G.players[pi] || {}).alignment || 'Neutral', hh.alignment, false, hh);
+  const wage = heroHireWage((G.players[pi]?.alignment ?? '') || 'Neutral', hh.alignment, false, hh);
   // a hero's wage (1–3g) is paid from the chest and no longer competes with troops for the upkeep
   // cap — bots try to hire at least one wanderer every turn they can reach one.
   if (wage == null || L.budget < wage) return null;
   botSpend(L, wage);
-  L.hired.add(hh.id);
+  hired.add(hh.id);
   return { action: 'hire', target: String(hh.id), extra: '', desc: 'Hire ' + hh.name };
 }
 // ══ SHARED BY THE BOTS' PASSES ════
@@ -709,34 +802,41 @@ export function botHireOrder(G, pi, c, L) {
 // (their armies) plus any standing garrison. An undefended enemy province reads 0 → walked in freely.
 // `viewerPi` is the realm doing the looking. Without sight of the province it gets the wealth-band
 // guess, never the true garrison.
-export function botEnemyDefence(G, prov, ownerPi, viewerPi) {
+export function botEnemyDefence(
+  G: GameState,
+  prov: Province | null | undefined,
+  ownerPi: number | null,
+  viewerPi: number | null | undefined,
+) {
   if (!prov) return 0;
   if (viewerPi != null && !botSees(G, viewerPi, prov.id)) return botGuessDefence(G, viewerPi, prov) / BOT_DEF_BONUS;
   let s = 0;
   const pool =
     viewerPi != null
       ? botVisibleCharsIn(G, viewerPi, prov)
-      : (prov.characters || []).map((id) => (G.characters || []).find((x) => x && x.id === id)).filter(Boolean);
+      : (asItsGuardReadsIt(prov.characters) ?? [])
+          .map((id) => (asItsGuardReadsIt(G.characters) ?? []).find((x) => asItsGuardReadsIt(x) && x.id === id))
+          .filter(Boolean);
   pool.forEach((c) => {
-    if (c && c.alive && c.player === ownerPi) s += botEffForce(G, c);
+    if (c && c.alive && c.player === ownerPi) s += botEffForce(G, c, undefined);
   });
-  (prov.garrisonArmies || []).forEach((a) => {
+  (asItsGuardReadsIt(prov.garrisonArmies) ?? []).forEach((a) => {
     s += unitBaseStrength(a);
   });
   return s;
 }
 // A province worth defending: the bot's home capital, or Rich land (tax ≥ 7). Marginal frontier
 // provinces are not worth freezing a field army over — they can be lost and retaken.
-export function botIsValuable(G, prov, pi) {
+export function botIsValuable(G: GameState, prov: Province | null | undefined, pi: number) {
   if (!prov) return false;
-  const home = (G.players[pi] || {}).homeProvinceId;
+  const home = G.players[pi]?.homeProvinceId;
   return prov.id === home || (prov.tax || 0) >= BOT_TUNING.valuableTax;
 }
 // How under-defended an owned province is RIGHT NOW: (strongest at-war enemy force adjacent to it)
 // minus (its own defenders + garrison). >0 means an enemy on its border could take it as it stands
 // — a candidate to reinforce. 0 means adequately held (or unthreatened).
-export function botDefenceNeed(G, prov, pi) {
-  if (!prov || prov.owner !== pi) return 0;
+export function botDefenceNeed(G: GameState, prov: Province | null | undefined, pi: number) {
+  if (prov?.owner !== pi) return 0;
   let threat = 0;
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, prov, i);
@@ -753,11 +853,11 @@ export function botDefenceNeed(G, prov, pi) {
   }
   if (threat <= 0) return 0;
   let def = 0;
-  (prov.characters || []).forEach((id) => {
-    const f = (G.characters || []).find((x) => x && x.id === id);
+  (asItsGuardReadsIt(prov.characters) ?? []).forEach((id) => {
+    const f = (asItsGuardReadsIt(G.characters) ?? []).find((x) => asItsGuardReadsIt(x) && x.id === id);
     if (f && f.alive && f.player === pi) def += botForceStrength(f.armies);
   });
-  (prov.garrisonArmies || []).forEach((a) => {
+  (asItsGuardReadsIt(prov.garrisonArmies) ?? []).forEach((a) => {
     def += unitBaseStrength(a);
   });
   return Math.max(0, threat - def);
@@ -768,47 +868,49 @@ export const BOT_CREATURE_ARMIES = new Set(KC_UNIT_CLASS.creature);
 export const BOT_CAVALRY_TYPES = new Set(KC_UNIT_CLASS.cavalry);
 // only the enemy characters this realm can actually see. On ground it cannot see into, the answer
 // is honestly empty — the bot then judges the province on its wealth-band guess alone.
-export function botEnemyChars(G, prov, pi) {
+export function botEnemyChars(G: GameState, prov: Province | null | undefined, pi: number) {
   let force = 0,
     value = 0,
     hasKing = false,
     units = 0;
   botVisibleCharsIn(G, pi, prov).forEach((e) => {
     if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy') {
-      force += botEffForce(G, e);
+      force += botEffForce(G, e, undefined);
       value += e.isKing ? 50 : 15;
       if (e.isKing) hasKing = true;
-      units += (e.armies || []).length;
+      units += (asItsGuardReadsIt(e.armies) ?? []).length;
     }
   });
   return { force, value, hasKing, units };
 }
 // ── Raise the fallen: the bodies this realm may raise (bots/movement.ts says the rule) ──
-export function botRaiseTargets(G, pi) {
-  const p = (G.players || [])[pi] || {};
-  const known = new Set(p.knownDeadHeroIds || []);
-  return (G.heroGraveyard || [])
+export function botRaiseTargets(G: GameState, pi: number) {
+  const p = (asItsGuardReadsIt(G.players) ?? [])[pi];
+  const known = new Set(p?.knownDeadHeroIds ?? []);
+  return (asItsGuardReadsIt(G.heroGraveyard) ?? [])
     .filter((g) => {
-      if (!g) return false;
-      if (g._monarch) return g.player === pi && p._resurrectableMonarchId === g.id;
+      if (!asItsGuardReadsIt(g)) return false;
+      if (g._monarch) return g.player === pi && p?._resurrectableMonarchId === g.id;
       return (
         !g.isKing &&
         g.player === pi &&
         known.has(g.id) &&
         !graveServedOther(g, pi) &&
-        !(G.characters || []).some((c) => c && c.id === g.id && c.alive)
+        !(asItsGuardReadsIt(G.characters) ?? []).some((c) => asItsGuardReadsIt(c) && c.id === g.id && c.alive)
       );
     })
     .map((g) => ({
       g,
       loc: g.location,
-      val: (g._monarch ? 100 : 0) + Object.values(g.skills || {}).reduce((a, b) => a + (b || 0), 0),
+      val:
+        (g._monarch ? 100 : 0) +
+        Object.values(theSkillsOfTheGrave(g)).reduce((a: number, b) => a + (Number(b) || 0), 0),
     }))
-    .filter((x) => x.loc != null)
+    .filter((x) => asItsGuardReadsIt(x.loc) != null)
     .sort((a, b) => b.val - a.val);
 }
 // ── Spellcraft: the engine's per-school cap on casts each turn (bots/spellcraft.ts) ──
-export function botSchoolLimit(lvl) {
+export function botSchoolLimit(lvl: number) {
   return actionSpellsAllowedPerSchoolEachTurn(lvl);
 }
 // ── The phase-one pass's tuning, and whether a host is in contact (bots/phase-one.ts says the pass) ──
@@ -835,17 +937,20 @@ export const BOT_P1 = {
   gainSpell: new Set([theNameOfTheSpell('elemental-summon'), theNameOfTheSpell('skeletal-armies')]),
   reloc: new Set(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']),
 };
-export function botEnemyHostsIn(G, pi, X) {
+export function botEnemyHostsIn(G: GameState, pi: number, X: Province | null | undefined) {
   return X
     ? botVisibleCharsIn(G, pi, X).filter(
         (e) =>
-          e.player != null && e.player !== pi && (e.armies || []).length && botRelationRaw(G, pi, e.player) === 'enemy',
+          e.player != null &&
+          e.player !== pi &&
+          (asItsGuardReadsIt(e.armies) ?? []).length &&
+          botRelationRaw(G, pi, e.player) === 'enemy',
       )
     : [];
 }
 // A host in CONTACT: battle running here, a visible at-war host here or next door, or standing on enemy ground.
-export function botInContact(G, pi, c) {
-  if (!c || !(c.armies || []).length) return false;
+export function botInContact(G: GameState, pi: number, c: Character | null | undefined) {
+  if (!c || !(asItsGuardReadsIt(c.armies) ?? []).length) return false;
   const P = G.world.provinces[c.location];
   if (!P) return false;
   if (P._battleUnresolved || botEnemyHostsIn(G, pi, P).length) return true;
@@ -858,31 +963,36 @@ export function botInContact(G, pi, c) {
 }
 // ── The economy pass's helpers: what a province can raise, wages and taxes (bots/economy.ts says the pass) ──
 export const BOT_NAVAL_TYPES = new Set(KC_UNIT_CLASS.sea);
-export function botRecruitableTypes(prov, G, cmdr) {
+export function botRecruitableTypes(
+  prov: Province,
+  G: GameState | null | undefined,
+  cmdr: Character | null | undefined,
+) {
   // rank by the strength the intended COMMANDER gets out of the unit (Druid shortfall applied, race
   // = the province's race as the engine assigns it), not the raw table value — a Druid-0 king
   // buying Cave Trolls at −60% was throwing gold away.
-  const effOf = (t) => {
-    const base = UNIT_BASE_STR[t] || 4;
+  const effOf = (t: string) => {
+    const base = (UNIT_BASE_STR[t] ?? 0) || 4;
     if (!G || !cmdr) return base;
-    const align = (cmdr.player != null ? ((G.players || [])[cmdr.player] || {}).alignment : null) || 'Neutral';
-    const theRealm = cmdr.player != null ? (G.players || [])[cmdr.player] : null;
-    let m = 1;
+    const align =
+      (cmdr.player != null ? ((asItsGuardReadsIt(G.players) ?? [])[cmdr.player]?.alignment ?? '') : '') || 'Neutral';
+    const theRealm = cmdr.player != null ? (asItsGuardReadsIt(G.players) ?? [])[cmdr.player] : null;
+    let m: number;
     try {
       m = druIdPenaltyMult(
         cmdr,
-        { type: t, race: prov.race || 'Human' },
+        { type: t, race: (prov.race ?? '') || 'Human' },
         align,
         aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: t }),
         G.characters,
       );
-    } catch (e) {
+    } catch {
       m = 1;
     }
     // Sept 2026: kinship / grudge for THIS commander, and the unconditional fervour an Evil (Monster) realm
     // gets from the unit — an Orc lord buying human levies at −20% was paying full price. (The Druidic
     // ×1.25, Wild Ferocity, was retired 2026-10-13.)
-    m *= botRaceTerrainMult(G, cmdr, { type: t, race: prov.race || 'Human' }, null, false, cmdr.player);
+    m *= botRaceTerrainMult(G, cmdr, { type: t, race: (prov.race ?? '') || 'Human' }, null, false, cmdr.player);
     if (align === 'Evil' && BOT_MONSTER_ARMIES.has(t)) m *= 1.25;
     return base * m;
   };
@@ -890,107 +1000,111 @@ export function botRecruitableTypes(prov, G, cmdr) {
   // troops of the grudge race (Elf↔Dwarf, Human↔Orc: −20% under him) while any other muster is possible — a
   // grudge-race province yields nothing to that commander; the feeder pipeline brings him kin instead.
   if (G && cmdr) {
-    const RIV = { ...KC_RIVAL_RACE };
-    const pr = prov.race || 'Human';
-    if (cmdr.race && RIV[pr] === cmdr.race && !String(pr).startsWith('Primal')) {
+    const RIV: Partial<Record<string, string>> = { ...KC_RIVAL_RACE };
+    const pr = (prov.race ?? '') || 'Human';
+    if (cmdr.race && RIV[pr] === cmdr.race && !pr.startsWith('Primal')) {
       const pi2 = cmdr.player;
-      const near = (G.world.provinces || []).some(
+      const near = (asItsGuardReadsIt(G.world.provinces) ?? []).some(
         (x) =>
-          x &&
+          asItsGuardReadsIt(x) &&
           x.owner === pi2 &&
           x.id !== prov.id &&
           x.terrain !== 'sea' &&
-          (x.armyTypes || []).some((t) => t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) &&
-          RIV[x.race || 'Human'] !== cmdr.race &&
-          (botPathLen(G, pi2, prov, x.id, false) || 99) <= 2,
+          (asItsGuardReadsIt(x.armyTypes) ?? []).some(
+            (t) => asItsGuardReadsIt(t) && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t),
+          ) &&
+          RIV[(x.race ?? '') || 'Human'] !== cmdr.race &&
+          ((botPathLen(G, pi2, prov, x.id, false) ?? 0) || 99) <= 2,
       );
       if (near) return [];
     }
   } // "when possible": only while kin can be raised within two hops
-  const all = (prov.armyTypes || [])
-    .filter((t) => t && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) // land field units only (v1)
+  const all = (asItsGuardReadsIt(prov.armyTypes) ?? [])
+    .filter((t) => asItsGuardReadsIt(t) && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) // land field units only (v1)
     .sort((a, b) => effOf(b) - effOf(a)); // strongest FOR THIS COMMANDER first (kinship already in effOf)
   // Sept 2026 (bot strategy): a speed-1 unit (Mountain Guns, Stone Giants…) pins the whole host to
   // one hop a turn, which costs far more conquest than its strength buys. Skip them when anything
   // else exists.
-  if (cmdr && cmdr._botRole === 'defender') return all; // a posted defender never marches: Mountain Guns are welcome
-  const mobile = all.filter((t) => (ARMY_SPEED_MASTER[t] || 3) >= 2);
+  if (cmdr?._botRole === 'defender') return all; // a posted defender never marches: Mountain Guns are welcome
+  const mobile = all.filter((t) => ((ARMY_SPEED_MASTER[t] ?? 0) || 3) >= 2);
   return mobile.length ? mobile : all;
 }
-export function botUpkeep(G, pi) {
+export function botUpkeep(G: GameState, pi: number) {
   let w = 0;
-  (G.characters || []).forEach((c) => {
-    if (c && c.alive && c.player === pi)
-      (c.armies || []).forEach((a) => {
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+    if (asItsGuardReadsIt(c) && c.alive && c.player === pi)
+      (asItsGuardReadsIt(c.armies) ?? []).forEach((a: AUnitAsTheWagesReadIt) => {
         if (a._temporary || a._wildHuntUntilTurn != null) return;
-        w += a._isSkeletal ? 1 : ARMY_COST_MASTER[a.type] || 2;
+        w += a._isSkeletal ? 1 : (ARMY_COST_MASTER[a.type] ?? 0) || 2;
       });
   });
   // Sept 2026: garrison units draw wages too (the engine bills them alongside field armies) — the
   // solvency guard must see them now that bots garrison every province.
-  (G.world.provinces || []).forEach((p) => {
-    if (p && p.owner === pi)
-      (p.garrisonArmies || []).forEach((a) => {
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((p) => {
+    if (asItsGuardReadsIt(p) && p.owner === pi)
+      (asItsGuardReadsIt(p.garrisonArmies) ?? []).forEach((a: AUnitAsTheWagesReadIt) => {
         if (a._temporary || a._wildHuntUntilTurn != null) return;
-        w += a._isSkeletal ? 1 : ARMY_COST_MASTER[a.type] || 2;
+        w += a._isSkeletal ? 1 : (ARMY_COST_MASTER[a.type] ?? 0) || 2;
       });
   });
-  (G.characters || []).forEach((c) => {
-    if (c && c.alive && c.player === pi && !c.isKing) w += c.pay || 0;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+    if (asItsGuardReadsIt(c) && c.alive && c.player === pi && !c.isKing) w += c.pay || 0;
   }); // hero wages are real wages too
   return w;
 }
 // Its return type written for a typed caller (plan P1-10b36: what-a-spy-learns.ts' tax income of a king's home): every
 // path returns a number.
-export function botTaxIncome(G, pi): number {
+export function botTaxIncome(G: GameState, pi: number): number {
   let inc = 0;
-  (G.world.provinces || []).forEach((p) => {
-    if (p && p.owner === pi) inc += p.tax || 0;
+  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((p) => {
+    if (asItsGuardReadsIt(p) && p.owner === pi) inc += p.tax || 0;
   });
   return inc;
 }
 // ── ECONOMY helpers for the 2026-08 batch ────
 // is this bot AT WAR (any at-war relation with a live player)? At-war bots spend their treasury
 // down and raise their sustainable army ceiling to build for the fight.
-export function botAtWar(G, pi) {
-  return (G.players || []).some(
+export function botAtWar(G: GameState, pi: number) {
+  return (asItsGuardReadsIt(G.players) ?? []).some(
     (p, j) =>
       j !== pi &&
-      p &&
-      (G.characters || []).some((c) => c && c.alive && c.isKing && c.player === j) &&
+      asItsGuardReadsIt(p) &&
+      (asItsGuardReadsIt(G.characters) ?? []).some(
+        (c) => asItsGuardReadsIt(c) && c.alive && c.isKing && c.player === j,
+      ) &&
       botRelationRaw(G, pi, j) === 'enemy',
   );
 }
 // the biggest army stack (unit count) any at-war enemy is currently leading. Used to decide when to
 // go to a war footing and roughly how big an army to build toward.
-export function botMaxEnemyStack(G, pi) {
+export function botMaxEnemyStack(G: GameState, pi: number) {
   // the biggest host this realm has EYES ON, not the biggest in the world.
   let mx = 0;
-  (G.characters || []).forEach((c) => {
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
     if (
-      c &&
+      asItsGuardReadsIt(c) &&
       c.alive &&
       c.player != null &&
       c.player !== pi &&
       botRelationRaw(G, pi, c.player) === 'enemy' &&
       botSeesChar(G, pi, c)
     ) {
-      const n = (c.armies || []).length;
+      const n = (asItsGuardReadsIt(c.armies) ?? []).length;
       if (n > mx) mx = n;
     }
   });
   return mx;
 }
 // a CARRIER fleet type this province can raise (for sea conquest / troop transport), else null.
-export function botCoastalFleetType(prov) {
-  return (prov.armyTypes || []).find((t) => BOT_CARRIER_TYPES.has(t)) || null;
+export function botCoastalFleetType(prov: Province) {
+  return ((asItsGuardReadsIt(prov.armyTypes) ?? []).find((t) => BOT_CARRIER_TYPES.has(t)) ?? '') || null;
 }
 // Sept 2026: an at-war ENEMY coast one sea-hop from this province (the only naval reason worth a
 // fleet while land remains to conquer).
-export function botNavalEnemyCoast(G, prov, pi) {
+export function botNavalEnemyCoast(G: GameState, prov: Province, pi: number) {
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, prov, i);
-    if (!N || N.terrain !== 'sea') continue;
+    if (N?.terrain !== 'sea') continue;
     for (let j = 0; j < 6; j++) {
       const K = botNeighbourProv(G, N, j);
       const ko = botBelievedOwner(G, pi, K);
@@ -1001,12 +1115,12 @@ export function botNavalEnemyCoast(G, prov, pi) {
 }
 // how many fleet hulls the bot already leads across its whole roster (so it stops over-building
 // ships).
-export function botFleetHullCount(G, pi) {
+export function botFleetHullCount(G: GameState, pi: number) {
   let h = 0;
-  (G.characters || []).forEach((c) => {
-    if (c && c.alive && c.player === pi)
-      (c.armies || []).forEach((a) => {
-        if (a && BOT_CARRIER_TYPES.has(a.type)) h++;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
+    if (asItsGuardReadsIt(c) && c.alive && c.player === pi)
+      (asItsGuardReadsIt(c.armies) ?? []).forEach((a) => {
+        if (asItsGuardReadsIt(a) && BOT_CARRIER_TYPES.has(a.type)) h++;
       });
   });
   return h;
@@ -1014,38 +1128,58 @@ export function botFleetHullCount(G, pi) {
 // ── The specialists' pass's helpers (bots/specialists.ts says the pass): the specialist roles, a character's magic, the
 // realm's land, the drill and the role skill, contact, a march's orders, the pathing and the frontier ──
 export const BOT_SPECIALIST_ROLES = new Set(Object.keys(BOT_SPECIALIST_SKILLS));
-export function botMagicScore(c) {
-  const s = c.skills || {};
-  return (s.elemental || 0) + (s.necromancy || 0) + (s.psychic || 0) + (s.illusory || 0) + (s.white || 0);
+export function botMagicScore(c: Character) {
+  const s = asItsGuardReadsIt(c.skills) ?? {};
+  return (
+    (Number(s.elemental) || 0) +
+    (Number(s.necromancy) || 0) +
+    (Number(s.psychic) || 0) +
+    (Number(s.illusory) || 0) +
+    (Number(s.white) || 0)
+  );
 }
-export function botLandCount(G, pi) {
-  return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea').length;
+export function botLandCount(G: GameState, pi: number) {
+  return (asItsGuardReadsIt(G.world.provinces) ?? []).filter(
+    (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea',
+  ).length;
 }
 // DRILL: a commander leading 3+ land/air units practises Tactical in every spare phase (levels the
 // skill AND promotes unit quality); a fleet commander drills Naval. Else the phase is a Hold.
-export function botDrillOrder(G, pi, c) {
-  const land = (c.armies || []).filter((a) => a && !BOT_SEA_ALL.has(a.type) && !a._isSkeletal).length;
-  const sea = (c.armies || []).filter((a) => a && BOT_SEA_ALL.has(a.type)).length;
+export function botDrillOrder(G: GameState, pi: number, c: Character) {
+  const land = (asItsGuardReadsIt(c.armies) ?? []).filter(
+    (a) => asItsGuardReadsIt(a) && !BOT_SEA_ALL.has(a.type) && !a._isSkeletal,
+  ).length;
+  const sea = (asItsGuardReadsIt(c.armies) ?? []).filter((a) => asItsGuardReadsIt(a) && BOT_SEA_ALL.has(a.type)).length;
   // a commander whose host carries units he cannot lead cleanly trains DRUID before anything else —
   // every missing level is −20% on those units, which no amount of Tactical drill recovers.
-  if ((c.armies || []).length && ((c.skills || {}).druid || 0) < 5 && botDruidShortfall(G, c) > 0)
+  if (
+    (asItsGuardReadsIt(c.armies) ?? []).length &&
+    (Number(asItsGuardReadsIt(c.skills)?.druid) || 0) < 5 &&
+    botDruidShortfall(G, c, undefined) > 0
+  )
     return { action: 'practice', target: 'druid', extra: '', desc: 'Practice Druid (lead the host cleanly)' };
   // Sept 2026 (Toby): a general who cannot win a duel trains for one — his best of Melee / Archery / a battle
   // school — until it stands at 3; Tactical drill then resumes. He must be able to fight the duel his host invites.
-  if ((c.armies || []).length && botDuelSkill(c) < 3 && ((c.skills || {}).tactical || 0) >= 2) {
-    const s = c.skills || {};
-    const pick = [
-      ['melee', s.melee || 0],
-      ['archery', s.archery || 0],
-      ['elemental', s.elemental || 0],
-      ['necromancy', s.necromancy || 0],
-      ['psychic', s.psychic || 0],
-    ].sort((a, b) => b[1] - a[1])[0][0];
+  if (
+    (asItsGuardReadsIt(c.armies) ?? []).length &&
+    botDuelSkill(c) < 3 &&
+    (Number(asItsGuardReadsIt(c.skills)?.tactical) || 0) >= 2
+  ) {
+    const s = asItsGuardReadsIt(c.skills) ?? {};
+    const duelSkills: TheDuelSkillsAndTheirLevels = [
+      ['melee', Number(s.melee) || 0],
+      ['archery', Number(s.archery) || 0],
+      ['elemental', Number(s.elemental) || 0],
+      ['necromancy', Number(s.necromancy) || 0],
+      ['psychic', Number(s.psychic) || 0],
+    ];
+    const pick = duelSkills.sort((a, b) => b[1] - a[1])[0][0];
+    const labels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
     return {
       action: 'practice',
       target: pick,
       extra: '',
-      desc: 'Practice ' + (SKILL_LABELS[pick] || pick) + ' (fit for a duel)',
+      desc: 'Practice ' + ((labels[pick] ?? '') || pick) + ' (fit for a duel)',
     };
   }
   if (land >= 3)
@@ -1056,23 +1190,31 @@ export function botDrillOrder(G, pi, c) {
 // 2026-09-26 (study): an officer below his role's working level trains THAT skill in every filler phase — an
 // admiral to Naval 3. (The flying general trained Druid 3 while the winged riders were beasts; since 2026-10-11
 // they are soldiers of their race and need none.) Without this the explore-first filler left admirals at Naval 1.
-export function botRoleTrainSkill(c) {
-  const s = (c && c.skills) || {};
-  if (c._botRole === 'admiral' && (s.naval || 0) < 3) return 'naval';
+export function botRoleTrainSkill(c: Character) {
+  const s: Readonly<Partial<Record<string, number>>> = asItsGuardReadsIt(c.skills) ?? {};
+  if (c._botRole === 'admiral' && (Number(s['naval']) || 0) < 3) return 'naval';
   // 2026-09-26 (idea 8): the holder of a craft keeps at it to MASTERY 7 in his filler phases — Sabotage,
   // Grand Heist, Chart the Unknown, Research Breakthrough and the rest are level-7 orders nobody reached.
-  const k = { scholar: 'sage', scout: 'explorer', spy: 'spy', thief: 'thief' }[c._botRole];
-  if (k && (s[k] || 0) >= 5 && (s[k] || 0) < 7) return k;
+  const crafts: Readonly<Partial<Record<string, string>>> = {
+    scholar: 'sage',
+    scout: 'explorer',
+    spy: 'spy',
+    thief: 'thief',
+  };
+  const k = crafts[String(c._botRole)];
+  if (k && (Number(s[k]) || 0) >= 5 && (Number(s[k]) || 0) < 7) return k;
   return null;
 }
 // CONTACT: until another crown has been met — a non-neutral relation, or any other player's land or
 // armed character within 2 hexes of our own land — Defend watches are pointless.
-export function botHasMetPlayers(G, pi) {
+export function botHasMetPlayers(G: GameState, pi: number) {
   const cache = botTurnCache(G);
-  cache.met = cache.met || {};
-  if (cache.met[pi] != null) return cache.met[pi];
+  const metBefore = cache.met ?? {};
+  cache.met = metBefore;
+  const known = metBefore[pi];
+  if (known != null) return known;
   let met = false;
-  const rel = G.relations || {};
+  const rel = asItsGuardReadsIt(G.relations) ?? {};
   for (const k of Object.keys(rel)) {
     if (rel[k] !== 'neutral' && k.split('-').map(Number).includes(pi)) {
       met = true;
@@ -1085,23 +1227,23 @@ export function botHasMetPlayers(G, pi) {
   // test measured raw hex distance to any rival province or host, so a bot knew it had neighbours
   // before it had seen one.
   if (!met) {
-    met = (((G.players || [])[pi] || {})._encountered || []).length > 0;
+    met = ((asItsGuardReadsIt(G.players) ?? [])[pi]?._encountered ?? []).length > 0;
   }
-  cache.met[pi] = met;
+  metBefore[pi] = met;
   return met;
 }
 // A non-allied player's armed host within 2 hexes of this character — reason for an early watch.
-export function botNearbyThreat(G, pi, c) {
+export function botNearbyThreat(G: GameState, pi: number, c: Character) {
   const P = G.world.provinces[c.location];
   if (!P) return false;
   // a host two hexes away sets a watch only if the realm can see it standing there.
-  return (G.characters || []).some(
+  return (asItsGuardReadsIt(G.characters) ?? []).some(
     (e) =>
-      e &&
+      asItsGuardReadsIt(e) &&
       e.alive &&
       e.player != null &&
       e.player !== pi &&
-      (e.armies || []).length &&
+      (asItsGuardReadsIt(e.armies) ?? []).length &&
       botRelationRaw(G, pi, e.player) !== 'allied' &&
       botSeesChar(G, pi, e) &&
       (() => {
@@ -1110,24 +1252,33 @@ export function botNearbyThreat(G, pi, c) {
       })(),
   );
 }
-export const botMoveOrder = (dirIdx, desc) => ({
+export const botMoveOrder = (dirIdx: number, desc?: string) => ({
   action: 'move',
-  target: 'dir:' + BOT_HEX_DIRS[dirIdx],
+  target: 'dir:' + String(BOT_HEX_DIRS[dirIdx]),
   extra: '',
-  desc: desc || 'Advance',
+  desc: (desc ?? '') || 'Advance',
 });
 // PATHING — shortest march from `from` to province `toId` through passable land (own/allied); the
 // destination itself may be anything. Returns up to maxHops direction indices, or null if
 // unreachable.
-export function botPathDirs(G, pi, from, toId, maxHops, unarmed) {
+export function botPathDirs(
+  G: GameState,
+  pi: number | null,
+  from: Province | null | undefined,
+  toId: number | null | undefined,
+  maxHops: number,
+  unarmed?: boolean,
+) {
   if (!from || toId == null || from.id === toId) return [];
-  const prev = {};
+  const prev: Partial<Record<number, number | null>> = {};
   prev[from.id] = null;
-  const dirOf = {};
-  const q = [from];
-  const passable = (N) => botPassable(G, pi, N) || (unarmed && N && N.terrain !== 'sea' && N.owner == null);
+  const dirOf: Partial<Record<number, number>> = {};
+  const q: Province[] = [from];
+  const passable = (N: Province) =>
+    botPassable(G, pi, N) || (unarmed && asItsGuardReadsIt(N) && N.terrain !== 'sea' && N.owner == null);
   while (q.length) {
     const cur = q.shift();
+    if (cur === undefined) break; // the loop's test has made sure of one
     let found = false;
     for (let i = 0; i < 6; i++) {
       const N = botNeighbourProv(G, cur, i);
@@ -1144,22 +1295,30 @@ export function botPathDirs(G, pi, from, toId, maxHops, unarmed) {
     if (found) break;
   }
   if (prev[toId] === undefined) return null;
-  const dirs = [];
-  let id = toId;
-  while (prev[id] !== null) {
-    dirs.unshift(dirOf[id]);
-    id = prev[id];
+  const dirs: (number | undefined)[] = [];
+  let id: number | undefined = toId;
+  let back = prev[id];
+  while (back !== null) {
+    dirs.unshift(id === undefined ? undefined : dirOf[id]);
+    id = back;
+    back = id === undefined ? undefined : prev[id];
   }
   return dirs.slice(0, Math.max(0, maxHops));
 }
 // BFS distance through passable land (null = unreachable).
-export function botPathLen(G, pi, from, toId, unarmed) {
+export function botPathLen(
+  G: GameState,
+  pi: number | null,
+  from: Province | null | undefined,
+  toId: number | null | undefined,
+  unarmed?: boolean,
+) {
   const d = botPathDirs(G, pi, from, toId, 99, unarmed);
   return d ? d.length : null;
 }
 // FRONTIER — nearest own/allied land province that borders unowned or at-war-enemy land (ties → the one
 // with the most such neighbours). null if `P` is itself on the edge or nothing is reachable.
-export function botIsEdge(G, pi, prov) {
+export function botIsEdge(G: GameState, pi: number, prov: Province) {
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, prov, i);
     if (!N || N.terrain === 'sea') continue;
@@ -1167,11 +1326,11 @@ export function botIsEdge(G, pi, prov) {
   }
   return false;
 }
-export function botFrontierTarget(G, pi, P) {
+export function botFrontierTarget(G: GameState, pi: number, P: Province) {
   if (botIsEdge(G, pi, P)) return null;
   // counted on BELIEVED ownership — staging through an ally's land can look two hops past our own
   // border, and unmapped ground is not counted as open country.
-  const openCount = (prov) => {
+  const openCount = (prov: Province) => {
     let n = 0;
     for (let j = 0; j < 6; j++) {
       const K = botNeighbourProv(G, prov, j);
@@ -1180,29 +1339,32 @@ export function botFrontierTarget(G, pi, P) {
       if (ko === undefined) continue;
       if (ko == null || (ko !== pi && botRelationRaw(G, pi, ko) === 'enemy')) {
         const b = botBelief(G, pi, K);
-        n += 1 + Math.min(3, ((b && b.tax) || 0) / 3);
+        n += 1 + Math.min(3, (Number(b?.tax) || 0) / 3);
       }
     }
     return n;
   }; // Sept 2026 (R8): weighted by the wealth band the border shows
-  const seen = new Set([P.id]);
-  let q = [P],
-    depth = 0,
-    best = null;
+  const seen = new Set<number>([P.id]);
+  let q: Province[] = [P],
+    depth = 0;
+  const best: { id: Province['id'] | null; oc: number } = { id: null, oc: 0 };
   while (q.length && depth < 8) {
-    const next = [];
+    const next: Province[] = [];
     depth++;
-    q.forEach((cur) => {
+    for (const cur of q) {
       for (let i = 0; i < 6; i++) {
         const N = botNeighbourProv(G, cur, i);
         if (!N || seen.has(N.id) || !botPassable(G, pi, N)) continue;
         seen.add(N.id);
         const oc = openCount(N);
-        if (oc > 0 && (!best || oc > best.oc)) best = { id: N.id, oc };
+        if (oc > 0 && (best.id === null || oc > best.oc)) {
+          best.id = N.id;
+          best.oc = oc;
+        }
         next.push(N);
       }
-    });
-    if (best) return best.id;
+    }
+    if (best.id !== null) return best.id;
     q = next;
   }
   return null;
@@ -1210,13 +1372,14 @@ export function botFrontierTarget(G, pi, P) {
 // ── The missions pass's helpers (bots/missions.ts says the rules): enemy intel, lair rumours, admirals and flyers, a
 // rival's known skills, duels and lessons ──
 // Enemy intel: what the realm saw of rival characters (bots/missions.ts's ENEMY INTEL says what is kept).
-export function botUpdateIntel(G, pi) {
-  const p = (G.players || [])[pi];
+export function botUpdateIntel(G: GameState, pi: number) {
+  const p = (asItsGuardReadsIt(G.players) ?? [])[pi];
   if (!p) return null;
-  const I = (p._botIntel = p._botIntel || { generals: {}, heroes: {} });
+  const I = p._botIntel ?? { generals: {}, heroes: {} };
+  p._botIntel = I;
   const turn = G.turn || 0;
-  (G.characters || []).forEach((e) => {
-    if (!(e && e.player != null && e.player !== pi)) return;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((e) => {
+    if (!(asItsGuardReadsIt(e) && e.player != null && e.player !== pi)) return;
     if (!e.alive) {
       delete I.generals[e.id];
       delete I.heroes[e.id];
@@ -1226,10 +1389,10 @@ export function botUpdateIntel(G, pi) {
     const rec = {
       turn,
       provId: e.location,
-      units: (e.armies || []).length,
+      units: (asItsGuardReadsIt(e.armies) ?? []).length,
       name: e.name,
       player: e.player,
-      isKing: !!e.isKing,
+      isKing: Boolean(asItsGuardReadsIt(e.isKing)),
       strength: botBattleForce(G, e, null, 'plain', { viewerPi: pi }),
       skillsKnown: !botSkillsUnknown(G, pi, e),
     };
@@ -1241,49 +1404,57 @@ export function botUpdateIntel(G, pi) {
       delete I.generals[e.id];
     }
   });
-  [I.generals, I.heroes].forEach((M) =>
-    Object.keys(M).forEach((k) => {
-      if (turn - M[k].turn > 6) delete M[k];
-    }),
-  );
+  [I.generals, I.heroes].forEach((M) => {
+    Object.entries(M).forEach(([k, rec]) => {
+      if (turn - rec.turn > 6) delete M[k];
+    });
+  });
   // review II A10: allied realms exchange reports — what an ally saw this turn is copied in (never overwriting fresher news)
-  (G.players || []).forEach((a, j) => {
-    if (j === pi || !a || !a._botIntel || botRelationRaw(G, pi, j) !== 'allied') return;
-    [
+  (asItsGuardReadsIt(G.players) ?? []).forEach((a, j) => {
+    if (j === pi || !asItsGuardReadsIt(a) || !a._botIntel || botRelationRaw(G, pi, j) !== 'allied') return;
+    const theRecords: TheRecordsAnAllyShares = [
       ['generals', I.generals, a._botIntel.generals],
       ['heroes', I.heroes, a._botIntel.heroes],
-    ].forEach(([_, mine, theirs]) => {
-      Object.keys(theirs || {}).forEach((k) => {
-        const r = theirs[k];
+    ];
+    theRecords.forEach(([, mine, theirs]) => {
+      const told = theirs ?? {};
+      Object.keys(told).forEach((k) => {
+        const r = told[k];
         if (!r || r.player === pi || botRelationRaw(G, pi, r.player) !== 'enemy') return;
-        if (!mine[k] || mine[k].turn < r.turn) mine[k] = { ...r };
+        const had = mine[k];
+        if (!had || had.turn < r.turn) mine[k] = { ...r };
       });
     });
   });
   return I;
 }
-export function botEnemyIntel(G, pi) {
-  const p = (G.players || [])[pi];
-  return (p && p._botIntel) || { generals: {}, heroes: {} };
+export function botEnemyIntel(G: GameState, pi: number) {
+  const p = (asItsGuardReadsIt(G.players) ?? [])[pi];
+  return p?._botIntel ?? { generals: {}, heroes: {} };
 }
-export function botRumourFor(G, pi, c, f) {
-  const r = f && f._rumourOdds && f._rumourOdds[pi];
-  if (!r || r.charId !== c.id) return null;
+export function botRumourFor(G: GameState, pi: number, c: Character, f: ProvinceFeature | null | undefined) {
+  const r = f?._rumourOdds?.[pi];
+  if (r?.charId !== c.id) return null;
   if ((G.turn || 0) - r.turn > 3) return null;
-  if (r.rating != null && botLairRating(c) < r.rating) return null;
-  if (BOT_LAIR_REASK_GAIN > 0 && r.rating != null && botLairRating(c) >= r.rating + BOT_LAIR_REASK_GAIN) return null;
+  if (asItsGuardReadsIt(r.rating) != null && botLairRating(c) < r.rating) return null;
+  if (
+    BOT_LAIR_REASK_GAIN > 0 &&
+    asItsGuardReadsIt(r.rating) != null &&
+    botLairRating(c) >= r.rating + BOT_LAIR_REASK_GAIN
+  )
+    return null;
   return r;
 } // 2026-09-28: stale only if he has WEAKENED since (a level gained no longer voids it)
 // (Its return type is written for a freed caller, Hunting Rumours' note of the odds told; plan P1-10b21.)
-export function botLairRating(c): number {
-  const sk = c.skills || {};
+export function botLairRating(c: Character): number {
+  const sk = asItsGuardReadsIt(c.skills) ?? {};
   return (
     (c.maxHp || 20) +
-    (sk.melee || 0) * 6 +
-    (sk.tactical || 0) * 3 +
-    (sk.archery || 0) * 2 +
-    ((sk.elemental || 0) + (sk.necromancy || 0) + (sk.psychic || 0)) * 4 +
-    (c.items || []).length
+    (Number(sk.melee) || 0) * 6 +
+    (Number(sk.tactical) || 0) * 3 +
+    (Number(sk.archery) || 0) * 2 +
+    ((Number(sk.elemental) || 0) + (Number(sk.necromancy) || 0) + (Number(sk.psychic) || 0)) * 4 +
+    (asItsGuardReadsIt(c.items) ?? []).length
   );
 }
 export const BOT_RUMOUR_FUND_PER_SLAYER = 4;
@@ -1291,31 +1462,35 @@ export const BOT_RUMOUR_FUND_PER_SLAYER = 4;
 // into a Moderate-or-higher lair (BOT_LAIR_GO_BAND stays the Weak one); BOT_LAIR_REASK_GAIN > 0 lets a hero re-ask a
 // lair once his botLairRating has risen that much since he was told (0 = off: he waits out the six turns).
 export const BOT_LAIR_GO_BAND_HI = 90,
-  BOT_LAIR_REASK_GAIN = 3; // 2026-09-29 (Toby, study C4): re-ask once his rating has risen 3
+  BOT_LAIR_REASK_GAIN: ATuningKnob = 3; // 2026-09-29 (Toby, study C4): re-ask once his rating has risen 3
 // Admirals and flying generals (bots/missions.ts's NAVAL DOCTRINE and FLYING GENERAL).
-export function botCoastalPorts(G, pi) {
-  return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea' && botCoastalFleetType(p));
+export function botCoastalPorts(G: GameState, pi: number) {
+  return (asItsGuardReadsIt(G.world.provinces) ?? []).filter(
+    (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea' && botCoastalFleetType(p),
+  );
 }
 // 2026-09-26 (Toby item 1/6): ONE port is enough to want an admiral (was two — most realms never got there).
-export function botSeaWorthTaking(G, pi) {
+export function botSeaWorthTaking(G: GameState, pi: number) {
   const ports = botCoastalPorts(G, pi);
   if (ports.length < 1) return false;
   return ports.some((p) => {
     for (let i = 0; i < 6; i++) {
       const N = botNeighbourProv(G, p, i);
-      if (!N || N.terrain !== 'sea') continue;
+      if (N?.terrain !== 'sea') continue;
       if (N.owner == null || N.owner !== pi) return true;
     }
     return botNavalEnemyCoast(G, p, pi);
   });
 }
-export function botFlyerType(prov) {
-  return ((prov && prov.armyTypes) || []).find((t) => BOT_FLYING_TYPES.has(t)) || null;
+export function botFlyerType(prov: Province | null | undefined) {
+  return ((prov?.armyTypes ?? []).find((t) => BOT_FLYING_TYPES.has(t)) ?? '') || null;
 }
-export function botFlyerPorts(G, pi) {
-  return (G.world.provinces || []).filter((p) => p && p.owner === pi && p.terrain !== 'sea' && botFlyerType(p));
+export function botFlyerPorts(G: GameState, pi: number) {
+  return (asItsGuardReadsIt(G.world.provinces) ?? []).filter(
+    (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea' && botFlyerType(p),
+  );
 }
-export function botLiftable(t) {
+export function botLiftable(t: string) {
   return !(
     BOT_SEA_ALL.has(t) ||
     BOT_AERIAL_TYPES.has(t) ||
@@ -1325,25 +1500,31 @@ export function botLiftable(t) {
   );
 }
 // A clone of a rival with only the skills we know (for the duel forecast).
-export function botAssumedChar(G, pi, e) {
+export function botAssumedChar(G: GameState, pi: number, e: Character) {
   const k = botKnownSkills(G, pi, e);
-  if (k === (e.skills || {}) || e.player === pi) return e;
-  const c = JSON.parse(JSON.stringify(e));
+  if (k === (asItsGuardReadsIt(e.skills) ?? {}) || e.player === pi) return e;
+  const c = aCopyMadeThroughJson(e);
   c.skills = k ? { ...k } : { ...BOT_ASSUMED_SKILLS };
   if (!k) {
     c.items = [];
   }
   return c;
 }
-export function botSkillsUnknown(G, pi, e) {
+export function botSkillsUnknown(G: GameState, pi: number, e: Character) {
   return botKnownSkills(G, pi, e) === null;
 }
-export function botDuelSkill(c) {
-  const s = c.skills || {};
-  return Math.max(s.melee || 0, s.archery || 0, s.elemental || 0, s.necromancy || 0, s.psychic || 0);
+export function botDuelSkill(c: Character) {
+  const s = asItsGuardReadsIt(c.skills) ?? {};
+  return Math.max(
+    Number(s.melee) || 0,
+    Number(s.archery) || 0,
+    Number(s.elemental) || 0,
+    Number(s.necromancy) || 0,
+    Number(s.psychic) || 0,
+  );
 }
-export function botIsTeach(o) {
-  return !!(o && o.action === 'practice' && /\(teach /.test(o.desc || ''));
+export function botIsTeach(o: { readonly action?: string; readonly desc?: string } | null | undefined) {
+  return o?.action === 'practice' && (o.desc ?? '').includes('(teach ');
 }
 
 // ══ BOT PLAYERS — Phase 3c: character actions (Practice / Rest / Explore) ═════ Runs AFTER
@@ -1358,13 +1539,13 @@ export function botIsTeach(o) {
 // monster-strength gate like the guard gate, so it belongs with Phase 4 combat assessment) and
 // action-phase spells / battle magic (school knowledge, per-turn limits, fizzle, and summon-before-
 // battle timing that ties into Phase 4 — deferred to a dedicated spell pass).
-export function botPracticeSkill(c) {
-  const sk = c.skills || {};
+export function botPracticeSkill(c: Character) {
+  const sk: Readonly<Partial<Record<string, number>>> = asItsGuardReadsIt(c.skills) ?? {};
   // Prefer the highest skill still below the drill cap (push a strength toward its level-5 perks).
   let best = null,
     bestLvl = -1;
   for (const k of Object.keys(sk)) {
-    const v = sk[k] || 0;
+    const v = Number(sk[k]) || 0;
     if (v < 5 && v > bestLvl) {
       best = k;
       bestLvl = v;
@@ -1374,7 +1555,7 @@ export function botPracticeSkill(c) {
   // No trainable existing skill — train a core combat/command skill from scratch, if any is
   // unmaxed.
   for (const k of ['melee', 'tactical', 'march']) {
-    if ((sk[k] || 0) < 5) return k;
+    if ((Number(sk[k]) || 0) < 5) return k;
   }
   return null; // everything relevant already at the drill cap
 }

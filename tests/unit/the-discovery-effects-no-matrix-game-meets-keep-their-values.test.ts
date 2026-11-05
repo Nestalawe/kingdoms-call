@@ -1659,7 +1659,11 @@ describe("the bots' strength estimates, with Dragon Taming and Flanking Tactics 
       botEffForce(G, c, aDragon),
       botBattleForce(G, c, aDragon, 'plains', {}),
       botDruidShortfall(G, c, aDragon),
-      botRecruitableTypes(aProvince, G, c),
+      botRecruitableTypes(
+        aProvince as Parameters<typeof botRecruitableTypes>[0],
+        G as Parameters<typeof botRecruitableTypes>[1],
+        c as Parameters<typeof botRecruitableTypes>[2],
+      ),
     ];
     const tamed = aRealmHolding(['sd40']);
     expect(estimates(tamed.G, tamed.theCommander)).toEqual([38, 38, 0, ['Elder Dragons', 'Shieldwall Levies']]);

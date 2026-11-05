@@ -80,12 +80,69 @@ interface TheBotsWeights {
   chestShare: number;
   coalitionTriggerFrac: number;
 }
+/** A bot realm's roles this turn (botRoles, bots/strategy.ts): its field leaders and defenders (heroes' ids), its best
+ *  general, his reach and the number of field armies it wants. */
+export interface ABotRealmsRoles {
+  readonly leaders: number[];
+  readonly defenders: number[];
+  readonly primaryId: number | null;
+  readonly reach: number;
+  readonly want: number;
+}
+/** What a muster spends against: the free treasury, the wages and their ceiling. */
+export interface ABotRealmsSpending {
+  budget: number;
+  upkeep: number;
+  upkeepCap: number;
+}
+/** The wage ceiling of the admiral's or the flying general's own column (botLedger). */
+export interface ABotsWagePool {
+  readonly cap: number;
+  upkeep: number;
+  readonly id: number;
+}
+/** The ledger's tally for the study (window.__botDiag): the opening figures, and what each muster met. */
+export interface TheBotLedgersTally {
+  gold?: number;
+  income?: number;
+  reserve?: number;
+  budget0?: number;
+  upkeep0?: number;
+  cap?: number;
+  calls?: number;
+  noTypes?: number;
+  noKin?: number;
+  capStop?: number;
+  budgetStop?: number;
+  tokens?: number;
+  holdersIdle?: number;
+  holdersInRecruit?: number;
+  navCap?: number;
+  airCap?: number;
+}
+/** A bot realm's treasury ledger for a turn (botLedger, bots/strategy.ts), and what the other bots files write there. */
+export interface ABotRealmsLedger extends ABotRealmsSpending {
+  readonly income: number;
+  readonly warFooting: boolean;
+  readonly recruitedByProv: Partial<Record<number, Partial<Record<string, number>>>>;
+  rumourFund?: number;
+  warChest?: number;
+  diag?: TheBotLedgersTally;
+  defReserve?: number;
+  navReserve?: number;
+  airReserve?: number;
+  nav?: ABotsWagePool | null;
+  air?: ABotsWagePool | null;
+  hired?: Set<number>;
+  [field: string]: unknown;
+}
 /** The bots' scratch state for a turn: the roles, the treasury ledger, the engine's terrain figure the turn hands in,
  *  and what the other bots files write there. */
 interface TheBotsTurnCache {
   readonly turn: number | undefined;
-  readonly roles: Record<string, unknown>;
-  readonly ledger: Record<string, unknown>;
+  readonly roles: Partial<Record<number, ABotRealmsRoles>>;
+  readonly ledger: Partial<Record<number, ABotRealmsLedger>>;
+  met?: Partial<Record<number, boolean>>;
   terrainMult?: ((armyType: string, terrain: string) => unknown) | undefined;
   [field: string]: unknown;
 }
