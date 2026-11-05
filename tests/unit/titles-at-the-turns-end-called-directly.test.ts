@@ -1010,6 +1010,33 @@ describe('The standings and the Reckoning on worlds no game holds', () => {
     ]);
   });
 
+  test('a Reckoning tied on score and on tax base goes to the realm with the more gold, its gold weighed against the other’s gold', () => {
+    const relic = vm.runInContext('ITEMS_BY_TIER[4][0].name', engine) as string;
+    // Realm A holds the Throne (the first of a tie on tax) and the Vault (100 gold to 50): 30 points; realm B's hero
+    // carries 30 legendary relics: 30 points. Each has a tax base of 10, and B's 50 gold is more than A's tax.
+    const w = {
+      players: [
+        { name: 'A', gold: 100 },
+        { name: 'B', gold: 50 },
+      ],
+      characters: [plainHero(1, 1, { items: Array.from({ length: 30 }, () => ({ name: relic })) })],
+      world: {
+        provinces: [
+          { owner: 0, tax: 10 },
+          { owner: 1, tax: 10 },
+        ],
+      },
+    };
+    const rw = (engineFn(engine, 'reckoningWinner') as Fn)(w) as { winner: Raw; standings: Raw };
+    const st = rw.standings;
+    expect([(st['standings'] as Raw[]).map((r) => r['score']), st['taxByPlayer'], st['goldByPlayer']]).toEqual([
+      [30, 30],
+      [10, 10],
+      [100, 50],
+    ]);
+    expect(rw.winner['index'], 'the richer realm wins the tie').toBe(0);
+  });
+
   test('a title won by a hero of a realm the list doesn’t hold leaves the standings unworked: a TypeError', () => {
     let thrown = '';
     try {
