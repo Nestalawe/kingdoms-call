@@ -796,15 +796,21 @@ describe('the test run', () => {
     }
   });
 
-  // P1-01d: up to 8 test files at once, the fastest count measured at which no test came near its time limit; KC_JOBS
-  // sets the count (KC_JOBS=1: one file, and one script within it, at a time).
-  test('its files run one per core, up to 8 at once, and KC_JOBS sets how many', () => {
-    const jobs = Number(process.env['KC_JOBS']) || os.availableParallelism();
-    expect(t.maxWorkers).toBe(Math.min(8, jobs));
+  // P1-01d: two test files fewer than the cores, from 2 up to 8 at once: 8 on a 14-core laptop, the fastest count
+  // measured at which no test came near its time limit, and 2 on CI's 4-core runners, where 4 failed tests at their
+  // limits. KC_JOBS sets the count (KC_JOBS=1: one file, and one script within it, at a time).
+  test('its files run two fewer than the cores, from 2 up to 8 at once, and KC_JOBS sets how many', () => {
+    const cores = os.availableParallelism();
+    const jobs = Number(process.env['KC_JOBS']) || cores;
+    const files = Number(process.env['KC_JOBS']) || Math.min(8, Math.max(2, cores - 2), cores);
+    expect(t.maxWorkers).toBe(files);
     expect(t.maxConcurrency).toBe(jobs);
     expect(read('vitest.config.mts')).toContain(
-      "const jobs = Number(process.env['KC_JOBS']) || os.availableParallelism();",
+      "const files = Number(process.env['KC_JOBS']) || Math.min(8, Math.max(2, cores - 2), cores);",
     );
+    // The counts it gives: 1 core, 2, 4 (CI), 6, 14 (the laptop measured), 32.
+    const count = (n: number) => Math.min(8, Math.max(2, n - 2), n);
+    expect([1, 2, 4, 6, 14, 32].map(count)).toEqual([1, 2, 2, 4, 8, 8]);
   });
 
   test('no project changes those settings', () => {
