@@ -6,6 +6,8 @@
 // - Each file named in the budgets stays within its bytes, and so do the files read first, together.
 // - Each topic file under docs/architecture/ stays within its bytes.
 // - Each entry of docs/traps.md (a "## " heading and the text under it) stays within its bytes.
+// - Each Claude Code skill (a folder under the skills' folder: its SKILL.md and any file beside it) stays within its
+//   bytes, so a skill stays a few steps that point at the docs.
 // - CLAUDE.md has no line over its cap outside its tables (the file map is one table row a path).
 // - The list of tests has no line over its cap, names every test file, and every file it names exists.
 // The budgets are in a file on .github/dangerous-paths, so raising one is seen in review.
@@ -20,6 +22,7 @@ interface TheDocsBudgets {
   readFirst: { files: string[]; maxBytesTogether: number };
   topicFiles: { folder: string; maxBytesEach: number };
   trapEntries: { file: string; maxBytesEach: number };
+  skills: { folder: string; maxBytesEach: number };
   claudeMdLines: { file: string; maxCharactersALineOutsideItsTables: number };
   testList: { file: string; maxCharactersALine: number };
 }
@@ -101,6 +104,26 @@ describe('the docs an agent reads first', () => {
       .filter((entry) => entry.bytes > maxBytesEach)
       .map((entry) => `"${entry.heading}": ${String(entry.bytes)} bytes, budget ${String(maxBytesEach)}`);
     expect(over, `${file}: a trap is its rule in one sentence, one example and what checks it`).toEqual([]);
+  });
+
+  test('each skill stays within its budget', () => {
+    const { folder, maxBytesEach } = BUDGETS.skills;
+    const skills = exists(folder)
+      ? fs
+          .readdirSync(path.join(ROOT, folder), { withFileTypes: true })
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => `${folder}/${entry.name}`)
+      : [];
+    const bytesOfSkill = (skill: string): number =>
+      fs
+        .readdirSync(path.join(ROOT, skill), { recursive: true, encoding: 'utf8' })
+        .map((f) => `${skill}/${f.split(path.sep).join('/')}`)
+        .filter((file) => fs.statSync(path.join(ROOT, file)).isFile())
+        .reduce((sum, file) => sum + bytesOf(file), 0);
+    const over = skills
+      .filter((skill) => bytesOfSkill(skill) > maxBytesEach)
+      .map((skill) => `${skill}: ${String(bytesOfSkill(skill))} bytes, budget ${String(maxBytesEach)}`);
+    expect(over, 'A skill is its steps and its output, each rule by a link to the doc that holds it').toEqual([]);
   });
 
   test('CLAUDE.md has no long line outside its tables', () => {

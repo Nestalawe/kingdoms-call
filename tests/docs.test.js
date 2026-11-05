@@ -1,9 +1,11 @@
 // Docs check: the guides an agent starts from must not point at things that aren't there.
-//   - every relative link in CLAUDE.md, README.md, docs/**/*.md, tests/README.md, the list of tests and the PR template
+//   - every relative link in CLAUDE.md, README.md, docs/**/*.md, tests/README.md, the list of tests, the PR template
+//     and the Claude Code skills (each Markdown file under the folder tests/the-docs-budgets.json names as "skills")
 //     reaches an existing file, and a #anchor into a Markdown file matches one of its headings;
-//   - every `site/…`, `src/…`, `tests/…`, `tools/…` or `.github/…` path written in backticks exists (site/ is built
-//     first: npm test builds it)
+//   - every `site/…`, `src/…`, `tests/…`, `tools/…`, `docs/…`, `.github/…` or `.claude/…` path written in backticks
+//     exists (site/ is built first: npm test builds it)
 //     (globs and placeholders such as `**`, `<name>` or `NNN` are skipped);
+// A skill's frontmatter is checked by tests/static/a-skills-frontmatter-holds-only-its-name-and-its-description.test.ts.
 // How big CLAUDE.md and the other docs read first may grow is checked in bytes by
 // tests/static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts (it replaced this check's 200-line cap).
 // Nothing outside the repo is fetched.
@@ -17,8 +19,9 @@ function mdFiles(dir){
     return d.isDirectory()?mdFiles(p):d.name.endsWith('.md')?[p]:[];
   });
 }
+const SKILLS=JSON.parse(fs.readFileSync(path.join(ROOT,'tests','the-docs-budgets.json'),'utf8')).skills.folder;
 const FILES=['CLAUDE.md','README.md','tests/README.md','tests/every-test-its-level-and-what-it-checks.md','.github/pull_request_template.md']
-  .map(f=>path.join(ROOT,f)).concat(mdFiles(path.join(ROOT,'docs')));
+  .map(f=>path.join(ROOT,f)).concat(mdFiles(path.join(ROOT,'docs')), mdFiles(path.join(ROOT,SKILLS)));
 
 // GitHub's heading anchors: lower case, punctuation dropped, spaces to hyphens, repeats get -1, -2, …
 function anchors(file){
@@ -55,7 +58,7 @@ for(const file of FILES){
     if(hash&&dest.endsWith('.md')&&!anchors(dest).has(hash)) fail(file,`link to ${target}: no heading with that anchor`);
   }
 
-  for(const [,p] of prose.matchAll(/`((?:site|src|tests|tools|\.github)\/[^`\s]*)`/g)){
+  for(const [,p] of prose.matchAll(/`((?:site|src|tests|tools|docs|\.github|\.claude)\/[^`\s]*)`/g)){
     if(/[*<>]|NNN/.test(p)) continue;
     checked++;
     if(!fs.existsSync(path.join(ROOT,p))) fail(file,`\`${p}\` doesn't exist`);
