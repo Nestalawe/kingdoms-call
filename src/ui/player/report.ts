@@ -18,13 +18,13 @@ import {
 import { kcJoinP, sb } from './startup.ts';
 import {
   deadHeroRealmTagP,
-  effSkillP,
   GUARD_POWER_COLORS_P,
   itemBoundTag,
   itemsForDisplayP,
   itemSlotTag,
   itemTierTagP,
 } from './items-and-heroes.ts';
+import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
 import { refreshOrdersVisibility } from './layout.ts';
 import { turnDeadlineText } from './game-lists.ts';

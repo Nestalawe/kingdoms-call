@@ -140,8 +140,8 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 // ── The copies ────
 
 /** Where the order form says a hero will stand (predictedLocation), and since P1-11e10 what it reads: the march the
- *  turn refuses and the relation at a border, its one answer a refresh (the report it was kept for, the answers, the
- *  fields it was worked out from) and the forecast itself. */
+ *  turn refuses and the relation at a border, and its one answer a refresh (the report it was kept for, the answers,
+ *  the fields it was worked out from). */
 const THE_MARCH_FORECASTS_DECLARATIONS = [
   'theRelationAMarchMeetsAtTheBorderOf',
   'aMarchTheTurnRefuses',
@@ -149,7 +149,6 @@ const THE_MARCH_FORECASTS_DECLARATIONS = [
   'theForecastsAnswers',
   'whatTheForecastOfThePhasesBeforeReads',
   'predictedLocation',
-  'whereTheFormSaysAHeroWillStand',
 ];
 /** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
@@ -184,9 +183,22 @@ const COPIES: Record<string, string[]> = {
   // where a hero will stand after his orders so far (P1-11d1: the Explore forecast and the Move field read it), what he
   // will carry and lead, and a province's garrison hold (P1-11d2: the forms of the later phases read them), with the
   // units a Recruit musters and which go to the garrison; since P1-11e10 the march the turn refuses, asked on the column
-  // the Move note counts, and the forecast's one answer a refresh
+  // the Move note counts, and the forecast's one answer a refresh; and since P1-11e10 the column the Move note counts
+  // (P1-11d8: its beasts of the Wild Hunt are the rite's row's number), with the sea lift, the ships and the orders it
+  // can't count, and a hero's skill as the report counts it (skillEff: druidNeedP, exploreGainFor and the army card
+  // read it), which the march forecast reads (moved from move-analysis.ts and items-and-heroes.ts, no statement changed)
   'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts': [
     'getOrderTarget',
+    'PO_SEA_TYPES',
+    'PO_CARRIER_TYPES',
+    'PO_AERIAL_TYPES',
+    'PO_PROJECTED_FOOT',
+    'takesHalfAHullAboardOrIsYetToBeRaised',
+    'poSeaAnalysis',
+    'PO_UNCOUNTABLE_ACTIONS',
+    'PO_UNCOUNTABLE_SPELLS',
+    'projectedMoveHost',
+    'effSkillP',
     ...THE_MARCH_FORECASTS_DECLARATIONS,
     'predictedItems',
     'GARRISON_UNIT_TYPES_P',
@@ -206,29 +218,13 @@ const COPIES: Record<string, string[]> = {
     'ALIGN_ACTIONS',
     'gdAlreadyBuiltP',
     'rawSkillLvl',
-    // (a hero's skill as the report counts it, skillEff: druidNeedP, exploreGainFor and the army card read it)
-    'effSkillP',
     'skillsUnseenP',
     'ACTION_DISPLAY_ORDER',
     '_actionRank',
     'actionsFor',
   ],
-  // (and the skills' names, which the Practice Skill note gives: P1-11d4; and the column the Move note counts, whose
-  // beasts of the Wild Hunt are the rite's row's number: P1-11d8; since P1-11e10 with the sea lift and the ships the
-  // march forecast reads of it, and the orders it can't count)
-  'ui/player/move-analysis.ts': [
-    'lastMoveDirOf',
-    'SKILL_LABELS',
-    'projectedMoveHost',
-    'PO_UNCOUNTABLE_ACTIONS',
-    'PO_UNCOUNTABLE_SPELLS',
-    'PO_PROJECTED_FOOT',
-    'takesHalfAHullAboardOrIsYetToBeRaised',
-    'PO_SEA_TYPES',
-    'PO_CARRIER_TYPES',
-    'PO_AERIAL_TYPES',
-    'poSeaAnalysis',
-  ],
+  // (and the skills' names, which the Practice Skill note gives: P1-11d4)
+  'ui/player/move-analysis.ts': ['lastMoveDirOf', 'SKILL_LABELS'],
 };
 const ARMY_CARD = 'ui/player/report.ts';
 const TURN_REPORT = 'views/turn-report.ts';

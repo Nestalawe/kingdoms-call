@@ -1974,43 +1974,6 @@
   {
     "type": "cycle",
     "from": "src/ui/player/map-symbols.ts",
-    "to": "src/ui/player/move-analysis.ts",
-    "unresolvedTo": "./move-analysis.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/player/move-analysis.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/items-and-heroes.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/map-symbols.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/ui/player/map-symbols.ts",
     "to": "src/ui/player/order-chances.ts",
     "unresolvedTo": "./order-chances.ts",
     "dependencyTypes": [
@@ -2037,7 +2000,7 @@
         ]
       },
       {
-        "name": "src/ui/player/items-and-heroes.ts",
+        "name": "src/ui/player/join-and-chronicle.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -2132,21 +2095,28 @@
         ]
       },
       {
-        "name": "src/ui/player/pre-orders.ts",
+        "name": "src/ui/player/move-analysis.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/player/orders-form.ts",
+        "name": "src/ui/player/join-and-chronicle.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/player/report.ts",
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -2177,20 +2147,6 @@
     "cycle": [
       {
         "name": "src/ui/player/skills-and-projections.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/items-and-heroes.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/map-symbols.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -2470,8 +2426,8 @@
   {
     "type": "cycle",
     "from": "src/ui/player/order-targets.ts",
-    "to": "src/ui/player/skills-and-projections.ts",
-    "unresolvedTo": "./skills-and-projections.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
     "dependencyTypes": [
       "local",
       "import"
@@ -2482,7 +2438,49 @@
     },
     "cycle": [
       {
-        "name": "src/ui/player/skills-and-projections.ts",
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -2497,6 +2495,43 @@
       },
       {
         "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-targets.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/order-targets.ts",
+    "to": "src/ui/player/skills-and-projections.ts",
+    "unresolvedTo": "./skills-and-projections.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/skills-and-projections.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -2552,14 +2587,14 @@
         ]
       },
       {
-        "name": "src/ui/player/layout.ts",
+        "name": "src/ui/player/items-and-heroes.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/player/map.ts",
+        "name": "src/ui/player/map-symbols.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -2742,28 +2777,7 @@
         ]
       },
       {
-        "name": "src/ui/player/init.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/dispatches.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/game-lists.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/report.ts",
+        "name": "src/ui/player/briefing-and-submit.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -2800,7 +2814,21 @@
         ]
       },
       {
-        "name": "src/ui/player/pre-orders.ts",
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -2956,20 +2984,6 @@
     "cycle": [
       {
         "name": "src/ui/player/skills-and-projections.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/items-and-heroes.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/map-symbols.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -3254,6 +3268,99 @@
   {
     "type": "cycle",
     "from": "src/ui/player/pre-orders.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "no-cycle-through-imports-that-bring-code"
+    },
+    "cycle": [
+      {
+        "name": "src/ui/player/move-analysis.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/join-and-chronicle.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/briefing-and-submit.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/init.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/dispatches.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/items-and-heroes.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/map-symbols.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/order-chances.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/pre-orders.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "cycle",
+    "from": "src/ui/player/pre-orders.ts",
     "to": "src/ui/player/order-targets.ts",
     "unresolvedTo": "./order-targets.ts",
     "dependencyTypes": [
@@ -3387,20 +3494,6 @@
         ]
       },
       {
-        "name": "src/ui/player/items-and-heroes.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/map-symbols.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
         "name": "src/ui/player/move-analysis.ts",
         "dependencyTypes": [
           "local",
@@ -3450,14 +3543,14 @@
         ]
       },
       {
-        "name": "src/ui/player/layout.ts",
+        "name": "src/ui/player/items-and-heroes.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/player/map.ts",
+        "name": "src/ui/player/map-symbols.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -3837,14 +3930,14 @@
         ]
       },
       {
-        "name": "src/ui/player/pre-orders.ts",
+        "name": "src/ui/player/move-analysis.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/player/orders-form.ts",
+        "name": "src/ui/player/join-and-chronicle.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -3875,20 +3968,6 @@
     "cycle": [
       {
         "name": "src/ui/player/skills-and-projections.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/items-and-heroes.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/map-symbols.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -4022,8 +4101,8 @@
   {
     "type": "cycle",
     "from": "src/ui/player/skills-and-projections.ts",
-    "to": "src/ui/player/items-and-heroes.ts",
-    "unresolvedTo": "./items-and-heroes.ts",
+    "to": "src/ui/player/move-analysis.ts",
+    "unresolvedTo": "./move-analysis.ts",
     "dependencyTypes": [
       "local",
       "import"
@@ -4033,20 +4112,6 @@
       "name": "no-cycle-through-imports-that-bring-code"
     },
     "cycle": [
-      {
-        "name": "src/ui/player/items-and-heroes.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/map-symbols.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
       {
         "name": "src/ui/player/move-analysis.ts",
         "dependencyTypes": [
@@ -4091,57 +4156,6 @@
       },
       {
         "name": "src/ui/player/report.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/skills-and-projections.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/ui/player/skills-and-projections.ts",
-    "to": "src/ui/player/move-analysis.ts",
-    "unresolvedTo": "./move-analysis.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/player/move-analysis.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/join-and-chronicle.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/layout.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/map.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -4315,28 +4329,35 @@
         ]
       },
       {
-        "name": "src/ui/player/layout.ts",
+        "name": "src/ui/player/briefing-and-submit.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/player/map.ts",
+        "name": "src/ui/player/init.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/player/order-chances.ts",
+        "name": "src/ui/player/dispatches.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/player/order-targets.ts",
+        "name": "src/ui/player/game-lists.ts",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ]
+      },
+      {
+        "name": "src/ui/player/report.ts",
         "dependencyTypes": [
           "local",
           "import"
