@@ -61,6 +61,8 @@ import { reportHeroFall } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import { resolveUnitGainInProvince } from '../battle/hosts-gained-in-a-province.ts';
 import { botLairRating } from '../bots/strategy.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { theCompaniesABloodOfferingGivesAndRaises } from '../rules-on-plain-values/the-company-a-call-to-arms-musters-a-blood-offerings-companies-and-a-consecrations-checks.ts';
+import { unitAsItsRealmSeesIt } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { servesARealm, theOneThePickFell } from './spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
 import {
   theNameDrawn,
@@ -279,6 +281,14 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
   recordDeadHeroSighting(turnContext, c.player, prov.id);
   return;
 }
+/** The turns the beasts a Wild Hunt binds serve beyond this one (plan P1-11e22, moved as it was): WILD_HUNT_TURNS,
+ *  and what the hero's realm's discoveries add (ap08 The Long Hunt; the discoveries' registry's since plan P1-19ad:
+ *  "orderOutcome: a realm's discoveries lengthen the wild hunt"). */
+export function theTurnsAWildHuntServesBeyondThisOne(
+  hisRealm: Parameters<typeof theTurnsARealmsDiscoveriesLengthenTheWildHuntBy>[0],
+): number {
+  return WILD_HUNT_TURNS + theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(hisRealm);
+}
 // Perform Rite (Pagan realms, at a ritual site): the Rite of the Wild Hunt, or the Blood Offering.
 export function resolvePerformRiteOrder(
   turnContext: TurnContext,
@@ -390,10 +400,8 @@ export function resolvePerformRiteOrder(
         quality: 'Veteran',
         race: (prov.race ?? '') || 'Primal',
         unitName: theNameDrawn(armyUnitName(_wildType)),
-        _wildHuntUntilTurn:
-          G.turn + WILD_HUNT_TURNS + theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(G.players[c.player]),
-      }; // + ap08 The Long Hunt (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries
-      // lengthen the wild hunt")
+        _wildHuntUntilTurn: G.turn + theTurnsAWildHuntServesBeyondThisOne(G.players[c.player]),
+      };
       c.armies.push(_u);
       _bound.push({ unitName: _u.unitName, type: _wildType });
     }
@@ -423,57 +431,27 @@ export function resolvePerformRiteOrder(
   // be neither offered nor raised.
   const _tiers = QUALITY_TIERS.slice();
   const _army: ACompanyAsTheBloodOfferingReadsIt[] = asItsGuardReadsIt(c.armies) ?? [];
-  const _bOffElig = (i: number) => {
-    const a = _army[i];
-    return !!a && !a._temporary && a._wildHuntUntilTurn == null && !a._isSkeletal;
-  };
-  // a company the offering names, by an index _bOffElig has passed (so there is one); for none, a TypeError
+  // a company the offering names, by an index the rite may take (so there is one); for none, a TypeError
   const theCompanyNamed = (i: number) => {
     const a = _army[i];
     if (!a) throw new TypeError('a company the Blood Offering names is none');
     return a;
   };
-  let _sacI: number[] = [],
-    _benI: number[] = [];
-  const _bm = /S:([0-9,]*)\|E:([0-9,]*)/.exec((extra || '').trim());
-  if (_bm) {
-    _sacI = [
-      ...new Set(
-        String(_bm[1]) // the group always takes part in a match (its words, '' for none)
-          .split(',')
-          .filter((x) => x !== '')
-          .map(Number),
-      ),
-    ].filter((i) => Number.isInteger(i) && _bOffElig(i));
-    _benI = [
-      ...new Set(
-        String(_bm[2])
-          .split(',')
-          .filter((x) => x !== '')
-          .map(Number),
-      ),
-    ].filter((i) => Number.isInteger(i) && _bOffElig(i) && !_sacI.includes(i));
+  // the companies it gives and raises, on plain values (plan P1-11e22)
+  const theMarked = theCompaniesABloodOfferingGivesAndRaises(_army, extra, unitAsItsRealmSeesIt);
+  if (!theMarked) {
+    emit(turnContext, {
+      type: 'system',
+      fact: { kind: 'a hero makes no Blood Offering', heroName: c.name },
+      audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+    });
+    return;
   }
-  // Legacy/no-selection fallback: sacrifice one own unit to raise one other by two tiers.
-  if (_sacI.length === 0 || _benI.length === 0) {
-    const _own = _army.map((a, i) => i).filter(_bOffElig);
-    if (_own.length >= 2) {
-      _sacI = _own.slice(0, 1); // the first, as [_own[0]]
-      _benI = _own.slice(1, 2); // the second, as [_own[1]]
-    } else {
-      emit(turnContext, {
-        type: 'system',
-        fact: { kind: 'a hero makes no Blood Offering', heroName: c.name },
-        audience: { actor: c.player, realms: [c.player] },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      });
-      return;
-    }
-  }
-  const _bn = Math.min(_sacI.length, _benI.length); // each sacrifice funds exactly one empowerment
-  const _sac = _sacI.slice(0, _bn).map(theCompanyNamed);
-  const _ben = _benI.slice(0, _bn).map(theCompanyNamed);
+  const _bn = theMarked.given.length; // each sacrifice funds exactly one empowerment
+  const _sac = theMarked.given.map(theCompanyNamed);
+  const _ben = theMarked.raised.map(theCompanyNamed);
   prov._riteTurn = G.turn; // the province's one rite this turn is spent
   c.armies = _army.filter((a) => !_sac.includes(a));
   recordBattleGraves(turnContext, prov, _sac);

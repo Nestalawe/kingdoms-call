@@ -48,6 +48,10 @@ import {
 } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import {
+  theCompanyACallToArmsMusters,
+  whyAKingMayNotConsecrateAProvince,
+} from '../rules-on-plain-values/the-company-a-call-to-arms-musters-a-blood-offerings-companies-and-a-consecrations-checks.ts';
+import {
   aRealmsNameOrNone,
   servesARealm,
   theOneTakenOut,
@@ -84,6 +88,20 @@ interface WhereAsAWildCallingComparesIt {
 function theSamePlaceAsNamed(h: WhereAsAWildCallingComparesIt, from: WhereAsAWildCallingComparesIt) {
   return h.kind === from.kind && h.provinceName === from.provinceName && h.heroName === from.heroName;
 }
+/** The consecrations a king may hold at once (plan P1-11e22, moved as it was): his White, and what his realm's
+ *  discoveries add (ad03 Holy Sites, +1; still needs White 1+; the discoveries' registry's since plan P1-19ae:
+ *  "orderOutcome: a realm's discoveries add to the consecrations a crown may hold"). */
+export function theConsecrationsAKingMayHold(
+  c: Parameters<typeof skillLevel>[0],
+  hisRealm: Parameters<typeof whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold>[0],
+): number {
+  return (
+    skillLevel(c, 'white') +
+    whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(hisRealm, {
+      theConsecratorsWhiteSkill: skillLevel(c, 'white'),
+    })
+  );
+}
 // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
 export function resolveConsecrateOrder(
   turnContext: TurnContext,
@@ -116,7 +134,30 @@ export function resolveConsecrateOrder(
     return;
   }
   theProvinceIsHanded(prov); // the province he stands in (processOrder's: there is one)
-  if (prov.owner !== c.player) {
+  // the checks on plain values (plan P1-11e22), each fact asked only once the checks before it have passed
+  const theAnswer = whyAKingMayNotConsecrateAProvince({
+    theProvinceId: prov.id,
+    itIsHisRealms: prov.owner === c.player,
+    theHomeMarches: () => {
+      const _homeId = homeProvinceIdFor(G, c.player);
+      return {
+        theHomeId: _homeId,
+        theProvincesBesideIt:
+          _homeId != null
+            ? getNeighborsP(
+                theHomeOnTheMap(G.world.provinces[_homeId]),
+                G.world.cols,
+                G.world.rows,
+                G.world.provinces,
+              ).map((x) => x.id)
+            : [],
+      };
+    },
+    theConsecrated: () => consecratedIds(player),
+    theProvincesBesideIt: () => getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).map((x) => x.id),
+    theConsecrationsHeMayHold: () => theConsecrationsAKingMayHold(c, G.players[c.player]),
+  });
+  if (theAnswer.refused === 'it is not a province of his realm') {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'only a province of the realm can be consecrated', heroName: c.name },
@@ -126,15 +167,7 @@ export function resolveConsecrateOrder(
     });
     return;
   }
-  const _homeId = homeProvinceIdFor(G, c.player);
-  const _homeAdj = new Set(
-    _homeId != null
-      ? getNeighborsP(theHomeOnTheMap(G.world.provinces[_homeId]), G.world.cols, G.world.rows, G.world.provinces).map(
-          (x) => x.id,
-        )
-      : [],
-  );
-  if (prov.id === _homeId || _homeAdj.has(prov.id)) {
+  if (theAnswer.refused === 'it lies in the home marches') {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'the home marches were anointed at the coronation', heroName: c.name },
@@ -144,8 +177,7 @@ export function resolveConsecrateOrder(
     });
     return;
   }
-  const _cList = consecratedIds(player);
-  if (_cList.includes(prov.id)) {
+  if (theAnswer.refused === 'it is consecrated already') {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'the province is already consecrated', provinceName: prov.name },
@@ -155,20 +187,14 @@ export function resolveConsecrateOrder(
     });
     return;
   }
-  // holy ground must be spread across the realm — two consecrated provinces may not lie side
-  // by side. Reject if any neighbour of this province is already consecrated.
-  const _provAdjC = new Set<number>(
-    getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces).map((x) => x.id),
-  );
-  const _adjConsecId = _cList.find((id) => _provAdjC.has(id));
-  if (_adjConsecId != null) {
+  if (theAnswer.refused === 'a consecrated province lies beside it') {
     emit(turnContext, {
       type: 'system',
       fact: {
         kind: 'two consecrated provinces may not lie side by side',
         heroName: c.name,
         provinceName: prov.name,
-        neighbourName: (G.world.provinces[_adjConsecId]?.name ?? '') || null,
+        neighbourName: (G.world.provinces[theAnswer.theNeighbourId]?.name ?? '') || null,
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -176,14 +202,7 @@ export function resolveConsecrateOrder(
     });
     return;
   }
-  // the crown may hold up to its WHITE skill level in consecrated provinces at once.
-  const _cLimit =
-    skillLevel(c, 'white') +
-    whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(G.players[c.player], {
-      theConsecratorsWhiteSkill: skillLevel(c, 'white'),
-    }); // ad03 Holy Sites (+1; still needs White 1+; the discoveries' registry's since plan P1-19ae: "orderOutcome: a
-  // realm's discoveries add to the consecrations a crown may hold")
-  if (_cLimit <= 0) {
+  if (theAnswer.refused === 'he knows no White') {
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'consecration flows from the White arts', heroName: c.name },
@@ -193,7 +212,8 @@ export function resolveConsecrateOrder(
     });
     return;
   }
-  if (_cList.length >= _cLimit) {
+  if (theAnswer.refused === 'he holds as many as he may') {
+    const { theConsecrated: _cList, theLimit: _cLimit } = theAnswer;
     emit(turnContext, {
       type: 'system',
       fact: {
@@ -209,6 +229,7 @@ export function resolveConsecrateOrder(
     });
     return;
   }
+  const { theConsecrated: _cList, theLimit: _cLimit } = theAnswer;
   _cList.push(prov.id);
   // 2026-10-15 (Toby, D8): no Hierophant merit — only a Divine king can consecrate, so it was a
   // creed-only route to a title. Bless Province, Holy Symbol and Resurrect still count.
@@ -299,17 +320,9 @@ export function resolveCallToArmsOrder(
     return;
   }
   // Elven Bowmen). Take the province's garrison type from its own pool; fall back to the
-  // racial garrison, then a plain levy.
-  const GARRISON_BY_RACE_CTA: Readonly<Partial<Record<string, string>>> = {
-    Human: 'Human Garrison',
-    Elven: 'Elven Garrison',
-    Dwarven: 'Dwarf Garrison',
-    Orcish: 'Orc Garrison',
-  };
-  const ctaType =
-    ((asItsGuardReadsIt(ctaProv.armyTypes) ?? []).find((t) => t.toLowerCase().includes('garrison')) ?? '') ||
-    (GARRISON_BY_RACE_CTA[String(ctaProv.race)] ?? '') ||
-    'Human Garrison';
+  // racial garrison, then a plain levy (plan P1-11e22: on plain values, with its race).
+  const theCompany = theCompanyACallToArmsMusters(ctaProv);
+  const ctaType = theCompany.type;
   ctaProv.garrisonArmies = asItsGuardReadsIt(ctaProv.garrisonArmies) ?? [];
   // the tiers, looked up by a quality of any form a discovery gives (a list of them is none)
   const tiers: readonly unknown[] = QUALITY_TIERS;
@@ -325,7 +338,7 @@ export function resolveCallToArmsOrder(
   ctaProv.garrisonArmies.push({
     type: ctaType,
     quality: _ctaQ,
-    race: (ctaProv.race ?? '') || 'Human',
+    race: theCompany.race,
     unitName: theNameDrawn(armyUnitName(ctaType)),
   });
   player._calledToArmsTurn = G.turn;
