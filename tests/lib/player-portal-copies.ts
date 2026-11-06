@@ -141,8 +141,9 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 
 /** Where the order form says a hero will stand (predictedLocation), and since P1-11e10 what it reads: the march the
  *  turn refuses and the relation at a border, and its one answer a refresh (the report it was kept for, the answers,
- *  the fields it was worked out from). */
+ *  the fields it was worked out from); since P1-11e11 his move pools as the report gives them. */
 const THE_MARCH_FORECASTS_DECLARATIONS = [
+  'hisMovePoolsAsTheReportGivesThem',
   'theRelationAMarchMeetsAtTheBorderOf',
   'aMarchTheTurnRefuses',
   'theForecastsReport',
@@ -1614,8 +1615,10 @@ export function thePortalsHexTablesAgainstTheEngine(c: Copies): HexStepCompariso
  *  province's bare number since R-128: both read their target by the turn's whatAMarchsOrderNames; one naming no
  *  province leaves him where he is; since P1-11e10 a march the turn refuses leaves him where he is too: a column with
  *  ships over land, one with too little lift to put to sea, one at a neutral realm's border, his realm's war declared
- *  this turn standing only for an Evil realm, and the marches each refusal lets through), and those it is known to get
- *  wrong (question 44): a column past its pace, and a far province (the turn takes one step toward it). */
+ *  this turn standing only for an Evil realm, and the marches each refusal lets through; since P1-11e11 a march past his
+ *  pace stops him where his pools run out: the pools the report gives, each step spending the one the turn's rule
+ *  names, a voyage the sea pool and a march over land the land pool), and those it is known to get wrong (question
+ *  44): a far province (the turn takes one step toward it). */
 export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   'a compass step',
   'a province next door',
@@ -1634,6 +1637,10 @@ export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   "a neutral realm's border, war declared this turn by an Evil realm that hasn't met it",
   'ships putting to sea',
   'a fleet putting in on a coast',
+  'past his pace',
+  'past his pace at sea',
+  'a voyage past his pace on land',
+  'a march the turn refuses, then two steps on his pace of 2',
 ] as const;
 /** The kinds of staged march the turn refuses (P1-11e10): the hero stays where he is, and a Search Lair the form sends
  *  after it names the province he stands in. */
@@ -1644,8 +1651,12 @@ export const THE_MARCHES_THE_TURN_REFUSES = [
   "a neutral realm's border, war declared this turn by a Good realm",
   "a neutral realm's border, war declared this turn by an Evil realm that hasn't met it",
 ] as const;
+/** The kinds of staged march the turn lets begin and stops part way, where his pace runs out (P1-11e11): the hero stands
+ *  in the province of the last step his pools pay for. */
+export const THE_MARCHES_STOPPED_BY_HIS_PACE = ['past his pace', 'past his pace at sea'] as const;
+/** The kinds of staged march a Search Lair is staged after: each the turn refuses, and one his pace stops on land. */
+export const THE_MARCHES_A_SEARCH_LAIR_FOLLOWS = [...THE_MARCHES_THE_TURN_REFUSES, 'past his pace'] as const;
 export const THE_MARCHES_THE_FORECAST_GETS_WRONG = [
-  'past his pace',
   'a far province',
   'a far Forced March',
   'a far province, leading ships',
@@ -1675,6 +1686,8 @@ export interface AStagedMarch {
   readonly orders: readonly AnOrder[];
   readonly from: unknown;
   readonly named: unknown;
+  /** Where his pace stops him (a march past it, P1-11e11): the province of the last step his pools pay for. */
+  readonly stopsAt?: unknown;
   readonly realm?: WhatAStagedMarchChangesOfTheRealm;
 }
 /** The kinds of staged march into a province whose share the march maps is read: those the forecast and the turn
@@ -1704,7 +1717,7 @@ export interface AStagedMarchIn {
  *  heroes gone (so no march meets a battle), and one province next door to the start made realm 1's (neutral: no
  *  treaty). From one land province with the sea beside it and a road of three land provinces out of it (the second two
  *  steps away), heroes of realm 0 each march one kind: alone, or leading Men-at-Arms (a pace of 2), or Men-at-Arms and
- *  Orcish Longships. */
+ *  Orcish Longships (a pace of 3 at sea), or a Galleon Fleet (3 at sea). */
 export function marchingWorld(): { world: World; marches: AStagedMarch[]; marchesIn: AStagedMarchIn[] } {
   const { g, hero } = aWorldToStageIn();
   const map = isObj(g['world']) ? g['world'] : {};
@@ -1804,15 +1817,30 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     ['ships putting to sea', [move(`prov:${id(sea)}`)], sea, withShips()],
     ['a fleet putting in on a coast', [move(`prov:${id(start)}`)], start, fleet()],
     ['past his pace', [move(`prov:${id(first)}`), move(`prov:${id(second)}`), move(`prov:${id(third)}`)], third, men()],
+    // (a fleet at sea, four steps between two seas: its pace of 3 pays for three)
+    ['past his pace at sea', [open, sea, open, sea].map((p) => move(`prov:${id(p)}`)), sea, fleet()],
+    // (three steps at sea, past his pace of 2 on land: a voyage spends the sea pool, his 3)
+    ['a voyage past his pace on land', [sea, open, sea].map((p) => move(`prov:${id(p)}`)), sea, withShips()],
+    // (turned back at the border, which spends nothing of his pace of 2: then two steps)
+    [
+      'a march the turn refuses, then two steps on his pace of 2',
+      [border, first, second].map((p) => move(`prov:${id(p)}`)),
+      second,
+      men(),
+    ],
     ['a far province', [move(`prov:${id(second)}`)], second, men()],
     ['a far Forced March', [forced(id(second))], second, men()],
     ['a far province, leading ships', [move(`prov:${id(second)}`)], second, withShips()],
   ];
   // (where each sets out: the start, but for a fleet at sea)
-  const setsOutFrom = (kind: AKindOfMarch) => (kind === 'a fleet putting in on a coast' ? sea : start);
+  const atSea: readonly AKindOfMarch[] = ['a fleet putting in on a coast', 'past his pace at sea'];
+  const setsOutFrom = (kind: AKindOfMarch) => (atSea.includes(kind) ? sea : start);
+  // (where his pace stops a march past it: the second step's province on land, the third's at sea)
+  const stopsAt: Partial<Record<AKindOfMarch, Obj>> = { 'past his pace': second, 'past his pace at sea': open };
   const marches = kinds.map(([kind, orders, named, armies, realm]) => ({
     kind,
     ...(realm ? { realm } : {}),
+    ...(stopsAt[kind] ? { stopsAt: stopsAt[kind]['id'] } : {}),
     // (March 7 for a Forced March, which the turn refuses below it; March 0 else, so a column of Men-at-Arms keeps
     // their pace of 2)
     heroId: hero({
@@ -1950,6 +1978,8 @@ export interface MarchForecastComparison extends Comparison {
   readonly kind: AKindOfMarch;
   readonly from: unknown;
   readonly named: unknown;
+  /** Where his pace stops him (a march past it). */
+  readonly stopsAt?: unknown;
   /** The provinces next door both to where he set out and to the one his orders name (a step toward it). */
   readonly nextDoorToBoth: unknown[];
 }
@@ -1965,7 +1995,7 @@ export function theMarchForecastAgainstTheTurn(c: Copies): MarchForecastComparis
     const at = { row: Number(p['row']), col: Number(p['col']) };
     return getNeighborsP(at, Number(map['cols']), Number(map['rows']), provinces).map((x) => x['id']);
   };
-  return marches.map(({ kind, heroId, orders, from, named, realm }) => {
+  return marches.map(({ kind, heroId, orders, from, named, stopsAt, realm }) => {
     const on = realm ? theWorldWithTheRealmChanged(world, realm) : world;
     const declarations = realm?.declaresWar ? { 0: { 1: 'enemy' } } : {};
     return {
@@ -1977,6 +2007,7 @@ export function theMarchForecastAgainstTheTurn(c: Copies): MarchForecastComparis
       kind,
       from,
       named,
+      ...(stopsAt === undefined ? {} : { stopsAt }),
       nextDoorToBoth: nextTo(from).filter((id) => nextTo(named).includes(id)),
     };
   });
@@ -2013,11 +2044,43 @@ export function theMarchForecastAsWhatItReadsChanges(c: Copies): {
     border: march.named,
   };
 }
-/** One staged march the turn refuses, with a Search Lair after it (P1-11e10): the province the Search Lair the form
- *  sends names (doSubmitOrders sends predictedLocation's), where the turn leaves the hero, and whether the turn sends
- *  him to rest because he never reached the lair's province. */
+/** Where the order form says the hero ordered past his pace (on land) will stand, on the report changed as the form
+ *  holds a hero who joins this turn (hired, charmed or raised: in a phase of this turn, his pace the page's) and as a
+ *  report that shows no pace of his (P1-11e11: neither gives the turn's pools, so neither stops him); with the province
+ *  his orders name and the one his pace stops him in. */
+export function theMarchPastHisPaceOfAHeroTheReportShowsNoPaceOf(c: Copies): {
+  joined: unknown;
+  noPace: unknown;
+  named: unknown;
+  stopsAt: unknown;
+} {
+  const { world, marches } = marchingWorld();
+  const march = marches.find((m) => m.kind === 'past his pace');
+  if (!march) throw new Error('no staged march past his pace');
+  const ask = (change: (hero: Obj) => void) => {
+    const report = copyOf(world.report);
+    const hero = objects(report['characters']).find((h) => h['id'] === march.heroId);
+    if (!hero) throw new Error('the staged report has no hero marching past his pace');
+    change(hero);
+    return c.predictedLocationOn(report, { [String(march.heroId)]: march.orders }, march.heroId, march.orders.length);
+  };
+  return {
+    joined: ask((hero) => {
+      hero['hiredInPhase'] = 0;
+    }),
+    noPace: ask((hero) => {
+      delete hero['effectiveSpeed'];
+      delete hero['effectiveSeaSpeed'];
+    }),
+    named: march.named,
+    stopsAt: march.stopsAt,
+  };
+}
+/** One staged march the turn refuses, with a Search Lair after it (P1-11e10; since P1-11e11 one his pace stops too):
+ *  the province the Search Lair the form sends names (doSubmitOrders sends predictedLocation's), where the turn leaves
+ *  the hero, and whether the turn sends him to rest because he never reached the lair's province. */
 export interface ASearchLairAfterARefusedMarch {
-  readonly kind: (typeof THE_MARCHES_THE_TURN_REFUSES)[number];
+  readonly kind: (typeof THE_MARCHES_A_SEARCH_LAIR_FOLLOWS)[number];
   readonly sent: unknown;
   readonly heStands: unknown;
   readonly heNeverReachesTheLair: boolean;
@@ -2025,7 +2088,7 @@ export interface ASearchLairAfterARefusedMarch {
 /** Each staged march the turn refuses, followed by a Search Lair, as the form sends it and as the turn carries it out. */
 export function aSearchLairAfterEachMarchTheTurnRefuses(c: Copies): ASearchLairAfterARefusedMarch[] {
   const { world, marches } = marchingWorld();
-  return THE_MARCHES_THE_TURN_REFUSES.map((kind) => {
+  return THE_MARCHES_A_SEARCH_LAIR_FOLLOWS.map((kind) => {
     const march = marches.find((m) => m.kind === kind);
     if (!march) throw new Error(`no staged march of the kind ${kind}`);
     const { heroId, orders, realm } = march;
