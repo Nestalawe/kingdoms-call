@@ -112,11 +112,10 @@ function aMarchTheTurnRefuses(report, char, ph, from, to) {
   const lift = poSeaAnalysis(column, (char.skills || {}).naval || 0).cap;
   if (to.terrain === 'sea') return !canEnterTerrain({ armies: column }, 'sea', lift);
   if (from.terrain === 'sea') return false; // a landing: the turn asks only his sea points
+  // (the turn's own check of the ground after it, that a column of ships alone may not stand on land, can't refuse a
+  // march this one lets through: such a column leads ships)
   const leadsShips = column.some((a) => a && PO_SEA_TYPES.has(a.type));
-  return (
-    aColumnLeadingShipsMayNotStepFromLandToLand(leadsShips, from.terrain, to.terrain) ||
-    !canEnterTerrain({ armies: column }, to.terrain, lift)
-  );
+  return aColumnLeadingShipsMayNotStepFromLandToLand(leadsShips, from.terrain, to.terrain);
 }
 // ── ONE ANSWER A REFRESH (plan P1-11e10) ────
 // A march's refusal reads the column he will lead, and that column reads where he and his comrades stand in the

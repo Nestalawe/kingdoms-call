@@ -1635,6 +1635,7 @@ export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   "a realm's border his own is at war with",
   "a neutral realm's border, war declared this turn by a Good realm",
   "a neutral realm's border, war declared this turn by an Evil realm",
+  "a neutral realm's border, war declared this turn by an Evil realm that hasn't met it",
   'ships putting to sea',
   'a fleet putting in on a coast',
 ] as const;
@@ -1645,6 +1646,7 @@ export const THE_MARCHES_THE_TURN_REFUSES = [
   'too little lift to put to sea',
   "a neutral realm's border",
   "a neutral realm's border, war declared this turn by a Good realm",
+  "a neutral realm's border, war declared this turn by an Evil realm that hasn't met it",
 ] as const;
 export const THE_MARCHES_THE_FORECAST_GETS_WRONG = [
   'past his pace',
@@ -1661,11 +1663,13 @@ interface AnOrder {
 }
 /** What a staged march changes of realm 0 toward realm 1, whose province is next door (P1-11e10): its creed, the two
  *  realms at war as the turn begins, a war it declares this turn (as the form holds it, and the turn's merge hands it
- *  on once the Safe Start is over). Either way, realm 0 has met realm 1. */
+ *  on once the Safe Start is over), and whether realm 0 has met realm 1 (it has, unless `unmet`: the form offers no
+ *  declaration then, and the turn takes none). */
 export interface WhatAStagedMarchChangesOfTheRealm {
   readonly alignment?: string;
   readonly atWar?: boolean;
   readonly declaresWar?: boolean;
+  readonly unmet?: boolean;
 }
 /** A staged march: its kind, the hero who marches (realm 0's), his orders by phase, where he sets out and where his
  *  orders name; and what it changes of his realm, if anything. */
@@ -1794,6 +1798,13 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
       men(),
       { alignment: 'Evil', declaresWar: true },
     ],
+    [
+      "a neutral realm's border, war declared this turn by an Evil realm that hasn't met it",
+      [move(`prov:${id(border)}`)],
+      border,
+      men(),
+      { alignment: 'Evil', declaresWar: true, unmet: true },
+    ],
     ['ships putting to sea', [move(`prov:${id(sea)}`)], sea, withShips()],
     ['a fleet putting in on a coast', [move(`prov:${id(start)}`)], start, fleet()],
     ['past his pace', [move(`prov:${id(first)}`), move(`prov:${id(second)}`), move(`prov:${id(third)}`)], third, men()],
@@ -1894,14 +1905,14 @@ function whatTheTurnDoesWithHim(
   });
   return { location: c['location'], facts };
 }
-/** The world `world` with realm 0 changed toward realm 1 as `realm` says (P1-11e10): its creed, the two at war; realm 0
- *  has met realm 1 either way. The report is made again from the state changed. */
+/** The world `world` with realm 0 changed toward realm 1 as `realm` says (P1-11e10): its creed, the two at war, and
+ *  realm 0 having met realm 1 (unless `unmet`). The report is made again from the state changed. */
 function theWorldWithTheRealmChanged(world: World, realm: WhatAStagedMarchChangesOfTheRealm): World {
   const g = copyOf(world.state);
   const realms = objects(g['players']);
   const ours = realms[0];
   if (!ours) throw new Error('the staged world has no realm 0');
-  ours['_encountered'] = [1];
+  ours['_encountered'] = realm.unmet ? [] : [1];
   if (realm.alignment) ours['alignment'] = realm.alignment;
   if (realm.atWar) g['relations'] = { ...(isObj(g['relations']) ? g['relations'] : {}), [relKeyOf(0, 1)]: 'enemy' };
   return quietly(() => savedAndReported(g));
