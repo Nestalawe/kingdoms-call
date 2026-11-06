@@ -6,8 +6,8 @@
 // so the order form's notes can later ask the turn's own: the company a Call to Arms musters in a province; the
 // companies a Blood Offering may take, and the ones it gives and raises; and why a king may not consecrate a province.
 // The consecrations a king may hold read the discoveries' registry, so they stay engine side
-// (theConsecrationsAKingMayHold, beside resolveConsecrateOrder), as the Wild Hunt's term does
-// (theTurnsAWildHuntServesBeyondThisOne, beside resolvePerformRiteOrder).
+// (theConsecrationsAKingMayHold, in heroes/fame-and-consecration.ts), as the Wild Hunt's term does
+// (theTurnsAWildHuntServesBeyondThisOne, in items/tiers-and-hoards.ts): the report names both (plan P1-11e24).
 import type { AUnitAsItsRealmSeesIt } from './beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 
 /** A province as a Call to Arms reads it: the companies its folk raise (its pool of types) and its folk's race. */

@@ -26,8 +26,8 @@ import {
   unitAsItsRealmSeesIt,
   type AUnitAsItsRealmSeesIt,
 } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
-import { theConsecrationsAKingMayHold } from '../../src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
-import { theTurnsAWildHuntServesBeyondThisOne } from '../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
+import { theConsecrationsAKingMayHold } from '../../src/engine/heroes/fame-and-consecration.ts';
+import { theTurnsAWildHuntServesBeyondThisOne } from '../../src/engine/items/tiers-and-hoards.ts';
 import { WILD_HUNT_TURNS } from '../../src/engine/items/tiers-and-hoards.ts';
 import { getNeighborsP } from '../../src/engine/world/map-helpers.ts';
 

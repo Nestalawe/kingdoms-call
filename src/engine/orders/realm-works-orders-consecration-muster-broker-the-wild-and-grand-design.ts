@@ -21,10 +21,10 @@ import { armyUnitName, d100 } from '../dice-and-army-names.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { TM, skillLevel } from '../titles/perks.ts';
 import { gdActive } from '../discoveries.ts';
+import { theConsecrationsAKingMayHold } from '../heroes/fame-and-consecration.ts';
 import {
   doARealmsDiscoveriesWaiveTheHiringBan,
   theQualitiesARealmsDiscoveriesMayRaiseACallToArmsAt,
-  whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import {
   emit,
@@ -87,20 +87,6 @@ interface WhereAsAWildCallingComparesIt {
  *  compared as it is. */
 function theSamePlaceAsNamed(h: WhereAsAWildCallingComparesIt, from: WhereAsAWildCallingComparesIt) {
   return h.kind === from.kind && h.provinceName === from.provinceName && h.heroName === from.heroName;
-}
-/** The consecrations a king may hold at once (plan P1-11e22, moved as it was): his White, and what his realm's
- *  discoveries add (ad03 Holy Sites, +1; still needs White 1+; the discoveries' registry's since plan P1-19ae:
- *  "orderOutcome: a realm's discoveries add to the consecrations a crown may hold"). */
-export function theConsecrationsAKingMayHold(
-  c: Parameters<typeof skillLevel>[0],
-  hisRealm: Parameters<typeof whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold>[0],
-): number {
-  return (
-    skillLevel(c, 'white') +
-    whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(hisRealm, {
-      theConsecratorsWhiteSkill: skillLevel(c, 'white'),
-    })
-  );
 }
 // DIVINE — Consecrate: sanctify ONE owned province as the realm's holy heart.
 export function resolveConsecrateOrder(
