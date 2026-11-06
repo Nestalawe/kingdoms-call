@@ -79,7 +79,7 @@ describe('the tier an order acts in, and which of two heroes acts first', () => 
     expect(theTierAnOrderActsIn('defend')).toBe(2);
   });
 
-  const hero = (id: number, kind: string, melee: number) => ({ id, kind, skills: { melee } });
+  const hero = (id: number, action: string, melee: number) => ({ id, action, skills: { melee } });
   const first = (a: ReturnType<typeof hero>, b: ReturnType<typeof hero>) => whichOfTwoHeroesActsFirstInAPhase(a, b);
 
   test('the tier first, however quick the hero of a later tier', () => {
@@ -95,8 +95,8 @@ describe('the tier an order acts in, and which of two heroes acts first', () => 
     expect(first(hero(1, 'recruit', 4), hero(7, 'give_item', 1))).toBe(-3);
     expect(
       whichOfTwoHeroesActsFirstInAPhase(
-        { id: 1, kind: 'move', skills: { march: 1 } },
-        { id: 2, kind: 'move', skills: { melee: 2 } },
+        { id: 1, action: 'move', skills: { march: 1 } },
+        { id: 2, action: 'move', skills: { melee: 2 } },
       ),
     ).toBe(-1);
   });
@@ -110,10 +110,10 @@ describe('the tier an order acts in, and which of two heroes acts first', () => 
 
 // ── Who must act first ────
 type AnIntent = AHerosIntentAsWhoMustActFirstReadsIt;
-const intent = (id: number, kind: string, more: Partial<AnIntent> = {}): AnIntent => ({
+const intent = (id: number, action: string, more: Partial<AnIntent> = {}): AnIntent => ({
   id,
   player: 0,
-  kind,
+  action,
   fromId: 10,
   toId: null,
   order: { target: '', extra: '' },
@@ -288,7 +288,7 @@ describe('who must act first: a pursuer after his quarry', () => {
 });
 
 describe('the order the heroes act in a phase', () => {
-  const hero = (id: number, kind: string, melee: number) => ({ id, kind, skills: { melee } });
+  const hero = (id: number, action: string, melee: number) => ({ id, action, skills: { melee } });
   const ids = (heroes: { id: number }[]) => heroes.map((h) => h.id);
 
   test('with no dependency, the comparator’s order: the tier, then initiative, then the lower id', () => {

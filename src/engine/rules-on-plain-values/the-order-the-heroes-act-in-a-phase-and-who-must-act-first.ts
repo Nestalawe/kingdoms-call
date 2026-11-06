@@ -71,15 +71,15 @@ export function theTierAnOrderActsIn(d: string): number {
 /** A hero as the phase's order reads him: his id, his order's kind this phase, and his skills. */
 export interface AHeroAsThePhasesOrderReadsHim extends AHeroAsHisInitiativeReadsHim {
   readonly id: number;
-  readonly kind: string;
+  readonly action: string;
 }
 /** Which of two heroes acts first in a phase: below zero the first, above zero the second (a sort's comparator). */
 export function whichOfTwoHeroesActsFirstInAPhase(
   a: AHeroAsThePhasesOrderReadsHim,
   b: AHeroAsThePhasesOrderReadsHim,
 ): number {
-  const at = theTierAnOrderActsIn(a.kind),
-    bt = theTierAnOrderActsIn(b.kind);
+  const at = theTierAnOrderActsIn(a.action),
+    bt = theTierAnOrderActsIn(b.action);
   if (at !== bt) return at - bt; // non-move → move/pursue → defend
   const d = theInitiativeAHeroActsBy(b) - theInitiativeAHeroActsBy(a);
   if (d !== 0) return d;
@@ -91,7 +91,7 @@ export interface AHerosIntentAsWhoMustActFirstReadsIt {
   readonly id: number;
   readonly player: number | null;
   /** his order's kind (normaliseAction's answer; a cancelled march's is Defend) */
-  readonly kind: string;
+  readonly action: string;
   readonly fromId: number;
   /** where his march takes him (none: no march) */
   readonly toId: number | null;
@@ -112,7 +112,7 @@ export function theHeroesWhoMustActFirstInAPhase(
   const byId = (id: number) => intents.get(id);
 
   list.forEach((it) => {
-    const { order, kind: action } = it;
+    const { order, action } = it;
     if (!order) return;
     const tgtId = parseInt(order.target);
     const tgt = isNaN(tgtId) ? null : byId(tgtId);
@@ -123,7 +123,7 @@ export function theHeroesWhoMustActFirstInAPhase(
     // applies instead and the ally arrives first — emitting both edges would make a cycle,
     // and Kahn's algorithm would then fall back to plain initiative and honour neither.
     const tgtArrivingHere = (t: AHerosIntentAsWhoMustActFirstReadsIt | null | undefined) =>
-      !!t && t.kind === 'move' && t.toId === it.fromId;
+      !!t && t.action === 'move' && t.toId === it.fromId;
     // 2026-09-23: the RECIPIENT of Send Item / Transfer Army is in `extra` (the target holds item
     // indices / unit names). Reading `target` here linked the sender to whichever character's id
     // matched the first item index, and never to the real recipient.
@@ -146,7 +146,7 @@ export function theHeroesWhoMustActFirstInAPhase(
     if (action === 'pickup_army') {
       list.forEach((other) => {
         if (other.id === it.id || other.player !== it.player) return;
-        if (other.kind !== 'leave_army') return;
+        if (other.action !== 'leave_army') return;
         if (other.fromId !== it.fromId) return;
         edges.push([other.id, it.id]);
       });
@@ -158,7 +158,7 @@ export function theHeroesWhoMustActFirstInAPhase(
       list.forEach((other) => {
         if (other.id === it.id || other.player !== it.player) return;
         if (other.fromId !== itsDest) return;
-        if (other.kind !== 'give_item' && other.kind !== 'leave_army') return;
+        if (other.action !== 'give_item' && other.action !== 'leave_army') return;
         const _oR = other.theHeroHisOrderHandsTo; // recipient is in extra (2026-09-23)
         if (_oR !== it.id) return;
         edges.push([it.id, other.id]);

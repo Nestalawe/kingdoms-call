@@ -664,7 +664,12 @@ describe('a hero with no order this phase (P1-10b34)', () => {
 
 describe('who must act first, read from the world (P1-11e16: the rules on plain values, asked by phaseDependencies)', () => {
   type AStagedHero = Phase['heroes'][number];
-  const at = (player: number, location: number, action: string, more: Partial<AStagedHero> = {}): AStagedHero => ({
+  const at = (
+    player: AStagedHero['player'],
+    location: number,
+    action: string,
+    more: Partial<AStagedHero> = {},
+  ): AStagedHero => ({
     player,
     location,
     troops: 1,

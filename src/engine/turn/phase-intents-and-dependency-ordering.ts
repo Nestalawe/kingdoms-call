@@ -345,7 +345,7 @@ export function phaseDependencies(
         {
           id: it.id,
           player: it.player,
-          kind: it.action,
+          action: it.action,
           fromId: it.fromId,
           toId: it.toId,
           order: it.order,
@@ -370,8 +370,8 @@ export function phaseInitCompare(
   const turnOrders: TheTurnsOrdersAsThePipelineReadsThem = G.turnOrders;
   return (a, b) =>
     whichOfTwoHeroesActsFirstInAPhase(
-      { id: a.id, kind: normaliseAction((turnOrders[a.id] ?? [])[ph]), skills: a.skills },
-      { id: b.id, kind: normaliseAction((turnOrders[b.id] ?? [])[ph]), skills: b.skills },
+      { id: a.id, action: normaliseAction((turnOrders[a.id] ?? [])[ph]), skills: a.skills },
+      { id: b.id, action: normaliseAction((turnOrders[b.id] ?? [])[ph]), skills: b.skills },
     );
 }
 
@@ -386,7 +386,7 @@ export function orderPhaseActors(
   const turnOrders: TheTurnsOrdersAsThePipelineReadsThem = G.turnOrders;
   const heroes = [...intents.values()].map(({ c }) => ({
     id: c.id,
-    kind: normaliseAction((turnOrders[c.id] ?? [])[ph]),
+    action: normaliseAction((turnOrders[c.id] ?? [])[ph]),
     skills: c.skills,
     c,
   }));
