@@ -1,6 +1,10 @@
 import { MONSTERS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { ITEM_UNCAPPED_SKILLS, SKILL_BENEFIT_CAP, SKILL_MAX } from '../army-tables.ts';
+import {
+  dedupeItemsByName,
+  theLevelAHerosSkillCountsAt,
+  theTrainedLevelOfAHerosSkillThatCounts,
+} from '../rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
 import { activeItems } from '../items/equipment.ts';
 import type { AHeroAsHisItemsAreRead, AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 import { DISC_BY_ID, discMaxHpFor } from '../discoveries.ts';
@@ -131,9 +135,8 @@ interface TheStateAsTheMaxHpPassReadsIt extends TheStateAsTheGuardiansPassReadsI
 // runTurn's effStat() delegates here, and the player report renders from the SAME function, so what a
 // player is shown can never drift from what the engine actually uses. `chars` is the character list
 // to search for an aura bearer (runTurn passes G.characters, the report passes
-// gameState.characters).
-// Skills whose TRAINED levels 6-9 also count for effect (not just items past 5). 2026-09-24: Druid.
-export const FULL_RANGE_SKILLS = new Set(['druid']);
+// gameState.characters). The level it counts at, and his items each name once, are rules on plain values (plan
+// P1-11e32).
 export function skillBonusBreakdown(
   c: AHeroAsHisSkillIsRead | null | undefined,
   stat: string,
@@ -186,21 +189,8 @@ export function skillBonusBreakdown(
       });
     }
   }
-  // TRAINING tops out at 5 for benefit purposes — levels 6-9 buy mastery perks and mastery ORDERS
-  // instead of further scaling, which is the documented rule the engine is tuned around (see the
-  // Sage discovery chance, the Druid army bonus, the Thief hoard cut).
-  // MELEE and ARCHERY only: item and aura bonuses stack ON TOP of that capped base, to the ceiling of 9.
-  // Levels past 5 already mean something for those two (damage, +5%/level to-hit, perkTier), so a
-  // Legendary +4 blade is felt in full instead of being worth one level to a Melee 4 hero and nothing
-  // at all to a Melee 5 one.
-  // EVERY OTHER SKILL: the total still stops at 5, so a +2 Tome cannot make a Tactical 5 hero
-  // out-general a trained Tactical 9 in the battle maths.
-  // DRUID (2026-09-24, Toby): the whole skill counts — trained levels 6-9 add, and items/aura stack on
-  // top, to the ceiling of 9. (Druid mastery, primal strikes, the parley roll and the Curse's choice of
-  // skill all read this figure.)
-  const _trained = Math.max(0, Math.min(FULL_RANGE_SKILLS.has(stat) ? SKILL_MAX : SKILL_BENEFIT_CAP, out.base));
-  const _ceiling = ITEM_UNCAPPED_SKILLS.has(stat) || FULL_RANGE_SKILLS.has(stat) ? SKILL_MAX : SKILL_BENEFIT_CAP;
-  out.total = Math.max(0, Math.min(_ceiling, _trained + out.items + out.aura + out.curse));
+  const _trained = theTrainedLevelOfAHerosSkillThatCounts(stat, out.base);
+  out.total = theLevelAHerosSkillCountsAt(stat, out.base, out.items, out.aura, out.curse);
   out.bonus = out.total - _trained; // what the extras are actually WORTH
   return out;
 }
@@ -212,20 +202,6 @@ export function effSkillOf(
   return skillBonusBreakdown(c, stat, chars).total;
 }
 
-export function dedupeItemsByName<
-  AnItem extends { readonly name?: string | undefined; readonly effect?: object | null | undefined },
->(items: readonly (AnItem | null | undefined)[] | null | undefined) {
-  const seen = new Set<string>();
-  const out: AnItem[] = [];
-  (items ?? []).forEach((it) => {
-    if (!it) return;
-    const k = (it.name ?? '') || 'fx:' + JSON.stringify(it.effect ?? {});
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(it);
-  });
-  return out;
-}
 // ── MAXIMUM HP ── a character's maximum HP is an earned pool again.
 // max HP = start (15; 18 for an Orcish character of an Orcish realm) + hpEarned + item bonuses + ro08.
 // hpEarned grows ONLY through personal combat — see rollHpGain. 2026-10-09 (Toby item 16): every roll

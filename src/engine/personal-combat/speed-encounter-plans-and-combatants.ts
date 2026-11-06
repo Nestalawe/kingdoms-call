@@ -3,7 +3,8 @@ import { temperOf } from '../world/tables.ts';
 import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd } from '../names.ts';
 import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { activeItems, effTemper } from '../items/equipment.ts';
-import { dedupeItemsByName, guardianPassives } from '../heroes/skills-and-hp.ts';
+import { guardianPassives } from '../heroes/skills-and-hp.ts';
+import { dedupeItemsByName } from '../rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
 import { pcArmourMerge, pcArmourOf } from './helpers.ts';
 import { whatAGuardiansGradesCapDoesBesideHisOwn } from '../rules/the-registry-of-guardian-perks.ts';
 import {

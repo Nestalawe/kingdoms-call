@@ -44,7 +44,6 @@ import { theWordsOfTheItemsAHeroGained } from '../../src/views/prose/the-words-o
 import {
   GUARDIAN_TABLE_VER,
   computeMaxHp,
-  dedupeItemsByName,
   effSkillOf,
   guardianPassives,
   hpEarnedBase,
@@ -58,6 +57,7 @@ import {
   skillBonusBreakdown,
   syncMaxHp,
 } from '../../src/engine/heroes/skills-and-hp.ts';
+import { dedupeItemsByName } from '../../src/engine/rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
 import { hpGainLine } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 
 type Obj = Record<string, unknown>;
