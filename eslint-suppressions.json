@@ -105,11 +105,6 @@
       "count": 3
     }
   },
-  "src/engine/bots/movement.ts": {
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
   "src/engine/bots/strategy.ts": {
     "@typescript-eslint/no-dynamic-delete": {
       "count": 5

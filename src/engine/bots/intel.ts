@@ -158,8 +158,19 @@ interface TheBotsTurnCache {
   teachDiag?: ASlayersLesson[];
   /** Each realm's specialists this turn (botSpecialistRoles, bots/specialists.ts), by the realm's index. */
   spec?: Partial<Record<number, TheBotsSpecialistRoles>>;
+  /** The raising of the fallen this turn, for the study (botResurrectErrands, bots/movement.ts): each body and its mage. */
+  raiseDiag?: ARaisesRecord[];
   terrainMult?: ((armyType: string, terrain: string) => unknown) | undefined;
   [field: string]: unknown;
+}
+/** A body a realm may raise this turn, for the study: the realm, the grave, whether he was its king, the white mage
+ *  sent (none if none is free) and the hops to walk. */
+export interface ARaisesRecord {
+  readonly pi: number;
+  readonly grave: number;
+  readonly monarch: boolean;
+  readonly mage: number | null;
+  readonly hops?: number;
 }
 /** A realm's specialists this turn: each hero's role by his id, the roles wanted and those filled, by the role. */
 export interface TheBotsSpecialistRoles {
