@@ -1636,6 +1636,7 @@ export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   "a neutral realm's border, war declared this turn by a Good realm",
   "a neutral realm's border, war declared this turn by an Evil realm",
   'ships putting to sea',
+  'a fleet putting in on a coast',
 ] as const;
 /** The kinds of staged march the turn refuses (P1-11e10): the hero stays where he is, and a Search Lair the form sends
  *  after it names the province he stands in. */
@@ -1645,7 +1646,12 @@ export const THE_MARCHES_THE_TURN_REFUSES = [
   "a neutral realm's border",
   "a neutral realm's border, war declared this turn by a Good realm",
 ] as const;
-export const THE_MARCHES_THE_FORECAST_GETS_WRONG = ['past his pace', 'a far province', 'a far Forced March'] as const;
+export const THE_MARCHES_THE_FORECAST_GETS_WRONG = [
+  'past his pace',
+  'a far province',
+  'a far Forced March',
+  'a far province, leading ships',
+] as const;
 export type AKindOfMarch =
   (typeof THE_MARCHES_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_MARCHES_THE_FORECAST_GETS_WRONG)[number];
 /** An order of a phase, as the page's fields hold it and the turn reads it. */
@@ -1757,6 +1763,7 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
   if (!compass) throw new Error("the staged world's road has no compass step");
   const men = () => [{ type: 'Men-at-Arms', quality: 'Average', unitName: 'Men-at-Arms 0' }];
   const withShips = () => [...men(), { type: 'Orcish Longships', quality: 'Average', unitName: 'Orcish Longships 0' }];
+  const fleet = () => [{ type: 'Galleon Fleet', quality: 'Average', unitName: 'Galleon Fleet 0' }];
   const id = (p: Obj) => String(p['id']);
   const move = (target: string): AnOrder => ({ action: 'Move', target });
   const forced = (target: string): AnOrder => ({ action: 'Forced March', target });
@@ -1788,22 +1795,26 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
       { alignment: 'Evil', declaresWar: true },
     ],
     ['ships putting to sea', [move(`prov:${id(sea)}`)], sea, withShips()],
+    ['a fleet putting in on a coast', [move(`prov:${id(start)}`)], start, fleet()],
     ['past his pace', [move(`prov:${id(first)}`), move(`prov:${id(second)}`), move(`prov:${id(third)}`)], third, men()],
     ['a far province', [move(`prov:${id(second)}`)], second, men()],
     ['a far Forced March', [forced(id(second))], second, men()],
+    ['a far province, leading ships', [move(`prov:${id(second)}`)], second, withShips()],
   ];
+  // (where each sets out: the start, but for a fleet at sea)
+  const setsOutFrom = (kind: AKindOfMarch) => (kind === 'a fleet putting in on a coast' ? sea : start);
   const marches = kinds.map(([kind, orders, named, armies, realm]) => ({
     kind,
     ...(realm ? { realm } : {}),
     // (March 7 for a Forced March, which the turn refuses below it; March 0 else, so a column of Men-at-Arms keeps
     // their pace of 2)
     heroId: hero({
-      location: start['id'],
+      location: setsOutFrom(kind)['id'],
       skills: { march: orders.some((o) => o.action === 'Forced March') ? 7 : 0 },
       armies,
     })['id'],
     orders,
-    from: start['id'],
+    from: setsOutFrom(kind)['id'],
     named: named['id'],
   }));
   const worn = (name: string) => {
@@ -1812,7 +1823,6 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     // (as a saved game holds it once the turn has put it on)
     return [{ ...copyOf(it), id: 62_000, equipped: true }];
   };
-  const fleet = () => [{ type: 'Galleon Fleet', quality: 'Average', unitName: 'Galleon Fleet 0' }];
   const into = (p: Obj) => [move(`prov:${id(p)}`)];
   const marchesIn: [TheMarchInKind, Obj, Obj][] = [
     ['a Travelworn Drape worn', { items: worn('Travelworn Drape') }, first],
@@ -1963,6 +1973,38 @@ export function theMarchForecastAgainstTheTurn(c: Copies): MarchForecastComparis
       nextDoorToBoth: nextTo(from).filter((id) => nextTo(named).includes(id)),
     };
   });
+}
+/** Where the order form says one staged hero will stand as his orders, his realm's declarations and the report change
+ *  between one ask and the next (P1-11e10: the forecast keeps each answer while what it was worked out from stands): a
+ *  province next door, then a neutral realm's border, then that border with an Evil realm's war declared, without it,
+ *  on the first report again, and on a report where the two realms are at war. With where his orders name. */
+export function theMarchForecastAsWhatItReadsChanges(c: Copies): {
+  answers: unknown[];
+  start: unknown;
+  first: unknown;
+  border: unknown;
+} {
+  const { world, marches } = marchingWorld();
+  const march = marches.find((m) => m.kind === "a neutral realm's border");
+  const nextDoor = marches.find((m) => m.kind === 'a province next door');
+  if (!march || !nextDoor) throw new Error('no staged march to the border');
+  const evil = theWorldWithTheRealmChanged(world, { alignment: 'Evil' });
+  const atWar = theWorldWithTheRealmChanged(world, { atWar: true });
+  const ask = (report: Obj, orders: readonly AnOrder[], declarations?: Record<string, string>) =>
+    c.predictedLocationOn(report, { [String(march.heroId)]: orders }, march.heroId, orders.length, declarations);
+  return {
+    answers: [
+      ask(world.report, nextDoor.orders),
+      ask(world.report, march.orders),
+      ask(evil.report, march.orders, { 1: 'enemy' }),
+      ask(evil.report, march.orders),
+      ask(world.report, march.orders),
+      ask(atWar.report, march.orders),
+    ],
+    start: march.from,
+    first: nextDoor.named,
+    border: march.named,
+  };
 }
 /** One staged march the turn refuses, with a Search Lair after it (P1-11e10): the province the Search Lair the form
  *  sends names (doSubmitOrders sends predictedLocation's), where the turn leaves the hero, and whether the turn sends

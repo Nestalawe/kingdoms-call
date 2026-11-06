@@ -160,6 +160,7 @@ import {
   THE_MARCHES_THE_FORECAST_GETS_WRONG,
   THE_MARCHES_THE_TURN_REFUSES,
   aSearchLairAfterEachMarchTheTurnRefuses,
+  theMarchForecastAsWhatItReadsChanges,
   THE_HOLDINGS_THE_FORECAST_GETS_RIGHT,
   THE_HOLDINGS_THE_FORECAST_GETS_WRONG,
   theMarchForecastAgainstTheTurn,
@@ -585,6 +586,15 @@ describe('the march: where the order form says a hero will stand, and what march
     );
   });
 
+  test('the march forecast follows the orders, the war declared and the report as they change between one ask and the next', () => {
+    // The forecast keeps each answer while what it was worked out from stands (the report, the order fields of the
+    // phases before, the declarations): one hero, ordered next door, then to a neutral realm's border (turned back);
+    // his Evil realm declares war on it (he crosses), then doesn't (turned back); the first report again (turned
+    // back); a report where the two are at war (he crosses).
+    const { answers, start, first, border } = theMarchForecastAsWhatItReadsChanges(copies);
+    expect(answers).toEqual([first, start, border, start, start, border]);
+  });
+
   test('the marches the forecast gets wrong are pinned: past his pace, a far province (question 44)', () => {
     // The form follows the orders, not the turn's pace: a column ordered past it (Men-at-Arms march 2 a turn: the
     // third Move) stays where the turn stopped it, but every later phase's form puts it where the order named. A far
@@ -606,6 +616,9 @@ describe('the march: where the order form says a hero will stand, and what march
       const x = kind(far);
       expect([far, x.copy, x.nextDoorToBoth.includes(x.engine)]).toEqual([far, x.named, true]);
     }
+    // A far province is taken as named whatever the column (the step the turn may refuse is one toward it).
+    const farWithShips = kind('a far province, leading ships');
+    expect(farWithShips.copy).toBe(farWithShips.named);
   });
 
   test('the share of a province the Explore forecast counts a march as mapping is what the turn maps: March 6 leading companies, March 0, a sea sailed into', () => {

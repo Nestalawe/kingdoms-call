@@ -89,9 +89,9 @@ export function getOrderExtra(charId, ph) {
 //      first phase), every other declaration from next turn;
 //   2. the sea, with too little lift to put to sea (hulls and flyers: the note's sea lift);
 //   3. ships over land: a column leading any fleet or sea-beast steps from land only to the sea.
-// Forecast limits (plan P1-11's Decision 3), left to the turn: ground the report can't show (a province not yet
-// mapped, its owner or terrain unknown: no refusal is forecast), a war a rival declares, a blockade, a flood, his pace
-// (P1-11e11) and a far province (P1-11e12).
+// Forecast limits (plan P1-11's Decision 3), left to the turn: an owner the report can't show (a province he hasn't
+// seen: no border is forecast), a terrain an Illusory Terrain hides, a war a rival declares, a blockade, a flood, his
+// pace (P1-11e11) and a far province (P1-11e12).
 function theRelationAMarchMeetsAtTheBorderOf(report, owner) {
   if (owner === report.playerIndex) return 'self';
   const known = ((report.diplomacy || {}).known || []).find((k) => k && k.index === owner);
@@ -109,7 +109,6 @@ function aMarchTheTurnRefuses(report, char, ph, from, to) {
     to.owner == null ? 'neutral' : theRelationAMarchMeetsAtTheBorderOf(report, to.owner),
   );
   if (turnedBack) return true;
-  if (!from.terrain || !to.terrain) return false;
   const lift = poSeaAnalysis(column, (char.skills || {}).naval || 0).cap;
   if (to.terrain === 'sea') return !canEnterTerrain({ armies: column }, 'sea', lift);
   if (from.terrain === 'sea') return false; // a landing: the turn asks only his sea points
