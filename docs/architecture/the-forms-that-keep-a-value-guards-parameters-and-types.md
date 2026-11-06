@@ -149,6 +149,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   passes `servesARealm` (only a hero of a realm acts in a phase), so each `c.player` after it is a realm's index. Each check
   never fails on a sound save, and throws if it does. A typed callee that takes a value its caller may lack (a hero's
   province) gets it through a check that throws for none, named for the invariant that makes it sure.
+- **A page's hook the engine reads behind `typeof window`** (the bots' `__botDiag` and `__botHyg`, the purity's
+  reviewed exception) is declared on `Window` in the file that reads it (`declare global { interface Window { … } }`),
+  each hook optional and typed as the code reads it (`unknown` where it tests `Array.isArray`): the read stays as it is.
+- **A copy's id that no hero carries** (the duel forecast's −1 and −2) is typed as a hero's id through a predicate that
+  holds what the schema checks (`Number.isFinite`: the brand is a type only), in a reader that throws for none.
 - **A hero a fight hands on that a typed callee takes by a number's id** (a fighter's `ref` to `syncMaxHp`) passes an
   assertion that throws for a fight's copy, whose id is words (`theHeroIsNoFightsCopy`: a Hunting Rumours fight is
   simulated, and rolls no rise); a line that needs his name and maximum, a predicate on the line itself
