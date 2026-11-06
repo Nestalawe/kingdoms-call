@@ -1432,8 +1432,13 @@ export function botEnemyIntel(G: GameState, pi: number) {
   const p = (asItsGuardReadsIt(G.players) ?? [])[pi];
   return p?._botIntel ?? { generals: {}, heroes: {} };
 }
-export function botRumourFor(G: GameState, pi: number, c: Character, f: ProvinceFeature | null | undefined) {
-  const r = f?._rumourOdds?.[pi];
+export function botRumourFor(
+  G: GameState,
+  pi: number | null | undefined,
+  c: Character,
+  f: ProvinceFeature | null | undefined,
+) {
+  const r = f?._rumourOdds?.[String(pi)]; // a realm of no index reads the odds under its key's words, as before
   if (r?.charId !== c.id) return null;
   if ((G.turn || 0) - r.turn > 3) return null;
   if (asItsGuardReadsIt(r.rating) != null && botLairRating(c) < r.rating) return null;

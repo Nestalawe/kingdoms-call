@@ -30,9 +30,12 @@
 // difficulty, and the intel, the guesses and the estimates on a world lacking a list or a field. Then the strategy's
 // helpers on what no matrix game hands them (P1-10b41): a world, a realm, a hero, a province or a ledger lacking a list
 // or a field, the musters of an admiral, a flying general and a host, a garrison, a hire and the kinds a province raises.
-// Then the Spring orders pass on what no matrix game hands it (P1-10b42). Last, a case aimed at each fault the night
+// Then the Spring orders pass on what no matrix game hands it (P1-10b42), with a case aimed at each fault the night
 // run's mutation session found unguarded (P1-21j): the empire's width, a feint past a visiting host, the forced march
 // at the second assault, a garrison raised under threat put first, and a Flood mage's pins within his casting limit.
+// Last, the spellcraft on what no matrix game hands it (P1-10b43): the single best cast, the titles a realm with no
+// standings chases, the ratings and a guardian weighed on a hero lacking a field, a lair, a march, a path, a quarry, a
+// cast plan, the cross-training, the actions pass, a spy's target and the practice fallback on a world lacking a list.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -1882,5 +1885,380 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
     }
     const pins = (engineFn(engine, 'botPins') as Fn)(b.G, 1) as Map<number, number>;
     expect([pins.size, [...pins.values()].every((id) => id === mage.id)]).toEqual([1, true]);
+  });
+});
+describe('The spellcraft on what no matrix game hands it (P1-10b43)', () => {
+  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
+  const json = (v: unknown) => JSON.stringify(v);
+  /** A world of one realm and the lists named, each other list missing; its map 2 by 1. */
+  const aWorld = (lists: Record<string, unknown> = {}) => ({
+    turn: 3,
+    world: { cols: 2, rows: 1, ...((lists['world'] as object | undefined) ?? {}) },
+    players: [{}],
+    ...Object.fromEntries(Object.entries(lists).filter(([k]) => k !== 'world')),
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    ...fields,
+  });
+  const results = (calls: readonly (() => unknown)[]) =>
+    json(
+      calls.map((f) => {
+        try {
+          const v = f();
+          return v === undefined ? 'undefined' : v;
+        } catch (e) {
+          return `throws ${String(e).split(':')[0] ?? ''}`;
+        }
+      }),
+    );
+  test('a single best cast, read by no pass: the first of the plan, or none for a hero of no magic', () => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    const mage = standAHero(b, { player: 1, at: b.X, skills: { psychic: 2 } });
+    const plain = standAHero(b, { player: 1, at: b.X, skills: { melee: 1 } });
+    standAHero(b, { player: 0, at: b.X, troops: 3 });
+    standAHero(b, { player: 0, at: b.X, skills: { melee: NaN } });
+    delete (standAHero(b, { player: 0, at: b.X }) as unknown as Raw)['skills'];
+    const cast = (c: Character) => {
+      const o = fn('botActionCast')(b.G, c) as Raw | null;
+      return o === null ? null : `${String(o['action'])}|${String(o['desc'])}`.replace(/\d{4}/g, '#');
+    };
+    expect(results([() => cast(mage), () => cast(plain)])).toBe('["cast_spell|Cast Telekinetic Storm on Hero #",null]');
+  });
+  test("the titles a realm with no standings chases: by its own heroes' skills alone, each school, weapon and craft counted", () => {
+    const skills = [
+      { white: 3 },
+      { psychic: 3 },
+      { illusory: 3 },
+      { elemental: 3 },
+      { necromancy: 3 },
+      { melee: 3, sage: 3 },
+      { tactical: 3, sage: 3 },
+      { march: 3, sage: 3 },
+      { archery: 3, sage: 3 },
+      { naval: 3 },
+      { sage: 3 },
+      { spy: 3 },
+      { explorer: 3 },
+      {},
+    ];
+    expect(
+      results([
+        ...skills.map(
+          (s) => () =>
+            fn('botTargetTitles')(
+              aWorld({
+                characters: [
+                  null,
+                  { id: 1, player: 0, alive: true, skills: s },
+                  { id: 2, player: 1, alive: true, skills: { naval: 9 } },
+                  { id: 3, player: 0 },
+                ],
+              }),
+              0,
+            ),
+        ),
+        () => fn('botTargetTitles')(aWorld({ players: [{ _botTitles: ['sea'] }] }), 0),
+        () => fn('botTargetTitles')(aWorld(), 1),
+      ]),
+    ).toBe(
+      '[["arch","marshal","monster"],["arch","marshal","monster"],["arch","marshal","monster"],["arch","marshal","monster"],["arch","marshal","monster"],["marshal","lore","monster"],["marshal","lore","monster"],["marshal","lore","monster"],["marshal","lore","monster"],["sea","marshal","monster"],["lore","marshal","monster"],["spy","marshal","monster"],["carto","marshal","monster"],["marshal","monster"],["sea"],[]]',
+    );
+  });
+  test('the ratings, a title’s focus and a guardian weighed on a hero lacking his skills, his temper, his life or his things', () => {
+    const G = aWorld({ characters: [] });
+    const at =
+      (c: Record<string, unknown>, m: unknown, ...more: unknown[]) =>
+      () =>
+        fn('botCanBeatGuardian')(c, m, ...more);
+    expect(
+      results([
+        () => fn('botOffensiveMagic')({}),
+        () => fn('botOffensiveMagic')({ skills: { elemental: 1, psychic: 2 } }),
+        () => fn('botDuelRating')({}),
+        () => fn('botDuelRating')({ maxHp: 0, temper: 'Berserk', items: [{}], skills: { melee: 1 } }),
+        () => fn('botDuelRating')({ hp: 0, maxHp: 30, temper: 'Brave' }),
+        () => fn('botTitleFocusSkill')({ skills: { naval: 2 } }, null),
+        () =>
+          fn('botTitleFocusSkill')({ skills: { naval: 2, melee: 5, sage: 1 } }, [
+            'spy',
+            'carto',
+            'marshal',
+            'lore',
+            'sea',
+          ]),
+        () => fn('botTitleFocusSkill')({ skills: { white: 1, illusory: 3 } }, ['arch']),
+        at({}, null),
+        at({ maxHp: 99 }, { hp: 1 }),
+        at({ skills: { melee: 2 }, maxHp: 99 }, { hp: 1 }),
+        at({ id: 1 }, { hp: 10, power: 'Weak' }, G, null, { _rumourOdds: { null: { charId: 1, turn: 3, band: 200 } } }),
+        at({ id: 1 }, { hp: 10, power: 'Weak' }, G, 0, { _rumourOdds: { 0: { charId: 1, turn: 3, band: 101 } } }),
+        at({ id: 1 }, { hp: 10, power: 'Weak' }, G, 0, { _rumourOdds: { 0: { charId: 1, turn: 3, band: 100 } } }),
+        at({ skills: { melee: 2, archery: 2 }, maxHp: 99 }, { hp: 1 }),
+        at({ skills: { archery: 3 }, maxHp: 99 }, { hp: 1 }),
+        at({ skills: { melee: 3 }, maxHp: 0 }, { hp: 0, power: 'Strange' }),
+        at({ skills: { melee: 3 }, maxHp: 0 }, { hp: 25, power: '' }),
+        at({ skills: { melee: 3 }, maxHp: 15 }, { hp: 0, power: 'Moderate' }),
+        at({ skills: { melee: 3, tactical: 1, archery: 1, elemental: 1 }, maxHp: 21 }, { hp: 20, power: 'Moderate' }),
+        at({ skills: { melee: 3, tactical: 1, archery: 1, elemental: 1 }, maxHp: 20 }, { hp: 20, power: 'Moderate' }),
+        at({ skills: { melee: 3, necromancy: 1, psychic: 1 }, maxHp: 20 }, { hp: 20, power: 'Moderate' }),
+      ]),
+    ).toBe(
+      '[0,3,20,35,4,null,"sage","illusory",true,false,false,true,true,false,false,true,true,true,true,true,false,false]',
+    );
+  });
+  test('a lair to raid: none for no province or none listed; a gap, a guardian of no power and one of a power no table names', () => {
+    const G = aWorld({ characters: [] });
+    const lairs = aProvince({
+      features: [
+        null,
+        { discovered: true, cleared: true, monster: null },
+        { discovered: true, ritualSite: true, monster: null },
+        { discovered: true, discoveredBy: [0], monster: null },
+        {
+          discovered: true,
+          discoveredBy: [0],
+          monster: { hp: 10, power: 'Strange' },
+          _rumourOdds: { 0: { charId: 1, turn: 3, band: 101 } },
+        },
+        {
+          discovered: true,
+          discoveredBy: [0],
+          monster: { hp: 10, power: 'Moderate' },
+          _rumourOdds: { 0: { charId: 1, turn: 3, band: 101 } },
+        },
+      ],
+    });
+    expect(
+      results([
+        () => fn('botBeatableLairIn')(G, { id: 1, player: 0 }, null),
+        () => fn('botBeatableLairIn')(G, { id: 1, player: 0 }, aProvince()),
+        () => fn('botBeatableLairIn')(G, { id: 1, player: 0 }, lairs),
+        () => fn('botBeatableLairIn')(G, { id: 1 }, lairs),
+        () => fn('botBeatableLairIn')(G, null, lairs),
+        () => fn('botBeatableLair')(aWorld({ world: { provinces: [lairs] } }), { id: 1, player: 0, location: 0 }),
+      ]),
+    ).toBe('[-1,-1,5,3,"throws TypeError",5]');
+  });
+  test('a march planned, a path and a quarry on a world lacking its lists or a hero his plan', () => {
+    const P0 = aProvince();
+    const P1 = aProvince({ id: 1, col: 1 });
+    const G = aWorld({ world: { provinces: [P0, P1] }, turnOrders: {}, characters: [] });
+    expect(
+      results([
+        () => fn('botPlannedAttackTarget')(G, { id: 1, location: 0 }),
+        () => fn('botPlannedAttackTarget')(G, { id: 1, location: 5 }),
+        () =>
+          fn('botPlannedAttackTarget')(
+            aWorld({
+              world: { provinces: [P0, P1] },
+              turnOrders: {
+                1: [
+                  null,
+                  { action: 'defend' },
+                  { action: 'move', target: 1, desc: '' },
+                  { action: 'move', target: 0, desc: 'Attack Ashford' },
+                ],
+              },
+            }),
+            { id: 1, location: 0 },
+          ),
+        () => fn('botPathAny')(G, P0, 1, 3),
+        () => fn('botPathAny')(G, P0, 0, 3),
+        () => fn('botPathAny')(G, null, 1, 3),
+        () => fn('botPathAny')(G, P0, null, 3),
+        () => fn('botPathAny')(G, P0, 1, 0),
+        () => fn('botPathLenAny')(G, P0, 1, 3),
+        () => fn('botPathLenAny')(G, P0, 7, 3),
+        () => fn('botHuntTarget')(G, 0, { skills: {}, location: 0 }, 3, null),
+        () => fn('botHuntTarget')(G, 0, { skills: { melee: 3 }, location: 9 }, 3, null),
+        () =>
+          fn('botHuntTarget')(
+            aWorld({ world: { provinces: [P0] } }),
+            0,
+            { skills: { archery: 3 }, location: 0 },
+            3,
+            null,
+          ),
+        () =>
+          fn('botHuntTarget')(
+            aWorld({
+              turn: 0,
+              world: { provinces: [P0, P1] },
+              relations: { '0-1': 'enemy' },
+              players: [{ _botIntel: { generals: {}, heroes: { 5: { turn: 0, provId: 1, units: 0 } } } }, {}],
+              characters: [{ id: 5, player: 1, alive: true, location: 1 }],
+            }),
+            0,
+            { id: 1, player: 0, skills: { melee: 3 }, location: 0, maxHp: 40 },
+            3,
+            null,
+          ),
+        () => fn('botRaidTarget')(aWorld(), 0, P0, 3),
+        () => fn('botRaidTarget')(aWorld({ world: { provinces: [null, P1] } }), 0, P0, 3),
+      ]),
+    ).toBe('[null,null,0,[2],[],null,null,null,1,null,null,null,null,null,null,null]');
+  });
+  test('a cast plan with no choices or no province, and the cross-training on a world lacking its lists', () => {
+    const P0 = aProvince();
+    expect(
+      results([
+        () => fn('botCastPlan')(aWorld(), 0, { skills: {} }, null, null),
+        () =>
+          fn('botCastPlan')(
+            aWorld({ world: { provinces: [P0] }, relations: {} }),
+            0,
+            { id: 1, skills: {}, location: 0 },
+            P0,
+            null,
+          ),
+        () =>
+          fn('botCastPlan')(
+            aWorld({
+              world: { provinces: [P0] },
+              relations: {},
+              players: undefined,
+              characters: [null, { id: 2, player: 0, alive: true, isKing: true, location: 0 }],
+            }),
+            0,
+            { id: 1, skills: { white: 1 }, location: 0 },
+            P0,
+            { max: 0 },
+          ),
+        () =>
+          fn('botCastPlan')(
+            aWorld({
+              world: { provinces: [P0] },
+              relations: {},
+              players: [{ alignment: 'Divine' }],
+              characters: [{ id: 2, player: 0, alive: true, isKing: true, location: 0 }],
+            }),
+            0,
+            { id: 1, skills: { white: 1 }, location: 0 },
+            P0,
+            null,
+          ),
+        () => fn('botCrossTrainSkill')(aWorld(), { id: 1, location: 0 }, 0),
+        () =>
+          fn('botCrossTrainSkill')(
+            aWorld({
+              turnOrders: {},
+              characters: [
+                null,
+                { id: 1, player: 0, alive: true, location: 0, skills: { sage: 1 } },
+                { id: 2, player: 0, alive: true, location: 0 },
+              ],
+            }),
+            { id: 1, location: 0, skills: { sage: 1 } },
+            0,
+          ),
+      ]),
+    ).toBe(
+      '[[],[],"throws TypeError",[{"action":"cast_spell","target":"Bless Province","extra":"0","desc":"Cast Bless Province on Ashford"}],null,"sage"]',
+    );
+  });
+  test("the actions pass on no realms, on a world of no map, with no orders or a hero's life unknown", () => {
+    const P0 = aProvince();
+    const play = (G: Raw) => {
+      fn('runBotActions')(G, new Set([0]));
+      return G['turnOrders'];
+    };
+    expect(
+      results([
+        () => fn('runBotActions')(aWorld(), null),
+        () => fn('runBotActions')(aWorld(), new Set()),
+        () => fn('runBotActions')({ players: [{}] }, new Set([0])),
+        () => play(aWorld({ world: { provinces: [P0] } })),
+        () =>
+          play(
+            aWorld({
+              world: { provinces: [P0] },
+              characters: [null, { id: 1, player: 0, alive: true, location: 0, hp: 5, maxHp: 20 }],
+            }),
+          ),
+        () =>
+          play(
+            aWorld({ world: { provinces: [P0] }, characters: [{ id: 1, player: 0, alive: true, location: 0, hp: 5 }] }),
+          ),
+        () =>
+          play(
+            aWorld({
+              world: { provinces: [P0] },
+              characters: [{ id: 1, player: 0, alive: true, location: 0, armies: [null] }],
+            }),
+          ),
+        () =>
+          play(
+            aWorld({
+              world: { provinces: [P0] },
+              characters: [{ id: 1, player: 0, alive: true, location: 0, hp: 20, maxHp: 20 }],
+            }),
+          ),
+        () =>
+          fn('botFillOrders')(
+            aWorld({ world: { provinces: [P0] }, characters: [] }),
+            0,
+            { id: 1, location: 0, skills: {} },
+            [],
+            [],
+          ),
+      ]),
+    ).toBe(
+      '["undefined","undefined","undefined",{},{"1":[{"action":"rest","target":"","extra":"","desc":"Rest & heal"},{"action":"rest","target":"","extra":"","desc":"Rest & heal"},{"action":"rest","target":"","extra":"","desc":"Rest & heal"},{"action":"rest","target":"","extra":"","desc":"Rest & heal"},{"action":"rest","target":"","extra":"","desc":"Rest & heal"}]},{"1":[{"action":"rest","target":"","extra":"","desc":"Rest & heal"},{"action":"rest","target":"","extra":"","desc":"Rest & heal"},{"action":"rest","target":"","extra":"","desc":"Rest & heal"},{"action":"rest","target":"","extra":"","desc":"Rest & heal"},{"action":"rest","target":"","extra":"","desc":"Rest & heal"}]},{"1":[{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"}]},{"1":[{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"}]},[{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"}]]',
+    );
+  });
+  test('a spy’s target and the practice fallback on a world lacking its players’ records or a province its map', () => {
+    const P0 = aProvince();
+    expect(
+      results([
+        () => fn('botSpyTarget')(aWorld({ world: { provinces: [P0] } }), 0, { id: 1, location: 5 }, 3),
+        () => fn('botSpyTarget')(aWorld({ world: { provinces: [P0] }, characters: [] }), 0, { id: 1, location: 0 }, 3),
+        () =>
+          fn('botSpyTarget')(
+            aWorld({ world: { provinces: [P0] }, characters: [], players: undefined }),
+            0,
+            { id: 1, location: 0 },
+            3,
+          ),
+        () =>
+          fn('botSpyTarget')(
+            aWorld({
+              world: { provinces: [aProvince({ owner: 1 }), aProvince({ id: 1, col: 1 })] },
+              players: [{ _botSpyMemo: { 0: 0 } }, {}],
+              relations: { '0-1': 'enemy' },
+              characters: [{ id: 1, player: 0, alive: true, location: 0 }],
+            }),
+            0,
+            { id: 1, player: 0, location: 0 },
+            3,
+          ),
+        () =>
+          fn('botPracticeFallback')(aWorld({ world: { provinces: [P0] }, characters: [] }), 0, {
+            id: 1,
+            location: 0,
+            skills: {},
+          }),
+        () =>
+          fn('botPracticeFallback')(
+            aWorld({ world: { provinces: [P0] }, characters: [] }),
+            0,
+            { id: 1, location: 0, skills: {} },
+            { moving: true },
+          ),
+        () =>
+          fn('botPracticeFallback')(
+            aWorld({ world: { provinces: [aProvince({ exploredBy: { 0: 100 } })] }, characters: [] }),
+            0,
+            { id: 1, location: 0, skills: { sage: 5 } },
+          ),
+      ]),
+    ).toBe(
+      '[null,null,null,{"X":{"id":0,"row":0,"col":0,"owner":1,"terrain":"plains","name":"Ashford"},"d":0,"sc":14},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"}]',
+    );
   });
 });
