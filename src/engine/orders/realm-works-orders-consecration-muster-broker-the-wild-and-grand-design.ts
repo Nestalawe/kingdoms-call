@@ -91,7 +91,10 @@ function theSamePlaceAsNamed(h: WhereAsAWildCallingComparesIt, from: WhereAsAWil
 /** The consecrations a king may hold at once (plan P1-11e22, moved as it was): his White, and what his realm's
  *  discoveries add (ad03 Holy Sites, +1; still needs White 1+; the discoveries' registry's since plan P1-19ae:
  *  "orderOutcome: a realm's discoveries add to the consecrations a crown may hold"). */
-export function theConsecrationsAKingMayHold(c: Character, hisRealm: Realm | undefined): number {
+export function theConsecrationsAKingMayHold(
+  c: Parameters<typeof skillLevel>[0],
+  hisRealm: Parameters<typeof whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold>[0],
+): number {
   return (
     skillLevel(c, 'white') +
     whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(hisRealm, {

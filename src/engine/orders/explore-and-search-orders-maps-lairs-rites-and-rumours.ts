@@ -284,7 +284,9 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
 /** The turns the beasts a Wild Hunt binds serve beyond this one (plan P1-11e22, moved as it was): WILD_HUNT_TURNS,
  *  and what the hero's realm's discoveries add (ap08 The Long Hunt; the discoveries' registry's since plan P1-19ad:
  *  "orderOutcome: a realm's discoveries lengthen the wild hunt"). */
-export function theTurnsAWildHuntServesBeyondThisOne(hisRealm: Realm | undefined): number {
+export function theTurnsAWildHuntServesBeyondThisOne(
+  hisRealm: Parameters<typeof theTurnsARealmsDiscoveriesLengthenTheWildHuntBy>[0],
+): number {
   return WILD_HUNT_TURNS + theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(hisRealm);
 }
 // Perform Rite (Pagan realms, at a ritual site): the Rite of the Wild Hunt, or the Blood Offering.
