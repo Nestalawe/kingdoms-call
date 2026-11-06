@@ -19,6 +19,12 @@ import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
 import { whatAMarchsOrderNames } from '../rules-on-plain-values/what-a-marchs-order-names.ts';
 import { theMovePoolAStepSpends } from '../rules-on-plain-values/the-move-pools-a-column-marches-and-sails-by-and-the-pool-a-step-spends.ts';
 import {
+  aProvinceBesideTheSeaIsACoastAVoyageCharts,
+  theShareAVoyageChartsOfEachCoastBesideTheSea,
+  theShareOfAProvinceAMarchIntoItMaps,
+  theShareOfAProvinceMappedOnceAShareIsAdded,
+} from '../rules-on-plain-values/the-share-a-march-into-a-province-maps-and-the-coast-a-voyage-charts.ts';
+import {
   aColumnIsTurnedBackAtANeutralRealmsBorder,
   aColumnLeadingShipsMayNotStepFromLandToLand,
   canEnterTerrain,
@@ -662,11 +668,12 @@ export function resolveMoveOrder(
     // level of the moving character — applied on EVERY move in, not just the first.
     toProv.exploredBy ??= {};
     const explLvlMove = effStat(turnContext, c, 'explorer');
-    const explGainMove =
-      10 +
-      5 * explLvlMove +
-      theExplorationTheMoversItemsAdd(activeItems(c)) +
-      (perkTier(c, 'march') > 0 ? 2 * (asItsGuardReadsIt(c.armies) ?? []).length : 0); // Traveller's Cloak +20% · MARCH L6 +2%/army led (Loremaster explore bonus removed \u2014 now an intel line)
+    const explGainMove = theShareOfAProvinceAMarchIntoItMaps(
+      explLvlMove,
+      theExplorationTheMoversItemsAdd(activeItems(c)),
+      perkTier(c, 'march') > 0,
+      (asItsGuardReadsIt(c.armies) ?? []).length,
+    ); // Traveller's Cloak +20% · MARCH L6 +2%/army led (Loremaster explore bonus removed \u2014 now an intel line)
     // (The old Elven "Pathfinder" forest/jungle exploration doubling is REPLACED this session by
     // the Elven escape ability — no exploration bonus now.)
     const prevExp = (toProv.exploredBy[c.player] ?? 0) || 0;
@@ -679,23 +686,24 @@ export function resolveMoveOrder(
         trySkillGain(turnContext, c, 'explorer', SKILLGAIN_COMMON);
       }
     }
-    const mappedNow = Math.min(100, prevExp + explGainMove); // his realm's share mapped now, read back below as written
+    const mappedNow = theShareOfAProvinceMappedOnceAShareIsAdded(prevExp, explGainMove); // his realm's share mapped now, read back below as written
     toProv.exploredBy[c.player] = mappedNow;
     toProv.explored = mappedNow;
     creditMapped(c, prevExp, mappedNow); // TITLE MERIT: Cartographer
     // NAVAL L6 — charting the coast: entering a SEA province while leading naval units adds
     // +5% exploration to each LAND province adjacent to this sea province.
-    if (
-      toProv.terrain === 'sea' &&
-      perkTier(c, 'naval') > 0 &&
-      (asItsGuardReadsIt(c.armies) ?? []).some((a) => SEA_TYPES.has(a.type))
-    ) {
+    const _chartsEachCoast = theShareAVoyageChartsOfEachCoastBesideTheSea(
+      toProv.terrain,
+      perkTier(c, 'naval') > 0,
+      (asItsGuardReadsIt(c.armies) ?? []).some((a) => SEA_TYPES.has(a.type)),
+    );
+    if (_chartsEachCoast > 0) {
       getNeighborsP(toProv, G.world.cols, G.world.rows, G.world.provinces).forEach(
         (nb: Province | null | undefined) => {
-          if (nb && nb.terrain !== 'sea') {
+          if (nb && aProvinceBesideTheSeaIsACoastAVoyageCharts(nb.terrain)) {
             nb.exploredBy ??= {};
             const _npe = (nb.exploredBy[c.player] ?? 0) || 0;
-            const _npeNow = Math.min(100, _npe + 5); // read back below as written
+            const _npeNow = theShareOfAProvinceMappedOnceAShareIsAdded(_npe, _chartsEachCoast); // read back below as written
             nb.exploredBy[c.player] = _npeNow;
             nb.explored = _npeNow;
             creditMapped(c, _npe, _npeNow);
