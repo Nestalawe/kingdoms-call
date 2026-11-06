@@ -110,6 +110,8 @@ import {
 } from '../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts';
 import { anItemIsTheMithrilSuit } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
+import { warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages } from '../../src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts';
+import { relKeyOf } from '../../src/engine/realms/relations-and-captures.ts';
 import { earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill } from '../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
@@ -137,6 +139,18 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 
 // ── The copies ────
 
+/** Where the order form says a hero will stand (predictedLocation), and since P1-11e10 what it reads: the march the
+ *  turn refuses and the relation at a border, its one answer a refresh (the report it was kept for, the answers, the
+ *  fields it was worked out from) and the forecast itself. */
+const THE_MARCH_FORECASTS_DECLARATIONS = [
+  'theRelationAMarchMeetsAtTheBorderOf',
+  'aMarchTheTurnRefuses',
+  'theForecastsReport',
+  'theForecastsAnswers',
+  'whatTheForecastOfThePhasesBeforeReads',
+  'predictedLocation',
+  'whereTheFormSaysAHeroWillStand',
+];
 /** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
   // (and the label of a company, which the Blood Offering's rows show: P1-11d3; and the note under an order that
@@ -169,10 +183,11 @@ const COPIES: Record<string, string[]> = {
   // the order form's forecasts (P1-11e3: one file): the order a page's field holds (P1-11d1: the fields stood in below),
   // where a hero will stand after his orders so far (P1-11d1: the Explore forecast and the Move field read it), what he
   // will carry and lead, and a province's garrison hold (P1-11d2: the forms of the later phases read them), with the
-  // units a Recruit musters and which go to the garrison
+  // units a Recruit musters and which go to the garrison; since P1-11e10 the march the turn refuses, asked on the column
+  // the Move note counts, and the forecast's one answer a refresh
   'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts': [
     'getOrderTarget',
-    'predictedLocation',
+    ...THE_MARCH_FORECASTS_DECLARATIONS,
     'predictedItems',
     'GARRISON_UNIT_TYPES_P',
     '_isAutoGarrisonRecruit',
@@ -199,8 +214,21 @@ const COPIES: Record<string, string[]> = {
     'actionsFor',
   ],
   // (and the skills' names, which the Practice Skill note gives: P1-11d4; and the column the Move note counts, whose
-  // beasts of the Wild Hunt are the rite's row's number: P1-11d8)
-  'ui/player/move-analysis.ts': ['lastMoveDirOf', 'SKILL_LABELS', 'projectedMoveHost'],
+  // beasts of the Wild Hunt are the rite's row's number: P1-11d8; since P1-11e10 with the sea lift and the ships the
+  // march forecast reads of it, and the orders it can't count)
+  'ui/player/move-analysis.ts': [
+    'lastMoveDirOf',
+    'SKILL_LABELS',
+    'projectedMoveHost',
+    'PO_UNCOUNTABLE_ACTIONS',
+    'PO_UNCOUNTABLE_SPELLS',
+    'PO_PROJECTED_FOOT',
+    'takesHalfAHullAboardOrIsYetToBeRaised',
+    'PO_SEA_TYPES',
+    'PO_CARRIER_TYPES',
+    'PO_AERIAL_TYPES',
+    'poSeaAnalysis',
+  ],
 };
 const ARMY_CARD = 'ui/player/report.ts';
 const TURN_REPORT = 'views/turn-report.ts';
@@ -280,9 +308,13 @@ function onTheOrders(report, orders, fn) {
   theOrdersStaged = orders;
   try { return fn(); } finally { currentReport = null; theOrdersStaged = {}; }
 }
-// where the hero \`heroId\` will stand once his orders of the phases before \`upTo\` are carried out (its id, or null)
-function predictedLocationOn(report, orders, heroId, upTo) {
-  return onTheOrders(report, orders, () => { const at = predictedLocation(heroId, upTo); return at ? at.id : null; });
+// where the hero \`heroId\` will stand once his orders of the phases before \`upTo\` are carried out (its id, or null);
+// since P1-11e10 with the declarations of war the form holds (by realm), if any
+function predictedLocationOn(report, orders, heroId, upTo, declarations) {
+  diploChoices = declarations || {};
+  try {
+    return onTheOrders(report, orders, () => { const at = predictedLocation(heroId, upTo); return at ? at.id : null; });
+  } finally { diploChoices = {}; }
 }
 // the share of the province \`provId\` the hero \`c\` maps marching in, in the phases before \`upTo\`
 function exploreMoveGainOn(report, orders, c, upTo, provId) {
@@ -388,6 +420,9 @@ export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   const code = [
     'let currentReport = null;',
+    // the declarations of war and treaties the form holds for the turn (the page's diploChoices: none, unless a case
+    // stages them)
+    'let diploChoices = {};',
     scriptOf('content/kingdoms-call-data.ts', opts),
     scriptOf('content/mastery-orders-their-keys-names-skills-and-levels.ts', opts),
     scriptOf('ui/shared/kc-safe.ts', opts),
@@ -462,7 +497,7 @@ export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpel
     scriptOf('ui/player/the-hints-the-order-form-shows-below-each-spell.ts', opts),
     sourceOf(
       'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
-      ['getOrderTarget', 'predictedLocation'],
+      ['getOrderTarget', ...THE_MARCH_FORECASTS_DECLARATIONS],
       opts,
     ),
     sourceOf('ui/player/order-targets.ts', ['provDirectionLabel'], opts),
@@ -1581,9 +1616,10 @@ export function thePortalsHexTablesAgainstTheEngine(c: Copies): HexStepCompariso
 
 /** The kinds of staged march: those the forecast and the turn agree on (a Forced March by direction and a Move by a
  *  province's bare number since R-128: both read their target by the turn's whatAMarchsOrderNames; one naming no
- *  province leaves him where he is), and those it is known to get wrong (question 44): a march the turn refuses (a
- *  column with ships over land, one with too little lift to put to sea, one at a neutral realm's border, one past its
- *  pace) and a far province (the turn takes one step toward it). */
+ *  province leaves him where he is; since P1-11e10 a march the turn refuses leaves him where he is too: a column with
+ *  ships over land, one with too little lift to put to sea, one at a neutral realm's border, his realm's war declared
+ *  this turn standing only for an Evil realm, and the marches each refusal lets through), and those it is known to get
+ *  wrong (question 44): a column past its pace, and a far province (the turn takes one step toward it). */
 export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   'a compass step',
   'a province next door',
@@ -1592,15 +1628,24 @@ export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   "a Forced March's compass step",
   'a Move to a province next door by its bare number',
   'a Move naming no province on the map',
-] as const;
-export const THE_MARCHES_THE_FORECAST_GETS_WRONG = [
   'ships over land',
   'too little lift to put to sea',
   "a neutral realm's border",
-  'past his pace',
-  'a far province',
-  'a far Forced March',
+  "a lone hero at a neutral realm's border",
+  "a realm's border his own is at war with",
+  "a neutral realm's border, war declared this turn by a Good realm",
+  "a neutral realm's border, war declared this turn by an Evil realm",
+  'ships putting to sea',
 ] as const;
+/** The kinds of staged march the turn refuses (P1-11e10): the hero stays where he is, and a Search Lair the form sends
+ *  after it names the province he stands in. */
+export const THE_MARCHES_THE_TURN_REFUSES = [
+  'ships over land',
+  'too little lift to put to sea',
+  "a neutral realm's border",
+  "a neutral realm's border, war declared this turn by a Good realm",
+] as const;
+export const THE_MARCHES_THE_FORECAST_GETS_WRONG = ['past his pace', 'a far province', 'a far Forced March'] as const;
 export type AKindOfMarch =
   (typeof THE_MARCHES_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_MARCHES_THE_FORECAST_GETS_WRONG)[number];
 /** An order of a phase, as the page's fields hold it and the turn reads it. */
@@ -1608,14 +1653,23 @@ interface AnOrder {
   readonly action: 'Move' | 'Forced March';
   readonly target: string;
 }
+/** What a staged march changes of realm 0 toward realm 1, whose province is next door (P1-11e10): its creed, the two
+ *  realms at war as the turn begins, a war it declares this turn (as the form holds it, and the turn's merge hands it
+ *  on once the Safe Start is over). Either way, realm 0 has met realm 1. */
+export interface WhatAStagedMarchChangesOfTheRealm {
+  readonly alignment?: string;
+  readonly atWar?: boolean;
+  readonly declaresWar?: boolean;
+}
 /** A staged march: its kind, the hero who marches (realm 0's), his orders by phase, where he sets out and where his
- *  orders name. */
+ *  orders name; and what it changes of his realm, if anything. */
 export interface AStagedMarch {
   readonly kind: AKindOfMarch;
   readonly heroId: unknown;
   readonly orders: readonly AnOrder[];
   readonly from: unknown;
   readonly named: unknown;
+  readonly realm?: WhatAStagedMarchChangesOfTheRealm;
 }
 /** The kinds of staged march into a province whose share the march maps is read: those the forecast and the turn
  *  agree on, and those it is known to get wrong (question 44): a cloak of another name (the forecast knows a
@@ -1689,6 +1743,12 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
   if (!staged) throw new Error('the staged world has no province to march from with the sea and a road beside it');
   const { start, sea, open, coast, first, second, third, border } = staged;
   border['owner'] = 1;
+  // (the start in realm 0's own list of provinces, so its report shows the provinces beside it as its border, with their
+  // owners: the march forecast reads the neutral realm's border there, P1-11e10)
+  const ourRealm = objects(g['players'])[0];
+  if (!ourRealm) throw new Error('the staged world has no realm 0');
+  const ourProvinces: unknown[] = Array.isArray(ourRealm['provinces']) ? ourRealm['provinces'] : [];
+  if (!ourProvinces.includes(start['id'])) ourRealm['provinces'] = [...ourProvinces, start['id']];
   const tc = createTurnContext(g, [], Number(g['turn']) || 1);
   // (the staged world's province, given the type the engine's step takes, by assertion as the saved state's)
   const compass = KC_HEX_DIRS.find(
@@ -1700,7 +1760,7 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
   const id = (p: Obj) => String(p['id']);
   const move = (target: string): AnOrder => ({ action: 'Move', target });
   const forced = (target: string): AnOrder => ({ action: 'Forced March', target });
-  const kinds: [AKindOfMarch, AnOrder[], Obj, Obj[]][] = [
+  const kinds: [AKindOfMarch, AnOrder[], Obj, Obj[], WhatAStagedMarchChangesOfTheRealm?][] = [
     ['a compass step', [move(`dir:${compass}`)], first, []],
     ['a province next door', [move(`prov:${id(first)}`)], first, men()],
     ['a Forced March next door', [forced(id(first))], first, men()],
@@ -1711,12 +1771,30 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     ['ships over land', [move(`prov:${id(first)}`)], first, withShips()],
     ['too little lift to put to sea', [move(`prov:${id(sea)}`)], sea, men()],
     ["a neutral realm's border", [move(`prov:${id(border)}`)], border, men()],
+    ["a lone hero at a neutral realm's border", [move(`prov:${id(border)}`)], border, []],
+    ["a realm's border his own is at war with", [move(`prov:${id(border)}`)], border, men(), { atWar: true }],
+    [
+      "a neutral realm's border, war declared this turn by a Good realm",
+      [move(`prov:${id(border)}`)],
+      border,
+      men(),
+      { declaresWar: true },
+    ],
+    [
+      "a neutral realm's border, war declared this turn by an Evil realm",
+      [move(`prov:${id(border)}`)],
+      border,
+      men(),
+      { alignment: 'Evil', declaresWar: true },
+    ],
+    ['ships putting to sea', [move(`prov:${id(sea)}`)], sea, withShips()],
     ['past his pace', [move(`prov:${id(first)}`), move(`prov:${id(second)}`), move(`prov:${id(third)}`)], third, men()],
     ['a far province', [move(`prov:${id(second)}`)], second, men()],
     ['a far Forced March', [forced(id(second))], second, men()],
   ];
-  const marches = kinds.map(([kind, orders, named, armies]) => ({
+  const marches = kinds.map(([kind, orders, named, armies, realm]) => ({
     kind,
+    ...(realm ? { realm } : {}),
     // (March 7 for a Forced March, which the turn refuses below it; March 0 else, so a column of Men-at-Arms keeps
     // their pace of 2)
     heroId: hero({
@@ -1767,21 +1845,56 @@ function whereTheTurnLeavesHim(
   state: Obj,
   heroId: unknown,
   orders: readonly AnOrder[],
-  { inPlace = false }: { inPlace?: boolean } = {},
+  {
+    inPlace = false,
+    declarations = {},
+  }: { inPlace?: boolean; declarations?: Record<number, Record<string, string>> } = {},
 ): unknown {
+  return whatTheTurnDoesWithHim(state, heroId, orders, { inPlace, declarations }).location;
+}
+/** Where the turn leaves the hero `heroId` after `orders` (as whereTheTurnLeavesHim), and every fact its lines record:
+ *  the realms' declarations of war this turn (by realm, then by the realm it is toward) taken first, as the turn's step
+ *  before the first phase takes them (an Evil or Undead realm's war stands from that phase). */
+function whatTheTurnDoesWithHim(
+  state: Obj,
+  heroId: unknown,
+  orders: readonly { readonly action: string; readonly target: string; readonly prov?: unknown }[],
+  {
+    inPlace = false,
+    declarations = {},
+  }: { inPlace?: boolean; declarations?: Record<number, Record<string, string>> } = {},
+): { location: unknown; facts: string[] } {
   const G = inPlace ? state : copyOf(state);
   const c = objects(G['characters']).find((h) => h['id'] === heroId);
   if (!c) throw new Error('the staged march has no hero');
   const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], Number(G['turn']) || 1), { KC_SEASONS, isBotRow });
+  tc['diploDeclarations'] = declarations;
   kcRng.seed(1);
   quietly(() => {
+    warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(tc);
     orders.forEach((order, ph) => {
       tc._currentPhase = ph;
       // (the staged world's context, hero and order, given the types the dispatch takes, by assertion as above)
       processOrder(tc as unknown as TurnContext, c as never, { ...order } as never, ph);
     });
   });
-  return c['location'];
+  const facts = objects(tc.turnLog).map((line) => {
+    const fact = line['fact'];
+    return isObj(fact) ? String(fact['kind']) : '';
+  });
+  return { location: c['location'], facts };
+}
+/** The world `world` with realm 0 changed toward realm 1 as `realm` says (P1-11e10): its creed, the two at war; realm 0
+ *  has met realm 1 either way. The report is made again from the state changed. */
+function theWorldWithTheRealmChanged(world: World, realm: WhatAStagedMarchChangesOfTheRealm): World {
+  const g = copyOf(world.state);
+  const realms = objects(g['players']);
+  const ours = realms[0];
+  if (!ours) throw new Error('the staged world has no realm 0');
+  ours['_encountered'] = [1];
+  if (realm.alignment) ours['alignment'] = realm.alignment;
+  if (realm.atWar) g['relations'] = { ...(isObj(g['relations']) ? g['relations'] : {}), [relKeyOf(0, 1)]: 'enemy' };
+  return quietly(() => savedAndReported(g));
 }
 /** The share of the province `mapped` realm 0 has mapped once the turn has carried out the hero's `orders` (as
  *  whereTheTurnLeavesHim), on a copy of the state where his realm had mapped none of it. */
@@ -1835,17 +1948,50 @@ export function theMarchForecastAgainstTheTurn(c: Copies): MarchForecastComparis
     const at = { row: Number(p['row']), col: Number(p['col']) };
     return getNeighborsP(at, Number(map['cols']), Number(map['rows']), provinces).map((x) => x['id']);
   };
-  return marches.map(({ kind, heroId, orders, from, named }) => ({
-    ...compare(
-      [kind, orders],
-      c.predictedLocationOn(world.report, { [String(heroId)]: orders }, heroId, orders.length),
-      { answer: whereTheTurnLeavesHim(world.state, heroId, orders), changed: false },
-    ),
-    kind,
-    from,
-    named,
-    nextDoorToBoth: nextTo(from).filter((id) => nextTo(named).includes(id)),
-  }));
+  return marches.map(({ kind, heroId, orders, from, named, realm }) => {
+    const on = realm ? theWorldWithTheRealmChanged(world, realm) : world;
+    const declarations = realm?.declaresWar ? { 0: { 1: 'enemy' } } : {};
+    return {
+      ...compare(
+        [kind, orders],
+        c.predictedLocationOn(on.report, { [String(heroId)]: orders }, heroId, orders.length, declarations[0]),
+        { answer: whereTheTurnLeavesHim(on.state, heroId, orders, { declarations }), changed: false },
+      ),
+      kind,
+      from,
+      named,
+      nextDoorToBoth: nextTo(from).filter((id) => nextTo(named).includes(id)),
+    };
+  });
+}
+/** One staged march the turn refuses, with a Search Lair after it (P1-11e10): the province the Search Lair the form
+ *  sends names (doSubmitOrders sends predictedLocation's), where the turn leaves the hero, and whether the turn sends
+ *  him to rest because he never reached the lair's province. */
+export interface ASearchLairAfterARefusedMarch {
+  readonly kind: (typeof THE_MARCHES_THE_TURN_REFUSES)[number];
+  readonly sent: unknown;
+  readonly heStands: unknown;
+  readonly heNeverReachesTheLair: boolean;
+}
+/** Each staged march the turn refuses, followed by a Search Lair, as the form sends it and as the turn carries it out. */
+export function aSearchLairAfterEachMarchTheTurnRefuses(c: Copies): ASearchLairAfterARefusedMarch[] {
+  const { world, marches } = marchingWorld();
+  return THE_MARCHES_THE_TURN_REFUSES.map((kind) => {
+    const march = marches.find((m) => m.kind === kind);
+    if (!march) throw new Error(`no staged march of the kind ${kind}`);
+    const { heroId, orders, realm } = march;
+    const on = realm ? theWorldWithTheRealmChanged(world, realm) : world;
+    const declarations = realm?.declaresWar ? { 0: { 1: 'enemy' } } : {};
+    const sent = c.predictedLocationOn(on.report, { [String(heroId)]: orders }, heroId, orders.length, declarations[0]);
+    const search = { action: 'Search Lair', target: '', prov: sent };
+    const turn = whatTheTurnDoesWithHim(on.state, heroId, [...orders, search], { declarations });
+    return {
+      kind,
+      sent,
+      heStands: turn.location,
+      heNeverReachesTheLair: turn.facts.includes('a hero never reaches the lair he set out for and rests instead'),
+    };
+  });
 }
 // ── What a hero holds (P1-11d2) ────
 // Plan P1-11d's parity cases on what a hero will carry and lead, before any of it is shared: the items in his pack

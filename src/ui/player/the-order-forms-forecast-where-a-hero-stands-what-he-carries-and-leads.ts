@@ -1,9 +1,13 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_HEX_DIRS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
+  aColumnIsTurnedBackAtANeutralRealmsBorder,
+  aColumnLeadingShipsMayNotStepFromLandToLand,
+  canEnterTerrain,
   theHexNextToAProvinceInADirection,
   whatAMarchsOrderNames,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import { PO_SEA_TYPES, poSeaAnalysis, projectedMoveHost } from './move-analysis.ts';
 
 // The order form's forecasts (plan P1-11e3): where a hero will stand, what he will carry and what he will lead, and what a
 // province's garrison will hold, after the orders the form holds for the phases before. They read the page's fields (the
@@ -74,9 +78,90 @@ export function getOrderExtra(charId, ph) {
   return el?.value || '';
 }
 
+// ── A MARCH THE TURN REFUSES (R-128, plan P1-11e10) ────
+// The turn turns a march back before it takes a step, and the hero stays where he is for his later orders (and his
+// Search Lair names the lair where he stands: doSubmitOrders sends predictedLocation's province). Asked here in the
+// turn's order, by the engine's own rules (src/shared/), on the column the Move note counts (projectedMoveHost: the
+// companies he will lead as the march sets out, this phase's hand-overs among them):
+//   1. a neutral realm's border: a province of a realm his own is neither allied with nor at war with, and he leads
+//      companies (a lone hero passes). The relation is the report's; a war his realm declares on the form this turn
+//      stands from the first phase only for an Evil or Undead realm (war without warning: the turn's step before the
+//      first phase), every other declaration from next turn;
+//   2. the sea, with too little lift to put to sea (hulls and flyers: the note's sea lift);
+//   3. ships over land: a column leading any fleet or sea-beast steps from land only to the sea.
+// Forecast limits (plan P1-11's Decision 3), left to the turn: ground the report can't show (a province not yet
+// mapped, its owner or terrain unknown: no refusal is forecast), a war a rival declares, a blockade, a flood, his pace
+// (P1-11e11) and a far province (P1-11e12).
+function theRelationAMarchMeetsAtTheBorderOf(report, owner) {
+  if (owner === report.playerIndex) return 'self';
+  const known = ((report.diplomacy || {}).known || []).find((k) => k && k.index === owner);
+  const now = (known && known.relation) || 'neutral';
+  const declared = known && typeof diploChoices === 'object' && diploChoices ? diploChoices[owner] : null;
+  const withoutWarning = ['Evil', 'Undead'].includes((report.kingdom || {}).alignment);
+  return declared === 'enemy' && withoutWarning ? 'enemy' : now;
+}
+function aMarchTheTurnRefuses(report, char, ph, from, to) {
+  const column = projectedMoveHost(char.id, ph).armies;
+  const turnedBack = aColumnIsTurnedBackAtANeutralRealmsBorder(
+    report.playerIndex,
+    to.owner,
+    column.length,
+    to.owner == null ? 'neutral' : theRelationAMarchMeetsAtTheBorderOf(report, to.owner),
+  );
+  if (turnedBack) return true;
+  if (!from.terrain || !to.terrain) return false;
+  const lift = poSeaAnalysis(column, (char.skills || {}).naval || 0).cap;
+  if (to.terrain === 'sea') return !canEnterTerrain({ armies: column }, 'sea', lift);
+  if (from.terrain === 'sea') return false; // a landing: the turn asks only his sea points
+  const leadsShips = column.some((a) => a && PO_SEA_TYPES.has(a.type));
+  return (
+    aColumnLeadingShipsMayNotStepFromLandToLand(leadsShips, from.terrain, to.terrain) ||
+    !canEnterTerrain({ armies: column }, to.terrain, lift)
+  );
+}
+// ── ONE ANSWER A REFRESH (plan P1-11e10) ────
+// A march's refusal reads the column he will lead, and that column reads where he and his comrades stand in the
+// phases before (projectedMoveHost, projectedLedArmies), so every phase's answer would be worked out again for each
+// later one. Each answer is kept while what it was worked out from stands: the report and every order field the
+// forecasts read (each hero's action, target and extra, a Recruit's boxes and muster) of the phases before it, and the
+// war the form declares. A field changed is a new key, so no answer outlives the orders it was worked out from.
+let theForecastsReport = null;
+const theForecastsAnswers = new Map();
+function whatTheForecastOfThePhasesBeforeReads(report, upToPhaseExclusive) {
+  const parts = [typeof diploChoices === 'object' && diploChoices ? JSON.stringify(diploChoices) : ''];
+  const value = (id) => {
+    const el = document.getElementById(id);
+    return el ? String(el.value ?? '') : '';
+  };
+  (report.characters || []).forEach((o) => {
+    for (let ph = 0; ph < upToPhaseExclusive; ph++) {
+      parts.push(value(`po-action-${o.id}-${ph}`), value(`po-target-${o.id}-${ph}`), value(`po-extra-${o.id}-${ph}`));
+      const wrap = document.getElementById(`po-target-wrap-${o.id}-${ph}`);
+      if (!wrap) continue;
+      const dest = wrap.querySelector('.po-recruit-dest');
+      const ticked = [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((x) => x.value);
+      parts.push(dest ? String(dest.value) : '', ticked.join(','));
+    }
+  });
+  return JSON.stringify(parts);
+}
 export function predictedLocation(charId, upToPhaseExclusive) {
   const report = currentReport;
   if (!report) return null;
+  if (theForecastsReport !== report || theForecastsAnswers.size > 5000) {
+    theForecastsReport = report;
+    theForecastsAnswers.clear();
+  }
+  const key = `${String(charId)}|${upToPhaseExclusive}|${whatTheForecastOfThePhasesBeforeReads(report, upToPhaseExclusive)}`;
+  if (theForecastsAnswers.has(key)) {
+    const kept = theForecastsAnswers.get(key);
+    return kept ? { ...kept } : kept;
+  }
+  const answer = whereTheFormSaysAHeroWillStand(report, charId, upToPhaseExclusive);
+  theForecastsAnswers.set(key, answer ? { ...answer } : answer);
+  return answer;
+}
+function whereTheFormSaysAHeroWillStand(report, charId, upToPhaseExclusive) {
   const char = (report.characters || []).find((c) => c.id === charId);
   if (!char) return null;
   let locId = char.locationId;
@@ -90,17 +175,22 @@ export function predictedLocation(charId, upToPhaseExclusive) {
     // field writes it) a province.
     if (action !== 'Move' && action !== 'Forced March') continue;
     const named = whatAMarchsOrderNames(getOrderTarget(charId, ph) || '');
-    if (named.by === 'province') {
-      if (worldMeta.provinces.some((p) => p.id === named.provinceId)) locId = named.provinceId;
-      continue;
-    }
-    const dir = named.direction;
     const curProv = worldMeta.provinces.find((p) => p.id === locId);
-    if (!curProv) continue;
-    const nid = theHexNextToAProvinceInADirection(curProv, dir, worldMeta.cols, worldMeta.rows);
-    if (nid === null) continue;
-    const nbProv = worldMeta.provinces.find((p) => p.id === nid);
-    if (nbProv) locId = nid;
+    let toId = null;
+    if (named.by === 'province') {
+      if (worldMeta.provinces.some((p) => p.id === named.provinceId)) toId = named.provinceId;
+    } else if (curProv) {
+      const nid = theHexNextToAProvinceInADirection(curProv, named.direction, worldMeta.cols, worldMeta.rows);
+      if (nid !== null && worldMeta.provinces.some((p) => p.id === nid)) toId = nid;
+    }
+    if (toId === null || toId === locId) continue;
+    // a province next door: the step the turn may refuse (a far one is taken as named: P1-11e12)
+    const toProv = worldMeta.provinces.find((p) => p.id === toId);
+    const nextDoor =
+      curProv &&
+      KC_HEX_DIRS.some((d) => theHexNextToAProvinceInADirection(curProv, d, worldMeta.cols, worldMeta.rows) === toId);
+    if (nextDoor && aMarchTheTurnRefuses(report, char, ph, curProv, toProv)) continue;
+    locId = toId;
   }
   const prov = worldMeta.provinces.find((p) => p.id === locId);
   return prov ? { id: locId, name: prov.name || 'Unknown' } : { id: locId, name: 'Unknown' };
