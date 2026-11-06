@@ -17,6 +17,11 @@ import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
 import { whatAMarchsOrderNames } from '../rules-on-plain-values/what-a-marchs-order-names.ts';
+import {
+  aColumnIsTurnedBackAtANeutralRealmsBorder,
+  aColumnLeadingShipsMayNotStepFromLandToLand,
+  canEnterTerrain,
+} from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import { TM, creditMapped, perkTier } from '../titles/perks.ts';
 import { whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite } from '../rules/the-registry-of-discovery-effects.ts';
 import {
@@ -31,13 +36,7 @@ import { applyEvilConquest, areEnemies, relationBetween, setProvinceOwner } from
 import { creditBattle } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, isVeiled } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { clearNavalHold, navalHeldIn, navalHoldLine } from '../units/sea-lift-stranding-and-retreats.ts';
-import {
-  canEnterTerrain,
-  contingentUnifyChance,
-  getSeaCapability,
-  refreshMovePool,
-  setMovePool,
-} from '../units/movement-pools.ts';
+import { contingentUnifyChance, getSeaCapability, refreshMovePool, setMovePool } from '../units/movement-pools.ts';
 import { commandHandoverLine, pickBattleCommander, relocateChar, syncLeaderCopy } from '../battle/best-commander.ts';
 import {
   SKILLGAIN_COMMON,
@@ -288,9 +287,12 @@ export function resolveMoveOrder(
   // an army).
   if (
     toProv.owner != null &&
-    toProv.owner !== c.player &&
-    (asItsGuardReadsIt(c.armies) ?? []).length > 0 &&
-    relationBetween(turnContext, c.player, toProv.owner) === 'neutral'
+    aColumnIsTurnedBackAtANeutralRealmsBorder(
+      c.player,
+      toProv.owner,
+      (asItsGuardReadsIt(c.armies) ?? []).length,
+      relationBetween(turnContext, c.player, toProv.owner),
+    )
   ) {
     emit(turnContext, {
       type: 'move',
@@ -553,7 +555,7 @@ export function resolveMoveOrder(
     const _navalAboard = (asItsGuardReadsIt(c.armies) ?? []).filter(
       (a: Army | null | undefined) => a && SEA_TYPES.has(a.type),
     );
-    if (_navalAboard.length > 0) {
+    if (aColumnLeadingShipsMayNotStepFromLandToLand(_navalAboard.length > 0, prov.terrain, toProv.terrain)) {
       emit(turnContext, {
         type: 'move',
         fact: {

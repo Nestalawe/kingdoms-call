@@ -1,7 +1,10 @@
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { getNeighborsP } from './map-helpers.ts';
 import { relationBetween } from '../realms/relations-and-captures.ts';
-import { canEnterTerrain } from '../units/movement-pools.ts';
+import {
+  aColumnLeadingShipsMayNotStepFromLandToLand,
+  canEnterTerrain,
+} from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 
@@ -108,7 +111,8 @@ export function stepTowardPath(
   // land→land edge is now closed to such a column: from land it must put out to an adjacent sea
   // province first, and it may land again only from the sea.
   const _naval = (c.armies || []).some((a) => a && SEA_TYPES.has(a.type));
-  const edgeOk = (a: Province, b: Province) => !_naval || a.terrain === 'sea' || b.terrain === 'sea';
+  const edgeOk = (a: Province, b: Province) =>
+    !aColumnLeadingShipsMayNotStepFromLandToLand(_naval, a.terrain, b.terrain);
   const seen = new Set([from.id]);
   // BFS storing the first step taken on each path
   let frontier = getNeighborsP(from, G.world.cols, G.world.rows, G.world.provinces)
