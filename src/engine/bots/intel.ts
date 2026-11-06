@@ -143,6 +143,8 @@ interface TheBotsTurnCache {
   readonly roles: Partial<Record<number, ABotRealmsRoles>>;
   readonly ledger: Partial<Record<number, ABotRealmsLedger>>;
   met?: Partial<Record<number, boolean>>;
+  /** Each realm's Flood pins this year (botPins, bots/phase-one.ts): a province's id, then its caster's. */
+  pins?: Partial<Record<number, Map<number, number>>>;
   terrainMult?: ((armyType: string, terrain: string) => unknown) | undefined;
   [field: string]: unknown;
 }
