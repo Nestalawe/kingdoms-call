@@ -17,6 +17,7 @@ import { markOrcAttackWin } from '../units/drill-and-spoils.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { getNeighborsP, neighborInDir } from '../world/map-helpers.ts';
 import { whatAMarchsOrderNames } from '../rules-on-plain-values/what-a-marchs-order-names.ts';
+import { theMovePoolAStepSpends } from '../rules-on-plain-values/the-move-pools-a-column-marches-and-sails-by-and-the-pool-a-step-spends.ts';
 import {
   aColumnIsTurnedBackAtANeutralRealmsBorder,
   aColumnLeadingShipsMayNotStepFromLandToLand,
@@ -326,11 +327,13 @@ export function resolveMoveOrder(
   // Coastal landing: moving from sea province to adjacent land province costs from the sea
   // pool (not land pool) since the journey is naval
   const coastalLanding = leavingSea && !enteringSea;
+  // The pool the step spends (rules-on-plain-values/, plan P1-11e5): the sea pool to enter the sea or land from it.
+  const _thePoolTheStepSpends = theMovePoolAStepSpends(prov.terrain, toProv.terrain);
   // 2026-10-08 (Toby item 6): WINNING a battle costs one more point, from the SAME pool the step
   // in was paid from — sea points for a fight at sea or a coastal landing. Every win path used
   // to take it from the land pool, so a fleet with no land points won sea battles for free.
   const _payWinPoint = () => {
-    if (enteringSea || coastalLanding) seaMovePoints[c.id] = Math.max(0, (seaMovePoints[c.id] ?? 0) - 1);
+    if (_thePoolTheStepSpends === 'sea') seaMovePoints[c.id] = Math.max(0, (seaMovePoints[c.id] ?? 0) - 1);
     else movePoints[c.id] = Math.max(0, (movePoints[c.id] ?? 0) - 1);
   };
 
@@ -2122,7 +2125,7 @@ export function resolveMoveOrder(
     // Generic "moves to" is only needed for a plain land move where nothing more descriptive
     // was logged. Sea moves ("moves across sea to…"), coastal landings, and claim/venture
     // lines already describe the move, so skip the redundant generic line in those cases.
-    if (!coastalLanding && !enteringSea && !_moveLineLogged) {
+    if (_thePoolTheStepSpends === 'land' && !_moveLineLogged) {
       emit(turnContext, {
         type: 'move',
         fact: {
