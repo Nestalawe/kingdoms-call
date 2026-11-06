@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { runBotConcessions } from './missions.ts';
 import { runBotMovement } from './movement.ts';
@@ -9,6 +8,10 @@ import { runBotReckoning } from '../titles/reckoning.ts';
 import { seaPenalty, terrainMod } from '../battle/terrain-and-unit-strength.ts';
 import { autoEncounterPlan, pcCharCombatant } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { resolvePersonalCombat } from '../personal-combat/resolve-personal-combat.ts';
+import { aCopyMadeThroughJson } from '../rules-on-plain-values/a-copy-made-through-json-and-typed-as-its-original.ts';
+import type { CharacterId } from '../../schemas/ids-of-provinces-heroes-and-realms.ts';
+import type { Character } from '../../schemas/saved-game-state.ts';
+import type { TurnContext } from '../turn/context.ts';
 
 // ── THE BOTS' PLAN: CONCESSIONS, MOVEMENT, MUSTER, ECONOMY, ACTIONS, SPRING ORDERS, HYGIENE, THE RECKONING, AND THE
 // DUEL FORECAST (plan P1-08l2: lifted out of resolveTurn) ─────────────────────────────────────────────────────────────
@@ -24,7 +27,24 @@ import { resolvePersonalCombat } from '../personal-combat/resolve-personal-comba
 // can rise (turnContext._pcSimulating). The plan hands it to the movement pass with the turn's context.
 // Each takes the turn's context (src/engine/turn/context.ts) first; their lines keep resolveTurn's indent (plan
 // P1-08's Decisions).
-export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hunter, quarry, n) {
+// Its types (plan P1-10b48): the forecast takes the turn's context and two heroes of the world; its copies' ids are
+// numbers no hero of the world carries.
+/** Whether a number is a hero's id as the saved state's schema checks one (`CharacterIdSchema`: a finite number; the
+ *  brand is a type only). */
+function isAHerosIdAsTheSaveChecksIt(id: number): id is CharacterId {
+  return Number.isFinite(id);
+}
+/** A copy's id in the forecast (−1 the hunter's, −2 his quarry's), typed as a hero's id: it throws for none. */
+function aCopysId(id: number): CharacterId {
+  if (!isAHerosIdAsTheSaveChecksIt(id)) throw new TypeError(`a copy's id ${String(id)} is no hero's id`);
+  return id;
+}
+export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(
+  turnContext: TurnContext,
+  hunter: Character,
+  quarry: Character,
+  n?: number,
+) {
   // 2026-09-28: a forecast, not a fight — experience is muted exactly as in simulateLairOdds (the copies carry
   // ids −1/−2, so no real hero ever gained from it, but every simulated win still rolled a wasted check).
   const _prevSim = turnContext._pcSimulating;
@@ -32,19 +52,20 @@ export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hu
   try {
     let win = 0,
       felled = 0;
-    n = n || 20;
-    for (let i = 0; i < n; i++) {
-      const a = JSON.parse(JSON.stringify(hunter)),
-        b = JSON.parse(JSON.stringify(quarry));
-      a.id = -1;
-      b.id = -2;
+    const rounds = (n ?? 0) || 20;
+    for (let i = 0; i < rounds; i++) {
+      const a = aCopyMadeThroughJson(hunter),
+        b = aCopyMadeThroughJson(quarry);
+      a.id = aCopysId(-1);
+      b.id = aCopysId(-2);
       delete a._sgLog;
       delete b._sgLog;
       a.encounterPlan = { tactics: autoEncounterPlan(turnContext, a), notes: '', _auto: true };
-      if (!(b.encounterPlan && Array.isArray(b.encounterPlan.tactics) && b.encounterPlan.tactics.length))
+      if (!(b.encounterPlan && Array.isArray(b.encounterPlan.tactics) && b.encounterPlan.tactics.length > 0))
         b.encounterPlan = { tactics: autoEncounterPlan(turnContext, b), notes: '', _auto: true };
       const COMBAT_ONLY = COMBAT_ONLY_TACTICS;
-      const filt = (pl) => (pl || ['ME']).filter((t) => COMBAT_ONLY.has(String(t).split(':')[0].toUpperCase()));
+      const filt = (pl: readonly string[] | undefined) =>
+        (pl ?? ['ME']).filter((t) => COMBAT_ONLY.has((t.split(':')[0] ?? '').toUpperCase()));
       const A = pcCharCombatant(turnContext, a),
         B = pcCharCombatant(turnContext, b);
       A.tactics = filt(a.encounterPlan.tactics);
@@ -55,8 +76,8 @@ export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hu
       if (res.winner === A) win++;
       if (res.aHp <= 0 && res.winner !== A) felled++;
     }
-    return { win: win / n, felled: felled / n };
-  } catch (e) {
+    return { win: win / rounds, felled: felled / rounds };
+  } catch {
     return null;
   } finally {
     turnContext._pcSimulating = _prevSim;
@@ -64,7 +85,7 @@ export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(turnContext, hu
 }
 
 export function botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning(
-  turnContext,
+  turnContext: TurnContext,
 ) {
   const { G, _botPlayerIdx, reckoningCalls } = turnContext;
   // Phase 3 (pre) — item 2: any bot realm that has lost its last province concedes before it plans

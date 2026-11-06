@@ -36,10 +36,14 @@
 // Then the spellcraft on what no matrix game hands it (P1-10b43): the single best cast, the titles a realm with no
 // standings chases, the ratings and a guardian weighed on a hero lacking a field, a lair, a march, a path, a quarry, a
 // cast plan, the cross-training, the actions pass, a spy's target and the practice fallback on a world lacking a list.
-// Last, the war's reckoning and the assaults on what no matrix game hands them (P1-10b44): the naval checks on a host
+// Then the war's reckoning and the assaults on what no matrix game hands them (P1-10b44): the naval checks on a host
 // of no units or a gap, a realm's strength, a rival's and the war book on a world lacking a list, its intel or its
 // turn, the war weighed with no choices and on a rival's empty capital, and the assaults from valuable ground of no
 // characters nor garrison listed and on a province whose id is not its place.
+// Then the missions, the specialists and the march (P1-10b45 to b47). Last, the economy and the order hygiene on what
+// no matrix game hands them (P1-10b48): no bots, no map, no orders listed, a teaching phase kept, a holder with no
+// fallback, a muster for the host, the study's two page hooks; a cast of no school, a hire of no hero, a hand-over
+// trimmed, a capped practice refilled; the drill on a unit of no known quality and the cast limit with no characters.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -3172,5 +3176,203 @@ describe('The march on what no matrix game hands it (P1-10b47)', () => {
         () => march({ characters: [hero({ hp: 20 }), null] }, {}),
       ]),
     ).toBe('[{},{},{},{},{}]');
+  });
+});
+
+describe('The economy and the order hygiene on what no matrix game hands them (P1-10b48)', () => {
+  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
+  /** A world of two realms and the lists named, each other list missing; its map as wide as named. */
+  const aWorld = (lists: Record<string, unknown> = {}) => ({
+    turn: 3,
+    relations: { '0-1': 'enemy' },
+    players: [{ gold: 40, alignment: 'Good' }, {}],
+    turnOrders: {},
+    ...lists,
+    world: { cols: 2, rows: 1, ...((lists['world'] as object | undefined) ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const results = (calls: readonly (() => unknown)[]) =>
+    JSON.stringify(
+      calls.map((f) => {
+        try {
+          const v = f();
+          return v === undefined ? 'undefined' : v;
+        } catch (e) {
+          return `throws ${String(e).split(':')[0] ?? ''}`;
+        }
+      }),
+    );
+  const hero = (fields: Record<string, unknown> = {}) => ({
+    id: 1,
+    name: 'Wren',
+    player: 0,
+    alive: true,
+    location: 0,
+    maxHp: 20,
+    hp: 20,
+    skills: {},
+    ...fields,
+  });
+  const aRow = (fields: readonly Record<string, unknown>[]) =>
+    fields.map((f, i) => aProvince({ id: i, col: i, name: `Hold${String(i)}`, ...f }));
+  const order = (action: string, target = '', more: Record<string, unknown> = {}) => ({
+    action,
+    target,
+    extra: '',
+    desc: action,
+    ...more,
+  });
+  /** The hygiene on a world of these heroes and their plans, its tally read through the page's hook. */
+  const hygiene = (characters: readonly Record<string, unknown>[], plans: Record<string, unknown>, lists = {}) => {
+    const G = aWorld({ characters, turnOrders: plans, world: { cols: 3, provinces: aRow([{}, {}, {}]) }, ...lists });
+    const g = engine;
+    g['window'] = { __botHyg: {} };
+    try {
+      fn('runBotOrderHygiene')(G, new Set([0]));
+      return [G.turnOrders, (g['window'] as Record<string, unknown>)['__botHyg']];
+    } finally {
+      delete g['window'];
+    }
+  };
+  test('the hygiene: a cast of no school, a hire of no hero, a hand-over trimmed, a practice capped and refilled', () => {
+    expect(
+      results([
+        () => hygiene([hero()], { 1: [order('cast_spell', 'Nothing'), null, null, null, null] }),
+        () => hygiene([hero()], { 1: [order('hire', '99'), null, null, null, null] }),
+        () =>
+          hygiene([hero(), hero({ id: 5, name: 'Rook', player: null, alive: false })], {
+            1: [order('hire', '5'), null, null, null, null],
+          }),
+        () =>
+          hygiene([hero(), hero({ id: 5, name: 'Rook', player: null, location: 2 })], {
+            1: [order('hire', '5'), null, null, null, null],
+          }),
+        () =>
+          hygiene(
+            [
+              hero({
+                armies: [
+                  { type: 'Skeletons', unitName: 'Bone, Ash', _isSkeletal: true, quality: 'Green' },
+                  { type: 'Militia', unitName: 'Ash, Oak', quality: 'Green' },
+                  { type: 'Archers', unitName: '', quality: 'Green' },
+                ],
+              }),
+              hero({ id: 2, name: 'Oswin' }),
+            ],
+            {
+              1: [order('leave_army', 'all', { extra: '2', desc: '' }), null, null, null, null],
+              2: [null, null, null, null, null],
+            },
+          ),
+        () =>
+          hygiene([hero({ skills: { melee: 5, archery: 5, tactical: 5 } })], {
+            1: [order('practice', 'melee', { desc: undefined }), null, null, null, null],
+          }),
+        () =>
+          hygiene(
+            [hero({ skills: { melee: 5, oddcraft: 2 } }), hero({ id: 2, name: 'Oswin', skills: { oddcraft: 1 } })],
+            {
+              1: [order('practice', 'melee'), null, null, null, null],
+              2: [order('practice', 'oddcraft', { desc: undefined }), null, null, null, null],
+            },
+          ),
+        () =>
+          hygiene(
+            [hero({ skills: { melee: 5, tactical: 5, march: 5 }, armies: [{ type: 'Militia', quality: 'Green' }] })],
+            {
+              1: [order('practice', 'melee'), null, null, null, null],
+            },
+          ),
+        () =>
+          hygiene([hero({ skills: { melee: 5, tactical: 5, march: 5 } })], {
+            1: [order('practice', 'melee'), null, null, null, null],
+          }),
+        () => hygiene([hero()], { 1: [order('practice', 'melee')] }, { players: undefined }),
+        () => hygiene([hero()], { 1: [order('practice', 'melee')] }, { characters: undefined }),
+      ]),
+    ).toBe(
+      '[[{"1":[{"action":"cast_spell","target":"Nothing","extra":"","desc":"cast_spell"},null,null,null,null]},{}],[{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},null,null,null,null]},{"hireGone":1}],[{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},null,null,null,null]},{"hireGone":1}],[{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},null,null,null,null]},{"hireElsewhere":1}],[{"1":[{"action":"leave_army","target":"Militia,Archers","extra":"2","desc":"Hand column (the living only)"},null,null,null,null],"2":[null,null,null,null,null]},{"handoverTrimmed":1}],[{"1":[{"action":"practice","target":"march","extra":"","desc":"Practice March"},null,null,null,null]},{"practiceCapped":1}],[{"1":[{"action":"practice","target":"oddcraft","extra":"","desc":"Practice oddcraft"},null,null,null,null],"2":[{"action":"practice","target":"oddcraft","extra":""},null,null,null,null]},{"practiceCapped":1}],[{"1":[{"action":"practice","target":"tactical","extra":"","desc":"Practice Tactical (drill the host)"},null,null,null,null]},{"practiceCapped":1}],[{"1":[{"action":"defend","target":"","extra":"","desc":"Hold"},null,null,null,null]},{"practiceCapped":1}],[{"1":[{"action":"practice","target":"melee","extra":"","desc":"practice"}]},{}],[{"1":[{"action":"practice","target":"melee","extra":"","desc":"practice"}]},{}]]',
+    );
+  });
+  test('the drill and the cast limit: a unit of no known quality, a hero of no units, a world of no characters', () => {
+    expect(
+      results([
+        () => fn('botDrillUseful')(hero({ armies: [{ type: 'Militia', quality: 'Odd' }] }), 'tactical'),
+        () => fn('botDrillUseful')(hero({ armies: [{ type: 'Militia', quality: 'Green' }] }), 'tactical'),
+        () => fn('botDrillUseful')(hero(), 'naval'),
+        () => fn('botCastLimit')({}, hero({ skills: { psychic: 2 } }), 'psychic', 1),
+        () => fn('botCastLimit')({ characters: [] }, hero({ skills: { psychic: 2 } }), 'psychic'),
+      ]),
+    ).toBe('[false,true,false,2,1]');
+  });
+  test("the economy: no bots, no map, no orders listed, the study's hook", () => {
+    const run = (G: Record<string, unknown>, bots: unknown, diag?: unknown[]) => {
+      const g = engine;
+      if (diag) g['window'] = { __botDiag: diag };
+      try {
+        fn('runBotEconomy')(G, bots);
+        return [G['turnOrders'] ?? 'none', diag ? diag.length : 'no hook'];
+      } finally {
+        delete g['window'];
+      }
+    };
+    const lands = aRow([{ armyTypes: ['Militia'] }, {}, {}]);
+    expect(
+      results([
+        () => run(aWorld({ turnOrders: undefined }), null),
+        () => run(aWorld({ turnOrders: undefined }), new Set()),
+        () => run({ turnOrders: undefined, players: [{}] }, new Set([0])),
+        () => run(aWorld({ turnOrders: undefined, players: [{ conceded: true }] }), new Set([0])),
+        () => run(aWorld({ characters: [hero()], world: { cols: 3, provinces: lands } }), new Set([0]), []),
+        () =>
+          run(
+            aWorld({
+              characters: [hero()],
+              turnOrders: {
+                1: [order('practice', 'melee', { desc: 'Practice Melee (teach Oswin)' }), null, null, null, null],
+              },
+              world: { cols: 3, provinces: lands },
+            }),
+            new Set([0]),
+          ),
+        () =>
+          run(
+            aWorld({
+              characters: [hero({ skills: { melee: 5, tactical: 5, march: 5 } })],
+              world: { cols: 3, provinces: aRow([{ armyTypes: ['Militia'], exploredBy: { 0: 100 } }, {}, {}]) },
+            }),
+            new Set([0]),
+          ),
+        () =>
+          run(
+            aWorld({
+              characters: [
+                hero({ id: 3, name: 'Edda', location: 1 }),
+                hero({ id: 2, name: 'Oswin', location: 1 }),
+                hero(),
+              ],
+              turnOrders: {
+                3: [order('practice', 'melee'), null, null, null, null],
+                2: [order('move', '99'), null, null, null, null],
+                1: [order('practice', 'archery', { desc: '' }), null, null, null, null],
+              },
+              players: [{ gold: 90, alignment: 'Good' }, {}],
+              world: { cols: 3, provinces: aRow([{ armyTypes: ['Militia'] }, {}, {}]) },
+            }),
+            new Set([0]),
+          ),
+      ]),
+    ).toBe(
+      '[["none","no hook"],["none","no hook"],["none","no hook"],[{},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"}]},1],[{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach Oswin)"},{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"}]},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"}]},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units (for the host)"},null,null,null,null],"2":[{"action":"move","target":"99","extra":"","desc":"move"},null,null,null,null],"3":[{"action":"practice","target":"melee","extra":"","desc":"practice"},null,null,null,null]},"no hook"]]',
+    );
   });
 });
