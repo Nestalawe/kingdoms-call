@@ -2802,14 +2802,13 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
   }
   {
     const p = aProvince();
-    const named = anItem(items[1]);
-    const [giver, comrade] = [at(p, { items: [anItem(items[0]), named] }), at(p)];
+    const [giver, comrade] = [at(p, { items: [anItem(items[0]), anItem(items[1])] }), at(p)];
     stage(
       'an item handed over by its name',
       'items',
       null,
       { giver, comrade },
-      { [id(giver)]: [send(String(named['name']), comrade)] },
+      { [id(giver)]: [send(String(items[1]?.['name']), comrade)] },
     );
   }
   {
