@@ -183,8 +183,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   the schema holds a brand (a monarch's grave's resting place, `AMonarchsGraveAsItIsWritten`; an heir's id and realm,
   `AnHeirAsTheSuccessionCrownsHim`), one keyed by a closed set that the code fills by any key, or leaves empty (the
   titles' snapshot when the standings fail; a title won by a realm the list doesn't name:
-  `TheTitlesRecordAsTheChangesWriteIt`), and one written with a callee's result its schema is narrower than (the game's
-  end, its standings as `computeStandings` gives them: `TheStateAsTheVictoryWritesIt`).
+  `TheTitlesRecordAsTheChangesWriteIt`), one written with a callee's result its schema is narrower than (the game's
+  end, its standings as `computeStandings` gives them: `TheStateAsTheVictoryWritesIt`), and a hero's field written
+  `null` the schema's `optional()` doesn't name (a bot's second role where none ranks: `theSecondRoleWritten`).
+- **A constant flag set `false`** (`BOT_SLAYER_FIGHTERS_ONLY`, a choice kept off) is read through a reader typed
+  `boolean` (`theSlayersMustFight`): read as it is, lint's `no-unnecessary-condition` calls the test always false.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does (for `null`, the TypeError that read throws: a game's setup, `bots/setup.ts`).
 - **A unit an estimate weighs that holds no name** (the bots' estimates of a neutral mix) is a member of the grid row's

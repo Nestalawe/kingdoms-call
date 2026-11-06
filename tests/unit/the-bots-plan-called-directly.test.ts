@@ -2760,3 +2760,322 @@ describe('The missions on what no matrix game hands them (P1-10b45)', () => {
     );
   });
 });
+
+describe('The specialists on what no matrix game hands them (P1-10b46)', () => {
+  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
+  /** A world of two realms, at war, and the lists named, each other list missing; its map as wide as named. */
+  const aWorld = (lists: Record<string, unknown> = {}) => ({
+    turn: 3,
+    relations: { '0-1': 'enemy' },
+    players: [{}, {}],
+    turnOrders: {},
+    ...lists,
+    world: { cols: 2, rows: 1, ...((lists['world'] as object | undefined) ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const results = (calls: readonly (() => unknown)[]) =>
+    JSON.stringify(
+      calls.map((f) => {
+        try {
+          const v = f();
+          return v === undefined ? 'undefined' : v;
+        } catch (e) {
+          return `throws ${String(e).split(':')[0] ?? ''}`;
+        }
+      }),
+    );
+  const units = (n: number, type = 'Militia') =>
+    Array.from({ length: n }, () => ({ type, quality: 'Average', race: 'Human' }));
+  const hero = (fields: Record<string, unknown> = {}) => ({
+    id: 1,
+    name: 'Wren',
+    player: 0,
+    alive: true,
+    location: 0,
+    maxHp: 20,
+    skills: {},
+    ...fields,
+  });
+  /** A row of provinces west to east, each named and owned as listed. */
+  const aRow = (fields: readonly Record<string, unknown>[]) =>
+    fields.map((f, i) => aProvince({ id: i, col: i, name: `Hold${String(i)}`, ...f }));
+  test('the court: a hero of no plan or units, the roles held for the turn, a hero of no role', () => {
+    const G = (characters: unknown[]) =>
+      aWorld({ characters, world: { cols: 3, provinces: aRow([{}, { owner: null }, { owner: null }]) } });
+    const h1 = hero();
+    const h2 = hero({
+      id: 2,
+      name: 'Tamsin',
+      skills: { sage: 3 },
+      encounterPlan: { tactics: ['ME'], _botTactics: true },
+    });
+    const h3 = hero({ id: 3, name: 'Odo', skills: { thief: 4 }, _botRole: 'thief' });
+    const court = [h1, h2, h3];
+    const world = G(court);
+    expect(
+      results([
+        () => fn('botSpecialistRoles')(world, 0),
+        () => court,
+        () => {
+          (world as Record<string, unknown>)['characters'] = [];
+          return fn('botSpecialistRoles')(world, 0);
+        },
+        () => fn('botSpecialistOf')(G([hero({ isKing: true })]), 0, hero({ id: 9 })),
+        () => fn('botSpecialistRoles')(aWorld({ characters: [hero()], world: { cols: 3 } }), 0),
+        () => fn('botSpecialistRoles')(G([hero({ isKing: true }), hero({ id: 2, _botRole: 'spy' })]), 0, new Set([2])),
+      ]),
+    ).toBe(
+      '[{"byId":{"2":"slayer","3":"scholar"},"want":{"slayer":1,"scout":1,"scholar":2,"spy":1,"thief":1,"mage":1},"filled":{"slayer":1,"scholar":1}},[{"id":1,"name":"Wren","player":0,"alive":true,"location":0,"maxHp":20,"skills":{},"_botRole2":"slayer"},{"id":2,"name":"Tamsin","player":0,"alive":true,"location":0,"maxHp":20,"skills":{"sage":3},"encounterPlan":{"tactics":[],"_botTactics":false},"_botRole2":"scholar","_botRole":"slayer"},{"id":3,"name":"Odo","player":0,"alive":true,"location":0,"maxHp":20,"skills":{"thief":4},"_botRole":"scholar","_botRole2":"thief"}],{"byId":{"2":"slayer","3":"scholar"},"want":{"slayer":1,"scout":1,"scholar":2,"spy":1,"thief":1,"mage":1},"filled":{"slayer":1,"scholar":1}},null,{"byId":{},"want":{"slayer":2,"scout":0,"scholar":1,"spy":1,"thief":1,"mage":1},"filled":{}},{"byId":{},"want":{"slayer":2,"scout":1,"scholar":1,"spy":1,"thief":1,"mage":1},"filled":{}}]',
+    );
+  });
+  test('the training: a skill of no label, no reason given, a scholar whose king is out of reach', () => {
+    const king = hero({ id: 2, name: 'Aldric', isKing: true, location: 2, skills: { sage: 1 } });
+    const scholar = hero();
+    const across = (orders: unknown) =>
+      aWorld({
+        characters: [scholar, king],
+        turnOrders: { 2: orders },
+        world: {
+          cols: 4,
+          provinces: aRow([{}, { terrain: 'sea', owner: null }, { owner: null }, { terrain: 'sea', owner: null }]),
+        },
+      });
+    const near = aWorld({
+      characters: [scholar, king],
+      turnOrders: { 2: [{ action: 'defend', target: '', extra: '', desc: 'Hold' }] },
+      world: { cols: 3, provinces: aRow([{}, {}, {}]) },
+    });
+    expect(
+      results([
+        () => fn('botTrainOrders')(across([]), 0, scholar, [], 'oddcraft', ''),
+        () =>
+          fn('botScholarOrders')(across([{ action: 'defend', target: '', extra: '', desc: 'Hold' }]), 0, scholar, []),
+        () => fn('botScholarOrders')(near, 0, scholar, []),
+        () =>
+          fn('botScholarOrders')(
+            aWorld({ players: undefined, characters: [], world: { provinces: [aProvince()] } }),
+            0,
+            hero({ skills: { sage: 2 } }),
+            [],
+          ),
+        () => fn('botRoleReady')(aWorld({ players: undefined }), 0, hero({ skills: { sage: 1 } }), 'scholar'),
+      ]),
+    ).toBe(
+      '[[{"action":"practice","target":"oddcraft","extra":"","desc":"Practice oddcraft"},{"action":"practice","target":"oddcraft","extra":"","desc":"Practice oddcraft"},{"action":"practice","target":"oddcraft","extra":"","desc":"Practice oddcraft"},{"action":"practice","target":"oddcraft","extra":"","desc":"Practice oddcraft"},{"action":"practice","target":"oddcraft","extra":"","desc":"Practice oddcraft"}],[{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"}],[{"action":"move","target":"dir:W","extra":"","desc":"Study with the king"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"}],[{"action":"research","target":"","extra":"","desc":"Research"},{"action":"research","target":"","extra":"","desc":"Research"},{"action":"research","target":"","extra":"","desc":"Research"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"},{"action":"practice","target":"sage","extra":"","desc":"Practice Sage (scholar)"}],false]',
+    );
+  });
+  test('the scout and the roamer on ground of no race, visits or features', () => {
+    const G = aWorld({
+      characters: [hero()],
+      world: {
+        cols: 3,
+        provinces: aRow([
+          { exploredBy: { 0: 100 }, visitedBy: [0] },
+          { owner: null },
+          { owner: null, visitedBy: [1], features: [{ name: 'Cave' }] },
+        ]),
+      },
+    });
+    expect(
+      results([
+        () => fn('botScoutTarget')(G, 0, hero(), 4),
+        () => fn('botRoamOrders')(G, 0, hero(), []),
+        () => fn('botRoamOrders')(G, 0, hero(), [null, null]),
+        () => fn('botRoleWork')(G, 0, hero({ skills: { explorer: 7 } }), [], 'scout', null),
+      ]),
+    ).toBe(
+      '[{"X":{"id":1,"row":0,"col":1,"owner":null,"terrain":"plains","name":"Hold1","tax":1},"d":1,"sc":17},[{"action":"move","target":"dir:W","extra":"","desc":"Roam to Hold2 (seek heroes)"},{"action":"explore","target":"","extra":"","desc":"Explore Hold2"},{"action":"explore","target":"","extra":"","desc":"Explore Hold2"},{"action":"explore","target":"","extra":"","desc":"Explore Hold2"},{"action":"explore","target":"","extra":"","desc":"Explore Hold2"}],[null,null,{"action":"move","target":"dir:W","extra":"","desc":"Roam to Hold2 (seek heroes)"},{"action":"explore","target":"","extra":"","desc":"Explore Hold2"},{"action":"explore","target":"","extra":"","desc":"Explore Hold2"}],[{"action":"chart_unknown","target":"2","extra":"","desc":"Chart the Unknown \u2014 Hold2"},{"action":"move","target":"dir:E","extra":"","desc":"Scout Hold1"},{"action":"explore","target":"","extra":"","desc":"Explore Hold1"},{"action":"explore","target":"","extra":"","desc":"Explore Hold1"},{"action":"explore","target":"","extra":"","desc":"Explore Hold1"}]]',
+    );
+  });
+  test('the spy: a general reported nowhere or at no turn, a cloak over a gap, a mark to kill', () => {
+    const rival = hero({ id: 2, name: 'Grim', player: 1, location: 1, armies: units(2) });
+    const foe = hero({ id: 4, name: 'Brannoc', player: 1, location: 0, isKing: true });
+    const report = (provId: unknown) => ({ 2: { turn: 3, player: 1, provId, units: 2, isKing: false } });
+    const G = (provId: unknown, more: Record<string, unknown> = {}) =>
+      aWorld({
+        players: [{ _botIntel: { generals: report(provId), heroes: {} } }, {}],
+        characters: [hero(), rival],
+        world: { cols: 3, provinces: aRow([{}, { owner: 1 }, { owner: 1 }]) },
+        ...more,
+      });
+    expect(
+      results([
+        () => fn('botSpyOrders')(G(null), 0, hero(), []),
+        () => fn('botSpyOrders')(G(9), 0, hero(), []),
+        () => fn('botSpyOrders')(G(2, { turn: 0 }), 0, hero(), []),
+        () => fn('botCloakPre')(G(2), 0, hero({ skills: { illusory: 1 } }), [null], aProvince({ owner: 1 })),
+        () => fn('botRoleWork')(G(2, { characters: [hero(), foe] }), 0, hero({ skills: { spy: 9 } }), [], 'spy', null),
+        () =>
+          fn('botRoleWork')(
+            aWorld({
+              characters: [hero(), { ...foe, location: 2 }],
+              world: { cols: 3, provinces: aRow([{}, { owner: 1, tax: 0 }, { owner: 1 }]) },
+            }),
+            0,
+            hero({ skills: { spy: 7 } }),
+            [],
+            'spy',
+            null,
+          ),
+      ]),
+    ).toBe(
+      '[[{"action":"move","target":"dir:E","extra":"","desc":"Slip into Hold1"},{"action":"spy","target":"","extra":"","desc":"Spy on Hold1"},{"action":"spy","target":"","extra":"","desc":"Spy on Hold1"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"}],[{"action":"move","target":"dir:E","extra":"","desc":"Slip into Hold1"},{"action":"spy","target":"","extra":"","desc":"Spy on Hold1"},{"action":"spy","target":"","extra":"","desc":"Spy on Hold1"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"}],[{"action":"move","target":"dir:W","extra":"","desc":"Shadow Grim"},{"action":"spy","target":"char:2","extra":"","desc":"Spy on Grim"},{"action":"spy","target":"","extra":"","desc":"Spy on Hold2"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"}],[null,{"action":"cast_spell","target":"Invisibility","extra":"","desc":"Cast Invisibility"}],[{"action":"assassinate","target":"4","extra":"","desc":"Assassinate Brannoc"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"}],[{"action":"sabotage","target":"2","extra":"","desc":"Sabotage Hold2"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"}]]',
+    );
+  });
+  test('the thief: a mark of no items or units, one unseen this turn, ground of no garrison, the vaults out of reach', () => {
+    const rival = (fields: Record<string, unknown> = {}) =>
+      hero({ id: 2, name: 'Grim', player: 1, location: 0, ...fields });
+    const scout = hero({ id: 3, name: 'Pell', location: 1 });
+    const foe = hero({ id: 4, name: 'Brannoc', player: 1, location: 4, isKing: true });
+    const G = (characters: unknown[], provinces: Record<string, unknown>[], more: Record<string, unknown> = {}) =>
+      aWorld({ characters, world: { cols: provinces.length, provinces: aRow(provinces) }, ...more });
+    const vaults = [
+      {},
+      { owner: 1, tax: 0 },
+      { terrain: 'sea', owner: null },
+      { owner: 1, tax: 9, visitedBy: [0] },
+      { terrain: 'sea', owner: null },
+      { owner: null },
+      { owner: 1, tax: 0 },
+    ];
+    expect(
+      results([
+        () => fn('botStealTarget')(G([hero(), scout, rival()], [{}, { owner: 1 }, {}]), 0, hero(), 4),
+        () =>
+          fn('botStealTarget')(
+            G([hero(), scout, rival({ _invisTurn: 3 })], [{}, { owner: 1, garrisonArmies: units(1) }, {}]),
+            0,
+            hero(),
+            4,
+          ),
+        () => fn('botThiefOrders')(G([hero(), scout, rival()], [{}, { owner: 1 }, {}]), 0, hero(), []),
+        () =>
+          fn('botThiefOrders')(
+            G([hero(), foe], vaults, { players: [{}, { homeProvinceId: 1 }] }),
+            0,
+            hero({ skills: { thief: 7 } }),
+            [],
+          ),
+        () =>
+          fn('botThiefOrders')(
+            G(
+              [hero()],
+              [
+                {},
+                {
+                  owner: null,
+                  features: [{ name: 'Den', monster: { power: 'Epic', hp: 5 }, discovered: true, cleared: false }],
+                },
+              ],
+            ),
+            0,
+            hero({ skills: { thief: 3, melee: 9 } }),
+            [],
+          ),
+      ]),
+    ).toBe(
+      '[{"kind":"char","e":{"id":2,"name":"Grim","player":1,"alive":true,"location":0,"maxHp":20,"skills":{}},"provId":0,"d":0,"sc":3},{"kind":"garrison","provId":1,"d":1,"sc":-1,"X":{"id":1,"row":0,"col":1,"owner":1,"terrain":"plains","name":"Hold1","tax":1,"garrisonArmies":[{"type":"Militia","quality":"Average","race":"Human"}]}},[{"action":"steal","target":"2","extra":"","desc":"Rob Grim"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"}],[{"action":"move","target":"dir:E","extra":"","desc":"Creep toward the vaults of Hold1"},{"action":"grand_heist","target":"","extra":"","desc":"Grand Heist \u2014 Hold1"},{"action":"defend","target":"","extra":"","desc":"Lie low"},{"action":"defend","target":"","extra":"","desc":"Lie low"},{"action":"defend","target":"","extra":"","desc":"Lie low"}],[{"action":"move","target":"dir:W","extra":"","desc":"Creep toward the lair in Hold1"},{"action":"search","target":"0","extra":"","desc":"Rob the hoard","prov":1},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"},{"action":"defend","target":"","extra":"","desc":"Lie in wait"}]]',
+    );
+  });
+  test('the lair travel, read by nothing today: a lair of no power, one too far, one on a rival’s ground', () => {
+    const den = (monster: unknown) => ({ name: 'Den', monster, discovered: true, cleared: false });
+    const G = aWorld({
+      characters: [hero()],
+      world: {
+        cols: 3,
+        provinces: aRow([{}, { owner: null, features: [null, den(null)] }, { owner: 1, features: [den(null)] }]),
+      },
+    });
+    const rivals = aWorld({
+      characters: [hero()],
+      world: { cols: 3, provinces: aRow([{}, { owner: null }, { owner: 1, features: [den(null)] }]) },
+    });
+    const slayer = hero({ skills: { melee: 9 } });
+    expect(
+      results([
+        () => fn('botLairTarget')(G, 0, slayer, 4),
+        () => fn('botLairTarget')(G, 0, slayer, 0),
+        () => fn('botLairOrders')(G, 0, slayer, []),
+        () => fn('botLairOrders')(G, 0, slayer, [null, null, null, null, null]),
+        () => fn('botLairTarget')(rivals, 0, slayer, 4),
+        () => fn('botLairTarget')({ ...G, relations: { '0-1': 'allied' } }, 0, slayer, 0),
+      ]),
+    ).toBe(
+      '[{"X":{"id":1,"row":0,"col":1,"owner":null,"terrain":"plains","name":"Hold1","tax":1,"features":[null,{"name":"Den","monster":null,"discovered":true,"cleared":false}]},"li":1,"d":1,"sc":-2},null,[{"action":"move","target":"dir:E","extra":"","desc":"Seek the lair in Hold1"},{"action":"search","target":"1","extra":"","desc":"Search Lair","prov":1},{"action":"practice","target":"tactical","extra":"","desc":"Practice Tactical"},{"action":"practice","target":"tactical","extra":"","desc":"Practice Tactical"},{"action":"practice","target":"tactical","extra":"","desc":"Practice Tactical"}],null,null,null]',
+    );
+  });
+  test('the mage: no school yet, a general reported off the map or at no turn, a blessing on ground of no tax', () => {
+    const rival = hero({ id: 2, name: 'Grim', player: 1, location: 9, armies: units(2) });
+    const G = (more: Record<string, unknown> = {}) =>
+      aWorld({
+        players: [
+          { _botIntel: { generals: { 2: { turn: 3, player: 1, provId: 9, units: 2, isKing: false } }, heroes: {} } },
+          {},
+        ],
+        characters: [hero(), rival],
+        world: { cols: 3, provinces: aRow([{}, { owner: 1 }, { owner: 1 }]) },
+        ...more,
+      });
+    const blessing = aWorld({
+      characters: [hero()],
+      world: { cols: 3, provinces: aRow([{ owner: null }, { tax: 0 }, { tax: 0 }]) },
+    });
+    expect(
+      results([
+        () =>
+          fn('botRoleTrain')(aWorld({ characters: [], world: { provinces: [aProvince()] } }), 0, hero(), [], 'mage'),
+        () =>
+          fn('botRoleTrain')(
+            aWorld({ characters: [], world: { provinces: [aProvince()] } }),
+            0,
+            hero({ skills: { elemental: 2 } }),
+            [],
+            'mage',
+          ),
+        () => fn('botMageOrders')(G(), 0, hero({ skills: { psychic: 1 } }), []),
+        () => fn('botMageOrders')(G({ turn: 0 }), 0, hero({ skills: { necromancy: 1 } }), []),
+        () => fn('botMageOrders')(blessing, 0, hero({ skills: { white: 1 } }), []),
+      ]),
+    ).toBe(
+      '[[{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"}],[{"action":"practice","target":"white","extra":"","desc":"Practice White Magic (mage)"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic (mage)"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic (mage)"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic (mage)"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic (mage)"}],null,[{"action":"cast_spell","target":"Plague","extra":"2","desc":"Cast Plague on Hold2"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"}],[{"action":"cast_spell","target":"Bless Province","extra":"2","desc":"Cast Bless Province on Hold2"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"},{"action":"practice","target":"elemental","extra":"","desc":"Practice Elemental Magic (mage)"}]]',
+    );
+  });
+  test('the defender: ground of no tax, units to raise or garrison, a neighbour of no garrison', () => {
+    const lands = aRow([{ tax: 0, armyTypes: ['Militia'] }, { tax: 0 }, { owner: null }]);
+    const G = aWorld({ characters: [hero()], world: { cols: 3, provinces: lands } });
+    const armed = hero({ armies: units(1) });
+    expect(
+      results([
+        () => fn('botDefenderPost')(G, 0, hero({ _botPost: 1 }), new Set()),
+        () => fn('botDefenderPost')(G, 0, armed, new Set()),
+        () => fn('botDefenderOrders')(G, 0, hero(), [], { X: lands[0], d: 0 }, null),
+        () => fn('botDefenderOrders')(G, 0, armed, [], { X: lands[1], d: 1 }, null),
+      ]),
+    ).toBe(
+      '[{"X":{"id":0,"row":0,"col":0,"owner":0,"terrain":"plains","name":"Hold0","tax":0,"armyTypes":["Militia"]},"d":0,"sc":14},{"X":{"id":0,"row":0,"col":0,"owner":0,"terrain":"plains","name":"Hold0","tax":0,"armyTypes":["Militia"]},"d":0,"sc":11},[{"action":"defend","target":"","extra":"","desc":"Hold the post"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"}],[{"action":"move","target":"dir:E","extra":"","desc":"Take post at Hold1"},{"action":"defend","target":"","extra":"","desc":"Hold the post"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"}]]',
+    );
+  });
+  test('the march: a frontier out of reach, a strike with nothing to take', () => {
+    const T = { kingAttackMargin: 1.2, heroAttackMargin: 1.2, taxScoreWeight: 1, rivalBias: 2 };
+    const lands = aRow([{}, { terrain: 'sea', owner: null }, { owner: 1 }]);
+    const G = aWorld({ characters: [hero({ armies: units(3) })], world: { cols: 3, provinces: lands } });
+    const c = hero({ armies: units(3) });
+    expect(
+      results([
+        () => fn('botChainHops')(G, 0, c, lands[0], 10, T, 2, new Set(), null),
+        () => fn('botDistantStrike')(G, 0, c, lands[0], 10, T, 2),
+        () =>
+          fn('botHomeThreat')(aWorld({ players: [{ homeProvinceId: 0 }, {}], world: { provinces: [aProvince()] } }), 0),
+      ]),
+    ).toBe('[[],null,null]');
+  });
+});

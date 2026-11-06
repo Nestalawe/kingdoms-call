@@ -156,8 +156,16 @@ interface TheBotsTurnCache {
   /** The slayers' school (botRunSlayerSchool, bots/missions.ts): each teacher's lessons by phase, and the study's tally. */
   teach?: Partial<Record<number, Partial<Record<number, string>>>>;
   teachDiag?: ASlayersLesson[];
+  /** Each realm's specialists this turn (botSpecialistRoles, bots/specialists.ts), by the realm's index. */
+  spec?: Partial<Record<number, TheBotsSpecialistRoles>>;
   terrainMult?: ((armyType: string, terrain: string) => unknown) | undefined;
   [field: string]: unknown;
+}
+/** A realm's specialists this turn: each hero's role by his id, the roles wanted and those filled, by the role. */
+export interface TheBotsSpecialistRoles {
+  readonly byId: Partial<Record<number, string>>;
+  readonly want: Readonly<Record<string, number>>;
+  readonly filled: Partial<Record<string, number>>;
 }
 /** A slayer's year at the school, for the study (window.__botDiag): his teacher, the phases taught and handed. */
 interface ASlayersLesson {
