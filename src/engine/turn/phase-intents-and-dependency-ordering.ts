@@ -3,6 +3,11 @@ import { whatAMarchsOrderNames } from '../rules-on-plain-values/what-a-marchs-or
 import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { totalInit } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import {
+  theHeroesWhoMustActFirstInAPhase,
+  theOrderTheHeroesActInAPhase,
+  whichOfTwoHeroesActsFirstInAPhase,
+} from '../rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
 import { stepTowardPreferSafe } from '../world/routes-and-distances.ts';
 import {
   emit,
@@ -42,10 +47,11 @@ type TheTurnsOrdersAsThePipelineReadsThem = Readonly<
 
 // ── THE PHASE PIPELINE: INTENTS, DEPENDENCY ORDERING, MOVEMENT INTERLOCKS (plan P1-08i1: lifted out of resolveTurn) ────
 // Before anyone acts in a phase: what every acting character intends to do (buildPhaseIntents), the order they act in
-// (orderPhaseActors: initiative in tiers, the AK [3.0] dependencies first), and the defenders an enemy column pins by
-// arriving before they can march out (applyMoveInterlocks). PHASE_ACTION_MAP turns an order's name into the action key
-// processOrder and the pipeline share. They take the turn's context first (src/engine/turn/context.ts); normaliseAction and
-// _phaseActionTier take none. A pinned column's line is a fact (since P1-12d15: the-facts-a-phases-lines-record.ts), its
+// (orderPhaseActors: initiative in tiers, the AK [3.0] dependencies first, its rules on plain values since P1-11e16:
+// rules-on-plain-values/the-order-the-heroes-act-in-a-phase-…), and the defenders an enemy column pins by arriving
+// before they can march out (applyMoveInterlocks). PHASE_ACTION_MAP turns an order's name into the action key
+// processOrder and the pipeline share. They take the turn's context first (src/engine/turn/context.ts); normaliseAction
+// takes none. A pinned column's line is a fact (since P1-12d15: the-facts-a-phases-lines-record.ts), its
 // words written in the views.
 // ════
 // PHASE PIPELINE — intent table, dependency ordering, movement interlocks
@@ -324,155 +330,67 @@ export function isHostileInvasion(
 }
 
 // ── Dependency ordering (AK [3.0] exceptions) ────
-// Returns [charId_before, charId_after] pairs meaning "before" must be processed first.
+// Returns [charId_before, charId_after] pairs meaning "before" must be processed first: the rules on plain values
+// (theHeroesWhoMustActFirstInAPhase), asked with each intent's recipient and quarry worked out from the world.
 export function phaseDependencies(
   turnContext: Pick<TurnContext, 'G'>,
   ph: number,
   intents: ThePhasesIntents,
 ): [before: number, after: number][] {
   const { G } = turnContext;
-  const edges: [before: number, after: number][] = [];
-  const list = [...intents.values()];
-  const byId = (id: number) => intents.get(id);
-
-  list.forEach((it) => {
-    const { order, action } = it;
-    if (!order) return;
-    const tgtId = parseInt(order.target);
-    const tgt = isNaN(tgtId) ? null : byId(tgtId);
-
-    // (a) A character doing something FOR a co-located ally goes first, so the ally can use it.
-    // Give Item / Leave-Transfer Army to a named ally, and friendly action spells.
-    // EXCEPTION: if that ally is marching INTO this province this phase, rule (c) below
-    // applies instead and the ally arrives first — emitting both edges would make a cycle,
-    // and Kahn's algorithm would then fall back to plain initiative and honour neither.
-    const tgtArrivingHere = (t: APhaseIntent | null | undefined) => !!t && t.action === 'move' && t.toId === it.fromId;
-    // 2026-09-23: the RECIPIENT of Send Item / Transfer Army is in `extra` (the target holds item
-    // indices / unit names). Reading `target` here linked the sender to whichever character's id
-    // matched the first item index, and never to the real recipient.
-    const _rcp =
-      action === 'give_item' || action === 'leave_army'
-        ? (() => {
-            const r = orderCharRef(G, order.extra);
-            return r ? byId(r.id) : null;
-          })()
-        : null;
-    if (_rcp?.player === it.player && _rcp.id !== it.id && !tgtArrivingHere(_rcp)) {
-      edges.push([it.id, _rcp.id]);
-    }
-    if (action === 'cast_spell') {
-      const spellTargetId = parseInt(order.extra);
-      const st = isNaN(spellTargetId) ? null : byId(spellTargetId);
-      if (st?.player === it.player && st.id !== it.id && !tgtArrivingHere(st)) edges.push([it.id, st.id]);
-    }
-    // (b) Pick Up waits for anyone Leaving armies in the same province this phase.
-    if (action === 'pickup_army') {
-      list.forEach((other) => {
-        if (other.id === it.id || other.player !== it.player) return;
-        if (other.action !== 'leave_army') return;
-        if (other.fromId !== it.fromId) return;
-        edges.push([other.id, it.id]);
-      });
-    }
-    // (c) A character MOVING IN to a province where an ally intends to hand him something
-    // arrives first — the ally waits for him (AK [3.0]).
-    const itsDest = it.dest;
-    if (action === 'move' && itsDest) {
-      list.forEach((other) => {
-        if (other.id === it.id || other.player !== it.player) return;
-        if (other.fromId !== itsDest.id) return;
-        if (other.action !== 'give_item' && other.action !== 'leave_army') return;
-        const _oR = orderCharRef(G, other.order?.extra); // recipient is in extra (2026-09-23)
-        if (_oR?.id !== it.id) return;
-        edges.push([it.id, other.id]);
-      });
-    }
-    // (d) A pursuer acts immediately after the character he is chasing (AK [3.0]).
-    if ((action === 'pursue' || action === 'encounter') && tgt && tgt.id !== it.id) edges.push([tgt.id, it.id]); // an Encounter chaser acts right after their quarry
-    if (it.c._pursuit?.active) {
-      const pt = byId(it.c._pursuit.targetId);
-      if (pt && pt.id !== it.id) edges.push([pt.id, it.id]);
-    }
-  });
-  return edges;
+  return theHeroesWhoMustActFirstInAPhase(
+    new Map(
+      [...intents].map(([id, it]) => [
+        id,
+        {
+          id: it.id,
+          player: it.player,
+          action: it.action,
+          fromId: it.fromId,
+          toId: it.toId,
+          order: it.order,
+          theHeroHisOrderHandsTo:
+            it.action === 'give_item' || it.action === 'leave_army'
+              ? (orderCharRef(G, it.order?.extra)?.id ?? null)
+              : null,
+          theHeroHePursues: it.c._pursuit?.active ? it.c._pursuit.targetId : null,
+        },
+      ]),
+    ),
+  );
 }
 
-// Initiative comparator — AK [3.0]: highest total ability first (March ×3), ties broken by lowest
-// character number. Actions resolve in tiers: all non-relocating orders (cast, recruit, give,
-// search, spy, …) settle FIRST while everyone is still in their start-of-phase positions, THEN
-// Move/Pursue relocate and any battles they start are fought, and Defend orders always come last.
-// So a fast general can no longer march out and start a fight before a co-located caster gets to
-// act. Dependency edges (buildPhaseIntents → phaseDependencies, e.g. a hero marching in to receive
-// an item) still override this tiering through Kahn's topological sort, so the AK [3.0]
-// exceptions that require a specific move-before/after ordering are preserved.
-export function _phaseActionTier(d: string): number {
-  return d === 'defend' ? 2 : d === 'move' || d === 'pursue' || d === 'encounter' ? 1 : 0;
-} // Encounter relocates (chases), so it tiers with Move
+// Initiative comparator — AK [3.0], on plain values (whichOfTwoHeroesActsFirstInAPhase): each hero's order this
+// phase as the turn's orders hold it, read through normaliseAction, and his skills.
 export function phaseInitCompare(
   turnContext: Pick<TurnContext, 'G'>,
   ph: number,
 ): (a: Pick<Character, 'id' | 'skills'>, b: Pick<Character, 'id' | 'skills'>) => number {
   const { G } = turnContext;
   const turnOrders: TheTurnsOrdersAsThePipelineReadsThem = G.turnOrders;
-  return (a, b) => {
-    const aD = normaliseAction((turnOrders[a.id] ?? [])[ph]);
-    const bD = normaliseAction((turnOrders[b.id] ?? [])[ph]);
-    const at = _phaseActionTier(aD),
-      bt = _phaseActionTier(bD);
-    if (at !== bt) return at - bt; // non-move → move/pursue → defend
-    const d = totalInit(b) - totalInit(a);
-    if (d !== 0) return d;
-    return a.id - b.id;
-  };
+  return (a, b) =>
+    whichOfTwoHeroesActsFirstInAPhase(
+      { id: a.id, action: normaliseAction((turnOrders[a.id] ?? [])[ph]), skills: a.skills },
+      { id: b.id, action: normaliseAction((turnOrders[b.id] ?? [])[ph]), skills: b.skills },
+    );
 }
 
-// Kahn's algorithm over the dependency edges, using initiative order as the tie-break priority.
-// Any characters left in a dependency cycle (e.g. two heroes each Giving to the other) are
-// appended in plain initiative order rather than dropped.
+// The order the phase's actors act in (theOrderTheHeroesActInAPhase, on plain values): initiative in tiers, with the
+// dependencies first; a hero in a cycle of them is appended in initiative order.
 export function orderPhaseActors(
   turnContext: Pick<TurnContext, 'G'>,
   ph: number,
   intents: ThePhasesIntents,
 ): Character[] {
-  const cmp = phaseInitCompare(turnContext, ph);
-  const nodes = [...intents.values()].map((it) => it.c).sort(cmp);
-  const edges = phaseDependencies(turnContext, ph, intents).filter(
-    ([u, v]) => intents.has(u) && intents.has(v) && u !== v,
-  );
-  const indeg = new Map<number, number>(nodes.map((c) => [c.id, 0]));
-  const out = new Map<number, number[]>(nodes.map((c) => [c.id, []]));
-  /** The heroes who wait for one (each actor has his list, and the edges join actors alone). */
-  const theOnesWaitingFor = (id: number): number[] => {
-    const waiting = out.get(id);
-    if (waiting === undefined) throw new TypeError(`hero ${String(id)} is none of the phase's actors`);
-    return waiting;
-  };
-  edges.forEach(([u, v]) => {
-    theOnesWaitingFor(u).push(v);
-    indeg.set(v, Number(indeg.get(v)) + 1);
-  });
-  const ready = nodes.filter((c) => indeg.get(c.id) === 0);
-  const result: Character[] = [];
-  const placed = new Set<number>();
-  while (ready.length) {
-    ready.sort(cmp);
-    const c = ready.shift();
-    if (c === undefined) throw new TypeError('the list of the heroes ready to act held a gap'); // it holds heroes alone
-    if (placed.has(c.id)) continue;
-    placed.add(c.id);
-    result.push(c);
-    theOnesWaitingFor(c.id).forEach((v) => {
-      indeg.set(v, Number(indeg.get(v)) - 1);
-      if (indeg.get(v) === 0) {
-        const n = nodes.find((x) => x.id === v);
-        if (n && !placed.has(v)) ready.push(n);
-      }
-    });
-  }
-  nodes.forEach((c) => {
-    if (!placed.has(c.id)) result.push(c);
-  });
-  return result;
+  const { G } = turnContext;
+  const turnOrders: TheTurnsOrdersAsThePipelineReadsThem = G.turnOrders;
+  const heroes = [...intents.values()].map(({ c }) => ({
+    id: c.id,
+    action: normaliseAction((turnOrders[c.id] ?? [])[ph]),
+    skills: c.skills,
+    c,
+  }));
+  return theOrderTheHeroesActInAPhase(heroes, phaseDependencies(turnContext, ph, intents)).map(({ c }) => c);
 }
 
 // ── MOVEMENT INTERLOCKS (AK [3.1]) ────

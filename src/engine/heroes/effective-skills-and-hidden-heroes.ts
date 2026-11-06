@@ -1,4 +1,5 @@
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { theInitiativeAHeroActsBy } from '../rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
 import { activeItems } from '../items/equipment.ts';
 import { theHerosItemsHideHisFace } from '../rules/the-registry-of-magic-item-effects.ts';
 import { effSkillOf, skillBonusBreakdown } from './skills-and-hp.ts';
@@ -40,24 +41,7 @@ interface TheContextAsTheseReadIt {
 // Vanish tests. Each takes the turn's context first (src/engine/turn/context.ts), but totalInit and recalcHeroPay,
 // which read none.
 export function totalInit(c: { readonly skills?: Readonly<SkillLevels> | null | undefined }) {
-  const s: Readonly<SkillLevels> = c.skills ?? {};
-  return (
-    (Number(s.melee) || 0) +
-    (Number(s.archery) || 0) +
-    (Number(s.tactical) || 0) +
-    (Number(s.march) || 0) * 3 +
-    (Number(s.naval) || 0) +
-    (Number(s.sage) || 0) +
-    (Number(s.spy) || 0) +
-    (Number(s.thief) || 0) +
-    (Number(s.druid) || 0) +
-    (Number(s.explorer) || 0) +
-    (Number(s.white) || 0) +
-    (Number(s.psychic) || 0) +
-    (Number(s.illusory) || 0) +
-    (Number(s.elemental) || 0) +
-    (Number(s.necromancy) || 0)
-  );
+  return theInitiativeAHeroActsBy(c); // a hero's initiative, on plain values (P1-11e16)
 }
 // Delegates to the module-level implementation (see skillBonusBreakdown) so the engine and the
 // player report cannot disagree about what a character's skills actually are. Equipped items only
