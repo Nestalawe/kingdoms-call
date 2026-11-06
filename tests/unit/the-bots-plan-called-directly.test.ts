@@ -3079,3 +3079,98 @@ describe('The specialists on what no matrix game hands them (P1-10b46)', () => {
     ).toBe('[[],null,null]');
   });
 });
+
+describe('The march on what no matrix game hands it (P1-10b47)', () => {
+  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
+  /** A world of two realms, at war, and the lists named, each other list missing; its map as wide as named. */
+  const aWorld = (lists: Record<string, unknown> = {}) => ({
+    turn: 3,
+    relations: { '0-1': 'enemy' },
+    players: [{}, {}],
+    turnOrders: {},
+    ...lists,
+    world: { cols: 2, rows: 1, ...((lists['world'] as object | undefined) ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const results = (calls: readonly (() => unknown)[]) =>
+    JSON.stringify(
+      calls.map((f) => {
+        try {
+          const v = f();
+          return v === undefined ? 'undefined' : v;
+        } catch (e) {
+          return `throws ${String(e).split(':')[0] ?? ''}`;
+        }
+      }),
+    );
+  const hero = (fields: Record<string, unknown> = {}) => ({
+    id: 1,
+    name: 'Wren',
+    player: 0,
+    alive: true,
+    location: 0,
+    maxHp: 20,
+    skills: {},
+    ...fields,
+  });
+  /** A row of provinces west to east, each named and owned as listed. */
+  const aRow = (fields: readonly Record<string, unknown>[]) =>
+    fields.map((f, i) => aProvince({ id: i, col: i, name: `Hold${String(i)}`, ...f }));
+  test('the raising of the fallen: a mage of no health recorded or of none at most, one off the map', () => {
+    const lands = aRow([{}, {}, {}, {}]);
+    const grave = { id: 7, name: 'Bram', player: 0, location: 2, skills: { melee: 2 } };
+    const G = (characters: unknown[]) =>
+      aWorld({
+        characters,
+        heroGraveyard: [grave],
+        players: [{ knownDeadHeroIds: [7] }, {}],
+        world: { cols: 4, provinces: lands },
+      });
+    const roles = { leaders: [], defenders: [] };
+    const asked = (mages: Record<string, unknown>[]): unknown => {
+      const world = G(mages);
+      fn('botResurrectErrands')(world, 0, mages, roles, new Set());
+      return [world.turnOrders, (fn('botTurnCache')(world) as Record<string, unknown>)['raiseDiag']];
+    };
+    expect(
+      results([
+        () => asked([hero({ skills: { white: 2 }, maxHp: 0 })]),
+        () => asked([hero({ skills: { white: 2 }, hp: 4, maxHp: 0 })]),
+        () =>
+          asked([
+            hero({ skills: { white: 1 }, location: 9 }),
+            hero({ id: 2, skills: { white: 1 }, hp: 20, location: 3 }),
+          ]),
+        () => asked([hero({ skills: { white: 1 }, hp: 9 })]),
+      ]),
+    ).toBe(
+      '[[{"1":[{"action":"move","target":"dir:W","extra":"","desc":"To raise Bram"},{"action":"move","target":"dir:W","extra":"","desc":"To raise Bram"},{"action":"cast_spell","target":"Resurrect","extra":"7","desc":"Resurrect Bram"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic"}]},[{"pi":0,"grave":7,"monarch":false,"mage":1,"hops":2}]],[{},[{"pi":0,"grave":7,"monarch":false,"mage":null}]],[{"2":[{"action":"move","target":"dir:W","extra":"","desc":"To raise Bram"},{"action":"cast_spell","target":"Resurrect","extra":"7","desc":"Resurrect Bram"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic"},{"action":"practice","target":"white","extra":"","desc":"Practice White Magic"}]},[{"pi":0,"grave":7,"monarch":false,"mage":2,"hops":1}]],[{},[{"pi":0,"grave":7,"monarch":false,"mage":null}]]]',
+    );
+  });
+  test('the march on a world of no characters or orders listed, no hooks handed', () => {
+    const lands = aRow([{}, { owner: null }, { owner: null }]);
+    const march = (lists: Record<string, unknown>, hooks?: unknown): unknown => {
+      const world = aWorld({ world: { cols: 3, provinces: lands }, ...lists });
+      fn('runBotMovement')(world, new Set([0]), hooks);
+      return world.turnOrders;
+    };
+    expect(
+      results([
+        () => march({}),
+        () => march({ characters: [hero({ isKing: true, hp: 20 })] }),
+        () => march({ characters: [hero({ isKing: true, hp: 20 })], turnOrders: undefined }),
+        () => march({ characters: [hero({ hp: 20 })] }, null),
+        () => march({ characters: [hero({ hp: 20 }), null] }, {}),
+      ]),
+    ).toBe('[{},{},{},{},{}]');
+  });
+});

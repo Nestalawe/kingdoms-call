@@ -72,6 +72,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
   its test still reads it.
 
+- **A parameter set to its own default that callbacks read** (`hooks = hooks || {}`, then `hooks.duelSim` in a
+  `forEach`) is a `const` of the old name set from the parameter renamed (`const hooks = hooksHanded ?? {};`): a
+  callback keeps a `const`'s narrowing, not a reassigned parameter's. **`list.filter(p)[0]`** (lint's `prefer-find`)
+  is `list.find(p)`, the same first element or `undefined`, where `p` changes nothing.
+
 ## Parameters, shapes and claims
 
 - **An object the code builds whose ids are plain numbers** (the world's making: a province, a hero, a realm) is typed by a
