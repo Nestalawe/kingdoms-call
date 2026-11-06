@@ -109,6 +109,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   through a reader that hands back the same object typed `Partial<Record<string, number>>` (`theLevelsByAnyName`):
   a schema's object type, unlike an interface, takes a record, so the writes reach it. So does a `for (k in obj)` that
   cuts each field (a fallen hero's merit towards the titles, `theMeritByAnyName`).
+- **A literal list sorted and its first read** (`['elemental', …].sort(…)[0]`, a slayer's school) is typed as a tuple,
+  `[string, ...string[]]`: `sort` hands back the same tuple, so its first element is words, as it always was. A step of a
+  path that may hold a gap, handed to a callee typed `number` (a move's way), is `d ?? -1`: `LIST[-1]` reads none, as
+  `LIST[undefined]` did (`aMoveOrderOnThePath`).
 - **`[a[0]]` and `[a[1]]` from a list just found to hold two** are `a.slice(0, 1)` and `a.slice(1, 2)`, the same lists. A
   regular expression's group that always takes part in a match is read `String(m[1])`, the same words.
 - **A die's pick from a list that may hold a gap** (a hero's pack, read as a battle's copy holds it) is checked just
