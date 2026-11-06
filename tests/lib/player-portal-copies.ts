@@ -141,11 +141,13 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 
 /** Where the order form says a hero will stand (predictedLocation), and since P1-11e10 what it reads: the march the
  *  turn refuses and the relation at a border, and its one answer a refresh (the report it was kept for, the answers,
- *  the fields it was worked out from); since P1-11e11 his move pools as the report gives them. */
+ *  the fields it was worked out from); since P1-11e11 his move pools as the report gives them; since P1-11e12 the step
+ *  the turn takes toward a far province. */
 const THE_MARCH_FORECASTS_DECLARATIONS = [
   'hisMovePoolsAsTheReportGivesThem',
   'theRelationAMarchMeetsAtTheBorderOf',
   'aMarchTheTurnRefuses',
+  'theStepTowardAFarProvinceTheTurnTakes',
   'theForecastsReport',
   'theForecastsAnswers',
   'whatTheForecastOfThePhasesBeforeReads',
