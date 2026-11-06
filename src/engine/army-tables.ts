@@ -1,10 +1,4 @@
-import {
-  KC_ITEM_UNCAPPED_SKILLS,
-  KC_QUALITY_TIERS,
-  KC_SKILL_LABELS,
-  KC_UNIT_CLASS,
-  PRIMAL_ARMY_DEFS_P,
-} from '../content/kingdoms-call-data.ts';
+import { KC_QUALITY_TIERS, KC_SKILL_LABELS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../content/kingdoms-call-data.ts';
 import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../content/mastery-orders-their-keys-names-skills-and-levels.ts';
@@ -215,23 +209,13 @@ export function demoteOrDisband(a: ArmyInABattle | null | undefined): boolean {
 }
 
 // ── SKILLS ────
-// TRAINING gives its benefit up to level 5; levels 6-9 buy mastery perks and mastery orders
-// instead. Magic items and the Crown of Command aura stack above that ONLY for melee and archery,
-// to the skill ceiling of 9. Those two are special: the engine already gives levels past 5 a real
-// meaning there — meleeRaw/archeryRaw drive the damage roll, to-hit climbs +5% per level past 5,
-// and perkTier reads the same scale. Every other skill (tactical, naval, sage, druid, spy, thief,
-// explorer, march and the five magic schools) has no defined behaviour above 5, and the engine is
-// tuned around that cap in a dozen places, so their bonuses still stop at 5.
-export const SKILL_BENEFIT_CAP = 5,
-  SKILL_MAX = 9;
-// the five magic schools JOIN melee and archery as skills whose item and aura bonuses stack on top
-// of a trained 5, to the ceiling of 9. What that buys is CAST CHANCE only — +10% a level to the 95%
-// ceiling — because every spell EFFECT is computed on `Math.min(lvl,5)`
-// (pcCastCombatSpell's `lvlEff`, the action phase's `spellLevelEff`, the Bless ward, Phantasmal
-// Armies). The per-turn cast limit already tops out at 3 from level 4, and the per-fight limit at 2
-// from level 2, so neither moves either. A relic focus therefore makes a master more RELIABLE,
-// never more powerful — which is the distinction Toby asked for.
-export const ITEM_UNCAPPED_SKILLS = new Set(KC_ITEM_UNCAPPED_SKILLS);
+// The level training stops counting at (5), the highest a skill can reach (9) and the skills whose bonuses stack past 5:
+// a rule on plain values since plan P1-11e32, beside the level a hero's skill counts at.
+export {
+  ITEM_UNCAPPED_SKILLS,
+  SKILL_BENEFIT_CAP,
+  SKILL_MAX,
+} from './rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
 export const SKILL_LABELS = { ...KC_SKILL_LABELS };
 // ── ONE-SOURCE ENGINE TABLES (2026-09-27, Toby: collapse to one source) ──────────────────────────
 // GM-only tables that had been re-typed at every site that needed them. Each old site now reads
