@@ -30,6 +30,7 @@ import { twoATurn } from '../engine/world/tables.ts';
 import { itemLore, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
 import { isConsecrated } from '../engine/heroes/fame-and-consecration.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
+import { theExplorationTheMoversItemsAdd } from '../engine/rules/the-registry-of-magic-item-effects.ts';
 import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { effSkillOf, skillBonusBreakdown } from '../engine/heroes/skills-and-hp.ts';
 import { lairRumourKey } from '../engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
@@ -586,6 +587,9 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
         (asItsGuardReadsIt(c.items) ?? []).map((it: Item | null | undefined) =>
           it ? { ...it, slot: itemSlot(it), lore: itemLore(it), acquiredThisTurn: itemAcquiredThisTurn(c, it) } : it,
         )),
+      // the share of a province the items he wears add as he marches into it, as the Move order asks the items'
+      // registry (plan P1-11e8): the order form's march-in share reads it
+      theShareHisWornItemsAddToAMarchIn: theExplorationTheMoversItemsAdd(activeItems(c)),
       pay: c.pay || 0,
       locationId: c.location,
       locationName: (prov?.name ?? '') || 'Unknown',

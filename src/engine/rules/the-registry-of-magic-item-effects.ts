@@ -1143,8 +1143,9 @@ export function theHealTheRestersItemsAdd(
   return heal;
 }
 
-/** The runner of "orderOutcome: a move's exploration" (resolveMoveOrder): the share of the province the mover's items
- *  explore more, item by item in the order he holds them, each item's effects in the stage's order. */
+/** The runner of "orderOutcome: a move's exploration" (resolveMoveOrder; each own hero's card in the report): the
+ *  share of the province the mover's items explore more, item by item in the order he holds them, each item's effects
+ *  in the stage's order. */
 export function theExplorationTheMoversItemsAdd(theMoversItems: readonly AMagicItemAsTheRegistryReadsIt[]): number {
   const order = THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.orderOutcome["a move's exploration"];
   let share = 0;
