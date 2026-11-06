@@ -31,8 +31,9 @@
 // and `.claude/` is closed to agents' edits; the browser specs have no retries, no `.only`, the Node check, a fixed
 // time zone and locale, traces on failure, and a server of `site/` or `KC_SITE` that is never one already running, and
 // in the specs a focused or skipped spec or a fixed wait is an error, with Playwright's recommended rules at full
-// strength (one spec may wait for the network to go quiet); CI runs the static checks in their own job, every level and
-// the browser specs in exactly one job each, with no retries or ignored failures, `ci` and `db` keep their names, `ci`
+// strength (one spec may wait for the network to go quiet); CI runs the static checks and the static tests in a job
+// each, side by side (P1-01d), every level and the browser specs in exactly one job each, with no retries or ignored
+// failures, `ci` and `db` keep their names, `ci`
 // needs every job but `db` and fails unless all passed, `db` lints the database's functions, and deploy waits for the
 // whole run (P1-01c); CI runs again when a label is added or removed, and a pull request has one CI run at a time: a
 // new event on it cancels its run still going, while Deploy's call has a group of its own, its run's id, and is never
@@ -795,6 +796,23 @@ describe('the test run', () => {
     }
   });
 
+  // P1-01d: two test files fewer than the cores, from 2 up to 8 at once: 8 on a 14-core laptop, the fastest count
+  // measured at which no test came near its time limit, and 2 on CI's 4-core runners, where 4 failed tests at their
+  // limits. KC_JOBS sets the count (KC_JOBS=1: one file, and one script within it, at a time).
+  test('its files run two fewer than the cores, from 2 up to 8 at once, and KC_JOBS sets how many', () => {
+    const cores = os.availableParallelism();
+    const jobs = Number(process.env['KC_JOBS']) || cores;
+    const files = Number(process.env['KC_JOBS']) || Math.min(8, Math.max(2, cores - 2), cores);
+    expect(t.maxWorkers).toBe(files);
+    expect(t.maxConcurrency).toBe(jobs);
+    expect(read('vitest.config.mts')).toContain(
+      "const files = Number(process.env['KC_JOBS']) || Math.min(8, Math.max(2, cores - 2), cores);",
+    );
+    // The counts it gives: 1 core, 2, 4 (CI), 6, 14 (the laptop measured), 32.
+    const count = (n: number) => Math.min(8, Math.max(2, n - 2), n);
+    expect([1, 2, 4, 6, 14, 32].map(count)).toEqual([1, 2, 2, 4, 8, 8]);
+  });
+
   test('no project changes those settings', () => {
     for (const p of t.projects ?? []) {
       expect(typeof p).toBe('object');
@@ -1068,16 +1086,43 @@ describe('CI', () => {
     expect(field('db', 'name')).toBe('db');
   });
 
-  test('the static checks have their own job: type check, lint, the import rules, format, ratchet and the static tests', () => {
-    expect(runs('static')).toEqual([
-      'npm ci',
-      'npm run typecheck',
-      'npm run lint',
-      'npm run lint:arch',
-      'npm run format:check',
-      'npm run ratchet',
-      'npm run build',
-      'npm test -- --project static',
+  // P1-01d: the static checks (type check, lint, the import rules, format, ratchet) and the static tests in a job each,
+  // side by side; together they run every command the one job ran before.
+  const STATIC_JOBS = [
+    [
+      'static',
+      ['npm ci', 'npm run typecheck', 'npm run lint', 'npm run lint:arch', 'npm run format:check', 'npm run ratchet'],
+    ],
+    ['static-tests', ['npm ci', 'npm run build', 'npm test -- --project static']],
+  ] as const;
+  function staticJobsProblems(text: string): string[] {
+    const problems: string[] = [];
+    for (const [id, want] of STATIC_JOBS) {
+      const block = new RegExp(`^ {2}${id}:\\n[\\s\\S]*?(?=^ {2}[\\w-]+:\\n)`, 'm').exec(text)?.[0] ?? '';
+      const got = [...block.matchAll(/^ +(?:- )?run: (.+)$/gm)].map((m) => m[1] ?? '');
+      if (String(got) !== String(want)) problems.push(`${id}: ${got.join('; ')}`);
+      if (/^ {4}needs:/m.test(block)) problems.push(`${id}: waits for another job`);
+    }
+    return problems;
+  }
+  test('the static checks and the static tests have a job each, side by side: every command the one job ran', () => {
+    expect(staticJobsProblems(ci)).toEqual([]);
+    // Planted copies: the ratchet dropped; the static tests made to wait for the checks; both back in one job.
+    const noRatchet = ci.replace(/\n {6}- if: .*\n {8}run: npm run ratchet\n/, '\n');
+    expect(noRatchet).not.toBe(ci);
+    expect(staticJobsProblems(noRatchet)).toEqual([
+      'static: npm ci; npm run typecheck; npm run lint; npm run lint:arch; npm run format:check',
+    ]);
+    const waits = ci.replace(/^( {2}static-tests:\n)/m, '$1    needs: static\n');
+    expect(staticJobsProblems(waits)).toEqual(['static-tests: waits for another job']);
+    const oneJob = ci.replace(
+      /\n {2}# The static tests, beside.*\n {2}static-tests:\n[\s\S]*?\n(?=\n {6}- run: npm run build\n)/,
+      '',
+    );
+    expect(oneJob).not.toBe(ci);
+    expect(staticJobsProblems(oneJob)).toEqual([
+      'static: npm ci; npm run typecheck; npm run lint; npm run lint:arch; npm run format:check; npm run ratchet; npm run build; npm test -- --project static',
+      'static-tests: ',
     ]);
   });
 
@@ -1092,7 +1137,7 @@ describe('CI', () => {
       'browser',
       'page',
       'simulation',
-      'static',
+      'static-tests',
       'unit-scenario',
     ]);
     for (const id of jobsThatTest) {
@@ -1413,7 +1458,7 @@ describe('CI', () => {
 
   test('every job that installs takes node_modules from a cache, and saves it before anything else runs', () => {
     expect(ids.filter((id) => runs(id).includes('npm ci')).sort()).toEqual(
-      ['balance', 'balance-part', 'browser', 'page', 'simulation', 'static', 'unit-scenario'].sort(),
+      ['balance', 'balance-part', 'browser', 'page', 'simulation', 'static', 'static-tests', 'unit-scenario'].sort(),
     );
     expect(nodeModulesCacheProblems(ci)).toEqual([]);
     // Planted copies: unit-scenario's save moved after its build; npm ci on every run; a key without the lock file.
@@ -1428,7 +1473,10 @@ describe('CI', () => {
     expect(nodeModulesCacheProblems(ci.replace(unitScenario, moved))).toEqual([
       "unit-scenario: node_modules isn't saved straight after npm ci, on a miss, under the restore's key",
     ]);
-    const always = ci.replace(/(- if: )steps\.modules\.outputs\.cache-hit != 'true'(\n {8}run: npm ci\n)/, '$1true$2');
+    const always = ci.replace(
+      unitScenario,
+      unitScenario.replace(/(- if: )steps\.modules\.outputs\.cache-hit != 'true'(\n {8}run: npm ci\n)/, '$1true$2'),
+    );
     expect(nodeModulesCacheProblems(always)).toEqual(['unit-scenario: npm ci runs on a hit']);
     const noLock = ci.replace("hashFiles('package-lock.json', '.npmrc')", "hashFiles('.npmrc')");
     expect(nodeModulesCacheProblems(noLock)).toEqual(["static: the restore's path or key is another"]);

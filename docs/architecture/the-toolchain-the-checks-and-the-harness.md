@@ -124,12 +124,12 @@ and **broken** (the mutator's mistake, never "survived") when it has no header, 
 apply or doesn't build. It prints a table, and writes each stage's log and `results.json` beside the patches. It
 writes `results.json` after the control run and again after each patch, so a run that stops carries on with
 `--resume`: on the same base commit, it runs no control and skips each patch already scored whose file is unchanged.
-About 4.6 minutes a mutant the tests miss, 1.5 to 3 one they catch.
+About 2.5 minutes a mutant the tests miss, up to about 1.7 one they catch.
 Local only, never in CI: it stops when `CI` is set, and `harness` checks no workflow runs it. The patches say where the
 tests are weak, so they never enter this repository: the scorer refuses a folder git would commit.
 
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
-(`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet, the static tests), the
+(`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet), the static tests, the
 unit and scenario tests in two halves (Vitest's `--shard`), the simulations, the page tests, the browser specs, the
 balance matrix in three parts and the job that joins them, and `db` (the access-rule tests and `supabase db lint`, which
 checks the database's functions). Each job takes `node_modules` from a cache keyed on the runner, Node's version, the
