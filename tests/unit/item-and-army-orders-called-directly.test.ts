@@ -25,7 +25,8 @@
 // up joining those he leads; a beast sent back behind the comrade's others; a company with no room aboard put back
 // behind the garrison's. Lines no matrix game reaches (P1-10b29): a realm with no name a distant realm to the others
 // when the Stone is worked, and another realm's bearer named by his realm's; his maximum HP brought in line once it
-// leaves his pack; his other items kept, a record under its id struck too. Properties: Send Item loses or makes
+// leaves his pack; his other items kept, a record under its id struck too. P1-11e14: the dead handed between two heroes
+// of no realm lost. Properties: Send Item loses or makes
 // no item and never moves Mithril; Leave/Transfer Army and Pick Up Army lose no company but the dead refused, and give
 // no hero beasts beyond his Druid; each company disbanded is one band; no slot holds more than its limit, the first
 // named of a slot worn. Planted faults: in the PR (P1-08j5)
@@ -541,6 +542,17 @@ describe('Leave/Transfer Army, called directly', () => {
       led: ['Great Bears c1'],
       took: ['His Bears c0', 'Great Bears c0'],
     });
+  });
+
+  test('between two heroes of no realm, the risen dead go to their graves: no realm of the dead to follow', () => {
+    const b = fresh();
+    const h = at(b, { king: true });
+    h.armies = [skeletal(), ...companies(1)];
+    const r = at(b);
+    h.player = null;
+    r.player = null;
+    play(b, h, o('leave_army', 'all', place(b, r)));
+    expect({ led: names(h.armies), took: names(r.armies) }).toEqual({ led: [], took: ['Men-at-Arms c0'] });
   });
 
   test('a garrison takes beasts and the dead with no Druid or Necromancy asked', () => {

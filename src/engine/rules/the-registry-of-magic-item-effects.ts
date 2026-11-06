@@ -19,6 +19,7 @@ import {
   type MagicItemEffectSlug,
 } from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { anItemIsTheMithrilSuitGrantedToItsWearer } from '../rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
 import {
   A_HEROS_ITEMS_ADD_TO_THE_REALMS_TAX,
   A_LAIR_REVEALED_WHEN_EXPLORING,
@@ -901,7 +902,7 @@ export function anItemIsWornAsArmour(item: AMagicItemAsTheRegistryReadsIt): bool
 /** Whether a held item is the Mithril suit: its effect carries the key of the `mithril-armour` row. A granted relic, so
  *  it is never loot (the engine's Mithril passes), is kept out of a lair's hoard, and has a lore of its own. */
 export function anItemIsTheMithrilSuit(item: AMagicItemAsTheRegistryReadsIt | null | undefined): boolean {
-  return item?.effect?.stat === MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS['mithril-armour'].carriedAs.stat;
+  return anItemIsTheMithrilSuitGrantedToItsWearer(item);
 }
 
 /** Whether a held item is a combat item: a potion, scroll or device a fighter carries into a personal combat (a hero

@@ -1,5 +1,12 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
-import { beastCommandCount, beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
+import { beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
+import { unitAsItsRealmSeesIt } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import {
+  theCompaniesALeaderTakesUpToHisBeastCommandsRoom,
+  theGarrisonPlacesAPickUpTakes,
+  theRisenDeadFollowAHandOverTo,
+  whereAHandOversRisenDeadGo,
+} from '../rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
 import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { isCharmedNow, isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import {
@@ -179,12 +186,17 @@ export function resolveLeaveOrTransferArmyOrder(
   // regains pace.)
 
   // Skeletal armies refuse to follow non-Undead commanders
-  const recipIsUndead2 =
-    !recip2 ||
-    recip2.alignment === 'Undead' ||
-    (recip2.player !== null && G.players[recip2.player]?.alignment === 'Undead');
-  const skelTransfer = removed.filter((a) => a._isSkeletal);
-  if (skelTransfer.length > 0 && !recipIsUndead2) {
+  const recipIsUndead2 = theRisenDeadFollowAHandOverTo(
+    recip2
+      ? {
+          alignment: recip2.alignment,
+          hisRealmsAlignment: recip2.player !== null ? G.players[recip2.player]?.alignment : null,
+        }
+      : null,
+  );
+  const _byTheDead = whereAHandOversRisenDeadGo(removed, recipIsUndead2, unitAsItsRealmSeesIt);
+  const skelTransfer = _byTheDead.toTheirGraves;
+  if (skelTransfer.length > 0) {
     emit(turnContext, {
       type: 'system',
       fact: {
@@ -196,23 +208,19 @@ export function resolveLeaveOrTransferArmyOrder(
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: prov.id,
     });
-    removed = removed.filter((a) => !a._isSkeletal); // remove skeletal from transfer
+    removed = _byTheDead.handed; // remove skeletal from transfer
     if (removed.length === 0) return; // nothing left to transfer
   }
 
   // Item 24 (2026-10-12): beasts beyond the recipient's Druid stay with the giver.
   if (recip2) {
-    let _room = beastCommandRoom(recip2, G.characters);
-    const _stay: Army[] = [];
-    removed = removed.filter((a) => {
-      if (!beastCommandCount(a)) return true;
-      if (_room > 0) {
-        _room--;
-        return true;
-      }
-      _stay.push(a);
-      return false;
-    });
+    const _byTheRoom = theCompaniesALeaderTakesUpToHisBeastCommandsRoom(
+      removed,
+      beastCommandRoom(recip2, G.characters),
+      unitAsItsRealmSeesIt,
+    );
+    const _stay: Army[] = _byTheRoom.left;
+    removed = _byTheRoom.taken;
     if (_stay.length) {
       c.armies = (asItsGuardReadsIt(c.armies) ?? []).concat(_stay);
       emit(turnContext, {
@@ -534,8 +542,8 @@ export function resolvePickUpArmyOrder(
     }
     const n = garr.length;
     c.armies = asItsGuardReadsIt(c.armies) ?? [];
-    while (garr.length > 0) {
-      c.armies.push(...garr.splice(-1, 1));
+    for (const i of theGarrisonPlacesAPickUpTakes(target, garr.length)) {
+      c.armies.push(...garr.splice(i, 1));
     }
     prov.garrisonArmies = [];
     emit(turnContext, {
@@ -571,18 +579,9 @@ export function resolvePickUpArmyOrder(
     });
     return;
   } else if (/(^|,)\s*g:\d+/i.test(String((target ?? '') || ''))) {
-    // pick up a SELECTION of unled garrison units by index. The player form now offers
-    // checkboxes and emits a comma-separated list like "g:0,g:2". Splice from the highest
-    // index down so earlier removals don't shift the indices still to be taken.
+    // pick up a SELECTION of unled garrison units by index (the form's "g:0,g:2"), the highest first.
     const garr = asItsGuardReadsIt(prov.garrisonArmies) ?? [];
-    const idxs = String(target)
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => /^g:\d+$/i.test(s))
-      .map((s) => parseInt(s.slice(2)));
-    const uniq = [...new Set(idxs)]
-      .filter((i) => Number.isInteger(i) && i >= 0 && i < garr.length)
-      .sort((a, b) => b - a);
+    const uniq = theGarrisonPlacesAPickUpTakes(target, garr.length);
     if (uniq.length === 0) {
       emit(turnContext, {
         type: 'system',
@@ -697,17 +696,12 @@ export function resolvePickUpArmyOrder(
   // Item 24 (2026-10-12): beasts taken up beyond the leader's Druid go back where they came from.
   {
     const _new = (asItsGuardReadsIt(c.armies) ?? []).filter((a) => !_pickBefore.includes(a));
-    let _room = beastCommandRoom({ ...c, armies: _pickBefore }, G.characters);
-    const _keepN: Army[] = [],
-      _backB: Army[] = [];
-    _new.forEach((a) => {
-      if (beastCommandCount(a)) {
-        if (_room > 0) {
-          _room--;
-          _keepN.push(a);
-        } else _backB.push(a);
-      } else _keepN.push(a);
-    });
+    const _room = beastCommandRoom({ ...c, armies: _pickBefore }, G.characters);
+    const { taken: _keepN, left: _backB } = theCompaniesALeaderTakesUpToHisBeastCommandsRoom(
+      _new,
+      _room,
+      unitAsItsRealmSeesIt,
+    );
     if (_backB.length) {
       c.armies = _pickBefore.concat(_keepN);
       if (_pickSrc) _pickSrc.armies = (asItsGuardReadsIt(_pickSrc.armies) ?? []).concat(_backB);
