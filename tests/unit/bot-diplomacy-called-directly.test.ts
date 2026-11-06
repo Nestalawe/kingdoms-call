@@ -22,7 +22,8 @@
 // by that rival's Treat to that bot); then what a whole turn can't stage: a declaration from a seat that is not a
 // realm's whole number, war on a bot seat the save lacks, a gap in the realms' list, a bot's rivals missing from the
 // context, the rivals read from the context not the realm's record, realms of no creed and a claim, a claim naming no
-// one, a game with no turn counter (a truce dated 0), a truce's date kept and renewed, no line written. Properties
+// one, a game with no turn counter (a truce dated 0), a truce's date kept and renewed, no line written; a game of no
+// realms' or characters' list, a seat's declarations of none, a truce dated 0 holding (P1-10b44). Properties
 // (fast-check): only bots' declarations are written, each a Treat or a war, toward a realm met when the turn began that
 // stands in the game, never itself; never war on a foe or a Treat to an ally; a Treat to a realm held in a grudge only
 // under a truce; every human realm's war on a bot it has met remembered once, after the grudges held; under Safe Start
@@ -419,6 +420,53 @@ describe('What a whole turn can’t stage', () => {
     const before = (tc['turnLog'] as unknown[]).length;
     botDiplomacy(tc);
     expect((tc['turnLog'] as unknown[]).length).toBe(before);
+  });
+  // P1-10b44: what the typed function's guards meet, each pinned from the base
+  const outcome = (tc: Raw) => {
+    try {
+      botDiplomacy(tc);
+      return declarations(tc);
+    } catch (e) {
+      return `throws ${String(e).split(':')[0] ?? ''}`;
+    }
+  };
+  test('a game of no realms’ list declares nothing; one of no characters’ list declares by the rivals’ land and creeds alone', () => {
+    const one = fresh((bb) => {
+      relate(bb, {});
+      return { bots: [1] };
+    });
+    delete (one.b.G as unknown as Raw)['players'];
+    const two = fresh((bb) => {
+      relate(bb, {});
+      return { bots: [1] };
+    });
+    delete (two.b.G as unknown as Raw)['characters'];
+    expect([outcome(one.tc), outcome(two.tc)]).toEqual([
+      { 0: {}, 1: {}, 2: {} },
+      { 0: {}, 1: { 0: 'treat', 2: 'treat' }, 2: {} },
+    ]);
+  });
+  test('a seat whose declarations are none records no grudge', () => {
+    const { b, tc } = fresh(() => ({ bots: [1] }));
+    (tc['diploDeclarations'] as Raw)['0'] = null;
+    expect(outcome(tc)).toEqual({ 0: null, 1: { 0: 'treat' }, 2: {} });
+    expect(realm(b, 1)['botGrudges']).toBeUndefined();
+  });
+  test('a truce dated turn 0 still holds: the bot treats with the realm it holds a grudge against', () => {
+    const { tc } = fresh((bb) => {
+      relate(bb, { '1-2': 'enemy' });
+      grudge(bb, 1, 2);
+      return { bots: [1] };
+    });
+    (tc['G'] as Raw)['turn'] = 0;
+    standIn(
+      ['botOwnPower', 'botRivalPower'],
+      () => {
+        botDiplomacy(tc);
+      },
+      { botOwnPower: () => 1, botRivalPower: () => 10 },
+    );
+    expect(declarations(tc)['1']).toEqual({ 0: 'treat', 2: 'treat' });
   });
 });
 

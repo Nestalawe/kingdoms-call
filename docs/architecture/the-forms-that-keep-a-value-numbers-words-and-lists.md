@@ -89,7 +89,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **`if (!list.length) return;` then `list[0].x`** is one test of the first element, `const first = list[0]; if (first ===
   undefined) return;`, where the list holds no gap. A list that a value of a wider type is pushed into (an intent's
   realm, typed as allowing none, into a province's visitors) is written through a local view of the same list typed
-  that wide, `const visitors: (number | null)[] = p.visitedBy`.
+  that wide, `const visitors: (number | null)[] = p.visitedBy`. A field set to a new list of that wider element (the war's news,
+  a battle of no province) is written through a view of its holder typed so (`theNewsHolder(G)._battleNews = kept`).
 - **A list read by a key in words** (a province by a key of a realm's grave lore) is read as JavaScript reads `list[k]`
   for any key, `Reflect.get(list, k)` into an `unknown`, and its field so too, `Reflect.get(Object(v), 'name')`
   (`theProvinceALoreKeyNames`).

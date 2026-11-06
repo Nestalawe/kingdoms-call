@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -33,6 +32,59 @@ import {
   botEnemyIntel,
   botIsValuable,
 } from './strategy.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
+import type { Army, BotIntelHero, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+
+// Its types (plan P1-10b44): each parameter typed as wide as the body's guards, so each guard stays.
+/** A battle between two realms as the war's news holds it: its province is none where the battle's merit is counted
+ *  with no province. */
+interface ABattlesNews {
+  readonly t: number;
+  readonly p: number | null;
+  readonly a: number;
+  readonly d: number;
+  readonly w: number;
+  readonly al: number;
+  readonly dl: number;
+}
+/** The world, where the war's news is read and written (a battle's province may be none). */
+function theNewsHolder(G: GameState): { _battleNews?: (ABattlesNews | null | undefined)[] | undefined } {
+  return G;
+}
+/** The world's characters, where the code tests the list for a gap. */
+function theCharactersOf(G: GameState): readonly (Character | null | undefined)[] {
+  return asItsGuardReadsIt(G.characters) ?? [];
+}
+/** The world's provinces, where the code tests the list for a gap. */
+function theProvincesOf(G: GameState): readonly (Province | null | undefined)[] {
+  return asItsGuardReadsIt(G.world.provinces) ?? [];
+}
+/** The realms, where the code tests the list for a gap. */
+function theRealmsOf(G: GameState): readonly (GameState['players'][number] | null | undefined)[] {
+  return asItsGuardReadsIt(G.players) ?? [];
+}
+/** A hero a realm's intel has sighted, where the code tests his place for none. */
+type ASighting = Omit<BotIntelHero, 'provId'> & { readonly provId?: number | null | undefined };
+/** The heroes a realm's intel has sighted, by id, where the code tests the record for none and each for a gap. */
+function theSightingsIn(
+  record: Readonly<Record<string, ASighting | null | undefined>> | null | undefined,
+): Readonly<Record<string, ASighting | null | undefined>> {
+  return record ?? {};
+}
+/** A host's units, where the code tests the list for a gap or none. */
+type TheUnitsAsTheNavalChecksReadThem = readonly (Army | null | undefined)[] | null | undefined;
+/** The turn's orders, read where the code read `G.turnOrders` (the assaults write them through this type). */
+function theTurnsOrders(G: GameState): Partial<Record<string, readonly (PhaseOrder | null | undefined)[]>> {
+  return G.turnOrders;
+}
+/** The province an assault's target names, which the code has just found next to a hero: for none, the TypeError its
+ *  read would throw. */
+function theTargetedProvince(G: GameState, id: number): Province {
+  const X = G.world.provinces[id];
+  if (X === undefined) throw new TypeError("Cannot read properties of undefined (reading 'tax')");
+  return X;
+}
 
 // ══ WAR ASSESSMENT (2026-09-29, Toby) ══════════════════════════════════════════════════════════════
 // A bot no longer declares war the moment it meets a crown two or more steps away on the alignment
@@ -91,29 +143,39 @@ export const BOT_WAR = {
   acceptNoPrize: 0.7,
 }; // accept a rival's peace below these ratios (and below the bar)
 // Battles between two realms, kept a few turns so bots can read recent fortunes (GM creditBattle).
-export function noteRealmBattle(G, provId, atk, def, won, atkLost, defLost) {
+export function noteRealmBattle(
+  G: GameState,
+  provId: number | null,
+  atk: number,
+  def: number,
+  won: boolean,
+  atkLost: number | undefined,
+  defLost: number | undefined,
+) {
   const t = G.turn || 0;
-  G._battleNews = (G._battleNews || []).filter((x) => x && t - x.t <= BOT_WAR.newsTurns);
-  G._battleNews.push({ t, p: provId, a: atk, d: def, w: won ? 1 : 0, al: atkLost || 0, dl: defLost || 0 });
+  const H = theNewsHolder(G);
+  const kept = (H._battleNews ?? []).filter((x) => x && t - x.t <= BOT_WAR.newsTurns);
+  H._battleNews = kept;
+  kept.push({ t, p: provId, a: atk, d: def, w: won ? 1 : 0, al: Number(atkLost) || 0, dl: Number(defLost) || 0 });
 }
 // News of a battle reaches realm pi if it or an ally fought in it, or it can see the field.
-export function botHeardBattle(G, pi, x) {
+export function botHeardBattle(G: GameState, pi: number, x: ABattlesNews) {
   if (x.a === pi || x.d === pi) return true;
   if (botRelationRaw(G, pi, x.a) === 'allied' || botRelationRaw(G, pi, x.d) === 'allied') return true;
   return x.p != null && botSees(G, pi, x.p);
 }
-export function botOwnPower(G, pi) {
+export function botOwnPower(G: GameState, pi: number) {
   let field = 0,
     gar = 0,
     heroes = 0,
     inc = 0;
-  (G.characters || []).forEach((c) => {
-    if (!(c && c.alive && c.player === pi)) return;
+  theCharactersOf(G).forEach((c) => {
+    if (!(c?.alive && c.player === pi)) return;
     heroes++;
-    if ((c.armies || []).length) field += botBattleForce(G, c, null, 'plain', { viewerPi: pi });
+    if ((asItsGuardReadsIt(c.armies) ?? []).length) field += botBattleForce(G, c, null, 'plain', { viewerPi: pi });
   });
-  (G.world.provinces || []).forEach((p) => {
-    if (!p || p.owner !== pi) return;
+  theProvincesOf(G).forEach((p) => {
+    if (p?.owner !== pi) return;
     inc += p.tax || 0;
     gar += botForceStrength(p.garrisonArmies);
   });
@@ -122,33 +184,31 @@ export function botOwnPower(G, pi) {
 // What realm pi BELIEVES realm j can put in the field. Hosts seen lately (their plain-ground
 // strength), or — where the realm has seen little — about one unit for each province it has seen
 // them hold; their wealth from the land it has seen; the characters it has met.
-export function botRivalPower(G, pi, j) {
+export function botRivalPower(G: GameState, pi: number, j: number) {
   const I = botEnemyIntel(G, pi),
     turn = G.turn || 0,
-    seen = new Set();
+    seen = new Set<string>();
   let field = 0;
-  Object.keys(I.generals || {}).forEach((k) => {
-    const r = I.generals[k];
-    if (r && r.player === j && turn - r.turn <= BOT_WAR.knowTurns) {
+  Object.entries(theSightingsIn(I.generals)).forEach(([k, r]) => {
+    if (r?.player === j && turn - r.turn <= BOT_WAR.knowTurns) {
       field += r.strength || 0;
-      seen.add(String(k));
+      seen.add(k);
     }
   });
-  Object.keys(I.heroes || {}).forEach((k) => {
-    const r = I.heroes[k];
-    if (r && r.player === j && turn - r.turn <= 6) seen.add(String(k));
+  Object.entries(theSightingsIn(I.heroes)).forEach(([k, r]) => {
+    if (r?.player === j && turn - r.turn <= 6) seen.add(k);
   });
-  (G.characters || []).forEach((e) => {
-    if (!(e && e.alive && e.player === j) || seen.has(String(e.id)) || !botSeesChar(G, pi, e)) return;
+  theCharactersOf(G).forEach((e) => {
+    if (!(e?.alive && e.player === j) || seen.has(String(e.id)) || !botSeesChar(G, pi, e)) return;
     seen.add(String(e.id));
-    if ((e.armies || []).length) field += botBattleForce(G, e, null, 'plain', { viewerPi: pi });
+    if ((asItsGuardReadsIt(e.armies) ?? []).length) field += botBattleForce(G, e, null, 'plain', { viewerPi: pi });
   });
   let inc = 0,
     land = 0;
-  (G.world.provinces || []).forEach((p) => {
+  theProvincesOf(G).forEach((p) => {
     if (!p || !botKnows(G, pi, p.id)) return;
     const b = botBelief(G, pi, p);
-    if (!b || b.owner !== j) return;
+    if (b?.owner !== j) return;
     inc += b.tax || 0;
     if (b.terrain !== 'sea') land++;
   });
@@ -156,13 +216,19 @@ export function botRivalPower(G, pi, j) {
   return field + 3 + 2 * inc + 3 * Math.max(1, seen.size); // +3: the capital's garrison, assumed
 }
 // The realm's standing with j: {since, peaceAt} kept on the player record.
-export function botWarBook(G, pi, j) {
-  const p = (G.players || [])[pi];
+export function botWarBook(
+  G: GameState,
+  pi: number,
+  j: number,
+): { since?: number | undefined; peaceAt?: number | undefined } {
+  const p = theRealmsOf(G)[pi];
   if (!p) return {};
-  p._botWar = p._botWar || {};
-  const b = (p._botWar[j] = p._botWar[j] || {});
+  const books = p._botWar ?? {};
+  p._botWar = books;
+  const b = books[j] ?? {};
+  books[j] = b;
   if (botRelationRaw(G, pi, j) === 'enemy') {
-    if (b.since == null) b.since = G.turn || 0;
+    b.since ??= G.turn || 0;
   } else if (b.since != null) {
     b.peaceAt = G.turn || 0;
     delete b.since;
@@ -170,12 +236,14 @@ export function botWarBook(G, pi, j) {
   return b;
 }
 // Is there a province of j's on our border that one of our hosts could take?
-export function botWarPrize(G, pi, j) {
-  const hosts = (G.characters || []).filter((c) => c && c.alive && c.player === pi && (c.armies || []).length);
+export function botWarPrize(G: GameState, pi: number, j: number) {
+  const hosts = theCharactersOf(G).filter(
+    (c) => c?.alive && c.player === pi && (asItsGuardReadsIt(c.armies) ?? []).length,
+  );
   if (!hosts.length) return false;
   const T = botTuning(G, pi);
   const margin = Math.min(T.kingAttackMargin || 1.2, T.heroAttackMargin || 1.2);
-  return (G.world.provinces || []).some((X) => {
+  return theProvincesOf(G).some((X) => {
     if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id) || botBelievedOwner(G, pi, X) !== j) return false;
     // on our border — or, with prizeHops 2, one province beyond it
     let border = false;
@@ -189,7 +257,7 @@ export function botWarPrize(G, pi, j) {
       if (BOT_WAR.prizeHops >= 2)
         for (let k = 0; k < 6; k++) {
           const M = botNeighbourProv(G, N, k);
-          if (M && M.owner === pi && M.terrain !== 'sea') {
+          if (M?.owner === pi && M.terrain !== 'sea') {
             border = true;
             break;
           }
@@ -201,10 +269,10 @@ export function botWarPrize(G, pi, j) {
   });
 }
 // Free neutral land still on our border (and we are not stalled against it)?
-export function botStillExpanding(G, pi) {
+export function botStillExpanding(G: GameState, pi: number) {
   if (botStallTurns(G, pi) >= BOT_WAR.stallFree) return false;
-  return (G.world.provinces || []).some((P) => {
-    if (!P || P.owner !== pi || P.terrain === 'sea') return false;
+  return theProvincesOf(G).some((P) => {
+    if (P?.owner !== pi || P.terrain === 'sea') return false;
     for (let i = 0; i < 6; i++) {
       const N = botNeighbourProv(G, P, i);
       if (!N || N.terrain === 'sea' || !botKnows(G, pi, N.id)) continue;
@@ -213,19 +281,23 @@ export function botStillExpanding(G, pi) {
     return false;
   });
 }
-export function botWarAssess(G, pi, j, opts) {
-  opts = opts || {};
+export function botWarAssess(
+  G: GameState,
+  pi: number,
+  j: number,
+  opts: { readonly offeredPeace?: boolean | undefined } | null | undefined,
+) {
+  opts = opts ?? {};
   const turn = G.turn || 0,
-    pls = G.players || [];
+    pls = theRealmsOf(G);
   const book = botWarBook(G, pi, j),
     rel = botRelationRaw(G, pi, j);
-  const enc = (pls[pi] || {})._encountered || [];
   // 1 + 6: the two sides
   let mine = botOwnPower(G, pi),
     theirs = botRivalPower(G, pi, j),
     losingElsewhere = false;
-  pls.forEach((q, k) => {
-    if (!q || k === pi || k === j || q.conceded || q._eliminated) return;
+  for (const [k, q] of pls.entries()) {
+    if (!q || k === pi || k === j || q.conceded || q._eliminated) continue;
     const rpk = botRelationRaw(G, pi, k),
       rjk = botRelationRaw(G, j, k);
     if (rpk === 'allied') mine += BOT_WAR.allyWeight * botRivalPower(G, pi, k);
@@ -235,15 +307,17 @@ export function botWarAssess(G, pi, j, opts) {
       mine -= BOT_WAR.burden * pk;
       if (botOwnPower(G, pi) < pk * BOT_WAR.losingRatio) losingElsewhere = true;
     }
-  });
+  }
   const ratio = Math.max(0, mine) / Math.max(1, theirs);
   // 3: opportunities
-  const opp = [];
-  const news = (G._battleNews || []).filter((x) => x && turn - x.t <= 3 && botHeardBattle(G, pi, x));
+  const opp: string[] = [];
+  const news = (theNewsHolder(G)._battleNews ?? []).filter(
+    (x): x is ABattlesNews => !!x && turn - x.t <= 3 && botHeardBattle(G, pi, x),
+  );
   if (news.some((x) => (x.a === j && !x.w) || (x.d === j && x.w))) opp.push('lost a battle');
   if (
-    (G.characters || []).some(
-      (c) => c && c.alive && c.isKing && c.player === j && c._crownedTurn != null && turn - c._crownedTurn <= 4,
+    theCharactersOf(G).some(
+      (c) => c?.alive && c.isKing && c.player === j && c._crownedTurn != null && turn - c._crownedTurn <= 4,
     )
   )
     opp.push('new heir');
@@ -254,14 +328,13 @@ export function botWarAssess(G, pi, j, opts) {
     )
   )
     opp.push('ally at war with them');
-  const home = (pls[j] || {}).homeProvinceId,
+  const home = pls[j]?.homeProvinceId,
     H = home != null ? G.world.provinces[home] : null;
   if (H && botKnows(G, pi, H.id)) {
     const I = botEnemyIntel(G, pi);
     if (
-      Object.keys(I.generals || {}).some((k) => {
-        const r = I.generals[k];
-        if (!(r && r.player === j && turn - r.turn <= 2 && r.provId != null && r.provId !== H.id)) return false;
+      Object.entries(theSightingsIn(I.generals)).some(([, r]) => {
+        if (!(r?.player === j && turn - r.turn <= 2 && r.provId != null && r.provId !== H.id)) return false;
         const P = G.world.provinces[r.provId];
         if (!P) return false;
         const d = botPathLenAny(G, P, H.id, BOT_WAR.farFromHome);
@@ -272,19 +345,21 @@ export function botWarAssess(G, pi, j, opts) {
     if (
       botSees(G, pi, H.id) &&
       H.owner === j &&
-      !(H.garrisonArmies || []).length &&
-      !botVisibleCharsIn(G, pi, H).some((e) => e.player === j && (e.armies || []).length)
+      !(asItsGuardReadsIt(H.garrisonArmies) ?? []).length &&
+      !botVisibleCharsIn(G, pi, H).some((e) => e.player === j && (asItsGuardReadsIt(e.armies) ?? []).length)
     )
       opp.push('capital unguarded');
   }
   // 5 + 8 + alignment: the bar
-  const king = (G.characters || []).find((c) => c && c.alive && c.isKing && c.player === pi);
-  const lean = (((pi * 37 + ((pls[pi] || {}).name || '').length * 11) % 21) - 10) / 100; // fixed per realm, −0.10…+0.10
+  const king = theCharactersOf(G).find((c) => c?.alive && c.isKing && c.player === pi);
+  const lean = (((pi * 37 + (pls[pi]?.name ?? '').length * 11) % 21) - 10) / 100; // fixed per realm, −0.10…+0.10
+  // the tempers' table read by any temper's name, as JavaScript read it (a king of none: the key 'undefined')
+  const tempers: Readonly<Partial<Record<string, number>>> = BOT_WAR.temper;
   const dist = alignDistP(botAlignOf(G, pi), botAlignOf(G, j));
   const expanding = botStillExpanding(G, pi);
   let thr =
     BOT_WAR.base +
-    (BOT_WAR.temper[(king || {}).temper] || 0) +
+    (tempers[String(king?.temper)] ?? 0) +
     lean -
     (['Evil', 'Undead'].includes(botAlignOf(G, pi)) ? BOT_WAR.dark : 0) -
     Math.max(0, dist - 2) * BOT_WAR.farStep +
@@ -295,7 +370,7 @@ export function botWarAssess(G, pi, j, opts) {
   // 7: our record against them lately
   let wins = 0,
     losses = 0;
-  (G._battleNews || []).forEach((x) => {
+  (theNewsHolder(G)._battleNews ?? []).forEach((x) => {
     if (!x || turn - x.t > BOT_WAR.newsTurns) return;
     if (x.a === pi && x.d === j) {
       if (x.w) wins++;
@@ -305,7 +380,7 @@ export function botWarAssess(G, pi, j, opts) {
       else wins++;
     }
   });
-  let decision = null,
+  let decision: 'peace' | 'war' | null = null,
     why = '';
   if (rel === 'enemy') {
     const age = book.since != null ? turn - book.since : 99;
@@ -342,21 +417,21 @@ export function botWarAssess(G, pi, j, opts) {
 // excludes characters pinned to hold their own threatened capital or needed to reinforce a
 // threatened valuable neighbour — defence outranks a gang-up. Assigned character ids are added to
 // `assigned` so the per-character pass skips them.
-export function botPlanAssaults(G, pi, chars, assigned) {
+export function botPlanAssaults(G: GameState, pi: number, chars: readonly Character[], assigned: Set<number>) {
   const T = botTuning(G, pi);
   const ASSAULT_MARGIN = T.assaultMargin; // combined edge needed (buffers the unify roll)
-  const isPinnedOrNeeded = (c, P) => {
+  const isPinnedOrNeeded = (c: Character, P: Province) => {
     if (!(P.owner === pi && botIsValuable(G, P, pi))) {
       /* not on valuable ground */
     } else {
       // would P fall if c left?
       let remaining = 0;
-      (P.characters || []).forEach((id) => {
+      (asItsGuardReadsIt(P.characters) ?? []).forEach((id) => {
         if (id === c.id) return;
-        const f = (G.characters || []).find((x) => x && x.id === id);
-        if (f && f.alive && f.player === pi) remaining += botForceStrength(f.armies);
+        const f = theCharactersOf(G).find((x) => x?.id === id);
+        if (f?.alive && f.player === pi) remaining += botForceStrength(f.armies);
       });
-      (P.garrisonArmies || []).forEach((a) => {
+      (asItsGuardReadsIt(P.garrisonArmies) ?? []).forEach((a) => {
         remaining += unitBaseStrength(a);
       });
       let maxAdj = 0;
@@ -376,12 +451,12 @@ export function botPlanAssaults(G, pi, chars, assigned) {
     // needed to reinforce a threatened valuable neighbour?
     for (let i = 0; i < 6; i++) {
       const N = botNeighbourProv(G, P, i);
-      if (N && N.owner === pi && botIsValuable(G, N, pi) && botDefenceNeed(G, N, pi) > 0) return true;
+      if (N?.owner === pi && botIsValuable(G, N, pi) && botDefenceNeed(G, N, pi) > 0) return true;
     }
     return false;
   };
   // enemy province id → [{c, dirIdx}] of our FREE characters adjacent to it
-  const byTarget = {};
+  const byTarget: Record<number, { c: Character; dirIdx: number }[]> = {};
   chars.forEach((c) => {
     if (assigned.has(c.id)) return;
     const P = G.world.provinces[c.location];
@@ -392,14 +467,15 @@ export function botPlanAssaults(G, pi, chars, assigned) {
       if (!N || N.terrain === 'sea') continue;
       if (N.owner == null || N.owner === pi) continue;
       if (botRelationRaw(G, pi, N.owner) !== 'enemy') continue;
-      (byTarget[N.id] || (byTarget[N.id] = [])).push({ c, dirIdx: i });
+      const here = byTarget[N.id] ?? [];
+      byTarget[N.id] = here;
+      here.push({ c, dirIdx: i });
     }
   });
   // Rank candidate targets (richest / weakest first) and commit greedily.
-  const cands = Object.keys(byTarget)
-    .map((tid) => {
-      const X = G.world.provinces[+tid],
-        list = byTarget[tid],
+  const cands = Object.entries(byTarget)
+    .map(([tid, list]) => {
+      const X = theTargetedProvince(G, +tid),
         def = botTargetDefence(G, pi, X);
       return { X, list, def, score: (X.tax || 0) * 10 - def };
     })
@@ -408,12 +484,14 @@ export function botPlanAssaults(G, pi, chars, assigned) {
   cands.forEach(({ X, list, def }) => {
     const free = list.filter(({ c }) => !assigned.has(c.id));
     if (free.length < 2) return;
-    const soloWinner = free.some(({ c }) => botBattleForce(G, c, null, X.terrain) >= def * botMarginFor(G, pi, c, T));
+    const soloWinner = free.some(
+      ({ c }) => botBattleForce(G, c, null, X.terrain, undefined) >= def * botMarginFor(G, pi, c, T),
+    );
     if (soloWinner) return; // a single character can take it — let the solo pass do it
-    const combined = free.reduce((s, { c }) => s + botBattleForce(G, c, null, X.terrain), 0);
+    const combined = free.reduce((s, { c }) => s + botBattleForce(G, c, null, X.terrain, undefined), 0);
     if (combined < def * ASSAULT_MARGIN) return; // not worth throwing armies at
     free.forEach(({ c }) => {
-      G.turnOrders[c.id] = botFillOrders(
+      theTurnsOrders(G)[c.id] = botFillOrders(
         G,
         pi,
         c,
@@ -439,8 +517,8 @@ export const BOT_LIGHT_ARMIES = new Set(KC_UNIT_CLASS.lightFoot); // mirrors LIG
 // enough hulls to put to sea). Mirrors getSeaCapability exactly.
 // bot mirror of getFlyCapability — can the humanoid flyers lift every foot soldier so the whole
 // column flies (and crosses sea without a fleet)?
-export function botCanFly(armies) {
-  armies = armies || [];
+export function botCanFly(armies: TheUnitsAsTheNavalChecksReadThem) {
+  armies = armies ?? [];
   if (!armies.length) return false;
   let carriers = 0,
     carried = 0,
@@ -467,16 +545,16 @@ export function botCanFly(armies) {
   }
   return selfFly && carriers >= carried;
 }
-export function botSeaCap(armies) {
-  armies = armies || [];
+export function botSeaCap(armies: TheUnitsAsTheNavalChecksReadThem) {
+  armies = armies ?? [];
   if (armies.length === 0) return 'all';
-  const landArmies = armies.filter((a) => a && !BOT_AERIAL_TYPES.has(a.type) && !BOT_SEA_ALL.has(a.type));
+  const landArmies = armies.filter((a): a is Army => !!a && !BOT_AERIAL_TYPES.has(a.type) && !BOT_SEA_ALL.has(a.type));
   const hulls = armies.filter((a) => a && BOT_CARRIER_TYPES.has(a.type)).length;
   if (landArmies.length === 0) return 'all';
   if (botCanFly(armies)) return 'sea'; // airborne column crosses sea
   // mirrors getSeaCapability's pooled hull+flyer lift exactly.
-  const capOf = (a) => (BOT_LIGHT_ARMIES.has(a.type) ? 0.5 : 1);
-  const liftableB = (a) =>
+  const capOf = (a: Army) => (BOT_LIGHT_ARMIES.has(a.type) ? 0.5 : 1);
+  const liftableB = (a: Army) =>
     !(
       BOT_SEA_ALL.has(a.type) ||
       BOT_AERIAL_TYPES.has(a.type) ||
@@ -498,8 +576,8 @@ export function botSeaCap(armies) {
   return byAir <= armies.filter((a) => a && BOT_FLYING_TYPES.has(a.type)).length ? 'sea' : 'land';
 }
 // A force carrying land troops it can ferry (has fleets AND land armies) — the invasion package.
-export function botIsLoadedFleet(armies) {
-  armies = armies || [];
+export function botIsLoadedFleet(armies: TheUnitsAsTheNavalChecksReadThem) {
+  armies = armies ?? [];
   return (
     armies.some((a) => a && BOT_CARRIER_TYPES.has(a.type)) &&
     armies.some((a) => a && !BOT_AERIAL_TYPES.has(a.type) && !BOT_SEA_ALL.has(a.type))
@@ -507,7 +585,7 @@ export function botIsLoadedFleet(armies) {
 }
 // seek out a beatable, uncleared lair in our OWN adjacent land (safe to enter) so heroes actively
 // go clear hoards rather than only searching lairs they happen to stand on.
-export function botLairDir(G, P, c, pi) {
+export function botLairDir(G: GameState, P: Province, c: Character, pi: number) {
   // botKnownFeatures — an UNDISCOVERED lair is not on this realm's map. A player must Explore or
   // Search to find one; bots were reading every hoard in their territory the moment the world was
   // generated.
@@ -515,9 +593,7 @@ export function botLairDir(G, P, c, pi) {
     const N = botNeighbourProv(G, P, i);
     if (!N || N.terrain === 'sea' || N.owner !== pi) continue;
     if (
-      botKnownFeatures(G, pi, N).some(
-        (f) => f && !f.cleared && !f.ritualSite && botCanBeatGuardian(c, f.monster, G, pi, f),
-      )
+      botKnownFeatures(G, pi, N).some((f) => !f.cleared && !f.ritualSite && botCanBeatGuardian(c, f.monster, G, pi, f))
     )
       return i;
   }

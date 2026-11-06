@@ -33,9 +33,13 @@
 // Then the Spring orders pass on what no matrix game hands it (P1-10b42), with a case aimed at each fault the night
 // run's mutation session found unguarded (P1-21j): the empire's width, a feint past a visiting host, the forced march
 // at the second assault, a garrison raised under threat put first, and a Flood mage's pins within his casting limit.
-// Last, the spellcraft on what no matrix game hands it (P1-10b43): the single best cast, the titles a realm with no
+// Then the spellcraft on what no matrix game hands it (P1-10b43): the single best cast, the titles a realm with no
 // standings chases, the ratings and a guardian weighed on a hero lacking a field, a lair, a march, a path, a quarry, a
 // cast plan, the cross-training, the actions pass, a spy's target and the practice fallback on a world lacking a list.
+// Last, the war's reckoning and the assaults on what no matrix game hands them (P1-10b44): the naval checks on a host
+// of no units or a gap, a realm's strength, a rival's and the war book on a world lacking a list, its intel or its
+// turn, the war weighed with no choices and on a rival's empty capital, and the assaults from valuable ground of no
+// characters nor garrison listed and on a province whose id is not its place.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -2260,5 +2264,119 @@ describe('The spellcraft on what no matrix game hands it (P1-10b43)', () => {
     ).toBe(
       '[null,null,null,{"X":{"id":0,"row":0,"col":0,"owner":1,"terrain":"plains","name":"Ashford"},"d":0,"sc":14},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee"}]',
     );
+  });
+});
+
+describe("The war's reckoning and the assaults on what no matrix game hands them (P1-10b44)", () => {
+  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
+  /** A world of two realms, at war, and the lists named, each other list missing; its map 2 by 1. */
+  const aWorld = (lists: Record<string, unknown> = {}) => ({
+    turn: 3,
+    relations: { '0-1': 'enemy' },
+    players: [{}, {}],
+    ...lists,
+    world: { cols: 2, rows: 1, ...((lists['world'] as object | undefined) ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const results = (calls: readonly (() => unknown)[]) =>
+    JSON.stringify(
+      calls.map((f) => {
+        try {
+          const v = f();
+          return v === undefined ? 'undefined' : v;
+        } catch (e) {
+          return `throws ${String(e).split(':')[0] ?? ''}`;
+        }
+      }),
+    );
+  test('the naval checks on a host of no units, or of a gap', () => {
+    expect(
+      results([
+        () => fn('botCanFly')(null),
+        () => fn('botCanFly')([null]),
+        () => fn('botSeaCap')(undefined),
+        () => fn('botSeaCap')([null]),
+        () => fn('botIsLoadedFleet')(null),
+        () => fn('botIsLoadedFleet')([null]),
+      ]),
+    ).toBe('[false,false,"all","all",false,false]');
+  });
+  test("a realm's strength, a rival's and its war book on a world lacking its lists, its intel or its turn", () => {
+    const heroOfNoUnits = { id: 1, alive: true, player: 0, location: 0 };
+    expect(
+      results([
+        () => fn('botOwnPower')(aWorld(), 0),
+        () =>
+          fn('botOwnPower')(
+            aWorld({ characters: [null, heroOfNoUnits], world: { provinces: [null, aProvince({ tax: 3 })] } }),
+            0,
+          ),
+        () =>
+          fn('botRivalPower')(
+            aWorld({ players: [{ _botIntel: {} }], characters: [heroOfNoUnits], world: { provinces: [aProvince()] } }),
+            0,
+            0,
+          ),
+        () => fn('botWarBook')(aWorld({ players: undefined }), 0, 1),
+        () => fn('botWarBook')(aWorld({ turn: 0 }), 0, 1),
+        () => fn('botWarBook')(aWorld({ turn: undefined }), 0, 1),
+        () => fn('botWarPrize')(aWorld({ characters: [heroOfNoUnits] }), 0, 1),
+      ]),
+    ).toBe('[0,9,13,{},{"since":0},{"since":0},false]');
+  });
+  test('the war weighed with no choices, for a realm of no name, and a rival’s capital of no garrison nor host', () => {
+    const G = aWorld({
+      players: [{}, { homeProvinceId: 1 }],
+      characters: [
+        { id: 1, alive: true, player: 0, location: 1, armies: [] },
+        { id: 2, alive: true, player: 1, location: 1 },
+      ],
+      world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 1, characters: [1, 2] })] },
+    });
+    expect(
+      results([
+        () => fn('botWarAssess')(aWorld({ characters: [] }), 0, 1, undefined),
+        () => fn('botWarAssess')(G, 0, 1, null),
+      ]),
+    ).toBe(
+      '[{"decision":null,"why":"","ratio":0,"thr":0.75,"prize":false,"expanding":false,"opp":[],"losingElsewhere":false,"wins":0,"losses":0},{"decision":null,"why":"","ratio":0.38461538461538464,"thr":0.75,"prize":false,"expanding":false,"opp":["capital unguarded"],"losingElsewhere":false,"wins":0,"losses":0}]',
+    );
+  });
+  test('the assaults from valuable ground of no characters nor garrison listed, and on a province whose id is not its place', () => {
+    const hero = { id: 1, alive: true, player: 0, location: 0, armies: [] };
+    const plan = (G: Raw) => {
+      const assigned = new Set<number>();
+      fn('botPlanAssaults')(G, 0, [hero], assigned);
+      return [G['turnOrders'], [...assigned]];
+    };
+    expect(
+      results([
+        () =>
+          plan(
+            aWorld({
+              turnOrders: {},
+              characters: [hero],
+              world: { provinces: [aProvince({ tax: 99 }), aProvince({ id: 1, col: 1, owner: 1 })] },
+            }),
+          ),
+        () =>
+          plan(
+            aWorld({
+              turnOrders: {},
+              characters: [hero],
+              world: { provinces: [aProvince({ characters: [1] }), aProvince({ id: 5, col: 1, owner: 1 })] },
+            }),
+          ),
+      ]),
+    ).toBe('[[{},[]],"throws TypeError"]');
   });
 });
