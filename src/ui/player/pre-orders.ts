@@ -22,8 +22,13 @@ import {
 import { buildOrdersForm, refreshEncounterPlan, renderPreSchool } from './orders-form.ts';
 import { doSaveOrders, doSubmitOrders, restoreSubmitWrap } from './briefing-and-submit.ts';
 import { heroHireWageOfP } from './skills-and-projections.ts';
-import { buildTargetField, predictedLocation, refreshExploreNotes } from './order-targets.ts';
+import { buildTargetField, refreshExploreNotes } from './order-targets.ts';
 import { leadsArmiesP, provLinkHtml } from './map-symbols.ts';
+import {
+  getOrderExtra,
+  getOrderTarget,
+  predictedLocation,
+} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
 // L7/L9 mastery order (GM MASTERY_ORDER_KEYS — exactly the L79_ORDERS set: both are the content's rows, P1-11d10)
@@ -919,18 +924,6 @@ export function injectHiredHeroOrders(charId, ph, charIdx) {
     </div>`;
   card.appendChild(epDiv);
   renderPreSchool(hiredCharId);
-}
-
-// Get target value — handles both regular selects/inputs and recruit checkbox lists
-export function getOrderTarget(charId, ph) {
-  // For recruit, the hidden input holds the comma-joined checkbox values
-  const hidden = document.getElementById(`po-target-${charId}-${ph}`);
-  if (hidden) return hidden.value || '';
-  return '';
-}
-export function getOrderExtra(charId, ph) {
-  const el = document.getElementById(`po-extra-${charId}-${ph}`);
-  return el?.value || '';
 }
 
 // read the Blood Offering per-unit Sacrifice/Empower selectors into the hidden extra field

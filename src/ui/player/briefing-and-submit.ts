@@ -6,10 +6,13 @@ import { collectMessages } from './init.ts';
 import { setMobileView } from './layout.ts';
 import { currentHeroOrderP } from './move-analysis.ts';
 import { buildOrdersForm } from './orders-form.ts';
-import { getOrderExtra, getOrderTarget } from './pre-orders.ts';
-import { predictedLocation } from './order-targets.ts';
 import { bulletizeDesc } from './map-symbols.ts';
 import { UNIT_ABILITIES } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
+import {
+  getOrderExtra,
+  getOrderTarget,
+  predictedLocation,
+} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // ══ THE NEW PLAYER'S BRIEFING — RACE, ALIGNMENT, TEMPER ═══════════════════════════════════
 // STANDING RULE (Toby, 2026-09-27): these three boxes are the ONLY thing most players read before
@@ -442,22 +445,4 @@ export async function doSubmitOrders() {
   setOrdersSubmittedUI(true);
   // On mobile, drop the player back to the Turn Report now their orders are in.
   setMobileView('report');
-}
-
-// ── SKILL ROW ────
-// One renderer for both places a character's abilities are listed: the report's character card and
-// the orders column. The GM ships `skillEff` for each character — base level, EFFECTIVE level, and
-// the sources of the difference — computed by the same function the engine resolves turns with, so
-// what is shown here IS what the turn will use. `combatSkillBonus` carries bonuses that apply only
-// in personal combat (minor titles, Veteran Training); those are shown separately, because they do
-// not change the skill itself. Falls back to the raw skills for an older report with no breakdown.
-// style: 'tags' — the compact pills on the report card; 'inline' — the orders column's label list.
-// The EFFECTIVE level of a skill as the engine will use it — base plus items, aura and any Curse,
-// straight from the breakdown the GM shipped. Every success-chance preview in the order forms reads
-// this, so a "+2 Thief" blade shows in the odds the player is quoted. Falls back to the raw level
-// for an older report.
-export function effSkillP(c, k) {
-  const e = c && c.skillEff && c.skillEff[k];
-  if (e && typeof e.total === 'number') return e.total;
-  return ((c && c.skills) || {})[k] || 0;
 }

@@ -105,7 +105,7 @@ const RETIRED = [
 /** The portal's three hex tables (P1-11d6), each as the file and the function that held a table of the six steps from
  *  a hex: they step by the folder's function now. */
 const THE_THREE_HEX_TABLES: readonly (readonly [string, string])[] = [
-  ['ui/player/order-targets.ts', 'predictedLocation'],
+  ['ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts', 'predictedLocation'],
   ['ui/player/order-targets.ts', 'buildTargetField'],
   ['ui/player/move-analysis.ts', 'lastMoveDirOf'],
 ];

@@ -142,19 +142,10 @@ const COPIES: Record<string, string[]> = {
   // (and the label of a company, which the Blood Offering's rows show: P1-11d3; and the note under an order that
   // quotes its chance, which the Practice Skill field shows: P1-11d4)
   'ui/player/order-chances.ts': ['chanceLine', 'orderChanceNote', 'ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl', 'armyLabel'],
-  // a hero's skill as the report counts it (skillEff): druidNeedP, exploreGainFor and the army card read it
-  'ui/player/briefing-and-submit.ts': ['effSkillP'],
-  // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3); and what a hero will
-  // carry and lead, and a province's garrison hold, after his realm's orders so far (P1-11d2: the forms of the later
-  // phases read them), with the units a Recruit musters and which go to the garrison (the army card reads the engine's
-  // two sets of beasts, and asks its Druid mastery's guard, through src/shared/ since P1-11d12)
+  // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3; the army card reads the
+  // engine's two sets of beasts, and asks its Druid mastery's guard, through src/shared/ since P1-11d12)
   'ui/player/skills-and-projections.ts': [
     'druidNeedP',
-    'predictedItems',
-    'GARRISON_UNIT_TYPES_P',
-    '_isAutoGarrisonRecruit',
-    '_projRecruitUnits',
-    'projectedGarrison',
     // (the word of a unit's race on its label, and a wandering hero's wage, which the Broker's field shows: P1-11d3)
     'HUMANOID_RACES_UI',
     'PRIMAL_SUBRACE_CLASS',
@@ -162,15 +153,12 @@ const COPIES: Record<string, string[]> = {
     'heroHireWageOfP',
   ],
   // the Explore order's forecast (since P1-11d14 it feeds the engine's rule what the report gives: not a copy of the
-  // rule, kept to run its truth cases), and the share of the province a march into it maps first (P1-23t); where a
-  // hero will stand after his orders so far (P1-11d1), which that share and the Move field read; the companies he will lead
-  // (P1-11d2); the target field of an order (P1-11d3: the creed orders' fields); and the skill a comrade practises
-  // beside a hero, which his Practice Skill field opens on (P1-11d4: the co-trainers), with the order it reads
+  // rule, kept to run its truth cases), and the share of the province a march into it maps first (P1-23t), which reads
+  // where a hero will stand; the target field of an order (P1-11d3: the creed orders' fields); and the skill a comrade
+  // practises beside a hero, which his Practice Skill field opens on (P1-11d4: the co-trainers), with the order it reads
   'ui/player/order-targets.ts': [
     'exploreGainFor',
     'exploreMoveGainBefore',
-    'predictedLocation',
-    'projectedLedArmies',
     '_draftOrdersSnapshot',
     'draftOrderAt',
     'practiceCompanionSkill',
@@ -178,9 +166,20 @@ const COPIES: Record<string, string[]> = {
   ],
   // the treasury ledger at the top of the orders (P1-11d4): what the orders will spend and add to the wages
   'ui/player/orders-form.ts': ['computeOrderLedgerP'],
-  // the order a page's field holds (P1-11d1: the fields stood in below), the Move field's compass words, and the
-  // direction a fresh Move opens on (the hex table of each)
-  'ui/player/pre-orders.ts': ['getOrderTarget'],
+  // the order form's forecasts (P1-11e3: one file): the order a page's field holds (P1-11d1: the fields stood in below),
+  // where a hero will stand after his orders so far (P1-11d1: the Explore forecast and the Move field read it), what he
+  // will carry and lead, and a province's garrison hold (P1-11d2: the forms of the later phases read them), with the
+  // units a Recruit musters and which go to the garrison
+  'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts': [
+    'getOrderTarget',
+    'predictedLocation',
+    'predictedItems',
+    'GARRISON_UNIT_TYPES_P',
+    '_isAutoGarrisonRecruit',
+    '_projRecruitUnits',
+    'projectedGarrison',
+    'projectedLedArmies',
+  ],
   // the mastery orders' table (P1-11d3: the order list's gates read it), each order's name, skill and level its row's
   // (P1-11d10: the content's rows run beside the copies) and its target and hint the form's own
   'ui/player/l79-orders.ts': ['THE_FORMS_FIELDS_OF_EACH_MASTERY_ORDER', 'L79_ORDERS'],
@@ -192,6 +191,8 @@ const COPIES: Record<string, string[]> = {
     'ALIGN_ACTIONS',
     'gdAlreadyBuiltP',
     'rawSkillLvl',
+    // (a hero's skill as the report counts it, skillEff: druidNeedP, exploreGainFor and the army card read it)
+    'effSkillP',
     'skillsUnseenP',
     'ACTION_DISPLAY_ORDER',
     '_actionRank',
@@ -459,8 +460,12 @@ export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpel
     // the spells' hints, which the target field shows, and the content's rows some of them read (P1-11d13)
     scriptOf('content/spell-effects-their-names-numbers-and-words.ts', opts),
     scriptOf('ui/player/the-hints-the-order-form-shows-below-each-spell.ts', opts),
-    sourceOf('ui/player/pre-orders.ts', ['getOrderTarget'], opts),
-    sourceOf('ui/player/order-targets.ts', ['predictedLocation', 'provDirectionLabel'], opts),
+    sourceOf(
+      'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
+      ['getOrderTarget', 'predictedLocation'],
+      opts,
+    ),
+    sourceOf('ui/player/order-targets.ts', ['provDirectionLabel'], opts),
     sourceOf(
       'ui/player/items-and-heroes.ts',
       ['isPreOrderIdP', 'orderTargetCharsP', 'preOrderTagP', 'realmOfP', 'realmNameP', 'realmOptStyleP'],
