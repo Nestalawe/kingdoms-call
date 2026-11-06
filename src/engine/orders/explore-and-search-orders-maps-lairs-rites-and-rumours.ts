@@ -10,7 +10,12 @@ import {
   featureTreasure,
   setFeatureTreasure,
 } from '../world/tables.ts';
-import { WILD_HUNT_TURNS, WILD_HUNT_UNITS, guardianCanUseItem, wildHuntPrice } from '../items/tiers-and-hoards.ts';
+import {
+  WILD_HUNT_UNITS,
+  guardianCanUseItem,
+  theTurnsAWildHuntServesBeyondThisOne,
+  wildHuntPrice,
+} from '../items/tiers-and-hoards.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { theShareOfAProvinceAnExploreOrderMaps } from '../rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';
 import { aRealmOfThisCreedMayGiveTheAlignmentOrder } from '../rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
@@ -27,7 +32,6 @@ import { TM, creditMapped, perkTier, skillLevel } from '../titles/perks.ts';
 import {
   theFactorARealmsDiscoveriesMultiplyExploringBy,
   theShareARealmsDiscoveriesMapAroundAnExplorer,
-  theTurnsARealmsDiscoveriesLengthenTheWildHuntBy,
   whatARealmsDiscoveriesAddToALairsGold,
   whatARealmsDiscoveriesAddToALairsItemChance,
 } from '../rules/the-registry-of-discovery-effects.ts';
@@ -280,14 +284,6 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
   }
   recordDeadHeroSighting(turnContext, c.player, prov.id);
   return;
-}
-/** The turns the beasts a Wild Hunt binds serve beyond this one (plan P1-11e22, moved as it was): WILD_HUNT_TURNS,
- *  and what the hero's realm's discoveries add (ap08 The Long Hunt; the discoveries' registry's since plan P1-19ad:
- *  "orderOutcome: a realm's discoveries lengthen the wild hunt"). */
-export function theTurnsAWildHuntServesBeyondThisOne(
-  hisRealm: Parameters<typeof theTurnsARealmsDiscoveriesLengthenTheWildHuntBy>[0],
-): number {
-  return WILD_HUNT_TURNS + theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(hisRealm);
 }
 // Perform Rite (Pagan realms, at a ritual site): the Rite of the Wild Hunt, or the Blood Offering.
 export function resolvePerformRiteOrder(

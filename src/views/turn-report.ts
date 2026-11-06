@@ -32,8 +32,8 @@ import {
 } from '../engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
-import { itemLore, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
-import { isConsecrated } from '../engine/heroes/fame-and-consecration.ts';
+import { itemLore, theTurnsAWildHuntServesBeyondThisOne, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
+import { isConsecrated, theConsecrationsAKingMayHold } from '../engine/heroes/fame-and-consecration.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
 import { theExplorationTheMoversItemsAdd } from '../engine/rules/the-registry-of-magic-item-effects.ts';
 import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
@@ -66,6 +66,7 @@ import {
   whatARealmsDiscoveriesAddToPractice,
   whatARealmsDiscoveriesAddToResearch,
   theSharesARealmsDiscoveriesAddToPracticeSkillBySkill,
+  theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom,
 } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
@@ -1136,6 +1137,14 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
     }
     return s + w;
   }, 0);
+  // each upkeep discovery's cut on a unit of each type and its room left under its cap, once the roster's wages above
+  // have drawn on it (plan P1-11e24): the treasury ledger counts a new company's wage with them
+  const theUpkeepDiscoveriesCutsAndTheirRoom = theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom(
+    player,
+    Object.keys(ARMY_COST_MASTER),
+    _upkAccR,
+    _taxCapR,
+  );
   // 2026-09-09. The forecast skipped three PERSISTENT discounts the collector applies — the
   // Host-Leader minor title (−1g per unit he leads, floor 0 on the total), Granaries sd17 (−1g per
   // hero) and every heritage/creed `heroWage` discovery (−Ng per hero), all with the collector's
@@ -1223,6 +1232,17 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       color: player.color,
       // R-124: while its Grand Cathedral stands (as the turn counts it), the order form counts Bless Province as free
       ...(view.books.wonderBlesses.Divine ? { itsGrandCathedralStands: true } : {}),
+      // the realm's own facts the order form's creed notes and ledger read (plan P1-11e24), each as the turn counts it:
+      // its home province (its founding capital, held or lost), the consecrations its living king may hold at once
+      // (null with none), the turns a Wild Hunt's beasts serve beyond the turn they are bound, whether its Druidic
+      // Wonder halves its beasts' wages, and each upkeep discovery's cut and room
+      homeProvinceId: view.homeProvinceId,
+      theConsecrationsItsKingMayHold: ((king) => (king ? theConsecrationsAKingMayHold(king, player) : null))(
+        playerCharsForWages.find((c) => c.isKing),
+      ),
+      theTurnsAWildHuntServesBeyondThisOne: theTurnsAWildHuntServesBeyondThisOne(player),
+      itsDruidicWonderHalvesItsBeastsWages: view.books.wonderBlesses.Druidic,
+      theUpkeepDiscoveriesCutsAndTheirRoom,
     },
     exploreDiscMult: Object.fromEntries(
       ['plain', 'desert', 'forest', 'mountain', 'jungle', 'sea'].map((t) => [t, discExploreMult(player, t)]),

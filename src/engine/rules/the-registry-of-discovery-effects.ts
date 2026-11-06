@@ -1260,6 +1260,44 @@ export function theWageARealmsDiscoveriesLeaveAUnit(
   return aWageAfterEachCut(theCuts, theWage, theAccount, theCeiling);
 }
 
+/** One effect of a realm's discoveries that cuts a unit's wage, as its turn report names it (plan P1-11e24): its
+ *  discovery's id, the gold it cuts from a unit of each type it reaches (before the 1g floor), and the room it has
+ *  left under its ceiling once `theAccount` holds what it has saved, or null where it has no ceiling. */
+export interface AnUpkeepDiscoverysCutAndItsRoom {
+  readonly theDiscovery: string | null;
+  readonly theGoldItCutsFromAUnitOfEachType: Partial<Record<string, number>>;
+  readonly theRoomLeftUnderItsCap: number | null;
+}
+
+/** The runner of "turnEnd: a realm's discoveries cut a unit's wage", for the report (plan P1-11e24): each effect the
+ *  realm holds, in the stage's order, its cut on a unit of each of `theTypes` it reaches (asked as the hire list's
+ *  wages ask, by the type alone), and its room left under the ceiling `aWageAfterEachCut` gives it (`theCeiling`, or
+ *  its row's own `max`) after `theAccount`. */
+export function theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  theTypes: readonly string[],
+  theAccount: WhatEachCappedEffectHasPaid,
+  theCeiling: number | null | undefined,
+): AnUpkeepDiscoverysCutAndItsRoom[] {
+  const theStage = "a realm's discoveries cut a unit's wage";
+  return theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage]).map(([slug, e]) => {
+    const theGoldItCutsFromAUnitOfEachType: Partial<Record<string, number>> = {};
+    let itsOwnCeiling: number | undefined;
+    for (const t of theTypes) {
+      const theCut = ENTRIES[slug].turnEnd?.[theStage]?.(e, { theUnit: { type: t } }) ?? null;
+      if (theCut === null) continue;
+      theGoldItCutsFromAUnitOfEachType[t] = theCut.theGold;
+      itsOwnCeiling = theCut.itsOwnCeiling;
+    }
+    const lim = theCeiling ?? itsOwnCeiling;
+    return {
+      theDiscovery: Object.values(DISC_BY_ID).find((d) => d.effect === e || d.effect2 === e)?.id ?? null,
+      theGoldItCutsFromAUnitOfEachType,
+      theRoomLeftUnderItsCap: lim == null ? null : lim - (Number(theAccount.get(e)) || 0),
+    };
+  });
+}
+
 /** The runner of "turnEnd: a realm's discoveries cut a hero's wage" (discHeroWage, before the ceilings): the wage
  *  `theWage` the realm's effects for the hero's alignment leave, each cut in turn. */
 export function theWageARealmsDiscoveriesCutsLeaveAHero(

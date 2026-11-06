@@ -6,6 +6,7 @@ import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-la
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { isLegendaryItem, itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { anItemIsACombatItem, anItemIsTheMithrilSuit } from '../rules/the-registry-of-magic-item-effects.ts';
+import { theTurnsARealmsDiscoveriesLengthenTheWildHuntBy } from '../rules/the-registry-of-discovery-effects.ts';
 import type { ItemOfTheseRules } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import type { Item } from '../../schemas/saved-game-state.ts';
 
@@ -49,6 +50,14 @@ export function wildHuntPrice(type: string) {
 }
 export const GRAND_HEIST_RICH_TAX = 7; // tax base at/above which a province is rich enough to stage a Grand Heist in (a realm's home capital always qualifies)
 export const WILD_HUNT_TURNS = THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.theWildHuntsTurnsMore.value; // extra full turns the bound creatures serve beyond this one (its row's)
+/** The turns the beasts a Wild Hunt binds serve beyond this one (plan P1-11e22, moved as it was; here since P1-11e24, where the views may ask it): WILD_HUNT_TURNS,
+ *  and what the hero's realm's discoveries add (ap08 The Long Hunt; the discoveries' registry's since plan P1-19ad:
+ *  "orderOutcome: a realm's discoveries lengthen the wild hunt"). */
+export function theTurnsAWildHuntServesBeyondThisOne(
+  hisRealm: Parameters<typeof theTurnsARealmsDiscoveriesLengthenTheWildHuntBy>[0],
+): number {
+  return WILD_HUNT_TURNS + theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(hisRealm);
+}
 export const BLOOD_HARVEST_PER_UNIT = 1; // gold per enemy unit destroyed in a Pagan victory
 export const FEATURE_POOLS_P = {
   plain: [

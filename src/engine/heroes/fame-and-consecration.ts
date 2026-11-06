@@ -1,9 +1,10 @@
 import { homeFounderOf } from '../grand-design.ts';
 import { hexDistP } from '../world/map-helpers.ts';
-import { perkTier } from '../titles/perks.ts';
+import { perkTier, skillLevel } from '../titles/perks.ts';
 import { discProvCoastal } from '../discoveries.ts';
 import {
   whatARealmsDiscoveriesAddToSpottingALurker,
+  whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold,
   type ARealmAsTheDiscoveriesReadIt,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import type { GameState, Province, SkillLevels } from '../../schemas/saved-game-state.ts';
@@ -268,4 +269,18 @@ export function spotEnemyInOwnedProvince(
   // realm's discoveries spot a hero lurking in its province", the home and the coast asked only by an effect for them)
   if (perkTier(enemyChar, 'illusory') >= 1) chance = Math.max(5, chance * 0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
   return detRoll(turn ?? gs.turn, viewerPi, enemyChar.id, prov.id) * 100 < chance;
+}
+/** The consecrations a king may hold at once (plan P1-11e22, moved as it was; here since P1-11e24, where the views may ask it): his White, and what his realm's
+ *  discoveries add (ad03 Holy Sites, +1; still needs White 1+; the discoveries' registry's since plan P1-19ae:
+ *  "orderOutcome: a realm's discoveries add to the consecrations a crown may hold"). */
+export function theConsecrationsAKingMayHold(
+  c: Parameters<typeof skillLevel>[0],
+  hisRealm: Parameters<typeof whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold>[0],
+): number {
+  return (
+    skillLevel(c, 'white') +
+    whatARealmsDiscoveriesAddToTheConsecrationsACrownMayHold(hisRealm, {
+      theConsecratorsWhiteSkill: skillLevel(c, 'white'),
+    })
+  );
 }

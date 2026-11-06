@@ -343,6 +343,8 @@ export interface PlayerView {
   /** The realm itself, whole, with its memory (provinces remembered, rumours, spied skills, discoveries). */
   me: Realm;
   map: { cols: number; rows: number; centreCol: unknown };
+  /** Its home province's id, as the turn reads it (homeProvinceIdFor: its founding capital, held or lost), or null. */
+  homeProvinceId: number | null;
   /** The province sets each sight rule gives (the hero lists, the dead and the mercenaries read them). */
   sight: {
     owned: ReadonlySet<number>;
@@ -945,6 +947,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     turn: state.turn,
     me,
     map: { cols, rows, centreCol: mapCentreColFor(state, realm) },
+    homeProvinceId: homeProvinceIdFor(state, realm),
     sight: {
       owned: ownedProvIds,
       visited: visitedProvIds,
