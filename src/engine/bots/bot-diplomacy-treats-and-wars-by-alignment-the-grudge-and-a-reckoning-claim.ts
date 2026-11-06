@@ -1,8 +1,21 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { safeStartLocked } from '../army-tables.ts';
 import { botAlignFriendly } from './intel.ts';
 import { BOT_WAR, botOwnPower, botRivalPower, botWarAssess } from './war.ts';
 import { areAllied, realmHasMet, relationBetween } from '../realms/relations-and-captures.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { TurnContext } from '../turn/context.ts';
+import type { Character, GameState } from '../../schemas/saved-game-state.ts';
+
+// Its types (plan P1-10b44): the context as the function reads it, each list as wide as the body's guards.
+/** A bot realm's own record, which the grudge's truce is written on: for none, the TypeError its read would throw. */
+function theBotsOwnRecord(
+  players: readonly (GameState['players'][number] | null | undefined)[],
+  idx: number,
+): GameState['players'][number] {
+  const bp = players[idx];
+  if (!bp) throw new TypeError("Cannot read properties of undefined (reading '_botGrudgeTruce')");
+  return bp;
+}
 
 // ── BOT DIPLOMACY: TREATS AND WARS BY ALIGNMENT, THE GRUDGE AND A RECKONING CLAIM (plan P1-08l1: lifted out of
 // resolveTurn) ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -15,8 +28,19 @@ import { areAllied, realmHasMet, relationBetween } from '../realms/relations-and
 // world as the phases left it (the same rivals: those met when the turn began). It does nothing while Safe Start holds.
 // It takes the turn's context (src/engine/turn/context.ts) and nothing else; its lines keep resolveTurn's indent (plan
 // P1-08's Decisions).
-export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(turnContext) {
+export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(
+  turnContext: Pick<TurnContext, 'G' | 'diploDeclarations' | '_botPlayerIdx' | '_botEncounteredAtStart'>,
+) {
   const { G, diploDeclarations, _botPlayerIdx, _botEncounteredAtStart } = turnContext;
+  // the realms and the characters, where the code tests each list for a gap
+  const players: readonly (GameState['players'][number] | null | undefined)[] = asItsGuardReadsIt(G.players) ?? [];
+  const characters: readonly (Character | null | undefined)[] = asItsGuardReadsIt(G.characters) ?? [];
+  // a realm's declarations this turn, written back where the code made them none
+  const theDeclarationsOf = (from: number) => {
+    const its = diploDeclarations[from] ?? {};
+    diploDeclarations[from] = its;
+    return its;
+  };
   if (safeStartLocked(G, G.turn)) return; // SAFE START: bots make no Treat or declaration before Turn SAFE_START_TURN either
   // ── BOT DIPLOMACY — ALIGNMENT DECIDES ────
   //
@@ -55,25 +79,25 @@ export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(
   Object.keys(diploDeclarations).forEach((k) => {
     const from = Number(k);
     if (!Number.isInteger(from) || _botPlayerIdx.has(from)) return; // human declarations only
-    const decl = diploDeclarations[from] || {};
+    const decl = diploDeclarations[from] ?? {};
     Object.keys(decl).forEach((k2) => {
       const to = Number(k2);
       if (decl[k2] !== 'enemy' || !_botPlayerIdx.has(to) || !realmHasMet(turnContext, from, to)) return;
-      const bp = (G.players || [])[to];
+      const bp = players[to];
       if (!bp) return;
       if (!Array.isArray(bp.botGrudges)) bp.botGrudges = [];
       if (!bp.botGrudges.includes(from)) bp.botGrudges.push(from);
     });
   });
-  const _grudgeAgainst = (botIdx, rival) => (((G.players || [])[botIdx] || {}).botGrudges || []).includes(rival);
+  const _grudgeAgainst = (botIdx: number, rival: number) => (players[botIdx]?.botGrudges ?? []).includes(rival);
 
-  const _kingAliveIdx = new Set(
-    (G.characters || []).filter((c) => c && c.alive && c.isKing && c.player != null).map((c) => c.player),
+  const _kingAliveIdx = new Set<number | null>(
+    characters.filter((c): c is Character => !!c?.alive && c.isKing && c.player != null).map((c) => c.player),
   );
-  const _hasLand = (idx) => (((G.players || [])[idx] || {}).provinces || []).length > 0;
-  const _conceded = (idx) => !!((G.players || [])[idx] || {}).conceded;
+  const _hasLand = (idx: number) => (players[idx]?.provinces ?? []).length > 0;
+  const _conceded = (idx: number) => !!players[idx]?.conceded;
   // The claimant, if any — the only thing that can override alignment.
-  const claimBy = G.reckoning && G.reckoning.by != null && _kingAliveIdx.has(G.reckoning.by) ? G.reckoning.by : -1;
+  const claimBy = G.reckoning?.by != null && _kingAliveIdx.has(G.reckoning.by) ? G.reckoning.by : -1;
   _botPlayerIdx.forEach((idx) => {
     if (_conceded(idx)) return; // a conceded realm makes no declarations
     if (!_kingAliveIdx.has(idx) && !_hasLand(idx)) return;
@@ -84,31 +108,30 @@ export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(
       claimBy >= 0 &&
       claimBy !== idx &&
       areAllied(turnContext, idx, claimBy) &&
-      ((G.players || [])[idx] || {}).alignment != null &&
-      ((G.players || [])[idx] || {}).alignment === ((G.players || [])[claimBy] || {}).alignment;
+      players[idx]?.alignment != null &&
+      players[idx].alignment === players[claimBy]?.alignment;
     const denyingAClaim = claimBy >= 0 && claimBy !== idx && !_loyalToClaimant;
-    (_botEncounteredAtStart[idx] || []).forEach((rival) => {
+    const met: readonly (number | null | undefined)[] = _botEncounteredAtStart[idx] ?? [];
+    met.forEach((rival) => {
       if (rival == null || rival === idx) return;
-      if (!(G.players || [])[rival]) return;
+      if (!players[rival]) return;
       if (_conceded(rival)) return; // a realm that has quit is not worth a declaration
       if (!_kingAliveIdx.has(rival) && !_hasLand(rival)) return; // skip already-defeated realms
       // 2026-09-26b (Toby item 10): AGGRESSIVE bot diplomacy (chosen at game creation) — every bot
       // is at war with every HUMAN realm it has met and never offers one a Treat, whatever the
       // alignment wheel or a Reckoning claim says. Bot-to-bot diplomacy is unchanged.
       if (G.botDiplomacy === 'hostile' && !_botPlayerIdx.has(rival)) {
-        if (relationBetween(turnContext, idx, rival) !== 'enemy')
-          (diploDeclarations[idx] = diploDeclarations[idx] || {})[rival] = 'enemy';
+        if (relationBetween(turnContext, idx, rival) !== 'enemy') theDeclarationsOf(idx)[rival] = 'enemy';
         return;
       }
       if (denyingAClaim) {
         if (rival === claimBy) {
           // The crown is on the table: break with him, ally or not.
-          if (relationBetween(turnContext, idx, rival) !== 'enemy')
-            (diploDeclarations[idx] = diploDeclarations[idx] || {})[rival] = 'enemy';
+          if (relationBetween(turnContext, idx, rival) !== 'enemy') theDeclarationsOf(idx)[rival] = 'enemy';
         } else if (!areAllied(turnContext, idx, rival) && !_grudgeAgainst(idx, rival)) {
           // Everyone else is a potential partner in denying the claim, whatever their alignment —
           // except a human king who once declared war on us. That grudge outlasts the endgame.
-          (diploDeclarations[idx] = diploDeclarations[idx] || {})[rival] = 'treat';
+          theDeclarationsOf(idx)[rival] = 'treat';
         }
         return;
       }
@@ -121,24 +144,24 @@ export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(
       // strength again, it remembers the grudge and breaks the alliance. (The flag in between is
       // hysteresis, so it does not flip every turn.)
       if (_grudge) {
-        const _bp = (G.players || [])[idx];
-        _bp._botGrudgeTruce = _bp._botGrudgeTruce || {};
+        const _bp = theBotsOwnRecord(players, idx);
+        const truce = _bp._botGrudgeTruce ?? {};
+        _bp._botGrudgeTruce = truce;
         const _r = botOwnPower(G, idx) / Math.max(1, botRivalPower(G, idx, rival));
-        if (_r <= 1 / BOT_WAR.grudgeYield) _bp._botGrudgeTruce[rival] = G.turn || 0;
-        else if (_r >= 1 / BOT_WAR.grudgeRecall) delete _bp._botGrudgeTruce[rival];
-        if (_bp._botGrudgeTruce[rival] != null) {
-          if (!areAllied(turnContext, idx, rival))
-            (diploDeclarations[idx] = diploDeclarations[idx] || {})[rival] = 'treat';
+        if (_r <= 1 / BOT_WAR.grudgeYield) truce[rival] = G.turn || 0;
+        else if (_r >= 1 / BOT_WAR.grudgeRecall) delete truce[rival];
+        if (truce[rival] != null) {
+          if (!areAllied(turnContext, idx, rival)) theDeclarationsOf(idx)[rival] = 'treat';
           return;
         }
         if (areAllied(turnContext, idx, rival)) {
-          (diploDeclarations[idx] = diploDeclarations[idx] || {})[rival] = 'enemy';
+          theDeclarationsOf(idx)[rival] = 'enemy';
           return;
         } // the grudge remembered
       }
       // 2026-09-29b (Toby): a bot never ALLIES with a realm that is allied to any of its enemies
       // (alliances are known to all). Peace (Enemy→Neutral) is still possible.
-      const _alliedToMyFoe = (G.players || []).some(
+      const _alliedToMyFoe = players.some(
         (q, k) =>
           q &&
           k !== idx &&
@@ -152,18 +175,18 @@ export function botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(
           !areAllied(turnContext, idx, rival) &&
           !(_alliedToMyFoe && relationBetween(turnContext, idx, rival) === 'neutral')
         )
-          (diploDeclarations[idx] = diploDeclarations[idx] || {})[rival] = 'treat';
+          theDeclarationsOf(idx)[rival] = 'treat';
         return;
       }
       // 2026-09-29 (Toby): an ally of any alignment is kept faith with; otherwise war and peace are
       // a JUDGEMENT (botWarAssess) — strength, a prize on the border, opportunity, expansion first,
       // other wars, temper — not automatic on contact.
       if (areAllied(turnContext, idx, rival)) return;
-      const _wa = botWarAssess(G, idx, rival, { offeredPeace: (diploDeclarations[rival] || {})[idx] === 'treat' });
+      const _wa = botWarAssess(G, idx, rival, { offeredPeace: diploDeclarations[rival]?.[idx] === 'treat' });
       if (_wa.decision === 'war' && relationBetween(turnContext, idx, rival) !== 'enemy')
-        (diploDeclarations[idx] = diploDeclarations[idx] || {})[rival] = 'enemy';
+        theDeclarationsOf(idx)[rival] = 'enemy';
       else if (_wa.decision === 'peace' && !_grudge && relationBetween(turnContext, idx, rival) === 'enemy')
-        (diploDeclarations[idx] = diploDeclarations[idx] || {})[rival] = 'treat';
+        theDeclarationsOf(idx)[rival] = 'treat';
     });
   });
 }

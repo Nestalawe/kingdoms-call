@@ -128,11 +128,6 @@
       "count": 5
     }
   },
-  "src/engine/bots/war.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/engine/dice-and-army-names.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 7
