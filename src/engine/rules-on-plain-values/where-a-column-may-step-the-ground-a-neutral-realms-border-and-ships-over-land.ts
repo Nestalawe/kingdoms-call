@@ -5,9 +5,9 @@ import type { UnitOfAType } from './units-that-fly-sail-or-can-be-carried-throug
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other. The Move order's own function
 // (src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts) asks all three; the steps a column takes
-// without a Move order (canStepBetween in src/engine/units/movement-pools.ts) and the road a far march follows
-// (stepTowardPath in src/engine/world/routes-and-distances.ts) ask the ground and ships over land. Plan P1-11e4 moved
-// them here, with the world's values handed in, so the order form's march forecast can ask the same rules.
+// without a Move order (canStepBetween in src/engine/units/movement-pools.ts) and the road a far march follows (the
+// first step of a shortest route, beside this file) ask the ground and ships over land. Plan P1-11e4 moved them here,
+// with the world's values handed in, so the order form's march forecast can ask the same rules.
 
 /** A column as the terrain tests read it: its units (a gap passed over where the step's test guards one), and the Part
  *  Sea mark of this phase (Parked: nothing sets it). */
