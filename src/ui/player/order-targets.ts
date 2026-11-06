@@ -22,7 +22,6 @@ import { L79_ORDERS } from './l79-orders.ts';
 import {
   ALIGN_ACTIONS,
   DIRECTIONS,
-  effSkillP,
   gdHintFor,
   ITEM_SLOT_CAP_P,
   ITEM_SLOT_LABEL_P,
@@ -56,17 +55,18 @@ import {
   lastMoveDirOf,
   moveOriginProv,
   poMoveModeNote,
-  projectedMoveHost,
   refreshAllMoveModeNotes,
 } from './move-analysis.ts';
 import { capitalise, heroHireWageOfP } from './skills-and-projections.ts';
 import { heroFameTextP } from './map-symbols.ts';
 import {
+  effSkillP,
   getOrderTarget,
   predictedItems,
   predictedLocation,
   projectedGarrison,
   projectedLedArmies,
+  projectedMoveHost,
 } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // projected exploration gain for ONE Explore order: the engine's own rule (theShareOfAProvinceAnExploreOrderMaps, through

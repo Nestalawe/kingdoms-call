@@ -12,7 +12,7 @@ import {
 import { kcJoinP } from './startup.ts';
 import { ITEM_UNCAPPED_SKILLS_P } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
-import { effSkillP } from './items-and-heroes.ts';
+import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // (ITEM_UNCAPPED_SKILLS_P is declared above effMagicLvl — see the note there.)
 // ── BONUS SOURCE COLOURS ────

@@ -145,6 +145,8 @@ const THE_FILES_THAT_READ_THE_ROWS_NUMBERS = [
   'ui/player/pre-orders.ts',
   'ui/player/orders-form.ts',
   'ui/player/move-analysis.ts',
+  // (the column the Move note counts, projectedMoveHost, since P1-11e10: the march forecast reads it)
+  'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
 ];
 const THE_ROWS_NUMBERS_WRITTEN_OUT = [
   '— raises a Green ',
@@ -463,7 +465,11 @@ describe('the player portal reaches the engine only through src/shared/', () => 
       [widget, 'buildTargetField', 'theBloodOfferingsGrades'],
       ['ui/player/pre-orders.ts', 'updateBloodOffering', 'theBloodOfferingsGrades'],
       ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePriceOfWordFromAProvince'],
-      ['ui/player/move-analysis.ts', 'projectedMoveHost', 'theWildHuntsBeasts'],
+      [
+        'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
+        'projectedMoveHost',
+        'theWildHuntsBeasts',
+      ],
     ] as const;
     expect(
       readsTheRow
@@ -471,7 +477,10 @@ describe('the player portal reaches the engine only through src/shared/', () => 
         .map(([file, fn, number]) => `${fn} (${file}) doesn't read ${number}`),
     ).toEqual([]);
     // the Wild Hunt's beasts are made once, in a loop of the row's number, not once for each
-    const column = textOfFunction('ui/player/move-analysis.ts', 'projectedMoveHost');
+    const column = textOfFunction(
+      'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
+      'projectedMoveHost',
+    );
     expect(column.split('(bound by the Wild Hunt)')).toHaveLength(2);
     // the once-a-turn list
     const once = initializersDeclaredIn('ui/player/pre-orders.ts', 'ONCE_PER_TURN_ACTIONS').join('\n');

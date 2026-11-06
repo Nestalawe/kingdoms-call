@@ -84,9 +84,10 @@
 // its fields) step where `neighborInDir` and `getNeighborsP` do, from every province of a staged map; on a staged
 // world with no guards (`marchingWorld`), where `predictedLocation` says a hero will stand is
 // where `processOrder` leaves him for a compass step, a province next door, a Forced March next door or by direction, a
-// Move by a province's bare number (R-128) and his own province, and pinned where it is not (question 44): a column with
-// ships over land, with too little lift for the sea, at a neutral realm's border, past its pace (each refused by the
-// turn), a far province or a far Forced March (one step in the turn); and the share `exploreMoveGainBefore` counts a march
+// Move by a province's bare number (R-128) and his own province, and since P1-11e10 for a march the turn refuses (ships
+// over land, too little lift for the sea, a neutral realm's border, the war declared this turn: then a Search Lair after
+// it names where he stands) and those it lets through; and pinned where it is not (question 44): a column past its pace
+// (refused by the turn), a far province or a far Forced March (one step in the turn); and the share `exploreMoveGainBefore` counts a march
 // as mapping is the turn's at March 6 and 0 leading companies and for a sea sailed into, and pinned for a Travelworn
 // Drape (10 for 30) and Naval 6's charting of the coast (0 for 5). P1-11d2 (plan P1-11d, before any of it is shared):
 // on a staged world with no guards (`holdingWorld`, each case on its own province), what `predictedItems`,
@@ -158,6 +159,9 @@ import {
   THE_MARCHES_IN_THE_FORECAST_GETS_WRONG,
   THE_MARCHES_THE_FORECAST_GETS_RIGHT,
   THE_MARCHES_THE_FORECAST_GETS_WRONG,
+  THE_MARCHES_THE_TURN_REFUSES,
+  aSearchLairAfterEachMarchTheTurnRefuses,
+  theMarchForecastAsWhatItReadsChanges,
   THE_HOLDINGS_THE_FORECAST_GETS_RIGHT,
   THE_HOLDINGS_THE_FORECAST_GETS_WRONG,
   theMarchForecastAgainstTheTurn,
@@ -553,24 +557,50 @@ describe('the march: where the order form says a hero will stand, and what march
       expect(of('lastMoveDirOf').filter((x) => on(x)[1] % 2 === parity).length).toBeGreaterThan(0);
   });
 
-  test("where the order form says a hero will stand after a march is where the turn leaves him: a compass step, a province next door, a Forced March next door or by direction, a Move by a province's bare number, his own province (R-128)", () => {
+  test("where the order form says a hero will stand after a march is where the turn leaves him: a compass step, a province next door, a Forced March next door or by direction, a Move by a province's bare number, his own province, a march the turn refuses (R-128)", () => {
     // On a staged world (no guards, no foes on the way): a Move by direction, by a province next door (prov:<id>, as the
     // form writes it), a Forced March to a province next door (its bare number, as the form writes it), a Move into
     // the province he stands in (the form's "Stay in", the turn's "already there"), and since R-128 a Forced March by
     // direction (dir:, a bot's) and a Move by a province's bare number (a bot's joint assault's): the form reads both
     // targets by the turn's own rule, whatAMarchsOrderNames; a Move naming no province on the map leaves him there.
+    // Since P1-11e10 a march the turn refuses leaves him where he is, by the turn's own rules on the column the Move
+    // note counts: ships ordered over land, too little lift ordered to sea, companies at a neutral realm's border (a
+    // war declared this turn stands from the first phase only for an Evil realm); a lone hero, a realm at war and
+    // ships that carry the column pass.
     const list = marches().filter((x) => (THE_MARCHES_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
-    expect(list.filter((x) => x.copy !== x.named)).toEqual([]);
+    const refused = (x: (typeof list)[number]) => (THE_MARCHES_THE_TURN_REFUSES as readonly string[]).includes(x.kind);
+    expect(list.filter((x) => x.copy !== (refused(x) ? x.from : x.named))).toEqual([]);
+    expect(list.filter((x) => refused(x) && x.from === x.named)).toEqual([]);
   });
 
-  test('the marches the forecast gets wrong are pinned: a march the turn refuses, a far province (question 44)', () => {
-    // The form follows the orders, not the turn's checks: a column with ships aboard ordered over land, one with too
-    // little lift ordered to sea, one ordered over a neutral realm's border and one ordered past its pace (Men-at-Arms
-    // march 2 a turn: the third Move) stay where the turn stopped them, but every later phase's form puts them where
-    // the order named. A far province (prov:<id> or a Forced March's bare number: since #364 the turn reads both alike)
-    // is one step toward it in the turn, and there in the form.
+  test('each march the turn refuses leaves him where he set out, and a Search Lair the form sends after it names the province he stands in, where the turn lets him search (R-128)', () => {
+    // doSubmitOrders sends predictedLocation's province with every Search Lair (its `prov`); the turn sends a searcher
+    // standing anywhere else to rest ("never reaches the lair"). So once the forecast follows the turn, the order
+    // names where he stands, and the turn lets him go in.
+    const list = aSearchLairAfterEachMarchTheTurnRefuses(copies);
+    expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_THE_TURN_REFUSES]);
+    const from = new Map(marches().map((m) => [m.kind, m.from]));
+    expect(list.map((x) => [x.kind, x.sent, x.heStands, x.heNeverReachesTheLair])).toEqual(
+      list.map((x) => [x.kind, from.get(x.kind), from.get(x.kind), false]),
+    );
+  });
+
+  test('the march forecast follows the orders, the war declared and the report as they change between one ask and the next', () => {
+    // The forecast keeps each answer while what it was worked out from stands (the report, the order fields of the
+    // phases before, the declarations): one hero, ordered next door, then to a neutral realm's border (turned back);
+    // his Evil realm declares war on it (he crosses), then doesn't (turned back); the first report again (turned
+    // back); a report where the two are at war (he crosses).
+    const { answers, start, first, border } = theMarchForecastAsWhatItReadsChanges(copies);
+    expect(answers).toEqual([first, start, border, start, start, border]);
+  });
+
+  test('the marches the forecast gets wrong are pinned: past his pace, a far province (question 44)', () => {
+    // The form follows the orders, not the turn's pace: a column ordered past it (Men-at-Arms march 2 a turn: the
+    // third Move) stays where the turn stopped it, but every later phase's form puts it where the order named. A far
+    // province (prov:<id> or a Forced March's bare number: since #364 the turn reads both alike) is one step toward it
+    // in the turn, and there in the form.
     const list = marches();
     const kind = (k: string) => {
       const x = list.find((m) => m.kind === k);
@@ -580,10 +610,6 @@ describe('the march: where the order form says a hero will stand, and what march
     expect(
       list.map((x) => x.kind).filter((k) => !(THE_MARCHES_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
     ).toEqual([...THE_MARCHES_THE_FORECAST_GETS_WRONG]);
-    for (const refused of ['ships over land', 'too little lift to put to sea', "a neutral realm's border"]) {
-      const x = kind(refused);
-      expect([refused, x.copy, x.engine]).toEqual([refused, x.named, x.from]);
-    }
     const pace = kind('past his pace');
     const secondStep = Number(String((pace.on as [string, { target: string }[]])[1][1]?.target).slice(5));
     expect([pace.copy, pace.engine]).toEqual([pace.named, secondStep]);
@@ -591,6 +617,9 @@ describe('the march: where the order form says a hero will stand, and what march
       const x = kind(far);
       expect([far, x.copy, x.nextDoorToBoth.includes(x.engine)]).toEqual([far, x.named, true]);
     }
+    // A far province is taken as named whatever the column (the step the turn may refuse is one toward it).
+    const farWithShips = kind('a far province, leading ships');
+    expect(farWithShips.copy).toBe(farWithShips.named);
   });
 
   test('the share of a province the Explore forecast counts a march as mapping is what the turn maps: March 6 leading companies, March 0, a sea sailed into', () => {
