@@ -1,7 +1,8 @@
 // ── The engine's rules the player portal shares (plan P1-11a4; beasts and Druid, P1-11b3; the sea lift, P1-11b4; the
 // order form's spells, P1-11c2; the mark check, P1-11c4; kin and feud, P1-11c5; the Warlock's extra cast, P1-23s; the
 // Grand Cathedral's free Bless, P1-23ad; the hex step, P1-11d5 and d6; the alignment orders, P1-11d7; the beasts' two
-// sets and the Druid mastery's guard, P1-11d12; the Explore gain, P1-11d14) ────
+// sets and the Druid mastery's guard, P1-11d12; the Explore gain, P1-11d14; what a march's order names,
+// P1-11e9) ────
 // The player portal's one door to the engine (plan P1-11a, Decision 2): the rules of a hero, an army, an item, a level
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
@@ -10,7 +11,8 @@
 // army card's kin and feud since P1-11c5, the hex step since P1-11d6: the order form's three hex tables call it; the
 // alignment orders' names and the two checks of who may give one since P1-11d7: the order list reads them; the Creature
 // and Monster sets and the units the Druid mastery lifts since P1-11d12: the army card and the unit labels read them; the
-// share of a province an Explore order maps since P1-11d14: the Explore forecast asks it).
+// share of a province an Explore order maps since P1-11d14: the Explore forecast asks it; what a march's order names since
+// P1-11e9: the march forecast reads a Move's and a Forced March's target by it).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -72,6 +74,7 @@ export { theShareOfAProvinceAnExploreOrderMaps } from '../engine/rules-on-plain-
 export { theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt } from '../engine/rules-on-plain-values/the-strength-a-units-kin-and-a-rival-kins-leader-leave-it.ts';
 export { theMarkOfThisSpellMustStandInTheCastersProvince } from '../engine/rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
 export { unitBaseStrength, unitTypeOf } from '../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
+export { whatAMarchsOrderNames } from '../engine/rules-on-plain-values/what-a-marchs-order-names.ts';
 export {
   CREATURE_ARMIES,
   MONSTER_ARMIES,

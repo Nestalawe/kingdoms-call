@@ -1,6 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
-import { theHexNextToAProvinceInADirection } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  theHexNextToAProvinceInADirection,
+  whatAMarchsOrderNames,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
 // The order form's forecasts (plan P1-11e3): where a hero will stand, what he will carry and what he will lead, and what a
 // province's garrison will hold, after the orders the form holds for the phases before. They read the page's fields (the
@@ -81,26 +84,17 @@ export function predictedLocation(charId, upToPhaseExclusive) {
   if (!worldMeta) return { id: locId, name: char.locationName };
   for (let ph = 0; ph < upToPhaseExclusive; ph++) {
     const action = document.getElementById(`po-action-${charId}-${ph}`)?.value;
-    // FORCED MARCH relocates the character exactly as a Move does (the engine turns it into a
-    // move), so later-phase order forms must follow it. Its target is a BARE province id from the
-    // move_adjacent select, not the `prov:`/`dir:` form a Move uses, so it is resolved first.
-    // Mirrors the GM portal's predictedLocation — both must change together or the forms disagree.
-    if (action === 'Forced March') {
-      const fmT = (getOrderTarget(charId, ph) || '').trim();
-      const fmId = parseInt(fmT.startsWith('prov:') ? fmT.slice(5) : fmT);
-      if (!isNaN(fmId) && worldMeta.provinces.some((p) => p.id === fmId)) locId = fmId;
+    // A FORCED MARCH is a Move in the turn (one that may slip past a battle), so later phases' forms follow it as they
+    // follow a Move. Both read their target as the turn does (R-128: the engine's whatAMarchsOrderNames, through
+    // src/shared/): `dir:<compass>` a step that way, `prov:<id>` or the province's bare number (as the Forced March's
+    // field writes it) a province.
+    if (action !== 'Move' && action !== 'Forced March') continue;
+    const named = whatAMarchsOrderNames(getOrderTarget(charId, ph) || '');
+    if (named.by === 'province') {
+      if (worldMeta.provinces.some((p) => p.id === named.provinceId)) locId = named.provinceId;
       continue;
     }
-    if (action !== 'Move') continue;
-    const tgt = getOrderTarget(charId, ph);
-    if (!tgt) continue;
-    if (tgt.startsWith('prov:')) {
-      const pid = parseInt(tgt.slice(5));
-      if (!isNaN(pid) && worldMeta.provinces.some((p) => p.id === pid)) locId = pid;
-      continue;
-    }
-    if (!tgt.startsWith('dir:')) continue;
-    const dir = tgt.slice(4);
+    const dir = named.direction;
     const curProv = worldMeta.provinces.find((p) => p.id === locId);
     if (!curProv) continue;
     const nid = theHexNextToAProvinceInADirection(curProv, dir, worldMeta.cols, worldMeta.rows);
