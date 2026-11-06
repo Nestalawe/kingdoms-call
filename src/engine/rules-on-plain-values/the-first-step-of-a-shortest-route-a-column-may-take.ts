@@ -68,3 +68,35 @@ export function theFirstStepOfAShortestRouteAColumnMayTake<P extends AProvinceOn
   }
   return null;
 }
+
+/** Whether a realm's column may pass through a province on its way without starting a fight or being turned back (plan
+ *  P1-11e12): its realm's own, an ally's (`theRelation`, asked only of another realm's province), or ground no realm
+ *  holds where no armed neutral guard stands (`anArmedNeutralGuardStandsThere`, asked only there). */
+export function aProvinceIsSafePassageForARealmsColumn(
+  theRealm: number | null,
+  theOwner: number | null | undefined,
+  theRelation: () => string,
+  anArmedNeutralGuardStandsThere: () => boolean,
+): boolean {
+  if (theOwner === theRealm) return true;
+  if (theOwner != null) return theRelation() === 'allied';
+  return !anArmedNeutralGuardStandsThere();
+}
+
+/** The step a column takes toward a far province (plan P1-11e12): the first step of a shortest route (`theRoute`, asked
+ *  with no filter), but where it serves a realm, of a route over safe passage (`isSafePassage`: the province it makes
+ *  for may be any) that is no longer, that one's. Null when no route reaches it. */
+export function theStepAColumnTakesTowardAFarProvince<P extends AProvinceOnARoute>(
+  theRoute: (extraFilter?: (p: P) => boolean) => { first: P; depth: number } | null,
+  toId: number | null | undefined,
+  itServesARealm: boolean,
+  isSafePassage: (p: P) => boolean,
+): P | null {
+  const any = theRoute();
+  if (!any) return null;
+  if (itServesARealm) {
+    const safe = theRoute((p) => p.id === toId || isSafePassage(p));
+    if (safe && safe.depth <= any.depth) return safe.first;
+  }
+  return any.first;
+}
