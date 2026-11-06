@@ -90,8 +90,8 @@
 // a step spending the one the turn's rule names: on land, at sea, a voyage past his land pace), and since P1-11e12 for
 // one step toward a far province (the turn's route on the report's map, round a neutral or unmet realm's province, none
 // for a fleet inland or Men-at-Arms to a far sea, a step past his pace; a Search Lair after it); and the share `exploreMoveGainBefore` counts a march
-// as mapping is the turn's at March 6 and 0 leading companies and for a sea sailed into, and pinned for a Travelworn
-// Drape (10 for 30) and Naval 6's charting of the coast (0 for 5). P1-11d2 (plan P1-11d, before any of it is shared):
+// as mapping is the turn's at March 6 and 0 leading companies, at Explorer 7 and for a sea sailed into, and since
+// P1-11e13 for a Travelworn Drape (the share his card gives) and Naval 6's charting of the coast. P1-11d2 (plan P1-11d, before any of it is shared):
 // on a staged world with no guards (`holdingWorld`, each case on its own province), what `predictedItems`,
 // `projectedLedArmies` and `projectedGarrison` (with `_projRecruitUnits` and `_isAutoGarrisonRecruit`) say a hero will
 // carry and lead, and a garrison hold, as the season after his orders begins, is what the turn's phases leave them
@@ -158,7 +158,6 @@ import {
   theGamePlayed,
   theHeroesEachSpellAimedAtAHeroOffers,
   THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT,
-  THE_MARCHES_IN_THE_FORECAST_GETS_WRONG,
   THE_MARCHES_THE_FORECAST_GETS_RIGHT,
   THE_MARCHES_A_SEARCH_LAIR_FOLLOWS,
   THE_MARCHES_ONE_STEP_TOWARD_A_FAR_PROVINCE,
@@ -171,6 +170,7 @@ import {
   THE_HOLDINGS_THE_FORECAST_GETS_WRONG,
   theMarchForecastAgainstTheTurn,
   theMarchInForecastAgainstTheTurn,
+  theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems,
   thePortalsHexTablesAgainstTheEngine,
   theOrderFormsSpells,
   theOrderEachNameOfTheListGives,
@@ -627,27 +627,22 @@ describe('the march: where the order form says a hero will stand, and what march
     expect(answers).toEqual([first, start, border, start, start, border]);
   });
 
-  test('the share of a province the Explore forecast counts a march as mapping is what the turn maps: March 6 leading companies, March 0, a sea sailed into', () => {
-    // The turn adds 2% for each company led at March 6 or more (its mastery); the forecast does too.
-    const list = marchesIn().filter((x) =>
-      (THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind),
-    );
+  test("the share of a province the Explore forecast counts a march as mapping is what the turn maps: a Travelworn Drape, March 6 leading companies, March 0, Explorer 7, a sea sailed into and the coast Naval 6 charts beside it (R-128)", () => {
+    // The turn adds the share his worn items add (a Travelworn Drape is a Traveller's Cloak by another name: its 20%),
+    // 2% for each company led at March 6 or more (its mastery; the companies he leads as the turn begins on the form:
+    // question 61), 5% a level of his Explorer as it counts (to 5), and sailing into a sea at Naval 6 with a fleet 5% of
+    // each coast beside it. Since P1-11e13 the forecast reads the share his card gives and charts the coast too.
+    const list = marchesIn();
     expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
-    expect(list.map((x) => x.engine)).toEqual([14, 10, 10]);
+    expect(list.map((x) => x.engine)).toEqual([30, 14, 10, 35, 10, 5]);
   });
 
-  test("the marches in the forecast gets wrong are pinned: a Traveller's Cloak of another name, Naval 6's charting of the coast (question 44)", () => {
-    // A Travelworn Drape is a Traveller's Cloak by another name: the turn counts its 20% (it reads the item's
-    // exploreMove), the forecast knows the cloak by its name. Sailing into a sea at Naval 6 with a fleet charts 5% of
-    // each coast beside it in the turn; the forecast counts only the province entered.
-    const list = marchesIn().filter((x) =>
-      (THE_MARCHES_IN_THE_FORECAST_GETS_WRONG as readonly string[]).includes(x.kind),
-    );
-    expect(list.map((x) => [x.kind, x.copy, x.engine])).toEqual([
-      ['a Travelworn Drape worn', 10, 30],
-      ['the coast beside the sea he sails into, charted at Naval 6', 0, 5],
-    ]);
+  test("a hero whose card gives no share of his worn items marches in with none on the form (a report older than the field: a forecast limit, P1-11e13)", () => {
+    // A report written before the card gave the share (P1-11e8) holds no figure for it: the form counts none, as for a
+    // hero with no cloak, until the next turn's report gives it.
+    const { given, notGiven, noCloak } = theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems(copies);
+    expect([given, notGiven]).toEqual([30, noCloak]);
   });
 });
 
