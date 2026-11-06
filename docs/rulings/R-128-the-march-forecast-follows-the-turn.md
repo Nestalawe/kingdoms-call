@@ -17,8 +17,9 @@ orders it holds. It follows the turn, not the order as written:
 4. **Every cloak counts in the Explore note**, whatever its name (a Travelworn Drape is a Traveller's Cloak), and so
    does Naval 6's charting of the coast beside a sea he sails into.
 
-Where the form doesn't yet follow the turn, the parity test pins the difference (question 44); each part's PR turns
-its pin into an agreement case.
+Each part is an agreement case of the parity test (the last two since P1-11e13). What the report doesn't show stays a
+forecast limit, pinned: a hero who joins this turn, a report older than the field a part reads, and ground the report
+leaves unknown (a sea of the unknown tier reads as land, so no coast is charted beside it).
 
 The question was: the forecast kept a hero marching where the turn stops him, read a Forced March only by a province's
 number, and knew a Traveller's Cloak only by its name. Option 1: "the forecast follows the turn". Option 2 (not

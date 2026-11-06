@@ -1725,9 +1725,13 @@ export const THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT = [
   'a Travelworn Drape worn',
   'March 6, leading two companies',
   'March 0, leading two companies',
+  'March 5, leading two companies',
   'Explorer 7 trained',
   'a sea sailed into at Naval 6, leading a fleet',
   'the coast beside the sea he sails into, charted at Naval 6',
+  'a land province not beside the sea he sails into, at Naval 6',
+  'the sea he sets out from, beside the sea he sails into at Naval 6',
+  'the coast beside the sea he flies into at Naval 6, leading Eagle Riders and no ships',
 ] as const;
 export type TheMarchInKind = (typeof THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT)[number];
 /** A staged march into a province: its kind, the hero (realm 0's), his orders by phase and the province whose share is
@@ -1957,6 +1961,7 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     ['a Travelworn Drape worn', { items: worn('Travelworn Drape') }, first],
     ['March 6, leading two companies', { skills: { march: 6 }, armies: [...men(), ...men()] }, first],
     ['March 0, leading two companies', { armies: [...men(), ...men()] }, first],
+    ['March 5, leading two companies', { skills: { march: 5 }, armies: [...men(), ...men()] }, first],
     ['Explorer 7 trained', { skills: { explorer: 7 } }, first],
     [
       'a sea sailed into at Naval 6, leading a fleet',
@@ -1979,6 +1984,31 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     {
       ...charting,
       kind: 'the coast beside the sea he sails into, charted at Naval 6',
+      mapped: coast['id'],
+      realm: { itsRealmListsAlso: coast['id'] },
+    },
+    // (and of the provinces the voyage charts none: a land province not beside the sea, the sea he set out from)
+    {
+      ...charting,
+      kind: 'a land province not beside the sea he sails into, at Naval 6',
+      mapped: start['id'],
+      realm: { itsRealmListsAlso: coast['id'] },
+    },
+    {
+      ...charting,
+      kind: 'the sea he sets out from, beside the sea he sails into at Naval 6',
+      mapped: sea['id'],
+      realm: { itsRealmListsAlso: coast['id'] },
+    },
+    // (a column with no ships charts none: the Eagle Riders carry him over the sea)
+    {
+      kind: 'the coast beside the sea he flies into at Naval 6, leading Eagle Riders and no ships',
+      heroId: hero({
+        location: sea['id'],
+        skills: { naval: 6 },
+        armies: [{ type: 'Eagle Riders', quality: 'Average', unitName: 'Eagle Riders 0' }],
+      })['id'],
+      orders: into(open),
       mapped: coast['id'],
       realm: { itsRealmListsAlso: coast['id'] },
     },

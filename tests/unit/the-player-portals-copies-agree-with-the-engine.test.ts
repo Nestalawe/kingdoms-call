@@ -628,15 +628,16 @@ describe('the march: where the order form says a hero will stand, and what march
     expect(answers).toEqual([first, start, border, start, start, border]);
   });
 
-  test("the share of a province the Explore forecast counts a march as mapping is what the turn maps: a Travelworn Drape, March 6 leading companies, March 0, Explorer 7, a sea sailed into and the coast Naval 6 charts beside it (R-128)", () => {
+  test("the share of a province the Explore forecast counts a march as mapping is what the turn maps: a Travelworn Drape, March 6, 5 and 0 leading companies, Explorer 7, a sea sailed into and the coast Naval 6 charts beside it, and none elsewhere or with no ships (R-128)", () => {
     // The turn adds the share his worn items add (a Travelworn Drape is a Traveller's Cloak by another name: its 20%),
     // 2% for each company led at March 6 or more (its mastery; the companies he leads as the turn begins on the form:
-    // question 61), 5% a level of his Explorer as it counts (to 5), and sailing into a sea at Naval 6 with a fleet 5% of
-    // each coast beside it. Since P1-11e13 the forecast reads the share his card gives and charts the coast too.
+    // question 61), 5% a level of his Explorer as it counts (to 5), and sailing into a sea at Naval 6 with ships 5% of
+    // each land province beside it (not one further off, not a sea, not with flyers alone). Since P1-11e13 the forecast
+    // reads the share his card gives and charts the coast too.
     const list = marchesIn();
     expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
-    expect(list.map((x) => x.engine)).toEqual([30, 14, 10, 35, 10, 5]);
+    expect(list.map((x) => x.engine)).toEqual([30, 14, 10, 10, 35, 10, 5, 0, 0, 0]);
   });
 
   test("a hero whose card gives no share of his worn items marches in with none on the form (a report older than the field: a forecast limit, P1-11e13)", () => {
