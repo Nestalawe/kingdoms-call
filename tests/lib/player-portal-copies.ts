@@ -1648,7 +1648,9 @@ export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   'a far Forced March',
   'a far province, leading ships',
   "a far province round a neutral realm's province",
+  'a far province round the province of a realm not yet met',
   'a far province no route reaches',
+  'a far sea, with too little lift',
   'past his pace, then a far province',
 ] as const;
 /** The kinds of staged march the turn refuses (P1-11e10): the hero stays where he is, and a Search Lair the form sends
@@ -1673,6 +1675,7 @@ export const THE_MARCHES_ONE_STEP_TOWARD_A_FAR_PROVINCE = [
   'a far province',
   'a far Forced March',
   "a far province round a neutral realm's province",
+  'a far province round the province of a realm not yet met',
 ] as const;
 /** The kinds of staged march a Search Lair is staged after: each the turn refuses, and one his pace stops on land. */
 /** The kinds of staged march a Search Lair is staged after: each the turn refuses, one his pace stops on land, and one
@@ -1700,6 +1703,8 @@ export interface WhatAStagedMarchChangesOfTheRealm {
   readonly unmet?: boolean;
   /** A province realm 1 holds besides (P1-11e12: one next door to the start, on the shortest route toward a far one). */
   readonly theNeutralRealmHolds?: unknown;
+  /** A province realm 0's own list holds besides (P1-11e12: so its report shows the ground beside it). */
+  readonly itsRealmListsAlso?: unknown;
 }
 /** A staged march: its kind, the hero who marches (realm 0's), his orders by phase, where he sets out and where his
  *  orders name; and what it changes of his realm, if anything. */
@@ -1810,6 +1815,11 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
   if (!ourRealm) throw new Error('the staged world has no realm 0');
   const ourProvinces: unknown[] = Array.isArray(ourRealm['provinces']) ? ourRealm['provinces'] : [];
   if (!ourProvinces.includes(start['id'])) ourRealm['provinces'] = [...ourProvinces, start['id']];
+  // (a far sea, with the coast beside it in realm 0's own list on that march alone, so its report shows the ground:
+  // P1-11e12; ground the report shows as unknown is read as land, a forecast limit)
+  const farSea = provinces.find((p) => !isLand(p) && !beside.includes(p) && nextTo(p).some(ours));
+  const farCoast = farSea ? nextTo(farSea).find(ours) : undefined;
+  if (!farSea || !farCoast) throw new Error('the staged world has no far sea with a coast of realm 0');
   const tc = createTurnContext(g, [], Number(g['turn']) || 1);
   // (the staged world's province, given the type the engine's step takes, by assertion as the saved state's)
   const compass = KC_HEX_DIRS.find(
@@ -1880,8 +1890,23 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
       men(),
       { theNeutralRealmHolds: round.held['id'] },
     ],
+    [
+      'a far province round the province of a realm not yet met',
+      [move(`prov:${id(round.far)}`)],
+      round.far,
+      men(),
+      { theNeutralRealmHolds: round.held['id'], unmet: true },
+    ],
     // (a fleet at sea: it may not enter land but from the sea next door, so no route reaches an inland province)
     ['a far province no route reaches', [move(`prov:${id(inland)}`)], inland, fleet()],
+    // (Men-at-Arms, with no hull to lift them, may not enter the sea: no route reaches one)
+    [
+      'a far sea, with too little lift',
+      [move(`prov:${id(farSea)}`)],
+      farSea,
+      men(),
+      { itsRealmListsAlso: farCoast['id'] },
+    ],
     // (two steps on his pace of 2, then a far province: the step toward it is past his pace)
     ['past his pace, then a far province', [first, second, start].map((p) => move(`prov:${id(p)}`)), start, men()],
   ];
@@ -1901,6 +1926,8 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     'a far province': theStepToward(second),
     'a far Forced March': theStepToward(second),
     "a far province round a neutral realm's province": round.safe,
+    'a far province round the province of a realm not yet met': round.safe,
+    'a far sea, with too little lift': start,
     'a far province no route reaches': sea,
     // (a column leading ships may not step from land to land: no route of the sea reaches the province two steps away)
     'a far province, leading ships': start,
@@ -1998,7 +2025,8 @@ function whatTheTurnDoesWithHim(
   return { location: c['location'], facts };
 }
 /** The world `world` with realm 0 changed toward realm 1 as `realm` says (P1-11e10): its creed, the two at war, and
- *  realm 0 having met realm 1 (unless `unmet`). The report is made again from the state changed. */
+ *  realm 0 having met realm 1 (unless `unmet`); since P1-11e12 a province realm 1 holds besides and one realm 0's own
+ *  list holds besides. The report is made again from the state changed. */
 function theWorldWithTheRealmChanged(world: World, realm: WhatAStagedMarchChangesOfTheRealm): World {
   const g = copyOf(world.state);
   const realms = objects(g['players']);
@@ -2006,6 +2034,8 @@ function theWorldWithTheRealmChanged(world: World, realm: WhatAStagedMarchChange
   if (!ours) throw new Error('the staged world has no realm 0');
   ours['_encountered'] = realm.unmet ? [] : [1];
   if (realm.alignment) ours['alignment'] = realm.alignment;
+  if (realm.itsRealmListsAlso !== undefined)
+    ours['provinces'] = [...(Array.isArray(ours['provinces']) ? ours['provinces'] : []), realm.itsRealmListsAlso];
   if (realm.theNeutralRealmHolds !== undefined) {
     const held = objects(isObj(g['world']) ? g['world']['provinces'] : []).find(
       (p) => p['id'] === realm.theNeutralRealmHolds,

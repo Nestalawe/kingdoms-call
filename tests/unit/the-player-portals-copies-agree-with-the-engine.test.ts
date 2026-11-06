@@ -87,8 +87,9 @@
 // Move by a province's bare number (R-128) and his own province, and since P1-11e10 for a march the turn refuses (ships
 // over land, too little lift for the sea, a neutral realm's border, the war declared this turn: then a Search Lair after
 // it names where he stands) and those it lets through, and since P1-11e11 for a march past his pace (the report's pools,
-// a step spending the one the turn's rule names: on land, at sea, a voyage past his land pace); and pinned where it is
-// not (question 44): a far province or a far Forced March (one step in the turn); and the share `exploreMoveGainBefore` counts a march
+// a step spending the one the turn's rule names: on land, at sea, a voyage past his land pace), and since P1-11e12 for
+// one step toward a far province (the turn's route on the report's map, round a neutral or unmet realm's province, none
+// for a fleet inland or Men-at-Arms to a far sea, a step past his pace; a Search Lair after it); and the share `exploreMoveGainBefore` counts a march
 // as mapping is the turn's at March 6 and 0 leading companies and for a sea sailed into, and pinned for a Travelworn
 // Drape (10 for 30) and Naval 6's charting of the coast (0 for 5). P1-11d2 (plan P1-11d, before any of it is shared):
 // on a staged world with no guards (`holdingWorld`, each case on its own province), what `predictedItems`,
