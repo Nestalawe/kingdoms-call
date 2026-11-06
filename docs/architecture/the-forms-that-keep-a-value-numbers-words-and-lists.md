@@ -31,7 +31,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 ## Numbers, words and conversions
 
 - **A number in a line's words or a key** is `${String(x)}` (the same text); `a + '-' + b` on numbers is
-  `` `${String(a)}-${String(b)}` ``.
+  `` `${String(a)}-${String(b)}` ``. A realm's index that may be `null`, reading a record by it (a lair's rumoured odds), is
+  `odds?.[String(pi)]`, its parameter `number | null | undefined`: a `null` reads the key `'null'`, as before.
 - **`parseInt(x)`** on a number or a regular expression's group is `parseInt(String(x))`: `parseInt` reads its argument
   as words. `s.match(re)` with no `g` flag is `re.exec(s)`, the same result.
 - **Flags subtracted in a sort** (`y.fly - x.fly`, flying first) are `Number(y.fly) - Number(x.fly)`: the same order.

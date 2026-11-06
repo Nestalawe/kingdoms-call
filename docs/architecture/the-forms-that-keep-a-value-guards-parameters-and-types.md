@@ -53,7 +53,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A value read by nothing, kept alive by `void x;`** (lint's `no-meaningless-void-operator`) or held by a `const`
   nobody reads (lint's `no-unused-vars`): a pure one goes (a count, a product, a name destructured and never read); one
   a call gives keeps the call as a bare statement (`effStat(…);`, `armyTotalStr(…);`), its reads and writes as they
-  were. A flag a stand-in may leave out (`c.alive === false`) is read `asItsGuardReadsIt(c.alive) === false`.
+  were. One whose read can throw (the cast plan's known dead, on a world of no players' list) is read in a
+  function called as a bare statement (`theKnownDeadOf(G, pi);`): the same throw, nothing else. A flag a stand-in may leave out (`c.alive === false`) is read `asItsGuardReadsIt(c.alive) === false`.
 - **A value the code has made sure, read for a field after a test that may skip the read** (`kb === ka || b.tier !==
   a.tier`, a lair's one item) goes through its check where the field is read (`madeSureByTheStocking(b).tier`), not
   where the element is read: a test before it that skips the read keeps its value, and only the read the old code made

@@ -145,6 +145,8 @@ interface TheBotsTurnCache {
   met?: Partial<Record<number, boolean>>;
   /** Each realm's Flood pins this year (botPins, bots/phase-one.ts): a province's id, then its caster's. */
   pins?: Partial<Record<number, Map<number, number>>>;
+  /** Each realm's titles to chase this year (botTargetTitles, bots/spellcraft.ts), by the realm's index. */
+  titles?: Partial<Record<number, string[]>>;
   terrainMult?: ((armyType: string, terrain: string) => unknown) | undefined;
   [field: string]: unknown;
 }
