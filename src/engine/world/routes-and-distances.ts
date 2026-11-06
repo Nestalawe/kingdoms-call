@@ -1,10 +1,7 @@
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { getNeighborsP } from './map-helpers.ts';
 import { relationBetween } from '../realms/relations-and-captures.ts';
-import {
-  aColumnLeadingShipsMayNotStepFromLandToLand,
-  canEnterTerrain,
-} from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
+import { theFirstStepOfAShortestRouteAColumnMayTake } from '../rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 
@@ -102,8 +99,6 @@ export function stepTowardPath(
   const from = G.world.provinces[c.location];
   if (!from || toId == null || c.location === toId) return null;
   const sc = seaCap[c.id] || 'land';
-  const passable = (p: Province | null | undefined) =>
-    !!p && canEnterTerrain(c, p.terrain, sc) && (!extraFilter || extraFilter(p));
   // 2026-09-26 (Toby item 2): a column that leads ANY naval unit (fleet or sea-beast) cannot
   // march land→land — the move handler refuses it ("cannot march overland while leading naval
   // units"). The BFS used to ignore that, so a displaced admiral in a coastal province picked the
@@ -111,29 +106,6 @@ export function stepTowardPath(
   // land→land edge is now closed to such a column: from land it must put out to an adjacent sea
   // province first, and it may land again only from the sea.
   const _naval = (c.armies || []).some((a) => a && SEA_TYPES.has(a.type));
-  const edgeOk = (a: Province, b: Province) =>
-    !aColumnLeadingShipsMayNotStepFromLandToLand(_naval, a.terrain, b.terrain);
-  const seen = new Set([from.id]);
-  // BFS storing the first step taken on each path
-  let frontier = getNeighborsP(from, G.world.cols, G.world.rows, G.world.provinces)
-    .filter((p) => passable(p) && edgeOk(from, p))
-    .map((p) => ({ p, first: p }));
-  frontier.forEach((e) => seen.add(e.p.id));
-  let depth = 0;
-  while (frontier.length && depth < 40) {
-    for (const e of frontier) {
-      if (e.p.id === toId) return { first: e.first, depth: depth };
-    }
-    const next = [];
-    for (const e of frontier) {
-      for (const nb of getNeighborsP(e.p, G.world.cols, G.world.rows, G.world.provinces)) {
-        if (seen.has(nb.id) || !passable(nb) || !edgeOk(e.p, nb)) continue;
-        seen.add(nb.id);
-        next.push({ p: nb, first: e.first });
-      }
-    }
-    frontier = next;
-    depth++;
-  }
-  return null;
+  // The search itself, on the map's values (plan P1-11e7): src/engine/rules-on-plain-values/.
+  return theFirstStepOfAShortestRouteAColumnMayTake(c, sc, _naval, G.world, from, toId, extraFilter);
 }
