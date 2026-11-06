@@ -149,7 +149,15 @@ function theStepTowardAFarProvinceTheTurnTakes(report, char, ph, from, toId) {
   const seaCap = poSeaAnalysis(column, (char.skills || {}).naval || 0).cap;
   const leadsShips = column.some((a) => a && PO_SEA_TYPES.has(a.type));
   const route = (extraFilter) =>
-    theFirstStepOfAShortestRouteAColumnMayTake({ armies: column }, seaCap, leadsShips, worldMeta, from, toId, extraFilter);
+    theFirstStepOfAShortestRouteAColumnMayTake(
+      { armies: column },
+      seaCap,
+      leadsShips,
+      worldMeta,
+      from,
+      toId,
+      extraFilter,
+    );
   const known = (owner) => ((report.diplomacy || {}).known || []).find((k) => k && k.index === owner);
   // (a guard the report shows: a hero of no realm sworn to the province, leading any company)
   const anArmedGuardIsSeen = (p) =>

@@ -2034,8 +2034,10 @@ function theWorldWithTheRealmChanged(world: World, realm: WhatAStagedMarchChange
   if (!ours) throw new Error('the staged world has no realm 0');
   ours['_encountered'] = realm.unmet ? [] : [1];
   if (realm.alignment) ours['alignment'] = realm.alignment;
-  if (realm.itsRealmListsAlso !== undefined)
-    ours['provinces'] = [...(Array.isArray(ours['provinces']) ? ours['provinces'] : []), realm.itsRealmListsAlso];
+  if (realm.itsRealmListsAlso !== undefined) {
+    const listed: unknown[] = Array.isArray(ours['provinces']) ? ours['provinces'] : [];
+    ours['provinces'] = [...listed, realm.itsRealmListsAlso];
+  }
   if (realm.theNeutralRealmHolds !== undefined) {
     const held = objects(isObj(g['world']) ? g['world']['provinces'] : []).find(
       (p) => p['id'] === realm.theNeutralRealmHolds,

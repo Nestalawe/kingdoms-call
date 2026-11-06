@@ -590,7 +590,9 @@ describe('the march: where the order form says a hero will stand, and what march
     expect(stopped.map((x) => x.kind)).toEqual([...THE_MARCHES_STOPPED_BY_HIS_PACE]);
     expect(stopped.filter((x) => x.stopsAt === undefined || [x.from, x.named].includes(x.stopsAt))).toEqual([]);
     // (each step toward a far province is to a province next door both to where he set out and to the one named)
-    const steps = list.filter((x) => (THE_MARCHES_ONE_STEP_TOWARD_A_FAR_PROVINCE as readonly string[]).includes(x.kind));
+    const steps = list.filter((x) =>
+      (THE_MARCHES_ONE_STEP_TOWARD_A_FAR_PROVINCE as readonly string[]).includes(x.kind),
+    );
     expect(steps.map((x) => x.kind)).toEqual([...THE_MARCHES_ONE_STEP_TOWARD_A_FAR_PROVINCE]);
     expect(steps.filter((x) => !x.nextDoorToBoth.includes(x.copy))).toEqual([]);
   });
