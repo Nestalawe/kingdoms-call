@@ -8,6 +8,8 @@
 // - --only scores the patches named; results.json and each stage's log are written; the worktrees are gone (a killed
 //   run's too) and the repository's worktree list and status are as before; node_modules is copied without .cache, and
 //   the stages run without KC_SEED; the table keeps a header's backslashes and bars inside their cell.
+// - The tests stop at their first failure (P1-21l: Vitest's --bail 1; the made-up "test" has two that a fault fails),
+//   and the balance is skipped once an earlier stage is red (a fault the tests or the compiler catch), run otherwise.
 // - --resume (P1-21k): a run stopped after its first patch has written results.json with that patch (and no
 //   half-written file beside it); carried on, it runs no control and scores only the rest; a patch changed since is
 //   scored again, and a result outside --only stays; another base commit, or no results.json, refuses it.
@@ -53,15 +55,23 @@ const marked = fs.readdirSync('src').filter((f) => fs.readFileSync('src/' + f, '
 if (marked.length) { console.log('Type error in ' + marked.join(', ')); process.exit(1); }
 `,
   'scripts/ok.js': `console.log('ok');\n`,
+  // Two tests; given Vitest's --bail 1, it stops at the first that fails, and the one after it is skipped.
   'scripts/test.js': `const fs = require('fs');
 const { sum } = require('../src/sum.js');
-const passed = sum(2, 3) === 5;
+const bail = process.argv.some((a, i) => a === '--bail' && process.argv[i + 1] === '1');
+const tests = [['sum adds two numbers', () => sum(2, 3) === 5], ['sum adds a number to itself', () => sum(4, 4) === 8]];
+let failed = 0;
+const assertionResults = tests.map(([fullName, passes]) => {
+  if (bail && failed) return { fullName, status: 'skipped' };
+  const status = passes() ? 'passed' : 'failed';
+  if (status === 'failed') failed++;
+  return { fullName, status };
+});
 const out = process.argv.find((a) => a.startsWith('--outputFile.json='));
-const status = passed ? 'passed' : 'failed';
-const report = { testResults: [{ name: process.cwd() + '/tests/sum.test.js', status,
-  assertionResults: [{ fullName: 'sum adds two numbers', status }] }] };
+const status = failed ? 'failed' : 'passed';
+const report = { testResults: [{ name: process.cwd() + '/tests/sum.test.js', status, assertionResults }] };
 if (out) fs.writeFileSync(out.slice('--outputFile.json='.length), JSON.stringify(report));
-process.exit(passed ? 0 : 1);
+process.exit(failed ? 1 : 0);
 `,
   'scripts/balance.js': `const crypto = require('crypto');
 const fs = require('fs');
@@ -234,6 +244,27 @@ describe('a run over eight patches', () => {
     const r = of('01-the-tests-catch.patch');
     expect([r.result, r.redStages, r.failedTests]).toEqual(['caught', ['tests'], ['sum adds two numbers']]);
     expect([r.area, r.imitates]).toEqual(['made-up', 'the sum takes away']);
+  });
+
+  test('a mutant the tests catch: its tests stop at their first failure, and its balance is skipped', () => {
+    const r = of('01-the-tests-catch.patch');
+    expect(r.stages.map((s) => [s.stage, s.outcome])).toEqual([
+      ['build', 'green'],
+      ['compiler', 'green'],
+      ['lint', 'green'],
+      ['tests', 'red'],
+      ['balance', 'skipped'],
+    ]);
+    const logOf = (stage: string) =>
+      fs.readFileSync(path.join(folder, 'logs', '01-the-tests-catch', `${stage}.log`), 'utf8');
+    expect(logOf('tests')).toMatch(/^\$ npm test -- --bail 1 /);
+    expect(logOf('balance')).toBe('Skipped: tests red before it, so the balance cannot change the verdict.\n');
+  });
+
+  test('a mutant the compiler catches has its balance skipped too; one the tests miss has it run', () => {
+    const outcomes = (patch: string) => of(patch).stages.map((s) => s.outcome);
+    expect(outcomes('03-only-the-compiler-catches.patch')).toEqual(['green', 'red', 'green', 'green', 'skipped']);
+    expect(outcomes('02-only-the-balance-catches.patch')).toEqual(['green', 'green', 'green', 'green', 'red']);
   });
 
   test('a mutant only the balance catches: caught by the balance alone', () => {

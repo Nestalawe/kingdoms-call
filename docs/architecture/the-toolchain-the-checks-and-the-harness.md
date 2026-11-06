@@ -117,12 +117,14 @@ session (the plan's protocol), with an `Area:` and an `Imitates:` line (the real
 scorer first runs every stage on the checkout's `HEAD` with no patch (the control run; the tree must be clean, and any
 red stops it), then each patch, one at a time, in a throwaway git worktree in the system's temporary folder with
 `node_modules` copied in without its caches: `npm run build` (red means the patch is broken), then the compiler, lint
-(with the import rules), `npm test` and the balance matrix. A mutant is **caught** when any of the four goes red or runs
-past five times its control time (at least a minute), **survived** when all four are green, and **broken** (the
-mutator's mistake, never "survived") when it has no header, changes a file outside `src/`, doesn't apply or doesn't
-build. It prints a table, and writes each stage's log and `results.json` beside the patches. It writes `results.json`
-after the control run and again after each patch, so a run that stops carries on with `--resume`: on the same base
-commit, it runs no control and skips each patch already scored whose file is unchanged. About 2.3 minutes a mutant.
+(with the import rules), `npm test` (stopping at its first failing test: `--bail 1`) and the balance matrix, which runs
+only once every stage before it is green (else it reads `skipped`: it can't change the verdict). A mutant is **caught**
+when any stage goes red or runs past five times its control time (at least a minute), **survived** when all are green,
+and **broken** (the mutator's mistake, never "survived") when it has no header, changes a file outside `src/`, doesn't
+apply or doesn't build. It prints a table, and writes each stage's log and `results.json` beside the patches. It
+writes `results.json` after the control run and again after each patch, so a run that stops carries on with
+`--resume`: on the same base commit, it runs no control and skips each patch already scored whose file is unchanged.
+About 4.6 minutes a mutant the tests miss, 1.5 to 3 one they catch.
 Local only, never in CI: it stops when `CI` is set, and `harness` checks no workflow runs it. The patches say where the
 tests are weak, so they never enter this repository: the scorer refuses a folder git would commit.
 
