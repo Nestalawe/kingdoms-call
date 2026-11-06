@@ -94,6 +94,11 @@ describe("Druid 8's and Necromancy 6's lifts of a unit's quality", () => {
       liftedByDruid: true,
       liftedByNecromancy: false,
     });
+    expect(lifted('Men-at-Arms', 'Legendary', true, 0, 1)).toEqual({
+      quality: 'Legendary',
+      liftedByDruid: false,
+      liftedByNecromancy: true,
+    });
   });
   test('no commander (both tiers 0) lifts nothing', () => {
     expect(lifted('Cave Trolls', 'Average', true, 0, 0)).toEqual({
@@ -245,6 +250,12 @@ describe("armStr's call of them", () => {
       kind: 'it fights at another quality',
       quality: 'Crack',
       liftedBy: ['oratory', 'druid'],
+    });
+    const risenBirds = unit('Thunderbirds', 'Average', { _isSkeletal: true });
+    expect(strength(risenBirds, hero({ druid: 8, necromancy: 6 })).trace[0]).toEqual({
+      kind: 'it fights at another quality',
+      quality: 'Crack',
+      liftedBy: ['druid', 'necromancy'],
     });
     expect(lift(hero({ druid: 7 }))?.kind).not.toBe('it fights at another quality');
     expect(lift(hero({ druid: 8, necromancy: 6 }, { _druidNegated: true }))?.kind).toBe('it fights at another quality');
