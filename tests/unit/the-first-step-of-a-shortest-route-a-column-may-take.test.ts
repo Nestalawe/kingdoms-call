@@ -33,9 +33,9 @@ function aMap(...theRows: string[]) {
   return { provinces, cols, rows: theRows.length };
 }
 
-const aLandColumn = { armies: [{ type: 'infantry' }] };
+const aLandColumn = { armies: [{ type: 'Infantry' }] };
 // A fleet carrying foot: the ships let it enter the sea (its sea cap 'all'), the foot the land.
-const aFleetCarryingFoot = { armies: [{ type: 'warship' }, { type: 'infantry' }] };
+const aFleetCarryingFoot = { armies: [{ type: 'Galleon Fleet' }, { type: 'Infantry' }] };
 
 /** The answer as ids: the first step's and the depth (the steps after the first), or null. */
 function theRoute(
@@ -116,11 +116,14 @@ test("the caller's filter closes a province, on the first step and beyond", () =
     noFilter: theRoute(aLandColumn, 'land', false, ring, 0, 5),
     // Every step refused: no route.
     everyStepRefused: theRoute(aLandColumn, 'land', false, ring, 0, 5, () => false),
+    // The start is never a step: no route back to it (stepTowardPath answers null before it asks).
+    toTheStartItself: theRoute(aLandColumn, 'land', false, ring, 0, 0),
   }).toEqual({
     beyond: { first: 1, depth: 4 },
     theFirstStep: { first: 1, depth: 5 },
     noFilter: { first: 7, depth: 2 },
     everyStepRefused: null,
+    toTheStartItself: null,
   });
 });
 
