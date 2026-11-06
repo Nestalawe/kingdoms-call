@@ -17,7 +17,8 @@
 // Supply Depots (every unit's wage, -1g); its king, White 0, leads one company of Shieldwall Levies (2g: Quartermasters
 // cuts it to 1g, so Supply Depots finds nothing left to cut); the province it holds is taxed 60, so the cap they share
 // (5% of its base tax) is above each row's own 1g. Realm 1 (Divine) holds Holy Sites and no other
-// discovery; its king is White 3 (Holy Sites' 1 more needs White 3). Every hero Rests.
+// discovery; its king is White 3 (Holy Sites' 1 more needs White 3). Every hero Rests. One case restages realm 1: its
+// king White 1, and a hero of its who is not the king, White 3, placed before him in the world's list of characters.
 import { expect, test } from 'vitest';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 
@@ -81,7 +82,7 @@ interface AnUpkeepCut {
 }
 type Kingdom = Record<string, unknown>;
 
-async function theTurn() {
+async function theTurn(restage?: (S: World) => void) {
   const sc = await aStagedTurnOnTheEnginesModules({ seed: SEED });
   const { getNeighborsP } = await import('../../src/engine/world/map-helpers.ts');
   const r = sc.turn<World, Scene>({
@@ -134,6 +135,7 @@ async function theTurn() {
       king0.skills = { ...(king0.skills ?? {}), white: 0 };
       king0.armies = [{ type: 'Shieldwall Levies', quality: 'Average', id: 72_001 }];
       king1.skills = { ...(king1.skills ?? {}), white: 3 };
+      restage?.(S);
       return { home, held };
     },
   });
@@ -178,6 +180,30 @@ test("its king's consecrations and a Wild Hunt's term: his White and Holy Sites'
   }
   expect(kingdom(0)['theTurnsAWildHuntServesBeyondThisOne'], 'The Long Hunt: 1 more').toBe(2);
   expect(kingdom(1)['theTurnsAWildHuntServesBeyondThisOne'], 'the rite alone').toBe(1);
+});
+
+test("its king's consecrations are read off its king, not the first hero of its list: his White 1, not the hero's 3", async () => {
+  const { S2, kingdom } = await theTurn((S) => {
+    const king = S.characters.find((c) => c.alive && c.player === 1 && c.isKing);
+    const hero = S.characters.find((c) => c.alive && c.player === 1 && !c.isKing);
+    if (!king || !hero) throw new Error('could not stage: realm 1 a king and a hero who is not');
+    king.skills = { ...(king.skills ?? {}), white: 1 };
+    hero.skills = { ...(hero.skills ?? {}), white: 3 };
+    S.characters = [hero, ...S.characters.filter((c) => c !== hero)];
+  });
+  const { theConsecrationsAKingMayHold } = await import('../../src/engine/heroes/fame-and-consecration.ts');
+  const itsHeroes = S2.characters.filter((c) => c.alive && c.player === 1);
+  const [first] = itsHeroes;
+  const king = itsHeroes.find((c) => c.isKing);
+  if (!first || !king) throw new Error('realm 1 lost its heroes or its king (staging)');
+  expect(first.isKing, 'the first of its heroes is not its king (staging)').toBe(false);
+  expect(theConsecrationsAKingMayHold(first, S2.players[1]), "the hero's: White 3, and Holy Sites: 4 (staging)").toBe(
+    4,
+  );
+  expect(kingdom(1)['theConsecrationsItsKingMayHold'], "the king's: White 1, and Holy Sites needs White 3: 1").toBe(1);
+  expect(kingdom(1)['theConsecrationsItsKingMayHold'], "the turn's limit for its king").toBe(
+    theConsecrationsAKingMayHold(king, S2.players[1]),
+  );
 });
 
 test('its Druidic Wonder: it halves its beasts’ wages while it stands, as the turn counts it', async () => {
