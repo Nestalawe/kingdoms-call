@@ -84,9 +84,10 @@
 // its fields) step where `neighborInDir` and `getNeighborsP` do, from every province of a staged map; on a staged
 // world with no guards (`marchingWorld`), where `predictedLocation` says a hero will stand is
 // where `processOrder` leaves him for a compass step, a province next door, a Forced March next door or by direction, a
-// Move by a province's bare number (R-128) and his own province, and pinned where it is not (question 44): a column with
-// ships over land, with too little lift for the sea, at a neutral realm's border, past its pace (each refused by the
-// turn), a far province or a far Forced March (one step in the turn); and the share `exploreMoveGainBefore` counts a march
+// Move by a province's bare number (R-128) and his own province, and since P1-11e10 for a march the turn refuses (ships
+// over land, too little lift for the sea, a neutral realm's border, the war declared this turn: then a Search Lair after
+// it names where he stands) and those it lets through; and pinned where it is not (question 44): a column past its pace
+// (refused by the turn), a far province or a far Forced March (one step in the turn); and the share `exploreMoveGainBefore` counts a march
 // as mapping is the turn's at March 6 and 0 leading companies and for a sea sailed into, and pinned for a Travelworn
 // Drape (10 for 30) and Naval 6's charting of the coast (0 for 5). P1-11d2 (plan P1-11d, before any of it is shared):
 // on a staged world with no guards (`holdingWorld`, each case on its own province), what `predictedItems`,
