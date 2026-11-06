@@ -1,7 +1,11 @@
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { getNeighborsP } from './map-helpers.ts';
 import { relationBetween } from '../realms/relations-and-captures.ts';
-import { theFirstStepOfAShortestRouteAColumnMayTake } from '../rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts';
+import {
+  aProvinceIsSafePassageForARealmsColumn,
+  theFirstStepOfAShortestRouteAColumnMayTake,
+  theStepAColumnTakesTowardAFarProvince,
+} from '../rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 
@@ -51,10 +55,17 @@ export function provDistance(
 export function provSafePassageFor(turnContext: TurnContext, p: Province | null | undefined, pi: number | null) {
   const { G } = turnContext;
   if (!p) return false;
-  if (p.owner === pi) return true;
-  if (p.owner != null) return relationBetween(turnContext, pi, p.owner) === 'allied';
-  return !(G.characters || []).some(
-    (g) => g && g.alive && g.player === null && g._isNeutralGuard && g.location === p.id && (g.armies || []).length > 0,
+  const { owner } = p;
+  // (the rule on the province's values, plan P1-11e12: src/engine/rules-on-plain-values/)
+  return aProvinceIsSafePassageForARealmsColumn(
+    pi,
+    owner,
+    () => relationBetween(turnContext, pi, owner),
+    () =>
+      (G.characters || []).some(
+        (g) =>
+          g && g.alive && g.player === null && g._isNeutralGuard && g.location === p.id && (g.armies || []).length > 0,
+      ),
   );
 }
 // prov:-move detour: prefer a route whose INTERMEDIATE provinces are all safe passage (the final
@@ -65,18 +76,13 @@ export function provSafePassageFor(turnContext: TurnContext, p: Province | null 
 // never a longer one. If the only short road runs through a rival's province, the column takes
 // it.
 export function stepTowardPreferSafe(turnContext: TurnContext, c: Character, toId: number | null | undefined) {
-  const any = stepTowardPath(turnContext, c, toId);
-  if (!any) return null;
-  if (c && c.player != null) {
-    const safe = stepTowardPath(
-      turnContext,
-      c,
-      toId,
-      (p) => p.id === toId || provSafePassageFor(turnContext, p, c.player),
-    );
-    if (safe && safe.depth <= any.depth) return safe.first;
-  }
-  return any.first;
+  // (the preference on the routes' values, plan P1-11e12: src/engine/rules-on-plain-values/)
+  return theStepAColumnTakesTowardAFarProvince(
+    (extraFilter?: (p: Province) => boolean) => stepTowardPath(turnContext, c, toId, extraFilter),
+    toId,
+    c && c.player != null,
+    (p) => provSafePassageFor(turnContext, p, c.player),
+  );
 }
 export function stepToward(
   turnContext: TurnContext,
