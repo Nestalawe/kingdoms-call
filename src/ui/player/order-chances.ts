@@ -18,9 +18,13 @@ import {
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
-import { getOrderExtra, getOrderTarget, syncCharmCard, syncResurrectCard } from './pre-orders.ts';
+import { syncCharmCard, syncResurrectCard } from './pre-orders.ts';
 import { HUMANOID_RACES_UI, formatRace } from './skills-and-projections.ts';
 import { buildTargetField } from './order-targets.ts';
+import {
+  getOrderExtra,
+  getOrderTarget,
+} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // ── ORDERS FORM ────
 // ── SPELLS LIST ────

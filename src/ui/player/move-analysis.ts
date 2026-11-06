@@ -9,10 +9,14 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
 import { SKILL_COLUMNS } from './join-and-chronicle.ts';
-import { getOrderTarget } from './pre-orders.ts';
-import { effSkillP } from './briefing-and-submit.ts';
-import { _isAutoGarrisonRecruit, _projRecruitUnits } from './skills-and-projections.ts';
-import { predictedLocation, projectedLedArmies } from './order-targets.ts';
+import {
+  _isAutoGarrisonRecruit,
+  _projRecruitUnits,
+  getOrderTarget,
+  predictedLocation,
+  projectedLedArmies,
+} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import { effSkillP } from './items-and-heroes.ts';
 
 // ══ MOVE ANALYSIS (2026-09-26, Toby item 1) ═══════════════════════════════════════════════════
 // Before a Move order is submitted, tell the player what KIND of move it is — a land march, a
