@@ -558,7 +558,7 @@ describe('the march: where the order form says a hero will stand, and what march
     // form writes it), a Forced March to a province next door (its bare number, as the form writes it), a Move into
     // the province he stands in (the form's "Stay in", the turn's "already there"), and since R-128 a Forced March by
     // direction (dir:, a bot's) and a Move by a province's bare number (a bot's joint assault's): the form reads both
-    // targets by the turn's own rule, whatAMarchsOrderNames.
+    // targets by the turn's own rule, whatAMarchsOrderNames; a Move naming no province on the map leaves him there.
     const list = marches().filter((x) => (THE_MARCHES_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
