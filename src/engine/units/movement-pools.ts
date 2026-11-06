@@ -6,6 +6,11 @@ import {
   getFlyCapability,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { seaLiftOfAColumn } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
+import {
+  aColumnLeadingShipsMayNotStepFromLandToLand,
+  canEnterTerrain,
+} from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
+import type { AColumnAsTheTerrainTestsReadIt } from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import { whatARealmsDiscoveriesAddToAMarch } from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -41,20 +46,14 @@ function hisIdIsHeld(c: AHeroAsHisPoolsAreRefreshed): c is AHeroAsHisPoolsAreRef
   return c.id != null;
 }
 
-/** A column as the terrain tests read it: its units (a gap passed over where the step's test guards one), and the Part
- *  Sea mark of this phase (Parked: nothing sets it). */
-interface AColumnAsTheTerrainTestsReadIt {
-  readonly _partSeaThisPhase?: unknown;
-  readonly armies?: readonly UnitOfAType[] | null | undefined;
-}
-
 // ── MOVEMENT POOLS (plan P1-08b: lifted out of resolveTurn) ────
 // Where a column may step, and each hero's move points for the turn: the land and sea pools (resolveTurn's movePoints,
 // seaMovePoints, seaMoveActive, seaCap, moveMax and seaMoveMax, which join the turn's context by reference), set at
 // the start of the turn and refreshed when a column changes; and the chance that two contingents unify.
 // computeMovePoolMax, setMovePool and refreshMovePool take the turn's context first (src/engine/turn/context.ts); the
 // rest read no turn state. Whether a column can put to sea (getSeaCapability; plan P1-13e1 moved it here from
-// sea-lift-stranding-and-retreats.ts) comes first: canEnterTerrain and the sea pool read its answer.
+// sea-lift-stranding-and-retreats.ts) comes first: canEnterTerrain (in rules-on-plain-values/, P1-11e4) and the sea
+// pool read its answer.
 // Get movement allowance for a character AT THE START OF THE TURN (before any armies picked up)
 // stored per character for the whole turn
 export function getSeaCapability(
@@ -64,19 +63,6 @@ export function getSeaCapability(
   // The rule is seaLiftOfAColumn's (plan P1-11b4 moved the body there, so the player portal's Move notice asks it
   // too); the leader's naval mastery is worked out here. NAVAL L8: one naval hull carries what once needed two.
   return seaLiftOfAColumn(armies, !!leadChar && perkTier(leadChar, 'naval') >= 3).answer;
-}
-
-export function canEnterTerrain(c: AColumnAsTheTerrainTestsReadIt, terrain: string, seaCap: string): boolean {
-  if (terrain === 'sea') {
-    if (seaCap === 'all' || seaCap === 'sea') return true;
-    if (c._partSeaThisPhase) return true; // Part Sea spell active this phase
-    return false;
-  }
-  // Land province: sea-only armies can't move land→land unless adjacent to same sea
-  // For simplicity we allow land movement unless they have ONLY sea armies (no land/flying)
-  const armies = c.armies ?? [];
-  if (armies.length > 0 && armies.every((a) => SEA_TYPES.has(a.type))) return false;
-  return true;
 }
 
 // 2026-10-08 (Toby item 14): can this column step from `from` into `to`? canEnterTerrain judges only the
@@ -94,7 +80,7 @@ export function canStepBetween(
 ): boolean {
   if (!to || !canEnterTerrain(c, to.terrain, cap)) return false;
   const naval = (c.armies ?? []).some((a: UnitOfAType | null | undefined) => a && SEA_TYPES.has(a.type));
-  if (naval && from && from.terrain !== 'sea' && to.terrain !== 'sea') return false;
+  if (from && aColumnLeadingShipsMayNotStepFromLandToLand(naval, from.terrain, to.terrain)) return false;
   return true;
 }
 
