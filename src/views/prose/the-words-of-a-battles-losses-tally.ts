@@ -3,9 +3,10 @@
 // views write it from the facts of the battle's lines (theTurnsLinesInWords puts it where the casualty lists begin):
 // - each side's units, from its force drawn up for battle (`armies`, phantoms left out): the "of 6" and the types;
 // - each side's name, from its casualty list's header (the label the header's words give), else its role;
-// - each company's fate, credited to the side whose header names the company's owner as its line names him, else to
-//   the side whose casualty list it follows; counted by its fate: lost (it dies, is cut down with no escape, or is cut
-//   down and rises again by its Regenerating Hide: question 37), disbanded, demoted or promoted, or not at all;
+// - each company's fate, credited to the side whose header names the company's owner as its record names him (where
+//   its line names it by its name alone too: question 37, R-127), else to the side whose casualty list it follows;
+//   counted by its fate: lost (it dies, or is cut down with no escape), disbanded, demoted or promoted, or not at all
+//   (a company cut down that rises again by its Regenerating Hide is not lost: question 37, R-127);
 // - its type, found on its side's force: by its type where its line names the type (a company named with its quality,
 //   or as it disbands, or by its type when it has no name), else by its name (a company named by its name alone, as a
 //   company cut down with no escape is): the type of its side's company of that name; else "unit";
@@ -33,7 +34,7 @@ interface ACompanyAsTheTallyFindsIt {
   itsLineNamesItsType: boolean;
 }
 
-/** A company's fate, as the tally reads it: the owner its line names (his label, or null when it names none), the
+/** A company's fate, as the tally reads it: the owner its record names (his label, or null when it names none), the
  *  company, and how it is counted. */
 interface ACompanysFateInTheTally {
   owner: string | null;
@@ -52,15 +53,14 @@ interface ASidesLossesInTheTally {
   promoted: number;
 }
 
-/** The owner a company's line names: his label, or null when the line names none (a company named by its name or type
- *  alone, or one with no owner). */
+/** The owner a company's record names: his label, or null when it names none (a company with no owner). */
 function theOwnerItsLineNames(owner: TheOwnerOfABattlesUnits | null): string | null {
   return owner ? theLabelOfASideOrTheDefenders(owner) : null;
 }
 
-/** The owner a unit's record names, as its line writes it. */
+/** The owner a unit's record names, as a line writes him (whether or not its line names him: question 37, R-127). */
 function theOwnerOfTheUnitItsLineNames(unit: AUnitAsALineNamesIt): string | null {
-  return unit.kind === 'a unit named by its name or type alone' ? null : theOwnerItsLineNames(unit.owner);
+  return theOwnerItsLineNames(unit.owner);
 }
 
 /** A unit's record as the tally finds it: its line names its type unless it names the unit by its name (ownedUnitName's
@@ -98,12 +98,12 @@ function aCompanysFateTheTallyCounts(fact: LineFact): ACompanysFateInTheTally | 
     switch (fact.fate) {
       case 'dies':
       case 'is cut down with no escape':
-      case 'is cut down and rises again by its regenerating hide':
         return asTheUnit('lost');
       case 'rises a tier':
         return asTheUnit('promoted');
       case 'loses heart and falls a tier':
         return asTheUnit('demoted');
+      case 'is cut down and rises again by its regenerating hide':
       case 'falls back behind the shield wall in good order':
       case 'keeps its nerve under the knightly example':
         return null;
