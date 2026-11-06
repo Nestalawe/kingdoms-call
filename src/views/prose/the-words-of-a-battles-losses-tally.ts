@@ -4,7 +4,8 @@
 // - each side's units, from its force drawn up for battle (`armies`, phantoms left out): the "of 6" and the types;
 // - each side's name, from its casualty list's header (the label the header's words give), else its role;
 // - each company's fate, credited to the side whose header names the company's owner as its record names him (where
-//   its line names it by its name alone too: question 37, R-127), else to the side whose casualty list it follows;
+//   its line names it by its name alone too, and a hero's side by its hero, his host leaderless or not: question 37,
+//   R-127), else to the side whose casualty list it follows;
 //   counted by its fate: lost (it dies, or is cut down with no escape), disbanded, demoted or promoted, or not at all
 //   (a company cut down that rises again by its Regenerating Hide is not lost: question 37, R-127);
 // - its type, found on its side's force: by its type where its line names the type (a company named with its quality,
@@ -34,8 +35,8 @@ interface ACompanyAsTheTallyFindsIt {
   itsLineNamesItsType: boolean;
 }
 
-/** A company's fate, as the tally reads it: the owner its record names (his label, or null when it names none), the
- *  company, and how it is counted. */
+/** A company's fate, as the tally reads it: the owner its record names (the name his side is matched by, or null when
+ *  it names none), the company, and how it is counted. */
 interface ACompanysFateInTheTally {
   owner: string | null;
   company: ACompanyAsTheTallyFindsIt;
@@ -53,9 +54,17 @@ interface ASidesLossesInTheTally {
   promoted: number;
 }
 
-/** The owner a company's record names: his label, or null when it names none (a company with no owner). */
+/** The name a side is matched by (question 37, R-127): a hero's side by its hero's name, his host leaderless or not (a
+ *  leaderless host's header names the hero whose host it was, a company's record names the hero alone); a province's
+ *  defenders by their label. */
+function theNameASideIsMatchedBy(side: TheOwnerOfABattlesUnits): string {
+  return 'kind' in side ? theLabelOfASideOrTheDefenders(side) : side.heroName;
+}
+
+/** The owner a company's record names: the name his side is matched by, or null when it names none (a company with no
+ *  owner). */
 function theOwnerItsLineNames(owner: TheOwnerOfABattlesUnits | null): string | null {
-  return owner ? theLabelOfASideOrTheDefenders(owner) : null;
+  return owner ? theNameASideIsMatchedBy(owner) : null;
 }
 
 /** The owner a unit's record names, as a line writes him (whether or not its line names him: question 37, R-127). */
@@ -152,8 +161,9 @@ function theTypesCounted(types: readonly string[]): string {
  *  …", the attacker first; null when no side has a casualty list or a hull lost. */
 export function theWordsOfABattlesLossesTally(facts: readonly (LineFact | undefined)[]): string | null {
   const theUnitsOfEachSide: Record<TheRoleOfASide, AUnitOfAForceDrawnUp[]> = { attacker: [], defender: [] };
-  // Each side's casualty list's header, in the order they come (the first of each side's).
-  const theHeaders: { role: TheRoleOfASide; label: string }[] = [];
+  // Each side's casualty list's header, in the order they come (the first of each side's): its label, and the name its
+  // side is matched by.
+  const theHeaders: { role: TheRoleOfASide; label: string; matchedBy: string }[] = [];
   for (const fact of facts) {
     if (fact === undefined) continue;
     if (fact.kind === 'a force drawn up for battle') {
@@ -161,10 +171,18 @@ export function theWordsOfABattlesLossesTally(facts: readonly (LineFact | undefi
         theUnitsOfEachSide[fact.role].push(...fact.armies.filter((unit) => !unit.phantom));
     } else if (fact.kind === "the attacker's casualties begin") {
       if (!theHeaders.some((h) => h.role === 'attacker'))
-        theHeaders.push({ role: 'attacker', label: theLabelOfASide(fact.atkName) });
+        theHeaders.push({
+          role: 'attacker',
+          label: theLabelOfASide(fact.atkName),
+          matchedBy: theNameASideIsMatchedBy(fact.atkName),
+        });
     } else if (fact.kind === "the defender's casualties begin") {
       if (!theHeaders.some((h) => h.role === 'defender'))
-        theHeaders.push({ role: 'defender', label: theLabelOfASideOrTheDefenders(fact.defName) });
+        theHeaders.push({
+          role: 'defender',
+          label: theLabelOfASideOrTheDefenders(fact.defName),
+          matchedBy: theNameASideIsMatchedBy(fact.defName),
+        });
     }
   }
   const sides: ASidesLossesInTheTally[] = [];
@@ -217,7 +235,7 @@ export function theWordsOfABattlesLossesTally(facts: readonly (LineFact | undefi
     const fate = aCompanysFateTheTallyCounts(fact);
     if (fate === null) continue;
     const owner = fate.owner;
-    const side = theSide(theHeaders.find((h) => owner !== null && h.label === owner)?.role ?? theListItFollows);
+    const side = theSide(theHeaders.find((h) => owner !== null && h.matchedBy === owner)?.role ?? theListItFollows);
     switch (fate.counted) {
       case 'lost':
         side.lost.push(theTypeOnItsSidesForce(fate.company, side.role));

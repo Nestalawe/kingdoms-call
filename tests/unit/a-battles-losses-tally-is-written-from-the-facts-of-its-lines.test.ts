@@ -15,7 +15,8 @@
 // - a beaten guard's companies: one that loses heart demoted, one that disbands disbanded, the others not counted;
 // - question 37's ruled form (R-127, Toby 2026-11-05: the tally follows the battle): a company that rises again by its
 //   Regenerating Hide not lost, and a company cut down with no escape, its line naming it by its name alone, credited
-//   to the side its record names (its type looked for by its name on that side's force);
+//   to the side its record names (its type looked for by its name on that side's force); and a leaderless host's
+//   trapped company, its record naming the hero whose host it was, credited to that host (P1-11e2b: red before it);
 // - a battle with no casualty list and no breach has no tally; a line with no fact is read as nothing (the tally
 //   called directly: no battle files one).
 // Level 1 (unit): emitBattle and the words pass on a context made in the test, with the facts staged; nothing else of
@@ -481,6 +482,33 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
         ),
       ]),
     ).toBe('⚰ Losses — **Aldric**: 1 of 1 unit lost (Shieldwall Levies) · **Gorbash**: no units lost.');
+  });
+
+  test("question 37 (R-127): a leaderless host's trapped company counts for its own side, its record naming the hero whose host it was", () => {
+    // as the battle between heroes records it: the owner is the hero ("Aldric"), the header "Aldric's leaderless host"
+    const aTrappedCompanyOf = (heroName: string, unitName: string, type: string) =>
+      isCutDownWithNoEscape(aUnit(side(heroName), unitName, type, 'a unit named without its quality'));
+    const theForces = [
+      aForce('Aldric', 'attacker', [['Fire Elemental', 'Ember Host']]),
+      aForce('Gorbash', 'defender', [['Goblin Horde', 'Gob']]),
+    ];
+    expect(
+      theTallyOf([
+        ...theForces,
+        { kind: "the attacker's casualties begin", atkName: { heroName: 'Aldric', leaderless: true } },
+        theDefendersList(side('Gorbash')),
+        aTrappedCompanyOf('Aldric', 'Ember Host', 'Fire Elemental'),
+      ]),
+    ).toBe("⚰ Losses — **Aldric's leaderless host**: 1 of 1 unit lost (Fire Elemental) · **Gorbash**: no units lost.");
+    // the beaten defender's host leaderless, its trapped company after the attacker's list
+    expect(
+      theTallyOf([
+        ...theForces,
+        theDefendersList({ heroName: 'Gorbash', leaderless: true }),
+        theAttackersList('Aldric'),
+        aTrappedCompanyOf('Gorbash', 'Gob', 'Goblin Horde'),
+      ]),
+    ).toBe("⚰ Losses — **Aldric**: no units lost · **Gorbash's leaderless host**: 1 of 1 unit lost (Goblin Horde).");
   });
 
   test('a battle with no casualty list and no breach has no tally; a line with no fact is read as nothing', () => {
