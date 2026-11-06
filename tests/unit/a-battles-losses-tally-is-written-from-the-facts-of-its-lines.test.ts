@@ -6,15 +6,16 @@
 // tests/unit/the-battle-fate-and-tally-lines-no-matrix-game-reaches-keep-their-values.test.ts held them), and each case
 // but the last passes on the code before this row too.
 // - each company credited to the side whose casualty list's header names its owner (not the side of the company its
-//   clause names), else to the side whose list it follows; a fate before the first list not counted;
+//   clause names), its record's owner where its line names it by its name alone too (question 37, R-127), else to the
+//   side whose list it follows; a fate before the first list not counted;
 // - each side's units from its force drawn up for battle, phantoms left out; a force with no units gives no total;
 // - each company's type found on its side's force: its own where its line names its type and the force lists it, else
 //   that of the force's company of its name (a company named by its name alone), else "unit"; an empty type "unit";
 // - a whale cohort's breach counted against the side whose hull sinks, with the hull's type;
 // - a beaten guard's companies: one that loses heart demoted, one that disbands disbanded, the others not counted;
-// - question 37's two forms as they are today: a company that rises again by its Regenerating Hide counted lost, and a
-//   company cut down with no escape, its line naming no owner, credited to the list it follows (and its type looked
-//   for by its name on that side's force);
+// - question 37's ruled form (R-127, Toby 2026-11-05: the tally follows the battle): a company that rises again by its
+//   Regenerating Hide not lost, and a company cut down with no escape, its line naming it by its name alone, credited
+//   to the side its record names (its type looked for by its name on that side's force);
 // - a battle with no casualty list and no breach has no tally; a line with no fact is read as nothing (the tally
 //   called directly: no battle files one).
 // Level 1 (unit): emitBattle and the words pass on a context made in the test, with the facts staged; nothing else of
@@ -272,7 +273,7 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
     );
   });
 
-  test('a company named by its name alone goes to the list it follows, whatever owner its record holds', () => {
+  test('a company named by its name alone counts for the side its record names, whatever list it follows', () => {
     expect(
       theTallyOf([
         aForce('Aldric', 'attacker', [['Shieldwall Levies', 'the Grey Legion']]),
@@ -282,7 +283,7 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
           aUnit(side('Aldric'), 'the Grey Legion', 'Shieldwall Levies', 'a unit named by its name or type alone'),
         ),
       ]),
-    ).toBe('⚰ Losses — **Aldric**: no units lost · **Gorbash**: 1 unit lost (unit).');
+    ).toBe('⚰ Losses — **Aldric**: 1 of 1 unit lost (Shieldwall Levies) · **Gorbash**: no units lost.');
   });
 
   test('a company whose line names no owner goes to the list it follows, as one disbanding with none named', () => {
@@ -455,7 +456,7 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
     ).toBe('⚰ Losses — **Ulric**: no units lost, 1 disbanded (Shieldwall Levies), 1 demoted.');
   });
 
-  test('question 37, as it is today: the Regenerating Hide counted lost, and a company its line names no owner of counted on the list it follows', () => {
+  test('question 37 (R-127): a company that rises again by its Regenerating Hide is not lost, and a company named by its name alone counts for the side its record names', () => {
     expect(
       theTallyOf([
         aForce('Aldric', 'attacker', [['Troll Brutes', 'Grak']]),
@@ -468,7 +469,7 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
           whomItFaced: null,
         },
       ]),
-    ).toBe('⚰ Losses — **Aldric**: 1 of 1 unit lost (Troll Brutes).');
+    ).toBe('⚰ Losses — **Aldric**: no units lost.');
     expect(
       theTallyOf([
         aForce('Aldric', 'attacker', [['Shieldwall Levies', 'the Grey Legion']]),
@@ -476,10 +477,10 @@ describe("a battle's losses tally is written from the facts of its lines", () =>
         theAttackersList('Aldric'),
         theDefendersList(side('Gorbash')),
         isCutDownWithNoEscape(
-          aUnit(null, 'the Grey Legion', 'Shieldwall Levies', 'a unit named by its name or type alone'),
+          aUnit(side('Aldric'), 'the Grey Legion', 'Shieldwall Levies', 'a unit named by its name or type alone'),
         ),
       ]),
-    ).toBe('⚰ Losses — **Aldric**: no units lost · **Gorbash**: 1 of 1 unit lost (unit).');
+    ).toBe('⚰ Losses — **Aldric**: 1 of 1 unit lost (Shieldwall Levies) · **Gorbash**: no units lost.');
   });
 
   test('a battle with no casualty list and no breach has no tally; a line with no fact is read as nothing', () => {
