@@ -134,6 +134,8 @@ export interface ABotRealmsLedger extends ABotRealmsSpending {
   nav?: ABotsWagePool | null;
   air?: ABotsWagePool | null;
   hired?: Set<number>;
+  /** The realm's signature orders written this turn (botSignaturePre, bots/missions.ts): a Call to Arms, a Broker's. */
+  sig?: { cta?: number; broker?: number };
   [field: string]: unknown;
 }
 /** The bots' scratch state for a turn: the roles, the treasury ledger, the engine's terrain figure the turn hands in,
@@ -147,8 +149,25 @@ interface TheBotsTurnCache {
   pins?: Partial<Record<number, Map<number, number>>>;
   /** Each realm's titles to chase this year (botTargetTitles, bots/spellcraft.ts), by the realm's index. */
   titles?: Partial<Record<number, string[]>>;
+  /** The provinces whose surplus garrison a hero has taken up this turn, and those an orphaned host is claimed in
+   *  (botPickupOrder, botOrphanHostOrders, bots/missions.ts). */
+  swept?: Set<number>;
+  orphan?: Set<number>;
+  /** The slayers' school (botRunSlayerSchool, bots/missions.ts): each teacher's lessons by phase, and the study's tally. */
+  teach?: Partial<Record<number, Partial<Record<number, string>>>>;
+  teachDiag?: ASlayersLesson[];
   terrainMult?: ((armyType: string, terrain: string) => unknown) | undefined;
   [field: string]: unknown;
+}
+/** A slayer's year at the school, for the study (window.__botDiag): his teacher, the phases taught and handed. */
+interface ASlayersLesson {
+  readonly pi: number;
+  readonly slayer: number;
+  readonly mentor: number;
+  readonly king: boolean;
+  readonly phases: number;
+  readonly handed: number;
+  readonly follow?: boolean;
 }
 /** What a bot realm knows this turn (botIntel). */
 interface WhatABotRealmKnows {

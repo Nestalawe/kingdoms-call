@@ -2380,3 +2380,383 @@ describe("The war's reckoning and the assaults on what no matrix game hands them
     ).toBe('[[{},[]],"throws TypeError"]');
   });
 });
+
+describe('The missions on what no matrix game hands them (P1-10b45)', () => {
+  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
+  /** A world of two realms, at war, and the lists named, each other list missing; its map 2 by 1. */
+  const aWorld = (lists: Record<string, unknown> = {}) => ({
+    turn: 3,
+    relations: { '0-1': 'enemy' },
+    players: [{}, {}],
+    ...lists,
+    world: { cols: 2, rows: 1, ...((lists['world'] as object | undefined) ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const results = (calls: readonly (() => unknown)[]) =>
+    JSON.stringify(
+      calls.map((f) => {
+        try {
+          const v = f();
+          return v === undefined ? 'undefined' : v;
+        } catch (e) {
+          return `throws ${String(e).split(':')[0] ?? ''}`;
+        }
+      }),
+    );
+  const units = (n: number, type = 'Militia') =>
+    Array.from({ length: n }, () => ({ type, quality: 'Average', race: 'Human' }));
+  test('a hero’s items: the Stone cracked for a realm of eight units, kit of no id, an item of no power', () => {
+    const stone = { name: "Philosopher's Stone", effect: { stat: 'massPromote', bonus: 1 }, tier: 3 };
+    const hero = (items: unknown[], more: Record<string, unknown> = {}) => ({
+      id: 1,
+      player: 0,
+      alive: true,
+      location: 0,
+      race: 'Human',
+      skills: {},
+      items,
+      ...more,
+    });
+    const G = (c: unknown, more: Record<string, unknown> = {}) =>
+      aWorld({
+        characters: [null, c],
+        world: { provinces: [null, aProvince({ id: 1, garrisonArmies: units(2) }), aProvince({ id: 2 })] },
+        ...more,
+      });
+    const c1 = hero([{ ...stone, id: 7 }, null], { armies: units(6) });
+    const c2 = hero([stone], { armies: units(6) });
+    const c3 = hero([stone], { armies: units(5) });
+    const ring = (name: string, bonus: number, id?: number) => ({
+      name,
+      effect: { stat: 'melee', bonus },
+      tier: 1,
+      slot: 'ring',
+      ...(id === undefined ? {} : { id }),
+    });
+    const c4 = hero([ring('Band', 1), ring('Loop', 2, 4)]);
+    const c5 = hero([{ name: 'Odd Thing', tier: 1 }]);
+    expect(
+      results([
+        () => fn('botItemPre')(G(c1), 0, c1, null),
+        () => fn('botItemPre')(G(c2), 0, c2, null),
+        () => fn('botItemPre')(G(c3), 0, c3, null),
+        () => fn('botItemPre')(G(c4), 0, c4, null),
+        () => fn('botItemPre')(G(c5, { characters: [c5, { ...hero([]), id: 2 }] }), 0, c5, { leaders: [2] }),
+      ]),
+    ).toBe(
+      '[{"action":"use_item","target":"7","extra":"","desc":"Use Philosopher\'s Stone"},{"action":"use_item","target":"Philosopher\'s Stone","extra":"","desc":"Use Philosopher\'s Stone"},null,{"action":"equip_items","target":"4,Band","extra":"","desc":"Don the best kit"},null]',
+    );
+  });
+  test('the lair ladder: strength for the grade above, tiers of no ladder, candidates of no features or grade', () => {
+    const c = { id: 1, player: 0, alive: true, location: 0, skills: { melee: 6 }, items: [] };
+    const lairs = (features: unknown) => aWorld({ characters: [c], world: { provinces: [aProvince({ features })] } });
+    expect(
+      results([
+        () => fn('botLairStrongFor')(null, 1),
+        () => fn('botLairStrongFor')(c, 0),
+        () => fn('botLairStrongFor')(c, 1),
+        () => fn('botLairStrongFor')({ ...c, skills: {} }, 3),
+        () => fn('botLairTiers')({ id: 1 }),
+        () => fn('botLairTiers')({ id: 1, _botLairKills: { Weak: 2 }, skills: { melee: 9 }, items: [] }),
+        () => fn('botLairCandidates')(lairs(undefined), 0, c, 4),
+        () =>
+          fn('botLairCandidates')(
+            lairs([
+              null,
+              { name: 'Den', monster: {}, discovered: true, cleared: false },
+              { name: 'Pit', monster: null, tier: 'Epic', discovered: true, cleared: false },
+            ]),
+            0,
+            c,
+            4,
+          ),
+        () => fn('botLairPlan')(lairs(undefined), 0, { id: 1, location: 0 }, [], null),
+        () => fn('botSlayerSchool')(undefined),
+        () => fn('botSlayerTrainSkill')({ skills: { melee: 5, archery: 5 } }),
+      ]),
+    ).toBe(
+      '[false,false,true,false,{"cur":-1,"up":0},{"cur":0,"up":1},[],[{"X":{"id":0,"row":0,"col":0,"owner":0,"terrain":"plains","name":"Ashford","tax":1,"features":[null,{"name":"Den","monster":{},"discovered":true,"cleared":false},{"name":"Pit","monster":null,"tier":"Epic","discovered":true,"cleared":false}]},"li":1,"f":{"name":"Den","monster":{},"discovered":true,"cleared":false},"grade":0,"price":1,"d":0,"rumour":null},{"X":{"id":0,"row":0,"col":0,"owner":0,"terrain":"plains","name":"Ashford","tax":1,"features":[null,{"name":"Den","monster":{},"discovered":true,"cleared":false},{"name":"Pit","monster":null,"tier":"Epic","discovered":true,"cleared":false}]},"li":2,"f":{"name":"Pit","monster":null,"tier":"Epic","discovered":true,"cleared":false},"grade":0,"price":1,"d":0,"rumour":{"band":101}}],null,"elemental","elemental"]',
+    );
+  });
+  test('the signature orders for a hero of no skills, a land of no race or garrison, a Broker’s wanderer seen afar', () => {
+    const king = { id: 1, player: 0, alive: true, isKing: true, location: 0 };
+    const realm = (alignment: string) => ({ alignment, homeProvinceId: 0 });
+    const goodLand = aProvince({ tax: 5, race: undefined });
+    const goodWorld = aWorld({ players: [realm('Good'), {}], characters: [king], world: { provinces: [goodLand] } });
+    const wanderer = { id: 2, player: null, alive: true, location: 1, alignment: 'Neutral' };
+    const neutralWorld = (more: Record<string, unknown>) =>
+      aWorld({
+        players: [realm('Neutral'), {}],
+        characters: [king, wanderer],
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: null, ...more })] },
+      });
+    expect(
+      results([
+        () => fn('botSignaturePre')(goodWorld, 0, king, goodLand, { budget: 0 }),
+        () =>
+          fn('botSignaturePre')(
+            aWorld({ players: [realm('Undead'), {}], characters: [king], world: { provinces: [aProvince()] } }),
+            0,
+            king,
+            aProvince(),
+            { budget: 9 },
+          ),
+        () => fn('botSignaturePre')(neutralWorld({}), 0, king, aProvince(), { budget: 50, upkeep: 0 }),
+        () => fn('botSignaturePre')(neutralWorld({ visitedBy: [0] }), 0, king, aProvince(), { budget: 50, upkeep: 0 }),
+        () => fn('botRitePre')(aWorld({ players: [realm('Pagan'), {}] }), 0, king, aProvince(), { budget: 9 }, true),
+        () =>
+          fn('botRitePre')(
+            aWorld({ players: [realm('Pagan'), {}] }),
+            0,
+            { ...king, armies: units(2) },
+            aProvince({ features: [{ name: 'Stones', ritualSite: true, discovered: true }] }),
+            { budget: 9 },
+            true,
+          ),
+        () => fn('botInfiltrateSchool')({ id: 1 }),
+        () => fn('botOnlySkeletal')({ id: 1 }),
+      ]),
+    ).toBe(
+      '[{"action":"call_to_arms","target":"0","extra":"","desc":"Call to Arms in Ashford"},null,null,{"action":"broker","target":"hire:2","extra":"","desc":"Broker \u2014 hire undefined"},null,null,null,false]',
+    );
+  });
+  test('the ground undefended, the nearest, the berths, the mastery orders and a duel stance on what no game hands them', () => {
+    const c = { id: 1, player: 0, alive: true, location: 0, maxHp: 20, skills: { melee: 7, march: 9 } };
+    const foe = { id: 2, player: 1, alive: true, location: 0, maxHp: 20, skills: {} };
+    const P1 = aProvince({ id: 1, col: 1 });
+    const G = aWorld({ characters: [c, foe], world: { provinces: [aProvince(), P1] } });
+    const duelSim = () => ({ win: 0.8, felled: 0 });
+    expect(
+      results([
+        () => fn('botProvUndefended')(G, P1, 0),
+        () => fn('botProvUndefended')(G, aProvince({ id: 1, col: 1, npcArmies: 2 }), 0),
+        () => fn('botNearestOf')(G, 0, c, null, true),
+        () => fn('botSpareBerths')(null),
+        () => fn('botSpareBerths')({ armies: [null] }),
+        () => fn('botMasteryPre')(G, 0, { ...c, skills: undefined }, aProvince(), null),
+        () => fn('botMasteryPre')(G, 0, c, aProvince(), { fightAhead: true }),
+        () => fn('botMasteryPre')(G, 0, c, aProvince(), { duelSim }),
+        () =>
+          fn('botMasteryPre')(
+            aWorld({
+              characters: [c, foe, { id: 3, player: 1, alive: true, isKing: true, location: 1 }],
+              world: { provinces: [aProvince(), P1] },
+            }),
+            0,
+            c,
+            aProvince(),
+            { duelSim },
+          ),
+        () =>
+          fn('botInfiltrateTarget')(
+            aWorld({
+              characters: [{ ...c, skills: { elemental: 2 } }],
+              world: {
+                cols: 4,
+                provinces: [
+                  aProvince(),
+                  aProvince({ id: 1, col: 1, owner: null }),
+                  aProvince({ id: 2, col: 2, owner: null, visitedBy: [0] }),
+                  aProvince({ id: 3, col: 3, owner: null }),
+                ],
+              },
+            }),
+            0,
+            { ...c, skills: { elemental: 2 } },
+            'elemental',
+            5,
+          ),
+        () => fn('botDuelStance')(G, 0, { ...c, hp: undefined, skills: { melee: 1 } }, null),
+        () => fn('botPickupOrder')(G, 0, c, aProvince()),
+        () => fn('botOrphanHostOrders')(G, 0, c, []),
+      ]),
+    ).toBe(
+      '[true,false,null,0,0,null,{"action":"lightning_advance","target":"","extra":"","desc":"Lightning Advance"},null,{"action":"challenge","target":"2","extra":"","desc":"Challenge undefined"},{"P":{"id":1,"row":0,"col":1,"owner":null,"terrain":"plains","name":"Ashford","tax":1},"d":1,"sc":-1},"refuse",null,null]',
+    );
+  });
+  test('a strike by sea or air over unowned water of no defenders listed', () => {
+    const P0 = aProvince({ tax: 2 });
+    const sea = aProvince({ id: 1, col: 1, owner: null, terrain: 'sea', name: 'Grey Water', tax: 1 });
+    const T = { kingAttackMargin: 1.2, heroAttackMargin: 1.2, taxScoreWeight: 2, rivalBias: 1 };
+    const admiral = { id: 1, player: 0, alive: true, location: 0, skills: {}, armies: [] };
+    const flyer = { ...admiral, armies: units(2, 'Eagle Riders') };
+    const G = (c: unknown) => aWorld({ characters: [c], world: { provinces: [P0, sea] } });
+    expect(
+      results([
+        () => fn('botSeaStrike')(G(admiral), 0, admiral, P0, 10, T, 3),
+        () => fn('botAirStrike')(G(flyer), 0, flyer, P0, 10, T, 3),
+        () => fn('botAirReach')(flyer),
+      ]),
+    ).toBe('[null,null,5]');
+  });
+  test('the concessions on a world of no map or provinces listed, and a realm of no province list that holds ground', () => {
+    const bots = new Set([0]);
+    const G = (more: Record<string, unknown>) => aWorld({ players: [{ name: 'Fen' }, {}], ...more });
+    const conceded = (g: Raw) => {
+      fn('runBotConcessions')(g, bots, null);
+      return g['players'];
+    };
+    expect(
+      results([
+        () => conceded({ turn: 3, players: [{}] }),
+        () => conceded(G({})),
+        () => conceded(G({ world: { provinces: [aProvince()] } })),
+        () => conceded(G({ world: { provinces: [aProvince({ owner: 1 })] } })),
+      ]),
+    ).toBe('[[{}],[{"name":"Fen"},{}],[{"name":"Fen"},{}],[{"name":"Fen","conceded":true,"concededTurn":3},{}]]');
+  });
+  test('the slayers’ school: lessons from a king of no orders, a recruit handed to a helper, a slayer following the king', () => {
+    const king = {
+      id: 1,
+      player: 0,
+      alive: true,
+      isKing: true,
+      location: 0,
+      maxHp: 20,
+      skills: { melee: 6, archery: 4 },
+    };
+    const slayer = (id: number, more: Record<string, unknown> = {}) => ({
+      id,
+      player: 0,
+      alive: true,
+      location: 0,
+      maxHp: 20,
+      _botRole: 'slayer',
+      skills: { melee: 1 },
+      ...more,
+    });
+    const general = { id: 4, player: 0, alive: true, location: 0, maxHp: 20, _botRole: 'general', skills: {} };
+    const school = (characters: unknown[], turnOrders: Record<string, unknown>) => {
+      const G: Raw = aWorld({
+        characters,
+        turnOrders,
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1 })] },
+      });
+      fn('botRunSlayerSchool')(G, 0, { leaders: [] });
+      return G['turnOrders'];
+    };
+    const recruit = { action: 'recruit', target: 'Militia,to:9', extra: '', desc: 'Raise Militia' };
+    const move = { action: 'move', target: '1', extra: '', desc: 'March' };
+    expect(
+      results([
+        () => school([king, slayer(2), slayer(3, { skills: undefined })], {}),
+        () => school([king, slayer(2), general], { 1: [recruit, recruit, recruit, recruit, recruit] }),
+        () => school([king, slayer(2)], { 1: [move, move, move, move, move] }),
+        () => fn('botOrderLocs')(aWorld({ turnOrders: {}, world: { provinces: [aProvince()] } }), king),
+        () => fn('botTeachFree')(aWorld({ turnOrders: {} }), 0, king, 1),
+      ]),
+    ).toBe(
+      '[{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (teach undefined)"}],"2":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (taught by undefined)"}]},{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (teach undefined)"}],"2":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (taught by undefined)"}],"4":[{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise Militia (for undefined\'s host)"},{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise Militia (for undefined\'s host)"},{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise Militia (for undefined\'s host)"},{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise Militia (for undefined\'s host)"},{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise Militia (for undefined\'s host)"}]},{"1":[{"action":"move","target":"1","extra":"","desc":"March"},{"action":"move","target":"1","extra":"","desc":"March"},{"action":"move","target":"1","extra":"","desc":"March"},{"action":"move","target":"1","extra":"","desc":"March"},{"action":"move","target":"1","extra":"","desc":"March"}],"2":[{"action":"move","target":"dir:W","extra":"","desc":"Join undefined for training"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"}]},[0,0,0,0,0],true]',
+    );
+  });
+  test('the missions’ lists read missing, a hunt by a hero of no health recorded, and the school’s other teachers', () => {
+    const king = {
+      id: 1,
+      player: 0,
+      alive: true,
+      isKing: true,
+      location: 0,
+      maxHp: 20,
+      skills: { melee: 6, archery: 4 },
+    };
+    const lair = { name: 'Den', monster: { name: 'Wolf', power: 'Weak' }, discovered: true, cleared: false };
+    const hunter = { id: 1, player: 0, alive: true, location: 0, maxHp: 20, skills: { melee: 3 }, items: [] };
+    const huntWorld = aWorld({ characters: [hunter], world: { provinces: [aProvince({ features: [lair] })] } });
+    const slayer = (more: Record<string, unknown> = {}) => ({
+      id: 2,
+      player: 0,
+      alive: true,
+      location: 0,
+      maxHp: 20,
+      _botRole: 'slayer',
+      skills: { melee: 1 },
+      ...more,
+    });
+    const school = (characters: unknown[], turnOrders: Record<string, unknown>) => {
+      const G: Raw = aWorld({
+        characters,
+        turnOrders,
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1 })] },
+      });
+      fn('botRunSlayerSchool')(G, 0, { leaders: [] });
+      return G['turnOrders'];
+    };
+    const drill = { action: 'practice', target: 'tactical', extra: '', desc: '' };
+    const move = { action: 'move', target: '1', extra: '', desc: 'March' };
+    expect(
+      results([
+        () => fn('botAllyNear')(aWorld(), 0, aProvince()),
+        () =>
+          fn('botSignaturePre')(aWorld({ players: [{ alignment: 'Good' }, {}], world: {} }), 0, king, aProvince(), {
+            budget: 0,
+          }),
+        () =>
+          fn('botSignaturePre')(
+            aWorld({
+              players: [{ alignment: 'Good', homeProvinceId: 0 }, {}],
+              world: { provinces: [aProvince({ tax: 5 }), aProvince({ id: 1, col: 1, tax: undefined })] },
+            }),
+            0,
+            king,
+            aProvince(),
+            { budget: 0 },
+          ),
+        () => fn('botConsecrateOK')(aWorld({ players: undefined }), 0, king, aProvince()),
+        () => fn('botItemPre')(aWorld(), 0, { id: 1 }, null),
+        () => fn('botLairPlan')(huntWorld, 0, hunter, [], { budget: 10, upkeep: 0 }),
+        () => fn('botDuelStance')(aWorld(), 0, { id: 1, hp: 20, skills: { melee: 5 } }, null),
+        () =>
+          fn('botOrderLocs')(
+            aWorld({
+              turnOrders: { 1: [move, { ...move, target: '9' }] },
+              world: { provinces: [aProvince(), aProvince({ id: 1, col: 1 })] },
+            }),
+            king,
+          ),
+        () => school([{ ...king, skills: undefined, location: 9 }, slayer()], {}),
+        () => school([king, slayer()], { 1: [drill, drill, drill, drill, drill] }),
+        () => school([king, slayer({ skills: undefined })], {}),
+        () => school([king, slayer({ maxHp: undefined })], {}),
+        () => school([king, slayer({ skills: {} })], { 1: [move, move, move, move, move] }),
+        () => school([{ ...king, location: 9 }, slayer()], {}),
+        () => {
+          const G: Raw = aWorld({ characters: [king, slayer()], turnOrders: {}, world: { provinces: [aProvince()] } });
+          (fn('botTurnCache')(G) as Raw)['teach'] = { 1: { 0: 'archery' } };
+          fn('botRunSlayerSchool')(G, 0, { leaders: [] });
+          return G['turnOrders'];
+        },
+        () =>
+          school([king, slayer()], {
+            1: [drill, drill, drill, drill, { action: 'move', target: 'dir:E', extra: '', desc: 'March' }].map((o) => ({
+              ...o,
+              action: o.action === 'practice' ? 'recruit' : o.action,
+            })),
+          }),
+        () =>
+          school(
+            [
+              king,
+              slayer(),
+              { id: 4, player: 0, alive: true, location: 0, maxHp: 20, _botRole: 'general', skills: {} },
+            ],
+            {
+              1: Array.from({ length: 5 }, () => ({ action: 'recruit', target: 'Militia', extra: '', desc: 'Raise' })),
+              4: Array.from({ length: 5 }, () => ({ action: 'defend', target: '', extra: '', desc: 'Hold' })),
+            },
+          ),
+        () => fn('botDuelStance')(aWorld(), 0, { id: 1, skills: { melee: 1 } }, null),
+      ]),
+    ).toBe(
+      '[false,null,{"action":"call_to_arms","target":"0","extra":"","desc":"Call to Arms in Ashford"},false,null,[{"action":"hunt_rumours","target":"0","extra":"","desc":"Hunt Rumours \u2014 Den"},{"action":"search","target":"0","extra":"","desc":"Search Lair (if the talk is good)","prov":0,"_botIfRumour":90,"_botMinHp":0.5,"_botIfRumourLow":80,"_botIfRumourLowHp":0.95},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"},{"action":"explore","target":"","extra":"","desc":"Explore Ashford"}],"throws TypeError",[0,1,1,1,1],{},{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (teach undefined)"}],"2":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (taught by undefined)"}]},{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"}],"2":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"}]},{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (teach undefined)"}],"2":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (taught by undefined)"}]},{"1":[{"action":"move","target":"1","extra":"","desc":"March"},{"action":"move","target":"1","extra":"","desc":"March"},{"action":"move","target":"1","extra":"","desc":"March"},{"action":"move","target":"1","extra":"","desc":"March"},{"action":"move","target":"1","extra":"","desc":"March"}],"2":[{"action":"move","target":"dir:W","extra":"","desc":"Join undefined for training"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"}]},{},{"1":[{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"}],"2":[{"action":"practice","target":"archery","extra":"","desc":"Practice Archery (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"}]},{"1":[{"action":"recruit","target":"tactical","extra":"","desc":""},{"action":"recruit","target":"tactical","extra":"","desc":""},{"action":"recruit","target":"tactical","extra":"","desc":""},{"action":"recruit","target":"tactical","extra":"","desc":""},{"action":"move","target":"dir:E","extra":"","desc":"March"}],"2":[{"action":"move","target":"dir:W","extra":"","desc":"Join undefined for training"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"}]},{"1":[{"action":"recruit","target":"Militia","extra":"","desc":"Raise"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach undefined)"}],"2":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (slayer)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"},{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (taught by undefined)"}],"4":[{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise (for undefined\'s host)"},{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise (for undefined\'s host)"},{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise (for undefined\'s host)"},{"action":"recruit","target":"Militia,to:1","extra":"","desc":"Raise (for undefined\'s host)"}]},"refuse"]',
+    );
+  });
+});
