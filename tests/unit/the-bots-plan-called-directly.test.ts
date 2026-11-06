@@ -27,7 +27,9 @@
 // bot host in contact ranks Harvest the Field and Perform Rite, by the order's key, ahead of slower orders (P1-21f).
 // Then the intel and the setup on what no matrix game hands them (P1-10b40): a game's slot and setup as the GM's page
 // reads them, a realm's name once its pool is used, the alignments' spread beside humans, the weights for any
-// difficulty, and the intel, the guesses and the estimates on a world lacking a list or a field.
+// difficulty, and the intel, the guesses and the estimates on a world lacking a list or a field. Then the strategy's
+// helpers on what no matrix game hands them (P1-10b41): a world, a realm, a hero, a province or a ledger lacking a list
+// or a field, the musters of an admiral, a flying general and a host, a garrison, a hire and the kinds a province raises.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -977,5 +979,648 @@ describe('The intel and the setup on what no matrix game hands them', () => {
         throw new Error('no figure');
       }),
     ]).toEqual([2, 1]);
+  });
+});
+
+describe("The strategy's helpers on what no matrix game hands them (P1-10b41)", () => {
+  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
+  const json = (v: unknown) => JSON.stringify(v);
+  /** A world of one realm and the lists named, each other list missing; its map 2 by 1. */
+  const aWorld = (lists: Record<string, unknown> = {}) => ({
+    turn: 3,
+    world: { cols: 2, rows: 1, ...((lists['world'] as object | undefined) ?? {}) },
+    players: [{}],
+    ...Object.fromEntries(Object.entries(lists).filter(([k]) => k !== 'world')),
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    ...fields,
+  });
+  const aLedger = (fields: Record<string, unknown> = {}) => ({
+    budget: 40,
+    upkeep: 0,
+    upkeepCap: 40,
+    recruitedByProv: {},
+    ...fields,
+  });
+  const results = (calls: readonly (() => unknown)[]) =>
+    json(
+      calls.map((f) => {
+        try {
+          return f();
+        } catch (e) {
+          return `throws ${String(e).split(':')[0] ?? ''}`;
+        }
+      }),
+    );
+  test("the bot flag, a realm's roles and ledger, a home and a column's reach on a world that lacks its lists", () => {
+    expect(
+      results([
+        () => fn('botIsBotPlayer')({}, 0),
+        () => fn('botIsBotPlayer')({ players: [{ isBot: true }] }, 0),
+        () => fn('botIsBotPlayer')({ players: [{ _isBot: false, isBot: true }, null] }, 0),
+        () => fn('botIsBotPlayer')({ players: [{ _isBot: false, isBot: true }, null] }, 1),
+        () => fn('botIsBotPlayer')({ players: [{ _isBot: true }] }, 0),
+        () => fn('botRoles')(aWorld(), 0),
+        () => fn('botLedger')(aWorld(), 0),
+        () =>
+          fn('botHomeId')(
+            aWorld({ players: [{ homeProvinceId: 7 }], world: { provinces: [null, aProvince({ id: 1 })] } }),
+            0,
+          ),
+        () => fn('botHomeId')(aWorld({ players: [] }), 0),
+        () => fn('botLandReach')({}, null),
+        () => fn('botLandReach')({ skills: {} }, ['Shieldwall Levies', 'Strange Levies']),
+        () => fn('botSeaReach')({}),
+        () => fn('botSeaReach')({ armies: [{ type: 'Galleon Fleet' }, null], skills: {} }),
+        () => fn('botSeaReach')({ armies: [{ type: 'Whale Cohort' }] }),
+        () => fn('botFleetOnly')(null),
+        () => fn('botEmpireDiameter')({ world: { cols: 2 } }, 0),
+        () => fn('botGeneralship')({}),
+        () => fn('botGeneralship')({ race: 'Human', armies: [null, { race: 'Orcish' }] }),
+        () => fn('botMagicScore')({}),
+        () => fn('botDuelSkill')({}),
+        () => fn('botLairRating')({}),
+        () => fn('botPracticeSkill')({}),
+        () => fn('botPracticeSkill')({ skills: { melee: 5, tactical: 5 } }),
+        () => fn('botRoleTrainSkill')({ _botRole: 'admiral' }),
+        () => fn('botRoleTrainSkill')({ _botRole: 'spy', skills: { spy: 6 } }),
+        () => fn('botIsFighter')(null),
+        () => fn('botIsTeach')({ action: 'practice' }),
+        () => fn('botIsTeach')({ action: 'practice', desc: 'Practice Melee (teach Ser Amble)' }),
+        () => fn('botMoveOrder')(9),
+      ]),
+    ).toBe(
+      '[false,true,true,false,true,{"leaders":[],"defenders":[],"primaryId":null,"reach":3,"want":1},{"income":0,"warFooting":false,"upkeepCap":0,"upkeep":0,"budget":-3,"recruitedByProv":{},"rumourFund":0,"warChest":0,"diag":{"gold":0,"income":0,"reserve":3,"budget0":-3,"upkeep0":0,"cap":0,"calls":0,"noTypes":0,"noKin":0,"capStop":0,"budgetStop":0,"tokens":0,"holdersIdle":0,"holdersInRecruit":0,"navCap":0,"airCap":0},"defReserve":0,"navReserve":0,"airReserve":0,"nav":null,"air":null},1,"throws TypeError",5,2,0,3,5,false,0,0,-1,0,0,20,"melee","march","naval","spy",false,false,true,{"action":"move","target":"dir:undefined","extra":"","desc":"Advance"}]',
+    );
+  });
+  test("a realm's roles, its ledger and its upkeep, its defenders and its admiral, with heroes holding no list", () => {
+    expect(
+      results([
+        () => {
+          const G = aWorld({
+            world: {
+              provinces: [
+                aProvince({ armyTypes: ['Galleon Fleet'] }),
+                aProvince({ id: 1, col: 1, terrain: 'sea', owner: null }),
+              ],
+            },
+            players: [{ gold: 30 }],
+            characters: [
+              null,
+              { id: 1, player: 0, alive: true, isKing: true, location: 0 },
+              {
+                id: 2,
+                player: 0,
+                alive: true,
+                location: 0,
+                _botRole: 'defender',
+                armies: [{ type: 'Strange Levies' }, { type: 'Shieldwall Levies', _isSkeletal: true }],
+              },
+              {
+                id: 3,
+                player: 0,
+                alive: true,
+                location: 0,
+                _botRole: 'slayer',
+                skills: { naval: 2 },
+                armies: [{ type: 'Strange Levies', _temporary: true }, { type: 'Strange Levies' }],
+              },
+              {
+                id: 4,
+                player: 0,
+                alive: true,
+                location: 0,
+                skills: { naval: 3 },
+                armies: [
+                  { type: 'Galleon Fleet' },
+                  { type: 'Shieldwall Levies' },
+                  { type: 'Shieldwall Levies' },
+                  { type: 'Shieldwall Levies' },
+                  { type: 'Shieldwall Levies' },
+                  { type: 'Shieldwall Levies' },
+                ],
+              },
+            ],
+          });
+          return [fn('botRoles')(G, 0), fn('botLedger')(G, 0), fn('botUpkeep')(G, 0)];
+        },
+        () =>
+          fn('botUpkeep')(
+            {
+              world: {
+                provinces: [
+                  null,
+                  aProvince({
+                    garrisonArmies: [{ type: 'Strange Garrison' }, { type: 'Human Garrison', _isSkeletal: true }],
+                  }),
+                  aProvince({ id: 1 }),
+                ],
+              },
+              characters: [{ player: 0, alive: true, pay: 2 }],
+            },
+            0,
+          ),
+        () => fn('botUpkeep')({ world: {} }, 0),
+        () =>
+          fn('botTaxIncome')({ world: { provinces: [null, aProvince({ tax: 4 }), aProvince({ id: 1, tax: 0 })] } }, 0),
+        () => fn('botTaxIncome')({ world: {} }, 0),
+        () => fn('botLandCount')({ world: {} }, 0),
+        () => fn('botCoastalPorts')({ world: {} }, 0),
+        () => fn('botFlyerPorts')({ world: {} }, 0),
+        () => fn('botHeroCap')({ world: {}, players: [] }, 0),
+        () =>
+          fn('botHeroCap')(
+            { world: { provinces: [null, aProvince()] }, players: [{ alignment: 'Neutral', gold: 31 }] },
+            0,
+          ),
+      ]),
+    ).toBe(
+      '[[{"leaders":[4,3],"defenders":[],"primaryId":4,"reach":2,"want":1},{"income":0,"warFooting":false,"upkeepCap":12,"upkeep":16,"budget":27,"recruitedByProv":{},"rumourFund":0,"warChest":0,"diag":{"gold":30,"income":0,"reserve":3,"budget0":27,"upkeep0":18,"cap":16,"calls":0,"noTypes":0,"noKin":0,"capStop":0,"budgetStop":0,"tokens":0,"holdersIdle":0,"holdersInRecruit":0,"navCap":4,"airCap":0},"defReserve":0,"navReserve":0,"airReserve":0,"nav":{"cap":4,"upkeep":2,"id":3},"air":null},18],5,0,4,0,0,[],[],4,8]',
+    );
+  });
+  test('the enemies in sight, the defence of a province and the bodies to raise, on a world that lacks its lists', () => {
+    expect(
+      results([
+        () => fn('botUnderAttack')(aWorld(), 0),
+        () =>
+          fn('botUnderAttack')(
+            aWorld({
+              world: { provinces: [aProvince()] },
+              relations: { '0-1': 'enemy' },
+              characters: [null, { id: 1, player: 1, alive: true, location: 0 }],
+            }),
+            0,
+          ),
+        () => fn('botNeedsSlayer')({}, 0),
+        () => fn('botAtWar')({}, 0),
+        () =>
+          fn('botAtWar')(
+            {
+              players: [{}, null, {}],
+              characters: [null, { player: 2, alive: true, isKing: true }],
+              relations: { '0-2': 'enemy' },
+            },
+            0,
+          ),
+        () => fn('botMaxEnemyStack')({}, 0),
+        () => fn('botFleetHullCount')({}, 0),
+        () =>
+          fn('botFleetHullCount')(
+            {
+              characters: [
+                null,
+                { player: 0, alive: true },
+                { player: 0, alive: true, armies: [null, { type: 'Galleon Fleet' }] },
+              ],
+            },
+            0,
+          ),
+        () => fn('botEnemyDefence')(aWorld(), aProvince(), 1, null),
+        () =>
+          fn('botEnemyDefence')(
+            aWorld({
+              characters: [
+                null,
+                {
+                  id: 4,
+                  player: 1,
+                  alive: true,
+                  race: 'Human',
+                  armies: [{ type: 'Shieldwall Levies', race: 'Human', quality: 'Average' }],
+                },
+                { id: 5, player: 2, alive: true },
+              ],
+            }),
+            aProvince({
+              characters: [4, 5, 6],
+              garrisonArmies: [{ type: 'Human Garrison', race: 'Human', quality: 'Average' }],
+            }),
+            1,
+            null,
+          ),
+        () => fn('botEnemyDefence')(aWorld(), aProvince({ characters: [4] }), 1, null),
+        () => fn('botDefenceNeed')(aWorld({ world: { provinces: [] } }), aProvince(), 0),
+        () => fn('botDefenceNeed')(aWorld({ world: { provinces: [] } }), null, 0),
+        () =>
+          fn('botDefenceNeed')(
+            aWorld({
+              world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 1 })] },
+              relations: { '0-1': 'enemy' },
+              characters: [
+                null,
+                { id: 1, player: 1, alive: true, location: 1, armies: [{ type: 'Shieldwall Levies' }] },
+                { id: 2, player: 0, alive: true, location: 0 },
+              ],
+            }),
+            aProvince({ characters: [2, 3] }),
+            0,
+          ),
+        () => fn('botEnemyChars')(aWorld(), aProvince(), 0),
+        () =>
+          fn('botEnemyChars')(
+            aWorld({
+              world: { provinces: [aProvince()] },
+              relations: { '0-1': 'enemy' },
+              characters: [{ id: 1, player: 1, alive: true, location: 0, isKing: true }],
+            }),
+            aProvince(),
+            0,
+          ),
+        () => fn('botEnemyHostsIn')(aWorld(), 0, aProvince()),
+        () => fn('botInContact')(aWorld(), 0, {}),
+        () => fn('botNearbyThreat')({ world: { provinces: [aProvince()] } }, 0, { location: 0 }),
+        () => fn('botRaiseTargets')({ players: [{}] }, 0),
+        () =>
+          fn('botRaiseTargets')(
+            {
+              players: [{ knownDeadHeroIds: [4, 5] }],
+              heroGraveyard: [
+                null,
+                { id: 4, player: 0, location: 2 },
+                { id: 5, player: 0, location: 3, skills: { melee: 2 } },
+              ],
+              characters: [null],
+            },
+            0,
+          ),
+        () => fn('botHasMetPlayers')({ turn: 2 }, 0),
+        () => fn('botEnemyIntel')({}, 0),
+        () => fn('botUpdateIntel')({ turn: 4, players: [{}] }, 0),
+        () =>
+          fn('botUpdateIntel')(
+            {
+              turn: 4,
+              players: [
+                { _botIntel: { generals: {}, heroes: {} } },
+                { _botIntel: { generals: { 7: { turn: 3, player: 2, units: 2 } } } },
+                {},
+              ],
+              relations: { '0-1': 'allied', '0-2': 'enemy' },
+              characters: [null, { id: 8, player: 2, alive: true, location: 0, isKing: true }],
+              world: { cols: 2, rows: 1, provinces: [aProvince()] },
+            },
+            0,
+          ),
+        () => fn('botAssumedChar')({ players: [{}] }, 0, { id: 3, player: 1, items: [{ name: 'a ring' }] }),
+      ]),
+    ).toBe(
+      '[false,false,true,false,true,0,0,1,0,12,0,0,0,0,{"force":0,"value":0,"hasKing":false,"units":0},{"force":0,"value":50,"hasKing":true,"units":0},[],false,false,[],[{"g":{"id":5,"player":0,"location":3,"skills":{"melee":2}},"loc":3,"val":2},{"g":{"id":4,"player":0,"location":2},"loc":2,"val":0}],false,{"generals":{},"heroes":{}},{"generals":{},"heroes":{}},{"generals":{"7":{"turn":3,"player":2,"units":2}},"heroes":{}},{"id":3,"player":1,"items":[],"skills":{"melee":3,"archery":2,"tactical":2,"elemental":2}}]',
+    );
+  });
+  test('the musters, a garrison, a hire and the kinds a province raises, with lists and fields missing', () => {
+    expect(
+      results([
+        () => fn('botGarrisonType')({}),
+        () => {
+          const prov = aProvince({ armyTypes: ['Strange Garrison'] });
+          const L = aLedger();
+          return [
+            fn('botGarrisonOrder')(
+              aWorld({ world: { provinces: [prov] }, players: [{ homeProvinceId: 0 }] }),
+              0,
+              prov,
+              L,
+            ),
+            L,
+          ];
+        },
+        () => fn('botRecruitCmdr')(aWorld(), 0, { id: 1, location: 0 }),
+        () => fn('botRecruitOrder')(['Shieldwall Levies|', 'Archers'], null),
+        () => fn('botRecruitOrder')(['Shieldwall Levies|2'], 4),
+        () => {
+          const prov = aProvince({
+            armyTypes: ['Strange Levies', 'Shieldwall Levies', 'Human Garrison', 'Galleon Fleet'],
+          });
+          const L = aLedger();
+          const c = { id: 1, player: 0, alive: true, location: 0, race: 'Human' };
+          return [
+            fn('botFieldRecruitTokensCore')(aWorld({ world: { provinces: [prov] }, characters: [c] }), 0, c, prov, L),
+            L,
+          ];
+        },
+        () => {
+          const prov = aProvince({ armyTypes: ['Galleon Fleet', 'Shieldwall Levies'] });
+          const L = aLedger({ diag: {} });
+          const c = { id: 1, player: 0, alive: true, location: 0, race: 'Human', _botRole: 'admiral' };
+          return [
+            fn('botFieldRecruitTokensCore')(aWorld({ world: { provinces: [prov] }, characters: [c] }), 0, c, prov, L),
+            L,
+          ];
+        },
+        () => {
+          const prov = aProvince({ armyTypes: ['Eagle Riders', 'Shieldwall Levies', 'Strange Levies'] });
+          const L = aLedger();
+          const c = { id: 1, player: 0, alive: true, location: 0, race: 'Human', _botRole: 'skygeneral' };
+          return [
+            fn('botFieldRecruitTokensCore')(aWorld({ world: { provinces: [prov] }, characters: [c] }), 0, c, prov, L),
+            L,
+          ];
+        },
+        () => {
+          const prov = aProvince({ armyTypes: ['Shieldwall Levies'] });
+          const L = aLedger({ budget: 0 });
+          const c = { id: 1, player: 0, location: 0, race: 'Human' };
+          return [fn('botFieldRecruitTokensCore')(aWorld({ world: { provinces: [prov] } }), 0, c, prov, L), L];
+        },
+        () => {
+          const prov = aProvince({ armyTypes: ['Shieldwall Levies'] });
+          const L = aLedger({ upkeepCap: 0 });
+          const c = { id: 1, player: 0, location: 0, race: 'Human' };
+          return [fn('botFieldRecruitTokensCore')(aWorld({ world: { provinces: [prov] } }), 0, c, prov, L), L];
+        },
+        () => {
+          const prov = aProvince({ armyTypes: ['Human Garrison', 'Galleon Fleet'] });
+          const L = aLedger();
+          const c = { id: 1, player: 0, location: 0, race: 'Human' };
+          return [fn('botFieldRecruitTokensCore')(aWorld({ world: { provinces: [prov] } }), 0, c, prov, L), L];
+        },
+        () => fn('botFieldRecruitTokensCore')(aWorld(), 0, { id: 1 }, aProvince({ armyTypes: undefined }), aLedger()),
+        () => {
+          const L = aLedger();
+          const h = { id: 2, player: null, alive: true, location: 0, alignment: 'Neutral', skills: {} };
+          return [
+            fn('botHireOrder')(
+              aWorld({ world: { provinces: [aProvince()] }, characters: [null, h] }),
+              0,
+              { id: 1, location: 0 },
+              L,
+            ),
+            L,
+          ];
+        },
+        () => fn('botRecruitableTypes')({ id: 0 }, null, null),
+        () =>
+          fn('botRecruitableTypes')(aProvince({ armyTypes: ['Strange Levies', 'Mountain Guns', ''] }), aWorld(), {
+            player: 0,
+            race: 'Human',
+          }),
+        () =>
+          fn('botRecruitableTypes')(
+            aProvince({ armyTypes: ['Shieldwall Levies'], race: null }),
+            {
+              players: [{ alignment: '' }],
+              world: { provinces: [null, aProvince({ id: 1, col: 1, race: null, armyTypes: ['Orc Raiders'] })] },
+            },
+            { player: 0, race: 'Orcish' },
+          ),
+        () =>
+          fn('botRecruitableTypes')(
+            aProvince({ armyTypes: ['Shieldwall Levies'], race: 'Human' }),
+            {
+              world: {
+                provinces: [
+                  aProvince({ id: 1, col: 1, race: 'Orcish' }),
+                  aProvince({ id: 2, col: 1, race: 'Orcish', armyTypes: ['', 'Goblin Horde'] }),
+                ],
+              },
+            },
+            { player: null, race: 'Orcish' },
+          ),
+        () => fn('botDrillOrder')({}, 0, {}),
+        () =>
+          fn('botDrillOrder')({ players: [{}], characters: [] }, 0, {
+            armies: [{ type: 'Shieldwall Levies' }],
+            skills: { tactical: 2 },
+          }),
+      ]),
+    ).toBe(
+      '[null,[{"action":"recruit","target":"Strange Garrison|1,to:garrison","extra":"","desc":"Garrison undefined (1)"},{"budget":39,"upkeep":1,"upkeepCap":40,"recruitedByProv":{"0":{"Strange Garrison":1}}}],{"id":1,"location":0},{"action":"recruit","target":"Shieldwall Levies|,Archers","extra":"","desc":"Recruit 2 units"},{"action":"recruit","target":"Shieldwall Levies|2,to:4","extra":"","desc":"Recruit 2 units"},[["Galleon Fleet|1","Strange Levies|3","Shieldwall Levies|3"],{"budget":25,"upkeep":15,"upkeepCap":40,"recruitedByProv":{"0":{"Galleon Fleet":1,"Strange Levies":1,"Shieldwall Levies":1}}}],[["Galleon Fleet|1","Shieldwall Levies|1"],{"budget":35,"upkeep":5,"upkeepCap":40,"recruitedByProv":{"0":{"Galleon Fleet":1,"Shieldwall Levies":1}},"diag":{"calls":1,"tokens":1}}],[["Eagle Riders|1","Shieldwall Levies|1"],{"budget":34,"upkeep":6,"upkeepCap":40,"recruitedByProv":{"0":{"Eagle Riders":1,"Shieldwall Levies":1}}}],[[],{"budget":0,"upkeep":0,"upkeepCap":40,"recruitedByProv":{"0":{}}}],[[],{"budget":40,"upkeep":0,"upkeepCap":0,"recruitedByProv":{"0":{}}}],[["Galleon Fleet|1"],{"budget":37,"upkeep":3,"upkeepCap":40,"recruitedByProv":{"0":{"Galleon Fleet":1}}}],[],[{"action":"hire","target":"2","extra":"","desc":"Hire undefined"},{"budget":38,"upkeep":2,"upkeepCap":40,"recruitedByProv":{},"hired":{}}],[],["Mountain Guns","Strange Levies"],["Shieldwall Levies"],["Shieldwall Levies"],null,{"action":"practice","target":"druid","extra":"","desc":"Practice Druid (lead the host cleanly)"}]',
+    );
+  });
+  test("a hero seen beside the realm's own, a court of many heroes, a host of the grudge race, a frontier and the tables' fallbacks", () => {
+    expect(
+      results([
+        () => {
+          // realm 0's hero 1 stands in column 0 beside hero 2 of realm 1, at war, who leads no units listed
+          const provinces = [aProvince({ tax: 2 }), aProvince({ id: 1, col: 1, tax: 2 })];
+          const G = aWorld({
+            world: { cols: 5, provinces },
+            players: [{}, {}],
+            relations: { '0-1': 'enemy' },
+            characters: [
+              { id: 1, player: 0, alive: true, location: 0 },
+              { id: 2, player: 1, alive: true, location: 0, name: 'Ser Vane' },
+            ],
+          });
+          return [
+            fn('botMaxEnemyStack')(G, 0),
+            fn('botNearbyThreat')(G, 0, { location: 1 }),
+            fn('botEnemyHostsIn')(G, 0, provinces[0]),
+            fn('botUpdateIntel')(G, 0),
+          ];
+        },
+        () => {
+          // a host of realm 1 seen in realm 0's column 1, beside realm 0's hero: column 0, with no heroes or garrison listed
+          const G = aWorld({
+            world: { cols: 5, provinces: [aProvince({ tax: 2 }), aProvince({ id: 1, col: 1, tax: 2 })] },
+            players: [{}, {}],
+            relations: { '0-1': 'enemy' },
+            characters: [
+              { id: 1, player: 0, alive: true, location: 1 },
+              {
+                id: 2,
+                player: 1,
+                alive: true,
+                location: 1,
+                armies: [{ type: 'Shieldwall Levies', race: 'Human', quality: 'Average' }],
+              },
+            ],
+          });
+          return fn('botDefenceNeed')(G, aProvince({ tax: 2 }), 0);
+        },
+        () => fn('botAtWar')({ players: [{}, {}] }, 0),
+        () => fn('botCoastalFleetType')({}),
+        () => fn('botCoastalFleetType')({ armyTypes: ['Shieldwall Levies'] }),
+        () => fn('botFlyerType')(null),
+        () => fn('botFlyerType')({}),
+        () => fn('botHeroCap')({ world: {} }, 0),
+        () => fn('botHireOrder')(aWorld(), 0, { id: 1, location: 0 }, aLedger()),
+        () => fn('botRaiseTargets')({ heroGraveyard: [{ id: 4, player: 0, location: 2 }] }, 0),
+        () =>
+          fn('botRaiseTargets')(
+            { players: [{ knownDeadHeroIds: [4] }], heroGraveyard: [{ id: 4, player: 0, location: 2 }] },
+            0,
+          ),
+        () => fn('botUpdateIntel')({}, 0),
+        () => fn('botRoleTrainSkill')({ _botRole: 'spy', skills: {} }),
+        () =>
+          fn('botHomeId')(
+            aWorld({
+              players: [{ homeProvinceId: 7 }],
+              world: {
+                cols: 4,
+                provinces: [
+                  aProvince({ tax: 0 }),
+                  aProvince({ id: 1, col: 1, tax: undefined }),
+                  aProvince({ id: 2, col: 2, tax: 3 }),
+                  aProvince({ id: 3, col: 3, tax: 0 }),
+                ],
+              },
+            }),
+            0,
+          ),
+        () => {
+          // realm 0 holds columns 0 and 1; column 2 is open land of no tax, column 3 the sea
+          const provinces = [
+            aProvince(),
+            aProvince({ id: 1, col: 1 }),
+            aProvince({ id: 2, col: 2, owner: null, tax: 0 }),
+            aProvince({ id: 3, col: 3, owner: null, terrain: 'sea' }),
+          ];
+          const G = aWorld({ world: { cols: 4, provinces }, characters: [] });
+          return fn('botFrontierTarget')(G, 0, provinces[0]);
+        },
+        () => {
+          // an Orcish lord in Human land two hops from Orcish land of the realm's, past a province of it that lists no units:
+          // the grudge race gives him nothing, and a muster there with no tally finds no kin
+          const prov = aProvince({ race: 'Human', armyTypes: ['Shieldwall Levies'] });
+          const G = aWorld({
+            world: {
+              cols: 4,
+              provinces: [
+                prov,
+                aProvince({ id: 1, col: 1, race: 'Orcish' }),
+                aProvince({ id: 2, col: 2, race: 'Orcish', armyTypes: ['Goblin Horde'] }),
+              ],
+            },
+          });
+          const c = { id: 1, player: 0, alive: true, location: 0, race: 'Orcish' };
+          const L = aLedger();
+          return [
+            fn('botRecruitableTypes')(prov, G, c),
+            fn('botFieldRecruitTokensCore')(G, 0, c, prov, L),
+            L,
+            fn('botRecruitableTypes')(prov, { world: {} }, c),
+          ];
+        },
+        () =>
+          fn('botRecruitableTypes')(
+            aProvince({ armyTypes: ['Shieldwall Levies', 'Strange Levies'], race: null }),
+            aWorld(),
+            { player: 0, race: 'Human' },
+          ),
+        () =>
+          fn('botRecruitableTypes')(
+            aProvince({ armyTypes: ['Shieldwall Levies', 'Strange Levies'], race: '' }),
+            aWorld(),
+            { player: 0, race: 'Human' },
+          ),
+        () =>
+          fn('botRecruitableTypes')(
+            aProvince({ armyTypes: ['Shieldwall Levies', 'Elder Dragons'] }),
+            aWorld({ players: [{ alignment: 'Good', race: 'Human', discoveries: 5 }], characters: [] }),
+            { player: 0, race: 'Human', skills: {}, armies: [] },
+          ),
+        () =>
+          fn('botRecruitableTypes')(
+            aProvince({ armyTypes: ['Elder Dragons', 'Shieldwall Levies'], race: null }),
+            aWorld({ players: [{ alignment: 'Good', race: 'Human', discoveries: [] }], characters: [] }),
+            { player: 0, race: 'Human', skills: {}, armies: [] },
+          ),
+        () =>
+          fn('botRecruitableTypes')(
+            aProvince({ armyTypes: ['Elder Dragons', 'Shieldwall Levies'], race: '' }),
+            aWorld({ players: [{ alignment: 'Good', race: 'Human', discoveries: [] }], characters: [] }),
+            { player: 0, race: 'Human', skills: {}, armies: [] },
+          ),
+        () =>
+          fn('botHomeId')(
+            aWorld({
+              world: {
+                cols: 3,
+                provinces: [
+                  aProvince({ owner: 1 }),
+                  aProvince({ id: 1, col: 1, tax: 0 }),
+                  aProvince({ id: 2, col: 2, tax: 5 }),
+                ],
+              },
+            }),
+            0,
+          ),
+        () => {
+          // a flying general who leads a flyer, where no flyer is raised and no tally is kept: the foot he can carry
+          const prov = aProvince({ armyTypes: ['Strange Levies'] });
+          const c = {
+            id: 1,
+            player: 0,
+            alive: true,
+            location: 0,
+            race: 'Human',
+            _botRole: 'skygeneral',
+            armies: [{ type: 'Eagle Riders' }],
+          };
+          const L = aLedger();
+          return [
+            fn('botFieldRecruitTokensCore')(aWorld({ world: { provinces: [prov] }, characters: [c] }), 0, c, prov, L),
+            L,
+          ];
+        },
+        () => {
+          // a court of a king and five heroes with no skills or units listed, at turn 5, holding four provinces: one defender
+          const G = aWorld({
+            turn: 5,
+            world: { cols: 4, provinces: [0, 1, 2, 3].map((id) => aProvince({ id, col: id })) },
+            characters: [
+              { id: 1, player: 0, alive: true, isKing: true, location: 0, skills: { tactical: 5 }, armies: [] },
+              ...[2, 3, 4, 5, 6].map((id) => ({ id, player: 0, alive: true, location: 0 })),
+            ],
+          });
+          return [fn('botRoles')(G, 0), fn('botLedger')(G, 0)];
+        },
+        () => {
+          // a court of five heroes who each lead three units and a king who leads none, at turn 5, where a flyer is raised:
+          // the flying general is wanted, and none is free to be him
+          const host = () => [1, 2, 3].map(() => ({ type: 'Shieldwall Levies' }));
+          const G = aWorld({
+            turn: 5,
+            world: { provinces: [aProvince({ armyTypes: ['Eagle Riders'] })] },
+            characters: [
+              { id: 1, player: 0, alive: true, isKing: true, location: 0 },
+              ...[2, 3, 4, 5, 6].map((id) => ({
+                id,
+                player: 0,
+                alive: true,
+                location: 0,
+                skills: { tactical: 1 },
+                armies: host(),
+              })),
+            ],
+          });
+          return fn('botRoles')(G, 0);
+        },
+        () => {
+          // an admiral who leads no units listed
+          const G = aWorld({
+            world: {
+              provinces: [
+                aProvince({ armyTypes: ['Galleon Fleet'] }),
+                aProvince({ id: 1, col: 1, terrain: 'sea', owner: null }),
+              ],
+            },
+            players: [{ gold: 30 }],
+            characters: [
+              { id: 1, player: 0, alive: true, isKing: true, location: 0 },
+              { id: 3, player: 0, alive: true, location: 0, skills: { naval: 2 } },
+              {
+                id: 4,
+                player: 0,
+                alive: true,
+                location: 0,
+                armies: [{ type: 'Galleon Fleet' }, { type: 'Shieldwall Levies' }, { type: 'Shieldwall Levies' }],
+              },
+              { id: 5, player: 0, alive: true, location: 0 },
+            ],
+          });
+          return fn('botLedger')(G, 0);
+        },
+      ]),
+    ).toBe(
+      '[[0,false,[],{"generals":{},"heroes":{"2":{"turn":3,"provId":0,"units":0,"name":"Ser Vane","player":1,"isKing":false,"strength":0,"skillsKnown":false}}}],8,false,null,null,null,null,4,null,[],[{"g":{"id":4,"player":0,"location":2},"loc":2,"val":0}],null,null,2,1,[[],[],{"budget":40,"upkeep":0,"upkeepCap":40,"recruitedByProv":{"0":{}}},["Shieldwall Levies"]],["Shieldwall Levies","Strange Levies"],["Shieldwall Levies","Strange Levies"],["Elder Dragons","Shieldwall Levies"],["Shieldwall Levies","Elder Dragons"],["Shieldwall Levies","Elder Dragons"],2,[["Strange Levies|1"],{"budget":38,"upkeep":2,"upkeepCap":40,"recruitedByProv":{"0":{"Strange Levies":1}}}],[{"leaders":[1,2],"defenders":[3],"primaryId":1,"reach":5,"want":2},{"income":0,"warFooting":false,"upkeepCap":0,"upkeep":0,"budget":-3,"recruitedByProv":{},"rumourFund":0,"warChest":0,"diag":{"gold":0,"income":0,"reserve":3,"budget0":-3,"upkeep0":0,"cap":0,"calls":0,"noTypes":0,"noKin":0,"capStop":0,"budgetStop":0,"tokens":0,"holdersIdle":0,"holdersInRecruit":0,"navCap":0,"airCap":0},"defReserve":0,"navReserve":0,"airReserve":0,"nav":null,"air":null}],{"leaders":[2,3,4,5,6],"defenders":[],"primaryId":2,"reach":2,"want":5},{"income":0,"warFooting":false,"upkeepCap":12,"upkeep":7,"budget":27,"recruitedByProv":{},"rumourFund":0,"warChest":0,"diag":{"gold":30,"income":0,"reserve":3,"budget0":27,"upkeep0":7,"cap":16,"calls":0,"noTypes":0,"noKin":0,"capStop":0,"budgetStop":0,"tokens":0,"holdersIdle":0,"holdersInRecruit":0,"navCap":4,"airCap":0},"defReserve":0,"navReserve":0,"airReserve":0,"nav":{"cap":4,"upkeep":0,"id":3},"air":null}]',
+    );
   });
 });

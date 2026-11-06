@@ -108,7 +108,7 @@ test("a fallen king's body stays in his home after it is captured: the map, the 
     (rep.visibleDeadHeroes ?? []).find((g) => g.id === king.id)?.locationId,
     'the map shows the body in the same place',
   ).toBe(home);
-  const bot = (botRaiseTargets(S, 0) as { g: { id: number }; loc: number }[]).find((t) => t.g.id === king.id);
+  const bot = (botRaiseTargets(S as never, 0) as { g: { id: number }; loc: number }[]).find((t) => t.g.id === king.id);
   expect(bot?.loc, 'a bot realm would march to the captured home to raise him').toBe(home);
   expect(G.heroGraveyard[0]?.location, 'nothing above moved the stored body').toBe(home);
 });

@@ -24,6 +24,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   the value is `!!(x && x.flag)`'s, a truthy flag that isn't `true` included.
 - **A `let` set inside a `forEach` callback** is still its first value to the compiler: a `for … of` over the same list,
   `continue` for the callback's `return`; or, where it is handed back, the function's return type written.
+  A `let` set in a loop inside a `while` may still read as its first value (`null`: the frontier's best, P1-10b41):
+  one `const` object holding it (`best.id`, `best.oc`) is read as its declared type.
 - **A table's element made sure by a key that is a field** (`if (!G.turnOrders[h.id]) …; G.turnOrders[h.id][p]`)
   is read by a plain `const` key (`const hiredsId = h.id`), and `if (!x) x = []` on it is `x ??= []`, which narrows.
 - **A branch the check above makes dead** (`h.player === null ? wage : h.pay || 1` after a check that every hired
@@ -56,7 +58,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   throws. A call whose typed callee takes a realm's index, made for a hero who may serve none, is made only for a
   realm's hero where the callee does nothing at `G.players[null]` (`if (c.player !== null) recordDeadHeroSighting(…)`).
 - **A list indexed by a key that may be missing** (`G.world.provinces[c._attackedFrom]`) is `k === undefined ?
-  undefined : list[k]`; a record by words indexed by a realm's index that may be `null` is `table?.[String(n)]`, as
+  undefined : list[k]`; where a staged world may lack the list itself (a realm of no home), `list[k ?? -1]` keeps the
+  read and its throw (no list holds a `-1` element, nor an `undefined` one: P1-10b41's case failed on the first form); a record by words indexed by a realm's index that may be `null` is `table?.[String(n)]`, as
   JavaScript reads `table[null]`.
 - **A `let` that a `try` and its `catch` (or its `finally`) always set** is declared with its type and no first value
   (`let base: number;`): the compiler sees it set after them, and lint's `no-useless-assignment` no longer finds a first

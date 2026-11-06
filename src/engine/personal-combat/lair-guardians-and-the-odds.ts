@@ -12,6 +12,7 @@ import { theApproachesAGuardiansPerksTurn } from '../rules/the-registry-of-guard
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, transferableItems } from './helpers.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { aCopyMadeThroughJson } from '../rules-on-plain-values/a-copy-made-through-json-and-typed-as-its-original.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.ts';
 import {
@@ -70,18 +71,6 @@ interface AHeroAsTheRoutsDropGuardsHim {
 /** A hoard's item as the guardian who wields it reads its effect (an item an untyped caller stages may have none). */
 interface AnItemAsItsEffectIsGuarded {
   readonly effect?: Item['effect'] | null | undefined;
-}
-
-/** A copy of `value` made through JSON, as the Hunting Rumours fight on: the copy has the original's type once
- *  `itsJsonIsTheOriginals` has found its JSON the same as the original's (Theo's form, 2026-10-30, plan P1-10b14). */
-function aCopyMadeThroughJson<Value>(value: Value): Value {
-  const copy: unknown = JSON.parse(JSON.stringify(value));
-  if (!itsJsonIsTheOriginals(copy, value)) throw new Error('a copy made through JSON differs from its original');
-  return copy;
-}
-/** Whether a copy's JSON is its original's: the check that types a copy made through JSON as its original. */
-function itsJsonIsTheOriginals<Value>(copy: unknown, original: Value): copy is Value {
-  return JSON.stringify(copy) === JSON.stringify(original);
 }
 
 // ── PERSONAL COMBAT: LAIR GUARDIANS AND THE ODDS (plan P1-08f: lifted out of resolveTurn) ────
