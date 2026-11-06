@@ -18,6 +18,7 @@ import {
   theTrainedLevelOfAHerosSkillThatCounts,
 } from '../../src/engine/rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
 import * as theArmyTables from '../../src/engine/army-tables.ts';
+import { skillBonusBreakdown } from '../../src/engine/heroes/skills-and-hp.ts';
 
 describe("the numbers a skill's level is counted by", () => {
   test('training counts to 5; a skill reaches 9 at most', () => {
@@ -108,5 +109,40 @@ describe("a hero's items, each name once", () => {
     const c = { name: '', effect: { stat: 'spy', bonus: 2 } };
     expect(dedupeItemsByName([a, b, c])).toEqual([a, c]);
     expect(dedupeItemsByName([{ name: '' }, { effect: null }, { name: 'fx:{}' }])).toEqual([{ name: '' }]);
+  });
+});
+
+describe('skillBonusBreakdown asks it: the level and what the extras are worth', () => {
+  const aTrinket = (name: string, stat: string, bonus: number) => ({ name, effect: { stat, bonus }, tier: 1 });
+  const theCrown = { name: 'Crown of Command', effect: { stat: 'aura', bonus: 1 }, tier: 4 };
+  test('two Dreamstones on Psychic 2 count once: 3, worth 1', () => {
+    const hero = {
+      skills: { psychic: 2 },
+      items: [aTrinket('Dreamstone', 'psychic', 1), aTrinket('Dreamstone', 'psychic', 1)],
+    };
+    expect(skillBonusBreakdown(hero, 'psychic', null)).toMatchObject({ base: 2, items: 1, total: 3, bonus: 1 });
+  });
+  test('a trained Tactical 7 counts as 5, and a +2 Tome on it is worth nothing', () => {
+    const hero = { skills: { tactical: 7 }, items: [aTrinket('A Tome', 'tactical', 2)] };
+    expect(skillBonusBreakdown(hero, 'tactical', null)).toMatchObject({ base: 7, items: 2, total: 5, bonus: 0 });
+  });
+  test("a Curse's cut and the Crown's aura each count, beside the items", () => {
+    const hero = {
+      id: 1,
+      player: 0,
+      location: 5,
+      alive: true,
+      skills: { melee: 5 },
+      _curses: { melee: 2 },
+      items: [aTrinket('A Blade', 'melee', 3), theCrown],
+    };
+    expect(skillBonusBreakdown(hero, 'melee', [hero])).toMatchObject({
+      base: 5,
+      items: 3,
+      aura: 1,
+      curse: -2,
+      total: 7,
+      bonus: 2,
+    });
   });
 });
