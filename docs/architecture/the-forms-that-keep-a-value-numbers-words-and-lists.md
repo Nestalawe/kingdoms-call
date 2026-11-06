@@ -25,6 +25,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   would keep a `''`.
 - **`x || {}` on a value of any type** (a game's setup, held as JSON or parsed) goes through a reader written with an
   `if` (`aSetUpOrNone`: `if (held) return held; return {};`): lint asks for `??` in place of both `||` and a ternary.
+- **`String(v == null ? '' : v)` on a value of any kind** (what a page hands `kcEsc`: an object shows as `[object
+  Object]`) is `const shown: unknown = typeof v === 'undefined' || v === null ? '' : v;`, then `String(shown)`: `v ?? ''`
+  narrows `v` to `{}`, which lint's `no-base-to-string` refuses, and would show `document.all`, which `== null` reads as
+  missing.
 - **`(x != null && list.find(…)) || y`**, the found element else a fallback, is `(x != null ? list.find(…) : undefined)
   ?? y`: `??` on the `false` the left can give would keep it.
 
@@ -65,6 +69,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   (`theOneTakenOut`); a value a filter has just kept and its map works out again (an item's slot), through one that throws
   for none (`theSlotTheFilterFound`). `G.players[c.player].name` after a check doesn't narrow: only a plain variable as
   the key does.
+- **A tagged template's text, `strings[i + 1]`, added to words** is `String(strings[i + 1])`, as `+` reads it; a
+  replacer's lookup (`{ '&': '&amp;', … }[c]`, `c` one of the table's keys) is `String(…)`, as `replace` reads it.
 - **A table read by any string** is typed inside the function that reads it, `Readonly<Partial<Record<string, T>>>`,
   not by a second module-level `const` (`tests/unit/engine-purity.test.ts` watches the engine's module-level names). A
   key that may be `undefined` is read as JavaScript reads it, `table[String(key)]`; an element by an index that may be
