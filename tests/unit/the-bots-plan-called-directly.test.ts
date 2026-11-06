@@ -30,6 +30,9 @@
 // difficulty, and the intel, the guesses and the estimates on a world lacking a list or a field. Then the strategy's
 // helpers on what no matrix game hands them (P1-10b41): a world, a realm, a hero, a province or a ledger lacking a list
 // or a field, the musters of an admiral, a flying general and a host, a garrison, a hire and the kinds a province raises.
+// Then the Spring orders pass on what no matrix game hands it (P1-10b42). Last, a case aimed at each fault the night
+// run's mutation session found unguarded (P1-21j): the empire's width, a feint past a visiting host, the forced march
+// at the second assault, a garrison raised under threat put first, and a Flood mage's pins within his casting limit.
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -1623,6 +1626,15 @@ describe("The strategy's helpers on what no matrix game hands them (P1-10b41)", 
       '[[0,false,[],{"generals":{},"heroes":{"2":{"turn":3,"provId":0,"units":0,"name":"Ser Vane","player":1,"isKing":false,"strength":0,"skillsKnown":false}}}],8,false,null,null,null,null,4,null,[],[{"g":{"id":4,"player":0,"location":2},"loc":2,"val":0}],null,null,2,1,[[],[],{"budget":40,"upkeep":0,"upkeepCap":40,"recruitedByProv":{"0":{}}},["Shieldwall Levies"]],["Shieldwall Levies","Strange Levies"],["Shieldwall Levies","Strange Levies"],["Elder Dragons","Shieldwall Levies"],["Shieldwall Levies","Elder Dragons"],["Shieldwall Levies","Elder Dragons"],2,[["Strange Levies|1"],{"budget":38,"upkeep":2,"upkeepCap":40,"recruitedByProv":{"0":{"Strange Levies":1}}}],[{"leaders":[1,2],"defenders":[3],"primaryId":1,"reach":5,"want":2},{"income":0,"warFooting":false,"upkeepCap":0,"upkeep":0,"budget":-3,"recruitedByProv":{},"rumourFund":0,"warChest":0,"diag":{"gold":0,"income":0,"reserve":3,"budget0":-3,"upkeep0":0,"cap":0,"calls":0,"noTypes":0,"noKin":0,"capStop":0,"budgetStop":0,"tokens":0,"holdersIdle":0,"holdersInRecruit":0,"navCap":0,"airCap":0},"defReserve":0,"navReserve":0,"airReserve":0,"nav":null,"air":null}],{"leaders":[2,3,4,5,6],"defenders":[],"primaryId":2,"reach":2,"want":5},{"income":0,"warFooting":false,"upkeepCap":12,"upkeep":7,"budget":27,"recruitedByProv":{},"rumourFund":0,"warChest":0,"diag":{"gold":30,"income":0,"reserve":3,"budget0":27,"upkeep0":7,"cap":16,"calls":0,"noTypes":0,"noKin":0,"capStop":0,"budgetStop":0,"tokens":0,"holdersIdle":0,"holdersInRecruit":0,"navCap":4,"airCap":0},"defReserve":0,"navReserve":0,"airReserve":0,"nav":{"cap":4,"upkeep":0,"id":3},"air":null}]',
     );
   });
+  test("the empire's width: each province measured against every other, the next in the list too (P1-21j)", () => {
+    const widthOf = (cols: readonly number[]) =>
+      fn('botEmpireDiameter')(
+        aWorld({ world: { cols: 10, rows: 1, provinces: cols.map((col, id) => aProvince({ id, col })) } }),
+        0,
+      );
+    // two provinces three apart; then the widest pair next to each other in the list, a nearer one between
+    expect([widthOf([0, 3]), widthOf([4, 0, 1])]).toEqual([3, 4]);
+  });
 });
 
 describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', () => {
@@ -1781,5 +1793,94 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
           ),
       ]),
     ).toBe('[null,null,null,null,null,{},{},{}]');
+  });
+  test('a feint looks past a visiting host beside the target to the owner’s own (P1-21j)', () => {
+    expect(
+      JSON.stringify(
+        feint((b) => {
+          // a host of a second enemy realm stands in the foe's province, listed before the foe's own host
+          b.G.relations['1-2'] = 'enemy';
+          const foe = must(
+            b.G.characters.find((c) => c.player === 0 && c.armies.length > 0),
+            'the foe’s host',
+          );
+          const visitor = standAHero(b, {
+            player: 2,
+            at: must(b.G.world.provinces[foe.location], 'his province'),
+            troops: 2,
+          });
+          b.G.characters = [visitor, ...b.G.characters.filter((c) => c !== visitor)];
+        }),
+      ),
+    ).toBe(
+      '[["leave_army|Men-at-Arms ##.0|Feint \u2014 Men-at-Arms ##.0 to Hero # to draw Hero # into Teeth Reef","move|dir:SE|Attack Wide Waters","defend||Hold","defend||Hold","defend||Hold"],["move|dir:NE|Feint on Teeth Reef (draw Hero # away from Wide Waters)","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]]',
+    );
+  });
+  test('a Master of March forces the second assault, never the last: of two back to back, the second; of three with a lightning strike second, none (P1-21j)', () => {
+    const marchOf = (second: Raw, third: Raw = hold()) => {
+      const { b } = fresh(() => ({ bots: [1] }));
+      const g = standAHero(b, { player: 1, at: b.X, troops: 3, skills: { melee: 2, tactical: 2, march: 7, spy: 0 } });
+      plans(b)[g.id] = [
+        { action: 'move', target: 'dir:E', extra: '', desc: 'Attack the first' },
+        second,
+        third,
+        hold(),
+        hold(),
+      ];
+      runBotPhaseOne(b.G, new Set([1]), 'order');
+      return words(b, g.id).slice(0, 3);
+    };
+    expect([
+      marchOf({ action: 'move', target: 'dir:E', extra: '', desc: 'Attack the second' }),
+      marchOf(
+        { action: 'lightning_advance', target: 'dir:E', extra: '', desc: 'Lightning strike on the second' },
+        { action: 'move', target: 'dir:E', extra: '', desc: 'Attack the third' },
+      ),
+    ]).toEqual([
+      ['move|dir:E|Attack the first', 'forced_march|dir:E|Forced March \u2014 Attack the second', 'defend||Hold'],
+      [
+        'move|dir:E|Attack the first',
+        'lightning_advance|dir:E|Lightning strike on the second',
+        'move|dir:E|Attack the third',
+      ],
+    ]);
+  });
+  test('a garrison raised with an enemy host next door goes first in the year (P1-21j)', () => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    const N = must(b.ring1[0], 'a neighbour');
+    b.own(b.X, 1);
+    const h = standAHero(b, { player: 1, at: b.X });
+    standAHero(b, { player: 0, at: N, troops: 6 });
+    plans(b)[standAHero(b, { player: 1, at: N }).id] = [hold(), hold(), hold(), hold(), hold()]; // the realm's eyes there
+    plans(b)[h.id] = [
+      hold(),
+      hold(),
+      { action: 'recruit', target: 'Men-at-Arms|2,to:garrison', extra: '', desc: 'Raise the garrison' },
+      hold(),
+      hold(),
+    ];
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    expect(words(b, h.id)).toEqual([
+      'recruit|Men-at-Arms|2,to:garrison|Raise the garrison',
+      'defend||Hold',
+      'defend||Hold',
+      'defend||Hold',
+      'defend||Hold',
+    ]);
+  });
+  test('a Flood mage pins no more provinces than his school lets him cast (P1-21j)', () => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(b.X, 1);
+    const mage = standAHero(b, {
+      player: 1,
+      at: b.X,
+      skills: { melee: 1, tactical: 1, march: 1, spy: 0, elemental: 1 },
+    });
+    for (const N of b.ring1.slice(0, 2)) {
+      standAHero(b, { player: 0, at: N, troops: 6 });
+      standAHero(b, { player: 1, at: N }); // the realm's eyes there
+    }
+    const pins = (engineFn(engine, 'botPins') as Fn)(b.G, 1) as Map<number, number>;
+    expect([pins.size, [...pins.values()].every((id) => id === mage.id)]).toEqual([1, true]);
   });
 });
