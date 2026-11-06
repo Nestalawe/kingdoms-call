@@ -572,7 +572,8 @@ describe('the march: where the order form says a hero will stand, and what march
     // war declared this turn stands from the first phase only for an Evil realm); a lone hero, a realm at war and
     // ships that carry the column pass. Since P1-11e11 a march past his pace stops where his pools run out: the pools
     // the report gives (Men-at-Arms march 2 a turn, a Galleon Fleet sails 3), each step spending the pool the turn's
-    // rule names (a voyage the sea pool: Men-at-Arms with Orcish Longships sail three seas past their land pace of 2).
+    // rule names (a voyage the sea pool: Men-at-Arms with Orcish Longships sail three seas past their land pace of 2),
+    // and a march the turn refuses spends none of it.
     const list = marches().filter((x) => (THE_MARCHES_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);

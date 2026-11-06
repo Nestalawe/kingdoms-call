@@ -1640,6 +1640,7 @@ export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   'past his pace',
   'past his pace at sea',
   'a voyage past his pace on land',
+  'a march the turn refuses, then two steps on his pace of 2',
 ] as const;
 /** The kinds of staged march the turn refuses (P1-11e10): the hero stays where he is, and a Search Lair the form sends
  *  after it names the province he stands in. */
@@ -1820,6 +1821,13 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     ['past his pace at sea', [open, sea, open, sea].map((p) => move(`prov:${id(p)}`)), sea, fleet()],
     // (three steps at sea, past his pace of 2 on land: a voyage spends the sea pool, his 3)
     ['a voyage past his pace on land', [sea, open, sea].map((p) => move(`prov:${id(p)}`)), sea, withShips()],
+    // (turned back at the border, which spends nothing of his pace of 2: then two steps)
+    [
+      'a march the turn refuses, then two steps on his pace of 2',
+      [border, first, second].map((p) => move(`prov:${id(p)}`)),
+      second,
+      men(),
+    ],
     ['a far province', [move(`prov:${id(second)}`)], second, men()],
     ['a far Forced March', [forced(id(second))], second, men()],
     ['a far province, leading ships', [move(`prov:${id(second)}`)], second, withShips()],
