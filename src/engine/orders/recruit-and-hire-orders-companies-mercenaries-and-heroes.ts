@@ -9,7 +9,12 @@ import {
   MONSTER_ARMIES,
   PRIMAL_SEA_TYPES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { beastCommandCount, beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
+import { beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
+import {
+  aMercenaryBandIsNotHiredIntoAFullColumn,
+  unitAsItsRealmSeesIt,
+  whereARecruitedCompanyMusters,
+} from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import {
   alignDistP,
   heroHireWage,
@@ -222,11 +227,18 @@ export function resolveRecruitArmiesOrder(
     // Orc Garrison unit never joins a column when recruited — it musters into the garrison of the
     // province it was raised in, whatever "Muster to" names (native recruiting already needs the
     // province to be ours). A character can still march it out with Pick Up Army.
-    const _toGarr = _destGarrison || (isGarrisonUnitType(unit.type) && prov.owner === c.player);
     // Item 24 (2026-10-12): a beast recruited into a column already holding as many beasts as its leader's
     // Druid musters into the garrison instead (native beasts are raised only in a province the realm holds).
-    const _overCmd =
-      !_toGarr && prov.owner === c.player && beastCommandCount(unit) && beastCommandRoom(_destChar, G.characters) <= 0;
+    // Both rules: whereARecruitedCompanyMusters (rules-on-plain-values/, plan P1-11e15).
+    const _musters = whereARecruitedCompanyMusters({
+      theOrderNamesTheGarrison: _destGarrison,
+      itIsAGarrisonCompany: isGarrisonUnitType(unit.type),
+      inAProvinceOfHisRealm: prov.owner === c.player,
+      theCompany: unitAsItsRealmSeesIt(unit),
+      theRoomTheColumnsBeastCommandLeaves: beastCommandRoom(_destChar, G.characters),
+    });
+    const _toGarr = _musters === 'the garrison';
+    const _overCmd = _musters === 'the garrison, the column it would join being full';
     if (_toGarr) {
       prov.garrisonArmies = asItsGuardReadsIt(prov.garrisonArmies) ?? [];
       prov.garrisonArmies.push(unit);
@@ -269,10 +281,12 @@ export function resolveRecruitArmiesOrder(
       _mercTokens.add(tok);
       // Item 24: a mercenary beast is not hired into a full column where there is no garrison to take it.
       if (
-        !_destGarrison &&
-        prov.owner !== c.player &&
-        beastCommandCount({ type: merc.type }) &&
-        beastCommandRoom(_destChar, G.characters) <= 0
+        aMercenaryBandIsNotHiredIntoAFullColumn({
+          theOrderNamesTheGarrison: _destGarrison,
+          inAProvinceOfHisRealm: prov.owner === c.player,
+          theCompany: unitAsItsRealmSeesIt({ type: merc.type }),
+          theRoomTheColumnsBeastCommandLeaves: beastCommandRoom(_destChar, G.characters),
+        })
       ) {
         emit(turnContext, {
           type: 'hire',

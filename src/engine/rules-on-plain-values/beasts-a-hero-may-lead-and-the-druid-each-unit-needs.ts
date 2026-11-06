@@ -45,6 +45,60 @@ export const BEAST_CMD_TYPES = new Set([...KC_UNIT_CLASS.creature, ...KC_UNIT_CL
 export function countsAgainstBeastCommand(a: AUnitAsItsRealmSeesIt | null | undefined): boolean {
   return !!a && BEAST_CMD_TYPES.has(a.type) && !a.skeletal && !a.temporary && !a.wildHunt && !a.phantom;
 }
+/** The room a leader's beast command leaves (plan P1-11e15): his Druid as it counts, less the beasts he leads that
+ *  count against it, never below none. A company is read as its realm sees it (`seenAs`: the engine hands
+ *  unitAsItsRealmSeesIt); a gap among his companies counts for none. A hero who serves no realm has no beast command:
+ *  the engine's beastCommandRoom answers Infinity for him before it asks this. */
+export function theRoomALeadersBeastCommandLeaves<TheCompany>(
+  hisDruid: number,
+  theCompaniesHeLeads: readonly TheCompany[],
+  seenAs: (company: TheCompany) => AUnitAsItsRealmSeesIt | null | undefined,
+): number {
+  return Math.max(0, hisDruid - theCompaniesHeLeads.filter((a) => countsAgainstBeastCommand(seenAs(a))).length);
+}
+
+// ── Where a recruited company musters (plan P1-11e15; moved as they were from the Recruit Armies order) ──
+/** Where a company a Recruit Armies order raises or hires musters: its province's garrison, the garrison because the
+ *  column it would join is full, or that column (the recruiter's, or the comrade's the order names). */
+export type WhereARecruitedCompanyMusters =
+  'the garrison' | 'the garrison, the column it would join being full' | 'the column';
+/** The facts where a recruited company musters is read from. */
+export interface ACompanyARecruitArmiesOrderMusters {
+  /** The order names the garrison ("to:garrison", in a province of his realm). */
+  readonly theOrderNamesTheGarrison: boolean;
+  /** Its type is a garrison company's (a Human, Elven, Dwarf or Orc Garrison). */
+  readonly itIsAGarrisonCompany: boolean;
+  /** The province it is raised or hired in is his realm's. */
+  readonly inAProvinceOfHisRealm: boolean;
+  /** The company, as its realm sees it. */
+  readonly theCompany: AUnitAsItsRealmSeesIt;
+  /** The room the beast command of the column it would join leaves (theRoomALeadersBeastCommandLeaves). */
+  readonly theRoomTheColumnsBeastCommandLeaves: number;
+}
+/** Where a recruited company musters. GARRISON UNITS GO STRAIGHT TO THE GARRISON (2026-09-23c, Toby): a garrison
+ *  company never joins a column when recruited; it musters into the garrison of the province it was raised in, whatever
+ *  "Muster to" names (a hero can still march it out with Pick Up Army). Item 24 (2026-10-12): a beast recruited into a
+ *  column already holding as many beasts as its leader's Druid musters into the garrison instead, in a province of his
+ *  realm (native beasts are raised only there). */
+export function whereARecruitedCompanyMusters(c: ACompanyARecruitArmiesOrderMusters): WhereARecruitedCompanyMusters {
+  if (c.theOrderNamesTheGarrison || (c.itIsAGarrisonCompany && c.inAProvinceOfHisRealm)) return 'the garrison';
+  if (c.inAProvinceOfHisRealm && countsAgainstBeastCommand(c.theCompany) && c.theRoomTheColumnsBeastCommandLeaves <= 0)
+    return 'the garrison, the column it would join being full';
+  return 'the column';
+}
+/** Whether a mercenary band roaming a province is not hired, before its price is asked (Item 24): a band of beasts, for
+ *  a column whose beast command has no room left, where there is no garrison to take it (the order names none, and the
+ *  province is not his realm's). */
+export function aMercenaryBandIsNotHiredIntoAFullColumn(
+  c: Omit<ACompanyARecruitArmiesOrderMusters, 'itIsAGarrisonCompany'>,
+): boolean {
+  return (
+    !c.theOrderNamesTheGarrison &&
+    !c.inAProvinceOfHisRealm &&
+    countsAgainstBeastCommand(c.theCompany) &&
+    c.theRoomTheColumnsBeastCommandLeaves <= 0
+  );
+}
 
 // DRUID ARMY LEVEL TABLE — a commander's Druid must be >= a unit's level, or it fights at −20% per
 // level short. A commander leads his OWN race's units as if he had Druid 1.
