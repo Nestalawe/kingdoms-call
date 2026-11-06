@@ -345,6 +345,11 @@ function projectedLedArmiesOn(report, orders, heroId, upTo) {
 function projectedGarrisonOn(report, orders, provId, upTo) {
   return onTheOrders(report, orders, () => projectedGarrison(provId, upTo));
 }
+// the companies the Pick Up field of the hero \`heroId\` offers in the phase \`ph\` (P1-11e17): the province \`provId\`'s
+// garrison as the phase begins, with what his comrades leave in it that phase
+function thePickUpFieldsGarrisonOn(report, orders, provId, ph, heroId) {
+  return onTheOrders(report, orders, () => projectedGarrison(provId, ph, true, heroId));
+}
 // The order list the form offers the hero (or the card) \`c\` (P1-11d3): each order's name, in the list's order; every
 // name the list may hold (ACTIONS); and the mastery orders' table it reads, each order with its skill and its level.
 function actionsForOn(report, c) {
@@ -404,6 +409,7 @@ const COPY_FUNCTIONS = [
   'predictedItemsOn',
   'projectedLedArmiesOn',
   'projectedGarrisonOn',
+  'thePickUpFieldsGarrisonOn',
   'actionsForOn',
   'theOrderListsNames',
   'theMasteryOrdersOfTheList',
@@ -2328,6 +2334,11 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a company left in the garrison, then taken up by a comrade next season',
   'a company taken up as a comrade leaves it, in the same phase',
   'a company disbanded',
+  // (P1-11e17: the forecasts' replay, each red on a fault planted in it)
+  'an item handed over by its name',
+  'every company left in the garrison',
+  'a company left in the garrison by its type',
+  'every company handed to a comrade beside him',
 ] as const;
 export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = [
   'Mithril Armour sent with "all"',
@@ -2789,6 +2800,44 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
     const taker = at(p);
     stage('a beast taken up past his beast command', 'companies', p, { taker }, { [id(taker)]: [pickUp('g:0')] });
   }
+  {
+    const p = aProvince();
+    const named = anItem(items[1]);
+    const [giver, comrade] = [at(p, { items: [anItem(items[0]), named] }), at(p)];
+    stage(
+      'an item handed over by its name',
+      'items',
+      null,
+      { giver, comrade },
+      { [id(giver)]: [send(String(named['name']), comrade)] },
+    );
+  }
+  {
+    const p = aProvince();
+    p['garrisonArmies'] = [unit('Longbowmen')];
+    const leader = at(p, { armies: [unit('Shieldwall Levies'), unit('Men-at-Arms')] });
+    stage('every company left in the garrison', 'companies', p, { leader }, { [id(leader)]: [leave('all')] });
+  }
+  {
+    // (the garrison alone is read: the form keeps a company left by its type with its leader, Parked)
+    const p = aProvince();
+    const leader = at(p, { armies: [unit('Shieldwall Levies'), unit('Men-at-Arms')] });
+    stage('a company left in the garrison by its type', 'companies', p, {}, { [id(leader)]: [leave('Men-at-Arms')] });
+  }
+  {
+    const p = aProvince();
+    const [giver, comrade] = [
+      at(p, { armies: [unit('Shieldwall Levies'), unit('Men-at-Arms')] }),
+      at(p, { armies: [unit('Longbowmen')] }),
+    ];
+    stage(
+      'every company handed to a comrade beside him',
+      'companies',
+      p,
+      { giver, comrade },
+      { [id(giver)]: [leave('all', id(comrade))] },
+    );
+  }
   return { world: quietly(() => savedAndReported(g)), holdings };
 }
 /** What the heroes of `holding` and its province's garrison hold in the state `G`: each item's name, or each
@@ -2892,6 +2941,18 @@ export function whatAHeroHoldsAgainstTheTurn(c: Copies): HoldingComparison[] {
       before: whatTheyHoldIn(world.state, holding),
     };
   });
+}
+/** The companies the Pick Up field offers the hero who takes up a company as a comrade leaves it, in the same phase
+ *  (projectedGarrison with the leaves of its own phase: P1-11e17), and those the turn gives him. */
+export function thePickUpFieldAsAComradeLeavesAgainstTheTurn(c: Copies): { field: string[]; turn: string[] } {
+  const { world, holdings } = holdingWorld();
+  const holding = holdings.find((h) => h.kind === 'a company taken up as a comrade leaves it, in the same phase');
+  if (!holding) throw new Error('no staged holding of a company taken up as a comrade leaves it');
+  const field = c.thePickUpFieldsGarrisonOn(world.report, holding.orders, holding.province, 0, holding.heroes['taker']);
+  return {
+    field: (Array.isArray(field) ? field : []).map(aCompany),
+    turn: whatTheyHoldIn(theTurnPlaysTheHolding(world.state, holding), holding)['taker'] ?? [],
+  };
 }
 /** What the army card's sea note tells the player, in the engine's words (getSeaCapability's answers): 'all' (every
  *  unit sails or flies on its own), 'sea' (the column can put to sea: its hulls carry it, or its flyers lift it and
