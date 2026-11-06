@@ -8,6 +8,7 @@ import {
   takesHalfAHullAboard,
   theAlignmentOrdersByTheNameTheFormWrites,
   theHexNextToAProvinceInADirection,
+  theMovePoolAStepSpends,
   whatAMarchsOrderNames,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
@@ -85,6 +86,10 @@ export function getOrderExtra(charId, ph) {
 // Search Lair names the lair where he stands: doSubmitOrders sends predictedLocation's province). Asked here in the
 // turn's order, by the engine's own rules (src/shared/), on the column the Move note counts (projectedMoveHost: the
 // companies he will lead as the march sets out, this phase's hand-overs among them):
+//   0. his pace (P1-11e11): the turn checks his move pools first. They are the paces the report gives (his land and sea
+//      pace: the turn's pools as the turn begins), and each step spends one point of the pool the turn's rule names
+//      (theMovePoolAStepSpends: the sea pool to put to sea or land from it, the land pool from land to land); a step
+//      whose pool is spent is refused;
 //   1. a neutral realm's border: a province of a realm his own is neither allied with nor at war with, and he leads
 //      companies (a lone hero passes). The relation is the report's; a war his realm declares on the form this turn
 //      stands from the first phase only for an Evil or Undead realm (war without warning: the turn's step before the
@@ -92,8 +97,15 @@ export function getOrderExtra(charId, ph) {
 //   2. the sea, with too little lift to put to sea (hulls and flyers: the note's sea lift);
 //   3. ships over land: a column leading any fleet or sea-beast steps from land only to the sea.
 // Forecast limits (plan P1-11's Decision 3), left to the turn: an owner the report can't show (a province he hasn't
-// seen: no border is forecast), a terrain an Illusory Terrain hides, a war a rival declares, a blockade, a flood, his
-// pace (P1-11e11) and a far province (P1-11e12).
+// seen: no border is forecast), a terrain an Illusory Terrain hides, a war a rival declares, a blockade, a flood, a far
+// province (P1-11e12), and his pools as the turn changes them: companies he takes up, hands over or loses, a skill he
+// rises in, a lone leg not charged to companies he takes up after it, a battle's win point; a hero who joins this
+// turn (hired, charmed or raised: the report shows no pace of his) marches at no pace.
+function hisMovePoolsAsTheReportGivesThem(char) {
+  if (char.hiredInPhase >= 0) return null;
+  const pace = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : Infinity);
+  return { land: pace(char.effectiveSpeed), sea: pace(char.effectiveSeaSpeed) };
+}
 function theRelationAMarchMeetsAtTheBorderOf(report, owner) {
   if (owner === report.playerIndex) return 'self';
   const known = ((report.diplomacy || {}).known || []).find((k) => k && k.index === owner);
@@ -163,6 +175,7 @@ export function predictedLocation(charId, upToPhaseExclusive) {
     let locId = char.locationId;
     const worldMeta = report.worldMeta;
     if (!worldMeta) return { id: locId, name: char.locationName };
+    const pools = hisMovePoolsAsTheReportGivesThem(char);
     for (let ph = 0; ph < upToPhaseExclusive; ph++) {
       const action = document.getElementById(`po-action-${charId}-${ph}`)?.value;
       // A FORCED MARCH is a Move in the turn (one that may slip past a battle), so later phases' forms follow it as they
@@ -185,7 +198,12 @@ export function predictedLocation(charId, upToPhaseExclusive) {
       const nextDoor =
         curProv &&
         KC_HEX_DIRS.some((d) => theHexNextToAProvinceInADirection(curProv, d, worldMeta.cols, worldMeta.rows) === toId);
-      if (nextDoor && aMarchTheTurnRefuses(report, char, ph, curProv, toProv)) continue;
+      if (nextDoor) {
+        const spends = pools ? theMovePoolAStepSpends(curProv.terrain, toProv.terrain) : null;
+        if (spends && pools[spends] <= 0) continue; // past his pace
+        if (aMarchTheTurnRefuses(report, char, ph, curProv, toProv)) continue;
+        if (spends) pools[spends] -= 1;
+      }
       locId = toId;
     }
     const prov = worldMeta.provinces.find((p) => p.id === locId);

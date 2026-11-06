@@ -2,7 +2,7 @@
 // order form's spells, P1-11c2; the mark check, P1-11c4; kin and feud, P1-11c5; the Warlock's extra cast, P1-23s; the
 // Grand Cathedral's free Bless, P1-23ad; the hex step, P1-11d5 and d6; the alignment orders, P1-11d7; the beasts' two
 // sets and the Druid mastery's guard, P1-11d12; the Explore gain, P1-11d14; what a march's order names,
-// P1-11e9; where a column may step, P1-11e10) ────
+// P1-11e9; where a column may step, P1-11e10; the pool a step spends, P1-11e11) ────
 // The player portal's one door to the engine (plan P1-11a, Decision 2): the rules of a hero, an army, an item, a level
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
@@ -13,7 +13,8 @@
 // and Monster sets and the units the Druid mastery lifts since P1-11d12: the army card and the unit labels read them; the
 // share of a province an Explore order maps since P1-11d14: the Explore forecast asks it; what a march's order names since
 // P1-11e9: the march forecast reads a Move's and a Forced March's target by it; where a column may step since P1-11e10:
-// the march forecast asks whether the turn refuses a march).
+// the march forecast asks whether the turn refuses a march; the pool a step spends since P1-11e11: the march forecast
+// spends his pace by it).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -70,6 +71,7 @@ export {
   theAlignmentOrdersByTheNameTheFormWrites,
   theNameTheFormWritesOfTheAlignmentOrder,
 } from '../engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
+export { theMovePoolAStepSpends } from '../engine/rules-on-plain-values/the-move-pools-a-column-marches-and-sails-by-and-the-pool-a-step-spends.ts';
 export { theHexNextToAProvinceInADirection } from '../engine/rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 export { theShareOfAProvinceAnExploreOrderMaps } from '../engine/rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';
 export { theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt } from '../engine/rules-on-plain-values/the-strength-a-units-kin-and-a-rival-kins-leader-leave-it.ts';
