@@ -1,16 +1,16 @@
 import { ARMY_SPEED_R } from '../battle/ladder.ts';
 import { marchSpeedBonus, navalSpeedBonus } from './movement.ts';
-import {
-  AERIAL_TYPES,
-  SEA_TYPES,
-  getFlyCapability,
-} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { seaLiftOfAColumn } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
 import {
   aColumnLeadingShipsMayNotStepFromLandToLand,
   canEnterTerrain,
 } from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import type { AColumnAsTheTerrainTestsReadIt } from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
+import {
+  theMovePointsAPoolHasLeftOnceItsMaximumChanges,
+  theMovePoolsOfAColumn,
+} from '../rules-on-plain-values/the-move-pools-a-column-marches-and-sails-by-and-the-pool-a-step-spends.ts';
 import { whatARealmsDiscoveriesAddToAMarch } from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -105,71 +105,29 @@ export const NAVAL_UNIFY = [
   [100, 100, 70],
 ];
 
-// Pure computation of a character's move-pool MAXIMUMS from CURRENT army composition + skills.
-// Returns {land, sea, seaActive, cap}. Shared by setMovePool (turn start) and refreshMovePool
-// (mid-turn, after composition or March/Naval changes), so both stay perfectly in step.
+// A character's move-pool MAXIMUMS from CURRENT army composition + skills: theMovePoolsOfAColumn's (rules-on-plain-
+// values/, plan P1-11e5), handed what this reads of the world. Returns {land, sea, seaActive, cap}. Shared by
+// setMovePool (turn start) and refreshMovePool (mid-turn, after composition or March/Naval changes), so both stay
+// perfectly in step.
 export function computeMovePoolMax(turnContext: TurnContext, c: AHeroAsHisPoolsAreWorkedOut) {
   const armies = (asItsGuardReadsIt(c.armies) ?? []).filter(
     (a: Character['armies'][number] | null | undefined) => a && !a._phantom,
   ); // illusions set no pace and take no berth
   const marchLevel = effStat(turnContext, c, 'march');
   const navalLevel = effStat(turnContext, c, 'naval');
-  let land: number, sea: number, seaActive: boolean;
-  if (armies.length === 0) {
-    land = 5;
-    sea = 5;
-    seaActive = true; // a hero with no fleet takes passage — Naval skill buys nothing
-  } else {
-    const landArmies = armies.filter((a) => !SEA_TYPES.has(a.type));
-    if (landArmies.length > 0) {
-      const landSpeeds = landArmies.map((a) => {
-        const base = (ARMY_SPEED_R[a.type] ?? 0) || 3;
-        if (AERIAL_TYPES.has(a.type)) return base; // no flyer (rider or winged beast) is sped by March (item 14)
-        // sd13 Road Network (+1 for speed 1-2 land armies) and Item 5 `move` discoveries (race /
-        // cls filtered), same speed band (the discoveries' registry's since plan P1-19af: "movementCost: a realm's
-        // discoveries add to a march").
-        let _road = 0;
-        if (c.player != null && base <= 2) {
-          _road = whatARealmsDiscoveriesAddToAMarch(turnContext.G.players[c.player], { theUnit: a });
-        }
-        return base + Number(marchSpeedBonus(marchLevel)) + _road;
-      });
-      land = Math.min(...landSpeeds);
-    } else {
-      land = 0; // only sea armies: can't traverse land directly
-    }
-    const seaArmies = armies.filter((a) => SEA_TYPES.has(a.type));
-    if (seaArmies.length > 0) {
-      const seaSpeeds = seaArmies.map((a) => {
-        const base = (ARMY_SPEED_R[a.type] ?? 0) || 3;
-        return base + Number(navalSpeedBonus(base, navalLevel));
-      });
-      sea = Math.min(...seaSpeeds);
-      seaActive = true;
-    } else if (armies.every((a) => AERIAL_TYPES.has(a.type))) {
-      sea = land;
-      seaActive = true; // all flying: free sea entry
-    } else {
-      sea = 0;
-      seaActive = false;
-    }
-    // FLYING CARRY. If the humanoid flyers can lift every foot soldier (1 each, nothing grounded
-    // left behind), the column takes to the air: it no longer marches at the infantry's pace but
-    // at the flyers' own speed, and — like an all-flying host — it crosses sea freely. Only the
-    // self-flying units (humanoid flyers + primal winged beasts) set the pace; carried infantry
-    // ride along at that speed. March does not speed flight (flyers already ignore March above).
-    if (getFlyCapability(armies) && !armies.every((a) => AERIAL_TYPES.has(a.type))) {
-      const flyerSpeeds = armies.filter((a) => AERIAL_TYPES.has(a.type)).map((a) => (ARMY_SPEED_R[a.type] ?? 0) || 3);
-      if (flyerSpeeds.length) {
-        land = Math.min(...flyerSpeeds);
-        sea = land;
-        seaActive = true;
-      }
-    }
-  }
-  // Swift / Seawolf minor titles keep their +1 (only when a pool actually exists).
-  if (charMinor(turnContext, c, 'swift') && land > 0) land += 1;
-  if (charMinor(turnContext, c, 'seawolf') && sea > 0) sea += 1;
+  const hisRealm = c.player;
+  const { land, sea, seaActive } = theMovePoolsOfAColumn({
+    companies: armies,
+    theSpeedOfEachType: ARMY_SPEED_R,
+    whatHisMarchAddsOnLand: Number(marchSpeedBonus(marchLevel)),
+    whatHisNavalAddsToAShipOfTheSpeed: (base) => Number(navalSpeedBonus(base, navalLevel)),
+    whatHisRealmsDiscoveriesAddTo:
+      hisRealm != null
+        ? (a) => whatARealmsDiscoveriesAddToAMarch(turnContext.G.players[hisRealm], { theUnit: a })
+        : null,
+    heHoldsSwift: charMinor(turnContext, c, 'swift'),
+    heHoldsSeawolf: charMinor(turnContext, c, 'seawolf'),
+  });
   return { land, sea, seaActive, cap: getSeaCapability(armies, c) };
 }
 export function setMovePool(turnContext: TurnContext, c: Character): void {
@@ -196,21 +154,10 @@ export function refreshMovePool(turnContext: TurnContext, c: AHeroAsHisPoolsAreR
   const oldLandRem = movePoints[c.id] ?? oldLandMax;
   const oldSeaRem = seaMovePoints[c.id] ?? oldSeaMax;
   const m = computeMovePoolMax(turnContext, c);
-  // Composition-change accounting WITHOUT retroactive penalties. Remaining points are carried
-  // forward and adjusted only by the CHANGE in the pool's maximum:
-  // • ADDING a slower unit (newMax < oldMax): the fresh unit just mustered/joined and has not
-  // marched, so the moves already made are NOT charged against its allowance —
-  // remaining = min(newMax, oldRemaining). (Fixes: recruiting or picking up a speed-1 garrison
-  // after an earlier march wrongly reported "no movement points left".)
-  // • DROPPING a slow unit (newMax > oldMax): the freed reach is handed back — remaining rises by
-  // the max increase (still capped at newMax), so shedding a slow unit speeds the column up.
-  // • No change (newMax == oldMax): remaining is untouched.
-  // This also subsumes the old light-travel discount (a no-army hero's generous 5-move pool
-  // dropping to an army pace is just the "added a slower unit" case). Total moves stay capped by
-  // the 5-phase turn (one move per phase), so a character can still never exceed 5 provinces in a
-  // turn.
-  movePoints[c.id] = Math.max(0, Math.min(m.land, oldLandRem + Math.max(0, m.land - oldLandMax)));
-  seaMovePoints[c.id] = Math.max(0, Math.min(m.sea, oldSeaRem + Math.max(0, m.sea - oldSeaMax)));
+  // Composition-change accounting WITHOUT retroactive penalties: theMovePointsAPoolHasLeftOnceItsMaximumChanges's
+  // (rules-on-plain-values/, plan P1-11e5), which says how.
+  movePoints[c.id] = theMovePointsAPoolHasLeftOnceItsMaximumChanges(oldLandMax, oldLandRem, m.land);
+  seaMovePoints[c.id] = theMovePointsAPoolHasLeftOnceItsMaximumChanges(oldSeaMax, oldSeaRem, m.sea);
   seaMoveActive[c.id] = m.seaActive;
   seaCap[c.id] = m.cap;
   moveMax[c.id] = m.land;
