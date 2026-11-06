@@ -22,18 +22,19 @@ import { L79_ORDERS } from './l79-orders.ts';
 import {
   ALIGN_ACTIONS,
   DIRECTIONS,
+  effSkillP,
+  gdHintFor,
   ITEM_SLOT_CAP_P,
   ITEM_SLOT_LABEL_P,
   ITEM_SLOT_ORDER_P,
   ITEM_TIER_NAME_P,
-  RUMOUR_COST_BY_POWER_P,
-  SEASONS,
-  gdHintFor,
   itemTierTagP,
   orderTargetCharsP,
   preOrderTagP,
   realmNameP,
   realmOptStyleP,
+  RUMOUR_COST_BY_POWER_P,
+  SEASONS,
   skillsUnseenP,
   unseenSuffixP,
 } from './items-and-heroes.ts';
@@ -58,149 +59,15 @@ import {
   projectedMoveHost,
   refreshAllMoveModeNotes,
 } from './move-analysis.ts';
-import { getOrderTarget } from './pre-orders.ts';
-import { effSkillP } from './briefing-and-submit.ts';
-import {
-  _isAutoGarrisonRecruit,
-  _projRecruitUnits,
-  capitalise,
-  heroHireWageOfP,
-  predictedItems,
-  projectedGarrison,
-} from './skills-and-projections.ts';
+import { capitalise, heroHireWageOfP } from './skills-and-projections.ts';
 import { heroFameTextP } from './map-symbols.ts';
-
-// ── 2026-09-24 (Toby): TRANSFER CHAINS ──────────────────────────────────────────────────────────
-// This used to take a `_depth` counter and refuse to recurse past `_depth<2`, added to stop "mutual
-// transfers recursing forever". That worry was unfounded: a transfer always recurses with a STRICTLY
-// SMALLER phase bound (`projectedLedArmies(o.id, prevPh, …)` where prevPh < upToPhaseExclusive), so the
-// recursion bottoms out at phase 0 on its own and no cycle is possible. What the guard actually did was
-// silently truncate legitimate chains — hand a company king → Bryn in Spring and Bryn → Cara in Early
-// Summer and it projected; add Cara → Dain in Late Summer and the company VANISHED from every later
-// form, so Dain could not be ordered to do anything with troops he would really be leading.
-// The cap was NOT needed for performance either, which is worth recording because it looks as though it
-// should be: only the ONE character whose `po-extra` names this one recurses (the rest return at the
-// `String(oExtra)!==String(charId)` check), so a transfer chain is linear, not exponential. Measured in
-// the worst shape available — every character leaving troops to the garrison and picking up from it in
-// alternate phases, which is the N-way fan-out through projectedGarrison — all 5N projections cost
-// 4ms at 4 characters and 7ms at 10, indistinguishable with the memo below removed.
-// The memoisation on (character, phase bound), shared with projectedGarrison, is therefore kept as cheap
-// insurance against repeated subtree work rather than as a fix for a measured problem. The cache lives
-// for ONE top-level call, so it can never serve a stale answer after the player changes an order.
-// Callers mutate what they get back (splice/push), so every hit returns fresh copies.
-export function projectedLedArmies(charId, upToPhaseExclusive, _memo) {
-  const report = currentReport || {};
-  const char = (report.characters || []).find((x) => x.id === charId);
-  if (!char) return [];
-  const memo = _memo instanceof Map ? _memo : new Map();
-  const _ck = `c|${String(charId)}|${upToPhaseExclusive}`;
-  if (memo.has(_ck)) return memo.get(_ck).map((a) => ({ ...a }));
-  memo.set(_ck, []); // sentinel: belt-and-braces against a cycle the phase bound should already prevent
-  let armies = (char.armies || []).map((a) => ({
-    type: a.type,
-    quality: a.quality,
-    unitName: a.unitName,
-    race: a.race,
-    _isSkeletal: a._isSkeletal,
-  }));
-  const provOrderData = report.provinceOrderData || {};
-  for (let prevPh = 0; prevPh < upToPhaseExclusive; prevPh++) {
-    const prevAction = document.getElementById(`po-action-${charId}-${prevPh}`)?.value || '';
-    const prevTarget = document.getElementById(`po-target-${charId}-${prevPh}`)?.value || '';
-    // armies gained FROM OTHER characters of yours earlier this turn — a Recruit mustered "to:<this
-    // id>" or a Leave/Transfer handed to this character — now project in too (depth-limited so
-    // mutual transfers cannot recurse forever).
-    (report.characters || []).forEach((o) => {
-      if (o.id === charId) return;
-      const oAct = document.getElementById(`po-action-${o.id}-${prevPh}`)?.value || '';
-      const oTgt = document.getElementById(`po-target-${o.id}-${prevPh}`)?.value || '';
-      if (
-        oAct === 'Recruit Armies' &&
-        oTgt
-          .split(',')
-          .map((t) => t.trim())
-          .includes('to:' + charId)
-      ) {
-        // The engine hires MERCENARIES first and appends native recruits after, so the projection
-        // must use the same order or the Blood Offering S:/E: indices would point at the wrong
-        // units.
-        _projRecruitUnits(oTgt.split(',').map((t) => t.trim())).forEach((u) => {
-          if (!_isAutoGarrisonRecruit(u)) armies.push(u);
-        }); // garrison units never join a character
-      } else if (oAct === 'Leave/Transfer Army') {
-        const oExtra = document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value || '';
-        if (String(oExtra) !== String(charId)) return;
-        const oArm = projectedLedArmies(o.id, prevPh, memo);
-        if (oTgt.split(',').includes('all')) oArm.forEach((a) => armies.push(a));
-        else
-          oTgt
-            .split(',')
-            .filter(Boolean)
-            .forEach((val) => {
-              val = val.trim();
-              const a = oArm.find((x) => (x.unitName || x.type) === val);
-              if (a) armies.push(a);
-            });
-      }
-    });
-    if (prevAction === 'Recruit Armies') {
-      const wrap = document.getElementById(`po-target-wrap-${charId}-${prevPh}`);
-      if (wrap) {
-        // the default muster destination is still THIS character, but recruits sent to the province
-        // garrison ("to:garrison") or handed to a friendly hero ("to:<id>") do NOT join this
-        // character — so they must not show in this hero's projected led-army preview (that stale
-        // display was what made garrison-bound units look as though they marched off with the
-        // hero).
-        const destSel = wrap.querySelector('.po-recruit-dest');
-        const destTok = destSel ? destSel.value : 'to:self';
-        const goesToThisHero = !(
-          destTok === 'to:garrison' ||
-          (destTok && destTok.startsWith('to:') && destTok !== 'to:self')
-        );
-        if (goesToThisHero) {
-          const _ticks = [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || '');
-          _projRecruitUnits(_ticks).forEach((u) => {
-            if (!_isAutoGarrisonRecruit(u)) armies.push(u);
-          }); // garrison units never join a character
-        }
-      }
-    } else if (prevAction === 'Pick Up Army') {
-      const ploc = predictedLocation(charId, prevPh);
-      const pgarr = ploc ? projectedGarrison(ploc.id, prevPh, true, charId, memo) : []; // garrison as it stands at THAT phase
-      if (prevTarget === 'all') {
-        pgarr.forEach((a) => armies.push({ type: a.type, quality: a.quality, unitName: a.unitName }));
-      } else
-        prevTarget
-          .split(',')
-          .filter(Boolean)
-          .forEach((sel) => {
-            sel = sel.trim();
-            let gi = null;
-            if (sel.startsWith('g:')) gi = parseInt(sel.slice(2));
-            else if (sel.startsWith('-1:')) gi = parseInt(sel.slice(3)); // legacy form
-            if (gi != null && pgarr[gi])
-              armies.push({ type: pgarr[gi].type, quality: pgarr[gi].quality, unitName: pgarr[gi].unitName });
-          });
-    } else if (prevAction === 'Leave/Transfer Army' || prevAction === 'Disband Army') {
-      if (prevTarget === 'all') {
-        armies = [];
-      } else
-        prevTarget
-          .split(',')
-          .filter(Boolean)
-          .forEach((val) => {
-            val = val.trim();
-            const idx = armies.findIndex((a) => (a.unitName || a.type) === val);
-            if (idx >= 0) armies.splice(idx, 1);
-          });
-    }
-  }
-  memo.set(
-    _ck,
-    armies.map((a) => ({ ...a })),
-  );
-  return armies;
-}
+import {
+  getOrderTarget,
+  predictedItems,
+  predictedLocation,
+  projectedGarrison,
+  projectedLedArmies,
+} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // projected exploration gain for ONE Explore order: the engine's own rule (theShareOfAProvinceAnExploreOrderMaps, through
 // src/shared/ since plan P1-11d14), fed what the report gives: the hero's Explorer (skillEff), his Trailblazer title and
@@ -320,47 +187,6 @@ export function refreshExploreNotes() {
     }
   });
 }
-export function predictedLocation(charId, upToPhaseExclusive) {
-  const report = currentReport;
-  if (!report) return null;
-  const char = (report.characters || []).find((c) => c.id === charId);
-  if (!char) return null;
-  let locId = char.locationId;
-  const worldMeta = report.worldMeta;
-  if (!worldMeta) return { id: locId, name: char.locationName };
-  for (let ph = 0; ph < upToPhaseExclusive; ph++) {
-    const action = document.getElementById(`po-action-${charId}-${ph}`)?.value;
-    // FORCED MARCH relocates the character exactly as a Move does (the engine turns it into a
-    // move), so later-phase order forms must follow it. Its target is a BARE province id from the
-    // move_adjacent select, not the `prov:`/`dir:` form a Move uses, so it is resolved first.
-    // Mirrors the GM portal's predictedLocation — both must change together or the forms disagree.
-    if (action === 'Forced March') {
-      const fmT = (getOrderTarget(charId, ph) || '').trim();
-      const fmId = parseInt(fmT.startsWith('prov:') ? fmT.slice(5) : fmT);
-      if (!isNaN(fmId) && worldMeta.provinces.some((p) => p.id === fmId)) locId = fmId;
-      continue;
-    }
-    if (action !== 'Move') continue;
-    const tgt = getOrderTarget(charId, ph);
-    if (!tgt) continue;
-    if (tgt.startsWith('prov:')) {
-      const pid = parseInt(tgt.slice(5));
-      if (!isNaN(pid) && worldMeta.provinces.some((p) => p.id === pid)) locId = pid;
-      continue;
-    }
-    if (!tgt.startsWith('dir:')) continue;
-    const dir = tgt.slice(4);
-    const curProv = worldMeta.provinces.find((p) => p.id === locId);
-    if (!curProv) continue;
-    const nid = theHexNextToAProvinceInADirection(curProv, dir, worldMeta.cols, worldMeta.rows);
-    if (nid === null) continue;
-    const nbProv = worldMeta.provinces.find((p) => p.id === nid);
-    if (nbProv) locId = nid;
-  }
-  const prov = worldMeta.provinces.find((p) => p.id === locId);
-  return prov ? { id: locId, name: prov.name || 'Unknown' } : { id: locId, name: 'Unknown' };
-}
-
 // Track recruit orders already placed in earlier phases (client-side) Compass direction from one
 // province to another on the offset-hex map, used to label an as-yet unexplored target province as
 // e.g. "Unknown province (West)" instead of a meaningless internal number. Rows shift by half a

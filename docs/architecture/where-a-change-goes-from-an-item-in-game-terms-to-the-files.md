@@ -129,6 +129,8 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
 - **Where:** `src/ui/player/`. A rule of the engine it uses comes through its one door,
   `src/shared/the-engines-rules-the-player-portal-shares.ts`, from `src/engine/rules-on-plain-values/`. The figures the
   GM works out for a realm (a cast chance a school, say) reach the portal in the report (`src/views/turn-report.ts`).
+  The forecasts of where a hero will stand, what he will carry and lead, and what a garrison will hold, after the orders
+  so far: `src/ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts` (P1-11e3).
 - **The detail:** [the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules);
   the copies left are `tests/lib/player-portal-copies.ts`'s.
 

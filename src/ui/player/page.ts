@@ -25,6 +25,9 @@ import './move-analysis.ts';
 import './orders-form.ts';
 import './pre-orders.ts';
 import './briefing-and-submit.ts';
+// The order form's forecasts (plan P1-11e3), which the page's files read: listed here so that the tests that read the page's
+// files still read them as the page's.
+import './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import './skills-and-projections.ts';
 import './order-targets.ts';
 import './map-symbols.ts';
