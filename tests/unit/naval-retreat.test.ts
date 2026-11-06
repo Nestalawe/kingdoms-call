@@ -286,6 +286,20 @@ describe('the staged cases', () => {
     expect(retreat(ch, true).r).toBe('stay');
     expect(ch.location).toBe(landN.id);
   });
+
+  test("a host whose only ships are illusions (a Phantasmal Army's) has no fleet: the ordinary retreat applies", () => {
+    const ch = reset({
+      siteOwned: true,
+      friendlySea: true,
+      friendlyLand: true,
+      armies: [{ ...unit('Galleon Fleet'), _phantom: true }, unit('Shieldwall Levies')],
+    });
+    const before = JSON.stringify({ loc: ch.location, n: ch.armies.length });
+    const { r, narr } = retreat(ch);
+    expect(r, 'no sea retreat on phantom hulls').toBe('');
+    expect(JSON.stringify({ loc: ch.location, n: ch.armies.length }), 'nothing was moved').toBe(before);
+    expect(narr, 'nothing was reported').toHaveLength(0);
+  });
 });
 
 // ── The beaten side each line names (plan P1-12d32: a record, ASideOfABattle; the prose writes its label) ────

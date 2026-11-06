@@ -27,6 +27,8 @@
 // - a retreat by sea: to the water a landing came from only when it is unowned and undefended (retreatOptions,
 //   navalSplitRetreat), the units the hulls can't carry joining the garrison of the realm's ground beside it, and each
 //   function handed a list that is missing.
+// And two the balance alone caught (plan P1-21i, the mutation session of 2026-11-05): the Widowmaker counts a slain
+// hero of a rival realm, never a wanderer's death; and the chance two hosts unify, by March and provinces apart.
 // Level 1 (unit): the functions called directly on the engine's modules (plan P1-14a) on a staged province or a world
 // the engine makes from a fixed seed, with no turn played; a lower level can't run them. The dice are fed.
 import '../lib/the-whole-engine.ts';
@@ -37,6 +39,7 @@ import { generateBotSetups, isBotRow } from '../../src/engine/bots/setup.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { createTurnContext } from '../../src/engine/turn/context.ts';
 import { resyncNeutralDefenders } from '../../src/engine/units/drill-and-spoils.ts';
+import { contingentUnifyChance } from '../../src/engine/units/movement-pools.ts';
 import { updateProvinceMemory } from '../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts';
 import {
   awardKillXP,
@@ -617,6 +620,19 @@ describe("a hero's death: Battlefield Surgery's lines, who slew him, and who tak
       ],
     ]);
   });
+
+  test('the Widowmaker counts a slain hero of a rival realm, never a wandering hero of no realm', () => {
+    /** Wodan (realm 1's) slays Seren, of the realm given: his count of rival heroes slain after. */
+    const theCountAfter = (player: number | null) => {
+      const S = aStagedWorld();
+      const wodan = S.G.characters.find((c) => c.id === 4);
+      if (!wodan) throw new Error('the world has no Wodan');
+      Object.assign(wodan, { tm: { duelKills: 0 } });
+      handleHeroDeath(S.tc as never, serenOf(S, { player }) as never, wodan as never, {});
+      return (wodan as { tm?: { duelKills?: unknown } }).tm?.duelKills;
+    };
+    expect([theCountAfter(0), theCountAfter(null)]).toEqual([1, 0]);
+  });
 });
 
 describe('a retreat by sea: the water a landing came from, a fleet that leaves units ashore, and lists missing', () => {
@@ -746,5 +762,19 @@ describe('a retreat by sea: the water a landing came from, a fleet that leaves u
       split: '',
       trapped: null,
     });
+  });
+});
+
+describe('two hosts of a realm that attack one province in a phase: the chance they unify', () => {
+  test("March's table by the provinces between their starts: none, one, two and beyond; the sea's the same", () => {
+    const chances = (isNaval: boolean) =>
+      [0, 3, 5, 9].map((march) => [0, 1, 2, 4].map((apart) => contingentUnifyChance(march, apart, isNaval)));
+    const theTable = [
+      [80, 50, 20, 20],
+      [100, 80, 50, 50],
+      [100, 100, 70, 70],
+      [100, 100, 70, 70],
+    ];
+    expect([chances(false), chances(true)]).toEqual([theTable, theTable]);
   });
 });
