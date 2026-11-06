@@ -532,6 +532,86 @@ export const RECRUIT_ORDER_CASES: RecruitHireAndWorksOrderCase[] = [
     },
   },
   {
+    // plan P1-11e15: where the realm holds the ground, a full column's mercenary beast is hired, and musters into the
+    // garrison as a raised beast does
+    name: 'Recruit Armies: a mercenary beast hired on the realm’s own ground by a full column musters into the garrison (item 24)',
+    stage(b) {
+      holds(b, b.X);
+      realm(b)['gold'] = 200;
+      band(b, b.X, 'Great Bears');
+      return { hero: at(b), here: b.X, orders: plan(order('recruit', 'merc:merc_test')) };
+    },
+    check(o, { hero: h, here }) {
+      return {
+        got: {
+          led: led(o, h),
+          garrison: garrison(o, here),
+          gone: !(o.world.mercenaries ?? []).some((m) => m.id === 'merc_test'),
+          told: says(o, '(Great Bears) musters into the garrison of'),
+        },
+        want: { led: [], garrison: ['Great Bears'], gone: true, told: true },
+      };
+    },
+  },
+  {
+    // plan P1-11e15: the room counted is the column's the companies join, the comrade's, not the recruiter's
+    name: 'Recruit Armies: a mercenary beast mustered under a comrade with room is hired, though the recruiter has none (item 24)',
+    stage(b) {
+      settled(b.X);
+      realm(b)['gold'] = 200;
+      band(b, b.X, 'Great Bears');
+      const other = at(b, { skills: skilled({ druid: 2 }) });
+      return {
+        hero: at(b),
+        other,
+        here: b.X,
+        orders: plan(order('recruit', `merc:merc_test,to:${String(other.id)}`)),
+      };
+    },
+    check(o, { hero: h, other }) {
+      return {
+        got: { led: [led(o, h), led(o, must(other, 'the comrade'))] },
+        want: { led: [[], ['Veteran Great Bears']] },
+      };
+    },
+  },
+  {
+    // plan P1-11e15: as above, for a beast raised on the realm's own ground
+    name: 'Recruit Armies: a beast raised under a comrade with room joins his column, though the recruiter has none (item 24)',
+    stage(b) {
+      holds(b, b.X, ['Great Bears']);
+      const other = at(b, { skills: skilled({ druid: 2 }) });
+      return {
+        hero: at(b),
+        other,
+        here: b.X,
+        orders: plan(order('recruit', `Great Bears|1,to:${String(other.id)}`)),
+      };
+    },
+    check(o, { hero: h, other, here }) {
+      return {
+        got: { led: [led(o, h), led(o, must(other, 'the comrade'))], garrison: garrison(o, here) },
+        want: { led: [[], ['Average Great Bears']], garrison: [] },
+      };
+    },
+  },
+  {
+    // plan P1-11e15: a garrison company goes straight to the garrison only in a province of the realm's
+    name: 'Recruit Armies: a mercenary band of a garrison company hired on ground the realm does not hold joins the column',
+    stage(b) {
+      settled(b.X);
+      realm(b)['gold'] = 200;
+      band(b, b.X, 'Human Garrison');
+      return { hero: at(b), here: b.X, orders: plan(order('recruit', 'merc:merc_test')) };
+    },
+    check(o, { hero: h, here }) {
+      return {
+        got: { led: led(o, h), garrison: garrison(o, here) },
+        want: { led: ['Veteran Human Garrison'], garrison: [] },
+      };
+    },
+  },
+  {
     name: 'Recruit Armies: the garrison is not there to muster into on ground the realm does not hold',
     stage(b) {
       settled(b.X);

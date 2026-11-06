@@ -20,6 +20,7 @@ import {
   druidLevelALeaderNeeds,
   druidShortfall,
   strengthLeftByADruidShortfall,
+  theRoomALeadersBeastCommandLeaves,
   unitAsItsRealmSeesIt,
 } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 
@@ -244,8 +245,9 @@ export const SEA_TYPES_GEN = new Set(KC_UNIT_CLASS.sea);
 // Returns the effective quality after druid shortfall penalty shortfall of N = -N quality tiers
 // (each missing level = 20% str penalty)
 // ── BEAST COMMAND (2026-10-12, Toby item 24) ── A hero may lead only as many Creature and Monster units as his Druid
-// level. Which units count is countsAgainstBeastCommand's (engine/rules-on-plain-values/, which the player portal
-// shares), on a unit as its realm sees it: the engine hands it its own unit in the realm's names.
+// level. Which units count is countsAgainstBeastCommand's, and the room his command leaves is
+// theRoomALeadersBeastCommandLeaves (engine/rules-on-plain-values/, which the player portal shares), on a unit as its
+// realm sees it: the engine hands it its own unit in the realm's names.
 export function beastCommandCount(a: AUnitAsTheBeastCommandCountsIt | null | undefined) {
   return !!a && countsAgainstBeastCommand(unitAsItsRealmSeesIt(a));
 }
@@ -257,7 +259,11 @@ export function beastCommandRoom(
   chars: TheHeroesAsASkillIsReadBesideThem,
 ) {
   if (c?.player == null) return Infinity;
-  return Math.max(0, (Number(effSkillOf(c, 'druid', chars ?? [])) | 0) - beastsLed(c));
+  return theRoomALeadersBeastCommandLeaves(
+    Number(effSkillOf(c, 'druid', chars ?? [])) | 0,
+    c.armies ?? [],
+    (a) => a && unitAsItsRealmSeesIt(a),
+  );
 }
 // A commander's beast command, as a line tells it (plan P1-12d6): his name and his Druid as it counts, copied as the
 // line is told. The Recruit and Hire orders' and the army orders' facts hold it, and the views write its words
