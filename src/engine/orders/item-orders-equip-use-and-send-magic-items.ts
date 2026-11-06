@@ -3,7 +3,8 @@ import { ITEM_SLOT_CAP, normaliseEquipment, settleTheItemsAHeroGained } from '..
 import { thePowerAnItemWorksWhenUsed } from '../rules/the-registry-of-magic-item-effects.ts';
 import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { syncMaxHp } from '../heroes/skills-and-hp.ts';
-import { applyItemMaxHp, isMithril } from '../personal-combat/helpers.ts';
+import { applyItemMaxHp } from '../personal-combat/helpers.ts';
+import { theItemsASendItemOrderHandsOver } from '../rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
 import { isCharmedNow, isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import {
   emit,
@@ -384,41 +385,10 @@ export function resolveSendItemOrder(
     return;
   }
   const _held: readonly AnItemAsTheseTestIt[] = asItsGuardReadsIt(c.items) ?? [];
-  let idxs: number[];
-  if (
-    String((target ?? '') || '')
-      .trim()
-      .toLowerCase() === 'all'
-  ) {
-    idxs = _held.map((_, i) => i);
-  } else {
-    // ── 2026-09-24 (Toby): a token may be a positional INDEX (as always) or an item ID / NAME ──
-    // Send Item was index-only, and an index is only meaningful when the order form's list and
-    // the engine's `c.items` are the same list in the same order. They are NOT for a PRE-ORDER
-    // card: a hero being HIRED has a real pack the player has never seen, so the form's index 0
-    // (the sword you sent them an hour ago) is some other item entirely at resolution — you
-    // would send the wrong thing, chosen by an accident of ordering. Equip Items and Use Item
-    // already addressed items by id-or-name for exactly this reason; Send Item now does too, so
-    // the player form can name what it means whenever position cannot be trusted.
-    // Backward compatible: a token that is a plain integer in range is still positional, so
-    // every existing (and in-flight) order behaves identically. `String(n)===t` is what keeps a
-    // name that merely STARTS with digits ("3 Rings of Dawn") out of the positional branch.
-    const _toks = String((target ?? '') || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    idxs = _toks
-      .map((t) => {
-        const n = parseInt(t);
-        if (Number.isInteger(n) && String(n) === t && n >= 0 && n < _held.length) return n;
-        return _held.findIndex((it) => it && (String(it.id) === t || it.name === t));
-      })
-      .filter((n) => Number.isInteger(n) && n >= 0 && n < _held.length);
-  }
-  let uniq = [...new Set(idxs)].sort((a, b) => b - a);
+  const _send = theItemsASendItemOrderHandsOver(_held, target);
+  const uniq = _send.places;
   // A granted Mithril suit is forged to its wearer and cannot be sent on.
-  if (uniq.some((i) => isMithril(_held[i]))) {
-    uniq = uniq.filter((i) => !isMithril(_held[i]));
+  if (_send.theMithrilSuitStays) {
     emit(turnContext, {
       type: 'item',
       fact: { kind: 'Mithril Armour is forged to its wearer and cannot be sent', heroName: c.name },
