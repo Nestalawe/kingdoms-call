@@ -30,7 +30,10 @@ import {
 } from '../rules/the-registry-of-magic-item-effects.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
-import { MINOR_CAV, MINOR_HEAVY } from '../titles/reckoning.ts';
+import {
+  theQualityACommandersDruid8AndNecromancy6LiftAUnitTo,
+  theStrengthAUnitsCommandersMinorTitlesLiftItTo,
+} from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import { discUnitMult, dragonTamed, gdActive } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -558,29 +561,23 @@ export function armStr(
     const _oN = (heroChar._oratoryBoost === true ? 1 : heroChar._oratoryBoost | 0) || 1;
     for (let _oi = 0; _oi < _oN; _oi++) effQuality = Q_UP[effQuality] ?? effQuality;
   } // PSYCHIC Oratory: +1 quality tier (+2 with Words of Awe, L6)
-  if (
-    heroChar &&
-    perkTier(heroChar, 'druid') >= 3 &&
-    (CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type))
-  ) {
-    effQuality = Q_UP[effQuality] ?? effQuality;
-  } // DRUID L8: creatures & monsters fight one tier higher
-  if (heroChar && army._isSkeletal && perkTier(heroChar, 'necromancy') >= 1) {
-    effQuality = Q_UP[effQuality] ?? effQuality;
-  } // NECROMANCY L6 (The Necromantic Arts): skeletal armies you lead fight one experience tier higher
+  // DRUID L8 and NECROMANCY L6: one rule on plain values (plan P1-11e35), which the army card can ask too
+  const _mastery = theQualityACommandersDruid8AndNecromancy6LiftAUnitTo(
+    { unitType: army.type, quality: effQuality, isSkeletal: Boolean(army._isSkeletal) },
+    {
+      hisDruidMasteryTier: heroChar ? perkTier(heroChar, 'druid') : 0,
+      hisNecromancyMasteryTier: heroChar ? perkTier(heroChar, 'necromancy') : 0,
+    },
+  );
+  effQuality = _mastery.quality;
   if (army._tacUp || army._drumUp) {
     effQuality = Q_UP[effQuality] ?? effQuality;
   } // TACTICAL L6 / War Drum: fight one tier higher (rolled ONCE per battle at battle start)
   if (_tr && effQuality !== (army.quality || 'Average')) {
     const _w: WhatLiftsAUnitsQuality[] = [];
     if (heroChar?._oratoryBoost) _w.push('oratory');
-    if (
-      heroChar &&
-      perkTier(heroChar, 'druid') >= 3 &&
-      (CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type))
-    )
-      _w.push('druid');
-    if (heroChar && army._isSkeletal && perkTier(heroChar, 'necromancy') >= 1) _w.push('necromancy');
+    if (_mastery.liftedByDruid) _w.push('druid');
+    if (_mastery.liftedByNecromancy) _w.push('necromancy');
     if (army._tacUp) _w.push('tactical');
     if (army._drumUp) _w.push('war-drum');
     _tr.push({ reason: { kind: 'it fights at another quality', quality: effQuality, liftedBy: _w } });
@@ -787,20 +784,19 @@ export function armStr(
   }
   // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%;
   // Ironclad: heavy & fleet +5%.
+  // (one rule on plain values, plan P1-11e35, which the army card can ask too)
   if (heroChar) {
-    const _prim = CREATURE_ARMIES.has(army.type) || MONSTER_ARMIES.has(army.type);
-    if (_prim && (charMinor(turnContext, heroChar, 'naturalist') || charMinor(turnContext, heroChar, 'beastmaster'))) {
-      str = Math.round(str * 1.05);
-      if (_tr) _tr.push({ reason: { kind: "a naturalist's or beastmaster's title" } });
-    }
-    if (charMinor(turnContext, heroChar, 'cavalier') && MINOR_CAV.has(army.type)) {
-      str = Math.round(str * 1.05);
-      if (_tr) _tr.push({ reason: { kind: "a cavalier's title" } });
-    }
-    if (charMinor(turnContext, heroChar, 'ironclad') && MINOR_HEAVY.has(army.type)) {
-      str = Math.round(str * 1.05);
-      if (_tr) _tr.push({ reason: { kind: "an ironclad's title" } });
-    }
+    const _titles = theStrengthAUnitsCommandersMinorTitlesLiftItTo(str, army.type, (title) =>
+      charMinor(turnContext, heroChar, title),
+    );
+    str = _titles.strength;
+    if (_tr)
+      _titles.liftedBy.forEach((perk) => {
+        if (perk === 'naturalist or beastmaster')
+          _tr.push({ reason: { kind: "a naturalist's or beastmaster's title" } });
+        else if (perk === 'cavalier') _tr.push({ reason: { kind: "a cavalier's title" } });
+        else _tr.push({ reason: { kind: "an ironclad's title" } });
+      });
   }
   // Evil Terror: province was terrorised last turn — defending armies -10%
   // (prov is not available in armStr — terror is applied at the call site via _tempStrReduction)

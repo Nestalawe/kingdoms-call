@@ -222,7 +222,7 @@
   number) import only `src/content` and each other, so the player portal shares them through `src/shared/`
   ([the shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules));
   the static test `rules-on-plain-values-import-only-the-content-and-each-other` refuses any other import there. The
-  engine's callers import them there too. Since P1-13i they hold the fortune's curve, win chance, Hunting Rumours' bands, a lair's key, the Terror's figures; since P1-13j a guardian's kind and label; since P1-11e4 to e7 the march's (where a column may step, its pools, a step's cost, the share it maps, a route's first step); e14 to e16 what a hero holds; e22, e23 orders and gold; e32 skill levels. Where the portal feeds in its own figure (the army card's sea
+  engine's callers import them there too. Since P1-13i they hold the fortune's curve, win chance, Hunting Rumours' bands, a lair's key, the Terror's figures; since P1-13j a guardian's kind and label; since P1-11e4 to e7 the march's (where a column steps, its pools, a step's cost, the share it maps, a route's first step); e14 to e16 what a hero holds; e22, e23 orders and gold; e32, e35 the card's. Where the portal feeds in its own figure (the army card's sea
   note), it is an open question for Toby.
 - A lifted helper keeps `resolveTurn`'s indent. Tests call one directly in Node: `engineFn`, `turnContext` and
   `botWorld` in `tests/lib/engine.ts`, or on the engine's modules
