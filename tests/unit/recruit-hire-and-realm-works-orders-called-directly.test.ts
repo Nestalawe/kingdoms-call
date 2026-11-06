@@ -23,7 +23,8 @@
 // garrison company, the carters' discount and the Undead Wonder, the Grove's Ents, Wild Calling's even chance per beast
 // (a die of 50 wins, 51 loses) with the room it leaves and each place it tears beasts from named once (the settling of
 // the province after it stood in for), the onlookers told the realm by name, and the Grand Design's Wonder by creed,
-// once (P1-10b20 added the cases its proof asked for).
+// once (P1-10b20 added the cases its proof asked for), and a Call to Arms' company of its province's folk and the
+// crown's home itself refused (P1-11e22's proof).
 // 192 planted faults in the functions and their calls: 191 turn at least one of the two tests red, and every test goes
 // red for at least one; the one left can't change the game (the Wild Calling's own-realm guard, which the next guard
 // covers)
@@ -623,6 +624,25 @@ describe('Consecrate, called directly', () => {
     };
     expect([tryFourth(3, true), tryFourth(3, false), tryFourth(2, true)]).toEqual([true, false, false]);
   });
+  test("the crown's home itself is never consecrated; ground two hexes from it is (P1-11e22)", () => {
+    const withTheHomeAt = (home: (b: Board) => Province) => {
+      const b = fresh();
+      holds(b, b.X);
+      const h = home(b);
+      holds(b, h);
+      realm(b)['homeProvinceId'] = h.id;
+      const k = at(b, { king: true, skills: skilled({ white: 1 }) });
+      play(b, k, o('consecrate'));
+      return {
+        holy: ((realm(b)['consecratedProvIds'] ?? []) as number[]).includes(b.X.id),
+        told: textOf(b, k).includes('anointed at the coronation'),
+      };
+    };
+    expect([withTheHomeAt((b) => b.X), withTheHomeAt((b) => must(b.ring2[0], 'two hexes off'))]).toEqual([
+      { holy: false, told: true },
+      { holy: true, told: false },
+    ]);
+  });
 });
 
 describe('Call to Arms, called directly', () => {
@@ -670,6 +690,18 @@ describe('Call to Arms, called directly', () => {
       q['armyTypes'] = [];
     });
     expect(p.garrisonArmies.map((u) => [u.type, u.race])).toEqual([['Human Garrison', 'Human']]);
+  });
+  test('the company is of the folk of the province: Elven folk raise Elves; folk of no name, men (P1-11e22)', () => {
+    const raised = (race: string, armyTypes: string[]) =>
+      call((_, q) => {
+        q['race'] = race;
+        q['armyTypes'] = armyTypes;
+      }).p.garrisonArmies.map((u) => [u.type, u.race]);
+    expect([raised('Elven', ['Elven Bowmen']), raised('Elven', ['Human Garrison']), raised('', [])]).toEqual([
+      [['Elven Garrison', 'Elven']],
+      [['Human Garrison', 'Elven']],
+      [['Human Garrison', 'Human']],
+    ]);
   });
 });
 

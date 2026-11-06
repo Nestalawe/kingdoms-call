@@ -92,9 +92,9 @@ describe('the companies a Blood Offering may take', () => {
 
 describe('the companies a Blood Offering gives and raises', () => {
   const five = ['A', 'B', 'C', 'D', 'E'].map((t) => company(t));
-  const gives = (army: readonly (AUnitAsItsRealmSeesIt | undefined)[], extra: string) =>
-    theCompaniesABloodOfferingGivesAndRaises(army, extra, (a: AUnitAsItsRealmSeesIt | undefined) =>
-      a === undefined ? company('a gap') : asItIs(a),
+  const gives = (army: readonly (AUnitAsItsRealmSeesIt | null | undefined)[], extra: string) =>
+    theCompaniesABloodOfferingGivesAndRaises(army, extra, (a: AUnitAsItsRealmSeesIt | null | undefined) =>
+      a == null ? company('a gap') : asItIs(a),
     );
   test('the ones the marks name, in the order named', () => {
     expect(gives(five, 'S:3,0|E:4,1')).toEqual({ given: [3, 0], raised: [4, 1] });
@@ -122,6 +122,7 @@ describe('the companies a Blood Offering gives and raises', () => {
   test('a gap in the column is never taken', () => {
     expect(gives([undefined, company('B'), undefined, company('D')], 'S:0|E:2')).toEqual({ given: [1], raised: [3] });
     expect(gives([undefined, company('B'), undefined, company('D')], 'S:1|E:3')).toEqual({ given: [1], raised: [3] });
+    expect(gives([null, company('B'), null, company('D')], 'S:0|E:2')).toEqual({ given: [1], raised: [3] });
   });
   test('fewer than two companies it may take: no offering', () => {
     expect(gives([company('A'), company('B', { temporary: true })], '')).toBeNull();
