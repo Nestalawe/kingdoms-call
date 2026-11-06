@@ -1718,21 +1718,22 @@ export interface AStagedMarch {
   readonly stopsAt?: unknown;
   readonly realm?: WhatAStagedMarchChangesOfTheRealm;
 }
-/** The kinds of staged march into a province whose share the march maps is read: those the forecast and the turn
- *  agree on, and those it is known to get wrong (question 44): a cloak of another name (the forecast knows a
- *  Traveller's Cloak by its name), and the coast Naval 6 charts beside a sea sailed into (the forecast counts only the
- *  province entered). */
+/** The kinds of staged march into a province whose share the march maps is read, each one the forecast and the turn
+ *  agree on: since P1-11e13 (question 44, R-128) a cloak of another name (the share the report gives of his worn
+ *  items) and the coast Naval 6 charts beside a sea sailed into, and an Explorer trained past 5 (both count 5). */
 export const THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT = [
+  'a Travelworn Drape worn',
   'March 6, leading two companies',
   'March 0, leading two companies',
+  'March 5, leading two companies',
+  'Explorer 7 trained',
   'a sea sailed into at Naval 6, leading a fleet',
-] as const;
-export const THE_MARCHES_IN_THE_FORECAST_GETS_WRONG = [
-  'a Travelworn Drape worn',
   'the coast beside the sea he sails into, charted at Naval 6',
+  'a land province not beside the sea he sails into, at Naval 6',
+  'the sea he sets out from, beside the sea he sails into at Naval 6',
+  'the coast beside the sea he flies into at Naval 6, leading Eagle Riders and no ships',
 ] as const;
-export type TheMarchInKind =
-  (typeof THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_MARCHES_IN_THE_FORECAST_GETS_WRONG)[number];
+export type TheMarchInKind = (typeof THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT)[number];
 /** A staged march into a province: its kind, the hero (realm 0's), his orders by phase and the province whose share is
  *  read. */
 export interface AStagedMarchIn {
@@ -1740,6 +1741,8 @@ export interface AStagedMarchIn {
   readonly heroId: unknown;
   readonly orders: readonly AnOrder[];
   readonly mapped: unknown;
+  /** What it changes of his realm (P1-11e13: the coast in its list, so its report shows the sea beside it). */
+  readonly realm?: WhatAStagedMarchChangesOfTheRealm;
 }
 /** The world staged for marching (P1-11d1): every land province no realm holds made realm 0's, its guards and neutral
  *  heroes gone (so no march meets a battle), and one province next door to the start made realm 1's (neutral: no
@@ -1958,24 +1961,57 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     ['a Travelworn Drape worn', { items: worn('Travelworn Drape') }, first],
     ['March 6, leading two companies', { skills: { march: 6 }, armies: [...men(), ...men()] }, first],
     ['March 0, leading two companies', { armies: [...men(), ...men()] }, first],
+    ['March 5, leading two companies', { skills: { march: 5 }, armies: [...men(), ...men()] }, first],
+    ['Explorer 7 trained', { skills: { explorer: 7 } }, first],
     [
       'a sea sailed into at Naval 6, leading a fleet',
       { location: sea['id'], skills: { naval: 6 }, armies: fleet() },
       open,
     ],
   ];
-  const sailed = marchesIn.map(([kind, fields, to]) => ({
+  const sailed: AStagedMarchIn[] = marchesIn.map(([kind, fields, to]) => ({
     kind,
     heroId: hero({ location: start['id'], ...fields })['id'],
     orders: into(to),
     mapped: to['id'],
   }));
-  // the coast beside the sea he sails into (Naval 6's charting): the province the share is read of, not the one entered
+  // the coast beside the sea he sails into (Naval 6's charting): the province the share is read of, not the one entered;
+  // the coast in his realm's list, so its report shows the sea's ground (the unknown tier's is null: P1-11e13)
   const charting = sailed.find((x) => x.kind === 'a sea sailed into at Naval 6, leading a fleet');
   if (!charting) throw new Error('the staged world has no sailor');
   const everyMarchIn: AStagedMarchIn[] = [
     ...sailed,
-    { ...charting, kind: 'the coast beside the sea he sails into, charted at Naval 6', mapped: coast['id'] },
+    {
+      ...charting,
+      kind: 'the coast beside the sea he sails into, charted at Naval 6',
+      mapped: coast['id'],
+      realm: { itsRealmListsAlso: coast['id'] },
+    },
+    // (and of the provinces the voyage charts none: a land province not beside the sea, the sea he set out from)
+    {
+      ...charting,
+      kind: 'a land province not beside the sea he sails into, at Naval 6',
+      mapped: start['id'],
+      realm: { itsRealmListsAlso: coast['id'] },
+    },
+    {
+      ...charting,
+      kind: 'the sea he sets out from, beside the sea he sails into at Naval 6',
+      mapped: sea['id'],
+      realm: { itsRealmListsAlso: coast['id'] },
+    },
+    // (a column with no ships charts none: the Eagle Riders carry him over the sea)
+    {
+      kind: 'the coast beside the sea he flies into at Naval 6, leading Eagle Riders and no ships',
+      heroId: hero({
+        location: sea['id'],
+        skills: { naval: 6 },
+        armies: [{ type: 'Eagle Riders', quality: 'Average', unitName: 'Eagle Riders 0' }],
+      })['id'],
+      orders: into(open),
+      mapped: coast['id'],
+      realm: { itsRealmListsAlso: coast['id'] },
+    },
   ];
   return { world: quietly(() => savedAndReported(g)), marches, marchesIn: everyMarchIn };
 }
@@ -2069,15 +2105,57 @@ export interface MarchInForecastComparison extends Comparison {
 /** The share of a province the Explore forecast counts each staged march as mapping, against what the turn maps. */
 export function theMarchInForecastAgainstTheTurn(c: Copies): MarchInForecastComparison[] {
   const { world, marchesIn } = marchingWorld();
-  const inTheReport = new Map(objects(world.report['characters']).map((h) => [h['id'], h]));
-  return marchesIn.map(({ kind, heroId, orders, mapped }) => ({
-    ...compare(
-      [kind, orders, mapped],
-      c.exploreMoveGainOn(world.report, { [String(heroId)]: orders }, inTheReport.get(heroId), orders.length, mapped),
-      { answer: theShareTheTurnMaps(world.state, heroId, orders, mapped), changed: false },
-    ),
-    kind,
-  }));
+  return marchesIn.map(({ kind, heroId, orders, mapped, realm }) => {
+    const on = realm ? theWorldWithTheRealmChanged(world, realm) : world;
+    const hero = objects(on.report['characters']).find((h) => h['id'] === heroId);
+    return {
+      ...compare(
+        [kind, orders, mapped],
+        c.exploreMoveGainOn(on.report, { [String(heroId)]: orders }, hero, orders.length, mapped),
+        { answer: theShareTheTurnMaps(on.state, heroId, orders, mapped), changed: false },
+      ),
+      kind,
+    };
+  });
+}
+/** The share of the coast the Explore forecast counts the Naval 6 voyage beside it as charting, and the share the turn
+ *  charts, on the staged report where the sea he sails into is of the unknown tier (its ground null: a forecast limit,
+ *  P1-11e13: the form can't tell it is a sea). */
+export function theCoastBesideASeaTheReportShowsNoGroundOf(c: Copies): { forecast: unknown; turn: unknown } {
+  const { world, marchesIn } = marchingWorld();
+  const m = marchesIn.find((x) => x.kind === 'the coast beside the sea he sails into, charted at Naval 6');
+  if (!m) throw new Error('the staged world has no voyage beside a coast');
+  const hero = objects(world.report['characters']).find((h) => h['id'] === m.heroId);
+  return {
+    forecast: c.exploreMoveGainOn(world.report, { [String(m.heroId)]: m.orders }, hero, m.orders.length, m.mapped),
+    turn: theShareTheTurnMaps(world.state, m.heroId, m.orders, m.mapped),
+  };
+}
+/** The share of the province the Explore forecast counts the march of the hero wearing a Travelworn Drape as mapping,
+ *  on the staged report and on a copy of it whose card of his gives no share of his worn items (a report older than
+ *  the field, P1-11e8: a forecast limit, his items then add none); with the share of a march with no cloak. */
+export function theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems(c: Copies): {
+  given: unknown;
+  notGiven: unknown;
+  noCloak: unknown;
+} {
+  const { world, marchesIn } = marchingWorld();
+  const drape = marchesIn.find((m) => m.kind === 'a Travelworn Drape worn');
+  const plain = marchesIn.find((m) => m.kind === 'March 0, leading two companies');
+  if (!drape || !plain) throw new Error('the staged world has no march in with a Drape');
+  const ask = (report: Obj, m: AStagedMarchIn) =>
+    c.exploreMoveGainOn(
+      report,
+      { [String(m.heroId)]: m.orders },
+      objects(report['characters']).find((h) => h['id'] === m.heroId),
+      m.orders.length,
+      m.mapped,
+    );
+  const older = copyOf(world.report);
+  const hero = objects(older['characters']).find((h) => h['id'] === drape.heroId);
+  if (!hero) throw new Error('the staged report has no hero wearing a Drape');
+  delete hero['theShareHisWornItemsAddToAMarchIn'];
+  return { given: ask(world.report, drape), notGiven: ask(older, drape), noCloak: ask(world.report, plain) };
 }
 /** One staged march compared: the province the forecast says he stands in after his orders, and the one the turn
  *  leaves him in; with its kind, where he set out and the province his orders name. */

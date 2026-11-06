@@ -80,6 +80,11 @@ export {
 export { theMovePoolAStepSpends } from '../engine/rules-on-plain-values/the-move-pools-a-column-marches-and-sails-by-and-the-pool-a-step-spends.ts';
 export { theHexNextToAProvinceInADirection } from '../engine/rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 export { theShareOfAProvinceAnExploreOrderMaps } from '../engine/rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';
+export {
+  aProvinceBesideTheSeaIsACoastAVoyageCharts,
+  theShareAVoyageChartsOfEachCoastBesideTheSea,
+  theShareOfAProvinceAMarchIntoItMaps,
+} from '../engine/rules-on-plain-values/the-share-a-march-into-a-province-maps-and-the-coast-a-voyage-charts.ts';
 export { theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt } from '../engine/rules-on-plain-values/the-strength-a-units-kin-and-a-rival-kins-leader-leave-it.ts';
 export { theMarkOfThisSpellMustStandInTheCastersProvince } from '../engine/rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
 export { unitBaseStrength, unitTypeOf } from '../engine/rules-on-plain-values/unit-types-and-base-strength.ts';

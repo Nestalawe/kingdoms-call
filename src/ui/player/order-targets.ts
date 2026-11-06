@@ -14,10 +14,14 @@ import {
   MONSTER_ARMIES,
   theActionSpells,
   theActionSpellsNoMasteryLevelGates,
+  aProvinceBesideTheSeaIsACoastAVoyageCharts,
   theHexNextToAProvinceInADirection,
+  theShareAVoyageChartsOfEachCoastBesideTheSea,
+  theShareOfAProvinceAMarchIntoItMaps,
   theShareOfAProvinceAnExploreOrderMaps,
   theSpellCostsItsCasterNoCastingSlot,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import {
   ALIGN_ACTIONS,
@@ -62,6 +66,7 @@ import { heroFameTextP } from './map-symbols.ts';
 import {
   effSkillP,
   getOrderTarget,
+  PO_SEA_TYPES,
   predictedItems,
   predictedLocation,
   projectedGarrison,
@@ -110,12 +115,16 @@ export function exploreQueuedBefore(charId, ph, provId) {
   });
   return sum;
 }
-// Exploration a character gains simply by MARCHING INTO a province — the engine grants it on every
-// move in, before any Explore order resolves (10% + 5% per Explorer level, + a worn Traveller's Cloak, +
-// 2% per army led at March 6+). Mirrors the engine's explGainMove so the projection below counts
-// ground the hero will have mapped on arrival. Returns 0 if they do not move in during `upTo`
-// phases.
+// Exploration a character gains simply by MARCHING INTO a province: the turn grants it on every move in, before any
+// Explore order resolves. Since P1-11e13 (R-128) the forecast asks the turn's own rules (src/shared/): 10%, 5% a level
+// of his Explorer as it counts (to 5), the share his worn items add (his card's, every Traveller's Cloak by its effect;
+// a report older than the field gives none: a forecast limit), and at March 6 or more 2% a company he leads (those he
+// leads as the turn begins: question 61); and sailing into a sea next to `provId` at Naval 6 leading ships, the 5% of
+// each coast beside it the voyage charts. Returns 0 if they do not move in during `upTo` phases.
 export function exploreMoveGainBefore(c, upToPhaseExclusive, provId) {
+  const worldMeta = (currentReport && currentReport.worldMeta) || null;
+  const provinces = (worldMeta && worldMeta.provinces) || [];
+  const theCoast = provinces.find((p) => p.id === provId);
   let gain = 0;
   for (let p = 0; p < upToPhaseExclusive; p++) {
     const act = document.getElementById(`po-action-${c.id}-${p}`)?.value;
@@ -124,20 +133,29 @@ export function exploreMoveGainBefore(c, upToPhaseExclusive, provId) {
     if (act !== 'Move' && act !== 'Forced March') continue;
     const dest = predictedLocation(c.id, p + 1); // where this move LANDS them
     const from = predictedLocation(c.id, p);
-    if (!dest || !from || dest.id === from.id || dest.id !== provId) continue;
-    const lvl = Math.min(5, effSkillP(c, 'explorer'));
-    // R-125: a worn cloak only, as the turn counts it (a spare in his pack adds nothing)
-    const cloak = (c.items || []).some(
-      (it) =>
-        it &&
-        /Traveller's Cloak/i.test(it.name || '') &&
-        itemUsableBy(it, c) &&
-        (!itemSlot(it) || it.equipped !== false),
-    )
-      ? 20
-      : 0;
-    const marchPerk = ((c.skills || {}).march || 0) >= 6 ? 2 * (c.armies || []).length : 0;
-    gain += 10 + 5 * lvl + cloak + marchPerk;
+    if (!dest || !from || dest.id === from.id) continue;
+    if (dest.id === provId) {
+      const worn = c.theShareHisWornItemsAddToAMarchIn;
+      gain += theShareOfAProvinceAMarchIntoItMaps(
+        Math.min(5, effSkillP(c, 'explorer')),
+        typeof worn === 'number' ? worn : 0,
+        ((c.skills || {}).march || 0) >= 6,
+        (c.armies || []).length,
+      );
+      continue;
+    }
+    // Naval 6, charting the coast: the province `provId` beside the sea he sails into
+    const theSea = provinces.find((x) => x.id === dest.id);
+    if (!theSea || !theCoast || !aProvinceBesideTheSeaIsACoastAVoyageCharts(theCoast.terrain)) continue;
+    const besideIt = KC_HEX_DIRS.some(
+      (d) => theHexNextToAProvinceInADirection(theSea, d, worldMeta.cols, worldMeta.rows) === provId,
+    );
+    if (!besideIt) continue;
+    gain += theShareAVoyageChartsOfEachCoastBesideTheSea(
+      theSea.terrain,
+      ((c.skills || {}).naval || 0) >= 6,
+      (c.armies || []).some((a) => a && PO_SEA_TYPES.has(a.type)),
+    );
   }
   return gain;
 }
