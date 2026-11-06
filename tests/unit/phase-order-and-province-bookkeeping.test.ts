@@ -21,6 +21,8 @@
 // all of them (updateProvinceMemory too, which has no test here: what a realm remembers is the turn report's, P1-12).
 // Since P1-10b34 (the file freed of its ts-nocheck line), staged: a hero with no order this phase (none at all, or none
 // in this phase's slot) intends a Defend and acts in its tier, after a mover however quick he is.
+// Since P1-11e16 (the order's rules on plain values), staged: who must act first as phaseDependencies reads it from the
+// world (a Leave Army to a comrade or a foe, a comrade marching in to his giver, a pursuit under way or called off).
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
@@ -657,5 +659,45 @@ describe('a hero with no order this phase (P1-10b34)', () => {
     if (!one || !two) throw new Error('the two heroes are staged');
     const cmp = phaseInitCompare(tc, 2);
     expect([Math.sign(cmp(one, two)), Math.sign(cmp(two, one))]).toEqual([1, -1]);
+  });
+});
+
+describe('who must act first, read from the world (P1-11e16: the rules on plain values, asked by phaseDependencies)', () => {
+  type AStagedHero = Phase['heroes'][number];
+  const at = (player: number, location: number, action: string, more: Partial<AStagedHero> = {}): AStagedHero => ({
+    player,
+    location,
+    troops: 1,
+    skills: { march: 0, melee: 0, tactical: 0 },
+    alive: true,
+    hiredInPhase: undefined,
+    defend: false,
+    action,
+    toProv: 0,
+    toHero: 0,
+    absolute: true,
+    ...more,
+  });
+  const dependencies = (heroes: AStagedHero[], before?: (characters: Character[]) => void) => {
+    const { tc, characters } = stage({ heroes, owner: Array.from({ length: COLS * ROWS }, () => null), ph: 2 });
+    before?.(characters);
+    return phaseDependencies(tc, 2, buildPhaseIntents(tc, 2));
+  };
+
+  test('a Leave/Transfer Army to a comrade named in its extra choice: the giver first; to a foe, none', () => {
+    expect(dependencies([at(0, 0, 'Leave Army', { toHero: 1 }), at(0, 0, 'Search Lair')])).toEqual([[1, 2]]);
+    expect(dependencies([at(0, 0, 'Leave Army', { toHero: 1 }), at(1, 0, 'Search Lair')])).toEqual([]);
+  });
+
+  test('a comrade marching in to the giver who hands him something arrives first', () => {
+    expect(dependencies([at(0, 1, 'Move', { toProv: 0 }), at(0, 0, 'Send Item', { toHero: 0 })])).toEqual([[1, 2]]);
+  });
+
+  test('a pursuit under way acts after its quarry; one called off, not', () => {
+    const pursuing = (active: boolean) => (characters: Character[]) => {
+      Object.assign(characters[0] ?? {}, { _pursuit: { targetId: 2, active, setPhase: 1 } });
+    };
+    expect(dependencies([at(0, 0, 'Defend'), at(1, 1, 'Search Lair')], pursuing(true))).toEqual([[2, 1]]);
+    expect(dependencies([at(0, 0, 'Defend'), at(1, 1, 'Search Lair')], pursuing(false))).toEqual([]);
   });
 });
