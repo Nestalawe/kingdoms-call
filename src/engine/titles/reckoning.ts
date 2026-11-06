@@ -1,9 +1,13 @@
-import { KC_UNIT_CLASS, TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
+import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { theHighestLevelAHeroHasTrainedInAMagicSchool } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import {
+  MINOR_CAV,
+  MINOR_HEAVY,
+} from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import { ITEMS_BY_TIER } from '../items/tiers-and-hoards.ts';
 import { _skillItem, activeItems } from '../items/equipment.ts';
 import { botConceded } from '../bots/intel.ts';
@@ -467,18 +471,6 @@ export function runBotReckoning(
 // ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
 // character a small perk. Each is awarded every turn to the single best living character by its
 // metric (ties → first found; a metric of 0 leaves the title vacant). See the design doc.
-export const MINOR_CAV = new Set(KC_UNIT_CLASS.cavalry); // flyers are not cavalry — matches CAVALRY_TYPES and the rulebook
-export const MINOR_HEAVY = new Set([
-  'Mountain Guns',
-  'Dwarf Ironclads',
-  'Galleon Fleet',
-  'Corsair Fleet',
-  'Elven Galleys',
-  'Orcish Longships',
-  'Whale Cohort',
-  'Great Turtles',
-  'Siege Towers',
-]); // the ferries count (the turtles since Island Back, 2026-10-13)
 /** The world as the minor titles read it: its heroes (a list, or a gap in it, may be missing) and its provinces' owners
  *  (the Castellan's count, which reads each province as there). */
 interface TheWorldAsTheMinorTitlesReadIt {
