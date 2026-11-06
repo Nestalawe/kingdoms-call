@@ -171,6 +171,7 @@ import {
   theMarchForecastAgainstTheTurn,
   theMarchInForecastAgainstTheTurn,
   theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems,
+  theCoastBesideASeaTheReportShowsNoGroundOf,
   thePortalsHexTablesAgainstTheEngine,
   theOrderFormsSpells,
   theOrderEachNameOfTheListGives,
@@ -643,6 +644,12 @@ describe('the march: where the order form says a hero will stand, and what march
     // hero with no cloak, until the next turn's report gives it.
     const { given, notGiven, noCloak } = theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems(copies);
     expect([given, notGiven]).toEqual([30, noCloak]);
+  });
+
+  test('a coast beside a sea the report shows no ground of is charted by no voyage on the form (a forecast limit, P1-11e13)', () => {
+    // The report's unknown tier gives a province's ground as null, which the form can't tell from land: so a voyage
+    // into such a sea charts nothing of the coast on the form, where the turn charts its 5%.
+    expect(theCoastBesideASeaTheReportShowsNoGroundOf(copies)).toEqual({ forecast: 0, turn: 5 });
   });
 });
 
