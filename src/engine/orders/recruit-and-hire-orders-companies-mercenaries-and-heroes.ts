@@ -20,6 +20,10 @@ import {
   heroHireWage,
   heroSkillWage,
 } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import {
+  aCompanyIsABeastADruidHalves,
+  thePriceADruidPaysForABeast,
+} from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { grantMithrilTo } from '../personal-combat/helpers.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { TM, creditBeastUnit, perkTier } from '../titles/perks.ts';
@@ -427,8 +431,8 @@ export function resolveRecruitArmiesOrder(
     const alreadyDone = Number(recruitedThisTurn[`${String(prov.id)}:${armyType}`]) || 0;
     const actualQty = Math.min(qty, limit - alreadyDone);
     let _unitCost = realmRecruitCost(G.players[c.player], armyType, (ARMY_COST_P[armyType] ?? 0) || 2); // sd16 + recruitCost discoveries
-    if (perkTier(c, 'druid') > 0 && (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType)))
-      _unitCost = Math.floor(_unitCost * 0.5); // DRUID L6: creatures/monsters cost half (rounded down)
+    if (perkTier(c, 'druid') > 0 && aCompanyIsABeastADruidHalves(armyType))
+      _unitCost = thePriceADruidPaysForABeast(_unitCost); // DRUID L6: creatures/monsters cost half (rounded down)
     const unitCost = _unitCost;
     const cost = actualQty * unitCost;
     if ((player.gold || 0) < totalCost + cost) {

@@ -1,11 +1,15 @@
 import { kcRng } from '../rng.ts';
 import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
+import { CARRIER_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import {
-  CARRIER_TYPES,
-  CREATURE_ARMIES,
-  MONSTER_ARMIES,
-} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+  aCompanyDrawsNoWage,
+  aCompanyIsABeastADruidHalves,
+  aLeadersBeastsPayHalfWages,
+  theCompaniesTheHostLeaderSavesOn,
+  theHostLeadersCut,
+  theWageABeastPaysUnderADruid,
+} from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { neutralTradeGold } from '../grand-design.ts';
 import { isConsecrated } from '../heroes/fame-and-consecration.ts';
 import { activeItems } from '../items/equipment.ts';
@@ -295,9 +299,9 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // association.
     const _druidHalfWage = new Set<ArmyInABattle>();
     playerChars.forEach((ch: AHeroAsEarlyWinterReadsHisArmies) => {
-      if (perkTier(ch, 'druid') > 0 || gdActive(turnContext, p.id, 'Druidic'))
+      if (aLeadersBeastsPayHalfWages(perkTier(ch, 'druid') > 0, () => gdActive(turnContext, p.id, 'Druidic')))
         (ch.armies ?? []).forEach((a) => {
-          if (CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)) _druidHalfWage.add(a);
+          if (aCompanyIsABeastADruidHalves(a.type)) _druidHalfWage.add(a);
         });
     }); // + GRAND DESIGN Druidic
     const _upkAcc = new Map<unknown, number>();
@@ -315,10 +319,10 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // The 1g floor still applies per unit, so a 1g unit is never free.
     let _orcFrac = 0;
     let armyWages = allKingdomArmies.reduce((s, a: ArmyInABattle) => {
-      if (a._temporary) return s;
       // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
-      if (a._wildHuntUntilTurn != null) return s;
+      // (A summons draws none either: both are aCompanyDrawsNoWage.)
+      if (aCompanyDrawsNoWage(a)) return s;
       if (a._isSkeletal) return s + 1;
       let w = Number(ARMY_COST[a.type]) || 2;
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
@@ -340,7 +344,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         w = _wHalf;
         _orcSpoilsG += _w0 - w;
       }
-      if (_druidHalfWage.has(a)) w = Math.max(1, Math.floor(w * 0.5)); // DRUID L6
+      if (_druidHalfWage.has(a)) w = theWageABeastPaysUnderADruid(w); // DRUID L6
       {
         const _w0 = w;
         w = discUpkeepWage(p, a, w, _upkAcc, _taxCap);
@@ -356,9 +360,10 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         charMinor(turnContext, c, 'hostleader'),
       );
       if (hl) {
-        const led = (hl.armies ?? []).filter((a) => !a._temporary && a._wildHuntUntilTurn == null).length;
-        _hostLeaderG = Math.min(armyWages, led);
-        armyWages = Math.max(0, armyWages - led);
+        const led = theCompaniesTheHostLeaderSavesOn(hl.armies ?? []);
+        const theCut = theHostLeadersCut(armyWages, led);
+        _hostLeaderG = theCut.theGoldSaved;
+        armyWages = theCut.theWagesLeft;
       }
     }
 

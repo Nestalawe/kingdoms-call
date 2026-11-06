@@ -9,6 +9,13 @@ import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE, humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100 } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
+import {
+  aSkillAtThisLevelIsPractisedNoFurther,
+  theBaseChanceAPracticeAloneRaisesASkill,
+  theChanceAHeroPractisingAloneRaisesHisSkill,
+  thePerseveranceOfAHeroWhoFailedPracticesThisTurn,
+  theShareAQuickLearnerPractisesAt,
+} from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { provOf } from '../world/map-helpers.ts';
 import { TM, perkTier, skillLevel } from '../titles/perks.ts';
 import {
@@ -379,7 +386,7 @@ export function resolvePracticeSkillOrder(turnContext: TurnContext, c: Character
   // strategy batch): a maxed (5) skill no longer BREAKS out of the case — it skips the level
   // roll but still falls through to the unit-drilling block below, so a Tactical-5 / Naval-5
   // general practising their command skill drills their troops.
-  const _practiceMaxed = current >= 5;
+  const _practiceMaxed = aSkillAtThisLevelIsPractisedNoFurther(current);
   if (_practiceMaxed) {
     emit(turnContext, {
       type: 'system',
@@ -413,8 +420,7 @@ export function resolvePracticeSkillOrder(turnContext: TurnContext, c: Character
     // Base practice chance now DECREASES as the character's current level rises — mastery is
     // progressively harder to attain. These are the solo base rates; the peer group bonus
     // (half the solo chance) and the guaranteed-success mentor rule below apply on top.
-    const PRACTICE_BASE_BY_LEVEL = [0.25, 0.2, 0.15, 0.1, 0.05]; // level 0→25% … level 4→5%
-    const baseByLevel = Number(PRACTICE_BASE_BY_LEVEL[Math.min(current, 4)]);
+    const baseByLevel = theBaseChanceAPracticeAloneRaisesASkill(current); // level 0→25% … level 4→5%
     // practice discoveries (sd26 Astronomical Tables is one; the discoveries' registry's since plan P1-19ad:
     // "orderOutcome: a realm's discoveries add to practice")
     const hisRealm = c.player === null ? undefined : G.players[c.player]; // a wanderer's: none, as JavaScript reads it
@@ -423,11 +429,12 @@ export function resolvePracticeSkillOrder(turnContext: TurnContext, c: Character
     // chance by 1.2 (cumulative); a success resets it. The streak is per character, any skill,
     // and starts fresh each turn.
     const _streak = c._practiceFailStreak?.turn === G.turn ? c._practiceFailStreak.n : 0;
-    const _persevere = Math.pow(1.2, _streak);
+    const _persevere = thePerseveranceOfAHeroWhoFailedPracticesThisTurn(_streak);
     // 2026-10-14 (batch item 10, Toby): QUICK LEARNERS on the Practice ground too — a Human of a
     // Human realm practises at ×1.5, as they learn in the field (trySkillGain).
-    const _prHuman = c.race === 'Human' && hisRealm?.race === 'Human' ? 1.5 : 1;
-    const soloChance = (baseByLevel + astroBonus) * _persevere * _prHuman; // this character's normal (solo) chance to improve
+    const _prHumanOfAHumanRealm = c.race === 'Human' && hisRealm?.race === 'Human';
+    const _prHuman = theShareAQuickLearnerPractisesAt(_prHumanOfAHumanRealm);
+    const soloChance = theChanceAHeroPractisingAloneRaisesHisSkill(current, astroBonus, _streak, _prHumanOfAHumanRealm); // this character's normal (solo) chance to improve
     // Mentor rule: if any co-trainer had a HIGHER level in this skill AT PHASE START, they
     // teach the character — the improvement is automatic (guaranteed). Levels are read from the
     // start-of-phase snapshot, so a peer who trained up earlier this phase is NOT a mentor.

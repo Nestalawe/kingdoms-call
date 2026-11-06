@@ -20,11 +20,16 @@ import {
   topSkillOf,
 } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../engine/units/movement.ts';
+import { getFlyCapability } from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import {
-  CREATURE_ARMIES,
-  MONSTER_ARMIES,
-  getFlyCapability,
-} from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+  THE_PERCENT_CHANCE_A_PRACTICE_ALONE_RAISES_A_SKILL_FROM_EACH_LEVEL,
+  aCompanyDrawsNoWage,
+  aCompanyIsABeastADruidHalves,
+  aLeadersBeastsPayHalfWages,
+  theCompaniesTheHostLeaderSavesOn,
+  theHostLeadersCut,
+  theWageABeastPaysUnderADruid,
+} from '../engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
 import { itemLore, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
@@ -542,7 +547,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
         // PRACTICE — the solo chance at each level; a peer adds half as much again, a mentor makes
         // it certain.
         out.practice = {
-          byLevel: [25, 20, 15, 10, 5],
+          byLevel: THE_PERCENT_CHANCE_A_PRACTICE_ALONE_RAISES_A_SKILL_FROM_EACH_LEVEL.slice(),
           astro: 0,
           discovery: whatARealmsDiscoveriesAddToPractice(pl, THE_REPORTS_PRACTICE_NAMES_NO_SKILL) * 100,
           bySkill: (() => {
@@ -1112,18 +1117,18 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
 
   const _druidHalfWageR = new Set();
   playerCharsForWages.forEach((ch) => {
-    if (perkTier(ch, 'druid') > 0 || view.books.wonderBlesses.Druidic)
+    if (aLeadersBeastsPayHalfWages(perkTier(ch, 'druid') > 0, () => view.books.wonderBlesses.Druidic))
       (asItsGuardReadsIt(ch.armies) ?? []).forEach((a) => {
-        if (CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)) _druidHalfWageR.add(a);
+        if (aCompanyIsABeastADruidHalves(a.type)) _druidHalfWageR.add(a);
       });
   }); // DRUID L6 + GRAND DESIGN Druidic (report mirror)
   const _upkAccR = new Map();
   let _discUpkeepR = 0; // `upkeep` discoveries (mirrors the collector)
   let armyWages = [...allArmiesForWages, ...garrisonArmiesForWages].reduce((s: number, a: AUnitAsTheReportReadsIt) => {
-    if (a._temporary || a._wildHuntUntilTurn != null) return s;
+    if (aCompanyDrawsNoWage(a)) return s;
     /* Wild Hunt beasts serve the old gods, not a paymaster */ if (a._isSkeletal) return s + 1;
     /* skeletons are a flat 1g everywhere */ let w = (ARMY_COST_TR[a.type] ?? 0) || 2;
-    if (_druidHalfWageR.has(a)) w = Math.max(1, Math.floor(w * 0.5));
+    if (_druidHalfWageR.has(a)) w = theWageABeastPaysUnderADruid(w);
     {
       const _w0 = w;
       w = discUpkeepWage(player, a, w, _upkAccR, _taxCapR);
@@ -1138,11 +1143,10 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
   // half-wage (depends on a battle not yet fought). Keep in step with ~17220.
   let hostLeaderG = 0;
   if (_hostLeaderChar) {
-    const led = (asItsGuardReadsIt(_hostLeaderChar.armies) ?? []).filter(
-      (a: AUnitAsTheReportReadsIt) => !a._temporary && a._wildHuntUntilTurn == null,
-    ).length;
-    hostLeaderG = Math.min(armyWages, led);
-    armyWages = Math.max(0, armyWages - led);
+    const led = theCompaniesTheHostLeaderSavesOn(asItsGuardReadsIt(_hostLeaderChar.armies) ?? []);
+    const theCut = theHostLeadersCut(armyWages, led);
+    hostLeaderG = theCut.theGoldSaved;
+    armyWages = theCut.theWagesLeft;
   }
   const _hwAccR = new Map(); // heroWage / heroWageCap discoveries (Granaries, Inspiring Leadership, creeds) — mirrors the collector
   let heroWageDisc = 0;
