@@ -467,6 +467,10 @@ describe('the player portal reaches the engine only through src/shared/', () => 
       [widget, 'buildTargetField', 'theBloodOfferingsGrades'],
       ['ui/player/pre-orders.ts', 'updateBloodOffering', 'theBloodOfferingsGrades'],
       ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePriceOfWordFromAProvince'],
+      // (since P1-11e26: the carters' price and the Wild Hunt's term, each the row's on a report that names none)
+      [widget, 'buildTargetField', 'thePrice'],
+      [widget, 'buildTargetField', 'theWildHuntsTurnsMore'],
+      ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePrice.value'],
       [
         'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
         'projectedMoveHost',
