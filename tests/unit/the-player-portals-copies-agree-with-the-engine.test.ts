@@ -100,7 +100,9 @@
 // left and taken up, taken up as a comrade leaves them, disbanded, a Mithril suit sent with "all" (it stays on him: since
 // P1-11e18, R-129), a beast past a leader's beast command (recruited, handed over, taken up), a band of garrison troops
 // hired, companies taken up (the turn's last first), risen dead handed to a comrade (to their graves: since P1-11e19);
-// and pinned where it is not (question 42): a comrade marching in, a chain of hand-overs in one season, the Philosopher's Stone used.
+// and since P1-11e20 each season's items handed over in the turn's order of its heroes (a comrade marching in first, a
+// chain of hand-overs, the quicker hero first; a comrade beside him who marches away after); and pinned where it is not
+// (question 42): the Philosopher's Stone used.
 // P1-11d3 (plan P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
 // order list (`ACTIONS`) is the order `normaliseAction` reads it as, none read as a Defend but Defend; on staged heroes of
 // realm 0 (its report as the engine builds it under each creed, and with its Wonder raised), the list `actionsFor`
@@ -658,7 +660,7 @@ describe('the march: where the order form says a hero will stand, and what march
 });
 
 describe('what a hero holds: what the order form says he will carry and lead, and a garrison hold (P1-11d2)', () => {
-  test('what the order form says a hero will carry and lead, and a garrison hold, after his orders is what the turn leaves them: items handed over, sent by courier and passed on, companies recruited, handed over, left, taken up and disbanded, the beast command, a garrison band, risen dead', () => {
+  test('what the order form says a hero will carry and lead, and a garrison hold, after his orders is what the turn leaves them: items handed over, sent by courier and passed on, companies recruited, handed over, left, taken up and disbanded, the beast command, a garrison band, risen dead, a season’s heroes in the turn’s order', () => {
     // On a staged world (no guards, no foes; each case on its own province, its heroes realm 0's): the form's
     // predictedItems, projectedLedArmies and projectedGarrison as the phase after the orders begins, against the turn's
     // phases played one at a time. Items handed to a comrade beside him (two, by their places: the higher first), one
@@ -676,7 +678,11 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // that is not Undead going to their graves (the report's `skeletal` mark); with, for the rules' inputs, two beasts
     // recruited by a Druid 1 hero (the first fits his command), bands hired with the garrison named in a province of
     // another realm (the beasts not hired, the men into his column), a beast recruited by a Druid 1 hero whose bound and
-    // summoned beasts don't count, and a beast mustered under a comrade at his beast command (into the garrison).
+    // summoned beasts don't count, and a beast mustered under a comrade at his beast command (into the garrison); and
+    // since P1-11e20 (R-129, the turn's order of the heroes through src/shared/) an item handed to a comrade marching in
+    // that season (he arrives first: handed over at once), a chain of hand-overs in one season (the hero who hands to a
+    // comrade who hands on goes first), two heroes handing to one comrade (the quicker first: his items first in the
+    // pack), and a comrade beside him who marches away that season (handed over before he sets out).
     const list = holdings().filter((x) => (THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
@@ -719,11 +725,9 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(turn).toHaveLength(1);
   });
 
-  test('what the forecast gets wrong is pinned: a comrade marching in, a chain in one phase, the Stone (question 42)', () => {
-    // The form replays the orders, not the turn's checks: a comrade marching in that season is handed the item at once (the form, which places him where the season
-    // began, sends it by courier); a chain of hand-overs in one season goes in the turn's order (a hero handing to a
-    // comrade who hands on goes first), in the form's by the heroes' order; the Philosopher's Stone used is destroyed
-    // (as an older save's copy carries it: the one Use Item works).
+  test('what the forecast gets wrong is pinned: the Stone (question 42)', () => {
+    // The form replays the orders, not the turn's checks: the Philosopher's Stone used is destroyed (as an older save's
+    // copy carries it: the one Use Item works), and the form keeps it in his pack.
     const list = holdings();
     expect(
       list.map((x) => x.kind).filter((k) => !(THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
@@ -731,21 +735,8 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     const kind = (k: string) => {
       const x = list.find((h) => h.kind === k);
       if (!x) throw new Error(`no staged holding of the kind ${k}`);
-      return { ...x, before: x.before as Record<string, string[] | undefined> };
+      return x;
     };
-    const one = (x: { before: Record<string, string[] | undefined> }, part: string, i = 0) =>
-      x.before[part]?.[i] ?? `(no ${part} ${String(i)})`;
-    const marchingIn = kind('an item handed to a comrade marching in');
-    expect([marchingIn.copy, marchingIn.engine]).toEqual([
-      { giver: [], comrade: [] },
-      { giver: [], comrade: [one(marchingIn, 'giver')] },
-    ]);
-    const chain = kind('a chain of hand-overs in one phase');
-    const [handed, between] = [one(chain, 'the first to hand over'), one(chain, 'between')];
-    expect([chain.copy, chain.engine]).toEqual([
-      { 'the first to hand over': [], between: [handed], last: [between] },
-      { 'the first to hand over': [], between: [], last: [handed, between] },
-    ]);
     const stone = kind("the Philosopher's Stone used");
     expect([stone.copy, stone.engine]).toEqual([{ bearer: ["Philosopher's Stone"] }, { bearer: [] }]);
   });
