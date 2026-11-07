@@ -16,9 +16,11 @@ import {
   strengthLeftByADruidShortfall,
   takesHalfAHullAboard,
   theDruidMasteryLiftsAUnitOfThisType,
-  theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt,
+  theEffectsOfAKindTheseDiscoveriesCarry,
+  theItemsAHeroUses,
+  theMasteryTierATrainedLevelGives,
+  theStrengthAUnitHasBeforeTheGroundAndTheFoe,
   theWageABeastPaysUnderADruid,
-  unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
 import {
@@ -395,10 +397,9 @@ export function renderReportView(report) {
               druidUnits = 0,
               druidShort = 0;
             const lines = arr.map((a) => {
-              // The unit's strength in the battle's order (armStr's; R-122): the Druid shortfall first, then
-              // its kin and a rival kin's leader, then the Druid mastery. Shown before terrain/tactics, like
-              // everything else here.
-              let bs = unitBaseStrength(a);
+              // The unit's strength as the turn counts it before the ground, the foe and the battle's tactics (R-135,
+              // question 45 (a)): armStr's own steps in its order (theStrengthAUnitHasBeforeTheGroundAndTheFoe), the
+              // shortfall and the mastery below handed in.
               const creature = CREATURE_ARMIES.has(a.type),
                 monster = MONSTER_ARMIES.has(a.type);
               const _dn = druidNeedP(a, c, report); // skeleton / Druidic-creature / sd40 waivers, same-race Druid 1
@@ -406,13 +407,13 @@ export function renderReportView(report) {
               if (_dn.counts) druidUnits++;
               const effDru = _dn.effDru;
               const shortfall = _dn.shortfall;
-              // a Druid shortfall actually REDUCES the unit's strength — apply it to the shown
-              // figure and the panel total (the engine's own strengthLeftByADruidShortfall:
-              // max(0.1, 1−0.2×shortfall)), off the unit's base strength and rounded down, as the
-              // battle takes it, instead of only tagging the penalty beside a full-strength number.
+              // a Druid shortfall actually REDUCES the unit's strength — the share it leaves (the engine's own
+              // strengthLeftByADruidShortfall: max(0.1, 1−0.2×shortfall)) comes off the unit's base strength, rounded
+              // down, as the battle takes it, instead of only tagging the penalty beside a full-strength number.
+              let theShareHisShortfallLeaves = 1;
               if (shortfall > 0) {
                 druidShort++;
-                bs = Math.floor(bs * strengthLeftByADruidShortfall(shortfall));
+                theShareHisShortfallLeaves = strengthLeftByADruidShortfall(shortfall);
               }
               // DRUID MASTERY (2026-09-24; the engine's own rule, as druidMasteryGain asks it): on a living
               // Creature or Monster, +20% per Druid level over the unit's minimum (0 where the requirement is
@@ -421,17 +422,33 @@ export function renderReportView(report) {
               const mastery = theDruidMasteryLiftsAUnitOfThisType(a.type, a.skeletal)
                 ? Math.round(druidMasteryGainOver(druidLevelTheMasteryCounts(druLevel), req) * 100)
                 : 0;
-              // humanoid race affinity — a unit of the same race as your KING gets +20%, and a unit
-              // led by a character of the same race gets +20% (they STACK → +44% when both apply) — and
-              // racial animosity: Elves & Dwarves, Humans & Orcs fight at −20% under a rival-kin
-              // commander. The engine's own rule (theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt, as the
-              // battle's armStr asks it; plan P1-11c5), on the strength the shortfall leaves.
-              const _kin = theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt(bs, a.race, kingdom.race, c.race);
-              const kingRaceMatch = _kin.itsKingIsOfItsKin;
-              const leadRaceMatch = _kin.itsLeaderIsOfItsKin;
-              const feudLed = _kin.aLeaderOfItsRivalKinLeadsIt;
-              bs = _kin.strength;
-              if (mastery > 0) bs = Math.round(bs * (1 + mastery / 100));
+              // In armStr's order: Druid 8 and Necromancy 6 lift its quality (his trained levels); its base strength at
+              // that quality; the shortfall, rounded down; its kin (+20% your king's, +20% its leader's: +44% both) and
+              // a rival kin's leader (−20%); your realm's unit-strength discoveries; the items he uses; the Druid
+              // mastery; his minor titles (those the report names). What a battle or a spell of the turn adds is left out.
+              const _str = theStrengthAUnitHasBeforeTheGroundAndTheFoe(
+                { unitType: a.type, quality: a.quality, isSkeletal: !!a.skeletal, race: a.race },
+                {
+                  hisDruidMasteryTier: theMasteryTierATrainedLevelGives(rawSkillLvl(c, 'druid')),
+                  hisNecromancyMasteryTier: theMasteryTierATrainedLevelGives(rawSkillLvl(c, 'necromancy')),
+                  theShareHisDruidShortfallLeaves: theShareHisShortfallLeaves,
+                  theKingsRace: kingdom.race,
+                  hisRace: c.race,
+                  theRealmsUnitStrengthEffects: theEffectsOfAKindTheseDiscoveriesCarry(
+                    report.discoveries || [],
+                    'unitStr',
+                  ),
+                  heIsTheKing: !!c.isKing,
+                  theItemsHeUses: theItemsAHeroUses(c.items || [], c),
+                  theRealmsAlignment: kingdom.alignment,
+                  hisDruidMasteryGain: mastery / 100,
+                  heHoldsTheMinorTitle: (title) => (c.minorHeld || []).some((t) => t && t.key === title),
+                },
+              );
+              const kingRaceMatch = _str.theKin.itsKingIsOfItsKin;
+              const leadRaceMatch = _str.theKin.itsLeaderIsOfItsKin;
+              const feudLed = _str.theKin.aLeaderOfItsRivalKinLeadsIt;
+              const bs = _str.strength;
               totalStr += bs;
               const wage = a.cost != null ? a.cost : 2;
               totalCost +=
@@ -500,7 +517,7 @@ export function renderReportView(report) {
               druidUnits > 0
                 ? kcHtml` · 🌿 ${druidUnits} unit${druidUnits !== 1 ? 's' : ''} need Druid ${druidShort > 0 ? kcHtml`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>` : kcHtml`<span style="color:#1d5a1d">(${c.name.split(' ')[0]} qualifies)</span>`}`
                 : '';
-            const summary = kcHtml`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(base, before terrain/tactics/fanaticism)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2 !== 1 ? 's' : ''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
+            const summary = kcHtml`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(before the ground, the foe and the battle's tactics)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2 !== 1 ? 's' : ''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
             // ONE line stands for the whole army — strength, a count of each unit type, and the
             // land / flying / sea pace — with a button that unfolds the full unit list (and the
             // upkeep/druid/sea-transport notes) beneath it. The list starts folded.

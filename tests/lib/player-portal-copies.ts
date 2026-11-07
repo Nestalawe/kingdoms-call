@@ -275,9 +275,9 @@ const statementCopies = (opts: SourceOptions) => `
 // the shortfall.
 function armyCardDruidLines(a, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel', opts)}
-  let bs = 1000, druidUnits = 0, druidShort = 0;
+  let druidUnits = 0, druidShort = 0;
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'mastery', opts)}
-  return { strengthOfAThousand: bs, mastery, shortfall };
+  return { strengthOfAThousand: Math.floor(1000 * theShareHisShortfallLeaves), mastery, shortfall };
 }
 // The army card's sea-transport note for the column \`arr\` the hero \`c\` leads, as the words the card shows.
 function armyCardSeaNote(arr, c) {
@@ -292,7 +292,7 @@ function armyCardUnitStrength(a, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom', opts)}
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel', opts)}
   let totalStr = 0, druidUnits = 0, druidShort = 0;
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'bs', 'totalStr+=bs;', opts)}
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'totalStr+=bs;', opts)}
   return bs;
 }
 // The army card's upkeep for the column \`arr\` the hero \`c\` leads, as its "💰 Upkeep" figure gives it: the wage it
@@ -301,7 +301,7 @@ function armyCardUpkeep(arr, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom', opts)}
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druidShort', opts)}
   for (const a of arr) {
-    ${statementsBetween(ARMY_CARD, 'renderReportView', 'bs', 'mast', opts)}
+    ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'mast', opts)}
   }
   return totalCost;
 }

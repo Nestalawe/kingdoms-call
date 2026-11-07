@@ -108,3 +108,12 @@ export function itemUsableBy(it: ItemOfTheseRules | null | undefined, c: RaceAnd
   if (it.alignment && (!c || c.alignment !== it.alignment)) return false;
   return true;
 }
+/** The items a hero uses: each he may use (his race's and alignment's), and of those that take a slot, the ones he
+ *  wears; the rest are inert in his hands. activeItems asks it once it has tidied his slots; the army card asks it of
+ *  the report's items (plan P1-11e38). */
+export function theItemsAHeroUses<AnItem extends ItemOfTheseRules & { readonly equipped?: boolean | undefined }>(
+  items: readonly (AnItem | null | undefined)[],
+  hero: RaceAndAlignment | null | undefined,
+): AnItem[] {
+  return items.filter((it): it is AnItem => !!it && itemUsableBy(it, hero) && (!itemSlot(it) || it.equipped === true));
+}
