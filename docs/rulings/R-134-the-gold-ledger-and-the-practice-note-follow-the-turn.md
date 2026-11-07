@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-05, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 43, built in PR (opening)
+- **Source:** Plan question 43, built in PR #476
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The note under a Practice Skill order quotes the chance the turn rolls when a hero practises alone, by the turn's own
