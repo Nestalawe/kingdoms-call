@@ -17,11 +17,12 @@ The army card's upkeep is the wages the turn charges his column: a Creature or M
 (rounded down, at least 1g) when he has trained Druid to 6 or his realm's Druidic Wonder stands, as the turn's Early
 Winter asks it. A summoned company and a beast of the Wild Hunt still draw none, and a skeleton 1g.
 
-The army card's strength of each unit is the turn's before the ground, the foe and the battle's tactics, as its label
-says: the battle's own steps in the battle's order (Druid 8 and Necromancy 6 lift a unit's quality; a Druid shortfall;
-its kin and a rival kin's leader; the realm's discoveries; the commander's items; his Druid mastery; his minor titles,
-where the report names them). What the ground, the foe and the battle add (the terrain, a defender's bonus, a spell
-cast that turn) stays out.
+The army card's strength of each unit is the turn's before the realm's discoveries, the ground, the foe and the
+battle's tactics, as its label says: the battle's own steps in the battle's order (Druid 8 and Necromancy 6 lift a
+unit's quality; a Druid shortfall; its kin and a rival kin's leader; the commander's items; his Druid mastery; his
+minor titles, where the report names them). What the ground, the foe and the battle add (the terrain, a defender's
+bonus, a spell cast that turn) stays out. The realm's unit-strength discoveries wait for the report to carry their
+effects.
 
 The order form's level of a magic school asks the turn's own rule: his trained level counts to 5 (the levels past it
 buy mastery, not casting), then his items and a Crown of Command's aura, as the report counts them, stack to 9, and two
@@ -45,6 +46,7 @@ Example: Lady Wren, Druid 6, leads two Thunderbirds. The turn charges her realm 
 The turn is not changed. The question was: the card left out the flyers' lift (the sea note), Druid 8's and Necromancy
 6's lifts, the commander's items, the discoveries and titles (its strength), Druid 6's half wage (its upkeep), and the
 cap on a trained magic level and two items of one name (its magic level). Option 1: "the card and the form follow the
-turn". Option 2 (not taken): the turn follows them. The sea note, the magic level, the upkeep and the strength are built.
+turn". Option 2 (not taken): the turn follows them. The sea note, the magic level, the upkeep and the strength are built; the strength's discoveries wait for the
+report.
 
 In Toby's words: "(1)"
