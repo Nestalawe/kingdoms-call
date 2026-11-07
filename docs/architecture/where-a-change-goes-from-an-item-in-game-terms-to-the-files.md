@@ -131,7 +131,9 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
   GM works out for a realm (a cast chance a school, say) reach the portal in the report (`src/views/turn-report.ts`).
   The forecasts of where a hero will stand, what he will carry and lead, and what a garrison will hold, after the orders
   so far: `src/ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts` (P1-11e3; since
-  P1-11e10 with the column the Move note counts and its sea lift, which the march forecast reads).
+  P1-11e10 with the column the Move note counts and its sea lift, which the march forecast reads). Since P1-11e41 they
+  read only the report and the orders handed to them; the page hands them, in
+  `src/ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts` (a snapshot of the form's fields a forecast).
 - **The detail:** [the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules);
   the copies left are `tests/lib/player-portal-copies.ts`'s.
 

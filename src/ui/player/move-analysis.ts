@@ -6,11 +6,13 @@ import { kcJoinP, sb } from './startup.ts';
 import { SKILL_COLUMNS } from './join-and-chronicle.ts';
 import {
   PO_SEA_TYPES,
-  getOrderTarget,
   poSeaAnalysis,
+} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import {
+  getOrderTarget,
   predictedLocation,
   projectedMoveHost,
-} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+} from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
 // The notice shown under a Move order's dropdown: what kind of move this is, and a warning when the
 // column cannot be carried to a sea province. `destProv` is a worldMeta province (may be undefined

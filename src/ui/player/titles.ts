@@ -12,7 +12,7 @@ import { SPELL_HINTS } from './the-hints-the-order-form-shows-below-each-spell.t
 import { SKILL_LABELS } from './move-analysis.ts';
 import { provDirectionLabel } from './order-targets.ts';
 import { leadsArmiesP, reportColour } from './map-symbols.ts';
-import { predictedLocation } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import { predictedLocation } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
 // ── SKILL MASTERY reference ────
 // A permanent, always-available reference: for every one of your characters who has pushed a skill

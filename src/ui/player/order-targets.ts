@@ -69,16 +69,15 @@ import {
 } from './move-analysis.ts';
 import { capitalise, heroHireWageOfP } from './skills-and-projections.ts';
 import { heroFameTextP } from './map-symbols.ts';
+import { effSkillP, PO_SEA_TYPES } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
-  effSkillP,
   getOrderTarget,
-  PO_SEA_TYPES,
   predictedItems,
   predictedLocation,
   projectedGarrison,
   projectedLedArmies,
   projectedMoveHost,
-} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+} from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
 // projected exploration gain for ONE Explore order: the engine's own rule (theShareOfAProvinceAnExploreOrderMaps, through
 // src/shared/ since plan P1-11d14), fed what the report gives: the hero's Explorer (skillEff), his Trailblazer title and
