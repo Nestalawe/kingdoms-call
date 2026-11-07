@@ -142,6 +142,8 @@ import {
   armyCardKinAgainstTheBattle,
   armyCardMasteryAgainstTheTurn,
   armyCardSeaNoteAgainstTheEngine,
+  armyCardSeaNoteOnStagedColumns,
+  aStagedHeroLeading,
   armyCardShortfallAgainstTheBattle,
   castingLimitAgainstTheOrder,
   type Comparison,
@@ -233,6 +235,7 @@ const armyCardMastery = lazily(() => armyCardMasteryAgainstTheTurn(copies, world
 const flyingCarry = lazily(() => flyingCarryAgainstTheEngine(copies, values));
 const exploreForecast = lazily(() => exploreForecastAgainstTheOrder(copies, worldValues));
 const seaNote = lazily(() => armyCardSeaNoteAgainstTheEngine(copies, values));
+const stagedSeaNote = lazily(() => armyCardSeaNoteOnStagedColumns(copies));
 const marchIn = lazily(() => marchInGainAgainstTheMoveOrder(copies));
 const theForm = lazily(() => theOrderFormsSpells());
 const castingLimit = lazily(() => castingLimitAgainstTheOrder(theForm()));
@@ -395,6 +398,34 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     const list = seaNote();
     for (const naval of [7, 8]) expect(list.filter((x) => x.naval === naval).length).toBeGreaterThan(0);
     expect(differences(list)).toEqual([]);
+  });
+
+  test("the army card's sea note pools the flyers' lift with the hulls, as the turn does (R-135, question 45 (d))", () => {
+    // No matrix game leads humanoid flyers beside too few hulls, so the columns are staged, at Naval 0 and 8. The card
+    // counted the hulls alone: Eagle Riders and a Galleon Fleet with two Knights read "needs 2 hulls, has 1" where the
+    // turn sails them (a hull and a flyer). Since R-135 it asks the turn's seaLiftOfAColumn, as the Move note does.
+    const list = stagedSeaNote();
+    expect(list).toHaveLength(12);
+    for (const verdict of ['sea', 'land']) expect(list.filter((x) => x.engine === verdict).length).toBeGreaterThan(1);
+    expect(differences(list)).toEqual([]);
+  });
+
+  test("the army card's sea note says what the turn's lift is, in words (R-135)", () => {
+    // Both the card and the turn ask seaLiftOfAColumn, so a fault in it moves both sides of the case above: here the
+    // words are written out.
+    const words = (column: string[], naval: number) => {
+      const hero = aStagedHeroLeading(column, naval);
+      let text = String(copies.armyCardSeaNote(hero['armies'], hero));
+      for (let was = ''; was !== text;) [was, text] = [text, text.replace(/<[^>]*>/g, '')];
+      return text;
+    };
+    const knights = ['Eagle Riders', 'Galleon Fleet', 'Household Knights', 'Household Knights'];
+    const levies = ['Galleon Fleet', ...Array<string>(4).fill('Shieldwall Levies')];
+    expect([words(knights, 0), words(levies, 0), words(levies, 8)]).toEqual([
+      ' · ⚓ Sea transport: needs 2 hulls, has 1, and the flyers carry the rest — can put to sea',
+      ' · ⚓ Sea transport: needs 2 hulls, has 1 — 2 units left ashore: more fleet units or flyers to carry the whole force',
+      ' · ⚓ Sea transport: needs 1 hull, has 1 — can put to sea',
+    ]);
   });
 });
 
@@ -984,6 +1015,7 @@ test('each engine function leaves its input as it was (the values are frozen: a 
     ...armyCardMastery(),
     ...flyingCarry().columns,
     ...seaNote(),
+    ...stagedSeaNote(),
     ...kin(),
   ]
     .filter((c) => c.engineChangedItsInput)

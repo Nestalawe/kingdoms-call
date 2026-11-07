@@ -3177,6 +3177,56 @@ export function armyCardSeaNoteAgainstTheEngine(c: Copies, s: Samples): SeaNoteC
       };
     });
 }
+/** Staged columns of humanoid flyers beside too few hulls (P1-11e31, question 45 (d)), which no matrix game leads: the
+ *  card's verdict for each, at a trained Naval of 0 and of 8, against getSeaCapability's on the same column and hero. */
+const THE_STAGED_SEA_COLUMNS: Readonly<Record<string, readonly string[]>> = {
+  'Eagle Riders, a Galleon Fleet and four Men-at-Arms': [
+    'Eagle Riders',
+    'Galleon Fleet',
+    ...Array<string>(4).fill('Men-at-Arms'),
+  ],
+  'Eagle Riders, a Galleon Fleet and two Knights': [
+    'Eagle Riders',
+    'Galleon Fleet',
+    'Household Knights',
+    'Household Knights',
+  ],
+  'Eagle Riders, a Galleon Fleet, a Knight and three levies': [
+    'Eagle Riders',
+    'Galleon Fleet',
+    'Household Knights',
+    ...Array<string>(3).fill('Shieldwall Levies'),
+  ],
+  'a Galleon Fleet and two levies': ['Galleon Fleet', 'Shieldwall Levies', 'Shieldwall Levies'],
+  'a Galleon Fleet and four levies': ['Galleon Fleet', ...Array<string>(4).fill('Shieldwall Levies')],
+  'two Eagle Riders, a Galleon Fleet and five levies': [
+    'Eagle Riders',
+    'Eagle Riders',
+    'Galleon Fleet',
+    ...Array<string>(5).fill('Shieldwall Levies'),
+  ],
+};
+/** A staged hero of trained Naval `naval` leading `column` (no sea pace, so the card shows no airborne note). */
+export function aStagedHeroLeading(column: readonly string[], naval: number): Record<string, unknown> {
+  const armies = column.map((type) => ({ type, quality: 'Average' }));
+  return { skills: { naval }, armies, effectiveSeaSpeed: 0 };
+}
+/** The army card's sea note on each staged column, at Naval 0 and 8, against getSeaCapability. */
+export function armyCardSeaNoteOnStagedColumns(c: Copies): SeaNoteComparison[] {
+  return Object.entries(THE_STAGED_SEA_COLUMNS).flatMap(([name, column]) =>
+    [0, 8].map((naval) => {
+      const hero = aStagedHeroLeading(column, naval);
+      return {
+        ...compare(
+          [name, naval],
+          seaNoteVerdict(c.armyCardSeaNote(hero['armies'], hero)),
+          engineOn(getSeaCapability, [structuredClone(hero['armies']), structuredClone(hero)]),
+        ),
+        naval,
+      };
+    }),
+  );
+}
 
 // ── The order form's Cast Spell tables and checks, and the army card's kin and feud (P1-11c1) ────
 // Plan P1-11c's parity cases, before the form takes its tables and its check from the engine's side (P1-11c2 to c5).
