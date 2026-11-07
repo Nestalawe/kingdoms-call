@@ -9,11 +9,13 @@ import {
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
+  aSkillAtThisLevelIsPractisedNoFurther,
   dispFloor,
   everySpellBySchool,
   itemSlot,
   itemUsableBy,
   theLevelEachMasterySpellNeeds,
+  theChanceAHeroPractisingAloneRaisesHisSkill,
   theSchoolOfEachSpell,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
@@ -136,17 +138,24 @@ export function orderChanceNote(c, action, ph) {
       const by = o.byLevel || [25, 20, 15, 10, 5];
       const _pick = KC_SKILLS.indexOf(document.getElementById(`po-target-${c.id}-${ph}`)?.value || '');
       const sel = _pick >= 0 ? KC_SKILLS[_pick] : ''; // only a skill the game knows is named in the note
-      const lvl = sel ? Math.min(4, (c.skills || {})[sel] || 0) : null;
-      const base =
-        lvl == null
-          ? null
-          : by[lvl] + (o.astro || 0) + (o.discovery || 0) + (o.bySkill && sel ? o.bySkill[sel] || 0 : 0); // + skill-scoped practice discoveries
+      // the level he holds as the report gives it (the turn reads it as the phase begins: a rise earlier this turn is
+      // a forecast limit, as is a failed practice's perseverance), and the chance the turn rolls when he practises
+      // alone (R-134): the base by his level and his realm's practice discoveries (in percent on the report), x1.5 for
+      // a Human of a Human realm; no roll at all once practice can raise it no further
+      const lvl = sel ? (c.skills || {})[sel] || 0 : null;
       const scale = `Chance falls as mastery grows: ${by.map((v, i) => `${v}% at ${i}`).join(', ')}.`;
       const extra = `Practising alongside someone of equal level adds half again; anyone of HIGHER level teaches you, and the lesson cannot fail. A run of failures makes the next attempt likelier.`;
+      if (lvl == null) return chanceLine(`${scale} ${extra}`);
+      const label = SKILL_LABELS[sel] || sel;
+      if (aSkillAtThisLevelIsPractisedNoFurther(lvl))
+        return chanceLine(
+          kcHtml`No roll is made: practice raises a skill only to level 5, and ${label} is at ${lvl}. Higher levels come only from experience in the field.`,
+        );
+      const discoveries = (o.astro || 0) + (o.discovery || 0) + (o.bySkill ? o.bySkill[sel] || 0 : 0); // + skill-scoped practice discoveries
+      const quick = c.race === 'Human' && (currentReport?.kingdom || {}).race === 'Human';
+      const chance = theChanceAHeroPractisingAloneRaisesHisSkill(lvl, discoveries / 100, 0, quick) * 100;
       return chanceLine(
-        base == null
-          ? `${scale} ${extra}`
-          : kcHtml`Improvement: ${pct(base)} at ${SKILL_LABELS[sel] || sel} ${lvl}. ${extra}`,
+        kcHtml`Improvement: ${pct(chance)} at ${label} ${lvl}.${quick ? ' A Human of a Human realm learns half as fast again (×1.5).' : ''} ${extra}`,
       );
     }
     default:
