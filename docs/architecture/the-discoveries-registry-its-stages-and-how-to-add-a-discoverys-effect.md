@@ -27,7 +27,8 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   (one union, `TheStagesOfEachHookPoint`, in `the-registry-of-content-effects.ts`); its orders are its own list,
   `THE_ORDER_OF_EACH_STAGE_OF_THE_DISCOVERIES`. Each stage holds one kind so far.
 - **A runner is handed the realm.** It finds the realm's effects of its stage's kind by the realm's discoveries' ids
-  (`theEffectsOfAKindARealmHolds`, in the table `DISC_BY_ID`): in the order the realm holds its discoveries, `effect`
+  (`theEffectsOfAKindARealmHolds`, on plain values since P1-11e38 as `theEffectsOfAKindTheseDiscoveriesCarry`, which
+  the army card asks too): in the order the realm holds its discoveries, `effect`
   before `effect2`, the order a product or a sum of decimals runs in. It hands each effect, with the stage's facts, to
   the kind's effect, which returns its number (or nothing, where its filters don't hold), and adds, multiplies or asks
   them as the old reader did. The old readers (`discEffectsOf`, `discSum`, `discEff`, `discSumOf`, `discParam`,
