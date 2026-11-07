@@ -68,7 +68,10 @@ const heroes = [
       'Sea Chart of the Deep',
       'Black Sceptre',
       'Chalice of Dawn',
-    ].map((n) => item(n)),
+    ]
+      .map((n) => item(n))
+      // the Kraken's step up a tier, as an older save's copy carries it (no item in play does: Parked)
+      .concat({ ...item('Kraken Figurehead'), name: 'An Older Figurehead', effect: { stat: 'navalBonus', bonus: 1 } }),
   },
   { id: 5, player: 0, race: 'Human', alignment: 'Divine', skills: {}, items: [item('Golden Spur', false)] },
   { id: 6, player: 0, race: 'Human', alignment: 'Divine', isKing: true, skills: { druid: 6 }, items: [] },
