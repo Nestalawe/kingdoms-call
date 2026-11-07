@@ -470,5 +470,5 @@ test("the rulebook's Charm row says the Chronicle lists the charmed hero's skill
   }
   expect(row).toContain('your Chronicle lists their skills and the magic items they carry');
   expect(row).not.toContain('never sees their skills or possessions');
-  expect(HINTS.Charm).toContain('you learn their skills and magic items');
+  expect(HINTS['Charm']).toContain('you learn their skills and magic items');
 });

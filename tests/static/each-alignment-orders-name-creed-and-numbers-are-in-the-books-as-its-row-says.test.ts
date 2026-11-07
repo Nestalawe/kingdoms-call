@@ -352,7 +352,7 @@ const WHAT_THE_EVIL_TEXTS_SAID = [
 test.for([
   {
     text: "the report's Evil summary",
-    seen: asAReaderSeesThePagesText(TEXTS.theReportsSummaries.Evil ?? ''),
+    seen: asAReaderSeesThePagesText(TEXTS.theReportsSummaries['Evil'] ?? ''),
     says: THE_EVIL_DOCTRINE,
     saidBefore: WHAT_THE_EVIL_TEXTS_SAID,
   },
@@ -370,7 +370,7 @@ test.for([
   },
   {
     text: "the report's Pagan summary",
-    seen: asAReaderSeesThePagesText(TEXTS.theReportsSummaries.Pagan ?? ''),
+    seen: asAReaderSeesThePagesText(TEXTS.theReportsSummaries['Pagan'] ?? ''),
     says: [
       "the Wild Hunt binds two of the province's creatures to your host as Veterans until the end of the following turn",
     ],
