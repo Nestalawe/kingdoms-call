@@ -22,8 +22,8 @@ below a spell and the spell's blurb say what the turn does:
 Every spell's effect counts the caster's level to 5 (the rulebook says so once for every spell); levels 6 to 9 buy cast
 chance and the mastery spells.
 
-The report's Evil summary and its bonus line, the rulebook's Evil section and Charm row, and the Pagan texts say what
-the turn does:
+The report's Evil summary and its bonus line, the rulebook's Evil section, the intro's Evil row, the rulebook's Charm
+row and the Pagan texts say what the turn does:
 
 - **An Evil conquest** follows the doctrine set on the conquering hero's orders. *Terror* plunders 50% of the
   province's tax value in gold at once. *Enslave* takes no gold: it presses the beaten folk into a free Green garrison
