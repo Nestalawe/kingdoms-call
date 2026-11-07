@@ -11,10 +11,8 @@ import {
   whatARealmsDiscoveriesAddToACastersChance,
   type ARealmAsTheDiscoveriesReadIt,
 } from './rules/the-registry-of-discovery-effects.ts';
-import {
-  whatTheCommandersItemsAddToAStrikesChance,
-  type AMagicItemAsTheRegistryReadsIt,
-} from './rules/the-registry-of-magic-item-effects.ts';
+import { whatTheCommandersItemsAddToAStrikesChance } from './rules/the-registry-of-magic-item-effects.ts';
+import type { AMagicItemAsTheRegistryReadsIt } from './rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import { theChanceOfAUnitsStrikeBeforeTheBattle } from './rules/the-registry-of-spell-effects.ts';
 
 /** A commander as the primal strike's bonus reads him: his items (or none), as the items' registry reads them. */
