@@ -3,17 +3,24 @@ import { KC_HEX_DIRS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts'
 import {
   aColumnIsTurnedBackAtANeutralRealmsBorder,
   aColumnLeadingShipsMayNotStepFromLandToLand,
+  aMercenaryBandIsNotHiredIntoAFullColumn,
   aProvinceIsSafePassageForARealmsColumn,
   canEnterTerrain,
   seaLiftOfAColumn,
   takesHalfAHullAboard,
   theAlignmentOrdersByTheNameTheFormWrites,
+  theCompaniesALeaderTakesUpToHisBeastCommandsRoom,
   theFirstStepOfAShortestRouteAColumnMayTake,
+  theGarrisonPlacesAPickUpTakes,
   theHexNextToAProvinceInADirection,
   theItemsASendItemOrderHandsOver,
   theMovePoolAStepSpends,
+  theRisenDeadFollowAHandOverTo,
+  theRoomALeadersBeastCommandLeaves,
   theStepAColumnTakesTowardAFarProvince,
   whatAMarchsOrderNames,
+  whereAHandOversRisenDeadGo,
+  whereARecruitedCompanyMusters,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
 // The order form's forecasts (plan P1-11e3): where a hero will stand, what he will carry and what he will lead, and what a
@@ -35,13 +42,7 @@ import {
 // native recruits at Average. Blood Offering, Leave/Transfer and Disband all address units by INDEX
 // into the character's army list, so a projection that skipped mercenaries — as this one did until
 // 2026-09-09 — both hid a band hired earlier in the turn and shifted every index after it.
-// Garrison units always muster straight into the province garrison when recruited, whatever the
-// "Muster to" choice (GM engine, 2026-09-23c). Native recruiting needs the province, so any
-// non-mercenary garrison-type recruit is projected into the garrison, never onto a character.
 export const GARRISON_UNIT_TYPES_P = new Set(KC_UNIT_CLASS.garrison);
-export function _isAutoGarrisonRecruit(u) {
-  return !!u && !u._merc && GARRISON_UNIT_TYPES_P.has(u.type);
-}
 export function _projRecruitUnits(tokens) {
   const out = [];
   const mercs = (currentReport || {}).mercIntel || [];
@@ -71,6 +72,80 @@ export function _projRecruitUnits(tokens) {
     out.push({ type, quality: 'Average' });
   });
   return out;
+}
+
+// ── THE COMPANIES A RECRUIT, A HAND-OVER AND A PICK UP MOVE (R-129, plan P1-11e19) ────
+// Where each goes is the turn's own rule (src/shared/), asked on the companies as the report shows them: their marks
+// (skeletal, temporary, wildHunt: the names the rules read) carried with them through the replay.
+const asTheReportShowsIt = (a) => a;
+// A company as the forecasts carry it: its type, quality, name and race, and the marks the turn's rules read.
+function theCompanyAsTheFormCarriesIt(a, withRace = true) {
+  const company = { type: a.type, quality: a.quality, unitName: a.unitName };
+  if (withRace) company.race = a.race;
+  return {
+    ...company,
+    skeletal: a.skeletal,
+    temporary: a.temporary,
+    wildHunt: a.wildHunt,
+    wildHuntUntil: a.wildHuntUntil,
+  };
+}
+// The room the beast command of the hero `card` leaves, leading `column`: his Druid as the report counts it (a hero
+// hired, charmed or raised this turn shows none: a forecast limit).
+function theRoomHisBeastCommandLeaves(card, column) {
+  return theRoomALeadersBeastCommandLeaves(Number(effSkillP(card, 'druid')) | 0, column || [], asTheReportShowsIt);
+}
+// Where the companies the Recruit Armies order of the hero `o` in the phase `ph` raises muster, as the turn musters them
+// (whereARecruitedCompanyMusters, aMercenaryBandIsNotHiredIntoAFullColumn): the bands first, then the province's, each
+// into the column it joins (his, or the comrade's "Muster to" names: `dest`), or into the garrison (a garrison company,
+// the garrison named, or a beast past the column's beast command, in a province of his realm); a band of beasts for a
+// full column with no garrison to take it is not hired. `ticks` are the order's boxes, `destTok` its "Muster to";
+// `columnOf(card)` the companies a hero leads as the phase begins. The province is his realm's by the report (one
+// taken this turn: a forecast limit).
+function whereTheCompaniesARecruitRaisesMuster(report, o, ph, ticks, destTok, columnOf) {
+  const loc = predictedLocation(o.id, ph);
+  const inAProvinceOfHisRealm = !!loc && (report.ownedProvinces || []).some((p) => p.id === loc.id);
+  const theOrderNamesTheGarrison = destTok === 'to:garrison' && inAProvinceOfHisRealm;
+  const named =
+    destTok && destTok !== 'to:self' && destTok !== 'to:garrison'
+      ? (report.characters || []).find((x) => 'to:' + x.id === destTok)
+      : null;
+  const dest = named || o;
+  const column = (columnOf(dest) || []).slice();
+  const out = { dest, toTheColumn: [], toTheGarrison: [] };
+  _projRecruitUnits(ticks).forEach((u) => {
+    const facts = {
+      theOrderNamesTheGarrison,
+      inAProvinceOfHisRealm,
+      theCompany: u,
+      theRoomTheColumnsBeastCommandLeaves: theRoomHisBeastCommandLeaves(dest, column),
+    };
+    if (u._merc && aMercenaryBandIsNotHiredIntoAFullColumn(facts)) return;
+    if (
+      whereARecruitedCompanyMusters({ ...facts, itIsAGarrisonCompany: GARRISON_UNIT_TYPES_P.has(u.type) }) ===
+      'the column'
+    ) {
+      column.push(u);
+      out.toTheColumn.push(u);
+    } else out.toTheGarrison.push(u);
+  });
+  return out;
+}
+// What the hero `recipient`, leading `column` as the phase begins, takes of the companies `handed` him, as the turn
+// hands them over: risen dead go to their graves unless he or his realm is Undead (theRisenDeadFollowAHandOverTo,
+// whereAHandOversRisenDeadGo); the beasts past his beast command's room stay with the giver (`left`), the rest he takes
+// (`taken`: theCompaniesALeaderTakesUpToHisBeastCommandsRoom).
+function whatAComradeTakesOfAHandOver(report, recipient, column, handed) {
+  const theyFollow = theRisenDeadFollowAHandOverTo({
+    alignment: recipient.alignment,
+    hisRealmsAlignment: (report.kingdom || {}).alignment,
+  });
+  const following = whereAHandOversRisenDeadGo(handed, theyFollow, asTheReportShowsIt).handed;
+  return theCompaniesALeaderTakesUpToHisBeastCommandsRoom(
+    following,
+    theRoomHisBeastCommandLeaves(recipient, column),
+    asTheReportShowsIt,
+  );
 }
 
 // Get target value — handles both regular selects/inputs and recruit checkbox lists
@@ -356,9 +431,11 @@ export function projectedMoveHost(charId, ph) {
       let got = [];
       if (oAct === 'Recruit Armies') {
         if (!toks.includes('to:' + ch.id)) return;
-        got = (typeof _projRecruitUnits === 'function' ? _projRecruitUnits(toks) : []).filter(
-          (u) => !_isAutoGarrisonRecruit(u),
-        ); // garrison units never join a character
+        // where the turn musters them (R-129, P1-11e19): garrison companies and beasts past his command not in his column
+        const musters = whereTheCompaniesARecruitRaisesMuster(report, o, ph, toks, 'to:' + ch.id, (x) =>
+          x === ch ? out.armies : projectedLedArmies(x.id, ph),
+        );
+        got = musters.dest === ch ? musters.toTheColumn : [];
       } else {
         const oExtra = (document.getElementById(`po-extra-${o.id}-${ph}`) || {}).value || '';
         if (String(oExtra) !== String(ch.id)) return;
@@ -371,6 +448,8 @@ export function projectedMoveHost(charId, ph) {
             if (i >= 0) got.push(pool.splice(i, 1)[0]);
           });
         }
+        // what he takes of them as the turn hands them over (R-129, P1-11e19): risen dead, his beast command
+        got = whatAComradeTakesOfAHandOver(report, ch, out.armies, got).taken;
       }
       if (!got.length) return;
       got.forEach((u) => add({ ...u, _projected: true }));
@@ -506,18 +585,12 @@ function theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive) {
     items.set(String(x.id), [...(x.items || [])]);
     byKey.set(String(x.id), x);
   });
-  // the companies each hero leads, by his card
+  // the companies each hero leads, by his card (with the marks the report gives them: R-129, P1-11e19)
   let armies = new Map();
   characters.forEach((x) => {
     armies.set(
       x,
-      (x.armies || []).map((a) => ({
-        type: a.type,
-        quality: a.quality,
-        unitName: a.unitName,
-        race: a.race,
-        _isSkeletal: a._isSkeletal,
-      })),
+      (x.armies || []).map((a) => theCompanyAsTheFormCarriesIt(a)),
     );
   });
   // the garrison of each province an order has touched, by the province's id as predictedLocation gives it
@@ -526,10 +599,12 @@ function theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive) {
     theItemsAPhasesOrdersHandOver(characters, items, byKey, p);
     const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, armies, p);
     const next = new Map();
+    // the beasts the phase's Pick Ups take past a leader's beast command, which go back to the garrison
+    const goBack = new Map();
     characters.forEach((x) => {
-      next.set(x, theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, x, p));
+      next.set(x, theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, x, p, goBack));
     });
-    theGarrisonsAfterAPhase(report, garrisons, added, p);
+    theGarrisonsAfterAPhase(report, garrisons, added, p, goBack);
     armies = next;
   }
   return { items, armies, garrisons };
@@ -575,12 +650,7 @@ function theItemsAPhasesOrdersHandOver(characters, items, byKey, p) {
 // The garrison a province holds as the replay begins, from the report.
 function theGarrisonTheReportShows(report, provId) {
   const pd = (report.provinceOrderData || {})[provId];
-  return ((pd && pd.garrisonArmies) || []).map((a) => ({
-    type: a.type,
-    quality: a.quality,
-    unitName: a.unitName,
-    race: a.race,
-  }));
+  return ((pd && pd.garrisonArmies) || []).map((a) => theCompanyAsTheFormCarriesIt(a));
 }
 // What the orders of the phase `ph` add to each garrison, by the province's id: for each living hero who adds any, in
 // the report's order, the hero and the companies he adds (those he leads as the phase begins, from `armies`).
@@ -621,12 +691,15 @@ function theCompaniesAPhasesOrdersAddToEachGarrison(report, armies, ph) {
         const wrap = document.getElementById(`po-target-wrap-${o.id}-${ph}`);
         if (!wrap) return;
         const destSel = wrap.querySelector('.po-recruit-dest');
-        const _toG = !!destSel && destSel.value === 'to:garrison';
-        _projRecruitUnits(
+        // where the turn musters them (R-129, P1-11e19)
+        whereTheCompaniesARecruitRaisesMuster(
+          report,
+          o,
+          ph,
           [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || ''),
-        ).forEach((u) => {
-          if (_toG || _isAutoGarrisonRecruit(u)) units.push(u);
-        });
+          destSel ? destSel.value : 'to:self',
+          (x) => armies.get(x),
+        ).toTheGarrison.forEach((u) => units.push(u));
       }
       if (!added.has(loc.id)) added.set(loc.id, []);
       added.get(loc.id).push({ hero: o, units });
@@ -645,7 +718,8 @@ function theGarrisonAPickUpOfThePhaseSees(report, garrisons, added, provId, excl
 }
 // Each garrison once the phase `ph` is over: what its orders add (`added`), then what its Pick Ups take — only strictly
 // earlier phases' pick-ups are replayed into a later phase (same-phase pick-ups race on initiative).
-function theGarrisonsAfterAPhase(report, garrisons, added, ph) {
+// The beasts a Pick Up takes past the leader's beast command go back to the end of the garrison (`goBack`, by province).
+function theGarrisonsAfterAPhase(report, garrisons, added, ph, goBack) {
   const garrisonOf = (provId) => {
     if (!garrisons.has(provId)) garrisons.set(provId, theGarrisonTheReportShows(report, provId));
     return garrisons.get(provId);
@@ -662,29 +736,14 @@ function theGarrisonsAfterAPhase(report, garrisons, added, ph) {
       const loc = predictedLocation(o.id, ph);
       if (!loc) return;
       const tgt = document.getElementById(`po-target-${o.id}-${ph}`)?.value || '';
-      if (
-        tgt
-          .split(',')
-          .map((t) => t.trim())
-          .includes('all')
-      ) {
-        garrisons.set(loc.id, []);
-        return;
-      }
+      // the places the turn takes ("all", or each `g:N`), the last first (R-129, P1-11e19)
       const garr = garrisonOf(loc.id);
-      const idxs = [
-        ...new Set(
-          tgt
-            .split(',')
-            .map((t) => t.trim())
-            .filter((t) => /^(g:|-1:)\d+$/.test(t))
-            .map((t) => parseInt(t.slice(t.indexOf(':') + 1))),
-        ),
-      ]
-        .filter((i) => i >= 0 && i < garr.length)
-        .sort((a, b) => b - a);
-      idxs.forEach((i) => garr.splice(i, 1));
+      theGarrisonPlacesAPickUpTakes(tgt, garr.length).forEach((i) => garr.splice(i, 1));
     });
+  goBack.forEach((beasts, provId) => {
+    const garr = garrisonOf(provId);
+    beasts.forEach((a) => garr.push(a));
+  });
 }
 
 // ── 2026-09-24 (Toby): TRANSFER CHAINS ──────────────────────────────────────────────────────────
@@ -701,7 +760,9 @@ function theGarrisonsAfterAPhase(report, garrisons, added, ph) {
 // conquests, so the recipient and garrison-eligibility lists reflect where the character will actually be.) Armies
 // TRANSFERRED to this character by ANOTHER of yours earlier this turn — a Leave/Transfer handed over, or a Recruit
 // mustered "to:<this id>" — ARE projected in, through chains of any length (2026-09-24).
-function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, char, prevPh) {
+// Each company moves where the turn's rules send it (R-129, P1-11e19): a recruit, a hand-over and a Pick Up's beasts
+// past a beast command, a garrison company or band, risen dead; the beasts his Pick Up can't take go into `goBack`.
+function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, char, prevPh, goBack) {
   const charId = char.id;
   let led = (armies.get(char) || []).slice();
   const prevAction = document.getElementById(`po-action-${charId}-${prevPh}`)?.value || '';
@@ -712,24 +773,26 @@ function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, cha
     if (o.id === charId) return;
     const oAct = document.getElementById(`po-action-${o.id}-${prevPh}`)?.value || '';
     const oTgt = document.getElementById(`po-target-${o.id}-${prevPh}`)?.value || '';
-    if (
-      oAct === 'Recruit Armies' &&
-      oTgt
-        .split(',')
-        .map((t) => t.trim())
-        .includes('to:' + charId)
-    ) {
+    if (oAct === 'Recruit Armies') {
       // The engine hires MERCENARIES first and appends native recruits after, so the projection
       // must use the same order or the Blood Offering S:/E: indices would point at the wrong
       // units.
-      _projRecruitUnits(oTgt.split(',').map((t) => t.trim())).forEach((u) => {
-        if (!_isAutoGarrisonRecruit(u)) led.push(u);
-      }); // garrison units never join a character
+      const toks = oTgt.split(',').map((t) => t.trim());
+      const musters = whereTheCompaniesARecruitRaisesMuster(
+        report,
+        o,
+        prevPh,
+        toks,
+        toks.find((t) => t.startsWith('to:')) || 'to:self',
+        (x) => armies.get(x),
+      );
+      if (musters.dest === char) musters.toTheColumn.forEach((u) => led.push(u));
     } else if (oAct === 'Leave/Transfer Army') {
       const oExtra = document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value || '';
       if (String(oExtra) !== String(charId)) return;
       const oArm = theCompaniesTheReplayGivesTheHeroOfId(report, armies, o.id);
-      if (oTgt.split(',').includes('all')) oArm.forEach((a) => led.push(a));
+      const handed = [];
+      if (oTgt.split(',').includes('all')) oArm.forEach((a) => handed.push(a));
       else
         oTgt
           .split(',')
@@ -737,8 +800,9 @@ function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, cha
           .forEach((val) => {
             val = val.trim();
             const a = oArm.find((x) => (x.unitName || x.type) === val);
-            if (a) led.push(a);
+            if (a) handed.push(a);
           });
+      whatAComradeTakesOfAHandOver(report, char, armies.get(char), handed).taken.forEach((a) => led.push(a));
     }
   });
   if (prevAction === 'Recruit Armies') {
@@ -750,37 +814,34 @@ function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, cha
       // display was what made garrison-bound units look as though they marched off with the
       // hero).
       const destSel = wrap.querySelector('.po-recruit-dest');
-      const destTok = destSel ? destSel.value : 'to:self';
-      const goesToThisHero = !(
-        destTok === 'to:garrison' ||
-        (destTok && destTok.startsWith('to:') && destTok !== 'to:self')
+      const musters = whereTheCompaniesARecruitRaisesMuster(
+        report,
+        char,
+        prevPh,
+        [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || ''),
+        destSel ? destSel.value : 'to:self',
+        (x) => armies.get(x),
       );
-      if (goesToThisHero) {
-        const _ticks = [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || '');
-        _projRecruitUnits(_ticks).forEach((u) => {
-          if (!_isAutoGarrisonRecruit(u)) led.push(u);
-        }); // garrison units never join a character
-      }
+      if (musters.dest === char) musters.toTheColumn.forEach((u) => led.push(u));
     }
   } else if (prevAction === 'Pick Up Army') {
     const ploc = predictedLocation(charId, prevPh);
     const pgarr = ploc ? theGarrisonAPickUpOfThePhaseSees(report, garrisons, added, ploc.id, charId) : []; // garrison as it stands at THAT phase
-    if (prevTarget === 'all') {
-      pgarr.forEach((a) => led.push({ type: a.type, quality: a.quality, unitName: a.unitName }));
-    } else
-      prevTarget
-        .split(',')
-        .filter(Boolean)
-        .forEach((sel) => {
-          sel = sel.trim();
-          let gi = null;
-          if (sel.startsWith('g:')) gi = parseInt(sel.slice(2));
-          else if (sel.startsWith('-1:')) gi = parseInt(sel.slice(3)); // legacy form
-          if (gi != null && pgarr[gi])
-            led.push({ type: pgarr[gi].type, quality: pgarr[gi].quality, unitName: pgarr[gi].unitName });
-        });
+    // the places the turn takes, the last first, and the beasts past his beast command back to the garrison
+    const takenUp = theGarrisonPlacesAPickUpTakes(prevTarget, pgarr.length).map((i) =>
+      theCompanyAsTheFormCarriesIt(pgarr[i], false),
+    );
+    const { taken, left } = theCompaniesALeaderTakesUpToHisBeastCommandsRoom(
+      takenUp,
+      theRoomHisBeastCommandLeaves(char, led),
+      asTheReportShowsIt,
+    );
+    taken.forEach((a) => led.push(a));
+    if (left.length) goBack.set(ploc.id, [...(goBack.get(ploc.id) || []), ...left]);
   } else if (prevAction === 'Leave/Transfer Army' || prevAction === 'Disband Army') {
+    let removed = [];
     if (prevTarget === 'all') {
+      removed = led;
       led = [];
     } else
       prevTarget
@@ -789,8 +850,17 @@ function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, cha
         .forEach((val) => {
           val = val.trim();
           const idx = led.findIndex((a) => (a.unitName || a.type) === val);
-          if (idx >= 0) led.splice(idx, 1);
+          if (idx >= 0) removed.push(...led.splice(idx, 1));
         });
+    // handed to a comrade: the beasts past his beast command stay with the giver, at the end of his column
+    const extra =
+      prevAction === 'Leave/Transfer Army' ? document.getElementById(`po-extra-${charId}-${prevPh}`)?.value : '';
+    const recipient =
+      extra !== '' && extra != null && String(extra) !== '-1'
+        ? (report.characters || []).find((x) => String(x.id) === String(extra))
+        : null;
+    if (recipient)
+      whatAComradeTakesOfAHandOver(report, recipient, armies.get(recipient), removed).left.forEach((a) => led.push(a));
   }
   return led;
 }

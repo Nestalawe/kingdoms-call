@@ -205,8 +205,13 @@ const COPIES: Record<string, string[]> = {
     ...THE_MARCH_FORECASTS_DECLARATIONS,
     'predictedItems',
     'GARRISON_UNIT_TYPES_P',
-    '_isAutoGarrisonRecruit',
     '_projRecruitUnits',
+    // since P1-11e19 where the companies a Recruit, a hand-over and a Pick Up move go, by the turn's rules
+    'asTheReportShowsIt',
+    'theCompanyAsTheFormCarriesIt',
+    'theRoomHisBeastCommandLeaves',
+    'whereTheCompaniesARecruitRaisesMuster',
+    'whatAComradeTakesOfAHandOver',
     // since P1-11e17 one replay of the phases' orders, which the three read
     'theFormsReplayOfThePhasesBefore',
     'theItemsAPhasesOrdersHandOver',
@@ -2317,7 +2322,7 @@ export function aSearchLairAfterEachMarchTheTurnRefuses(c: Copies): ASearchLairA
 // (predictedItems, which every later phase's Send Item, Equip Items and Use Item fields read), the companies he leads
 // (projectedLedArmies, which the Leave/Transfer, Disband and Blood Offering fields and the Move note read) and those a
 // province holds unled (projectedGarrison, which the Pick Up field reads), with the units a Recruit musters
-// (_projRecruitUnits) and which of them go to the garrison (_isAutoGarrisonRecruit). Each runs as the portal's own code,
+// (_projRecruitUnits) and where each musters (since P1-11e19 the turn's rule). Each runs as the portal's own code,
 // on the orders staged in its fields; the turn's side is its phases, played one at a time as its loop plays them. Where
 // the forecast disagrees with the turn (question 42), the difference is pinned exactly: each case says which kind it is.
 

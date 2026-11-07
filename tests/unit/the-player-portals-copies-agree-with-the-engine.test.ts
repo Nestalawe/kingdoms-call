@@ -93,7 +93,7 @@
 // as mapping is the turn's at March 6 and 0 leading companies, at Explorer 7 and for a sea sailed into, and since
 // P1-11e13 for a Travelworn Drape (the share his card gives) and Naval 6's charting of the coast. P1-11d2 (plan P1-11d, before any of it is shared):
 // on a staged world with no guards (`holdingWorld`, each case on its own province), what `predictedItems`,
-// `projectedLedArmies` and `projectedGarrison` (with `_projRecruitUnits` and `_isAutoGarrisonRecruit`) say a hero will
+// `projectedLedArmies` and `projectedGarrison` (with `_projRecruitUnits`) say a hero will
 // carry and lead, and a garrison hold, as the season after his orders begins, is what the turn's phases leave them
 // (played one at a time, its loop's four stages each): items handed over beside him, sent by courier and passed on;
 // companies recruited (a band and the province's, a garrison company, into the garrison, under a comrade), handed over,
