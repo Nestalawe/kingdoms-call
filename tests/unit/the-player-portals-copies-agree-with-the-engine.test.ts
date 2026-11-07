@@ -168,6 +168,7 @@ import {
   theMarchPastHisPaceOfAHeroTheReportShowsNoPaceOf,
   THE_HOLDINGS_THE_FORECAST_GETS_RIGHT,
   THE_HOLDINGS_THE_FORECAST_GETS_WRONG,
+  theSendItemFieldWithAMithrilSuitAgainstTheTurn,
   theMarchForecastAgainstTheTurn,
   theMarchInForecastAgainstTheTurn,
   theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems,
@@ -681,6 +682,15 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     const { field, turn } = thePickUpFieldAsAComradeLeavesAgainstTheTurn(copies);
     expect(field).toEqual(turn);
     expect(field).toHaveLength(1);
+  });
+
+  test('the Send Item field lists a Mithril suit but lets him tick only what the turn hands over (P1-11e18, R-129)', () => {
+    // A granted suit is forged to its wearer: the field still lists it (the boxes' values are places in his pack, so
+    // dropping it would shift every later one) but greyed, by the turn's own check (src/shared/).
+    const { listed, ticked, turn } = theSendItemFieldWithAMithrilSuitAgainstTheTurn(copies);
+    expect(listed).toEqual(['Mithril Armour', ...turn]);
+    expect(ticked).toEqual(turn);
+    expect(turn).toHaveLength(1);
   });
 
   test("what the forecast gets wrong is pinned: a comrade marching in, a chain in one phase, the Stone, the beast command, a garrison band, Pick Up's order, risen dead (question 42)", () => {

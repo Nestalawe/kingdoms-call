@@ -3,7 +3,7 @@
 // Grand Cathedral's free Bless, P1-23ad; the hex step, P1-11d5 and d6; the alignment orders, P1-11d7; the beasts' two
 // sets and the Druid mastery's guard, P1-11d12; the Explore gain, P1-11d14; what a march's order names,
 // P1-11e9; where a column may step, P1-11e10; the pool a step spends, P1-11e11; the step toward a far province,
-// P1-11e12) ────
+// P1-11e12; the items a Send Item hands over, P1-11e18) ────
 // The player portal's one door to the engine (plan P1-11a, Decision 2): the rules of a hero, an army, an item, a level
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
@@ -15,7 +15,9 @@
 // share of a province an Explore order maps since P1-11d14: the Explore forecast asks it; what a march's order names since
 // P1-11e9: the march forecast reads a Move's and a Forced March's target by it; where a column may step since P1-11e10:
 // the march forecast asks whether the turn refuses a march; the pool a step spends since P1-11e11: the march forecast
-// spends his pace by it; the step toward a far province since P1-11e12: the march forecast takes it as the turn does).
+// spends his pace by it; the step toward a far province since P1-11e12: the march forecast takes it as the turn does;
+// the items a Send Item hands over since P1-11e18: the forecasts' replay hands them over, the Send Item field greys the
+// Mithril suit).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -77,6 +79,10 @@ export {
   theFirstStepOfAShortestRouteAColumnMayTake,
   theStepAColumnTakesTowardAFarProvince,
 } from '../engine/rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts';
+export {
+  anItemIsTheMithrilSuitGrantedToItsWearer,
+  theItemsASendItemOrderHandsOver,
+} from '../engine/rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
 export { theMovePoolAStepSpends } from '../engine/rules-on-plain-values/the-move-pools-a-column-marches-and-sails-by-and-the-pool-a-step-spends.ts';
 export { theHexNextToAProvinceInADirection } from '../engine/rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 export { theShareOfAProvinceAnExploreOrderMaps } from '../engine/rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';

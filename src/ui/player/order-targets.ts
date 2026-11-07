@@ -6,6 +6,7 @@ import {
   alignDistP,
   ALL_SKILLS,
   aRealmOfThisCreedMayGiveTheAlignmentOrder,
+  anItemIsTheMithrilSuitGrantedToItsWearer,
   CREATURE_ARMIES,
   heroHireWage,
   isLegendaryItem,
@@ -1395,11 +1396,12 @@ export function buildTargetField(c, ph, saved) {
       const _giSaved = (target || '').split(',').filter(Boolean);
       const _giAll = !_giByName && _giSaved.includes('all');
       const _giBoxes = items.map((it, i) => {
-        // A granted Mithril suit is forged to its wearer and cannot be sent on. The row still has
+        // A granted Mithril suit is forged to its wearer and cannot be sent on (the turn's own check, src/shared/; the
+        // forecasts' replay keeps it on him with "all", R-129). The row still has
         // to be RENDERED — when the tick values are indices into the engine's own item list — so it is
         // shown greyed and disabled rather than dropped, which would slide every later index by
         // one.
-        const _bound = !!(it && it.effect && it.effect.stat === 'mithrilArmour');
+        const _bound = anItemIsTheMithrilSuitGrantedToItsWearer(it);
         const _val = _giByName ? String(it.name || '') : String(i);
         const chk = !_bound && (_giAll || _giSaved.includes(_val)) ? 'checked' : '';
         return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:${_bound ? 'not-allowed' : 'pointer'};${_bound ? 'opacity:.55' : ''}">

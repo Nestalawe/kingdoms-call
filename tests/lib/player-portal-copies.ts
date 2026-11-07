@@ -231,6 +231,13 @@ const COPIES: Record<string, string[]> = {
     'gdAlreadyBuiltP',
     'rawSkillLvl',
     'skillsUnseenP',
+    // (the Send Item field's list of items and its recipients: P1-11e18)
+    'ITEM_TIER_NAME_P',
+    'ITEM_TIER_COLOUR_P',
+    'itemTierTagP',
+    'isPreOrderIdP',
+    'orderTargetCharsP',
+    'preOrderTagP',
     'ACTION_DISPLAY_ORDER',
     '_actionRank',
     'actionsFor',
@@ -2951,6 +2958,34 @@ export function thePickUpFieldAsAComradeLeavesAgainstTheTurn(c: Copies): { field
   return {
     field: (Array.isArray(field) ? field : []).map(aCompany),
     turn: whatTheyHoldIn(theTurnPlaysTheHolding(world.state, holding), holding)['taker'] ?? [],
+  };
+}
+/** The Send Item field of the hero who sends "all" with a Mithril suit in his pack (P1-11e18, R-129): each item it
+ *  lists, by its place in his pack, and the items it lets him tick; and the items the turn hands over (what his comrade
+ *  holds once the turn has played the order). */
+export function theSendItemFieldWithAMithrilSuitAgainstTheTurn(c: Copies): {
+  listed: string[];
+  ticked: string[];
+  turn: string[];
+} {
+  const { world, holdings } = holdingWorld();
+  const holding = holdings.find((h) => h.kind === 'Mithril Armour sent with "all"');
+  if (!holding) throw new Error('no staged holding of a Mithril suit sent with "all"');
+  const card = objects(world.report['characters']).find((h) => h['id'] === holding.heroes['giver']);
+  if (!card) throw new Error("the staged report has no giver's card");
+  const pack = objects(card['items']).map((it) => String(it['name']));
+  const [order] = holding.orders[String(holding.heroes['giver'])] ?? [];
+  if (!order) throw new Error("the staged holding has no giver's order");
+  const field = String(c.theTargetFieldOn(world.report, holding.orders, card, 0, order));
+  // each item's box: its value is its place in his pack ("all" is the box above them), a box he can't tick disabled
+  const boxes = [...field.matchAll(/<input type="checkbox" value="(\d+)"([^>]*)>/g)].map((m) => ({
+    item: pack[Number(m[1])] ?? `(no item ${String(m[1])})`,
+    disabled: /\bdisabled\b/.test(m[2] ?? ''),
+  }));
+  return {
+    listed: boxes.map((b) => b.item),
+    ticked: boxes.filter((b) => !b.disabled).map((b) => b.item),
+    turn: whatTheyHoldIn(theTurnPlaysTheHolding(world.state, holding), holding)['comrade'] ?? [],
   };
 }
 /** What the army card's sea note tells the player, in the engine's words (getSeaCapability's answers): 'all' (every
