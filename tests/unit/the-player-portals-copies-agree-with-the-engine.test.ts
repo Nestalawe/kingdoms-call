@@ -17,7 +17,7 @@
 // what a hero holds: what the form says he will carry and lead, and a garrison hold, after his orders, against the turn's
 // phases (each known difference pinned: question 42). Since P1-11d3, the orders: the order list's names against the
 // turn's, the orders it offers a hero against those the turn lets him give, and the creed orders' fields against their
-// rows and the turn (each known difference pinned: questions 36, 39, 40 and 41). Since P1-11d4, gold and practice: the
+// rows and the turn (each known difference pinned: questions 36, 39 and 41). Since P1-11d4, gold and practice: the
 // treasury ledger against what the turn spends and Early Winter charges, the Practice Skill note against the chance
 // the turn rolls, and the comrades a hero's field counts as practising beside him against the turn's (each known
 // difference pinned: question 43). And each engine function leaves its input as it was.
@@ -107,10 +107,10 @@
 // order list (`ACTIONS`) is the order `normaliseAction` reads it as, none read as a Defend but Defend; on staged heroes of
 // realm 0 (its report as the engine builds it under each creed, and with its Wonder raised), the list `actionsFor`
 // offers is what `processOrder` lets him give (no refusal the list restates): each of the 20 masteries from its level
-// and not one below, the five creeds' orders to their own realm and the king's to the king, Steal and Research by their
-// trained level, Release Hero but by the king, the Grand Design until it is raised, and every order of a hero seized by
-// a charm or hired this turn (each with the card the page makes him); pinned where it is not: Steal by a hero whose Thief
-// is his gloves' (question 40); the creed
+// and not one below, the five creeds' orders to their own realm and the king's to the king, Research by the trained
+// Sage, Steal by the Thief the turn counts (his gloves' too: since P1-11e21, R-130), Release Hero but by the king, the
+// Grand Design until it is raised, and every order of a hero seized by a charm or hired this turn (each with the card
+// the page makes him); the creed
 // orders' fields (`buildTargetField`, its words and its marks) say what the rows and the turn say: Call to Arms' grade
 // and company, the Broker's price, the carters' price, the Wild Hunt's beasts, grade, price and term, the Blood
 // Offering's marks and grades, where a king may consecrate; pinned where they do not: Consecrate's home (a captured seat
@@ -808,12 +808,16 @@ describe('the orders: what the order form offers a hero, and what the creed orde
     // the form's actionsFor against processOrder's refusals the list restates. Each mastery of the form's table by a
     // hero one level below it (refused) and one at it; the five creeds' orders by the king and a hero of each of the
     // seven creeds; Steal and Research at levels 0 and 1, and at 0 wearing a Sage +2 item (Research reads the trained
-    // Sage); Release Hero by a hero, not the king; the Grand Design until the realm has raised its Wonder; every order
-    // by a hero seized from an enemy by a charm and one hired this turn, each with the card the page makes him.
+    // Sage) or the Gloves of the Nightcrawler (Steal reads the Thief his items give: since P1-11e21, R-130); Release
+    // Hero by a hero, not the king; the Grand Design until the realm has raised its Wonder; every order by a hero seized
+    // from an enemy by a charm and one hired this turn, each with the card the page makes him.
     const list = orderList();
-    const agreeing = list.filter((x) => !(x.kind === 'Steal' && x.who.includes('wearing')));
-    expect(differences(agreeing)).toEqual([]);
-    expect(agreeing.length).toBe(211);
+    expect(differences(list)).toEqual([]);
+    expect(list.length).toBe(212);
+    // the gloves' Thief is offered Steal, as the turn lets him steal (question 40)
+    expect(
+      list.filter((x) => x.order === 'Steal' && x.who.includes('wearing')).map((x) => [x.who, x.copy, x.engine]),
+    ).toEqual([['thief 0, wearing Gloves of the Nightcrawler', true, true]]);
     // every refusal the list restates is met, each mastery's too, and each order is both offered and hidden somewhere
     const met = new Set(list.map((x) => x.refusal));
     expect(THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES.filter((k) => !met.has(k))).toEqual([]);
@@ -822,18 +826,8 @@ describe('the orders: what the order form offers a hero, and what the creed orde
       ...new Set(list.filter((x) => x.kind !== 'a hero under a charm, or new to the realm').map((x) => x.order)),
     ];
     expect(
-      gated.filter(
-        (o) => !(agreeing.some((x) => x.order === o && x.copy) && agreeing.some((x) => x.order === o && !x.copy)),
-      ),
+      gated.filter((o) => !(list.some((x) => x.order === o && x.copy) && list.some((x) => x.order === o && !x.copy))),
     ).toEqual([]);
-  });
-
-  test('what the order list gets wrong is pinned: Steal hidden from a hero whose Thief is his gloves’ (question 40)', () => {
-    // The form gates Steal on the trained Thief; the turn counts the items' too (effStat).
-    const list = orderList();
-    expect(list.filter((x) => !sameAnswer(x.copy, x.engine)).map((x) => [x.who, x.order, x.copy, x.engine])).toEqual([
-      ['thief 0, wearing Gloves of the Nightcrawler', 'Steal', false, true],
-    ]);
   });
 
   test('the creed orders’ fields say what their rows and the turn say: Call to Arms’ grade, the Broker’s and the carters’ price, the Wild Hunt’s beasts and term, the Blood Offering’s marks and grades, where a king may consecrate', () => {
