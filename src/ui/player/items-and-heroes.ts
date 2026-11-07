@@ -279,6 +279,23 @@ export function gdHintFor(report) {
   return kcHtml`Sage 9 · ONCE EVER, and only in a province you hold. Your ${al} realm raises the <strong>${gd.name}</strong> — ${gd.desc} The Wonder stands in the province it is built in: hold that ground and its blessing flows, lose the province and the blessing lapses until you take it back. The Wonder itself is never destroyed, and a conqueror gains nothing from it but the view.`;
 }
 export const rawSkillLvl = (charObj, sk) => ((charObj && charObj.skills) || {})[sk] || 0;
+// ── SKILL ROW ────
+// One renderer for both places a character's abilities are listed: the report's character card and
+// the orders column. The GM ships `skillEff` for each character — base level, EFFECTIVE level, and
+// the sources of the difference — computed by the same function the engine resolves turns with, so
+// what is shown here IS what the turn will use. `combatSkillBonus` carries bonuses that apply only
+// in personal combat (minor titles, Veteran Training); those are shown separately, because they do
+// not change the skill itself. Falls back to the raw skills for an older report with no breakdown.
+// style: 'tags' — the compact pills on the report card; 'inline' — the orders column's label list.
+// The EFFECTIVE level of a skill as the engine will use it — base plus items, aura and any Curse,
+// straight from the breakdown the GM shipped. Every success-chance preview in the order forms reads
+// this, so a "+2 Thief" blade shows in the odds the player is quoted. Falls back to the raw level
+// for an older report.
+export function effSkillP(c, k) {
+  const e = c && c.skillEff && c.skillEff[k];
+  if (e && typeof e.total === 'number') return e.total;
+  return ((c && c.skills) || {})[k] || 0;
+}
 // ── A CHARACTER WHOSE SHEET THE PLAYER CANNOT READ ──────────────────────────────────────────────
 // Two pre-order cards carry one: a hero being HIRED this turn (`_unknownSkills` — the GM ships only
 // their fame, never their levels) and a hero being CHARMED (`_hiddenSkills` — you have borrowed a

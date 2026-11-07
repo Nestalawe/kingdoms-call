@@ -17,12 +17,13 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
 import {
-  GUARD_POWER_COLORS_P,
   deadHeroRealmTagP,
+  effSkillP,
+  GUARD_POWER_COLORS_P,
   itemBoundTag,
+  itemsForDisplayP,
   itemSlotTag,
   itemTierTagP,
-  itemsForDisplayP,
 } from './items-and-heroes.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
 import { refreshOrdersVisibility } from './layout.ts';
@@ -32,7 +33,7 @@ import { renderMastery, renderTitles } from './titles.ts';
 import { armyLabel, unitEmoji } from './order-chances.ts';
 import { SKILL_LABELS } from './move-analysis.ts';
 import { buildOrdersForm } from './orders-form.ts';
-import { effSkillP, itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.ts';
+import { itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.ts';
 import { capitalise, druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.ts';
 import {
   CHIEFTAIN_MARKER_COLOR,
