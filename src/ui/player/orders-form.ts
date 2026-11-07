@@ -3,7 +3,10 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import {
   aCompanyIsABeastADruidHalves,
+  aHerosWageAfterTheCutsAndTheCeilings,
   aLeadersBeastsPayHalfWages,
+  aWageAfterEachCut,
+  aWageUnderEachCeiling,
   combatSpellsAllowedPerSchoolEachFight,
   itemUsableBy,
   theCombatSpellsBySchool,
@@ -65,7 +68,9 @@ import {
 // Since P1-11e29 (R-134), a company's price and wage follow the turn's cuts (src/shared/): a Druid 6 recruiter pays
 // half for a beast; a beast in the column of a Druid 6 leader, or of a realm whose Druidic Wonder stands, pays half
 // wages; and a company in the Host-Leader's column pays 1g less, where the report names him (his minorHeld: the titles
-// public). Where a company musters is the turn's (whereTheCompaniesAHerosRecruitRaisesMuster).
+// public). Where a company musters is the turn's (whereTheCompaniesAHerosRecruitRaisesMuster). Since P1-11e30, the
+// upkeep and hero-wage discoveries' cuts (Supply Depots, Granaries, Inspiring Leadership…) are each shared under the
+// room the report gives it, a company or hero at a time, as Early Winter shares them; an older report's are the type's.
 export function computeOrderLedgerP() {
   const rep = currentReport || {};
   const k = rep.kingdom || {};
@@ -77,6 +82,27 @@ export function computeOrderLedgerP() {
   const heroesAvail = Object.values(rep.provinceOrderData || {}).flatMap((pd) => pd.availableHeroes || []);
   const hired = new Set(),
     mercsTaken = new Set();
+  // what each discovery's cut or ceiling has saved on the orders' new companies and heroes, under the room the report
+  // gives it (R-134, P1-11e30)
+  const theirSavings = new Map();
+  const itsRoom = (x) => (x.theRoomLeftUnderItsCap == null ? undefined : x.theRoomLeftUnderItsCap);
+  const upkeepCuts = Array.isArray(k.theUpkeepDiscoveriesCutsAndTheirRoom)
+    ? k.theUpkeepDiscoveriesCutsAndTheirRoom
+    : null;
+  const theUpkeepCutsOn = (type) =>
+    upkeepCuts.map((x) => {
+      const g = (x.theGoldItCutsFromAUnitOfEachType || {})[type];
+      return [x, g == null ? null : { theGold: g, itsOwnCeiling: itsRoom(x) }];
+    });
+  const theHeroWageCutsOn = (alignment) =>
+    (k.theHeroWageDiscoveriesCutsAndTheirRoom || []).map((x) => {
+      const g = (x.theGoldItCutsFromAHeroOfEachAlignment || {})[alignment];
+      return [x, g == null ? null : { theGold: g, itsOwnCeiling: itsRoom(x) }];
+    });
+  const theHeroWageCeilings = (k.theHeroWageDiscoveriesCeilingsAndTheirRoom || []).map((x) => [
+    x,
+    { theWagesCeiling: x.theWagesCeiling, itsOwnCeiling: itsRoom(x) },
+  ]);
   const hireHero = (hid) => {
     hid = String(hid);
     if (!/^\d+$/.test(hid) || hired.has(hid)) return;
@@ -87,7 +113,11 @@ export function computeOrderLedgerP() {
     hired.add(hid);
     cats.heroes.g += w;
     cats.heroes.n++;
-    cats.heroes.wage += w;
+    cats.heroes.wage += aHerosWageAfterTheCutsAndTheCeilings(
+      (x) => aWageAfterEachCut(theHeroWageCutsOn(h.alignment), x, theirSavings, null),
+      (x) => aWageUnderEachCeiling(theHeroWageCeilings, x, theirSavings, null),
+      w,
+    );
   };
   (rep.characters || [])
     .filter((c) => c && c.alive !== false)
@@ -111,15 +141,25 @@ export function computeOrderLedgerP() {
             () => !!k.itsDruidicWonderHalvesItsBeastsWages,
           );
           const heIsTheHostLeader = (leader.minorHeld || []).some((t) => t && t.key === 'hostleader');
+          // (one company's: each draws on the upkeep discoveries' room in turn)
           const theWageOf = (type, joinsTheColumn) => {
-            let w = wageOf(type);
-            if (!joinsTheColumn) return w;
-            if (hisBeastsPayHalfWages && aCompanyIsABeastADruidHalves(type)) {
-              // the turn halves the wage before an upkeep discovery's cut: the cut the report gives for the type after
-              const raw = (P.unitCost || {})[type] || 2;
-              w = Math.max(0, theWageABeastPaysUnderADruid(raw) - Math.max(0, raw - w));
+            const halved = joinsTheColumn && hisBeastsPayHalfWages && aCompanyIsABeastADruidHalves(type);
+            const raw = (P.unitCost || {})[type] || 2;
+            let w;
+            if (upkeepCuts) {
+              // the turn halves the wage before the upkeep discoveries' cuts, each under its room (P1-11e30)
+              w = aWageAfterEachCut(
+                theUpkeepCutsOn(type),
+                halved ? theWageABeastPaysUnderADruid(raw) : raw,
+                theirSavings,
+                null,
+              );
+            } else {
+              // an older report: the cut it gives for the type, after the half
+              w = wageOf(type);
+              if (halved) w = Math.max(0, theWageABeastPaysUnderADruid(raw) - Math.max(0, raw - w));
             }
-            return heIsTheHostLeader ? theHostLeadersCut(w, 1).theWagesLeft : w;
+            return joinsTheColumn && heIsTheHostLeader ? theHostLeadersCut(w, 1).theWagesLeft : w;
           };
           const intoTheColumn = (type, unitName) =>
             musters.toTheColumn.some((u) => u.type === type && (unitName == null || u.unitName === unitName));
@@ -143,7 +183,7 @@ export function computeOrderLedgerP() {
               cost = thePriceADruidPaysForABeast(cost); // a Druid 6 recruiter's half price (R-134)
             cats.armies.g += cost * n;
             cats.armies.n += n;
-            cats.armies.wage += theWageOf(type, intoTheColumn(type)) * n;
+            for (let i = 0; i < n; i++) cats.armies.wage += theWageOf(type, intoTheColumn(type));
           });
         } else if (act === 'Hire Hero') {
           hireHero(tgt);
