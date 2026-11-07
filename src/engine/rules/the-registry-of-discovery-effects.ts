@@ -10,6 +10,10 @@
 // `effect` before `effect2`), and hands each to the kind's effect, so an old save works as it does.
 import { SAGE_DISCOVERIES_P } from '../../content/kingdoms-call-data.ts';
 import {
+  aWageAfterEachCut,
+  aWageUnderEachCeiling,
+} from '../rules-on-plain-values/a-wage-after-each-cut-and-ceiling-a-realms-discoveries-make.ts';
+import {
   DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS,
   type ADiscoverysRow,
   type AKindOfDiscoveryEffect,
@@ -102,7 +106,6 @@ import type {
   ATreasuryARealmsDiscoveriesMayEarnInterestOn,
   AUnitWhoseWageARealmsDiscoveriesMayCut,
   TheIncomeTaxationRecordsAddsTo,
-  WhatAnEffectPaysAndItsOwnCeiling,
   WhatEachCappedEffectHasPaid,
   ABeatenUnitARealmsDiscoveriesMaySpare,
   ACastARealmsDiscoveriesMayHelp,
@@ -1218,32 +1221,6 @@ export function whatARealmsDiscoveriesEarnInInterest(
   );
 }
 
-/** A wage after each cut in turn (the effects of a realm's discoveries that cut a unit's or a hero's wage): a cut never
- *  takes the wage below 1g, and is capped at `theCeiling` (or, given none, its row's own `max`), what each effect has
- *  saved so far kept in `theAccount`. */
-function aWageAfterEachCut(
-  theCuts: readonly (readonly [theEffect: TheEffectOfADiscovery, theCut: WhatAnEffectPaysAndItsOwnCeiling | null])[],
-  theWage: number,
-  theAccount: WhatEachCappedEffectHasPaid,
-  theCeiling: number | null | undefined,
-): number {
-  let out = theWage;
-  for (const [e, theCut] of theCuts) {
-    if (theCut === null) continue;
-    let cut = Math.min(theCut.theGold, out - 1);
-    if (cut <= 0) continue;
-    const lim = theCeiling ?? theCut.itsOwnCeiling;
-    if (lim != null) {
-      const u = Number(theAccount.get(e)) || 0;
-      cut = Math.min(cut, lim - u);
-      if (cut <= 0) continue;
-      theAccount.set(e, u + cut);
-    }
-    out -= cut;
-  }
-  return out;
-}
-
 /** The runner of "turnEnd: a realm's discoveries cut a unit's wage" (discUpkeepWage, which Early Winter and the report
  *  ask, after its guards): the wage `theWage` the realm's effects that reach the unit leave, each cut in turn. */
 export function theWageARealmsDiscoveriesLeaveAUnit(
@@ -1291,7 +1268,7 @@ export function theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom(
     }
     const lim = theCeiling ?? itsOwnCeiling;
     return {
-      theDiscovery: Object.values(DISC_BY_ID).find((d) => d.effect === e || d.effect2 === e)?.id ?? null,
+      theDiscovery: theDiscoveryOfTheEffect(e),
       theGoldItCutsFromAUnitOfEachType,
       theRoomLeftUnderItsCap: lim == null ? null : lim - (Number(theAccount.get(e)) || 0),
     };
@@ -1324,21 +1301,80 @@ export function theWageARealmsDiscoveriesCeilingsLeaveAHero(
   theCeiling: number | null | undefined,
 ): number {
   const theStage = "a realm's discoveries cap a hero's wage";
-  let w = theWage;
-  for (const [slug, e] of theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage])) {
-    const theCap = ENTRIES[slug].turnEnd?.[theStage]?.(e) ?? null;
-    if (theCap === null || w <= theCap.theWagesCeiling) continue;
-    let cut = w - Math.max(1, theCap.theWagesCeiling);
-    const lim = theCeiling ?? theCap.itsOwnCeiling;
-    if (lim != null) {
-      const u = Number(theAccount.get(e)) || 0;
-      cut = Math.min(cut, lim - u);
-      if (cut <= 0) continue;
-      theAccount.set(e, u + cut);
+  const theCeilings = theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theStage]).map(
+    ([slug, e]) => [e, ENTRIES[slug].turnEnd?.[theStage]?.(e) ?? null] as const,
+  );
+  return aWageUnderEachCeiling(theCeilings, theWage, theAccount, theCeiling);
+}
+
+/** One effect of a realm's discoveries that cuts a hero's wage, as its turn report names it (plan P1-11e30): its
+ *  discovery's id, the gold it cuts from a hero of each alignment it reaches (before the 1g floor), and its room left
+ *  under its ceiling once `theAccount` holds what it has saved, or null where it has no ceiling. */
+export interface AHeroWageDiscoverysCutAndItsRoom {
+  readonly theDiscovery: string | null;
+  readonly theGoldItCutsFromAHeroOfEachAlignment: Partial<Record<string, number>>;
+  readonly theRoomLeftUnderItsCap: number | null;
+}
+
+/** One effect of a realm's discoveries that caps a hero's wage, as its turn report names it (plan P1-11e30): its
+ *  discovery's id, the wage it lets no hero be paid above, and its room left under its ceiling, or null. */
+export interface AHeroWageDiscoverysCeilingAndItsRoom {
+  readonly theDiscovery: string | null;
+  readonly theWagesCeiling: number;
+  readonly theRoomLeftUnderItsCap: number | null;
+}
+
+/** The runners of "turnEnd: a realm's discoveries cut a hero's wage" and "… cap a hero's wage", for the report (plan
+ *  P1-11e30): each effect the realm holds, in each stage's order, its cut on a hero of each of `theAlignments` (or its
+ *  ceiling), and its room left under the ceiling the runners give it (`theCeiling`, or its row's own `max`) after
+ *  `theAccount`. */
+export function theCutsAndCeilingsARealmsHeroWageDiscoveriesMakeAndTheirRoom(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+  theAlignments: readonly string[],
+  theAccount: WhatEachCappedEffectHasPaid,
+  theCeiling: number | null | undefined,
+): {
+  readonly theCuts: AHeroWageDiscoverysCutAndItsRoom[];
+  readonly theCeilings: AHeroWageDiscoverysCeilingAndItsRoom[];
+} {
+  const theRoom = (e: TheEffectOfADiscovery, itsOwnCeiling: number | undefined) => {
+    const lim = theCeiling ?? itsOwnCeiling;
+    return lim == null ? null : lim - (Number(theAccount.get(e)) || 0);
+  };
+  const theCutsStage = "a realm's discoveries cut a hero's wage";
+  const theCuts = theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theCutsStage]).map(([slug, e]) => {
+    const theGoldItCutsFromAHeroOfEachAlignment: Partial<Record<string, number>> = {};
+    let itsOwnCeiling: number | undefined;
+    for (const a of theAlignments) {
+      const theCut = ENTRIES[slug].turnEnd?.[theCutsStage]?.(e, { theHerosAlignment: a }) ?? null;
+      if (theCut === null) continue;
+      theGoldItCutsFromAHeroOfEachAlignment[a] = theCut.theGold;
+      itsOwnCeiling = theCut.itsOwnCeiling;
     }
-    w -= cut;
-  }
-  return w;
+    return {
+      theDiscovery: theDiscoveryOfTheEffect(e),
+      theGoldItCutsFromAHeroOfEachAlignment,
+      theRoomLeftUnderItsCap: theRoom(e, itsOwnCeiling),
+    };
+  });
+  const theCeilingsStage = "a realm's discoveries cap a hero's wage";
+  const theCeilings = theEffectsOfTheStageARealmHolds(theRealm, TURN_END[theCeilingsStage]).flatMap(([slug, e]) => {
+    const theCap = ENTRIES[slug].turnEnd?.[theCeilingsStage]?.(e) ?? null;
+    if (theCap === null) return [];
+    return [
+      {
+        theDiscovery: theDiscoveryOfTheEffect(e),
+        theWagesCeiling: theCap.theWagesCeiling,
+        theRoomLeftUnderItsCap: theRoom(e, theCap.itsOwnCeiling),
+      },
+    ];
+  });
+  return { theCuts, theCeilings };
+}
+
+/** The id of the discovery whose effect (or second effect) `e` is, or null. */
+function theDiscoveryOfTheEffect(e: TheEffectOfADiscovery): string | null {
+  return Object.values(DISC_BY_ID).find((d) => d.effect === e || d.effect2 === e)?.id ?? null;
 }
 
 /** The runner of "aHerosStanding: a realm's discoveries add to maximum HP" (discMaxHpFor, which a hero's maximum
