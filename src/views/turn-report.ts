@@ -1,4 +1,5 @@
 import {
+  KC_ALIGNMENTS,
   KC_SKILLS as ABILITIES_P,
   KC_UNIT_CLASS,
   MONSTERS_P,
@@ -67,6 +68,7 @@ import {
   whatARealmsDiscoveriesAddToResearch,
   theSharesARealmsDiscoveriesAddToPracticeSkillBySkill,
   theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom,
+  theCutsAndCeilingsARealmsHeroWageDiscoveriesMakeAndTheirRoom,
 } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
@@ -1167,6 +1169,14 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       heroWageDisc += Math.max(0, raw - w);
       return s + w;
     }, 0);
+  // each hero-wage discovery's cut on a hero of each alignment, or its ceiling, and its room left under its cap, once
+  // the heroes' wages above have drawn on it (plan P1-11e30): the treasury ledger counts a hired hero's wage with them
+  const theHeroWageDiscoveriesCutsCeilingsAndRoom = theCutsAndCeilingsARealmsHeroWageDiscoveriesMakeAndTheirRoom(
+    player,
+    KC_ALIGNMENTS,
+    _hwAccR,
+    _taxCapR,
+  );
   // 2026-09-10 item 3: when this report follows a resolved turn, "Your Realm" shows the wages the
   // collector ACTUALLY charged (stamped in p._lastWages) — identical to the Realm Events line by
   // construction. The roster-based figures computed above become a "next turn" note only when they
@@ -1243,6 +1253,9 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       theTurnsAWildHuntServesBeyondThisOne: theTurnsAWildHuntServesBeyondThisOne(player),
       itsDruidicWonderHalvesItsBeastsWages: view.books.wonderBlesses.Druidic,
       theUpkeepDiscoveriesCutsAndTheirRoom,
+      // and each hero-wage discovery's cut or ceiling and room (plan P1-11e30)
+      theHeroWageDiscoveriesCutsAndTheirRoom: theHeroWageDiscoveriesCutsCeilingsAndRoom.theCuts,
+      theHeroWageDiscoveriesCeilingsAndTheirRoom: theHeroWageDiscoveriesCutsCeilingsAndRoom.theCeilings,
     },
     exploreDiscMult: Object.fromEntries(
       ['plain', 'desert', 'forest', 'mountain', 'jungle', 'sea'].map((t) => [t, discExploreMult(player, t)]),
