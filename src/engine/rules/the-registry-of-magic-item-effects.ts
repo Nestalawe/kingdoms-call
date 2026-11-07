@@ -41,7 +41,12 @@ import {
   THE_COMMANDERS_RIDERS_RUN_THE_BEATEN_DOWN_ON_ANY_GROUND,
   THE_DEFENDERS_FORTIFICATIONS,
 } from './magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts';
-import { A_LAND_UNIT_AT_SEA_LED, THE_COMMANDERS_ITEMS } from './magic-items/the-commanders-items-in-a-battle.ts';
+import { A_LAND_UNIT_AT_SEA_LED } from './magic-items/the-commanders-items-in-a-battle.ts';
+import {
+  THE_COMMANDERS_ITEMS,
+  theStrengthAUnitHasAfterTheStepsOfItsCommandersItems,
+  type AUnitLedByACommander,
+} from '../rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts';
 import { A_HEROS_ITEMS_CHANGE_HIS_BATTLE_SPELL } from './magic-items/a-heros-items-and-his-battle-spell.ts';
 import { A_COMMANDERS_ITEMS_ADD_TO_A_STRIKES_CHANCE } from './magic-items/a-commanders-items-and-his-units-strikes.ts';
 import { A_HEROS_ITEMS_CHANGE_HIS_COMBAT_SPELL } from './magic-items/a-heros-items-and-his-combat-spells.ts';
@@ -116,7 +121,6 @@ import type {
   AHeroAtRest,
   ASpellAboutToBeCast,
   ALandUnitAtSeaLed,
-  AUnitLedByACommander,
   AWardAsTheMergeReadsIt,
   HookPointName,
   TheAuraAnItemSpreads,
@@ -917,23 +921,19 @@ function theEffectsTheseItemsCarry(items: readonly AMagicItemAsTheRegistryReadsI
 }
 
 /** The runner of "strength: the commander's items" (armStr): the strength of a unit he leads after the steps of the
- *  effects his items carry, in the stage's order, each rounded as it goes (strength added is not rounded). */
+ *  effects his items carry, handed in the stage's order to their product, each rounded as it goes (on plain values
+ *  since plan P1-11e37: each entry of the stage is that product's step of its effect). */
 export function theStrengthAfterTheCommandersItems(
   facts: AUnitLedByACommander,
   theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[],
   theStrengthSoFar: number,
 ): number {
   const carried = theEffectsTheseItemsCarry(theCommandersItems);
-  let str = theStrengthSoFar;
-  for (const slug of THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.strength["the commander's items"]) {
-    if (!carried.has(slug)) continue;
-    const step = ENTRIES[slug].strength?.["the commander's items"]?.(facts);
-    if (!step) continue;
-    if ('adds' in step) str += step.adds;
-    else if (step.dividedBy === undefined) str = Math.round(str * step.multipliesBy);
-    else str = Math.round((str * step.multipliesBy) / step.dividedBy);
-  }
-  return str;
+  return theStrengthAUnitHasAfterTheStepsOfItsCommandersItems(
+    THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.strength["the commander's items"].filter((slug) => carried.has(slug)),
+    facts,
+    theStrengthSoFar,
+  );
 }
 
 /** The runner of "strength: a land unit at sea, led" (armStr, beside Naval's eighth level): whether an effect the
