@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-05, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 41, built in PR #PRNUM (parts a and b)
+- **Source:** Plan question 41, built in PR #473 (parts a and b)
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 As [R-131](R-131-the-creed-orders-notes-follow-the-turn.md): each creed order's note says what the turn will do.

@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-05, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 36, built in PR #PRNUM (part a)
+- **Source:** Plan question 36, built in PR #473 (part a)
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 Each creed order's note on the order form says what the turn will do with the order. The turn is the rule.
