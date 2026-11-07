@@ -1579,15 +1579,19 @@ export function thePortalsHexTablesAgainstTheEngine(c: Copies): HexStepCompariso
   });
 }
 
-/** The kinds of staged march: those the forecast and the turn agree on, and those it is known to get wrong (question
- *  44): a march the turn refuses (a column with ships over land, one with too little lift to put to sea, one at a
- *  neutral realm's border, one past its pace), a far province (the turn takes one step toward it), and a Forced March's
- *  compass step (the forecast reads only a province's number). */
+/** The kinds of staged march: those the forecast and the turn agree on (a Forced March by direction and a Move by a
+ *  province's bare number since R-128: both read their target by the turn's whatAMarchsOrderNames; one naming no
+ *  province leaves him where he is), and those it is known to get wrong (question 44): a march the turn refuses (a
+ *  column with ships over land, one with too little lift to put to sea, one at a neutral realm's border, one past its
+ *  pace) and a far province (the turn takes one step toward it). */
 export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   'a compass step',
   'a province next door',
   'a Forced March next door',
   'a march into his own province',
+  "a Forced March's compass step",
+  'a Move to a province next door by its bare number',
+  'a Move naming no province on the map',
 ] as const;
 export const THE_MARCHES_THE_FORECAST_GETS_WRONG = [
   'ships over land',
@@ -1596,7 +1600,6 @@ export const THE_MARCHES_THE_FORECAST_GETS_WRONG = [
   'past his pace',
   'a far province',
   'a far Forced March',
-  "a Forced March's compass step",
 ] as const;
 export type AKindOfMarch =
   (typeof THE_MARCHES_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_MARCHES_THE_FORECAST_GETS_WRONG)[number];
@@ -1702,13 +1705,15 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     ['a province next door', [move(`prov:${id(first)}`)], first, men()],
     ['a Forced March next door', [forced(id(first))], first, men()],
     ['a march into his own province', [move(`prov:${id(start)}`)], start, men()],
+    ["a Forced March's compass step", [forced(`dir:${compass}`)], first, men()],
+    ['a Move to a province next door by its bare number', [move(id(first))], first, men()],
+    ['a Move naming no province on the map', [move('prov:9999')], start, men()],
     ['ships over land', [move(`prov:${id(first)}`)], first, withShips()],
     ['too little lift to put to sea', [move(`prov:${id(sea)}`)], sea, men()],
     ["a neutral realm's border", [move(`prov:${id(border)}`)], border, men()],
     ['past his pace', [move(`prov:${id(first)}`), move(`prov:${id(second)}`), move(`prov:${id(third)}`)], third, men()],
     ['a far province', [move(`prov:${id(second)}`)], second, men()],
     ['a far Forced March', [forced(id(second))], second, men()],
-    ["a Forced March's compass step", [forced(`dir:${compass}`)], first, men()],
   ];
   const marches = kinds.map(([kind, orders, named, armies]) => ({
     kind,
