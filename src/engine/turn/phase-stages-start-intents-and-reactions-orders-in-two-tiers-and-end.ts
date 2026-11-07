@@ -14,10 +14,10 @@ import {
 import { disperseDeadCharArmies } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import {
   applyMoveInterlocks,
-  normaliseAction,
   orderPhaseActors,
   type ThePhasesIntents,
 } from './phase-intents-and-dependency-ordering.ts';
+import { normaliseAction } from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 import type { TurnContext, TurnOrder } from './context.ts';
 import {
   reconcileProvinceCharacters,

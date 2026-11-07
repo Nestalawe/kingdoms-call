@@ -33,7 +33,7 @@ import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-an
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.ts';
 import { reportHeroFall } from './hero-death-and-leaderless-hosts.ts';
 import { combatVsChar } from '../battle/battles-between-heroes.ts';
-import { normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
+import { normaliseAction } from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 import { stepToward } from '../world/routes-and-distances.ts';
 import { aHeroOfARealm } from '../battle/hosts-gained-in-a-province.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';

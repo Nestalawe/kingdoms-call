@@ -97,11 +97,11 @@ import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-
 import { resolveMoveOrder } from '../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts';
 import { getNeighborsP, neighborInDir } from '../../src/engine/world/map-helpers.ts';
 import { processOrder } from '../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
+import { buildPhaseIntents } from '../../src/engine/turn/phase-intents-and-dependency-ordering.ts';
 import {
-  buildPhaseIntents,
   normaliseAction,
   PHASE_ACTION_MAP,
-} from '../../src/engine/turn/phase-intents-and-dependency-ordering.ts';
+} from '../../src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 import {
   endPhaseSkillRisesFallenCommandersAndProvinceMemory,
   pinAndReactToPhaseIntents,
@@ -214,7 +214,10 @@ const COPIES: Record<string, string[]> = {
     'whatAComradeTakesOfAHandOver',
     // since P1-11e17 one replay of the phases' orders, which the three read
     'theFormsReplayOfThePhasesBefore',
+    // (since P1-11e20 a phase's items handed over in the turn's order of its heroes)
+    'theHeroesInTheOrderTheTurnHasThemActInAPhase',
     'theItemsAPhasesOrdersHandOver',
+    'theItemsAHeroHandsOver',
     'theGarrisonTheReportShows',
     'theCompaniesAPhasesOrdersAddToEachGarrison',
     'theGarrisonAPickUpOfThePhaseSees',
@@ -2328,10 +2331,10 @@ export function aSearchLairAfterEachMarchTheTurnRefuses(c: Copies): ASearchLairA
 
 /** The kinds of staged holding: those the forecast and the turn agree on (since P1-11e19 a beast recruited, handed
  *  over or taken up past a leader's beast command, a band of garrison troops hired, companies taken up from the
- *  garrison last first, and risen dead handed to a comrade of a realm that is not Undead), and those it is known to get
- *  wrong (question 42): an item handed to a comrade who marches in that phase (the turn hands it over at once, the form
- *  sends it by courier), a chain of hand-overs in one phase (the turn hands over in its own order, the form by the
- *  heroes' order), and the Philosopher's Stone used (the turn destroys it). */
+ *  garrison last first, and risen dead handed to a comrade of a realm that is not Undead; since P1-11e20 an item handed
+ *  to a comrade who marches in that phase, at once, and the items of a phase handed over in the turn's order of its
+ *  heroes), and the one it is known to get wrong (question 42): the Philosopher's Stone used (the turn destroys it), and a chain of company hand-overs in one
+ *  phase (the turn hands on what the comrade was handed; the form reads each column as the phase begins). */
 export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'items handed to a comrade beside him',
   'an item sent by courier to a comrade elsewhere',
@@ -2346,6 +2349,11 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a company disbanded',
   // (P1-11e18, R-129: a Mithril suit sent with "all" stays on its wearer, as the turn keeps it)
   'Mithril Armour sent with "all"',
+  // (P1-11e20, R-129: each phase's items handed over in the turn's order of its heroes, a comrade marching in first)
+  'an item handed to a comrade marching in',
+  'a chain of hand-overs in one phase',
+  'items handed to one comrade by two heroes, the quicker first',
+  'an item handed to a comrade beside him who marches away that season',
   // (P1-11e19, R-129: the companies a Recruit, a hand-over and a Pick Up move, by the turn's own rules)
   'a beast recruited past his beast command',
   'a band of garrison troops hired',
@@ -2366,9 +2374,8 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a beast recruited under the banner of a comrade at his beast command',
 ] as const;
 export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = [
-  'an item handed to a comrade marching in',
-  'a chain of hand-overs in one phase',
   "the Philosopher's Stone used",
+  'a chain of company hand-overs in one phase',
 ] as const;
 export type AKindOfHolding =
   (typeof THE_HOLDINGS_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_HOLDINGS_THE_FORECAST_GETS_WRONG)[number];
@@ -2693,7 +2700,7 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
     const [giver, comrade] = [at(p, { items: [mithril, anItem(items[0])] }), at(p)];
     stage('Mithril Armour sent with "all"', 'items', null, { giver, comrade }, { [id(giver)]: [send('all', comrade)] });
   }
-  // the ones the forecast gets wrong (question 42)
+  // (P1-11e20, R-129: the turn's order of the heroes)
   {
     const [giver, comrade] = [at(meeting, { items: [fourth] }), at(nextDoor)];
     stage(
@@ -2724,6 +2731,38 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
     );
   }
   {
+    // the quicker is the later hero (March counts three times in a hero's initiative): the turn takes him first
+    const p = aProvince();
+    const slower = at(p, { items: [anItem(items[0])] });
+    const quicker = at(p, { items: [anItem(items[1])], skills: { march: 2 } });
+    const comrade = at(p);
+    stage(
+      'items handed to one comrade by two heroes, the quicker first',
+      'items',
+      null,
+      { slower, quicker, comrade },
+      {
+        [id(slower)]: [send('0', comrade)],
+        [id(quicker)]: [send('0', comrade)],
+      },
+    );
+  }
+  {
+    // he hands it over before his comrade sets out (an order that stays put acts before a march)
+    const [giver, comrade] = [at(meeting, { items: [anItem(items[2])] }), at(meeting)];
+    stage(
+      'an item handed to a comrade beside him who marches away that season',
+      'items',
+      null,
+      { giver, comrade },
+      {
+        [id(giver)]: [send('0', comrade)],
+        [id(comrade)]: [{ action: 'Move', target: `prov:${id(nextDoor['id'])}` }],
+      },
+    );
+  }
+  // the one the forecast gets wrong (question 42)
+  {
     // (a company of the realm for it to raise a tier, so it is spent)
     const p = aProvince();
     const bearer = at(p, { items: [stone], armies: [unit('Men-at-Arms')] });
@@ -2734,6 +2773,23 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       { bearer },
       {
         [id(bearer)]: [{ action: 'Use Item', target: id(stone.id) }],
+      },
+    );
+  }
+  {
+    // the first to hand over is the later hero, as in the items' chain
+    const p = aProvince();
+    const last = at(p);
+    const between = at(p, { armies: [unit('Yeoman Longbows')] });
+    const firstToHand = at(p, { armies: [unit('Men-at-Arms')] });
+    stage(
+      'a chain of company hand-overs in one phase',
+      'companies',
+      null,
+      { 'the first to hand over': firstToHand, between, last },
+      {
+        [id(firstToHand)]: [leave('all', id(between))],
+        [id(between)]: [leave('all', id(last))],
       },
     );
   }
