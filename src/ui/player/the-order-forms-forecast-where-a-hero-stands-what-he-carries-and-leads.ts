@@ -3,12 +3,15 @@ import { KC_HEX_DIRS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts'
 import {
   aColumnIsTurnedBackAtANeutralRealmsBorder,
   aColumnLeadingShipsMayNotStepFromLandToLand,
+  aProvinceIsSafePassageForARealmsColumn,
   canEnterTerrain,
   seaLiftOfAColumn,
   takesHalfAHullAboard,
   theAlignmentOrdersByTheNameTheFormWrites,
+  theFirstStepOfAShortestRouteAColumnMayTake,
   theHexNextToAProvinceInADirection,
   theMovePoolAStepSpends,
+  theStepAColumnTakesTowardAFarProvince,
   whatAMarchsOrderNames,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
@@ -97,8 +100,8 @@ export function getOrderExtra(charId, ph) {
 //   2. the sea, with too little lift to put to sea (hulls and flyers: the note's sea lift);
 //   3. ships over land: a column leading any fleet or sea-beast steps from land only to the sea.
 // Forecast limits (plan P1-11's Decision 3), left to the turn: an owner the report can't show (a province he hasn't
-// seen: no border is forecast), a terrain an Illusory Terrain hides, a war a rival declares, a blockade, a flood, a far
-// province (P1-11e12), and his pools as the turn changes them: companies he takes up, hands over or loses, a skill he
+// seen: no border is forecast), a terrain an Illusory Terrain hides, a war a rival declares, a blockade, a flood, and
+// his pools as the turn changes them: companies he takes up, hands over or loses, a skill he
 // rises in, a lone leg not charged to companies he takes up after it, a battle's win point; a hero who joins this
 // turn (hired, charmed or raised: the report shows no pace of his) marches at no pace.
 function hisMovePoolsAsTheReportGivesThem(char) {
@@ -130,6 +133,43 @@ function aMarchTheTurnRefuses(report, char, ph, from, to) {
   // march this one lets through: such a column leads ships)
   const leadsShips = column.some((a) => a && PO_SEA_TYPES.has(a.type));
   return aColumnLeadingShipsMayNotStepFromLandToLand(leadsShips, from.terrain, to.terrain);
+}
+// ── ONE STEP TOWARD A FAR PROVINCE (R-128, plan P1-11e12) ────
+// The turn marches a column ordered to a province not next door one step toward it, and the step is then a march like
+// any other (his pace, a border, the sea, ships over land: aMarchTheTurnRefuses). The step is the turn's own (src/shared/):
+// the first step of a shortest route the column may take (the ground its lift lets it enter; ships never from land to
+// land), but of a route as short over safe passage (his realm's own ground, an ally's, or ground no realm holds where
+// no armed neutral guard stands), that one's; where no route reaches it, he stays. Asked on the report's map, with the
+// column the Move note counts and the relation the report gives. Forecast limits, left to the turn: ground the report
+// shows as unknown (read as land no realm holds), a guard out of sight, an owner or ground as last seen, an alliance or
+// war changed this turn.
+function theStepTowardAFarProvinceTheTurnTakes(report, char, ph, from, toId) {
+  const worldMeta = report.worldMeta;
+  const column = projectedMoveHost(char.id, ph).armies;
+  const seaCap = poSeaAnalysis(column, (char.skills || {}).naval || 0).cap;
+  const leadsShips = column.some((a) => a && PO_SEA_TYPES.has(a.type));
+  const route = (extraFilter) =>
+    theFirstStepOfAShortestRouteAColumnMayTake(
+      { armies: column },
+      seaCap,
+      leadsShips,
+      worldMeta,
+      from,
+      toId,
+      extraFilter,
+    );
+  const known = (owner) => ((report.diplomacy || {}).known || []).find((k) => k && k.index === owner);
+  // (a guard the report shows: a hero of no realm sworn to the province, leading any company)
+  const anArmedGuardIsSeen = (p) =>
+    (p.characters || []).some((x) => x && x.isWanderer && x.isNeutralGuard && x.armyBand && x.armyBand !== 'no armies');
+  const isSafePassage = (p) =>
+    aProvinceIsSafePassageForARealmsColumn(
+      report.playerIndex,
+      p.owner,
+      () => (known(p.owner) || {}).relation || 'neutral',
+      () => anArmedGuardIsSeen(p),
+    );
+  return theStepAColumnTakesTowardAFarProvince(route, toId, true, isSafePassage);
 }
 // ── ONE ANSWER A REFRESH (plan P1-11e10) ────
 // A march's refusal reads the column he will lead, and that column reads where he and his comrades stand in the
@@ -193,18 +233,23 @@ export function predictedLocation(charId, upToPhaseExclusive) {
         if (nid !== null && worldMeta.provinces.some((p) => p.id === nid)) toId = nid;
       }
       if (toId === null || toId === locId) continue;
-      // a province next door: the step the turn may refuse (a far one is taken as named: P1-11e12)
-      const toProv = worldMeta.provinces.find((p) => p.id === toId);
-      const nextDoor =
-        curProv &&
-        KC_HEX_DIRS.some((d) => theHexNextToAProvinceInADirection(curProv, d, worldMeta.cols, worldMeta.rows) === toId);
-      if (nextDoor) {
-        const spends = pools ? theMovePoolAStepSpends(curProv.terrain, toProv.terrain) : null;
-        if (spends && pools[spends] <= 0) continue; // past his pace
-        if (aMarchTheTurnRefuses(report, char, ph, curProv, toProv)) continue;
-        if (spends) pools[spends] -= 1;
+      if (!curProv) {
+        locId = toId;
+        continue;
       }
-      locId = toId;
+      // a province next door, or one step toward a far one (P1-11e12): the step the turn may refuse
+      const nextDoor = KC_HEX_DIRS.some(
+        (d) => theHexNextToAProvinceInADirection(curProv, d, worldMeta.cols, worldMeta.rows) === toId,
+      );
+      const toProv = nextDoor
+        ? worldMeta.provinces.find((p) => p.id === toId)
+        : theStepTowardAFarProvinceTheTurnTakes(report, char, ph, curProv, toId);
+      if (!toProv) continue; // no route reaches it
+      const spends = pools ? theMovePoolAStepSpends(curProv.terrain, toProv.terrain) : null;
+      if (spends && pools[spends] <= 0) continue; // past his pace
+      if (aMarchTheTurnRefuses(report, char, ph, curProv, toProv)) continue;
+      if (spends) pools[spends] -= 1;
+      locId = toProv.id;
     }
     const prov = worldMeta.provinces.find((p) => p.id === locId);
     return prov ? { id: locId, name: prov.name || 'Unknown' } : { id: locId, name: 'Unknown' };
