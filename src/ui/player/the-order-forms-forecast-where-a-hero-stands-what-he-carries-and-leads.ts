@@ -341,7 +341,6 @@ export function projectedMoveHost(charId, ph) {
   // otherwise).
   {
     const myLoc = typeof predictedLocation === 'function' ? predictedLocation(ch.id, ph) : null;
-    const _memo = new Map();
     (report.characters || []).forEach((o) => {
       if (!o || o.alive === false || String(o.id) === String(ch.id)) return;
       const oAct = (document.getElementById(`po-action-${o.id}-${ph}`) || {}).value || '';
@@ -362,7 +361,7 @@ export function projectedMoveHost(charId, ph) {
       } else {
         const oExtra = (document.getElementById(`po-extra-${o.id}-${ph}`) || {}).value || '';
         if (String(oExtra) !== String(ch.id)) return;
-        const oArm = projectedLedArmies(o.id, ph, _memo);
+        const oArm = projectedLedArmies(o.id, ph);
         if (toks.includes('all')) got = oArm.slice();
         else {
           const pool = oArm.slice();
@@ -472,15 +471,19 @@ export function effSkillP(c, k) {
   return ((c && c.skills) || {})[k] || 0;
 }
 
-// Predict each character's item list at the given phase by replaying the Give Item orders of all
-// EARLIER phases exactly as the GM engine resolves them (splice from giver, push to recipient — so
-// item INDICES stay aligned with what the engine will see at resolution time). This lets a
-// character who RECEIVES an item in an earlier phase pass it on in a later one.
-export function predictedItems(charId, upToPhaseExclusive) {
-  const report = currentReport;
-  if (!report) return [];
+// ── The forecasts' replay (plan P1-11e17) ────────────────────────────────────────────────────────────────────────────
+// What each hero will carry and lead, and what each province's garrison will hold unled, as a phase begins: ONE forward
+// replay of the realm's orders, a phase at a time from the report, in the form's order of today (each phase: the items
+// handed over, hero by hero in the report's order; then what the phase's orders add to each garrison, from what each
+// hero leads as the phase begins; then what each hero will lead, from what he and his comrades led as it began; then
+// what the phase's Pick Ups take from each garrison). predictedItems, projectedLedArmies and projectedGarrison each
+// read it; they used to replay the phases each on its own (the last two calling each other through a shared cache).
+// The replay is worked out afresh for each call, from the fields as they stand, so it never serves an answer the
+// player has since changed.
+function theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive) {
+  const characters = report.characters || [];
   // ── 2026-09-24 (Toby): keyed by String(id) throughout ──────────────────────────────────────────
-  // This used to open with
+  // predictedItems used to open with
   //     const cid=typeof charId==='string'?parseInt(charId):charId;
   // and read the recipient with `parseInt(...)` as well. Both are NaN for a PRE-ORDER card's
   // synthetic id ('hired_77_via_1_ph0', 'charm_88_via_1_ph0', 'resurrect_…'), so an item SENT to a
@@ -492,106 +495,130 @@ export function predictedItems(charId, upToPhaseExclusive) {
   // to order the hero to equip or use the very thing they had just been handed, and made the
   // "what they carry is not yours to see" notice (§150) permanent even for gear the player had
   // supplied themselves.
-  // The Map is local to this function, so re-keying it is contained; `predictedLocation` still needs
+  // The Map is local to the replay, so re-keying it is contained; `predictedLocation` still needs
   // the character's REAL id (it compares with ===), hence the byKey lookup rather than passing the
   // select's string value straight through — that was how the old code got away with parseInt for
   // ordinary numeric recipients.
-  const cid = String(charId);
   const items = new Map();
   const byKey = new Map();
-  (report.characters || []).forEach((x) => {
+  characters.forEach((x) => {
     items.set(String(x.id), [...(x.items || [])]);
     byKey.set(String(x.id), x);
   });
+  // the companies each hero leads, by his card
+  let armies = new Map();
+  characters.forEach((x) => {
+    armies.set(
+      x,
+      (x.armies || []).map((a) => ({
+        type: a.type,
+        quality: a.quality,
+        unitName: a.unitName,
+        race: a.race,
+        _isSkeletal: a._isSkeletal,
+      })),
+    );
+  });
+  // the garrison of each province an order has touched, by the province's id as predictedLocation gives it
+  const garrisons = new Map();
   for (let p = 0; p < upToPhaseExclusive; p++) {
-    (report.characters || []).forEach((x) => {
-      const action = document.getElementById(`po-action-${x.id}-${p}`)?.value || '';
-      if (action !== 'Send Item' && action !== 'Give Item') return;
-      // a Give Item order can now hand over MULTIPLE items (comma-separated indices, or
-      // "all"). Splice high→low so earlier removals don't shift the indices still to be moved.
-      const recipKey = String(document.getElementById(`po-extra-${x.id}-${p}`)?.value || '').trim();
-      const arr = items.get(String(x.id)) || [];
-      if (!recipKey || !items.has(recipKey)) return;
-      const recipCh = byKey.get(recipKey);
-      if (!recipCh) return;
-      const rawT = (document.getElementById(`po-target-${x.id}-${p}`)?.value || '').trim();
-      let idxs;
-      if (rawT.toLowerCase() === 'all') idxs = arr.map((_, i) => i);
-      // A CHARMED sender writes target='auto' — the engine picks the item and the player never sees
-      // which, so nothing can be projected into the recipient's pack. 'auto' resolves to no index
-      // below, which is the right outcome; noted so it is not later "fixed".
-      // Token grammar MIRRORS the engine's give_item exactly: a plain in-range integer is positional,
-      // anything else is matched by item id or name (a pre-order card ticks names, because its index
-      // space is not the engine's — see the Send Item branch). These two must change together.
-      else
-        idxs = rawT
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map((t) => {
-            const n = parseInt(t);
-            if (Number.isInteger(n) && String(n) === t && n >= 0 && n < arr.length) return n;
-            return arr.findIndex((it) => it && (String(it.id) === t || it.name === t));
-          })
-          .filter((n) => Number.isInteger(n) && n >= 0 && n < arr.length);
-      const uniq = [...new Set(idxs)].sort((a, b) => b - a);
-      // only DELIVER into the recipient's list this turn if they are co-located this phase; a
-      // cross-province send leaves the giver now but arrives with the recipient only at turn's end.
-      const _same = predictedLocation(x.id, p)?.id === predictedLocation(recipCh.id, p)?.id;
-      uniq.forEach((i) => {
-        const [it] = arr.splice(i, 1);
-        if (_same) (items.get(recipKey) || []).push(it);
-      });
+    theItemsAPhasesOrdersHandOver(characters, items, byKey, p);
+    const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, armies, p);
+    const next = new Map();
+    characters.forEach((x) => {
+      next.set(x, theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, x, p));
     });
+    theGarrisonsAfterAPhase(report, garrisons, added, p);
+    armies = next;
   }
-  return items.get(cid) || [];
+  return { items, armies, garrisons };
 }
 
-// the unled GARRISON of a province at a given phase, projected by replaying this player's earlier
-// orders in the SAME order the GM engine resolves them — Leave/Transfer-to-garrison and Recruit
-// "to:garrison" APPEND (in army/checkbox order), Pick Up REMOVES (by index, highest first). The
-// engine makes a Pick Up wait for any Leave in the same province in the same phase, so leaves at
-// `phase` itself by OTHER characters are included when includeSamePhase is set (the Pick Up form);
-// pick-ups are only replayed for strictly earlier phases. This keeps the `g:i` indices the form
-// emits aligned with the engine's live garrison. Rival/neutral changes to the garrison can't be
-// foreseen.
-export function projectedGarrison(provId, phase, includeSamePhase, excludeCharId, _memo) {
-  // _memo: the shared projection cache threaded down from the top-level call (see
-  // projectedLedArmies). projectedGarrison and projectedLedArmies call EACH OTHER — a Pick Up reads
-  // the garrison, and the garrison is built from other characters' Leave orders — so they share one
-  // cache or the pair blows up combinatorially on a five-phase turn.
-  const memo = _memo instanceof Map ? _memo : new Map();
-  const _gk = `g|${provId}|${phase}|${includeSamePhase ? 1 : 0}|${String(excludeCharId)}`;
-  if (memo.has(_gk)) return memo.get(_gk).map((a) => ({ ...a }));
-  const report = currentReport || {};
+// Each character's item list through the phase `p`, by replaying its Give Item orders exactly as the GM engine resolves
+// them (splice from giver, push to recipient — so item INDICES stay aligned with what the engine will see at resolution
+// time). This lets a character who RECEIVES an item in an earlier phase pass it on in a later one.
+function theItemsAPhasesOrdersHandOver(characters, items, byKey, p) {
+  characters.forEach((x) => {
+    const action = document.getElementById(`po-action-${x.id}-${p}`)?.value || '';
+    if (action !== 'Send Item' && action !== 'Give Item') return;
+    // a Give Item order can now hand over MULTIPLE items (comma-separated indices, or
+    // "all"). Splice high→low so earlier removals don't shift the indices still to be moved.
+    const recipKey = String(document.getElementById(`po-extra-${x.id}-${p}`)?.value || '').trim();
+    const arr = items.get(String(x.id)) || [];
+    if (!recipKey || !items.has(recipKey)) return;
+    const recipCh = byKey.get(recipKey);
+    if (!recipCh) return;
+    const rawT = (document.getElementById(`po-target-${x.id}-${p}`)?.value || '').trim();
+    let idxs;
+    if (rawT.toLowerCase() === 'all') idxs = arr.map((_, i) => i);
+    // A CHARMED sender writes target='auto' — the engine picks the item and the player never sees
+    // which, so nothing can be projected into the recipient's pack. 'auto' resolves to no index
+    // below, which is the right outcome; noted so it is not later "fixed".
+    // Token grammar MIRRORS the engine's give_item exactly: a plain in-range integer is positional,
+    // anything else is matched by item id or name (a pre-order card ticks names, because its index
+    // space is not the engine's — see the Send Item branch). These two must change together.
+    else
+      idxs = rawT
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((t) => {
+          const n = parseInt(t);
+          if (Number.isInteger(n) && String(n) === t && n >= 0 && n < arr.length) return n;
+          return arr.findIndex((it) => it && (String(it.id) === t || it.name === t));
+        })
+        .filter((n) => Number.isInteger(n) && n >= 0 && n < arr.length);
+    const uniq = [...new Set(idxs)].sort((a, b) => b - a);
+    // only DELIVER into the recipient's list this turn if they are co-located this phase; a
+    // cross-province send leaves the giver now but arrives with the recipient only at turn's end.
+    const _same = predictedLocation(x.id, p)?.id === predictedLocation(recipCh.id, p)?.id;
+    uniq.forEach((i) => {
+      const [it] = arr.splice(i, 1);
+      if (_same) (items.get(recipKey) || []).push(it);
+    });
+  });
+}
+
+// The unled GARRISON of a province, replayed from this player's orders in the SAME order the GM engine resolves them —
+// Leave/Transfer-to-garrison and Recruit "to:garrison" APPEND (in army/checkbox order), Pick Up REMOVES (by index,
+// highest first). The engine makes a Pick Up wait for any Leave in the same province in the same phase, so a Pick Up
+// sees the leaves of its own phase by OTHER characters (projectedGarrison's includeSamePhase, the Pick Up form);
+// pick-ups are only replayed for strictly earlier phases. This keeps the `g:i` indices the form emits aligned with the
+// engine's live garrison. Rival/neutral changes to the garrison can't be foreseen.
+// The garrison a province holds as the replay begins, from the report.
+function theGarrisonTheReportShows(report, provId) {
   const pd = (report.provinceOrderData || {})[provId];
-  let garr = ((pd && pd.garrisonArmies) || []).map((a) => ({
+  return ((pd && pd.garrisonArmies) || []).map((a) => ({
     type: a.type,
     quality: a.quality,
     unitName: a.unitName,
     race: a.race,
   }));
-  const chars = (report.characters || []).filter((x) => x && x.alive !== false);
-  const lastPh = includeSamePhase ? phase : phase - 1;
-  for (let ph = 0; ph <= lastPh; ph++) {
-    // (1) additions this phase
-    chars.forEach((o) => {
-      if (ph === phase && String(o.id) === String(excludeCharId)) return;
+}
+// What the orders of the phase `ph` add to each garrison, by the province's id: for each living hero who adds any, in
+// the report's order, the hero and the companies he adds (those he leads as the phase begins, from `armies`).
+function theCompaniesAPhasesOrdersAddToEachGarrison(report, armies, ph) {
+  const added = new Map();
+  (report.characters || [])
+    .filter((x) => x && x.alive !== false)
+    .forEach((o) => {
       const act = document.getElementById(`po-action-${o.id}-${ph}`)?.value || '';
+      if (act !== 'Leave/Transfer Army' && act !== 'Recruit Armies') return;
       const tgt = document.getElementById(`po-target-${o.id}-${ph}`)?.value || '';
       const loc = predictedLocation(o.id, ph);
-      if (!loc || loc.id !== provId) return;
+      if (!loc) return;
+      const units = [];
       if (act === 'Leave/Transfer Army') {
         const extra = document.getElementById(`po-extra-${o.id}-${ph}`)?.value;
         if (extra !== '' && extra != null && String(extra) !== '-1') return; // handed to a character, not the garrison
-        const led = projectedLedArmies(o.id, ph, memo);
+        const led = theCompaniesTheReplayGivesTheHeroOfId(report, armies, o.id);
         if (
           tgt
             .split(',')
             .map((t) => t.trim())
             .includes('all')
         )
-          led.forEach((a) => garr.push(a));
+          led.forEach((a) => units.push(a));
         else {
           const pool = led.slice();
           tgt
@@ -600,10 +627,10 @@ export function projectedGarrison(provId, phase, includeSamePhase, excludeCharId
             .filter(Boolean)
             .forEach((val) => {
               const i = pool.findIndex((a) => a.type === val || a.unitName === val);
-              if (i >= 0) garr.push(pool.splice(i, 1)[0]);
+              if (i >= 0) units.push(pool.splice(i, 1)[0]);
             });
         }
-      } else if (act === 'Recruit Armies') {
+      } else {
         const wrap = document.getElementById(`po-target-wrap-${o.id}-${ph}`);
         if (!wrap) return;
         const destSel = wrap.querySelector('.po-recruit-dest');
@@ -611,176 +638,206 @@ export function projectedGarrison(provId, phase, includeSamePhase, excludeCharId
         _projRecruitUnits(
           [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || ''),
         ).forEach((u) => {
-          if (_toG || _isAutoGarrisonRecruit(u)) garr.push(u);
+          if (_toG || _isAutoGarrisonRecruit(u)) units.push(u);
         });
       }
+      if (!added.has(loc.id)) added.set(loc.id, []);
+      added.get(loc.id).push({ hero: o, units });
     });
-    // (2) removals this phase — only strictly earlier phases (same-phase pick-ups race on initiative)
-    if (ph < phase)
-      chars.forEach((o) => {
-        const act = document.getElementById(`po-action-${o.id}-${ph}`)?.value || '';
-        if (act !== 'Pick Up Army') return;
-        const loc = predictedLocation(o.id, ph);
-        if (!loc || loc.id !== provId) return;
-        const tgt = document.getElementById(`po-target-${o.id}-${ph}`)?.value || '';
-        if (
+  return added;
+}
+// The garrison of the province `provId` as the phase begins (from `garrisons`, the replay's, or the report), with what
+// the phase's orders add to it (`added`) but those of the hero `excludeCharId`.
+function theGarrisonAPickUpOfThePhaseSees(report, garrisons, added, provId, excludeCharId) {
+  const garr = (garrisons.has(provId) ? garrisons.get(provId) : theGarrisonTheReportShows(report, provId)).slice();
+  (added.get(provId) || []).forEach((by) => {
+    if (String(by.hero.id) === String(excludeCharId)) return;
+    by.units.forEach((a) => garr.push(a));
+  });
+  return garr;
+}
+// Each garrison once the phase `ph` is over: what its orders add (`added`), then what its Pick Ups take — only strictly
+// earlier phases' pick-ups are replayed into a later phase (same-phase pick-ups race on initiative).
+function theGarrisonsAfterAPhase(report, garrisons, added, ph) {
+  const garrisonOf = (provId) => {
+    if (!garrisons.has(provId)) garrisons.set(provId, theGarrisonTheReportShows(report, provId));
+    return garrisons.get(provId);
+  };
+  added.forEach((bys, provId) => {
+    const garr = garrisonOf(provId);
+    bys.forEach((by) => by.units.forEach((a) => garr.push(a)));
+  });
+  (report.characters || [])
+    .filter((x) => x && x.alive !== false)
+    .forEach((o) => {
+      const act = document.getElementById(`po-action-${o.id}-${ph}`)?.value || '';
+      if (act !== 'Pick Up Army') return;
+      const loc = predictedLocation(o.id, ph);
+      if (!loc) return;
+      const tgt = document.getElementById(`po-target-${o.id}-${ph}`)?.value || '';
+      if (
+        tgt
+          .split(',')
+          .map((t) => t.trim())
+          .includes('all')
+      ) {
+        garrisons.set(loc.id, []);
+        return;
+      }
+      const garr = garrisonOf(loc.id);
+      const idxs = [
+        ...new Set(
           tgt
             .split(',')
             .map((t) => t.trim())
-            .includes('all')
-        ) {
-          garr = [];
-          return;
-        }
-        const idxs = [
-          ...new Set(
-            tgt
-              .split(',')
-              .map((t) => t.trim())
-              .filter((t) => /^(g:|-1:)\d+$/.test(t))
-              .map((t) => parseInt(t.slice(t.indexOf(':') + 1))),
-          ),
-        ]
-          .filter((i) => i >= 0 && i < garr.length)
-          .sort((a, b) => b - a);
-        idxs.forEach((i) => garr.splice(i, 1));
-      });
-  }
-  memo.set(
-    _gk,
-    garr.map((a) => ({ ...a })),
-  );
-  return garr;
+            .filter((t) => /^(g:|-1:)\d+$/.test(t))
+            .map((t) => parseInt(t.slice(t.indexOf(':') + 1))),
+        ),
+      ]
+        .filter((i) => i >= 0 && i < garr.length)
+        .sort((a, b) => b - a);
+      idxs.forEach((i) => garr.splice(i, 1));
+    });
 }
 
 // ── 2026-09-24 (Toby): TRANSFER CHAINS ──────────────────────────────────────────────────────────
-// This used to take a `_depth` counter and refuse to recurse past `_depth<2`, added to stop "mutual
-// transfers recursing forever". That worry was unfounded: a transfer always recurses with a STRICTLY
-// SMALLER phase bound (`projectedLedArmies(o.id, prevPh, …)` where prevPh < upToPhaseExclusive), so the
-// recursion bottoms out at phase 0 on its own and no cycle is possible. What the guard actually did was
-// silently truncate legitimate chains — hand a company king → Bryn in Spring and Bryn → Cara in Early
-// Summer and it projected; add Cara → Dain in Late Summer and the company VANISHED from every later
-// form, so Dain could not be ordered to do anything with troops he would really be leading.
-// The cap was NOT needed for performance either, which is worth recording because it looks as though it
-// should be: only the ONE character whose `po-extra` names this one recurses (the rest return at the
-// `String(oExtra)!==String(charId)` check), so a transfer chain is linear, not exponential. Measured in
-// the worst shape available — every character leaving troops to the garrison and picking up from it in
-// alternate phases, which is the N-way fan-out through projectedGarrison — all 5N projections cost
-// 4ms at 4 characters and 7ms at 10, indistinguishable with the memo below removed.
-// The memoisation on (character, phase bound), shared with projectedGarrison, is therefore kept as cheap
-// insurance against repeated subtree work rather than as a fix for a measured problem. The cache lives
-// for ONE top-level call, so it can never serve a stale answer after the player changes an order.
-// Callers mutate what they get back (splice/push), so every hit returns fresh copies.
-export function projectedLedArmies(charId, upToPhaseExclusive, _memo) {
-  const report = currentReport || {};
-  const char = (report.characters || []).find((x) => x.id === charId);
-  if (!char) return [];
-  const memo = _memo instanceof Map ? _memo : new Map();
-  const _ck = `c|${String(charId)}|${upToPhaseExclusive}`;
-  if (memo.has(_ck)) return memo.get(_ck).map((a) => ({ ...a }));
-  memo.set(_ck, []); // sentinel: belt-and-braces against a cycle the phase bound should already prevent
-  let armies = (char.armies || []).map((a) => ({
-    type: a.type,
-    quality: a.quality,
-    unitName: a.unitName,
-    race: a.race,
-    _isSkeletal: a._isSkeletal,
-  }));
-  const provOrderData = report.provinceOrderData || {};
-  for (let prevPh = 0; prevPh < upToPhaseExclusive; prevPh++) {
-    const prevAction = document.getElementById(`po-action-${charId}-${prevPh}`)?.value || '';
-    const prevTarget = document.getElementById(`po-target-${charId}-${prevPh}`)?.value || '';
-    // armies gained FROM OTHER characters of yours earlier this turn — a Recruit mustered "to:<this
-    // id>" or a Leave/Transfer handed to this character — now project in too (depth-limited so
-    // mutual transfers cannot recurse forever).
-    (report.characters || []).forEach((o) => {
-      if (o.id === charId) return;
-      const oAct = document.getElementById(`po-action-${o.id}-${prevPh}`)?.value || '';
-      const oTgt = document.getElementById(`po-target-${o.id}-${prevPh}`)?.value || '';
-      if (
-        oAct === 'Recruit Armies' &&
+// projectedLedArmies used to take a `_depth` counter and refuse to recurse past `_depth<2`, added to stop "mutual
+// transfers recursing forever". That worry was unfounded: a transfer always read the giver's companies with a STRICTLY
+// SMALLER phase bound, so no cycle was possible. What the guard actually did was silently truncate legitimate chains —
+// hand a company king → Bryn in Spring and Bryn → Cara in Early Summer and it projected; add Cara → Dain in Late Summer
+// and the company VANISHED from every later form, so Dain could not be ordered to do anything with troops he would
+// really be leading. The replay reads the giver's companies as the phase begins, so a chain of any length projects.
+// The army list the character `char` is LEADING once the phase `prevPh` is over, from what each hero led as it began
+// (`armies`): every order that adds or removes armies — Recruit and Pick Up (add), Leave/Transfer and Disband (remove).
+// This is what the Leave/Transfer and Disband forms show, so an army handed off or disbanded in an earlier phase no
+// longer appears, and one recruited or picked up earlier does. (predictedLocation already accounts for earlier moves /
+// conquests, so the recipient and garrison-eligibility lists reflect where the character will actually be.) Armies
+// TRANSFERRED to this character by ANOTHER of yours earlier this turn — a Leave/Transfer handed over, or a Recruit
+// mustered "to:<this id>" — ARE projected in, through chains of any length (2026-09-24).
+function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, char, prevPh) {
+  const charId = char.id;
+  let led = (armies.get(char) || []).slice();
+  const prevAction = document.getElementById(`po-action-${charId}-${prevPh}`)?.value || '';
+  const prevTarget = document.getElementById(`po-target-${charId}-${prevPh}`)?.value || '';
+  // armies gained FROM OTHER characters of yours earlier this turn — a Recruit mustered "to:<this
+  // id>" or a Leave/Transfer handed to this character — project in too.
+  (report.characters || []).forEach((o) => {
+    if (o.id === charId) return;
+    const oAct = document.getElementById(`po-action-${o.id}-${prevPh}`)?.value || '';
+    const oTgt = document.getElementById(`po-target-${o.id}-${prevPh}`)?.value || '';
+    if (
+      oAct === 'Recruit Armies' &&
+      oTgt
+        .split(',')
+        .map((t) => t.trim())
+        .includes('to:' + charId)
+    ) {
+      // The engine hires MERCENARIES first and appends native recruits after, so the projection
+      // must use the same order or the Blood Offering S:/E: indices would point at the wrong
+      // units.
+      _projRecruitUnits(oTgt.split(',').map((t) => t.trim())).forEach((u) => {
+        if (!_isAutoGarrisonRecruit(u)) led.push(u);
+      }); // garrison units never join a character
+    } else if (oAct === 'Leave/Transfer Army') {
+      const oExtra = document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value || '';
+      if (String(oExtra) !== String(charId)) return;
+      const oArm = theCompaniesTheReplayGivesTheHeroOfId(report, armies, o.id);
+      if (oTgt.split(',').includes('all')) oArm.forEach((a) => led.push(a));
+      else
         oTgt
-          .split(',')
-          .map((t) => t.trim())
-          .includes('to:' + charId)
-      ) {
-        // The engine hires MERCENARIES first and appends native recruits after, so the projection
-        // must use the same order or the Blood Offering S:/E: indices would point at the wrong
-        // units.
-        _projRecruitUnits(oTgt.split(',').map((t) => t.trim())).forEach((u) => {
-          if (!_isAutoGarrisonRecruit(u)) armies.push(u);
-        }); // garrison units never join a character
-      } else if (oAct === 'Leave/Transfer Army') {
-        const oExtra = document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value || '';
-        if (String(oExtra) !== String(charId)) return;
-        const oArm = projectedLedArmies(o.id, prevPh, memo);
-        if (oTgt.split(',').includes('all')) oArm.forEach((a) => armies.push(a));
-        else
-          oTgt
-            .split(',')
-            .filter(Boolean)
-            .forEach((val) => {
-              val = val.trim();
-              const a = oArm.find((x) => (x.unitName || x.type) === val);
-              if (a) armies.push(a);
-            });
-      }
-    });
-    if (prevAction === 'Recruit Armies') {
-      const wrap = document.getElementById(`po-target-wrap-${charId}-${prevPh}`);
-      if (wrap) {
-        // the default muster destination is still THIS character, but recruits sent to the province
-        // garrison ("to:garrison") or handed to a friendly hero ("to:<id>") do NOT join this
-        // character — so they must not show in this hero's projected led-army preview (that stale
-        // display was what made garrison-bound units look as though they marched off with the
-        // hero).
-        const destSel = wrap.querySelector('.po-recruit-dest');
-        const destTok = destSel ? destSel.value : 'to:self';
-        const goesToThisHero = !(
-          destTok === 'to:garrison' ||
-          (destTok && destTok.startsWith('to:') && destTok !== 'to:self')
-        );
-        if (goesToThisHero) {
-          const _ticks = [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || '');
-          _projRecruitUnits(_ticks).forEach((u) => {
-            if (!_isAutoGarrisonRecruit(u)) armies.push(u);
-          }); // garrison units never join a character
-        }
-      }
-    } else if (prevAction === 'Pick Up Army') {
-      const ploc = predictedLocation(charId, prevPh);
-      const pgarr = ploc ? projectedGarrison(ploc.id, prevPh, true, charId, memo) : []; // garrison as it stands at THAT phase
-      if (prevTarget === 'all') {
-        pgarr.forEach((a) => armies.push({ type: a.type, quality: a.quality, unitName: a.unitName }));
-      } else
-        prevTarget
-          .split(',')
-          .filter(Boolean)
-          .forEach((sel) => {
-            sel = sel.trim();
-            let gi = null;
-            if (sel.startsWith('g:')) gi = parseInt(sel.slice(2));
-            else if (sel.startsWith('-1:')) gi = parseInt(sel.slice(3)); // legacy form
-            if (gi != null && pgarr[gi])
-              armies.push({ type: pgarr[gi].type, quality: pgarr[gi].quality, unitName: pgarr[gi].unitName });
-          });
-    } else if (prevAction === 'Leave/Transfer Army' || prevAction === 'Disband Army') {
-      if (prevTarget === 'all') {
-        armies = [];
-      } else
-        prevTarget
           .split(',')
           .filter(Boolean)
           .forEach((val) => {
             val = val.trim();
-            const idx = armies.findIndex((a) => (a.unitName || a.type) === val);
-            if (idx >= 0) armies.splice(idx, 1);
+            const a = oArm.find((x) => (x.unitName || x.type) === val);
+            if (a) led.push(a);
           });
     }
+  });
+  if (prevAction === 'Recruit Armies') {
+    const wrap = document.getElementById(`po-target-wrap-${charId}-${prevPh}`);
+    if (wrap) {
+      // the default muster destination is still THIS character, but recruits sent to the province
+      // garrison ("to:garrison") or handed to a friendly hero ("to:<id>") do NOT join this
+      // character — so they must not show in this hero's projected led-army preview (that stale
+      // display was what made garrison-bound units look as though they marched off with the
+      // hero).
+      const destSel = wrap.querySelector('.po-recruit-dest');
+      const destTok = destSel ? destSel.value : 'to:self';
+      const goesToThisHero = !(
+        destTok === 'to:garrison' ||
+        (destTok && destTok.startsWith('to:') && destTok !== 'to:self')
+      );
+      if (goesToThisHero) {
+        const _ticks = [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || '');
+        _projRecruitUnits(_ticks).forEach((u) => {
+          if (!_isAutoGarrisonRecruit(u)) led.push(u);
+        }); // garrison units never join a character
+      }
+    }
+  } else if (prevAction === 'Pick Up Army') {
+    const ploc = predictedLocation(charId, prevPh);
+    const pgarr = ploc ? theGarrisonAPickUpOfThePhaseSees(report, garrisons, added, ploc.id, charId) : []; // garrison as it stands at THAT phase
+    if (prevTarget === 'all') {
+      pgarr.forEach((a) => led.push({ type: a.type, quality: a.quality, unitName: a.unitName }));
+    } else
+      prevTarget
+        .split(',')
+        .filter(Boolean)
+        .forEach((sel) => {
+          sel = sel.trim();
+          let gi = null;
+          if (sel.startsWith('g:')) gi = parseInt(sel.slice(2));
+          else if (sel.startsWith('-1:')) gi = parseInt(sel.slice(3)); // legacy form
+          if (gi != null && pgarr[gi])
+            led.push({ type: pgarr[gi].type, quality: pgarr[gi].quality, unitName: pgarr[gi].unitName });
+        });
+  } else if (prevAction === 'Leave/Transfer Army' || prevAction === 'Disband Army') {
+    if (prevTarget === 'all') {
+      led = [];
+    } else
+      prevTarget
+        .split(',')
+        .filter(Boolean)
+        .forEach((val) => {
+          val = val.trim();
+          const idx = led.findIndex((a) => (a.unitName || a.type) === val);
+          if (idx >= 0) led.splice(idx, 1);
+        });
   }
-  memo.set(
-    _ck,
-    armies.map((a) => ({ ...a })),
-  );
-  return armies;
+  return led;
+}
+// The companies the replay gives the first hero of the report with the id `charId` (none if no hero has it).
+function theCompaniesTheReplayGivesTheHeroOfId(report, armies, charId) {
+  const char = (report.characters || []).find((x) => x.id === charId);
+  return char ? armies.get(char) : [];
+}
+
+// Predict each character's item list at the given phase: the replay's (theItemsAPhasesOrdersHandOver).
+export function predictedItems(charId, upToPhaseExclusive) {
+  const report = currentReport;
+  if (!report) return [];
+  return theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive).items.get(String(charId)) || [];
+}
+
+// the unled GARRISON of a province at a given phase: the replay's as the phase begins (theGarrisonsAfterAPhase), with,
+// when includeSamePhase is set (the Pick Up form), the leaves at `phase` itself by OTHER characters than excludeCharId.
+export function projectedGarrison(provId, phase, includeSamePhase, excludeCharId) {
+  const report = currentReport || {};
+  const replay = theFormsReplayOfThePhasesBefore(report, phase);
+  if (!includeSamePhase) {
+    return (
+      replay.garrisons.has(provId) ? replay.garrisons.get(provId) : theGarrisonTheReportShows(report, provId)
+    ).slice();
+  }
+  const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, replay.armies, phase);
+  return theGarrisonAPickUpOfThePhaseSees(report, replay.garrisons, added, provId, excludeCharId);
+}
+
+// the army list a character is LEADING at the start of a given phase: the replay's (theCompaniesAHeroLeadsAfterAPhase).
+export function projectedLedArmies(charId, upToPhaseExclusive) {
+  const report = currentReport || {};
+  const char = (report.characters || []).find((x) => x.id === charId);
+  if (!char) return [];
+  return theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive).armies.get(char).slice();
 }
