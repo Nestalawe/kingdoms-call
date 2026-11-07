@@ -3888,10 +3888,9 @@ const theRowsNumber = (order: keyof typeof THE_ALIGNMENT_ORDERS, n: string): unk
   return numbers[n]?.value;
 };
 
-/** The creed orders' target fields the parity cases stage: those the field and the turn agree on, and those it is
- *  known to get wrong (questions 36, 39 and 41): a Consecrate in a captured seat of tax 10 (the field takes it for
- *  the home, the turn's home is the seat the realm was founded on), by a king of White 7 at five consecrations (the
- *  field counts his White to 5), Harvest the Field's price with Corpse-Carters (the field's 2g), the Wild Hunt's term
+/** The creed orders' target fields the parity cases stage: those the field and the turn agree on (Consecrate's home
+ *  and limit since P1-11e25, R-131: the report's), and those it is known to get wrong (questions 36, 39 and 41):
+ *  Harvest the Field's price with Corpse-Carters (the field's 2g), the Wild Hunt's term
  *  with The Long Hunt (the field's next turn), a Call to Arms in a province whose first company is not a garrison (the
  *  field names that company, the turn musters a garrison), and a Blood Offering marked on companies the rite never
  *  takes (the field offers bound beasts and risen dead; the turn gives the first company it may and raises the next). */
@@ -3904,14 +3903,19 @@ export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'a Blood Offering marked on two companies',
   'a Consecrate in a province of the realm',
   'a Consecrate in the capital',
+  'a Consecrate in a captured seat of tax 10',
+  'a Consecrate by a king of White 7 at five consecrations',
+  'a Consecrate by a king of White 2 at two consecrations',
+  'a Consecrate by a king of White 3 at three consecrations, with Holy Sites',
+  'a Consecrate by a king of White 2 under a Curse of 2, at one consecration',
+  'a Consecrate beside the capital, lost',
+  'a Consecrate by a king of White 2 at one consecration, on a report older than its home and limit',
 ] as const;
 export const THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH = [
   'a Call to Arms in a province whose first company is not a garrison',
   'Harvest the Field, with Corpse-Carters',
   'the Rite of the Wild Hunt, with The Long Hunt',
   'a Blood Offering marked on a bound beast',
-  'a Consecrate in a captured seat of tax 10',
-  'a Consecrate by a king of White 7 at five consecrations',
 ] as const;
 export type AKindOfCreedField =
   (typeof THE_CREED_FIELDS_THE_TURN_AGREES_WITH)[number] | (typeof THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH)[number];
@@ -3929,7 +3933,7 @@ function theFieldsConsecration(markup: string): string {
   const words = theWordsOf(said);
   if (words.startsWith('Consecrates ')) return 'it consecrates';
   if (/is your home province|borders your home province/.test(words)) return 'the home marches';
-  if (words.includes('(your White limit)')) return 'the limit';
+  if (words.includes('(the most your king may hold)')) return 'the limit';
   return `(the field says: ${words})`;
 }
 function theTurnsConsecration(facts: readonly Obj[]): string {
@@ -3992,8 +3996,9 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
     ],
   });
   // the provinces a Consecrate is given in: one of the realm's, and a captured seat of tax 10 the map lists before
-  // the capital; and five more of the realm's, consecrated, none next to the first
+  // the capital; and five more of the realm's, consecrated, none next to the first; and one beside the capital
   const consecrated = take();
+  const besideTheCapital = nextTo(capital).find((p) => land.includes(p));
   const apart = near(consecrated);
   const five = free.filter((p) => !apart.has(p['id'])).slice(0, 5);
   const seat = land.find(
@@ -4002,7 +4007,8 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
       !homeMarches.has(p['id']) &&
       ![garrisonFirst, levyFirst, field, stones, consecrated].includes(p),
   );
-  if (five.length < 5 || !seat) throw new Error('the staged world has too few provinces for the Consecrate cases');
+  if (five.length < 5 || !seat || !besideTheCapital)
+    throw new Error('the staged world has too few provinces for the Consecrate cases');
   const discovery = (id: string) => {
     const d = objects(SAGE_DISCOVERIES_P).find((x) => x['id'] === id);
     if (!d) throw new Error(`the discoveries have no ${id}`);
@@ -4227,9 +4233,13 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
     }
   }
   // Consecrate: what its field says, and what the turn does, by the king of a Divine realm
-  for (const [kind, p, white, edit] of [
-    ['a Consecrate in a province of the realm', consecrated, 1, () => undefined],
-    ['a Consecrate in the capital', capital, 1, () => undefined],
+  const holding = (n: number) => (G: Obj) => {
+    realmZeroOf(G)['consecratedProvIds'] = five.slice(0, n).map((q) => q['id']);
+  };
+  const unchanged = (): undefined => undefined;
+  for (const [kind, p, white, edit, theReport] of [
+    ['a Consecrate in a province of the realm', consecrated, 1, unchanged, 'as built'],
+    ['a Consecrate in the capital', capital, 1, unchanged, 'as built'],
     [
       'a Consecrate in a captured seat of tax 10',
       seat,
@@ -4238,23 +4248,63 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
         const q = provinceIn(G, seat);
         q['tax'] = 10;
       },
+      'as built',
+    ],
+    ['a Consecrate by a king of White 7 at five consecrations', consecrated, 7, holding(5), 'as built'],
+    ['a Consecrate by a king of White 2 at two consecrations', consecrated, 2, holding(2), 'as built'],
+    [
+      'a Consecrate by a king of White 3 at three consecrations, with Holy Sites',
+      consecrated,
+      3,
+      (G: Obj) => {
+        holding(3)(G);
+        realmZeroOf(G)['discoveries'] = [discovery('ad03')];
+      },
+      'as built',
     ],
     [
-      'a Consecrate by a king of White 7 at five consecrations',
+      'a Consecrate by a king of White 2 under a Curse of 2, at one consecration',
       consecrated,
-      7,
-      (G: Obj) => {
-        realmZeroOf(G)['consecratedProvIds'] = five.map((q) => q['id']);
+      2,
+      (G: Obj, theKing: Obj) => {
+        holding(1)(G);
+        theKing['_curses'] = { white: 2 };
       },
+      'as built',
+    ],
+    [
+      'a Consecrate beside the capital, lost',
+      besideTheCapital,
+      1,
+      (G: Obj) => {
+        // the capital taken by realm 1: the turn's home is still the seat the realm was founded on
+        provinceIn(G, capital)['owner'] = 1;
+        const r = realmZeroOf(G);
+        r['provinces'] = (Array.isArray(r['provinces']) ? r['provinces'] : []).filter((id) => id !== capital['id']);
+      },
+      'as built',
+    ],
+    [
+      'a Consecrate by a king of White 2 at one consecration, on a report older than its home and limit',
+      consecrated,
+      2,
+      holding(1),
+      'without the home and the limit',
     ],
   ] as const) {
     const divine = worldOf('Divine', (G, theKing) => {
       theKingIn(G, theKing, p, white);
-      edit(G);
+      edit(G, theKing);
     });
+    // a report written before P1-11e24's fields: the field reads the king's trained White, and knows no home
+    const kingdom = isObj(divine.report['kingdom']) ? divine.report['kingdom'] : {};
+    const older = Object.fromEntries(
+      Object.entries(kingdom).filter(([k]) => k !== 'homeProvinceId' && k !== 'theConsecrationsItsKingMayHold'),
+    );
+    const theField = theReport === 'as built' ? divine : { ...divine, report: { ...divine.report, kingdom: older } };
     push(
       kind,
-      theFieldsConsecration(field_(divine, kingId, 'Consecrate')),
+      theFieldsConsecration(field_(theField, kingId, 'Consecrate')),
       theTurnsConsecration(theTurnPlaysTheOrder(divine.state, kingId, 'Consecrate').facts),
     );
   }

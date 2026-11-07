@@ -113,8 +113,8 @@
 // the page makes him); the creed
 // orders' fields (`buildTargetField`, its words and its marks) say what the rows and the turn say: Call to Arms' grade
 // and company, the Broker's price, the carters' price, the Wild Hunt's beasts, grade, price and term, the Blood
-// Offering's marks and grades, where a king may consecrate; pinned where they do not: Consecrate's home (a captured seat
-// of tax 10) and limit (White counted to 5), the carters' price with Corpse-Carters, the Wild Hunt's term with The Long
+// Offering's marks and grades, where a king may consecrate (his home and his limit the report's since P1-11e25); pinned
+// where they do not: the carters' price with Corpse-Carters, the Wild Hunt's term with The Long
 // Hunt (question 41), Call to Arms' company (question 36), a Blood Offering marked on a bound beast (question 39).
 // P1-11d4 (plan P1-11d, before the ledger's wages, the practice chance and the co-trainer are shared): on staged heroes
 // of realm 0 (its report as the engine builds it from each world), what the treasury ledger (`computeOrderLedgerP`)
@@ -836,7 +836,11 @@ describe('the orders: what the order form offers a hero, and what the creed orde
     // is a garrison (a Green Human Garrison), word bought from a province (2g), Harvest the Field (2g), the Rite of the
     // Wild Hunt (two Veteran Stone Giants at the price of one, serving one turn beyond this), a Blood Offering marked on
     // two companies (the first given, the second raised two grades), a Consecrate in a province of the realm (it
-    // consecrates) and in the capital (the home marches). And the Move note, the phase after a Rite of the Wild Hunt,
+    // consecrates) and in the capital (the home marches); and Consecrate's home and limit as the report gives them
+    // (P1-11e25, R-131): a captured seat of tax 10 is not the home, nor is the capital once lost (the provinces beside
+    // it are still the home marches), and the limit is the king's trained White and Holy Sites' one more (White 7 at
+    // five, White 3 at three with Holy Sites, and White 2 under a Curse of 2 at one consecrate; White 2 at two is the
+    // limit); a report older than those fields reads his trained White and knows no home. And the Move note, the phase after a Rite of the Wild Hunt,
     // counts as many bound beasts in the column as the rite binds (P1-11d8: the row's number).
     const list = creedFields().filter((x) =>
       (THE_CREED_FIELDS_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind),
@@ -849,9 +853,8 @@ describe('the orders: what the order form offers a hero, and what the creed orde
     expect(list.map((x) => [x.kind, fromTheRows(x)])).toEqual(list.map((x) => [x.kind, x.rows]));
   });
 
-  test('what the creed orders’ fields get wrong is pinned: Consecrate’s home and limit, the carters’ price, the Long Hunt (question 41), Call to Arms’ company (question 36), the Blood Offering’s marks (question 39)', () => {
-    // The field takes the first province of tax 10 for the home (the turn: the seat the realm was founded on) and
-    // counts the king's White to 5 (the turn: to 9); it says 2g with Corpse-Carters (the turn takes nothing) and "until
+  test('what the creed orders’ fields get wrong is pinned: the carters’ price, the Long Hunt (question 41), Call to Arms’ company (question 36), the Blood Offering’s marks (question 39)', () => {
+    // It says 2g with Corpse-Carters (the turn takes nothing) and "until
     // end of NEXT turn" with The Long Hunt (the turn: a turn more); it names a province's first company (the turn
     // musters a garrison); it offers a bound beast to give (the turn takes no bound beast, so it gives the first company
     // it may and raises the one marked).
@@ -864,8 +867,6 @@ describe('the orders: what the order form offers a hero, and what the creed orde
       if (!x) throw new Error(`no staged field of the kind ${k}`);
       return [x.copy, x.engine];
     };
-    expect(kind('a Consecrate in a captured seat of tax 10')).toEqual(['the home marches', 'it consecrates']);
-    expect(kind('a Consecrate by a king of White 7 at five consecrations')).toEqual(['the limit', 'it consecrates']);
     expect(kind('Harvest the Field, with Corpse-Carters')).toEqual([{ price: 2 }, { price: 0 }]);
     const hunt = { beasts: 2, grade: 'Veteran', type: 'Stone Giants', price: 5 };
     expect(kind('the Rite of the Wild Hunt, with The Long Hunt')).toEqual([
