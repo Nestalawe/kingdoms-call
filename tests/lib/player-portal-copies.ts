@@ -217,6 +217,8 @@ const COPIES: Record<string, string[]> = {
     'theCompanyAsTheFormCarriesIt',
     'theRoomHisBeastCommandLeaves',
     'whereTheCompaniesARecruitRaisesMuster',
+    // (since P1-11e29 the same, asked by the treasury ledger)
+    'whereTheCompaniesAHerosRecruitRaisesMuster',
     'whatAComradeTakesOfAHandOver',
     // since P1-11e17 one replay of the phases' orders, which the three read
     'theFormsReplayOfThePhasesBefore',
@@ -4510,6 +4512,10 @@ export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   "a company raised into the Host-Leader's column, the report naming him (the titles public)",
   'a beast raised by a Druid 5 hero',
   'a beast raised by a Druid 6 hero',
+  'a beast raised by a Druid 6 hero of a realm with Supply Depots, under its cap',
+  'a company of the province raised by a Druid 6 hero',
+  'a company raised by the Champion of the People, the report naming him',
+  'a garrison company raised by the Host-Leader, the report naming him',
   'a beast raised by a Druid 5 hero of a realm whose Druidic Wonder stands',
   'Harvest the Field',
   'Harvest the Field, on a report that names no price',
@@ -4696,6 +4702,39 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
   stage('a beast raised by a Druid 5 hero', at(take(beast), { skills: { druid: 5 } }), [recruit(`${beast}|1`)]);
   stage('a beast raised by a Druid 6 hero', at(take(beast), { skills: { druid: 6 } }), [recruit(`${beast}|1`)]);
   // a Wonder raised before Wonders were sited stands wherever it is (gdActiveFor): its beasts pay half wages (P1-11e29)
+  // (a beast of an odd wage, 5g: halved, then the depots' 1g, as the turn takes them, 1g; the other way round, 2g)
+  stage(
+    'a beast raised by a Druid 6 hero of a realm with Supply Depots, under its cap',
+    at(take('Unicorn Herd'), { skills: { druid: 6 } }),
+    [recruit('Unicorn Herd|1')],
+    supplyDepots,
+  );
+  stage('a company of the province raised by a Druid 6 hero', at(take('Men-at-Arms'), { skills: { druid: 6 } }), [
+    recruit('Men-at-Arms|1'),
+  ]);
+  stage(
+    'a company raised by the Champion of the People, the report naming him',
+    at(take('Men-at-Arms'), { merits: 9999 }),
+    [recruit('Men-at-Arms|1')],
+    (G) => {
+      G['turn'] = Math.max(5, Number(G['turn']) || 1);
+    },
+  );
+  {
+    // the Host-Leader named, raising a garrison company: it joins no column, so it pays its whole wage (P1-11e29)
+    const hostLeader = at(take('Human Garrison'));
+    const host = Array.from({ length: 40 }, () => company('Shieldwall Levies'));
+    stage(
+      'a garrison company raised by the Host-Leader, the report naming him',
+      hostLeader,
+      [recruit('Human Garrison|1')],
+      (G) => {
+        G['turn'] = Math.max(5, Number(G['turn']) || 1);
+        heroIn(G, hostLeader)['armies'] = copyOf(host);
+        G['_minorHolders'] = { hostleader: { charId: hostLeader['id'] } };
+      },
+    );
+  }
   stage(
     'a beast raised by a Druid 5 hero of a realm whose Druidic Wonder stands',
     at(take(beast), { skills: { druid: 5 } }),

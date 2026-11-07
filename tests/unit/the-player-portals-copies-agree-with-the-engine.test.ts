@@ -903,7 +903,9 @@ describe('gold and practice: what the treasury ledger and the Practice Skill not
       { spend: 3, 'new wages': 3 },
     ]);
     expect(
-      kind("a company raised into the Host-Leader's column, on a report that doesn't name him (the titles not yet public)"),
+      kind(
+        "a company raised into the Host-Leader's column, on a report that doesn't name him (the titles not yet public)",
+      ),
     ).toEqual([
       { spend: 3, 'new wages': 3 },
       { spend: 3, 'new wages': 2 },
