@@ -4507,7 +4507,10 @@ export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   'a mercenary band hired',
   'a wandering hero hired',
   'a company raised by a realm with Supply Depots, under its cap',
+  "a company raised into the Host-Leader's column, the report naming him (the titles public)",
   'a beast raised by a Druid 5 hero',
+  'a beast raised by a Druid 6 hero',
+  'a beast raised by a Druid 5 hero of a realm whose Druidic Wonder stands',
   'Harvest the Field',
   'Harvest the Field, on a report that names no price',
   'Harvest the Field, by a realm with Corpse-Carters',
@@ -4518,8 +4521,7 @@ export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
 export const THE_LEDGERS_THE_TURN_DISAGREES_WITH = [
   'a wandering hero hired by a realm with Granaries',
   'a company raised by a realm with Supply Depots, past its cap',
-  "a company raised into the Host-Leader's column",
-  'a beast raised by a Druid 6 hero',
+  "a company raised into the Host-Leader's column, on a report that doesn't name him (the titles not yet public)",
 ] as const;
 export type AKindOfLedger =
   (typeof THE_LEDGERS_THE_TURN_AGREES_WITH)[number] | (typeof THE_LEDGERS_THE_TURN_DISAGREES_WITH)[number];
@@ -4667,12 +4669,44 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
   }
   {
     const hostLeader = at(take('Men-at-Arms'));
-    stage("a company raised into the Host-Leader's column", hostLeader, [recruit('Men-at-Arms|1')], (G) => {
-      G['_minorHolders'] = { hostleader: { charId: hostLeader['id'] } };
-    });
+    stage(
+      "a company raised into the Host-Leader's column, on a report that doesn't name him (the titles not yet public)",
+      hostLeader,
+      [recruit('Men-at-Arms|1')],
+      (G) => {
+        G['_minorHolders'] = { hostleader: { charId: hostLeader['id'] } };
+      },
+    );
+  }
+  {
+    // the titles public (turn 5): he leads the most companies, so the report names him in his minorHeld (P1-11e29)
+    const hostLeader = at(take('Men-at-Arms'));
+    const host = Array.from({ length: 40 }, () => company('Shieldwall Levies'));
+    stage(
+      "a company raised into the Host-Leader's column, the report naming him (the titles public)",
+      hostLeader,
+      [recruit('Men-at-Arms|1')],
+      (G) => {
+        G['turn'] = Math.max(5, Number(G['turn']) || 1);
+        heroIn(G, hostLeader)['armies'] = copyOf(host);
+        G['_minorHolders'] = { hostleader: { charId: hostLeader['id'] } };
+      },
+    );
   }
   stage('a beast raised by a Druid 5 hero', at(take(beast), { skills: { druid: 5 } }), [recruit(`${beast}|1`)]);
   stage('a beast raised by a Druid 6 hero', at(take(beast), { skills: { druid: 6 } }), [recruit(`${beast}|1`)]);
+  // a Wonder raised before Wonders were sited stands wherever it is (gdActiveFor): its beasts pay half wages (P1-11e29)
+  stage(
+    'a beast raised by a Druid 5 hero of a realm whose Druidic Wonder stands',
+    at(take(beast), { skills: { druid: 5 } }),
+    [recruit(`${beast}|1`)],
+    (G) => {
+      const r = realmZeroIn(G);
+      r['alignment'] = 'Druidic';
+      r['discoveries'] = [{ id: 'gd' }];
+      delete r['gdProvinceId'];
+    },
+  );
   {
     const p = take();
     p['battleGraves'] = [{ type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName: 'The Fallen Spears' }];
