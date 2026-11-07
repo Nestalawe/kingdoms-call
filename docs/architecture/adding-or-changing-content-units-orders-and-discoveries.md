@@ -34,8 +34,9 @@ rule there, once. Rules are still restated:
   march's forecasts, `predictedLocation` and `lastMoveDirOf` (their hex step, and the Move field's, is the engine's since P1-11d6, and a Move's or a Forced March's target is read by the engine's `whatAMarchsOrderNames` since R-128, and a march the turn refuses at a border, by the sea or with ships over land asked of the engine's rules on the Move note's column since P1-11e10, and past his pace, the report's pools spent a step by the engine's `theMovePoolAStepSpends`, since P1-11e11, and one step toward a far province, by the engine's route and its safe-ground preference on the report's map, since P1-11e12), and since P1-11d2
   what a hero will hold, `predictedItems`, `projectedLedArmies` and `projectedGarrison` (with `predictedLocation`, one file since P1-11e3: `src/ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts`; the three read one replay of the phases' orders since P1-11e17, `theFormsReplayOfThePhasesBefore`), since P1-11d3 the order
   list, `actionsFor`, and the creed orders' target fields, and since P1-11d4 the treasury ledger,
-  `computeOrderLedgerP`, the Practice Skill note and the comrades it counts beside a hero, each difference from the
-  turn pinned), and the other forecasts and order checks
+  `computeOrderLedgerP`, the Practice Skill note (the engine's `theChanceAHeroPractisingAloneRaisesHisSkill` since
+  R-134) and the comrades it counts beside a hero, each difference from the turn pinned), and the other forecasts and
+  order checks
   whose engine rule is written inline (P1-11b, P1-19);
 - at order time and again at resolution time in the engine;
 - in the balance matrix's scripted realm: what the player portal sends, `doSubmitOrders`
