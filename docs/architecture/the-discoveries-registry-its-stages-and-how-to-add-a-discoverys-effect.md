@@ -44,7 +44,10 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `strength`'s **a realm's discoveries strengthen a unit** (`unitStr`; `discUnitMult`, which `armStr` asks). It is
   handed the unit (its type, race and quality, and whether it is risen dead), the ground, whether its side attacks,
   whether the king leads it, and whether a commander leads it (a garrison standing alone has none). It returns the
-  factor, `1 + pct`, or nothing. The runner multiplies them and caps the product at the kind's ceiling.
+  factor, `1 + pct`, or nothing. The runner multiplies them and caps the product at the kind's ceiling. The effect and
+  the capped product are on plain values (P1-11e36, so the army card can share them):
+  `rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts`. The registry's entry
+  names that effect, and its runner hands the product the effects the realm holds.
 - **A realm's discoveries add to a siege** (`siege`; both battles): handed the attacker's units. It returns its `delta`
   if it names no unit types, or the attacker has one of them. The runner adds them.
 - **A realm's discoveries fortify its own ground** (`defOwn`; both battles, the defending realm's): handed whether the
