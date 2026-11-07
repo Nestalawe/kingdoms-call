@@ -26,6 +26,15 @@ export const MINOR_HEAVY = new Set([
 /** The quality one tier above each (Elite stays Elite); a quality the table doesn't hold has none. */
 const THE_QUALITY_ONE_TIER_UP: Readonly<Record<string, string | undefined>> = { ...KC_QUALITY_UP };
 
+/** A hero's trained level of a skill, from 0 to 9, as his card or the save writes it (none is 0). */
+export function theTrainedLevelOfASkill(theLevelWritten: number | null | undefined): number {
+  return Math.max(0, Math.min(9, Number(theLevelWritten) || 0));
+}
+/** The mastery tier a trained level gives: the levels past 5 (Druid 8 is tier 3, Necromancy 6 tier 1). */
+export function theMasteryTierATrainedLevelGives(theLevelWritten: number | null | undefined): number {
+  return Math.max(0, theTrainedLevelOfASkill(theLevelWritten) - 5);
+}
+
 /** A unit as the two mastery lifts read it: its type, its quality, and whether it is of the risen dead. */
 export interface AUnitAsTheMasteryLiftsReadIt {
   readonly unitType: string;

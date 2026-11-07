@@ -275,9 +275,9 @@ const statementCopies = (opts: SourceOptions) => `
 // the shortfall.
 function armyCardDruidLines(a, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel', opts)}
-  let bs = 1000, druidUnits = 0, druidShort = 0;
+  let druidUnits = 0, druidShort = 0;
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'mastery', opts)}
-  return { strengthOfAThousand: bs, mastery, shortfall };
+  return { strengthOfAThousand: Math.floor(1000 * theShareHisShortfallLeaves), mastery, shortfall };
 }
 // The army card's sea-transport note for the column \`arr\` the hero \`c\` leads, as the words the card shows.
 function armyCardSeaNote(arr, c) {
@@ -292,7 +292,7 @@ function armyCardUnitStrength(a, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom', opts)}
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel', opts)}
   let totalStr = 0, druidUnits = 0, druidShort = 0;
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'bs', 'totalStr+=bs;', opts)}
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'totalStr+=bs;', opts)}
   return bs;
 }
 // The army card's upkeep for the column \`arr\` the hero \`c\` leads, as its "💰 Upkeep" figure gives it: the wage it
@@ -301,7 +301,7 @@ function armyCardUpkeep(arr, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom', opts)}
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druidShort', opts)}
   for (const a of arr) {
-    ${statementsBetween(ARMY_CARD, 'renderReportView', 'bs', 'mast', opts)}
+    ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'mast', opts)}
   }
   return totalCost;
 }
@@ -3312,6 +3312,126 @@ export function theArmyCardsUpkeepAgainstTheTurn(c: Copies): AnUpkeepComparison[
       ...compare(column, c.armyCardUpkeep(shown['armies'], shown, world.report), { answer: turn, changed: false }),
       column,
     };
+  });
+}
+
+// ── The army card's strength (P1-11e38, R-135, question 45 (a)) ────
+/** The columns the army card's strength cases stage, each led by a hero of realm 0 in a world of its own: a lift or a
+ *  step armStr takes before the ground and the foe (Druid 8, Necromancy 6, his items, the realm's discoveries), and a
+ *  Druid shortfall with none of them. */
+export const THE_ARMY_CARDS_STRENGTH_COLUMNS = [
+  'Thunderbirds under a Druid 8 hero',
+  'Thunderbirds under a Druid 3 hero',
+  'skeletal Men-at-Arms under a Necromancy 6 hero',
+  'Free Lances under a hero with a Golden Spur and a Battle Standard',
+  'Men-at-Arms under a hero of a realm with War Drums',
+  'Men-at-Arms under a hero of a Divine realm with the Chalice of Dawn',
+  "Free Lances under the king of a realm whose discovery lifts its king's cavalry",
+] as const;
+export type AStrengthColumn = (typeof THE_ARMY_CARDS_STRENGTH_COLUMNS)[number];
+/** One unit of a staged column compared: the card's "str" figure, and armStr's with no ground and no battle. */
+export interface AStrengthComparison extends Comparison {
+  readonly column: AStrengthColumn;
+}
+/** The army card's strength of each unit (armyCardUnitStrength, on the hero as realm 0's report shows him) against the
+ *  turn's (armStr, on the ground of no terrain, with nothing of the battle around it). */
+export function theArmyCardsStrengthAgainstTheTurn(c: Copies): AStrengthComparison[] {
+  const { g, king, land, at } = aWorldForTheOrders();
+  const p = land[0];
+  if (!p) throw new Error('the staged world has no land for the strength cases');
+  let unitN = 0;
+  const unit = (type: string, fields: Obj = {}): Obj => ({
+    type,
+    quality: 'Average',
+    race: 'Human',
+    unitName: `Strength Company ${String(unitN++)}`,
+    ...fields,
+  });
+  // (a beast is of no race: its kin can't lift it)
+  const beast = (type: string): Obj => {
+    const b = unit(type);
+    delete b['race'];
+    return b;
+  };
+  const item = (name: string): Obj => {
+    const it = catalogue().find((x) => x['name'] === name);
+    if (!it) throw new Error(`the items have no ${name}`);
+    return { ...copyOf(it), equipped: true };
+  };
+  const staged: Record<
+    AStrengthColumn,
+    { skills: Obj; armies: Obj[]; items?: Obj[]; edit?: (G: Obj) => void; theKing?: true }
+  > = {
+    'Thunderbirds under a Druid 8 hero': { skills: { druid: 8 }, armies: [beast('Thunderbirds')] },
+    'Thunderbirds under a Druid 3 hero': { skills: { druid: 3 }, armies: [beast('Thunderbirds')] },
+    'skeletal Men-at-Arms under a Necromancy 6 hero': {
+      skills: { necromancy: 6 },
+      armies: [unit('Men-at-Arms', { _isSkeletal: true })],
+    },
+    'Free Lances under a hero with a Golden Spur and a Battle Standard': {
+      skills: {},
+      armies: [unit('Free Lances'), unit('Men-at-Arms')],
+      items: [item('Golden Spur'), item('Battle Standard')],
+    },
+    'Men-at-Arms under a hero of a realm with War Drums': {
+      skills: {},
+      armies: [unit('Men-at-Arms')],
+      edit: (G) => {
+        const r = realmZeroIn(G);
+        r['discoveries'] = [...objects(r['discoveries']), aDiscovery('sd02')];
+      },
+    },
+    'Men-at-Arms under a hero of a Divine realm with the Chalice of Dawn': {
+      skills: {},
+      armies: [unit('Men-at-Arms')],
+      items: [item('Chalice of Dawn')],
+      edit: (G) => {
+        realmZeroIn(G)['alignment'] = 'Divine';
+      },
+    },
+    "Free Lances under the king of a realm whose discovery lifts its king's cavalry": {
+      skills: {},
+      armies: [unit('Free Lances')],
+      theKing: true,
+      edit: (G) => {
+        const r = realmZeroIn(G);
+        r['discoveries'] = [...objects(r['discoveries']), aDiscovery('rh10')];
+      },
+    },
+  };
+  return THE_ARMY_CARDS_STRENGTH_COLUMNS.flatMap((column) => {
+    const s = staged[column];
+    const hero = s.theKing ? king : at(p, { skills: s.skills, items: s.items ?? [] });
+    const world = editedAndReported(g, (G) => {
+      s.edit?.(G);
+      heroIn(G, hero)['armies'] = copyOf(s.armies);
+    });
+    const G = copyOf(world.state);
+    G['_titleHolders'] = {};
+    G['_minorHolders'] = {};
+    const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], Number(G['turn']) || 1), { KC_SEASONS, isBotRow });
+    const h = heroIn(G, hero);
+    const alignment = String(realmZeroIn(G)['alignment']);
+    // (the staged world's hero and unit, given the types armStr takes, by assertion as armyCardKinAgainstTheBattle's;
+    // each on a copy of the hero, whose items armStr's activeItems tidies)
+    const battle = (x: Obj, u: Obj) => ({
+      answer: armStr(
+        tc as unknown as TurnContext,
+        u as ArmyInABattle,
+        copyOf(x) as HeroInABattle,
+        alignment,
+        null,
+        null,
+      ),
+      changed: false,
+    });
+    const shown = objects(world.report['characters']).find((x) => x['id'] === hero['id']);
+    if (!shown) throw new Error(`realm 0's report shows no hero ${String(hero['id'])}`);
+    const states = objects(h['armies']);
+    return objects(shown['armies']).map((u, i) => ({
+      ...compare([column, u['type']], c.armyCardUnitStrength(u, shown, world.report), battle(h, states[i] ?? {})),
+      column,
+    }));
   });
 }
 
