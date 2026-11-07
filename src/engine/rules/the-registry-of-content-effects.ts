@@ -67,6 +67,7 @@ import {
 } from './unit-abilities/the-volley-before-the-battle.ts';
 import type { TheEffectOfADiscovery } from '../../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import type { AUnitAsTheDiscoveriesReadIt } from '../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
+import type { AUnitARealmsDiscoveriesMayStrengthen } from '../rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -1351,19 +1352,6 @@ export type AStepOfACombatSpell =
     }
   /** A line alone. */
   | { readonly kind: 'a line'; readonly theLine: TheLineOfACombatSpell };
-
-/** A unit a realm's discoveries may strengthen, and its battle (discUnitMult, which armStr asks: plan P1-19aa). */
-export interface AUnitARealmsDiscoveriesMayStrengthen {
-  readonly theUnit: AUnitAsTheDiscoveriesReadIt;
-  /** The ground it fights on, or none given. */
-  readonly theGround: string | null | undefined;
-  /** Whether its side attacks (true), defends (false), or neither is given. */
-  readonly isItsSideTheAttacker: boolean | null | undefined;
-  /** Whether the realm's king leads it in person. */
-  readonly isItLedByTheKing: boolean;
-  /** Whether a commander leads it (a garrison standing alone has none). */
-  readonly hasItACommander: boolean;
-}
 
 /** The attacker's units, as a realm's siegecraft reads them (both battles, before the defenders' bonus is counted). */
 export interface TheAttackersUnitsAtASiege {
