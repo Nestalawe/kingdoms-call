@@ -2359,6 +2359,11 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'every company left in the garrison',
   'a company left in the garrison by its type',
   'every company handed to a comrade beside him',
+  // (P1-11e19: each red on a fault planted in the rules' inputs)
+  'two beasts recruited by a Druid 1 hero, the second past his beast command',
+  'a band of beasts and a band hired with the garrison named, in a province of another realm',
+  'a beast recruited by a Druid 1 hero leading a beast of the Wild Hunt and a summoned one',
+  'a beast recruited under the banner of a comrade at his beast command',
 ] as const;
 export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = [
   'an item handed to a comrade marching in',
@@ -2467,9 +2472,9 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
   };
   const mithril = anItem(catalogue().find(anItemIsTheMithrilSuit));
   const classes: Record<string, readonly string[]> = KC_UNIT_CLASS;
-  const beast = classes['creature']?.[0];
+  const [beast, otherBeast] = [classes['creature']?.[0], classes['creature']?.[1]];
   const garrisonType = 'Human Garrison';
-  if (!beast || !(classes['garrison'] ?? []).includes(garrisonType))
+  if (!beast || !otherBeast || !(classes['garrison'] ?? []).includes(garrisonType))
     throw new Error('the unit classes have no creature or no Human Garrison');
   let unitN = 0;
   const unit = (type: string, quality = 'Average', fields: Obj = {}): Obj => ({
@@ -2850,6 +2855,59 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       { [id(giver)]: [leave('all', id(comrade))] },
     );
   }
+  // (P1-11e19: the rules' inputs, each red on a fault planted in it)
+  {
+    const p = offering(aProvince(), beast, otherBeast);
+    const recruiter = at(p, { skills: { druid: 1 } });
+    stage(
+      'two beasts recruited by a Druid 1 hero, the second past his beast command',
+      'companies',
+      p,
+      { recruiter },
+      { [id(recruiter)]: [recruit(`${beast}|1`, `${otherBeast}|1`)] },
+    );
+  }
+  {
+    // (a province of another realm: no garrison is his to muster into, and a full column hires no beasts there)
+    const p = provinces.find((x) => isLand(x) && x['owner'] != null && x['owner'] !== 0);
+    if (!p) throw new Error('the staged world has no province of another realm');
+    p['garrisonArmies'] = [];
+    const [beasts, men] = [band(p, beast, 'Average'), band(p, 'Men-at-Arms', 'Veteran')];
+    const recruiter = at(p);
+    stage(
+      'a band of beasts and a band hired with the garrison named, in a province of another realm',
+      'companies',
+      p,
+      { recruiter },
+      { [id(recruiter)]: [recruit(`merc:${beasts}`, `merc:${men}`, 'to:garrison')] },
+    );
+  }
+  {
+    const p = offering(aProvince(), beast);
+    const bound = [
+      unit(otherBeast, 'Veteran', { _wildHuntUntilTurn: Number(g['turn']) + 1 }),
+      unit(otherBeast, 'Average', { _temporary: true }),
+    ];
+    const recruiter = at(p, { skills: { druid: 1 }, armies: bound });
+    stage(
+      'a beast recruited by a Druid 1 hero leading a beast of the Wild Hunt and a summoned one',
+      'companies',
+      p,
+      { recruiter },
+      { [id(recruiter)]: [recruit(`${beast}|1`)] },
+    );
+  }
+  {
+    const p = offering(aProvince(), beast);
+    const [recruiter, comrade] = [at(p), at(p)];
+    stage(
+      'a beast recruited under the banner of a comrade at his beast command',
+      'companies',
+      p,
+      { recruiter, comrade },
+      { [id(recruiter)]: [recruit(`${beast}|1`, `to:${id(comrade)}`)] },
+    );
+  }
   return { world: quietly(() => savedAndReported(g)), holdings };
 }
 /** What the heroes of `holding` and its province's garrison hold in the state `G`: each item's name, or each
@@ -2965,6 +3023,35 @@ export function thePickUpFieldAsAComradeLeavesAgainstTheTurn(c: Copies): { field
     field: (Array.isArray(field) ? field : []).map(aCompany),
     turn: whatTheyHoldIn(theTurnPlaysTheHolding(world.state, holding), holding)['taker'] ?? [],
   };
+}
+/** The companies the Move note counts in the column of a comrade handed or mustered companies in the phase he would
+ *  march (projectedMoveHost's gains of the same phase: P1-11e19, R-129), by their names, and those the turn gives him;
+ *  on the staged holdings of a comrade a hand-over or a Recruit names. */
+export function theMoveNoteOfAComradeHandedCompaniesAgainstTheTurn(
+  c: Copies,
+): { kind: AKindOfHolding; note: string[]; turn: string[] }[] {
+  const { world, holdings } = holdingWorld();
+  return holdings
+    .filter((h) =>
+      (
+        [
+          'risen dead handed to a comrade',
+          'a beast handed to a comrade at his beast command',
+          "companies recruited under a comrade's banner",
+          'a beast recruited under the banner of a comrade at his beast command',
+        ] as readonly string[]
+      ).includes(h.kind),
+    )
+    .map((holding) => {
+      const note = c.theMoveNotesColumnOn(world.report, holding.orders, holding.heroes['comrade'], 0);
+      const G = theTurnPlaysTheHolding(world.state, holding);
+      const comrade = objects(G['characters']).find((h) => h['id'] === holding.heroes['comrade']);
+      return {
+        kind: holding.kind,
+        note: (Array.isArray(note) ? note : []).map(String),
+        turn: objects(comrade?.['armies']).map((a) => String(a['unitName'])),
+      };
+    });
 }
 /** The Send Item field of the hero who sends "all" with a Mithril suit in his pack (P1-11e18, R-129): each item it
  *  lists, by its place in his pack, and the items it lets him tick; and the items the turn hands over (what his comrade

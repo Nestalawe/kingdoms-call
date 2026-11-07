@@ -191,6 +191,7 @@ import {
   THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES,
   theWarlocksTitle,
   whatAHeroHoldsAgainstTheTurn,
+  theMoveNoteOfAComradeHandedCompaniesAgainstTheTurn,
   thePickUpFieldAsAComradeLeavesAgainstTheTurn,
   worldSamples,
   type WorldSamples,
@@ -672,7 +673,10 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // (R-129, the turn's rules through src/shared/) a beast past a leader's beast command (his Druid, here 0) mustering
     // into the garrison, staying with the giver or going back to the garrison, a band of garrison troops hired into the
     // garrison, companies taken up last first (by their places and "all"), and risen dead handed to a comrade of a realm
-    // that is not Undead going to their graves (the report's `skeletal` mark).
+    // that is not Undead going to their graves (the report's `skeletal` mark); with, for the rules' inputs, two beasts
+    // recruited by a Druid 1 hero (the first fits his command), bands hired with the garrison named in a province of
+    // another realm (the beasts not hired, the men into his column), a beast recruited by a Druid 1 hero whose bound and
+    // summoned beasts don't count, and a beast mustered under a comrade at his beast command (into the garrison).
     const list = holdings().filter((x) => (THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
@@ -680,6 +684,21 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(list.filter((x) => sameAnswer(x.engine, x.before)).map((x) => x.kind)).toEqual([
       'a beast handed to a comrade at his beast command',
       'a beast taken up past his beast command',
+    ]);
+  });
+
+  test('the Move note counts what a comrade takes of the companies handed or mustered to him that season, as the turn gives them (P1-11e19, R-129)', () => {
+    // The note reads his column as he marches: the companies a comrade hands him or musters under his banner that same
+    // season join first. Risen dead go to their graves, a beast past his beast command stays with the giver or goes to
+    // the garrison, by the turn's rules.
+    // (counted: a company raised this season has no name on the form yet)
+    expect(
+      theMoveNoteOfAComradeHandedCompaniesAgainstTheTurn(copies).map((x) => [x.kind, x.note.length, x.turn.length]),
+    ).toEqual([
+      ["companies recruited under a comrade's banner", 1, 1],
+      ['risen dead handed to a comrade', 0, 0],
+      ['a beast handed to a comrade at his beast command', 0, 0],
+      ['a beast recruited under the banner of a comrade at his beast command', 0, 0],
     ]);
   });
 
