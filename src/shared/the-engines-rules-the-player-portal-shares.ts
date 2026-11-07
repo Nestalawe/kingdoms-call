@@ -23,7 +23,8 @@
 // season's heroes act in since P1-11e20: the forecasts' replay hands over a season's items in it, with the kind of
 // order each name reads as; the company a Call to Arms musters since P1-11e26: its choice names it; the companies a
 // Blood Offering may take, gives and raises since P1-11e27: its rows lock the others, its hint and the Move note's
-// column follow the turn's).
+// column follow the turn's; the chance a practice alone raises a skill, and the level past which no roll is made,
+// since P1-11e28: the Practice Skill note quotes them).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -102,6 +103,10 @@ export {
   theRisenDeadFollowAHandOverTo,
   whereAHandOversRisenDeadGo,
 } from '../engine/rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
+export {
+  aSkillAtThisLevelIsPractisedNoFurther,
+  theChanceAHeroPractisingAloneRaisesHisSkill,
+} from '../engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 export { normaliseAction } from '../engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 export {
   theHeroesWhoMustActFirstInAPhase,
