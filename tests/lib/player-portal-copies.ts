@@ -4756,8 +4756,9 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
 }
 
 /** The Practice Skill orders the note cases stage, each by a hero practising Melee alone in a province of his own, in a
- *  world of its own: those the note and the turn agree on, and those it is known to get wrong (question 43): a Human of
- *  a Human realm (the turn's quick learner, ×1.5) and a hero at level 5 (the turn makes no roll). */
+ *  world of its own; since P1-11e28 (R-134) the note and the turn agree on each: a Human of a Human realm too (the
+ *  turn's quick learner, ×1.5, on the base and his realm's discoveries both) and a hero at level 5 (the turn makes no
+ *  roll). */
 export const THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH = [
   'an Elven hero of a Human realm at Melee 0',
   'an Elven hero of a Human realm at Melee 1',
@@ -4768,23 +4769,32 @@ export const THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH = [
   'an Elven hero at Melee 0, his realm with Astronomical Tables',
   'an Elven hero at Melee 1, his realm with Blooded Retinues (Melee and Archery)',
   'an Elven hero at Melee 1, his realm with Tradecraft Manuals (Spy and Thief)',
-] as const;
-export const THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH = [
   'a Human hero of a Human realm at Melee 2',
+  'a Human hero of a Human realm at Melee 0, his realm with Astronomical Tables',
   'an Elven hero of a Human realm at Melee 5',
 ] as const;
-export type AKindOfPracticeNote =
-  | (typeof THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH)[number]
-  | (typeof THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH)[number];
-/** One staged Practice Skill order compared: the chance the note quotes and the level it names, and the chance the
- *  turn rolls against at the level it reads (none: it makes no roll); with its kind. */
+export type AKindOfPracticeNote = (typeof THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH)[number];
+/** One staged Practice Skill order compared: the chance the note quotes, the level it names and whether it says he
+ *  learns as a Human of a Human realm, and the chance the turn rolls against at the level it reads and whether it
+ *  counts him a quick learner (none: it makes no roll); with its kind. */
 export interface APracticeNoteComparison extends Comparison {
   readonly kind: AKindOfPracticeNote;
 }
-/** The chance a Practice Skill note quotes and the level it names ("Improvement: N% at <skill> L."), from its words. */
+/** The chance a Practice Skill note quotes, the level it names ("Improvement: N% at <skill> L.") and whether it says he
+ *  learns half as fast again (a Human of a Human realm); or that no roll is made at his level ("No roll is made: …, and
+ *  <skill> is at L."); from its words. */
 function theNotesChance(markup: string): Obj {
-  const said = /Improvement: (\d+)% at \S+ (\d+)\./.exec(theWordsOf(markup));
-  return said ? { chance: Number(said[1]), level: Number(said[2]) } : { '(the note says)': theWordsOf(markup) };
+  const words = theWordsOf(markup);
+  const said = /Improvement: (\d+)% at \S+ (\d+)\./.exec(words);
+  if (said)
+    return {
+      chance: Number(said[1]),
+      level: Number(said[2]),
+      'a quick learner': words.includes('A Human of a Human realm learns half as fast again'),
+    };
+  const none = /No roll is made: practice raises a skill only to level 5, and \S+ is at (\d+)\./.exec(words);
+  if (none) return { chance: '(no roll: drilled as far as practice can take it)', level: Number(none[1]) };
+  return { '(the note says)': words };
 }
 const THE_PRACTICE_ROLLS = ['a hero practises a skill and improves', 'a hero practises a skill but makes no progress'];
 /** The chance the turn rolls a hero's practice against, and the level it reads, from the line it writes of him. */
@@ -4793,7 +4803,7 @@ function theTurnsChance(facts: readonly Obj[], heroName: unknown): Obj {
   const rolled = his.find((f) => THE_PRACTICE_ROLLS.includes(String(f['kind'])));
   if (rolled) {
     const why = isObj(rolled['theChance']) ? rolled['theChance'] : {};
-    return { chance: rolled['chance'], level: why['level'] };
+    return { chance: rolled['chance'], level: why['level'], 'a quick learner': rolled['quickLearner'] === true };
   }
   if (his.some((f) => f['kind'] === 'a skill is drilled as far as practice can take it'))
     return { chance: '(no roll: drilled as far as practice can take it)', level: 5 };
@@ -4802,8 +4812,7 @@ function theTurnsChance(facts: readonly Obj[], heroName: unknown): Obj {
 
 /** The Practice Skill note (orderChanceNote, on realm 0's report as the engine builds it from each world) against the
  *  chance the turn rolls (its phase played on a copy of the state): each kind of
- *  THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH and THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH, its race, its realm's race
- *  and its discoveries staged. */
+ *  THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH, its race, its realm's race and its discoveries staged. */
 export function thePracticeNoteAgainstTheTurn(c: Copies): APracticeNoteComparison[] {
   const { g, capital, land, at } = aWorldForTheOrders();
   const free = land.filter((p) => p !== capital);
@@ -4842,6 +4851,12 @@ export function thePracticeNoteAgainstTheTurn(c: Copies): APracticeNoteCompariso
       realmOf('Human', ['sd61']),
     ],
     ['a Human hero of a Human realm at Melee 2', 'Human', 2, realmOf('Human')],
+    [
+      'a Human hero of a Human realm at Melee 0, his realm with Astronomical Tables',
+      'Human',
+      0,
+      realmOf('Human', ['sd26']),
+    ],
     ['an Elven hero of a Human realm at Melee 5', 'Elven', 5, realmOf('Human')],
   ];
   const heroes = staged.map(([, race, level]) => at(take(), { race, skills: { melee: level } }));

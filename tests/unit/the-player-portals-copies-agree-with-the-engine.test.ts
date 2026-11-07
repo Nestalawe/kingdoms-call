@@ -20,7 +20,8 @@
 // rows and the turn (each known difference pinned: questions 36, 39 and 41). Since P1-11d4, gold and practice: the
 // treasury ledger against what the turn spends and Early Winter charges, the Practice Skill note against the chance
 // the turn rolls, and the comrades a hero's field counts as practising beside him against the turn's (each known
-// difference pinned: question 43). And each engine function leaves its input as it was.
+// difference pinned: question 43; the practice note's none since P1-11e28). And each engine function leaves its input
+// as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -126,7 +127,8 @@
 // in the turn), a company under the Host-Leader (1g less in the turn), a Druid 6 hero's beast (half price and half wage
 // in the turn), a hero hired by a realm with Granaries (1g less in the turn); the Practice Skill note (`orderChanceNote`)
 // quotes the chance `processOrder` rolls at Melee 0 to 4, for a Human hero of another realm and with the practice
-// discoveries, and is pinned for a Human of a Human realm (the turn's x1.5) and at Melee 5 (no roll in the turn); and the
+// discoveries, and since P1-11e28 (R-134) for a Human of a Human realm (the turn's x1.5, which it names) and at Melee 5
+// (it says no roll is made, as the turn makes none); and the
 // comrades a hero's Practice Skill field counts as practising beside him (`practiceCompanionSkill`) are the turn's
 // co-trainers: of his realm, alive, in his province that season (marched there or away the season before too), at the
 // same skill, of any level.
@@ -189,7 +191,6 @@ import {
   THE_LEDGERS_THE_TURN_DISAGREES_WITH,
   thePracticeNoteAgainstTheTurn,
   THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH,
-  THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH,
   THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES,
   theWarlocksTitle,
   whatAHeroHoldsAgainstTheTurn,
@@ -911,38 +912,46 @@ describe('gold and practice: what the treasury ledger and the Practice Skill not
     ]);
   });
 
-  test('the Practice Skill note quotes the chance the turn rolls: Melee 0 to 4, a Human hero of another realm, a practice discovery of the realm and one of other skills', () => {
-    // The form's orderChanceNote (its "Improvement: N% at <skill> L.") against the chance processOrder's line gives,
-    // each hero practising alone: an Elven hero of a Human realm at each level a practice can raise, a Human hero of an
-    // Elven realm, and a realm with Astronomical Tables (+3), Blooded Retinues (Melee +10) and Tradecraft Manuals (Spy
-    // and Thief: none for Melee).
+  test('the Practice Skill note quotes the chance the turn rolls: Melee 0 to 4, a Human hero of another realm and of a Human realm, a practice discovery of the realm and one of other skills; no roll at Melee 5', () => {
+    // The form's orderChanceNote (its "Improvement: N% at <skill> L.", and whether it says he learns half as fast
+    // again) against the chance processOrder's line gives and whether it counts him a quick learner, each hero
+    // practising alone: an Elven hero of a Human realm at each level a practice can raise, a Human hero of an Elven
+    // realm, and a realm with Astronomical Tables (+3), Blooded Retinues (Melee +10) and Tradecraft Manuals (Spy and
+    // Thief: none for Melee). Since P1-11e28 (R-134, question 43 (b)): a Human hero of a Human realm (x1.5, the turn's
+    // quick learner, on the base and the realm's discoveries both: (25 + 3) x 1.5 = 42 with Astronomical Tables), and
+    // an Elven hero at Melee 5 (the note says no roll is made; the turn makes none).
     const list = practiceNotes().filter((x) =>
       (THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind),
     );
     expect(list.map((x) => x.kind)).toEqual([...THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH]);
     expect(differences(list)).toEqual([]);
-    expect(list.map((x) => (x.copy as Record<string, unknown>)['chance'])).toEqual([25, 20, 15, 10, 5, 15, 28, 30, 20]);
-  });
-
-  test('what the Practice Skill note gets wrong is pinned: a Human hero of a Human realm (the turn’s ×1.5), Melee 5 (the turn makes no roll) (question 43)', () => {
-    const list = practiceNotes();
-    expect(
-      list
-        .map((x) => x.kind)
-        .filter((k) => !(THE_PRACTICE_NOTES_THE_TURN_AGREES_WITH as readonly string[]).includes(k)),
-    ).toEqual([...THE_PRACTICE_NOTES_THE_TURN_DISAGREES_WITH]);
-    const kind = (k: string) => {
-      const x = list.find((l) => l.kind === k);
-      if (!x) throw new Error(`no staged note of the kind ${k}`);
-      return [x.copy, x.engine];
-    };
-    expect(kind('a Human hero of a Human realm at Melee 2')).toEqual([
-      { chance: 15, level: 2 },
-      { chance: 22, level: 2 },
+    expect(list.map((x) => (x.copy as Record<string, unknown>)['chance'])).toEqual([
+      25,
+      20,
+      15,
+      10,
+      5,
+      15,
+      28,
+      30,
+      20,
+      22,
+      42,
+      '(no roll: drilled as far as practice can take it)',
     ]);
-    expect(kind('an Elven hero of a Human realm at Melee 5')).toEqual([
-      { chance: 5, level: 4 },
-      { chance: '(no roll: drilled as far as practice can take it)', level: 5 },
+    expect(list.map((x) => (x.copy as Record<string, unknown>)['a quick learner'])).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      undefined,
     ]);
   });
 
