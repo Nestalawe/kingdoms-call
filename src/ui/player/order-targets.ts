@@ -21,6 +21,7 @@ import {
   theShareOfAProvinceAMarchIntoItMaps,
   theShareOfAProvinceAnExploreOrderMaps,
   theSpellCostsItsCasterNoCastingSlot,
+  whyAKingMayNotConsecrateAProvince,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 import { L79_ORDERS } from './l79-orders.ts';
@@ -35,6 +36,7 @@ import {
   itemTierTagP,
   orderTargetCharsP,
   preOrderTagP,
+  rawSkillLvl,
   realmNameP,
   realmOptStyleP,
   RUMOUR_COST_BY_POWER_P,
@@ -869,36 +871,52 @@ export function buildTargetField(c, ph, saved) {
       const wmP = (report.worldMeta && report.worldMeta.provinces) || [];
       const curP = loc ? wmP.find((p) => p.id === loc.id) : null;
       const ownedHere = !!(curP && curP.tier === 'owned');
-      const homeP = wmP.find((p) => p.tier === 'owned' && p.tax >= 10); // home = the tax-10 seat
-      const homeId = homeP ? homeP.id : null;
-      // Only YOUR OWN consecrated provinces bear on the placement rules (adjacency ban +
-      // White-skill limit). Enemy holy ground is now visible on the map too, so it must be excluded
-      // here or it would wrongly block your placements / inflate your consecrated count.
-      const consecIds = new Set(wmP.filter((p) => p.consecrated && p.tier === 'owned').map((p) => p.id));
+      // the turn's six checks (whyAKingMayNotConsecrateAProvince, plan P1-11e25, R-131), on the report's facts: the
+      // realm's home (its founding capital, held or lost) and the consecrations its king may hold (his trained White
+      // and Holy Sites' one more), as the turn counts them; a report older than those fields knows no home and reads
+      // his trained White
+      const homeId = report.kingdom?.homeProvinceId ?? null;
+      // Only YOUR OWN consecrated provinces bear on the placement rules (adjacency ban + the limit). Enemy holy ground
+      // is visible on the map too, so it must be excluded here or it would wrongly block your placements / inflate
+      // your consecrated count.
+      const consecIds = wmP.filter((p) => p.consecrated && p.tier === 'owned').map((p) => p.id);
       const nbrs = (curP && curP.neighbors) || [];
-      const white = effSkillP(c, 'white');
-      // reflect the placement rules — owned, not home / home-adjacent, not already consecrated, not
-      // adjacent to another consecrated province, and within the White-skill limit.
+      const theAnswer = loc
+        ? whyAKingMayNotConsecrateAProvince({
+            theProvinceId: loc.id,
+            itIsHisRealms: ownedHere,
+            theHomeMarches: () => ({
+              theHomeId: homeId,
+              theProvincesBesideIt: (homeId != null && wmP.find((p) => p.id === homeId)?.neighbors) || [],
+            }),
+            theConsecrated: () => consecIds,
+            theProvincesBesideIt: () => nbrs,
+            theConsecrationsHeMayHold: () => report.kingdom?.theConsecrationsItsKingMayHold ?? rawSkillLvl(c, 'white'),
+          })
+        : null;
+      const limit = theAnswer && 'theLimit' in theAnswer ? theAnswer.theLimit : 0;
       let warn = '';
-      if (!loc) warn = 'Province unknown this phase.';
-      else if (!ownedHere) warn = `${loc.name} is not yours this phase — you may only consecrate land you hold.`;
-      else if (homeId != null && loc.id === homeId)
-        warn = `${loc.name} is your home province — already anointed at the coronation. Carry the light outward.`;
-      else if (homeId != null && nbrs.includes(homeId))
-        warn = `${loc.name} borders your home province — the crown's hearth already shelters it. Consecrate ground beyond the home marches.`;
-      else if (curP && curP.consecrated) warn = `${loc.name} is already consecrated.`;
-      else if (nbrs.some((id) => consecIds.has(id)))
+      if (!loc || !theAnswer) warn = 'Province unknown this phase.';
+      else if (theAnswer.refused === 'it is not a province of his realm')
+        warn = `${loc.name} is not yours this phase — you may only consecrate land you hold.`;
+      else if (theAnswer.refused === 'it lies in the home marches')
+        warn =
+          loc.id === homeId
+            ? `${loc.name} is your home province — already anointed at the coronation. Carry the light outward.`
+            : `${loc.name} borders your home province — the crown's hearth already shelters it. Consecrate ground beyond the home marches.`;
+      else if (theAnswer.refused === 'it is consecrated already') warn = `${loc.name} is already consecrated.`;
+      else if (theAnswer.refused === 'a consecrated province lies beside it')
         warn = `${loc.name} borders one of your consecrated provinces — two may not lie side by side. Choose ground set apart.`;
-      else if (white <= 0)
+      else if (theAnswer.refused === 'he knows no White')
         warn = `Consecration flows from the White arts — learn White magic before you can sanctify ground.`;
-      else if (consecIds.size >= white)
-        warn = `You already hold ${consecIds.size}/${white} consecrated province${white !== 1 ? 's' : ''} (your White limit). One must be lost or captured first, or raise White to hold more.`;
-      const okMsg = `Consecrates ${loc ? loc.name : 'current province'} — holy ground (${consecIds.size}/${white || 0} held).`;
+      else if (theAnswer.refused === 'he holds as many as he may')
+        warn = `You already hold ${consecIds.length}/${limit} consecrated province${limit !== 1 ? 's' : ''} (the most your king may hold). One must be lost or captured first, or raise White to hold more.`;
+      const okMsg = `Consecrates ${loc ? loc.name : 'current province'} — holy ground (${consecIds.length}/${limit} held).`;
       const inputBox = warn
         ? kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
         : kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
       return kcHtml`${inputBox}
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your <strong>White skill level</strong> at once; a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your king's trained <strong>White skill level</strong> at once (one more with Holy Sites, from White 3); a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;
     }
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms': {

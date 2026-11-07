@@ -81,6 +81,7 @@ export {
   theAlignmentOrdersByTheNameTheFormWrites,
   theNameTheFormWritesOfTheAlignmentOrder,
 } from '../engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
+export { whyAKingMayNotConsecrateAProvince } from '../engine/rules-on-plain-values/the-company-a-call-to-arms-musters-a-blood-offerings-companies-and-a-consecrations-checks.ts';
 export {
   aProvinceIsSafePassageForARealmsColumn,
   theFirstStepOfAShortestRouteAColumnMayTake,
