@@ -190,6 +190,7 @@ import {
   THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES,
   theWarlocksTitle,
   whatAHeroHoldsAgainstTheTurn,
+  thePickUpFieldAsAComradeLeavesAgainstTheTurn,
   worldSamples,
   type WorldSamples,
 } from '../lib/player-portal-copies.ts';
@@ -664,12 +665,21 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // garrison company recruited (into the garrison, whoever is named), companies recruited into the garrison and under a
     // comrade's banner; a company handed to a comrade beside him, one left in the garrison and taken up by a comrade
     // next season by its place (behind the one there before), one taken up as a comrade leaves it in the same season (the turn makes the Pick Up wait), one
-    // disbanded.
+    // disbanded; and since P1-11e17 (the forecasts' replay) an item handed over by its name, every company left in the
+    // garrison, one left by its type (the garrison read) and every company handed to a comrade.
     const list = holdings().filter((x) => (THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
     // and each order changed what they hold
     expect(list.filter((x) => sameAnswer(x.engine, x.before)).map((x) => x.kind)).toEqual([]);
+  });
+
+  test('the Pick Up field offers the company a comrade leaves in the garrison that season, as the turn gives it (P1-11e17)', () => {
+    // The field reads the garrison as the season begins with what the hero's comrades leave in it that season (the turn
+    // makes the Pick Up wait for them): the forecasts' replay with the leaves of its own phase.
+    const { field, turn } = thePickUpFieldAsAComradeLeavesAgainstTheTurn(copies);
+    expect(field).toEqual(turn);
+    expect(field).toHaveLength(1);
   });
 
   test('what the forecast gets wrong is pinned: Mithril with "all", a comrade marching in, a chain in one phase, the Stone, the beast command, a garrison band, Pick Up\'s order, risen dead (question 42)', () => {
