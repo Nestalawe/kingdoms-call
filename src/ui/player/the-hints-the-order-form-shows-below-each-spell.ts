@@ -6,8 +6,8 @@
 // numbers-and-words.ts: a percentage, a count of rounds, a multiplier), it reads the row, which the turn reads too. A
 // number written in words ("halved", "per two"), as the share kept ("75%"), or worked out at a level ("12% at 1"),
 // stays in the hint's words. tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts reads
-// each hint against its row. The hints that say otherwise than the turn (Telekinetic Storm, Plague, Lightning Bolt and
-// Hand of Death) stay as they are, numbers and all, until their words are fixed.
+// each hint against its row, and Telekinetic Storm's, Plague's, Lightning Bolt's and Hand of Death's against the words
+// of the turn's rule (R-136).
 import { SPELL_EFFECTS_THE_REGISTRY_HOLDS } from '../../content/spell-effects-their-names-numbers-and-words.ts';
 
 const FIREBALL = SPELL_EFFECTS_THE_REGISTRY_HOLDS.fireball.combat;
@@ -34,7 +34,7 @@ export const SPELL_HINTS = {
     'Target: any enemy character you\u2019ve ever seen, anywhere (not neutral or wandering heroes). You learn all that happens to them this turn — reported in your Realm Events — and see their full skills. At turn\u2019s end you also know exactly where they stand: they are marked on your map and open to Encounter, even through Invisibility. Only one active at a time.',
   'Psychic Blast': `Target: an enemy/neutral hero in your province. They permanently lose TWO skill levels, each taken from a randomly chosen skill they hold (both picks can land on the same skill, dropping it by 2). Combat: they can do nothing at all for ${String(PSYCHIC_BLAST.theRoundsItStuns.value)} round + 1 per two Psychic levels (3 at Psychic 5; doubled against a foe weak to Psychic; Dreamstone +1, after any doubling), unless a stun ward turns it. Battle: negates the enemy commander\u2019s Druid.`,
   'Telekinetic Storm':
-    'Target: an enemy hero leading armies in your province. A number of their units equal to your skill level are struck: Green units are destroyed and every other struck unit PERMANENTLY drops one experience level (skeletal units unaffected). Combat: 12% of the target\u2019s max HP, +3% per Psychic level (15% at 1, 27% at 5), as damage (you take a quarter of that). Battle: negates the enemy commander\u2019s Tactical.',
+    'Target: an enemy hero leading armies in your province. A number of their units equal to your skill level (counted to 5) are struck: Green units are destroyed, skeletal units shatter outright, and every other struck unit PERMANENTLY drops one experience level. Combat: 12% of the target\u2019s max HP, +3% per Psychic level (15% at 1, 27% at 5), as damage (you take a quarter of that). Battle: halves the enemy commander\u2019s Tactical bonus, on land, if he has any.',
   'Illusory Terrain':
     'Target: a province you\u2019re in or adjacent to. Cloaks it in a false, ever-shifting terrain: enemies who fight there are disoriented, each unit fighting as if in the worst terrain for its kind (at least \u221215%). An enemy hero who enters dispels it at the end of that turn; 20%/turn natural fade.',
   'Phantasmal Armies':
@@ -43,7 +43,7 @@ export const SPELL_HINTS = {
     'Target: a province you\u2019re in or adjacent to. Hides every lair there from all other players \u2014 they cannot discover any lair in it while the glamour holds (one already found stays theirs). 20% chance to fade each turn.',
   Invisibility: `Combat: enemies suffer \u2212${String(INVISIBILITY.theCutToHisFoesAim.value)}%, and a further \u2212${String(INVISIBILITY.theCutMoreALevel.value)}% per Illusory level (\u221214% at 1, \u221230% at 5), to hit you (melee and arrows) for the fight, +${String(INVISIBILITY.theFlightAdded.value)}% to Flee, and +${String(INVISIBILITY.theStealAdded.value)}% to a following Steal. Action: cast on yourself — 80% chance no enemy player sees you (sightings, spies, Encounter targeting, the map) for the rest of the turn, and every enemy order and ambush aimed at you misses you.`,
   'Lightning Bolt':
-    'Combat: 1\u20133 damage per caster level to your opponent. Battle: your-level enemy armies each lose 20% strength.',
+    'Combat: 1\u20133 damage per caster level (counted to 5) to your opponent. Battle: as many enemy armies as your level (counted to 5) each lose 20% strength.',
   Fireball: `Combat: burns the target for ${String(FIREBALL.theShareOfMaximumHpItBurnsARound.value)}% of its health each round, +${String(FIREBALL.theShareMoreALevel.value)}% per Elemental level (12% at 1, 20% at 5), for ${String(FIREBALL.theRoundsItBurns.value)} rounds. Battle: the strongest enemy unit\u2019s strength is halved.`,
   Earthquake: 'Target: a province you\u2019re in or adjacent to. It yields no tax at the end of this turn.',
   Flood:
@@ -57,7 +57,7 @@ export const SPELL_HINTS = {
   Curse:
     'Target: an enemy/neutral hero here. EVERY skill they have is halved (rounded down) for the rest of the turn. Combat: their best combat ability halved. Battle: the enemy commander\u2019s best combat skill (Tactical/Druid/Naval) halved.',
   'Hand of Death':
-    'Combat: 10% per Necromancy level (at most 60%) to strike for 40% of the target\u2019s max HP (\u00d71.1 with Death\u2019s Finger Ring).',
+    'Combat: 10% per Necromancy level (counted to 5), at most 60%, to strike for 40% of the target\u2019s max HP (\u00d71.1 with Death\u2019s Finger Ring).',
   Plague:
-    'Target: your province or an adjacent one. Each humanoid unit has a (10% + 5%/level) chance to lose a level; survivors are immunised. Spreads to neighbours over the turn. Not cumulative.',
+    'Target: your province or an adjacent one. Each humanoid unit has a (10% + 5%/level, the level counted to 5) chance to lose a level; a unit that faced a plague before rolls at half the chance. Spreads to neighbours over the turn. Not cumulative.',
 };
