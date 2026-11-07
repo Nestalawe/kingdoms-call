@@ -97,8 +97,8 @@
 // carry and lead, and a garrison hold, as the season after his orders begins, is what the turn's phases leave them
 // (played one at a time, its loop's four stages each): items handed over beside him, sent by courier and passed on;
 // companies recruited (a band and the province's, a garrison company, into the garrison, under a comrade), handed over,
-// left and taken up, taken up as a comrade leaves them, disbanded; and pinned where it is not (question 42): Mithril
-// sent with "all", a comrade marching in, a chain of hand-overs in one season, the Philosopher's Stone used, a beast
+// left and taken up, taken up as a comrade leaves them, disbanded, a Mithril suit sent with "all" (it stays on him: since
+// P1-11e18, R-129); and pinned where it is not (question 42): a comrade marching in, a chain of hand-overs in one season, the Philosopher's Stone used, a beast
 // past a leader's beast command (recruited, handed over, taken up), a band of garrison troops hired, companies taken up
 // (the turn's last first), risen dead handed to a comrade (to their graves in the turn; no risen mark in the form).
 // P1-11d3 (plan P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
@@ -168,6 +168,7 @@ import {
   theMarchPastHisPaceOfAHeroTheReportShowsNoPaceOf,
   THE_HOLDINGS_THE_FORECAST_GETS_RIGHT,
   THE_HOLDINGS_THE_FORECAST_GETS_WRONG,
+  theSendItemFieldWithAMithrilSuitAgainstTheTurn,
   theMarchForecastAgainstTheTurn,
   theMarchInForecastAgainstTheTurn,
   theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems,
@@ -665,7 +666,8 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // garrison company recruited (into the garrison, whoever is named), companies recruited into the garrison and under a
     // comrade's banner; a company handed to a comrade beside him, one left in the garrison and taken up by a comrade
     // next season by its place (behind the one there before), one taken up as a comrade leaves it in the same season (the turn makes the Pick Up wait), one
-    // disbanded; and since P1-11e17 (the forecasts' replay) an item handed over by its name, every company left in the
+    // disbanded; since P1-11e18 (R-129) a Mithril suit sent with "all" (forged to its wearer: the turn and the form keep
+    // it on him, the shared theItemsASendItemOrderHandsOver); and since P1-11e17 (the forecasts' replay) an item handed over by its name, every company left in the
     // garrison, one left by its type (the garrison read) and every company handed to a comrade.
     const list = holdings().filter((x) => (THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_RIGHT]);
@@ -682,9 +684,17 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(field).toHaveLength(1);
   });
 
-  test('what the forecast gets wrong is pinned: Mithril with "all", a comrade marching in, a chain in one phase, the Stone, the beast command, a garrison band, Pick Up\'s order, risen dead (question 42)', () => {
-    // The form replays the orders, not the turn's checks: a Mithril suit is forged to its wearer (the turn keeps it on
-    // him); a comrade marching in that season is handed the item at once (the form, which places him where the season
+  test('the Send Item field lists a Mithril suit but lets him tick only what the turn hands over (P1-11e18, R-129)', () => {
+    // A granted suit is forged to its wearer: the field still lists it (the boxes' values are places in his pack, so
+    // dropping it would shift every later one) but greyed, by the turn's own check (src/shared/).
+    const { listed, ticked, turn } = theSendItemFieldWithAMithrilSuitAgainstTheTurn(copies);
+    expect(listed).toEqual(['Mithril Armour', ...turn]);
+    expect(ticked).toEqual(turn);
+    expect(turn).toHaveLength(1);
+  });
+
+  test("what the forecast gets wrong is pinned: a comrade marching in, a chain in one phase, the Stone, the beast command, a garrison band, Pick Up's order, risen dead (question 42)", () => {
+    // The form replays the orders, not the turn's checks: a comrade marching in that season is handed the item at once (the form, which places him where the season
     // began, sends it by courier); a chain of hand-overs in one season goes in the turn's order (a hero handing to a
     // comrade who hands on goes first), in the form's by the heroes' order; the Philosopher's Stone used is destroyed
     // (as an older save's copy carries it: the one Use Item works); a beast past a leader's beast command (his Druid
@@ -702,11 +712,6 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     };
     const one = (x: { before: Record<string, string[] | undefined> }, part: string, i = 0) =>
       x.before[part]?.[i] ?? `(no ${part} ${String(i)})`;
-    const mithril = kind('Mithril Armour sent with "all"');
-    expect([mithril.copy, mithril.engine]).toEqual([
-      { giver: [], comrade: [one(mithril, 'giver', 1), 'Mithril Armour'] },
-      { giver: ['Mithril Armour'], comrade: [one(mithril, 'giver', 1)] },
-    ]);
     const marchingIn = kind('an item handed to a comrade marching in');
     expect([marchingIn.copy, marchingIn.engine]).toEqual([
       { giver: [], comrade: [] },
