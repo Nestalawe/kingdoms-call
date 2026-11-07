@@ -126,10 +126,10 @@
 // Early Winter's wages (each hero who served before at his wage without them): a company of the province, two at the
 // capital, a garrison company, a mercenary band, a wandering hero, Supply Depots under its cap, a Druid 5 hero's beast,
 // and since P1-11e29 (R-134) a Druid 6 hero's beast (half price and half wage), a beast under a Druidic Wonder (half
-// wage) and a company under the Host-Leader where the report names him (1g less), Harvest the Field, the Wild Hunt;
-// pinned where it is not (question 43): Supply Depots past its cap (its saving shared in the turn), a company under the
-// Host-Leader on a report that doesn't name him (the titles not yet public: a forecast limit), a hero hired by a realm
-// with Granaries (1g less in the turn); the Practice Skill note (`orderChanceNote`)
+// wage) and a company under the Host-Leader where the report names him (1g less), and since P1-11e30 (R-134) the upkeep
+// and hero-wage discoveries' savings shared under their caps (Supply Depots past its cap, Granaries, Inspiring
+// Leadership), Harvest the Field, the Wild Hunt; pinned where it can't (question 43, a forecast limit): a company under
+// the Host-Leader on a report that doesn't name him (the titles not yet public); the Practice Skill note (`orderChanceNote`)
 // quotes the chance `processOrder` rolls at Melee 0 to 4, for a Human hero of another realm and with the practice
 // discoveries, and since P1-11e28 (R-134) for a Human of a Human realm (the turn's x1.5, which it names) and at Melee 5
 // (it says no roll is made, as the turn makes none); and the
@@ -908,7 +908,7 @@ describe('the orders: what the order form offers a hero, and what the creed orde
 });
 
 describe('gold and practice: what the treasury ledger and the Practice Skill note say, and who practises together (P1-11d4)', () => {
-  test('the treasury ledger says what the turn spends and adds to the wages: companies of the province, at the capital and for the garrison, a mercenary band, a wandering hero, Supply Depots under its cap, a Druid 5 hero’s beast, a Druid 6 hero’s beast at half price and wage, a beast under a Druidic Wonder, the Host-Leader’s column where the report names him, Harvest the Field (with Corpse-Carters too), the Wild Hunt', () => {
+  test('the treasury ledger says what the turn spends and adds to the wages: companies of the province, at the capital and for the garrison, a mercenary band, a wandering hero, Supply Depots under its cap and past it (a company to the garrison too, room for one of two, an older report), Granaries under its cap and past it (room for one of two), Inspiring Leadership, a Druid 5 hero’s beast, a Druid 6 hero’s beast at half price and wage, a beast under a Druidic Wonder, the Host-Leader’s column where the report names him, Harvest the Field (with Corpse-Carters too), the Wild Hunt', () => {
     // On realm 0's report as the engine builds it from each world, the form's computeOrderLedgerP (its spend, and its
     // new wages) against the turn: the gold its phase takes from the treasury, and what Early Winter's wages rise by.
     // The Broker's word from a province is two gold on a report that prices it, and on an older one that names no
@@ -927,12 +927,11 @@ describe('gold and practice: what the treasury ledger and the Practice Skill not
     expect(list.filter((x) => x.kind === 'Harvest the Field, by a realm with Corpse-Carters').map(added)).toEqual([1]);
   });
 
-  test('what the treasury ledger gets wrong is pinned: Supply Depots past its cap, the Host-Leader on a report that doesn’t name him, Granaries (question 43)', () => {
-    // The ledger counts an upkeep discovery's saving afresh for each new company (the turn shares it, to 5% of the
-    // realm's base tax), leaves out the Host-Leader's 1g a company he leads where the report doesn't name him (the titles
-    // not yet public: a forecast limit, Decision 6; since P1-11e29 it counts it where the report names him, as it does a
-    // Druid 6 leader's half price and half wage for a beast), and counts a hired hero's wage before a hero-wage
-    // discovery's saving.
+  test('what the treasury ledger can’t know is pinned: the Host-Leader on a report that doesn’t name him (question 43, a forecast limit)', () => {
+    // The ledger leaves out the Host-Leader's 1g a company he leads where the report doesn't name him (the titles not
+    // yet public: a forecast limit, Decision 6; since P1-11e29 it counts it where the report names him, as it does a
+    // Druid 6 leader's half price and half wage for a beast; since P1-11e30 it shares the upkeep and hero-wage
+    // discoveries' savings under their caps, as the turn does).
     const list = ledgers();
     expect(
       list.map((x) => x.kind).filter((k) => !(THE_LEDGERS_THE_TURN_AGREES_WITH as readonly string[]).includes(k)),
@@ -942,19 +941,11 @@ describe('gold and practice: what the treasury ledger and the Practice Skill not
       if (!x) throw new Error(`no staged ledger of the kind ${k}`);
       return [x.copy, x.engine];
     };
-    expect(kind('a company raised by a realm with Supply Depots, past its cap')).toEqual([
-      { spend: 3, 'new wages': 2 },
-      { spend: 3, 'new wages': 3 },
-    ]);
     expect(
       kind(
         "a company raised into the Host-Leader's column, on a report that doesn't name him (the titles not yet public)",
       ),
     ).toEqual([
-      { spend: 3, 'new wages': 3 },
-      { spend: 3, 'new wages': 2 },
-    ]);
-    expect(kind('a wandering hero hired by a realm with Granaries')).toEqual([
       { spend: 3, 'new wages': 3 },
       { spend: 3, 'new wages': 2 },
     ]);
