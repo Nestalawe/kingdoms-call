@@ -10,8 +10,8 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `theStrengthAUnitHasBeforeTheGroundAndTheFoe` against `armStr` (terrain none, no battle context) on every staged unit
 // under every staged hero: Druid 8 and 3, Necromancy 6, a hero with eight army items worn and one carried, a king holding
-// the Naturalist's, the Cavalier's and the Ironclad's titles, heroes of each rival kin, in a Divine realm with six
-// unit-strength discoveries (two that need a ground or a side, one a garrison alone) and a Pagan realm with none; the
+// the Naturalist's, the Cavalier's and the Ironclad's titles, heroes of each rival kin, in a Divine realm with seven
+// unit-strength discoveries (three that need a ground or a side, one a garrison alone) and a Pagan realm with none; the
 // items' steps in the registry's order; the mastery tier of each trained level, and the effects of a kind the
 // discoveries carry, an unknown id and a second effect among them.
 import '../lib/the-whole-engine.ts';
@@ -38,10 +38,10 @@ const item = (name: string, equipped = true) => {
   if (!it) throw new Error(`the items have no ${name}`);
   return { ...structuredClone(it), equipped };
 };
-/** Realm 0: a Divine realm of Humans with six unit-strength discoveries (War Drums, Fire Arrows, a garrison's alone, one
- *  on the plains defending, the Free Lances', the cavalry under the king) and an unknown id; realm 1: Pagan Elves with
- *  none. */
-const discoveries = ['sd02', 'sd07', 'sd44', 'sd49', 'rh01', 'rh10', 'no-such-discovery'].map((id) => ({ id }));
+/** Realm 0: a Divine realm of Humans with seven unit-strength discoveries (War Drums, Fire Arrows, a garrison's alone,
+ *  one on the plains defending, the Free Lances', the cavalry under the king, a second effect defending) and an unknown
+ *  id; realm 1: Pagan Elves with none. */
+const discoveries = ['sd02', 'sd07', 'sd44', 'sd49', 'rh01', 'rh10', 'ag09', 'no-such-discovery'].map((id) => ({ id }));
 const realms = [
   { alignment: 'Divine', race: 'Human', discoveries },
   { alignment: 'Pagan', race: 'Elven', discoveries: [] },
@@ -144,7 +144,7 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
 
   test('the effects of a kind the discoveries carry: in their order, a second effect too, none of an unknown id', () => {
     expect(theEffectsOfAKindTheseDiscoveriesCarry(discoveries, 'unitStr').map((e) => e.pct)).toEqual([
-      0.04, 0.14, 0.3, 0.3, 0.13, 0.18,
+      0.04, 0.14, 0.3, 0.3, 0.13, 0.18, 0.06,
     ]);
     expect(theEffectsOfAKindTheseDiscoveriesCarry([null, { id: 'no-such-discovery' }], 'unitStr')).toEqual([]);
   });
