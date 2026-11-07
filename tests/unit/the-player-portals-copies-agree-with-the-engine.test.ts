@@ -67,7 +67,7 @@
 // `getSeaCapability`'s answer, a Naval 8 hero's too (R-125), and on staged columns of flyers beside too few hulls, its
 // words written out (R-135: the card asks `seaLiftOfAColumn`); its upkeep, on staged columns under a Druid 6 hero and a
 // Druidic Wonder, is what Early Winter charges (R-135); its strength of a unit, on staged columns under Druid 8, Druid 3
-// and Necromancy 6 heroes, with items and with War Drums, is armStr's with no ground and no battle (R-135). Every engine function leaves its input as it was (the values are frozen, so a write
+// and Necromancy 6 heroes, with items, with War Drums and under the king, is armStr's with no ground and no battle (R-135). Every engine function leaves its input as it was (the values are frozen, so a write
 // throws). P1-11c1 (plan P1-11c, before the form takes its tables and its check from the engine's side): the order
 // form's eight Cast Spell tables (`order-chances.ts` run whole, the others read by their declarations) are the ones
 // `SPELL_DEFS_P` makes, each as the form reads it (a list in its order, a map, a set), but an Encounter plan lists the
@@ -461,6 +461,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
       ['Free Lances under a hero with a Golden Spur and a Battle Standard', 'Men-at-Arms', 19],
       ['Men-at-Arms under a hero of a realm with War Drums', 'Men-at-Arms', 18],
       ['Men-at-Arms under a hero of a Divine realm with the Chalice of Dawn', 'Men-at-Arms', 20],
+      ["Free Lances under the king of a realm whose discovery lifts its king's cavalry", 'Free Lances', 20],
     ]);
   });
 

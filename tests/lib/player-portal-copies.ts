@@ -3326,6 +3326,7 @@ export const THE_ARMY_CARDS_STRENGTH_COLUMNS = [
   'Free Lances under a hero with a Golden Spur and a Battle Standard',
   'Men-at-Arms under a hero of a realm with War Drums',
   'Men-at-Arms under a hero of a Divine realm with the Chalice of Dawn',
+  "Free Lances under the king of a realm whose discovery lifts its king's cavalry",
 ] as const;
 export type AStrengthColumn = (typeof THE_ARMY_CARDS_STRENGTH_COLUMNS)[number];
 /** One unit of a staged column compared: the card's "str" figure, and armStr's with no ground and no battle. */
@@ -3335,7 +3336,7 @@ export interface AStrengthComparison extends Comparison {
 /** The army card's strength of each unit (armyCardUnitStrength, on the hero as realm 0's report shows him) against the
  *  turn's (armStr, on the ground of no terrain, with nothing of the battle around it). */
 export function theArmyCardsStrengthAgainstTheTurn(c: Copies): AStrengthComparison[] {
-  const { g, land, at } = aWorldForTheOrders();
+  const { g, king, land, at } = aWorldForTheOrders();
   const p = land[0];
   if (!p) throw new Error('the staged world has no land for the strength cases');
   let unitN = 0;
@@ -3357,7 +3358,10 @@ export function theArmyCardsStrengthAgainstTheTurn(c: Copies): AStrengthComparis
     if (!it) throw new Error(`the items have no ${name}`);
     return { ...copyOf(it), equipped: true };
   };
-  const staged: Record<AStrengthColumn, { skills: Obj; armies: Obj[]; items?: Obj[]; edit?: (G: Obj) => void }> = {
+  const staged: Record<
+    AStrengthColumn,
+    { skills: Obj; armies: Obj[]; items?: Obj[]; edit?: (G: Obj) => void; theKing?: true }
+  > = {
     'Thunderbirds under a Druid 8 hero': { skills: { druid: 8 }, armies: [beast('Thunderbirds')] },
     'Thunderbirds under a Druid 3 hero': { skills: { druid: 3 }, armies: [beast('Thunderbirds')] },
     'skeletal Men-at-Arms under a Necromancy 6 hero': {
@@ -3385,10 +3389,19 @@ export function theArmyCardsStrengthAgainstTheTurn(c: Copies): AStrengthComparis
         realmZeroIn(G)['alignment'] = 'Divine';
       },
     },
+    "Free Lances under the king of a realm whose discovery lifts its king's cavalry": {
+      skills: {},
+      armies: [unit('Free Lances')],
+      theKing: true,
+      edit: (G) => {
+        const r = realmZeroIn(G);
+        r['discoveries'] = [...objects(r['discoveries']), aDiscovery('rh10')];
+      },
+    },
   };
   return THE_ARMY_CARDS_STRENGTH_COLUMNS.flatMap((column) => {
     const s = staged[column];
-    const hero = at(p, { skills: s.skills, items: s.items ?? [] });
+    const hero = s.theKing ? king : at(p, { skills: s.skills, items: s.items ?? [] });
     const world = editedAndReported(g, (G) => {
       s.edit?.(G);
       heroIn(G, hero)['armies'] = copyOf(s.armies);

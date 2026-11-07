@@ -10,9 +10,9 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `theStrengthAUnitHasBeforeTheGroundAndTheFoe` against `armStr` (terrain none, no battle context) on every staged unit
 // under every staged hero: Druid 8 and 3, Necromancy 6, a hero with eight army items worn and one carried, a king holding
-// the Naturalist's, the Cavalier's and the Ironclad's titles, heroes of each rival kin, in a Divine realm with seven
+// the Naturalist's, the Cavalier's and the Ironclad's titles, heroes of each rival kin, in a Divine realm with eight
 // unit-strength discoveries (three that need a ground or a side, one a garrison alone) and a Pagan realm with none; the
-// items' steps in the registry's order; the mastery tier of each trained level, and the effects of a kind the
+// items' steps in the registry's order; the items a hero uses (his race's, a slot item only worn); the mastery tier of each trained level, and the effects of a kind the
 // discoveries carry, an unknown id and a second effect among them.
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
@@ -27,6 +27,7 @@ import { theEffectsOfAKindARealmHolds } from '../../src/engine/rules/the-registr
 import { THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
 import { THE_COMMANDERS_ITEMS } from '../../src/engine/rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts';
 import { theEffectsOfAKindTheseDiscoveriesCarry } from '../../src/engine/rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
+import { theItemsAHeroUses } from '../../src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { theMasteryTierATrainedLevelGives } from '../../src/engine/rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import { theStrengthAUnitHasBeforeTheGroundAndTheFoe } from '../../src/engine/rules-on-plain-values/the-strength-a-unit-has-before-the-ground-and-the-foe.ts';
 import type { ArmyInABattle, HeroInABattle } from '../../src/engine/army-tables.ts';
@@ -38,10 +39,12 @@ const item = (name: string, equipped = true) => {
   if (!it) throw new Error(`the items have no ${name}`);
   return { ...structuredClone(it), equipped };
 };
-/** Realm 0: a Divine realm of Humans with seven unit-strength discoveries (War Drums, Fire Arrows, a garrison's alone,
- *  one on the plains defending, the Free Lances', the cavalry under the king, a second effect defending) and an unknown
+/** Realm 0: a Divine realm of Humans with eight unit-strength discoveries (War Drums, Fire Arrows, a garrison's alone,
+ *  one on the plains defending, the Free Lances', the cavalry under the king, a second effect defending, the risen dead's) and an unknown
  *  id; realm 1: Pagan Elves with none. */
-const discoveries = ['sd02', 'sd07', 'sd44', 'sd49', 'rh01', 'rh10', 'ag09', 'no-such-discovery'].map((id) => ({ id }));
+const discoveries = ['sd02', 'sd07', 'sd44', 'sd49', 'rh01', 'rh10', 'ag09', 'az01', 'no-such-discovery'].map((id) => ({
+  id,
+}));
 const realms = [
   { alignment: 'Divine', race: 'Human', discoveries },
   { alignment: 'Pagan', race: 'Elven', discoveries: [] },
@@ -85,6 +88,7 @@ const units: ArmyInABattle[] = [
   { type: 'Free Lances', quality: 'Green', race: 'Human' },
   { type: 'Yeoman Longbows', quality: 'Average', race: 'Human' },
   { type: 'Galleon Fleet', quality: 'Average', race: '' },
+  { type: 'Galleon Fleet', quality: 'Veteran', race: '' },
   { type: 'Shieldwall Levies', quality: 'Average', race: 'Elven' },
   { type: 'Shieldwall Levies', quality: 'Average', race: 'Dwarven' },
 ].map((u, i) => ({ unitName: `Test Company ${String(i)}`, ...u }));
@@ -122,7 +126,7 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
         return { hero: h.id, unit: `${a.quality} ${a.type}`, rule: theRuleOn(a, h), battle };
       }),
     );
-    expect(list).toHaveLength(54);
+    expect(list).toHaveLength(60);
     expect(list.filter((x) => x.rule !== x.battle)).toEqual([]);
     // the question's Thunderbirds: 40 at their base, 59 under a Druid 8 hero (lifted to Veteran, then his mastery)
     expect(list.find((x) => x.hero === 1 && x.unit === 'Average Thunderbirds')?.battle).toBe(59);
@@ -136,6 +140,22 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
     ]);
   });
 
+  test('the items a hero uses: those of his race and alignment, a slot item only worn', () => {
+    const items = [
+      { ...item("Legionnaire's Mark"), equipped: undefined },
+      item("Legionnaire's Mark"),
+      item('Moonsilver Bow'),
+      item('Golden Spur', false),
+      null,
+    ];
+    expect(
+      theItemsAHeroUses(items, { race: 'Human', alignment: 'Divine' }).map((it) => [it.name, it.equipped]),
+    ).toEqual([
+      ["Legionnaire's Mark", true],
+      ['Golden Spur', false],
+    ]);
+  });
+
   test('the mastery tier of each trained level: the levels past 5, from 0 to 9', () => {
     expect([undefined, null, -1, 0, 5, 6, 8, 9, 12].map((l) => theMasteryTierATrainedLevelGives(l))).toEqual([
       0, 0, 0, 0, 0, 1, 3, 4, 4,
@@ -144,7 +164,7 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
 
   test('the effects of a kind the discoveries carry: in their order, a second effect too, none of an unknown id', () => {
     expect(theEffectsOfAKindTheseDiscoveriesCarry(discoveries, 'unitStr').map((e) => e.pct)).toEqual([
-      0.04, 0.14, 0.3, 0.3, 0.13, 0.18, 0.06,
+      0.04, 0.14, 0.3, 0.3, 0.13, 0.18, 0.06, 0.2,
     ]);
     expect(theEffectsOfAKindTheseDiscoveriesCarry([null, { id: 'no-such-discovery' }], 'unitStr')).toEqual([]);
   });
