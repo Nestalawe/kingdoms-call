@@ -23,6 +23,8 @@ import {
   theSpellCostsItsCasterNoCastingSlot,
   theCompanyACallToArmsMusters,
   whyAKingMayNotConsecrateAProvince,
+  aBloodOfferingMayTakeTheCompany,
+  theCompaniesABloodOfferingGivesAndRaises,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 import { L79_ORDERS } from './l79-orders.ts';
@@ -388,6 +390,38 @@ export function practiceOwnEarlierSkill(c, ph) {
     if (d.target && ALL_SKILLS.includes(d.target)) return d.target;
   }
   return '';
+}
+// ── THE BLOOD OFFERING'S HINT (R-133, plan P1-11e27) ────
+// The words under a Blood Offering's rows, and their colour: what the turn gives and raises from the companies `army`
+// the hero leads that phase, marked to sacrifice (`sac`) and to empower (`ben`) by their places in the column. The
+// companies are the turn's own answer (src/shared/): with a side left empty it ignores the marks, gives the first
+// company it may take and raises the next; with fewer than two it may take, it makes no offering.
+export function theBloodOfferingsHint(army, sac, ben) {
+  const grades = ALIGN_ACTIONS['Perform Rite'].theNumbers.theBloodOfferingsGrades.value; // its row's
+  const offered = theCompaniesABloodOfferingGivesAndRaises(army, `S:${sac.join(',')}|E:${ben.join(',')}`, (a) => a);
+  if (!offered)
+    return {
+      words: `⚠ No offering will be made: the rite needs two companies it can take.`,
+      colour: '#b04a4a',
+    };
+  const names = (places) => places.map((i) => armyLabel(army[i], { short: true })).join(', ');
+  const what = `sacrifice ${names(offered.given)} to empower ${names(offered.raised)} by +${grades} tiers`;
+  if (sac.length === 0 && ben.length === 0)
+    return {
+      words: `Nothing marked: the turn will ${what} (the first two companies the rite can take). Mark units to choose others.`,
+      colour: '#7a4a00',
+    };
+  if (sac.length === 0 || ben.length === 0)
+    return {
+      words: `⚠ A side is left empty, so the turn ignores the marks: it will ${what} (the first two companies the rite can take).`,
+      colour: '#b04a4a',
+    };
+  if (sac.length !== ben.length)
+    return {
+      words: `⚠ The sides don't match (${sac.length} and ${ben.length}): each sacrifice funds one empowerment, so the turn will ${what}.`,
+      colour: '#b04a4a',
+    };
+  return { words: `✓ The turn will ${what}.`, colour: '#2d6a2d' };
 }
 export function buildTargetField(c, ph, saved) {
   const action = saved.action || '';
@@ -1036,9 +1070,20 @@ export function buildTargetField(c, ph, saved) {
             .forEach((x) => _boSaved.E.add(+x));
         }
       }
+      // a company the rite never takes (the turn's rule: bound by the Wild Hunt, summoned or charmed, risen dead) is
+      // shown and locked, its saved mark dropped as the turn drops it (R-133, plan P1-11e27)
+      const _boLocked = (i) => !aBloodOfferingMayTakeTheCompany(_boArmy[i]);
+      const _boMarked = (side) => _boArmy.map((a, i) => i).filter((i) => !_boLocked(i) && _boSaved[side].has(i));
+      const _boHint = theBloodOfferingsHint(_boArmy, _boMarked('S'), _boMarked('E'));
       const _boRows = _boArmy.length
-        ? _boArmy.map(
-            (a, i) => kcHtml`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0">
+        ? _boArmy.map((a, i) =>
+            _boLocked(i)
+              ? kcHtml`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0;opacity:.6">
+            <span style="flex:1">${typeof unitEmoji === 'function' ? unitEmoji(a.type) : ''} ${armyLabel(a)}</span>
+            <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" disabled title="The old gods take no ${a.wildHunt ? 'beast bound by the Wild Hunt' : a.skeletal ? 'risen dead' : 'summoned or charmed company'}" style="font-size:.7rem">
+              <option value="K" selected>Keep (the rite can't take it)</option>
+            </select></div>`
+              : kcHtml`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0">
             <span style="flex:1">${typeof unitEmoji === 'function' ? unitEmoji(a.type) : ''} ${armyLabel(a)}</span>
             <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})" style="font-size:.7rem">
               <option value="K" ${!_boSaved.S.has(i) && !_boSaved.E.has(i) ? 'selected' : ''}>Keep</option>
@@ -1055,7 +1100,8 @@ export function buildTargetField(c, ph, saved) {
       <div id="bo-block-${c.id}-${ph}" style="margin-top:5px;border:1px solid var(--parchment-dark);border-radius:3px;padding:6px;background:#fdf5e0">
         <div style="font-size:.7rem;font-weight:600;color:#7a4a00;margin-bottom:3px">Blood Offering — mark units to Sacrifice, and an equal number to Empower (+${theRitesNumbers.theBloodOfferingsGrades.value} quality tiers each, max Elite):</div>
         ${_boRows}
-        <div id="bo-hint-${c.id}-${ph}" style="font-size:.7rem;color:var(--stone);margin-top:3px"></div>
+        ${_boArmy.some((a, i) => _boLocked(i)) ? kcHtml`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">Bound beasts, summoned or charmed companies and risen dead can be neither sacrificed nor empowered.</div>` : ''}
+        <div id="bo-hint-${c.id}-${ph}" style="font-size:.7rem;color:${_boHint.colour};margin-top:3px">${_boHint.words}</div>
       </div>
       <div style="font-size:.68rem;color:#7a4a00;margin-top:3px">At the ${site.name}. The old gods always take payment.</div>
       <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Only one rite per province per turn — if anyone (your own characters included) performs a rite here earlier in the turn, this one fails.</div>`;
