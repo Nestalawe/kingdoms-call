@@ -436,7 +436,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
       ['two Thunderbirds under a Druid 5 hero', 8],
       ['two Thunderbirds under a Druid 5 hero of a realm whose Druidic Wonder stands', 4],
       ['a Unicorn Herd under a Druid 6 hero', 2],
-      ['two Men-at-Arms under a Druid 6 hero', 4],
+      ['two Men-at-Arms under a Druid 6 hero', 6],
       ['skeletal Thunderbirds under a Druid 6 hero', 1],
       ['summoned Thunderbirds under a Druid 6 hero', 0],
       ['Thunderbirds of the Wild Hunt under a Druid 6 hero', 0],
