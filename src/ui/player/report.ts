@@ -19,6 +19,7 @@ import {
   theEffectsOfAKindTheseDiscoveriesCarry,
   theItemsAHeroUses,
   theMasteryTierATrainedLevelGives,
+  theRowOfADiscovery,
   theStrengthAUnitHasBeforeTheGroundAndTheFoe,
   theWageABeastPaysUnderADruid,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
@@ -437,6 +438,7 @@ export function renderReportView(report) {
                   theRealmsUnitStrengthEffects: theEffectsOfAKindTheseDiscoveriesCarry(
                     report.discoveries || [],
                     'unitStr',
+                    theRowOfADiscovery,
                   ),
                   heIsTheKing: !!c.isKing,
                   theItemsHeUses: theItemsAHeroUses(c.items || [], c),

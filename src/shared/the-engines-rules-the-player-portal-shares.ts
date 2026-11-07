@@ -58,7 +58,10 @@ export {
   itemUsableBy,
   theItemsAHeroUses,
 } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
-export { theEffectsOfAKindTheseDiscoveriesCarry } from '../engine/rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
+export {
+  theEffectsOfAKindTheseDiscoveriesCarry,
+  theRowOfADiscovery,
+} from '../engine/rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
 export { theMasteryTierATrainedLevelGives } from '../engine/rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 export { theStrengthAUnitHasBeforeTheGroundAndTheFoe } from '../engine/rules-on-plain-values/the-strength-a-unit-has-before-the-ground-and-the-foe.ts';
 export {

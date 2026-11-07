@@ -154,7 +154,7 @@ SAGE_DISCOVERIES_P.forEach((d) => {
 export function theEffectsOfAKindARealmHolds(pl: ARealmAsTheDiscoveriesReadIt | null | undefined, kind: string) {
   if (!pl) return [];
   // (on plain values since plan P1-11e38, so the army card finds the effects as the turn does)
-  return theEffectsOfAKindTheseDiscoveriesCarry(pl.discoveries ?? [], kind);
+  return theEffectsOfAKindTheseDiscoveriesCarry(pl.discoveries ?? [], kind, (id) => DISC_BY_ID[id]);
 }
 
 /** An entry: the kind's effect at each stage it acts in. */

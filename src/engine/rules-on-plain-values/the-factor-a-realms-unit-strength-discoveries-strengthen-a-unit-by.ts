@@ -16,18 +16,24 @@ import {
 
 /** Each discovery's row, by its id (the content's, the last of an id if two share it). */
 const THE_DISCOVERIES_BY_ID = new Map<string, ADiscoverysRow>(SAGE_DISCOVERIES_P.map((d) => [d.id, d]));
+/** A discovery's row, by its id, as the content writes it (the army card's lookup; the engine's registry looks in its
+ *  own table, DISC_BY_ID, made of the same rows). */
+export function theRowOfADiscovery(id: string): ADiscoverysRow | undefined {
+  return THE_DISCOVERIES_BY_ID.get(id);
+}
 
 /** The effects of a kind the discoveries a realm holds carry, in the order it holds them, each discovery's `effect`
- *  before its `effect2` (a second, smaller effect: 2026-09-21); an id the content doesn't hold carries none. The
- *  discoveries' registry finds every kind's effects with it (theEffectsOfAKindARealmHolds); the army card the
- *  unit-strength effects of the realm its report shows (plan P1-11e38). */
+ *  before its `effect2` (a second, smaller effect: 2026-09-21), each row found by `theRowOf`; an id it doesn't find
+ *  carries none. The discoveries' registry finds every kind's effects with it (theEffectsOfAKindARealmHolds); the army
+ *  card the unit-strength effects of the realm its report shows (plan P1-11e38). */
 export function theEffectsOfAKindTheseDiscoveriesCarry(
   theDiscoveries: readonly ({ readonly id: string } | null | undefined)[],
   kind: string,
+  theRowOf: (id: string) => ADiscoverysRow | undefined,
 ): TheEffectOfADiscovery[] {
   const out: TheEffectOfADiscovery[] = [];
   theDiscoveries.forEach((d) => {
-    const t = d && THE_DISCOVERIES_BY_ID.get(d.id);
+    const t = d && theRowOf(d.id);
     if (!t) return;
     [t.effect, t.effect2].forEach((e) => {
       if (e?.kind === kind) out.push(e);

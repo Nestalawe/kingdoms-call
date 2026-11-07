@@ -63,6 +63,7 @@ import '../../engine/titles/reckoning.ts';
 import '../../views/turn-report.ts';
 import '../../engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import '../../engine/rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts';
+import '../../engine/rules-on-plain-values/the-strength-a-unit-has-before-the-ground-and-the-foe.ts';
 import '../../engine/discoveries.ts';
 import '../../engine/turn/context.ts';
 import '../../engine/turn/log-line-helpers.ts';
