@@ -48,7 +48,8 @@ import {
 } from './report.ts';
 import { renderReckoningOrders, renderTitles, setReckoningCall } from './titles.ts';
 import { rebuildTargetWrap } from './order-chances.ts';
-import { groupHeroesByLocation, moveHeroBlock, poSeaAnalysis, refreshAllMoveModeNotes } from './move-analysis.ts';
+import { groupHeroesByLocation, moveHeroBlock, refreshAllMoveModeNotes } from './move-analysis.ts';
+import { poSeaAnalysis } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   addEncounterTactic,
   buildOrdersForm,
@@ -224,7 +225,7 @@ Object.assign(window, {
   openReport, // ui/player/report.ts
   pollForUpdates, // ui/player/game-lists.ts
   popupKnownChars, // ui/player/map-symbols.ts
-  poSeaAnalysis, // ui/player/move-analysis.ts
+  poSeaAnalysis, // ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts
   PRIMAL_ARMY_SPEEDS, // ui/player/skills-and-projections.ts
   renderDiplomacy, // ui/player/report.ts
   renderMessageThread, // ui/player/dispatches.ts

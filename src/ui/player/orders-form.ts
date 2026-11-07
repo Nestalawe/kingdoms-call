@@ -11,7 +11,6 @@ import {
   actionsFor,
   ALIGN_ACTIONS,
   discoveryChoiceBlockHTML,
-  effSkillP,
   isPreOrderIdP,
   itemBoundTag,
   itemsForDisplayP,
@@ -41,6 +40,7 @@ import { druidNeedP, formatRace, heroHireWageOfP, skillRowHTML } from './skills-
 import { buildTargetField, refreshExploreNotes } from './order-targets.ts';
 import { provLinkHtml } from './map-symbols.ts';
 import {
+  effSkillP,
   getOrderTarget,
   predictedLocation,
 } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
