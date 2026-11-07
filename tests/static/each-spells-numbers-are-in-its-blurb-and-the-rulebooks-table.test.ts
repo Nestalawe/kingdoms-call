@@ -23,8 +23,10 @@
 // rounds longer as "1 round longer" and one strongest unit as "strongest enemy unit". Some hints read their numbers
 // from the row, the rest write them in words; each figure a hint reads, and its figures at a level ("12% at 1, 20% at 5",
 // its row's sums), stand in their places among its words.
-// A row whose spell has no hint is listed with why; a hint's known gaps are listed as the other texts' are (the hints
-// that say otherwise than the turn: Parked "Six texts say otherwise than the turn").
+// A row whose spell has no hint is listed with why; a hint's known gaps are listed as the other texts' are.
+// Since P1-11e39 (R-136), the hints and blurbs of Telekinetic Storm, Plague, Lightning Bolt and Hand of Death say what
+// the turn does (plan question 46 (a) to (c)): each states the words of the turn's rule, and none the words it said
+// before.
 // Level 0 (static): the content's spells, the hints' module (it imports only the content) and the rulebook's source are
 // files; nothing of the engine runs.
 import fs from 'node:fs';
@@ -39,14 +41,11 @@ import {
 import { SPELL_HINTS } from '../../src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts';
 import { ROOT } from '../../tools/build.ts';
 
-const BLURBS = 'Parked "Two spell blurbs misstate their battle magic"';
 const SPIRITWRACKS_BLURB = 'Parked "Spiritwrack\'s blurb leaves out three of its combat numbers"';
 const MIRROR_AND_INVISIBILITY =
   "Parked \"Mirror Image's and Invisibility's texts leave out numbers, and the Mirror Shard's its half\"";
 /** A Mirror Image's chance to be seen through, as no text gives it yet: a guardian's, and its bounds. */
 const A_GUARDIANS_DISBELIEF = `a guardian's chance to see through it, and its bounds, are in neither text (${MIRROR_AND_INVISIBILITY})`;
-/** The hints that say otherwise than the turn (P1-11d13 leaves them as they are). */
-const SIX_TEXTS = 'Parked "Six texts say otherwise than the turn"';
 /** Where a text states a spell's numbers: its blurb's, its rulebook row's or its order-form hint's part for a use. */
 type AText = 'blurb' | 'rulebook' | 'hint';
 /** The numbers of a use a text doesn't state yet, by the row's slug and the number's name, each with where and why. */
@@ -55,16 +54,8 @@ type TheGaps = Partial<Record<SpellSlug, Readonly<Record<string, Partial<Record<
 const KNOWN_GAPS: TheGaps = {
   'lightning-bolt': {
     theLevelItCountsTo: {
-      blurb: `its Battle magic says "a number of enemy armies equal to your level" (${BLURBS})`,
       rulebook:
         'its Battle part says "several enemy units": the spellbook states the rule once for every spell ("Spell EFFECTS are worked out on your level counted to 5")',
-      hint: `its Battle part says "your-level enemy armies" (${SIX_TEXTS})`,
-    },
-  },
-  'telekinetic-storm': {
-    theTacticalMultiplier: {
-      blurb: `its Battle magic says it "negates" the Tactical bonus (${BLURBS})`,
-      hint: `its Battle part says it "negates" the commander's Tactical (${SIX_TEXTS})`,
     },
   },
 };
@@ -438,4 +429,32 @@ test.for([
   ],
 ] as const)("%s's hint states its row's figures in their places: %s", ([name, words]) => {
   expect(HINTS[name]).toContain(words);
+});
+
+// The words of the turn's rule each hint and blurb states, and the words it said before, which none may (R-136, plan
+// question 46 (a) to (c)): Telekinetic Storm shatters a skeletal unit and halves the Tactical bonus, on land and where
+// he has any; a unit that faced a Plague before rolls at half the chance; every effect counts the level to 5
+// (src/engine/orders/cast-spell-order-…ts, the effects' level; src/engine/magic/plague-and-bless-ward.ts, the half
+// chance; src/engine/rules/spells/battle-magic-cast-before-an-army-battle.ts, the storm's cut).
+test.for([
+  {
+    name: 'Telekinetic Storm',
+    says: ['(counted to 5)', 'shatter', 'halves the enemy commander', 'Tactical bonus, on land, if he has any'],
+    saidBefore: ['unaffected', 'negates'],
+  },
+  {
+    name: 'Plague',
+    says: ['the level counted to 5', 'a unit that faced a plague before rolls at half the chance'],
+    saidBefore: ['immunised'],
+  },
+  { name: 'Lightning Bolt', says: ['(counted to 5)'], saidBefore: ['your-level'] },
+  { name: 'Hand of Death', says: ['per Necromancy level (counted to 5)'], saidBefore: [] },
+] as const)("$name's hint and blurb say what the turn does (R-136)", ({ name, says, saidBefore }) => {
+  for (const [where, text] of [
+    ['hint', HINTS[name] ?? ''],
+    ['blurb', SPELLS[name]?.desc ?? ''],
+  ] as const) {
+    for (const words of says) expect(text, `${name}'s ${where} says "${words}"`).toContain(words);
+    for (const words of saidBefore) expect(text, `${name}'s ${where} no longer says "${words}"`).not.toContain(words);
+  }
 });
