@@ -97,11 +97,11 @@ import { resolveExploreOrder } from '../../src/engine/orders/explore-and-search-
 import { resolveMoveOrder } from '../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts';
 import { getNeighborsP, neighborInDir } from '../../src/engine/world/map-helpers.ts';
 import { processOrder } from '../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
+import { buildPhaseIntents } from '../../src/engine/turn/phase-intents-and-dependency-ordering.ts';
 import {
-  buildPhaseIntents,
   normaliseAction,
   PHASE_ACTION_MAP,
-} from '../../src/engine/turn/phase-intents-and-dependency-ordering.ts';
+} from '../../src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 import {
   endPhaseSkillRisesFallenCommandersAndProvinceMemory,
   pinAndReactToPhaseIntents,

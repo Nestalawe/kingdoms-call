@@ -47,7 +47,7 @@ const BOTS_MISSIONS = 'src/engine/bots/missions.ts';
 const TAKEN: readonly (readonly [file: string, fn: string, row: string, left: readonly string[]])[] = [
   ['src/engine/army-tables.ts', TOP, "P1-19ap, the rows: ALIGNMENT_ORDER_KEYS, the charmed hero's gate", []],
   [
-    'src/engine/turn/phase-intents-and-dependency-ordering.ts',
+    'src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts',
     TOP,
     "P1-19aq, the turn's order-name map: PHASE_ACTION_MAP",
     ORDER_KINDS_LITERAL_TYPES,
