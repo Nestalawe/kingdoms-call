@@ -3889,16 +3889,24 @@ const theRowsNumber = (order: keyof typeof THE_ALIGNMENT_ORDERS, n: string): unk
 };
 
 /** The creed orders' target fields the parity cases stage: those the field and the turn agree on (Consecrate's home
- *  and limit since P1-11e25, R-131: the report's), and those it is known to get wrong (questions 36, 39 and 41):
- *  Harvest the Field's price with Corpse-Carters (the field's 2g), the Wild Hunt's term
- *  with The Long Hunt (the field's next turn), a Call to Arms in a province whose first company is not a garrison (the
- *  field names that company, the turn musters a garrison), and a Blood Offering marked on companies the rite never
- *  takes (the field offers bound beasts and risen dead; the turn gives the first company it may and raises the next). */
+ *  and limit since P1-11e25, R-131 and R-132: the report's; since P1-11e26, Call to Arms' company as the turn musters
+ *  it, Harvest the Field's grave, its grade and its price with Corpse-Carters, and the Wild Hunt's term with The Long
+ *  Hunt, each the turn's or the report's, R-131 and R-132), and those it is known to get wrong (question 39): a Blood
+ *  Offering marked on companies the rite never takes (the field offers bound beasts and risen dead; the turn gives the
+ *  first company it may and raises the next). */
 export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'a Call to Arms in a province whose first company is a garrison',
+  'a Call to Arms in a province whose first company is not a garrison',
+  'a Call to Arms in a province whose companies hold no garrison',
   'Broker: word bought from a province',
   'Harvest the Field',
+  'Harvest the Field, with Corpse-Carters',
+  'Harvest the Field, among graves of two grades',
+  'Harvest the Field, by a realm whose Wonder stands',
+  'Harvest the Field, on a report that names no price',
   'the Rite of the Wild Hunt',
+  'the Rite of the Wild Hunt, with The Long Hunt',
+  'the Rite of the Wild Hunt, on a report older than its term',
   'the Move note after the Rite of the Wild Hunt',
   'a Blood Offering marked on two companies',
   'a Consecrate in a province of the realm',
@@ -3914,12 +3922,7 @@ export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'a Consecrate by a king of White 2 at one consecration, on a report older than its home and limit',
   'a Consecrate in the capital, on a report older than its home and limit',
 ] as const;
-export const THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH = [
-  'a Call to Arms in a province whose first company is not a garrison',
-  'Harvest the Field, with Corpse-Carters',
-  'the Rite of the Wild Hunt, with The Long Hunt',
-  'a Blood Offering marked on a bound beast',
-] as const;
+export const THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH = ['a Blood Offering marked on a bound beast'] as const;
 export type AKindOfCreedField =
   (typeof THE_CREED_FIELDS_THE_TURN_AGREES_WITH)[number] | (typeof THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH)[number];
 /** One creed order's field compared: what the field says the order will do (read from its words and its marks), and
@@ -3975,21 +3978,30 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
     if (!p) throw new Error('the staged world has too few provinces for the creed fields');
     return p;
   };
-  // a Call to Arms' two provinces: one whose first company is a garrison, one whose first is not
-  const [garrisonFirst, levyFirst] = [take(), take()];
-  // (settled by Humans: a seeded world's races differ after another world is made in the process, as the names its
-  // first draws take do; its map and its capitals don't)
-  for (const [p, types] of [
-    [garrisonFirst, ['Human Garrison', 'Men-at-Arms']],
-    [levyFirst, ['Free Lances', 'Human Garrison']],
+  // a Call to Arms' three provinces: one whose first company is a garrison, one whose first is not, and one of Elves
+  // whose companies hold no garrison (the turn musters its race's)
+  const [garrisonFirst, levyFirst, noGarrison] = [take(), take(), take()];
+  // (settled by Humans, the third by Elves: a seeded world's races differ after another world is made in the process,
+  // as the names its first draws take do; its map and its capitals don't)
+  for (const [p, types, race] of [
+    [garrisonFirst, ['Human Garrison', 'Men-at-Arms'], 'Human'],
+    [levyFirst, ['Free Lances', 'Human Garrison'], 'Human'],
+    [noGarrison, ['Elven Bowmen'], 'Elven'],
   ] as const) {
-    p['race'] = 'Human';
+    p['race'] = race;
     p['armyTypes'] = [...types];
   }
-  // the graves Harvest the Field raises from
+  // the graves Harvest the Field raises from: one, and (in a province of their own) two of two grades, the less
+  // experienced first
   const field = take();
   field['battleGraves'] = [{ type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName: 'The Fallen Spears' }];
   const harvester = at(field);
+  const twoGrades = take();
+  twoGrades['battleGraves'] = [
+    { type: 'Men-at-Arms', quality: 'Green', race: 'Human', unitName: 'The Raw Spears' },
+    { type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName: 'The Old Spears' },
+  ];
+  const twoGradesHarvester = at(twoGrades);
   // the standing stones a Pagan hero performs his rites at, in a province of beasts
   const stones = take();
   stones['features'] = [{ name: 'Staged Stones', index: 0, ritualSite: true, discovered: true }];
@@ -4073,6 +4085,7 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
   for (const [kind, p] of [
     ['a Call to Arms in a province whose first company is a garrison', garrisonFirst],
     ['a Call to Arms in a province whose first company is not a garrison', levyFirst],
+    ['a Call to Arms in a province whose companies hold no garrison', noGarrison],
   ] as const) {
     const markup = field_(good, kingId, 'Call to Arms', String(p['id']));
     const option = theOptionsOf(markup).find((o) => o.value === String(p['id']));
@@ -4108,39 +4121,99 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
       { 'in its option': row, 'in its note': row },
     );
   }
-  // Harvest the Field: the price its note gives; what the turn charges
-  for (const [kind, discoveries] of [
-    ['Harvest the Field', []],
-    ['Harvest the Field, with Corpse-Carters', [discovery('az06')]],
+  // Harvest the Field: the price its note gives, the grave it says rises and the grades that grave rises by; what the
+  // turn charges, the grave it raises (the most experienced of those staged, or another) and the grades it rises by
+  const tiers: readonly string[] = KC_QUALITY_TIERS;
+  const noPrice = (world: World): World => {
+    const prices = isObj(world.report['orderPrices']) ? world.report['orderPrices'] : {};
+    return {
+      ...world,
+      report: {
+        ...world.report,
+        orderPrices: Object.fromEntries(Object.entries(prices).filter(([k]) => k !== 'harvest')),
+      },
+    };
+  };
+  for (const [kind, hero, graves, edit, theReport] of [
+    ['Harvest the Field', harvester, field, () => undefined, 'as built'],
+    [
+      'Harvest the Field, with Corpse-Carters',
+      harvester,
+      field,
+      (G: Obj) => {
+        realmZeroOf(G)['discoveries'] = [discovery('az06')];
+      },
+      'as built',
+    ],
+    ['Harvest the Field, among graves of two grades', twoGradesHarvester, twoGrades, () => undefined, 'as built'],
+    [
+      'Harvest the Field, by a realm whose Wonder stands',
+      harvester,
+      field,
+      (G: Obj) => {
+        // a Wonder raised before Wonders were sited: always on (gdActiveFor)
+        realmZeroOf(G)['discoveries'] = [{ id: 'gd' }];
+        realmZeroOf(G)['gdProvinceId'] = null;
+      },
+      'as built',
+    ],
+    ['Harvest the Field, on a report that names no price', harvester, field, () => undefined, 'without the price'],
   ] as const) {
-    const undead = worldOf('Undead', (G) => {
-      realmZeroOf(G)['discoveries'] = [...discoveries];
-    });
-    const [price] = words(field_(undead, harvester['id'], 'Harvest the Field'), /No magic required: (\d+)g raises/);
+    const undead = worldOf('Undead', edit);
+    const theWonderStands = objects(realmZeroOf(undead.state)['discoveries']).some((d) => d['id'] === 'gd');
+    const note = theWordsOf(
+      field_(theReport === 'as built' ? undead : noPrice(undead), hero['id'], 'Harvest the Field'),
+    );
+    const [price] = /No magic required: (\d+)g raises/.exec(note)?.slice(1) ?? ['(not said)'];
+    const theGraveItSays = note.includes('raises the most experienced battlefield grave')
+      ? 'the most experienced'
+      : note.includes('ONE random battlefield grave')
+        ? 'one at random'
+        : '(not said)';
     const raised = factOf(
-      theTurnPlaysTheOrder(undead.state, harvester['id'], 'Harvest the Field').facts,
+      theTurnPlaysTheOrder(undead.state, hero['id'], 'Harvest the Field').facts,
       'the corpse-carters raise a skeletal company',
     );
+    const staged = objects(graves['battleGraves']);
+    const grave = staged.find((x) => `${String(x['unitName'])} (Skeletal)` === raised['unitName']);
+    const best = Math.max(...staged.map((x) => tiers.indexOf(String(x['quality']))));
     push(
       kind,
-      { price: Number(price) },
-      { price: raised['cost'] },
-      { price: theRowsNumber('harvest-the-field', 'thePrice') },
+      {
+        price: Number(price),
+        'the grave it raises': theGraveItSays,
+        'the grades it rises by':
+          theWonderStands && note.includes('a grade higher while your realm holds its Wonder') ? 1 : 0,
+      },
+      {
+        price: raised['cost'],
+        'the grave it raises':
+          grave && tiers.indexOf(String(grave['quality'])) === best ? 'the most experienced' : 'another',
+        'the grades it rises by': tiers.indexOf(String(raised['quality'])) - tiers.indexOf(String(grave?.['quality'])),
+      },
+      kind === 'Harvest the Field' ? { price: theRowsNumber('harvest-the-field', 'thePrice') } : {},
     );
   }
   // the Rite of the Wild Hunt: the beasts its option binds, their grade and type, their price and the turns beyond
   // this one they serve ("until end of NEXT turn": one); what the turn binds
-  for (const [kind, discoveries] of [
-    ['the Rite of the Wild Hunt', []],
-    ['the Rite of the Wild Hunt, with The Long Hunt', [discovery('ap08')]],
+  // (a report older than P1-11e24's term names none: the row's number)
+  for (const [kind, discoveries, theReport] of [
+    ['the Rite of the Wild Hunt', [], 'as built'],
+    ['the Rite of the Wild Hunt, with The Long Hunt', [discovery('ap08')], 'as built'],
+    ['the Rite of the Wild Hunt, on a report older than its term', [], 'without the term'],
   ] as const) {
     const pagan = worldOf('Pagan', (G) => {
       realmZeroOf(G)['discoveries'] = [...discoveries];
     });
-    const option = theOptionsOf(field_(pagan, hunter['id'], 'Perform Rite', 'Wild Hunt')).find(
+    const kingdom = isObj(pagan.report['kingdom']) ? pagan.report['kingdom'] : {};
+    const older = Object.fromEntries(
+      Object.entries(kingdom).filter(([k]) => k !== 'theTurnsAWildHuntServesBeyondThisOne'),
+    );
+    const theField = theReport === 'as built' ? pagan : { ...pagan, report: { ...pagan.report, kingdom: older } };
+    const option = theOptionsOf(field_(theField, hunter['id'], 'Perform Rite', 'Wild Hunt')).find(
       (o) => o.value === 'Wild Hunt',
     );
-    const said = /bind (\d+) (\S+) (.+) \((\d+)g — the price of one, no wages, serve until end of (.+?) turn\)/.exec(
+    const said = /bind (\d+) (\S+) (.+) \((\d+)g — the price of one, no wages, serve until end of (.+?)\)$/.exec(
       option?.words ?? '',
     );
     const [beasts, grade, type, price, until] = said?.slice(1) ?? [];
@@ -4157,7 +4230,12 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
         grade: grade ? grade.charAt(0) + grade.slice(1).toLowerCase() : '(not said)',
         type,
         price: Number(price),
-        'turns beyond this one': until === 'NEXT' ? 1 : `(the field says: until end of ${String(until)} turn)`,
+        'turns beyond this one':
+          until === 'NEXT turn'
+            ? 1
+            : until === 'the turn after next'
+              ? 2
+              : `(the field says: until end of ${String(until)})`,
       },
       {
         beasts: bound.length,
@@ -4166,9 +4244,12 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
         price: performed['price'],
         'turns beyond this one': Math.max(...bound.map((a) => Number(a['_wildHuntUntilTurn']))) - turn,
       },
+      // (with The Long Hunt the term is the row's and the discovery's: the report's)
       {
         beasts: theRowsNumber('perform-rite', 'theWildHuntsBeasts'),
-        'turns beyond this one': theRowsNumber('perform-rite', 'theWildHuntsTurnsMore'),
+        ...(discoveries.length
+          ? {}
+          : { 'turns beyond this one': theRowsNumber('perform-rite', 'theWildHuntsTurnsMore') }),
       },
     );
   }
@@ -4221,7 +4302,6 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
           theTurnPlaysTheOrder(pagan.state, hero['id'], 'Perform Rite', 'Blood Offering', extra).G['characters'],
         ).find((h) => h['id'] === hero['id'])?.['armies'],
       );
-      const tiers: readonly string[] = KC_QUALITY_TIERS;
       const risen = after.filter((a) =>
         before.some((b) => b['unitName'] === a['unitName'] && b['quality'] !== a['quality']),
       );
@@ -4353,6 +4433,7 @@ export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   'a company raised by a realm with Supply Depots, under its cap',
   'a beast raised by a Druid 5 hero',
   'Harvest the Field',
+  'Harvest the Field, on a report that names no price',
   'the Rite of the Wild Hunt',
   'word bought from a province by the Broker',
   'word bought from a province, on a report that names no price',
@@ -4521,6 +4602,23 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
     stage('Harvest the Field', at(p), [{ action: 'Harvest the Field', target: '' }], (G) => {
       realmZeroIn(G)['alignment'] = 'Undead';
     });
+  }
+  {
+    // the carters' price on a report that names none: the row's (P1-11e26)
+    const p = take();
+    p['battleGraves'] = [{ type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName: 'The Last Spears' }];
+    stage(
+      'Harvest the Field, on a report that names no price',
+      at(p),
+      [{ action: 'Harvest the Field', target: '' }],
+      (G) => {
+        realmZeroIn(G)['alignment'] = 'Undead';
+      },
+      (report) => {
+        const prices = report['orderPrices'];
+        if (isObj(prices)) delete prices['harvest'];
+      },
+    );
   }
   {
     const p = take('Stone Giants');
