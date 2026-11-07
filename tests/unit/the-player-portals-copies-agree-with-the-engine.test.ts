@@ -93,14 +93,14 @@
 // as mapping is the turn's at March 6 and 0 leading companies, at Explorer 7 and for a sea sailed into, and since
 // P1-11e13 for a Travelworn Drape (the share his card gives) and Naval 6's charting of the coast. P1-11d2 (plan P1-11d, before any of it is shared):
 // on a staged world with no guards (`holdingWorld`, each case on its own province), what `predictedItems`,
-// `projectedLedArmies` and `projectedGarrison` (with `_projRecruitUnits` and `_isAutoGarrisonRecruit`) say a hero will
+// `projectedLedArmies` and `projectedGarrison` (with `_projRecruitUnits`) say a hero will
 // carry and lead, and a garrison hold, as the season after his orders begins, is what the turn's phases leave them
 // (played one at a time, its loop's four stages each): items handed over beside him, sent by courier and passed on;
 // companies recruited (a band and the province's, a garrison company, into the garrison, under a comrade), handed over,
 // left and taken up, taken up as a comrade leaves them, disbanded, a Mithril suit sent with "all" (it stays on him: since
-// P1-11e18, R-129); and pinned where it is not (question 42): a comrade marching in, a chain of hand-overs in one season, the Philosopher's Stone used, a beast
-// past a leader's beast command (recruited, handed over, taken up), a band of garrison troops hired, companies taken up
-// (the turn's last first), risen dead handed to a comrade (to their graves in the turn; no risen mark in the form).
+// P1-11e18, R-129), a beast past a leader's beast command (recruited, handed over, taken up), a band of garrison troops
+// hired, companies taken up (the turn's last first), risen dead handed to a comrade (to their graves: since P1-11e19);
+// and pinned where it is not (question 42): a comrade marching in, a chain of hand-overs in one season, the Philosopher's Stone used.
 // P1-11d3 (plan P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
 // order list (`ACTIONS`) is the order `normaliseAction` reads it as, none read as a Defend but Defend; on staged heroes of
 // realm 0 (its report as the engine builds it under each creed, and with its Wonder raised), the list `actionsFor`
@@ -191,6 +191,7 @@ import {
   THE_TURNS_REFUSALS_THE_ORDER_LIST_RESTATES,
   theWarlocksTitle,
   whatAHeroHoldsAgainstTheTurn,
+  theMoveNoteOfAComradeHandedCompaniesAgainstTheTurn,
   thePickUpFieldAsAComradeLeavesAgainstTheTurn,
   worldSamples,
   type WorldSamples,
@@ -657,7 +658,7 @@ describe('the march: where the order form says a hero will stand, and what march
 });
 
 describe('what a hero holds: what the order form says he will carry and lead, and a garrison hold (P1-11d2)', () => {
-  test('what the order form says a hero will carry and lead, and a garrison hold, after his orders is what the turn leaves them: items handed over, sent by courier and passed on, companies recruited, handed over, left, taken up and disbanded', () => {
+  test('what the order form says a hero will carry and lead, and a garrison hold, after his orders is what the turn leaves them: items handed over, sent by courier and passed on, companies recruited, handed over, left, taken up and disbanded, the beast command, a garrison band, risen dead', () => {
     // On a staged world (no guards, no foes; each case on its own province, its heroes realm 0's): the form's
     // predictedItems, projectedLedArmies and projectedGarrison as the phase after the orders begins, against the turn's
     // phases played one at a time. Items handed to a comrade beside him (two, by their places: the higher first), one
@@ -667,13 +668,38 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // comrade's banner; a company handed to a comrade beside him, one left in the garrison and taken up by a comrade
     // next season by its place (behind the one there before), one taken up as a comrade leaves it in the same season (the turn makes the Pick Up wait), one
     // disbanded; since P1-11e18 (R-129) a Mithril suit sent with "all" (forged to its wearer: the turn and the form keep
-    // it on him, the shared theItemsASendItemOrderHandsOver); and since P1-11e17 (the forecasts' replay) an item handed over by its name, every company left in the
-    // garrison, one left by its type (the garrison read) and every company handed to a comrade.
+    // it on him, the shared theItemsASendItemOrderHandsOver); since P1-11e17 (the forecasts' replay) an item handed over by its name, every company left in the
+    // garrison, one left by its type (the garrison read) and every company handed to a comrade; and since P1-11e19
+    // (R-129, the turn's rules through src/shared/) a beast past a leader's beast command (his Druid, here 0) mustering
+    // into the garrison, staying with the giver or going back to the garrison, a band of garrison troops hired into the
+    // garrison, companies taken up last first (by their places and "all"), and risen dead handed to a comrade of a realm
+    // that is not Undead going to their graves (the report's `skeletal` mark); with, for the rules' inputs, two beasts
+    // recruited by a Druid 1 hero (the first fits his command), bands hired with the garrison named in a province of
+    // another realm (the beasts not hired, the men into his column), a beast recruited by a Druid 1 hero whose bound and
+    // summoned beasts don't count, and a beast mustered under a comrade at his beast command (into the garrison).
     const list = holdings().filter((x) => (THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
-    // and each order changed what they hold
-    expect(list.filter((x) => sameAnswer(x.engine, x.before)).map((x) => x.kind)).toEqual([]);
+    // and each order changed what they hold, but the two a full beast command turns back (the beast stays where it was)
+    expect(list.filter((x) => sameAnswer(x.engine, x.before)).map((x) => x.kind)).toEqual([
+      'a beast handed to a comrade at his beast command',
+      'a beast taken up past his beast command',
+    ]);
+  });
+
+  test('the Move note counts what a comrade takes of the companies handed or mustered to him that season, as the turn gives them (P1-11e19, R-129)', () => {
+    // The note reads his column as he marches: the companies a comrade hands him or musters under his banner that same
+    // season join first. Risen dead go to their graves, a beast past his beast command stays with the giver or goes to
+    // the garrison, by the turn's rules.
+    // (counted: a company raised this season has no name on the form yet)
+    expect(
+      theMoveNoteOfAComradeHandedCompaniesAgainstTheTurn(copies).map((x) => [x.kind, x.note.length, x.turn.length]),
+    ).toEqual([
+      ["companies recruited under a comrade's banner", 1, 1],
+      ['risen dead handed to a comrade', 0, 0],
+      ['a beast handed to a comrade at his beast command', 0, 0],
+      ['a beast recruited under the banner of a comrade at his beast command', 0, 0],
+    ]);
   });
 
   test('the Pick Up field offers the company a comrade leaves in the garrison that season, as the turn gives it (P1-11e17)', () => {
@@ -693,14 +719,11 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(turn).toHaveLength(1);
   });
 
-  test("what the forecast gets wrong is pinned: a comrade marching in, a chain in one phase, the Stone, the beast command, a garrison band, Pick Up's order, risen dead (question 42)", () => {
+  test('what the forecast gets wrong is pinned: a comrade marching in, a chain in one phase, the Stone (question 42)', () => {
     // The form replays the orders, not the turn's checks: a comrade marching in that season is handed the item at once (the form, which places him where the season
     // began, sends it by courier); a chain of hand-overs in one season goes in the turn's order (a hero handing to a
     // comrade who hands on goes first), in the form's by the heroes' order; the Philosopher's Stone used is destroyed
-    // (as an older save's copy carries it: the one Use Item works); a beast past a leader's beast command (his Druid
-    // level, here 0) musters into the garrison, stays with the giver or goes back to the garrison; a band of garrison
-    // troops hired musters into the garrison; companies taken up join last first; risen dead handed to a comrade of a
-    // realm that is not Undead go to their graves (the form hands them over, and its companies carry no risen mark).
+    // (as an older save's copy carries it: the one Use Item works).
     const list = holdings();
     expect(
       list.map((x) => x.kind).filter((k) => !(THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
@@ -725,45 +748,6 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     ]);
     const stone = kind("the Philosopher's Stone used");
     expect([stone.copy, stone.engine]).toEqual([{ bearer: ["Philosopher's Stone"] }, { bearer: [] }]);
-    const beasts = THE_HOLDINGS_THE_FORECAST_GETS_WRONG.filter((k) => k.includes('beast'));
-    const beast = one(kind('a beast taken up past his beast command'), 'the garrison');
-    expect(beasts.map((k) => [k, kind(k).copy, kind(k).engine])).toEqual([
-      [
-        'a beast recruited past his beast command',
-        { recruiter: [beast], 'the garrison': [] },
-        { recruiter: [], 'the garrison': [beast] },
-      ],
-      [
-        'a beast handed to a comrade at his beast command',
-        { giver: [], comrade: [beast], 'the garrison': [] },
-        { giver: [beast], comrade: [], 'the garrison': [] },
-      ],
-      [
-        'a beast taken up past his beast command',
-        { taker: [beast], 'the garrison': [] },
-        { taker: [], 'the garrison': [beast] },
-      ],
-    ]);
-    const band = kind('a band of garrison troops hired');
-    expect([band.copy, band.engine]).toEqual([
-      { recruiter: ['Human Garrison (Veteran)'], 'the garrison': [] },
-      { recruiter: [], 'the garrison': ['Human Garrison (Veteran)'] },
-    ]);
-    for (const k of ['companies taken up from the garrison by their places', 'the whole garrison taken up']) {
-      const x = kind(k);
-      const [a, b] = [one(x, 'the garrison'), one(x, 'the garrison', 1)];
-      expect([k, x.copy, x.engine]).toEqual([
-        k,
-        { taker: [a, b], 'the garrison': [] },
-        { taker: [b, a], 'the garrison': [] },
-      ]);
-    }
-    const risen = kind('risen dead handed to a comrade');
-    expect([risen.before, risen.copy, risen.engine]).toEqual([
-      { giver: ['Men-at-Arms (Average) (risen)'], comrade: [], 'the garrison': [] },
-      { giver: [], comrade: ['Men-at-Arms (Average)'], 'the garrison': [] },
-      { giver: [], comrade: [], 'the garrison': [] },
-    ]);
   });
 });
 
