@@ -332,13 +332,13 @@ test('planted, a "3g" in each of the page\'s texts, or a number or a name in a r
   ]);
 });
 
-// The words of the turn's rule the Evil and Pagan texts state, and the words they said before, which none may (R-136,
-// plan question 46 (d) and (f)): an Evil hero conquers by the doctrine on his orders, Terror plundering 50% of the
-// province's tax and Enslave pressing a free Green garrison unit, the province paying 1g less tax for 3 turns, as the
-// order form and the turn's line say (src/engine/realms/relations-and-captures.ts, applyEvilConquest; the tax in
-// src/engine/turn/early-winter-…ts, which counts the turn of the conquest too: plan question 68); the
-// Wild Hunt binds two of a province's creatures, as Veterans until the end of the following turn (its row's numbers,
-// above).
+// The words of the turn's rule the Evil and Pagan texts state (the intro's Evil row too: it restates the plunder), and
+// the words they said before, which none may (R-136, plan question 46 (d) and (f)): an Evil hero conquers by the
+// doctrine on his orders, Terror plundering 50% of the province's tax and Enslave pressing a free Green garrison unit,
+// the province paying 1g less tax for 3 turns, as the order form and the turn's line say (src/engine/realms/relations-
+// and-captures.ts, applyEvilConquest; the tax in src/engine/turn/early-winter-…ts, which counts the turn of the conquest
+// too: plan question 68); the Wild Hunt binds two of a province's creatures, as Veterans until the end of the following
+// turn (its row's numbers, above).
 const THE_EVIL_BONUS_LINES = stringsOf(THE_REPORTS_SUMMARIES).filter((s) =>
   s.includes('<strong>Evil bonuses</strong>'),
 );
@@ -367,6 +367,15 @@ test.for([
     seen: theEntriesOfItsCreedsSection(BOOKS, 'Evil').join(' '),
     says: THE_EVIL_DOCTRINE,
     saidBefore: WHAT_THE_EVIL_TEXTS_SAID,
+  },
+  {
+    text: "the intro's Evil row",
+    seen: theIntrosTable(BOOKS)
+      .filter((cells) => (cells[0] ?? '').includes('<strong>Evil</strong>'))
+      .map((cells) => asAReaderSeesIt(cells.join(' ')))
+      .join(' '),
+    says: ['under the Terror doctrine a conquest plunders 50%', 'Enslave (passive), the other doctrine'],
+    saidBefore: ["; plunder 50% of a conquered province's tax"],
   },
   {
     text: "the report's Pagan summary",
