@@ -4693,17 +4693,24 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
 // phases played on a copy of the state the report was built from (theTurnPlaysThePhases), and for the wages, Early
 // Winter's reckoning after them. Where the form disagrees with the turn (question 43), the difference is pinned exactly.
 
-/** The orders the ledger cases stage, each in a world of its own: those the ledger and the turn agree on, and those it
- *  is known to get wrong (question 43): the upkeep discovery's saving counted fresh for each company (the turn's is
- *  shared, to a cap), the Host-Leader's 1g a company, a Druid 6 leader's half price and half wage for a beast, and a
- *  hero-wage discovery's saving on a hero hired. */
+/** The orders the ledger cases stage, each in a world of its own: those the ledger and the turn agree on, and the one
+ *  it can't know (question 43, a forecast limit): the Host-Leader's 1g a company on a report that doesn't name him.
+ *  Since P1-11e30 the upkeep and hero-wage discoveries' savings are shared under their caps, as the turn shares them. */
 export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   'a company of the province raised into his column',
   'two companies of one kind raised at the capital',
   'a garrison company raised',
   'a mercenary band hired',
   'a wandering hero hired',
+  'a wandering hero hired by a realm with Granaries',
+  'a wandering hero hired by a realm with Granaries, past its cap',
+  'two wandering heroes hired by a realm with Granaries, its room left for one',
+  'a wandering hero hired by a realm with Inspiring Leadership',
   'a company raised by a realm with Supply Depots, under its cap',
+  'a company raised by a realm with Supply Depots, past its cap',
+  'a company mustered to the garrison by a realm with Supply Depots, past its cap',
+  'two companies raised at the capital by a realm with Supply Depots, its room left for one',
+  'a company raised by a realm with Supply Depots, on a report older than its room',
   "a company raised into the Host-Leader's column, the report naming him (the titles public)",
   'a beast raised by a Druid 5 hero',
   'a beast raised by a Druid 6 hero',
@@ -4720,8 +4727,6 @@ export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   'word bought from a province, on a report that names no price',
 ] as const;
 export const THE_LEDGERS_THE_TURN_DISAGREES_WITH = [
-  'a wandering hero hired by a realm with Granaries',
-  'a company raised by a realm with Supply Depots, past its cap',
   "a company raised into the Host-Leader's column, on a report that doesn't name him (the titles not yet public)",
 ] as const;
 export type AKindOfLedger =
@@ -4844,6 +4849,65 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
       },
     );
   }
+  {
+    // in its world, a hundred more heroes of the realm, each paid 5g: their savings fill Granaries' cap (5% of the
+    // realm's base tax), so the hero hired pays his whole wage (P1-11e30)
+    const p = take();
+    const w = wanderer(p);
+    stage(
+      'a wandering hero hired by a realm with Granaries, past its cap',
+      at(p),
+      [{ action: 'Hire Hero', target: String(w['id']) }],
+      (G) => {
+        realmZeroIn(G)['discoveries'] = [aDiscovery('sd17')];
+        const heroes: unknown[] = Array.isArray(G['characters']) ? G['characters'] : [];
+        const one = heroIn(G, w);
+        for (let i = 0; i < 100; i++)
+          heroes.push({ ...copyOf(one), id: heroes.length, name: `Staged Retainer ${String(i)}`, player: 0, pay: 5 });
+      },
+    );
+  }
+  {
+    // two wanderers hired in two seasons, more heroes of the realm leaving Granaries room for one gold: the first saves
+    // it, the second pays his whole wage (the room read off a report on its world without them, P1-11e30)
+    const p = take();
+    const [w1, w2] = [wanderer(p), wanderer(p)];
+    stage(
+      'two wandering heroes hired by a realm with Granaries, its room left for one',
+      at(p),
+      [
+        { action: 'Hire Hero', target: String(w1['id']) },
+        { action: 'Hire Hero', target: String(w2['id']) },
+      ],
+      (G) => {
+        realmZeroIn(G)['discoveries'] = [aDiscovery('sd17')];
+        const k = savedAndReported(copyOf(G)).report['kingdom'];
+        const cuts =
+          isObj(k) && Array.isArray(k['theHeroWageDiscoveriesCutsAndTheirRoom'])
+            ? k['theHeroWageDiscoveriesCutsAndTheirRoom']
+            : [];
+        const room = Number(objects(cuts)[0]?.['theRoomLeftUnderItsCap']);
+        if (!(room > 1)) throw new Error(`Granaries' room is ${String(room)}, not above 1g`);
+        const heroes: unknown[] = Array.isArray(G['characters']) ? G['characters'] : [];
+        const one = heroIn(G, w1);
+        for (let i = 0; i < room - 1; i++)
+          heroes.push({ ...copyOf(one), id: heroes.length, name: `Staged Steward ${String(i)}`, player: 0, pay: 5 });
+      },
+    );
+  }
+  {
+    // a wanderer of proven skill (a wage above 3g): Inspiring Leadership pays no hero more than 3g (P1-11e30)
+    const p = take();
+    const w = at(p, { player: null, alignment: 'Good', skills: { melee: 9, tactical: 9, spy: 6 } });
+    stage(
+      'a wandering hero hired by a realm with Inspiring Leadership',
+      at(p),
+      [{ action: 'Hire Hero', target: String(w['id']) }],
+      (G) => {
+        realmZeroIn(G)['discoveries'] = [aDiscovery('sd38')];
+      },
+    );
+  }
   const supplyDepots = (G: Obj) => {
     realmZeroIn(G)['discoveries'] = [aDiscovery('sd55')];
   };
@@ -4867,7 +4931,46 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
         heroIn(G, host)['armies'] = copyOf(levies);
       },
     );
+    // a company mustered to the garrison draws on the cap too (P1-11e30)
+    stage(
+      'a company mustered to the garrison by a realm with Supply Depots, past its cap',
+      at(take('Men-at-Arms')),
+      [recruit('Men-at-Arms|1', 'to:garrison')],
+      (G) => {
+        supplyDepots(G);
+        heroIn(G, host)['armies'] = copyOf(levies);
+      },
+    );
+    // the levies leave the depots room for one gold: the first of two companies saves it, the second pays its whole
+    // wage (the room read off a report on its world without them, P1-11e24's)
+    const lancer = at(capital);
+    stage(
+      'two companies raised at the capital by a realm with Supply Depots, its room left for one',
+      lancer,
+      [recruit('Yeoman Longbows|2')],
+      (G) => {
+        supplyDepots(G);
+        const k = savedAndReported(copyOf(G)).report['kingdom'];
+        const cuts =
+          isObj(k) && Array.isArray(k['theUpkeepDiscoveriesCutsAndTheirRoom'])
+            ? k['theUpkeepDiscoveriesCutsAndTheirRoom']
+            : [];
+        const room = Number(objects(cuts)[0]?.['theRoomLeftUnderItsCap']);
+        if (!(room > 1)) throw new Error(`the depots' room is ${String(room)}, not above 1g`);
+        heroIn(G, host)['armies'] = Array.from({ length: room - 1 }, () => company('Shieldwall Levies'));
+      },
+    );
   }
+  stage(
+    'a company raised by a realm with Supply Depots, on a report older than its room',
+    at(take('Men-at-Arms')),
+    [recruit('Men-at-Arms|1')],
+    supplyDepots,
+    (report) => {
+      const k = report['kingdom'];
+      if (isObj(k)) delete k['theUpkeepDiscoveriesCutsAndTheirRoom'];
+    },
+  );
   {
     const hostLeader = at(take('Men-at-Arms'));
     stage(

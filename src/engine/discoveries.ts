@@ -21,6 +21,7 @@ import {
   DISC_CLS_SETS,
   type AUnitAsTheDiscoveriesReadIt,
 } from './rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
+import { aHerosWageAfterTheCutsAndTheCeilings } from './rules-on-plain-values/a-wage-after-each-cut-and-ceiling-a-realms-discoveries-make.ts';
 import { gdActiveFor, homeFounderOf } from './grand-design.ts';
 import { getNeighborsP } from './world/map-helpers.ts';
 import type { TurnContext } from './turn/context.ts';
@@ -205,9 +206,11 @@ export function discHeroWage(
 ) {
   // (the discoveries' registry's since plan P1-19ag: "turnEnd: a realm's discoveries cut a hero's wage", then "… cap a
   // hero's wage", each in turn)
-  let w = theWageARealmsDiscoveriesCutsLeaveAHero(pl, { theHerosAlignment: h.alignment }, raw, acc, capG);
-  w = theWageARealmsDiscoveriesCeilingsLeaveAHero(pl, w, acc, capG);
-  return Math.max(1, w);
+  return aHerosWageAfterTheCutsAndTheCeilings(
+    (w) => theWageARealmsDiscoveriesCutsLeaveAHero(pl, { theHerosAlignment: h.alignment }, w, acc, capG),
+    (w) => theWageARealmsDiscoveriesCeilingsLeaveAHero(pl, w, acc, capG),
+    raw,
+  );
 }
 // `maxHp` discoveries for one character (filters: king, heroOnly, skill — at least one trained level).
 export function discMaxHpFor(
