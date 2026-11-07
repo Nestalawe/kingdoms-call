@@ -12,7 +12,7 @@ import {
   getOrderExtra,
   getOrderTarget,
   predictedLocation,
-} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+} from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
 // ══ THE NEW PLAYER'S BRIEFING — RACE, ALIGNMENT, TEMPER ═══════════════════════════════════
 // STANDING RULE (Toby, 2026-09-27): these three boxes are the ONLY thing most players read before
