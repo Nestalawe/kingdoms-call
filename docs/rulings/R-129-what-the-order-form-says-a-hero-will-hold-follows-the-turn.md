@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-05, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 42, built from PR #469
+- **Source:** Plan question 42, built from PR #469 on
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The order form works out what each hero will carry and lead, and what a province's garrison will hold, in every later
@@ -16,9 +16,11 @@ phase, from the orders it holds. It follows the turn, not the order as written:
    garrison troops musters into the garrison, and companies taken up from the garrison join in the turn's order.
 4. **Risen dead handed to a comrade of a realm that is not Undead go to their graves.**
 
-Part 1 is an agreement case of the parity test (since P1-11e18); parts 2 to 4 are pinned there until their rows
-(P1-11e19, e20) make them agree. What the report doesn't show stays a forecast limit: a hero hired, charmed or raised
-this turn (his pack and his levels are hidden), and a skill that rises during the turn.
+Parts 1, 3 and 4 are agreement cases of the parity test (part 1 since P1-11e18, parts 3 and 4 since P1-11e19, the
+Move note's column too); part 2 is pinned there until P1-11e20 makes it agree. What the report doesn't show stays a
+forecast limit: a hero hired, charmed or raised this turn (his pack and his levels are hidden, so his beast command
+too), a skill that rises during the turn, and a province taken this turn (the form musters by the realm's ground as
+the turn begins).
 
 The question was: the form moved a Mithril suit with "all items", sent an item to a comrade marching in by courier,
 replayed hand-overs in its heroes' order, put beasts past a leader's command in his column, added companies taken up
