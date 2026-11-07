@@ -77,6 +77,7 @@ import {
   itemUsableBy,
 } from '../../src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts';
+import { effSkillOf } from '../../src/engine/heroes/skills-and-hp.ts';
 import {
   skillFameLabelM,
   topSkillOf,
@@ -161,7 +162,7 @@ const THE_MARCH_FORECASTS_DECLARATIONS = [
 const COPIES: Record<string, string[]> = {
   // (and the label of a company, which the Blood Offering's rows show: P1-11d3; and the note under an order that
   // quotes its chance, which the Practice Skill field shows: P1-11d4)
-  'ui/player/order-chances.ts': ['chanceLine', 'orderChanceNote', 'ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl', 'armyLabel'],
+  'ui/player/order-chances.ts': ['chanceLine', 'orderChanceNote', 'effMagicLvl', 'armyLabel'],
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3; the army card reads the
   // engine's two sets of beasts, and asks its Druid mastery's guard, through src/shared/ since P1-11d12)
   'ui/player/skills-and-projections.ts': [
@@ -451,7 +452,7 @@ export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 
 /** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file, the mastery
  *  orders' rows (L79_ORDERS reads them) and kc-safe (kcHtml: the army card's notes) beside them, and the names
- *  src/shared/ hands the portal (effMagicLvl calls itemSlot and itemUsableBy). The turn report's flying carry runs
+ *  src/shared/ hands the portal (effMagicLvl calls theLevelAHerosSkillCountsAt). The turn report's flying carry runs
  *  beside them too: it reads the data file and getFlyCapability, which the views import from the folder (the portal no
  *  longer does, since P1-11b4). */
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
@@ -3561,6 +3562,64 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
       }
     }
   }
+  return out;
+}
+
+/** The order form's level of a magic school (effMagicLvl) and its third cast of one school, on heroes no matrix game
+ *  holds (P1-11e33, question 45 (c)): a Psychic 2 hero with two Dreamstones, a hero trained to White 7, and one with a
+ *  Chalice of Dawn too, each of realm 0 by its king. The form handed its realm's report as the engine builds it; the
+ *  engine's side, the level the turn casts at (effSkillOf, which effStat asks) and its Cast Spell order (a third
+ *  Oratory, the Dreamstones' hero's). */
+export function effMagicLvlOnStagedHeroes(c: Copies, form: TheOrderFormsSpells): Comparison[] {
+  const { g, king, hero } = aWorldToStageIn();
+  const named = (name: string): Obj => {
+    const it = catalogue().find((x) => x['name'] === name);
+    if (!it) throw new Error(`the catalogue has no ${name}`);
+    return it;
+  };
+  const staged: { readonly name: string; readonly school: string; readonly skills: Obj; readonly items: Obj[] }[] = [
+    {
+      name: 'Psychic 2, two Dreamstones',
+      school: 'psychic',
+      skills: { psychic: 2 },
+      items: [named('Dreamstone'), named('Dreamstone')],
+    },
+    { name: 'White 7', school: 'white', skills: { white: 7 }, items: [] },
+    { name: 'White 7, a Chalice of Dawn', school: 'white', skills: { white: 7 }, items: [named('Chalice of Dawn')] },
+  ];
+  const heroes = staged.map((s) =>
+    hero({ location: king['location'], skills: s.skills, items: s.items.map((it, n) => ({ ...it, id: 60_000 + n })) }),
+  );
+  const world = quietly(() => savedAndReported(g));
+  const saved = (h: Obj) => objects(world.state['characters']).find((x) => x['id'] === h['id']) ?? {};
+  const reported = (h: Obj) => objects(world.report['characters']).find((x) => x['id'] === h['id']) ?? {};
+  const chars = objects(world.state['characters']);
+  const out: Comparison[] = staged.map(({ name, school }, i) => {
+    const h = heroes[i] ?? {};
+    return compare([name, school], c.effMagicLvl(reported(h), school), {
+      answer: effSkillOf(saved(h), school, chars),
+      changed: false,
+    });
+  });
+  // the Dreamstones' hero's third Psychic cast: the form greys it out at his school's limit, the turn blocks it there
+  const dreamer = heroes[0] ?? {};
+  const fields: Record<string, string> = {};
+  for (const ph of [0, 1]) {
+    fields[`po-action-${String(dreamer['id'])}-${String(ph)}`] = 'Cast Spell';
+    fields[`po-target-${String(dreamer['id'])}-${String(ph)}`] = 'Oratory';
+  }
+  const row = form.castSpellRows(world.report, reported(dreamer), 2, fields).find((r) => r.spell === 'Oratory');
+  out.push(
+    compare(['Psychic 2, two Dreamstones', 'a third Oratory'], row ? row.atLimit : '(not offered)', {
+      answer: theOrderBlocks(
+        copyOf(world.state),
+        deepFreeze(copyOf(saved(dreamer))),
+        ['Oratory', 'Oratory'],
+        'Oratory',
+      ),
+      changed: false,
+    }),
+  );
   return out;
 }
 
