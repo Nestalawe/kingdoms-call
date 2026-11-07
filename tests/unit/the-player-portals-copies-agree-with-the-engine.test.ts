@@ -880,17 +880,23 @@ describe('the orders: what the order form offers a hero, and what the creed orde
 });
 
 describe('gold and practice: what the treasury ledger and the Practice Skill note say, and who practises together (P1-11d4)', () => {
-  test('the treasury ledger says what the turn spends and adds to the wages: companies of the province, at the capital and for the garrison, a mercenary band, a wandering hero, Supply Depots under its cap, a Druid 5 hero’s beast, Harvest the Field, the Wild Hunt', () => {
+  test('the treasury ledger says what the turn spends and adds to the wages: companies of the province, at the capital and for the garrison, a mercenary band, a wandering hero, Supply Depots under its cap, a Druid 5 hero’s beast, Harvest the Field (with Corpse-Carters too), the Wild Hunt', () => {
     // On realm 0's report as the engine builds it from each world, the form's computeOrderLedgerP (its spend, and its
     // new wages) against the turn: the gold its phase takes from the treasury, and what Early Winter's wages rise by.
     // The Broker's word from a province is two gold on a report that prices it, and on an older one that names no
-    // price (the row's number is the ledger's fallback: P1-11d8).
+    // price (the row's number is the ledger's fallback: P1-11d8); so are the carters', and nothing with Corpse-Carters
+    // (P1-11e26).
     const list = ledgers().filter((x) => (THE_LEDGERS_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_LEDGERS_THE_TURN_AGREES_WITH]);
     expect(differences(list)).toEqual([]);
-    // each order is carried out: the turn takes gold for it
+    // each order is carried out: the turn takes gold for it, but the carters' with Corpse-Carters (nothing: P1-11e26)
     const spent = (x: (typeof list)[number]) => Number((x.engine as Record<string, unknown>)['spend']);
-    expect(list.filter((x) => !(spent(x) > 0)).map((x) => x.kind)).toEqual([]);
+    expect(list.filter((x) => !(spent(x) > 0)).map((x) => x.kind)).toEqual([
+      'Harvest the Field, by a realm with Corpse-Carters',
+    ]);
+    // and each is carried out all the same: the carters raise a company, which adds its wage
+    const added = (x: (typeof list)[number]) => Number((x.engine as Record<string, unknown>)['new wages']);
+    expect(list.filter((x) => x.kind === 'Harvest the Field, by a realm with Corpse-Carters').map(added)).toEqual([1]);
   });
 
   test('what the treasury ledger gets wrong is pinned: Supply Depots past its cap, the Host-Leader, a Druid 6 hero’s beast, Granaries (question 43)', () => {

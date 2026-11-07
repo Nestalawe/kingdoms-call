@@ -4434,6 +4434,7 @@ export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   'a beast raised by a Druid 5 hero',
   'Harvest the Field',
   'Harvest the Field, on a report that names no price',
+  'Harvest the Field, by a realm with Corpse-Carters',
   'the Rite of the Wild Hunt',
   'word bought from a province by the Broker',
   'word bought from a province, on a report that names no price',
@@ -4617,6 +4618,20 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
       (report) => {
         const prices = report['orderPrices'];
         if (isObj(prices)) delete prices['harvest'];
+      },
+    );
+  }
+  {
+    // the carters' price with Corpse-Carters: the report's, nothing (P1-11e26)
+    const p = take();
+    p['battleGraves'] = [{ type: 'Men-at-Arms', quality: 'Veteran', race: 'Human', unitName: 'The Carted Spears' }];
+    stage(
+      'Harvest the Field, by a realm with Corpse-Carters',
+      at(p),
+      [{ action: 'Harvest the Field', target: '' }],
+      (G) => {
+        realmZeroIn(G)['alignment'] = 'Undead';
+        realmZeroIn(G)['discoveries'] = [aDiscovery('az06')];
       },
     );
   }
