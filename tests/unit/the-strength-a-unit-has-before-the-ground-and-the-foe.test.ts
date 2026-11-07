@@ -147,7 +147,9 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
       skills: { druid: 8 },
       items: [item('Battle Standard')],
     } as unknown as HeroInABattle;
-    const a = structuredClone(units[0] ?? { type: 'Thunderbirds', quality: 'Average', race: '' });
+    const a = structuredClone(
+      units[0] ?? { type: 'Thunderbirds', quality: 'Average', race: '', unitName: 'Test Company 0' },
+    );
     const gain = druidMasteryGain(turn, h, a, 'Pagan').gain;
     expect(gain).toBeGreaterThan(0);
     const battle = armStr(turn, structuredClone(a), structuredClone(h), 'Pagan', null, undefined);

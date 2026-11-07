@@ -138,7 +138,10 @@
 // (it says no roll is made, as the turn makes none); and the
 // comrades a hero's Practice Skill field counts as practising beside him (`practiceCompanionSkill`) are the turn's
 // co-trainers: of his realm, alive, in his province that season (marched there or away the season before too), at the
-// same skill, of any level.
+// same skill, of any level. Since P1-21n (each red on its mutant of the 2026-11-07 session): the march-in share of an
+// Explorer counting above his trained level, the Send Item field's Mithril suit greyed however its items are ticked, the
+// army card's half beast wage and Druid 8 quality read from his trained Druid, and the ledger's wage of a beast mustered
+// to a comrade read from the comrade's column.
 // Level 1: pure functions on values; no page is needed, and a static test can't compare what two functions answer.
 // Planted faults: in the PRs (P1-11a2, P1-11a4, P1-11b1, P1-11b2, P1-11b3, P1-11b4, P1-11c1, P1-11c4, P1-11d1, P1-11d2,
 // P1-11d3, P1-11d4, P1-11d14)
@@ -186,9 +189,11 @@ import {
   THE_HOLDINGS_THE_FORECAST_GETS_RIGHT,
   THE_HOLDINGS_THE_FORECAST_GETS_WRONG,
   theSendItemFieldWithAMithrilSuitAgainstTheTurn,
+  theSendItemFieldsMithrilBoxOn,
   theMarchForecastAgainstTheTurn,
   theMarchInForecastAgainstTheTurn,
   theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems,
+  theMarchInShareOfAHeroWhoseExplorerCountsAboveHisTrainedLevel,
   theCoastBesideASeaTheReportShowsNoGroundOf,
   thePortalsHexTablesAgainstTheEngine,
   theOrderFormsSpells,
@@ -471,6 +476,27 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     ]);
   });
 
+  test("the army card's upkeep and strength read his trained Druid where the turn does: a +1 Druid item lifts neither the half wage nor the Druid 8 quality (P1-21n)", () => {
+    // Early Winter halves a beast's wage under a hero of trained Druid 6, and armStr lifts a beast's quality under one
+    // of trained Druid 8 (his Druid mastery reads the Druid as it counts). Two Thunderbirds (4g each) under a hero of
+    // Druid 5 counting 6: 8g. Average Thunderbirds (11 × 2) under a hero of Druid 7 counting 8: his mastery's +80%, 40;
+    // under a hero of trained Druid 8, lifted to Veteran (11 × 3) first, 59.
+    const birds = (n: number) =>
+      Array.from({ length: n }, () => ({ type: 'Thunderbirds', quality: 'Average', cost: 4 }));
+    const hero = (trained: number, counting: number) => ({
+      race: 'Human',
+      alignment: 'Good',
+      skills: { druid: trained },
+      skillEff: { druid: { total: counting } },
+      armies: birds(2),
+    });
+    const report = { kingdom: { alignment: 'Good', race: 'Human' } };
+    const upkeep = (h: Record<string, unknown>) => copies.armyCardUpkeep(h['armies'], h, report);
+    expect([upkeep(hero(5, 6)), upkeep(hero(6, 6))]).toEqual([8, 4]);
+    const strength = (h: Record<string, unknown>) => copies.armyCardUnitStrength(birds(1)[0], h, report);
+    expect([strength(hero(7, 8)), strength(hero(8, 8))]).toEqual([40, 59]);
+  });
+
   test("the army card's sea note says what the turn's lift is, in words (R-135)", () => {
     // Both the card and the turn ask seaLiftOfAColumn, so a fault in it moves both sides of the case above: here the
     // words are written out.
@@ -747,6 +773,12 @@ describe('the march: where the order form says a hero will stand, and what march
     expect([given, notGiven]).toEqual([30, noCloak]);
   });
 
+  test('a hero whose Explorer counts above his trained level marches in with the share of his Explorer as it counts (P1-21n)', () => {
+    // The turn grants 5% a level of his Explorer as it counts (an item's +2 too): trained at 1, counting at 3, a march
+    // in maps 10% and 15%, not 10% and 5%.
+    expect(theMarchInShareOfAHeroWhoseExplorerCountsAboveHisTrainedLevel(copies)).toBe(25);
+  });
+
   test('a coast beside a sea the report shows no ground of is charted by no voyage on the form (a forecast limit, P1-11e13)', () => {
     // The report's unknown tier gives a province's ground as null, which the form can't tell from land: so a voyage
     // into such a sea charts nothing of the coast on the form, where the turn charts its 5%.
@@ -818,6 +850,15 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(listed).toEqual(['Mithril Armour', ...turn]);
     expect(ticked).toEqual(turn);
     expect(turn).toHaveLength(1);
+  });
+
+  test('the Send Item field greys a Mithril suit however his items are ticked: none, the suit by its place, or all (P1-21n)', () => {
+    // The turn keeps a granted suit on its wearer however the order names it, so its box is never one he may tick.
+    expect(['', '0', 'all'].map((target) => theSendItemFieldsMithrilBoxOn(copies, target))).toEqual([
+      { disabled: true, checked: false },
+      { disabled: true, checked: false },
+      { disabled: true, checked: false },
+    ]);
   });
 
   test('what the forecast gets wrong is pinned: the Stone, a chain of company hand-overs in one phase (question 42)', () => {
@@ -1006,6 +1047,45 @@ describe('gold and practice: what the treasury ledger and the Practice Skill not
       { spend: 3, 'new wages': 3 },
       { spend: 3, 'new wages': 2 },
     ]);
+  });
+
+  test("the treasury ledger charges a beast mustered to a comrade the wage of the comrade's column, not the recruiter's Druid (P1-21n)", () => {
+    // R-134: a beast in the column of a Druid 6 leader pays half wages. A Druid 6 hero musters a Great Bear (4g) into
+    // the column of a Druid 2 comrade beside him: the full 4g; into his own: 2g.
+    const hero = (id: number, druid: number) => ({
+      id,
+      name: `Hero ${String(id)}`,
+      locationId: 1,
+      locationName: 'Province 1',
+      effectiveSpeed: 2,
+      effectiveSeaSpeed: 0,
+      skills: { druid },
+      items: [],
+      armies: [],
+    });
+    const provinces = Array.from({ length: 8 }, (_, id) => ({
+      id,
+      row: Math.floor(id / 4),
+      col: id % 4,
+      name: `Province ${String(id)}`,
+      terrain: 'plains',
+      owner: 0,
+    }));
+    const report = {
+      playerIndex: 0,
+      kingdom: { alignment: 'Good' },
+      diplomacy: { known: [] },
+      worldMeta: { cols: 4, rows: 2, provinces },
+      ownedProvinces: provinces.map((p) => ({ id: p.id })),
+      provinceOrderData: { 1: { garrisonArmies: [], armyTypes: [{ type: 'Great Bears', cost: 6 }] } },
+      orderPrices: { unitCost: { 'Great Bears': 4 } },
+      characters: [hero(1, 6), hero(2, 2)],
+    };
+    const newWages = (to: string): unknown => {
+      const ledger = copies.theLedgerOn(report, { 1: [{ action: 'Recruit Armies', target: `Great Bears|1,${to}` }] });
+      return typeof ledger === 'object' && ledger !== null ? Reflect.get(ledger, 'new wages') : ledger;
+    };
+    expect([newWages('to:2'), newWages('to:self')]).toEqual([4, 2]);
   });
 
   test('the Practice Skill note quotes the chance the turn rolls: Melee 0 to 4, a Human hero of another realm and of a Human realm, a practice discovery of the realm and one of other skills; no roll at Melee 5', () => {
