@@ -10,6 +10,7 @@ import {
   theAlignmentOrdersByTheNameTheFormWrites,
   theFirstStepOfAShortestRouteAColumnMayTake,
   theHexNextToAProvinceInADirection,
+  theItemsASendItemOrderHandsOver,
   theMovePoolAStepSpends,
   theStepAColumnTakesTowardAFarProvince,
   whatAMarchsOrderNames,
@@ -548,27 +549,13 @@ function theItemsAPhasesOrdersHandOver(characters, items, byKey, p) {
     if (!recipKey || !items.has(recipKey)) return;
     const recipCh = byKey.get(recipKey);
     if (!recipCh) return;
+    // The items the turn hands over, by its own rule (src/shared/): "all", or each token a place (a plain whole number
+    // in the pack's range) or an item's id or name, highest first; a granted Mithril suit stays on its wearer (R-129).
+    // A CHARMED sender writes target='auto' — the engine picks the item and the player never sees which, so nothing can
+    // be projected into the recipient's pack: 'auto' names no item, which is the right outcome; noted so it is not
+    // later "fixed".
     const rawT = (document.getElementById(`po-target-${x.id}-${p}`)?.value || '').trim();
-    let idxs;
-    if (rawT.toLowerCase() === 'all') idxs = arr.map((_, i) => i);
-    // A CHARMED sender writes target='auto' — the engine picks the item and the player never sees
-    // which, so nothing can be projected into the recipient's pack. 'auto' resolves to no index
-    // below, which is the right outcome; noted so it is not later "fixed".
-    // Token grammar MIRRORS the engine's give_item exactly: a plain in-range integer is positional,
-    // anything else is matched by item id or name (a pre-order card ticks names, because its index
-    // space is not the engine's — see the Send Item branch). These two must change together.
-    else
-      idxs = rawT
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((t) => {
-          const n = parseInt(t);
-          if (Number.isInteger(n) && String(n) === t && n >= 0 && n < arr.length) return n;
-          return arr.findIndex((it) => it && (String(it.id) === t || it.name === t));
-        })
-        .filter((n) => Number.isInteger(n) && n >= 0 && n < arr.length);
-    const uniq = [...new Set(idxs)].sort((a, b) => b - a);
+    const uniq = theItemsASendItemOrderHandsOver(arr, rawT).places;
     // only DELIVER into the recipient's list this turn if they are co-located this phase; a
     // cross-province send leaves the giver now but arrives with the recipient only at turn's end.
     const _same = predictedLocation(x.id, p)?.id === predictedLocation(recipCh.id, p)?.id;
