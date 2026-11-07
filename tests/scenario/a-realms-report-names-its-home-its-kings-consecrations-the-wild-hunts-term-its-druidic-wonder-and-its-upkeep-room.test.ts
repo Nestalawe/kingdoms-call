@@ -1,11 +1,13 @@
-// A realm's turn report names five facts of its own in its `kingdom` (plan P1-11e24), each as the turn counts it, for
-// the order form's creed notes and treasury ledger to read (P1-11e25, e26, e30, e34); until then nothing reads them:
+// A realm's turn report names facts of its own in its `kingdom` (plan P1-11e24; the hero-wage ones P1-11e30), each as
+// the turn counts it, for the order form's creed notes and treasury ledger to read (P1-11e25, e26, e29, e30, e34):
 // - `homeProvinceId`: its home province (homeProvinceIdFor: its founding capital, held or lost);
 // - `theConsecrationsItsKingMayHold`: the consecrations its living king may hold at once (his White, and Holy Sites');
 // - `theTurnsAWildHuntServesBeyondThisOne`: the turns a Wild Hunt's beasts serve beyond the turn (and The Long Hunt's);
 // - `itsDruidicWonderHalvesItsBeastsWages`: whether its Druidic Wonder stands (gdActiveFor), halving its beasts' wages;
 // - `theUpkeepDiscoveriesCutsAndTheirRoom`: each upkeep discovery's cut on a unit of each type, and its room left under
-//   its cap once the roster's wages have drawn on it (the cuts share the realm's 5%-of-base-tax cap, one at a time).
+//   its cap once the roster's wages have drawn on it (the cuts share the realm's 5%-of-base-tax cap, one at a time);
+// - `theHeroWageDiscoveriesCutsAndTheirRoom` and `theHeroWageDiscoveriesCeilingsAndTheirRoom`: each hero-wage
+//   discovery's cut on a hero of each alignment, or its ceiling, and its room left once the heroes' wages have drawn on it.
 // Who sees what doesn't change (P1-11's Decision 6): each is the realm's own, in its own report alone.
 //
 // Level 2 (scenario): the report is built from a world after a turn, and each field is checked against the turn's own
@@ -13,8 +15,8 @@
 // on a world made from KC_SEED. Not lower: the fields are the report's, built from what a realm may see of the world.
 //
 // Staged: realm 0 (Druidic) has lost its founding capital (now no realm's), holds a province beside it where its
-// heroes stand, has built its Druidic Wonder there, and holds The Long Hunt, Quartermasters (infantry's wage, -1g) and
-// Supply Depots (every unit's wage, -1g); its king, White 0, leads one company of Shieldwall Levies (2g: Quartermasters
+// heroes stand, has built its Druidic Wonder there, and holds The Long Hunt, Quartermasters (infantry's wage, -1g),
+// Supply Depots (every unit's wage, -1g), Granaries (every hero's, -1g) and Inspiring Leadership (no hero above 3g); its king, White 0, leads one company of Shieldwall Levies (2g: Quartermasters
 // cuts it to 1g, so Supply Depots finds nothing left to cut); the province it holds is taxed 60, so the cap they share
 // (5% of its base tax) is above each row's own 1g. Realm 1 (Divine) holds Holy Sites and no other
 // discovery; its king is White 3 (Holy Sites' 1 more needs White 3). Every hero Rests. One case restages realm 1: its
@@ -29,6 +31,8 @@ const FIELDS = [
   'theTurnsAWildHuntServesBeyondThisOne',
   'itsDruidicWonderHalvesItsBeastsWages',
   'theUpkeepDiscoveriesCutsAndTheirRoom',
+  'theHeroWageDiscoveriesCutsAndTheirRoom',
+  'theHeroWageDiscoveriesCeilingsAndTheirRoom',
 ] as const;
 
 interface Province {
@@ -121,13 +125,21 @@ async function theTurn(restage?: (S: World) => void) {
         c.location = held.id;
         c.locationName = held.name;
         c.armies = [];
+        if (!c.isKing) c['pay'] = 6; // (each hero of 6g: Granaries' 1g and Inspiring Leadership's 2g draw on their room)
       }
       // (no wanderer or chieftain in the lost capital or the province beside it)
       S.characters = S.characters.filter((c) => c.player != null || (c.location !== home.id && c.location !== held.id));
       for (const p of [home, held])
         p.characters = (p.characters ?? []).filter((id) => S.characters.some((c) => c.id === id));
       realm0.gdProvinceId = held.id;
-      realm0.discoveries = [{ id: 'gd' }, { id: 'ap08' }, { id: 'sd45' }, { id: 'sd55' }];
+      realm0.discoveries = [
+        { id: 'gd' },
+        { id: 'ap08' },
+        { id: 'sd45' },
+        { id: 'sd55' },
+        { id: 'sd17' },
+        { id: 'sd38' },
+      ];
       realm1.discoveries = [{ id: 'ad03' }];
       const king0 = S.characters.find((c) => c.alive && c.player === 0 && c.isKing);
       const king1 = S.characters.find((c) => c.alive && c.player === 1 && c.isKing);
@@ -253,6 +265,51 @@ test('its upkeep discoveries: each one’s cut on a unit of each type, and its r
     );
   }
   expect(kingdom(1)['theUpkeepDiscoveriesCutsAndTheirRoom'], 'realm 1 holds none').toEqual([]);
+});
+
+test('its hero-wage discoveries: each one’s cut on a hero of each alignment, or its ceiling, and its room left under the cap', async () => {
+  const { S2, kingdom } = await theTurn();
+  const { discHeroWage } = await import('../../src/engine/discoveries.ts');
+  const { DISC_BY_ID } = await import('../../src/engine/rules/the-registry-of-discovery-effects.ts');
+  const { KC_ALIGNMENTS } = await import('../../src/content/kingdoms-call-data.ts');
+  const cuts = kingdom(0)['theHeroWageDiscoveriesCutsAndTheirRoom'] as {
+    theDiscovery: string | null;
+    theGoldItCutsFromAHeroOfEachAlignment: Partial<Record<string, number>>;
+    theRoomLeftUnderItsCap: number | null;
+  }[];
+  const ceilings = kingdom(0)['theHeroWageDiscoveriesCeilingsAndTheirRoom'] as {
+    theDiscovery: string | null;
+    theWagesCeiling: number;
+    theRoomLeftUnderItsCap: number | null;
+  }[];
+  const cap = Number(kingdom(0)['taxBonusCapG']);
+  expect(
+    cuts.map((c) => [c.theDiscovery, c.theGoldItCutsFromAHeroOfEachAlignment]),
+    'Granaries: 1g off every hero',
+  ).toEqual([['sd17', Object.fromEntries(KC_ALIGNMENTS.map((a) => [a, 1]))]]);
+  expect(
+    ceilings.map((c) => [c.theDiscovery, c.theWagesCeiling]),
+    'Inspiring Leadership: no hero above 3g',
+  ).toEqual([['sd38', 3]]);
+  // against the turn's rule: Early Winter's hero wages, the king's aside, on one account, its cap
+  const account = new Map<unknown, number>();
+  const heroes = S2.characters.filter((c) => c.alive && c.player === 0 && !c.isKing);
+  expect(heroes.length, 'realm 0 has heroes who draw on the room (staging)').toBeGreaterThan(0);
+  heroes.forEach((h) =>
+    discHeroWage(S2.players[0], { alignment: String(h['alignment']) }, Number(h['pay']) || 0, account, cap),
+  );
+  for (const c of [...cuts, ...ceilings]) {
+    const row = DISC_BY_ID[String(c.theDiscovery)];
+    expect(c.theRoomLeftUnderItsCap, `${String(c.theDiscovery)}: the turn's room`).toBe(
+      cap - (account.get(row?.effect) ?? 0),
+    );
+  }
+  expect(
+    [...cuts, ...ceilings].map((c) => Number(c.theRoomLeftUnderItsCap) < cap),
+    'each room drawn on by its heroes',
+  ).toEqual([true, true]);
+  expect(kingdom(1)['theHeroWageDiscoveriesCutsAndTheirRoom'], 'realm 1 holds none').toEqual([]);
+  expect(kingdom(1)['theHeroWageDiscoveriesCeilingsAndTheirRoom'], 'realm 1 holds none').toEqual([]);
 });
 
 test("each fact is the realm's own, in its own report's kingdom alone: no realm reads another's", async () => {
