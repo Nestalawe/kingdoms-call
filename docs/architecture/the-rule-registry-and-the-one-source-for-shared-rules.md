@@ -145,13 +145,13 @@ A **magic item's effect** (from P1-19m) is one row in
 - **A runner finds the effects a hero's items carry once a call** (`theEffectsAnItemCarries`, from maps built as the file
   loads), from the items the resolver hands it: his active items (`activeItems`, in `src/engine/items/`, stays the one
   gate). An effect reads only its stage's facts and its row; which items carry it, the runner reads.
-- **The stages written so far** (P1-19m, `src/engine/rules/magic-items/the-commanders-items-in-a-battle.ts`):
-  `strength`'s **the commander's items**, in `armStr` after the unit's own modifiers and before its factors from its
-  force: handed the unit's type, its quality, whether it is skeletal and the realm's alignment, each effect returns a
-  step (strength added, or a multiplier, and for the Kraken Figurehead's step up a tier the tier's multiplier it is
-  divided by), and the runner applies them in the stage's order, each rounded as it goes (the ladder records their sum,
-  one line): ten items. And `strength`'s **a land unit at sea, led** (the Tide-Caller's Horn: whether the sea's penalty to a land
-  unit the bearer leads is waived; `armStr` asks it beside Naval's eighth level).
+- **The stages written so far** (P1-19m): `strength`'s **the commander's items**, in `armStr` after the unit's own
+  modifiers: handed the unit (type, quality, skeletal) and the realm's alignment, each of ten effects returns a step
+  (strength added, or a multiplier, over the unit's own tier's for the Kraken Figurehead's tier up), taken in the
+  stage's order, each rounded as it goes (the ladder records their sum). Effects and product are on plain values
+  (P1-11e37, `rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts`): the runner
+  hands in those carried. And **a land unit at sea, led** (`magic-items/the-commanders-items-in-a-battle.ts`; the
+  Tide-Caller's Horn waives the sea's penalty on the land units the bearer leads, as Naval 8 does).
 - **The battles' stages** (P1-19n, `magic-items/the-commanders-items-at-the-walls-the-volley-and-the-rout.ts`):
   `strength`'s **the defenders' fortifications** (both battles, after the province's and the realm's own bonuses):
   handed the side whose commander carries the item and whether the defenders fight at their home, and the bonus so far,
