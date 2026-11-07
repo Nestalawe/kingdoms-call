@@ -136,10 +136,10 @@ const THE_WIDGETS_CREED_ORDERS = 5;
 const THE_WIDGETS_KINGS_ORDERS = 3;
 /** The words the portal wrote a number of an alignment order in (P1-11d8): each is the order's row's now, so none of
  *  these may be written again: Call to Arms' grade (twice), the Broker's price (twice, and the ledger's fallback), the
- *  Wild Hunt's beasts, and the Blood Offering's tiers (four), in the files that read them (the report's and the join
- *  form's texts of the same orders are the words test's, each-alignment-orders-…-as-its-row-says.test.ts: P1-11d9).
- *  The literals that stay (decision 5: Harvest's 2g and its fallback, "until end of NEXT turn", "VETERAN", Call to
- *  Arms' company, Consecrate's home and limit) are not here. */
+ *  Wild Hunt's beasts, the Blood Offering's tiers (four), and since P1-11e26 the carters' price (the note's and the
+ *  ledger's fallback: the report's, else the row's), in the files that read them (the report's and the join form's
+ *  texts of the same orders are the words test's, each-alignment-orders-…-as-its-row-says.test.ts: P1-11d9). The
+ *  literal that stays ("VETERAN") is not here. */
 const THE_FILES_THAT_READ_THE_ROWS_NUMBERS = [
   'ui/player/order-targets.ts',
   'ui/player/pre-orders.ts',
@@ -154,6 +154,8 @@ const THE_ROWS_NUMBERS_WRITTEN_OUT = [
   '(2g — full Spy result)',
   'seen — 2g.',
   'P.brokerSpy : 2',
+  'P.harvest : 2',
+  '2g raises',
   'bind 2 VETERAN',
   'Empower +2',
   '(+2 tiers each)',
@@ -465,6 +467,10 @@ describe('the player portal reaches the engine only through src/shared/', () => 
       [widget, 'buildTargetField', 'theBloodOfferingsGrades'],
       ['ui/player/pre-orders.ts', 'updateBloodOffering', 'theBloodOfferingsGrades'],
       ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePriceOfWordFromAProvince'],
+      // (since P1-11e26: the carters' price and the Wild Hunt's term, each the row's on a report that names none)
+      [widget, 'buildTargetField', 'thePrice'],
+      [widget, 'buildTargetField', 'theWildHuntsTurnsMore'],
+      ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePrice.value'],
       [
         'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
         'projectedMoveHost',

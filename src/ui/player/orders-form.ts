@@ -122,7 +122,7 @@ export function computeOrderLedgerP() {
             cats.intel.n++;
           }
         } else if (act === 'Harvest the Field') {
-          cats.armies.g += P.harvest != null ? P.harvest : 2;
+          cats.armies.g += P.harvest != null ? P.harvest : ALIGN_ACTIONS['Harvest the Field'].theNumbers.thePrice.value; // its row's, on a report that names no price
           cats.armies.n++;
           cats.armies.wage += 1; // a skeletal unit's wage is a flat 1g
         } else if (act === 'Perform Rite' && /^wild/i.test(tgt)) {
