@@ -139,12 +139,12 @@ A **magic item's effect** (from P1-19m) is one row in
 - **A held item is a copy** ([traps.md](../traps.md#live-saves-keep-copies)): a row names the key a copy carries the
   effect by (its `effect.stat`, a field of the item's own such as `fleetStr`, or its base name, a second name counting as
   its base's, as `hasItemBase` reads it), and holds only the numbers the code wrote inline before (×1.25, +2) and the
-  units the effect reaches. The registry reads each copy's own key, never content's copy of the item, so an old save's
+  units it reaches. The registry reads each copy's own key, never content's copy of the item, so an old save's
   copy works as it did, and no row changes the save's shape. P1-20's item ids name a copy, not an effect: the registry
   never reads them.
-- **A runner finds the effects a hero's items carry once a call** (`theEffectsAnItemCarries`, from maps built as the file
-  loads), from the items the resolver hands it: his active items (`activeItems`, in `src/engine/items/`, stays the one
-  gate). An effect reads only its stage's facts and its row; which items carry it, the runner reads.
+- **A runner finds the effects a hero's items carry once a call**, from the items the resolver hands it: his active
+  items (`activeItems`, in `src/engine/items/`, the one gate), by the index on plain values (`theEffectsAnItemCarries`:
+  P1-11e37b, `rules-on-plain-values/the-effects-a-held-item-carries.ts`). An effect reads its stage's facts and its row.
 - **The stages written so far** (P1-19m): `strength`'s **the commander's items**, in `armStr` after the unit's own
   modifiers: handed the unit (type, quality, skeletal) and the realm's alignment, each of ten effects returns a step
   (strength added, or a multiplier, over the unit's own tier's for the Kraken Figurehead's tier up), taken in the

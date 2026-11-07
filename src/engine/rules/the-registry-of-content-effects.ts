@@ -72,6 +72,7 @@ import type {
   AStepOfTheCommandersItems,
   AUnitLedByACommander,
 } from '../rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts';
+import type { TheRidersAFighterWears } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -536,15 +537,6 @@ export interface AWardAsTheMergeReadsIt {
   readonly pct?: number | undefined;
   readonly hits?: number | undefined;
   readonly school?: string | undefined;
-}
-
-/** The riders a fighter wears beside his wards (pcApplyFx writes them on him, the hit bonus on his status). */
-export interface TheRidersAFighterWears {
-  readonly aura?: number | undefined;
-  readonly burn?: number | undefined;
-  readonly drain?: number | undefined;
-  readonly hitBonus?: number | undefined;
-  readonly dmgBonus?: number | undefined;
 }
 
 /** The riders (pcApplyFx's `fx`): an item's `effect.pc` and a guardian's perk's `fx`, one type for both. A ward among
