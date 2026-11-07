@@ -16,7 +16,7 @@ his note's limit is 7, not 5.
 
 The form gives the turn's six checks in the turn's order (his realm's province; not the home marches; not consecrated
 already; beside no consecrated province; he knows White; fewer than he may hold). A report written before the home and
-the limit were in it knows no home and reads his trained White, for one turn at most.
+the limit were in it (one turn at most) reads his trained White, and knows the home only while the realm holds it.
 
 Parts (c) and (d) are built in a later row and pinned until then: Harvest the Field's price with Corpse-Carters, and
 the Wild Hunt's term with The Long Hunt.

@@ -840,7 +840,7 @@ describe('the orders: what the order form offers a hero, and what the creed orde
     // (P1-11e25, R-131): a captured seat of tax 10 is not the home, nor is the capital once lost (the provinces beside
     // it are still the home marches), and the limit is the king's trained White and Holy Sites' one more (White 7 at
     // five, White 3 at three with Holy Sites, and White 2 under a Curse of 2 at one consecrate; White 2 at two is the
-    // limit); a report older than those fields reads his trained White and knows no home. And the Move note, the phase after a Rite of the Wild Hunt,
+    // limit); a report older than those fields reads his trained White, and the home by its crown marker. And the Move note, the phase after a Rite of the Wild Hunt,
     // counts as many bound beasts in the column as the rite binds (P1-11d8: the row's number).
     const list = creedFields().filter((x) =>
       (THE_CREED_FIELDS_THE_TURN_AGREES_WITH as readonly string[]).includes(x.kind),

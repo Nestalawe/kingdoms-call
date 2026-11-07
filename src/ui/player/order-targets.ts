@@ -873,9 +873,10 @@ export function buildTargetField(c, ph, saved) {
       const ownedHere = !!(curP && curP.tier === 'owned');
       // the turn's six checks (whyAKingMayNotConsecrateAProvince, plan P1-11e25, R-131), on the report's facts: the
       // realm's home (its founding capital, held or lost) and the consecrations its king may hold (his trained White
-      // and Holy Sites' one more), as the turn counts them; a report older than those fields knows no home and reads
-      // his trained White
-      const homeId = report.kingdom?.homeProvinceId ?? null;
+      // and Holy Sites' one more), as the turn counts them; a report older than those fields knows the home only while
+      // the realm holds it (its crown marker) and reads his trained White
+      const homeId =
+        report.kingdom?.homeProvinceId ?? wmP.find((p) => p.tier === 'owned' && p.isHomeCapitalOfOwner)?.id ?? null;
       // Only YOUR OWN consecrated provinces bear on the placement rules (adjacency ban + the limit). Enemy holy ground
       // is visible on the map too, so it must be excluded here or it would wrongly block your placements / inflate
       // your consecrated count.

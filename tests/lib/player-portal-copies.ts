@@ -3912,6 +3912,7 @@ export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'a Consecrate in the capital, lost',
   'a Consecrate by a king of White 2 at three consecrations',
   'a Consecrate by a king of White 2 at one consecration, on a report older than its home and limit',
+  'a Consecrate in the capital, on a report older than its home and limit',
 ] as const;
 export const THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH = [
   'a Call to Arms in a province whose first company is not a garrison',
@@ -4304,12 +4305,20 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
       holding(1),
       'without the home and the limit',
     ],
+    [
+      'a Consecrate in the capital, on a report older than its home and limit',
+      capital,
+      1,
+      unchanged,
+      'without the home and the limit',
+    ],
   ] as const) {
     const divine = worldOf('Divine', (G, theKing) => {
       theKingIn(G, theKing, p, white);
       edit(G, theKing);
     });
-    // a report written before P1-11e24's fields: the field reads the king's trained White, and knows no home
+    // a report written before P1-11e24's fields: the field reads the king's trained White, and knows the home only by
+    // its crown marker while the realm holds it
     const kingdom = isObj(divine.report['kingdom']) ? divine.report['kingdom'] : {};
     const older = Object.fromEntries(
       Object.entries(kingdom).filter(([k]) => k !== 'homeProvinceId' && k !== 'theConsecrationsItsKingMayHold'),
