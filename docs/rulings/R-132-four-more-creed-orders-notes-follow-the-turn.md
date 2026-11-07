@@ -2,8 +2,8 @@
 
 - **Decided:** 2026-11-05, Toby
 - **Status:** Confirmed
-- **Source:** Plan question 41, built in PR #473 (parts a and b)
-- **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
+- **Source:** Plan question 41, built in PR #473 (parts a and b) and PR #PRNUM (parts c and d)
+- **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts), [`the-player-portal-reaches-the-engine-only-through-src-shared`](../../tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts)
 
 As [R-131](R-131-the-creed-orders-notes-follow-the-turn.md): each creed order's note says what the turn will do.
 
@@ -18,8 +18,14 @@ The form gives the turn's six checks in the turn's order (his realm's province; 
 already; beside no consecrated province; he knows White; fewer than he may hold). A report written before the home and
 the limit were in it (one turn at most) reads his trained White, and knows the home only while the realm holds it.
 
-Parts (c) and (d) are built in a later row and pinned until then: Harvest the Field's price with Corpse-Carters, and
-the Wild Hunt's term with The Long Hunt.
+Part (c), Harvest the Field's price: the note and the treasury ledger give the price the turn takes, from the report
+(nothing with Corpse-Carters). Example: Queen Isolde's realm holds Corpse-Carters; her note says 0g, not 2g.
+
+Part (d), the Wild Hunt's term: the rite's choice says how long the beasts serve as the turn counts it, from the
+report. Example: her realm holds The Long Hunt; the choice says the beasts serve "until end of the turn after next".
+
+A report written before these figures were in it (one turn at most) gives the order's own numbers: 2g, and the next
+turn.
 
 The question was: four notes said otherwise than the turn. Option 1: "each note follows the turn". Option 2 (not
 taken): the turn follows the notes.
