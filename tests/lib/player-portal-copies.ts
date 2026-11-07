@@ -3914,6 +3914,7 @@ export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'the Rite of the Wild Hunt, on a report older than its term',
   'the Move note after the Rite of the Wild Hunt',
   'a Blood Offering marked on two companies',
+  'a Blood Offering marked the other way round',
   'a Blood Offering marked on a bound beast',
   'a Blood Offering with nothing marked',
   'a Blood Offering with a side left empty',
@@ -4300,6 +4301,7 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
     const theNames = (said: string | undefined) => (said ? said.split(', ') : []);
     for (const [kind, hero, extra] of [
       ['a Blood Offering marked on two companies', offerer, 'S:0|E:1'],
+      ['a Blood Offering marked the other way round', offerer, 'S:1|E:0'],
       ['a Blood Offering marked on a bound beast', markedOnABeast, 'S:2|E:1'],
       ['a Blood Offering with nothing marked', offerer, ''],
       ['a Blood Offering with a side left empty', offerer, 'S:1|E:'],
@@ -4340,6 +4342,14 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
       const given = before
         .filter((b) => !after.some((a) => a['unitName'] === b['unitName']))
         .map((b) => String(b['unitName']));
+      const raised = risen.map((a) => String(a['unitName']));
+      // whether the turn did what the marks name (each side's companies, by their places in the column)
+      const marked = (side: string) =>
+        (new RegExp(`${side}:([0-9,]*)`).exec(extra)?.[1] ?? '')
+          .split(',')
+          .filter((x) => x !== '')
+          .map((i) => String(before[Number(i)]?.['unitName']));
+      const same = (a: readonly string[], b: readonly string[]) => a.join('|') === b.join('|');
       const row = theRowsNumber('perform-rite', 'theBloodOfferingsGrades');
       push(
         kind,
@@ -4350,10 +4360,12 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
             .filter((r) => r.marks.includes('S') && r.marks.includes('E'))
             .map((r) => r.company),
           ...(given.length ? { 'the grades each rises': grades } : {}),
+          // (its hint's ✓: the marks are what the turn follows; else its warning, or "Nothing marked")
+          'the turn follows the marks': hint.startsWith('✓'),
         },
         {
           given,
-          raised: risen.map((a) => String(a['unitName'])),
+          raised,
           'the companies it may mark': before
             .filter((b) =>
               aBloodOfferingMayTakeTheCompany(
@@ -4369,6 +4381,7 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
           ...(given.length
             ? { 'the grades each rises': grades.map(() => (rises.length === 1 ? rises[0] : rises)) }
             : {}),
+          'the turn follows the marks': given.length > 0 && same(given, marked('S')) && same(raised, marked('E')),
         },
         given.length ? { 'the grades each rises': grades.map(() => row) } : {},
       );
