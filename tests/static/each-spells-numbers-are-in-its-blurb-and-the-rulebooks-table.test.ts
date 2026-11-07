@@ -458,3 +458,17 @@ test.for([
     for (const words of saidBefore) expect(text, `${name}'s ${where} no longer says "${words}"`).not.toContain(words);
   }
 });
+
+// The rulebook's Charm row says what the turn shows the charmer, as the hint does (R-136, plan question 46 (e)): as the
+// Charm takes hold, his Chronicle lists the charmed hero's skills and magic items (src/engine/orders/spells/psychic-
+// spells-…ts, the Charm's line), and no longer that he never sees them.
+test("the rulebook's Charm row says the Chronicle lists the charmed hero's skills and magic items (R-136)", () => {
+  let row = theRulebooksRowOf('Charm') ?? '';
+  for (let before = ''; before !== row;) {
+    before = row;
+    row = row.replace(/<[^>]*>/g, '');
+  }
+  expect(row).toContain('your Chronicle lists their skills and the magic items they carry');
+  expect(row).not.toContain('never sees their skills or possessions');
+  expect(HINTS.Charm).toContain('you learn their skills and magic items');
+});

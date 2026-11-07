@@ -113,12 +113,19 @@ export const THE_ALIGNMENT_ORDERS = {
     creed: 'Pagan',
     theKingAlone: false,
     theNumbers: {
-      theWildHuntsBeasts: { value: 2, writtenAs: 'as a word', inItsCreedsSection: 'the Wild Hunt binds {N} of' },
+      theWildHuntsBeasts: {
+        value: 2,
+        writtenAs: 'as a word',
+        inItsCreedsSection: 'the Wild Hunt binds {N} of',
+        inTheReportsSummary: 'the Wild Hunt binds {N} of',
+        inTheJoinForm: 'the Wild Hunt binds {N} of',
+      },
       // the turns the bound beasts serve beyond this one, more with the realm's discoveries
       theWildHuntsTurnsMore: {
         value: 1,
         writtenAs: 'as the turn it lasts until',
         inItsCreedsSection: 'serve until the end of {N}',
+        inTheReportsSummary: 'as Veterans until the end of {N}',
       },
       theBloodOfferingsGrades: {
         value: 2,
