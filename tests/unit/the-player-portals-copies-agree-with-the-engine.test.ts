@@ -65,7 +65,8 @@
 // (`exploreMoveGainBefore`, on a staged march into the capital) is what `resolveMoveOrder` maps, for a hero with no
 // Traveller's Cloak, one worn and one carried as a spare (R-125: a worn one alone); the army card's sea note is
 // `getSeaCapability`'s answer, a Naval 8 hero's too (R-125), and on staged columns of flyers beside too few hulls, its
-// words written out (R-135: the card asks `seaLiftOfAColumn`). Every engine function leaves its input as it was (the values are frozen, so a write
+// words written out (R-135: the card asks `seaLiftOfAColumn`); its upkeep, on staged columns under a Druid 6 hero and a
+// Druidic Wonder, is what Early Winter charges (R-135). Every engine function leaves its input as it was (the values are frozen, so a write
 // throws). P1-11c1 (plan P1-11c, before the form takes its tables and its check from the engine's side): the order
 // form's eight Cast Spell tables (`order-chances.ts` run whole, the others read by their declarations) are the ones
 // `SPELL_DEFS_P` makes, each as the form reads it (a list in its order, a map, a set), but an Encounter plan lists the

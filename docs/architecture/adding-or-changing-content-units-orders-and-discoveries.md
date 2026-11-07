@@ -26,7 +26,8 @@ rule there, once. Rules are still restated:
   `tests/lib/player-portal-copies.ts` checks (`effMagicLvl`, which feeds the engine's `theLevelAHerosSkillCountsAt` the
   report's items and aura since R-135; the Explore forecast's march-in share `exploreMoveGainBefore` (since R-125); the level of a hero's Druid that `druidNeedP` and the army card's Druid lines
   feed the engine's Druid rule, and the Explorer, Trailblazer and discoveries' factor `exploreGainFor` feeds the engine's Explore gain (P1-11d14); and the Naval 8 the Move notice and the army card's sea line (R-135) work out from the report's skills to feed the sea
-  lift, `seaLiftOfAColumn`; since P1-11c1 the order form's casting count; its Cast Spell tables are the engine
+  lift, `seaLiftOfAColumn`; the army card's upkeep hands the report's Druid and Wonder to the Druid's half wage,
+  `aLeadersBeastsPayHalfWages` (R-135); since P1-11c1 the order form's casting count; its Cast Spell tables are the engine
   folder's, made by calls since P1-11c3, and its target field's "the caster's province only" asks the engine's mark
   check since P1-11c4: the parity test checks the form's eight declarations and pins each target list; the army card's
   kin and feud ask the battle's own rule since P1-11c5, `theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt`, after a Druid
