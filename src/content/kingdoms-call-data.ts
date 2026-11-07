@@ -14452,7 +14452,7 @@ export const SPELL_DEFS_P = {
     target: 'character',
     encounter: true,
     phase: true,
-    desc: "Action: a number of the target's units equal to your skill level are struck — Green units are destroyed outright, and every other struck unit PERMANENTLY drops one experience level; a skeletal unit struck by it shatters outright. Combat: deals 12% of the target's max HP, plus 3% per Psychic level (15% at 1, 27% at 5), as damage; the caster takes a quarter of that. Battle magic: negates the enemy commander's Tactical bonus.",
+    desc: "Action: a number of the target's units equal to your skill level (counted to 5) are struck — Green units are destroyed outright, and every other struck unit PERMANENTLY drops one experience level; a skeletal unit struck by it shatters outright. Combat: deals 12% of the target's max HP, plus 3% per Psychic level (15% at 1, 27% at 5), as damage; the caster takes a quarter of that. Battle magic: halves the enemy commander's Tactical bonus, on land, if he has any.",
     fn: 'psychic_storm',
   },
 
@@ -14504,7 +14504,7 @@ export const SPELL_DEFS_P = {
     target: 'none',
     encounter: true,
     phase: false,
-    desc: 'Combat: deals 1–3 damage per caster level (counted to level 5) to the opponent. Battle magic: the bolt leaps from army to army — a number of enemy armies equal to your level each lose 20% of their strength for the battle.',
+    desc: 'Combat: deals 1–3 damage per caster level (counted to level 5) to the opponent. Battle magic: the bolt leaps from army to army — a number of enemy armies equal to your level (counted to 5) each lose 20% of their strength for the battle.',
     fn: 'elemental_lightning',
   },
   Fireball: {
@@ -14570,7 +14570,7 @@ export const SPELL_DEFS_P = {
     target: 'none',
     encounter: true,
     phase: false,
-    desc: "Combat: 10% per Necromancy level (at most 60%) to strike for 40% of the enemy's maximum health (×1.1 with Death's Finger Ring).",
+    desc: "Combat: 10% per Necromancy level (counted to 5), at most 60%, to strike for 40% of the enemy's maximum health (×1.1 with Death's Finger Ring).",
     fn: 'necromancy_hand',
   },
   Plague: {
@@ -14578,7 +14578,7 @@ export const SPELL_DEFS_P = {
     target: 'province',
     encounter: false,
     phase: true,
-    desc: "Action: in your province or an adjacent one, each humanoid army unit has a (10% + 5%/level) chance to drop an experience level; survivors are immunised (half chance thereafter). The plague then spreads to adjacent provinces (15% each per phase) until turn's end. Not cumulative.",
+    desc: "Action: in your province or an adjacent one, each humanoid army unit has a (10% + 5%/level, the level counted to 5) chance to drop an experience level; a unit that faced a plague before rolls at half the chance. The plague then spreads to adjacent provinces (15% each per phase) until turn's end. Not cumulative.",
     fn: 'necromancy_plague',
   },
 
