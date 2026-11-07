@@ -2321,13 +2321,12 @@ export function aSearchLairAfterEachMarchTheTurnRefuses(c: Copies): ASearchLairA
 // on the orders staged in its fields; the turn's side is its phases, played one at a time as its loop plays them. Where
 // the forecast disagrees with the turn (question 42), the difference is pinned exactly: each case says which kind it is.
 
-/** The kinds of staged holding: those the forecast and the turn agree on, and those it is known to get wrong (question
- *  42): an item handed to a comrade who marches in that phase (the turn hands it over at once, the form sends it by courier), a chain of hand-overs in
- *  one phase (the turn hands over in its own order, the form by the heroes' order), the Philosopher's Stone used (the
- *  turn destroys it), a beast recruited, handed over or taken up past a leader's beast command (the turn puts it in
- *  the garrison or leaves it where it was), a band of garrison troops hired (the turn musters it into the garrison),
- *  companies taken up from the garrison (the turn adds them last first), and risen dead handed to a comrade of a realm
- *  that is not Undead (the turn keeps them with the giver; the form's companies carry no risen mark). */
+/** The kinds of staged holding: those the forecast and the turn agree on (since P1-11e19 a beast recruited, handed
+ *  over or taken up past a leader's beast command, a band of garrison troops hired, companies taken up from the
+ *  garrison last first, and risen dead handed to a comrade of a realm that is not Undead), and those it is known to get
+ *  wrong (question 42): an item handed to a comrade who marches in that phase (the turn hands it over at once, the form
+ *  sends it by courier), a chain of hand-overs in one phase (the turn hands over in its own order, the form by the
+ *  heroes' order), and the Philosopher's Stone used (the turn destroys it). */
 export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'items handed to a comrade beside him',
   'an item sent by courier to a comrade elsewhere',
@@ -2342,6 +2341,14 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a company disbanded',
   // (P1-11e18, R-129: a Mithril suit sent with "all" stays on its wearer, as the turn keeps it)
   'Mithril Armour sent with "all"',
+  // (P1-11e19, R-129: the companies a Recruit, a hand-over and a Pick Up move, by the turn's own rules)
+  'a beast recruited past his beast command',
+  'a band of garrison troops hired',
+  'companies taken up from the garrison by their places',
+  'the whole garrison taken up',
+  'risen dead handed to a comrade',
+  'a beast handed to a comrade at his beast command',
+  'a beast taken up past his beast command',
   // (P1-11e17: the forecasts' replay, each red on a fault planted in it)
   'an item handed over by its name',
   'every company left in the garrison',
@@ -2352,13 +2359,6 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = [
   'an item handed to a comrade marching in',
   'a chain of hand-overs in one phase',
   "the Philosopher's Stone used",
-  'a beast recruited past his beast command',
-  'a band of garrison troops hired',
-  'companies taken up from the garrison by their places',
-  'the whole garrison taken up',
-  'risen dead handed to a comrade',
-  'a beast handed to a comrade at his beast command',
-  'a beast taken up past his beast command',
 ] as const;
 export type AKindOfHolding =
   (typeof THE_HOLDINGS_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_HOLDINGS_THE_FORECAST_GETS_WRONG)[number];
@@ -2389,10 +2389,11 @@ export interface AStagedHolding {
   readonly orders: Record<string, readonly AnOrderOfWhatAHeroHolds[]>;
   readonly province: unknown;
 }
-/** A company, as both sides are read: its type and quality, and "(risen)" when it is marked as risen dead. */
+/** A company, as both sides are read: its type and quality, and "(risen)" when it is marked as risen dead (the turn's
+ *  `_isSkeletal`; the report's and the form's `skeletal`). */
 function aCompany(a: unknown): string {
   const u = isObj(a) ? a : {};
-  return `${String(u['type'])} (${String(u['quality'])})${u['_isSkeletal'] ? ' (risen)' : ''}`;
+  return `${String(u['type'])} (${String(u['quality'])})${u['_isSkeletal'] || u['skeletal'] ? ' (risen)' : ''}`;
 }
 /** The world staged for what a hero holds (P1-11d2): as marchingWorld's (every land province no realm holds realm 0's,
  *  its guards and neutral heroes gone), realm 0 rich enough for any Recruit, and each case on its own province (two
