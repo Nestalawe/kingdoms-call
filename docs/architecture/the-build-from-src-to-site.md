@@ -113,7 +113,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     `tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts`).
   - **In the engine:** `TurnContext`, the turn's context (every field `resolveTurn` adds), in
     `engine/turn/context.ts`; `LogLine`, a line of the GM's log, in the events file; `OrderKind`, the 48 kinds an
-    order's action reads as, beside `PHASE_ACTION_MAP` (`engine/turn/phase-intents-and-dependency-ordering.ts`). Each
+    order's action reads as, beside `PHASE_ACTION_MAP` (`engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`). Each
     of these files is freed of its ts-nocheck line, so TypeScript checks these types and the map's `satisfies`, and
     every freed file that reads them is checked against them; where their reads disagreed with `TurnContext`, the
     type was corrected (a line's `targets` may hold null: callers pass `[c.player]`). Beside them in

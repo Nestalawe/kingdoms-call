@@ -8,7 +8,10 @@ import { skillLevel } from '../titles/perks.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
 import { theLevelEachMasterySpellNeeds } from '../rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts';
-import { PHASE_ACTION_MAP, normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
+import {
+  PHASE_ACTION_MAP,
+  normaliseAction,
+} from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 import { resolveMoveOrder } from './move-order-marches-voyages-and-battles-on-arrival.ts';
 import {
   resolveChartTheUnknownOrder,

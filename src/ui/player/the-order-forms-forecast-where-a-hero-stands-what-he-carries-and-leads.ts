@@ -6,15 +6,18 @@ import {
   aMercenaryBandIsNotHiredIntoAFullColumn,
   aProvinceIsSafePassageForARealmsColumn,
   canEnterTerrain,
+  normaliseAction,
   seaLiftOfAColumn,
   takesHalfAHullAboard,
   theAlignmentOrdersByTheNameTheFormWrites,
   theCompaniesALeaderTakesUpToHisBeastCommandsRoom,
   theFirstStepOfAShortestRouteAColumnMayTake,
   theGarrisonPlacesAPickUpTakes,
+  theHeroesWhoMustActFirstInAPhase,
   theHexNextToAProvinceInADirection,
   theItemsASendItemOrderHandsOver,
   theMovePoolAStepSpends,
+  theOrderTheHeroesActInAPhase,
   theRisenDeadFollowAHandOverTo,
   theRoomALeadersBeastCommandLeaves,
   theStepAColumnTakesTowardAFarProvince,
@@ -553,8 +556,8 @@ export function effSkillP(c, k) {
 
 // ── The forecasts' replay (plan P1-11e17) ────────────────────────────────────────────────────────────────────────────
 // What each hero will carry and lead, and what each province's garrison will hold unled, as a phase begins: ONE forward
-// replay of the realm's orders, a phase at a time from the report, in the form's order of today (each phase: the items
-// handed over, hero by hero in the report's order; then what the phase's orders add to each garrison, from what each
+// replay of the realm's orders, a phase at a time from the report (each phase: the items handed over, hero by hero in
+// the turn's order of the phase's heroes since P1-11e20; then what the phase's orders add to each garrison, from what each
 // hero leads as the phase begins; then what each hero will lead, from what he and his comrades led as it began; then
 // what the phase's Pick Ups take from each garrison). predictedItems, projectedLedArmies and projectedGarrison each
 // read it; they used to replay the phases each on its own (the last two calling each other through a shared cache).
@@ -596,7 +599,7 @@ function theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive) {
   // the garrison of each province an order has touched, by the province's id as predictedLocation gives it
   const garrisons = new Map();
   for (let p = 0; p < upToPhaseExclusive; p++) {
-    theItemsAPhasesOrdersHandOver(characters, items, byKey, p);
+    theItemsAPhasesOrdersHandOver(report, characters, items, byKey, p);
     const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, armies, p);
     const next = new Map();
     // the beasts the phase's Pick Ups take past a leader's beast command, which go back to the garrison
@@ -610,34 +613,88 @@ function theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive) {
   return { items, armies, garrisons };
 }
 
+// The realm's heroes who act in the phase `p`, in the order the turn has them act (R-129, plan P1-11e20): the turn's
+// own rules (src/shared/), on each hero's order of the phase as the form holds it (its kind as the turn reads its name),
+// his skills as the report gives them, where he stands as the phase begins and where his march takes him. Initiative in
+// tiers (an order that stays put, then a march, then a Defend), and who must act first: a hero handing an item or
+// companies to a comrade beside him before that comrade, a comrade marching in to take them before the giver, a Pick Up
+// after the leaves of its province. A hero who joins this turn acts from the phase after (his levels hidden, so his
+// initiative a forecast limit, as is a hero of the realm the report gives no id: he acts after the rest on a tie).
+// Forecast limits, left to the turn: a pursuit under way, a march the interlocks cancel, a rival's hero.
+function theHeroesInTheOrderTheTurnHasThemActInAPhase(report, characters, p) {
+  const field = (part, x) => String(document.getElementById(`po-${part}-${x.id}-${p}`)?.value || '');
+  const acting = characters.filter((x) => x && x.alive !== false && !(x.hiredInPhase >= 0 && p <= x.hiredInPhase));
+  const plainIds = new Map(acting.map((x, i) => [x, typeof x.id === 'number' ? x.id : 1_000_000 + i]));
+  const heroes = acting.map((x) => ({
+    id: plainIds.get(x),
+    action: normaliseAction({ action: field('action', x) }),
+    skills: x.skills,
+    hero: x,
+  }));
+  const intents = new Map(
+    heroes.map((h) => {
+      const from = predictedLocation(h.hero.id, p);
+      const to = h.action === 'move' ? predictedLocation(h.hero.id, p + 1) : null;
+      const handsTo =
+        h.action === 'give_item' || h.action === 'leave_army'
+          ? acting.find((x) => String(x.id) === field('extra', h.hero))
+          : null;
+      return [
+        h.id,
+        {
+          id: h.id,
+          player: report.playerIndex ?? null,
+          action: h.action,
+          fromId: from ? from.id : null,
+          toId: to && from && to.id !== from.id ? to.id : null,
+          order: { target: field('target', h.hero), extra: field('extra', h.hero) },
+          theHeroHisOrderHandsTo: handsTo ? plainIds.get(handsTo) : null,
+          theHeroHePursues: null,
+        },
+      ];
+    }),
+  );
+  return theOrderTheHeroesActInAPhase(heroes, theHeroesWhoMustActFirstInAPhase(intents)).map((h) => h.hero);
+}
+
 // Each character's item list through the phase `p`, by replaying its Give Item orders exactly as the GM engine resolves
 // them (splice from giver, push to recipient — so item INDICES stay aligned with what the engine will see at resolution
-// time). This lets a character who RECEIVES an item in an earlier phase pass it on in a later one.
-function theItemsAPhasesOrdersHandOver(characters, items, byKey, p) {
-  characters.forEach((x) => {
-    const action = document.getElementById(`po-action-${x.id}-${p}`)?.value || '';
-    if (action !== 'Send Item' && action !== 'Give Item') return;
-    // a Give Item order can now hand over MULTIPLE items (comma-separated indices, or
-    // "all"). Splice high→low so earlier removals don't shift the indices still to be moved.
-    const recipKey = String(document.getElementById(`po-extra-${x.id}-${p}`)?.value || '').trim();
-    const arr = items.get(String(x.id)) || [];
-    if (!recipKey || !items.has(recipKey)) return;
-    const recipCh = byKey.get(recipKey);
-    if (!recipCh) return;
-    // The items the turn hands over, by its own rule (src/shared/): "all", or each token a place (a plain whole number
-    // in the pack's range) or an item's id or name, highest first; a granted Mithril suit stays on its wearer (R-129).
-    // A CHARMED sender writes target='auto' — the engine picks the item and the player never sees which, so nothing can
-    // be projected into the recipient's pack: 'auto' names no item, which is the right outcome; noted so it is not
-    // later "fixed".
-    const rawT = (document.getElementById(`po-target-${x.id}-${p}`)?.value || '').trim();
-    const uniq = theItemsASendItemOrderHandsOver(arr, rawT).places;
-    // only DELIVER into the recipient's list this turn if they are co-located this phase; a
-    // cross-province send leaves the giver now but arrives with the recipient only at turn's end.
-    const _same = predictedLocation(x.id, p)?.id === predictedLocation(recipCh.id, p)?.id;
-    uniq.forEach((i) => {
-      const [it] = arr.splice(i, 1);
-      if (_same) (items.get(recipKey) || []).push(it);
-    });
+// time). This lets a character who RECEIVES an item in an earlier phase pass it on in a later one. The heroes hand over
+// in the turn's order (P1-11e20), so a comrade who acts before the giver stands where the phase leaves him: a comrade
+// marching in to take it has arrived, and is handed it at once.
+function theItemsAPhasesOrdersHandOver(report, characters, items, byKey, p) {
+  const sends = (x) => ['Send Item', 'Give Item'].includes(document.getElementById(`po-action-${x.id}-${p}`)?.value);
+  if (!characters.some(sends)) return;
+  const actedBefore = new Set();
+  const whereHeStandsAsTheGiverActs = (x) => predictedLocation(x.id, actedBefore.has(x) ? p + 1 : p);
+  theHeroesInTheOrderTheTurnHasThemActInAPhase(report, characters, p).forEach((x) => {
+    if (sends(x)) theItemsAHeroHandsOver(x, items, byKey, p, whereHeStandsAsTheGiverActs);
+    actedBefore.add(x);
+  });
+}
+// The items the hero `x` hands over in the phase `p` (his Send Item), as he acts; `whereHeStandsAsTheGiverActs` is where
+// his comrade stands then.
+function theItemsAHeroHandsOver(x, items, byKey, p, whereHeStandsAsTheGiverActs) {
+  // a Give Item order can now hand over MULTIPLE items (comma-separated indices, or
+  // "all"). Splice high→low so earlier removals don't shift the indices still to be moved.
+  const recipKey = String(document.getElementById(`po-extra-${x.id}-${p}`)?.value || '').trim();
+  const arr = items.get(String(x.id)) || [];
+  if (!recipKey || !items.has(recipKey)) return;
+  const recipCh = byKey.get(recipKey);
+  if (!recipCh) return;
+  // The items the turn hands over, by its own rule (src/shared/): "all", or each token a place (a plain whole number
+  // in the pack's range) or an item's id or name, highest first; a granted Mithril suit stays on its wearer (R-129).
+  // A CHARMED sender writes target='auto' — the engine picks the item and the player never sees which, so nothing can
+  // be projected into the recipient's pack: 'auto' names no item, which is the right outcome; noted so it is not
+  // later "fixed".
+  const rawT = (document.getElementById(`po-target-${x.id}-${p}`)?.value || '').trim();
+  const uniq = theItemsASendItemOrderHandsOver(arr, rawT).places;
+  // only DELIVER into the recipient's list this turn if they are co-located as he acts; a
+  // cross-province send leaves the giver now but arrives with the recipient only at turn's end.
+  const _same = predictedLocation(x.id, p)?.id === whereHeStandsAsTheGiverActs(recipCh)?.id;
+  uniq.forEach((i) => {
+    const [it] = arr.splice(i, 1);
+    if (_same) (items.get(recipKey) || []).push(it);
   });
 }
 

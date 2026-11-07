@@ -3,7 +3,7 @@ import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import type { Army, Character, GameState, Grave, Province } from '../schemas/saved-game-state.ts';
-import type { OrderKind } from './turn/phase-intents-and-dependency-ordering.ts';
+import type { OrderKind } from './rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 
 // ── A UNIT AND A HERO IN A BATTLE ────
 // A battle writes marks on its units and its commanders that last for that battle only, and wipes them at the battle's

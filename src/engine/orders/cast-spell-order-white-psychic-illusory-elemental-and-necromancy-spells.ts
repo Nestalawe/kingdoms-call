@@ -28,7 +28,7 @@ import {
   isVeiled,
 } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { normaliseAction } from '../turn/phase-intents-and-dependency-ordering.ts';
+import { normaliseAction } from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Realm } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
