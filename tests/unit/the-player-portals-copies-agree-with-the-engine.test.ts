@@ -146,6 +146,7 @@ import {
   armyCardMasteryAgainstTheTurn,
   armyCardSeaNoteAgainstTheEngine,
   armyCardSeaNoteOnStagedColumns,
+  theArmyCardsStrengthAgainstTheTurn,
   theArmyCardsUpkeepAgainstTheTurn,
   aStagedHeroLeading,
   armyCardShortfallAgainstTheBattle,
@@ -441,6 +442,24 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
       ['skeletal Thunderbirds under a Druid 6 hero', 1],
       ['summoned Thunderbirds under a Druid 6 hero', 0],
       ['Thunderbirds of the Wild Hunt under a Druid 6 hero', 0],
+    ]);
+  });
+
+  test("the army card's strength of a unit is the turn's before the ground and the foe: Druid 8, Necromancy 6, his items, the realm's discoveries (R-135, question 45 (a))", () => {
+    // No matrix game has a Druid 8 hero leading beasts, a Necromancy 6 hero leading skeletons, or a hero leading with
+    // items that lift his units, so the columns are staged. The card counted the unit's base strength, a Druid shortfall,
+    // its kin and the Druid mastery: Thunderbirds under a Druid 8 hero read "str 40" where the battle's armStr, with no
+    // ground and no battle, gives 59. Since R-135 it asks the turn's steps in armStr's order.
+    const list = theArmyCardsStrengthAgainstTheTurn(copies);
+    expect(differences(list)).toEqual([]);
+    expect(list.map((x) => [...(x.on as string[]), x.engine])).toEqual([
+      ['Thunderbirds under a Druid 8 hero', 'Thunderbirds', 59],
+      ['Thunderbirds under a Druid 3 hero', 'Thunderbirds', 17],
+      ['skeletal Men-at-Arms under a Necromancy 6 hero', 'Men-at-Arms', 26],
+      ['Free Lances under a hero with a Golden Spur and a Battle Standard', 'Free Lances', 24],
+      ['Free Lances under a hero with a Golden Spur and a Battle Standard', 'Men-at-Arms', 19],
+      ['Men-at-Arms under a hero of a realm with War Drums', 'Men-at-Arms', 18],
+      ['Men-at-Arms under a hero of a Divine realm with the Chalice of Dawn', 'Men-at-Arms', 20],
     ]);
   });
 
