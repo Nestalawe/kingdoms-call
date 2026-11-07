@@ -115,8 +115,8 @@
 // and company, the Broker's price, the carters' price, the Wild Hunt's beasts, grade, price and term, the Blood
 // Offering's marks and grades, where a king may consecrate (his home and his limit the report's since P1-11e25), Call to
 // Arms' company, the carters' grave, grade and price with Corpse-Carters, and the Wild Hunt's term with The Long Hunt
-// (the turn's and the report's since P1-11e26); pinned where they do not: a Blood Offering marked on a bound beast
-// (question 39).
+// (the turn's and the report's since P1-11e26), and the Blood Offering's rows and hint (since P1-11e27, R-133: a
+// company the rite never takes is locked, and the hint names what the turn gives and raises, a side left empty too).
 // P1-11d4 (plan P1-11d, before the ledger's wages, the practice chance and the co-trainer are shared): on staged heroes
 // of realm 0 (its report as the engine builds it from each world), what the treasury ledger (`computeOrderLedgerP`)
 // says the orders will spend and add to the wages is what the turn takes from the treasury in their phase and adds to
@@ -182,7 +182,6 @@ import {
   theOrderListAgainstTheTurn,
   theCreedFieldsAgainstTheRowsAndTheTurn,
   THE_CREED_FIELDS_THE_TURN_AGREES_WITH,
-  THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH,
   theCoTrainersAgainstTheTurn,
   THE_COMRADES_AT_PRACTICE,
   theLedgerAgainstTheTurn,
@@ -839,9 +838,11 @@ describe('the orders: what the order form offers a hero, and what the creed orde
     // Corpse-Carters, the row's 2g on a report that names no price; the most experienced of two graves; a grade higher
     // while the realm's Wonder stands: since P1-11e26, R-131 and R-132), the Rite of the Wild Hunt (two Veteran Stone
     // Giants at the price of one, serving one turn beyond this; two with The Long Hunt, the report's; the row's one on
-    // a report older than its term), a Blood Offering marked on
-    // two companies (the first given, the second raised two grades), a Consecrate in a province of the realm (it
-    // consecrates) and in the capital (the home marches); and Consecrate's home and limit as the report gives them
+    // a report older than its term), a Blood Offering marked on two companies (the first given, the second raised two
+    // grades), and since P1-11e27 (R-133) on a bound beast (its row locked), with nothing marked or a side left empty
+    // (the hint: the turn gives the first company it may and raises the next; so does the Move note's column after it),
+    // by a hero leading one it may take (no offering), a Consecrate in a province of the realm (it consecrates) and in
+    // the capital (the home marches); and Consecrate's home and limit as the report gives them
     // (P1-11e25, R-131): a captured seat of tax 10 is not the home, nor is the capital once lost (the provinces beside
     // it are still the home marches), and the limit is the king's trained White and Holy Sites' one more (White 7 at
     // five, White 3 at three with Holy Sites, and White 2 under a Curse of 2 at one consecrate; White 2 at two is the
@@ -856,26 +857,6 @@ describe('the orders: what the order form offers a hero, and what the creed orde
     const fromTheRows = (x: (typeof list)[number]) =>
       Object.fromEntries(Object.keys(x.rows).map((k) => [k, (x.copy as Record<string, unknown>)[k]]));
     expect(list.map((x) => [x.kind, fromTheRows(x)])).toEqual(list.map((x) => [x.kind, x.rows]));
-  });
-
-  test('what the creed orders’ fields get wrong is pinned: the Blood Offering’s marks (question 39)', () => {
-    // It offers a bound beast to give (the turn takes no bound beast, so it gives the first company it may and raises
-    // the one marked).
-    const list = creedFields();
-    expect(
-      list.map((x) => x.kind).filter((k) => !(THE_CREED_FIELDS_THE_TURN_AGREES_WITH as readonly string[]).includes(k)),
-    ).toEqual([...THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH]);
-    const kind = (k: string) => {
-      const x = list.find((f) => f.kind === k);
-      if (!x) throw new Error(`no staged field of the kind ${k}`);
-      return [x.copy, x.engine];
-    };
-    // his companies: Men-at-Arms (Staged Company 2), Yeoman Longbows (3), bound Stone Giants (4); marked: give the
-    // beasts, raise the bowmen
-    expect(kind('a Blood Offering marked on a bound beast')).toEqual([
-      { given: ['Staged Company 4'], raised: ['Staged Company 3'], 'the grades each rises': [2, 2, 2] },
-      { given: ['Staged Company 2'], raised: ['Staged Company 3'], 'the grades each rises': [2, 2, 2] },
-    ]);
   });
 });
 

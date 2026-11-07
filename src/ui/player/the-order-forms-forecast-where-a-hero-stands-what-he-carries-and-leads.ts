@@ -24,6 +24,7 @@ import {
   whatAMarchsOrderNames,
   whereAHandOversRisenDeadGo,
   whereARecruitedCompanyMusters,
+  theCompaniesABloodOfferingGivesAndRaises,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
 // The order form's forecasts (plan P1-11e3): where a hero will stand, what he will carry and what he will lead, and what a
@@ -476,24 +477,19 @@ export function projectedMoveHost(charId, ph) {
             add({ type: wt, quality: 'Veteran', unitName: `${wt} (bound by the Wild Hunt)`, _projected: true });
         } else out.uncounted.push('the Wild Hunt');
       } else {
-        // Blood Offering — the sacrificed units are gone by the time the column marches.
+        // Blood Offering — the sacrificed units are gone by the time the column marches: those the turn gives (its own
+        // rule: with a side left empty, the first company it may take; R-133, plan P1-11e27).
         const ex = String((document.getElementById(`po-extra-${charId}-${p}`) || {}).value || '');
-        const m = /S:([0-9,]*)\|E:/.exec(ex);
-        if (m) {
-          const atThen = typeof projectedLedArmies === 'function' ? projectedLedArmies(charId, p) : [];
-          m[1]
-            .split(',')
-            .filter(Boolean)
-            .map(Number)
-            .forEach((i) => {
-              const a = atThen[i];
-              if (!a) return;
-              const j = out.armies.findIndex((x) => (x.unitName || x.type) === (a.unitName || a.type));
-              if (j >= 0) {
-                out.armies.splice(j, 1);
-              }
-            });
-        }
+        const atThen = typeof projectedLedArmies === 'function' ? projectedLedArmies(charId, p) : [];
+        const offered = theCompaniesABloodOfferingGivesAndRaises(atThen, ex, asTheReportShowsIt);
+        (offered ? offered.given : []).forEach((i) => {
+          const a = atThen[i];
+          if (!a) return;
+          const j = out.armies.findIndex((x) => (x.unitName || x.type) === (a.unitName || a.type));
+          if (j >= 0) {
+            out.armies.splice(j, 1);
+          }
+        });
       }
       continue;
     }

@@ -21,7 +21,9 @@
 // Mithril suit; the companies a Recruit, a hand-over and a Pick Up move since P1-11e19: the forecasts' replay musters,
 // hands over and takes them up by them, the beast command's room, the risen dead and the garrison's places; the order a
 // season's heroes act in since P1-11e20: the forecasts' replay hands over a season's items in it, with the kind of
-// order each name reads as; the company a Call to Arms musters since P1-11e26: its choice names it).
+// order each name reads as; the company a Call to Arms musters since P1-11e26: its choice names it; the companies a
+// Blood Offering may take, gives and raises since P1-11e27: its rows lock the others, its hint and the Move note's
+// column follow the turn's).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -82,6 +84,8 @@ export {
   theNameTheFormWritesOfTheAlignmentOrder,
 } from '../engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
 export {
+  aBloodOfferingMayTakeTheCompany,
+  theCompaniesABloodOfferingGivesAndRaises,
   theCompanyACallToArmsMusters,
   whyAKingMayNotConsecrateAProvince,
 } from '../engine/rules-on-plain-values/the-company-a-call-to-arms-musters-a-blood-offerings-companies-and-a-consecrations-checks.ts';

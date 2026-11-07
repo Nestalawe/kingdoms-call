@@ -87,7 +87,11 @@ import {
   getFlyCapability,
   isAirCarriable,
 } from '../../src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { countsAgainstBeastCommand } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import {
+  countsAgainstBeastCommand,
+  unitAsItsRealmSeesIt,
+} from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import { aBloodOfferingMayTakeTheCompany } from '../../src/engine/rules-on-plain-values/the-company-a-call-to-arms-musters-a-blood-offerings-companies-and-a-consecrations-checks.ts';
 import { beastCommandCount, druIdPenaltyMult } from '../../src/engine/world/tables.ts';
 import { armStr, druidMasteryGain } from '../../src/engine/battle/terrain-and-unit-strength.ts';
 import { resolveCastSpellOrder } from '../../src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts';
@@ -178,6 +182,8 @@ const COPIES: Record<string, string[]> = {
     '_draftOrdersSnapshot',
     'draftOrderAt',
     'practiceCompanionSkill',
+    // (since P1-11e27 the words under a Blood Offering's rows: what the turn gives and raises)
+    'theBloodOfferingsHint',
     'buildTargetField',
   ],
   // the treasury ledger at the top of the orders (P1-11d4): what the orders will spend and add to the wages
@@ -3888,12 +3894,11 @@ const theRowsNumber = (order: keyof typeof THE_ALIGNMENT_ORDERS, n: string): unk
   return numbers[n]?.value;
 };
 
-/** The creed orders' target fields the parity cases stage: those the field and the turn agree on (Consecrate's home
- *  and limit since P1-11e25, R-131 and R-132: the report's; since P1-11e26, Call to Arms' company as the turn musters
- *  it, Harvest the Field's grave, its grade and its price with Corpse-Carters, and the Wild Hunt's term with The Long
- *  Hunt, each the turn's or the report's, R-131 and R-132), and those it is known to get wrong (question 39): a Blood
- *  Offering marked on companies the rite never takes (the field offers bound beasts and risen dead; the turn gives the
- *  first company it may and raises the next). */
+/** The creed orders' target fields the parity cases stage, each agreeing with the turn (Consecrate's home and limit
+ *  since P1-11e25, R-131 and R-132: the report's; since P1-11e26, Call to Arms' company as the turn musters it, Harvest
+ *  the Field's grave, its grade and its price with Corpse-Carters, and the Wild Hunt's term with The Long Hunt, each the
+ *  turn's or the report's, R-131 and R-132; since P1-11e27, R-133, a Blood Offering's rows and hint: a company the rite
+ *  never takes shown and locked, and what the turn gives and raises with a side left empty or none to give). */
 export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'a Call to Arms in a province whose first company is a garrison',
   'a Call to Arms in a province whose first company is not a garrison',
@@ -3909,6 +3914,12 @@ export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'the Rite of the Wild Hunt, on a report older than its term',
   'the Move note after the Rite of the Wild Hunt',
   'a Blood Offering marked on two companies',
+  'a Blood Offering marked the other way round',
+  'a Blood Offering marked on a bound beast',
+  'a Blood Offering with nothing marked',
+  'a Blood Offering with a side left empty',
+  'a Blood Offering by a hero leading one company it may take',
+  'the Move note after a Blood Offering with a side left empty',
   'a Consecrate in a province of the realm',
   'a Consecrate in the capital',
   'a Consecrate in a captured seat of tax 10',
@@ -3922,9 +3933,7 @@ export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'a Consecrate by a king of White 2 at one consecration, on a report older than its home and limit',
   'a Consecrate in the capital, on a report older than its home and limit',
 ] as const;
-export const THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH = ['a Blood Offering marked on a bound beast'] as const;
-export type AKindOfCreedField =
-  (typeof THE_CREED_FIELDS_THE_TURN_AGREES_WITH)[number] | (typeof THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH)[number];
+export type AKindOfCreedField = (typeof THE_CREED_FIELDS_THE_TURN_AGREES_WITH)[number];
 /** One creed order's field compared: what the field says the order will do (read from its words and its marks), and
  *  what the turn does with it; with its kind, and the rows' numbers for what the field states (where a row has one). */
 export interface ACreedFieldComparison extends Comparison {
@@ -3965,7 +3974,7 @@ function theTurnsConsecration(facts: readonly Obj[], itIsTheHome: boolean): stri
 }
 /** The creed orders' fields (buildTargetField, on realm 0's report as the engine builds it from each world) against
  *  the rows and what the turn does with each order (processOrder, on a copy of the state the report was built from):
- *  each kind of THE_CREED_FIELDS_THE_TURN_AGREES_WITH and THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH, staged in a world
+ *  each kind of THE_CREED_FIELDS_THE_TURN_AGREES_WITH, staged in a world
  *  of its own (its creed, its discoveries, where its hero stands). */
 export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldComparison[] {
   const { g, king, capital, land, at, nextTo } = aWorldForTheOrders();
@@ -4021,6 +4030,13 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
     armies: [
       company('Men-at-Arms'),
       company('Yeoman Longbows'),
+      company('Stone Giants', { quality: 'Veteran', race: 'Primal', _wildHuntUntilTurn: turn + 1 }),
+    ],
+  });
+  // (P1-11e27) a hero whose column holds one company the rite may take, beside a bound beast: no offering
+  const offeringOne = at(stones, {
+    armies: [
+      company('Men-at-Arms'),
       company('Stone Giants', { quality: 'Veteran', race: 'Primal', _wildHuntUntilTurn: turn + 1 }),
     ],
   });
@@ -4276,26 +4292,39 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
       { beasts: theRowsNumber('perform-rite', 'theWildHuntsBeasts') },
     );
   }
-  // a Blood Offering: the companies its marks give and raise, and the grades it says each rises (in its option, its
-  // heading and its mark); what the turn gives and raises
+  // a Blood Offering: the companies it says the turn gives and raises (its hint's words, under the rows: since
+  // P1-11e27, R-133, the turn's own rule names them, a side left empty too), the companies whose rows it lets a player
+  // mark (a company the rite never takes is shown and locked), and the grades it says each rises (in its option, its
+  // heading and its hint); what the turn gives and raises, and the companies of the column the rite may take
   {
     const pagan = worldOf('Pagan');
+    const theNames = (said: string | undefined) => (said ? said.split(', ') : []);
     for (const [kind, hero, extra] of [
       ['a Blood Offering marked on two companies', offerer, 'S:0|E:1'],
+      ['a Blood Offering marked the other way round', offerer, 'S:1|E:0'],
       ['a Blood Offering marked on a bound beast', markedOnABeast, 'S:2|E:1'],
+      ['a Blood Offering with nothing marked', offerer, ''],
+      ['a Blood Offering with a side left empty', offerer, 'S:1|E:'],
+      ['a Blood Offering by a hero leading one company it may take', offeringOne, 'S:0|E:'],
     ] as const) {
       const markup = field_(pagan, hero['id'], 'Perform Rite', 'Blood Offering', extra);
       const led = objects(reportHero(pagan, hero['id'])['armies']);
-      const marks = [...markup.matchAll(/<select class="bo-sel"[^>]*data-idx="(\d+)"[^>]*>([\s\S]*?)<\/select>/g)].map(
+      const rows = [...markup.matchAll(/<select class="bo-sel"[^>]*data-idx="(\d+)"[^>]*>([\s\S]*?)<\/select>/g)].map(
         (m) => ({
           company: String(led[Number(m[1])]?.['unitName']),
-          mark: theOptionsOf(m[2] ?? '').find((o) => o.selected)?.value ?? '',
+          marks: theOptionsOf(m[2] ?? '').map((o) => o.value),
         }),
       );
+      const hint = theWordsOf(/<div id="bo-hint-[^>]*>([\s\S]*?)<\/div>/.exec(markup)?.[1] ?? '');
+      const says = /sacrific\w* (.+?) to empower (.+?)(?: by \+\d+ tiers)?\s*[.(]/.exec(hint);
+      const none = /no offering/i.test(hint);
       const text = theWordsOf(markup);
-      const grades = [/\(\+(\d+) tiers each\)/, /\(\+(\d+) quality tiers each/, /Empower \+(\d+)/].map((re) =>
-        Number(re.exec(text)?.[1]),
-      );
+      const grades = [
+        /\(\+(\d+) tiers each\)/,
+        /\(\+(\d+) quality tiers each/,
+        /Empower \+(\d+)/,
+        / by \+(\d+) tiers/,
+      ].map((re) => Number(re.exec(text)?.[1]));
       const before = objects(objects(pagan.state['characters']).find((h) => h['id'] === hero['id'])?.['armies']);
       const after = objects(
         objects(
@@ -4310,24 +4339,71 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
           tiers.indexOf(String(a['quality'])) -
           tiers.indexOf(String(before.find((b) => b['unitName'] === a['unitName'])?.['quality'])),
       );
+      const given = before
+        .filter((b) => !after.some((a) => a['unitName'] === b['unitName']))
+        .map((b) => String(b['unitName']));
+      const raised = risen.map((a) => String(a['unitName']));
+      // whether the turn did what the marks name (each side's companies, by their places in the column)
+      const marked = (side: string) =>
+        (new RegExp(`${side}:([0-9,]*)`).exec(extra)?.[1] ?? '')
+          .split(',')
+          .filter((x) => x !== '')
+          .map((i) => String(before[Number(i)]?.['unitName']));
+      const same = (a: readonly string[], b: readonly string[]) => a.join('|') === b.join('|');
       const row = theRowsNumber('perform-rite', 'theBloodOfferingsGrades');
       push(
         kind,
         {
-          given: marks.filter((m) => m.mark === 'S').map((m) => m.company),
-          raised: marks.filter((m) => m.mark === 'E').map((m) => m.company),
-          'the grades each rises': grades,
+          given: none ? [] : theNames(says?.[1]),
+          raised: none ? [] : theNames(says?.[2]),
+          'the companies it may mark': rows
+            .filter((r) => r.marks.includes('S') && r.marks.includes('E'))
+            .map((r) => r.company),
+          ...(given.length ? { 'the grades each rises': grades } : {}),
+          // (its hint's ✓: the marks are what the turn follows; else its warning, or "Nothing marked")
+          'the turn follows the marks': hint.startsWith('✓'),
         },
         {
-          given: before
-            .filter((b) => !after.some((a) => a['unitName'] === b['unitName']))
+          given,
+          raised,
+          'the companies it may mark': before
+            .filter((b) =>
+              aBloodOfferingMayTakeTheCompany(
+                unitAsItsRealmSeesIt({
+                  type: String(b['type']),
+                  _isSkeletal: b['_isSkeletal'] === true,
+                  _temporary: b['_temporary'] === true,
+                  _wildHuntUntilTurn: typeof b['_wildHuntUntilTurn'] === 'number' ? b['_wildHuntUntilTurn'] : null,
+                }),
+              ),
+            )
             .map((b) => String(b['unitName'])),
-          raised: risen.map((a) => String(a['unitName'])),
-          'the grades each rises': grades.map(() => (rises.length === 1 ? rises[0] : rises)),
+          ...(given.length
+            ? { 'the grades each rises': grades.map(() => (rises.length === 1 ? rises[0] : rises)) }
+            : {}),
+          'the turn follows the marks': given.length > 0 && same(given, marked('S')) && same(raised, marked('E')),
         },
-        { 'the grades each rises': grades.map(() => row) },
+        given.length ? { 'the grades each rises': grades.map(() => row) } : {},
       );
     }
+    // the Move note's column in the phase after a Blood Offering with a side left empty: the company the turn gives
+    // is gone from it (the turn ignores the marks and gives the first company it may)
+    const column = c.theMoveNotesColumnOn(
+      pagan.report,
+      { [String(offerer['id'])]: [{ action: 'Perform Rite', target: 'Blood Offering', extra: 'S:1|E:' }] },
+      offerer['id'],
+      1,
+    );
+    const played = theTurnPlaysTheOrder(pagan.state, offerer['id'], 'Perform Rite', 'Blood Offering', 'S:1|E:');
+    push(
+      'the Move note after a Blood Offering with a side left empty',
+      { column: (Array.isArray(column) ? column : []).map(String) },
+      {
+        column: objects(objects(played.G['characters']).find((h) => h['id'] === offerer['id'])?.['armies']).map((a) =>
+          String(a['unitName']),
+        ),
+      },
+    );
   }
   // Consecrate: what its field says, and what the turn does, by the king of a Divine realm
   const holding = (n: number) => (G: Obj) => {

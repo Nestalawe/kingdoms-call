@@ -465,7 +465,8 @@ describe('the player portal reaches the engine only through src/shared/', () => 
       [widget, 'buildTargetField', 'thePriceOfWordFromAProvince'],
       [widget, 'buildTargetField', 'theWildHuntsBeasts'],
       [widget, 'buildTargetField', 'theBloodOfferingsGrades'],
-      ['ui/player/pre-orders.ts', 'updateBloodOffering', 'theBloodOfferingsGrades'],
+      // (since P1-11e27 the Blood Offering's hint is one function, which updateBloodOffering and the field call)
+      [widget, 'theBloodOfferingsHint', 'theBloodOfferingsGrades'],
       ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePriceOfWordFromAProvince'],
       // (since P1-11e26: the carters' price and the Wild Hunt's term, each the row's on a report that names none)
       [widget, 'buildTargetField', 'thePrice'],

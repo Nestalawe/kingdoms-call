@@ -6,7 +6,7 @@ import {
   theNameTheFormWritesOfTheAlignmentOrder,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
-import { ALIGN_ACTIONS, SEASONS, _pendingDiscChoices, actionsFor } from './items-and-heroes.ts';
+import { SEASONS, _pendingDiscChoices, actionsFor } from './items-and-heroes.ts';
 import { refreshLaterCastSpells } from './order-chances.ts';
 import {
   DUEL_STANCES,
@@ -22,12 +22,13 @@ import {
 import { buildOrdersForm, refreshEncounterPlan, renderPreSchool } from './orders-form.ts';
 import { doSaveOrders, doSubmitOrders, restoreSubmitWrap } from './briefing-and-submit.ts';
 import { heroHireWageOfP } from './skills-and-projections.ts';
-import { buildTargetField, refreshExploreNotes } from './order-targets.ts';
+import { buildTargetField, refreshExploreNotes, theBloodOfferingsHint } from './order-targets.ts';
 import { leadsArmiesP, provLinkHtml } from './map-symbols.ts';
 import {
   getOrderExtra,
   getOrderTarget,
   predictedLocation,
+  projectedLedArmies,
 } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
@@ -927,7 +928,8 @@ export function injectHiredHeroOrders(charId, ph, charIdx) {
 }
 
 // read the Blood Offering per-unit Sacrifice/Empower selectors into the hidden extra field
-// ("S:i,j|E:a,b"), show the block only for the Blood Offering rite, and warn if the counts don't match.
+// ("S:i,j|E:a,b"), show the block only for the Blood Offering rite, and say what the turn gives and raises
+// (theBloodOfferingsHint: a side left empty or the counts unmatched too; R-133, plan P1-11e27).
 export function updateBloodOffering(charId, ph) {
   const rite = document.getElementById(`po-target-${charId}-${ph}`)?.value || '';
   const block = document.getElementById(`bo-block-${charId}-${ph}`);
@@ -948,16 +950,9 @@ export function updateBloodOffering(charId, ph) {
   });
   if (extra) extra.value = `S:${sac.join(',')}|E:${ben.join(',')}`;
   if (hint) {
-    if (sac.length === 0 && ben.length === 0) {
-      hint.textContent = 'Mark units to sacrifice and an equal number to empower.';
-      hint.style.color = 'var(--stone)';
-    } else if (sac.length !== ben.length) {
-      hint.textContent = `⚠ ${sac.length} to sacrifice vs ${ben.length} to empower — only ${Math.min(sac.length, ben.length)} pair(s) will take effect (each sacrifice funds one empowerment).`;
-      hint.style.color = '#b04a4a';
-    } else {
-      hint.textContent = `✓ ${sac.length} unit(s) sacrificed to empower ${ben.length} other(s) by +${ALIGN_ACTIONS['Perform Rite'].theNumbers.theBloodOfferingsGrades.value} tiers.`;
-      hint.style.color = '#2d6a2d';
-    }
+    const said = theBloodOfferingsHint(projectedLedArmies(charId, ph), sac, ben);
+    hint.textContent = said.words;
+    hint.style.color = said.colour;
   }
   // Persist the selection into the saved draft immediately. Without this, the per-unit choices live
   // ONLY in the DOM: any later full re-render of the orders form (e.g. heir-skill allocation) or a
