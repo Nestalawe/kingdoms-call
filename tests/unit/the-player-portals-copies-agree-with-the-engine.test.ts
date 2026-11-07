@@ -47,7 +47,8 @@
 // figure the Move notice reads, and on the state's side `getSeaCapability`'s answer; until P1-11b4 a truth case of
 // `poSeaAnalysis`'s cap). For a copy that stays, the truth (the copy on the report's value, against what the engine
 // sends): `effMagicLvl` is the report's effective level of each magic school, the Crown of Command's aura too (R-120:
-// it adds the aura the report sends). P1-11b1 added the truth of the copies that read the realm, the report's shape or the world,
+// it adds the aura the report sends), and on staged heroes (two Dreamstones, a trained White 7) the level the turn
+// casts at and its third cast's limit (R-135: it asks the turn's rule with the report's items and aura). P1-11b1 added the truth of the copies that read the realm, the report's shape or the world,
 // on six more staged worlds for the Druid rule (realm 0 Good, Druidic or Evil, with and without Dragon Taming; a hero
 // of every race, alignment and Druid level 0 to 5, beside a Crown of Command and away from it, with one unit of each
 // Druid level and class, of his race and of none, alive and skeletal) and one for exploring (a hero of each Explorer

@@ -12,10 +12,9 @@ import {
   aSkillAtThisLevelIsPractisedNoFurther,
   dispFloor,
   everySpellBySchool,
-  itemSlot,
-  itemUsableBy,
   theLevelEachMasterySpellNeeds,
   theChanceAHeroPractisingAloneRaisesHisSkill,
+  theLevelAHerosSkillCountsAt,
   theSchoolOfEachSpell,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
@@ -169,46 +168,25 @@ export const SPELL_TO_SCHOOL = theSchoolOfEachSpell();
 export const SPELL_REQ_LEVEL = theLevelEachMasterySpellNeeds();
 export const rawMagicLvl = (charObj, school) => ((charObj && charObj.skills) || {})[school] || 0;
 
-// Effective magic-skill level for a character = base skill + any magic-item bonuses to that school
-// + the aura the report sends (R-120), clamped 0..5. Mirrors the GM engine's effStat() for the spell
-// schools, so an item that grants a magic-skill bonus (e.g. Death's Finger Ring → Necromancy +1)
-// lets a hero with 0 base skill cast at the item's effective level. The engine already casts off
-// effStat; this keeps the ORDER-ENTRY spell dropdowns in step so those spells can actually be
-// selected. 2026-09-16: the five magic
-// schools join melee and archery as skills whose ITEM bonuses carry
-// past a trained 5 to the ceiling of 9. Declared HERE, above effMagicLvl, its first reader — a const
-// declared further down the file is in the temporal dead zone for everything above it, which is
-// this project's oldest and most expensive bug class.
+// The level of a magic school the order form offers spells by: the level the turn casts at (R-135, question 45 (c)),
+// asked of the turn's own rule (theLevelAHerosSkillCountsAt: his trained level counts to 5, then his items' bonus and
+// the aura stack to 9). The items' bonus and the aura are the report's (skillEff: each item name once, an equipped
+// slot item only, a Crown of Command worn by a hero of his realm in his province, R-120); the trained level is the
+// hero's own, or the one his earlier Practice orders project (projectedMagicLevels). A Curse ends with the turn, so no
+// report shows one. The form forecasts from the report: if the Crown's wearer leaves before the cast, the turn casts
+// without it.
+// The skills whose item bonuses carry past a trained 5 to the ceiling of 9 (the army card's "capped at" reads them).
 export const ITEM_UNCAPPED_SKILLS_P = new Set(KC_ITEM_UNCAPPED_SKILLS);
 export function effMagicLvl(charObj, school) {
-  const base = ((charObj && charObj.skills) || {})[school] || 0;
-  // only EQUIPPED slot items count (unslotted items are always active).
-  const bonus = ((charObj && charObj.items) || []).reduce(
-    (s, it) =>
-      s +
-      (it &&
-      it.effect &&
-      it.effect.stat === school &&
-      itemUsableBy(it, charObj) &&
-      (!itemSlot(it) || it.equipped !== false)
-        ? it.effect.bonus || 0
-        : 0),
-    0,
-  );
-  // R-120: the aura of a Crown of Command worn by a hero of his realm in his province, as the report
-  // counts it in his effective level (skillEff). The form forecasts from the report: if the wearer
-  // leaves before the cast, the turn casts without it.
+  const trained = ((charObj && charObj.skills) || {})[school] || 0;
   const eff = charObj && charObj.skillEff && charObj.skillEff[school];
-  const aura = (eff && eff.aura) || 0;
-  // reads the same set the engine does, so the spell dropdown and the cast chance it quotes cannot
-  // drift from what will actually be rolled. Spell EFFECTS still read the level counted to 5.
-  return Math.max(0, Math.min(ITEM_UNCAPPED_SKILLS_P.has(school) ? 9 : 5, base + bonus + aura));
+  return theLevelAHerosSkillCountsAt(school, trained, (eff && eff.items) || 0, (eff && eff.aura) || 0, 0);
 }
 
 // 2026-10-13 (item 2, Toby): the level each magic school may have reached by phase `ph`, assuming
 // every Practice Skill order on it in an earlier phase succeeds (+1 each). Practice trains a skill
 // only up to 5 (6–9 come from experience), so a school already at 5 or more gains nothing; item
-// bonuses are then added as effMagicLvl does. `practising` is the set of schools with such an order.
+// bonuses and the aura are then added as effMagicLvl does. `practising` is the set of schools with such an order.
 export function projectedMagicLevels(c, ph) {
   const practice = {};
   for (let prevPh = 0; prevPh < ph; prevPh++) {

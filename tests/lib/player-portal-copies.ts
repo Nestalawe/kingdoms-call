@@ -162,7 +162,7 @@ const THE_MARCH_FORECASTS_DECLARATIONS = [
 const COPIES: Record<string, string[]> = {
   // (and the label of a company, which the Blood Offering's rows show: P1-11d3; and the note under an order that
   // quotes its chance, which the Practice Skill field shows: P1-11d4)
-  'ui/player/order-chances.ts': ['chanceLine', 'orderChanceNote', 'ITEM_UNCAPPED_SKILLS_P', 'effMagicLvl', 'armyLabel'],
+  'ui/player/order-chances.ts': ['chanceLine', 'orderChanceNote', 'effMagicLvl', 'armyLabel'],
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3; the army card reads the
   // engine's two sets of beasts, and asks its Druid mastery's guard, through src/shared/ since P1-11d12)
   'ui/player/skills-and-projections.ts': [
@@ -452,7 +452,7 @@ export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 
 /** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file, the mastery
  *  orders' rows (L79_ORDERS reads them) and kc-safe (kcHtml: the army card's notes) beside them, and the names
- *  src/shared/ hands the portal (effMagicLvl calls itemSlot and itemUsableBy). The turn report's flying carry runs
+ *  src/shared/ hands the portal (effMagicLvl calls theLevelAHerosSkillCountsAt). The turn report's flying carry runs
  *  beside them too: it reads the data file and getFlyCapability, which the views import from the folder (the portal no
  *  longer does, since P1-11b4). */
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
