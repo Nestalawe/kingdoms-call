@@ -102,7 +102,7 @@
 // hired, companies taken up (the turn's last first), risen dead handed to a comrade (to their graves: since P1-11e19);
 // and since P1-11e20 each season's items handed over in the turn's order of its heroes (a comrade marching in first, a
 // chain of hand-overs, the quicker hero first; a comrade beside him who marches away after); and pinned where it is not
-// (question 42): the Philosopher's Stone used.
+// (question 42): the Philosopher's Stone used, a chain of company hand-overs in one season.
 // P1-11d3 (plan P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
 // order list (`ACTIONS`) is the order `normaliseAction` reads it as, none read as a Defend but Defend; on staged heroes of
 // realm 0 (its report as the engine builds it under each creed, and with its Wonder raised), the list `actionsFor`
@@ -725,9 +725,11 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(turn).toHaveLength(1);
   });
 
-  test('what the forecast gets wrong is pinned: the Stone (question 42)', () => {
+  test('what the forecast gets wrong is pinned: the Stone, a chain of company hand-overs in one phase (question 42)', () => {
     // The form replays the orders, not the turn's checks: the Philosopher's Stone used is destroyed (as an older save's
-    // copy carries it: the one Use Item works), and the form keeps it in his pack.
+    // copy carries it: the one Use Item works), and the form keeps it in his pack; a chain of company hand-overs in one
+    // season goes in the turn's order (the comrade hands on what he was handed), where the form reads each column as the
+    // season begins, so the first hero's companies are lost from every column (Parked, R-129).
     const list = holdings();
     expect(
       list.map((x) => x.kind).filter((k) => !(THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
@@ -739,6 +741,11 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     };
     const stone = kind("the Philosopher's Stone used");
     expect([stone.copy, stone.engine]).toEqual([{ bearer: ["Philosopher's Stone"] }, { bearer: [] }]);
+    const chain = kind('a chain of company hand-overs in one phase');
+    expect([chain.copy, chain.engine]).toEqual([
+      { 'the first to hand over': [], between: [], last: ['Yeoman Longbows (Average)'] },
+      { 'the first to hand over': [], between: [], last: ['Yeoman Longbows (Average)', 'Men-at-Arms (Average)'] },
+    ]);
   });
 });
 

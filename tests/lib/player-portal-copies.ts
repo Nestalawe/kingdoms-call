@@ -2333,7 +2333,8 @@ export function aSearchLairAfterEachMarchTheTurnRefuses(c: Copies): ASearchLairA
  *  over or taken up past a leader's beast command, a band of garrison troops hired, companies taken up from the
  *  garrison last first, and risen dead handed to a comrade of a realm that is not Undead; since P1-11e20 an item handed
  *  to a comrade who marches in that phase, at once, and the items of a phase handed over in the turn's order of its
- *  heroes), and the one it is known to get wrong (question 42): the Philosopher's Stone used (the turn destroys it). */
+ *  heroes), and the one it is known to get wrong (question 42): the Philosopher's Stone used (the turn destroys it), and a chain of company hand-overs in one
+ *  phase (the turn hands on what the comrade was handed; the form reads each column as the phase begins). */
 export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'items handed to a comrade beside him',
   'an item sent by courier to a comrade elsewhere',
@@ -2372,7 +2373,10 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a beast recruited by a Druid 1 hero leading a beast of the Wild Hunt and a summoned one',
   'a beast recruited under the banner of a comrade at his beast command',
 ] as const;
-export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = ["the Philosopher's Stone used"] as const;
+export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = [
+  "the Philosopher's Stone used",
+  'a chain of company hand-overs in one phase',
+] as const;
 export type AKindOfHolding =
   (typeof THE_HOLDINGS_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_HOLDINGS_THE_FORECAST_GETS_WRONG)[number];
 /** An order of a phase, as the page's fields hold it and the turn reads it: its action, its target and its extra (a
@@ -2769,6 +2773,23 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       { bearer },
       {
         [id(bearer)]: [{ action: 'Use Item', target: id(stone.id) }],
+      },
+    );
+  }
+  {
+    // the first to hand over is the later hero, as in the items' chain
+    const p = aProvince();
+    const last = at(p);
+    const between = at(p, { armies: [unit('Yeoman Longbows')] });
+    const firstToHand = at(p, { armies: [unit('Men-at-Arms')] });
+    stage(
+      'a chain of company hand-overs in one phase',
+      'companies',
+      null,
+      { 'the first to hand over': firstToHand, between, last },
+      {
+        [id(firstToHand)]: [leave('all', id(between))],
+        [id(between)]: [leave('all', id(last))],
       },
     );
   }
