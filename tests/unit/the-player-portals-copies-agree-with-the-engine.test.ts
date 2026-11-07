@@ -864,7 +864,7 @@ describe('the orders: what the order form offers a hero, and what the creed orde
 });
 
 describe('gold and practice: what the treasury ledger and the Practice Skill note say, and who practises together (P1-11d4)', () => {
-  test('the treasury ledger says what the turn spends and adds to the wages: companies of the province, at the capital and for the garrison, a mercenary band, a wandering hero, Supply Depots under its cap and past it (a company to the garrison too, room for one of two, an older report), Granaries under its cap and past it, Inspiring Leadership, a Druid 5 hero’s beast, a Druid 6 hero’s beast at half price and wage, a beast under a Druidic Wonder, the Host-Leader’s column where the report names him, Harvest the Field (with Corpse-Carters too), the Wild Hunt', () => {
+  test('the treasury ledger says what the turn spends and adds to the wages: companies of the province, at the capital and for the garrison, a mercenary band, a wandering hero, Supply Depots under its cap and past it (a company to the garrison too, room for one of two, an older report), Granaries under its cap and past it (room for one of two), Inspiring Leadership, a Druid 5 hero’s beast, a Druid 6 hero’s beast at half price and wage, a beast under a Druidic Wonder, the Host-Leader’s column where the report names him, Harvest the Field (with Corpse-Carters too), the Wild Hunt', () => {
     // On realm 0's report as the engine builds it from each world, the form's computeOrderLedgerP (its spend, and its
     // new wages) against the turn: the gold its phase takes from the treasury, and what Early Winter's wages rise by.
     // The Broker's word from a province is two gold on a report that prices it, and on an older one that names no

@@ -4509,6 +4509,7 @@ export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   'a wandering hero hired',
   'a wandering hero hired by a realm with Granaries',
   'a wandering hero hired by a realm with Granaries, past its cap',
+  'two wandering heroes hired by a realm with Granaries, its room left for one',
   'a wandering hero hired by a realm with Inspiring Leadership',
   'a company raised by a realm with Supply Depots, under its cap',
   'a company raised by a realm with Supply Depots, past its cap',
@@ -4668,6 +4669,34 @@ export function theLedgerAgainstTheTurn(c: Copies): ALedgerComparison[] {
         const one = heroIn(G, w);
         for (let i = 0; i < 100; i++)
           heroes.push({ ...copyOf(one), id: heroes.length, name: `Staged Retainer ${String(i)}`, player: 0, pay: 5 });
+      },
+    );
+  }
+  {
+    // two wanderers hired in two seasons, more heroes of the realm leaving Granaries room for one gold: the first saves
+    // it, the second pays his whole wage (the room read off a report on its world without them, P1-11e30)
+    const p = take();
+    const [w1, w2] = [wanderer(p), wanderer(p)];
+    stage(
+      'two wandering heroes hired by a realm with Granaries, its room left for one',
+      at(p),
+      [
+        { action: 'Hire Hero', target: String(w1['id']) },
+        { action: 'Hire Hero', target: String(w2['id']) },
+      ],
+      (G) => {
+        realmZeroIn(G)['discoveries'] = [aDiscovery('sd17')];
+        const k = savedAndReported(copyOf(G)).report['kingdom'];
+        const cuts =
+          isObj(k) && Array.isArray(k['theHeroWageDiscoveriesCutsAndTheirRoom'])
+            ? k['theHeroWageDiscoveriesCutsAndTheirRoom']
+            : [];
+        const room = Number(objects(cuts)[0]?.['theRoomLeftUnderItsCap']);
+        if (!(room > 1)) throw new Error(`Granaries' room is ${String(room)}, not above 1g`);
+        const heroes: unknown[] = Array.isArray(G['characters']) ? G['characters'] : [];
+        const one = heroIn(G, w1);
+        for (let i = 0; i < room - 1; i++)
+          heroes.push({ ...copyOf(one), id: heroes.length, name: `Staged Steward ${String(i)}`, player: 0, pay: 5 });
       },
     );
   }
