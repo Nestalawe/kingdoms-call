@@ -25,7 +25,8 @@
 // Blood Offering may take, gives and raises since P1-11e27: its rows lock the others, its hint and the Move note's
 // column follow the turn's; the chance a practice alone raises a skill, and the level past which no roll is made,
 // since P1-11e28: the Practice Skill note quotes them; a Druid's half price and half wage for a beast, and the
-// Host-Leader's cut, since P1-11e29: the treasury ledger counts them).
+// Host-Leader's cut, since P1-11e29: the treasury ledger counts them; a wage after each cut and ceiling of a realm's
+// discoveries, since P1-11e30: the ledger shares them under the room the report gives).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -113,6 +114,11 @@ export {
   thePriceADruidPaysForABeast,
   theWageABeastPaysUnderADruid,
 } from '../engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
+export {
+  aHerosWageAfterTheCutsAndTheCeilings,
+  aWageAfterEachCut,
+  aWageUnderEachCeiling,
+} from '../engine/rules-on-plain-values/a-wage-after-each-cut-and-ceiling-a-realms-discoveries-make.ts';
 export { normaliseAction } from '../engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 export {
   theHeroesWhoMustActFirstInAPhase,
