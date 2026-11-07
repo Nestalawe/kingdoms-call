@@ -2,9 +2,14 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import {
+  aCompanyIsABeastADruidHalves,
+  aLeadersBeastsPayHalfWages,
   combatSpellsAllowedPerSchoolEachFight,
   itemUsableBy,
   theCombatSpellsBySchool,
+  theHostLeadersCut,
+  thePriceADruidPaysForABeast,
+  theWageABeastPaysUnderADruid,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import {
@@ -20,6 +25,7 @@ import {
   renderDiscoveryChoices,
   RUMOUR_COST_BY_POWER_P,
   SEASONS,
+  rawSkillLvl,
   skillsUnseenP,
 } from './items-and-heroes.ts';
 import { renderDiplomacy } from './report.ts';
@@ -43,6 +49,7 @@ import {
   effSkillP,
   getOrderTarget,
   predictedLocation,
+  whereTheCompaniesAHerosRecruitRaisesMuster,
 } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // ── TREASURY LEDGER (2026-09-23, Toby item 6) ────
@@ -55,6 +62,10 @@ import {
 // wages from the alignment table, the rest from report.orderPrices (the GM engine's own figures).
 // It is an ESTIMATE: an order that fails (unaffordable, target gone, province not taken) costs
 // nothing, and Hunting Rumours pays per lair actually heard of.
+// Since P1-11e29 (R-134), a company's price and wage follow the turn's cuts (src/shared/): a Druid 6 recruiter pays
+// half for a beast; a beast in the column of a Druid 6 leader, or of a realm whose Druidic Wonder stands, pays half
+// wages; and a company in the Host-Leader's column pays 1g less, where the report names him (his minorHeld: the titles
+// public). Where a company musters is the turn's (whereTheCompaniesAHerosRecruitRaisesMuster).
 export function computeOrderLedgerP() {
   const rep = currentReport || {};
   const k = rep.kingdom || {};
@@ -88,30 +99,52 @@ export function computeOrderLedgerP() {
         if (act === 'Recruit Armies') {
           const loc = predictedLocation(c.id, ph);
           const pd = loc ? (rep.provinceOrderData || {})[loc.id] : null;
-          tgt
+          const ticks = tgt
             .split(',')
             .map((x) => x.trim())
-            .filter(Boolean)
-            .forEach((tok) => {
-              if (tok.startsWith('to:')) return;
-              if (tok.startsWith('merc:')) {
-                if (mercsTaken.has(tok)) return;
-                const m = (rep.mercIntel || []).find((x) => 'merc:' + x.id === tok);
-                if (!m) return;
-                mercsTaken.add(tok);
-                cats.mercs.g += m.cost || 0;
-                cats.mercs.n++;
-                cats.mercs.wage += wageOf(m.type);
-                return;
-              }
-              const [type, q] = tok.split('|');
-              const n = Math.max(1, parseInt(q) || 1);
-              const at = ((pd && pd.armyTypes) || []).find((a) => a.type === type);
-              const cost = at && at.cost != null ? at.cost : (P.unitCost || {})[type] || 2;
-              cats.armies.g += cost * n;
-              cats.armies.n += n;
-              cats.armies.wage += wageOf(type) * n;
-            });
+            .filter(Boolean);
+          // the column each company joins, and the wage the turn charges it there (R-134, P1-11e29)
+          const musters = whereTheCompaniesAHerosRecruitRaisesMuster(c, ph, ticks);
+          const leader = musters.dest;
+          const hisBeastsPayHalfWages = aLeadersBeastsPayHalfWages(
+            rawSkillLvl(leader, 'druid') >= 6,
+            () => !!k.itsDruidicWonderHalvesItsBeastsWages,
+          );
+          const heIsTheHostLeader = (leader.minorHeld || []).some((t) => t && t.key === 'hostleader');
+          const theWageOf = (type, joinsTheColumn) => {
+            let w = wageOf(type);
+            if (!joinsTheColumn) return w;
+            if (hisBeastsPayHalfWages && aCompanyIsABeastADruidHalves(type)) {
+              // the turn halves the wage before an upkeep discovery's cut: the cut the report gives for the type after
+              const raw = (P.unitCost || {})[type] || 2;
+              w = Math.max(0, theWageABeastPaysUnderADruid(raw) - Math.max(0, raw - w));
+            }
+            return heIsTheHostLeader ? theHostLeadersCut(w, 1).theWagesLeft : w;
+          };
+          const intoTheColumn = (type, unitName) =>
+            musters.toTheColumn.some((u) => u.type === type && (unitName == null || u.unitName === unitName));
+          ticks.forEach((tok) => {
+            if (tok.startsWith('to:')) return;
+            if (tok.startsWith('merc:')) {
+              if (mercsTaken.has(tok)) return;
+              const m = (rep.mercIntel || []).find((x) => 'merc:' + x.id === tok);
+              if (!m) return;
+              mercsTaken.add(tok);
+              cats.mercs.g += m.cost || 0;
+              cats.mercs.n++;
+              cats.mercs.wage += theWageOf(m.type, intoTheColumn(m.type, m.unitName));
+              return;
+            }
+            const [type, q] = tok.split('|');
+            const n = Math.max(1, parseInt(q) || 1);
+            const at = ((pd && pd.armyTypes) || []).find((a) => a.type === type);
+            let cost = at && at.cost != null ? at.cost : (P.unitCost || {})[type] || 2;
+            if (rawSkillLvl(c, 'druid') >= 6 && aCompanyIsABeastADruidHalves(type))
+              cost = thePriceADruidPaysForABeast(cost); // a Druid 6 recruiter's half price (R-134)
+            cats.armies.g += cost * n;
+            cats.armies.n += n;
+            cats.armies.wage += theWageOf(type, intoTheColumn(type)) * n;
+          });
         } else if (act === 'Hire Hero') {
           hireHero(tgt);
         } else if (act === 'Broker') {

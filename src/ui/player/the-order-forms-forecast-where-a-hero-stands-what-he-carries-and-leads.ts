@@ -135,6 +135,19 @@ function whereTheCompaniesARecruitRaisesMuster(report, o, ph, ticks, destTok, co
   });
   return out;
 }
+// Where the companies the Recruit Armies order `ticks` of the hero `o` in the phase `ph` raises muster, as the turn
+// musters them, each column as the replay gives it: the treasury ledger counts a company's wage by the column it joins
+// (R-134, P1-11e29).
+export function whereTheCompaniesAHerosRecruitRaisesMuster(o, ph, ticks) {
+  return whereTheCompaniesARecruitRaisesMuster(
+    currentReport || {},
+    o,
+    ph,
+    ticks,
+    ticks.find((t) => t.startsWith('to:')) || 'to:self',
+    (x) => projectedLedArmies(x.id, ph),
+  );
+}
 // What the hero `recipient`, leading `column` as the phase begins, takes of the companies `handed` him, as the turn
 // hands them over: risen dead go to their graves unless he or his realm is Undead (theRisenDeadFollowAHandOverTo,
 // whereAHandOversRisenDeadGo); the beasts past his beast command's room stay with the giver (`left`), the rest he takes
