@@ -4,7 +4,7 @@
 // sets and the Druid mastery's guard, P1-11d12; the Explore gain, P1-11d14; what a march's order names,
 // P1-11e9; where a column may step, P1-11e10; the pool a step spends, P1-11e11; the step toward a far province,
 // P1-11e12; the items a Send Item hands over, P1-11e18; the companies a Recruit, a hand-over and a Pick Up move,
-// P1-11e19) ────
+// P1-11e19; the order a season's heroes act in, P1-11e20) ────
 // The player portal's one door to the engine (plan P1-11a, Decision 2): the rules of a hero, an army, an item, a level
 // or a number that the order form and the report screens use, re-exported from src/engine/rules-on-plain-values/ and
 // from nowhere else. That folder imports only src/content and itself, so the player page loads no other engine file
@@ -19,7 +19,9 @@
 // spends his pace by it; the step toward a far province since P1-11e12: the march forecast takes it as the turn does;
 // the items a Send Item hands over since P1-11e18: the forecasts' replay hands them over, the Send Item field greys the
 // Mithril suit; the companies a Recruit, a hand-over and a Pick Up move since P1-11e19: the forecasts' replay musters,
-// hands over and takes them up by them, the beast command's room, the risen dead and the garrison's places).
+// hands over and takes them up by them, the beast command's room, the risen dead and the garrison's places; the order a
+// season's heroes act in since P1-11e20: the forecasts' replay hands over a season's items in it, with the kind of
+// order each name reads as).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -92,6 +94,11 @@ export {
   theRisenDeadFollowAHandOverTo,
   whereAHandOversRisenDeadGo,
 } from '../engine/rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
+export { normaliseAction } from '../engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
+export {
+  theHeroesWhoMustActFirstInAPhase,
+  theOrderTheHeroesActInAPhase,
+} from '../engine/rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
 export { theMovePoolAStepSpends } from '../engine/rules-on-plain-values/the-move-pools-a-column-marches-and-sails-by-and-the-pool-a-step-spends.ts';
 export { theHexNextToAProvinceInADirection } from '../engine/rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 export { theShareOfAProvinceAnExploreOrderMaps } from '../engine/rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';

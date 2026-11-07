@@ -214,7 +214,10 @@ const COPIES: Record<string, string[]> = {
     'whatAComradeTakesOfAHandOver',
     // since P1-11e17 one replay of the phases' orders, which the three read
     'theFormsReplayOfThePhasesBefore',
+    // (since P1-11e20 a phase's items handed over in the turn's order of its heroes)
+    'theHeroesInTheOrderTheTurnHasThemActInAPhase',
     'theItemsAPhasesOrdersHandOver',
+    'theItemsAHeroHandsOver',
     'theGarrisonTheReportShows',
     'theCompaniesAPhasesOrdersAddToEachGarrison',
     'theGarrisonAPickUpOfThePhaseSees',
