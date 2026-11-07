@@ -21,6 +21,7 @@ import {
   theShareOfAProvinceAMarchIntoItMaps,
   theShareOfAProvinceAnExploreOrderMaps,
   theSpellCostsItsCasterNoCastingSlot,
+  theCompanyACallToArmsMusters,
   whyAKingMayNotConsecrateAProvince,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
@@ -931,9 +932,11 @@ export function buildTargetField(c, ph, saved) {
       );
       if (!human.length)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No owned humanoid provinces to raise" disabled>`;
+      // the company the turn musters there: the first garrison of the province's companies, else its race's (plan
+      // P1-11e26, R-131)
       const ctaOpts = human.map(
         (p) =>
-          kcHtml`<option value="${p.id}" ${target == p.id ? 'selected' : ''}>${p.name} — raises a ${theGrade} ${(p.armyTypes && p.armyTypes[0] && (p.armyTypes[0].type || p.armyTypes[0])) || 'levy'}</option>`,
+          kcHtml`<option value="${p.id}" ${target == p.id ? 'selected' : ''}>${p.name} — raises a ${theGrade} ${theCompanyACallToArmsMusters(p).type}</option>`,
       );
       return kcHtml`<select id="po-target-${c.id}-${ph}">${ctaOpts}</select>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Free ${theGrade} garrison unit of the province's native type. The king need not be present — the province just has to be yours when the order resolves. Once per turn.</div>`;
@@ -977,8 +980,13 @@ export function buildTargetField(c, ph, saved) {
       if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS['Harvest the Field'], report.kingdom?.alignment))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Undead realms keep corpse-carters" disabled>`;
       const loc = predictedLocation(c.id, ph);
+      // the carters' price as the turn takes it (the report's, with the realm's discoveries), else its row's; the grave
+      // the turn raises: the most experienced, a grade higher while the realm holds its Wonder (plan P1-11e26, R-131,
+      // R-132)
+      const theCartersPrice =
+        report.orderPrices?.harvest ?? ALIGN_ACTIONS['Harvest the Field'].theNumbers.thePrice.value;
       return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Harvests the graves of ${loc ? loc.name : 'current province'}" readonly>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">No magic required: 2g raises ONE random battlefield grave in the province ${c.name} stands in as a Skeletal unit (keeps its type and quality; 1g upkeep). Needs battlefield dead present — fields where armies have fallen.</div>`;
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">No magic required: ${theCartersPrice}g raises the most experienced battlefield grave in the province ${c.name} stands in as a Skeletal unit (keeps its type and quality, a grade higher while your realm holds its Wonder; 1g upkeep). Needs battlefield dead present — fields where armies have fallen.</div>`;
     }
     case 'Perform Rite': {
       // PAGAN only — rites are performed at a DISCOVERED ritual site (Standing Stones and their
@@ -1002,6 +1010,12 @@ export function buildTargetField(c, ph, saved) {
       const canHunt = !!pd?.wildHuntType;
       const theRitesNumbers = ALIGN_ACTIONS['Perform Rite'].theNumbers; // its row's: the beasts the Wild Hunt binds, the tiers a Blood Offering raises
       const huntCost = pd?.wildHuntCost;
+      // the turns its beasts serve beyond this one as the turn counts them (The Long Hunt's too: the report's), else
+      // its row's (plan P1-11e26, R-132)
+      const huntTurns =
+        report.kingdom?.theTurnsAWildHuntServesBeyondThisOne ?? theRitesNumbers.theWildHuntsTurnsMore.value;
+      const huntUntil =
+        huntTurns === 1 ? 'NEXT turn' : huntTurns === 2 ? 'the turn after next' : `${huntTurns} turns after this one`;
       // list the armies this character will be LEADING at this phase — start-of- turn units plus
       // anything recruited, picked up, transferred in or otherwise gained earlier in the turn (the
       // engine resolves the S:/E: indices against the actual army list at that phase, which is
@@ -1034,7 +1048,7 @@ export function buildTargetField(c, ph, saved) {
           )
         : kcHtml`<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})">
-        ${canHunt ? kcHtml`<option value="Wild Hunt" ${target === 'Wild Hunt' ? 'selected' : ''}>\u{1F525} Rite of the Wild Hunt — bind ${theRitesNumbers.theWildHuntsBeasts.value} VETERAN ${pd?.wildHuntType || 'wild creatures'} (${huntCost}g — the price of one, no wages, serve until end of NEXT turn)</option>` : ''}
+        ${canHunt ? kcHtml`<option value="Wild Hunt" ${target === 'Wild Hunt' ? 'selected' : ''}>\u{1F525} Rite of the Wild Hunt — bind ${theRitesNumbers.theWildHuntsBeasts.value} VETERAN ${pd?.wildHuntType || 'wild creatures'} (${huntCost}g — the price of one, no wages, serve until end of ${huntUntil})</option>` : ''}
         <option value="Blood Offering" ${target === 'Blood Offering' || !target ? 'selected' : ''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+${theRitesNumbers.theBloodOfferingsGrades.value} tiers each)</option>
       </select>
       <input id="po-extra-${c.id}-${ph}" type="hidden" value="${extra || ''}">

@@ -284,8 +284,7 @@ context (`ctx.reignOfFear`); read after, it is always false. Checks: `terror-thr
 An alignment order is a row of `THE_ALIGNMENT_ORDERS` (`src/content/`). The turn (the gate, the order-name map, the
 `case`, the resolver), the report's prices, the bots, the portal's order list and target widget, and the GM's three
 labels read it. Still written by hand: the GM's label keys, "Harvest Field" and "Rite"; `ACTION_DISPLAY_ORDER`; the
-widget's Harvest 2g, Wild Hunt term, "VETERAN", Call to Arms company, Consecrate home and limit (questions 36 and 41).
-Grep `harvest_field`. A removed order keeps its `case` as a refusal, for saves. Example: a missed place refuses, hides
+widget's "VETERAN". Grep `harvest_field`. A removed order keeps its `case` as a refusal, for saves. Example: a missed place refuses, hides
 or misprices the order, and throws nothing. Checks: the words test (the row against the books, the page's creed texts
 and the GM's labels); the door's static test (the portal reads the rows).
 
