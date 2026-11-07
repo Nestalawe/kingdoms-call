@@ -16,10 +16,8 @@ import {
   strengthLeftByADruidShortfall,
   takesHalfAHullAboard,
   theDruidMasteryLiftsAUnitOfThisType,
-  theEffectsOfAKindTheseDiscoveriesCarry,
   theItemsAHeroUses,
   theMasteryTierATrainedLevelGives,
-  theRowOfADiscovery,
   theStrengthAUnitHasBeforeTheGroundAndTheFoe,
   theWageABeastPaysUnderADruid,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
@@ -425,8 +423,8 @@ export function renderReportView(report) {
                 : 0;
               // In armStr's order: Druid 8 and Necromancy 6 lift its quality (his trained levels); its base strength at
               // that quality; the shortfall, rounded down; its kin (+20% your king's, +20% its leader's: +44% both) and
-              // a rival kin's leader (−20%); your realm's unit-strength discoveries; the items he uses; the Druid
-              // mastery; his minor titles (those the report names). What a battle or a spell of the turn adds is left out.
+              // a rival kin's leader (−20%); the items he uses; the Druid mastery; his minor titles (those the report
+              // names). Your realm's unit-strength discoveries, and what a battle or a spell of the turn adds, are left out.
               const _str = theStrengthAUnitHasBeforeTheGroundAndTheFoe(
                 { unitType: a.type, quality: a.quality, isSkeletal: !!a.skeletal, race: a.race },
                 {
@@ -435,11 +433,8 @@ export function renderReportView(report) {
                   theShareHisDruidShortfallLeaves: theShareHisShortfallLeaves,
                   theKingsRace: kingdom.race,
                   hisRace: c.race,
-                  theRealmsUnitStrengthEffects: theEffectsOfAKindTheseDiscoveriesCarry(
-                    report.discoveries || [],
-                    'unitStr',
-                    theRowOfADiscovery,
-                  ),
+                  // (not yet: the report doesn't carry its discoveries' effects, and the page holds no table of them)
+                  theRealmsUnitStrengthEffects: [],
                   heIsTheKing: !!c.isKing,
                   theItemsHeUses: theItemsAHeroUses(c.items || [], c),
                   theRealmsAlignment: kingdom.alignment,
@@ -519,7 +514,7 @@ export function renderReportView(report) {
               druidUnits > 0
                 ? kcHtml` · 🌿 ${druidUnits} unit${druidUnits !== 1 ? 's' : ''} need Druid ${druidShort > 0 ? kcHtml`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>` : kcHtml`<span style="color:#1d5a1d">(${c.name.split(' ')[0]} qualifies)</span>`}`
                 : '';
-            const summary = kcHtml`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(before the ground, the foe and the battle's tactics)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2 !== 1 ? 's' : ''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
+            const summary = kcHtml`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(before your discoveries, the ground, the foe and the battle's tactics)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2 !== 1 ? 's' : ''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
             // ONE line stands for the whole army — strength, a count of each unit type, and the
             // land / flying / sea pace — with a button that unfolds the full unit list (and the
             // upkeep/druid/sea-transport notes) beneath it. The list starts folded.

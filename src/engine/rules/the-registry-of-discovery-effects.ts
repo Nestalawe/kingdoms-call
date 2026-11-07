@@ -89,7 +89,6 @@ import {
   A_REALMS_DISCOVERIES_WIDEN_THE_WARNINGS_IT_HEARS,
 } from './discoveries/a-realms-discoveries-at-the-turns-end-and-the-new-turn.ts';
 import {
-  theEffectsOfAKindTheseDiscoveriesCarry,
   theFactorTheUnitStrengthDiscoveriesARealmHoldsStrengthenAUnitBy,
   type AUnitARealmsDiscoveriesMayStrengthen,
 } from '../rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
@@ -153,8 +152,15 @@ SAGE_DISCOVERIES_P.forEach((d) => {
 // applies to either slot. (discEffectsOf's rule, which src/engine/discoveries.ts asks.)
 export function theEffectsOfAKindARealmHolds(pl: ARealmAsTheDiscoveriesReadIt | null | undefined, kind: string) {
   if (!pl) return [];
-  // (on plain values since plan P1-11e38, so the army card finds the effects as the turn does)
-  return theEffectsOfAKindTheseDiscoveriesCarry(pl.discoveries ?? [], kind, (id) => DISC_BY_ID[id]);
+  const out: TheEffectOfADiscovery[] = [];
+  (pl.discoveries ?? []).forEach((d) => {
+    const t = d && DISC_BY_ID[d.id];
+    if (!t) return;
+    [t.effect, t.effect2].forEach((e) => {
+      if (e?.kind === kind) out.push(e);
+    });
+  });
+  return out;
 }
 
 /** An entry: the kind's effect at each stage it acts in. */

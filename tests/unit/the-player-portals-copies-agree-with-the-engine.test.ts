@@ -67,7 +67,8 @@
 // `getSeaCapability`'s answer, a Naval 8 hero's too (R-125), and on staged columns of flyers beside too few hulls, its
 // words written out (R-135: the card asks `seaLiftOfAColumn`); its upkeep, on staged columns under a Druid 6 hero and a
 // Druidic Wonder, is what Early Winter charges (R-135); its strength of a unit, on staged columns under Druid 8, Druid 3
-// and Necromancy 6 heroes, with items, with War Drums and under the king, is armStr's with no ground and no battle (R-135). Every engine function leaves its input as it was (the values are frozen, so a write
+// and Necromancy 6 heroes and with items, is armStr's with no ground and no battle (R-135); with War Drums and under the
+// king, the card leaves the realm's discoveries out (pinned). Every engine function leaves its input as it was (the values are frozen, so a write
 // throws). P1-11c1 (plan P1-11c, before the form takes its tables and its check from the engine's side): the order
 // form's eight Cast Spell tables (`order-chances.ts` run whole, the others read by their declarations) are the ones
 // `SPELL_DEFS_P` makes, each as the form reads it (a list in its order, a map, a set), but an Encounter plan lists the
@@ -446,13 +447,18 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     ]);
   });
 
-  test("the army card's strength of a unit is the turn's before the ground and the foe: Druid 8, Necromancy 6, his items, the realm's discoveries (R-135, question 45 (a))", () => {
+  test("the army card's strength of a unit is the turn's before the ground and the foe: Druid 8, Necromancy 6, his items (R-135, question 45 (a)); the realm's discoveries pinned", () => {
     // No matrix game has a Druid 8 hero leading beasts, a Necromancy 6 hero leading skeletons, or a hero leading with
     // items that lift his units, so the columns are staged. The card counted the unit's base strength, a Druid shortfall,
     // its kin and the Druid mastery: Thunderbirds under a Druid 8 hero read "str 40" where the battle's armStr, with no
-    // ground and no battle, gives 59. Since R-135 it asks the turn's steps in armStr's order.
+    // ground and no battle, gives 59. Since R-135 it asks the turn's steps in armStr's order. The realm's unit-strength
+    // discoveries it can't count yet (the report doesn't carry their effects, and the page holds no table of them): the
+    // two columns they lift are pinned, the card's figure before them.
     const list = theArmyCardsStrengthAgainstTheTurn(copies);
-    expect(differences(list)).toEqual([]);
+    expect(list.filter((x) => x.copy !== x.engine).map((x) => [...(x.on as string[]), x.copy, x.engine])).toEqual([
+      ['Men-at-Arms under a hero of a realm with War Drums', 'Men-at-Arms', 17, 18],
+      ["Free Lances under the king of a realm whose discovery lifts its king's cavalry", 'Free Lances', 17, 20],
+    ]);
     expect(list.map((x) => [...(x.on as string[]), x.engine])).toEqual([
       ['Thunderbirds under a Druid 8 hero', 'Thunderbirds', 59],
       ['Thunderbirds under a Druid 3 hero', 'Thunderbirds', 17],

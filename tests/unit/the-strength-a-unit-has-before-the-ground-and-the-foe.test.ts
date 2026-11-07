@@ -12,8 +12,7 @@
 // under every staged hero: Druid 8 and 3, Necromancy 6, a hero with eight army items worn and one carried, a king holding
 // the Naturalist's, the Cavalier's and the Ironclad's titles, heroes of each rival kin, in a Divine realm with eight
 // unit-strength discoveries (three that need a ground or a side, one a garrison alone) and a Pagan realm with none; the
-// items' steps in the registry's order; the items a hero uses (his race's, a slot item only worn); the mastery tier of each trained level, and the effects of a kind the
-// discoveries carry, an unknown id and a second effect among them.
+// items' steps in the registry's order; the items a hero uses (his race's, a slot item only worn); the mastery tier of each trained level.
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import { ALL_MAGIC_ITEMS_P } from '../../src/content/kingdoms-call-data.ts';
@@ -26,10 +25,6 @@ import { charMinor } from '../../src/engine/titles/title-holders-and-battle-meri
 import { theEffectsOfAKindARealmHolds } from '../../src/engine/rules/the-registry-of-discovery-effects.ts';
 import { THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
 import { THE_COMMANDERS_ITEMS } from '../../src/engine/rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts';
-import {
-  theEffectsOfAKindTheseDiscoveriesCarry,
-  theRowOfADiscovery,
-} from '../../src/engine/rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
 import { theItemsAHeroUses } from '../../src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { theMasteryTierATrainedLevelGives } from '../../src/engine/rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import { theStrengthAUnitHasBeforeTheGroundAndTheFoe } from '../../src/engine/rules-on-plain-values/the-strength-a-unit-has-before-the-ground-and-the-foe.ts';
@@ -166,14 +161,5 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
     expect([undefined, null, -1, 0, 5, 6, 8, 9, 12].map((l) => theMasteryTierATrainedLevelGives(l))).toEqual([
       0, 0, 0, 0, 0, 1, 3, 4, 4,
     ]);
-  });
-
-  test('the effects of a kind the discoveries carry: in their order, a second effect too, none of an unknown id', () => {
-    expect(
-      theEffectsOfAKindTheseDiscoveriesCarry(discoveries, 'unitStr', theRowOfADiscovery).map((e) => e.pct),
-    ).toEqual([0.04, 0.14, 0.3, 0.3, 0.13, 0.18, 0.06, 0.2]);
-    expect(
-      theEffectsOfAKindTheseDiscoveriesCarry([null, { id: 'no-such-discovery' }], 'unitStr', theRowOfADiscovery),
-    ).toEqual([]);
   });
 });
