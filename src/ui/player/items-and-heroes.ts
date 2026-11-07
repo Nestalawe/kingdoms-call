@@ -17,6 +17,7 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import { _tintForDarkTooltip, reportColour } from './map-symbols.ts';
+import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.ts (KC_ITEM_SLOT_CAP) ──
 export const ITEM_SLOT_CAP_P = { ...KC_ITEM_SLOT_CAP };
@@ -386,14 +387,15 @@ export function actionsFor(c) {
     // order that can only ever be refused should not be on the form.
     if (a === 'Grand Design' && gdAlreadyBuiltP(currentReport)) return false;
     if (L79_ORDERS[a] && !skillsUnseenP(c) && rawSkillLvl(c, L79_ORDERS[a].skill) < L79_ORDERS[a].lvl) return false;
-    // Research (Sage 1+) and Steal (Thief 1+) are gated on the character's BASE skill, matching the
-    // engine (`case 'research'` / `case 'steal'` both read the raw level). A CHARMED hero is the
-    // one exception: the charmer cannot see their levels, so the placeholder card carries
-    // `skills:{}` and every raw lookup returns 0 — which silently stripped both orders from a hero
-    // who may well have the training. Offer them and let the engine enforce the real requirement at
-    // resolution.
+    // Research (Sage 1+) and Steal (Thief 1+) are gated as the engine gates them: Research on the
+    // character's BASE Sage (the research order reads the raw level), Steal on the Thief the turn
+    // counts, his items' too (the steal order reads `effStat`; R-130: Gloves of the Nightcrawler
+    // make an untrained hero a Thief 2). A CHARMED hero is the one exception: the charmer cannot see
+    // their levels, so the placeholder card carries `skills:{}` and every lookup returns 0 — which
+    // silently stripped both orders from a hero who may well have the skill. Offer them and let the
+    // engine enforce the real requirement at resolution.
     if (a === 'Research' && !skillsUnseenP(c) && rawSkillLvl(c, 'sage') < 1) return false; // Research: Sage 1+ only (discovery roll)
-    if (a === 'Steal' && !skillsUnseenP(c) && rawSkillLvl(c, 'thief') < 1) return false; // Steal: Thief 1+ only — light fingers take training
+    if (a === 'Steal' && !skillsUnseenP(c) && effSkillP(c, 'thief') < 1) return false; // Steal: Thief 1+, his items counted (R-130)
     if (a === 'Release Hero' && c && c.isKing) return false; // a king cannot release himself
     // ── A CHARMED HERO AND ITEMS: NONE OF IT ──────────────────────────────────────────────────────
     // 2026-09-12 hid Send Item from a charmed hero; 2026-09-18 replaced that with ONE engine-chosen

@@ -3580,8 +3580,8 @@ export function armyCardKinAgainstTheBattle(c: Copies, world: World): KinCompari
 // order (processOrder and the order's function), each name the list holds against the order the turn reads it as
 // (normaliseAction), and the creed orders' target fields (buildTargetField) against their rows and what the turn does.
 // Each runs as the portal's own code, on a report the engine builds; the turn's side is processOrder on a copy of the
-// state the report was built from. Where the form disagrees with the turn (questions 36, 39, 40 and 41), the
-// difference is pinned exactly.
+// state the report was built from. Where the form disagrees with the turn (questions 36, 39 and 41), the difference is
+// pinned exactly (question 40's Steal agrees since P1-11e21, R-130).
 
 /** The turn's refusals the order list restates, each by its line's kind: a creed's order outside its creed, a king's
  *  order by another hero, Steal with no Thief, Research with no Sage, a king releasing himself, a second Grand Design,
