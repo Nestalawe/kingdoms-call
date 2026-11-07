@@ -3909,6 +3909,8 @@ export const THE_CREED_FIELDS_THE_TURN_AGREES_WITH = [
   'a Consecrate by a king of White 3 at three consecrations, with Holy Sites',
   'a Consecrate by a king of White 2 under a Curse of 2, at one consecration',
   'a Consecrate beside the capital, lost',
+  'a Consecrate in the capital, lost',
+  'a Consecrate by a king of White 2 at three consecrations',
   'a Consecrate by a king of White 2 at one consecration, on a report older than its home and limit',
 ] as const;
 export const THE_CREED_FIELDS_THE_TURN_DISAGREES_WITH = [
@@ -3926,21 +3928,35 @@ export interface ACreedFieldComparison extends Comparison {
   readonly rows: Obj;
 }
 /** What a Consecrate's field says it will do (its words: "Consecrates …" or the warning it gives), and what the turn
- *  does (its line), each in the same words: it consecrates, or the rule that refuses it (the home marches: the home and
- *  the provinces next to it; the limit: the consecrations a king may hold). */
+ *  does (its line), each in the same words: it consecrates, or the rule that refuses it (not his realm's; the home
+ *  marches: the home itself, or a province next to it; the limit: the consecrations a king may hold), with the count
+ *  held before the order and the limit where it names them. */
 function theFieldsConsecration(markup: string): string {
   const said = /placeholder="([^"]*)"/.exec(markup)?.[1] ?? '';
   const words = theWordsOf(said);
-  if (words.startsWith('Consecrates ')) return 'it consecrates';
-  if (/is your home province|borders your home province/.test(words)) return 'the home marches';
-  if (words.includes('(the most your king may hold)')) return 'the limit';
+  const held = (re: RegExp) => re.exec(words)?.slice(1, 3).join('/') ?? '(no count)';
+  if (words.startsWith('Consecrates ')) return `it consecrates: ${held(/\((\d+)\/(\d+) held\)/)}`;
+  if (words.includes('is not yours this phase')) return "not his realm's";
+  if (words.includes('is your home province')) return 'the home marches: the home';
+  if (words.includes('borders your home province')) return 'the home marches: beside the home';
+  if (words.includes('(the most your king may hold)')) return `the limit: ${held(/You already hold (\d+)\/(\d+) /)}`;
   return `(the field says: ${words})`;
 }
-function theTurnsConsecration(facts: readonly Obj[]): string {
+function theTurnsConsecration(facts: readonly Obj[], itIsTheHome: boolean): string {
   const kinds = facts.map((f) => String(f['kind']));
-  if (kinds.includes('a king consecrates a province')) return 'it consecrates';
-  if (kinds.includes('the home marches were anointed at the coronation')) return 'the home marches';
-  if (kinds.includes('the White faith can sustain no more consecrated provinces')) return 'the limit';
+  const fact = (k: string) => facts.find((f) => f['kind'] === k) ?? {};
+  if (kinds.includes('a king consecrates a province')) {
+    const f = fact('a king consecrates a province');
+    return `it consecrates: ${String(Number(f['consecrated']) - 1)}/${String(f['limit'])}`;
+  }
+  if (kinds.includes('only a province of the realm can be consecrated')) return "not his realm's";
+  if (kinds.includes('the home marches were anointed at the coronation'))
+    return itIsTheHome ? 'the home marches: the home' : 'the home marches: beside the home';
+  if (kinds.includes('the White faith can sustain no more consecrated provinces')) {
+    const f = fact('the White faith can sustain no more consecrated provinces');
+    const names = Array.isArray(f['consecratedNames']) ? f['consecratedNames'] : [];
+    return `the limit: ${String(names.length)}/${String(f['limit'])}`;
+  }
   return `(the turn says: ${kinds.join('; ')})`;
 }
 /** The creed orders' fields (buildTargetField, on realm 0's report as the engine builds it from each world) against
@@ -4237,6 +4253,12 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
     realmZeroOf(G)['consecratedProvIds'] = five.slice(0, n).map((q) => q['id']);
   };
   const unchanged = (): undefined => undefined;
+  // the capital taken by realm 1: the turn's home is still the seat the realm was founded on
+  const theCapitalLost = (G: Obj) => {
+    provinceIn(G, capital)['owner'] = 1;
+    const r = realmZeroOf(G);
+    r['provinces'] = (Array.isArray(r['provinces']) ? r['provinces'] : []).filter((id) => id !== capital['id']);
+  };
   for (const [kind, p, white, edit, theReport] of [
     ['a Consecrate in a province of the realm', consecrated, 1, unchanged, 'as built'],
     ['a Consecrate in the capital', capital, 1, unchanged, 'as built'],
@@ -4272,18 +4294,9 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
       },
       'as built',
     ],
-    [
-      'a Consecrate beside the capital, lost',
-      besideTheCapital,
-      1,
-      (G: Obj) => {
-        // the capital taken by realm 1: the turn's home is still the seat the realm was founded on
-        provinceIn(G, capital)['owner'] = 1;
-        const r = realmZeroOf(G);
-        r['provinces'] = (Array.isArray(r['provinces']) ? r['provinces'] : []).filter((id) => id !== capital['id']);
-      },
-      'as built',
-    ],
+    ['a Consecrate beside the capital, lost', besideTheCapital, 1, theCapitalLost, 'as built'],
+    ['a Consecrate in the capital, lost', capital, 1, theCapitalLost, 'as built'],
+    ['a Consecrate by a king of White 2 at three consecrations', consecrated, 2, holding(3), 'as built'],
     [
       'a Consecrate by a king of White 2 at one consecration, on a report older than its home and limit',
       consecrated,
@@ -4305,7 +4318,7 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
     push(
       kind,
       theFieldsConsecration(field_(theField, kingId, 'Consecrate')),
-      theTurnsConsecration(theTurnPlaysTheOrder(divine.state, kingId, 'Consecrate').facts),
+      theTurnsConsecration(theTurnPlaysTheOrder(divine.state, kingId, 'Consecrate').facts, p === capital),
     );
   }
   return out;
