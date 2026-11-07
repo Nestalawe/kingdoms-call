@@ -9,9 +9,9 @@ import type {
   TheEffectOfADiscovery,
 } from '../../../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import { TAMED_FLYER_TYPES_D } from '../../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import { theFactorAUnitStrengthDiscoveryGivesAUnit } from '../../rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
 import {
   discUnitIs,
-  discUnitMatch,
   type AUnitAsTheDiscoveriesReadIt,
 } from '../../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effects.ts';
@@ -19,17 +19,9 @@ import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effect
 type TheStrengthStages = TheStagesOfEachHookPoint['strength'];
 
 /** "strength: a realm's discoveries strengthen a unit" (`unitStr`): the unit's type, race and quality (or risen dead),
- *  the ground, the side, led by the king, a garrison standing alone. */
+ *  the ground, the side, led by the king, a garrison standing alone (on plain values since plan P1-11e36). */
 export const A_REALMS_DISCOVERIES_STRENGTHEN_A_UNIT = {
-  'unit-strength': (e, facts) => {
-    if (!discUnitMatch(e, facts.theUnit)) return null;
-    if (e.king && !facts.isItLedByTheKing) return null; // "led by your KING in person" effects
-    if (e.terrain && (facts.theGround == null || !e.terrain.includes(facts.theGround))) return null;
-    if (e.side === 'atk' && facts.isItsSideTheAttacker !== true) return null;
-    if (e.side === 'def' && facts.isItsSideTheAttacker !== false) return null;
-    if (e.led === 'garrison' && facts.hasItACommander) return null; // only a garrison standing without a commander
-    return 1 + (e.pct ?? 0);
-  },
+  'unit-strength': theFactorAUnitStrengthDiscoveryGivesAUnit,
 } satisfies Partial<Record<DiscoveryEffectSlug, TheStrengthStages["a realm's discoveries strengthen a unit"]>>;
 
 /** "strength: a realm's discoveries add to a siege" (`siege`): its `delta`, if it names no unit types or the attacker

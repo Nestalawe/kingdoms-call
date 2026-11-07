@@ -88,6 +88,10 @@ import {
   A_REALMS_DISCOVERIES_PROMOTE_THE_CAPITALS_ARMIES,
   A_REALMS_DISCOVERIES_WIDEN_THE_WARNINGS_IT_HEARS,
 } from './discoveries/a-realms-discoveries-at-the-turns-end-and-the-new-turn.ts';
+import {
+  theFactorTheUnitStrengthDiscoveriesARealmHoldsStrengthenAUnitBy,
+  type AUnitARealmsDiscoveriesMayStrengthen,
+} from '../rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
 import type {
   ABeastACommanderLeads,
   AConsecrationARealmsDiscoveriesMayAllow,
@@ -114,7 +118,6 @@ import type {
   ASkillARealmsDiscoveriesMayRaise,
   ASideAsItsFanaticismIsRolled,
   AUnitARealmsDiscoveriesMayPromote,
-  AUnitARealmsDiscoveriesMayStrengthen,
   HookPointName,
   TheAttackersUnitsAtASiege,
   TheGroundAHeroWorks,
@@ -541,22 +544,17 @@ function theEffectsOfTheStageARealmHolds(
   );
 }
 
-/** The runner of "strength: a realm's discoveries strengthen a unit" (discUnitMult, which armStr asks): the product of
- *  the factors of the realm's effects that reach the unit, capped at the kind's ceiling (×1.30), however many it
- *  stacks (Toby, 2026-09-21). */
+/** The runner of "strength: a realm's discoveries strengthen a unit" (discUnitMult, which armStr asks): the realm's
+ *  effects of the stage's kind, handed in the order it holds them to their product, capped at the kind's ceiling (on
+ *  plain values since plan P1-11e36: the stage holds its one kind, whose entry is that product's effect). */
 export function theFactorARealmsDiscoveriesStrengthenAUnitBy(
   theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
   facts: AUnitARealmsDiscoveriesMayStrengthen,
 ): number {
-  let m = 1;
-  for (const [slug, e] of theEffectsOfTheStageARealmHolds(
-    theRealm,
-    STRENGTH["a realm's discoveries strengthen a unit"],
-  )) {
-    const factor = ENTRIES[slug].strength?.["a realm's discoveries strengthen a unit"]?.(e, facts) ?? null;
-    if (factor !== null) m *= factor;
-  }
-  return Math.min(DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS['unit-strength'].numbers.theCeiling.value, m);
+  return theFactorTheUnitStrengthDiscoveriesARealmHoldsStrengthenAUnitBy(
+    theEffectsOfTheStageARealmHolds(theRealm, STRENGTH["a realm's discoveries strengthen a unit"]).map(([, e]) => e),
+    facts,
+  );
 }
 
 /** The runner of "strength: a realm's discoveries add to a siege" (both battles, before the defenders' bonus is worn
