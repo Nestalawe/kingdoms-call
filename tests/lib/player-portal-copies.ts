@@ -182,6 +182,8 @@ const COPIES: Record<string, string[]> = {
     '_draftOrdersSnapshot',
     'draftOrderAt',
     'practiceCompanionSkill',
+    // (since P1-11e27 the words under a Blood Offering's rows: what the turn gives and raises)
+    'theBloodOfferingsHint',
     'buildTargetField',
   ],
   // the treasury ledger at the top of the orders (P1-11d4): what the orders will spend and add to the wages
@@ -4312,7 +4314,7 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
         }),
       );
       const hint = theWordsOf(/<div id="bo-hint-[^>]*>([\s\S]*?)<\/div>/.exec(markup)?.[1] ?? '');
-      const says = /sacrific\w* (.+?) to empower (.+?)(?: by \+\d+ tiers)?[.(]/.exec(hint);
+      const says = /sacrific\w* (.+?) to empower (.+?)(?: by \+\d+ tiers)?\s*[.(]/.exec(hint);
       const none = /no offering/i.test(hint);
       const text = theWordsOf(markup);
       const grades = [
@@ -4354,7 +4356,14 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
           raised: risen.map((a) => String(a['unitName'])),
           'the companies it may mark': before
             .filter((b) =>
-              aBloodOfferingMayTakeTheCompany(unitAsItsRealmSeesIt(b as Parameters<typeof unitAsItsRealmSeesIt>[0])),
+              aBloodOfferingMayTakeTheCompany(
+                unitAsItsRealmSeesIt({
+                  type: String(b['type']),
+                  _isSkeletal: b['_isSkeletal'] === true,
+                  _temporary: b['_temporary'] === true,
+                  _wildHuntUntilTurn: typeof b['_wildHuntUntilTurn'] === 'number' ? b['_wildHuntUntilTurn'] : null,
+                }),
+              ),
             )
             .map((b) => String(b['unitName'])),
           ...(given.length
