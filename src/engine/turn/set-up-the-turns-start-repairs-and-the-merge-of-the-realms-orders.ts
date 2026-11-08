@@ -1,8 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { safeStartLocked } from '../army-tables.ts';
 import { KC_SKILLS } from '../../content/kingdoms-call-data.ts';
-import { RACES_P, TEMPERS_P } from '../world/tables.ts';
-import { normaliseOwnedNames, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
+import { TEMPERS_P } from '../world/tables.ts';
 import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 
 // ── THE SET-UP: THE TURN'S START REPAIRS AND THE MERGE OF THE REALMS' ORDERS (plan P1-08k7: two stages taken out of
@@ -13,11 +12,10 @@ import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 //      P1-08n). It takes the save (G), as the save's upgrades beside its call do, and a failure in it is a save that
 //      can't be read;
 //   2. once the context is made: every realm stamped a bot's or a human's from the slot rows (plan P1-08n);
-//   3. the turn's start repairs: a neutral hero wearing a beast's race is given a people's race; a guard stranded
-//      without companies, or inside a realm's land, becomes a wanderer; no company carries a stranded hull's marker
-//      into the turn; a hero in a realm's service loses his " (wandering)" tag (stashed on the save, told at the
-//      turn's end); then the turn's orders and its scratch lists start empty, every living hero noting the realm he
-//      serves, and every living realm's hero starts with five empty phases (Defend, later);
+//   3. the turn's start: how many heroes in a realm's service the save's upgrade took the " (wandering)" tag off
+//      (its four turn-start repairs, since P1-15f2) kept on the save, told at the turn's end; then the turn's orders
+//      and its scratch lists start empty, every living hero noting the realm he serves, and every living realm's hero
+//      starts with five empty phases (Defend, later);
 //   4. the merge of the realms' orders: each realm that sent orders has its hero order kept, its declarations (or the
 //      Safe Start's refusal), research choices, Reckoning call, messages and concession collected for later stages,
 //      orders stamped for another turn refused, the orders of heroes it means to hire, raise or charm held until the
@@ -57,41 +55,12 @@ export function everyRealmStampedBotOrHumanFromTheBotSlotRows(turnContext) {
 
 export function turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext) {
   const { G } = turnContext;
-  // a defeated sea neutral-guard becomes a plain wandering hero (player===null, no longer
-  // _isNeutralGuard) but keeps the 'Creature'/'Monster' pseudo-race it wore to label the beasts it
-  // once commanded — which then reads absurdly in the Wandering Heroes list ("Mira the Nomad
-  // (Monster, Neutral) — hire for …"). Heroes are people; the monster class belongs to the ARMIES.
-  // Normalise any such lone wanderer to a stable humanoid race here (deterministic by id, so it
-  // never flickers turn to turn). Active guards keep their beast label — they are excluded by the
-  // _isNeutralGuard check — preserving the intended sea-guard flavour while they hold their waters.
-  // Legacy-save safety net: world-gen now gives every neutral hero a humanoid race, but a save
-  // created before that fix may still hold neutral heroes — active guards included — wearing a
-  // 'Creature'/'Monster' pseudo-race. Normalise ALL of them to a stable humanoid race
-  // (deterministic by id so it never flickers). The monster class stays on the ARMIES they lead.
-  (G.characters || []).forEach((c) => {
-    if (c && c.player === null && (c.race === 'Monster' || c.race === 'Creature')) {
-      c.race = RACES_P[(((c.id || 0) % RACES_P.length) + RACES_P.length) % RACES_P.length];
-    }
-  });
-  // repair any guard stranded troopless or inside a player's province (see normaliseStrandedGuards)
-  // so this turn's move-in / hire / sightings all treat him as the wanderer he really is. This also
-  // heals saves carrying the pre-fix case.
-  normaliseStrandedGuards(G);
-  // 2026-09-27 (Toby): the stranded-hull marker is a WITHIN-PHASE flag (see navalHeldIn). Every
-  // path that sets it clears it again, but a save written by an older build — or any future path
-  // that forgets — must not carry it into a fresh turn, where it would quietly hold units out of
-  // their own province's defence. One sweep, at the top of the turn.
-  ((G.world && G.world.provinces) || []).forEach((p) =>
-    ((p && p.garrisonArmies) || []).forEach((a) => {
-      if (a && a._navalHold != null) delete a._navalHold;
-    }),
-  );
-  // strip the ' (wandering)' tag from anyone who now serves a crown. Heals live games whose heroes
-  // were charmed or resurrected into service before the paths below were fixed.
-  // SCOPE TRAP: `log` is a const arrow declared far below inside runTurn, so it is in its temporal
-  // dead zone here — the repair is stashed on G and reported by the turn-end integrity block
-  // instead.
-  G._nameRepairs = normaliseOwnedNames(G);
+  // the turn's start repairs are the save's upgrade's (src/engine/saves/, plan P1-15f2), after its check: a neutral
+  // hero's beast race, a stranded guard, a stranded hull's marker, a crowned hero's ' (wandering)' tag. How many tags it
+  // took off is kept on the save here, where the repair wrote it, and the turn's end tells the GM.
+  // SCOPE TRAP: `log` is a const arrow declared far below inside runTurn, so it is in its temporal dead zone here —
+  // the count is stashed on G and reported by the turn-end integrity block instead.
+  G._nameRepairs = turnContext.whatTheSavesUpgradeFound.heroesInARealmsServiceWhoseWanderingTagWasTakenOff;
 
   // 2. Merge all player orders into G.turnOrders + apply encounter plans
   // CRITICAL: reset turnOrders completely first — stale orders from a previous turn

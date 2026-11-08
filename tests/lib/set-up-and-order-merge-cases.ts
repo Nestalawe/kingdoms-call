@@ -2,9 +2,10 @@
 // flags stamped, the turn's start repairs, then the merge of the realms' orders. Staged on the middle of a bot world
 // (lib/middle-of-a-bot-world.ts), from plain realms each holding only its seat with a living king there (P1-08k5a's
 // `stageCase`), every realm having met every other, each case with what must be true after it in game terms.
-// The repairs: a wandering hero wearing a beast's race is given a people's race; a neutral guard with no companies, or
-// standing in a realm's land, becomes a wanderer; no company carries a stranded hull's marker into the turn; a hero in a
-// realm's service loses his "(wandering)" tag, told at the turn's end; last turn's orders and scratch lists are gone;
+// The repairs (the save's upgrade's since P1-15f2, run in resolveTurn before the stages: whole-turn cases): a wandering
+// hero wearing a beast's race is given a people's race; a neutral guard with no companies, or standing in a realm's
+// land, becomes a wanderer; no company carries a stranded hull's marker into the turn; a hero in a realm's service loses
+// his "(wandering)" tag, told at the turn's end (the set-up keeps the count); last turn's orders and scratch lists are gone;
 // every living hero of a realm notes the realm he serves. The merge: each realm that sent orders has them read, as text
 // or as an object, in the form of today or an older one; its heroes' order in its column kept; its declarations (or the
 // Safe Start's refusal), research choices, Reckoning call, messages and concession taken for the stages that act on
@@ -362,20 +363,12 @@ export const REPAIR_CASES: SetUpCase[] = [
         want: { first: want, after: want },
       };
     },
-    merged: (m, s) => ({
-      got: { race: charIn(m.G, hero(s))['race'] },
-      want: { race: raceFor(must(s.board, 'board'), hero(s)) },
-    }),
   },
   {
     name: 'a wandering hero wearing the other beast’s race (Creature) is given a people’s race too',
     stage: (b) => ({ hero: wanderingAs(b, 'Creature'), board: b }),
     check: (o, s) => ({
       got: { race: charIn(o.first, hero(s))['race'] },
-      want: { race: raceFor(must(s.board, 'board'), hero(s)) },
-    }),
-    merged: (m, s) => ({
-      got: { race: charIn(m.G, hero(s))['race'] },
       want: { race: raceFor(must(s.board, 'board'), hero(s)) },
     }),
   },
@@ -390,20 +383,12 @@ export const REPAIR_CASES: SetUpCase[] = [
       got: { races: [hero(s), other(s, 0)].map((c) => charIn(o.first, c)['race']) },
       want: { races: [hero(s), other(s, 0)].map((c) => raceFor(must(s.board, 'board'), c)) },
     }),
-    merged: (m, s) => ({
-      got: { races: [hero(s), other(s, 0)].map((c) => charIn(m.G, c)['race']) },
-      want: { races: [hero(s), other(s, 0)].map((c) => raceFor(must(s.board, 'board'), c)) },
-    }),
   },
   {
     name: 'a hero in a realm’s service keeps a beast’s race; a wandering Elf keeps his own',
     stage: (b) => ({ hero: realmHero(b, 0, { race: 'Monster' }), others: [wanderingAs(b, 'Elf')] }),
     check: (o, s) => ({
       got: { served: charIn(o.first, hero(s))['race'], wandering: charIn(o.first, other(s, 0))['race'] },
-      want: { served: 'Monster', wandering: 'Elf' },
-    }),
-    merged: (m, s) => ({
-      got: { served: charIn(m.G, hero(s))['race'], wandering: charIn(m.G, other(s, 0))['race'] },
       want: { served: 'Monster', wandering: 'Elf' },
     }),
   },
@@ -414,7 +399,6 @@ export const REPAIR_CASES: SetUpCase[] = [
       got: { guard: charIn(o.first, hero(s))['_isNeutralGuard'] ?? false },
       want: { guard: false },
     }),
-    merged: (m, s) => ({ got: { guard: charIn(m.G, hero(s))['_isNeutralGuard'] ?? false }, want: { guard: false } }),
   },
   {
     name: 'a neutral guard standing in a realm’s land is a wanderer by the first phase',
@@ -426,7 +410,6 @@ export const REPAIR_CASES: SetUpCase[] = [
       got: { guard: charIn(o.first, hero(s))['_isNeutralGuard'] ?? false },
       want: { guard: false },
     }),
-    merged: (m, s) => ({ got: { guard: charIn(m.G, hero(s))['_isNeutralGuard'] ?? false }, want: { guard: false } }),
   },
   {
     name: 'a neutral guard leading companies on unclaimed ground still guards it at the first phase',
@@ -435,7 +418,6 @@ export const REPAIR_CASES: SetUpCase[] = [
       got: { guard: charIn(o.first, hero(s))['_isNeutralGuard'] ?? false },
       want: { guard: true },
     }),
-    merged: (m, s) => ({ got: { guard: charIn(m.G, hero(s))['_isNeutralGuard'] ?? false }, want: { guard: true } }),
   },
   {
     name: 'no garrison company carries a stranded hull’s marker into the turn',
@@ -444,20 +426,12 @@ export const REPAIR_CASES: SetUpCase[] = [
       got: { held: (o.first.world.provinces[there(s).id]?.garrisonArmies ?? []).map((u) => '_navalHold' in u) },
       want: { held: [false] },
     }),
-    merged: (m, s) => ({
-      got: { held: (m.G.world.provinces[there(s).id]?.garrisonArmies ?? []).map((u) => '_navalHold' in u) },
-      want: { held: [false] },
-    }),
   },
   {
     name: 'a stranded hull’s marker of phase 0 is taken off as well',
     stage: (b) => ({ there: heldHull(b, 2, 0) }),
     check: (o, s) => ({
       got: { held: (o.first.world.provinces[there(s).id]?.garrisonArmies ?? []).map((u) => '_navalHold' in u) },
-      want: { held: [false] },
-    }),
-    merged: (m, s) => ({
-      got: { held: (m.G.world.provinces[there(s).id]?.garrisonArmies ?? []).map((u) => '_navalHold' in u) },
       want: { held: [false] },
     }),
   },
@@ -473,10 +447,6 @@ export const REPAIR_CASES: SetUpCase[] = [
       got: { name: charIn(o.first, hero(s)).name, told: told(o, repaired(1)) },
       want: { name: hero(s).name.replace(' (wandering)', ''), told: [{ targets: [], public: false }] },
     }),
-    merged: (m, s) => ({
-      got: { name: charIn(m.G, hero(s)).name, repairs: m.G['_nameRepairs'] },
-      want: { name: hero(s).name.replace(' (wandering)', ''), repairs: 1 },
-    }),
   },
   {
     name: 'two heroes in realms’ service bearing the tag are both mended, and the line counts two',
@@ -491,7 +461,6 @@ export const REPAIR_CASES: SetUpCase[] = [
       got: { names: [hero(s), other(s, 0)].map((c) => charIn(o.first, c).name), told: told(o, repaired(2)).length },
       want: { names: [hero(s), other(s, 0)].map((c) => c.name.replace(/ \(wandering\)/i, '')), told: 1 },
     }),
-    merged: (m) => ({ got: { repairs: m.G['_nameRepairs'] }, want: { repairs: 2 } }),
   },
   {
     name: 'with no hero to mend, no line is told and the save keeps a count of none',

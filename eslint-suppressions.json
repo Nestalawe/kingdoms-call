@@ -722,7 +722,7 @@
   },
   "tests/lib/set-up-and-order-merge-cases.ts": {
     "@typescript-eslint/dot-notation": {
-      "count": 7
+      "count": 4
     }
   },
   "tests/lib/source.ts": {
@@ -936,7 +936,7 @@
   },
   "tests/unit/set-up-and-order-merge-called-directly.test.ts": {
     "@typescript-eslint/dot-notation": {
-      "count": 3
+      "count": 2
     }
   },
   "tests/unit/skill-rises-terror-and-graves.test.ts": {

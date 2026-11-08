@@ -6,9 +6,8 @@
 // replaced in the vm by a recorder for the test's length), what they hand them and when, and where resolveTurn calls
 // them; then what the whole turn can't stage: the turn run differing from the save's turn, a slot row for a realm the
 // save doesn't have, the per-turn lists missing when the merge runs, a save with no map or gaps in it. Properties
-// (fast-check): the repairs leave every living hero of a realm, and only them, five empty phases, the five per-turn
-// lists empty, each living hero's own realm in his record once, a people's race on every unclaimed hero who wore a
-// beast's, and no stranded hull's marker; the merge writes exactly the hero orders a realm sends as lists for its own
+// (fast-check): the set-up leaves every living hero of a realm, and only them, five empty phases, the five per-turn
+// lists empty, and each living hero's own realm in his record once; the merge writes exactly the hero orders a realm sends as lists for its own
 // heroes, holds exactly
 // the written orders in their lists with their numbers read, and nothing of a payload for another turn; a conceded
 // realm's living heroes always hold; declarations are taken, or refused under Safe Start, exactly as the rule says.
@@ -20,21 +19,20 @@
 // the slot rows and the turn run, as `resolveTurn` calls them: the whole-turn cases through the two stages alone,
 // reading the world and the context's collectors (`staleOrderWarnings`, `diploDeclarations`, `safeStartRefused`,
 // `discoveryChoicePicks`, `reckoningCalls`, `playerMessages`), but for the turn's record of orders (the reports');
-// then, with the helpers they call stood in by recorders in the `vm`, what each is handed: the beasts' races mended
-// before the stranded guards' repair, which is handed the save once, then the names' repair once (its count kept on the
-// save as given), then each living realm hero's realm noted; Safe Start asked once per realm sending declarations, of
+// then, with the helpers they call stood in by recorders in the `vm`, what each is handed: none of the turn-start
+// repairs (the save's upgrade's since P1-15f2), the count of tags the upgrade took off kept on the save as it gives it,
+// then each living realm hero's realm noted; Safe Start asked once per realm sending declarations, of
 // the save and the turn run; `resolveTurn` calling the repairs, then the merge, once each with its context, before any
 // line is logged and before the first phase, the six collectors in the context as the merge returns (the merge makes
 // them since P1-08l2), and its later stages reading what the merge collected. Then what a whole turn can't stage: the
 // turn run differing from the save's turn (stale orders, the concession's date, a research choice, Safe Start all
 // judged by the turn run); a slot row for a realm the save doesn't have ("a player"'s stale orders, its order of heroes
 // and concession going nowhere, its Reckoning call taken); the per-turn lists missing when the merge runs (made) or
-// holding this turn's orders already (added to); the repairs leaving the lists empty and every hero's phases a list of
-// his own; a save with no map, a gap among the provinces or a garrison's companies; a wanderer with id 0 or a negative
-// id; a hero with no realm field at all keeping a beast's race; a gap in the realms' list not stopping the conceded
-// hold; an heir named by his id as text. Properties (fast-check): the repairs leave every living realm hero, and only
-// them, five empty phases, the per-turn lists empty, each living realm hero's realm in his record once, a people's race
-// on every unclaimed hero who wore a beast's, no stranded hull's marker; the merge writes exactly the hero orders sent
+// holding this turn's orders already (added to); the set-up leaving the lists empty and every hero's phases a list of
+// his own; a save with no map, a gap among the provinces or a garrison's companies; a gap in the realms' list not
+// stopping the conceded hold; an heir named by his id as text. Properties (fast-check): the set-up leaves every living
+// realm hero, and only them, five empty phases, the per-turn lists empty, each living realm hero's realm in his record
+// once; the merge writes exactly the hero orders sent
 // as lists for the realm's own heroes and holds exactly the written orders with their numbers read, in order, passing
 // over the column's order; a payload for another turn writes no orders, holds none and sets no plan, one for the turn
 // run or with none does, a conceded realm's living heroes hold once a row of orders read comes at or after its
@@ -56,7 +54,6 @@ import {
   ordersOf,
   orderedHeroes,
   payloadOf,
-  raceFor,
   realmHero,
   rowsOf,
   scratch,
@@ -138,49 +135,36 @@ function standIn(names: string[], body: () => void): Call[] {
 }
 
 describe('The set-up: what it calls', () => {
-  test('the repairs mend the beasts’ races first, then hand the save to the stranded guards’ repair and the names’ repair once each, then note each living realm hero’s realm', () => {
+  test('the set-up calls none of the turn-start repairs (the save’s upgrade’s), then notes each living realm hero’s realm', () => {
     const b = fresh();
     const g = wanderingAs(b, 'Monster');
     Object.assign(g, { _isNeutralGuard: true, armies: [] });
     const h = realmHero(b, 1);
     realmHero(b, 2, { alive: false });
-    const seen: string[] = [];
     const calls = standIn(['normaliseStrandedGuards', 'normaliseOwnedNames', 'noteServedRealm'], () => {
-      const was = engine['demoteGuardToWanderer'] as Fn;
-      engine['demoteGuardToWanderer'] = (c: Character) => {
-        seen.push(String(c['race']));
-        return was(c);
-      };
-      try {
-        setUp(b.tc);
-      } finally {
-        engine['demoteGuardToWanderer'] = was;
-      }
+      setUp(b.tc);
     });
-    expect(calls.map((c) => c.fn)).toEqual([
-      'normaliseStrandedGuards',
-      'normaliseOwnedNames',
-      ...b.G.characters.filter((c) => c.alive && c.player != null).map(() => 'noteServedRealm'),
-    ]);
-    expect(calls.slice(0, 2).map((c) => c.args.length === 1 && c.args[0] === b.G)).toEqual([true, true]);
-    const noted = calls.slice(2).map((c) => [(c.args[0] as Character).id, c.args[1]]);
+    expect(calls.map((c) => c.fn)).toEqual(
+      b.G.characters.filter((c) => c.alive && c.player != null).map(() => 'noteServedRealm'),
+    );
+    const noted = calls.map((c) => [(c.args[0] as Character).id, c.args[1]]);
     expect(noted).toEqual(b.G.characters.filter((c) => c.alive && c.player != null).map((c) => [c.id, c.player]));
     expect(noted).toContainEqual([h.id, 1]);
-    expect(seen).toEqual([raceFor(b, g)]);
+    expect([g['race'], g['_isNeutralGuard']]).toEqual(['Monster', true]);
   });
 
-  test('the repairs keep the names’ repair count on the save, as the names’ repair gives it back', () => {
-    const b = fresh();
-    const g: Raw = engine;
-    const was = g['normaliseOwnedNames'];
-    g['normaliseOwnedNames'] = () => 5;
-    try {
+  test.each([0, 1, 5])(
+    'the set-up keeps on the save how many heroes’ “(wandering)” tags the save’s upgrade took off: %i',
+    (n) => {
+      const b = fresh();
+      tc(b)['whatTheSavesUpgradeFound'] = {
+        ...(tc(b)['whatTheSavesUpgradeFound'] as Raw),
+        heroesInARealmsServiceWhoseWanderingTagWasTakenOff: n,
+      };
       setUp(b.tc);
-    } finally {
-      g['normaliseOwnedNames'] = was;
-    }
-    expect(G(b)['_nameRepairs']).toBe(5);
-  });
+      expect(G(b)['_nameRepairs']).toBe(n);
+    },
+  );
 
   test('the merge asks Safe Start once for each realm that sends declarations, of the save and the turn run', () => {
     const b = fresh();
@@ -400,25 +384,6 @@ describe('The set-up: what only a direct call can stage', () => {
     expect(() => setUp(noMap.tc)).not.toThrow();
   });
 
-  test('a wandering hero with no id wearing a beast’s race is given the first people’s race; a negative id counts round the list', () => {
-    const b = fresh();
-    const w = wanderingAs(b, 'Monster');
-    const v = wanderingAs(b, 'Creature');
-    (w as Raw)['id'] = 0;
-    (v as Raw)['id'] = -1;
-    setUp(b.tc);
-    const rs = JSON.parse(vm.runInContext('JSON.stringify(RACES_P)', engine) as string) as string[];
-    expect([w['race'], v['race']]).toEqual([rs[0], rs[rs.length - 1]]);
-  });
-
-  test('a hero whose realm the save doesn’t record at all (not even as none) keeps a beast’s race', () => {
-    const b = fresh();
-    const h = wanderingAs(b, 'Monster');
-    Reflect.deleteProperty(h, 'player');
-    setUp(b.tc);
-    expect(h['race']).toBe('Monster');
-  });
-
   test('a gap in the save’s list of realms doesn’t stop a conceded realm’s heroes being made to hold', () => {
     const b = fresh();
     const h = realmHero(b, 1);
@@ -450,7 +415,7 @@ const SCRATCH = [
   '_pendingSynthPlans',
 ];
 describe('The set-up: properties', () => {
-  test('the repairs leave every living hero of a realm, and only them, five empty phases; the per-turn lists empty; each living realm hero’s realm in his record once; a people’s race on every unclaimed hero who wore a beast’s; no stranded hull’s marker', () => {
+  test('the set-up leaves every living hero of a realm, and only them, five empty phases; the per-turn lists empty; each living realm hero’s realm in his record once', () => {
     const heroSpec = fc.record({
       player: fc.constantFrom(null, 0, 1, 2),
       alive: fc.boolean(),
@@ -484,7 +449,6 @@ describe('The set-up: properties', () => {
             (b.G.turnOrders as Raw)['5'] = plan();
             SCRATCH.forEach((k) => (G(b)[k] = [{ heroId: 1 }]));
           }
-          const before = b.G.characters.map((c) => ({ id: c.id, player: c.player, alive: c.alive, race: c['race'] }));
           setUp(b.tc);
           const living = b.G.characters.filter((c) => c.player !== null && c.alive);
           expect(orderedHeroes(b.G)).toEqual(living.map((c) => String(c.id)).sort());
@@ -494,13 +458,7 @@ describe('The set-up: properties', () => {
             expect(sv.filter((x) => x === c.player).length).toBe(1);
           });
           expect(SCRATCH.map((k) => scratch(b.G, k))).toEqual(SCRATCH.map(() => []));
-          before.forEach((x, i) => {
-            const c = must(b.G.characters[i], 'hero');
-            const beast = x.race === 'Monster' || x.race === 'Creature';
-            expect(c['race']).toBe(x.player === null && beast ? raceFor(b, c) : x.race);
-          });
           expect(hs.length).toBe(specs.length);
-          expect(seat.garrisonArmies.filter((u) => '_navalHold' in u)).toEqual([]);
         },
       ),
       { seed: SEED, numRuns: 150 },

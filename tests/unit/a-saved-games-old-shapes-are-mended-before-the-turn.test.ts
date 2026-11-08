@@ -17,6 +17,12 @@
 //   how many (a property: any HP, or none); a gap among the provinces or the features is passed over;
 // - the retired Library (sd30) is struck from a realm's discoveries, with any gap in its list; a realm with no list
 //   keeps none;
+// - after the check, the turn-start repairs (P1-15f2: the turn ran them before): a hero of no realm wearing a beast's
+//   race is given the people's race at his id (an id of 0, or below, too; a hero with no realm field keeps his); a
+//   neutral guard who leads no companies, or stands in a realm's land, is made a wanderer (one leading companies on
+//   unclaimed ground still guards); no garrison company keeps a stranded hull's marker, and the check, before the
+//   repair, still names the leaked marker; a hero in a realm's service loses his "(wandering)" tag, and the upgrade
+//   returns how many (a property: any race, realm and marker); gaps in the lists are passed over;
 // - all of them at once, then the upgrade run again on what it left: the second run changes nothing and finds nothing.
 // The world staged on is one that has played its first turn: its guardians already re-measured (a new world isn't:
 // question 17). And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a
@@ -38,10 +44,13 @@
 // Corsair company kept); a retired Sage discovery taken and counted, none kept on the save, a held one refreshed from
 // the table; a company of a renamed unit renamed; an item's tier from today's tables; an old world's lairs renamed once,
 // counted; its guardians 5 HP frailer once, never below 5, counted (a property), gaps passed over; the Library struck
-// with any gap, a realm with no list keeping none. All at once, then again: the second run changes nothing and finds
-// nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril Armour made at tier 1, raised to 2; the
-// guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass left out turns its cases red (9
-// of 9). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
+// with any gap, a realm with no list keeping none; after the check, a hero of no realm in a beast's race given the
+// people's race at his id (id 0 and below too; no realm field: kept), a stranded guard made a wanderer (one guarding
+// unclaimed ground kept), a garrison's stranded-hull marker taken off (the check still naming it), a crowned hero's
+// "(wandering)" tag taken off, counted (a property; gaps passed over). All at once, then again: the second run changes
+// nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril Armour made at tier 1,
+// raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
+// out turns its cases red (13 of 13). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
 // since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
 // settings)
 import fc from 'fast-check';
@@ -51,7 +60,7 @@ import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { generateBotSetups } from '../../src/engine/bots/setup.ts';
 import { kcRng } from '../../src/engine/rng.ts';
 import { homeProvinceIdFor } from '../../src/engine/grand-design.ts';
-import { fullRaceLandRoster } from '../../src/engine/world/tables.ts';
+import { RACES_P, fullRaceLandRoster } from '../../src/engine/world/tables.ts';
 import { LEGACY_UNIT_RENAMES } from '../../src/engine/army-tables.ts';
 import { GUARDIAN_TABLE_VER } from '../../src/engine/heroes/skills-and-hp.ts';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
@@ -100,17 +109,20 @@ const countsOf = ({
   heroesCarriedOverToTheEarnedHpPool,
   lairsRenamed,
   guardiansCut,
+  heroesInARealmsServiceWhoseWanderingTagWasTakenOff,
 }: WhatTheSavesUpgradeFound): TheCounts => ({
   retiredSageDiscoveriesRemoved,
   heroesCarriedOverToTheEarnedHpPool,
   lairsRenamed,
   guardiansCut,
+  heroesInARealmsServiceWhoseWanderingTagWasTakenOff,
 });
 const NOTHING_FOUND: TheCounts = {
   retiredSageDiscoveriesRemoved: 0,
   heroesCarriedOverToTheEarnedHpPool: [],
   lairsRenamed: 0,
   guardiansCut: 0,
+  heroesInARealmsServiceWhoseWanderingTagWasTakenOff: 0,
 };
 
 const realmsHeroes = (s: Save) => s.characters.filter((c) => c.alive && c.player != null);
@@ -146,6 +158,42 @@ const notAHome = (s: Save): Province =>
     ),
     'land province that is no home',
   );
+/** A land province no realm holds. */
+const unclaimed = (s: Save): Province =>
+  must(
+    s.world.provinces.find((p) => p.terrain !== 'sea' && p.owner == null),
+    'land province no realm holds',
+  );
+/** A hero of no realm (a copy of realm 0's king, with an id of his own), at a land province no realm holds, leading no
+ *  companies, with `extra` over him; added to the save. */
+function aHeroOfNoRealm(s: Save, extra: Loose = {}): Hero {
+  const king = must(
+    s.characters.find((c) => c.isKing && c.player === 0),
+    'king of realm 0',
+  );
+  const id = Math.max(...s.characters.map((c) => c.id)) + 1;
+  const hero: Hero = Object.assign(copy(king), {
+    id,
+    player: null,
+    isKing: false,
+    name: 'Mira the Nomad',
+    location: unclaimed(s).id,
+    armies: [],
+    ...extra,
+  });
+  s.characters.push(hero);
+  return hero;
+}
+/** The people's race a hero of no realm wearing a beast's race is given: the race at his id, round the list. */
+const theRaceAt = (id: number) => RACES_P[((id % RACES_P.length) + RACES_P.length) % RACES_P.length];
+const heroOf = (s: Save, id: unknown) =>
+  must(
+    s.characters.find((c) => c.id === id),
+    'staged hero',
+  );
+/** Every garrison company of the world holding a stranded hull's marker. */
+const heldHulls = (s: Save) =>
+  s.world.provinces.flatMap((p) => p.garrisonArmies).filter((u) => Reflect.get(u, '_navalHold') != null);
 const aCompany = (s: Save) => must(s.characters.flatMap((c) => c.armies).find(Boolean), 'company led by a hero');
 const firstRename = must(Object.entries(LEGACY_UNIT_RENAMES)[0], 'renamed unit');
 const aTreasuryItem = must(
@@ -381,6 +429,81 @@ const OLD_SHAPES: OldShape[] = [
       };
     },
   },
+  {
+    name: "a hero of no realm wearing a beast's race (Monster, Creature) is given the people's race at his id",
+    pass: 'everyNeutralHeroWearingABeastsRaceGivenAPeoplesRace',
+    stage(s) {
+      return [aHeroOfNoRealm(s, { race: 'Monster' }).id, aHeroOfNoRealm(s, { race: 'Creature' }).id];
+    },
+    mended(s, ids, found) {
+      const [a, b] = ids as number[];
+      return {
+        got: { races: [heroOf(s, a).race, heroOf(s, b).race], found },
+        want: { races: [theRaceAt(Number(a)), theRaceAt(Number(b))], found: NOTHING_FOUND },
+      };
+    },
+  },
+  {
+    name: "a neutral guard who leads no companies, or stands in a realm's land, is made a wanderer; one leading companies on unclaimed ground still guards",
+    pass: 'normaliseStrandedGuards',
+    stage(s) {
+      const company = copy(aCompany(s));
+      return [
+        aHeroOfNoRealm(s, { _isNeutralGuard: true }).id,
+        aHeroOfNoRealm(s, { _isNeutralGuard: true, armies: [company], location: homeOf(s, 1).id }).id,
+        aHeroOfNoRealm(s, { _isNeutralGuard: true, armies: [company] }).id,
+      ];
+    },
+    mended(s, ids) {
+      const heroes = (ids as number[]).map((id) => heroOf(s, id));
+      return {
+        got: heroes.map((h) => [h._isNeutralGuard, h.name]),
+        want: [
+          [false, 'Mira the Nomad (wandering)'],
+          [false, 'Mira the Nomad (wandering)'],
+          [true, 'Mira the Nomad'],
+        ],
+      };
+    },
+  },
+  {
+    name: "no garrison company keeps a stranded hull's marker; the company is kept",
+    pass: 'noGarrisonCompanyCarriesAStrandedHullsMarker',
+    stage(s) {
+      const home = homeOf(s, 0);
+      home.garrisonArmies.push(
+        { ...copy(aCompany(s)), _navalHold: 2 } as never,
+        {
+          ...copy(aCompany(s)),
+          _navalHold: 0,
+        } as never,
+      );
+      return home.garrisonArmies.length;
+    },
+    mended(s, length) {
+      return { got: [heldHulls(s), homeOf(s, 0).garrisonArmies.length], want: [[], length] };
+    },
+  },
+  {
+    name: 'a hero in a realm\'s service loses his "(wandering)" tag, and the upgrade returns how many',
+    pass: 'normaliseOwnedNames',
+    stage(s) {
+      const [a, b] = realmsHeroes(s);
+      const first = must(a, 'a realm hero');
+      const second = must(b, 'a second realm hero');
+      const names = [first.name, second.name];
+      first.name = `${first.name} (wandering)`;
+      second.name = `${second.name} (Wandering)`;
+      return [[first.id, second.id], names];
+    },
+    mended(s, staged, found) {
+      const [ids, names] = staged as [number[], string[]];
+      return {
+        got: { names: ids.map((id) => heroOf(s, id).name), found },
+        want: { names, found: { ...NOTHING_FOUND, heroesInARealmsServiceWhoseWanderingTagWasTakenOff: 2 } },
+      };
+    },
+  },
 ];
 
 describe("a saved game's old shapes are mended before the turn (upgradeGameState)", () => {
@@ -448,6 +571,86 @@ describe("a saved game's old shapes are mended before the turn (upgradeGameState
     loose(must(s.players[1], 'realm 1'))['discoveries'] = null;
     upgradeGameState(s);
     expect(loose(must(s.players[1], 'realm 1'))['discoveries']).toBeNull();
+  });
+
+  test("a hero of no realm with an id of 0 wearing a beast's race is given the first people's race; an id below 0 counts round the list; a hero with no realm field keeps a beast's race", () => {
+    const s = copy(WORLD);
+    const none = aHeroOfNoRealm(s, { race: 'Monster' });
+    const below = aHeroOfNoRealm(s, { race: 'Creature' });
+    const unrecorded = aHeroOfNoRealm(s, { race: 'Monster' });
+    loose(none)['id'] = 0;
+    loose(below)['id'] = -1;
+    delete loose(unrecorded)['player'];
+    upgradeGameState(s);
+    expect([none.race, below.race, unrecorded.race]).toEqual([RACES_P[0], RACES_P.at(-1), 'Monster']);
+  });
+
+  test("the check, before the repairs, still names a leaked stranded hull's marker; the repair then takes it off", () => {
+    const s = copy(WORLD);
+    const home = homeOf(s, 0);
+    home.garrisonArmies.push({ ...copy(aCompany(s)), _navalHold: 3 } as never);
+    const where = `world.provinces.${String(s.world.provinces.indexOf(home))}.garrisonArmies.${String(home.garrisonArmies.length - 1)}`;
+    const found = upgradeGameState(s);
+    expect(found.whereTheSaveDiffersFromThisBuildsSchema.filter((p) => p.startsWith(where))).toEqual([
+      `${where}: a field this build doesn't know, _navalHold`,
+    ]);
+    expect(heldHulls(s)).toEqual([]);
+  });
+
+  test('the repairs pass over gaps among the provinces and the garrisons', () => {
+    const s = copy(WORLD);
+    const named = must(realmsHeroes(s)[0], 'a realm hero');
+    const name = named.name;
+    named.name = `${name} (wandering)`;
+    homeOf(s, 0).garrisonArmies.push(null as never);
+    const ps = s.world.provinces as unknown as (Loose | null)[];
+    ps[ps.findIndex((p) => p && !(p['features'] as unknown[] | undefined)?.length)] = null;
+    expect(upgradeGameState(s).heroesInARealmsServiceWhoseWanderingTagWasTakenOff).toBe(1);
+    expect(named.name).toBe(name);
+  });
+
+  test("the repairs, any hero's race, realm and life, any garrison's markers: a people's race on every hero of no realm who wore a beast's, every other race kept; no stranded hull's marker; every crowned hero's tag off, counted", () => {
+    const heroSpec = fc.record({
+      player: fc.constantFrom(null, 0, 1, 2),
+      alive: fc.boolean(),
+      race: fc.constantFrom('Monster', 'Creature', 'Human', 'Elven'),
+      tag: fc.constantFrom('', ' (wandering)', ' (Wandering)'),
+    });
+    fc.assert(
+      fc.property(
+        fc.array(heroSpec, { maxLength: 6 }),
+        fc.array(fc.option(fc.integer({ min: 0, max: 4 }), { nil: undefined }), { maxLength: 4 }),
+        (specs, holds) => {
+          const s = copy(WORLD);
+          const heroes = specs.map((x) =>
+            aHeroOfNoRealm(s, {
+              player: x.player,
+              alive: x.alive,
+              race: x.race,
+              name: 'Mira the Nomad' + x.tag,
+              armies: [copy(aCompany(s))],
+            }),
+          );
+          const home = homeOf(s, 0);
+          home.garrisonArmies = holds.map((h) => ({
+            ...copy(aCompany(s)),
+            ...(h === undefined ? {} : { _navalHold: h }),
+          }));
+          const found = upgradeGameState(s);
+          heroes.forEach((h, i) => {
+            const x = must(specs[i], 'spec');
+            const beast = x.race === 'Monster' || x.race === 'Creature';
+            expect(h.race).toBe(x.player === null && beast ? theRaceAt(h.id) : x.race);
+            expect(h.name).toBe(x.player === null ? 'Mira the Nomad' + x.tag : 'Mira the Nomad');
+          });
+          expect(heldHulls(s)).toEqual([]);
+          expect(found.heroesInARealmsServiceWhoseWanderingTagWasTakenOff).toBe(
+            specs.filter((x) => x.player !== null && x.tag !== '').length,
+          );
+        },
+      ),
+      { seed: SEED, numRuns: 100 },
+    );
   });
 });
 
