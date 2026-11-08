@@ -48,7 +48,7 @@ describe('the rules on plain values import only the content and each other', () 
 
   test('the folder is there to check', () => {
     // Its first file, the two casting limits (P1-11a1). Which functions live here is the parity test's to say: it
-    // imports each from its file (tests/lib/player-portal-copies.ts).
+    // imports each from its file (tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts).
     expect(files).toContain(`${FOLDER}spells-each-school-allows-a-turn-and-a-fight.ts`);
     expect(files.every((f) => f.endsWith('.ts'))).toBe(true);
   });

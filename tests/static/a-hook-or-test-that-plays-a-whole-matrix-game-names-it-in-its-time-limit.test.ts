@@ -4,7 +4,7 @@
 // played under the default limit fails on a slow runner, not on a fault.
 // What plays a whole game: a `for` loop over the turns up to MAX_TURNS (tools/balance/matrix.ts), or a call of, or a
 // reference to, a function that does, followed through the file's own functions and its named imports from tests/ and
-// tools/balance/ (tests/lib/player-portal-copies.ts's scripted05, passed by name to `quietly`, is found so).
+// tools/balance/ (tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts's scripted05, passed by name to `quietly`, is found so).
 // What it can't see: a game played in another process (the balance matrix's workers, a test script run by
 // tests/legacy.test.ts, which gives each script its own limit); a loop over the turns bounded by anything but
 // MAX_TURNS; a function reached through a value (an object's method, a callback handed in from another file) or a
@@ -216,7 +216,7 @@ describe('a hook or test that plays a whole game of the matrix names it in its t
       [
         PLANTED,
         "import { beforeAll, test } from 'vitest';\n" +
-          "import { theGamePlayed } from '../lib/player-portal-copies.ts';\n" +
+          "import { theGamePlayed } from '../lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts';\n" +
           "import { timeLimitForTheWork } from '../lib/time-limits.ts';\n" +
           `beforeAll(() => { theGamePlayed(); }${limit});\n` +
           "test('planted', () => undefined);\n",

@@ -23,7 +23,7 @@ portal uses: it calls the engine's own function, in `src/engine/rules-on-plain-v
 `src/shared/` ([the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules)). Change such a
 rule there, once. Rules are still restated:
 - in the player portal's projections (forecasts, order validation, hints): the copies still left are the ones
-  `tests/lib/player-portal-copies.ts` checks (`effMagicLvl`, which feeds the engine's `theLevelAHerosSkillCountsAt` the
+  `tests/lib/player-portal-copies.ts` loads (`effMagicLvl`, which feeds the engine's `theLevelAHerosSkillCountsAt` the
   report's items and aura since R-135; the Explore forecast's march-in share `exploreMoveGainBefore` (since R-125); the level of a hero's Druid that `druidNeedP` and the army card's Druid lines
   feed the engine's Druid rule, and the Explorer, Trailblazer and discoveries' factor `exploreGainFor` feeds the engine's Explore gain (P1-11d14); and the Naval 8 the Move notice and the army card's sea line (R-135) work out from the report's skills to feed the sea
   lift, `seaLiftOfAColumn`; the army card's upkeep hands the report's Druid and Wonder to the Druid's half wage,
@@ -187,8 +187,8 @@ built from the rows, and so is the order form's `L79_ORDERS` (each order's name,
 are the form's own, by the row's key). Each resolver reads its level from its row (`skillLevel(c, …) <
 THE_MASTERY_ORDERS.<key>.level`, P1-11d11, inside the function), but each hint still writes its skill and level
 ("Spy 7: …"): change a level in the row and the hint. The level is pinned as a number in `order-dispatch-called-
-directly.test.ts` (a hero one level short is refused, one at it is not, for each of the 20); the parity test
-(`tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts`) holds the form's skill and level to the
+directly.test.ts` (a hero one level short is refused, one at it is not, for each of the 20); the forecasts' test
+(`tests/unit/the-order-forms-forecasts-agree-with-the-turn.test.ts`) holds the form's skill and level to the
 resolver's; the door's static test checks the form's table reads the rows.
 
 ## A fate line names two companies

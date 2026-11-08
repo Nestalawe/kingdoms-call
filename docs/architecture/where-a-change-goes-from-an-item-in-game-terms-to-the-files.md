@@ -22,7 +22,7 @@ so find them all before you plan the change. Search; don't read the long files w
    is a place the change reaches (the order, the report's forecast, the player's form). Then search the rule's numbers
    and words again outside it, for copies written inline (a battle file, a duel, the report).
 5. **The player portal's copies** that still restate an engine rule are the ones `tests/lib/player-portal-copies.ts`
-   checks. A rule it shares is written once, in `src/engine/rules-on-plain-values/`.
+   loads (its forecasts: their test imports them). A rule it shares is written once, in `src/engine/rules-on-plain-values/`.
 
 The player portal's files are named after their first section, not everything they hold: find a field, a forecast or
 a hint by its words or its function's name, not by the file's name.
