@@ -1,3 +1,11 @@
+// Since P1-11e43 this test keeps only the copies that read a page file no test can import, which
+// tests/lib/player-portal-copies.ts loads in a vm (the checks and the values in
+// tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts): the order form's
+// forecasts, ledger, Practice Skill note and order list are checked, imported with no vm, by
+// tests/unit/the-order-forms-forecasts-agree-with-the-turn.test.ts; the 11 projection cases and the values' reach by
+// tests/unit/the-rules-the-shared-door-hands-the-portal-answer-alike-on-the-report-and-the-state.test.ts; and the
+// turn report's flying carry and druidNeedP's shortfall cases are dropped (each checked one call twice). The account
+// below is of the checks as they were built, where each now runs.
 // The player portal's copies of the engine's rules agree with the engine, and the report hands the portal what the
 // engine reads (plan P1-11a2, P1-11a4; the checks and the values in tests/lib/player-portal-copies.ts). P1-11a4 swapped
 // the 16 copies that agreed for the engine's own functions (the portal imports them through src/shared/), so their
@@ -27,6 +35,8 @@
 // answer.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
+// (Since P1-11e43 the projection cases, the march's forecast, what a hero holds, the order list, the ledger and the
+// Practice Skill note are the two tests named above; the flying carry and druidNeedP's shortfall cases are dropped.)
 // The player portal's copies of the engine's rules that are left, and the engine's functions it now calls in their
 // place (P1-11a2, P1-11a4; the checks and the values in `lib/player-portal-copies.ts`). The copies are read from
 // `src/ui/player/` by their syntax tree and run beside the data file as a script (the content as the player page holds
