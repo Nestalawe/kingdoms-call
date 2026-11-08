@@ -94,11 +94,15 @@ test.beforeAll(async () => {
     // The file's whole path, read only when it stays inside the folder served.
     const root = path.resolve(name.endsWith('.html') ? first : site);
     const file = path.resolve(root, name);
-    const ok =
-      !name.includes('..') && file.startsWith(root + path.sep) && fs.existsSync(file) && fs.statSync(file).isFile();
-    answered.push(`${ok ? '200' : '404'} ${name}`);
-    res.writeHead(ok ? 200 : 404, { 'Content-Type': (ok ? MIME[path.extname(file)] : undefined) ?? 'text/plain' });
-    res.end(ok ? fs.readFileSync(file) : 'no');
+    if (!name.includes('..') && file.startsWith(root + path.sep) && fs.existsSync(file) && fs.statSync(file).isFile()) {
+      answered.push(`200 ${name}`);
+      res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] ?? 'text/plain' });
+      res.end(fs.readFileSync(file));
+    } else {
+      answered.push(`404 ${name}`);
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('no');
+    }
   });
   await new Promise<void>((resolve) => server?.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${String((server.address() as AddressInfo).port)}/`;
