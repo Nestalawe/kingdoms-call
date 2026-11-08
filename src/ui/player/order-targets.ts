@@ -29,7 +29,6 @@ import {
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import {
-  ALIGN_ACTIONS,
   DIRECTIONS,
   gdHintFor,
   ITEM_SLOT_CAP_P,
@@ -39,12 +38,9 @@ import {
   itemTierTagP,
   orderTargetCharsP,
   preOrderTagP,
-  rawSkillLvl,
   realmNameP,
   realmOptStyleP,
-  RUMOUR_COST_BY_POWER_P,
   SEASONS,
-  skillsUnseenP,
   unseenSuffixP,
 } from './items-and-heroes.ts';
 import { spellSecondaryHtml } from './titles.ts';
@@ -54,30 +50,32 @@ import {
   SPELL_TO_SCHOOL,
   armyLabel,
   castChanceNote,
-  effMagicLvl,
-  orderChanceNote,
-  projectedMagicLevels,
-  rawMagicLvl,
   unitEmoji,
 } from './order-chances.ts';
-import {
-  SKILL_LABELS,
-  lastMoveDirOf,
-  moveOriginProv,
-  poMoveModeNote,
-  refreshAllMoveModeNotes,
-} from './move-analysis.ts';
-import { capitalise, heroHireWageOfP } from './skills-and-projections.ts';
+import { lastMoveDirOf, moveOriginProv, poMoveModeNote, refreshAllMoveModeNotes } from './move-analysis.ts';
+import { capitalise } from './skills-and-projections.ts';
 import { heroFameTextP } from './map-symbols.ts';
 import { effSkillP, PO_SEA_TYPES } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   getOrderTarget,
+  orderChanceNote,
   predictedItems,
   predictedLocation,
   projectedGarrison,
   projectedLedArmies,
+  projectedMagicLevels,
   projectedMoveHost,
 } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
+import {
+  ALIGN_ACTIONS,
+  RUMOUR_COST_BY_POWER_P,
+  SKILL_LABELS,
+  effMagicLvl,
+  heroHireWageOfP,
+  rawMagicLvl,
+  rawSkillLvl,
+  skillsUnseenP,
+} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // projected exploration gain for ONE Explore order: the engine's own rule (theShareOfAProvinceAnExploreOrderMaps, through
 // src/shared/ since plan P1-11d14), fed what the report gives: the hero's Explorer (skillEff), his Trailblazer title and

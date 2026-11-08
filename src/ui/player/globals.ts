@@ -54,7 +54,6 @@ import {
   addEncounterTactic,
   buildOrdersForm,
   clearPreSchool,
-  computeOrderLedgerP,
   confirmEPSchool,
   confirmEPSpell,
   epDragStart,
@@ -108,6 +107,7 @@ import {
   updateMsgComposer,
 } from './dispatches.ts';
 import { getDruidLevel, unitTypeOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import { computeOrderLedgerP } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
 // ── The player portal's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // The page's scripts are ES modules (P1-09d), so a top-level name belongs to its own file: an inline on…="…" handler, a

@@ -5,7 +5,7 @@ import { skillFameLabelM, topSkillOf } from '../../shared/the-engines-rules-the-
 import { kcJoinP } from './startup.ts';
 import { GD_BY_ALIGNMENT, GUARD_POWER_COLORS_P, deadHeroRealmTagP } from './items-and-heroes.ts';
 import { armyLabel, unitEmoji } from './order-chances.ts';
-import { SKILL_LABELS } from './move-analysis.ts';
+import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // ── TERRAIN COLORS ────
 export const TERRAIN_COLORS_MAP = { ...KC_TERRAIN_COLORS };

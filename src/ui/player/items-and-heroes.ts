@@ -1,23 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import {
-  KC_GRAND_DESIGNS,
-  KC_ITEM_SLOT_CAP,
-  KC_RUMOUR_COST_BY_POWER,
-  KC_SEASONS,
-} from '../../content/kingdoms-call-data.ts';
-import {
-  aHeroMayGiveTheAlignmentOrderAsKingOrNot,
-  aRealmOfThisCreedMayGiveTheAlignmentOrder,
-  itemRaceOf,
-  itemSlot,
-  itemUsableBy,
-  theAlignmentOrdersByTheNameTheFormWrites,
-  theNameTheFormWritesOfTheAlignmentOrder,
-} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import { KC_GRAND_DESIGNS, KC_ITEM_SLOT_CAP, KC_SEASONS } from '../../content/kingdoms-call-data.ts';
+import { itemRaceOf, itemSlot, itemUsableBy } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import { _tintForDarkTooltip, reportColour } from './map-symbols.ts';
-import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 
 // ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.ts (KC_ITEM_SLOT_CAP) ──
 export const ITEM_SLOT_CAP_P = { ...KC_ITEM_SLOT_CAP };
@@ -165,7 +151,6 @@ export function itemSlotTag(it, c) {
   return kcHtml` <span style="color:${it.equipped === false ? '#5b5b5b' : '#43350f'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
 }
 // Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
-export const RUMOUR_COST_BY_POWER_P = { ...KC_RUMOUR_COST_BY_POWER }; // keep in step with the GM portal's RUMOUR_COST_BY_POWER
 export function updateRumourTarget(charId, ph) {
   const wrap = document.getElementById(`po-rumour-wrap-${charId}-${ph}`);
   const hidden = document.getElementById(`po-target-${charId}-${ph}`);
@@ -205,72 +190,10 @@ export const DIRECTIONS = {
   SW: 'South West',
   SE: 'South East',
 };
-export const ACTIONS = [
-  'Move',
-  'Explore',
-  'Search Lair',
-  'Hunting Rumours',
-  'Recruit Armies',
-  'Hire Hero',
-  'Release Hero',
-  'Encounter Character',
-  'Steal',
-  'Disband Army',
-  'Leave/Transfer Army',
-  'Pick Up Army',
-  'Send Item',
-  'Cast Spell',
-  'Use Item',
-  'Equip Items',
-  'Spy',
-  'Practice Skill',
-  'Research',
-  // the alignment orders' names, from their rows (plan P1-11d7)
-  theNameTheFormWritesOfTheAlignmentOrder('perform-rite'),
-  theNameTheFormWritesOfTheAlignmentOrder('consecrate'),
-  theNameTheFormWritesOfTheAlignmentOrder('call-to-arms'),
-  theNameTheFormWritesOfTheAlignmentOrder('broker'),
-  theNameTheFormWritesOfTheAlignmentOrder('harvest-the-field'),
-  'Sabotage',
-  'Forced March',
-  'Grand Heist',
-  'Awaken Grove',
-  'Chart the Unknown',
-  'Discover Lost Ruin',
-  'Blockade',
-  'Research Breakthrough',
-  'Assassinate',
-  'Vanish',
-  'Challenge',
-  'Rampage',
-  'Rain of Arrows',
-  "Sniper's Mark",
-  'Feigned Retreat',
-  'Grand Stratagem',
-  'Lightning Advance',
-  'Raid the Coast',
-  'Wild Calling',
-  'Grand Design',
-  'Defend',
-  'Rest',
-];
-// Alignment-signature actions: shown only to the realm that owns them (and Perform Rite joins the
-// same gating — no more dangling Pagan action in every dropdown). King-only actions are hidden from
-// heroes' dropdowns entirely: the engine rejects them from a hero. Druidic and Evil have no signature
-// order since 2026-10-12 (item 22). Each by the name the form writes, its row: its creed and whether the
-// king alone gives it, which actionsFor asks the engine's two checks of (plan P1-11d7).
-export const ALIGN_ACTIONS = theAlignmentOrdersByTheNameTheFormWrites();
 // ── THE SEVEN WONDERS ────
 // One per alignment, mirroring _GD_DEFS in the GM engine. Keep the two in step: the engine decides
 // what the Wonder DOES, this decides what the player is told it will do before they spend the order.
 export const GD_BY_ALIGNMENT = { ...KC_GRAND_DESIGNS };
-// 2026-09-27 (Toby item 4): ONE Wonder per realm, ever. The engine pushes the discovery with id 'gd'
-// and refuses a second outright, so once it is there the order is withdrawn from every hero of the
-// realm rather than being offered and then rejected at resolution.
-export function gdAlreadyBuiltP(report) {
-  const r = report || currentReport || {};
-  return (r.discoveries || []).some((d) => d && d.id === 'gd');
-}
 // The Grand Design hint for the reader's own realm, naming the Wonder they would actually raise.
 export function gdHintFor(report) {
   const r = report || currentReport || {};
@@ -279,7 +202,6 @@ export function gdHintFor(report) {
   if (!gd) return L79_ORDERS['Grand Design'].hint;
   return kcHtml`Sage 9 · ONCE EVER, and only in a province you hold. Your ${al} realm raises the <strong>${gd.name}</strong> — ${gd.desc} The Wonder stands in the province it is built in: hold that ground and its blessing flows, lose the province and the blessing lapses until you take it back. The Wonder itself is never destroyed, and a conqueror gains nothing from it but the view.`;
 }
-export const rawSkillLvl = (charObj, sk) => ((charObj && charObj.skills) || {})[sk] || 0;
 // ── SKILL ROW ────
 // One renderer for both places a character's abilities are listed: the report's character card and
 // the orders column. The GM ships `skillEff` for each character — base level, EFFECTIVE level, and
@@ -288,137 +210,11 @@ export const rawSkillLvl = (charObj, sk) => ((charObj && charObj.skills) || {})[
 // in personal combat (minor titles, Veteran Training); those are shown separately, because they do
 // not change the skill itself. Falls back to the raw skills for an older report with no breakdown.
 // style: 'tags' — the compact pills on the report card; 'inline' — the orders column's label list.
-// ── A CHARACTER WHOSE SHEET THE PLAYER CANNOT READ ──────────────────────────────────────────────
-// Two pre-order cards carry one: a hero being HIRED this turn (`_unknownSkills` — the GM ships only
-// their fame, never their levels) and a hero being CHARMED (`_hiddenSkills` — you have borrowed a
-// mind, not read a life; their pack is not yours to rummage). For every order field the two mean the
-// same thing: the placeholder's `skills:{}` and `items:[]` are NOT facts about the character, they are
-// an ABSENCE of information. So nothing may be printed that is computed from them — no level, no
-// level-derived percentage, no greyed-out tier, no "you have no Thief skill", and no claim that a pack
-// is empty. Offer the full choice and let the engine judge at resolution.
-// 2026-09-24 (Toby): these two flags had drifted badly apart — each was patched at a different site on
-// a different day, so gates closed for a hired hero stood wide open for a charmed one (the Steal and
-// Spy percentages, the Research and Explore notes, and the whole L7/L9 set). ONE
-// predicate now serves every site. Add future gates through it; never test either flag directly.
-export const skillsUnseenP = (c) => !!(c && (c._hiddenSkills || c._unknownSkills));
 // …and the two reasons, phrased for the player. `hidden` never becomes visible; `unknown` does, next turn.
 export const unseenSuffixP = (c) =>
   c && c._unknownSkills
     ? `${(c && c.name) || 'this hero'}’s level is not known until they have joined`
     : `${(c && c.name) || 'this hero'}’s level is hidden from you`;
-// dropdown display order — most-used orders near the top, and any alignment-signature order
-// (Broker, Consecrate, Call to Arms, Perform Rite, Harvest the Field)
-// pinned to the VERY TOP (each is only shown to its own realm, so this simply puts a realm's special order
-// first when it appears). Mastery (L7/L9) orders sink to the bottom as rare, situational picks.
-// Adjust freely — this array is the single source of the ordering.
-export const ACTION_DISPLAY_ORDER = [
-  // ── SPECIAL actions the character can take — pinned to the very top ── Alignment-signature
-  // orders (each shown only to its own realm)…
-  'Broker',
-  'Consecrate',
-  'Call to Arms',
-  'Perform Rite',
-  'Harvest the Field',
-  // …and MASTERY (L7/L9) orders, which surface only when the hero's skill is high enough.
-  // actionsFor() already filters both groups down to what THIS character actually qualifies for, so
-  // only the specials available to them appear here.
-  'Sabotage',
-  'Forced March',
-  'Grand Heist',
-  'Awaken Grove',
-  'Chart the Unknown',
-  'Discover Lost Ruin',
-  'Blockade',
-  'Research Breakthrough',
-  'Assassinate',
-  'Vanish',
-  'Challenge',
-  'Rampage',
-  'Rain of Arrows',
-  "Sniper's Mark",
-  'Feigned Retreat',
-  'Grand Stratagem',
-  'Lightning Advance',
-  'Raid the Coast',
-  'Wild Calling',
-  'Grand Design',
-  // ── Everyday orders — exact order requested ──
-  'Move',
-  'Practice Skill',
-  'Research',
-  'Cast Spell',
-  'Explore',
-  'Search Lair',
-  'Hunting Rumours',
-  'Recruit Armies',
-  'Pick Up Army',
-  'Leave/Transfer Army',
-  'Disband Army',
-  'Hire Hero',
-  'Release Hero',
-  'Defend',
-  'Encounter Character',
-  'Spy',
-  'Send Item',
-  'Use Item',
-  'Equip Items',
-  'Steal',
-  'Rest',
-];
-export const _actionRank = (a) => {
-  const i = ACTION_DISPLAY_ORDER.indexOf(a);
-  return i < 0 ? ACTION_DISPLAY_ORDER.length : i;
-};
-export function actionsFor(c) {
-  const align = currentReport?.kingdom?.alignment;
-  return ACTIONS.filter((a) => {
-    if (ALIGN_ACTIONS[a] && !aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS[a], align)) return false;
-    if (ALIGN_ACTIONS[a] && !aHeroMayGiveTheAlignmentOrderAsKingOrNot(ALIGN_ACTIONS[a], c && c.isKing)) return false;
-    // 2026-09-24 (Toby): a character whose sheet you cannot read gets NO mastery orders at all.
-    // Item 8 had offered the whole L7/L9 set to such a card — since the levels are unseen, filtering
-    // by level would have leaked them. But offering all twenty is its own leak in reverse: a player
-    // could fish for hidden mastery by ordering Assassinate / Grand Heist / Wild Calling and reading
-    // the result. Mastery is the mark of a hero who has served under you; it is not on the table for a
-    // hero still being hired, nor for a mind you have merely charmed. A charmed WANDERER who joins
-    // for good is an ordinary hero from next turn and the level gate below applies as usual.
-    if (L79_ORDERS[a] && skillsUnseenP(c)) return false;
-    // 2026-09-27 (Toby item 4): a realm raises ONE Grand Design in the whole game. Once the Wonder
-    // stands, the order leaves every hero's dropdown — the engine already refuses a second, and an
-    // order that can only ever be refused should not be on the form.
-    if (a === 'Grand Design' && gdAlreadyBuiltP(currentReport)) return false;
-    if (L79_ORDERS[a] && !skillsUnseenP(c) && rawSkillLvl(c, L79_ORDERS[a].skill) < L79_ORDERS[a].lvl) return false;
-    // Research (Sage 1+) and Steal (Thief 1+) are gated as the engine gates them: Research on the
-    // character's BASE Sage (the research order reads the raw level), Steal on the Thief the turn
-    // counts, his items' too (the steal order reads `effStat`; R-130: Gloves of the Nightcrawler
-    // make an untrained hero a Thief 2). A CHARMED hero is the one exception: the charmer cannot see
-    // their levels, so the placeholder card carries `skills:{}` and every lookup returns 0 — which
-    // silently stripped both orders from a hero who may well have the skill. Offer them and let the
-    // engine enforce the real requirement at resolution.
-    if (a === 'Research' && !skillsUnseenP(c) && rawSkillLvl(c, 'sage') < 1) return false; // Research: Sage 1+ only (discovery roll)
-    if (a === 'Steal' && !skillsUnseenP(c) && effSkillP(c, 'thief') < 1) return false; // Steal: Thief 1+, his items counted (R-130)
-    if (a === 'Release Hero' && c && c.isKing) return false; // a king cannot release himself
-    // ── A CHARMED HERO AND ITEMS: NONE OF IT ──────────────────────────────────────────────────────
-    // 2026-09-12 hid Send Item from a charmed hero; 2026-09-18 replaced that with ONE engine-chosen
-    // Send Item per turn; 2026-09-24 (Toby) SUPERSEDES both and settles the rule the other way, for
-    // every direction items could travel: a charmed hero may not be GIVEN items, may not USE an item,
-    // and may not SEND one to anybody. An enchanter borrows a mind for a season — they do not gain a
-    // quartermaster. Nothing about the hero's own gear changes: they keep it, they fight with it, and
-    // whatever passive magic they carry still works.
-    // Enforced in the ENGINE too (give_item as sender AND as recipient, use_item — see isCharmedNow
-    // in the GM portal), because a stale or hand-crafted submission would otherwise walk straight
-    // past this form-level gate. Equip Items is deliberately left: it addresses the hero's OWN gear,
-    // and the form can only ever show it as "not yours to see", so there is nothing to order.
-    if (c && c._hiddenSkills && (a === 'Send Item' || a === 'Give Item' || a === 'Use Item' || a === 'Release Hero'))
-      return false;
-    // an ENEMY hero whose command you have seized for the turn is held by an enchantment, not an
-    // oath — they will not disband companies that are not theirs, perform your realm's alignment
-    // rites, or spend their own mastery for you. The engine refuses these orders at resolution too
-    // (see the _charmTempControl guard in processOrder); this keeps them off the form. A WANDERING
-    // hero charmed into permanent service has genuinely joined the realm and is unrestricted.
-    if (c && c._charmEnemy && (L79_ORDERS[a] || ALIGN_ACTIONS[a] || a === 'Disband Army')) return false;
-    return true;
-  }).sort((a, b) => _actionRank(a) - _actionRank(b));
-}
 
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis.currentUser = null;

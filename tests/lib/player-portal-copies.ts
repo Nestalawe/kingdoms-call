@@ -173,7 +173,8 @@ const THE_PAGES_SIDE_OF_A_FORECAST = [
 const COPIES: Record<string, string[]> = {
   // (and the label of a company, which the Blood Offering's rows show: P1-11d3; and the note under an order that
   // quotes its chance, which the Practice Skill field shows: P1-11d4)
-  'ui/player/order-chances.ts': ['chanceLine', 'orderChanceNote', 'effMagicLvl', 'armyLabel'],
+  // (since P1-11e42 the note, its line and effMagicLvl are the ledger's file's, below)
+  'ui/player/order-chances.ts': ['armyLabel'],
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3; the army card reads the
   // engine's two sets of beasts, and asks its Druid mastery's guard, through src/shared/ since P1-11d12)
   'ui/player/skills-and-projections.ts': [
@@ -182,7 +183,6 @@ const COPIES: Record<string, string[]> = {
     'HUMANOID_RACES_UI',
     'PRIMAL_SUBRACE_CLASS',
     'formatRace',
-    'heroHireWageOfP',
   ],
   // the Explore order's forecast (since P1-11d14 it feeds the engine's rule what the report gives: not a copy of the
   // rule, kept to run its truth cases), and the share of the province a march into it maps first (P1-23t), which reads
@@ -198,8 +198,6 @@ const COPIES: Record<string, string[]> = {
     'theBloodOfferingsHint',
     'buildTargetField',
   ],
-  // the treasury ledger at the top of the orders (P1-11d4): what the orders will spend and add to the wages
-  'ui/player/orders-form.ts': ['computeOrderLedgerP'],
   // the order form's forecasts (P1-11e3: one file): the order a page's field holds (P1-11d1: the fields stood in below),
   // where a hero will stand after his orders so far (P1-11d1: the Explore forecast and the Move field read it), what he
   // will carry and lead, and a province's garrison hold (P1-11d2: the forms of the later phases read them), with the
@@ -255,19 +253,19 @@ const COPIES: Record<string, string[]> = {
     'projectedGarrison',
     'projectedLedArmies',
     'whereTheCompaniesAHerosRecruitRaisesMuster',
+    // (since P1-11e42 the ledger, the note, the order list and the magic levels, by the page's names)
+    'theOrdersTheFormHoldsForTheHero',
+    'computeOrderLedgerP',
+    'orderChanceNote',
+    'actionsFor',
+    'projectedMagicLevels',
   ],
   // the mastery orders' table (P1-11d3: the order list's gates read it), each order's name, skill and level its row's
   // (P1-11d10: the content's rows run beside the copies) and its target and hint the form's own
   'ui/player/l79-orders.ts': ['THE_FORMS_FIELDS_OF_EACH_MASTERY_ORDER', 'L79_ORDERS'],
   // and the order list a hero's form offers (P1-11d3), with the tables and checks it reads
   'ui/player/items-and-heroes.ts': [
-    'RUMOUR_COST_BY_POWER_P',
     'DIRECTIONS',
-    'ACTIONS',
-    'ALIGN_ACTIONS',
-    'gdAlreadyBuiltP',
-    'rawSkillLvl',
-    'skillsUnseenP',
     // (the Send Item field's list of items and its recipients: P1-11e18)
     'ITEM_TIER_NAME_P',
     'ITEM_TIER_COLOUR_P',
@@ -275,12 +273,30 @@ const COPIES: Record<string, string[]> = {
     'isPreOrderIdP',
     'orderTargetCharsP',
     'preOrderTagP',
+  ],
+  'ui/player/move-analysis.ts': ['lastMoveDirOf'],
+  // since P1-11e42 in a file of their own, on the report and the orders handed them: the treasury ledger at the top of
+  // the orders (P1-11d4: what the orders will spend and add to the wages), the note under an order that quotes its
+  // chance (the Practice Skill note, with the skills' names it gives), the order list a hero's form offers (P1-11d3)
+  // with the tables and checks it reads, a wandering hero's wage (the Broker's field and the ledger), and the level of a
+  // magic school the form offers spells by
+  'ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts': [
+    'SKILL_LABELS',
+    'RUMOUR_COST_BY_POWER_P',
+    'ACTIONS',
+    'ALIGN_ACTIONS',
+    'gdAlreadyBuiltP',
+    'rawSkillLvl',
+    'skillsUnseenP',
     'ACTION_DISPLAY_ORDER',
     '_actionRank',
-    'actionsFor',
+    'theOrdersTheFormOffersAHero',
+    'heroHireWageOfP',
+    'theTreasuryLedgerOnTheseOrders',
+    'chanceLine',
+    'theNoteUnderAnOrderThatQuotesItsChance',
+    'effMagicLvl',
   ],
-  // (and the skills' names, which the Practice Skill note gives: P1-11d4)
-  'ui/player/move-analysis.ts': ['lastMoveDirOf', 'SKILL_LABELS'],
 };
 const ARMY_CARD = 'ui/player/report.ts';
 const TURN_REPORT = 'views/turn-report.ts';
@@ -543,7 +559,7 @@ export interface TheOrderFormsSpells {
 
 /** The order form's Cast Spell tables, and its two functions that read them, read from `src` (default: this
  *  checkout's src/) by their statements and run beside the data file and kc-safe, with the names src/shared/ hands the
- *  portal: order-chances.ts whole (its tables, effMagicLvl and projectedMagicLevels), the spells' hints and the rows
+ *  portal: order-chances.ts whole (its tables; since P1-11e42 effMagicLvl and projectedMagicLevels from the ledger's file), the spells' hints and the rows
  *  they read (P1-11d13: until then order-chances.ts held the hints), the helpers the target field
  *  calls as the portal declares them, and a stand-in for the page's fields (document.getElementById, which the form's
  *  count and getOrderTarget read). Apart from playerPortalCopies: order-chances.ts runs whole here. */
@@ -569,7 +585,17 @@ export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpel
       THE_MARCH_FORECASTS_DECLARATIONS,
       opts,
     ),
-    sourceOf('ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts', THE_PAGES_SIDE_OF_A_FORECAST, opts),
+    sourceOf(
+      'ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts',
+      [...THE_PAGES_SIDE_OF_A_FORECAST, 'theOrdersTheFormHoldsForTheHero', 'projectedMagicLevels'],
+      opts,
+    ),
+    // (since P1-11e42 the magic levels and the skills' names: the ledger's file's)
+    sourceOf(
+      'ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts',
+      ['SKILL_LABELS', 'rawMagicLvl', 'effMagicLvl', 'theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise'],
+      opts,
+    ),
     sourceOf('ui/player/order-targets.ts', ['provDirectionLabel'], opts),
     sourceOf(
       'ui/player/items-and-heroes.ts',
@@ -577,7 +603,6 @@ export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpel
       opts,
     ),
     sourceOf('ui/player/map-symbols.ts', ['leadsArmiesP'], opts),
-    sourceOf('ui/player/move-analysis.ts', ['SKILL_LABELS'], opts),
     sourceOf('ui/player/titles.ts', ['spellSecondaryHtml'], opts),
     `function castSpellRows(report, c, ph, fields) {
       theFields = fields;

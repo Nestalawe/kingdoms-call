@@ -1,28 +1,23 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
-import {
-  KC_ITEM_UNCAPPED_SKILLS,
-  KC_MAGIC_SCHOOLS,
-  KC_SKILLS,
-  KC_UNIT_CLASS,
-} from '../../content/kingdoms-call-data.ts';
+import { KC_ITEM_UNCAPPED_SKILLS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
-  aSkillAtThisLevelIsPractisedNoFurther,
   dispFloor,
   everySpellBySchool,
   theLevelEachMasterySpellNeeds,
-  theChanceAHeroPractisingAloneRaisesHisSkill,
-  theLevelAHerosSkillCountsAt,
   theSchoolOfEachSpell,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { SKILL_LABELS } from './move-analysis.ts';
 import { syncCharmCard, syncResurrectCard } from './pre-orders.ts';
 import { HUMANOID_RACES_UI, formatRace } from './skills-and-projections.ts';
 import { buildTargetField } from './order-targets.ts';
 import { getOrderExtra, getOrderTarget } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
+import {
+  SKILL_LABELS,
+  effMagicLvl,
+} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // ── ORDERS FORM ────
 // ── SPELLS LIST ────
@@ -54,15 +49,6 @@ export function castChanceNote(c, spellName, opts) {
   return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>${chance}%</strong> (${bits.join(', ')}${capped}). A failed cast is spent — the spell fizzles and the phase is used.</div>`;
 }
 
-// ── ORDER SUCCESS CHANCE ────
-// Quotes the odds the engine will roll for an order, from the `orderChance` block the GM ships (its
-// own formulas, computed from the same effective skills the turn resolves with). Where a factor
-// cannot be known at order time — an enemy's counter-espionage, whether a vault is guarded, who
-// ends up practising alongside — the note says so instead of pretending the number is final.
-export function chanceLine(txt, tone) {
-  const col = tone === 'bad' ? 'var(--crimson)' : tone === 'sure' ? '#2d6a2d' : 'var(--forest)';
-  return kcHtml`<div style="font-size:.72rem;color:${col};margin-top:2px">🎲 ${txt}</div>`;
-}
 // Rebuild one order's target field in place — used when a choice within the field changes the odds
 // quoted beneath it (picking a different skill to practise). Mirrors what onSpellChange does.
 export function rebuildTargetWrap(charId, ph) {
@@ -81,129 +67,14 @@ export function rebuildTargetWrap(charId, ph) {
   }
   if (saved.action === 'Practice Skill') refreshLaterCastSpells(charId, ph); // a re-aimed practice moves later casts' limits
 }
-export function orderChanceNote(c, action, ph) {
-  const oc = (c && c.orderChance) || null;
-  if (!oc) return '';
-  const pct = (n) => kcHtml`<strong>${Math.max(0, Math.min(100, dispFloor(n)))}%</strong>`;
-  switch (action) {
-    case 'Spy': {
-      const o = oc.spy || {};
-      if (o.auto)
-        return chanceLine(
-          kcHtml`Success is <strong>certain</strong> — ${o.autoWhy || 'your craft'} never fails. Only an enemy's counter-espionage could trouble it.`,
-          'sure',
-        );
-      if (!o.level)
-        return chanceLine(kcHtml`No Spy skill — ${pct(o.chance || 20)} at best. Espionage rewards training.`, 'bad');
-      return chanceLine(
-        kcHtml`Success: ${pct(o.chance)} (Spy ${o.level}). A realm with Cipher Scripts is up to 25% harder to spy on.`,
-      );
-    }
-    case 'Research': {
-      const o = oc.research || {};
-      if ((o.rawLevel || 0) < 1)
-        return chanceLine('Research needs Sage 1+ — without it the archives yield nothing.', 'bad');
-      return chanceLine(
-        kcHtml`Discovery: ${pct(o.chance)} (Sage ${o.level}). A failed search still passes the season; nothing else is lost. Each failed Research this turn makes the hero's next one ×1.2 likelier (a discovery resets it).`,
-      );
-    }
-    case 'Assassinate': {
-      const o = oc.assassinate || {};
-      return chanceLine(
-        kcHtml`Success: ${pct(o.chance)} (Spy ${o.level}) — but only ${pct(Math.max(0, o.chance - (o.kingPenalty || 25)))} against a king, who is heavily guarded. Failure is noticed.`,
-      );
-    }
-    case 'Steal': {
-      const o = oc.steal || {};
-      return chanceLine(
-        kcHtml`Success: ${pct(o.chance)} (Thief ${o.level}), halved if the target leads troops or the paymaster is guarded. Fail and you are seen unless you slip away (${pct(o.escape)}).`,
-      );
-    }
-    case 'Grand Heist': {
-      const o = oc.grandHeist || {};
-      return chanceLine(
-        kcHtml`Success: ${pct(o.chance)} (Thief ${o.level}), halved if the vaults are guarded — a garrison, or an enemy commander here with troops. Fail and you are seen unless you slip away (${pct(o.escape)}).`,
-      );
-    }
-    case 'Blockade':
-      return chanceLine(
-        kcHtml`The blockade forms ${pct((oc.blockade || {}).chance || 50)} of the time — wind and tide decide the rest.`,
-      );
-    case 'Practice Skill': {
-      const o = oc.practice || {};
-      const by = o.byLevel || [25, 20, 15, 10, 5];
-      const _pick = KC_SKILLS.indexOf(document.getElementById(`po-target-${c.id}-${ph}`)?.value || '');
-      const sel = _pick >= 0 ? KC_SKILLS[_pick] : ''; // only a skill the game knows is named in the note
-      // the level he holds as the report gives it (the turn reads it as the phase begins: a rise earlier this turn is
-      // a forecast limit, as is a failed practice's perseverance), and the chance the turn rolls when he practises
-      // alone (R-134): the base by his level and his realm's practice discoveries (in percent on the report), x1.5 for
-      // a Human of a Human realm; no roll at all once practice can raise it no further
-      const lvl = sel ? (c.skills || {})[sel] || 0 : null;
-      const scale = `Chance falls as mastery grows: ${by.map((v, i) => `${v}% at ${i}`).join(', ')}.`;
-      const extra = `Practising alongside someone of equal level adds half again; anyone of HIGHER level teaches you, and the lesson cannot fail. A run of failures makes the next attempt likelier.`;
-      if (lvl == null) return chanceLine(`${scale} ${extra}`);
-      const label = SKILL_LABELS[sel] || sel;
-      if (aSkillAtThisLevelIsPractisedNoFurther(lvl))
-        return chanceLine(
-          kcHtml`No roll is made: practice raises a skill only to level 5, and ${label} is at ${lvl}. Higher levels come only from experience in the field.`,
-        );
-      const discoveries = (o.astro || 0) + (o.discovery || 0) + (o.bySkill ? o.bySkill[sel] || 0 : 0); // + skill-scoped practice discoveries
-      const quick = c.race === 'Human' && (currentReport?.kingdom || {}).race === 'Human';
-      const chance = theChanceAHeroPractisingAloneRaisesHisSkill(lvl, discoveries / 100, 0, quick) * 100;
-      return chanceLine(
-        kcHtml`Improvement: ${pct(chance)} at ${label} ${lvl}.${quick ? ' A Human of a Human realm learns half as fast again (×1.5).' : ''} ${extra}`,
-      );
-    }
-    default:
-      return '';
-  }
-}
 
 // Reverse lookup: spell name → school
 export const SPELL_TO_SCHOOL = theSchoolOfEachSpell();
 // L7/L9 mastery spells require the caster's RAW school level (past-5 comes from experience only).
 export const SPELL_REQ_LEVEL = theLevelEachMasterySpellNeeds();
-export const rawMagicLvl = (charObj, school) => ((charObj && charObj.skills) || {})[school] || 0;
 
-// The level of a magic school the order form offers spells by: the level the turn casts at (R-135, question 45 (c)),
-// asked of the turn's own rule (theLevelAHerosSkillCountsAt: his trained level counts to 5, then his items' bonus and
-// the aura stack to 9). The items' bonus and the aura are the report's (skillEff: each item name once, an equipped
-// slot item only, a Crown of Command worn by a hero of his realm in his province, R-120); the trained level is the
-// hero's own, or the one his earlier Practice orders project (projectedMagicLevels). A Curse ends with the turn, so no
-// report shows one. The form forecasts from the report: if the Crown's wearer leaves before the cast, the turn casts
-// without it.
 // The skills whose item bonuses carry past a trained 5 to the ceiling of 9 (the army card's "capped at" reads them).
 export const ITEM_UNCAPPED_SKILLS_P = new Set(KC_ITEM_UNCAPPED_SKILLS);
-export function effMagicLvl(charObj, school) {
-  const trained = ((charObj && charObj.skills) || {})[school] || 0;
-  const eff = charObj && charObj.skillEff && charObj.skillEff[school];
-  return theLevelAHerosSkillCountsAt(school, trained, (eff && eff.items) || 0, (eff && eff.aura) || 0, 0);
-}
-
-// 2026-10-13 (item 2, Toby): the level each magic school may have reached by phase `ph`, assuming
-// every Practice Skill order on it in an earlier phase succeeds (+1 each). Practice trains a skill
-// only up to 5 (6–9 come from experience), so a school already at 5 or more gains nothing; item
-// bonuses and the aura are then added as effMagicLvl does. `practising` is the set of schools with such an order.
-export function projectedMagicLevels(c, ph) {
-  const practice = {};
-  for (let prevPh = 0; prevPh < ph; prevPh++) {
-    const prevAction = document.getElementById(`po-action-${c.id}-${prevPh}`)?.value || '';
-    if (prevAction !== 'Practice Skill') continue;
-    const t = getOrderTarget(c.id, prevPh);
-    if (t && KC_MAGIC_SCHOOLS.includes(t)) practice[t] = (practice[t] || 0) + 1;
-  }
-  const projected = {},
-    trained = {};
-  KC_MAGIC_SCHOOLS.forEach((school) => {
-    const raw = rawMagicLvl(c, school),
-      n = practice[school] || 0;
-    const rawProj = raw >= 5 ? raw : Math.min(5, raw + n);
-    trained[school] = rawProj;
-    projected[school] = effMagicLvl({ ...c, skills: { ...((c && c.skills) || {}), [school]: rawProj } }, school);
-  });
-  // `trained`: each school's trained level after those practices (the Warlock's best school is read from it, R-123)
-  return { practising: new Set(Object.keys(practice)), projected, practice, trained };
-}
 
 // After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every
 // LATER Cast Spell order's dropdown is rebuilt so its projected level and casting limit stay true.

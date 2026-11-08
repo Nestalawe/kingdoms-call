@@ -30,6 +30,9 @@ import './briefing-and-submit.ts';
 import './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 // The page's side of those forecasts (plan P1-11e41): the report and the orders its form holds, handed to each.
 import './the-orders-the-form-holds-handed-to-its-forecasts.ts';
+// Its ledger, chance notes, order list and magic levels, with the tables they read (plan P1-11e42), on the orders handed
+// to them.
+import './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import './skills-and-projections.ts';
 import './order-targets.ts';
 import './map-symbols.ts';

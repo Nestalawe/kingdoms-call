@@ -29,7 +29,6 @@ import {
   itemsForDisplayP,
   itemSlotTag,
   itemTierTagP,
-  rawSkillLvl,
 } from './items-and-heroes.ts';
 import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
@@ -38,7 +37,6 @@ import { turnDeadlineText } from './game-lists.ts';
 import { buildChronicle, loadPastReport, returnToCurrentReport } from './join-and-chronicle.ts';
 import { renderMastery, renderTitles } from './titles.ts';
 import { armyLabel, unitEmoji } from './order-chances.ts';
-import { SKILL_LABELS } from './move-analysis.ts';
 import { buildOrdersForm } from './orders-form.ts';
 import { itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.ts';
 import { capitalise, druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.ts';
@@ -54,6 +52,10 @@ import {
 } from './map-symbols.ts';
 import { ensureProvinceLinking, renderPlayerMap } from './map.ts';
 import { initMessaging } from './dispatches.ts';
+import {
+  SKILL_LABELS,
+  rawSkillLvl,
+} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // ── TURN REPORT ────
 export async function openReport(gamePlayerId) {

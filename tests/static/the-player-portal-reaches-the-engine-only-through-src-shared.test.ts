@@ -150,6 +150,8 @@ const THE_FILES_THAT_READ_THE_ROWS_NUMBERS = [
   'ui/player/move-analysis.ts',
   // (the column the Move note counts, projectedMoveHost, since P1-11e10: the march forecast reads it)
   'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
+  // (the treasury ledger, since P1-11e42: in a file of its own)
+  'ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts',
 ];
 const THE_ROWS_NUMBERS_WRITTEN_OUT = [
   '— raises a Green ',
@@ -436,7 +438,11 @@ describe('the player portal reaches the engine only through src/shared/', () => 
         (slug) => !theList.includes(`${THE_NAME_OF_AN_ALIGNMENT_ORDER}('${slug}')`),
       ),
     ).toEqual([]);
-    const called = namesCalledIn('ui/player/items-and-heroes.ts', 'actionsFor');
+    // (since P1-11e42 the list is the ledger's file's, on the report handed it; actionsFor is the page's name for it)
+    const called = namesCalledIn(
+      'ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts',
+      'theOrdersTheFormOffersAHero',
+    );
     expect(THE_TWO_CHECKS_OF_WHO_MAY_GIVE_AN_ALIGNMENT_ORDER.filter((check) => !called.includes(check))).toEqual([]);
   });
 
@@ -470,11 +476,20 @@ describe('the player portal reaches the engine only through src/shared/', () => 
       [widget, 'buildTargetField', 'theBloodOfferingsGrades'],
       // (since P1-11e27 the Blood Offering's hint is one function, which updateBloodOffering and the field call)
       [widget, 'theBloodOfferingsHint', 'theBloodOfferingsGrades'],
-      ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePriceOfWordFromAProvince'],
+      // (the ledger since P1-11e42: its file's, on the report and the orders handed it)
+      [
+        'ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts',
+        'theTreasuryLedgerOnTheseOrders',
+        'thePriceOfWordFromAProvince',
+      ],
       // (since P1-11e26: the carters' price and the Wild Hunt's term, each the row's on a report that names none)
       [widget, 'buildTargetField', 'thePrice'],
       [widget, 'buildTargetField', 'theWildHuntsTurnsMore'],
-      ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePrice.value'],
+      [
+        'ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts',
+        'theTreasuryLedgerOnTheseOrders',
+        'thePrice.value',
+      ],
       [
         'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
         'theColumnAHeroMarchesWithInAPhase',

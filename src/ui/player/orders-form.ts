@@ -2,22 +2,12 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import {
-  aCompanyIsABeastADruidHalves,
-  aHerosWageAfterTheCutsAndTheCeilings,
-  aLeadersBeastsPayHalfWages,
-  aWageAfterEachCut,
-  aWageUnderEachCeiling,
   combatSpellsAllowedPerSchoolEachFight,
   itemUsableBy,
   theCombatSpellsBySchool,
-  theHostLeadersCut,
-  thePriceADruidPaysForABeast,
-  theWageABeastPaysUnderADruid,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './startup.ts';
 import {
-  actionsFor,
-  ALIGN_ACTIONS,
   discoveryChoiceBlockHTML,
   isPreOrderIdP,
   itemBoundTag,
@@ -26,18 +16,14 @@ import {
   itemTierTagP,
   renderConcede,
   renderDiscoveryChoices,
-  RUMOUR_COST_BY_POWER_P,
   SEASONS,
-  rawSkillLvl,
-  skillsUnseenP,
 } from './items-and-heroes.ts';
 import { renderDiplomacy } from './report.ts';
 import { renderReckoningOrders } from './titles.ts';
-import { SPELL_TO_SCHOOL, armyLabel, effMagicLvl, refreshLaterCastSpells, unitEmoji } from './order-chances.ts';
+import { SPELL_TO_SCHOOL, armyLabel, refreshLaterCastSpells, unitEmoji } from './order-chances.ts';
 import {
   DUEL_STANCES,
   ENCOUNTER_TACTICS,
-  SKILL_LABELS,
   applyHeroOrderP,
   heirSelectorHTML,
   heroOrderFromOrdersP,
@@ -45,205 +31,22 @@ import {
 } from './move-analysis.ts';
 import { refreshAllOncePerTurn, syncAllPreOrderCards, syncAllResurrectCards, syncResurrectCard } from './pre-orders.ts';
 import { itemAcquiredTagP, itemLoreTip, restoreSubmitWrap } from './briefing-and-submit.ts';
-import { druidNeedP, formatRace, heroHireWageOfP, skillRowHTML } from './skills-and-projections.ts';
+import { druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.ts';
 import { buildTargetField, refreshExploreNotes } from './order-targets.ts';
 import { provLinkHtml } from './map-symbols.ts';
 import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
+  actionsFor,
+  computeOrderLedgerP,
   getOrderTarget,
-  predictedLocation,
-  whereTheCompaniesAHerosRecruitRaisesMuster,
 } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
+import {
+  SKILL_LABELS,
+  effMagicLvl,
+  skillsUnseenP,
+} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // ── TREASURY LEDGER (2026-09-23, Toby item 6) ────
-// A running account at the top of the orders column (sticky, like the report's jump-bar): what the
-// treasury holds, what the orders entered so far will spend and on what, and an estimate of the
-// treasury once this turn has resolved — after the season's tax comes in and every wage is paid,
-// including the wages of the units recruited and heroes hired by these orders. Read straight from
-// the live form (every order row, pre-order cards included) and refreshed on any change.
-// Prices: native recruits from the province's own list, mercenaries from their sighting, hero
-// wages from the alignment table, the rest from report.orderPrices (the GM engine's own figures).
-// It is an ESTIMATE: an order that fails (unaffordable, target gone, province not taken) costs
-// nothing, and Hunting Rumours pays per lair actually heard of.
-// Since P1-11e29 (R-134), a company's price and wage follow the turn's cuts (src/shared/): a Druid 6 recruiter pays
-// half for a beast; a beast in the column of a Druid 6 leader, or of a realm whose Druidic Wonder stands, pays half
-// wages; and a company in the Host-Leader's column pays 1g less, where the report names him (his minorHeld: the titles
-// public). Where a company musters is the turn's (whereTheCompaniesAHerosRecruitRaisesMuster). Since P1-11e30, the
-// upkeep and hero-wage discoveries' cuts (Supply Depots, Granaries, Inspiring Leadership…) are each shared under the
-// room the report gives it, a company or hero at a time, as Early Winter shares them; an older report's are the type's.
-export function computeOrderLedgerP() {
-  const rep = currentReport || {};
-  const k = rep.kingdom || {};
-  const P = rep.orderPrices || {};
-  const wageOf = (t) => (P.unitWage && P.unitWage[t] != null ? P.unitWage[t] : (P.unitCost || {})[t] || 2);
-  const mk = () => ({ g: 0, n: 0, wage: 0 });
-  const cats = { armies: mk(), mercs: mk(), heroes: mk(), intel: mk(), other: mk() };
-  const notes = new Set();
-  const heroesAvail = Object.values(rep.provinceOrderData || {}).flatMap((pd) => pd.availableHeroes || []);
-  const hired = new Set(),
-    mercsTaken = new Set();
-  // what each discovery's cut or ceiling has saved on the orders' new companies and heroes, under the room the report
-  // gives it (R-134, P1-11e30)
-  const theirSavings = new Map();
-  const itsRoom = (x) => (x.theRoomLeftUnderItsCap == null ? undefined : x.theRoomLeftUnderItsCap);
-  const upkeepCuts = Array.isArray(k.theUpkeepDiscoveriesCutsAndTheirRoom)
-    ? k.theUpkeepDiscoveriesCutsAndTheirRoom
-    : null;
-  const theUpkeepCutsOn = (type) =>
-    upkeepCuts.map((x) => {
-      const g = (x.theGoldItCutsFromAUnitOfEachType || {})[type];
-      return [x, g == null ? null : { theGold: g, itsOwnCeiling: itsRoom(x) }];
-    });
-  const theHeroWageCutsOn = (alignment) =>
-    (k.theHeroWageDiscoveriesCutsAndTheirRoom || []).map((x) => {
-      const g = (x.theGoldItCutsFromAHeroOfEachAlignment || {})[alignment];
-      return [x, g == null ? null : { theGold: g, itsOwnCeiling: itsRoom(x) }];
-    });
-  const theHeroWageCeilings = (k.theHeroWageDiscoveriesCeilingsAndTheirRoom || []).map((x) => [
-    x,
-    { theWagesCeiling: x.theWagesCeiling, itsOwnCeiling: itsRoom(x) },
-  ]);
-  const hireHero = (hid) => {
-    hid = String(hid);
-    if (!/^\d+$/.test(hid) || hired.has(hid)) return;
-    const h = heroesAvail.find((x) => String(x.id) === hid);
-    if (!h) return;
-    const w = heroHireWageOfP(h, rep);
-    if (w == null) return;
-    hired.add(hid);
-    cats.heroes.g += w;
-    cats.heroes.n++;
-    cats.heroes.wage += aHerosWageAfterTheCutsAndTheCeilings(
-      (x) => aWageAfterEachCut(theHeroWageCutsOn(h.alignment), x, theirSavings, null),
-      (x) => aWageUnderEachCeiling(theHeroWageCeilings, x, theirSavings, null),
-      w,
-    );
-  };
-  (rep.characters || [])
-    .filter((c) => c && c.alive !== false)
-    .forEach((c) => {
-      for (let ph = 0; ph < 5; ph++) {
-        const act = document.getElementById(`po-action-${c.id}-${ph}`)?.value || '';
-        if (!act) continue;
-        const tgt = String(getOrderTarget(c.id, ph) || '');
-        if (act === 'Recruit Armies') {
-          const loc = predictedLocation(c.id, ph);
-          const pd = loc ? (rep.provinceOrderData || {})[loc.id] : null;
-          const ticks = tgt
-            .split(',')
-            .map((x) => x.trim())
-            .filter(Boolean);
-          // the column each company joins, and the wage the turn charges it there (R-134, P1-11e29)
-          const musters = whereTheCompaniesAHerosRecruitRaisesMuster(c, ph, ticks);
-          const leader = musters.dest;
-          const hisBeastsPayHalfWages = aLeadersBeastsPayHalfWages(
-            rawSkillLvl(leader, 'druid') >= 6,
-            () => !!k.itsDruidicWonderHalvesItsBeastsWages,
-          );
-          const heIsTheHostLeader = (leader.minorHeld || []).some((t) => t && t.key === 'hostleader');
-          // (one company's: each draws on the upkeep discoveries' room in turn)
-          const theWageOf = (type, joinsTheColumn) => {
-            const halved = joinsTheColumn && hisBeastsPayHalfWages && aCompanyIsABeastADruidHalves(type);
-            const raw = (P.unitCost || {})[type] || 2;
-            let w;
-            if (upkeepCuts) {
-              // the turn halves the wage before the upkeep discoveries' cuts, each under its room (P1-11e30)
-              w = aWageAfterEachCut(
-                theUpkeepCutsOn(type),
-                halved ? theWageABeastPaysUnderADruid(raw) : raw,
-                theirSavings,
-                null,
-              );
-            } else {
-              // an older report: the cut it gives for the type, after the half
-              w = wageOf(type);
-              if (halved) w = Math.max(0, theWageABeastPaysUnderADruid(raw) - Math.max(0, raw - w));
-            }
-            return joinsTheColumn && heIsTheHostLeader ? theHostLeadersCut(w, 1).theWagesLeft : w;
-          };
-          const intoTheColumn = (type, unitName) =>
-            musters.toTheColumn.some((u) => u.type === type && (unitName == null || u.unitName === unitName));
-          ticks.forEach((tok) => {
-            if (tok.startsWith('to:')) return;
-            if (tok.startsWith('merc:')) {
-              if (mercsTaken.has(tok)) return;
-              const m = (rep.mercIntel || []).find((x) => 'merc:' + x.id === tok);
-              if (!m) return;
-              mercsTaken.add(tok);
-              cats.mercs.g += m.cost || 0;
-              cats.mercs.n++;
-              cats.mercs.wage += theWageOf(m.type, intoTheColumn(m.type, m.unitName));
-              return;
-            }
-            const [type, q] = tok.split('|');
-            const n = Math.max(1, parseInt(q) || 1);
-            const at = ((pd && pd.armyTypes) || []).find((a) => a.type === type);
-            let cost = at && at.cost != null ? at.cost : (P.unitCost || {})[type] || 2;
-            if (rawSkillLvl(c, 'druid') >= 6 && aCompanyIsABeastADruidHalves(type))
-              cost = thePriceADruidPaysForABeast(cost); // a Druid 6 recruiter's half price (R-134)
-            cats.armies.g += cost * n;
-            cats.armies.n += n;
-            for (let i = 0; i < n; i++) cats.armies.wage += theWageOf(type, intoTheColumn(type));
-          });
-        } else if (act === 'Hire Hero') {
-          hireHero(tgt);
-        } else if (act === 'Broker') {
-          if (tgt.startsWith('hire:')) hireHero(tgt.slice(5));
-          else if (tgt.startsWith('spy:')) {
-            cats.intel.g +=
-              P.brokerSpy != null ? P.brokerSpy : ALIGN_ACTIONS.Broker.theNumbers.thePriceOfWordFromAProvince.value;
-            cats.intel.n++;
-          }
-        } else if (act === 'Harvest the Field') {
-          cats.armies.g += P.harvest != null ? P.harvest : ALIGN_ACTIONS['Harvest the Field'].theNumbers.thePrice.value; // its row's, on a report that names no price
-          cats.armies.n++;
-          cats.armies.wage += 1; // a skeletal unit's wage is a flat 1g
-        } else if (act === 'Perform Rite' && /^wild/i.test(tgt)) {
-          const loc = predictedLocation(c.id, ph);
-          const pd = loc ? (rep.provinceOrderData || {})[loc.id] : null;
-          if (pd && pd.wildHuntCost != null) {
-            cats.other.g += pd.wildHuntCost;
-            cats.other.n++;
-          } // bound beasts draw no wage
-        } else if (act === 'Hunting Rumours') {
-          // 2026-09-24 (Toby item 1): count the ticked lairs at their grade price (Weak 1 … Legendary
-          // 4), the same figures the engine charges — read from the province the hero will stand in.
-          const loc = predictedLocation(c.id, ph);
-          const pd =
-            (loc ? (rep.provinceOrderData || {})[loc.id] : null) || (rep.provinceOrderData || {})[c.locationId] || null;
-          const feats = ((pd && pd.features) || []).filter((f) => !f.ritualSite && f.monster);
-          tgt
-            .split(',')
-            .map((x) => x.trim())
-            .filter(Boolean)
-            .forEach((ix) => {
-              const f = feats.find((x) => String(x.idx) === ix);
-              if (!f) return;
-              cats.intel.g += RUMOUR_COST_BY_POWER_P[f.monsterPower] || 1;
-              cats.intel.n++;
-            });
-        }
-      }
-    });
-  const spend = Object.values(cats).reduce((s, x) => s + x.g, 0);
-  const newWages = Object.values(cats).reduce((s, x) => s + x.wage, 0);
-  const gold = k.gold || 0,
-    tax = k.taxIncome || 0;
-  const armyW = k.nextArmyWages != null ? k.nextArmyWages : k.armyWages || 0,
-    heroW = k.nextHeroWages != null ? k.nextHeroWages : k.heroWages || 0;
-  return {
-    gold,
-    spend,
-    left: gold - spend,
-    tax,
-    armyW,
-    heroW,
-    newWages,
-    cats,
-    notes: [...notes],
-    projected: gold - spend + tax - armyW - heroW - newWages,
-  };
-}
 export function renderOrderLedgerP() {
   const el = document.getElementById('orders-ledger');
   if (!el) return;
