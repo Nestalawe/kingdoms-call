@@ -124,10 +124,10 @@ describe('the treasury ledger, on the orders handed in', () => {
           {},
           {},
           // a sixth phase's order is not one the ledger counts
-          { action: 'Hire Hero', target: '7' },
+          { action: 'Hunting Rumours', target: '0' },
         ],
         // a hero who fell this turn gives no order
-        3: [{ action: 'Hire Hero', target: '7' }],
+        3: [{ action: 'Hunting Rumours', target: '1' }],
       }),
     );
     expect(L.cats).toEqual({
@@ -143,6 +143,11 @@ describe('the treasury ledger, on the orders handed in', () => {
     expect([L.gold, L.spend, L.left, L.tax, L.armyW, L.heroW, L.newWages, L.projected]).toEqual([
       50, 36, 14, 12, 5, 3, 16, 2,
     ]);
+  });
+  test('a Thunderbird mustered to a comrade who is no Druid pays its full wage there, at its recruiter’s half price', () => {
+    const toBrin = recruit('Spearmen|2,Thunderbirds,to:2');
+    const L = theTreasuryLedgerOnTheseOrders(aReport(), ordersOf({ 1: [toBrin] }));
+    expect(L.cats.armies).toEqual({ g: 16, n: 3, wage: 8 });
   });
   test('word from a province and a harvest at their rows’ prices on a report that names none; no orders, no spend', () => {
     const report = aReport();
@@ -236,6 +241,8 @@ describe('the levels of magic a hero’s earlier practices may raise, and a hire
       5, 5, 7, 5,
     ]);
     expect(at(theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise(orders, c, 1).trained, 'white')).toBe(4);
+    // a third practice of White, past 5: practice trains no further
+    expect(at(theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise(orders, c, 4).trained, 'white')).toBe(5);
     expect(effMagicLvl(c, 'white')).toBe(5);
   });
   test('a hire’s wage is the report’s where it gives one, else the alignments’', () => {
