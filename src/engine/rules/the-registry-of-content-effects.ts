@@ -68,6 +68,10 @@ import {
 import type { TheEffectOfADiscovery } from '../../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import type { AUnitAsTheDiscoveriesReadIt } from '../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import type { AUnitARealmsDiscoveriesMayStrengthen } from '../rules-on-plain-values/the-factor-a-realms-unit-strength-discoveries-strengthen-a-unit-by.ts';
+import type {
+  AStepOfTheCommandersItems,
+  AUnitLedByACommander,
+} from '../rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -98,24 +102,6 @@ export interface ALandUnitAtSea {
   readonly unitType: string;
   readonly itsForce: readonly (AUnitOfAForce | null | undefined)[];
 }
-
-/** What the stage "strength: the commander's items" hands an effect (armStr, after the unit's own modifiers and before
- *  its factors from its force): the unit he leads and his realm's alignment. Which effects his items carry, the items'
- *  runner reads from his active items, once a call (the-registry-of-magic-item-effects.ts). */
-export interface AUnitLedByACommander {
-  readonly unitType: string;
-  /** The unit's own quality (not the tier Oratory lifts it to). */
-  readonly quality: string | undefined;
-  /** Whether the unit is skeletal (the mark a raising of the dead writes on it). */
-  readonly isSkeletal: boolean;
-  /** The alignment of the realm he leads it for, if any. */
-  readonly theRealmsAlignment: string | null | undefined;
-}
-
-/** A step of the commander's items on a unit's strength: strength added, or a multiplier (with, for a step up a quality
- *  tier, the tier's own multiplier it is divided by), the result rounded. */
-export type AStepOfTheCommandersItems =
-  { readonly adds: number } | { readonly multipliesBy: number; readonly dividedBy?: number };
 
 /** What the stage "strength: a land unit at sea, led" hands an effect (armStr, where the sea's penalty would cut a land
  *  unit a commander leads): the unit's type. */
