@@ -3,7 +3,6 @@ import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { SAFE_START_TURN } from '../army-tables.ts';
 import { homeProvinceIdFor } from '../grand-design.ts';
-import { renameLairsThematicP } from '../names.ts';
 import { RETIRED_DISCOVERY_IDS } from '../heroes/skills-and-hp.ts';
 import { grantMithrilToDwarves } from '../personal-combat/helpers.ts';
 import { botResearchPick } from '../bots/missions.ts';
@@ -31,8 +30,8 @@ import {
 //      orders' lines, the realms the GM removed told as conceding, and the realms' messages delivered;
 //   3. every living realm hero's move pools, the seasons, the turn's trackers (recruits, presence, provinces entered,
 //      sightings, distances), last turn's deaths, espionage, watches, chases and attack routes cleared, then the
-//      save's sweeps: the Dwarves' mithril, the lairs' names and the guardians' HP (once each), the retired Library,
-//      and the Grand Cathedral's ward;
+//      Dwarves' mithril, the lairs renamed and the guardians re-measured told (the save's upgrade does both, once
+//      each), and the Grand Cathedral's ward;
 //   4. once the bots have planned, every living realm hero's empty phase set to Defend, the orders recorded for the
 //      turn's statistics, and the hosts standing on a war front as the turn begins.
 // Each takes the turn's context (src/engine/turn/context.ts) and nothing else: they read the merge's collectors from it
@@ -383,54 +382,25 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
   // resurrected dwarves, charm-reverts, and any path the inline grants miss.
   grantMithrilToDwarves(G);
 
-  // LAIR NAMES v2 — older worlds were named at random from per-terrain pools, so a guardian and its
-  // lair rarely matched and 68 of 81 names were reused at different difficulties (which is what
-  // made lair and guardian show different colours in the Chronicle). Re-name every lair once, from
-  // its own guardian's pools and uniquely. Idempotent: the flag stops it ever running twice.
-  if (!G._lairNamesV3) {
-    const _rn = renameLairsThematicP(G);
-    if (_rn > 0)
-      emit(turnContext, {
-        type: 'system',
-        fact: { kind: 'the chronicles record the lairs under fitting names', lairs: _rn },
-        audience: { actor: null, realms: [] },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      });
-  }
-  // EVERY GUARDIAN IS 5 HP FRAILER. The table was re-statted, but a live world keeps its own copy
-  // of each guardian on the feature (and `_hpFull`, the undamaged total a guardian is restored to
-  // between fights), so the table change alone would never reach a game in progress. One flagged,
-  // idempotent pass brings existing worlds into line. Floored at 5 so nothing is ever reduced to a
-  // guardian that cannot fight.
-  if (!G._guardianHpV2) {
-    let _gh = 0;
-    ((G.world && G.world.provinces) || []).forEach((p) =>
-      ((p && p.features) || []).forEach((f) => {
-        if (!f || f.ritualSite || !f.monster) return;
-        if (f.monster.hp != null) {
-          f.monster.hp = Math.max(5, f.monster.hp - 5);
-          _gh++;
-        }
-        if (f.monster._hpFull != null) f.monster._hpFull = Math.max(5, f.monster._hpFull - 5);
-      }),
-    );
-    G._guardianHpV2 = true;
-    if (_gh > 0)
-      emit(turnContext, {
-        type: 'system',
-        fact: { kind: "the world's guardians are re-measured five hit points frailer", guardians: _gh },
-        audience: { actor: null, realms: [] },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      });
-  }
-
-  // ── RETIRED DISCOVERIES ── the Library (sd30) was removed from the game on 2026-09-09. Strike it
-  // from any realm that had already found it, so no live save keeps a dead entry on its sheet.
-  (G.players || []).forEach((pl) => {
-    if (pl && Array.isArray(pl.discoveries)) pl.discoveries = pl.discoveries.filter((d) => d && d.id !== 'sd30');
-  });
+  // The lairs renamed and the guardians re-measured on an old world (once each, behind their flags) are the upgrade's
+  // (src/engine/saves/, plan P1-15f1), with the retired Library struck: what it counted is told here, as it was.
+  const { lairsRenamed: _rn, guardiansCut: _gh } = turnContext.whatTheSavesUpgradeFound;
+  if (_rn > 0)
+    emit(turnContext, {
+      type: 'system',
+      fact: { kind: 'the chronicles record the lairs under fitting names', lairs: _rn },
+      audience: { actor: null, realms: [] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+    });
+  if (_gh > 0)
+    emit(turnContext, {
+      type: 'system',
+      fact: { kind: "the world's guardians are re-measured five hit points frailer", guardians: _gh },
+      audience: { actor: null, realms: [] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+    });
 
   // GRAND DESIGN — Divine (Grand Cathedral): the capital is permanently warded
   // (Plague/Earthquake/Flood/Part Sea turned aside). 2026-09-14: the ward lies over the province

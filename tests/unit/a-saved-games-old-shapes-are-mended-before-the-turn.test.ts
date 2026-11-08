@@ -12,10 +12,17 @@
 //   discovery reads as the table says now;
 // - a company of a unit renamed since is called by its name now;
 // - an item whose tier was stamped by an older table has today's;
+// - an old world's lairs are renamed once, and the upgrade returns how many (P1-15f1: the turn ran it before);
+// - an old world's guardians are made 5 HP frailer once, their undamaged HP too, never below 5, and the upgrade returns
+//   how many (a property: any HP, or none); a gap among the provinces or the features is passed over;
+// - the retired Library (sd30) is struck from a realm's discoveries, with any gap in its list; a realm with no list
+//   keeps none;
 // - all of them at once, then the upgrade run again on what it left: the second run changes nothing and finds nothing.
-// And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a known defect,
-// fixed in its own pull request, whose fix removes it (Mithril Armour is made at tier 1, and the upgrade raises it to
-// its floor, tier 2), so the list only shrinks.
+// The world staged on is one that has played its first turn: its guardians already re-measured (a new world isn't:
+// question 17). And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a
+// known defect, fixed in its own pull request, whose fix removes it (Mithril Armour is made at tier 1, and the upgrade
+// raises it to its floor, tier 2; a new world's guardians are made 5 HP frailer, question 17, P1-23l), so the list only
+// shrinks.
 // Each staged case is certain on any world: it stages what it reads (a hero's items and his realm's discoveries, a
 // home's race), so no seed can miss it. Each pass left out of the upgrade turns its cases red.
 // Level 1 (unit): world generation and the upgrade, called directly on the engine's modules (plan P1-14a); no turn is
@@ -29,12 +36,15 @@
 // returned for the turn's end to tell, none kept on the save; guardians from an older table re-read from today's; a
 // home lacking a unit of its people's roster offers it again; a pool offering the Corsair Fleet offers the Galleon (a
 // Corsair company kept); a retired Sage discovery taken and counted, none kept on the save, a held one refreshed from
-// the table; a company of a renamed unit renamed; an item's tier from today's tables. All at once, then again: the
-// second run changes nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril
-// Armour made at tier 1, raised to 2: a known defect, whose fix removes it) and find nothing. Each pass left out turns
-// its cases red (6 of 6). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
+// the table; a company of a renamed unit renamed; an item's tier from today's tables; an old world's lairs renamed once,
+// counted; its guardians 5 HP frailer once, never below 5, counted (a property), gaps passed over; the Library struck
+// with any gap, a realm with no list keeping none. All at once, then again: the second run changes nothing and finds
+// nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril Armour made at tier 1, raised to 2; the
+// guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass left out turns its cases red (9
+// of 9). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
 // since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
 // settings)
+import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import '../lib/the-whole-engine.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
@@ -77,7 +87,10 @@ function newWorld(realms: number, cols: number, rows: number, seed = SEED): Save
   }));
   return JSON.parse(JSON.stringify(generateNewGame(setups, { cols, rows }, 0, {}))) as Save;
 }
+/** A save of a world that has played its first turn: its guardians are re-measured then (world generation doesn't mark
+ *  a new world's: question 17, P1-23l), so only a case that stages an old world sees the cut. */
 const WORLD = newWorld(3, 10, 8);
+WORLD._guardianHpV2 = true;
 /** What the upgrade's passes counted. The check's findings are left out: a world made by world generation and staged
  *  here isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots' settings), so the check names those;
  *  the check has its own test (a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts, P1-15d). */
@@ -85,10 +98,19 @@ type TheCounts = Omit<WhatTheSavesUpgradeFound, 'whereTheSaveDiffersFromThisBuil
 const countsOf = ({
   retiredSageDiscoveriesRemoved,
   heroesCarriedOverToTheEarnedHpPool,
-}: WhatTheSavesUpgradeFound): TheCounts => ({ retiredSageDiscoveriesRemoved, heroesCarriedOverToTheEarnedHpPool });
+  lairsRenamed,
+  guardiansCut,
+}: WhatTheSavesUpgradeFound): TheCounts => ({
+  retiredSageDiscoveriesRemoved,
+  heroesCarriedOverToTheEarnedHpPool,
+  lairsRenamed,
+  guardiansCut,
+});
 const NOTHING_FOUND: TheCounts = {
   retiredSageDiscoveriesRemoved: 0,
   heroesCarriedOverToTheEarnedHpPool: [],
+  lairsRenamed: 0,
+  guardiansCut: 0,
 };
 
 const realmsHeroes = (s: Save) => s.characters.filter((c) => c.alive && c.player != null);
@@ -102,6 +124,10 @@ function aKingWithNothingToAdd(s: Save): Hero {
   must(s.players[0], 'realm 0').discoveries = [];
   return king;
 }
+/** Every lair of the world with a guardian (a ritual site's keeper aside), in the map's order. */
+const lairsOf = (s: Save) => s.world.provinces.flatMap((p) => p.features).filter((f) => f.monster && !f.ritualSite);
+/** How many guardians of the world hold an HP (a ritual site's keeper aside). */
+const guardiansWithHp = (s: Save) => lairsOf(s).filter((f) => f.monster?.hp != null).length;
 const aLairGuardian = (s: Save) =>
   must(
     s.world.provinces.flatMap((p) => p.features).find((f) => f.monster && !f.cleared),
@@ -295,6 +321,66 @@ const OLD_SHAPES: OldShape[] = [
       };
     },
   },
+  {
+    name: "an old world's lairs are renamed once, each uniquely, and the upgrade returns how many",
+    pass: 'renameLairsThematicP',
+    stage(s) {
+      delete loose(s)['_lairNamesV3'];
+      for (const f of lairsOf(s)) f.name = 'An Old Name';
+    },
+    mended(s, _, found) {
+      const names = lairsOf(s).map((f) => f.name);
+      return {
+        got: {
+          flag: s._lairNamesV3,
+          found,
+          old: names.filter((n) => n === 'An Old Name'),
+          unique: new Set(names).size,
+        },
+        want: {
+          flag: true,
+          found: { ...NOTHING_FOUND, lairsRenamed: lairsOf(WORLD).length },
+          old: [],
+          unique: names.length,
+        },
+      };
+    },
+  },
+  {
+    name: "an old world's guardians are made 5 HP frailer once, never below 5, and the upgrade returns how many",
+    pass: 'everyGuardianOfAnOldWorldFiveHpFrailer',
+    stage(s) {
+      delete loose(s)['_guardianHpV2'];
+      const [a, b] = lairsOf(s).map((f) => must(f.monster, 'guardian'));
+      Object.assign(must(a, 'first guardian'), { hp: 12, _hpFull: 14 });
+      Object.assign(must(b, 'second guardian'), { hp: 7, _hpFull: 8 });
+    },
+    mended(s, _, found) {
+      const [a, b] = lairsOf(s).map((f) => f.monster);
+      return {
+        got: { hp: [a?.hp, a?._hpFull, b?.hp, b?._hpFull], flag: s._guardianHpV2, found },
+        want: { hp: [7, 9, 5, 5], flag: true, found: { ...NOTHING_FOUND, guardiansCut: guardiansWithHp(WORLD) } },
+      };
+    },
+  },
+  {
+    name: 'the retired Library (sd30) is struck from a realm that found it, with any gap in its list; the rest kept',
+    pass: 'theLibraryStruckFromEveryRealm',
+    stage(s) {
+      must(s.players[0], 'realm 0').discoveries = [
+        { id: 'sd30', name: 'The Library' },
+        { ...aHeldDiscovery },
+        null,
+        { id: 'sd30' },
+      ] as never;
+    },
+    mended(s) {
+      return {
+        got: (must(s.players[0], 'realm 0').discoveries as (Loose | null)[]).map((d) => d?.['id']),
+        want: [aHeldDiscovery.id],
+      };
+    },
+  },
 ];
 
 describe("a saved game's old shapes are mended before the turn (upgradeGameState)", () => {
@@ -313,6 +399,55 @@ describe("a saved game's old shapes are mended before the turn (upgradeGameState
     expect(countsOf(upgradeGameState(s))).toEqual(NOTHING_FOUND);
     expect(s).toEqual(once);
     expect(staged).toHaveLength(OLD_SHAPES.length);
+  });
+
+  test("an old world's guardians, any HP or none: each 5 HP frailer, never below 5, its undamaged HP too; only those with HP counted", () => {
+    const hp = fc.option(fc.integer({ min: 0, max: 40 }), { nil: null });
+    fc.assert(
+      fc.property(fc.array(fc.tuple(hp, hp), { minLength: 1, maxLength: 4 }), (guards) => {
+        const s = copy(WORLD);
+        delete loose(s)['_guardianHpV2'];
+        const lairs = lairsOf(s);
+        lairs.forEach((f, i) => {
+          const [h, full] = guards[i] ?? [null, null];
+          const m = loose(must(f.monster, 'guardian'));
+          if (h == null) delete m['hp'];
+          else m['hp'] = h;
+          if (full == null) delete m['_hpFull'];
+          else m['_hpFull'] = full;
+        });
+        const found = upgradeGameState(s);
+        const cut = (v: number | null) => (v == null ? null : Math.max(5, v - 5));
+        const want = lairs.map((_, i) => {
+          const [h, full] = guards[i] ?? [null, null];
+          return [cut(h), cut(full)];
+        });
+        expect(lairsOf(s).map((f) => [f.monster?.hp ?? null, f.monster?._hpFull ?? null])).toEqual(want);
+        expect(found.guardiansCut).toBe(guards.filter(([h]) => h != null).length);
+      }),
+      { seed: SEED, numRuns: 50 },
+    );
+  });
+
+  test("the guardians' cut passes over gaps among the provinces and the features, and marks the world done", () => {
+    const s = copy(WORLD);
+    delete loose(s)['_guardianHpV2'];
+    const ps = s.world.provinces as unknown as (Loose | null)[];
+    const bare = ps.findIndex((p) => p && !(p['features'] as unknown[] | undefined)?.length);
+    ps[bare] = null;
+    must(
+      s.world.provinces.find((p) => p.features.length > 0),
+      'province with features',
+    ).features.unshift(null as never, { ritualSite: false, monster: null } as never);
+    expect(countsOf(upgradeGameState(s))).toEqual({ ...NOTHING_FOUND, guardiansCut: guardiansWithHp(WORLD) });
+    expect(s._guardianHpV2).toBe(true);
+  });
+
+  test('a realm with no list of discoveries keeps none', () => {
+    const s = copy(WORLD);
+    loose(must(s.players[1], 'realm 1'))['discoveries'] = null;
+    upgradeGameState(s);
+    expect(loose(must(s.players[1], 'realm 1'))['discoveries']).toBeNull();
   });
 });
 
@@ -339,6 +474,13 @@ const KNOWN: { what: string; matches: (d: Difference) => boolean }[] = [
     what: 'Mithril Armour is made at tier 1; the upgrade raises it to its floor, tier 2',
     matches: (d) => d.path.endsWith('.tier') && d.holder['name'] === MITHRIL_ARMOUR.name && d.was === 1 && d.is === 2,
   },
+  {
+    what: "a new world's guardians are made 5 HP frailer on its first turn, never below 5, and the world marked so (world generation doesn't mark it: question 17, P1-23l)",
+    matches: (d) =>
+      d.path === '_guardianHpV2'
+        ? d.was === undefined && d.is === true
+        : /\.monster\.(hp|_hpFull)$/.test(d.path) && typeof d.was === 'number' && d.is === Math.max(5, d.was - 5),
+  },
 ];
 
 describe('a brand-new world through the upgrade', () => {
@@ -351,7 +493,7 @@ describe('a brand-new world through the upgrade', () => {
   test.each(WORLDS)('%i realms on %i by %i: nothing changes but what the known list names', (realms, cols, rows) => {
     const world = newWorld(realms, cols, rows);
     const upgraded = copy(world);
-    expect(countsOf(upgradeGameState(upgraded))).toEqual(NOTHING_FOUND);
+    expect(countsOf(upgradeGameState(upgraded))).toEqual({ ...NOTHING_FOUND, guardiansCut: guardiansWithHp(world) });
     const unknown = differences(world, upgraded).filter((d) => !KNOWN.some((k) => k.matches(d)));
     expect(unknown.map((d) => `${d.path}: ${JSON.stringify(d.was)} → ${JSON.stringify(d.is)}`)).toEqual([]);
   });

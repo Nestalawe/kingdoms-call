@@ -29,15 +29,25 @@
 // turn's end tells the GM in the GM's log alone, and the turn's message (src/ui/gm/turn-shell.ts) says it too.
 // It draws no dice and writes no line. What it finds for the GM's log, it returns (WhatTheSavesUpgradeFound): the turn
 // keeps it on the turn's context and tells it at the turn's end, as before, and the save keeps none of it.
-// Still in the turn, not here (P1-15's second slice): the flagged passes before the first phase, the turn-start
-// repairs, the reads that write an old save's missing field, and the readers of older shapes. ensureAllLairHoards
-// stays in the turn: it draws dice every turn.
+// After the six, the three old flags' passes (P1-15f1; until then the turn ran them before the bots plan, after the
+// merge of the realms' orders, the lair hoards and the bots' first diplomacy; none of those reads what they change):
+//   7. an old world's lairs renamed once, each from its own guardian's pools (renameLairsThematicP, behind _lairNamesV3;
+//      world generation names a new world's so and sets the flag);
+//   8. an old world's guardians made 5 HP frailer once, their undamaged HP too, never below 5 (behind _guardianHpV2,
+//      which world generation doesn't set: a new world's guardians are cut on its first turn, question 17, P1-23l);
+//   9. the retired Library (sd30) struck from every realm's discoveries, with any gap in the list.
+// Each runs on every load behind its flag, as in the turn, not as a numbered step (P1-15's Decision 2): a numbered
+// step would skip a new world, and the guardians' cut would stop for new games, which is a rule's change. How many
+// lairs it renamed and guardians it cut, it returns: the turn tells the GM where it did.
+// Still in the turn, not here (P1-15's second slice): the turn-start repairs, the reads that write an old save's
+// missing field, and the readers of older shapes. ensureAllLairHoards stays in the turn: it draws dice every turn.
 import type { GameState } from '../../schemas/saved-game-state.ts';
 import { migrateLegacyUnitNames } from '../army-tables.ts';
 import { retireCorsairPools } from '../grand-design.ts';
 import { backfillHomeRosters } from '../world/tables.ts';
 import { migrateItemTiers } from '../items/equipment.ts';
 import { migrateMaxHpV2, retireDiscoveries } from '../heroes/skills-and-hp.ts';
+import { renameLairsThematicP } from '../names.ts';
 import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from './the-saved-games-version-this-build-writes.ts';
 import { whereASavedGameDiffersFromThisBuildsSchema } from '../../schemas/where-a-saved-game-differs-from-this-builds-schema.ts';
 
@@ -61,6 +71,82 @@ export interface WhatTheSavesUpgradeFound {
    *  and its kind, never a value (`characters.17.armies.2: a field this build doesn't know, _flakTargeted`); none if
    *  it matches. The turn's end tells the GM (views/prose/what-the-saves-check-found-in-words.ts). */
   whereTheSaveDiffersFromThisBuildsSchema: string[];
+  /** How many lairs of an old world it renamed (renameLairsThematicP, behind _lairNamesV3): told to the GM before the
+   *  bots plan. */
+  lairsRenamed: number;
+  /** How many guardians of an old world it made 5 HP frailer (behind _guardianHpV2): told to the GM before the bots
+   *  plan. */
+  guardiansCut: number;
+}
+
+/** A guardian as the guardians' cut reads it: an old world's may hold no HP, or no undamaged HP. */
+interface AGuardianAsTheCutReadsIt {
+  hp?: number | null | undefined;
+  _hpFull?: number | null | undefined;
+}
+/** A save as the guardians' cut reads it: a gap among the provinces or the features is passed over. */
+interface ASaveAsTheGuardiansCutReadsIt {
+  readonly world?:
+    | {
+        readonly provinces?:
+          | readonly (
+              | {
+                  readonly features?:
+                    | readonly (
+                        | {
+                            readonly ritualSite?: boolean | undefined;
+                            readonly monster?: AGuardianAsTheCutReadsIt | null | undefined;
+                          }
+                        | null
+                        | undefined
+                      )[]
+                    | null
+                    | undefined;
+                }
+              | null
+              | undefined
+            )[]
+          | null
+          | undefined;
+      }
+    | null
+    | undefined;
+  _guardianHpV2?: boolean | undefined;
+}
+
+/** EVERY GUARDIAN IS 5 HP FRAILER. The table was re-statted, but a live world keeps its own copy of each guardian on
+ *  the feature (and `_hpFull`, the undamaged total a guardian is restored to between fights), so the table change
+ *  alone would never reach a game in progress. One flagged, idempotent pass brings existing worlds into line. Floored
+ *  at 5 so nothing is ever reduced to a guardian that cannot fight. A ritual site's keeper is left as it is. Returns
+ *  how many guardians with HP it cut (0 once the flag is set). */
+function everyGuardianOfAnOldWorldFiveHpFrailer(save: ASaveAsTheGuardiansCutReadsIt): number {
+  if (save._guardianHpV2) return 0;
+  let cut = 0;
+  (save.world?.provinces ?? []).forEach((p) => {
+    (p?.features ?? []).forEach((f) => {
+      if (!f || f.ritualSite || !f.monster) return;
+      if (f.monster.hp != null) {
+        f.monster.hp = Math.max(5, f.monster.hp - 5);
+        cut++;
+      }
+      if (f.monster._hpFull != null) f.monster._hpFull = Math.max(5, f.monster._hpFull - 5);
+    });
+  });
+  save._guardianHpV2 = true;
+  return cut;
+}
+
+/** Whether a held discovery is the retired Library (sd30). */
+const isTheLibrary = (d: unknown): boolean => typeof d === 'object' && d !== null && Reflect.get(d, 'id') === 'sd30';
+/** RETIRED DISCOVERIES: the Library (sd30) was removed from the game on 2026-09-09. Strike it from any realm that had
+ *  already found it, so no live save keeps a dead entry on its sheet; a gap in a realm's list goes with it. */
+function theLibraryStruckFromEveryRealm(save: {
+  readonly players?: readonly ({ discoveries?: unknown[] | null | undefined } | null | undefined)[] | null | undefined;
+}): void {
+  (save.players ?? []).forEach((pl) => {
+    if (pl && Array.isArray(pl.discoveries))
+      pl.discoveries = pl.discoveries.filter((d) => Boolean(d) && !isTheLibrary(d));
+  });
 }
 
 /** The save as the passes leave it: two of them count what they mend on it, and the upgrade takes the counts off. */
@@ -130,6 +216,13 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
   retireDiscoveries(save); // strip retired Sage discovery ids (sd34) from live saves
   migrateLegacyUnitNames(save); // pre-2026.09.06 unit-type strings → current names (idempotent)
   migrateItemTiers(save); // re-stamp saved items with their tier under the four-tier scheme
+  // LAIR NAMES v2: older worlds were named at random from per-terrain pools, so a guardian and its lair rarely matched
+  // and 68 of 81 names were reused at different difficulties (which is what made lair and guardian show different
+  // colours in the Chronicle). Re-name every lair once, from its own guardian's pools and uniquely. Idempotent: the
+  // flag stops it ever running twice.
+  const lairsRenamed = save._lairNamesV3 ? 0 : renameLairsThematicP(save);
+  const guardiansCut = everyGuardianOfAnOldWorldFiveHpFrailer(save);
+  theLibraryStruckFromEveryRealm(save);
   const retiredSageDiscoveriesRemoved = save._retiredDiscoveries ?? 0;
   const heroesCarriedOverToTheEarnedHpPool = save._maxHpMigration ?? [];
   delete save._retiredDiscoveries;
@@ -141,5 +234,11 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
   }
   // the check, last: what it finds is told; the save stays as upgraded (its parse's output is never used)
   const whereTheSaveDiffersFromThisBuildsSchema = whereASavedGameDiffersFromThisBuildsSchema(save);
-  return { retiredSageDiscoveriesRemoved, heroesCarriedOverToTheEarnedHpPool, whereTheSaveDiffersFromThisBuildsSchema };
+  return {
+    retiredSageDiscoveriesRemoved,
+    heroesCarriedOverToTheEarnedHpPool,
+    whereTheSaveDiffersFromThisBuildsSchema,
+    lairsRenamed,
+    guardiansCut,
+  };
 }

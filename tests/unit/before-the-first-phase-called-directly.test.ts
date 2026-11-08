@@ -48,8 +48,6 @@ import {
   choices,
   creed,
   host,
-  lair,
-  onlyLairs,
   outcomeOf,
   prepare,
   pursuit,
@@ -521,7 +519,7 @@ describe('The move pools, the trackers and the sweeps: what the third stage call
     expect(fresh_.every(Boolean)).toBe(true);
   });
 
-  test('the Dwarves’ mithril is handed the save once; the lairs’ names only for a world not yet renamed', () => {
+  test('the Dwarves’ mithril is handed the save once; the lairs’ names are the upgrade’s, never the stage’s', () => {
     const a = fresh();
     expect(
       standIn(['grantMithrilToDwarves', 'renameLairsThematicP'], () => {
@@ -536,29 +534,33 @@ describe('The move pools, the trackers and the sweeps: what the third stage call
       standIn(['grantMithrilToDwarves', 'renameLairsThematicP'], () => {
         run(c.tc, [POOLS_AND_SWEEPS]);
       }).map((x) => [x.fn, x.args[0] === c.b.G]),
-    ).toEqual([
-      ['grantMithrilToDwarves', true],
-      ['renameLairsThematicP', true],
-    ]);
+    ).toEqual([['grantMithrilToDwarves', true]]);
   });
 
+  /** The context, as the save's upgrade found `found` (the lairs renamed, the guardians cut) on an old world. */
+  const foundByTheUpgrade = (tc: Raw, found: Raw) => {
+    tc['whatTheSavesUpgradeFound'] = { ...(tc['whatTheSavesUpgradeFound'] as Raw), ...found };
+  };
   test.each([
     [0, []],
     [1, [`\u{1F5FA} The chronicles are corrected: 1 lair is now recorded under a name befitting what dwells there.`]],
     [3, [`\u{1F5FA} The chronicles are corrected: 3 lairs are now recorded under a name befitting what dwells there.`]],
-  ])('the lairs renamed are told as many as the renaming says: %i', (n, want) => {
-    const { b, tc } = fresh((bb) => {
-      Reflect.deleteProperty(bb.G, '_lairNamesV3');
-      return {};
-    });
-    standIn(
-      ['renameLairsThematicP'],
-      () => {
-        run(tc, [POOLS_AND_SWEEPS]);
-      },
-      { renameLairsThematicP: () => n },
-    );
+  ])('the lairs renamed are told as many as the upgrade counted: %i', (n, want) => {
+    const { b, tc } = fresh();
+    foundByTheUpgrade(tc, { lairsRenamed: n });
+    run(tc, [POOLS_AND_SWEEPS]);
     expect(starting(outcomeOf(b), '\u{1F5FA} ')).toEqual(want);
+  });
+
+  test.each([
+    [0, []],
+    [1, [`\u{1F489} The world's guardians are re-measured: 1 lair-keeper is 5 hit points frailer than before.`]],
+    [3, [`\u{1F489} The world's guardians are re-measured: 3 lair-keepers are 5 hit points frailer than before.`]],
+  ])('the guardians cut are told as many as the upgrade counted: %i', (n, want) => {
+    const { b, tc } = fresh();
+    foundByTheUpgrade(tc, { guardiansCut: n });
+    run(tc, [POOLS_AND_SWEEPS]);
+    expect(starting(outcomeOf(b), '\u{1F489} ')).toEqual(want);
   });
 
   test('each realm is asked whether its Grand Cathedral stands, as a Divine realm’s; its home is looked up only for a Cathedral with no province', () => {
@@ -605,52 +607,12 @@ describe('The move pools, the trackers and the sweeps: what the third stage call
     expect(seatOf(b, 1)['_blessWardBy']).toBeUndefined();
   });
 
-  test('the guardians’ sweep passes over gaps among the provinces and the features, and marks the world done with none to re-measure', () => {
-    const { b, tc } = fresh((bb) => {
-      Reflect.deleteProperty(bb.G, '_guardianHpV2');
-      onlyLairs(bb);
-      bb.X['features'] = [null, { ritualSite: false, monster: null }];
-      return {};
-    });
-    const ps = b.G.world.provinces as unknown as (Raw | null)[];
-    const at_ = ps.findIndex((p) => p && !(p['features'] as unknown[] | undefined)?.length);
-    const keep = ps[at_] ?? null;
-    ps[at_] = null;
-    try {
-      expect(() => {
-        standIn(
-          ['setMovePool', 'gdActive', 'grantMithrilToDwarves'],
-          () => {
-            run(tc, [POOLS_AND_SWEEPS]);
-          },
-          {
-            setMovePool: () => undefined,
-            gdActive: () => false,
-            grantMithrilToDwarves: () => undefined,
-          },
-        );
-      }).not.toThrow();
-    } finally {
-      ps[at_] = keep;
-    }
-    expect([G(b)['_guardianHpV2'], starting(outcomeOf(b), '\u{1F489} ')]).toEqual([true, []]);
-  });
-
   test('a gap in the realms’ list stops the stage at the espionage reset (no realm is ever a gap in play: Parked)', () => {
     const { b, tc } = fresh();
     G(b).players[1] = null as unknown as Board['G']['players'][number];
     expect(() => {
       run(tc, [POOLS_AND_SWEEPS]);
     }).toThrow(/reading '_spiedProvincesThisTurn'/);
-  });
-
-  test('a realm with no list of discoveries keeps none', () => {
-    const { b, tc } = fresh((bb) => {
-      realm(bb, 1)['discoveries'] = null;
-      return {};
-    });
-    run(tc, [POOLS_AND_SWEEPS]);
-    expect(realm(b, 1)['discoveries']).toBeNull();
   });
 
   test('the seasons are a new copy each turn: a stage that changes them leaves the game’s list as it was', () => {
@@ -1053,33 +1015,6 @@ describe('Properties of the four stages', () => {
         expect(ordersOf(b.G, must(h as Character | null, 'the hero'))).toEqual(want);
       }),
       { seed: SEED, numRuns: 150 },
-    );
-  });
-
-  test('an old world’s guardians are each 5 HP frailer, never below 5, their undamaged HP too; only those with HP counted', () => {
-    const hp = fc.option(fc.integer({ min: 0, max: 40 }), { nil: null });
-    fc.assert(
-      fc.property(fc.array(fc.tuple(hp, hp), { minLength: 1, maxLength: 4 }), (guards) => {
-        const { b, tc } = fresh((bb) => {
-          Reflect.deleteProperty(bb.G, '_guardianHpV2');
-          onlyLairs(bb, ...guards.map(([h, f]) => lair(bb, h, f)));
-          return {};
-        });
-        run(tc, [POOLS_AND_SWEEPS]);
-        const ms = ((b.X['features'] as Raw[] | undefined) ?? []).map((f) => f['monster'] as Raw);
-        expect(ms.map((m) => [m['hp'] ?? null, m['_hpFull'] ?? null])).toEqual(
-          guards.map(([h, f]) => [h == null ? null : Math.max(5, h - 5), f == null ? null : Math.max(5, f - 5)]),
-        );
-        const n = guards.filter(([h]) => h != null).length;
-        expect(starting(outcomeOf(b), '\u{1F489} ')).toEqual(
-          n
-            ? [
-                `\u{1F489} The world's guardians are re-measured: ${String(n)} lair-keeper${n !== 1 ? 's are' : ' is'} 5 hit points frailer than before.`,
-              ]
-            : [],
-        );
-      }),
-      { seed: SEED, numRuns: 100 },
     );
   });
 });
