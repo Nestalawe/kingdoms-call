@@ -292,11 +292,6 @@
       "count": 7
     }
   },
-  "src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
   "src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts": {
     "@typescript-eslint/no-dynamic-delete": {
       "count": 1
@@ -336,11 +331,6 @@
     },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 2
-    }
-  },
-  "src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts": {
-    "prefer-const": {
-      "count": 1
     }
   },
   "src/engine/units/recruit-limits.ts": {

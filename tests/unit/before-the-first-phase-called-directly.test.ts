@@ -1019,3 +1019,103 @@ describe('Properties of the four stages', () => {
     );
   });
 });
+
+describe('What the stages’ typed reads keep (P1-10b50: each a value the old reads gave, on a world no game makes)', () => {
+  test('a message to a seat that is a gap in the realms’ list is copied to the sender naming that seat by its number', () => {
+    const { b, tc } = fresh();
+    G(b).players[1] = null as unknown as Board['G']['players'][number];
+    tc['playerMessages'] = { 0: [{ to: [1], text: 'Anyone?' }] };
+    run(tc, [WAR_AND_MESSAGES]);
+    expect(
+      lines(b)
+        .filter((l) => l.type === 'message')
+        .map((l) => l.text),
+    ).toEqual([dispatch(realm(b, 0).name, 'Anyone?'), sentTo(['Player 2'], 'Anyone?')]);
+  });
+
+  test('an Evil realm’s war on a seat it has met that is a gap in the realms’ list names the seat by its number', () => {
+    const { b, tc } = fresh((bb) => {
+      creed(bb, 0, 'Evil');
+      return { sends: { 0: { diplomacy: { 1: 'enemy' } } } };
+    });
+    G(b).relations = {};
+    realm(b, 0)['_encountered'] = [1, 2];
+    G(b).players[1] = null as unknown as Board['G']['players'][number];
+    run(tc, [WAR_AND_MESSAGES]);
+    expect(b.G.relations).toEqual({ '0-1': 'enemy' });
+    expect(told(outcomeOf(b), warNow(realm(b, 0).name, 'Realm 2')).length).toBe(1);
+  });
+
+  test('an Evil realm with no list of the realms it has met declares no war without warning', () => {
+    const { b, tc } = fresh((bb) => {
+      creed(bb, 0, 'Evil');
+      return { sends: { 0: { diplomacy: { 1: 'enemy', 2: 'enemy' } } } };
+    });
+    G(b).relations = {};
+    delete realm(b, 0)['_encountered'];
+    run(tc, [WAR_AND_MESSAGES]);
+    expect(b.G.relations).toEqual({});
+  });
+
+  test('the first two stages on a save with no list of realms tell nothing and change no relation', () => {
+    const { b, tc } = fresh();
+    G(b).relations = {};
+    delete (G(b) as Raw)['players'];
+    run(tc, [RESEARCH, WAR_AND_MESSAGES]);
+    expect(b.G.relations).toEqual({});
+    expect(lines(b).filter((l) => l.type === 'message')).toEqual([]);
+  });
+
+  test('a Divine realm’s Cathedral with no province and no home wards no province', () => {
+    const { b, tc } = fresh((bb) => {
+      delete realm(bb, 2)['gdProvinceId'];
+      return {};
+    });
+    standIn(
+      ['gdActive', 'homeProvinceIdFor'],
+      () => {
+        run(tc, [POOLS_AND_SWEEPS]);
+      },
+      { gdActive: (_t: unknown, pi: unknown) => pi === 2, homeProvinceIdFor: () => null },
+    );
+    expect(b.G.world.provinces.filter((p) => (p as unknown as Raw)['_blessWardBy'] === 2)).toEqual([]);
+  });
+
+  test('an empty phase sent as 0, no words or false is a Defend, as a missing one is; an order sent is kept', () => {
+    const { b, tc } = fresh((bb) => ({ hero: realmHero(bb, 2) }));
+    const h = must(
+      b.G.characters.find((c) => c.player === 2 && !c.isKing),
+      'the hero',
+    );
+    (b.G.turnOrders as unknown as Record<string, unknown[]>)[String(h.id)] = [
+      0,
+      '',
+      false,
+      null,
+      { action: 'rest', target: '', extra: '', desc: 'Rest' },
+    ];
+    run(tc, [DEFAULT_DEFEND]);
+    expect(ordersOf(b.G, h)).toEqual([...Array.from({ length: 4 }, () => 'defend: Defend'), 'rest: Rest']);
+  });
+
+  test('a realm with no declarations is recorded with none; one dated a concession by the turn run but not conceded, with no concession', () => {
+    const { tc } = fresh((bb) => {
+      Object.assign(realm(bb, 2), { conceded: false, concededTurn: 9 });
+      return {};
+    });
+    tc['expectedTurnToRun'] = 9;
+    tc['diploDeclarations'] = {};
+    const calls = standIn(['telOrdersFor'], () => {
+      run(tc, [DEFAULT_DEFEND]);
+    });
+    const handed = calls[2]?.args[2] as Raw;
+    expect([handed['diplomacy'], handed['concede']]).toEqual([null, undefined]);
+  });
+
+  test('a save with no list of characters still has each realm’s orders recorded', () => {
+    const { tc } = fresh();
+    delete (tc['G'] as Raw)['characters'];
+    run(tc, [DEFAULT_DEFEND]);
+    expect(Object.keys((tc['_tel'] as Raw)['orders'] as Raw)).toEqual(['0', '1', '2']);
+  });
+});

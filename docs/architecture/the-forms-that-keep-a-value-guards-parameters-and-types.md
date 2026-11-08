@@ -200,6 +200,13 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `boolean` (`theSlayersMustFight`): read as it is, lint's `no-unnecessary-condition` calls the test always false.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does (for `null`, the TypeError that read throws: a game's setup, `bots/setup.ts`).
+- **What a realm sent, parsed from JSON or as its slot row holds it** (its orders, read field by field) goes through one
+  reader that hands it back typed `Readonly<Partial<Record<string, unknown>>>` for any value but `null` and `undefined`,
+  and for those throws the `TypeError` its first field's read threw (`theOrdersAsTheRealmSentThem`); a field's `x || {}`
+  through an `if` reader (`itOrAnEmptyObject`). What the merge keeps as it was sent (a realm's declarations, research
+  picks and messages, a hero's phases) is written into the context's typed record through a view of the same record
+  typed `Record<number, unknown>`, and read back through a local typed as wide as the reader's guards (`Partial<Dispatch>
+  | null | undefined`).
 - **A unit an estimate weighs that holds no name** (the bots' estimates of a neutral mix) is a member of the grid row's
   unit type, `AUnitAnEstimateWeighs`, its `unitName` `undefined`; the facings, which meet only a battle's whole armies,
   read the unit through `theWholeArmyABattlesGridHolds`, which throws for one of no name.

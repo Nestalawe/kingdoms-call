@@ -2118,7 +2118,7 @@ function whatTheTurnDoesWithHim(
   tc['diploDeclarations'] = declarations;
   kcRng.seed(1);
   quietly(() => {
-    warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(tc);
+    warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(tc as unknown as TurnContext);
     orders.forEach((order, ph) => {
       tc._currentPhase = ph;
       // (the staged world's context, hero and order, given the types the dispatch takes, by assertion as above)
