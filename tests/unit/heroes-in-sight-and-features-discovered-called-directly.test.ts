@@ -6,7 +6,7 @@
 // - enemyCharVisibleTo: an enemy hero leading a column (one unit is enough) in this realm's own land is always seen,
 //   with none of its heroes there; a lone one is found only by the spotting roll (R-020: a column is always seen);
 // - discoverFeat: a feature an older save had marked discovered for everyone (before discovery was kept realm by
-//   realm) stays known to every realm when one realm discovers it again; a feature of a newer game is known only to
+//   realm), as the save's upgrade leaves it (P1-15f3), stays known to every realm when one realm discovers it again; a feature of a newer game is known only to
 //   the realms that discovered it;
 // - encounterUntargetableReason: a hero wearing an older save's Cloak of Many Faces (`effect:{stat:'hidden'}`) is
 //   faceless to an Encounter Character order; with another item, or none, he is not (plan P1-19am: no test saw it,

@@ -5,7 +5,7 @@
 // identical); these are proved here, each on the value it had before (worked out by the files as they were, with their
 // ts-nocheck line):
 // - a value the code guards, missing: no list (of items, realms, heroes, provinces, armies, rises, types or relations),
-//   a gap in a list, no realm, no hero, no name, no skills, no tax, no race, no plan, no tally, no province;
+//   a gap in a list, no realm, no hero, no name, no skills, no tax, no race, no plan, no province;
 // - an empty value a `||` turned into its fallback, which `??` would keep: an empty lore, relation, doctrine, race or
 //   type;
 // - a key no table holds: a monster's category with no label or use, a unit type of no price (or of a price of 0), a

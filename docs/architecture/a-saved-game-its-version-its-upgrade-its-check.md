@@ -7,7 +7,8 @@ the turn reads it.
 - **The upgrade**: `upgradeGameState(save)`, in `src/engine/saves/upgrade-a-saved-game-and-check-it.ts`,
   typed. `resolveTurn` calls it on the save it has just parsed, before the turn's context is made. It runs the six
   passes the turn used to run at its start, in the same order: `migrateMaxHpV2` (which calls
-  `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
+  `migrateLairGuardiansV2`), `backfillHomeRosters` (after a realm with no `homeProvinceId` is given its first province,
+  else its king's place: P1-15f3; until then `homeProvinceIdFor` wrote it on its first read), `retireCorsairPools`, `retireDiscoveries`,
   `migrateLegacyUnitNames` and `migrateItemTiers` (until P1-15a the turn ran it after the merge of the realms' orders;
   nothing between reads an item's tier). Each pass runs on every turn and is safe to repeat; it also mends what the
   turn before wrote (a hero hired last turn gets his earned-HP pool).
@@ -31,9 +32,13 @@ the turn reads it.
   keeps that on the turn's context (`whatTheSavesUpgradeFound`), and the stages tell it where they did before (the
   lairs and the guardians before the bots plan, the rest at the turn's end). The save keeps none of it but the tags'
   count, as before.
-- **Still in the turn** (P1-15's second slice brings them here, each with an old shape staged): the reads that write
-  an old save's missing field, and the readers of older shapes. `ensureAllLairHoards`
-  stays in the turn: it draws dice every turn.
+- **After the repairs, three reads that wrote an old save's field** (P1-15f3; until then each reader wrote it on its
+  first read in the turn, and now only reads): a realm's single `consecratedProvId` folded into its list
+  (`consecratedIds` still gives a realm with no list an empty one: a new game's realms hold none), its find tally's
+  retired `consumable` count folded into `combat`, and a feature discovered with no `discoveredBy` known to every realm
+  (`_legacyAll`, an empty list). After the check, so it still names the old fields.
+- **Still in the turn** (P1-15's second slice brings them here, each with an old shape staged): the readers of older
+  shapes. `ensureAllLairHoards` stays in the turn: it draws dice every turn.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
   a new world and mended; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
   tier, the guardians' cut) and
@@ -128,8 +133,7 @@ games.
   `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
   `migrateLegacyUnitNames` and `migrateItemTiers`, in that order. A new pass goes there, draws no dice and writes no
   line: what it has to tell the GM it returns, and the turn tells it ([above](#a-saved-game-its-version-its-upgrade-its-check)).
-  `ensureAllLairHoards` still runs in the turn, after the merge of the orders (it draws dice). `migrateHoardTally` runs
-  wherever the find tally is read or written. A running game picks up a change at its next turn.
+  `ensureAllLairHoards` still runs in the turn, after the merge of the orders (it draws dice). A running game picks up a change at its next turn.
 - **Every migration runs on every turn**, not once, so it must be safe to repeat (idempotent).
 - **Guardians:** `migrateLairGuardiansV2` re-stats uncleared lairs from `MONSTERS_P`, by name, only
   when `GUARDIAN_TABLE_VER` is higher than the save's `_guardiansVer`. When you change a guardian's

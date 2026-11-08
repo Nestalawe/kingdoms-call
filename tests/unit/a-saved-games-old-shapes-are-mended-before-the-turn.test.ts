@@ -25,6 +25,12 @@
 //   unclaimed ground still guards); no garrison company keeps a stranded hull's marker, and the check, before the
 //   repair, still names the leaked marker; a hero in a realm's service loses his "(wandering)" tag, and the upgrade
 //   returns how many (a property: any race, realm and marker); gaps in the lists are passed over;
+// - the reads that wrote an older save's field (P1-15f3: the readers wrote it in the turn before): a realm with no home
+//   is given its first province, else its king's place, else none; after the check (which still names the old fields),
+//   a realm's single consecrated province is folded into its list (a realm holding a list keeps it; one with neither is
+//   given none), its tally of the items found under the retired Consumable slot folded into the Combat Item's, and a
+//   feature an older save discovered for everyone, with no list of who discovered it, is known to every realm and given
+//   an empty list (a gap among the features passed over; one discovered again is still known to all);
 // - all of them at once, then the upgrade run again on what it left: the second run changes nothing and finds nothing.
 // The world staged on is one that has played its first turn: its guardians already re-measured (a new world isn't:
 // question 17). And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a
@@ -50,10 +56,12 @@
 // with any gap, a realm with no list keeping none; after the check, a hero of no realm in a beast's race given the
 // people's race at his id (id 0 and below too; no realm field: kept), a stranded guard made a wanderer (one guarding
 // unclaimed ground kept), a garrison's stranded-hull marker taken off (the check still naming it), a crowned hero's
-// "(wandering)" tag taken off, counted (a property; gaps passed over). All at once, then again: the second run changes
-// nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril Armour made at tier 1,
-// raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
-// out turns its cases red (14 of 14). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
+// "(wandering)" tag taken off, counted (a property; gaps passed over); a realm with no home given its first province,
+// else its king's place; after the check (still naming them), a single consecration folded into the list, a Consumable
+// tally into the Combat Item's, a feature discovered for everyone known to every realm. All at once, then again: the
+// second run changes nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril
+// Armour made at tier 1, raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
+// out turns its cases red (18 of 18). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
 // since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
 // settings)
 import fc from 'fast-check';
