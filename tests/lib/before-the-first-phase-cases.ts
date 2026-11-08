@@ -4,8 +4,9 @@
 // orders' lines, the realms the GM removed told as conceding, and the realms' messages delivered; (3) every living
 // realm hero's move pools, the seasons, the turn's trackers, last turn's deaths, espionage, watches, chases and attack
 // routes cleared, and the save's sweeps (the Dwarves' mithril, the lairs' names, the guardians' HP, the retired
-// Library, the Grand Cathedral's ward); (4) once the bots have planned, every empty phase of a living realm hero set to
-// Defend, the orders recorded for the turn's statistics, and the hosts standing on a war front as the turn begins.
+// Library, the Grand Cathedral's ward; the three between, the save's upgrade's since P1-15f1, are whole-turn cases);
+// (4) once the bots have planned, every empty phase of a living realm hero set to Defend, the orders recorded for the
+// turn's statistics, and the hosts standing on a war front as the turn begins.
 // Staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms each holding only its seat with
 // a living king there (P1-08k5a's `stageCase`), every realm having met every other, each sending its heroes Resting for
 // this turn (P1-08k7's slot rows), each case with what must be true after it in game terms.
@@ -94,7 +95,8 @@ export interface Outcome {
 }
 export interface BeforeCase {
   name: string;
-  /** Plays only in a whole turn: what the case is about is the bots' (their passes run between the stages). */
+  /** Plays only in a whole turn: what the case is about is the bots' (their passes run between the stages), or the
+   *  save's upgrade's (resolveTurn runs it before the stages: the lairs' names, the guardians' HP, the Library). */
   wholeTurnOnly?: boolean;
   /** The dice for the whole turn (default LANDS). */
   dice?: Dice;
@@ -1503,6 +1505,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'an old world’s lairs are renamed once, the world told how many',
+    wholeTurnOnly: true,
     stage: (b) => {
       delete raw(b)['_lairNamesV3'];
       return { board: b };
@@ -1520,6 +1523,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'one lair renamed is told as one',
+    wholeTurnOnly: true,
     stage: (b) => {
       delete raw(b)['_lairNamesV3'];
       onlyLairs(b, lair(b, 10));
@@ -1529,6 +1533,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'an old world with no lair to rename is not told of it',
+    wholeTurnOnly: true,
     stage: (b) => {
       delete raw(b)['_lairNamesV3'];
       onlyLairs(b);
@@ -1541,6 +1546,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'a world whose lairs were renamed is not renamed again',
+    wholeTurnOnly: true,
     stage: (b) => {
       const f = lair(b, 10);
       f['name'] = 'Kept Name';
@@ -1558,6 +1564,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'an old world’s guardians are made 5 HP frailer once, their undamaged HP too, the world told how many',
+    wholeTurnOnly: true,
     stage: (b) => {
       delete raw(b)['_guardianHpV2'];
       lair(b, 12, 14);
@@ -1582,6 +1589,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'a guardian is never made frailer than 5 HP',
+    wholeTurnOnly: true,
     stage: (b) => {
       delete raw(b)['_guardianHpV2'];
       onlyLairs(b, lair(b, 7, 8));
@@ -1597,6 +1605,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'a guardian of no recorded HP is not counted, but its undamaged HP is still made frailer',
+    wholeTurnOnly: true,
     stage: (b) => {
       delete raw(b)['_guardianHpV2'];
       onlyLairs(b, lair(b, null, 20), lair(b, 15, null));
@@ -1616,6 +1625,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'a ritual site’s keeper is left as it is',
+    wholeTurnOnly: true,
     stage: (b) => {
       delete raw(b)['_guardianHpV2'];
       onlyLairs(b);
@@ -1636,6 +1646,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'a world whose guardians were re-measured is not re-measured again',
+    wholeTurnOnly: true,
     stage: (b) => {
       lair(b, 12, 12);
       return { there: b.X };
@@ -1650,6 +1661,7 @@ export const SWEEP_CASES: BeforeCase[] = [
   },
   {
     name: 'the Library, retired from the game, is struck from a realm that found it; its other discoveries kept',
+    wholeTurnOnly: true,
     stage: (b) => {
       realm(b, 2)['discoveries'] = [
         { id: 'sd30', name: 'The Library' },

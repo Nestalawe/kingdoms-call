@@ -11,17 +11,24 @@ the turn reads it.
   `migrateLegacyUnitNames` and `migrateItemTiers` (until P1-15a the turn ran it after the merge of the realms' orders;
   nothing between reads an item's tier). Each pass runs on every turn and is safe to repeat; it also mends what the
   turn before wrote (a hero hired last turn gets his earned-HP pool).
-- **It draws no dice and writes no line.** What it finds for the GM's log it returns (`WhatTheSavesUpgradeFound`: how
-  many retired Sage discoveries it took, and the heroes of a save from before the earned-HP pool it carried over).
-  `resolveTurn` keeps that on the turn's context (`whatTheSavesUpgradeFound`), and the stages at the turn's end tell
-  it, as before. The save keeps none of it (until P1-15a the two passes kept their counts on the save until the turn's
-  end deleted them).
-- **Still in the turn** (P1-15's second slice brings them here, each with an old shape staged): the flagged passes
-  before the first phase (`_lairNamesV3`, `_guardianHpV2`, the Library's), the turn-start repairs, the reads that write
-  an old save's missing field, and the readers of older shapes. `ensureAllLairHoards` stays in the turn: it draws dice
-  every turn.
+- **Then the three old flags' passes** (P1-15f1; until then the turn's third stage ran them, before the bots plan): an
+  old world's lairs renamed once (`renameLairsThematicP`, behind `_lairNamesV3`), its guardians made 5 HP frailer once
+  (behind `_guardianHpV2`), and the retired Library (`sd30`) struck from every realm. Each runs on every load behind
+  its flag, not as a numbered step: a step would skip a new world, and world generation doesn't set `_guardianHpV2`,
+  so a new world's guardians are cut on its first turn (question 17, P1-23l). Setting the flag earlier in turn 1 moved
+  it in the save's key order (the matrix's `state` and `writes`, from turn 1).
+- **It writes no line, and draws no dice but an old world's lairs' renaming** (the names, from the turn's dice: no save
+  that has played a turn since that flag came lacks it). What it finds for the GM's log it returns
+  (`WhatTheSavesUpgradeFound`: how many retired Sage discoveries it took, the heroes of a save from before the
+  earned-HP pool it carried over, the lairs it renamed, the guardians it cut). `resolveTurn` keeps that on the turn's
+  context (`whatTheSavesUpgradeFound`), and the stages tell it where they did before (the lairs and the guardians
+  before the bots plan, the rest at the turn's end). The save keeps none of it.
+- **Still in the turn** (P1-15's second slice brings them here, each with an old shape staged): the turn-start
+  repairs, the reads that write an old save's missing field, and the readers of older shapes. `ensureAllLairHoards`
+  stays in the turn: it draws dice every turn.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
-  a new world and mended; the upgrade run twice equals once; a new world changes only by a known list) and
+  a new world and mended; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
+  tier, the guardians' cut) and
   `corsairs-retired` (the turn passes the loaded world through the upgrade, which calls the pass).
 - **What the schema knows**: the saved state's schema (`src/schemas/saved-game-state.ts`) was written from the
   balance matrix's states, so it also names what only live play saves: the hero order the player portal sends with
