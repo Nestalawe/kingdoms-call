@@ -203,30 +203,26 @@ export interface TheOrderFormsSpells {
 
 /** The checks' names for the order form's forecasts, its ledger, its note and its order list: those a test asks of the
  *  files that hold them, imported with no vm (each file reads the report and the orders handed it, P1-11e41, e42). */
-export const THE_FORECASTS_IMPORTED = [
-  'predictedLocationOn',
-  'predictedItemsOn',
-  'projectedLedArmiesOn',
-  'projectedGarrisonOn',
-  'thePickUpFieldsGarrisonOn',
-  'actionsForOn',
-  'theOrderListsNames',
-  'theMasteryOrdersOfTheList',
-  'theMoveNotesColumnOn',
-  'theLedgerOn',
-  'thePracticeNoteOn',
-] as const satisfies readonly CopyName[];
-export type TheForecasts = Pick<Copies, (typeof THE_FORECASTS_IMPORTED)[number]>;
+export type TheForecasts = Pick<
+  Copies,
+  | 'predictedLocationOn'
+  | 'predictedItemsOn'
+  | 'projectedLedArmiesOn'
+  | 'projectedGarrisonOn'
+  | 'thePickUpFieldsGarrisonOn'
+  | 'actionsForOn'
+  | 'theOrderListsNames'
+  | 'theMasteryOrdersOfTheList'
+  | 'theMoveNotesColumnOn'
+  | 'theLedgerOn'
+  | 'thePracticeNoteOn'
+>;
 
 /** The orders staged for a check (by hero, then by phase, each { action, target, extra }), as the page's
  *  theOrdersTheFormHolds snapshots its fields: for each hero of `report`, each phase's action, target and extra (none
  *  read as '') where an order is staged, and a Recruit's boxes (its ticks, and its "Muster to" as the target holds it:
  *  to:self unless it names another); the declarations of war the form holds, by realm (none: {}). */
-export function theOrdersAsTheFormHoldsThem(
-  report: unknown,
-  staged: unknown,
-  declarations?: unknown,
-): TheOrdersTheFormHolds {
+function theOrdersAsTheFormHoldsThem(report: unknown, staged: unknown, declarations?: unknown): TheOrdersTheFormHolds {
   const byHero: TheOrdersTheFormHolds['byHero'] = {};
   const stagedByHero = isObj(staged) ? staged : {};
   const characters = isObj(report) ? report['characters'] : null;
