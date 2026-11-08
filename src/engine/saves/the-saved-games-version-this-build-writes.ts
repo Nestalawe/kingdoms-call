@@ -6,4 +6,4 @@
 // so world generation reads it without loading the upgrade's passes.
 
 /** The version of the saved state's shape this build writes, and the newest it can read. */
-export const THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES = 1;
+export const THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES = 2;
