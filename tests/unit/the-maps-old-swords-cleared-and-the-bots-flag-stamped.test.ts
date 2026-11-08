@@ -9,8 +9,11 @@
 // three bots), on a turn seed of its own: a save holding last turn's swords, or the wrong bot flags, plays exactly the
 // turn the clean save plays, and the world after it has the slot rows' flags. These pass on the code before P1-08n too.
 // Then each function called directly: what it changes and what it leaves, a save or a realm list with gaps, and where
-// resolveTurn calls it (each stood in, in the vm, for the test's length). Properties (fast-check): the swords cleared
-// take off exactly the two marks and nothing else; the stamp sets exactly the slot rows' seats and nothing else.
+// resolveTurn calls it (each stood in, in the vm, for the test's length). Beside them, the lines of resolveTurn's read
+// of the save no game reaches (P1-10b51): what a failing read threw, in its words and as the cause; a save that parses
+// into no game in play, refused first; a save handed as an object, changed in place; each bot realm's rivals at the
+// start, a copy, none for a realm with none or no realm. Properties (fast-check): the swords cleared take off exactly
+// the two marks and nothing else; the stamp sets exactly the slot rows' seats and nothing else.
 // Level 1 (unit): resolveTurn and the two functions in the bare vm (lib/engine.ts); the whole turn reads only the save
 // and the slot rows, so no lower level holds it, and no page is needed.
 import { isDeepStrictEqual } from 'node:util';

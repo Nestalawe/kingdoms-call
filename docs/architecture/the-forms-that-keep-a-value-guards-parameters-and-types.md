@@ -69,6 +69,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   value nobody reads. A `catch (e)` whose `e` is unread is `catch {`; an empty one holds a comment saying why
   (`// the statistics never stop a hero's death`), which lint's `no-empty` asks for. A `let` set once after its unread
   first value is a `const` where it is set (the Stone's `already`).
+- **A `catch` that writes what was thrown into its own error's words** (`${(e && e.message) || e}`) reads the message
+  through `Reflect.get(Object(e), 'message')` into an `unknown`, else `e` itself, then `String()` (`theWordsOfWhatWasThrown`,
+  `run-turn.ts`): an object thrown with a message, and an error of another realm's class (a test's `vm`), keep their
+  words, which `e instanceof Error` would not. The error it throws carries `{ cause: e }` (lint's
+  `preserve-caught-error`): its words are the same.
 - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
   its test still reads it.
 
@@ -143,6 +148,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A type goes in the file whose code it types most** (a file of types alone is in no page's bundle, which
   `tests/static/pages-build.test.ts` refuses): the fighter, `AFighterInAPersonalCombat`, is in `helpers.ts`; the Mirror
   Image, in the combat spells' file. A copy whose id is a string (a Hunting Rumours hero) is `AHeroAsAFightTakesHim`.
+- **A save parsed from words** (`JSON.parse` into an `unknown`) is the game's state once the upgrade's first refusal lets
+  it through (`refuseASaveThatIsNotAGameInPlay`, an assertion: provinces, realms and a list of heroes); the check after
+  the upgrade names where its shape differs, and the turn runs on it as it is. `resolveTurn` makes it first.
 - **A claim the compiler can't check is made only through a check that holds it**: a copy made through JSON parses into
   `unknown` and a type predicate holds when `JSON.stringify(copy) === JSON.stringify(original)` (Theo, 2026-10-30); a
   hero handed to a callee that needs his name as words passes a predicate `typeof hero.name === 'string'`; a caster
