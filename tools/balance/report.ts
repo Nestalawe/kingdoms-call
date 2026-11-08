@@ -346,7 +346,8 @@ export interface Report {
   scripted: Line[];
   /** The strict overall answer (paired.ts): the headline figures that moved once the bar is raised for their number. */
   meaningful: Line[];
-  /** Statistics that changed though every game played out the same (they read the log's words: stats.ts LINES). */
+  /** Statistics that changed though every game played out the same (they read the log's lines by their kind:
+   *  stats.ts THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM). */
   statsFromWords: string[];
   /** The branch's games differ from its committed baseline (CI fails until it's updated). */
   baselineStale: boolean;
@@ -681,7 +682,8 @@ export function renderReport(r: Report, form: ReportForm = 'counts only'): strin
   if (r.statsFromWords.length) {
     out.push(
       `⚠️ Some figures changed though no game played out differently: ${r.statsFromWords.join('; ')}. They read the ` +
-        "log's words (tools/balance/stats.ts, LINES): update the pattern there with the wording.",
+        "log's lines by their kind (tools/balance/stats.ts, THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM): " +
+        "update the kinds there with the engine's lines.",
       '',
     );
   }

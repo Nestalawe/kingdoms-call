@@ -997,14 +997,6 @@
       "count": 2
     }
   },
-  "tools/balance/stats.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-string-starts-ends-with": {
-      "count": 1
-    }
-  },
   "tools/ratchet.ts": {
     "@typescript-eslint/prefer-string-starts-ends-with": {
       "count": 1
