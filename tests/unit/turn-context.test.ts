@@ -76,6 +76,23 @@ describe('createTurnContext', () => {
     expect([...(tc['_botPlayerIdx'] as Set<number>)]).toEqual([1]);
   });
 
+  test('handed no slot rows, it holds no bot realm', () => {
+    const tc = vm.runInContext('createTurnContext({turn:1},null,1)', engine) as Record<string, unknown>;
+    expect(tc['freshPlayers']).toBeNull();
+    expect((tc['_botPlayerIdx'] as Set<number>).size).toBe(0);
+  });
+
+  test("the Spy stealth on a world of no list of heroes rolls for none, once (resolveTurn's own step)", () => {
+    const stealth = engineFn(engine, 'spyStealthAndInvisibilityStampedForTheReports') as (tc: TurnContext) => void;
+    const tc = turnContext(engine, { turn: 2 });
+    stealth(tc);
+    expect(tc['_reports']).toEqual({ stealthRolled: true, built: false });
+    expect(tc.turnLog).toEqual([]);
+    expect(() => {
+      stealth(tc);
+    }).toThrow('the Spy stealth is rolled once a turn');
+  });
+
   test('emit files a line under the hero and the phase the context names when it is written', () => {
     // A world holds its heroes (every saved state has `characters`): emit looks up the realm of the hero whose order is
     // resolving (P1-12c1). Hero 7 isn't among them, so he serves no realm and keeps his lines.

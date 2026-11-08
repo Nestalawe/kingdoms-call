@@ -245,6 +245,55 @@ describe('the swords cleared, called directly', () => {
       ),
     ).toThrow('Could not read the saved game: the map is torn');
   });
+  // What a read of the save throws, in the words the base wrote it with (`${(e && e.message) || e}`, plan P1-10b51):
+  // its message, else itself; what was thrown is the new error's cause.
+  const thrownBy = (thrown: unknown): unknown => {
+    try {
+      standIn(
+        SWORDS,
+        () => () => {
+          throw thrown;
+        },
+        () => play(WORLD),
+      );
+    } catch (e) {
+      return e;
+    }
+    throw new Error('the turn ran');
+  };
+  const torn = { message: 'the map is torn', at: 3 };
+  test.each([
+    ['an error of no message: its name', new Error(''), 'Error'],
+    ['words', 'the map is torn', 'the map is torn'],
+    ['an object with a message: the message', torn, 'the map is torn'],
+    ['an object with none: the object', { at: 3 }, '[object Object]'],
+    ['an object whose message is empty: the object', { message: '' }, '[object Object]'],
+    ['nothing', null, 'null'],
+    ['a 0', 0, '0'],
+  ])('a read that throws %s, as the save that can’t be read', (_, thrown, words) => {
+    expect(String(thrownBy(thrown))).toBe(`Error: Could not read the saved game: ${words}`);
+  });
+  test('what the read threw is the cause of the save that can’t be read', () => {
+    expect((thrownBy(torn) as { cause?: unknown }).cause).toBe(torn);
+  });
+  test.each([
+    ['nothing (null)', 'null'],
+    ['a number', '5'],
+    ['an empty object', '{}'],
+    ['a list', '[]'],
+  ])('a save that parses into %s holds no game in play: refused before anything is read', (_, save) => {
+    expect(() => play(save)).toThrow(
+      "Could not read the saved game: This game's save holds no game in play (no provinces, realms or list of " +
+        'heroes), so no turn can run on it. Nothing was changed.',
+    );
+  });
+  test('a save handed as an object, not words, is the turn’s working copy: the turn changes it in place', () => {
+    const resolveTurn = engineFn(engine, 'resolveTurn') as (...a: unknown[]) => { state: string };
+    const save = JSON.parse(WORLD) as World;
+    const played = resolveTurn(save, slotRows(engine, WORLD, 1), 1, TURN_SEED);
+    expect(JSON.stringify(save)).toBe(played.state);
+    expect(played.state).not.toBe(WORLD);
+  });
   test('property: exactly the two marks go, from every province, and nothing else changes', () => {
     const province = fc.option(
       fc.record(
@@ -338,6 +387,37 @@ describe('the bots’ flag stamped, called directly', () => {
     expect(handed.length).toBe(1);
     expect(handed[0]).toBe(context);
     expect(seats).toEqual([1, 2, 3]);
+  });
+  test('each bot realm’s rivals as the turn began are a copy of its own: none for a realm with none or no realm', () => {
+    const state = staged((w) => {
+      const [, one, two] = w.players;
+      if (!one || !two) throw new Error('scripted-05 has four realms');
+      one['_encountered'] = [0, 2];
+      delete two['_encountered'];
+    });
+    const rows = slotRows(engine, state, 1) as unknown[];
+    rows.push({ player_index: 9 }); // a bot's seat no realm holds
+    let atStart: Record<number, unknown> = {};
+    let held: unknown;
+    const STOP = 'the repairs reached';
+    expect(() =>
+      standIn(
+        'turnStartRepairsAndAFreshSlateOfOrdersForEveryHero',
+        () =>
+          (...a) => {
+            const tc = a[0] as Raw;
+            atStart = tc['_botEncounteredAtStart'] as Record<number, unknown>;
+            held = (tc['G'] as World).players[1]?.['_encountered'];
+            throw new Error(STOP);
+          },
+        () => (engineFn(engine, 'resolveTurn') as (...a: unknown[]) => unknown)(state, rows, 1, TURN_SEED),
+      ),
+    ).toThrow(STOP);
+    expect(Object.keys(atStart).sort()).toEqual(['1', '2', '3', '9']);
+    expect(atStart[1]).toEqual([0, 2]);
+    expect(atStart[1]).not.toBe(held);
+    expect(atStart[2]).toEqual([]);
+    expect(atStart[9]).toEqual([]);
   });
   test('property: every realm is stamped from the seats, and nothing else of it changes', () => {
     const realm = fc.option(
