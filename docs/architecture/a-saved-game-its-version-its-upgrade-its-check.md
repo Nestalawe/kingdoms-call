@@ -48,7 +48,7 @@ the turn reads it.
   without `served`; the items' readers serve today's items and the player page's copies too; the diplomacy's readers
   map any word). `ensureAllLairHoards` stays in the turn: it draws dice every turn.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
-  a new world and mended; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
+  a new world and mended, version 2's on the version-1 fixture; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
   tier, the guardians' cut) and
   `corsairs-retired` (the turn passes the loaded world through the upgrade, which calls the pass).
 - **A pass that names a unit** reads the name from a content row, as `migrateLegacyUnitNames` reads its table: the Corsair Fleet
@@ -75,7 +75,7 @@ the turn reads it.
 - **The version**: a save holds the number of its shape, `schemaVersion`, at its top level; a save without
   one is version 0 (every live save before P1-15c). Version 1 is the shape the six passes leave; version 2, an older save's shapes mended once (above). The number this build
   writes is in `src/engine/saves/the-saved-games-version-this-build-writes.ts`, a file that imports nothing, so world
-  generation writes it on a new world without loading the passes. `upgradeGameState` first refuses a save from a newer
+  generation writes it on a new world without loading the passes. `upgradeGameState` refuses a save from a newer
   build, before anything changes (`resolveTurn` throws "Could not read the saved game: This game was saved by a newer
   version of Kingdoms Call (save version 3; this page knows 2). Reload this page.", and the shell puts the orders
   back); then, after the passes, it runs each numbered step (`THE_NUMBERED_STEPS_OF_THE_UPGRADE`, `{ version, upgrade
@@ -157,7 +157,7 @@ games.
 - **Migrations run at the start of every turn**, on the world `resolveTurn` has just read, in one place since P1-15a:
   `upgradeGameState` (`src/engine/saves/upgrade-a-saved-game-and-check-it.ts`) runs `migrateMaxHpV2` (which calls
   `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
-  `migrateLegacyUnitNames` and `migrateItemTiers`, in that order. A new pass goes there, draws no dice and writes no
+  `migrateLegacyUnitNames` and `migrateItemTiers`, in that order, then the passes above. A new pass goes there, draws no dice and writes no
   line: what it has to tell the GM it returns, and the turn tells it ([above](#a-saved-game-its-version-its-upgrade-its-check)).
   `ensureAllLairHoards` still runs in the turn, after the merge of the orders (it draws dice). A running game picks up a change at its next turn.
 - **Every migration runs on every turn**, not once, so it must be safe to repeat (idempotent).
@@ -182,7 +182,7 @@ older save.
   save can't meet as it is (a field renamed, moved, retyped, or now required) also bumps the version: a numbered step
   in `THE_NUMBERED_STEPS_OF_THE_UPGRADE` that mends a save of the version before, the new number, and a fixture of the
   new version (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`). A step runs once, on a save below
-  its version, after the six passes, and stays safe to repeat.
+  its version, after the passes before the check, and stays safe to repeat.
 - **A fixture is never edited once merged** (as a merged migration): it is what a build of its day saved. The script
   refuses to write over one. `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` upgrades every
   fixture, parses it strictly and plays a turn on it, so an older fixture fails until a step mends it, and a version
