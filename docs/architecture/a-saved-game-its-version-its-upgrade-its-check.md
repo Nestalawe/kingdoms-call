@@ -108,7 +108,9 @@ the turn reads it.
   as it was. …`); `resolveTurn` returns the list, and the shell's message says the same, and shows it again once the
   page has refreshed the game. `resolveTurn` itself still checks and tells, never stops: the tests' staged worlds aren't
   whole saves, and the balance matrix fails a game on any place (its own list lets no leak through) and on a turn the
-  stop refuses. A special's damaging `dmg` range with no `dmgW`, which version 2 leaves, stops the turn. A save that
+  stop refuses. A special's damaging `dmg` range with no `dmgW`, which version 2 leaves, stops the turn, as do the old shapes no step
+  can mend (a hero's `_speedBonus`, an item's `_spent`, a claim with no `thrPct`, a grave's `armies`): since P1-15f9 no
+  reader of the turn reads them. A save that
   isn't a game in play (no provinces, no realms, no list of heroes: the new game's settings before Turn 0) is refused
   first, before anything changes, as a newer save is: the stop names no place for either, and the turn refuses it.
   What checks it: `tests/unit/a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts` (the
