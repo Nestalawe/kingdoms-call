@@ -695,11 +695,6 @@
       "count": 2
     }
   },
-  "tests/lib/player-portal-copies.ts": {
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    }
-  },
   "tests/lib/report-leaks.ts": {
     "@typescript-eslint/prefer-includes": {
       "count": 1
@@ -718,6 +713,11 @@
   "tests/lib/the-bots-plan-cases.ts": {
     "@typescript-eslint/dot-notation": {
       "count": 4
+    }
+  },
+  "tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
     }
   },
   "tests/lib/titles-at-the-turns-end-cases.ts": {
