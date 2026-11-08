@@ -28,6 +28,8 @@ import './briefing-and-submit.ts';
 // The order form's forecasts (plan P1-11e3), which the page's files read: listed here so that the tests that read the page's
 // files still read them as the page's.
 import './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+// The page's side of those forecasts (plan P1-11e41): the report and the orders its form holds, handed to each.
+import './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 import './skills-and-projections.ts';
 import './order-targets.ts';
 import './map-symbols.ts';

@@ -48,12 +48,12 @@ import { itemAcquiredTagP, itemLoreTip, restoreSubmitWrap } from './briefing-and
 import { druidNeedP, formatRace, heroHireWageOfP, skillRowHTML } from './skills-and-projections.ts';
 import { buildTargetField, refreshExploreNotes } from './order-targets.ts';
 import { provLinkHtml } from './map-symbols.ts';
+import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
-  effSkillP,
   getOrderTarget,
   predictedLocation,
   whereTheCompaniesAHerosRecruitRaisesMuster,
-} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+} from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
 // ── TREASURY LEDGER (2026-09-23, Toby item 6) ────
 // A running account at the top of the orders column (sticky, like the report's jump-bar): what the

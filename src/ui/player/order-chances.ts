@@ -22,10 +22,7 @@ import { SKILL_LABELS } from './move-analysis.ts';
 import { syncCharmCard, syncResurrectCard } from './pre-orders.ts';
 import { HUMANOID_RACES_UI, formatRace } from './skills-and-projections.ts';
 import { buildTargetField } from './order-targets.ts';
-import {
-  getOrderExtra,
-  getOrderTarget,
-} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import { getOrderExtra, getOrderTarget } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
 // ── ORDERS FORM ────
 // ── SPELLS LIST ────

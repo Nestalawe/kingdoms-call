@@ -28,8 +28,31 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
 // The order form's forecasts (plan P1-11e3): where a hero will stand, what he will carry and what he will lead, and what a
-// province's garrison will hold, after the orders the form holds for the phases before. They read the page's fields (the
-// DOM) and the report the page holds (currentReport): the declared globals the page's files share (globals.ts).
+// province's garrison will hold, after the orders the form holds for the phases before. Since P1-11e41 they read only
+// what they are handed: the report, and the orders the form holds (`orders`, the page's snapshot of its fields as a
+// forecast is asked: the-orders-the-form-holds-handed-to-its-forecasts.ts). They read no field of the page.
+
+// The orders the form holds, as the page hands them: `byHero`, by the hero's id (as a string), his order of each phase,
+// with the part of each field the form shows (`action`, `target`, `extra`: the field's value as the page holds it; a part
+// the form shows no field for is absent) and, for a Recruit's boxes, `recruit` ({ musterTo: its "Muster to" or null,
+// ticked: each ticked box's value }); `declarations`, the declarations of war and treaties the form holds, by realm, or
+// null. The field `part` of the hero `heroId`'s order of the phase `ph`, as the statements below read a field ({ value }),
+// or null where the form shows none.
+function theOrderField(orders, part, heroId, ph) {
+  const order = ((orders.byHero || {})[String(heroId)] || [])[ph];
+  return order && part in order ? { value: order[part] } : null;
+}
+// The Recruit's boxes of the hero `heroId`'s order of the phase `ph` ({ dest: its "Muster to" as { value } or null,
+// ticked: each ticked box as { value } }), or null where the form shows none.
+function theRecruitBoxesOf(orders, heroId, ph) {
+  const order = ((orders.byHero || {})[String(heroId)] || [])[ph];
+  const boxes = order && order.recruit;
+  if (!boxes) return null;
+  return {
+    dest: boxes.musterTo === null ? null : { value: boxes.musterTo },
+    ticked: boxes.ticked.map((value) => ({ value })),
+  };
+}
 
 // the army list a character is LEADING at the start of a given phase, projected from the report by
 // replaying every earlier-phase order that adds or removes armies — Recruit and Pick Up
@@ -47,9 +70,9 @@ import {
 // into the character's army list, so a projection that skipped mercenaries — as this one did until
 // 2026-09-09 — both hid a band hired earlier in the turn and shifted every index after it.
 export const GARRISON_UNIT_TYPES_P = new Set(KC_UNIT_CLASS.garrison);
-export function _projRecruitUnits(tokens) {
+export function _projRecruitUnits(report, tokens) {
   const out = [];
-  const mercs = (currentReport || {}).mercIntel || [];
+  const mercs = (report || {}).mercIntel || [];
   const toks = (tokens || []).map((t) => String(t || '').trim()).filter(Boolean);
   // The engine walks the PROVINCE'S band list and hires whichever are ticked, so bands join in that
   // list's order — not the order the boxes happen to be ticked in. Mirror that exactly.
@@ -106,8 +129,8 @@ function theRoomHisBeastCommandLeaves(card, column) {
 // full column with no garrison to take it is not hired. `ticks` are the order's boxes, `destTok` its "Muster to";
 // `columnOf(card)` the companies a hero leads as the phase begins. The province is his realm's by the report (one
 // taken this turn: a forecast limit).
-function whereTheCompaniesARecruitRaisesMuster(report, o, ph, ticks, destTok, columnOf) {
-  const loc = predictedLocation(o.id, ph);
+function whereTheCompaniesARecruitRaisesMuster(report, orders, o, ph, ticks, destTok, columnOf) {
+  const loc = whereAHeroStandsAfterTheOrdersBefore(report, orders, o.id, ph);
   const inAProvinceOfHisRealm = !!loc && (report.ownedProvinces || []).some((p) => p.id === loc.id);
   const theOrderNamesTheGarrison = destTok === 'to:garrison' && inAProvinceOfHisRealm;
   const named =
@@ -117,7 +140,7 @@ function whereTheCompaniesARecruitRaisesMuster(report, o, ph, ticks, destTok, co
   const dest = named || o;
   const column = (columnOf(dest) || []).slice();
   const out = { dest, toTheColumn: [], toTheGarrison: [] };
-  _projRecruitUnits(ticks).forEach((u) => {
+  _projRecruitUnits(report, ticks).forEach((u) => {
     const facts = {
       theOrderNamesTheGarrison,
       inAProvinceOfHisRealm,
@@ -138,14 +161,15 @@ function whereTheCompaniesARecruitRaisesMuster(report, o, ph, ticks, destTok, co
 // Where the companies the Recruit Armies order `ticks` of the hero `o` in the phase `ph` raises muster, as the turn
 // musters them, each column as the replay gives it: the treasury ledger counts a company's wage by the column it joins
 // (R-134, P1-11e29).
-export function whereTheCompaniesAHerosRecruitRaisesMuster(o, ph, ticks) {
+export function whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders(report, orders, o, ph, ticks) {
   return whereTheCompaniesARecruitRaisesMuster(
-    currentReport || {},
+    report || {},
+    orders,
     o,
     ph,
     ticks,
     ticks.find((t) => t.startsWith('to:')) || 'to:self',
-    (x) => projectedLedArmies(x.id, ph),
+    (x) => whatAHeroLeadsAsAPhaseBegins(report, orders, x.id, ph),
   );
 }
 // What the hero `recipient`, leading `column` as the phase begins, takes of the companies `handed` him, as the turn
@@ -163,18 +187,6 @@ function whatAComradeTakesOfAHandOver(report, recipient, column, handed) {
     theRoomHisBeastCommandLeaves(recipient, column),
     asTheReportShowsIt,
   );
-}
-
-// Get target value — handles both regular selects/inputs and recruit checkbox lists
-export function getOrderTarget(charId, ph) {
-  // For recruit, the hidden input holds the comma-joined checkbox values
-  const hidden = document.getElementById(`po-target-${charId}-${ph}`);
-  if (hidden) return hidden.value || '';
-  return '';
-}
-export function getOrderExtra(charId, ph) {
-  const el = document.getElementById(`po-extra-${charId}-${ph}`);
-  return el?.value || '';
 }
 
 // ── A MARCH THE TURN REFUSES (R-128, plan P1-11e10) ────
@@ -202,21 +214,21 @@ function hisMovePoolsAsTheReportGivesThem(char) {
   const pace = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : Infinity);
   return { land: pace(char.effectiveSpeed), sea: pace(char.effectiveSeaSpeed) };
 }
-function theRelationAMarchMeetsAtTheBorderOf(report, owner) {
+function theRelationAMarchMeetsAtTheBorderOf(report, orders, owner) {
   if (owner === report.playerIndex) return 'self';
   const known = ((report.diplomacy || {}).known || []).find((k) => k && k.index === owner);
   const now = (known && known.relation) || 'neutral';
-  const declared = known && typeof diploChoices === 'object' && diploChoices ? diploChoices[owner] : null;
+  const declared = known && orders.declarations ? orders.declarations[owner] : null;
   const withoutWarning = ['Evil', 'Undead'].includes((report.kingdom || {}).alignment);
   return declared === 'enemy' && withoutWarning ? 'enemy' : now;
 }
-function aMarchTheTurnRefuses(report, char, ph, from, to) {
-  const column = projectedMoveHost(char.id, ph).armies;
+function aMarchTheTurnRefuses(report, orders, char, ph, from, to) {
+  const column = theColumnAHeroMarchesWithInAPhase(report, orders, char.id, ph).armies;
   const turnedBack = aColumnIsTurnedBackAtANeutralRealmsBorder(
     report.playerIndex,
     to.owner,
     column.length,
-    to.owner == null ? 'neutral' : theRelationAMarchMeetsAtTheBorderOf(report, to.owner),
+    to.owner == null ? 'neutral' : theRelationAMarchMeetsAtTheBorderOf(report, orders, to.owner),
   );
   if (turnedBack) return true;
   const lift = poSeaAnalysis(column, (char.skills || {}).naval || 0).cap;
@@ -236,9 +248,9 @@ function aMarchTheTurnRefuses(report, char, ph, from, to) {
 // column the Move note counts and the relation the report gives. Forecast limits, left to the turn: ground the report
 // shows as unknown (read as land no realm holds), a guard out of sight, an owner or ground as last seen, an alliance or
 // war changed this turn.
-function theStepTowardAFarProvinceTheTurnTakes(report, char, ph, from, toId) {
+function theStepTowardAFarProvinceTheTurnTakes(report, orders, char, ph, from, toId) {
   const worldMeta = report.worldMeta;
-  const column = projectedMoveHost(char.id, ph).armies;
+  const column = theColumnAHeroMarchesWithInAPhase(report, orders, char.id, ph).armies;
   const seaCap = poSeaAnalysis(column, (char.skills || {}).naval || 0).cap;
   const leadsShips = column.some((a) => a && PO_SEA_TYPES.has(a.type));
   const route = (extraFilter) =>
@@ -272,32 +284,31 @@ function theStepTowardAFarProvinceTheTurnTakes(report, char, ph, from, toId) {
 // war the form declares. A field changed is a new key, so no answer outlives the orders it was worked out from.
 let theForecastsReport = null;
 const theForecastsAnswers = new Map();
-function whatTheForecastOfThePhasesBeforeReads(report, upToPhaseExclusive) {
-  const parts = [typeof diploChoices === 'object' && diploChoices ? JSON.stringify(diploChoices) : ''];
-  const value = (id) => {
-    const el = document.getElementById(id);
+function whatTheForecastOfThePhasesBeforeReads(report, orders, upToPhaseExclusive) {
+  const parts = [orders.declarations ? JSON.stringify(orders.declarations) : ''];
+  const value = (part, heroId, ph) => {
+    const el = theOrderField(orders, part, heroId, ph);
     return el ? String(el.value ?? '') : '';
   };
   (report.characters || []).forEach((o) => {
     for (let ph = 0; ph < upToPhaseExclusive; ph++) {
-      parts.push(value(`po-action-${o.id}-${ph}`), value(`po-target-${o.id}-${ph}`), value(`po-extra-${o.id}-${ph}`));
-      const wrap = document.getElementById(`po-target-wrap-${o.id}-${ph}`);
+      parts.push(value('action', o.id, ph), value('target', o.id, ph), value('extra', o.id, ph));
+      const wrap = theRecruitBoxesOf(orders, o.id, ph);
       if (!wrap) continue;
-      const dest = wrap.querySelector('.po-recruit-dest');
-      const ticked = [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((x) => x.value);
+      const dest = wrap.dest;
+      const ticked = wrap.ticked.map((x) => x.value);
       parts.push(dest ? String(dest.value) : '', ticked.join(','));
     }
   });
   return JSON.stringify(parts);
 }
-export function predictedLocation(charId, upToPhaseExclusive) {
-  const report = currentReport;
+export function whereAHeroStandsAfterTheOrdersBefore(report, orders, charId, upToPhaseExclusive) {
   if (!report) return null;
   if (theForecastsReport !== report || theForecastsAnswers.size > 5000) {
     theForecastsReport = report;
     theForecastsAnswers.clear();
   }
-  const key = `${String(charId)}|${upToPhaseExclusive}|${whatTheForecastOfThePhasesBeforeReads(report, upToPhaseExclusive)}`;
+  const key = `${String(charId)}|${upToPhaseExclusive}|${whatTheForecastOfThePhasesBeforeReads(report, orders, upToPhaseExclusive)}`;
   if (theForecastsAnswers.has(key)) {
     const kept = theForecastsAnswers.get(key);
     return kept ? { ...kept } : kept;
@@ -310,13 +321,13 @@ export function predictedLocation(charId, upToPhaseExclusive) {
     if (!worldMeta) return { id: locId, name: char.locationName };
     const pools = hisMovePoolsAsTheReportGivesThem(char);
     for (let ph = 0; ph < upToPhaseExclusive; ph++) {
-      const action = document.getElementById(`po-action-${charId}-${ph}`)?.value;
+      const action = theOrderField(orders, 'action', charId, ph)?.value;
       // A FORCED MARCH is a Move in the turn (one that may slip past a battle), so later phases' forms follow it as they
       // follow a Move. Both read their target as the turn does (R-128: the engine's whatAMarchsOrderNames, through
       // src/shared/): `dir:<compass>` a step that way, `prov:<id>` or the province's bare number (as the Forced March's
       // field writes it) a province.
       if (action !== 'Move' && action !== 'Forced March') continue;
-      const named = whatAMarchsOrderNames(getOrderTarget(charId, ph) || '');
+      const named = whatAMarchsOrderNames(theOrderField(orders, 'target', charId, ph)?.value || '');
       const curProv = worldMeta.provinces.find((p) => p.id === locId);
       let toId = null;
       if (named.by === 'province') {
@@ -336,11 +347,11 @@ export function predictedLocation(charId, upToPhaseExclusive) {
       );
       const toProv = nextDoor
         ? worldMeta.provinces.find((p) => p.id === toId)
-        : theStepTowardAFarProvinceTheTurnTakes(report, char, ph, curProv, toId);
+        : theStepTowardAFarProvinceTheTurnTakes(report, orders, char, ph, curProv, toId);
       if (!toProv) continue; // no route reaches it
       const spends = pools ? theMovePoolAStepSpends(curProv.terrain, toProv.terrain) : null;
       if (spends && pools[spends] <= 0) continue; // past his pace
-      if (aMarchTheTurnRefuses(report, char, ph, curProv, toProv)) continue;
+      if (aMarchTheTurnRefuses(report, orders, char, ph, curProv, toProv)) continue;
       if (spends) pools[spends] -= 1;
       locId = toProv.id;
     }
@@ -410,13 +421,15 @@ export function poSeaAnalysis(armies, navalRaw) {
 // rather than guessed at.
 export const PO_UNCOUNTABLE_ACTIONS = new Set(['Awaken Grove', 'Wild Calling']);
 export const PO_UNCOUNTABLE_SPELLS = new Set(['Control Undead', 'Raise Wraiths', "Death's Dominion", 'Phantom Host']);
-export function projectedMoveHost(charId, ph) {
-  const report = currentReport || {};
+export function theColumnAHeroMarchesWithInAPhase(theReport, orders, charId, ph) {
+  const report = theReport || {};
   const ch = (report.characters || []).find((x) => String(x.id) === String(charId));
   const out = { armies: [], uncounted: [], gained: 0, base: 0 };
   if (!ch) return out;
   out.armies =
-    typeof projectedLedArmies === 'function' ? projectedLedArmies(ch.id, ph) : (ch.armies || []).map((a) => ({ ...a }));
+    typeof whatAHeroLeadsAsAPhaseBegins === 'function'
+      ? whatAHeroLeadsAsAPhaseBegins(report, orders, ch.id, ph)
+      : (ch.armies || []).map((a) => ({ ...a }));
   out.base = (ch.armies || []).length;
   out.sameFrom = [];
   const pod = report.provinceOrderData || {};
@@ -433,14 +446,17 @@ export function projectedMoveHost(charId, ph) {
   // be standing in the same province at the start of the phase (the engine refuses the hand-over
   // otherwise).
   {
-    const myLoc = typeof predictedLocation === 'function' ? predictedLocation(ch.id, ph) : null;
+    const myLoc =
+      typeof whereAHeroStandsAfterTheOrdersBefore === 'function'
+        ? whereAHeroStandsAfterTheOrdersBefore(report, orders, ch.id, ph)
+        : null;
     (report.characters || []).forEach((o) => {
       if (!o || o.alive === false || String(o.id) === String(ch.id)) return;
-      const oAct = (document.getElementById(`po-action-${o.id}-${ph}`) || {}).value || '';
+      const oAct = (theOrderField(orders, 'action', o.id, ph) || {}).value || '';
       if (oAct !== 'Recruit Armies' && oAct !== 'Leave/Transfer Army') return;
-      const oLoc = predictedLocation(o.id, ph);
+      const oLoc = whereAHeroStandsAfterTheOrdersBefore(report, orders, o.id, ph);
       if (!myLoc || !oLoc || oLoc.id !== myLoc.id) return;
-      const oTgt = String((document.getElementById(`po-target-${o.id}-${ph}`) || {}).value || '');
+      const oTgt = String((theOrderField(orders, 'target', o.id, ph) || {}).value || '');
       const toks = oTgt
         .split(',')
         .map((t) => t.trim())
@@ -449,14 +465,14 @@ export function projectedMoveHost(charId, ph) {
       if (oAct === 'Recruit Armies') {
         if (!toks.includes('to:' + ch.id)) return;
         // where the turn musters them (R-129, P1-11e19): garrison companies and beasts past his command not in his column
-        const musters = whereTheCompaniesARecruitRaisesMuster(report, o, ph, toks, 'to:' + ch.id, (x) =>
-          x === ch ? out.armies : projectedLedArmies(x.id, ph),
+        const musters = whereTheCompaniesARecruitRaisesMuster(report, orders, o, ph, toks, 'to:' + ch.id, (x) =>
+          x === ch ? out.armies : whatAHeroLeadsAsAPhaseBegins(report, orders, x.id, ph),
         );
         got = musters.dest === ch ? musters.toTheColumn : [];
       } else {
-        const oExtra = (document.getElementById(`po-extra-${o.id}-${ph}`) || {}).value || '';
+        const oExtra = (theOrderField(orders, 'extra', o.id, ph) || {}).value || '';
         if (String(oExtra) !== String(ch.id)) return;
-        const oArm = projectedLedArmies(o.id, ph);
+        const oArm = whatAHeroLeadsAsAPhaseBegins(report, orders, o.id, ph);
         if (toks.includes('all')) got = oArm.slice();
         else {
           const pool = oArm.slice();
@@ -476,12 +492,12 @@ export function projectedMoveHost(charId, ph) {
     });
   }
   for (let p = 0; p < ph; p++) {
-    const act = (document.getElementById(`po-action-${charId}-${p}`) || {}).value || '';
+    const act = (theOrderField(orders, 'action', charId, p) || {}).value || '';
     if (!act) continue;
-    const tgt = String((document.getElementById(`po-target-${charId}-${p}`) || {}).value || '').trim();
+    const tgt = String((theOrderField(orders, 'target', charId, p) || {}).value || '').trim();
     if (act === 'Perform Rite') {
       if (tgt === 'Wild Hunt') {
-        const loc = predictedLocation(charId, p);
+        const loc = whereAHeroStandsAfterTheOrdersBefore(report, orders, charId, p);
         const wt = loc ? (pod[loc.id] || {}).wildHuntType : null;
         if (wt) {
           const theBeasts =
@@ -492,8 +508,11 @@ export function projectedMoveHost(charId, ph) {
       } else {
         // Blood Offering — the sacrificed units are gone by the time the column marches: those the turn gives (its own
         // rule: with a side left empty, the first company it may take; R-133, plan P1-11e27).
-        const ex = String((document.getElementById(`po-extra-${charId}-${p}`) || {}).value || '');
-        const atThen = typeof projectedLedArmies === 'function' ? projectedLedArmies(charId, p) : [];
+        const ex = String((theOrderField(orders, 'extra', charId, p) || {}).value || '');
+        const atThen =
+          typeof whatAHeroLeadsAsAPhaseBegins === 'function'
+            ? whatAHeroLeadsAsAPhaseBegins(report, orders, charId, p)
+            : [];
         const offered = theCompaniesABloodOfferingGivesAndRaises(atThen, ex, asTheReportShowsIt);
         (offered ? offered.given : []).forEach((i) => {
           const a = atThen[i];
@@ -572,7 +591,7 @@ export function effSkillP(c, k) {
 // read it; they used to replay the phases each on its own (the last two calling each other through a shared cache).
 // The replay is worked out afresh for each call, from the fields as they stand, so it never serves an answer the
 // player has since changed.
-function theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive) {
+function theFormsReplayOfThePhasesBefore(report, orders, upToPhaseExclusive) {
   const characters = report.characters || [];
   // ── 2026-09-24 (Toby): keyed by String(id) throughout ──────────────────────────────────────────
   // predictedItems used to open with
@@ -608,15 +627,15 @@ function theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive) {
   // the garrison of each province an order has touched, by the province's id as predictedLocation gives it
   const garrisons = new Map();
   for (let p = 0; p < upToPhaseExclusive; p++) {
-    theItemsAPhasesOrdersHandOver(report, characters, items, byKey, p);
-    const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, armies, p);
+    theItemsAPhasesOrdersHandOver(report, orders, characters, items, byKey, p);
+    const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, orders, armies, p);
     const next = new Map();
     // the beasts the phase's Pick Ups take past a leader's beast command, which go back to the garrison
     const goBack = new Map();
     characters.forEach((x) => {
-      next.set(x, theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, x, p, goBack));
+      next.set(x, theCompaniesAHeroLeadsAfterAPhase(report, orders, armies, garrisons, added, x, p, goBack));
     });
-    theGarrisonsAfterAPhase(report, garrisons, added, p, goBack);
+    theGarrisonsAfterAPhase(report, orders, garrisons, added, p, goBack);
     armies = next;
   }
   return { items, armies, garrisons };
@@ -630,8 +649,8 @@ function theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive) {
 // after the leaves of its province. A hero who joins this turn acts from the phase after (his levels hidden, so his
 // initiative a forecast limit, as is a hero of the realm the report gives no id: he acts after the rest on a tie).
 // Forecast limits, left to the turn: a pursuit under way, a march the interlocks cancel, a rival's hero.
-function theHeroesInTheOrderTheTurnHasThemActInAPhase(report, characters, p) {
-  const field = (part, x) => String(document.getElementById(`po-${part}-${x.id}-${p}`)?.value || '');
+function theHeroesInTheOrderTheTurnHasThemActInAPhase(report, orders, characters, p) {
+  const field = (part, x) => String(theOrderField(orders, part, x.id, p)?.value || '');
   const acting = characters.filter((x) => x && x.alive !== false && !(x.hiredInPhase >= 0 && p <= x.hiredInPhase));
   const plainIds = new Map(acting.map((x, i) => [x, typeof x.id === 'number' ? x.id : 1_000_000 + i]));
   const heroes = acting.map((x) => ({
@@ -642,8 +661,8 @@ function theHeroesInTheOrderTheTurnHasThemActInAPhase(report, characters, p) {
   }));
   const intents = new Map(
     heroes.map((h) => {
-      const from = predictedLocation(h.hero.id, p);
-      const to = h.action === 'move' ? predictedLocation(h.hero.id, p + 1) : null;
+      const from = whereAHeroStandsAfterTheOrdersBefore(report, orders, h.hero.id, p);
+      const to = h.action === 'move' ? whereAHeroStandsAfterTheOrdersBefore(report, orders, h.hero.id, p + 1) : null;
       const handsTo =
         h.action === 'give_item' || h.action === 'leave_army'
           ? acting.find((x) => String(x.id) === field('extra', h.hero))
@@ -671,22 +690,23 @@ function theHeroesInTheOrderTheTurnHasThemActInAPhase(report, characters, p) {
 // time). This lets a character who RECEIVES an item in an earlier phase pass it on in a later one. The heroes hand over
 // in the turn's order (P1-11e20), so a comrade who acts before the giver stands where the phase leaves him: a comrade
 // marching in to take it has arrived, and is handed it at once.
-function theItemsAPhasesOrdersHandOver(report, characters, items, byKey, p) {
-  const sends = (x) => ['Send Item', 'Give Item'].includes(document.getElementById(`po-action-${x.id}-${p}`)?.value);
+function theItemsAPhasesOrdersHandOver(report, orders, characters, items, byKey, p) {
+  const sends = (x) => ['Send Item', 'Give Item'].includes(theOrderField(orders, 'action', x.id, p)?.value);
   if (!characters.some(sends)) return;
   const actedBefore = new Set();
-  const whereHeStandsAsTheGiverActs = (x) => predictedLocation(x.id, actedBefore.has(x) ? p + 1 : p);
-  theHeroesInTheOrderTheTurnHasThemActInAPhase(report, characters, p).forEach((x) => {
-    if (sends(x)) theItemsAHeroHandsOver(x, items, byKey, p, whereHeStandsAsTheGiverActs);
+  const whereHeStandsAsTheGiverActs = (x) =>
+    whereAHeroStandsAfterTheOrdersBefore(report, orders, x.id, actedBefore.has(x) ? p + 1 : p);
+  theHeroesInTheOrderTheTurnHasThemActInAPhase(report, orders, characters, p).forEach((x) => {
+    if (sends(x)) theItemsAHeroHandsOver(report, orders, x, items, byKey, p, whereHeStandsAsTheGiverActs);
     actedBefore.add(x);
   });
 }
 // The items the hero `x` hands over in the phase `p` (his Send Item), as he acts; `whereHeStandsAsTheGiverActs` is where
 // his comrade stands then.
-function theItemsAHeroHandsOver(x, items, byKey, p, whereHeStandsAsTheGiverActs) {
+function theItemsAHeroHandsOver(report, orders, x, items, byKey, p, whereHeStandsAsTheGiverActs) {
   // a Give Item order can now hand over MULTIPLE items (comma-separated indices, or
   // "all"). Splice high→low so earlier removals don't shift the indices still to be moved.
-  const recipKey = String(document.getElementById(`po-extra-${x.id}-${p}`)?.value || '').trim();
+  const recipKey = String(theOrderField(orders, 'extra', x.id, p)?.value || '').trim();
   const arr = items.get(String(x.id)) || [];
   if (!recipKey || !items.has(recipKey)) return;
   const recipCh = byKey.get(recipKey);
@@ -696,11 +716,12 @@ function theItemsAHeroHandsOver(x, items, byKey, p, whereHeStandsAsTheGiverActs)
   // A CHARMED sender writes target='auto' — the engine picks the item and the player never sees which, so nothing can
   // be projected into the recipient's pack: 'auto' names no item, which is the right outcome; noted so it is not
   // later "fixed".
-  const rawT = (document.getElementById(`po-target-${x.id}-${p}`)?.value || '').trim();
+  const rawT = (theOrderField(orders, 'target', x.id, p)?.value || '').trim();
   const uniq = theItemsASendItemOrderHandsOver(arr, rawT).places;
   // only DELIVER into the recipient's list this turn if they are co-located as he acts; a
   // cross-province send leaves the giver now but arrives with the recipient only at turn's end.
-  const _same = predictedLocation(x.id, p)?.id === whereHeStandsAsTheGiverActs(recipCh)?.id;
+  const _same =
+    whereAHeroStandsAfterTheOrdersBefore(report, orders, x.id, p)?.id === whereHeStandsAsTheGiverActs(recipCh)?.id;
   uniq.forEach((i) => {
     const [it] = arr.splice(i, 1);
     if (_same) (items.get(recipKey) || []).push(it);
@@ -720,19 +741,19 @@ function theGarrisonTheReportShows(report, provId) {
 }
 // What the orders of the phase `ph` add to each garrison, by the province's id: for each living hero who adds any, in
 // the report's order, the hero and the companies he adds (those he leads as the phase begins, from `armies`).
-function theCompaniesAPhasesOrdersAddToEachGarrison(report, armies, ph) {
+function theCompaniesAPhasesOrdersAddToEachGarrison(report, orders, armies, ph) {
   const added = new Map();
   (report.characters || [])
     .filter((x) => x && x.alive !== false)
     .forEach((o) => {
-      const act = document.getElementById(`po-action-${o.id}-${ph}`)?.value || '';
+      const act = theOrderField(orders, 'action', o.id, ph)?.value || '';
       if (act !== 'Leave/Transfer Army' && act !== 'Recruit Armies') return;
-      const tgt = document.getElementById(`po-target-${o.id}-${ph}`)?.value || '';
-      const loc = predictedLocation(o.id, ph);
+      const tgt = theOrderField(orders, 'target', o.id, ph)?.value || '';
+      const loc = whereAHeroStandsAfterTheOrdersBefore(report, orders, o.id, ph);
       if (!loc) return;
       const units = [];
       if (act === 'Leave/Transfer Army') {
-        const extra = document.getElementById(`po-extra-${o.id}-${ph}`)?.value;
+        const extra = theOrderField(orders, 'extra', o.id, ph)?.value;
         if (extra !== '' && extra != null && String(extra) !== '-1') return; // handed to a character, not the garrison
         const led = theCompaniesTheReplayGivesTheHeroOfId(report, armies, o.id);
         if (
@@ -754,15 +775,16 @@ function theCompaniesAPhasesOrdersAddToEachGarrison(report, armies, ph) {
             });
         }
       } else {
-        const wrap = document.getElementById(`po-target-wrap-${o.id}-${ph}`);
+        const wrap = theRecruitBoxesOf(orders, o.id, ph);
         if (!wrap) return;
-        const destSel = wrap.querySelector('.po-recruit-dest');
+        const destSel = wrap.dest;
         // where the turn musters them (R-129, P1-11e19)
         whereTheCompaniesARecruitRaisesMuster(
           report,
+          orders,
           o,
           ph,
-          [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || ''),
+          wrap.ticked.map((cb) => cb.value || ''),
           destSel ? destSel.value : 'to:self',
           (x) => armies.get(x),
         ).toTheGarrison.forEach((u) => units.push(u));
@@ -785,7 +807,7 @@ function theGarrisonAPickUpOfThePhaseSees(report, garrisons, added, provId, excl
 // Each garrison once the phase `ph` is over: what its orders add (`added`), then what its Pick Ups take — only strictly
 // earlier phases' pick-ups are replayed into a later phase (same-phase pick-ups race on initiative).
 // The beasts a Pick Up takes past the leader's beast command go back to the end of the garrison (`goBack`, by province).
-function theGarrisonsAfterAPhase(report, garrisons, added, ph, goBack) {
+function theGarrisonsAfterAPhase(report, orders, garrisons, added, ph, goBack) {
   const garrisonOf = (provId) => {
     if (!garrisons.has(provId)) garrisons.set(provId, theGarrisonTheReportShows(report, provId));
     return garrisons.get(provId);
@@ -797,11 +819,11 @@ function theGarrisonsAfterAPhase(report, garrisons, added, ph, goBack) {
   (report.characters || [])
     .filter((x) => x && x.alive !== false)
     .forEach((o) => {
-      const act = document.getElementById(`po-action-${o.id}-${ph}`)?.value || '';
+      const act = theOrderField(orders, 'action', o.id, ph)?.value || '';
       if (act !== 'Pick Up Army') return;
-      const loc = predictedLocation(o.id, ph);
+      const loc = whereAHeroStandsAfterTheOrdersBefore(report, orders, o.id, ph);
       if (!loc) return;
-      const tgt = document.getElementById(`po-target-${o.id}-${ph}`)?.value || '';
+      const tgt = theOrderField(orders, 'target', o.id, ph)?.value || '';
       // the places the turn takes ("all", or each `g:N`), the last first (R-129, P1-11e19)
       const garr = garrisonOf(loc.id);
       theGarrisonPlacesAPickUpTakes(tgt, garr.length).forEach((i) => garr.splice(i, 1));
@@ -828,17 +850,17 @@ function theGarrisonsAfterAPhase(report, garrisons, added, ph, goBack) {
 // mustered "to:<this id>" — ARE projected in, through chains of any length (2026-09-24).
 // Each company moves where the turn's rules send it (R-129, P1-11e19): a recruit, a hand-over and a Pick Up's beasts
 // past a beast command, a garrison company or band, risen dead; the beasts his Pick Up can't take go into `goBack`.
-function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, char, prevPh, goBack) {
+function theCompaniesAHeroLeadsAfterAPhase(report, orders, armies, garrisons, added, char, prevPh, goBack) {
   const charId = char.id;
   let led = (armies.get(char) || []).slice();
-  const prevAction = document.getElementById(`po-action-${charId}-${prevPh}`)?.value || '';
-  const prevTarget = document.getElementById(`po-target-${charId}-${prevPh}`)?.value || '';
+  const prevAction = theOrderField(orders, 'action', charId, prevPh)?.value || '';
+  const prevTarget = theOrderField(orders, 'target', charId, prevPh)?.value || '';
   // armies gained FROM OTHER characters of yours earlier this turn — a Recruit mustered "to:<this
   // id>" or a Leave/Transfer handed to this character — project in too.
   (report.characters || []).forEach((o) => {
     if (o.id === charId) return;
-    const oAct = document.getElementById(`po-action-${o.id}-${prevPh}`)?.value || '';
-    const oTgt = document.getElementById(`po-target-${o.id}-${prevPh}`)?.value || '';
+    const oAct = theOrderField(orders, 'action', o.id, prevPh)?.value || '';
+    const oTgt = theOrderField(orders, 'target', o.id, prevPh)?.value || '';
     if (oAct === 'Recruit Armies') {
       // The engine hires MERCENARIES first and appends native recruits after, so the projection
       // must use the same order or the Blood Offering S:/E: indices would point at the wrong
@@ -846,6 +868,7 @@ function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, cha
       const toks = oTgt.split(',').map((t) => t.trim());
       const musters = whereTheCompaniesARecruitRaisesMuster(
         report,
+        orders,
         o,
         prevPh,
         toks,
@@ -854,7 +877,7 @@ function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, cha
       );
       if (musters.dest === char) musters.toTheColumn.forEach((u) => led.push(u));
     } else if (oAct === 'Leave/Transfer Army') {
-      const oExtra = document.getElementById(`po-extra-${o.id}-${prevPh}`)?.value || '';
+      const oExtra = theOrderField(orders, 'extra', o.id, prevPh)?.value || '';
       if (String(oExtra) !== String(charId)) return;
       const oArm = theCompaniesTheReplayGivesTheHeroOfId(report, armies, o.id);
       const handed = [];
@@ -872,26 +895,27 @@ function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, cha
     }
   });
   if (prevAction === 'Recruit Armies') {
-    const wrap = document.getElementById(`po-target-wrap-${charId}-${prevPh}`);
+    const wrap = theRecruitBoxesOf(orders, charId, prevPh);
     if (wrap) {
       // the default muster destination is still THIS character, but recruits sent to the province
       // garrison ("to:garrison") or handed to a friendly hero ("to:<id>") do NOT join this
       // character — so they must not show in this hero's projected led-army preview (that stale
       // display was what made garrison-bound units look as though they marched off with the
       // hero).
-      const destSel = wrap.querySelector('.po-recruit-dest');
+      const destSel = wrap.dest;
       const musters = whereTheCompaniesARecruitRaisesMuster(
         report,
+        orders,
         char,
         prevPh,
-        [...wrap.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value || ''),
+        wrap.ticked.map((cb) => cb.value || ''),
         destSel ? destSel.value : 'to:self',
         (x) => armies.get(x),
       );
       if (musters.dest === char) musters.toTheColumn.forEach((u) => led.push(u));
     }
   } else if (prevAction === 'Pick Up Army') {
-    const ploc = predictedLocation(charId, prevPh);
+    const ploc = whereAHeroStandsAfterTheOrdersBefore(report, orders, charId, prevPh);
     const pgarr = ploc ? theGarrisonAPickUpOfThePhaseSees(report, garrisons, added, ploc.id, charId) : []; // garrison as it stands at THAT phase
     // the places the turn takes, the last first, and the beasts past his beast command back to the garrison
     const takenUp = theGarrisonPlacesAPickUpTakes(prevTarget, pgarr.length).map((i) =>
@@ -919,8 +943,7 @@ function theCompaniesAHeroLeadsAfterAPhase(report, armies, garrisons, added, cha
           if (idx >= 0) removed.push(...led.splice(idx, 1));
         });
     // handed to a comrade: the beasts past his beast command stay with the giver, at the end of his column
-    const extra =
-      prevAction === 'Leave/Transfer Army' ? document.getElementById(`po-extra-${charId}-${prevPh}`)?.value : '';
+    const extra = prevAction === 'Leave/Transfer Army' ? theOrderField(orders, 'extra', charId, prevPh)?.value : '';
     const recipient =
       extra !== '' && extra != null && String(extra) !== '-1'
         ? (report.characters || []).find((x) => String(x.id) === String(extra))
@@ -937,30 +960,29 @@ function theCompaniesTheReplayGivesTheHeroOfId(report, armies, charId) {
 }
 
 // Predict each character's item list at the given phase: the replay's (theItemsAPhasesOrdersHandOver).
-export function predictedItems(charId, upToPhaseExclusive) {
-  const report = currentReport;
+export function whatAHeroCarriesAsAPhaseBegins(report, orders, charId, upToPhaseExclusive) {
   if (!report) return [];
-  return theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive).items.get(String(charId)) || [];
+  return theFormsReplayOfThePhasesBefore(report, orders, upToPhaseExclusive).items.get(String(charId)) || [];
 }
 
 // the unled GARRISON of a province at a given phase: the replay's as the phase begins (theGarrisonsAfterAPhase), with,
 // when includeSamePhase is set (the Pick Up form), the leaves at `phase` itself by OTHER characters than excludeCharId.
-export function projectedGarrison(provId, phase, includeSamePhase, excludeCharId) {
-  const report = currentReport || {};
-  const replay = theFormsReplayOfThePhasesBefore(report, phase);
+export function whatAGarrisonHoldsAsAPhaseBegins(theReport, orders, provId, phase, includeSamePhase, excludeCharId) {
+  const report = theReport || {};
+  const replay = theFormsReplayOfThePhasesBefore(report, orders, phase);
   if (!includeSamePhase) {
     return (
       replay.garrisons.has(provId) ? replay.garrisons.get(provId) : theGarrisonTheReportShows(report, provId)
     ).slice();
   }
-  const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, replay.armies, phase);
+  const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, orders, replay.armies, phase);
   return theGarrisonAPickUpOfThePhaseSees(report, replay.garrisons, added, provId, excludeCharId);
 }
 
 // the army list a character is LEADING at the start of a given phase: the replay's (theCompaniesAHeroLeadsAfterAPhase).
-export function projectedLedArmies(charId, upToPhaseExclusive) {
-  const report = currentReport || {};
+export function whatAHeroLeadsAsAPhaseBegins(theReport, orders, charId, upToPhaseExclusive) {
+  const report = theReport || {};
   const char = (report.characters || []).find((x) => x.id === charId);
   if (!char) return [];
-  return theFormsReplayOfThePhasesBefore(report, upToPhaseExclusive).armies.get(char).slice();
+  return theFormsReplayOfThePhasesBefore(report, orders, upToPhaseExclusive).armies.get(char).slice();
 }

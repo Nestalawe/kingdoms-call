@@ -105,7 +105,10 @@ const RETIRED = [
 /** The portal's three hex tables (P1-11d6), each as the file and the function that held a table of the six steps from
  *  a hex: they step by the folder's function now. */
 const THE_THREE_HEX_TABLES: readonly (readonly [string, string])[] = [
-  ['ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts', 'predictedLocation'],
+  [
+    'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
+    'whereAHeroStandsAfterTheOrdersBefore',
+  ],
   ['ui/player/order-targets.ts', 'buildTargetField'],
   ['ui/player/move-analysis.ts', 'lastMoveDirOf'],
 ];
@@ -474,7 +477,7 @@ describe('the player portal reaches the engine only through src/shared/', () => 
       ['ui/player/orders-form.ts', 'computeOrderLedgerP', 'thePrice.value'],
       [
         'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
-        'projectedMoveHost',
+        'theColumnAHeroMarchesWithInAPhase',
         'theWildHuntsBeasts',
       ],
     ] as const;
@@ -486,7 +489,7 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     // the Wild Hunt's beasts are made once, in a loop of the row's number, not once for each
     const column = textOfFunction(
       'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
-      'projectedMoveHost',
+      'theColumnAHeroMarchesWithInAPhase',
     );
     expect(column.split('(bound by the Wild Hunt)')).toHaveLength(2);
     // the once-a-turn list

@@ -147,8 +147,11 @@ const SCHOOLS: readonly string[] = KC_MAGIC_SCHOOLS;
 /** Where the order form says a hero will stand (predictedLocation), and since P1-11e10 what it reads: the march the
  *  turn refuses and the relation at a border, and its one answer a refresh (the report it was kept for, the answers,
  *  the fields it was worked out from); since P1-11e11 his move pools as the report gives them; since P1-11e12 the step
- *  the turn takes toward a far province. */
+ *  the turn takes toward a far province. Since P1-11e41 the forecast reads the orders the page hands it (its two readers
+ *  of them), as whereAHeroStandsAfterTheOrdersBefore; predictedLocation is the page's (THE_PAGES_SIDE_OF_A_FORECAST). */
 const THE_MARCH_FORECASTS_DECLARATIONS = [
+  'theOrderField',
+  'theRecruitBoxesOf',
   'hisMovePoolsAsTheReportGivesThem',
   'theRelationAMarchMeetsAtTheBorderOf',
   'aMarchTheTurnRefuses',
@@ -156,6 +159,14 @@ const THE_MARCH_FORECASTS_DECLARATIONS = [
   'theForecastsReport',
   'theForecastsAnswers',
   'whatTheForecastOfThePhasesBeforeReads',
+  'whereAHeroStandsAfterTheOrdersBefore',
+];
+/** The page's side of a forecast (P1-11e41): the order a page's field holds (getOrderTarget, moved from the forecasts'
+ *  file), the snapshot of the orders the form holds, and predictedLocation, which hands both to the forecast. */
+const THE_PAGES_SIDE_OF_A_FORECAST = [
+  'theValueOfAField',
+  'getOrderTarget',
+  'theOrdersTheFormHolds',
   'predictedLocation',
 ];
 /** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
@@ -198,7 +209,6 @@ const COPIES: Record<string, string[]> = {
   // can't count, and a hero's skill as the report counts it (skillEff: druidNeedP, exploreGainFor and the army card
   // read it), which the march forecast reads (moved from move-analysis.ts and items-and-heroes.ts, no statement changed)
   'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts': [
-    'getOrderTarget',
     'PO_SEA_TYPES',
     'PO_CARRIER_TYPES',
     'PO_AERIAL_TYPES',
@@ -207,10 +217,10 @@ const COPIES: Record<string, string[]> = {
     'poSeaAnalysis',
     'PO_UNCOUNTABLE_ACTIONS',
     'PO_UNCOUNTABLE_SPELLS',
-    'projectedMoveHost',
+    'theColumnAHeroMarchesWithInAPhase',
     'effSkillP',
     ...THE_MARCH_FORECASTS_DECLARATIONS,
-    'predictedItems',
+    'whatAHeroCarriesAsAPhaseBegins',
     'GARRISON_UNIT_TYPES_P',
     '_projRecruitUnits',
     // since P1-11e19 where the companies a Recruit, a hand-over and a Pick Up move go, by the turn's rules
@@ -219,7 +229,7 @@ const COPIES: Record<string, string[]> = {
     'theRoomHisBeastCommandLeaves',
     'whereTheCompaniesARecruitRaisesMuster',
     // (since P1-11e29 the same, asked by the treasury ledger)
-    'whereTheCompaniesAHerosRecruitRaisesMuster',
+    'whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders',
     'whatAComradeTakesOfAHandOver',
     // since P1-11e17 one replay of the phases' orders, which the three read
     'theFormsReplayOfThePhasesBefore',
@@ -233,8 +243,18 @@ const COPIES: Record<string, string[]> = {
     'theGarrisonsAfterAPhase',
     'theCompaniesAHeroLeadsAfterAPhase',
     'theCompaniesTheReplayGivesTheHeroOfId',
+    'whatAGarrisonHoldsAsAPhaseBegins',
+    'whatAHeroLeadsAsAPhaseBegins',
+  ],
+  // the page's side of the forecasts (P1-11e41): the report and the orders its form holds, handed to each, by the names
+  // the page's files ask them by
+  'ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts': [
+    ...THE_PAGES_SIDE_OF_A_FORECAST,
+    'projectedMoveHost',
+    'predictedItems',
     'projectedGarrison',
     'projectedLedArmies',
+    'whereTheCompaniesAHerosRecruitRaisesMuster',
   ],
   // the mastery orders' table (P1-11d3: the order list's gates read it), each order's name, skill and level its row's
   // (P1-11d10: the content's rows run beside the copies) and its target and hint the form's own
@@ -546,9 +566,10 @@ export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpel
     scriptOf('ui/player/the-hints-the-order-form-shows-below-each-spell.ts', opts),
     sourceOf(
       'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
-      ['getOrderTarget', ...THE_MARCH_FORECASTS_DECLARATIONS],
+      THE_MARCH_FORECASTS_DECLARATIONS,
       opts,
     ),
+    sourceOf('ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts', THE_PAGES_SIDE_OF_A_FORECAST, opts),
     sourceOf('ui/player/order-targets.ts', ['provDirectionLabel'], opts),
     sourceOf(
       'ui/player/items-and-heroes.ts',

@@ -29,7 +29,7 @@ import {
   getOrderTarget,
   predictedLocation,
   projectedLedArmies,
-} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+} from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
 // ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
 // L7/L9 mastery order (GM MASTERY_ORDER_KEYS — exactly the L79_ORDERS set: both are the content's rows, P1-11d10)
