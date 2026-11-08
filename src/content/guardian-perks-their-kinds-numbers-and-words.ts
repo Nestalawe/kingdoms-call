@@ -124,12 +124,13 @@ export const GUARDIAN_PERKS_THE_REGISTRY_HOLDS = {
     inTheRulebook: { row: 'Keen eye (its own to-hit) / brute strength (its damage)', aCellWritesIt: '+{N}%', part: 0 },
     theItemsEffectItReaches: 'hit-bonus-rider',
   },
-  // its words say "every blow and special": a special's weight multiplies it (plan NEXT.md question 34)
+  // a special's weight multiplies it, as the fight and the rulebook do (docs/rulings/R-137, question 34); a running
+  // game's guardians are re-stamped with these words by the save's upgrade
   'brute-strength': {
     carriedAs: { rider: 'dmgBonus' },
     theValueAtEachGrade: [1, 2, 3, 4],
     itsNumberIsWritten: 'as it is',
-    itsWords: '+{N} damage on every blow and special',
+    itsWords: "+{N} damage on every blow; a special's weight multiplies it",
     inTheRulebook: { row: 'Keen eye (its own to-hit) / brute strength (its damage)', aCellWritesIt: '+{N}', part: 1 },
     theItemsEffectItReaches: 'damage-bonus-rider',
   },

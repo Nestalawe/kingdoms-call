@@ -1234,7 +1234,9 @@ export const MONSTERS_P = [
         flavour: 'The wolf goes low and lunges for the throat!',
       },
     ],
-    passives: [{ name: 'Savage Jaws', fx: { dmgBonus: 1 }, desc: '+1 damage on every blow and special' }],
+    passives: [
+      { name: 'Savage Jaws', fx: { dmgBonus: 1 }, desc: "+1 damage on every blow; a special's weight multiplies it" },
+    ],
     weak: { kind: 'archery', key: 'archery', name: 'Open to Arrows', desc: 'arrows strike it for double damage' },
   },
   {
@@ -2499,7 +2501,11 @@ export const MONSTERS_P = [
     ],
     passives: [
       { name: 'Spined Hide', fx: { ward: 'thorns', amt: 2 }, desc: 'whoever lands a blow on it takes 2' },
-      { name: 'Venomed Spines', fx: { dmgBonus: 2 }, desc: '+2 damage on every blow and special' },
+      {
+        name: 'Venomed Spines',
+        fx: { dmgBonus: 2 },
+        desc: "+2 damage on every blow; a special's weight multiplies it",
+      },
     ],
     weak: { kind: 'archery', key: 'archery', name: 'Open to Arrows', desc: 'arrows strike it for double damage' },
   },
@@ -2525,7 +2531,11 @@ export const MONSTERS_P = [
       },
     ],
     passives: [
-      { name: 'Brute Strength', fx: { dmgBonus: 2 }, desc: '+2 damage on every blow and special' },
+      {
+        name: 'Brute Strength',
+        fx: { dmgBonus: 2 },
+        desc: "+2 damage on every blow; a special's weight multiplies it",
+      },
       {
         name: 'Thick-Headed',
         fx: { ward: 'stunWard', pct: 60 },
@@ -3131,7 +3141,7 @@ export const MONSTERS_P = [
         fx: { ward: 'stunWard', pct: 60 },
         desc: 'shrugs off 60% of stuns, dazes and holds the moment they land',
       },
-      { name: 'Sapling Club', fx: { dmgBonus: 2 }, desc: '+2 damage on every blow and special' },
+      { name: 'Sapling Club', fx: { dmgBonus: 2 }, desc: "+2 damage on every blow; a special's weight multiplies it" },
     ],
     weak: {
       kind: 'school',
@@ -3286,7 +3296,7 @@ export const MONSTERS_P = [
       },
     ],
     passives: [
-      { name: 'Ferocity', fx: { dmgBonus: 2 }, desc: '+2 damage on every blow and special' },
+      { name: 'Ferocity', fx: { dmgBonus: 2 }, desc: "+2 damage on every blow; a special's weight multiplies it" },
       {
         name: 'Cornered Fury',
         fx: { ward: 'lowHp', pct: 20 },
@@ -3928,7 +3938,7 @@ export const MONSTERS_P = [
         fx: { ward: 'schoolWard', school: 'elemental', pct: 40 },
         desc: 'Elemental Magic cast at it is −40% to take hold',
       },
-      { name: 'Demonic Might', fx: { dmgBonus: 3 }, desc: '+3 damage on every blow and special' },
+      { name: 'Demonic Might', fx: { dmgBonus: 3 }, desc: "+3 damage on every blow; a special's weight multiplies it" },
     ],
     weak: {
       kind: 'school',
@@ -4490,7 +4500,7 @@ export const MONSTERS_P = [
       },
     ],
     passives: [
-      { name: "Giant's Might", fx: { dmgBonus: 3 }, desc: '+3 damage on every blow and special' },
+      { name: "Giant's Might", fx: { dmgBonus: 3 }, desc: "+3 damage on every blow; a special's weight multiplies it" },
       {
         name: 'Thick Skull',
         fx: { ward: 'stunWard', pct: 80 },
@@ -4643,7 +4653,7 @@ export const MONSTERS_P = [
         fx: { ward: 'schoolWard', school: 'elemental', pct: 40 },
         desc: 'Elemental Magic cast at it is −40% to take hold',
       },
-      { name: 'Three Maws', fx: { dmgBonus: 3 }, desc: '+3 damage on every blow and special' },
+      { name: 'Three Maws', fx: { dmgBonus: 3 }, desc: "+3 damage on every blow; a special's weight multiplies it" },
     ],
     weak: { kind: 'archery', key: 'archery', name: 'Open to Arrows', desc: 'arrows strike it for double damage' },
   },
@@ -5122,7 +5132,11 @@ export const MONSTERS_P = [
         desc: 'Psychic Magic cast at it is −50% to take hold',
       },
       { name: 'Unmovable', fx: { ward: 'stunWard', pct: 100 }, desc: 'cannot be stunned, dazed or held' },
-      { name: "Titan's Strength", fx: { dmgBonus: 4 }, desc: '+4 damage on every blow and special' },
+      {
+        name: "Titan's Strength",
+        fx: { dmgBonus: 4 },
+        desc: "+4 damage on every blow; a special's weight multiplies it",
+      },
     ],
     weak: {
       kind: 'school',
@@ -5305,7 +5319,11 @@ export const MONSTERS_P = [
         fx: { ward: 'spellPct', pct: 45 },
         desc: 'spells deal 45% less harm to it, their burns included',
       },
-      { name: 'Infernal Might', fx: { dmgBonus: 4 }, desc: '+4 damage on every blow and special' },
+      {
+        name: 'Infernal Might',
+        fx: { dmgBonus: 4 },
+        desc: "+4 damage on every blow; a special's weight multiplies it",
+      },
     ],
     weak: {
       kind: 'align',
@@ -5478,7 +5496,11 @@ export const MONSTERS_P = [
         fx: { ward: 'regen', amt: 4 },
         desc: 'regenerates 4 HP a round (half as fast after the fourth round, spent after the eighth)',
       },
-      { name: 'Crushing Weight', fx: { dmgBonus: 4 }, desc: '+4 damage on every blow and special' },
+      {
+        name: 'Crushing Weight',
+        fx: { dmgBonus: 4 },
+        desc: "+4 damage on every blow; a special's weight multiplies it",
+      },
     ],
     weak: {
       kind: 'school',

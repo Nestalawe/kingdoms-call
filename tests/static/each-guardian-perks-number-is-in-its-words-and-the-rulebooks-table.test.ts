@@ -9,8 +9,8 @@
 // - the numbers the code writes are in the rulebook too: the grade's cap ("its grade's own 20% hit cap"), the
 //   sustain's fade (the regeneration row's rounds, and its words' "fourth" and "eighth"), a second wind's share.
 // So a number changed in content and not in a text, or in a text alone, turns this red. A form is the words, not what
-// they mean: question 34 (plan NEXT.md: Parked "A guardian's damage perk is multiplied by a special's weight; its words
-// say a flat bonus") was found by reading the code, and its form is listed below with it. Whether each perk carries its
+// they mean, so a form a ruling sets is listed below with it: brute strength's says a special's weight multiplies it,
+// as the fight and the rulebook do (docs/rulings/R-137, Toby's answer to question 34). Whether each perk carries its
 // grade's value is tests/unit/guardian-perks.test.ts's.
 // Level 0 (static): the content's guardians and rows, and the rulebook, are files; nothing of the engine runs.
 import fs from 'node:fs';
@@ -32,13 +32,11 @@ const GRADES = ['Weak', 'Moderate', 'Powerful', 'Legendary'];
 const A_SECOND_WINDS_SHARE =
   MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS['second-wind'].numbers.belowThisShareOfHisMaximumHp.value * 100;
 
-/** The forms of words a question for Toby holds, by the kind's slug, with the question: checked to be still the form,
- *  so the exception is seen when the words change. */
-const THE_FORMS_A_QUESTION_HOLDS: Readonly<Record<string, { readonly form: string; readonly question: string }>> = {
+/** The forms of words a ruling sets, by the kind's slug, with the ruling: checked to be the form. */
+const THE_FORMS_A_RULING_SETS: Readonly<Record<string, { readonly form: string; readonly ruling: string }>> = {
   'brute-strength': {
-    form: '+{N} damage on every blow and special',
-    question:
-      'question 34 (Parked "A guardian\'s damage perk is multiplied by a special\'s weight; its words say a flat bonus")',
+    form: "+{N} damage on every blow; a special's weight multiplies it",
+    ruling: "R-137 (question 34): a guardian's brute strength reads as it fights",
   },
 };
 
@@ -153,9 +151,9 @@ test('the numbers the code writes are in the rulebook and the words', () => {
   );
 });
 
-test('the forms a question for Toby holds are still the forms', () => {
-  for (const [slug, { form, question }] of Object.entries(THE_FORMS_A_QUESTION_HOLDS))
-    expect(ROWS[slug]?.itsWords, `${slug}: ${question}`).toBe(form);
+test('the forms a ruling sets are the forms', () => {
+  for (const [slug, { form, ruling }] of Object.entries(THE_FORMS_A_RULING_SETS))
+    expect(ROWS[slug]?.itsWords, `${slug}: ${ruling}`).toBe(form);
 });
 
 // The checks find a fault: a number planted in a perk's words, in a row alone, in the rulebook alone, and a perk of a

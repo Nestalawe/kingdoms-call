@@ -412,6 +412,41 @@ const OLD_SHAPES: OldShape[] = [
     },
   },
   {
+    name: "a guardian's brute strength in an older build's words reads as it fights now (R-137); its other perks' words (a second rider's, a number's gap), and a gap among them, are kept",
+    pass: 'everyGuardiansBruteStrengthInTheWordsOfItsKind',
+    stage(s) {
+      const [a, b] = lairsOf(s).map((f) => must(f.monster, 'guardian'));
+      must(a, 'first guardian').passives = [
+        { name: "Titan's Strength", fx: { dmgBonus: 4 }, desc: '+4 damage on every blow and special' },
+        { name: 'Stone Skin', fx: { ward: 'meleeDR', amt: 3 }, desc: 'every blow against it deals 3 less' },
+      ];
+      must(b, 'second guardian').passives = [
+        null as never,
+        { name: 'Made-up Club', fx: { dmgBonus: 1 }, desc: 'hits a little harder' },
+        { name: 'Made-up Eye', fx: { hitBonus: 5 }, desc: 'sees a little better' },
+        { name: 'Made-up Knack', fx: { dmgBonus: 2, hitBonus: 5 }, desc: 'hits harder and truer' },
+        { name: 'Made-up Husk', fx: { dmgBonus: null }, desc: 'a husk' } as never,
+      ];
+    },
+    mended(s, _, found) {
+      const [a, b] = lairsOf(s).map((f) => f.monster);
+      return {
+        got: { a: a?.passives.map((p) => p.desc), b: b?.passives.map((p) => (p as Loose | null)?.['desc']), found },
+        want: {
+          a: ["+4 damage on every blow; a special's weight multiplies it", 'every blow against it deals 3 less'],
+          b: [
+            undefined,
+            "+1 damage on every blow; a special's weight multiplies it",
+            'sees a little better',
+            'hits harder and truer',
+            'a husk',
+          ],
+          found: NOTHING_FOUND,
+        },
+      };
+    },
+  },
+  {
     name: 'the retired Library (sd30) is struck from a realm that found it, with any gap in its list; the rest kept',
     pass: 'theLibraryStruckFromEveryRealm',
     stage(s) {
