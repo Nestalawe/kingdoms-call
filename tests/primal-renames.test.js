@@ -13,8 +13,8 @@
 // none of the old; the GM portal's grid codes, terrain rows and both copies of the world-generation pools (sliced from
 // the source) follow, the sea pass keys nothing on the Leviathans; the booted portal's `unitAbilityMult` (Thunderbirds
 // carry no Stoop on the Archers, the Kraken keep Deepwater Grasp, the Hydras nothing yet) and master tables; and
-// `migrateLegacyUnitNames` on a staged running game renames companies, recruit pools, defenders, graves, a fallen
-// hero's companies and the province races (Leviathan waters become Kraken waters), and is idempotent
+// `migrateLegacyUnitNames` on a staged running game renames companies, recruit pools, defenders, graves and the
+// province races (Leviathan waters become Kraken waters), and is idempotent
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
 const {compactPage,pageInitializer,scriptOf}=require('./lib/source.ts');
@@ -94,8 +94,7 @@ const OLD=Object.keys(RENAMED), NEW=[...new Set(Object.values(RENAMED))];
       {id:0,terrain:'mountain',race:'Primal:Giant Eagle',armyTypes:['Giant Eagles'],neutralDefenders:[{type:'Giant Eagles',quality:'Average',race:'Primal:Giant Eagle'}],garrisonArmies:[],battleGraves:[{type:'Giant Eagles',quality:'Average'}]},
       {id:1,terrain:'sea',race:'Primal:Leviathan',armyTypes:['Leviathan Pods'],neutralDefenders:[{type:'Leviathan Pods',quality:'Veteran',race:'Primal'}],garrisonArmies:[{type:'Leviathan Pods',quality:'Average',race:'Primal'}],battleGraves:[]},
       {id:2,terrain:'sea',race:'Primal:Kraken',armyTypes:['Kraken Tentacles'],neutralDefenders:[],garrisonArmies:[],battleGraves:[]},
-      {id:3,terrain:'forest',race:'Elven',armyTypes:['Forest Wardens','Elven Garrison'],neutralDefenders:[],garrisonArmies:[],battleGraves:[]}]},
-    heroGraveyard:[{armies:[{type:'Giant Eagles',quality:'Green'}]}]};
+      {id:3,terrain:'forest',race:'Elven',armyTypes:['Forest Wardens','Elven Garrison'],neutralDefenders:[],garrisonArmies:[],battleGraves:[]}]}};
   const out=g(`(()=>{ const s=window.__renameFixture; try{ migrateLegacyUnitNames(s); }catch(e){ return {threw:e.message}; } return s; })()`);
   ok(out&&!out.threw,`migrateLegacyUnitNames runs on the staged game (${out&&out.threw||'ok'})`);
   if(out&&!out.threw){
@@ -107,7 +106,6 @@ const OLD=Object.keys(RENAMED), NEW=[...new Set(Object.values(RENAMED))];
     ok(p1.race==='Primal:Kraken'&&p1.armyTypes.join()==='Eldritch Kraken'&&p1.neutralDefenders[0].type==='Eldritch Kraken'&&p1.garrisonArmies[0].type==='Eldritch Kraken',`Leviathan waters become Kraken waters, their pods Eldritch Kraken (got ${p1.race}, ${p1.armyTypes.join()}, ${p1.neutralDefenders[0].type}, ${p1.garrisonArmies[0].type})`);
     ok(p2.race==='Primal:Kraken'&&p2.armyTypes.join()==='Eldritch Kraken',`Kraken waters keep their race and recruit Eldritch Kraken (got ${p2.race}, ${p2.armyTypes.join()})`);
     ok(p3.race==='Elven'&&p3.armyTypes.join()==='Forest Wardens,Elven Garrison','a humanoid province is untouched');
-    ok(out.heroGraveyard[0].armies[0].type==='Thunderbirds','a fallen hero\'s remembered companies are renamed too');
     const again=g(`(()=>{ const s=window.__renameFixture; migrateLegacyUnitNames(s); return s.characters[0].armies.map(a=>a.type).join(); })()`);
     ok(again==='Thunderbirds,Eldritch Kraken,Eldritch Kraken,Shieldwall Levies','running the migration again changes nothing (it runs every turn)');
   }

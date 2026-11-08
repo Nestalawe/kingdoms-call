@@ -416,10 +416,6 @@ export function reckoningOwnShare(state: TheWorldAsTheStandingsReadIt, pi: numbe
   const s = computeStandings(state);
   return s.worldTax > 0 ? ((s.taxByPlayer[pi] ?? 0) || 0) / s.worldTax : 0;
 }
-// The bar THIS realm's claim must carry — its own bloc's size decides it.
-export function reckoningThresholdFor(state: TheWorldAsTheReckoningReadsIt, pi: number) {
-  return reckoningThreshold((state.players ?? []).length, reckoningDecayOf(state), alliedBloc(state, pi).length);
-}
 // May THIS realm lodge the claim? Bloc share carries the bar; the caller still has to be a
 // contributor worth naming; and no claim at all stands before RECKONING_MIN_TURN. Returns {ok,
 // blocShare, ownShare, threshold, callerMin, blocSize, soloThreshold, minTurn, reason}.

@@ -35,8 +35,6 @@ import type {
 // Its types (plan P1-10b11): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
 // stays; the fighter both builders make is AFighterInAPersonalCombat (a-fighter-in-a-personal-combat-and-the-wards-he-
 // wears.ts), and a table read by any name is read through a typed local inside its function.
-/** A hero as his fighter is built from him: the saved hero, and the speed bonus an older save may hold. */
-type AHeroAsHisFighterIsBuilt = AHeroAsAFightTakesHim & { readonly _speedBonus?: number | undefined };
 /** A hero as the builder guards his hit points: a hero staged without them enters at his maximum. */
 interface AHeroAsHisHitPointsAreGuarded {
   readonly hp?: number | null | undefined;
@@ -277,7 +275,7 @@ export function pcNewStatus(): AFightersStatus {
     _pending: [],
   }; // riders waiting to take hold at the start of the next round
 }
-export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterIsBuilt) {
+export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakesHim) {
   ensureEncounterPlan(turnContext, ch);
   const theHeroAsHisHitPointsAreGuarded: AHeroAsHisHitPointsAreGuarded = ch;
   const maxHp = ch.maxHp || 20;
@@ -357,7 +355,7 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsHisFighterI
     tacIdx: 0,
     planExhausted: false,
     neverFlees: false,
-    speedBonus: Number(ch._speedBonus) || 0,
+    speedBonus: 0,
     specials: [],
     mithril: theItemsMakeTheirBearerFightInMithril(activeItems(ch)), // −2 melee damage taken (the items' registry, plan P1-19q)
     mithrilDR:

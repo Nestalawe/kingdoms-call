@@ -13,7 +13,6 @@ import {
   reckoningBlocShare,
   reckoningCallEligibility,
   reckoningOwnShare,
-  reckoningThresholdFor,
   reckoningWinner,
 } from '../titles/reckoning.ts';
 import { areAllied, realmHasMet, relKeyOf } from '../realms/relations-and-captures.ts';
@@ -433,12 +432,8 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
       }
     }
     if (G.reckoning) {
-      // the bar recorded when the claim was lodged. Older saves carrying a live claim with no
-      // `thrPct` fall back to the claimant's bar as it stands now, so nothing breaks on load.
-      const thr =
-        asItsGuardReadsIt(G.reckoning.thrPct) != null
-          ? G.reckoning.thrPct / 100
-          : reckoningThresholdFor(G, G.reckoning.by);
+      // the bar recorded when the claim was lodged.
+      const thr = G.reckoning.thrPct / 100;
       const share = reckoningBlocShare(G, G.reckoning.by);
       const theClaimantsSeat = G.reckoning.by;
       const claimantAlive =

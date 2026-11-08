@@ -329,21 +329,6 @@ export const USE_ITEM_ORDER_CASES: ItemAndArmyOrderCase[] = [
     },
   },
   {
-    name: 'Use Item: an item already used',
-    stage(b) {
-      const h = stoneBearer(b, companies(1, 'Men-at-Arms', 'Green'));
-      const stone = must(h.items[0], 'the Stone');
-      stone['_spent'] = true;
-      return { hero: h, orders: [one(h, order('use_item', STONE))] };
-    },
-    check(o, { hero: h }) {
-      return {
-        got: { told: says(o, `The ${STONE} has already been used.`), led: qualities(char(o, h).armies) },
-        want: { told: true, led: ['Green Men-at-Arms c0'] },
-      };
-    },
-  },
-  {
     name: 'Use Item: a passive item needs no using',
     stage(b) {
       const h = holding(king(b), item(b, 'Ring of the Explorer'));

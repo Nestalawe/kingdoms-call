@@ -18,8 +18,6 @@ export function theWordsOfTheItemOrdersLine(fact: TheFactOfTheItemOrdersLine): s
       return `${fact.heroName} will not spend what they carry at another's bidding — a mind held by enchantment keeps its treasures to itself.`;
     case 'a hero has no such item to use':
       return `${fact.heroName}: no such item to use.`;
-    case 'an item has already been used':
-      return `The ${fact.itemName} has already been used.`;
     case "the Philosopher's Stone finds nothing to work on and is not spent":
       return `${fact.heroName} raises the ${fact.stoneName}, but there is nothing for it to work on — ${fact.theRealmHasNoUnits ? 'your realm has no armies in the field or in garrison' : 'every unit you command is already Elite'}. The Stone is NOT spent, and may be invoked another turn.`;
     case "the GM's note of the undiscovered Stones struck from the lair hoards":

@@ -426,11 +426,10 @@ describe('a hero’s fighter', () => {
     expect(heroFighter({ ...hero, maxHp: 24, hp: 0, _unkillable: true }).hp).toBe(12);
   });
 
-  test('a maximum of 0 is 20; a plan of no tactics fights by blows; a speed bonus he carries counts', () => {
+  test('a maximum of 0 is 20; a plan of no tactics fights by blows', () => {
     const hero = aHero();
-    const f = heroFighter({ ...hero, maxHp: 0, hp: 9, encounterPlan: {}, _speedBonus: 1 });
-    expect([f.maxHp, f.hp, f.tactics, f.speedBonus]).toEqual([20, 9, ['ME'], 1]);
-    expect(pcSpeedOf(f)).toBe(3);
+    const f = heroFighter({ ...hero, maxHp: 0, hp: 9, encounterPlan: {} });
+    expect([f.maxHp, f.hp, f.tactics]).toEqual([20, 9, ['ME']]);
   });
 
   test('an item of no effect is no suit of Mithril and no combat item', () => {
