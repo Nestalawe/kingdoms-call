@@ -276,22 +276,3 @@ export function lairItemTier(power: string) {
 export function itemHoardCategory(it: ItemOfTheseRules | null | undefined) {
   return itemSlot(it) ?? 'trinket'; // itemSlot gives a slot's name or null, never ''
 }
-// the Consumable slot became the Combat Item slot. A live save still holds its old tally under the
-// retired key; fold it into the new one so the even-distribution draw does not decide the realm has
-// never found a combat item and flood it with them. Called by BOTH the writer (noteItemFound) and
-// the reader (rollMagicItemFor) — patching only one leaves the other stale.
-export function migrateHoardTally(
-  pl:
-    | {
-        readonly _itemsFoundByCat?: { combat?: number | undefined; consumable?: number | undefined } | null | undefined;
-      }
-    | null
-    | undefined,
-) {
-  if (!pl?._itemsFoundByCat) return;
-  const t = pl._itemsFoundByCat;
-  if (t.consumable != null) {
-    t.combat = (Number(t.combat) || 0) + t.consumable;
-    delete t.consumable;
-  }
-}

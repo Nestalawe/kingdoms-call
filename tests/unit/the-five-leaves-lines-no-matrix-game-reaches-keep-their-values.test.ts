@@ -47,7 +47,6 @@ import {
   itemLore,
   itemLoreLines,
   lairItemTier,
-  migrateHoardTally,
   preferFreshEffects,
   wildHuntPrice,
 } from '../../src/engine/items/tiers-and-hoards.ts';
@@ -301,19 +300,6 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
 
   test("a lair's power of no tier holds a Weak item", () => {
     expect(lairItemTier('Mythic')).toBe(1);
-  });
-
-  test("the hoard's old tally: no realm, no tally, an old count with and without a combat count", () => {
-    expect(() => {
-      migrateHoardTally(null);
-      migrateHoardTally({});
-    }).not.toThrow();
-    const alone = { _itemsFoundByCat: { consumable: 2 } };
-    migrateHoardTally(alone);
-    expect(alone._itemsFoundByCat).toEqual({ combat: 2 });
-    const beside = { _itemsFoundByCat: { combat: 3, consumable: 2 } };
-    migrateHoardTally(beside);
-    expect(beside._itemsFoundByCat).toEqual({ combat: 5 });
   });
 
   describe('the intrusion warnings', () => {

@@ -798,10 +798,6 @@ describe('The intel and the setup on what no matrix game hands them', () => {
       12,
     );
     expect(T({ alignment: 'Divine', consecratedProvIds: [] })['kingAttackMargin']).toBe(h['kingAttackMargin']);
-    expect(T({ alignment: 'Divine', consecratedProvId: 3 })['kingAttackMargin']).toBeCloseTo(
-      Number(h['kingAttackMargin']) * 0.9,
-      12,
-    );
   });
   test('a step to a neighbour in a seventh direction, and a gap among the units an estimate counts, throw as the reads did', () => {
     const G = { world: { cols: 4, rows: 4, provinces: [] } };

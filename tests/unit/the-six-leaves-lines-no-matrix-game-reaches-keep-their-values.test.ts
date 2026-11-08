@@ -93,10 +93,10 @@ describe("the Wonder's and the home province's reads, on a realm or a state with
     expect(gdActiveFor(sited(1), 0, undefined)).toBe(false);
     expect(gdActiveFor(sited(0, false), 0, undefined)).toBe(false);
   });
-  test('homeProvinceIdFor: no home province yet, from the first land held, or else the king, then frozen', () => {
+  test('homeProvinceIdFor: no home province yet, from the first land held, or else the king, writing nothing (the upgrade freezes it)', () => {
     const byLand = { players: [{ provinces: [5, 6] }] };
     expect(homeProvinceIdFor(byLand, 0)).toBe(5);
-    expect(byLand.players[0]).toEqual({ provinces: [5, 6], homeProvinceId: 5 });
+    expect(byLand.players[0]).toEqual({ provinces: [5, 6] });
     const byKing = {
       players: [{ provinces: [] }],
       characters: [
@@ -105,7 +105,7 @@ describe("the Wonder's and the home province's reads, on a realm or a state with
       ],
     };
     expect(homeProvinceIdFor(byKing, 0)).toBe(7);
-    expect(byKing.players[0]).toEqual({ provinces: [], homeProvinceId: 7 });
+    expect(byKing.players[0]).toEqual({ provinces: [] });
     const nowhere = { players: [{ provinces: [] }] };
     expect(homeProvinceIdFor(nowhere, 0)).toBe(null);
     expect(nowhere.players[0]).toEqual({ provinces: [] });

@@ -11,12 +11,11 @@ import type { GameState, Province, SkillLevels } from '../../schemas/saved-game-
 
 // Its types (plan P1-10b9): each parameter typed as wide as the body's guards (plan P1-10b's Decision 3), so each guard
 // stays, though a state the turn hands always holds what it guards. Ids are plain numbers (the schema brands them).
-/** A realm as consecration reads it: its alignment, and its consecrated provinces (an older save's single one, which
- *  the first read folds into the list). */
+/** A realm as consecration reads it: its alignment, and its consecrated provinces (an older save's single one the
+ *  save's upgrade folds into the list first: plan P1-15f3). */
 interface ARealmAsConsecrationReadsIt {
   readonly alignment?: string | undefined;
   consecratedProvIds?: number[] | undefined;
-  consecratedProvId?: number | null | undefined;
 }
 /** A province as consecration and spotting read it. */
 interface AProvinceAsTheseRead {
@@ -72,8 +71,8 @@ export const MITHRIL_ARMOUR = {
 // through this first. (Different items that happen to share a stat still stack normally.) a Divine
 // realm may now hold MULTIPLE consecrated provinces — up to the king's White skill level, that many
 // at any one time. Consecration is stored as a LIST
-// (player.consecratedProvIds); this helper returns it, migrating any legacy single `consecratedProvId`
-// save into the list on first read.
+// (player.consecratedProvIds); this helper returns it (the save's upgrade folds a legacy single `consecratedProvId`
+// into the list).
 // 2026-09-24 (Toby item 7): only the profane profit from casting down altars — an UNDEAD realm's
 // column always rises a level, an EVIL realm's has a 50% chance per unit, everyone else gains nothing.
 export const CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT = { Undead: 100, Evil: 50 };
@@ -84,10 +83,8 @@ export function consecCaptureXpPct(pl: { readonly alignment: string } | null | u
 }
 export function consecratedIds(pl: ARealmAsConsecrationReadsIt | null | undefined) {
   if (!pl) return [];
-  if (!Array.isArray(pl.consecratedProvIds)) {
-    pl.consecratedProvIds = pl.consecratedProvId != null ? [pl.consecratedProvId] : [];
-    if ('consecratedProvId' in pl) delete pl.consecratedProvId; // fold the old single field into the list
-  }
+  // a new game's realm holds no list until its first read (an older save's single field: the upgrade folds it)
+  if (!Array.isArray(pl.consecratedProvIds)) pl.consecratedProvIds = [];
   return pl.consecratedProvIds;
 }
 export function isConsecrated(pl: ARealmAsConsecrationReadsIt | null | undefined, provId: number) {

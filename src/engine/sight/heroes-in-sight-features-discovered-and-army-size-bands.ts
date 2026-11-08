@@ -98,7 +98,7 @@ export function encounterUntargetableReason(c: Character | null | undefined) {
 // f.discovered remains the engine-internal "discovered by ANYONE" flag; player-facing views must
 // instead ask featDiscovered(f, playerIndex). Legacy saves (features with discovered:true but no
 // discoveredBy array) are grandfathered as visible to everyone who could already see them
-// (_legacyAll), so upgrading mid-game never takes knowledge away from a player.
+// (_legacyAll, by the save's upgrade: plan P1-15f3), so upgrading mid-game never takes knowledge away from a player.
 export function featDiscovered(f: ProvinceFeature | null | undefined, pi: number | null | undefined) {
   if (!f) return false;
   if (pi == null) return !!f.discovered; // engine-internal: anyone
@@ -110,10 +110,8 @@ export function discoverFeat(f: ProvinceFeature | null | undefined, pi: number |
   if (!f) return false;
   const wasKnown = featDiscovered(f, pi);
   if (pi != null) {
-    if (!Array.isArray(f.discoveredBy)) {
-      if (f.discovered) f._legacyAll = true; // grandfather old-save global discovery
-      f.discoveredBy = [];
-    }
+    // a feature no realm has discovered yet holds no list (an older save's discovered one: the upgrade grandfathers it)
+    if (!Array.isArray(f.discoveredBy)) f.discoveredBy = [];
     if (!f.discoveredBy.includes(pi)) f.discoveredBy.push(pi);
   }
   f.discovered = true;

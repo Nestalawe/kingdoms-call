@@ -10,7 +10,6 @@ import {
   itemEffectKey,
   itemHoardCategory,
   lairItemTier,
-  migrateHoardTally,
   preferFreshEffects,
 } from './tiers-and-hoards.ts';
 import { itemFallbackOk, rollMagicItem } from './equipment.ts';
@@ -123,7 +122,6 @@ export function noteItemFound(
   const pl = (gs.players ?? [])[playerIndex];
   if (!pl) return;
   pl._itemsFoundByCat ??= {};
-  migrateHoardTally(pl);
   const cat = itemHoardCategory(it);
   pl._itemsFoundByCat[cat] = (Number(pl._itemsFoundByCat[cat]) || 0) + 1;
 }
@@ -143,7 +141,6 @@ export function rollMagicItemFor(
   const takenEffects = takenEff ?? awardedEffectSet(gs);
   const pl = playerIndex == null ? undefined : (gs?.players ?? [])[playerIndex]; // as JavaScript reads [][null]
   if (!pl) return rollMagicItem(monsterPower, takenNames, takenEffects);
-  migrateHoardTally(pl);
   const found = pl._itemsFoundByCat ?? {};
   const t = lairItemTier(monsterPower);
   const avail = (c: string | undefined, tt: number | null) =>

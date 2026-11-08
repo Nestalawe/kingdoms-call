@@ -126,8 +126,9 @@ describe('a feature an older save marked discovered stays known to every realm',
     ({ name: 'Troll Den', cleared: false, treasure: 50, ...extra }) as unknown as ProvinceFeature;
 
   test('an older save’s discovered feature, discovered again by one realm, is still known to the others', () => {
-    // before discovery was kept realm by realm, a feature had `discovered` and no `discoveredBy`
-    const f = feature({ discovered: true });
+    // before discovery was kept realm by realm, a feature had `discovered` and no `discoveredBy`: the save's upgrade
+    // grandfathers it (P1-15f3), and the turn reads it so
+    const f = feature({ discovered: true, _legacyAll: true, discoveredBy: [] });
     expect([featDiscovered(f, 0), featDiscovered(f, 1)]).toEqual([true, true]);
     discoverFeat(f, 1);
     expect([featDiscovered(f, 0), featDiscovered(f, 1), featDiscovered(f, 2)]).toEqual([true, true, true]);
