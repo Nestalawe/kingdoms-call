@@ -192,8 +192,8 @@ describe('the planting helpers put the line in the same place in either layout',
       plantBefore(code, file, 'resolveTurn', 'turnLog', 'PLANTED_BEFORE();'),
       plantAtStart(code, file, 'resolveTurn', 'PLANTED_FIRST();'),
     ].map((c) => {
-      fs.writeFileSync(path.join(copy, 'planted.js'), c);
-      const body = compactDeclaration(path.join(copy, 'planted.js'), 'resolveTurn');
+      fs.writeFileSync(path.join(copy, 'planted.ts'), c);
+      const body = compactDeclaration(path.join(copy, 'planted.ts'), 'resolveTurn');
       return [body.indexOf('PLANTED_BEFORE();const{turnLog}=turnContext;'), body.indexOf('{PLANTED_FIRST();')];
     });
   };

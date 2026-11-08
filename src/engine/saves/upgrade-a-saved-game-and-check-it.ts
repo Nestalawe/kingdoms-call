@@ -442,8 +442,10 @@ function holdsAList(holder: unknown, key: string, mayBeEmpty = false): boolean {
 }
 
 /** Throws, before anything changes, on a save that isn't a game in play: no provinces, no realms, or no list of heroes
- *  (the new game's settings, before Turn 0; a save cut short). Read as it was loaded, whatever its type says. */
-function refuseASaveThatIsNotAGameInPlay(save: unknown): void {
+ *  (the new game's settings, before Turn 0; a save cut short). Read as it was loaded, whatever its type says. A save it
+ *  lets through is the game's state as the turn reads it (resolveTurn makes it first, on the save as parsed): where its
+ *  shape differs from this build's, the check after the upgrade names the place, and the turn runs on it as it is. */
+export function refuseASaveThatIsNotAGameInPlay(save: unknown): asserts save is GameState {
   const world: unknown = typeof save === 'object' && save !== null ? Reflect.get(save, 'world') : undefined;
   if (!holdsAList(world, 'provinces') || !holdsAList(save, 'players') || !holdsAList(save, 'characters', true))
     throw new Error(

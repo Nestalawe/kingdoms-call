@@ -1,15 +1,19 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcRng, kcRngStream } from './rng.ts';
-import { upgradeGameState } from './saves/upgrade-a-saved-game-and-check-it.ts';
+import {
+  refuseASaveThatIsNotAGameInPlay,
+  upgradeGameState,
+  type WhatTheSavesUpgradeFound,
+} from './saves/upgrade-a-saved-game-and-check-it.ts';
+import type { Character, GameState } from '../schemas/saved-game-state.ts';
 import { seedUsedHeroNames } from './names.ts';
 import { ensureAllLairHoards } from './items/lair-items.ts';
 import { d100, seedUsedArmyNames } from './dice-and-army-names.ts';
-import { isBotRow } from './bots/setup.ts';
+import { asItsGuardReadsIt } from './rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim } from './bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts';
 import { botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning } from './bots/bot-realms-plan-the-turn-concessions-movement-muster-economy-actions-hygiene-the-reckoning-and-the-duel-forecast.ts';
 import { perkTier, snapshotHeldItems } from './titles/perks.ts';
 import { telRealmSnapshot } from './turn/log-line-helpers.ts';
-import { createTurnContext } from './turn/context.ts';
+import { createTurnContext, type TheGamesSlotRow, type TurnContext } from './turn/context.ts';
 import { syncAllMaxHp } from './heroes/experience-skill-rises-and-earned-hp.ts';
 import { effStat } from './heroes/effective-skills-and-hidden-heroes.ts';
 import { emit } from './turn/events-and-their-audiences.ts';
@@ -73,14 +77,19 @@ import {
 //                     differs from this build's schema, by its path and kind; the turn ran on it as it was, and the
 //                     shell's message tells the GM, as the GM's log does
 // The body keeps runTurn's two-space indent and names, so the code anchors in tests/README.md still match.
-export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
+export function resolveTurn(
+  save: string | GameState,
+  freshPlayers: TheGamesSlotRow[],
+  expectedTurnToRun: number,
+  seed?: number | null,
+) {
   // ── THE TURN'S DICE (P1-08m, 2026-10-20) ── given a seed, the turn plays on dice of its own: kcRngStream(seed), made
   // once, lent (kcRng.use) for the turn and again for the Spy-stealth step, whose rolls carry on from the turn's. The
   // dice in use before are given back after each, also when it throws, so nothing else the page runs between them (the
   // save, another game's turn, the watcher) draws from the turn's. With no seed, nothing is lent. The reports draw no
   // dice (P1-12b2), and since P1-12b3 they are the views', which the shell calls: they are lent none.
   const turnDice = seed == null ? null : kcRngStream(seed);
-  const onTheTurnsDice = (fn) => {
+  const onTheTurnsDice = <TheResult>(fn: () => TheResult): TheResult => {
     if (!turnDice) return fn();
     const was = kcRng.use(turnDice);
     try {
@@ -90,9 +99,13 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     }
   };
   return onTheTurnsDice(() => {
-    let whatTheSavesUpgradeFound;
+    let whatTheSavesUpgradeFound: WhatTheSavesUpgradeFound;
+    let G: GameState;
     try {
-      G = typeof G === 'string' ? JSON.parse(G) : G;
+      const parsed: unknown = typeof save === 'string' ? JSON.parse(save) : save;
+      // the upgrade's first refusal, made here too, so the turn holds the save as a game in play from its first read
+      refuseASaveThatIsNotAGameInPlay(parsed);
+      G = parsed;
       seedUsedArmyNames(G);
       seedUsedHeroNames(G);
       whatTheSavesUpgradeFound = upgradeGameState(G); // the save brought up to date (engine/saves/, plan P1-15a)
@@ -100,32 +113,18 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
       lastTurnsBattleAndDuelSwordsClearedFromTheMap(G); // the save still holds last turn's crossed swords on the map
     } catch (e) {
       // the orders are already cleared: the catch at the end of runTurn puts them back
-      throw new Error(`Could not read the saved game: ${(e && e.message) || e}`);
+      throw new Error(`Could not read the saved game: ${theWordsOfWhatWasThrown(e)}`, { cause: e });
     }
     // ── THE TURN'S CONTEXT (plan P1-08a) ── what the helpers lifted out of resolveTurn read: the state, the log
     // and its collectors, the phase being resolved. They take it first (src/engine/turn/context.ts).
-    const turnContext = createTurnContext(G, freshPlayers, expectedTurnToRun);
-    // what the save's upgrade found (a retired discovery taken, a hero carried over to the earned-HP pool): the turn's
-    // end tells the GM and the realms, and the save keeps none of it
-    turnContext.whatTheSavesUpgradeFound = whatTheSavesUpgradeFound;
-    // ── MERCENARY BAND IDS (P1-18b, 2026-10-18) ── a band made this turn is `merc_t<turn>_<n>`, counted
-    // afresh each turn: no clock and no dice, so the turn's dice don't depend on how many bands it makes.
-    // The `merc_` prefix is what the hire code tests for, and an older save's `merc_<ms>_<b36>` ids can't
-    // meet these. The turn is the one being run (expectedTurnToRun), not G.turn, which advances mid-turn.
-    const _mercIds = { n: 0 };
-    turnContext._mercIds = _mercIds;
-    // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn, and
-    // the facts for the statistics the turn files in its order (battles, lair fights, captures, deaths, spells:
-    // recordForTheStatistics, plan P1-12d33). Written to turn_events after the save, one row per realm — see
-    // writeTurnTelemetry at the end of runTurn.
-    const _tel = {
-      pre: {},
-      orders: {},
-      factsInTheTurnsOrder: [],
-    };
-    turnContext._tel = _tel;
+    // It is whole at birth (plan P1-10b51): every field its start value, what the upgrade found among them.
+    const turnContext: TurnContext = createTurnContext(G, freshPlayers, expectedTurnToRun, whatTheSavesUpgradeFound);
+    // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn (the context's
+    // _tel, which also files the facts for the statistics).
+    const { _tel } = turnContext;
     try {
-      (G.players || []).forEach((pl, pi) => {
+      // (a list: the refusal above made sure; a gap in it is passed over)
+      G.players.forEach((pl: GameState['players'][number] | null | undefined, pi) => {
         if (pl) _tel.pre[pi] = telRealmSnapshot(G, pi);
       });
     } catch (_te) {
@@ -136,14 +135,12 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // (_encountered, driven by fog-of-war) as it stands at the START of the turn. A bot then declares
     // war (below, just before diplomacy resolution) on the same cadence a human would: it reacts to
     // what it knew going into the turn, the declaration is applied at end of turn, and war stands
-    // next turn — reusing the existing human war tempo.
-    const _botPlayerIdx = new Set((freshPlayers || []).filter(isBotRow).map((p) => p.player_index));
-    turnContext._botPlayerIdx = _botPlayerIdx;
+    // next turn — reusing the existing human war tempo. (The bot realms, by their slot rows: the context's
+    // _botPlayerIdx.)
+    const { _botPlayerIdx, _botEncounteredAtStart } = turnContext;
     everyRealmStampedBotOrHumanFromTheBotSlotRows(turnContext);
-    const _botEncounteredAtStart = {};
-    turnContext._botEncounteredAtStart = _botEncounteredAtStart;
     _botPlayerIdx.forEach((idx) => {
-      _botEncounteredAtStart[idx] = [...(((G.players || [])[idx] || {})._encountered || [])];
+      _botEncounteredAtStart[idx] = [...(G.players[idx]?._encountered ?? [])];
     });
 
     turnStartRepairsAndAFreshSlateOfOrdersForEveryHero(turnContext);
@@ -167,79 +164,10 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // public — if true, all players who own or have characters in this province see it
     // redact — if true, enemy army strength is shown as a rough estimate only
     const { turnLog } = turnContext;
-    // CLAIRVOYANCE watch snapshot. targetChar._clairvoyantBy is cleared at turn-end BEFORE the
-    // per-player reports are built, so record each caster's active watch here (one per player — a new
-    // casting replaces the old) to survive into report generation. { playerIndex: {charId, fromPhase}
-    // }.
-    const clairWatch = {};
-    turnContext.clairWatch = clairWatch;
-    // Which commanders fought in each battle, keyed by provinceId@phase. Every battle line carries a
-    // SINGLE charId — the attacker's (via _logCtx) for a fresh fight, or the ranking live force for a
-    // resumed stalled battle. This map lets that report re-file the fight under THIS player's own
-    // commander who fought there.
-    const battleCommanders = {};
-    turnContext.battleCommanders = battleCommanders;
-    // 2026-10-08 (Toby item 7): every character who stood in a field battle, by id → the phase it was
-    // fought in. That is both leaders AND every armed character of either side standing on the ground,
-    // so a general pooled in as a reinforcement counts too. ONE BATTLE PER PHASE reads it: a chase
-    // already under way waits when its hunter has fought this phase — as the attacker OR the defender.
-    const fieldBattlePhase = {};
-    turnContext.fieldBattlePhase = fieldBattlePhase;
-    // Current character context — set by processOrder: the hero a line naming THE_HERO_WHOSE_ORDER_IS_RESOLVING is
-    // filed under (when the line reaches his realm), and the phase of a line that names none
-    turnContext._logCtx = { charId: null, phase: null };
-    // the phase currently being resolved. _logCtx is cleared to null between characters and after
-    // resolveStalledBattles, so a skill-rise earned in a phase-pipeline STAGE
-    // (force-march reinforcement, defend-reaction, pursuit movement) — outside processOrder — would
-    // otherwise be deferred with phase null and land under END OF TURN. This is the reliable
-    // fallback.
-    turnContext._currentPhase = null;
-    // once the phase loop has finished, EVERY remaining line of the turn is an end-of-turn line (Mass
-    // Healing, couriers, wages, de-consecration, max-HP sync …). _logCtx and _currentPhase are both
-    // null by then, and a null phase was being filed under SPRING in the character sections of both
-    // reports. This flag makes emit stamp phase 99 ("End of Turn") for anything emitted after the
-    // pipeline, so no end-of-turn event can be reported a year early again.
-    turnContext._afterPhases = false;
-    // while a battle (or its carry-on series) is resolving, this holds the contested province's id so
-    // trySkillGain can cap a combat skill to ONE gain per province-battle-series (carry-on battles
-    // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between
-    // fights.
-    turnContext._combatSkillProv = null;
-    // 2026-10-13 (item 6, Toby): while a pre-battle duel is fought, each duellist's id → the foe's name,
-    // so a skill rise earned in it can say so (resolveDuel sets it; trySkillGain reads it).
-    turnContext._duelFoes = null;
-    turnContext._battleSeq = 0; // 2026-09-23d: numbers each emitted battle so the player portal can fold it (emitBattle)
-    // The Defend step (see flushDefendStep in the phase loop): true while the phase's non-moving orders
-    // are still resolving; hosts raised meanwhile where a Defend general would answer wait in the queue.
-    turnContext._tier0Open = false;
-    turnContext._unitGainQueue = [];
-    // while a duel against a LOCAL CHIEFTAIN (a neutral guard) is resolving, this holds
-    // {used:false}. The FIRST skill advance of that duel closes it for every skill — melee, archery and
-    // thief could each roll before, so one chieftain could train three skills at once. Unlike
-    // _combatSkillProv (which is per-skill) this cap is TOTAL: one advance per duel, whatever the
-    // skill.
-    turnContext._chieftainDuelGain = null;
 
     relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks(turnContext);
     botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim(turnContext);
     warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages(turnContext);
-
-    // incidental skill-rises (those NOT tied to a battle narrative) are buffered here and flushed at
-    // the END of the phase, so a line like "…Explorer rises to level 1…" reads as the consequence it
-    // is — reported after the move/action that earned it, not jumping ahead of it.
-    turnContext._deferredSkillLogs = [];
-    // set while the Hunting Rumours odds simulation runs fights in the background — no sandbox fight
-    // may ever train a real skill (see simulateLairOdds).
-    turnContext._pcSimulating = false;
-
-    // Record killed armies into province grave pool for Skeletal Armies spell Elven army units of an
-    // Elven KINGDOM that would fall in battle have a terrain-based chance to slip the field and make
-    // for home instead of dying. The chance is decided here, at the moment of loss; the survivor is
-    // DELIVERED at the end of the turn (see flushElvenEscapes), to the king's home province — or, if
-    // that has been lost, the realm's wealthiest remaining province — so the destination reflects
-    // final ownership. Desert/mountain 30%, plains 45%, forest/jungle 60%.
-    const _elvenEscapeQueue = [];
-    turnContext._elvenEscapeQueue = _elvenEscapeQueue;
 
     movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan(turnContext);
     // ── BOT DECISIONS + default-to-Defend ── run here, after every helper const in this block is initialised
@@ -257,9 +185,9 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart(turnContext);
     for (let ph = 0; ph < 5; ph++) {
       turnContext._currentPhase = ph; // reliable phase for skill-rises earned outside processOrder
-      const _phaseStartLoc = {};
-      (G.characters || []).forEach((c) => {
-        if (c && c.alive) _phaseStartLoc[c.id] = c.location;
+      const _phaseStartLoc: Partial<Record<number, number | null>> = {};
+      G.characters.forEach((c: Character | null | undefined) => {
+        if (c?.alive) _phaseStartLoc[c.id] = c.location;
       }); // for noteSilentHeroes
       startPhaseHealingSnapshotsAndStalledBattles(turnContext, ph);
 
@@ -303,18 +231,30 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
     // as they always were, and write nothing to it (P1-12b2): the Spy-stealth rolls and the Invisibility re-stamp, which
     // change it, are a step of their own (below) that the shell calls first. The views build them (P1-12b3), from what
     // whatTheReportsRead (below) hands the shell.
-    const _reports = { stealthRolled: false, built: false };
-    turnContext._reports = _reports;
 
     return {
       state: JSON.stringify(G),
       log: turnLog,
-      spyStealthAndInvisibilityStampedForTheReports: () =>
-        onTheTurnsDice(() => spyStealthAndInvisibilityStampedForTheReports(turnContext)),
+      spyStealthAndInvisibilityStampedForTheReports: () => {
+        onTheTurnsDice(() => {
+          spyStealthAndInvisibilityStampedForTheReports(turnContext);
+        });
+      },
       whatTheReportsRead: () => whatTheReportsRead(turnContext),
       whereTheSaveDiffersFromThisBuildsSchema: whatTheSavesUpgradeFound.whereTheSaveDiffersFromThisBuildsSchema,
     };
   });
+}
+
+/** The words of what a read of the save threw, as `${(e && e.message) || e}` wrote them: its message, else itself (an
+ *  error of another realm's class too: a test's engine runs in a vm). */
+function theWordsOfWhatWasThrown(e: unknown): string {
+  let words: unknown = e;
+  if (e) {
+    const message: unknown = Reflect.get(Object(e), 'message');
+    if (message) words = message;
+  }
+  return String(words);
 }
 
 // ── THE SPY STEALTH, ROLLED AFTER THE SAVE (plan P1-12b2: out of buildReports; P1-12b3: here from its own file) ────
@@ -323,7 +263,7 @@ export function resolveTurn(G, freshPlayers, expectedTurnToRun, seed) {
 // hands it to the shell beside whatTheReportsRead, wrapped with the turn's context and lent the turn's dice; the shell
 // calls it once the turn is saved, just before the reports, so its rolls come where they always did: after the
 // turn's, before the reports. Its line goes to the end of the GM's log, as before.
-export function spyStealthAndInvisibilityStampedForTheReports(turnContext) {
+export function spyStealthAndInvisibilityStampedForTheReports(turnContext: TurnContext) {
   const { _reports, G } = turnContext;
   if (_reports.stealthRolled) throw new Error('the Spy stealth is rolled once a turn');
   _reports.stealthRolled = true;
@@ -332,8 +272,8 @@ export function spyStealthAndInvisibilityStampedForTheReports(turnContext) {
   // passes is stamped _unspottedTurn and is dropped from other players' PASSIVE sightings (map
   // markers, hero-sighting lists, presence-based province intel). A deliberate Spy still finds
   // them.
-  (G.characters || []).forEach((c) => {
-    if (!c || !c.alive) return;
+  (asItsGuardReadsIt(G.characters) ?? []).forEach((c: Character | null | undefined) => {
+    if (!c?.alive) return;
     // an Invisibility cast this turn was stamped BEFORE the turn counter advanced (§7); re-stamp it
     // to the report's turn so every report-time visibility check (which compares against
     // gameState.turn, like _unspottedTurn) still treats the caster as unseen. Spies do not pierce
@@ -370,7 +310,7 @@ export function spyStealthAndInvisibilityStampedForTheReports(turnContext) {
 // log stores them); the turn's sight, recorded as it was resolved (presenceByPhase: whose heroes stood where in each
 // phase; battleCommanders: who fought in each battle; clairWatch: whom each realm watches by Clairvoyance, and from
 // which phase); and the telemetry (_tel: the realms' snapshots and the facts for the statistics, P1-12d33).
-export function whatTheReportsRead(turnContext) {
+export function whatTheReportsRead(turnContext: TurnContext) {
   const { _reports, freshPlayers, G, turnLog, presenceByPhase, battleCommanders, clairWatch, _tel } = turnContext;
   if (_reports.built) throw new Error('buildReports() runs once a turn');
   if (!_reports.stealthRolled) throw new Error('the Spy stealth is rolled before buildReports()');

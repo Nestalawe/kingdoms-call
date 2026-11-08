@@ -32,8 +32,8 @@
 // list stopping the espionage reset (Parked); a hero with no orders at all; the record's reckoning handed what each
 // realm sent, a concession dated by the turn run, a failing record warned and set aside, gaps; the war fronts as the
 // threats name them, not on ground fought over, not under a veil; and `resolveTurn` calling the merge, the first two
-// around the bots' declarations, the third after the turn's start values, the bots' passes, the fourth, then the first
-// phase, each once with its context. Properties (fast-check): a research choice settles on the pick or the die's open
+// around the bots' declarations, the third, each handed the turn's start values (the context whole at birth,
+// P1-10b51), the bots' passes, the fourth, then the first phase, each once with its context. Properties (fast-check): a research choice settles on the pick or the die's open
 // lead, forgetting the rest, or is dropped; a message reaches exactly the realms it may, once each, with one copy; an
 // Evil or Undead realm's war on a realm met stands at once, every other waits; every empty phase sent is Defend, only
 // those. Planted faults: in the PR (P1-08k8)
@@ -754,7 +754,7 @@ describe('The default to Defend, the record and the war fronts: what the fourth 
 });
 
 describe('Where resolveTurn calls them', () => {
-  test('after the merge: the first two around the bots’ declarations, the third after the turn’s start values, then the bots’ passes, the fourth, and the first phase, once each, with its context', () => {
+  test('after the merge: the first two around the bots’ declarations, the third, each handed the turn’s start values, then the bots’ passes, the fourth, and the first phase, once each, with its context', () => {
     const b = board(engine, world, 0);
     const s = stageCase(b, {
       ...NOTHING,
@@ -775,7 +775,8 @@ describe('Where resolveTurn calls them', () => {
     const names = [MERGE, ...STAGES, FIRST_PHASE, ...BOTS];
     const g = engine;
     const was = names.map((f) => [f, g[f] as Fn] as const);
-    const seen: { fn: string; tc: unknown; declared?: unknown; deferred?: boolean; botOrders?: boolean }[] = [];
+    const seen: { fn: string; tc: unknown; declared?: unknown; deferred?: string | undefined; botOrders?: boolean }[] =
+      [];
     const botHero = must(
       b.G.characters.find((c) => c.player === 1),
       'a bot hero',
@@ -791,7 +792,7 @@ describe('Where resolveTurn calls them', () => {
             ...(f === STAGES[0] || f === STAGES[1]
               ? { declared: JSON.parse(JSON.stringify((t?.['diploDeclarations'] as Raw)['1'] ?? null)) }
               : {}),
-            ...(f === STAGES[1] || f === STAGES[2] ? { deferred: Array.isArray(t?.['_deferredSkillLogs']) } : {}),
+            ...(f === STAGES[1] || f === STAGES[2] ? { deferred: JSON.stringify(t?.['_deferredSkillLogs']) } : {}),
             ...(f === STAGES[3] ? { botOrders: (G_.turnOrders[botHero.id] ?? []).every((o) => o != null) } : {}),
           });
         }
@@ -826,7 +827,7 @@ describe('Where resolveTurn calls them', () => {
     expect(stages.every((x) => x.tc === stages[0]?.tc)).toBe(true);
     expect(seen.find((x) => x.fn === STAGES[0])?.declared).toBeNull();
     expect(seen.find((x) => x.fn === STAGES[1])?.declared).toEqual({ 2: 'enemy' });
-    expect(seen.filter((x) => 'deferred' in x).map((x) => x.deferred)).toEqual([false, true]);
+    expect(seen.filter((x) => 'deferred' in x).map((x) => x.deferred)).toEqual(['[]', '[]']);
     expect(seen.find((x) => x.fn === STAGES[3])?.botOrders).toBe(true);
   });
 
