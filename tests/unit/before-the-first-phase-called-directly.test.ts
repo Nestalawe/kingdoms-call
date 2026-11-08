@@ -9,8 +9,8 @@
 // that fail, a Cathedral's home off the map, a record that fails. Properties (fast-check): a research choice settles on
 // the lead picked, or the die's among those the realm may still find, forgetting the rest, or is dropped; a message
 // reaches exactly the realms it may, once each, with one copy; an Evil or Undead realm's war on a realm it has met
-// stands at once, every other waits; every empty phase sent is Defend, and only those; every guardian is 5 HP frailer,
-// never below 5.
+// stands at once, every other waits; every empty phase sent is Defend, and only those. (The guardians' cut, its gaps and
+// its property are the save's upgrade's since P1-15f1: a-saved-games-old-shapes-are-mended-before-the-turn.test.ts.)
 // Level 1: four functions, called with the context resolveTurn hands them.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -26,8 +26,9 @@
 // or empty leaving none; Safe Start's and the stale lines in their order, public only for a concession; removals by
 // name past gaps; the log's hero kept through the messages, the copy carrying it; "all" read from the rows; a message
 // from a seat the save lacks; each living realm hero handed to the move pool with the turn's new pools; the mithril
-// once, the lairs' renaming only for an old world and told as it counts; each realm asked for its Cathedral, the home
-// looked up only when it has no province; a home off the map; gaps among provinces and features; a gap in the realms'
+// once, the lairs' renaming never the stage's (the upgrade's), the lairs renamed and the guardians cut told as the
+// upgrade counted; each realm asked for its Cathedral, the home looked up only when it has no province; a home off the
+// map; a gap in the realms'
 // list stopping the espionage reset (Parked); a hero with no orders at all; the record's reckoning handed what each
 // realm sent, a concession dated by the turn run, a failing record warned and set aside, gaps; the war fronts as the
 // threats name them, not on ground fought over, not under a veil; and `resolveTurn` calling the merge, the first two
@@ -35,7 +36,7 @@
 // phase, each once with its context. Properties (fast-check): a research choice settles on the pick or the die's open
 // lead, forgetting the rest, or is dropped; a message reaches exactly the realms it may, once each, with one copy; an
 // Evil or Undead realm's war on a realm met stands at once, every other waits; every empty phase sent is Defend, only
-// those; every guardian 5 HP frailer, never below 5. Planted faults: in the PR (P1-08k8)
+// those. Planted faults: in the PR (P1-08k8)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';

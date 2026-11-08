@@ -27,8 +27,10 @@
 // and its kind, never a value. The check is not the save: the turn plays the save as upgraded, every key kept, never
 // the parse's output (docs/traps.md). A save that differs still plays (Theo's Choice 1, "tell now, stop later"): the
 // turn's end tells the GM in the GM's log alone, and the turn's message (src/ui/gm/turn-shell.ts) says it too.
-// It draws no dice and writes no line. What it finds for the GM's log, it returns (WhatTheSavesUpgradeFound): the turn
-// keeps it on the turn's context and tells it at the turn's end, as before, and the save keeps none of it.
+// It writes no line, and draws no dice but an old world's lairs' renaming (its names, from the turn's dice; no save
+// that has played a turn since _lairNamesV3 came lacks it). What it finds for the GM's log, it returns
+// (WhatTheSavesUpgradeFound): the turn keeps it on the turn's context and tells it where it did before, and the save
+// keeps none of it.
 // After the six, the three old flags' passes (P1-15f1; until then the turn ran them before the bots plan, after the
 // merge of the realms' orders, the lair hoards and the bots' first diplomacy; none of those reads what they change):
 //   7. an old world's lairs renamed once, each from its own guardian's pools (renameLairsThematicP, behind _lairNamesV3;
