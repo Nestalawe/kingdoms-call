@@ -357,7 +357,8 @@ A change to the save's shape changes its schema; one an older save can't meet as
 retyped or now required) also bumps `schemaVersion`: a numbered step in `THE_NUMBERED_STEPS_OF_THE_UPGRADE`, the
 number in `the-saved-games-version-this-build-writes.ts`, and a fixture of the new version
 (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`), never edited once merged. Example: a field renamed with no step: every live
-save keeps the old name, which the new code never reads. Checks:
+save keeps the old name, which the new code never reads. Version 2 is one (P1-15f5): `botDiplomacy` now required, its
+step giving an older save "normal". Checks:
 `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` fails until a step mends every older fixture,
 and on a version without its fixture. [Detail](architecture/a-saved-game-its-version-its-upgrade-its-check.md#a-change-to-the-saves-shape-needs-its-version).
 

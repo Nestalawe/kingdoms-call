@@ -37,8 +37,13 @@ the turn reads it.
   (`consecratedIds` still gives a realm with no list an empty one: a new game's realms hold none), its find tally's
   retired `consumable` count folded into `combat`, and a feature discovered with no `discoveredBy` known to every realm
   (`_legacyAll`, an empty list). After the check, so it still names the old fields.
-- **Still in the turn** (P1-15's second slice brings them here, each with an old shape staged): the readers of older
-  shapes. `ensureAllLairHoards` stays in the turn: it draws dice every turn.
+- **Version 2's step** (P1-15f5, `src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts`), between the
+  passes and the check, once, on a save below version 2: each shape an older build wrote is given the value its reader
+  works out today (a `{ gold }` treasure, a guardian's single `passive`, a special with no `dmgW` and no range that
+  deals damage, a lair's `lairItems` and a stocked lair's `_clearGold`, a missing `_hoardGoldOrig`, a grave with no
+  `served`, an item's lore, old race name and stale inline slot, a missing `botDiplomacy`, "normal"). A special's range
+  that deals damage has no such value (the dice roll it): it is left, and the check names it. The readers keep their
+  fallbacks until P1-15f6. `ensureAllLairHoards` stays in the turn: it draws dice every turn.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
   a new world and mended; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
   tier, the guardians' cut) and
@@ -57,21 +62,22 @@ the turn reads it.
   and those orders save: an encounter plan as the portal sends it and the merge keeps it (a duel stance, an Evil hero's
   conquest doctrine, `evilMode`; no bot's `_botStance`), every mastery order's once-a-turn stamp (the schema names
   every key of `MASTERY_ORDER_KEYS`), Release Hero's `_releasedBy`, a spied hero's entry, the Grand Design's fields, a
-  win by elimination, a Wild Calling's beasts; and `botDiplomacy` is optional (games begun before 26 September lack
-  it). What checks it: `tests/unit/the-fields-a-human-realm-and-the-rare-orders-save-parse-strictly.test.ts`. Since
+  win by elimination, a Wild Calling's beasts; and `botDiplomacy`, required since version 2 (its step gives a game
+  begun before 26 September "normal"). What checks it: `tests/unit/the-fields-a-human-realm-and-the-rare-orders-save-parse-strictly.test.ts`. Since
   P1-15e2 the scripted realm sends what the portal sends (a plan for every hero, in the form's names; the matrix fails
   a game on a `[Save check]` line), so the matrix's games also save a human realm's plans, turn after turn; since
   P1-15e3 its spare heroes also give the form's other orders where they stand (Spy, Hire Hero with its card, Search
   Lair, Research, Practice Skill, Explore, Rest, a mastery at its level, Release Hero once a game), so the games save
   Release Hero's `_releasedBy` and a spied hero's entry too.
 - **The version**: a save holds the number of its shape, `schemaVersion`, at its top level; a save without
-  one is version 0 (every live save before P1-15c). Version 1 is the shape the six passes leave. The number this build
+  one is version 0 (every live save before P1-15c). Version 1 is the shape the six passes leave; version 2, an older save's shapes mended once (above). The number this build
   writes is in `src/engine/saves/the-saved-games-version-this-build-writes.ts`, a file that imports nothing, so world
   generation writes it on a new world without loading the passes. `upgradeGameState` first refuses a save from a newer
   build, before anything changes (`resolveTurn` throws "Could not read the saved game: This game was saved by a newer
-  version of Kingdoms Call (save version 2; this page knows 1). Reload this page.", and the shell puts the orders
+  version of Kingdoms Call (save version 3; this page knows 2). Reload this page.", and the shell puts the orders
   back); then, after the passes, it runs each numbered step (`THE_NUMBERED_STEPS_OF_THE_UPGRADE`, `{ version, upgrade
-  }`) whose version is above the save's, and stamps the save with it. Version 1's step is the stamp alone. When to
+  }`) whose version is above the save's, and stamps the save with it. Version 1's step is the stamp alone. A GM page
+  opened before version 2 deployed refuses a version-2 save ("Reload this page"): reload every open GM page after it. When to
   bump it: [traps.md](../traps.md#a-change-to-the-saves-shape-needs-its-version).
 - **The fixtures**: `tests/fixtures/saves/version-<n>.json`, one per version, each a made-up game of three
   bot realms after its third turn, one line of JSON (about 0.3 MB), made by
@@ -165,10 +171,10 @@ older save.
   fixture, parses it strictly and plays a turn on it, so an older fixture fails until a step mends it, and a version
   without its fixture fails too.
 - **A GM page of an older build refuses a newer save.** The turn stops before anything changes ("This game was saved by
-  a newer version of Kingdoms Call (save version 2; this page knows 1). Reload this page."), and the shell puts the
+  a newer version of Kingdoms Call (save version 3; this page knows 2). Reload this page."), and the shell puts the
   realms' orders back. A page opened before P1-15c deployed has no such check: it would run a turn on any save. So the
-  first bump (P1-20's, version 2) deploys only once every open GM page has had time to reload onto a build with the
-  check.
+  first bump (version 2, P1-15f5) came two weeks after the check, and every open GM page is reloaded after a bump's
+  deploy.
 
 ## The check is not the save
 

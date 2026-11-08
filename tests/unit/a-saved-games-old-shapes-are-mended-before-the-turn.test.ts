@@ -32,13 +32,18 @@
 //   feature an older save discovered for everyone, with no list of who discovered it, is known to every realm and given
 //   an empty list (a gap among the features passed over; one discovered again is still known to all);
 // - all of them at once, then the upgrade run again on what it left: the second run changes nothing and finds nothing.
+// - version 2's step (P1-15f5), each shape staged on the version-1 fixture, which then parses strictly: a {gold}
+//   treasure, a guardian's single perk, a special with no weight (a range that deals damage is left, and named by the
+//   check), a lair's items left by the fallen and its cached gold, a stocked lair's missing first hoard, a grave with no
+//   service list, an item's lore, old race and stale slot, a missing bots' diplomacy; all at once, then again; gaps
+//   passed over; on a fixture holding none, only the stamp; a save at version 2 not mended again.
 // The world staged on is one that has played its first turn: its guardians already re-measured (a new world isn't:
 // question 17). And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a
 // known defect, fixed in its own pull request, whose fix removes it (Mithril Armour is made at tier 1, and the upgrade
 // raises it to its floor, tier 2; a new world's guardians are made 5 HP frailer, question 17, P1-23l), so the list only
 // shrinks.
 // Each staged case is certain on any world: it stages what it reads (a hero's items and his realm's discoveries, a
-// home's race), so no seed can miss it. Each pass left out of the upgrade turns its cases red.
+// home's race), so no seed can miss it. Each pass, and each of version 2's mends, left out turns its cases red.
 // Level 1 (unit): world generation and the upgrade, called directly on the engine's modules (plan P1-14a); no turn is
 // played. Not static: it runs the passes. The turn's end telling what the upgrade found is the stages' tests
 // (tests/lib/after-the-phases-cases.ts, tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts).
@@ -59,9 +64,12 @@
 // "(wandering)" tag taken off, counted (a property; gaps passed over); a realm with no home given its first province,
 // else its king's place; after the check (still naming them), a single consecration folded into the list, a Consumable
 // tally into the Combat Item's, a feature discovered for everyone known to every realm. All at once, then again: the
-// second run changes nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril
+// second run changes nothing and finds nothing. Version 2's step (P1-15f5), on the version-1 fixture: each older shape
+// given its reader's value, then parsed strictly (a damage range that deals damage left, and named); gaps passed over;
+// a save at version 2 not mended again. Four new worlds (2 to 6 realms) change only by a known list (Mithril
 // Armour made at tier 1, raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
-// out turns its cases red (18 of 18). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
+// out turns its cases red (18 of 18), as does each mend of version 2's step (27 of 27: each staged on the version-1
+// fixture, which then parses strictly). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
 // since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
 // settings)
 import fs from 'node:fs';
@@ -1093,13 +1101,17 @@ const VERSION_2_SHAPES: {
     mended: (_s, g) => ({ got: loose(g as object)['served'], want: [] }),
   },
   {
-    name: 'an item with no lore is given its lore as the reader works it out, by its name',
+    name: "an item in a hero's pack with no lore is given its lore as the reader works it out, by its name",
     mend: 'lore',
     stage(s) {
-      const it = anItem(s, 'an item whose lore is its name’s', (i) => {
+      const found = anItem(s, 'an item whose lore is its name’s', (i) => {
         const name = i['name'];
         return typeof name === 'string' && i['lore'] === ITEM_LORE_BY_NAME[name];
       });
+      const it = loose(copy(found));
+      it['id'] = s.nextItemId;
+      s.nextItemId += 1;
+      aKingWithNothingToAdd(s).items.push(it as never);
       const lore = it['lore'];
       delete it['lore'];
       return [it, lore];
