@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_CARRIER_BERTHS, KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
@@ -9,8 +9,10 @@ import {
   druidLevelTheMasteryCounts,
   druidMasteryGainOver,
   itemUsableBy,
+  seaLiftOfAColumn,
   skillFameLabelM,
   strengthLeftByADruidShortfall,
+  takesHalfAHullAboard,
   theDruidMasteryLiftsAUnitOfThisType,
   theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt,
   unitBaseStrength,
@@ -456,31 +458,29 @@ export function renderReportView(report) {
             const _airNote = _airborne
               ? kcHtml` · <span style="color:#2d6a8a">🦅 Airborne — the flyers carry the foot soldiers, so the whole force flies (crosses sea, moves at the flyers' pace)</span>`
               : '';
-            // sea transport — how many hulls this force needs to enter a sea province, and how many
-            // it has. Mirrors the engine's getSeaCapability: only the six carrier fleets carry (a
-            // hull each); light foot (levies, Men-at-Arms, archers incl. Black Arrows, gun-crews,
-            // garrisons, Goblin Horde, Forest Wardens, Dwarven Guard, Orc Berserkers:
-            // KC_UNIT_CLASS.lightFoot) take ½ a hull, everything else on foot takes
-            // a full hull; flyers and sea units need none; Naval mastery (a trained level of 8+, as
-            // the turn reads it: R-125) halves the need; a fully airborne column needs no ships at all.
-            const _CARRIER_UI2 = new Set(KC_UNIT_CLASS.carrier);
-            const _LIGHT_UI2 = new Set(KC_UNIT_CLASS.lightFoot);
+            // sea transport: whether this force can put to sea is the turn's own answer (seaLiftOfAColumn, which
+            // getSeaCapability and the Move note ask too: R-135): its hulls (each carries double under a trained Naval
+            // of 8 or more, R-125) and its humanoid flyers pool their lift. The figures explain it: the hulls its land
+            // units need (light foot half a hull, the rest a whole one), the berths it has, the units left ashore.
+            const _naval8 = ((c.skills || {}).naval || 0) >= 8;
+            const _lift = seaLiftOfAColumn(arr, _naval8);
             const _landUnits = arr.filter((a) => !_AER_UI2.has(a.type) && !_SEA_UI2.has(a.type));
-            let _hullNeed = _landUnits.reduce((n, a) => n + (_LIGHT_UI2.has(a.type) ? 0.5 : 1), 0);
-            if (((c.skills || {}).naval || 0) >= 8) _hullNeed /= 2;
+            let _hullNeed = _landUnits.reduce((n, a) => n + (takesHalfAHullAboard(a) ? 0.5 : 1), 0);
+            if (_naval8) _hullNeed /= 2;
             const _hullNeedShown = Math.ceil(_hullNeed);
-            const _hullHave = arr.reduce(
-              (n, a) => n + (_CARRIER_UI2.has(a.type) ? (KC_CARRIER_BERTHS && KC_CARRIER_BERTHS[a.type]) || 1 : 0),
-              0,
-            ); // berths: a turtle's Island Back offers two
+            const _hullHave = _lift.berths; // berths: a turtle's Island Back offers two
+            const _ashore = _lift.unitsLeftAshore.length;
+            const _hulls = kcHtml`needs ${_hullNeedShown} hull${_hullNeedShown !== 1 ? 's' : ''}, has ${_hullHave}`;
             let _seaNote = '';
-            if (_landUnits.length === 0)
+            if (_lift.answer === 'all')
               _seaNote = kcHtml` · ⚓ <span style="color:#2d6a8a">Sea: every unit sails or flies on its own</span>`;
             else if (_airborne) _seaNote = '';
-            else if (_hullHave >= _hullNeed)
-              _seaNote = kcHtml` · ⚓ <span style="color:#1d5a1d">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown !== 1 ? 's' : ''}, has ${_hullHave} — can put to sea</span>`;
+            else if (_lift.answer === 'sea' && _hullHave >= _hullNeed)
+              _seaNote = kcHtml` · ⚓ <span style="color:#1d5a1d">Sea transport: ${_hulls} — can put to sea</span>`;
+            else if (_lift.answer === 'sea')
+              _seaNote = kcHtml` · ⚓ <span style="color:#1d5a1d">Sea transport: ${_hulls}, and the flyers carry the rest — can put to sea</span>`;
             else
-              _seaNote = kcHtml` · ⚓ <span style="color:var(--crimson)">Sea transport: needs ${_hullNeedShown} hull${_hullNeedShown !== 1 ? 's' : ''}, has ${_hullHave} — ${_hullNeedShown - _hullHave} more fleet unit${_hullNeedShown - _hullHave !== 1 ? 's' : ''} to carry the whole force</span>`;
+              _seaNote = kcHtml` · ⚓ <span style="color:var(--crimson)">Sea transport: ${_hulls} — ${_ashore} unit${_ashore !== 1 ? 's' : ''} left ashore: more fleet units or flyers to carry the whole force</span>`;
             const druNote =
               druidUnits > 0
                 ? kcHtml` · 🌿 ${druidUnits} unit${druidUnits !== 1 ? 's' : ''} need Druid ${druidShort > 0 ? kcHtml`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>` : kcHtml`<span style="color:#1d5a1d">(${c.name.split(' ')[0]} qualifies)</span>`}`
