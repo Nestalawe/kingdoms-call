@@ -21,6 +21,7 @@
 // battle's mark left on a company, the turn still runs and is saved, and the message names the place, never its
 // value, and still does once the page has refreshed the game; and a new game's Turn 0, then two turns, on the stand-in
 // database, each message with nothing of the check.
+// And the GM's log (P1-12d39): each line the turn stores keeps its kind, and the GM page draws a force's rows by it.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.ts)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
 //
@@ -52,9 +53,12 @@
 // with nothing of the check in the message; with a battle's mark left on a company, the turn runs and is saved, and the
 // message names the place and not its value, and does again once the page has refreshed the game; a new game's Turn 0
 // (`runTurn0`, `commitTurn0`) then two turns, each saved at version 2, no message saying anything of the check (planted
-// on copies: the message without the check, its words not shown again after the refresh, each red). Raised the
-// ratchet's `stubDbTests` by one (Theo, 2026-10-18), once for the P1-18 series; P1-15d's cases are in this file, so it
-// doesn't rise. Level 4: these are the database calls of the turn's shell (`runTurn`, `src/ui/gm/turn-shell.ts`),
+// on copies: the message without the check, its words not shown again after the refresh, each red). The GM's log
+// (P1-12d39; both red on its base): every line the turn stores keeps its kind, and the GM page's log (`loadTurnLog`)
+// draws a force's rows by a line's kind, a line of another kind opening with the force marker as its words, and an
+// older turn's line, with no kind, by its words as before. Raised the
+// ratchet's `stubDbTests` by one (Theo, 2026-10-18), once for the P1-18 series; P1-15d's and P1-12d39's cases are in
+// this file, so it doesn't rise. Level 4: these are the database calls of the turn's shell (`runTurn`, `src/ui/gm/turn-shell.ts`),
 // around the engine's `resolveTurn`; the shell runs only in the booted page. TypeScript, in `page/`
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'node:fs';
@@ -770,6 +774,72 @@ describe('the GM page plays a turn from a version-0 save', () => {
       }
     } finally {
       W.close();
+    }
+  }, 60_000);
+});
+
+// ── The GM's log as the GM page draws it (P1-12d39) ────
+describe("the GM's log keeps each line's kind, and the GM page draws a force's rows by it", () => {
+  const A_FORCE = 'a force drawn up for battle';
+  const marked = (force: Record<string, unknown>) => '⚑FORCE⚑' + JSON.stringify(force);
+  const aForce = (name: string, type: string) =>
+    marked({ name, color: '#a33', verb: 'attacks, leading', armies: [{ quality: 'Veteran', type }] });
+
+  test("a turn's stored lines each keep their kind", async () => {
+    const t = await stage();
+    try {
+      expect(await t.run()).toMatchObject({ ok: true, committed: true });
+      const stored = (t.S.DB['turn_logs'] ?? [])
+        .filter((r) => r['player_index'] === -1)
+        .flatMap((r) => r['entries'] as Record<string, unknown>[]);
+      expect(stored.length, "the turn's GM log").toBeGreaterThan(0);
+      expect(
+        stored.filter((e) => typeof e['kind'] !== 'string'),
+        'every stored line keeps its kind',
+      ).toEqual([]);
+    } finally {
+      t.W.close();
+    }
+  }, 60_000);
+
+  test("a force's rows are drawn by the line's kind, and an older turn's line, with none, by its words", async () => {
+    const t = await stage();
+    try {
+      const world = JSON.parse(String(t.game()['game_state'])) as { characters: { id: number; player: number }[] };
+      const hero = world.characters.find((c) => c.player === 0);
+      if (!hero) throw new Error('realm 0 has no hero');
+      const line = (text: string, kind?: string) => ({
+        type: 'combat',
+        text,
+        charId: hero.id,
+        phase: 1,
+        ...(kind === undefined ? {} : { kind }),
+      });
+      const drawn = async (entries: Record<string, unknown>[]) => {
+        (t.S.DB['turn_logs'] ?? []).push({ id: 'L9', game_id: 'G1', player_index: -1, turn: 9, entries });
+        t.W['currentGame'] = t.game();
+        await t.W.eval("loadTurnLog('G1',9)");
+        const shown = String(t.W.eval("document.getElementById('detail-log').textContent"));
+        t.S.DB['turn_logs'] = (t.S.DB['turn_logs'] ?? []).filter((r) => r['id'] !== 'L9');
+        return shown;
+      };
+      const byKind = await drawn([line(aForce('Aldric of Greyford', 'Footmen'), A_FORCE)]);
+      expect(byKind, "a force's rows, by its kind").toContain('• Veteran Footmen');
+      expect(byKind).not.toContain('⚑FORCE⚑');
+      const ofAnotherKind = await drawn([
+        line(aForce('Mara of the Fens', 'Dragons'), 'the battle for a province begins'),
+      ]);
+      expect(ofAnotherKind, 'a line of another kind opening with the marker: its words').toContain(
+        aForce('Mara of the Fens', 'Dragons'),
+      );
+      expect(ofAnotherKind).not.toContain('• Veteran Dragons');
+      const older = await drawn([line(aForce('Cass of Morrow', 'Archers'))]);
+      expect(older, "an older turn's line, with no kind: a force's rows by its words, as before").toContain(
+        '• Veteran Archers',
+      );
+      expect(older).not.toContain('⚑FORCE⚑');
+    } finally {
+      t.W.close();
     }
   }, 60_000);
 });

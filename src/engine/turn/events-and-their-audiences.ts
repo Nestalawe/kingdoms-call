@@ -17,7 +17,7 @@
 // Nothing stored changes in P1-12a and P1-12b (Decision 2): emit writes today's line forms, key for key and in the
 // same order: the 17 keys of the lines the old `log` helper wrote; the 14 of the lines that were pushed straight
 // into turnLog (form: 'bare', with no battle fields); and notFor after them when an `except` is given. P1-12c keeps it
-// (its Decision 3): the stored form changes once, declared, when the last area is typed.
+// (its Decision 3); the stored form changed once, declared (P1-12d39): the views store each line's kind after them.
 //
 // Every event names its hero (P1-12c2; docs/traps.md, "Every event names its hero"), and the phase falls back as the
 // old `log` helper's did:
@@ -437,6 +437,8 @@ export interface LogLine {
   notFor?: number[];
   /** What a typed line records, until the views write its words (never stored). */
   fact?: LineFact;
+  /** Its fact's kind, as the GM's log stores it (theTurnsLinesInWords, since plan P1-12d39; emit writes none). */
+  kind?: LineFact['kind'];
 }
 
 /** A line of a battle's or a duel's narrative: the fact its words are written from. emitNarrLine writes each

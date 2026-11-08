@@ -1,6 +1,7 @@
 // A province taken from a realm (setProvinceOwner, src/engine/realms/relations-and-captures.ts) tells the realm that
 // lost it, and, if it was consecrated, that its consecration is broken. Both lines went straight into the GM's log
-// before emit (plan P1-12a2): they keep that form, the 14 keys with no battle fields, to that realm alone, with no hero
+// before emit (plan P1-12a2): they keep that form, the 14 keys with no battle fields (and, stored since P1-12d39, the
+// line's kind last), to that realm alone, with no hero
 // (a real null, not the hero whose order is resolving) and, after the phases with no phase given, no phase (a real
 // null, not the End of Turn's 99 that log() would give). Passes on p1-12a1 and on P1-12a2 (nothing stored changes).
 // Level 1 (unit): setProvinceOwner is called on a context made in the test; nothing else of the turn runs. Whole games
@@ -48,7 +49,8 @@ describe('the lines a capture writes', () => {
       expect.stringContaining('Wendmeadow has been captured from you by an unknown commander (Varn)'),
     ]);
     for (const line of lines) {
-      expect(Object.keys(line)).toHaveLength(14);
+      expect(Object.keys(line).filter((k) => k !== 'kind')).toHaveLength(14);
+      expect(Object.keys(line).at(-1), 'its kind last, as the GM log stores it (P1-12d39)').toBe('kind');
       expect(line).toMatchObject({
         type: 'system',
         targets: [0],

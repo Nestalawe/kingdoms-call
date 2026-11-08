@@ -2,14 +2,14 @@
 // Decision 3) ────
 // A spy's lingering sight and the Clairvoyance feed (playerEvents, every-realms-report-and-the-lines-each-realm-reads.ts)
 // pass over some lines by their kind, which the words pass hands beside each stored line (theTurnsLinesInWords,
-// prose/the-words-of-each-line.ts; the kind is never stored). Both pass over a force drawn up for battle (the header
-// the pages read back as a record); the Clairvoyance feed passes over the roll lines too.
+// prose/the-words-of-each-line.ts; since P1-12d39 the GM's log stores it too). Both pass over a force drawn up for
+// battle (the header the pages read back as a record); the Clairvoyance feed passes over the roll lines too.
 import type { LineFact } from '../engine/turn/events-and-their-audiences.ts';
 
 type AKindOfLine = LineFact['kind'];
 
-/** A battle's force drawn up: its words are the record the pages read back (⚑FORCE⚑ and the force as JSON), no line to
- *  read in a feed. */
+/** A battle's force drawn up: its words are the record the pages read back (⚑FORCE⚑ and the force as JSON; the GM
+ *  page's log finds it by this kind, src/ui/gm/turn-log.ts), no line to read in a feed. */
 export const THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE = 'a force drawn up for battle' satisfies AKindOfLine;
 
 /** The roll lines: the kinds whose words show a roll or a battle's working, each opening with 📊 (a static test keeps

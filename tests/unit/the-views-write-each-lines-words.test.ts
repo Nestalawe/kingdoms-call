@@ -3,7 +3,7 @@
 // battle's losses tally), and theTurnsLinesInWords (src/views/prose/the-words-of-each-line.ts) writes the turn's lines
 // in words: a fact's words as the engine wrote them before, a battle's lines with their kinds' tiers ('k' key,
 // 'd' detail; since P1-12d34), its losses tally where its casualty lists begin, and every line in the form the GM's log is stored in,
-// key for key, with no fact left in it.
+// key for key, with no fact left in it and its fact's kind last (since P1-12d39).
 // Level 1 (unit): forceMarker, emitBattle and the words pass are called on a context made in the test; nothing else of
 // the turn runs, and every case is a staged battle the test writes. Whole games (the balance matrix and every realm's
 // report, both sets) prove the same words and the same stored log in play.
@@ -18,7 +18,8 @@
 // when a side brings no strength, whatever words the names hold; a line with no fact 'k') and puts its losses tally
 // where its casualty lists begin, every line with the fight's audience, hero and place; a battle with nothing to tally has no tally line, one whose lines are all for one realm
 // alone files no tally place, two battles side by side keep their own; the GM's log in words has the 17 keys in their
-// order, no fact and no tier left to work out, and a line that holds its words already is stored as it is. Red on the
+// order and its kind last (P1-12d39), no fact and no tier left to work out, and a line that holds its words already is
+// stored as it is, with no kind. Red on the
 // plants of the row's PR (a force's words without `guard`, the tally always last, every tier `'k'`). Level 1:
 // `forceMarker`, `emitBattle` and the words pass on a context made in the test
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -433,7 +434,7 @@ describe("a battle's lines in words", () => {
   });
 });
 
-describe("the GM's log in words is stored in the form it had", () => {
+describe("the GM's log in words is stored in the form it had, each line's kind after it", () => {
   const FULL = [
     'type',
     'text',
@@ -452,9 +453,10 @@ describe("the GM's log in words is stored in the form it had", () => {
     'battleId',
     'bTier',
     'gameEnd',
+    'kind',
   ];
 
-  test('every line has its 17 keys in their order, with no fact and no tier left to work out', () => {
+  test('every line has its 17 keys in their order and its kind last, with no fact and no tier left to work out', () => {
     const tc = newContext();
     fileTheBattle(tc, aBattle(tc));
     const { gmLog } = theTurnsLinesInWords(tc.turnLog);
@@ -494,7 +496,7 @@ describe("the GM's log in words is stored in the form it had", () => {
     expect(gmLog).toHaveLength(tc.turnLog.length);
   });
 
-  test("beside it, each stored line's kind in its order (none for a line that holds its words), never stored", () => {
+  test("beside it, each stored line's kind in its order (none for a line that holds its words), as each stores it", () => {
     const tc = newContext();
     const told: EventButItsWords = {
       audience: { realms: [0] },
@@ -526,7 +528,8 @@ describe("the GM's log in words is stored in the form it had", () => {
       null,
     ]);
     expect(theKindOfEachStoredLine).toHaveLength(gmLog.length);
-    for (const l of gmLog) expect(Object.keys(l)).not.toContain('kind');
+    expect(gmLog.map((l) => l.kind ?? null)).toEqual(theKindOfEachStoredLine);
+    expect(gmLog.filter((l) => Object.keys(l).includes('kind'))).toHaveLength(gmLog.length - 2);
   });
 });
 
