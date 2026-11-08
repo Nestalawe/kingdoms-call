@@ -252,10 +252,11 @@ GitHub's CodeQL scans every file a pull request into `main` changes, `tests/` an
 blocks the merge as one in `src/` does. Write test code in the form CodeQL calls safe: strip a pattern until the text
 stops changing (`text = text.replace(…)` in a loop: the result must flow back into the same name), replace every match
 (`/…/g`) and escape every special character, the backslash too; match a tag with the `i` flag and an end tag like
-`<\/script\b[^>]*>`; resolve a path a test reads (`path.resolve(root, name)`) and check it starts with `root +
-path.sep`. Example: `[was, text] = [text, text.replace(/<[^>]*>/g, '')]` in a loop is still an alert; `was = text;
-text = text.replace(…)` is not. Checks: the `main` ruleset's "Require code scanning results" rule (CodeQL, every alert);
-the pull request's CodeQL check lists each one.
+`<\/script\b[^>]*>`; resolve a path a test reads (`path.resolve(root, name)`), check it starts with `root + path.sep` in
+an `if`'s condition, and read it in that branch (a check held in a variable isn't seen). Example: `[was, text] = [text,
+text.replace(/<[^>]*>/g, '')]` in a loop is still an alert; `was = text; text = text.replace(…)` is not. Checks: the
+`main` ruleset's "Require code scanning results" rule (CodeQL, every alert); the pull request's CodeQL check lists each
+one.
 
 ## A new army unit is a dozen tables
 
