@@ -246,6 +246,17 @@ anymore". A new finding fails, even of a rule the file already has suppressed. M
 Checks: ESLint's command line (`npm run lint`, `npm run check`, the edit hook; not its API); the ratchet's
 `eslintSuppressions`.
 
+## CodeQL reads the tests too, and any alert fails the merge
+
+GitHub's CodeQL scans every file a pull request into `main` changes, `tests/` and `tools/` too, and an alert in a test
+blocks the merge as one in `src/` does. Write test code in the form CodeQL calls safe: strip a pattern until the text
+stops changing (`text = text.replace(…)` in a loop: the result must flow back into the same name), replace every match
+(`/…/g`) and escape every special character, the backslash too; match a tag with the `i` flag and an end tag like
+`<\/script\b[^>]*>`; resolve a path a test reads (`path.resolve(root, name)`) and check it starts with `root +
+path.sep`. Example: `[was, text] = [text, text.replace(/<[^>]*>/g, '')]` in a loop is still an alert; `was = text;
+text = text.replace(…)` is not. Checks: the `main` ruleset's "Require code scanning results" rule (CodeQL, every alert);
+the pull request's CodeQL check lists each one.
+
 ## A new army unit is a dozen tables
 
 A unit type is keyed by its name in tables over several files, and nothing throws when one is missed. Example: a unit
