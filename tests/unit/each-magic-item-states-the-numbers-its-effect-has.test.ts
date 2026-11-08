@@ -39,7 +39,7 @@ import {
   type ANumberOfAnItemsEffect,
   type MagicItemEffectSlug,
 } from '../../src/content/magic-item-effects-their-names-numbers-and-words.ts';
-import { theEffectsAnItemCarries } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
+import { theEffectsAnItemCarries } from '../../src/engine/rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts';
 
 /** The items whose texts don't state their effect's number yet, by the row's slug, each with its Parked entry. */

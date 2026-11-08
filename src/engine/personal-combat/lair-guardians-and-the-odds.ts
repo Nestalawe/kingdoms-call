@@ -5,9 +5,9 @@ import { ensureLairHoard } from '../world/tables.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import {
   anItemIsACombatItem,
-  anItemIsWornAsArmour,
   whatAHoardsItemDoesForTheGuardianWhoWieldsIt,
 } from '../rules/the-registry-of-magic-item-effects.ts';
+import { anItemIsWornAsArmour } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import { theApproachesAGuardiansPerksTurn } from '../rules/the-registry-of-guardian-perks.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { pcArmourMerge, transferableItems } from './helpers.ts';
