@@ -148,11 +148,14 @@ function withoutHashes(built: string): string {
 async function serving(dir: string, status?: number): Promise<{ url: string; close: () => Promise<void> }> {
   const server = http.createServer((req, res) => {
     const name = decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/').replace(/^\/+/, '');
-    const file = path.join(dir, name);
+    // The file's whole path, read only when it stays inside the folder served.
+    const root = path.resolve(dir);
+    const file = path.resolve(root, name);
+    const inside = file.startsWith(root + path.sep);
     if (status !== undefined) {
       res.writeHead(status);
       res.end();
-    } else if (!name || name.includes('..') || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+    } else if (!name || name.includes('..') || !inside || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
       res.writeHead(404);
       res.end('no');
     } else {

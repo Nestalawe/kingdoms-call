@@ -503,7 +503,10 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     const words = (column: string[], naval: number) => {
       const hero = aStagedHeroLeading(column, naval);
       let text = String(copies.armyCardSeaNote(hero['armies'], hero));
-      for (let was = ''; was !== text;) [was, text] = [text, text.replace(/<[^>]*>/g, '')];
+      for (let was = ''; was !== text;) {
+        was = text;
+        text = text.replace(/<[^>]*>/g, '');
+      }
       return text;
     };
     const knights = ['Eagle Riders', 'Galleon Fleet', 'Household Knights', 'Household Knights'];

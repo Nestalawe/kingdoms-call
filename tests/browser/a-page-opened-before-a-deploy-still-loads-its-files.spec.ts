@@ -91,8 +91,11 @@ test.beforeAll(async () => {
   server = http.createServer((req, res) => {
     const name = decodeURIComponent((req.url ?? '/').split('?')[0] ?? '/').replace(/^\/+/, '');
     // A page from the first deploy (cached before the second); everything else from the site behind it.
-    const file = path.join(name.endsWith('.html') ? first : site, name);
-    const ok = !name.includes('..') && fs.existsSync(file) && fs.statSync(file).isFile();
+    // The file's whole path, read only when it stays inside the folder served.
+    const root = path.resolve(name.endsWith('.html') ? first : site);
+    const file = path.resolve(root, name);
+    const ok =
+      !name.includes('..') && file.startsWith(root + path.sep) && fs.existsSync(file) && fs.statSync(file).isFile();
     answered.push(`${ok ? '200' : '404'} ${name}`);
     res.writeHead(ok ? 200 : 404, { 'Content-Type': (ok ? MIME[path.extname(file)] : undefined) ?? 'text/plain' });
     res.end(ok ? fs.readFileSync(file) : 'no');

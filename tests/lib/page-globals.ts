@@ -103,7 +103,7 @@ export const entryOf = (page: ScriptPage): string => `${SCRIPT_PAGES[page]}/page
 export function pageClassicScripts(page: ScriptPage, src = SRC): { where: string; code: string }[] {
   const template = fs.readFileSync(path.join(src, page), 'utf8');
   const out: { where: string; code: string }[] = [];
-  for (const m of template.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/g)) {
+  for (const m of template.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script\b[^>]*>/gi)) {
     const attributes = m[1] ?? '';
     if (/\btype="module"/.test(attributes)) continue;
     const named = /\bsrc="([^"]+)"/.exec(attributes)?.[1];
