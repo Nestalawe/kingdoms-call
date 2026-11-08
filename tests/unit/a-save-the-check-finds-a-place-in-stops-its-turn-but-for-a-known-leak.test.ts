@@ -15,6 +15,8 @@
 // - the check never replaces the save; each kind is named without its value; at most ten places, then a count, in the
 //   words of the told turn and of the stopped one;
 // - a special's range that deals damage with no weight (left by version 2's step) stops the turn;
+// - the old shapes no step can mend (P1-15's group (b): a hero's `_speedBonus`, an item's `_spent`, a claim with no
+//   `thrPct`, a grave's `armies`) stop the turn, so no turn reads them (P1-15f9 dropped their readers);
 // - a save that isn't a game in play is refused before anything changes, by the upgrade and by the turn (the stop
 //   names no place: the turn refuses it, in its own words).
 // Level 1 (unit): the upgrade, the check and the stop's list are functions of a save, and one turn of the three-realm
@@ -36,7 +38,8 @@
 // as it was; a field of a later build is kept by the upgrade and in the save the turn writes (the check is not the
 // save); a field of the wrong kind holding a text, a missing field and a key that isn't a field's name (shown as "(a
 // key)") are named without their values; twelve places: all found, ten named and two counted, as told and as stopped;
-// a special's damaging range with no weight stops the turn; a save that isn't a game in play is refused by the upgrade
+// a special's damaging range with no weight stops the turn; a hero's `_speedBonus`, an item's `_spent`, a claim with no
+// `thrPct` and a grave's `armies` stop the turn, each named (P1-15f9 dropped their readers); a save that isn't a game in play is refused by the upgrade
 // and the turn, the stop naming nothing. The stop's cases fail on their base (no stop). Planted on copies (`/tmp`, each
 // red): the check taken out, the turn playing the parse's output, a key shown as it is, the GM's line told to a realm
 // or left out, a save that isn't a game in play let through, the known list emptied, an entry unanchored, the copy's
@@ -214,6 +217,41 @@ describe('the stop: a place not on the known list stops the turn, before anythin
       'monster.spells.0.dmgW: missing, and this build needs it',
       "monster.spells.0: a field this build doesn't know, dmg",
     ]);
+  });
+
+  test("the old shapes no step can mend stop the turn, so the turn reads none: a hero's speed bonus, a spent item, a claim with no bar, a grave's companies", () => {
+    const save = aCopyOfTheFixture();
+    const king = must(listIn(save, 'characters')[0], 'hero');
+    king['_speedBonus'] = 1;
+    must(listIn(king, 'items')[0], 'item of realm 0’s king')['_spent'] = true;
+    save['reckoning'] = { by: 0, bloc: [0], calledTurn: 3, resolveAtTurn: 5 };
+    save['heroGraveyard'] = [
+      {
+        id: 1,
+        name: 'Sir Testwin',
+        player: null,
+        race: 'Human',
+        alignment: 'Good',
+        temper: 'Bold',
+        skills: {},
+        maxHp: 15,
+        isKing: false,
+        killedOnTurn: 3,
+        location: 4,
+        served: [],
+        _releasedBy: null,
+        armies: [{ type: 'Shieldwall Levies', race: 'Human' }],
+      },
+    ];
+    expect(whatTheSavesCheckFindsBeforeTheTurn(JSON.stringify(save))).toEqual({
+      placesThatStopTheTurn: [
+        "characters.0.items.0: a field this build doesn't know, _spent",
+        "characters.0: a field this build doesn't know, _speedBonus",
+        "heroGraveyard.0: a field this build doesn't know, armies",
+        'reckoning.thrPct: missing, and this build needs it',
+      ],
+      knownPlacesTheTurnRunsOn: [],
+    });
   });
 
   test("the check on a copy draws none of the page's dice, an old world's lairs' renaming included", () => {
