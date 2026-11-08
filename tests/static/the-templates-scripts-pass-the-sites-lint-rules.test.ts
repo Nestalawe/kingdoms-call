@@ -60,7 +60,7 @@ function piecesOf(template: string, html: string): Piece[] {
   const blank = (s: string) => s.replace(/[^\n]/g, ' ');
   const scripts: Piece[] = [];
   const markup = html.replace(/<!--[\s\S]*?-->/g, blank).replace(/<style\b[\s\S]*?<\/style>/gi, blank);
-  for (const m of markup.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi)) {
+  for (const m of markup.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script\b[^>]*>/gi)) {
     if (/\b(src|type)\s*=/i.test(m[1] ?? '')) continue;
     scripts.push({
       file: `src/${template}/script-${String(scripts.length + 1)}.js`,

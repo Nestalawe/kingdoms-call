@@ -187,21 +187,29 @@ const RULEBOOK = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules.htm
 /** A spell's row of the rulebook's spell table, or none. */
 const theRulebooksRowOf = (name: string) =>
   RULEBOOK.split('\n').find((line) => line.includes(`<tr><td><strong>${name}</strong>`)) ?? null;
+/** A text with its tags taken out, pass after pass until none is left (a pass can leave a tag standing). */
+const withoutItsTags = (html: string) => {
+  let text = html;
+  for (let before = ''; before !== text;) {
+    before = text;
+    text = text.replace(/<[^>]*>/g, '');
+  }
+  return text;
+};
 /** The words of the "Battle:" part of a spell's rulebook row (its tags taken out), or none. */
-const theRulebooksBattleOf = (name: string) =>
-  theRulebooksRowOf(name)
-    ?.split('Battle:')[1]
-    ?.replace(/<[^>]*>/g, '')
-    .trim() ?? null;
+const theRulebooksBattleOf = (name: string) => {
+  const battle = theRulebooksRowOf(name)?.split('Battle:')[1];
+  return battle === undefined ? null : withoutItsTags(battle).trim();
+};
 
 /** The words of the "Combat:" (or "In combat:") part of a spell's rulebook row, up to its "Battle:" (its tags taken
  *  out), or none. */
-const theRulebooksCombatOf = (name: string) =>
-  theRulebooksRowOf(name)
+const theRulebooksCombatOf = (name: string) => {
+  const combat = theRulebooksRowOf(name)
     ?.split(/Combat:|In combat:/)[1]
-    ?.split('Battle:')[0]
-    ?.replace(/<[^>]*>/g, '')
-    .trim() ?? null;
+    ?.split('Battle:')[0];
+  return combat === undefined ? null : withoutItsTags(combat).trim();
+};
 
 /** The hints by any spell's name, as the page shows them. */
 const HINTS: Readonly<Record<string, string | undefined>> = SPELL_HINTS;

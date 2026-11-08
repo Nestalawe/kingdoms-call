@@ -135,7 +135,9 @@ const pages = pageNames();
 // Each page's bundle and stylesheet are named by the page and a hash of their content (P1-06b: assets/<page>-<hash>.js),
 // so a deploy never replaces a file a cached page still names (tools/deploy/keep-the-previous-deploys-files.ts).
 const HASHED = (page: string, ext: string) =>
-  new RegExp(`^assets/${page.replace(/\.html$/, '').replace(/[.-]/g, '\\$&')}-[A-Za-z0-9_-]{8}\\.${ext}$`);
+  new RegExp(
+    `^assets/${page.replace(/\.html$/, '').replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')}-[A-Za-z0-9_-]{8}\\.${ext}$`,
+  );
 const assetsOf = (site: string, page: string, ext: string) => filesUnder(site).filter((f) => HASHED(page, ext).test(f));
 const bundleOf = (page: string) => assetsOf(SITE, page, 'js')[0] ?? `no bundle of ${page}`;
 
