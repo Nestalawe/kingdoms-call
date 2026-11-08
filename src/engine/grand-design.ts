@@ -105,23 +105,6 @@ export const HOME_FLEET_BY_RACE: Readonly<Record<string, string | undefined>> = 
   Dwarven: 'Dwarf Ironclads',
   Orcish: 'Orcish Longships',
 };
-// 2026-10-15 (Toby, D3): the Corsair Fleet is gone. New worlds stopped offering it on 2026-10-11; a
-// province of a game already running whose pool still offers it now offers the Galleon Fleet in its
-// place (or simply loses it, if the Galleon is already there). A Corsair company already raised is
-// kept and fights as before. Idempotent: runs at the top of every runTurn.
-export function retireCorsairPools(gs: StateAsTheseRead | null | undefined) {
-  (gs?.world?.provinces ?? []).forEach((p) => {
-    if (!p || !Array.isArray(p.armyTypes)) return;
-    const i = p.armyTypes.indexOf('Corsair Fleet');
-    if (i < 0) return;
-    if (p.armyTypes.includes('Galleon Fleet')) p.armyTypes = p.armyTypes.filter((t) => t !== 'Corsair Fleet');
-    else {
-      p.armyTypes[i] = 'Galleon Fleet';
-      p.armyTypes = p.armyTypes.filter((t) => t !== 'Corsair Fleet');
-    }
-  });
-}
-
 // Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
 // is borne home: it lies in the player's home province while they still hold it, else in their
 // wealthiest remaining province. Returns null only if the dynasty holds no land at all (extinct).
