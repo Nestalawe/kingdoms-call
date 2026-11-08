@@ -331,3 +331,68 @@ test('planted, a "3g" in each of the page\'s texts, or a number or a name in a r
     `the report's summary's thePriceOfWordFromAProvince: "has ever seen for 2g"`,
   ]);
 });
+
+// The words of the turn's rule the Evil and Pagan texts state (the intro's Evil row too: it restates the plunder), and
+// the words they said before, which none may (R-136, plan question 46 (d) and (f)): an Evil hero conquers by the
+// doctrine on his orders, Terror plundering 50% of the province's tax and Enslave pressing a free Green garrison unit,
+// the province paying 1g less tax for 3 turns, as the order form and the turn's line say (src/engine/realms/relations-
+// and-captures.ts, applyEvilConquest; the tax in src/engine/turn/early-winter-…ts, which counts the turn of the conquest
+// too: plan question 68); the Wild Hunt binds two of a province's creatures, as Veterans until the end of the following
+// turn (its row's numbers, above).
+const THE_EVIL_BONUS_LINES = stringsOf(THE_REPORTS_SUMMARIES).filter((s) =>
+  s.includes('<strong>Evil bonuses</strong>'),
+);
+const THE_JOIN_FORMS_PAGAN = TEXTS.theJoinFormsStrings.filter((s) => s.includes('**Pagan:**'));
+const THE_EVIL_DOCTRINE = ['Terror plunders 50%', 'Enslave', 'free Green garrison unit', '1g less tax for 3 turns'];
+const WHAT_THE_EVIL_TEXTS_SAID = [
+  'instant 50% loot',
+  'your forces immediately plunder 50%',
+  'conquering a province immediately yields',
+];
+test.for([
+  {
+    text: "the report's Evil summary",
+    seen: asAReaderSeesThePagesText(TEXTS.theReportsSummaries['Evil'] ?? ''),
+    says: THE_EVIL_DOCTRINE,
+    saidBefore: WHAT_THE_EVIL_TEXTS_SAID,
+  },
+  {
+    text: "the report's Evil bonus line",
+    seen: THE_EVIL_BONUS_LINES.length === 1 ? asAReaderSeesIt(THE_EVIL_BONUS_LINES[0] ?? '') : '',
+    says: THE_EVIL_DOCTRINE,
+    saidBefore: WHAT_THE_EVIL_TEXTS_SAID,
+  },
+  {
+    text: "the rulebook's Evil section",
+    seen: theEntriesOfItsCreedsSection(BOOKS, 'Evil').join(' '),
+    says: THE_EVIL_DOCTRINE,
+    saidBefore: WHAT_THE_EVIL_TEXTS_SAID,
+  },
+  {
+    text: "the intro's Evil row",
+    seen: theIntrosTable(BOOKS)
+      .filter((cells) => (cells[0] ?? '').includes('<strong>Evil</strong>'))
+      .map((cells) => asAReaderSeesIt(cells.join(' ')))
+      .join(' '),
+    says: ['under the Terror doctrine a conquest plunders 50%', 'Enslave (passive), the other doctrine'],
+    saidBefore: ["; plunder 50% of a conquered province's tax"],
+  },
+  {
+    text: "the report's Pagan summary",
+    seen: asAReaderSeesThePagesText(TEXTS.theReportsSummaries['Pagan'] ?? ''),
+    says: [
+      "the Wild Hunt binds two of the province's creatures to your host as Veterans until the end of the following turn",
+    ],
+    saidBefore: ["binds a province's creatures"],
+  },
+  {
+    text: "the join form's Pagan description",
+    seen: THE_JOIN_FORMS_PAGAN.length === 1 ? asAReaderSeesThePagesText(THE_JOIN_FORMS_PAGAN[0] ?? '') : '',
+    says: ["the Wild Hunt binds two of that province's beasts"],
+    saidBefore: ["binds that province's beasts"],
+  },
+] as const)('$text says what the turn does (R-136)', ({ text, seen, says, saidBefore }) => {
+  expect(seen, `${text} is found once`).not.toBe('');
+  for (const words of says) expect(seen, `${text} says "${words}"`).toContain(words);
+  for (const words of saidBefore) expect(seen, `${text} no longer says "${words}"`).not.toContain(words);
+});
