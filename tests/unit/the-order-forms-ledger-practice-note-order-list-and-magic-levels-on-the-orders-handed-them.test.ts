@@ -7,13 +7,14 @@
 // doesn't list him. Level 1: functions on plain values; a page would test the same functions through the DOM.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line): the ledger's spend and
-// new wages by kind (companies at the province's price, a Druid 6 recruiter's beast at half price and wage, a hire at
-// the report's wage and at the alignment's, word from a province at the report's price and at its row's, the lairs'
-// rumours by grade, Harvest the Field; a fallen hero's orders and a phase past the fifth not counted); the Practice
-// Skill note's chance (a Human of a Human realm, a skill at 5, none chosen) and the Spy note; the order list of a hero,
-// a king, a realm whose Wonder stands and a charmed card, in the display order; each school's level after the earlier
-// practices, an item's bonus counted; a hire's wage with the report's figure and without; each red on a fault planted
-// in the line it reads (P1-11e42's PR).
+// new wages by kind (companies at the price of the province the recruiter stands in, after an earlier march too, a
+// Druid 6 recruiter's beast at half price and wage, a hire at the report's wage and at the alignment's, word from a
+// province at the report's price and at its row's, the lairs' rumours by grade, Harvest the Field; a fallen hero's
+// orders and a phase past the fifth not counted); the Practice Skill note's chance (a Human of a Human realm, a skill
+// at 5, none chosen) and the Spy note; the order list of a hero, a king, a realm whose Wonder stands and a charmed
+// card, in the display order; each school's level after the earlier practices, an item's bonus counted; a hire's wage
+// with the report's figure and without; each red on a fault planted in the line it reads (P1-11e42's PR; the march
+// before a recruit, P1-21o's mutation session).
 import { afterEach, describe, expect, test } from 'vitest';
 import {
   ACTION_DISPLAY_ORDER,
@@ -45,8 +46,9 @@ const recruit = (target: string): AnOrder => ({
 });
 
 /** A Good realm of Humans: 50g in its treasury, 12g of tax to come, 5g and 3g of wages; a province (1) whose companies
- *  and lairs it knows, with two wandering heroes (one whose wage the report gives); Aldo (Druid 7, Sage 2, his realm's
- *  king where `king`) and Brin in it, and Cael, who fell this turn. A fresh report each call. */
+ *  and lairs it knows, with two wandering heroes (one whose wage the report gives), and one next door (2) where
+ *  Spearmen cost 9g to its 6g; Aldo (Druid 7, Sage 2, his realm's king where `king`) and Brin in province 1, and Cael,
+ *  who fell this turn. A fresh report each call. */
 function aReport({ king = false, wonder = false } = {}) {
   const provinces = Array.from({ length: 4 }, (_, id) => ({
     id,
@@ -78,6 +80,8 @@ function aReport({ king = false, wonder = false } = {}) {
           { idx: 1, monster: true, monsterPower: 'Weak' },
         ],
       },
+      // the province next door, whose Spearmen cost more
+      2: { armyTypes: [{ type: 'Spearmen', cost: 9 }] },
     },
     characters: [
       {
@@ -148,6 +152,14 @@ describe('the treasury ledger, on the orders handed in', () => {
     const toBrin = recruit('Spearmen|2,Thunderbirds,to:2');
     const L = theTreasuryLedgerOnTheseOrders(aReport(), ordersOf({ 1: [toBrin] }));
     expect(L.cats.armies).toEqual({ g: 16, n: 3, wage: 8 });
+  });
+  test('a hero who marches next door and then recruits pays the prices of the province he has marched into', () => {
+    const L = theTreasuryLedgerOnTheseOrders(
+      aReport(),
+      ordersOf({ 1: [{ action: 'Move', target: 'prov:2' }, recruit('Spearmen|2')] }),
+    );
+    // 2 × province 2's 9g (not province 1's 6g, where he stood as the turn began); wages 2 × 2g
+    expect(L.cats.armies).toEqual({ g: 18, n: 2, wage: 4 });
   });
   test('word from a province and a harvest at their rows’ prices on a report that names none; no orders, no spend', () => {
     const report = aReport();
