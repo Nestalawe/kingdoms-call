@@ -4,6 +4,8 @@ import { KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
+  aCompanyIsABeastADruidHalves,
+  aLeadersBeastsPayHalfWages,
   countsAgainstBeastCommand,
   dispFloor,
   druidLevelTheMasteryCounts,
@@ -15,6 +17,7 @@ import {
   takesHalfAHullAboard,
   theDruidMasteryLiftsAUnitOfThisType,
   theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt,
+  theWageABeastPaysUnderADruid,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
@@ -25,6 +28,7 @@ import {
   itemsForDisplayP,
   itemSlotTag,
   itemTierTagP,
+  rawSkillLvl,
 } from './items-and-heroes.ts';
 import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
@@ -378,6 +382,13 @@ export function renderReportView(report) {
             if (arr.length === 0)
               return kcHtml`${head}<div style="font-size:.75rem;color:#3a3224">No armies led — moves 5 provinces/turn on its own.</div></div>`;
             const druLevel = effSkillP(c, 'druid');
+            // the wage the turn charges: a beast he leads pays half if he holds Druid 6 or his realm's Druidic Wonder
+            // stands (aLeadersBeastsPayHalfWages, as Early Winter asks it: R-135); a summons and a Wild Hunt beast draw
+            // none, a skeleton its 1g, halved or not
+            const hisBeastsPayHalfWages = aLeadersBeastsPayHalfWages(
+              rawSkillLvl(c, 'druid') >= 6,
+              () => !!kingdom.itsDruidicWonderHalvesItsBeastsWages,
+            );
             // Druid requirement, waivers and shortfall: ONE rule, druidNeedP (the engine's, with the portal's level).
             let totalStr = 0,
               totalCost = 0,
@@ -422,7 +433,11 @@ export function renderReportView(report) {
               bs = _kin.strength;
               if (mastery > 0) bs = Math.round(bs * (1 + mastery / 100));
               totalStr += bs;
-              totalCost += a.cost != null ? a.cost : 2;
+              const wage = a.cost != null ? a.cost : 2;
+              totalCost +=
+                hisBeastsPayHalfWages && !a.temporary && !a.wildHunt && aCompanyIsABeastADruidHalves(a.type)
+                  ? theWageABeastPaysUnderADruid(wage)
+                  : wage;
               const mast =
                 mastery > 0
                   ? kcHtml` <span style="color:#1d5a1d;font-size:.66rem">+${mastery}% Druid mastery</span>`

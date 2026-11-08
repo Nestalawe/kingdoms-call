@@ -295,6 +295,16 @@ function armyCardUnitStrength(a, c, report) {
   ${statementsBetween(ARMY_CARD, 'renderReportView', 'bs', 'totalStr+=bs;', opts)}
   return bs;
 }
+// The army card's upkeep for the column \`arr\` the hero \`c\` leads, as its "💰 Upkeep" figure gives it: the wage it
+// adds for each unit, after the strength statements its loop runs first (P1-11e34).
+function armyCardUpkeep(arr, c, report) {
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom', opts)}
+  ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druidShort', opts)}
+  for (const a of arr) {
+    ${statementsBetween(ARMY_CARD, 'renderReportView', 'bs', 'mast', opts)}
+  }
+  return totalCost;
+}
 // The turn report's flying carry, on the column \`armies\` as the report projects it.
 function turnReportFlyingCarry(armies) {
   ${statementsBetween(TURN_REPORT, 'buildTurnReport', 'SEA_UNIT_TYPES', 'AERIAL_UNIT_TYPES', opts)}
@@ -445,6 +455,7 @@ const COPY_FUNCTIONS = [
   'armyCardDruidLines',
   'armyCardSeaNote',
   'armyCardUnitStrength',
+  'armyCardUpkeep',
   'turnReportFlyingCarry',
 ] as const;
 export type CopyName = (typeof COPY_FUNCTIONS)[number];
@@ -3227,6 +3238,81 @@ export function armyCardSeaNoteOnStagedColumns(c: Copies): SeaNoteComparison[] {
       };
     }),
   );
+}
+
+// ── The army card's upkeep (P1-11e34, R-135, question 45 (b)) ────
+/** The columns the army card's upkeep cases stage, each led by a hero of realm 0 in a world of its own: beasts under a
+ *  Druid 6 leader or a Druidic Wonder (half wages, as Early Winter charges them), and those whose wage no Druid halves. */
+export const THE_ARMY_CARDS_UPKEEP_COLUMNS = [
+  'two Thunderbirds under a Druid 6 hero',
+  'two Thunderbirds under a Druid 5 hero',
+  'two Thunderbirds under a Druid 5 hero of a realm whose Druidic Wonder stands',
+  'a Unicorn Herd under a Druid 6 hero',
+  'two Men-at-Arms under a Druid 6 hero',
+  'skeletal Thunderbirds under a Druid 6 hero',
+  'summoned Thunderbirds under a Druid 6 hero',
+  'Thunderbirds of the Wild Hunt under a Druid 6 hero',
+] as const;
+export type AnUpkeepColumn = (typeof THE_ARMY_CARDS_UPKEEP_COLUMNS)[number];
+/** One staged column compared: the card's upkeep, and what the column adds to the wages Early Winter charges. */
+export interface AnUpkeepComparison extends Comparison {
+  readonly column: AnUpkeepColumn;
+}
+/** The army card's upkeep (armyCardUpkeep, on the hero as realm 0's report shows him) against the turn: the wages Early
+ *  Winter charges realm 0 with the hero leading the column, less those with him leading none. */
+export function theArmyCardsUpkeepAgainstTheTurn(c: Copies): AnUpkeepComparison[] {
+  const { g, land, at } = aWorldForTheOrders();
+  const p = land[0];
+  if (!p) throw new Error('the staged world has no land for the upkeep cases');
+  let unitN = 0;
+  const unit = (type: string, fields: Obj = {}): Obj => ({
+    type,
+    quality: 'Average',
+    race: 'Human',
+    unitName: `Upkeep Company ${String(unitN++)}`,
+    ...fields,
+  });
+  const twoBirds = () => [unit('Thunderbirds'), unit('Thunderbirds')];
+  const wonder = (G: Obj) => {
+    const r = realmZeroIn(G);
+    r['alignment'] = 'Druidic';
+    r['discoveries'] = [{ id: 'gd' }];
+    delete r['gdProvinceId'];
+  };
+  const staged: Record<AnUpkeepColumn, { druid: number; armies: Obj[]; edit?: (G: Obj) => void }> = {
+    'two Thunderbirds under a Druid 6 hero': { druid: 6, armies: twoBirds() },
+    'two Thunderbirds under a Druid 5 hero': { druid: 5, armies: twoBirds() },
+    'two Thunderbirds under a Druid 5 hero of a realm whose Druidic Wonder stands': {
+      druid: 5,
+      armies: twoBirds(),
+      edit: wonder,
+    },
+    'a Unicorn Herd under a Druid 6 hero': { druid: 6, armies: [unit('Unicorn Herd')] },
+    'two Men-at-Arms under a Druid 6 hero': { druid: 6, armies: [unit('Men-at-Arms'), unit('Men-at-Arms')] },
+    'skeletal Thunderbirds under a Druid 6 hero': { druid: 6, armies: [unit('Thunderbirds', { _isSkeletal: true })] },
+    'summoned Thunderbirds under a Druid 6 hero': { druid: 6, armies: [unit('Thunderbirds', { _temporary: true })] },
+    'Thunderbirds of the Wild Hunt under a Druid 6 hero': {
+      druid: 6,
+      armies: [unit('Thunderbirds', { _wildHuntUntilTurn: 3 })],
+    },
+  };
+  return THE_ARMY_CARDS_UPKEEP_COLUMNS.map((column) => {
+    const s = staged[column];
+    const hero = at(p, { skills: { druid: s.druid } });
+    const leading = (armies: Obj[]) => (G: Obj) => {
+      s.edit?.(G);
+      heroIn(G, hero)['armies'] = copyOf(armies);
+    };
+    const world = editedAndReported(g, leading(s.armies));
+    const withNone = editedAndReported(g, leading([]));
+    const shown = objects(world.report['characters']).find((h) => h['id'] === hero['id']);
+    if (!shown) throw new Error(`realm 0's report shows no hero ${String(hero['id'])}`);
+    const turn = theWagesEarlyWinterCharges(world.state) - theWagesEarlyWinterCharges(withNone.state);
+    return {
+      ...compare(column, c.armyCardUpkeep(shown['armies'], shown, world.report), { answer: turn, changed: false }),
+      column,
+    };
+  });
 }
 
 // ── The order form's Cast Spell tables and checks, and the army card's kin and feud (P1-11c1) ────

@@ -65,7 +65,8 @@
 // (`exploreMoveGainBefore`, on a staged march into the capital) is what `resolveMoveOrder` maps, for a hero with no
 // Traveller's Cloak, one worn and one carried as a spare (R-125: a worn one alone); the army card's sea note is
 // `getSeaCapability`'s answer, a Naval 8 hero's too (R-125), and on staged columns of flyers beside too few hulls, its
-// words written out (R-135: the card asks `seaLiftOfAColumn`). Every engine function leaves its input as it was (the values are frozen, so a write
+// words written out (R-135: the card asks `seaLiftOfAColumn`); its upkeep, on staged columns under a Druid 6 hero and a
+// Druidic Wonder, is what Early Winter charges (R-135). Every engine function leaves its input as it was (the values are frozen, so a write
 // throws). P1-11c1 (plan P1-11c, before the form takes its tables and its check from the engine's side): the order
 // form's eight Cast Spell tables (`order-chances.ts` run whole, the others read by their declarations) are the ones
 // `SPELL_DEFS_P` makes, each as the form reads it (a list in its order, a map, a set), but an Encounter plan lists the
@@ -145,6 +146,7 @@ import {
   armyCardMasteryAgainstTheTurn,
   armyCardSeaNoteAgainstTheEngine,
   armyCardSeaNoteOnStagedColumns,
+  theArmyCardsUpkeepAgainstTheTurn,
   aStagedHeroLeading,
   armyCardShortfallAgainstTheBattle,
   castingLimitAgainstTheOrder,
@@ -421,6 +423,25 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     expect(list).toHaveLength(12);
     for (const verdict of ['sea', 'land']) expect(list.filter((x) => x.engine === verdict).length).toBeGreaterThan(1);
     expect(differences(list)).toEqual([]);
+  });
+
+  test("the army card's upkeep is the wages the turn charges: a Druid 6 leader's beasts, or a Druidic Wonder's, pay half (R-135, question 45 (b))", () => {
+    // No matrix game has a Druid 6 hero leading beasts, so the columns are staged. The card summed each unit's whole
+    // wage: two Thunderbirds under a Druid 6 hero read 8g where Early Winter charges 4g. Since R-135 it halves a beast's
+    // wage as the turn does (e23's rule, with the report's Wonder flag); a skeleton, a summons and a Wild Hunt beast as
+    // before. The figures are written out too: both sides ask the same halving.
+    const list = theArmyCardsUpkeepAgainstTheTurn(copies);
+    expect(differences(list)).toEqual([]);
+    expect(list.map((x) => [x.column, x.copy])).toEqual([
+      ['two Thunderbirds under a Druid 6 hero', 4],
+      ['two Thunderbirds under a Druid 5 hero', 8],
+      ['two Thunderbirds under a Druid 5 hero of a realm whose Druidic Wonder stands', 4],
+      ['a Unicorn Herd under a Druid 6 hero', 2],
+      ['two Men-at-Arms under a Druid 6 hero', 6],
+      ['skeletal Thunderbirds under a Druid 6 hero', 1],
+      ['summoned Thunderbirds under a Druid 6 hero', 0],
+      ['Thunderbirds of the Wild Hunt under a Druid 6 hero', 0],
+    ]);
   });
 
   test("the army card's sea note says what the turn's lift is, in words (R-135)", () => {
