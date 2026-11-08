@@ -7,7 +7,9 @@ interface ProvinceAsThisPassReadsIt {
 }
 interface SaveAsThisPassReadsIt {
   readonly world?:
-    { readonly provinces?: readonly (ProvinceAsThisPassReadsIt | null | undefined)[] | null | undefined } | null | undefined;
+    | { readonly provinces?: readonly (ProvinceAsThisPassReadsIt | null | undefined)[] | null | undefined }
+    | null
+    | undefined;
 }
 
 // 2026-10-15 (Toby, D3): the Corsair Fleet is gone. New worlds stopped offering it on 2026-10-11; a
