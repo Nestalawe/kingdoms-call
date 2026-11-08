@@ -114,7 +114,7 @@ import {
   startPhaseHealingSnapshotsAndStalledBattles,
 } from '../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts';
 import { anItemIsTheMithrilSuit } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
-import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
+import { createTurnContext, type TheGamesSlotRow, type TurnContext } from '../../src/engine/turn/context.ts';
 import { warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages } from '../../src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts';
 import { relKeyOf } from '../../src/engine/realms/relations-and-captures.ts';
 import { earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill } from '../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts';
@@ -670,7 +670,7 @@ export function scripted05(): { state: Obj; report: Obj }[] {
     if ((JSON.parse(state) as Obj)['gameOver']) break;
     const result = resolveTurn(
       state,
-      JSON.parse(slotRowsJson(state, turn)),
+      JSON.parse(slotRowsJson(state, turn)) as TheGamesSlotRow[],
       turn,
       Math.floor(kcRng() * 2 ** 32) || 1,
     ) as {

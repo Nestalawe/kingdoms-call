@@ -29,6 +29,7 @@ import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engi
 import { PAGE_DRAWS_AS_IT_LOADS, setupsOf, slotRowsJsonOf, stampedAsTheShellSaves } from '../lib/matrix-game.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import type { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
+import type { TheGamesSlotRow } from '../../src/engine/turn/context.ts';
 
 const GAME_ID = 'bots-32';
 const SPEC = matrix('A').find((g) => g.id === GAME_ID);
@@ -172,7 +173,12 @@ describe(`a whole game (${GAME_ID}), every report built on a world that refuses 
       // console quiet, as the harness has it.
       vi.spyOn(console, 'log').mockImplementation(() => undefined);
       vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-      const resolved = resolveTurn(first, JSON.parse(slotRowsJsonOf(spec, first, 1)), 1, null) as Resolved;
+      const resolved = resolveTurn(
+        first,
+        JSON.parse(slotRowsJsonOf(spec, first, 1)) as TheGamesSlotRow[],
+        1,
+        null,
+      ) as Resolved;
       try {
         build(resolved.whatTheReportsRead());
       } catch (err) {
