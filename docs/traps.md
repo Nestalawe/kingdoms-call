@@ -367,9 +367,9 @@ and on a version without its fixture. [Detail](architecture/a-saved-game-its-ver
 The turn plays, saves and returns the object it upgraded, never the output of the schema's parse, and the check names
 a place by its path and kind, never its value. Example: Zod's `z.object` returns a copy without the keys it doesn't
 name, so a turn that played the parse's copy would drop a field only live play writes from every live game for good.
-A place the check reports is a fix of its own, and a staged world in a test is not a save. Checks:
-`tests/unit/a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts` keeps an unknown field through the upgrade
-and the turn. [Detail](architecture/a-saved-game-its-version-its-upgrade-its-check.md#the-check-is-not-the-save).
+A place the check reports is a fix of its own (on the GM page it stops the turn, but for a known leak), and a staged
+world in a test is not a save. Checks: `tests/unit/a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-
+leak.test.ts` keeps an unknown field through the upgrade and the turn. [Detail](architecture/a-saved-game-its-version-its-upgrade-its-check.md#the-check-is-not-the-save).
 
 ## A package imported from `src/`
 

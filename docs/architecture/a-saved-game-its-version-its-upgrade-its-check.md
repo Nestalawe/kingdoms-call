@@ -94,17 +94,29 @@ the turn reads it.
   its kind, never a value: `characters.17.armies.2: a field this build doesn't know, _flakTargeted`; a key that isn't a
   number or a name as code writes one is shown as "(a key)". **The check is not the save**: the turn plays the save as
   upgraded, every key kept, never the parse's output ([traps.md](../traps.md#the-check-is-not-the-save)). How a save that
-  differs is met is Theo's Choice 1, "tell now, stop later": the turn runs; its end tells the GM in one line of the GM's
-  log, which no realm reads (`[Save check] The saved game holds 1 thing this build of Kingdoms Call doesn't know, …`);
-  `resolveTurn` returns the list, and the shell's message says the same (at most ten places, then a count;
-  `src/views/prose/what-the-saves-check-found-in-words.ts`), and shows it again once the page has refreshed the game.
-  A save that isn't a game in play (no provinces, no realms, no list of heroes: the new game's settings before Turn 0)
-  is refused first, before anything changes, as a newer save is. Once every live game has run two weeks of turns with
-  no place reported, a pull request of its own turns a difference into a stop. What checks it:
-  `tests/unit/a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts` (the version-1 fixture: as it is, with
-  a leaked mark, with a field of a later build, each kind, ten then a count, the refusals) and the page test
-  `tests/page/turn-shell.test.ts` ("the GM page plays a turn from a version-0 save": the message, after the refresh
-  too; Turn 0 then two turns). The balance matrix fails a game on a `[Save check]` line and on the check of its last
+  differs is met by **the stop** (P1-15f8, P1-15's Decision 8 and Choice 1, option 1): before the turn, the GM page's
+  shell runs the upgrade and the check on a copy of the loaded save
+  (`src/engine/saves/the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts`, about 3 ms on a 0.3 MB
+  save; the copy draws none of the page's dice, so an old world's lairs' renaming leaves the turn's seed as it was). A
+  place not on its known list stops the turn before anything is written: the orders stay in, and the message says "The
+  saved game holds 1 thing this build of Kingdoms Call doesn't know, so the turn did not run." and names each place (at
+  most ten, then a count; `src/views/prose/what-the-saves-check-found-in-words.ts`). The known list
+  (`THE_KNOWN_LEAKS_A_TURN_STILL_RUNS_ON`) holds the Parked leaks of a battle's marks (a garrison company's
+  `_tempStrReduction`, `_archeryRed`, `_died` and `_fromGarrison`; a hero's `_slainBy`), each naming its Parked entry;
+  each leak's fix removes its entry. On a known place the turn runs, and, as before the stop, its end tells the GM in
+  one line of the GM's log, which no realm reads (`[Save check] The saved game holds 1 thing …, and the turn ran on it
+  as it was. …`); `resolveTurn` returns the list, and the shell's message says the same, and shows it again once the
+  page has refreshed the game. `resolveTurn` itself still checks and tells, never stops: the tests' staged worlds aren't
+  whole saves, and the balance matrix fails a game on any place (its own list lets no leak through) and on a turn the
+  stop refuses. A special's damaging `dmg` range with no `dmgW`, which version 2 leaves, stops the turn. A save that
+  isn't a game in play (no provinces, no realms, no list of heroes: the new game's settings before Turn 0) is refused
+  first, before anything changes, as a newer save is: the stop names no place for either, and the turn refuses it.
+  What checks it: `tests/unit/a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts` (the
+  version-1 fixture: as it is, with a leaked mark, with a known leak, the list, the dice, with a field of a later build,
+  each kind, ten then a count, the refusals) and the page test
+  `tests/page/turn-shell.test.ts` ("the GM page plays a turn from a version-0 save": a field this build doesn't know
+  refused, nothing written, the orders in, the places named; a known leak played and told, after the refresh too; Turn
+  0 then two turns). The balance matrix fails a game on a `[Save check]` line and on the check of its last
   save (P1-15e1, [the toolchain the checks and the harness](the-toolchain-the-checks-and-the-harness.md)). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes.
 
 ## A battle-only mark is not part of the saved state
@@ -189,14 +201,16 @@ writes, or a battle's mark that leaked into the save).
 
 - **Never play, save or return the parse's output.** The turn plays the object it upgraded, every key kept. A turn
   that played the parse's copy would drop each such key from every live game for good. `tests/unit/a-save-the-check-
-  refuses-still-plays-and-the-gm-is-told.test.ts` keeps a field this build doesn't know through the upgrade and the
-  turn.
+  finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts` keeps a field this build doesn't know through the
+  upgrade and the turn. The stop's check runs on a copy too, and leaves the loaded save as it was.
 - **Name a place by its path and kind, never its value.** The GM's line and the turn's message may be passed on, so
   they hold no name or text from a game: a key that isn't a number or a name as code writes one is shown as "(a key)".
 - **A place reported is a fix of its own**: a field the code saves goes into the schema (optional, with what writes
-  it); a battle's mark that leaked is a Parked bug. Until a pull request of its own turns a difference into a stop
-  (Theo's Choice 1, after two weeks with nothing reported), the turn runs and the GM is told.
+  it); a battle's mark that leaked is a Parked bug. Since the stop (P1-15f8), a place not on the known list stops the
+  turn on the GM page; a leak's place stays on that list, its turn played and told, until its fix removes the entry.
 - **A staged world in a test is not a save.** A world made by `generateNewGame` alone lacks what Turn 0 adds (the turn
   mode, the bots' settings), and a hero a test stands on the board lacks fields a real one holds, so a turn played on
   them has a `[Save check]` line in the GM's log. A test that reads every line of the turn's end must say which it
-  reads (the stage's own lines), as `tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts` does.
+  reads (the stage's own lines), as `tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts` does. A test that
+  plays a turn through the GM page (`runTurn`) stages a whole save, or the stop refuses it: `tests/lib/scenario.js`
+  adds Turn 0's settings, and each company a test stages has its race.

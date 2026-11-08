@@ -7,8 +7,9 @@
 // and never by a value, so no name or text from a game leaves the save; a path's step or a key that isn't a number or
 // a name as code writes one (it could be a game's own text, a name a player chose) is shown as "(a key)".
 // **The check is not the save** (docs/traps.md): the parse's output, a copy without the keys the schema doesn't name, is
-// never used; the turn plays the save it upgraded, every key kept. How a difference is met is Theo's Choice 1 (tell
-// now, stop later): the turn runs, and the GM's log and the turn's message name each place.
+// never used; the turn plays the save it upgraded, every key kept. How a difference is met: the GM page's stop refuses
+// the turn on a place not on its known list of leaks (P1-15f8, src/engine/saves/the-saves-check-before-a-turn-…); on a
+// known one the turn runs, and the GM's log and the turn's message name each place.
 // This is the one file of src/schemas/ that src/ imports for its code (the save's upgrade imports it): the GM page's
 // bundle holds the schemas and Zod; every other import of src/schemas/ is a type's (.dependency-cruiser.mts,
 // tests/static/pages-build.test.ts).
