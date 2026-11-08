@@ -2228,6 +2228,20 @@ export function theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems(c: Cop
   delete hero['theShareHisWornItemsAddToAMarchIn'];
   return { given: ask(world.report, drape), notGiven: ask(older, drape), noCloak: ask(world.report, plain) };
 }
+/** The share the Explore forecast counts a hero marching in as mapping (P1-21n), on the staged march in of "March 0,
+ *  leading two companies", his card's Explorer trained at 1 and counting at 3 (an item's +2, as the card's skillEff
+ *  gives it): the turn grants 5% a level of his Explorer as it counts. */
+export function theMarchInShareOfAHeroWhoseExplorerCountsAboveHisTrainedLevel(c: Copies): unknown {
+  const { world, marchesIn } = marchingWorld();
+  const plain = marchesIn.find((m) => m.kind === 'March 0, leading two companies');
+  if (!plain) throw new Error('the staged world has no plain march in');
+  const report = copyOf(world.report);
+  const hero = objects(report['characters']).find((h) => h['id'] === plain.heroId);
+  if (!hero) throw new Error('the staged report has no hero of the plain march in');
+  hero['skills'] = { ...(isObj(hero['skills']) ? hero['skills'] : {}), explorer: 1 };
+  hero['skillEff'] = { ...(isObj(hero['skillEff']) ? hero['skillEff'] : {}), explorer: { total: 3 } };
+  return c.exploreMoveGainOn(report, { [String(plain.heroId)]: plain.orders }, hero, plain.orders.length, plain.mapped);
+}
 /** One staged march compared: the province the forecast says he stands in after his orders, and the one the turn
  *  leaves him in; with its kind, where he set out and the province his orders name. */
 export interface MarchForecastComparison extends Comparison {
@@ -3177,6 +3191,22 @@ export function theSendItemFieldWithAMithrilSuitAgainstTheTurn(c: Copies): {
     ticked: boxes.filter((b) => !b.disabled).map((b) => b.item),
     turn: whatTheyHoldIn(theTurnPlaysTheHolding(world.state, holding), holding)['comrade'] ?? [],
   };
+}
+/** The Send Item field of the staged giver of a Mithril suit (P1-21n), his order's items ticked as `target` writes them
+ *  ('' for none, '0' for the suit by its place, 'all'): whether the suit's box is disabled, and whether it is ticked. */
+export function theSendItemFieldsMithrilBoxOn(c: Copies, target: string): { disabled: boolean; checked: boolean } {
+  const { world, holdings } = holdingWorld();
+  const holding = holdings.find((h) => h.kind === 'Mithril Armour sent with "all"');
+  if (!holding) throw new Error('no staged holding of a Mithril suit sent with "all"');
+  const card = objects(world.report['characters']).find((h) => h['id'] === holding.heroes['giver']);
+  if (!card) throw new Error("the staged report has no giver's card");
+  const place = objects(card['items']).findIndex((it) => it['name'] === 'Mithril Armour');
+  const [order] = holding.orders[String(holding.heroes['giver'])] ?? [];
+  if (!order || place < 0) throw new Error("the staged holding has no giver's order or suit");
+  const field = String(c.theTargetFieldOn(world.report, holding.orders, card, 0, { ...order, target }));
+  const box = [...field.matchAll(/<input type="checkbox" value="(\d+)"([^>]*)>/g)].find((m) => Number(m[1]) === place);
+  if (!box) throw new Error("the Send Item field lists no box for the suit's place");
+  return { disabled: /\bdisabled\b/.test(box[2] ?? ''), checked: /\bchecked\b/.test(box[2] ?? '') };
 }
 /** What the army card's sea note tells the player, in the engine's words (getSeaCapability's answers): 'all' (every
  *  unit sails or flies on its own), 'sea' (the column can put to sea: its hulls carry it, or its flyers lift it and

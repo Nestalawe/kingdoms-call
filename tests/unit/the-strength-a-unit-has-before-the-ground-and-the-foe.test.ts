@@ -12,7 +12,8 @@
 // under every staged hero: Druid 8 and 3, Necromancy 6, a hero with eight army items worn and one carried, a king holding
 // the Naturalist's, the Cavalier's and the Ironclad's titles, heroes of each rival kin, in a Divine realm with eight
 // unit-strength discoveries (three that need a ground or a side, one a garrison alone) and a Pagan realm with none; the
-// items' steps in the registry's order; the items a hero uses (his race's, a slot item only worn); the mastery tier of each trained level.
+// items' steps in the registry's order; the items a hero uses (his race's, a slot item only worn); the mastery tier of each trained level;
+// and since P1-21n a Druid 8 hero's mastery lifting the strength his Battle Standard adds (the adds first, its figure pinned).
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import { ALL_MAGIC_ITEMS_P } from '../../src/content/kingdoms-call-data.ts';
@@ -133,6 +134,28 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
     expect(list.find((x) => x.hero === 1 && x.unit === 'Average Thunderbirds')?.battle).toBe(59);
     // the values are many, not one step's
     expect(new Set(list.map((x) => x.battle)).size).toBeGreaterThan(20);
+  });
+
+  test("a Druid 8 hero's mastery lifts the strength his items' steps added: armStr's, the adds first, then the lift", () => {
+    // a Pagan Human of Druid 8 with a Battle Standard (+2) leading Average Thunderbirds: lifted to Veteran (11 × 3 = 33),
+    // the +2 (35), then his mastery (+80%): 63, where the lift before the +2 would give 59 + 2 = 61
+    const h = {
+      id: 7,
+      player: 1,
+      race: 'Human',
+      alignment: 'Pagan',
+      skills: { druid: 8 },
+      items: [item('Battle Standard')],
+    } as unknown as HeroInABattle;
+    const a = structuredClone(
+      units[0] ?? { type: 'Thunderbirds', quality: 'Average', race: '', unitName: 'Test Company 0' },
+    );
+    const gain = druidMasteryGain(turn, h, a, 'Pagan').gain;
+    expect(gain).toBeGreaterThan(0);
+    const battle = armStr(turn, structuredClone(a), structuredClone(h), 'Pagan', null, undefined);
+    expect(theRuleOn(structuredClone(a), structuredClone(h))).toBe(battle);
+    expect(gain).toBeCloseTo(0.8);
+    expect(battle).toBe(63);
   });
 
   test("the items' steps run in the registry's order of the stage", () => {
