@@ -16,7 +16,8 @@ the turn reads it.
   (behind `_guardianHpV2`), and the retired Library (`sd30`) struck from every realm. Each runs on every load behind
   its flag, not as a numbered step: a step would skip a new world, and world generation doesn't set `_guardianHpV2`,
   so a new world's guardians are cut on its first turn (question 17, P1-23l). Setting the flag earlier in turn 1 moved
-  it in the save's key order (the matrix's `state` and `writes`, from turn 1).
+  it in the save's key order (the matrix's `state` and `writes`, from turn 1). Beside the cut, with no flag, every
+  guardian's brute strength is given its kind's words (P1-11e1, R-137); a perk already in them is left untouched.
 - **After the check, the four turn-start repairs** (P1-15f2; until then the turn ran them before the merge of the
   realms' orders): a hero of no realm wearing a beast's race given a people's race by his id, a stranded neutral guard
   made a wanderer (`normaliseStrandedGuards`), no garrison company keeping a stranded hull's marker (`_navalHold`), and
@@ -133,7 +134,8 @@ games.
 - **Guardians:** `migrateLairGuardiansV2` re-stats uncleared lairs from `MONSTERS_P`, by name, only
   when `GUARDIAN_TABLE_VER` is higher than the save's `_guardiansVer`. When you change a guardian's
   stats, bump `GUARDIAN_TABLE_VER`, or running games keep the old guardian. The re-stat also heals a
-  wounded guardian to its new full HP.
+  wounded guardian to its new full HP. A perk's words alone are re-stamped by a pass of their own, no stats touched
+  (brute strength's, R-137).
 - **Items:** `migrateItemTiers` re-stamps only an item's tier. An item's effect stays as it was when
   awarded, so changing an effect doesn't reach items players already hold. Whether it should is a
   design decision for Toby: raise it as a ruling, don't decide it in code.

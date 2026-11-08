@@ -15,6 +15,8 @@
 // - an old world's lairs are renamed once, and the upgrade returns how many (P1-15f1: the turn ran it before);
 // - an old world's guardians are made 5 HP frailer once, their undamaged HP too, never below 5, and the upgrade returns
 //   how many (a property: any HP, or none); a gap among the provinces or the features is passed over;
+// - a guardian's brute strength in an older build's words is given its kind's words (R-137, P1-11e1); its other perks,
+//   one with a second rider and one whose number is missing, keep theirs;
 // - the retired Library (sd30) is struck from a realm's discoveries, with any gap in its list; a realm with no list
 //   keeps none;
 // - after the check, the turn-start repairs (P1-15f2: the turn ran them before): a hero of no realm wearing a beast's
@@ -43,14 +45,15 @@
 // home lacking a unit of its people's roster offers it again; a pool offering the Corsair Fleet offers the Galleon (a
 // Corsair company kept); a retired Sage discovery taken and counted, none kept on the save, a held one refreshed from
 // the table; a company of a renamed unit renamed; an item's tier from today's tables; an old world's lairs renamed once,
-// counted; its guardians 5 HP frailer once, never below 5, counted (a property), gaps passed over; the Library struck
+// counted; its guardians 5 HP frailer once, never below 5, counted (a property), gaps passed over; a guardian's brute
+// strength in an older build's words given its kind's (R-137), its other perks' kept; the Library struck
 // with any gap, a realm with no list keeping none; after the check, a hero of no realm in a beast's race given the
 // people's race at his id (id 0 and below too; no realm field: kept), a stranded guard made a wanderer (one guarding
 // unclaimed ground kept), a garrison's stranded-hull marker taken off (the check still naming it), a crowned hero's
 // "(wandering)" tag taken off, counted (a property; gaps passed over). All at once, then again: the second run changes
 // nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril Armour made at tier 1,
 // raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
-// out turns its cases red (13 of 13). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
+// out turns its cases red (14 of 14). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
 // since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
 // settings)
 import fc from 'fast-check';
