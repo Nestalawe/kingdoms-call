@@ -107,8 +107,8 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   Overlord page reach it only through `shared/` and `views/`.
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
-**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (105 findings)
-and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), the 90 findings of the two
+**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (99 findings)
+and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), the 84 findings of the two
 import cycles left, the GM page's (10 files, both of `db/` among them) and the player page's (18), and the prose's one,
 the explore and search lines' import of `itemLoreLines` from `engine/items/tiers-and-hoards.ts` (P1-13l, Theo's
 agreement; it leaves with the fix of the items' other names the engine adds to the content as it loads). P1-13e broke the

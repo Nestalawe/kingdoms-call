@@ -252,7 +252,6 @@ const COPIES: Record<string, string[]> = {
     'predictedItems',
     'projectedGarrison',
     'projectedLedArmies',
-    'whereTheCompaniesAHerosRecruitRaisesMuster',
     // (since P1-11e42 the ledger, the note, the order list and the magic levels, by the page's names)
     'theOrdersTheFormHoldsForTheHero',
     'computeOrderLedgerP',

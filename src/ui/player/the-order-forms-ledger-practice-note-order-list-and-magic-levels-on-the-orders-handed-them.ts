@@ -256,9 +256,10 @@ export function heroHireWageOfP(h, report) {
 // Since P1-11e29 (R-134), a company's price and wage follow the turn's cuts (src/shared/): a Druid 6 recruiter pays
 // half for a beast; a beast in the column of a Druid 6 leader, or of a realm whose Druidic Wonder stands, pays half
 // wages; and a company in the Host-Leader's column pays 1g less, where the report names him (his minorHeld: the titles
-// public). Where a company musters is the turn's (whereTheCompaniesAHerosRecruitRaisesMuster). Since P1-11e30, the
-// upkeep and hero-wage discoveries' cuts (Supply Depots, Granaries, Inspiring Leadership…) are each shared under the
-// room the report gives it, a company or hero at a time, as Early Winter shares them; an older report's are the type's.
+// public). Where a company musters is the turn's (whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders). Since
+// P1-11e30, the upkeep and hero-wage discoveries' cuts (Supply Depots, Granaries, Inspiring Leadership…) are each shared
+// under the room the report gives it, a company or hero at a time, as Early Winter shares them; an older report's are
+// the type's.
 export function theTreasuryLedgerOnTheseOrders(report, orders) {
   const rep = report || {};
   const k = rep.kingdom || {};

@@ -10,7 +10,6 @@ import {
   whatAHeroCarriesAsAPhaseBegins,
   whatAHeroLeadsAsAPhaseBegins,
   whereAHeroStandsAfterTheOrdersBefore,
-  whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders,
 } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise,
@@ -124,15 +123,6 @@ export function projectedGarrison(
 }
 export function projectedLedArmies(charId: unknown, upToPhaseExclusive: number): unknown {
   return whatAHeroLeadsAsAPhaseBegins(currentReport, theOrdersTheFormHolds(currentReport), charId, upToPhaseExclusive);
-}
-export function whereTheCompaniesAHerosRecruitRaisesMuster(o: unknown, ph: number, ticks: unknown): unknown {
-  return whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders(
-    currentReport,
-    theOrdersTheFormHolds(currentReport),
-    o,
-    ph,
-    ticks,
-  );
 }
 
 // The orders the form holds for the hero `c` alone (a pre-order card's too, which the report may not list yet): the

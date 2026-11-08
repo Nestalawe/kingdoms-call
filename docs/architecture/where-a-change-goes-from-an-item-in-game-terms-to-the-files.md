@@ -134,6 +134,9 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
   P1-11e10 with the column the Move note counts and its sea lift, which the march forecast reads). Since P1-11e41 they
   read only the report and the orders handed to them; the page hands them, in
   `src/ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts` (a snapshot of the form's fields a forecast).
+  The treasury ledger, the notes that quote an order's chance (the Practice Skill note), the order list and the levels
+  of magic a hero's practices may raise, with the tables they read, the same way since P1-11e42:
+  `src/ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts`.
 - **The detail:** [the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules);
   the copies left are `tests/lib/player-portal-copies.ts`'s.
 
