@@ -719,6 +719,20 @@ describe("a saved game's old shapes are mended before the turn (upgradeGameState
     expect(heldHulls(s)).toEqual([]);
   });
 
+  test("the check, before the folds, still names an older save's single consecration and its Consumable tally; the folds then mend them", () => {
+    const s = copy(WORLD);
+    const realm = loose(must(s.players[1], 'realm 1'));
+    delete realm['consecratedProvIds'];
+    realm['consecratedProvId'] = homeOf(s, 1).id;
+    realm['_itemsFoundByCat'] = { consumable: 2 };
+    const found = upgradeGameState(s);
+    expect(found.whereTheSaveDiffersFromThisBuildsSchema.filter((p) => p.startsWith('players.1'))).toEqual([
+      "players.1._itemsFoundByCat: a field this build doesn't know, consumable",
+      "players.1: a field this build doesn't know, consecratedProvId",
+    ]);
+    expect([realm['consecratedProvIds'], realm['_itemsFoundByCat']]).toEqual([[homeOf(s, 1).id], { combat: 2 }]);
+  });
+
   test('the repairs pass over gaps among the provinces and the garrisons', () => {
     const s = copy(WORLD);
     const named = must(realmsHeroes(s)[0], 'a realm hero');
