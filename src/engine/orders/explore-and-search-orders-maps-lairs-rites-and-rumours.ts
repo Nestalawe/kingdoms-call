@@ -852,7 +852,6 @@ export function resolveSearchLairOrder(
     if (f.monster) delete f.monster._treasureStolen;
     ensureLairHoard(f, G);
     const hoard = featureTreasure(f);
-    f._hoardGoldOrig ??= hoard; // back-compat for pre-revision saves
     if (hoard <= 0) {
       if (c.player != null) {
         f._pickedCleanBy ??= [];
@@ -1020,7 +1019,7 @@ export function resolveSearchLairOrder(
     // (G._awardedItems) and grows as each drop is chosen, so no lair — this one or any other
     // — can ever hand out a duplicate. A null means the treasury is exhausted (gold only).
     // Item 4: the lair's items were fixed at world gen (hoardItems) — the clearer takes them
-    // ALL (any kit left by slain challengers is already merged in). Discovery bonus finds
+    // ALL (an older save's kit left by slain challengers was merged in by version 2's step). Discovery bonus finds
     // still roll fresh.
     ensureLairHoard(f, G);
     const drops: Item[] = [];

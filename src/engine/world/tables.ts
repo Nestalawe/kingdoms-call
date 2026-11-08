@@ -52,9 +52,9 @@ interface AUnitAsTheDruidCheckReadsIt {
   readonly race?: string | null | undefined;
   readonly _isSkeletal?: boolean | undefined;
 }
-/** A feature's treasure as a save holds it: gold as a number, or (a sea feature saved before v1054) `{ gold }`. */
-type AFeaturesTreasure = number | { gold?: number | undefined } | null | undefined;
-/** An item in a lair's hoard, as the hoard's stocking moves it: one the lair held before hoards, or one rolled. */
+/** A feature's treasure as a save holds it: gold as a number (version 2's step mends a sea feature's older `{ gold }`). */
+type AFeaturesTreasure = number | null | undefined;
+/** An item in a lair's hoard, as the hoard's stocking adds one it rolls. */
 interface AnItemInAHoard {
   readonly name: string;
 }
@@ -66,7 +66,6 @@ interface ALairAsItsHoardIsStocked {
   readonly monster?: { readonly power?: string | undefined } | null | undefined;
   treasure?: AFeaturesTreasure;
   hoardItems?: AnItemInAHoard[] | null | undefined;
-  lairItems?: AnItemInAHoard[] | null | undefined;
   _hoardV2?: boolean | undefined;
   _clearGold?: number | null | undefined;
   _hoardGoldOrig?: number | null | undefined;
@@ -332,19 +331,16 @@ export function temperOf(t: string | null | undefined): TheTraitsOfATemper {
   const rows: Readonly<Partial<Record<string, TheTraitsOfATemper>>> = TEMPER_TRAITS;
   return rows[String(t)] ?? TEMPER_TRAITS.Brave;
 }
-// A feature's steal-able treasure as a plain number. Tolerates the legacy {gold:n} shape that
-// pre-v1054 sea features saved, so old games don't throw when a thief lifts from them.
+// A feature's steal-able treasure as a plain number.
 export function featureTreasure(f: { readonly treasure?: AFeaturesTreasure } | null | undefined) {
   if (!f) return 0;
   const t = f.treasure;
   if (t == null) return 0;
-  if (typeof t === 'object') return Math.max(0, Number(t.gold) || 0);
   return Math.max(0, t || 0);
 }
 export function setFeatureTreasure(f: { treasure?: AFeaturesTreasure } | null | undefined, v: number) {
   v = Math.max(0, Math.round(v));
-  if (f && typeof f.treasure === 'object' && f.treasure) f.treasure.gold = v;
-  else if (f) f.treasure = v;
+  if (f) f.treasure = v;
 }
 // the gold a hero collects for CLEARING a feature guardian is a tier-band roll. We roll it ONCE and
 // cache it on the feature, so a Scout can report the EXACT figure a clearer will receive and the
@@ -376,10 +372,6 @@ export function ensureLairHoard(
   // the hoard, the same list each push below fills
   const hoardItems = Array.isArray(f.hoardItems) ? f.hoardItems : [];
   f.hoardItems = hoardItems;
-  if (Array.isArray(f.lairItems) && f.lairItems.length) {
-    hoardItems.push(...f.lairItems);
-    f.lairItems = [];
-  }
   if (f._hoardV2) return;
   f._hoardV2 = true;
   const power = (f.monster?.power ?? '') || 'Weak';

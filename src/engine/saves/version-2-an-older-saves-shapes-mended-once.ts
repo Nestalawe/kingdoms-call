@@ -1,9 +1,10 @@
 // ── VERSION 2: AN OLDER SAVE'S SHAPES MENDED ONCE (plan P1-15f5, 2026-11-08) ────
 // The numbered step of version 2 (THE_NUMBERED_STEPS_OF_THE_UPGRADE, upgrade-a-saved-game-and-check-it.ts). On a save
 // below version 2, once, after the upgrade's passes and before the check, each shape an older build wrote that a reader
-// still works out as it reads it is given the value that reader works out, so the save meets the saved state's schema:
-//   1. a feature's treasure held as `{ gold }` (sea features before v1054) becomes the number (featureTreasure);
-//   2. a guardian's single perk (`passive`) becomes its list (`passives`, as guardianPassives reads it), and goes;
+// worked out as it read it is given the value that reader works out, so the save meets the saved state's schema. The
+// readers of 1 to 5 no longer read the older shape (plan P1-15f6): this step is the only place that does.
+//   1. a feature's treasure held as `{ gold }` (sea features before v1054) becomes the number, as featureTreasure read it;
+//   2. a guardian's single perk (`passive`) becomes its list (`passives`, as guardianPassives read it), and goes;
 //   3. a guardian's special with no weight (`dmgW`) and no damage range that deals damage is given the weight 0, as the
 //      fight reads it, and a special with a weight loses the range it no longer reads (`dmg`);
 //   4. a lair's items left by the fallen (`lairItems`) go into its hoard, as the stocking (ensureLairHoard) moves them;
@@ -19,7 +20,6 @@
 // (the turn's stocking reads its `_clearGold`, or rolls it), and a realm's old vault (a field the schema doesn't hold).
 // It draws no dice and writes no line, and is safe to repeat.
 import { featureTreasure } from '../world/tables.ts';
-import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { itemLore } from '../items/tiers-and-hoards.ts';
 import { itemRaceOf, itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 
@@ -73,7 +73,7 @@ interface ASaveAsTheStepReadsIt {
 /** 2, 3: a guardian of an older table: its single perk into its list, each special's weight as the fight reads it. */
 function aGuardianOfAnOlderTableMended(m: NonNullable<AFeatureAsTheStepReadsIt['monster']>): void {
   if ('passive' in m) {
-    if (!Array.isArray(m.passives)) m.passives = guardianPassives(m);
+    if (!Array.isArray(m.passives)) m.passives = m.passive?.fx ? [m.passive] : [];
     delete m.passive;
   }
   (m.spells ?? []).forEach((sp) => {
@@ -92,7 +92,7 @@ function aGuardianOfAnOlderTableMended(m: NonNullable<AFeatureAsTheStepReadsIt['
 /** 1, 4, 5: a feature's treasure as a number, a lair's items left by the fallen in its hoard, a stocked lair's first
  *  hoard on record and its cached clearing gold gone. */
 function aFeatureOfAnOlderSaveMended(f: AFeatureAsTheStepReadsIt): void {
-  if (typeof f.treasure === 'object' && f.treasure !== null) f.treasure = featureTreasure(f);
+  if (typeof f.treasure === 'object' && f.treasure !== null) f.treasure = Math.max(0, Number(f.treasure.gold) || 0);
   if (f.monster) aGuardianOfAnOlderTableMended(f.monster);
   if (f.ritualSite) return;
   if (Array.isArray(f.lairItems)) {
@@ -103,7 +103,7 @@ function aFeatureOfAnOlderSaveMended(f: AFeatureAsTheStepReadsIt): void {
   }
   if (!f._hoardV2) return;
   delete f._clearGold;
-  f._hoardGoldOrig ??= featureTreasure(f);
+  f._hoardGoldOrig ??= featureTreasure({ treasure: f.treasure });
 }
 
 /** 7: an item's lore, race and slot as today's readers work them out. */

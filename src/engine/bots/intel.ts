@@ -281,15 +281,10 @@ export const BOT_TUNING = {
 // ── BOT STRENGTH ── 2026-09-26 (Toby item 9): the Easy / Normal / Hard tiers are retired. Every bot realm
 // plays at what was the Hard setting — bolder attack margins, the strongest rival bias, and 97% of income
 // on wages. The table keeps one row so botTuning reads the same shape; a game saved with 'easy' or
-// 'normal' (G.botDifficulty) resolves to it too, and telemetry keeps recording the word it finds.
-export const BOT_DIFFICULTY: {
-  hard: ABotDifficultysWeights;
-  easy?: ABotDifficultysWeights;
-  normal?: ABotDifficultysWeights;
-} = {
+// 'normal' (G.botDifficulty) finds no row and resolves to it too, and telemetry keeps recording the word it finds.
+export const BOT_DIFFICULTY: { hard: ABotDifficultysWeights } = {
   hard: { attackMarginMult: 0.92, assaultMarginMult: 0.9, rivalBias: 12, upkeepCapFrac: 0.97 },
 };
-BOT_DIFFICULTY.easy = BOT_DIFFICULTY.normal = BOT_DIFFICULTY.hard;
 export const BOT_DIFFICULTY_DEFAULT = 'hard';
 // Effective weights for this game. Bot decision functions read these instead of BOT_TUNING directly.
 // Difficulty-neutral weights pass straight through.

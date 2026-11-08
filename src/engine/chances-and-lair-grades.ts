@@ -317,7 +317,7 @@ export function LAIR_TIER_ROLL() {
 }
 export const MAGIC_L8_SCHOOLS = KC_MAGIC_SCHOOLS.slice();
 // ── CAST CHANCE ────
-// 20% + 10% per school level, + the Arcane Codex discovery, + 10% per school mastered to level 8, +
+// 30% + 10% per school level, + the Arcane Codex discovery, + 10% per school mastered to level 8, +
 // any alignment/Sage cast discoveries; hard cap 95%. A spell worked from an ITEM is a flat 95%
 // (the item carries the craft, and counts as at least level 3), and the Wailing Phylactery makes a
 // realm's FIRST Necromancy spell each turn a certainty. The action-phase caster reads this, and so

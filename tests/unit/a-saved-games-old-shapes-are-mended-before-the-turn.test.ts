@@ -37,6 +37,8 @@
 //   check), a lair's items left by the fallen and its cached gold, a stocked lair's missing first hoard, a grave with no
 //   service list, an item's lore, old race and stale slot, a missing bots' diplomacy; all at once, then again; gaps
 //   passed over; on a fixture holding none, only the stamp; a save at version 2 not mended again.
+// - the readers whose fallback for those shapes went (P1-15f6), each through the upgrade then the reader: the {gold}
+//   treasure read and set as a number, the single perk read as the list, the fallen's items stocked into the hoard.
 // The world staged on is one that has played its first turn: its guardians already re-measured (a new world isn't:
 // question 17). And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a
 // known defect, fixed in its own pull request, whose fix removes it (Mithril Armour is made at tier 1, and the upgrade
@@ -66,7 +68,8 @@
 // tally into the Combat Item's, a feature discovered for everyone known to every realm. All at once, then again: the
 // second run changes nothing and finds nothing. Version 2's step (P1-15f5), on the version-1 fixture: each older shape
 // given its reader's value, then parsed strictly (a damage range that deals damage left, and named); gaps passed over;
-// a save at version 2 not mended again. Four new worlds (2 to 6 realms) change only by a known list (Mithril
+// a save at version 2 not mended again. The readers whose fallback for those shapes went (P1-15f6), through the
+// upgrade then the reader: the treasure read and set, the perk read, the fallen's items stocked. Four new worlds (2 to 6 realms) change only by a known list (Mithril
 // Armour made at tier 1, raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
 // out turns its cases red (18 of 18), as does each mend of version 2's step (27 of 27: each staged on the version-1
 // fixture, which then parses strictly). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
@@ -85,9 +88,15 @@ import {
   discoverFeat,
   featDiscovered,
 } from '../../src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
-import { RACES_P, fullRaceLandRoster } from '../../src/engine/world/tables.ts';
+import {
+  RACES_P,
+  ensureLairHoard,
+  featureTreasure,
+  fullRaceLandRoster,
+  setFeatureTreasure,
+} from '../../src/engine/world/tables.ts';
 import { LEGACY_UNIT_RENAMES } from '../../src/engine/army-tables.ts';
-import { GUARDIAN_TABLE_VER } from '../../src/engine/heroes/skills-and-hp.ts';
+import { GUARDIAN_TABLE_VER, guardianPassives } from '../../src/engine/heroes/skills-and-hp.ts';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
 import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts';
 import { ALL_MAGIC_ITEMS_P, MONSTERS_P } from '../../src/content/kingdoms-call-data.ts';
@@ -1248,5 +1257,45 @@ describe("version 2's step: an older save's shapes mended once, on the version-1
       undefined,
       ['botDiplomacy: missing, and this build needs it'],
     ]);
+  });
+});
+
+describe("the readers whose fallback for an older save's shape went (P1-15f6): the upgrade, then the reader", () => {
+  test("a sea feature's { gold } treasure is read as its gold, and set as a number", () => {
+    const s = copy(VERSION_1);
+    const f = loose(
+      must(s.world.provinces.filter((p) => p.terrain === 'sea').flatMap((p) => p.features)[0], 'a sea feature'),
+    );
+    f['treasure'] = { gold: 23 };
+    upgradeGameState(s);
+    const read = featureTreasure(f);
+    setFeatureTreasure(f, 9);
+    expect([read, f['treasure']]).toEqual([23, 9]);
+  });
+
+  test("a guardian's single perk is read as his one perk", () => {
+    const s = copy(VERSION_1);
+    const m = loose(must(stockedLairsOf(s)[0]?.monster, 'a guardian'));
+    const [perk] = (m['passives'] ?? []) as Loose[];
+    delete m['passives'];
+    m['passive'] = perk;
+    upgradeGameState(s);
+    expect(guardianPassives(m)).toEqual([perk]);
+  });
+
+  test("a stocked lair's items left by the fallen are in its hoard when it is next stocked", () => {
+    const s = copy(VERSION_1);
+    const f = loose(
+      must(
+        stockedLairsOf(s).find((l) => (l.hoardItems ?? []).length > 0),
+        'a stocked lair with an item',
+      ),
+    );
+    const left = (f['hoardItems'] as Loose[]).splice(0);
+    f['lairItems'] = left;
+    const want = copy(left);
+    upgradeGameState(s);
+    ensureLairHoard(f, s); // stocked already: no dice are drawn
+    expect([f['hoardItems'], 'lairItems' in f]).toEqual([want, false]);
   });
 });

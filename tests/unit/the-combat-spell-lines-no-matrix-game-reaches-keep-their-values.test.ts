@@ -46,6 +46,8 @@ const { pcCharCombatant, pcMonsterCombatant } =
 const { pcAct } = await import('../../src/engine/personal-combat/tactics-combat-items-and-actions.ts');
 const { resolvePersonalCombat } = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const { anOlderSavesShapesMendedOnce } =
+  await import('../../src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts');
 // the engine's dice, the fresh module the functions above draw from (to count the dice a spell draws)
 const { kcRng } = await import('../../src/engine/rng.ts');
 // since P1-12d19 a daze's and a lingering harm's source is a record; the words, read through the prose
@@ -246,7 +248,10 @@ describe("a guardian's power", () => {
   test("an older save's damage range (no weight, no words) is rolled by the dice; a range of nothing strikes no blow", () => {
     const struck = (dmg: number[], dice: number) => {
       const foe = aHero();
-      const narrative = usePower(aGuardian(), foe, { name: 'Old Claw', dmg }, dice);
+      // the special as version 2's step leaves it (plan P1-15f6): a range of nothing given the weight 0
+      const special = { name: 'Old Claw', dmg };
+      anOlderSavesShapesMendedOnce({ world: { provinces: [{ features: [{ monster: { spells: [special] } }] }] } });
+      const narrative = usePower(aGuardian(), foe, special, dice);
       return [40 - foe.hp, kinds(narrative).includes('a power tears into the foe')];
     };
     expect(struck([2, 6], 0)).toEqual([2, true]);

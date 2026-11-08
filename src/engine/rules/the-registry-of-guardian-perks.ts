@@ -4,11 +4,11 @@
 // at each stage of a hook point. The hook points and their stages are the content effects' (one union, in
 // the-registry-of-content-effects.ts); each stage's order is THE_ORDER_OF_EACH_STAGE_OF_THE_GUARDIAN_PERKS.
 //
-// A held guardian carries his own copy of his perks (`passives`, or an older save's one `passive`: guardianPassives
-// finds them), and each effect reads that copy's numbers, as a held item's are read. Fourteen kinds are the items' too:
-// what a perk of one of them wears and does in a fight is the items' effect its row names (pcApplyFx, one applier), so
-// its entry here holds only a guardian's own stages. The three kinds no item carries (the stun ward, the lingering-harm
-// ward and the ward against one school) hold what he wears and what they do in the fight (plan P1-19aj).
+// A held guardian carries his own copy of his perks (`passives`: guardianPassives finds them), and each effect reads
+// that copy's numbers, as a held item's are read. Fourteen kinds are the items' too: what a perk of one of them wears
+// and does in a fight is the items' effect its row names (pcApplyFx, one applier), so its entry here holds only a
+// guardian's own stages. The three kinds no item carries (the stun ward, the lingering-harm ward and the ward against
+// one school) hold what he wears and what they do in the fight (plan P1-19aj).
 import {
   GUARDIAN_PERKS_THE_REGISTRY_HOLDS as ROWS,
   type GuardianPerkSlug,

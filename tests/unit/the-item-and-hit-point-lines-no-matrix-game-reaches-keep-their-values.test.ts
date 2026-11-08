@@ -58,6 +58,7 @@ import {
   syncMaxHp,
 } from '../../src/engine/heroes/skills-and-hp.ts';
 import { dedupeItemsByName } from '../../src/engine/rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
+import { anOlderSavesShapesMendedOnce } from '../../src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts';
 import { hpGainLine } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 
 type Obj = Record<string, unknown>;
@@ -512,8 +513,14 @@ describe('the item and hit-point lines no matrix game reaches keep their values'
     const ward: APerk = { name: 'Hard Hide', fx: { ward: 'meleeDR', amt: 1 } };
     const nothing: APerk = { name: 'Nothing' };
     expect(guardianPassives({ passives: [null, nothing, ward] })).toEqual([ward]);
-    expect(guardianPassives({ passive: ward })).toEqual([ward]);
-    expect(guardianPassives({ passive: nothing })).toEqual([]);
+    // an older save's one perk: version 2's step turns it into the list (plan P1-15f6), which the reader then reads
+    const anOlderSavesGuardian = (passive: APerk) => {
+      const monster: { passive?: APerk; passives?: APerk[] } = { passive };
+      anOlderSavesShapesMendedOnce({ world: { provinces: [{ features: [{ monster }] }] } });
+      return monster;
+    };
+    expect(guardianPassives(anOlderSavesGuardian(ward))).toEqual([ward]);
+    expect(guardianPassives(anOlderSavesGuardian(nothing))).toEqual([]);
     expect(guardianPassives({})).toEqual([]);
   });
 
