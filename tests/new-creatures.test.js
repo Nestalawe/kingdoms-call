@@ -79,9 +79,10 @@ const RICH=new Set(['Sea Giants','Eldritch Kraken','Great Turtles']);
       const forest=take(around[0],null,null); forest.terrain='forest'; delete forest._awakenTurn;
       const wild1=take(around[1],'Primal:Stone Giant',['Stone Giants']);
       const wild2=take(around[2],'Primal:Forest Ent',['Forest Ents']);
-      const clone=(from,id,name,druid,loc)=>{ const c={...JSON.parse(JSON.stringify(from)),id,name,isKing:false,isHeir:false,armies:[],items:[],location:loc,skills:{druid,melee:1}}; S.characters.push(c); return c; };
-      const heir=clone(dk,'iv-heir','Rowan of the Deep Wood',3,wild1.id);
-      const hero=clone(dk,'iv-hero','Tamsin Greenhand',1,wild2.id);
+      // (each a hero as a save holds one, a number for his id: the GM page's stop refuses a save with any other, P1-15f8)
+      const clone=(from,name,druid,loc)=>{ const id=Math.max(...S.characters.map(c=>c.id))+1; const c={...JSON.parse(JSON.stringify(from)),id,name,isKing:false,armies:[],items:[],location:loc,skills:{druid,melee:1}}; S.characters.push(c); return c; };
+      const heir=clone(dk,'Rowan of the Deep Wood',3,wild1.id);
+      const hero=clone(dk,'Tamsin Greenhand',1,wild2.id);
       dk.location=forest.id; S.players[0].gold=60;
       // The Neutral king stands in his own prosperous sea, the turtles' waters, with no hull under him.
       const sea=S.world.provinces.find(p=>p&&p.terrain==='sea'&&nbrs(S,p).every(n=>n.owner!==0));

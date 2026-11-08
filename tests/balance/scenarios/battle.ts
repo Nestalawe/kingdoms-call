@@ -47,8 +47,8 @@ const scenario: Scenario = {
           c.items = [];
           c.skills = { melee: 1, tactical: 1 };
         }
-        attacker.armies = companies('Yeoman Longbows', 'Elite', 6);
-        defender.armies = companies('Dwarven Guard', 'Average', 6);
+        attacker.armies = companies('Yeoman Longbows', 'Elite', 6, 'Human');
+        defender.armies = companies('Dwarven Guard', 'Average', 6, 'Dwarven');
         return { attacker: attacker.id, hills };
       },
       orders: (_S, x) => ({ [x.attacker]: plan(order('move', x.hills.id)) }),

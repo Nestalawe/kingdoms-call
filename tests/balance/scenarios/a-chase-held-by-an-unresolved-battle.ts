@@ -116,9 +116,9 @@ const scenario: Scenario = {
         place(S, hunter, start);
         place(S, quarry, field);
         for (const h of holders) place(S, h, field);
-        hunter.armies = companies('Heavy Infantry', 'Veteran', 4);
-        quarry.armies = companies('Heavy Infantry', 'Elite', 12);
-        for (const h of holders) h.armies = companies('Light Infantry', 'Green', 1);
+        hunter.armies = companies('Heavy Infantry', 'Veteran', 4, 'Human');
+        quarry.armies = companies('Heavy Infantry', 'Elite', 12, 'Human');
+        for (const h of holders) h.armies = companies('Light Infantry', 'Green', 1, 'Human');
         field._battleUnresolved = true;
         return { hunter, quarry, field };
       },
