@@ -12,7 +12,8 @@
 // After every turn it checks the invariants (tests/lib/invariants.ts, P1-04b) and, in a scripted game, the scripted
 // realm's report for leaks (tests/lib/report-leaks.ts, P1-04c): a breach fails the game. They only read.
 // The save's check fails a game too (P1-15e1: a-game-fails-on-the-save-check.ts): a `[Save check]` line in a turn's GM
-// log, and, after the last turn, the check of the last save. With KC_SITE the line is the other copy's and the last
+// log, and, after the last turn, the check of the last save; and since P1-15f8 a turn the page's stop refuses (a place
+// not on src's known list), as any turn that fails, with the refusal's words. With KC_SITE the line is the other copy's and the last
 // save's check this checkout's.
 import { bootJsdom, readPage, type PageWindow } from '../../tests/lib/boot.js';
 import { checkTurn, describeBreaches } from '../../tests/lib/invariants.ts';
@@ -192,8 +193,13 @@ export async function playGame(
       errors.length = 0;
       calls.length = 0;
       W['__game'] = structuredClone(row);
-      const res = (await W.eval('runTurn({auto:true,game:__game,reason:"matrix"})')) as { ok?: boolean } | null;
-      if (errors.length || res?.ok === false) throw fail(`turn ${String(t)} failed: ${errors[0] ?? 'not ok'}`);
+      const res = (await W.eval('runTurn({auto:true,game:__game,reason:"matrix"})')) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      // a turn the save's check stops (P1-15f8) is refused before it runs: no error logged, its words in `error`
+      if (errors.length || res?.ok === false)
+        throw fail(`turn ${String(t)} failed: ${errors[0] ?? res?.error ?? 'not ok'}`);
 
       const after = game();
       const state = JSON.parse(String(after['game_state'])) as State;

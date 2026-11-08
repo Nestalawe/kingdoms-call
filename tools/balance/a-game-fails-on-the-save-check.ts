@@ -1,8 +1,8 @@
 // A game of the balance matrix fails on the save's check (plan P1-15e1, P1-15e's Decision 3). The check of a saved game
 // at load (src/engine/saves/upgrade-a-saved-game-and-check-it.ts, P1-15d) names each place a save differs from this
 // build's schema, and the turn tells the GM in one line of the GM's log, `[Save check] …`. A live game still plays on
-// such a save ("tell now, stop later"), but in the matrix a place the check names is something a turn wrote that the
-// schema refuses, so the game fails (play.ts), in two places:
+// a save holding a known leak (the GM page's stop refuses any other place, P1-15f8), but in the matrix any place the
+// check names is something a turn wrote that the schema refuses, so the game fails (play.ts), in two places:
 // - **after each turn, on a `[Save check]` line in its GM log:** the line reports the save the turn loaded, so the
 //   turn before wrote it. The game fails with `turn N: <its places>` (the turn whose log holds the line);
 // - **after the last turn, on the check of the last save:** no turn loads it, so its line would never come (a game's
@@ -16,13 +16,16 @@
 // tests/unit/the-balance-matrix-fails-a-game-on-the-save-check.test.ts checks both checks and the list.
 import '../../tests/lib/the-whole-engine.ts';
 import { upgradeGameState } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
+import {
+  aPlaceOnTheList,
+  type AKnownPlaceTheSaveCheckFinds,
+} from '../../src/engine/saves/the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts';
 
-/** A place the check finds on main, let through until its fix lands: `place` matches one whole place as the check
- *  names it (`<path>: <kind>`), narrowly (one path and one kind); `parked`, the plan's STATUS entry that fixes it. */
-export interface AKnownPlaceTheSaveCheckFinds {
-  place: RegExp;
-  parked: string;
-}
+/** A place the check finds on main, let through until its fix lands, as the page's stop reads its own list (P1-15f8):
+ *  `place` matches one whole place as the check names it (`<path>: <kind>`), narrowly (one path and one kind);
+ *  `parked`, the plan's STATUS entry that fixes it. The matrix's list is its own: the page's lets the Parked leaks
+ *  through, this one none. */
+export type { AKnownPlaceTheSaveCheckFinds };
 
 /** The places known on main (none when P1-15e1 came in). Each fix removes its entry. */
 export const KNOWN_PLACES_THE_SAVE_CHECK_FINDS: readonly AKnownPlaceTheSaveCheckFinds[] = [];
@@ -50,7 +53,7 @@ export function placesNotKnown(
   places: readonly string[],
   known: readonly AKnownPlaceTheSaveCheckFinds[] = KNOWN_PLACES_THE_SAVE_CHECK_FINDS,
 ): string[] {
-  return places.filter((p) => AND_N_MORE.test(p) || !known.some((k) => k.place.test(p)));
+  return places.filter((p) => AND_N_MORE.test(p) || !aPlaceOnTheList(p, known));
 }
 
 /** The places the `[Save check]` lines of a turn's GM log name that no entry lets through ([] when none). */

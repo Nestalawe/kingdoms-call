@@ -15,12 +15,14 @@
 // And the turn's dice (P1-18e): each turn plays from a seed of its own, drawn from the page's dice and returned, and
 // the page gets its own dice back; the shell hands resolveTurn that seed (P1-08m); the turn the page plays is the one
 // the engine plays alone, in the bare vm, from that seed.
-// And the check of a saved game at load (P1-15d, Theo's Choice 1, "tell now, stop later"): the GM page plays a turn from
+// And the check of a saved game at load (P1-15d) and the stop (P1-15f8): the GM page plays a turn from
 // the made-up save of version 0 (tests/fixtures/saves/version-0.json, what every live game held the day the version
 // came in): the turn is saved at this build's version (2, P1-15f5) and the message says nothing of the check; with a
-// battle's mark left on a company, the turn still runs and is saved, and the message names the place, never its
-// value, and still does once the page has refreshed the game; and a new game's Turn 0, then two turns, on the stand-in
-// database, each message with nothing of the check.
+// battle's mark left on a company, the stop refuses the turn before anything is written, the orders stay in, and the
+// message names the place, never its value; with a known leak (a battle's cut on a garrison company), the turn runs and
+// is saved, and the message names the place, and still does once the page has refreshed the game; and a new game's
+// Turn 0, then two turns, on the stand-in database, each message with nothing of the check. The staged games are
+// whole saves (Turn 0's settings: the bots' strength and diplomacy), as the stop needs.
 // And the GM's log (P1-12d39): each line the turn stores keeps its kind, and the GM page draws a force's rows by it.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.ts)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
@@ -50,10 +52,13 @@
 // shell's stamps (the turn mode's `turnRanAt` and `nextDeadlineAt`, each report's `engineStamp`) are taken out of both
 // by one function. The check of a saved game at load (P1-15d; fails on its base, whose turn says nothing of it): the
 // page plays a turn from the version-0 fixture (`fixtures/saves/version-0.json`, an all-bot game), saved at version 2
-// with nothing of the check in the message; with a battle's mark left on a company, the turn runs and is saved, and the
-// message names the place and not its value, and does again once the page has refreshed the game; a new game's Turn 0
-// (`runTurn0`, `commitTurn0`) then two turns, each saved at version 2, no message saying anything of the check (planted
-// on copies: the message without the check, its words not shown again after the refresh, each red). The GM's log
+// with nothing of the check in the message; the stop (P1-15f8; red on its base, which plays the turn): with a battle's
+// mark left on a company, the turn is refused, nothing is written, the orders stay in, and the message names the place
+// and not its value; with a known leak (`_tempStrReduction` on a garrison company), the turn runs and is saved, and the
+// message names the place, and does again once the page has refreshed the game; a new game's Turn 0 (`runTurn0`,
+// `commitTurn0`) then two turns, each saved at version 2, no message saying anything of the check (planted on copies:
+// the message without the check, its words not shown again after the refresh, the stop taken out, the known list
+// emptied, the stop after the clear, each red). The GM's log
 // (P1-12d39; both red on its base): every line the turn stores keeps its kind, and the GM page's log (`loadTurnLog`)
 // draws a force's rows by a line's kind, a line of another kind opening with the force marker as its words, and an
 // older turn's line, with no kind, by its words as before. Raised the
@@ -133,7 +138,7 @@ async function stage(orders: [string, string] = [SENT, DRAFT], page?: string): P
     }));
     W.eval(`(function(){ const g=generateNewGame(__sp,{cols:8,rows:7},0,{seaPct:20});
       g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
-      window.__G=g; })()`);
+      g.botDifficulty='hard'; g.botDiplomacy='normal'; window.__G=g; })()`);
     return {
       world: String(W.eval('JSON.stringify(__G)')),
       rows: orders.map((o, i) => ({
@@ -704,11 +709,47 @@ describe('the GM page plays a turn from a version-0 save', () => {
     }
   }, 60_000);
 
-  test("with a battle's mark left on a company: the turn runs and is saved, and the message names the place, not its value, after the refresh too", async () => {
+  test("with a field this build doesn't know (a battle's mark left on a company): the turn is refused before anything changes, the orders stay in, and the message names the place, not its value", async () => {
     const save = JSON.parse(VERSION_0) as Save & { characters: { armies: Record<string, unknown>[] }[] };
     const company = save.characters[0]?.armies[2];
     if (!company) throw new Error('the fixture’s first hero leads fewer than three companies');
     company['_flakTargeted'] = A_LEAKED_MARKS_VALUE;
+    const world = JSON.stringify(save);
+    const rows = botRows(save).map((r, i) =>
+      i === 0 ? { ...r, user_id: 'u0', orders: SENT, orders_submitted: true } : r,
+    );
+    const t = seat(await boot(), () => ({ world, rows }));
+    try {
+      t.game()['turn'] = save.turn;
+      const writes = recordWrites(t);
+      const ordersBefore = ordersOf(t);
+      expect(await t.run()).toMatchObject({ ok: false, committed: false, conflict: false });
+      expect(writes, 'nothing was written').toEqual([]);
+      expect([t.game()['turn'], t.game()['game_state']], 'the game as it was').toEqual([save.turn, world]);
+      expect(ordersOf(t), 'the orders stay in').toEqual(ordersBefore);
+      expect(ordersBefore[0]).toEqual({ orders: SENT, submitted: true });
+      expect(t.S.DB['turn_logs'] ?? [], 'no log written').toEqual([]);
+      const said = t.message();
+      expect(said).toContain(
+        `⚠ Turn 4: The saved game holds 1 thing this build of Kingdoms Call doesn't know, so the turn did not run. ` +
+          `Please send this list to the Kingdoms Call team: ${THE_LEAKED_MARK}.`,
+      );
+      expect(said).toContain('Nothing was changed, and the orders are still in.');
+      expect(said).not.toContain(A_LEAKED_MARKS_VALUE);
+      expect(said).not.toMatch(/resolved!/);
+    } finally {
+      t.W.close();
+    }
+  }, 60_000);
+
+  test("with a known leak (a battle's cut left on a garrison company): the turn runs and is saved, and the message names the place, not its value, after the refresh too", async () => {
+    const save = JSON.parse(VERSION_0) as Save & {
+      world: { provinces: { garrisonArmies?: Record<string, unknown>[] }[] };
+    };
+    const garrison = save.world.provinces[12]?.garrisonArmies?.[0];
+    if (!garrison) throw new Error('the fixture’s province 12 holds no garrison');
+    garrison['_tempStrReduction'] = 3;
+    const THE_KNOWN_LEAK = "world.provinces.12.garrisonArmies.0: a field this build doesn't know, _tempStrReduction";
     const t = seat(await boot(), () => ({ world: JSON.stringify(save), rows: botRows(save) }));
     try {
       t.game()['turn'] = save.turn;
@@ -719,12 +760,11 @@ describe('the GM page plays a turn from a version-0 save', () => {
       expect(said).toMatch(/Turn 4 resolved!/);
       expect(said).toContain(
         "⚠ The saved game holds 1 thing this build of Kingdoms Call doesn't know, and the turn ran on it as it was. " +
-          `Please send this list to the Kingdoms Call team: ${THE_LEAKED_MARK}.`,
+          `Please send this list to the Kingdoms Call team: ${THE_KNOWN_LEAK}.`,
       );
-      expect(said).not.toContain(A_LEAKED_MARKS_VALUE);
       // the page refreshes the game two seconds after the turn, which empties the message: the check's words come back
       await new Promise((r) => setTimeout(r, 2600));
-      expect(t.message()).toContain(THE_LEAKED_MARK);
+      expect(t.message()).toContain(THE_KNOWN_LEAK);
       expect(t.message()).not.toMatch(/Turn 4 resolved!/);
     } finally {
       t.W.close();
