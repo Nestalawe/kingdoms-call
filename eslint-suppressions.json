@@ -251,11 +251,6 @@
       "count": 1
     }
   },
-  "src/engine/run-turn.ts": {
-    "preserve-caught-error": {
-      "count": 1
-    }
-  },
   "src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 3
