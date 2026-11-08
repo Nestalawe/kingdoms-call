@@ -28,6 +28,7 @@ import {
   isLegendaryItem,
   itemSlot,
   itemUsableBy,
+  theItemsAHeroUses,
 } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import type {
   ItemOfTheseRules,
@@ -645,7 +646,7 @@ export function activeItems<AnItem extends AnItemAsTheSlotsReadIt>(
 ): AnItem[] {
   if (!c || !Array.isArray(c.items)) return [];
   normaliseEquipment(c);
-  return c.items.filter((it): it is AnItem => !!it && itemUsableBy(it, c) && (!itemSlot(it) || it.equipped === true));
+  return theItemsAHeroUses(c.items, c);
 }
 // Does the character carry (active/equipped) an item whose BASE name is `base`? Resolves the two
 // alternate names of every tier-1/2 item, so 'Falcon\'s Quiver' counts as the Quiver of the Hawk.

@@ -1,5 +1,9 @@
 import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { SKILL_MAX } from '../army-tables.ts';
+import {
+  theMasteryTierATrainedLevelGives,
+  theTrainedLevelOfASkill,
+} from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import type { Character, Item } from '../../schemas/saved-game-state.ts';
 
 // A hero's title-merit counters (TM, below).
@@ -223,10 +227,10 @@ export function itemAcquiredThisTurn(
 type SkillsAsTheseRead =
   { skills?: Readonly<Record<string, number | undefined>> | null | undefined } | null | undefined;
 export function skillLevel(c: SkillsAsTheseRead, stat: string) {
-  return Math.max(0, Math.min(9, Number(c?.skills?.[stat]) || 0));
+  return theTrainedLevelOfASkill(c?.skills?.[stat]);
 }
 export function perkTier(c: SkillsAsTheseRead, stat: string) {
-  return Math.max(0, skillLevel(c, stat) - 5);
+  return theMasteryTierATrainedLevelGives(c?.skills?.[stat]);
 }
 // 2026-09-26 (Toby item 3): the personal-combat ceiling. SKILL_MAX is the highest any skill can
 // reach, however it is reached — training, items, the Crown aura, minor titles, discoveries. Every

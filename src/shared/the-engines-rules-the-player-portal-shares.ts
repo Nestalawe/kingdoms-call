@@ -27,7 +27,8 @@
 // since P1-11e28: the Practice Skill note quotes them; a Druid's half price and half wage for a beast, and the
 // Host-Leader's cut, since P1-11e29: the treasury ledger counts them; a wage after each cut and ceiling of a realm's
 // discoveries, since P1-11e30: the ledger shares them under the room the report gives; the level a hero's skill counts
-// at, since P1-11e33: the order form's level of a magic school asks it).
+// at, since P1-11e33: the order form's level of a magic school asks it; the strength of a unit before the ground and
+// the foe, with the items a hero uses and his mastery tier, since P1-11e38: the army card shows it).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -56,7 +57,10 @@ export {
   itemRaceOf,
   itemSlot,
   itemUsableBy,
+  theItemsAHeroUses,
 } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+export { theMasteryTierATrainedLevelGives } from '../engine/rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
+export { theStrengthAUnitHasBeforeTheGroundAndTheFoe } from '../engine/rules-on-plain-values/the-strength-a-unit-has-before-the-ground-and-the-foe.ts';
 export {
   seaLiftOfAColumn,
   takesHalfAHullAboard,
