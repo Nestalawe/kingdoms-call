@@ -5,12 +5,14 @@
 // its arguments. An object (the state, a collector) joins it by reference. A value resolveTurn changes as the turn goes
 // on (_logCtx, _currentPhase, _afterPhases) is read and written as turnContext.<name> everywhere, so every reader sees
 // the value as it is now. No dice and no clock: the dice are still kcRng's (plan P1-08m).
-//   G                  the game's state, parsed: the working copy the turn changes
-//   freshPlayers       the game's slot rows, as loaded
-//   expectedTurnToRun  the turn being run
-//   turnLog            the GM's log of the turn, which emit() fills (events-and-their-audiences.ts: the one door)
-// resolveTurn adds the rest as it reaches them: whatTheSavesUpgradeFound, _mercIds, _tel, battleCommanders,
-// fieldBattlePhase, _logCtx, _currentPhase, _afterPhases, and more as each lifted area needs them (docs/ARCHITECTURE.md lists them). The lifted code keeps resolveTurn's two-space indent (plan P1-08's Decisions).
+//   G                         the game's state, parsed: the working copy the turn changes
+//   freshPlayers              the game's slot rows, as loaded
+//   expectedTurnToRun         the turn being run
+//   whatTheSavesUpgradeFound  what the save's upgrade found as the turn began (none, for a test's context)
+// It is whole at birth (plan P1-10b51): every field of TurnContext holds its start value, the one resolveTurn gave it
+// before the first phase, as tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts writes them; the stages
+// that make a field afresh each turn (the move pools, the merge's records) still do. The lifted code keeps
+// resolveTurn's two-space indent (plan P1-08's Decisions).
 // TurnContext, below the function, is the context's type (plan P1-10a2); LogLine, the type of a line of the log, is the
 // events file's.
 import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
@@ -23,16 +25,152 @@ import type {
 } from './events-and-their-audiences.ts';
 import type { telOrdersFor, telRealmSnapshot } from './log-line-helpers.ts';
 import type { WhatTheSavesUpgradeFound } from '../saves/upgrade-a-saved-game-and-check-it.ts';
+import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { isBotRow } from '../bots/setup.ts';
 
 // Generic in the state it is handed (plan P1-10b37): resolveTurn hands it the parsed save, and a test the part of a
-// world it stages. Its return is the four fields it makes, as TypeScript works them out.
+// world it stages. Its return is TurnContext, its state the one handed.
 export function createTurnContext<TheState>(
   G: TheState,
-  freshPlayers: readonly TheGamesSlotRow[],
+  freshPlayers: TheGamesSlotRow[],
   expectedTurnToRun: number,
-) {
+  whatTheSavesUpgradeFound: WhatTheSavesUpgradeFound = nothingTheSavesUpgradeFound(),
+): Omit<TurnContext, 'G'> & { G: TheState } {
   const turnLog: LogLine[] = [];
-  return { G, freshPlayers, expectedTurnToRun, turnLog };
+  return {
+    G,
+    freshPlayers,
+    expectedTurnToRun,
+    turnLog,
+    // Current character context, set by processOrder: the hero a line naming THE_HERO_WHOSE_ORDER_IS_RESOLVING is
+    // filed under (when the line reaches his realm), and the phase of a line that names none
+    _logCtx: { charId: null, phase: null },
+    // the phase currently being resolved. _logCtx is cleared to null between characters and after
+    // resolveStalledBattles, so a skill-rise earned in a phase-pipeline STAGE
+    // (force-march reinforcement, defend-reaction, pursuit movement) — outside processOrder — would
+    // otherwise be deferred with phase null and land under END OF TURN. This is the reliable
+    // fallback.
+    _currentPhase: null,
+    // once the phase loop has finished, EVERY remaining line of the turn is an end-of-turn line (Mass
+    // Healing, couriers, wages, de-consecration, max-HP sync …). _logCtx and _currentPhase are both
+    // null by then, and a null phase was being filed under SPRING in the character sections of both
+    // reports. This flag makes emit stamp phase 99 ("End of Turn") for anything emitted after the
+    // pipeline, so no end-of-turn event can be reported a year early again.
+    _afterPhases: false,
+    // what the save's upgrade found (a retired discovery taken, a hero carried over to the earned-HP pool): the turn's
+    // end tells the GM and the realms, and the save keeps none of it
+    whatTheSavesUpgradeFound,
+    // ── MERCENARY BAND IDS (P1-18b, 2026-10-18) ── a band made this turn is `merc_t<turn>_<n>`, counted
+    // afresh each turn: no clock and no dice, so the turn's dice don't depend on how many bands it makes.
+    // The `merc_` prefix is what the hire code tests for, and an older save's `merc_<ms>_<b36>` ids can't
+    // meet these. The turn is the one being run (expectedTurnToRun), not G.turn, which advances mid-turn.
+    _mercIds: { n: 0 },
+    // ── TELEMETRY (2026-09-25) ── the situation of every realm BEFORE anything happens this turn, and
+    // the facts for the statistics the turn files in its order (battles, lair fights, captures, deaths, spells:
+    // recordForTheStatistics, plan P1-12d33). Written to turn_events after the save, one row per realm — see
+    // writeTurnTelemetry at the end of runTurn.
+    _tel: {
+      pre: {},
+      orders: {},
+      factsInTheTurnsOrder: [],
+    },
+    // Which commanders fought in each battle, keyed by provinceId@phase. Every battle line carries a
+    // SINGLE charId — the attacker's (via _logCtx) for a fresh fight, or the ranking live force for a
+    // resumed stalled battle. This map lets that report re-file the fight under THIS player's own
+    // commander who fought there.
+    battleCommanders: {},
+    // 2026-10-08 (Toby item 7): every character who stood in a field battle, by id → the phase it was
+    // fought in. That is both leaders AND every armed character of either side standing on the ground,
+    // so a general pooled in as a reinforcement counts too. ONE BATTLE PER PHASE reads it: a chase
+    // already under way waits when its hunter has fought this phase — as the attacker OR the defender.
+    fieldBattlePhase: {},
+    // the move pools, the seasons, the recruits, the sightings, the sight and the war fronts: made afresh by the
+    // stage before the bots plan (movePoolsPerTurnTrackers…, missingOrdersDefaultToDefend…), empty until then
+    movePoints: {},
+    seaMovePoints: {},
+    seaMoveActive: {},
+    seaCap: {},
+    moveMax: {},
+    seaMoveMax: {},
+    SEASONS: KC_SEASONS.slice(),
+    recruitedThisTurn: {},
+    _intrusionAcc: new Map(),
+    // while a battle (or its carry-on series) is resolving, this holds the contested province's id so
+    // trySkillGain can cap a combat skill to ONE gain per province-battle-series (carry-on battles
+    // span phases, so a per-phase cap alone isn't enough). Cleared at every loop boundary between
+    // fights.
+    _combatSkillProv: null,
+    // 2026-10-13 (item 6, Toby): while a pre-battle duel is fought, each duellist's id → the foe's name,
+    // so a skill rise earned in it can say so (resolveDuel sets it; trySkillGain reads it).
+    _duelFoes: null,
+    _battleSeq: 0, // 2026-09-23d: numbers each emitted battle so the player portal can fold it (emitBattle)
+    // while a duel against a LOCAL CHIEFTAIN (a neutral guard) is resolving, this holds
+    // {used:false}. The FIRST skill advance of that duel closes it for every skill — melee, archery and
+    // thief could each roll before, so one chieftain could train three skills at once. Unlike
+    // _combatSkillProv (which is per-skill) this cap is TOTAL: one advance per duel, whatever the
+    // skill.
+    _chieftainDuelGain: null,
+    // incidental skill-rises (those NOT tied to a battle narrative) are buffered here and flushed at
+    // the END of the phase, so a line like "…Explorer rises to level 1…" reads as the consequence it
+    // is — reported after the move/action that earned it, not jumping ahead of it.
+    _deferredSkillLogs: [],
+    // set while the Hunting Rumours odds simulation runs fights in the background — no sandbox fight
+    // may ever train a real skill (see simulateLairOdds).
+    _pcSimulating: false,
+    // Record killed armies into province grave pool for Skeletal Armies spell Elven army units of an
+    // Elven KINGDOM that would fall in battle have a terrain-based chance to slip the field and make
+    // for home instead of dying. The chance is decided here, at the moment of loss; the survivor is
+    // DELIVERED at the end of the turn (see flushElvenEscapes), to the king's home province — or, if
+    // that has been lost, the realm's wealthiest remaining province — so the destination reflects
+    // final ownership. Desert/mountain 30%, plains 45%, forest/jungle 60%.
+    _elvenEscapeQueue: [],
+    // CLAIRVOYANCE watch snapshot. targetChar._clairvoyantBy is cleared at turn-end BEFORE the
+    // per-player reports are built, so record each caster's active watch here (one per player — a new
+    // casting replaces the old) to survive into report generation. { playerIndex: {charId, fromPhase}
+    // }.
+    clairWatch: {},
+    presenceByPhase: [],
+    // The shell has the reports built only once the turn is saved (_turnCommitted): the Spy-stealth step and
+    // whatTheReportsRead (run-turn.ts) each run once, the stealth first.
+    _reports: { stealthRolled: false, built: false },
+    enteredThisPhase: {},
+    _distCache: new Map(),
+    // The Defend step (see flushDefendStep in the phase loop): true while the phase's non-moving orders
+    // are still resolving; hosts raised meanwhile where a Defend general would answer wait in the queue.
+    _tier0Open: false,
+    _unitGainQueue: [],
+    _warFrontAtStart: new Map(),
+    _warFrontProvs: new Set(),
+    lightLandMoves: {},
+    lightSeaMoves: {},
+    // the merge's records of what each realm sent (mergeTheRealmsSubmittedOrders…), empty until it runs
+    diploDeclarations: {},
+    reckoningCalls: new Set(),
+    staleOrderWarnings: [],
+    safeStartRefused: [],
+    discoveryChoicePicks: {},
+    playerMessages: {},
+    // ── BOT DIPLOMACY (Phase 2) — turn-start snapshot ── the bot realms, by their slot rows; resolveTurn
+    // snapshots each one's identified rivals (_encountered, driven by fog-of-war) as it stands at the START
+    // of the turn, so a bot declares war on the same cadence a human would: it reacts to what it knew going
+    // into the turn, the declaration is applied at end of turn, and war stands next turn — reusing the
+    // existing human war tempo.
+    _botPlayerIdx: new Set((asItsGuardReadsIt(freshPlayers) ?? []).filter(isBotRow).map((p) => p.player_index)),
+    _botEncounteredAtStart: {},
+  };
+}
+
+/** What the upgrade found in a save that needed nothing: the start value of a test's context. */
+function nothingTheSavesUpgradeFound(): WhatTheSavesUpgradeFound {
+  return {
+    retiredSageDiscoveriesRemoved: 0,
+    heroesCarriedOverToTheEarnedHpPool: [],
+    whereTheSaveDiffersFromThisBuildsSchema: [],
+    lairsRenamed: 0,
+    guardiansCut: 0,
+    heroesInARealmsServiceWhoseWanderingTagWasTakenOff: 0,
+  };
 }
 
 // ── THE CONTEXT'S TYPES (plan P1-10a2) ────
@@ -85,9 +223,8 @@ export interface ElvenEscape {
   unit: { type: string; quality: string; race: string; unitName: string | undefined; strength?: number | undefined };
 }
 
-/** The turn's context: createTurnContext makes the first four fields; resolveTurn and the helpers it calls add
- *  the rest as the turn reaches them (tests/lib/engine.ts's turnContext() makes them all, as resolveTurn does before
- *  the first phase). Keyed by a hero's id, a province's or a realm's index where the comment says "by". */
+/** The turn's context: createTurnContext makes every field, each its start value; resolveTurn and the helpers it calls
+ *  change them as the turn goes on. Keyed by a hero's id, a province's or a realm's index where the comment says "by". */
 export interface TurnContext {
   /** The game's state, parsed: the working copy the turn changes. */
   G: GameState;

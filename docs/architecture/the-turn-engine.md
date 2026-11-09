@@ -202,7 +202,7 @@
   the bots in `engine/bots/`, the map in `engine/world/`. What `resolveTurn` calls, stage by stage, and `processOrder`'s checks:
   [the turn's context](the-turns-context-and-calling-its-helpers-and-stages-from-a-test.md#what-resolveturn-calls-in-order).
 - **A helper that reads the turn's state takes the turn's context first**: `turnContext`, made by
-  `createTurnContext(G, freshPlayers, expectedTurnToRun)` (`src/engine/turn/context.ts`, whose `TurnContext` is its
+  `createTurnContext(G, freshPlayers, expectedTurnToRun, whatTheSavesUpgradeFound)` (`src/engine/turn/context.ts`, whose `TurnContext` is its
   type) just after the save is parsed. It holds the state and the GM's log (`turnLog`, which only `emit` writes: every
   line enters through it with its audience, in `engine/turn/events-and-their-audiences.ts`; there is no `log()`;
   [traps.md](../traps.md#a-line-goes-through-emit)), the collectors (`_tel`, `battleCommanders`, …), the movement
@@ -213,10 +213,9 @@
   upgrade found, [a saved game](a-saved-game-its-version-its-upgrade-its-check.md)), and the values the turn changes as
   it goes (`_logCtx`, `_currentPhase`, `_afterPhases`, `_combatSkillProv`, `_duelFoes`, `_battleSeq`,
   `_chieftainDuelGain`, `_deferredSkillLogs`, `_pcSimulating`, `enteredThisPhase`, `_tier0Open`, `_unitGainQueue`),
-  read and written as `turnContext._currentPhase` everywhere, in `resolveTurn` too. Each joins on the line after
-  `resolveTurn` declares it, or is made and joined by the stage before the first phase that first needs it (the
-  movement pools, `lightLandMoves`, `lightSeaMoves`, `SEASONS`, `recruitedThisTurn`, `presenceByPhase`,
-  `_intrusionAcc`, `_distCache`, `_warFrontAtStart` and `_warFrontProvs`). A helper that reads none keeps its own
+  read and written as `turnContext._currentPhase` everywhere, in `resolveTurn` too. Each holds its start value from the
+  context's birth (P1-10b51); the stages before the first phase make some afresh (the movement pools, the merge's
+  records). A helper that reads none keeps its own
   arguments. No dice and no clock in the context: the turn's dice are lent for its length.
 - **The rules on plain values** (`engine/rules-on-plain-values/`: the rules of a hero, an army, an item, a level or a
   number) import only `src/content` and each other, so the player portal shares them through `src/shared/`

@@ -4,8 +4,9 @@ What a helper, an order or a stage of the turn takes, and what a test that calls
 
 ## What `resolveTurn` calls, in order
 
-`resolveTurn` (`src/engine/run-turn.ts`) is the stages' calls. Between them it keeps only the bots' calls and the
-turn's start values. Each stage takes the context, and the phase loop's stages also take the loop's values they read.
+`resolveTurn` (`src/engine/run-turn.ts`) is the stages' calls. Between them it keeps only the bots' calls, the
+telemetry's first snapshot and the bots' rivals at the start: the context holds every start value from its birth
+(`createTurnContext`, P1-10b51). Each stage takes the context, and the phase loop's stages also take the loop's values they read.
 Search a name to find its file. In order:
 
 1. **As the save is read**, with its upgrades: `lastTurnsBattleAndDuelSwordsClearedFromTheMap(G)` clears the map's
@@ -162,10 +163,11 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   reach it in the `vm` but not in a test that imports the module, where a `const` can't be replaced. Stage the
   state it reads instead. A table declared with `const` (`TITLE_DEFS`, `MINOR_TITLES`, `SEA_TYPES`, `SKILL_LABELS`) is
   read in the `vm` with `vm.runInContext('JSON.stringify(TITLE_DEFS)', engine)`, which works either way.
-- Reading a context value before `resolveTurn` has set it gives `undefined`; reading the old `let` before its line
-  threw. P1-08a checked that nothing reads one early (a throwaway tripwire through a whole test run and the matrix), and
-  P1-08b again for the objects that join partway through the turn (the movement pools, `SEASONS`,
-  `recruitedThisTurn`, `_intrusionAcc`): before its join line, the old name threw; the context's reads `undefined`.
-  P1-08c checked again for the six values above and `_elvenEscapeQueue`, P1-08d for `presenceByPhase`, `clairWatch` and
-  `_reports`, P1-08e for `_botPlayerIdx`, P1-08i1 for `enteredThisPhase` and `_distCache`, P1-08i3 for `_tier0Open`, `_unitGainQueue`, `_warFrontAtStart` and `_warFrontProvs`. P1-08k4 and P1-08k7 for the merge's six collectors. P1-08k8 added no join and no `let` (the values it makes were joined before; their join lines moved with them), so it didn't rerun it. P1-08l1 reran it for `_botEncounteredAtStart`; P1-08l2 added none (the merge's six collectors moved into the merge with their join lines, still joined before anything reads them), so it didn't. `turnContext()` in `tests/lib/engine.ts` sets each of them, as `resolveTurn`
-  does: a test of a lifted helper that reads one it doesn't set gets `undefined`, not the turn's value.
+- **The context is whole at birth** (P1-10b51): `createTurnContext` gives every field of `TurnContext` its start value,
+  as `tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts` writes them (`unit/turn-context` holds the two
+  the same), so no read finds a field unset. Before it, each field joined on its line in `resolveTurn` or in its stage,
+  and a read before that line gave `undefined`: the tripwire P1-08a to P1-08l1 ran (a context that throws on such a
+  read, through a whole test run and the matrix) found none, nor did P1-10b51's on its base (both sets the same, 120 of
+  120 games; only tests that stage a context read one early, `_pcSimulating`, whose start value is as falsy). The
+  stages that make a field afresh each turn (the move pools, the merge's records) still do. `turnContext()` in
+  `tests/lib/engine.ts` sets each of them again, with the same values.

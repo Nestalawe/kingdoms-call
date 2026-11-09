@@ -251,11 +251,6 @@
       "count": 1
     }
   },
-  "src/engine/run-turn.ts": {
-    "preserve-caught-error": {
-      "count": 1
-    }
-  },
   "src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 3
@@ -290,11 +285,6 @@
     },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 7
-    }
-  },
-  "src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
     }
   },
   "src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts": {
@@ -336,11 +326,6 @@
     },
     "@typescript-eslint/restrict-template-expressions": {
       "count": 2
-    }
-  },
-  "src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts": {
-    "prefer-const": {
-      "count": 1
     }
   },
   "src/engine/units/recruit-limits.ts": {
@@ -710,11 +695,6 @@
       "count": 2
     }
   },
-  "tests/lib/player-portal-copies.ts": {
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    }
-  },
   "tests/lib/report-leaks.ts": {
     "@typescript-eslint/prefer-includes": {
       "count": 1
@@ -733,6 +713,11 @@
   "tests/lib/the-bots-plan-cases.ts": {
     "@typescript-eslint/dot-notation": {
       "count": 4
+    }
+  },
+  "tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
     }
   },
   "tests/lib/titles-at-the-turns-end-cases.ts": {
@@ -995,14 +980,6 @@
   "tools/balance/scripted.ts": {
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2
-    }
-  },
-  "tools/balance/stats.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-string-starts-ends-with": {
-      "count": 1
     }
   },
   "tools/ratchet.ts": {

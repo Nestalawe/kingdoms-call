@@ -1,4 +1,5 @@
-// The page's side of the order form's forecasts (plan P1-11e41): the forecasts' file reads no field of the page, so the
+// The page's side of the order form's forecasts (plan P1-11e41; since P1-11e42 its ledger, chance notes, order list and
+// magic levels too): the forecasts' file reads no field of the page, so the
 // page hands each forecast the report it shows (currentReport) and a snapshot of the orders its form holds, taken as the
 // forecast is asked: one snapshot for the forecast and everything it asks in turn. The page's files ask the forecasts
 // by these names; a test asks the forecasts' file with orders of its own.
@@ -9,8 +10,13 @@ import {
   whatAHeroCarriesAsAPhaseBegins,
   whatAHeroLeadsAsAPhaseBegins,
   whereAHeroStandsAfterTheOrdersBefore,
-  whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders,
 } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import {
+  theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise,
+  theNoteUnderAnOrderThatQuotesItsChance,
+  theOrdersTheFormOffersAHero,
+  theTreasuryLedgerOnTheseOrders,
+} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // The value a page's field holds (an input's, a select's), or undefined where the element holds none.
 function theValueOfAField(el: Element): unknown {
@@ -118,12 +124,23 @@ export function projectedGarrison(
 export function projectedLedArmies(charId: unknown, upToPhaseExclusive: number): unknown {
   return whatAHeroLeadsAsAPhaseBegins(currentReport, theOrdersTheFormHolds(currentReport), charId, upToPhaseExclusive);
 }
-export function whereTheCompaniesAHerosRecruitRaisesMuster(o: unknown, ph: number, ticks: unknown): unknown {
-  return whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders(
-    currentReport,
-    theOrdersTheFormHolds(currentReport),
-    o,
-    ph,
-    ticks,
-  );
+
+// The orders the form holds for the hero `c` alone (a pre-order card's too, which the report may not list yet): the
+// snapshot read by what reads only his own orders (P1-11e42).
+function theOrdersTheFormHoldsForTheHero(c: unknown): TheOrdersTheFormHolds {
+  return theOrdersTheFormHolds({ characters: [c] });
+}
+// The ledger, the note under an order that quotes its chance, the orders the form offers a hero and the levels of
+// magic his earlier practices may raise (P1-11e42), as the page's files ask them.
+export function computeOrderLedgerP(): unknown {
+  return theTreasuryLedgerOnTheseOrders(currentReport, theOrdersTheFormHolds(currentReport));
+}
+export function orderChanceNote(c: unknown, action: unknown, ph: unknown): unknown {
+  return theNoteUnderAnOrderThatQuotesItsChance(currentReport, theOrdersTheFormHoldsForTheHero(c), c, action, ph);
+}
+export function actionsFor(c: unknown): unknown {
+  return theOrdersTheFormOffersAHero(currentReport, c);
+}
+export function projectedMagicLevels(c: unknown, ph: unknown): unknown {
+  return theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise(theOrdersTheFormHoldsForTheHero(c), c, ph);
 }

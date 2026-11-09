@@ -2,7 +2,7 @@
 // sets a game up on the page: in a scripted game realm 0 is a player's, on the matrix's scripted orders; every other
 // realm is a bot. GAME is scripted-05 (four realms): tests/unit/engine-purity.test.ts plays it whole in the vm;
 // tests/page/turn-shell.test.ts plays one turn of it on the page and in the vm, from the same seed, and compares the two
-// (P1-18e); tests/lib/player-portal-copies.ts plays it with the engine's modules imported directly, from SETUPS
+// (P1-18e); tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts plays it with the engine's modules imported directly, from SETUPS
 // (P1-11a2). Every game of a set, with a report for every realm: tools/balance/every-realm.ts (P1-12a1).
 import vm from 'node:vm';
 import { MAP_SIZES, matrix, SCRIPTED_REALM, START, type GameSpec } from '../../tools/balance/matrix.ts';

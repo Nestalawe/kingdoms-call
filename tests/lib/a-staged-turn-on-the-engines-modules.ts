@@ -25,6 +25,7 @@
 // Rests all turn. The console is quiet (its log and its warnings) while the engine makes the world and plays the turn.
 import { vi } from 'vitest';
 import type { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
+import type { TheGamesSlotRow } from '../../src/engine/turn/context.ts';
 
 export interface Order {
   action: string;
@@ -188,7 +189,10 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
     const turnNumber = (JSON.parse(json) as World).turn;
     // the shell's seed: one number from the dice, as a 32-bit integer (0 read as 1)
     const turnSeed = Math.floor(kcRng() * 2 ** 32) || 1;
-    const resolved = quietly(() => resolveTurn(json, plain(rows), turnNumber, turnSeed) as Resolved);
+    // (the rows as the test stages them; the turn's return as the test reads it: its log's lines as Line)
+    const resolved = quietly(
+      () => resolveTurn(json, plain(rows) as TheGamesSlotRow[], turnNumber, turnSeed) as unknown as Resolved,
+    );
     const built: Built = quietly(() => {
       resolved.spyStealthAndInvisibilityStampedForTheReports();
       // through the module, so a stand-in set on it (reportEveryRealm, a test's vi.spyOn) is the one called

@@ -81,6 +81,7 @@ export const scenarioNames = (): string[] =>
 export interface Unit {
   type: string;
   quality: string;
+  race: string;
   unitName: string;
 }
 export interface Hero {
@@ -150,9 +151,10 @@ export function own(S: World, p: Province, pi: number): void {
   p.characters = (p.characters ?? []).filter((id) => S.characters.some((c) => c.id === id));
 }
 
-/** `n` companies of one type and quality. */
-export const companies = (type: string, quality: string, n: number): Unit[] =>
-  Array.from({ length: n }, (_, i) => ({ type, quality, unitName: `${type} ${String(i + 1)}` }));
+/** `n` companies of one type, quality and race (each company a save holds has its race: the GM page's stop refuses a
+ *  save with one missing, P1-15f8). */
+export const companies = (type: string, quality: string, n: number, race: string): Unit[] =>
+  Array.from({ length: n }, (_, i) => ({ type, quality, race, unitName: `${type} ${String(i + 1)}` }));
 
 /** Two realms at war. */
 export function atWar(S: World, a: number, b: number): void {

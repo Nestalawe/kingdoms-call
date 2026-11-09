@@ -664,3 +664,99 @@ const kingOf2 = (b: Board) =>
     b.G.characters.find((c) => c.isKing && c.player === 2),
     'the king of realm 2',
   ).id;
+
+describe('What the merge’s typed reads keep (P1-10b50: each a value the old reads gave, on orders no game sends)', () => {
+  /** The slot row of seat `i`, holding `orders` as its text. */
+  const rowOf = (i: number, orders: string) => ({
+    id: 'G1gp' + String(i),
+    game_id: 'G1',
+    user_id: 'u' + String(i),
+    player_index: i,
+    display_name: 'Realm ' + String(i),
+    orders_submitted: true,
+    orders,
+    turn_report: '{}',
+  });
+  /** The merge on one slot row of seat `i` sending `payload` (as JSON). */
+  const mergedWith = (b: Board, i: number, payload: unknown) => {
+    given(b, JSON.stringify([rowOf(i, JSON.stringify(payload))]));
+    merge(b.tc);
+  };
+  const forTurn = (b: Board) => ({ orders: {}, encounterPlans: {}, forTurn: b.G.turn });
+
+  test('orders that are the words “null” stop the merge with the TypeError their first read threw', () => {
+    const b = fresh();
+    setUp(b.tc);
+    given(b, JSON.stringify([rowOf(1, 'null')]));
+    let thrown = '';
+    try {
+      merge(b.tc);
+    } catch (e) {
+      thrown = String(e);
+    }
+    expect(thrown).toBe("TypeError: Cannot read properties of null (reading 'heroOrder')");
+  });
+
+  test('orders of the new form with no list of plans or of an heir’s choices set nothing aside', () => {
+    const b = fresh();
+    setUp(b.tc);
+    mergedWith(b, 1, { ...forTurn(b), encounterPlans: null, kingSkills: null });
+    expect(collected(merged(b), 'staleOrderWarnings')).toEqual([]);
+  });
+
+  test('an heir with no skills on record keeps a skill sent at 0, and his name when none is sent', () => {
+    const b = fresh();
+    setUp(b.tc);
+    const h = realmHero(b, 1);
+    Object.assign(h, { _isHeir: true });
+    delete (h as unknown as Raw)['skills'];
+    delete (h as unknown as Raw)['_pendingSkillAllocation'];
+    const name = h.name;
+    mergedWith(b, 1, { ...forTurn(b), kingSkills: { [h.id]: { skills: { melee: 0 } } } });
+    expect([h.skills, h.name, collected(merged(b), 'staleOrderWarnings')]).toEqual([{ melee: 0 }, name, []]);
+  });
+
+  test('an heir with no whole number of points to place, or none, has a skill raised set aside, told by the points he has', () => {
+    for (const [points, words] of [
+      [1.5, '1.5'],
+      [undefined, '0'],
+    ] as const) {
+      const b = fresh();
+      setUp(b.tc);
+      const h = realmHero(b, 1);
+      Object.assign(h, { _isHeir: true, skills: { melee: 1 } });
+      if (points === undefined) delete (h as unknown as Raw)['_pendingSkillAllocation'];
+      else Object.assign(h, { _pendingSkillAllocation: points });
+      mergedWith(b, 1, { ...forTurn(b), kingSkills: { [h.id]: { skills: { melee: 2 } } } });
+      expect(h.skills).toEqual({ melee: 1 });
+      expect(collected(merged(b), 'staleOrderWarnings')).toEqual([
+        `⚠ Set aside from ${realm(b, 1).name}'s orders: skills for its heir ${h.name} that are not his crowned skills plus at most ${words} points (no more than 2 in one skill); he keeps his crowned skills.`,
+      ]);
+    }
+  });
+
+  test('a plan keeps only the tactics sent as words', () => {
+    const b = fresh();
+    setUp(b.tc);
+    const h = realmHero(b, 1);
+    mergedWith(b, 1, { ...forTurn(b), encounterPlans: { [h.id]: { tactics: ['ME', 3, null, true, 'AR'] } } });
+    expect(h['encounterPlan']).toEqual({ tactics: ['ME', 'AR'] });
+  });
+
+  test('a seat the save doesn’t have, sending for heroes not its own, is told as “a player”’s', () => {
+    const b = fresh();
+    setUp(b.tc);
+    const h = realmHero(b, 1);
+    mergedWith(b, 7, { ...forTurn(b), orders: { [h.id]: [] } });
+    expect(collected(merged(b), 'staleOrderWarnings')).toEqual([
+      `⚠ Set aside from a player's orders: what it sent for heroes not in its service (${String(h.id)}).`,
+    ]);
+  });
+
+  test('the set-up on a save with no list of characters gives no hero orders', () => {
+    const b = fresh();
+    delete (G(b) as Raw)['characters'];
+    setUp(b.tc);
+    expect(b.G.turnOrders).toEqual({});
+  });
+});

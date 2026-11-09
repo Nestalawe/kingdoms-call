@@ -125,15 +125,9 @@ export const host = (b: Board, pi: number, p: Province, n: number) =>
     companies(n, 'Men-at-Arms', 'Average', 'Host ' + String(pi)),
   );
 /** A claim to the throne lodged two turns before `judgedAt` by realm `by` and its bloc, judged at the end of turn
- *  `judgedAt`, at the bar `thrPct` (none: an old save's claim, which carries no bar). */
-export const claim = (b: Board, by: number, bloc: number[], judgedAt: number, thrPct?: number) => {
-  raw(b)['reckoning'] = {
-    by,
-    bloc,
-    calledTurn: judgedAt - 2,
-    resolveAtTurn: judgedAt,
-    ...(thrPct === undefined ? {} : { thrPct }),
-  };
+ *  `judgedAt`, at the bar `thrPct`. */
+export const claim = (b: Board, by: number, bloc: number[], judgedAt: number, thrPct: number) => {
+  raw(b)['reckoning'] = { by, bloc, calledTurn: judgedAt - 2, resolveAtTurn: judgedAt, thrPct };
 };
 /** The bar has eroded `n` steps already. */
 export const eroded = (b: Board, n: number) => {
@@ -1090,22 +1084,6 @@ export const CLAIM_CASES: DiplomacyAndVictoryCase[] = [
       return {
         got: { said: said(o), claim: claimAfter(o) },
         want: { said: [], claim: { by: 0, bloc: [0], calledTurn: 12, resolveAtTurn: 14, thrPct: 50 } },
-      };
-    },
-  },
-  {
-    name: "an old save's claim, with no bar recorded, is held to the bar as it stands now",
-    stage(b) {
-      turnIs(b, 13);
-      taxes(b, 50, 40, 10);
-      king(b, 0);
-      claim(b, 0, [0], 14);
-      return sending();
-    },
-    check(o) {
-      return {
-        got: { said: said(o), claim: claimAfter(o) },
-        want: { said: [[[], collapses(nm(o, 0), 60, 67)]], claim: null },
       };
     },
   },

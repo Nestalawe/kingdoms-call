@@ -10,13 +10,17 @@ import { writeTurnTelemetry } from '../../db/telemetry.ts';
 import { computeNextDeadline } from './turn-mode.ts';
 import { runningBuildStamp, setAutoTurnStatus } from './auto-turn.ts';
 import { resolveTurn } from '../../engine/run-turn.ts';
-import { whatTheSavesCheckFoundInWords } from '../../views/prose/what-the-saves-check-found-in-words.ts';
+import {
+  whatTheSavesCheckFoundInWords,
+  whyTheSavesCheckStoppedTheTurnInWords,
+} from '../../views/prose/what-the-saves-check-found-in-words.ts';
+import { whatTheSavesCheckFindsBeforeTheTurn } from '../../engine/saves/the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts';
 import { buildReports } from '../../views/every-realms-report-and-the-lines-each-realm-reads.ts';
 
 // ── THE TURN SHELL (plan P1-18d, 2026-10-18) ────
 // runTurn runs one turn of a game for the GM: from the Resolve Turn button, or from the auto-turn watcher (auto-turn.ts).
 // It does the turn's database and screen work, around the engine's resolveTurn (src/engine/run-turn.ts), in this order:
-// confirm, load the game and its slots, check the turn, clear the orders, resolveTurn, save the world (only if the game
+// confirm, load the game and its slots, check the turn, check the save on a copy (the stop), clear the orders, resolveTurn, save the world (only if the game
 // is still on that turn), then roll the Spy stealth, have the views build every realm's report (buildReports, from what
 // resolveTurn hands over for them) and write each one, the GM's log and the telemetry. It always returns {ok, committed, conflict, error} (and `turn` when it worked); docs/traps.md,
 // "Post-commit work in runTurn".
@@ -97,6 +101,17 @@ export async function runTurn(opts) {
     if (freshGame.turn !== expectedTurnToRun) {
       msg.innerHTML = kcHtml`<div class="msg-error">⚠ Turn mismatch: expected Turn ${expectedTurnToRun} but game is now on Turn ${freshGame.turn}. The turn may have already been run. Reload the page.</div>`;
       return { ok: false, committed: false, conflict: true, error: 'turn mismatch' };
+    }
+
+    // 1b. THE STOP (plan P1-15f8, P1-15's Decision 8): the save upgraded and checked on a copy, before anything changes
+    // (src/engine/saves/the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts). A place the check names
+    // that isn't on its short known list (the Parked leaks of a battle's marks) stops the turn here: nothing is written,
+    // the orders stay in, and the message names each place by its path and kind, never a value. A known place lets the
+    // turn run, and the GM is told below, as the GM's log tells it. The copy draws none of the page's dice.
+    const theStop = whatTheSavesCheckFindsBeforeTheTurn(freshGame.game_state).placesThatStopTheTurn;
+    if (theStop.length) {
+      msg.innerHTML = kcHtml`<div class="msg-error">⚠ Turn ${expectedTurnToRun}: ${whyTheSavesCheckStoppedTheTurnInWords(theStop)}<br><small>Nothing was changed, and the orders are still in.</small></div>`;
+      return { ok: false, committed: false, conflict: false, error: whyTheSavesCheckStoppedTheTurnInWords(theStop) };
     }
 
     // 2a. Snapshot the orders, then clear them in the database — ONCE, here, before the save is upgraded
@@ -235,8 +250,8 @@ export async function runTurn(opts) {
 
     // Orders and flags already cleared in step 2a, before the save was upgraded
 
-    // What the save's check found (plan P1-15d): the turn ran on the save as it was (Theo's Choice 1, tell now), and
-    // the GM is told here as in the GM's log, each place by its path and kind, never a value.
+    // What the save's check found (plan P1-15d): since the stop (P1-15f8, above) only known places, on which the turn ran
+    // as the save was; the GM is told here as in the GM's log, each place by its path and kind, never a value.
     theSavesCheck = resolved.whereTheSaveDiffersFromThisBuildsSchema.length
       ? kcHtml`<div class="msg-error">⚠ ${whatTheSavesCheckFoundInWords(resolved.whereTheSaveDiffersFromThisBuildsSchema)}</div>`
       : '';

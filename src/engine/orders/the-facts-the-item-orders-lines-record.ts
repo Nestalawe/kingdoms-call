@@ -30,7 +30,6 @@ export type TheFactOfTheItemOrdersLine =
     }
   | { kind: 'a charmed hero will not spend what he carries'; heroName: string }
   | { kind: 'a hero has no such item to use'; heroName: string }
-  | { kind: 'an item has already been used'; itemName: string }
   | {
       kind: "the Philosopher's Stone finds nothing to work on and is not spent";
       heroName: string;
@@ -103,7 +102,6 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_THE_ITEM_ORDERS_LINE: Readonly<
   'a hero arms and dresses for the season': "its event's",
   'a charmed hero will not spend what he carries': "its event's",
   'a hero has no such item to use': "its event's",
-  'an item has already been used': "its event's",
   "the Philosopher's Stone finds nothing to work on and is not spent": "its event's",
   "the GM's note of the undiscovered Stones struck from the lair hoards": "its event's",
   "the Philosopher's Stone raises the realm's units a tier and crumbles": "its event's",

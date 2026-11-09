@@ -32,8 +32,8 @@
 // list stopping the espionage reset (Parked); a hero with no orders at all; the record's reckoning handed what each
 // realm sent, a concession dated by the turn run, a failing record warned and set aside, gaps; the war fronts as the
 // threats name them, not on ground fought over, not under a veil; and `resolveTurn` calling the merge, the first two
-// around the bots' declarations, the third after the turn's start values, the bots' passes, the fourth, then the first
-// phase, each once with its context. Properties (fast-check): a research choice settles on the pick or the die's open
+// around the bots' declarations, the third, each handed the turn's start values (the context whole at birth,
+// P1-10b51), the bots' passes, the fourth, then the first phase, each once with its context. Properties (fast-check): a research choice settles on the pick or the die's open
 // lead, forgetting the rest, or is dropped; a message reaches exactly the realms it may, once each, with one copy; an
 // Evil or Undead realm's war on a realm met stands at once, every other waits; every empty phase sent is Defend, only
 // those. Planted faults: in the PR (P1-08k8)
@@ -754,7 +754,7 @@ describe('The default to Defend, the record and the war fronts: what the fourth 
 });
 
 describe('Where resolveTurn calls them', () => {
-  test('after the merge: the first two around the bots’ declarations, the third after the turn’s start values, then the bots’ passes, the fourth, and the first phase, once each, with its context', () => {
+  test('after the merge: the first two around the bots’ declarations, the third, each handed the turn’s start values, then the bots’ passes, the fourth, and the first phase, once each, with its context', () => {
     const b = board(engine, world, 0);
     const s = stageCase(b, {
       ...NOTHING,
@@ -775,7 +775,8 @@ describe('Where resolveTurn calls them', () => {
     const names = [MERGE, ...STAGES, FIRST_PHASE, ...BOTS];
     const g = engine;
     const was = names.map((f) => [f, g[f] as Fn] as const);
-    const seen: { fn: string; tc: unknown; declared?: unknown; deferred?: boolean; botOrders?: boolean }[] = [];
+    const seen: { fn: string; tc: unknown; declared?: unknown; deferred?: string | undefined; botOrders?: boolean }[] =
+      [];
     const botHero = must(
       b.G.characters.find((c) => c.player === 1),
       'a bot hero',
@@ -791,7 +792,7 @@ describe('Where resolveTurn calls them', () => {
             ...(f === STAGES[0] || f === STAGES[1]
               ? { declared: JSON.parse(JSON.stringify((t?.['diploDeclarations'] as Raw)['1'] ?? null)) }
               : {}),
-            ...(f === STAGES[1] || f === STAGES[2] ? { deferred: Array.isArray(t?.['_deferredSkillLogs']) } : {}),
+            ...(f === STAGES[1] || f === STAGES[2] ? { deferred: JSON.stringify(t?.['_deferredSkillLogs']) } : {}),
             ...(f === STAGES[3] ? { botOrders: (G_.turnOrders[botHero.id] ?? []).every((o) => o != null) } : {}),
           });
         }
@@ -826,7 +827,7 @@ describe('Where resolveTurn calls them', () => {
     expect(stages.every((x) => x.tc === stages[0]?.tc)).toBe(true);
     expect(seen.find((x) => x.fn === STAGES[0])?.declared).toBeNull();
     expect(seen.find((x) => x.fn === STAGES[1])?.declared).toEqual({ 2: 'enemy' });
-    expect(seen.filter((x) => 'deferred' in x).map((x) => x.deferred)).toEqual([false, true]);
+    expect(seen.filter((x) => 'deferred' in x).map((x) => x.deferred)).toEqual(['[]', '[]']);
     expect(seen.find((x) => x.fn === STAGES[3])?.botOrders).toBe(true);
   });
 
@@ -1017,5 +1018,105 @@ describe('Properties of the four stages', () => {
       }),
       { seed: SEED, numRuns: 150 },
     );
+  });
+});
+
+describe('What the stages’ typed reads keep (P1-10b50: each a value the old reads gave, on a world no game makes)', () => {
+  test('a message to a seat that is a gap in the realms’ list is copied to the sender naming that seat by its number', () => {
+    const { b, tc } = fresh();
+    G(b).players[1] = null as unknown as Board['G']['players'][number];
+    tc['playerMessages'] = { 0: [{ to: [1], text: 'Anyone?' }] };
+    run(tc, [WAR_AND_MESSAGES]);
+    expect(
+      lines(b)
+        .filter((l) => l.type === 'message')
+        .map((l) => l.text),
+    ).toEqual([dispatch(realm(b, 0).name, 'Anyone?'), sentTo(['Player 2'], 'Anyone?')]);
+  });
+
+  test('an Evil realm’s war on a seat it has met that is a gap in the realms’ list names the seat by its number', () => {
+    const { b, tc } = fresh((bb) => {
+      creed(bb, 0, 'Evil');
+      return { sends: { 0: { diplomacy: { 1: 'enemy' } } } };
+    });
+    G(b).relations = {};
+    realm(b, 0)['_encountered'] = [1, 2];
+    G(b).players[1] = null as unknown as Board['G']['players'][number];
+    run(tc, [WAR_AND_MESSAGES]);
+    expect(b.G.relations).toEqual({ '0-1': 'enemy' });
+    expect(told(outcomeOf(b), warNow(realm(b, 0).name, 'Realm 2')).length).toBe(1);
+  });
+
+  test('an Evil realm with no list of the realms it has met declares no war without warning', () => {
+    const { b, tc } = fresh((bb) => {
+      creed(bb, 0, 'Evil');
+      return { sends: { 0: { diplomacy: { 1: 'enemy', 2: 'enemy' } } } };
+    });
+    G(b).relations = {};
+    delete realm(b, 0)['_encountered'];
+    run(tc, [WAR_AND_MESSAGES]);
+    expect(b.G.relations).toEqual({});
+  });
+
+  test('the first two stages on a save with no list of realms tell nothing and change no relation', () => {
+    const { b, tc } = fresh();
+    G(b).relations = {};
+    delete (G(b) as Raw)['players'];
+    run(tc, [RESEARCH, WAR_AND_MESSAGES]);
+    expect(b.G.relations).toEqual({});
+    expect(lines(b).filter((l) => l.type === 'message')).toEqual([]);
+  });
+
+  test('a Divine realm’s Cathedral with no province and no home wards no province', () => {
+    const { b, tc } = fresh((bb) => {
+      delete realm(bb, 2)['gdProvinceId'];
+      return {};
+    });
+    standIn(
+      ['gdActive', 'homeProvinceIdFor'],
+      () => {
+        run(tc, [POOLS_AND_SWEEPS]);
+      },
+      { gdActive: (_t: unknown, pi: unknown) => pi === 2, homeProvinceIdFor: () => null },
+    );
+    expect(b.G.world.provinces.filter((p) => (p as unknown as Raw)['_blessWardBy'] === 2)).toEqual([]);
+  });
+
+  test('an empty phase sent as 0, no words or false is a Defend, as a missing one is; an order sent is kept', () => {
+    const { b, tc } = fresh((bb) => ({ hero: realmHero(bb, 2) }));
+    const h = must(
+      b.G.characters.find((c) => c.player === 2 && !c.isKing),
+      'the hero',
+    );
+    (b.G.turnOrders as unknown as Record<string, unknown[]>)[String(h.id)] = [
+      0,
+      '',
+      false,
+      null,
+      { action: 'rest', target: '', extra: '', desc: 'Rest' },
+    ];
+    run(tc, [DEFAULT_DEFEND]);
+    expect(ordersOf(b.G, h)).toEqual([...Array.from({ length: 4 }, () => 'defend: Defend'), 'rest: Rest']);
+  });
+
+  test('a realm with no declarations is recorded with none; one dated a concession by the turn run but not conceded, with no concession', () => {
+    const { tc } = fresh((bb) => {
+      Object.assign(realm(bb, 2), { conceded: false, concededTurn: 9 });
+      return {};
+    });
+    tc['expectedTurnToRun'] = 9;
+    tc['diploDeclarations'] = {};
+    const calls = standIn(['telOrdersFor'], () => {
+      run(tc, [DEFAULT_DEFEND]);
+    });
+    const handed = calls[2]?.args[2] as Raw;
+    expect([handed['diplomacy'], handed['concede']]).toEqual([null, undefined]);
+  });
+
+  test('a save with no list of characters still has each realm’s orders recorded', () => {
+    const { tc } = fresh();
+    delete (tc['G'] as Raw)['characters'];
+    run(tc, [DEFAULT_DEFEND]);
+    expect(Object.keys((tc['_tel'] as Raw)['orders'] as Raw)).toEqual(['0', '1', '2']);
   });
 });

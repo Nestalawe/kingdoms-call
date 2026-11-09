@@ -22,7 +22,7 @@ so find them all before you plan the change. Search; don't read the long files w
    is a place the change reaches (the order, the report's forecast, the player's form). Then search the rule's numbers
    and words again outside it, for copies written inline (a battle file, a duel, the report).
 5. **The player portal's copies** that still restate an engine rule are the ones `tests/lib/player-portal-copies.ts`
-   checks. A rule it shares is written once, in `src/engine/rules-on-plain-values/`.
+   loads (its forecasts: their test imports them). A rule it shares is written once, in `src/engine/rules-on-plain-values/`.
 
 The player portal's files are named after their first section, not everything they hold: find a field, a forecast or
 a hint by its words or its function's name, not by the file's name.
@@ -134,6 +134,9 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
   P1-11e10 with the column the Move note counts and its sea lift, which the march forecast reads). Since P1-11e41 they
   read only the report and the orders handed to them; the page hands them, in
   `src/ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts` (a snapshot of the form's fields a forecast).
+  The treasury ledger, the notes that quote an order's chance (the Practice Skill note), the order list and the levels
+  of magic a hero's practices may raise, with the tables they read, the same way since P1-11e42:
+  `src/ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts`.
 - **The detail:** [the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules);
   the copies left are `tests/lib/player-portal-copies.ts`'s.
 
@@ -166,8 +169,29 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
 ### The save's shape
 
 A change to what a saved game holds follows [CLAUDE.md's rule](../../CLAUDE.md#rules) and
-[a saved game](a-saved-game-its-version-its-upgrade-its-check.md#a-change-to-the-saves-shape-needs-its-version). This
-paragraph is completed when the work on the saves lands.
+[a saved game](a-saved-game-its-version-its-upgrade-its-check.md#a-change-to-the-saves-shape-needs-its-version).
+- **The schema:** `src/schemas/saved-game-state.ts`; a new optional field is the schema alone. A mark a battle or a turn
+  writes and wipes before the save is typed in `src/engine/army-tables.ts` instead
+  ([A battle-only mark](../traps.md#a-battle-only-mark-is-not-part-of-the-saved-state)).
+- **A numbered step or a pass on every load,** both in `upgradeGameState`
+  (`src/engine/saves/upgrade-a-saved-game-and-check-it.ts`). A shape an older save can't meet as it is takes a numbered
+  step, run once on a save below its version: version 2's, `src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts`,
+  is the pattern, and the number goes in `the-saved-games-version-this-build-writes.ts` beside it. A mend a new world
+  needs too, or one that carries a table's change into running games, is a pass, safe to repeat: a step skips a world
+  made at its version ([Live saves keep copies](../traps.md#live-saves-keep-copies)).
+- **The fixture:** a bump adds `tests/fixtures/saves/version-<n>.json` (the newest is `version-2.json`), made by
+  `npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`, never edited once merged.
+- **The stop:** before a turn, the GM page's shell (`src/ui/gm/turn-shell.ts`) checks the save, and a place the schema
+  refuses (a field it doesn't know, say) stops the turn, but for the known leaks listed in
+  `src/engine/saves/the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts`. So a field a turn starts to
+  save goes into the schema in the same change, or every live game's next turn stops
+  ([The check is not the save](../traps.md#the-check-is-not-the-save)).
+- **The tests:** `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` (red until a step mends every
+  older fixture), `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged and
+  mended) and `tests/unit/a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts` (the stop). The
+  balance matrix fails a game on any place the check finds.
+- **A GM page opened before a bump's deploy** refuses a save of the new version ("Reload this page"): the PR's top
+  half tells Toby to reload every open GM page after the deploy.
 
 ## The test for an item
 

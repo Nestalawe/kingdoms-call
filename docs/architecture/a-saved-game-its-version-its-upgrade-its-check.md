@@ -48,7 +48,7 @@ the turn reads it.
   without `served`; the items' readers serve today's items and the player page's copies too; the diplomacy's readers
   map any word). `ensureAllLairHoards` stays in the turn: it draws dice every turn.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
-  a new world and mended; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
+  a new world and mended, version 2's on the version-1 fixture; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
   tier, the guardians' cut) and
   `corsairs-retired` (the turn passes the loaded world through the upgrade, which calls the pass).
 - **A pass that names a unit** reads the name from a content row, as `migrateLegacyUnitNames` reads its table: the Corsair Fleet
@@ -75,7 +75,7 @@ the turn reads it.
 - **The version**: a save holds the number of its shape, `schemaVersion`, at its top level; a save without
   one is version 0 (every live save before P1-15c). Version 1 is the shape the six passes leave; version 2, an older save's shapes mended once (above). The number this build
   writes is in `src/engine/saves/the-saved-games-version-this-build-writes.ts`, a file that imports nothing, so world
-  generation writes it on a new world without loading the passes. `upgradeGameState` first refuses a save from a newer
+  generation writes it on a new world without loading the passes. `upgradeGameState` refuses a save from a newer
   build, before anything changes (`resolveTurn` throws "Could not read the saved game: This game was saved by a newer
   version of Kingdoms Call (save version 3; this page knows 2). Reload this page.", and the shell puts the orders
   back); then, after the passes, it runs each numbered step (`THE_NUMBERED_STEPS_OF_THE_UPGRADE`, `{ version, upgrade
@@ -94,17 +94,31 @@ the turn reads it.
   its kind, never a value: `characters.17.armies.2: a field this build doesn't know, _flakTargeted`; a key that isn't a
   number or a name as code writes one is shown as "(a key)". **The check is not the save**: the turn plays the save as
   upgraded, every key kept, never the parse's output ([traps.md](../traps.md#the-check-is-not-the-save)). How a save that
-  differs is met is Theo's Choice 1, "tell now, stop later": the turn runs; its end tells the GM in one line of the GM's
-  log, which no realm reads (`[Save check] The saved game holds 1 thing this build of Kingdoms Call doesn't know, …`);
-  `resolveTurn` returns the list, and the shell's message says the same (at most ten places, then a count;
-  `src/views/prose/what-the-saves-check-found-in-words.ts`), and shows it again once the page has refreshed the game.
-  A save that isn't a game in play (no provinces, no realms, no list of heroes: the new game's settings before Turn 0)
-  is refused first, before anything changes, as a newer save is. Once every live game has run two weeks of turns with
-  no place reported, a pull request of its own turns a difference into a stop. What checks it:
-  `tests/unit/a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts` (the version-1 fixture: as it is, with
-  a leaked mark, with a field of a later build, each kind, ten then a count, the refusals) and the page test
-  `tests/page/turn-shell.test.ts` ("the GM page plays a turn from a version-0 save": the message, after the refresh
-  too; Turn 0 then two turns). The balance matrix fails a game on a `[Save check]` line and on the check of its last
+  differs is met by **the stop** (P1-15f8, P1-15's Decision 8 and Choice 1, option 1): before the turn, the GM page's
+  shell runs the upgrade and the check on a copy of the loaded save
+  (`src/engine/saves/the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts`, about 3 ms on a 0.3 MB
+  save; the copy draws none of the page's dice, so an old world's lairs' renaming leaves the turn's seed as it was). A
+  place not on its known list stops the turn before anything is written: the orders stay in, and the message says "The
+  saved game holds 1 thing this build of Kingdoms Call doesn't know, so the turn did not run." and names each place (at
+  most ten, then a count; `src/views/prose/what-the-saves-check-found-in-words.ts`). The known list
+  (`THE_KNOWN_LEAKS_A_TURN_STILL_RUNS_ON`) holds the Parked leaks of a battle's marks (a garrison company's
+  `_tempStrReduction`, `_archeryRed`, `_died` and `_fromGarrison`; a hero's `_slainBy`), each naming its Parked entry;
+  each leak's fix removes its entry. On a known place the turn runs, and, as before the stop, its end tells the GM in
+  one line of the GM's log, which no realm reads (`[Save check] The saved game holds 1 thing …, and the turn ran on it
+  as it was. …`); `resolveTurn` returns the list, and the shell's message says the same, and shows it again once the
+  page has refreshed the game. `resolveTurn` itself still checks and tells, never stops: the tests' staged worlds aren't
+  whole saves, and the balance matrix fails a game on any place (its own list lets no leak through) and on a turn the
+  stop refuses. A special's damaging `dmg` range with no `dmgW`, which version 2 leaves, stops the turn, as do the old shapes no step
+  can mend (a hero's `_speedBonus`, an item's `_spent`, a claim with no `thrPct`, a grave's `armies`): since P1-15f9 no
+  reader of the turn reads them. A save that
+  isn't a game in play (no provinces, no realms, no list of heroes: the new game's settings before Turn 0) is refused
+  first, before anything changes, as a newer save is: the stop names no place for either, and the turn refuses it.
+  What checks it: `tests/unit/a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts` (the
+  version-1 fixture: as it is, with a leaked mark, with a known leak, the list, the dice, with a field of a later build,
+  each kind, ten then a count, the refusals) and the page test
+  `tests/page/turn-shell.test.ts` ("the GM page plays a turn from a version-0 save": a field this build doesn't know
+  refused, nothing written, the orders in, the places named; a known leak played and told, after the refresh too; Turn
+  0 then two turns). The balance matrix fails a game on a `[Save check]` line and on the check of its last
   save (P1-15e1, [the toolchain the checks and the harness](the-toolchain-the-checks-and-the-harness.md)). The GM page's bundle grew by Zod and the schemas: 2,268,926 → 2,479,486 bytes.
 
 ## A battle-only mark is not part of the saved state
@@ -143,7 +157,7 @@ games.
 - **Migrations run at the start of every turn**, on the world `resolveTurn` has just read, in one place since P1-15a:
   `upgradeGameState` (`src/engine/saves/upgrade-a-saved-game-and-check-it.ts`) runs `migrateMaxHpV2` (which calls
   `migrateLairGuardiansV2`), `backfillHomeRosters`, `retireCorsairPools`, `retireDiscoveries`,
-  `migrateLegacyUnitNames` and `migrateItemTiers`, in that order. A new pass goes there, draws no dice and writes no
+  `migrateLegacyUnitNames` and `migrateItemTiers`, in that order, then the passes above. A new pass goes there, draws no dice and writes no
   line: what it has to tell the GM it returns, and the turn tells it ([above](#a-saved-game-its-version-its-upgrade-its-check)).
   `ensureAllLairHoards` still runs in the turn, after the merge of the orders (it draws dice). A running game picks up a change at its next turn.
 - **Every migration runs on every turn**, not once, so it must be safe to repeat (idempotent).
@@ -168,7 +182,7 @@ older save.
   save can't meet as it is (a field renamed, moved, retyped, or now required) also bumps the version: a numbered step
   in `THE_NUMBERED_STEPS_OF_THE_UPGRADE` that mends a save of the version before, the new number, and a fixture of the
   new version (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`). A step runs once, on a save below
-  its version, after the six passes, and stays safe to repeat.
+  its version, after the passes before the check, and stays safe to repeat.
 - **A fixture is never edited once merged** (as a merged migration): it is what a build of its day saved. The script
   refuses to write over one. `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` upgrades every
   fixture, parses it strictly and plays a turn on it, so an older fixture fails until a step mends it, and a version
@@ -189,14 +203,16 @@ writes, or a battle's mark that leaked into the save).
 
 - **Never play, save or return the parse's output.** The turn plays the object it upgraded, every key kept. A turn
   that played the parse's copy would drop each such key from every live game for good. `tests/unit/a-save-the-check-
-  refuses-still-plays-and-the-gm-is-told.test.ts` keeps a field this build doesn't know through the upgrade and the
-  turn.
+  finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts` keeps a field this build doesn't know through the
+  upgrade and the turn. The stop's check runs on a copy too, and leaves the loaded save as it was.
 - **Name a place by its path and kind, never its value.** The GM's line and the turn's message may be passed on, so
   they hold no name or text from a game: a key that isn't a number or a name as code writes one is shown as "(a key)".
 - **A place reported is a fix of its own**: a field the code saves goes into the schema (optional, with what writes
-  it); a battle's mark that leaked is a Parked bug. Until a pull request of its own turns a difference into a stop
-  (Theo's Choice 1, after two weeks with nothing reported), the turn runs and the GM is told.
+  it); a battle's mark that leaked is a Parked bug. Since the stop (P1-15f8), a place not on the known list stops the
+  turn on the GM page; a leak's place stays on that list, its turn played and told, until its fix removes the entry.
 - **A staged world in a test is not a save.** A world made by `generateNewGame` alone lacks what Turn 0 adds (the turn
   mode, the bots' settings), and a hero a test stands on the board lacks fields a real one holds, so a turn played on
   them has a `[Save check]` line in the GM's log. A test that reads every line of the turn's end must say which it
-  reads (the stage's own lines), as `tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts` does.
+  reads (the stage's own lines), as `tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts` does. A test that
+  plays a turn through the GM page (`runTurn`) stages a whole save, or the stop refuses it: `tests/lib/scenario.js`
+  adds Turn 0's settings, and each company a test stages has its race.

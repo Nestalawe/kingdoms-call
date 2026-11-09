@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_HEX_DIRS, KC_SKILL_LABELS, KC_TEMPERS } from '../../content/kingdoms-call-data.ts';
+import { KC_HEX_DIRS, KC_TEMPERS } from '../../content/kingdoms-call-data.ts';
+import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import { theHexNextToAProvinceInADirection } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP, sb } from './startup.ts';
 import { SKILL_COLUMNS } from './join-and-chronicle.ts';
@@ -204,8 +205,6 @@ export function lastMoveDirOf(charId, beforePhase) {
   }
   return found;
 }
-
-export const SKILL_LABELS = { ...KC_SKILL_LABELS };
 
 // Encounter plan tactics (AK 5.0-5.8) How a commander answers the call to single combat at the
 // start of an army battle.

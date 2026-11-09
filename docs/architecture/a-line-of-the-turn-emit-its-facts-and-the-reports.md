@@ -37,7 +37,7 @@ check finds were made.
   tell his realm alone (no deed, no sight) and whose facts name its `realm`. A line told to a realm with no deed is that
   realm's news: a spy who stays in the province reads a rival's deeds and what anyone there could see, never that
   (`playerEvents`' spy feed, R-118). Since P1-12d36 the spy feed and the Clairvoyance feed pass over a line by its
-  kind, which the words pass hands beside each stored line (`theKindOfEachStoredLine`, never stored): both a force
+  kind, which the words pass hands beside each stored line (`theKindOfEachStoredLine`): both a force
   drawn up for battle, the Clairvoyance feed the roll lines too (`THE_KINDS_OF_A_ROLL_LINE`,
   `src/views/the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts`). A new kind whose words open with 📊 joins
   that list: a static test refuses the list and the words out of step.
@@ -238,11 +238,11 @@ check finds were made.
   its type or its name; a whale cohort's breach names the side whose hull sinks. Nothing in the engine may read a
   line's tier, or the tally, as the turn goes on: they aren't there yet. The cases:
   `tests/unit/the-views-write-each-lines-words.test.ts`, `a-battles-losses-tally-is-written-from-the-facts-of-its-lines`.
-- Nothing stored changes in P1-12a, P1-12b or this run of P1-12c: the GM's log in words is today's line forms, key for
-  key and in the same order (the old `log()`'s 17 keys; `form: 'bare'`, the 14 of the lines once pushed directly;
-  `notFor` last when `except` is given), with no fact in it. The stored form changes once, declared, when the last area
-  is typed (P1-12's Decisions of 2026-10-24, Decision 3). The balance matrix hashes the stored log (`writes`), and every
-  realm's report is compared line for line (`npm run balance`). `tests/unit/emit-writes-the-lines-log-wrote.test.ts`
+- The GM's log in words is the old line forms, key for key and in the same order (the old `log()`'s 17 keys;
+  `form: 'bare'`, the 14 of the lines once pushed directly; `notFor` last when `except` is given), with no fact in it
+  and, since P1-12d39, its fact's `kind` last; the GM page's log draws a force's rows by it, and an older turn's line,
+  with no kind, by its words; the balance matrix reads its chase figures by it (P1-12d40). The matrix hashes the
+  stored log (`writes`), and every realm's report is compared line for line (`npm run balance`). `tests/unit/emit-writes-the-lines-log-wrote.test.ts`
   checks the forms (its oracle against copies of the old code ran from P1-12a2 to P1-12a4, until every caller was
   converted).
 

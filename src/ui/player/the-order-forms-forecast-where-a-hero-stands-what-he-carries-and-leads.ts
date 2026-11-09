@@ -38,7 +38,7 @@ import {
 // ticked: each ticked box's value }); `declarations`, the declarations of war and treaties the form holds, by realm, or
 // null. The field `part` of the hero `heroId`'s order of the phase `ph`, as the statements below read a field ({ value }),
 // or null where the form shows none.
-function theOrderField(orders, part, heroId, ph) {
+export function theOrderField(orders, part, heroId, ph) {
   const order = ((orders.byHero || {})[String(heroId)] || [])[ph];
   return order && part in order ? { value: order[part] } : null;
 }

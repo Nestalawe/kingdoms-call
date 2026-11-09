@@ -39,6 +39,9 @@ async function bootScenario(opts={}){
     setup.forEach((s,i)=>{ if(alignments[i]){ s.alignment=alignments[i]; if(builds[s.alignment]) s.skills={...builds[s.alignment]}; } if(races[i]) s.race=races[i]; });   // a crown's own skill build, as a bot of that alignment would be dealt
     const S=await W.generateNewGame(setup,{cols,rows},999,{seaPct});
     S.safeStart=false;
+    // what Turn 0 adds (turn-zero.ts), so the world is a whole save, which the GM page's stop lets play (P1-15f8)
+    S.botDifficulty='hard'; S.botDiplomacy='normal';
+    S.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:null};
     return {S,setup};
   }
   async function turn({realms=2,cols=10,rows=6,seaPct=20,alignments=[],races=[],bots=[],prepare,orders={}}={}){

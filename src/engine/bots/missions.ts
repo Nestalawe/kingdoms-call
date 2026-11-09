@@ -84,8 +84,6 @@ type AnOrderAsThePassesReadIt = PhaseOrder | null | undefined;
 type TheTurnsOrdersAsThePassesHoldThem = Partial<Record<string, AnOrderAsThePassesReadIt[]>>;
 /** A unit with the turn's marks the schema lacks: a company that stays only this turn. */
 type AUnitWithItsTurnsMarks = Army & { readonly _temporary?: boolean | undefined };
-/** An item with a mark only an older save holds: a Philosopher's Stone already cracked. */
-type AnItemWithItsOldMarks = Item & { readonly _spent?: unknown };
 /** A lair a hero may hunt (botLairCandidates): its province, its place there, its grade and rumour's price, the hops
  *  to it, and the rumour he holds of it (none for a lair of no guardian, which is searched as if certain). */
 interface ALairCandidate {
@@ -595,13 +593,11 @@ export const BOT_FIGHT_STATS = new Set([
   'druid',
 ]);
 export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRealmsRoles | null | undefined) {
-  const carried: readonly (AnItemWithItsOldMarks | null | undefined)[] = theItemsWithGapsOf(c);
-  const items = carried.filter((it): it is AnItemWithItsOldMarks => Boolean(it));
+  const carried: readonly (Item | null | undefined)[] = theItemsWithGapsOf(c);
+  const items = carried.filter((it): it is Item => Boolean(it));
   if (!items.length) return null;
   // 1. Philosopher's Stone — every unit of the realm one tier up, once per game
-  const stone = items.find(
-    (it) => thePowerAnItemWorksWhenUsed(it) === 'every unit of the realm rises a quality tier' && !it._spent,
-  );
+  const stone = items.find((it) => thePowerAnItemWorksWhenUsed(it) === 'every unit of the realm rises a quality tier');
   if (stone) {
     let units = 0;
     theCharactersOf(G).forEach((x) => {
@@ -622,14 +618,14 @@ export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRe
   const caps: Readonly<Partial<Record<string, number>>> = ITEM_SLOT_CAP;
   const slotted = items.filter((it) => itemSlot(it) && itemUsableBy(it, c));
   if (slotted.length) {
-    const bySlot: Record<string, AnItemWithItsOldMarks[]> = {};
+    const bySlot: Record<string, Item[]> = {};
     slotted.forEach((it) => {
       const k = String(itemSlot(it));
       const here = bySlot[k] ?? [];
       bySlot[k] = here;
       here.push(it);
     });
-    const want: AnItemWithItsOldMarks[] = [];
+    const want: Item[] = [];
     Object.entries(bySlot).forEach(([sl, list]) => {
       list
         .sort((a, b) => itemPowerScore(b) - itemPowerScore(a))
@@ -666,7 +662,7 @@ export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRe
     .forEach(({ it, i }) => {
       const e: Partial<Item['effect']> = asItsGuardReadsIt(it.effect) ?? {};
       const stat = e.stat;
-      if (!stat || it._spent || isMithril(it)) return;
+      if (!stat || isMithril(it)) return;
       // 2026-09-28 (option 4): duelling kit (Melee, Archery, armour, HP, combat charms, spell schools) goes to a
       // SLAYER ahead of the general — the lair fights it wins are income; a general who holds it sends it on.
       const _toSlayer =

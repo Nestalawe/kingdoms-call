@@ -140,7 +140,7 @@ const WORLD = newWorld(3, 10, 8);
 WORLD._guardianHpV2 = true;
 /** What the upgrade's passes counted. The check's findings are left out: a world made by world generation and staged
  *  here isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots' settings), so the check names those;
- *  the check has its own test (a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts, P1-15d). */
+ *  the check has its own test (a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts, P1-15d). */
 type TheCounts = Omit<WhatTheSavesUpgradeFound, 'whereTheSaveDiffersFromThisBuildsSchema'>;
 const countsOf = ({
   retiredSageDiscoveriesRemoved,

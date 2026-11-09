@@ -36,7 +36,7 @@ const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log
     skills:{melee:1,tactical:1,march:1,white:1,naval:0,sage:1,explorer:1}}));
   W.eval(`(function(){ const g=generateNewGame(__sp,{cols:8,rows:7},0,{seaPct:20});
     g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
-    window.__G=g; })()`);
+    g.botDifficulty='hard'; g.botDiplomacy='normal'; window.__G=g; })()`);   // a whole save, as Turn 0 writes it (the GM page's stop, P1-15f8)
   S.DB.games.push({id:'G1',name:'Missing meta',gm_user_id:'gm1',status:'active',turn:1,max_players:3,max_turns:0,
     created_at:new Date().toISOString(),game_state:W.eval('JSON.stringify(__G)')});       // no meta: the column isn't there
   for(let i=0;i<3;i++) S.DB.game_players.push({id:'gp'+i,game_id:'G1',user_id:null,player_index:i,display_name:'Realm'+i,

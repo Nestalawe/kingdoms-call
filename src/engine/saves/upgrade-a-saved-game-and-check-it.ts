@@ -27,8 +27,10 @@
 // Then the check (P1-15d, Decision 4): the save, upgraded, parsed against the saved state's schema made strict
 // (src/schemas/where-a-saved-game-differs-from-this-builds-schema.ts), which names each place it differs by its path
 // and its kind, never a value. The check is not the save: the turn plays the save as upgraded, every key kept, never
-// the parse's output (docs/traps.md). A save that differs still plays (Theo's Choice 1, "tell now, stop later"): the
-// turn's end tells the GM in the GM's log alone, and the turn's message (src/ui/gm/turn-shell.ts) says it too.
+// the parse's output (docs/traps.md). A save that differs still plays here: the turn's end tells the GM in the GM's
+// log alone, and the turn's message (src/ui/gm/turn-shell.ts) says it too. The stop is the GM page's (P1-15f8): its
+// shell runs this on a copy before the turn and refuses the turn on a place not on its known list
+// (the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts).
 // It writes no line, and draws no dice but an old world's lairs' renaming (its names, from the turn's dice; no save
 // that has played a turn since _lairNamesV3 came lacks it). What it finds for the GM's log, it returns
 // (WhatTheSavesUpgradeFound): the turn keeps it on the turn's context and tells it where it did before, and the save
@@ -442,8 +444,10 @@ function holdsAList(holder: unknown, key: string, mayBeEmpty = false): boolean {
 }
 
 /** Throws, before anything changes, on a save that isn't a game in play: no provinces, no realms, or no list of heroes
- *  (the new game's settings, before Turn 0; a save cut short). Read as it was loaded, whatever its type says. */
-function refuseASaveThatIsNotAGameInPlay(save: unknown): void {
+ *  (the new game's settings, before Turn 0; a save cut short). Read as it was loaded, whatever its type says. A save it
+ *  lets through is the game's state as the turn reads it (resolveTurn makes it first, on the save as parsed): where its
+ *  shape differs from this build's, the check after the upgrade names the place, and the turn runs on it as it is. */
+export function refuseASaveThatIsNotAGameInPlay(save: unknown): asserts save is GameState {
   const world: unknown = typeof save === 'object' && save !== null ? Reflect.get(save, 'world') : undefined;
   if (!holdsAList(world, 'provinces') || !holdsAList(save, 'players') || !holdsAList(save, 'characters', true))
     throw new Error(

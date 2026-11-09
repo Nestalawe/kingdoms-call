@@ -2,7 +2,8 @@
 // (tests/lib/engine.ts).
 // - createTurnContext holds the turn's state, slot rows and turn, and an empty log; emit files a line under the hero
 //   and the phase the context names as it is when the line is written, not as it was when the context was made. It
-//   is a plain object: a value nothing has set reads as undefined, as resolveTurn's code expects, and never throws.
+//   is a plain object, whole at birth (plan P1-10b51): every field holds its start value, the one the tests' list of
+//   them writes (tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts), and none is left to be set later.
 // - The title lookups the balance matrix never runs (charHoldsTitle, playerHoldsTitle: nothing calls them today), and
 //   charMinor beside them: true for the holder only.
 // - Relations (property, fast-check): whatever G.relations holds, two realms stand to each other as they stand the
@@ -11,9 +12,9 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The turn's context and the helpers lifted with it (P1-08a), called directly through `lib/engine.ts` (`engineFn`,
-// `turnContext`): `createTurnContext` holds the state, the slot rows, the turn and an empty log, and is a plain object
-// (a value nothing has set reads as undefined; it failed while a debugging check that threw on such a read was left in,
-// #136); `emit` files a line under the hero and phase the context names when the line is written (a hero's own, then
+// `turnContext`): `createTurnContext` holds the state, the slot rows, the turn and an empty log, and is a plain object,
+// whole at birth: every field its start value, as the tests' list of them writes it (the bot realms read from the
+// rows; red while it made only the first four, P1-10b51); `emit` files a line under the hero and phase the context names when the line is written (a hero's own, then
 // the phase being resolved, then End of Turn once the phases are over); the title lookups the balance matrix never runs
 // (`charHoldsTitle`, `playerHoldsTitle`: nothing calls them today) and `charMinor` are true for the holder only; and,
 // as a property (fast-check), two realms stand to each other as they do the other way round, are never both at war and
@@ -30,6 +31,7 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { engineFn, loadEngine, turnContext, type TurnContext } from '../lib/engine.ts';
+import { THE_FIELDS_RESOLVE_TURN_ADDS } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
@@ -56,12 +58,45 @@ describe('createTurnContext', () => {
     expect(tc.turnLog).toEqual([]);
   });
 
-  test('is a plain object: a value nothing has set yet reads as undefined', () => {
-    const tc = vm.runInContext('createTurnContext({turn:1},[],1)', engine) as Record<string, unknown>;
+  test("is a plain object, whole at birth: every field its start value, as the tests' list of them writes it", () => {
+    // a human's row (it names its player) and a bot's (it names none)
+    const rows = JSON.stringify([{ player_index: 0, user_id: 'a player' }, { player_index: 1 }]);
+    // handed to the vm as text and parsed there, so its lists are the vm's (as the engine's are), not written into code
+    const parsedInTheVm = vm.runInContext('(text) => JSON.parse(text)', engine) as (text: string) => unknown;
+    const born = vm.runInContext('(rows) => createTurnContext({turn:1}, rows, 1)', engine) as (
+      rows: unknown,
+    ) => Record<string, unknown>;
+    const tc = born(parsedInTheVm(rows));
     expect(types.isProxy(tc)).toBe(false);
     expect(Object.getPrototypeOf(Object.getPrototypeOf(tc))).toBeNull(); // the vm's Object.prototype
-    expect(() => tc['notSetYet']).not.toThrow();
-    expect(tc['notSetYet']).toBeUndefined();
+    // the same four fields, then the list's statements, in the vm (its Maps and Sets the engine's)
+    const listedFrom = vm.runInContext(
+      `(rows) => { const tc = { G: {turn:1}, freshPlayers: rows, expectedTurnToRun: 1, turnLog: [] };
+        ${THE_FIELDS_RESOLVE_TURN_ADDS}
+        return tc; }`,
+      engine,
+    ) as (rows: unknown) => Record<string, unknown>;
+    const listed = listedFrom(parsedInTheVm(rows));
+    expect(Object.keys(tc).sort()).toEqual(Object.keys(listed).sort());
+    expect(tc).toStrictEqual(listed);
+    expect([...(tc['_botPlayerIdx'] as Set<number>)]).toEqual([1]);
+  });
+
+  test('handed no slot rows, it holds no bot realm', () => {
+    const tc = vm.runInContext('createTurnContext({turn:1},null,1)', engine) as Record<string, unknown>;
+    expect(tc['freshPlayers']).toBeNull();
+    expect((tc['_botPlayerIdx'] as Set<number>).size).toBe(0);
+  });
+
+  test("the Spy stealth on a world of no list of heroes rolls for none, once (resolveTurn's own step)", () => {
+    const stealth = engineFn(engine, 'spyStealthAndInvisibilityStampedForTheReports') as (tc: TurnContext) => void;
+    const tc = turnContext(engine, { turn: 2 });
+    stealth(tc);
+    expect(tc['_reports']).toEqual({ stealthRolled: true, built: false });
+    expect(tc.turnLog).toEqual([]);
+    expect(() => {
+      stealth(tc);
+    }).toThrow('the Spy stealth is rolled once a turn');
   });
 
   test('emit files a line under the hero and the phase the context names when it is written', () => {

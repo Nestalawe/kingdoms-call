@@ -2,7 +2,7 @@ import { KC_QUALITY_TIERS, KC_SKILL_LABELS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } 
 import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../content/mastery-orders-their-keys-names-skills-and-levels.ts';
-import type { Army, Character, GameState, Grave, Province } from '../schemas/saved-game-state.ts';
+import type { Army, Character, GameState, Province } from '../schemas/saved-game-state.ts';
 import type { OrderKind } from './rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 
 // ── A UNIT AND A HERO IN A BATTLE ────
@@ -329,9 +329,8 @@ export const LEGACY_RACE_RENAMES: Readonly<Record<string, string>> = {
   'Primal:Leviathan': 'Primal:Kraken',
 };
 // The saved state as migrateLegacyUnitNames reads it: today's, or an older save's, so any field it reads may be
-// missing (the guards below say so), and a hero's grave is today's plus the companies he led (`armies`), which nothing
-// writes today (an older save's field, or dead code). P1-15 types the old saves; until then their shape is
-// declared here, with only the fields this function reads. Today's GameState passes.
+// missing (the guards below say so). P1-15 types the old saves; until then their shape is declared here, with only the
+// fields this function reads. Today's GameState passes.
 interface UnitOfAnOldSave {
   type?: string | null;
   race?: string | null;
@@ -347,7 +346,6 @@ interface ProvinceOfAnOldSave {
 interface StateOfAnOldSave {
   readonly characters?: readonly { readonly armies?: UnitsOfAnOldSave }[] | null;
   readonly world?: { readonly provinces?: readonly (ProvinceOfAnOldSave | null | undefined)[] | null } | null;
-  readonly heroGraveyard?: readonly ((Grave & { readonly armies?: UnitsOfAnOldSave }) | null | undefined)[] | null;
 }
 export function migrateLegacyUnitNames(
   state: StateOfAnOldSave | null | undefined,
@@ -396,9 +394,6 @@ export function migrateLegacyUnitNames(
         n++;
       }
     });
-  });
-  (state.heroGraveyard ?? []).forEach((g) => {
-    fixArmyList(g?.armies);
   });
   if (n > 0) console.log(`[migration] renamed ${String(n)} legacy unit reference(s) to the current names.`);
   return state;

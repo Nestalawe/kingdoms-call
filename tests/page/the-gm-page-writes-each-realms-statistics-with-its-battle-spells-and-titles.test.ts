@@ -39,7 +39,7 @@ interface Character {
   locationName?: string;
   items?: unknown[];
   skills?: Record<string, number>;
-  armies?: { type: string; quality: string; unitName: string }[];
+  armies?: { type: string; quality: string; unitName: string; race?: unknown }[];
   encounterPlan?: { tactics: string[] };
   [key: string]: unknown;
 }
@@ -95,7 +95,10 @@ beforeAll(async () => {
       king.location = P.id;
       king.locationName = P.name;
       const id = Math.max(...S.characters.map((c) => c.id)) + 1;
+      // a hero as a save holds one (the GM page's stop refuses a save with a field missing, P1-15f8): the king's shape,
+      // the guard's own values over it
       S.characters.push({
+        ...(JSON.parse(JSON.stringify(king)) as Character),
         id,
         name: 'Warden Testcairn',
         isKing: false,
@@ -105,7 +108,6 @@ beforeAll(async () => {
         hp: 10,
         maxHp: 10,
         skills: {},
-        aptitude: {},
         items: [],
         alive: true,
         merits: 0,
@@ -115,8 +117,8 @@ beforeAll(async () => {
         locationName: N.name,
         _isNeutralGuard: true,
         armies: [
-          { type: 'Militia', quality: 'Green', unitName: 'Testcairn Levy' },
-          { type: 'Militia', quality: 'Green', unitName: 'Testcairn Levy II' },
+          { type: 'Militia', quality: 'Green', unitName: 'Testcairn Levy', race: 'Human' },
+          { type: 'Militia', quality: 'Green', unitName: 'Testcairn Levy II', race: 'Human' },
         ],
       });
       N.characters = [...(N.characters ?? []), id];
@@ -128,6 +130,7 @@ beforeAll(async () => {
         type: 'Men-at-Arms',
         quality: 'Elite',
         unitName,
+        race: king['race'],
       }));
       return { king, N: N.id };
     },

@@ -5,6 +5,7 @@ import { sb } from './config.ts';
 import { show } from './sign-in.ts';
 import { loadGames } from './game-list.ts';
 import { parseGameState } from '../../db/game-meta.ts';
+import { THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE } from '../../views/the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
 
 export async function loadTurnLog(gameId, turn) {
   const { data } = await sb.from('turn_logs').select('*').eq('game_id', gameId).eq('turn', turn).eq('player_index', -1);
@@ -28,7 +29,11 @@ export async function loadTurnLog(gameId, turn) {
 
   function renderEntry(e) {
     const raw0 = e.text || '';
-    if (raw0.startsWith('⚑FORCE⚑')) {
+    // A force's rows, by the line's kind (stored since plan P1-12d39); a line of an older turn, stored with no kind, by
+    // its words opening with the force marker, as before.
+    const aForcesRow =
+      e.kind !== undefined ? e.kind === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE : raw0.startsWith('⚑FORCE⚑');
+    if (aForcesRow) {
       try {
         const f = JSON.parse(raw0.slice(7));
         const col = f.neutral ? '#555' : f.color || '#555';

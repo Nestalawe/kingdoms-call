@@ -1,12 +1,15 @@
 // The statistics half of the balance matrix (plan P1-02, Decisions): per game, the figures a rule change moves, from
-// the telemetry (turn_events: `outcomes`, `pre` and `post`), the GM log and the saved state. Until P1-12 gives the
-// engine events, the chase figures come from the GM log's lines (LINES below): a rewording there shows as a scripted
-// case that never happens, and the run fails.
+// the telemetry (turn_events: `outcomes`, `pre` and `post`), the GM log and the saved state. The chase figures come
+// from the GM log's lines by the kind each is stored with (since plan P1-12d39; the kinds below): a kind the engine
+// renames is a type error here, and a kind its lines no longer carry shows as a scripted case that never happens, and
+// the run fails.
 //
 // Every statistic is a pair [sum, count] for one game, so the figure for many games is sum of sums / sum of counts:
 // "attacker won" is [battles won, battles fought], "battles fought" is [battles, 1] (a mean per game), a figure that
 // doesn't apply to a game is [0, 0]. Resampling whole games (paired.ts) then needs nothing else. A statistic's name is
 // its base, or its base and a slice: 'battles: attacker won | by terrain: hills'.
+
+import type { LineFact } from '../../src/engine/turn/events-and-their-audiences.ts';
 
 export type Stat = [sum: number, count: number];
 export type Stats = Record<string, Stat>;
@@ -91,19 +94,37 @@ export interface GameOver {
 export interface GameRecord {
   telemetry: TelemetryRow[];
   /** Every GM log line of the game. */
-  gmLog: { text?: unknown }[];
+  gmLog: { text?: unknown; kind?: unknown }[];
   /** Provinces with an unresolved battle in the saved state, after each turn. */
   unresolved: number[];
   gameOver: GameOver | null;
 }
 
-/** GM log lines the chase figures are read from (the GM portal's advancePursuit). */
-export const LINES = {
-  chaseStart: / sets out to run down /,
-  chaseRoll: /^📊 Pursuit — /,
-  chaseMissed: / slips away through the country around /,
-  chaseWaited: / the chase after .* must wait\.|the reckoning must wait\./,
+/** The kind of a GM log line, as the GM log stores it beside the line's words (plan P1-12d39). */
+export type TheKindOfAStoredLine = LineFact['kind'];
+
+/** The kinds of GM log line the chase figures are read from (the GM portal's advancePursuit): a hunter setting out on
+ *  an Encounter Character order, the catch roll, the quarry slipping away from it, a chase held by a battle. */
+export const THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM: Readonly<
+  Record<'chaseStart' | 'chaseRoll' | 'chaseMissed' | 'chaseWaited', ReadonlySet<TheKindOfAStoredLine>>
+> = {
+  chaseStart: new Set<TheKindOfAStoredLine>(['a hunter sets out to run down his quarry']),
+  chaseRoll: new Set<TheKindOfAStoredLine>(['a chaser rolls to close on his quarry']),
+  chaseMissed: new Set<TheKindOfAStoredLine>(["a chaser's quarry slips away"]),
+  chaseWaited: new Set<TheKindOfAStoredLine>([
+    'a chaser with a battle on his hands holds the chase over',
+    'a chaser closes on his quarry on ground already a battlefield',
+  ]),
 };
+
+/** GM log line `line` is stored with one of `kinds`. */
+export function aStoredLineOfOneOfTheKinds(
+  line: GameRecord['gmLog'][number],
+  kinds: ReadonlySet<TheKindOfAStoredLine>,
+): boolean {
+  const theKinds: ReadonlySet<unknown> = kinds;
+  return theKinds.has(line.kind);
+}
 
 /** The most common unit type in an army, ties to the one met first; 'none' for no army. */
 export function leadingUnit(units: { t: string }[] | undefined): string {
@@ -229,11 +250,12 @@ export function gameStats(g: GameRecord): Stats {
   );
   perGame('chases: Encounter orders', actions.filter((a) => a === 'encounter').length);
   perGame('chases: Pursue orders', actions.filter((a) => a === 'pursue').length);
-  const texts = g.gmLog.map((e) => (typeof e.text === 'string' ? e.text : ''));
-  const rolls = texts.filter((t) => LINES.chaseRoll.test(t)).length;
-  const missed = texts.filter((t) => LINES.chaseMissed.test(t)).length;
+  const ofTheKinds = (kinds: ReadonlySet<TheKindOfAStoredLine>) =>
+    g.gmLog.filter((e) => aStoredLineOfOneOfTheKinds(e, kinds)).length;
+  const rolls = ofTheKinds(THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM.chaseRoll);
+  const missed = ofTheKinds(THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM.chaseMissed);
   add('chases: caught', rolls - missed, rolls);
-  perGame('chases: waited for a battle', texts.filter((t) => LINES.chaseWaited.test(t)).length);
+  perGame('chases: waited for a battle', ofTheKinds(THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM.chaseWaited));
   perGame(
     'battles: provinces left unresolved',
     g.unresolved.reduce((a, b) => a + b, 0),

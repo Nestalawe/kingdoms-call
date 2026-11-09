@@ -6,13 +6,12 @@ import {
   theNameTheFormWritesOfTheAlignmentOrder,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
-import { SEASONS, _pendingDiscChoices, actionsFor } from './items-and-heroes.ts';
+import { SEASONS, _pendingDiscChoices } from './items-and-heroes.ts';
 import { refreshLaterCastSpells } from './order-chances.ts';
 import {
   DUEL_STANCES,
   ENCOUNTER_TACTICS,
   HEIR_TEMPERS_LIST,
-  SKILL_LABELS,
   heirAddedTo,
   heirPointsRemaining,
   heirTotalAdded,
@@ -21,15 +20,19 @@ import {
 } from './move-analysis.ts';
 import { buildOrdersForm, refreshEncounterPlan, renderPreSchool } from './orders-form.ts';
 import { doSaveOrders, doSubmitOrders, restoreSubmitWrap } from './briefing-and-submit.ts';
-import { heroHireWageOfP } from './skills-and-projections.ts';
 import { buildTargetField, refreshExploreNotes, theBloodOfferingsHint } from './order-targets.ts';
 import { leadsArmiesP, provLinkHtml } from './map-symbols.ts';
 import {
+  actionsFor,
   getOrderExtra,
   getOrderTarget,
   predictedLocation,
   projectedLedArmies,
 } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
+import {
+  SKILL_LABELS,
+  heroHireWageOfP,
+} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
 // L7/L9 mastery order (GM MASTERY_ORDER_KEYS — exactly the L79_ORDERS set: both are the content's rows, P1-11d10)
@@ -798,7 +801,7 @@ export function injectHiredHeroOrders(charId, ph, charIdx) {
     _unknownSkills: true,
     armies: [],
     items: [],
-    pay: heroHireWageOfP(heroData) ?? heroData.pay, // item 12: the wage they will be hired at
+    pay: heroHireWageOfP(heroData, currentReport) ?? heroData.pay, // item 12: the wage they will be hired at
     // A hero hired via Hire Hero stands in the SAME province as the hiring character (the hire
     // requires it), so the newly-hired hero acts from there. Without a real locationId every
     // province-dependent order option (Recruit Armies, Search Lair, …) came up empty.

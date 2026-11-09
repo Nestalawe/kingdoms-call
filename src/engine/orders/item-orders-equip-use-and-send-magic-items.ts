@@ -30,8 +30,8 @@ import type { TurnContext } from '../turn/context.ts';
 /** An order's target as these bodies turn it into words (`String(t || '')`, `String(t)`): its schema's words, kept as
  *  wide as the conversions. */
 type ATargetAsTheseTurnItIntoWords = string | number | null | undefined;
-/** An item in a hero's pack as these orders test it: a gap among the items, or (an older save's) a mark that it is spent. */
-type AnItemAsTheseTestIt = (Item & { readonly _spent?: unknown }) | null | undefined;
+/** An item in a hero's pack as these orders test it: a gap among the items. */
+type AnItemAsTheseTestIt = Item | null | undefined;
 /** A company as the Stone counts and raises it: a gap among the companies, his grade, whether he is of the dead. */
 type ACompanyAsTheStoneRaisesIt = Pick<Army, 'quality' | '_isSkeletal'> | null | undefined;
 /** The slot an item is worn in, read where a filter has just found it has one (itemSlot reads the item alone); for
@@ -125,16 +125,6 @@ export function resolveUseItemOrder(
     emit(turnContext, {
       type: 'system',
       fact: { kind: 'a hero has no such item to use', heroName: c.name },
-      audience: { actor: c.player, realms: [c.player] },
-      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-      phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-    });
-    return;
-  }
-  if (it._spent) {
-    emit(turnContext, {
-      type: 'system',
-      fact: { kind: 'an item has already been used', itemName: it.name },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,

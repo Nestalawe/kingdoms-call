@@ -303,7 +303,7 @@ describe('the lint rules', () => {
       'src/ui/gm/start.ts',
     ])
       expect(typeChecked(f), f).toBe(true);
-    // until P1-10b and P1-16 free the last of them
+    // until P1-17 (src/db/) and P1-16 free the last of them
     expect(srcFiles.filter((f) => !typeChecked(f)).length).toBeGreaterThan(0);
   });
   // A planted finding of a type-aware rule (a `||` that should be `??`: it needs the value's type) is an error in a file
@@ -311,7 +311,7 @@ describe('the lint rules', () => {
   // on CI.
   test.for([
     ['src/engine/clock.ts', true],
-    ['src/engine/run-turn.ts', false],
+    ['src/ui/gm/turn-shell.ts', false],
   ] as const)(
     '%s: a planted type-aware finding is an error: %s',
     timeLimitForTheWork({ typeScriptPrograms: 1 }),

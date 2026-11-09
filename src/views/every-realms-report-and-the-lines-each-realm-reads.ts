@@ -52,7 +52,7 @@ interface WhatTheReportsRead extends Pick<TurnContext, 'freshPlayers' | 'G' | 't
 //   pi       the realm reading
 //   sight    { presenceByPhase, battleCommanders, clairWatch }: the turn's sight facts (whatTheReportsRead)
 //   theKindOfEachLine  each line's kind, in turnLog's order (null: no fact), as the words pass hands it beside the log
-//                      (theTurnsLinesInWords' theKindOfEachStoredLine, never stored; P1-12d36): the spy and
+//                      (theTurnsLinesInWords' theKindOfEachStoredLine; P1-12d36): the spy and
 //                      Clairvoyance feeds pass over a line by its kind (the-kinds-of-line-the-spy-and-scrying-feeds-
 //                      pass-over.ts)
 // Returns { lastTurnLog, provinceEvents, spyActivity, spiedProvincesAndTheirFirstPhase,

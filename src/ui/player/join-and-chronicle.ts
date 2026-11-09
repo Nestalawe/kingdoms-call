@@ -8,9 +8,9 @@ import { refreshOrdersVisibility } from './layout.ts';
 import { fetchGameSlots, loadAllGames } from './sign-in.ts';
 import { renderReportView } from './report.ts';
 import { armyLabel, roundReportNumbers, unitEmoji } from './order-chances.ts';
-import { SKILL_LABELS } from './move-analysis.ts';
 import { restoreSubmitWrap, updateAlignmentDesc, updateRaceDesc, updateTemperDesc } from './briefing-and-submit.ts';
 import { CHIEFTAIN_MARKER_COLOR, reportColour } from './map-symbols.ts';
+import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // ── JOIN GAME ────
 export async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize) {

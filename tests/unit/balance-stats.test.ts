@@ -3,12 +3,15 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The balance matrix's statistics from a small made-up game worked out by hand: battles counted once, the leading unit
-// type, lairs, deaths, spells by caster, realms at turns 10 and 20 (a shorter game with its last turn), chases; a
-// missing slice is a zero only for counts per game. TypeScript, in `unit/`
+// type, lairs, deaths, spells by caster, realms at turns 10 and 20 (a shorter game with its last turn), chases (the GM
+// log's lines read by the kind each is stored with, not by their words); a missing slice is a zero only for counts per
+// game. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import {
+  aStoredLineOfOneOfTheKinds,
   gameStats,
   isShare,
+  THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM,
   leadingUnit,
   valueOf,
   type Battle,
@@ -125,11 +128,26 @@ const game: GameRecord = {
     }),
   ],
   gmLog: [
-    { text: '📊 Pursuit — A (Spy 1) closing on B (Spy 0): 75% [roll 20 ✓]' },
-    { text: '📊 Pursuit — A (Spy 1) closing on B (Spy 0): 75% [roll 90 ✗]' },
-    { text: 'B slips away through the country around Fen — A keeps the trail but cannot close.' },
-    { text: 'A has a battle on their hands in Fen this season — the chase after B must wait.' },
-    { text: 'A closes on B in Fen, but the ground is already a battlefield this season — the reckoning must wait.' },
+    {
+      text: '📊 Pursuit — A (Spy 1) closing on B (Spy 0): 75% [roll 20 ✓]',
+      kind: 'a chaser rolls to close on his quarry',
+    },
+    {
+      text: '📊 Pursuit — A (Spy 1) closing on B (Spy 0): 75% [roll 90 ✗]',
+      kind: 'a chaser rolls to close on his quarry',
+    },
+    {
+      text: 'B slips away through the country around Fen — A keeps the trail but cannot close.',
+      kind: "a chaser's quarry slips away",
+    },
+    {
+      text: 'A has a battle on their hands in Fen this season — the chase after B must wait.',
+      kind: 'a chaser with a battle on his hands holds the chase over',
+    },
+    {
+      text: 'A closes on B in Fen, but the ground is already a battlefield this season — the reckoning must wait.',
+      kind: 'a chaser closes on his quarry on ground already a battlefield',
+    },
     { text: 3 },
   ],
   unresolved: [1, 0],
@@ -199,6 +217,32 @@ describe('chases', () => {
     expect(s['chases: Pursue orders']).toEqual([1, 1]);
     expect(s['chases: caught']).toEqual([1, 2]);
     expect(s['chases: waited for a battle']).toEqual([2, 1]);
+  });
+
+  test("the GM log's lines are read by the kind each is stored with, not by their words", () => {
+    // The fixture's chase lines with their words taken away, and a line in a chase's words stored with another kind
+    // (or, as on a turn played before kinds were stored, with none): the same figures as the fixture's.
+    const byKind = gameStats({
+      ...game,
+      gmLog: [
+        ...game.gmLog.map((e) => ({ kind: e.kind })),
+        { text: '📊 Pursuit — C (Spy 2) closing on D (Spy 0): 50% [roll 10 ✓]', kind: "a spy's roll to read a hero" },
+        { text: 'C has a battle on their hands in Fen this season — the chase after D must wait.' },
+      ],
+    });
+    expect(byKind['chases: caught']).toEqual([1, 2]);
+    expect(byKind['chases: waited for a battle']).toEqual([2, 1]);
+  });
+
+  test("the scripted game's Encounter case is read by the kind of the hunter's setting out", () => {
+    const { chaseStart } = THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM;
+    expect(aStoredLineOfOneOfTheKinds({ kind: 'a hunter sets out to run down his quarry' }, chaseStart)).toBe(true);
+    expect(
+      aStoredLineOfOneOfTheKinds(
+        { text: 'A sets out to run down B and will not turn aside until the matter is settled.' },
+        chaseStart,
+      ),
+    ).toBe(false);
   });
 });
 

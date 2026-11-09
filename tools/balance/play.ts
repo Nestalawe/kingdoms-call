@@ -12,7 +12,8 @@
 // After every turn it checks the invariants (tests/lib/invariants.ts, P1-04b) and, in a scripted game, the scripted
 // realm's report for leaks (tests/lib/report-leaks.ts, P1-04c): a breach fails the game. They only read.
 // The save's check fails a game too (P1-15e1: a-game-fails-on-the-save-check.ts): a `[Save check]` line in a turn's GM
-// log, and, after the last turn, the check of the last save. With KC_SITE the line is the other copy's and the last
+// log, and, after the last turn, the check of the last save; and since P1-15f8 a turn the page's stop refuses (a place
+// not on src's known list), as any turn that fails, with the refusal's words. With KC_SITE the line is the other copy's and the last
 // save's check this checkout's.
 import { bootJsdom, readPage, type PageWindow } from '../../tests/lib/boot.js';
 import { checkTurn, describeBreaches } from '../../tests/lib/invariants.ts';
@@ -25,7 +26,15 @@ import {
 import { h, reportSectionHashes, turnHashes, withoutStamps, playHash } from './hash.ts';
 import { MAP_SIZES, MAX_TURNS, SCRIPTED_REALM, START, type GameSpec } from './matrix.ts';
 import { scriptedOrders, type Plan, type State } from './scripted.ts';
-import { gameStats, LINES, type GameOver, type Stats, type TelemetryRow } from './stats.ts';
+import {
+  aStoredLineOfOneOfTheKinds,
+  gameStats,
+  THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM,
+  type GameOver,
+  type Stats,
+  type TelemetryRow,
+  type TheKindOfAStoredLine,
+} from './stats.ts';
 import { recordCalls } from './writes.ts';
 
 /** How long the page is given to boot. A fixed wait until a "boot finished" condition is found that doesn't depend on
@@ -67,6 +76,8 @@ export interface LogEntry {
   text?: unknown;
   type?: unknown;
   charId?: unknown;
+  /** The kind of the line's fact (stored since plan P1-12d39). */
+  kind?: unknown;
   [key: string]: unknown;
 }
 
@@ -182,8 +193,13 @@ export async function playGame(
       errors.length = 0;
       calls.length = 0;
       W['__game'] = structuredClone(row);
-      const res = (await W.eval('runTurn({auto:true,game:__game,reason:"matrix"})')) as { ok?: boolean } | null;
-      if (errors.length || res?.ok === false) throw fail(`turn ${String(t)} failed: ${errors[0] ?? 'not ok'}`);
+      const res = (await W.eval('runTurn({auto:true,game:__game,reason:"matrix"})')) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      // a turn the save's check stops (P1-15f8) is refused before it runs: no error logged, its words in `error`
+      if (errors.length || res?.ok === false)
+        throw fail(`turn ${String(t)} failed: ${errors[0] ?? res?.error ?? 'not ok'}`);
 
       const after = game();
       const state = JSON.parse(String(after['game_state'])) as State;
@@ -216,12 +232,12 @@ export async function playGame(
         for (const [k, list] of sections) list.push(now[k]?.join('/') ?? '-');
       }
       if (plan) {
-        const by = (id: number, re: RegExp) =>
-          log.some((e) => e.charId === id && typeof e.text === 'string' && re.test(e.text));
-        if (plan.chaser && by(plan.chaser.heroId, LINES.chaseStart)) cases.encounter++;
+        const by = (id: number, kinds: ReadonlySet<TheKindOfAStoredLine>) =>
+          log.some((e) => e.charId === id && aStoredLineOfOneOfTheKinds(e, kinds));
+        const { chaseStart, chaseWaited } = THE_KINDS_OF_LINE_THE_CHASE_FIGURES_ARE_READ_FROM;
+        if (plan.chaser && by(plan.chaser.heroId, chaseStart)) cases.encounter++;
         // Counted once a turn per hero: a held chase is logged again in each phase it waits.
-        for (const c of [plan.chaser, ...plan.battleChases])
-          if (c && by(c.heroId, LINES.chaseWaited)) cases.battleChase++;
+        for (const c of [plan.chaser, ...plan.battleChases]) if (c && by(c.heroId, chaseWaited)) cases.battleChase++;
       }
     }
 

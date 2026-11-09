@@ -16,10 +16,10 @@
 // tally ('t': the short account only) its place where its casualty lists begin; since P1-12d35 the tally is written from
 // the facts of the battle's lines (theWordsOfABattlesLossesTally, the-words-of-a-battles-losses-tally.ts); the onlookers'
 // one-line summary is 's' (shown only to a realm with nothing else of the battle). The result is the GM's log
-// as it is stored (turn_logs, player index −1), in the same form as before, key for key: the shell saves it, and the
-// GM page and the player page's fallback read an old turn's lines and a new one's alike. Beside it, each stored line's
-// kind, never stored (since P1-12d36: the spy and Clairvoyance feeds pass over a line by its kind). In this run a line's
-// words are the same for every reader.
+// as it is stored (turn_logs, player index −1): the form before, key for key, with each line's kind after them (since
+// P1-12d39: the GM page draws a force's rows by it; an older turn's line, with no kind, is read by its words). Beside it,
+// each stored line's kind in a list (since P1-12d36: the spy and Clairvoyance feeds pass over a line by its kind). In
+// this run a line's words are the same for every reader.
 import type {
   LineFact,
   LogLine,
@@ -218,10 +218,10 @@ export function theWordsOf(fact: LineFact): string {
   return words(fact);
 }
 
-/** The GM's log of the turn with every line's words, as it is stored and as the realms' lines are read from it; the
- *  kind of each of its lines, in its order, beside it and never stored (null: a line with no fact; plan P1-12d36: the
- *  spy and Clairvoyance feeds pass over a line by its kind); and the words of each line of the engine's log, in its
- *  order (null: a battle's tally place left empty, which is no line). */
+/** The GM's log of the turn with every line's words and its kind, as it is stored and as the realms' lines are read
+ *  from it; the kind of each of its lines, in its order, beside it (null: a line with no fact; plan P1-12d36: the spy
+ *  and Clairvoyance feeds pass over a line by its kind); and the words of each line of the engine's log, in its order
+ *  (null: a battle's tally place left empty, which is no line). */
 export interface TheTurnsLinesInWords {
   gmLog: LogLine[];
   theKindOfEachStoredLine: (LineFact['kind'] | null)[];
@@ -280,11 +280,13 @@ export function theTiersOfABattlesLines(lines: readonly LogLine[]): {
   return { tiers, whereTheCasualtyListsBegin };
 }
 
-/** A line as the GM's log stores it: its words in place of its fact, and its tier when it is a battle's. */
+/** A line as the GM's log stores it: its words in place of its fact, its tier when it is a battle's, and its fact's
+ *  kind last (plan P1-12d39). */
 function asStored(line: LogLine, text: string | null, tier?: string): LogLine {
   const stored: LogLine = { ...line, text };
   if (tier !== undefined) stored.bTier = tier;
   delete stored.fact;
+  if (line.fact !== undefined) stored.kind = line.fact.kind;
   return stored;
 }
 

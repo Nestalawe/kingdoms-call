@@ -173,9 +173,9 @@ elsewhere ([the statistics' one door](architecture/the-database-and-what-it-hold
 Before changing a rule, grep the engine and both portals for its nouns **and its numbers**, and change every place in
 the same commit; when a number moves, grep the old number in narrative strings and the rulebooks. Example: the most
 common root cause in this project's history is two copies of one rule disagreeing. A rule the player portal takes
-through `src/shared/` is written once; it is still restated in the portal's projections (the copies
-`tests/lib/player-portal-copies.ts` checks), at order time and resolution time, in the balance matrix's scripted realm,
-and in the words players read. Checks: `the-player-portals-copies-agree-with-the-engine`, the scripted realm's page
+through `src/shared/` is written once; it is still restated in the portal's projections (its forecasts, and the copies
+`tests/lib/player-portal-copies.ts` loads), at order time and resolution time, in the balance matrix's scripted realm,
+and in the words players read. Checks: `the-player-portals-copies-agree-with-the-engine`, `the-order-forms-forecasts-agree-with-the-turn`, the scripted realm's page
 test and the `*-words` tests, for what they cover. Battle magic is one stage of the spells' registry, asked by three
 copies with one rule (R-126) and each its own lines; the units' strikes are
 another, asked by three copies that each keep their own roll. Veteran Training's +1 is one stage of the discoveries'
@@ -367,9 +367,9 @@ and on a version without its fixture. [Detail](architecture/a-saved-game-its-ver
 The turn plays, saves and returns the object it upgraded, never the output of the schema's parse, and the check names
 a place by its path and kind, never its value. Example: Zod's `z.object` returns a copy without the keys it doesn't
 name, so a turn that played the parse's copy would drop a field only live play writes from every live game for good.
-A place the check reports is a fix of its own, and a staged world in a test is not a save. Checks:
-`tests/unit/a-save-the-check-refuses-still-plays-and-the-gm-is-told.test.ts` keeps an unknown field through the upgrade
-and the turn. [Detail](architecture/a-saved-game-its-version-its-upgrade-its-check.md#the-check-is-not-the-save).
+A place the check reports is a fix of its own (on the GM page it stops the turn, but for a known leak), and a staged
+world in a test is not a save. Checks: `tests/unit/a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-
+leak.test.ts` keeps an unknown field through the upgrade and the turn. [Detail](architecture/a-saved-game-its-version-its-upgrade-its-check.md#the-check-is-not-the-save).
 
 ## A package imported from `src/`
 

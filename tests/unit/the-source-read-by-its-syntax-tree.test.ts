@@ -116,7 +116,12 @@ describe('each helper gives the same answer on both layouts', () => {
     ['statementsFollowing', (o) => statementsFollowing('kingdoms-call-gm-portal.html', /hauls out/, 4, o)],
     [
       'initializersOf',
-      (o) => initializersOf('ui/player/items-and-heroes.ts', 'ACTION_DISPLAY_ORDER', o).map(compactCode),
+      (o) =>
+        initializersOf(
+          'ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts',
+          'ACTION_DISPLAY_ORDER',
+          o,
+        ).map(compactCode),
     ],
     ['entriesOf', (o) => entriesOf('content/unit-abilities-their-names-numbers-and-words.ts', 'UNIT_ABILITIES', o)],
     ['callsTo', (o) => callsTo('engine/battle/battles-between-heroes.ts', 'trySkillGain', o)],
@@ -192,8 +197,8 @@ describe('the planting helpers put the line in the same place in either layout',
       plantBefore(code, file, 'resolveTurn', 'turnLog', 'PLANTED_BEFORE();'),
       plantAtStart(code, file, 'resolveTurn', 'PLANTED_FIRST();'),
     ].map((c) => {
-      fs.writeFileSync(path.join(copy, 'planted.js'), c);
-      const body = compactDeclaration(path.join(copy, 'planted.js'), 'resolveTurn');
+      fs.writeFileSync(path.join(copy, 'planted.ts'), c);
+      const body = compactDeclaration(path.join(copy, 'planted.ts'), 'resolveTurn');
       return [body.indexOf('PLANTED_BEFORE();const{turnLog}=turnContext;'), body.indexOf('{PLANTED_FIRST();')];
     });
   };

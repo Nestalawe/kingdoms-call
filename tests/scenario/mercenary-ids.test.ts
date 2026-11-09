@@ -19,6 +19,7 @@ interface Army {
   type: string;
   quality: string;
   unitName?: string;
+  race?: string;
 }
 interface World {
   turn: number;
@@ -36,8 +37,8 @@ test('bands made in a turn are numbered for the turn, and can be hired by those 
       const king = S.characters.find((c) => c.alive !== false && c.player === 0);
       if (!king) throw new Error('realm 0 has no hero');
       king.armies = [
-        { type: 'Shieldwall Levies', quality: 'Average', unitName: 'First Levy' },
-        { type: 'Shieldwall Levies', quality: 'Average', unitName: 'Second Levy' },
+        { type: 'Shieldwall Levies', quality: 'Average', unitName: 'First Levy', race: 'Human' },
+        { type: 'Shieldwall Levies', quality: 'Average', unitName: 'Second Levy', race: 'Human' },
       ];
       (S.players[0] ?? {}).gold = 100;
       S.mercenaries = [];

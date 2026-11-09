@@ -61,7 +61,8 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   refuses to compare with it.
 - **Statistics** (`tools/balance/stats.ts`), per game, from the telemetry and the GM log: battles (attacker win % by
   kind, terrain and the realm side's leading unit type; units lost), lairs by grade, heroes' deaths by how, spells by
-  school, realms at turns 10 and 20 and at the end, items, titles, game length and how it ended, chases.
+  school, realms at turns 10 and 20 and at the end, items, titles, game length and how it ended, chases (the GM log's
+  lines found by the kind each is stored with, not by their words).
 - **The noise rule** (`tools/balance/paired.ts`): the two runs paired by seed, each statistic's change with its 95%
   and 99% ranges from resampling whole games 2,000 times (fixed resampling seed): "clear change", "possible change",
   "within the noise" or "too few to tell". The overall answer looks only at the bot games' headline statistics, with

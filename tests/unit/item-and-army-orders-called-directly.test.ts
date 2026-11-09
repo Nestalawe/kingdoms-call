@@ -183,15 +183,13 @@ describe('Use Item, called directly: the Philosopher’s Stone (an older save’
     expect(rs).toEqual([{ id: h.id, skill: 'sage', base: common }]);
   });
 
-  test('a passive item, a spent one or one he lacks is no lesson', () => {
+  test('a passive item or one he lacks is no lesson', () => {
     const b = fresh();
     const h = bearer(b, companies(1, 'Men-at-Arms', 'Green'));
     h.items.push(item(b, 'Ring of the Explorer'));
     const rs = rollsIn(() => {
       play(b, h, o('use_item', 'Ring of the Explorer'));
       play(b, h, o('use_item', 'Blade of Nothing'));
-      must(h.items[0], 'the Stone')['_spent'] = true;
-      play(b, h, o('use_item', STONE));
     });
     expect(rs).toEqual([]);
   });

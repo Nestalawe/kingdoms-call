@@ -14,13 +14,12 @@
 // line that no game of the balance matrix reaches, called directly on the engine's modules: `ownedUnitName` for a unit
 // whose name doesn't start with "the", a unit with no name, and no unit ("unit"); `migrateLegacyUnitNames` on a made-up
 // older save (every place it renames: heroes' companies, a province's race, garrison, defenders, recruit pool and
-// graves, a fallen hero's companies; the holes and missing fields its guards skip; the count it logs) and a second run
+// graves; the holes and missing fields its guards skip; the count it logs) and a second run
 // that changes nothing. Each planted fault in those lines turns it red
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test, vi } from 'vitest';
 import { migrateLegacyUnitNames } from '../../src/engine/army-tables.ts';
 import { ownedUnitName } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
-import { CharacterIdSchema, ProvinceIdSchema } from '../../src/schemas/ids-of-provinces-heroes-and-realms.ts';
 
 describe("ownedUnitName: an owner and a unit's name or type", () => {
   test('a unit named "the …" reads "the Red Hand (Atk\'s Eagle Riders)"', () => {
@@ -62,32 +61,13 @@ const anOlderSave = () => ({
       { race: 'Human', armyTypes: null },
     ],
   },
-  heroGraveyard: [
-    {
-      id: CharacterIdSchema.parse(1),
-      name: 'Sir Testwin',
-      player: null,
-      race: 'Human',
-      alignment: 'Good',
-      temper: 'Bold',
-      skills: {},
-      maxHp: 15,
-      isKing: false,
-      killedOnTurn: 3,
-      location: ProvinceIdSchema.parse(4),
-      served: [],
-      _releasedBy: null,
-      armies: [{ type: 'Longbowmen', race: 'Human' }],
-    },
-    null,
-  ],
 });
 
 describe('migrateLegacyUnitNames on an older save', () => {
-  test("renames every old unit and race name: heroes' companies, a province's race, garrison, defenders, recruit pool and graves, and a fallen hero's companies", () => {
+  test("renames every old unit and race name: heroes' companies, a province's race, garrison, defenders, recruit pool and graves", () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const s = migrateLegacyUnitNames(anOlderSave());
-    expect(log.mock.calls).toEqual([['[migration] renamed 11 legacy unit reference(s) to the current names.']]);
+    expect(log.mock.calls).toEqual([['[migration] renamed 10 legacy unit reference(s) to the current names.']]);
     expect(s).toEqual({
       characters: [
         {
@@ -113,7 +93,6 @@ describe('migrateLegacyUnitNames on an older save', () => {
           { race: 'Human', armyTypes: null },
         ],
       },
-      heroGraveyard: [expect.objectContaining({ armies: [{ type: 'Yeoman Longbows', race: 'Human' }] }), null],
     });
   });
   test('a second run changes nothing', () => {
@@ -124,13 +103,9 @@ describe('migrateLegacyUnitNames on an older save', () => {
     expect(migrateLegacyUnitNames(once)).toEqual(copy);
     expect(log).not.toHaveBeenCalled();
   });
-  test('a save with no world, no heroes and no graves, or no save at all, comes back as it was', () => {
+  test('a save with no world and no heroes, or no save at all, comes back as it was', () => {
     expect(migrateLegacyUnitNames({})).toEqual({});
-    expect(migrateLegacyUnitNames({ world: null, characters: null, heroGraveyard: null })).toEqual({
-      world: null,
-      characters: null,
-      heroGraveyard: null,
-    });
+    expect(migrateLegacyUnitNames({ world: null, characters: null })).toEqual({ world: null, characters: null });
     expect(migrateLegacyUnitNames({ world: {} })).toEqual({ world: {} });
     expect(migrateLegacyUnitNames(null)).toBeNull();
     expect(migrateLegacyUnitNames(undefined)).toBeUndefined();

@@ -1107,12 +1107,7 @@ describe('The standings and the Reckoning on worlds no game holds', () => {
     const w = { players: [{}, {}, {}], relations: { '0-1': 'allied' }, world: { provinces: [{ owner: 0, tax: 10 }] } };
     const share = engineFn(engine, 'reckoningBlocShare') as Fn;
     const own = engineFn(engine, 'reckoningOwnShare') as Fn;
-    const thresholdFor = engineFn(engine, 'reckoningThresholdFor') as Fn;
     expect([share(w, 9), own(w, 9), share(w, 0), own(w, 1)]).toEqual([0, 0, 1, 0]);
-    expect([thresholdFor({ ...w, reckoningDecaySteps: 1 }, 0), thresholdFor({}, 0)]).toEqual([
-      thresholdOf(3, 1, 2),
-      thresholdOf(0, 0, 1),
-    ]);
     const eligibility = engineFn(engine, 'reckoningCallEligibility') as Fn;
     expect(eligibility({}, 0)).toMatchObject({ ok: false, reason: 'tooEarly', threshold: thresholdOf(0, 0, 1) });
   });
