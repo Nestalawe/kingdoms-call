@@ -17,10 +17,10 @@
 // the engine plays alone, in the bare vm, from that seed.
 // And the check of a saved game at load (P1-15d, Theo's Choice 1, "tell now, stop later"): the GM page plays a turn from
 // the made-up save of version 0 (tests/fixtures/saves/version-0.json, what every live game held the day the version
-// came in): the turn is saved at version 1 and the message says nothing of the check; with a battle's mark left on a
-// company, the turn still runs and is saved, and the message names the place, never its value, and still does once
-// the page has refreshed the game; and a new game's Turn 0, then two turns, on the stand-in database, each message
-// with nothing of the check.
+// came in): the turn is saved at this build's version (2, P1-15f5) and the message says nothing of the check; with a
+// battle's mark left on a company, the turn still runs and is saved, and the message names the place, never its
+// value, and still does once the page has refreshed the game; and a new game's Turn 0, then two turns, on the stand-in
+// database, each message with nothing of the check.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.ts)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
 //
@@ -48,10 +48,10 @@
 // same world and rows: the world after the turn, the GM's log and each report are the same byte for byte, once the
 // shell's stamps (the turn mode's `turnRanAt` and `nextDeadlineAt`, each report's `engineStamp`) are taken out of both
 // by one function. The check of a saved game at load (P1-15d; fails on its base, whose turn says nothing of it): the
-// page plays a turn from the version-0 fixture (`fixtures/saves/version-0.json`, an all-bot game), saved at version 1
+// page plays a turn from the version-0 fixture (`fixtures/saves/version-0.json`, an all-bot game), saved at version 2
 // with nothing of the check in the message; with a battle's mark left on a company, the turn runs and is saved, and the
 // message names the place and not its value, and does again once the page has refreshed the game; a new game's Turn 0
-// (`runTurn0`, `commitTurn0`) then two turns, each saved at version 1, no message saying anything of the check (planted
+// (`runTurn0`, `commitTurn0`) then two turns, each saved at version 2, no message saying anything of the check (planted
 // on copies: the message without the check, its words not shown again after the refresh, each red). Raised the
 // ratchet's `stubDbTests` by one (Theo, 2026-10-18), once for the P1-18 series; P1-15d's cases are in this file, so it
 // doesn't rise. Level 4: these are the database calls of the turn's shell (`runTurn`, `src/ui/gm/turn-shell.ts`),
@@ -684,7 +684,7 @@ describe('the GM page plays a turn from a version-0 save', () => {
   const A_LEAKED_MARKS_VALUE = 'Captain Ostrel of the Ember Coast';
   const THE_LEAKED_MARK = "characters.0.armies.2: a field this build doesn't know, _flakTargeted";
 
-  test('as it is: the turn is saved at version 1, and the message says nothing of the check', async () => {
+  test('as it is: the turn is saved at version 2, and the message says nothing of the check', async () => {
     const save = JSON.parse(VERSION_0) as Save;
     expect(save['schemaVersion']).toBeUndefined();
     const t = seat(await boot(), () => ({ world: VERSION_0, rows: botRows(save) }));
@@ -692,7 +692,7 @@ describe('the GM page plays a turn from a version-0 save', () => {
       t.game()['turn'] = save.turn;
       expect(await t.run()).toMatchObject({ ok: true, committed: true, turn: save.turn + 1 });
       const saved = JSON.parse(String(t.game()['game_state'])) as Save;
-      expect([saved.turn, saved['schemaVersion']]).toEqual([save.turn + 1, 1]);
+      expect([saved.turn, saved['schemaVersion']]).toEqual([save.turn + 1, 2]);
       expect(t.message()).toMatch(/Turn 4 resolved!/);
       expect(t.message()).not.toMatch(THE_CHECK);
     } finally {
@@ -727,7 +727,7 @@ describe('the GM page plays a turn from a version-0 save', () => {
     }
   }, 60_000);
 
-  test("a new game's Turn 0, then two turns: each saved at version 1, no message says anything of the check", async () => {
+  test("a new game's Turn 0, then two turns: each saved at version 2, no message says anything of the check", async () => {
     const { S, W } = await boot();
     try {
       const settings = {
@@ -756,7 +756,7 @@ describe('the GM page plays a turn from a version-0 save', () => {
       await W.eval('commitTurn0()');
       const game = () => games[0] ?? {};
       expect([game()['status'], game()['turn']], message()).toEqual(['active', 1]);
-      expect((JSON.parse(String(game()['game_state'])) as Save)['schemaVersion'], 'Turn 0 writes version 1').toBe(1);
+      expect((JSON.parse(String(game()['game_state'])) as Save)['schemaVersion'], 'Turn 0 writes version 2').toBe(2);
       for (const turn of [1, 2]) {
         W['__game'] = structuredClone(game());
         expect(await W.eval('runTurn({game:__game})'), `turn ${String(turn)}`).toMatchObject({
@@ -766,7 +766,7 @@ describe('the GM page plays a turn from a version-0 save', () => {
         expect(message()).toMatch(new RegExp(`Turn ${String(turn)} resolved!`));
         expect(message()).not.toMatch(THE_CHECK);
         const saved = JSON.parse(String(game()['game_state'])) as Save;
-        expect([saved.turn, saved['schemaVersion']]).toEqual([turn + 1, 1]);
+        expect([saved.turn, saved['schemaVersion']]).toEqual([turn + 1, 2]);
       }
     } finally {
       W.close();

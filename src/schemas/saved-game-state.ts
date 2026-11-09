@@ -766,8 +766,9 @@ export const GameStateSchema = z.object({
     turnRanAt: z.string().nullable(),
   }),
   botDifficulty: z.string(),
-  // (P1-15b2) optional: Turn 0 writes it only since 26 September, and every reader takes "normal" when it is missing
-  botDiplomacy: z.string().optional(),
+  // (P1-15f5) required: Turn 0 writes it since 26 September, and version 2's step gives an older save "normal", which
+  // every reader took when it was missing
+  botDiplomacy: z.string(),
   // (P1-12b5: read by the realm's view, for its diplomacy) Safe Start: no diplomacy before turn SAFE_START_TURN; the
   // matrix's games don't set it
   safeStart: z.boolean().optional(),

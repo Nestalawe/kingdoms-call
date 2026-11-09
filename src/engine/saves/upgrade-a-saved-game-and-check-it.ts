@@ -61,8 +61,9 @@
 //   16. a realm's tally of the items it found under the retired Consumable slot folded into the Combat Item's;
 //   17. a feature an older save discovered for everyone, with no list of who discovered it, known to every realm
 //       (_legacyAll) and given an empty list.
-// Still in the turn, not here (P1-15's second slice): the readers of older shapes. ensureAllLairHoards stays in the
-// turn: it draws dice every turn.
+// The numbered steps run between the passes and the check: version 1's the stamp alone, version 2's an older save's
+// shapes mended once (P1-15f5: each the value its reader works out; the readers keep their fallbacks until P1-15f6).
+// ensureAllLairHoards stays in the turn: it draws dice every turn.
 import type { GameState } from '../../schemas/saved-game-state.ts';
 import { migrateLegacyUnitNames } from '../army-tables.ts';
 import { theHomeARealmWithoutOneIsGiven } from '../grand-design.ts';
@@ -74,6 +75,7 @@ import { migrateMaxHpV2, retireDiscoveries } from '../heroes/skills-and-hp.ts';
 import { renameLairsThematicP } from '../names.ts';
 import { GUARDIAN_PERKS_THE_REGISTRY_HOLDS } from '../../content/guardian-perks-their-kinds-numbers-and-words.ts';
 import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from './the-saved-games-version-this-build-writes.ts';
+import { anOlderSavesShapesMendedOnce } from './version-2-an-older-saves-shapes-mended-once.ts';
 import { whereASavedGameDiffersFromThisBuildsSchema } from '../../schemas/where-a-saved-game-differs-from-this-builds-schema.ts';
 
 /** A hero of a save from before the earned-HP pool, carried over to it by the first upgrade: his realm is told at the
@@ -424,6 +426,9 @@ export const THE_NUMBERED_STEPS_OF_THE_UPGRADE: readonly ANumberedStepOfTheUpgra
   // Version 1 (P1-15c, 2026-10-25): the shape the six passes leave, which every save had when the version came in.
   // The step is the stamp alone.
   { version: 1, upgrade: () => undefined },
+  // Version 2 (P1-15f5, 2026-11-08): an older save's shapes the schema refuses, or a reader still works out, given the
+  // value the reader works out (version-2-an-older-saves-shapes-mended-once.ts); the bots' diplomacy required since.
+  { version: 2, upgrade: anOlderSavesShapesMendedOnce },
 ];
 
 /** The version a save says it is at: 0 for a save from before the version came in, which holds none. */

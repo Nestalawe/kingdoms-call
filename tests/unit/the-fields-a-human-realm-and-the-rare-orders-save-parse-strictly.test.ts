@@ -27,7 +27,8 @@
 // fields, each staged on the matrix's own turn (which parses strictly as it is) as its writer writes it: Release Hero's
 // `_releasedBy` on the hero and his grave (`recordHeroGrave` called), a Moderate or Legendary lair cleared,
 // Clairvoyance's and a wandering hero's spied entry, the Grand Design, a win by elimination, every realm conceded, a
-// Wild Calling's beasts, a game without `botDiplomacy`. Red on its base (P1-15c: 27 of 35; the 7 mastery orders the
+// Wild Calling's beasts (a game without `botDiplomacy`, required since P1-15f5, is version 2's step's: `a-saved-games-
+// old-shapes-…`). Red on its base (P1-15c: 27 of 35; the 7 mastery orders the
 // bots give and the matrix's turn itself pass). Level 1: three turns by direct import and values parsed, about 2 s; a
 // static test can't parse a save. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
@@ -322,13 +323,6 @@ const fieldsTheRareOrdersSave: [string, string, (s: Obj) => void][] = [
       const company = objectsIn(s, 'characters').flatMap((c) => objectsIn(c, 'armies'))[0];
       if (!company) throw new Error('the save has no company');
       hero['armies'] = [...objectsIn(hero, 'armies'), { ...copyOf(company), _pacified: true }];
-    },
-  ],
-  [
-    'a game begun before 26 September: Turn 0 wrote no bot diplomacy then (every reader takes "normal")',
-    'src/ui/gm/turn-zero.ts',
-    (s) => {
-      delete s['botDiplomacy'];
     },
   ],
 ];

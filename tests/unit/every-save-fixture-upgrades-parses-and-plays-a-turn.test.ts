@@ -26,8 +26,8 @@
 // it by direct import (`lib/a-staged-turn-on-the-engines-modules.ts`'s `play`, on the dice of `KC_SEED`) keeping every
 // invariant (`lib/invariants.ts`). One fixture for each version from 0 to this build's, and the numbered steps numbered
 // 1 to it; a save from a newer build refused by the upgrade, unchanged, and by the turn; a new world at this build's
-// version. Red with the stamp left out, the refusal taken out, or world generation's stamp taken out; each of the six
-// passes left out leaves it green (the fixture holds no old shape:
+// version. Red with the stamp left out, version 2's step left out, the refusal taken out, or world generation's stamp
+// taken out; each of the six passes left out leaves it green (the fixture holds no old shape:
 // `a-saved-games-old-shapes-are-mended-before-the-turn` stages them). Level 1: the upgrade and the parse are functions
 // of a save, one turn of a three-realm game about a second; a static test can't upgrade a save. A fixture is never
 // edited once merged. TypeScript, in `unit/`

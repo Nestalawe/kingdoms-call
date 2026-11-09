@@ -32,13 +32,18 @@
 //   feature an older save discovered for everyone, with no list of who discovered it, is known to every realm and given
 //   an empty list (a gap among the features passed over; one discovered again is still known to all);
 // - all of them at once, then the upgrade run again on what it left: the second run changes nothing and finds nothing.
+// - version 2's step (P1-15f5), each shape staged on the version-1 fixture, which then parses strictly: a {gold}
+//   treasure, a guardian's single perk, a special with no weight (a range that deals damage is left, and named by the
+//   check), a lair's items left by the fallen and its cached gold, a stocked lair's missing first hoard, a grave with no
+//   service list, an item's lore, old race and stale slot, a missing bots' diplomacy; all at once, then again; gaps
+//   passed over; on a fixture holding none, only the stamp; a save at version 2 not mended again.
 // The world staged on is one that has played its first turn: its guardians already re-measured (a new world isn't:
 // question 17). And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a
 // known defect, fixed in its own pull request, whose fix removes it (Mithril Armour is made at tier 1, and the upgrade
 // raises it to its floor, tier 2; a new world's guardians are made 5 HP frailer, question 17, P1-23l), so the list only
 // shrinks.
 // Each staged case is certain on any world: it stages what it reads (a hero's items and his realm's discoveries, a
-// home's race), so no seed can miss it. Each pass left out of the upgrade turns its cases red.
+// home's race), so no seed can miss it. Each pass, and each of version 2's mends, left out turns its cases red.
 // Level 1 (unit): world generation and the upgrade, called directly on the engine's modules (plan P1-14a); no turn is
 // played. Not static: it runs the passes. The turn's end telling what the upgrade found is the stages' tests
 // (tests/lib/after-the-phases-cases.ts, tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts).
@@ -59,11 +64,16 @@
 // "(wandering)" tag taken off, counted (a property; gaps passed over); a realm with no home given its first province,
 // else its king's place; after the check (still naming them), a single consecration folded into the list, a Consumable
 // tally into the Combat Item's, a feature discovered for everyone known to every realm. All at once, then again: the
-// second run changes nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril
+// second run changes nothing and finds nothing. Version 2's step (P1-15f5), on the version-1 fixture: each older shape
+// given its reader's value, then parsed strictly (a damage range that deals damage left, and named); gaps passed over;
+// a save at version 2 not mended again. Four new worlds (2 to 6 realms) change only by a known list (Mithril
 // Armour made at tier 1, raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
-// out turns its cases red (18 of 18). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
+// out turns its cases red (18 of 18), as does each mend of version 2's step (27 of 27: each staged on the version-1
+// fixture, which then parses strictly). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
 // since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
 // settings)
+import fs from 'node:fs';
+import path from 'node:path';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import '../lib/the-whole-engine.ts';
@@ -85,6 +95,10 @@ import {
   upgradeGameState,
   type WhatTheSavesUpgradeFound,
 } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
+import { ITEM_LORE_BY_NAME } from '../../src/engine/items/tiers-and-hoards.ts';
+import { anOlderSavesShapesMendedOnce } from '../../src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts';
+import { GameStateSchema } from '../../src/schemas/saved-game-state.ts';
+import { strictIssues } from '../lib/strict-schema.ts';
 
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
@@ -924,5 +938,315 @@ describe('a brand-new world through the upgrade', () => {
 
   test('a new world holds every realm hero with an earned-HP pool, so the upgrade carries nobody over', () => {
     expect(realmsHeroes(WORLD).every((c) => typeof c.hpEarned === 'number')).toBe(true);
+  });
+});
+
+/** The version-1 fixture (tests/fixtures/saves/), as a build of its day saved it: version 2's step mends it. */
+const VERSION_1 = JSON.parse(
+  fs.readFileSync(path.join(import.meta.dirname, '../fixtures/saves/version-1.json'), 'utf8'),
+) as Save;
+/** The fixture's lairs with a guardian (no ritual site), each stocked, in the map's order. */
+const stockedLairsOf = (s: Save) => lairsOf(s).filter((f) => f._hoardV2);
+/** Every item in a hero's pack or a lair's hoard of the save, in the save's order. */
+const itemsOf = (s: Save) => [
+  ...s.characters.flatMap((c) => c.items),
+  ...s.world.provinces.flatMap((p) => p.features).flatMap((f) => f.hoardItems ?? []),
+];
+const anItem = (s: Save, what: string, is: (it: Loose) => boolean): Loose =>
+  loose(
+    must(
+      itemsOf(s).find((it) => is(loose(it))),
+      what,
+    ),
+  );
+/** A grave as recordHeroGrave writes one, of realm 0's king, slain on turn 3. */
+function aGraveOfRealm0sKing(s: Save): Loose {
+  const king = must(
+    s.characters.find((c) => c.isKing && c.player === 0),
+    'king of realm 0',
+  );
+  const grave = {
+    id: king.id,
+    name: king.name,
+    player: 0,
+    race: king.race,
+    alignment: king.alignment,
+    temper: king.temper,
+    skills: copy(king.skills),
+    maxHp: king.maxHp,
+    isKing: true,
+    killedOnTurn: 3,
+    location: king.location,
+    served: [0],
+    _releasedBy: null,
+  };
+  loose(s)['heroGraveyard'] = [grave];
+  return grave;
+}
+
+/** Version 2's shapes, each staged on the version-1 fixture; `mended` gives what the step left and what it should. */
+const VERSION_2_SHAPES: {
+  name: string;
+  mend: string;
+  stage: (s: Save) => unknown;
+  mended: (s: Save, staged: unknown) => { got: unknown; want: unknown };
+}[] = [
+  {
+    name: "a sea feature's treasure held as { gold } becomes the number",
+    mend: 'treasure',
+    stage(s) {
+      const f = loose(
+        must(s.world.provinces.filter((p) => p.terrain === 'sea').flatMap((p) => p.features)[0], 'a sea feature'),
+      );
+      f['treasure'] = { gold: 23 };
+      return f;
+    },
+    mended: (_s, f) => ({ got: loose(f as object)['treasure'], want: 23 }),
+  },
+  {
+    name: "a guardian's single perk becomes its list; one holding a list beside it keeps the list",
+    mend: 'passive',
+    stage(s) {
+      const [one, two] = stockedLairsOf(s).map((f) => loose(must(f.monster, 'a guardian')));
+      const [perk] = (must(one, 'a guardian')['passives'] ?? []) as Loose[];
+      const lone = loose(must(one, 'a guardian'));
+      delete lone['passives'];
+      lone['passive'] = perk;
+      const both = loose(must(two, 'a second guardian'));
+      both['passive'] = perk;
+      return [lone, both, (both['passives'] as Loose[]).map((p) => p['name']), perk];
+    },
+    mended(_s, staged) {
+      const [lone, both, names, perk] = staged as [Loose, Loose, unknown, unknown];
+      return {
+        got: [
+          lone['passives'],
+          'passive' in lone,
+          (both['passives'] as Loose[]).map((p) => p['name']),
+          'passive' in both,
+        ],
+        want: [[perk], false, names, false],
+      };
+    },
+  },
+  {
+    name: "a guardian's special with no weight and no range that deals damage is given the weight 0; one with a weight loses its range",
+    mend: 'dmgW',
+    stage(s) {
+      const [none, zero, weighed] = stockedLairsOf(s)
+        .flatMap((f) => f.monster?.spells ?? [])
+        .map(loose);
+      const a = must(none, 'a special');
+      const b = must(zero, 'a second special');
+      const c = must(weighed, 'a third special');
+      delete a['dmgW'];
+      delete b['dmgW'];
+      b['dmg'] = [0, 0];
+      c['dmg'] = [3, 6];
+      return [a, b, c, c['dmgW']];
+    },
+    mended(_s, staged) {
+      const [a, b, c, weight] = staged as [Loose, Loose, Loose, unknown];
+      return {
+        got: [a['dmgW'], 'dmg' in a, b['dmgW'], 'dmg' in b, c['dmgW'], 'dmg' in c],
+        want: [0, false, 0, false, weight, false],
+      };
+    },
+  },
+  {
+    name: "a lair's items left by the fallen go into its hoard, after what it holds; a stocked lair's cached clearing gold goes",
+    mend: 'lairItems',
+    stage(s) {
+      const [held, bare] = stockedLairsOf(s)
+        .filter((f) => (f.hoardItems ?? []).length > 0)
+        .map(loose);
+      const a = must(held, 'a lair with a hoard');
+      const b = must(bare, 'a second lair with a hoard');
+      const hoard = a['hoardItems'] as Loose[];
+      const left = hoard.splice(1);
+      a['lairItems'] = left;
+      a['_clearGold'] = 9;
+      const leftHere = b['hoardItems'];
+      delete b['hoardItems'];
+      b['lairItems'] = leftHere;
+      return [a, copy([...hoard, ...left]), b, copy(leftHere)];
+    },
+    mended(_s, staged) {
+      const [a, aHoard, b, bHoard] = staged as [Loose, unknown, Loose, unknown];
+      return {
+        got: [a['hoardItems'], 'lairItems' in a, '_clearGold' in a, b['hoardItems'], 'lairItems' in b],
+        want: [aHoard, false, false, bHoard, false],
+      };
+    },
+  },
+  {
+    name: 'a stocked lair with no record of its first hoard is given its hoard as it stands',
+    mend: '_hoardGoldOrig',
+    stage(s) {
+      const f = loose(must(stockedLairsOf(s)[0], 'a stocked lair'));
+      delete f['_hoardGoldOrig'];
+      f['treasure'] = 17;
+      return f;
+    },
+    mended: (_s, f) => ({ got: loose(f as object)['_hoardGoldOrig'], want: 17 }),
+  },
+  {
+    name: 'a grave with no list of the realms its hero served is given an empty one',
+    mend: 'served',
+    stage(s) {
+      const grave = aGraveOfRealm0sKing(s);
+      delete grave['served'];
+      return grave;
+    },
+    mended: (_s, g) => ({ got: loose(g as object)['served'], want: [] }),
+  },
+  {
+    name: "an item in a hero's pack with no lore is given its lore as the reader works it out, by its name",
+    mend: 'lore',
+    stage(s) {
+      const found = anItem(s, 'an item whose lore is its name’s', (i) => {
+        const name = i['name'];
+        return typeof name === 'string' && i['lore'] === ITEM_LORE_BY_NAME[name];
+      });
+      const it = loose(copy(found));
+      it['id'] = s.nextItemId;
+      s.nextItemId += 1;
+      aKingWithNothingToAdd(s).items.push(it as never);
+      const lore = it['lore'];
+      delete it['lore'];
+      return [it, lore];
+    },
+    mended(_s, staged) {
+      const [it, lore] = staged as [Loose, unknown];
+      return { got: it['lore'], want: lore };
+    },
+  },
+  {
+    name: "an item's race under its old name (Elf, Orc) is given today's",
+    mend: 'race',
+    stage(s) {
+      const elven = anItem(s, 'an Elven item', (i) => i['race'] === 'Elven');
+      const orcish = anItem(s, 'an Orcish item', (i) => i['race'] === 'Orcish');
+      elven['race'] = 'Elf';
+      orcish['race'] = 'Orc';
+      return [elven, orcish];
+    },
+    mended: (_s, staged) => ({ got: (staged as Loose[]).map((it) => it['race']), want: ['Elven', 'Orcish'] }),
+  },
+  {
+    name: "an item's inline slot another rule beats is given the slot that wins: an old 'consumable', a shield's 'armour'",
+    mend: 'slot',
+    stage(s) {
+      const potion = anItem(s, 'a combat item', (i) => i['slot'] === 'combat');
+      const shield = anItem(s, 'a shield', (i) => i['name'] === 'Tower Shield of the Wall');
+      potion['slot'] = 'consumable';
+      shield['slot'] = 'armour';
+      return [potion, shield];
+    },
+    mended: (_s, staged) => ({ got: (staged as Loose[]).map((it) => it['slot']), want: ['combat', 'shield'] }),
+  },
+  {
+    name: 'a game begun before 26 September, with no bots’ diplomacy, is given "normal"',
+    mend: 'botDiplomacy',
+    stage(s) {
+      delete loose(s)['botDiplomacy'];
+      return null;
+    },
+    mended: (s) => ({ got: loose(s)['botDiplomacy'], want: 'normal' }),
+  },
+];
+
+describe("version 2's step: an older save's shapes mended once, on the version-1 fixture", () => {
+  test.each(VERSION_2_SHAPES.map((c) => [c.name, c] as const))('%s; it then parses strictly', (_, c) => {
+    const s = copy(VERSION_1);
+    const staged = c.stage(s);
+    const found = upgradeGameState(s);
+    const { got, want } = c.mended(s, staged);
+    expect(got).toEqual(want);
+    expect([s.schemaVersion, found.whereTheSaveDiffersFromThisBuildsSchema]).toEqual([2, []]);
+    expect(strictIssues(GameStateSchema, s)).toEqual([]);
+  });
+
+  test('every shape at once, then the upgrade again: the second run changes nothing, and the save parses strictly', () => {
+    const s = copy(VERSION_1);
+    const staged = VERSION_2_SHAPES.map((c) => c.stage(s));
+    upgradeGameState(s);
+    expect(strictIssues(GameStateSchema, s)).toEqual([]);
+    const once = copy(s);
+    upgradeGameState(s);
+    expect(s).toEqual(once);
+    expect(staged).toHaveLength(VERSION_2_SHAPES.length);
+  });
+
+  test('on a save of version 1 that holds none of them, the step changes only its stamp (the bots’ diplomacy kept)', () => {
+    const passesOnly = { ...copy(VERSION_1), schemaVersion: 2 }; // at version 2, the step is passed over
+    const withTheStep = copy(VERSION_1);
+    upgradeGameState(passesOnly);
+    upgradeGameState(withTheStep);
+    expect([withTheStep.schemaVersion, withTheStep.botDiplomacy]).toEqual([2, 'normal']);
+    expect(withTheStep).toEqual(passesOnly);
+  });
+
+  test("left as they are, with no value a reader works out: a special's range that deals damage (the check names it), a hostile game's diplomacy", () => {
+    const s = copy(VERSION_1);
+    const sp = loose(must(stockedLairsOf(s)[0]?.monster?.spells[0], 'a special'));
+    delete sp['dmgW'];
+    sp['dmg'] = [2, 5];
+    s.botDiplomacy = 'hostile';
+    const found = upgradeGameState(s);
+    expect([sp['dmgW'], sp['dmg'], s.botDiplomacy]).toEqual([undefined, [2, 5], 'hostile']);
+    expect(found.whereTheSaveDiffersFromThisBuildsSchema).toEqual([
+      'world.provinces.0.features.0.monster.spells.0.dmgW: missing, and this build needs it',
+      "world.provinces.0.features.0.monster.spells.0: a field this build doesn't know, dmg",
+    ]);
+  });
+
+  test("left as they are too: a ritual site's items left by the fallen; a lair not yet stocked keeps its clearing gold and gets no first hoard; an item with no inline slot, or an empty one no rule beats", () => {
+    const s = copy(VERSION_1);
+    const [ritual, unstocked] = stockedLairsOf(s).map(loose);
+    const site = must(ritual, 'a lair');
+    const fresh = must(unstocked, 'a second lair');
+    site['ritualSite'] = true;
+    site['lairItems'] = [];
+    delete fresh['_hoardV2'];
+    delete fresh['_hoardGoldOrig'];
+    fresh['_clearGold'] = 9;
+    const bare = anItem(s, 'an item with no inline slot', (i) => !('slot' in i));
+    const ring = anItem(s, 'a ring', (i) => i['slot'] === 'ring');
+    ring['slot'] = '';
+    upgradeGameState(s);
+    expect([site['lairItems'], fresh['_clearGold'], '_hoardGoldOrig' in fresh, 'slot' in bare, ring['slot']]).toEqual([
+      [],
+      9,
+      false,
+      false,
+      '',
+    ]);
+  });
+
+  test('the step passes over gaps among the provinces, features, specials, items, heroes and graves', () => {
+    const save = {
+      world: { provinces: [null, { features: [null, { monster: { spells: [null] }, hoardItems: [null] }] }] },
+      characters: [null, { items: [null] }],
+      heroGraveyard: [null],
+    };
+    anOlderSavesShapesMendedOnce(save);
+    expect(save).toEqual({
+      world: { provinces: [null, { features: [null, { monster: { spells: [null] }, hoardItems: [null] }] }] },
+      characters: [null, { items: [null] }],
+      heroGraveyard: [null],
+      botDiplomacy: 'normal',
+    });
+  });
+
+  test('a save already at version 2 is not mended again: an old shape staged on it is named by the check', () => {
+    const s = copy(VERSION_1);
+    upgradeGameState(s);
+    delete loose(s)['botDiplomacy'];
+    const found = upgradeGameState(s);
+    expect([loose(s)['botDiplomacy'], found.whereTheSaveDiffersFromThisBuildsSchema]).toEqual([
+      undefined,
+      ['botDiplomacy: missing, and this build needs it'],
+    ]);
   });
 });
