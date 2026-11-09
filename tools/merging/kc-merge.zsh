@@ -19,8 +19,12 @@
 #                          one. Each it marks ready and merges with a merge commit; one stacked on a branch already
 #                          in main it first moves onto main. Main's rules need CodeQL's results for the pull request,
 #                          and moving its base starts no scan, so one with none it brings up to date with main (a merge
-#                          commit on its branch), then waits for ci, db and CodeQL on that commit (about 5 minutes; press
-#                          any key to stop waiting). If one fails, it stops; run it again to carry on.
+#                          commit on its branch) and waits for ci, db and CodeQL on that commit (press any key to stop
+#                          waiting). For several, it starts them all at once first: each stacked one whose branch holds
+#                          all of its base is moved onto main early and brought up to date, so their checks run side by
+#                          side (a stack of 17: about 30 to 40 minutes, not 1.5 hours). It asks before bringing up to
+#                          date one with the label `staging` (a push rebuilds staging's database). If one fails, it
+#                          stops; run it again to carry on.
 #   kc-wait-deploy <pr>    waits until a merged pull request is deployed and live (press any key to stop waiting)
 
 # Wait <seconds>; true if a key was pressed meanwhile. Without a terminal to read keys from, it only sleeps.
@@ -101,10 +105,23 @@ _kc-has-check() {
 }
 
 # Bring a pull request up to date with main (GitHub pushes a merge commit to its branch), and wait for the new commit.
+# A pull request with the label `staging` is on the staging site, and a push to it rebuilds staging's database (its
+# games and accounts emptied): it asks first, and takes the label off before the push.
 _kc-bring-up-to-date() {
-  local pr=$1 repo=Nestalawe/kingdoms-call old new tries
+  local pr=$1 why=${2:-"it has no CodeQL results (moving its base started no scan)"} repo=Nestalawe/kingdoms-call old new tries
   old=$(gh pr view -R $repo "$pr" --json headRefOid -q .headRefOid) || return 1
-  echo "#$pr has no CodeQL results (moving its base started no scan): bringing it up to date with main."
+  if [[ $(gh pr view -R $repo "$pr" --json labels -q '[.labels[].name] | index("staging")') != null ]]; then
+    echo "#$pr has the label 'staging': a push to it rebuilds staging's database (its games and accounts emptied)."
+    if [[ ! -t 0 ]] || ! read -q "?Take the label off #$pr and bring it up to date with main? [y/N] "; then
+      echo
+      echo "Left #$pr as it is: stopping. Once staging is done with, take the label off and run kc-merge again." >&2
+      return 1
+    fi
+    echo
+    gh pr edit -R $repo "$pr" --remove-label staging >/dev/null || return 1
+    echo "Took the label 'staging' off #$pr."
+  fi
+  echo "#$pr: $why: bringing it up to date with main."
   if ! gh pr update-branch -R $repo "$pr"; then
     echo "Couldn't bring #$pr up to date with main: stopping." >&2
     echo "Close and reopen it on GitHub to start CodeQL and CI, then run kc-merge again." >&2
@@ -156,6 +173,31 @@ _kc-wait-for-checks() {
   done
 }
 
+# Start a pull request's CI and CodeQL now, before the ones below it merge, so a stack's checks run side by side: a
+# stacked one whose branch already holds all of its base is moved onto main early (until the ones below merge, GitHub
+# shows their changes in its diff too), then any without CodeQL's results is brought up to date with main. Its checks
+# then test what main will hold once the ones below have merged (each a merge commit adding only its own branch). One
+# whose branch lacks some of its base's commits is left for kc-merge to start once its base has merged.
+_kc-start-checks-early() {
+  local pr=$1 repo=Nestalawe/kingdoms-call info base head behind
+  info=$(gh pr view -R $repo "$pr" --json baseRefName,headRefName -q '"\(.baseRefName) \(.headRefName)"') || return 1
+  read -r base head <<< "$info"
+  if [[ $base != main ]]; then
+    behind=$(gh api "repos/$repo/compare/$base...$head" -q .behind_by) || return 1
+    if [[ $behind != 0 ]]; then
+      echo "#$pr: its branch lacks $behind commit(s) of '$base': its checks start once '$base' has merged."
+      return 0
+    fi
+    gh pr edit -R $repo "$pr" --base main >/dev/null || return 1
+    echo "#$pr: moved onto main early (its branch holds all of '$base')."
+  fi
+  if _kc-has-check "$pr" CodeQL; then
+    echo "#$pr: has CodeQL's results already."
+    return 0
+  fi
+  _kc-bring-up-to-date "$pr"
+}
+
 # Merge one open pull request into main with a merge commit. A stacked one whose base branch is already all in main is
 # moved onto main first, so a stack merges one by one. The branch is kept: the next pull request of a stack is based on it.
 _kc-merge-one() {
@@ -190,23 +232,32 @@ _kc-merge-one() {
   # request only when a commit is pushed to it while it merges into main, so one that was stacked has none, and moving
   # its base starts no scan (nor CI). Bringing it up to date with main pushes a merge commit: CI and CodeQL then run
   # on what main will hold.
+  local updated=0 merge_state
   if ! _kc-has-check "$pr" CodeQL; then
     _kc-bring-up-to-date "$pr" || return 1
+    updated=1
   fi
-  _kc-wait-for-checks "$pr" || return 1
+  while true; do
+    _kc-wait-for-checks "$pr" || return 1
 
-  # The rules' verdict follows the checks by a few seconds; BLOCKED until then.
-  local merge_state
-  for (( tries = 0; tries < 24; tries++ )); do
-    merge_state=$(gh pr view -R $repo "$pr" --json mergeStateStatus -q .mergeStateStatus) || return 1
+    # The rules' verdict follows the checks by a few seconds; BLOCKED until then.
+    for (( tries = 0; tries < 24; tries++ )); do
+      merge_state=$(gh pr view -R $repo "$pr" --json mergeStateStatus -q .mergeStateStatus) || return 1
+      [[ $merge_state != (BLOCKED|UNKNOWN) ]] && break
+      sleep 5
+    done
     [[ $merge_state != (BLOCKED|UNKNOWN) ]] && break
-    sleep 5
-  done
-  if [[ $merge_state == (BLOCKED|UNKNOWN) ]]; then
+    # Checks started early ran before main moved; if the rules want a scan against main as it is now, one more update.
+    if (( ! updated )); then
+      _kc-bring-up-to-date "$pr" "its checks passed, but main's rules still block it (main has moved since its scan)" \
+        || return 1
+      updated=1
+      continue
+    fi
     echo "#$pr's checks passed, but main's rules still block it (merge state: $merge_state): stopping." >&2
     echo "Its page on GitHub says which rule; run kc-merge again once it's met." >&2
     return 1
-  fi
+  done
 
   gh pr merge -R $repo "$pr" --merge || return 1
   echo "Merged #$pr."
@@ -276,6 +327,16 @@ kc-merge() {
       return 1
     fi
     echo
+  fi
+
+  # Start every pull request's CI and CodeQL now, side by side, rather than each after the one below it merges (about
+  # 5 minutes each, one after another). One that can't start yet is started by the merge below.
+  if (( ${#to_merge} > 1 )); then
+    echo
+    echo "== Starting the checks of all ${#to_merge} now"
+    for n in $to_merge; do
+      _kc-start-checks-early "$n" || echo "#$n: its checks start when its turn to merge comes." >&2
+    done
   fi
 
   for n in $to_merge; do
