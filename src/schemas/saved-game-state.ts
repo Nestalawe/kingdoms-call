@@ -118,6 +118,7 @@ export const ItemSchema = z.object({
   fleetStr: z.number().optional(),
   _unscorable: z.boolean().optional(),
   primalStrike: z.number().optional(),
+  drumTierUp: z.boolean().optional(),
 });
 export type Item = z.infer<typeof ItemSchema>;
 
