@@ -61,16 +61,22 @@ describe('createTurnContext', () => {
   test("is a plain object, whole at birth: every field its start value, as the tests' list of them writes it", () => {
     // a human's row (it names its player) and a bot's (it names none)
     const rows = JSON.stringify([{ player_index: 0, user_id: 'a player' }, { player_index: 1 }]);
-    const tc = vm.runInContext(`createTurnContext({turn:1},${rows},1)`, engine) as Record<string, unknown>;
+    // handed to the vm as text and parsed there, so its lists are the vm's (as the engine's are), not written into code
+    const parsedInTheVm = vm.runInContext('(text) => JSON.parse(text)', engine) as (text: string) => unknown;
+    const born = vm.runInContext('(rows) => createTurnContext({turn:1}, rows, 1)', engine) as (
+      rows: unknown,
+    ) => Record<string, unknown>;
+    const tc = born(parsedInTheVm(rows));
     expect(types.isProxy(tc)).toBe(false);
     expect(Object.getPrototypeOf(Object.getPrototypeOf(tc))).toBeNull(); // the vm's Object.prototype
     // the same four fields, then the list's statements, in the vm (its Maps and Sets the engine's)
-    const listed = vm.runInContext(
-      `(() => { const tc = { G: {turn:1}, freshPlayers: ${rows}, expectedTurnToRun: 1, turnLog: [] };
+    const listedFrom = vm.runInContext(
+      `(rows) => { const tc = { G: {turn:1}, freshPlayers: rows, expectedTurnToRun: 1, turnLog: [] };
         ${THE_FIELDS_RESOLVE_TURN_ADDS}
-        return tc; })()`,
+        return tc; }`,
       engine,
-    ) as Record<string, unknown>;
+    ) as (rows: unknown) => Record<string, unknown>;
+    const listed = listedFrom(parsedInTheVm(rows));
     expect(Object.keys(tc).sort()).toEqual(Object.keys(listed).sort());
     expect(tc).toStrictEqual(listed);
     expect([...(tc['_botPlayerIdx'] as Set<number>)]).toEqual([1]);
