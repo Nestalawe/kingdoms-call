@@ -110,7 +110,8 @@ _kc-has-check() {
 _kc-bring-up-to-date() {
   local pr=$1 why=${2:-"it has no CodeQL results (moving its base started no scan)"} repo=Nestalawe/kingdoms-call old new tries
   old=$(gh pr view -R $repo "$pr" --json headRefOid -q .headRefOid) || return 1
-  if [[ $(gh pr view -R $repo "$pr" --json labels -q '[.labels[].name] | index("staging")') != null ]]; then
+  # `gh -q` prints a null as an empty line, so the test asks for true or false.
+  if [[ $(gh pr view -R $repo "$pr" --json labels -q 'any(.labels[]; .name == "staging")') == true ]]; then
     echo "#$pr has the label 'staging': a push to it rebuilds staging's database (its games and accounts emptied)."
     if [[ ! -t 0 ]] || ! read -q "?Take the label off #$pr and bring it up to date with main? [y/N] "; then
       echo
