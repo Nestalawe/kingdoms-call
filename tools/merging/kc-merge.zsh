@@ -492,7 +492,13 @@ _kc-merge-group() {
     gh pr edit -R $repo "$top" --remove-label refactor-only >/dev/null || return 1
     echo "#$top: took the label 'refactor-only' off (the group changes play: #${(j:, #:)not_refactor})."
   fi
-  _kc-bring-up-to-date "$top" "it carries the group: its checks are the group's" || return 1
+  # Its checks must be on a commit that holds main as it is now; a rerun after a fix pushed to it holds it already (the
+  # push started its CI and CodeQL: they are waited for below).
+  if [[ $(gh api "repos/$repo/compare/main...$(gh pr view -R $repo "$top" --json headRefOid -q .headRefOid)" -q .behind_by) != 0 ]]; then
+    _kc-bring-up-to-date "$top" "it carries the group: its checks are the group's" || return 1
+  else
+    echo "#$top already holds main: its checks are the group's."
+  fi
   _kc-wait-for-checks "$top" || return 1
   local merge_state tries
   for (( tries = 0; tries < 24; tries++ )); do
