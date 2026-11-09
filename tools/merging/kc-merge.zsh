@@ -25,6 +25,10 @@
 #                          side (a stack of 17: about 30 to 40 minutes, not 1.5 hours). It asks before bringing up to
 #                          date one with the label `staging` (a push rebuilds staging's database). If one fails, it
 #                          stops; run it again to carry on.
+#   kc-merge --group <prs> merges a stack as one group through its top pull request: every one moved onto main,
+#                          the top one alone brought up to date and checked (one CI run and one CodeQL scan for the
+#                          whole stack, about 6 minutes), then merged; GitHub marks the ones below it merged. It
+#                          takes the label refactor-only off the top one if the group holds one that isn't.
 #   kc-wait-deploy <pr>    waits until a merged pull request is deployed and live (press any key to stop waiting)
 
 # Wait <seconds>; true if a key was pressed meanwhile. Without a terminal to read keys from, it only sleeps.
@@ -283,8 +287,13 @@ _kc-merge-one() {
 # and stops before merging anything if one in it isn't ready; asks before merging more than one.
 kc-merge() {
   local repo=Nestalawe/kingdoms-call
+  if [[ $1 == --group ]]; then
+    shift
+    _kc-merge-group "$@"
+    return
+  fi
   if (( $# == 0 )); then
-    echo "usage: kc-merge <pr-number or range>...   (e.g. kc-merge 294, kc-merge 294-310, kc-merge 294-299 301)" >&2
+    echo "usage: kc-merge [--group] <pr-number or range>...   (e.g. kc-merge 294, kc-merge 294-310, kc-merge --group 294-310)" >&2
     return 1
   fi
   local -a numbers to_merge heads merged
@@ -379,6 +388,144 @@ kc-merge() {
   echo
   (( ${#merged} > 1 )) && echo "Merged ${#merged} pull requests. The deploy of the last one carries them all."
   kc-wait-deploy "${merged[-1]}"
+}
+
+# Merge a stack as one group, through its top pull request: every one is moved onto main (which starts no checks), the
+# top one alone is brought up to date and checked (one CI run and one CodeQL scan over every line of the stack), then
+# merged with a merge commit. Its branch holds every branch below it, so once it is in main GitHub marks each of them
+# merged too. One deploy carries the lot. A group holding a pull request that isn't refactor-only takes that label
+# off the top one first (the baseline guard compares the whole group with main).
+_kc-merge-group() {
+  local repo=Nestalawe/kingdoms-call
+  if (( $# == 0 )); then
+    echo "usage: kc-merge --group <pr-number or range>...   (e.g. kc-merge --group 294-310)" >&2
+    return 1
+  fi
+  local -a numbers group heads not_refactor
+  local i
+  local n info state draft base head head_sha checks labels title top top_head blocked=0 behind
+  numbers=($(_kc-pr-numbers "$@")) || return 1
+
+  echo "== The group"
+  for n in $numbers; do
+    info=$(gh pr view -R $repo "$n" --json state,isDraft,baseRefName,headRefName,headRefOid,labels,statusCheckRollup,title -q '
+      "\(.state) \(.isDraft) \(.baseRefName) \(.headRefName) \(.headRefOid) \(any(.labels[]; .name == "refactor-only")) "
+        + ([.statusCheckRollup[] | select((.name // .context) == ("ci", "db"))]
+           | group_by(.name // .context)
+           | map(max_by(.startedAt // "") | "\(.name // .context)=\(.conclusion // .state)")
+           | join(" ")),
+      .title' 2>/dev/null)
+    if [[ -z $info ]]; then
+      echo "#$n  skip: not a pull request"
+      continue
+    fi
+    { read -r state draft base head head_sha labels checks; read -r title; } <<< "$info"
+    case $state in
+      MERGED) echo "#$n  skip: already merged"; continue ;;
+      CLOSED) echo "#$n  skip: closed without merging"; continue ;;
+    esac
+    # Its own checks are the stack's record; a stacked one's must have passed (one already on main may have been
+    # started early, and failed only for the ones below it: the top's checks are the group's verdict).
+    if [[ $base != main && $checks != "ci=SUCCESS db=SUCCESS" ]] || [[ $checks != ci=*\ db=* ]]; then
+      echo "#$n  not ready: its required checks are ${checks:-missing}  ${title[1,60]}"
+      blocked=1
+      continue
+    fi
+    echo "#$n  in the group$([[ $base != main ]] && echo " (stacked on $base)")  ${title[1,60]}"
+    group+=($n)
+    heads+=($head_sha)
+    [[ $labels != true ]] && not_refactor+=($n)
+  done
+  if (( blocked )); then
+    echo "Nothing merged. Fix the pull requests marked 'not ready', or leave them out, and run kc-merge --group again." >&2
+    return 1
+  fi
+  if (( ${#group} == 0 )); then
+    echo "Nothing to merge."
+    return 0
+  fi
+  top=${group[-1]}
+  top_head=${heads[-1]}
+
+  # The top one's branch must hold every other one's own commits, or merging it would leave one out. A commit of one
+  # in neither main nor the top's branch may only be GitHub's "Merge branch 'main' into …" (an earlier kc-merge
+  # brought it up to date): it brings nothing but main.
+  local -a not_in_main not_in_top missing
+  for (( i = 1; i < ${#group}; i++ )); do
+    not_in_main=(${(f)"$(gh api "repos/$repo/compare/main...${heads[i]}" -q '.commits[].sha')"}) || return 1
+    not_in_top=(${(f)"$(gh api "repos/$repo/compare/$top_head...${heads[i]}" \
+      -q '.commits[] | select(.commit.message | startswith("Merge branch '"'main'"' into ") | not) | .sha')"}) || return 1
+    missing=(${not_in_main:*not_in_top})
+    if (( ${#missing} )); then
+      echo "#$top's branch doesn't hold ${#missing} commit(s) of #${group[i]} (${missing[1]:0:7} …): stopping; nothing changed." >&2
+      echo "Merge without --group, or bring the stack's branches together first." >&2
+      return 1
+    fi
+  done
+  echo
+  echo "#$top's branch holds all ${#group} pull requests: merging it merges the group."
+  (( ${#not_refactor} )) && echo "Not refactor-only: #${(j:, #:)not_refactor}, so #$top merges without that label."
+  if [[ -t 0 ]]; then
+    if ! read -q "?Merge these ${#group} pull requests into main as one group, through #$top? [y/N] "; then
+      echo
+      echo "Nothing merged."
+      return 1
+    fi
+    echo
+  fi
+
+  echo
+  echo "== Moving the group onto main"
+  for n in $group; do
+    base=$(gh pr view -R $repo "$n" --json baseRefName -q .baseRefName) || return 1
+    if [[ $base != main ]]; then
+      gh pr edit -R $repo "$n" --base main >/dev/null || return 1
+      echo "#$n: moved onto main."
+    fi
+    gh pr ready -R $repo "$n" >/dev/null 2>&1
+  done
+
+  echo
+  echo "== #$top, for the group"
+  if (( ${#not_refactor} )) \
+     && [[ $(gh pr view -R $repo "$top" --json labels -q 'any(.labels[]; .name == "refactor-only")') == true ]]; then
+    gh pr edit -R $repo "$top" --remove-label refactor-only >/dev/null || return 1
+    echo "#$top: took the label 'refactor-only' off (the group changes play: #${(j:, #:)not_refactor})."
+  fi
+  _kc-bring-up-to-date "$top" "it carries the group: its checks are the group's" || return 1
+  _kc-wait-for-checks "$top" || return 1
+  local merge_state tries
+  for (( tries = 0; tries < 24; tries++ )); do
+    merge_state=$(gh pr view -R $repo "$top" --json mergeStateStatus -q .mergeStateStatus) || return 1
+    [[ $merge_state != (BLOCKED|UNKNOWN) ]] && break
+    sleep 5
+  done
+  if [[ $merge_state == (BLOCKED|UNKNOWN) ]]; then
+    echo "#$top's checks passed, but main's rules still block it (merge state: $merge_state): stopping." >&2
+    echo "Its page on GitHub says which rule; run kc-merge --group again once it's met." >&2
+    return 1
+  fi
+  gh pr merge -R $repo "$top" --merge || return 1
+  echo "Merged #$top, and with it the group."
+
+  # GitHub marks each one merged once its commits are in main; it takes a moment.
+  local -a left
+  for (( tries = 0; tries < 12; tries++ )); do
+    left=()
+    for n in ${group[1,-2]}; do
+      [[ $(gh pr view -R $repo "$n" --json state -q .state) != MERGED ]] && left+=($n)
+    done
+    (( ${#left} == 0 )) && break
+    sleep 10
+  done
+  if (( ${#left} )); then
+    echo "Their commits are in main, but GitHub doesn't show these as merged yet: #${(j:, #:)left}." >&2
+    echo "Look on their pages; if one stays open, close it with a comment naming #$top." >&2
+  else
+    echo "GitHub shows all ${#group} as merged."
+  fi
+  echo
+  kc-wait-deploy "$top"
 }
 
 # Wait until merged pull request <pr-number> is deployed and live. Press any key to stop waiting.
