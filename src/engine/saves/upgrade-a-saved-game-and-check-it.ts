@@ -32,22 +32,25 @@
 // (WhatTheSavesUpgradeFound): the turn keeps it on the turn's context and tells it where it did before, and the save
 // keeps none of it.
 // After the six, the three old flags' passes (P1-15f1; until then the turn ran them before the bots plan, after the
-// merge of the realms' orders, the lair hoards and the bots' first diplomacy; none of those reads what they change):
+// merge of the realms' orders, the lair hoards and the bots' first diplomacy; none of those reads what they change),
+// with the guardians' words beside them:
 //   7. an old world's lairs renamed once, each from its own guardian's pools (renameLairsThematicP, behind _lairNamesV3;
 //      world generation names a new world's so and sets the flag);
 //   8. an old world's guardians made 5 HP frailer once, their undamaged HP too, never below 5 (behind _guardianHpV2,
 //      which world generation doesn't set: a new world's guardians are cut on its first turn, question 17, P1-23l);
-//   9. the retired Library (sd30) struck from every realm's discoveries, with any gap in the list.
+//   9. every guardian's brute strength given its kind's words (P1-11e1, R-137), with no flag: a perk already in them
+//      is left untouched;
+//   10. the retired Library (sd30) struck from every realm's discoveries, with any gap in the list.
 // Each runs on every load behind its flag, as in the turn, not as a numbered step (P1-15's Decision 2): a numbered
 // step would skip a new world, and the guardians' cut would stop for new games, which is a rule's change. How many
 // lairs it renamed and guardians it cut, it returns: the turn tells the GM where it did.
 // After the check, the four turn-start repairs (P1-15f2; until then the turn ran them once the realms' flags were
 // stamped, before the merge of the realms' orders), so the check still sees the save as loaded (a leaked hull marker
 // is still named). They also mend what today's code may leave:
-//   10. a hero of no realm wearing a beast's race (Monster, Creature) given a people's race, by his id;
-//   11. a neutral guard who leads no companies, or stands in a realm's land, made a wanderer (normaliseStrandedGuards);
-//   12. no garrison company carries a stranded hull's marker (_navalHold, a within-phase flag) into the turn;
-//   13. a hero in a realm's service loses his " (wandering)" tag (normaliseOwnedNames): how many, it returns, and the
+//   11. a hero of no realm wearing a beast's race (Monster, Creature) given a people's race, by his id;
+//   12. a neutral guard who leads no companies, or stands in a realm's land, made a wanderer (normaliseStrandedGuards);
+//   13. no garrison company carries a stranded hull's marker (_navalHold, a within-phase flag) into the turn;
+//   14. a hero in a realm's service loses his " (wandering)" tag (normaliseOwnedNames): how many, it returns, and the
 //       turn keeps the count on the save where it did (_nameRepairs), for the turn's end to tell.
 // Still in the turn, not here (P1-15's second slice): the reads that write an old save's missing field, and the readers
 // of older shapes. ensureAllLairHoards stays in the turn: it draws dice every turn.
@@ -59,6 +62,7 @@ import { normaliseOwnedNames, normaliseStrandedGuards } from '../heroes/fame-and
 import { migrateItemTiers } from '../items/equipment.ts';
 import { migrateMaxHpV2, retireDiscoveries } from '../heroes/skills-and-hp.ts';
 import { renameLairsThematicP } from '../names.ts';
+import { GUARDIAN_PERKS_THE_REGISTRY_HOLDS } from '../../content/guardian-perks-their-kinds-numbers-and-words.ts';
 import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from './the-saved-games-version-this-build-writes.ts';
 import { whereASavedGameDiffersFromThisBuildsSchema } from '../../schemas/where-a-saved-game-differs-from-this-builds-schema.ts';
 
@@ -148,6 +152,68 @@ function everyGuardianOfAnOldWorldFiveHpFrailer(save: ASaveAsTheGuardiansCutRead
   });
   save._guardianHpV2 = true;
   return cut;
+}
+
+/** A guardian's perk as the brute strength's words read it: an old save's list may hold a gap. */
+interface AGuardiansPerkAsItsWordsReadIt {
+  readonly fx?: unknown;
+  desc?: string | undefined;
+}
+/** A save as the brute strength's words read it: a gap among the provinces, features or perks is passed over. */
+interface ASaveAsTheBruteStrengthsWordsReadIt {
+  readonly world?:
+    | {
+        readonly provinces?:
+          | readonly (
+              | {
+                  readonly features?:
+                    | readonly (
+                        | {
+                            readonly monster?:
+                              | {
+                                  readonly passives?:
+                                    readonly (AGuardiansPerkAsItsWordsReadIt | null | undefined)[] | null | undefined;
+                                }
+                              | null
+                              | undefined;
+                          }
+                        | null
+                        | undefined
+                      )[]
+                    | null
+                    | undefined;
+                }
+              | null
+              | undefined
+            )[]
+          | null
+          | undefined;
+      }
+    | null
+    | undefined;
+}
+const BRUTE_STRENGTH = GUARDIAN_PERKS_THE_REGISTRY_HOLDS['brute-strength'];
+/** A GUARDIAN'S BRUTE STRENGTH READS AS IT FIGHTS (R-137, question 34). A live world keeps its own copy of each
+ *  guardian's perks, their words with them, so the kind's words changed in content reach a game in progress only here:
+ *  each perk of the kind (its rider alone, a number) is given the kind's words with its number, on every load; a perk
+ *  already in them is left untouched, so a new world's, which holds the table's own, is never written. Its other perks
+ *  keep their words. An old save's single `passive` is not read: it is held only below the guardians' table version
+ *  20, and the re-read (migrateLairGuardiansV2, in the first pass) has replaced it with the table's `passives`. */
+function everyGuardiansBruteStrengthInTheWordsOfItsKind(save: ASaveAsTheBruteStrengthsWordsReadIt): void {
+  const { rider } = BRUTE_STRENGTH.carriedAs;
+  (save.world?.provinces ?? []).forEach((p) => {
+    (p?.features ?? []).forEach((f) => {
+      (f?.monster?.passives ?? []).forEach((perk) => {
+        if (!perk) return;
+        const fx: unknown = perk.fx;
+        if (typeof fx !== 'object' || fx === null || Object.keys(fx).join() !== rider) return;
+        const n: unknown = Reflect.get(fx, rider);
+        if (typeof n !== 'number') return;
+        const words = BRUTE_STRENGTH.itsWords.replaceAll('{N}', String(n));
+        if (perk.desc !== words) perk.desc = words;
+      });
+    });
+  });
 }
 
 /** Whether a held discovery is the retired Library (sd30). */
@@ -286,6 +352,7 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
   // flag stops it ever running twice.
   const lairsRenamed = save._lairNamesV3 ? 0 : renameLairsThematicP(save);
   const guardiansCut = everyGuardianOfAnOldWorldFiveHpFrailer(save);
+  everyGuardiansBruteStrengthInTheWordsOfItsKind(save);
   theLibraryStruckFromEveryRealm(save);
   const retiredSageDiscoveriesRemoved = save._retiredDiscoveries ?? 0;
   const heroesCarriedOverToTheEarnedHpPool = save._maxHpMigration ?? [];

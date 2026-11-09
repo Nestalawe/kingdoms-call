@@ -36,7 +36,7 @@ export const A_STRIKERS_BONUS_TO_A_CHANCE_TO_HIT = {
 
 export const A_STRIKERS_BONUS_TO_A_BLOWS_DAMAGE = {
   // none is 0 (pcMeleeDamage adds it only when set); a guardian's special multiplies the blow, this bonus with it
-  // (as the rulebook reads: Toby's question 34)
+  // (as the rulebook and the perk's words read: R-137, Toby's question 34)
   'damage-bonus-rider': (theRiders) => theRiders.dmgBonus ?? 0,
 } satisfies Partial<Record<MagicItemEffectSlug, WhatARiderDoes["a blow's damage: his bonus"]>>;
 

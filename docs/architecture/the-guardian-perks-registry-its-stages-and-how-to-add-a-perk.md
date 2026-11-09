@@ -85,7 +85,7 @@ same effect, as a hero's item does. Each stage holds one effect, and its runner 
   `pcArrowHitChance`): what the aura laid on the striker takes off his chance, and what his bonus to hit adds (his
   riders' and a combat item's).
 - **a blow's damage: his bonus** (`pcMeleeDamage`, after his items'): a guardian's special multiplies the whole blow by
-  its weight, this bonus with it (as the rulebook reads: Toby's question 34).
+  its weight, this bonus with it (as the rulebook and the perk's words read: R-137, question 34).
 - **a melee round: his burn** (`resolvePersonalCombat`, at melee range only, both standing): the harm, and the rider
   the line names.
 - **a blow lands: his drain** (`pcMeleeStrike`): his share of the wound he dealt, at the sustain's fade (asked only as
@@ -106,8 +106,8 @@ same effect, as a hero's item does. Each stage holds one effect, and its runner 
   name no kind of perk, and no check of a perk is left in the engine outside the registries.
 - `tests/static/each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table.test.ts`: every perk's `desc` is its
   kind's form with its number, and each kind's value at each grade is in the rulebook's table; the grade's cap, the
-  sustain's fade and a second wind's share are in the rulebook. Question 34's form (a damage perk on a special) is
-  listed with it.
+  sustain's fade and a second wind's share are in the rulebook. The form a ruling sets (brute strength's, R-137) is
+  listed with it; the save's upgrade re-stamps a running game's guardians with it.
 - `tests/unit/guardian-perks.test.ts`: every perk carries its grade's value from the rows' table.
 - `tests/unit/the-guardian-perks-no-matrix-game-meets-keep-their-values.test.ts`: the lines no matrix game reaches, or
   reaches in part (the card's spell resistance, the older form, a missing perk; the grade's cap; a ward against one
