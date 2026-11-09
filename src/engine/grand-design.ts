@@ -56,12 +56,19 @@ export function homeProvinceIdFor(gs: StateAsTheseRead | null | undefined, playe
   const pl = (gs?.players ?? [])[playerIndex];
   if (!pl) return null;
   if (pl.homeProvinceId != null) return pl.homeProvinceId;
+  return theHomeARealmWithoutOneIsGiven(gs, playerIndex);
+}
+/** The home a realm of an older save, with no homeProvinceId, is given: its first province, else its king's place, else
+ *  none. The save's upgrade writes it once, and so freezes it (src/engine/saves/, plan P1-15f3); homeProvinceIdFor
+ *  reads it, and writes nothing. */
+export function theHomeARealmWithoutOneIsGiven(gs: StateAsTheseRead | null | undefined, playerIndex: number) {
+  const pl = (gs?.players ?? [])[playerIndex];
+  if (!pl) return null;
   let fallback = pl.provinces?.length && pl.provinces[0] != null ? pl.provinces[0] : null;
   if (fallback == null) {
     const king = (gs?.characters ?? []).find((c) => c.player === playerIndex && c.isKing);
     fallback = king ? king.location : null;
   }
-  if (fallback != null) pl.homeProvinceId = fallback; // freeze it from now on
   return fallback;
 }
 // ── PLAYER MAP CENTRING ────
@@ -69,7 +76,7 @@ export function homeProvinceIdFor(gs: StateAsTheseRead | null | undefined, playe
 // column; the wrap seam then falls behind them instead of through their territory. Same world,
 // different starting column per player. North-south is untouched — the grid does not wrap that way.
 //
-// Games saved before this existed have no homeProvinceId, so it is backfilled once, here, and then
+// Games saved before this existed have no homeProvinceId, so the save's upgrade backfills it once, and then it is
 // frozen: provinces[0] was seeded with the capital at world gen, and the king's location is the
 // last resort. Backfilling from the CURRENT province list would let the centre drift as land
 // changes hands, which is exactly what this is meant to prevent. Item 4: who FOUNDED this province

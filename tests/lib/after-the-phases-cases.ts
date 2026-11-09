@@ -501,6 +501,7 @@ export const CONSECRATION_CASES: AfterThePhasesCase[] = [
   },
   {
     name: "an old save's single consecrated province is read as the realm's list, and lost like any other",
+    wholeTurnOnly: true, // the save's upgrade folds the old field, before the stages (P1-15f3)
     stage(b) {
       const gone = ring1(b, 0);
       holdsOnly(b, 0, [b.X, 0]);

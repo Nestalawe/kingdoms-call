@@ -1338,8 +1338,8 @@ export interface TheAttackersUnitsAtASiege {
 
 /** The province a realm defends, as its own-ground discoveries read it (both battles). */
 export interface TheGroundARealmDefends {
-  /** Whether the province is the realm's home: asked only by an effect that reads it (asking may fix a realm's home,
-   *  as homeProvinceIdFor does the first time, so it is asked when the resolver asked it before). */
+  /** Whether the province is the realm's home: asked only by an effect that reads it, when the resolver asked it before
+   *  (until P1-15f3 asking could fix a realm's home; the save's upgrade does now). */
   readonly isItTheRealmsHome: () => boolean;
 }
 
@@ -1479,8 +1479,8 @@ export interface WhereASpyActsAsARealmsDiscoveriesReadIt {
   readonly theGround: string | null | undefined;
   /** Whether the province touches the sea. */
   readonly isItCoastal: () => boolean;
-  /** Whether it is the home of the realm whose discoveries these are (asking may fix a realm's home:
-   *  homeProvinceIdFor writes it the first time). */
+  /** Whether it is the home of the realm whose discoveries these are (until P1-15f3 asking could fix a realm's home;
+   *  the save's upgrade does now). */
   readonly isItTheRealmsHome: () => boolean;
 }
 

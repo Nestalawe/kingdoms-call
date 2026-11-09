@@ -8,7 +8,9 @@
 //   1. migrateMaxHpV2: every living hero's maximum HP from his earned pool (a hero with no pool is given one, from his
 //      maximum as the old formula set it), and the lairs' guardians re-read from their table when the save's table
 //      version is behind (migrateLairGuardiansV2);
-//   2. backfillHomeRosters: each realm's home recruits its people's full land roster, and a coastal home its fleet;
+//   2. each realm of an older save without a home given one, its first province, else its king's place (P1-15f3: until
+//      then homeProvinceIdFor wrote it on its first read, which this pass made), then backfillHomeRosters: each realm's
+//      home recruits its people's full land roster, and a coastal home its fleet;
 //   3. retireCorsairPools: no province offers the retired Corsair Fleet (the Galleon Fleet in its place);
 //   4. retireDiscoveries: no realm holds a retired Sage discovery, and each held one reads as its table says now;
 //   5. migrateLegacyUnitNames: the units and races renamed since are called by their names now;
@@ -52,11 +54,18 @@
 //   13. no garrison company carries a stranded hull's marker (_navalHold, a within-phase flag) into the turn;
 //   14. a hero in a realm's service loses his " (wandering)" tag (normaliseOwnedNames): how many, it returns, and the
 //       turn keeps the count on the save where it did (_nameRepairs), for the turn's end to tell.
-// Still in the turn, not here (P1-15's second slice): the reads that write an old save's missing field, and the readers
-// of older shapes. ensureAllLairHoards stays in the turn: it draws dice every turn.
+// Then, after the check too (so it still names an old field), three reads that wrote an older save's missing field
+// (P1-15f3; until then each reader wrote it on its first read in the turn, and now only reads):
+//   15. a realm's single consecrated province (consecratedProvId) folded into its list (consecratedIds still gives a
+//       realm with no list an empty one: a new game's realms hold none until then);
+//   16. a realm's tally of the items it found under the retired Consumable slot folded into the Combat Item's;
+//   17. a feature an older save discovered for everyone, with no list of who discovered it, known to every realm
+//       (_legacyAll) and given an empty list.
+// Still in the turn, not here (P1-15's second slice): the readers of older shapes. ensureAllLairHoards stays in the
+// turn: it draws dice every turn.
 import type { GameState } from '../../schemas/saved-game-state.ts';
 import { migrateLegacyUnitNames } from '../army-tables.ts';
-import { retireCorsairPools } from '../grand-design.ts';
+import { retireCorsairPools, theHomeARealmWithoutOneIsGiven } from '../grand-design.ts';
 import { RACES_P, backfillHomeRosters } from '../world/tables.ts';
 import { normaliseOwnedNames, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
 import { migrateItemTiers } from '../items/equipment.ts';
@@ -279,6 +288,119 @@ function noGarrisonCompanyCarriesAStrandedHullsMarker(save: {
   });
 }
 
+/** A HOME FOR A REALM OF AN OLDER SAVE. A game saved before the home province existed holds no homeProvinceId; each
+ *  such realm is given the home it would have had (theHomeARealmWithoutOneIsGiven: its first province, seeded with
+ *  its capital at world generation, else its king's place), once, and then it is frozen, so the map's centre never
+ *  drifts as land changes hands. A realm with neither keeps none. (Until P1-15f3 homeProvinceIdFor wrote it on its
+ *  first read, which backfillHomeRosters made for every realm.) */
+function everyRealmWithoutAHomeGivenOne(save: {
+  readonly players?:
+    | readonly (
+        | { homeProvinceId?: number | null | undefined; readonly provinces?: readonly number[] | null | undefined }
+        | null
+        | undefined
+      )[]
+    | null
+    | undefined;
+  readonly characters?:
+    | readonly { readonly player: number | null; readonly isKing: boolean; readonly location: number }[]
+    | null
+    | undefined;
+}): void {
+  (save.players ?? []).forEach((pl, pi) => {
+    if (!pl || pl.homeProvinceId != null) return;
+    const home = theHomeARealmWithoutOneIsGiven(save, pi);
+    if (home != null) pl.homeProvinceId = home;
+  });
+}
+
+/** A SINGLE CONSECRATION. A Divine realm may hold several consecrated provinces, as a list (consecratedProvIds); an
+ *  older save held one, as consecratedProvId. A realm with the old field and no list has it folded into the list, and
+ *  the old field taken off. (Until P1-15f3 consecratedIds folded it on its first read.) */
+function theOldSingleConsecrationFoldedIntoTheList(save: {
+  readonly players?:
+    | readonly (
+        { consecratedProvIds?: number[] | undefined; consecratedProvId?: number | null | undefined } | null | undefined
+      )[]
+    | null
+    | undefined;
+}): void {
+  (save.players ?? []).forEach((pl) => {
+    if (!pl || Array.isArray(pl.consecratedProvIds) || !('consecratedProvId' in pl)) return;
+    pl.consecratedProvIds = pl.consecratedProvId != null ? [pl.consecratedProvId] : [];
+    delete pl.consecratedProvId;
+  });
+}
+
+/** THE OLD COMBAT TALLY. The Consumable slot became the Combat Item slot. An older save holds a realm's tally of the
+ *  items it has found under the retired key; it is folded into the new one, so the even-distribution draw doesn't
+ *  decide the realm has never found a combat item and flood it with them. (Until P1-15f3 migrateHoardTally folded it
+ *  in both the tally's writer, noteItemFound, and its reader, rollMagicItemFor.) */
+function theOldCombatTallyFoldedIntoTheNew(save: {
+  readonly players?:
+    | readonly (
+        | {
+            readonly _itemsFoundByCat?:
+              { combat?: number | undefined; consumable?: number | undefined } | null | undefined;
+          }
+        | null
+        | undefined
+      )[]
+    | null
+    | undefined;
+}): void {
+  (save.players ?? []).forEach((pl) => {
+    if (!pl?._itemsFoundByCat) return;
+    const t = pl._itemsFoundByCat;
+    if (t.consumable != null) {
+      t.combat = (Number(t.combat) || 0) + t.consumable;
+      delete t.consumable;
+    }
+  });
+}
+
+/** A FEATURE AN OLDER SAVE DISCOVERED FOR EVERYONE. Before discovery was kept realm by realm, a feature held
+ *  `discovered` and no `discoveredBy`. Each such feature is grandfathered as known to every realm (_legacyAll) and
+ *  given an empty list, so upgrading never takes knowledge away from a player. (Until P1-15f3 discoverFeat did it when
+ *  a realm discovered the feature again.) */
+function everyFeatureAnOlderSaveDiscoveredKnownToEveryRealm(save: {
+  readonly world?:
+    | {
+        readonly provinces?:
+          | readonly (
+              | {
+                  readonly features?:
+                    | readonly (
+                        | {
+                            readonly discovered?: boolean | undefined;
+                            discoveredBy?: number[] | undefined;
+                            _legacyAll?: boolean | undefined;
+                          }
+                        | null
+                        | undefined
+                      )[]
+                    | null
+                    | undefined;
+                }
+              | null
+              | undefined
+            )[]
+          | null
+          | undefined;
+      }
+    | null
+    | undefined;
+}): void {
+  (save.world?.provinces ?? []).forEach((p) => {
+    (p?.features ?? []).forEach((f) => {
+      if (f && !Array.isArray(f.discoveredBy) && f.discovered) {
+        f._legacyAll = true;
+        f.discoveredBy = [];
+      }
+    });
+  });
+}
+
 /** The save as the passes leave it: two of them count what they mend on it, and the upgrade takes the counts off. */
 type TheSaveWithThePassesCounts = GameState & {
   _retiredDiscoveries?: number | undefined;
@@ -341,6 +463,7 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
   refuseASaveThatIsNotAGameInPlay(save);
   refuseASaveFromANewerBuild(save);
   migrateMaxHpV2(save); // Sept 2026 redesign: derived max HP (one-time recompute for older saves, silent resync otherwise)
+  everyRealmWithoutAHomeGivenOne(save);
   backfillHomeRosters(save); // home provinces recruit the king's full racial land roster
   retireCorsairPools(save); // 2026-10-15 (D3): no province offers the retired Corsair Fleet
   retireDiscoveries(save); // strip retired Sage discovery ids (sd34) from live saves
@@ -374,6 +497,10 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
   // the ' (wandering)' tag off anyone who now serves a crown: heals live games whose heroes were charmed or
   // resurrected into service before those paths were fixed
   const heroesInARealmsServiceWhoseWanderingTagWasTakenOff = normaliseOwnedNames(save);
+  // the reads that wrote an older save's missing field (P1-15f3: the readers now only read), after the check as well
+  theOldSingleConsecrationFoldedIntoTheList(save);
+  theOldCombatTallyFoldedIntoTheNew(save);
+  everyFeatureAnOlderSaveDiscoveredKnownToEveryRealm(save);
   return {
     retiredSageDiscoveriesRemoved,
     heroesCarriedOverToTheEarnedHpPool,

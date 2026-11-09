@@ -51,8 +51,8 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - **A realm's discoveries add to a siege** (`siege`; both battles): handed the attacker's units. It returns its `delta`
   if it names no unit types, or the attacker has one of them. The runner adds them.
 - **A realm's discoveries fortify its own ground** (`defOwn`; both battles, the defending realm's): handed whether the
-  province is the realm's home, as a question. Only an effect that needs the answer asks it, because asking may fix a
-  realm's home (`homeProvinceIdFor` writes it the first time). The runner adds the shares and caps the sum at the
+  province is the realm's home, as a question. Only an effect that needs the answer asks it, as before P1-15f3, when
+  asking could fix a realm's home (the save's upgrade does now). The runner adds the shares and caps the sum at the
   kind's ceiling.
 - **A realm's discoveries stir a side's fanaticism** (`fanatic`; both battles, before each side's roll): handed the
   side, the ground and the force (`discFanaticApplies`, now the effect's file's). The runner adds them; the battle rolls

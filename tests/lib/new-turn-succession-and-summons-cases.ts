@@ -419,6 +419,7 @@ export const DIVINE_RETURN_CASES: NewTurnCase[] = [
   },
   {
     name: 'an old save’s one consecrated province still counts as holy ground: the king keeps his way back',
+    wholeTurnOnly: true, // the save's upgrade folds the old field, before the stages (P1-15f3)
     stage(b) {
       const k = kingFalls(b, 0, { awaitsReturn: true });
       realm(b, 0)['consecratedProvId'] = seatOf(b, 0).id;

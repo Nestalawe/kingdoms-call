@@ -25,6 +25,12 @@
 //   unclaimed ground still guards); no garrison company keeps a stranded hull's marker, and the check, before the
 //   repair, still names the leaked marker; a hero in a realm's service loses his "(wandering)" tag, and the upgrade
 //   returns how many (a property: any race, realm and marker); gaps in the lists are passed over;
+// - the reads that wrote an older save's field (P1-15f3: the readers wrote it in the turn before): a realm with no home
+//   is given its first province, else its king's place, else none; after the check (which still names the old fields),
+//   a realm's single consecrated province is folded into its list (a realm holding a list keeps it; one with neither is
+//   given none), its tally of the items found under the retired Consumable slot folded into the Combat Item's, and a
+//   feature an older save discovered for everyone, with no list of who discovered it, is known to every realm and given
+//   an empty list (a gap among the features passed over; one discovered again is still known to all);
 // - all of them at once, then the upgrade run again on what it left: the second run changes nothing and finds nothing.
 // The world staged on is one that has played its first turn: its guardians already re-measured (a new world isn't:
 // question 17). And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a
@@ -50,10 +56,12 @@
 // with any gap, a realm with no list keeping none; after the check, a hero of no realm in a beast's race given the
 // people's race at his id (id 0 and below too; no realm field: kept), a stranded guard made a wanderer (one guarding
 // unclaimed ground kept), a garrison's stranded-hull marker taken off (the check still naming it), a crowned hero's
-// "(wandering)" tag taken off, counted (a property; gaps passed over). All at once, then again: the second run changes
-// nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril Armour made at tier 1,
-// raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
-// out turns its cases red (14 of 14). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
+// "(wandering)" tag taken off, counted (a property; gaps passed over); a realm with no home given its first province,
+// else its king's place; after the check (still naming them), a single consecration folded into the list, a Consumable
+// tally into the Combat Item's, a feature discovered for everyone known to every realm. All at once, then again: the
+// second run changes nothing and finds nothing. Four new worlds (2 to 6 realms) change only by a known list (Mithril
+// Armour made at tier 1, raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
+// out turns its cases red (18 of 18). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
 // since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
 // settings)
 import fc from 'fast-check';
@@ -63,6 +71,10 @@ import { generateNewGame } from '../../src/engine/world/generate.ts';
 import { generateBotSetups } from '../../src/engine/bots/setup.ts';
 import { kcRng } from '../../src/engine/rng.ts';
 import { homeProvinceIdFor } from '../../src/engine/grand-design.ts';
+import {
+  discoverFeat,
+  featDiscovered,
+} from '../../src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { RACES_P, fullRaceLandRoster } from '../../src/engine/world/tables.ts';
 import { LEGACY_UNIT_RENAMES } from '../../src/engine/army-tables.ts';
 import { GUARDIAN_TABLE_VER } from '../../src/engine/heroes/skills-and-hp.ts';
@@ -198,6 +210,11 @@ const heroOf = (s: Save, id: unknown) =>
 const heldHulls = (s: Save) =>
   s.world.provinces.flatMap((p) => p.garrisonArmies).filter((u) => Reflect.get(u, '_navalHold') != null);
 const aCompany = (s: Save) => must(s.characters.flatMap((c) => c.armies).find(Boolean), 'company led by a hero');
+/** Two features of the world no realm has discovered (neither holds a list of who has). */
+const undiscovered = (s: Save) => {
+  const found = s.world.provinces.flatMap((p) => p.features).filter((f) => !f.discovered && !('discoveredBy' in f));
+  return [must(found[0], 'an undiscovered feature'), must(found[1], 'a second undiscovered feature')];
+};
 const firstRename = must(Object.entries(LEGACY_UNIT_RENAMES)[0], 'renamed unit');
 const aTreasuryItem = must(
   (ALL_MAGIC_ITEMS_P as Loose[]).find((it) => typeof it['tier'] === 'number' && typeof it['name'] === 'string'),
@@ -542,6 +559,81 @@ const OLD_SHAPES: OldShape[] = [
       };
     },
   },
+  {
+    name: 'a realm of an older save with no home is given its first province, once',
+    pass: 'everyRealmWithoutAHomeGivenOne',
+    stage(s) {
+      const realm = loose(must(s.players[2], 'realm 2'));
+      delete realm['homeProvinceId'];
+      return must(must(s.players[2], 'realm 2').provinces[0], "realm 2's first province");
+    },
+    mended(s, first, found) {
+      return {
+        got: { home: loose(must(s.players[2], 'realm 2'))['homeProvinceId'], found },
+        want: { home: first, found: NOTHING_FOUND },
+      };
+    },
+  },
+  {
+    name: "a realm's single consecrated province of an older save is folded into its list, the old field taken off",
+    pass: 'theOldSingleConsecrationFoldedIntoTheList',
+    stage(s) {
+      const one = loose(must(s.players[1], 'realm 1'));
+      const none = loose(must(s.players[2], 'realm 2'));
+      delete one['consecratedProvIds'];
+      delete none['consecratedProvIds'];
+      one['consecratedProvId'] = homeOf(s, 1).id;
+      none['consecratedProvId'] = null;
+      return homeOf(s, 1).id;
+    },
+    mended(s, id) {
+      const realms = [1, 2].map((i) => loose(must(s.players[i], `realm ${String(i)}`)));
+      return {
+        got: realms.map((r) => [r['consecratedProvIds'], 'consecratedProvId' in r]),
+        want: [
+          [[id], false],
+          [[], false],
+        ],
+      };
+    },
+  },
+  {
+    name: "a realm's tally of the items it found under the retired Consumable slot is folded into the Combat Item's",
+    pass: 'theOldCombatTallyFoldedIntoTheNew',
+    stage(s) {
+      loose(must(s.players[1], 'realm 1'))['_itemsFoundByCat'] = { consumable: 2 };
+      loose(must(s.players[2], 'realm 2'))['_itemsFoundByCat'] = { weapon: 1, combat: 3, consumable: 2 };
+      return null;
+    },
+    mended(s) {
+      return {
+        got: [1, 2].map((i) => loose(must(s.players[i], `realm ${String(i)}`))['_itemsFoundByCat']),
+        want: [{ combat: 2 }, { weapon: 1, combat: 5 }],
+      };
+    },
+  },
+  {
+    name: 'a feature an older save discovered for everyone, with no list of who discovered it, is known to every realm and given an empty list',
+    pass: 'everyFeatureAnOlderSaveDiscoveredKnownToEveryRealm',
+    stage(s) {
+      const [old, never] = undiscovered(s);
+      const f = loose(must(old, 'an undiscovered feature'));
+      f['discovered'] = true;
+      delete f['discoveredBy'];
+      delete f['_legacyAll'];
+      return [old, never];
+    },
+    mended(_s, staged) {
+      const [old, never] = (staged as Loose[]).map(loose);
+      return {
+        got: [old, never].map((f) => [f?.['discovered'], f?.['discoveredBy'], f?.['_legacyAll']]),
+        want: [
+          [true, [], true],
+          [false, undefined, undefined],
+        ],
+      };
+    },
+  },
 ];
 
 describe("a saved game's old shapes are mended before the turn (upgradeGameState)", () => {
@@ -635,6 +727,20 @@ describe("a saved game's old shapes are mended before the turn (upgradeGameState
     expect(heldHulls(s)).toEqual([]);
   });
 
+  test("the check, before the folds, still names an older save's single consecration and its Consumable tally; the folds then mend them", () => {
+    const s = copy(WORLD);
+    const realm = loose(must(s.players[1], 'realm 1'));
+    delete realm['consecratedProvIds'];
+    realm['consecratedProvId'] = homeOf(s, 1).id;
+    realm['_itemsFoundByCat'] = { consumable: 2 };
+    const found = upgradeGameState(s);
+    expect(found.whereTheSaveDiffersFromThisBuildsSchema.filter((p) => p.startsWith('players.1'))).toEqual([
+      "players.1._itemsFoundByCat: a field this build doesn't know, consumable",
+      "players.1: a field this build doesn't know, consecratedProvId",
+    ]);
+    expect([realm['consecratedProvIds'], realm['_itemsFoundByCat']]).toEqual([[homeOf(s, 1).id], { combat: 2 }]);
+  });
+
   test('the repairs pass over gaps among the provinces and the garrisons', () => {
     const s = copy(WORLD);
     const named = must(realmsHeroes(s)[0], 'a realm hero');
@@ -645,6 +751,70 @@ describe("a saved game's old shapes are mended before the turn (upgradeGameState
     ps[ps.findIndex((p) => p && !(p['features'] as unknown[] | undefined)?.length)] = null;
     expect(upgradeGameState(s).heroesInARealmsServiceWhoseWanderingTagWasTakenOff).toBe(1);
     expect(named.name).toBe(name);
+  });
+
+  test("a realm of an older save with no home and no land is given its king's place; one with no king either keeps none", () => {
+    const s = copy(WORLD);
+    const [one, two] = [1, 2].map((i) => must(s.players[i], `realm ${String(i)}`));
+    const king = must(
+      s.characters.find((c) => c.isKing && c.player === 2),
+      'king of realm 2',
+    );
+    for (const r of [one, two]) {
+      delete loose(must(r, 'realm'))['homeProvinceId'];
+      must(r, 'realm').provinces = [];
+    }
+    king.isKing = false;
+    upgradeGameState(s);
+    const kingOfOne = must(
+      s.characters.find((c) => c.isKing && c.player === 1),
+      'king of realm 1',
+    );
+    expect([loose(must(one, 'realm 1'))['homeProvinceId'], 'homeProvinceId' in must(two, 'realm 2')]).toEqual([
+      kingOfOne.location,
+      false,
+    ]);
+  });
+
+  test('a realm holding a list of consecrated provinces keeps it, and the old field beside it; a realm with neither is given no list', () => {
+    const s = copy(WORLD);
+    const both = loose(must(s.players[1], 'realm 1'));
+    const neither = loose(must(s.players[2], 'realm 2'));
+    both['consecratedProvIds'] = [3];
+    both['consecratedProvId'] = 4;
+    delete neither['consecratedProvIds'];
+    delete neither['consecratedProvId'];
+    upgradeGameState(s);
+    expect([both['consecratedProvIds'], both['consecratedProvId'], 'consecratedProvIds' in neither]).toEqual([
+      [3],
+      4,
+      false,
+    ]);
+  });
+
+  test('a realm with no tally, or one with no Consumable count, keeps it as it is', () => {
+    const s = copy(WORLD);
+    loose(must(s.players[1], 'realm 1'))['_itemsFoundByCat'] = null;
+    loose(must(s.players[2], 'realm 2'))['_itemsFoundByCat'] = { combat: 3 };
+    upgradeGameState(s);
+    expect([1, 2].map((i) => loose(must(s.players[i], `realm ${String(i)}`))['_itemsFoundByCat'])).toEqual([
+      null,
+      { combat: 3 },
+    ]);
+  });
+
+  test('a feature an older save discovered for everyone, once upgraded and discovered again by one realm, is still known to every realm; a gap among the features is passed over', () => {
+    const s = copy(WORLD);
+    const [old] = undiscovered(s);
+    const f = must(old, 'an undiscovered feature');
+    f.discovered = true;
+    must(
+      s.world.provinces.find((p) => p.features.includes(f)),
+      "the feature's province",
+    ).features.unshift(null as never);
+    upgradeGameState(s);
+    expect(discoverFeat(f, 1)).toBe(false);
+    expect([0, 1, 2].map((i) => featDiscovered(f, i))).toEqual([true, true, true]);
   });
 
   test("the repairs, any hero's race, realm and life, any garrison's markers: a people's race on every hero of no realm who wore a beast's, every other race kept; no stranded hull's marker; every crowned hero's tag off, counted", () => {

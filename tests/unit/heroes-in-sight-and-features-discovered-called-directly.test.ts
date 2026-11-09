@@ -6,7 +6,7 @@
 // - enemyCharVisibleTo: an enemy hero leading a column (one unit is enough) in this realm's own land is always seen,
 //   with none of its heroes there; a lone one is found only by the spotting roll (R-020: a column is always seen);
 // - discoverFeat: a feature an older save had marked discovered for everyone (before discovery was kept realm by
-//   realm) stays known to every realm when one realm discovers it again; a feature of a newer game is known only to
+//   realm), as the save's upgrade leaves it (P1-15f3), stays known to every realm when one realm discovers it again; a feature of a newer game is known only to
 //   the realms that discovered it;
 // - encounterUntargetableReason: a hero wearing an older save's Cloak of Many Faces (`effect:{stat:'hidden'}`) is
 //   faceless to an Encounter Character order; with another item, or none, he is not (plan P1-19am: no test saw it,
@@ -126,8 +126,9 @@ describe('a feature an older save marked discovered stays known to every realm',
     ({ name: 'Troll Den', cleared: false, treasure: 50, ...extra }) as unknown as ProvinceFeature;
 
   test('an older save’s discovered feature, discovered again by one realm, is still known to the others', () => {
-    // before discovery was kept realm by realm, a feature had `discovered` and no `discoveredBy`
-    const f = feature({ discovered: true });
+    // before discovery was kept realm by realm, a feature had `discovered` and no `discoveredBy`: the save's upgrade
+    // grandfathers it (P1-15f3), and the turn reads it so
+    const f = feature({ discovered: true, _legacyAll: true, discoveredBy: [] });
     expect([featDiscovered(f, 0), featDiscovered(f, 1)]).toEqual([true, true]);
     discoverFeat(f, 1);
     expect([featDiscovered(f, 0), featDiscovered(f, 1), featDiscovered(f, 2)]).toEqual([true, true, true]);
