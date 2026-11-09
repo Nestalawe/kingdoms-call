@@ -159,9 +159,9 @@ _kc-wait-for-checks() {
         echo "$(date +%H:%M:%S)  ci, db and CodeQL passed on ${sha:0:7}."
         return 0
       fi
-      echo "A check didn't pass on #$pr (${rest}): stopping." >&2
+      echo "A check didn't pass on #$pr (${rest})." >&2
       [[ " $rest " != *" CodeQL=SUCCESS "* ]] && echo "CodeQL's alerts are on the pull request's page (Checks, then CodeQL)." >&2
-      return 1
+      return 2
     fi
     if (( SECONDS - started > 40 * 60 )); then
       echo "#$pr's checks haven't finished after 40 minutes: stopping. kc-merge carries on from it when run again." >&2
@@ -241,7 +241,20 @@ _kc-merge-one() {
     updated=1
   fi
   while true; do
-    _kc-wait-for-checks "$pr" || return 1
+    _kc-wait-for-checks "$pr"
+    case $? in
+      0) ;;
+      2) # Checks started early compare the pull request with main before the ones below it merged, so they also see
+         # those ones' changes (a refactor-only one then "changes the baseline" a fix below it rewrote). Once only.
+         if (( ! updated )); then
+           _kc-bring-up-to-date "$pr" "a check failed; checking it again against main as it is now" || return 1
+           updated=1
+           continue
+         fi
+         echo "#$pr: a check failed again, against main as it is now: stopping." >&2
+         return 1 ;;
+      *) return 1 ;;
+    esac
 
     # The rules' verdict follows the checks by a few seconds; BLOCKED until then.
     for (( tries = 0; tries < 24; tries++ )); do
