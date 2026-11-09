@@ -65,7 +65,8 @@
 // turn: it draws dice every turn.
 import type { GameState } from '../../schemas/saved-game-state.ts';
 import { migrateLegacyUnitNames } from '../army-tables.ts';
-import { retireCorsairPools, theHomeARealmWithoutOneIsGiven } from '../grand-design.ts';
+import { theHomeARealmWithoutOneIsGiven } from '../grand-design.ts';
+import { retireCorsairPools } from './retire-the-corsair-pools.ts';
 import { RACES_P, backfillHomeRosters } from '../world/tables.ts';
 import { normaliseOwnedNames, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
 import { migrateItemTiers } from '../items/equipment.ts';

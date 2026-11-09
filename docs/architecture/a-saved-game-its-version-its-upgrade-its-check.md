@@ -43,6 +43,9 @@ the turn reads it.
   a new world and mended; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
   tier, the guardians' cut) and
   `corsairs-retired` (the turn passes the loaded world through the upgrade, which calls the pass).
+- **A pass that names a unit** reads the name from a content row, as `migrateLegacyUnitNames` reads its table: the Corsair Fleet
+  and the Galleon Fleet in its place are `src/content/the-corsair-fleet-retired-from-the-pools-and-the-unit-in-its-place.ts`,
+  read by `retireCorsairPools` (`src/engine/saves/retire-the-corsair-pools.ts`); the engine names no unit for it (P1-15f4).
 - **What the schema knows**: the saved state's schema (`src/schemas/saved-game-state.ts`) was written from the
   balance matrix's states, so it also names what only live play saves: the hero order the player portal sends with
   every submission (a realm's `heroOrder`), what the GM page writes between turns (`archived`, `archivedAt`,

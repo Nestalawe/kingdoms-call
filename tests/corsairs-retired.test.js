@@ -6,7 +6,7 @@
 // did. Letters of Marque, the Human discovery that only lifted Corsairs, now lifts the Galleon Fleet the same
 // way (+30% when attacking) until a full review of the discoveries (Toby, 2026-10-15).
 // Level 0 (static) for the words; level 1 (unit) for the migration: retireCorsairPools is a top-level function of
-// the engine (src/engine/grand-design.ts), called on a hand-made world in its bare vm (tests/lib/engine.ts). The
+// the engine (src/engine/saves/retire-the-corsair-pools.ts), called on a hand-made world in its bare vm (tests/lib/engine.ts). The
 // rulebooks are read as site/ text; the player portal as its files under src/ (tests/lib/source.ts), the data file's
 // discoveries in the vm, and the call in the turn by its syntax tree. Until plan P1-09a the portals and the data file
 // were read as site/ text, and the migration ran on the booted GM portal.
@@ -14,7 +14,8 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Item 3 (R-109): no rulebook or player-portal text names the Corsairs, Admiralty names the Galleons only, Letters of
 // Marque lifts the Galleon Fleet +30% when attacking (item 12), and `retireCorsairPools` turns a running game's Corsair
-// offer into the Galleon (once, idempotent) while keeping Corsair companies already raised (batch 2026-10-15); the turn
+// offer into the Galleon (once, idempotent) while keeping Corsair companies already raised, and passes over a hole in the
+// provinces and a province with no pool (batch 2026-10-15; P1-15f4); the turn
 // passes the loaded world through the save's upgrade, which calls it (by syntax tree; since P1-15a)
 const fs=require('fs'), path=require('path'), vm=require('vm');
 const {sitePath}=require('./lib/boot'); const {loadEngine,engineFn}=require('./lib/engine.ts');
@@ -47,12 +48,15 @@ ok(/"effect":\{"kind":"unitStr","pct":0\.3,"types":\["Galleon Fleet"\],"side":"a
       {id:1,terrain:'plain',race:'Human',armyTypes:['Galleon Fleet','Corsair Fleet']},
       {id:2,terrain:'forest',race:'Elven',armyTypes:['Elven Bowmen','Elven Galleys']},
       {id:3,terrain:'sea',armyTypes:[]},
+      null,
+      {id:5,terrain:'plain',race:'Human'},
     ]},characters:[{id:'h1',armies:[{type:'Corsair Fleet',quality:'Veteran'}]}]};
     fn(gs);
     const P=gs.world.provinces;
     ok(JSON.stringify(P[0].armyTypes)===JSON.stringify(['Shieldwall Levies','Galleon Fleet','Human Garrison']),`a pool offering Corsairs offers the Galleon in its place (got ${P[0].armyTypes.join(', ')})`);
     ok(JSON.stringify(P[1].armyTypes)===JSON.stringify(['Galleon Fleet']),`a pool that already offers the Galleon simply loses the Corsairs (got ${P[1].armyTypes.join(', ')})`);
     ok(JSON.stringify(P[2].armyTypes)===JSON.stringify(['Elven Bowmen','Elven Galleys']),'a pool without Corsairs is untouched');
+    ok(P[4]===null&&P[5].armyTypes===undefined,'a hole in the list of provinces, and a province with no pool, are passed over');
     ok(gs.characters[0].armies[0].type==='Corsair Fleet','a Corsair company already raised is kept');
     const before=JSON.stringify(gs); fn(gs); ok(JSON.stringify(gs)===before,'a second run changes nothing (it runs every turn)');
   }
