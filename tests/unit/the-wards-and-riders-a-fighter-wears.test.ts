@@ -58,6 +58,8 @@ const {
   pcSpeedOf,
 } = await import('../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts');
 const { ALL_MAGIC_ITEMS_P, LEGENDARY_ITEMS_P, MONSTERS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const { anOlderSavesShapesMendedOnce } =
+  await import('../../src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts');
 const { _ITEM_ALT_BASE } =
   await import('../../src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts');
 
@@ -394,9 +396,9 @@ describe('a guardian’s fighter', () => {
       { aura: 'Made-up Gaze', ward: 'Made-up Blank' },
       7,
     ]);
-    expect(pcMonsterCombatant({ passive: { name: 'Made-up Old Perk', fx: { burn: 1 } } }).passiveName).toBe(
-      'Made-up Old Perk',
-    );
+    const anOlderSavesGuardian = { passive: { name: 'Made-up Old Perk', fx: { burn: 1 } } };
+    anOlderSavesShapesMendedOnce({ world: { provinces: [{ features: [{ monster: anOlderSavesGuardian }] }] } }); // version 2's step (plan P1-15f6)
+    expect(pcMonsterCombatant(anOlderSavesGuardian).passiveName).toBe('Made-up Old Perk');
   });
 
   test('his plan: no specials and no bow is twelve blows; a special that heals waits for the end', () => {

@@ -517,9 +517,11 @@ describe('Search Lair, called directly: what follows the fight', () => {
 
   test('the kit of challengers the guardian slew is recovered with the hoard; a hoard with no magic says a thief came first', () => {
     const kit = searchOne(lair('Drowned Mill', 'Weak', { gold: 7 }), {}, (b) => {
-      must(features(b.X)[0], 'the lair')['lairItems'] = [magicItem(b, 'Boots of the Wind')];
+      const theLair = must(features(b.X)[0], 'the lair');
+      theLair['lairItems'] = [magicItem(b, 'Boots of the Wind')];
+      fn('anOlderSavesShapesMendedOnce')({ world: { provinces: [{ features: [theLair] }] } });
     });
-    // a hoard's lairItems join its hoardItems as soon as it is settled (ensureLairHoard): the clearer gets them
+    // an older save's lairItems join its hoardItems in version 2's step (plan P1-15f6): the clearer gets them
     fightEndsIn({ won: true }, () => {
       play(kit.b, kit.h, o('search', '0'));
     });
@@ -579,6 +581,7 @@ describe('Search Lair, called directly: what follows the fight', () => {
 describe("an older save's lair, stocked when it is first read (encounterClearGold, ensureLairHoard)", () => {
   const encounterClearGold = fn('encounterClearGold');
   const ensureLairHoard = fn('ensureLairHoard');
+  const anOlderSavesShapesMendedOnce = fn('anOlderSavesShapesMendedOnce');
   const goldOf = (monster: Record<string, unknown> | null, die: number) => {
     const f: Record<string, unknown> = { name: 'Old Barrow', monster, treasure: 0, cleared: false };
     return { gold: withDice(engine, [die], () => encounterClearGold(f)), f };
@@ -593,7 +596,7 @@ describe("an older save's lair, stocked when it is first read (encounterClearGol
     expect(withDice(engine, [0.99], () => encounterClearGold(f))).toBe(15);
   });
 
-  test('its hoard takes the items it held before hoards, then rolls one item no other lair holds, with the next id', () => {
+  test("its hoard takes the items it held before hoards (version 2's step moves them), then rolls one item no other lair holds, with the next id", () => {
     const names = JSON.parse(
       vm.runInContext('JSON.stringify(ALL_MAGIC_ITEMS_P.map((i) => i.name))', engine) as string,
     ) as string[];
@@ -608,13 +611,14 @@ describe("an older save's lair, stocked when it is first read (encounterClearGol
     };
     const awarded = names.filter((n) => n !== 'Boots of the Wind');
     const gs = { _awardedItems: awarded, nextItemId: 7 };
+    anOlderSavesShapesMendedOnce({ world: { provinces: [{ features: [f] }] } }); // version 2's step (plan P1-15f6)
     withDice(engine, [0.5], () => ensureLairHoard(f, gs));
     const hoard = f['hoardItems'] as Record<string, unknown>[];
     expect(hoard.map((i) => [i['name'], i['id']])).toEqual([
       ['Old Lamp', 7000],
       ['Boots of the Wind', 7],
     ]);
-    expect([f['lairItems'], f['treasure'], f['_hoardGoldOrig'], f['_hoardV2']]).toEqual([[], 7, 7, true]);
+    expect([f['lairItems'], f['treasure'], f['_hoardGoldOrig'], f['_hoardV2']]).toEqual([undefined, 7, 7, true]);
     expect(gs._awardedItems).toBe(awarded);
     expect(awarded.slice(-1)).toEqual(['Boots of the Wind']);
     expect(gs.nextItemId).toBe(8);

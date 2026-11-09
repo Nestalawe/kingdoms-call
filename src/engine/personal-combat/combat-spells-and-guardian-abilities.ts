@@ -162,7 +162,7 @@ export function pcCastCombatSpell(
                 whereHeCasts: 'duel',
               })
             : 0),
-      ); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (action/battle phases stay 20)
+      ); // sd27 Arcane Codex + cast discoveries now apply in personal combat too (were pre-battle/action-phase only) · item 2: base 30 in PERSONAL combat (since 2026-09-11 every phase's, SPELL_CAST_BASE)
   // ── SCHOOL WARD (2026-10-14, batch item 7) ── a guardian's ward against this school takes its
   // points off the (already capped) cast chance; never below 5. A guardian is never warded against
   // the school it is weak to. (The guardian perks' registry, plan P1-19aj.)
@@ -538,9 +538,9 @@ export function pcMonsterSpecial(
   const eff = sp.effect ?? ''; // the saved schema's words, or none
   let dealt = 0;
   // a special's damage is the guardian's own MELEE-FORMULA blow (pcMeleeDamage — its tier's base + ⌈melee/2⌉)
-  // × the special's weight: 1.0 light, 1.5 heavy, 2.0 breath. Legacy saved creatures
-  // still carrying a dmg:[lo,hi] range roll that range instead.
-  const _w = sp.dmgW ?? (sp.dmg && (Number(sp.dmg[0]) > 0 || Number(sp.dmg[1]) > 0) ? null : 0);
+  // × the special's weight: 1.0 light, 1.5 heavy, 2.0 breath. A legacy saved creature's special with no weight
+  // carries a dmg:[lo,hi] range that deals damage, and rolls it (version 2's step gave every other one the weight 0).
+  const _w = sp.dmgW ?? null;
   if (_w !== 0) {
     let d =
       _w != null

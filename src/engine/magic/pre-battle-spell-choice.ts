@@ -83,8 +83,8 @@ export function pickBattleSpell(
       }
     }
   }
-  // Legacy: an explicit single-spell choice. An explicitly named spell is HONOURED even if it has
-  // no valid target — the player asked for it by name, and the handler narrates the miss.
+  // A named spell (`CA:<spell>`, as the order form and autoEncounterPlan write it today). An explicitly named spell is
+  // HONOURED even if it has no valid target — the player asked for it by name, and the handler narrates the miss.
   // the spells' rows by any name a plan gives
   const spellDefs: Readonly<Partial<Record<string, { readonly school: string }>>> = SPELL_DEFS_P;
   for (const t of tactics) {

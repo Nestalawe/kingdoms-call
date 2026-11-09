@@ -42,8 +42,11 @@ the turn reads it.
   works out today (a `{ gold }` treasure, a guardian's single `passive`, a special with no `dmgW` and no range that
   deals damage, a lair's `lairItems` and a stocked lair's `_clearGold`, a missing `_hoardGoldOrig`, a grave with no
   `served`, an item's lore, old race name and stale inline slot, a missing `botDiplomacy`, "normal"). A special's range
-  that deals damage has no such value (the dice roll it): it is left, and the check names it. The readers keep their
-  fallbacks until P1-15f6. `ensureAllLairHoards` stays in the turn: it draws dice every turn.
+  that deals damage has no such value (the dice roll it): it is left, and the check names it. Since P1-15f6 the readers
+  of the treasure, the perk, the special's weight, the fallen's items and the first hoard no longer read the older
+  shape: the step alone does. The grave's, the items' and the diplomacy's readers keep theirs (tests stage graves
+  without `served`; the items' readers serve today's items and the player page's copies too; the diplomacy's readers
+  map any word). `ensureAllLairHoards` stays in the turn: it draws dice every turn.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
   a new world and mended; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
   tier, the guardians' cut) and

@@ -85,7 +85,7 @@ export function itemSlot(it: ItemOfTheseRules | null | undefined): string | null
   // a SHIELD is a shield even when its power is a once-per-fight ward - the Anvil-Brand Shield is
   // strapped to the arm, not drunk. The shield test therefore comes first.
   if (_SHIELD_BASES.has(_ITEM_ALT_BASE[it.name] || it.name)) return 'shield';
-  if (it.effect && it.effect.stat === THE_STAT_OF_A_COMBAT_ITEM) return 'combat'; // every other potion, scroll or device is a COMBAT ITEM and takes a Combat Item slot (two per character). This test runs BEFORE `it.slot` is read, so items saved with the old inline slot:'consumable' re-resolve here with no migration.
+  if (it.effect && it.effect.stat === THE_STAT_OF_A_COMBAT_ITEM) return 'combat'; // every other potion, scroll or device is a COMBAT ITEM and takes a Combat Item slot (two per character). This test runs BEFORE `it.slot` is read, so an inline slot never beats it (version 2's step gave an older save's inline slot:'consumable' this one).
   if (it.effect && it.effect.stat === THE_STAT_OF_THE_MITHRIL_SUIT) return 'armour'; // Mithril is worn in the armour slot // 2026-09-10: shields moved to their own slot — beats a stale inline slot on a saved copy
   if (it.slot !== undefined) return it.slot || null;
   const altBase = _ITEM_ALT_BASE[it.name]; // the item's base name, when this is its second name

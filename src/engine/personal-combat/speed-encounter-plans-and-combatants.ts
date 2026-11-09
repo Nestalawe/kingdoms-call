@@ -423,7 +423,7 @@ export function pcMonsterPlan(m: Pick<AGuardianAsHisFighterIsBuilt, 'spells' | '
   }
   return plan.slice(0, room).concat(heals);
 }
-// A guardian's PASSIVE: `m.passive` = {name, fx, desc}. Ward-style fx (meleeDR, arrowDR, dodge,
+// A guardian's PERKS: each of `m.passives` = {name, fx, desc}. Ward-style fx (meleeDR, arrowDR, dodge,
 // regen, thorns, spellPct, cap, lowHp, secondWind, stunImmune, dotImmune) fold into the
 // combatant's `arm` table exactly like worn armour; aura / burn / drain / hitBonus / dmgBonus are
 // read by the engine directly. 2026-09-11: ONE applier for every fx table — guardian passives AND

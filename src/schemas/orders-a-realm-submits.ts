@@ -25,8 +25,9 @@ export const PhaseOrderSchema = z.object({
 });
 export type PhaseOrder = z.infer<typeof PhaseOrderSchema>;
 
-/** A hero's plan for a fight: his tactics in order (`ME`, …, and `CS:<school>` for a spell cast first), the player's
- *  notes, whether he accepts a duel, and an Evil hero's conquest doctrine (`'terror'` or `'enslave'`). */
+/** A hero's plan for a fight: his tactics in order (`ME`, …, `CS:<school>` for a spell of a school cast first, and
+ *  `CA:<spell>` for a spell named), the player's notes, whether he accepts a duel, and an Evil hero's conquest doctrine
+ *  (`'terror'` or `'enslave'`). */
 export const EncounterPlanSchema = z.object({
   tactics: z.array(z.string()),
   notes: z.string(),
