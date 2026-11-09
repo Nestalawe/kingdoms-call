@@ -524,11 +524,25 @@ _kc-merge-group() {
     (( ${#left} == 0 )) && break
     sleep 10
   done
-  if (( ${#left} )); then
-    echo "Their commits are in main, but GitHub doesn't show these as merged yet: #${(j:, #:)left}." >&2
-    echo "Look on their pages; if one stays open, close it with a comment naming #$top." >&2
+  # One an earlier kc-merge brought up to date ends in GitHub's "Merge branch 'main' into …", which main doesn't hold,
+  # so GitHub leaves it open: if that is all it holds outside main, close it, saying where it went.
+  local merge_sha extra
+  local -a unmerged
+  merge_sha=$(gh pr view -R $repo "$top" --json mergeCommit -q '.mergeCommit.oid[0:7]')
+  for n in $left; do
+    extra=$(gh api "repos/$repo/compare/main...$(gh pr view -R $repo "$n" --json headRefOid -q .headRefOid)" \
+      -q '[.commits[] | select(.commit.message | startswith("Merge branch '"'main'"' into ") | not)] | length') || extra=x
+    if [[ $extra == 0 ]]; then
+      gh pr close -R $repo "$n" --comment "Merged into main through #$top (\`$merge_sha\`), as one group. All of this pull request's own commits are in main; the commit left out is GitHub's \"Merge branch 'main' into …\" on this branch, which brings nothing but main." >/dev/null \
+        && echo "#$n: its own commits are in main (through #$top); closed it, saying so."
+    else
+      unmerged+=($n)
+    fi
+  done
+  if (( ${#unmerged} )); then
+    echo "GitHub doesn't show these as merged, and they hold commits main doesn't: #${(j:, #:)unmerged}. Look on their pages." >&2
   else
-    echo "GitHub shows all ${#group} as merged."
+    echo "All ${#group} are in main: GitHub shows them merged, or kc-merge closed them saying where they went."
   fi
   echo
   kc-wait-deploy "$top"
