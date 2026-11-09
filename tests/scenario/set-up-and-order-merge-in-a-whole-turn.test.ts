@@ -1,7 +1,7 @@
 // The set-up in a whole turn (plan P1-08k7, the first two stages of resolveTurn's own body lifted out): once the save is
 // read and the bots' flags stamped, the turn's start repairs (a wandering hero's beast race, a stranded guard, a
-// stranded hull's marker, a "(wandering)" tag on a realm's hero, last turn's orders and scratch lists, the realm each
-// hero serves), then the merge of the realms' orders (which rows are read and in what form; the heroes' order in the
+// stranded hull's marker, a "(wandering)" tag on a realm's hero: the save's upgrade's since P1-15f2, so whole-turn
+// cases alone; last turn's orders and scratch lists, the realm each hero serves), then the merge of the realms' orders (which rows are read and in what form; the heroes' order in the
 // column; orders for another turn; declarations and Safe Start; research choices; the Reckoning; messages;
 // concession; orders and plans held for a hero to come; encounter plans; a new heir's choices). Each case of
 // lib/set-up-and-order-merge-cases.ts staged on the middle of a bot world, from plain realms each holding only its seat
@@ -19,7 +19,7 @@
 // with the dice fixed for the whole turn, its lines the GM's log in words (`theTurnsLinesInWords`, since P1-12d6, when
 // the orders' lines became facts); what the set-up leaves is read as the first phase begins
 // (`startPhaseHealingSnapshotsAndStalledBattles` wrapped), what follows from it after the turn, and the turn's record
-// of orders from the reports. The repairs: a wandering hero wearing a beast's race (Monster, Creature) given the
+// of orders from the reports. The repairs (the save's upgrade's since P1-15f2): a wandering hero wearing a beast's race (Monster, Creature) given the
 // people's race at his id, a realm's hero and a wandering Elf left as they are; a neutral guard with no companies or in
 // a realm's land a wanderer, one leading companies on unclaimed ground still a guard; no stranded hull's marker (of any
 // phase, 0 too) on a garrison company; a realm's hero bearing "(wandering)" mended and the GM told the count at the

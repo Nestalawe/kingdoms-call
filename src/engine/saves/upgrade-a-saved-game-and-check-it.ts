@@ -41,12 +41,21 @@
 // Each runs on every load behind its flag, as in the turn, not as a numbered step (P1-15's Decision 2): a numbered
 // step would skip a new world, and the guardians' cut would stop for new games, which is a rule's change. How many
 // lairs it renamed and guardians it cut, it returns: the turn tells the GM where it did.
-// Still in the turn, not here (P1-15's second slice): the turn-start repairs, the reads that write an old save's
-// missing field, and the readers of older shapes. ensureAllLairHoards stays in the turn: it draws dice every turn.
+// After the check, the four turn-start repairs (P1-15f2; until then the turn ran them once the realms' flags were
+// stamped, before the merge of the realms' orders), so the check still sees the save as loaded (a leaked hull marker
+// is still named). They also mend what today's code may leave:
+//   10. a hero of no realm wearing a beast's race (Monster, Creature) given a people's race, by his id;
+//   11. a neutral guard who leads no companies, or stands in a realm's land, made a wanderer (normaliseStrandedGuards);
+//   12. no garrison company carries a stranded hull's marker (_navalHold, a within-phase flag) into the turn;
+//   13. a hero in a realm's service loses his " (wandering)" tag (normaliseOwnedNames): how many, it returns, and the
+//       turn keeps the count on the save where it did (_nameRepairs), for the turn's end to tell.
+// Still in the turn, not here (P1-15's second slice): the reads that write an old save's missing field, and the readers
+// of older shapes. ensureAllLairHoards stays in the turn: it draws dice every turn.
 import type { GameState } from '../../schemas/saved-game-state.ts';
 import { migrateLegacyUnitNames } from '../army-tables.ts';
 import { retireCorsairPools } from '../grand-design.ts';
-import { backfillHomeRosters } from '../world/tables.ts';
+import { RACES_P, backfillHomeRosters } from '../world/tables.ts';
+import { normaliseOwnedNames, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
 import { migrateItemTiers } from '../items/equipment.ts';
 import { migrateMaxHpV2, retireDiscoveries } from '../heroes/skills-and-hp.ts';
 import { renameLairsThematicP } from '../names.ts';
@@ -79,6 +88,9 @@ export interface WhatTheSavesUpgradeFound {
   /** How many guardians of an old world it made 5 HP frailer (behind _guardianHpV2): told to the GM before the bots
    *  plan. */
   guardiansCut: number;
+  /** How many heroes in a realm's service it took the " (wandering)" tag off (normaliseOwnedNames, after the check):
+   *  the turn keeps it on the save (_nameRepairs), and its end tells the GM. */
+  heroesInARealmsServiceWhoseWanderingTagWasTakenOff: number;
 }
 
 /** A guardian as the guardians' cut reads it: an old world's may hold no HP, or no undamaged HP. */
@@ -148,6 +160,56 @@ function theLibraryStruckFromEveryRealm(save: {
   (save.players ?? []).forEach((pl) => {
     if (pl && Array.isArray(pl.discoveries))
       pl.discoveries = pl.discoveries.filter((d) => Boolean(d) && !isTheLibrary(d));
+  });
+}
+
+/** A hero as the beasts' races repair reads him: an old save's may hold no id. */
+interface AHeroAsTheBeastsRaceRepairReadsHim {
+  readonly id?: number | null | undefined;
+  readonly player?: number | null | undefined;
+  race?: string | null | undefined;
+}
+/** A NEUTRAL HERO WEARING A BEAST'S RACE. A defeated sea guard becomes a plain wandering hero (player null, no longer
+ *  _isNeutralGuard) but keeps the 'Creature'/'Monster' pseudo-race it wore to label the beasts it once commanded, which
+ *  then reads absurdly in the Wandering Heroes list ("Mira the Nomad (Monster, Neutral)"). Heroes are people; the
+ *  monster class belongs to the armies. World generation gives every neutral hero a people's race, but a save made
+ *  before that may hold neutral heroes, active guards included, wearing one: each is given a people's race, by his id
+ *  (deterministic, so it never flickers turn to turn). The monster class stays on the armies they lead. */
+function everyNeutralHeroWearingABeastsRaceGivenAPeoplesRace(save: {
+  readonly characters?: readonly (AHeroAsTheBeastsRaceRepairReadsHim | null | undefined)[] | null | undefined;
+}): void {
+  (save.characters ?? []).forEach((c) => {
+    if (c?.player === null && (c.race === 'Monster' || c.race === 'Creature')) {
+      c.race = RACES_P[((((c.id ?? 0) || 0) % RACES_P.length) + RACES_P.length) % RACES_P.length];
+    }
+  });
+}
+
+/** THE STRANDED-HULL MARKER (2026-09-27, Toby) is a within-phase flag (see navalHeldIn). Every path that sets it clears
+ *  it again, but a save written by an older build, or any future path that forgets, must not carry it into a fresh
+ *  turn, where it would quietly hold units out of their own province's defence. One sweep, before the turn. */
+function noGarrisonCompanyCarriesAStrandedHullsMarker(save: {
+  readonly world?:
+    | {
+        readonly provinces?:
+          | readonly (
+              | {
+                  readonly garrisonArmies?: readonly (object | null | undefined)[] | null | undefined;
+                }
+              | null
+              | undefined
+            )[]
+          | null
+          | undefined;
+      }
+    | null
+    | undefined;
+}): void {
+  (save.world?.provinces ?? []).forEach((p) => {
+    (p?.garrisonArmies ?? []).forEach((a) => {
+      // a field the saved state's schema doesn't hold, read and taken off as it was loaded
+      if (a && Reflect.get(a, '_navalHold') != null) Reflect.deleteProperty(a, '_navalHold');
+    });
   });
 }
 
@@ -234,13 +296,23 @@ export function upgradeGameState(save: TheSaveWithThePassesCounts): WhatTheSaves
     step.upgrade(save);
     save.schemaVersion = step.version;
   }
-  // the check, last: what it finds is told; the save stays as upgraded (its parse's output is never used)
+  // the check: what it finds is told; the save stays as upgraded (its parse's output is never used)
   const whereTheSaveDiffersFromThisBuildsSchema = whereASavedGameDiffersFromThisBuildsSchema(save);
+  // the turn-start repairs, after the check (so it sees the save as loaded)
+  everyNeutralHeroWearingABeastsRaceGivenAPeoplesRace(save);
+  // any guard stranded troopless or inside a realm's province is the wanderer he really is, so the turn's move-in,
+  // hire and sightings treat him so (this also heals saves carrying the pre-fix case)
+  normaliseStrandedGuards(save);
+  noGarrisonCompanyCarriesAStrandedHullsMarker(save);
+  // the ' (wandering)' tag off anyone who now serves a crown: heals live games whose heroes were charmed or
+  // resurrected into service before those paths were fixed
+  const heroesInARealmsServiceWhoseWanderingTagWasTakenOff = normaliseOwnedNames(save);
   return {
     retiredSageDiscoveriesRemoved,
     heroesCarriedOverToTheEarnedHpPool,
     whereTheSaveDiffersFromThisBuildsSchema,
     lairsRenamed,
     guardiansCut,
+    heroesInARealmsServiceWhoseWanderingTagWasTakenOff,
   };
 }

@@ -23,7 +23,7 @@ export interface TurnContext {
 
 /** The statements, on the context `tc`. */
 export const THE_FIELDS_RESOLVE_TURN_ADDS = `tc._logCtx={charId:null,phase:null}; tc._currentPhase=null; tc._afterPhases=false;
-      tc.whatTheSavesUpgradeFound={retiredSageDiscoveriesRemoved:0, heroesCarriedOverToTheEarnedHpPool:[], whereTheSaveDiffersFromThisBuildsSchema:[], lairsRenamed:0, guardiansCut:0};
+      tc.whatTheSavesUpgradeFound={retiredSageDiscoveriesRemoved:0, heroesCarriedOverToTheEarnedHpPool:[], whereTheSaveDiffersFromThisBuildsSchema:[], lairsRenamed:0, guardiansCut:0, heroesInARealmsServiceWhoseWanderingTagWasTakenOff:0};
       tc._mercIds={n:0};
       tc._tel={pre:{}, orders:{}, factsInTheTurnsOrder:[]};
       tc.battleCommanders={}; tc.fieldBattlePhase={};

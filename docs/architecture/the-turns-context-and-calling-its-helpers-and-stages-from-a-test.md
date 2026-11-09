@@ -126,7 +126,7 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   shared board every realm holds a seat of equal tax and gold, so realm 0 holds the Throne and the Vaultkeeper (the
   first of equals) and its king the Colossus and the Castellan: a test of the title changes counts them, and a hero's
   wage (never under 1g) can hand the Vaultkeeper to another realm unless the realm is given gold. P1-08k7's two set-up
-  stages (the turn's start repairs, the merge of the realms' orders) run before `log` is ready, so they log nothing:
+  stages (the turn's start, the merge of the realms' orders) run before `log` is ready, so they log nothing:
   what the merge has to tell goes into the context's collectors (`staleOrderWarnings`, `diploDeclarations`,
   `safeStartRefused`, `discoveryChoicePicks`, `reckoningCalls`, `playerMessages`), which the merge itself makes afresh
   each turn and joins to the context (since P1-08l2; `resolveTurn` declared them before). A test that calls the merge

@@ -17,14 +17,21 @@ the turn reads it.
   its flag, not as a numbered step: a step would skip a new world, and world generation doesn't set `_guardianHpV2`,
   so a new world's guardians are cut on its first turn (question 17, P1-23l). Setting the flag earlier in turn 1 moved
   it in the save's key order (the matrix's `state` and `writes`, from turn 1).
+- **After the check, the four turn-start repairs** (P1-15f2; until then the turn ran them before the merge of the
+  realms' orders): a hero of no realm wearing a beast's race given a people's race by his id, a stranded neutral guard
+  made a wanderer (`normaliseStrandedGuards`), no garrison company keeping a stranded hull's marker (`_navalHold`), and
+  a crowned hero's " (wandering)" tag taken off (`normaliseOwnedNames`). After the check, so it still names a leaked
+  marker as loaded. The set-up keeps the tags' count on the save where the repair wrote it (`_nameRepairs`, so every
+  save still holds `_nameRepairs: 0`), and the turn's end tells the GM.
 - **It writes no line, and draws no dice but an old world's lairs' renaming** (the names, from the turn's dice: no save
   that has played a turn since that flag came lacks it). What it finds for the GM's log it returns
   (`WhatTheSavesUpgradeFound`: how many retired Sage discoveries it took, the heroes of a save from before the
-  earned-HP pool it carried over, the lairs it renamed, the guardians it cut). `resolveTurn` keeps that on the turn's
-  context (`whatTheSavesUpgradeFound`), and the stages tell it where they did before (the lairs and the guardians
-  before the bots plan, the rest at the turn's end). The save keeps none of it.
-- **Still in the turn** (P1-15's second slice brings them here, each with an old shape staged): the turn-start
-  repairs, the reads that write an old save's missing field, and the readers of older shapes. `ensureAllLairHoards`
+  earned-HP pool it carried over, the lairs it renamed, the guardians it cut, the tags it took off). `resolveTurn`
+  keeps that on the turn's context (`whatTheSavesUpgradeFound`), and the stages tell it where they did before (the
+  lairs and the guardians before the bots plan, the rest at the turn's end). The save keeps none of it but the tags'
+  count, as before.
+- **Still in the turn** (P1-15's second slice brings them here, each with an old shape staged): the reads that write
+  an old save's missing field, and the readers of older shapes. `ensureAllLairHoards`
   stays in the turn: it draws dice every turn.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
   a new world and mended; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
