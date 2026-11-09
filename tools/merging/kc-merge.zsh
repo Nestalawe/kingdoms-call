@@ -180,11 +180,13 @@ _kc-wait-for-checks() {
 # then test what main will hold once the ones below have merged (each a merge commit adding only its own branch). One
 # whose branch lacks some of its base's commits is left for kc-merge to start once its base has merged.
 _kc-start-checks-early() {
-  local pr=$1 repo=Nestalawe/kingdoms-call info base head behind
+  local pr=$1 base_tip=$2 repo=Nestalawe/kingdoms-call info base head behind
   info=$(gh pr view -R $repo "$pr" --json baseRefName,headRefName -q '"\(.baseRefName) \(.headRefName)"') || return 1
   read -r base head <<< "$info"
   if [[ $base != main ]]; then
-    behind=$(gh api "repos/$repo/compare/$base...$head" -q .behind_by) || return 1
+    # Against the base's commit as kc-merge found it: bringing the pull request below up to date has since added a
+    # merge of main to that branch, which this one needn't hold.
+    behind=$(gh api "repos/$repo/compare/${base_tip:-$base}...$head" -q .behind_by) || return 1
     if [[ $behind != 0 ]]; then
       echo "#$pr: its branch lacks $behind commit(s) of '$base': its checks start once '$base' has merged."
       return 0
@@ -273,13 +275,14 @@ kc-merge() {
     return 1
   fi
   local -a numbers to_merge heads merged
+  local -A tip_of base_of
   numbers=($(_kc-pr-numbers "$@")) || return 1
 
-  local n info state draft base head checks title note blocked=0
+  local n info state draft base head head_sha checks title note blocked=0
   echo "== The plan"
   for n in $numbers; do
-    info=$(gh pr view -R $repo "$n" --json state,isDraft,baseRefName,headRefName,statusCheckRollup,title -q '
-      "\(.state) \(.isDraft) \(.baseRefName) \(.headRefName) "
+    info=$(gh pr view -R $repo "$n" --json state,isDraft,baseRefName,headRefName,headRefOid,statusCheckRollup,title -q '
+      "\(.state) \(.isDraft) \(.baseRefName) \(.headRefName) \(.headRefOid) "
         + ([.statusCheckRollup[] | select((.name // .context) == ("ci", "db"))]
            | group_by(.name // .context)
            | map(max_by(.startedAt // "") | "\(.name // .context)=\(.conclusion // .state)")
@@ -289,7 +292,7 @@ kc-merge() {
       echo "#$n  skip: not a pull request"
       continue
     fi
-    { read -r state draft base head checks; read -r title; } <<< "$info"
+    { read -r state draft base head head_sha checks; read -r title; } <<< "$info"
     case $state in
       MERGED) echo "#$n  skip: already merged"; continue ;;
       CLOSED) echo "#$n  skip: closed without merging"; continue ;;
@@ -310,6 +313,8 @@ kc-merge() {
     echo "#$n  merge$([[ $base != main ]] && echo " (stacked on $base)")  ${title[1,60]}"
     to_merge+=($n)
     heads+=($head)
+    tip_of[$head]=$head_sha
+    base_of[$n]=$base
   done
 
   if (( blocked )); then
@@ -336,7 +341,7 @@ kc-merge() {
     echo
     echo "== Starting the checks of all ${#to_merge} now"
     for n in $to_merge; do
-      _kc-start-checks-early "$n" || echo "#$n: its checks start when its turn to merge comes." >&2
+      _kc-start-checks-early "$n" "${tip_of[${base_of[$n]}]}" || echo "#$n: its checks start when its turn to merge comes." >&2
     done
   fi
 
