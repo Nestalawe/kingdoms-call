@@ -311,8 +311,13 @@ kc-merge() {
       CLOSED) echo "#$n  skip: closed without merging"; continue ;;
     esac
 
-    note=""
-    if [[ $checks != "ci=SUCCESS db=SUCCESS" ]]; then
+    note="" again=""
+    # One already moved onto main whose checks failed or still run was likely started early by an earlier kc-merge
+    # (compared with main before the ones below it merged): its turn waits for them, and a failure brings it up to
+    # date and checks it again, once. Checks missing aren't ready.
+    if [[ $base == main && $checks == ci=*\ db=* && $checks != "ci=SUCCESS db=SUCCESS" ]]; then
+      again="  ($checks: waited for, or checked again against main, at its turn)"
+    elif [[ $checks != "ci=SUCCESS db=SUCCESS" ]]; then
       note="not ready: the required checks are ${checks:-missing}"
     elif [[ $base != main ]] && (( ! ${heads[(Ie)$base]} )) \
          && [[ $(gh api "repos/$repo/compare/main...$base" -q .ahead_by 2>/dev/null) != 0 ]]; then
@@ -323,7 +328,7 @@ kc-merge() {
       blocked=1
       continue
     fi
-    echo "#$n  merge$([[ $base != main ]] && echo " (stacked on $base)")  ${title[1,60]}"
+    echo "#$n  merge$([[ $base != main ]] && echo " (stacked on $base)")$again  ${title[1,60]}"
     to_merge+=($n)
     heads+=($head)
     tip_of[$head]=$head_sha
