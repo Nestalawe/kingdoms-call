@@ -22,7 +22,7 @@ declare const KC_RNG_SEED: number | undefined;
 /** A page variable's value, untyped until P1-16. */
 type PageState = any;
 
-// db/game-meta.ts
+// ui/gm/startup.ts
 declare var _kcHasTel: PageState;
 declare var _kcTelLastErr: PageState;
 declare var _kcHasMsg: PageState;

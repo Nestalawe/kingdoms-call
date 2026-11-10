@@ -3,10 +3,11 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { SAFE_START_TURN } from '../../engine/army-tables.ts';
 import { sb } from './config.ts';
 import { openGame, renderOrdersStatus } from './game-detail.ts';
-import { TURN_MODES, metaPatch, normalizeTurnMode, parseGameState } from '../../db/game-meta.ts';
+import { TURN_MODES, normalizeTurnMode, parseGameState } from './startup.ts';
 import { isBotRow } from '../../engine/bots/setup.ts';
 import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { normSeaPct } from '../../engine/world/generate.ts';
+import { _kcHasMeta } from './startup.ts';
 
 export function turnModeOf(game) {
   const m = gameMetaOf(game);
@@ -388,4 +389,42 @@ export async function saveTurnMode() {
   if (msg) msg.innerHTML = '<span style="color:#8c8">Saved.</span>';
   renderTurnModePanel(currentGame);
   if (currentGame.status === 'active') renderOrdersStatus(currentGame);
+}
+
+// gs = the parsed game_state (setup cfg before Turn 0, the world G after it).
+export function buildGameMeta(gs) {
+  gs = gs && typeof gs === 'object' ? gs : {};
+  const m = { v: 1, turnMode: normalizeTurnMode(gs.turnMode) };
+  [
+    'mapSize',
+    'maxPlayers',
+    'botCount',
+    'allBot',
+    'botDifficulty',
+    'botDiplomacy',
+    'safeStart',
+    'visibility',
+    'invited',
+  ].forEach((k) => {
+    if (gs[k] !== undefined) m[k] = gs[k];
+  });
+  // ARCHIVE (2026-09-27, Toby item 1). The flag lives in game_state — the one place every writer
+  // round-trips — and is copied up into meta here so the LIGHT games-list read can see it without
+  // pulling the world. Because meta is rebuilt from game_state on every save, a later turn
+  // resolution cannot silently drop it.
+  if (gs.archived) {
+    m.archived = true;
+    if (gs.archivedAt) m.archivedAt = gs.archivedAt;
+  }
+  const sp = gs.seaPct != null ? gs.seaPct : gs.world && gs.world.seaPct != null ? gs.world.seaPct : null;
+  if (sp != null) m.seaPct = sp;
+  if (Array.isArray(gs.players)) {
+    m.realms = gs.players.length;
+    m.exempt = gs.players.map((pl, i) => (realmExemptFromOrders(gs, i) ? i : -1)).filter((i) => i >= 0);
+  }
+  return m;
+}
+// Spread into any games insert/update that writes game_state: `{game_state:…, ...metaPatch(gs)}`.
+export function metaPatch(gs) {
+  return _kcHasMeta ? { meta: buildGameMeta(gs) } : {};
 }

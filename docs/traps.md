@@ -241,7 +241,7 @@ flyer harried once was immune to Flak Screen for the rest of the game. Checks: t
 
 When you fix a finding listed in `eslint-suppressions.json`, run `npx eslint --prune-suppressions`, then
 `npm run ratchet -- --update`, and commit both with the fix; never `--pass-on-unpruned-suppressions`. Example: fix one
-of `src/db/game-meta.ts`'s five unused variables and lint stops with "There are suppressions left that do not occur
+of `src/ui/gm/game-list.ts`'s five unused variables and lint stops with "There are suppressions left that do not occur
 anymore". A new finding fails, even of a rule the file already has suppressed. Moving code moves its findings: `npx eslint --suppress-all <new file>`, then prune.
 Checks: ESLint's command line (`npm run lint`, `npm run check`, the edit hook; not its API); the ratchet's
 `eslintSuppressions`.

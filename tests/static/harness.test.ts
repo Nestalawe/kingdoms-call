@@ -269,7 +269,7 @@ describe('the lint rules', () => {
   // neither imports nor declares (a helper lifted out of resolveTurn that still reads its closure, a missing import)
   // is an error, not a ReferenceError the day it first runs. The engine may read no page's or browser's name.
   const ENGINE_FILES = ['src/engine/run-turn.ts', 'src/engine/turn/context.ts', 'src/views/turn-report.ts'];
-  const PAGE_FILES = ['src/ui/gm/turn-shell.ts', 'src/ui/player/map.ts', 'src/db/telemetry.ts'];
+  const PAGE_FILES = ['src/ui/gm/turn-shell.ts', 'src/ui/player/map.ts', 'src/ui/gm/hall-of-fame.ts'];
   test.for([...ENGINE_FILES, ...PAGE_FILES])('%s gets no-undef, as a module', async (file) => {
     expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
     const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;

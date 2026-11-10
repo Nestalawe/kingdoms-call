@@ -1,228 +1,6 @@
 [
   {
     "type": "cycle",
-    "from": "src/db/game-meta.ts",
-    "to": "src/ui/gm/game-list.ts",
-    "unresolvedTo": "../ui/gm/game-list.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/gm/game-list.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/db/game-meta.ts",
-    "to": "src/ui/gm/sign-in.ts",
-    "unresolvedTo": "../ui/gm/sign-in.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/gm/sign-in.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/db/game-meta.ts",
-    "to": "src/ui/gm/turn-mode.ts",
-    "unresolvedTo": "../ui/gm/turn-mode.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/gm/turn-mode.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/db/telemetry.ts",
-    "to": "src/db/game-meta.ts",
-    "unresolvedTo": "./game-meta.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/sign-in.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/db/telemetry.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/db/telemetry.ts",
-    "to": "src/ui/gm/hall-of-fame.ts",
-    "unresolvedTo": "../ui/gm/hall-of-fame.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/gm/hall-of-fame.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/game-list.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/game-detail.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/sign-in.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/db/telemetry.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/ui/gm/auto-turn.ts",
-    "to": "src/db/game-meta.ts",
-    "unresolvedTo": "../../db/game-meta.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/sign-in.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/auto-turn.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
     "from": "src/ui/gm/auto-turn.ts",
     "to": "src/ui/gm/turn-mode.ts",
     "unresolvedTo": "./turn-mode.ts",
@@ -243,7 +21,7 @@
         ]
       },
       {
-        "name": "src/db/game-meta.ts",
+        "name": "src/ui/gm/game-detail.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -251,13 +29,6 @@
       },
       {
         "name": "src/ui/gm/game-list.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/game-detail.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -302,43 +73,6 @@
       },
       {
         "name": "src/ui/gm/auto-turn.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/ui/gm/game-detail.ts",
-    "to": "src/db/game-meta.ts",
-    "unresolvedTo": "../../db/game-meta.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/game-list.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/game-detail.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -428,13 +162,6 @@
         ]
       },
       {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
         "name": "src/ui/gm/game-list.ts",
         "dependencyTypes": [
           "local",
@@ -532,7 +259,7 @@
         ]
       },
       {
-        "name": "src/db/game-meta.ts",
+        "name": "src/ui/gm/game-detail.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -540,43 +267,6 @@
       },
       {
         "name": "src/ui/gm/game-list.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/ui/gm/hall-of-fame.ts",
-    "to": "src/db/game-meta.ts",
-    "unresolvedTo": "../../db/game-meta.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/sign-in.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/hall-of-fame.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -587,8 +277,8 @@
   {
     "type": "cycle",
     "from": "src/ui/gm/sign-in.ts",
-    "to": "src/db/telemetry.ts",
-    "unresolvedTo": "../../db/telemetry.ts",
+    "to": "src/ui/gm/auto-turn.ts",
+    "unresolvedTo": "./auto-turn.ts",
     "dependencyTypes": [
       "local",
       "import"
@@ -599,51 +289,14 @@
     },
     "cycle": [
       {
-        "name": "src/db/telemetry.ts",
+        "name": "src/ui/gm/auto-turn.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/gm/hall-of-fame.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/sign-in.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/ui/gm/turn-log.ts",
-    "to": "src/ui/gm/game-list.ts",
-    "unresolvedTo": "./game-list.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/gm/game-list.ts",
+        "name": "src/ui/gm/turn-mode.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -657,7 +310,7 @@
         ]
       },
       {
-        "name": "src/ui/gm/turn-log.ts",
+        "name": "src/ui/gm/sign-in.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -687,14 +340,14 @@
         ]
       },
       {
-        "name": "src/db/game-meta.ts",
+        "name": "src/ui/gm/auto-turn.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/ui/gm/game-list.ts",
+        "name": "src/ui/gm/turn-mode.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -709,78 +362,6 @@
       },
       {
         "name": "src/ui/gm/turn-log.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/ui/gm/turn-shell.ts",
-    "to": "src/db/telemetry.ts",
-    "unresolvedTo": "../../db/telemetry.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/db/telemetry.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/hall-of-fame.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/db/game-meta.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/game-list.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/game-detail.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/sign-in.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/auto-turn.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/turn-shell.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -810,7 +391,7 @@
         ]
       },
       {
-        "name": "src/db/game-meta.ts",
+        "name": "src/ui/gm/game-detail.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -818,13 +399,6 @@
       },
       {
         "name": "src/ui/gm/game-list.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/gm/game-detail.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -852,202 +426,6 @@
         ]
       }
     ]
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/game-meta.ts",
-    "to": "src/engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
-    "unresolvedTo": "../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/game-meta.ts",
-    "to": "src/ui/gm/config.ts",
-    "unresolvedTo": "../ui/gm/config.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/game-meta.ts",
-    "to": "src/ui/gm/game-list.ts",
-    "unresolvedTo": "../ui/gm/game-list.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/game-meta.ts",
-    "to": "src/ui/gm/sign-in.ts",
-    "unresolvedTo": "../ui/gm/sign-in.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/game-meta.ts",
-    "to": "src/ui/gm/turn-mode.ts",
-    "unresolvedTo": "../ui/gm/turn-mode.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/game-meta.ts",
-    "to": "src/ui/shared/kc-safe.ts",
-    "unresolvedTo": "../ui/shared/kc-safe.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/content/kingdoms-call-data.ts",
-    "unresolvedTo": "../content/kingdoms-call-data.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/engine/bots/setup.ts",
-    "unresolvedTo": "../engine/bots/setup.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
-    "unresolvedTo": "../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/engine/titles/reckoning.ts",
-    "unresolvedTo": "../engine/titles/reckoning.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/engine/turn/log-line-helpers.ts",
-    "unresolvedTo": "../engine/turn/log-line-helpers.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/ui/gm/config.ts",
-    "unresolvedTo": "../ui/gm/config.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/ui/gm/hall-of-fame.ts",
-    "unresolvedTo": "../ui/gm/hall-of-fame.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/db/telemetry.ts",
-    "to": "src/ui/gm/startup.ts",
-    "unresolvedTo": "../ui/gm/startup.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "the-database-code-imports-only-itself-and-the-schemas"
-    }
   },
   {
     "type": "dependency",

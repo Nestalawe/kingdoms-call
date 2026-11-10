@@ -4,22 +4,6 @@
       "count": 1
     }
   },
-  "src/db/game-meta.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 5
-    }
-  },
-  "src/db/telemetry.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
-    },
-    "no-empty": {
-      "count": 1
-    }
-  },
   "src/engine/battle/battle-report-lines-and-force-markers.ts": {
     "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
       "count": 1
@@ -383,7 +367,7 @@
   },
   "src/ui/gm/game-list.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 4
+      "count": 5
     },
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
       "count": 1
@@ -402,12 +386,23 @@
   },
   "src/ui/gm/hall-of-fame.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 4
+    },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
     }
   },
   "src/ui/gm/start.ts": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
+    }
+  },
+  "src/ui/gm/startup.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
     }
   },
   "src/ui/gm/stats-tab.ts": {

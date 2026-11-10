@@ -211,7 +211,7 @@ hold. ESLint's command line reads it (`npm run lint`, `npm run check`, the edit 
 `tests/static/harness.test.ts` uses) doesn't. The ratchet counts the list (`eslintSuppressions`), so it only falls.
 
 - **A new finding fails**, even of a rule the file already has suppressed findings of. Once a file holds more than
-  its count, ESLint reports every finding of that rule in the file, not only the new one: `src/db/game-meta.ts` may
+  its count, ESLint reports every finding of that rule in the file, not only the new one: `src/ui/gm/game-list.ts` may
   hold five unused variables, and a sixth shows all six. Fix the new one.
 - **A fixed finding fails too, until it leaves the list.** Fix one of the five and lint stops with "There are
   suppressions left that do not occur anymore" (exit 2). Run `npx eslint --prune-suppressions`, which lowers the

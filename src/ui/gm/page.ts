@@ -34,8 +34,6 @@ import '../../engine/heroes/skills-and-hp.ts';
 import '../../engine/personal-combat/helpers.ts';
 import '../../engine/units/drill-and-spoils.ts';
 import '../../engine/dice-and-army-names.ts';
-import '../../db/game-meta.ts';
-import '../../db/telemetry.ts';
 import './stats-tab.ts';
 import './hall-of-fame.ts';
 import './turn-mode.ts';

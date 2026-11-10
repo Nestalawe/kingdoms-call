@@ -54,17 +54,16 @@ import { pickLairNameP } from '../../engine/names.ts';
 import { itemEffectKey, lairItemTier } from '../../engine/items/tiers-and-hoards.ts';
 import { migrateLairGuardiansV2 } from '../../engine/heroes/skills-and-hp.ts';
 import { neutralDefBand } from '../../engine/units/drill-and-spoils.ts';
+import { setGameArchived, toggleArchivedView } from './game-list.ts';
 import {
-  buildGameMeta,
   gameArchived,
   probeGameMeta,
   probeMessaging,
   probeTelemetry,
   renderMessagingBanner,
   renderTelemetryBanner,
-  setGameArchived,
-  toggleArchivedView,
-} from '../../db/game-meta.ts';
+} from './startup.ts';
+import { buildGameMeta } from './turn-mode.ts';
 import { exportStats, forgetDeletedGames, openStats, renderStats } from './stats-tab.ts';
 import {
   _LB_SEA,
@@ -114,7 +113,7 @@ Object.assign(window, {
   doSignOut, // ui/gm/sign-in.ts
   exportStats, // ui/gm/stats-tab.ts
   forgetDeletedGames, // ui/gm/stats-tab.ts
-  gameArchived, // db/game-meta.ts
+  gameArchived, // ui/gm/startup.ts
   loadGames, // ui/gm/game-list.ts
   openEditInvites, // ui/gm/game-list.ts
   openGame, // ui/gm/game-detail.ts
@@ -129,11 +128,11 @@ Object.assign(window, {
   saveBotDiplomacy, // ui/gm/turn-mode.ts
   saveEditInvites, // ui/gm/game-list.ts
   saveTurnMode, // ui/gm/turn-mode.ts
-  setGameArchived, // db/game-meta.ts
+  setGameArchived, // ui/gm/game-list.ts
   show, // ui/gm/sign-in.ts
   showNewGame, // ui/gm/game-list.ts
   submitChangePassword, // ui/gm/sign-in.ts
-  toggleArchivedView, // db/game-meta.ts
+  toggleArchivedView, // ui/gm/game-list.ts
   toggleInvite, // ui/gm/game-list.ts
   updateBotHint, // ui/gm/game-list.ts
   updateGameVisibility, // ui/gm/game-list.ts
@@ -151,7 +150,7 @@ Object.assign(window, {
   backfillHomeRosters, // engine/world/tables.ts
   BOT_SKILL_BUILD, // engine/bots/setup.ts
   botBattleForce, // engine/bots/intel.ts
-  buildGameMeta, // db/game-meta.ts
+  buildGameMeta, // ui/gm/turn-mode.ts
   buildGameRecords, // ui/gm/hall-of-fame.ts
   buildTurnReport, // views/turn-report.ts
   druIdPenaltyMult, // engine/world/tables.ts
@@ -179,15 +178,15 @@ Object.assign(window, {
   playerView, // views/what-each-realm-may-see-of-the-world.ts
   PRIMAL_ARMY_DEFS_P, // content/kingdoms-call-data.ts
   primalStrikeChance, // engine/chances-and-lair-grades.ts
-  probeGameMeta, // db/game-meta.ts
+  probeGameMeta, // ui/gm/startup.ts
   probeLeaderboard, // ui/gm/hall-of-fame.ts
-  probeMessaging, // db/game-meta.ts
-  probeTelemetry, // db/game-meta.ts
+  probeMessaging, // ui/gm/startup.ts
+  probeTelemetry, // ui/gm/startup.ts
   PROVINCE_ARMIES_P, // content/kingdoms-call-data.ts
   refreshIfNewerBuild, // ui/gm/auto-turn.ts
   renderLeaderboardBanner, // ui/gm/hall-of-fame.ts
-  renderMessagingBanner, // db/game-meta.ts
-  renderTelemetryBanner, // db/game-meta.ts
+  renderMessagingBanner, // ui/gm/startup.ts
+  renderTelemetryBanner, // ui/gm/startup.ts
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
   sb, // ui/gm/config.ts
   unitAbilityMult, // engine/battle/strength.ts

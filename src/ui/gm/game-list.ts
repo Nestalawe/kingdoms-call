@@ -3,7 +3,8 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { sb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
 import { openGame } from './game-detail.ts';
-import { _showArchived, gameArchived, gameArchivedAt, gamesListCols, metaPatch } from '../../db/game-meta.ts';
+import { gameArchived, gameArchivedAt, gamesListCols } from './startup.ts';
+import { metaPatch } from './turn-mode.ts';
 import {
   fmtAgo,
   fmtLastRun,
@@ -16,6 +17,8 @@ import {
 } from './turn-mode.ts';
 import { botConfigFor, gameVisibility, isBotRow } from '../../engine/bots/setup.ts';
 import { SEA_PCT_DEFAULT, normSeaPct } from '../../engine/world/generate.ts';
+import { _kcHasMeta, parseGameState } from './startup.ts';
+import { buildGameMeta } from './turn-mode.ts';
 
 // ── GAME LIST ────
 export let _listGames = []; // the last list read: the GM's own games, or every game for the Overlord
@@ -564,4 +567,76 @@ export async function createGame() {
     show('sec-games');
     loadGames();
   }, 1500);
+}
+
+export let _showArchived = false; // which list the GM is looking at
+// Set or clear the flag. Reads the full row (game_state is the source of truth), writes it back
+// with a conditional guard on `turn` so an archive click can never clobber a turn another tab
+// resolved in the meantime.
+export async function setGameArchived(gameId, archived) {
+  if (!gameId) return;
+  const msg = document.getElementById('detail-msg') || document.getElementById('msg-games');
+  if (msg) msg.innerHTML = kcHtml`<div class="msg-info">${archived ? 'Archiving' : 'Restoring'}…</div>`;
+  const { data: row, error } = await sb.from('games').select('id,turn,game_state').eq('id', gameId).single();
+  if (error || !row) {
+    if (msg) msg.innerHTML = kcHtml`<div class="msg-error">${(error && error.message) || 'Game not found.'}</div>`;
+    return;
+  }
+  const gs = parseGameState(row);
+  if (archived) {
+    gs.archived = true;
+    gs.archivedAt = new Date().toISOString();
+  } else {
+    delete gs.archived;
+    delete gs.archivedAt;
+  }
+  let q = sb
+    .from('games')
+    .update({ game_state: JSON.stringify(gs), ...metaPatch(gs) })
+    .eq('id', gameId);
+  if (row.turn != null) q = q.eq('turn', row.turn); // the turn must not have moved under us
+  const { data: done, error: e2 } = await q.select('id').maybeSingle();
+  if (e2) {
+    if (msg) msg.innerHTML = kcHtml`<div class="msg-error">${e2.message}</div>`;
+    return;
+  }
+  if (!done) {
+    if (msg)
+      msg.innerHTML = '<div class="msg-error">The turn advanced while you were archiving — reload and try again.</div>';
+    return;
+  }
+  if (msg) msg.innerHTML = '';
+  _showArchived = archived; // land on the list the game just moved into
+  show('sec-games');
+  loadGames();
+}
+export function toggleArchivedView() {
+  _showArchived = !_showArchived;
+  loadGames();
+}
+// One-off: any of this GM's games saved before the column existed gets its meta computed from
+// game_state now, so the light reads never have to fall back for it again.
+export async function backfillGameMeta() {
+  if (!_kcHasMeta || !currentUser) return 0;
+  try {
+    const { data, error } = await sb
+      .from('games')
+      .select('id,game_state')
+      .eq('gm_user_id', currentUser.id)
+      .is('meta', null);
+    if (error || !data || !data.length) return 0;
+    let n = 0;
+    for (const g of data) {
+      const { error: e2 } = await sb
+        .from('games')
+        .update({ meta: buildGameMeta(parseGameState(g)) })
+        .eq('id', g.id);
+      if (!e2) n++;
+    }
+    if (n) console.log(`[meta] backfilled ${n} game(s)`);
+    if (n && document.getElementById('sec-games')?.classList.contains('section-active')) loadGames();
+    return n;
+  } catch (e) {
+    return 0;
+  }
 }

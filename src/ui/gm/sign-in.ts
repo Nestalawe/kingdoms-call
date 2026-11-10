@@ -3,8 +3,9 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { sb } from './config.ts';
 import { loadGames } from './game-list.ts';
 import { openGame } from './game-detail.ts';
-import { backfillGameMeta, probeGameMeta, probeMessaging, probeTelemetry } from '../../db/game-meta.ts';
-import { backfillGameResults } from '../../db/telemetry.ts';
+import { backfillGameMeta } from './game-list.ts';
+import { probeGameMeta, probeMessaging, probeTelemetry } from './startup.ts';
+import { backfillGameResults } from './hall-of-fame.ts';
 import { probeLeaderboard } from './hall-of-fame.ts';
 import { startAutoTurnWatcher } from './auto-turn.ts';
 

@@ -151,8 +151,8 @@ down to ~1 KB after the fix).
 - Lint refuses every column of `games`, `game_players`, `turn_logs` or `profiles` (`*`, also inside an embedded
   `games(*)`, or `.select()` with no list, as after an insert), and `profiles`' `email`
   (`kc/big-tables-and-profiles-are-read-by-named-columns`, P1-13c). The 17 reads of every column that were there when
-  the rule came in are in `eslint-suppressions.json`, for P1-17's access layer to take out: `db/telemetry.ts` (games
-  with `game_players(*)`); the GM page's `game-detail.ts` (opening a game, `*, game_players(*)`), `game-list.ts`
+  the rule came in are in `eslint-suppressions.json`, for P1-17's access layer to take out: the GM page's `hall-of-fame.ts` (games
+  with `game_players(*)`), `game-detail.ts` (opening a game, `*, game_players(*)`), `game-list.ts`
   (after creating a game), `turn-log.ts` (the turn log), `turn-shell.ts` (the turn's game and its realms, 2) and
   `turn-zero.ts` (3); the player page's `game-lists.ts` (its slots, and two of `games`, 3),
   `join-and-chronicle.ts` (after joining, the chronicle's two turn logs, a game: 4) and `report.ts` (the report).
@@ -178,6 +178,8 @@ database version it works with (a migration's 14-digit version), and starts thro
 its version (`kc_db_version()`, the newest migration applied). On an older database, or one without the
 function, or no answer after one retry, the page stops with "The game is being updated" and nothing is read
 or written.
+`src/db/` holds only that file: the GM page's database code (the banners' probes, archiving, the statistics rows)
+is in `src/ui/gm/` and calls the database as the page's other code does, until P1-17's area rows move the calls.
 - **Raising `KC_DB_MIN` is how a site PR says "needs migration X".** Use it when the page can't sensibly
   work without the change; otherwise cope ([traps.md](../traps.md#a-new-column-must-be-optional-at-the-write-site)).
   Raise it in every page that needs the change, not only the one you edited.
