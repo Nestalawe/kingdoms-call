@@ -68,17 +68,15 @@ declare var currentProfile: PageState;
 declare var joiningGame: PageState;
 declare var joinSkills: PageState;
 declare var currentGamePlayer: PageState;
-/** The report the page shows: as the order form's forecasts read it (P1-16b: its one typed reader, the forecasts' page
- *  side, hands it to them), every part optional. */
-declare var currentReport:
-  | import('./ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts').TheReportAsTheOrderFormReadsIt
-  | null
-  | undefined;
+/** The report the page shows: as the order form's forecasts and the page's lists read it (P1-16b, P1-16c: its typed
+ *  readers, the forecasts' page side and items-and-heroes.ts), every part optional. */
+declare var currentReport: import('./ui/player/items-and-heroes.ts').TheReportAsThePagesListsReadIt | null | undefined;
 declare var diploChoices: PageState;
 declare var reckoningCall: PageState;
 declare var _heroOrder: PageState;
 declare var concedeGame: PageState;
-declare var discoveryChoices: PageState;
+/** The research's leads kept this turn, by the pair's key (items-and-heroes.ts). */
+declare var discoveryChoices: Partial<Record<string, unknown>>;
 // ui/player/layout.ts
 declare var _msgEnabled: PageState;
 declare var _deskLeftView: PageState;

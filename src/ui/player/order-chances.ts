@@ -1,5 +1,5 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcHtml } from '../shared/kc-safe.ts';
+import { kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
+
 import { KC_ITEM_UNCAPPED_SKILLS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
   dispFloor,
@@ -7,10 +7,27 @@ import {
   theLevelEachMasterySpellNeeds,
   theSchoolOfEachSpell,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import type { AHerosSkillsAsTheFormReadsThem } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   SKILL_LABELS,
   effMagicLvl,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+
+/** A school's cast chance as the report gives it (castChance: the GM's own figure, its level and what lifts it). */
+interface ASchoolsCastChanceTheReportGives {
+  readonly level?: number | undefined;
+  readonly chance?: number | undefined;
+  readonly arcane?: number | undefined;
+  readonly mastery?: number | undefined;
+  readonly discovery?: number | undefined;
+}
+/** A hero as the cast chance note reads him: his levels, his cast chance by school, and the Wailing Phylactery's mark. */
+interface AHeroAsTheCastChanceNoteReadsHim extends AHerosSkillsAsTheFormReadsThem {
+  readonly castChance?: Readonly<Partial<Record<string, ASchoolsCastChanceTheReportGives | null>>> | null | undefined;
+  readonly necroAutoReady?: unknown;
+}
+/** The skills' names by key, read by any key (none is empty words). */
+const theSkillsNames: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
 
 // ── ORDERS FORM ────
 // ── SPELLS LIST ────
@@ -20,25 +37,29 @@ export const SPELLS_BY_SCHOOL = everySpellBySchool();
 // by the same castChanceFor() the action phase rolls against, so this is not an estimate — it is
 // the number. A spell worked from an ITEM is a flat 95%; a Wailing Phylactery makes the realm's
 // first Necromancy spell of the turn certain. Falls back to the plain formula for an older report.
-export function castChanceNote(c, spellName, opts) {
-  opts = opts || {};
+export function castChanceNote(
+  c: AHeroAsTheCastChanceNoteReadsHim | null | undefined,
+  spellName: string,
+  optsHanded?: { readonly itemCast?: unknown } | null,
+): KcSafeHtml | '' {
+  const opts = optsHanded ?? {};
   const school = SPELL_TO_SCHOOL[spellName];
   if (!school) return '';
-  const rec = (c && c.castChance && c.castChance[school]) || null;
+  const rec = c?.castChance?.[school] ?? null;
   if (opts.itemCast)
     return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>95%</strong> — worked from the item, whatever your own skill.</div>`;
   const lvl = rec ? rec.level : effMagicLvl(c, school);
-  if (lvl <= 0)
-    return kcHtml`<div style="font-size:.72rem;color:var(--crimson);margin-top:2px">🎲 No ${SKILL_LABELS[school] || school} skill yet — this cast will fail unless a Practice order earlier this turn raises it.</div>`;
-  if (school === 'necromancy' && c && c.necroAutoReady)
+  if (Number(lvl) <= 0)
+    return kcHtml`<div style="font-size:.72rem;color:var(--crimson);margin-top:2px">🎲 No ${(theSkillsNames[school] ?? '') || school} skill yet — this cast will fail unless a Practice order earlier this turn raises it.</div>`;
+  if (school === 'necromancy' && c?.necroAutoReady)
     return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>100%</strong> — your Wailing Phylactery makes this turn's first Necromancy spell certain.</div>`;
-  const chance = rec ? rec.chance : Math.min(95, 30 + lvl * 10); // base 30 everywhere
+  const chance = rec ? rec.chance : Math.min(95, 30 + Number(lvl) * 10); // base 30 everywhere
   // Name what lifted it above the base, so the number is explainable.
-  const bits = [`${SKILL_LABELS[school] || school} ${lvl}`];
-  if (rec && rec.arcane) bits.push(`+${rec.arcane}% Arcane Codex`);
-  if (rec && rec.mastery) bits.push(`+${rec.mastery}% school mastery`);
-  if (rec && rec.discovery) bits.push(`+${rec.discovery}% discoveries`);
-  const capped = chance >= 95 ? ' — the 95% cap' : '';
+  const bits = [`${(theSkillsNames[school] ?? '') || school} ${String(lvl)}`];
+  if (rec?.arcane) bits.push(`+${String(rec.arcane)}% Arcane Codex`);
+  if (rec?.mastery) bits.push(`+${String(rec.mastery)}% school mastery`);
+  if (rec?.discovery) bits.push(`+${String(rec.discovery)}% discoveries`);
+  const capped = Number(chance) >= 95 ? ' — the 95% cap' : '';
   return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>${chance}%</strong> (${bits.join(', ')}${capped}). A failed cast is spent — the spell fizzles and the phase is used.</div>`;
 }
 
@@ -59,22 +80,24 @@ export const ITEM_UNCAPPED_SKILLS_P = new Set(KC_ITEM_UNCAPPED_SKILLS);
 // 2026-09-12: every figure a player is shown is ROUNDED DOWN (toward zero), by the engine's own
 // dispFloor (src/shared/): a float a hair under an integer (0.29*100) snaps to that integer rather
 // than losing a point.
-export function roundReportNumbers(text) {
+export function roundReportNumbers(text: string | null | undefined): string {
   // The lookarounds matter: without them a dotted sequence such as a build stamp (2026.07.23) or a
   // rules citation (AK 7.6.1) gets partially rewritten, because the engine would happily match the
   // '2026.07' inside it. Only a decimal that is not adjacent to another dot or digit is rounded.
   // 2026-09-08: a decimal FOLLOWED by × ("a 6.1× edge") is a multiplier too and is kept. (Root
   // cause of the "× fortune 1" report: the old "fortune 0.50" had no × directly before it and was
   // rounded to 1.)
-  return String(text || '').replace(/(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d\u00d7])/g, (m, mult, whole, frac) =>
-    mult ? m : String(dispFloor(Number(whole + '.' + frac))),
+  return (text ?? '').replace(
+    /(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d\u00d7])/g,
+    (m: string, mult: string | undefined, whole: string, frac: string) =>
+      mult ? m : String(dispFloor(Number(whole + '.' + frac))),
   ); // rounded DOWN, never to nearest
 }
 
 // an icon representing the *kind* of unit (land / sea / flying / creature / monster) so players can
 // tell them apart at a glance. Priority resolves overlaps (a Wyvern is a flying monster
 // → monster; a Whale Cohort is a sea creature → sea).
-export function unitEmoji(type) {
+export function unitEmoji(type: string): string {
   // Icons signal MOVEMENT CLASS first, then creature/monster nature — that is what a player needs
   // at a glance. Sea monsters therefore get their own icon rather than the land-dragon one, and the
   // winged primals are counted as flying because they genuinely cross water without a fleet. These

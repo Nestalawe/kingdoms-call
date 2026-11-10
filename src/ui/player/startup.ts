@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
 
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
