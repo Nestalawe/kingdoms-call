@@ -21,8 +21,8 @@ so find them all before you plan the change. Search; don't read the long files w
 4. **The function and its callers.** Once you find the function that works the rule out, search its name: every caller
    is a place the change reaches (the order, the report's forecast, the player's form). Then search the rule's numbers
    and words again outside it, for copies written inline (a battle file, a duel, the report).
-5. **The player portal's copies** that still restate an engine rule are the ones `tests/lib/player-portal-copies.ts`
-   loads (its forecasts: their test imports them). A rule it shares is written once, in `src/engine/rules-on-plain-values/`.
+5. **The player portal's copies** that still restate an engine rule are the ones `the-player-portals-copies-agree-with-the-engine`
+   checks, imported from their page files (its forecasts: `the-order-forms-forecasts-agree-with-the-turn`'s). A rule it shares is written once, in `src/engine/rules-on-plain-values/`.
 
 The player portal's files are named after their first section, not everything they hold: find a field, a forecast or
 a hint by its words or its function's name, not by the file's name.
@@ -138,7 +138,7 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
   of magic a hero's practices may raise, with the tables they read, the same way since P1-11e42:
   `src/ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts`.
 - **The detail:** [the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules);
-  the copies left are `tests/lib/player-portal-copies.ts`'s.
+  the copies left are `the-player-portals-copies-agree-with-the-engine`'s.
 
 ### The rulebooks' words
 

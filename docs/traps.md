@@ -173,8 +173,8 @@ elsewhere ([the statistics' one door](architecture/the-database-and-what-it-hold
 Before changing a rule, grep the engine and both portals for its nouns **and its numbers**, and change every place in
 the same commit; when a number moves, grep the old number in narrative strings and the rulebooks. Example: the most
 common root cause in this project's history is two copies of one rule disagreeing. A rule the player portal takes
-through `src/shared/` is written once; it is still restated in the portal's projections (its forecasts, and the copies
-`tests/lib/player-portal-copies.ts` loads), at order time and resolution time, in the balance matrix's scripted realm,
+through `src/shared/` is written once; it is still restated in the portal's projections (its forecasts and the copies
+left), at order time and resolution time, in the balance matrix's scripted realm,
 and in the words players read. Checks: `the-player-portals-copies-agree-with-the-engine`, `the-order-forms-forecasts-agree-with-the-turn`, the scripted realm's page
 test and the `*-words` tests, for what they cover. Battle magic is one stage of the spells' registry, asked by three
 copies with one rule (R-126) and each its own lines; the units' strikes are
