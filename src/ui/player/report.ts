@@ -21,25 +21,19 @@ import {
   theStrengthAUnitHasBeforeTheGroundAndTheFoe,
   theWageABeastPaysUnderADruid,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { kcJoinP, sb } from './startup.ts';
-import {
-  deadHeroRealmTagP,
-  GUARD_POWER_COLORS_P,
-  itemBoundTag,
-  itemsForDisplayP,
-  itemSlotTag,
-  itemTierTagP,
-} from './items-and-heroes.ts';
+import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
+import { sb } from './startup.ts';
+import { GUARD_POWER_COLORS_P, itemBoundTag, itemsForDisplayP, itemSlotTag, itemTierTagP } from './items-and-heroes.ts';
 import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
 import { refreshOrdersVisibility } from './layout.ts';
 import { turnDeadlineText } from './game-lists.ts';
 import { buildChronicle, loadPastReport, returnToCurrentReport } from './join-and-chronicle.ts';
 import { renderMastery, renderTitles } from './titles.ts';
-import { armyLabel, unitEmoji } from './order-chances.ts';
+import { unitEmoji } from './order-chances.ts';
 import { buildOrdersForm } from './orders-form.ts';
 import { itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.ts';
-import { capitalise, druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.ts';
+import { capitalise, druidNeedP, formatRace, skillRowHTML, armyLabel } from './skills-and-projections.ts';
 import {
   CHIEFTAIN_MARKER_COLOR,
   _lairName,
@@ -49,6 +43,7 @@ import {
   reportColour,
   spiedExtraP,
   terrorNoteP,
+  deadHeroRealmTagP,
 } from './map-symbols.ts';
 import { ensureProvinceLinking, renderPlayerMap } from './map.ts';
 import { initMessaging } from './dispatches.ts';

@@ -39,22 +39,15 @@ import {
   orderTargetCharsP,
   preOrderTagP,
   realmNameP,
-  realmOptStyleP,
   SEASONS,
   unseenSuffixP,
+  provDirectionLabel,
 } from './items-and-heroes.ts';
 import { spellSecondaryHtml } from './titles.ts';
-import {
-  SPELLS_BY_SCHOOL,
-  SPELL_REQ_LEVEL,
-  SPELL_TO_SCHOOL,
-  armyLabel,
-  castChanceNote,
-  unitEmoji,
-} from './order-chances.ts';
+import { SPELLS_BY_SCHOOL, SPELL_REQ_LEVEL, SPELL_TO_SCHOOL, castChanceNote, unitEmoji } from './order-chances.ts';
 import { lastMoveDirOf, moveOriginProv, poMoveModeNote, refreshAllMoveModeNotes } from './move-analysis.ts';
-import { capitalise } from './skills-and-projections.ts';
-import { heroFameTextP } from './map-symbols.ts';
+import { capitalise, armyLabel } from './skills-and-projections.ts';
+import { heroFameTextP, realmOptStyleP } from './map-symbols.ts';
 import { effSkillP, PO_SEA_TYPES } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   getOrderTarget,
@@ -207,30 +200,6 @@ export function refreshExploreNotes() {
       if (el) el.innerHTML = exploreProjectionNote(c, p);
     }
   });
-}
-// Track recruit orders already placed in earlier phases (client-side) Compass direction from one
-// province to another on the offset-hex map, used to label an as-yet unexplored target province as
-// e.g. "Unknown province (West)" instead of a meaningless internal number. Rows shift by half a
-// column with parity (pointy-top offset), and columns wrap around the map edge.
-export function provDirectionLabel(fromId, toId, provs, cols) {
-  if (!Array.isArray(provs)) return null;
-  const a = provs.find((p) => p.id === fromId),
-    b = provs.find((p) => p.id === toId);
-  if (!a || !b || a.row == null || b.row == null) return null;
-  let dc = b.col - a.col;
-  if (cols) {
-    if (dc > cols / 2) dc -= cols;
-    if (dc < -cols / 2) dc += cols;
-  } // shortest way around the wrap
-  const dr = b.row - a.row;
-  if (dr === 0 && dc === 0) return null;
-  const x1 = a.col + (a.row & 1) * 0.5,
-    y1 = a.row * 0.866;
-  const x2 = a.col + dc + (b.row & 1) * 0.5,
-    y2 = b.row * 0.866;
-  const ang = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI; // y grows southward: 0=E, 90=S, 180=W, 270=N
-  const dirs = ['East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest', 'North', 'Northeast'];
-  return dirs[Math.round(((ang + 360) % 360) / 45) % 8];
 }
 
 export function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive) {

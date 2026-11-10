@@ -66,9 +66,7 @@
 // `druIdPenaltyMult`, and the army card's Druid shortfall and mastery lines (read by their statements) against it and
 // `druidMasteryGain`, agree, beside a Crown too (R-120: the battle counts its aura, as the portal does; since P1-11b3
 // both call the engine's Druid rule through `src/shared/`, so these check the level of the hero's Druid each side feeds
-// it); the turn report's own flying carry (read by its statements) agrees
-// with `isAirCarriable` and `getFlyCapability` (P1-11b2: the report calls `getFlyCapability` now, so its statement that
-// gives a column the flyers' pace is checked on every column, and the unit types' half went with the copy); the Explore
+// it); the Explore
 // forecast (`exploreGainFor`) is what `resolveExploreOrder` maps, the Loremaster's too (R-125), in a realm with no
 // discovery that adds to exploring, with The Compass and with Star Charts (since P1-11d14 both ask the folder's
 // `theShareOfAProvinceAnExploreOrderMaps`, so these check what each feeds it); its march-in share

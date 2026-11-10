@@ -2,10 +2,11 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_TERRAIN_COLORS } from '../../content/kingdoms-call-data.ts';
 import { skillFameLabelM, topSkillOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { kcJoinP } from './startup.ts';
-import { GD_BY_ALIGNMENT, GUARD_POWER_COLORS_P, deadHeroRealmTagP } from './items-and-heroes.ts';
-import { armyLabel, unitEmoji } from './order-chances.ts';
+import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
+import { GD_BY_ALIGNMENT, GUARD_POWER_COLORS_P, realmOfP } from './items-and-heroes.ts';
+import { unitEmoji } from './order-chances.ts';
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+import { armyLabel } from './skills-and-projections.ts';
 
 // ── TERRAIN COLORS ────
 export const TERRAIN_COLORS_MAP = { ...KC_TERRAIN_COLORS };
@@ -691,4 +692,25 @@ export const CHIEFTAIN_MARKER_COLOR = '#8f6a38'; // darkened from #b08a5a — lu
 export function provLinkHtml(id, name, extraCls) {
   if (id == null || id === '') return name;
   return kcHtml`<span class="prov-link${extraCls ? ' ' + extraCls : ''}" onmouseenter="highlightMapProv(${kcArg(Number(id))},true)" onmouseleave="highlightMapProv(${kcArg(Number(id))},false)" onclick="locateOnMap(${kcArg(Number(id))})" title="Hover to light up ${name} on the map — click or tap to show it">${name}</span>`;
+}
+export function realmOptStyleP(playerIdx, report) {
+  const k = realmOfP(playerIdx, report);
+  return k && k.color ? kcHtml` style="color:${reportColour(k.color)};font-weight:600"` : '';
+}
+// ── WHOSE HERO WAS THIS? (2026-09-27, Toby item 10) ────
+// Resurrect will raise only your OWN fallen and true wanderers — a body that ever served another
+// crown is refused — so every place a dead hero is shown must say which realm held them when they
+// fell. `player` is null for a hero who never served anyone. `opts.dark` tints for the map tooltip's
+// dark background; `opts.bare` drops the leading em-dash for callers that supply their own.
+export function deadHeroRealmTagP(h, report, opts) {
+  opts = opts || {};
+  const rep = report || currentReport || {};
+  const own = rep.playerIndex != null ? rep.playerIndex : null;
+  const lead = opts.bare ? '' : '— ';
+  if (h && h.player == null) return `${lead}a neutral hero, sworn to no crown`;
+  if (h && own != null && h.player === own) return `${lead}your own hero`;
+  const k = realmOfP(h ? h.player : null, rep);
+  const nm = (k && k.name) || 'another realm';
+  const col = k && k.color ? (opts.dark ? _tintForDarkTooltip(k.color) || '#e8b84b' : reportColour(k.color)) : null;
+  return kcHtml`${lead}a hero of <span style="${col ? `color:${col};` : ''}font-weight:600">${nm}</span>`;
 }

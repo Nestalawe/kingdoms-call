@@ -3,7 +3,7 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_GRAND_DESIGNS, KC_ITEM_SLOT_CAP, KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import { itemRaceOf, itemSlot, itemUsableBy } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
-import { _tintForDarkTooltip, reportColour } from './map-symbols.ts';
+import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.ts (KC_ITEM_SLOT_CAP) ──
 export const ITEM_SLOT_CAP_P = { ...KC_ITEM_SLOT_CAP };
@@ -66,27 +66,6 @@ export function realmOfP(playerIdx, report) {
 export function realmNameP(playerIdx, report) {
   const k = realmOfP(playerIdx, report);
   return k ? k.name : 'enemy';
-}
-export function realmOptStyleP(playerIdx, report) {
-  const k = realmOfP(playerIdx, report);
-  return k && k.color ? kcHtml` style="color:${reportColour(k.color)};font-weight:600"` : '';
-}
-// ── WHOSE HERO WAS THIS? (2026-09-27, Toby item 10) ────
-// Resurrect will raise only your OWN fallen and true wanderers — a body that ever served another
-// crown is refused — so every place a dead hero is shown must say which realm held them when they
-// fell. `player` is null for a hero who never served anyone. `opts.dark` tints for the map tooltip's
-// dark background; `opts.bare` drops the leading em-dash for callers that supply their own.
-export function deadHeroRealmTagP(h, report, opts) {
-  opts = opts || {};
-  const rep = report || currentReport || {};
-  const own = rep.playerIndex != null ? rep.playerIndex : null;
-  const lead = opts.bare ? '' : '— ';
-  if (h && h.player == null) return `${lead}a neutral hero, sworn to no crown`;
-  if (h && own != null && h.player === own) return `${lead}your own hero`;
-  const k = realmOfP(h ? h.player : null, rep);
-  const nm = (k && k.name) || 'another realm';
-  const col = k && k.color ? (opts.dark ? _tintForDarkTooltip(k.color) || '#e8b84b' : reportColour(k.color)) : null;
-  return kcHtml`${lead}a hero of <span style="${col ? `color:${col};` : ''}font-weight:600">${nm}</span>`;
 }
 // ── PACK ORDER ────
 // A hero's pack is LISTED equipped-first, in slot order (weapon, armour, shield, cloak, helm,
@@ -305,4 +284,46 @@ export function setConcede(v) {
     return;
   concedeGame = !!v;
   renderConcede();
+}
+// Track recruit orders already placed in earlier phases (client-side) Compass direction from one
+// province to another on the offset-hex map, used to label an as-yet unexplored target province as
+// e.g. "Unknown province (West)" instead of a meaningless internal number. Rows shift by half a
+// column with parity (pointy-top offset), and columns wrap around the map edge.
+export function provDirectionLabel(fromId, toId, provs, cols) {
+  if (!Array.isArray(provs)) return null;
+  const a = provs.find((p) => p.id === fromId),
+    b = provs.find((p) => p.id === toId);
+  if (!a || !b || a.row == null || b.row == null) return null;
+  let dc = b.col - a.col;
+  if (cols) {
+    if (dc > cols / 2) dc -= cols;
+    if (dc < -cols / 2) dc += cols;
+  } // shortest way around the wrap
+  const dr = b.row - a.row;
+  if (dr === 0 && dc === 0) return null;
+  const x1 = a.col + (a.row & 1) * 0.5,
+    y1 = a.row * 0.866;
+  const x2 = a.col + dc + (b.row & 1) * 0.5,
+    y2 = b.row * 0.866;
+  const ang = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI; // y grows southward: 0=E, 90=S, 180=W, 270=N
+  const dirs = ['East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest', 'North', 'Northeast'];
+  return dirs[Math.round(((ang + 360) % 360) / 45) % 8];
+}
+
+// Render the "Pre-battle magic" control for a character from its hidden ep-preschool field.
+export function renderPreSchool(charId) {
+  const disp = document.getElementById(`ep-preschool-display-${charId}`);
+  const hidden = document.getElementById(`ep-preschool-${charId}`);
+  if (!disp || !hidden) return;
+  const school = (hidden.value || '').toLowerCase();
+  if (school) {
+    disp.innerHTML = kcHtml`<span style="display:inline-flex;align-items:center;gap:6px;background:#fff8e8;border:1px solid #c8922a;border-radius:2px;padding:3px 8px;font-size:.78rem">
+        <span style="color:#5a4208">Random <strong>${SKILL_LABELS[school] || school}</strong> spell</span>
+        <button onclick="clearPreSchool(${kcArg(String(charId))})" title="Remove" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:0 6px;cursor:pointer;font-size:.7rem">✕</button>
+      </span>
+      <button onclick="openPreSchoolPicker(${kcArg(String(charId))})" style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">Change</button>`;
+  } else {
+    disp.innerHTML = kcHtml`<button onclick="openPreSchoolPicker(${kcArg(String(charId))})" style="font-size:.72rem;padding:3px 10px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">+ Choose spell school</button>
+      <span style="font-size:.72rem;color:#aaa">None set</span>`;
+  }
 }

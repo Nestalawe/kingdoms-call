@@ -52,10 +52,6 @@ const THE_PAGES_SIDE_OF_A_FORECAST = [
 ];
 /** The copies left (and the tables and helpers they read) by file, as the player portal declares them. */
 const COPIES: Record<string, string[]> = {
-  // (and the label of a company, which the Blood Offering's rows show: P1-11d3; and the note under an order that
-  // quotes its chance, which the Practice Skill field shows: P1-11d4)
-  // (since P1-11e42 the note, its line and effMagicLvl are the ledger's file's, below)
-  'ui/player/order-chances.ts': ['armyLabel'],
   // druidNeedP feeds the portal's level of the hero's Druid to the engine's rule (since P1-11b3; the army card reads the
   // engine's two sets of beasts, and asks its Druid mastery's guard, through src/shared/ since P1-11d12)
   'ui/player/skills-and-projections.ts': [
@@ -64,6 +60,10 @@ const COPIES: Record<string, string[]> = {
     'HUMANOID_RACES_UI',
     'PRIMAL_SUBRACE_CLASS',
     'formatRace',
+    // (and the label of a company, which the Blood Offering's rows show: P1-11d3; and the note under an order that
+    // quotes its chance, which the Practice Skill field shows: P1-11d4)
+    // (since P1-11e42 the note, its line and effMagicLvl are the ledger's file's, below)
+    'armyLabel',
   ],
   // the Explore order's forecast (since P1-11d14 it feeds the engine's rule what the report gives: not a copy of the
   // rule, kept to run its truth cases), and the share of the province a march into it maps first (P1-23t), which reads
@@ -181,9 +181,7 @@ const COPIES: Record<string, string[]> = {
 const ARMY_CARD = 'ui/player/report.ts';
 /** The copies written inline, inside a longer function: each read by its statements (tests/lib/source.ts's
  *  statementsBetween) and run as a function of what those statements read. The army card is the "Armies leading" part
- *  of a hero's card on the player's report screen (renderReportView); the turn report's flying carry is the statement
- *  that gives a column the flyers' pace when it takes to the air (buildTurnReport: it calls getFlyCapability, since
- *  P1-11b2, where it kept a copy of it and of isAirCarriable). */
+ *  of a hero's card on the player's report screen (renderReportView). */
 const statementCopies = (opts: SourceOptions) => `
 // The army card's Druid lines for one unit \`a\` of the hero \`c\`: the strength left of a unit of 1,000 by a Druid
 // shortfall (the card's own sum, rounded down as the battle rounds it: R-122), the Druid mastery bonus in percent, and
@@ -342,9 +340,7 @@ function theMoveFieldsDirectionsOn(theReport, orders, c, ph) {
 }`;
 /** The player portal's copies, read from `src` (default: this checkout's src/), run with the data file, the mastery
  *  orders' rows (L79_ORDERS reads them) and kc-safe (kcHtml: the army card's notes) beside them, and the names
- *  src/shared/ hands the portal (effMagicLvl calls theLevelAHerosSkillCountsAt). The turn report's flying carry runs
- *  beside them too: it reads the data file and getFlyCapability, which the views import from the folder (the portal no
- *  longer does, since P1-11b4). */
+ *  src/shared/ hands the portal (effMagicLvl calls theLevelAHerosSkillCountsAt). */
 export function playerPortalCopies(opts: SourceOptions = {}): Copies {
   const code = [
     'let currentReport = null;',
@@ -406,13 +402,12 @@ export function theOrderFormsSpells(opts: SourceOptions = {}): TheOrderFormsSpel
       ['SKILL_LABELS', 'rawMagicLvl', 'effMagicLvl', 'theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise'],
       opts,
     ),
-    sourceOf('ui/player/order-targets.ts', ['provDirectionLabel'], opts),
     sourceOf(
       'ui/player/items-and-heroes.ts',
-      ['isPreOrderIdP', 'orderTargetCharsP', 'preOrderTagP', 'realmOfP', 'realmNameP', 'realmOptStyleP'],
+      ['provDirectionLabel', 'isPreOrderIdP', 'orderTargetCharsP', 'preOrderTagP', 'realmOfP', 'realmNameP'],
       opts,
     ),
-    sourceOf('ui/player/map-symbols.ts', ['leadsArmiesP'], opts),
+    sourceOf('ui/player/map-symbols.ts', ['leadsArmiesP', 'realmOptStyleP'], opts),
     sourceOf('ui/player/titles.ts', ['spellSecondaryHtml'], opts),
     `function castSpellRows(report, c, ph, fields) {
       theFields = fields;

@@ -47,7 +47,6 @@ import {
   toggleSection,
 } from './report.ts';
 import { renderReckoningOrders, renderTitles, setReckoningCall } from './titles.ts';
-import { rebuildTargetWrap } from './order-chances.ts';
 import { groupHeroesByLocation, moveHeroBlock, refreshAllMoveModeNotes } from './move-analysis.ts';
 import { poSeaAnalysis } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
@@ -62,9 +61,9 @@ import {
   onSpellChange,
   openPreSchoolPicker,
   removeEncounterTactic,
+  allocateHeirSkill,
 } from './orders-form.ts';
 import {
-  allocateHeirSkill,
   onActionChange,
   onMoveEdited,
   resubmitOrders,
@@ -75,6 +74,7 @@ import {
   syncHiredHeroCard,
   syncResurrectCard,
   updateBloodOffering,
+  rebuildTargetWrap,
 } from './pre-orders.ts';
 import {
   cancelSubmit,
@@ -124,7 +124,7 @@ Object.assign(window, {
   acceptGmOffer, // ui/player/sign-in.ts
   addEncounterTactic, // ui/player/orders-form.ts
   adjustSkill, // ui/player/join-and-chronicle.ts
-  allocateHeirSkill, // ui/player/pre-orders.ts
+  allocateHeirSkill, // ui/player/orders-form.ts
   cancelSubmit, // ui/player/briefing-and-submit.ts
   changeDisplayName, // ui/player/sign-in.ts
   changePassword, // ui/player/sign-in.ts
@@ -163,7 +163,7 @@ Object.assign(window, {
   onSpellChange, // ui/player/orders-form.ts
   openGameFresh, // ui/player/sign-in.ts
   openPreSchoolPicker, // ui/player/orders-form.ts
-  rebuildTargetWrap, // ui/player/order-chances.ts
+  rebuildTargetWrap, // ui/player/pre-orders.ts
   refreshAllMoveModeNotes, // ui/player/move-analysis.ts
   refreshMessages, // ui/player/dispatches.ts
   refreshOpenReport, // ui/player/game-lists.ts

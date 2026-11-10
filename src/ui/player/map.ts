@@ -1,9 +1,9 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { kcJoinP } from './startup.ts';
+import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import { applyMapZoom, fitMapSvgHeight, setDeskView, setMobileView } from './layout.ts';
-import { armyLabel, unitEmoji } from './order-chances.ts';
-import { capitalise, formatRace } from './skills-and-projections.ts';
+import { unitEmoji } from './order-chances.ts';
+import { capitalise, formatRace, armyLabel } from './skills-and-projections.ts';
 import {
   CHIEFTAIN_MARKER_COLOR,
   MAP_RACE_BADGE,

@@ -9,8 +9,3 @@ if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load
 export const SUPABASE_URL = KC_CONFIG.supabaseUrl;
 export const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
 export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-// A list of kcHtml pieces with `sep` between them, to put into kcHtml (P0-19): .join(sep) would make them a plain
-// string, which kcHtml shows as text. `sep` is text, or kcHtml for markup (kcHtml`<br>`).
-export function kcJoinP(list, sep) {
-  return list.flatMap((x, i) => (i ? [sep, x] : [x]));
-}

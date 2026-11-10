@@ -2,18 +2,11 @@
 import { kcHtml } from '../shared/kc-safe.ts';
 import { KC_ITEM_UNCAPPED_SKILLS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
-  CREATURE_ARMIES,
-  MONSTER_ARMIES,
   dispFloor,
   everySpellBySchool,
   theLevelEachMasterySpellNeeds,
   theSchoolOfEachSpell,
-  unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { syncCharmCard, syncResurrectCard } from './pre-orders.ts';
-import { HUMANOID_RACES_UI, formatRace } from './skills-and-projections.ts';
-import { buildTargetField } from './order-targets.ts';
-import { getOrderExtra, getOrderTarget } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 import {
   SKILL_LABELS,
   effMagicLvl,
@@ -49,25 +42,6 @@ export function castChanceNote(c, spellName, opts) {
   return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>${chance}%</strong> (${bits.join(', ')}${capped}). A failed cast is spent — the spell fizzles and the phase is used.</div>`;
 }
 
-// Rebuild one order's target field in place — used when a choice within the field changes the odds
-// quoted beneath it (picking a different skill to practise). Mirrors what onSpellChange does.
-export function rebuildTargetWrap(charId, ph) {
-  const wrap = document.getElementById(`po-target-wrap-${charId}-${ph}`);
-  const c = ((currentReport && currentReport.characters) || []).find((x) => String(x.id) === String(charId));
-  if (!wrap || !c) return;
-  const saved = {
-    action: document.getElementById(`po-action-${charId}-${ph}`)?.value || '',
-    target: getOrderTarget(charId, ph),
-    extra: getOrderExtra(charId, ph),
-  };
-  try {
-    wrap.innerHTML = buildTargetField(c, ph, saved);
-  } catch (e) {
-    console.warn('target rebuild failed', e);
-  }
-  if (saved.action === 'Practice Skill') refreshLaterCastSpells(charId, ph); // a re-aimed practice moves later casts' limits
-}
-
 // Reverse lookup: spell name → school
 export const SPELL_TO_SCHOOL = theSchoolOfEachSpell();
 // L7/L9 mastery spells require the caster's RAW school level (past-5 comes from experience only).
@@ -75,45 +49,6 @@ export const SPELL_REQ_LEVEL = theLevelEachMasterySpellNeeds();
 
 // The skills whose item bonuses carry past a trained 5 to the ceiling of 9 (the army card's "capped at" reads them).
 export const ITEM_UNCAPPED_SKILLS_P = new Set(KC_ITEM_UNCAPPED_SKILLS);
-
-// After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every
-// LATER Cast Spell order's dropdown is rebuilt so its projected level and casting limit stay true.
-export function refreshLaterCastSpells(charId, fromPh) {
-  const c = ((currentReport && currentReport.characters) || []).find((x) => String(x.id) === String(charId));
-  if (!c) return;
-  for (let later = fromPh + 1; later <= 4; later++) {
-    if ((document.getElementById(`po-action-${charId}-${later}`)?.value || '') !== 'Cast Spell') continue;
-    const wrap = document.getElementById(`po-target-wrap-${charId}-${later}`);
-    if (!wrap) continue;
-    const before = getOrderTarget(charId, later);
-    // only a spell the table knows goes back into the rebuilt markup; the spell's own target is put
-    // back afterwards as the field's value, never as markup
-    const known = Object.keys(SPELL_TO_SCHOOL),
-      at = known.indexOf(before);
-    const spell = at >= 0 ? known[at] : '';
-    const savedExtra = getOrderExtra(charId, later);
-    try {
-      wrap.innerHTML = buildTargetField(c, later, { action: 'Cast Spell', target: spell, extra: '' });
-    } catch (e) {
-      console.warn('cast refresh failed', e);
-    }
-    const ex = document.getElementById(`po-extra-${charId}-${later}`);
-    if (
-      ex &&
-      savedExtra &&
-      getOrderTarget(charId, later) === spell &&
-      (ex.tagName !== 'SELECT' || [...ex.options].some((o) => o.value === savedExtra))
-    )
-      ex.value = savedExtra;
-    if (getOrderTarget(charId, later) !== before) {
-      const l = later;
-      setTimeout(() => {
-        syncResurrectCard(charId, l);
-        syncCharmCard(charId, l);
-      }, 0);
-    } // the spell itself changed
-  }
-}
 
 // ── DISPLAY ROUNDING (report text) ────
 // Belt-and-braces partner to the GM engine's n0(): the engine now rounds every battle statistic at
@@ -134,43 +69,6 @@ export function roundReportNumbers(text) {
   return String(text || '').replace(/(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d\u00d7])/g, (m, mult, whole, frac) =>
     mult ? m : String(dispFloor(Number(whole + '.' + frac))),
   ); // rounded DOWN, never to nearest
-}
-
-// Army display helper — shows unit name if known, falls back to plain type+quality
-export function armyLabel(a, opts = {}) {
-  const name = a.unitName ? `${a.unitName}` : '';
-  if (opts.short) return name ? `${name}` : `${a.quality} ${a.type}`;
-  // Classification first, then type, quality and the unit's base strength (type × quality tier) —
-  // enough to judge a force at a glance without opening the rules. primal armies always lead with
-  // the full word 'Creature' or 'Monster' (derived from the unit TYPE, so it shows even when the
-  // army carries no race field — e.g. awakened/recruited beasts), and no separate [C]/[M] tag is
-  // used.
-  const primalWord = CREATURE_ARMIES.has(a.type) ? 'Creature' : MONSTER_ARMIES.has(a.type) ? 'Monster' : null;
-  const race = a.race ? formatRace(a.race, a.type) : null;
-  // a unit with a HUMANOID race leads with that race — "Orcish (Monster), Wyvern Riders" — so an
-  // Orc garrison of wyverns is not mistaken for a primal band. Only raceless / primal units lead
-  // with the bare Creature / Monster word.
-  const _humanoidRace = !!(a.race && HUMANOID_RACES_UI.has(a.race));
-  const lead = _humanoidRace ? (primalWord ? `${race} (${primalWord})` : race) : primalWord || race;
-  const str = unitBaseStrength(a);
-  // 2026-09-23 (Toby item 7): the unit's own movement rate after its strength — computed by the GM
-  // report with every bonus the engine applies (March / Naval incl. items, Road & race `move`
-  // discoveries, the Swift / Sea-Wolf titles). Shown only where the report supplies it (your led
-  // units and garrisons); a column still moves at its slowest unit.
-  const _mv =
-    a.moveRate != null && !opts.noMove
-      ? `Move ${a.moveRate}${a.moveKind === 'sea' ? ' (sea)' : a.moveKind === 'air' ? ' (air)' : ''}`
-      : null;
-  // 2026-09-23b: labelled BASE — it is type × quality only (no kinship, terrain, Tactical…), so it
-  // never matches a battle figure; the Battle stats ladder starts from exactly this number.
-  const detail = [lead, a.type, a.quality, `Base str ${str}`, _mv].filter(Boolean).join(', ');
-  // beasts bound by the Rite of the Wild Hunt are flagged wherever an army line is rendered — they
-  // draw no wages and leave when the binding fails.
-  const wild =
-    a.wildHunt || a._wildHuntUntilTurn != null
-      ? kcHtml` <span style="color:#7a4a10;font-size:.72rem">[Wild Hunt — bound until end of turn ${a.wildHuntUntil != null ? a.wildHuntUntil : a._wildHuntUntilTurn != null ? a._wildHuntUntilTurn : '?'}, no wages]</span>`
-      : '';
-  return kcHtml`${name ? `${name} (${detail})` : detail}${wild}`;
 }
 
 // an icon representing the *kind* of unit (land / sea / flying / creature / monster) so players can

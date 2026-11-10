@@ -38,8 +38,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   its entry and the rest of its code), `ui/shared/` (`kc-safe.ts`), `rulebook/`. The
   templates are at the top of `src/`. The GM portal's code is 141 modules; `src/engine/run-turn.ts` (the turn,
   `resolveTurn`, once ~13,000 lines, now ~250 in a file of ~380) was taken apart by P1-08, one area at a time (below). The player portal's
-  is 39: its own 23, the data file, `kc-safe.ts`, the reload banner's two files, `kc-db-guard.ts`, `src/shared/`'s
-  file and the folder's ten.
+  is 75: its own 28, 8 files of `content/`, `kc-safe.ts`, the reload banner's two files, `kc-db-guard.ts`,
+  `src/shared/`'s file and the 34 of the folder `engine/rules-on-plain-values/`.
 - **TypeScript checks the site** (`tsconfig.json` includes `src/`, with the browser's types; one project until P1-10
   splits the engine's). The files that were JavaScript start with `// @ts-nocheck` and the reason (142 of 158 at the
   rename: strict TypeScript found errors in each); P1-10 and P1-16 type them. The ratchet counts the line in two, so

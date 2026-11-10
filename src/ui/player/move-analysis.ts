@@ -3,7 +3,8 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_HEX_DIRS, KC_TEMPERS } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import { theHexNextToAProvinceInADirection } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { kcJoinP, sb } from './startup.ts';
+import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
+import { sb } from './startup.ts';
 import { SKILL_COLUMNS } from './join-and-chronicle.ts';
 import {
   PO_SEA_TYPES,
@@ -448,4 +449,41 @@ export async function persistHeroOrder() {
     return;
   }
   gp.orders = payload;
+}
+
+// ONE row renderer for the encounter plan, used by the initial build AND refreshEncounterPlan. ▲/▼
+// buttons give touch devices — which have no HTML5 drag — the same reordering.
+export function epRowHtml(charId, t, i, n) {
+  return kcHtml`<div draggable="true" data-char="${charId}" data-idx="${i}"
+      ondragstart="epDragStart(event,${kcArg(String(charId))},${kcArg(i)})"
+      ondragover="event.preventDefault();this.style.outline='2px solid var(--crimson)'"
+      ondragleave="this.style.outline=''"
+      ondrop="epDropTactic(event,${kcArg(String(charId))},${kcArg(i)});this.style.outline=''"
+      style="display:flex;align-items:center;gap:6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 8px;cursor:grab">
+      <span style="color:#bbb;font-size:.9rem;cursor:grab" title="Drag to reorder">⠿</span>
+      <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);min-width:16px">${i + 1}.</span>
+      <span style="font-size:.8rem;flex:1">${tacticLabel(t)}</span>
+      <button type="button" onclick="epMoveTactic(${kcArg(String(charId))},${kcArg(i)},-1)" ${i === 0 ? 'disabled' : ''} title="Move up" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▲</button>
+      <button type="button" onclick="epMoveTactic(${kcArg(String(charId))},${kcArg(i)},1)" ${i >= n - 1 ? 'disabled' : ''} title="Move down" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▼</button>
+      <button type="button" onclick="removeEncounterTactic(${kcArg(String(charId))},${kcArg(i)})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
+    </div>`;
+}
+
+export function tacticLabel(code) {
+  if (code.startsWith('CA:')) {
+    const spell = code.slice(3);
+    return `Cast Spell — ${spell}`;
+  }
+  if (code.startsWith('CS:')) {
+    const school = code.slice(3);
+    return `Pre-battle: random ${SKILL_LABELS[school] || school} spell`;
+  }
+  const baseCode = code.split(':')[0];
+  return ENCOUNTER_TACTICS.find((et) => et.code === baseCode)?.label || code;
+}
+
+export function refreshEncounterPlan(charId, tactics) {
+  const list = document.getElementById(`ep-list-${charId}`);
+  if (!list) return;
+  list.innerHTML = kcHtml`${tactics.map((t, i) => epRowHtml(String(charId), t, i, tactics.length))}`;
 }
