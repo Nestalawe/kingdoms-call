@@ -171,6 +171,38 @@ describe('the treasury ledger, on the orders handed in', () => {
     expect([L.cats.intel.g, L.cats.armies.g, L.cats.armies.wage]).toEqual([2, 2, 1]);
     expect(theTreasuryLedgerOnTheseOrders(aReport(), ordersOf({})).spend).toBe(0);
   });
+  test('the fallbacks: a company priced nowhere at 2g, a band of no price at none, a lair of no grade at 1g, a realm of no treasury at 0g', () => {
+    // (P1-16b: each `|| n` of the ledger, on a value the report leaves out)
+    const report = {
+      ...aReport(),
+      kingdom: { alignment: 'Good', race: 'Human' },
+      mercIntel: [{ id: 7, type: 'Swordsmen', unitName: 'Free Blades' }],
+    };
+    const lairs = report.provinceOrderData[1].features;
+    lairs.push({ idx: 2, monster: true, monsterPower: 'Unheard of' });
+    const L = theTreasuryLedgerOnTheseOrders(
+      report,
+      ordersOf({ 1: [recruit('Pikemen,merc:7')], 2: [{ action: 'Hunting Rumours', target: '2' }] }),
+    );
+    expect([L.cats.armies.g, L.cats.mercs.g, L.cats.mercs.n, L.cats.intel.g]).toEqual([2, 0, 1, 1]);
+    expect([L.gold, L.tax, L.armyW, L.heroW]).toEqual([0, 0, 0, 0]);
+  });
+  test("a discovery's cut of a hero's wage is the one for the hero's alignment", () => {
+    // (P1-16b: the cut read by his alignment's name)
+    const report = {
+      ...aReport(),
+      kingdom: {
+        alignment: 'Good',
+        race: 'Human',
+        theHeroWageDiscoveriesCutsAndTheirRoom: [
+          { theGoldItCutsFromAHeroOfEachAlignment: { Evil: 1, Good: 0 }, theRoomLeftUnderItsCap: 5 },
+        ],
+      },
+    };
+    const L = theTreasuryLedgerOnTheseOrders(report, ordersOf({ 1: [{ action: 'Broker', target: 'hire:8' }] }));
+    // the Evil hero's 4g, 1g less
+    expect(L.cats.heroes).toEqual({ g: 4, n: 1, wage: 3 });
+  });
 });
 
 describe('the note under an order that quotes its chance', () => {
@@ -207,6 +239,18 @@ describe('the note under an order that quotes its chance', () => {
     expect(note(practising, 'Practice Skill', 'white')).toContain('No roll is made');
     expect(note(practising, 'Practice Skill', null)).toContain('Chance falls as mastery grows: 25% at 0, 20% at 1');
   });
+  test('the Spy note of no Spy skill, the Research note at and below Sage 1, and the Assassinate note against a king', () => {
+    // (P1-16b: each `|| n` of the notes, on a figure the report leaves out)
+    const quoted = (orderChance: unknown, action: string) => note({ id: 1, orderChance }, action, null);
+    expect(quoted({ spy: { level: 0 } }, 'Spy')).toContain('No Spy skill — <strong>20%</strong> at best.');
+    expect(quoted({ research: { rawLevel: 0 } }, 'Research')).toContain('Research needs Sage 1+');
+    expect(quoted({ research: { rawLevel: 1, chance: 30, level: 1 } }, 'Research')).toContain(
+      'Discovery: <strong>30%</strong> (Sage 1).',
+    );
+    expect(quoted({ assassinate: { chance: 60, level: 7 } }, 'Assassinate')).toContain(
+      'but only <strong>35%</strong> against a king',
+    );
+  });
   test('the Spy note, and none for a hero the report quotes no chance for', () => {
     expect(note(practising, 'Spy', null)).toContain('Success: <strong>47%</strong> (Spy 3).');
     expect(note({ id: 1 }, 'Spy', null)).toBe('');
@@ -233,6 +277,11 @@ describe('the orders the form offers a hero', () => {
     expect(offered).toContain('Research');
     expect(offered.filter((a) => ['Send Item', 'Use Item', 'Disband Army', 'Awaken Grove'].includes(a))).toEqual([]);
     expect(gdAlreadyBuiltP(null)).toBe(false);
+  });
+  test('an enemy hero whose command is seized for the turn is offered no mastery, though his levels are seen', () => {
+    // (P1-16b: the charm's check of the order's mastery row, read once)
+    const seized = { ...aReport().characters[0], skills: { sage: 9 }, _charmEnemy: true };
+    expect(theOrdersTheFormOffersAHero(aReport(), seized)).not.toContain('Grand Design');
   });
 });
 
@@ -263,6 +312,13 @@ describe('the levels of magic a hero’s earlier practices may raise, and a hire
     expect(heroHireWageOfP({ alignment: 'Evil', hireWage: 9 }, aReport())).toBe(9);
     expect(heroHireWageOfP({ alignment: 'Evil' }, aReport())).toBe(4);
     expect(heroHireWageOfP({ alignment: 'Good' }, aReport())).toBe(2);
+    // (P1-16b: a report that gives no realm's creed reads it as Neutral)
+    expect(heroHireWageOfP({ alignment: 'Evil' }, {})).toBe(
+      heroHireWageOfP({ alignment: 'Evil' }, { kingdom: { alignment: 'Neutral' } }),
+    );
+    expect(heroHireWageOfP({ alignment: 'Evil' }, {})).not.toBe(
+      heroHireWageOfP({ alignment: 'Evil' }, { kingdom: { alignment: 'Divine' } }),
+    );
   });
 });
 

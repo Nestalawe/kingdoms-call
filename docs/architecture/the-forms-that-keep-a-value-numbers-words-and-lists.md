@@ -32,6 +32,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **`(x != null && list.find(…)) || y`**, the found element else a fallback, is `(x != null ? list.find(…) : undefined)
   ?? y`: `??` on the `false` the left can give would keep it.
 
+- **`x || ''` on a value of any kind** (an order field's value as the page's snapshot holds it, `unknown`) goes through a
+  reader written with an `if` that hands back `unknown` (`theFieldOrNoWords`): `x ?? ''` keeps a `0` or a `false`, and
+  `x || ''` narrows to `{}`, which `no-base-to-string` refuses written out. Such a value is written out through a reader
+  typed `unknown` (`inWords`: `String` inside it).
 ## Numbers, words and conversions
 
 - **A number in a line's words or a key** is `${String(x)}` (the same text); `a + '-' + b` on numbers is
@@ -58,6 +62,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A number a typed callee may give as `undefined`** (`effSkillOf` for no hero) is read `Number(x)` where it is counted
   or compared, and kept as it is where it is handed back.
 
+- **`.split`, `.trim` or `.startsWith` on a value of any kind** (a field's value after `|| ''`) reads it through a check that
+  hands back words and throws the `TypeError` the call threw on any other value (`theWordsAFieldHolds`). One handed to a
+  rule typed `string | number` that reads it by `String()` or `toString()` (a Pick Up's places) is `String(x)` after the
+  `|| ''`: the same words for every value.
 ## Lists, tables, sets and maps
 
 - **A deal from a deck the code has just filled** (`if (!d.length) d = shuffleP(cards); return d.pop()`) goes through
@@ -162,3 +170,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   into a new `const` (`counted`), each later read of the parameter read from it: the same list, now of the filter's
   kind. A filter's callback may take the element with a turn's mark the schema lacks, optional (`(p2: Province & {
   _flood?: unknown })`): the list's element still passes.
+- **`m.has(k) ? m.get(k) : y`, or `has` then `get`, on a `Map` whose values are never `undefined`** (the replay's
+  garrisons, the march forecast's kept answers) is `m.get(k) ?? y`, or `get` then `!== undefined`: the same miss.
+  **`list.push(pool.splice(i, 1)[0])`** at an index `findIndex` has just found is `list.push(...pool.splice(i, 1))`: the
+  same one element.
