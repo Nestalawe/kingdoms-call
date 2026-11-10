@@ -272,47 +272,50 @@ export function theForecastsImported(): TheForecasts {
     // where the hero will stand once his orders of the phases before `upTo` are carried out (its id, or null)
     predictedLocationOn: (report, orders, heroId, upTo, declarations) => {
       const at: unknown = whereAHeroStandsAfterTheOrdersBefore(
-        report,
-        theOrders(report, orders, declarations),
-        heroId,
-        upTo,
+        ...([report, theOrders(report, orders, declarations), heroId, upTo] as unknown as Parameters<
+          typeof whereAHeroStandsAfterTheOrdersBefore
+        >),
       );
       return isObj(at) ? at['id'] : null;
     },
     // what he will carry, each item by its name in the order of his pack
     predictedItemsOn: (report, orders, heroId, upTo) => {
-      const items: unknown = whatAHeroCarriesAsAPhaseBegins(report, theOrders(report, orders), heroId, upTo);
+      const items: unknown = whatAHeroCarriesAsAPhaseBegins(
+        ...([report, theOrders(report, orders), heroId, upTo] as unknown as Parameters<
+          typeof whatAHeroCarriesAsAPhaseBegins
+        >),
+      );
       return objects(items).map((it) => it['name']);
     },
     projectedLedArmiesOn: (report, orders, heroId, upTo) => {
-      const led: unknown = whatAHeroLeadsAsAPhaseBegins(report, theOrders(report, orders), heroId, upTo);
+      const led: unknown = whatAHeroLeadsAsAPhaseBegins(
+        ...([report, theOrders(report, orders), heroId, upTo] as unknown as Parameters<
+          typeof whatAHeroLeadsAsAPhaseBegins
+        >),
+      );
       return led;
     },
     projectedGarrisonOn: (report, orders, provId, upTo) => {
       const held: unknown = whatAGarrisonHoldsAsAPhaseBegins(
-        report,
-        theOrders(report, orders),
-        provId,
-        upTo,
-        undefined,
-        undefined,
+        ...([report, theOrders(report, orders), provId, upTo, undefined, undefined] as unknown as Parameters<
+          typeof whatAGarrisonHoldsAsAPhaseBegins
+        >),
       );
       return held;
     },
     // the Pick Up field's garrison: as the phase begins, with what his comrades leave in it that phase
     thePickUpFieldsGarrisonOn: (report, orders, provId, ph, heroId) => {
       const held: unknown = whatAGarrisonHoldsAsAPhaseBegins(
-        report,
-        theOrders(report, orders),
-        provId,
-        ph,
-        true,
-        heroId,
+        ...([report, theOrders(report, orders), provId, ph, true, heroId] as unknown as Parameters<
+          typeof whatAGarrisonHoldsAsAPhaseBegins
+        >),
       );
       return held;
     },
     actionsForOn: (report, c) => {
-      const offered: unknown = theOrdersTheFormOffersAHero(report, c);
+      const offered: unknown = theOrdersTheFormOffersAHero(
+        ...([report, c] as unknown as Parameters<typeof theOrdersTheFormOffersAHero>),
+      );
       return offered;
     },
     theOrderListsNames: () => ACTIONS.slice(),
@@ -320,17 +323,29 @@ export function theForecastsImported(): TheForecasts {
       Object.entries(L79_ORDERS).map(([name, o]) => ({ name, skill: o.skill, level: o.lvl })),
     // the companies the Move note counts in his column marching in the phase `ph`, each by its name
     theMoveNotesColumnOn: (report, orders, heroId, ph) => {
-      const host: unknown = theColumnAHeroMarchesWithInAPhase(report, theOrders(report, orders), heroId, ph);
+      const host: unknown = theColumnAHeroMarchesWithInAPhase(
+        ...([report, theOrders(report, orders), heroId, ph] as unknown as Parameters<
+          typeof theColumnAHeroMarchesWithInAPhase
+        >),
+      );
       return objects(isObj(host) ? host['armies'] : null).map((a) => String(a['unitName']));
     },
     // the treasury ledger's two sums
     theLedgerOn: (report, orders) => {
-      const ledger: unknown = theTreasuryLedgerOnTheseOrders(report, theOrders(report, orders));
+      const ledger: unknown = theTreasuryLedgerOnTheseOrders(
+        ...([report, theOrders(report, orders)] as unknown as Parameters<typeof theTreasuryLedgerOnTheseOrders>),
+      );
       return isObj(ledger) ? { spend: ledger['spend'], 'new wages': ledger['newWages'] } : null;
     },
     // the note under his Practice Skill order of the phase `ph`: its markup
     thePracticeNoteOn: (report, orders, c, ph) =>
-      String(theNoteUnderAnOrderThatQuotesItsChance(report, forTheHero(c, orders), c, 'Practice Skill', ph)),
+      String(
+        theNoteUnderAnOrderThatQuotesItsChance(
+          ...([report, forTheHero(c, orders), c, 'Practice Skill', ph] as unknown as Parameters<
+            typeof theNoteUnderAnOrderThatQuotesItsChance
+          >),
+        ),
+      ),
   };
 }
 

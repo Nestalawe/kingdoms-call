@@ -68,7 +68,12 @@ declare var currentProfile: PageState;
 declare var joiningGame: PageState;
 declare var joinSkills: PageState;
 declare var currentGamePlayer: PageState;
-declare var currentReport: PageState;
+/** The report the page shows: as the order form's forecasts read it (P1-16b: its one typed reader, the forecasts' page
+ *  side, hands it to them), every part optional. */
+declare var currentReport:
+  | import('./ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts').TheReportAsTheOrderFormReadsIt
+  | null
+  | undefined;
 declare var diploChoices: PageState;
 declare var reckoningCall: PageState;
 declare var _heroOrder: PageState;

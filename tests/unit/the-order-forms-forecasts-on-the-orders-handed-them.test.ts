@@ -79,7 +79,9 @@ function aReport({ neutralAt2 = false, alignment = 'Good' } = {}) {
   };
 }
 const where = (report: unknown, orders: unknown, heroId: number, upTo: number): unknown => {
-  const at: unknown = whereAHeroStandsAfterTheOrdersBefore(report, orders, heroId, upTo);
+  const at: unknown = whereAHeroStandsAfterTheOrdersBefore(
+    ...([report, orders, heroId, upTo] as unknown as Parameters<typeof whereAHeroStandsAfterTheOrdersBefore>),
+  );
   return typeof at === 'object' && at !== null && 'id' in at ? at.id : at;
 };
 const names = (companies: unknown): unknown[] =>
@@ -226,7 +228,9 @@ describe('what the later phases read of the earlier ones, on the orders handed i
           : a,
     );
   const theColumn = (report: unknown, orders: unknown, heroId: number, ph: number) => {
-    const column: unknown = theColumnAHeroMarchesWithInAPhase(report, orders, heroId, ph);
+    const column: unknown = theColumnAHeroMarchesWithInAPhase(
+      ...([report, orders, heroId, ph] as unknown as Parameters<typeof theColumnAHeroMarchesWithInAPhase>),
+    );
     return {
       armies: labels(typeof column === 'object' && column !== null && 'armies' in column ? column.armies : null),
       sameFrom: typeof column === 'object' && column !== null && 'sameFrom' in column ? column.sameFrom : null,
@@ -272,11 +276,9 @@ describe('what the later phases read of the earlier ones, on the orders handed i
       1: [{ action: 'Recruit Armies', target: ticks.join(','), recruit: { musterTo: 'to:2', ticked: ticks } }],
     });
     const musters: unknown = whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders(
-      report,
-      orders,
-      report.characters[0],
-      0,
-      ticks,
+      ...([report, orders, report.characters[0], 0, ticks] as unknown as Parameters<
+        typeof whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders
+      >),
     );
     const part = (key: string) =>
       labels(typeof musters === 'object' && musters !== null && key in musters ? Reflect.get(musters, key) : null);

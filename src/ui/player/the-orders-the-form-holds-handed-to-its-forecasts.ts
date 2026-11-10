@@ -16,6 +16,7 @@ import {
   theNoteUnderAnOrderThatQuotesItsChance,
   theOrdersTheFormOffersAHero,
   theTreasuryLedgerOnTheseOrders,
+  type AHeroAsTheOrderFormReadsHim,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // The value a page's field holds (an input's, a select's), or undefined where the element holds none.
@@ -135,12 +136,16 @@ function theOrdersTheFormHoldsForTheHero(c: unknown): TheOrdersTheFormHolds {
 export function computeOrderLedgerP(): unknown {
   return theTreasuryLedgerOnTheseOrders(currentReport, theOrdersTheFormHolds(currentReport));
 }
-export function orderChanceNote(c: unknown, action: unknown, ph: unknown): unknown {
+export function orderChanceNote(
+  c: AHeroAsTheOrderFormReadsHim | null | undefined,
+  action: unknown,
+  ph: number,
+): unknown {
   return theNoteUnderAnOrderThatQuotesItsChance(currentReport, theOrdersTheFormHoldsForTheHero(c), c, action, ph);
 }
-export function actionsFor(c: unknown): unknown {
+export function actionsFor(c: AHeroAsTheOrderFormReadsHim | null | undefined): unknown {
   return theOrdersTheFormOffersAHero(currentReport, c);
 }
-export function projectedMagicLevels(c: unknown, ph: unknown): unknown {
+export function projectedMagicLevels(c: AHeroAsTheOrderFormReadsHim | null | undefined, ph: number): unknown {
   return theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise(theOrdersTheFormHoldsForTheHero(c), c, ph);
 }

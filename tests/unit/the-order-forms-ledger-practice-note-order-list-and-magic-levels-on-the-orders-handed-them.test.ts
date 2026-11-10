@@ -186,11 +186,13 @@ describe('the note under an order that quotes its chance', () => {
   const note = (c: unknown, action: string, target: string | null, report: unknown = aReport()) =>
     String(
       theNoteUnderAnOrderThatQuotesItsChance(
-        report,
-        ordersOf(target === null ? {} : { 1: [{}, { action, target }] }),
-        c,
-        action,
-        1,
+        ...([
+          report,
+          ordersOf(target === null ? {} : { 1: [{}, { action, target }] }),
+          c,
+          action,
+          1,
+        ] as unknown as Parameters<typeof theNoteUnderAnOrderThatQuotesItsChance>),
       ),
     );
   test('the Practice Skill note: the chance at his level, half again for a Human of a Human realm; no roll at 5', () => {
