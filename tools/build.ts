@@ -168,8 +168,15 @@ export function siteOptions(src = SRC, pub = PUBLIC): InlineConfig {
   };
 }
 
-/** The options for one page's build into `out`. */
-function pageOptions(page: string, out: string, src: string, pub: string, first: boolean): InlineConfig {
+/** The options for one page's build into `out` (with each bundle's source map beside it when `sourceMaps`). */
+function pageOptions(
+  page: string,
+  out: string,
+  src: string,
+  pub: string,
+  first: boolean,
+  sourceMaps: boolean,
+): InlineConfig {
   const site = siteOptions(src, pub);
   return {
     ...site,
@@ -177,12 +184,20 @@ function pageOptions(page: string, out: string, src: string, pub: string, first:
     publicDir: first ? pub : false,
     build: {
       ...site.build,
+      sourcemap: sourceMaps,
       outDir: out,
       emptyOutDir: first,
       rolldownOptions: {
         ...KEEP_THE_CODE,
         input: { [page.replace(/\.html$/, '')]: path.join(src, page) },
-        output: { entryFileNames: 'assets/[name]-[hash].js', assetFileNames: 'assets/[name]-[hash][extname]' },
+        output: {
+          entryFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash][extname]',
+          // The build writes into a temporary folder first: each source by its full path, so the map reads anywhere.
+          ...(sourceMaps && {
+            sourcemapPathTransform: (source: string, map: string) => path.resolve(path.dirname(map), source),
+          }),
+        },
       },
     },
   };
@@ -269,8 +284,14 @@ export interface BuildResult {
 }
 
 /** Builds the site from `src` (and `pub`, copied as it is) into `out`: writes what changed, removes what is no longer
- *  made. */
-export async function buildSite(out = SITE, src = SRC, pub = PUBLIC): Promise<BuildResult> {
+ *  made. `sourceMaps`: each bundle with its source map (tools/proof/the-changed-lines-no-tour-reaches.ts; the site
+ *  published has none). */
+export async function buildSite(
+  out = SITE,
+  src = SRC,
+  pub = PUBLIC,
+  { sourceMaps = false }: { sourceMaps?: boolean } = {},
+): Promise<BuildResult> {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-build-'));
   try {
     const pages = pagesIn(src);
@@ -280,7 +301,7 @@ export async function buildSite(out = SITE, src = SRC, pub = PUBLIC): Promise<Bu
     const realSrc = fs.realpathSync(src);
     const modules: Record<string, string[]> = {};
     for (const page of pages) {
-      const result = await viteBuild(pageOptions(page, temp, src, pub, first));
+      const result = await viteBuild(pageOptions(page, temp, src, pub, first, sourceMaps));
       first = false;
       const outputs = (Array.isArray(result) ? result : [result]).flatMap((r) => ('output' in r ? r.output : []));
       modules[page] = [

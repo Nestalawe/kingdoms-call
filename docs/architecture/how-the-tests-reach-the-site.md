@@ -209,7 +209,9 @@
   expected, and its screen is the boot-failure message. In jsdom, a promise the page leaves rejected is a page error (jsdom
   doesn't fire `unhandledrejection`, so Node would otherwise end the test). A step may hold the page's own short timers:
   the player portal's orders mode queues them and runs them in order at the end of each step, so no screen is caught
-  halfway; every player-portal mode holds the Dispatches poll.
+  halfway; every player-portal mode holds the Dispatches poll. The report and Dispatches modes run the orders' running
+  account's timers at once, and the GM watcher's failed run reads a fixed time, so two runs of one site show the same
+  screens (P1-16a: 10 runs, none differ).
 - **`tests/tools/same-dom.js`** (run by hand, not in `npm test`): every screen of a tour, with ordinary names, on two copies of
   the site (e.g. `main`'s and the branch's), compared as parsed DOM; a string in a handler is compared by its value, however
   it's quoted, and a footer's build line reads as the stamp it replaced. A pull request that converts a page shows its output.

@@ -1,12 +1,13 @@
 # The proof tools
 
-Six tools that show what a change to the engine (or to a page's database calls) does, and what the balance matrix
-can't show. The matrix (`npm run balance`) compares its 120 games with their baselines. It is strong on the code those games reach, and
+Seven tools that show what a change to the engine (or to a page's code or its database calls) does, and what the balance
+matrix can't show. The matrix (`npm run balance`) compares its 120 games with their baselines. It is strong on the code those games reach, and
 blind to the rest. These tools tell which lines the games reach, plant a fault and show what catches it, and compare
 the base's words with the branch's where the games don't go.
 
 Use them on a branch whose matrix is identical to its baseline (a refactor). All are local tools: none runs in CI or
-in `npm test`. Each has a unit test on a small made-up input (`tests/unit/`, below).
+in `npm test`. Each but the tours' has a unit test on a small made-up input (`tests/unit/`, below); the tours' was proved by its
+trial on four planted faults (plan P1-16a).
 
 | Command | What it answers | Time (14 cores) |
 |---|---|---|
@@ -16,6 +17,7 @@ in `npm test`. Each has a unit test on a small made-up input (`tests/unit/`, bel
 | `npm run proof:gm-logs -- --base <ref>` | Whether every game's GM log is byte-identical, base against branch | about 70 s |
 | `npm run proof:two-engines -- --cases <module> --base <ref>` | Whether the base's engine and the branch's write the same lines on staged cases | a few seconds, plus the cases' own time |
 | `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the page tests and tours send, to compare base with branch | the tests' own time |
+| `npm run proof:tours -- --base <ref>` | Which lines of `src/` this branch changed that no screen tour reaches (nor, for the GM page, the matrix) | about 50 s; 2 minutes more with the matrix |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
 branch it is stacked on. The branch is always the working tree as it is now, uncommitted changes and new files too.
@@ -137,6 +139,45 @@ diff <(cat /tmp/rec-base/*.jsonl | sort) <(cat /tmp/rec-row/*.jsonl | sort)
 A test that reads the branch's own new code (a new way in) is left out of both (`--exclude`). The two fuzz scripts'
 GM-log reads differ between any two runs (their turn numbers hang on a short wait), so set them aside. The browser
 specs aren't recorded.
+
+## 6. The lines a page's code changed that no tour reaches
+
+A page row's list (plan P1-16, Decision 6): its tier 1, with the screen tours where the matrix stands for the engine.
+Run it on the row's branch, naming the branch the row is stacked on:
+
+```sh
+npm run proof:tours -- --base p1-16b-the-two-forecast-files   # the row's base branch, or main
+```
+
+[the-changed-lines-no-tour-reaches.ts](the-changed-lines-no-tour-reaches.ts):
+
+1. builds this working tree's site with each bundle's source map (`buildSite`'s `sourceMaps`) into `coverage/tours/site/`;
+2. runs every mode of the four screen tours (`tests/lib/screens.js`, as `tests/tools/same-dom.js` does) in jsdom on it, in a
+   process Node's V8 coverage watches;
+3. when the branch changed a file of the GM page's bundle, plays the matrix's set A on that site's GM page
+   (`KC_SITE`) under the coverage too (`--matrix always` or `never` to say otherwise);
+4. maps what ran, character by character, through each bundle's source map to the lines of `src/`, and sorts the lines
+   the branch changed since `--base` (as `proof:unreached` does): **not reached**, **partly reached** (some of the line
+   never ran: the right of a `||`, a branch of `? :`, a callback never called) and **reached**, counted only. It also
+   lists the files no page's bundle holds code of, and where lines were only taken out.
+
+Each line listed needs a case that fails on a fault planted in it (a unit test where the file imports in Node, else a page
+test), or a reason by name why the code makes it so. It writes `coverage/tours/lines.json` (every line's reach) and two logs
+(`tours.log`, the pages' own errors; `matrix.log`, with the matrix's verdict). It is a list, not a gate: it exits 0. Options: `--out DIR`, `--json`.
+
+Its trial (P1-16a; the fault planted, then this tool, the screens against the base's site and the matrix):
+
+| Planted fault | The screens (`same-dom.js`) | The matrix (set A) | This list |
+|---|---|---|---|
+| A, `titles.ts`: a vacant title sorted as 0, not 1000 | 71 of 102 differ (the player's tour) | – | reached, counted |
+| B, `hall-of-fame.ts`: a record's provinces + 1 | none differ (the GM's tour) | 56 of 60 games differ (`writes`, `results`) | reached, counted (the matrix played) |
+| C, `titles.ts`: the standings' prize fallback `\|\| 0` made `\|\| 1` | none differ | – | partly reached, listed (its callback never runs) |
+| D, `titles.ts`: "Your realm" `\|\|` made `??` | none differ | – | partly reached, listed |
+
+**What it can't see.** A line whose code all ran reads reached whatever values it ran with: a `||` made `??` on such a
+line, where no tour meets the falsy value, shows nowhere (plant D's line is listed because some of it never runs); the
+forms that keep a value by construction carry such lines. The other browser specs and set B aren't run. The screens must be steady for the screens' check to mean anything: two runs of one
+site show the same screens (the tours hold the page's short timers and the watcher's clock).
 
 ## The tests
 
