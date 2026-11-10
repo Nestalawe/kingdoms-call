@@ -714,3 +714,95 @@ export function deadHeroRealmTagP(h, report, opts) {
   const col = k && k.color ? (opts.dark ? _tintForDarkTooltip(k.color) || '#e8b84b' : reportColour(k.color)) : null;
   return kcHtml`${lead}a hero of <span style="${col ? `color:${col};` : ''}font-weight:600">${nm}</span>`;
 }
+
+// ── DIPLOMACY PANEL (alliance system) ────
+// Renders the realms this player has encountered with the current relation and the declarations
+// available. A pending choice is stored in diploChoices and submitted with the turn's orders. Item
+// 9: the report card keeps the INFORMATION (relations, pending declarations); the Declare War /
+// Propose Peace / Propose Alliance BUTTONS now live at the top of the Orders column
+// (#orders-diplomacy), beside the dispatch composer and the Concede control.
+export function renderDiplomacy(report) {
+  _renderDiplomacyInto(document.getElementById('report-diplomacy'), report, false);
+  _renderDiplomacyInto(document.getElementById('orders-diplomacy'), report, true);
+}
+export function _renderDiplomacyInto(el, report, withControls) {
+  if (!el) return;
+  const known = (report && report.diplomacy && report.diplomacy.known) || [];
+  const alliancesAllowed = !report || !report.diplomacy || report.diplomacy.alliancesAllowed !== false;
+  // 2026-09-29 (Toby): SAFE START — no Treat or declaration of war until the orders for Turn N
+  // (safeStartUntil, 6). The engine discards any sent earlier; here the controls are withdrawn.
+  const _ssUntil = Number(report && report.diplomacy && report.diplomacy.safeStartUntil) || 0;
+  const _ssLive = Number(report && (report._liveTurn || report.turn)) || 1;
+  const safeLocked = _ssUntil > 0 && _ssLive < _ssUntil;
+  if (!known.length) {
+    el.innerHTML = kcHtml`<em style="color:#3a3224;font-size:.85rem">You have not yet encountered another realm. Once you see a rival's province or one of their characters, you may treat with them here.</em>`;
+    return;
+  }
+  const relBadge = (r) =>
+    r === 'allied'
+      ? kcHtml`<span class="pill" style="background:#dff0d8;color:#1d541d">🤝 Allied</span>`
+      : r === 'enemy'
+        ? kcHtml`<span class="pill" style="background:#f7d7d7;color:#701010">⚔ At war</span>`
+        : kcHtml`<span class="pill" style="background:#efe6cc;color:#3a2e18">🕊 Neutral</span>`;
+  const btn = (idx, val, label, bg) =>
+    kcHtml`<button onclick="setDiploChoice(${kcArg(idx)},${kcArg(val)})" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
+  const pendingLabel = (k) => {
+    const p = diploChoices[k.index];
+    if (p === 'enemy') return k.relation === 'allied' ? 'Break Alliance' : 'Declare War';
+    if (p === 'treat') return k.relation === 'enemy' ? 'Propose Peace' : 'Propose Alliance';
+    return '';
+  };
+  el.innerHTML = kcHtml`${known.map((k) => {
+    const pending = diploChoices[k.index];
+    let controls;
+    // 2026-09-27 (Toby item 7): a realm that has CONCEDED (or been extinguished) has left the game.
+    // There is nobody left to treat with, so the entry says so and every control is withdrawn — and
+    // any declaration already pending against them this turn is dropped rather than sent into the
+    // void.
+    if (k.conceded || k.eliminated) {
+      if (pending != null) delete diploChoices[k.index];
+      controls = kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated && !k.conceded ? 'This dynasty is extinguished' : 'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
+    } else if (safeLocked) {
+      if (pending != null) delete diploChoices[k.index];
+      controls = withControls
+        ? kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>🕊 Safe Start — no Treat or declaration of war may be made until the orders for Turn ${_ssUntil}.</em></div>`
+        : '';
+    } else if (!withControls) {
+      controls = pending
+        ? kcHtml`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`
+        : '';
+    } else if (pending) {
+      controls = kcHtml`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;<button onclick="setDiploChoice(${kcArg(k.index)},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
+    } else if (k.relation === 'neutral') {
+      controls = kcHtml`${alliancesAllowed ? kcHtml`${btn(k.index, 'treat', 'Propose Alliance', '#2d6a2d')} ` : ''}${btn(k.index, 'enemy', 'Declare War', '#8a1c1c')}`;
+    } else if (k.relation === 'enemy') {
+      controls = btn(k.index, 'treat', 'Propose Peace', '#2d6a2d');
+    } else {
+      // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
+      // for an Evil or Undead crown, which goes straight to war.
+      const _darkSelf = ['Evil', 'Undead'].includes((report.kingdom || {}).alignment);
+      controls = btn(k.index, 'enemy', _darkSelf ? 'Break Alliance — War' : 'Break Alliance', '#8a1c1c');
+    }
+    return kcHtml`<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <strong style="color:${reportColour(k.color) || '#333'}">${k.name}</strong>
+        <span style="font-size:.72rem;color:#332c20">${k.alignment || ''}</span>
+        ${k.conceded || k.eliminated ? kcHtml`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated && !k.conceded ? '\u2620 Extinguished' : '\u{1F3F3} Conceded'}${k.conceded && k.concededTurn ? ` (turn ${k.concededTurn})` : ''}</span>` : relBadge(k.relation)}
+        ${!k.conceded && !k.eliminated && k.offeredUs ? kcHtml`<span class="pill" style="background:#e3eefa;color:#1c3e6a" title="They proposed this last turn. Propose it back this turn to seal it.">🕊 Offered ${k.offeredUs === 'peace' ? 'peace' : 'an alliance'} last turn</span>` : ''}
+      </div>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
+    </div>`;
+  })}${
+    withControls && safeLocked
+      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">🕊 <strong>Safe Start:</strong> this is a Safe Start game — diplomacy opens with the orders for <strong>Turn ${_ssUntil}</strong> (this is Turn ${_ssLive}).</div>`
+      : ''
+  }${
+    withControls && !safeLocked
+      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${
+          alliancesAllowed
+            ? kcHtml`An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.`
+            : kcHtml`In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).`
+        } Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`
+      : ''
+  }`;
+}

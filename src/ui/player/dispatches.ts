@@ -2,8 +2,6 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { sb } from './startup.ts';
 import { applyDeskViews } from './layout.ts';
-import { fetchGameSlots } from './sign-in.ts';
-import { _activeSectionId } from './game-lists.ts';
 import { _tintForDarkTooltip } from './map-symbols.ts';
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -823,3 +821,20 @@ document.addEventListener('visibilitychange', () => {
     } catch (e) {}
   } else refreshMsgBadgeSoon(); // the unread count on the Dispatches tab, too
 });
+
+export function _activeSectionId() {
+  const s = document.querySelector('section.section-active');
+  return s ? s.id : null;
+}
+
+// ── OTHER REALMS' SLOTS (P0-20) ────
+// The portal sees other realms only through get_game_slots: each slot's game_id, player_index, is_bot,
+// orders_submitted, and alignment while the game is in setup. It never reads another realm's game_players row
+// (the database answers those only for their own player and the game's GM: Unit B). Games the account may not
+// see are left out.
+export async function fetchGameSlots(gameIds) {
+  const ids = [...new Set((gameIds || []).filter(Boolean))];
+  if (!ids.length) return { data: [], error: null };
+  const { data, error } = await sb.rpc('get_game_slots', { p_games: ids });
+  return { data: Array.isArray(data) ? data : [], error };
+}

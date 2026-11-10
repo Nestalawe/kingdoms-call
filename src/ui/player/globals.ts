@@ -12,39 +12,24 @@ import {
   doSignIn,
   doSignOut,
   doSignUp,
-  loadAllGames,
   openGameFresh,
   setAuthTab,
   submitChangePassword,
   submitDisplayName,
 } from './sign-in.ts';
+import { loadMyGames, loadOpenGames, pollForUpdates, toggleArchivedGamesCard, loadAllGames } from './game-lists.ts';
+import { adjustSkill, doJoinGame, hideSkillTip, joinGame, showJoinGame, showSkillTip } from './join-and-chronicle.ts';
 import {
-  loadMyGames,
-  loadOpenGames,
-  pollForUpdates,
-  refreshOpenReport,
-  toggleArchivedGamesCard,
-} from './game-lists.ts';
-import {
-  adjustSkill,
-  doJoinGame,
-  hideSkillTip,
-  joinGame,
-  loadPastReport,
-  returnToCurrentReport,
-  showJoinGame,
-  showSkillTip,
-} from './join-and-chronicle.ts';
-import {
-  _renderDiplomacyInto,
   collapseAllChronicle,
   collapseAllSections,
   openReport,
-  renderDiplomacy,
   renderReportView,
   setDiploChoice,
   toggleBattleFold,
   toggleSection,
+  loadPastReport,
+  refreshOpenReport,
+  returnToCurrentReport,
 } from './report.ts';
 import { renderReckoningOrders, renderTitles, setReckoningCall } from './titles.ts';
 import { groupHeroesByLocation, moveHeroBlock, refreshAllMoveModeNotes } from './move-analysis.ts';
@@ -62,6 +47,7 @@ import {
   openPreSchoolPicker,
   removeEncounterTactic,
   allocateHeirSkill,
+  reviseOrders,
 } from './orders-form.ts';
 import {
   onActionChange,
@@ -80,14 +66,13 @@ import {
   cancelSubmit,
   doSaveOrders,
   doSubmitOrders,
-  reviseOrders,
   updateAlignmentDesc,
   updateRaceDesc,
   updateTemperDesc,
 } from './briefing-and-submit.ts';
 import { PRIMAL_ARMY_SPEEDS, druidNeedP } from './skills-and-projections.ts';
 import { buildTargetField, leaveToggleAll, updateLeaveTarget, updateRecruitTarget } from './order-targets.ts';
-import { popupKnownChars, terrorNoteP } from './map-symbols.ts';
+import { popupKnownChars, terrorNoteP, _renderDiplomacyInto, renderDiplomacy } from './map-symbols.ts';
 import { _closeMapTip, highlightMapProv, locateOnMap, showFullscreenMap, toggleMapIcon } from './map.ts';
 import {
   createMsgGroup,
@@ -152,7 +137,7 @@ Object.assign(window, {
   joinGame, // ui/player/join-and-chronicle.ts
   jumpToReportSection, // ui/player/init.ts
   leaveToggleAll, // ui/player/order-targets.ts
-  loadAllGames, // ui/player/sign-in.ts
+  loadAllGames, // ui/player/game-lists.ts
   loadOlderMessages, // ui/player/dispatches.ts
   locateOnMap, // ui/player/map.ts
   mapZoom, // ui/player/layout.ts
@@ -166,12 +151,12 @@ Object.assign(window, {
   rebuildTargetWrap, // ui/player/pre-orders.ts
   refreshAllMoveModeNotes, // ui/player/move-analysis.ts
   refreshMessages, // ui/player/dispatches.ts
-  refreshOpenReport, // ui/player/game-lists.ts
+  refreshOpenReport, // ui/player/report.ts
   removeEncounterTactic, // ui/player/orders-form.ts
   reportMessage, // ui/player/dispatches.ts
   resubmitOrders, // ui/player/pre-orders.ts
-  returnToCurrentReport, // ui/player/join-and-chronicle.ts
-  reviseOrders, // ui/player/briefing-and-submit.ts
+  returnToCurrentReport, // ui/player/report.ts
+  reviseOrders, // ui/player/orders-form.ts
   sendMessage, // ui/player/dispatches.ts
   setAuthTab, // ui/player/sign-in.ts
   setConcede, // ui/player/items-and-heroes.ts
@@ -208,7 +193,7 @@ Object.assign(window, {
 });
 // The names its tests reach.
 Object.assign(window, {
-  _renderDiplomacyInto, // ui/player/report.ts
+  _renderDiplomacyInto, // ui/player/map-symbols.ts
   buildOrdersForm, // ui/player/orders-form.ts
   buildTargetField, // ui/player/order-targets.ts
   computeOrderLedgerP, // ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts
@@ -219,7 +204,7 @@ Object.assign(window, {
   loadMyGames, // ui/player/game-lists.ts
   loadMyReports, // ui/player/dispatches.ts
   loadOpenGames, // ui/player/game-lists.ts
-  loadPastReport, // ui/player/join-and-chronicle.ts
+  loadPastReport, // ui/player/report.ts
   msgChannelKeyOf, // ui/player/dispatches.ts
   msgContacts, // ui/player/dispatches.ts
   openReport, // ui/player/report.ts
@@ -227,7 +212,7 @@ Object.assign(window, {
   popupKnownChars, // ui/player/map-symbols.ts
   poSeaAnalysis, // ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts
   PRIMAL_ARMY_SPEEDS, // ui/player/skills-and-projections.ts
-  renderDiplomacy, // ui/player/report.ts
+  renderDiplomacy, // ui/player/map-symbols.ts
   renderMessageThread, // ui/player/dispatches.ts
   renderReckoningOrders, // ui/player/titles.ts
   renderReportView, // ui/player/report.ts

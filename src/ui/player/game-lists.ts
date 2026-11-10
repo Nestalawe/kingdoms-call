@@ -2,9 +2,15 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { gameMetaOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { sb } from './startup.ts';
-import { fetchGameSlots } from './sign-in.ts';
-import { openReport } from './report.ts';
-import { KC_MSG_READS, KC_MSG_TABLE, _msgArr, _msgNum, msgChannelKeyOf } from './dispatches.ts';
+import {
+  KC_MSG_READS,
+  KC_MSG_TABLE,
+  _msgArr,
+  _msgNum,
+  msgChannelKeyOf,
+  _activeSectionId,
+  fetchGameSlots,
+} from './dispatches.ts';
 
 // ── LIVE UPDATE POLLING ────
 // A light background poll keeps the portal current without the player having to reload the page. It
@@ -18,11 +24,6 @@ import { KC_MSG_READS, KC_MSG_TABLE, _msgArr, _msgNum, msgChannelKeyOf } from '.
 globalThis._pollTimer = null;
 export let _lastMyGamesSig = null;
 export const POLL_MS = 20000;
-
-export function _activeSectionId() {
-  const s = document.querySelector('section.section-active');
-  return s ? s.id : null;
-}
 
 export function startUpdatePolling() {
   if (_pollTimer) return; // never stack timers
@@ -89,16 +90,6 @@ export async function pollForUpdates() {
   } catch (e) {
     /* transient network/RLS hiccup — try again next tick */
   }
-}
-
-// Manual refresh from the new-turn banner. Re-opens the current report (fetches the fresh
-// turn_report); the player triggered it, so replacing the current view is expected. Any draft they
-// had already saved is reloaded from the server by openReport; a draft only typed but not saved is
-// theirs to re-enter.
-export function refreshOpenReport() {
-  const b = document.getElementById('new-turn-banner');
-  if (b) b.style.display = 'none';
-  if (currentGamePlayerId) openReport(currentGamePlayerId);
 }
 
 export async function loadMyGames() {
@@ -507,4 +498,28 @@ export async function loadOpenGames() {
       <div class="gc-meta" style="opacity:.7">Click to join this game</div>
     </div>`;
   })}`;
+}
+
+// ── GAME LISTS ────
+export async function loadAllGames() {
+  await Promise.all([loadMyGames(), loadOpenGames(), loadGmOffer()]);
+}
+
+// ── GAME MASTER OFFER (P0-32c) ────
+// The Overlord offers an account Game Master (P0-32b): its own game_masters row, open while accepted_at is
+// null. Accept and No thanks are database functions acting on the signed-in account's own offer. The banner
+// is an extra: if the read fails, it just stays hidden.
+export async function loadGmOffer() {
+  const el = document.getElementById('gm-offer-banner');
+  const { data, error } = await sb
+    .from('game_masters')
+    .select('accepted_at')
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
+  const open = !error && data && !data.accepted_at;
+  if (open) {
+    document.getElementById('gm-offer-ask').style.display = 'block';
+    document.getElementById('gm-offer-done').style.display = 'none';
+  }
+  el.style.display = open ? 'block' : 'none';
 }

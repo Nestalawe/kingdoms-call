@@ -2,7 +2,7 @@
 import { kcHtml } from '../shared/kc-safe.ts';
 import { sb } from './startup.ts';
 import { show } from './init.ts';
-import { loadMyGames, loadOpenGames, startUpdatePolling } from './game-lists.ts';
+import { startUpdatePolling, loadAllGames } from './game-lists.ts';
 import { openReport } from './report.ts';
 import { saveMessageReads, stopMessagePolling } from './dispatches.ts';
 
@@ -231,42 +231,6 @@ export function openGameFresh(gamePlayerId) {
   } catch (e) {}
   location.reload();
 }
-
-// ── OTHER REALMS' SLOTS (P0-20) ────
-// The portal sees other realms only through get_game_slots: each slot's game_id, player_index, is_bot,
-// orders_submitted, and alignment while the game is in setup. It never reads another realm's game_players row
-// (the database answers those only for their own player and the game's GM: Unit B). Games the account may not
-// see are left out.
-export async function fetchGameSlots(gameIds) {
-  const ids = [...new Set((gameIds || []).filter(Boolean))];
-  if (!ids.length) return { data: [], error: null };
-  const { data, error } = await sb.rpc('get_game_slots', { p_games: ids });
-  return { data: Array.isArray(data) ? data : [], error };
-}
-
-// ── GAME LISTS ────
-export async function loadAllGames() {
-  await Promise.all([loadMyGames(), loadOpenGames(), loadGmOffer()]);
-}
-
-// ── GAME MASTER OFFER (P0-32c) ────
-// The Overlord offers an account Game Master (P0-32b): its own game_masters row, open while accepted_at is
-// null. Accept and No thanks are database functions acting on the signed-in account's own offer. The banner
-// is an extra: if the read fails, it just stays hidden.
-export async function loadGmOffer() {
-  const el = document.getElementById('gm-offer-banner');
-  const { data, error } = await sb
-    .from('game_masters')
-    .select('accepted_at')
-    .eq('user_id', currentUser.id)
-    .maybeSingle();
-  const open = !error && data && !data.accepted_at;
-  if (open) {
-    document.getElementById('gm-offer-ask').style.display = 'block';
-    document.getElementById('gm-offer-done').style.display = 'none';
-  }
-  el.style.display = open ? 'block' : 'none';
-}
 export async function answerGmOffer(fn) {
   const ask = document.getElementById('gm-offer-ask'),
     msg = document.getElementById('gm-offer-msg');
@@ -293,4 +257,25 @@ export async function acceptGmOffer() {
 export async function declineGmOffer() {
   if (!confirm('Turn down the offer to become a Game Master? The Overlord would have to offer again.')) return;
   if (await answerGmOffer('gm_decline_offer')) document.getElementById('gm-offer-banner').style.display = 'none';
+}
+
+// ── INIT ────
+export async function init() {
+  try {
+    document.getElementById('spinner').style.display = 'none';
+    const {
+      data: { session },
+      error,
+    } = await sb.auth.getSession();
+    if (error) throw error;
+    if (session) {
+      currentUser = session.user;
+      await onSignedIn();
+    } else show('sec-auth');
+  } catch (e) {
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('spinner').textContent =
+      'Connection error: ' + e.message + '. Check your internet connection and refresh.';
+    console.error('Init failed:', e);
+  }
 }

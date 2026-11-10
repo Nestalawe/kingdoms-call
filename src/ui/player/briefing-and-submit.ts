@@ -5,7 +5,6 @@ import { SEASONS } from './items-and-heroes.ts';
 import { collectMessages } from './init.ts';
 import { setMobileView } from './layout.ts';
 import { currentHeroOrderP } from './move-analysis.ts';
-import { buildOrdersForm } from './orders-form.ts';
 import { bulletizeDesc } from './map-symbols.ts';
 import { UNIT_ABILITIES } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
 import {
@@ -236,26 +235,6 @@ export async function doSaveOrders() {
       msg.style.display = 'none';
     }, 3000);
   }
-}
-
-export async function reviseOrders() {
-  // Mark orders as not submitted so the player can edit and resubmit
-  const gp = currentGamePlayer;
-  if (!gp) return;
-  const { error } = await sb.from('game_players').update({ orders_submitted: false }).eq('id', gp.id);
-  if (error) {
-    console.error(error);
-    return;
-  }
-  // Update local state and rebuild form with existing orders pre-filled
-  setOrdersSubmittedUI(false); // the turn is no longer submitted — say so at the top of the column
-  const chars = currentReport?.characters || [];
-  buildOrdersForm(chars, false, gp.orders, currentReport?.turn || 1);
-  document.getElementById('orders-msg').innerHTML =
-    '<div class="msg-warning">✏ Revising orders — your previous orders are pre-filled. Make changes and resubmit.</div>';
-  document.getElementById('submit-btn').disabled = false;
-  document.getElementById('submit-btn').textContent =
-    `Resubmit Orders for Turn ${currentReport?._liveTurn || currentReport?.turn || 1}`;
 }
 
 export async function doSubmitOrders() {

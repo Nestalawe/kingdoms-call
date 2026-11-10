@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcArg, kcHtml } from '../shared/kc-safe.ts';
+import { kcHtml } from '../shared/kc-safe.ts';
 import { KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
   CREATURE_ARMIES,
@@ -28,11 +28,11 @@ import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-h
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
 import { refreshOrdersVisibility } from './layout.ts';
 import { turnDeadlineText } from './game-lists.ts';
-import { buildChronicle, loadPastReport, returnToCurrentReport } from './join-and-chronicle.ts';
+import { buildChronicle } from './join-and-chronicle.ts';
 import { renderMastery, renderTitles } from './titles.ts';
 import { unitEmoji } from './order-chances.ts';
 import { buildOrdersForm } from './orders-form.ts';
-import { itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.ts';
+import { itemAcquiredTagP, itemLoreTip, unitAbilityTip, restoreSubmitWrap } from './briefing-and-submit.ts';
 import { capitalise, druidNeedP, formatRace, skillRowHTML, armyLabel } from './skills-and-projections.ts';
 import {
   CHIEFTAIN_MARKER_COLOR,
@@ -44,6 +44,7 @@ import {
   spiedExtraP,
   terrorNoteP,
   deadHeroRealmTagP,
+  renderDiplomacy,
 } from './map-symbols.ts';
 import { ensureProvinceLinking, renderPlayerMap } from './map.ts';
 import { initMessaging } from './dispatches.ts';
@@ -1020,98 +1021,6 @@ export function renderReportView(report) {
     ensureProvinceLinking();
   } catch (e) {} // every province name in the report becomes a map link
 }
-
-// ── DIPLOMACY PANEL (alliance system) ────
-// Renders the realms this player has encountered with the current relation and the declarations
-// available. A pending choice is stored in diploChoices and submitted with the turn's orders. Item
-// 9: the report card keeps the INFORMATION (relations, pending declarations); the Declare War /
-// Propose Peace / Propose Alliance BUTTONS now live at the top of the Orders column
-// (#orders-diplomacy), beside the dispatch composer and the Concede control.
-export function renderDiplomacy(report) {
-  _renderDiplomacyInto(document.getElementById('report-diplomacy'), report, false);
-  _renderDiplomacyInto(document.getElementById('orders-diplomacy'), report, true);
-}
-export function _renderDiplomacyInto(el, report, withControls) {
-  if (!el) return;
-  const known = (report && report.diplomacy && report.diplomacy.known) || [];
-  const alliancesAllowed = !report || !report.diplomacy || report.diplomacy.alliancesAllowed !== false;
-  // 2026-09-29 (Toby): SAFE START — no Treat or declaration of war until the orders for Turn N
-  // (safeStartUntil, 6). The engine discards any sent earlier; here the controls are withdrawn.
-  const _ssUntil = Number(report && report.diplomacy && report.diplomacy.safeStartUntil) || 0;
-  const _ssLive = Number(report && (report._liveTurn || report.turn)) || 1;
-  const safeLocked = _ssUntil > 0 && _ssLive < _ssUntil;
-  if (!known.length) {
-    el.innerHTML = kcHtml`<em style="color:#3a3224;font-size:.85rem">You have not yet encountered another realm. Once you see a rival's province or one of their characters, you may treat with them here.</em>`;
-    return;
-  }
-  const relBadge = (r) =>
-    r === 'allied'
-      ? kcHtml`<span class="pill" style="background:#dff0d8;color:#1d541d">🤝 Allied</span>`
-      : r === 'enemy'
-        ? kcHtml`<span class="pill" style="background:#f7d7d7;color:#701010">⚔ At war</span>`
-        : kcHtml`<span class="pill" style="background:#efe6cc;color:#3a2e18">🕊 Neutral</span>`;
-  const btn = (idx, val, label, bg) =>
-    kcHtml`<button onclick="setDiploChoice(${kcArg(idx)},${kcArg(val)})" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
-  const pendingLabel = (k) => {
-    const p = diploChoices[k.index];
-    if (p === 'enemy') return k.relation === 'allied' ? 'Break Alliance' : 'Declare War';
-    if (p === 'treat') return k.relation === 'enemy' ? 'Propose Peace' : 'Propose Alliance';
-    return '';
-  };
-  el.innerHTML = kcHtml`${known.map((k) => {
-    const pending = diploChoices[k.index];
-    let controls;
-    // 2026-09-27 (Toby item 7): a realm that has CONCEDED (or been extinguished) has left the game.
-    // There is nobody left to treat with, so the entry says so and every control is withdrawn — and
-    // any declaration already pending against them this turn is dropped rather than sent into the
-    // void.
-    if (k.conceded || k.eliminated) {
-      if (pending != null) delete diploChoices[k.index];
-      controls = kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated && !k.conceded ? 'This dynasty is extinguished' : 'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
-    } else if (safeLocked) {
-      if (pending != null) delete diploChoices[k.index];
-      controls = withControls
-        ? kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>🕊 Safe Start — no Treat or declaration of war may be made until the orders for Turn ${_ssUntil}.</em></div>`
-        : '';
-    } else if (!withControls) {
-      controls = pending
-        ? kcHtml`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`
-        : '';
-    } else if (pending) {
-      controls = kcHtml`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;<button onclick="setDiploChoice(${kcArg(k.index)},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
-    } else if (k.relation === 'neutral') {
-      controls = kcHtml`${alliancesAllowed ? kcHtml`${btn(k.index, 'treat', 'Propose Alliance', '#2d6a2d')} ` : ''}${btn(k.index, 'enemy', 'Declare War', '#8a1c1c')}`;
-    } else if (k.relation === 'enemy') {
-      controls = btn(k.index, 'treat', 'Propose Peace', '#2d6a2d');
-    } else {
-      // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
-      // for an Evil or Undead crown, which goes straight to war.
-      const _darkSelf = ['Evil', 'Undead'].includes((report.kingdom || {}).alignment);
-      controls = btn(k.index, 'enemy', _darkSelf ? 'Break Alliance — War' : 'Break Alliance', '#8a1c1c');
-    }
-    return kcHtml`<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <strong style="color:${reportColour(k.color) || '#333'}">${k.name}</strong>
-        <span style="font-size:.72rem;color:#332c20">${k.alignment || ''}</span>
-        ${k.conceded || k.eliminated ? kcHtml`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated && !k.conceded ? '\u2620 Extinguished' : '\u{1F3F3} Conceded'}${k.conceded && k.concededTurn ? ` (turn ${k.concededTurn})` : ''}</span>` : relBadge(k.relation)}
-        ${!k.conceded && !k.eliminated && k.offeredUs ? kcHtml`<span class="pill" style="background:#e3eefa;color:#1c3e6a" title="They proposed this last turn. Propose it back this turn to seal it.">🕊 Offered ${k.offeredUs === 'peace' ? 'peace' : 'an alliance'} last turn</span>` : ''}
-      </div>
-      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
-    </div>`;
-  })}${
-    withControls && safeLocked
-      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">🕊 <strong>Safe Start:</strong> this is a Safe Start game — diplomacy opens with the orders for <strong>Turn ${_ssUntil}</strong> (this is Turn ${_ssLive}).</div>`
-      : ''
-  }${
-    withControls && !safeLocked
-      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${
-          alliancesAllowed
-            ? kcHtml`An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.`
-            : kcHtml`In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).`
-        } Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`
-      : ''
-  }`;
-}
 export function setDiploChoice(idx, val) {
   if (val == null || val === 'null') delete diploChoices[idx];
   else diploChoices[idx] = val;
@@ -1175,4 +1084,131 @@ export function initReportCollapsers() {
     b.addEventListener('click', () => toggleSection(b));
     h.appendChild(b);
   });
+}
+
+// Manual refresh from the new-turn banner. Re-opens the current report (fetches the fresh
+// turn_report); the player triggered it, so replacing the current view is expected. Any draft they
+// had already saved is reloaded from the server by openReport; a draft only typed but not saved is
+// theirs to re-enter.
+export function refreshOpenReport() {
+  const b = document.getElementById('new-turn-banner');
+  if (b) b.style.display = 'none';
+  if (currentGamePlayerId) openReport(currentGamePlayerId);
+} // end buildChronicle
+
+export async function loadPastReport(gameId, playerIndex, turn) {
+  viewedTurn = turn;
+  refreshTurnNavHighlight();
+  const banner = document.getElementById('prev-report-banner');
+  banner.style.display = 'block';
+  const pi = playerIndex;
+
+  // Strictly hide orders and submit sections — past-turn views must never affect orders.
+  document.getElementById('orders-card').style.display = 'none';
+  refreshOrdersVisibility(false); // past turn — orders unavailable (desk-safe)
+  const sw = document.getElementById('orders-submit-wrap');
+  if (sw) sw.style.display = 'none';
+  document.getElementById('orders-msg').innerHTML = '';
+  document.getElementById('save-msg').style.display = 'none';
+
+  // 1. Try to load this player's full snapshot for the turn (gives the correct historical MAP).
+  let snapshot = null;
+  try {
+    const { data: snapRows } = await sb
+      .from('turn_logs')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('turn', turn)
+      .eq('player_index', pi)
+      .limit(1);
+    if (snapRows && snapRows[0] && snapRows[0].entries) {
+      const e = snapRows[0].entries;
+      snapshot = typeof e === 'string' ? JSON.parse(e) : e;
+    }
+  } catch (err) {
+    snapshot = null;
+  }
+
+  banner.innerHTML = kcHtml`Viewing Turn ${snapshotTurnLabel(turn)}${turn === 0 ? ' (founding)' : ''} — read only. <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
+
+  if (snapshot) {
+    // Whole report body straight from the snapshot — map, chronicle, AND every other section revert
+    // to this turn. (Order forms stay hidden; renderReportView only paints the read-only view.)
+    viewingReport = snapshot;
+    renderReportView(snapshot);
+    return;
+  }
+
+  // 2. Fallback for games/turns saved before per-turn snapshots existed:
+  // rebuild the chronicle from the GM full log and keep the current map (noted in the banner).
+  const { data: logs } = await sb
+    .from('turn_logs')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('turn', turn)
+    .eq('player_index', -1)
+    .limit(1);
+  const { data: g } = await sb.from('games').select('*').eq('id', gameId).single();
+  const gameState = g?.game_state || {};
+  const allChars = gameState.characters || [];
+  const ownCharIds = new Set(allChars.filter((c) => c.player === pi).map((c) => c.id));
+
+  const entries = ((logs && logs[0]?.entries) || [])
+    .filter((e) => {
+      if ((e.targets || []).includes(pi)) return true;
+      if (e.actor === pi) return true;
+      if (e.charId != null && ownCharIds.has(e.charId)) return true;
+      if (Array.isArray(e.charIds) && e.charIds.some((id) => ownCharIds.has(id))) return true;
+      return false;
+    })
+    .map((e) => {
+      // Route to one of THIS player's characters via charId, or via charIds (a duel/battle names
+      // both).
+      let cid =
+        e.charId != null && ownCharIds.has(e.charId)
+          ? e.charId
+          : Array.isArray(e.charIds)
+            ? (e.charIds.find((id) => ownCharIds.has(id)) ?? null)
+            : null;
+      return { type: e.type, text: e.text, charId: cid, phase: e.phase ?? null };
+    });
+
+  if (entries.length > 0) {
+    buildChronicle(
+      entries,
+      allChars.filter((c) => c.player === pi),
+    );
+  } else if (turn === 0) {
+    document.getElementById('report-log').innerHTML =
+      kcHtml`<div class="log-entry system">Your realm is founded. The realm awaits your first commands.</div>`;
+  }
+  banner.innerHTML = kcHtml`Viewing Turn ${snapshotTurnLabel(turn)} — read only. <span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
+}
+
+export function returnToCurrentReport() {
+  viewedTurn = null;
+  refreshTurnNavHighlight();
+  document.getElementById('prev-report-banner').style.display = 'none';
+  document.getElementById('orders-card').style.display = 'block';
+  refreshOrdersVisibility(true); // back on the live turn — orders available (desk tab governs display)
+  // Restore the correct submit wrap based on the TRUE submitted state (not on whatever DOM happens
+  // to be there). If the live turn is not submitted, ensure a live Submit button — this clears any
+  // stale "success / ↺ Resubmit" block from an earlier submission. If it IS submitted, leave the
+  // existing submitted/resubmit control in place.
+  const submitWrap = document.getElementById('orders-submit-wrap');
+  const _submitted = !!(currentGamePlayer && currentGamePlayer.orders_submitted);
+  if (submitWrap && !_submitted && !submitWrap.querySelector('#submit-btn')) {
+    restoreSubmitWrap('Submit');
+  }
+  if (submitWrap) submitWrap.style.display = 'flex';
+  // Restore the WHOLE current-turn body. loadPastReport paints every read-only section (realm,
+  // provinces, intel, discoveries, diplomacy, titles, mastery, map AND chronicle) from the
+  // past-turn snapshot, so returning must repaint every one of them from the current report — not
+  // just the map and chronicle. Repainting only those two left the other sections frozen on the
+  // turn just viewed, which read as a report "muddled" with a previous one until the browser was
+  // reloaded.
+  viewingReport = currentReport;
+  if (currentReport) {
+    renderReportView(currentReport);
+  }
 }

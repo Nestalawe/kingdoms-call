@@ -19,7 +19,6 @@ import {
   SEASONS,
   renderPreSchool,
 } from './items-and-heroes.ts';
-import { renderDiplomacy } from './report.ts';
 import { renderReckoningOrders } from './titles.ts';
 import { SPELL_TO_SCHOOL, unitEmoji } from './order-chances.ts';
 import {
@@ -42,10 +41,16 @@ import {
   syncResurrectCard,
   refreshLaterCastSpells,
 } from './pre-orders.ts';
-import { itemAcquiredTagP, itemLoreTip, restoreSubmitWrap, doSaveOrders } from './briefing-and-submit.ts';
+import {
+  itemAcquiredTagP,
+  itemLoreTip,
+  restoreSubmitWrap,
+  doSaveOrders,
+  setOrdersSubmittedUI,
+} from './briefing-and-submit.ts';
 import { druidNeedP, formatRace, skillRowHTML, armyLabel } from './skills-and-projections.ts';
 import { buildTargetField, refreshExploreNotes } from './order-targets.ts';
-import { provLinkHtml } from './map-symbols.ts';
+import { provLinkHtml, renderDiplomacy } from './map-symbols.ts';
 import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   actionsFor,
@@ -57,6 +62,7 @@ import {
   effMagicLvl,
   skillsUnseenP,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+import { sb } from './startup.ts';
 
 // ── TREASURY LEDGER (2026-09-23, Toby item 6) ────
 export function renderOrderLedgerP() {
@@ -923,4 +929,24 @@ export async function allocateHeirSkill(charId, skill, delta) {
     currentGamePlayer?.orders,
     currentReport?._liveTurn || currentReport?.turn || 1,
   );
+}
+
+export async function reviseOrders() {
+  // Mark orders as not submitted so the player can edit and resubmit
+  const gp = currentGamePlayer;
+  if (!gp) return;
+  const { error } = await sb.from('game_players').update({ orders_submitted: false }).eq('id', gp.id);
+  if (error) {
+    console.error(error);
+    return;
+  }
+  // Update local state and rebuild form with existing orders pre-filled
+  setOrdersSubmittedUI(false); // the turn is no longer submitted — say so at the top of the column
+  const chars = currentReport?.characters || [];
+  buildOrdersForm(chars, false, gp.orders, currentReport?.turn || 1);
+  document.getElementById('orders-msg').innerHTML =
+    '<div class="msg-warning">✏ Revising orders — your previous orders are pre-filled. Make changes and resubmit.</div>';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('submit-btn').textContent =
+    `Resubmit Orders for Turn ${currentReport?._liveTurn || currentReport?.turn || 1}`;
 }

@@ -1,11 +1,10 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_HEX_DIRS, KC_TEMPERS } from '../../content/kingdoms-call-data.ts';
+import { KC_HEX_DIRS, KC_TEMPERS, KC_MAGIC_SCHOOLS } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import { theHexNextToAProvinceInADirection } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import { sb } from './startup.ts';
-import { SKILL_COLUMNS } from './join-and-chronicle.ts';
 import {
   PO_SEA_TYPES,
   poSeaAnalysis,
@@ -487,3 +486,9 @@ export function refreshEncounterPlan(charId, tactics) {
   if (!list) return;
   list.innerHTML = kcHtml`${tactics.map((t, i) => epRowHtml(String(charId), t, i, tactics.length))}`;
 }
+// Column grouping for the join screen: martial | special | magic
+export const SKILL_COLUMNS = [
+  { head: '⚔ Martial', skills: ['melee', 'archery', 'tactical', 'march', 'naval'] },
+  { head: '✦ Special', skills: ['sage', 'spy', 'thief', 'druid', 'explorer'] },
+  { head: '✨ Magic', skills: KC_MAGIC_SCHOOLS.slice() },
+];

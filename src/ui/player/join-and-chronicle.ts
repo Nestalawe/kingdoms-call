@@ -1,17 +1,17 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_MAGIC_SCHOOLS, KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.ts';
+import { KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.ts';
 import { sb } from './startup.ts';
 import { GUARD_POWER_COLORS_P } from './items-and-heroes.ts';
-import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
-import { refreshOrdersVisibility } from './layout.ts';
-import { fetchGameSlots, loadAllGames } from './sign-in.ts';
-import { renderReportView } from './report.ts';
+import { show } from './init.ts';
 import { roundReportNumbers, unitEmoji } from './order-chances.ts';
-import { restoreSubmitWrap, updateAlignmentDesc, updateRaceDesc, updateTemperDesc } from './briefing-and-submit.ts';
+import { updateAlignmentDesc, updateRaceDesc, updateTemperDesc } from './briefing-and-submit.ts';
 import { CHIEFTAIN_MARKER_COLOR, reportColour } from './map-symbols.ts';
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import { armyLabel } from './skills-and-projections.ts';
+import { fetchGameSlots } from './dispatches.ts';
+import { SKILL_COLUMNS } from './move-analysis.ts';
+import { loadAllGames } from './game-lists.ts';
 
 // ── JOIN GAME ────
 export async function showJoinGame(gameId, gameName, maxP, joined, gmName, worldSize) {
@@ -89,12 +89,6 @@ export const SKILL_INFO = {
   necromancy:
     'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Plague (Undead realms start with Necromancy 1).',
 };
-// Column grouping for the join screen: martial | special | magic
-export const SKILL_COLUMNS = [
-  { head: '⚔ Martial', skills: ['melee', 'archery', 'tactical', 'march', 'naval'] },
-  { head: '✦ Special', skills: ['sage', 'spy', 'thief', 'druid', 'explorer'] },
-  { head: '✨ Magic', skills: KC_MAGIC_SCHOOLS.slice() },
-];
 
 export function renderSkillGrid() {
   const spent = Object.values(joinSkills).reduce((s, v) => s + v, 0);
@@ -895,121 +889,4 @@ export function buildChronicle(log, chars_for_log) {
     document.getElementById('report-log').innerHTML =
       kcHtml`${_reckoningBanner}${html.length ? html : kcHtml`<em style="color:#3a3224;font-size:.85rem">No events yet.</em>`}`;
   } // end else (log.length > 0)
-} // end buildChronicle
-
-export async function loadPastReport(gameId, playerIndex, turn) {
-  viewedTurn = turn;
-  refreshTurnNavHighlight();
-  const banner = document.getElementById('prev-report-banner');
-  banner.style.display = 'block';
-  const pi = playerIndex;
-
-  // Strictly hide orders and submit sections — past-turn views must never affect orders.
-  document.getElementById('orders-card').style.display = 'none';
-  refreshOrdersVisibility(false); // past turn — orders unavailable (desk-safe)
-  const sw = document.getElementById('orders-submit-wrap');
-  if (sw) sw.style.display = 'none';
-  document.getElementById('orders-msg').innerHTML = '';
-  document.getElementById('save-msg').style.display = 'none';
-
-  // 1. Try to load this player's full snapshot for the turn (gives the correct historical MAP).
-  let snapshot = null;
-  try {
-    const { data: snapRows } = await sb
-      .from('turn_logs')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('turn', turn)
-      .eq('player_index', pi)
-      .limit(1);
-    if (snapRows && snapRows[0] && snapRows[0].entries) {
-      const e = snapRows[0].entries;
-      snapshot = typeof e === 'string' ? JSON.parse(e) : e;
-    }
-  } catch (err) {
-    snapshot = null;
-  }
-
-  banner.innerHTML = kcHtml`Viewing Turn ${snapshotTurnLabel(turn)}${turn === 0 ? ' (founding)' : ''} — read only. <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
-
-  if (snapshot) {
-    // Whole report body straight from the snapshot — map, chronicle, AND every other section revert
-    // to this turn. (Order forms stay hidden; renderReportView only paints the read-only view.)
-    viewingReport = snapshot;
-    renderReportView(snapshot);
-    return;
-  }
-
-  // 2. Fallback for games/turns saved before per-turn snapshots existed:
-  // rebuild the chronicle from the GM full log and keep the current map (noted in the banner).
-  const { data: logs } = await sb
-    .from('turn_logs')
-    .select('*')
-    .eq('game_id', gameId)
-    .eq('turn', turn)
-    .eq('player_index', -1)
-    .limit(1);
-  const { data: g } = await sb.from('games').select('*').eq('id', gameId).single();
-  const gameState = g?.game_state || {};
-  const allChars = gameState.characters || [];
-  const ownCharIds = new Set(allChars.filter((c) => c.player === pi).map((c) => c.id));
-
-  const entries = ((logs && logs[0]?.entries) || [])
-    .filter((e) => {
-      if ((e.targets || []).includes(pi)) return true;
-      if (e.actor === pi) return true;
-      if (e.charId != null && ownCharIds.has(e.charId)) return true;
-      if (Array.isArray(e.charIds) && e.charIds.some((id) => ownCharIds.has(id))) return true;
-      return false;
-    })
-    .map((e) => {
-      // Route to one of THIS player's characters via charId, or via charIds (a duel/battle names
-      // both).
-      let cid =
-        e.charId != null && ownCharIds.has(e.charId)
-          ? e.charId
-          : Array.isArray(e.charIds)
-            ? (e.charIds.find((id) => ownCharIds.has(id)) ?? null)
-            : null;
-      return { type: e.type, text: e.text, charId: cid, phase: e.phase ?? null };
-    });
-
-  if (entries.length > 0) {
-    buildChronicle(
-      entries,
-      allChars.filter((c) => c.player === pi),
-    );
-  } else if (turn === 0) {
-    document.getElementById('report-log').innerHTML =
-      kcHtml`<div class="log-entry system">Your realm is founded. The realm awaits your first commands.</div>`;
-  }
-  banner.innerHTML = kcHtml`Viewing Turn ${snapshotTurnLabel(turn)} — read only. <span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
-}
-
-export function returnToCurrentReport() {
-  viewedTurn = null;
-  refreshTurnNavHighlight();
-  document.getElementById('prev-report-banner').style.display = 'none';
-  document.getElementById('orders-card').style.display = 'block';
-  refreshOrdersVisibility(true); // back on the live turn — orders available (desk tab governs display)
-  // Restore the correct submit wrap based on the TRUE submitted state (not on whatever DOM happens
-  // to be there). If the live turn is not submitted, ensure a live Submit button — this clears any
-  // stale "success / ↺ Resubmit" block from an earlier submission. If it IS submitted, leave the
-  // existing submitted/resubmit control in place.
-  const submitWrap = document.getElementById('orders-submit-wrap');
-  const _submitted = !!(currentGamePlayer && currentGamePlayer.orders_submitted);
-  if (submitWrap && !_submitted && !submitWrap.querySelector('#submit-btn')) {
-    restoreSubmitWrap('Submit');
-  }
-  if (submitWrap) submitWrap.style.display = 'flex';
-  // Restore the WHOLE current-turn body. loadPastReport paints every read-only section (realm,
-  // provinces, intel, discoveries, diplomacy, titles, mastery, map AND chronicle) from the
-  // past-turn snapshot, so returning must repaint every one of them from the current report — not
-  // just the map and chronicle. Repainting only those two left the other sections frozen on the
-  // turn just viewed, which read as a report "muddled" with a previous one until the browser was
-  // reloaded.
-  viewingReport = currentReport;
-  if (currentReport) {
-    renderReportView(currentReport);
-  }
 }

@@ -514,16 +514,16 @@
       "count": 1
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 8
+      "count": 7
     },
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 4
+      "count": 1
     },
     "no-empty": {
       "count": 2
     },
     "prefer-const": {
-      "count": 5
+      "count": 4
     }
   },
   "src/ui/player/layout.ts": {
@@ -535,6 +535,9 @@
     }
   },
   "src/ui/player/map-symbols.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 2
+    },
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
@@ -590,13 +593,13 @@
   },
   "src/ui/player/report.ts": {
     "@typescript-eslint/no-dynamic-delete": {
-      "count": 3
+      "count": 1
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 5
+      "count": 6
     },
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
+      "count": 4
     },
     "no-empty": {
       "count": 3
@@ -605,7 +608,7 @@
       "count": 1
     },
     "prefer-const": {
-      "count": 3
+      "count": 4
     }
   },
   "src/ui/player/sign-in.ts": {
