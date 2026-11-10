@@ -3,8 +3,8 @@
 // Three tests read them: tests/unit/the-order-forms-forecasts-agree-with-the-turn.test.ts (the order form's forecasts,
 // its treasury ledger, its Practice Skill note and its order list, imported from their files with no vm: below, "The
 // forecasts, imported"), tests/unit/the-rules-the-shared-door-hands-the-portal-answer-alike-on-the-report-and-the-state.test.ts
-// (the projection cases) and tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts (the copies
-// tests/lib/player-portal-copies.ts imports from their page files, or runs by their statements, and hands the checks).
+// (the projection cases) and tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts (the copies it imports
+// from their page files and hands the checks).
 //
 // Two ways of checking (Decision 7):
 //   projection  the engine's function on the report's value against it on the state's value the report made it from:
