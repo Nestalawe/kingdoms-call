@@ -639,6 +639,9 @@ const playerPortal={
       +"Math.random=(()=>{let s=7;return ()=>(s=s*16807%2147483647)/2147483647;})();"
       +"{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms>=1000?0:st(f,ms,...a); }"
       +"{ const si=window.setInterval; window.setInterval=(f,ms,...a)=>ms>=1000?0:si(f,ms,...a); }";
+    // the orders' running account redraws 120 ms after a change, so a screen could catch it before or after: in the
+    // report's and the dispatches' steps its timer runs at once instead
+    const now="{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms===120?(f(...a),0):st(f,ms,...a); }";
     if(!m.user) return [
       ['sign-in refused',fixed+`sb.auth.signInWithPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('si-email','player@example.test')+val('si-password',W.password)+'doSignIn()'],
@@ -667,7 +670,7 @@ const playerPortal={
       const stage=`supabase.stub.DB.game_players.push(${lit(D.slot)});supabase.stub.DB.game_messages=${lit(D.messages)};`
         +`supabase.stub.DB.message_reports=${lit(D.reports)};supabase.stub.DB.game_message_reads=${lit([D.reads])};`;
       return [
-        ['Dispatches, to every realm',fixed+stage+"openReport('s10')"],
+        ['Dispatches, to every realm',fixed+now+stage+"openReport('s10')"],
         ['Dispatches, a private conversation',"setMsgChannel('p:0-1')"],
         ['Dispatches, a conversation of three',"setMsgChannel('p:0-1-3')"],
         ['Dispatches, choosing realms for a new conversation','toggleMsgGroupPicker(true)'],
@@ -739,9 +742,6 @@ const playerPortal={
       ];
     }
     if(m.report){
-      // the orders' running account redraws 120 ms after a change, so a screen could catch it before or after: its
-      // timer runs at once instead
-      const now="{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms===120?(f(...a),0):st(f,ms,...a); }";
       // the Call the Reckoning control lives in the orders form; without it, a stand-in holds its place
       const wrap="if(!document.getElementById('reckoning-wrap')){ const d=document.createElement('div'); d.id='reckoning-wrap'; document.getElementById('report-titles').after(d); }";
       const titles=o=>`Object.assign(currentReport.titles,${lit(o)});renderTitles(currentReport);${wrap}renderReckoningOrders();`;
