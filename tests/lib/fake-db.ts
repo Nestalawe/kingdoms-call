@@ -3,7 +3,7 @@
 // (bootJsdom's opts.db, tests/lib/boot.js); a unit test calls code that takes a Db with it. It doesn't imitate the
 // access rules: the access layer's tests prove those against the local database. Each of P1-17's area rows adds its
 // area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
-// role and no offer.
+// role and no offer; and no game. The Overlord's functions refuse, as the database refuses anyone but the Overlord.
 import type { ADatabaseAnswer, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 
 /** No answer at all (the network), as an answer the fake gives. */
@@ -35,6 +35,13 @@ function versionAnswer(answer: TheFakeVersionAnswer): ADatabaseAnswer<string> {
 const NO_SUCH_ACCOUNT = { message: 'Invalid login credentials' };
 /** What a change to the signed-in account answers with no one signed in. */
 const NO_SESSION = { message: 'Auth session missing!' };
+
+/** An Overlord's function's refusal, in the database's words (an exception: HTTP 400). */
+const refusedAsNotTheOverlord = (message: string): ADatabaseAnswer<never> => ({
+  data: null,
+  error: { message },
+  status: 400,
+});
 
 /** A fake database answering kc_db_version() with `versions` in order, the last one again from then on. */
 export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFakeVersionAnswer[]]): AFakeDb {
@@ -112,6 +119,36 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
           },
           status: 400,
         }))(),
+    },
+    theOverlordsAccounts: {
+      everyAccountAsTheOverlordSeesIt: answering('rpc:overlord_accounts', () =>
+        refusedAsNotTheOverlord('Only the Overlord can list the accounts.'),
+      ),
+      suspendThisAccountUntil: answering('rpc:account_suspend', () =>
+        refusedAsNotTheOverlord('Only the Overlord can suspend an account.'),
+      ),
+      liftThisAccountsSuspension: answering('rpc:account_unsuspend', () =>
+        refusedAsNotTheOverlord('Only the Overlord can lift a suspension.'),
+      ),
+      deleteThisAccount: answering('rpc:account_delete', () =>
+        refusedAsNotTheOverlord('Only the Overlord can delete an account.'),
+      ),
+      offerThisAccountGameMaster: answering('rpc:gm_offer', () =>
+        refusedAsNotTheOverlord('Only the Overlord can offer Game Master.'),
+      ),
+      withdrawTheGameMasterOfferToThisAccount: answering('rpc:gm_withdraw_offer', () =>
+        refusedAsNotTheOverlord('Only the Overlord can withdraw an offer.'),
+      ),
+      revokeThisAccountsGameMaster: answering('rpc:gm_revoke', () =>
+        refusedAsNotTheOverlord('Only the Overlord can revoke a Game Master.'),
+      ),
+    },
+    theOverlordsGames: {
+      everyGameNewestFirstFromRowToRow: answering('from:games', () => ({ data: [], error: null, status: 200 })),
+      handThisGameToThisGameMaster: answering('rpc:reassign_game', () =>
+        refusedAsNotTheOverlord('Only the Overlord can hand a game over.'),
+      ),
+      theRealmsNamesOfTheseGames: answering('from:game_players', () => ({ data: [], error: null, status: 200 })),
     },
   };
   return { db, calls };

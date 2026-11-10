@@ -135,7 +135,7 @@ export async function loadAll() {
   await loadReports();
 }
 export async function loadAccounts() {
-  const { data, error } = await sb.rpc('overlord_accounts');
+  const { data, error } = await thePagesDb.theOverlordsAccounts.everyAccountAsTheOverlordSeesIt();
   ACCOUNTS = error ? null : data || [];
   ACCOUNTS_ERROR = error ? error.message : '';
 }
@@ -143,11 +143,7 @@ export async function loadAccounts() {
 export async function loadGames() {
   const rows = [];
   for (let from = 0; ; from += 200) {
-    const { data, error } = await sb
-      .from('games')
-      .select('id,name,gm_user_id,status,turn,max_turns,created_at,meta')
-      .order('created_at', { ascending: false })
-      .range(from, from + 199);
+    const { data, error } = await thePagesDb.theOverlordsGames.everyGameNewestFirstFromRowToRow(from, from + 199);
     if (error) {
       GAMES = null;
       GAMES_ERROR = error.message;
@@ -168,10 +164,7 @@ export async function loadReports() {
   const ids = [...new Set(REPORTS.map((r) => r.game_id))];
   REALMS = {};
   if (ids.length) {
-    const { data: slots } = await sb
-      .from('game_players')
-      .select('game_id,player_index,display_name')
-      .in('game_id', ids);
+    const { data: slots } = await thePagesDb.theOverlordsGames.theRealmsNamesOfTheseGames(ids);
     (slots || []).forEach((s) => {
       (REALMS[s.game_id] = REALMS[s.game_id] || {})[s.player_index] = s.display_name;
     });
@@ -425,15 +418,15 @@ export async function suspend(a, how) {
   )
     return;
   await act(
-    sb.rpc('account_suspend', {
-      p_user: a.user_id,
-      p_until: ms == null ? null : new Date(Date.now() + ms).toISOString(),
-    }),
+    thePagesDb.theOverlordsAccounts.suspendThisAccountUntil(
+      a.user_id,
+      ms == null ? null : new Date(Date.now() + ms).toISOString(),
+    ),
     `${label(a)} is suspended ${words}.`,
   );
 }
 export async function unsuspend(a) {
-  await act(sb.rpc('account_unsuspend', { p_user: a.user_id }), `${label(a)} can sign in again.`);
+  await act(thePagesDb.theOverlordsAccounts.liftThisAccountsSuspension(a.user_id), `${label(a)} can sign in again.`);
 }
 // Deleting: says what goes and what stays, and needs the account's email (or name) typed in. The database refuses while
 // the account runs or plays in an unfinished game, and says which.
@@ -503,21 +496,27 @@ export function deletePanel(a) {
 }
 export async function deleteAccount(a) {
   DELETING = null;
-  await act(sb.rpc('account_delete', { p_user: a.user_id }), `${label(a)}'s account is deleted.`);
+  await act(thePagesDb.theOverlordsAccounts.deleteThisAccount(a.user_id), `${label(a)}'s account is deleted.`);
 }
 export async function offerGm(a) {
   await act(
-    sb.rpc('gm_offer', { p_user: a.user_id }),
+    thePagesDb.theOverlordsAccounts.offerThisAccountGameMaster(a.user_id),
     `Offered Game Master to ${a.name || a.email}. They'll see it at the top of their player portal.`,
   );
 }
 export async function withdrawOffer(a) {
-  await act(sb.rpc('gm_withdraw_offer', { p_user: a.user_id }), `Withdrew the offer to ${a.name || a.email}.`);
+  await act(
+    thePagesDb.theOverlordsAccounts.withdrawTheGameMasterOfferToThisAccount(a.user_id),
+    `Withdrew the offer to ${a.name || a.email}.`,
+  );
 }
 export async function revokeGm(a) {
   if (!confirm(`Revoke Game Master from ${a.name || a.email}? They can still play.`)) return;
   REVOKING = null;
-  await act(sb.rpc('gm_revoke', { p_user: a.user_id }), `${a.name || a.email} is no longer a Game Master.`);
+  await act(
+    thePagesDb.theOverlordsAccounts.revokeThisAccountsGameMaster(a.user_id),
+    `${a.name || a.email} is no longer a Game Master.`,
+  );
 }
 
 // ── GAMES ─────────────────────────────────────────────────────────────────────────────────────
@@ -551,7 +550,10 @@ export async function reassign(g, to) {
     )
   )
     return;
-  await act(sb.rpc('reassign_game', { p_game: g.id, p_new_gm: to }), `${g.name} is now run by ${nameOf(to)}.`);
+  await act(
+    thePagesDb.theOverlordsGames.handThisGameToThisGameMaster(g.id, to),
+    `${g.name} is now run by ${nameOf(to)}.`,
+  );
 }
 export function renderGames() {
   if (GAMES == null) {

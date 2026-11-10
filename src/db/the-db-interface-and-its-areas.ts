@@ -8,8 +8,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types.ts';
 
+/** The generated types, but for a database function's argument that takes null on purpose (the generator writes every
+ *  argument as never null): account_suspend's p_until (null: until the suspension is lifted). */
+export type TheDatabase = Omit<Database, 'public'> & {
+  readonly public: Omit<Database['public'], 'Functions'> & {
+    readonly Functions: Omit<Database['public']['Functions'], 'account_suspend'> & {
+      readonly account_suspend: { Args: { p_user: string; p_until: string | null }; Returns: undefined };
+    };
+  };
+};
+
 /** The page's database client (supabase-js), typed by the generated types. */
-export type TheDatabaseClient = SupabaseClient<Database>;
+export type TheDatabaseClient = SupabaseClient<TheDatabase>;
 
 /** What a Db function answers, as supabase-js answers it: the data, or the error, and the HTTP status (0: no answer at
  *  all, as the version guard writes a call that threw). */
@@ -74,6 +84,32 @@ export interface AnAccountsNameAndJoiningDate extends AnAccountsName {
 /** The two answers to a Game Master offer (P0-32b): the database functions that give them. */
 export type AnAnswerToTheGameMasterOffer = 'gm_accept_offer' | 'gm_decline_offer';
 
+/** An account, as the Overlord's list of them gives it (overlord_accounts(), P0-32b and P0-32h): its sign-in's
+ *  address, days and suspension, its name, its Game Master role ('game_master', 'offered' or 'none') and its games. */
+export interface AnAccountAsTheOverlordSeesIt {
+  readonly user_id: string;
+  readonly name: string | null;
+  readonly email: string | null;
+  readonly joined: string;
+  readonly last_sign_in: string | null;
+  readonly gm_status: string;
+  readonly games_run: number;
+  readonly games_played: number;
+  readonly suspended_until: string | null;
+}
+
+/** A game, as the Overlord's list of every game gives it: its light columns, never the world. */
+export type AGameAsTheOverlordListsIt = Pick<
+  Database['public']['Tables']['games']['Row'],
+  'id' | 'name' | 'gm_user_id' | 'status' | 'turn' | 'max_turns' | 'created_at' | 'meta'
+>;
+
+/** A realm's name in its game. */
+export type ARealmsName = Pick<
+  Database['public']['Tables']['game_players']['Row'],
+  'game_id' | 'player_index' | 'display_name'
+>;
+
 /** The database, as the pages reach it: one area a row of P1-17. */
 export interface Db {
   /** The version guard's (src/db/kc-db-guard.ts, P0-34). */
@@ -129,6 +165,36 @@ export interface Db {
     /** The signed-in account's answer to its own offer: gm_accept_offer() or gm_decline_offer(). */
     readonly answerTheGameMasterOffer: (answer: AnAnswerToTheGameMasterOffer) => PromiseLike<ADatabaseAnswer<unknown>>;
   };
+  /** The Overlord's accounts (P0-32b, P0-32h): each a database function that refuses anyone but the Overlord. */
+  readonly theOverlordsAccounts: {
+    /** overlord_accounts(): every account, oldest first. */
+    readonly everyAccountAsTheOverlordSeesIt: () => PromiseLike<ADatabaseAnswer<AnAccountAsTheOverlordSeesIt[]>>;
+    /** account_suspend(): the account `user` can't sign in until `until` (null: until it is lifted). */
+    readonly suspendThisAccountUntil: (user: string, until: string | null) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** account_unsuspend(): the account `user` can sign in again. */
+    readonly liftThisAccountsSuspension: (user: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** account_delete(): the account `user` deleted (refused while it runs or plays in an unfinished game). */
+    readonly deleteThisAccount: (user: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** gm_offer(): Game Master offered to the account `user`. */
+    readonly offerThisAccountGameMaster: (user: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** gm_withdraw_offer(): the open offer to the account `user` withdrawn. */
+    readonly withdrawTheGameMasterOfferToThisAccount: (user: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** gm_revoke(): the account `user` no longer a Game Master (refused while it runs an unfinished game). */
+    readonly revokeThisAccountsGameMaster: (user: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+  };
+  /** The Overlord's games (P0-32e): every game, handing one over, and the realms' names of the games it lists. */
+  readonly theOverlordsGames: {
+    /** Every game the signed-in account may read, newest first, its rows `from` to `to` (both counted, from 0): the
+     *  light columns only. */
+    readonly everyGameNewestFirstFromRowToRow: (
+      from: number,
+      to: number,
+    ) => PromiseLike<ADatabaseAnswer<AGameAsTheOverlordListsIt[]>>;
+    /** reassign_game(): the game `game` run by the Game Master `gameMaster` from now on. */
+    readonly handThisGameToThisGameMaster: (game: string, gameMaster: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** The names of the realms of the games `games`, as the signed-in account may read them. */
+    readonly theRealmsNamesOfTheseGames: (games: readonly string[]) => PromiseLike<ADatabaseAnswer<ARealmsName[]>>;
+  };
 }
 
 /** The page's Db, on its own client: each function sends the query the page sent on that client before. */
@@ -160,6 +226,27 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
       theGameMasterOfferMadeToThisAccount: (id) =>
         client.from('game_masters').select('accepted_at').eq('user_id', id).maybeSingle(),
       answerTheGameMasterOffer: (answer) => client.rpc(answer),
+    },
+    theOverlordsAccounts: {
+      everyAccountAsTheOverlordSeesIt: () => client.rpc('overlord_accounts'),
+      suspendThisAccountUntil: (user, until) => client.rpc('account_suspend', { p_user: user, p_until: until }),
+      liftThisAccountsSuspension: (user) => client.rpc('account_unsuspend', { p_user: user }),
+      deleteThisAccount: (user) => client.rpc('account_delete', { p_user: user }),
+      offerThisAccountGameMaster: (user) => client.rpc('gm_offer', { p_user: user }),
+      withdrawTheGameMasterOfferToThisAccount: (user) => client.rpc('gm_withdraw_offer', { p_user: user }),
+      revokeThisAccountsGameMaster: (user) => client.rpc('gm_revoke', { p_user: user }),
+    },
+    theOverlordsGames: {
+      everyGameNewestFirstFromRowToRow: (from, to) =>
+        client
+          .from('games')
+          .select('id,name,gm_user_id,status,turn,max_turns,created_at,meta')
+          .order('created_at', { ascending: false })
+          .range(from, to),
+      handThisGameToThisGameMaster: (game, gameMaster) =>
+        client.rpc('reassign_game', { p_game: game, p_new_gm: gameMaster }),
+      theRealmsNamesOfTheseGames: (games) =>
+        client.from('game_players').select('game_id,player_index,display_name').in('game_id', games),
     },
   };
 }
