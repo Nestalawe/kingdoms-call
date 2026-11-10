@@ -70,8 +70,8 @@ declare var joinSkills: PageState;
 declare var currentGamePlayer: PageState;
 /** The report the page shows: as the order form's forecasts and the page's lists read it (P1-16b, P1-16c: its typed
  *  readers, the forecasts' page side and items-and-heroes.ts), every part optional. */
-declare var currentReport: import('./ui/player/items-and-heroes.ts').TheReportAsThePagesListsReadIt | null | undefined;
-declare var diploChoices: PageState;
+declare var currentReport: import('./ui/player/map-symbols.ts').TheReportAsTheMapsPopupsReadIt | null | undefined;
+declare var diploChoices: Partial<Record<string, unknown>> | null;
 declare var reckoningCall: PageState;
 declare var _heroOrder: (string | null)[] | null | undefined;
 declare var concedeGame: PageState;

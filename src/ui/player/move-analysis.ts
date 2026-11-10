@@ -68,7 +68,8 @@ function theTargetOfTheOrderInWords(charId: unknown, ph: number): string {
 }
 /** The orders as held (words of JSON, or the object), read for its hero order: a TypeError for none, as the read did. */
 function theHeroOrderHeld(r: unknown): unknown {
-  if (r === null || r === undefined) throw new TypeError(`Cannot read properties of ${String(r)} (reading 'heroOrder')`);
+  if (r === null || r === undefined)
+    throw new TypeError(`Cannot read properties of ${String(r)} (reading 'heroOrder')`);
   return Reflect.get(Object(r), 'heroOrder');
 }
 /** The orders as handed, else an empty object (`existingOrders || {}`). */
@@ -171,8 +172,7 @@ export function poMoveModeNote(
   }
   // Land destination (or an unmapped hex).
   const bits: string[] = [];
-  if (an.aerial)
-    bits.push(`${String(an.aerial)} winged unit${an.aerial !== 1 ? 's' : ''} march with the rest`);
+  if (an.aerial) bits.push(`${String(an.aerial)} winged unit${an.aerial !== 1 ? 's' : ''} march with the rest`);
   if (_navalAboard > 0) {
     // Reaching here means the hard case above did not apply: either the column sets out from SEA
     // (a legal coastal landing), or one of the two hexes is not mapped yet and the ban cannot be

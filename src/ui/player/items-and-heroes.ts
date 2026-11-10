@@ -28,6 +28,7 @@ export interface AHeroAsTheListsReadHim {
 interface ARealmEveryReportNames {
   readonly index?: unknown;
   readonly name?: string | undefined;
+  readonly color?: string | undefined;
 }
 /** A research's pair of leads the player keeps one of (pendingDiscoveryChoices). */
 interface APairOfLeads {

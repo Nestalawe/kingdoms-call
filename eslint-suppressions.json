@@ -495,17 +495,6 @@
       "count": 6
     }
   },
-  "src/ui/player/map-symbols.ts": {
-    "@typescript-eslint/no-dynamic-delete": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-empty": {
-      "count": 1
-    }
-  },
   "src/ui/player/map.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 3
@@ -514,11 +503,6 @@
       "count": 2
     },
     "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/ui/player/move-analysis.ts": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   },

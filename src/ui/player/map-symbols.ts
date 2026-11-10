@@ -1,5 +1,4 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcArg, kcHtml } from '../shared/kc-safe.ts';
+import { kcArg, kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
 import { KC_TERRAIN_COLORS } from '../../content/kingdoms-call-data.ts';
 import { skillFameLabelM, topSkillOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
@@ -7,16 +6,126 @@ import { GD_BY_ALIGNMENT, GUARD_POWER_COLORS_P, realmOfP } from './items-and-her
 import { unitEmoji } from './order-chances.ts';
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import { armyLabel } from './skills-and-projections.ts';
+import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import type { TheReportAsThePagesListsReadIt } from './items-and-heroes.ts';
+
+/** A realm the diplomacy panel and the popup's owner line read: its index, name, colour, relation and standing. */
+interface ARealmTheDiplomacyShows {
+  readonly index?: unknown;
+  readonly name?: string | undefined;
+  readonly color?: string | undefined;
+  readonly alignment?: string | null | undefined;
+  readonly relation?: string | null | undefined;
+  readonly conceded?: unknown;
+  readonly concededTurn?: number | null | undefined;
+  readonly eliminated?: unknown;
+  readonly offeredUs?: unknown;
+}
+/** A reading of a province's graves (graveIntel): the turn it was taken, and the dead it names. */
+interface AGraveReading {
+  readonly provinceId?: number | null | undefined;
+  readonly turn?: number | null | undefined;
+  readonly detail?: readonly { readonly n: number; readonly k: string }[] | null | undefined;
+  readonly detailPartial?: unknown;
+}
+/** The report as the map's popups, the dead heroes' tags and the diplomacy panel read it. */
+export interface TheReportAsTheMapsPopupsReadIt extends TheReportAsThePagesListsReadIt {
+  readonly diplomacy?:
+    | {
+        readonly known?: readonly ARealmTheDiplomacyShows[] | null | undefined;
+        readonly alliancesAllowed?: unknown;
+        readonly safeStartUntil?: unknown;
+      }
+    | null
+    | undefined;
+  readonly _liveTurn?: number | null | undefined;
+  readonly turn?: number | null | undefined;
+  readonly turnNumber?: number | null | undefined;
+  readonly graveIntel?: readonly (AGraveReading | null | undefined)[] | null | undefined;
+}
+/** A marker of the map's one symbol table (MAP_SYM). */
+interface AMapSymbol {
+  readonly glyph: string;
+  readonly text: boolean;
+  readonly fill: string | null;
+  readonly label: string;
+  readonly legend?: string | undefined;
+  readonly path?: string | undefined;
+  readonly box?: number | undefined;
+}
+/** A lair or a ritual site of a province, as the popup and the province cards name it. */
+interface AProvincesFeature {
+  readonly name?: string | undefined;
+  readonly monsterPower?: string | undefined;
+  readonly power?: string | undefined;
+  readonly monsterCat?: string | undefined;
+  readonly cleared?: unknown;
+  readonly ritualSite?: unknown;
+}
+/** A Grand Design standing in a province. */
+interface AGrandDesignStanding {
+  readonly name?: string | undefined;
+  readonly ownerName?: string | undefined;
+  readonly active?: unknown;
+}
+/** A hero the popup lists in a province (the report's `characters` of the map's province). */
+interface AHeroThePopupLists {
+  readonly id?: unknown;
+  readonly name?: string | undefined;
+  readonly isOwn?: unknown;
+  readonly isWanderer?: unknown;
+  readonly isNeutralGuard?: unknown;
+  readonly isKing?: unknown;
+  readonly ownerColor?: string | undefined;
+  readonly ownerName?: string | undefined;
+  readonly armyBand?: string | undefined;
+  readonly armyCount?: number | undefined;
+}
+/** A fallen hero the report knows of: where he lies, and whose he was. */
+interface AFallenHero {
+  readonly id?: unknown;
+  readonly name?: string | undefined;
+  readonly locationId?: unknown;
+  readonly isKing?: unknown;
+  readonly player?: unknown;
+}
+/** A province of the map as its popup reads it. */
+interface AProvinceThePopupReads {
+  readonly id?: number | null | undefined;
+  readonly owner?: unknown;
+  readonly ownerName?: string | undefined;
+  readonly ownerColor?: string | undefined;
+  readonly tier?: string | undefined;
+  readonly explored?: number | null | undefined;
+  readonly features?: readonly (AProvincesFeature | null | undefined)[] | null | undefined;
+  readonly garrisonArmies?: readonly { readonly type?: string | undefined }[] | null | undefined;
+  readonly terror?:
+    | { readonly pct?: number | undefined; readonly stacks?: number | undefined; readonly byYou?: unknown }
+    | null
+    | undefined;
+  readonly grandDesign?: AGrandDesignStanding | null | undefined;
+  readonly characters?: readonly AHeroThePopupLists[] | null | undefined;
+}
+/** The declarations the player has chosen this turn (diploChoices): a TypeError for none, as a read on `null` threw. */
+function theDiplomaticChoices(): Partial<Record<string, unknown>> {
+  if (diploChoices === null) throw new TypeError("Cannot read properties of null (reading the realm's declaration)");
+  return diploChoices;
+}
+/** The tables read by a key of words: the skills' names and the guardians' colours (no colour is ''). */
+const theSkillsNames: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
+const theGuardiansColours: Readonly<Partial<Record<string, string>>> = GUARD_POWER_COLORS_P;
 
 // ── TERRAIN COLORS ────
 export const TERRAIN_COLORS_MAP = { ...KC_TERRAIN_COLORS };
 
 // ── TERRAIN ICONS (proper SVG element creation) ────
-export function makeTerrainIcon(svgNS, cx, cy, terrain) {
-  const els = [];
-  const mk = (tag, attrs) => {
+export function makeTerrainIcon(svgNS: string, cx: number, cy: number, terrain: unknown) {
+  const els: Element[] = [];
+  const mk = (tag: string, attrs: Readonly<Record<string, string | number>>) => {
     const el = document.createElementNS(svgNS, tag);
-    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    Object.entries(attrs).forEach(([k, v]) => {
+      el.setAttribute(k, String(v));
+    });
     el.setAttribute('pointer-events', 'none');
     return el;
   };
@@ -25,7 +134,7 @@ export function makeTerrainIcon(svgNS, cx, cy, terrain) {
       // every glyph re-centred on (cx,cy) by its bounding box.
       els.push(
         mk('path', {
-          d: `M${cx - 8},${cy - 1} q4,-4 8,0 q4,4 8,0`,
+          d: `M${String(cx - 8)},${String(cy - 1)} q4,-4 8,0 q4,4 8,0`,
           stroke: 'rgba(255,255,255,0.55)',
           'stroke-width': '1.5',
           fill: 'none',
@@ -33,7 +142,7 @@ export function makeTerrainIcon(svgNS, cx, cy, terrain) {
       );
       els.push(
         mk('path', {
-          d: `M${cx - 6},${cy + 3} q3,-3 6,0 q3,3 6,0`,
+          d: `M${String(cx - 6)},${String(cy + 3)} q3,-3 6,0 q3,3 6,0`,
           stroke: 'rgba(255,255,255,0.35)',
           'stroke-width': '1',
           fill: 'none',
@@ -41,13 +150,15 @@ export function makeTerrainIcon(svgNS, cx, cy, terrain) {
       );
       break;
     case 'forest':
-      [
-        [cx - 8.5, cy - 3],
-        [cx + 0.5, cy - 3],
-      ].forEach(([tx, ty]) => {
+      (
+        [
+          [cx - 8.5, cy - 3],
+          [cx + 0.5, cy - 3],
+        ] satisfies [number, number][]
+      ).forEach(([tx, ty]) => {
         els.push(
           mk('polygon', {
-            points: `${tx},${ty + 6} ${tx + 4},${ty - 2} ${tx + 8},${ty + 6}`,
+            points: `${String(tx)},${String(ty + 6)} ${String(tx + 4)},${String(ty - 2)} ${String(tx + 8)},${String(ty + 6)}`,
             fill: 'rgba(255,255,255,0.35)',
           }),
         );
@@ -65,7 +176,7 @@ export function makeTerrainIcon(svgNS, cx, cy, terrain) {
     case 'mountain':
       els.push(
         mk('polygon', {
-          points: `${cx - 10},${cy + 5} ${cx - 4},${cy - 5} ${cx + 2},${cy + 5}`,
+          points: `${String(cx - 10)},${String(cy + 5)} ${String(cx - 4)},${String(cy - 5)} ${String(cx + 2)},${String(cy + 5)}`,
           fill: 'rgba(255,255,255,0.2)',
           stroke: 'rgba(255,255,255,0.45)',
           'stroke-width': '0.8',
@@ -73,7 +184,7 @@ export function makeTerrainIcon(svgNS, cx, cy, terrain) {
       );
       els.push(
         mk('polygon', {
-          points: `${cx - 2},${cy + 5} ${cx + 4},${cy - 4} ${cx + 10},${cy + 5}`,
+          points: `${String(cx - 2)},${String(cy + 5)} ${String(cx + 4)},${String(cy - 4)} ${String(cx + 10)},${String(cy + 5)}`,
           fill: 'rgba(255,255,255,0.12)',
           stroke: 'rgba(255,255,255,0.35)',
           'stroke-width': '0.8',
@@ -83,7 +194,7 @@ export function makeTerrainIcon(svgNS, cx, cy, terrain) {
     case 'desert':
       els.push(
         mk('path', {
-          d: `M${cx - 12},${cy + 2} q6,-8 12,0 q6,8 12,0`,
+          d: `M${String(cx - 12)},${String(cy + 2)} q6,-8 12,0 q6,8 12,0`,
           stroke: 'rgba(255,255,255,0.4)',
           'stroke-width': '1.5',
           fill: 'none',
@@ -92,14 +203,16 @@ export function makeTerrainIcon(svgNS, cx, cy, terrain) {
       break;
     case 'plain':
       els.push(mk('circle', { cx, cy, r: '3', fill: 'rgba(255,255,255,0.35)' }));
-      [
-        [0, -6],
-        [0, 6],
-        [-5, -3],
-        [5, -3],
-        [-5, 3],
-        [5, 3],
-      ].forEach(([dx, dy]) => {
+      (
+        [
+          [0, -6],
+          [0, 6],
+          [-5, -3],
+          [5, -3],
+          [-5, 3],
+          [5, 3],
+        ] satisfies [number, number][]
+      ).forEach(([dx, dy]) => {
         els.push(
           mk('line', {
             x1: cx + dx * 0.55,
@@ -126,26 +239,26 @@ export function makeTerrainIcon(svgNS, cx, cy, terrain) {
 // period followed by whitespace, so decimals (×1.5), ranges (2–5) and mid-clause em-dashes stay
 // intact (their period isn't followed by a space). Curated wording is preserved verbatim; only the
 // presentation changes. `text` is shown as text, and each **bold** run becomes <strong> (P0-19).
-export function bulletizeDesc(text) {
+export function bulletizeDesc(text: unknown) {
   if (!text) return '';
-  const bold = (s) => s.split(/\*\*(.+?)\*\*/).map((x, i) => (i % 2 ? kcHtml`<strong>${x}</strong>` : x));
-  const raw = String(text).trim();
+  const bold = (s: string) => s.split(/\*\*(.+?)\*\*/).map((x, i) => (i % 2 ? kcHtml`<strong>${x}</strong>` : x));
+  const raw = inWords(text).trim();
   const parts = raw
     .split(/\.\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
-  if (parts.length <= 1) return kcHtml`${bold(String(text))}`;
+  if (parts.length <= 1) return kcHtml`${bold(inWords(text))}`;
   const lis = parts.map((p) => {
     const needsDot = !/[.!?]$/.test(p); // last clause keeps its period; earlier ones had theirs stripped
     return kcHtml`<li style="margin-bottom:4px">${bold(p)}${needsDot ? '.' : ''}</li>`;
   });
   return kcHtml`<ul style="margin:2px 0 0;padding-left:1.15em;line-height:1.45">${lis}</ul>`;
 }
-export function neutralCharLabel(c) {
-  const base = String((c && c.name) || '')
-    .replace(/\s*\(wandering\)/gi, '')
-    .trim();
-  return `${base} (${c && c.isNeutralGuard ? 'local chieftain' : 'wandering'})`;
+export function neutralCharLabel(
+  c: { readonly name?: string | null | undefined; readonly isNeutralGuard?: unknown } | null | undefined,
+) {
+  const base = (c?.name ?? '').replace(/\s*\(wandering\)/gi, '').trim();
+  return `${base} (${c?.isNeutralGuard ? 'local chieftain' : 'wandering'})`;
 }
 // the map tooltip has a very dark background, so a dark realm colour (e.g. navy) would be hard to
 // read. Lighten only low-luminance colours (mix toward white); bright ones pass through.
@@ -154,24 +267,24 @@ export function neutralCharLabel(c) {
 // forms, standings) it is darkened until it reads. Both keep the hue — a realm stays recognisably
 // its own colour — and move only as far as a contrast ratio needs (WCAG: 4.5 on the parchment,
 // 6 on the near-black popup). Map BORDERS and hex fills use the raw realm colour, untouched.
-export function _hexRgb(hex) {
-  if (!hex || typeof hex !== 'string' || hex[0] !== '#' || hex.length !== 7) return null;
+export function _hexRgb(hex: unknown) {
+  if (!hex || typeof hex !== 'string' || !hex.startsWith('#') || hex.length !== 7) return null;
   const v = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
   return v.some(isNaN) ? null : v;
 }
-export function _relLum(rgb) {
-  const f = (c) => {
+export function _relLum(rgb: readonly number[]) {
+  const f = (c: number) => {
     c /= 255;
     return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   };
-  return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]);
+  return 0.2126 * f(Number(rgb[0])) + 0.7152 * f(Number(rgb[1])) + 0.0722 * f(Number(rgb[2]));
 }
-export function _contrast(a, b) {
+export function _contrast(a: readonly number[], b: readonly number[]) {
   const la = _relLum(a),
     lb = _relLum(b);
   return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
-export function _toHex(rgb) {
+export function _toHex(rgb: readonly number[]) {
   return (
     '#' +
     rgb
@@ -183,7 +296,7 @@ export function _toHex(rgb) {
       .join('')
   );
 }
-export function _shiftForContrast(hex, bgHex, target, toward) {
+export function _shiftForContrast<Colour>(hex: Colour, bgHex: string, target: number, toward: number): Colour | string {
   const rgb = _hexRgb(hex),
     bg = _hexRgb(bgHex);
   if (!rgb || !bg) return hex;
@@ -198,23 +311,27 @@ export function _shiftForContrast(hex, bgHex, target, toward) {
 // 2026-09-26b (Toby item 6): the map popup's "Owned by …" line shows the owning realm's name in the
 // realm's own colour (lifted for the dark tooltip) followed by the player's standing with it —
 // Neutral, Allied or Enemy — read from report.diplomacy.known (matched by owner index, else by name).
-export function _ownerLineP(pd) {
-  if (!pd || !pd.ownerName) return 'Unclaimed';
-  const r = currentReport || {};
-  const known = (r.diplomacy && r.diplomacy.known) || [];
-  const k = known.find((x) => pd.owner != null && x.index === pd.owner) || known.find((x) => x.name === pd.ownerName);
-  const col = _tintForDarkTooltip(pd.ownerColor || (k && k.color)) || '#f2e8d0';
+export function _ownerLineP(pd: AProvinceThePopupReads | null | undefined) {
+  if (!pd?.ownerName) return 'Unclaimed';
+  const r: TheReportAsTheMapsPopupsReadIt = currentReport ?? {};
+  const known = r.diplomacy?.known ?? [];
+  const k = known.find((x) => pd.owner != null && x.index === pd.owner) ?? known.find((x) => x.name === pd.ownerName);
+  const col = (_tintForDarkTooltip((pd.ownerColor ?? '') || k?.color) ?? '') || '#f2e8d0';
   const rel = k ? k.relation : null;
-  const REL = { neutral: ['Neutral', '#e8d8b0'], allied: ['Allied', '#9be07a'], enemy: ['Enemy', '#ff7a6a'] };
-  const tag =
-    rel && REL[rel] ? kcHtml` <span style="color:${REL[rel][1]};font-weight:600">(${REL[rel][0]})</span>` : '';
+  const REL: Readonly<Partial<Record<string, readonly [string, string]>>> = {
+    neutral: ['Neutral', '#e8d8b0'],
+    allied: ['Allied', '#9be07a'],
+    enemy: ['Enemy', '#ff7a6a'],
+  };
+  const relShown = rel ? REL[rel] : undefined;
+  const tag = relShown ? kcHtml` <span style="color:${relShown[1]};font-weight:600">(${relShown[0]})</span>` : '';
   return kcHtml`Owned by <strong style="color:${col}">${pd.ownerName}</strong>${tag}`;
 }
-export function _tintForDarkTooltip(hex) {
+export function _tintForDarkTooltip<Colour>(hex: Colour) {
   return _shiftForContrast(hex, '#1a1208', 6, 255);
 }
 // text on the light report parchment (checked against its palest card, #fdf5e0)
-export function reportColour(hex) {
+export function reportColour<Colour>(hex: Colour) {
   return _shiftForContrast(hex, '#fdf5e0', 4.5, 0);
 }
 // ══ ONE SYMBOL TABLE FOR THE HEX AND ITS POPUP ════
@@ -253,7 +370,24 @@ export const MAP_SKULL_PATH =
   'M0,0.45L0.8,1.95L-0.8,1.95Z' +
   'M-1.15,2.95L-0.6,2.95L-0.6,4.75L-1.15,4.75Z' +
   'M0.6,2.95L1.15,2.95L1.15,4.75L0.6,4.75Z';
-export const MAP_SYM = {
+export const MAP_SYM: Readonly<
+  Record<
+    | 'dead'
+    | 'gravesFresh'
+    | 'gravesStale'
+    | 'battle'
+    | 'battleOngoing'
+    | 'duel'
+    | 'capital'
+    | 'flag'
+    | 'consecrate'
+    | 'ritual'
+    | 'wonder'
+    | 'garrison'
+    | 'lair',
+    AMapSymbol
+  >
+> = {
   // 2026-09-21: the fallen hero is a plain WHITE SKULL, not a skull-and-crossbones. Like the graves
   // cross it is SVG geometry rather than a font glyph (MAP_CROSS_PATH's reasoning applies twice over
   // here: ☠ has no dependable text-style glyph on phones, so the emoji font answered with its own
@@ -293,35 +427,36 @@ export const MAP_SYM = {
   garrison: { glyph: '🛡', text: false, fill: null, label: 'a standing garrison holds this province' },
   lair: { glyph: '⭐', text: false, fill: null, label: 'a lair' },
 };
+const theMapSymbolsByKey: Readonly<Partial<Record<string, AMapSymbol>>> = MAP_SYM;
 // Paint one onto an SVG <text> node (the hex). `fill` overrides the table for the markers whose
 // colour is decided at draw time (a realm's crown, a player's banner, a Wonder that has changed
 // hands). 2026-09-18: a `path` marker RETURNS A NEW <g> in place of the <text> the caller built —
 // the caller's x/y/font-size/stroke/filter/title/pointer-events are carried across, so the caller
 // must append the RETURN VALUE, not its own text node. Callers of glyph markers still get their own
 // node back.
-export function mapSymSvg(el, sym, fill) {
-  const f = fill != null ? fill : sym.fill;
+export function mapSymSvg(el: Element, sym: AMapSymbol, fill?: string | null) {
+  const f = fill ?? sym.fill;
   if (sym.path) {
     const ns = 'http://www.w3.org/2000/svg';
-    const size = parseFloat(el.getAttribute('font-size')) || 8,
-      box = sym.box || 10,
+    const size = parseFloat(String(el.getAttribute('font-size'))) || 8,
+      box = (sym.box ?? 0) || 10,
       sc = size / box;
-    const x = parseFloat(el.getAttribute('x')) || 0,
-      y = parseFloat(el.getAttribute('y')) || 0;
+    const x = parseFloat(String(el.getAttribute('x'))) || 0,
+      y = parseFloat(String(el.getAttribute('y'))) || 0;
     const g = document.createElementNS(ns, 'g');
     // a text glyph of this font-size sits on the baseline `y`; centre the geometry where its middle
     // was
-    g.setAttribute('transform', `translate(${x} ${y - size * 0.4}) scale(${sc})`);
+    g.setAttribute('transform', `translate(${String(x)} ${String(y - size * 0.4)}) scale(${String(sc)})`);
     ['filter', 'pointer-events', 'opacity'].forEach((a) => {
-      if (el.hasAttribute(a)) g.setAttribute(a, el.getAttribute(a));
+      if (el.hasAttribute(a)) g.setAttribute(a, String(el.getAttribute(a)));
     });
     const p = document.createElementNS(ns, 'path');
     p.setAttribute('d', sym.path);
     p.setAttribute('fill-rule', 'evenodd'); // multi-subpath markers (the skull) punch holes; harmless on single-subpath ones
     if (f != null) p.setAttribute('fill', f);
     if (el.hasAttribute('stroke')) {
-      p.setAttribute('stroke', el.getAttribute('stroke'));
-      p.setAttribute('stroke-width', String((parseFloat(el.getAttribute('stroke-width')) || 0.3) / sc));
+      p.setAttribute('stroke', String(el.getAttribute('stroke')));
+      p.setAttribute('stroke-width', String((parseFloat(String(el.getAttribute('stroke-width'))) || 0.3) / sc));
       p.setAttribute('paint-order', 'stroke');
       p.setAttribute('stroke-linejoin', 'round');
     }
@@ -336,20 +471,20 @@ export function mapSymSvg(el, sym, fill) {
   return el;
 }
 // Render one as HTML (the popup), lifted for the dark ground.
-export function mapSymHtml(sym, colour, size) {
+export function mapSymHtml(sym: AMapSymbol, colour?: string | null, size?: string) {
   if (sym.path) {
     // geometry, not a font glyph — identical on every platform (see MAP_CROSS_PATH)
-    const raw = colour != null ? colour : sym.fill || sym.legend;
+    const raw = colour ?? ((sym.fill ?? '') || sym.legend);
     const col = raw ? _tintForDarkTooltip(raw) : 'currentColor';
-    const b = sym.box || 10,
-      sz = size || '1em';
-    return kcHtml`<svg viewBox="${-b / 2} ${-b / 2} ${b} ${b}" style="width:${sz};height:${sz};vertical-align:-0.15em" aria-hidden="true"><path d="${sym.path}" fill="${col}" fill-rule="evenodd" stroke="#000" stroke-width="0.4" paint-order="stroke" stroke-linejoin="round"></path></svg>`;
+    const b = (sym.box ?? 0) || 10,
+      sz = (size ?? '') || '1em';
+    return kcHtml`<svg viewBox="${String(-b / 2)} ${String(-b / 2)} ${String(b)} ${String(b)}" style="width:${sz};height:${sz};vertical-align:-0.15em" aria-hidden="true"><path d="${sym.path}" fill="${col}" fill-rule="evenodd" stroke="#000" stroke-width="0.4" paint-order="stroke" stroke-linejoin="round"></path></svg>`;
   }
   // The variation selector matters as much as the glyph: VS15 pins TEXT presentation so a phone's
   // emoji font cannot hijack ☠ or ✝ and draw a colour picture that ignores our fill.
   // MAP_SYMBOL_FONT is the same symbol-capable stack the hex uses.
   const vs = sym.text ? '\uFE0E' : '\uFE0F';
-  const raw = colour != null ? colour : sym.fill || sym.legend;
+  const raw = colour ?? ((sym.fill ?? '') || sym.legend);
   const col = sym.text && raw ? `color:${_tintForDarkTooltip(raw)};` : '';
   return kcHtml`<span style="${col}font-family:${MAP_SYMBOL_FONT}${size ? ';font-size:' + size : ''}">${sym.glyph}${vs}</span>`;
 }
@@ -357,21 +492,23 @@ export function mapSymHtml(sym, colour, size) {
 // a wandering-hero line). Same font stack, same VS15 pin — otherwise a phone draws these two in its
 // emoji font at emoji size and in emoji colour, which is exactly the desktop/mobile drift item 2 is
 // about.
-export function txtGlyph(ch, colour) {
+export function txtGlyph(ch: string, colour?: string) {
   return kcHtml`<span style="${colour ? `color:${colour};` : ''}font-family:${MAP_SYMBOL_FONT}">${ch}︎</span>`;
 }
 // ── THE LEGEND IS DRAWN FROM THE SAME TABLE AS THE MAP ────
 // Each legend swatch is an empty <span data-mapsym="key"> in the markup; this fills it in from
 // MAP_SYM at boot. A legend entry therefore cannot describe a glyph or a colour the map does not
 // actually draw, and both get the symbol font and the variation selector on every platform.
-export function applyMapSymLegend(root) {
-  (root || document).querySelectorAll('[data-mapsym]').forEach((el) => {
-    const sym = MAP_SYM[el.getAttribute('data-mapsym')];
+export function applyMapSymLegend(root?: ParentNode | null) {
+  (root ?? document).querySelectorAll('[data-mapsym]').forEach((el) => {
+    const sym = theMapSymbolsByKey[String(el.getAttribute('data-mapsym'))];
     if (!sym) return;
-    el.innerHTML = mapSymHtml(
-      sym,
-      el.getAttribute('data-mapcolour') || null,
-      el.getAttribute('data-mapsize') || '1rem',
+    el.innerHTML = String(
+      mapSymHtml(
+        sym,
+        (el.getAttribute('data-mapcolour') ?? '') || null,
+        (el.getAttribute('data-mapsize') ?? '') || '1rem',
+      ),
     );
     if (!el.getAttribute('title')) el.setAttribute('title', sym.label);
   });
@@ -379,20 +516,20 @@ export function applyMapSymLegend(root) {
 // The popup's own copy of the hex's race badge — the same lettered disc at text size, so the corner
 // of the hex and the line in the popup are visibly the same mark, not a badge and an unrelated
 // emoji.
-export function mapRaceBadgeHtml(race) {
-  const rb = MAP_RACE_BADGE[race];
+export function mapRaceBadgeHtml(race: unknown) {
+  const rb = theRaceBadgesByKey[String(race)];
   if (!rb) return '';
   return kcHtml`<svg width="13" height="13" viewBox="0 0 13 13" style="vertical-align:-2px" aria-hidden="true"><circle cx="6.5" cy="6.5" r="6" fill="${rb.fill}"></circle><text x="6.5" y="9.2" text-anchor="middle" font-size="8" font-weight="700" font-family="Cinzel,serif" fill="${rb.text}">${rb.glyph}</text></svg>`;
 }
 // each lair in a province popup gets its OWN star, tinted by the guardian's
 // difficulty (Weak→green, Moderate→gold, Powerful→orange, Legendary→crimson).
-export function _lairStar(f) {
+export function _lairStar(f: AProvincesFeature) {
   // use the SAME difficulty palette as the Known Lairs card and the Chronicle
   // (POWER_COLORS) — the old star used a different orange/red set — and tint the lair name too.
   // province feature data carries `monsterPower` (not `power`) — every popup lair was falling
   // through to the default brown. Difficulty now colours the map popup as everywhere else.
-  const _pw = f.monsterPower || f.power;
-  const col = _tintForDarkTooltip(GUARD_POWER_COLORS_P[_pw] || '#7a5510'); // lightened for the dark popup
+  const _pw = (f.monsterPower ?? '') || f.power;
+  const col = _tintForDarkTooltip(theGuardiansColours[String(_pw)] ?? '#7a5510'); // lightened for the dark popup
   const _tag = _pw ? kcHtml` <span style="font-size:.68rem;opacity:.8">(${_pw})</span>` : '';
   // the guardian's kind rides along in the popup too.
   const _cat =
@@ -410,13 +547,13 @@ export function _lairStar(f) {
 // and `cleared` is the world's own flag — so a lair another realm cleared counts, and a lair a
 // rival has hidden behind a Veil of Illusions is not known to be there at all. The note reports
 // what the player knows.
-export function _lairsClearedNote(pd) {
-  if (!pd || pd.explored == null || pd.explored < 100) return '';
-  const lairs = (pd.features || []).filter((f) => f && !f.ritualSite);
+export function _lairsClearedNote(pd: AProvinceThePopupReads | null | undefined) {
+  if (pd?.explored == null || pd.explored < 100) return '';
+  const lairs = (pd.features ?? []).filter((f): f is AProvincesFeature => Boolean(f) && !f?.ritualSite);
   if (lairs.length === 0)
     return kcHtml`<br><span style="color:${_tintForDarkTooltip('#6a7f5a')};font-style:italic">\u{1F5FA} Fully mapped \u2014 no lair was ever found in this province.</span>`;
   if (lairs.some((f) => !f.cleared)) return '';
-  return kcHtml`<br><span style="color:${_tintForDarkTooltip('#4a8a4a')};font-weight:600">\u2705 Cleared of all lairs \u2014 ${lairs.length === 1 ? 'its lair has' : `all ${lairs.length} lairs have`} been put to the sword. Nothing is left to fight here.</span>`;
+  return kcHtml`<br><span style="color:${_tintForDarkTooltip('#4a8a4a')};font-weight:600">\u2705 Cleared of all lairs \u2014 ${lairs.length === 1 ? 'its lair has' : `all ${String(lairs.length)} lairs have`} been put to the sword. Nothing is left to fight here.</span>`;
 }
 // ── GRAVES ON THE MAP ────
 // If this realm knows battlefield dead lie in a province, say so in the hex popup — the same lore
@@ -425,13 +562,14 @@ export function _lairsClearedNote(pd) {
 // Grave-sight, crack and elite only), or a bare sensing (a necromancer marching through). All three
 // are stamped with the turn they were learned, because none of them refreshes on its own — the
 // graves may since have been raised as skeletons or rotted to nothing.
-export let _graveIntelById = null; // rebuilt each report load by _rebuildGraveIntelIndex()
-export let _graveIntelTurn = null; // the report's own turn, so the popup can colour a reading the way the hex does
-export function _rebuildGraveIntelIndex(report) {
-  _graveIntelById = {};
-  _graveIntelTurn = report && report.turnNumber != null ? report.turnNumber : null;
-  ((report && report.graveIntel) || []).forEach((g) => {
-    if (g && g.provinceId != null) _graveIntelById[g.provinceId] = g;
+export let _graveIntelById: Partial<Record<string, AGraveReading>> | null = null; // rebuilt each report load by _rebuildGraveIntelIndex()
+export let _graveIntelTurn: number | null = null; // the report's own turn, so the popup can colour a reading the way the hex does
+export function _rebuildGraveIntelIndex(report: TheReportAsTheMapsPopupsReadIt | null | undefined) {
+  const byId: Partial<Record<string, AGraveReading>> = {};
+  _graveIntelById = byId;
+  _graveIntelTurn = report?.turnNumber ?? null;
+  (report?.graveIntel ?? []).forEach((g) => {
+    if (g?.provinceId != null) byId[String(g.provinceId)] = g;
   });
 }
 // ── 2026-09-18: GARRISON IN THE MAP POP-UP ────
@@ -439,24 +577,24 @@ export function _rebuildGraveIntelIndex(report) {
 // character standing in right now (live tier; the GM ships garrisonArmies on that tier) — reports
 // how many units are garrisoned and what they are, tinted in the owner's colour. Nothing is shown
 // for border/remembered ground: the report never carries a garrison the player cannot see.
-export function _garrisonNote(pd) {
+export function _garrisonNote(pd: AProvinceThePopupReads | null | undefined) {
   if (!pd || !(pd.tier === 'owned' || pd.tier === 'live')) return '';
-  const g = pd.garrisonArmies || [];
+  const g = pd.garrisonArmies ?? [];
   if (!g.length) return '';
-  const col = _tintForDarkTooltip(pd.ownerColor) || '#e8d8b0';
-  const counts = {};
+  const col = (_tintForDarkTooltip(pd.ownerColor) ?? '') || '#e8d8b0';
+  const counts: Partial<Record<string, number>> = {};
   g.forEach((a) => {
-    const k = a.type || 'unit';
-    counts[k] = (counts[k] || 0) + 1;
+    const k = (a.type ?? '') || 'unit';
+    counts[k] = (counts[k] ?? 0) + 1;
   });
-  const list = Object.keys(counts)
-    .map((k) => `${unitEmoji(k)} ${counts[k] > 1 ? counts[k] + '× ' : ''}${k}`)
+  const list = Object.entries(counts)
+    .map(([k, n = 0]) => `${unitEmoji(k)} ${n > 1 ? String(n) + '× ' : ''}${k}`)
     .join(', ');
-  return kcHtml`<br>\u{1F6E1} <span style="color:${col}">${g.length} unit${g.length !== 1 ? 's' : ''} garrisoned${pd.tier === 'live' && pd.ownerName ? ` (${pd.ownerName})` : ''}</span> <span style="opacity:.8;font-size:.9em">— ${list}</span>`;
+  return kcHtml`<br>\u{1F6E1} <span style="color:${col}">${String(g.length)} unit${g.length !== 1 ? 's' : ''} garrisoned${pd.tier === 'live' && pd.ownerName ? ` (${pd.ownerName})` : ''}</span> <span style="opacity:.8;font-size:.9em">— ${list}</span>`;
 }
-export function _graveNote(pd) {
-  if (!pd || pd.id == null || !_graveIntelById) return '';
-  const g = _graveIntelById[pd.id];
+export function _graveNote(pd: AProvinceThePopupReads | null | undefined) {
+  if (pd?.id == null || !_graveIntelById) return '';
+  const g = _graveIntelById[String(pd.id)];
   if (!g) return '';
   // the popup now shows the map's OWN grave cross in the map's own two colours — light green for a
   // reading taken this turn (the dead are certainly still in the ground), grey for older knowledge.
@@ -464,9 +602,9 @@ export function _graveNote(pd) {
   const fresh = g.turn != null && _graveIntelTurn != null && g.turn === _graveIntelTurn;
   const sym = fresh ? MAP_SYM.gravesFresh : MAP_SYM.gravesStale;
   const gcol = _tintForDarkTooltip(sym.fill);
-  const stamp = kcHtml`<span style="opacity:.75">(known turn ${g.turn != null ? g.turn : '?'})</span>`;
-  if (g.detail && g.detail.length) {
-    const list = g.detail.map((d) => `${d.n}× ${d.k}`).join(', ');
+  const stamp = kcHtml`<span style="opacity:.75">(known turn ${g.turn ?? '?'})</span>`;
+  if (g.detail?.length) {
+    const list = g.detail.map((d) => `${String(d.n)}× ${d.k}`).join(', ');
     return kcHtml`<br>${mapSymHtml(sym)} <span style="color:${gcol}">Battlefield graves: ${g.detailPartial ? 'at least ' : ''}${list}</span> ${stamp}${g.detailPartial ? kcHtml`<br><span style="opacity:.7;font-style:italic">Grave-sight names only the crack and elite — lesser dead may lie here unseen.</span>` : ''}`;
   }
   return kcHtml`<br>${mapSymHtml(sym)} <span style="color:${gcol}">Battlefield graves lie here</span> <span style="opacity:.7;font-style:italic">— how many, and what they hold, is unknown</span> ${stamp}`;
@@ -474,10 +612,10 @@ export function _graveNote(pd) {
 // tint a lair name by its guardian's difficulty (Weak→Legendary), for inline
 // lists (owned-province cards, etc.). Ritual sites and unknown-difficulty lairs render in plain
 // text.
-export function _lairName(f) {
+export function _lairName(f: AProvincesFeature | null | undefined) {
   if (!f) return '';
-  const col = GUARD_POWER_COLORS_P[f.monsterPower || f.power] || null;
-  return col ? kcHtml`<span style="color:${col}">${f.name}</span>` : f.name || '';
+  const col = theGuardiansColours[String((f.monsterPower ?? '') || f.power)] ?? null;
+  return col ? kcHtml`<span style="color:${col}">${f.name}</span>` : (f.name ?? '');
 }
 // GRAND DESIGN: a Wonder of the age is no secret — anyone who can see the province sees the Wonder
 // standing in it, and who raised it. Its powers, though, serve only the realm that built it, and
@@ -485,16 +623,16 @@ export function _lairName(f) {
 // EVIL TERROR (2026-10-12, Toby item 23): an Evil realm's report carries each province's Terror ({pct, stacks,
 // byYou} on the map's records and its own provinces); the popup and the Your Provinces entry print it. `light`: the
 // report's pale page rather than the dark popup. No reading (any other crown, or no Terror there) → nothing.
-export function terrorNoteP(pd, light) {
-  const t = pd && pd.terror;
-  if (!t || !(t.pct > 0)) return '';
+export function terrorNoteP(pd: AProvinceThePopupReads | null | undefined, light?: unknown) {
+  const t = pd?.terror;
+  if (!t || !(Number(t.pct) > 0)) return '';
   const col = light ? '#701010' : '#e08a8a';
-  return kcHtml`<br><span style="color:${col}">\u{1F480} Terror ${t.pct}% \u2014 ${t.stacks} stack${t.stacks !== 1 ? 's' : ''}${t.byYou ? ' of your own' : ''}: its next defenders fight at \u2212${t.pct}%${t.byYou ? ' (yours are spared where you hold the ground)' : ''}</span>`;
+  return kcHtml`<br><span style="color:${col}">\u{1F480} Terror ${String(t.pct)}% \u2014 ${String(t.stacks)} stack${t.stacks !== 1 ? 's' : ''}${t.byYou ? ' of your own' : ''}: its next defenders fight at \u2212${String(t.pct)}%${t.byYou ? ' (yours are spared where you hold the ground)' : ''}</span>`;
 }
-export function _grandDesignNote(pd) {
-  const gd = pd && pd.grandDesign;
+export function _grandDesignNote(pd: AProvinceThePopupReads | null | undefined) {
+  const gd = pd?.grandDesign;
   if (!gd) return '';
-  return kcHtml`<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span><span style="opacity:.85"> \u2014 a Grand Design raised by <strong>${gd.ownerName || 'a fallen realm'}</strong>${gd.active ? '.' : ', dormant while another crown holds this ground.'}</span>`;
+  return kcHtml`<br><span style="color:#d8a63a;font-weight:600">\u{1F3DB} ${gd.name}</span><span style="opacity:.85"> \u2014 a Grand Design raised by <strong>${(gd.ownerName ?? '') || 'a fallen realm'}</strong>${gd.active ? '.' : ', dormant while another crown holds this ground.'}</span>`;
 }
 // \u2500\u2500 GRAND DESIGN in YOUR PROVINCES (2026-09-27, Toby item 2) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 // The map popup has named the Wonder standing in a province for a while, but the Your Provinces list
@@ -504,20 +642,23 @@ export function _grandDesignNote(pd) {
 // whether it is active, not its alignment), so the wording can never drift from the engine's.
 // (Built lazily, never as a top-level IIFE: a throw at script top level stops the whole portal
 // booting — the standing ITEMS_BY_TIER lesson.)
-export let _GD_DESC_BY_NAME = null;
-export function grandDesignDesc(name) {
+export let _GD_DESC_BY_NAME: Partial<Record<string, string>> | null = null;
+export function grandDesignDesc(name: unknown) {
   if (!_GD_DESC_BY_NAME) {
-    _GD_DESC_BY_NAME = {};
+    const byName: Partial<Record<string, string>> = {};
+    _GD_DESC_BY_NAME = byName;
     try {
-      Object.values(GD_BY_ALIGNMENT || {}).forEach((d) => {
-        if (d && d.name) _GD_DESC_BY_NAME[d.name] = d.desc || '';
+      Object.values(GD_BY_ALIGNMENT).forEach((d) => {
+        if (d.name) byName[d.name] = d.desc || '';
       });
-    } catch (e) {}
+    } catch {
+      // a table that can't be read leaves the descriptions empty (the portal still boots)
+    }
   }
-  return _GD_DESC_BY_NAME[name] || '';
+  return _GD_DESC_BY_NAME[String(name)] ?? '';
 }
-export function provinceGrandDesignHTML(p) {
-  const gd = p && p.grandDesign;
+export function provinceGrandDesignHTML(p: AProvinceThePopupReads | null | undefined) {
+  const gd = p?.grandDesign;
   if (!gd) return '';
   const desc = grandDesignDesc(gd.name);
   const mine = !!gd.active; // active === the builder still holds the ground, i.e. its powers are working
@@ -525,7 +666,7 @@ export function provinceGrandDesignHTML(p) {
       <div style="font-family:Cinzel,serif;font-size:.76rem;color:#4a3105;font-weight:700">\u{1F3DB} ${gd.name}
         <span style="font-weight:400;font-size:.7rem;color:${mine ? '#1d541d' : '#7a1010'}">\u2014 ${mine ? 'active' : 'dormant'}</span></div>
       ${desc ? kcHtml`<div style="font-size:.73rem;color:#2a2419;line-height:1.45;margin-top:1px">${desc}</div>` : ''}
-      <div style="font-size:.68rem;color:#4a4335;margin-top:1px">Raised by <strong>${gd.ownerName || 'a fallen realm'}</strong>.
+      <div style="font-size:.68rem;color:#4a4335;margin-top:1px">Raised by <strong>${(gd.ownerName ?? '') || 'a fallen realm'}</strong>.
         ${
           mine
             ? 'A realm may raise only one Grand Design, and its powers last while that realm holds this province.'
@@ -535,14 +676,24 @@ export function provinceGrandDesignHTML(p) {
 }
 // 2026-10-15 (D1): does a hero your orders can target lead troops? A report now says so (leadsArmies)
 // rather than giving another realm's exact count; an older report still carries the count.
-export function leadsArmiesP(x) {
-  return x && x.leadsArmies != null ? !!x.leadsArmies : ((x && x.armies) || 0) > 0;
+export function leadsArmiesP(
+  x: { readonly leadsArmies?: unknown; readonly armies?: number | null | undefined } | null | undefined,
+) {
+  return x?.leadsArmies != null ? Boolean(x.leadsArmies) : (x?.armies ?? 0) > 0;
 }
 // 2026-10-15 (Toby, D2/D9): what a Spy on the hero read besides their skills — the magic items they
 // carried and the army units they led, as of that spy. Empty for a hero never spied on.
-export function spiedExtraP(s) {
+export function spiedExtraP(
+  s:
+    | {
+        readonly spiedItems?: string[] | null | undefined;
+        readonly spiedArmies?: Parameters<typeof armyLabel>[0][] | null | undefined;
+      }
+    | null
+    | undefined,
+) {
   if (!s) return '';
-  const h = [];
+  const h: KcSafeHtml[] = [];
   if (Array.isArray(s.spiedItems))
     h.push(
       kcHtml`<br><span style="color:#1d5a1d">🔍 Items:</span> ${s.spiedItems.length ? s.spiedItems.join(', ') : 'none'}`,
@@ -560,14 +711,17 @@ export function spiedExtraP(s) {
     );
   return h.length ? kcHtml`${h}` : '';
 }
-export function popupKnownChars(pd, deadHeroes) {
-  const chars = (pd && pd.characters) || [];
+export function popupKnownChars(
+  pd: AProvinceThePopupReads | null | undefined,
+  deadHeroes: readonly AFallenHero[] | null | undefined,
+) {
+  const chars = pd?.characters ?? [];
   // a fallen hero must appear ONCE — as "(dead)". De-dupe the dead list by id, and drop from the
   // live lists any character that also appears among the dead (the dead entry wins), so a hero
   // never shows both as a living commander and again as "(dead)".
   const _deadSeen = new Set();
-  const dead = (deadHeroes || [])
-    .filter((d) => d.locationId === (pd && pd.id))
+  const dead = (deadHeroes ?? [])
+    .filter((d) => d.locationId === (pd ? pd.id : pd))
     .filter((d) => {
       if (_deadSeen.has(d.id)) return false;
       _deadSeen.add(d.id);
@@ -576,28 +730,28 @@ export function popupKnownChars(pd, deadHeroes) {
   const deadIds = new Set(dead.map((d) => d.id));
   if (!chars.length && !dead.length) return '';
   // 2026-10-15 (D1): your own heroes' exact count; anyone else's rough size (armyBand), never a number
-  const cnt = (c) =>
+  const cnt = (c: AHeroThePopupLists) =>
     c.armyBand
       ? c.armyBand === 'no armies'
         ? ''
         : kcHtml` <span style="opacity:.7">(${c.armyBand})</span>`
-      : c.armyCount > 0
-        ? kcHtml` <span style="opacity:.7">(${c.armyCount} unit${c.armyCount !== 1 ? 's' : ''})</span>`
+      : Number(c.armyCount) > 0
+        ? kcHtml` <span style="opacity:.7">(${String(c.armyCount)} unit${c.armyCount !== 1 ? 's' : ''})</span>`
         : '';
-  const crown = (c) => (c.isKing ? kcHtml`${txtGlyph('\u265B')} ` : '');
+  const crown = (c: { readonly isKing?: unknown }) => (c.isKing ? kcHtml`${txtGlyph('\u265B')} ` : '');
   const own = chars.filter((c) => c.isOwn && !deadIds.has(c.id));
   const enemy = chars.filter((c) => !c.isOwn && !c.isWanderer && !deadIds.has(c.id));
   const wand = chars.filter((c) => c.isWanderer && !deadIds.has(c.id));
-  const s = [];
+  const s: KcSafeHtml[] = [];
   // colour character names by owner — own & enemy in their realm colour (lightened if needed for
   // the dark tooltip), wandering heroes and local chieftains (neutral) in grey.
   const NEUTRAL_GREY = '#9a9a9a';
   own.forEach((c) => {
-    const col = _tintForDarkTooltip(c.ownerColor) || '#f2e8d0';
+    const col = (_tintForDarkTooltip(c.ownerColor) ?? '') || '#f2e8d0';
     s.push(kcHtml`<br>\u{1F464} <span style="color:${col}">${crown(c)}${c.name}</span>${cnt(c)}`);
   });
   enemy.forEach((c) => {
-    const col = _tintForDarkTooltip(c.ownerColor) || '#e05050';
+    const col = (_tintForDarkTooltip(c.ownerColor) ?? '') || '#e05050';
     s.push(
       kcHtml`<br>\u{1F441} <span style="color:${col}">${crown(c)}${c.name}${c.ownerName ? ' of ' + c.ownerName : ''}</span>${cnt(c)}`,
     );
@@ -631,9 +785,14 @@ export function popupKnownChars(pd, deadHeroes) {
 // characters, and for any hero your Spy (or Clairvoyance) has actually read. A wandering hero's
 // reputation as one phrase — "legendary for Tactical". Mirrors the GM engine's heroFameText(); the
 // level itself is never shown.
-export function heroFameTextP(h) {
-  const ts = (h && h.topSkill) || topSkillOf(h);
-  return ts ? `${skillFameLabelM(ts.level)} ${SKILL_LABELS[ts.skill] || ts.skill}` : 'no notable skills';
+export function heroFameTextP(
+  h:
+    | (Parameters<typeof topSkillOf>[0] & { readonly topSkill?: ReturnType<typeof topSkillOf> | undefined })
+    | null
+    | undefined,
+) {
+  const ts = h?.topSkill ?? topSkillOf(h);
+  return ts ? `${skillFameLabelM(ts.level)} ${(theSkillsNames[ts.skill] ?? '') || ts.skill}` : 'no notable skills';
 }
 // bottom-right race badges. Keys are formatRace() outputs. 2026-09-11: no outline — the dark ring
 // read as a black border at map scale. Fill + glyph only, so `stroke` is deliberately absent from
@@ -659,18 +818,18 @@ export const MAP_SYMBOL_FONT =
   "'Noto Sans Symbols 2','Noto Sans Symbols','Segoe UI Symbol','Apple Symbols','Symbola','DejaVu Sans',sans-serif";
 // set the glyph WITHOUT wiping child elements \u2014 callers append a <title> tooltip before
 // calling these, and `textContent=` was silently deleting it.
-export function _setGlyphText(el, s) {
+export function _setGlyphText(el: Element, s: string) {
   Array.from(el.childNodes).forEach((n) => {
     if (n.nodeType === 3) el.removeChild(n);
   });
   el.appendChild(document.createTextNode(s));
 }
-export function mapTextGlyph(el, ch) {
+export function mapTextGlyph(el: Element, ch: string) {
   el.setAttribute('font-family', MAP_SYMBOL_FONT);
   _setGlyphText(el, ch + '\uFE0E');
   return el;
 }
-export function mapEmojiGlyph(el, ch) {
+export function mapEmojiGlyph(el: Element, ch: string) {
   _setGlyphText(el, ch + '\uFE0F');
   return el;
 }
@@ -683,35 +842,42 @@ export const MAP_RACE_BADGE = {
   Creature: { glyph: 'C', fill: '#4fa3c9', text: '#0a1f28' },
   Monster: { glyph: 'M', fill: '#7d4fb5', text: '#fff' },
 };
+const theRaceBadgesByKey: Readonly<
+  Partial<Record<string, { readonly glyph: string; readonly fill: string; readonly text: string }>>
+> = MAP_RACE_BADGE;
 export const CHIEFTAIN_MARKER_COLOR = '#8f6a38'; // darkened from #b08a5a — luminance 111 stays just above the tooltip's 110 lightening threshold so the popup shows the same brown
 // ── LOCATE A PROVINCE ON THE MAP (2026-09-20, Toby) ── A province name in the report can be
 // hovered to light up its hex on the map (desktop: the map sits beside the report), and clicked or
 // tapped to bring the map into view and light it up for a few seconds (phones: switches to the Map
 // tab). Every drawn hex group carries data-prov=<id>; the highlight is a pulsing outline laid over
 // the whole map (pointer-events:none) so it never blocks the hex popup.
-export function provLinkHtml(id, name, extraCls) {
+export function provLinkHtml(id: unknown, name: unknown, extraCls?: string) {
   if (id == null || id === '') return name;
   return kcHtml`<span class="prov-link${extraCls ? ' ' + extraCls : ''}" onmouseenter="highlightMapProv(${kcArg(Number(id))},true)" onmouseleave="highlightMapProv(${kcArg(Number(id))},false)" onclick="locateOnMap(${kcArg(Number(id))})" title="Hover to light up ${name} on the map — click or tap to show it">${name}</span>`;
 }
-export function realmOptStyleP(playerIdx, report) {
+export function realmOptStyleP(playerIdx: unknown, report?: TheReportAsThePagesListsReadIt | null) {
   const k = realmOfP(playerIdx, report);
-  return k && k.color ? kcHtml` style="color:${reportColour(k.color)};font-weight:600"` : '';
+  return k?.color ? kcHtml` style="color:${reportColour(k.color)};font-weight:600"` : '';
 }
 // ── WHOSE HERO WAS THIS? (2026-09-27, Toby item 10) ────
 // Resurrect will raise only your OWN fallen and true wanderers — a body that ever served another
 // crown is refused — so every place a dead hero is shown must say which realm held them when they
 // fell. `player` is null for a hero who never served anyone. `opts.dark` tints for the map tooltip's
 // dark background; `opts.bare` drops the leading em-dash for callers that supply their own.
-export function deadHeroRealmTagP(h, report, opts) {
-  opts = opts || {};
-  const rep = report || currentReport || {};
-  const own = rep.playerIndex != null ? rep.playerIndex : null;
+export function deadHeroRealmTagP(
+  h: AFallenHero | null | undefined,
+  report?: TheReportAsThePagesListsReadIt | null,
+  optsHanded?: { readonly dark?: unknown; readonly bare?: unknown } | null,
+) {
+  const opts = optsHanded ?? {};
+  const rep = report ?? currentReport ?? {};
+  const own = rep.playerIndex ?? null;
   const lead = opts.bare ? '' : '— ';
   if (h && h.player == null) return `${lead}a neutral hero, sworn to no crown`;
   if (h && own != null && h.player === own) return `${lead}your own hero`;
   const k = realmOfP(h ? h.player : null, rep);
-  const nm = (k && k.name) || 'another realm';
-  const col = k && k.color ? (opts.dark ? _tintForDarkTooltip(k.color) || '#e8b84b' : reportColour(k.color)) : null;
+  const nm = (k?.name ?? '') || 'another realm';
+  const col = k?.color ? (opts.dark ? _tintForDarkTooltip(k.color) || '#e8b84b' : reportColour(k.color)) : null;
   return kcHtml`${lead}a hero of <span style="${col ? `color:${col};` : ''}font-weight:600">${nm}</span>`;
 }
 
@@ -721,88 +887,99 @@ export function deadHeroRealmTagP(h, report, opts) {
 // 9: the report card keeps the INFORMATION (relations, pending declarations); the Declare War /
 // Propose Peace / Propose Alliance BUTTONS now live at the top of the Orders column
 // (#orders-diplomacy), beside the dispatch composer and the Concede control.
-export function renderDiplomacy(report) {
+export function renderDiplomacy(report: TheReportAsTheMapsPopupsReadIt | null | undefined) {
   _renderDiplomacyInto(document.getElementById('report-diplomacy'), report, false);
   _renderDiplomacyInto(document.getElementById('orders-diplomacy'), report, true);
 }
-export function _renderDiplomacyInto(el, report, withControls) {
+export function _renderDiplomacyInto(
+  el: Element | null,
+  report: TheReportAsTheMapsPopupsReadIt | null | undefined,
+  withControls: boolean,
+) {
   if (!el) return;
-  const known = (report && report.diplomacy && report.diplomacy.known) || [];
-  const alliancesAllowed = !report || !report.diplomacy || report.diplomacy.alliancesAllowed !== false;
+  const known = report?.diplomacy?.known ?? [];
+  const alliancesAllowed = report?.diplomacy?.alliancesAllowed !== false;
   // 2026-09-29 (Toby): SAFE START — no Treat or declaration of war until the orders for Turn N
   // (safeStartUntil, 6). The engine discards any sent earlier; here the controls are withdrawn.
-  const _ssUntil = Number(report && report.diplomacy && report.diplomacy.safeStartUntil) || 0;
-  const _ssLive = Number(report && (report._liveTurn || report.turn)) || 1;
+  const _ssUntil = Number(report?.diplomacy?.safeStartUntil) || 0;
+  const _ssLive = Number(report ? (report._liveTurn ?? 0) || report.turn : report) || 1;
   const safeLocked = _ssUntil > 0 && _ssLive < _ssUntil;
   if (!known.length) {
-    el.innerHTML = kcHtml`<em style="color:#3a3224;font-size:.85rem">You have not yet encountered another realm. Once you see a rival's province or one of their characters, you may treat with them here.</em>`;
+    el.innerHTML = String(
+      kcHtml`<em style="color:#3a3224;font-size:.85rem">You have not yet encountered another realm. Once you see a rival's province or one of their characters, you may treat with them here.</em>`,
+    );
     return;
   }
-  const relBadge = (r) =>
+  // made sure: a report of no realm known returned above
+  const reportRead: TheReportAsTheMapsPopupsReadIt = report ?? {};
+  const relBadge = (r: unknown) =>
     r === 'allied'
       ? kcHtml`<span class="pill" style="background:#dff0d8;color:#1d541d">🤝 Allied</span>`
       : r === 'enemy'
         ? kcHtml`<span class="pill" style="background:#f7d7d7;color:#701010">⚔ At war</span>`
         : kcHtml`<span class="pill" style="background:#efe6cc;color:#3a2e18">🕊 Neutral</span>`;
-  const btn = (idx, val, label, bg) =>
+  const btn = (idx: unknown, val: string, label: string, bg: string) =>
     kcHtml`<button onclick="setDiploChoice(${kcArg(idx)},${kcArg(val)})" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
-  const pendingLabel = (k) => {
-    const p = diploChoices[k.index];
+  const pendingLabel = (k: ARealmTheDiplomacyShows) => {
+    const p = theDiplomaticChoices()[String(k.index)];
     if (p === 'enemy') return k.relation === 'allied' ? 'Break Alliance' : 'Declare War';
     if (p === 'treat') return k.relation === 'enemy' ? 'Propose Peace' : 'Propose Alliance';
     return '';
   };
-  el.innerHTML = kcHtml`${known.map((k) => {
-    const pending = diploChoices[k.index];
-    let controls;
-    // 2026-09-27 (Toby item 7): a realm that has CONCEDED (or been extinguished) has left the game.
-    // There is nobody left to treat with, so the entry says so and every control is withdrawn — and
-    // any declaration already pending against them this turn is dropped rather than sent into the
-    // void.
-    if (k.conceded || k.eliminated) {
-      if (pending != null) delete diploChoices[k.index];
-      controls = kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated && !k.conceded ? 'This dynasty is extinguished' : 'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
-    } else if (safeLocked) {
-      if (pending != null) delete diploChoices[k.index];
-      controls = withControls
-        ? kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>🕊 Safe Start — no Treat or declaration of war may be made until the orders for Turn ${_ssUntil}.</em></div>`
-        : '';
-    } else if (!withControls) {
-      controls = pending
-        ? kcHtml`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`
-        : '';
-    } else if (pending) {
-      controls = kcHtml`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;<button onclick="setDiploChoice(${kcArg(k.index)},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
-    } else if (k.relation === 'neutral') {
-      controls = kcHtml`${alliancesAllowed ? kcHtml`${btn(k.index, 'treat', 'Propose Alliance', '#2d6a2d')} ` : ''}${btn(k.index, 'enemy', 'Declare War', '#8a1c1c')}`;
-    } else if (k.relation === 'enemy') {
-      controls = btn(k.index, 'treat', 'Propose Peace', '#2d6a2d');
-    } else {
-      // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
-      // for an Evil or Undead crown, which goes straight to war.
-      const _darkSelf = ['Evil', 'Undead'].includes((report.kingdom || {}).alignment);
-      controls = btn(k.index, 'enemy', _darkSelf ? 'Break Alliance — War' : 'Break Alliance', '#8a1c1c');
-    }
-    return kcHtml`<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
+  el.innerHTML = String(
+    kcHtml`${known.map((k) => {
+      const pending = theDiplomaticChoices()[String(k.index)];
+      let controls: KcSafeHtml | string;
+      // 2026-09-27 (Toby item 7): a realm that has CONCEDED (or been extinguished) has left the game.
+      // There is nobody left to treat with, so the entry says so and every control is withdrawn — and
+      // any declaration already pending against them this turn is dropped rather than sent into the
+      // void.
+      if (k.conceded || k.eliminated) {
+        if (pending != null) Reflect.deleteProperty(theDiplomaticChoices(), String(k.index));
+        controls = kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated && !k.conceded ? 'This dynasty is extinguished' : 'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
+      } else if (safeLocked) {
+        if (pending != null) Reflect.deleteProperty(theDiplomaticChoices(), String(k.index));
+        controls = withControls
+          ? kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>🕊 Safe Start — no Treat or declaration of war may be made until the orders for Turn ${String(_ssUntil)}.</em></div>`
+          : '';
+      } else if (!withControls) {
+        controls = pending
+          ? kcHtml`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`
+          : '';
+      } else if (pending) {
+        controls = kcHtml`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;<button onclick="setDiploChoice(${kcArg(k.index)},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
+      } else if (k.relation === 'neutral') {
+        controls = kcHtml`${alliancesAllowed ? kcHtml`${btn(k.index, 'treat', 'Propose Alliance', '#2d6a2d')} ` : ''}${btn(k.index, 'enemy', 'Declare War', '#8a1c1c')}`;
+      } else if (k.relation === 'enemy') {
+        controls = btn(k.index, 'treat', 'Propose Peace', '#2d6a2d');
+      } else {
+        // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
+        // for an Evil or Undead crown, which goes straight to war.
+        const _darkCrowns: readonly unknown[] = ['Evil', 'Undead'];
+        const _darkSelf = _darkCrowns.includes(reportRead.kingdom?.alignment);
+        controls = btn(k.index, 'enemy', _darkSelf ? 'Break Alliance — War' : 'Break Alliance', '#8a1c1c');
+      }
+      return kcHtml`<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <strong style="color:${reportColour(k.color) || '#333'}">${k.name}</strong>
-        <span style="font-size:.72rem;color:#332c20">${k.alignment || ''}</span>
-        ${k.conceded || k.eliminated ? kcHtml`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated && !k.conceded ? '\u2620 Extinguished' : '\u{1F3F3} Conceded'}${k.conceded && k.concededTurn ? ` (turn ${k.concededTurn})` : ''}</span>` : relBadge(k.relation)}
+        <strong style="color:${(reportColour(k.color) ?? '') || '#333'}">${k.name}</strong>
+        <span style="font-size:.72rem;color:#332c20">${k.alignment ?? ''}</span>
+        ${k.conceded || k.eliminated ? kcHtml`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated && !k.conceded ? '\u2620 Extinguished' : '\u{1F3F3} Conceded'}${k.conceded && k.concededTurn ? ` (turn ${String(k.concededTurn)})` : ''}</span>` : relBadge(k.relation)}
         ${!k.conceded && !k.eliminated && k.offeredUs ? kcHtml`<span class="pill" style="background:#e3eefa;color:#1c3e6a" title="They proposed this last turn. Propose it back this turn to seal it.">🕊 Offered ${k.offeredUs === 'peace' ? 'peace' : 'an alliance'} last turn</span>` : ''}
       </div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
     </div>`;
-  })}${
-    withControls && safeLocked
-      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">🕊 <strong>Safe Start:</strong> this is a Safe Start game — diplomacy opens with the orders for <strong>Turn ${_ssUntil}</strong> (this is Turn ${_ssLive}).</div>`
-      : ''
-  }${
-    withControls && !safeLocked
-      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${
-          alliancesAllowed
-            ? kcHtml`An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.`
-            : kcHtml`In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).`
-        } Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`
-      : ''
-  }`;
+    })}${
+      withControls && safeLocked
+        ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">🕊 <strong>Safe Start:</strong> this is a Safe Start game — diplomacy opens with the orders for <strong>Turn ${String(_ssUntil)}</strong> (this is Turn ${String(_ssLive)}).</div>`
+        : ''
+    }${
+      withControls && !safeLocked
+        ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${
+            alliancesAllowed
+              ? kcHtml`An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.`
+              : kcHtml`In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).`
+          } Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`
+        : ''
+    }`,
+  );
 }
