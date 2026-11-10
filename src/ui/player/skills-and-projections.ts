@@ -539,8 +539,7 @@ export function armyLabel(
   // draw no wages and leave when the binding fails.
   const wild =
     a.wildHunt || a._wildHuntUntilTurn != null
-      ? kcHtml` <span style="color:#7a4a10;font-size:.72rem">[Wild Hunt — bound until end of turn ${a.wildHuntUntil ?? a._wildHuntUntilTurn ?? '?'}, no wages]
-</span>`
+      ? kcHtml` <span style="color:#7a4a10;font-size:.72rem">[Wild Hunt — bound until end of turn ${a.wildHuntUntil ?? a._wildHuntUntilTurn ?? '?'}, no wages]</span>`
       : '';
   return kcHtml`${name ? `${name} (${detail})` : detail}${wild}`;
 }
