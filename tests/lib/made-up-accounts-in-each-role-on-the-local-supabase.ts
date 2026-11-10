@@ -41,6 +41,8 @@ export interface AMadeUpWorld {
   readonly theOtherGMsGame: string;
   /** Each account's id. */
   readonly accounts: Readonly<Record<ARoleWithAnAccount, string>>;
+  /** Each account's address (its password is THE_MADE_UP_PASSWORD), for the tests that sign in themselves. */
+  readonly addressOf: (role: ARoleWithAnAccount) => string;
   /** The local service role's client: it passes every access rule (only for making and checking the world). */
   readonly theServiceRole: TheDatabaseClient;
   /** A new client, signed in as `role` (signed out: none). */
@@ -49,7 +51,8 @@ export interface AMadeUpWorld {
   readonly removeIt: () => Promise<void>;
 }
 
-const THE_PASSWORD = 'made-up-password-for-the-local-database';
+/** Every made-up account's password. */
+export const THE_MADE_UP_PASSWORD = 'made-up-password-for-the-local-database';
 
 /** A client on the local Supabase that keeps its session in memory only, never refreshing it. */
 function aClient(local: TheLocalSupabase, key: string): TheDatabaseClient {
@@ -96,7 +99,7 @@ export async function makeAMadeUpWorld(local: TheLocalSupabase, label: string): 
     for (const role of THE_ROLES_WITH_AN_ACCOUNT) {
       const { data, error } = await theServiceRole.auth.admin.createUser({
         email: emailOf(role),
-        password: THE_PASSWORD,
+        password: THE_MADE_UP_PASSWORD,
         email_confirm: true,
       });
       throwIfAnError(`making the account of ${role}`, error);
@@ -166,7 +169,7 @@ export async function makeAMadeUpWorld(local: TheLocalSupabase, label: string): 
     const signedInAs = async (role: ARole): Promise<TheDatabaseClient> => {
       const client = aClient(local, local.anonKey);
       if (role === 'signed out') return client;
-      const { error } = await client.auth.signInWithPassword({ email: emailOf(role), password: THE_PASSWORD });
+      const { error } = await client.auth.signInWithPassword({ email: emailOf(role), password: THE_MADE_UP_PASSWORD });
       throwIfAnError(`signing in as ${role}`, error);
       return client;
     };
@@ -180,6 +183,7 @@ export async function makeAMadeUpWorld(local: TheLocalSupabase, label: string): 
         'another GM': idOf('another GM'),
         'the Overlord': idOf('the Overlord'),
       },
+      addressOf: emailOf,
       theServiceRole,
       signedInAs,
       removeIt,

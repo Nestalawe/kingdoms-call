@@ -5,7 +5,7 @@ import { kcClock } from '../../engine/clock.ts';
 import { KC_BUILD_STAMP } from './startup.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../../engine/army-tables.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
-import { sb } from './config.ts';
+import { sb, thePagesDb } from './config.ts';
 import { kcMissingMsg, parseGameState } from './startup.ts';
 import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { computeStandings } from '../../engine/titles/reckoning.ts';
@@ -683,7 +683,7 @@ export async function lbProfileNames(players) {
     _lbProfCache = {};
     _lbProfErr = null;
     try {
-      const { data, error } = await sb.from('profiles').select('id,name');
+      const { data, error } = await thePagesDb.theAccountsNames.theNameOfEveryAccount();
       if (error) _lbProfErr = error.message;
       (data || []).forEach((r) => {
         if (r && r.id && r.name) _lbProfCache[r.id] = r.name;

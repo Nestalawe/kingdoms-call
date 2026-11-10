@@ -2,7 +2,8 @@
 // compiler keeps it in step with the real one. A page test hands it to the page before the page's scripts run
 // (bootJsdom's opts.db, tests/lib/boot.js); a unit test calls code that takes a Db with it. It doesn't imitate the
 // access rules: the access layer's tests prove those against the local database. Each of P1-17's area rows adds its
-// area's functions here.
+// area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
+// role and no offer.
 import type { ADatabaseAnswer, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 
 /** No answer at all (the network), as an answer the fake gives. */
@@ -30,10 +31,22 @@ function versionAnswer(answer: TheFakeVersionAnswer): ADatabaseAnswer<string> {
   return { data: answer, error: null, status: 200 };
 }
 
+/** What the fake's sign-in answers when it is refused, as the sign-in service words it. */
+const NO_SUCH_ACCOUNT = { message: 'Invalid login credentials' };
+/** What a change to the signed-in account answers with no one signed in. */
+const NO_SESSION = { message: 'Auth session missing!' };
+
 /** A fake database answering kc_db_version() with `versions` in order, the last one again from then on. */
 export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFakeVersionAnswer[]]): AFakeDb {
   const left = versions.slice();
   const calls: string[] = [];
+  /** Notes the call `name`, and answers `answer`. */
+  const answering =
+    <A extends unknown[], T>(name: string, answer: (...args: A) => T) =>
+    (...args: A): Promise<T> => {
+      calls.push(name);
+      return Promise.resolve(answer(...args));
+    };
   const db: Db = {
     theDatabasesVersion: {
       askTheDatabaseItsVersion: () => {
@@ -41,6 +54,64 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
         const answer = left.length > 1 ? left.shift() : left[0];
         return Promise.resolve(versionAnswer(answer ?? null));
       },
+    },
+    signingIn: {
+      theSessionKeptInThisBrowser: answering('auth:getSession', () => ({ data: { session: null }, error: null })),
+      signInWithEmailAndPassword: answering('auth:signInWithPassword', () => ({
+        data: { user: null, session: null },
+        error: NO_SUCH_ACCOUNT,
+      })),
+      signUpWithEmailPasswordAndName: answering('auth:signUp', () => ({
+        data: { user: null, session: null },
+        error: { message: 'Signups not allowed for this instance' },
+      })),
+      signOut: answering('auth:signOut', () => ({ error: null })),
+      changeThePassword: answering('auth:updateUser', () => ({ data: { user: null }, error: NO_SESSION })),
+      changeTheNameKeptWithTheSignIn: answering('auth:updateUser', () => ({ data: { user: null }, error: NO_SESSION })),
+    },
+    theAccountsNames: {
+      theNamesOfTheseAccounts: answering('from:profiles', () => ({ data: [], error: null, status: 200 })),
+      theNameOfEveryAccount: answering('from:profiles', () => ({ data: [], error: null, status: 200 })),
+      theNameAndJoiningDateOfEveryAccountInNameOrder: answering('from:profiles', () => ({
+        data: [],
+        error: null,
+        status: 200,
+      })),
+      theNameOfThisAccount: answering('from:profiles', () => ({
+        data: null,
+        error: { message: 'JSON object requested, multiple (or no) rows returned' },
+        status: 406,
+      })),
+      giveThisAccountItsName: answering('from:profiles', () => ({
+        data: null,
+        error: { message: 'new row violates row-level security policy for table "profiles"' },
+        status: 401,
+      })),
+    },
+    theRoles: {
+      isTheSignedInAccountAGameMaster: answering('rpc:is_game_master', () => ({
+        data: false,
+        error: null,
+        status: 200,
+      })),
+      isTheSignedInAccountTheOverlord: answering('rpc:is_site_admin', () => ({
+        data: false,
+        error: null,
+        status: 200,
+      })),
+      theGameMasterOfferMadeToThisAccount: answering('from:game_masters', () => ({
+        data: null,
+        error: null,
+        status: 200,
+      })),
+      answerTheGameMasterOffer: (answer) =>
+        answering(`rpc:${answer}`, () => ({
+          data: null,
+          error: {
+            message: answer === 'gm_accept_offer' ? 'You have no offer to accept.' : 'You have no offer to decline.',
+          },
+          status: 400,
+        }))(),
     },
   };
   return { db, calls };

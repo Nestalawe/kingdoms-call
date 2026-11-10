@@ -66,7 +66,7 @@ export async function init() {
   $('spinner').style.display = 'none';
   const {
     data: { session },
-  } = await sb.auth.getSession();
+  } = await thePagesDb.signingIn.theSessionKeptInThisBrowser();
   if (session && session.user) {
     ME = session.user;
     onSignedIn();
@@ -80,7 +80,7 @@ export async function doSignIn() {
     return;
   }
   fill('auth-msg', el('div', { class: 'msg-info' }, 'Signing in…'));
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  const { data, error } = await thePagesDb.signingIn.signInWithEmailAndPassword(email, password);
   if (error) {
     fill(
       'auth-msg',
@@ -93,11 +93,12 @@ export async function doSignIn() {
     return;
   }
   fill('auth-msg');
-  ME = (data && data.user) || ((await sb.auth.getSession()).data.session || {}).user || null;
+  ME =
+    (data && data.user) || ((await thePagesDb.signingIn.theSessionKeptInThisBrowser()).data.session || {}).user || null;
   if (ME) onSignedIn();
 }
 export async function doSignOut() {
-  await sb.auth.signOut();
+  await thePagesDb.signingIn.signOut();
   ME = null;
   ACCOUNTS = [];
   GAMES = [];
@@ -108,7 +109,7 @@ export async function doSignOut() {
   section('sec-auth');
 }
 export async function onSignedIn() {
-  const { data, error } = await sb.rpc('is_site_admin');
+  const { data, error } = await thePagesDb.theRoles.isTheSignedInAccountTheOverlord();
   if (error || data !== true) {
     const m = $('denied-msg');
     m.className = error ? 'msg-error' : 'msg-info';

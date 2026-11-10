@@ -112,6 +112,7 @@ describe('the version guard, on the fake Db', () => {
     const answers = makeAFakeDb([NEWER]);
     return {
       db: {
+        ...answers.db,
         theDatabasesVersion: {
           askTheDatabaseItsVersion: () => {
             asked++;

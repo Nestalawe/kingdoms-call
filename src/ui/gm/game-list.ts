@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { sb } from './config.ts';
+import { sb, thePagesDb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
 import { openGame } from './game-detail.ts';
 import { gameArchived, gameArchivedAt, gamesListCols } from './startup.ts';
@@ -42,7 +42,7 @@ export async function loadGames() {
   _listGames = data || [];
   if (_kcOverlord) {
     const ids = [...new Set(_listGames.map((g) => g.gm_user_id).filter(Boolean))];
-    const { data: prof } = ids.length ? await sb.from('profiles').select('id,name').in('id', ids) : { data: [] };
+    const { data: prof } = ids.length ? await thePagesDb.theAccountsNames.theNamesOfTheseAccounts(ids) : { data: [] };
     _gmNames = {};
     (prof || []).forEach((p) => {
       _gmNames[p.id] = p.name || '';
@@ -228,7 +228,7 @@ export let _invitableRawCount = null;
 // Excludes the signed-in GM. Cached for the session; pass force=true to refetch.
 export async function loadInvitablePlayers(force) {
   if (_invitablePlayers && !force) return _invitablePlayers;
-  const { data, error } = await sb.from('profiles').select('id,name,created_at').order('name', { ascending: true });
+  const { data, error } = await thePagesDb.theAccountsNames.theNameAndJoiningDateOfEveryAccountInNameOrder();
   if (error) {
     _invitablePlayers = null;
     _invitableRawCount = null;

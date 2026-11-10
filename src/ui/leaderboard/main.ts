@@ -336,7 +336,7 @@ export async function loadAll(force) {
   try {
     const {
       data: { session },
-    } = await sb.auth.getSession();
+    } = await thePagesDb.signingIn.theSessionKeptInThisBrowser();
     ME = session ? session.user : null;
   } catch (e) {
     ME = null;
@@ -347,7 +347,7 @@ export async function loadAll(force) {
     try {
       const [{ data }, ov] = await Promise.all([
         sb.from('games').select('id').eq('gm_user_id', ME.id).limit(1),
-        sb.rpc('is_site_admin'),
+        thePagesDb.theRoles.isTheSignedInAccountTheOverlord(),
       ]);
       OVERLORD = !!(ov && !ov.error && ov.data === true);
       GM = OVERLORD || !!(data && data.length);
@@ -388,7 +388,7 @@ export async function loadAll(force) {
   // the people behind the realms, by their current name
   PEOPLE = {};
   try {
-    const { data: profs } = await sb.from('profiles').select('id,name');
+    const { data: profs } = await thePagesDb.theAccountsNames.theNameOfEveryAccount();
     (profs || []).forEach((r) => {
       if (r && r.id && r.name) PEOPLE[r.id] = r.name;
     });

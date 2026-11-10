@@ -11,7 +11,7 @@ prove and run a test, and the levels: [README.md](README.md). Each test script's
 - `tests/db-min.test.js` (static): Every page that makes its database client (`makeThePagesDatabase`) declares `KC_DB_MIN`, imports `kc-db-guard.ts` and starts through `kcDbGuard(thePagesDb, KC_DB_MIN)` (its own modules, not the guard's comment); no `KC_DB_MIN` is newer than the newest migration
 - `tests/docs.test.js` (static): Every relative link and heading anchor in `CLAUDE.md`, `README.md`, `docs/`, `tests/README.md`, this list, the PR template and the skills resolves; every `site/`, `src/`, `tests/`, `tools/`, `docs/`, `.github/` or `.claude/` path they name exists
 - `tests/flyers-soldiers-words.test.js` (static): The rulebook's roster gives the three riders their race and no Druid; its Druid ladder, mastery example, strike sentence and Druidic creed name no rider; the player portal's Druidic text, Creature key and the Griffon and Wyvern blurbs agree
-- `tests/gm-portal-no-signup.test.js` (static): The GM portal makes no accounts: no sign-up form, tab or `auth.signUp` call in its template or modules; its sign-in says "New here? Register on the player portal"
+- `tests/gm-portal-no-signup.test.js` (static): The GM portal makes no accounts: no sign-up form, tab or `auth.signUp` call in its template or its own modules (not `src/db/`), nor a call of its Db's sign-up; its sign-in says "New here? Register on the player portal"
 - `tests/lair-readiness-words.test.js` (static): Both rulebooks drop the "19 fights in 20" promise above Weak; the comprehensive one calls the readiness table the least to send, names the next grade's hero as the one who clears a lair reliably and points to Hunting Rumours' odds …
 - `tests/landing-footer.test.js` (static): The landing page's footer reads "Kingdoms Call · A Strategy Game of Simultaneous Turns"
 - `tests/primal-abilities-words.test.js` (static): Every live beast has its player-portal blurb and its rulebook row; the rulebook says the flying beasts fight from the air; no page still promises an ability to come
@@ -315,6 +315,7 @@ Against the local Supabase, as each role (`tests/lib/made-up-accounts-in-each-ro
 CI's `db` job, not by `npm test`.
 
 - `tests/db/each-made-up-account-is-in-the-role-it-is-made-for.test.ts` (db): The role helper's six roles, by the database's own role checks (`is_site_admin`, `is_game_master`, `is_game_gm`, `is_game_member`); signed out refused; a second Overlord refused; a removed world leaves nothing
+- `tests/db/signing-in-the-accounts-names-and-the-roles-answer-each-role.test.ts` (db): `db.signingIn`, `db.theAccountsNames` and `db.theRoles` as each role: sign-in, sign-up, password, sign-out; names never with an email (`REVOKED_COLS`); the role checks and the offer's answer
 - `tests/db/the-version-guards-question-is-answered-for-each-role.test.ts` (db): `db.theDatabasesVersion.askTheDatabaseItsVersion()` on a client of the local Supabase, as each of the six roles: the newest migration's version, no error, status 200
 
 ## Scenario (level 2)

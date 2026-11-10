@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { gameMetaOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { sb } from './startup.ts';
+import { sb, thePagesDb } from './startup.ts';
 import {
   KC_MSG_READS,
   KC_MSG_TABLE,
@@ -411,7 +411,7 @@ export async function loadOpenGames() {
   const gmIds = [...new Set(games.map((g) => g.gm_user_id).filter(Boolean))];
   const gmNameById = {};
   if (gmIds.length) {
-    const { data: gmProfiles } = await sb.from('profiles').select('id,name').in('id', gmIds);
+    const { data: gmProfiles } = await thePagesDb.theAccountsNames.theNamesOfTheseAccounts(gmIds);
     (gmProfiles || []).forEach((pr) => {
       gmNameById[pr.id] = pr.name;
     });
@@ -511,11 +511,7 @@ export async function loadAllGames() {
 // is an extra: if the read fails, it just stays hidden.
 export async function loadGmOffer() {
   const el = document.getElementById('gm-offer-banner');
-  const { data, error } = await sb
-    .from('game_masters')
-    .select('accepted_at')
-    .eq('user_id', currentUser.id)
-    .maybeSingle();
+  const { data, error } = await thePagesDb.theRoles.theGameMasterOfferMadeToThisAccount(currentUser.id);
   const open = !error && data && !data.accepted_at;
   if (open) {
     document.getElementById('gm-offer-ask').style.display = 'block';

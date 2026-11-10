@@ -178,8 +178,11 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   `src/db/` reads the `supabase` global (ESLint) or imports the package, and only its types (dependency-cruiser).
 - **`Db`** (`src/db/the-db-interface-and-its-areas.ts`): one object of areas, made from the client by
   `makeTheDbFromItsClient`. Its first area is the version guard's, `db.theDatabasesVersion.askTheDatabaseItsVersion()`
-  (`rpc('kc_db_version')`). A `Db` function sends the query the page sent before and answers as supabase-js does
-  (`data`, `error`, `status`), so the page's error paths stay the same. Every other call is still on the page's `sb`.
+  (`rpc('kc_db_version')`). Then sign-in and accounts, on all four pages: `db.signingIn` (the session, signing in, up
+  and out, the password and the name kept with the sign-in), `db.theAccountsNames` (`profiles`: id, name, joining day)
+  and `db.theRoles` (`is_game_master`, `is_site_admin`, the Game Master offer and its answer). A `Db` function sends
+  the query the page sent before and answers as supabase-js does (`data`, `error`, `status`; the sign-in's `data` and
+  `error`), so the page's error paths stay the same. Every other call is still on the page's `sb`.
 - **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
   compiler error. Never edit them by hand: run `npx supabase@2.120.0 gen types typescript --local >
   src/db/database.types.ts` against the local database with every migration applied, then
@@ -195,7 +198,7 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
 - **The fake:** `tests/lib/fake-db.ts` is a small in-memory `Db`, kept in step by the compiler. A page test hands it to
   the page before its scripts run (`bootJsdom(html, { db })`, which sets it on the window under
   `THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER`); only `src/db/` reads that name (a static test). The fake doesn't
-  imitate the access rules.
+  imitate the access rules; beyond the version, it holds no account (no session, no names, no role).
 
 ## A site change that needs a database change
 
