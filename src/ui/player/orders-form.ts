@@ -4,7 +4,6 @@ import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.t
 import {
   combatSpellsAllowedPerSchoolEachFight,
   itemUsableBy,
-  theCombatSpellsBySchool,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import {
@@ -24,6 +23,7 @@ import { SPELL_TO_SCHOOL, unitEmoji } from './order-chances.ts';
 import {
   DUEL_STANCES,
   ENCOUNTER_TACTICS,
+  ENCOUNTER_VALID,
   applyHeroOrderP,
   heirSelectorHTML,
   heroOrderFromOrdersP,
@@ -632,8 +632,6 @@ export function addEncounterTactic(charId, code) {
   if (code === 'CA') {
     const char = (currentReport?.characters || []).find((c) => String(c.id) === String(charId));
     const skills = char?.skills || {};
-    // Encounter-valid spells: direct damage, debuffs, or Mirror Image
-    const ENCOUNTER_VALID = theCombatSpellsBySchool();
 
     // Also include schools being practised in any phase this turn
     // (same logic as Cast Spell phase orders — the player sets their plan after their orders)

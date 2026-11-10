@@ -1,5 +1,5 @@
-// Since P1-11e43 this test keeps only the copies that read a page file no test can import, which
-// tests/lib/player-portal-copies.ts loads in a vm (the checks and the values in
+// Since P1-11e43 this test keeps only the copies tests/lib/player-portal-copies.ts loads (since P1-13e9 imported from
+// their page files, those written inline run in a vm by their statements; the checks and the values in
 // tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts): the order form's
 // forecasts, ledger, Practice Skill note and order list are checked, imported with no vm, by
 // tests/unit/the-order-forms-forecasts-agree-with-the-turn.test.ts; the 11 projection cases and the values' reach by

@@ -2,7 +2,10 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_HEX_DIRS, KC_TEMPERS, KC_MAGIC_SCHOOLS } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
-import { theHexNextToAProvinceInADirection } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  theCombatSpellsBySchool,
+  theHexNextToAProvinceInADirection,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import {
   PO_SEA_TYPES,
@@ -234,6 +237,8 @@ export const ENCOUNTER_TACTICS = [
   { code: 'FL', label: 'Flee — attempt to escape from the encounter (does not affect duels; see Duel stance)' },
   { code: 'SC', label: 'Scout — scout the lair for secrets and special functions', retired: true }, // withdrawn; mirrors SCOUT_ENABLED in the GM engine
 ];
+// Encounter-valid spells: direct damage, debuffs, or Mirror Image
+export const ENCOUNTER_VALID = theCombatSpellsBySchool();
 
 // ── Royal succession skill allocation ────
 // The crowned heir keeps their base skills; the player spends 4 points on top of that, max +2 into
