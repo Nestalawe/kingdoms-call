@@ -55,6 +55,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A `String()` a test shows is needed** (an order's target, an item's id held as a number) stays, through a reader
   typed as wide (`aTargetInWords`), though the type says words. One the saved schema makes needless (a guardian's
   power's words) goes. `!!x` on a flag is `x` (`Boolean(asItsGuardReadsIt(x))` if it may be missing).
+- **`s[0].toUpperCase()` on words the code has tested non-empty** (a skill's name capitalised) is `s.charAt(0)`, the same
+  letter: an index read is `string | undefined` to the compiler.
 - **`/^merc_/.test(s)` on words** is `s.startsWith('merc_')`. A company's name `armyUnitName` draws is read through
   `theNameDrawn`, which throws for none (its type allows none; it always draws or composes one).
 - **`pool[id]--` on a record's number that may be missing** (a hero's move points) is `pool[id] = Number(pool[id]) - 1`:

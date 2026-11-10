@@ -4,9 +4,9 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-34 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+28 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
 (0 since P1-17c typed `src/db/kc-db-guard.ts`: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`,
-`src/content/`, `src/schemas/` and `src/shared/`), which P1-10b freed, and `tsNocheckUi` (34: the UI's pages in `src/ui/`, `src/rulebook/`, and any
+`src/content/`, `src/schemas/` and `src/shared/`), which P1-10b freed, and `tsNocheckUi` (28: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
 an annotation or a `satisfies` written there is a claim nobody checks: a wrong parameter type compiles, and so does a
@@ -45,7 +45,7 @@ table with a key left out.
 
 ## The forms that keep a value, by kind
 
-Each form in the two files below keeps every value the old statement gave, for every value its type allows; a few
+Each form in the three files below keeps every value the old statement gave, for every value its type allows; a few
 keep it for every value at all. P1-10b2 to P1-10b38 found them (each row's figures are in its PR). A form a row needs
 that isn't there is added under its kind.
 
@@ -56,3 +56,8 @@ that isn't there is added under its kind.
   [guards and the compiler's narrowing](the-forms-that-keep-a-value-guards-parameters-and-types.md#guards-and-the-compilers-narrowing),
   [parameters, shapes and claims](the-forms-that-keep-a-value-guards-parameters-and-types.md#parameters-shapes-and-claims),
   [the types the code corrects](the-forms-that-keep-a-value-guards-parameters-and-types.md#the-types-the-code-corrects).
+- **[The page's elements and events](the-forms-that-keep-a-value-the-pages-elements-and-events.md)** (P1-16c):
+  [elements looked up](the-forms-that-keep-a-value-the-pages-elements-and-events.md#elements-looked-up),
+  [writing into the page](the-forms-that-keep-a-value-the-pages-elements-and-events.md#writing-into-the-page),
+  [events and promises](the-forms-that-keep-a-value-the-pages-elements-and-events.md#events-and-promises),
+  [the page's globals](the-forms-that-keep-a-value-the-pages-elements-and-events.md#the-pages-globals).
