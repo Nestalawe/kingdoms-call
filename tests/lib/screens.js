@@ -259,7 +259,10 @@ const gmPortal={
       ['turn 0: the world not generated',ok+`runTurn0().then(()=>{ _pendingTurn0.sz={get cols(){ throw new Error(${lit(W.error)}); }};${quiet('commitTurn0()')} })`],
       ['an active game',ok+"openGame('G1')"],
       ['an active game, reports unreadable',fail('rpc.gm_reported_messages')+'loadReportedDispatches(currentGame)'],
-      ['the watcher: games waiting, one run fails',ok+'_autoRunBusy=false;'+quiet('autoTurnTick().then(()=>{ _autoRunBusy=true; })')],
+      // the paused game's retry time is read off the clock when its run fails: that run reads a fixed time (in 2099, so
+      // the game stays paused), so the time shown is the same on every run
+      ['the watcher: games waiting, one run fails',ok+'_autoRunBusy=false;'+quiet('(()=>{ const dn=Date.now; Date.now=()=>Date.UTC(2099,0,1);'
+        +' return autoTurnTick().finally(()=>{ Date.now=dn; }); })().then(()=>{ _autoRunBusy=true; })')],
       ['the watcher: a failed game paused',tick],
       ['the watcher: a game that can\'t load',fail('game_players.select')+`runTurn({auto:true,game:{id:'G1',name:${lit(W.db.games[0].name)},turn:3},reason:${lit(W.reason)}})`],
       ['the watcher: reloading for a newer build',ok+"{ const st=window.setTimeout; window.setTimeout=(f,ms)=>ms===400?0:st(f,ms);"
@@ -639,9 +642,10 @@ const playerPortal={
       +"Math.random=(()=>{let s=7;return ()=>(s=s*16807%2147483647)/2147483647;})();"
       +"{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms>=1000?0:st(f,ms,...a); }"
       +"{ const si=window.setInterval; window.setInterval=(f,ms,...a)=>ms>=1000?0:si(f,ms,...a); }";
-    // the orders' running account redraws 120 ms after a change, so a screen could catch it before or after: in the
-    // report's and the dispatches' steps its timer runs at once instead
+    // the orders' running account redraws 120 ms after a change, so a screen could catch it before or after: its timer
+    // runs at once instead (in the dispatches' steps, so does the 300 ms one that first draws it once the form is built)
     const now="{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms===120?(f(...a),0):st(f,ms,...a); }";
+    const ledgerNow="{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms===120||ms===300?(f(...a),0):st(f,ms,...a); }";
     if(!m.user) return [
       ['sign-in refused',fixed+`sb.auth.signInWithPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('si-email','player@example.test')+val('si-password',W.password)+'doSignIn()'],
@@ -670,7 +674,7 @@ const playerPortal={
       const stage=`supabase.stub.DB.game_players.push(${lit(D.slot)});supabase.stub.DB.game_messages=${lit(D.messages)};`
         +`supabase.stub.DB.message_reports=${lit(D.reports)};supabase.stub.DB.game_message_reads=${lit([D.reads])};`;
       return [
-        ['Dispatches, to every realm',fixed+now+stage+"openReport('s10')"],
+        ['Dispatches, to every realm',fixed+ledgerNow+stage+"openReport('s10')"],
         ['Dispatches, a private conversation',"setMsgChannel('p:0-1')"],
         ['Dispatches, a conversation of three',"setMsgChannel('p:0-1-3')"],
         ['Dispatches, choosing realms for a new conversation','toggleMsgGroupPicker(true)'],
