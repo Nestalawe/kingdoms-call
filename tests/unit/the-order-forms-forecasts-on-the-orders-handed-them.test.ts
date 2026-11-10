@@ -12,7 +12,10 @@
 // handed in, its answer pinned, each red on a fault planted in the line it reads (P1-11e41's PR); since P1-21n an Undead
 // realm's war without warning, a comrade's hand-over from another province left out of the Move note, a leave to the
 // garrison of companies recruited the phase before, beasts mustered to a comrade by his beast command's room, and an
-// earlier Blood Offering's company read as the offering began (each red on its mutant of the 2026-11-07 session); and
+// earlier Blood Offering's company read as the offering began (each red on its mutant of the 2026-11-07 session); since
+// P1-16b, which typed the file, a target field that isn't words, the province's name, Naval 8's hulls, a Recruit's boxes
+// trimmed, a same-phase hand-over by name, an earlier Skeletal Armies' graves and a Blood Offering's company by name
+// (each red on a fault planted in the line it reads); and
 // theOrdersTheFormHolds (the page's side) reading each field, a Recruit's boxes and the form's declarations, a field the
 // form doesn't show absent.
 import { afterEach, describe, expect, test } from 'vitest';

@@ -14,7 +14,9 @@
 // at 5, none chosen) and the Spy note; the order list of a hero, a king, a realm whose Wonder stands and a charmed
 // card, in the display order; each school's level after the earlier practices, an item's bonus counted; a hire's wage
 // with the report's figure and without; each red on a fault planted in the line it reads (P1-11e42's PR; the march
-// before a recruit, P1-21o's mutation session).
+// before a recruit, P1-21o's mutation session); since P1-16b, which typed the file, the ledger's and the notes' fallbacks
+// on a figure the report leaves out, a hero's wage cut by his alignment, a seized enemy hero's mastery and a hire's wage
+// on a report of no creed, each red on its plant.
 import { afterEach, describe, expect, test } from 'vitest';
 import {
   ACTION_DISPLAY_ORDER,
