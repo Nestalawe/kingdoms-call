@@ -823,12 +823,21 @@ describe('the test run', () => {
     expect([1, 2, 4, 6, 14, 32].map(count)).toEqual([1, 2, 2, 4, 8, 8]);
   });
 
+  // The db project (the access layer's tests, plan P1-17) alone adds two: its own setup beside the run's (the local
+  // Supabase's address and keys), and one file at a time (a database has one Overlord).
   test('no project changes those settings', () => {
     for (const p of t.projects ?? []) {
       expect(typeof p).toBe('object');
-      const keys = typeof p === 'object' && 'test' in p ? Object.keys(p.test ?? {}) : [];
-      expect(keys.filter((k) => !['name', 'include', 'provide'].includes(k))).toEqual([]);
+      const test = typeof p === 'object' && 'test' in p ? (p.test ?? {}) : {};
+      const keys = Object.keys(test).filter((k) => !['name', 'include', 'provide'].includes(k));
+      const theDbProjects = [['globalSetup', 'fileParallelism'], ['tests/setup/the-local-supabase.ts'], false];
+      expect(test.name === 'db' ? [keys, test.globalSetup, test.fileParallelism] : keys).toEqual(
+        test.name === 'db' ? theDbProjects : [],
+      );
     }
+    expect((t.projects ?? []).filter((p) => typeof p === 'object' && 'test' in p && p.test.name === 'db')).toHaveLength(
+      1,
+    );
   });
 
   // Read here, in a test file, after the setup files ran: what every property test gets.
@@ -1470,7 +1479,17 @@ describe('CI', () => {
 
   test('every job that installs takes node_modules from a cache, and saves it before anything else runs', () => {
     expect(ids.filter((id) => runs(id).includes('npm ci')).sort()).toEqual(
-      ['balance', 'balance-part', 'browser', 'page', 'simulation', 'static', 'static-tests', 'unit-scenario'].sort(),
+      [
+        'balance',
+        'balance-part',
+        'browser',
+        'db',
+        'page',
+        'simulation',
+        'static',
+        'static-tests',
+        'unit-scenario',
+      ].sort(),
     );
     expect(nodeModulesCacheProblems(ci)).toEqual([]);
     // Planted copies: unit-scenario's save moved after its build; npm ci on every run; a key without the lock file.
@@ -1502,6 +1521,18 @@ describe('CI', () => {
 
   test("the db job lints the database's functions and fails on any finding", () => {
     expect(runs('db')).toContain('supabase db lint --local --level warning --fail-on warning');
+  });
+
+  // P1-17: the generated database types compared with a fresh copy (a stale file fails, every step of the pipe
+  // counting), and the access layer's tests, both against the job's local Supabase.
+  test("the db job checks the generated types are fresh and runs the access layer's tests", () => {
+    const db = jobs.get('db') ?? '';
+    const fresh =
+      'supabase gen types typescript --local | npx prettier --stdin-filepath src/db/database.types.ts | ' +
+      'diff -u src/db/database.types.ts -';
+    expect(db).toContain(`        shell: bash\n        run: ${fresh}\n`);
+    expect(runs('db')).toContain('npm run test:db');
+    expect(read('package.json')).toContain('"test:db": "KC_DB=1 vitest run --project db"');
   });
 
   // The deploy (deploy.yml) and staging (staging.yml) since P1-06a: a build job installs (npm ci --ignore-scripts) and

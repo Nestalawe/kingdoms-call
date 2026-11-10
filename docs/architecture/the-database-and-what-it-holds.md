@@ -183,7 +183,15 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
 - **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
   compiler error. Never edit them by hand: run `npx supabase@2.120.0 gen types typescript --local >
   src/db/database.types.ts` against the local database with every migration applied, then
-  `npx prettier --write src/db/database.types.ts`.
+  `npx prettier --write src/db/database.types.ts`. CI's `db` job generates them again from its own local database and
+  compares: a stale file fails it.
+- **The access layer's tests** (`tests/db/`, `npm run test:db`; not in `npm test`): each `Db` function called on a
+  supabase-js client of the local Supabase as each role that matters (signed out, a player, a rival, the game's GM,
+  another GM, the Overlord), checking what it returns or refuses: the query and the access rules together. CI's `db`
+  job runs them beside pgTAP. Each file makes its own made-up world through the local service role
+  (`makeAMadeUpWorld`, `tests/lib/made-up-accounts-in-each-role-on-the-local-supabase.ts`: six accounts, two games)
+  and removes it; the files run one at a time (a database has one Overlord). The setup refuses any address but the
+  local one (`tests/setup/the-local-supabase.ts`). Locally: `npx supabase@2.120.0 start`, then `npm run test:db`.
 - **The fake:** `tests/lib/fake-db.ts` is a small in-memory `Db`, kept in step by the compiler. A page test hands it to
   the page before its scripts run (`bootJsdom(html, { db })`, which sets it on the window under
   `THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER`); only `src/db/` reads that name (a static test). The fake doesn't

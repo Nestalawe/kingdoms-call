@@ -37,6 +37,7 @@ npm run mutants -- <folder>  # score the mutant patches in <folder> (tools/mutan
 npm run mutants -- <folder> --resume  # carry on a scoring run that stopped, from its results.json
 npm run dev                 # Vite's dev server of src/, against the local Supabase only (npm run dev -- config writes its kc-config.js)
 npx supabase@2.120.0 test db --local supabase/tests   # the access-rule tests (local copy running; supabase/README.md)
+npm run test:db             # the access layer's tests (tests/db/), against the local copy (running)
 ```
 
 `npm test` is [Vitest](https://vitest.dev) (`vitest.config.mts`). It has one project per level: `static`, `unit`,
@@ -53,6 +54,7 @@ level and why a lower one wouldn't do.
 | 0 | static | Reads files (the docs, `src/` by its syntax tree, the workflows, a build's output); nothing of the game runs |
 | 1 | unit | Calls functions on plain values or a small staged world: the engine's modules, a rule, a tool's logic |
 | 1d | database unit | pgTAP tests of the access rules, in `supabase/tests/`, one file per table, run by CI's `db` job ([supabase/README.md](../supabase/README.md#the-access-rule-tests)) |
+| db | access layer | Calls a `Db` function (`src/db/`) against the local Supabase as each role (`lib/made-up-accounts-in-each-role-on-the-local-supabase.ts`), in `db/`: the query and the access rules together. `npm run test:db`, not in `npm test`; run by CI's `db` job ([the database topic file](../docs/architecture/the-database-and-what-it-holds.md#the-access-layer-srcdb)) |
 | 2 | scenario | Plays one real turn on a small staged world |
 | 3 | simulation | Plays whole seeded games (fuzz runs, the report-leak runs) |
 | 4 | page | Boots a page in jsdom against the stand-in database; the browser specs are page tests in Chromium |
@@ -137,7 +139,8 @@ before it fails. It never fails a run.
 - **In CI** (`.github/workflows/ci.yml`) each part runs in its own job, side by side, each building `site/` from
   `src/` first: the static checks (type check, lint, the import rules, format, ratchet), the `static` level,
   `unit` and `scenario` in two halves (Vitest's `--shard`), `simulation`, `page`, the browser specs, the balance matrix
-  in three parts and the job that joins them ([below](#the-balance-matrix-in-brief)), and `db`. Each takes
+  in three parts and the job that joins them ([below](#the-balance-matrix-in-brief)), and `db` (pgTAP, the generated
+  types' freshness, the access layer's tests). Each takes
   `node_modules` from a cache keyed on the lock file, `.npmrc`, Node and the runner, and runs `npm ci` only on a miss.
   The job named `ci` passes only when all but `db` passed; `ci` and `db` are the required checks.
 

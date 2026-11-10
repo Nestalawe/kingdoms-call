@@ -237,6 +237,7 @@ job: [supabase/README.md](../supabase/README.md#the-access-rule-tests).
 - `tests/unit/the-battle-grid-lines-no-matrix-game-reaches-keep-their-values.test.ts` (unit): The lines P1-10b4 changed to free `battle/lines.ts` of the ts-nocheck line that no game of the balance matrix reaches, called directly on the engine's modules, each on the value it had before …
 - `tests/unit/the-battle-spells-each-copy-casts-keep-their-values.test.ts` (unit): Each battle spell's effect through the spells' registry, in each of the three copies (one rule, R-126): its numbers, rounding, units struck, level counted to, and line; each spell's use; the Ember Rune
 - `tests/unit/the-bots-plan-called-directly.test.ts` (unit): The bots' plan and forecast, on `resolveTurn`'s context: whole turns, passes stood in, the forecast counted; Perform Rite first; each bots file (intel to the order hygiene) on what no game hands them
+- `tests/unit/the-database-call-recorder-writes-each-call-a-page-sends-with-its-steps.test.ts` (unit): P1-17's call recorder (`tools/proof/`) on a stand-in client: nothing without `KC_RECORD_DATABASE_CALLS`; with it, each query once awaited, with its steps, other calls when made, times masked
 - `tests/unit/the-cast-chance-lair-grade-and-battle-spell-lines-no-matrix-game-reaches-keep-their-values.test.ts` (unit): The lines P1-10b15 changed in `chances-and-lair-grades.ts` and `pre-battle-spell-choice.ts` no matrix game reaches keep their values: strikes, casts, lair grades, battle spells
 - `tests/unit/the-combat-spell-lines-no-matrix-game-reaches-keep-their-values.test.ts` (unit): Combat spell and fight lines no game reaches keep their values: each combat spell's, a steal's bonus, a guardian's old powers, a Druid's ward, a Mirror Shard, a Death's Finger Ring
 - `tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts` (unit): What no matrix game carries, in `armStr`: the Battle Standard +2, the Sea Chart +1, the Spyglass +2, the Chalice ×1.15, the stage's order; the Druid check beside a Crown, under a Curse (R-120, R-121) …
@@ -261,6 +262,7 @@ job: [supabase/README.md](../supabase/README.md#the-access-rule-tests).
 - `tests/unit/the-name-of-a-spell-by-its-slug-throws-for-a-slug-content-lacks.test.ts` (unit): The bots' lookup, called directly: every slug of the content answers with its spell's name, the fifteen the bots use, and a slug the content lacks (or an object's own word) throws
 - `tests/unit/the-on-staging-comment-names-the-commit-staging-built.test.ts` (unit): The "On staging" comment (`.github/scripts/staging.js` `comment`) names the pull request's last commit (each page's staging line) and the commit staging built …
 - `tests/unit/the-other-folders-lines-no-matrix-game-reaches-keep-their-words.test.ts` (unit): The other folders' lines P1-12d17 made facts that no game reaches, or a fallback: a spy of no realm, a nameless caster or unit, a capture naming no one, the enslavement; the lairs' stocking
+- `tests/unit/the-access-layers-tests-take-only-the-local-supabases-address.test.ts` (unit): The db project's setup takes the local Supabase's address (127.0.0.1, localhost) and keys from its status, refuses any other address, and stops with the reason when the status has no address or key
 - `tests/unit/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.test.ts` (unit): The folder's two checks (P1-11d7), asked by the five resolvers and the order list: each order's creed alone may give it, the king alone Consecrate, Call to Arms, the Broker; the form's names by slug
 - `tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts` (unit): The player portal's copies, imported (four spell tables read in a vm): the Cast Spell form's tables, the army card, the Explore forecast and march-in share, the hex tables, the Send Item and creed fields …
 - `tests/unit/the-rules-the-shared-door-hands-the-portal-answer-alike-on-the-report-and-the-state.test.ts` (unit): The 11 rules the portal takes through `src/shared/` whose value the report makes from the state answer alike on the report's value and the state's (scripted-05 and a staged world) …
@@ -306,6 +308,14 @@ job: [supabase/README.md](../supabase/README.md#the-access-rule-tests).
 - `tests/unit/xp-fight-win.test.ts` (unit): A hero who wins a personal fight (`resolvePersonalCombat`, the foe staged at 0 HP so no blow lands) rolls once for Melee at the standard rate; in a duel the winner rolls and the fallen loser does not (batch 2026-10-14). `unit/xp-fight-win.test.ts` …
 - `tests/unit/xp-fled-fight.test.ts` (unit): Item 11's last part, once in `xp-small-chances`: a hero who flees a personal fight (`resolvePersonalCombat`, the flight made certain) rolls Melee at the small rate while the one left standing does not. `unit/xp-fled-fight.test.ts` …
 - `tests/unit/xp-naval-passenger.test.ts` (unit + static): `rollNavalVoyage` rolls Naval for a hero leading ships or a sea beast and not for one with none (rolls recorded by a wrapper around the top-level `trySkillGain`) …
+
+## Access layer (level db, `npm run test:db`)
+
+Against the local Supabase, as each role (`tests/lib/made-up-accounts-in-each-role-on-the-local-supabase.ts`); run by
+CI's `db` job, not by `npm test`.
+
+- `tests/db/each-made-up-account-is-in-the-role-it-is-made-for.test.ts` (db): The role helper's six roles, by the database's own role checks (`is_site_admin`, `is_game_master`, `is_game_gm`, `is_game_member`); signed out refused; a second Overlord refused; a removed world leaves nothing
+- `tests/db/the-version-guards-question-is-answered-for-each-role.test.ts` (db): `db.theDatabasesVersion.askTheDatabaseItsVersion()` on a client of the local Supabase, as each of the six roles: the newest migration's version, no error, status 200
 
 ## Scenario (level 2)
 

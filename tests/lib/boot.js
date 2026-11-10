@@ -105,7 +105,8 @@ function withDbVersion(supabase,answers=DB_VERSION,calls){
       return Promise.resolve({data:v,error:null,status:200});
     };
     if(calls&&typeof from==='function') c.from=(t,...a)=>{ calls.push('from:'+t); return from.call(c,t,...a); };
-    return c;
+    // P1-17's proof: with KC_RECORD_DATABASE_CALLS set, every call recorded (tools/proof/every-database-call-a-page-makes.ts)
+    return process.env.KC_RECORD_DATABASE_CALLS?require('../../tools/proof/every-database-call-a-page-makes.ts').recordEveryDatabaseCall(c,args):c;
   }};
 }
 

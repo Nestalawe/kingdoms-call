@@ -133,8 +133,8 @@ tests are weak, so they never enter this repository: the scorer refuses a folder
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
 (`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet), the static tests, the
 unit and scenario tests in two halves (Vitest's `--shard`), the simulations, the page tests, the browser specs, the
-balance matrix in three parts and the job that joins them, and `db` (the access-rule tests and `supabase db lint`, which
-checks the database's functions). Each job takes `node_modules` from a cache keyed on the runner, Node's version, the
+balance matrix in three parts and the job that joins them, and `db` (the access-rule tests, `supabase db lint`, which
+checks the database's functions, the generated types' freshness and the access layer's tests, `npm run test:db`). Each job takes `node_modules` from a cache keyed on the runner, Node's version, the
 lock file and `.npmrc`; `npm ci` runs only on a miss, and the cache is saved straight after it, before a tool can write
 its own caches into `node_modules`. The job named `ci` passes only when every job but `db` passed; `ci` and `db` are
 the checks `main` requires. `deploy.yml` runs the same workflow before it publishes.

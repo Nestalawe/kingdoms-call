@@ -7,5 +7,7 @@ declare module 'vitest' {
     level: Level | 'quarantine';
     // Every level that has a project.
     levels: string[];
+    // The db project's only (tests/setup/the-local-supabase.ts): the local Supabase's address and its own keys.
+    theLocalSupabase: { url: string; anonKey: string; serviceRoleKey: string };
   }
 }

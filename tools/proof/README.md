@@ -1,7 +1,7 @@
 # The proof tools
 
-Four tools that show what a change to the engine does, and what the balance matrix can't show. The matrix
-(`npm run balance`) compares its 120 games with their baselines. It is strong on the code those games reach, and
+Six tools that show what a change to the engine (or to a page's database calls) does, and what the balance matrix
+can't show. The matrix (`npm run balance`) compares its 120 games with their baselines. It is strong on the code those games reach, and
 blind to the rest. These tools tell which lines the games reach, plant a fault and show what catches it, and compare
 the base's words with the branch's where the games don't go.
 
@@ -15,6 +15,7 @@ in `npm test`. Each has a unit test on a small made-up input (`tests/unit/`, bel
 | `npm run proof:plant -- <patch>… [--tests <file>,…]` | What a planted fault changes: games, reports and tests | about 2 min a patch, plus the tests' own time |
 | `npm run proof:gm-logs -- --base <ref>` | Whether every game's GM log is byte-identical, base against branch | about 70 s |
 | `npm run proof:two-engines -- --cases <module> --base <ref>` | Whether the base's engine and the branch's write the same lines on staged cases | a few seconds, plus the cases' own time |
+| `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the page tests and tours send, to compare base with branch | the tests' own time |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
 branch it is stacked on. The branch is always the working tree as it is now, uncommitted changes and new files too.
@@ -119,9 +120,28 @@ export default cases;
 Stage what the games don't reach: a case library's cases (`tests/lib/*-cases.ts`), or a stage called on a world staged
 directly. Return the lines in words, so that a line moving from words to facts compares by what it says.
 
+## 5. Every database call a page makes
+
+The proof of P1-17's area rows, which move a page's database calls onto `Db` (plan P1-17, Decision 12).
+[every-database-call-a-page-makes.ts](every-database-call-a-page-makes.ts) wraps each client a page makes in jsdom
+(`tests/lib/boot.js` loads it only when `KC_RECORD_DATABASE_CALLS` names a folder). Each call goes as one line of JSON
+into `<folder>/<process id>.jsonl`: a query once awaited, with every step and its arguments; any other call when made.
+Times read as `<time>`. Record the base's site and the branch's, then compare the lines, sorted:
+
+```sh
+KC_SITE=<base's site> KC_RECORD_DATABASE_CALLS=/tmp/rec-base npx vitest run
+KC_SITE=<branch's site> KC_RECORD_DATABASE_CALLS=/tmp/rec-row npx vitest run
+diff <(cat /tmp/rec-base/*.jsonl | sort) <(cat /tmp/rec-row/*.jsonl | sort)
+```
+
+A test that reads the branch's own new code (a new way in) is left out of both (`--exclude`). The two fuzz scripts'
+GM-log reads differ between any two runs (their turn numbers hang on a short wait), so set them aside. The browser
+specs aren't recorded.
+
 ## The tests
 
 - `tests/unit/the-matrixs-coverage-lists-the-changed-lines-no-game-reaches.test.ts`
 - `tests/unit/a-planted-fault-names-the-games-reports-and-tests-it-changes.test.ts`
 - `tests/unit/the-gm-logs-compared-names-each-game-whose-log-differs-and-where.test.ts`
 - `tests/unit/the-two-engines-compared-runs-each-side-in-its-own-process.test.ts`
+- `tests/unit/the-database-call-recorder-writes-each-call-a-page-sends-with-its-steps.test.ts`

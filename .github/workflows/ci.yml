@@ -7,7 +7,8 @@
 #   balance-part   the balance matrix (P1-02b) in three parts side by side, played only when an engine path changed
 #                  (tools/balance/engine-paths.ts);  balance  joins and judges them, and on a pull request makes its
 #                  report (P1-03a), posted by balance-report.yml
-#   db             the database's access-rule tests (pgTAP) and its function lint
+#   db             the database's access-rule tests (pgTAP), its function lint, the generated types' freshness and
+#                  the access layer's tests (npm run test:db)
 # and "ci", which passes only when every job but db passed. Branch protection on main requires "ci" and "db", so
 # those two names must not change; the other jobs can be added to or split without touching the settings.
 # deploy.yml calls this workflow before every publish and waits for the whole run, so each commit that goes live is
@@ -448,8 +449,10 @@ jobs:
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
           echo "$NEEDS" | jq -e 'length == 8 and all(.[]; .result == "success")' > /dev/null
 
-  # pgTAP against a throwaway local database built from supabase/migrations/ (no other Supabase
-  # services, no secrets, never the live or staging database). See supabase/README.md.
+  # Against a throwaway local Supabase built from supabase/migrations/ (the database, its API and its sign-in service;
+  # no other services, no secrets, never the live or staging database; its keys are the CLI's own local ones): pgTAP
+  # and the function lint (supabase/README.md), then the generated types' freshness and the access layer's tests
+  # (plan P1-17, Decision 6: npm run test:db, tests/db/).
   db:
     name: db
     runs-on: ubuntu-24.04
@@ -465,12 +468,35 @@ jobs:
       - if: github.event_name == 'pull_request'
         run: node .github/scripts/migrations.js pr-check
 
+      - id: node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - id: modules
+        uses: actions/cache/restore@v6
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ hashFiles('package-lock.json', '.npmrc') }}
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
+
       - uses: supabase/setup-cli@v3
         with:
           version: 2.120.0
 
+      # The database, the API (kong, postgrest) and sign-in (gotrue): what the access layer's tests call. gen types
+      # starts its own postgres-meta.
       - id: start
-        run: supabase db start
+        run: supabase start -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 
       # The database's functions, checked as written (plpgsql_check): a column or table that doesn't exist, a type
       # that doesn't fit. Clean at warning level when it was added (P1-01c), so any finding fails.
@@ -478,3 +504,13 @@ jobs:
 
       - if: ${{ !cancelled() && steps.start.outcome == 'success' }}
         run: supabase test db --local supabase/tests
+
+      # The generated database types (src/db/database.types.ts, P1-17) are this database's: generated again, formatted
+      # by Prettier as the committed file is, and compared. A stale file fails here: regenerate it (the database topic
+      # file, docs/architecture/the-database-and-what-it-holds.md).
+      - if: ${{ !cancelled() && steps.start.outcome == 'success' }}
+        shell: bash
+        run: supabase gen types typescript --local | npx prettier --stdin-filepath src/db/database.types.ts | diff -u src/db/database.types.ts -
+
+      - if: ${{ !cancelled() && steps.start.outcome == 'success' }}
+        run: npm run test:db
