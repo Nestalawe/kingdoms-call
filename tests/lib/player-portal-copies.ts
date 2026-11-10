@@ -8,10 +8,10 @@
 // globalThis as the page holds them: the report it shows (currentReport), the declarations of war its form holds
 // (diploChoices) and a stand-in for its fields (document.getElementById), each put back after the call. Since
 // P1-13e10 the army card's figures are skills-and-projections.ts's two functions, which report.ts's renderReportView
-// calls. A copy written inline in a longer function (the Move field's directions and the Cast Spell rows in
-// order-targets.ts's buildTargetField; the spells aimed at a province or a hero in titles.ts's spellSecondaryHtml) is
-// read by its statements (tests/lib/source.ts's statementsBetween) and run in a vm as a function of what they read,
-// beside the names its file imports, as the page imports them.
+// calls; since P1-13e11 the Move field's directions and the Cast Spell rows are order-targets.ts's two functions, which
+// its buildTargetField calls. The spell tables declared inside a function (the action spells in order-targets.ts; the
+// spells aimed at a province or a hero in titles.ts's spellSecondaryHtml) are read by their values
+// (tests/lib/source.ts's initializersOf) and run in a vm beside the names their file imports, as the page imports them.
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -32,7 +32,7 @@ import * as theForecasts from '../../src/ui/player/the-order-forms-forecast-wher
 import * as theLedger from '../../src/ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import * as thePagesSide from '../../src/ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts';
 import * as titles from '../../src/ui/player/titles.ts';
-import { initializersOf, SRC, statementsBetween } from './source.ts';
+import { initializersOf, SRC } from './source.ts';
 import {
   COPY_FUNCTIONS,
   isObj,
@@ -191,7 +191,7 @@ function onTheOrders<T>(report: unknown, orders: unknown, fn: () => T, declarati
 /** `fn`'s answer with no report shown and no order staged: the page's globals as it starts. */
 const atRest = <T>(fn: () => T): T => onTheOrders(null, {}, fn);
 
-// ── The copies written inline, read by their statements ────
+// ── The tables written inside a function, read by their values ────
 
 const TARGET_FIELD = 'ui/player/order-targets.ts';
 const SPELL_TARGETS = 'ui/player/titles.ts';
@@ -220,40 +220,23 @@ function theArmyCardsFiguresOfAUnit(a: unknown, c: unknown, report: unknown): Ob
   return unit;
 }
 
-/** The target field's two stretches (buildTargetField's statements) and its two action spell tables, beside
- *  order-targets.ts's imports and its own names, its fields read through the page's (the globalThis.document staged). */
-function theTargetFieldsStatements(): Obj {
-  const theFields = {
-    getElementById: (id: unknown) => {
-      const page: unknown = Reflect.get(globalThis, 'document');
-      return aFunctionOf(isObj(page) ? page : {}, 'getElementById')(id);
-    },
-  };
+/** The target field's two action spell tables (order-targets.ts's, each declared inside a function), beside its
+ *  imports. */
+function theTargetFieldsSpellTables(): Obj {
   return runBesideItsImports(
     TARGET_FIELD,
-    `
-// The Move field's directions for the hero \`c\` in the phase \`ph\` (buildTargetField's statements, for a fresh Move):
-// each option as the field writes it, its value (prov:<id>) and its words, and whether the icy wastes bar a way north
-// or south (the note under the field).
-function theMoveFieldsDirections(theReport, c, ph) {
-  const action = 'Move', target = '';
-  const report = theReport || {};
-  ${statementsBetween(TARGET_FIELD, 'buildTargetField', 'worldMeta_', 'dirOpts')}
-  return { options: dirOpts.map(String), blockedNorth, blockedSouth };
-}
-// The spells the Cast Spell field offers the hero \`c\` in the phase \`ph\` (buildTargetField's statements from the
-// action spells through the rows it builds).
-function castSpellRows(report, c, ph) {
-  ${statementsBetween(TARGET_FIELD, 'buildTargetField', 'PHASE_SPELLS', '_spellRows')}
-  return _spellRows;
-}
-const tables = {
+    `return {
   PHASE_SPELLS: [...${theOneInitializer(TARGET_FIELD, 'PHASE_SPELLS')}],
   _hsPhase: [...${theOneInitializer(TARGET_FIELD, '_hsPhase')}],
-};
-return { theMoveFieldsDirections, castSpellRows, tables };`,
-    { ...orderTargets, document: theFields },
+};`,
   );
+}
+
+/** What order-targets.ts's function `name` gives on `args`: its object of named values. */
+function theTargetFieldsValues(name: string, ...args: unknown[]): Obj {
+  const made = aFunctionOf(orderTargets, name)(...args);
+  if (!isObj(made)) throw new Error(`the target field's ${name} gave no values`);
+  return made;
 }
 
 /** The value `name` is declared with in `file` (inside a function), as source: it must be declared there once. */
@@ -268,7 +251,6 @@ function theOneInitializer(file: string, name: string): string {
 /** The player portal's copies, under the checks' names: each page function imported, called on the report and the
  *  orders handed in with the page's globals staged, and the inline copies run by their statements. */
 export function playerPortalCopies(): Copies {
-  const field = theTargetFieldsStatements();
   const call = aFunctionOf;
   const made: Record<string, (...args: unknown[]) => unknown> = {
     // the level of a magic school the form offers spells by (it feeds the engine's theLevelAHerosSkillCountsAt)
@@ -294,8 +276,21 @@ export function playerPortalCopies(): Copies {
     // the compass direction a fresh Move of the phase `ph` opens on, from his Moves before it
     lastMoveDirOn: (report, orders, heroId, ph) =>
       onTheOrders(report, orders, () => call(moveAnalysis, 'lastMoveDirOf')(heroId, ph)),
+    // the Move field's directions for the hero `c` in the phase `ph`, for a fresh Move (order-targets.ts's, which
+    // buildTargetField calls): each option as the field writes it, its value (prov:<id>) and its words, and whether the
+    // icy wastes bar a way north or south (the note under the field)
     theMoveFieldsDirectionsOn: (report, orders, c, ph) =>
-      onTheOrders(report, orders, () => call(field, 'theMoveFieldsDirections')(report, c, ph)),
+      onTheOrders(report, orders, () => {
+        const { dirOpts, blockedNorth, blockedSouth } = theTargetFieldsValues(
+          'theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase',
+          c,
+          ph,
+          'Move',
+          '',
+          [report].find(Boolean) ?? {},
+        );
+        return { options: (Array.isArray(dirOpts) ? dirOpts : []).map(String), blockedNorth, blockedSouth };
+      }),
     // what the hero `heroId` will carry once his realm's orders of the phases before `upTo` are carried out (P1-11d2):
     // each item's name, in the order of his pack
     predictedItemsOn: (report, orders, heroId, upTo) =>
@@ -375,11 +370,11 @@ export function playerPortalCopies(): Copies {
 }
 
 /** The order form's Cast Spell tables, and its two functions that read them: order-chances.ts's three tables and
- *  move-analysis.ts's ENCOUNTER_VALID imported, the action spells (buildTargetField's) and the spells aimed at a
- *  province or a hero (spellSecondaryHtml's) by their statements; the Cast Spell rows read the page's fields (a
- *  stand-in for document.getElementById, which the form's count and getOrderTarget read), with no report shown. */
+ *  move-analysis.ts's ENCOUNTER_VALID imported, the action spells (order-targets.ts's) and the spells aimed at a
+ *  province or a hero (spellSecondaryHtml's) by their values; the Cast Spell rows (order-targets.ts's, which
+ *  buildTargetField calls) read the page's fields (a stand-in for document.getElementById, which the form's count and
+ *  getOrderTarget read), with no report shown. */
 export function theOrderFormsSpells(): TheOrderFormsSpells {
-  const field = theTargetFieldsStatements();
   const aimed = runBesideItsImports(
     SPELL_TARGETS,
     `return {
@@ -387,7 +382,7 @@ export function theOrderFormsSpells(): TheOrderFormsSpells {
       NEEDS_CHAR: [...${theOneInitializer(SPELL_TARGETS, 'NEEDS_CHAR')}],
     };`,
   );
-  const actionSpells = isObj(field['tables']) ? field['tables'] : {};
+  const actionSpells = theTargetFieldsSpellTables();
   const tables: unknown = JSON.parse(
     JSON.stringify({
       SPELLS_BY_SCHOOL: orderChances.SPELLS_BY_SCHOOL,
@@ -407,8 +402,9 @@ export function theOrderFormsSpells(): TheOrderFormsSpells {
   const made = {
     tables,
     castSpellRows: (report: unknown, c: unknown, ph: unknown, fields: unknown) =>
-      withThePagesGlobals({ currentReport: null, document: theFieldsHeld(fields) }, () =>
-        aFunctionOf(field, 'castSpellRows')(report, c, ph),
+      withThePagesGlobals(
+        { currentReport: null, document: theFieldsHeld(fields) },
+        () => theTargetFieldsValues('theSpellsTheCastSpellFieldOffersAHeroInAPhase', c, ph, report)['_spellRows'],
       ),
     targetField: (report: unknown, c: unknown, spell: unknown) =>
       withThePagesGlobals({ currentReport: report, document: theFieldsHeld({}) }, () =>

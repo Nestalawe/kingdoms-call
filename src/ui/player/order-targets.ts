@@ -389,6 +389,141 @@ export function theBloodOfferingsHint(army, sac, ben) {
     };
   return { words: `✓ The turn will ${what}.`, colour: '#2d6a2d' };
 }
+// The Move field's directions for the hero `c` in the phase `ph` (buildTargetField's: it calls this for any order but a
+// mastery order, with `action` and `target` as saved, on the report `report`): each legal direction's option, and
+// whether the icy wastes bar a way north or south (the note under the field); with the provinces and the one he stands
+// in, which the field reads after.
+export function theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase(c, ph, action, target, report) {
+  // Build direction options with adjacent province names where known
+  const worldMeta_ = report.worldMeta || {};
+  const wCols = worldMeta_.cols || 20;
+  const wRows = worldMeta_.rows || 10;
+  const wProvs = worldMeta_.provinces || [];
+
+  // Find character's current predicted location
+  const curLocObj = predictedLocation(c.id, ph);
+  const curProv_ = curLocObj ? wProvs.find((p) => p.id === curLocObj.id) : null;
+
+  // Build direction options, but ONLY for legal moves. The world wraps east-west, so W/E always
+  // lead somewhere; north-south do not wrap — beyond the top and bottom rows lie the impassable icy
+  // wastelands. Those off-map directions are omitted from the dropdown, and a note explains why.
+  let blockedNorth = false,
+    blockedSouth = false;
+  // With nothing saved for this phase, open on the direction this character last moved in earlier
+  // this turn instead of always North West (2026-09-26, Toby item 2).
+  const _defaultDir = action === 'Move' && !target ? lastMoveDirOf(c.id, ph) : null;
+  const dirOpts = Object.entries(DIRECTIONS)
+    .map(([v, l]) => {
+      let provLabel = '',
+        offMap = false;
+      // the place of the hex one step that way (null past the top or bottom row)
+      const nidOut = curProv_ ? theHexNextToAProvinceInADirection(curProv_, v, wCols, wRows) : null;
+      if (curProv_) {
+        if (nidOut !== null) {
+          const nbProv = wProvs.find((p) => p.id === nidOut);
+          if (nbProv && nbProv.name) provLabel = ` (${nbProv.name})`;
+          else if (!nbProv) offMap = true;
+        } else {
+          offMap = true; // beyond the north or south edge of the world
+          if (v === 'NW' || v === 'NE') blockedNorth = true;
+          else blockedSouth = true;
+        }
+      }
+      if (offMap) return null; // legal moves only
+      // Emit the ABSOLUTE province id (prov:<id>) rather than the compass direction, so if the
+      // character is displaced earlier in the turn (retreat after a lost battle) the engine still
+      // heads for the province the player actually chose, not "one hex east of wherever they ended
+      // up". Legacy dir: orders still parse, so a previously-saved direction is shown as selected
+      // too.
+      const valOut = nidOut != null ? `prov:${nidOut}` : `dir:${v}`;
+      const selOut =
+        target === valOut || target === 'dir:' + v ? 'selected' : !target && _defaultDir === v ? 'selected' : '';
+      return kcHtml`<option value="${valOut}" ${selOut}>${l}${provLabel}</option>`;
+    })
+    .filter(Boolean);
+  return { wProvs, curProv_, blockedNorth, blockedSouth, dirOpts };
+}
+// The spells the Cast Spell field offers the hero `c` in the phase `ph` on the report `report` (buildTargetField's, for
+// a hero whose skills the report shows): each spell's row (its spell, whether its school's limit is reached, its
+// label), with the schools he practises, the casts each school allows and those the earlier phases spend, which the
+// field reads after.
+export function theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, ph, report) {
+  // Only show spells that are usable as phase orders
+  const PHASE_SPELLS = theActionSpells();
+
+  // Also include schools being practised in an earlier phase this turn. The practice may or may
+  // not succeed, but the player should be able to pre-order a cast in case it does. If the
+  // skill is still 0 when the phase resolves, the cast will simply fail with a clear message.
+  // 2026-10-13 (item 2, Toby): each earlier Practice order on a school is assumed to succeed, so
+  // the casting limit quoted (and enforced in the dropdown) is the one the hero may have reached
+  // by this phase. The engine counts the limit from the level at the moment of casting, so a
+  // practice that lands does raise it.
+  const { practising: practisingSchools, projected: _projLvl, trained: _trainedLvl } = projectedMagicLevels(c, ph);
+  // R-123: the Warlock (the minor title the report lists in his minorHeld) casts one more spell of his best school
+  // a turn, read from the levels he may have trained by this phase, as the turn reads them at the cast.
+  const _warlock = ((c && c.minorHeld) || []).some((t) => t && t.key === 'warlock');
+  const _castsAllowed = (school) =>
+    actionSpellsAHeroMayCastInASchoolEachTurn(
+      { skills: { ...((c && c.skills) || {}), ..._trainedLvl } },
+      school,
+      _projLvl[school],
+      _warlock,
+    );
+
+  // R-124: while the realm's Grand Cathedral stands (its report's kingdom says so), Bless Province costs no slot: the
+  // turn never counts it among a school's casts, nor ever blocks it.
+  const _cathedral = !!(report.kingdom && report.kingdom.itsGrandCathedralStands);
+  const _costsNoSlot = (spell) => theSpellCostsItsCasterNoCastingSlot(spell, _cathedral);
+
+  // Count how many Cast Spell orders from each school already exist in earlier phases
+  const schoolCastCount = {};
+  for (let prevPh = 0; prevPh < ph; prevPh++) {
+    const prevAction = document.getElementById(`po-action-${c.id}-${prevPh}`)?.value || '';
+    if (prevAction !== 'Cast Spell') continue;
+    const prevSpell = getOrderTarget(c.id, prevPh);
+    if (prevSpell && _costsNoSlot(prevSpell)) continue;
+    const prevSchool = prevSpell ? SPELL_TO_SCHOOL[prevSpell] : null;
+    if (prevSchool) schoolCastCount[prevSchool] = (schoolCastCount[prevSchool] || 0) + 1;
+  }
+
+  // ── 2026-09-21: THE DROPDOWN AND THE TARGET FIELD ARE DECIDED FROM ONE LIST ──
+  // They used to be worked out separately: the <option> markup here, and `selSpell` (which
+  // picks the secondary target field — province vs character) from a second pass over the same
+  // tables. When nothing was saved yet, `selSpell` took the FIRST spell in that list while the
+  // BROWSER, per the HTML spec, selects the first NON-DISABLED option. Those are different
+  // spells the moment an earlier phase has spent a school's casting limit, so a hero who had
+  // already cast his one Psychic spell this turn opened the form showing "Earthquake" over a
+  // "— Target character —" box built for Charm. The same drift hit any saved spell whose option
+  // is no longer offered (a level lost, a mastery spell gated). Now the rows are built ONCE as
+  // data, the selection is resolved against them (saved spell if it is still offered and
+  // castable, else the first castable one), and that single answer both marks `selected` and
+  // builds the target field — so the two cannot disagree.
+  const _spellRows = Object.entries(SPELLS_BY_SCHOOL)
+    .filter(([school]) => effMagicLvl(c, school) >= 1 || practisingSchools.has(school))
+    .flatMap(([school, list]) =>
+      list
+        .filter((s) => PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s] || rawMagicLvl(c, school) >= SPELL_REQ_LEVEL[s]))
+        .map((s) => {
+          const currentLvl = effMagicLvl(c, school);
+          const projLvl = _projLvl[school];
+          const isPractising = practisingSchools.has(school) && currentLvl === 0;
+          const limit = _castsAllowed(school);
+          const used = schoolCastCount[school] || 0;
+          const atLimit = used >= limit && !_costsNoSlot(s);
+          const lvlTxt = projLvl > currentLvl ? `Lv${currentLvl}→${projLvl} if practice succeeds` : `Lv${currentLvl}`;
+          let label;
+          if (isPractising && !atLimit) {
+            label = `${s} (${SKILL_LABELS[school]} — practising, may unlock: Lv${projLvl}, ${used}/${limit} used)`;
+          } else if (atLimit) {
+            label = `${s} (${SKILL_LABELS[school]} ${lvlTxt} — limit reached: ${used}/${limit} this turn)`;
+          } else {
+            label = `${s} (${SKILL_LABELS[school]} ${lvlTxt} — ${used}/${limit} used)`;
+          }
+          return { spell: s, atLimit, label };
+        }),
+    );
+  return { practisingSchools, _castsAllowed, schoolCastCount, _spellRows };
+}
 export function buildTargetField(c, ph, saved) {
   const action = saved.action || '';
   const target = saved.target || '';
@@ -522,53 +657,13 @@ export function buildTargetField(c, ph, saved) {
     }
   }
 
-  // Build direction options with adjacent province names where known
-  const worldMeta_ = report.worldMeta || {};
-  const wCols = worldMeta_.cols || 20;
-  const wRows = worldMeta_.rows || 10;
-  const wProvs = worldMeta_.provinces || [];
-
-  // Find character's current predicted location
-  const curLocObj = predictedLocation(c.id, ph);
-  const curProv_ = curLocObj ? wProvs.find((p) => p.id === curLocObj.id) : null;
-
-  // Build direction options, but ONLY for legal moves. The world wraps east-west, so W/E always
-  // lead somewhere; north-south do not wrap — beyond the top and bottom rows lie the impassable icy
-  // wastelands. Those off-map directions are omitted from the dropdown, and a note explains why.
-  let blockedNorth = false,
-    blockedSouth = false;
-  // With nothing saved for this phase, open on the direction this character last moved in earlier
-  // this turn instead of always North West (2026-09-26, Toby item 2).
-  const _defaultDir = action === 'Move' && !target ? lastMoveDirOf(c.id, ph) : null;
-  const dirOpts = Object.entries(DIRECTIONS)
-    .map(([v, l]) => {
-      let provLabel = '',
-        offMap = false;
-      // the place of the hex one step that way (null past the top or bottom row)
-      const nidOut = curProv_ ? theHexNextToAProvinceInADirection(curProv_, v, wCols, wRows) : null;
-      if (curProv_) {
-        if (nidOut !== null) {
-          const nbProv = wProvs.find((p) => p.id === nidOut);
-          if (nbProv && nbProv.name) provLabel = ` (${nbProv.name})`;
-          else if (!nbProv) offMap = true;
-        } else {
-          offMap = true; // beyond the north or south edge of the world
-          if (v === 'NW' || v === 'NE') blockedNorth = true;
-          else blockedSouth = true;
-        }
-      }
-      if (offMap) return null; // legal moves only
-      // Emit the ABSOLUTE province id (prov:<id>) rather than the compass direction, so if the
-      // character is displaced earlier in the turn (retreat after a lost battle) the engine still
-      // heads for the province the player actually chose, not "one hex east of wherever they ended
-      // up". Legacy dir: orders still parse, so a previously-saved direction is shown as selected
-      // too.
-      const valOut = nidOut != null ? `prov:${nidOut}` : `dir:${v}`;
-      const selOut =
-        target === valOut || target === 'dir:' + v ? 'selected' : !target && _defaultDir === v ? 'selected' : '';
-      return kcHtml`<option value="${valOut}" ${selOut}>${l}${provLabel}</option>`;
-    })
-    .filter(Boolean);
+  const { wProvs, curProv_, blockedNorth, blockedSouth, dirOpts } = theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase(
+    c,
+    ph,
+    action,
+    target,
+    report,
+  );
   // the character's OWN province is offered as a move target too. Orders are written before the
   // turn resolves, so a character can be displaced mid-turn — thrown back by a lost battle, routed
   // by Terror — and land somewhere the player never chose. Naming the province they expected to be
@@ -1091,81 +1186,8 @@ export function buildTargetField(c, ph, saved) {
         return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange(${kcArg(String(c.id))},${kcArg(ph)},this.value)">${_hsList.map(([sp, school]) => kcHtml`<option value="${sp}" ${sp === _hsSel ? 'selected' : ''}>${sp} (${SKILL_LABELS[school]})</option>`)}</select>
           <div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills ? `${c.name}'s training is unknown until they have joined — every base spell is offered; one from a school they have not learned simply fails.` : `You cannot see this hero's skills — a spell from a school they have not learned simply fails.`}</div>${spellSecondaryHtml(report, c, ph, _hsSel, _hsSel === target ? extra : '', target)}`;
       }
-      // Only show spells that are usable as phase orders
-      const PHASE_SPELLS = theActionSpells();
-
-      // Also include schools being practised in an earlier phase this turn. The practice may or may
-      // not succeed, but the player should be able to pre-order a cast in case it does. If the
-      // skill is still 0 when the phase resolves, the cast will simply fail with a clear message.
-      // 2026-10-13 (item 2, Toby): each earlier Practice order on a school is assumed to succeed, so
-      // the casting limit quoted (and enforced in the dropdown) is the one the hero may have reached
-      // by this phase. The engine counts the limit from the level at the moment of casting, so a
-      // practice that lands does raise it.
-      const { practising: practisingSchools, projected: _projLvl, trained: _trainedLvl } = projectedMagicLevels(c, ph);
-      // R-123: the Warlock (the minor title the report lists in his minorHeld) casts one more spell of his best school
-      // a turn, read from the levels he may have trained by this phase, as the turn reads them at the cast.
-      const _warlock = ((c && c.minorHeld) || []).some((t) => t && t.key === 'warlock');
-      const _castsAllowed = (school) =>
-        actionSpellsAHeroMayCastInASchoolEachTurn(
-          { skills: { ...((c && c.skills) || {}), ..._trainedLvl } },
-          school,
-          _projLvl[school],
-          _warlock,
-        );
-
-      // R-124: while the realm's Grand Cathedral stands (its report's kingdom says so), Bless Province costs no slot: the
-      // turn never counts it among a school's casts, nor ever blocks it.
-      const _cathedral = !!(report.kingdom && report.kingdom.itsGrandCathedralStands);
-      const _costsNoSlot = (spell) => theSpellCostsItsCasterNoCastingSlot(spell, _cathedral);
-
-      // Count how many Cast Spell orders from each school already exist in earlier phases
-      const schoolCastCount = {};
-      for (let prevPh = 0; prevPh < ph; prevPh++) {
-        const prevAction = document.getElementById(`po-action-${c.id}-${prevPh}`)?.value || '';
-        if (prevAction !== 'Cast Spell') continue;
-        const prevSpell = getOrderTarget(c.id, prevPh);
-        if (prevSpell && _costsNoSlot(prevSpell)) continue;
-        const prevSchool = prevSpell ? SPELL_TO_SCHOOL[prevSpell] : null;
-        if (prevSchool) schoolCastCount[prevSchool] = (schoolCastCount[prevSchool] || 0) + 1;
-      }
-
-      // ── 2026-09-21: THE DROPDOWN AND THE TARGET FIELD ARE DECIDED FROM ONE LIST ──
-      // They used to be worked out separately: the <option> markup here, and `selSpell` (which
-      // picks the secondary target field — province vs character) from a second pass over the same
-      // tables. When nothing was saved yet, `selSpell` took the FIRST spell in that list while the
-      // BROWSER, per the HTML spec, selects the first NON-DISABLED option. Those are different
-      // spells the moment an earlier phase has spent a school's casting limit, so a hero who had
-      // already cast his one Psychic spell this turn opened the form showing "Earthquake" over a
-      // "— Target character —" box built for Charm. The same drift hit any saved spell whose option
-      // is no longer offered (a level lost, a mastery spell gated). Now the rows are built ONCE as
-      // data, the selection is resolved against them (saved spell if it is still offered and
-      // castable, else the first castable one), and that single answer both marks `selected` and
-      // builds the target field — so the two cannot disagree.
-      const _spellRows = Object.entries(SPELLS_BY_SCHOOL)
-        .filter(([school]) => effMagicLvl(c, school) >= 1 || practisingSchools.has(school))
-        .flatMap(([school, list]) =>
-          list
-            .filter((s) => PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s] || rawMagicLvl(c, school) >= SPELL_REQ_LEVEL[s]))
-            .map((s) => {
-              const currentLvl = effMagicLvl(c, school);
-              const projLvl = _projLvl[school];
-              const isPractising = practisingSchools.has(school) && currentLvl === 0;
-              const limit = _castsAllowed(school);
-              const used = schoolCastCount[school] || 0;
-              const atLimit = used >= limit && !_costsNoSlot(s);
-              const lvlTxt =
-                projLvl > currentLvl ? `Lv${currentLvl}→${projLvl} if practice succeeds` : `Lv${currentLvl}`;
-              let label;
-              if (isPractising && !atLimit) {
-                label = `${s} (${SKILL_LABELS[school]} — practising, may unlock: Lv${projLvl}, ${used}/${limit} used)`;
-              } else if (atLimit) {
-                label = `${s} (${SKILL_LABELS[school]} ${lvlTxt} — limit reached: ${used}/${limit} this turn)`;
-              } else {
-                label = `${s} (${SKILL_LABELS[school]} ${lvlTxt} — ${used}/${limit} used)`;
-              }
-              return { spell: s, atLimit, label };
-            }),
-        );
+      const { practisingSchools, _castsAllowed, schoolCastCount, _spellRows } =
+        theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, ph, report);
       const _castable = _spellRows.filter((r) => !r.atLimit);
       const _selSpell =
         target && _castable.some((r) => r.spell === target)

@@ -191,8 +191,8 @@ export interface ASpellTheFormOffers {
 export interface TheOrderFormsSpells {
   readonly tables: TheOrderFormsSpellTables;
   /** The spells the Cast Spell field offers the hero `c` (as his realm's `report` holds him) in phase `ph`, the form's
-   *  fields (`po-action-<id>-<phase>`, `po-target-<id>-<phase>`) holding `fields`: buildTargetField's statements from
-   *  the action spells through the rows it builds. */
+   *  fields (`po-action-<id>-<phase>`, `po-target-<id>-<phase>`) holding `fields`: order-targets.ts's
+   *  theSpellsTheCastSpellFieldOffersAHeroInAPhase, which buildTargetField calls. */
   readonly castSpellRows: (report: Obj, c: Obj, ph: number, fields: Record<string, string>) => ASpellTheFormOffers[];
   /** The target field spellSecondaryHtml builds for the spell, the caster `c` in phase 0 of `report`'s orders, with no
    *  target chosen: its markup. */

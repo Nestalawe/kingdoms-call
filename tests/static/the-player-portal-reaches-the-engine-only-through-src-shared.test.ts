@@ -109,7 +109,8 @@ const THE_THREE_HEX_TABLES: readonly (readonly [string, string])[] = [
     'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
     'whereAHeroStandsAfterTheOrdersBefore',
   ],
-  ['ui/player/order-targets.ts', 'buildTargetField'],
+  // (since P1-13e11 the Move field's directions are a function of their own, which buildTargetField calls)
+  ['ui/player/order-targets.ts', 'theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase'],
   ['ui/player/move-analysis.ts', 'lastMoveDirOf'],
 ];
 
