@@ -45,7 +45,9 @@ each, which `tests/static/harness.test.ts` pins: `engine/bots/economy.ts` reads 
 `engine/rng.ts` `crypto` (the dice's seed when no test gives one), `engine/clock.ts` `Date`. `Math.random` is refused
 in every file of `src/` but `engine/rng.ts`, and in the classic scripts, through `Math` (`no-restricted-properties`) or
 through any object's `Math`, as `window.Math.random` (`no-restricted-syntax`). Only `src/db/` may read `supabase`, the
-client's global; the four pages' `createClient` calls are in the suppressions, for P1-17's access layer.
+client's global: the pages make their client through `src/db/the-pages-database-client.ts` (P1-17c). The generated
+database types (`src/db/database.types.ts`) keep the generator's forms: three style rules are off there, and knip
+doesn't count their unused helper types.
 
 **The project's own rules** are ESLint rules in TypeScript (`tools/eslint-rules/`, the plugin `kc`, P1-13c), each with
 its RuleTester test in `tests/unit/`: `kc/no-random-or-argument-less-sort-comparator` ([traps.md](../traps.md#a-sort-comparator-must-give-the-same-answer-every-time)),

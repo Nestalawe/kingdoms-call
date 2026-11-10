@@ -349,14 +349,6 @@
       "count": 3
     }
   },
-  "src/ui/gm/config.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "src/ui/gm/game-detail.ts": {
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
       "count": 1
@@ -377,11 +369,6 @@
     },
     "prefer-const": {
       "count": 2
-    }
-  },
-  "src/ui/gm/globals.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
     }
   },
   "src/ui/gm/hall-of-fame.ts": {
@@ -451,21 +438,10 @@
   "src/ui/leaderboard/main.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 5
-    },
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "src/ui/overlord/globals.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
     }
   },
   "src/ui/overlord/main.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -489,11 +465,6 @@
     },
     "no-empty": {
       "count": 5
-    }
-  },
-  "src/ui/player/globals.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
     }
   },
   "src/ui/player/init.ts": {
@@ -610,11 +581,6 @@
   },
   "src/ui/player/skills-and-projections.ts": {
     "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/ui/player/startup.ts": {
-    "no-restricted-globals": {
       "count": 1
     }
   },

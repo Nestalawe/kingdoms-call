@@ -1,6 +1,7 @@
 // Types for the parts of tests/lib/boot.js that TypeScript tests use. Add to them as tests need more.
 import type { Server } from 'node:http';
 import type { BrowserContext, Page } from '@playwright/test';
+import type { Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 
 /** A page's window as a test reaches it: run code in the page, read and set its globals. */
 export interface PageWindow {
@@ -27,6 +28,8 @@ export interface BootOptions {
   pretendToBeVisual?: boolean;
   dbVersion?: string | null | (string | null)[];
   dbCalls?: string[];
+  /** A Db the page takes as its own (its fake, tests/lib/fake-db.ts), handed in before the page's scripts run. */
+  db?: Db;
   /** The seed of the page's dice (kcRng, src/engine/rng.ts; its Math.random gets the same seed). */
   seed?: number;
   /** Pins the page's clock: starts here (ms since 1970, or a date string), 1 ms on at each reading. */

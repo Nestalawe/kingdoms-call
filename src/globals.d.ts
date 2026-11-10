@@ -2,7 +2,7 @@
 // module (no import, no export): each `declare` here is a global.
 //
 // From the page's classic scripts (public/, loaded by a tag before the page's module): KC_CONFIG (kc-config.js, which
-// staging overwrites), supabase (supabase-js, from npm: tools/build.ts). KC_RNG_SEED is set by the tests before a page's scripts
+// staging overwrites), supabase (supabase-js, from npm: tools/build.ts; its type, TheSupabaseGlobal, is src/db/'s, the only folder that reads it). KC_RNG_SEED is set by the tests before a page's scripts
 // run (tests/lib/boot.js) and read by src/engine/rng.ts behind typeof; the live site has none.
 //
 // Then each page's declared globals (P1-09b): the variables its files and its tests share, each declared once as
@@ -16,7 +16,7 @@ declare const KC_CONFIG: Readonly<{
   supabaseKey: string;
   deployed?: Readonly<{ pr: number; sha: string }>;
 }>;
-declare const supabase: { createClient(url: string, key: string, options?: object): PageState };
+declare const supabase: TheSupabaseGlobal;
 declare const KC_RNG_SEED: number | undefined;
 
 /** A page variable's value, untyped until P1-16. */

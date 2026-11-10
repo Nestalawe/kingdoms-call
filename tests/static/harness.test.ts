@@ -323,6 +323,11 @@ describe('the lint rules', () => {
       expect(found.map((m) => m.severity)).toEqual(isError ? [2] : []);
     },
   );
+  const GENERATED_TYPES_FORMS = [
+    '@typescript-eslint/no-redundant-type-constituents',
+    '@typescript-eslint/consistent-indexed-object-style',
+    '@typescript-eslint/consistent-type-definitions',
+  ];
   test(
     "every file of src/ gets the site's rules, each an error, and the type-aware ones exactly when TypeScript checks it",
     timeLimitForTheWork({ toolRuns: 1 }),
@@ -333,8 +338,13 @@ describe('the lint rules', () => {
         const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
         const rules = config.rules ?? {};
         const checked = typeChecked(file);
-        // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js)
-        const allowedOff = [...(file === 'src/globals.d.ts' ? ['no-var'] : []), ...(checked ? [DISAGREE] : [])];
+        // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js); the generated
+        // database types keep the generator's forms (eslint.config.js: three style rules off there, plan P1-17c)
+        const allowedOff = [
+          ...(file === 'src/globals.d.ts' ? ['no-var'] : []),
+          ...(file === 'src/db/database.types.ts' ? GENERATED_TYPES_FORMS : []),
+          ...(checked ? [DISAGREE] : []),
+        ];
         const off = notAtError({ ...siteExpected, ...(checked ? typedExpected : {}) }, rules);
         if (off.join() !== allowedOff.join()) wrong.push(`${file}: not errors: ${off.join(', ')}`);
         if (level(rules['no-undef']) !== 2) wrong.push(`${file}: no-undef`);
@@ -1375,15 +1385,17 @@ describe('CI', () => {
       // the save's check at the turn's start parses with the saved state's schema (P1-15d)
       expect(page).toContain('src/schemas/saved-game-state.ts');
       expect(page.filter((f) => !isEnginePath(f))).toEqual([]);
-      // Under src/, the engine paths are exactly the page's sources, the pages' templates and the schemas (one folder,
-      // every file: the page bundles the saved state's, and the orders' is types for its code): no other page's code
-      // plays the matrix.
+      // Under src/, the engine paths are exactly the page's sources, the pages' templates, the schemas and the database
+      // code (one folder each, every file: the page bundles the saved state's schema and the database client, and the
+      // orders' schema and the generated database types are types for its code): no other page's code plays the matrix.
       const src = filesUnder(path.join(ROOT, 'src')).map((f) => 'src/' + f);
       const templates = pageNames().map((p) => 'src/' + p);
       const schemas = src.filter((f) => f.startsWith('src/schemas/'));
       expect(schemas).toContain('src/schemas/orders-a-realm-submits.ts');
+      const databaseCode = src.filter((f) => f.startsWith('src/db/'));
+      expect(databaseCode).toContain('src/db/database.types.ts');
       expect(src.filter(isEnginePath).sort()).toEqual(
-        [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates, ...schemas])].sort(),
+        [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates, ...schemas, ...databaseCode])].sort(),
       );
       const dir = path.join(ROOT, 'tools', 'balance');
       const direct = fs
@@ -2124,7 +2136,8 @@ describe('the ratchet', () => {
     const baseline = readBaseline();
     for (const counts of [baseline, counted]) {
       expect(counts).not.toHaveProperty('tsNocheck');
-      expect(counts['tsNocheckEngineSide']).toBeGreaterThan(0);
+      // the engine's side is at 0 since P1-17c typed src/db/kc-db-guard.ts (P1-10b's Done when), and stays there
+      expect(counts['tsNocheckEngineSide']).toBe(0);
       expect(counts['tsNocheckUi']).toBeGreaterThan(0);
     }
     expect([...ENGINE_SIDE_FOLDERS]).toEqual([
@@ -2267,8 +2280,16 @@ describe('the architecture rules', () => {
   });
 
   test("knip starts from every page's entries and leaves out only the quarantine", () => {
-    expect(Object.keys(knipConfig).sort()).toEqual(['entry', 'ignore', 'ignoreExportsUsedInFile', 'project']);
+    expect(Object.keys(knipConfig).sort()).toEqual([
+      'entry',
+      'ignore',
+      'ignoreExportsUsedInFile',
+      'ignoreIssues',
+      'project',
+    ]);
     expect(knipConfig.ignore).toEqual(['tests/quarantine/**']);
+    // the generated database types' helpers no code uses yet: only those two kinds, only in that file (P1-17c)
+    expect(knipConfig.ignoreIssues).toEqual({ 'src/db/database.types.ts': ['exports', 'types'] });
     expect(knipConfig.ignoreExportsUsedInFile).toBe(true);
     const entry: string[] = knipConfig.entry;
     for (const page of ['src/ui/gm/page.ts', 'src/ui/player/page.ts', 'src/rulebook/toc.ts'])

@@ -170,16 +170,33 @@ prefer the new column and fall back to the old source. Prove it with a test that
 (`MISSING_COLS` in `tests/lib/stub-db.js`), as `tests/meta-missing-turn.test.js` does. This is why database
 and site changes go in separate PRs ([supabase/README.md](../../supabase/README.md#database-and-site-changes-go-separately)).
 
+## The access layer: `src/db/`
+
+Pages are moving onto one typed interface to the database, `Db` (plan P1-17), area by area. Today:
+- **The client:** each page makes its supabase-js client and its `Db` with `makeThePagesDatabase(url, key, options?)`
+  (`src/db/the-pages-database-client.ts`), the page's own arguments kept (the Overlord page's `storageKey`). Only
+  `src/db/` reads the `supabase` global (ESLint) or imports the package, and only its types (dependency-cruiser).
+- **`Db`** (`src/db/the-db-interface-and-its-areas.ts`): one object of areas, made from the client by
+  `makeTheDbFromItsClient`. Its first area is the version guard's, `db.theDatabasesVersion.askTheDatabaseItsVersion()`
+  (`rpc('kc_db_version')`). A `Db` function sends the query the page sent before and answers as supabase-js does
+  (`data`, `error`, `status`), so the page's error paths stay the same. Every other call is still on the page's `sb`.
+- **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
+  compiler error. Never edit them by hand: run `npx supabase@2.120.0 gen types typescript --local >
+  src/db/database.types.ts` against the local database with every migration applied, then
+  `npx prettier --write src/db/database.types.ts`.
+- **The fake:** `tests/lib/fake-db.ts` is a small in-memory `Db`, kept in step by the compiler. A page test hands it to
+  the page before its scripts run (`bootJsdom(html, { db })`, which sets it on the window under
+  `THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER`); only `src/db/` reads that name (a static test). The fake doesn't
+  imitate the access rules.
+
 ## A site change that needs a database change
 
 Every page that uses the database (both portals and the Hall of Fame) declares `KC_DB_MIN`, the oldest
 database version it works with (a migration's 14-digit version), and starts through
-`kcDbGuard(sb, KC_DB_MIN)` (`src/db/kc-db-guard.ts`, P0-34). Before the first read, it asks the database for
+`kcDbGuard(thePagesDb, KC_DB_MIN)` (`src/db/kc-db-guard.ts`, P0-34). Before the first read, it asks the database for
 its version (`kc_db_version()`, the newest migration applied). On an older database, or one without the
 function, or no answer after one retry, the page stops with "The game is being updated" and nothing is read
 or written.
-`src/db/` holds only that file: the GM page's database code (the banners' probes, archiving, the statistics rows)
-is in `src/ui/gm/` and calls the database as the page's other code does, until P1-17's area rows move the calls.
 - **Raising `KC_DB_MIN` is how a site PR says "needs migration X".** Use it when the page can't sensibly
   work without the change; otherwise cope ([traps.md](../traps.md#a-new-column-must-be-optional-at-the-write-site)).
   Raise it in every page that needs the change, not only the one you edited.

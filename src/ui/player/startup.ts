@@ -1,4 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
 
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
@@ -8,4 +9,6 @@ export const KC_DB_MIN = '20261015062128';
 if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load: reload the page.');
 export const SUPABASE_URL = KC_CONFIG.supabaseUrl;
 export const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
-export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const thePagesDatabase = makeThePagesDatabase(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const sb = thePagesDatabase.client;
+export const thePagesDb = thePagesDatabase.db;

@@ -134,6 +134,8 @@ if(SEED!=null&&SEED!=='') Math.random=seededRandom(SEED);
 // opts.url, opts.pretendToBeVisual   jsdom options; defaults match the original harnesses
 // opts.dbVersion, opts.dbCalls         what rpc('kc_db_version') answers, and a list recording the page's
 //                                      database calls (withDbVersion above); by default an up-to-date database
+// opts.db         a Db the page takes as its own (its fake: tests/lib/fake-db.ts), set on the window under the name
+//                 src/db/the-pages-database-client.ts reads (THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER)
 // opts.seed       the seed of the page's dice, kcRng (by default each page booted gets its own stream from KC_SEED). The
 //                 page's Math.random gets the same seed, for any code outside src/. A test fixes dice in a page that
 //                 has booted through kcRng.seed(n) or kcRng.use(fn) (docs/traps.md, "Dice come from kcRng()")
@@ -150,6 +152,7 @@ function bootJsdom(html,opts={}){
       if(seed!=null){ w.KC_RNG_SEED=seed; w.Math.random=seededRandom(seed); }
       if(opts.now!=null) w.Date=pinnedDate(w.Date,opts.now);
       if(opts.supabase) w.supabase=opts.supabase;
+      if(opts.db) w.kcTheDbATestHandsThePage=opts.db;
       w.confirm=()=>true; w.alert=()=>{};
       if(opts.setup) opts.setup(w);
       w.supabase=withDbVersion(w.supabase,'dbVersion' in opts?opts.dbVersion:DB_VERSION,opts.dbCalls);

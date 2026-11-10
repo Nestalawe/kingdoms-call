@@ -21,7 +21,7 @@
 // src/engine/clock.ts), nor the database (supabase, sb). Three files are the reviewed exceptions, each with its
 // reason below. The dice come from kcRng() (src/engine/rng.ts) everywhere: Math.random is refused in all of src/ but
 // rng.ts, through Math or through window. or globalThis., and in the classic scripts. Only src/db/ may read supabase
-// (the client's global); the four pages' createClient calls are in the suppressions, for P1-17's access layer.
+// (the client's global): the pages make their client through src/db/the-pages-database-client.ts (P1-17c).
 //
 // The project's own rules (tools/eslint-rules/, the plugin kc; plan P1-13, Decision 8) are the incident rules that
 // replaced home-made static tests: no random or argument-less sort comparator, the big tables and profiles read by
@@ -253,9 +253,23 @@ module.exports = defineConfig(
     rules: { 'no-restricted-globals': pureGlobals(['Date']) },
   },
   {
+    // The generated database types (npx supabase gen types typescript --local, then Prettier; plan P1-17, Decision 5),
+    // never edited by hand: three style rules of the type-aware sets ask for another form than the generator writes
+    // (an interface for its `type Database`, Record for its `[_ in never]` maps, no `never` in its unions). Every other
+    // rule runs on it.
+    files: ['src/db/database.types.ts'],
+    rules: {
+      '@typescript-eslint/consistent-type-definitions': 'off',
+      '@typescript-eslint/consistent-indexed-object-style': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
+    },
+  },
+  {
     // TypeScript's form for a global variable is `declare var`: with `let` or `const`, globalThis.<name> (how a page's
-    // declared globals are set, P1-09b) wouldn't be known.
+    // declared globals are set, P1-09b) wouldn't be known. The supabase global's type, TheSupabaseGlobal, is declared
+    // global by src/db/the-pages-database-client.ts (only src/db/ names the package: P1-17c).
     files: ['src/globals.d.ts'],
+    languageOptions: { globals: { TheSupabaseGlobal: 'readonly' } },
     rules: { 'no-var': 'off' },
   },
   {

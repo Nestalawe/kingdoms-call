@@ -57,8 +57,8 @@ Order inside each portal's page, and why it matters:
    each after the files it imports: `kc-safe.ts` first (the HTML helpers, [below](#how-a-page-builds-html)), then
    `kc-db-guard.ts` (`kcDbGuard`, the database version guard,
    [traps.md](../traps.md#a-site-change-that-needs-a-database-change)), the data file (both portals), then the page's own
-   code. The start-up file creates the Supabase client, then
-   `kcDbGuard(sb, KC_DB_MIN)`: only if the database is at least `KC_DB_MIN` does it call `init()` (the leaderboard:
+   code. The start-up file makes the Supabase client and the page's `Db` (`makeThePagesDatabase`,
+   `src/db/the-pages-database-client.ts`), then `kcDbGuard(thePagesDb, KC_DB_MIN)`: only if the database is at least `KC_DB_MIN` does it call `init()` (the leaderboard:
    `loadAll()`), which hides the spinner. Otherwise the guard raises "The game is being updated" through the
    boot-failure reporter, and nothing is read or written. In the GM portal, a signed-in account is then checked
    (`gmPortalAllowed`: `is_game_master()` or `is_site_admin()`, P0-32c); anyone else, or a check that fails, sees only

@@ -99,7 +99,7 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   another way but the save's upgrade (`engine/saves/upgrade-a-saved-game-and-check-it.ts`), whose check at load
   parses with it (P1-15d).
 - **`db/`** imports only `db/` and `schemas/`, and only the pages' code (`ui/`) imports `db/`. Only `db/` may import
-  `@supabase/supabase-js` (none does until P1-17: the pages read the copy served with the site).
+  `@supabase/supabase-js`, and imports only its types: each page makes its client and its `Db` through `db/` (P1-17).
 - **A page's code** (`ui/<page>/`) imports no other page's but `ui/shared/`, which imports only itself. **Only the GM
   page imports the engine** (it runs the turn and edits the world); the player portal, the Hall of Fame and the
   Overlord page reach it only through `shared/` and `views/`.
@@ -195,9 +195,9 @@ src_shared_-->src_engine_rules_on_plain_values_
 src_ui_gm_-->src_engine_
 src_ui_gm_-->src_ui_shared_
 src_ui_gm_-->src_content_
+src_ui_gm_-->src_db_
 src_ui_gm_-->src_engine_rules_on_plain_values_
 src_ui_gm_-->src_views_
-src_ui_gm_-->src_db_
 src_ui_leaderboard_-->src_db_
 src_ui_leaderboard_-->src_ui_shared_
 src_ui_overlord_-->src_db_

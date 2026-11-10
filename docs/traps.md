@@ -64,7 +64,7 @@ as `tests/meta-missing-turn.test.js` does. This is why database and site changes
 
 A site PR that can't work without a migration raises `KC_DB_MIN` to the migration's 14-digit version in every page
 that needs it, and never lowers it to get past the stop. Example: each page that uses the database starts through
-`kcDbGuard(sb, KC_DB_MIN)` (`src/db/kc-db-guard.ts`); on an older database, one without `kc_db_version()`, or no
+`kcDbGuard(thePagesDb, KC_DB_MIN)` (`src/db/kc-db-guard.ts`); on an older database, one without `kc_db_version()`, or no
 answer after one retry, it stops with "The game is being updated" and reads or writes nothing. Otherwise cope
 ([above](#a-new-column-must-be-optional-at-the-write-site)).
 Checks: `db-min` fails if a `KC_DB_MIN` is newer than the newest file in `supabase/migrations/`; `db-guard` boots each

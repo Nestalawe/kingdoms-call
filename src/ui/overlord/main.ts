@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcDbGuard } from '../../db/kc-db-guard.ts';
+import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // KINGDOMS CALL — THE OVERLORD PAGE (plan step P0-32f, ruling R-097)
@@ -14,9 +15,11 @@ import { kcDbGuard } from '../../db/kc-db-guard.ts';
 // Its sign-in is kept apart from the portals' (storageKey), so signing in here never switches the account a GM tab in
 // the same browser is running turns with.
 if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load: reload the page.');
-export const sb = supabase.createClient(KC_CONFIG.supabaseUrl, KC_CONFIG.supabaseKey, {
+const thePagesDatabase = makeThePagesDatabase(KC_CONFIG.supabaseUrl, KC_CONFIG.supabaseKey, {
   auth: { storageKey: 'kc-overlord-auth' },
 });
+export const sb = thePagesDatabase.client;
+export const thePagesDb = thePagesDatabase.db;
 // The oldest database this page works with (P0-34): P0-32h's, which added suspending and deleting accounts (and
 // suspended_until) on top of P0-32e's reassign_game and the Overlord's rights on every game. The page can't work without it.
 export const KC_DB_MIN = '20261015051826';
@@ -679,4 +682,4 @@ export async function act(call, done) {
   return true;
 }
 
-kcDbGuard(sb, KC_DB_MIN).then(() => init());
+kcDbGuard(thePagesDb, KC_DB_MIN).then(() => init());

@@ -26,6 +26,10 @@ const config = {
   ],
   project: ['src/**/*.ts', 'tools/**/*.ts', 'tests/**/*.{js,ts,mts}', '!tools/legacy/**', '!tests/quarantine/**'],
   ignore: ['tests/quarantine/**'],
+  // The generated database types (src/db/database.types.ts: npx supabase gen types typescript --local; plan P1-17,
+  // Decision 5) come with helper types no code uses yet; the file is never edited by hand, so its unused exports and
+  // types aren't findings. Any other kind in it still is.
+  ignoreIssues: { 'src/db/database.types.ts': ['exports', 'types'] },
   ignoreExportsUsedInFile: true,
 } satisfies KnipConfig;
 

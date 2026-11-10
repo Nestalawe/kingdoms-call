@@ -75,6 +75,8 @@ function unreached(src: string, r: BuildResult): string[] {
     ...pageNames(src).flatMap((page) => [page, ...pageEntries(page, src).styles]),
     // Types only, for TypeScript (tsconfig.json includes src/): no module imports it and no bundle holds it (P1-09e).
     'globals.d.ts',
+    // The generated database types (P1-17c): src/db/ imports them as types only, so no bundle holds them.
+    'db/database.types.ts',
   ]);
   return filesUnder(src).filter((f) => !reached.has(f) && !isASchema(f));
 }

@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { kcDbGuard } from '../../db/kc-db-guard.ts';
+import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // KINGDOMS CALL — HALL OF FAME
@@ -18,7 +19,9 @@ import { kcDbGuard } from '../../db/kc-db-guard.ts';
 if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load: reload the page.');
 export const SUPABASE_URL = KC_CONFIG.supabaseUrl;
 export const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
-export const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const thePagesDatabase = makeThePagesDatabase(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const sb = thePagesDatabase.client;
+export const thePagesDb = thePagesDatabase.db;
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
 // a database change").
@@ -997,4 +1000,4 @@ export async function deleteRecord(id, purge) {
   render();
 }
 
-kcDbGuard(sb, KC_DB_MIN).then(() => loadAll());
+kcDbGuard(thePagesDb, KC_DB_MIN).then(() => loadAll());
