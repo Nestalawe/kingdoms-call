@@ -41,7 +41,7 @@ Every doc says what is true now; history lives in git and the PRs. A static test
 | Path | What |
 |---|---|
 | `src/` | The site's source, TypeScript modules; `npm run build` (Vite) builds `site/` (git-ignored), what is published and every test opens. [Its folders](docs/architecture/the-build-from-src-to-site.md) |
-| `public/` | Copied as it is: `kc-config.js` (which database), `kc-staging-footer.js`, `vendor/` (supabase-js) |
+| `public/` | Copied as it is: `kc-config.js` (which database), `kc-staging-footer.js` |
 | `supabase/` | The database: `schemas/` (the structure and access rules), `migrations/` (generated, then reviewed), `tests/` (pgTAP): `supabase/README.md` |
 | `tests/` | The tests (the list and README: above); `fixtures/saves/`, a made-up save of each version |
 | `tools/` | The build, dev server, check, hooks, ratchet, lint rules, balance matrix, mutant scorer, the deploy's keep step |

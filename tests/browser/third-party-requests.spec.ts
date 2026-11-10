@@ -1,6 +1,6 @@
 // Third-party requests (P0-18): every page in site/, served from one folder as deployed and opened in Chromium with
-// the real vendored supabase-js (not a stub), asks no other site for anything except Google Fonts. On the pages that
-// use the database, the library has loaded (window.supabase.createClient) from the site's own vendor/ folder.
+// the real supabase-js (not a stub), asks no other site for anything except Google Fonts. On the pages that use the
+// database, the library has loaded (window.supabase.createClient) from the site's own assets/ (from npm, P1-17b).
 // No database is reached: kc-config.js is answered with an address on the test's own server, which has no database
 // there, and every request to another site is refused and recorded. Level 4: only a real browser shows which
 // requests a page makes. The static side (the tags in the pages) is vendor-supabase.test.js.
@@ -13,13 +13,21 @@ const pages = fs
   .readdirSync(SITE)
   .filter((f) => f.endsWith('.html'))
   .sort();
-const usesDb = (name: string) => /\bcreateClient\s*\(/.test(fs.readFileSync(`${SITE}/${name}`, 'utf8'));
+// A page uses the database when its code creates the client: the page and its bundle (assets/<page>-<hash>.js, named
+// by its module script since P1-09d; read from the page alone, the four pages that use the database were missed).
+const usesDb = (name: string) => {
+  const html = fs.readFileSync(`${SITE}/${name}`, 'utf8');
+  const bundles = [...html.matchAll(/<script type="module"[^>]*\bsrc="\.\/([^"]+)"/g)].map((m) =>
+    fs.readFileSync(`${SITE}/${m[1] ?? ''}`, 'utf8'),
+  );
+  return /\bcreateClient\s*\(/.test([html, ...bundles].join('\n'));
+};
 
 // Opens the page with every request to another site refused and recorded, and waits until it has asked for all it
-// will. Gives what it asked of other sites, the window.supabase.createClient it ended with, and its vendor/ files.
+// will. Gives what it asked of other sites, the window.supabase.createClient it ended with, and its supabase-js files.
 async function open(page: Page, own: string, name: string) {
   const outside: string[] = [];
-  const vendor: string[] = [];
+  const library: string[] = [];
   await page.route('**/*', (r) => {
     const url = r.request().url();
     if (url === own + 'kc-config.js')
@@ -35,7 +43,8 @@ async function open(page: Page, own: string, name: string) {
     return r.abort();
   });
   page.on('response', (res) => {
-    if (res.url().startsWith(own + 'vendor/')) vendor.push(`${String(res.status())} /${res.url().slice(own.length)}`);
+    if (res.url().startsWith(own + 'assets/supabase-js-'))
+      library.push(`${String(res.status())} /${res.url().slice(own.length)}`);
   });
   await page.goto('/' + name);
   // Whatever the page asks for once it has loaded: no request for half a second. Waiting for that is the check, so
@@ -44,7 +53,7 @@ async function open(page: Page, own: string, name: string) {
   const lib = await page.evaluate(
     () => typeof (window as { supabase?: { createClient?: unknown } }).supabase?.createClient,
   );
-  return { outside, lib, vendor };
+  return { outside, lib, library };
 }
 
 for (const name of pages.filter((n) => !usesDb(n))) {
@@ -55,13 +64,13 @@ for (const name of pages.filter((n) => !usesDb(n))) {
 }
 
 for (const name of pages.filter(usesDb)) {
-  test(`${name}: no request to another site but Google Fonts; supabase-js from vendor/`, async ({ page, baseURL }) => {
-    const { outside, lib, vendor } = await open(page, String(baseURL) + '/', name);
+  test(`${name}: no request to another site but Google Fonts; supabase-js from assets/`, async ({ page, baseURL }) => {
+    const { outside, lib, library } = await open(page, String(baseURL) + '/', name);
     expect.soft(outside, 'requests to another site').toEqual([]);
     expect.soft(lib, "supabase-js didn't load (window.supabase.createClient)").toBe('function');
     expect(
-      vendor.some((v) => /^200 \/vendor\/supabase-js-[\d.]+\.min\.js$/.test(v)),
-      `supabase-js wasn't served from vendor/ (${vendor.join(', ') || 'no vendor/ request'})`,
+      library.some((v) => /^200 \/assets\/supabase-js-[\w-]+\.js$/.test(v)),
+      `supabase-js wasn't served from assets/ (${library.join(', ') || 'no assets/supabase-js- request'})`,
     ).toBe(true);
   });
 }

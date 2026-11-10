@@ -14,7 +14,7 @@ Built from `src/` and `public/` ([the build from src to site](the-build-from-src
 | `kingdoms-call-rules.html`, `kingdoms-call-rules-intro.html` | | The comprehensive and introductory rulebooks (prose); their script opens and closes the table of contents |
 | `assets/<page>-<hash>.js`, `assets/<page>-<hash>.css` | | Each page's bundle and stylesheet, named by a hash of its content. The data file (`src/content/kingdoms-call-data.ts`), `kc-safe.ts` and `kc-db-guard.ts` are inside the bundles of the pages that use them, no longer files of their own. Older ones, which a cached page may still name, are kept for 24 hours after they stop being live ([the build from src to site](the-build-from-src-to-site.md#the-build-src-becomes-site)) |
 | `kc-config.js`, `kc-staging-footer.js` | small | Copied as they are from `public/`: which database this copy talks to (staging writes its own), and staging's footer |
-| `vendor/supabase-js-<version>.min.js` | ~210 KB | The Supabase library, a copy served with the site ([below](#supabase-js-a-copy-served-with-the-site)) |
+| `assets/supabase-js-<hash>.js` | ~210 KB | The Supabase library, the npm package's browser build, its licence beside it ([below](#supabase-js-a-copy-served-with-the-site)) |
 | `version.json` | small | Written by the build: the commit and each page's fingerprint, which open pages read ([the database and what it holds](the-database-and-what-it-holds.md#versions)) |
 | `published-files.json` | small | Written by the deploy, not the build: every file of the site and when it stopped being live (`null` while it is). The next deploy reads it to know what to keep: never rename it |
 
@@ -24,25 +24,19 @@ Google Fonts.
 
 ### supabase-js: a copy served with the site
 
-The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`, copied as it is), not from a CDN, so no outside party can change the code that holds players' logins, and a CDN outage can't stop the portals
-loading.
+The pages load supabase-js from the site itself, not from a CDN, so no outside party can change the code that holds
+players' logins, and a CDN outage can't stop the portals loading. It is the npm package `@supabase/supabase-js`, pinned
+to one exact version in `package.json`'s `dependencies`. The build (`supabaseJsFromItsPackage` in `tools/build.ts`)
+copies its browser build (`dist/umd/supabase.js`) unchanged to `assets/supabase-js-<hash>.js`, its licence beside it
+(`assets/supabase-js-LICENSE-<hash>.txt`), and writes the `<script>` tag where a template has `<!--kc-supabase-js-->`.
+The dev server answers it as `supabase-js.js`. `npm test`'s `vendor-supabase` check fails if the pin isn't exact, the
+lock or `node_modules` holds another version, or the published file or its licence isn't the package's, byte for byte.
 
-- **Its version and SHA-256** are in [ARCHITECTURE.md](../ARCHITECTURE.md#supabase-js-the-copy-served-with-the-site),
-  where `npm test`'s `vendor-supabase` check reads them: it fails if the file and those lines disagree.
-- **Nothing watches it for updates** (Dependabot can't see a copied file). When you touch this area, check
-  `npm view @supabase/supabase-js@2 version` and upgrade if it's newer. P1-17 replaces the copy with a pinned
-  npm dependency.
-
-**To upgrade**, in its own PR (it changes `public/vendor/**`, so it's a dangerous path: talk it through with
-Theo):
-1. In an empty folder: `npm pack @supabase/supabase-js@<version>` (npm checks the download against the
-   registry's checksum), then unpack it with `tar -xzf`.
-2. Copy `package/dist/umd/supabase.js` to `public/vendor/supabase-js-<version>.min.js` and `package/LICENSE` to
-   `public/vendor/supabase-js-LICENSE.txt`; delete the old copy.
-3. Point the `<script src="vendor/…">` tags (in the page templates, `src/*.html`) and their boot-failure hints
-   at the new file name, and update the version and SHA-256 in `docs/ARCHITECTURE.md` (`shasum -a 256 <file>`).
-4. Read the release notes between the two versions for anything the pages use (sign-in, `rpc`, realtime).
-5. `npm test`, then try sign-in, orders and Dispatches on staging.
+**To upgrade**, in its own PR (`package.json` and `package-lock.json` are dangerous paths: talk it through with Theo).
+Dependabot proposes a new version in a pull request of its own (its `site-runtime` group):
+1. Take Dependabot's PR, or run `npm install @supabase/supabase-js@<version>` (`.npmrc` saves it exact).
+2. Read the release notes between the two versions for anything the pages use (sign-in, `rpc`, realtime).
+3. `npm test`, then try sign-in, orders and Dispatches on staging.
 
 ## How a portal boots
 
@@ -52,7 +46,7 @@ Order inside each portal's page, and why it matters:
    spinner is still showing, the first `error` or `unhandledrejection` replaces it with the message, a hint and a
    Reload button. Without it, any throw as the page starts looks like "Loading…" for ever. It puts the message and
    hint in as text, since it runs before the HTML helpers exist.
-2. **supabase-js v2**, from the site itself (`vendor/supabase-js-<version>.min.js`, [above](#supabase-js-a-copy-served-with-the-site)).
+2. **supabase-js v2**, from the site itself (`assets/supabase-js-<hash>.js`, [above](#supabase-js-a-copy-served-with-the-site)).
 3. **`kc-config.js`**, at the end of `<body>`: `KC_CONFIG`, which database this copy of the site talks to (address and
    public key). Every page that uses the database loads it; a staging copy of the site replaces only this file.
 4. **`kc-staging-footer.js`**, last in `<body>` (every page). On staging it adds "Staging · PR #N · abc1234" to the

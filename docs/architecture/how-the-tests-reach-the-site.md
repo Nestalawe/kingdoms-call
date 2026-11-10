@@ -11,7 +11,8 @@
     Chromium only what `globals.ts` puts there ([traps.md](../traps.md#nothing-is-on-window-but-globalsts));
   - `bootJsdom` boots it in jsdom;
   - `serve` and `routeExternal` do the same for Chromium (Playwright): the pages are served from one
-    folder, as deployed (`browser/server.ts`); `vendor/supabase-js-*.js` gets a stub and the fonts get nothing;
+    folder, as deployed (`browser/server.ts`); `assets/supabase-js-*.js` gets a stub, `kc-config.js` a database
+    address that never answers (so a missed stub reaches no database) and the fonts nothing;
   - every stand-in database answers `rpc('kc_db_version')` with `DB_VERSION`, the newest migration in
     `supabase/migrations/`, so pages pass their database version guard. `bootJsdom`'s
     `opts.dbVersion` sets another answer (an older version, `null` for a missing function, `'offline'`, or a

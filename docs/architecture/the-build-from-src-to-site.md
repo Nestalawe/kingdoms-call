@@ -9,7 +9,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   follows each page's `<script type="module" src>` through every `import`, and writes one script holding the page's
   code, with no `import` left (`assets/<page>-<hash>.js`), and its stylesheet (`assets/<page>-<hash>.css`). Built one page at a time,
   each bundle stands alone, which is what lets a test run it as a classic script in jsdom. `public/` is copied as it
-  is: `kc-config.js`, `kc-staging-footer.js`, `vendor/`.
+  is: `kc-config.js`, `kc-staging-footer.js`. supabase-js is the pinned npm package's browser build, copied unchanged
+  as `assets/supabase-js-<hash>.js` ([the pages](the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#supabase-js-a-copy-served-with-the-site)).
 - **The options**, in `tools/build.ts` (one place, for the build and for `npm run dev`): no minifying (a live error's
   stack keeps the code's names), `target: 'esnext'` and no module preload (the code is left as written, nothing is
   added), relative paths (`base: './'`), and names with a hash of the file's content: a change to a page's code
@@ -164,7 +165,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   GitHub Pages replaces the whole site on each deploy, and its cache hands out a page for up to 10 minutes after it, so
   a page cached before a deploy can ask for a bundle the new site has renamed. Between the build and the upload, each
   `build` job runs `tools/deploy/keep-the-previous-deploys-files.ts` (plain Node, no install): it reads the previous
-  site and puts back every file that site's pages name (scripts, stylesheets, `vendor/`, and the `url()`s in their
+  site and puts back every file that site's pages name (scripts, stylesheets, and the `url()`s in their
   stylesheets), and every file its `published-files.json` lists as live within the last 24 hours, that the new build
   lacks. A file the new build makes is never overwritten. It then writes the new `published-files.json`. The deploy
   reads the previous site from the newest Deploy run on `main` whose `deploy` job succeeded (a run can succeed with that

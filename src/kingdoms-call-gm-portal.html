@@ -18,7 +18,7 @@
     if (/being updated/i.test(m))
       return 'Nothing was read or saved. Reload in a few minutes; if it keeps happening, tell the GM what the message above says.';
     if (/supabase is not defined/i.test(m))
-      return 'The Supabase library (vendor/supabase-js-2.117.3.min.js, part of this site) did not load. Check your internet connection and hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
+      return 'The Supabase library (supabase-js, part of this site) did not load. Check your internet connection and hard-reload (Ctrl/Cmd+Shift+R); if it persists, report the message above.';
     if (/kingdoms-call-data\.js/i.test(m))
       return 'Upload the current kingdoms-call-data.js to the same folder as this page, then reload.';
     if (/before initialization|is not defined/i.test(m))
@@ -50,7 +50,7 @@
   );
 })();
 </script>
-<script src="vendor/supabase-js-2.117.3.min.js"></script>
+<!--kc-supabase-js-->
 <link rel="stylesheet" href="./ui/gm/style.css">
 </head>
 <body>

@@ -8,7 +8,8 @@
 //   pageFiles(nameOrPath)       the files readPage reads for that page: the page, then each file it inlines
 //   bootJsdom(html, opts)       a jsdom with the page's scripts running and a Supabase stub installed
 //   serve(dir, port)            a static file server for Chromium (as the pages are deployed: one folder)
-//   routeExternal(target, cdn)  answers supabase-js with a stub and fonts with nothing (Playwright page/context)
+//   routeExternal(target, cdn)  answers supabase-js with a stub, kc-config.js with a dead address and fonts with nothing
+//                               (Playwright page/context)
 //   DB_VERSION                  the newest migration in supabase/migrations/: the database version every
 //                               stand-in database reports through rpc('kc_db_version') (P0-34), unless a test
 //                               says otherwise (bootJsdom's opts.dbVersion)
@@ -29,9 +30,10 @@ const LOCAL_TAG=/<script src="([A-Za-z0-9._-]+\.js)"><\/script>/g;
 // The page's bundle and its stylesheet, as Vite writes their tags (tools/build.ts, P1-09d).
 const BUNDLE_TAG=/[ \t]*<script type="module" crossorigin src="\.\/(assets\/[A-Za-z0-9._-]+\.js)"><\/script>\n?/g;
 const STYLE_TAG=/<link rel="stylesheet" crossorigin href="\.\/(assets\/[A-Za-z0-9._-]+\.css)">/g;
-// supabase-js: site/vendor/supabase-js-<version>.min.js since P0-18; a CDN before (still removed, so KC_SITE can point
-// at an older copy of the site). Tests install a stand-in instead.
-const SUPABASE_TAG=/<script src="(?:vendor\/supabase-js-[^"]*|https:\/\/cdn\.jsdelivr[^"]*)"><\/script>/g;
+// supabase-js: site/assets/supabase-js-<hash>.js, the npm package's browser build, since P1-17b; site/vendor/supabase-js-
+// <version>.min.js from P0-18; a CDN before (both still removed, so KC_SITE can point at an older copy of the site).
+// Tests install a stand-in instead.
+const SUPABASE_TAG=/<script src="(?:\.\/assets\/supabase-js-[^"]*|vendor\/supabase-js-[^"]*|https:\/\/cdn\.jsdelivr[^"]*)"><\/script>/g;
 
 // A name ('kingdoms-call-gm-portal.html') is looked up in site/; a path is used as given. Local scripts are
 // the ones beside the page, as when deployed (jsdom doesn't fetch them itself).
@@ -170,8 +172,14 @@ function serve(dir=SITE,port=0){
 const dbVersionPatch=v=>`;(function(){var s=window.supabase;if(!s||!s.createClient)return;var mk=s.createClient;`
   +`window.supabase=Object.assign({},s,{createClient:function(){var c=mk.apply(s,arguments),rpc=c.rpc;`
   +`c.rpc=function(fn){return fn==='kc_db_version'?Promise.resolve({data:${JSON.stringify(v)},error:null,status:200}):rpc.apply(c,arguments);};return c;}});})();`;
+// kc-config.js names a database address that never answers (.invalid is never a real name), so a page whose stand-in
+// route missed makes the real client and fails, and reaches no database (P1-17b).
+const NO_DATABASE='http://no-database.invalid';
 async function routeExternal(target,stubBody){
   const stub=r=>r.fulfill({status:200,contentType:'application/javascript',body:stubBody+dbVersionPatch(DB_VERSION)});
+  await target.route('**/kc-config.js',r=>r.fulfill({status:200,contentType:'application/javascript',
+    body:`const KC_CONFIG=Object.freeze({env:'test',supabaseUrl:${JSON.stringify(NO_DATABASE)},supabaseKey:'test-key'});`}));
+  await target.route('**/assets/supabase-js-*.js',stub);
   await target.route('**/vendor/supabase-js-*.js',stub);
   await target.route('**cdn.jsdelivr.net/**',stub);
   await target.route('**unpkg.com/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:''}));

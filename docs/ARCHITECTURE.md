@@ -60,13 +60,11 @@ writes each realm's report. Players only submit orders and read what they're giv
 
 ### supabase-js: the copy served with the site
 
-The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`), not from a CDN. How to upgrade it:
+The pages load supabase-js from the site itself (`assets/supabase-js-<hash>.js`), not from a CDN: the build copies the
+npm package's browser build (`dist/umd/supabase.js`) unchanged, its licence beside it. Its version is `package.json`'s
+exact pin; `npm test`'s `vendor-supabase` check fails if the lock disagrees or the published file isn't the package's,
+byte for byte. How to upgrade it:
 [the pages' topic file](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#supabase-js-a-copy-served-with-the-site).
-
-- **Version:** 2.117.3, the package's browser build (`dist/umd/supabase.js`) copied unchanged to
-  `public/vendor/supabase-js-2.117.3.min.js`, with its licence beside it (`supabase-js-LICENSE.txt`).
-- **SHA-256:** `d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3`. `npm test`'s
-  `vendor-supabase` check fails if the file and this line disagree.
 
 ## The code's guardrails
 

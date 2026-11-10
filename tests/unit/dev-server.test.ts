@@ -7,13 +7,14 @@
 //   that names another database while it runs, it answers with an error instead.
 // - Its pages' footers say "build dev" (P1-06c), with a kc-build meta of "dev" and no fingerprint, so a page it serves
 //   never finds a newer version of itself.
+// - Its pages load supabase-js from its npm package (P1-17b), byte for byte, as the build publishes it.
 // - The build never publishes public/dev/ (tests/static/pages-build.test.ts builds the site with the file there).
 // Level 1 (unit): the guard's functions, and the dev server started on this machine for a moment; no page runs.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, test } from 'vitest';
-import { ROOT } from '../../tools/build.ts';
+import { ROOT, SUPABASE_JS_MARKER, SUPABASE_JS_ON_THE_DEV_SERVER, supabaseJsFile } from '../../tools/build.ts';
 import { devConfigProblem, devConfigText, startDevServer } from '../../tools/dev.ts';
 
 const LIVE = fs.readFileSync(path.join(ROOT, 'public', 'kc-config.js'), 'utf8');
@@ -92,6 +93,24 @@ describe('the dev server', () => {
       expect(page).toContain('<meta name="kc-build" content="dev">');
       expect(page).not.toContain('kc-page-version');
       expect(page).not.toContain('<!--kc-build-->');
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('its pages load supabase-js from its npm package, as the build publishes it', async () => {
+    const file = path.join(tmp, 'kc-config-supabase-js.js');
+    fs.writeFileSync(file, LOCAL);
+    const server = await startDevServer(file);
+    try {
+      const url = server.resolvedUrls?.local[0];
+      if (!url) throw new Error('the dev server has no address');
+      const page = await (await fetch(new URL('kingdoms-call-player-portal.html', url))).text();
+      expect(page).toContain(`<script src="./${SUPABASE_JS_ON_THE_DEV_SERVER}"></script>`);
+      expect(page).not.toContain(SUPABASE_JS_MARKER);
+      const served = await fetch(new URL(SUPABASE_JS_ON_THE_DEV_SERVER, url));
+      expect(served.status).toBe(200);
+      expect(Buffer.from(await served.arrayBuffer()).equals(fs.readFileSync(supabaseJsFile()))).toBe(true);
     } finally {
       await server.close();
     }

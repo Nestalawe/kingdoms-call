@@ -50,5 +50,6 @@ export const DB_VERSION: string;
 
 /** A static file server for Chromium: the folder as deployed. `url` is where it listens (http://127.0.0.1:<port>). */
 export function serve(dir?: string, port?: number): Promise<Server & { url: string }>;
-/** Answers supabase-js with `stubBody` (a script) and Google Fonts with nothing, in a Playwright page or context. */
+/** Answers supabase-js with `stubBody` (a script), kc-config.js with a database address that never answers, and Google
+ *  Fonts with nothing, in a Playwright page or context. */
 export function routeExternal(target: Page | BrowserContext, stubBody: string): Promise<void>;

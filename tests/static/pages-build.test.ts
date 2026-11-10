@@ -2,8 +2,9 @@
 // is. It replaced P1-05's stitch and its two tests (static/build.test.ts, static/engine-files.test.ts). Level 0
 // (static): it builds the site into temporary folders (Vite, a few seconds) and reads what was made; nothing runs.
 // - Every page builds, and the site is exactly: each page, its bundle and its stylesheet (a page with no script has no
-//   bundle), each named by its page and a hash of its content (P1-06b), and public/ as it is, but public/dev/ (the dev
-//   server's config), which is never published. Two builds of the same src/ are byte-identical.
+//   bundle), each named by its page and a hash of its content (P1-06b), supabase-js and its licence from npm, each
+//   named by a hash (P1-17b), and public/ as it is, but public/dev/ (the dev server's config), which is never
+//   published. Two builds of the same src/ are byte-identical.
 // - Each bundle stands alone: it parses as a classic script, with no import or export left, so jsdom can run it
 //   (tests/lib/boot.js), and holds no stitch marker.
 // - Every file under src/ is in a page: in a bundle (Rolldown's own list of the bundle's modules), or a page's
@@ -140,6 +141,11 @@ const HASHED = (page: string, ext: string) =>
   );
 const assetsOf = (site: string, page: string, ext: string) => filesUnder(site).filter((f) => HASHED(page, ext).test(f));
 const bundleOf = (page: string) => assetsOf(SITE, page, 'js')[0] ?? `no bundle of ${page}`;
+// supabase-js from npm (P1-17b): the package's browser build and its licence, each named by a hash.
+const SUPABASE_JS = [
+  /^assets\/supabase-js-[A-Za-z0-9_-]{8}\.js$/,
+  /^assets\/supabase-js-LICENSE-[A-Za-z0-9_-]{8}\.txt$/,
+];
 
 describe('every page builds', () => {
   test('the pages are the seven published ones', () => {
@@ -154,14 +160,17 @@ describe('every page builds', () => {
     ]);
   });
 
-  test('the site is each page, its bundle and its stylesheet, each named by its page and a hash, and public/ as it is', () => {
+  test('the site is each page, its bundle and its stylesheet, each named by its page and a hash, supabase-js and its licence, and public/ as it is', () => {
     const scripted = pages.filter((p) => pageEntries(p).modules.length);
     for (const p of pages) expect(assetsOf(SITE, p, 'css'), p).toHaveLength(1);
     for (const p of scripted) expect(assetsOf(SITE, p, 'js'), p).toHaveLength(1);
+    const supabaseJs = SUPABASE_JS.map((re) => filesUnder(SITE).filter((f) => re.test(f)));
+    for (const files of supabaseJs) expect(files).toHaveLength(1);
     const want = [
       ...pages,
       ...scripted.flatMap((p) => assetsOf(SITE, p, 'js')),
       ...pages.flatMap((p) => assetsOf(SITE, p, 'css')),
+      ...supabaseJs.flat(),
       ...filesUnder(PUBLIC).filter((f) => !f.startsWith('dev/')),
       VERSION_FILE,
     ].sort();

@@ -1,5 +1,6 @@
-# Dependabot proposes version updates once a week, one pull request per ecosystem (P1-01a). Each is a normal pull
-# request: CI runs, it touches a dangerous path (package.json or .github/), and Theo talks it through before merging.
+# Dependabot proposes version updates once a week, one pull request per ecosystem (P1-01a), and the npm packages the
+# site loads in one of their own (P1-17b). Each is a normal pull request: CI runs, it touches a dangerous path
+# (package.json or .github/), and Theo talks it through before merging.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -7,6 +8,10 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # The site's runtime packages (supabase-js, plan P1-17b), which the pages load: a new version comes in a pull
+      # request of its own, tried on staging before it merges. A package goes in the first group it matches.
+      site-runtime:
+        dependency-type: production
       npm:
         patterns: ['*']
     ignore:
