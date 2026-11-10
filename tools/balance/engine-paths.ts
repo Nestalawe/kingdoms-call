@@ -27,7 +27,10 @@ export const ENGINE_PATHS: readonly string[] = [
   'src/db/**',
   'src/content/**',
   'src/ui/gm/**',
-  'src/ui/shared/**',
+  // The GM page's shared files by name: the folder's other files are other pages' code (the element helper, P1-16c).
+  'src/ui/shared/a-newer-version-of-this-page.ts',
+  'src/ui/shared/kc-safe.ts',
+  'src/ui/shared/the-reload-banner.ts',
   // The saved state's schemas: the save's check at the turn's start parses with them (P1-15d), so the GM page's bundle
   // holds them; one folder, every file (the orders' schema, which the page doesn't bundle yet, is types for its code).
   'src/schemas/**',
