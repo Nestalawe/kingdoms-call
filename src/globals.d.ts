@@ -73,7 +73,7 @@ declare var currentGamePlayer: PageState;
 declare var currentReport: import('./ui/player/items-and-heroes.ts').TheReportAsThePagesListsReadIt | null | undefined;
 declare var diploChoices: PageState;
 declare var reckoningCall: PageState;
-declare var _heroOrder: PageState;
+declare var _heroOrder: (string | null)[] | null | undefined;
 declare var concedeGame: PageState;
 /** The research's leads kept this turn, by the pair's key (items-and-heroes.ts). */
 declare var discoveryChoices: Partial<Record<string, unknown>>;
