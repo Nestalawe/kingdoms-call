@@ -6,11 +6,12 @@
 // Since P1-13e9 every copy written as a whole declaration is imported from its page file (src/ui/player/: the files
 // below the page's start, which import in Node since P1-13e8), and the page's globals it reads are staged on
 // globalThis as the page holds them: the report it shows (currentReport), the declarations of war its form holds
-// (diploChoices) and a stand-in for its fields (document.getElementById), each put back after the call. A copy written
-// inline in a longer function (the army card in report.ts's renderReportView; the Move field's directions and the
-// Cast Spell rows in order-targets.ts's buildTargetField; the spells aimed at a province or a hero in titles.ts's
-// spellSecondaryHtml) is read by its statements (tests/lib/source.ts's statementsBetween) and run in a vm as a function
-// of what they read, beside the names its file imports, as the page imports them.
+// (diploChoices) and a stand-in for its fields (document.getElementById), each put back after the call. Since
+// P1-13e10 the army card's figures are skills-and-projections.ts's two functions, which report.ts's renderReportView
+// calls. A copy written inline in a longer function (the Move field's directions and the Cast Spell rows in
+// order-targets.ts's buildTargetField; the spells aimed at a province or a hero in titles.ts's spellSecondaryHtml) is
+// read by its statements (tests/lib/source.ts's statementsBetween) and run in a vm as a function of what they read,
+// beside the names its file imports, as the page imports them.
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -192,7 +193,6 @@ const atRest = <T>(fn: () => T): T => onTheOrders(null, {}, fn);
 
 // ── The copies written inline, read by their statements ────
 
-const ARMY_CARD = 'ui/player/report.ts';
 const TARGET_FIELD = 'ui/player/order-targets.ts';
 const SPELL_TARGETS = 'ui/player/titles.ts';
 
@@ -203,49 +203,21 @@ function runBesideItsImports(file: string, code: string, more: Obj = {}): Obj {
   return made;
 }
 
-/** The army card's four functions: the "Armies leading" part of a hero's card on the player's report screen
- *  (renderReportView). */
-function theArmyCard(): Obj {
-  return runBesideItsImports(
-    ARMY_CARD,
-    `
-// The army card's Druid lines for one unit \`a\` of the hero \`c\`: the strength left of a unit of 1,000 by a Druid
-// shortfall (the card's own sum, rounded down as the battle rounds it: R-122), the Druid mastery bonus in percent, and
-// the shortfall.
-function armyCardDruidLines(a, c, report) {
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel')}
-  let druidUnits = 0, druidShort = 0;
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'mastery')}
-  return { strengthOfAThousand: Math.floor(1000 * theShareHisShortfallLeaves), mastery, shortfall };
+/** The army card's figures of the column `arr` the hero `c` leads, on the report `report`
+ *  (skills-and-projections.ts's theArmyCardsFiguresOfAColumn, which renderReportView calls): the column's, and each
+ *  unit's (`units`). */
+function theArmyCardsFigures(arr: unknown, c: unknown, report: unknown): Obj {
+  const figures = aFunctionOf(skillsAndProjections, 'theArmyCardsFiguresOfAColumn')(arr, c, report);
+  if (!isObj(figures)) throw new Error('the army card has no figures');
+  return figures;
 }
-// The army card's sea-transport note for the column \`arr\` the hero \`c\` leads, as the words the card shows.
-function armyCardSeaNote(arr, c) {
-  let druidUnits = 0, druidShort = 0;
-  ${statementsBetween(ARMY_CARD, 'renderReportView', '_FLY_UI2', 'druNote')}
-  return String(_seaNote);
-}
-// The army card's strength for one unit \`a\` of the hero \`c\`, as its line shows it ("str …"): the unit's kin (its
-// realm's king's and its leader's), a rival kin's leader, a Druid shortfall and the Druid mastery, in the battle's
-// order since R-122 (plan P1-11c1): the shortfall off the unit's base strength first, then its kin, then the mastery.
-function armyCardUnitStrength(a, c, report) {
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom')}
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druLevel')}
-  let totalStr = 0, druidUnits = 0, druidShort = 0;
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'totalStr+=bs;')}
-  return bs;
-}
-// The army card's upkeep for the column \`arr\` the hero \`c\` leads, as its "💰 Upkeep" figure gives it: the wage it
-// adds for each unit, after the strength statements its loop runs first (P1-11e34).
-function armyCardUpkeep(arr, c, report) {
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'kingdom', 'kingdom')}
-  ${statementsBetween(ARMY_CARD, 'renderReportView', 'druLevel', 'druidShort')}
-  for (const a of arr) {
-    ${statementsBetween(ARMY_CARD, 'renderReportView', 'creature', 'mast')}
-  }
-  return totalCost;
-}
-return { armyCardDruidLines, armyCardSeaNote, armyCardUnitStrength, armyCardUpkeep };`,
-  );
+
+/** The army card's figures of the one unit `a` the hero `c` leads, on the report `report`. */
+function theArmyCardsFiguresOfAUnit(a: unknown, c: unknown, report: unknown): Obj {
+  const units = theArmyCardsFigures([a], c, report)['units'];
+  const unit: unknown = Array.isArray(units) ? units[0] : undefined;
+  if (!isObj(unit)) throw new Error('the army card has no figures for the unit');
+  return unit;
 }
 
 /** The target field's two stretches (buildTargetField's statements) and its two action spell tables, beside
@@ -296,7 +268,6 @@ function theOneInitializer(file: string, name: string): string {
 /** The player portal's copies, under the checks' names: each page function imported, called on the report and the
  *  orders handed in with the page's globals staged, and the inline copies run by their statements. */
 export function playerPortalCopies(): Copies {
-  const card = theArmyCard();
   const field = theTargetFieldsStatements();
   const call = aFunctionOf;
   const made: Record<string, (...args: unknown[]) => unknown> = {
@@ -374,11 +345,29 @@ export function playerPortalCopies(): Copies {
     // The skill a comrade practises beside the hero `c` in the phase `ph`, as his field reads it (P1-11d4), or ''.
     thePracticeCompanionOn: (report, orders, c, ph) =>
       onTheOrders(report, orders, () => call(orderTargets, 'practiceCompanionSkill')(c, ph)),
-    // the army card's four (inline in renderReportView), with the page's globals as it starts
-    armyCardDruidLines: (a, c, report) => atRest(() => call(card, 'armyCardDruidLines')(a, c, report)),
-    armyCardSeaNote: (arr, c) => atRest(() => call(card, 'armyCardSeaNote')(arr, c)),
-    armyCardUnitStrength: (a, c, report) => atRest(() => call(card, 'armyCardUnitStrength')(a, c, report)),
-    armyCardUpkeep: (arr, c, report) => atRest(() => call(card, 'armyCardUpkeep')(arr, c, report)),
+    // the army card's four (skills-and-projections.ts's figures, which renderReportView calls), with the page's
+    // globals as it starts. Its Druid lines for one unit: the strength left of a unit of 1,000 by a Druid shortfall
+    // (the card's own sum, rounded down as the battle rounds it: R-122), the Druid mastery bonus in percent, and the
+    // shortfall.
+    armyCardDruidLines: (a, c, report) =>
+      atRest(() => {
+        const unit = theArmyCardsFiguresOfAUnit(a, c, report);
+        const strengthOfAThousand = Math.floor(1000 * Number(unit['theShareHisShortfallLeaves']));
+        return { strengthOfAThousand, mastery: unit['mastery'], shortfall: unit['shortfall'] };
+      }),
+    // its sea-transport note for the column `arr` the hero `c` leads, as the words the card shows
+    armyCardSeaNote: (arr, c) =>
+      atRest(() => {
+        const notes = call(skillsAndProjections, 'theArmyCardsAirAndSeaNotesOfAColumn')(arr, c);
+        return String(isObj(notes) ? notes['_seaNote'] : undefined);
+      }),
+    // its strength for one unit `a` of the hero `c`, as its line shows it ("str …"): the unit's kin (its realm's
+    // king's and its leader's), a rival kin's leader, a Druid shortfall and the Druid mastery, in the battle's order
+    // since R-122 (plan P1-11c1): the shortfall off the unit's base strength first, then its kin, then the mastery
+    armyCardUnitStrength: (a, c, report) => atRest(() => theArmyCardsFiguresOfAUnit(a, c, report)['bs']),
+    // its upkeep for the column `arr` the hero `c` leads, as its "💰 Upkeep" figure gives it: the wage it adds for
+    // each unit (P1-11e34)
+    armyCardUpkeep: (arr, c, report) => atRest(() => theArmyCardsFigures(arr, c, report)['totalCost']),
   };
   for (const name of COPY_FUNCTIONS)
     if (typeof made[name] !== 'function') throw new Error(`the player portal has no function ${name}`);

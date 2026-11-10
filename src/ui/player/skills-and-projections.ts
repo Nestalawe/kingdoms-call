@@ -1,19 +1,34 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
-import { KC_HUMANOID_RACES, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { KC_HUMANOID_RACES, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import {
   MONSTER_ARMIES,
   TAMED_FLYER_TYPES_D,
+  aCompanyIsABeastADruidHalves,
+  aLeadersBeastsPayHalfWages,
   druidALeaderBringsToAUnit,
   druidLevelALeaderNeeds,
+  druidLevelTheMasteryCounts,
+  druidMasteryGainOver,
   druidShortfall,
   CREATURE_ARMIES,
+  seaLiftOfAColumn,
+  strengthLeftByADruidShortfall,
+  takesHalfAHullAboard,
+  theDruidMasteryLiftsAUnitOfThisType,
+  theItemsAHeroUses,
+  theMasteryTierATrainedLevelGives,
+  theStrengthAUnitHasBeforeTheGroundAndTheFoe,
+  theWageABeastPaysUnderADruid,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import { ITEM_UNCAPPED_SKILLS_P } from './order-chances.ts';
 import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
-import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+import {
+  SKILL_LABELS,
+  rawSkillLvl,
+} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // (ITEM_UNCAPPED_SKILLS_P is declared above effMagicLvl — see the note there.)
 // ── BONUS SOURCE COLOURS ────
@@ -228,6 +243,137 @@ export function druidNeedP(a, c, report) {
   const sameRace = !!(a.race && c && a.race === c.race);
   const effDru = druidALeaderBringsToAUnit(druLevel, sameRace);
   return { req, effDru, shortfall: druidShortfall(req, effDru), counts: req > 0 && !(sameRace && req <= 1) };
+}
+// The army card's figures for the column `arr` the hero `c` leads, on the report `report` (renderReportView's
+// "Armies leading"): each unit's Druid need, shortfall, mastery, kin and strength, and the column's total strength,
+// upkeep and Druid counts, with the hero's Druid level the card's beast count reads.
+export function theArmyCardsFiguresOfAColumn(arr, c, report) {
+  const kingdom = report.kingdom || {};
+  const druLevel = effSkillP(c, 'druid');
+  // the wage the turn charges: a beast he leads pays half if he holds Druid 6 or his realm's Druidic Wonder
+  // stands (aLeadersBeastsPayHalfWages, as Early Winter asks it: R-135); a summons and a Wild Hunt beast draw
+  // none, a skeleton its 1g, halved or not
+  const hisBeastsPayHalfWages = aLeadersBeastsPayHalfWages(
+    rawSkillLvl(c, 'druid') >= 6,
+    () => !!kingdom.itsDruidicWonderHalvesItsBeastsWages,
+  );
+  // Druid requirement, waivers and shortfall: ONE rule, druidNeedP (the engine's, with the portal's level).
+  let totalStr = 0,
+    totalCost = 0,
+    druidUnits = 0,
+    druidShort = 0;
+  const units = arr.map((a) => {
+    // The unit's strength as the turn counts it before the ground, the foe and the battle's tactics (R-135,
+    // question 45 (a)): armStr's own steps in its order (theStrengthAUnitHasBeforeTheGroundAndTheFoe), the
+    // shortfall and the mastery below handed in.
+    const creature = CREATURE_ARMIES.has(a.type),
+      monster = MONSTER_ARMIES.has(a.type);
+    const _dn = druidNeedP(a, c, report); // skeleton / Druidic-creature / sd40 waivers, same-race Druid 1
+    const req = _dn.req;
+    if (_dn.counts) druidUnits++;
+    const effDru = _dn.effDru;
+    const shortfall = _dn.shortfall;
+    // a Druid shortfall actually REDUCES the unit's strength — the share it leaves (the engine's own
+    // strengthLeftByADruidShortfall: max(0.1, 1−0.2×shortfall)) comes off the unit's base strength, rounded
+    // down, as the battle takes it, instead of only tagging the penalty beside a full-strength number.
+    let theShareHisShortfallLeaves = 1;
+    if (shortfall > 0) {
+      druidShort++;
+      theShareHisShortfallLeaves = strengthLeftByADruidShortfall(shortfall);
+    }
+    // DRUID MASTERY (2026-09-24; the engine's own rule, as druidMasteryGain asks it): on a living
+    // Creature or Monster, +20% per Druid level over the unit's minimum (0 where the requirement is
+    // waived), Druid counted to 9, capped +100%; shown in percent, and applied after the kin below, as
+    // in the battle.
+    const mastery = theDruidMasteryLiftsAUnitOfThisType(a.type, a.skeletal)
+      ? Math.round(druidMasteryGainOver(druidLevelTheMasteryCounts(druLevel), req) * 100)
+      : 0;
+    // In armStr's order: Druid 8 and Necromancy 6 lift its quality (his trained levels); its base strength at
+    // that quality; the shortfall, rounded down; its kin (+20% your king's, +20% its leader's: +44% both) and
+    // a rival kin's leader (−20%); the items he uses; the Druid mastery; his minor titles (those the report
+    // names). Your realm's unit-strength discoveries, and what a battle or a spell of the turn adds, are left out.
+    const _str = theStrengthAUnitHasBeforeTheGroundAndTheFoe(
+      { unitType: a.type, quality: a.quality, isSkeletal: !!a.skeletal, race: a.race },
+      {
+        hisDruidMasteryTier: theMasteryTierATrainedLevelGives(rawSkillLvl(c, 'druid')),
+        hisNecromancyMasteryTier: theMasteryTierATrainedLevelGives(rawSkillLvl(c, 'necromancy')),
+        theShareHisDruidShortfallLeaves: theShareHisShortfallLeaves,
+        theKingsRace: kingdom.race,
+        hisRace: c.race,
+        // (not yet: the report doesn't carry its discoveries' effects, and the page holds no table of them)
+        theRealmsUnitStrengthEffects: [],
+        heIsTheKing: !!c.isKing,
+        theItemsHeUses: theItemsAHeroUses(c.items || [], c),
+        theRealmsAlignment: kingdom.alignment,
+        hisDruidMasteryGain: mastery / 100,
+        heHoldsTheMinorTitle: (title) => (c.minorHeld || []).some((t) => t && t.key === title),
+      },
+    );
+    const kingRaceMatch = _str.theKin.itsKingIsOfItsKin;
+    const leadRaceMatch = _str.theKin.itsLeaderIsOfItsKin;
+    const feudLed = _str.theKin.aLeaderOfItsRivalKinLeadsIt;
+    const bs = _str.strength;
+    totalStr += bs;
+    const wage = a.cost != null ? a.cost : 2;
+    totalCost +=
+      hisBeastsPayHalfWages && !a.temporary && !a.wildHunt && aCompanyIsABeastADruidHalves(a.type)
+        ? theWageABeastPaysUnderADruid(wage)
+        : wage;
+    return {
+      creature,
+      monster,
+      req,
+      effDru,
+      shortfall,
+      theShareHisShortfallLeaves,
+      mastery,
+      kingRaceMatch,
+      leadRaceMatch,
+      feudLed,
+      bs,
+    };
+  });
+  return { druLevel, units, totalStr, totalCost, druidUnits, druidShort };
+}
+// The army card's air and sea notes for the column `arr` the hero `c` leads (renderReportView's "Armies leading"),
+// as the words the card shows.
+export function theArmyCardsAirAndSeaNotesOfAColumn(arr, c) {
+  // FLYING CARRY note. If humanoid flyers are lifting foot soldiers (a mixed airborne
+  // column that can cross sea), tell the player so the raised speed and sea reach make
+  // sense.
+  const _FLY_UI2 = new Set(KC_UNIT_CLASS.flying);
+  const _SEA_UI2 = new Set(KC_UNIT_CLASS.sea);
+  const _AER_UI2 = new Set(KC_UNIT_CLASS.aerial);
+  const _hasFlyer = arr.some((a) => _FLY_UI2.has(a.type));
+  const _hasFoot = arr.some((a) => !_AER_UI2.has(a.type) && !_SEA_UI2.has(a.type));
+  const _airborne = _hasFlyer && _hasFoot && !arr.some((a) => _SEA_UI2.has(a.type)) && c.effectiveSeaSpeed > 0;
+  const _airNote = _airborne
+    ? kcHtml` · <span style="color:#2d6a8a">🦅 Airborne — the flyers carry the foot soldiers, so the whole force flies (crosses sea, moves at the flyers' pace)</span>`
+    : '';
+  // sea transport: whether this force can put to sea is the turn's own answer (seaLiftOfAColumn, which
+  // getSeaCapability and the Move note ask too: R-135): its hulls (each carries double under a trained Naval
+  // of 8 or more, R-125) and its humanoid flyers pool their lift. The figures explain it: the hulls its land
+  // units need (light foot half a hull, the rest a whole one), the berths it has, the units left ashore.
+  const _naval8 = ((c.skills || {}).naval || 0) >= 8;
+  const _lift = seaLiftOfAColumn(arr, _naval8);
+  const _landUnits = arr.filter((a) => !_AER_UI2.has(a.type) && !_SEA_UI2.has(a.type));
+  let _hullNeed = _landUnits.reduce((n, a) => n + (takesHalfAHullAboard(a) ? 0.5 : 1), 0);
+  if (_naval8) _hullNeed /= 2;
+  const _hullNeedShown = Math.ceil(_hullNeed);
+  const _hullHave = _lift.berths; // berths: a turtle's Island Back offers two
+  const _ashore = _lift.unitsLeftAshore.length;
+  const _hulls = kcHtml`needs ${_hullNeedShown} hull${_hullNeedShown !== 1 ? 's' : ''}, has ${_hullHave}`;
+  let _seaNote = '';
+  if (_lift.answer === 'all')
+    _seaNote = kcHtml` · ⚓ <span style="color:#2d6a8a">Sea: every unit sails or flies on its own</span>`;
+  else if (_airborne) _seaNote = '';
+  else if (_lift.answer === 'sea' && _hullHave >= _hullNeed)
+    _seaNote = kcHtml` · ⚓ <span style="color:#1d5a1d">Sea transport: ${_hulls} — can put to sea</span>`;
+  else if (_lift.answer === 'sea')
+    _seaNote = kcHtml` · ⚓ <span style="color:#1d5a1d">Sea transport: ${_hulls}, and the flyers carry the rest — can put to sea</span>`;
+  else
+    _seaNote = kcHtml` · ⚓ <span style="color:var(--crimson)">Sea transport: ${_hulls} — ${_ashore} unit${_ashore !== 1 ? 's' : ''} left ashore: more fleet units or flyers to carry the whole force</span>`;
+  return { _airNote, _seaNote };
 }
 export const PRIMAL_SUBRACE_CLASS = {
   'Stone Giant': 'Creature',

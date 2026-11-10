@@ -89,7 +89,7 @@
 // rule, the form with the title its hero's minorHeld lists, which the report writes on the holder the turn counts), and
 // in a realm with a Grand Cathedral (R-124: both ask the one rule of a spell that costs no slot, the form with the Wonder
 // its realm's report says stands, the report built by the engine from a world with and without it); the army card's strength
-// of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
+// of a unit (`theArmyCardsFiguresOfAColumn`'s, which `renderReportView` calls) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
 // battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
 // at a hero offers on the staged report. P1-11d1 (plan P1-11d; since P1-11d6 the three call the engine's hex step, so

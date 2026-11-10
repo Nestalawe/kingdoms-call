@@ -601,9 +601,6 @@
     "no-empty": {
       "count": 3
     },
-    "no-useless-assignment": {
-      "count": 1
-    },
     "prefer-const": {
       "count": 4
     }
@@ -614,6 +611,11 @@
     },
     "no-empty": {
       "count": 3
+    }
+  },
+  "src/ui/player/skills-and-projections.ts": {
+    "no-useless-assignment": {
+      "count": 1
     }
   },
   "src/ui/player/startup.ts": {
