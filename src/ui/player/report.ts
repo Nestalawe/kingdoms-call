@@ -26,7 +26,7 @@ import { sb } from './startup.ts';
 import { GUARD_POWER_COLORS_P, itemBoundTag, itemsForDisplayP, itemSlotTag, itemTierTagP } from './items-and-heroes.ts';
 import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
-import { refreshOrdersVisibility } from './layout.ts';
+import { ensureProvinceLinking } from './layout.ts';
 import { turnDeadlineText } from './game-lists.ts';
 import { buildChronicle } from './join-and-chronicle.ts';
 import { renderMastery, renderTitles } from './titles.ts';
@@ -46,8 +46,8 @@ import {
   deadHeroRealmTagP,
   renderDiplomacy,
 } from './map-symbols.ts';
-import { ensureProvinceLinking, renderPlayerMap } from './map.ts';
-import { initMessaging } from './dispatches.ts';
+import { renderPlayerMap } from './map.ts';
+import { initMessaging, refreshOrdersVisibility } from './dispatches.ts';
 import {
   SKILL_LABELS,
   rawSkillLvl,

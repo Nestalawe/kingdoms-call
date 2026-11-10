@@ -4,7 +4,6 @@ import { KC_HEX_DIRS, KC_TEMPERS, KC_MAGIC_SCHOOLS } from '../../content/kingdom
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import { theHexNextToAProvinceInADirection } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
-import { sb } from './startup.ts';
 import {
   PO_SEA_TYPES,
   poSeaAnalysis,
@@ -353,62 +352,6 @@ export function currentHeroOrderP() {
   const fromDom = heroBlocksP().map((b) => b.getAttribute('data-hero'));
   return fromDom.length ? fromDom : (_heroOrder || []).slice();
 }
-export function moveHeroBlock(charId, dir) {
-  const blocks = heroBlocksP();
-  const i = blocks.findIndex((b) => b.getAttribute('data-hero') === String(charId));
-  const j = i + dir;
-  if (i < 0 || j < 0 || j >= blocks.length) return;
-  const gA = heroGroupP(blocks[i]),
-    gB = heroGroupP(blocks[j]);
-  if (dir > 0) {
-    let ref = gB[gB.length - 1];
-    gA.forEach((n) => {
-      ref.after(n);
-      ref = n;
-    });
-  } else {
-    const anchor = gB[0];
-    gA.forEach((n) => anchor.parentNode.insertBefore(n, anchor));
-  }
-  _heroOrder = heroBlocksP().map((b) => b.getAttribute('data-hero'));
-  refreshHeroMoveButtonsP();
-  try {
-    blocks[i].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  } catch (e) {} // not every environment has it
-  persistHeroOrder();
-}
-// 2026-10-08 (Toby item 5): "Group by location" puts heroes standing in the same province next to
-// each other. Provinces come in the order their first hero already appears (so the king's stays on
-// top), and heroes keep their old order inside each province. Each hero moves with the cards parked
-// under it, and the result is remembered exactly like a ▲▼ reorder.
-export function groupHeroesByLocation() {
-  const blocks = heroBlocksP();
-  if (blocks.length < 2) return;
-  const chars = (currentReport && currentReport.characters) || [];
-  const locOf = (id) => {
-    const c = chars.find((x) => String(x.id) === String(id));
-    return c ? String(c.locationId != null ? c.locationId : c.locationName || '?') : '?';
-  };
-  const firstSeen = new Map();
-  blocks.forEach((b) => {
-    const k = locOf(b.getAttribute('data-hero'));
-    if (!firstSeen.has(k)) firstSeen.set(k, firstSeen.size);
-  });
-  const sorted = blocks
-    .map((b, i) => ({ b, i, k: firstSeen.get(locOf(b.getAttribute('data-hero'))) }))
-    .sort((x, y) => x.k - y.k || x.i - y.i);
-  if (sorted.every((s, i) => s.i === i)) return; // already grouped
-  // The last hero's group runs to the end of the form, so re-appending every group in the new order
-  // leaves the blocks above the heroes (realm, discoveries, heir) where they are.
-  const parent = blocks[0].parentNode;
-  sorted
-    .map((s) => heroGroupP(s.b))
-    .flat()
-    .forEach((n) => parent.appendChild(n));
-  _heroOrder = heroBlocksP().map((b) => b.getAttribute('data-hero'));
-  refreshHeroMoveButtonsP();
-  persistHeroOrder();
-}
 // Re-disable the first ▲ and the last ▼ after every move.
 export function refreshHeroMoveButtonsP() {
   const blocks = heroBlocksP();
@@ -418,36 +361,6 @@ export function refreshHeroMoveButtonsP() {
     if (up) up.disabled = i === 0;
     if (dn) dn.disabled = i >= blocks.length - 1;
   });
-}
-// Persist the arrangement on its own, MERGED into whatever orders payload is already stored, so a
-// reorder never rewrites (or un-submits) the orders themselves. The engine picks `heroOrder` out of
-// the payload and keeps it on the realm from then on.
-export async function persistHeroOrder() {
-  const gp = currentGamePlayer;
-  if (!gp || !gp.id || !_heroOrder.length) return;
-  // Never write while a past-turn report is on screen (same guard doSaveOrders uses).
-  if (document.getElementById('prev-report-banner')?.style.display === 'block') return;
-  let raw = {};
-  try {
-    raw = typeof gp.orders === 'string' ? JSON.parse(gp.orders || '{}') : gp.orders || {};
-  } catch (e) {
-    raw = {};
-  }
-  if (!raw || typeof raw !== 'object') raw = {};
-  // Keep the payload in the new {orders,encounterPlans,forTurn} shape so the stale-draft guard and
-  // the engine's format sniff both still recognise it after a bare reorder on an otherwise empty
-  // form.
-  if (raw.orders === undefined) raw.orders = {};
-  if (raw.encounterPlans === undefined) raw.encounterPlans = {};
-  if (raw.forTurn == null) raw.forTurn = (currentReport && (currentReport._liveTurn || currentReport.turn)) || 1;
-  raw.heroOrder = _heroOrder.slice();
-  const payload = JSON.stringify(raw);
-  const { error } = await sb.from('game_players').update({ orders: payload }).eq('id', gp.id);
-  if (error) {
-    console.warn('persistHeroOrder:', error.message);
-    return;
-  }
-  gp.orders = payload;
 }
 
 // ONE row renderer for the encounter plan, used by the initial build AND refreshEncounterPlan. ▲/▼

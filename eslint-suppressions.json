@@ -476,10 +476,10 @@
   },
   "src/ui/player/dispatches.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 9
+      "count": 11
     },
     "no-empty": {
-      "count": 6
+      "count": 8
     },
     "prefer-const": {
       "count": 1
@@ -528,7 +528,7 @@
   },
   "src/ui/player/layout.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 6
+      "count": 7
     },
     "no-empty": {
       "count": 6
@@ -547,20 +547,17 @@
   },
   "src/ui/player/map.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 4
+      "count": 3
     },
     "no-empty": {
-      "count": 3
+      "count": 2
+    },
+    "no-useless-assignment": {
+      "count": 1
     }
   },
   "src/ui/player/move-analysis.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    },
-    "no-empty": {
-      "count": 1
-    },
-    "no-useless-assignment": {
       "count": 1
     }
   },

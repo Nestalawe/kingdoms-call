@@ -854,66 +854,6 @@
     ]
   },
   {
-    "type": "cycle",
-    "from": "src/ui/player/dispatches.ts",
-    "to": "src/ui/player/layout.ts",
-    "unresolvedTo": "./layout.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/player/layout.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/dispatches.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
-    "type": "cycle",
-    "from": "src/ui/player/layout.ts",
-    "to": "src/ui/player/map.ts",
-    "unresolvedTo": "./map.ts",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "no-cycle-through-imports-that-bring-code"
-    },
-    "cycle": [
-      {
-        "name": "src/ui/player/map.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      },
-      {
-        "name": "src/ui/player/layout.ts",
-        "dependencyTypes": [
-          "local",
-          "import"
-        ]
-      }
-    ]
-  },
-  {
     "type": "dependency",
     "from": "src/db/game-meta.ts",
     "to": "src/engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts",
