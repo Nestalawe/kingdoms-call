@@ -201,7 +201,11 @@ import {
   worldSamples,
   type WorldSamples,
 } from '../lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import ts from 'typescript';
 import * as theSharedDoor from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
+import { initializersOf, SRC } from '../lib/source.ts';
 import * as l79Orders from '../../src/ui/player/l79-orders.ts';
 import * as moveAnalysis from '../../src/ui/player/move-analysis.ts';
 import * as orderChances from '../../src/ui/player/order-chances.ts';
@@ -476,6 +480,36 @@ function playerPortalCopies(): Copies {
   return made as Copies;
 }
 
+const THE_DOOR = 'shared/the-engines-rules-the-player-portal-shares.ts';
+
+/** The names the page file `file` (under src/) imports from src/shared/'s door for its code. */
+function theNamesItTakesFromTheDoor(file: string): ReadonlySet<string> {
+  const tree = ts.createSourceFile(file, fs.readFileSync(path.join(SRC, file), 'utf8'), ts.ScriptTarget.Latest);
+  const names = new Set<string>();
+  for (const statement of tree.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const from = path.posix.normalize(path.posix.join(path.posix.dirname(file), statement.moduleSpecifier.text));
+    const bindings = statement.importClause?.namedBindings;
+    if (from !== THE_DOOR || statement.importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword) continue;
+    if (bindings && ts.isNamedImports(bindings))
+      for (const element of bindings.elements) if (!element.isTypeOnly) names.add(element.name.text);
+  }
+  return names;
+}
+
+/** The spell table `name` the page file `file` (under src/) declares inside a function, as a list in its order: the
+ *  page sets each by a bare call of a function it imports from src/shared/'s door (`theActionSpells()`), so the call
+ *  is made here on the door's function. A table declared other than once, or set any other way, throws, naming it. */
+function aSpellTableThePageSets(file: string, name: string): unknown[] {
+  const found = initializersOf(file, name);
+  const called = found.length === 1 ? /^\(?(\w+)\(\)\)?$/.exec(found[0] ?? '')?.[1] : undefined;
+  const setBy: unknown =
+    called && theNamesItTakesFromTheDoor(file).has(called) ? Reflect.get(theSharedDoor, called) : undefined;
+  const table: unknown = typeof setBy === 'function' ? Reflect.apply(setBy, undefined, []) : undefined;
+  if (!(table instanceof Set)) throw new Error(`${file}: ${name} is not set by a call of a function the door hands it`);
+  return [...table];
+}
+
 /** The order form's Cast Spell tables, and its two functions that read them: order-chances.ts's three tables and
  *  move-analysis.ts's ENCOUNTER_VALID imported, the action spells (order-targets.ts's) and the spells aimed at a
  *  province or a hero (spellSecondaryHtml's) by their values; the Cast Spell rows (order-targets.ts's, which
@@ -487,11 +521,11 @@ function theOrderFormsSpells(): TheOrderFormsSpells {
       SPELLS_BY_SCHOOL: orderChances.SPELLS_BY_SCHOOL,
       SPELL_TO_SCHOOL: orderChances.SPELL_TO_SCHOOL,
       SPELL_REQ_LEVEL: orderChances.SPELL_REQ_LEVEL,
-      PHASE_SPELLS: [...theSharedDoor.theActionSpells()],
-      _hsPhase: [...theSharedDoor.theActionSpellsNoMasteryLevelGates()],
+      PHASE_SPELLS: aSpellTableThePageSets('ui/player/order-targets.ts', 'PHASE_SPELLS'),
+      _hsPhase: aSpellTableThePageSets('ui/player/order-targets.ts', '_hsPhase'),
       ENCOUNTER_VALID: moveAnalysis.ENCOUNTER_VALID,
-      NEEDS_PROV: [...theSharedDoor.theActionSpellsAimedAtAProvince()],
-      NEEDS_CHAR: [...theSharedDoor.theActionSpellsAimedAtAHero()],
+      NEEDS_PROV: aSpellTableThePageSets('ui/player/titles.ts', 'NEEDS_PROV'),
+      NEEDS_CHAR: aSpellTableThePageSets('ui/player/titles.ts', 'NEEDS_CHAR'),
     }),
   );
   // the page's fields, as the form reads them by id: here, the values handed in
