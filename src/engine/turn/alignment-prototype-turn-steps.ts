@@ -94,7 +94,8 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     const breedEvery = align === 'Druidic' ? WILD_BREED_EVERY_DRUIDIC : WILD_BREED_EVERY;
     if ((align === 'Druidic' || align === 'Evil') && isWild(pv) && G.turn % breedEvery === 0) {
       const kind = pv.armyTypes.find((t) => (align === 'Druidic' ? CREATURES.has(t) : MONSTERS.has(t)));
-      if (kind && pv.garrisonArmies.length < KIT_GARRISON_CAP) { // round 21: the Druids' beasts to 3 a province too (master list: no cap)
+      if (kind && pv.garrisonArmies.length < KIT_GARRISON_CAP) {
+        // round 21: the Druids' beasts to 3 a province too (master list: no cap)
         const u: Army = { type: kind, quality: 'Average', race: pv.race ?? 'Primal', unitName: armyUnitNameOf(kind) };
         pv.garrisonArmies.push(u);
         line(
@@ -132,20 +133,31 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
         };
       u._kitGarrison = true;
       pv.garrisonArmies.push(u);
-      line(pi, `💀 The dead of this soil rise in ${pv.name}: ${u.unitName} (${u.quality}) joins the garrison unbidden.`, pv);
+      line(
+        pi,
+        `💀 The dead of this soil rise in ${pv.name}: ${u.unitName} (${u.quality}) joins the garrison unbidden.`,
+        pv,
+      );
     }
     // ── UNDEAD: the barrow dead ── (master list) a held barrow keeps its graves filled: a humanoid barrow three graves,
     // each an Average unit of a kind the province can recruit; a creature or monster barrow one grave of its kind. The
     // necromancers raise them with the Necromancy spells (no company rises on its own any more).
     if (pv.features.some(isBarrow)) {
       const wild = isWild(pv);
-      const kinds = wild ? pv.armyTypes.filter((t) => CREATURES.has(t) || MONSTERS.has(t)) : pv.armyTypes.filter(fieldUnit);
+      const kinds = wild
+        ? pv.armyTypes.filter((t) => CREATURES.has(t) || MONSTERS.has(t))
+        : pv.armyTypes.filter(fieldUnit);
       const want = wild ? BARROW_GRAVES_WILD : BARROW_GRAVES_HUMANOID;
       pv.battleGraves = pv.battleGraves ?? [];
       let added = 0;
       while (pv.battleGraves.length < want && kinds.length) {
         const kind = kinds[Math.floor(kcRng() * kinds.length)] ?? kinds[0] ?? 'Shieldwall Levies';
-        pv.battleGraves.push({ type: kind, quality: 'Average', race: pv.race ?? 'Human', unitName: armyUnitNameOf(kind) });
+        pv.battleGraves.push({
+          type: kind,
+          quality: 'Average',
+          race: pv.race ?? 'Human',
+          unitName: armyUnitNameOf(kind),
+        });
         added += 1;
       }
       if (added)
@@ -155,6 +167,18 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
           pv,
         );
     }
+  }
+
+  // ── GOOD: the muster goes home ── (round 24) a Beacons company has served its turns: it leaves the garrison.
+  for (const pv of provinces) {
+    const gone = pv.garrisonArmies.filter((a) => a._musterUntilTurn != null && G.turn > a._musterUntilTurn);
+    if (!gone.length || pv.owner == null) continue;
+    pv.garrisonArmies = pv.garrisonArmies.filter((a) => !(a._musterUntilTurn != null && G.turn > a._musterUntilTurn));
+    line(
+      pv.owner,
+      `🔥 The muster of ${pv.name} is done: ${gone.map((a) => `${a.unitName} (${a.quality})`).join(', ')} go${gone.length === 1 ? 'es' : ''} home to the shire.`,
+      pv,
+    );
   }
 
   // ── DRUIDIC: the green heals ── a hero of the realm who ends the turn in forest or jungle recovers a quarter of their
@@ -219,7 +243,13 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     const kingLives = G.characters.some((k) => k.alive && k.isKing && k.player === c._soulBoundBy);
     if (kingLives && alignProto(G, 'Undead')) continue;
     delete c._soulBoundBy;
-    if (c.player != null) line(c.player, `✨ The reliquary is broken: ${c.name}'s soul is free, and the Grace may reach them again.`, null, 'explore');
+    if (c.player != null)
+      line(
+        c.player,
+        `✨ The reliquary is broken: ${c.name}'s soul is free, and the Grace may reach them again.`,
+        null,
+        'explore',
+      );
   }
 
   // ── NEUTRAL: Ransom ── a captive travels with his captor; at the start of each turn his realm may buy him back (a bot
@@ -235,7 +265,8 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
       c.location = where;
       const pv = provinces[where];
       if (pv && !pv.characters.includes(c.id)) pv.characters.push(c.id);
-      if (c.player != null) line(c.player, `${why} ${c.name} stands in ${pv?.name ?? 'the field'} again.`, pv ?? null, 'explore');
+      if (c.player != null)
+        line(c.player, `${why} ${c.name} stands in ${pv?.name ?? 'the field'} again.`, pv ?? null, 'explore');
     };
     if (!captor || !captor.alive || !league || !alignProto(G, 'Neutral')) {
       free(captor?.location ?? c.location, `🔓 ${c.name}'s captor is gone:`);

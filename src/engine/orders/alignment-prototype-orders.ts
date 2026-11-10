@@ -12,6 +12,8 @@ import {
   alignProto,
   BEACONS_CAP,
   BIND_BONES_COST,
+  BIND_BONES_TOP,
+  BEACONS_MUSTER_TURNS,
   CALL_OF_THE_WILD_RANGE,
   CALL_STORM_COST,
   CALL_WILD_COST,
@@ -181,11 +183,22 @@ export function tradePactPriceOwned(pv: Province): number {
  *  (master list) another realm's humanoid province, never a capital. */
 export function tradePactTargets(G: GameState, c: Character, prov: Prov): Province[] {
   if (!prov) return [];
+  // round 24: no pact where another realm's hero stands (a led host defends it), and none with a realm the League is
+  // at war with
+  const heroHere = (pv: Province) =>
+    G.characters.some((h) => h.alive && h.player != null && h.player !== c.player && h.location === pv.id);
   return [prov, ...neighboursOf(G, prov)].filter(
     (pv) =>
       humanoidLand(pv) &&
+      !heroHere(pv) &&
       (pv.owner == null ||
-        (pv.owner !== c.player && G.players[pv.owner] != null && homeProvinceIdFor(G, pv.owner) !== pv.id)),
+        (pv.owner !== c.player &&
+          G.players[pv.owner] != null &&
+          homeProvinceIdFor(G, pv.owner) !== pv.id &&
+          c.player != null &&
+          (G.relations[
+            c.player < pv.owner ? `${String(c.player)}-${String(pv.owner)}` : `${String(pv.owner)}-${String(c.player)}`
+          ] ?? 'neutral') !== 'enemy')),
   );
 }
 export function resolveTradePactOrder(
@@ -204,7 +217,7 @@ export function resolveTradePactOrder(
     refuse(
       turnContext,
       c,
-      `${c.name}: a Trade Pact needs an unclaimed humanoid province here or next door — none answers that name.`,
+      `${c.name}: a Trade Pact needs a humanoid province here or next door, unclaimed or another realm's — not a capital, not one where another realm's hero stands, and not one of a realm the League is at war with. None answers that name.`,
     );
     return;
   }
@@ -421,6 +434,7 @@ export function resolveLightTheBeaconsOrder(turnContext: TurnContext, c: Charact
     const kind = pv.armyTypes.find(fieldUnit);
     if (!kind) continue;
     const u: Army = { type: kind, quality: 'Veteran', race: pv.race ?? pl.race, unitName: armyUnitNameOf(kind) }; // master list: Veterans
+    u._musterUntilTurn = G.turn + BEACONS_MUSTER_TURNS; // round 24: a muster, not a payroll: wage-free, then they go home
     pv.garrisonArmies.push(u);
     raised.push(`${pv.name} (${kind})`);
   }
@@ -428,7 +442,7 @@ export function resolveLightTheBeaconsOrder(turnContext: TurnContext, c: Charact
     turnContext,
     pi,
     'hire',
-    `🔥 ${c.name} lights the beacons from ${prov.name}, and the shires answer the muster (${String(shires.length * LIGHT_BEACONS_COST_PER_COMPANY)}g): ${raised.join(', ')} each raise a Veteran company into the garrison. They draw wages from next turn like any other.`,
+    `🔥 ${c.name} lights the beacons from ${prov.name}, and the shires answer the muster (${String(shires.length * LIGHT_BEACONS_COST_PER_COMPANY)}g): ${raised.join(', ')} each raise a Veteran company into the garrison. The muster serves without wages for ${String(BEACONS_MUSTER_TURNS)} turns, then the shires' men go home.`,
     prov,
   );
 }
@@ -445,7 +459,11 @@ export function resolveCallOfTheWildOrder(turnContext: TurnContext, c: Character
     Math.floor(player.gold / CALL_WILD_COST), // master list: 2g a company that comes
   );
   if (room <= 0) {
-    refuse(turnContext, c, `${c.name} can lead no more beasts than march with him already, or cannot pay the horn's price.`);
+    refuse(
+      turnContext,
+      c,
+      `${c.name} can lead no more beasts than march with him already, or cannot pay the horn's price.`,
+    );
     return;
   }
   const came: string[] = [];
@@ -680,17 +698,26 @@ export function resolveBindTheBonesOrder(turnContext: TurnContext, c: Character,
   const pi = c.player;
   const here: Army[] = [...c.armies];
   if (prov.owner === pi) here.push(...prov.garrisonArmies);
-  for (const h of G.characters) if (h.alive && h.id !== c.id && h.player === pi && h.location === prov.id) here.push(...h.armies);
+  for (const h of G.characters)
+    if (h.alive && h.id !== c.id && h.player === pi && h.location === prov.id) here.push(...h.armies);
   const bones = here
-    .filter((a) => a._isSkeletal && !a._phantom && TIERS.indexOf(a.quality) < TIERS.length - 1)
+    .filter((a) => a._isSkeletal && !a._phantom && TIERS.indexOf(a.quality) < TIERS.indexOf(BIND_BONES_TOP)) // round 24: to Crack
     .sort((a, b) => TIERS.indexOf(b.quality) - TIERS.indexOf(a.quality));
   if (!bones.length) {
-    refuse(turnContext, c, `${c.name}: no skeletal company here can be bound any tighter.`);
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: no skeletal company here can be bound any tighter (the bones bind to ${BIND_BONES_TOP} at most; Elite is earned in battle).`,
+    );
     return;
   }
   const n = Math.min(bones.length, Math.floor(player.gold / BIND_BONES_COST));
   if (n < 1) {
-    refuse(turnContext, c, `${c.name}: Bind the Bones costs ${String(BIND_BONES_COST)}g a company — the treasury cannot pay.`);
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: Bind the Bones costs ${String(BIND_BONES_COST)}g a company — the treasury cannot pay.`,
+    );
     return;
   }
   player.gold -= n * BIND_BONES_COST;
@@ -717,7 +744,11 @@ export function resolveSpreadDreadOrder(turnContext: TurnContext, c: Character, 
   const { G } = turnContext;
   if (kitOff(turnContext, c, 'Evil', 'Spread Dread')) return;
   if (c.player == null || prov?.owner !== c.player || prov.terrain === 'sea') {
-    refuse(turnContext, c, `${c.name}: Spread Dread needs a province of your own realm to send the fearmongers out from.`);
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: Spread Dread needs a province of your own realm to send the fearmongers out from.`,
+    );
     return;
   }
   const pi = c.player;

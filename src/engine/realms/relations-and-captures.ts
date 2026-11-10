@@ -61,11 +61,20 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
   if (!units.length) return;
   const _pct = consecCaptureXpPct(G.players[newOwner]); // Undead 100 · Evil 50 · others 0
   const rose = [];
+  // PROTOTYPE Evil (round 24): one company of the column, chosen by lot, gains the level — not every one
+  const _oneOnly = _pct > 0 && alignProto(G, 'Evil') && G.players[newOwner]?.alignment === 'Evil';
+  const _eligible = units.filter(
+    (a) =>
+      !a._isSkeletal &&
+      QUALITY_TIERS.indexOf(a.quality) >= 0 &&
+      QUALITY_TIERS.indexOf(a.quality) < QUALITY_TIERS.length - 1,
+  );
+  const _chosen = _oneOnly && _eligible.length ? _eligible[Math.floor(kcRng() * _eligible.length)] : null;
   units.forEach((a) => {
     const qi = QUALITY_TIERS.indexOf(a.quality);
     if (a._isSkeletal) return; // skeletons never change quality by any means
     if (qi < 0 || qi >= QUALITY_TIERS.length - 1) return; // Elite (or unknown) cannot rise
-    if (_pct > 0 && kcRng() * 100 < _pct) {
+    if (_oneOnly ? a === _chosen : _pct > 0 && kcRng() * 100 < _pct) {
       a.quality = QUALITY_TIERS[qi + 1];
       rose.push(`${a.unitName || armyUnitName(a.type)} (now ${a.quality})`);
     }

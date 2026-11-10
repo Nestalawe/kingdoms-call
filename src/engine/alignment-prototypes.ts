@@ -59,7 +59,9 @@ export const CALL_WILD_COST = 2; // Druidic: master list, 2g a company that come
 export const EMBARGO_COST = 5; // Neutral: master list (rounds 6-18: 4; round 5: 6; was free)
 export const DESPOIL_COST = 3; // Undead: Blight the Land (round 22; master list: 5g)
 export const BIND_BONES_COST = 2; // Undead: Bind the Bones, 2g a company
-export const CALL_STORM_COST = 4; // Pagan: Call down the storm
+export const BIND_BONES_TOP = 'Crack'; // round 24: the bones bind to Crack at most; Elite is earned in battle
+export const BEACONS_MUSTER_TURNS = 3; // round 24: the Beacons' Veterans serve without wages this many turns, then go home
+export const CALL_STORM_COST = 8; // Pagan: Call down the storm (round 24: 8g; rounds 19-23: 4g)
 export const DARK_PACT_COST_MULT = 1.5; // Evil: 1.5 × the monster's recruit cost (round 5: 2 ×; rounds 2-4: a flat 10g)
 export const DARK_PACT_HP_SHARE = 0.4; // Evil: master list, 40% of the king's current HP (rounds 2-18: 5 HP)
 // round 5: the mutual enemies and the beast provinces
@@ -175,7 +177,8 @@ export function divinePower(G: GameState, pi: number): number {
   const pl = kitRealm(G, pi, 'Divine');
   if (!pl) return 0;
   const crusading = (pl._crusadeUntil ?? -1) >= G.turn ? 1 : 0; // round 3: a Proclaimed Crusade is +1 Power while it lasts
-  return heldSites(G, pi, isHolySite).length + shiningSites(G, pi) + crusading;
+  const consecrated = Math.floor((pl.consecratedProvIds ?? []).length / 2); // round 24: every two consecrated provinces count a point
+  return heldSites(G, pi, isHolySite).length + shiningSites(G, pi) + crusading + consecrated;
 }
 /** Round 2: is the king's order `key` off its cooldown for realm `pl` this turn? */
 export function kingOrderReady(G: GameState, pl: Realm, key: string): boolean {
@@ -239,7 +242,11 @@ export function paganFavourMult(G: GameState, pi: number): number {
 }
 
 /** Master list: does `pv` count as consecrated for realm `pi` — consecrated, or any province it holds at Divine Power 6? */
-export function countsConsecrated(G: GameState, pi: number | null | undefined, pv: Province | null | undefined): boolean {
+export function countsConsecrated(
+  G: GameState,
+  pi: number | null | undefined,
+  pv: Province | null | undefined,
+): boolean {
   const pl = pi == null ? null : kitRealm(G, pi, 'Divine');
   if (!pl || !pv || pv.owner !== pi) return false;
   if ((pl.consecratedProvIds ?? []).includes(pv.id)) return true;
@@ -258,7 +265,11 @@ export function pilgrimRoads(G: GameState, c: Character): boolean {
   return countsConsecrated(G, c.player, G.world.provinces[start]);
 }
 /** Master list (the Crusade's Hounds of God and Holy wrath): is `quarry` a hero of the realm `pi` is on Crusade against? */
-export function crusadeQuarry(G: GameState, pi: number | null | undefined, quarry: Character | null | undefined): boolean {
+export function crusadeQuarry(
+  G: GameState,
+  pi: number | null | undefined,
+  quarry: Character | null | undefined,
+): boolean {
   const pl = pi == null ? null : kitRealm(G, pi, 'Divine');
   if (!pl || quarry?.player == null) return false;
   return pl._crusadeVs === quarry.player && (pl._crusadeUntil ?? -1) >= G.turn;
@@ -281,8 +292,7 @@ export function protoSkillLift(G: GameState, c: Character | null | undefined, st
   if (!align) return 0;
   // Round 15 (the cut to six): one general rule in place of seven abilities. Every realm's heroes count one level
   // higher in their alignment's own skill, where they have it at all.
-  if (stat === SIGNATURE_SKILL[align] && base >= 1)
-    return 1 + (align === 'Undead' ? barrowsHeld(G, c.player) : 0); // master list: a barrow each, no cap
+  if (stat === SIGNATURE_SKILL[align] && base >= 1) return 1 + (align === 'Undead' ? barrowsHeld(G, c.player) : 0); // master list: a barrow each, no cap
   if (align === 'Undead' && stat === 'necromancy') return barrowsHeld(G, c.player); // the barrows lift even a hero with none
   if (align === 'Neutral' && (stat === 'spy' || stat === 'thief') && base >= 1) return 1; // Guilds
   // master list, Divine Power 4 (Pilgrim roads): a hero leading armies who began the turn on consecrated ground
@@ -364,15 +374,15 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       // round 5: Dominion of the Pits — storming an unclaimed monster province, with or without monsters of your own;
       // round 6: and defending a monster province of the realm's
       const pits =
-        !!prov &&
-        isMonsterProvince(prov) &&
-        ((isAttacker && prov.owner == null) || (!isAttacker && prov.owner === pi));
+        !!prov && isMonsterProvince(prov) && ((isAttacker && prov.owner == null) || (!isAttacker && prov.owner === pi));
       const monsters = armies.some((a) => monsterTypes.has(a.type));
       const fury = monsters ? (isAttacker ? 1.5 : 1.25) : 1; // round 2: ×1.25 defending
       // master list: the Dominion of the Pits stacks with Savage Fury (as the Druids' Parley stacks with Home of the Wild)
       const mult = Math.round((pits ? PARLEY_MULT : 1) * fury * 100) / 100;
       if (mult <= 1) return nothing;
-      const parts = [pits ? 'Dominion of the Pits ×1.5' : '', monsters ? `Savage Fury ×${String(fury)}` : ''].filter(Boolean);
+      const parts = [pits ? 'Dominion of the Pits ×1.5' : '', monsters ? `Savage Fury ×${String(fury)}` : ''].filter(
+        Boolean,
+      );
       return { mult, label: parts.join(' and ') };
     }
     case 'Undead': {
@@ -393,7 +403,7 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
 export function protoProvinceTaxAdd(G: GameState, pl: Realm, pv: Province, taxSoFar: number): number {
   if (pv.terrain === 'sea' || !alignProto(G, pl.alignment)) return 0;
   const base = pv.tax;
-  if (pl.alignment === 'Good' && base <= 4 && !isWild(pv)) return 3; // round 21: tax 4 or less (master list: 3 or less); round 8: +3
+  if (pl.alignment === 'Good' && base <= 5 && !isWild(pv)) return 3; // round 24: tax 5 or less (round 21: 4; master list: 3); round 8: +3
   if (pl.alignment === 'Neutral' && base >= 4) return Math.round(taxSoFar * 0.5);
   return 0;
 }

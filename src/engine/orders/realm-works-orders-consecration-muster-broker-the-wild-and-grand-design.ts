@@ -470,8 +470,17 @@ export function resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player) {
   // PROTOTYPE Undead (round 20): the corpse-carters work only at a barrow the realm holds (the master list had removed the
   // order altogether; round 19 showed the kit cannot live on the spell alone). 2g a company, one grave a phase.
   // round 21: everywhere, as today (round 20: at a held barrow only; the master list removed the order)
+  // round 24: gone under the kit, as the master list had it: the necromancers raise the dead with Skeletal Armies
   const _kitUndead = protoAlignOf(G, c.player) === 'Undead';
-  void _kitUndead;
+  if (_kitUndead) {
+    emit(turnContext, {
+      type: 'system',
+      text: `${c.name}: the corpse-carters are no more — the dead of ${prov.name} rise only to the Necromancy spell Skeletal Armies.`,
+      audience: { actor: c.player, realms: [c.player] },
+      hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+    });
+    return;
+  }
   if (G.players[c.player]?.alignment !== 'Undead') {
     emit(turnContext, {
       type: 'system',

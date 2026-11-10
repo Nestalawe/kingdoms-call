@@ -17,6 +17,7 @@ import {
   neighboursOf,
   RITE_OF_AWAKENING_COST,
   BIND_BONES_COST,
+  BIND_BONES_TOP,
   CALL_STORM_COST,
   PROCLAIM_CRUSADE_COST,
   protoBeastRoomExtra,
@@ -297,7 +298,8 @@ export function botSignaturePre(G, pi, c, P, L) {
     }
     // Druidic and Evil: no signature order since 2026-10-12 (Toby item 22: Awaken the Wild and Call from the Pit removed).
     case 'Undead': {
-      // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it); round 20: under the kit, at a held barrow only
+      // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it); round 24: gone under the kit (Skeletal Armies raises the dead)
+      if (alignProto(G, 'Undead')) return null;
       if ((sk.necromancy || 0) < 1 || !botSees(G, pi, P.id) || !(P.battleGraves || []).length) return null;
       if (L.budget < 2) return null;
       L.budget -= 2;
@@ -1928,7 +1930,9 @@ export function botKitPre(G, pi, c, P, L) {
       }
       // round 23: at woken stones of the realm, a hero with a host uses the other rites
       if (tactics && owned && stones && P._riteActivatedBy === pi && P._riteTurn !== G.turn) {
-        const host = (c.armies || []).filter((a) => a && !a._temporary && a._wildHuntUntilTurn == null && !a._isSkeletal);
+        const host = (c.armies || []).filter(
+          (a) => a && !a._temporary && a._wildHuntUntilTurn == null && !a._isSkeletal,
+        );
         // the Ley: step to another woken stones province of the realm that an enemy threatens, with the host
         if (host.length >= 2) {
           let goal = null;
@@ -1936,28 +1940,59 @@ export function botKitPre(G, pi, c, P, L) {
             const X = G.world.provinces[id];
             if (!X || X.id === P.id || X.owner !== pi || X._riteActivatedBy !== pi) return;
             if (!(X.features || []).some((f) => f && f.ritualSite && !f.siteKind)) return;
-            const own = (X.garrisonArmies || []).length + (G.characters || []).filter((h) => h && h.alive && h.player === pi && h.location === X.id).reduce((s, h) => s + (h.armies || []).length, 0);
+            const own =
+              (X.garrisonArmies || []).length +
+              (G.characters || [])
+                .filter((h) => h && h.alive && h.player === pi && h.location === X.id)
+                .reduce((s, h) => s + (h.armies || []).length, 0);
             let threat = 0;
             neighboursOf(G, X).forEach((N) => {
               (G.characters || []).forEach((h) => {
-                if (h && h.alive && h.player != null && h.player !== pi && h.location === N.id && botRelationRaw(G, pi, h.player) === 'enemy')
+                if (
+                  h &&
+                  h.alive &&
+                  h.player != null &&
+                  h.player !== pi &&
+                  h.location === N.id &&
+                  botRelationRaw(G, pi, h.player) === 'enemy'
+                )
                   threat += (h.armies || []).length;
               });
             });
             if (threat > own && (!goal || threat - own > goal.gain)) goal = { X, gain: threat - own };
           });
-          if (goal) return { action: 'rite', target: 'ley:' + String(goal.X.id), extra: '', desc: 'Perform Rite — the Ley to ' + goal.X.name };
+          if (goal)
+            return {
+              action: 'rite',
+              target: 'ley:' + String(goal.X.id),
+              extra: '',
+              desc: 'Perform Rite — the Ley to ' + goal.X.name,
+            };
         }
         // a Blood Offering when the host is big enough to spare its two weakest, at war
         if (host.length >= 5 && botAtWar(G, pi)) {
-          const idx = (c.armies || []).map((a, i) => ({ a, i })).filter((x) => x.a && host.includes(x.a)).map((x) => ({ i: x.i, v: unitBaseStrength(x.a) })).sort((x, y) => x.v - y.v);
-          const Sx = idx.slice(0, 2).map((x) => x.i), Ex = idx.slice(-2).map((x) => x.i);
+          const idx = (c.armies || [])
+            .map((a, i) => ({ a, i }))
+            .filter((x) => x.a && host.includes(x.a))
+            .map((x) => ({ i: x.i, v: unitBaseStrength(x.a) }))
+            .sort((x, y) => x.v - y.v);
+          const Sx = idx.slice(0, 2).map((x) => x.i),
+            Ex = idx.slice(-2).map((x) => x.i);
           if (!Sx.some((i) => Ex.includes(i)))
-            return { action: 'rite', target: 'blood offering', extra: `S:${Sx.join(',')}|E:${Ex.join(',')}`, desc: 'Perform Rite — a Blood Offering' };
+            return {
+              action: 'rite',
+              target: 'blood offering',
+              extra: `S:${Sx.join(',')}|E:${Ex.join(',')}`,
+              desc: 'Perform Rite — a Blood Offering',
+            };
         }
         // the Wild Hunt where beasts roam, with room to lead them
         const wild = (P.armyTypes || []).find((t) => PRIMAL_ARMY_DEFS_P[t]);
-        if (wild && beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) >= 2 && spendIf(wildHuntPrice(wild)))
+        if (
+          wild &&
+          beastCommandRoom(c, G.characters || [], protoBeastRoomExtra(G, c)) >= 2 &&
+          spendIf(wildHuntPrice(wild))
+        )
           return { action: 'rite', target: 'wild hunt', extra: '', desc: 'Perform Rite — the Wild Hunt' };
       }
       return null;
@@ -2072,13 +2107,19 @@ export function botKingKitOrder(G, pi, c, P, L) {
           if (h.player === pi) own += n;
           else if (h.player != null && botRelationRaw(G, pi, h.player) === 'enemy') foe += n;
         });
-        if (X.owner != null && X.owner !== pi && botRelationRaw(G, pi, X.owner) === 'enemy') foe += (X.garrisonArmies || []).length;
+        if (X.owner != null && X.owner !== pi && botRelationRaw(G, pi, X.owner) === 'enemy')
+          foe += (X.garrisonArmies || []).length;
         const gain = foe - own;
         if (foe >= 2 && gain >= 1 && (!best || gain > best.gain)) best = { X, gain }; // round 23: looser
       });
       if (!best) return null;
       botSpend(L, CALL_STORM_COST);
-      return { action: 'call_storm', target: 'prov:' + String(best.X.id), extra: '', desc: 'Call down the storm on ' + best.X.name };
+      return {
+        action: 'call_storm',
+        target: 'prov:' + String(best.X.id),
+        extra: '',
+        desc: 'Call down the storm on ' + best.X.name,
+      };
     }
     case 'Evil': {
       // round 5: the dearest monster of the realm's pits the chest can pay for, every turn the king can spare the blood
@@ -2097,11 +2138,13 @@ export function botKingKitOrder(G, pi, c, P, L) {
       // master list: Bind the Bones — when two or more skeletal companies here can still rise a tier and the chest can
       // pay for them beyond its wages
       if (!ready('bind_bones')) return null;
-      let n = (c.armies || []).filter((a) => a && a._isSkeletal && !a._phantom && a.quality !== 'Elite').length;
-      if (owned) n += (P.garrisonArmies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
+      const _bindable = (a) =>
+        a && a._isSkeletal && !a._phantom && a.quality !== 'Elite' && a.quality !== BIND_BONES_TOP; // round 24: to Crack
+      let n = (c.armies || []).filter(_bindable).length;
+      if (owned) n += (P.garrisonArmies || []).filter(_bindable).length;
       (G.characters || []).forEach((h) => {
         if (h && h.alive && h.id !== c.id && h.player === pi && h.location === P.id)
-          n += (h.armies || []).filter((a) => a && a._isSkeletal && a.quality !== 'Elite').length;
+          n += (h.armies || []).filter(_bindable).length;
       });
       const affordable = Math.min(n, Math.floor(Math.max(0, L.budget - 4) / BIND_BONES_COST));
       if (affordable < 1) return null;

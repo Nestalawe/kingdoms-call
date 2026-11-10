@@ -144,6 +144,7 @@ export const ArmySchema = z.object({
   _slave: z.boolean().optional(),
   _kitGarrison: z.boolean().optional(),
   _merc: z.boolean().optional(), // Neutral (round 2): a mercenary company hired under the kit, a condottiere
+  _musterUntilTurn: z.number().optional(), // Good (round 24): a Beacons company serves wage-free through this turn, then goes home
 });
 export type Army = z.infer<typeof ArmySchema>;
 

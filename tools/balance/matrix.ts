@@ -8,6 +8,11 @@ export const MAP_SIZES: Record<number, { cols: number; rows: number }> = {
   4: { cols: 9, rows: 7 },
   5: { cols: 12, rows: 7 },
   6: { cols: 15, rows: 7 },
+  // the GM portal's larger boards (src/ui/gm/game-list.ts), for the hand-played games
+  7: { cols: 16, rows: 7 },
+  8: { cols: 17, rows: 8 },
+  9: { cols: 16, rows: 11 },
+  10: { cols: 16, rows: 11 },
 };
 const RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'];
 const ALIGNMENTS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'];

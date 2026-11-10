@@ -277,6 +277,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
       if (a._wildHuntUntilTurn != null) return s;
+      if (a._musterUntilTurn != null) return s; // PROTOTYPE Good (round 24): the Beacons' muster serves without wages
       if (a._slave) return s; // PROTOTYPE Evil: slaves are paid nothing
       if (a._isSkeletal) return s + 1;
       let w = ARMY_COST[a.type] || 2;
@@ -447,6 +448,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         // dissolve on their own at turn's end (and no longer draw a wage above).
         if (army._temporary) return;
         if (army._wildHuntUntilTurn != null) return; // Wild Hunt beasts draw no wage, so they cannot be disbanded for one
+        if (army._musterUntilTurn != null) return; // PROTOTYPE Good (round 24): nor the Beacons' muster
         if (army._isSkeletal && gdActive(turnContext, p.id, 'Undead')) return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
         // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons)
         // still free
@@ -569,7 +571,15 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     if (!pv || pv.owner == null || !G.players[pv.owner]) return;
     const _up = []; // one line per province, however many rise
     (pv.garrisonArmies || []).forEach((a) => {
-      if (!a || a._isSkeletal || a._temporary || a._phantom || a._wildHuntUntilTurn != null) return;
+      if (
+        !a ||
+        a._isSkeletal ||
+        a._temporary ||
+        a._phantom ||
+        a._wildHuntUntilTurn != null ||
+        a._musterUntilTurn != null
+      )
+        return;
       const _qi = QUALITY_TIERS.indexOf(a.quality);
       if (_qi < 0 || _qi >= QUALITY_TIERS.length - 1) return;
       const _ch = (UNIT_DRILL_BASE[a.quality] || 0) * GARRISON_DRILL_LEVEL * humanXPMult(a, pv.owner, G);

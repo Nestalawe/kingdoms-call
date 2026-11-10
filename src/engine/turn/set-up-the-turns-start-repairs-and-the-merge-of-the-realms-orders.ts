@@ -134,6 +134,7 @@ function encounterPlanAsAPlanHasIt(plan) {
   if (typeof plan.notes === 'string') kept.notes = plan.notes;
   if (typeof plan.duelStance === 'string') kept.duelStance = plan.duelStance;
   if (typeof plan.evilMode === 'string') kept.evilMode = plan.evilMode;
+  if (plan.ransom === true) kept.ransom = true; // PROTOTYPE Neutral (round 24): a player may set out to capture (Ransom)
   return kept;
 }
 

@@ -527,7 +527,8 @@ export function runBotMovement(G, botIdxSet, hooks) {
             // >=65% wins and <=20% risk of being felled. The rating pre-filter keeps the sim cheap.
             // Hunters also set out only at >=85% health.
             const _ransomer = kitTactics(G, pi) === 'Neutral'; // round 23: the League's heroes hunt for ransoms
-            const hunt = hp >= mhp * (_ransomer ? 0.7 : 0.85) ? botHuntTarget(G, pi, c, _ransomer ? 5 : 4, hooks.duelSim) : null;
+            const hunt =
+              hp >= mhp * (_ransomer ? 0.7 : 0.85) ? botHuntTarget(G, pi, c, _ransomer ? 5 : 4, hooks.duelSim) : null;
             if (hunt && hunt.mem) {
               const path = (botPathAny(G, P, hunt.loc, 4) || []).slice(0, Math.max(0, 4 - pre.length));
               if (path.length) {
@@ -706,7 +707,13 @@ export function runBotMovement(G, botIdxSet, hooks) {
             if (bp && pre.length + bp.path.length < 5) {
               const mv = [
                 ...bp.path.map((d) => botMoveOrder(d, 'To the barrow of ' + bp.X.name)),
-                { action: 'harvest_field', target: '', extra: '', desc: 'Harvest the barrow of ' + bp.X.name, prov: bp.X.id }, // round 20: the carters, no roll
+                {
+                  action: 'cast_spell',
+                  target: 'Skeletal Armies',
+                  extra: '',
+                  desc: 'Raise the barrow dead of ' + bp.X.name,
+                  prov: bp.X.id,
+                }, // round 24: the spell (rounds 20-23: Harvest the Field)
               ];
               G.turnOrders[c.id] = botFillOrders(G, pi, c, pre, mv);
               assigned.add(c.id);
