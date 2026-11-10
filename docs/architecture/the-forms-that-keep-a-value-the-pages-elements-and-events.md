@@ -21,6 +21,9 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **`querySelectorAll` of a selector that names one kind** (`'input[type=checkbox]'`), read for that kind's fields
   (`b.checked`), is filtered by it: `[...wrap.querySelectorAll('input[type=checkbox]')].filter((b) => b instanceof
   HTMLInputElement)`, which keeps every element the selector finds.
+- **A field's value read off an element of no kind the code checks** (`document.getElementById(id)?.value`, the Move
+  order's action) is `el ? theValueOfAField(el) : undefined` (`'value' in el ? el.value : undefined`, in
+  `the-orders-the-form-holds-handed-to-its-forecasts.ts`): the same value for an element of any kind, none included.
 - **A node's parent read for its text** (`b.parentNode.textContent`) goes through a reader that throws, for none, the
   `TypeError` the read threw (`theParentOf`); its `textContent || ''` is `?? ''` (it is words or `null`).
 
@@ -42,6 +45,10 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 
 ## The page's globals
 
+- **A page global a typed file tests for none** (`diploChoices`, which the forecasts test with `typeof … === 'object'`)
+  keeps `| null` in its type; a file that reads it unguarded reads it through a reader that throws a `TypeError` for
+  `null`, as the read did (`theDiplomaticChoices`, `map-symbols.ts`), and `delete table[key]` on it is
+  `Reflect.deleteProperty(table, key)` (lint's `no-dynamic-delete`): the same key taken off a plain object.
 - **A page global a freed file reads with a type** (`currentReport`, `discoveryChoices`) is typed in
   `src/globals.d.ts`, where every page global is declared: the report as the most-derived of its typed readers' types
   (`TheReportAsThePagesListsReadIt`, every part optional), a record by words as `Partial<Record<string, unknown>>`. A
