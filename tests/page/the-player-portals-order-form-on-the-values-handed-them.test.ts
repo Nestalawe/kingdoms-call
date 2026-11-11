@@ -55,7 +55,7 @@ beforeAll(async () => {
       w.console.error = () => undefined;
       w.console.warn = () => undefined;
       w.console.log = () => undefined;
-      w.alert = (m: unknown) => {
+      w['alert'] = (m: unknown) => {
         alerts.push(String(m));
       };
     },
@@ -87,17 +87,17 @@ describe('the treasury ledger', () => {
     ledger.style.display = 'none';
     ledger.innerHTML = '';
     here('<input id="of-outside">');
-    doc.getElementById('of-outside')?.dispatchEvent(new P.Event('change', { bubbles: true }));
-    doc.dispatchEvent(new P.Event('input', { bubbles: true }));
+    stage("document.getElementById('of-outside').dispatchEvent(new Event('change', { bubbles: true }))");
+    stage("document.dispatchEvent(new Event('input', { bubbles: true }))");
     await settle(200);
     expect(ledger.style.display).toBe('none');
-    const inside = doc.querySelector('#orders-form select[id^="po-action-"]');
-    inside?.dispatchEvent(new P.Event('change', { bubbles: true }));
+    const inside = `document.querySelector('#orders-form select[id^="po-action-"]')`;
+    stage(`${inside}.dispatchEvent(new Event('change', { bubbles: true }))`);
     await settle(200);
     expect(ledger.style.display).toBe('block');
     expect(ledger.textContent).toContain('Treasury 40g');
     ledger.innerHTML = '';
-    inside?.dispatchEvent(new P.Event('input', { bubbles: true }));
+    stage(`${inside}.dispatchEvent(new Event('input', { bubbles: true }))`);
     await settle(200);
     expect(ledger.textContent).toContain('Treasury 40g');
   });
@@ -182,12 +182,10 @@ describe("the encounter plan's controls", () => {
   });
   test('a confirmed spell joins the plan, but not twice, not past its school limit, and not past six', () => {
     stage(`currentReport = ${JSON.stringify({ characters: [aHero] })};`);
-    const [a, b] = stage(
-      "Object.keys(SPELL_TO_SCHOOL).filter((s) => SPELL_TO_SCHOOL[s] === 'white').slice(0, 2)",
-    ) as string[];
+    const [a, b] = ['Resurrect', 'Part Sea']; // two of the White school's spells
     here('<div id="ep-spell-picker-h1"></div><input id="ep-tactics-h1" value="ME"><div id="ep-list-h1"></div>');
     call('confirmEPSpell', 'h1', a, 'white', 1, 1);
-    expect(theValueOf('ep-tactics-h1')).toBe(`ME,CA:${String(a)}`);
+    expect(theValueOf('ep-tactics-h1')).toBe(`ME,CA:${a}`);
     expect(doc.getElementById('ep-spell-picker-h1')).toBeNull();
     call('confirmEPSpell', 'h1', a, 'white', 1, 1);
     expect(alerts.pop()).toMatch(/already in your encounter plan/);
@@ -196,7 +194,7 @@ describe("the encounter plan's controls", () => {
     call('confirmEPSpell', 'h1', b, 'white', 1, Number.NaN);
     expect(alerts.pop()).toMatch(/^White Magic Lv1: you can cast at most 1 combat spell of/);
     call('confirmEPSpell', 'h1', b, 'white', 2, undefined);
-    expect(theValueOf('ep-tactics-h1')).toBe(`ME,CA:${String(a)},CA:${String(b)}`);
+    expect(theValueOf('ep-tactics-h1')).toBe(`ME,CA:${a},CA:${b}`);
     here('<input id="ep-tactics-h1" value="ME,ME,ME,ME,ME,ME">');
     call('confirmEPSpell', 'h1', a, 'white', 1, 1);
     expect(alerts.pop()).toMatch(/Maximum 6 tactics/);
