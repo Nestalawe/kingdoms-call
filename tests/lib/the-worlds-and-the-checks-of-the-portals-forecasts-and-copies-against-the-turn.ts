@@ -526,7 +526,10 @@ export function stagedWorld(): { state: Obj; report: Obj } {
   // an older save holds it, tagged with an old name of the race ('Elf', 'Dwarves', …: the data file's
   // KC_ITEM_RACE_ALIAS, which both read).
   const aliases: Record<string, string> = KC_ITEM_RACE_ALIAS;
-  const bound = catalogue().filter((it) => it['race'] || it['alignment']);
+  const bound = catalogue().filter((it) => {
+    if (it['race']) return it['race'];
+    return it['alignment'];
+  });
   const oldNames = Object.entries(aliases).flatMap(([old, race]) =>
     bound.filter((it) => it['race'] === race).map((it) => ({ ...it, race: old })),
   );

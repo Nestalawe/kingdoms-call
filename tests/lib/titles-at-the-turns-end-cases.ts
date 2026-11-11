@@ -1071,7 +1071,7 @@ export const HIEROPHANT_CASES: TitleCase[] = [
 // ── The Deathpriest ──────────────────────────────────────────────────────────────────────────────────────────────
 /** Realm `pi`'s graveyard lore of `p` after the turn: its turn, what it records, and whether it saw only some. */
 export const loreOf = (o: Outcome, pi: number, p: Province) => {
-  const r = ((realmOf(o, pi)['_graveIntel'] as Record<string, Raw> | undefined) ?? {})[p.id];
+  const r = (realmOf(o, pi)['_graveIntel'] as Record<string, Raw> | undefined)?.[p.id];
   return r ? { turn: r['turn'], detail: r['detail'], partial: r['detailPartial'] } : null;
 };
 export const DEATHPRIEST_CASES: TitleCase[] = [

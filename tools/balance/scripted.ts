@@ -353,7 +353,7 @@ export function scriptedChoices(S: State, me: number, turn: number): { chose: Wh
     ? nearest(
         S,
         chaser.location,
-        seen.filter((q) => chaser.isKing || !q.isKing),
+        seen.filter((q) => (chaser.isKing ?? false) || !q.isKing),
         (x) => x.location,
       )
     : null;
@@ -370,7 +370,7 @@ export function scriptedChoices(S: State, me: number, turn: number): { chose: Wh
     const q = nearest(
       S,
       hero.location,
-      quarries.filter((x) => hero.isKing || !x.isKing),
+      quarries.filter((x) => (hero.isKing ?? false) || !x.isKing),
       (x) => x.location,
     );
     if (!q) continue;

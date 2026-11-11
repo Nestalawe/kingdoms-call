@@ -10,7 +10,7 @@ import { defineConfig } from '@playwright/test';
 import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';
 
 // Set before the workers start, so they start with them (tests/lib/boot.js reads KC_SEED when it loads).
-Object.assign(process.env, FIXED, { KC_SEED: process.env['KC_SEED'] || DEFAULT_SEED });
+Object.assign(process.env, FIXED, { KC_SEED: (process.env['KC_SEED'] ?? '') || DEFAULT_SEED });
 const PORT = 4173;
 
 export default defineConfig({

@@ -37,7 +37,7 @@ const named = (name: string) => {
 };
 
 test('Holy Symbol at White 5: −60% to hit against undead and fiends, −40% against the rest', () => {
-  const notWeak = MON.filter((m) => !(m.weak && m.weak.kind === 'school' && m.weak.key === 'white'));
+  const notWeak = MON.filter((m) => !(m.weak?.kind === 'school' && m.weak.key === 'white'));
   const bad: string[] = [];
   notWeak.forEach((m) => {
     const want = m.cat === 'undead' || m.cat === 'fiend' ? 60 : 40;

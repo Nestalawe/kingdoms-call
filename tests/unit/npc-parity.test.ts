@@ -55,8 +55,8 @@ const combatVsNPC = engineFn(engine, 'combatVsNPC') as (
 let unitCount = 0;
 const U = (type: string, quality?: string, race?: string): Unit => ({
   type,
-  quality: quality || 'Average',
-  race: race || null,
+  quality: (quality ?? '') || 'Average',
+  race: (race ?? '') || null,
   unitName: `${type} #${String(++unitCount)}`,
 });
 
@@ -123,7 +123,7 @@ function battle(terrain: string, race: string, armies: Unit[], defenders: Unit[]
         player: 0,
         isKing: true,
         alive: true,
-        race: charRace || 'Dwarven',
+        race: (charRace ?? '') || 'Dwarven',
         alignment: 'Neutral',
         temper: 'Brave',
         hp: 20,
@@ -158,7 +158,7 @@ function battle(terrain: string, race: string, armies: Unit[], defenders: Unit[]
   const G = tc.G as unknown as Staged;
   const prov = G.world.provinces[4];
   if (!prov) throw new Error('the staged world has no province 4');
-  return combatVsNPC(tc, G.characters[0], prov, null) || {};
+  return combatVsNPC(tc, G.characters[0], prov, null) ?? {};
 }
 const has = (narr: string[], re: RegExp) => narr.some((l) => re.test(l));
 
@@ -178,7 +178,7 @@ function caseA(terrain: string, runs: number) {
       [U('Yeoman Longbows', 'Veteran', 'Human'), U('Yeoman Longbows', 'Veteran', 'Human')],
       'Elven',
     );
-    const narr = (out.narrative || []).map(wordsOf);
+    const narr = (out.narrative ?? []).map(wordsOf);
     if (has(narr, /Defender Archery Phase/)) volley++;
     if (has(narr, /answering volley never comes/)) blockLine++;
   }
@@ -219,7 +219,7 @@ function caseB1(guards: number, runs: number) {
     for (let k = 0; k < 10; k++) defenders.push(U('Free Lances', 'Elite', 'Human'));
     const out = battle('plain', 'Dwarven', armies, defenders);
     if (out.won !== false) continue;
-    const narr = (out.narrative || []).map(wordsOf);
+    const narr = (out.narrative ?? []).map(wordsOf);
     losses++;
     if (has(narr, /Free Lances range across the open ground/)) ride++;
     if (has(narr, /lock shields as they give ground/)) shield++;
@@ -266,7 +266,7 @@ test('Shield Fort: a beaten Guard garrison locks shields, is not ridden down or 
       5,
     );
     if (out.won !== true) continue;
-    const narr = (out.narrative || []).map(wordsOf);
+    const narr = (out.narrative ?? []).map(wordsOf);
     wins++;
     if (has(narr, /Free Lances ride down the broken companies across open ground/)) ride++;
     if (has(narr, /Dwarven Guard lock shields where they stand/)) shield++;

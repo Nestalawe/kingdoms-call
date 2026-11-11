@@ -3,4 +3,4 @@ import { KC_DB_MIN } from './startup.ts';
 import { thePagesDb } from './config.ts';
 import { init } from './sign-in.ts';
 
-kcDbGuard(thePagesDb, KC_DB_MIN).then(() => init());
+void kcDbGuard(thePagesDb, KC_DB_MIN).then(() => init());

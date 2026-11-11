@@ -19,7 +19,7 @@ import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';
 // levels in tests/suite.ts, so no script is left without a project to run it.
 const LEVELS: Level[] = ['page', 'simulation', 'scenario', 'unit', 'static'];
 // Set here as well as in `env`, so the worker processes start with them (the locale is read at start-up).
-Object.assign(process.env, FIXED, { KC_SEED: process.env['KC_SEED'] || DEFAULT_SEED });
+Object.assign(process.env, FIXED, { KC_SEED: (process.env['KC_SEED'] ?? '') || DEFAULT_SEED });
 // How many test files run at once (maxWorkers): two fewer than the cores, at least 2 (no more than the cores) and at
 // most 8; within a file, up to one test script per core (maxConcurrency). Measured (P1-01d, 2026-11-06, npm test three
 // times each on an idle 14-core laptop, 291 files and 8,668 tests, the same names and results every run): 2 at once

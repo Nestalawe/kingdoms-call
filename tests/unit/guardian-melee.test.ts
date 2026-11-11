@@ -35,7 +35,7 @@ test("every guardian's blow rolls its tier's base + its Melee", () => {
     const g = call('pcMonsterCombatant', { ...m, _hpFull: m.hp }) as Combatant;
     if (g['dmgBonus'] || g['gauntlets']) return; // a flat bonus on top: checked by its own passive
     const [lo, hi] = BASE[m.power] ?? [NaN, NaN];
-    const sk = m.melee || 1; // +1 a Melee level (item 20, 2026-10-14)
+    const sk = (m.melee ?? 0) || 1; // +1 a Melee level (item 20, 2026-10-14)
     let mn = 1e9;
     let mx = -1;
     for (let i = 0; i < 600; i++) {

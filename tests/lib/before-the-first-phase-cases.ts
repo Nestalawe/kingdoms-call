@@ -327,7 +327,7 @@ export const lair = (b: Board, hp: number | null, full: number | null = hp, p: P
 export const onlyLairs = (b: Board, ...keep: Raw[]) => {
   b.G.world.provinces.forEach((p) => {
     p['features'] = ((p['features'] as Raw[] | undefined) ?? []).filter(
-      (f) => keep.includes(f) || !f || f['ritualSite'] || !f['monster'],
+      (f) => keep.includes(f) || !f || (f['ritualSite'] ?? false) || !f['monster'],
     );
   });
 };

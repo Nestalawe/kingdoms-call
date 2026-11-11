@@ -19,8 +19,8 @@ declare const KC_CONFIG: Readonly<{
 declare const supabase: TheSupabaseGlobal;
 declare const KC_RNG_SEED: number | undefined;
 
-/** A page variable's value, untyped until P1-16. */
-type PageState = any;
+/** A page variable's value, unknown to a typed file until P1-16 types it. */
+type PageState = unknown;
 
 // ui/gm/startup.ts
 declare var _kcHasTel: PageState;

@@ -574,7 +574,7 @@ const rel = (relations: Record<string, string>, a: number, x: number) =>
 const written = (r: ReturnType<typeof playWorld>) =>
   Object.entries(r.after).flatMap(([k, d]) =>
     Object.entries(d)
-      .filter(([x, v]) => (r.before[k] ?? {})[x] !== v)
+      .filter(([x, v]) => r.before[k]?.[x] !== v)
       .map(([x, v]) => [Number(k), Number(x), v] as const),
   );
 
@@ -619,7 +619,7 @@ describe('Properties', () => {
         const r = playWorld(w);
         const wrong = written(r).filter(([pi, x, v]) => {
           const held = ((realm(r.b, pi)['botGrudges'] as number[] | undefined) ?? []).includes(x);
-          return v === 'treat' && held && (r.truces[pi] ?? {})[String(x)] == null;
+          return v === 'treat' && held && r.truces[pi]?.[String(x)] == null;
         });
         expect(wrong).toEqual([]);
       }),
@@ -638,7 +638,7 @@ describe('Properties', () => {
               ? [0, 1, 2].filter(
                   (h) =>
                     !r.s.bots.includes(h) &&
-                    (r.before[String(h)] ?? {})[String(pi)] === 'enemy' &&
+                    r.before[String(h)]?.[String(pi)] === 'enemy' &&
                     must(w.realms[h], 'realm').met.includes(pi),
                 )
               : [];

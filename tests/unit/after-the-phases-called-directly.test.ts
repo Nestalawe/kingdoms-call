@@ -230,7 +230,7 @@ describe('After the phases: what it calls', () => {
     expect(of('monarchRestProvId')).toEqual([[b.G, 0]]);
     expect(of('abandonHostOnFlight')).toEqual([[b.tc, coward]]);
     expect(of('reconcileProvinceCharacters')).toEqual([[b.tc]]);
-    expect(calls.filter((c) => c.fn === 'reconcileProvinceCharacters')[0]?.before).toBe(b.lines().length);
+    expect(calls.find((c) => c.fn === 'reconcileProvinceCharacters')?.before).toBe(b.lines().length);
   });
 
   test("a fallen commander's host is dispersed knowing who slew him, with no leaderless-host mark; the note goes after", () => {
