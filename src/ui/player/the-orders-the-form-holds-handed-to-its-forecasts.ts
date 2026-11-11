@@ -152,7 +152,7 @@ export function orderChanceNote(
 ): unknown {
   return theNoteUnderAnOrderThatQuotesItsChance(currentReport, theOrdersTheFormHoldsForTheHero(c), c, action, ph);
 }
-export function actionsFor(c: AHeroAsTheOrderFormReadsHim | null | undefined): unknown {
+export function actionsFor(c: AHeroAsTheOrderFormReadsHim | null | undefined): string[] {
   return theOrdersTheFormOffersAHero(currentReport, c);
 }
 export function projectedMagicLevels(

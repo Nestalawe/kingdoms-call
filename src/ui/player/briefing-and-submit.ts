@@ -138,7 +138,7 @@ export function setOrdersSubmittedUI(submitted) {
       : '<span class="pill pill-amber">⏳ Orders needed</span>';
 }
 
-export function restoreSubmitWrap(verb) {
+export function restoreSubmitWrap(verb): void {
   const w = document.getElementById('orders-submit-wrap');
   if (!w) return;
   w.innerHTML = normalSubmitWrapHtml(verb);
@@ -151,7 +151,7 @@ export function cancelSubmit() {
   restoreSubmitWrap('Submit');
 }
 
-export async function doSaveOrders() {
+export async function doSaveOrders(): Promise<void> {
   const chars = currentReport?.characters || [];
   const orders = {};
   const encounterPlans = {};
@@ -237,7 +237,7 @@ export async function doSaveOrders() {
   }
 }
 
-export async function doSubmitOrders() {
+export async function doSubmitOrders(): Promise<void> {
   const chars = currentReport?.characters || [];
   const btn = document.getElementById('submit-btn');
   if (btn) {

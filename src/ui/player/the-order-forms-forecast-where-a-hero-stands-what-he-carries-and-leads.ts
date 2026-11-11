@@ -85,7 +85,7 @@ export interface AHeroAsTheFormsForecastsReadHim extends AHerosSkillsAsTheFormRe
   readonly hiredInPhase?: number | null | undefined;
   readonly effectiveSpeed?: unknown;
   readonly effectiveSeaSpeed?: unknown;
-  readonly locationId?: number | undefined;
+  readonly locationId?: number | null | undefined;
   readonly locationName?: string | undefined;
   readonly armies?: readonly ACompanyAsTheFormCarriesIt[] | null | undefined;
   readonly items?: readonly AnItemAHeroCarries[] | null | undefined;
@@ -159,7 +159,7 @@ export interface TheOrdersAsTheFormsForecastsReadThem {
 }
 /** Where a hero will stand: the province's id (the report's, so none where it gives none) and its name. */
 export interface WhereAHeroStands {
-  readonly id: number | undefined;
+  readonly id: number | null | undefined;
   readonly name: string | undefined;
 }
 /** A company the phase's orders add to a garrison, with the hero who adds it. */

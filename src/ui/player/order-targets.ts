@@ -221,7 +221,7 @@ function theNumbersAmong(list: readonly unknown[]): number[] {
 }
 /** Where a hero will stand, as the consecration's checks read its id: a forecast with none reads as NaN, which matches
  *  no province (the checks compare it with the provinces' numbers, as `undefined` did). */
-function theIdOrNoProvince(id: number | undefined): number {
+function theIdOrNoProvince(id: number | null | undefined): number {
   return id ?? NaN;
 }
 /** A hero's companies, each as the code's guard reads it (`c.armies || []`). */
@@ -259,7 +259,7 @@ export function exploreGainFor(c: AHeroAsTheTargetFieldsReadHim, terr: string | 
 }
 // Sum of exploration already queued for a province by EARLIER Explore orders (this hero's earlier
 // phases, and every other hero's orders in this phase or earlier).
-export function exploreQueuedBefore(charId: unknown, ph: number, provId: number | undefined): number {
+export function exploreQueuedBefore(charId: unknown, ph: number, provId: number | null | undefined): number {
   let sum = 0;
   const chars: readonly (AHeroAsTheTargetFieldsReadHim | null | undefined)[] = currentReport?.characters ?? [];
   chars.forEach((o) => {
@@ -287,7 +287,7 @@ export function exploreQueuedBefore(charId: unknown, ph: number, provId: number 
 export function exploreMoveGainBefore(
   c: AHeroAsTheTargetFieldsReadHim,
   upToPhaseExclusive: number,
-  provId: number | undefined,
+  provId: number | null | undefined,
 ): number {
   const worldMeta = currentReport?.worldMeta ?? null;
   const provinces = worldMeta?.provinces ?? [];
