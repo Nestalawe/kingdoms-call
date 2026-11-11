@@ -24,6 +24,7 @@ import {
   whereAHandOversRisenDeadGo,
   whereARecruitedCompanyMusters,
   theCompaniesABloodOfferingGivesAndRaises,
+  itemSlot,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 
 // The order form's forecasts (plan P1-11e3): where a hero will stand, what he will carry and what he will lead, and what a
@@ -62,8 +63,19 @@ export interface AHerosSkillsAsTheFormReadsThem {
   readonly skills?: TheLevelsBySkill | null | undefined;
   readonly skillEff?: TheEffectiveLevelsBySkill | null | undefined;
 }
-/** An item a hero carries, as the Send Item order names it. */
-export type AnItemAHeroCarries = Parameters<typeof theItemsASendItemOrderHandsOver>[0][number];
+/** An item a hero carries, as the Send Item order names it and the order form's item fields read it (the rules' item: a
+ *  report's item always has its name), or none. */
+export type AnItemAHeroCarries =
+  | (NonNullable<Parameters<typeof theItemsASendItemOrderHandsOver>[0][number]> &
+      NonNullable<Parameters<typeof itemSlot>[0]> & {
+        readonly equipped?: boolean | undefined;
+        readonly desc?: string | undefined;
+        readonly _spent?: unknown;
+        readonly effect?:
+          { readonly stat?: string | undefined; readonly spell?: string | undefined } | null | undefined;
+      })
+  | null
+  | undefined;
 /** A hero as the forecasts read him from the report (a pre-order card's id is words: 'hired_77_via_1_ph0'). */
 export interface AHeroAsTheFormsForecastsReadHim extends AHerosSkillsAsTheFormReadsThem {
   readonly id: number | string;
@@ -73,7 +85,7 @@ export interface AHeroAsTheFormsForecastsReadHim extends AHerosSkillsAsTheFormRe
   readonly hiredInPhase?: number | null | undefined;
   readonly effectiveSpeed?: unknown;
   readonly effectiveSeaSpeed?: unknown;
-  readonly locationId?: number | undefined;
+  readonly locationId?: number | null | undefined;
   readonly locationName?: string | undefined;
   readonly armies?: readonly ACompanyAsTheFormCarriesIt[] | null | undefined;
   readonly items?: readonly AnItemAHeroCarries[] | null | undefined;
@@ -147,7 +159,7 @@ export interface TheOrdersAsTheFormsForecastsReadThem {
 }
 /** Where a hero will stand: the province's id (the report's, so none where it gives none) and its name. */
 export interface WhereAHeroStands {
-  readonly id: number | undefined;
+  readonly id: number | null | undefined;
   readonly name: string | undefined;
 }
 /** A company the phase's orders add to a garrison, with the hero who adds it. */

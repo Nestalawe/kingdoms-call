@@ -459,12 +459,18 @@ describe('an unarmed hunter and an armed quarry', () => {
 
 // ── P1-10b34: the lines of the chase no game of the balance matrix reaches, each on the value it had before ──
 describe('the chase battle: the hosts, their losses, the rout and the ground (P1-10b34)', () => {
-  /** Hunter (realm 0, Divine, `mine` companies of `quality`) and quarry (realm `realm`, `theirs` Green ones) in X,
-   *  which realm 1 holds, on the trail. */
+  /** Hunter (realm 0, Divine Dwarves, `mine` companies of `quality`) and quarry (realm `realm`, `theirs` Green ones) in
+   *  X, which realm 1 (Pagan Orcs) holds, on the trail. The seed deals what the battle reads of the realms (a host of
+   *  its realm's race is the stronger; a realm defends its seat the harder) and of X (who has explored it), so they are
+   *  staged: the realms as the default seed deals them, and X unexplored. */
   const together = (realm: number | null, mine: number, theirs: number, quality = 'Elite') => {
     const b = fresh();
     b.own(b.X, 1);
-    must(b.G.players[0], 'realm 0')['alignment'] = 'Divine';
+    Object.assign(must(b.G.players[0], 'realm 0'), { alignment: 'Divine', race: 'Dwarven', homeProvinceId: 12 });
+    Object.assign(must(b.G.players[1], 'realm 1'), { alignment: 'Pagan', race: 'Orcish', homeProvinceId: 72 });
+    Object.assign(must(b.G.players[2], 'realm 2'), { homeProvinceId: 18 });
+    Object.assign(b.X, { explored: 0, visitedBy: [] });
+    delete b.X['exploredBy'];
     const c = hero(b, { player: 0, at: b.X, troops: mine, quality, skills: { spy: 9, melee: 2, tactical: 2 } });
     const q = hero(b, { player: realm, at: b.X, troops: theirs, quality: 'Green', skills: { spy: 0, melee: 1 } });
     chase(c, q);

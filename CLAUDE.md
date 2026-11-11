@@ -110,7 +110,7 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   ([how](docs/rulings/README.md#adding-a-ruling)), and name the test that enforces it. Rulings go there only.
 - **Mirror rule changes everywhere a rule is restated** (engine, player-portal projections, rulebooks, blurbs):
   [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice). A function the player portal takes through
-  `src/shared/` is written once; its copies still left are `tests/lib/player-portal-copies.ts`'s.
+  `src/shared/` is written once; that entry names the test of its copies left.
 - **A change to the saved game's shape changes its schema too** (`src/schemas/saved-game-state.ts`). One an older save
   can't meet as it is (a field renamed, moved, retyped or now required) also bumps the save's version: a numbered step
   in `src/engine/saves/upgrade-a-saved-game-and-check-it.ts`, the number in

@@ -2028,7 +2028,13 @@ describe('the nightly run', () => {
   });
 
   test('it runs npm run test:full with the random seed it printed first, and lets no failure through', () => {
-    expect(runs).toEqual(['npm ci', '|', 'npm run test:full']);
+    // zsh, for tests/unit/kc-merge-starts-the-codeql-scan-…'s cases (the runner has none), then the seed, then the run.
+    expect(runs).toEqual([
+      'npm ci',
+      'command -v zsh >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq zsh >/dev/null; }',
+      '|',
+      'npm run test:full',
+    ]);
     expect(wf).toMatch(
       /^ {6}- run: npm run test:full\n {8}env:\n {10}KC_SEED: \$\{\{ steps\.seed\.outputs\.seed \}\}\n/m,
     );

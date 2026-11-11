@@ -61,16 +61,18 @@ declare var _msgBlockOut: PageState;
 declare var _pollTimer: PageState;
 // ui/player/init.ts
 declare var currentGamePlayerId: PageState;
-declare var viewingReport: PageState;
+/** A past turn's report the page shows instead (the map reads it). */
+declare var viewingReport: import('./ui/player/map.ts').TheReportAsTheMapDrawsIt | null | undefined;
 declare var viewedTurn: PageState;
 // ui/player/items-and-heroes.ts
 declare var currentProfile: PageState;
 declare var joiningGame: PageState;
 declare var joinSkills: PageState;
-declare var currentGamePlayer: PageState;
-/** The report the page shows: as the order form's forecasts and the page's lists read it (P1-16b, P1-16c: its typed
- *  readers, the forecasts' page side and items-and-heroes.ts), every part optional. */
-declare var currentReport: import('./ui/player/map-symbols.ts').TheReportAsTheMapsPopupsReadIt | null | undefined;
+/** The realm's seat in the open game (the map writes its hero order into it). */
+declare var currentGamePlayer: import('./ui/player/map.ts').TheRealmsSeatAsThePageHoldsIt | null | undefined;
+/** The report the page shows: as the order form's forecasts, the page's lists, the map's popups, the Titles card, the map
+ *  and the target fields read it (its typed readers, P1-16b to f), every part optional. */
+declare var currentReport: import('./ui/player/orders-form.ts').TheReportAsTheOrderFormHoldsIt | null | undefined;
 declare var diploChoices: Partial<Record<string, unknown>> | null;
 declare var reckoningCall: PageState;
 declare var _heroOrder: (string | null)[] | null | undefined;
@@ -81,4 +83,6 @@ declare var discoveryChoices: Partial<Record<string, unknown>>;
 declare var _msgEnabled: PageState;
 declare var _deskLeftView: PageState;
 // ui/player/order-targets.ts
-declare var _draftOrdersSnapshot: PageState;
+/** This turn's saved draft, by hero: each phase's order as saved (the target fields read it before the form exists), as
+ *  parsed from JSON: any value. */
+declare var _draftOrdersSnapshot: unknown;

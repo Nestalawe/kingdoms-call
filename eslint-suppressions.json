@@ -495,44 +495,6 @@
       "count": 6
     }
   },
-  "src/ui/player/map.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    },
-    "no-empty": {
-      "count": 2
-    },
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/ui/player/order-targets.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 7
-    },
-    "no-empty": {
-      "count": 1
-    }
-  },
-  "src/ui/player/orders-form.ts": {
-    "@typescript-eslint/no-dynamic-delete": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 5
-    },
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
-  "src/ui/player/pre-orders.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 12
-    },
-    "no-empty": {
-      "count": 8
-    }
-  },
   "src/ui/player/report.ts": {
     "@typescript-eslint/no-dynamic-delete": {
       "count": 1
@@ -556,14 +518,6 @@
     },
     "no-empty": {
       "count": 3
-    }
-  },
-  "src/ui/player/titles.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 2
     }
   },
   "src/views/every-realms-report-and-the-lines-each-realm-reads.ts": {

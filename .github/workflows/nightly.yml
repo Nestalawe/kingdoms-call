@@ -41,6 +41,9 @@ jobs:
 
       - run: npm ci
 
+      # tests/unit/kc-merge-starts-the-codeql-scan-…'s cases run tools/merging/kc-merge.zsh in zsh, which the runner lacks.
+      - run: command -v zsh >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq zsh >/dev/null; }
+
       # A random whole number from 1 to 2^32 - 1 (tests/lib/boot.js reads the seed as one), or the seed given.
       - id: seed
         env:

@@ -1,5 +1,5 @@
-// Since P1-11e43 this test keeps only the copies tests/lib/player-portal-copies.ts loads (since P1-13e9 imported from
-// their page files, those written inline run in a vm by their statements; the checks and the values in
+// Since P1-11e43 this test keeps only the copies below "The copies, imported" (since P1-13e12 each imported from its
+// page file, with no vm; the checks and the values in
 // tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts): the order form's
 // forecasts, ledger, Practice Skill note and order list are checked, imported with no vm, by
 // tests/unit/the-order-forms-forecasts-agree-with-the-turn.test.ts; the 11 projection cases and the values' reach by
@@ -7,7 +7,7 @@
 // turn report's flying carry and druidNeedP's shortfall cases are dropped (each checked one call twice). The account
 // below is of the checks as they were built, where each now runs.
 // The player portal's copies of the engine's rules agree with the engine, and the report hands the portal what the
-// engine reads (plan P1-11a2, P1-11a4; the checks and the values in tests/lib/player-portal-copies.ts). P1-11a4 swapped
+// engine reads (plan P1-11a2, P1-11a4). P1-11a4 swapped
 // the 16 copies that agreed for the engine's own functions (the portal imports them through src/shared/), so their
 // swap cases went with them; for the 9 whose value the report makes from the state, the truth case stays as a
 // projection case: the engine's function on the report's value and on the state's, the same answer (and for the beast
@@ -38,9 +38,8 @@
 // (Since P1-11e43 the projection cases, the march's forecast, what a hero holds, the order list, the ledger and the
 // Practice Skill note are the two tests named above; the flying carry and druidNeedP's shortfall cases are dropped.)
 // The player portal's copies of the engine's rules that are left, and the engine's functions it now calls in their
-// place (P1-11a2, P1-11a4; the checks and the values in `lib/player-portal-copies.ts`). The copies are read from
-// `src/ui/player/` by their syntax tree and run beside the data file as a script (the content as the player page holds
-// it), with the names `src/shared/` hands the portal; the engine's functions are imported directly, with no `vm`. The
+// place (P1-11a2, P1-11a4). The copies are imported from `src/ui/player/` (since P1-13e12), the page's globals they
+// read staged; the engine's functions are imported directly, with no `vm`. The
 // values: the balance matrix's game scripted-05, played with the engine's modules imported directly (its scripted
 // realm's report after every turn, and the state it was built from), and a staged world handed through the report's own
 // projection (`buildTurnReport`): every catalogue item (and each race-bound one under the race's old name), held by a
@@ -167,8 +166,12 @@ import {
   armyCardShortfallAgainstTheBattle,
   castingLimitAgainstTheOrder,
   effMagicLvlOnStagedHeroes,
+  COPY_FUNCTIONS,
+  isObj,
   type Comparison,
   type Copies,
+  type Obj,
+  type TheOrderFormsSpells,
   effMagicLvlAgainstTheReport,
   exploreForecastAgainstTheOrder,
   kinWorld,
@@ -198,10 +201,352 @@ import {
   worldSamples,
   type WorldSamples,
 } from '../lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts';
-import { playerPortalCopies, theOrderFormsSpells } from '../lib/player-portal-copies.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import ts from 'typescript';
+import * as theSharedDoor from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
+import { initializersOf, SRC } from '../lib/source.ts';
+import * as l79Orders from '../../src/ui/player/l79-orders.ts';
+import * as moveAnalysis from '../../src/ui/player/move-analysis.ts';
+import * as orderChances from '../../src/ui/player/order-chances.ts';
+import * as orderTargets from '../../src/ui/player/order-targets.ts';
+import * as skillsAndProjections from '../../src/ui/player/skills-and-projections.ts';
+import * as theLedger from '../../src/ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+import * as thePagesSide from '../../src/ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts';
+import * as titles from '../../src/ui/player/titles.ts';
 import { KC_RIVAL_RACE } from '../../src/content/kingdoms-call-data.ts';
 import { unitBaseStrength } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
+
+// ── The copies, imported from their page files (src/ui/player/) ────
+//
+// Each copy is the page's own function, imported and called on the report and the orders handed in, with the page's
+// globals it reads staged on globalThis as the page holds them: the report it shows (currentReport), the declarations
+// of war its form holds (diploChoices) and a stand-in for its fields (document.getElementById), each put back after the
+// call. The army card's figures are skills-and-projections.ts's two functions, which report.ts's renderReportView
+// calls; the Move field's directions and the Cast Spell rows are order-targets.ts's two functions, which its
+// buildTargetField calls. The four spell tables the page declares inside a function (the action spells in
+// order-targets.ts, the spells aimed at a province or a hero in titles.ts's spellSecondaryHtml) are each set by a
+// function src/shared/ hands it, imported here.
+
+/** The function `name` of the module `module` (a page file's export), to call on any values. */
+function aFunctionOf(module: Obj, name: string): (...args: unknown[]) => unknown {
+  const found = module[name];
+  if (typeof found !== 'function') throw new Error(`the player portal has no function ${name}`);
+  return (...args) => {
+    const answer: unknown = Reflect.apply(found, undefined, args);
+    return answer;
+  };
+}
+
+// ── The page's globals, staged ────
+
+/** The globals the page's files read as they run: the report the page shows, the declarations of war its form holds
+ *  (by realm) and its fields, each a property of globalThis, as items-and-heroes.ts declares the first two. */
+interface ThePagesGlobals {
+  readonly currentReport: unknown;
+  readonly diploChoices?: unknown;
+  readonly document: unknown;
+}
+
+/** `fn`'s answer with the page's globals set to `globals`, each put back as it was after (a global that wasn't there
+ *  is taken away again). */
+function withThePagesGlobals<T>(globals: ThePagesGlobals, fn: () => T): T {
+  const names = Object.keys(globals);
+  const before = names.map((name) => [name, Object.getOwnPropertyDescriptor(globalThis, name)] as const);
+  Object.assign(globalThis, globals);
+  try {
+    return fn();
+  } finally {
+    for (const [name, was] of before)
+      if (was) Object.defineProperty(globalThis, name, was);
+      else Reflect.deleteProperty(globalThis, name);
+  }
+}
+
+/** The orders staged for a check: by hero, then by phase, each { action, target } and since P1-11d1 its recipient or
+ *  comrade (`extra`). */
+type TheOrdersStaged = Readonly<Record<string, unknown>>;
+
+/** The staged order of the hero `heroId` in the phase `phase`, if any. */
+function theOrderStaged(orders: TheOrdersStaged, heroId: string, phase: string): Obj | null {
+  const his = orders[heroId];
+  const order: unknown = Array.isArray(his) ? his[Number(phase)] : undefined;
+  return isObj(order) ? order : null;
+}
+
+/** A Recruit's widget (po-target-wrap-…), as the projections of what a hero holds read it: its ticks and its "Muster
+ *  to", as the target updateRecruitTarget writes holds them (the ticks, then the destination unless it is the hero
+ *  himself). */
+function aRecruitsWidget(target: unknown) {
+  const tokens = (typeof target === 'string' ? target : '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const ticked = tokens.filter((t) => !t.startsWith('to:'));
+  const musterTo = tokens.find((t) => t.startsWith('to:')) ?? 'to:self';
+  return {
+    querySelector: (selector: string) => (selector === '.po-recruit-dest' ? { value: musterTo } : null),
+    querySelectorAll: (selector: string) =>
+      selector === 'input[type="checkbox"]:checked' ? ticked.map((value) => ({ value })) : [],
+  };
+}
+
+/** The page's fields (po-action-<hero>-<phase>, po-target-…, po-extra-…, po-target-wrap-…) standing in for the orders
+ *  staged: an order's extra none read as '', a Recruit's widget, and no field for a phase with no order staged. */
+function theFieldsOfTheOrders(orders: TheOrdersStaged) {
+  return {
+    getElementById: (id: string) => {
+      const wrap = /^po-target-wrap-(.+)-(\d+)$/.exec(id);
+      if (wrap) {
+        const order = theOrderStaged(orders, wrap[1] ?? '', wrap[2] ?? '');
+        return order?.['action'] === 'Recruit Armies' ? aRecruitsWidget(order['target']) : null;
+      }
+      const field = /^po-(action|target|extra)-(.+)-(\d+)$/.exec(id);
+      const order = field ? theOrderStaged(orders, field[2] ?? '', field[3] ?? '') : null;
+      if (!field || !order) return null;
+      return {
+        value:
+          field[1] === 'action'
+            ? order['action']
+            : field[1] === 'target'
+              ? order['target']
+              : ([order['extra']].find(Boolean) ?? ''),
+      };
+    },
+  };
+}
+
+/** `fn`'s answer on the report `report` and the orders staged, the form holding the declarations of war
+ *  `declarations` (none: {}, as the page's diploChoices starts). */
+function onTheOrders<T>(report: unknown, orders: unknown, fn: () => T, declarations?: unknown): T {
+  const staged: TheOrdersStaged = isObj(orders) ? orders : {};
+  return withThePagesGlobals(
+    {
+      currentReport: report,
+      diploChoices: [declarations].find(Boolean) ?? {},
+      document: theFieldsOfTheOrders(staged),
+    },
+    fn,
+  );
+}
+/** `fn`'s answer with no report shown and no order staged: the page's globals as it starts. */
+const atRest = <T>(fn: () => T): T => onTheOrders(null, {}, fn);
+
+/** The army card's figures of the column `arr` the hero `c` leads, on the report `report`
+ *  (skills-and-projections.ts's theArmyCardsFiguresOfAColumn, which renderReportView calls): the column's, and each
+ *  unit's (`units`). */
+function theArmyCardsFigures(arr: unknown, c: unknown, report: unknown): Obj {
+  const figures = aFunctionOf(skillsAndProjections, 'theArmyCardsFiguresOfAColumn')(arr, c, report);
+  if (!isObj(figures)) throw new Error('the army card has no figures');
+  return figures;
+}
+
+/** The army card's figures of the one unit `a` the hero `c` leads, on the report `report`. */
+function theArmyCardsFiguresOfAUnit(a: unknown, c: unknown, report: unknown): Obj {
+  const units = theArmyCardsFigures([a], c, report)['units'];
+  const unit: unknown = Array.isArray(units) ? units[0] : undefined;
+  if (!isObj(unit)) throw new Error('the army card has no figures for the unit');
+  return unit;
+}
+
+/** What order-targets.ts's function `name` gives on `args`: its object of named values. */
+function theTargetFieldsValues(name: string, ...args: unknown[]): Obj {
+  const made = aFunctionOf(orderTargets, name)(...args);
+  if (!isObj(made)) throw new Error(`the target field's ${name} gave no values`);
+  return made;
+}
+
+// ── The copies ────
+
+/** The player portal's copies, under the checks' names: each page function imported, called on the report and the
+ *  orders handed in with the page's globals staged, and the inline copies run by their statements. */
+function playerPortalCopies(): Copies {
+  const call = aFunctionOf;
+  const made: Record<string, (...args: unknown[]) => unknown> = {
+    // the level of a magic school the form offers spells by (it feeds the engine's theLevelAHerosSkillCountsAt)
+    effMagicLvl: (c, school) => atRest(() => call(theLedger, 'effMagicLvl')(c, school)),
+    // exploreGainFor reads the report the page shows (its currentReport): here, the one handed in
+    exploreGainOn: (report, c, terrain) =>
+      onTheOrders(report, {}, () => call(orderTargets, 'exploreGainFor')(c, terrain)),
+    // the share of the province `provId` the hero `c` maps marching in, in the phases before `upTo`
+    exploreMoveGainOn: (report, orders, c, upTo, provId) =>
+      onTheOrders(report, orders, () => call(orderTargets, 'exploreMoveGainBefore')(c, upTo, provId)),
+    // where the hero `heroId` will stand once his orders of the phases before `upTo` are carried out (its id, or
+    // null); since P1-11e10 with the declarations of war the form holds (by realm), if any
+    predictedLocationOn: (report, orders, heroId, upTo, declarations) =>
+      onTheOrders(
+        report,
+        orders,
+        () => {
+          const at = call(thePagesSide, 'predictedLocation')(heroId, upTo);
+          return isObj(at) ? at['id'] : null;
+        },
+        declarations,
+      ),
+    // the compass direction a fresh Move of the phase `ph` opens on, from his Moves before it
+    lastMoveDirOn: (report, orders, heroId, ph) =>
+      onTheOrders(report, orders, () => call(moveAnalysis, 'lastMoveDirOf')(heroId, ph)),
+    // the Move field's directions for the hero `c` in the phase `ph`, for a fresh Move (order-targets.ts's, which
+    // buildTargetField calls): each option as the field writes it, its value (prov:<id>) and its words, and whether the
+    // icy wastes bar a way north or south (the note under the field)
+    theMoveFieldsDirectionsOn: (report, orders, c, ph) =>
+      onTheOrders(report, orders, () => {
+        const { dirOpts, blockedNorth, blockedSouth } = theTargetFieldsValues(
+          'theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase',
+          c,
+          ph,
+          'Move',
+          '',
+          [report].find(Boolean) ?? {},
+        );
+        return { options: (Array.isArray(dirOpts) ? dirOpts : []).map(String), blockedNorth, blockedSouth };
+      }),
+    // what the hero `heroId` will carry once his realm's orders of the phases before `upTo` are carried out (P1-11d2):
+    // each item's name, in the order of his pack
+    predictedItemsOn: (report, orders, heroId, upTo) =>
+      onTheOrders(report, orders, () => {
+        const items = call(thePagesSide, 'predictedItems')(heroId, upTo);
+        return (Array.isArray(items) ? items : []).map((it: unknown) => (isObj(it) ? it['name'] : undefined));
+      }),
+    // the companies the hero `heroId` will lead, and those the province `provId` will hold unled, as each phase `upTo`
+    // begins (P1-11d2): each as the projection writes it
+    projectedLedArmiesOn: (report, orders, heroId, upTo) =>
+      onTheOrders(report, orders, () => call(thePagesSide, 'projectedLedArmies')(heroId, upTo)),
+    projectedGarrisonOn: (report, orders, provId, upTo) =>
+      onTheOrders(report, orders, () => call(thePagesSide, 'projectedGarrison')(provId, upTo)),
+    // the companies the Pick Up field of the hero `heroId` offers in the phase `ph` (P1-11e17): the province
+    // `provId`'s garrison as the phase begins, with what his comrades leave in it that phase
+    thePickUpFieldsGarrisonOn: (report, orders, provId, ph, heroId) =>
+      onTheOrders(report, orders, () => call(thePagesSide, 'projectedGarrison')(provId, ph, true, heroId)),
+    // The order list the form offers the hero (or the card) `c` (P1-11d3): each order's name, in the list's order;
+    // every name the list may hold (ACTIONS); and the mastery orders' table it reads, each order with its skill and
+    // its level.
+    actionsForOn: (report, c) => onTheOrders(report, {}, () => call(thePagesSide, 'actionsFor')(c)),
+    theOrderListsNames: () => theLedger.ACTIONS.slice(),
+    theMasteryOrdersOfTheList: () =>
+      Object.entries(l79Orders.L79_ORDERS).map(([name, o]) => ({ name, skill: o.skill, level: o.lvl })),
+    // The companies the Move note counts in the column of the hero `heroId` marching in the phase `ph` (P1-11d8):
+    // each by its name, those the orders before it raise or bind among them.
+    theMoveNotesColumnOn: (report, orders, heroId, ph) =>
+      onTheOrders(report, orders, () => {
+        const host = call(thePagesSide, 'projectedMoveHost')(heroId, ph);
+        const armies = isObj(host) ? host['armies'] : null;
+        return (Array.isArray(armies) ? armies : []).map((a: unknown) => String(isObj(a) ? a['unitName'] : a));
+      }),
+    // The target field of the order `saved` ({ action, target, extra }) the hero `c` gives in the phase `ph`, as the
+    // form builds it, on the orders staged (P1-11d3: the creed orders' fields): its markup.
+    theTargetFieldOn: (report, orders, c, ph, saved) =>
+      onTheOrders(report, orders, () => String(call(orderTargets, 'buildTargetField')(c, ph, saved))),
+    // What the treasury ledger says the orders staged will spend, and add to the wages (P1-11d4): its two sums.
+    theLedgerOn: (report, orders) =>
+      onTheOrders(report, orders, () => {
+        const ledger = call(thePagesSide, 'computeOrderLedgerP')();
+        return isObj(ledger) ? { spend: ledger['spend'], 'new wages': ledger['newWages'] } : null;
+      }),
+    // The note under the Practice Skill order of the hero `c` in the phase `ph`, its skill as staged (P1-11d4): its
+    // markup.
+    thePracticeNoteOn: (report, orders, c, ph) =>
+      onTheOrders(report, orders, () => String(call(thePagesSide, 'orderChanceNote')(c, 'Practice Skill', ph))),
+    // The skill a comrade practises beside the hero `c` in the phase `ph`, as his field reads it (P1-11d4), or ''.
+    thePracticeCompanionOn: (report, orders, c, ph) =>
+      onTheOrders(report, orders, () => call(orderTargets, 'practiceCompanionSkill')(c, ph)),
+    // the army card's four (skills-and-projections.ts's figures, which renderReportView calls), with the page's
+    // globals as it starts. Its Druid lines for one unit: the strength left of a unit of 1,000 by a Druid shortfall
+    // (the card's own sum, rounded down as the battle rounds it: R-122), the Druid mastery bonus in percent, and the
+    // shortfall.
+    armyCardDruidLines: (a, c, report) =>
+      atRest(() => {
+        const unit = theArmyCardsFiguresOfAUnit(a, c, report);
+        const strengthOfAThousand = Math.floor(1000 * Number(unit['theShareHisShortfallLeaves']));
+        return { strengthOfAThousand, mastery: unit['mastery'], shortfall: unit['shortfall'] };
+      }),
+    // its sea-transport note for the column `arr` the hero `c` leads, as the words the card shows
+    armyCardSeaNote: (arr, c) =>
+      atRest(() => {
+        const notes = call(skillsAndProjections, 'theArmyCardsAirAndSeaNotesOfAColumn')(arr, c);
+        return String(isObj(notes) ? notes['_seaNote'] : undefined);
+      }),
+    // its strength for one unit `a` of the hero `c`, as its line shows it ("str …"): the unit's kin (its realm's
+    // king's and its leader's), a rival kin's leader, a Druid shortfall and the Druid mastery, in the battle's order
+    // since R-122 (plan P1-11c1): the shortfall off the unit's base strength first, then its kin, then the mastery
+    armyCardUnitStrength: (a, c, report) => atRest(() => theArmyCardsFiguresOfAUnit(a, c, report)['bs']),
+    // its upkeep for the column `arr` the hero `c` leads, as its "💰 Upkeep" figure gives it: the wage it adds for
+    // each unit (P1-11e34)
+    armyCardUpkeep: (arr, c, report) => atRest(() => theArmyCardsFigures(arr, c, report)['totalCost']),
+  };
+  for (const name of COPY_FUNCTIONS)
+    if (typeof made[name] !== 'function') throw new Error(`the player portal has no function ${name}`);
+  return made as Copies;
+}
+
+const THE_DOOR = 'shared/the-engines-rules-the-player-portal-shares.ts';
+
+/** The names the page file `file` (under src/) imports from src/shared/'s door for its code. */
+function theNamesItTakesFromTheDoor(file: string): ReadonlySet<string> {
+  const tree = ts.createSourceFile(file, fs.readFileSync(path.join(SRC, file), 'utf8'), ts.ScriptTarget.Latest);
+  const names = new Set<string>();
+  for (const statement of tree.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const from = path.posix.normalize(path.posix.join(path.posix.dirname(file), statement.moduleSpecifier.text));
+    const bindings = statement.importClause?.namedBindings;
+    if (from !== THE_DOOR || statement.importClause?.phaseModifier === ts.SyntaxKind.TypeKeyword) continue;
+    if (bindings && ts.isNamedImports(bindings))
+      for (const element of bindings.elements) if (!element.isTypeOnly) names.add(element.name.text);
+  }
+  return names;
+}
+
+/** The spell table `name` the page file `file` (under src/) declares inside a function, as a list in its order: the
+ *  page sets each by a bare call of a function it imports from src/shared/'s door (`theActionSpells()`), so the call
+ *  is made here on the door's function. A table declared other than once, or set any other way, throws, naming it. */
+function aSpellTableThePageSets(file: string, name: string): unknown[] {
+  const found = initializersOf(file, name);
+  const called = found.length === 1 ? /^\(?(\w+)\(\)\)?$/.exec(found[0] ?? '')?.[1] : undefined;
+  const setBy: unknown =
+    called && theNamesItTakesFromTheDoor(file).has(called) ? Reflect.get(theSharedDoor, called) : undefined;
+  const table: unknown = typeof setBy === 'function' ? Reflect.apply(setBy, undefined, []) : undefined;
+  if (!(table instanceof Set)) throw new Error(`${file}: ${name} is not set by a call of a function the door hands it`);
+  return [...table];
+}
+
+/** The order form's Cast Spell tables, and its two functions that read them: order-chances.ts's three tables and
+ *  move-analysis.ts's ENCOUNTER_VALID imported, the action spells (order-targets.ts's) and the spells aimed at a
+ *  province or a hero (spellSecondaryHtml's) by their values; the Cast Spell rows (order-targets.ts's, which
+ *  buildTargetField calls) read the page's fields (a stand-in for document.getElementById, which the form's count and
+ *  getOrderTarget read), with no report shown. */
+function theOrderFormsSpells(): TheOrderFormsSpells {
+  const tables: unknown = JSON.parse(
+    JSON.stringify({
+      SPELLS_BY_SCHOOL: orderChances.SPELLS_BY_SCHOOL,
+      SPELL_TO_SCHOOL: orderChances.SPELL_TO_SCHOOL,
+      SPELL_REQ_LEVEL: orderChances.SPELL_REQ_LEVEL,
+      PHASE_SPELLS: aSpellTableThePageSets('ui/player/order-targets.ts', 'PHASE_SPELLS'),
+      _hsPhase: aSpellTableThePageSets('ui/player/order-targets.ts', '_hsPhase'),
+      ENCOUNTER_VALID: moveAnalysis.ENCOUNTER_VALID,
+      NEEDS_PROV: aSpellTableThePageSets('ui/player/titles.ts', 'NEEDS_PROV'),
+      NEEDS_CHAR: aSpellTableThePageSets('ui/player/titles.ts', 'NEEDS_CHAR'),
+    }),
+  );
+  // the page's fields, as the form reads them by id: here, the values handed in
+  const theFieldsHeld = (fields: unknown) => ({
+    getElementById: (id: string) => (isObj(fields) && id in fields ? { value: fields[id] } : null),
+  });
+  const made = {
+    tables,
+    castSpellRows: (report: unknown, c: unknown, ph: unknown, fields: unknown) =>
+      withThePagesGlobals(
+        { currentReport: null, document: theFieldsHeld(fields) },
+        () => theTargetFieldsValues('theSpellsTheCastSpellFieldOffersAHeroInAPhase', c, ph, report)['_spellRows'],
+      ),
+    targetField: (report: unknown, c: unknown, spell: unknown) =>
+      withThePagesGlobals({ currentReport: report, document: theFieldsHeld({}) }, () =>
+        String(aFunctionOf(titles, 'spellSecondaryHtml')(report, c, 0, spell, '', spell)),
+      ),
+  };
+  // (the form's own values: its tables as JSON, its rows and its markup)
+  return made as unknown as TheOrderFormsSpells;
+}
 
 let copies: Copies;
 let values: Samples;
