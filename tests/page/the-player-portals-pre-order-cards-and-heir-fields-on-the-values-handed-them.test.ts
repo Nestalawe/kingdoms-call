@@ -242,3 +242,65 @@ describe('a hero hired by a hero hired this turn, his first phases still to come
     await settle(0);
   });
 });
+
+describe("a card's orders poured back from the saved draft (P1-16h1)", () => {
+  const phaseSelects = (fake: string): string =>
+    [1, 2, 3, 4]
+      .map(
+        (p) =>
+          `<select id="po-action-${fake}-${String(p)}"><option value="" selected>—</option><option value="Defend">Defend</option></select><div id="po-target-wrap-${fake}-${String(p)}">as drawn</div>`,
+      )
+      .join('');
+  const theCardsOrders = (fake: string): string[] =>
+    [1, 2, 3, 4].map(
+      (p) =>
+        `${field(`po-action-${fake}-${String(p)}`).value}|${doc.getElementById(`po-target-wrap-${fake}-${String(p)}`)?.innerHTML === 'as drawn' ? 'as drawn' : 'rebuilt'}`,
+    );
+  test("a Resurrect card: a phase saved as none, an action the field doesn't offer and one that isn't words are passed over", () => {
+    const fake = 'resurrect_7_via_1_ph0';
+    stage(
+      `currentReport = ${JSON.stringify({ characters: [{ id: fake, name: 'Fallen Friend', hiredInPhase: 0, skills: {}, armies: [], items: [] }] })};`,
+    );
+    doc.body.insertAdjacentHTML('beforeend', `<div id="pd-test">${phaseSelects(fake)}</div>`);
+    call('_fillResurrectCard', fake, {
+      phases: [{ action: 'Defend' }, null, { action: 'Teleport' }, { action: 7 }, { action: 'Defend' }],
+    });
+    expect(theCardsOrders(fake)).toEqual(['|as drawn', '|as drawn', '|as drawn', 'Defend|rebuilt']);
+    doc.getElementById('pd-test')?.remove();
+  });
+  test('a Resurrect card with no phases saved keeps every phase as drawn', () => {
+    const fake = 'resurrect_8_via_1_ph0';
+    stage(
+      `currentReport = ${JSON.stringify({ characters: [{ id: fake, name: 'Fallen Friend', hiredInPhase: 0, skills: {}, armies: [], items: [] }] })};`,
+    );
+    doc.body.insertAdjacentHTML('beforeend', `<div id="pd-test">${phaseSelects(fake)}</div>`);
+    call('_fillResurrectCard', fake, { notes: 'none' });
+    expect(theCardsOrders(fake)).toEqual(['|as drawn', '|as drawn', '|as drawn', '|as drawn']);
+    doc.getElementById('pd-test')?.remove();
+  });
+  test("a hired hero's card: a phase saved as none, and an action that isn't words, are passed over", () => {
+    const fake = 'hired_9_via_1_ph0';
+    stage(
+      `currentReport = ${JSON.stringify({ characters: [{ id: fake, name: 'New Hire', hiredInPhase: 0, skills: {}, armies: [], items: [] }] })};`,
+    );
+    doc.body.insertAdjacentHTML('beforeend', `<div id="pd-test">${phaseSelects(fake)}</div>`);
+    call(
+      '_fillSyntheticOrderCard',
+      fake,
+      [{ action: 'Defend' }, null, { action: 7 }, { action: 'Defend' }, { action: 'Defend' }],
+      null,
+    );
+    expect(theCardsOrders(fake)).toEqual(['|as drawn', '|as drawn', 'Defend|rebuilt', 'Defend|rebuilt']);
+    doc.getElementById('pd-test')?.remove();
+  });
+  test("a hired hero's card with no phases saved keeps every phase as drawn", () => {
+    const fake = 'hired_10_via_1_ph0';
+    stage(
+      `currentReport = ${JSON.stringify({ characters: [{ id: fake, name: 'New Hire', hiredInPhase: 0, skills: {}, armies: [], items: [] }] })};`,
+    );
+    doc.body.insertAdjacentHTML('beforeend', `<div id="pd-test">${phaseSelects(fake)}</div>`);
+    call('_fillSyntheticOrderCard', fake, undefined, null);
+    expect(theCardsOrders(fake)).toEqual(['|as drawn', '|as drawn', '|as drawn', '|as drawn']);
+    doc.getElementById('pd-test')?.remove();
+  });
+});

@@ -336,3 +336,16 @@ describe("order-targets.ts: the checkboxes' hidden fields", () => {
     expect(hidden()).toBe('Archers,to:h2');
   });
 });
+
+describe("order-targets.ts: a draft's order read before the form exists (P1-16h1)", () => {
+  test('the saved phase as it was saved, and none where the draft holds no hero or no phase', () => {
+    stage('');
+    g['_draftOrdersSnapshot'] = { h7: [{ action: 'Move', target: 4 }, null] };
+    expect(T.draftOrderAt('h7', 0)).toEqual({ action: 'Move', target: 4 });
+    expect(T.draftOrderAt('h7', 1)).toEqual({ action: '', target: '' });
+    expect(T.draftOrderAt('h7', 2)).toEqual({ action: '', target: '' });
+    expect(T.draftOrderAt('h8', 0)).toEqual({ action: '', target: '' });
+    g['_draftOrdersSnapshot'] = undefined;
+    expect(T.draftOrderAt('h7', 0)).toEqual({ action: '', target: '' });
+  });
+});
