@@ -1,8 +1,9 @@
-// The player portal's pre-order cards, the heir's fields and the order form's rebuilds (plan P1-16g): the lines P1-16g
-// changed in pre-orders.ts that the screen tours don't reach, or reach only in part (npm run proof:tours), each run here
-// on the value that reaches it, so a fault planted in one is red: the heir's name and temper, the Blood Offering's
-// choices, Resubmit, a target field rebuilt, a field built for a hero the report doesn't hold, a raised hero's card
-// moved to its earlier caster with its orders carried over, and the card of a hero hired by a hero hired this turn.
+// The player portal's pre-order cards, the heir's fields and the order form's rebuilds (plan P1-16g, P1-16h1): the
+// lines they changed in pre-orders.ts that the screen tours don't reach, or reach only in part (npm run proof:tours),
+// each run here on the value that reaches it, so a fault planted in one is red: the heir's name and temper, the Blood
+// Offering's choices, Resubmit, a target field rebuilt, a field built for a hero the report doesn't hold, a raised
+// hero's card moved to its earlier caster with its orders carried over, the card of a hero hired by a hero hired this
+// turn, and a card's orders poured back from the saved draft.
 // Level 4 (page): pre-orders.ts loads the page's start-up (its database client), so no lower level reaches it; the
 // portal is booted in jsdom (tests/lib/boot.js) on the fake Db at an older database, so it stops at its notice with
 // every module loaded.

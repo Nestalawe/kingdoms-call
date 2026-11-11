@@ -1,4 +1,4 @@
-// The player page's order target fields on the values handed them (plan P1-16f): the lines P1-16f changed in
+// The player page's order target fields on the values handed them (plan P1-16f, P1-16h1): the lines they changed in
 // order-targets.ts that the screen tours don't reach, or reach only in part (npm run proof:tours), each run here on the
 // value that reaches it, so a fault planted in one is red.
 // Level 1 (unit): order-targets.ts imports in Node (P1-13e8); its functions called on a staged report and hero, the
