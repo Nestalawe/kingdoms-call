@@ -72,7 +72,7 @@ declare var joinSkills: PageState;
 declare var currentGamePlayer: import('./ui/player/map.ts').TheRealmsSeatAsThePageHoldsIt | null | undefined;
 /** The report the page shows: as the order form's forecasts, the page's lists, the map's popups, the Titles card, the map
  *  and the target fields read it (its typed readers, P1-16b to f), every part optional. */
-declare var currentReport: import('./ui/player/pre-orders.ts').TheReportAsThePreOrderCardsHoldIt | null | undefined;
+declare var currentReport: import('./ui/player/orders-form.ts').TheReportAsTheOrderFormHoldsIt | null | undefined;
 declare var diploChoices: Partial<Record<string, unknown>> | null;
 declare var reckoningCall: PageState;
 declare var _heroOrder: (string | null)[] | null | undefined;

@@ -218,7 +218,7 @@ function theHeroOrTheOneAtHisPlace(charId: unknown, charIdx: number): AHeroAsThe
 }
 /** `{}`, the hero the form builds a field for when the report holds none: an object of no fields, its id read as
  *  `undefined` as `{}.id` was. */
-function theEmptyHero(): AHeroAsThePreOrderCardsHoldHim {
+export function theEmptyHero(): AHeroAsThePreOrderCardsHoldHim {
   const none: unknown = undefined;
   return Object.defineProperties({ id: '' }, { id: { get: () => none, enumerable: false } });
 }

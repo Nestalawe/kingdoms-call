@@ -394,10 +394,10 @@ export function heroOrderFromOrdersP(existingOrders: unknown) {
     return null;
   }
 }
-export function applyHeroOrderP(
-  chars: readonly AHeroAsTheSuccessionReadsHim[] | null | undefined,
+export function applyHeroOrderP<Hero extends AHeroAsTheSuccessionReadsHim>(
+  chars: readonly Hero[] | null | undefined,
   order: readonly unknown[] | null | undefined,
-) {
+): Hero[] {
   const list = [...(chars ?? [])];
   if (order?.length) {
     const rank = new Map(order.map((id, i) => [String(id), i]));

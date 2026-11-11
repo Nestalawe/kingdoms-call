@@ -142,7 +142,7 @@ function theOrdersTheFormHoldsForTheHero(c: unknown): TheOrdersTheFormHolds {
 }
 // The ledger, the note under an order that quotes its chance, the orders the form offers a hero and the levels of
 // magic his earlier practices may raise (P1-11e42), as the page's files ask them.
-export function computeOrderLedgerP(): unknown {
+export function computeOrderLedgerP(): ReturnType<typeof theTreasuryLedgerOnTheseOrders> {
   return theTreasuryLedgerOnTheseOrders(currentReport, theOrdersTheFormHolds(currentReport));
 }
 export function orderChanceNote(

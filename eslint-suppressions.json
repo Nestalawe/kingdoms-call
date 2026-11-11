@@ -495,17 +495,6 @@
       "count": 6
     }
   },
-  "src/ui/player/orders-form.ts": {
-    "@typescript-eslint/no-dynamic-delete": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 5
-    },
-    "no-useless-assignment": {
-      "count": 1
-    }
-  },
   "src/ui/player/report.ts": {
     "@typescript-eslint/no-dynamic-delete": {
       "count": 1
