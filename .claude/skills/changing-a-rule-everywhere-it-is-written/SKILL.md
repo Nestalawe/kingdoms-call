@@ -14,7 +14,7 @@ all before you change one.
 1. [The search](../../../docs/architecture/where-a-change-goes-from-an-item-in-game-terms-to-the-files.md#find-every-place-first-the-search):
    the rulings, the list of tests, the content's key, its nouns, its numbers (old and new), the function and its
    callers.
-2. The player portal's copies still left: `tests/lib/player-portal-copies.ts`.
+2. The portal's copies left: `the-player-portals-copies-agree-with-the-engine`'s.
 3. Write the list down, a line a place, before the first edit.
 
 ## 2. Change each in its own way
