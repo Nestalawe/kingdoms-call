@@ -60,7 +60,9 @@ export function trySkillGain(turnContext, char, skill, base, narr?, mult?) {
   if ((skill === 'spy' || skill === 'thief') && protoAlignOf(G, real.player) === 'Neutral') mult *= 2;
   // PROTOTYPE Good (master list): Knights errant — Tactical and Melee rise twice as fast however earned, and a win
   // outside the realm's own land (a battle or duel in a province the realm does not hold) teaches twice as much
-  if (protoAlignOf(G, real.player) === 'Good') {
+  // round 25: Tactical stops rising twice as fast at level 5 (a Good king reached Tactical 9 from neutral battles alone)
+  const _knightTop = skill === 'tactical' && ((real.skills || {}).tactical || 0) >= 5;
+  if (protoAlignOf(G, real.player) === 'Good' && !_knightTop) {
     if (skill === 'tactical' || skill === 'melee') mult *= 2;
     const _kp = turnContext._combatSkillProv != null ? G.world.provinces[turnContext._combatSkillProv] : null;
     if (_kp && _kp.owner !== real.player) mult *= 2;

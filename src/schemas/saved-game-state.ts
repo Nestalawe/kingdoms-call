@@ -430,6 +430,7 @@ export const ProvinceSchema = z.object({
   // round 2
   _lostFrom: z.number().optional(), // Good: the realm this province was last taken from (Reclaim)
   _lostTurn: z.number().optional(), // Good: the turn it was taken
+  _takenTurn: z.number().optional(), // PROTOTYPE (round 25): the turn the province last changed hands (any kit on)
   _kitPlague: z.object({ by: z.number(), until: z.number() }).optional(), // Undead: the king's Plague on this province
   _goodWorksTurn: z.number().optional(), // Good (master list): the turn Good Works cleared this province (no Terror or plague for the rest of it)
   _stormTurn: z.number().optional(), // Pagan (master list): the turn Call down the storm struck here
@@ -475,6 +476,7 @@ export const RealmSchema = z.object({
   merits: z.number(),
   _encountered: z.array(z.number()),
   consecratedProvIds: z.array(z.number()).optional(),
+  _divinePowerSeen: z.number().optional(), // PROTOTYPE Divine (round 25): the Power last reported to the realm
   // PROTOTYPE (alignment ideas round 2, src/engine/alignment-prototypes.ts): what the kings' orders leave on a realm
   _kingOrderLast: z.record(z.string(), z.number()).optional(), // the turn each king-only kit order was last given
   _crusadeVs: z.number().optional(), // Divine: the realm the Crusade is proclaimed against

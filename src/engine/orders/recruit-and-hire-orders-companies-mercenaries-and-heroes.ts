@@ -316,13 +316,18 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
       continue;
     }
     // Check turn-wide recruit limit
-    if (!canRecruit(turnContext, armyType, prov.id, prov, c.player)) {
-      blocked.push(`${armyType} (already recruited this turn)`);
+    // PROTOTYPE (round 25): while any alignment kit is on, a province musters one company of a kind beyond its limit
+    // each turn, at twice the price (the levy pressed hard: a treasury has something to buy)
+    const _kitsOnR = Array.isArray(G.alignmentPrototypes) && G.alignmentPrototypes.length > 0;
+    const baseLimit = getRecruitLimit(turnContext, armyType, prov, c.player);
+    const limit = baseLimit + (_kitsOnR ? 1 : 0);
+    const alreadyDone = recruitedThisTurn[`${prov.id}:${armyType}`] || 0;
+    if (alreadyDone >= limit || (!_kitsOnR && !canRecruit(turnContext, armyType, prov.id, prov, c.player))) {
+      blocked.push(`${armyType} (already recruited this turn${_kitsOnR ? ', the pressed levy included' : ''})`);
       continue;
     }
-    const limit = getRecruitLimit(turnContext, armyType, prov, c.player);
-    const alreadyDone = recruitedThisTurn[`${prov.id}:${armyType}`] || 0;
     const actualQty = Math.min(qty, limit - alreadyDone);
+    const _pressedN = Math.max(0, alreadyDone + actualQty - Math.max(baseLimit, alreadyDone)); // companies beyond the limit
     let _unitCost = realmRecruitCost(G.players[c.player], armyType, ARMY_COST_P[armyType] || 2); // sd16 + recruitCost discoveries
     if (perkTier(c, 'druid') > 0 && (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType)))
       _unitCost = Math.floor(_unitCost * 0.5); // DRUID L6: creatures/monsters cost half (rounded down)
@@ -331,7 +336,7 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
     if (embargoTaxMult(G, G.players[c.player]) < 1 && (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType)))
       _unitCost *= EMBARGO_BEAST_COST_MULT;
     const unitCost = _unitCost;
-    const cost = actualQty * unitCost;
+    const cost = actualQty * unitCost + _pressedN * unitCost; // the pressed levy pays twice
     if ((player.gold || 0) < totalCost + cost) {
       blocked.push(`${armyType} (insufficient gold: need ${cost}g more)`);
       continue;
@@ -368,7 +373,9 @@ export function resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, pro
         trySkillGain(turnContext, _destGarrison ? c : _destChar, 'druid', SKILLGAIN_COMMON); // 2026-09-21: any primal recruit (incl. into a garrison) — small chance for the recruiter
     }
     recordRecruit(turnContext, armyType, prov.id, actualQty);
-    recruited.push(`${actualQty}× ${armyType}`);
+    recruited.push(
+      `${actualQty}× ${armyType}${_pressedN > 0 ? ` (${_pressedN} a pressed levy, at twice the price)` : ''}`,
+    );
   }
   if (recruited.length > 0) {
     player.gold -= totalCost;

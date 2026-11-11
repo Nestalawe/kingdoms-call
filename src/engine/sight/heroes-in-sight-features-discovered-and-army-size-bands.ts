@@ -5,7 +5,7 @@
 // src/views applies them. The engine may not import src/views, so they live here, in one copy.
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { activeItems } from '../items/equipment.ts';
-import { getNeighborsP } from '../world/map-helpers.ts';
+import { getNeighborsP, hexDistP } from '../world/map-helpers.ts';
 import type { Character, GameState, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 
 // ── Items 1 & 12: ONE visibility rule for non-own characters ────
@@ -67,6 +67,16 @@ export function enemyCharVisibleTo(
   const coLoc = ctx.ownCharLocs.has(p.id) || !!(ctx.nearSpied && ctx.nearSpied.has(p.id)),
     ownHere = ctx.ownedProvIds.has(p.id),
     spied = ctx.spiedThisTurn.has(p.id);
+  // PROTOTYPE (round 25, Toby: to come to the whole game): another realm's hero leading armies in a province next to
+  // one this realm owns is seen (his host at a glance, as armySizeBand gives it). While any alignment kit is on.
+  const _kitsOn = Array.isArray(gs.alignmentPrototypes) && gs.alignmentPrototypes.length > 0;
+  if (_kitsOn && c.player != null && c.armies.length > 0 && !ownHere && !coLoc && !spied && c._invisTurn !== gs.turn) {
+    const W = gs.world;
+    for (const id of ctx.ownedProvIds) {
+      const o = W.provinces[id];
+      if (o && hexDistP(o, p, W.cols) === 1) return true;
+    }
+  }
   if (!coLoc && !ownHere && !spied) return false; // no line of sight at all
   if (c._invisTurn === gs.turn) return false; // Invisibility beats even a spy
   if (spied) return true; // a deliberate Spy pierces stealth

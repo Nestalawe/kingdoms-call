@@ -59,6 +59,15 @@ export const CALL_WILD_COST = 2; // Druidic: master list, 2g a company that come
 export const EMBARGO_COST = 5; // Neutral: master list (rounds 6-18: 4; round 5: 6; was free)
 export const DESPOIL_COST = 3; // Undead: Blight the Land (round 22; master list: 5g)
 export const BIND_BONES_COST = 2; // Undead: Bind the Bones, 2g a company
+export const DIVINE_CONSECRATIONS_PER_POWER = 3; // round 25 (round 24: 2)
+export const DIVINE_GIFTS = [
+  'Sanctuary',
+  'Grace abounding',
+  'Revelation',
+  'Pilgrim roads',
+  'Absolution',
+  'The Church Triumphant',
+];
 export const BIND_BONES_TOP = 'Crack'; // round 24: the bones bind to Crack at most; Elite is earned in battle
 export const BEACONS_MUSTER_TURNS = 3; // round 24: the Beacons' Veterans serve without wages this many turns, then go home
 export const CALL_STORM_COST = 8; // Pagan: Call down the storm (round 24: 8g; rounds 19-23: 4g)
@@ -177,7 +186,7 @@ export function divinePower(G: GameState, pi: number): number {
   const pl = kitRealm(G, pi, 'Divine');
   if (!pl) return 0;
   const crusading = (pl._crusadeUntil ?? -1) >= G.turn ? 1 : 0; // round 3: a Proclaimed Crusade is +1 Power while it lasts
-  const consecrated = Math.floor((pl.consecratedProvIds ?? []).length / 2); // round 24: every two consecrated provinces count a point
+  const consecrated = Math.floor((pl.consecratedProvIds ?? []).length / DIVINE_CONSECRATIONS_PER_POWER); // round 25: every three consecrated provinces count a point (round 24: two)
   return heldSites(G, pi, isHolySite).length + shiningSites(G, pi) + crusading + consecrated;
 }
 /** Round 2: is the king's order `key` off its cooldown for realm `pl` this turn? */
@@ -198,6 +207,22 @@ export function protoBeastRoomExtra(G: GameState, c: Character | null | undefine
 // ── Undead: barrows held, and despoiled provinces held.
 export function barrowsHeld(G: GameState, pi: number): number {
   return kitRealm(G, pi, 'Undead') ? heldSites(G, pi, isBarrow).length : 0;
+}
+/** Round 25: what `n` skeletal companies cost realm `pi` a turn: 1g each, or 1g for every two under the Undead kit. */
+export function skeletalWages(G: GameState, pi: number, n: number): number {
+  return protoAlignOf(G, pi) === 'Undead' ? Math.ceil(n / 2) : n;
+}
+/** Round 25: the monster kinds realm `pi`'s held monster provinces breed (Evil: those companies draw half wages). */
+export function bredMonsterKinds(G: GameState, pi: number): Set<string> {
+  const out = new Set<string>();
+  const pl = G.players[pi];
+  if (!pl || protoAlignOf(G, pi) !== 'Evil') return out;
+  for (const id of pl.provinces) {
+    const pv = G.world.provinces[id];
+    if (pv?.owner === pi && isMonsterProvince(pv))
+      pv.armyTypes.filter((t) => MONSTERS.has(t)).forEach((t) => out.add(t));
+  }
+  return out;
 }
 /** Master list: every blighted province adds this to the skeletal hosts' multiplier, to UNDEAD_FEAR_CAP. */
 export const UNDEAD_FEAR_PER_BLIGHT = 0.05;
@@ -262,7 +287,11 @@ export function inSanctuary(G: GameState, c: Character | null | undefined): bool
 export function pilgrimRoads(G: GameState, c: Character): boolean {
   if (c.player == null || divinePower(G, c.player) < DIVINE_POWER_PILGRIM_ROADS) return false;
   const start = c._turnStartLoc ?? c.location;
-  return countsConsecrated(G, c.player, G.world.provinces[start]);
+  // round 25: from any consecrated province the host stands in, not only the one it began the turn in
+  return (
+    countsConsecrated(G, c.player, G.world.provinces[start]) ||
+    countsConsecrated(G, c.player, G.world.provinces[c.location])
+  );
 }
 /** Master list (the Crusade's Hounds of God and Holy wrath): is `quarry` a hero of the realm `pi` is on Crusade against? */
 export function crusadeQuarry(
@@ -403,7 +432,8 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
 export function protoProvinceTaxAdd(G: GameState, pl: Realm, pv: Province, taxSoFar: number): number {
   if (pv.terrain === 'sea' || !alignProto(G, pl.alignment)) return 0;
   const base = pv.tax;
-  if (pl.alignment === 'Good' && base <= 5 && !isWild(pv)) return 3; // round 24: tax 5 or less (round 21: 4; master list: 3); round 8: +3
+  if (pl.alignment === 'Good' && base <= 4 && !isWild(pv)) return 3; // round 21: tax 4 or less (master list: 3); round 8: +3
+  if (pl.alignment === 'Good' && base === 5 && !isWild(pv)) return 2; // round 25: tax 5 pays +2 (round 24: +3)
   if (pl.alignment === 'Neutral' && base >= 4) return Math.round(taxSoFar * 0.5);
   return 0;
 }

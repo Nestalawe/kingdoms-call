@@ -11,8 +11,10 @@ import {
   BARROW_GRAVES_HUMANOID,
   BARROW_GRAVES_WILD,
   DIVINE_POWER_ABSOLUTION,
+  DIVINE_GIFTS,
   DIVINE_POWER_REVELATION,
   divinePower,
+  inSanctuary,
   isBarrow,
   isHolySite,
   isWild,
@@ -197,6 +199,37 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
       pv,
     );
   }
+
+  // ── DIVINE: Sanctuary heals (round 25) ── a Divine hero who ends the turn on consecrated ground while the realm's
+  // Power gives Sanctuary recovers a quarter of their hit points, as the green mends a druid.
+  for (const c of G.characters) {
+    if (!c.alive || c.player == null || protoAlignOf(G, c.player) !== 'Divine' || !inSanctuary(G, c)) continue;
+    const pv = provinces[c.location];
+    const max = c.maxHp || 20;
+    if (!pv || c.hp >= max) continue;
+    const heal = Math.max(1, Math.ceil(max * FOREST_HEAL_SHARE));
+    c.hp = Math.min(max, c.hp + heal);
+    line(
+      c.player,
+      `✨ Sanctuary: the holy ground of ${pv.name} mends ${c.name}: +${String(heal)} HP (${String(c.hp)}/${String(max)}).`,
+      pv,
+    );
+  }
+  // ── DIVINE: the realm is told its Power (round 25) ── whenever Divine Power changes, one line names it and the gifts
+  // it now gives.
+  G.players.forEach((p, pi) => {
+    if (protoAlignOf(G, pi) !== 'Divine') return;
+    const power = divinePower(G, pi);
+    if (p._divinePowerSeen === power) return;
+    const before = p._divinePowerSeen ?? 0;
+    p._divinePowerSeen = power;
+    const gifts = DIVINE_GIFTS.slice(0, Math.min(DIVINE_GIFTS.length, power));
+    line(
+      pi,
+      `✨ Divine Power ${power > before ? 'rises' : 'falls'} to ${String(power)} (holy sites held, the shining ones counted twice, a Crusade, and a point for every three consecrated provinces). ${gifts.length ? `The faith's gifts: ${gifts.join(', ')}.` : "No gift of the faith is yet the realm's."}`,
+      null,
+    );
+  });
 
   // ── DIVINE: Absolution (Divine Power 5) ── every plague and stack of Terror on the realm's provinces is lifted. (The
   // design lifts curses and charms from its heroes too; the heroes' part is not modelled yet.)

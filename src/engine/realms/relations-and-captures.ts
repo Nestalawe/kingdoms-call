@@ -99,6 +99,9 @@ export function setProvinceOwner(turnContext, prov, newOwner, byChar, ph) {
     prov._lostFrom = prev;
     prov._lostTurn = G.turn;
   }
+  // PROTOTYPE (round 25): the turn a province last changed hands, while any kit is on (the Trade Pact waits on it)
+  if (prev !== newOwner && Array.isArray(G.alignmentPrototypes) && G.alignmentPrototypes.length)
+    prov._takenTurn = G.turn;
   if (prev !== newOwner) {
     try {
       _tel.captures.push({

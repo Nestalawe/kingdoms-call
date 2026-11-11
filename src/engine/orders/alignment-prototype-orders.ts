@@ -176,8 +176,15 @@ export const TRADE_PACT_PER_DEFENDER = 3; // round 4 (rounds 1-3: 2)
 export function tradePactPrice(pv: Province): number {
   return TRADE_PACT_PER_TAX * pv.tax + TRADE_PACT_PER_DEFENDER * (pv.neutralDefenders.length || pv.npcArmies);
 }
+/** Round 25: what one defending company of another realm costs the League: 3g at Average, 1g a tier more or less,
+ *  twice that for a creature or monster company. */
+export function tradePactDefenderPrice(a: Army): number {
+  const tier = Math.max(0, TIERS.indexOf(a.quality));
+  const base = Math.max(1, TRADE_PACT_PER_DEFENDER + tier - 1);
+  return CREATURES.has(a.type) || MONSTERS.has(a.type) ? 2 * base : base;
+}
 export function tradePactPriceOwned(pv: Province): number {
-  return TRADE_PACT_PER_TAX * pv.tax + TRADE_PACT_PER_DEFENDER * pv.garrisonArmies.length;
+  return TRADE_PACT_PER_TAX * pv.tax + pv.garrisonArmies.reduce((s, a) => s + tradePactDefenderPrice(a), 0);
 }
 /** The provinces a Trade Pact may buy from where the hero stands: unclaimed humanoid land here or next door, and
  *  (master list) another realm's humanoid province, never a capital. */
@@ -191,6 +198,7 @@ export function tradePactTargets(G: GameState, c: Character, prov: Prov): Provin
     (pv) =>
       humanoidLand(pv) &&
       !heroHere(pv) &&
+      (pv.owner == null || pv._takenTurn == null || G.turn - pv._takenTurn > 1) && // round 25: not land taken this turn or last
       (pv.owner == null ||
         (pv.owner !== c.player &&
           G.players[pv.owner] != null &&
@@ -200,6 +208,29 @@ export function tradePactTargets(G: GameState, c: Character, prov: Prov): Provin
             c.player < pv.owner ? `${String(c.player)}-${String(pv.owner)}` : `${String(pv.owner)}-${String(c.player)}`
           ] ?? 'neutral') !== 'enemy')),
   );
+}
+/** Round 25: the one reason a Trade Pact on province `wanted` is refused, in words. */
+function tradePactRefusal(G: GameState, c: Character, prov: Prov, wanted: number | null): string {
+  const pv = wanted == null ? null : G.world.provinces[wanted];
+  if (!pv || !prov) return 'a Trade Pact names a province (prov:<id>) here or next door.';
+  if (pv.id !== prov.id && !neighboursOf(G, prov).some((n) => n.id === pv.id))
+    return `${pv.name} is neither here nor next door: the envoys must stand in it or beside it.`;
+  if (pv.terrain === 'sea') return `${pv.name} is sea: there are no elders to buy.`;
+  if (isWild(pv)) return `${pv.name} is a creature or monster province: beasts take no coin.`;
+  if (pv.owner === c.player) return `${pv.name} is already the League's.`;
+  if (pv.owner != null && homeProvinceIdFor(G, pv.owner) === pv.id)
+    return `${pv.name} is a capital: a capital cannot be bought.`;
+  if (G.characters.some((h) => h.alive && h.player != null && h.player !== c.player && h.location === pv.id))
+    return `another realm's hero stands in ${pv.name}: his host holds it, and the elders will not sell from under him.`;
+  if (pv.owner != null && c.player != null) {
+    const key =
+      c.player < pv.owner ? `${String(c.player)}-${String(pv.owner)}` : `${String(pv.owner)}-${String(c.player)}`;
+    if ((G.relations[key] ?? 'neutral') === 'enemy')
+      return `the League is at war with ${G.players[pv.owner]?.name ?? 'its lord'}: no pact with an enemy.`;
+  }
+  if (pv.owner != null && pv._takenTurn != null && G.turn - pv._takenTurn <= 1)
+    return `${pv.name} changed hands this turn or last: its elders have not yet settled under their new lord.`;
+  return `${pv.name} cannot be bought.`;
 }
 export function resolveTradePactOrder(
   turnContext: TurnContext,
@@ -214,11 +245,7 @@ export function resolveTradePactOrder(
   const wanted = target.startsWith('prov:') ? parseInt(target.slice(5)) : prov ? prov.id : null;
   const pv = tradePactTargets(G, c, prov).find((x) => x.id === wanted);
   if (!pv) {
-    refuse(
-      turnContext,
-      c,
-      `${c.name}: a Trade Pact needs a humanoid province here or next door, unclaimed or another realm's — not a capital, not one where another realm's hero stands, and not one of a realm the League is at war with. None answers that name.`,
-    );
+    refuse(turnContext, c, `${c.name}: ${tradePactRefusal(G, c, prov, wanted)}`);
     return;
   }
   const prevOwner = pv.owner;
@@ -635,6 +662,7 @@ export function darkPactKinds(G: GameState, pi: number): string[] {
   return [...kinds];
 }
 const ARMY_COST: Record<string, number> = ARMY_COST_MASTER;
+export const DARK_PACT_FROM_AFAR_MULT = 2; // round 25: a pact with no monster province of the realm's own costs double
 export const darkPactCost = (kind: string): number => DARK_PACT_COST_MULT * (ARMY_COST[kind] ?? 5);
 /** The blood the pact asks: 40% of the king's current HP, rounded down, at least 1. */
 export const darkPactBlood = (c: Character): number => Math.max(1, Math.floor(c.hp * DARK_PACT_HP_SHARE));
@@ -648,23 +676,24 @@ export function resolveDarkPactOrder(
   const { G } = turnContext;
   const pl = kingMay(turnContext, c, 'Evil', 'dark_pact', 'make a Dark Pact');
   if (!pl || c.player == null || !prov) return;
-  const kinds = darkPactKinds(G, c.player);
-  if (!kinds.length) {
-    refuse(turnContext, c, `${c.name}: the pact needs a monster province of the realm's own — the pits are empty.`);
-    return;
-  }
+  const bred = darkPactKinds(G, c.player);
+  // round 25: with no monster province of its own the realm may still bargain, for any monster, at twice the price
+  const fromAfar = !bred.length;
+  const kinds = fromAfar ? [...MONSTERS].sort() : bred;
   const m = /^type:(.+)$/.exec(target.trim());
   const wanted = m ? m[1]?.trim() : null;
-  const kind = wanted ? kinds.find((k) => k.toLowerCase() === wanted.toLowerCase()) : kinds[0];
+  const kind = wanted ? kinds.find((k) => k.toLowerCase() === wanted.toLowerCase()) : fromAfar ? undefined : kinds[0];
   if (!kind) {
     refuse(
       turnContext,
       c,
-      `${c.name}: no monster province of the realm breeds ${wanted ?? 'that'} — the pact names ${kinds.join(', ')}.`,
+      fromAfar
+        ? `${c.name}: with no monster province of its own the pact must name a monster (type: and the kind): ${kinds.join(', ')}.`
+        : `${c.name}: no monster province of the realm breeds ${wanted ?? 'that'} — the pact names ${kinds.join(', ')}.`,
     );
     return;
   }
-  const cost = darkPactCost(kind);
+  const cost = darkPactCost(kind) * (fromAfar ? DARK_PACT_FROM_AFAR_MULT : 1);
   const blood = darkPactBlood(c);
   if (c.hp <= blood || c.hp <= 1) {
     refuse(turnContext, c, `${c.name}: the pact asks ${String(blood)} of the king's own blood — he has none to spare.`);
@@ -683,7 +712,7 @@ export function resolveDarkPactOrder(
     turnContext,
     c.player,
     'hire',
-    `😈 Dark Pact: ${c.name} cuts the bargain in his own blood (${String(cost)}g, −${String(blood)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, ${DARK_PACT_QUALITY}) joins the king's host.`,
+    `😈 Dark Pact${fromAfar ? ' (called from afar, at twice the price)' : ''}: ${c.name} cuts the bargain in his own blood (${String(cost)}g, −${String(blood)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, ${DARK_PACT_QUALITY}) joins the king's host.`,
     prov,
   );
 }
