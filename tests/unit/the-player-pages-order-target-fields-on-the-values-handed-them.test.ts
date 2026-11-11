@@ -6,6 +6,7 @@
 // reach each one.
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { bootJsdom } from '../lib/boot.js';
+import { theShareOfAProvinceAnExploreOrderMaps } from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
 
 type TheFile = typeof import('../../src/ui/player/order-targets.ts');
 let page: Document;
@@ -62,14 +63,18 @@ const hero = (more: Record<string, unknown> = {}) => ({
 describe('order-targets.ts: the explore forecast', () => {
   test("an Explore's gain reads the discoveries' words where the report gives no multiplier, and a mountain one only on mountains", () => {
     g['currentReport'] = {
-      discoveries: [{ desc: 'Your scouts map 20% more' }, { desc: 'Mountain guides map 50% more' }, { desc: '' }],
+      discoveries: [{ desc: 'Your scouts map 20% more' }, { desc: 'Mountain guides map 50% more' }, { desc: '' }, {}],
     };
-    const plain = T.exploreGainFor(hero({ skills: { explorer: 3 } }), 'forest');
-    const onMountains = T.exploreGainFor(hero({ skills: { explorer: 3 } }), 'mountain');
-    g['currentReport'] = {};
-    const none = T.exploreGainFor(hero({ skills: { explorer: 3 } }), 'forest');
-    expect(plain).toBeGreaterThan(none);
-    expect(onMountains).toBeGreaterThan(plain);
+    const c = hero({ skills: { explorer: 3 } });
+    expect(T.exploreGainFor(c, 'forest')).toBe(theShareOfAProvinceAnExploreOrderMaps('forest', 3, false, 1.2));
+    expect(T.exploreGainFor(c, 'mountain')).toBe(
+      theShareOfAProvinceAnExploreOrderMaps('mountain', 3, false, 1.2 * 1.5),
+    );
+    g['currentReport'] = { exploreDiscMult: { forest: 2 }, discoveries: [{ desc: 'Your scouts map 20% more' }] };
+    expect(T.exploreGainFor(c, 'forest')).toBe(theShareOfAProvinceAnExploreOrderMaps('forest', 3, false, 2));
+    const trail = hero({ skills: { explorer: 3 }, minorHeld: [{ name: 'The Trailblazer' }] });
+    expect(T.exploreGainFor(trail, 'forest')).toBe(theShareOfAProvinceAnExploreOrderMaps('forest', 3, true, 2));
+    expect(() => T.exploreGainFor(hero({ minorHeld: [null] }), 'forest')).toThrow();
     g['currentReport'] = { discoveries: [null] };
     expect(() => T.exploreGainFor(hero(), 'forest')).toThrow();
   });
@@ -88,7 +93,7 @@ describe('order-targets.ts: the recruits counted this turn', () => {
     g['currentReport'] = { characters: [hero()] };
     g['currentGamePlayer'] = {
       orders: JSON.stringify({
-        orders: { h1: [{ action: 'Recruit Armies', target: 'Militia|1, Militia|1,merc:5,to:garrison,|2' }] },
+        orders: { h1: [{ action: 'Recruit Armies', target: 'Militia|1, Militia |1,merc:5,to:garrison,|2' }] },
       }),
     };
     stage('');
@@ -117,8 +122,34 @@ describe("order-targets.ts: the defaults read off a companion's draft", () => {
     expect(T.practiceCompanionSkill(hero(), 0)).toBe('');
     g['_draftOrdersSnapshot'] = { h1: [{ action: 'Practice Skill', target: 'sage' }] };
     expect(T.practiceOwnEarlierSkill(hero(), 1)).toBe('sage');
-    g['_draftOrdersSnapshot'] = { h2: [{ action: 'Research', target: 'Arcana' }] };
+    g['currentReport'] = {
+      characters: [hero(), ally, hero({ id: 'h3' }), hero({ id: 'h4' })],
+    };
+    g['_draftOrdersSnapshot'] = {
+      h2: [{ action: 'Research', target: 'Arcana' }],
+      h3: [{ action: 'Research', target: 'Arcana' }],
+      h4: [{ action: 'Research', target: 'Lore' }],
+    };
     expect(T.defaultResearchField(hero(), 0)).toBe('Arcana');
+  });
+});
+
+describe("order-targets.ts: the Search Lair's default", () => {
+  test('the weakest lair, by its place on a tie; a grade the ranks lack counts after Legendary', () => {
+    g['currentReport'] = { characters: [hero()] };
+    stage('');
+    const lairs = [
+      { idx: 3, monsterPower: 'Weak' },
+      { idx: 1, monsterPower: 'Weak' },
+      { idx: 0, monsterPower: 'Legendary' },
+    ];
+    expect(T.defaultLairTarget(hero(), 0, 7, lairs)).toBe('1');
+    expect(
+      T.defaultLairTarget(hero(), 0, 7, [
+        { idx: 4, monsterPower: 'Odd' },
+        { idx: 5, monsterPower: 'Legendary' },
+      ]),
+    ).toBe('5');
   });
 });
 
@@ -170,11 +201,15 @@ describe('order-targets.ts: the target field', () => {
       { homeProvinceId: 3 },
     );
     expect(say()).toContain('borders one of your consecrated provinces');
-    g['currentReport'] = report([prov(7, { tier: 'owned' }), prov(9, { tier: 'owned', consecrated: true })], {
-      homeProvinceId: 3,
-      theConsecrationsItsKingMayHold: 1,
-    });
-    expect(say()).toContain('You already hold 1/1 consecrated province (the most');
+    g['currentReport'] = report(
+      [
+        prov(7, { tier: 'owned' }),
+        prov(9, { tier: 'owned', consecrated: true }),
+        prov(11, { tier: 'owned', consecrated: true }),
+      ],
+      { homeProvinceId: 3, theConsecrationsItsKingMayHold: 1 },
+    );
+    expect(say()).toContain('You already hold 2/1 consecrated province (the most');
   });
   test("the Perform Rite field: no site, and a saved offering's marks", () => {
     stage('');
@@ -191,8 +226,22 @@ describe('order-targets.ts: the target field', () => {
     };
     const f = field({ armies: [{ type: 'Militia' }, { type: 'Archers' }] }, 'Perform Rite', { extra: 'S:0|E:1' });
     expect(words(f)).toContain('serve until end of the turn after next');
-    expect(String(f)).toMatch(/data-idx="0"[^>]*>[\s\S]*?<option value="S" selected>/);
-    expect(String(f)).toMatch(/data-idx="1"[^>]*>[\s\S]*?<option value="E" selected>/);
+    const turns = (n: number) => {
+      g['currentReport'] = {
+        characters: [hero()],
+        kingdom: { alignment: 'Pagan', theTurnsAWildHuntServesBeyondThisOne: n },
+        provinceOrderData: { 7: { features: [{ ritualSite: true, name: 'the Grey Stones' }], wildHuntType: 'Wolves' } },
+      };
+      return words(field({}, 'Perform Rite'));
+    };
+    expect(turns(1)).toContain('serve until end of NEXT turn');
+    expect(turns(3)).toContain('serve until end of 3 turns after this one');
+    const box = page.createElement('template');
+    box.innerHTML = String(f);
+    const marks = [...box.content.querySelectorAll('select.bo-sel')].map(
+      (sel) => sel.querySelector('option[selected]')?.getAttribute('value') ?? '',
+    );
+    expect(marks).toEqual(['S', 'E']);
   });
   test("the Recruit field's refusals: not his ground, no native troops, the most raised", () => {
     stage('');
@@ -202,6 +251,24 @@ describe('order-targets.ts: the target field', () => {
     g['currentReport'] = rep({ canRecruit: true, armyTypes: [], name: 'Ashmere' });
     expect(placeholderOf(field({}, 'Recruit Armies'))).toBe('No native recruitable armies in Ashmere');
     g['currentReport'] = { ...rep({ canRecruit: false, armyTypes: [] }), mercIntel: [] };
+    g['currentReport'] = {
+      characters: [hero()],
+      provinceOrderData: { 7: { canRecruit: false, armyTypes: [] } },
+      mercIntel: [{ id: 3, type: 'Pikes', quality: 'Veteran', unitName: '', locationId: 7, cost: 4 }],
+    };
+    g['currentReport'] = {
+      characters: [hero()],
+      provinceOrderData: { 7: { canRecruit: true, name: 'Ashmere', armyTypes: [{ type: 'Militia', maxPerTurn: 2 }] } },
+    };
+    const boxes = (target: string) => {
+      const box = page.createElement('template');
+      box.innerHTML = String(field({}, 'Recruit Armies', { target }));
+      return [...box.content.querySelectorAll('input[type=checkbox]')].map(
+        (b) => `${b.getAttribute('value') ?? ''}${b.hasAttribute('checked') ? '+' : ''}`,
+      );
+    };
+    expect(boxes('Militia|1')).toEqual(['Militia|1+', 'Militia|1']);
+    expect(words(field({}, 'Recruit Armies'))).toContain('1× Militia (2g)');
     g['currentReport'] = {
       characters: [hero()],
       provinceOrderData: { 7: { canRecruit: false, armyTypes: [] } },
@@ -220,6 +287,31 @@ describe('order-targets.ts: the target field', () => {
     const rows = T.theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, 1, { kingdom: {} })._spellRows;
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0]?.label).toMatch(/practising, may unlock: Lv1, 0\/1 used\)$/);
+  });
+  test('the Cast Spell field opens on the saved spell where it is still castable', () => {
+    const c = hero({ skills: { white: 3 } });
+    g['currentReport'] = { characters: [c], kingdom: {} };
+    stage('');
+    const rows = T.theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, 0, { kingdom: {} })._spellRows;
+    const second = rows[1];
+    if (!second) throw new Error('fewer than two spell rows');
+    const box = page.createElement('template');
+    box.innerHTML = String(T.buildTargetField(c, 0, { action: 'Cast Spell', target: second.spell }));
+    expect(box.content.querySelector('option[selected]')?.getAttribute('value')).toBe(second.spell);
+    box.innerHTML = String(T.buildTargetField(c, 0, { action: 'Cast Spell', target: 'No Such Spell' }));
+    expect(box.content.querySelector('option[selected]')?.getAttribute('value')).toBe(rows[0]?.spell);
+  });
+  test("an earlier phase's Cast Spell spends its school's cast", () => {
+    const c = hero({ skills: { white: 1 } });
+    g['currentReport'] = { characters: [c], kingdom: {} };
+    stage('');
+    const first = T.theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, 0, { kingdom: {} })._spellRows[0];
+    if (!first) throw new Error('no spell row');
+    stage(
+      `<select id="po-action-h1-0"><option value="Cast Spell" selected>c</option></select><input id="po-target-h1-0" value="${first.spell}">`,
+    );
+    const later = T.theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, 1, { kingdom: {} })._spellRows[0];
+    expect(later?.label).toContain('limit reached: 1/1 this turn');
   });
 });
 

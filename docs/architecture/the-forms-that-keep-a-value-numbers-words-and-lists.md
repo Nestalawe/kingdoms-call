@@ -68,6 +68,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   hands back words and throws the `TypeError` the call threw on any other value (`theWordsAFieldHolds`). One handed to a
   rule typed `string | number` that reads it by `String()` or `toString()` (a Pick Up's places) is `String(x)` after the
   `|| ''`: the same words for every value.
+- **`saved == id`, words a field saved against a province's or a hero's number** (the target fields' `target == p.id`),
+  goes through a reader typed `unknown` that compares them so (`isTheSavedChoice`): the compiler refuses `==` between
+  `string` and `number`. **A level a table may lack, handed to a rule that only compares it** (`_projLvl[school]`, the
+  casts a school allows) is `Number(x)`: `NaN` meets no level, as `undefined` did. **A name read as a key that may be
+  missing** (an item's spell) is `String(x)` before it is handed on: `'undefined'` is the key `undefined` was read as.
 ## Lists, tables, sets and maps
 
 - **A deal from a deck the code has just filled** (`if (!d.length) d = shuffleP(cards); return d.pop()`) goes through
@@ -177,3 +182,6 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   garrisons, the march forecast's kept answers) is `m.get(k) ?? y`, or `get` then `!== undefined`: the same miss.
   **`list.push(pool.splice(i, 1)[0])`** at an index `findIndex` has just found is `list.push(...pool.splice(i, 1))`: the
   same one element.
+- **A list only asked whether it holds a number** (a province's neighbours, typed `unknown[]`, handed to the
+  consecration's checks) is filtered to its numbers (`theNumbersAmong`): no other value is a province's number. Where
+  the place is a forecast with no id, `id ?? NaN` (`theIdOrNoProvince`) matches none, as `undefined` did.

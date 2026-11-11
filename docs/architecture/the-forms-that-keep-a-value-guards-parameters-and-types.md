@@ -86,6 +86,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **`typeof f === 'function' ? f(…) : …` on a function its own module declares** (the order form's forecasts, from when the
   page's files were scripts) is the call: the test always held, and lint refuses it.
 
+- **`typeof f === 'function'` on a function the file imports** (`unitEmoji`, `refreshAllMoveModeNotes`) always holds:
+  the call alone, as lint's `no-unnecessary-condition` asks.
 ## Parameters, shapes and claims
 
 - **An object the code builds whose ids are plain numbers** (the world's making: a province, a hero, a realm) is typed by a
@@ -247,3 +249,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A test that calls a freed function on its own shapes** (a staged context, hero and province) hands its
   arguments through one cast, `f(...([tc, atk, field, guard] as unknown as Parameters<typeof f>))`.
 - **`{ ...(x || {}) }`** is `{ ...x }`: a spread of a missing or falsy value adds nothing.
+- **The item a hero carries as the order form's forecasts hand it** (`AnItemAHeroCarries`) is the rules' item too
+  (`itemSlot`'s: a report's item always has its name), with the fields the item fields read (`equipped`, `desc`,
+  `_spent`, the spell an item casts): the forecasts hand the report's own items back, so the type the code reads them as
+  is theirs (P1-16f).
