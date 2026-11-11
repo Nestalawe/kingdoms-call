@@ -154,11 +154,15 @@ describe('a draft that cannot be read', () => {
     expect(theValueOf('po-action-1-0')).toBe('');
     expect(() => call('buildOrdersForm', [aHero], false, 'null', 1)).toThrow(/Cannot read properties of null/);
   });
-  test("a saved tactic that isn't words stops the form, as before", () => {
+  test("a saved tactic that isn't words stops the form with a TypeError, as before", () => {
     stage(`currentReport = ${JSON.stringify({ characters: [aHero] })};`);
-    expect(() =>
-      call('buildOrdersForm', [aHero], false, JSON.stringify({ encounterPlans: { 1: { tactics: [5] } } }), 1),
-    ).toThrow(/not words/);
+    let thrown = 'nothing';
+    try {
+      call('buildOrdersForm', [aHero], false, JSON.stringify({ encounterPlans: { 1: { tactics: [5] } } }), 1);
+    } catch (e) {
+      thrown = String(e);
+    }
+    expect(thrown).toMatch(/^TypeError: /);
   });
   test('a call for the Reckoning saved in the draft is kept', () => {
     stage(`currentReport = ${JSON.stringify({ characters: [aHero] })}; reckoningCall = false;`);
