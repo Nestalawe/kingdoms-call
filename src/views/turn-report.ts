@@ -699,7 +699,7 @@ export function buildTurnReport(view, itsLines = null) {
         name: c.name,
         kingdom: enemyKingdom,
         kingdomColor: c.realmColor || null,
-        locationName: prov.name,
+        locationName: prov.name ?? 'a province beside your land',
         locationId: c.location,
         armyBand: _band,
         spiedSkills: spiedSkills || null,
@@ -707,7 +707,7 @@ export function buildTurnReport(view, itsLines = null) {
         spiedItems: (spyRec && spyRec.items) || null,
         spiedArmies: (spyRec && spyRec.armies) || null,
         inOwnedProvince: inOwned,
-        text: `${c.name} of ${enemyKingdom} is in ${inOwned ? 'your province of ' : ''}${prov.name}, and ${_band}.${spiedSkillStr ? ` Known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}.` : ''}`,
+        text: `${c.name} of ${enemyKingdom} is in ${inOwned ? 'your province of ' : ''}${prov.name ?? 'a province beside your land, not yet scouted'}, and ${_band}.${spiedSkillStr ? ` Known skills (spied turn ${spyRec.turn}): ${spiedSkillStr}.` : ''}`,
       });
     }
   });

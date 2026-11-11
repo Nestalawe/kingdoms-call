@@ -223,6 +223,7 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     if (p._divinePowerSeen === power) return;
     const before = p._divinePowerSeen ?? 0;
     p._divinePowerSeen = power;
+    if (power === before) return; // the first turn at Power 0: nothing to tell
     const gifts = DIVINE_GIFTS.slice(0, Math.min(DIVINE_GIFTS.length, power));
     line(
       pi,
