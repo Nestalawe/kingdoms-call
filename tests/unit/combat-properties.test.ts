@@ -88,7 +88,7 @@ const seedArb = fc.integer({ min: 1, max: 0x7fffffff });
 function hero(h: Hero): Combatant {
   const ch = clone(base);
   Object.assign(ch, {
-    skills: { ...(ch['skills'] as object), ...h.skills },
+    skills: { ...(ch.skills as object), ...h.skills },
     temper: h.temper,
     race: h.race,
     alignment: h.alignment,
@@ -101,7 +101,7 @@ function hero(h: Hero): Combatant {
 }
 function guardian(i: number): Combatant {
   const m: Partial<Guardian> = clone(MON[i] ?? {});
-  return call('pcMonsterCombatant', { ...m, _hpFull: m['hp'] }) as Combatant;
+  return call('pcMonsterCombatant', { ...m, _hpFull: m.hp }) as Combatant;
 }
 const fighter = (f: { hero: Hero } | { guardian: number }) => ('hero' in f ? hero(f.hero) : guardian(f.guardian));
 

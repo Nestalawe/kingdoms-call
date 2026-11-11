@@ -24,14 +24,19 @@ const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
 const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
-type Province = { id: number; name: string; terrain: string; [flag: string]: unknown };
-type Hero = {
+interface Province {
+  id: number;
+  name: string;
+  terrain: string;
+  [flag: string]: unknown;
+}
+interface Hero {
   id: number;
   alive: boolean;
   player: number | null;
   skills: Record<string, number>;
   [field: string]: unknown;
-};
+}
 const G = tc.G as {
   turn: number;
   world: { cols: number; rows: number; provinces: Province[] };
@@ -147,7 +152,7 @@ describe('recordBattleGraves', () => {
     killedArmies: object[],
     ownerPlayer: number | null,
   ) => void;
-  type Fallen = {
+  interface Fallen {
     type: string;
     quality: string;
     race: string;
@@ -155,7 +160,7 @@ describe('recordBattleGraves', () => {
     _phantom: boolean;
     _temporary: boolean;
     _elvenEscaped?: boolean;
-  };
+  }
   const unit = fc.record({
     type: fc.constantFrom('Elven Archers', 'Shieldwall Levies', 'Orc Berserkers'),
     quality: fc.constantFrom('Green', 'Average', 'Elite'),

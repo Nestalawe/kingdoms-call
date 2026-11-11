@@ -28,7 +28,7 @@ afterAll(() => {
 /** `text` with `from` replaced by `to`, where `from` is found exactly once (else the plant would miss: it throws). */
 function replacedOnce(text: string, from: string, to: string): string {
   const at = text.indexOf(from);
-  if (at < 0 || text.indexOf(from, at + 1) >= 0)
+  if (at < 0 || text.includes(from, at + 1))
     throw new Error(`the plant's anchor is not in the data file once: ${from}`);
   return text.slice(0, at) + to + text.slice(at + from.length);
 }

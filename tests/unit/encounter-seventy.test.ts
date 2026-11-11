@@ -46,6 +46,6 @@ test('the rulebook says 70% both times it states the chance, and the Encounter C
   const pp = pageText('kingdoms-call-player-portal.html'); // its words, from src/ (tests/lib/source.ts, plan P1-09a)
   const said = rules.match(/<strong>(\d+)%, \+5% per level of your Spy, −5% per level of theirs<\/strong>/g) ?? [];
   expect(said.length).toBe(2);
-  expect(said.every((x) => />70%/.test(x))).toBe(true);
+  expect(said.every((x) => x.includes('>70%'))).toBe(true);
   expect(pp).toMatch(/corner them each phase[^<]*70%, \+5% per level of your Spy, −5% per level of theirs/);
 });

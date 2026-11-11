@@ -147,7 +147,11 @@ describe.each(ITEM_AND_ARMY_ORDER_CASES)('the %s order, called directly: the who
 
 // ── Use Item ────────────────────────────────────────────────────────────────────────────────────────────────────
 describe('Use Item, called directly: the Philosopher’s Stone (an older save’s copy)', () => {
-  type Roll = { id: unknown; skill: string; base: unknown };
+  interface Roll {
+    id: unknown;
+    skill: string;
+    base: unknown;
+  }
   // every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
   vm.runInContext(
     `{ const tryOne=trySkillGain;

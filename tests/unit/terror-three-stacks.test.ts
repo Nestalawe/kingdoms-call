@@ -21,15 +21,19 @@ const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
 const wordsOf = (line: unknown): string => (typeof line === 'string' ? line : theWordsOf(line));
 afterAll(restoreLog);
 const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
-type Province = {
+interface Province {
   terrain: string;
   owner: number | null;
   _terrorStacks?: number;
   _terrorTurn?: number;
   _terrorisedBy?: number;
   _terrorPct?: number;
-};
-type Defender = { type: string; quality: string; _terrorMult?: number };
+}
+interface Defender {
+  type: string;
+  quality: string;
+  _terrorMult?: number;
+}
 const spreadTerror = engineFn(engine, 'spreadTerror') as (
   t: typeof tc,
   battleProv: Province,
@@ -61,7 +65,7 @@ test('Terror stacks at most three times', () => {
     1e-9,
   );
   expect(
-    narr.map(wordsOf).some((l) => /−30% strength \(3 terror stacks/.test(l)),
+    narr.map(wordsOf).some((l) => l.includes('−30% strength (3 terror stacks')),
     `the report says −30% from 3 stacks (${narr.map(wordsOf).join(' | ')})`,
   ).toBe(true);
   // an older save still holding five

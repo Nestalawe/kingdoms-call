@@ -630,7 +630,7 @@ describe('Resurrect and Charm, called directly', () => {
       { action: 'defend', target: '', extra: '', desc: 'Defend' },
       { action: 'defend', target: '', extra: '', desc: 'Defend' },
     ]);
-    expect([w['_defend'], w['_pursuit'], w['_defendReactedPhase']]).toEqual([undefined, undefined, undefined]);
+    expect([w._defend, w._pursuit, w['_defendReactedPhase']]).toEqual([undefined, undefined, undefined]);
     expect((b.tc['movePoints'] as Record<number, number>)[w.id]).toBeGreaterThan(0);
     expect([w.player, w['hiredInPhase'], w['_charmedTurn']]).toEqual([0, 0, b.G.turn]);
   });

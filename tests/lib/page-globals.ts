@@ -310,7 +310,7 @@ export function handlerNames(page: ScriptPage, src = SRC): Map<string, string[]>
   const names = pageDeclarations(page, src);
   const out = new Map<string, string[]>();
   for (const file of [page, ...pageModuleFiles(page, src)]) {
-    const texts = /\.html$/.test(file)
+    const texts = file.endsWith('.html')
       ? [fs.readFileSync(path.join(src, file), 'utf8')]
       : stringsIn(sourceTree(file, src));
     for (const code of texts.flatMap(handlerCodeIn)) {
@@ -329,7 +329,7 @@ export function handlerNames(page: ScriptPage, src = SRC): Map<string, string[]>
 export function testAndToolFiles(root = ROOT): string[] {
   return ['tests', 'tools']
     .flatMap((dir) => filesUnder(path.join(root, dir)).map((f) => `${dir}/${f}`))
-    .filter((f) => /\.[cm]?[jt]s$/.test(f) && !/\.d\.ts$/.test(f))
+    .filter((f) => /\.[cm]?[jt]s$/.test(f) && !f.endsWith('.d.ts'))
     .filter((f) => !/^(tests\/quarantine|tests\/balance\/baseline|tools\/legacy)\//.test(f));
 }
 
@@ -598,7 +598,7 @@ export function globalsLists(page: ScriptPage, src = SRC): { handlers: ListedNam
       const [target, names] = call?.arguments ?? [];
       if (
         !call ||
-        call.getText(tree).slice(0, 'Object.assign('.length) !== 'Object.assign(' ||
+        !call.getText(tree).startsWith('Object.assign(') ||
         call.arguments.length !== 2 ||
         !target ||
         !ts.isIdentifier(target) ||
@@ -612,7 +612,7 @@ export function globalsLists(page: ScriptPage, src = SRC): { handlers: ListedNam
       return names.properties.map((prop): ListedName => {
         if (!ts.isShorthandPropertyAssignment(prop))
           throw new Error(`${file}: ${prop.getText(tree)}: each entry is a bare name`);
-        const after = text.slice(prop.end).match(/^,?[ \t]*\/\/[ \t]*(\S+)/);
+        const after = /^,?[ \t]*\/\/[ \t]*(\S+)/.exec(text.slice(prop.end));
         return { name: prop.name.text, file: after?.[1] ?? '' };
       });
     });

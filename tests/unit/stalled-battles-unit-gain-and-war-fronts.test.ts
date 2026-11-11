@@ -105,8 +105,8 @@ const fresh = () => board(engine, WORLD, PH);
 /** A die, near the survivors' two chances (35% to flee, 50% to lose heart) as often as anywhere else. */
 const DIE = fc.constantFrom(0, 0.2, 0.34, 0.35, 0.4, 0.49, 0.5, 0.7, 0.999);
 /** Whether a province's battle is unresolved (read through a call, so a check after a staged flag isn't narrowed). */
-const flagged = (p: Province) => p['_battleUnresolved'] === true;
-const leaderless = (p: Province) => p['_leaderlessDefenders'] === true;
+const flagged = (p: Province) => p._battleUnresolved === true;
+const leaderless = (p: Province) => p._leaderlessDefenders === true;
 const units = (type: string, quality: string, names: string[]): Unit[] =>
   names.map((unitName) => ({ type, quality, race: 'Human', unitName }));
 const ENEMIES = (a: number | null, b: number | null) =>

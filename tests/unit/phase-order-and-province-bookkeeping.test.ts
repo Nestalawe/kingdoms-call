@@ -551,7 +551,7 @@ describe('province bookkeeping', () => {
                 String(w[1]).startsWith('garrison') &&
                 homeCount.set(String(w[1]), (homeCount.get(String(w[1])) ?? 0) + 1),
             );
-            expect(lines(tc).map((l) => [l.provinceId, l.text.match(/\((\d+) units?\)/)?.[1]])).toEqual(
+            expect(lines(tc).map((l) => [l.provinceId, /\((\d+) units?\)/.exec(l.text)?.[1]])).toEqual(
               [...homeCount]
                 .sort((a, b) => Number(a[0].slice(9)) - Number(b[0].slice(9)))
                 .map(([g, n]) => [Number(g.slice(9)), String(n)]),

@@ -139,7 +139,11 @@ const SKILLGAIN = vm.runInContext('({std:SKILLGAIN_STD, common:SKILLGAIN_COMMON}
   std: number;
   common: number;
 };
-type Roll = { id: unknown; skill: string; base: unknown };
+interface Roll {
+  id: unknown;
+  skill: string;
+  base: unknown;
+}
 // every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
 vm.runInContext(
   `{ const tryOne=trySkillGain;

@@ -274,7 +274,7 @@ function recording<T>(engine: vm.Context, s: Staged, r: Recorder, body: () => T)
     for (const [f, w] of was) g[f] = w;
   }
 }
-const ordersOf = (G: World) => json((G as World & Raw)['turnOrders']) as Record<string, unknown[]>;
+const ordersOf = (G: World) => json((G as World & Raw).turnOrders) as Record<string, unknown[]>;
 const concessions = (G: World) => G.players.map((p) => !!(p as Raw | null)?.['conceded']);
 
 /** A turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3): a
@@ -698,7 +698,7 @@ export const OUTCOME_CASES: BotsPlanCase[] = [
   {
     name: 'a bot realm with no province left concedes before it plans, told to every realm',
     stage: (b) => {
-      realm(b, 1)['provinces'] = [];
+      realm(b, 1).provinces = [];
       seatOf(b, 1).owner = null;
       return { bots: [1], board: b };
     },
@@ -710,7 +710,7 @@ export const OUTCOME_CASES: BotsPlanCase[] = [
   {
     name: 'a human realm with no province left is not conceded by the bots’ plan',
     stage: (b) => {
-      realm(b, 0)['provinces'] = [];
+      realm(b, 0).provinces = [];
       seatOf(b, 0).owner = null;
       return { bots: [1], board: b };
     },
@@ -763,7 +763,7 @@ export const OUTCOME_CASES: BotsPlanCase[] = [
   {
     name: 'a bot realm that concedes writes no orders: its heroes are left for the default to Defend',
     stage: (b) => {
-      realm(b, 1)['provinces'] = [];
+      realm(b, 1).provinces = [];
       seatOf(b, 1).owner = null;
       return { bots: [1], board: b };
     },

@@ -68,7 +68,7 @@ test('a short, even fight that nobody wins: both are wounded, both roll, both ha
   expect(a.hpEarned, 'a wounded hero who did not win hardens (Aldric)').toBeGreaterThan(0);
   expect(b.hpEarned, '…and so does the other (Brannoc)').toBeGreaterThan(0);
   expect(
-    wordsOf(res.narrative).some((l) => /hardened by the wounds of the fight/.test(l)),
+    wordsOf(res.narrative).some((l) => l.includes('hardened by the wounds of the fight')),
     "the fight report says so (to the hero's own realm: a private line since 2026-10-12, unit/hp-gain-private)",
   ).toBe(true);
 });

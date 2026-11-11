@@ -64,7 +64,7 @@ const sees = (e: Entry | undefined, pi: number) =>
 /** The lines written from `from` on, in words, as the views write them and the GM's log stores them (a line may record
  *  a fact, P1-12c4: a hero's hit-point rise in a fight). */
 const inWords = (from: number) => (call('theTurnsLinesInWords', L.slice(from)) as { gmLog: Entry[] }).gmLog;
-const hardLines = (from: number) => inWords(from).filter((e) => /hardened by/.test(String(e.text)));
+const hardLines = (from: number) => inWords(from).filter((e) => String(e.text).includes('hardened by'));
 const who = (e: Entry | undefined) => JSON.stringify(e && { p: e.public, a: e.actor, t: e.targets });
 
 test("two rivals both harden; each realm reads only its own hero's rise, and the rest of the fight is shared", () => {
@@ -97,11 +97,11 @@ test("two rivals both harden; each realm reads only its own hero's rise, and the
   expect(sees(la, 0) && !sees(la, 1), `Aldmar's realm reads his rise; Bresk's realm does not (${who(la)})`).toBe(true);
   expect(sees(lb, 1) && !sees(lb, 0), `Bresk's realm reads his rise; Aldmar's realm does not (${who(lb)})`).toBe(true);
   expect(
-    inWords(from).some((e) => !/hardened by/.test(String(e.text)) && sees(e, 0) && sees(e, 1)),
+    inWords(from).some((e) => !String(e.text).includes('hardened by') && sees(e, 0) && sees(e, 1)),
     'the rest of the fight is still shared by both realms',
   ).toBe(true);
   expect(
-    inWords(from).some((e) => /\[object Object\]/.test(String(e.text))),
+    inWords(from).some((e) => String(e.text).includes('[object Object]')),
     'no line reads [object Object]',
   ).toBe(false);
 });
@@ -119,7 +119,7 @@ test("a battle's winner: the victory line is private to the winner's realm; the 
     `the winner's realm reads "hardened by the victory"; the beaten realm does not (${who(line)})`,
   ).toBe(true);
   expect(
-    inWords(from).some((e) => /Battle for Testmoor/.test(String(e.text)) && sees(e, 1)),
+    inWords(from).some((e) => String(e.text).includes('Battle for Testmoor') && sees(e, 1)),
     'the battle itself is still shown to both realms',
   ).toBe(true);
 });

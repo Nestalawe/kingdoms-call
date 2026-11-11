@@ -23,7 +23,12 @@ import {
 
 const { call, MON, turnContext } = await personalCombatEngine();
 const experience = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
-type Roll = { id: unknown; skill: string; base: unknown; mult: unknown };
+interface Roll {
+  id: unknown;
+  skill: string;
+  base: unknown;
+  mult: unknown;
+}
 // every experience roll, recorded as it starts by a stand-in for trySkillGain on its module (plan P1-14b; until then a
 // wrapper around it in the bare vm), which calls the real one: the calls from personal combat's files reach it
 const recording = (fn: () => void): Roll[] => {

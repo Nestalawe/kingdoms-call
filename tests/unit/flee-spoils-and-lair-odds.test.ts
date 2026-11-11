@@ -26,7 +26,12 @@ const { RUMOUR_ODDS_BANDS } =
   await import('../../src/engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts');
 const G = turnContext.G as { characters: Character[]; players: Record<string, unknown>[] };
 
-type Item = { name: string; tier?: unknown; effect?: { stat?: string }; [key: string]: unknown };
+interface Item {
+  name: string;
+  tier?: unknown;
+  effect?: { stat?: string };
+  [key: string]: unknown;
+}
 /** The game's item tables and Mithril (a relic the Dwarves are granted), one of each name and tier. */
 const ITEMS = ([...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P, MITHRIL_ARMOUR] as Item[]).filter(
   (it, i, all) => all.findIndex((x) => x.name === it.name && x.tier === it.tier) === i,

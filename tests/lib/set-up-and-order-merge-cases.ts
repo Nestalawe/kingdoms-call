@@ -250,7 +250,7 @@ export const wanderingAs = (b: Board, race: string) => Object.assign(wanderer(b)
 export const guard = (b: Board, n: number, p: Province = b.X) => {
   const g = at(b, {}, { player: null, at: p });
   g.name = `${g.name} (Guardian)`;
-  g['_isNeutralGuard'] = true;
+  g._isNeutralGuard = true;
   g.armies = companies(n, 'Dire Wolves', 'Veteran', 'Guard');
   return g;
 };
@@ -396,7 +396,7 @@ export const REPAIR_CASES: SetUpCase[] = [
     name: 'a neutral guard who leads no companies is a wanderer by the first phase',
     stage: (b) => ({ hero: guard(b, 0) }),
     check: (o, s) => ({
-      got: { guard: charIn(o.first, hero(s))['_isNeutralGuard'] ?? false },
+      got: { guard: charIn(o.first, hero(s))._isNeutralGuard ?? false },
       want: { guard: false },
     }),
   },
@@ -407,7 +407,7 @@ export const REPAIR_CASES: SetUpCase[] = [
       return { hero: guard(b, 2, p), there: p };
     },
     check: (o, s) => ({
-      got: { guard: charIn(o.first, hero(s))['_isNeutralGuard'] ?? false },
+      got: { guard: charIn(o.first, hero(s))._isNeutralGuard ?? false },
       want: { guard: false },
     }),
   },
@@ -415,7 +415,7 @@ export const REPAIR_CASES: SetUpCase[] = [
     name: 'a neutral guard leading companies on unclaimed ground still guards it at the first phase',
     stage: (b) => ({ hero: guard(b, 2) }),
     check: (o, s) => ({
-      got: { guard: charIn(o.first, hero(s))['_isNeutralGuard'] ?? false },
+      got: { guard: charIn(o.first, hero(s))._isNeutralGuard ?? false },
       want: { guard: true },
     }),
   },

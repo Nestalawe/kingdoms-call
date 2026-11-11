@@ -63,7 +63,11 @@ describe('provName and provOf', () => {
 });
 
 describe('neighborInDir', () => {
-  type Prov = { id: number; row: number; col: number };
+  interface Prov {
+    id: number;
+    row: number;
+    col: number;
+  }
   const neighborInDir = engineFn(engine, 'neighborInDir') as (tc: TurnContext, p: Prov, dir: string) => Prov | null;
   const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
     p: Prov,

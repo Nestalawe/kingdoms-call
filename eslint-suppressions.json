@@ -550,11 +550,6 @@
       "count": 3
     }
   },
-  "tests/browser/chromium-boot.spec.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 2
-    }
-  },
   "tests/lib/before-the-first-phase-cases.ts": {
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
@@ -565,45 +560,9 @@
       "count": 1
     }
   },
-  "tests/lib/engine.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    }
-  },
-  "tests/lib/page-globals.ts": {
-    "@typescript-eslint/prefer-optional-chain": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-regexp-exec": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-string-starts-ends-with": {
-      "count": 3
-    }
-  },
-  "tests/lib/phase-stage-cases.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 2
-    }
-  },
-  "tests/lib/report-leaks.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    }
-  },
-  "tests/lib/set-up-and-order-merge-cases.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 4
-    }
-  },
   "tests/lib/source.ts": {
     "@typescript-eslint/prefer-optional-chain": {
       "count": 1
-    }
-  },
-  "tests/lib/the-bots-plan-cases.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 4
     }
   },
   "tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts": {
@@ -616,59 +575,13 @@
       "count": 1
     }
   },
-  "tests/lib/war-order-cases.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 2
-    }
-  },
   "tests/scenario/mercenary-ids.test.ts": {
     "@typescript-eslint/prefer-optional-chain": {
       "count": 1
     }
   },
-  "tests/scenario/move-points.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/scenario/pursuit-one-battle.test.ts": {
-    "@typescript-eslint/prefer-string-starts-ends-with": {
-      "count": 1
-    }
-  },
-  "tests/scenario/research-and-practice-orders-in-a-whole-turn.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 4
-    }
-  },
-  "tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    }
-  },
-  "tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts": {
-    "@typescript-eslint/prefer-optional-chain": {
-      "count": 1
-    }
-  },
   "tests/unit/after-the-phases-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 1
-    },
     "@typescript-eslint/prefer-find": {
-      "count": 1
-    }
-  },
-  "tests/unit/battle-tweaks.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 3
-    },
-    "@typescript-eslint/prefer-includes": {
-      "count": 6
-    }
-  },
-  "tests/unit/battles-between-heroes.test.ts": {
-    "@typescript-eslint/prefer-includes": {
       "count": 1
     }
   },
@@ -682,50 +595,7 @@
       "count": 3
     }
   },
-  "tests/unit/cast-spell-order-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 2
-    }
-  },
-  "tests/unit/combat-properties.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 2
-    }
-  },
-  "tests/unit/diplomacy-and-victory-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 1
-    }
-  },
-  "tests/unit/encounter-seventy.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    }
-  },
-  "tests/unit/explore-and-search-orders-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 1
-    }
-  },
-  "tests/unit/fireball-burn.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    }
-  },
-  "tests/unit/flee-spoils-and-lair-odds.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/unit/guardian-holds-melee.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 2
-    }
-  },
   "tests/unit/guardian-melee.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 2
-    },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
     }
@@ -745,122 +615,14 @@
       "count": 1
     }
   },
-  "tests/unit/hp-gain-private.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 4
-    }
-  },
-  "tests/unit/hp-wound-gain.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    }
-  },
-  "tests/unit/item-and-army-orders-called-directly.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/unit/march-one-rate.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/unit/new-turn-succession-and-summons-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 3
-    }
-  },
-  "tests/unit/new-turn-war-academy-to-the-final-reconcile-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 1
-    }
-  },
   "tests/unit/npc-parity.test.ts": {
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 7
     }
   },
-  "tests/unit/phase-order-and-province-bookkeeping.test.ts": {
-    "@typescript-eslint/prefer-regexp-exec": {
-      "count": 1
-    }
-  },
-  "tests/unit/pre-battle-duels.test.ts": {
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    }
-  },
-  "tests/unit/province-lookups-and-limits.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/unit/realm-reports.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 2
-    }
-  },
-  "tests/unit/recruit-hire-and-realm-works-orders-called-directly.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/unit/research-and-practice-orders-called-directly.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/unit/set-up-and-order-merge-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 2
-    }
-  },
-  "tests/unit/skill-rises-terror-and-graves.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 3
-    }
-  },
-  "tests/unit/stalled-battles-unit-gain-and-war-fronts.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 2
-    }
-  },
-  "tests/unit/terror-three-stacks.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 2
-    },
-    "@typescript-eslint/prefer-includes": {
-      "count": 1
-    }
-  },
   "tests/unit/the-saved-game-state-schemas-parse-every-state-of-a-matrix-game.test.ts": {
     "@typescript-eslint/prefer-optional-chain": {
       "count": 1
-    }
-  },
-  "tests/unit/titles-at-the-turns-end-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 10
-    }
-  },
-  "tests/unit/war-orders-called-directly.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 14
-    }
-  },
-  "tests/unit/xp-fight-win.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/unit/xp-fled-fight.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 1
-    }
-  },
-  "tests/unit/xp-naval-passenger.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 2
     }
   },
   "tools/balance/report-run.ts": {
@@ -871,11 +633,6 @@
   "tools/balance/scripted.ts": {
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2
-    }
-  },
-  "tools/ratchet.ts": {
-    "@typescript-eslint/prefer-string-starts-ends-with": {
-      "count": 1
     }
   },
   "vitest.config.mts": {

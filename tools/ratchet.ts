@@ -635,7 +635,7 @@ export function measure(): Counts {
     // which staging overwrites, and the staging footer: P1-09d moved them from src/), counted so that no other joins
     // them. The supabase-js copy in public/vendor/ (src/vendor/ until P1-09d) isn't the site's code.
     sourceJavascriptFiles: all.filter(
-      (f) => /\.js$/.test(f) && /^(src|public)\//.test(f) && !/^(src|public)\/vendor\//.test(f),
+      (f) => f.endsWith('.js') && /^(src|public)\//.test(f) && !/^(src|public)\/vendor\//.test(f),
     ).length,
     quarantinedTests: all.filter((f) => f.startsWith('tests/quarantine/') && /\.test\.[jt]s$/.test(f)).length,
     vmLoaderTests: vmLoaderTests(all),

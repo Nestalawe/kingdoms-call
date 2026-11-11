@@ -23,13 +23,13 @@ type Trace = { reason: unknown }[];
 const modifierWords = engineFn(engine, 'theWordsOfAUnitsModifier') as (reason: unknown) => string;
 /** The words the prose writes of why a unit fights as it does (battleFaceSide's why). */
 const facingWords = engineFn(engine, 'theWordsOfWhyAUnitFacesAsItDoes') as (why: unknown) => string;
-type StrengthContext = {
+interface StrengthContext {
   force: unknown[];
   enemyForce: unknown[];
   isAttacker?: boolean;
   reignOfFear?: boolean;
   trace?: Trace;
-};
+}
 const armStr = engineFn(engine, 'armStr') as (
   t: typeof tc,
   army: object,
@@ -64,8 +64,13 @@ describe('Reign of Fear: only when attacking', () => {
 });
 
 describe('Purity breaks a Spear Hedge or a Boulder Wall', () => {
-  type Row = { a: Record<string, unknown>; base: number };
-  type Grid = { face: { units: { row: Row; m: number; why: unknown }[] } };
+  interface Row {
+    a: Record<string, unknown>;
+    base: number;
+  }
+  interface Grid {
+    face: { units: { row: Row; m: number; why: unknown }[] };
+  }
   const grid = engineFn(engine, 'battleGrid') as (rows: Row[], width: number, terrain: string, opts: object) => Grid;
   const facing = engineFn(engine, 'battleFacing') as (me: Grid, them: Grid, terrain: string) => void;
   const BASE: Record<string, number> = {
@@ -94,7 +99,7 @@ describe('Purity breaks a Spear Hedge or a Boulder Wall', () => {
     const u = faced(fight([['Unicorn Herd', 2]], [['Shieldwall Levies', 2]]), 'Unicorn Herd');
     expect(u).toHaveLength(2);
     for (const x of u)
-      expect(near(x.m, 0.85) && /Purity breaks the Spear Hedge/.test(facingWords(x.why)), facingWords(x.why)).toBe(
+      expect(near(x.m, 0.85) && facingWords(x.why).includes('Purity breaks the Spear Hedge'), facingWords(x.why)).toBe(
         true,
       );
   });
@@ -102,7 +107,7 @@ describe('Purity breaks a Spear Hedge or a Boulder Wall', () => {
     const u = faced(fight([['Unicorn Herd', 2]], [['Stone Giants', 2]]), 'Unicorn Herd');
     expect(u).toHaveLength(2);
     for (const x of u)
-      expect(near(x.m, 0.85) && /Purity breaks the Boulder Wall/.test(facingWords(x.why)), facingWords(x.why)).toBe(
+      expect(near(x.m, 0.85) && facingWords(x.why).includes('Purity breaks the Boulder Wall'), facingWords(x.why)).toBe(
         true,
       );
   });
@@ -110,18 +115,18 @@ describe('Purity breaks a Spear Hedge or a Boulder Wall', () => {
     const u = faced(fight([['Unicorn Herd', 2]], [['Shieldwall Levies', 2, { _isSkeletal: true }]]), 'Unicorn Herd');
     for (const x of u)
       expect(
-        near(x.m, 0.85 * 1.25) && /Purity breaks the Spear Hedge/.test(facingWords(x.why)),
+        near(x.m, 0.85 * 1.25) && facingWords(x.why).includes('Purity breaks the Spear Hedge'),
         facingWords(x.why),
       ).toBe(true);
   });
   test('other horse still meets the Spear Hedge and the Boulder Wall at ×0.75', () => {
     for (const x of faced(fight([['Free Lances', 2]], [['Shieldwall Levies', 2]]), 'Free Lances'))
       expect(
-        near(x.m, 0.75) && /Spear Hedge/.test(facingWords(x.why)) && !/Purity/.test(facingWords(x.why)),
+        near(x.m, 0.75) && facingWords(x.why).includes('Spear Hedge') && !facingWords(x.why).includes('Purity'),
         facingWords(x.why),
       ).toBe(true);
     for (const x of faced(fight([['Free Lances', 2]], [['Stone Giants', 2]]), 'Free Lances'))
-      expect(near(x.m, 0.75) && /Boulder Wall/.test(facingWords(x.why)), facingWords(x.why)).toBe(true);
+      expect(near(x.m, 0.75) && facingWords(x.why).includes('Boulder Wall'), facingWords(x.why)).toBe(true);
   });
 });
 

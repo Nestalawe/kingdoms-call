@@ -27,7 +27,9 @@ const burn = (lvl: number, setup?: (g: Combatant) => void): [number, number] => 
   g.hp = g.maxHp = 100;
   if (setup) setup(g);
   pinned(0.01, () => call('pcCastCombatSpell', h, g, 'Fireball', [], st()));
-  const d = (g.status.dot ?? []).find((x) => /Fireball/.test(theWordsOfTheSourceOfALingeringHarm(x.source ?? null)));
+  const d = (g.status.dot ?? []).find((x) =>
+    theWordsOfTheSourceOfALingeringHarm(x.source ?? null).includes('Fireball'),
+  );
   return d ? [d.dmg, d.rounds] : [0, 0];
 };
 
