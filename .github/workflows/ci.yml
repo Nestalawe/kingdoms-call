@@ -163,6 +163,9 @@ jobs:
 
       - run: npm run build
 
+      # tests/unit/kc-merge-starts-the-codeql-scan-…'s cases run tools/merging/kc-merge.zsh in zsh, which the runner lacks.
+      - run: command -v zsh >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq zsh >/dev/null; }
+
       - run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2
 
   simulation:

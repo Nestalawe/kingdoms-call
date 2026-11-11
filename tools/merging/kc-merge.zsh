@@ -19,16 +19,20 @@
 #                          one. Each it marks ready and merges with a merge commit; one stacked on a branch already
 #                          in main it first moves onto main. Main's rules need CodeQL's results for the pull request,
 #                          and moving its base starts no scan, so one with none it brings up to date with main (a merge
-#                          commit on its branch) and waits for ci, db and CodeQL on that commit (press any key to stop
-#                          waiting). For several, it starts them all at once first: each stacked one whose branch holds
-#                          all of its base is moved onto main early and brought up to date, so their checks run side by
-#                          side (a stack of 17: about 30 to 40 minutes, not 1.5 hours). It asks before bringing up to
-#                          date one with the label `staging` (a push rebuilds staging's database). If one fails, it
-#                          stops; run it again to carry on.
+#                          commit on its branch), or, if its branch holds main already, pushes an empty commit to it,
+#                          and waits for ci, db and CodeQL on that commit (press any key to stop waiting; no scan
+#                          started in 10 minutes stops it). Once CodeQL passes it reads the pull request's open
+#                          code-scanning alerts (the check passes with one open): any, and it stops, listing them.
+#                          For several, it starts them all at once first: each stacked one whose branch holds all
+#                          of its base is moved onto main early and brought up to date, so their checks run side by
+#                          side (a stack of 17: about 30 to 40 minutes, not 1.5 hours). It asks before pushing to one
+#                          with the label `staging` (a push rebuilds staging's database; the answer is read from
+#                          stdin). If one fails, it stops; run it again to carry on.
 #   kc-merge --group <prs> merges a stack as one group through its top pull request: every one moved onto main,
-#                          the top one alone brought up to date and checked (one CI run and one CodeQL scan for the
-#                          whole stack, about 6 minutes), then merged; GitHub marks the ones below it merged. It
-#                          takes the label refactor-only off the top one if the group holds one that isn't.
+#                          the top one alone brought up to date (or given an empty commit) and checked (one CI run and
+#                          one CodeQL scan for the whole stack, about 6 minutes, and its open alerts read), then
+#                          merged; GitHub marks the ones below it merged. It takes the label refactor-only off the top
+#                          one if the group holds one that isn't.
 #   kc-wait-deploy <pr>    waits until a merged pull request is deployed and live (press any key to stop waiting)
 
 # Wait <seconds>; true if a key was pressed meanwhile. Without a terminal to read keys from, it only sleeps.
@@ -108,29 +112,76 @@ _kc-has-check() {
   [[ " $(_kc-checks-line "$1") " == *" $2="* ]]
 }
 
-# Bring a pull request up to date with main (GitHub pushes a merge commit to its branch), and wait for the new commit.
+# Ask a yes-or-no question on the terminal (or whatever stdin holds); true only for y or Y. No answer is a no.
+_kc-yes() {
+  local answer
+  print -rn -- "$1 [y/N] "
+  read -q -u 0 answer
+  local said=$?
+  echo
+  return $said
+}
+
+# Start CI and CodeQL on a pull request whose branch holds main already: push an empty commit to its branch. GitHub's
+# CodeQL scans a pull request only when a commit is pushed to it while it merges into main (closing and opening it
+# again starts CI and staging, no scan). The commit is made from the branch as GitHub has it, without touching the
+# folder's own checkout, and pushed only if the branch hasn't moved meanwhile (a plain push, never a forced one).
+_kc-push-an-empty-commit() {
+  local pr=$1 old=$2 why=$3 repo=Nestalawe/kingdoms-call branch fetched commit
+  branch=$(gh pr view -R $repo "$pr" --json headRefName -q .headRefName) || return 1
+  if ! git fetch -q origin "refs/heads/$branch" || ! fetched=$(git rev-parse FETCH_HEAD) \
+     || [[ $fetched != "$old" ]]; then
+    echo "Couldn't fetch #$pr's branch '$branch' at ${old:0:7}: stopping." >&2
+    echo "Push an empty commit to it yourself (git commit --allow-empty, then git push), then run kc-merge again." >&2
+    return 1
+  fi
+  commit=$(git commit-tree "$fetched^{tree}" -p "$fetched" \
+    -m "Start CodeQL on #$pr: an empty commit (kc-merge)" \
+    -m "kc-merge pushed it because $why. GitHub scans a pull request only when a commit is pushed to it while it
+merges into main.") \
+    || return 1
+  if ! git push -q origin "${commit}:refs/heads/${branch}"; then
+    echo "Couldn't push the empty commit to '$branch': stopping." >&2
+    echo "Push an empty commit to it yourself (git commit --allow-empty, then git push), then run kc-merge again." >&2
+    return 1
+  fi
+  echo "#$pr: pushed an empty commit (${commit:0:7}) to '$branch' to start CodeQL and CI."
+}
+
+# Start a pull request's CI and CodeQL on a commit that holds main: bring it up to date with main (GitHub pushes a merge
+# commit to its branch), or, if its branch holds main already, push an empty commit to it; then wait for the new commit.
 # A pull request with the label `staging` is on the staging site, and a push to it rebuilds staging's database (its
 # games and accounts emptied): it asks first, and takes the label off before the push.
 _kc-bring-up-to-date() {
-  local pr=$1 why=${2:-"it has no CodeQL results (moving its base started no scan)"} repo=Nestalawe/kingdoms-call old new tries
+  local pr=$1 why=${2:-"it has no CodeQL results (moving its base started no scan)"} repo=Nestalawe/kingdoms-call old new tries behind
   old=$(gh pr view -R $repo "$pr" --json headRefOid -q .headRefOid) || return 1
+  behind=$(gh api "repos/$repo/compare/main...$old" -q .behind_by) || return 1
+  # An empty commit only starts a scan that never ran: checks that ran on a branch holding main stand as they are.
+  if [[ $behind == 0 ]] && _kc-has-check "$pr" CodeQL; then
+    echo "#$pr: $why, but its branch holds main already and its last commit has its checks: stopping." >&2
+    echo "Its page on GitHub shows them; run kc-merge again once it's fixed." >&2
+    return 1
+  fi
   # `gh -q` prints a null as an empty line, so the test asks for true or false.
   if [[ $(gh pr view -R $repo "$pr" --json labels -q 'any(.labels[]; .name == "staging")') == true ]]; then
     echo "#$pr has the label 'staging': a push to it rebuilds staging's database (its games and accounts emptied)."
-    if [[ ! -t 0 ]] || ! read -q "?Take the label off #$pr and bring it up to date with main? [y/N] "; then
-      echo
+    if ! _kc-yes "Take the label off #$pr and push to its branch?"; then
       echo "Left #$pr as it is: stopping. Once staging is done with, take the label off and run kc-merge again." >&2
       return 1
     fi
-    echo
     gh pr edit -R $repo "$pr" --remove-label staging >/dev/null || return 1
     echo "Took the label 'staging' off #$pr."
   fi
-  echo "#$pr: $why: bringing it up to date with main."
-  if ! gh pr update-branch -R $repo "$pr"; then
-    echo "Couldn't bring #$pr up to date with main: stopping." >&2
-    echo "Close and reopen it on GitHub to start CodeQL and CI, then run kc-merge again." >&2
-    return 1
+  if [[ $behind == 0 ]]; then
+    echo "#$pr: $why; its branch holds main already."
+    _kc-push-an-empty-commit "$pr" "$old" "$why" || return 1
+  else
+    echo "#$pr: $why: bringing it up to date with main."
+    if ! gh pr update-branch -R $repo "$pr"; then
+      echo "Couldn't bring #$pr up to date with main: stopping." >&2
+      echo "Merge main into its branch yourself and push it (the push starts CI and CodeQL), then run kc-merge again." >&2
+      return 1
+    fi
   fi
   for (( tries = 0; tries < 24; tries++ )); do
     new=$(gh pr view -R $repo "$pr" --json headRefOid -q .headRefOid) || return 1
@@ -138,11 +189,11 @@ _kc-bring-up-to-date() {
     sleep 5
   done
   if [[ $new == "$old" ]]; then
-    echo "#$pr's branch didn't move (it may hold main already): close and reopen it on GitHub to start CodeQL" >&2
-    echo "and CI, then run kc-merge again." >&2
+    echo "GitHub still shows #$pr at ${old:0:7} after two minutes: stopping. Run kc-merge again once its page shows" >&2
+    echo "the new commit." >&2
     return 1
   fi
-  echo "#$pr is now at ${new:0:7} (main merged in); CI and CodeQL start on it."
+  echo "#$pr is now at ${new:0:7}; CI and CodeQL start on it."
 }
 
 # Wait until every check on the pull request's last commit has finished, and ci, db and CodeQL passed. Press any key
@@ -167,6 +218,14 @@ _kc-wait-for-checks() {
       [[ " $rest " != *" CodeQL=SUCCESS "* ]] && echo "CodeQL's alerts are on the pull request's page (Checks, then CodeQL)." >&2
       return 2
     fi
+    # GitHub starts CodeQL within a minute or two of a push; none after 10 minutes means none is coming (a head
+    # pushed while the pull request was stacked is never scanned).
+    if [[ " $rest " != *" CodeQL="* ]] && (( SECONDS - started > 10 * 60 )); then
+      echo "No CodeQL scan has started on #$pr's last commit (${sha:0:7}) in 10 minutes: stopping." >&2
+      echo "GitHub scans a pull request only when a commit is pushed to it while it merges into main: push an empty" >&2
+      echo "commit to its branch (git commit --allow-empty, then git push), then run kc-merge again." >&2
+      return 1
+    fi
     if (( SECONDS - started > 40 * 60 )); then
       echo "#$pr's checks haven't finished after 40 minutes: stopping. kc-merge carries on from it when run again." >&2
       return 1
@@ -176,6 +235,26 @@ _kc-wait-for-checks() {
       return 1
     fi
   done
+}
+
+# True if the pull request has no open code-scanning alert; otherwise lists them (the rule, the tool and the place)
+# and is false. CodeQL's check passes with an alert open, so the check alone isn't enough.
+_kc-no-open-alerts() {
+  local pr=$1 repo=Nestalawe/kingdoms-call alerts
+  local -a listed
+  alerts=$(gh api "repos/$repo/code-scanning/alerts?state=open&ref=refs/pull/$pr/head" \
+    -q '.[] | [.number, .rule.id, .tool.name, .most_recent_instance.location.path, .most_recent_instance.location.start_line] | @tsv') \
+    || { echo "Couldn't read #$pr's code-scanning alerts: stopping." >&2; return 1; }
+  listed=(${(f)alerts})
+  if (( ${#listed} )); then
+    echo "#$pr has ${#listed} open code-scanning alert(s): stopping; nothing merged." >&2
+    print -r -- "$alerts" | while IFS=$'\t' read -r n rule tool file line; do
+      echo "  alert $n: $rule ($tool) at ${file}:${line}" >&2
+    done
+    echo "Fix them on its branch (the push scans it again), then run kc-merge again." >&2
+    return 1
+  fi
+  echo "#$pr: no open code-scanning alerts."
 }
 
 # Start a pull request's CI and CodeQL now, before the ones below it merge, so a stack's checks run side by side: a
@@ -247,7 +326,7 @@ _kc-merge-one() {
   while true; do
     _kc-wait-for-checks "$pr"
     case $? in
-      0) ;;
+      0) _kc-no-open-alerts "$pr" || return 1 ;;
       2) # Checks started early compare the pull request with main before the ones below it merged, so they also see
          # those ones' changes (a refactor-only one then "changes the baseline" a fix below it rewrote). Once only.
          if (( ! updated )); then
@@ -494,12 +573,17 @@ _kc-merge-group() {
   fi
   # Its checks must be on a commit that holds main as it is now; a rerun after a fix pushed to it holds it already (the
   # push started its CI and CodeQL: they are waited for below).
+  # A head pushed while it was stacked has no CodeQL scan, and none starts on its own: one that holds main gets an
+  # empty commit pushed to it.
   if [[ $(gh api "repos/$repo/compare/main...$(gh pr view -R $repo "$top" --json headRefOid -q .headRefOid)" -q .behind_by) != 0 ]]; then
     _kc-bring-up-to-date "$top" "it carries the group: its checks are the group's" || return 1
+  elif ! _kc-has-check "$top" CodeQL; then
+    _kc-bring-up-to-date "$top" "it carries the group, and its last commit has no CodeQL scan" || return 1
   else
-    echo "#$top already holds main: its checks are the group's."
+    echo "#$top already holds main and has its CodeQL scan: its checks are the group's."
   fi
   _kc-wait-for-checks "$top" || return 1
+  _kc-no-open-alerts "$top" || return 1
   local merge_state tries
   for (( tries = 0; tries < 24; tries++ )); do
     merge_state=$(gh pr view -R $repo "$top" --json mergeStateStatus -q .mergeStateStatus) || return 1

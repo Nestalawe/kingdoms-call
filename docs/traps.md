@@ -256,7 +256,7 @@ stops changing (`text = text.replace(…)` in a loop: the result must flow back 
 an `if`'s condition, and read it in that branch (a check held in a variable isn't seen). Example: `[was, text] = [text,
 text.replace(/<[^>]*>/g, '')]` in a loop is still an alert; `was = text; text = text.replace(…)` is not. Checks: the
 `main` ruleset's "Require code scanning results" rule (CodeQL, every alert); the pull request's CodeQL check lists each
-one.
+one, and `kc-merge` stops on any open alert, listing each.
 
 ## A new army unit is a dozen tables
 
