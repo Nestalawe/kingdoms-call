@@ -171,15 +171,28 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     }
   }
 
-  // ── GOOD: the muster goes home ── (round 24) a Beacons company has served its turns: it leaves the garrison.
+  // ── GOOD: the muster goes home ── (round 24) a Beacons company has served its turns: it leaves the garrison, or the
+  // host of the hero who took it up (round 25: a muster picked up into a host went home too, not never).
+  const done = (a: Army): boolean => a._musterUntilTurn != null && G.turn > a._musterUntilTurn;
   for (const pv of provinces) {
-    const gone = pv.garrisonArmies.filter((a) => a._musterUntilTurn != null && G.turn > a._musterUntilTurn);
+    const gone = pv.garrisonArmies.filter(done);
     if (!gone.length || pv.owner == null) continue;
-    pv.garrisonArmies = pv.garrisonArmies.filter((a) => !(a._musterUntilTurn != null && G.turn > a._musterUntilTurn));
+    pv.garrisonArmies = pv.garrisonArmies.filter((a) => !done(a));
     line(
       pv.owner,
       `🔥 The muster of ${pv.name} is done: ${gone.map((a) => `${a.unitName} (${a.quality})`).join(', ')} go${gone.length === 1 ? 'es' : ''} home to the shire.`,
       pv,
+    );
+  }
+  for (const c of G.characters) {
+    if (c.player == null) continue;
+    const gone = c.armies.filter(done);
+    if (!gone.length) continue;
+    c.armies = c.armies.filter((a) => !done(a));
+    line(
+      c.player,
+      `🔥 The muster is done: ${gone.map((a) => `${a.unitName} (${a.quality})`).join(', ')} leave${gone.length === 1 ? 's' : ''} ${c.name}'s host and go${gone.length === 1 ? 'es' : ''} home to the shire.`,
+      provinces[c.location] ?? null,
     );
   }
 
