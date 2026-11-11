@@ -82,6 +82,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   callback keeps a `const`'s narrowing, not a reassigned parameter's. **`list.filter(p)[0]`** (lint's `prefer-find`)
   is `list.find(p)`, the same first element or `undefined`, where `p` changes nothing.
 
+- **`typeof f === 'function' ? f(…) : …` on a function its own module declares** (the order form's forecasts, from when the
+  page's files were scripts) is the call: the test always held, and lint refuses it.
+
 ## Parameters, shapes and claims
 
 - **An object the code builds whose ids are plain numbers** (the world's making: a province, a hero, a realm) is typed by a
@@ -171,6 +174,13 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   readers' new findings and prune their cleared suppressions. Freed, a claim that holds only for some values takes
   only those, and reads the value through a check that holds it: `effStat` takes a hero, never none, and reads his
   total through `aHerosSkillAsItIsCounted`, which throws only where `skillBonusBreakdown` counts none (no hero).
+
+- **A row's number read by a dotted path a static test reads** (`ALIGN_ACTIONS['Harvest the Field'].theNumbers.thePrice.value`)
+  goes through a reader of the row that hands back its numbers as getters (`theNumbersOfTheRow(row).thePrice.value`): no
+  row throws the `TypeError` the read threw, each number is read only where it was, and the text the test reads stays.
+- **A page's global its one typed reader hands to typed functions** (`currentReport`, which the forecasts' page side
+  hands them) is declared in `src/globals.d.ts` with the type they take, every part optional: its writers, untyped, are
+  unchecked, so the type stays a claim until they are freed.
 
 ## The types the code corrects
 

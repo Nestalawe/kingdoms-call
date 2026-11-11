@@ -4,22 +4,6 @@
       "count": 1
     }
   },
-  "src/db/game-meta.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 5
-    }
-  },
-  "src/db/telemetry.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
-    },
-    "no-empty": {
-      "count": 1
-    }
-  },
   "src/engine/battle/battle-report-lines-and-force-markers.ts": {
     "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
       "count": 1
@@ -355,22 +339,9 @@
       "count": 1
     }
   },
-  "src/rulebook/toc.ts": {
-    "no-var": {
-      "count": 2
-    }
-  },
   "src/ui/gm/auto-turn.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 3
-    }
-  },
-  "src/ui/gm/config.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 1
     }
   },
   "src/ui/gm/game-detail.ts": {
@@ -383,7 +354,7 @@
   },
   "src/ui/gm/game-list.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 4
+      "count": 5
     },
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
       "count": 1
@@ -395,19 +366,25 @@
       "count": 2
     }
   },
-  "src/ui/gm/globals.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "src/ui/gm/hall-of-fame.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 4
+    },
+    "kc/big-tables-and-profiles-are-read-by-named-columns": {
+      "count": 1
+    },
+    "no-empty": {
+      "count": 1
     }
   },
   "src/ui/gm/start.ts": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
+    }
+  },
+  "src/ui/gm/startup.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
     }
   },
   "src/ui/gm/stats-tab.ts": {
@@ -456,30 +433,19 @@
   "src/ui/leaderboard/main.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 5
-    },
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "src/ui/overlord/globals.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
     }
   },
   "src/ui/overlord/main.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 1
     }
   },
   "src/ui/player/dispatches.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 9
+      "count": 11
     },
     "no-empty": {
-      "count": 6
+      "count": 8
     },
     "prefer-const": {
       "count": 1
@@ -496,11 +462,6 @@
       "count": 5
     }
   },
-  "src/ui/player/globals.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
   "src/ui/player/init.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 3
@@ -514,48 +475,32 @@
       "count": 1
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 8
+      "count": 7
     },
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 4
+      "count": 1
     },
     "no-empty": {
       "count": 2
     },
     "prefer-const": {
-      "count": 5
+      "count": 4
     }
   },
   "src/ui/player/layout.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 6
+      "count": 7
     },
     "no-empty": {
       "count": 6
-    }
-  },
-  "src/ui/player/map-symbols.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-empty": {
-      "count": 1
     }
   },
   "src/ui/player/map.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 4
-    },
-    "no-empty": {
-      "count": 3
-    }
-  },
-  "src/ui/player/move-analysis.ts": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 3
     },
     "no-empty": {
-      "count": 1
+      "count": 2
     },
     "no-useless-assignment": {
       "count": 1
@@ -570,6 +515,9 @@
     }
   },
   "src/ui/player/orders-form.ts": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 1
+    },
     "@typescript-eslint/no-unused-vars": {
       "count": 5
     },
@@ -578,9 +526,6 @@
     }
   },
   "src/ui/player/pre-orders.ts": {
-    "@typescript-eslint/no-dynamic-delete": {
-      "count": 1
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 12
     },
@@ -590,22 +535,19 @@
   },
   "src/ui/player/report.ts": {
     "@typescript-eslint/no-dynamic-delete": {
-      "count": 3
+      "count": 1
     },
     "@typescript-eslint/no-unused-vars": {
-      "count": 5
+      "count": 6
     },
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
+      "count": 4
     },
     "no-empty": {
       "count": 3
     },
-    "no-useless-assignment": {
-      "count": 1
-    },
     "prefer-const": {
-      "count": 3
+      "count": 4
     }
   },
   "src/ui/player/sign-in.ts": {
@@ -614,11 +556,6 @@
     },
     "no-empty": {
       "count": 3
-    }
-  },
-  "src/ui/player/startup.ts": {
-    "no-restricted-globals": {
-      "count": 1
     }
   },
   "src/ui/player/titles.ts": {

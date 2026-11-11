@@ -17,6 +17,16 @@ export interface Tour {
 
 export const TOURS: Record<'leaderboard' | 'overlord' | 'gmPortal' | 'playerPortal', Tour>;
 
+/** Runs a tour's mode in jsdom against the site in `site` (a folder); visit(label, document, window) after each screen.
+ *  Gives the page's errors. */
+export function runJsdom(
+  tour: Tour,
+  mode: string,
+  W: unknown,
+  visit: (label: string, document: Document, window: Window) => unknown,
+  opts?: { site?: string },
+): Promise<string[]>;
+
 /** Runs a tour's mode in Chromium; visit(label, page) after each screen. Gives the page's errors. */
 export function runChromium(
   browser: Browser,

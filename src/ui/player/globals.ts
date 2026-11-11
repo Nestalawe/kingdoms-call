@@ -1,7 +1,7 @@
 import { sb } from './startup.ts';
 import { setConcede, setDiscoveryChoice, updateEquipTarget, updateRumourTarget } from './items-and-heroes.ts';
 import { jumpToReportSection, show } from './init.ts';
-import { mapZoom, setDeskView, setMobileView } from './layout.ts';
+import { setMobileView, locateOnMap } from './layout.ts';
 import {
   acceptGmOffer,
   changeDisplayName,
@@ -12,43 +12,27 @@ import {
   doSignIn,
   doSignOut,
   doSignUp,
-  loadAllGames,
   openGameFresh,
   setAuthTab,
   submitChangePassword,
   submitDisplayName,
 } from './sign-in.ts';
+import { loadMyGames, loadOpenGames, pollForUpdates, toggleArchivedGamesCard, loadAllGames } from './game-lists.ts';
+import { adjustSkill, doJoinGame, hideSkillTip, joinGame, showJoinGame, showSkillTip } from './join-and-chronicle.ts';
 import {
-  loadMyGames,
-  loadOpenGames,
-  pollForUpdates,
-  refreshOpenReport,
-  toggleArchivedGamesCard,
-} from './game-lists.ts';
-import {
-  adjustSkill,
-  doJoinGame,
-  hideSkillTip,
-  joinGame,
-  loadPastReport,
-  returnToCurrentReport,
-  showJoinGame,
-  showSkillTip,
-} from './join-and-chronicle.ts';
-import {
-  _renderDiplomacyInto,
   collapseAllChronicle,
   collapseAllSections,
   openReport,
-  renderDiplomacy,
   renderReportView,
   setDiploChoice,
   toggleBattleFold,
   toggleSection,
+  loadPastReport,
+  refreshOpenReport,
+  returnToCurrentReport,
 } from './report.ts';
 import { renderReckoningOrders, renderTitles, setReckoningCall } from './titles.ts';
-import { rebuildTargetWrap } from './order-chances.ts';
-import { groupHeroesByLocation, moveHeroBlock, refreshAllMoveModeNotes } from './move-analysis.ts';
+import { refreshAllMoveModeNotes } from './move-analysis.ts';
 import { poSeaAnalysis } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   addEncounterTactic,
@@ -62,9 +46,10 @@ import {
   onSpellChange,
   openPreSchoolPicker,
   removeEncounterTactic,
+  allocateHeirSkill,
+  reviseOrders,
 } from './orders-form.ts';
 import {
-  allocateHeirSkill,
   onActionChange,
   onMoveEdited,
   resubmitOrders,
@@ -75,20 +60,28 @@ import {
   syncHiredHeroCard,
   syncResurrectCard,
   updateBloodOffering,
+  rebuildTargetWrap,
 } from './pre-orders.ts';
 import {
   cancelSubmit,
   doSaveOrders,
   doSubmitOrders,
-  reviseOrders,
   updateAlignmentDesc,
   updateRaceDesc,
   updateTemperDesc,
 } from './briefing-and-submit.ts';
 import { PRIMAL_ARMY_SPEEDS, druidNeedP } from './skills-and-projections.ts';
 import { buildTargetField, leaveToggleAll, updateLeaveTarget, updateRecruitTarget } from './order-targets.ts';
-import { popupKnownChars, terrorNoteP } from './map-symbols.ts';
-import { _closeMapTip, highlightMapProv, locateOnMap, showFullscreenMap, toggleMapIcon } from './map.ts';
+import { popupKnownChars, terrorNoteP, _renderDiplomacyInto, renderDiplomacy } from './map-symbols.ts';
+import {
+  _closeMapTip,
+  highlightMapProv,
+  showFullscreenMap,
+  toggleMapIcon,
+  groupHeroesByLocation,
+  mapZoom,
+  moveHeroBlock,
+} from './map.ts';
 import {
   createMsgGroup,
   initMessaging,
@@ -105,6 +98,7 @@ import {
   setMsgChannel,
   toggleMsgGroupPicker,
   updateMsgComposer,
+  setDeskView,
 } from './dispatches.ts';
 import { getDruidLevel, unitTypeOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { computeOrderLedgerP } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
@@ -124,7 +118,7 @@ Object.assign(window, {
   acceptGmOffer, // ui/player/sign-in.ts
   addEncounterTactic, // ui/player/orders-form.ts
   adjustSkill, // ui/player/join-and-chronicle.ts
-  allocateHeirSkill, // ui/player/pre-orders.ts
+  allocateHeirSkill, // ui/player/orders-form.ts
   cancelSubmit, // ui/player/briefing-and-submit.ts
   changeDisplayName, // ui/player/sign-in.ts
   changePassword, // ui/player/sign-in.ts
@@ -146,36 +140,36 @@ Object.assign(window, {
   epDragStart, // ui/player/orders-form.ts
   epDropTactic, // ui/player/orders-form.ts
   epMoveTactic, // ui/player/orders-form.ts
-  groupHeroesByLocation, // ui/player/move-analysis.ts
+  groupHeroesByLocation, // ui/player/map.ts
   hideSkillTip, // ui/player/join-and-chronicle.ts
   highlightMapProv, // ui/player/map.ts
   joinGame, // ui/player/join-and-chronicle.ts
   jumpToReportSection, // ui/player/init.ts
   leaveToggleAll, // ui/player/order-targets.ts
-  loadAllGames, // ui/player/sign-in.ts
+  loadAllGames, // ui/player/game-lists.ts
   loadOlderMessages, // ui/player/dispatches.ts
-  locateOnMap, // ui/player/map.ts
-  mapZoom, // ui/player/layout.ts
-  moveHeroBlock, // ui/player/move-analysis.ts
+  locateOnMap, // ui/player/layout.ts
+  mapZoom, // ui/player/map.ts
+  moveHeroBlock, // ui/player/map.ts
   onActionChange, // ui/player/pre-orders.ts
   onMoveEdited, // ui/player/pre-orders.ts
   onMsgInput, // ui/player/dispatches.ts
   onSpellChange, // ui/player/orders-form.ts
   openGameFresh, // ui/player/sign-in.ts
   openPreSchoolPicker, // ui/player/orders-form.ts
-  rebuildTargetWrap, // ui/player/order-chances.ts
+  rebuildTargetWrap, // ui/player/pre-orders.ts
   refreshAllMoveModeNotes, // ui/player/move-analysis.ts
   refreshMessages, // ui/player/dispatches.ts
-  refreshOpenReport, // ui/player/game-lists.ts
+  refreshOpenReport, // ui/player/report.ts
   removeEncounterTactic, // ui/player/orders-form.ts
   reportMessage, // ui/player/dispatches.ts
   resubmitOrders, // ui/player/pre-orders.ts
-  returnToCurrentReport, // ui/player/join-and-chronicle.ts
-  reviseOrders, // ui/player/briefing-and-submit.ts
+  returnToCurrentReport, // ui/player/report.ts
+  reviseOrders, // ui/player/orders-form.ts
   sendMessage, // ui/player/dispatches.ts
   setAuthTab, // ui/player/sign-in.ts
   setConcede, // ui/player/items-and-heroes.ts
-  setDeskView, // ui/player/layout.ts
+  setDeskView, // ui/player/dispatches.ts
   setDiploChoice, // ui/player/report.ts
   setDiscoveryChoice, // ui/player/items-and-heroes.ts
   setHeirName, // ui/player/pre-orders.ts
@@ -208,7 +202,7 @@ Object.assign(window, {
 });
 // The names its tests reach.
 Object.assign(window, {
-  _renderDiplomacyInto, // ui/player/report.ts
+  _renderDiplomacyInto, // ui/player/map-symbols.ts
   buildOrdersForm, // ui/player/orders-form.ts
   buildTargetField, // ui/player/order-targets.ts
   computeOrderLedgerP, // ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts
@@ -219,7 +213,7 @@ Object.assign(window, {
   loadMyGames, // ui/player/game-lists.ts
   loadMyReports, // ui/player/dispatches.ts
   loadOpenGames, // ui/player/game-lists.ts
-  loadPastReport, // ui/player/join-and-chronicle.ts
+  loadPastReport, // ui/player/report.ts
   msgChannelKeyOf, // ui/player/dispatches.ts
   msgContacts, // ui/player/dispatches.ts
   openReport, // ui/player/report.ts
@@ -227,7 +221,7 @@ Object.assign(window, {
   popupKnownChars, // ui/player/map-symbols.ts
   poSeaAnalysis, // ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts
   PRIMAL_ARMY_SPEEDS, // ui/player/skills-and-projections.ts
-  renderDiplomacy, // ui/player/report.ts
+  renderDiplomacy, // ui/player/map-symbols.ts
   renderMessageThread, // ui/player/dispatches.ts
   renderReckoningOrders, // ui/player/titles.ts
   renderReportView, // ui/player/report.ts

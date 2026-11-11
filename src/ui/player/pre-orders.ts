@@ -6,19 +6,16 @@ import {
   theNameTheFormWritesOfTheAlignmentOrder,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
-import { SEASONS, _pendingDiscChoices } from './items-and-heroes.ts';
-import { refreshLaterCastSpells } from './order-chances.ts';
+import { SEASONS, _pendingDiscChoices, renderPreSchool } from './items-and-heroes.ts';
+import { SPELL_TO_SCHOOL } from './order-chances.ts';
 import {
   DUEL_STANCES,
   ENCOUNTER_TACTICS,
   HEIR_TEMPERS_LIST,
-  heirAddedTo,
-  heirPointsRemaining,
-  heirTotalAdded,
   refreshAllMoveModeNotes,
   refreshMoveModeNote,
+  refreshEncounterPlan,
 } from './move-analysis.ts';
-import { buildOrdersForm, refreshEncounterPlan, renderPreSchool } from './orders-form.ts';
 import { doSaveOrders, doSubmitOrders, restoreSubmitWrap } from './briefing-and-submit.ts';
 import { buildTargetField, refreshExploreNotes, theBloodOfferingsHint } from './order-targets.ts';
 import { leadsArmiesP, provLinkHtml } from './map-symbols.ts';
@@ -1026,37 +1023,6 @@ export function setHeirTemper(charId, value) {
   doSaveOrders(); // temper doesn't change order options, so no rebuild needed
 }
 
-// Spend or refund a succession skill point. delta is +1 or −1. Caps mirror the join screen: a
-// 4-point budget, at most +2 into any single skill, never reducing a skill below its crowned base.
-export async function allocateHeirSkill(charId, skill, delta) {
-  if (!currentReport) return;
-  const c = currentReport.characters.find((x) => x.id === charId);
-  if (!c || !c._isHeir) return;
-  c.skills = c.skills || {};
-  const cur = c.skills[skill] || 0;
-  const added = heirAddedTo(c, skill);
-  if ((delta || 0) > 0) {
-    if (heirTotalAdded(c) >= 4) return; // no points left to spend
-    if (added >= 2) return; // +2-per-skill cap
-    c.skills[skill] = cur + 1;
-  } else {
-    if (added <= 0) return; // can't dip below the crowned base
-    c.skills[skill] = cur - 1;
-    if (c.skills[skill] === 0) delete c.skills[skill];
-  }
-  c._pendingSkillAllocation = heirPointsRemaining(c); // keep the banner/payload count in sync
-  await doSaveOrders(); // persist first (also refreshes currentGamePlayer.orders)
-  // Rebuild ONLY the orders form from the freshly-saved draft. This redraws the pips + points AND
-  // re-reads c.skills for every character's spell controls, so a magic school just purchased offers
-  // its spells immediately — all without a full report re-fetch (which would blank the map/titles).
-  buildOrdersForm(
-    currentReport.characters,
-    false,
-    currentGamePlayer?.orders,
-    currentReport?._liveTurn || currentReport?.turn || 1,
-  );
-}
-
 export async function resubmitOrders() {
   // Re-enable all order form inputs so the player can update before resubmitting
   const gp = currentGamePlayer;
@@ -1069,4 +1035,62 @@ export async function resubmitOrders() {
   document.querySelectorAll('#orders-form select, #orders-form input, #orders-form button').forEach((el) => {
     if (!el.id?.includes('po-leave-all')) el.disabled = false;
   });
+}
+
+// Rebuild one order's target field in place — used when a choice within the field changes the odds
+// quoted beneath it (picking a different skill to practise). Mirrors what onSpellChange does.
+export function rebuildTargetWrap(charId, ph) {
+  const wrap = document.getElementById(`po-target-wrap-${charId}-${ph}`);
+  const c = ((currentReport && currentReport.characters) || []).find((x) => String(x.id) === String(charId));
+  if (!wrap || !c) return;
+  const saved = {
+    action: document.getElementById(`po-action-${charId}-${ph}`)?.value || '',
+    target: getOrderTarget(charId, ph),
+    extra: getOrderExtra(charId, ph),
+  };
+  try {
+    wrap.innerHTML = buildTargetField(c, ph, saved);
+  } catch (e) {
+    console.warn('target rebuild failed', e);
+  }
+  if (saved.action === 'Practice Skill') refreshLaterCastSpells(charId, ph); // a re-aimed practice moves later casts' limits
+}
+
+// After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every
+// LATER Cast Spell order's dropdown is rebuilt so its projected level and casting limit stay true.
+export function refreshLaterCastSpells(charId, fromPh) {
+  const c = ((currentReport && currentReport.characters) || []).find((x) => String(x.id) === String(charId));
+  if (!c) return;
+  for (let later = fromPh + 1; later <= 4; later++) {
+    if ((document.getElementById(`po-action-${charId}-${later}`)?.value || '') !== 'Cast Spell') continue;
+    const wrap = document.getElementById(`po-target-wrap-${charId}-${later}`);
+    if (!wrap) continue;
+    const before = getOrderTarget(charId, later);
+    // only a spell the table knows goes back into the rebuilt markup; the spell's own target is put
+    // back afterwards as the field's value, never as markup
+    const known = Object.keys(SPELL_TO_SCHOOL),
+      at = known.indexOf(before);
+    const spell = at >= 0 ? known[at] : '';
+    const savedExtra = getOrderExtra(charId, later);
+    try {
+      wrap.innerHTML = buildTargetField(c, later, { action: 'Cast Spell', target: spell, extra: '' });
+    } catch (e) {
+      console.warn('cast refresh failed', e);
+    }
+    const ex = document.getElementById(`po-extra-${charId}-${later}`);
+    if (
+      ex &&
+      savedExtra &&
+      getOrderTarget(charId, later) === spell &&
+      (ex.tagName !== 'SELECT' || [...ex.options].some((o) => o.value === savedExtra))
+    )
+      ex.value = savedExtra;
+    if (getOrderTarget(charId, later) !== before) {
+      const l = later;
+      setTimeout(() => {
+        syncResurrectCard(charId, l);
+        syncCharmCard(charId, l);
+      }, 0);
+    } // the spell itself changed
+  }
 }

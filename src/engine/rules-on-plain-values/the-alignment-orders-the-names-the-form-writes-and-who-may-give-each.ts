@@ -20,7 +20,8 @@ type TheSlugOfAnAlignmentOrder = keyof typeof THE_ALIGNMENT_ORDERS;
  *  alone may. */
 export function aRealmOfThisCreedMayGiveTheAlignmentOrder(
   order: Pick<AnAlignmentOrder, 'creed'>,
-  creed: string | undefined,
+  // (null where the order form's report gives the realm's creed as none: compared only)
+  creed: string | null | undefined,
 ): boolean {
   return creed === order.creed;
 }

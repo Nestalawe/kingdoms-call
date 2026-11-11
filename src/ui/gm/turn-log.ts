@@ -4,7 +4,7 @@ import { KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-dat
 import { sb } from './config.ts';
 import { show } from './sign-in.ts';
 import { loadGames } from './game-list.ts';
-import { parseGameState } from '../../db/game-meta.ts';
+import { parseGameState } from './startup.ts';
 import { THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE } from '../../views/the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
 
 export async function loadTurnLog(gameId, turn) {

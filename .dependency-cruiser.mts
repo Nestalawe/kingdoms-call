@@ -145,7 +145,7 @@ const config: IConfiguration = {
     {
       name: 'only-src-db-imports-supabase-js',
       comment:
-        'The database client is reached through src/db/ only (none imports it until plan P1-17; the pages read the copy served with the site).',
+        "The database client is reached through src/db/ only (plan P1-17): it imports the package's types alone, and makes each page's client from the copy served with the site.",
       severity: 'error',
       from: { pathNot: '^src/db/' },
       to: { path: '@supabase/supabase-js' },

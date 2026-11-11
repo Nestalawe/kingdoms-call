@@ -1,5 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcDbGuard } from '../../db/kc-db-guard.ts';
+import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // KINGDOMS CALL — THE OVERLORD PAGE (plan step P0-32f, ruling R-097)
@@ -14,9 +15,11 @@ import { kcDbGuard } from '../../db/kc-db-guard.ts';
 // Its sign-in is kept apart from the portals' (storageKey), so signing in here never switches the account a GM tab in
 // the same browser is running turns with.
 if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load: reload the page.');
-export const sb = supabase.createClient(KC_CONFIG.supabaseUrl, KC_CONFIG.supabaseKey, {
+const thePagesDatabase = makeThePagesDatabase(KC_CONFIG.supabaseUrl, KC_CONFIG.supabaseKey, {
   auth: { storageKey: 'kc-overlord-auth' },
 });
+export const sb = thePagesDatabase.client;
+export const thePagesDb = thePagesDatabase.db;
 // The oldest database this page works with (P0-34): P0-32h's, which added suspending and deleting accounts (and
 // suspended_until) on top of P0-32e's reassign_game and the Overlord's rights on every game. The page can't work without it.
 export const KC_DB_MIN = '20261015051826';
@@ -63,7 +66,7 @@ export async function init() {
   $('spinner').style.display = 'none';
   const {
     data: { session },
-  } = await sb.auth.getSession();
+  } = await thePagesDb.signingIn.theSessionKeptInThisBrowser();
   if (session && session.user) {
     ME = session.user;
     onSignedIn();
@@ -77,7 +80,7 @@ export async function doSignIn() {
     return;
   }
   fill('auth-msg', el('div', { class: 'msg-info' }, 'Signing in…'));
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  const { data, error } = await thePagesDb.signingIn.signInWithEmailAndPassword(email, password);
   if (error) {
     fill(
       'auth-msg',
@@ -90,11 +93,12 @@ export async function doSignIn() {
     return;
   }
   fill('auth-msg');
-  ME = (data && data.user) || ((await sb.auth.getSession()).data.session || {}).user || null;
+  ME =
+    (data && data.user) || ((await thePagesDb.signingIn.theSessionKeptInThisBrowser()).data.session || {}).user || null;
   if (ME) onSignedIn();
 }
 export async function doSignOut() {
-  await sb.auth.signOut();
+  await thePagesDb.signingIn.signOut();
   ME = null;
   ACCOUNTS = [];
   GAMES = [];
@@ -105,7 +109,7 @@ export async function doSignOut() {
   section('sec-auth');
 }
 export async function onSignedIn() {
-  const { data, error } = await sb.rpc('is_site_admin');
+  const { data, error } = await thePagesDb.theRoles.isTheSignedInAccountTheOverlord();
   if (error || data !== true) {
     const m = $('denied-msg');
     m.className = error ? 'msg-error' : 'msg-info';
@@ -131,7 +135,7 @@ export async function loadAll() {
   await loadReports();
 }
 export async function loadAccounts() {
-  const { data, error } = await sb.rpc('overlord_accounts');
+  const { data, error } = await thePagesDb.theOverlordsAccounts.everyAccountAsTheOverlordSeesIt();
   ACCOUNTS = error ? null : data || [];
   ACCOUNTS_ERROR = error ? error.message : '';
 }
@@ -139,11 +143,7 @@ export async function loadAccounts() {
 export async function loadGames() {
   const rows = [];
   for (let from = 0; ; from += 200) {
-    const { data, error } = await sb
-      .from('games')
-      .select('id,name,gm_user_id,status,turn,max_turns,created_at,meta')
-      .order('created_at', { ascending: false })
-      .range(from, from + 199);
+    const { data, error } = await thePagesDb.theOverlordsGames.everyGameNewestFirstFromRowToRow(from, from + 199);
     if (error) {
       GAMES = null;
       GAMES_ERROR = error.message;
@@ -164,10 +164,7 @@ export async function loadReports() {
   const ids = [...new Set(REPORTS.map((r) => r.game_id))];
   REALMS = {};
   if (ids.length) {
-    const { data: slots } = await sb
-      .from('game_players')
-      .select('game_id,player_index,display_name')
-      .in('game_id', ids);
+    const { data: slots } = await thePagesDb.theOverlordsGames.theRealmsNamesOfTheseGames(ids);
     (slots || []).forEach((s) => {
       (REALMS[s.game_id] = REALMS[s.game_id] || {})[s.player_index] = s.display_name;
     });
@@ -421,15 +418,15 @@ export async function suspend(a, how) {
   )
     return;
   await act(
-    sb.rpc('account_suspend', {
-      p_user: a.user_id,
-      p_until: ms == null ? null : new Date(Date.now() + ms).toISOString(),
-    }),
+    thePagesDb.theOverlordsAccounts.suspendThisAccountUntil(
+      a.user_id,
+      ms == null ? null : new Date(Date.now() + ms).toISOString(),
+    ),
     `${label(a)} is suspended ${words}.`,
   );
 }
 export async function unsuspend(a) {
-  await act(sb.rpc('account_unsuspend', { p_user: a.user_id }), `${label(a)} can sign in again.`);
+  await act(thePagesDb.theOverlordsAccounts.liftThisAccountsSuspension(a.user_id), `${label(a)} can sign in again.`);
 }
 // Deleting: says what goes and what stays, and needs the account's email (or name) typed in. The database refuses while
 // the account runs or plays in an unfinished game, and says which.
@@ -499,21 +496,27 @@ export function deletePanel(a) {
 }
 export async function deleteAccount(a) {
   DELETING = null;
-  await act(sb.rpc('account_delete', { p_user: a.user_id }), `${label(a)}'s account is deleted.`);
+  await act(thePagesDb.theOverlordsAccounts.deleteThisAccount(a.user_id), `${label(a)}'s account is deleted.`);
 }
 export async function offerGm(a) {
   await act(
-    sb.rpc('gm_offer', { p_user: a.user_id }),
+    thePagesDb.theOverlordsAccounts.offerThisAccountGameMaster(a.user_id),
     `Offered Game Master to ${a.name || a.email}. They'll see it at the top of their player portal.`,
   );
 }
 export async function withdrawOffer(a) {
-  await act(sb.rpc('gm_withdraw_offer', { p_user: a.user_id }), `Withdrew the offer to ${a.name || a.email}.`);
+  await act(
+    thePagesDb.theOverlordsAccounts.withdrawTheGameMasterOfferToThisAccount(a.user_id),
+    `Withdrew the offer to ${a.name || a.email}.`,
+  );
 }
 export async function revokeGm(a) {
   if (!confirm(`Revoke Game Master from ${a.name || a.email}? They can still play.`)) return;
   REVOKING = null;
-  await act(sb.rpc('gm_revoke', { p_user: a.user_id }), `${a.name || a.email} is no longer a Game Master.`);
+  await act(
+    thePagesDb.theOverlordsAccounts.revokeThisAccountsGameMaster(a.user_id),
+    `${a.name || a.email} is no longer a Game Master.`,
+  );
 }
 
 // ── GAMES ─────────────────────────────────────────────────────────────────────────────────────
@@ -547,7 +550,10 @@ export async function reassign(g, to) {
     )
   )
     return;
-  await act(sb.rpc('reassign_game', { p_game: g.id, p_new_gm: to }), `${g.name} is now run by ${nameOf(to)}.`);
+  await act(
+    thePagesDb.theOverlordsGames.handThisGameToThisGameMaster(g.id, to),
+    `${g.name} is now run by ${nameOf(to)}.`,
+  );
 }
 export function renderGames() {
   if (GAMES == null) {
@@ -679,4 +685,4 @@ export async function act(call, done) {
   return true;
 }
 
-kcDbGuard(sb, KC_DB_MIN).then(() => init());
+kcDbGuard(thePagesDb, KC_DB_MIN).then(() => init());

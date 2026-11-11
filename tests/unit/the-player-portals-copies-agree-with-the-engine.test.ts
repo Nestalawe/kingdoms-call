@@ -1,5 +1,5 @@
-// Since P1-11e43 this test keeps only the copies that read a page file no test can import, which
-// tests/lib/player-portal-copies.ts loads in a vm (the checks and the values in
+// Since P1-11e43 this test keeps only the copies tests/lib/player-portal-copies.ts loads (since P1-13e9 imported from
+// their page files, those written inline run in a vm by their statements; the checks and the values in
 // tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts): the order form's
 // forecasts, ledger, Practice Skill note and order list are checked, imported with no vm, by
 // tests/unit/the-order-forms-forecasts-agree-with-the-turn.test.ts; the 11 projection cases and the values' reach by
@@ -66,9 +66,7 @@
 // `druIdPenaltyMult`, and the army card's Druid shortfall and mastery lines (read by their statements) against it and
 // `druidMasteryGain`, agree, beside a Crown too (R-120: the battle counts its aura, as the portal does; since P1-11b3
 // both call the engine's Druid rule through `src/shared/`, so these check the level of the hero's Druid each side feeds
-// it); the turn report's own flying carry (read by its statements) agrees
-// with `isAirCarriable` and `getFlyCapability` (P1-11b2: the report calls `getFlyCapability` now, so its statement that
-// gives a column the flyers' pace is checked on every column, and the unit types' half went with the copy); the Explore
+// it); the Explore
 // forecast (`exploreGainFor`) is what `resolveExploreOrder` maps, the Loremaster's too (R-125), in a realm with no
 // discovery that adds to exploring, with The Compass and with Star Charts (since P1-11d14 both ask the folder's
 // `theShareOfAProvinceAnExploreOrderMaps`, so these check what each feeds it); its march-in share
@@ -85,21 +83,23 @@
 // combat spells of three schools in its own order (pinned); the target field (`spellSecondaryHtml`, on a staged report
 // with a hero of each kind in the caster's province and in another) offers a hero in the caster's province alone for
 // exactly the 11 spells of the spells' registry's "a spell's mark must stand in the province", and for Resurrect (its
-// body's province, its own rule: pinned); the form's casting count (`buildTargetField`'s statements, the page's fields
-// stood in) greys a spell out exactly where `resolveCastSpellOrder` blocks it (White Magic 1 to 5, every list of up to
-// three earlier casts of Holy Symbol, Bless Province and Oratory), the Warlock's extra cast too (R-123: both ask the one
-// rule, the form with the title its hero's minorHeld lists, which the report writes on the holder the turn counts), and
+// body's province, its own rule: pinned); the form's casting count (`theSpellsTheCastSpellFieldOffersAHeroInAPhase`,
+// which `buildTargetField` calls, the page's fields stood in) greys a spell out exactly where `resolveCastSpellOrder`
+// blocks it (White Magic 1 to 5, every list of up to three earlier casts of Holy Symbol, Bless Province and Oratory),
+// the Warlock's extra cast too (R-123: both ask the one rule, the form with the title its hero's minorHeld lists, which
+// the report writes on the holder the turn counts), and
 // in a realm with a Grand Cathedral (R-124: both ask the one rule of a spell that costs no slot, the form with the Wonder
 // its realm's report says stands, the report built by the engine from a world with and without it); the army card's strength
-// of a unit (`renderReportView`'s statements) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
+// of a unit (`theArmyCardsFiguresOfAColumn`'s, which `renderReportView` calls) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
 // battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
 // at a hero offers on the staged report. P1-11d1 (plan P1-11d; since P1-11d6 the three call the engine's hex step, so
 // these are projection cases: what the portal makes of it): the portal's three hex tables (`predictedLocation`, the
-// Move field's `buildTargetField` statements, `lastMoveDirOf`, each run as the page runs it on the orders staged in
-// its fields) step where `neighborInDir` and `getNeighborsP` do, from every province of a staged map; on a staged
-// world with no guards (`marchingWorld`), where `predictedLocation` says a hero will stand is
-// where `processOrder` leaves him for a compass step, a province next door, a Forced March next door or by direction, a
+// Move field's directions (`theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase`, which `buildTargetField` calls),
+// `lastMoveDirOf`, each run as the page runs it on the orders staged in its fields) step where `neighborInDir` and
+// `getNeighborsP` do, from every province of a staged map; on a staged world with no guards (`marchingWorld`), where
+// `predictedLocation` says a hero will stand is where `processOrder` leaves him for a compass step, a province next
+// door, a Forced March next door or by direction, a
 // Move by a province's bare number (R-128) and his own province, and since P1-11e10 for a march the turn refuses (ships
 // over land, too little lift for the sea, a neutral realm's border, the war declared this turn: then a Search Lair after
 // it names where he stands) and those it lets through, and since P1-11e11 for a march past his pace (the report's pools,

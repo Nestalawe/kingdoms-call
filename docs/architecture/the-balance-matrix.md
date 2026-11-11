@@ -157,7 +157,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
 ## What the games don't reach, and the proof tools
 
 The matrix sees only the code its games run. A change to a line no game reaches changes no hash, so the run says "no
-change" without having looked. Four local tools in `tools/proof/` (its
+change" without having looked. Local tools in `tools/proof/` (its
 [README](../../tools/proof/README.md); none runs in CI) cover that gap:
 
 - `npm run proof:coverage`: the 120 games (both sets, as every realm's report plays them) under Node's V8 coverage,
@@ -170,6 +170,8 @@ change" without having looked. Four local tools in `tools/proof/` (its
 - `npm run proof:gm-logs -- --base <ref>` and `npm run proof:two-engines -- --cases <module> --base <ref>`: the GM log
   of every game, byte for byte, base against branch; and two engines, each in its own process, on the staged cases a
   row brings, for the lines no game reaches.
+- `npm run proof:tours -- --base <ref>`: for a page's code, the lines of `src/` a branch changed that no screen tour
+  reaches (nor the matrix's page half, when the GM page's bundle changed), or reaches in part.
 
 The coverage is measured on the vm's half only. The page's half plays the same games and saves the same states, but it
 also runs the portal's shell, so a line only the page reaches reads "not reached".

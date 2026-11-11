@@ -81,6 +81,10 @@ interface Cruise {
   stale: number;
 }
 
+// A package is found through the copy's link to this repository's node_modules, which dependency-cruiser names by its
+// real path (../../…/node_modules/…): named here as the copy's own node_modules/… (supabase-js, installed since P1-17b).
+const packageInTheCopy = (to: string) => to.replace(/^(?:\.\.\/)+(?:[^/]+\/)*?node_modules\//, 'node_modules/');
+
 function cruise(dir: string): Cruise {
   const r = spawnSync(DEPCRUISE, ['src', '--ignore-known', '--output-type', 'json'], {
     cwd: dir,
@@ -97,7 +101,7 @@ function cruise(dir: string): Cruise {
   return {
     found: summary.violations
       .filter((v) => v.rule.severity !== 'ignore')
-      .map((v) => `${v.rule.name}: ${v.from} -> ${v.to}`)
+      .map((v) => `${v.rule.name}: ${v.from} -> ${packageInTheCopy(v.to)}`)
       .sort(),
     known: summary.ignore,
     stale: summary.baselineStale,
@@ -262,10 +266,11 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
       code: "import { kcRngStream } from '../../engine/rng.ts';\nexport const planted = kcRngStream;\n",
     },
     {
-      // supabase-js isn't installed (the pages read the copy served with the site), so this one breaks two rules
+      // supabase-js is installed (P1-17b): the import resolves to the package's Node build
       file: 'src/ui/gm/planted-reads-supabase-js.ts',
       code: "import { createClient } from '@supabase/supabase-js';\nexport const planted = createClient;\n",
-      refused: 'only-src-db-imports-supabase-js: src/ui/gm/planted-reads-supabase-js.ts -> @supabase/supabase-js',
+      refused:
+        'only-src-db-imports-supabase-js: src/ui/gm/planted-reads-supabase-js.ts -> node_modules/@supabase/supabase-js/dist/index.cjs',
     },
     {
       file: 'src/ui/gm/planted-reads-a-missing-file.ts',
@@ -284,7 +289,6 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
         plant(dir, file, was + code);
       }
       const refused = PLANTED.flatMap((p) => (p.refused === undefined ? [] : [p.refused]));
-      refused.push('every-import-resolves: src/ui/gm/planted-reads-supabase-js.ts -> @supabase/supabase-js');
       const now = cruise(dir);
       expect(now.found).toEqual(refused.sort());
       expect(now.stale).toBe(0);
@@ -305,8 +309,8 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
     timeLimitForTheWork({ toolRuns: 3, everyFileReads: 1 }),
     () => {
       const dir = copyOfTheRepository();
-      const file = 'src/db/telemetry.ts';
-      const line = "import { TITLE_DEFS } from '../content/kingdoms-call-data.ts';\n";
+      const file = 'src/views/prose/the-words-of-the-explore-and-search-orders-lines.ts';
+      const line = "import { itemLoreLines } from '../../engine/items/tiers-and-hoards.ts';\n";
       const text = fs.readFileSync(path.join(dir, file), 'utf8');
       expect(text).toContain(line);
       plant(dir, file, text.replace(line, ''));

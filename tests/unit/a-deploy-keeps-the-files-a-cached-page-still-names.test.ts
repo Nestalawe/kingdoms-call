@@ -20,7 +20,7 @@
 // one's pages name is in the second, byte for byte (16 of 16), and with the keep left out 3 are missing; after three,
 // both older deploys' pages find all theirs; `published-files.json` lists every file, live ones `null`, kept ones with
 // when they stopped being live; a file that stopped being live is kept 24 hours, then dropped (the clock passed in);
-// the first deploy from today's unhashed names, read from a local server standing in for the live site, keeps 13 and
+// the first deploy from today's unhashed names, read from a local server standing in for the live site, keeps 14 and
 // leaves none of the 16 missing (and the same from a folder); what a page and a stylesheet name (not another site, an
 // anchor or a page; `url()`s relative to the stylesheet; a planted font kept); a file the new build makes is never
 // overwritten; it stops, writing nothing, when the previous site is missing or has no page, lacks a file it must hand
@@ -301,17 +301,17 @@ describe('what a page names', () => {
 });
 
 describe('the first deploy, from the unhashed names of today', () => {
-  test('read from the live site (a local server): 13 files kept, none of the 16 its pages name missing', async () => {
+  test('read from the live site (a local server): 14 files kept, none of the 16 its pages name missing', async () => {
     const live = withoutHashes(b1);
     const server = await serving(live);
     try {
       const d1 = fresh('first');
       fs.cpSync(b1, d1, { recursive: true });
       const r = await main([d1, '--live', server.url, '--now', T1.toISOString()]);
-      expect(r.kept).toHaveLength(13);
+      expect(r.kept).toHaveLength(14);
       expect(r.named).toHaveLength(16);
       expect(missingOrDifferent(live, d1)).toEqual([]);
-      expect(missingOrDifferent(live, b1)).toHaveLength(13);
+      expect(missingOrDifferent(live, b1)).toHaveLength(14);
       // The same from a folder (an artifact of the last unhashed deploy).
       const fromFolder = deploy(b1, live, T1);
       expect(fromFolder.result.kept).toEqual(r.kept);

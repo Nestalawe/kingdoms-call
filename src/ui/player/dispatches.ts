@@ -1,10 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { sb } from './startup.ts';
-import { applyDeskViews } from './layout.ts';
-import { fetchGameSlots } from './sign-in.ts';
-import { _activeSectionId } from './game-lists.ts';
 import { _tintForDarkTooltip } from './map-symbols.ts';
+import { renderPlayerMap } from './map.ts';
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
 // DISPATCHES — realm-to-realm messaging (2026-09-27, Toby)
@@ -823,3 +821,104 @@ document.addEventListener('visibilitychange', () => {
     } catch (e) {}
   } else refreshMsgBadgeSoon(); // the unread count on the Dispatches tab, too
 });
+
+export function _activeSectionId() {
+  const s = document.querySelector('section.section-active');
+  return s ? s.id : null;
+}
+
+// ── OTHER REALMS' SLOTS (P0-20) ────
+// The portal sees other realms only through get_game_slots: each slot's game_id, player_index, is_bot,
+// orders_submitted, and alignment while the game is in setup. It never reads another realm's game_players row
+// (the database answers those only for their own player and the game's GM: Unit B). Games the account may not
+// see are left out.
+export async function fetchGameSlots(gameIds) {
+  const ids = [...new Set((gameIds || []).filter(Boolean))];
+  if (!ids.length) return { data: [], error: null };
+  const { data, error } = await sb.rpc('get_game_slots', { p_games: ids });
+  return { data: Array.isArray(data) ? data : [], error };
+}
+export let _deskRightView = 'report';
+// Whether the Orders view is currently AVAILABLE (true on the live turn; false on past turns and
+// Turn 0). On desktop the orders column's actual visibility is owned by applyDeskViews (the
+// right-panel tab), so the current/past-turn code sets this flag via refreshOrdersVisibility()
+// rather than poking the column's display directly — otherwise it would override the tab and stack
+// Orders on top of Report.
+export let _ordersAvailable = true;
+export function setDeskView(side, view) {
+  if (side === 'left') {
+    if (view === 'messages' && !_msgEnabled) view = 'map';
+    _deskLeftView = view;
+    // one report column: asking for it on the left hands the right panel over to Orders.
+    if (view === 'report' && _deskRightView === 'report') _deskRightView = 'orders';
+  } else {
+    _deskRightView = view;
+    // …and asking for it on the right sends the left panel back to the map.
+    if (view === 'report' && _deskLeftView === 'report') _deskLeftView = 'map';
+  }
+  applyDeskViews();
+  if (side === 'left' && view === 'messages') {
+    try {
+      onMessagesShown();
+    } catch (e) {}
+  } else refreshMsgBadgeSoon();
+}
+export function applyDeskViews() {
+  const map = document.getElementById('rp-map-col'),
+    rep = document.getElementById('rp-report-col'),
+    msg = document.getElementById('rp-msg-col'),
+    ord = document.getElementById('orders-column');
+  const lb = document.getElementById('desk-left-body'),
+    rb = document.getElementById('desk-right-body');
+  if (!map || !rep || !ord || !lb || !rb) return;
+  if (_deskLeftView === 'messages' && !_msgEnabled) _deskLeftView = 'map';
+  // Both panels cannot show the one report column at once — the left tab wins (a stale pair can
+  // only arise from a restored view state, never from setDeskView).
+  if (_deskLeftView === 'report' && _deskRightView === 'report') _deskRightView = 'orders';
+  const repLeft = _deskLeftView === 'report';
+  if (repLeft) {
+    if (rep.parentNode !== lb) lb.appendChild(rep);
+  } else if (rep.parentNode !== rb) rb.appendChild(rep);
+  if (msg && msg.parentNode !== lb) lb.appendChild(msg);
+  const mt = document.getElementById('desk-msg-tab');
+  if (mt) mt.style.display = _msgEnabled ? '' : 'none';
+  // 'flex', not '': clearing the inline value also dropped the column's inline display:flex, so the
+  // map column fell back to a block, the map grew past the panel's foot (cut off, nothing to scroll).
+  map.style.display = _deskLeftView === 'map' ? 'flex' : 'none';
+  if (msg) msg.style.display = _deskLeftView === 'messages' ? 'flex' : 'none';
+  ord.style.display = (repLeft || _deskRightView === 'orders') && _ordersAvailable ? '' : 'none';
+  rep.style.display =
+    repLeft || _deskRightView === 'report' || (_deskRightView === 'orders' && !_ordersAvailable) ? '' : 'none';
+  // Report on the left with no orders to give (a past turn, or Turn 0) leaves the right panel with
+  // nothing to show — say so rather than presenting a blank pane.
+  const none = document.getElementById('desk-right-none');
+  if (none) none.style.display = repLeft && !_ordersAvailable ? '' : 'none';
+  // Reflect active tab state. With the report on the left the right panel is showing Orders.
+  const rightTab = repLeft ? 'orders' : _deskRightView;
+  document
+    .querySelectorAll('#desk-left .desk-tabs button')
+    .forEach((b) => b.classList.toggle('active', b.getAttribute('data-view') === _deskLeftView));
+  document
+    .querySelectorAll('#desk-right .desk-tabs button')
+    .forEach((b) => b.classList.toggle('active', b.getAttribute('data-view') === rightTab));
+  if (_deskLeftView === 'map') {
+    try {
+      renderPlayerMap();
+    } catch (e) {}
+  }
+}
+// Set whether the Orders view is available (live turn vs past/Turn-0) and re-assert the layout. On
+// desktop the right-panel tab governs the orders column (via applyDeskViews); on mobile we still
+// toggle the column's display directly, exactly as before, since the mobile view-switcher owns that
+// panel.
+export function refreshOrdersVisibility(available) {
+  _ordersAvailable = !!available;
+  const lay = document.getElementById('rp-layout');
+  const oc = document.getElementById('orders-column');
+  if (lay && lay.classList.contains('desk')) {
+    if (!_ordersAvailable && _deskRightView === 'orders' && _deskLeftView !== 'report') _deskRightView = 'report'; // can't sit on an unavailable tab (unless the report is already on the left)
+    applyDeskViews();
+  } else if (oc) {
+    oc.style.display = _ordersAvailable ? 'flex' : 'none';
+  }
+}

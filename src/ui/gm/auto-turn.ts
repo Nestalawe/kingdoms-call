@@ -2,7 +2,7 @@
 import { kcHtml } from '../shared/kc-safe.ts';
 import { kcRng } from '../../engine/rng.ts';
 import { sb } from './config.ts';
-import { gameArchived, gamesListCols } from '../../db/game-meta.ts';
+import { gameArchived, gamesListCols } from './startup.ts';
 import { autoTurnReady, fmtDeadline, turnModeOf } from './turn-mode.ts';
 import { runTurn } from './turn-shell.ts';
 import { checkForANewerVersion, thisPagesBuild } from '../shared/a-newer-version-of-this-page.ts';

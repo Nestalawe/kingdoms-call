@@ -269,7 +269,7 @@ describe('the lint rules', () => {
   // neither imports nor declares (a helper lifted out of resolveTurn that still reads its closure, a missing import)
   // is an error, not a ReferenceError the day it first runs. The engine may read no page's or browser's name.
   const ENGINE_FILES = ['src/engine/run-turn.ts', 'src/engine/turn/context.ts', 'src/views/turn-report.ts'];
-  const PAGE_FILES = ['src/ui/gm/turn-shell.ts', 'src/ui/player/map.ts', 'src/db/telemetry.ts'];
+  const PAGE_FILES = ['src/ui/gm/turn-shell.ts', 'src/ui/player/map.ts', 'src/ui/gm/hall-of-fame.ts'];
   test.for([...ENGINE_FILES, ...PAGE_FILES])('%s gets no-undef, as a module', async (file) => {
     expect(await eslint.isPathIgnored(path.join(ROOT, file))).toBe(false);
     const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
@@ -323,6 +323,11 @@ describe('the lint rules', () => {
       expect(found.map((m) => m.severity)).toEqual(isError ? [2] : []);
     },
   );
+  const GENERATED_TYPES_FORMS = [
+    '@typescript-eslint/no-redundant-type-constituents',
+    '@typescript-eslint/consistent-indexed-object-style',
+    '@typescript-eslint/consistent-type-definitions',
+  ];
   test(
     "every file of src/ gets the site's rules, each an error, and the type-aware ones exactly when TypeScript checks it",
     timeLimitForTheWork({ toolRuns: 1 }),
@@ -333,8 +338,13 @@ describe('the lint rules', () => {
         const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
         const rules = config.rules ?? {};
         const checked = typeChecked(file);
-        // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js)
-        const allowedOff = [...(file === 'src/globals.d.ts' ? ['no-var'] : []), ...(checked ? [DISAGREE] : [])];
+        // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js); the generated
+        // database types keep the generator's forms (eslint.config.js: three style rules off there, plan P1-17c)
+        const allowedOff = [
+          ...(file === 'src/globals.d.ts' ? ['no-var'] : []),
+          ...(file === 'src/db/database.types.ts' ? GENERATED_TYPES_FORMS : []),
+          ...(checked ? [DISAGREE] : []),
+        ];
         const off = notAtError({ ...siteExpected, ...(checked ? typedExpected : {}) }, rules);
         if (off.join() !== allowedOff.join()) wrong.push(`${file}: not errors: ${off.join(', ')}`);
         if (level(rules['no-undef']) !== 2) wrong.push(`${file}: no-undef`);
@@ -813,12 +823,21 @@ describe('the test run', () => {
     expect([1, 2, 4, 6, 14, 32].map(count)).toEqual([1, 2, 2, 4, 8, 8]);
   });
 
+  // The db project (the access layer's tests, plan P1-17) alone adds two: its own setup beside the run's (the local
+  // Supabase's address and keys), and one file at a time (a database has one Overlord).
   test('no project changes those settings', () => {
     for (const p of t.projects ?? []) {
       expect(typeof p).toBe('object');
-      const keys = typeof p === 'object' && 'test' in p ? Object.keys(p.test ?? {}) : [];
-      expect(keys.filter((k) => !['name', 'include', 'provide'].includes(k))).toEqual([]);
+      const test = typeof p === 'object' && 'test' in p ? (p.test ?? {}) : {};
+      const keys = Object.keys(test).filter((k) => !['name', 'include', 'provide'].includes(k));
+      const theDbProjects = [['globalSetup', 'fileParallelism'], ['tests/setup/the-local-supabase.ts'], false];
+      expect(test.name === 'db' ? [keys, test.globalSetup, test.fileParallelism] : keys).toEqual(
+        test.name === 'db' ? theDbProjects : [],
+      );
     }
+    expect((t.projects ?? []).filter((p) => typeof p === 'object' && 'test' in p && p.test.name === 'db')).toHaveLength(
+      1,
+    );
   });
 
   // Read here, in a test file, after the setup files ran: what every property test gets.
@@ -1375,15 +1394,17 @@ describe('CI', () => {
       // the save's check at the turn's start parses with the saved state's schema (P1-15d)
       expect(page).toContain('src/schemas/saved-game-state.ts');
       expect(page.filter((f) => !isEnginePath(f))).toEqual([]);
-      // Under src/, the engine paths are exactly the page's sources, the pages' templates and the schemas (one folder,
-      // every file: the page bundles the saved state's, and the orders' is types for its code): no other page's code
-      // plays the matrix.
+      // Under src/, the engine paths are exactly the page's sources, the pages' templates, the schemas and the database
+      // code (one folder each, every file: the page bundles the saved state's schema and the database client, and the
+      // orders' schema and the generated database types are types for its code): no other page's code plays the matrix.
       const src = filesUnder(path.join(ROOT, 'src')).map((f) => 'src/' + f);
       const templates = pageNames().map((p) => 'src/' + p);
       const schemas = src.filter((f) => f.startsWith('src/schemas/'));
       expect(schemas).toContain('src/schemas/orders-a-realm-submits.ts');
+      const databaseCode = src.filter((f) => f.startsWith('src/db/'));
+      expect(databaseCode).toContain('src/db/database.types.ts');
       expect(src.filter(isEnginePath).sort()).toEqual(
-        [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates, ...schemas])].sort(),
+        [...new Set([...page.filter((f) => f.startsWith('src/')), ...templates, ...schemas, ...databaseCode])].sort(),
       );
       const dir = path.join(ROOT, 'tools', 'balance');
       const direct = fs
@@ -1458,7 +1479,17 @@ describe('CI', () => {
 
   test('every job that installs takes node_modules from a cache, and saves it before anything else runs', () => {
     expect(ids.filter((id) => runs(id).includes('npm ci')).sort()).toEqual(
-      ['balance', 'balance-part', 'browser', 'page', 'simulation', 'static', 'static-tests', 'unit-scenario'].sort(),
+      [
+        'balance',
+        'balance-part',
+        'browser',
+        'db',
+        'page',
+        'simulation',
+        'static',
+        'static-tests',
+        'unit-scenario',
+      ].sort(),
     );
     expect(nodeModulesCacheProblems(ci)).toEqual([]);
     // Planted copies: unit-scenario's save moved after its build; npm ci on every run; a key without the lock file.
@@ -1490,6 +1521,18 @@ describe('CI', () => {
 
   test("the db job lints the database's functions and fails on any finding", () => {
     expect(runs('db')).toContain('supabase db lint --local --level warning --fail-on warning');
+  });
+
+  // P1-17: the generated database types compared with a fresh copy (a stale file fails, every step of the pipe
+  // counting), and the access layer's tests, both against the job's local Supabase.
+  test("the db job checks the generated types are fresh and runs the access layer's tests", () => {
+    const db = jobs.get('db') ?? '';
+    const fresh =
+      'supabase gen types typescript --local | npx prettier --stdin-filepath src/db/database.types.ts | ' +
+      'diff -u src/db/database.types.ts -';
+    expect(db).toContain(`        shell: bash\n        run: ${fresh}\n`);
+    expect(runs('db')).toContain('npm run test:db');
+    expect(read('package.json')).toContain('"test:db": "KC_DB=1 vitest run --project db"');
   });
 
   // The deploy (deploy.yml) and staging (staging.yml) since P1-06a: a build job installs (npm ci --ignore-scripts) and
@@ -2124,7 +2167,8 @@ describe('the ratchet', () => {
     const baseline = readBaseline();
     for (const counts of [baseline, counted]) {
       expect(counts).not.toHaveProperty('tsNocheck');
-      expect(counts['tsNocheckEngineSide']).toBeGreaterThan(0);
+      // the engine's side is at 0 since P1-17c typed src/db/kc-db-guard.ts (P1-10b's Done when), and stays there
+      expect(counts['tsNocheckEngineSide']).toBe(0);
       expect(counts['tsNocheckUi']).toBeGreaterThan(0);
     }
     expect([...ENGINE_SIDE_FOLDERS]).toEqual([
@@ -2267,8 +2311,16 @@ describe('the architecture rules', () => {
   });
 
   test("knip starts from every page's entries and leaves out only the quarantine", () => {
-    expect(Object.keys(knipConfig).sort()).toEqual(['entry', 'ignore', 'ignoreExportsUsedInFile', 'project']);
+    expect(Object.keys(knipConfig).sort()).toEqual([
+      'entry',
+      'ignore',
+      'ignoreExportsUsedInFile',
+      'ignoreIssues',
+      'project',
+    ]);
     expect(knipConfig.ignore).toEqual(['tests/quarantine/**']);
+    // the generated database types' helpers no code uses yet: only those two kinds, only in that file (P1-17c)
+    expect(knipConfig.ignoreIssues).toEqual({ 'src/db/database.types.ts': ['exports', 'types'] });
     expect(knipConfig.ignoreExportsUsedInFile).toBe(true);
     const entry: string[] = knipConfig.entry;
     for (const page of ['src/ui/gm/page.ts', 'src/ui/player/page.ts', 'src/rulebook/toc.ts'])

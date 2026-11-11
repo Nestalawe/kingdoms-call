@@ -1,9 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { kcJoinP } from './startup.ts';
-import { applyMapZoom, fitMapSvgHeight, setDeskView, setMobileView } from './layout.ts';
-import { armyLabel, unitEmoji } from './order-chances.ts';
-import { capitalise, formatRace } from './skills-and-projections.ts';
+import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
+import { unitEmoji } from './order-chances.ts';
+import { capitalise, formatRace, armyLabel } from './skills-and-projections.ts';
 import {
   CHIEFTAIN_MARKER_COLOR,
   MAP_RACE_BADGE,
@@ -27,6 +26,8 @@ import {
   terrorNoteP,
   txtGlyph,
 } from './map-symbols.ts';
+import { heroBlocksP, heroGroupP, refreshHeroMoveButtonsP } from './move-analysis.ts';
+import { sb } from './startup.ts';
 
 // ── EVERY PROVINCE NAME IN THE REPORT IS A MAP LINK (2026-09-20, Toby) ── Rather than editing the
 // ~40 places the report prints a province name (Chronicle lines, Realm Events, Your Provinces, Known
@@ -73,79 +74,6 @@ export function _buildProvNameIndex(report) {
     ? new RegExp('(?<![A-Za-z\u00C0-\u024F])(' + names.join('|') + ')(?![A-Za-z\u00C0-\u024F])', 'g')
     : null;
 }
-export function _makeProvLinkEl(id, name) {
-  const sp = document.createElement('span');
-  sp.className = 'prov-link prov-auto';
-  sp.setAttribute('data-prov-link', String(id));
-  sp.title = `Hover to light up ${name} on the map — click or tap to show it`;
-  sp.textContent = name;
-  sp.onmouseenter = () => highlightMapProv(id, true);
-  sp.onmouseleave = () => highlightMapProv(id, false);
-  sp.onclick = (ev) => {
-    ev.stopPropagation();
-    locateOnMap(id);
-  };
-  return sp;
-}
-export let _provLinking = false;
-export function linkProvinceNames(root) {
-  if (!root || _provLinking) return;
-  _buildProvNameIndex(viewingReport || currentReport);
-  if (!_provNameRe) return;
-  _provLinking = true;
-  try {
-    const walker = document.createTreeWalker(root, window.NodeFilter.SHOW_TEXT, {
-      acceptNode(n) {
-        if (!n.nodeValue || n.nodeValue.length < 3) return window.NodeFilter.FILTER_REJECT;
-        for (let el = n.parentNode; el && el !== root; el = el.parentNode) {
-          if (_PROV_LINK_SKIP.has(el.nodeName) || el.namespaceURI === 'http://www.w3.org/2000/svg')
-            return window.NodeFilter.FILTER_REJECT;
-          if (el.classList && (el.classList.contains('prov-link') || el.classList.contains('no-prov-link')))
-            return window.NodeFilter.FILTER_REJECT;
-          if (el.isContentEditable) return window.NodeFilter.FILTER_REJECT;
-        }
-        _provNameRe.lastIndex = 0;
-        return _provNameRe.test(n.nodeValue) ? window.NodeFilter.FILTER_ACCEPT : window.NodeFilter.FILTER_REJECT;
-      },
-    });
-    const hits = [];
-    let n;
-    while ((n = walker.nextNode())) hits.push(n);
-    hits.forEach((t) => {
-      const txt = t.nodeValue;
-      const frag = document.createDocumentFragment();
-      let last = 0,
-        m;
-      _provNameRe.lastIndex = 0;
-      while ((m = _provNameRe.exec(txt))) {
-        if (m.index > last) frag.appendChild(document.createTextNode(txt.slice(last, m.index)));
-        frag.appendChild(_makeProvLinkEl(_provNameMap.get(m[1]), m[1]));
-        last = m.index + m[1].length;
-      }
-      if (last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
-      t.parentNode.replaceChild(frag, t);
-    });
-  } catch (e) {
-    /* a failed pass must never break the report */
-  } finally {
-    _provLinking = false;
-  }
-}
-export let _provLinkObs = null,
-  _provLinkTimer = null;
-export function ensureProvinceLinking() {
-  const col = document.getElementById('rp-report-col');
-  if (!col) return;
-  linkProvinceNames(col);
-  if (_provLinkObs || typeof MutationObserver === 'undefined') return;
-  _provLinkObs = new MutationObserver(() => {
-    if (_provLinking) return;
-    clearTimeout(_provLinkTimer);
-    _provLinkTimer = setTimeout(() => linkProvinceNames(document.getElementById('rp-report-col')), 60);
-  });
-  _provLinkObs.observe(col, { childList: true, subtree: true });
-}
-export let _provHlTimer = null;
 export function highlightMapProv(id, on) {
   document.querySelectorAll('.prov-hl').forEach((n) => n.remove());
   if (!on) return;
@@ -166,29 +94,6 @@ export function highlightMapProv(id, on) {
     hl.setAttribute('filter', 'drop-shadow(0 0 3px #ffe27a)');
     svg.appendChild(hl);
   });
-}
-export function locateOnMap(id) {
-  try {
-    if (window.innerWidth < 821) setMobileView('map');
-    else if (typeof _deskLeftView !== 'undefined' && _deskLeftView !== 'map' && typeof setDeskView === 'function')
-      setDeskView('left', 'map');
-  } catch (e) {}
-  setTimeout(() => {
-    highlightMapProv(id, true);
-    const g = document.querySelector(`#report-map-svg g[data-prov="${id}"]`);
-    // scroll only the map's own container (a zoomed map), never the page or the report column
-    try {
-      const box = document.getElementById('report-map-container');
-      if (g && box) {
-        const r = g.getBoundingClientRect(),
-          b = box.getBoundingClientRect();
-        box.scrollLeft += r.left + r.width / 2 - (b.left + b.width / 2);
-        box.scrollTop += r.top + r.height / 2 - (b.top + b.height / 2);
-      }
-    } catch (e) {}
-    clearTimeout(_provHlTimer);
-    _provHlTimer = setTimeout(() => highlightMapProv(id, false), 4000);
-  }, 60);
 }
 export function renderMapIntoSvg(svgEl, report) {
   const svgNS = 'http://www.w3.org/2000/svg';
@@ -1168,4 +1073,180 @@ export function showFullscreenMap() {
       modal.remove();
     }
   });
+}
+// Map zoom: at 1× the map fits the window; above 1× the SVG is sized in explicit pixels
+// (container content size × zoom) so it genuinely overflows and the container (#report-map-container,
+// overflow:auto) shows horizontal AND vertical scroll bars for panning. Re-applied after every
+// render and on resize so the current zoom always matches the panel.
+export let _mapZoom = 1;
+// Map fix: give an SVG an explicit pixel height matching its viewBox aspect ratio at the given
+// pixel width. Inline <svg> with CSS height:auto is NOT reliably sized from the viewBox on phone
+// browsers (it falls back to the 150px replaced-element default), which shrank the map to a thin
+// strip. Returns the height set (or null if the SVG has no usable viewBox).
+export function fitMapSvgHeight(svgEl, widthPx) {
+  if (!svgEl) return null;
+  const vb = (svgEl.getAttribute('viewBox') || '')
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number);
+  if (vb.length !== 4 || !(vb[2] > 0) || !(vb[3] > 0) || !(widthPx > 0)) {
+    svgEl.style.height = '';
+    return null;
+  }
+  const h = Math.round((widthPx * vb[3]) / vb[2]);
+  svgEl.style.height = h + 'px';
+  return h;
+}
+export const MOBILE_MAP_WIDTH = 700;
+export function applyMapZoom() {
+  const svg = document.getElementById('report-map-svg');
+  const cont = document.getElementById('report-map-container');
+  const wrap = document.getElementById('report-map-zoomwrap');
+  if (!svg) return;
+  // on phones the map is sized purely by the mobile CSS (700px wrapper, native pinch-zoom). Android
+  // fires `resize` whenever the URL bar collapses or the keyboard opens, and this was re-applying
+  // desktop inline sizes to the wrapper/SVG every time — leave the phone layout alone. Map fix: the
+  // SVG gets an explicit pixel height from its viewBox at the 700px phone width (CSS height:auto
+  // was resolving to 150px on phones, leaving the map as a tiny strip).
+  if (window.innerWidth < 821) {
+    if (wrap) {
+      wrap.style.width = '';
+      wrap.style.height = '';
+    }
+    svg.style.width = '';
+    svg.style.maxWidth = '';
+    svg.style.maxHeight = '';
+    // Map fix 2: kill the desktop flex sizing inline as well (flex:1 1 0 + min-height:0 collapsed
+    // the panel to 0px on phones)
+    if (cont) {
+      cont.style.overflow = '';
+      cont.style.flex = 'none';
+      cont.style.minHeight = '60vh';
+      cont.style.height = '60vh';
+    }
+    fitMapSvgHeight(svg, MOBILE_MAP_WIDTH);
+    return;
+  }
+  // the scroll container is a flex child; without min-height/min-width:0 it GREW to fit the zoomed
+  // map instead of scrolling (flex items default to min-size:auto) — which is why the bars never
+  // appeared. The map is now zoomed via an explicitly sized WRAPPER block, so the container's
+  // content is a plain oversized div and overflow:auto scrolls on both axes.
+  if (cont) {
+    cont.style.minHeight = '0';
+    cont.style.minWidth = '0';
+    cont.style.overflow = 'auto';
+    cont.style.flex = '';
+    cont.style.flexGrow = '1';
+    cont.style.flexShrink = '1';
+    cont.style.flexBasis = '0';
+    cont.style.height = '';
+  }
+  const setW = (w, h) => {
+    if (wrap) {
+      wrap.style.width = w;
+      wrap.style.height = h;
+    }
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.maxWidth = 'none';
+    svg.style.maxHeight = 'none';
+  };
+  if (_mapZoom <= 1) {
+    setW('100%', '100%');
+    return;
+  }
+  const pad = 12; // container padding (6px each side)
+  const cw = Math.max(50, ((cont && cont.clientWidth) || 320) - pad);
+  const ch = Math.max(50, ((cont && cont.clientHeight) || 320) - pad);
+  setW(cw * _mapZoom + 'px', ch * _mapZoom + 'px');
+}
+export function mapZoom(delta) {
+  _mapZoom = delta === 0 ? 1 : Math.max(1, Math.min(4, _mapZoom + delta));
+  applyMapZoom();
+}
+export function moveHeroBlock(charId, dir) {
+  const blocks = heroBlocksP();
+  const i = blocks.findIndex((b) => b.getAttribute('data-hero') === String(charId));
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= blocks.length) return;
+  const gA = heroGroupP(blocks[i]),
+    gB = heroGroupP(blocks[j]);
+  if (dir > 0) {
+    let ref = gB[gB.length - 1];
+    gA.forEach((n) => {
+      ref.after(n);
+      ref = n;
+    });
+  } else {
+    const anchor = gB[0];
+    gA.forEach((n) => anchor.parentNode.insertBefore(n, anchor));
+  }
+  _heroOrder = heroBlocksP().map((b) => b.getAttribute('data-hero'));
+  refreshHeroMoveButtonsP();
+  try {
+    blocks[i].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } catch (e) {} // not every environment has it
+  persistHeroOrder();
+}
+// 2026-10-08 (Toby item 5): "Group by location" puts heroes standing in the same province next to
+// each other. Provinces come in the order their first hero already appears (so the king's stays on
+// top), and heroes keep their old order inside each province. Each hero moves with the cards parked
+// under it, and the result is remembered exactly like a ▲▼ reorder.
+export function groupHeroesByLocation() {
+  const blocks = heroBlocksP();
+  if (blocks.length < 2) return;
+  const chars = (currentReport && currentReport.characters) || [];
+  const locOf = (id) => {
+    const c = chars.find((x) => String(x.id) === String(id));
+    return c ? String(c.locationId != null ? c.locationId : c.locationName || '?') : '?';
+  };
+  const firstSeen = new Map();
+  blocks.forEach((b) => {
+    const k = locOf(b.getAttribute('data-hero'));
+    if (!firstSeen.has(k)) firstSeen.set(k, firstSeen.size);
+  });
+  const sorted = blocks
+    .map((b, i) => ({ b, i, k: firstSeen.get(locOf(b.getAttribute('data-hero'))) }))
+    .sort((x, y) => x.k - y.k || x.i - y.i);
+  if (sorted.every((s, i) => s.i === i)) return; // already grouped
+  // The last hero's group runs to the end of the form, so re-appending every group in the new order
+  // leaves the blocks above the heroes (realm, discoveries, heir) where they are.
+  const parent = blocks[0].parentNode;
+  sorted
+    .map((s) => heroGroupP(s.b))
+    .flat()
+    .forEach((n) => parent.appendChild(n));
+  _heroOrder = heroBlocksP().map((b) => b.getAttribute('data-hero'));
+  refreshHeroMoveButtonsP();
+  persistHeroOrder();
+}
+// Persist the arrangement on its own, MERGED into whatever orders payload is already stored, so a
+// reorder never rewrites (or un-submits) the orders themselves. The engine picks `heroOrder` out of
+// the payload and keeps it on the realm from then on.
+export async function persistHeroOrder() {
+  const gp = currentGamePlayer;
+  if (!gp || !gp.id || !_heroOrder.length) return;
+  // Never write while a past-turn report is on screen (same guard doSaveOrders uses).
+  if (document.getElementById('prev-report-banner')?.style.display === 'block') return;
+  let raw = {};
+  try {
+    raw = typeof gp.orders === 'string' ? JSON.parse(gp.orders || '{}') : gp.orders || {};
+  } catch (e) {
+    raw = {};
+  }
+  if (!raw || typeof raw !== 'object') raw = {};
+  // Keep the payload in the new {orders,encounterPlans,forTurn} shape so the stale-draft guard and
+  // the engine's format sniff both still recognise it after a bare reorder on an otherwise empty
+  // form.
+  if (raw.orders === undefined) raw.orders = {};
+  if (raw.encounterPlans === undefined) raw.encounterPlans = {};
+  if (raw.forTurn == null) raw.forTurn = (currentReport && (currentReport._liveTurn || currentReport.turn)) || 1;
+  raw.heroOrder = _heroOrder.slice();
+  const payload = JSON.stringify(raw);
+  const { error } = await sb.from('game_players').update({ orders: payload }).eq('id', gp.id);
+  if (error) {
+    console.warn('persistHeroOrder:', error.message);
+    return;
+  }
+  gp.orders = payload;
 }

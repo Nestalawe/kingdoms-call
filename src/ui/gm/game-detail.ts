@@ -4,7 +4,7 @@ import { sb } from './config.ts';
 import { _kcOverlord, loadReportedDispatches, show } from './sign-in.ts';
 import { invitedNames, loadInvitablePlayers } from './game-list.ts';
 import { loadTurnLog } from './turn-log.ts';
-import { gameArchived, gameArchivedAt } from '../../db/game-meta.ts';
+import { gameArchived, gameArchivedAt } from './startup.ts';
 import {
   fmtLastRun,
   ordersWaitingOn,

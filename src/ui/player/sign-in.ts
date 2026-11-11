@@ -1,8 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { show } from './init.ts';
-import { loadMyGames, loadOpenGames, startUpdatePolling } from './game-lists.ts';
+import { startUpdatePolling, loadAllGames } from './game-lists.ts';
 import { openReport } from './report.ts';
 import { saveMessageReads, stopMessagePolling } from './dispatches.ts';
 
@@ -24,7 +24,7 @@ export async function doSignIn() {
     return;
   }
   msg.innerHTML = '<div class="msg-info">Signing in…</div>';
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pwd });
+  const { data, error } = await thePagesDb.signingIn.signInWithEmailAndPassword(email, pwd);
   if (error) {
     let m = error.message;
     if (m.includes('Email not confirmed'))
@@ -56,7 +56,7 @@ export async function doSignUp() {
     return;
   }
   msg.innerHTML = '<div class="msg-info">Creating account…</div>';
-  const { data, error } = await sb.auth.signUp({ email, password: pwd, options: { data: { display_name: name } } });
+  const { data, error } = await thePagesDb.signingIn.signUpWithEmailPasswordAndName(email, pwd, name);
   if (error) {
     msg.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
     return;
@@ -76,7 +76,7 @@ export async function doSignOut() {
     stopMessagePolling();
     await saveMessageReads();
   } catch (e) {} // flush read marks before the session goes
-  await sb.auth.signOut();
+  await thePagesDb.signingIn.signOut();
   currentUser = null;
   currentProfile = null;
   currentGamePlayer = null;
@@ -128,13 +128,13 @@ export async function submitDisplayName() {
   msg.innerHTML = '<span style="color:#231e16">Saving…</span>';
   try {
     // upsert, not update: an account created before the profiles trigger existed has no row yet
-    const { error } = await sb.from('profiles').upsert({ id: currentUser.id, name }, { onConflict: 'id' });
+    const { error } = await thePagesDb.theAccountsNames.giveThisAccountItsName(currentUser.id, name);
     if (error) {
       msg.innerHTML = kcHtml`<span style="color:#c00">${error.message}</span>`;
       return;
     }
     try {
-      await sb.auth.updateUser({ data: { display_name: name } });
+      await thePagesDb.signingIn.changeTheNameKeptWithTheSignIn(name);
     } catch (e) {} // keep the auth copy in step; not fatal
     currentProfile = Object.assign({}, currentProfile || {}, { id: currentUser.id, name });
     const el = document.getElementById('player-name-display');
@@ -187,7 +187,7 @@ export async function submitChangePassword() {
   }
   msg.innerHTML = '<span style="color:#231e16">Updating…</span>';
   try {
-    const { error } = await sb.auth.updateUser({ password: p1 });
+    const { error } = await thePagesDb.signingIn.changeThePassword(p1);
     if (error) {
       msg.innerHTML = kcHtml`<span style="color:#c00">${error.message}</span>`;
       return;
@@ -201,7 +201,7 @@ export async function submitChangePassword() {
 
 export async function onSignedIn() {
   // Load profile
-  const { data: profile } = await sb.from('profiles').select('id,name').eq('id', currentUser.id).single(); // never email (P0-31)
+  const { data: profile } = await thePagesDb.theAccountsNames.theNameOfThisAccount(currentUser.id); // never email (P0-31)
   currentProfile = profile;
   const displayName = profile?.name || currentUser.user_metadata?.display_name || currentUser.email.split('@')[0];
   document.getElementById('player-name-display').textContent = displayName;
@@ -231,42 +231,6 @@ export function openGameFresh(gamePlayerId) {
   } catch (e) {}
   location.reload();
 }
-
-// ── OTHER REALMS' SLOTS (P0-20) ────
-// The portal sees other realms only through get_game_slots: each slot's game_id, player_index, is_bot,
-// orders_submitted, and alignment while the game is in setup. It never reads another realm's game_players row
-// (the database answers those only for their own player and the game's GM: Unit B). Games the account may not
-// see are left out.
-export async function fetchGameSlots(gameIds) {
-  const ids = [...new Set((gameIds || []).filter(Boolean))];
-  if (!ids.length) return { data: [], error: null };
-  const { data, error } = await sb.rpc('get_game_slots', { p_games: ids });
-  return { data: Array.isArray(data) ? data : [], error };
-}
-
-// ── GAME LISTS ────
-export async function loadAllGames() {
-  await Promise.all([loadMyGames(), loadOpenGames(), loadGmOffer()]);
-}
-
-// ── GAME MASTER OFFER (P0-32c) ────
-// The Overlord offers an account Game Master (P0-32b): its own game_masters row, open while accepted_at is
-// null. Accept and No thanks are database functions acting on the signed-in account's own offer. The banner
-// is an extra: if the read fails, it just stays hidden.
-export async function loadGmOffer() {
-  const el = document.getElementById('gm-offer-banner');
-  const { data, error } = await sb
-    .from('game_masters')
-    .select('accepted_at')
-    .eq('user_id', currentUser.id)
-    .maybeSingle();
-  const open = !error && data && !data.accepted_at;
-  if (open) {
-    document.getElementById('gm-offer-ask').style.display = 'block';
-    document.getElementById('gm-offer-done').style.display = 'none';
-  }
-  el.style.display = open ? 'block' : 'none';
-}
 export async function answerGmOffer(fn) {
   const ask = document.getElementById('gm-offer-ask'),
     msg = document.getElementById('gm-offer-msg');
@@ -274,7 +238,7 @@ export async function answerGmOffer(fn) {
     b.disabled = true;
   });
   msg.innerHTML = '';
-  const { error } = await sb.rpc(fn);
+  const { error } = await thePagesDb.theRoles.answerTheGameMasterOffer(fn);
   ask.querySelectorAll('button').forEach((b) => {
     b.disabled = false;
   });
@@ -293,4 +257,25 @@ export async function acceptGmOffer() {
 export async function declineGmOffer() {
   if (!confirm('Turn down the offer to become a Game Master? The Overlord would have to offer again.')) return;
   if (await answerGmOffer('gm_decline_offer')) document.getElementById('gm-offer-banner').style.display = 'none';
+}
+
+// ── INIT ────
+export async function init() {
+  try {
+    document.getElementById('spinner').style.display = 'none';
+    const {
+      data: { session },
+      error,
+    } = await thePagesDb.signingIn.theSessionKeptInThisBrowser();
+    if (error) throw error;
+    if (session) {
+      currentUser = session.user;
+      await onSignedIn();
+    } else show('sec-auth');
+  } catch (e) {
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('spinner').textContent =
+      'Connection error: ' + e.message + '. Check your internet connection and refresh.';
+    console.error('Init failed:', e);
+  }
 }

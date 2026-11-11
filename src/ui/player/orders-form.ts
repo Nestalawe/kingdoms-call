@@ -4,9 +4,8 @@ import { KC_MAGIC_SCHOOLS, KC_SEASONS } from '../../content/kingdoms-call-data.t
 import {
   combatSpellsAllowedPerSchoolEachFight,
   itemUsableBy,
-  theCombatSpellsBySchool,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { kcJoinP } from './startup.ts';
+import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import {
   discoveryChoiceBlockHTML,
   isPreOrderIdP,
@@ -17,23 +16,41 @@ import {
   renderConcede,
   renderDiscoveryChoices,
   SEASONS,
+  renderPreSchool,
 } from './items-and-heroes.ts';
-import { renderDiplomacy } from './report.ts';
 import { renderReckoningOrders } from './titles.ts';
-import { SPELL_TO_SCHOOL, armyLabel, refreshLaterCastSpells, unitEmoji } from './order-chances.ts';
+import { SPELL_TO_SCHOOL, unitEmoji } from './order-chances.ts';
 import {
   DUEL_STANCES,
   ENCOUNTER_TACTICS,
+  ENCOUNTER_VALID,
   applyHeroOrderP,
   heirSelectorHTML,
   heroOrderFromOrdersP,
   refreshAllMoveModeNotes,
+  epRowHtml,
+  heirAddedTo,
+  heirPointsRemaining,
+  heirTotalAdded,
+  refreshEncounterPlan,
 } from './move-analysis.ts';
-import { refreshAllOncePerTurn, syncAllPreOrderCards, syncAllResurrectCards, syncResurrectCard } from './pre-orders.ts';
-import { itemAcquiredTagP, itemLoreTip, restoreSubmitWrap } from './briefing-and-submit.ts';
-import { druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.ts';
+import {
+  refreshAllOncePerTurn,
+  syncAllPreOrderCards,
+  syncAllResurrectCards,
+  syncResurrectCard,
+  refreshLaterCastSpells,
+} from './pre-orders.ts';
+import {
+  itemAcquiredTagP,
+  itemLoreTip,
+  restoreSubmitWrap,
+  doSaveOrders,
+  setOrdersSubmittedUI,
+} from './briefing-and-submit.ts';
+import { druidNeedP, formatRace, skillRowHTML, armyLabel } from './skills-and-projections.ts';
 import { buildTargetField, refreshExploreNotes } from './order-targets.ts';
-import { provLinkHtml } from './map-symbols.ts';
+import { provLinkHtml, renderDiplomacy } from './map-symbols.ts';
 import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   actionsFor,
@@ -45,6 +62,7 @@ import {
   effMagicLvl,
   skillsUnseenP,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+import { sb } from './startup.ts';
 
 // ── TREASURY LEDGER (2026-09-23, Toby item 6) ────
 export function renderOrderLedgerP() {
@@ -535,24 +553,6 @@ export function buildOrdersForm(chars, alreadySubmitted, existingOrders, turnNum
   }
 }
 
-// Render the "Pre-battle magic" control for a character from its hidden ep-preschool field.
-export function renderPreSchool(charId) {
-  const disp = document.getElementById(`ep-preschool-display-${charId}`);
-  const hidden = document.getElementById(`ep-preschool-${charId}`);
-  if (!disp || !hidden) return;
-  const school = (hidden.value || '').toLowerCase();
-  if (school) {
-    disp.innerHTML = kcHtml`<span style="display:inline-flex;align-items:center;gap:6px;background:#fff8e8;border:1px solid #c8922a;border-radius:2px;padding:3px 8px;font-size:.78rem">
-        <span style="color:#5a4208">Random <strong>${SKILL_LABELS[school] || school}</strong> spell</span>
-        <button onclick="clearPreSchool(${kcArg(String(charId))})" title="Remove" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:0 6px;cursor:pointer;font-size:.7rem">✕</button>
-      </span>
-      <button onclick="openPreSchoolPicker(${kcArg(String(charId))})" style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">Change</button>`;
-  } else {
-    disp.innerHTML = kcHtml`<button onclick="openPreSchoolPicker(${kcArg(String(charId))})" style="font-size:.72rem;padding:3px 10px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">+ Choose spell school</button>
-      <span style="font-size:.72rem;color:#aaa">None set</span>`;
-  }
-}
-
 // Open the school picker for the pre-battle magic control.
 export function openPreSchoolPicker(charId) {
   const char = (currentReport?.characters || []).find((c) => String(c.id) === String(charId));
@@ -632,8 +632,6 @@ export function addEncounterTactic(charId, code) {
   if (code === 'CA') {
     const char = (currentReport?.characters || []).find((c) => String(c.id) === String(charId));
     const skills = char?.skills || {};
-    // Encounter-valid spells: direct damage, debuffs, or Mirror Image
-    const ENCOUNTER_VALID = theCombatSpellsBySchool();
 
     // Also include schools being practised in any phase this turn
     // (same logic as Cast Spell phase orders — the player sets their plan after their orders)
@@ -833,24 +831,6 @@ export function confirmEPSchool(charId, school) {
   hidden.value = school;
   renderPreSchool(charId);
 }
-
-// ONE row renderer for the encounter plan, used by the initial build AND refreshEncounterPlan. ▲/▼
-// buttons give touch devices — which have no HTML5 drag — the same reordering.
-export function epRowHtml(charId, t, i, n) {
-  return kcHtml`<div draggable="true" data-char="${charId}" data-idx="${i}"
-      ondragstart="epDragStart(event,${kcArg(String(charId))},${kcArg(i)})"
-      ondragover="event.preventDefault();this.style.outline='2px solid var(--crimson)'"
-      ondragleave="this.style.outline=''"
-      ondrop="epDropTactic(event,${kcArg(String(charId))},${kcArg(i)});this.style.outline=''"
-      style="display:flex;align-items:center;gap:6px;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 8px;cursor:grab">
-      <span style="color:#bbb;font-size:.9rem;cursor:grab" title="Drag to reorder">⠿</span>
-      <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--stone);min-width:16px">${i + 1}.</span>
-      <span style="font-size:.8rem;flex:1">${tacticLabel(t)}</span>
-      <button type="button" onclick="epMoveTactic(${kcArg(String(charId))},${kcArg(i)},-1)" ${i === 0 ? 'disabled' : ''} title="Move up" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▲</button>
-      <button type="button" onclick="epMoveTactic(${kcArg(String(charId))},${kcArg(i)},1)" ${i >= n - 1 ? 'disabled' : ''} title="Move down" style="background:var(--parchment-dark);border:1px solid var(--stone);border-radius:2px;padding:1px 5px;cursor:pointer;font-size:.7rem">▼</button>
-      <button type="button" onclick="removeEncounterTactic(${kcArg(String(charId))},${kcArg(i)})" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:1px 6px;cursor:pointer;font-size:.7rem">✕</button>
-    </div>`;
-}
 export function epMoveTactic(charId, idx, dir) {
   const hidden = document.getElementById(`ep-tactics-${charId}`);
   if (!hidden) return;
@@ -899,25 +879,6 @@ export function removeEncounterTactic(charId, idx) {
   refreshEncounterPlan(charId, current);
 }
 
-export function tacticLabel(code) {
-  if (code.startsWith('CA:')) {
-    const spell = code.slice(3);
-    return `Cast Spell — ${spell}`;
-  }
-  if (code.startsWith('CS:')) {
-    const school = code.slice(3);
-    return `Pre-battle: random ${SKILL_LABELS[school] || school} spell`;
-  }
-  const baseCode = code.split(':')[0];
-  return ENCOUNTER_TACTICS.find((et) => et.code === baseCode)?.label || code;
-}
-
-export function refreshEncounterPlan(charId, tactics) {
-  const list = document.getElementById(`ep-list-${charId}`);
-  if (!list) return;
-  list.innerHTML = kcHtml`${tactics.map((t, i) => epRowHtml(String(charId), t, i, tactics.length))}`;
-}
-
 export function onSpellChange(charId, ph, selectedSpell) {
   // The resurrection order card belongs to a specific spell choice — rebuild/remove it whenever the
   // spell changes, not just when the corpse does. Deferred so the new secondary select exists
@@ -935,4 +896,55 @@ export function onSpellChange(charId, ph, selectedSpell) {
     target: selectedSpell,
   });
   if (liveAction === 'Cast Spell') refreshLaterCastSpells(charId, ph); // a spell from another school frees or spends a later slot
+}
+
+// Spend or refund a succession skill point. delta is +1 or −1. Caps mirror the join screen: a
+// 4-point budget, at most +2 into any single skill, never reducing a skill below its crowned base.
+export async function allocateHeirSkill(charId, skill, delta) {
+  if (!currentReport) return;
+  const c = currentReport.characters.find((x) => x.id === charId);
+  if (!c || !c._isHeir) return;
+  c.skills = c.skills || {};
+  const cur = c.skills[skill] || 0;
+  const added = heirAddedTo(c, skill);
+  if ((delta || 0) > 0) {
+    if (heirTotalAdded(c) >= 4) return; // no points left to spend
+    if (added >= 2) return; // +2-per-skill cap
+    c.skills[skill] = cur + 1;
+  } else {
+    if (added <= 0) return; // can't dip below the crowned base
+    c.skills[skill] = cur - 1;
+    if (c.skills[skill] === 0) delete c.skills[skill];
+  }
+  c._pendingSkillAllocation = heirPointsRemaining(c); // keep the banner/payload count in sync
+  await doSaveOrders(); // persist first (also refreshes currentGamePlayer.orders)
+  // Rebuild ONLY the orders form from the freshly-saved draft. This redraws the pips + points AND
+  // re-reads c.skills for every character's spell controls, so a magic school just purchased offers
+  // its spells immediately — all without a full report re-fetch (which would blank the map/titles).
+  buildOrdersForm(
+    currentReport.characters,
+    false,
+    currentGamePlayer?.orders,
+    currentReport?._liveTurn || currentReport?.turn || 1,
+  );
+}
+
+export async function reviseOrders() {
+  // Mark orders as not submitted so the player can edit and resubmit
+  const gp = currentGamePlayer;
+  if (!gp) return;
+  const { error } = await sb.from('game_players').update({ orders_submitted: false }).eq('id', gp.id);
+  if (error) {
+    console.error(error);
+    return;
+  }
+  // Update local state and rebuild form with existing orders pre-filled
+  setOrdersSubmittedUI(false); // the turn is no longer submitted — say so at the top of the column
+  const chars = currentReport?.characters || [];
+  buildOrdersForm(chars, false, gp.orders, currentReport?.turn || 1);
+  document.getElementById('orders-msg').innerHTML =
+    '<div class="msg-warning">✏ Revising orders — your previous orders are pre-filled. Make changes and resubmit.</div>';
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('submit-btn').textContent =
+    `Resubmit Orders for Turn ${currentReport?._liveTurn || currentReport?.turn || 1}`;
 }

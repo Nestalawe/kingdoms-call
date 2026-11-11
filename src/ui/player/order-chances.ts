@@ -1,23 +1,33 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcHtml } from '../shared/kc-safe.ts';
+import { kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
+
 import { KC_ITEM_UNCAPPED_SKILLS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
-  CREATURE_ARMIES,
-  MONSTER_ARMIES,
   dispFloor,
   everySpellBySchool,
   theLevelEachMasterySpellNeeds,
   theSchoolOfEachSpell,
-  unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { syncCharmCard, syncResurrectCard } from './pre-orders.ts';
-import { HUMANOID_RACES_UI, formatRace } from './skills-and-projections.ts';
-import { buildTargetField } from './order-targets.ts';
-import { getOrderExtra, getOrderTarget } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
+import type { AHerosSkillsAsTheFormReadsThem } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   SKILL_LABELS,
   effMagicLvl,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+
+/** A school's cast chance as the report gives it (castChance: the GM's own figure, its level and what lifts it). */
+interface ASchoolsCastChanceTheReportGives {
+  readonly level?: number | undefined;
+  readonly chance?: number | undefined;
+  readonly arcane?: number | undefined;
+  readonly mastery?: number | undefined;
+  readonly discovery?: number | undefined;
+}
+/** A hero as the cast chance note reads him: his levels, his cast chance by school, and the Wailing Phylactery's mark. */
+interface AHeroAsTheCastChanceNoteReadsHim extends AHerosSkillsAsTheFormReadsThem {
+  readonly castChance?: Readonly<Partial<Record<string, ASchoolsCastChanceTheReportGives | null>>> | null | undefined;
+  readonly necroAutoReady?: unknown;
+}
+/** The skills' names by key, read by any key (none is empty words). */
+const theSkillsNames: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
 
 // ── ORDERS FORM ────
 // ── SPELLS LIST ────
@@ -27,45 +37,30 @@ export const SPELLS_BY_SCHOOL = everySpellBySchool();
 // by the same castChanceFor() the action phase rolls against, so this is not an estimate — it is
 // the number. A spell worked from an ITEM is a flat 95%; a Wailing Phylactery makes the realm's
 // first Necromancy spell of the turn certain. Falls back to the plain formula for an older report.
-export function castChanceNote(c, spellName, opts) {
-  opts = opts || {};
+export function castChanceNote(
+  c: AHeroAsTheCastChanceNoteReadsHim | null | undefined,
+  spellName: string,
+  optsHanded?: { readonly itemCast?: unknown } | null,
+): KcSafeHtml | '' {
+  const opts = optsHanded ?? {};
   const school = SPELL_TO_SCHOOL[spellName];
   if (!school) return '';
-  const rec = (c && c.castChance && c.castChance[school]) || null;
+  const rec = c?.castChance?.[school] ?? null;
   if (opts.itemCast)
     return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>95%</strong> — worked from the item, whatever your own skill.</div>`;
   const lvl = rec ? rec.level : effMagicLvl(c, school);
-  if (lvl <= 0)
-    return kcHtml`<div style="font-size:.72rem;color:var(--crimson);margin-top:2px">🎲 No ${SKILL_LABELS[school] || school} skill yet — this cast will fail unless a Practice order earlier this turn raises it.</div>`;
-  if (school === 'necromancy' && c && c.necroAutoReady)
+  if (Number(lvl) <= 0)
+    return kcHtml`<div style="font-size:.72rem;color:var(--crimson);margin-top:2px">🎲 No ${(theSkillsNames[school] ?? '') || school} skill yet — this cast will fail unless a Practice order earlier this turn raises it.</div>`;
+  if (school === 'necromancy' && c?.necroAutoReady)
     return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>100%</strong> — your Wailing Phylactery makes this turn's first Necromancy spell certain.</div>`;
-  const chance = rec ? rec.chance : Math.min(95, 30 + lvl * 10); // base 30 everywhere
+  const chance = rec ? rec.chance : Math.min(95, 30 + Number(lvl) * 10); // base 30 everywhere
   // Name what lifted it above the base, so the number is explainable.
-  const bits = [`${SKILL_LABELS[school] || school} ${lvl}`];
-  if (rec && rec.arcane) bits.push(`+${rec.arcane}% Arcane Codex`);
-  if (rec && rec.mastery) bits.push(`+${rec.mastery}% school mastery`);
-  if (rec && rec.discovery) bits.push(`+${rec.discovery}% discoveries`);
-  const capped = chance >= 95 ? ' — the 95% cap' : '';
+  const bits = [`${(theSkillsNames[school] ?? '') || school} ${String(lvl)}`];
+  if (rec?.arcane) bits.push(`+${String(rec.arcane)}% Arcane Codex`);
+  if (rec?.mastery) bits.push(`+${String(rec.mastery)}% school mastery`);
+  if (rec?.discovery) bits.push(`+${String(rec.discovery)}% discoveries`);
+  const capped = Number(chance) >= 95 ? ' — the 95% cap' : '';
   return kcHtml`<div style="font-size:.72rem;color:var(--forest);margin-top:2px">🎲 Cast chance: <strong>${chance}%</strong> (${bits.join(', ')}${capped}). A failed cast is spent — the spell fizzles and the phase is used.</div>`;
-}
-
-// Rebuild one order's target field in place — used when a choice within the field changes the odds
-// quoted beneath it (picking a different skill to practise). Mirrors what onSpellChange does.
-export function rebuildTargetWrap(charId, ph) {
-  const wrap = document.getElementById(`po-target-wrap-${charId}-${ph}`);
-  const c = ((currentReport && currentReport.characters) || []).find((x) => String(x.id) === String(charId));
-  if (!wrap || !c) return;
-  const saved = {
-    action: document.getElementById(`po-action-${charId}-${ph}`)?.value || '',
-    target: getOrderTarget(charId, ph),
-    extra: getOrderExtra(charId, ph),
-  };
-  try {
-    wrap.innerHTML = buildTargetField(c, ph, saved);
-  } catch (e) {
-    console.warn('target rebuild failed', e);
-  }
-  if (saved.action === 'Practice Skill') refreshLaterCastSpells(charId, ph); // a re-aimed practice moves later casts' limits
 }
 
 // Reverse lookup: spell name → school
@@ -76,45 +71,6 @@ export const SPELL_REQ_LEVEL = theLevelEachMasterySpellNeeds();
 // The skills whose item bonuses carry past a trained 5 to the ceiling of 9 (the army card's "capped at" reads them).
 export const ITEM_UNCAPPED_SKILLS_P = new Set(KC_ITEM_UNCAPPED_SKILLS);
 
-// After an earlier phase's order changes (a Practice Skill picked or re-aimed, a spell cast), every
-// LATER Cast Spell order's dropdown is rebuilt so its projected level and casting limit stay true.
-export function refreshLaterCastSpells(charId, fromPh) {
-  const c = ((currentReport && currentReport.characters) || []).find((x) => String(x.id) === String(charId));
-  if (!c) return;
-  for (let later = fromPh + 1; later <= 4; later++) {
-    if ((document.getElementById(`po-action-${charId}-${later}`)?.value || '') !== 'Cast Spell') continue;
-    const wrap = document.getElementById(`po-target-wrap-${charId}-${later}`);
-    if (!wrap) continue;
-    const before = getOrderTarget(charId, later);
-    // only a spell the table knows goes back into the rebuilt markup; the spell's own target is put
-    // back afterwards as the field's value, never as markup
-    const known = Object.keys(SPELL_TO_SCHOOL),
-      at = known.indexOf(before);
-    const spell = at >= 0 ? known[at] : '';
-    const savedExtra = getOrderExtra(charId, later);
-    try {
-      wrap.innerHTML = buildTargetField(c, later, { action: 'Cast Spell', target: spell, extra: '' });
-    } catch (e) {
-      console.warn('cast refresh failed', e);
-    }
-    const ex = document.getElementById(`po-extra-${charId}-${later}`);
-    if (
-      ex &&
-      savedExtra &&
-      getOrderTarget(charId, later) === spell &&
-      (ex.tagName !== 'SELECT' || [...ex.options].some((o) => o.value === savedExtra))
-    )
-      ex.value = savedExtra;
-    if (getOrderTarget(charId, later) !== before) {
-      const l = later;
-      setTimeout(() => {
-        syncResurrectCard(charId, l);
-        syncCharmCard(charId, l);
-      }, 0);
-    } // the spell itself changed
-  }
-}
-
 // ── DISPLAY ROUNDING (report text) ────
 // Belt-and-braces partner to the GM engine's n0(): the engine now rounds every battle statistic at
 // source, but this catches anything a future edit forgets. Rounds any decimal number in a report
@@ -124,59 +80,24 @@ export function refreshLaterCastSpells(charId, fromPh) {
 // 2026-09-12: every figure a player is shown is ROUNDED DOWN (toward zero), by the engine's own
 // dispFloor (src/shared/): a float a hair under an integer (0.29*100) snaps to that integer rather
 // than losing a point.
-export function roundReportNumbers(text) {
+export function roundReportNumbers(text: string | null | undefined): string {
   // The lookarounds matter: without them a dotted sequence such as a build stamp (2026.07.23) or a
   // rules citation (AK 7.6.1) gets partially rewritten, because the engine would happily match the
   // '2026.07' inside it. Only a decimal that is not adjacent to another dot or digit is rounded.
   // 2026-09-08: a decimal FOLLOWED by × ("a 6.1× edge") is a multiplier too and is kept. (Root
   // cause of the "× fortune 1" report: the old "fortune 0.50" had no × directly before it and was
   // rounded to 1.)
-  return String(text || '').replace(/(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d\u00d7])/g, (m, mult, whole, frac) =>
-    mult ? m : String(dispFloor(Number(whole + '.' + frac))),
+  return (text ?? '').replace(
+    /(\u00d7\s*)?(?<![\d.])(\d+)\.(\d+)(?![.\d\u00d7])/g,
+    (m: string, mult: string | undefined, whole: string, frac: string) =>
+      mult ? m : String(dispFloor(Number(whole + '.' + frac))),
   ); // rounded DOWN, never to nearest
-}
-
-// Army display helper — shows unit name if known, falls back to plain type+quality
-export function armyLabel(a, opts = {}) {
-  const name = a.unitName ? `${a.unitName}` : '';
-  if (opts.short) return name ? `${name}` : `${a.quality} ${a.type}`;
-  // Classification first, then type, quality and the unit's base strength (type × quality tier) —
-  // enough to judge a force at a glance without opening the rules. primal armies always lead with
-  // the full word 'Creature' or 'Monster' (derived from the unit TYPE, so it shows even when the
-  // army carries no race field — e.g. awakened/recruited beasts), and no separate [C]/[M] tag is
-  // used.
-  const primalWord = CREATURE_ARMIES.has(a.type) ? 'Creature' : MONSTER_ARMIES.has(a.type) ? 'Monster' : null;
-  const race = a.race ? formatRace(a.race, a.type) : null;
-  // a unit with a HUMANOID race leads with that race — "Orcish (Monster), Wyvern Riders" — so an
-  // Orc garrison of wyverns is not mistaken for a primal band. Only raceless / primal units lead
-  // with the bare Creature / Monster word.
-  const _humanoidRace = !!(a.race && HUMANOID_RACES_UI.has(a.race));
-  const lead = _humanoidRace ? (primalWord ? `${race} (${primalWord})` : race) : primalWord || race;
-  const str = unitBaseStrength(a);
-  // 2026-09-23 (Toby item 7): the unit's own movement rate after its strength — computed by the GM
-  // report with every bonus the engine applies (March / Naval incl. items, Road & race `move`
-  // discoveries, the Swift / Sea-Wolf titles). Shown only where the report supplies it (your led
-  // units and garrisons); a column still moves at its slowest unit.
-  const _mv =
-    a.moveRate != null && !opts.noMove
-      ? `Move ${a.moveRate}${a.moveKind === 'sea' ? ' (sea)' : a.moveKind === 'air' ? ' (air)' : ''}`
-      : null;
-  // 2026-09-23b: labelled BASE — it is type × quality only (no kinship, terrain, Tactical…), so it
-  // never matches a battle figure; the Battle stats ladder starts from exactly this number.
-  const detail = [lead, a.type, a.quality, `Base str ${str}`, _mv].filter(Boolean).join(', ');
-  // beasts bound by the Rite of the Wild Hunt are flagged wherever an army line is rendered — they
-  // draw no wages and leave when the binding fails.
-  const wild =
-    a.wildHunt || a._wildHuntUntilTurn != null
-      ? kcHtml` <span style="color:#7a4a10;font-size:.72rem">[Wild Hunt — bound until end of turn ${a.wildHuntUntil != null ? a.wildHuntUntil : a._wildHuntUntilTurn != null ? a._wildHuntUntilTurn : '?'}, no wages]</span>`
-      : '';
-  return kcHtml`${name ? `${name} (${detail})` : detail}${wild}`;
 }
 
 // an icon representing the *kind* of unit (land / sea / flying / creature / monster) so players can
 // tell them apart at a glance. Priority resolves overlaps (a Wyvern is a flying monster
 // → monster; a Whale Cohort is a sea creature → sea).
-export function unitEmoji(type) {
+export function unitEmoji(type: string): string {
   // Icons signal MOVEMENT CLASS first, then creature/monster nature — that is what a player needs
   // at a glance. Sea monsters therefore get their own icon rather than the land-dragon one, and the
   // winged primals are counted as flying because they genuinely cross water without a fleet. These

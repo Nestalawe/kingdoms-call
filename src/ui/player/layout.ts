@@ -1,6 +1,14 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { _closeMapTip, renderPlayerMap } from './map.ts';
-import { onMessagesShown, refreshMsgBadgeSoon } from './dispatches.ts';
+import {
+  _closeMapTip,
+  _PROV_LINK_SKIP,
+  _buildProvNameIndex,
+  _provNameMap,
+  _provNameRe,
+  applyMapZoom,
+  highlightMapProv,
+} from './map.ts';
+import { onMessagesShown, refreshMsgBadgeSoon, applyDeskViews, setDeskView } from './dispatches.ts';
 
 // ── MOBILE VIEW SWITCHER ────
 // On narrow screens (see the @media block) the Map / Report / Orders columns are shown one at a
@@ -57,13 +65,6 @@ export function setMobileView(view) {
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._msgEnabled = false;
 globalThis._deskLeftView = 'map';
-export let _deskRightView = 'report';
-// Whether the Orders view is currently AVAILABLE (true on the live turn; false on past turns and
-// Turn 0). On desktop the orders column's actual visibility is owned by applyDeskViews (the
-// right-panel tab), so the current/past-turn code sets this flag via refreshOrdersVisibility()
-// rather than poking the column's display directly — otherwise it would override the tab and stack
-// Orders on top of Report.
-export let _ordersAvailable = true;
 export function setupDeskLayout() {
   const lay = document.getElementById('rp-layout');
   const map = document.getElementById('rp-map-col');
@@ -152,108 +153,7 @@ export function teardownDeskLayout() {
   dl.remove();
   if (dr) dr.remove();
   lay.classList.remove('desk');
-}
-export function setDeskView(side, view) {
-  if (side === 'left') {
-    if (view === 'messages' && !_msgEnabled) view = 'map';
-    _deskLeftView = view;
-    // one report column: asking for it on the left hands the right panel over to Orders.
-    if (view === 'report' && _deskRightView === 'report') _deskRightView = 'orders';
-  } else {
-    _deskRightView = view;
-    // …and asking for it on the right sends the left panel back to the map.
-    if (view === 'report' && _deskLeftView === 'report') _deskLeftView = 'map';
-  }
-  applyDeskViews();
-  if (side === 'left' && view === 'messages') {
-    try {
-      onMessagesShown();
-    } catch (e) {}
-  } else refreshMsgBadgeSoon();
-}
-export function applyDeskViews() {
-  const map = document.getElementById('rp-map-col'),
-    rep = document.getElementById('rp-report-col'),
-    msg = document.getElementById('rp-msg-col'),
-    ord = document.getElementById('orders-column');
-  const lb = document.getElementById('desk-left-body'),
-    rb = document.getElementById('desk-right-body');
-  if (!map || !rep || !ord || !lb || !rb) return;
-  if (_deskLeftView === 'messages' && !_msgEnabled) _deskLeftView = 'map';
-  // Both panels cannot show the one report column at once — the left tab wins (a stale pair can
-  // only arise from a restored view state, never from setDeskView).
-  if (_deskLeftView === 'report' && _deskRightView === 'report') _deskRightView = 'orders';
-  const repLeft = _deskLeftView === 'report';
-  if (repLeft) {
-    if (rep.parentNode !== lb) lb.appendChild(rep);
-  } else if (rep.parentNode !== rb) rb.appendChild(rep);
-  if (msg && msg.parentNode !== lb) lb.appendChild(msg);
-  const mt = document.getElementById('desk-msg-tab');
-  if (mt) mt.style.display = _msgEnabled ? '' : 'none';
-  // 'flex', not '': clearing the inline value also dropped the column's inline display:flex, so the
-  // map column fell back to a block, the map grew past the panel's foot (cut off, nothing to scroll).
-  map.style.display = _deskLeftView === 'map' ? 'flex' : 'none';
-  if (msg) msg.style.display = _deskLeftView === 'messages' ? 'flex' : 'none';
-  ord.style.display = (repLeft || _deskRightView === 'orders') && _ordersAvailable ? '' : 'none';
-  rep.style.display =
-    repLeft || _deskRightView === 'report' || (_deskRightView === 'orders' && !_ordersAvailable) ? '' : 'none';
-  // Report on the left with no orders to give (a past turn, or Turn 0) leaves the right panel with
-  // nothing to show — say so rather than presenting a blank pane.
-  const none = document.getElementById('desk-right-none');
-  if (none) none.style.display = repLeft && !_ordersAvailable ? '' : 'none';
-  // Reflect active tab state. With the report on the left the right panel is showing Orders.
-  const rightTab = repLeft ? 'orders' : _deskRightView;
-  document
-    .querySelectorAll('#desk-left .desk-tabs button')
-    .forEach((b) => b.classList.toggle('active', b.getAttribute('data-view') === _deskLeftView));
-  document
-    .querySelectorAll('#desk-right .desk-tabs button')
-    .forEach((b) => b.classList.toggle('active', b.getAttribute('data-view') === rightTab));
-  if (_deskLeftView === 'map') {
-    try {
-      renderPlayerMap();
-    } catch (e) {}
-  }
-}
-// Set whether the Orders view is available (live turn vs past/Turn-0) and re-assert the layout. On
-// desktop the right-panel tab governs the orders column (via applyDeskViews); on mobile we still
-// toggle the column's display directly, exactly as before, since the mobile view-switcher owns that
-// panel.
-export function refreshOrdersVisibility(available) {
-  _ordersAvailable = !!available;
-  const lay = document.getElementById('rp-layout');
-  const oc = document.getElementById('orders-column');
-  if (lay && lay.classList.contains('desk')) {
-    if (!_ordersAvailable && _deskRightView === 'orders' && _deskLeftView !== 'report') _deskRightView = 'report'; // can't sit on an unavailable tab (unless the report is already on the left)
-    applyDeskViews();
-  } else if (oc) {
-    oc.style.display = _ordersAvailable ? 'flex' : 'none';
-  }
-}
-// Map zoom: at 1× the map fits the window; above 1× the SVG is sized in explicit pixels
-// (container content size × zoom) so it genuinely overflows and the container (#report-map-container,
-// overflow:auto) shows horizontal AND vertical scroll bars for panning. Re-applied after every
-// render and on resize so the current zoom always matches the panel.
-export let _mapZoom = 1;
-// Map fix: give an SVG an explicit pixel height matching its viewBox aspect ratio at the given
-// pixel width. Inline <svg> with CSS height:auto is NOT reliably sized from the viewBox on phone
-// browsers (it falls back to the 150px replaced-element default), which shrank the map to a thin
-// strip. Returns the height set (or null if the SVG has no usable viewBox).
-export function fitMapSvgHeight(svgEl, widthPx) {
-  if (!svgEl) return null;
-  const vb = (svgEl.getAttribute('viewBox') || '')
-    .trim()
-    .split(/[\s,]+/)
-    .map(Number);
-  if (vb.length !== 4 || !(vb[2] > 0) || !(vb[3] > 0) || !(widthPx > 0)) {
-    svgEl.style.height = '';
-    return null;
-  }
-  const h = Math.round((widthPx * vb[3]) / vb[2]);
-  svgEl.style.height = h + 'px';
-  return h;
-}
-export const MOBILE_MAP_WIDTH = 700; // must match #report-map-zoomwrap width in the ≤820px media block
+} // must match #report-map-zoomwrap width in the ≤820px media block
 export function injectMapZoomBar() {
   const hdr = document.querySelector('#rp-map-col > div'); // the map header row
   if (!hdr || document.getElementById('map-zoom-bar')) return;
@@ -268,72 +168,6 @@ export function injectMapZoomBar() {
   if (fs) hdr.insertBefore(bar, fs);
   else hdr.appendChild(bar);
 }
-export function applyMapZoom() {
-  const svg = document.getElementById('report-map-svg');
-  const cont = document.getElementById('report-map-container');
-  const wrap = document.getElementById('report-map-zoomwrap');
-  if (!svg) return;
-  // on phones the map is sized purely by the mobile CSS (700px wrapper, native pinch-zoom). Android
-  // fires `resize` whenever the URL bar collapses or the keyboard opens, and this was re-applying
-  // desktop inline sizes to the wrapper/SVG every time — leave the phone layout alone. Map fix: the
-  // SVG gets an explicit pixel height from its viewBox at the 700px phone width (CSS height:auto
-  // was resolving to 150px on phones, leaving the map as a tiny strip).
-  if (window.innerWidth < 821) {
-    if (wrap) {
-      wrap.style.width = '';
-      wrap.style.height = '';
-    }
-    svg.style.width = '';
-    svg.style.maxWidth = '';
-    svg.style.maxHeight = '';
-    // Map fix 2: kill the desktop flex sizing inline as well (flex:1 1 0 + min-height:0 collapsed
-    // the panel to 0px on phones)
-    if (cont) {
-      cont.style.overflow = '';
-      cont.style.flex = 'none';
-      cont.style.minHeight = '60vh';
-      cont.style.height = '60vh';
-    }
-    fitMapSvgHeight(svg, MOBILE_MAP_WIDTH);
-    return;
-  }
-  // the scroll container is a flex child; without min-height/min-width:0 it GREW to fit the zoomed
-  // map instead of scrolling (flex items default to min-size:auto) — which is why the bars never
-  // appeared. The map is now zoomed via an explicitly sized WRAPPER block, so the container's
-  // content is a plain oversized div and overflow:auto scrolls on both axes.
-  if (cont) {
-    cont.style.minHeight = '0';
-    cont.style.minWidth = '0';
-    cont.style.overflow = 'auto';
-    cont.style.flex = '';
-    cont.style.flexGrow = '1';
-    cont.style.flexShrink = '1';
-    cont.style.flexBasis = '0';
-    cont.style.height = '';
-  }
-  const setW = (w, h) => {
-    if (wrap) {
-      wrap.style.width = w;
-      wrap.style.height = h;
-    }
-    svg.style.width = '100%';
-    svg.style.height = '100%';
-    svg.style.maxWidth = 'none';
-    svg.style.maxHeight = 'none';
-  };
-  if (_mapZoom <= 1) {
-    setW('100%', '100%');
-    return;
-  }
-  const pad = 12; // container padding (6px each side)
-  const cw = Math.max(50, ((cont && cont.clientWidth) || 320) - pad);
-  const ch = Math.max(50, ((cont && cont.clientHeight) || 320) - pad);
-  setW(cw * _mapZoom + 'px', ch * _mapZoom + 'px');
-}
-export function mapZoom(delta) {
-  _mapZoom = delta === 0 ? 1 : Math.max(1, Math.min(4, _mapZoom + delta));
-  applyMapZoom();
-}
 window.addEventListener('resize', () => {
   if (window.innerWidth < 821) teardownDeskLayout();
   else setupDeskLayout();
@@ -342,4 +176,100 @@ window.addEventListener('resize', () => {
 export function ensureMobileDefault() {
   const lay = document.getElementById('rp-layout');
   if (lay && !/\bmv-(map|report|messages|orders)\b/.test(lay.className)) setMobileView('report');
+}
+export function _makeProvLinkEl(id, name) {
+  const sp = document.createElement('span');
+  sp.className = 'prov-link prov-auto';
+  sp.setAttribute('data-prov-link', String(id));
+  sp.title = `Hover to light up ${name} on the map — click or tap to show it`;
+  sp.textContent = name;
+  sp.onmouseenter = () => highlightMapProv(id, true);
+  sp.onmouseleave = () => highlightMapProv(id, false);
+  sp.onclick = (ev) => {
+    ev.stopPropagation();
+    locateOnMap(id);
+  };
+  return sp;
+}
+export let _provLinking = false;
+export function linkProvinceNames(root) {
+  if (!root || _provLinking) return;
+  _buildProvNameIndex(viewingReport || currentReport);
+  if (!_provNameRe) return;
+  _provLinking = true;
+  try {
+    const walker = document.createTreeWalker(root, window.NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        if (!n.nodeValue || n.nodeValue.length < 3) return window.NodeFilter.FILTER_REJECT;
+        for (let el = n.parentNode; el && el !== root; el = el.parentNode) {
+          if (_PROV_LINK_SKIP.has(el.nodeName) || el.namespaceURI === 'http://www.w3.org/2000/svg')
+            return window.NodeFilter.FILTER_REJECT;
+          if (el.classList && (el.classList.contains('prov-link') || el.classList.contains('no-prov-link')))
+            return window.NodeFilter.FILTER_REJECT;
+          if (el.isContentEditable) return window.NodeFilter.FILTER_REJECT;
+        }
+        _provNameRe.lastIndex = 0;
+        return _provNameRe.test(n.nodeValue) ? window.NodeFilter.FILTER_ACCEPT : window.NodeFilter.FILTER_REJECT;
+      },
+    });
+    const hits = [];
+    let n;
+    while ((n = walker.nextNode())) hits.push(n);
+    hits.forEach((t) => {
+      const txt = t.nodeValue;
+      const frag = document.createDocumentFragment();
+      let last = 0,
+        m;
+      _provNameRe.lastIndex = 0;
+      while ((m = _provNameRe.exec(txt))) {
+        if (m.index > last) frag.appendChild(document.createTextNode(txt.slice(last, m.index)));
+        frag.appendChild(_makeProvLinkEl(_provNameMap.get(m[1]), m[1]));
+        last = m.index + m[1].length;
+      }
+      if (last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+      t.parentNode.replaceChild(frag, t);
+    });
+  } catch (e) {
+    /* a failed pass must never break the report */
+  } finally {
+    _provLinking = false;
+  }
+}
+export let _provLinkObs = null,
+  _provLinkTimer = null;
+export function ensureProvinceLinking() {
+  const col = document.getElementById('rp-report-col');
+  if (!col) return;
+  linkProvinceNames(col);
+  if (_provLinkObs || typeof MutationObserver === 'undefined') return;
+  _provLinkObs = new MutationObserver(() => {
+    if (_provLinking) return;
+    clearTimeout(_provLinkTimer);
+    _provLinkTimer = setTimeout(() => linkProvinceNames(document.getElementById('rp-report-col')), 60);
+  });
+  _provLinkObs.observe(col, { childList: true, subtree: true });
+}
+export let _provHlTimer = null;
+export function locateOnMap(id) {
+  try {
+    if (window.innerWidth < 821) setMobileView('map');
+    else if (typeof _deskLeftView !== 'undefined' && _deskLeftView !== 'map' && typeof setDeskView === 'function')
+      setDeskView('left', 'map');
+  } catch (e) {}
+  setTimeout(() => {
+    highlightMapProv(id, true);
+    const g = document.querySelector(`#report-map-svg g[data-prov="${id}"]`);
+    // scroll only the map's own container (a zoomed map), never the page or the report column
+    try {
+      const box = document.getElementById('report-map-container');
+      if (g && box) {
+        const r = g.getBoundingClientRect(),
+          b = box.getBoundingClientRect();
+        box.scrollLeft += r.left + r.width / 2 - (b.left + b.width / 2);
+        box.scrollTop += r.top + r.height / 2 - (b.top + b.height / 2);
+      }
+    } catch (e) {}
+    clearTimeout(_provHlTimer);
+    _provHlTimer = setTimeout(() => highlightMapProv(id, false), 4000);
+  }, 60);
 }

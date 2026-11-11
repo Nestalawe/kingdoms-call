@@ -16,10 +16,11 @@ import {
   theNoteUnderAnOrderThatQuotesItsChance,
   theOrdersTheFormOffersAHero,
   theTreasuryLedgerOnTheseOrders,
+  type AHeroAsTheOrderFormReadsHim,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // The value a page's field holds (an input's, a select's), or undefined where the element holds none.
-function theValueOfAField(el: Element): unknown {
+export function theValueOfAField(el: Element): unknown {
   return 'value' in el ? el.value : undefined;
 }
 
@@ -87,7 +88,10 @@ export function theOrdersTheFormHolds(report: unknown): TheOrdersTheFormHolds {
 }
 
 // Each forecast as the page's files ask it: on the report the page shows and the orders its form holds.
-export function predictedLocation(charId: unknown, upToPhaseExclusive: number): unknown {
+export function predictedLocation(
+  charId: unknown,
+  upToPhaseExclusive: number,
+): ReturnType<typeof whereAHeroStandsAfterTheOrdersBefore> {
   return whereAHeroStandsAfterTheOrdersBefore(
     currentReport,
     theOrdersTheFormHolds(currentReport),
@@ -95,7 +99,7 @@ export function predictedLocation(charId: unknown, upToPhaseExclusive: number): 
     upToPhaseExclusive,
   );
 }
-export function projectedMoveHost(charId: unknown, ph: number): unknown {
+export function projectedMoveHost(charId: unknown, ph: number): ReturnType<typeof theColumnAHeroMarchesWithInAPhase> {
   return theColumnAHeroMarchesWithInAPhase(currentReport, theOrdersTheFormHolds(currentReport), charId, ph);
 }
 export function predictedItems(charId: unknown, upToPhaseExclusive: number): unknown {
@@ -135,12 +139,16 @@ function theOrdersTheFormHoldsForTheHero(c: unknown): TheOrdersTheFormHolds {
 export function computeOrderLedgerP(): unknown {
   return theTreasuryLedgerOnTheseOrders(currentReport, theOrdersTheFormHolds(currentReport));
 }
-export function orderChanceNote(c: unknown, action: unknown, ph: unknown): unknown {
+export function orderChanceNote(
+  c: AHeroAsTheOrderFormReadsHim | null | undefined,
+  action: unknown,
+  ph: number,
+): unknown {
   return theNoteUnderAnOrderThatQuotesItsChance(currentReport, theOrdersTheFormHoldsForTheHero(c), c, action, ph);
 }
-export function actionsFor(c: unknown): unknown {
+export function actionsFor(c: AHeroAsTheOrderFormReadsHim | null | undefined): unknown {
   return theOrdersTheFormOffersAHero(currentReport, c);
 }
-export function projectedMagicLevels(c: unknown, ph: unknown): unknown {
+export function projectedMagicLevels(c: AHeroAsTheOrderFormReadsHim | null | undefined, ph: number): unknown {
   return theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise(theOrdersTheFormHoldsForTheHero(c), c, ph);
 }

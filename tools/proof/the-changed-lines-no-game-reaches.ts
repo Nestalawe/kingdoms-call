@@ -73,14 +73,15 @@ export interface Unreached {
   takenOut: { file: string; after: number }[];
 }
 
-/** Sorts `changed`'s lines in the counted folders by the coverage `files` (lines.json's), each file's text read by
- *  `textOf` (its path from the repository's root). */
+/** Sorts `changed`'s lines in the counted folders (`folders`, by default COUNTED) by the coverage `files` (lines.json's),
+ *  each file's text read by `textOf` (its path from the repository's root). */
 export function theChangedLinesNoGameReaches(
   changed: ChangedLines,
   files: Record<string, LinesOfAFile>,
   textOf: (file: string) => string,
+  folders: readonly string[] = COUNTED,
 ): Unreached {
-  const counted = (file: string) => COUNTED.some((dir) => file.startsWith(dir));
+  const counted = (file: string) => folders.some((dir) => file.startsWith(dir));
   const out: Unreached = {
     notReached: [],
     partlyReached: [],

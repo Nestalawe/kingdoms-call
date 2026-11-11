@@ -9,7 +9,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   follows each page's `<script type="module" src>` through every `import`, and writes one script holding the page's
   code, with no `import` left (`assets/<page>-<hash>.js`), and its stylesheet (`assets/<page>-<hash>.css`). Built one page at a time,
   each bundle stands alone, which is what lets a test run it as a classic script in jsdom. `public/` is copied as it
-  is: `kc-config.js`, `kc-staging-footer.js`, `vendor/`.
+  is: `kc-config.js`, `kc-staging-footer.js`. supabase-js is the pinned npm package's browser build, copied unchanged
+  as `assets/supabase-js-<hash>.js` ([the pages](the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#supabase-js-a-copy-served-with-the-site)).
 - **The options**, in `tools/build.ts` (one place, for the build and for `npm run dev`): no minifying (a live error's
   stack keeps the code's names), `target: 'esnext'` and no module preload (the code is left as written, nothing is
   added), relative paths (`base: './'`), and names with a hash of the file's content: a change to a page's code
@@ -38,8 +39,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   its entry and the rest of its code), `ui/shared/` (`kc-safe.ts`), `rulebook/`. The
   templates are at the top of `src/`. The GM portal's code is 141 modules; `src/engine/run-turn.ts` (the turn,
   `resolveTurn`, once ~13,000 lines, now ~250 in a file of ~380) was taken apart by P1-08, one area at a time (below). The player portal's
-  is 39: its own 23, the data file, `kc-safe.ts`, the reload banner's two files, `kc-db-guard.ts`, `src/shared/`'s
-  file and the folder's ten.
+  is 77: its own 28, 8 files of `content/`, `kc-safe.ts`, the reload banner's two files, `db/`'s three,
+  `src/shared/`'s file and the 34 of the folder `engine/rules-on-plain-values/`.
 - **TypeScript checks the site** (`tsconfig.json` includes `src/`, with the browser's types; one project until P1-10
   splits the engine's). The files that were JavaScript start with `// @ts-nocheck` and the reason (142 of 158 at the
   rename: strict TypeScript found errors in each); P1-10 and P1-16 type them. The ratchet counts the line in two, so
@@ -164,7 +165,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   GitHub Pages replaces the whole site on each deploy, and its cache hands out a page for up to 10 minutes after it, so
   a page cached before a deploy can ask for a bundle the new site has renamed. Between the build and the upload, each
   `build` job runs `tools/deploy/keep-the-previous-deploys-files.ts` (plain Node, no install): it reads the previous
-  site and puts back every file that site's pages name (scripts, stylesheets, `vendor/`, and the `url()`s in their
+  site and puts back every file that site's pages name (scripts, stylesheets, and the `url()`s in their
   stylesheets), and every file its `published-files.json` lists as live within the last 24 hours, that the new build
   lacks. A file the new build makes is never overwritten. It then writes the new `published-files.json`. The deploy
   reads the previous site from the newest Deploy run on `main` whose `deploy` job succeeded (a run can succeed with that
@@ -234,15 +235,15 @@ too, and the run still shows "success". That is how the deploys of #184 to #186 
 ## A constant read at load time must live in a leaf module
 
 The site's code is ES modules: each file runs after the files it imports. That orders almost everything by
-itself, but not a cycle: when two files import each other (the engine has none since P1-13e5; each portal's UI has one), one of
+itself, but not a cycle: when two files import each other (the engine has none since P1-13e5 and the player page none since P1-13e8; the GM page's UI has one), one of
 them runs first and finds the other's top-level `const`/`let` not yet set. Read as a file loads, that is a
 temporal-dead-zone `ReferenceError`, and at the top level it stops the page: the portal hangs on its spinner (the
 boot-failure reporter shows the error). Rolldown, the bundler, writes each top-level `const` as a `var`, so in the built
 bundle the read may instead find `undefined`, silently. Inside a function, read later, a cycle is harmless.
 
-**A new cycle fails `npm run lint:arch`** (P1-13a; CI and `npm run check` run it). The two known (the GM and player pages) are
-listed in `.dependency-cruiser-known-violations.json`, and a later P1-13e row breaks each (P1-13e1 to P1-13e5 broke
-the engine's six). A cycle of `import type` only is let through: types
+**A new cycle fails `npm run lint:arch`** (P1-13a; CI and `npm run check` run it). The one known (the GM page's) is
+listed in `.dependency-cruiser-known-violations.json`, and P1-13e13 breaks it (P1-13e1 to P1-13e5 broke the engine's
+six, P1-13e6 to P1-13e8 the player page's). A cycle of `import type` only is let through: types
 are erased, so no code runs in its order.
 
 - **A constant another file reads as it loads lives in a file of its own that imports nothing** (P1-09b:

@@ -1,6 +1,7 @@
 // Vitest runs every test (npm test). One project per test level (tests/README.md#the-levels); each runs its level's
 // test scripts through tests/legacy.test.ts and its new tests from tests/<level>/. The quarantine project runs only
-// in npm run test:quarantine.
+// in npm run test:quarantine, and the db project's tests (the access layer's, against the local Supabase) only in
+// npm run test:db.
 //
 // The same answer every time: Node pinned (tests/setup/global.ts), time zone and locale fixed, the seed fixed
 // (KC_SEED; the default in tests/setup/fixed.mts; fast-check's too, tests/setup/fast-check.ts), no retries and no .only. A test that logs console.error fails
@@ -39,6 +40,20 @@ const project = (level: Level | 'quarantine'): TestProjectInlineConfiguration =>
   },
 });
 
+// The access layer's tests (plan P1-17, Decision 6): tests/db/, against the local Supabase, so never in npm test (the
+// project has no files without KC_DB=1, and then its setup never runs); CI's db job runs them beside pgTAP. Its own
+// setup finds the local Supabase (tests/setup/the-local-supabase.ts), after the run's (the Node pin, the build). One
+// file at a time: each makes its own made-up accounts, and a database has one Overlord.
+const theAccessLayersProject: TestProjectInlineConfiguration = {
+  extends: true,
+  test: {
+    name: 'db',
+    include: process.env['KC_DB'] === '1' ? ['tests/db/**/*.test.ts'] : [],
+    globalSetup: ['tests/setup/the-local-supabase.ts'],
+    fileParallelism: false,
+  },
+};
+
 export default defineConfig({
   test: {
     retry: 0,
@@ -50,6 +65,10 @@ export default defineConfig({
     reporters: ['default', './tests/setup/reporter.ts'],
     maxConcurrency: jobs,
     maxWorkers: files,
-    projects: [...LEVELS.map(project), ...(process.env['KC_QUARANTINE'] === '1' ? [project('quarantine')] : [])],
+    projects: [
+      ...LEVELS.map(project),
+      ...(process.env['KC_QUARANTINE'] === '1' ? [project('quarantine')] : []),
+      theAccessLayersProject,
+    ],
   },
 });

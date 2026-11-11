@@ -260,7 +260,7 @@ perks'** (P1-19ai): [its file](the-guardian-perks-registry-its-stages-and-how-to
   the casting limits, the beasts' sets and command, the Druid rule, the sea lift, the hex step and who may give an alignment order. So the player page loads no other engine file and runs none of the
   engine's set-up. `tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts`
   refuses a portal file that imports an engine or a views file, or declares one of the retired copies (`floorNumP`, …)
-  or a name `src/shared/` hands it. The copies left (page files no test imports) are
+  or a name `src/shared/` hands it. The copies left are
   `tests/lib/player-portal-copies.ts`'s.
 - **A few deliberate near-copies stay in the GM portal**, because the *order* is a tie-break priority
   (each is commented `NOT a copy`). Don't collapse them.

@@ -7,10 +7,9 @@ import {
   theActionSpellsAimedAtAProvince,
   theMarkOfThisSpellMustStandInTheCastersProvince,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { orderTargetCharsP, preOrderTagP, realmNameP, realmOptStyleP } from './items-and-heroes.ts';
+import { orderTargetCharsP, preOrderTagP, realmNameP, provDirectionLabel } from './items-and-heroes.ts';
 import { SPELL_HINTS } from './the-hints-the-order-form-shows-below-each-spell.ts';
-import { provDirectionLabel } from './order-targets.ts';
-import { leadsArmiesP, reportColour } from './map-symbols.ts';
+import { leadsArmiesP, reportColour, realmOptStyleP } from './map-symbols.ts';
 import { predictedLocation } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 

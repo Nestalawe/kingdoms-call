@@ -73,7 +73,8 @@ export function theFirstStepOfAShortestRouteAColumnMayTake<P extends AProvinceOn
  *  P1-11e12): its realm's own, an ally's (`theRelation`, asked only of another realm's province), or ground no realm
  *  holds where no armed neutral guard stands (`anArmedNeutralGuardStandsThere`, asked only there). */
 export function aProvinceIsSafePassageForARealmsColumn(
-  theRealm: number | null,
+  // (undefined where the order form's report gives the realm no index: compared only)
+  theRealm: number | null | undefined,
   theOwner: number | null | undefined,
   theRelation: () => string,
   anArmedNeutralGuardStandsThere: () => boolean,

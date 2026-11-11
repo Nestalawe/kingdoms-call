@@ -60,13 +60,11 @@ writes each realm's report. Players only submit orders and read what they're giv
 
 ### supabase-js: the copy served with the site
 
-The pages load supabase-js from `vendor/` beside them (source: `public/vendor/`), not from a CDN. How to upgrade it:
+The pages load supabase-js from the site itself (`assets/supabase-js-<hash>.js`), not from a CDN: the build copies the
+npm package's browser build (`dist/umd/supabase.js`) unchanged, its licence beside it. Its version is `package.json`'s
+exact pin; `npm test`'s `vendor-supabase` check fails if the lock disagrees or the published file isn't the package's,
+byte for byte. How to upgrade it:
 [the pages' topic file](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#supabase-js-a-copy-served-with-the-site).
-
-- **Version:** 2.117.3, the package's browser build (`dist/umd/supabase.js`) copied unchanged to
-  `public/vendor/supabase-js-2.117.3.min.js`, with its licence beside it (`supabase-js-LICENSE.txt`).
-- **SHA-256:** `d6a5c4414a5d4ce646d9c1de223aa7067d3ff664c15394ffeb7fcffc763354a3`. `npm test`'s
-  `vendor-supabase` check fails if the file and this line disagree.
 
 ## The code's guardrails
 
@@ -101,20 +99,20 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   another way but the save's upgrade (`engine/saves/upgrade-a-saved-game-and-check-it.ts`), whose check at load
   parses with it (P1-15d).
 - **`db/`** imports only `db/` and `schemas/`, and only the pages' code (`ui/`) imports `db/`. Only `db/` may import
-  `@supabase/supabase-js` (none does until P1-17: the pages read the copy served with the site).
+  `@supabase/supabase-js`, and imports only its types: each page makes its client and its `Db` through `db/` (P1-17).
 - **A page's code** (`ui/<page>/`) imports no other page's but `ui/shared/`, which imports only itself. **Only the GM
   page imports the engine** (it runs the turn and edits the world); the player portal, the Hall of Fame and the
   Overlord page reach it only through `shared/` and `views/`.
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
-**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (99 findings)
-and let through (`--ignore-known`): `db/`'s 14 imports outside itself (P1-17's access layer), the 84 findings of the two
-import cycles left, the GM page's (10 files, both of `db/` among them) and the player page's (18), and the prose's one,
+**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (12 findings)
+and let through (`--ignore-known`): the 11 findings of the GM page's import cycle (7 files), and the prose's one,
 the explore and search lines' import of `itemLoreLines` from `engine/items/tiers-and-hoards.ts` (P1-13l, Theo's
 agreement; it leaves with the fix of the items' other names the engine adds to the content as it loads). P1-13e broke the
 engine's six cycles by moving code, one cycle a pull request: P1-13e1 the four two-file cycles in one, P1-13e2 the
-core, and P1-13e3 to P1-13e5 the bots' cycle in three steps. **The engine has no import cycle now**, and the no-cycle
-rule keeps it so; the pages' two come later (the GM page's after P1-17 takes `db/`'s page code out, the player page's after P1-11e). The ratchet counts the list
+core, and P1-13e3 to P1-13e5 the bots' cycle in three steps; P1-13e6 to e8 the player page's in three more. **The
+engine and the player page have no import cycle now**, and the no-cycle rule keeps it so; the GM page's comes next
+(P1-17a moved `db/`'s page code into the page). The ratchet counts the list
 (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no longer
 occurs: when you fix one, remove it in the same pull request with
 `npx depcruise src --baseline --baseline-mode shrink-only`. Never add a finding to it. A cut that leaves part of a
@@ -186,23 +184,19 @@ subgraph src["src"]
     src_views_[" "]
   end
 end
-src_db_-->src_engine_rules_on_plain_values_
-src_db_-->src_ui_gm_
-src_db_-->src_ui_shared_
-src_db_-->src_content_
-src_db_-->src_engine_
 src_engine_-->src_content_
-src_engine_-->src_engine_rules_on_plain_values_
 src_engine_-->src_schemas_
+src_engine_-->src_engine_rules_on_plain_values_
 src_engine_-->src_engine_rules_
 src_engine_rules_on_plain_values_-->src_content_
 src_engine_rules_-->src_content_
 src_engine_rules_-->src_engine_rules_on_plain_values_
+src_rulebook_-->src_ui_shared_
 src_shared_-->src_engine_rules_on_plain_values_
-src_ui_gm_-->src_content_
-src_ui_gm_-->src_db_
 src_ui_gm_-->src_engine_
 src_ui_gm_-->src_ui_shared_
+src_ui_gm_-->src_content_
+src_ui_gm_-->src_db_
 src_ui_gm_-->src_engine_rules_on_plain_values_
 src_ui_gm_-->src_views_
 src_ui_leaderboard_-->src_db_
@@ -213,9 +207,9 @@ src_ui_player_-->src_content_
 src_ui_player_-->src_ui_shared_
 src_ui_player_-->src_shared_
 src_ui_player_-->src_db_
+src_views_-->src_engine_
 src_views_-->src_engine_rules_on_plain_values_
 src_views_-->src_engine_rules_
-src_views_-->src_engine_
 src_views_-->src_schemas_
 src_views_-->src_content_
 ```

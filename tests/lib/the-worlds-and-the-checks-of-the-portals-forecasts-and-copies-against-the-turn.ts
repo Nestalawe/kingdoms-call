@@ -3,8 +3,8 @@
 // Three tests read them: tests/unit/the-order-forms-forecasts-agree-with-the-turn.test.ts (the order form's forecasts,
 // its treasury ledger, its Practice Skill note and its order list, imported from their files with no vm: below, "The
 // forecasts, imported"), tests/unit/the-rules-the-shared-door-hands-the-portal-answer-alike-on-the-report-and-the-state.test.ts
-// (the projection cases) and tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts (the copies that read a
-// page file no test can import, which tests/lib/player-portal-copies.ts loads in a vm and hands the checks here).
+// (the projection cases) and tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts (the copies
+// tests/lib/player-portal-copies.ts imports from their page files, or runs by their statements, and hands the checks).
 //
 // Two ways of checking (Decision 7):
 //   projection  the engine's function on the report's value against it on the state's value the report made it from:
@@ -191,8 +191,8 @@ export interface ASpellTheFormOffers {
 export interface TheOrderFormsSpells {
   readonly tables: TheOrderFormsSpellTables;
   /** The spells the Cast Spell field offers the hero `c` (as his realm's `report` holds him) in phase `ph`, the form's
-   *  fields (`po-action-<id>-<phase>`, `po-target-<id>-<phase>`) holding `fields`: buildTargetField's statements from
-   *  the action spells through the rows it builds. */
+   *  fields (`po-action-<id>-<phase>`, `po-target-<id>-<phase>`) holding `fields`: order-targets.ts's
+   *  theSpellsTheCastSpellFieldOffersAHeroInAPhase, which buildTargetField calls. */
   readonly castSpellRows: (report: Obj, c: Obj, ph: number, fields: Record<string, string>) => ASpellTheFormOffers[];
   /** The target field spellSecondaryHtml builds for the spell, the caster `c` in phase 0 of `report`'s orders, with no
    *  target chosen: its markup. */
@@ -272,47 +272,50 @@ export function theForecastsImported(): TheForecasts {
     // where the hero will stand once his orders of the phases before `upTo` are carried out (its id, or null)
     predictedLocationOn: (report, orders, heroId, upTo, declarations) => {
       const at: unknown = whereAHeroStandsAfterTheOrdersBefore(
-        report,
-        theOrders(report, orders, declarations),
-        heroId,
-        upTo,
+        ...([report, theOrders(report, orders, declarations), heroId, upTo] as unknown as Parameters<
+          typeof whereAHeroStandsAfterTheOrdersBefore
+        >),
       );
       return isObj(at) ? at['id'] : null;
     },
     // what he will carry, each item by its name in the order of his pack
     predictedItemsOn: (report, orders, heroId, upTo) => {
-      const items: unknown = whatAHeroCarriesAsAPhaseBegins(report, theOrders(report, orders), heroId, upTo);
+      const items: unknown = whatAHeroCarriesAsAPhaseBegins(
+        ...([report, theOrders(report, orders), heroId, upTo] as unknown as Parameters<
+          typeof whatAHeroCarriesAsAPhaseBegins
+        >),
+      );
       return objects(items).map((it) => it['name']);
     },
     projectedLedArmiesOn: (report, orders, heroId, upTo) => {
-      const led: unknown = whatAHeroLeadsAsAPhaseBegins(report, theOrders(report, orders), heroId, upTo);
+      const led: unknown = whatAHeroLeadsAsAPhaseBegins(
+        ...([report, theOrders(report, orders), heroId, upTo] as unknown as Parameters<
+          typeof whatAHeroLeadsAsAPhaseBegins
+        >),
+      );
       return led;
     },
     projectedGarrisonOn: (report, orders, provId, upTo) => {
       const held: unknown = whatAGarrisonHoldsAsAPhaseBegins(
-        report,
-        theOrders(report, orders),
-        provId,
-        upTo,
-        undefined,
-        undefined,
+        ...([report, theOrders(report, orders), provId, upTo, undefined, undefined] as unknown as Parameters<
+          typeof whatAGarrisonHoldsAsAPhaseBegins
+        >),
       );
       return held;
     },
     // the Pick Up field's garrison: as the phase begins, with what his comrades leave in it that phase
     thePickUpFieldsGarrisonOn: (report, orders, provId, ph, heroId) => {
       const held: unknown = whatAGarrisonHoldsAsAPhaseBegins(
-        report,
-        theOrders(report, orders),
-        provId,
-        ph,
-        true,
-        heroId,
+        ...([report, theOrders(report, orders), provId, ph, true, heroId] as unknown as Parameters<
+          typeof whatAGarrisonHoldsAsAPhaseBegins
+        >),
       );
       return held;
     },
     actionsForOn: (report, c) => {
-      const offered: unknown = theOrdersTheFormOffersAHero(report, c);
+      const offered: unknown = theOrdersTheFormOffersAHero(
+        ...([report, c] as unknown as Parameters<typeof theOrdersTheFormOffersAHero>),
+      );
       return offered;
     },
     theOrderListsNames: () => ACTIONS.slice(),
@@ -320,17 +323,29 @@ export function theForecastsImported(): TheForecasts {
       Object.entries(L79_ORDERS).map(([name, o]) => ({ name, skill: o.skill, level: o.lvl })),
     // the companies the Move note counts in his column marching in the phase `ph`, each by its name
     theMoveNotesColumnOn: (report, orders, heroId, ph) => {
-      const host: unknown = theColumnAHeroMarchesWithInAPhase(report, theOrders(report, orders), heroId, ph);
+      const host: unknown = theColumnAHeroMarchesWithInAPhase(
+        ...([report, theOrders(report, orders), heroId, ph] as unknown as Parameters<
+          typeof theColumnAHeroMarchesWithInAPhase
+        >),
+      );
       return objects(isObj(host) ? host['armies'] : null).map((a) => String(a['unitName']));
     },
     // the treasury ledger's two sums
     theLedgerOn: (report, orders) => {
-      const ledger: unknown = theTreasuryLedgerOnTheseOrders(report, theOrders(report, orders));
+      const ledger: unknown = theTreasuryLedgerOnTheseOrders(
+        ...([report, theOrders(report, orders)] as unknown as Parameters<typeof theTreasuryLedgerOnTheseOrders>),
+      );
       return isObj(ledger) ? { spend: ledger['spend'], 'new wages': ledger['newWages'] } : null;
     },
     // the note under his Practice Skill order of the phase `ph`: its markup
     thePracticeNoteOn: (report, orders, c, ph) =>
-      String(theNoteUnderAnOrderThatQuotesItsChance(report, forTheHero(c, orders), c, 'Practice Skill', ph)),
+      String(
+        theNoteUnderAnOrderThatQuotesItsChance(
+          ...([report, forTheHero(c, orders), c, 'Practice Skill', ph] as unknown as Parameters<
+            typeof theNoteUnderAnOrderThatQuotesItsChance
+          >),
+        ),
+      ),
   };
 }
 

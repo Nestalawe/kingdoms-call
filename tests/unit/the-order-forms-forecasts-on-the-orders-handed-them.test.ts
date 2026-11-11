@@ -12,7 +12,10 @@
 // handed in, its answer pinned, each red on a fault planted in the line it reads (P1-11e41's PR); since P1-21n an Undead
 // realm's war without warning, a comrade's hand-over from another province left out of the Move note, a leave to the
 // garrison of companies recruited the phase before, beasts mustered to a comrade by his beast command's room, and an
-// earlier Blood Offering's company read as the offering began (each red on its mutant of the 2026-11-07 session); and
+// earlier Blood Offering's company read as the offering began (each red on its mutant of the 2026-11-07 session); since
+// P1-16b, which typed the file, a target field that isn't words, the province's name, Naval 8's hulls, a Recruit's boxes
+// trimmed, a same-phase hand-over by name, an earlier Skeletal Armies' graves and a Blood Offering's company by name
+// (each red on a fault planted in the line it reads); and
 // theOrdersTheFormHolds (the page's side) reading each field, a Recruit's boxes and the form's declarations, a field the
 // form doesn't show absent.
 import { afterEach, describe, expect, test } from 'vitest';
@@ -23,6 +26,7 @@ import {
   whatAHeroLeadsAsAPhaseBegins,
   whereAHeroStandsAfterTheOrdersBefore,
   whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders,
+  poSeaAnalysis,
 } from '../../src/ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { theOrdersTheFormHolds } from '../../src/ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts';
 
@@ -79,7 +83,9 @@ function aReport({ neutralAt2 = false, alignment = 'Good' } = {}) {
   };
 }
 const where = (report: unknown, orders: unknown, heroId: number, upTo: number): unknown => {
-  const at: unknown = whereAHeroStandsAfterTheOrdersBefore(report, orders, heroId, upTo);
+  const at: unknown = whereAHeroStandsAfterTheOrdersBefore(
+    ...([report, orders, heroId, upTo] as unknown as Parameters<typeof whereAHeroStandsAfterTheOrdersBefore>),
+  );
   return typeof at === 'object' && at !== null && 'id' in at ? at.id : at;
 };
 const names = (companies: unknown): unknown[] =>
@@ -127,6 +133,32 @@ describe('where a hero will stand, on the orders handed in', () => {
     expect(where(report, ordersOf(march), 1, 1)).toBe(1);
     expect(where(report, ordersOf(march, { 1: 'enemy' }), 1, 1)).toBe(2);
   });
+  test("a Move whose target field holds a value that isn't words throws the TypeError the march's reading of it threw", () => {
+    // (P1-16b: the form's fields hold words; a number there is read as before, not as words)
+    expect(() => where(aReport(), ordersOf({ 1: [{ action: 'Move', target: 2 }] }), 1, 1)).toThrow(TypeError);
+  });
+  test("where he will stand is the province's id and name, a province of no name read as Unknown", () => {
+    // (P1-16b: the name as `prov.name || 'Unknown'` read it)
+    const march = ordersOf({ 1: [{ action: 'Move', target: 'prov:2' }] });
+    const place = (report: unknown): unknown =>
+      whereAHeroStandsAfterTheOrdersBefore(
+        ...([report, march, 1, 1] as unknown as Parameters<typeof whereAHeroStandsAfterTheOrdersBefore>),
+      );
+    expect(place(aReport())).toEqual({ id: 2, name: 'Province 2' });
+    const nameless = aReport();
+    const two = nameless.worldMeta.provinces[2];
+    if (two) two.name = '';
+    expect(place(nameless)).toEqual({ id: 2, name: 'Unknown' });
+  });
+  test('the Move notice counts a hull double from Naval 8, not below, nor with no Naval given', () => {
+    // (P1-16b: `(navalRaw || 0) >= 8`)
+    expect([8, 7, null, undefined].map((naval) => poSeaAnalysis([], naval).navalL8)).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ]);
+  });
   test('on one report, an answer follows the orders handed in, not the one kept before', () => {
     const report = aReport();
     expect(where(report, ordersOf({ 1: [{ action: 'Move', target: 'prov:2' }] }), 1, 1)).toBe(2);
@@ -158,6 +190,17 @@ describe('what a hero will lead and carry, and a garrison hold, on the orders ha
       );
     expect(types(whatAHeroLeadsAsAPhaseBegins(aReport(), orders, 1, 1))).toEqual(['Spearmen', 'Archers']);
     expect(types(whatAHeroLeadsAsAPhaseBegins(aReport(), orders, 2, 1))).toEqual(['Spearmen']);
+  });
+  test("a Recruit's boxes are read as words, trimmed; a box of no words (or a falsy value) raises nothing", () => {
+    // (P1-16b: a box's value as `String(v || '').trim()` read it)
+    const orders = ordersOf({
+      1: [{ action: 'Recruit Armies', target: 'Spearmen', recruit: { musterTo: null, ticked: [' Spearmen ', '', 0] } }],
+    });
+    const types = (companies: unknown) =>
+      (Array.isArray(companies) ? companies : []).map((a: unknown) =>
+        typeof a === 'object' && a !== null && 'type' in a ? a.type : a,
+      );
+    expect(types(whatAHeroLeadsAsAPhaseBegins(aReport(), orders, 1, 1))).toEqual(['Spearmen', 'Archers', 'Spearmen']);
   });
   test('a mercenary band ticked joins as the report shows it, a band out of view as a hired band', () => {
     const report = {
@@ -213,6 +256,38 @@ describe('what a hero will lead and carry, and a garrison hold, on the orders ha
     const armies = typeof column === 'object' && column !== null && 'armies' in column ? column.armies : null;
     expect(names(armies)).toEqual(['First Spears', 'Bowmen', 'Second Spears']);
   });
+  test("the column the Move note counts holds the companies a comrade's hand-over of the same phase names, and no other", () => {
+    // (P1-16b: the companies taken from his column by name, one each)
+    const orders = ordersOf({
+      1: [{ action: 'Move', target: 'prov:2' }],
+      2: [{ action: 'Leave/Transfer Army', target: 'Second Spears', extra: '1' }],
+    });
+    const report = aReport();
+    report.characters[1]?.armies.push(
+      { type: 'Spearmen', quality: 'Average', unitName: 'Second Spears' },
+      { type: 'Archers', quality: 'Average', unitName: 'Long Bows' },
+    );
+    const column: unknown = theColumnAHeroMarchesWithInAPhase(report, orders, 1, 0);
+    const armies = typeof column === 'object' && column !== null && 'armies' in column ? column.armies : null;
+    expect(names(armies)).toEqual(['First Spears', 'Bowmen', 'Second Spears']);
+  });
+  test('the column the Move note counts holds the graves an earlier Skeletal Armies raises, by his Necromancy', () => {
+    // (P1-16b: his level as the turn counts it, effSkillP: Necromancy 3 raises two)
+    const report = aReport();
+    const aldo = report.characters[0];
+    if (!aldo) throw new Error('the staged report has no first hero');
+    aldo.skills = { necromancy: 3 };
+    const orders = ordersOf({
+      1: [
+        { action: 'Cast Spell', target: 'Skeletal Armies' },
+        { action: 'Move', target: 'prov:2' },
+      ],
+    });
+    const column: unknown = theColumnAHeroMarchesWithInAPhase(report, orders, 1, 1);
+    const armies = typeof column === 'object' && column !== null && 'armies' in column ? column.armies : null;
+    const grave = 'a grave you expect to raise this turn';
+    expect(names(armies)).toEqual(['First Spears', 'Bowmen', grave, grave]);
+  });
 });
 
 describe('what the later phases read of the earlier ones, on the orders handed in', () => {
@@ -226,7 +301,9 @@ describe('what the later phases read of the earlier ones, on the orders handed i
           : a,
     );
   const theColumn = (report: unknown, orders: unknown, heroId: number, ph: number) => {
-    const column: unknown = theColumnAHeroMarchesWithInAPhase(report, orders, heroId, ph);
+    const column: unknown = theColumnAHeroMarchesWithInAPhase(
+      ...([report, orders, heroId, ph] as unknown as Parameters<typeof theColumnAHeroMarchesWithInAPhase>),
+    );
     return {
       armies: labels(typeof column === 'object' && column !== null && 'armies' in column ? column.armies : null),
       sameFrom: typeof column === 'object' && column !== null && 'sameFrom' in column ? column.sameFrom : null,
@@ -272,11 +349,9 @@ describe('what the later phases read of the earlier ones, on the orders handed i
       1: [{ action: 'Recruit Armies', target: ticks.join(','), recruit: { musterTo: 'to:2', ticked: ticks } }],
     });
     const musters: unknown = whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders(
-      report,
-      orders,
-      report.characters[0],
-      0,
-      ticks,
+      ...([report, orders, report.characters[0], 0, ticks] as unknown as Parameters<
+        typeof whereTheCompaniesAHerosRecruitRaisesMusterOnTheseOrders
+      >),
     );
     const part = (key: string) =>
       labels(typeof musters === 'object' && musters !== null && key in musters ? Reflect.get(musters, key) : null);
@@ -297,6 +372,18 @@ describe('what the later phases read of the earlier ones, on the orders handed i
     });
     expect(labels(whatAHeroLeadsAsAPhaseBegins(report, orders, 1, 2))).toEqual(['Bowmen', 'Third Spears']);
     expect(theColumn(report, orders, 1, 2).armies).toEqual(['Bowmen']);
+  });
+  test('the Move note takes out the company the Blood Offering gave by its name, not the first of its type', () => {
+    // (P1-16b: each company matched by `(unitName || type)`)
+    const report = aReport();
+    report.characters[0]?.armies.push({ type: 'Spearmen', quality: 'Average', unitName: 'Third Spears' });
+    const orders = ordersOf({
+      1: [
+        { action: 'Perform Rite', target: 'Blood Offering', extra: 'S:2|E:0' },
+        { action: 'Move', target: 'prov:2' },
+      ],
+    });
+    expect(theColumn(report, orders, 1, 1).armies).toEqual(['First Spears', 'Bowmen']);
   });
 });
 

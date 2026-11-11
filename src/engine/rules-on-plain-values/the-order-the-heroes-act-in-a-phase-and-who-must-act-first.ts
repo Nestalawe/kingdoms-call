@@ -92,9 +92,11 @@ export interface AHerosIntentAsWhoMustActFirstReadsIt {
   readonly player: number | null;
   /** his order's kind (normaliseAction's answer; a cancelled march's is Defend) */
   readonly action: string;
-  readonly fromId: number;
-  /** where his march takes him (none: no march) */
-  readonly toId: number | null;
+  /** where he stands as the phase begins (the order form's forecast gives none where it sees none, and undefined where
+   *  the report gives his province no id) */
+  readonly fromId: number | null | undefined;
+  /** where his march takes him (none: no march; undefined, as the order form's forecast may give it) */
+  readonly toId: number | null | undefined;
   readonly order: { readonly target: string; readonly extra: string } | null;
   /** the hero his Send Item or Leave/Transfer Army hands to (none for any other order, or none named) */
   readonly theHeroHisOrderHandsTo: number | null;

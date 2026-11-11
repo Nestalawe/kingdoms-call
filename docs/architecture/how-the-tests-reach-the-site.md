@@ -11,7 +11,8 @@
     Chromium only what `globals.ts` puts there ([traps.md](../traps.md#nothing-is-on-window-but-globalsts));
   - `bootJsdom` boots it in jsdom;
   - `serve` and `routeExternal` do the same for Chromium (Playwright): the pages are served from one
-    folder, as deployed (`browser/server.ts`); `vendor/supabase-js-*.js` gets a stub and the fonts get nothing;
+    folder, as deployed (`browser/server.ts`); `assets/supabase-js-*.js` gets a stub, `kc-config.js` a database
+    address that never answers (so a missed stub reaches no database) and the fonts nothing;
   - every stand-in database answers `rpc('kc_db_version')` with `DB_VERSION`, the newest migration in
     `supabase/migrations/`, so pages pass their database version guard. `bootJsdom`'s
     `opts.dbVersion` sets another answer (an older version, `null` for a missing function, `'offline'`, or a
@@ -208,7 +209,9 @@
   expected, and its screen is the boot-failure message. In jsdom, a promise the page leaves rejected is a page error (jsdom
   doesn't fire `unhandledrejection`, so Node would otherwise end the test). A step may hold the page's own short timers:
   the player portal's orders mode queues them and runs them in order at the end of each step, so no screen is caught
-  halfway; every player-portal mode holds the Dispatches poll.
+  halfway; every player-portal mode holds the Dispatches poll. The report and Dispatches modes run the orders' running
+  account's timers at once, and the GM watcher's failed run reads a fixed time, so two runs of one site show the same
+  screens (P1-16a: 10 runs, none differ).
 - **`tests/tools/same-dom.js`** (run by hand, not in `npm test`): every screen of a tour, with ordinary names, on two copies of
   the site (e.g. `main`'s and the branch's), compared as parsed DOM; a string in a handler is compared by its value, however
   it's quoted, and a footer's build line reads as the stamp it replaced. A pull request that converts a page shows its output.

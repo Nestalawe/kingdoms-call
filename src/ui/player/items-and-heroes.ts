@@ -1,9 +1,70 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcArg, kcHtml } from '../shared/kc-safe.ts';
+import { kcArg, kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
+
 import { KC_GRAND_DESIGNS, KC_ITEM_SLOT_CAP, KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import { itemRaceOf, itemSlot, itemUsableBy } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
-import { _tintForDarkTooltip, reportColour } from './map-symbols.ts';
+import {
+  SKILL_LABELS,
+  type TheReportAsTheOrderFormReadsIt,
+} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+
+/** An item as the pack and its tags read it: the rules' item, and whether it is worn (a slot item is unless `false`). */
+export type AnItemAsThePackReadsIt = NonNullable<Parameters<typeof itemSlot>[0]> & {
+  readonly equipped?: boolean | undefined;
+};
+/** A hero as the target lists, the pack and its tags read him (a pre-order card's id is words). */
+export interface AHeroAsTheListsReadHim {
+  readonly id?: unknown;
+  readonly name?: string | null | undefined;
+  readonly alive?: boolean | undefined;
+  readonly hiredInPhase?: number | null | undefined;
+  readonly _charmEnemy?: unknown;
+  readonly _unknownSkills?: unknown;
+  readonly race?: string | null | undefined;
+  readonly alignment?: string | null | undefined;
+  readonly items?: readonly (AnItemAsThePackReadsIt | null | undefined)[] | null | undefined;
+}
+/** A realm as every report names it (allKingdoms): its index and its name. */
+interface ARealmEveryReportNames {
+  readonly index?: unknown;
+  readonly name?: string | undefined;
+  readonly color?: string | undefined;
+}
+/** A research's pair of leads the player keeps one of (pendingDiscoveryChoices). */
+interface APairOfLeads {
+  readonly key?: unknown;
+  readonly charName?: string | null | undefined;
+  readonly category?: string | null | undefined;
+  readonly turn?: number | null | undefined;
+  readonly options?: ALead[] | null | undefined;
+}
+/** A lead of the pair, as the choice shows it. */
+interface ALead {
+  readonly id?: unknown;
+  readonly name?: string | undefined;
+  readonly category?: string | undefined;
+  readonly desc?: string | undefined;
+}
+/** The report as the page's lists, the Wonder's hint, the research choice and the concession read it: the order form's
+ *  report, every realm's name, the pairs of leads, and whether the realm has conceded. */
+export interface TheReportAsThePagesListsReadIt extends TheReportAsTheOrderFormReadsIt {
+  readonly allKingdoms?: readonly (ARealmEveryReportNames | null | undefined)[] | null | undefined;
+  readonly pendingDiscoveryChoices?: readonly (APairOfLeads | null | undefined)[] | null | undefined;
+  readonly kingdom?:
+    (NonNullable<TheReportAsTheOrderFormReadsIt['kingdom']> & { readonly conceded?: unknown }) | null | undefined;
+}
+/** The slots' caps, labels and the tiers' names and colours, read by any slot or tier. */
+const theSlotCaps: Readonly<Partial<Record<string, number>>> = { ...KC_ITEM_SLOT_CAP };
+const theWondersByAlignment: Readonly<Partial<Record<string, { readonly name: string; readonly desc: string }>>> = {
+  ...KC_GRAND_DESIGNS,
+};
+const theSkillsNames: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
+/** A pair's leads, as `p.options` the filter made sure is a list. */
+function theLeadsOf(p: APairOfLeads): readonly ALead[] {
+  const options = p.options;
+  if (!options) throw new TypeError("a pair of leads' options are not a list");
+  return options;
+}
 
 // ── EQUIPMENT SLOTS — slot caps from the shared table in kingdoms-call-data.ts (KC_ITEM_SLOT_CAP) ──
 export const ITEM_SLOT_CAP_P = { ...KC_ITEM_SLOT_CAP };
@@ -32,23 +93,27 @@ export const ITEM_SLOT_ORDER_P = ['weapon', 'armour', 'shield', 'cloak', 'helm',
 // — and an ENEMY hero seized by Charm (who goes home at turn's end) never receives items or troops
 // (opts.allowCharmEnemy lets a friendly spell reach them). The engine resolves these ids to the
 // real hero and refuses the order if the hire / raise / charm did not land.
-export function isPreOrderIdP(id) {
+export function isPreOrderIdP(id: unknown): boolean {
   return typeof id === 'string' && /^(?:hired|resurrect|charm)_\d+_via_/.test(id);
 }
-export function orderTargetCharsP(report, ph, opts) {
-  return ((report && report.characters) || []).filter((x) => {
+export function orderTargetCharsP<C extends AHeroAsTheListsReadHim>(
+  report: { readonly characters?: readonly (C | null | undefined)[] | null | undefined } | null | undefined,
+  ph: number | null | undefined,
+  opts?: { readonly allowCharmEnemy?: unknown } | null,
+): C[] {
+  return (report?.characters ?? []).filter((x): x is C => {
     if (!x || x.alive === false) return false;
     if (isPreOrderIdP(x.id)) {
       if (ph == null) return false;
       if (ph <= (x.hiredInPhase ?? -1)) return false;
-      if (x._charmEnemy && !(opts && opts.allowCharmEnemy)) return false;
+      if (x._charmEnemy && !opts?.allowCharmEnemy) return false;
     }
     return true;
   });
 }
 // the suffix a pre-order hero carries in a recipient list, so the player knows it depends on the
 // hire / raise / charm landing.
-export function preOrderTagP(x) {
+export function preOrderTagP(x: { readonly id?: unknown } | null | undefined): string {
   if (!x || !isPreOrderIdP(x.id)) return '';
   const k = String(x.id).split('_')[0];
   return k === 'hired' ? ' — if the hire lands' : k === 'resurrect' ? ' — if raised' : ' — if charmed';
@@ -58,35 +123,17 @@ export function preOrderTagP(x) {
 // with their realm's name, and the <option> is tinted in that realm's colour (browsers honour an
 // inline colour on <option> in the open list; the closed control shows plain text). A wandering
 // hero has no realm and keeps its "(wandering)" label.
-export function realmOfP(playerIdx, report) {
-  const rep = report || currentReport || {};
+export function realmOfP(
+  playerIdx: unknown,
+  report?: TheReportAsThePagesListsReadIt | null,
+): ARealmEveryReportNames | null {
+  const rep = report ?? currentReport ?? {};
   if (playerIdx == null) return null;
-  return (rep.allKingdoms || []).find((k) => k && k.index === playerIdx) || null;
+  return (rep.allKingdoms ?? []).find((k) => k?.index === playerIdx) ?? null;
 }
-export function realmNameP(playerIdx, report) {
+export function realmNameP(playerIdx: unknown, report?: TheReportAsThePagesListsReadIt | null): string | undefined {
   const k = realmOfP(playerIdx, report);
   return k ? k.name : 'enemy';
-}
-export function realmOptStyleP(playerIdx, report) {
-  const k = realmOfP(playerIdx, report);
-  return k && k.color ? kcHtml` style="color:${reportColour(k.color)};font-weight:600"` : '';
-}
-// ── WHOSE HERO WAS THIS? (2026-09-27, Toby item 10) ────
-// Resurrect will raise only your OWN fallen and true wanderers — a body that ever served another
-// crown is refused — so every place a dead hero is shown must say which realm held them when they
-// fell. `player` is null for a hero who never served anyone. `opts.dark` tints for the map tooltip's
-// dark background; `opts.bare` drops the leading em-dash for callers that supply their own.
-export function deadHeroRealmTagP(h, report, opts) {
-  opts = opts || {};
-  const rep = report || currentReport || {};
-  const own = rep.playerIndex != null ? rep.playerIndex : null;
-  const lead = opts.bare ? '' : '— ';
-  if (h && h.player == null) return `${lead}a neutral hero, sworn to no crown`;
-  if (h && own != null && h.player === own) return `${lead}your own hero`;
-  const k = realmOfP(h ? h.player : null, rep);
-  const nm = (k && k.name) || 'another realm';
-  const col = k && k.color ? (opts.dark ? _tintForDarkTooltip(k.color) || '#e8b84b' : reportColour(k.color)) : null;
-  return kcHtml`${lead}a hero of <span style="${col ? `color:${col};` : ''}font-weight:600">${nm}</span>`;
 }
 // ── PACK ORDER ────
 // A hero's pack is LISTED equipped-first, in slot order (weapon, armour, shield, cloak, helm,
@@ -95,9 +142,11 @@ export function deadHeroRealmTagP(h, report, opts) {
 // Send Item order addresses items by their INDEX into the character's real `items` array and the GM
 // engine splices by that same index. Reordering the underlying array would hand the wrong item to
 // the courier, so nothing here ever touches `c.items`.
-export function itemsForDisplayP(c) {
-  const src = (c && c.items) || [];
-  const rank = (it) => {
+export function itemsForDisplayP(
+  c: AHeroAsTheListsReadHim | null | undefined,
+): (AnItemAsThePackReadsIt | null | undefined)[] {
+  const src = c?.items ?? [];
+  const rank = (it: AnItemAsThePackReadsIt | null | undefined): [number, number] => {
     const sl = itemSlot(it);
     const equipped = !!sl && it && it.equipped !== false && itemUsableBy(it, c);
     if (equipped) {
@@ -122,61 +171,73 @@ export const ITEM_TIER_NAME_P = { 1: 'Weak', 2: 'Moderate', 3: 'Powerful', 4: 'L
 // read. Every tier now clears 5:1, and the item name/description use --item-ink / --item-desc.
 export const ITEM_TIER_COLOUR_P = { 1: 'var(--stone)', 2: '#2c4a1e', 3: '#6a3d08', 4: '#7a5806' };
 // The small pill shown beside an item name wherever a pack is listed.
-export function itemTierTagP(it) {
-  const n = (it && it.tier) || 1;
+export function itemTierTagP(it: { readonly tier?: number | undefined } | null | undefined): KcSafeHtml {
+  const n = (it?.tier ?? 0) || 1;
+  const theColours: Readonly<Partial<Record<number, string>>> = ITEM_TIER_COLOUR_P;
+  const theNames: Readonly<Partial<Record<number, string>>> = ITEM_TIER_NAME_P;
   const leg = n === 4;
-  return kcHtml`<span style="color:${ITEM_TIER_COLOUR_P[n]};font-weight:${leg ? 700 : 600};font-size:.9em">${leg ? ' \u2728 Legendary' : ' \u00b7 ' + ITEM_TIER_NAME_P[n]}</span>`;
+  return kcHtml`<span style="color:${theColours[n]};font-weight:${leg ? 700 : 600};font-size:.9em">${leg ? ' \u2728 Legendary' : ' \u00b7 ' + String(theNames[n])}</span>`;
 }
 // Small tag shown after an item name: its slot and whether it is currently worn/wielded. Item 4:
 // race/alignment-bound items are inert in the wrong hands.
-export function itemBoundTag(it, c) {
+export function itemBoundTag(
+  it: AnItemAsThePackReadsIt | null | undefined,
+  c: AHeroAsTheListsReadHim | null | undefined,
+): KcSafeHtml | '' {
   if (!it || (!it.race && !it.alignment)) return '';
-  const who = it.race ? `${itemRaceOf(it)} characters` : `${it.alignment} characters`;
+  const who = it.race ? `${String(itemRaceOf(it))} characters` : `${String(it.alignment)} characters`;
   return itemUsableBy(it, c)
     ? ''
     : kcHtml` <span style="color:#7a1010;font-size:.72rem">[${who} only — unusable by this character]</span>`;
 }
-export function itemSlotTag(it, c) {
+export function itemSlotTag(it: AnItemAsThePackReadsIt, c: AHeroAsTheListsReadHim | null | undefined): KcSafeHtml {
   // name the slot AND how many of that slot the character still has free.
   const sl = itemSlot(it);
   if (!sl) return kcHtml` <span style="color:#2a2419;font-size:.72rem">[carried — needs no slot]</span>`;
-  const cap = ITEM_SLOT_CAP_P[sl] || 1;
+  const cap = (theSlotCaps[sl] ?? 0) || 1;
+  const theLabels: Readonly<Partial<Record<string, string>>> = ITEM_SLOT_LABEL_P;
   const used = c
-    ? (c.items || []).filter((o) => o && itemSlot(o) === sl && o.equipped !== false && itemUsableBy(o, c)).length
+    ? (c.items ?? []).filter((o) => o && itemSlot(o) === sl && o.equipped !== false && itemUsableBy(o, c)).length
     : it.equipped === false
       ? 0
       : 1;
   const free = Math.max(0, cap - used);
   const st = it.equipped === false ? 'not equipped' : 'equipped';
-  return kcHtml` <span style="color:${it.equipped === false ? '#5b5b5b' : '#43350f'};font-size:.72rem">[${ITEM_SLOT_LABEL_P[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
+  return kcHtml` <span style="color:${it.equipped === false ? '#5b5b5b' : '#43350f'};font-size:.72rem">[${theLabels[sl]} slot — ${st} · ${free} of ${cap} free]</span>`;
 }
 // Hunting Rumours (2026-09-17 (late)): the ticked lairs → the hidden target field, comma-separated feature idx.
-export function updateRumourTarget(charId, ph) {
-  const wrap = document.getElementById(`po-rumour-wrap-${charId}-${ph}`);
-  const hidden = document.getElementById(`po-target-${charId}-${ph}`);
-  if (!wrap || !hidden) return;
-  const boxes = [...wrap.querySelectorAll('input[type=checkbox]')];
+export function updateRumourTarget(charId: unknown, ph: unknown): void {
+  const wrap = document.getElementById(`po-rumour-wrap-${String(charId)}-${String(ph)}`);
+  const hidden = document.getElementById(`po-target-${String(charId)}-${String(ph)}`);
+  if (!wrap || !(hidden instanceof HTMLInputElement)) return;
+  const boxes = [...wrap.querySelectorAll('input[type=checkbox]')].filter((b) => b instanceof HTMLInputElement);
   hidden.value = boxes
     .filter((b) => b.checked)
     .map((b) => b.value)
     .join(',');
-  const tot = document.getElementById(`po-rumour-total-${charId}-${ph}`);
+  const tot = document.getElementById(`po-rumour-total-${String(charId)}-${String(ph)}`);
   if (tot) {
     let sum = 0;
     boxes
       .filter((b) => b.checked)
       .forEach((b) => {
-        const m = (b.parentNode.textContent || '').match(/(\d+)g\s*$/);
-        if (m) sum += parseInt(m[1]);
+        const m = /(\d+)g\s*$/.exec(theParentOf(b).textContent ?? '');
+        if (m) sum += parseInt(String(m[1]));
       });
     const cost = tot.querySelector('strong');
-    if (cost) cost.textContent = `${sum}g`;
+    if (cost) cost.textContent = `${String(sum)}g`;
   } // the first <strong> is the cost of the ticked lairs
 }
-export function updateEquipTarget(charId, ph) {
-  const wrap = document.getElementById(`po-equip-wrap-${charId}-${ph}`);
-  const hidden = document.getElementById(`po-target-${charId}-${ph}`);
-  if (!wrap || !hidden) return;
+/** A box's parent, which a box inside its list always has; none throws the TypeError reading its text threw. */
+function theParentOf(b: Node): ParentNode {
+  const parent = b.parentNode;
+  if (parent === null) throw new TypeError("a box has no parent to read the lair's cost from");
+  return parent;
+}
+export function updateEquipTarget(charId: unknown, ph: unknown): void {
+  const wrap = document.getElementById(`po-equip-wrap-${String(charId)}-${String(ph)}`);
+  const hidden = document.getElementById(`po-target-${String(charId)}-${String(ph)}`);
+  if (!wrap || !(hidden instanceof HTMLInputElement)) return;
   const vals = [...wrap.querySelectorAll('select')].map((s) => s.value).filter(Boolean);
   hidden.value = [...new Set(vals)].join(',');
 }
@@ -195,11 +256,11 @@ export const DIRECTIONS = {
 // what the Wonder DOES, this decides what the player is told it will do before they spend the order.
 export const GD_BY_ALIGNMENT = { ...KC_GRAND_DESIGNS };
 // The Grand Design hint for the reader's own realm, naming the Wonder they would actually raise.
-export function gdHintFor(report) {
-  const r = report || currentReport || {};
-  const al = (r.kingdom && r.kingdom.alignment) || null;
-  const gd = al ? GD_BY_ALIGNMENT[al] : null;
-  if (!gd) return L79_ORDERS['Grand Design'].hint;
+export function gdHintFor(report?: TheReportAsThePagesListsReadIt | null): KcSafeHtml | string {
+  const r = report ?? currentReport ?? {};
+  const al = (r.kingdom?.alignment ?? '') || null;
+  const gd = al ? theWondersByAlignment[al] : null;
+  if (!gd) return theGrandDesignsHint();
   return kcHtml`Sage 9 · ONCE EVER, and only in a province you hold. Your ${al} realm raises the <strong>${gd.name}</strong> — ${gd.desc} The Wonder stands in the province it is built in: hold that ground and its blessing flows, lose the province and the blessing lapses until you take it back. The Wonder itself is never destroyed, and a conqueror gains nothing from it but the view.`;
 }
 // ── SKILL ROW ────
@@ -211,10 +272,16 @@ export function gdHintFor(report) {
 // not change the skill itself. Falls back to the raw skills for an older report with no breakdown.
 // style: 'tags' — the compact pills on the report card; 'inline' — the orders column's label list.
 // …and the two reasons, phrased for the player. `hidden` never becomes visible; `unknown` does, next turn.
-export const unseenSuffixP = (c) =>
-  c && c._unknownSkills
-    ? `${(c && c.name) || 'this hero'}’s level is not known until they have joined`
-    : `${(c && c.name) || 'this hero'}’s level is hidden from you`;
+export const unseenSuffixP = (c: AHeroAsTheListsReadHim | null | undefined): string =>
+  c?._unknownSkills
+    ? `${(c.name ?? '') || 'this hero'}’s level is not known until they have joined`
+    : `${(c?.name ?? '') || 'this hero'}’s level is hidden from you`;
+/** The Grand Design's hint as the orders' table writes it (the table always holds the order). */
+function theGrandDesignsHint(): string {
+  const theOrder = L79_ORDERS['Grand Design'];
+  if (theOrder === undefined) throw new TypeError("the orders' table holds no Grand Design");
+  return theOrder.hint;
+}
 
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis.currentUser = null;
@@ -243,11 +310,11 @@ globalThis.concedeGame = false;
 // pair's key → the kept discovery id. Submitted with orders as `discoveryChoices`.
 globalThis.discoveryChoices = {};
 export function _pendingDiscChoices() {
-  return ((currentReport && currentReport.pendingDiscoveryChoices) || []).filter(
-    (p) => p && p.key && Array.isArray(p.options) && p.options.length,
+  return (currentReport?.pendingDiscoveryChoices ?? []).filter(
+    (p): p is APairOfLeads => !!(p?.key && Array.isArray(p.options) && p.options.length),
   );
 }
-export function discoveryChoiceBlockHTML() {
+export function discoveryChoiceBlockHTML(): KcSafeHtml | '' {
   const pend = _pendingDiscChoices();
   if (!pend.length) return '';
   return kcHtml`<div id="orders-discovery-top" class="orders-char-block" style="background:#f4f7ec">
@@ -258,35 +325,37 @@ export function discoveryChoiceBlockHTML() {
       <div id="orders-discovery-choice" style="padding:6px 10px 10px"></div>
     </div>`;
 }
-export function renderDiscoveryChoices() {
+export function renderDiscoveryChoices(): void {
   const w = document.getElementById('orders-discovery-choice');
   if (!w) return;
   const pend = _pendingDiscChoices();
-  w.innerHTML = kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-bottom:6px">Your scholars turned up two leads for each discovery below, but only one can be pursued. Keep one — the other is <strong>forgotten for good</strong> and will never come up again. Left unchosen, one is kept at random.</div>${pend.map(
-    (
-      p,
-      i,
-    ) => kcHtml`<div style="${i ? 'border-top:1px solid var(--parchment-dark);margin-top:8px;padding-top:8px;' : ''}">
-      <div style="font-family:Cinzel,serif;font-size:.78rem;font-weight:600;color:var(--ink);margin-bottom:4px">Found by ${p.charName || 'a scholar'}${p.category ? ` — ${p.category} research` : ''}${p.turn ? ` (turn ${p.turn})` : ''}</div>
-      ${p.options.map(
+  w.innerHTML = String(
+    kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-bottom:6px">Your scholars turned up two leads for each discovery below, but only one can be pursued. Keep one — the other is <strong>forgotten for good</strong> and will never come up again. Left unchosen, one is kept at random.</div>${pend.map(
+      (
+        p,
+        i,
+      ) => kcHtml`<div style="${i ? 'border-top:1px solid var(--parchment-dark);margin-top:8px;padding-top:8px;' : ''}">
+      <div style="font-family:Cinzel,serif;font-size:.78rem;font-weight:600;color:var(--ink);margin-bottom:4px">Found by ${(p.charName ?? '') || 'a scholar'}${p.category ? ` — ${p.category} research` : ''}${p.turn ? ` (turn ${String(p.turn)})` : ''}</div>
+      ${theLeadsOf(p).map(
         (
           o,
-        ) => kcHtml`<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;margin:3px 0;border:1px solid ${discoveryChoices[p.key] === o.id ? 'var(--forest)' : 'var(--parchment-dark)'};border-radius:3px;background:${discoveryChoices[p.key] === o.id ? '#e8f1dc' : '#fffdf6'};cursor:pointer;font-size:.76rem;line-height:1.4">
-          <input type="radio" name="dc-${p.key}" value="${o.id}" ${discoveryChoices[p.key] === o.id ? 'checked' : ''} onchange="setDiscoveryChoice(${kcArg(String(p.key))},${kcArg(String(o.id))})" style="margin-top:3px">
+        ) => kcHtml`<label style="display:flex;align-items:flex-start;gap:8px;padding:5px 6px;margin:3px 0;border:1px solid ${discoveryChoices[String(p.key)] === o.id ? 'var(--forest)' : 'var(--parchment-dark)'};border-radius:3px;background:${discoveryChoices[String(p.key)] === o.id ? '#e8f1dc' : '#fffdf6'};cursor:pointer;font-size:.76rem;line-height:1.4">
+          <input type="radio" name="dc-${p.key}" value="${o.id}" ${discoveryChoices[String(p.key)] === o.id ? 'checked' : ''} onchange="setDiscoveryChoice(${kcArg(String(p.key))},${kcArg(String(o.id))})" style="margin-top:3px">
           <span><strong>${o.name}</strong> <span style="color:var(--stone)">(${o.category})</span><br>${o.desc}</span>
         </label>`,
       )}
     </div>`,
-  )}`;
+    )}`,
+  );
 }
-export function setDiscoveryChoice(key, id) {
+export function setDiscoveryChoice(key: string, id: unknown): void {
   discoveryChoices[key] = id;
   renderDiscoveryChoices();
 }
-export function renderConcede() {
+export function renderConcede(): void {
   const w = document.getElementById('concede-wrap');
   if (!w) return;
-  const k = currentReport?.kingdom || {};
+  const k = currentReport?.kingdom ?? {};
   if (k.conceded) {
     w.innerHTML = `<div style="background:#eee;border:1px solid #999;border-radius:3px;padding:6px 8px;color:#231e16">\u{1F3F3} <strong>Your realm has conceded.</strong> Your heroes hold their ground and take no further orders.</div>`;
     return;
@@ -295,7 +364,7 @@ export function renderConcede() {
     ? `<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px">\u{1F3F3} <strong>You will CONCEDE the game with these orders.</strong> This cannot be undone once the turn runs. <button type="button" onclick="setConcede(false)" style="margin-left:6px;font-size:.7rem;padding:2px 8px;cursor:pointer">Cancel</button></div>`
     : `<button type="button" onclick="setConcede(true)" style="font-family:'Cinzel',serif;font-size:.66rem;padding:4px 10px;border:1px solid #999;background:#f4f0e6;color:#2a2419;border-radius:2px;cursor:pointer" title="Withdraw your realm from the game">\u{1F3F3} Concede the game\u2026</button>`;
 }
-export function setConcede(v) {
+export function setConcede(v: unknown): void {
   if (
     v &&
     !confirm(
@@ -305,4 +374,59 @@ export function setConcede(v) {
     return;
   concedeGame = !!v;
   renderConcede();
+}
+// Track recruit orders already placed in earlier phases (client-side) Compass direction from one
+// province to another on the offset-hex map, used to label an as-yet unexplored target province as
+// e.g. "Unknown province (West)" instead of a meaningless internal number. Rows shift by half a
+// column with parity (pointy-top offset), and columns wrap around the map edge.
+export function provDirectionLabel(
+  fromId: unknown,
+  toId: unknown,
+  provs: AProvinceOfTheMapsGrid[] | null | undefined,
+  cols: number | null | undefined,
+): string | null | undefined {
+  if (!Array.isArray(provs)) return null;
+  const a = provs.find((p) => p.id === fromId),
+    b = provs.find((p) => p.id === toId);
+  if (!a || !b || a.row == null || b.row == null) return null;
+  let dc = b.col - a.col;
+  if (cols) {
+    if (dc > cols / 2) dc -= cols;
+    if (dc < -cols / 2) dc += cols;
+  } // shortest way around the wrap
+  const dr = b.row - a.row;
+  if (dr === 0 && dc === 0) return null;
+  const x1 = a.col + (a.row & 1) * 0.5,
+    y1 = a.row * 0.866;
+  const x2 = a.col + dc + (b.row & 1) * 0.5,
+    y2 = b.row * 0.866;
+  const ang = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI; // y grows southward: 0=E, 90=S, 180=W, 270=N
+  const dirs = ['East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest', 'North', 'Northeast'];
+  return dirs[Math.round(((ang + 360) % 360) / 45) % 8];
+}
+
+// Render the "Pre-battle magic" control for a character from its hidden ep-preschool field.
+/** A province as the compass reads it: its id and its place on the grid. */
+interface AProvinceOfTheMapsGrid {
+  readonly id?: unknown;
+  readonly row?: number | null | undefined;
+  readonly col: number;
+}
+export function renderPreSchool(charId: unknown): void {
+  const disp = document.getElementById(`ep-preschool-display-${String(charId)}`);
+  const hidden = document.getElementById(`ep-preschool-${String(charId)}`);
+  if (!disp || !(hidden instanceof HTMLInputElement)) return;
+  const school = (hidden.value || '').toLowerCase();
+  if (school) {
+    disp.innerHTML =
+      String(kcHtml`<span style="display:inline-flex;align-items:center;gap:6px;background:#fff8e8;border:1px solid #c8922a;border-radius:2px;padding:3px 8px;font-size:.78rem">
+        <span style="color:#5a4208">Random <strong>${(theSkillsNames[school] ?? '') || school}</strong> spell</span>
+        <button onclick="clearPreSchool(${kcArg(String(charId))})" title="Remove" style="background:var(--crimson);color:#fff;border:none;border-radius:2px;padding:0 6px;cursor:pointer;font-size:.7rem">✕</button>
+      </span>
+      <button onclick="openPreSchoolPicker(${kcArg(String(charId))})" style="font-size:.7rem;padding:3px 8px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">Change</button>`);
+  } else {
+    disp.innerHTML =
+      String(kcHtml`<button onclick="openPreSchoolPicker(${kcArg(String(charId))})" style="font-size:.72rem;padding:3px 10px;border:1px solid var(--stone);background:var(--parchment-dark);cursor:pointer;border-radius:2px">+ Choose spell school</button>
+      <span style="font-size:.72rem;color:#aaa">None set</span>`);
+  }
 }

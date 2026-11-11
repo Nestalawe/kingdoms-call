@@ -1,45 +1,31 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_SEASONS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { kcHtml } from '../shared/kc-safe.ts';
+import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
 import {
-  CREATURE_ARMIES,
-  MONSTER_ARMIES,
-  aCompanyIsABeastADruidHalves,
-  aLeadersBeastsPayHalfWages,
   countsAgainstBeastCommand,
   dispFloor,
-  druidLevelTheMasteryCounts,
-  druidMasteryGainOver,
   itemUsableBy,
-  seaLiftOfAColumn,
   skillFameLabelM,
-  strengthLeftByADruidShortfall,
-  takesHalfAHullAboard,
-  theDruidMasteryLiftsAUnitOfThisType,
-  theItemsAHeroUses,
-  theMasteryTierATrainedLevelGives,
-  theStrengthAUnitHasBeforeTheGroundAndTheFoe,
-  theWageABeastPaysUnderADruid,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { kcJoinP, sb } from './startup.ts';
-import {
-  deadHeroRealmTagP,
-  GUARD_POWER_COLORS_P,
-  itemBoundTag,
-  itemsForDisplayP,
-  itemSlotTag,
-  itemTierTagP,
-} from './items-and-heroes.ts';
-import { effSkillP } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
+import { sb } from './startup.ts';
+import { GUARD_POWER_COLORS_P, itemBoundTag, itemsForDisplayP, itemSlotTag, itemTierTagP } from './items-and-heroes.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
-import { refreshOrdersVisibility } from './layout.ts';
+import { ensureProvinceLinking } from './layout.ts';
 import { turnDeadlineText } from './game-lists.ts';
-import { buildChronicle, loadPastReport, returnToCurrentReport } from './join-and-chronicle.ts';
+import { buildChronicle } from './join-and-chronicle.ts';
 import { renderMastery, renderTitles } from './titles.ts';
-import { armyLabel, unitEmoji } from './order-chances.ts';
+import { unitEmoji } from './order-chances.ts';
 import { buildOrdersForm } from './orders-form.ts';
-import { itemAcquiredTagP, itemLoreTip, unitAbilityTip } from './briefing-and-submit.ts';
-import { capitalise, druidNeedP, formatRace, skillRowHTML } from './skills-and-projections.ts';
+import { itemAcquiredTagP, itemLoreTip, unitAbilityTip, restoreSubmitWrap } from './briefing-and-submit.ts';
+import {
+  capitalise,
+  formatRace,
+  skillRowHTML,
+  armyLabel,
+  theArmyCardsAirAndSeaNotesOfAColumn,
+  theArmyCardsFiguresOfAColumn,
+} from './skills-and-projections.ts';
 import {
   CHIEFTAIN_MARKER_COLOR,
   _lairName,
@@ -49,13 +35,12 @@ import {
   reportColour,
   spiedExtraP,
   terrorNoteP,
+  deadHeroRealmTagP,
+  renderDiplomacy,
 } from './map-symbols.ts';
-import { ensureProvinceLinking, renderPlayerMap } from './map.ts';
-import { initMessaging } from './dispatches.ts';
-import {
-  SKILL_LABELS,
-  rawSkillLvl,
-} from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+import { renderPlayerMap } from './map.ts';
+import { initMessaging, refreshOrdersVisibility } from './dispatches.ts';
+import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 
 // ── TURN REPORT ────
 export async function openReport(gamePlayerId) {
@@ -384,76 +369,14 @@ export function renderReportView(report) {
             const head = kcHtml`<div style="flex-basis:100%;width:100%;margin-top:5px;border-top:1px dashed var(--parchment-dark);padding-top:4px"><div style="font-size:.64rem;color:var(--stone);text-transform:uppercase;letter-spacing:.05em">Armies leading</div>`;
             if (arr.length === 0)
               return kcHtml`${head}<div style="font-size:.75rem;color:#3a3224">No armies led — moves 5 provinces/turn on its own.</div></div>`;
-            const druLevel = effSkillP(c, 'druid');
-            // the wage the turn charges: a beast he leads pays half if he holds Druid 6 or his realm's Druidic Wonder
-            // stands (aLeadersBeastsPayHalfWages, as Early Winter asks it: R-135); a summons and a Wild Hunt beast draw
-            // none, a skeleton its 1g, halved or not
-            const hisBeastsPayHalfWages = aLeadersBeastsPayHalfWages(
-              rawSkillLvl(c, 'druid') >= 6,
-              () => !!kingdom.itsDruidicWonderHalvesItsBeastsWages,
+            const { druLevel, units, totalStr, totalCost, druidUnits, druidShort } = theArmyCardsFiguresOfAColumn(
+              arr,
+              c,
+              report,
             );
-            // Druid requirement, waivers and shortfall: ONE rule, druidNeedP (the engine's, with the portal's level).
-            let totalStr = 0,
-              totalCost = 0,
-              druidUnits = 0,
-              druidShort = 0;
-            const lines = arr.map((a) => {
-              // The unit's strength as the turn counts it before the ground, the foe and the battle's tactics (R-135,
-              // question 45 (a)): armStr's own steps in its order (theStrengthAUnitHasBeforeTheGroundAndTheFoe), the
-              // shortfall and the mastery below handed in.
-              const creature = CREATURE_ARMIES.has(a.type),
-                monster = MONSTER_ARMIES.has(a.type);
-              const _dn = druidNeedP(a, c, report); // skeleton / Druidic-creature / sd40 waivers, same-race Druid 1
-              const req = _dn.req;
-              if (_dn.counts) druidUnits++;
-              const effDru = _dn.effDru;
-              const shortfall = _dn.shortfall;
-              // a Druid shortfall actually REDUCES the unit's strength — the share it leaves (the engine's own
-              // strengthLeftByADruidShortfall: max(0.1, 1−0.2×shortfall)) comes off the unit's base strength, rounded
-              // down, as the battle takes it, instead of only tagging the penalty beside a full-strength number.
-              let theShareHisShortfallLeaves = 1;
-              if (shortfall > 0) {
-                druidShort++;
-                theShareHisShortfallLeaves = strengthLeftByADruidShortfall(shortfall);
-              }
-              // DRUID MASTERY (2026-09-24; the engine's own rule, as druidMasteryGain asks it): on a living
-              // Creature or Monster, +20% per Druid level over the unit's minimum (0 where the requirement is
-              // waived), Druid counted to 9, capped +100%; shown in percent, and applied after the kin below, as
-              // in the battle.
-              const mastery = theDruidMasteryLiftsAUnitOfThisType(a.type, a.skeletal)
-                ? Math.round(druidMasteryGainOver(druidLevelTheMasteryCounts(druLevel), req) * 100)
-                : 0;
-              // In armStr's order: Druid 8 and Necromancy 6 lift its quality (his trained levels); its base strength at
-              // that quality; the shortfall, rounded down; its kin (+20% your king's, +20% its leader's: +44% both) and
-              // a rival kin's leader (−20%); the items he uses; the Druid mastery; his minor titles (those the report
-              // names). Your realm's unit-strength discoveries, and what a battle or a spell of the turn adds, are left out.
-              const _str = theStrengthAUnitHasBeforeTheGroundAndTheFoe(
-                { unitType: a.type, quality: a.quality, isSkeletal: !!a.skeletal, race: a.race },
-                {
-                  hisDruidMasteryTier: theMasteryTierATrainedLevelGives(rawSkillLvl(c, 'druid')),
-                  hisNecromancyMasteryTier: theMasteryTierATrainedLevelGives(rawSkillLvl(c, 'necromancy')),
-                  theShareHisDruidShortfallLeaves: theShareHisShortfallLeaves,
-                  theKingsRace: kingdom.race,
-                  hisRace: c.race,
-                  // (not yet: the report doesn't carry its discoveries' effects, and the page holds no table of them)
-                  theRealmsUnitStrengthEffects: [],
-                  heIsTheKing: !!c.isKing,
-                  theItemsHeUses: theItemsAHeroUses(c.items || [], c),
-                  theRealmsAlignment: kingdom.alignment,
-                  hisDruidMasteryGain: mastery / 100,
-                  heHoldsTheMinorTitle: (title) => (c.minorHeld || []).some((t) => t && t.key === title),
-                },
-              );
-              const kingRaceMatch = _str.theKin.itsKingIsOfItsKin;
-              const leadRaceMatch = _str.theKin.itsLeaderIsOfItsKin;
-              const feudLed = _str.theKin.aLeaderOfItsRivalKinLeadsIt;
-              const bs = _str.strength;
-              totalStr += bs;
-              const wage = a.cost != null ? a.cost : 2;
-              totalCost +=
-                hisBeastsPayHalfWages && !a.temporary && !a.wildHunt && aCompanyIsABeastADruidHalves(a.type)
-                  ? theWageABeastPaysUnderADruid(wage)
-                  : wage;
+            const lines = arr.map((a, i) => {
+              const { creature, monster, req, effDru, shortfall, mastery, kingRaceMatch, leadRaceMatch, feudLed, bs } =
+                units[i];
               const mast =
                 mastery > 0
                   ? kcHtml` <span style="color:#1d5a1d;font-size:.66rem">+${mastery}% Druid mastery</span>`
@@ -476,42 +399,7 @@ export function renderReportView(report) {
               return kcHtml`<div style="font-size:.75rem">${unitAbilityTip(a.type, kcHtml`${unitEmoji(a.type)} <span style="color:${reportColour(kingdom.color) || 'var(--ink)'}">${armyLabel(a, { noMove: true })}</span>`)} <span style="color:var(--stone);font-size:.66rem">str ${bs}${a.moveRate != null ? ` · move ${a.moveRate}${a.moveKind === 'sea' ? ' (sea)' : a.moveKind === 'air' ? ' (air)' : ''}` : ''}</span>${tag}${raceBoost}${feudTag}${mast}${pen}</div>`;
             });
             const effSpd2 = c.effectiveSpeed != null ? c.effectiveSpeed : Math.min(...arr.map((a) => a.speed || 3));
-            // FLYING CARRY note. If humanoid flyers are lifting foot soldiers (a mixed airborne
-            // column that can cross sea), tell the player so the raised speed and sea reach make
-            // sense.
-            const _FLY_UI2 = new Set(KC_UNIT_CLASS.flying);
-            const _SEA_UI2 = new Set(KC_UNIT_CLASS.sea);
-            const _AER_UI2 = new Set(KC_UNIT_CLASS.aerial);
-            const _hasFlyer = arr.some((a) => _FLY_UI2.has(a.type));
-            const _hasFoot = arr.some((a) => !_AER_UI2.has(a.type) && !_SEA_UI2.has(a.type));
-            const _airborne =
-              _hasFlyer && _hasFoot && !arr.some((a) => _SEA_UI2.has(a.type)) && c.effectiveSeaSpeed > 0;
-            const _airNote = _airborne
-              ? kcHtml` · <span style="color:#2d6a8a">🦅 Airborne — the flyers carry the foot soldiers, so the whole force flies (crosses sea, moves at the flyers' pace)</span>`
-              : '';
-            // sea transport: whether this force can put to sea is the turn's own answer (seaLiftOfAColumn, which
-            // getSeaCapability and the Move note ask too: R-135): its hulls (each carries double under a trained Naval
-            // of 8 or more, R-125) and its humanoid flyers pool their lift. The figures explain it: the hulls its land
-            // units need (light foot half a hull, the rest a whole one), the berths it has, the units left ashore.
-            const _naval8 = ((c.skills || {}).naval || 0) >= 8;
-            const _lift = seaLiftOfAColumn(arr, _naval8);
-            const _landUnits = arr.filter((a) => !_AER_UI2.has(a.type) && !_SEA_UI2.has(a.type));
-            let _hullNeed = _landUnits.reduce((n, a) => n + (takesHalfAHullAboard(a) ? 0.5 : 1), 0);
-            if (_naval8) _hullNeed /= 2;
-            const _hullNeedShown = Math.ceil(_hullNeed);
-            const _hullHave = _lift.berths; // berths: a turtle's Island Back offers two
-            const _ashore = _lift.unitsLeftAshore.length;
-            const _hulls = kcHtml`needs ${_hullNeedShown} hull${_hullNeedShown !== 1 ? 's' : ''}, has ${_hullHave}`;
-            let _seaNote = '';
-            if (_lift.answer === 'all')
-              _seaNote = kcHtml` · ⚓ <span style="color:#2d6a8a">Sea: every unit sails or flies on its own</span>`;
-            else if (_airborne) _seaNote = '';
-            else if (_lift.answer === 'sea' && _hullHave >= _hullNeed)
-              _seaNote = kcHtml` · ⚓ <span style="color:#1d5a1d">Sea transport: ${_hulls} — can put to sea</span>`;
-            else if (_lift.answer === 'sea')
-              _seaNote = kcHtml` · ⚓ <span style="color:#1d5a1d">Sea transport: ${_hulls}, and the flyers carry the rest — can put to sea</span>`;
-            else
-              _seaNote = kcHtml` · ⚓ <span style="color:var(--crimson)">Sea transport: ${_hulls} — ${_ashore} unit${_ashore !== 1 ? 's' : ''} left ashore: more fleet units or flyers to carry the whole force</span>`;
+            const { _airNote, _seaNote } = theArmyCardsAirAndSeaNotesOfAColumn(arr, c);
             const druNote =
               druidUnits > 0
                 ? kcHtml` · 🌿 ${druidUnits} unit${druidUnits !== 1 ? 's' : ''} need Druid ${druidShort > 0 ? kcHtml`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>` : kcHtml`<span style="color:#1d5a1d">(${c.name.split(' ')[0]} qualifies)</span>`}`
@@ -1025,98 +913,6 @@ export function renderReportView(report) {
     ensureProvinceLinking();
   } catch (e) {} // every province name in the report becomes a map link
 }
-
-// ── DIPLOMACY PANEL (alliance system) ────
-// Renders the realms this player has encountered with the current relation and the declarations
-// available. A pending choice is stored in diploChoices and submitted with the turn's orders. Item
-// 9: the report card keeps the INFORMATION (relations, pending declarations); the Declare War /
-// Propose Peace / Propose Alliance BUTTONS now live at the top of the Orders column
-// (#orders-diplomacy), beside the dispatch composer and the Concede control.
-export function renderDiplomacy(report) {
-  _renderDiplomacyInto(document.getElementById('report-diplomacy'), report, false);
-  _renderDiplomacyInto(document.getElementById('orders-diplomacy'), report, true);
-}
-export function _renderDiplomacyInto(el, report, withControls) {
-  if (!el) return;
-  const known = (report && report.diplomacy && report.diplomacy.known) || [];
-  const alliancesAllowed = !report || !report.diplomacy || report.diplomacy.alliancesAllowed !== false;
-  // 2026-09-29 (Toby): SAFE START — no Treat or declaration of war until the orders for Turn N
-  // (safeStartUntil, 6). The engine discards any sent earlier; here the controls are withdrawn.
-  const _ssUntil = Number(report && report.diplomacy && report.diplomacy.safeStartUntil) || 0;
-  const _ssLive = Number(report && (report._liveTurn || report.turn)) || 1;
-  const safeLocked = _ssUntil > 0 && _ssLive < _ssUntil;
-  if (!known.length) {
-    el.innerHTML = kcHtml`<em style="color:#3a3224;font-size:.85rem">You have not yet encountered another realm. Once you see a rival's province or one of their characters, you may treat with them here.</em>`;
-    return;
-  }
-  const relBadge = (r) =>
-    r === 'allied'
-      ? kcHtml`<span class="pill" style="background:#dff0d8;color:#1d541d">🤝 Allied</span>`
-      : r === 'enemy'
-        ? kcHtml`<span class="pill" style="background:#f7d7d7;color:#701010">⚔ At war</span>`
-        : kcHtml`<span class="pill" style="background:#efe6cc;color:#3a2e18">🕊 Neutral</span>`;
-  const btn = (idx, val, label, bg) =>
-    kcHtml`<button onclick="setDiploChoice(${kcArg(idx)},${kcArg(val)})" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
-  const pendingLabel = (k) => {
-    const p = diploChoices[k.index];
-    if (p === 'enemy') return k.relation === 'allied' ? 'Break Alliance' : 'Declare War';
-    if (p === 'treat') return k.relation === 'enemy' ? 'Propose Peace' : 'Propose Alliance';
-    return '';
-  };
-  el.innerHTML = kcHtml`${known.map((k) => {
-    const pending = diploChoices[k.index];
-    let controls;
-    // 2026-09-27 (Toby item 7): a realm that has CONCEDED (or been extinguished) has left the game.
-    // There is nobody left to treat with, so the entry says so and every control is withdrawn — and
-    // any declaration already pending against them this turn is dropped rather than sent into the
-    // void.
-    if (k.conceded || k.eliminated) {
-      if (pending != null) delete diploChoices[k.index];
-      controls = kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>${k.eliminated && !k.conceded ? 'This dynasty is extinguished' : 'This realm has withdrawn from the game'} — there is no court left to treat with, and no declaration can be made against it.</em></div>`;
-    } else if (safeLocked) {
-      if (pending != null) delete diploChoices[k.index];
-      controls = withControls
-        ? kcHtml`<div style="font-size:.78rem;color:#3a3224"><em>🕊 Safe Start — no Treat or declaration of war may be made until the orders for Turn ${_ssUntil}.</em></div>`
-        : '';
-    } else if (!withControls) {
-      controls = pending
-        ? kcHtml`<div style="font-size:.78rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)}</strong> <span style="color:#3a3224">(change it at the top of your Orders)</span></div>`
-        : '';
-    } else if (pending) {
-      controls = kcHtml`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;<button onclick="setDiploChoice(${kcArg(k.index)},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
-    } else if (k.relation === 'neutral') {
-      controls = kcHtml`${alliancesAllowed ? kcHtml`${btn(k.index, 'treat', 'Propose Alliance', '#2d6a2d')} ` : ''}${btn(k.index, 'enemy', 'Declare War', '#8a1c1c')}`;
-    } else if (k.relation === 'enemy') {
-      controls = btn(k.index, 'treat', 'Propose Peace', '#2d6a2d');
-    } else {
-      // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
-      // for an Evil or Undead crown, which goes straight to war.
-      const _darkSelf = ['Evil', 'Undead'].includes((report.kingdom || {}).alignment);
-      controls = btn(k.index, 'enemy', _darkSelf ? 'Break Alliance — War' : 'Break Alliance', '#8a1c1c');
-    }
-    return kcHtml`<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <strong style="color:${reportColour(k.color) || '#333'}">${k.name}</strong>
-        <span style="font-size:.72rem;color:#332c20">${k.alignment || ''}</span>
-        ${k.conceded || k.eliminated ? kcHtml`<span class="pill" style="background:#e6ded0;color:#3a2e18">${k.eliminated && !k.conceded ? '\u2620 Extinguished' : '\u{1F3F3} Conceded'}${k.conceded && k.concededTurn ? ` (turn ${k.concededTurn})` : ''}</span>` : relBadge(k.relation)}
-        ${!k.conceded && !k.eliminated && k.offeredUs ? kcHtml`<span class="pill" style="background:#e3eefa;color:#1c3e6a" title="They proposed this last turn. Propose it back this turn to seal it.">🕊 Offered ${k.offeredUs === 'peace' ? 'peace' : 'an alliance'} last turn</span>` : ''}
-      </div>
-      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">${controls}</div>
-    </div>`;
-  })}${
-    withControls && safeLocked
-      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">🕊 <strong>Safe Start:</strong> this is a Safe Start game — diplomacy opens with the orders for <strong>Turn ${_ssUntil}</strong> (this is Turn ${_ssLive}).</div>`
-      : ''
-  }${
-    withControls && !safeLocked
-      ? kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:6px">${
-          alliancesAllowed
-            ? kcHtml`An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.`
-            : kcHtml`In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).`
-        } Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`
-      : ''
-  }`;
-}
 export function setDiploChoice(idx, val) {
   if (val == null || val === 'null') delete diploChoices[idx];
   else diploChoices[idx] = val;
@@ -1180,4 +976,131 @@ export function initReportCollapsers() {
     b.addEventListener('click', () => toggleSection(b));
     h.appendChild(b);
   });
+}
+
+// Manual refresh from the new-turn banner. Re-opens the current report (fetches the fresh
+// turn_report); the player triggered it, so replacing the current view is expected. Any draft they
+// had already saved is reloaded from the server by openReport; a draft only typed but not saved is
+// theirs to re-enter.
+export function refreshOpenReport() {
+  const b = document.getElementById('new-turn-banner');
+  if (b) b.style.display = 'none';
+  if (currentGamePlayerId) openReport(currentGamePlayerId);
+} // end buildChronicle
+
+export async function loadPastReport(gameId, playerIndex, turn) {
+  viewedTurn = turn;
+  refreshTurnNavHighlight();
+  const banner = document.getElementById('prev-report-banner');
+  banner.style.display = 'block';
+  const pi = playerIndex;
+
+  // Strictly hide orders and submit sections — past-turn views must never affect orders.
+  document.getElementById('orders-card').style.display = 'none';
+  refreshOrdersVisibility(false); // past turn — orders unavailable (desk-safe)
+  const sw = document.getElementById('orders-submit-wrap');
+  if (sw) sw.style.display = 'none';
+  document.getElementById('orders-msg').innerHTML = '';
+  document.getElementById('save-msg').style.display = 'none';
+
+  // 1. Try to load this player's full snapshot for the turn (gives the correct historical MAP).
+  let snapshot = null;
+  try {
+    const { data: snapRows } = await sb
+      .from('turn_logs')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('turn', turn)
+      .eq('player_index', pi)
+      .limit(1);
+    if (snapRows && snapRows[0] && snapRows[0].entries) {
+      const e = snapRows[0].entries;
+      snapshot = typeof e === 'string' ? JSON.parse(e) : e;
+    }
+  } catch (err) {
+    snapshot = null;
+  }
+
+  banner.innerHTML = kcHtml`Viewing Turn ${snapshotTurnLabel(turn)}${turn === 0 ? ' (founding)' : ''} — read only. <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
+
+  if (snapshot) {
+    // Whole report body straight from the snapshot — map, chronicle, AND every other section revert
+    // to this turn. (Order forms stay hidden; renderReportView only paints the read-only view.)
+    viewingReport = snapshot;
+    renderReportView(snapshot);
+    return;
+  }
+
+  // 2. Fallback for games/turns saved before per-turn snapshots existed:
+  // rebuild the chronicle from the GM full log and keep the current map (noted in the banner).
+  const { data: logs } = await sb
+    .from('turn_logs')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('turn', turn)
+    .eq('player_index', -1)
+    .limit(1);
+  const { data: g } = await sb.from('games').select('*').eq('id', gameId).single();
+  const gameState = g?.game_state || {};
+  const allChars = gameState.characters || [];
+  const ownCharIds = new Set(allChars.filter((c) => c.player === pi).map((c) => c.id));
+
+  const entries = ((logs && logs[0]?.entries) || [])
+    .filter((e) => {
+      if ((e.targets || []).includes(pi)) return true;
+      if (e.actor === pi) return true;
+      if (e.charId != null && ownCharIds.has(e.charId)) return true;
+      if (Array.isArray(e.charIds) && e.charIds.some((id) => ownCharIds.has(id))) return true;
+      return false;
+    })
+    .map((e) => {
+      // Route to one of THIS player's characters via charId, or via charIds (a duel/battle names
+      // both).
+      let cid =
+        e.charId != null && ownCharIds.has(e.charId)
+          ? e.charId
+          : Array.isArray(e.charIds)
+            ? (e.charIds.find((id) => ownCharIds.has(id)) ?? null)
+            : null;
+      return { type: e.type, text: e.text, charId: cid, phase: e.phase ?? null };
+    });
+
+  if (entries.length > 0) {
+    buildChronicle(
+      entries,
+      allChars.filter((c) => c.player === pi),
+    );
+  } else if (turn === 0) {
+    document.getElementById('report-log').innerHTML =
+      kcHtml`<div class="log-entry system">Your realm is founded. The realm awaits your first commands.</div>`;
+  }
+  banner.innerHTML = kcHtml`Viewing Turn ${snapshotTurnLabel(turn)} — read only. <span style="opacity:.8">(map history isn't available for this turn — showing the current map)</span> <button onclick="returnToCurrentReport()" style="margin-left:8px;font-size:.72rem;padding:2px 7px;border:1px solid #c8922a;background:transparent;color:#5a3f08;cursor:pointer;border-radius:2px">← Current Turn</button>`;
+}
+
+export function returnToCurrentReport() {
+  viewedTurn = null;
+  refreshTurnNavHighlight();
+  document.getElementById('prev-report-banner').style.display = 'none';
+  document.getElementById('orders-card').style.display = 'block';
+  refreshOrdersVisibility(true); // back on the live turn — orders available (desk tab governs display)
+  // Restore the correct submit wrap based on the TRUE submitted state (not on whatever DOM happens
+  // to be there). If the live turn is not submitted, ensure a live Submit button — this clears any
+  // stale "success / ↺ Resubmit" block from an earlier submission. If it IS submitted, leave the
+  // existing submitted/resubmit control in place.
+  const submitWrap = document.getElementById('orders-submit-wrap');
+  const _submitted = !!(currentGamePlayer && currentGamePlayer.orders_submitted);
+  if (submitWrap && !_submitted && !submitWrap.querySelector('#submit-btn')) {
+    restoreSubmitWrap('Submit');
+  }
+  if (submitWrap) submitWrap.style.display = 'flex';
+  // Restore the WHOLE current-turn body. loadPastReport paints every read-only section (realm,
+  // provinces, intel, discoveries, diplomacy, titles, mastery, map AND chronicle) from the
+  // past-turn snapshot, so returning must repaint every one of them from the current report — not
+  // just the map and chronicle. Repainting only those two left the other sections frozen on the
+  // turn just viewed, which read as a report "muddled" with a previous one until the browser was
+  // reloaded.
+  viewingReport = currentReport;
+  if (currentReport) {
+    renderReportView(currentReport);
+  }
 }

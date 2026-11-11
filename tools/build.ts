@@ -4,8 +4,9 @@
 //
 // Every src/*.html is a page. Each is built on its own (P1-09's Decision 8), so its bundle stands alone: one script,
 // assets/<page>-<hash>.js, with no import left (jsdom runs no module script, so tests/lib/boot.js inlines it as a
-// classic one), and one stylesheet, assets/<page>-<hash>.css. public/ is copied as it is: kc-config.js (staging overwrites it),
-// kc-staging-footer.js and vendor/. The options, in one place for the build and the dev server (tools/dev.ts):
+// classic one), and one stylesheet, assets/<page>-<hash>.css. public/ is copied as it is: kc-config.js (staging overwrites it)
+// and kc-staging-footer.js. supabase-js is the pinned npm package's browser build, as it is (plan P1-17b): see
+// supabaseJsFromItsPackage below. The options, in one place for the build and the dev server (tools/dev.ts):
 // - minify: false: a live error's stack keeps the code's names, and the size is what it was;
 // - target esnext and no module preload: the code is left as written, and nothing is added to the page;
 // - names with a hash of the file's content (assets/<page>-<hash>.js, P1-06b): a change gives the file a new name, an
@@ -38,6 +39,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { build as viteBuild, createLogger, type InlineConfig, type Logger, type Plugin } from 'vite';
 
 export const ROOT = path.resolve(import.meta.dirname, '..');
@@ -63,7 +65,7 @@ const pagesIn = (src: string) =>
     .sort();
 
 // Vite says a <script src> without type="module" can't be bundled: those are the classic scripts in public/
-// (kc-config.js, the staging footer, supabase-js), loaded as they are, on purpose. Any other warning is printed.
+// (kc-config.js, the staging footer), loaded as they are, on purpose. Any other warning is printed.
 const CLASSIC_SCRIPT = /<script src="[^"]+"> in "[^"]+" can't be bundled without type="module" attribute/;
 function quietAboutClassicScripts(): Logger {
   const logger = createLogger('warn');
@@ -100,6 +102,58 @@ export function packagesFromTheRepository(): Plugin {
   };
 }
 
+/** The marker a template puts where supabase-js's <script> tag goes (plan P1-17b). */
+export const SUPABASE_JS_MARKER = '<!--kc-supabase-js-->';
+/** The package's files the site serves as they are: its browser build (it sets the global `supabase`) and its
+ *  licence. The version is package.json's pin (tests/vendor-supabase.test.js). */
+export const supabaseJsFile = (): string =>
+  fileURLToPath(import.meta.resolve('@supabase/supabase-js/dist/umd/supabase.js'));
+const supabaseJsLicence = (): string =>
+  path.join(path.dirname(fileURLToPath(import.meta.resolve('@supabase/supabase-js/package.json'))), 'LICENSE');
+/** Where the dev server answers supabase-js (tools/dev.ts has no hashed files). */
+export const SUPABASE_JS_ON_THE_DEV_SERVER = 'supabase-js.js';
+
+/** A Vite plugin (plan P1-17b): supabase-js from npm, its browser build copied byte for byte. The build emits it as
+ *  assets/supabase-js-<hash>.js (its licence beside it, assets/supabase-js-LICENSE-<hash>.txt), and writes a classic
+ *  <script> tag for it where a template has SUPABASE_JS_MARKER, before the page's module script, as public/vendor/'s
+ *  tag was. The dev server answers it as SUPABASE_JS_ON_THE_DEV_SERVER instead. */
+export function supabaseJsFromItsPackage(): Plugin {
+  let serving = false;
+  return {
+    name: 'kc-supabase-js-from-its-package',
+    configResolved(config) {
+      serving = config.command === 'serve';
+    },
+    buildStart() {
+      if (serving) return;
+      this.emitFile({ type: 'asset', name: 'supabase-js.js', source: fs.readFileSync(supabaseJsFile()) });
+      this.emitFile({ type: 'asset', name: 'supabase-js-LICENSE.txt', source: fs.readFileSync(supabaseJsLicence()) });
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if ((req.url ?? '').split('?')[0] !== '/' + SUPABASE_JS_ON_THE_DEV_SERVER) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', 'application/javascript');
+        res.end(fs.readFileSync(supabaseJsFile()));
+      });
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!html.includes(SUPABASE_JS_MARKER)) return html;
+        const file = serving
+          ? SUPABASE_JS_ON_THE_DEV_SERVER
+          : Object.values(ctx.bundle ?? {}).find((o) => o.type === 'asset' && o.names.includes('supabase-js.js'))
+              ?.fileName;
+        if (file === undefined) throw new Error('supabase-js was not emitted');
+        return html.replace(SUPABASE_JS_MARKER, `<script src="./${file}"></script>`);
+      },
+    },
+  };
+}
+
 /** Vite's options for the site, shared by the build (one page at a time) and the dev server (tools/dev.ts). */
 export function siteOptions(src = SRC, pub = PUBLIC): InlineConfig {
   return {
@@ -109,13 +163,20 @@ export function siteOptions(src = SRC, pub = PUBLIC): InlineConfig {
     base: './',
     logLevel: 'warn',
     customLogger: quietAboutClassicScripts(),
-    plugins: [packagesFromTheRepository()],
+    plugins: [packagesFromTheRepository(), supabaseJsFromItsPackage()],
     build: { minify: false, target: 'esnext', modulePreload: false },
   };
 }
 
-/** The options for one page's build into `out`. */
-function pageOptions(page: string, out: string, src: string, pub: string, first: boolean): InlineConfig {
+/** The options for one page's build into `out` (with each bundle's source map beside it when `sourceMaps`). */
+function pageOptions(
+  page: string,
+  out: string,
+  src: string,
+  pub: string,
+  first: boolean,
+  sourceMaps: boolean,
+): InlineConfig {
   const site = siteOptions(src, pub);
   return {
     ...site,
@@ -123,12 +184,20 @@ function pageOptions(page: string, out: string, src: string, pub: string, first:
     publicDir: first ? pub : false,
     build: {
       ...site.build,
+      sourcemap: sourceMaps,
       outDir: out,
       emptyOutDir: first,
       rolldownOptions: {
         ...KEEP_THE_CODE,
         input: { [page.replace(/\.html$/, '')]: path.join(src, page) },
-        output: { entryFileNames: 'assets/[name]-[hash].js', assetFileNames: 'assets/[name]-[hash][extname]' },
+        output: {
+          entryFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash][extname]',
+          // The build writes into a temporary folder first: each source by its full path, so the map reads anywhere.
+          ...(sourceMaps && {
+            sourcemapPathTransform: (source: string, map: string) => path.resolve(path.dirname(map), source),
+          }),
+        },
       },
     },
   };
@@ -215,8 +284,14 @@ export interface BuildResult {
 }
 
 /** Builds the site from `src` (and `pub`, copied as it is) into `out`: writes what changed, removes what is no longer
- *  made. */
-export async function buildSite(out = SITE, src = SRC, pub = PUBLIC): Promise<BuildResult> {
+ *  made. `sourceMaps`: each bundle with its source map (tools/proof/the-changed-lines-no-tour-reaches.ts; the site
+ *  published has none). */
+export async function buildSite(
+  out = SITE,
+  src = SRC,
+  pub = PUBLIC,
+  { sourceMaps = false }: { sourceMaps?: boolean } = {},
+): Promise<BuildResult> {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-build-'));
   try {
     const pages = pagesIn(src);
@@ -226,7 +301,7 @@ export async function buildSite(out = SITE, src = SRC, pub = PUBLIC): Promise<Bu
     const realSrc = fs.realpathSync(src);
     const modules: Record<string, string[]> = {};
     for (const page of pages) {
-      const result = await viteBuild(pageOptions(page, temp, src, pub, first));
+      const result = await viteBuild(pageOptions(page, temp, src, pub, first, sourceMaps));
       first = false;
       const outputs = (Array.isArray(result) ? result : [result]).flatMap((r) => ('output' in r ? r.output : []));
       modules[page] = [

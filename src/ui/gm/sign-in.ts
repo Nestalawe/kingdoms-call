@@ -1,10 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { sb } from './config.ts';
+import { sb, thePagesDb } from './config.ts';
 import { loadGames } from './game-list.ts';
 import { openGame } from './game-detail.ts';
-import { backfillGameMeta, probeGameMeta, probeMessaging, probeTelemetry } from '../../db/game-meta.ts';
-import { backfillGameResults } from '../../db/telemetry.ts';
+import { backfillGameMeta } from './game-list.ts';
+import { probeGameMeta, probeMessaging, probeTelemetry } from './startup.ts';
+import { backfillGameResults } from './hall-of-fame.ts';
 import { probeLeaderboard } from './hall-of-fame.ts';
 import { startAutoTurnWatcher } from './auto-turn.ts';
 
@@ -13,7 +14,7 @@ export async function init() {
   document.getElementById('spinner').style.display = 'none';
   const {
     data: { session },
-  } = await sb.auth.getSession();
+  } = await thePagesDb.signingIn.theSessionKeptInThisBrowser();
   if (session) {
     currentUser = session.user;
     onSignedIn();
@@ -35,7 +36,7 @@ export async function doSignIn() {
     return;
   }
   msg.innerHTML = '<div class="msg-info">Signing in…</div>';
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pwd });
+  const { data, error } = await thePagesDb.signingIn.signInWithEmailAndPassword(email, pwd);
   if (error) {
     let m = error.message;
     if (m.includes('Email not confirmed'))
@@ -50,7 +51,7 @@ export async function doSignIn() {
 }
 
 export async function doSignOut() {
-  await sb.auth.signOut();
+  await thePagesDb.signingIn.signOut();
   currentUser = null;
   _kcOverlord = false;
   show('sec-auth');
@@ -97,7 +98,7 @@ export async function submitChangePassword() {
   }
   msg.innerHTML = '<span style="color:#231e16">Updating…</span>';
   try {
-    const { error } = await sb.auth.updateUser({ password: p1 });
+    const { error } = await thePagesDb.signingIn.changeThePassword(p1);
     if (error) {
       msg.innerHTML = kcHtml`<span style="color:#c00">${error.message}</span>`;
       return;
@@ -140,7 +141,10 @@ export async function onSignedIn() {
 // any game (P0-32e); this switches the list to every game, hides New Game and keeps the watcher off.
 export let _kcOverlord = false;
 export async function gmPortalAllowed() {
-  const [gm, ov] = await Promise.all([sb.rpc('is_game_master'), sb.rpc('is_site_admin')]);
+  const [gm, ov] = await Promise.all([
+    thePagesDb.theRoles.isTheSignedInAccountAGameMaster(),
+    thePagesDb.theRoles.isTheSignedInAccountTheOverlord(),
+  ]);
   const err = gm.error || ov.error;
   _kcOverlord = !err && ov.data === true;
   if (!err && (gm.data === true || ov.data === true)) return true;

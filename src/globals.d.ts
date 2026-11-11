@@ -2,7 +2,7 @@
 // module (no import, no export): each `declare` here is a global.
 //
 // From the page's classic scripts (public/, loaded by a tag before the page's module): KC_CONFIG (kc-config.js, which
-// staging overwrites), supabase (supabase-js, public/vendor/). KC_RNG_SEED is set by the tests before a page's scripts
+// staging overwrites), supabase (supabase-js, from npm: tools/build.ts; its type, TheSupabaseGlobal, is src/db/'s, the only folder that reads it). KC_RNG_SEED is set by the tests before a page's scripts
 // run (tests/lib/boot.js) and read by src/engine/rng.ts behind typeof; the live site has none.
 //
 // Then each page's declared globals (P1-09b): the variables its files and its tests share, each declared once as
@@ -16,13 +16,13 @@ declare const KC_CONFIG: Readonly<{
   supabaseKey: string;
   deployed?: Readonly<{ pr: number; sha: string }>;
 }>;
-declare const supabase: { createClient(url: string, key: string, options?: object): PageState };
+declare const supabase: TheSupabaseGlobal;
 declare const KC_RNG_SEED: number | undefined;
 
 /** A page variable's value, untyped until P1-16. */
 type PageState = any;
 
-// db/game-meta.ts
+// ui/gm/startup.ts
 declare var _kcHasTel: PageState;
 declare var _kcTelLastErr: PageState;
 declare var _kcHasMsg: PageState;
@@ -68,12 +68,15 @@ declare var currentProfile: PageState;
 declare var joiningGame: PageState;
 declare var joinSkills: PageState;
 declare var currentGamePlayer: PageState;
-declare var currentReport: PageState;
-declare var diploChoices: PageState;
+/** The report the page shows: as the order form's forecasts and the page's lists read it (P1-16b, P1-16c: its typed
+ *  readers, the forecasts' page side and items-and-heroes.ts), every part optional. */
+declare var currentReport: import('./ui/player/map-symbols.ts').TheReportAsTheMapsPopupsReadIt | null | undefined;
+declare var diploChoices: Partial<Record<string, unknown>> | null;
 declare var reckoningCall: PageState;
-declare var _heroOrder: PageState;
+declare var _heroOrder: (string | null)[] | null | undefined;
 declare var concedeGame: PageState;
-declare var discoveryChoices: PageState;
+/** The research's leads kept this turn, by the pair's key (items-and-heroes.ts). */
+declare var discoveryChoices: Partial<Record<string, unknown>>;
 // ui/player/layout.ts
 declare var _msgEnabled: PageState;
 declare var _deskLeftView: PageState;

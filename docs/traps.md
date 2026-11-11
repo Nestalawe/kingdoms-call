@@ -38,7 +38,7 @@ A constant another file reads as it loads lives in a file of its own that import
 order is not changed. Example: when two files import each other, one runs first and finds the other's top-level `const`
 unset: a temporal-dead-zone `ReferenceError` stops the page on its spinner, or, in the bundle (Rolldown writes each
 `const` as a `var`), the read quietly finds `undefined`. Checks: `npm run lint:arch` fails on a new import cycle (the
-pages' two known ones are listed in `.dependency-cruiser-known-violations.json`); `boot-pages` and `chromium-boot`
+GM page's known one is listed in `.dependency-cruiser-known-violations.json`); `boot-pages` and `chromium-boot`
 catch a page that no longer boots. [Detail](architecture/the-build-from-src-to-site.md#a-constant-read-at-load-time-must-live-in-a-leaf-module).
 
 ## `select('*')` on big tables
@@ -64,7 +64,7 @@ as `tests/meta-missing-turn.test.js` does. This is why database and site changes
 
 A site PR that can't work without a migration raises `KC_DB_MIN` to the migration's 14-digit version in every page
 that needs it, and never lowers it to get past the stop. Example: each page that uses the database starts through
-`kcDbGuard(sb, KC_DB_MIN)` (`src/db/kc-db-guard.ts`); on an older database, one without `kc_db_version()`, or no
+`kcDbGuard(thePagesDb, KC_DB_MIN)` (`src/db/kc-db-guard.ts`); on an older database, one without `kc_db_version()`, or no
 answer after one retry, it stops with "The game is being updated" and reads or writes nothing. Otherwise cope
 ([above](#a-new-column-must-be-optional-at-the-write-site)).
 Checks: `db-min` fails if a `KC_DB_MIN` is newer than the newest file in `supabase/migrations/`; `db-guard` boots each
@@ -241,7 +241,7 @@ flyer harried once was immune to Flak Screen for the rest of the game. Checks: t
 
 When you fix a finding listed in `eslint-suppressions.json`, run `npx eslint --prune-suppressions`, then
 `npm run ratchet -- --update`, and commit both with the fix; never `--pass-on-unpruned-suppressions`. Example: fix one
-of `src/db/game-meta.ts`'s five unused variables and lint stops with "There are suppressions left that do not occur
+of `src/ui/gm/game-list.ts`'s five unused variables and lint stops with "There are suppressions left that do not occur
 anymore". A new finding fails, even of a rule the file already has suppressed. Moving code moves its findings: `npx eslint --suppress-all <new file>`, then prune.
 Checks: ESLint's command line (`npm run lint`, `npm run check`, the edit hook; not its API); the ratchet's
 `eslintSuppressions`.

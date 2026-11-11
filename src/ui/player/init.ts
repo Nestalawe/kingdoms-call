@@ -1,7 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { sb } from './startup.ts';
 import { ensureMobileDefault, setupDeskLayout, teardownDeskLayout } from './layout.ts';
-import { onSignedIn } from './sign-in.ts';
 import { _closeMapTip } from './map.ts';
 import { saveMessageReads, stopMessagePolling } from './dispatches.ts';
 
@@ -69,27 +67,6 @@ export function refreshTurnNavHighlight() {
     } // lighter crimson = the turn on screen
     btn.style.cssText = `font-size:.68rem;padding:2px 8px;border:1px solid ${border};background:${bg};color:${color};cursor:pointer;border-radius:2px`;
   });
-}
-
-// ── INIT ────
-export async function init() {
-  try {
-    document.getElementById('spinner').style.display = 'none';
-    const {
-      data: { session },
-      error,
-    } = await sb.auth.getSession();
-    if (error) throw error;
-    if (session) {
-      currentUser = session.user;
-      await onSignedIn();
-    } else show('sec-auth');
-  } catch (e) {
-    document.getElementById('spinner').style.display = 'block';
-    document.getElementById('spinner').textContent =
-      'Connection error: ' + e.message + '. Check your internet connection and refresh.';
-    console.error('Init failed:', e);
-  }
 }
 
 // scroll the report column to one of its main sections, keeping the target heading clear of the
