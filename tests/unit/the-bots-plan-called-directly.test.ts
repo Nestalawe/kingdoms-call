@@ -1658,9 +1658,15 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
       o === null ? '-' : `${String(o['action'])}|${String(o['target'])}|${String(o['desc'])}`.replace(/\d{4}/g, '#'),
     );
   const plans = (b: Board) => b.G.turnOrders as unknown as Record<number, Raw[]>;
+  /** The names the plan's words give, staged as the default seed deals them: the seed names the world's provinces,
+   *  and `stageCase` stages alike on every seed the rest these cases read (each realm's race and faith, the wealth). */
+  const named = (names: readonly (readonly [Board['X'], string])[]) => {
+    for (const [p, name] of names) p.name = name;
+  };
   const relief = (more: (b: Board, h: Character, x: Character) => void = () => undefined) => {
     const { b } = fresh(() => ({ bots: [1] }));
     const B = b.X;
+    named([[B, 'Wide Waters']]);
     const X = must(b.ring1[0], 'a neighbour');
     (B as unknown as Raw)['_battleUnresolved'] = true;
     const h = standAHero(b, { player: 1, at: B, troops: 2 });
@@ -1685,6 +1691,11 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
       b.ring2.find((p) => nbrsOfS.includes(p) && b.nbrs(Xf).includes(p)),
       'the ground beside both',
     );
+    named([
+      [t1, 'Wide Waters'],
+      [A, 'Teeth Reef'],
+      [must(step(b.G, S, 0) as Board['X'] | null, 'the ground north-west'), 'Leviathan Abyss'],
+    ]);
     b.own(t1, 0);
     b.own(Xf, 0);
     b.own(A, 0);
