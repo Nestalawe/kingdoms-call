@@ -96,7 +96,9 @@ export const ITEM_SLOT_ORDER_P = ['weapon', 'armour', 'shield', 'cloak', 'helm',
 export function isPreOrderIdP(id: unknown): boolean {
   return typeof id === 'string' && /^(?:hired|resurrect|charm)_\d+_via_/.test(id);
 }
-export function orderTargetCharsP<C extends AHeroAsTheListsReadHim>(
+export function orderTargetCharsP<
+  C extends Pick<AHeroAsTheListsReadHim, 'id' | 'alive' | 'hiredInPhase' | '_charmEnemy'>,
+>(
   report: { readonly characters?: readonly (C | null | undefined)[] | null | undefined } | null | undefined,
   ph: number | null | undefined,
   opts?: { readonly allowCharmEnemy?: unknown } | null,
@@ -379,13 +381,17 @@ export function setConcede(v: unknown): void {
 // province to another on the offset-hex map, used to label an as-yet unexplored target province as
 // e.g. "Unknown province (West)" instead of a meaningless internal number. Rows shift by half a
 // column with parity (pointy-top offset), and columns wrap around the map edge.
+/** `Array.isArray` on a list typed `readonly` (which it narrows to `any[]`), its elements' type kept. */
+function isAListOf<T>(x: readonly T[] | null | undefined): x is readonly T[] {
+  return Array.isArray(x);
+}
 export function provDirectionLabel(
   fromId: unknown,
   toId: unknown,
-  provs: AProvinceOfTheMapsGrid[] | null | undefined,
+  provs: readonly AProvinceOfTheMapsGrid[] | null | undefined,
   cols: number | null | undefined,
 ): string | null | undefined {
-  if (!Array.isArray(provs)) return null;
+  if (!isAListOf(provs)) return null;
   const a = provs.find((p) => p.id === fromId),
     b = provs.find((p) => p.id === toId);
   if (!a || !b || a.row == null || b.row == null) return null;

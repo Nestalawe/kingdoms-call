@@ -90,7 +90,7 @@ interface AFallenHero {
   readonly player?: unknown;
 }
 /** A province of the map as its popup reads it. */
-interface AProvinceThePopupReads {
+export interface AProvinceThePopupReads {
   readonly id?: number | null | undefined;
   readonly owner?: unknown;
   readonly ownerName?: string | undefined;
