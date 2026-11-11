@@ -88,6 +88,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 
 - **`typeof f === 'function'` on a function the file imports** (`unitEmoji`, `refreshAllMoveModeNotes`) always holds:
   the call alone, as lint's `no-unnecessary-condition` asks.
+- **A value a `forEach` callback finds** (`heroData = h`, two loops deep) is kept in a holder (`{ hero: null }`) read
+  after the loops: the compiler forgets what a callback sets in a `let`; the same callbacks run in the same order.
+- **`{}` handed where a typed hero is needed** (`find(…) || list[i] || {}`) is an object whose `id` reads `undefined`
+  and isn't its own enumerable field (`theEmptyHero`, `pre-orders.ts`): every read the field makes gives what `{}` gave.
+
 ## Parameters, shapes and claims
 
 - **An object the code builds whose ids are plain numbers** (the world's making: a province, a hero, a realm) is typed by a
