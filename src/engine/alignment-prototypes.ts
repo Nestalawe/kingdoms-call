@@ -43,7 +43,7 @@ export const KING_ORDER_EVERY: Record<string, number> = {
   light_beacons: 2, // round 22 (master list: 3)
   embargo: 0, // master list: no waiting between Embargoes (rounds 2-18: 3)
   call_storm: 1, // master list: Call down the storm, once a turn
-  dark_pact: 0, // every turn, at a price set by the monster
+  dark_pact: 2, // round 26: every other turn (rounds 19-25: every turn)
   bind_bones: 1, // master list: Bind the Bones, once a turn
 };
 export const CRUSADE_TURNS = 3;
@@ -60,6 +60,7 @@ export const EMBARGO_COST = 5; // Neutral: master list (rounds 6-18: 4; round 5:
 export const DESPOIL_COST = 3; // Undead: Blight the Land (round 22; master list: 5g)
 export const BIND_BONES_COST = 2; // Undead: Bind the Bones, 2g a company
 export const DIVINE_CONSECRATIONS_PER_POWER = 3; // round 25 (round 24: 2)
+export const DIVINE_POWER_CAP = 6; // round 26: the six gifts, and no further
 export const DIVINE_GIFTS = [
   'Sanctuary',
   'Grace abounding',
@@ -187,7 +188,9 @@ export function divinePower(G: GameState, pi: number): number {
   if (!pl) return 0;
   const crusading = (pl._crusadeUntil ?? -1) >= G.turn ? 1 : 0; // round 3: a Proclaimed Crusade is +1 Power while it lasts
   const consecrated = Math.floor((pl.consecratedProvIds ?? []).length / DIVINE_CONSECRATIONS_PER_POWER); // round 25: every three consecrated provinces count a point (round 24: two)
-  return heldSites(G, pi, isHolySite).length + shiningSites(G, pi) + crusading + consecrated;
+  // round 26: each held holy site counts once, and only the first shining one counts again; Power stops at 6
+  const shining = shiningSites(G, pi) > 0 ? 1 : 0;
+  return Math.min(DIVINE_POWER_CAP, heldSites(G, pi, isHolySite).length + shining + crusading + consecrated);
 }
 /** Round 2: is the king's order `key` off its cooldown for realm `pl` this turn? */
 export function kingOrderReady(G: GameState, pl: Realm, key: string): boolean {
@@ -208,21 +211,47 @@ export function protoBeastRoomExtra(G: GameState, c: Character | null | undefine
 export function barrowsHeld(G: GameState, pi: number): number {
   return kitRealm(G, pi, 'Undead') ? heldSites(G, pi, isBarrow).length : 0;
 }
-/** Round 25: what `n` skeletal companies cost realm `pi` a turn: 1g each, or 1g for every two under the Undead kit. */
-export function skeletalWages(G: GameState, pi: number, n: number): number {
-  return protoAlignOf(G, pi) === 'Undead' ? Math.ceil(n / 2) : n;
-}
-/** Round 25: the monster kinds realm `pi`'s held monster provinces breed (Evil: those companies draw half wages). */
-export function bredMonsterKinds(G: GameState, pi: number): Set<string> {
-  const out = new Set<string>();
+/** Round 26: the monster companies of realm `pi` that draw half wages (Evil): those standing in the garrison of a held
+ *  monster province that breeds their kind (round 25: every company of a bred kind, wherever it stood). */
+export function bredMonstersAtHome(G: GameState, pi: number): Set<Army> {
+  const out = new Set<Army>();
   const pl = G.players[pi];
   if (!pl || protoAlignOf(G, pi) !== 'Evil') return out;
   for (const id of pl.provinces) {
     const pv = G.world.provinces[id];
-    if (pv?.owner === pi && isMonsterProvince(pv))
-      pv.armyTypes.filter((t) => MONSTERS.has(t)).forEach((t) => out.add(t));
+    if (pv?.owner !== pi || !isMonsterProvince(pv)) continue;
+    for (const a of pv.garrisonArmies) if (MONSTERS.has(a.type) && pv.armyTypes.includes(a.type)) out.add(a);
   }
   return out;
+}
+/** Round 26 (Neutral, Ransom): the League's hero beat `loser` in a duel before a battle while carrying the ransom plan:
+ *  the loser is taken, not slain (the real records, found by id: battles fight on copies). Returns the line to tell, or
+ *  '' when there is no capture. */
+export function ransomTakenInBattle(G: GameState, winner: Character, loser: Character): string {
+  const w = G.characters.find((h) => h.id === winner.id) ?? winner;
+  const l = G.characters.find((h) => h.id === loser.id) ?? loser;
+  if (w.player == null || l.player == null || protoAlignOf(G, w.player) !== 'Neutral') return '';
+  if (w.encounterPlan?.ransom !== true || l.isKing || l._captiveOf != null) return '';
+  const ransom = Math.max(
+    1,
+    Object.values(l.skills).reduce((s: number, v) => s + (v ?? 0), 0),
+  );
+  l.hp = 1;
+  l.alive = true;
+  l.killedThisTurn = true;
+  l._captiveOf = w.id;
+  l._ransom = ransom;
+  return `⛓ Ransom: ${w.name} spares ${l.name} and holds them to ransom — ${String(ransom)}g to the League buys their freedom.`;
+}
+/** Round 26 (Undead): may realm `pi`'s skeletons stand as a garrison in `pv` without a necromancer? A held barrow or a
+ *  blighted province: the dead of that soil. */
+export function deadHoldThisSoil(G: GameState, pi: number | null | undefined, pv: Province): boolean {
+  return (
+    pi != null &&
+    pv.owner === pi &&
+    protoAlignOf(G, pi) === 'Undead' &&
+    (pv._despoiled != null || pv.features.some(isBarrow))
+  );
 }
 /** Master list: every blighted province adds this to the skeletal hosts' multiplier, to UNDEAD_FEAR_CAP. */
 export const UNDEAD_FEAR_PER_BLIGHT = 0.05;

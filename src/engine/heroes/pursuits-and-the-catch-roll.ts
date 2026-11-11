@@ -36,7 +36,10 @@ export function ransomCapture(turnContext, winner, loser, prov, targetsPi, duelC
   if (!winner || !loser || winner.player == null || loser.player == null) return false;
   if (protoAlignOf(G, winner.player) !== 'Neutral' || !(winner.encounterPlan || {}).ransom) return false;
   if (loser.isKing || loser._captiveOf != null || _escapesTheEnd(loser)) return false;
-  const ransom = Math.max(1, (KC_SKILLS || []).reduce((s, k) => s + ((loser.skills || {})[k] || 0), 0));
+  const ransom = Math.max(
+    1,
+    (KC_SKILLS || []).reduce((s, k) => s + ((loser.skills || {})[k] || 0), 0),
+  );
   loser.hp = 1;
   loser.alive = true;
   loser.killedThisTurn = true;
@@ -103,7 +106,8 @@ export function advancePursuit(turnContext, c, ph) {
   if (!p || !p.active) return;
   const quarry = (G.characters || []).find((x) => x && x.id === p.targetId);
   const here = G.world.provinces[c.location];
-  if (!quarry || !quarry.alive) {
+  if (!quarry || !quarry.alive || quarry._captiveOf != null) {
+    // (PROTOTYPE Neutral, round 26: a hero held to ransom is no quarry: his captor's own orders cannot kill him)
     emit(turnContext, {
       type: 'move',
       text: `${c.name}'s quarry is beyond catching now — the chase is called off.`,

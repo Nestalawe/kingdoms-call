@@ -1,12 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   alignProto,
-  bredMonsterKinds,
+  bredMonstersAtHome,
   embargoTaxMult,
   protoAlignOf,
   protoProvinceTaxAdd,
   protoRealmGold,
-  skeletalWages,
   WOOD_WAGE_MULT,
 } from '../alignment-prototypes.ts';
 import { kcRng } from '../rng.ts';
@@ -274,8 +273,8 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // (or half rounded to the nearest gold), which is what "half upkeep" has always meant.
     // The 1g floor still applies per unit, so a 1g unit is never free.
     let _orcFrac = 0;
-    let _skelN = 0; // round 25: skeletons are counted, then paid by skeletalWages (the Undead kit pays 1g for two)
-    const _bredHalf = bredMonsterKinds(G, pi); // round 25: an Evil kit realm's bred monsters draw half wages
+    let _skelN = 0; // skeletons are counted, then paid 1g each below
+    const _bredHalf = bredMonstersAtHome(G, pi); // round 26: an Evil kit realm's bred monsters at home draw half wages
     let armyWages = allKingdomArmies.reduce((s, a) => {
       if (a._temporary) return s;
       // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
@@ -288,7 +287,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         return s;
       }
       let w = ARMY_COST[a.type] || 2;
-      if (_bredHalf.has(a.type)) w = Math.max(1, Math.floor(w * 0.5)); // PROTOTYPE Evil (round 25): the pits feed their own
+      if (_bredHalf.has(a)) w = Math.max(1, Math.floor(w * 0.5)); // PROTOTYPE Evil (round 26): the pits feed their own garrison
       if (_woodFed.has(a)) w = Math.max(1, Math.floor(w * WOOD_WAGE_MULT)); // PROTOTYPE Druidic: the wood provides half (round 3)
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
         const _w0 = w,
@@ -317,7 +316,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       } // `upkeep` discoveries
       return s + w;
     }, 0);
-    armyWages += skeletalWages(G, pi, _skelN);
+    armyWages += _skelN; // skeletons: 1g each (round 26; round 25 tried 1g for two)
     // MINOR TITLE — The Host-Leader: this realm's greatest general pays 1g less per unit he
     // leads (min 1/unit).
     let _hostLeaderG = 0;

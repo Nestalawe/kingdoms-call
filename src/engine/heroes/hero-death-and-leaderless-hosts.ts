@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { protoAlignOf } from '../alignment-prototypes.ts';
+import { protoAlignOf, ransomTakenInBattle } from '../alignment-prototypes.ts';
 import { spreadTerror } from '../battle/evil-terror.ts';
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
@@ -226,6 +226,11 @@ export function abandonHostOnFlight(turnContext, c) {
   return left.length;
 }
 
+// PROTOTYPE Neutral (round 26): Ransom in a duel before a battle: the line to tell when the League's hero takes the
+// beaten duellist alive (the real records), or '' when he does not.
+export function ransomInAPreBattleDuel(turnContext, winner, loser) {
+  return ransomTakenInBattle(turnContext.G, winner, loser);
+}
 // 2026-10-13 (Toby, item 19): the one way a personal-combat death outside a battle is reported.
 // It resolves the death FIRST, then writes the line: "slain" only when the hero really died; "at
 // death's door, but not slain" when Battlefield Surgery saves them, with the surgery line

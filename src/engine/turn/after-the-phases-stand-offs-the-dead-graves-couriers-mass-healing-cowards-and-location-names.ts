@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { protoAlignOf } from '../alignment-prototypes.ts';
+import { deadHoldThisSoil, protoAlignOf } from '../alignment-prototypes.ts';
 import { monarchRestProvId } from '../grand-design.ts';
 import { senseGravesUnderfoot } from '../graves.ts';
 import { consecratedIds, relOfReport } from '../heroes/fame-and-consecration.ts';
@@ -78,6 +78,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       if (!pv || !Array.isArray(pv.garrisonArmies) || !pv.garrisonArmies.length) return;
       // PROTOTYPE Undead: the dead the land itself raised need no master while they garrison an Undead realm's province
       const _kitHeld = pv.owner != null && protoAlignOf(G, pv.owner) === 'Undead';
+      if (deadHoldThisSoil(G, pv.owner, pv)) return; // PROTOTYPE Undead (round 26): a barrow or blighted soil holds its dead
       const dead = pv.garrisonArmies.filter((a) => a && a._isSkeletal && !(_kitHeld && a._kitGarrison));
       if (!dead.length) return;
       pv.garrisonArmies = pv.garrisonArmies.filter((a) => !(a && a._isSkeletal && !(_kitHeld && a._kitGarrison)));

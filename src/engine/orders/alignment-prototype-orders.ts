@@ -172,6 +172,8 @@ export function resolveGrowTheWildOrder(turnContext: TurnContext, c: Character, 
 // ── NEUTRAL: Trade Pact ── buy an unowned humanoid land province (this one, or a neighbour): 3g per tax and 2g per
 // defending unit; the defenders take the realm's coin and stand as its garrison. No battle, no merit.
 export const TRADE_PACT_PER_TAX = 4; // round 6 (round 5: 5; round 4: 4; rounds 1-3: 3)
+export const TRADE_PACT_OWNED_MULT = 2; // round 26: another realm's province costs twice as much
+export const TRADE_PACT_NOTICE_TURNS = 2; // round 26: the envoys' notice stands this many turns
 export const TRADE_PACT_PER_DEFENDER = 3; // round 4 (rounds 1-3: 2)
 export function tradePactPrice(pv: Province): number {
   return TRADE_PACT_PER_TAX * pv.tax + TRADE_PACT_PER_DEFENDER * (pv.neutralDefenders.length || pv.npcArmies);
@@ -249,7 +251,36 @@ export function resolveTradePactOrder(
     return;
   }
   const prevOwner = pv.owner;
-  const price = prevOwner == null ? tradePactPrice(pv) : tradePactPriceOwned(pv);
+  // round 26: another realm's province costs twice as much, and its lord has a turn's notice: the first pact order
+  // only sends the envoys (free), and the purchase can be made from the next turn while their notice stands
+  if (prevOwner != null) {
+    const noticed =
+      pv._pactNoticeBy === c.player &&
+      pv._pactNoticeTurn != null &&
+      G.turn - pv._pactNoticeTurn <= TRADE_PACT_NOTICE_TURNS;
+    if (!noticed || pv._pactNoticeTurn === G.turn) {
+      if (!noticed) {
+        pv._pactNoticeBy = c.player ?? undefined;
+        pv._pactNoticeTurn = G.turn;
+        realmLine(
+          turnContext,
+          prevOwner,
+          'system',
+          `🤝 The League's envoys are in ${pv.name}, offering its elders ${player.name}'s coin. From next turn they may buy it from under you (for ${String(TRADE_PACT_OWNED_MULT * tradePactPriceOwned(pv))}g at today's garrison) unless a hero of yours stands there.`,
+          pv,
+        );
+      }
+      told(
+        turnContext,
+        c,
+        'explore',
+        `🤝 ${c.name}'s envoys open talks with the elders of ${pv.name} (${G.players[prevOwner]?.name ?? 'its lord'} has been told). The pact can be sealed from next turn, for about ${String(TRADE_PACT_OWNED_MULT * tradePactPriceOwned(pv))}g.`,
+        pv,
+      );
+      return;
+    }
+  }
+  const price = prevOwner == null ? tradePactPrice(pv) : TRADE_PACT_OWNED_MULT * tradePactPriceOwned(pv);
   if (player.gold < price) {
     refuse(
       turnContext,
@@ -308,6 +339,8 @@ export function resolveTradePactOrder(
   setProvinceOwner(turnContext, pv, c.player, c, ph);
   if (!player.provinces.includes(pv.id)) player.provinces.push(pv.id);
   pv._tradePactTurn = G.turn;
+  delete pv._pactNoticeBy;
+  delete pv._pactNoticeTurn;
   told(
     turnContext,
     c,
@@ -564,6 +597,7 @@ export function resolveEmbargoOrder(turnContext: TurnContext, c: Character, targ
 // are not modelled yet.)
 export const STORM_DESTROY_CHANCE = 0.25;
 export const STORM_DEMOTE_CHANCE = 0.5;
+export const STORM_MAX_DESTROYED = 2; // round 26: a storm destroys at most two companies a cast
 const wokenStones = (G: GameState, pi: number, pv: Province): boolean =>
   pv.features.some(isPaganStones) && pv._riteActivatedBy === pi;
 /** The provinces realm `pi`'s king may call the storm down on. */
@@ -612,7 +646,7 @@ export function resolveCallDownTheStormOrder(
         continue;
       }
       if (owner != null) struck.add(owner);
-      if (kcRng() < STORM_DESTROY_CHANCE) {
+      if (destroyed < STORM_MAX_DESTROYED && kcRng() < STORM_DESTROY_CHANCE) {
         destroyed += 1;
         continue;
       }

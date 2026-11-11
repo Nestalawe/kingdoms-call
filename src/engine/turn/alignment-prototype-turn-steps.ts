@@ -196,6 +196,30 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
     );
   }
 
+  // ── EVERY REALM: a bare capital (round 26) ── while any kit is on: a capital with no garrison and no hero of its realm
+  // in it, with another realm's hero leading armies next door (the host the sight rule shows), gets one line of warning.
+  G.players.forEach((p) => {
+    const pi = p.id;
+    const cap = provinces[p.homeProvinceId];
+    if (cap?.owner !== pi || cap.garrisonArmies.length > 0) return;
+    if (G.characters.some((h) => h.alive && h.player === pi && h.location === cap.id)) return;
+    const near = G.characters.filter(
+      (h) =>
+        h.alive &&
+        h.player != null &&
+        h.player !== pi &&
+        h.armies.length > 0 &&
+        hexDistP(provinces[h.location] ?? cap, cap, G.world.cols) === 1,
+    );
+    if (!near.length) return;
+    line(
+      pi,
+      `⚠ Your capital ${cap.name} stands empty, with no garrison and no hero of yours in it, and ${near.map((h) => `${h.name} of ${G.players[h.player ?? 0]?.name ?? 'another realm'}`).join(', ')} lead${near.length === 1 ? 's' : ''} a host next door.`,
+      cap,
+      'system',
+    );
+  });
+
   // ── DRUIDIC: the green heals ── a hero of the realm who ends the turn in forest or jungle recovers a quarter of their
   // hit points.
   for (const c of G.characters) {
@@ -303,6 +327,7 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
   // pays when it can), and a captor slain sets him free where he fell.
   for (const c of G.characters) {
     if (c._captiveOf == null) continue;
+    if (c.armies.length) c.armies = []; // round 26: a captive's column scatters (one taken before a battle kept it)
     const captor = G.characters.find((h) => h.id === c._captiveOf);
     const owner = c.player == null ? null : G.players[c.player];
     const league = captor?.player == null ? null : G.players[captor.player];

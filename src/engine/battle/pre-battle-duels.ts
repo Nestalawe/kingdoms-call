@@ -4,7 +4,7 @@ import { awardKillXP, awardWinHp } from '../heroes/experience-skill-rises-and-ea
 import { pushBattlecry } from './battle-report-lines-and-force-markers.ts';
 import { duelStanceOf, ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { resolveDuel } from '../personal-combat/duels-and-character-encounters.ts';
-import { handleHeroDeath } from '../heroes/hero-death-and-leaderless-hosts.ts';
+import { handleHeroDeath, ransomInAPreBattleDuel } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { EventButItsWords, NarrativeLine } from '../turn/events-and-their-audiences.ts';
@@ -124,14 +124,19 @@ export function preBattleDuel(
       lines: { type: string; text: string; place?: EventButItsWords; priv?: number | null }[];
       outcome?: string;
     } = { keepArmies: true, lines: [] };
-    const _duelDied = handleHeroDeath(turnContext, realLoser, realWinner, _dOpts);
+    // PROTOTYPE Neutral (round 26): a League hero carrying the ransom plan takes the beaten duellist alive; for the battle
+    // it is as if he had fallen (his host fights on leaderless and scatters afterwards)
+    const _ransomLine = ransomInAPreBattleDuel(turnContext, realWinner, realLoser);
+    const _duelDied = _ransomLine ? true : handleHeroDeath(turnContext, realLoser, realWinner, _dOpts);
     const _saved = _duelDied === false && _dOpts.outcome === 'surgery';
-    narrate(
-      narrative,
-      _saved
-        ? { kind: "the duel's loser falls at death's door but is not slain", loserName: String(loser.name) }
-        : { kind: "the duel's loser is slain", loserName: String(loser.name) },
-    );
+    if (_ransomLine) narrate(narrative, _ransomLine);
+    else
+      narrate(
+        narrative,
+        _saved
+          ? { kind: "the duel's loser falls at death's door but is not slain", loserName: String(loser.name) }
+          : { kind: "the duel's loser is slain", loserName: String(loser.name) },
+      );
     _dOpts.lines.forEach((l) => {
       if (l.priv != null)
         narrate(narrative, {

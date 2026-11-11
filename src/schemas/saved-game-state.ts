@@ -199,6 +199,7 @@ export const CharacterSchema = z.object({
       duelStance: z.string(),
       _botStance: z.boolean(),
       _botTactics: z.boolean().optional(),
+      ransom: z.boolean().optional(), // PROTOTYPE Neutral: the hero sets out to capture, not kill (Ransom)
     })
     .optional(),
   _hpAtPhaseStart: z.number().nullable().optional(),
@@ -431,6 +432,8 @@ export const ProvinceSchema = z.object({
   _lostFrom: z.number().optional(), // Good: the realm this province was last taken from (Reclaim)
   _lostTurn: z.number().optional(), // Good: the turn it was taken
   _takenTurn: z.number().optional(), // PROTOTYPE (round 25): the turn the province last changed hands (any kit on)
+  _pactNoticeBy: z.number().optional(), // PROTOTYPE Neutral (round 26): the League realm whose envoys gave notice here
+  _pactNoticeTurn: z.number().optional(), // and the turn they gave it
   _kitPlague: z.object({ by: z.number(), until: z.number() }).optional(), // Undead: the king's Plague on this province
   _goodWorksTurn: z.number().optional(), // Good (master list): the turn Good Works cleared this province (no Terror or plague for the rest of it)
   _stormTurn: z.number().optional(), // Pagan (master list): the turn Call down the storm struck here
