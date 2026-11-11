@@ -49,7 +49,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   the same value (`if (!g) return 0;`, `takeBestGrave`).
 - **Arguments a function never reads, after the ones it reads** (a closure handed the winner's force and the winner
   beside the loser's), are dropped from the call where each is a plain read: the same call, the same values. A last
-  parameter no caller hands and the body never reads (a hero's merit's `ctx`) goes from the signature.
+  parameter no caller hands and the body never reads (a hero's merit's `ctx`) goes from the signature, and so does one
+  every caller hands that the body never reads (the spells' target field's sixth), with a comment saying so.
 - **A value read by nothing, kept alive by `void x;`** (lint's `no-meaningless-void-operator`) or held by a `const`
   nobody reads (lint's `no-unused-vars`): a pure one goes (a count, a product, a name destructured and never read); one
   a call gives keeps the call as a bare statement (`effStat(…);`, `armyTotalStr(…);`), its reads and writes as they

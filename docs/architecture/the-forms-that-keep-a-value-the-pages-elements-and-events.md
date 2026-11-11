@@ -24,6 +24,13 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **A field's value read off an element of no kind the code checks** (`document.getElementById(id)?.value`, the Move
   order's action) is `el ? theValueOfAField(el) : undefined` (`'value' in el ? el.value : undefined`, in
   `the-orders-the-form-holds-handed-to-its-forecasts.ts`): the same value for an element of any kind, none included.
+- **A mark the page writes on an element of its own** (the map popup's `_sticky`, the icon bar's `_built`) is read and
+  written through `Reflect.get(el, '_sticky')` and `Reflect.set(el, '_sticky', true)`: the same property on the same
+  element, which no DOM type declares.
+- **An element found or made** (`let tt = getElementById(…); if (!tt) { tt = createElement(…); … }`) that closures
+  read later is read into a `const` once it is sure (`const tt = ttFound;`): a `let` loses its narrowing in a closure.
+- **`svg g[…]` read for its `ownerSVGElement`** is filtered by `instanceof SVGElement`, which keeps every `<g>` an SVG
+  holds (`highlightMapProv`).
 - **A node's parent read for its text** (`b.parentNode.textContent`) goes through a reader that throws, for none, the
   `TypeError` the read threw (`theParentOf`); its `textContent || ''` is `?? ''` (it is words or `null`).
 
@@ -37,6 +44,8 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **A click's target's tag** (`e.target.tagName === 'A'`) is read through a reader typed `unknown` that throws for a
   `null` target, as the read did, and gives `undefined` for a target that isn't an element (`theTagOfWhatWasClicked`,
   `src/rulebook/toc.ts`).
+- **A click's target handed to `contains`** goes through a reader that gives a node or `null` as it is and throws, for
+  any other target, the `TypeError` `contains` threw (`theNodeClicked`, `map.ts`).
 - **A promise the page starts and never awaits** (the player page's start, `kcDbGuard(…).then(…)`) is written
   `void kcDbGuard(…).then(…)`: the same promise, its rejection still unhandled (lint's `no-floating-promises`).
 - **A `catch` callback** takes its error as `unknown` (lint's `use-unknown-in-catch-callback-variable`); `'…' +
@@ -51,5 +60,8 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   `Reflect.deleteProperty(table, key)` (lint's `no-dynamic-delete`): the same key taken off a plain object.
 - **A page global a freed file reads with a type** (`currentReport`, `discoveryChoices`) is typed in
   `src/globals.d.ts`, where every page global is declared: the report as the most-derived of its typed readers' types
-  (`TheReportAsThePagesListsReadIt`, every part optional), a record by words as `Partial<Record<string, unknown>>`. A
-  global read only by files that keep their line stays `PageState`.
+  (`TheReportAsTheMapDrawsIt` since P1-16e, every part optional; `viewingReport` the same), a record by words as
+  `Partial<Record<string, unknown>>`, a seat as the fields its reader reads (`currentGamePlayer`: its id and its orders).
+  A global read only by files that keep their line stays `PageState`. A derived report type may make a field its base
+  leaves optional sure only where the base already does (the map's province keeps the forecasts' `row`, `col`); a guard
+  on it reads it through `asItsGuardReadsIt`, which the player page takes from `src/shared/`.

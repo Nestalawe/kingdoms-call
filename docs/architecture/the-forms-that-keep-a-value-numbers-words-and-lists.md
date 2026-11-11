@@ -147,8 +147,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A filter that keeps a kind** needs a generic predicate, `<L>(l: L | null): l is L => Boolean(l)`;
   `filter(Boolean)` a type predicate. A callback whose result is read only as true or false is typed `: boolean`, so
   the compiler doesn't infer a predicate over a large union.
-- **`Array.isArray` on a `readonly` list type** narrows it to `any[]`: a parameter tested so takes a list that isn't
-  `readonly`.
+- **`Array.isArray` on a `readonly` list type** narrows it to `any[]`: it is read through a predicate that keeps the
+  element's type (`isAListOf<T>(x: readonly T[] | null | undefined): x is readonly T[]`, the compass's), so a typed
+  caller can hand a `readonly` list.
 - **A list the saved state holds empty but a turn fills** (`G.turnOrders`) is read through a local typed as the turn
   holds it; a list read both guarded and unguarded keeps the schema's type, and the guarded reads go through a reader
   typed as wide as the guard (`provincesOrNone`).
