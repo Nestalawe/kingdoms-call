@@ -169,7 +169,7 @@ export interface TheReportAsTheTargetFieldsReadIt extends TheReportAsTheMapDraws
 type AnItem = NonNullable<AnItemAHeroCarries>;
 /** A saved order of a phase, as the target field reads it. */
 interface ASavedOrder {
-  readonly action?: string | undefined;
+  readonly action?: unknown;
   readonly target?: unknown;
   readonly extra?: unknown;
 }
@@ -435,8 +435,11 @@ globalThis._draftOrdersSnapshot = {};
 export function draftOrderAt(charId: unknown, ph: number): { action: unknown; target: unknown } {
   const actEl = document.getElementById(`po-action-${String(charId)}-${String(ph)}`);
   if (actEl) return { action: itOrElse(theValueOfAField(actEl), ''), target: getOrderTarget(charId, ph) };
-  const sv = (_draftOrdersSnapshot?.[String(charId)] ?? [])[ph] ?? {};
-  return { action: itOrElse(sv.action, ''), target: itOrElse(sv.target, '') };
+  const sv = fieldAsJavaScriptReadsIt(fieldIfThere(_draftOrdersSnapshot, String(charId)) ?? [], String(ph)) ?? {};
+  return {
+    action: itOrElse(fieldAsJavaScriptReadsIt(sv, 'action'), ''),
+    target: itOrElse(fieldAsJavaScriptReadsIt(sv, 'target'), ''),
+  };
 }
 export const LAIR_POWER_RANK = { Weak: 0, Moderate: 1, Powerful: 2, Legendary: 3 };
 /** The skills' names, read by any skill; the tables the item fields read by any slot or tier; a mastery spell's level,
@@ -612,7 +615,7 @@ export function theBloodOfferingsHint(
 export function theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase(
   c: Pick<AHeroAsTheTargetFieldsReadHim, 'id'>,
   ph: number,
-  action: string,
+  action: unknown,
   target: unknown,
   report: TheReportAsTheTargetFieldsReadIt,
 ) {
@@ -770,7 +773,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
   const provOrderData = report.provinceOrderData ?? {};
 
   // ── L7/L9 MASTERY ORDERS — generic target field by declared target type ──
-  const cfg = L79_ORDERS[action];
+  const cfg = L79_ORDERS[inWords(action)];
   if (cfg) {
     // Every mastery-order branch appends hintHtml, so folding the odds in here covers them all at
     // once — Assassinate, Blockade, Grand Heist and any future one. orderChanceNote returns '' for

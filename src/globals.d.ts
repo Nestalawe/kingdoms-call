@@ -83,8 +83,6 @@ declare var discoveryChoices: Partial<Record<string, unknown>>;
 declare var _msgEnabled: PageState;
 declare var _deskLeftView: PageState;
 // ui/player/order-targets.ts
-/** This turn's saved draft, by hero: each phase's order as saved (the target fields read it before the form exists). */
-declare var _draftOrdersSnapshot:
-  | Partial<Record<string, readonly ({ readonly action?: unknown; readonly target?: unknown } | null | undefined)[]>>
-  | null
-  | undefined;
+/** This turn's saved draft, by hero: each phase's order as saved (the target fields read it before the form exists), as
+ *  parsed from JSON: any value. */
+declare var _draftOrdersSnapshot: unknown;

@@ -275,20 +275,21 @@ export function onMoveEdited(charId: unknown, ph: number): void {
 // and idled the rest of the turn, with nothing in their Chronicle after the hire line.
 // _fillSyntheticOrderCard pours a saved order set back into a freshly injected card, exactly as
 // _fillResurrectCard does for a resurrect card.
-export function _fillSyntheticOrderCard(
-  fakeId: unknown,
-  savedPhases: readonly (ASavedPhasesOrder | null | undefined)[] | null | undefined,
-  savedEP: ASavedEncounterPlan | null | undefined,
-): void {
+export function _fillSyntheticOrderCard(fakeId: unknown, savedPhases: unknown, savedEP: unknown): void {
   const fake = (currentReport?.characters ?? []).find((c) => String(c.id) === String(fakeId));
   if (!fake) return;
   const first = (fake.hiredInPhase ?? -1) + 1;
   for (let p = first; p < 5; p++) {
-    const o = (savedPhases ?? [])[p];
-    if (!o?.action) continue;
-    const action = o.action;
+    const o = aFieldOfTheDraft(savedPhases ?? [], String(p));
+    const action = o === null || o === undefined ? undefined : aFieldOfTheDraft(o, 'action');
+    if (!action) continue;
     const sel = document.getElementById(`po-action-${String(fakeId)}-${String(p)}`);
-    if (!(sel instanceof HTMLSelectElement) || ![...sel.options].some((x) => x.value === action)) continue;
+    if (
+      !(sel instanceof HTMLSelectElement) ||
+      typeof action !== 'string' ||
+      ![...sel.options].some((x) => x.value === action)
+    )
+      continue;
     sel.value = action;
     const wrap = document.getElementById(`po-target-wrap-${String(fakeId)}-${String(p)}`);
     if (wrap) {
@@ -296,8 +297,8 @@ export function _fillSyntheticOrderCard(
         wrap.innerHTML = String(
           buildTargetField(fake, p, {
             action,
-            target: theFieldOrNoWords(o.target),
-            extra: theFieldOrNoWords(o.extra),
+            target: theFieldOrNoWords(aFieldOfTheDraft(o, 'target')),
+            extra: theFieldOrNoWords(aFieldOfTheDraft(o, 'extra')),
           }),
         );
       } catch {
@@ -335,26 +336,23 @@ export function _fillSyntheticOrderCard(
     }
   }
   const n = document.getElementById(`ep-notes-${String(fakeId)}`);
-  if (n instanceof HTMLInputElement) n.value = inWords(theFieldOrNoWords(savedEP.notes));
+  if (n instanceof HTMLInputElement) n.value = inWords(theFieldOrNoWords(aFieldOfTheDraft(savedEP, 'notes')));
   const d = document.getElementById(`ep-duel-${String(fakeId)}`);
-  if (d instanceof HTMLSelectElement && savedEP.duelStance) d.value = inWords(savedEP.duelStance);
+  if (d instanceof HTMLSelectElement && aFieldOfTheDraft(savedEP, 'duelStance'))
+    d.value = inWords(aFieldOfTheDraft(savedEP, 'duelStance'));
 }
-/** A phase's order a saved draft holds for a card's hero. */
-interface ASavedPhasesOrder {
-  readonly action?: string | undefined;
-  readonly target?: unknown;
-  readonly extra?: unknown;
-}
-/** An encounter plan a saved draft holds for a card's hero. */
-interface ASavedEncounterPlan {
-  readonly tactics?: unknown;
-  readonly notes?: unknown;
-  readonly duelStance?: unknown;
+/** `value[key]` on a saved draft's part, parsed from JSON (any value: a hero's phases, a phase's order, an encounter
+ *  plan), as JavaScript reads it: for none, the TypeError that read throws. */
+function aFieldOfTheDraft(value: unknown, key: string): unknown {
+  if (value === null || value === undefined) {
+    throw new TypeError(`Cannot read properties of ${String(value)} (reading '${key}')`);
+  }
+  return Reflect.get(Object(value), key);
 }
 /** The plan's tactics as `(plan.tactics || [])` read them for `.map`: a list, none for a falsy value, and the TypeError
  *  `.map` threw for anything else. */
-function theTacticsOf(plan: ASavedEncounterPlan): readonly unknown[] {
-  const tactics = plan.tactics;
+function theTacticsOf(plan: unknown): readonly unknown[] {
+  const tactics = aFieldOfTheDraft(plan, 'tactics');
   if (!tactics) return [];
   if (!Array.isArray(tactics)) throw new TypeError('a saved encounter plan’s tactics are not a list');
   const list: readonly unknown[] = tactics;
@@ -363,11 +361,7 @@ function theTacticsOf(plan: ASavedEncounterPlan): readonly unknown[] {
 // Walk every rendered order row and re-inject whichever hired-hero / charm cards the restored form
 // calls for, filling each from the draft. Repeated a few times so a NESTED hire (a hero hired this
 // turn who himself hires another) gets his own card once his card exists to be read from.
-export function syncAllPreOrderCards(
-  savedOrdersHeld:
-    Readonly<Partial<Record<string, readonly (ASavedPhasesOrder | null | undefined)[]>>> | null | undefined,
-  savedEncounterPlansHeld: Readonly<Partial<Record<string, ASavedEncounterPlan>>> | null | undefined,
-): void {
+export function syncAllPreOrderCards(savedOrdersHeld: unknown, savedEncounterPlansHeld: unknown): void {
   const savedOrders = savedOrdersHeld ?? {};
   const savedEncounterPlans = savedEncounterPlansHeld ?? {};
   const SEL = '[id^="hired-hero-orders-"],[id^="charm-orders-"]';
@@ -396,7 +390,12 @@ export function syncAllPreOrderCards(
           }
           const card = document.getElementById(cardId);
           const fid = card?.getAttribute('data-fakeid');
-          if (fid) _fillSyntheticOrderCard(fid, savedOrders[fid], savedEncounterPlans[fid]);
+          if (fid)
+            _fillSyntheticOrderCard(
+              fid,
+              aFieldOfTheDraft(savedOrders, fid),
+              aFieldOfTheDraft(savedEncounterPlans, fid),
+            );
         });
       }
     });
@@ -471,7 +470,7 @@ export function _resurrectCastersByHero(): Record<string, AResurrectCaster[]> {
 }
 /** A Resurrect card's orders as the card holds them, carried to the card rebuilt. */
 interface AResurrectCardsOrders {
-  readonly phases?: readonly (ASavedPhasesOrder | null | undefined)[] | null | undefined;
+  readonly phases?: readonly unknown[] | null | undefined;
   readonly tactics?: unknown;
   readonly notes?: unknown;
   readonly duel?: unknown;
@@ -498,11 +497,16 @@ export function _fillResurrectCard(fakeId: unknown, saved: AResurrectCardsOrders
   if (!fake || !saved) return;
   const first = (fake.hiredInPhase ?? -1) + 1;
   for (let p = first; p < 5; p++) {
-    const o = (saved.phases ?? [])[p];
-    if (!o?.action) continue;
-    const action = o.action;
+    const o = aFieldOfTheDraft(saved.phases ?? [], String(p));
+    const action = o === null || o === undefined ? undefined : aFieldOfTheDraft(o, 'action');
+    if (!action) continue;
     const sel = document.getElementById(`po-action-${String(fakeId)}-${String(p)}`);
-    if (!(sel instanceof HTMLSelectElement) || ![...sel.options].some((x) => x.value === action)) continue;
+    if (
+      !(sel instanceof HTMLSelectElement) ||
+      typeof action !== 'string' ||
+      ![...sel.options].some((x) => x.value === action)
+    )
+      continue;
     sel.value = action;
     const wrap = document.getElementById(`po-target-wrap-${String(fakeId)}-${String(p)}`);
     if (wrap) {
@@ -510,8 +514,8 @@ export function _fillResurrectCard(fakeId: unknown, saved: AResurrectCardsOrders
         wrap.innerHTML = String(
           buildTargetField(fake, p, {
             action,
-            target: theFieldOrNoWords(o.target),
-            extra: theFieldOrNoWords(o.extra),
+            target: theFieldOrNoWords(aFieldOfTheDraft(o, 'target')),
+            extra: theFieldOrNoWords(aFieldOfTheDraft(o, 'extra')),
           }),
         );
       } catch {
