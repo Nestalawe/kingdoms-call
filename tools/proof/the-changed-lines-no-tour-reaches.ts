@@ -31,7 +31,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { buildSite, ROOT } from '../build.ts';
 import { GM_PAGE } from '../pages.ts';
-import { readPage } from '../../tests/lib/boot.js';
+import { pageFiles } from '../../tests/lib/boot.js';
 import { names } from '../../tests/lib/hostile.js';
 import { runJsdom, TOURS } from '../../tests/lib/screens.js';
 import {
@@ -69,9 +69,13 @@ export interface InlinedBundle {
  *  script's coverage is matched to its text by its length. */
 export function theInlinedBundlesOf(site: string): InlinedBundle[] {
   const found = new Map<number, InlinedBundle>();
+  const assets = path.join(site, 'assets') + path.sep;
   for (const page of fs.readdirSync(site).filter((f) => f.endsWith('.html'))) {
-    for (const m of readPage(path.join(site, page)).matchAll(/<script>([\s\S]*?)<\/script>/g)) {
-      const text = m[1] ?? '';
+    // readPage inlines each bundle the page names in assets/ as BEFORE_AN_INLINED_BUNDLE and the file's text; the
+    // same text is built here from the files pageFiles lists, so no pattern reads the page's HTML.
+    const bundles = pageFiles(path.join(site, page)).filter((f) => f.startsWith(assets) && f.endsWith('.js'));
+    for (const bundle of bundles) {
+      const text = BEFORE_AN_INLINED_BUNDLE + fs.readFileSync(bundle, 'utf8');
       const name = /\/\/# sourceMappingURL=(\S+)\.map\s*$/.exec(text)?.[1];
       if (name === undefined || !text.startsWith(BEFORE_AN_INLINED_BUNDLE)) continue;
       const was = found.get(text.length);
