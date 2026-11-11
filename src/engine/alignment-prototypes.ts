@@ -243,6 +243,35 @@ export function ransomTakenInBattle(G: GameState, winner: Character, loser: Char
   l._ransom = ransom;
   return `⛓ Ransom: ${w.name} spares ${l.name} and holds them to ransom — ${String(ransom)}g to the League buys their freedom.`;
 }
+/** Round 27 (Neutral, Ransom): `loser` (not a king) lost a battle in province `provId` to the League realm `leaguePi`, and
+ *  his host was routed (half or more of its `before` companies gone, `left` remain). If a League hero standing there
+ *  carries the ransom plan, the loser is taken: what is left of his column scatters. Returns the line to tell, or ''. */
+export function ransomTakenAfterBattle(
+  G: GameState,
+  leaguePi: number | null | undefined,
+  loser: Character,
+  provId: number,
+  before: number,
+  left: number,
+): string {
+  if (leaguePi == null || protoAlignOf(G, leaguePi) !== 'Neutral') return '';
+  const l = G.characters.find((h) => h.id === loser.id) ?? loser;
+  if (l.player == null || l.player === leaguePi || l.isKing || !l.alive || l._captiveOf != null) return '';
+  if (before < 1 || left * 2 > before) return '';
+  const captor = G.characters.find(
+    (h) => h.alive && h.player === leaguePi && h.location === provId && h.encounterPlan?.ransom === true,
+  );
+  if (!captor) return '';
+  const ransom = Math.max(
+    1,
+    Object.values(l.skills).reduce((s: number, v) => s + (v ?? 0), 0),
+  );
+  l._captiveOf = captor.id;
+  l._ransom = ransom;
+  l.armies = [];
+  l.location = captor.location;
+  return `⛓ Ransom: ${l.name}'s host is broken and ${captor.name} takes them alive — ${String(ransom)}g to the League buys their freedom. What is left of the column scatters.`;
+}
 /** Round 26 (Undead): may realm `pi`'s skeletons stand as a garrison in `pv` without a necromancer? A held barrow or a
  *  blighted province: the dead of that soil. */
 export function deadHoldThisSoil(G: GameState, pi: number | null | undefined, pv: Province): boolean {

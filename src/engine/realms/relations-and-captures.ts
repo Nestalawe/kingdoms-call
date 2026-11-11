@@ -61,8 +61,9 @@ export function breakConsecrationOnCapture(turnContext, prov, prev, newOwner, by
   if (!units.length) return;
   const _pct = consecCaptureXpPct(G.players[newOwner]); // Undead 100 · Evil 50 · others 0
   const rose = [];
-  // PROTOTYPE Evil (round 24): one company of the column, chosen by lot, gains the level — not every one
-  const _oneOnly = _pct > 0 && alignProto(G, 'Evil') && G.players[newOwner]?.alignment === 'Evil';
+  // PROTOTYPE Evil (round 24), Undead (round 27): one company of the column, chosen by lot, gains the level — not every one
+  const _capAl = G.players[newOwner]?.alignment;
+  const _oneOnly = _pct > 0 && (_capAl === 'Evil' || _capAl === 'Undead') && alignProto(G, _capAl);
   const _eligible = units.filter(
     (a) =>
       !a._isSkeletal &&

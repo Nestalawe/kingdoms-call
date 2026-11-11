@@ -80,6 +80,7 @@ import {
 } from '../turn/mercenary-ids-and-battle-records.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
+import { ransomAfterALostBattle } from '../heroes/hero-death-and-leaderless-hosts.ts';
 import {
   REIGN_OF_FEAR_MULT,
   SEA_LAND_PENALTY,
@@ -1672,6 +1673,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
       // go), so we say nothing about a retreat here.
       if ((def.armies || []).length === 0)
         narrate(narrative, { kind: "the loser's force is destroyed to the last", loserName: defName });
+    } else if (ransomAfterALostBattle(turnContext, atk, def, prov, defArmies.length, narrative)) {
+      // PROTOTYPE Neutral (round 27): the beaten commander is taken for ransom and makes no retreat
     } else {
       if (_sfDef && def.armies.length > 0)
         narrate(narrative, { kind: "the loser's dwarven guard withdraw behind a shield fort", loserName: defName });
@@ -1889,6 +1892,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
       // nothing to fall back with. Leaderless survivors are dispersed after the battle.
       if ((atk.armies || []).length === 0)
         narrate(narrative, { kind: "the loser's force is destroyed to the last", loserName: atkName });
+    } else if (ransomAfterALostBattle(turnContext, def, atk, prov, atkArmies.length, narrative)) {
+      // PROTOTYPE Neutral (round 27): the beaten commander is taken for ransom and makes no retreat
     } else {
       if (_sfAtk && atk.armies.length > 0)
         narrate(narrative, { kind: "the loser's dwarven guard withdraw behind a shield fort", loserName: atkName });

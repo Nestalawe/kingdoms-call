@@ -1368,6 +1368,32 @@ export function generateNewGame(setupPlayers, sz, maxTurns, genOpts) {
       }
     }
     playerStarts.push(best);
+    // PROTOTYPE Undead (round 27): a barrow within two hexes of the Undead capital, always. If the lots gave none, the
+    // nearest humanoid land province beside the capital holds one (no draw is spent, so the rest of the world is as it
+    // would have been).
+    if (hasBarrows && sp.alignment === 'Undead') {
+      const _isBarrow = (f) => f && f.ritualSite && f.siteKind === 'barrow';
+      // two steps over the map's own neighbours (hexDistP is a rough measure and calls some three-step provinces two)
+      const _ring1 = getNeighborsP(best, cols, rows, provinces).filter((p) => p && p.terrain !== 'sea');
+      const _ring2 = _ring1
+        .flatMap((p) => getNeighborsP(p, cols, rows, provinces))
+        .filter((p) => p && p.terrain !== 'sea' && p.id !== best.id && !_ring1.includes(p));
+      const _near = [best, ..._ring1, ...new Set(_ring2)];
+      if (!_near.some((p) => (p.features || []).some(_isBarrow))) {
+        const _others = _near.filter((p) => p.id !== best.id);
+        const _site = _others.find((p) => !String(p.race || '').startsWith('Primal')) || _others[0] || best;
+        _site.features = _site.features || [];
+        _site.features.push({
+          name: BARROW_NAMES[_site.id % BARROW_NAMES.length],
+          ritualSite: true,
+          siteKind: 'barrow',
+          monster: null,
+          discovered: false,
+          cleared: false,
+          treasure: 0,
+        });
+      }
+    }
 
     // Build king skills
     const kingSkills = { melee: 2, archery: 1, sage: 1 };

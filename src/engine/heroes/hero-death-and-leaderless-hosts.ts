@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { protoAlignOf, ransomTakenInBattle } from '../alignment-prototypes.ts';
+import { protoAlignOf, ransomTakenAfterBattle, ransomTakenInBattle } from '../alignment-prototypes.ts';
 import { spreadTerror } from '../battle/evil-terror.ts';
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
@@ -19,7 +19,7 @@ import { setProvinceOwner } from '../realms/relations-and-captures.ts';
 import { effStat, isVanished } from './effective-skills-and-hidden-heroes.ts';
 import { isOpenSea } from '../units/sea-lift-stranding-and-retreats.ts';
 import { flushDeferredSkillLogsFor } from './experience-skill-rises-and-earned-hp.ts';
-import { emit, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
+import { emit, narrate, THE_HERO_WHOSE_ORDER_IS_RESOLVING } from '../turn/events-and-their-audiences.ts';
 
 // ── HERO DEATH AND LEADERLESS HOSTS (plan P1-08f: lifted out of resolveTurn) ────
 // What becomes of a dead commander's armies (disperseDeadCharArmies) and of the host a spared coward leaves behind
@@ -230,6 +230,19 @@ export function abandonHostOnFlight(turnContext, c) {
 // beaten duellist alive (the real records), or '' when he does not.
 export function ransomInAPreBattleDuel(turnContext, winner, loser) {
   return ransomTakenInBattle(turnContext.G, winner, loser);
+}
+// PROTOTYPE Neutral (round 27): Ransom after a battle the League wins: the beaten commander (not a king) whose host was
+// routed is taken alive when a League hero there carries the ransom plan. Tells the battle's narrative and returns
+// true when he is taken (he then makes no retreat).
+export function ransomAfterALostBattle(turnContext, winner, loser, prov, before, narrative) {
+  const { G } = turnContext;
+  if (!winner || !loser || !prov || _escapesTheEnd(loser)) return false;
+  const line = ransomTakenAfterBattle(G, winner.player, loser, prov.id, before, (loser.armies || []).length);
+  if (!line) return false;
+  loser.armies = []; // the battle's own record of him, if it is a copy
+  loser._captiveOf = (G.characters.find((h) => h.id === loser.id) || loser)._captiveOf;
+  narrate(narrative, line);
+  return true;
 }
 // 2026-10-13 (Toby, item 19): the one way a personal-combat death outside a battle is reported.
 // It resolves the death FIRST, then writes the line: "slain" only when the hero really died; "at
