@@ -254,6 +254,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A test that calls a freed function on its own shapes** (a staged context, hero and province) hands its
   arguments through one cast, `f(...([tc, atk, field, guard] as unknown as Parameters<typeof f>))`.
 - **`{ ...(x || {}) }`** is `{ ...x }`: a spread of a missing or falsy value adds nothing.
+- **A value from a parsed draft compared as a number** (`fromIdx < 0`, `splice(fromIdx, 1)`, P1-16h2's dragged tactic)
+  is read `Number(fromIdx)` there: both read it through the same conversion; its `===` compares it as it is.
+- **`set.has(x)` on a value of no type** (a target read off the page) uses a `Set<unknown>`: the same members, and a value
+  of another kind is never one of them, as before.
 - **The item a hero carries as the order form's forecasts hand it** (`AnItemAHeroCarries`) is the rules' item too
   (`itemSlot`'s: a report's item always has its name), with the fields the item fields read (`equipped`, `desc`,
   `_spent`, the spell an item casts): the forecasts hand the report's own items back, so the type the code reads them as

@@ -39,6 +39,12 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **A node's parent read for its text** (`b.parentNode.textContent`) goes through a reader that throws, for none, the
   `TypeError` the read threw (`theParentOf`); its `textContent || ''` is `?? ''` (it is words or `null`).
 
+- **An event's target tested for `closest`** (`ev.target && ev.target.closest && ev.target.closest(sel)`, the order
+  form's listeners) is `ev.target instanceof Element && ev.target.closest(sel)`: only an element has `closest`.
+- **An element looked up before the HTML written into it is built** (`el.innerHTML = kcHtml\`…\``) is read through
+  `theElementWithTheId` after the HTML is built into a `const`: the page builds the right side before a missing element
+  throws.
+
 ## Writing into the page
 
 - **`el.innerHTML = kcHtml\`…\``** is `el.innerHTML = String(kcHtml\`…\`)`: the setter writes the marked value by its
