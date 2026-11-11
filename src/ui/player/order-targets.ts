@@ -445,8 +445,8 @@ const theSkillsLabels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
 const theSlotsCaps: Readonly<Partial<Record<string, number>>> = ITEM_SLOT_CAP_P;
 const theSlotsLabels: Readonly<Partial<Record<string, string>>> = ITEM_SLOT_LABEL_P;
 const theTiersNames: Readonly<Partial<Record<string, string>>> = ITEM_TIER_NAME_P;
-const theLevelEachMasterySpellNeeds: Readonly<Partial<Record<string, number>>> = SPELL_REQ_LEVEL;
-const theSchoolOfEachSpell: Readonly<Partial<Record<string, string>>> = SPELL_TO_SCHOOL;
+const theLevelsTheMasterySpellsNeed: Readonly<Partial<Record<string, number>>> = SPELL_REQ_LEVEL;
+const theSchoolsOfTheSpells: Readonly<Partial<Record<string, string>>> = SPELL_TO_SCHOOL;
 const theRumoursPrices: Readonly<Partial<Record<string, number>>> = RUMOUR_COST_BY_POWER_P;
 /** The lairs' ranks, read by any grade. */
 const theLairsRanks: Readonly<Partial<Record<string, number>>> = LAIR_POWER_RANK;
@@ -712,7 +712,7 @@ export function theSpellsTheCastSpellFieldOffersAHeroInAPhase(
     if (prevAction !== 'Cast Spell') continue;
     const prevSpell = getOrderTarget(hisId, prevPh);
     if (prevSpell && _costsNoSlot(prevSpell)) continue;
-    const prevSchool = prevSpell ? theSchoolOfEachSpell[inWords(prevSpell)] : null;
+    const prevSchool = prevSpell ? theSchoolsOfTheSpells[inWords(prevSpell)] : null;
     if (prevSchool) schoolCastCount[prevSchool] = (schoolCastCount[prevSchool] ?? 0) + 1;
   }
 
@@ -733,7 +733,7 @@ export function theSpellsTheCastSpellFieldOffersAHeroInAPhase(
     .flatMap(([school, list]) =>
       list
         .filter((s) => {
-          const theLevelItNeeds = theLevelEachMasterySpellNeeds[s];
+          const theLevelItNeeds = theLevelsTheMasterySpellsNeed[s];
           return PHASE_SPELLS.has(s) && (!theLevelItNeeds || rawMagicLvl(c, school) >= theLevelItNeeds);
         })
         .map((s) => {
@@ -1437,7 +1437,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
         const _hsPhase = theActionSpellsNoMasteryLevelGates();
         const _hsList = Object.entries(SPELLS_BY_SCHOOL).flatMap(([school, list]) =>
           list
-            .filter((sp) => _hsPhase.has(sp) && !theLevelEachMasterySpellNeeds[sp])
+            .filter((sp) => _hsPhase.has(sp) && !theLevelsTheMasterySpellsNeed[sp])
             .map((sp): [string, string] => [sp, school]),
         );
         // same one-list rule as the visible-skills branch below: the option marked `selected` and
