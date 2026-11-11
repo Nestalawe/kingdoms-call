@@ -1,5 +1,4 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kcArg, kcHtml } from '../shared/kc-safe.ts';
+import { kcArg, kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
 import {
   actionSpellsAHeroMayCastInASchoolEachTurn,
   aHeroMayGiveTheAlignmentOrderAsKingOrNot,
@@ -48,7 +47,13 @@ import { SPELLS_BY_SCHOOL, SPELL_REQ_LEVEL, SPELL_TO_SCHOOL, castChanceNote, uni
 import { lastMoveDirOf, moveOriginProv, poMoveModeNote, refreshAllMoveModeNotes } from './move-analysis.ts';
 import { capitalise, armyLabel } from './skills-and-projections.ts';
 import { heroFameTextP, realmOptStyleP } from './map-symbols.ts';
-import { effSkillP, PO_SEA_TYPES } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import {
+  effSkillP,
+  inWords,
+  PO_SEA_TYPES,
+  type ACompanyAsTheFormCarriesIt,
+  type AnItemAHeroCarries,
+} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import {
   getOrderTarget,
   orderChanceNote,
@@ -58,6 +63,7 @@ import {
   projectedLedArmies,
   projectedMagicLevels,
   projectedMoveHost,
+  theValueOfAField,
 } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 import {
   ALIGN_ACTIONS,
@@ -68,45 +74,206 @@ import {
   rawMagicLvl,
   rawSkillLvl,
   skillsUnseenP,
+  type AHeroAsTheOrderFormReadsHim,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
+import type { TheReportAsTheMapDrawsIt } from './map.ts';
+
+/** A hero as the target fields read him: the order form's hero, with his realm, his titles' names and the share his
+ *  worn items add to a march in. */
+export interface AHeroAsTheTargetFieldsReadHim extends AHeroAsTheOrderFormReadsHim {
+  readonly player?: number | null | undefined;
+  readonly minorHeld?:
+    readonly ({ readonly key?: unknown; readonly name?: string | undefined } | null | undefined)[] | null | undefined;
+  readonly theShareHisWornItemsAddToAMarchIn?: unknown;
+}
+/** The ledger's part of a province's order data. */
+type AProvincesOrderDataAsTheLedgerReadsIt = NonNullable<
+  NonNullable<TheReportAsTheMapDrawsIt['provinceOrderData']>[string]
+>;
+/** A lair the report's order data lists in a province, as the Search Lair and Hunting Rumours fields read it. */
+interface ALairTheTargetFieldsList {
+  readonly idx?: unknown;
+  readonly name?: string | undefined;
+  readonly ritualSite?: unknown;
+  readonly monster?: unknown;
+  readonly monsterCat?: string | null | undefined;
+  readonly monsterPower?: string | undefined;
+}
+/** A hero for hire in a province, as the Broker and Hire Hero fields read him. */
+type AHeroForHireAsTheTargetFieldsReadHim = NonNullable<
+  AProvincesOrderDataAsTheLedgerReadsIt['availableHeroes']
+>[number] &
+  NonNullable<Parameters<typeof heroFameTextP>[0]> & {
+    readonly name?: string | undefined;
+    readonly race?: string | null | undefined;
+    readonly locationName?: string | undefined;
+  };
+/** A province's part of the report's order data, as the target fields read it. */
+interface AProvincesOrderDataAsTheTargetFieldsReadIt extends AProvincesOrderDataAsTheLedgerReadsIt {
+  readonly name?: string | undefined;
+  readonly terrain?: string | null | undefined;
+  readonly explored?: number | null | undefined;
+  readonly owner?: number | null | undefined;
+  readonly canRecruit?: unknown;
+  readonly armyTypes?:
+    | readonly {
+        readonly type: string;
+        readonly cost?: number | null | undefined;
+        readonly maxPerTurn: number;
+      }[]
+    | null
+    | undefined;
+  readonly features?: readonly ALairTheTargetFieldsList[] | null | undefined;
+  readonly availableHeroes?: readonly AHeroForHireAsTheTargetFieldsReadHim[] | null | undefined;
+}
+/** A hero the Encounter Character field lists (the report's encounterTargets). */
+interface AHeroTheEncounterFieldLists {
+  readonly id?: unknown;
+  readonly name?: string | undefined;
+  readonly player?: unknown;
+  readonly isKing?: unknown;
+  readonly untargetable?: string | null | undefined;
+  readonly locationName?: string | undefined;
+  readonly leadsArmy?: unknown;
+}
+/** The report as the target fields read it: the map's report, with the realm's explore multipliers, its discoveries'
+ *  words, the heroes it may hunt, the fields of study, where the bands roam, and its kingdom's home, consecrations,
+ *  Wild Hunt and Cathedral. */
+export interface TheReportAsTheTargetFieldsReadIt extends TheReportAsTheMapDrawsIt {
+  readonly characters?: readonly AHeroAsTheTargetFieldsReadHim[] | null | undefined;
+  readonly exploreDiscMult?: Readonly<Partial<Record<string, number | null>>> | null | undefined;
+  readonly discoveries?:
+    readonly ({ readonly id?: unknown; readonly desc?: string | undefined } | null | undefined)[] | null | undefined;
+  readonly encounterTargets?: readonly AHeroTheEncounterFieldLists[] | null | undefined;
+  readonly researchCategories?:
+    | readonly { readonly name?: string | undefined; readonly known: number; readonly total: number }[]
+    | null
+    | undefined;
+  readonly mercIntel?:
+    | readonly (NonNullable<TheReportAsTheMapDrawsIt['mercIntel']>[number] & { readonly locationId?: unknown })[]
+    | null
+    | undefined;
+  readonly provinceOrderData?:
+    Readonly<Partial<Record<string, AProvincesOrderDataAsTheTargetFieldsReadIt>>> | null | undefined;
+  readonly kingdom?:
+    | (NonNullable<TheReportAsTheMapDrawsIt['kingdom']> & {
+        readonly homeProvinceId?: number | null | undefined;
+        readonly theConsecrationsItsKingMayHold?: number | null | undefined;
+        readonly theTurnsAWildHuntServesBeyondThisOne?: number | null | undefined;
+        readonly itsGrandCathedralStands?: unknown;
+      })
+    | null
+    | undefined;
+}
+/** An item a hero carries. */
+type AnItem = NonNullable<AnItemAHeroCarries>;
+/** A saved order of a phase, as the target field reads it. */
+interface ASavedOrder {
+  readonly action?: string | undefined;
+  readonly target?: unknown;
+  readonly extra?: unknown;
+}
+/** Whether the saved choice `saved` is the option's value `value`, as `saved == value` compares them (a saved id as words
+ *  against a province's or a hero's number). */
+function isTheSavedChoice(saved: unknown, value: unknown): boolean {
+  return saved == value;
+}
+/** A value the code reads a field of: itself, or for none the TypeError the read threw. */
+function thereOrTheTypeError<T>(x: T | null | undefined, what: string): T {
+  if (x === null || x === undefined) throw new TypeError(`Cannot read properties of ${String(x)} (reading ${what})`);
+  return x;
+}
+/** `value[key]` as JavaScript reads it (a value parsed from JSON): for none, the TypeError that read throws. */
+function fieldAsJavaScriptReadsIt(value: unknown, key: string): unknown {
+  if (value === null || value === undefined) {
+    throw new TypeError(`Cannot read properties of ${String(value)} (reading '${key}')`);
+  }
+  return Reflect.get(Object(value), key);
+}
+/** `value?.[key]`: none for none, else the field as JavaScript reads it. */
+function fieldIfThere(value: unknown, key: string): unknown {
+  return value === null || value === undefined ? undefined : fieldAsJavaScriptReadsIt(value, key);
+}
+/** `a || b` on values of any kind: `a` where it is truthy, else `b`. */
+function itOrElse(a: unknown, b: unknown): unknown {
+  if (a) return a;
+  return b;
+}
+/** A value the code splits, trims or tests the start of: words, handed back as they are; any other value throws the
+ *  TypeError the old `.split` on it threw. */
+function theWordsToSplit(value: unknown): string {
+  if (typeof value === 'string') return value;
+  throw new TypeError(`${typeof value} has no split: not words`);
+}
+/** An alignment order's row (ALIGN_ACTIONS' by its name): none throws the TypeError reading it threw. */
+function theAlignmentOrdersRow(name: string): NonNullable<(typeof ALIGN_ACTIONS)[string]> {
+  return thereOrTheTypeError(ALIGN_ACTIONS[name], `the row of ${name}`);
+}
+/** The number `what` of an alignment order's row, as `row.theNumbers[what].value` read it (a grade is words): one the
+ *  row doesn't state throws the TypeError that read threw. */
+function theRowsNumber(row: NonNullable<(typeof ALIGN_ACTIONS)[string]>, what: string): number | string {
+  return thereOrTheTypeError(row.theNumbers[what], "'value'").value;
+}
+/** A province's neighbours as the consecration's checks read them: the numbers among them (the checks only ask whether
+ *  a province's number is one of them, which no other value is). */
+function theNumbersAmong(list: readonly unknown[]): number[] {
+  return list.filter((x): x is number => typeof x === 'number');
+}
+/** Where a hero will stand, as the consecration's checks read its id: a forecast with none reads as NaN, which matches
+ *  no province (the checks compare it with the provinces' numbers, as `undefined` did). */
+function theIdOrNoProvince(id: number | undefined): number {
+  return id ?? NaN;
+}
+/** A hero's companies, each as the code's guard reads it (`c.armies || []`). */
+function theCompaniesOrNone<T>(armies: readonly T[] | null | undefined): readonly (T | null | undefined)[] {
+  return armies ?? [];
+}
+/** The value of the page's field with the id `id` (`document.getElementById(id)?.value`): none where no element has the
+ *  id, or the element holds no value. */
+function theValueOfTheField(id: string): unknown {
+  const el = document.getElementById(id);
+  return el ? theValueOfAField(el) : undefined;
+}
 
 // projected exploration gain for ONE Explore order: the engine's own rule (theShareOfAProvinceAnExploreOrderMaps, through
 // src/shared/ since plan P1-11d14), fed what the report gives: the hero's Explorer (skillEff), his Trailblazer title and
 // his realm's explore discoveries' factor on the ground. R-125: the Loremaster adds nothing, as in the turn.
-export function exploreGainFor(c, terr) {
-  const report = currentReport || {};
-  const disc = report.discoveries || [];
+export function exploreGainFor(c: AHeroAsTheTargetFieldsReadHim, terr: string | null): number {
+  const report = currentReport ?? {};
+  const disc = report.discoveries ?? [];
   const explorerSkill = effSkillP(c, 'explorer');
   // 2026-09-21: the GM ships the realm's per-terrain explore multiplier (every `explore` discovery,
   // terrain-scoped ones included). Old reports without it, and a ground it doesn't name (an earlier
   // Explore in a province the order data doesn't hold: exploreQueuedBefore), fall back to the old desc parse.
   let discMult = 1;
-  if (report.exploreDiscMult && report.exploreDiscMult[terr] != null) discMult = report.exploreDiscMult[terr];
+  const theMultOnTheGround = report.exploreDiscMult?.[String(terr)];
+  if (theMultOnTheGround != null) discMult = theMultOnTheGround;
   else
     disc.forEach((d) => {
-      const m = /map(?:s)? (\d+)% more/i.exec(d.desc || '');
-      if (m && (!/mountain/i.test(d.desc) || terr === 'mountain')) discMult *= 1 + parseInt(m[1]) / 100;
+      const theWords = thereOrTheTypeError(d, "'desc'").desc;
+      const m = /map(?:s)? (\d+)% more/i.exec(theWords ?? '');
+      if (m && (!/mountain/i.test(String(theWords)) || terr === 'mountain')) discMult *= 1 + parseInt(m[1] ?? '') / 100;
     });
-  const hasTrail = (c.minorHeld || []).some((t) => /Trailblazer/i.test(t.name || ''));
+  const hasTrail = (c.minorHeld ?? []).some((t) => /Trailblazer/i.test(thereOrTheTypeError(t, "'name'").name ?? ''));
   return theShareOfAProvinceAnExploreOrderMaps(terr, explorerSkill, hasTrail, discMult);
 }
 // Sum of exploration already queued for a province by EARLIER Explore orders (this hero's earlier
 // phases, and every other hero's orders in this phase or earlier).
-export function exploreQueuedBefore(charId, ph, provId) {
+export function exploreQueuedBefore(charId: unknown, ph: number, provId: number | undefined): number {
   let sum = 0;
-  const chars = (currentReport && currentReport.characters) || [];
+  const chars: readonly (AHeroAsTheTargetFieldsReadHim | null | undefined)[] = currentReport?.characters ?? [];
   chars.forEach((o) => {
     if (!o || o.alive === false) return;
     for (let p = 0; p <= 4; p++) {
       const isSelf = String(o.id) === String(charId);
       if (isSelf && p >= ph) break;
       if (!isSelf && p > ph) break;
-      const act = document.getElementById(`po-action-${o.id}-${p}`)?.value;
+      const act = theValueOfTheField(`po-action-${String(o.id)}-${String(p)}`);
       if (act !== 'Explore') continue;
       const loc = predictedLocation(o.id, p);
       if (!loc || loc.id !== provId) continue;
-      const pd = ((currentReport && currentReport.provinceOrderData) || {})[provId];
-      sum += exploreGainFor(o, (pd && pd.terrain) || null);
+      const pd = currentReport?.provinceOrderData?.[String(provId)];
+      sum += exploreGainFor(o, (pd?.terrain ?? '') || null);
     }
   });
   return sum;
@@ -117,13 +284,17 @@ export function exploreQueuedBefore(charId, ph, provId) {
 // a report older than the field gives none: a forecast limit), and at March 6 or more 2% a company he leads (those he
 // leads as the turn begins: question 61); and sailing into a sea next to `provId` at Naval 6 leading ships, the 5% of
 // each coast beside it the voyage charts. Returns 0 if they do not move in during `upTo` phases.
-export function exploreMoveGainBefore(c, upToPhaseExclusive, provId) {
-  const worldMeta = (currentReport && currentReport.worldMeta) || null;
-  const provinces = (worldMeta && worldMeta.provinces) || [];
+export function exploreMoveGainBefore(
+  c: AHeroAsTheTargetFieldsReadHim,
+  upToPhaseExclusive: number,
+  provId: number | undefined,
+): number {
+  const worldMeta = currentReport?.worldMeta ?? null;
+  const provinces = worldMeta?.provinces ?? [];
   const theCoast = provinces.find((p) => p.id === provId);
   let gain = 0;
   for (let p = 0; p < upToPhaseExclusive; p++) {
-    const act = document.getElementById(`po-action-${c.id}-${p}`)?.value;
+    const act = theValueOfTheField(`po-action-${String(c.id)}-${String(p)}`);
     // a Forced March IS a move in the engine (`_fmSlip=true; action='move'`), so it grants the same
     // move-in exploration. The projection has to count it or the forecast undershoots.
     if (act !== 'Move' && act !== 'Forced March') continue;
@@ -135,39 +306,39 @@ export function exploreMoveGainBefore(c, upToPhaseExclusive, provId) {
       gain += theShareOfAProvinceAMarchIntoItMaps(
         Math.min(5, effSkillP(c, 'explorer')),
         typeof worn === 'number' ? worn : 0,
-        ((c.skills || {}).march || 0) >= 6,
-        (c.armies || []).length,
+        Number(c.skills?.['march']) >= 6,
+        (c.armies ?? []).length,
       );
       continue;
     }
     // Naval 6, charting the coast: the province `provId` beside the sea he sails into
     const theSea = provinces.find((x) => x.id === dest.id);
-    if (!theSea || !theCoast || !aProvinceBesideTheSeaIsACoastAVoyageCharts(theCoast.terrain)) continue;
+    if (!worldMeta || !theSea || !theCoast || !aProvinceBesideTheSeaIsACoastAVoyageCharts(theCoast.terrain)) continue;
     const besideIt = KC_HEX_DIRS.some(
       (d) => theHexNextToAProvinceInADirection(theSea, d, worldMeta.cols, worldMeta.rows) === provId,
     );
     if (!besideIt) continue;
     gain += theShareAVoyageChartsOfEachCoastBesideTheSea(
       theSea.terrain,
-      ((c.skills || {}).naval || 0) >= 6,
-      (c.armies || []).some((a) => a && PO_SEA_TYPES.has(a.type)),
+      Number(c.skills?.['naval']) >= 6,
+      theCompaniesOrNone(c.armies).some((a) => a && PO_SEA_TYPES.has(a.type)),
     );
   }
   return gain;
 }
-export function exploreProjectionNote(c, ph) {
+export function exploreProjectionNote(c: AHeroAsTheTargetFieldsReadHim, ph: number): KcSafeHtml {
   const loc = predictedLocation(c.id, ph);
-  const report = currentReport || {};
-  const pd = loc ? (report.provinceOrderData || {})[loc.id] : null;
-  const wm = loc ? ((report.worldMeta && report.worldMeta.provinces) || []).find((x) => x.id === loc.id) : null;
-  const terr = (pd && pd.terrain) || (wm && wm.terrain) || null;
+  const report = currentReport ?? {};
+  const pd = loc ? report.provinceOrderData?.[String(loc.id)] : null;
+  const wm = loc ? (report.worldMeta?.provinces ?? []).find((x) => x.id === loc.id) : null;
+  const terr = (pd?.terrain ?? '') || (wm?.terrain ?? '') || null;
   if (!loc) return kcHtml`🧭 Explores the province ${c.name} stands in.`;
   // 2026-09-24 (Toby): was _unknownSkills only, so a CHARMED hero fell through to the real note below
   // and its figure — computed from Explorer 0 — told the charmer exactly what the hero has not got.
   if (skillsUnseenP(c))
-    return kcHtml`🧭 Explores ${loc.name}. The gain depends on an Explorer level ${c._unknownSkills ? `not known until ${c.name} has joined` : `hidden from you`}.`;
+    return kcHtml`🧭 Explores ${loc.name}. The gain depends on an Explorer level ${c._unknownSkills ? `not known until ${String(c.name)} has joined` : `hidden from you`}.`;
   if (!terr)
-    return kcHtml`🧭 Explores ${loc.name || 'the province'} — its ground is still unknown to you, so how much it will yield cannot be judged from here.`;
+    return kcHtml`🧭 Explores ${(loc.name ?? '') || 'the province'} — its ground is still unknown to you, so how much it will yield cannot be judged from here.`;
   const gain = exploreGainFor(c, terr);
   // Everything already mapped, or that WILL be mapped before this order resolves:
   // known — what this realm has charted of the province so far
@@ -178,65 +349,76 @@ export function exploreProjectionNote(c, ph) {
   // fell through to the map's figure. Reports snapshotted before the GM portal began emitting
   // pd.explored therefore showed "0% mapped" in the orders section while the map pop-up showed the
   // truth. Keying on the value itself makes old reports fall back to worldMeta.
-  const known = Math.min(100, (pd && pd.explored != null ? pd.explored : wm && wm.explored) || 0);
+  const known = Math.min(100, Number(pd?.explored ?? wm?.explored) || 0);
   const moved = exploreMoveGainBefore(c, ph, loc.id);
   const queued = exploreQueuedBefore(c.id, ph, loc.id);
   const before = Math.min(100, known + moved + queued);
   const after = Math.min(100, before + gain);
-  const priorBits = [];
-  if (moved > 0) priorBits.push(`+${moved}% from marching in`);
-  if (queued > 0) priorBits.push(`+${queued}% from earlier Explore orders this turn`);
-  const prior = priorBits.length ? ` (${known}% mapped now, ${priorBits.join(', ')})` : '';
+  const priorBits: string[] = [];
+  if (moved > 0) priorBits.push(`+${String(moved)}% from marching in`);
+  if (queued > 0) priorBits.push(`+${String(queued)}% from earlier Explore orders this turn`);
+  const prior = priorBits.length ? ` (${String(known)}% mapped now, ${priorBits.join(', ')})` : '';
   if (before >= 100)
     return kcHtml`🧭 ${loc.name} is already fully mapped${prior ? ` ${prior}` : ''} — this Explore order would add nothing.`;
   return kcHtml`🧭 ${loc.name} (${capitalise(terr)}) is <strong>${before}%</strong> mapped; this order adds about <strong>+${gain}%</strong> → <strong>${after}%</strong>${after >= 100 ? ' — fully explored' : ''}${prior}.`;
 }
-export function refreshExploreNotes() {
-  const chars = (currentReport && currentReport.characters) || [];
+export function refreshExploreNotes(): void {
+  const chars: readonly (AHeroAsTheTargetFieldsReadHim | null | undefined)[] = currentReport?.characters ?? [];
   chars.forEach((c) => {
     if (!c || c.alive === false) return;
     for (let p = 0; p <= 4; p++) {
-      const el = document.getElementById(`po-explore-note-${c.id}-${p}`);
-      if (el) el.innerHTML = exploreProjectionNote(c, p);
+      const el = document.getElementById(`po-explore-note-${String(c.id)}-${String(p)}`);
+      if (el) el.innerHTML = String(exploreProjectionNote(c, p));
     }
   });
 }
 
-export function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive) {
+export function getAlreadyRecruitedThisTurn(
+  charId: unknown,
+  upToPhaseExclusive: number,
+): Partial<Record<string, number>> {
   // The recruit cap is PER PROVINCE per unit type (the GM engine keys it `provId:type`), so this
   // tally must be keyed the same way — otherwise recruiting a type in one province wrongly zeroes
   // it out in every OTHER province this character musters in this turn. Returns counts keyed
   // `${provId}:${type}`.
-  const recruited = {};
+  const recruited: Partial<Record<string, number>> = {};
   const savedOrders = currentGamePlayer?.orders;
-  let parsedOrders = {};
+  let parsedOrders: unknown = {};
   if (savedOrders) {
     try {
-      const raw = typeof savedOrders === 'string' ? JSON.parse(savedOrders) : savedOrders;
-      parsedOrders = (raw.orders || raw)[charId] || [];
-    } catch (e) {}
+      const raw: unknown = typeof savedOrders === 'string' ? JSON.parse(savedOrders) : savedOrders;
+      parsedOrders = itOrElse(
+        fieldAsJavaScriptReadsIt(itOrElse(fieldAsJavaScriptReadsIt(raw, 'orders'), raw), String(charId)),
+        [],
+      );
+    } catch {
+      // (a draft that doesn't parse counts nothing)
+    }
   }
   for (let ph = 0; ph < upToPhaseExclusive; ph++) {
     // Check DOM first, fall back to saved
-    const domAction = document.getElementById(`po-action-${charId}-${ph}`)?.value;
-    const action = domAction || parsedOrders[ph]?.action || '';
+    const domAction = theValueOfTheField(`po-action-${String(charId)}-${String(ph)}`);
+    const theSavedPhase = fieldAsJavaScriptReadsIt(parsedOrders, String(ph));
+    const action = itOrElse(itOrElse(domAction, fieldIfThere(theSavedPhase, 'action')), '');
     if (action !== 'Recruit Armies') continue;
-    const tgt = domAction ? getOrderTarget(charId, ph) : parsedOrders[ph]?.target || '';
+    const tgt = domAction ? getOrderTarget(charId, ph) : itOrElse(fieldIfThere(theSavedPhase, 'target'), '');
     if (!tgt) continue;
     // The province is wherever the character stands in THIS phase (recruit happens at its
     // location).
     const loc = predictedLocation(charId, ph);
-    const provKey = loc ? loc.id : 'unknown' + ph; // keep unknown-location phases from cross-counting
-    tgt.split(',').forEach((sel) => {
-      const s = sel.trim();
-      if (s.startsWith('merc:')) return; // mercenary hire — not a native recruit, no per-turn cap
-      if (s.startsWith('to:')) return; // muster-destination selector, not a unit type
-      const parts = s.split('|');
-      if (parts[0]) {
-        const key = `${provKey}:${parts[0].trim()}`;
-        recruited[key] = (recruited[key] || 0) + 1;
-      }
-    });
+    const provKey = loc ? String(loc.id) : 'unknown' + String(ph); // keep unknown-location phases from cross-counting
+    theWordsToSplit(tgt)
+      .split(',')
+      .forEach((sel) => {
+        const s = sel.trim();
+        if (s.startsWith('merc:')) return; // mercenary hire — not a native recruit, no per-turn cap
+        if (s.startsWith('to:')) return; // muster-destination selector, not a unit type
+        const parts = s.split('|');
+        if (parts[0]) {
+          const key = `${provKey}:${parts[0].trim()}`;
+          recruited[key] = (recruited[key] ?? 0) + 1;
+        }
+      });
   }
   return recruited;
 }
@@ -250,19 +432,41 @@ export function getAlreadyRecruitedThisTurn(charId, upToPhaseExclusive) {
 // consulted, so "default to what a companion is doing" works on load as well as after a change.
 // A declared global (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._draftOrdersSnapshot = {};
-export function draftOrderAt(charId, ph) {
-  const actEl = document.getElementById(`po-action-${charId}-${ph}`);
-  if (actEl) return { action: actEl.value || '', target: getOrderTarget(charId, ph) };
-  const sv = ((_draftOrdersSnapshot || {})[charId] || [])[ph] || {};
-  return { action: sv.action || '', target: sv.target || '' };
+export function draftOrderAt(charId: unknown, ph: number): { action: unknown; target: unknown } {
+  const actEl = document.getElementById(`po-action-${String(charId)}-${String(ph)}`);
+  if (actEl) return { action: itOrElse(theValueOfAField(actEl), ''), target: getOrderTarget(charId, ph) };
+  const sv = (_draftOrdersSnapshot?.[String(charId)] ?? [])[ph] ?? {};
+  return { action: itOrElse(sv.action, ''), target: itOrElse(sv.target, '') };
 }
 export const LAIR_POWER_RANK = { Weak: 0, Moderate: 1, Powerful: 2, Legendary: 3 };
+/** The skills' names, read by any skill; the tables the item fields read by any slot or tier; a mastery spell's level,
+ *  read by any spell; a rumour's price, by any grade. */
+const theSkillsLabels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
+const theSlotsCaps: Readonly<Partial<Record<string, number>>> = ITEM_SLOT_CAP_P;
+const theSlotsLabels: Readonly<Partial<Record<string, string>>> = ITEM_SLOT_LABEL_P;
+const theTiersNames: Readonly<Partial<Record<string, string>>> = ITEM_TIER_NAME_P;
+const theLevelEachMasterySpellNeeds: Readonly<Partial<Record<string, number>>> = SPELL_REQ_LEVEL;
+const theSchoolOfEachSpell: Readonly<Partial<Record<string, string>>> = SPELL_TO_SCHOOL;
+const theRumoursPrices: Readonly<Partial<Record<string, number>>> = RUMOUR_COST_BY_POWER_P;
+/** The lairs' ranks, read by any grade. */
+const theLairsRanks: Readonly<Partial<Record<string, number>>> = LAIR_POWER_RANK;
+/** The heroes the report lists, each as the code's guard reads it (`report.characters || []`). */
+function theHeroesOrNone(
+  report: TheReportAsTheTargetFieldsReadIt | null | undefined,
+): readonly (AHeroAsTheTargetFieldsReadHim | null | undefined)[] {
+  return report?.characters ?? [];
+}
 // the default Search Lair target is the LOWEST-power lair known in the province the character will
 // stand in, skipping any lair already chosen by an earlier Search Lair order — this character's
 // earlier phases, or any other of the realm's characters in any phase (same province, same lair).
-export function defaultLairTarget(c, ph, provId, feats) {
-  const taken = new Set();
-  ((currentReport && currentReport.characters) || []).forEach((o) => {
+export function defaultLairTarget(
+  c: Pick<AHeroAsTheTargetFieldsReadHim, 'id'>,
+  ph: number,
+  provId: unknown,
+  feats: readonly ALairTheTargetFieldsList[] | null | undefined,
+): string {
+  const taken = new Set<string>();
+  theHeroesOrNone(currentReport).forEach((o) => {
     if (!o || o.alive === false) return;
     for (let q = 0; q < SEASONS.length; q++) {
       if (o.id === c.id && q >= ph) continue; // own later phases don't count
@@ -274,23 +478,26 @@ export function defaultLairTarget(c, ph, provId, feats) {
       taken.add(String(d.target));
     }
   });
-  const ranked = (feats || [])
+  const ranked = (feats ?? [])
     .filter((f) => !f.ritualSite && !taken.has(String(f.idx)))
     .sort(
       (a, b) =>
-        (a.ritualSite ? 9 : (LAIR_POWER_RANK[a.monsterPower] ?? 5)) -
-          (b.ritualSite ? 9 : (LAIR_POWER_RANK[b.monsterPower] ?? 5)) || a.idx - b.idx,
+        (a.ritualSite ? 9 : (theLairsRanks[String(a.monsterPower)] ?? 5)) -
+          (b.ritualSite ? 9 : (theLairsRanks[String(b.monsterPower)] ?? 5)) || Number(a.idx) - Number(b.idx),
     );
-  return ranked.length ? String(ranked[0].idx) : '';
+  const theFirst = ranked[0];
+  return theFirst ? String(theFirst.idx) : '';
 }
 // Research defaults to the field a companion is researching in the SAME province and phase, else
 // this character's own earlier Research this turn, else any other character's Research this turn.
-export function defaultResearchField(c, ph) {
+export function defaultResearchField(c: AHeroAsTheTargetFieldsReadHim, ph: number): unknown {
   const here = predictedLocation(c.id, ph);
   const hereId = here ? here.id : c.locationId;
-  const chars = ((currentReport && currentReport.characters) || []).filter((o) => o && o.alive !== false);
-  const counts = {};
-  let best = '',
+  const chars = theHeroesOrNone(currentReport).filter(
+    (o): o is AHeroAsTheTargetFieldsReadHim => !!o && o.alive !== false,
+  );
+  const counts: Partial<Record<string, number>> = {};
+  let best: unknown = '',
     bestN = 0;
   chars.forEach((o) => {
     if (o.id === c.id) return;
@@ -298,9 +505,11 @@ export function defaultResearchField(c, ph) {
     if (d.action !== 'Research' || !d.target) return;
     const loc = predictedLocation(o.id, ph);
     if ((loc ? loc.id : o.locationId) !== hereId) return;
-    counts[d.target] = (counts[d.target] || 0) + 1;
-    if (counts[d.target] > bestN) {
-      bestN = counts[d.target];
+    const theField = inWords(d.target);
+    const theCount = (counts[theField] ?? 0) + 1;
+    counts[theField] = theCount;
+    if (theCount > bestN) {
+      bestN = theCount;
       best = d.target;
     }
   });
@@ -326,34 +535,36 @@ export function defaultResearchField(c, ph) {
 // when there is not, so the group-drill default now survives a first paint. This reverses the
 // earlier "no other orders get this system" call — Practice Skill was the one order that visibly
 // needed it.
-export function practiceCompanionSkill(c, ph) {
-  const report = currentReport || {};
+export function practiceCompanionSkill(c: AHeroAsTheTargetFieldsReadHim, ph: number): string {
+  const report = currentReport ?? {};
   const here = predictedLocation(c.id, ph);
   const hereId = here ? here.id : c.locationId;
-  const counts = {};
+  const counts: Partial<Record<string, number>> = {};
   let best = '',
     bestN = 0;
-  (report.characters || []).forEach((o) => {
+  theHeroesOrNone(report).forEach((o) => {
     if (!o || o.id === c.id || o.alive === false) return;
     const d = draftOrderAt(o.id, ph);
     if (d.action !== 'Practice Skill') return;
     const sk = d.target;
-    if (!sk || !ALL_SKILLS.includes(sk)) return;
+    if (typeof sk !== 'string' || !sk || !ALL_SKILLS.includes(sk)) return;
     const loc = predictedLocation(o.id, ph);
     if ((loc ? loc.id : o.locationId) !== hereId) return;
-    counts[sk] = (counts[sk] || 0) + 1;
-    if (counts[sk] > bestN) {
-      bestN = counts[sk];
+    const theCount = (counts[sk] ?? 0) + 1;
+    counts[sk] = theCount;
+    if (theCount > bestN) {
+      bestN = theCount;
       best = sk;
     }
   });
   return best;
 }
-export function practiceOwnEarlierSkill(c, ph) {
+export function practiceOwnEarlierSkill(c: Pick<AHeroAsTheTargetFieldsReadHim, 'id'>, ph: number): string {
   for (let q = ph - 1; q >= 0; q--) {
     const d = draftOrderAt(c.id, q);
     if (d.action !== 'Practice Skill') continue;
-    if (d.target && ALL_SKILLS.includes(d.target)) return d.target;
+    const sk = d.target;
+    if (typeof sk === 'string' && sk && ALL_SKILLS.includes(sk)) return sk;
   }
   return '';
 }
@@ -362,16 +573,21 @@ export function practiceOwnEarlierSkill(c, ph) {
 // the hero leads that phase, marked to sacrifice (`sac`) and to empower (`ben`) by their places in the column. The
 // companies are the turn's own answer (src/shared/): with a side left empty it ignores the marks, gives the first
 // company it may take and raises the next; with fewer than two it may take, it makes no offering.
-export function theBloodOfferingsHint(army, sac, ben) {
-  const grades = ALIGN_ACTIONS['Perform Rite'].theNumbers.theBloodOfferingsGrades.value; // its row's
+export function theBloodOfferingsHint(
+  army: readonly ACompanyAsTheFormCarriesIt[],
+  sac: readonly number[],
+  ben: readonly number[],
+): { words: string; colour: string } {
+  const grades = theRowsNumber(theAlignmentOrdersRow('Perform Rite'), 'theBloodOfferingsGrades'); // its row's
   const offered = theCompaniesABloodOfferingGivesAndRaises(army, `S:${sac.join(',')}|E:${ben.join(',')}`, (a) => a);
   if (!offered)
     return {
       words: `⚠ No offering will be made: the rite needs two companies it can take.`,
       colour: '#b04a4a',
     };
-  const names = (places) => places.map((i) => armyLabel(army[i], { short: true })).join(', ');
-  const what = `sacrifice ${names(offered.given)} to empower ${names(offered.raised)} by +${grades} tiers`;
+  const names = (places: readonly number[]) =>
+    places.map((i) => String(armyLabel(thereOrTheTypeError(army[i], "'unitName'"), { short: true }))).join(', ');
+  const what = `sacrifice ${names(offered.given)} to empower ${names(offered.raised)} by +${String(grades)} tiers`;
   if (sac.length === 0 && ben.length === 0)
     return {
       words: `Nothing marked: the turn will ${what} (the first two companies the rite can take). Mark units to choose others.`,
@@ -384,7 +600,7 @@ export function theBloodOfferingsHint(army, sac, ben) {
     };
   if (sac.length !== ben.length)
     return {
-      words: `⚠ The sides don't match (${sac.length} and ${ben.length}): each sacrifice funds one empowerment, so the turn will ${what}.`,
+      words: `⚠ The sides don't match (${String(sac.length)} and ${String(ben.length)}): each sacrifice funds one empowerment, so the turn will ${what}.`,
       colour: '#b04a4a',
     };
   return { words: `✓ The turn will ${what}.`, colour: '#2d6a2d' };
@@ -393,12 +609,18 @@ export function theBloodOfferingsHint(army, sac, ben) {
 // mastery order, with `action` and `target` as saved, on the report `report`): each legal direction's option, and
 // whether the icy wastes bar a way north or south (the note under the field); with the provinces and the one he stands
 // in, which the field reads after.
-export function theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase(c, ph, action, target, report) {
+export function theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase(
+  c: Pick<AHeroAsTheTargetFieldsReadHim, 'id'>,
+  ph: number,
+  action: string,
+  target: unknown,
+  report: TheReportAsTheTargetFieldsReadIt,
+) {
   // Build direction options with adjacent province names where known
-  const worldMeta_ = report.worldMeta || {};
-  const wCols = worldMeta_.cols || 20;
-  const wRows = worldMeta_.rows || 10;
-  const wProvs = worldMeta_.provinces || [];
+  const worldMeta_ = report.worldMeta;
+  const wCols = (worldMeta_?.cols ?? 0) || 20;
+  const wRows = (worldMeta_?.rows ?? 0) || 10;
+  const wProvs = worldMeta_?.provinces ?? [];
 
   // Find character's current predicted location
   const curLocObj = predictedLocation(c.id, ph);
@@ -421,7 +643,7 @@ export function theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase(c, ph, actio
       if (curProv_) {
         if (nidOut !== null) {
           const nbProv = wProvs.find((p) => p.id === nidOut);
-          if (nbProv && nbProv.name) provLabel = ` (${nbProv.name})`;
+          if (nbProv?.name) provLabel = ` (${nbProv.name})`;
           else if (!nbProv) offMap = true;
         } else {
           offMap = true; // beyond the north or south edge of the world
@@ -435,19 +657,23 @@ export function theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase(c, ph, actio
       // heads for the province the player actually chose, not "one hex east of wherever they ended
       // up". Legacy dir: orders still parse, so a previously-saved direction is shown as selected
       // too.
-      const valOut = nidOut != null ? `prov:${nidOut}` : `dir:${v}`;
+      const valOut = nidOut != null ? `prov:${String(nidOut)}` : `dir:${v}`;
       const selOut =
         target === valOut || target === 'dir:' + v ? 'selected' : !target && _defaultDir === v ? 'selected' : '';
       return kcHtml`<option value="${valOut}" ${selOut}>${l}${provLabel}</option>`;
     })
-    .filter(Boolean);
+    .filter((o): o is KcSafeHtml => Boolean(o));
   return { wProvs, curProv_, blockedNorth, blockedSouth, dirOpts };
 }
 // The spells the Cast Spell field offers the hero `c` in the phase `ph` on the report `report` (buildTargetField's, for
 // a hero whose skills the report shows): each spell's row (its spell, whether its school's limit is reached, its
 // label), with the schools he practises, the casts each school allows and those the earlier phases spend, which the
 // field reads after.
-export function theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, ph, report) {
+export function theSpellsTheCastSpellFieldOffersAHeroInAPhase(
+  c: AHeroAsTheTargetFieldsReadHim | null | undefined,
+  ph: number,
+  report: TheReportAsTheTargetFieldsReadIt,
+) {
   // Only show spells that are usable as phase orders
   const PHASE_SPELLS = theActionSpells();
 
@@ -461,29 +687,33 @@ export function theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, ph, report) {
   const { practising: practisingSchools, projected: _projLvl, trained: _trainedLvl } = projectedMagicLevels(c, ph);
   // R-123: the Warlock (the minor title the report lists in his minorHeld) casts one more spell of his best school
   // a turn, read from the levels he may have trained by this phase, as the turn reads them at the cast.
-  const _warlock = ((c && c.minorHeld) || []).some((t) => t && t.key === 'warlock');
-  const _castsAllowed = (school) =>
+  const _warlock = (c?.minorHeld ?? []).some((t) => t?.key === 'warlock');
+  const _castsAllowed = (school: string) =>
     actionSpellsAHeroMayCastInASchoolEachTurn(
-      { skills: { ...((c && c.skills) || {}), ..._trainedLvl } },
+      { skills: { ...(c?.skills ?? {}), ..._trainedLvl } },
       school,
-      _projLvl[school],
+      // (a school the levels don't name: as `undefined`, NaN meets no level)
+      Number(_projLvl[school]),
       _warlock,
     );
 
   // R-124: while the realm's Grand Cathedral stands (its report's kingdom says so), Bless Province costs no slot: the
   // turn never counts it among a school's casts, nor ever blocks it.
-  const _cathedral = !!(report.kingdom && report.kingdom.itsGrandCathedralStands);
-  const _costsNoSlot = (spell) => theSpellCostsItsCasterNoCastingSlot(spell, _cathedral);
+  const _cathedral = Boolean(report.kingdom?.itsGrandCathedralStands);
+  // (a field's value that isn't words names no spell's row, so it costs a slot, as the rule says of a name with none)
+  const _costsNoSlot = (spell: unknown) =>
+    typeof spell === 'string' && theSpellCostsItsCasterNoCastingSlot(spell, _cathedral);
 
   // Count how many Cast Spell orders from each school already exist in earlier phases
-  const schoolCastCount = {};
+  const schoolCastCount: Partial<Record<string, number>> = {};
   for (let prevPh = 0; prevPh < ph; prevPh++) {
-    const prevAction = document.getElementById(`po-action-${c.id}-${prevPh}`)?.value || '';
+    const hisId = thereOrTheTypeError(c, "'id'").id;
+    const prevAction = itOrElse(theValueOfTheField(`po-action-${String(hisId)}-${String(prevPh)}`), '');
     if (prevAction !== 'Cast Spell') continue;
-    const prevSpell = getOrderTarget(c.id, prevPh);
+    const prevSpell = getOrderTarget(hisId, prevPh);
     if (prevSpell && _costsNoSlot(prevSpell)) continue;
-    const prevSchool = prevSpell ? SPELL_TO_SCHOOL[prevSpell] : null;
-    if (prevSchool) schoolCastCount[prevSchool] = (schoolCastCount[prevSchool] || 0) + 1;
+    const prevSchool = prevSpell ? theSchoolOfEachSpell[inWords(prevSpell)] : null;
+    if (prevSchool) schoolCastCount[prevSchool] = (schoolCastCount[prevSchool] ?? 0) + 1;
   }
 
   // ── 2026-09-21: THE DROPDOWN AND THE TARGET FIELD ARE DECIDED FROM ONE LIST ──
@@ -502,38 +732,46 @@ export function theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, ph, report) {
     .filter(([school]) => effMagicLvl(c, school) >= 1 || practisingSchools.has(school))
     .flatMap(([school, list]) =>
       list
-        .filter((s) => PHASE_SPELLS.has(s) && (!SPELL_REQ_LEVEL[s] || rawMagicLvl(c, school) >= SPELL_REQ_LEVEL[s]))
+        .filter((s) => {
+          const theLevelItNeeds = theLevelEachMasterySpellNeeds[s];
+          return PHASE_SPELLS.has(s) && (!theLevelItNeeds || rawMagicLvl(c, school) >= theLevelItNeeds);
+        })
         .map((s) => {
           const currentLvl = effMagicLvl(c, school);
           const projLvl = _projLvl[school];
           const isPractising = practisingSchools.has(school) && currentLvl === 0;
           const limit = _castsAllowed(school);
-          const used = schoolCastCount[school] || 0;
+          const used = schoolCastCount[school] ?? 0;
           const atLimit = used >= limit && !_costsNoSlot(s);
-          const lvlTxt = projLvl > currentLvl ? `Lv${currentLvl}→${projLvl} if practice succeeds` : `Lv${currentLvl}`;
-          let label;
+          const lvlTxt =
+            projLvl !== undefined && projLvl > currentLvl
+              ? `Lv${String(currentLvl)}→${String(projLvl)} if practice succeeds`
+              : `Lv${String(currentLvl)}`;
+          const theSchoolsName = String(theSkillsLabels[school]);
+          const usedOfLimit = `${String(used)}/${String(limit)}`;
+          let label: string;
           if (isPractising && !atLimit) {
-            label = `${s} (${SKILL_LABELS[school]} — practising, may unlock: Lv${projLvl}, ${used}/${limit} used)`;
+            label = `${s} (${theSchoolsName} — practising, may unlock: Lv${String(projLvl)}, ${usedOfLimit} used)`;
           } else if (atLimit) {
-            label = `${s} (${SKILL_LABELS[school]} ${lvlTxt} — limit reached: ${used}/${limit} this turn)`;
+            label = `${s} (${theSchoolsName} ${lvlTxt} — limit reached: ${usedOfLimit} this turn)`;
           } else {
-            label = `${s} (${SKILL_LABELS[school]} ${lvlTxt} — ${used}/${limit} used)`;
+            label = `${s} (${theSchoolsName} ${lvlTxt} — ${usedOfLimit} used)`;
           }
           return { spell: s, atLimit, label };
         }),
     );
   return { practisingSchools, _castsAllowed, schoolCastCount, _spellRows };
 }
-export function buildTargetField(c, ph, saved) {
-  const action = saved.action || '';
-  const target = saved.target || '';
-  const extra = saved.extra || '';
-  const report = currentReport || {};
-  const provOrderData = report.provinceOrderData || {};
+export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, saved: ASavedOrder): KcSafeHtml {
+  const action = saved.action ?? '';
+  const target = itOrElse(saved.target, '');
+  const extra = itOrElse(saved.extra, '');
+  const report = currentReport ?? {};
+  const provOrderData = report.provinceOrderData ?? {};
 
   // ── L7/L9 MASTERY ORDERS — generic target field by declared target type ──
-  if (L79_ORDERS[action]) {
-    const cfg = L79_ORDERS[action];
+  const cfg = L79_ORDERS[action];
+  if (cfg) {
     // Every mastery-order branch appends hintHtml, so folding the odds in here covers them all at
     // once — Assassinate, Blockade, Grand Heist and any future one. orderChanceNote returns '' for
     // an order with no roll behind it, so the deterministic masteries are unaffected.
@@ -542,17 +780,17 @@ export function buildTargetField(c, ph, saved) {
       return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${action} — no target needed" readonly>${hintHtml}`;
     }
     if (cfg.target === 'province') {
-      const wmProvs = report.worldMeta?.provinces || [];
+      const wmProvs = report.worldMeta?.provinces ?? [];
       if (cfg.provKind === 'move_adjacent') {
         const curLoc = predictedLocation(c.id, ph);
         const curId = curLoc ? curLoc.id : c.locationId;
         const curP = wmProvs.find((p) => p.id === curId);
-        const candIds = (curP && curP.neighbors) || [];
+        const candIds = curP?.neighbors ?? [];
         const opts = candIds
           .map((pid) => {
             const p = wmProvs.find((x) => x.id === pid);
             if (!p) return '';
-            return kcHtml`<option value="${pid}" ${target == pid ? 'selected' : ''}>${p.name || 'Unknown province (' + (provDirectionLabel(curId, pid, wmProvs, report.worldMeta?.cols) || '?') + ')'}${p.ownerName ? ` — ${p.ownerName}` : ''}</option>`;
+            return kcHtml`<option value="${pid}" ${isTheSavedChoice(target, pid) ? 'selected' : ''}>${(p.name ?? '') || 'Unknown province (' + ((provDirectionLabel(curId, pid, wmProvs, report.worldMeta?.cols) ?? '') || '?') + ')'}${p.ownerName ? ` — ${p.ownerName}` : ''}</option>`;
           })
           .filter(Boolean);
         return opts.length
@@ -563,12 +801,12 @@ export function buildTargetField(c, ph, saved) {
         const curLoc = predictedLocation(c.id, ph);
         const curId = curLoc ? curLoc.id : c.locationId;
         const curP = wmProvs.find((p) => p.id === curId);
-        const candIds = [curId, ...((curP && curP.neighbors) || [])];
+        const candIds = [curId, ...(curP?.neighbors ?? [])];
         const opts = candIds
           .map((pid) => {
             const p = wmProvs.find((x) => x.id === pid);
-            if (!p || p.terrain !== 'sea') return '';
-            return kcHtml`<option value="${pid}" ${target == pid ? 'selected' : ''}>${p.name || 'Sea (' + pid + ')'}${pid === curId ? ' (here)' : ''}</option>`;
+            if (p?.terrain !== 'sea') return '';
+            return kcHtml`<option value="${pid}" ${isTheSavedChoice(target, pid) ? 'selected' : ''}>${(p.name ?? '') || 'Sea (' + String(pid) + ')'}${pid === curId ? ' (here)' : ''}</option>`;
           })
           .filter(Boolean);
         return opts.length
@@ -580,7 +818,7 @@ export function buildTargetField(c, ph, saved) {
       );
       const opts = seen.map(
         (p) =>
-          kcHtml`<option value="${p.id}" ${target == p.id ? 'selected' : ''}>${p.name}${p.ownerName ? ` — ${p.ownerName}` : ''}</option>`,
+          kcHtml`<option value="${p.id}" ${isTheSavedChoice(target, p.id) ? 'selected' : ''}>${p.name}${p.ownerName ? ` — ${p.ownerName}` : ''}</option>`,
       );
       return opts.length
         ? kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
@@ -589,18 +827,18 @@ export function buildTargetField(c, ph, saved) {
     // ── 'here_or_adjacent' — this province or one bordering it (Chart the Unknown). ──
     if (cfg.target === 'here_or_adjacent') {
       const here = predictedLocation(c.id, ph)?.id ?? c.locationId;
-      const wm = report.worldMeta?.provinces || [];
+      const wm = report.worldMeta?.provinces ?? [];
       const hp = wm.find((p) => p.id === here);
-      const ids = [here, ...((hp && hp.neighbors) || [])];
+      const ids = [here, ...(hp?.neighbors ?? [])];
       const opts = ids.map((pid) => {
         const p = wm.find((x) => x.id === pid);
         const nm =
-          (p && p.name) ||
+          (p?.name ?? '') ||
           (pid === here
             ? 'this province'
-            : `Unknown province (${provDirectionLabel(here, pid, wm, report.worldMeta?.cols) || '?'})`);
+            : `Unknown province (${(provDirectionLabel(here, pid, wm, report.worldMeta?.cols) ?? '') || '?'})`);
         const sel = String(target) === String(pid) || (!target && pid === here) ? 'selected' : '';
-        return kcHtml`<option value="${pid}" ${sel}>${nm}${pid === here ? ' (here)' : ''}${p && p.explored != null ? ` — ${Math.min(100, p.explored)}% mapped` : ''}</option>`;
+        return kcHtml`<option value="${pid}" ${sel}>${nm}${pid === here ? ' (here)' : ''}${p?.explored != null ? ` — ${String(Math.min(100, p.explored))}% mapped` : ''}</option>`;
       });
       return kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`;
     }
@@ -623,33 +861,35 @@ export function buildTargetField(c, ph, saved) {
     // is chosen; the field simply reports whether this ground can be robbed and why.
     if (cfg.target === 'here') {
       const here = predictedLocation(c.id, ph)?.id ?? c.locationId;
-      const wm = report.worldMeta?.provinces || [];
+      const wm = report.worldMeta?.provinces ?? [];
       const hp = wm.find((p) => p.id === here);
-      const atWar = (pi) =>
-        ((report.diplomacy && report.diplomacy.known) || []).some((k) => k.index === pi && k.relation === 'enemy');
+      const atWar = (pi: unknown) =>
+        (report.diplomacy?.known ?? []).some((k) => k.index === pi && k.relation === 'enemy');
       const owner = hp ? hp.owner : null;
       const rich = !!hp && (hp.wealth === 'Rich' || (hp.tax != null && hp.tax >= 7));
-      const home = !!(hp && hp.isHomeCapitalOfOwner);
-      const no = (why) =>
+      const home = Boolean(hp?.isHomeCapitalOfOwner);
+      const no = (why: string) =>
         kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>${hintHtml}`;
-      if (owner == null || owner === c.player)
+      // (no province here has no owner: the same answer)
+      if (!hp || owner == null || owner === c.player)
         return no('A Grand Heist needs enemy ground — this province is not held by a rival realm');
-      if (!atWar(owner)) return no(`You are not at war with ${hp.ownerName || 'this realm'} — declare war first`);
+      if (!atWar(owner))
+        return no(`You are not at war with ${(hp.ownerName ?? '') || 'this realm'} — declare war first`);
       if (!rich && !home)
         return no(
-          `${hp.name || 'This province'} is not worth robbing — a heist needs their capital or rich country (tax 7+)`,
+          `${(hp.name ?? '') || 'This province'} is not worth robbing — a heist needs their capital or rich country (tax 7+)`,
         );
-      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${hp.name} — ${hp.ownerName || 'the enemy realm'}" readonly>
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">🏦 You will crack the vaults of <strong>${hp.name}</strong> — ${home ? `${hp.ownerName || 'the enemy'}'s home capital` : 'rich country'}.</div>${hintHtml}`;
+      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${hp.name} — ${(hp.ownerName ?? '') || 'the enemy realm'}" readonly>
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">🏦 You will crack the vaults of <strong>${hp.name}</strong> — ${home ? `${(hp.ownerName ?? '') || 'the enemy'}'s home capital` : 'rich country'}.</div>${hintHtml}`;
     }
     if (cfg.target === 'character') {
       const here = predictedLocation(c.id, ph)?.id ?? c.locationId;
-      const foes = (report.visibleChars || []).filter(
+      const foes = (report.visibleChars ?? []).filter(
         (x) => x.locationId === here && (x.player === null || x.player !== c.player),
       );
       const opts = foes.map(
         (x) =>
-          kcHtml`<option value="${x.id}"${realmOptStyleP(x.player, report)} ${target == x.id ? 'selected' : ''}>${x.name}${x.isKing ? ' 👑' : ''}${x.player === null ? ' (wandering)' : ` ⚔ (${realmNameP(x.player, report)})`} — ${x.locationName || '?'}</option>`,
+          kcHtml`<option value="${x.id}"${realmOptStyleP(x.player, report)} ${isTheSavedChoice(target, x.id) ? 'selected' : ''}>${x.name}${x.isKing ? ' 👑' : ''}${x.player === null ? ' (wandering)' : ` ⚔ (${String(realmNameP(x.player, report))})`} — ${(x.locationName ?? '') || '?'}</option>`,
       );
       return opts.length
         ? kcHtml`<select id="po-target-${c.id}-${ph}">${opts}</select>${hintHtml}`
@@ -671,7 +911,7 @@ export function buildTargetField(c, ph, saved) {
   // engine simply logs "already in X — the move order is moot" and spends no movement, so it is
   // safe either way.
   const stayOpt = curProv_
-    ? kcHtml`<option value="prov:${curProv_.id}" ${target === `prov:${curProv_.id}` ? 'selected' : ''}>Stay in ${curProv_.name || 'this province'} (return here if displaced)</option>`
+    ? kcHtml`<option value="prov:${curProv_.id}" ${target === `prov:${String(curProv_.id)}` ? 'selected' : ''}>Stay in ${(curProv_.name ?? '') || 'this province'} (return here if displaced)</option>`
     : '';
 
   switch (action) {
@@ -690,15 +930,16 @@ export function buildTargetField(c, ph, saved) {
       // refreshMoveModeNote whenever the player changes it.
       const _allOpts = String(kcHtml`${dirOpts}${stayOpt}`); // the options' markup, read for the one that opens selected
       const _initSel = (() => {
-        const m = _allOpts.match(/<option value="([^"]+)" selected>/);
-        if (m) return m[1];
-        const f = _allOpts.match(/<option value="([^"]+)"/);
-        return f ? f[1] : '';
+        // (a group that matched always holds words)
+        const m = /<option value="([^"]+)" selected>/.exec(_allOpts);
+        if (m) return m[1] ?? '';
+        const f = /<option value="([^"]+)"/.exec(_allOpts);
+        return f ? (f[1] ?? '') : '';
       })();
       const _initDest = (() => {
         if (!_initSel.startsWith('prov:')) return null;
         const id = parseInt(_initSel.slice(5));
-        return isNaN(id) ? null : wProvs.find((p) => p.id === id) || null;
+        return isNaN(id) ? null : (wProvs.find((p) => p.id === id) ?? null);
       })();
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited(${kcArg(String(c.id))},${kcArg(ph)})">${dirOpts}${stayOpt}</select>${edgeNote}
         <div id="po-move-mode-${c.id}-${ph}">${poMoveModeNote(c, _initDest, projectedMoveHost(c.id, ph), moveOriginProv(c.id, ph))}</div>
@@ -722,7 +963,7 @@ export function buildTargetField(c, ph, saved) {
       // in the same province (target 'char:<id>').
       const here = predictedLocation(c.id, ph);
       const hereId = here ? here.id : c.locationId;
-      const foes = (report.visibleChars || []).filter(
+      const foes = (report.visibleChars ?? []).filter(
         (x) => x.id !== c.id && x.locationId === hereId && (x.player === null || x.player !== c.player),
       );
       const spyLvl = effSkillP(c, 'spy');
@@ -733,13 +974,13 @@ export function buildTargetField(c, ph, saved) {
       const _spHide = skillsUnseenP(c);
       const opts = foes.map(
         (x) =>
-          kcHtml`<option value="char:${x.id}"${realmOptStyleP(x.player, report)} ${target === `char:${x.id}` ? 'selected' : ''}>Spy on ${x.name}${x.isKing ? ' 👑 (king)' : ''}${x.isWandering ? ' (wandering)' : x.player != null ? ` ⚔ (${realmNameP(x.player, report)})` : ''}${_spHide ? ' — learns their skills, items and army' : ` — ~${charPct}% to learn their skills, items and army`}</option>`,
+          kcHtml`<option value="char:${x.id}"${realmOptStyleP(x.player, report)} ${target === `char:${String(x.id)}` ? 'selected' : ''}>Spy on ${x.name}${x.isKing ? ' 👑 (king)' : ''}${x.isWandering ? ' (wandering)' : x.player != null ? ` ⚔ (${String(realmNameP(x.player, report))})` : ''}${_spHide ? ' — learns their skills, items and army' : ` — ~${String(charPct)}% to learn their skills, items and army`}</option>`,
       );
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap(${kcArg(String(c.id))},${kcArg(ph)})"><option value="" ${!target ? 'selected' : ''}>Spy on the province (${here ? here.name : 'here'})</option>${opts}</select>
         ${
           _spHide
             ? kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 25% +10% per Spy level — ${unseenSuffixP(c)}.</div>`
-            : String(target || '').startsWith('char:')
+            : inWords(itOrElse(target, '')).startsWith('char:')
               ? kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: <strong>${charPct}%</strong> (25% +10% per Spy level) — reveals every skill level, magic item and army unit. Win or lose, you may be <strong>caught</strong>: 20% +10% per level of their Spy, −10% per level of yours, +15% in their realm's land, −15% in yours. A caught spy is brought to a personal fight unless the target's Encounter Plan is set to Refuse — put <strong>Flee</strong> at the head of your plan if you would rather not fight.</div>`
               : orderChanceNote(c, 'Spy', ph)
         }`;
@@ -751,7 +992,7 @@ export function buildTargetField(c, ph, saved) {
     // province he stands in and the provinces of his realm adjacent to it, reacting to enemy
     // incursions — a column marching in, or a host raised/summoned/seized inside one.
     case 'Defend': {
-      if ((c.armies || []).length === 0) {
+      if ((c.armies ?? []).length === 0) {
         return kcHtml`<input type="hidden" id="po-target-${c.id}-${ph}" value="">
           <div style="font-size:.72rem;color:var(--forest)">🗡 Lies in wait around ${curProv_ ? curProv_.name : 'the province they stand in'} and its neighbours.</div>
           <div style="font-size:.7rem;color:var(--stone);margin-top:3px">With no column at their back they cannot bar a road, but they will try to <em>ambush</em> any enemy character who marches into their province or one adjacent — springing a personal battle. Their <strong>Spy</strong> skill decides the odds of catching them (harder against a commander leading an army). A crowned king cannot be ambushed this way unless the ambusher is also a king. Done once an ambush is sprung (a Defend order in a later season sets a new watch); cancelled by a later Move or Encounter order.</div>`;
@@ -775,8 +1016,8 @@ export function buildTargetField(c, ph, saved) {
       // Items 1 & 12: the list is now exactly what the map shows. A hero you can SEE but cannot
       // hunt is still listed — greyed out with the reason — so the dropdown never silently
       // disagrees with the map.
-      const allSeen = (report.encounterTargets || []).filter((x) => x.id !== c.id);
-      const reasonOf = (x) =>
+      const allSeen = (report.encounterTargets ?? []).filter((x) => x.id !== c.id);
+      const reasonOf = (x: AHeroTheEncounterFieldLists) =>
         x.untargetable === 'faceless'
           ? 'no face anyone can remember — cannot be hunted'
           : x.isKing && !c.isKing
@@ -787,7 +1028,7 @@ export function buildTargetField(c, ph, saved) {
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No enemy characters in sight (own / occupied / spied provinces)" disabled>`;
       const opts = allSeen.map((x) => {
         const why = reasonOf(x);
-        return kcHtml`<option value="${why ? '' : x.id}"${realmOptStyleP(x.player, report)} ${why ? 'disabled' : ''} ${!why && target == x.id ? 'selected' : ''}>${x.name}${x.isKing ? ' 👑 (king)' : ''}${x.player === null ? ' (wandering)' : ` ⚔ (${realmNameP(x.player, report)})`} — ${x.locationName || '?'}${x.leadsArmy ? ' (leads troops)' : ''}${why ? ` — ${why}` : ''}</option>`;
+        return kcHtml`<option value="${why ? '' : x.id}"${realmOptStyleP(x.player, report)} ${why ? 'disabled' : ''} ${!why && isTheSavedChoice(target, x.id) ? 'selected' : ''}>${x.name}${x.isKing ? ' 👑 (king)' : ''}${x.player === null ? ' (wandering)' : ` ⚔ (${String(realmNameP(x.player, report))})`} — ${(x.locationName ?? '') || '?'}${x.leadsArmy ? ' (leads troops)' : ''}${why ? ` — ${why}` : ''}</option>`;
       });
       if (targets.length === 0)
         return kcHtml`<select id="po-target-${c.id}-${ph}"><option value="" selected>— No character here can be hunted by ${c.name} —</option>${opts}</select>`;
@@ -805,34 +1046,35 @@ export function buildTargetField(c, ph, saved) {
       // only characters standing where the thief will BE this phase are offered. The engine (`case
       // 'steal'`) requires `victim.location===c.location` and never chases — a target in another
       // province was accepted by the form, then wasted the phase with "finds no suitable target".
-      const _allVisEnemy = (report.visibleChars || []).filter((x) => x.player !== null && x.player !== c.player);
+      const _allVisEnemy = (report.visibleChars ?? []).filter((x) => x.player !== null && x.player !== c.player);
       const visibleEnemyChars = loc ? _allVisEnemy.filter((x) => x.locationId === loc.id) : [];
       const _elsewhere = _allVisEnemy.length - visibleEnemyChars.length;
-      const pdS = loc ? provOrderData[loc.id] : null;
-      const garrN = pdS && pdS.owner != null && pdS.owner !== c.player ? (pdS.garrisonArmies || []).length : 0;
+      const pdS = loc ? provOrderData[String(loc.id)] : null;
+      const garrN = pdS?.owner != null && pdS.owner !== c.player ? (pdS.garrisonArmies ?? []).length : 0;
       if (visibleEnemyChars.length === 0 && garrN === 0)
-        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from in ${loc ? loc.name : 'this province'}${_elsewhere > 0 ? ` (${_elsewhere} rival${_elsewhere !== 1 ? 's' : ''} in sight elsewhere — a thief must stand in the same province; move there first)` : ' — you need a rival character or an enemy garrison'}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Nothing to steal from in ${loc ? loc.name : 'this province'}${_elsewhere > 0 ? ` (${String(_elsewhere)} rival${_elsewhere !== 1 ? 's' : ''} in sight elsewhere — a thief must stand in the same province; move there first)` : ' — you need a rival character or an enemy garrison'}" disabled>`;
       const base = 50 + 10 * Math.min(thiefLvl, 5);
       // 2026-09-24 (Toby): the per-target "~N% chance" is 50% +10% per Thief level, so a hired
       // hero's placeholder card (skills:{} → thiefLvl 0) quoted a flat ~50% and told the player the
       // hero has no Thief training. Print the formula instead until they have joined. Same treatment
       // as the Spy / Research / Explore notes.
       const _stHide = skillsUnseenP(c);
-      const _stPct = (halved) => (_stHide ? '' : ` — ~${halved ? Math.floor(base / 2) : base}% chance`);
+      const _stPct = (halved: boolean) =>
+        _stHide ? '' : ` — ~${String(halved ? Math.floor(base / 2) : base)}% chance`;
       // the target's pack is NEVER described — the thief takes a random magic item if one can be
       // lifted (weighted toward the lesser ones), or gold if there is none.
       const opts = visibleEnemyChars.map((x) => {
-        return kcHtml`<option value="${x.id}"${realmOptStyleP(x.player, report)} ${target == x.id ? 'selected' : ''}>${x.name}${x.isKing ? ' 👑' : ''} ⚔ (${realmNameP(x.player, report)})${x.armies > 0 ? ' — leads troops (halved)' : ''}${_stPct(x.armies > 0)}</option>`;
+        return kcHtml`<option value="${x.id}"${realmOptStyleP(x.player, report)} ${isTheSavedChoice(target, x.id) ? 'selected' : ''}>${x.name}${x.isKing ? ' 👑' : ''} ⚔ (${realmNameP(x.player, report)})${Number(x.armies) > 0 ? ' — leads troops (halved)' : ''}${_stPct(Number(x.armies) > 0)}</option>`;
       });
       const garrOpt =
         garrN > 0
-          ? kcHtml`<option value="garrison" ${target === 'garrison' ? 'selected' : ''}>The garrison paymaster of ${pdS.name || 'this province'} (${garrN} unit${garrN !== 1 ? 's' : ''})${_stPct(true)}</option>`
+          ? kcHtml`<option value="garrison" ${target === 'garrison' ? 'selected' : ''}>The garrison paymaster of ${(pdS?.name ?? '') || 'this province'} (${garrN} unit${garrN !== 1 ? 's' : ''})${_stPct(true)}</option>`
           : '';
       const _stNote = _stHide
         ? kcHtml`<div style="font-size:.72rem;color:var(--stone);margin-top:3px">Success: 50% +10% per Thief level (halved if the mark leads troops or the paymaster is guarded) — ${unseenSuffixP(c)}, and without Thief training the attempt fails.</div>`
         : '';
       return kcHtml`<select id="po-target-${c.id}-${ph}"><option value="">— Choose target —</option>${opts}${garrOpt}</select>
-        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Only characters in ${loc ? loc.name : 'the same province'} are listed — a thief never chases; move there in an earlier phase first.${_elsewhere > 0 ? ` (${_elsewhere} other rival${_elsewhere !== 1 ? 's' : ''} in sight elsewhere.)` : ''} You cannot tell what a rival carries: a successful theft lifts one of their magic items at random (the lesser trinkets come to hand far more readily than a legendary relic), or 5% of their realm's treasury if they carry no magic. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${_stNote}${orderChanceNote(c, 'Steal', ph)}`;
+        <div style="font-size:.72rem;color:var(--stone);margin-top:3px">Only characters in ${loc ? loc.name : 'the same province'} are listed — a thief never chases; move there in an earlier phase first.${_elsewhere > 0 ? ` (${String(_elsewhere)} other rival${_elsewhere !== 1 ? 's' : ''} in sight elsewhere.)` : ''} You cannot tell what a rival carries: a successful theft lifts one of their magic items at random (the lesser trinkets come to hand far more readily than a legendary relic), or 5% of their realm's treasury if they carry no magic. <strong>If you fail and are spotted, the victim draws steel</strong> — put <strong>Flee</strong> at the head of this character's Encounter Plan if you would rather not fight.</div>${_stNote}${orderChanceNote(c, 'Steal', ph)}`;
     }
 
     // ── SEARCH LAIR ──
@@ -842,18 +1084,18 @@ export function buildTargetField(c, ph, saved) {
       // and list every feature known there — including ones discovered by another of your
       // characters.
       const loc = predictedLocation(c.id, ph);
-      const pd = (loc ? provOrderData[loc.id] : null) || provOrderData[c.locationId] || null;
+      const pd = (loc ? provOrderData[String(loc.id)] : null) ?? provOrderData[String(c.locationId)] ?? null;
       const _provId = loc ? loc.id : c.locationId;
       //no saved target → the weakest lair not already chosen by another Search Lair order here.
       const _lairSel =
-        target !== '' && target != null ? String(target) : defaultLairTarget(c, ph, _provId, pd?.features || []);
+        target !== '' && target != null ? inWords(target) : defaultLairTarget(c, ph, _provId, pd?.features ?? []);
       // the dropdown names the guardian and its KIND as well as the grade, so a player choosing
       // which lair to send a hero to can see they are picking a fight with an undead thing (White
       // Magic doubles) rather than a beast, without opening the Known Lairs card.
-      const feats = (pd?.features || [])
+      const feats = (pd?.features ?? [])
         .filter((f) => !f.ritualSite)
         .map((f) => {
-          const diff = f.ritualSite ? 'Ritual Site' : f.monsterPower || '';
+          const diff = f.ritualSite ? 'Ritual Site' : (f.monsterPower ?? '');
           /* ritual sites cannot be searched — only a Pagan's Perform Rite uses them */ const _g = f.ritualSite
             ? ''
             : [f.monster, f.monsterCat ? f.monsterCat.toLowerCase() : ''].filter(Boolean).join(', ');
@@ -872,28 +1114,28 @@ export function buildTargetField(c, ph, saved) {
     // the lair in the background).
     case 'Hunting Rumours': {
       const loc = predictedLocation(c.id, ph);
-      const pd = (loc ? provOrderData[loc.id] : null) || provOrderData[c.locationId] || null;
-      const feats = (pd?.features || []).filter((f) => !f.ritualSite && f.monster);
+      const pd = (loc ? provOrderData[String(loc.id)] : null) ?? provOrderData[String(c.locationId)] ?? null;
+      const feats = (pd?.features ?? []).filter((f) => !f.ritualSite && f.monster);
       if (!feats.length)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No known lairs in ${loc ? loc.name : 'this province'} to ask about — explore, or move to a province with a known lair" disabled>`;
       const chosen = new Set(
-        String(target || '')
+        inWords(itOrElse(target, ''))
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean),
       );
-      const gold = report.kingdom && report.kingdom.gold != null ? report.kingdom.gold : null;
+      const gold = report.kingdom?.gold ?? null;
       const rows = feats.map((f) => {
-        const price = RUMOUR_COST_BY_POWER_P[f.monsterPower] || 1;
+        const price = (theRumoursPrices[String(f.monsterPower)] ?? 0) || 1;
         const kind = [f.monster, f.monsterCat ? f.monsterCat.toLowerCase() : ''].filter(Boolean).join(', ');
-        return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:.78rem;cursor:pointer"><input type="checkbox" value="${f.idx}" ${chosen.has(String(f.idx)) ? 'checked' : ''} onchange="updateRumourTarget(${kcArg(String(c.id))},${kcArg(ph)})"> <span>${f.name} <span style="color:var(--stone)">(${f.monsterPower || '?'})</span> — ${kind} — <strong>${price}g</strong></span></label>`;
+        return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:.78rem;cursor:pointer"><input type="checkbox" value="${f.idx}" ${chosen.has(String(f.idx)) ? 'checked' : ''} onchange="updateRumourTarget(${kcArg(String(c.id))},${kcArg(ph)})"> <span>${f.name} <span style="color:var(--stone)">(${(f.monsterPower ?? '') || '?'})</span> — ${kind} — <strong>${price}g</strong></span></label>`;
       });
       const total = [...chosen].reduce((s, ix) => {
-        const f = feats.find((x) => String(x.idx) === String(ix));
-        return s + (f ? RUMOUR_COST_BY_POWER_P[f.monsterPower] || 1 : 0);
+        const f = feats.find((x) => String(x.idx) === ix);
+        return s + (f ? (theRumoursPrices[String(f.monsterPower)] ?? 0) || 1 : 0);
       }, 0);
       return kcHtml`<div id="po-rumour-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
-        <div id="po-rumour-total-${c.id}-${ph}" style="font-size:.72rem;color:var(--stone);margin-top:3px">Cost of the ticked lairs: <strong>${total}g</strong>${gold != null ? ` (treasury ${gold}g)` : ''} — paid per lair, in the order listed, until the purse runs dry.</div>
+        <div id="po-rumour-total-${c.id}-${ph}" style="font-size:.72rem;color:var(--stone);margin-top:3px">Cost of the ticked lairs: <strong>${total}g</strong>${gold != null ? ` (treasury ${String(gold)}g)` : ''} — paid per lair, in the order listed, until the purse runs dry.</div>
         <div style="font-size:.72rem;color:var(--stone);margin-top:3px">For every lair paid for, ${c.name} learns all three: the guardian's <strong>weakness</strong> (marked on your Known Lairs for good), its <strong>hoard</strong> (exact gold and the magic that lies there), and <strong>your own odds</strong> of defeating it as you stand today — told as one of five bands, from no chance to almost certain.</div>
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${[...chosen].join(',')}"></div>`;
     }
@@ -903,21 +1145,24 @@ export function buildTargetField(c, ph, saved) {
       // one select per slot (two for rings) listing the slot items this character will hold at this
       // phase; target = comma-separated chosen item names. Unlisted slot items are unequipped; a
       // slot left on '— none —' is auto-filled by the engine with the first item held for it.
-      const held = predictedItems(c.id, ph).filter((it) => it && itemSlot(it) && itemUsableBy(it, c)); // bound items you can't use aren't offered
+      const held = predictedItems(c.id, ph).filter((it): it is AnItem =>
+        Boolean(it && itemSlot(it) && itemUsableBy(it, c)),
+      ); // bound items you can't use aren't offered
       // 2026-09-24 (Toby): a card whose sheet you cannot read carries `items:[]` — an ABSENCE of
       // information, not an empty pack. The old placeholder read it as fact and announced "Nothing to
       // wear or wield", which tells the player something definite about a pack they have no right to
       // see (and is very likely false — a wandering hero of any standing is carrying something).
       if (held.length === 0)
-        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c) ? `What ${c.name} carries is not yours to see — they wear and wield their own gear as they see fit` : 'Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or combat items)'}" disabled>`;
-      const chosen = (target || '')
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c) ? `What ${String(c.name)} carries is not yours to see — they wear and wield their own gear as they see fit` : 'Nothing to wear or wield (no weapon, armour, shield, cloak, helm, ring, amulet or combat items)'}" disabled>`;
+      const chosen = theWordsToSplit(itOrElse(target, ''))
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean);
       const rows = ITEM_SLOT_ORDER_P.map((sl) => {
         const opts = held.filter((it) => itemSlot(it) === sl);
         if (opts.length === 0) return '';
-        const cap = ITEM_SLOT_CAP_P[sl];
+        // (a slot with no cap: as `undefined`, no field)
+        const cap = theSlotsCaps[sl] ?? 0;
         const pre = chosen.length
           ? chosen.filter((n) => opts.some((o) => o.name === n))
           : opts.filter((o) => o.equipped !== false).map((o) => o.name);
@@ -926,7 +1171,7 @@ export function buildTargetField(c, ph, saved) {
           (_, k) =>
             kcHtml`<select data-slot="${sl}" onchange="updateEquipTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="font-size:.75rem;flex:1"><option value="">— none —</option>${opts.map((o) => kcHtml`<option value="${o.name}" ${pre[k] === o.name ? 'selected' : ''}>${o.name}${isLegendaryItem(o) ? '✨ ' : ''}</option>`)}</select>`,
         );
-        return kcHtml`<div style="display:flex;align-items:center;gap:6px;padding:2px 0"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);min-width:110px">${ITEM_SLOT_LABEL_P[sl]}</span>${sels}</div>`;
+        return kcHtml`<div style="display:flex;align-items:center;gap:6px;padding:2px 0"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--stone);min-width:110px">${theSlotsLabels[sl]}</span>${sels}</div>`;
       });
       const init = chosen.length ? chosen : held.filter((o) => o.equipped !== false).map((o) => o.name);
       return kcHtml`<div id="po-equip-wrap-${c.id}-${ph}" style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px 6px">${rows}
@@ -934,39 +1179,41 @@ export function buildTargetField(c, ph, saved) {
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${init.join(',')}"></div>`;
     }
     case 'Use Item': {
-      const ACTIVE_ITEM_STATS = new Set(['massPromote', 'castSpell']);
+      const ACTIVE_ITEM_STATS = new Set<string | undefined>(['massPromote', 'castSpell']);
       // Items received via Give Item in an earlier phase are usable here too.
-      const active = predictedItems(c.id, ph).filter(
-        (it) => it && it.effect && ACTIVE_ITEM_STATS.has(it.effect.stat) && !it._spent,
+      const active = predictedItems(c.id, ph).filter((it): it is AnItem =>
+        Boolean(it?.effect && ACTIVE_ITEM_STATS.has(it.effect.stat) && !it._spent),
       );
       // Same reasoning as Equip Items above: "No usable items" is a claim about a pack the player
       // cannot see. A charmed hero will use their own tricks or not; you do not get to inventory them.
       if (active.length === 0)
-        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c) ? `Whatever ${c.name} carries is hidden from you — you cannot order the use of an item you cannot see` : 'No usable (active) items — most items are passive'}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c) ? `Whatever ${String(c.name)} carries is hidden from you — you cannot order the use of an item you cannot see` : 'No usable (active) items — most items are passive'}" disabled>`;
       const opts = active.map(
         (it) =>
-          kcHtml`<option value="${it.id}" ${target == it.id ? 'selected' : ''}>${isLegendaryItem(it) ? '✨ Legendary — ' : ITEM_TIER_NAME_P[it.tier || 1] + ' — '}${it.name} — ${it.desc}</option>`,
+          kcHtml`<option value="${it.id}" ${isTheSavedChoice(target, it.id) ? 'selected' : ''}>${isLegendaryItem(it) ? '✨ Legendary — ' : String(theTiersNames[String((it.tier ?? 0) || 1)]) + ' — '}${it.name} — ${it.desc}</option>`,
       );
       // a spell item needs the spell's own target (province / character) — same field as Cast
       // Spell.
-      const selIt = active.find((it) => String(it.id) === String(target)) || active[0];
+      const selIt = active.find((it) => String(it.id) === String(target)) ?? active[0];
+      // (the spell an item casts, as its name is read as a key: none reads as 'undefined', which names no spell)
+      const theItemsSpell = String(selIt?.effect?.spell);
       const sec =
-        selIt && selIt.effect && selIt.effect.stat === 'castSpell'
-          ? kcHtml`${castChanceNote(c, selIt.effect.spell, { itemCast: true })}${spellSecondaryHtml(report, c, ph, selIt.effect.spell, extra, selIt.effect.spell)}`
+        selIt?.effect?.stat === 'castSpell'
+          ? kcHtml`${castChanceNote(c, theItemsSpell, { itemCast: true })}${spellSecondaryHtml(report, c, ph, theItemsSpell, extra)}`
           : '';
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange(${kcArg(String(c.id))},${kcArg(ph)},this.value)">${opts}</select>${sec}`;
     }
 
     // ── CAST SPELL ── ── DIVINE: CONSECRATE ──
     case 'Consecrate': {
-      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS.Consecrate, report.kingdom?.alignment))
+      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(theAlignmentOrdersRow('Consecrate'), report.kingdom?.alignment))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Divine realms may consecrate" disabled>`;
-      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(ALIGN_ACTIONS.Consecrate, c.isKing))
+      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(theAlignmentOrdersRow('Consecrate'), c.isKing))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="King only" disabled>`;
       const loc = predictedLocation(c.id, ph);
-      const wmP = (report.worldMeta && report.worldMeta.provinces) || [];
+      const wmP = report.worldMeta?.provinces ?? [];
       const curP = loc ? wmP.find((p) => p.id === loc.id) : null;
-      const ownedHere = !!(curP && curP.tier === 'owned');
+      const ownedHere = curP?.tier === 'owned';
       // the turn's six checks (whyAKingMayNotConsecrateAProvince, plan P1-11e25, R-131), on the report's facts: the
       // realm's home (its founding capital, held or lost) and the consecrations its king may hold (his trained White
       // and Holy Sites' one more), as the turn counts them; a report older than those fields knows the home only while
@@ -977,14 +1224,16 @@ export function buildTargetField(c, ph, saved) {
       // is visible on the map too, so it must be excluded here or it would wrongly block your placements / inflate
       // your consecrated count.
       const consecIds = wmP.filter((p) => p.consecrated && p.tier === 'owned').map((p) => p.id);
-      const nbrs = (curP && curP.neighbors) || [];
+      const nbrs = theNumbersAmong(curP?.neighbors ?? []);
       const theAnswer = loc
         ? whyAKingMayNotConsecrateAProvince({
-            theProvinceId: loc.id,
+            theProvinceId: theIdOrNoProvince(loc.id),
             itIsHisRealms: ownedHere,
             theHomeMarches: () => ({
               theHomeId: homeId,
-              theProvincesBesideIt: (homeId != null && wmP.find((p) => p.id === homeId)?.neighbors) || [],
+              theProvincesBesideIt: theNumbersAmong(
+                (homeId != null ? wmP.find((p) => p.id === homeId)?.neighbors : undefined) ?? [],
+              ),
             }),
             theConsecrated: () => consecIds,
             theProvincesBesideIt: () => nbrs,
@@ -995,20 +1244,20 @@ export function buildTargetField(c, ph, saved) {
       let warn = '';
       if (!loc || !theAnswer) warn = 'Province unknown this phase.';
       else if (theAnswer.refused === 'it is not a province of his realm')
-        warn = `${loc.name} is not yours this phase — you may only consecrate land you hold.`;
+        warn = `${String(loc.name)} is not yours this phase — you may only consecrate land you hold.`;
       else if (theAnswer.refused === 'it lies in the home marches')
         warn =
           loc.id === homeId
-            ? `${loc.name} is your home province — already anointed at the coronation. Carry the light outward.`
-            : `${loc.name} borders your home province — the crown's hearth already shelters it. Consecrate ground beyond the home marches.`;
-      else if (theAnswer.refused === 'it is consecrated already') warn = `${loc.name} is already consecrated.`;
+            ? `${String(loc.name)} is your home province — already anointed at the coronation. Carry the light outward.`
+            : `${String(loc.name)} borders your home province — the crown's hearth already shelters it. Consecrate ground beyond the home marches.`;
+      else if (theAnswer.refused === 'it is consecrated already') warn = `${String(loc.name)} is already consecrated.`;
       else if (theAnswer.refused === 'a consecrated province lies beside it')
-        warn = `${loc.name} borders one of your consecrated provinces — two may not lie side by side. Choose ground set apart.`;
+        warn = `${String(loc.name)} borders one of your consecrated provinces — two may not lie side by side. Choose ground set apart.`;
       else if (theAnswer.refused === 'he knows no White')
         warn = `Consecration flows from the White arts — learn White magic before you can sanctify ground.`;
       else if (theAnswer.refused === 'he holds as many as he may')
-        warn = `You already hold ${consecIds.length}/${limit} consecrated province${limit !== 1 ? 's' : ''} (the most your king may hold). One must be lost or captured first, or raise White to hold more.`;
-      const okMsg = `Consecrates ${loc ? loc.name : 'current province'} — holy ground (${consecIds.length}/${limit} held).`;
+        warn = `You already hold ${String(consecIds.length)}/${String(limit)} consecrated province${limit !== 1 ? 's' : ''} (the most your king may hold). One must be lost or captured first, or raise White to hold more.`;
+      const okMsg = `Consecrates ${loc ? String(loc.name) : 'current province'} — holy ground (${String(consecIds.length)}/${String(limit)} held).`;
       const inputBox = warn
         ? kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
         : kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
@@ -1017,13 +1266,13 @@ export function buildTargetField(c, ph, saved) {
     }
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms': {
-      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS['Call to Arms'], report.kingdom?.alignment))
+      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(theAlignmentOrdersRow('Call to Arms'), report.kingdom?.alignment))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Good realms may call the folk to arms" disabled>`;
-      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(ALIGN_ACTIONS['Call to Arms'], c.isKing))
+      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(theAlignmentOrdersRow('Call to Arms'), c.isKing))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING's voice carries the Call" disabled>`;
-      const theGrade = ALIGN_ACTIONS['Call to Arms'].theNumbers.theGradeMustered.value; // its row's: the grade a company mustered has
-      const human = (report.ownedProvinces || []).filter(
-        (p) => p.terrain !== 'sea' && !(p.race || '').startsWith('Primal'),
+      const theGrade = theRowsNumber(theAlignmentOrdersRow('Call to Arms'), 'theGradeMustered'); // its row's: the grade a company mustered has
+      const human = (report.ownedProvinces ?? []).filter(
+        (p) => p.terrain !== 'sea' && !(p.race ?? '').startsWith('Primal'),
       );
       if (!human.length)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No owned humanoid provinces to raise" disabled>`;
@@ -1031,31 +1280,31 @@ export function buildTargetField(c, ph, saved) {
       // P1-11e26, R-131)
       const ctaOpts = human.map(
         (p) =>
-          kcHtml`<option value="${p.id}" ${target == p.id ? 'selected' : ''}>${p.name} — raises a ${theGrade} ${theCompanyACallToArmsMusters(p).type}</option>`,
+          kcHtml`<option value="${p.id}" ${isTheSavedChoice(target, p.id) ? 'selected' : ''}>${p.name} — raises a ${theGrade} ${theCompanyACallToArmsMusters(p).type}</option>`,
       );
       return kcHtml`<select id="po-target-${c.id}-${ph}">${ctaOpts}</select>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Free ${theGrade} garrison unit of the province's native type. The king need not be present — the province just has to be yours when the order resolves. Once per turn.</div>`;
     }
     // ── NEUTRAL: BROKER ──
     case 'Broker': {
-      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS.Broker, report.kingdom?.alignment))
+      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(theAlignmentOrdersRow('Broker'), report.kingdom?.alignment))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Neutral realms keep brokers" disabled>`;
-      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(ALIGN_ACTIONS.Broker, c.isKing))
+      if (!aHeroMayGiveTheAlignmentOrderAsKingOrNot(theAlignmentOrdersRow('Broker'), c.isKing))
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING commands the brokers" disabled>`;
-      const thePriceOfWord = ALIGN_ACTIONS.Broker.theNumbers.thePriceOfWordFromAProvince.value; // its row's
-      const hireOpts = Object.values(provOrderData || {})
-        .flatMap((pd) => pd.availableHeroes || [])
+      const thePriceOfWord = theRowsNumber(theAlignmentOrdersRow('Broker'), 'thePriceOfWordFromAProvince'); // its row's
+      const hireOpts = Object.values(provOrderData)
+        .flatMap((pd) => thereOrTheTypeError(pd, "'availableHeroes'").availableHeroes ?? [])
         .map((h) => {
           const w = heroHireWageOfP(h, report);
           if (w == null) return '';
-          return kcHtml`<option value="hire:${h.id}" ${target === 'hire:' + h.id ? 'selected' : ''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${heroFameTextP(h)} — ${w}g/turn</option>`;
+          return kcHtml`<option value="hire:${h.id}" ${target === 'hire:' + String(h.id) ? 'selected' : ''}>🤝 Hire remotely: ${h.name} (${h.race}/${h.alignment}) in ${h.locationName} — ${heroFameTextP(h)} — ${w}g/turn</option>`;
         })
         .filter(Boolean);
-      const spyOpts = (report.worldMeta?.provinces || [])
+      const spyOpts = (report.worldMeta?.provinces ?? [])
         .filter((p) => p.name && p.terrain)
         .map(
           (p) =>
-            kcHtml`<option value="spy:${p.id}" ${target === 'spy:' + p.id ? 'selected' : ''}>🕵 Buy word from ${p.name} (${thePriceOfWord}g — full Spy result)</option>`,
+            kcHtml`<option value="spy:${p.id}" ${target === 'spy:' + String(p.id) ? 'selected' : ''}>🕵 Buy word from ${p.name} (${thePriceOfWord}g — full Spy result)</option>`,
         );
       if (!hireOpts.length && !spyOpts.length)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Your brokers have nothing within reach" disabled>`;
@@ -1072,14 +1321,19 @@ export function buildTargetField(c, ph, saved) {
     }
     // ── UNDEAD: HARVEST THE FIELD ──
     case 'Harvest the Field': {
-      if (!aRealmOfThisCreedMayGiveTheAlignmentOrder(ALIGN_ACTIONS['Harvest the Field'], report.kingdom?.alignment))
+      if (
+        !aRealmOfThisCreedMayGiveTheAlignmentOrder(
+          theAlignmentOrdersRow('Harvest the Field'),
+          report.kingdom?.alignment,
+        )
+      )
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Undead realms keep corpse-carters" disabled>`;
       const loc = predictedLocation(c.id, ph);
       // the carters' price as the turn takes it (the report's, with the realm's discoveries), else its row's; the grave
       // the turn raises: the most experienced, a grade higher while the realm holds its Wonder (plan P1-11e26, R-131,
       // R-132)
       const theCartersPrice =
-        report.orderPrices?.harvest ?? ALIGN_ACTIONS['Harvest the Field'].theNumbers.thePrice.value;
+        report.orderPrices?.harvest ?? theRowsNumber(theAlignmentOrdersRow('Harvest the Field'), 'thePrice');
       return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Harvests the graves of ${loc ? loc.name : 'current province'}" readonly>
         <div style="font-size:.68rem;color:var(--stone);margin-top:2px">No magic required: ${theCartersPrice}g raises the most experienced battlefield grave in the province ${c.name} stands in as a Skeletal unit (keeps its type and quality, a grade higher while your realm holds its Wonder; 1g upkeep). Needs battlefield dead present — fields where armies have fallen.</div>`;
     }
@@ -1088,44 +1342,49 @@ export function buildTargetField(c, ph, saved) {
       // kin) in the province the character will be standing in this phase.
       if (
         !aRealmOfThisCreedMayGiveTheAlignmentOrder(
-          ALIGN_ACTIONS['Perform Rite'],
-          report.kingdom?.alignment || 'Neutral',
+          theAlignmentOrdersRow('Perform Rite'),
+          (report.kingdom?.alignment ?? '') || 'Neutral',
         )
       )
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan realms keep the old rites" disabled>`;
       const loc = predictedLocation(c.id, ph);
-      const pd = loc ? (report.provinceOrderData || {})[loc.id] : null;
-      const site = (pd?.features || []).find((f) => f.ritualSite);
+      const pd = loc ? report.provinceOrderData?.[String(loc.id)] : null;
+      const site = (pd?.features ?? []).find((f) => f.ritualSite);
       if (!site)
-        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc ? `No known ritual site in ${loc.name} — Explore to find standing stones` : 'Province unknown'}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc ? `No known ritual site in ${String(loc.name)} — Explore to find standing stones` : 'Province unknown'}" disabled>`;
       // Wild Hunt needs wild creatures to bind: only offered where the province's recruitable pool
       // still holds a primal unit (Creature or Monster country). The GM report names the exact type
       // the engine will bind and its price (the cost of ONE beast, however many answer), so this
       // form never has to re-derive it and drift from the engine.
       const canHunt = !!pd?.wildHuntType;
-      const theRitesNumbers = ALIGN_ACTIONS['Perform Rite'].theNumbers; // its row's: the beasts the Wild Hunt binds, the tiers a Blood Offering raises
+      const theRitesRow = theAlignmentOrdersRow('Perform Rite'); // its row's: the beasts the Wild Hunt binds, the tiers a Blood Offering raises
       const huntCost = pd?.wildHuntCost;
       // the turns its beasts serve beyond this one as the turn counts them (The Long Hunt's too: the report's), else
       // its row's (plan P1-11e26, R-132)
       const huntTurns =
-        report.kingdom?.theTurnsAWildHuntServesBeyondThisOne ?? theRitesNumbers.theWildHuntsTurnsMore.value;
+        report.kingdom?.theTurnsAWildHuntServesBeyondThisOne ?? theRowsNumber(theRitesRow, 'theWildHuntsTurnsMore');
       const huntUntil =
-        huntTurns === 1 ? 'NEXT turn' : huntTurns === 2 ? 'the turn after next' : `${huntTurns} turns after this one`;
+        huntTurns === 1
+          ? 'NEXT turn'
+          : huntTurns === 2
+            ? 'the turn after next'
+            : `${String(huntTurns)} turns after this one`;
       // list the armies this character will be LEADING at this phase — start-of- turn units plus
       // anything recruited, picked up, transferred in or otherwise gained earlier in the turn (the
       // engine resolves the S:/E: indices against the actual army list at that phase, which is
       // built in the same order: existing units first, gains appended in phase order).
       const _boArmy = projectedLedArmies(c.id, ph);
       // Pre-select from any saved order (extra encodes "S:i,j|E:a,b").
-      const _boSaved = { S: new Set(), E: new Set() };
+      const _boSaved = { S: new Set<number>(), E: new Set<number>() };
       {
-        const m = /S:([0-9,]*)\|E:([0-9,]*)/.exec(extra || '');
+        const m = /S:([0-9,]*)\|E:([0-9,]*)/.exec(inWords(itOrElse(extra, '')));
+        // (a group that matched always holds words)
         if (m) {
-          m[1]
+          (m[1] ?? '')
             .split(',')
             .filter(Boolean)
             .forEach((x) => _boSaved.S.add(+x));
-          m[2]
+          (m[2] ?? '')
             .split(',')
             .filter(Boolean)
             .forEach((x) => _boSaved.E.add(+x));
@@ -1133,33 +1392,34 @@ export function buildTargetField(c, ph, saved) {
       }
       // a company the rite never takes (the turn's rule: bound by the Wild Hunt, summoned or charmed, risen dead) is
       // shown and locked, its saved mark dropped as the turn drops it (R-133, plan P1-11e27)
-      const _boLocked = (i) => !aBloodOfferingMayTakeTheCompany(_boArmy[i]);
-      const _boMarked = (side) => _boArmy.map((a, i) => i).filter((i) => !_boLocked(i) && _boSaved[side].has(i));
+      const _boLocked = (i: number) => !aBloodOfferingMayTakeTheCompany(thereOrTheTypeError(_boArmy[i], "'temporary'"));
+      const _boMarked = (side: 'S' | 'E') =>
+        _boArmy.map((a, i) => i).filter((i) => !_boLocked(i) && _boSaved[side].has(i));
       const _boHint = theBloodOfferingsHint(_boArmy, _boMarked('S'), _boMarked('E'));
       const _boRows = _boArmy.length
         ? _boArmy.map((a, i) =>
             _boLocked(i)
               ? kcHtml`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0;opacity:.6">
-            <span style="flex:1">${typeof unitEmoji === 'function' ? unitEmoji(a.type) : ''} ${armyLabel(a)}</span>
+            <span style="flex:1">${unitEmoji(a.type)} ${armyLabel(a)}</span>
             <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" disabled title="The old gods take no ${a.wildHunt ? 'beast bound by the Wild Hunt' : a.skeletal ? 'risen dead' : 'summoned or charmed company'}" style="font-size:.7rem">
               <option value="K" selected>Keep (the rite can't take it)</option>
             </select></div>`
               : kcHtml`<div style="display:flex;align-items:center;gap:6px;font-size:.72rem;padding:1px 0">
-            <span style="flex:1">${typeof unitEmoji === 'function' ? unitEmoji(a.type) : ''} ${armyLabel(a)}</span>
+            <span style="flex:1">${unitEmoji(a.type)} ${armyLabel(a)}</span>
             <select class="bo-sel" data-cid="${c.id}" data-ph="${ph}" data-idx="${i}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})" style="font-size:.7rem">
               <option value="K" ${!_boSaved.S.has(i) && !_boSaved.E.has(i) ? 'selected' : ''}>Keep</option>
               <option value="S" ${_boSaved.S.has(i) ? 'selected' : ''}>Sacrifice ✝</option>
-              <option value="E" ${_boSaved.E.has(i) ? 'selected' : ''}>Empower +${theRitesNumbers.theBloodOfferingsGrades.value}</option>
+              <option value="E" ${_boSaved.E.has(i) ? 'selected' : ''}>Empower +${theRowsNumber(theRitesRow, 'theBloodOfferingsGrades')}</option>
             </select></div>`,
           )
         : kcHtml`<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})">
-        ${canHunt ? kcHtml`<option value="Wild Hunt" ${target === 'Wild Hunt' ? 'selected' : ''}>\u{1F525} Rite of the Wild Hunt — bind ${theRitesNumbers.theWildHuntsBeasts.value} VETERAN ${pd?.wildHuntType || 'wild creatures'} (${huntCost}g — the price of one, no wages, serve until end of ${huntUntil})</option>` : ''}
-        <option value="Blood Offering" ${target === 'Blood Offering' || !target ? 'selected' : ''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+${theRitesNumbers.theBloodOfferingsGrades.value} tiers each)</option>
+        ${canHunt ? kcHtml`<option value="Wild Hunt" ${target === 'Wild Hunt' ? 'selected' : ''}>\u{1F525} Rite of the Wild Hunt — bind ${theRowsNumber(theRitesRow, 'theWildHuntsBeasts')} VETERAN ${pd.wildHuntType} (${huntCost}g — the price of one, no wages, serve until end of ${huntUntil})</option>` : ''}
+        <option value="Blood Offering" ${target === 'Blood Offering' || !target ? 'selected' : ''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+${theRowsNumber(theRitesRow, 'theBloodOfferingsGrades')} tiers each)</option>
       </select>
-      <input id="po-extra-${c.id}-${ph}" type="hidden" value="${extra || ''}">
+      <input id="po-extra-${c.id}-${ph}" type="hidden" value="${itOrElse(extra, '')}">
       <div id="bo-block-${c.id}-${ph}" style="margin-top:5px;border:1px solid var(--parchment-dark);border-radius:3px;padding:6px;background:#fdf5e0">
-        <div style="font-size:.7rem;font-weight:600;color:#7a4a00;margin-bottom:3px">Blood Offering — mark units to Sacrifice, and an equal number to Empower (+${theRitesNumbers.theBloodOfferingsGrades.value} quality tiers each, max Elite):</div>
+        <div style="font-size:.7rem;font-weight:600;color:#7a4a00;margin-bottom:3px">Blood Offering — mark units to Sacrifice, and an equal number to Empower (+${theRowsNumber(theRitesRow, 'theBloodOfferingsGrades')} quality tiers each, max Elite):</div>
         ${_boRows}
         ${_boArmy.some((a, i) => _boLocked(i)) ? kcHtml`<div style="font-size:.68rem;color:var(--stone);margin-top:2px">Bound beasts, summoned or charmed companies and risen dead can be neither sacrificed nor empowered.</div>` : ''}
         <div id="bo-hint-${c.id}-${ph}" style="font-size:.7rem;color:${_boHint.colour};margin-top:3px">${_boHint.words}</div>
@@ -1168,7 +1428,6 @@ export function buildTargetField(c, ph, saved) {
       <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Only one rite per province per turn — if anyone (your own characters included) performs a rite here earlier in the turn, this one fails.</div>`;
     }
     case 'Cast Spell': {
-      const skills = c.skills || {};
       // a charmed hero's schools and levels are hidden — offer every core phase spell without
       // levels. 2026-09-18: every BASE spell (levels 1-5) that can be a phase order is listed,
       // whatever the school; L7/L9 mastery spells (SPELL_REQ_LEVEL) are not. Combat-only spells
@@ -1177,22 +1436,25 @@ export function buildTargetField(c, ph, saved) {
       if (skillsUnseenP(c)) {
         const _hsPhase = theActionSpellsNoMasteryLevelGates();
         const _hsList = Object.entries(SPELLS_BY_SCHOOL).flatMap(([school, list]) =>
-          list.filter((sp) => _hsPhase.has(sp) && !SPELL_REQ_LEVEL[sp]).map((sp) => [sp, school]),
+          list
+            .filter((sp) => _hsPhase.has(sp) && !theLevelEachMasterySpellNeeds[sp])
+            .map((sp): [string, string] => [sp, school]),
         );
         // same one-list rule as the visible-skills branch below: the option marked `selected` and
         // the spell the target field is built for must be the same one, even when the saved spell
         // is no longer in the list.
-        const _hsSel = target && _hsList.some(([sp]) => sp === target) ? target : (_hsList[0] && _hsList[0][0]) || '';
-        return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange(${kcArg(String(c.id))},${kcArg(ph)},this.value)">${_hsList.map(([sp, school]) => kcHtml`<option value="${sp}" ${sp === _hsSel ? 'selected' : ''}>${sp} (${SKILL_LABELS[school]})</option>`)}</select>
-          <div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills ? `${c.name}'s training is unknown until they have joined — every base spell is offered; one from a school they have not learned simply fails.` : `You cannot see this hero's skills — a spell from a school they have not learned simply fails.`}</div>${spellSecondaryHtml(report, c, ph, _hsSel, _hsSel === target ? extra : '', target)}`;
+        // (the saved spell where the list holds it: the one it finds is the saved spell itself)
+        const _hsSel = (target ? _hsList.find(([sp]) => sp === target)?.[0] : undefined) ?? _hsList[0]?.[0] ?? '';
+        return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange(${kcArg(String(c.id))},${kcArg(ph)},this.value)">${_hsList.map(([sp, school]) => kcHtml`<option value="${sp}" ${sp === _hsSel ? 'selected' : ''}>${sp} (${theSkillsLabels[school]})</option>`)}</select>
+          <div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills ? `${String(c.name)}'s training is unknown until they have joined — every base spell is offered; one from a school they have not learned simply fails.` : `You cannot see this hero's skills — a spell from a school they have not learned simply fails.`}</div>${spellSecondaryHtml(report, c, ph, _hsSel, _hsSel === target ? extra : '')}`;
       }
       const { practisingSchools, _castsAllowed, schoolCastCount, _spellRows } =
         theSpellsTheCastSpellFieldOffersAHeroInAPhase(c, ph, report);
       const _castable = _spellRows.filter((r) => !r.atLimit);
+      // (the saved spell where a castable row holds it: the one it finds is the saved spell itself)
       const _selSpell =
-        target && _castable.some((r) => r.spell === target)
-          ? target
-          : (_castable[0] && _castable[0].spell) || (_spellRows[0] && _spellRows[0].spell) || '';
+        (target ? _castable.find((r) => r.spell === target)?.spell : undefined) ??
+        ((_castable[0]?.spell ?? '') || (_spellRows[0]?.spell ?? ''));
       const spells = _spellRows.map(
         (r) =>
           kcHtml`<option value="${r.spell}" ${r.spell === _selSpell ? 'selected' : ''} ${r.atLimit ? 'disabled' : ''} style="${r.atLimit ? 'color:#aaa;' : ''}">  ${r.label}</option>`,
@@ -1206,7 +1468,7 @@ export function buildTargetField(c, ph, saved) {
       // (a spell that costs no slot is still offered when every school is at its limit)
       const allAtLimit =
         knownOrPractisingSchools.length > 0 &&
-        knownOrPractisingSchools.every(([school]) => (schoolCastCount[school] || 0) >= _castsAllowed(school)) &&
+        knownOrPractisingSchools.every(([school]) => (schoolCastCount[school] ?? 0) >= _castsAllowed(school)) &&
         _spellRows.every((r) => r.atLimit);
 
       if (!spells.length)
@@ -1218,7 +1480,7 @@ export function buildTargetField(c, ph, saved) {
       // note above _spellRows. `extra` (the saved target) is only meaningful for the saved spell,
       // so it is dropped when the selection has fallen back to a different one.
       const selSpell = _selSpell;
-      const secondaryHtml = spellSecondaryHtml(report, c, ph, selSpell, selSpell === target ? extra : '', target);
+      const secondaryHtml = spellSecondaryHtml(report, c, ph, selSpell, selSpell === target ? extra : '');
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onSpellChange(${kcArg(String(c.id))},${kcArg(ph)},this.value)">${spells}</select>${castChanceNote(c, selSpell)}${secondaryHtml}`;
     }
 
@@ -1230,29 +1492,30 @@ export function buildTargetField(c, ph, saved) {
       // listed; an explicitly saved target always wins. Item 4: failing a companion, default to
       // whatever THIS character practised in an earlier phase this turn (the latest one), so a
       // training week takes one click per phase.
-      const defaultSk = target || practiceCompanionSkill(c, ph) || practiceOwnEarlierSkill(c, ph) || '';
+      let defaultSk = target;
+      if (defaultSk === '') defaultSk = practiceCompanionSkill(c, ph) || practiceOwnEarlierSkill(c, ph) || '';
       const skillOpts = ALL_SKILLS.map(
         (sk) =>
-          kcHtml`<option value="${sk}" ${defaultSk === sk ? 'selected' : ''}>${SKILL_LABELS[sk]}${skillsUnseenP(c) ? '' : ` (Lv ${(c.skills || {})[sk] || 0})`}</option>`,
+          kcHtml`<option value="${sk}" ${defaultSk === sk ? 'selected' : ''}>${theSkillsLabels[sk]}${skillsUnseenP(c) ? '' : ` (Lv ${String(Number(c.skills?.[sk]) || 0)})`}</option>`,
       );
       if (skillsUnseenP(c))
-        return kcHtml`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills ? `${c.name}'s skill levels are not known until they have joined.` : `A charmed hero's skill levels are hidden from you.`}</div>`; // item 7 · 2026-09-24 item 8
+        return kcHtml`<select id="po-target-${c.id}-${ph}">${skillOpts}</select><div style="font-size:.7rem;color:var(--stone)">${c._unknownSkills ? `${String(c.name)}'s skill levels are not known until they have joined.` : `A charmed hero's skill levels are hidden from you.`}</div>`; // item 7 · 2026-09-24 item 8
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="rebuildTargetWrap(${kcArg(String(c.id))},${kcArg(ph)})">${skillOpts}</select>${orderChanceNote(c, 'Practice Skill', ph)}`;
     }
 
     // ── RESEARCH (Sage 1+) ── the discovery roll, split out of Practice Sage.
     case 'Research': {
       const sg = Math.min(5, effSkillP(c, 'sage'));
-      const disc = report.discoveries || [];
       const per = 5;
       const neutral = report.kingdom?.alignment === 'Neutral' ? sg * 5 : 0;
       const chance = sg * per + neutral;
       // choose a FIELD of study. Categories with every discovery already made are greyed out.
-      const cats = report.researchCategories || [];
+      const cats = report.researchCategories ?? [];
       //no saved field → what a companion researches here this phase, else this
       // character's earlier Research this turn, else any other character's. An open field (all
       // found) is never defaulted.
-      let _rsel = target || defaultResearchField(c, ph);
+      let _rsel = target;
+      if (_rsel === '') _rsel = defaultResearchField(c, ph);
       if (_rsel && cats.some((k) => k.name === _rsel && k.known >= k.total)) _rsel = '';
       const catOpts = [
         kcHtml`<option value="" ${!_rsel ? 'selected' : ''}>Any field of study</option>`,
@@ -1269,10 +1532,9 @@ export function buildTargetField(c, ph, saved) {
     // ── RECRUIT ARMIES ──
     case 'Recruit Armies': {
       const loc = predictedLocation(c.id, ph);
-      const pd = loc ? provOrderData[loc.id] : null;
+      const pd = loc ? provOrderData[String(loc.id)] : null;
       // Also show mercenaries available in this province
-      const mercsAvail = (report.mercIntel || []).filter((m) => m.locationId === loc?.id);
-      const gold = report.kingdom?.gold || 0;
+      const mercsAvail = (report.mercIntel ?? []).filter((m) => m.locationId === loc?.id);
       // conditional recruit in a NON-owned province. Normally recruiting is limited to provinces
       // you control. But if (a) you already knew this province's recruitable units at the start of
       // this turn (its army types are present in your intel below) AND (b) this character moved in
@@ -1284,44 +1546,44 @@ export function buildTargetField(c, ph, saved) {
       // pre-planned move-in — the GM engine re-checks that you actually control the province
       // (prov.owner===player) when the order resolves; if you don't, the recruit is simply skipped.
       // A ⚑ notice makes the conditional nature clear.
-      const conditionalRecruit = !!(pd && !pd.canRecruit && (pd.armyTypes || []).length > 0 && loc);
+      const conditionalRecruit = !!(pd && !pd.canRecruit && (pd.armyTypes ?? []).length > 0 && loc);
       // Mercenary bands answer to gold, not to borders: they can be hired in ANY province this
       // character occupies, owned or not, and are never subject to the native per-turn recruit cap.
       // They are therefore listed independently of every gate below.
-      const savedSelsM = (target || '').split(',').filter(Boolean);
+      const savedSelsM = theWordsToSplit(itOrElse(target, '')).split(',').filter(Boolean);
       const mercRows = mercsAvail.map((m) => {
-        const val = `merc:${m.id}`;
+        const val = `merc:${String(m.id)}`;
         return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer;background:#fbeeee;border-radius:2px">
           <input type="checkbox" value="${val}" ${savedSelsM.includes(val) ? 'checked' : ''} onchange="updateRecruitTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
-          \u2694 ${m.unitName || m.type} (${m.quality} ${m.type}, ${m.cost ?? '?'}g) <span style="color:#701010;font-size:.72rem">[mercenary]</span>
+          \u2694 ${(m.unitName ?? '') || m.type} (${m.quality} ${m.type}, ${m.cost ?? '?'}g) <span style="color:#701010;font-size:.72rem">[mercenary]</span>
         </label>`;
       });
       // ── Recruit destination ── self (default), a friendly character standing in this province
       // this phase, or (in a controlled province) straight into the garrison.
       const _destSaved =
-        (target || '')
+        theWordsToSplit(itOrElse(target, ''))
           .split(',')
           .map((t) => t.trim())
-          .find((t) => t.startsWith('to:')) || 'to:self';
+          .find((t) => t.startsWith('to:')) ?? 'to:self';
       const _destAllies = orderTargetCharsP(report, ph).filter(
-        (x) => x.id !== c.id && (predictedLocation(x.id, ph)?.id ?? x.locationId) === (loc && loc.id),
+        (x) => x.id !== c.id && (predictedLocation(x.id, ph)?.id ?? x.locationId) === (loc ? loc.id : loc),
       );
       const _destRow = (
-        allowGarrison,
+        allowGarrison: boolean,
       ) => kcHtml`<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:.75rem">
           <span style="color:var(--stone)">Muster to:</span>
           <select class="po-recruit-dest" onchange="updateRecruitTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="flex:1;font-size:.75rem;padding:1px 3px">
             <option value="to:self" ${_destSaved === 'to:self' ? 'selected' : ''}>${c.name} (this character)</option>
-            ${_destAllies.map((x) => kcHtml`<option value="to:${x.id}" ${_destSaved === 'to:' + x.id ? 'selected' : ''}>${x.name} (also here this phase${preOrderTagP(x)})</option>`)}
+            ${_destAllies.map((x) => kcHtml`<option value="to:${x.id}" ${_destSaved === 'to:' + String(x.id) ? 'selected' : ''}>${x.name} (also here this phase${preOrderTagP(x)})</option>`)}
             ${allowGarrison ? kcHtml`<option value="to:garrison" ${_destSaved === 'to:garrison' ? 'selected' : ''}>Province garrison (defends ${loc ? loc.name : 'the province'})</option>` : ''}
           </select>
         </div>${allowGarrison ? kcHtml`<div style="font-size:.68rem;color:var(--stone);margin:-2px 0 4px;line-height:1.35">Garrison units always muster straight into the province garrison, whoever is named above.</div>` : ''}`;
       const mercWrap = (
-        inner,
+        inner: unknown,
       ) => kcHtml`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
         ${_destRow(false)}
         ${inner}
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target || ''}">
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${itOrElse(target, '')}">
       </div>`;
       if (!pd || (!pd.canRecruit && !conditionalRecruit)) {
         // No native recruitment here — but if mercenaries are roaming the province, offer those.
@@ -1329,33 +1591,35 @@ export function buildTargetField(c, ph, saved) {
           return mercWrap(
             kcHtml`<div style="font-size:.68rem;color:#6a3030;margin-bottom:4px;line-height:1.35">Mercenaries can be hired anywhere. Native troops need control of the province.</div>${mercRows}`,
           );
+        // (order data for a province means the hero stands somewhere: pd is read only where loc is)
         const why = !pd
           ? 'Province unknown'
-          : (pd.armyTypes || []).length === 0
-            ? `${loc.name} is not your territory — cannot recruit here`
-            : `${loc.name} is not yours yet — move in with an army in an earlier phase to recruit here if you take control`;
+          : (pd.armyTypes ?? []).length === 0
+            ? `${String(thereOrTheTypeError(loc, "'name'").name)} is not your territory — cannot recruit here`
+            : `${String(thereOrTheTypeError(loc, "'name'").name)} is not yours yet — move in with an army in an earlier phase to recruit here if you take control`;
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>`;
       }
       const alreadyRecruited = getAlreadyRecruitedThisTurn(c.id, ph);
+      // (order data for a province means the hero stands somewhere: pd is read only where loc is)
+      const theLoc = thereOrTheTypeError(loc, "'id'");
       // Show the recruit list whenever the province has army types with capacity left this turn.
       // (Don't hard-block on current gold — gold can change across phases and affordability is
       // enforced when the turn resolves.
-      const anyRecruitable = (pd.armyTypes || []).some(
-        (at) => at.maxPerTurn - (alreadyRecruited[`${loc.id}:${at.type}`] || 0) > 0,
+      const anyRecruitable = (pd.armyTypes ?? []).some(
+        (at) => at.maxPerTurn - (alreadyRecruited[`${String(theLoc.id)}:${at.type}`] ?? 0) > 0,
       );
       if (!anyRecruitable) {
         if (mercRows.length) return mercWrap(mercRows);
         const why =
-          (pd.armyTypes || []).length === 0
-            ? `No native recruitable armies in ${pd.name}`
-            : `Already recruited the maximum in ${pd.name} this turn`;
+          (pd.armyTypes ?? []).length === 0
+            ? `No native recruitable armies in ${String(pd.name)}`
+            : `Already recruited the maximum in ${String(pd.name)} this turn`;
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${why}" disabled>`;
       }
       // Multi-select: use checkboxes rendered as a scrollable list
-      const checkId = `po-recruit-${c.id}-${ph}`;
-      const savedSels = (target || '').split(',').filter(Boolean);
+      const savedSels = theWordsToSplit(itOrElse(target, '')).split(',').filter(Boolean);
       return kcHtml`<div id="po-target-wrap-inner-${c.id}-${ph}" style="max-height:160px;overflow-y:auto;background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px">
-        ${conditionalRecruit ? kcHtml`<div style="font-size:.68rem;color:#6a3030;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${loc.name} is not yours yet — plan freely. This recruit only takes effect if you <strong>control the province</strong> when the order resolves (e.g. this character seizes it in an earlier phase); otherwise it is skipped.</div>` : ''}
+        ${conditionalRecruit ? kcHtml`<div style="font-size:.68rem;color:#6a3030;background:#f7ece0;border-radius:2px;padding:3px 5px;margin-bottom:4px;line-height:1.35">⚑ ${theLoc.name} is not yours yet — plan freely. This recruit only takes effect if you <strong>control the province</strong> when the order resolves (e.g. this character seizes it in an earlier phase); otherwise it is skipped.</div>` : ''}
         ${
           /* once you conquer a province earlier in the turn it is yours when the
  recruit resolves, so the garrison is a valid muster target — offer it here too. The engine
@@ -1363,18 +1627,19 @@ export function buildTargetField(c, ph, saved) {
         }
         ${_destRow(true)}
         ${mercRows}
-        ${(pd.armyTypes || []).flatMap((at) => {
-          const done = alreadyRecruited[`${loc.id}:${at.type}`] || 0;
+        ${(pd.armyTypes ?? []).flatMap((at) => {
+          const done = alreadyRecruited[`${String(theLoc.id)}:${at.type}`] ?? 0;
           const remaining = at.maxPerTurn - done;
           if (remaining <= 0) return [];
-          const costEach = at.cost || 2;
+          const costEach = (at.cost ?? 0) || 2;
           // 2026-09-07 batch 3: every checkbox is ONE unit, so every token is `type|1`. The old
           // `type|<slot>` values were read by the GM engine (and by projectedLedArmies) as a
           // QUANTITY —
           // ticking the 1st and 2nd garrison boxes sent `Garrison|1,Garrison|2` = three units. The k-th
           // box is checked when the saved order holds at least k tokens of this type (legacy
           // `type|n` tokens count as one each).
-          const _savedOfType = savedSels.filter((v) => v.split('|')[0].trim() === at.type).length;
+          // (a split always gives a first part)
+          const _savedOfType = savedSels.filter((v) => (v.split('|')[0] ?? '').trim() === at.type).length;
           return Array.from({ length: remaining }, (_, i) => {
             const val = `${at.type}|1`;
             const chk = _savedOfType > i ? 'checked' : '';
@@ -1390,17 +1655,17 @@ export function buildTargetField(c, ph, saved) {
             </label>`;
           });
         })}
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target || ''}">
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${itOrElse(target, '')}">
       </div>`;
     }
 
     // ── HIRE HERO ──
     case 'Hire Hero': {
       const loc = predictedLocation(c.id, ph);
-      const pd = loc ? provOrderData[loc.id] : null;
-      const heroes = pd?.availableHeroes || [];
+      const pd = loc ? provOrderData[String(loc.id)] : null;
+      const heroes = pd?.availableHeroes ?? [];
       if (heroes.length === 0) {
-        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc ? `No wandering heroes in ${loc.name}` : 'No heroes available'}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${loc ? `No wandering heroes in ${String(loc.name)}` : 'No heroes available'}" disabled>`;
       }
       const opts = heroes.map((h) => {
         // the hero's best skill is DESCRIBED, exactly as the Intelligence report describes it —
@@ -1409,17 +1674,18 @@ export function buildTargetField(c, ph, saved) {
         // Alignment-distance pricing: wage = 2g +1g per 2 spectrum steps between the hero's
         // alignment and YOUR KINGDOM's. Divine and Undead crowns cannot hire one another
         // (Diplomatic Protocols discovery waives the ban — the GM engine handles that at resolution).
-        const kAlign = report.kingdom?.alignment || 'Neutral';
+        const kAlign = (report.kingdom?.alignment ?? '') || 'Neutral';
         const wage = heroHireWageOfP(h, report);
         if (wage == null)
           return kcHtml`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;
-        const d = alignDistP(kAlign, h.alignment);
-        const _base = heroHireWage(kAlign, h.alignment),
+        // (an alignment the report doesn't give, as its words: no alignment's name, as before)
+        const d = alignDistP(kAlign, String(h.alignment));
+        const _base = heroHireWage(kAlign, String(h.alignment)),
           _prem = _base != null && wage > _base ? wage - _base : 0;
         const costNote =
-          (d <= 1 ? '(kindred outlook' : `(${d} steps from ${kAlign}`) +
-          (_prem ? `, +${_prem}g for proven skill)` : d <= 1 ? ' — base rate)' : ')');
-        return kcHtml`<option value="${h.id}" ${target == h.id ? 'selected' : ''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
+          (d <= 1 ? '(kindred outlook' : `(${String(d)} steps from ${kAlign}`) +
+          (_prem ? `, +${String(_prem)}g for proven skill)` : d <= 1 ? ' — base rate)' : ')');
+        return kcHtml`<option value="${h.id}" ${isTheSavedChoice(target, h.id) ? 'selected' : ''}>${h.name} (${h.race}/${h.alignment}) — best: ${topSkill} — ${wage}g/turn ${costNote}</option>`;
       });
       // never let the browser silently pre-select the FIRST hero. If the saved target is not one of
       // the heroes listed here (e.g. an earlier-phase move was changed and this character's
@@ -1445,12 +1711,12 @@ export function buildTargetField(c, ph, saved) {
       // recipient. Item ticks write "all" or a comma-separated list of item indices to the hidden
       // po-target field (reusing the shared checkbox helpers).
       const items = predictedItems(c.id, ph);
-      const startNames = new Set((c.items || []).map((it) => it && it.name));
+      const startNames = new Set((c.items ?? []).map((it) => (it ? it.name : it)));
       // 2026-09-24 (Toby): a HIRED hero reaches this branch (only _hiddenSkills takes the auto-pick
       // path above) with predictedItems → [], and the old text announced "none held" — a claim about a
       // pack the player has not seen. A charmed hero never gets here.
       if (items.length === 0)
-        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c) ? `What ${c.name} carries is not known to you until they have joined — you can only send on something you handed them yourself this turn` : 'No items to give (none held, or all given away earlier this turn)'}" disabled>`;
+        return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${skillsUnseenP(c) ? `What ${String(c.name)} carries is not known to you until they have joined — you can only send on something you handed them yourself this turn` : 'No items to give (none held, or all given away earlier this turn)'}" disabled>`;
       // ── 2026-09-24 (Toby): ADDRESS BY NAME WHEN POSITION CANNOT BE TRUSTED ──────────────────────
       // The tick values are normally indices into the engine's own item list, which is only safe while
       // this form's list and the engine's `c.items` are the same list in the same order. For a hero
@@ -1460,7 +1726,7 @@ export function buildTargetField(c, ph, saved) {
       // resolves an id-or-name token), and lose the "All items" box, which would otherwise sweep up the
       // hidden pack the player cannot see and never chose.
       const _giByName = skillsUnseenP(c);
-      const _giSaved = (target || '').split(',').filter(Boolean);
+      const _giSaved = theWordsToSplit(itOrElse(target, '')).split(',').filter(Boolean);
       const _giAll = !_giByName && _giSaved.includes('all');
       const _giBoxes = items.map((it, i) => {
         // A granted Mithril suit is forged to its wearer and cannot be sent on (the turn's own check, src/shared/; the
@@ -1469,11 +1735,13 @@ export function buildTargetField(c, ph, saved) {
         // shown greyed and disabled rather than dropped, which would slide every later index by
         // one.
         const _bound = anItemIsTheMithrilSuitGrantedToItsWearer(it);
-        const _val = _giByName ? String(it.name || '') : String(i);
+        // (no item throws the TypeError reading its name threw)
+        const theItem = thereOrTheTypeError(it, "'name'");
+        const _val = _giByName ? theItem.name || '' : String(i);
         const chk = !_bound && (_giAll || _giSaved.includes(_val)) ? 'checked' : '';
         return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:${_bound ? 'not-allowed' : 'pointer'};${_bound ? 'opacity:.55' : ''}">
           <input type="checkbox" value="${_val}" ${chk} ${_bound ? 'disabled' : ''} onchange="updateLeaveTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
-          🔮 ${it.name}${itemTierTagP(it)}${_bound ? kcHtml` <span style="color:var(--stone)">— bound to its wearer, cannot be sent</span>` : startNames.has(it.name) ? '' : ' (received earlier this turn)'}
+          🔮 ${theItem.name}${itemTierTagP(theItem)}${_bound ? kcHtml` <span style="color:var(--stone)">— bound to its wearer, cannot be sent</span>` : startNames.has(theItem.name) ? '' : ' (received earlier this turn)'}
         </label>`;
       });
       const _giWrap = kcHtml`<div style="background:#fdf8ee;border:1px solid var(--stone);border-radius:2px;padding:4px;max-height:120px;overflow-y:auto">
@@ -1486,7 +1754,7 @@ export function buildTargetField(c, ph, saved) {
         </label>`
         }
         ${_giBoxes}
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target || ''}">
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${itOrElse(target, '')}">
       </div>`;
       // Send Item can now reach ANY of your living characters, wherever they stand. A recipient in
       // the SAME province gets the item at once (usable later this turn); one ELSEWHERE receives it
@@ -1505,10 +1773,10 @@ export function buildTargetField(c, ph, saved) {
         // 2026-09-24 (Toby): name the province each recipient is in at this phase (projected from
         // earlier-phase moves) instead of a bare "elsewhere".
         const _xl = predictedLocation(x.id, ph),
-          _xn = (_xl && _xl.name) || 'unknown province';
+          _xn = (_xl?.name ?? '') || 'unknown province';
         const _same = _xl?.id === loc4?.id;
         const _where = _same ? `here in ${_xn} — at once` : `in ${_xn} — arrives end of turn`;
-        return kcHtml`<option value="${x.id}" ${extra == x.id ? 'selected' : ''}>${x.name} (${_where}${preOrderTagP(x)})</option>`;
+        return kcHtml`<option value="${x.id}" ${isTheSavedChoice(extra, x.id) ? 'selected' : ''}>${x.name} (${_where}${preOrderTagP(x)})</option>`;
       });
       return kcHtml`${_giWrap}
         <select id="po-extra-${c.id}-${ph}" style="margin-top:4px">${recipOpts}</select>`;
@@ -1520,11 +1788,11 @@ export function buildTargetField(c, ph, saved) {
       // Recruit / Pick Up (added) and Leave/Transfer / Disband (removed) orders, so an army handed
       // off or disbanded earlier no longer shows, and one gained earlier does.
       const baseArmies = projectedLedArmies(c.id, ph);
-      const savedTgts = (target || '').split(',').filter(Boolean);
+      const savedTgts = theWordsToSplit(itOrElse(target, '')).split(',').filter(Boolean);
       // Where is this character predicted to be at this phase (accounting for earlier-phase moves)?
       const cLoc = predictedLocation(c.id, ph);
       const cLocId = cLoc ? cLoc.id : null;
-      const ownedIds = new Set((report.ownedProvinces || []).map((p) => p.id));
+      const ownedIds = new Set((report.ownedProvinces ?? []).map((p) => p.id));
       // Garrison recipient: allowed outright in a province you OWN now, and ALSO offered
       // CONDITIONALLY in a province you don't yet own — you may seize it earlier this turn. The GM
       // engine re-checks ownership (prov.owner===player) when the order resolves and simply skips
@@ -1541,14 +1809,17 @@ export function buildTargetField(c, ph, saved) {
         const xl = predictedLocation(x.id, ph);
         return xl && cLocId != null && xl.id === cLocId;
       });
-      const recipParts = [];
-      if (canGarrison)
+      const recipParts: KcSafeHtml[] = [];
+      if (canGarrison) {
+        // (a hero who stands somewhere has a place: cLocId is read only where cLoc is)
+        const theName = (thereOrTheTypeError(cLoc, "'name'").name ?? '') || 'province';
         recipParts.push(
-          kcHtml`<option value="-1" ${extra === '-1' || !extra ? 'selected' : ''}>${ownsHere ? `Garrison in ${cLoc.name || 'province'}` : `Garrison in ${cLoc.name || 'province'} \u2691 (only if you control it when this resolves)`}</option>`,
+          kcHtml`<option value="-1" ${extra === '-1' || !extra ? 'selected' : ''}>${ownsHere ? `Garrison in ${theName}` : `Garrison in ${theName} \u2691 (only if you control it when this resolves)`}</option>`,
         );
+      }
       othersHere.forEach((x) =>
         recipParts.push(
-          kcHtml`<option value="${x.id}" ${extra == x.id ? 'selected' : ''}>${x.name}${preOrderTagP(x)}</option>`,
+          kcHtml`<option value="${x.id}" ${isTheSavedChoice(extra, x.id) ? 'selected' : ''}>${x.name}${preOrderTagP(x)}</option>`,
         ),
       );
       if (recipParts.length === 0)
@@ -1569,12 +1840,12 @@ export function buildTargetField(c, ph, saved) {
             <input type="checkbox" value="all" id="po-leave-all-${c.id}-${ph}" ${allChk} onchange="leaveToggleAll(${kcArg(String(c.id))},${kcArg(ph)},this.checked)" style="width:auto;margin:0">
             <strong>All armies</strong>
           </label>
-          <input type="hidden" id="po-target-${c.id}-${ph}" value="${target || ''}">
+          <input type="hidden" id="po-target-${c.id}-${ph}" value="${itOrElse(target, '')}">
         </div>
         <select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="setTimeout(refreshAllMoveModeNotes,0)">${recipOpts}</select>`;
       }
-      const checkboxes = baseArmies.map((a, i) => {
-        const val = a.unitName || a.type;
+      const checkboxes = baseArmies.map((a) => {
+        const val = (a.unitName ?? '') || a.type;
         const chk = savedTgts.includes(val) || savedTgts.includes('all') ? 'checked' : '';
         return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
           <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
@@ -1587,7 +1858,7 @@ export function buildTargetField(c, ph, saved) {
           <strong>All armies</strong>
         </label>
         ${checkboxes}
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target || ''}">
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${itOrElse(target, '')}">
       </div>
       <select id="po-extra-${c.id}-${ph}" style="margin-top:4px" onchange="setTimeout(refreshAllMoveModeNotes,0)">${recipOpts}</select>`;
     }
@@ -1611,9 +1882,9 @@ export function buildTargetField(c, ph, saved) {
       const armies = projectedLedArmies(c.id, ph);
       if (armies.length === 0)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No armies to disband" disabled>`;
-      const savedTgts = (target || '').split(',').filter(Boolean);
-      const checkboxes = armies.map((a, i) => {
-        const val = a.unitName || a.type;
+      const savedTgts = theWordsToSplit(itOrElse(target, '')).split(',').filter(Boolean);
+      const checkboxes = armies.map((a) => {
+        const val = (a.unitName ?? '') || a.type;
         const chk = savedTgts.includes(val) || savedTgts.includes('all') ? 'checked' : '';
         return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
           <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
@@ -1628,7 +1899,7 @@ export function buildTargetField(c, ph, saved) {
           <strong>All armies</strong>
         </label>
         ${checkboxes}
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target || ''}">
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${itOrElse(target, '')}">
       </div>`;
     }
 
@@ -1645,10 +1916,10 @@ export function buildTargetField(c, ph, saved) {
       const garrArr = loc2 ? projectedGarrison(loc2.id, ph, true, c.id) : [];
       if (garrArr.length === 0)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No garrison armies here to pick up (hire mercenaries via Recruit Armies)" disabled>`;
-      const savedTgts = (target || '').split(',').filter(Boolean);
+      const savedTgts = theWordsToSplit(itOrElse(target, '')).split(',').filter(Boolean);
       const allSel = savedTgts.includes('all');
       const checkboxes = garrArr.map((a, i) => {
-        const val = `g:${i}`;
+        const val = `g:${String(i)}`;
         const chk = allSel || savedTgts.includes(val) ? 'checked' : '';
         return kcHtml`<label style="display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:.8rem;cursor:pointer">
           <input type="checkbox" value="${val}" ${chk} onchange="updateLeaveTarget(${kcArg(String(c.id))},${kcArg(ph)})" style="width:auto;margin:0">
@@ -1661,46 +1932,50 @@ export function buildTargetField(c, ph, saved) {
           <strong>All garrison armies (${garrArr.length})</strong>
         </label>
         ${checkboxes}
-        <input type="hidden" id="po-target-${c.id}-${ph}" value="${target || ''}">
+        <input type="hidden" id="po-target-${c.id}-${ph}" value="${itOrElse(target, '')}">
       </div>`;
     }
 
     default:
-      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="${target || ''}" placeholder="Details / notes">`;
+      return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="${itOrElse(target, '')}" placeholder="Details / notes">`;
   }
 }
 
 // Helper: update hidden leave target from checkboxes
-export function updateLeaveTarget(charId, ph) {
-  const wrap = document.querySelector(`#po-target-${charId}-${ph}`)?.parentElement;
+export function updateLeaveTarget(charId: unknown, ph: unknown): void {
+  const wrap = document.querySelector(`#po-target-${String(charId)}-${String(ph)}`)?.parentElement;
   if (!wrap) return;
-  const allChk = document.getElementById(`po-leave-all-${charId}-${ph}`);
-  if (allChk) allChk.checked = false; // deselect 'all' when individual checked
-  const checked = [...wrap.querySelectorAll('input[type=checkbox]:not([value=all]):checked')].map((cb) => cb.value);
-  const hidden = document.getElementById(`po-target-${charId}-${ph}`);
-  if (hidden) hidden.value = checked.join(',');
-  if (typeof refreshAllMoveModeNotes === 'function') setTimeout(refreshAllMoveModeNotes, 0); // the host a later move sets out with has changed
+  const allChk = document.getElementById(`po-leave-all-${String(charId)}-${String(ph)}`);
+  if (allChk instanceof HTMLInputElement) allChk.checked = false; // deselect 'all' when individual checked
+  const checked = [...wrap.querySelectorAll('input[type=checkbox]:not([value=all]):checked')]
+    .filter((cb) => cb instanceof HTMLInputElement)
+    .map((cb) => cb.value);
+  const hidden = document.getElementById(`po-target-${String(charId)}-${String(ph)}`);
+  if (hidden instanceof HTMLInputElement) hidden.value = checked.join(',');
+  setTimeout(refreshAllMoveModeNotes, 0); // the host a later move sets out with has changed
 }
-export function leaveToggleAll(charId, ph, checked) {
-  const wrap = document.querySelector(`#po-target-${charId}-${ph}`)?.parentElement;
+export function leaveToggleAll(charId: unknown, ph: unknown, checked: unknown): void {
+  const wrap = document.querySelector(`#po-target-${String(charId)}-${String(ph)}`)?.parentElement;
   if (!wrap) return;
   wrap.querySelectorAll('input[type=checkbox]:not([value=all])').forEach((cb) => {
-    cb.checked = false;
+    if (cb instanceof HTMLInputElement) cb.checked = false;
   });
-  const hidden = document.getElementById(`po-target-${charId}-${ph}`);
-  if (hidden) hidden.value = checked ? 'all' : '';
-  if (typeof refreshAllMoveModeNotes === 'function') setTimeout(refreshAllMoveModeNotes, 0); // the host a later move sets out with has changed
+  const hidden = document.getElementById(`po-target-${String(charId)}-${String(ph)}`);
+  if (hidden instanceof HTMLInputElement) hidden.value = checked ? 'all' : '';
+  setTimeout(refreshAllMoveModeNotes, 0); // the host a later move sets out with has changed
 }
 
 // Helper: update hidden recruit target from checkboxes
-export function updateRecruitTarget(charId, ph) {
-  const wrap = document.getElementById(`po-target-wrap-inner-${charId}-${ph}`);
+export function updateRecruitTarget(charId: unknown, ph: unknown): void {
+  const wrap = document.getElementById(`po-target-wrap-inner-${String(charId)}-${String(ph)}`);
   if (!wrap) return;
-  const checked = [...wrap.querySelectorAll('input[type=checkbox]:checked')].map((cb) => cb.value);
+  const checked = [...wrap.querySelectorAll('input[type=checkbox]:checked')]
+    .filter((cb) => cb instanceof HTMLInputElement)
+    .map((cb) => cb.value);
   // Destination token: only written when a non-default destination is chosen.
   const destSel = wrap.querySelector('.po-recruit-dest');
-  if (destSel && destSel.value && destSel.value !== 'to:self') checked.push(destSel.value);
-  const hidden = document.getElementById(`po-target-${charId}-${ph}`);
-  if (hidden) hidden.value = checked.join(',');
-  if (typeof refreshAllMoveModeNotes === 'function') setTimeout(refreshAllMoveModeNotes, 0); // recruits change what a later move has to carry
+  if (destSel instanceof HTMLSelectElement && destSel.value && destSel.value !== 'to:self') checked.push(destSel.value);
+  const hidden = document.getElementById(`po-target-${String(charId)}-${String(ph)}`);
+  if (hidden instanceof HTMLInputElement) hidden.value = checked.join(',');
+  setTimeout(refreshAllMoveModeNotes, 0); // recruits change what a later move has to carry
 }

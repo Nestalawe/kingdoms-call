@@ -14,7 +14,11 @@ interface TheSpellRows {
 let page: Document;
 let refreshOpenReport: () => void;
 let mapZoom: (delta: number) => void;
-let spellRows: (c: unknown, ph: number, report: unknown) => TheSpellRows;
+let spellRows: (
+  c: { readonly id: string; readonly skills: Readonly<Record<string, number>> },
+  ph: number,
+  report: { readonly kingdom: Readonly<Record<string, never>> },
+) => TheSpellRows;
 let theLevelEachMasterySpellNeeds: () => Record<string, number>;
 let theSchoolOfEachSpell: () => Record<string, string>;
 

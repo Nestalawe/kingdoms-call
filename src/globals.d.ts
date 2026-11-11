@@ -70,9 +70,9 @@ declare var joiningGame: PageState;
 declare var joinSkills: PageState;
 /** The realm's seat in the open game (the map writes its hero order into it). */
 declare var currentGamePlayer: import('./ui/player/map.ts').TheRealmsSeatAsThePageHoldsIt | null | undefined;
-/** The report the page shows: as the order form's forecasts, the page's lists, the map's popups, the Titles card and the map
- *  read it (its typed readers, P1-16b to e), every part optional. */
-declare var currentReport: import('./ui/player/map.ts').TheReportAsTheMapDrawsIt | null | undefined;
+/** The report the page shows: as the order form's forecasts, the page's lists, the map's popups, the Titles card, the map
+ *  and the target fields read it (its typed readers, P1-16b to f), every part optional. */
+declare var currentReport: import('./ui/player/order-targets.ts').TheReportAsTheTargetFieldsReadIt | null | undefined;
 declare var diploChoices: Partial<Record<string, unknown>> | null;
 declare var reckoningCall: PageState;
 declare var _heroOrder: (string | null)[] | null | undefined;
@@ -83,4 +83,8 @@ declare var discoveryChoices: Partial<Record<string, unknown>>;
 declare var _msgEnabled: PageState;
 declare var _deskLeftView: PageState;
 // ui/player/order-targets.ts
-declare var _draftOrdersSnapshot: PageState;
+/** This turn's saved draft, by hero: each phase's order as saved (the target fields read it before the form exists). */
+declare var _draftOrdersSnapshot:
+  | Partial<Record<string, readonly ({ readonly action?: unknown; readonly target?: unknown } | null | undefined)[]>>
+  | null
+  | undefined;

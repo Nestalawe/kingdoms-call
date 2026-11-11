@@ -102,7 +102,10 @@ export function predictedLocation(
 export function projectedMoveHost(charId: unknown, ph: number): ReturnType<typeof theColumnAHeroMarchesWithInAPhase> {
   return theColumnAHeroMarchesWithInAPhase(currentReport, theOrdersTheFormHolds(currentReport), charId, ph);
 }
-export function predictedItems(charId: unknown, upToPhaseExclusive: number): unknown {
+export function predictedItems(
+  charId: unknown,
+  upToPhaseExclusive: number,
+): ReturnType<typeof whatAHeroCarriesAsAPhaseBegins> {
   return whatAHeroCarriesAsAPhaseBegins(
     currentReport,
     theOrdersTheFormHolds(currentReport),
@@ -115,7 +118,7 @@ export function projectedGarrison(
   phase: number,
   includeSamePhase?: boolean,
   excludeCharId?: unknown,
-): unknown {
+): ReturnType<typeof whatAGarrisonHoldsAsAPhaseBegins> {
   return whatAGarrisonHoldsAsAPhaseBegins(
     currentReport,
     theOrdersTheFormHolds(currentReport),
@@ -125,7 +128,10 @@ export function projectedGarrison(
     excludeCharId,
   );
 }
-export function projectedLedArmies(charId: unknown, upToPhaseExclusive: number): unknown {
+export function projectedLedArmies(
+  charId: unknown,
+  upToPhaseExclusive: number,
+): ReturnType<typeof whatAHeroLeadsAsAPhaseBegins> {
   return whatAHeroLeadsAsAPhaseBegins(currentReport, theOrdersTheFormHolds(currentReport), charId, upToPhaseExclusive);
 }
 
@@ -149,6 +155,9 @@ export function orderChanceNote(
 export function actionsFor(c: AHeroAsTheOrderFormReadsHim | null | undefined): unknown {
   return theOrdersTheFormOffersAHero(currentReport, c);
 }
-export function projectedMagicLevels(c: AHeroAsTheOrderFormReadsHim | null | undefined, ph: number): unknown {
+export function projectedMagicLevels(
+  c: AHeroAsTheOrderFormReadsHim | null | undefined,
+  ph: number,
+): ReturnType<typeof theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise> {
   return theMagicLevelsAHerosPractisesBeforeAPhaseMayRaise(theOrdersTheFormHoldsForTheHero(c), c, ph);
 }
