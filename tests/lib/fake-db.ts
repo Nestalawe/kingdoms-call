@@ -3,10 +3,10 @@
 // (bootJsdom's opts.db, tests/lib/boot.js); a unit test calls code that takes a Db with it. It doesn't imitate the
 // access rules: the access layer's tests prove those against the local database. Each of P1-17's area rows adds its
 // area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
-// role and no offer; and no game, so no Hall of Fame entry, no statistics, no dispatch and no report (a new row refused,
-// a change or deletion matching nothing). The Overlord's functions refuse, as the database refuses anyone but the
-// Overlord. Two fakes below hold a world a test stages and reads back: the Overlord's page's and the Hall of Fame's
-// (plan P1-17i).
+// role and no offer; and no game, so no realm, no slot, no turn's log, no Hall of Fame entry, no statistics, no dispatch
+// and no report (a new row refused, a change or deletion matching nothing, a single row's read finding none). The
+// Overlord's functions refuse, as the database refuses anyone but the Overlord. Two fakes below hold a world a test
+// stages and reads back: the Overlord's page's and the Hall of Fame's (plan P1-17i).
 import type {
   ADatabaseAnswer,
   AGameAsTheOverlordListsIt,
@@ -57,8 +57,14 @@ const refusedAsNotTheOverlord = (message: string): ADatabaseAnswer<never> => ({
 const none = (): ADatabaseAnswer<never[]> => ({ data: [], error: null, status: 200 });
 /** A change or deletion that matched no row (the database answers no error). */
 const nothingMatched = (): ADatabaseAnswer<null> => ({ data: null, error: null, status: 204 });
+/** One row asked for, and none there (the database's words for a single row's read that matched none). */
+const noSuchRow = (): ADatabaseAnswer<never> => ({
+  data: null,
+  error: { message: 'JSON object requested, multiple (or no) rows returned' },
+  status: 406,
+});
 /** A new row the access rules refuse (no one signed in), in the database's words. */
-const refusedByTheAccessRules = (table: string): ADatabaseAnswer<null> => ({
+const refusedByTheAccessRules = (table: string): ADatabaseAnswer<never> => ({
   data: null,
   error: { message: `new row violates row-level security policy for table "${table}"` },
   status: 401,
@@ -230,6 +236,27 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
       theDispatchesThisAccountReportedInThisGame: answering('from:message_reports', none),
       reportThisDispatch: answering('from:message_reports', () => refusedByTheAccessRules('message_reports')),
       theDispatchesReportedToThisAccount: answering('rpc:gm_reported_messages', none),
+    },
+    thePlayersRealms: {
+      thisAccountsRealmsAndTheirOrdersFlags: answering('from:game_players', none),
+      everyRealmOfThisAccount: answering('from:game_players', none),
+      theGamesOfThisAccountsRealms: answering('from:game_players', none),
+      thisAccountsRealmsInThisGame: answering('from:game_players', none),
+      thisRealm: answering('from:game_players', noSuchRow),
+      joinWithThisRealm: answering('from:game_players', () => refusedByTheAccessRules('game_players')),
+      theSlotsOfTheseGames: answering('rpc:get_game_slots', none),
+    },
+    thePlayersGames: {
+      theTurnAndStateOfTheseGames: answering('from:games', none),
+      theseGamesForTheirCards: answering('from:games', none),
+      theseGamesEveryColumn: answering('from:games', none),
+      theGamesInSetup: answering('from:games', none),
+      thisGamesWorldAndState: answering('from:games', noSuchRow),
+      thisGameForItsReport: answering('from:games', noSuchRow),
+      thisGameEveryColumn: answering('from:games', noSuchRow),
+    },
+    theChroniclesLogs: {
+      theLogOfThisRealmInThisTurn: answering('from:turn_logs', none),
     },
   };
   return { db, calls };

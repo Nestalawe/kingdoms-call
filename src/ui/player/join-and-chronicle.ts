@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { GUARD_POWER_COLORS_P } from './items-and-heroes.ts';
 import { show } from './init.ts';
 import { roundReportNumbers, unitEmoji } from './order-chances.ts';
@@ -214,11 +214,10 @@ export async function doJoinGame(gameId) {
   }
   // ── ONE REALM PER PLAYER PER GAME ── checked at submit time, not just hidden from the list.
   {
-    const { data: mine, error: meErr } = await sb
-      .from('game_players')
-      .select('id,player_index')
-      .eq('game_id', gameId)
-      .eq('user_id', currentUser.id);
+    const { data: mine, error: meErr } = await thePagesDb.thePlayersRealms.thisAccountsRealmsInThisGame(
+      gameId,
+      currentUser.id,
+    );
     if (meErr) {
       msg.innerHTML = kcHtml`<div class="msg-error">${meErr.message}</div>`;
       return;
@@ -238,7 +237,7 @@ export async function doJoinGame(gameId) {
   // Defense-in-depth: re-check visibility at submit time. A Private game may only be joined by an
   // invited player, even if they somehow reached this flow without seeing the (hidden) card.
   {
-    const { data: gRow } = await sb.from('games').select('game_state,status').eq('id', gameId).single();
+    const { data: gRow } = await thePagesDb.thePlayersGames.thisGamesWorldAndState(gameId);
     let cfg = {};
     try {
       cfg = typeof gRow?.game_state === 'string' ? JSON.parse(gRow.game_state) : gRow?.game_state || {};
@@ -276,18 +275,14 @@ export async function doJoinGame(gameId) {
   } // clear the flag — see the private-game note above
 
   const playerSetup = { kingName, kingdomName, race, alignment, temper, skills: joinSkills };
-  const { data: slot, error } = await sb
-    .from('game_players')
-    .insert({
-      game_id: gameId,
-      user_id: currentUser.id,
-      player_index: nextIndex,
-      display_name: kingdomName,
-      orders_submitted: false,
-      turn_report: JSON.stringify({ playerSetup, status: 'joined', waitingForTurn0: true }),
-    })
-    .select()
-    .single();
+  const { data: slot, error } = await thePagesDb.thePlayersRealms.joinWithThisRealm({
+    game_id: gameId,
+    user_id: currentUser.id,
+    player_index: nextIndex,
+    display_name: kingdomName,
+    orders_submitted: false,
+    turn_report: JSON.stringify({ playerSetup, status: 'joined', waitingForTurn0: true }),
+  });
 
   _joinInFlight = false;
   if (error) {

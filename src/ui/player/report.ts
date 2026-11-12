@@ -8,7 +8,7 @@ import {
   skillFameLabelM,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { GUARD_POWER_COLORS_P, itemBoundTag, itemsForDisplayP, itemSlotTag, itemTierTagP } from './items-and-heroes.ts';
 import { refreshTurnNavHighlight, show, snapshotTurnLabel } from './init.ts';
 import { ensureProvinceLinking } from './layout.ts';
@@ -56,7 +56,7 @@ export async function openReport(gamePlayerId) {
   document.getElementById('report-title').textContent = 'Loading…';
 
   // Fetch game_player row first
-  const { data: gp, error } = await sb.from('game_players').select('*').eq('id', gamePlayerId).single();
+  const { data: gp, error } = await thePagesDb.thePlayersRealms.thisRealm(gamePlayerId);
   if (error) {
     document.getElementById('report-title').textContent = 'Error: ' + error.message;
     return;
@@ -64,11 +64,7 @@ export async function openReport(gamePlayerId) {
   // Fetch game separately to avoid RLS join issue. Disk-IO (2026-09-25): the report screen reads
   // only name / turn / status off the game row — never its world. block_eliminated_msgs is the GM's Dispatches
   // switch (P0-25, R-075).
-  const { data: g, error: gErr } = await sb
-    .from('games')
-    .select('id,name,gm_user_id,status,turn,max_players,block_eliminated_msgs')
-    .eq('id', gp.game_id)
-    .single();
+  const { data: g, error: gErr } = await thePagesDb.thePlayersGames.thisGameForItsReport(gp.game_id);
   if (gErr) {
     document.getElementById('report-title').textContent = 'Error loading game: ' + gErr.message;
     return;
@@ -1006,13 +1002,7 @@ export async function loadPastReport(gameId, playerIndex, turn) {
   // 1. Try to load this player's full snapshot for the turn (gives the correct historical MAP).
   let snapshot = null;
   try {
-    const { data: snapRows } = await sb
-      .from('turn_logs')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('turn', turn)
-      .eq('player_index', pi)
-      .limit(1);
+    const { data: snapRows } = await thePagesDb.theChroniclesLogs.theLogOfThisRealmInThisTurn(gameId, turn, pi);
     if (snapRows && snapRows[0] && snapRows[0].entries) {
       const e = snapRows[0].entries;
       snapshot = typeof e === 'string' ? JSON.parse(e) : e;
@@ -1033,14 +1023,8 @@ export async function loadPastReport(gameId, playerIndex, turn) {
 
   // 2. Fallback for games/turns saved before per-turn snapshots existed:
   // rebuild the chronicle from the GM full log and keep the current map (noted in the banner).
-  const { data: logs } = await sb
-    .from('turn_logs')
-    .select('*')
-    .eq('game_id', gameId)
-    .eq('turn', turn)
-    .eq('player_index', -1)
-    .limit(1);
-  const { data: g } = await sb.from('games').select('*').eq('id', gameId).single();
+  const { data: logs } = await thePagesDb.theChroniclesLogs.theLogOfThisRealmInThisTurn(gameId, turn, -1);
+  const { data: g } = await thePagesDb.thePlayersGames.thisGameEveryColumn(gameId);
   const gameState = g?.game_state || {};
   const allChars = gameState.characters || [];
   const ownCharIds = new Set(allChars.filter((c) => c.player === pi).map((c) => c.id));

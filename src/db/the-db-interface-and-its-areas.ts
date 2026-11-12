@@ -187,6 +187,30 @@ export type ARealmsReadMarks = Pick<ARow<'game_message_reads'>, 'game_id' | 'pla
 /** A reported dispatch, as gm_reported_messages() answers it: the dispatch, its report and its reporter. */
 export type AReportedDispatch = Database['public']['Functions']['gm_reported_messages']['Returns'][number];
 
+/** A realm (game_players: one row a realm a game), every column, as its own player or the game's GM reads it. */
+export type ARealm = ARow<'game_players'>;
+
+/** A realm's slot in its game, as get_game_slots() answers it to anyone who may see the game: never its player. */
+export type ARealmsSlot = Database['public']['Functions']['get_game_slots']['Returns'][number];
+
+/** A game (games), every column, its world (game_state) among them. */
+export type AGame = ARow<'games'>;
+
+/** A game's light columns, as the player's game cards read them: never the world. */
+export type AGameForItsCard = Pick<
+  AGame,
+  'id' | 'name' | 'gm_user_id' | 'status' | 'turn' | 'max_players' | 'created_at' | 'meta'
+>;
+
+/** A game's columns the report screen reads: never the world. */
+export type AGameForItsReport = Pick<
+  AGame,
+  'id' | 'name' | 'gm_user_id' | 'status' | 'turn' | 'max_players' | 'block_eliminated_msgs'
+>;
+
+/** A turn's log (turn_logs: one row a game, turn and realm; realm -1, the GM's whole log), every column. */
+export type ATurnsLog = ARow<'turn_logs'>;
+
 /** The database, as the pages reach it: one area a row of P1-17. */
 export interface Db {
   /** The version guard's (src/db/kc-db-guard.ts, P0-34). */
@@ -418,6 +442,58 @@ export interface Db {
       game: string | null,
     ) => PromiseLike<ADatabaseAnswer<AReportedDispatch[]>>;
   };
+  /** The player's realms (game_players; get_game_slots(): every realm's slot in the games an account may see). */
+  readonly thePlayersRealms: {
+    /** The realms of the account `account`: their ids, games, places and whether their orders are in. */
+    readonly thisAccountsRealmsAndTheirOrdersFlags: (
+      account: string,
+    ) => PromiseLike<ADatabaseAnswer<Pick<ARealm, 'id' | 'game_id' | 'player_index' | 'orders_submitted'>[]>>;
+    /** The realms of the account `account`, every column. */
+    readonly everyRealmOfThisAccount: (account: string) => PromiseLike<ADatabaseAnswer<ARealm[]>>;
+    /** The games of the account `account`'s realms. */
+    readonly theGamesOfThisAccountsRealms: (account: string) => PromiseLike<ADatabaseAnswer<Pick<ARealm, 'game_id'>[]>>;
+    /** The realms of the account `account` in the game `game`: their ids and places. */
+    readonly thisAccountsRealmsInThisGame: (
+      game: string,
+      account: string,
+    ) => PromiseLike<ADatabaseAnswer<Pick<ARealm, 'id' | 'player_index'>[]>>;
+    /** The realm `id`, every column. */
+    readonly thisRealm: (id: string) => PromiseLike<ADatabaseAnswer<ARealm>>;
+    /** The realm `realm` joined to its game, and its row, every column, as the database made it. */
+    readonly joinWithThisRealm: (realm: ANewRow<'game_players'>) => PromiseLike<ADatabaseAnswer<ARealm>>;
+    /** get_game_slots(): every realm's slot in the games `games` the signed-in account may see. */
+    readonly theSlotsOfTheseGames: (games: string[]) => PromiseLike<ADatabaseAnswer<ARealmsSlot[]>>;
+  };
+  /** The player's games (games), as the player page lists, joins and reports them. */
+  readonly thePlayersGames: {
+    /** The turn and state of the games `games`. */
+    readonly theTurnAndStateOfTheseGames: (
+      games: readonly string[],
+    ) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'id' | 'turn' | 'status'>[]>>;
+    /** The games `games`, their light columns (the meta column among them). */
+    readonly theseGamesForTheirCards: (games: readonly string[]) => PromiseLike<ADatabaseAnswer<AGameForItsCard[]>>;
+    /** The games `games`, every column (for a database without the meta column). */
+    readonly theseGamesEveryColumn: (games: readonly string[]) => PromiseLike<ADatabaseAnswer<AGame[]>>;
+    /** The games still in setup (open to join), every column. */
+    readonly theGamesInSetup: () => PromiseLike<ADatabaseAnswer<AGame[]>>;
+    /** The game `game`'s world and state. */
+    readonly thisGamesWorldAndState: (
+      game: string,
+    ) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'game_state' | 'status'>>>;
+    /** The game `game`, the columns its report screen reads. */
+    readonly thisGameForItsReport: (game: string) => PromiseLike<ADatabaseAnswer<AGameForItsReport>>;
+    /** The game `game`, every column. */
+    readonly thisGameEveryColumn: (game: string) => PromiseLike<ADatabaseAnswer<AGame>>;
+  };
+  /** The turns' logs (turn_logs), as the chronicle reads a past turn. */
+  readonly theChroniclesLogs: {
+    /** The log of the realm `realm` (-1: the GM's whole log) of the game `game` in the turn `turn`, if any. */
+    readonly theLogOfThisRealmInThisTurn: (
+      game: string,
+      turn: number,
+      realm: number,
+    ) => PromiseLike<ADatabaseAnswer<ATurnsLog[]>>;
+  };
 }
 
 /** The page's Db, on its own client: each function sends the query the page sent on that client before. */
@@ -585,6 +661,36 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
         client.from('message_reports').select('message_id').eq('game_id', game),
       reportThisDispatch: (report) => client.from('message_reports').insert(report),
       theDispatchesReportedToThisAccount: (game) => client.rpc('gm_reported_messages', { p_game: game }),
+    },
+    thePlayersRealms: {
+      thisAccountsRealmsAndTheirOrdersFlags: (account) =>
+        client.from('game_players').select('id,game_id,player_index,orders_submitted').eq('user_id', account),
+      everyRealmOfThisAccount: (account) => client.from('game_players').select('*').eq('user_id', account),
+      theGamesOfThisAccountsRealms: (account) => client.from('game_players').select('game_id').eq('user_id', account),
+      thisAccountsRealmsInThisGame: (game, account) =>
+        client.from('game_players').select('id,player_index').eq('game_id', game).eq('user_id', account),
+      thisRealm: (id) => client.from('game_players').select('*').eq('id', id).single(),
+      joinWithThisRealm: (realm) => client.from('game_players').insert(realm).select().single(),
+      theSlotsOfTheseGames: (games) => client.rpc('get_game_slots', { p_games: games }),
+    },
+    thePlayersGames: {
+      theTurnAndStateOfTheseGames: (games) => client.from('games').select('id,turn,status').in('id', games),
+      theseGamesForTheirCards: (games) =>
+        client.from('games').select('id,name,gm_user_id,status,turn,max_players,created_at,meta').in('id', games),
+      theseGamesEveryColumn: (games) => client.from('games').select('*').in('id', games),
+      theGamesInSetup: () => client.from('games').select('*').eq('status', 'setup'),
+      thisGamesWorldAndState: (game) => client.from('games').select('game_state,status').eq('id', game).single(),
+      thisGameForItsReport: (game) =>
+        client
+          .from('games')
+          .select('id,name,gm_user_id,status,turn,max_players,block_eliminated_msgs')
+          .eq('id', game)
+          .single(),
+      thisGameEveryColumn: (game) => client.from('games').select('*').eq('id', game).single(),
+    },
+    theChroniclesLogs: {
+      theLogOfThisRealmInThisTurn: (game, turn, realm) =>
+        client.from('turn_logs').select('*').eq('game_id', game).eq('turn', turn).eq('player_index', realm).limit(1),
     },
   };
 }

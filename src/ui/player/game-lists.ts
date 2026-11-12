@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { gameMetaOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
-import { sb, thePagesDb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { _msgArr, _msgNum, msgChannelKeyOf, _activeSectionId, fetchGameSlots } from './dispatches.ts';
 
 // ── LIVE UPDATE POLLING ────
@@ -27,13 +27,10 @@ export async function pollForUpdates() {
   if (document.hidden) return; // don't poll a backgrounded tab
   try {
     // One light query: this player's slots (turn/status live on the game rows we fetch next).
-    const { data: mySlots } = await sb
-      .from('game_players')
-      .select('id,game_id,player_index,orders_submitted')
-      .eq('user_id', currentUser.id);
+    const { data: mySlots } = await thePagesDb.thePlayersRealms.thisAccountsRealmsAndTheirOrdersFlags(currentUser.id);
     if (!mySlots || !mySlots.length) return;
     const gameIds = [...new Set(mySlots.map((s) => s.game_id))];
-    const { data: games } = await sb.from('games').select('id,turn,status').in('id', gameIds);
+    const { data: games } = await thePagesDb.thePlayersGames.theTurnAndStateOfTheseGames(gameIds);
     const gById = Object.fromEntries((games || []).map((g) => [g.id, g]));
     // rivals' submission flags feed the "N of M realms have sent orders" line, so they must be part
     // of the change signature or the tally would sit stale until the turn resolved.
@@ -87,7 +84,7 @@ export async function pollForUpdates() {
 export async function loadMyGames() {
   const el = document.getElementById('my-games-list');
   // Step 1: get player's own slots
-  const { data: mySlots, error } = await sb.from('game_players').select('*').eq('user_id', currentUser.id);
+  const { data: mySlots, error } = await thePagesDb.thePlayersRealms.everyRealmOfThisAccount(currentUser.id);
   if (error) {
     el.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
     return;
@@ -281,7 +278,6 @@ export function parseGameStateP(g) {
 // exempt:[player indices], …}. My Games used to pull every game's full world (hundreds of KB per
 // game, on every page load) just to read the turn mode and which realms are exempt from orders;
 // it now reads the summary and only falls back to the world for a row that has none.
-export const GAME_LITE_COLS_P = 'id,name,gm_user_id,status,turn,max_players,created_at,meta';
 // ARCHIVED (2026-09-27, Toby item 1). The GM portal writes `archived` onto game_state and mirrors it
 // into meta; nothing is deleted, so an archived game still opens and still shows every past turn.
 export function gameArchivedP(g) {
@@ -292,8 +288,8 @@ export function gameArchivedP(g) {
 // Light read of games by id; if the meta column does not exist yet (the GM has not run the
 // one-line migration) the query errors on the unknown column and we fall back to the full rows.
 export async function fetchGamesLite(ids) {
-  let r = await sb.from('games').select(GAME_LITE_COLS_P).in('id', ids);
-  if (r.error && /meta/i.test(r.error.message || '')) r = await sb.from('games').select('*').in('id', ids);
+  let r = await thePagesDb.thePlayersGames.theseGamesForTheirCards(ids);
+  if (r.error && /meta/i.test(r.error.message || '')) r = await thePagesDb.thePlayersGames.theseGamesEveryColumn(ids);
   return r;
 }
 export function realmExemptFromOrdersP(G, idx) {
@@ -368,11 +364,11 @@ export function turnDeadlineText(g) {
 export async function loadOpenGames() {
   const el = document.getElementById('open-games-list');
   // Get my game IDs to exclude them
-  const { data: mySlots } = await sb.from('game_players').select('game_id').eq('user_id', currentUser.id);
+  const { data: mySlots } = await thePagesDb.thePlayersRealms.theGamesOfThisAccountsRealms(currentUser.id);
   const myGameIds = new Set((mySlots || []).map((s) => s.game_id));
 
   // Fetch setup-status games separately (no join — avoids RLS blocking)
-  const { data: games, error } = await sb.from('games').select('*').eq('status', 'setup');
+  const { data: games, error } = await thePagesDb.thePlayersGames.theGamesInSetup();
   if (error) {
     el.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
     return;

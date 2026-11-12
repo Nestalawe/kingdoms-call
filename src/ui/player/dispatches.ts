@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { sb, thePagesDb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { _tintForDarkTooltip } from './map-symbols.ts';
 import { renderPlayerMap } from './map.ts';
 
@@ -821,7 +821,7 @@ export function _activeSectionId() {
 export async function fetchGameSlots(gameIds) {
   const ids = [...new Set((gameIds || []).filter(Boolean))];
   if (!ids.length) return { data: [], error: null };
-  const { data, error } = await sb.rpc('get_game_slots', { p_games: ids });
+  const { data, error } = await thePagesDb.thePlayersRealms.theSlotsOfTheseGames(ids);
   return { data: Array.isArray(data) ? data : [], error };
 }
 export let _deskRightView = 'report';
