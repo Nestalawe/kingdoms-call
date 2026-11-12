@@ -5,14 +5,17 @@
 // area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
 // role and no offer; and no game, so no realm, no slot, no turn's log, no Hall of Fame entry, no statistics, no dispatch
 // and no report (a new row refused, a change or deletion matching nothing, a single row's read finding none). The
-// Overlord's functions refuse, as the database refuses anyone but the Overlord. Two fakes below hold a world a test
-// stages and reads back: the Overlord's page's and the Hall of Fame's (plan P1-17i).
+// Overlord's functions refuse, as the database refuses anyone but the Overlord. Three fakes below hold a world a test
+// stages and reads back: the Overlord's page's and the Hall of Fame's (plan P1-17i), and the player's (P1-17l).
 import type {
   ADatabaseAnswer,
+  AGame,
   AGameAsTheOverlordListsIt,
   AHallOfFameEntry,
   AnAccountsName,
+  ARealm,
   ARealmsName,
+  ARealmsSlot,
   Db,
 } from '../../src/db/the-db-interface-and-its-areas.ts';
 
@@ -628,6 +631,169 @@ export function makeAFakeDbHoldingTheHallOfFame(version: string, world: TheHallO
       ...fake.db.theStatistics,
       deleteThisGamesResults: answering('from:game_results', () => noted({ table: 'game_results', op: 'delete' })),
       deleteThisGamesTurnRecords: answering('from:turn_events', () => noted({ table: 'turn_events', op: 'delete' })),
+    },
+  };
+  return { db, calls };
+}
+
+/** A dispatch refused, as the database words it (a check or a trigger: its code, hint and details beside its words). */
+export interface ADispatchRefused {
+  readonly message: string;
+  readonly code: string;
+  readonly hint: string | null;
+  readonly details: string | null;
+}
+/** What the player page reads, held by the fake: who is signed in (`me`, else no one), the accounts' names, the games
+ *  and their realms (as tests/lib/stub-db.js's makeStub held them: a test may add one later, and reads a join back), and
+ *  what a dispatch sent is refused with (`dispatchRefused`, none: sent). The fake answers each read as its query asks
+ *  (its filters, never the access rules), and notes in `readsOfAnotherAccountsRealms` each read of the realms that asks
+ *  for an account other than `me`'s, or for a realm not `me`'s. */
+export interface ThePlayersWorld {
+  readonly me: string | null;
+  readonly names: readonly AnAccountsName[];
+  readonly games: AGame[];
+  readonly realms: ARealm[];
+  dispatchRefused: ADispatchRefused | null;
+  readonly readsOfAnotherAccountsRealms: string[];
+}
+
+/** A fake database, up to date at `version`, holding the player's `world`. */
+export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePlayersWorld): AFakeDb {
+  const fake = makeAFakeDb([version]);
+  const { calls } = fake;
+  const answering =
+    <A extends unknown[], T>(name: string, answer: (...args: A) => T) =>
+    (...args: A): Promise<T> => {
+      calls.push(name);
+      return Promise.resolve(answer(...args));
+    };
+  /** A copy of the held rows, so the page's changes to what it read change nothing held. */
+  const copies = <T>(rows: readonly T[]): T[] => rows.map((r) => structuredClone(r));
+  const rows = <T>(data: T[]): ADatabaseAnswer<T[]> => ({ data, error: null, status: 200 });
+  /** One row asked for: it, else the local database's words for a single row's read that matched none. */
+  const oneRow = <T>(found: T | undefined): ADatabaseAnswer<T> =>
+    found === undefined ? noSuchRow() : { data: structuredClone(found), error: null, status: 200 };
+  /** The realms of the account `account`, noting a read that asks for another's. */
+  const realmsOf = (name: string, account: string): ARealm[] => {
+    if (account !== world.me) world.readsOfAnotherAccountsRealms.push(name);
+    return copies(world.realms.filter((r) => r.user_id === account));
+  };
+  const gamesAmong = (ids: readonly string[]): AGame[] => copies(world.games.filter((g) => ids.includes(g.id)));
+  const gameOf = (id: string): AGame | undefined => world.games.find((g) => g.id === id);
+  /** A realm's setup in a game still in setup (its turn report's playerSetup), as get_game_slots reads it. */
+  const alignmentInSetup = (realm: ARealm): string | null => {
+    let report: unknown = realm.turn_report;
+    if (typeof report === 'string') {
+      try {
+        report = JSON.parse(report);
+      } catch {
+        report = null;
+      }
+    }
+    const setup: unknown = typeof report === 'object' && report !== null ? Reflect.get(report, 'playerSetup') : null;
+    const alignment: unknown = typeof setup === 'object' && setup !== null ? Reflect.get(setup, 'alignment') : null;
+    return typeof alignment === 'string' && alignment !== '' ? alignment : null;
+  };
+  const db: Db = {
+    ...fake.db,
+    signingIn: {
+      ...fake.db.signingIn,
+      theSessionKeptInThisBrowser: answering('auth:getSession', () => ({
+        data: { session: world.me === null ? null : { user: { id: world.me, user_metadata: {} } } },
+        error: null,
+      })),
+    },
+    theAccountsNames: {
+      ...fake.db.theAccountsNames,
+      theNamesOfTheseAccounts: answering('from:profiles', (ids: readonly string[]) =>
+        rows(copies(world.names.filter((n) => ids.includes(n.id)))),
+      ),
+      theNameOfThisAccount: answering('from:profiles', (id: string) => oneRow(world.names.find((n) => n.id === id))),
+    },
+    thePlayersRealms: {
+      thisAccountsRealmsAndTheirOrdersFlags: answering('from:game_players', (account: string) =>
+        rows(realmsOf('thisAccountsRealmsAndTheirOrdersFlags', account)),
+      ),
+      everyRealmOfThisAccount: answering('from:game_players', (account: string) =>
+        rows(realmsOf('everyRealmOfThisAccount', account)),
+      ),
+      theGamesOfThisAccountsRealms: answering('from:game_players', (account: string) =>
+        rows(realmsOf('theGamesOfThisAccountsRealms', account)),
+      ),
+      thisAccountsRealmsInThisGame: answering('from:game_players', (game: string, account: string) =>
+        rows(realmsOf('thisAccountsRealmsInThisGame', account).filter((r) => r.game_id === game)),
+      ),
+      thisRealm: answering('from:game_players', (id: string) => {
+        const realm = world.realms.find((r) => r.id === id);
+        if (realm !== undefined && realm.user_id !== world.me) world.readsOfAnotherAccountsRealms.push('thisRealm');
+        return oneRow(realm);
+      }),
+      joinWithThisRealm: answering(
+        'from:game_players',
+        (realm: Parameters<Db['thePlayersRealms']['joinWithThisRealm']>[0]) => {
+          // the unique indexes game_players_one_per_number (P0-20) and game_players_one_per_user
+          const inTheGame = world.realms.filter((r) => r.game_id === realm.game_id);
+          const clash = inTheGame.some((r) => r.player_index === realm.player_index)
+            ? 'game_players_one_per_number'
+            : realm.user_id != null && inTheGame.some((r) => r.user_id === realm.user_id)
+              ? 'game_players_one_per_user'
+              : null;
+          if (clash !== null)
+            return {
+              data: null,
+              error: { message: `duplicate key value violates unique constraint "${clash}"` },
+              status: 409,
+            };
+          const made: ARealm = {
+            id: realm.id ?? `realm-${String(world.realms.length)}`,
+            game_id: realm.game_id,
+            user_id: realm.user_id ?? null,
+            player_index: realm.player_index,
+            display_name: realm.display_name,
+            orders_submitted: realm.orders_submitted ?? false,
+            turn_report: realm.turn_report ?? null,
+            orders: realm.orders ?? null,
+            created_at: realm.created_at ?? null,
+            invite_code: realm.invite_code ?? null,
+            last_submitted_at: realm.last_submitted_at ?? null,
+          };
+          world.realms.push(made);
+          return { data: structuredClone(made), error: null, status: 201 };
+        },
+      ),
+      theSlotsOfTheseGames: answering('rpc:get_game_slots', (games: string[]) =>
+        rows(
+          world.realms
+            .filter((r) => games.includes(r.game_id) && gameOf(r.game_id) !== undefined)
+            .map((r): ARealmsSlot => ({
+              game_id: r.game_id,
+              player_index: r.player_index,
+              is_bot: r.user_id === null,
+              orders_submitted: r.orders_submitted,
+              // the database answers null where the fake answers '': the generated types write a function's
+              // columns as never null, and the page reads the alignment only through filter(Boolean)
+              alignment: (gameOf(r.game_id)?.status === 'setup' ? alignmentInSetup(r) : null) ?? '',
+            })),
+        ),
+      ),
+    },
+    thePlayersGames: {
+      ...fake.db.thePlayersGames,
+      theTurnAndStateOfTheseGames: answering('from:games', (ids: readonly string[]) => rows(gamesAmong(ids))),
+      theseGamesForTheirCards: answering('from:games', (ids: readonly string[]) => rows(gamesAmong(ids))),
+      theseGamesEveryColumn: answering('from:games', (ids: readonly string[]) => rows(gamesAmong(ids))),
+      theGamesInSetup: answering('from:games', () => rows(copies(world.games.filter((g) => g.status === 'setup')))),
+      thisGamesWorldAndState: answering('from:games', (id: string) => oneRow(gameOf(id))),
+      thisGameForItsReport: answering('from:games', (id: string) => oneRow(gameOf(id))),
+      thisGameEveryColumn: answering('from:games', (id: string) => oneRow(gameOf(id))),
+    },
+    theDispatches: {
+      ...fake.db.theDispatches,
+      sendThisDispatch: answering('from:game_messages', () =>
+        world.dispatchRefused === null
+          ? { data: null, error: null, status: 201 }
+          : { data: null, error: world.dispatchRefused, status: 400 },
+      ),
     },
   };
   return { db, calls };
