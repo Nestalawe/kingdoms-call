@@ -158,6 +158,8 @@ beforeAll(async () => {
         entries: [{ text: theLogsWords(turn, realm) }],
       })),
     ),
+    // a second of turn 1's realm 1 (nothing makes a log unique): the chronicle reads one
+    { game_id: world.theGame, turn: 1, player_index: 1, entries: [{ text: theLogsWords(1, 1) }] },
     { game_id: world.theOtherGMsGame, turn: 2, player_index: 0, entries: [{ text: theLogsWords(2, 0) }] },
   ]);
   if (logs.error) throw new Error(`making the logs: ${logs.error.message}`);
