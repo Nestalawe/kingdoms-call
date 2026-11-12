@@ -110,6 +110,60 @@ export type ARealmsName = Pick<
   'game_id' | 'player_index' | 'display_name'
 >;
 
+/** A table's row, its new row and its change, as the generated types give them. */
+type ARow<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+type ANewRow<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
+type AChange<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];
+
+/** A Hall of Fame entry (game_records): one finished game's row, as the GM page built it. */
+export type AHallOfFameEntry = ARow<'game_records'>;
+
+/** A Hall of Fame entry's notes a Game Master keeps when the entry is built again. */
+export type AHallOfFameEntrysGameMasterNotes = Pick<ARow<'game_records'>, 'note' | 'hidden' | 'game_name'>;
+
+/** A realm's result in a finished game (game_results). */
+export type AGameResult = ARow<'game_results'>;
+
+/** A realm's turn, as a Hall of Fame entry reads it from the statistics (turn_events). */
+export type ATurnRecordForTheHallOfFame = Pick<
+  ARow<'turn_events'>,
+  'turn' | 'player_index' | 'is_bot' | 'realm' | 'race' | 'alignment' | 'post' | 'outcomes'
+>;
+
+/** A realm's turn, as the Stats tab reads it (turn_events). */
+export type ATurnRecordForTheStatsTab = Pick<
+  ARow<'turn_events'>,
+  | 'game_id'
+  | 'turn'
+  | 'player_index'
+  | 'is_bot'
+  | 'bot_difficulty'
+  | 'realm'
+  | 'race'
+  | 'alignment'
+  | 'orders'
+  | 'pre'
+  | 'post'
+  | 'outcomes'
+>;
+
+/** A game, with its world and its realms, as a Hall of Fame entry is built from it. */
+export type AGameForItsHallOfFameEntry = Pick<
+  ARow<'games'>,
+  'id' | 'name' | 'gm_user_id' | 'created_at' | 'max_turns' | 'meta' | 'game_state'
+> & {
+  readonly game_players: Pick<ARow<'game_players'>, 'id' | 'player_index' | 'user_id' | 'display_name'>[];
+};
+
+/** A finished game, as the Hall of Fame's rebuild lists it: its light columns, never the world. */
+export type AFinishedGameForTheHallOfFame = Pick<
+  ARow<'games'>,
+  'id' | 'name' | 'gm_user_id' | 'created_at' | 'max_turns' | 'meta'
+>;
+
+/** A game's name, state and turn, as the Stats tab names it. */
+export type AGamesNameStatusAndTurn = Pick<ARow<'games'>, 'id' | 'name' | 'status' | 'turn'>;
+
 /** The database, as the pages reach it: one area a row of P1-17. */
 export interface Db {
   /** The version guard's (src/db/kc-db-guard.ts, P0-34). */
@@ -195,6 +249,94 @@ export interface Db {
     /** The names of the realms of the games `games`, as the signed-in account may read them. */
     readonly theRealmsNamesOfTheseGames: (games: readonly string[]) => PromiseLike<ADatabaseAnswer<ARealmsName[]>>;
   };
+  /** The Hall of Fame (game_records: one entry a finished game, built by the GM page; the leaderboard reads it). */
+  readonly theHallOfFame: {
+    /** One entry's game, if any: the probe that the table is there. */
+    readonly oneEntrysGame: () => PromiseLike<ADatabaseAnswer<Pick<AHallOfFameEntry, 'game_id'>[]>>;
+    /** Every entry, the newest finished first, its rows `from` to `to` (both counted, from 0). */
+    readonly everyEntryNewestFinishedFirstFromRowToRow: (
+      from: number,
+      to: number,
+    ) => PromiseLike<ADatabaseAnswer<AHallOfFameEntry[]>>;
+    /** The game of every entry. */
+    readonly theGameOfEveryEntry: () => PromiseLike<ADatabaseAnswer<Pick<AHallOfFameEntry, 'game_id'>[]>>;
+    /** The Game Master's notes on the game `game`'s entry, if it has one. */
+    readonly theGameMastersNotesOnThisGamesEntry: (
+      game: string,
+    ) => PromiseLike<ADatabaseAnswer<AHallOfFameEntrysGameMasterNotes>>;
+    /** The entries `entries` written, each over its game's entry if there is one. */
+    readonly writeTheseEntries: (entries: readonly ANewRow<'game_records'>[]) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The game `game`'s entry changed by `change`. */
+    readonly changeThisGamesEntry: (
+      game: string,
+      change: AChange<'game_records'>,
+    ) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The game `game`'s entry deleted. */
+    readonly deleteThisGamesEntry: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The entries of the games `games` deleted. */
+    readonly deleteTheseGamesEntries: (games: readonly string[]) => PromiseLike<ADatabaseAnswer<null>>;
+    /** rename_player(): the person `user` (profiles.name, on every game they played) renamed `name`; the Overlord only. */
+    readonly renameThisPlayer: (user: string, name: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+  };
+  /** The statistics (turn_events: one row a realm a turn; game_results: one a realm a finished game). */
+  readonly theStatistics: {
+    /** One turn record's id: the probe that turn_events is there. */
+    readonly oneTurnRecordsId: () => PromiseLike<ADatabaseAnswer<Pick<ARow<'turn_events'>, 'id'>[]>>;
+    /** One game result's id: the probe that game_results is there. */
+    readonly oneGameResultsId: () => PromiseLike<ADatabaseAnswer<Pick<AGameResult, 'id'>[]>>;
+    /** The game `game`'s results. */
+    readonly theResultsOfThisGame: (game: string) => PromiseLike<ADatabaseAnswer<AGameResult[]>>;
+    /** The game `game`'s turn records, as its Hall of Fame entry reads them, by turn and realm, its rows `from` to
+     *  `to`. */
+    readonly thisGamesTurnRecordsForItsEntryFromRowToRow: (
+      game: string,
+      from: number,
+      to: number,
+    ) => PromiseLike<ADatabaseAnswer<ATurnRecordForTheHallOfFame[]>>;
+    /** The game of every result, by game and realm, its rows `from` to `to`. */
+    readonly theGameOfEveryResultFromRowToRow: (
+      from: number,
+      to: number,
+    ) => PromiseLike<ADatabaseAnswer<Pick<AGameResult, 'game_id'>[]>>;
+    /** Every turn record, as the Stats tab reads it, by game, turn and realm, its rows `from` to `to`. */
+    readonly everyTurnRecordFromRowToRow: (
+      from: number,
+      to: number,
+    ) => PromiseLike<ADatabaseAnswer<ATurnRecordForTheStatsTab[]>>;
+    /** Every game result, its rows `from` to `to`. */
+    readonly everyResultFromRowToRow: (from: number, to: number) => PromiseLike<ADatabaseAnswer<AGameResult[]>>;
+    /** The game `game`'s results deleted. */
+    readonly deleteThisGamesResults: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The game `game`'s turn records deleted. */
+    readonly deleteThisGamesTurnRecords: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The results of the games `games` deleted. */
+    readonly deleteTheseGamesResults: (games: readonly string[]) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The turn records of the games `games` deleted. */
+    readonly deleteTheseGamesTurnRecords: (games: readonly string[]) => PromiseLike<ADatabaseAnswer<null>>;
+  };
+  /** The games, as the Hall of Fame and the statistics read them. */
+  readonly theHallOfFamesGames: {
+    /** One game the Game Master `gameMaster` runs, if any (the leaderboard's GM editing). */
+    readonly oneGameThisGameMasterRuns: (
+      gameMaster: string,
+    ) => PromiseLike<ADatabaseAnswer<Pick<ARow<'games'>, 'id'>[]>>;
+    /** The game `game`, with its world and its realms, if the signed-in account may read it. */
+    readonly thisGameWithItsWorldAndRealms: (game: string) => PromiseLike<ADatabaseAnswer<AGameForItsHallOfFameEntry>>;
+    /** The finished games the Game Master `gameMaster` runs. */
+    readonly theFinishedGamesThisGameMasterRuns: (
+      gameMaster: string,
+    ) => PromiseLike<ADatabaseAnswer<AFinishedGameForTheHallOfFame[]>>;
+    /** Every game the signed-in account may read: its name, state and turn. */
+    readonly everyGamesNameStatusAndTurn: () => PromiseLike<ADatabaseAnswer<AGamesNameStatusAndTurn[]>>;
+    /** The games the Game Master `gameMaster` runs: their names, states and turns. */
+    readonly theNameStatusAndTurnOfTheGamesThisGameMasterRuns: (
+      gameMaster: string,
+    ) => PromiseLike<ADatabaseAnswer<AGamesNameStatusAndTurn[]>>;
+    /** Which of the games `games` still exist (as the signed-in account may read them). */
+    readonly whichOfTheseGamesStillExist: (
+      games: readonly string[],
+    ) => PromiseLike<ADatabaseAnswer<Pick<ARow<'games'>, 'id'>[]>>;
+  };
 }
 
 /** The page's Db, on its own client: each function sends the query the page sent on that client before. */
@@ -247,6 +389,69 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
         client.rpc('reassign_game', { p_game: game, p_new_gm: gameMaster }),
       theRealmsNamesOfTheseGames: (games) =>
         client.from('game_players').select('game_id,player_index,display_name').in('game_id', games),
+    },
+    theHallOfFame: {
+      oneEntrysGame: () => client.from('game_records').select('game_id').limit(1),
+      everyEntryNewestFinishedFirstFromRowToRow: (from, to) =>
+        client.from('game_records').select('*').order('finished_at', { ascending: false }).range(from, to),
+      theGameOfEveryEntry: () => client.from('game_records').select('game_id'),
+      theGameMastersNotesOnThisGamesEntry: (game) =>
+        client.from('game_records').select('note,hidden,game_name').eq('game_id', game).maybeSingle(),
+      writeTheseEntries: (entries) => client.from('game_records').upsert([...entries], { onConflict: 'game_id' }),
+      changeThisGamesEntry: (game, change) => client.from('game_records').update(change).eq('game_id', game),
+      deleteThisGamesEntry: (game) => client.from('game_records').delete().eq('game_id', game),
+      deleteTheseGamesEntries: (games) => client.from('game_records').delete().in('game_id', games),
+      renameThisPlayer: (user, name) => client.rpc('rename_player', { p_user: user, p_name: name }),
+    },
+    theStatistics: {
+      oneTurnRecordsId: () => client.from('turn_events').select('id').limit(1),
+      oneGameResultsId: () => client.from('game_results').select('id').limit(1),
+      theResultsOfThisGame: (game) => client.from('game_results').select('*').eq('game_id', game),
+      thisGamesTurnRecordsForItsEntryFromRowToRow: (game, from, to) =>
+        client
+          .from('turn_events')
+          .select('turn,player_index,is_bot,realm,race,alignment,post,outcomes')
+          .eq('game_id', game)
+          .order('turn')
+          .order('player_index')
+          .range(from, to),
+      theGameOfEveryResultFromRowToRow: (from, to) =>
+        client.from('game_results').select('game_id').order('game_id').order('player_index').range(from, to),
+      everyTurnRecordFromRowToRow: (from, to) =>
+        client
+          .from('turn_events')
+          .select('game_id,turn,player_index,is_bot,bot_difficulty,realm,race,alignment,orders,pre,post,outcomes')
+          .order('game_id')
+          .order('turn')
+          .order('player_index')
+          .range(from, to),
+      everyResultFromRowToRow: (from, to) => client.from('game_results').select('*').range(from, to),
+      deleteThisGamesResults: (game) => client.from('game_results').delete().eq('game_id', game),
+      deleteThisGamesTurnRecords: (game) => client.from('turn_events').delete().eq('game_id', game),
+      deleteTheseGamesResults: (games) => client.from('game_results').delete().in('game_id', games),
+      deleteTheseGamesTurnRecords: (games) => client.from('turn_events').delete().in('game_id', games),
+    },
+    theHallOfFamesGames: {
+      oneGameThisGameMasterRuns: (gameMaster) =>
+        client.from('games').select('id').eq('gm_user_id', gameMaster).limit(1),
+      thisGameWithItsWorldAndRealms: (game) =>
+        client
+          .from('games')
+          .select(
+            'id,name,gm_user_id,created_at,max_turns,meta,game_state,game_players(id,player_index,user_id,display_name)',
+          )
+          .eq('id', game)
+          .maybeSingle(),
+      theFinishedGamesThisGameMasterRuns: (gameMaster) =>
+        client
+          .from('games')
+          .select('id,name,gm_user_id,created_at,max_turns,meta')
+          .eq('gm_user_id', gameMaster)
+          .eq('status', 'complete'),
+      everyGamesNameStatusAndTurn: () => client.from('games').select('id,name,status,turn'),
+      theNameStatusAndTurnOfTheGamesThisGameMasterRuns: (gameMaster) =>
+        client.from('games').select('id,name,status,turn').eq('gm_user_id', gameMaster),
+      whichOfTheseGamesStillExist: (games) => client.from('games').select('id').in('id', games),
     },
   };
 }

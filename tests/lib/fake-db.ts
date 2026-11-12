@@ -3,7 +3,8 @@
 // (bootJsdom's opts.db, tests/lib/boot.js); a unit test calls code that takes a Db with it. It doesn't imitate the
 // access rules: the access layer's tests prove those against the local database. Each of P1-17's area rows adds its
 // area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
-// role and no offer; and no game. The Overlord's functions refuse, as the database refuses anyone but the Overlord.
+// role and no offer; and no game, so no Hall of Fame entry and no statistics (a new entry refused, a change or deletion
+// matching nothing). The Overlord's functions refuse, as the database refuses anyone but the Overlord.
 import type { ADatabaseAnswer, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 
 /** No answer at all (the network), as an answer the fake gives. */
@@ -41,6 +42,17 @@ const refusedAsNotTheOverlord = (message: string): ADatabaseAnswer<never> => ({
   data: null,
   error: { message },
   status: 400,
+});
+
+/** No rows: the fake holds no game, so no entry, record or result. */
+const none = (): ADatabaseAnswer<never[]> => ({ data: [], error: null, status: 200 });
+/** A change or deletion that matched no row (the database answers no error). */
+const nothingMatched = (): ADatabaseAnswer<null> => ({ data: null, error: null, status: 204 });
+/** A new row the access rules refuse (no one signed in), in the database's words. */
+const refusedByTheAccessRules = (table: string): ADatabaseAnswer<null> => ({
+  data: null,
+  error: { message: `new row violates row-level security policy for table "${table}"` },
+  status: 401,
 });
 
 /** A fake database answering kc_db_version() with `versions` in order, the last one again from then on. */
@@ -149,6 +161,44 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
         refusedAsNotTheOverlord('Only the Overlord can hand a game over.'),
       ),
       theRealmsNamesOfTheseGames: answering('from:game_players', () => ({ data: [], error: null, status: 200 })),
+    },
+    theHallOfFame: {
+      oneEntrysGame: answering('from:game_records', none),
+      everyEntryNewestFinishedFirstFromRowToRow: answering('from:game_records', none),
+      theGameOfEveryEntry: answering('from:game_records', none),
+      theGameMastersNotesOnThisGamesEntry: answering('from:game_records', () => ({
+        data: null,
+        error: null,
+        status: 200,
+      })),
+      writeTheseEntries: answering('from:game_records', () => refusedByTheAccessRules('game_records')),
+      changeThisGamesEntry: answering('from:game_records', nothingMatched),
+      deleteThisGamesEntry: answering('from:game_records', nothingMatched),
+      deleteTheseGamesEntries: answering('from:game_records', nothingMatched),
+      renameThisPlayer: answering('rpc:rename_player', () =>
+        refusedAsNotTheOverlord('Only the Overlord renames players.'),
+      ),
+    },
+    theStatistics: {
+      oneTurnRecordsId: answering('from:turn_events', none),
+      oneGameResultsId: answering('from:game_results', none),
+      theResultsOfThisGame: answering('from:game_results', none),
+      thisGamesTurnRecordsForItsEntryFromRowToRow: answering('from:turn_events', none),
+      theGameOfEveryResultFromRowToRow: answering('from:game_results', none),
+      everyTurnRecordFromRowToRow: answering('from:turn_events', none),
+      everyResultFromRowToRow: answering('from:game_results', none),
+      deleteThisGamesResults: answering('from:game_results', nothingMatched),
+      deleteThisGamesTurnRecords: answering('from:turn_events', nothingMatched),
+      deleteTheseGamesResults: answering('from:game_results', nothingMatched),
+      deleteTheseGamesTurnRecords: answering('from:turn_events', nothingMatched),
+    },
+    theHallOfFamesGames: {
+      oneGameThisGameMasterRuns: answering('from:games', none),
+      thisGameWithItsWorldAndRealms: answering('from:games', () => ({ data: null, error: null, status: 200 })),
+      theFinishedGamesThisGameMasterRuns: answering('from:games', none),
+      everyGamesNameStatusAndTurn: answering('from:games', none),
+      theNameStatusAndTurnOfTheGamesThisGameMasterRuns: answering('from:games', none),
+      whichOfTheseGamesStillExist: answering('from:games', none),
     },
   };
   return { db, calls };

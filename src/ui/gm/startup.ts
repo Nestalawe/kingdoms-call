@@ -2,7 +2,7 @@
 import { thisPagesBuild } from '../shared/a-newer-version-of-this-page.ts';
 import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { computeStandings } from '../../engine/titles/reckoning.ts';
-import { sb } from './config.ts';
+import { sb, thePagesDb } from './config.ts';
 import { kcHtml } from '../shared/kc-safe.ts';
 
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
@@ -148,8 +148,8 @@ globalThis._kcHasTel = false;
 globalThis._kcTelLastErr = null;
 export async function probeTelemetry() {
   try {
-    const a = await sb.from('turn_events').select('id').limit(1);
-    const b = await sb.from('game_results').select('id').limit(1);
+    const a = await thePagesDb.theStatistics.oneTurnRecordsId();
+    const b = await thePagesDb.theStatistics.oneGameResultsId();
     _kcHasTel = !a.error && !b.error;
     if (a.error) console.warn('turn_events probe:', a.error.message);
     if (b.error) console.warn('game_results probe:', b.error.message);

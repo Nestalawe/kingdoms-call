@@ -3,7 +3,7 @@ import { kcHtml } from '../shared/kc-safe.ts';
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { KC_BUILD_STAMP } from './startup.ts';
 import { ARMY_COST_MASTER } from '../../engine/army-tables.ts';
-import { sb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
 import { fortuneWinChance } from '../../engine/rules-on-plain-values/the-fortune-of-a-battle-its-curve-and-the-win-chance-it-gives.ts';
 import { KC_TEL_V } from './startup.ts';
@@ -63,30 +63,22 @@ export async function openStats(force) {
     try {
       const rows = [];
       for (let from = 0; ; from += 1000) {
-        const { data, error } = await sb
-          .from('turn_events')
-          .select('game_id,turn,player_index,is_bot,bot_difficulty,realm,race,alignment,orders,pre,post,outcomes')
-          .order('game_id')
-          .order('turn')
-          .order('player_index')
-          .range(from, from + 999);
+        const { data, error } = await thePagesDb.theStatistics.everyTurnRecordFromRowToRow(from, from + 999);
         if (error) throw error;
         rows.push(...(data || []));
         if (!data || data.length < 1000) break;
       }
       const res = [];
       for (let from = 0; ; from += 1000) {
-        const { data, error } = await sb
-          .from('game_results')
-          .select('*')
-          .range(from, from + 999);
+        const { data, error } = await thePagesDb.theStatistics.everyResultFromRowToRow(from, from + 999);
         if (error) throw error;
         res.push(...(data || []));
         if (!data || data.length < 1000) break;
       }
-      let _gq = sb.from('games').select('id,name,status,turn');
-      if (!_kcOverlord) _gq = _gq.eq('gm_user_id', currentUser.id); // Master GM mode: every game's name (P0-32g, D-09)
-      const { data: games } = await _gq;
+      // Master GM mode: every game's name (P0-32g, D-09)
+      const { data: games } = await (_kcOverlord
+        ? thePagesDb.theHallOfFamesGames.everyGamesNameStatusAndTurn()
+        : thePagesDb.theHallOfFamesGames.theNameStatusAndTurnOfTheGamesThisGameMasterRuns(currentUser.id));
       _stats.rows = rows.map((r) => ({
         ...r,
         orders: _statsJ(r.orders),
@@ -897,10 +889,9 @@ export async function forgetDeletedGames() {
   const recorded = [...new Set([..._stats.rows.map((r) => r.game_id), ..._stats.results.map((r) => r.game_id)])];
   const live = new Set();
   for (let i = 0; i < recorded.length; i += 100) {
-    const { data, error } = await sb
-      .from('games')
-      .select('id')
-      .in('id', recorded.slice(i, i + 100));
+    const { data, error } = await thePagesDb.theHallOfFamesGames.whichOfTheseGamesStillExist(
+      recorded.slice(i, i + 100),
+    );
     if (error) {
       alert('Could not check which games still exist: ' + error.message + '. Nothing was deleted.');
       return;
@@ -918,8 +909,8 @@ export async function forgetDeletedGames() {
     )
   )
     return;
-  await sb.from('turn_events').delete().in('game_id', gone);
-  await sb.from('game_results').delete().in('game_id', gone);
-  if (_kcHasLb) await sb.from('game_records').delete().in('game_id', gone); // and their Hall-of-Fame rows
+  await thePagesDb.theStatistics.deleteTheseGamesTurnRecords(gone);
+  await thePagesDb.theStatistics.deleteTheseGamesResults(gone);
+  if (_kcHasLb) await thePagesDb.theHallOfFame.deleteTheseGamesEntries(gone); // and their Hall-of-Fame rows
   openStats(true);
 }

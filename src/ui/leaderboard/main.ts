@@ -346,7 +346,7 @@ export async function loadAll(force) {
   if (ME && new URLSearchParams(location.search).get('gm') === '1') {
     try {
       const [{ data }, ov] = await Promise.all([
-        sb.from('games').select('id').eq('gm_user_id', ME.id).limit(1),
+        thePagesDb.theHallOfFamesGames.oneGameThisGameMasterRuns(ME.id),
         thePagesDb.theRoles.isTheSignedInAccountTheOverlord(),
       ]);
       OVERLORD = !!(ov && !ov.error && ov.data === true);
@@ -362,11 +362,10 @@ export async function loadAll(force) {
   const rows = [];
   try {
     for (let from = 0; ; from += 200) {
-      const { data, error } = await sb
-        .from('game_records')
-        .select('*')
-        .order('finished_at', { ascending: false })
-        .range(from, from + 199);
+      const { data, error } = await thePagesDb.theHallOfFame.everyEntryNewestFinishedFirstFromRowToRow(
+        from,
+        from + 199,
+      );
       if (error) throw error;
       rows.push(...(data || []));
       if (!data || data.length < 200) break;
@@ -927,7 +926,7 @@ export async function saveGame(id) {
     date = $('e-date-' + id).value;
   const patch = { game_name: name || null, note: note || null };
   if (date) patch.finished_at = new Date(date + 'T12:00:00').toISOString();
-  const { error } = await sb.from('game_records').update(patch).eq('game_id', id);
+  const { error } = await thePagesDb.theHallOfFame.changeThisGamesEntry(id, patch);
   if (error) {
     msg.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
     return;
@@ -938,7 +937,7 @@ export async function saveGame(id) {
   setTimeout(() => render(), 500);
 }
 export async function setHidden(id, hide) {
-  const { error } = await sb.from('game_records').update({ hidden: hide }).eq('game_id', id);
+  const { error } = await thePagesDb.theHallOfFame.changeThisGamesEntry(id, { hidden: hide });
   if (error) {
     alert(error.message);
     return;
@@ -964,7 +963,7 @@ export async function renamePlayer(uid) {
     if (msg) msg.innerHTML = '<div class="msg-warning">A player needs a name — nothing changed.</div>';
     return;
   }
-  const { error } = await sb.rpc('rename_player', { p_user: uid, p_name: t });
+  const { error } = await thePagesDb.theHallOfFame.renameThisPlayer(uid, t);
   if (error) {
     if (msg)
       msg.innerHTML = kcHtml`<div class="msg-error"><strong>Could not rename that player.</strong> ${error.message}</div>`;
@@ -983,12 +982,12 @@ export async function deleteRecord(id, purge) {
     : `Remove “${nm}” from the Hall of Fame? Its recorded turns are kept, so the GM portal can rebuild the entry later.`;
   if (!confirm(q)) return;
   let err = null;
-  const r1 = await sb.from('game_records').delete().eq('game_id', id);
+  const r1 = await thePagesDb.theHallOfFame.deleteThisGamesEntry(id);
   err = err || r1.error;
   if (purge) {
-    const r2 = await sb.from('game_results').delete().eq('game_id', id);
+    const r2 = await thePagesDb.theStatistics.deleteThisGamesResults(id);
     err = err || r2.error;
-    const r3 = await sb.from('turn_events').delete().eq('game_id', id);
+    const r3 = await thePagesDb.theStatistics.deleteThisGamesTurnRecords(id);
     err = err || r3.error;
   }
   if (err) {
