@@ -23,6 +23,7 @@ import {
   botEnemyChars,
   botEnemyHostsIn,
   botFieldRecruitTokens,
+  botGarrisonOrder,
   botHexDist,
   botHomeId,
   botInContact,
@@ -195,6 +196,25 @@ export function botSafeStep(G, pi, P, awayFrom) {
     if (!best || sc > best.sc) best = { N, i, sc };
   }
   return best;
+}
+// GARRISON LEVY (bot improvements, step 4): what a character leaving province P of ours raises into its garrison as he
+// goes, under the emergency levy past the wage ceiling: the field companies P recruits, else its garrison companies.
+export function botGarrisonLevy(G, pi, c, P, L) {
+  if (!P || P.owner !== pi || !(P.armyTypes || []).length) return null;
+  const _cap0 = L.upkeepCap;
+  L.upkeepCap = Math.max(_cap0 * BOT_P1.levyCap, (L.upkeep || 0) + BOT_P1.levyWages);
+  try {
+    const toks = botFieldRecruitTokens(G, pi, c, P, L).filter((t) => !BOT_SEA_ALL.has(t.split('|')[0]));
+    const ro = botRecruitOrder(toks, 'garrison');
+    if (ro) {
+      ro.desc = 'Raise the garrison of ' + P.name + ' (' + ro.desc.toLowerCase() + ', the enemy is at hand)';
+      return ro;
+    }
+    const go = botGarrisonOrder(G, pi, P, L);
+    return go ? { ...go, desc: go.desc + ' (the enemy is at hand)' } : null;
+  } finally {
+    L.upkeepCap = _cap0;
+  }
 }
 export function runBotPhaseOne(G, botIdxSet, stage) {
   const MUSTER = stage === 'muster';
@@ -384,6 +404,9 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           }
         }
         if (!danger) return;
+        // Bot improvements, step 4: leaving the capital or rich land of ours, he first raises its garrison in Spring
+        // (orders that don't move resolve before anyone marches), with the emergency levy; he leaves in the second phase.
+        const levy = valuable(P) ? botGarrisonLevy(G, pi, c, P, L) : null;
         if (((c.skills || {}).illusory || 0) >= 1 && !o.some((x) => x && x.target === 'Invisibility')) {
           o.unshift({
             action: 'cast_spell',
@@ -391,13 +414,17 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
             extra: '',
             desc: 'Cast Invisibility (evacuate: an enemy host is at hand)',
           });
+          if (levy) o.unshift(levy);
           o.length = 5;
           spring.add(c.id);
           return;
         }
         const st = botSafeStep(G, pi, P, P);
         if (!st) return;
-        const out = [botMoveOrder(st.i, 'Evacuate to ' + st.N.name + ' (an enemy host is at hand)')];
+        const out = [
+          ...(levy ? [levy] : []),
+          botMoveOrder(st.i, 'Evacuate to ' + st.N.name + ' (an enemy host is at hand)'),
+        ];
         while (out.length < 5) out.push(hold());
         G.turnOrders[c.id] = out;
         spring.add(c.id);

@@ -494,10 +494,12 @@ export function botGarrisonTarget(G, prov, pi) {
   // PROTOTYPE round 5 (Toby): under the bot switch (G.botLairHunting, KC_BOT_LAIRS=1) no bot recruits garrison
   // companies unless it has an ability that makes garrisons worth it (the Good kit's Shield and Yeomanry, or the Good
   // Grand Design). Off, the bots garrison as they do today, so a game without the switch plays as it did.
-  if (G.botLairHunting === true && protoAlignOf(G, pi) !== 'Good' && !gdActiveFor(G, pi, 'Good')) return 0;
+  // Bot improvements, step 4: the CAPITAL is held under the switch too. The hand-played games showed an empty capital
+  // falling to any host that walked in; the switch's rule now spares the rest of the realm's land only.
   const home = prov.id === botHomeId(G, pi);
   const attacked = botUnderAttack(G, pi);
   if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn
+  if (G.botLairHunting === true && protoAlignOf(G, pi) !== 'Good' && !gdActiveFor(G, pi, 'Good')) return 0;
   // PROTOTYPE tactics (Good): one company in every humanoid province, since the Shield makes it fight at ×1.5 (round 6
   // marched them at war; round 7 keeps them home: the Shield is a defence rule)
   if (kitTactics(G, pi) === 'Good' && !String(prov.race || '').startsWith('Primal') && !botSafeWindow(G)) return 1;
