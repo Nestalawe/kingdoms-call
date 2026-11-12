@@ -23,6 +23,11 @@ import {
 export function theValueOfAField(el: Element): unknown {
   return 'value' in el ? el.value : undefined;
 }
+/** The value of the page's field with the id `id`, as `document.getElementById(id)?.value` read it. */
+export function theValueOfThePagesField(id: string): unknown {
+  const el = document.getElementById(id);
+  return el ? theValueOfAField(el) : undefined;
+}
 
 // Get target value — handles both regular selects/inputs and recruit checkbox lists
 export function getOrderTarget(charId: unknown, ph: unknown): unknown {

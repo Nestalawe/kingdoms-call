@@ -77,6 +77,8 @@ export interface AHeroAsTheOrderFormBuildsHim extends AHeroAsThePreOrderCardsHol
   readonly alignment?: string | null | undefined;
   skills?: Partial<Record<string, number>> | null | undefined;
   _pendingSkillAllocation?: unknown;
+  /** The heir's skills as crowned (the order form snapshots them). */
+  readonly _heirBase?: Partial<Record<string, number>> | null | undefined;
 }
 /** The report as the order form holds it: its heroes (which it orders and filters), the order of them the engine kept,
  *  and the fallen the read-only view names. */

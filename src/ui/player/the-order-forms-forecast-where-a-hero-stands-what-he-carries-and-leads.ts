@@ -171,7 +171,7 @@ interface WhatAHeroAddsToAGarrison {
 /** A field's value as the page holds it, read for its words where the code splits or trims it, or hands it to a rule
  *  that does: words (an input's or a select's value is), handed back as they are; any other value throws the TypeError
  *  the old `.split`, `.trim` or `.startsWith` on it threw. */
-function theWordsAFieldHolds(value: unknown): string {
+export function theWordsAFieldHolds(value: unknown): string {
   if (typeof value === 'string') return value;
   throw new TypeError(`an order's field holds ${typeof value}, not words`);
 }

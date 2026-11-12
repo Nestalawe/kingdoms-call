@@ -120,6 +120,12 @@ function theOrdersHeldOrNone(held: unknown): unknown {
 export interface TheRealmsSeatAsThePageHoldsIt {
   readonly id?: string | null | undefined;
   orders?: unknown;
+  /** Its game (the game lists and Submit read it). */
+  readonly game_id?: string | undefined;
+  /** Whether its orders are in (Submit and Revise write it). */
+  orders_submitted?: boolean | undefined;
+  /** The game's live turn, which the report screen writes on it as it opens (the page's own mark). */
+  _liveTurn?: number | undefined;
 }
 
 // ── EVERY PROVINCE NAME IN THE REPORT IS A MAP LINK (2026-09-20, Toby) ── Rather than editing the

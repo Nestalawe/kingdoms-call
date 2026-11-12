@@ -25,7 +25,7 @@ import {
   getOrderTarget,
   predictedLocation,
   projectedLedArmies,
-  theValueOfAField,
+  theValueOfThePagesField,
 } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
 import {
   inWords,
@@ -92,11 +92,6 @@ export interface TheReportAsThePreOrderCardsHoldIt extends TheReportAsTheTargetF
   readonly visibleChars?: readonly AHeroTheCharmCardReads[] | null | undefined;
   readonly provinceOrderData?:
     Readonly<Partial<Record<string, AProvincesOrderDataAsTheHireCardReadsIt>>> | null | undefined;
-}
-/** The value of the page's field with the id `id`, as `document.getElementById(id)?.value` read it. */
-function theValueOfThePagesField(id: string): unknown {
-  const el = document.getElementById(id);
-  return el ? theValueOfAField(el) : undefined;
 }
 
 // ── ONCE-PER-TURN ORDERS (2026-09-24, Toby) ── The engine refuses a second use in one turn of any
