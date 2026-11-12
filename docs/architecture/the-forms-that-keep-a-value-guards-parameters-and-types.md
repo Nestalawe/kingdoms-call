@@ -11,7 +11,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A value guarded in one place and read unguarded in another** (a fight's narrative, a foe, a fighter's hero) keeps
   its type, and the guarded reads go through `asItsGuardReadsIt(value)` (in `rules-on-plain-values/`). A guard
   on a field the schema requires stays where an untyped caller may still leave it out; so does one on a field a database
-  function's generated type makes sure while its column may hold `null` (`gm_reported_messages`' `turn`).
+  function's generated type makes sure while its column may hold `null` (`gm_reported_messages`' `turn`): the callback
+  that reads it takes the row as its table holds it (`AReportedDispatchAsItsTablesHoldIt`).
 - **A `const` typed as a wide list is narrowed by its value** (`const l: readonly Army[] | null | undefined =
   hero.armies` is `Army[]`): type the object instead (`const h: AHeroAsEarlyWinterReadsHisArmies = hero`, his `armies`
   optional), or a callback's parameter; an object's optional field isn't narrowed away.

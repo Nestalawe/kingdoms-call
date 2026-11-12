@@ -6,7 +6,6 @@ import type {
   TheSignedInAccount,
 } from '../../db/the-db-interface-and-its-areas.ts';
 import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
-import { asItsGuardReadsIt } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -147,9 +146,7 @@ export async function doSignIn(): Promise<void> {
   }
   fill('auth-msg');
   ME =
-    asItsGuardReadsIt(data)?.user ??
-    (await thePagesDb.signingIn.theSessionKeptInThisBrowser()).data.session?.user ??
-    null;
+    theAccountSignedIn(data) ?? (await thePagesDb.signingIn.theSessionKeptInThisBrowser()).data.session?.user ?? null;
   if (ME) void onSignedIn();
 }
 export async function doSignOut(): Promise<void> {
@@ -179,6 +176,10 @@ export async function onSignedIn(): Promise<void> {
   await loadAll();
 }
 
+// The account a sign-in answered with, if it answered with one (the answer as the code guards it: none, or no account).
+function theAccountSignedIn(answer: { readonly user: TheSignedInAccount | null } | null): TheSignedInAccount | null {
+  return answer?.user ?? null;
+}
 // The signed-in account, for a step only a signed-in page takes; none: the TypeError a field read on it threw.
 function theSignedInAccount(): TheSignedInAccount {
   if (ME === null) throw new TypeError("Cannot read properties of null (reading 'email')");
@@ -700,6 +701,12 @@ export function renderGames(): void {
 }
 
 // ── REPORTED DISPATCHES ───────────────────────────────────────────────────────────────────────
+/** A reported dispatch, its turn and its realms as the dispatches' table holds them (the database function's generated
+ *  type makes both sure; the column may hold none). */
+type AReportedDispatchAsItsTablesHoldIt = Omit<AReportedDispatch, 'turn' | 'to_indexes'> & {
+  readonly turn: number | null;
+  readonly to_indexes: readonly number[] | null;
+};
 export function renderReports(): void {
   if (!REPORTS.length) {
     fill('reports', el('div', { class: 'muted' }, 'No dispatches reported.'));
@@ -709,7 +716,7 @@ export function renderReports(): void {
   const realm = (gid: string, i: number): string => (REALMS[gid]?.[i] ?? '') || 'Realm ' + String(i + 1);
   fill(
     'reports',
-    REPORTS.map((r) =>
+    REPORTS.map((r: AReportedDispatchAsItsTablesHoldIt) =>
       el(
         'div',
         { class: 'report', 'data-message': r.message_id },
@@ -718,13 +725,11 @@ export function renderReports(): void {
           { class: 'muted' },
           el('strong', null, gameName(r.game_id)),
           ' · ',
-          asItsGuardReadsIt(r.turn) != null ? `Turn ${String(r.turn)} · ` : '',
+          r.turn != null ? `Turn ${String(r.turn)} · ` : '',
           'from ',
           el('strong', null, realm(r.game_id, r.from_index)),
           ' to ',
-          r.scope === 'public'
-            ? 'every realm'
-            : (asItsGuardReadsIt(r.to_indexes) ?? []).map((i) => realm(r.game_id, i)).join(', '),
+          r.scope === 'public' ? 'every realm' : (r.to_indexes ?? []).map((i) => realm(r.game_id, i)).join(', '),
           ' · reported by ',
           el('strong', null, realm(r.game_id, r.reporter_index)),
           r.reason ? [' · “', r.reason, '”'] : null,
@@ -739,7 +744,7 @@ export function renderReports(): void {
     ),
   );
 }
-export async function deleteDispatch(r: AReportedDispatch): Promise<void> {
+export async function deleteDispatch(r: Pick<AReportedDispatch, 'message_id'>): Promise<void> {
   if (!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
   const { error } = await thePagesDb.theDispatches.deleteThisDispatch(r.message_id);
   if (error) {
