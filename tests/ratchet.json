@@ -7,7 +7,7 @@
     "eslintDisable": 0,
     "stubDbTests": 54,
     "allowlistEntries": 1,
-    "javascriptFiles": 86,
+    "javascriptFiles": 85,
     "quarantinedTests": 4,
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 72,
@@ -17,7 +17,7 @@
     "discoveryChecksInEngine": 0,
     "guardianPerkChecksInEngine": 0,
     "alignmentOrderChecksInEngine": 0,
-    "eslintSuppressions": 506,
+    "eslintSuppressions": 365,
     "knownArchitectureViolations": 12,
     "unusedCode": 16
   }

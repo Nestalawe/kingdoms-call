@@ -24,7 +24,7 @@ const config = {
     'tests/lib/*.{js,ts}',
     'tests/balance/scenarios/*.ts',
   ],
-  project: ['src/**/*.ts', 'tools/**/*.ts', 'tests/**/*.{js,ts,mts}', '!tools/legacy/**', '!tests/quarantine/**'],
+  project: ['src/**/*.ts', 'tools/**/*.ts', 'tests/**/*.{js,ts,mts}', '!tests/quarantine/**'],
   ignore: ['tests/quarantine/**'],
   // The generated database types (src/db/database.types.ts: npx supabase gen types typescript --local; plan P1-17,
   // Decision 5) come with helper types no code uses yet; the file is never edited by hand, so its unused exports and

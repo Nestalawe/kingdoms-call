@@ -324,13 +324,13 @@ export function handlerNames(page: ScriptPage, src = SRC): Map<string, string[]>
 
 // ---- The tests' side
 
-/** The test and tool files that may reach a page: under tests/ and tools/, not the quarantine, the balance baselines,
- *  or tools/legacy/ (older content-export tools, not run). Relative to the repository. */
+/** The test and tool files that may reach a page: under tests/ and tools/, not the quarantine or
+ *  the balance baselines. Relative to the repository. */
 export function testAndToolFiles(root = ROOT): string[] {
   return ['tests', 'tools']
     .flatMap((dir) => filesUnder(path.join(root, dir)).map((f) => `${dir}/${f}`))
     .filter((f) => /\.[cm]?[jt]s$/.test(f) && !f.endsWith('.d.ts'))
-    .filter((f) => !/^(tests\/quarantine|tests\/balance\/baseline|tools\/legacy)\//.test(f));
+    .filter((f) => !/^(tests\/quarantine|tests\/balance\/baseline)\//.test(f));
 }
 
 const OPENS_A_PAGE = /\b(bootJsdom|bootScenario|JSDOM|playGame)\s*\(|\.goto\s*\(/;

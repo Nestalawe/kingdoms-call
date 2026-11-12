@@ -13,7 +13,7 @@
 // too, the page's own classic scripts' (KC_CONFIG from kc-config.js, supabase from supabase-js) and its declared
 // globals. ban-ts-comment: a file is left unchecked only with its reason. And no type assertion (`as`, but `as const`)
 // and no non-null assertion (`x!`), each a claim the compiler takes on trust (plan P1-10, Decision 2): a file passes
-// strict TypeScript with what it checks. The other JavaScript (tests' scripts, tools/legacy/) isn't linted yet: it
+// strict TypeScript with what it checks. The other JavaScript (the tests' scripts) isn't linted yet: it
 // becomes TypeScript in Phase 1.
 //
 // The engine runs on plain data (plan P1-13, Decision 7): src/engine/, src/views/, src/content/, src/shared/ and
