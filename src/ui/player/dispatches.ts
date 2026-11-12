@@ -1,5 +1,6 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
+import type { Json } from '../../db/database.types.ts';
+import type { ADispatch } from '../../db/the-db-interface-and-its-areas.ts';
 import { thePagesDb } from './startup.ts';
 import { _tintForDarkTooltip } from './map-symbols.ts';
 import { renderPlayerMap } from './map.ts';
@@ -48,23 +49,64 @@ export const MSG_MAX_LEN = 500; // the database refuses longer (P0-23, ruling D-
 export const MSG_PAGE = 400; // most recent dispatches loaded on entry; later ones arrive by id, and
 // anything older is fetched a page at a time by loadOlderMessages()
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
+/** A dispatch, as the panel holds it (`_msgRows`): as the database answers it. */
+export type TheDispatchAsThePanelHoldsIt = ADispatch;
+/** A realm the panel knows (`_msgRealms`): a met realm, named from the report, and this realm itself. */
+export interface ARealmAsTheDispatchesKnowIt {
+  readonly index: number;
+  readonly name: string;
+  readonly color: string | null;
+  readonly alignment?: string | null;
+  readonly conceded: boolean;
+  readonly eliminated: boolean;
+  readonly relation?: string;
+  readonly human: boolean;
+  readonly met: boolean;
+  readonly mine?: boolean;
+}
+/** A realm the report names as met (`diplomacy.known`). */
+interface ARealmTheReportNames {
+  readonly index?: unknown;
+  readonly name?: string | null;
+  readonly color?: string | null;
+  readonly alignment?: string | null;
+  readonly conceded?: unknown;
+  readonly eliminated?: unknown;
+  readonly relation?: string | null;
+}
+/** The report, as the dispatches read it: who this realm is, whom it has met, and whether the game is over. */
+export interface TheReportAsTheDispatchesReadIt {
+  readonly playerName?: string | null;
+  readonly kingdom?: {
+    readonly color?: string | null;
+    readonly conceded?: unknown;
+    readonly eliminated?: unknown;
+  } | null;
+  readonly diplomacy?: { readonly known?: readonly ARealmTheReportNames[] | null } | null;
+  readonly titles?: { readonly gameOver?: unknown } | null;
+}
+/** The game, as the dispatches read it: whether it is over, and the GM's switch. */
+export interface TheGameAsTheDispatchesReadIt {
+  readonly status?: string | null;
+  readonly block_eliminated_msgs?: unknown;
+}
 globalThis._msgGameId = null;
 globalThis._msgMyIndex = null;
 export let _msgMyName = '',
-  _msgMyColor = null;
+  _msgMyColor: string | null = null;
 globalThis._msgRows = [];
-export let _msgIds = new Set(),
+export let _msgIds = new Set<number>(),
   _msgMaxId = 0,
   _msgMinId = 0;
 globalThis._msgMoreOlder = false;
 globalThis._msgLoadingOlder = false;
-export let _msgReported = new Set(); // ids of dispatches this player has reported (P0-24), as strings
-export let _msgReads = {}; // channelKey -> highest message id this realm has seen
+export let _msgReported = new Set<string>(); // ids of dispatches this player has reported (P0-24), as strings
+export let _msgReads: Record<string, Json | undefined> = {}; // channelKey -> highest message id this realm has seen
 // Declared globals (plan P1-09b): one binding the page's files and its tests share (ui/player/globals.ts says why).
 globalThis._msgRealms = {}; // realm index -> {index,name,color,human,met,conceded,eliminated}
 globalThis._msgChannel = 'public';
-export let _msgExtraGroups = []; // conference channels opened this session that carry no messages yet
-export let _msgTimer = null,
+export let _msgExtraGroups: string[] = []; // conference channels opened this session that carry no messages yet
+export let _msgTimer: ReturnType<typeof setInterval> | null = null,
   _msgTick = 0,
   _msgBusy = false,
   _msgSending = false;
@@ -72,87 +114,109 @@ export let _msgTimer = null,
 globalThis._msgTableOk = null; // null = not probed, false = the SQL has not been run
 globalThis._msgErr = null;
 export let _msgReadsDirty = false,
-  _msgReadSaveTimer = null;
+  _msgReadSaveTimer: ReturnType<typeof setTimeout> | null = null;
 // R-075 (P0-25): what this realm may send. _msgOut: null, 'conceded' or 'eliminated' (its dynasty extinguished), from
 // its own turn report. _msgGameOver: the game has ended. _msgBlockOut: the GM's switch (games.block_eliminated_msgs).
 globalThis._msgOut = null;
 export let _msgGameOver = false;
 globalThis._msgBlockOut = false;
 
-export function _msgNum(v) {
+export function _msgNum(v: unknown) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
-export function _msgArr(v) {
+export function _msgArr<Item>(v: readonly Item[] | null | undefined): readonly Item[];
+export function _msgArr(v: unknown): readonly unknown[];
+export function _msgArr(v: unknown): readonly unknown[] {
   return Array.isArray(v) ? v : [];
+}
+// What was thrown (a database's refusal, or an error), in words: its message, else itself.
+function theWordsOfWhatTheDispatchesMet(e: unknown): string {
+  let words: unknown = e;
+  if (e) {
+    const message: unknown = Reflect.get(Object(e), 'message');
+    if (message) words = message;
+  }
+  return String(words);
+}
+// A database's refusal (its message, code and hint: not an Error), thrown as it is for the catch that reads it.
+function theRefusalAsThrown(error: unknown): unknown {
+  return error;
+}
+// The turn the page marks on its seat or report (`_liveTurn`), or the holder itself where it has none.
+function theLiveTurnHeldBy(holder: unknown): unknown {
+  return holder && Reflect.get(Object(holder), '_liveTurn');
 }
 
 // ── channel keys ──
-export function msgChannelKeyOf(row) {
+export function msgChannelKeyOf(row: Pick<ADispatch, 'scope' | 'from_index' | 'to_indexes'> | null | undefined) {
   if (!row) return 'public';
   if (row.scope === 'public' || !_msgArr(row.to_indexes).length) return 'public';
   return msgGroupKey([_msgNum(row.from_index), ..._msgArr(row.to_indexes).map(_msgNum)]);
 }
 // Sorted, de-duplicated, numeric — the ONE place a key is spelled, so the sender's key and the
 // recipient's key cannot drift apart.
-export function msgGroupKey(indices) {
+export function msgGroupKey(indices: unknown) {
   const set = [
     ...new Set(
       _msgArr(indices)
         .map(_msgNum)
-        .filter((i) => i != null),
+        .filter((i): i is number => i != null),
     ),
   ].sort((a, b) => a - b);
   return 'p:' + set.join('-');
 }
-export function msgParticipantsOf(key) {
+export function msgParticipantsOf(key: string | null | undefined): number[] {
   if (!key || key === 'public') return [];
-  return String(key)
+  return key
     .slice(2)
     .split('-')
     .map(_msgNum)
-    .filter((i) => i != null);
+    .filter((i): i is number => i != null);
 }
-export function msgRealmName(i) {
-  const r = _msgRealms[i];
-  return (r && r.name) || 'Realm ' + ((_msgNum(i) || 0) + 1);
+export function msgRealmName(i: unknown): string {
+  const r = _msgRealms[String(i)];
+  return (r?.name ?? '') || `Realm ${String((_msgNum(i) ?? 0) + 1)}`;
 }
-export function msgRealmColour(i) {
-  const r = _msgRealms[i];
-  const hex = (r && r.color) || null;
+export function msgRealmColour(i: unknown) {
+  const r = _msgRealms[String(i)];
+  const hex = (r?.color ?? '') || null;
   if (!hex) return '#c9b189';
   // The thread sits on a very dark ground, so a realm colour is lifted for contrast the same way the
   // map tooltip lifts its symbols — hue kept, lightness raised only as far as it must be.
   try {
-    return _tintForDarkTooltip ? _tintForDarkTooltip(hex) : hex;
-  } catch (e) {
+    return _tintForDarkTooltip(hex);
+  } catch {
     return hex;
   }
 }
 
 // ── ROSTER ── who is in this game, who is human, and whom this realm has met.
-export async function loadMessageRoster(gameId, report) {
-  const known = {};
-  _msgArr(report && report.diplomacy && report.diplomacy.known).forEach((k) => {
-    const i = _msgNum(k && k.index);
+export async function loadMessageRoster(
+  gameId: string | null | undefined,
+  report: TheReportAsTheDispatchesReadIt | null | undefined,
+) {
+  const known: Record<number, Omit<ARealmAsTheDispatchesKnowIt, 'human' | 'met'>> = {};
+  _msgArr(report?.diplomacy?.known).forEach((k) => {
+    const i = _msgNum(k.index);
     if (i == null) return;
     known[i] = {
       index: i,
-      name: k.name || 'Realm ' + (i + 1),
-      color: k.color || null,
-      alignment: k.alignment || null,
+      name: (k.name ?? '') || `Realm ${String(i + 1)}`,
+      color: (k.color ?? '') || null,
+      alignment: (k.alignment ?? '') || null,
       conceded: !!k.conceded,
       eliminated: !!k.eliminated,
-      relation: k.relation || 'neutral',
+      relation: (k.relation ?? '') || 'neutral',
     };
   });
   // Which slots are human comes from get_game_slots (P0-20): it never gives names, so a met realm is named
   // from the report (or "Realm N").
-  let humans = new Set(),
-    total = 0;
+  const humans = new Set<number>();
+  let total = 0;
   try {
     const { data: slots, error } = await fetchGameSlots([gameId]);
-    if (error) throw error;
+    if (error) throw theRefusalAsThrown(error);
     _msgArr(slots).forEach((s) => {
       const i = _msgNum(s.player_index);
       if (i == null) return;
@@ -160,7 +224,7 @@ export async function loadMessageRoster(gameId, report) {
       if (!s.is_bot) humans.add(i);
     });
   } catch (e) {
-    _msgErr = 'Could not read the realm roster: ' + ((e && e.message) || e);
+    _msgErr = 'Could not read the realm roster: ' + theWordsOfWhatTheDispatchesMet(e);
   }
   _msgRealms = {};
   Object.values(known).forEach((k) => {
@@ -185,13 +249,13 @@ export async function loadMessageRoster(gameId, report) {
 // The realms this player may address privately: met, human, and not themselves.
 export function msgContacts() {
   return Object.values(_msgRealms)
-    .filter((r) => r && r.met && r.human && r.index !== _msgMyIndex)
+    .filter((r): r is ARealmAsTheDispatchesKnowIt => r !== undefined && r.met && r.human && r.index !== _msgMyIndex)
     .sort((a, b) => a.index - b.index);
 }
-export function msgChannelIsSendable(key) {
+export function msgChannelIsSendable(key: string) {
   return msgChannelOpen(key) && !msgOutReason(key);
 }
-export function msgChannelOpen(key) {
+export function msgChannelOpen(key: string) {
   if (key === 'public') return true;
   const others = msgParticipantsOf(key).filter((i) => i !== _msgMyIndex);
   if (!others.length) return false;
@@ -199,13 +263,13 @@ export function msgChannelOpen(key) {
   // every realm may write privately again (R-075), to a realm that left as much as from one.
   return others.some((i) => {
     const r = _msgRealms[i];
-    return r && r.human && (_msgGameOver || (!r.conceded && !r.eliminated));
+    return r?.human && (_msgGameOver || (!r.conceded && !r.eliminated));
   });
 }
 // R-075 (P0-25): until the game is over, a realm that has conceded or been extinguished sends no private dispatches,
 // and none at all while the GM's switch is on. Returns the reason the composer shows, or null when it may send.
 // Enforced on this screen only: the database can't yet tell who is out (that lives in the world), until P2-04.
-export function msgOutReason(key) {
+export function msgOutReason(key: string) {
   if (!_msgOut || _msgGameOver) return null;
   if (_msgBlockOut)
     return (
@@ -222,7 +286,7 @@ export function msgOutWho() {
 export function msgOutPrivateOff() {
   return _msgOut && !_msgGameOver ? msgOutWho() + ', so you send no private dispatches until the game is over.' : '';
 }
-export function msgChannelLabel(key) {
+export function msgChannelLabel(key: string) {
   if (key === 'public') return '📣 All Realms';
   const others = msgParticipantsOf(key).filter((i) => i !== _msgMyIndex);
   if (!others.length) return 'Private note';
@@ -231,17 +295,22 @@ export function msgChannelLabel(key) {
 }
 
 // ── ENTRY POINT ── called by openReport once the report is in hand.
-export async function initMessaging(gameId, myIndex, report, game) {
+export async function initMessaging(
+  gameId: string | null | undefined,
+  myIndex: unknown,
+  report: TheReportAsTheDispatchesReadIt | null | undefined,
+  game: TheGameAsTheDispatchesReadIt | null | undefined,
+) {
   const same = String(_msgGameId) === String(gameId) && _msgMyIndex === _msgNum(myIndex);
-  _msgGameId = gameId != null ? String(gameId) : null;
+  _msgGameId = gameId ?? null;
   _msgMyIndex = _msgNum(myIndex);
-  _msgMyName = (report && report.playerName) || '';
-  _msgMyColor = (report && report.kingdom && report.kingdom.color) || null;
+  _msgMyName = report?.playerName ?? '';
+  _msgMyColor = (report?.kingdom?.color ?? '') || null;
   {
-    const k = (report && report.kingdom) || {};
+    const k = report?.kingdom ?? {};
     _msgOut = k.conceded ? 'conceded' : k.eliminated ? 'eliminated' : null;
-    _msgGameOver = !!((game && game.status === 'complete') || (report && report.titles && report.titles.gameOver));
-    _msgBlockOut = !!(game && game.block_eliminated_msgs);
+    _msgGameOver = !!(game?.status === 'complete' || report?.titles?.gameOver);
+    _msgBlockOut = !!game?.block_eliminated_msgs;
   }
   if (!same) {
     _msgRows = [];
@@ -266,7 +335,9 @@ export async function initMessaging(gameId, myIndex, report, game) {
   if (dt) dt.style.display = _msgEnabled ? '' : 'none';
   try {
     applyDeskViews();
-  } catch (e) {}
+  } catch {
+    // the desk's columns may not be built yet
+  }
   if (!_msgEnabled) {
     stopMessagePolling();
     updateMsgBadges();
@@ -289,7 +360,7 @@ export async function probeMessagesTable() {
     if (error) _msgErr = error.message;
   } catch (e) {
     _msgTableOk = false;
-    _msgErr = String((e && e.message) || e);
+    _msgErr = theWordsOfWhatTheDispatchesMet(e);
   }
   return _msgTableOk;
 }
@@ -297,10 +368,10 @@ export async function loadMessageReads() {
   if (!_msgGameId || _msgMyIndex == null) return;
   try {
     const { data, error } = await thePagesDb.theDispatches.thisRealmsReadMarksInThisGame(_msgGameId, _msgMyIndex);
-    if (error) throw error;
-    const r = data && data.reads;
+    if (error) throw theRefusalAsThrown(error);
+    const r = data?.reads;
     _msgReads = r && typeof r === 'object' && !Array.isArray(r) ? { ...r } : {};
-  } catch (e) {
+  } catch {
     _msgReads = {};
   } // no row yet, or the table is missing — everything reads as unread
 }
@@ -309,7 +380,7 @@ export function queueMessageReadSave() {
   if (_msgReadSaveTimer) return;
   _msgReadSaveTimer = setTimeout(() => {
     _msgReadSaveTimer = null;
-    saveMessageReads();
+    void saveMessageReads();
   }, 1200);
 }
 export async function saveMessageReads() {
@@ -323,7 +394,7 @@ export async function saveMessageReads() {
       reads: _msgReads,
       updated_at: new Date().toISOString(),
     });
-  } catch (e) {
+  } catch {
     /* read marks are a convenience; a failure only means a badge lingers */
   }
 }
@@ -338,7 +409,7 @@ export function startMessagePolling() {
     if (!_msgEnabled || !_msgGameId) return;
     if (_activeSectionId() !== 'sec-report') return;
     if (!_msgViewVisible() && _msgTick % MSG_SLOW_EVERY !== 0) return;
-    refreshMessages(false);
+    void refreshMessages(false);
   }, MSG_POLL_MS);
 }
 // 2026-10-09 (Toby item 2): the unread count on the ✉ Dispatches tab. Off the Dispatches view the poll
@@ -349,8 +420,10 @@ export function startMessagePolling() {
 // declared the messaging state (see _msgEnabled above).
 export function refreshMsgBadgeSoon() {
   try {
-    if (_msgEnabled && _msgGameId && _activeSectionId() === 'sec-report') refreshMessages(false);
-  } catch (e) {}
+    if (_msgEnabled && _msgGameId && _activeSectionId() === 'sec-report') void refreshMessages(false);
+  } catch {
+    // the dispatches' state may not be declared yet
+  }
 }
 export function stopMessagePolling() {
   if (_msgTimer) {
@@ -368,7 +441,7 @@ export function _msgViewVisible() {
 
 // ── FETCH ── first call pulls the most recent MSG_PAGE rows; every later call asks only for ids above
 // the highest already held, so a long game does not re-download its whole correspondence each tick.
-export async function refreshMessages(force) {
+export async function refreshMessages(force: boolean) {
   if (!_msgEnabled || !_msgGameId) return;
   if (_msgBusy && !force) return;
   if (_msgTableOk === null) await probeMessagesTable();
@@ -381,7 +454,7 @@ export async function refreshMessages(force) {
     const { data, error } = await (_msgMaxId > 0
       ? thePagesDb.theDispatches.theDispatchesOfThisGameAfterThisOne(_msgGameId, _msgMaxId, MSG_PAGE)
       : thePagesDb.theDispatches.theNewestDispatchesOfThisGame(_msgGameId, MSG_PAGE));
-    if (error) throw error;
+    if (error) throw theRefusalAsThrown(error);
     let rows = _msgArr(data);
     const wasFirst = _msgMaxId <= 0;
     if (wasFirst) {
@@ -396,7 +469,7 @@ export async function refreshMessages(force) {
     }
     updateMsgBadges();
   } catch (e) {
-    _msgErr = String((e && e.message) || e);
+    _msgErr = theWordsOfWhatTheDispatchesMet(e);
     renderMessageThread();
   } finally {
     _msgBusy = false;
@@ -405,10 +478,10 @@ export async function refreshMessages(force) {
 
 // Fold a fetched page into the held rows, ignoring anything already there (a poll and a manual refresh
 // can overlap). Returns how many were new, and keeps the id watermarks in step.
-export function _msgAbsorb(rows) {
+export function _msgAbsorb(rows: readonly TheDispatchAsThePanelHoldsIt[]) {
   let added = 0;
   _msgArr(rows).forEach((r) => {
-    const id = _msgNum(r && r.id);
+    const id = _msgNum(r.id);
     if (id == null || _msgIds.has(id)) return;
     _msgIds.add(id);
     _msgRows.push(r);
@@ -416,7 +489,7 @@ export function _msgAbsorb(rows) {
     if (id > _msgMaxId) _msgMaxId = id;
     if (_msgMinId === 0 || id < _msgMinId) _msgMinId = id;
   });
-  if (added) _msgRows.sort((a, b) => _msgNum(a.id) - _msgNum(b.id));
+  if (added) _msgRows.sort((a, b) => Number(_msgNum(a.id)) - Number(_msgNum(b.id)));
   return added;
 }
 // A game that has run to hundreds of dispatches loads only its most recent page on entry; this walks
@@ -431,12 +504,12 @@ export async function loadOlderMessages() {
       _msgMinId,
       MSG_PAGE,
     );
-    if (error) throw error;
+    if (error) throw theRefusalAsThrown(error);
     const page = _msgArr(data);
     _msgMoreOlder = page.length >= MSG_PAGE;
     _msgAbsorb(page.slice().reverse());
   } catch (e) {
-    _msgErr = String((e && e.message) || e);
+    _msgErr = theWordsOfWhatTheDispatchesMet(e);
   } finally {
     _msgLoadingOlder = false;
     renderMessageChannels();
@@ -445,21 +518,21 @@ export async function loadOlderMessages() {
 }
 
 // ── UNREAD ──
-export function msgRowsOf(key) {
+export function msgRowsOf(key: string) {
   return _msgRows.filter((r) => msgChannelKeyOf(r) === key);
 }
-export function msgUnreadIn(key) {
-  const seen = _msgNum(_msgReads[key]) || 0;
-  return msgRowsOf(key).filter((r) => (_msgNum(r.id) || 0) > seen && _msgNum(r.from_index) !== _msgMyIndex).length;
+export function msgUnreadIn(key: string) {
+  const seen = _msgNum(_msgReads[key]) ?? 0;
+  return msgRowsOf(key).filter((r) => (_msgNum(r.id) ?? 0) > seen && _msgNum(r.from_index) !== _msgMyIndex).length;
 }
 export function msgUnreadTotal() {
   return msgChannelKeys().reduce((n, k) => n + msgUnreadIn(k), 0);
 }
-export function markChannelRead(key) {
+export function markChannelRead(key: string) {
   const rows = msgRowsOf(key);
   if (!rows.length) return;
-  const top = rows.reduce((m, r) => Math.max(m, _msgNum(r.id) || 0), 0);
-  if ((_msgNum(_msgReads[key]) || 0) >= top) return;
+  const top = rows.reduce((m, r) => Math.max(m, _msgNum(r.id) ?? 0), 0);
+  if ((_msgNum(_msgReads[key]) ?? 0) >= top) return;
   _msgReads[key] = top;
   queueMessageReadSave();
   updateMsgBadges();
@@ -484,7 +557,7 @@ export function msgChannelKeys() {
     const k = msgGroupKey([_msgMyIndex, r.index]);
     if (!keys.includes(k)) keys.push(k);
   });
-  const groups = new Set();
+  const groups = new Set<string>();
   _msgRows.forEach((r) => {
     const k = msgChannelKeyOf(r);
     if (k !== 'public' && !keys.includes(k)) groups.add(k);
@@ -494,7 +567,7 @@ export function msgChannelKeys() {
   });
   return keys.concat([...groups].sort());
 }
-export function setMsgChannel(key) {
+export function setMsgChannel(key: string) {
   _msgChannel = key || 'public';
   renderMessageChannels();
   renderMessageThread();
@@ -503,55 +576,60 @@ export function setMsgChannel(key) {
   if (ta)
     try {
       ta.focus();
-    } catch (e) {}
+    } catch {
+      // a field that can't take the focus is left as it is
+    }
 }
 export function renderMessageChannels() {
   const el = document.getElementById('msg-channels');
   if (!el) return;
   const keys = msgChannelKeys();
   if (!keys.includes(_msgChannel)) _msgChannel = 'public';
-  el.innerHTML = kcHtml`${keys.map((k) => {
-    const others = msgParticipantsOf(k).filter((i) => i !== _msgMyIndex);
-    const gone = k !== 'public' && !msgChannelIsSendable(k);
-    const dot =
-      k === 'public'
-        ? kcHtml`<span class="mc-dot" style="background:#7d5fb5"></span>`
-        : others.length === 1
-          ? kcHtml`<span class="mc-dot" style="background:${msgRealmColour(others[0])}"></span>`
-          : kcHtml`<span class="mc-dot" style="background:linear-gradient(90deg,${others
-              .slice(0, 3)
-              .map((i) => msgRealmColour(i))
-              .join(',')})"></span>`;
-    const u = msgUnreadIn(k);
-    return kcHtml`<button type="button" class="msg-chan${k === _msgChannel ? ' active' : ''}${gone ? ' gone' : ''}" data-ch="${k}" title="${msgChannelLabel(k)}${gone ? ' — no longer in the game' : ''}">${
-      dot
-    }<span class="mc-label">${msgChannelLabel(k)}</span>${
-      u ? kcHtml`<span class="mc-unread">${u > 99 ? '99+' : u}</span>` : ''
-    }</button>`;
-  })}`;
+  el.innerHTML = String(
+    kcHtml`${keys.map((k) => {
+      const others = msgParticipantsOf(k).filter((i) => i !== _msgMyIndex);
+      const gone = k !== 'public' && !msgChannelIsSendable(k);
+      const dot =
+        k === 'public'
+          ? kcHtml`<span class="mc-dot" style="background:#7d5fb5"></span>`
+          : others.length === 1
+            ? kcHtml`<span class="mc-dot" style="background:${msgRealmColour(others[0])}"></span>`
+            : kcHtml`<span class="mc-dot" style="background:linear-gradient(90deg,${others
+                .slice(0, 3)
+                .map((i) => msgRealmColour(i))
+                .join(',')})"></span>`;
+      const u = msgUnreadIn(k);
+      return kcHtml`<button type="button" class="msg-chan${k === _msgChannel ? ' active' : ''}${gone ? ' gone' : ''}" data-ch="${k}" title="${msgChannelLabel(k)}${gone ? ' — no longer in the game' : ''}">${
+        dot
+      }<span class="mc-label">${msgChannelLabel(k)}</span>${
+        u ? kcHtml`<span class="mc-unread">${u > 99 ? '99+' : u}</span>` : ''
+      }</button>`;
+    })}`,
+  );
   updateMsgComposer();
 }
 // One delegated listener rather than an inline onclick per chip: a channel key would otherwise have to
 // survive being written into an HTML attribute and read back as JavaScript.
 export function _msgBindChannelClicks() {
   const el = document.getElementById('msg-channels');
-  if (!el || el._bound) return;
-  el._bound = true;
+  if (!el || Reflect.get(el, '_bound')) return;
+  Reflect.set(el, '_bound', true);
   el.addEventListener('click', (ev) => {
-    const b = ev.target && ev.target.closest ? ev.target.closest('.msg-chan') : null;
-    if (b && b.dataset && b.dataset.ch) setMsgChannel(b.dataset.ch);
+    const b = ev.target instanceof Element ? ev.target.closest('.msg-chan') : null;
+    // every .msg-chan is a <button> renderMessageChannels writes
+    if (b instanceof HTMLElement && b.dataset['ch']) setMsgChannel(b.dataset['ch']);
   });
 }
 
 // ── THREAD ──
-export function _msgWhen(iso) {
+export function _msgWhen(iso: string) {
   const d = new Date(iso);
-  if (isNaN(d)) return '';
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
-export function _msgDay(iso) {
+export function _msgDay(iso: string) {
   const d = new Date(iso);
-  if (isNaN(d)) return '';
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
 }
 export function renderMessageThread() {
@@ -563,9 +641,11 @@ export function renderMessageThread() {
     return;
   }
   if (_msgTableOk === false) {
-    el.innerHTML = kcHtml`<div class="msg-empty">Dispatches are not switched on for this server yet — the <strong>game_messages</strong> table is missing. Ask your GM to run the messaging SQL shown on their portal.${
-      _msgErr ? kcHtml`<br><span style="font-size:.72rem;opacity:.7">${_msgErr}</span>` : ''
-    }</div>`;
+    el.innerHTML = String(
+      kcHtml`<div class="msg-empty">Dispatches are not switched on for this server yet — the <strong>game_messages</strong> table is missing. Ask your GM to run the messaging SQL shown on their portal.${
+        _msgErr ? kcHtml`<br><span style="font-size:.72rem;opacity:.7">${_msgErr}</span>` : ''
+      }</div>`,
+    );
     updateMsgComposer();
     return;
   }
@@ -580,12 +660,14 @@ export function renderMessageThread() {
     : '';
   if (!rows.length) {
     const who = _msgChannel === 'public' ? 'every realm in the game' : msgChannelLabel(_msgChannel);
-    el.innerHTML = kcHtml`${older}<div class="msg-empty">No dispatches here yet.<br>Anything you write goes to <strong>${who}</strong>.</div>`;
+    el.innerHTML = String(
+      kcHtml`${older}<div class="msg-empty">No dispatches here yet.<br>Anything you write goes to <strong>${who}</strong>.</div>`,
+    );
     updateMsgComposer();
     return;
   }
-  const seen = _msgNum(_msgReads[_msgChannel]) || 0;
-  let lastDay = null;
+  const seen = _msgNum(_msgReads[_msgChannel]) ?? 0;
+  let lastDay: string | null = null;
   const html = [older];
   rows.forEach((r) => {
     const day = _msgDay(r.created_at);
@@ -604,23 +686,23 @@ export function renderMessageThread() {
       : others.length > 1
         ? 'to ' + others.map((i) => msgRealmName(i)).join(', ')
         : '';
-    const fresh = !mine && (_msgNum(r.id) || 0) > seen;
+    const fresh = !mine && (_msgNum(r.id) ?? 0) > seen;
     const meta = [
       kcHtml`<span class="msg-from" style="color:${msgRealmColour(from)}">${mine ? msgRealmName(from) + ' (you)' : msgRealmName(from)}</span>`,
       showTo ? kcHtml`<span class="msg-to">${showTo}</span>` : '',
-      kcHtml`<span class="msg-when">${r.turn != null ? 'T' + r.turn + ' · ' : ''}${_msgWhen(r.created_at)}</span>`,
+      kcHtml`<span class="msg-when">${r.turn != null ? `T${String(r.turn)} · ` : ''}${_msgWhen(r.created_at)}</span>`,
       fresh ? kcHtml`<span class="mc-unread" title="New since you last read this thread">new</span>` : '',
       mine
         ? ''
         : _msgReported.has(String(r.id))
           ? kcHtml`<span class="msg-reported" title="Your GM (or the Overlord) can see this dispatch">⚑ Reported</span>`
-          : kcHtml`<button type="button" class="msg-report" title="Show this dispatch to your GM" onclick="reportMessage(${kcArg(_msgNum(r.id) || 0)})">⚑ Report</button>`,
+          : kcHtml`<button type="button" class="msg-report" title="Show this dispatch to your GM" onclick="reportMessage(${kcArg(_msgNum(r.id) ?? 0)})">⚑ Report</button>`,
     ];
     html.push(
       kcHtml`<div class="msg-bubble${mine ? ' mine' : ''}${pub && !mine ? ' pub' : ''}"><div class="msg-meta">${meta}</div>${r.body}</div>`,
     );
   });
-  el.innerHTML = kcHtml`${html}`;
+  el.innerHTML = String(kcHtml`${html}`);
   if (atBottom) el.scrollTop = el.scrollHeight;
   updateMsgComposer();
 }
@@ -631,7 +713,7 @@ export function onMessagesShown() {
   const el = document.getElementById('msg-thread');
   if (el) el.scrollTop = el.scrollHeight;
   markChannelRead(_msgChannel);
-  refreshMessages(true);
+  void refreshMessages(true);
 }
 
 // ── REPORT (P0-24, rulings D-01 and D-13g) ── a player shows a dispatch they received to the game's GM, or to the
@@ -639,27 +721,27 @@ export function onMessagesShown() {
 // their own reports (message_reports' read rule), so a reported dispatch stays marked after a reload.
 export async function loadMyReports() {
   if (!_msgGameId) return;
-  const { data, error } = await thePagesDb.theReportedDispatches.theDispatchesThisAccountReportedInThisGame(
-    String(_msgGameId),
-  );
+  const { data, error } = await thePagesDb.theReportedDispatches.theDispatchesThisAccountReportedInThisGame(_msgGameId);
   if (!error) _msgReported = new Set(_msgArr(data).map((r) => String(r.message_id)));
 }
-export async function reportMessage(id) {
+export async function reportMessage(id: unknown) {
   const r = _msgRows.find((x) => _msgNum(x.id) === _msgNum(id));
-  if (!r || _msgMyIndex == null || _msgNum(r.from_index) === _msgMyIndex) return;
+  // a dispatch held has a number for its id (_msgAbsorb holds no other), so the one found gives it
+  const messageId = _msgNum(id);
+  if (!r || messageId === null || _msgMyIndex == null || _msgNum(r.from_index) === _msgMyIndex) return;
   const why = prompt(
     "Report this dispatch?\n\nYour GM will see it, with your reason (or the Overlord will, if your GM plays in this game). The sender isn't told.\n\nReason (optional):",
     '',
   );
   if (why == null) return;
   const { error } = await thePagesDb.theReportedDispatches.reportThisDispatch({
-    message_id: _msgNum(id),
+    message_id: messageId,
     game_id: String(_msgGameId),
     reporter_index: _msgMyIndex,
-    reason: String(why).trim().slice(0, 500) || null,
+    reason: why.trim().slice(0, 500) || null,
   });
-  if (error && error.code !== '23505') {
-    _msgErr = 'Report not sent: ' + String(error.message || error);
+  if (error && Reflect.get(error, 'code') !== '23505') {
+    _msgErr = 'Report not sent: ' + theWordsOfWhatTheDispatchesMet(error);
     updateMsgComposer();
     return;
   }
@@ -674,24 +756,27 @@ export function updateMsgComposer() {
     ta = document.getElementById('msg-input'),
     hint = document.getElementById('msg-hint'),
     note = document.getElementById('msg-note');
-  if (!btn || !ta) return;
+  // the page writes the button and the field as a <button> and a <textarea>
+  if (!(btn instanceof HTMLButtonElement) || !(ta instanceof HTMLTextAreaElement)) return;
   const sendable = _msgEnabled && _msgTableOk !== false && msgChannelIsSendable(_msgChannel);
   const len = (ta.value || '').trim().length;
   btn.disabled = !sendable || !len || _msgSending;
   ta.disabled = !sendable;
   if (hint) {
     // a realm that can't send sees why; one that can sees who will read it and how much room is left
-    hint.innerHTML = !sendable
-      ? kcHtml`${_msgTableOk === false ? 'Messaging is not active on this server.' : msgOutReason(_msgChannel) || 'Every realm in this conversation has left the game.'}`
-      : kcHtml`${
-          _msgChannel === 'public'
-            ? kcHtml`Public — <strong>every realm in this game</strong> will read this.${msgOutPrivateOff() ? ' ' + msgOutPrivateOff() : ''}`
-            : 'Private to ' + msgChannelLabel(_msgChannel) + '.'
-        } <span style="opacity:.75">Ctrl+Enter sends. ${MSG_MAX_LEN - len} left.</span>`;
+    hint.innerHTML = String(
+      !sendable
+        ? kcHtml`${_msgTableOk === false ? 'Messaging is not active on this server.' : (msgOutReason(_msgChannel) ?? '') || 'Every realm in this conversation has left the game.'}`
+        : kcHtml`${
+            _msgChannel === 'public'
+              ? kcHtml`Public — <strong>every realm in this game</strong> will read this.${msgOutPrivateOff() ? ' ' + msgOutPrivateOff() : ''}`
+              : 'Private to ' + msgChannelLabel(_msgChannel) + '.'
+          } <span style="opacity:.75">Ctrl+Enter sends. ${MSG_MAX_LEN - len} left.</span>`,
+    );
   }
   if (note) {
     note.style.display = _msgErr && _msgTableOk !== false ? 'block' : 'none';
-    note.textContent = _msgErr || '';
+    note.textContent = _msgErr ?? '';
   }
 }
 export function onMsgInput() {
@@ -701,18 +786,19 @@ export function onMsgInput() {
 // not a chat line.
 export function _msgBindComposerKeys() {
   const ta = document.getElementById('msg-input');
-  if (!ta || ta._bound) return;
-  ta._bound = true;
+  if (!ta || Reflect.get(ta, '_bound')) return;
+  Reflect.set(ta, '_bound', true);
   ta.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
       ev.preventDefault();
-      sendMessage();
+      void sendMessage();
     }
   });
 }
 export async function sendMessage() {
   const ta = document.getElementById('msg-input');
-  if (!ta) return;
+  // the page writes the field as a <textarea>
+  if (!(ta instanceof HTMLTextAreaElement)) return;
   const body = (ta.value || '').trim();
   if (!body || _msgSending || !_msgEnabled || !_msgGameId || _msgMyIndex == null) return;
   if (!msgChannelIsSendable(_msgChannel)) return;
@@ -722,19 +808,18 @@ export async function sendMessage() {
   if (!pub && !to.length) return;
   _msgSending = true;
   updateMsgComposer();
-  const turn =
-    _msgNum(currentGamePlayer && currentGamePlayer._liveTurn) || _msgNum(currentReport && currentReport._liveTurn);
+  const turn = (_msgNum(theLiveTurnHeldBy(currentGamePlayer)) ?? 0) || _msgNum(theLiveTurnHeldBy(currentReport));
   try {
     const { error } = await thePagesDb.theDispatches.sendThisDispatch({
       game_id: _msgGameId,
       turn: turn,
       from_index: _msgMyIndex,
-      from_user_id: (currentUser && currentUser.id) || null,
+      from_user_id: (currentUser?.id ?? '') || null,
       to_indexes: to,
       scope: pub ? 'public' : 'private',
       body: body.slice(0, MSG_MAX_LEN),
     });
-    if (error) throw error;
+    if (error) throw theRefusalAsThrown(error);
     ta.value = '';
     _msgErr = null;
     await refreshMessages(true); // straight back out of the table, so the sender sees it
@@ -744,12 +829,12 @@ export async function sendMessage() {
   } catch (e) {
     // P0-23: the database's limits. Its rate refusals (10 a minute, 300 a day) are written for players, so they
     // show as they are; its length check is reworded. The dispatch stays in the box either way.
-    const m = String((e && e.message) || e);
+    const m = theWordsOfWhatTheDispatchesMet(e);
     _msgErr =
-      e && e.hint === 'kc_dispatch_rate'
+      e && Reflect.get(Object(e), 'hint') === 'kc_dispatch_rate'
         ? m
-        : /game_messages_body_len/.test(m)
-          ? 'A dispatch can be at most ' + MSG_MAX_LEN + ' characters. Shorten it and send again.'
+        : m.includes('game_messages_body_len')
+          ? `A dispatch can be at most ${String(MSG_MAX_LEN)} characters. Shorten it and send again.`
           : 'Dispatch not sent: ' + m;
   } finally {
     _msgSending = false;
@@ -758,7 +843,7 @@ export async function sendMessage() {
 }
 
 // ── CONFERENCE PICKER ── address one private dispatch to several met realms at once.
-export function toggleMsgGroupPicker(force) {
+export function toggleMsgGroupPicker(force?: unknown) {
   const p = document.getElementById('msg-group-pick');
   if (!p) return;
   const open = force === undefined ? p.style.display !== 'block' : !!force;
@@ -768,20 +853,23 @@ export function toggleMsgGroupPicker(force) {
   const cs = msgContacts();
   if (list)
     list.innerHTML = cs.length
-      ? kcHtml`${cs.map(
-          (r) =>
-            kcHtml`<label><input type="checkbox" value="${r.index}"><span style="color:${msgRealmColour(r.index)}">${r.name}</span>${
-              r.conceded || r.eliminated ? kcHtml` <span style="opacity:.6;font-size:.72rem">(out)</span>` : ''
-            }</label>`,
-        )}`
+      ? String(
+          kcHtml`${cs.map(
+            (r) =>
+              kcHtml`<label><input type="checkbox" value="${r.index}"><span style="color:${msgRealmColour(r.index)}">${r.name}</span>${
+                r.conceded || r.eliminated ? kcHtml` <span style="opacity:.6;font-size:.72rem">(out)</span>` : ''
+              }</label>`,
+          )}`,
+        )
       : '<span style="font-size:.76rem;color:#8a7a5c">You have not met another player\'s realm yet.</span>';
 }
 export function createMsgGroup() {
   const list = document.getElementById('msg-group-list');
   if (!list) return;
   const picked = [...list.querySelectorAll('input[type=checkbox]:checked')]
+    .filter((c) => c instanceof HTMLInputElement)
     .map((c) => _msgNum(c.value))
-    .filter((i) => i != null);
+    .filter((i): i is number => i != null);
   if (!picked.length) return;
   const key = msgGroupKey([_msgMyIndex, ...picked]);
   if (!_msgExtraGroups.includes(key)) _msgExtraGroups.push(key);
@@ -793,18 +881,24 @@ export function createMsgGroup() {
 // rather than waiting out the poll.
 window.addEventListener('pagehide', () => {
   try {
-    saveMessageReads();
-  } catch (e) {}
+    void saveMessageReads();
+  } catch {
+    // the dispatches' state may not be declared yet
+  }
 });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     try {
-      saveMessageReads();
-    } catch (e) {}
+      void saveMessageReads();
+    } catch {
+      // the dispatches' state may not be declared yet
+    }
   } else if (_msgEnabled && _msgViewVisible()) {
     try {
-      refreshMessages(true);
-    } catch (e) {}
+      void refreshMessages(true);
+    } catch {
+      // the dispatches' state may not be declared yet
+    }
   } else refreshMsgBadgeSoon(); // the unread count on the Dispatches tab, too
 });
 
@@ -818,8 +912,8 @@ export function _activeSectionId() {
 // orders_submitted, and alignment while the game is in setup. It never reads another realm's game_players row
 // (the database answers those only for their own player and the game's GM: Unit B). Games the account may not
 // see are left out.
-export async function fetchGameSlots(gameIds) {
-  const ids = [...new Set((gameIds || []).filter(Boolean))];
+export async function fetchGameSlots(gameIds: readonly (string | null | undefined)[] | null | undefined) {
+  const ids = [...new Set((gameIds ?? []).filter((id): id is string => Boolean(id)))];
   if (!ids.length) return { data: [], error: null };
   const { data, error } = await thePagesDb.thePlayersRealms.theSlotsOfTheseGames(ids);
   return { data: Array.isArray(data) ? data : [], error };
@@ -831,7 +925,7 @@ export let _deskRightView = 'report';
 // rather than poking the column's display directly — otherwise it would override the tab and stack
 // Orders on top of Report.
 export let _ordersAvailable = true;
-export function setDeskView(side, view) {
+export function setDeskView(side: string, view: string) {
   if (side === 'left') {
     if (view === 'messages' && !_msgEnabled) view = 'map';
     _deskLeftView = view;
@@ -846,7 +940,9 @@ export function setDeskView(side, view) {
   if (side === 'left' && view === 'messages') {
     try {
       onMessagesShown();
-    } catch (e) {}
+    } catch {
+      // the dispatches' state may not be declared yet
+    }
   } else refreshMsgBadgeSoon();
 }
 export function applyDeskViews() {
@@ -890,18 +986,20 @@ export function applyDeskViews() {
   if (_deskLeftView === 'map') {
     try {
       renderPlayerMap();
-    } catch (e) {}
+    } catch {
+      // the map may not be drawable yet
+    }
   }
 }
 // Set whether the Orders view is available (live turn vs past/Turn-0) and re-assert the layout. On
 // desktop the right-panel tab governs the orders column (via applyDeskViews); on mobile we still
 // toggle the column's display directly, exactly as before, since the mobile view-switcher owns that
 // panel.
-export function refreshOrdersVisibility(available) {
+export function refreshOrdersVisibility(available: unknown) {
   _ordersAvailable = !!available;
   const lay = document.getElementById('rp-layout');
   const oc = document.getElementById('orders-column');
-  if (lay && lay.classList.contains('desk')) {
+  if (lay?.classList.contains('desk')) {
     if (!_ordersAvailable && _deskRightView === 'orders' && _deskLeftView !== 'report') _deskRightView = 'report'; // can't sit on an unavailable tab (unless the report is already on the left)
     applyDeskViews();
   } else if (oc) {

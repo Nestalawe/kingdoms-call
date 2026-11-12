@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import {
   _closeMapTip,
   _PROV_LINK_SKIP,
@@ -8,13 +7,14 @@ import {
   applyMapZoom,
   highlightMapProv,
 } from './map.ts';
+import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 import { onMessagesShown, refreshMsgBadgeSoon, applyDeskViews, setDeskView } from './dispatches.ts';
 
 // ── MOBILE VIEW SWITCHER ────
 // On narrow screens (see the @media block) the Map / Report / Orders columns are shown one at a
 // time, chosen by the fixed bottom tab bar. This toggles a single class on #rp-layout; on desktop
 // the class is inert (all three columns show regardless). No effect on the engine or on saved data.
-export function setMobileView(view) {
+export function setMobileView(view: string) {
   const lay = document.getElementById('rp-layout');
   if (!lay) return;
   if (view === 'messages' && !_msgEnabled) view = 'report'; // no messaging in a one-human game
@@ -30,23 +30,31 @@ export function setMobileView(view) {
   lay.classList.add('mv-' + view);
   try {
     _closeMapTip();
-  } catch (e) {} // a lingering province popup must not survive a view switch
+  } catch {
+    // a lingering province popup must not survive a view switch
+  }
   document
     .querySelectorAll('#mobile-tabbar button')
     .forEach((b) => b.classList.toggle('active', b.getAttribute('data-mv') === view));
   if (view === 'map') {
     try {
       applyMapZoom();
-    } catch (e) {}
+    } catch {
+      // the map may not be drawn yet
+    }
   } // map fix: re-fit the SVG height now the column is visible
   if (view === 'messages') {
     try {
       onMessagesShown();
-    } catch (e) {}
+    } catch {
+      // the dispatches' state may not be declared yet
+    }
   } else refreshMsgBadgeSoon();
   try {
     window.scrollTo(0, 0);
-  } catch (e) {} // start each view at its head
+  } catch {
+    // start each view at its head
+  }
 }
 
 // ── DESKTOP TWO-COLUMN LAYOUT ────
@@ -96,10 +104,10 @@ export function setupDeskLayout() {
       '</div>';
     lay.appendChild(left);
     lay.appendChild(right);
-    document.getElementById('desk-left-body').appendChild(map);
-    if (msg) document.getElementById('desk-left-body').appendChild(msg);
-    document.getElementById('desk-right-body').appendChild(ord);
-    document.getElementById('desk-right-body').appendChild(rep); // the report lives on the right, permanently
+    theElementWithTheId('desk-left-body', HTMLElement).appendChild(map);
+    if (msg) theElementWithTheId('desk-left-body', HTMLElement).appendChild(msg);
+    theElementWithTheId('desk-right-body', HTMLElement).appendChild(ord);
+    theElementWithTheId('desk-right-body', HTMLElement).appendChild(rep); // the report lives on the right, permanently
     injectMapZoomBar();
   }
   lay.classList.add('desk');
@@ -111,7 +119,7 @@ export function setupDeskLayout() {
 // 220px), so their last 100px sat below the fold until the page itself was scrolled — and with them
 // the orders column's sticky Save Draft / Submit bar. Measured from where the panels really start,
 // and re-measured whenever something above them (the game bar, the new-turn banner) changes size.
-export let _deskFitObs = null;
+export let _deskFitObs: ResizeObserver | null = null;
 export function fitDeskPanels() {
   const l = document.getElementById('desk-left'),
     r = document.getElementById('desk-right');
@@ -122,14 +130,17 @@ export function fitDeskPanels() {
     return;
   }
   const top = l.getBoundingClientRect().top + (window.scrollY || 0);
-  const h = Math.max(360, Math.floor(window.innerHeight - top - 8)) + 'px';
+  const h = `${String(Math.max(360, Math.floor(window.innerHeight - top - 8)))}px`;
   if (l.style.height !== h) l.style.height = h;
   if (r.style.height !== h) r.style.height = h;
   if (!_deskFitObs && typeof ResizeObserver === 'function') {
-    _deskFitObs = new ResizeObserver(() => fitDeskPanels());
-    document
-      .querySelectorAll('#sec-report > .detail-header, #new-turn-banner')
-      .forEach((el) => _deskFitObs.observe(el));
+    const observer = new ResizeObserver(() => {
+      fitDeskPanels();
+    });
+    _deskFitObs = observer;
+    document.querySelectorAll('#sec-report > .detail-header, #new-turn-banner').forEach((el) => {
+      observer.observe(el);
+    });
   }
 }
 export function teardownDeskLayout() {
@@ -177,14 +188,18 @@ export function ensureMobileDefault() {
   const lay = document.getElementById('rp-layout');
   if (lay && !/\bmv-(map|report|messages|orders)\b/.test(lay.className)) setMobileView('report');
 }
-export function _makeProvLinkEl(id, name) {
+export function _makeProvLinkEl(id: unknown, name: string) {
   const sp = document.createElement('span');
   sp.className = 'prov-link prov-auto';
   sp.setAttribute('data-prov-link', String(id));
   sp.title = `Hover to light up ${name} on the map — click or tap to show it`;
   sp.textContent = name;
-  sp.onmouseenter = () => highlightMapProv(id, true);
-  sp.onmouseleave = () => highlightMapProv(id, false);
+  sp.onmouseenter = () => {
+    highlightMapProv(id, true);
+  };
+  sp.onmouseleave = () => {
+    highlightMapProv(id, false);
+  };
   sp.onclick = (ev) => {
     ev.stopPropagation();
     locateOnMap(id);
@@ -192,73 +207,103 @@ export function _makeProvLinkEl(id, name) {
   return sp;
 }
 export let _provLinking = false;
-export function linkProvinceNames(root) {
+export function linkProvinceNames(root: Node | null | undefined) {
   if (!root || _provLinking) return;
-  _buildProvNameIndex(viewingReport || currentReport);
-  if (!_provNameRe) return;
+  _buildProvNameIndex(viewingReport ?? currentReport);
+  // the index sets the expression and the map together, and nothing here builds it again
+  const provNameRe = _provNameRe,
+    provNameMap = _provNameMap;
+  if (!provNameRe) return;
   _provLinking = true;
   try {
     const walker = document.createTreeWalker(root, window.NodeFilter.SHOW_TEXT, {
       acceptNode(n) {
         if (!n.nodeValue || n.nodeValue.length < 3) return window.NodeFilter.FILTER_REJECT;
         for (let el = n.parentNode; el && el !== root; el = el.parentNode) {
-          if (_PROV_LINK_SKIP.has(el.nodeName) || el.namespaceURI === 'http://www.w3.org/2000/svg')
+          // a node with no namespace, classes or editing (a fragment, the document) reads each as missing
+          if (
+            _PROV_LINK_SKIP.has(el.nodeName) ||
+            (el instanceof Element && el.namespaceURI === 'http://www.w3.org/2000/svg')
+          )
             return window.NodeFilter.FILTER_REJECT;
-          if (el.classList && (el.classList.contains('prov-link') || el.classList.contains('no-prov-link')))
+          if (el instanceof Element && (el.classList.contains('prov-link') || el.classList.contains('no-prov-link')))
             return window.NodeFilter.FILTER_REJECT;
-          if (el.isContentEditable) return window.NodeFilter.FILTER_REJECT;
+          if (el instanceof HTMLElement && el.isContentEditable) return window.NodeFilter.FILTER_REJECT;
         }
-        _provNameRe.lastIndex = 0;
-        return _provNameRe.test(n.nodeValue) ? window.NodeFilter.FILTER_ACCEPT : window.NodeFilter.FILTER_REJECT;
+        provNameRe.lastIndex = 0;
+        return provNameRe.test(n.nodeValue) ? window.NodeFilter.FILTER_ACCEPT : window.NodeFilter.FILTER_REJECT;
       },
     });
-    const hits = [];
-    let n;
+    const hits: Node[] = [];
+    let n: Node | null;
     while ((n = walker.nextNode())) hits.push(n);
     hits.forEach((t) => {
-      const txt = t.nodeValue;
+      const txt = theWordsOfTheTextAccepted(t);
       const frag = document.createDocumentFragment();
       let last = 0,
-        m;
-      _provNameRe.lastIndex = 0;
-      while ((m = _provNameRe.exec(txt))) {
+        m: RegExpExecArray | null;
+      provNameRe.lastIndex = 0;
+      while ((m = provNameRe.exec(txt))) {
         if (m.index > last) frag.appendChild(document.createTextNode(txt.slice(last, m.index)));
-        frag.appendChild(_makeProvLinkEl(_provNameMap.get(m[1]), m[1]));
-        last = m.index + m[1].length;
+        const name = theProvinceNameMatched(m);
+        if (provNameMap === null) throw new TypeError("Cannot read properties of null (reading 'get')");
+        frag.appendChild(_makeProvLinkEl(provNameMap.get(name), name));
+        last = m.index + name.length;
       }
       if (last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
-      t.parentNode.replaceChild(frag, t);
+      theParentOfTheTextAccepted(t).replaceChild(frag, t);
     });
-  } catch (e) {
+  } catch {
     /* a failed pass must never break the report */
   } finally {
     _provLinking = false;
   }
 }
-export let _provLinkObs = null,
-  _provLinkTimer = null;
+// A text node the walk accepted holds words (three letters or more), and sits in the column.
+function theWordsOfTheTextAccepted(t: Node): string {
+  const words = t.nodeValue;
+  if (words === null) throw new TypeError("Cannot read properties of null (reading 'slice')");
+  return words;
+}
+function theParentOfTheTextAccepted(t: Node): ParentNode {
+  const parent = t.parentNode;
+  if (parent === null) throw new TypeError("Cannot read properties of null (reading 'replaceChild')");
+  return parent;
+}
+// The province expression's one group, the name, is in every match.
+function theProvinceNameMatched(m: RegExpExecArray): string {
+  const name = m[1];
+  if (name === undefined) throw new TypeError("Cannot read properties of undefined (reading 'length')");
+  return name;
+}
+export let _provLinkObs: MutationObserver | null = null,
+  _provLinkTimer: ReturnType<typeof setTimeout> | null = null;
 export function ensureProvinceLinking() {
   const col = document.getElementById('rp-report-col');
   if (!col) return;
   linkProvinceNames(col);
   if (_provLinkObs || typeof MutationObserver === 'undefined') return;
-  _provLinkObs = new MutationObserver(() => {
+  const observer = new MutationObserver(() => {
     if (_provLinking) return;
-    clearTimeout(_provLinkTimer);
-    _provLinkTimer = setTimeout(() => linkProvinceNames(document.getElementById('rp-report-col')), 60);
+    clearTimeout(_provLinkTimer ?? undefined);
+    _provLinkTimer = setTimeout(() => {
+      linkProvinceNames(document.getElementById('rp-report-col'));
+    }, 60);
   });
-  _provLinkObs.observe(col, { childList: true, subtree: true });
+  _provLinkObs = observer;
+  observer.observe(col, { childList: true, subtree: true });
 }
-export let _provHlTimer = null;
-export function locateOnMap(id) {
+export let _provHlTimer: ReturnType<typeof setTimeout> | null = null;
+export function locateOnMap(id: unknown) {
   try {
     if (window.innerWidth < 821) setMobileView('map');
-    else if (typeof _deskLeftView !== 'undefined' && _deskLeftView !== 'map' && typeof setDeskView === 'function')
-      setDeskView('left', 'map');
-  } catch (e) {}
+    else if (typeof _deskLeftView !== 'undefined' && _deskLeftView !== 'map') setDeskView('left', 'map');
+  } catch {
+    // the desk's state may not be declared yet
+  }
   setTimeout(() => {
     highlightMapProv(id, true);
-    const g = document.querySelector(`#report-map-svg g[data-prov="${id}"]`);
+    const g = document.querySelector(`#report-map-svg g[data-prov="${String(id)}"]`);
     // scroll only the map's own container (a zoomed map), never the page or the report column
     try {
       const box = document.getElementById('report-map-container');
@@ -268,8 +313,12 @@ export function locateOnMap(id) {
         box.scrollLeft += r.left + r.width / 2 - (b.left + b.width / 2);
         box.scrollTop += r.top + r.height / 2 - (b.top + b.height / 2);
       }
-    } catch (e) {}
-    clearTimeout(_provHlTimer);
-    _provHlTimer = setTimeout(() => highlightMapProv(id, false), 4000);
+    } catch {
+      // the map may not be drawn yet
+    }
+    clearTimeout(_provHlTimer ?? undefined);
+    _provHlTimer = setTimeout(() => {
+      highlightMapProv(id, false);
+    }, 4000);
   }, 60);
 }

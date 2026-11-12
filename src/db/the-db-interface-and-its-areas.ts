@@ -8,11 +8,21 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types.ts';
 
+type TheGeneratedTables = Database['public']['Tables'];
+/** A dispatch as the Dispatches panel sends it: its sender's account `null` when no account is signed in (the database
+ *  then refuses it, as the column takes none). */
+type ANewDispatch = Omit<TheGeneratedTables['game_messages']['Insert'], 'from_user_id'> & {
+  from_user_id?: string | null;
+};
+
 /** The generated types, but for a database function's argument that takes null on purpose (the generator writes every
  *  argument as never null): account_suspend's p_until (null: until the suspension is lifted) and gm_reported_messages'
- *  p_game (null: every game's). */
+ *  p_game (null: every game's); and a dispatch's sender, which the page may send as null (`ANewDispatch`). */
 export type TheDatabase = Omit<Database, 'public'> & {
-  readonly public: Omit<Database['public'], 'Functions'> & {
+  readonly public: Omit<Database['public'], 'Functions' | 'Tables'> & {
+    readonly Tables: Omit<TheGeneratedTables, 'game_messages'> & {
+      readonly game_messages: Omit<TheGeneratedTables['game_messages'], 'Insert'> & { Insert: ANewDispatch };
+    };
     readonly Functions: Omit<Database['public']['Functions'], 'account_suspend' | 'gm_reported_messages'> & {
       readonly account_suspend: { Args: { p_user: string; p_until: string | null }; Returns: undefined };
       readonly gm_reported_messages: {
@@ -412,7 +422,7 @@ export interface Db {
       games: readonly string[],
     ) => PromiseLike<ADatabaseAnswer<ADispatchsGameAndRealms[]>>;
     /** The dispatch `dispatch` sent. */
-    readonly sendThisDispatch: (dispatch: ANewRow<'game_messages'>) => PromiseLike<ADatabaseAnswer<null>>;
+    readonly sendThisDispatch: (dispatch: ANewDispatch) => PromiseLike<ADatabaseAnswer<null>>;
     /** The dispatch `id` deleted (its reports with it). */
     readonly deleteThisDispatch: (id: number) => PromiseLike<ADatabaseAnswer<null>>;
     /** The realm `realm`'s read marks in the game `game`, if it has any. */

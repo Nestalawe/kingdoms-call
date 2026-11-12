@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { ensureMobileDefault, setupDeskLayout, teardownDeskLayout } from './layout.ts';
 import { _closeMapTip } from './map.ts';
 import { saveMessageReads, stopMessagePolling } from './dispatches.ts';
@@ -42,37 +41,40 @@ globalThis.viewedTurn = null;
 // renumbered — snapshotTurnLabel() converts it to the turn the player knew it as: the report
 // written when turn N finished is the briefing acted on during turn N+1, and the founding
 // snapshot (key 0) is the Turn 1 briefing.
-export function snapshotTurnLabel(key) {
-  return (parseInt(key) || 0) + 1;
+export function snapshotTurnLabel(key: unknown) {
+  return (parseInt(String(key)) || 0) + 1;
 }
 export function refreshTurnNavHighlight() {
   const navEl = document.getElementById('turn-nav-btns');
   if (!navEl) return;
-  const resolved = parseInt(navEl.dataset.resolved ?? '-1');
-  [...navEl.children].forEach((btn) => {
-    const d = parseInt(btn.dataset.turn);
-    const isCurrent = d === resolved;
-    const isViewed = viewedTurn != null && d === viewedTurn && !isCurrent;
-    let bg = 'transparent',
-      border = 'var(--stone)',
-      color = 'var(--stone)';
-    if (isCurrent) {
-      bg = 'var(--crimson)';
-      border = 'var(--crimson)';
-      color = '#fff';
-    } else if (isViewed) {
-      bg = '#b34a4a';
-      border = 'var(--crimson)';
-      color = '#fff';
-    } // lighter crimson = the turn on screen
-    btn.style.cssText = `font-size:.68rem;padding:2px 8px;border:1px solid ${border};background:${bg};color:${color};cursor:pointer;border-radius:2px`;
-  });
+  const resolved = parseInt(navEl.dataset['resolved'] ?? '-1');
+  // every child is a button the navigator writes
+  [...navEl.children]
+    .filter((child) => child instanceof HTMLElement)
+    .forEach((btn) => {
+      const d = parseInt(String(btn.dataset['turn']));
+      const isCurrent = d === resolved;
+      const isViewed = viewedTurn != null && d === viewedTurn && !isCurrent;
+      let bg = 'transparent',
+        border = 'var(--stone)',
+        color = 'var(--stone)';
+      if (isCurrent) {
+        bg = 'var(--crimson)';
+        border = 'var(--crimson)';
+        color = '#fff';
+      } else if (isViewed) {
+        bg = '#b34a4a';
+        border = 'var(--crimson)';
+        color = '#fff';
+      } // lighter crimson = the turn on screen
+      btn.style.cssText = `font-size:.68rem;padding:2px 8px;border:1px solid ${border};background:${bg};color:${color};cursor:pointer;border-radius:2px`;
+    });
 }
 
 // scroll the report column to one of its main sections, keeping the target heading clear of the
 // sticky jump-bar. On desktop the middle column is its own scroll container; on a phone
 // (single-column view) the page scrolls, so fall back to scrollIntoView there.
-export function jumpToReportSection(id) {
+export function jumpToReportSection(id: string) {
   const tgt = document.getElementById(id);
   if (!tgt) return;
   if (tgt.style.display === 'none') return;
@@ -83,28 +85,36 @@ export function jumpToReportSection(id) {
     const top = col.scrollTop + tgt.getBoundingClientRect().top - col.getBoundingClientRect().top - barH;
     col.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
   } else {
-    tgt.style.scrollMarginTop = barH + 'px';
+    tgt.style.scrollMarginTop = `${String(barH)}px`;
     tgt.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
-export function show(id) {
+export function show(id: string) {
   try {
     _closeMapTip();
-  } catch (e) {} // dismiss any province popup when leaving/entering a section
+  } catch {
+    // dismiss any province popup when leaving/entering a section
+  }
   // leaving the report drops the "#game=…" address, so a refresh from any other screen does not
   // bounce back into a report.
-  if (id !== 'sec-report' && /^#game=/.test(location.hash || '')) {
+  if (id !== 'sec-report' && (location.hash || '').startsWith('#game=')) {
     try {
       history.replaceState(null, '', location.pathname + location.search);
-    } catch (e) {}
+    } catch {
+      // the address stays as it is
+    }
   }
   if (id !== 'sec-report') {
     try {
       stopMessagePolling();
-      saveMessageReads();
-    } catch (e) {}
+      void saveMessageReads();
+    } catch {
+      // the dispatches' state may not be declared yet
+    }
   } // no dispatch poll off the report screen
-  document.querySelectorAll('section').forEach((s) => s.classList.remove('section-active'));
+  document.querySelectorAll('section').forEach((s) => {
+    s.classList.remove('section-active');
+  });
   document.getElementById(id)?.classList.add('section-active');
   // On a phone, default the report screen to the Report view the first time it's shown.
   if (id === 'sec-report') {

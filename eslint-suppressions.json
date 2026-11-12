@@ -425,31 +425,12 @@
       "count": 5
     }
   },
-  "src/ui/player/dispatches.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 11
-    },
-    "no-empty": {
-      "count": 8
-    },
-    "prefer-const": {
-      "count": 1
-    }
-  },
   "src/ui/player/game-lists.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 11
     },
     "no-empty": {
       "count": 5
-    }
-  },
-  "src/ui/player/init.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    },
-    "no-empty": {
-      "count": 3
     }
   },
   "src/ui/player/join-and-chronicle.ts": {
@@ -464,14 +445,6 @@
     },
     "prefer-const": {
       "count": 4
-    }
-  },
-  "src/ui/player/layout.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 7
-    },
-    "no-empty": {
-      "count": 6
     }
   },
   "src/ui/player/report.ts": {
