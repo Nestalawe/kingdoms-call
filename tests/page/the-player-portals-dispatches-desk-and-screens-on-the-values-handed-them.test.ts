@@ -442,22 +442,27 @@ describe('the desk and the screens', () => {
     expect(left.style.height).toBe(`${String(Math.max(360, Math.floor(Number(stage('innerHeight')) - 8)))}px`);
   });
   test("a province named in the report becomes a map link, but not inside a link, a box marked so or the map's SVG", async () => {
-    stage('viewingReport = null; currentReport = { worldMeta: { provinces: [{ id: 3, name: "Ashford" }] } };');
+    // a past turn's report on screen names its own provinces, not the current one's
+    stage(
+      'viewingReport = { worldMeta: { provinces: [{ id: 3, name: "Ashford" }] } }; currentReport = { worldMeta: { provinces: [{ id: 4, name: "Brindle" }] } };',
+    );
     try {
-      call('renderReportView', P.eval('currentReport'));
+      call('renderReportView', P.eval('viewingReport'));
     } catch {
       // the report's own cards need more of a report than this; the links are made at its end all the same
     }
     const col = theElement('rp-report-col');
     col.insertAdjacentHTML(
       'beforeend',
-      '<p id="pl-a">The road to Ashford.</p><p id="pl-b" class="no-prov-link">Ashford</p><svg id="pl-c"><text>Ashford</text></svg>',
+      '<p id="pl-a">The road to Ashford, not Brindle.</p><p id="pl-b" class="no-prov-link">Ashford</p><svg id="pl-c"><text>Ashford</text></svg>',
     );
     await settle(200);
     const linked = (id: string): number => theElement(id).querySelectorAll('[data-prov-link="3"]').length;
     expect([linked('pl-a'), linked('pl-b'), doc.querySelectorAll('#pl-c [data-prov-link]').length]).toEqual([1, 0, 0]);
-    expect(textOf('pl-a')).toBe('The road to Ashford.');
+    expect(doc.querySelectorAll('#pl-a [data-prov-link]').length).toBe(1);
+    expect(textOf('pl-a')).toBe('The road to Ashford, not Brindle.');
     for (const id of ['pl-a', 'pl-b', 'pl-c']) doc.getElementById(id)?.remove();
+    stage('viewingReport = null;');
   });
   test('a province located on the desk brings the map back to the left panel', () => {
     call('show', 'sec-report');
