@@ -18,7 +18,6 @@ if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load
 const thePagesDatabase = makeThePagesDatabase(KC_CONFIG.supabaseUrl, KC_CONFIG.supabaseKey, {
   auth: { storageKey: 'kc-overlord-auth' },
 });
-export const sb = thePagesDatabase.client;
 export const thePagesDb = thePagesDatabase.db;
 // The oldest database this page works with (P0-34): P0-32h's, which added suspending and deleting accounts (and
 // suspended_until) on top of P0-32e's reassign_game and the Overlord's rights on every game. The page can't work without it.
