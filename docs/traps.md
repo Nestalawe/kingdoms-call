@@ -37,8 +37,8 @@ on every merge that adds no migration, so a job after it with a plain `if` is sk
 A constant another file reads as it loads lives in a file of its own that imports nothing, and `page.ts`'s import
 order is not changed. Example: when two files import each other, one runs first and finds the other's top-level `const`
 unset: a temporal-dead-zone `ReferenceError` stops the page on its spinner, or, in the bundle (Rolldown writes each
-`const` as a `var`), the read quietly finds `undefined`. Checks: `npm run lint:arch` fails on a new import cycle (the
-GM page's known one is listed in `.dependency-cruiser-known-violations.json`); `boot-pages` and `chromium-boot`
+`const` as a `var`), the read quietly finds `undefined`. Checks: `npm run lint:arch` fails on a new import cycle (none is
+known now); `boot-pages` and `chromium-boot`
 catch a page that no longer boots. [Detail](architecture/the-build-from-src-to-site.md#a-constant-read-at-load-time-must-live-in-a-leaf-module).
 
 ## `select('*')` on big tables

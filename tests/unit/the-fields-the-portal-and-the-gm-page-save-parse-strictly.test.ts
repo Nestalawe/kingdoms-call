@@ -6,7 +6,7 @@
 //   matrix's game scripted-05 played by resolveTurn, its scripted realm's orders sent with a hero order (the scripted
 //   realm never sends one, so the matrix never stores it);
 // - the four fields the GM page writes into the save between turns, each staged on that turn's save as its writer
-//   writes it: a removed realm's `_gmRemoved` and the save's `_gmRemovedRealms` (removePlayer, src/ui/gm/turn-mode.ts),
+//   writes it: a removed realm's `_gmRemoved` and the save's `_gmRemovedRealms` (removePlayer, src/ui/gm/game-detail.ts),
 //   `archived` and `archivedAt` (setGameArchived, src/db/game-meta.ts);
 // - each mark the code writes and keeps in the save (the scan of every name written by assignment, each writer read),
 //   staged as its writer writes it.

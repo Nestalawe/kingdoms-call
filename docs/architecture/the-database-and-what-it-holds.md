@@ -109,7 +109,7 @@ Each page's version is in its HTML, filled in by `tools/build.ts` after Vite:
   digits of the SHA-256 of its HTML before the build line and the metas are filled in). The HTML names its hashed
   files, so the fingerprint changes exactly when the page or one of its files does; the bundles never hold the commit.
 - **`version.json`**, beside the pages: `{ "commit", "time", "pages": { "<page>.html": "<fingerprint>", … } }`.
-- **Who reads them.** `KC_BUILD_STAMP` (`ui/gm/startup.ts`) and `runningBuildStamp()` (`ui/gm/auto-turn.ts`) are the
+- **Who reads them.** `KC_BUILD_STAMP` (`ui/gm/startup.ts`) and `runningBuildStamp()` (`ui/gm/sign-in.ts`) are the
   meta's commit, 7 characters: telemetry rows (`GM 3f2a9c1 tel3`), Hall of Fame records (`lb3`), the Stats export and
   each report's `engineStamp` carry it. `src/ui/shared/a-newer-version-of-this-page.ts` compares this page's
   fingerprint with the one `version.json` names for it: another one counts once this page has known of it for 10

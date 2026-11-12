@@ -9,7 +9,6 @@ import { normalizeTurnMode } from './startup.ts';
 import { metaPatch } from './turn-mode.ts';
 import { writeTurnTelemetry } from './hall-of-fame.ts';
 import { computeNextDeadline } from './turn-mode.ts';
-import { runningBuildStamp, setAutoTurnStatus } from './auto-turn.ts';
 import { resolveTurn } from '../../engine/run-turn.ts';
 import {
   whatTheSavesCheckFoundInWords,
@@ -17,6 +16,7 @@ import {
 } from '../../views/prose/what-the-saves-check-found-in-words.ts';
 import { whatTheSavesCheckFindsBeforeTheTurn } from '../../engine/saves/the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts';
 import { buildReports } from '../../views/every-realms-report-and-the-lines-each-realm-reads.ts';
+import { runningBuildStamp, setAutoTurnStatus } from './sign-in.ts';
 
 // ── THE TURN SHELL (plan P1-18d, 2026-10-18) ────
 // runTurn runs one turn of a game for the GM: from the Resolve Turn button, or from the auto-turn watcher (auto-turn.ts).

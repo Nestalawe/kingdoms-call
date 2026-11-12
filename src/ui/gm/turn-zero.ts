@@ -9,11 +9,11 @@ import { seedUsedArmyNames } from '../../engine/dice-and-army-names.ts';
 import { normalizeTurnMode, parseGameState } from './startup.ts';
 import { metaPatch } from './turn-mode.ts';
 import { computeNextDeadline } from './turn-mode.ts';
-import { runningBuildStamp } from './auto-turn.ts';
 import { botConfigFor, generateBotSetups, isBotRow } from '../../engine/bots/setup.ts';
 import { generateNewGame, normSeaPct } from '../../engine/world/generate.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
 import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
+import { runningBuildStamp } from './sign-in.ts';
 
 // ── TURN 0 — FULL INLINE MAP GENERATION ────
 // Embeds the core map/character generation from kingdoms-call-gm.html so the GM portal is fully

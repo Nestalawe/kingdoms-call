@@ -2,7 +2,6 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { sb, thePagesDb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
-import { openGame } from './game-detail.ts';
 import { gameArchived, gameArchivedAt, gamesListCols } from './startup.ts';
 import { metaPatch } from './turn-mode.ts';
 import {
@@ -365,37 +364,6 @@ export async function openEditInvites() {
 export function closeEditInvites() {
   const o = document.getElementById('edit-invite-overlay');
   if (o) o.remove();
-}
-export async function saveEditInvites() {
-  const msg = document.getElementById('edit-invite-msg');
-  if (!currentGame) {
-    closeEditInvites();
-    return;
-  }
-  const invited = [..._editInviteSelected];
-  // Merge into the existing setup config (keep mapSize/botCount/allBot etc. intact).
-  let cfg = {};
-  try {
-    cfg =
-      typeof currentGame.game_state === 'string' ? JSON.parse(currentGame.game_state) : currentGame.game_state || {};
-  } catch (e) {
-    cfg = {};
-  }
-  cfg.visibility = 'private';
-  cfg.invited = invited;
-  if (msg) msg.innerHTML = '<span style="color:var(--stone)">Saving…</span>';
-  const { error } = await sb
-    .from('games')
-    .update({ game_state: JSON.stringify(cfg), ...metaPatch(cfg) })
-    .eq('id', currentGame.id);
-  if (error) {
-    if (msg) msg.innerHTML = kcHtml`<span style="color:#e88">${error.message}</span>`;
-    return;
-  }
-  currentGame.game_state = JSON.stringify(cfg);
-  Object.assign(currentGame, metaPatch(cfg)); // keep the in-memory copy fresh
-  closeEditInvites();
-  openGame(currentGame.id); // re-render the detail with the updated invite list
 }
 
 // Comfortable player caps per map size — the most kings that fit with at least ~3 provinces between

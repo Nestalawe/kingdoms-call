@@ -335,21 +335,21 @@
     }
   },
   "src/ui/gm/game-detail.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
       "count": 1
     },
     "no-useless-assignment": {
-      "count": 1
+      "count": 2
     }
   },
   "src/ui/gm/game-list.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 5
+      "count": 4
     },
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
-    },
-    "no-useless-assignment": {
       "count": 1
     },
     "prefer-const": {
