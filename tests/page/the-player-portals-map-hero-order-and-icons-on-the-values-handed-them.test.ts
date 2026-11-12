@@ -6,7 +6,7 @@
 // moved, grouped and written into the orders the seat holds.
 // Level 4 (page): map.ts loads the page's start-up (its database client), so no lower level reaches it; the portal is
 // booted in jsdom (tests/lib/boot.js) on the fake Db at an older database, so it stops at its notice with every
-// module loaded, and its client is one that records the hero order's write.
+// module loaded, and the fake records the hero order's write (db.theOrders, plan P1-17k).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
 import { makeAFakeDb } from '../lib/fake-db.ts';
@@ -21,22 +21,22 @@ const call = (name: string, ...args: unknown[]): unknown => {
   return Reflect.apply(f, undefined, args);
 };
 const stage = (code: string): unknown => P.eval(code);
+const theFakeDb = makeAFakeDb(['20261010000000']).db;
 
 beforeAll(async () => {
   P = bootJsdom(readPage('kingdoms-call-player-portal.html'), {
-    supabase: {
-      createClient: () => ({
-        from: (table: string) => ({
-          update: (val: unknown) => ({
-            eq: (...eq: unknown[]) => {
-              writes.push({ table, val, eq });
-              return Promise.resolve({ error: null });
-            },
-          }),
-        }),
-      }),
+    supabase: { createClient: () => ({}) },
+    db: {
+      ...theFakeDb,
+      theOrders: {
+        ...theFakeDb.theOrders,
+        // the hero order's write, as the page's client sent it before (P1-17k): its table, its change, its filter
+        saveThisRealmsHeroOrder: (realm, orders) => {
+          writes.push({ table: 'game_players', val: { orders }, eq: ['id', realm] });
+          return Promise.resolve({ data: null, error: null, status: 204 });
+        },
+      },
     },
-    db: makeAFakeDb(['20261010000000']).db,
     url: 'https://example.org/p',
     setup(w) {
       w.addEventListener('error', (e) => errs.push(e.error?.stack ?? e.message));
