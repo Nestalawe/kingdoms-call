@@ -35,8 +35,11 @@ map. Write order files as JSON; do not split orders on `|` (a recruit order uses
 
 ## The bot matrix with the kits on
 
+How the kits were measured, and how sure the figures are: [METHOD.md](METHOD.md). The scripts that play the matrix
+with the kits on and compare the runs are in [matrix/](matrix/README.md). One run by hand:
+
 ```sh
 KC_BOT_LAIRS=1 KC_ALIGN_TACTICS=1 KC_ALIGN_PROTO=Divine,Good,Druidic,Neutral,Pagan,Evil,Undead npm run balance -- --set C --out out.json
 ```
 
-Seed sets A to E, 48 games each. The share of wins by alignment, from round 23 to round 28, is in the `findings/` files.
+Seed sets A to E, 48 bot games each. The share of wins by alignment, from round 23 to round 28, is in the `findings/` files.
