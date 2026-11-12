@@ -2,7 +2,6 @@
 import { KC_UNIT_CLASS, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
-import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE } from '../units/drill-and-spoils.ts';
 import { BOT_HEX_DIRS, BOT_SEA_ALL, botNeighbourProv } from './intel.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
@@ -17,6 +16,7 @@ import {
   botPracticeSkill,
   botRecruitOrder,
   botRoles,
+  botSkillOf,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
 import { botOrderLocs, botPickupOrder } from './missions.ts';
@@ -356,11 +356,8 @@ export function botDrillUseful(c, S) {
 export function botCastLimit(G, c, school, practised) {
   const raw = skillLevel(c, school),
     pr = practised || 0;
-  const l = effSkillOf(
-    pr && raw < 5 ? { ...c, skills: { ...(c.skills || {}), [school]: Math.min(5, raw + pr) } } : c,
-    school,
-    G.characters || [],
-  );
+  const c2 = pr && raw < 5 ? { ...c, skills: { ...(c.skills || {}), [school]: Math.min(5, raw + pr) } } : c;
+  const l = botSkillOf(G, c2, school); // step 6: with the kit's lift, as the engine's limit reads it
   const w =
     G._minorHolders &&
     G._minorHolders.warlock &&

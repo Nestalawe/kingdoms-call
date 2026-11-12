@@ -96,6 +96,7 @@ import {
   botBeastFundPay,
   botCanAfford,
   botSpend,
+  botSkillOf,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
 import { botDuelRating, botFillOrders, botPathAny, botPathLenAny, botSpyTarget } from './spellcraft.ts';
@@ -1792,7 +1793,7 @@ export function botKitBredHere(G, pi, c, X) {
     );
   // round 11: the dead that rose from dead land garrison it and cannot be led away
   if (kit === 'Undead')
-    return garr.some((a) => a && a._isSkeletal && a._kitGarrison !== true) && (c.skills || {}).necromancy >= 1;
+    return garr.some((a) => a && a._isSkeletal && a._kitGarrison !== true) && botSkillOf(G, c, 'necromancy') >= 1;
   return false;
 }
 export function botKitPre(G, pi, c, P, L) {
@@ -2215,7 +2216,7 @@ export function botDespoilPlan(G, pi, c, P, L, maxHops) {
  *  to within `maxHops` through the realm's land, to raise them there. {X, d, path}. */
 export function botBarrowPlan(G, pi, c, P, L, maxHops) {
   const pl = (G.players || [])[pi];
-  if (!pl || !P || (c.skills || {}).necromancy < 1) return null;
+  if (!pl || !P || botSkillOf(G, c, 'necromancy') < 1) return null; // step 6: a barrow lifts even a hero with none
   let best = null;
   (pl.provinces || []).forEach((id) => {
     const X = G.world.provinces[id];

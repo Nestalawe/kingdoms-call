@@ -1,6 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kitTactics } from '../alignment-prototypes.ts';
-import { protoAlignOf } from '../alignment-prototypes.ts';
+import { protoAlignOf, protoSkillLift } from '../alignment-prototypes.ts';
+import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { gdActiveFor } from '../grand-design.ts';
 import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
@@ -858,6 +859,15 @@ export function botRaiseTargets(G, pi) {
     .sort((a, b) => b.val - a.val);
 }
 // ── Spellcraft: the engine's per-school cap on casts each turn (bots/spellcraft.ts) ──
+// A hero's skill as the rules cast with it (bot improvements, step 6): his items, a Curse and the Crown's aura (effSkillOf),
+// and what an alignment kit lifts (protoSkillLift: the barrows an Undead realm holds, a signature skill), as the engine's
+// effStat reads it. The bots read the raw skill before, so a hero the barrows had made a necromancer never raised the dead.
+export function botSkillOf(G, c, stat) {
+  if (!c) return 0;
+  const base = effSkillOf(c, stat, G.characters || []) || 0;
+  const lift = protoSkillLift(G, c, stat, base);
+  return lift > 0 ? Math.min(9, base + lift) : base;
+}
 export function botSchoolLimit(lvl) {
   return actionSpellsAllowedPerSchoolEachTurn(lvl);
 }

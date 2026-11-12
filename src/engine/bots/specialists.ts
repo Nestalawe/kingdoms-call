@@ -57,6 +57,7 @@ import {
   botRoles,
   botSchoolLimit,
   botSkillsUnknown,
+  botSkillOf,
 } from './strategy.ts';
 import { BOT_SCHOOLS } from './schools.ts';
 import {
@@ -870,7 +871,7 @@ export function botMageOrders(G, pi, c, pre, L) {
   }
   // idea 9: a NECROMANCER walks to the nearest known battlefield graves in our own or unowned ground (three hops)
   // and raises them — Skeletal Armies needs him standing on the dead.
-  if ((sk.necromancy || 0) >= 1) {
+  if (botSkillOf(G, c, 'necromancy') >= 1) {
     let bestX = null;
     (G.world.provinces || []).forEach((X) => {
       if (!X || X.id === P.id || X.terrain === 'sea' || !botKnowsGraves(G, pi, X.id)) return;
@@ -883,7 +884,7 @@ export function botMageOrders(G, pi, c, pre, L) {
       const path = botPathAny(G, P, bestX.X.id, 3) || [];
       if (path.length === bestX.d) {
         const out = [...pre, ...path.map((d) => botMoveOrder(d, 'To the battlefield dead of ' + bestX.X.name))];
-        const lim = botSchoolLimit(sk.necromancy || 0);
+        const lim = botSchoolLimit(botSkillOf(G, c, 'necromancy'));
         for (let i = 0; i < lim && out.length < 5; i++)
           out.push({ action: 'cast_spell', target: 'Skeletal Armies', extra: '', desc: 'Cast Skeletal Armies' });
         while (out.length < 5) out.push({ ...prac });
