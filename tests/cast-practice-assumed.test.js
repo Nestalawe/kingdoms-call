@@ -16,7 +16,7 @@
 // refused because the practice before it failed spends no casting slot, so a later successful practice opens the last
 // cast) moved down in P1-08j4 to `scenario/research-and-practice-orders-in-a-whole-turn.test.ts`, with its hook on the
 // practice roll
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db'); const {bootScenario}=require('./lib/scenario');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts'); const {bootScenario}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const sc=await bootScenario({});
@@ -35,7 +35,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 
   // ── The encounter plan's combat spells ──
   const errs=[]; let alerts=[];
-  const d=bootJsdom(readPage('kingdoms-call-player-portal.html'),{supabase:{createClient:()=>cannedStub({rows:()=>({}),writes:[]})},
+  const d=bootJsdom(readPage('kingdoms-call-player-portal.html'),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,
     setup(w){ w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message))); w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(res=>setTimeout(res,400)); const P=d.window, doc=P.document; P.alert=m=>alerts.push(String(m));
   const ph={id:'h1',name:'Maelis',player:0,locationId:11,locationName:'Ashford',hp:20,maxHp:20,armies:[],items:[],skills:{psychic:1},effectiveSpeed:3,effectiveSeaSpeed:3,isKing:true};

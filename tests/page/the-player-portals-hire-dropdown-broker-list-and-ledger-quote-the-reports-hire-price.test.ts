@@ -7,8 +7,8 @@
 // Level 4 (page): the dropdown, the list and the ledger are the player portal's own code (buildTargetField,
 // computeOrderLedgerP and the order form, on its globals currentGamePlayer and currentReport), in modules that load the
 // portal's start-up (which calls supabase.createClient as it loads), so only the booted page shows them: the portal
-// booted in jsdom (tests/lib/boot.js) on the stand-in database (tests/lib/stub-db.js's cannedStub, which answers every
-// read with nothing), given the report one real turn wrote. The turn is played on the engine's modules
+// booted in jsdom (tests/lib/boot.js) on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account
+// and no game), given the report one real turn wrote. The turn is played on the engine's modules
 // (tests/lib/a-staged-turn-on-the-engines-modules.ts) from KC_SEED, with a seasoned wanderer of realm 0's alignment
 // staged in its capital.
 //
@@ -17,8 +17,8 @@
 // nothing": a console.error fails the test (tests/setup/each.ts).
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
-import { cannedStub } from '../lib/stub-db.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
@@ -64,7 +64,8 @@ const errs: string[] = [];
 let P: PageWindow;
 beforeAll(async () => {
   P = bootJsdom(readPage('kingdoms-call-player-portal.html'), {
-    supabase: { createClient: () => cannedStub({ rows: () => ({}), writes: [] }) },
+    supabase: { createClient: () => ({}) },
+    db: makeAFakeDb([DB_VERSION]).db,
     setup(w) {
       w.addEventListener('error', (e) => errs.push(e.error?.stack ?? e.message));
       w.console.error = (...a: unknown[]) => errs.push('console.error: ' + a.map(String).join(' '));
