@@ -11,7 +11,8 @@ saved state with its Zod schema and give the report fields it reads a small sche
 ```ts
 // Hand-play harness (research tool for the alignment test games; see tools/handplay/README.md): a game with every kit on, every realm held by a player who reads
 // the realm's report and writes its orders. Run from the repo root: npx tsx tools/handplay/handplay.ts <command> ...
-//   new <game.json> --seed N --alignments A,B,C [--races R,R,R] [--sea 20] [--diplomacy normal|hostile]
+//   new <game.json> --seed N --alignments A,B,C [--races R,R,R] [--sea 20] [--diplomacy normal|hostile] [--human 0,3]
+//                                       --human: only these realms are hand-played; the bots plan every other realm
 //   view <game.json> <realm>            the realm's last report and its situation, as text
 //   orders <game.json> <realm> <orders.json>   {"<charId>": [5 x {action,target,extra,desc}], ...} plus optional
 //                                       "diplomacy": {"<realm>": "enemy"|"treat"}
@@ -28,7 +29,7 @@ const arg = (name: string, d = ''): string => {
   return i >= 0 ? (rest[i + 1] ?? d) : d;
 };
 type Any = any;
-interface Game { spec: GameSpec; state: string; turn: number; reports: Record<string, Any>; orders: Record<string, Any>; logs: string[]; summaries: string[] }
+interface Game { spec: GameSpec; state: string; turn: number; bots?: number[]; reports: Record<string, Any>; orders: Record<string, Any>; logs: string[]; summaries: string[] }
 const load = (): Game => JSON.parse(fs.readFileSync(file, 'utf8'));
 const save = (g: Game) => fs.writeFileSync(file, JSON.stringify(g));
 const scenario = (seed: number) => {
@@ -50,8 +51,10 @@ if (cmd === 'new') {
   const sc = scenario(spec.seed);
   for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) sc.W.eval('kcRng()');
   const state = newWorldOf(sc.engine, spec);
-  save({ spec, state, turn: 1, reports: {}, orders: {}, logs: [], summaries: [] });
-  console.log('made', file, 'realms', aligns.join(','));
+  const human = arg('human') ? arg('human').split(',').map(Number) : null;
+  const bots = human ? aligns.map((_, i) => i).filter((i) => !human.includes(i)) : [];
+  save({ spec, state, turn: 1, bots, reports: {}, orders: {}, logs: [], summaries: [] });
+  console.log('made', file, 'realms', aligns.join(','), bots.length ? '· bots: ' + bots.join(',') : '');
 } else if (cmd === 'view') {
   const g = load();
   const pi = Number(rest[0]);
@@ -129,6 +132,7 @@ if (cmd === 'new') {
 } else if (cmd === 'orders') {
   const g = load();
   const pi = rest[0]; const o = JSON.parse(fs.readFileSync(rest[1], 'utf8'));
+  if ((g.bots || []).includes(Number(pi))) { console.log('realm', pi, 'is played by the bots: no orders taken'); process.exit(1); }
   g.orders[pi] = o; save(g); console.log('orders set for realm', pi, 'heroes', Object.keys(o).filter((k) => k !== 'diplomacy').join(','));
 } else if (cmd === 'run') {
   const g = load();
@@ -138,6 +142,8 @@ if (cmd === 'new') {
   const sc = scenario(g.spec.seed + g.turn * 7919);
   const S = JSON.parse(g.state);
   const rows = S.players.map((p: Any, i: number) => {
+    // a bot realm's row is what the shell loads for a bot: no user, no orders, and the bot flag in its report
+    if ((g.bots || []).includes(i)) return { id: 'G1gp' + i, game_id: 'G1', user_id: null, player_index: i, display_name: p.name, orders_submitted: false, orders: null, turn_report: JSON.stringify({ isBot: true, playerSetup: {} }) };
     const o = g.orders[String(i)] || {};
     const { diplomacy, encounterPlans, discoveryChoices, kingSkills, callReckoning, ...heroOrders } = o;
     const payload = { orders: heroOrders, encounterPlans: encounterPlans || {}, forTurn: g.turn, diplomacy: diplomacy || {}, discoveryChoices: discoveryChoices || {}, kingSkills: kingSkills || {}, callReckoning: callReckoning === true };
@@ -149,7 +155,7 @@ if (cmd === 'new') {
   const S2 = JSON.parse(g.state);
   const log: string[] = (played.log || []).map((l: Any) => l.text).filter(Boolean);
   g.logs.push(...log.map((t: string) => `T${g.turn}: ${t}`));
-  const summary = `Turn ${g.turn} done. ` + S2.players.map((p: Any, i: number) => `${p.name}(${p.alignment}): ${p.provinces.length} prov, ${p.gold}g, ${S2.characters.filter((c: Any) => c.alive && c.player === i).length} heroes`).join(' | ') + (S2.gameOver ? ` GAME OVER: winner ${S2.gameOver.winner}` : '');
+  const summary = `Turn ${g.turn} done. ` + S2.players.map((p: Any, i: number) => `${p.name}(${p.alignment}${(g.bots || []).includes(i) ? ', bot' : ''}): ${p.provinces.length} prov, ${p.gold}g, ${S2.characters.filter((c: Any) => c.alive && c.player === i).length} heroes`).join(' | ') + (S2.gameOver ? ` GAME OVER: winner ${S2.gameOver.winner}` : '');
   g.summaries.push(summary); g.turn += 1; g.orders = {}; save(g);
   console.log(summary);
   if (process.env['KC_SHOW_GM']) for (const t of log.filter((t) => /battle|captur|slain|wins|takes|falls|claims|Ransom|storm|Crusade|consecrat|Blight|Terror|Beacons|Embargo|Trade Pact|Dark Pact|Bind the Bones|rite|Rite|Hunt|Offering|ley|Harvest|dead rise|breeds|answers|Hearts|Grace|Resurrection/i).slice(0, 60)) console.log('  ' + t.slice(0, 220));

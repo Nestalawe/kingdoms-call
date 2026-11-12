@@ -24,7 +24,8 @@ npx tsx tools/handplay/handplay.ts orders g.json 3 o3.json  # that realm's order
 npx tsx tools/handplay/handplay.ts run g.json               # plays the turn for every realm
 ```
 
-`new` also takes `--sea 30` and `--diplomacy hostile`. Every alignment kit is switched on (KC_ALIGN_PROTO). The orders
+`new` also takes `--sea 30`, `--diplomacy hostile` and `--human 0` (one against nine: only the realms listed are
+hand-played, and the bots plan every other realm, as in the matrix; `orders` refuses a bot realm). Every alignment kit is switched on (KC_ALIGN_PROTO). The orders
 file is `{"<heroId>": [five orders], "diplomacy": {"<realm>": "enemy"|"treat"}, "encounterPlans": {"<heroId>":
 {"duelStance": "challenge"|"accept"|"refuse", "ransom": true}}, "discoveryChoices": {...}, "kingSkills": {...}}`; each
 order is `{"action", "target", "extra", "desc"}` as the brief describes. A realm with no orders rests: there are no bots
