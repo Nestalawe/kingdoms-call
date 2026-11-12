@@ -182,7 +182,10 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   and out, the password and the name kept with the sign-in), `db.theAccountsNames` (`profiles`: id, name, joining day)
   and `db.theRoles` (`is_game_master`, `is_site_admin`, the Game Master offer and its answer). Then the Overlord page's
   `db.theOverlordsAccounts` (`overlord_accounts`, suspending, lifting, deleting, offering, withdrawing and revoking Game
-  Master) and `db.theOverlordsGames` (every game a page at a time, `reassign_game`, the realms' names). A `Db` function
+  Master) and `db.theOverlordsGames` (every game a page at a time, `reassign_game`, the realms' names). Then the Hall of
+  Fame and the statistics (the leaderboard, the GM page's Hall of Fame, Stats tab and probe): `db.theHallOfFame`
+  (`game_records`, `rename_player`), `db.theStatistics` (`turn_events`, `game_results`) and `db.theHallOfFamesGames`
+  (the games they read). A `Db` function
   sends the query the page sent before and answers as supabase-js does (`data`, `error`, `status`; the sign-in's `data`
   and `error`), so the page's error paths stay the same. Every other call is still on the page's `sb`.
 - **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
