@@ -89,14 +89,17 @@ const putBackTheRows = async (): Promise<void> => {
   const results = await service.from('game_results').insert([
     { game_id: theGame(), player_index: 1, realm: 'Realm of Brackwater' },
     { game_id: theOtherGame(), player_index: 0, realm: 'Realm of Dunmere' },
+    { game_id: theOtherGame(), player_index: 1, realm: 'Realm of Elderwick' },
     { game_id: theGame(), player_index: 0, realm: 'Realm of Ashford' },
   ]);
   if (results.error) throw new Error(`making the results: ${results.error.message}`);
-  // made out of order, so the reads' order is the query's
+  // made out of order, so the reads' order is the query's; both games have two realms' results and two turns' records,
+  // so the order by game first differs from the order by realm or turn first, whichever game's id is the lower
   const events = await service.from('turn_events').insert([
     { game_id: theGame(), turn: 2, player_index: 1, realm: 'Realm of Brackwater' },
     { game_id: theGame(), turn: 1, player_index: 1, realm: 'Realm of Brackwater' },
     { game_id: theOtherGame(), turn: 1, player_index: 0, realm: 'Realm of Dunmere' },
+    { game_id: theOtherGame(), turn: 2, player_index: 0, realm: 'Realm of Dunmere' },
     { game_id: theGame(), turn: 2, player_index: 0, realm: 'Realm of Ashford' },
     { game_id: theGame(), turn: 1, player_index: 0, realm: 'Realm of Ashford' },
   ]);
@@ -352,7 +355,9 @@ describe("the statistics: only the game's GM and the Overlord read them", () => 
       pages: pages.map((page) => page.data?.length),
     }).toEqual({
       errors: [theReadsError(role), theReadsError(role), theReadsError(role)],
-      games: byId.filter(read).flatMap((game) => (game === theGame() ? ['the game', 'the game'] : ['the other game'])),
+      games: byId
+        .filter(read)
+        .flatMap((game) => (game === theGame() ? ['the game', 'the game'] : ['the other game', 'the other game'])),
       records: byId.filter(read).flatMap((game) =>
         game === theGame()
           ? [
@@ -361,11 +366,14 @@ describe("the statistics: only the game's GM and the Overlord read them", () => 
               ['the game', 2, 0],
               ['the game', 2, 1],
             ]
-          : [['the other game', 1, 0]],
+          : [
+              ['the other game', 1, 0],
+              ['the other game', 2, 0],
+            ],
       ),
       results: [
         ...(runs ? ['the game:0:Realm of Ashford', 'the game:1:Realm of Brackwater'] : []),
-        ...(other ? ['the other game:0:Realm of Dunmere'] : []),
+        ...(other ? ['the other game:0:Realm of Dunmere', 'the other game:1:Realm of Elderwick'] : []),
       ],
       pages: role === 'signed out' ? [undefined, undefined, undefined] : runs || other ? [1, 1, 1] : [0, 0, 0],
     });
@@ -382,14 +390,27 @@ describe("the statistics: only the game's GM and the Overlord delete them", () =
     ];
     const left = [await whatIsLeftIn('game_results'), await whatIsLeftIn('turn_events')];
     const all = {
-      game_results: ['the game:0', 'the game:1', 'the other game:0'],
-      turn_events: ['the game:0:1', 'the game:0:2', 'the game:1:1', 'the game:1:2', 'the other game:0:1'],
+      game_results: ['the game:0', 'the game:1', 'the other game:0', 'the other game:1'],
+      turn_events: [
+        'the game:0:1',
+        'the game:0:2',
+        'the game:1:1',
+        'the game:1:2',
+        'the other game:0:1',
+        'the other game:0:2',
+      ],
     };
     expect({ errors: answers.map(itsError), left }).toEqual(
       role === 'signed out'
         ? { errors: [NO_GRANT, NO_GRANT], left: [all.game_results, all.turn_events] }
         : runsTheGameOrIsTheOverlord(role)
-          ? { errors: [null, null], left: [['the other game:0'], ['the other game:0:1']] }
+          ? {
+              errors: [null, null],
+              left: [
+                ['the other game:0', 'the other game:1'],
+                ['the other game:0:1', 'the other game:0:2'],
+              ],
+            }
           : { errors: [null, null], left: [all.game_results, all.turn_events] },
     );
   });
@@ -404,7 +425,10 @@ describe("the statistics: only the game's GM and the Overlord delete them", () =
       game_results: ['the game:0', 'the game:1'],
       turn_events: ['the game:0:1', 'the game:0:2', 'the game:1:1', 'the game:1:2'],
     };
-    const theOthers = { game_results: ['the other game:0'], turn_events: ['the other game:0:1'] };
+    const theOthers = {
+      game_results: ['the other game:0', 'the other game:1'],
+      turn_events: ['the other game:0:1', 'the other game:0:2'],
+    };
     const keeps = (game: 'the game' | 'the other game'): boolean =>
       role === 'signed out' ||
       (game === 'the game' ? !runsTheGameOrIsTheOverlord(role) : role !== 'another GM' && role !== 'the Overlord');
