@@ -519,8 +519,9 @@ export interface Db {
       orders: string,
       submittedAt: string,
     ) => PromiseLike<ADatabaseAnswer<null>>;
-    /** The turn the game `game` is on (Submit checks it has not moved on). */
-    readonly theTurnOfThisGame: (game: string) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'turn'>>>;
+    /** The turn the game `game` is on (Submit checks it has not moved on). With none (Submit with no seat), the
+     *  request names `undefined`, as the filter wrote it. */
+    readonly theTurnOfThisGame: (game: string | undefined) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'turn'>>>;
   };
 }
 
@@ -731,7 +732,7 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
           .from('game_players')
           .update({ orders, orders_submitted: true, last_submitted_at: submittedAt })
           .eq('id', realm),
-      theTurnOfThisGame: (game) => client.from('games').select('turn').eq('id', game).single(),
+      theTurnOfThisGame: (game) => client.from('games').select('turn').eq('id', String(game)).single(),
     },
   };
 }

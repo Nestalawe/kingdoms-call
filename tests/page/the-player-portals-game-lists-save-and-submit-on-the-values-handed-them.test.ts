@@ -474,7 +474,7 @@ describe('the live poll and the Game Master offer', () => {
 });
 
 describe("the join form's descriptions", () => {
-  test('each select shows its choice in words; one with no words shows none; no select, no change', () => {
+  test('each select shows its choice in words; one with no words shows none; with no select or no box, nothing', () => {
     const cases = [
       ['join-alignment', 'updateAlignmentDesc', 'Neutral', 'The merchant crown'],
       ['join-race', 'updateRaceDesc', 'Dwarven', 'The anvil.'],
@@ -490,13 +490,17 @@ describe("the join form's descriptions", () => {
       Reflect.set(sel, 'value', 'Nobody');
       call(fn);
       expect(desc.innerHTML).toBe('');
-      desc.innerHTML = 'kept';
-      const stand = doc.createElement('div');
-      sel.replaceWith(stand);
-      stand.id = id;
+      Reflect.set(sel, 'value', choice);
+      const holder = doc.createElement('div');
+      desc.replaceWith(holder);
       call(fn);
-      expect(desc.innerHTML).toBe('kept');
-      stand.replaceWith(sel);
+      expect(desc.innerHTML).toBe('');
+      holder.replaceWith(desc);
+      sel.remove();
+      call(fn);
+      expect(desc.innerHTML).toBe('');
+      holder.append(sel);
+      doc.body.append(holder);
     }
   });
 });
@@ -592,7 +596,7 @@ describe('Save and Submit', () => {
     stage('currentGamePlayer = null;');
     answers['turn'] = () => ok(null);
     await call('doSubmitOrders');
-    expect(theAsked('turn').at(-1)).toEqual(['undefined']);
+    expect(theAsked('turn').at(-1)).toEqual([undefined]);
     expect(theAsked('submit')).toEqual([]);
   });
   test("Submit sends each hero's orders, the Spy's target by name, a lair's province, and the cards' orders", async () => {
