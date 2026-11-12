@@ -1154,6 +1154,27 @@ export function botHomeThreat(G, pi) {
   });
   return best;
 }
+// RIDERS (bot improvements, step 5): a general on Defend rides into a neighbouring province of his realm when it is
+// attacked, so the hosts of N's owner the realm can see (or saw lately) beside N count in N's defence, as players count
+// them. A host pinned by our flood cannot ride; one standing in `fromId` (where we attack from) is fought there.
+export function botRidersFor(G, pi, N, fromId, pins) {
+  let force = 0,
+    units = 0;
+  if (!N || N.owner == null || N.owner === pi) return { force, units };
+  for (let j = 0; j < 6; j++) {
+    const K = botNeighbourProv(G, N, j);
+    if (!K || K.id === fromId || (pins && pins.has(K.id))) continue;
+    botVisibleCharsIn(G, pi, K).forEach((e) => {
+      if (e.player !== N.owner || !(e.armies || []).length) return;
+      force += botEffForce(G, e);
+      units += (e.armies || []).length;
+    });
+    const r = botRememberedHostAt(G, pi, K.id);
+    force += r.strength;
+    units += r.units;
+  }
+  return { force, units };
+}
 // TARGET SCAN — from province P with a column of strength myStr: the best winnable adjacent target
 // (attack an at-war enemy province, take unowned land, hunt enemy leaders, put to sea), the strongest
 // at-war enemy host on the doorstep, and the neighbouring valuable province most in need of help.
@@ -1208,8 +1229,10 @@ export function botScanTargets(G, pi, c, P, myStr, T, visited) {
     }
     const rem = enemyTarget ? botRememberedHostAt(G, pi, N.id) : { units: 0, strength: 0 };
     targetStr += rem.strength * BOT_DEF_BONUS; // Sept 2026: a host seen here lately may still be here
+    const ride = enemyTarget ? botRidersFor(G, pi, N, P.id, _pins) : { force: 0, units: 0 };
+    targetStr += ride.force * BOT_DEF_BONUS; // step 5: the owner's hosts beside it ride in
     let effMargin = ec.hasKing ? margin * 0.9 : margin;
-    effMargin = botHostMargin(effMargin, ec.units + rem.units); // 1.5–2× against a general
+    effMargin = botHostMargin(effMargin, ec.units + rem.units + ride.units); // 1.5–2× against a general
     if (targetStr > 0 && strIn(N.terrain) < targetStr * effMargin) continue;
     const terrainEdge = plainStr > 0 ? (strIn(N.terrain) / (plainStr * k) - 1) * 15 : 0; // fight where OUR troops stand tallest
     // a winnable enemy HOST is the prize — the bigger the stack we can smash, the better.
@@ -1308,6 +1331,7 @@ export function botChainHops(G, pi, c, startProv, myStr, T, hopsLeft, visited, f
 // exists in reach.
 export function botDistantStrike(G, pi, c, P, myStr, T, maxHops) {
   if (maxHops <= 0) return null;
+  const _pins = botPins(G, pi);
   const margin = botMarginFor(G, pi, c, T);
   const plainStr = botBattleForce(G, c, null, 'plain');
   const k = plainStr > 0 ? myStr / plainStr : 1;
@@ -1344,8 +1368,10 @@ export function botDistantStrike(G, pi, c, P, myStr, T, maxHops) {
           }
           const rem = enemyTarget ? botRememberedHostAt(G, pi, X.id) : { units: 0, strength: 0 };
           tStr += rem.strength * BOT_DEF_BONUS;
+          const ride = enemyTarget ? botRidersFor(G, pi, X, N.id, _pins) : { force: 0, units: 0 };
+          tStr += ride.force * BOT_DEF_BONUS; // step 5: the owner's hosts beside it ride in
           let effMargin = ec.hasKing ? margin * 0.9 : margin;
-          effMargin = botHostMargin(effMargin, ec.units + rem.units);
+          effMargin = botHostMargin(effMargin, ec.units + rem.units + ride.units);
           if (tStr > 0 && strIn(X.terrain) < tStr * effMargin) continue;
           const terrainEdge = plainStr > 0 ? (strIn(X.terrain) / (plainStr * k) - 1) * 15 : 0;
           const v =
