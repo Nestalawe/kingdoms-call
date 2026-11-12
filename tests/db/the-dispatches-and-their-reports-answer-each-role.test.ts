@@ -78,6 +78,7 @@ const LONG_AGO = '2026-01-01T00:00:00+00:00';
 const THE_PLAYERS_READ_MARKS = { pub: 1 };
 const THE_RIVALS_READ_MARKS = { pub: 2 };
 const A_REASON = 'A made-up reason';
+const ANOTHER_REASON = 'Another made-up reason';
 /** The length check's refusal, in the words the page rewords (src/ui/player/dispatches.ts). */
 const THE_LENGTH_CHECKS_WORDS: unknown = expect.stringMatching(/game_messages_body_len/);
 
@@ -291,11 +292,17 @@ describe('the dispatches: only the realm sends as itself, within the limits; the
       body: 'A new made-up word',
     });
     const sent = (
-      await world.theServiceRole.from('game_messages').select('body,from_index').eq('body', 'A new made-up word')
+      await world.theServiceRole
+        .from('game_messages')
+        .select('body,from_index,to_indexes,scope,turn')
+        .eq('body', 'A new made-up word')
     ).data;
     expect({ error: itsError(answer), sent }).toEqual(
       role === 'a player'
-        ? { error: null, sent: [{ body: 'A new made-up word', from_index: 0 }] }
+        ? {
+            error: null,
+            sent: [{ body: 'A new made-up word', from_index: 0, to_indexes: [1], scope: 'private', turn: 3 }],
+          }
         : { error: role === 'signed out' ? NO_GRANT : refusedByTheRulesFor('game_messages'), sent: [] },
     );
   });
@@ -490,6 +497,15 @@ describe('the reports: a player reports a dispatch they received, once; it goes 
     ]);
   });
   test.for(THE_ROLES)('%s: the reported dispatches of the game, and of every game', async (role) => {
+    // a report in the other game too (the service role: no account holds its realm), made after the first
+    const another = await world.theServiceRole.from('message_reports').insert({
+      message_id: theIdOf("the other game's to every realm"),
+      game_id: theOtherGame(),
+      reporter_index: 1,
+      reporter_user_id: world.accounts['a rival'],
+      reason: ANOTHER_REASON,
+    });
+    if (another.error) throw new Error(`making the other report: ${another.error.message}`);
     const db = dbOf(role);
     const theGames = await db.theReportedDispatches.theDispatchesReportedToThisAccount(theGame());
     const every = await db.theReportedDispatches.theDispatchesReportedToThisAccount(null);
@@ -500,6 +516,9 @@ describe('the reports: a player reports a dispatch they received, once; it goes 
         .filter((row) => [...idOf.values()].includes(row.message_id))
         .map((row) => [theNamesOf([{ id: row.message_id }]).join(''), row.reporter_index, row.reason, row.body]);
     const theReport = [['the rival to the player', 0, A_REASON, 'Made-up words: the rival to the player']];
+    const theOtherReport = [
+      ["the other game's to every realm", 1, ANOTHER_REASON, "Made-up words: the other game's to every realm"],
+    ];
     const reportedTo = role === "the game's GM" || role === 'the Overlord';
     expect({
       errors: [itsError(theGames), itsError(every)],
@@ -508,7 +527,15 @@ describe('the reports: a player reports a dispatch they received, once; it goes 
     }).toEqual({
       errors: [theErrorFor(role), theErrorFor(role)],
       theGames: reportedTo ? theReport : [],
-      every: reportedTo ? theReport : [],
+      // the newest report first
+      every:
+        role === 'the Overlord'
+          ? [...theOtherReport, ...theReport]
+          : role === "the game's GM"
+            ? theReport
+            : role === 'another GM'
+              ? theOtherReport
+              : [],
     });
   });
   test("a GM who plays a realm in the game isn't sent its reports; the Overlord is", async () => {
