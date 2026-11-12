@@ -436,8 +436,28 @@ describe('the desk and the screens', () => {
     left.style.height = '';
     const watcher: unknown = P['kcTheResizeWatcher'];
     if (typeof watcher !== 'function') throw new Error('no watcher');
+    const watched = observed.length;
     Reflect.apply(watcher, undefined, []);
+    expect(observed.length).toBe(watched);
     expect(left.style.height).toBe(`${String(Math.max(360, Math.floor(Number(stage('innerHeight')) - 8)))}px`);
+  });
+  test("a province named in the report becomes a map link, but not inside a link, a box marked so or the map's SVG", async () => {
+    stage('viewingReport = null; currentReport = { worldMeta: { provinces: [{ id: 3, name: "Ashford" }] } };');
+    try {
+      call('renderReportView', P.eval('currentReport'));
+    } catch {
+      // the report's own cards need more of a report than this; the links are made at its end all the same
+    }
+    const col = theElement('rp-report-col');
+    col.insertAdjacentHTML(
+      'beforeend',
+      '<p id="pl-a">The road to Ashford.</p><p id="pl-b" class="no-prov-link">Ashford</p><svg id="pl-c"><text>Ashford</text></svg>',
+    );
+    await settle(200);
+    const linked = (id: string): number => theElement(id).querySelectorAll('[data-prov-link="3"]').length;
+    expect([linked('pl-a'), linked('pl-b'), doc.querySelectorAll('#pl-c [data-prov-link]').length]).toEqual([1, 0, 0]);
+    expect(textOf('pl-a')).toBe('The road to Ashford.');
+    for (const id of ['pl-a', 'pl-b', 'pl-c']) doc.getElementById(id)?.remove();
   });
   test('a province located on the desk brings the map back to the left panel', () => {
     call('show', 'sec-report');
