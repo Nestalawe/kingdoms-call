@@ -181,7 +181,13 @@ describe('My Games', () => {
   test('the tally leaves out bots and the exempt (from the meta, else the world), and the joining realm has no name yet', async () => {
     answers['myRealms'] = () => ok([aRealm('R1', 'G1', { display_name: '' }), aRealm('R2', 'G2')]);
     const world = {
-      players: [{ provinces: [1] }, { conceded: true }, { provinces: [] }, {}, { _eliminated: true }],
+      players: [
+        { provinces: [1] },
+        { conceded: true, provinces: [3] },
+        { provinces: [] },
+        {},
+        { _eliminated: true, provinces: [4] },
+      ],
       characters: [null, { alive: true, player: 3 }, { alive: false, player: 2 }],
     };
     answers['cards'] = () =>
@@ -208,7 +214,7 @@ describe('My Games', () => {
     expect(cards[1]).toContain('Your realm: Thornmere · Turn 0');
     expect(cards[1]).toContain('2 of 2 realms have sent orders — every realm is in');
   });
-  test("a world that isn't JSON exempts no one; one whose heroes aren't a list stops the list", async () => {
+  test("a world that isn't JSON exempts no one; one whose heroes aren't a list, or that is null, stops the list", async () => {
     answers['myRealms'] = () => ok([aRealm('R1', 'G1')]);
     answers['cards'] = () => ok([aGame('G1', { game_state: 'not json' })]);
     answers['slots'] = () => ok([aSlot('G1', 0), aSlot('G1', 1)]);
@@ -216,6 +222,8 @@ describe('My Games', () => {
     expect(textOf('my-games-list')).toContain('0 of 2 realms have sent orders');
     answers['cards'] = () =>
       ok([aGame('G1', { game_state: { players: [{}, { provinces: [2] }], characters: { 0: { alive: true } } } })]);
+    await expect(call('loadMyGames')).rejects.toHaveProperty('name', 'TypeError');
+    answers['cards'] = () => ok([aGame('G1', { game_state: 'null' })]);
     await expect(call('loadMyGames')).rejects.toHaveProperty('name', 'TypeError');
   });
   test('a game archived by its meta, or by its world, moves to the archived card', async () => {
@@ -309,6 +317,13 @@ describe('My Games', () => {
         })),
       );
     answers['readMarks'] = () => refused('no read marks');
+    await call('loadMyGames');
+    expect(textOf('my-games-list')).toContain('✉ 99+ new');
+    answers['readMarks'] = () => ({
+      data: [{ game_id: 'G1', player_index: 0, reads: { public: 100 } }],
+      error: { message: 'refused, with rows' },
+      status: 400,
+    });
     await call('loadMyGames');
     expect(textOf('my-games-list')).toContain('✉ 99+ new');
     answers['readMarks'] = () => {
@@ -427,6 +442,10 @@ describe('the live poll and the Game Master offer', () => {
     answers['turnAndState'] = () => ok([]);
     await call('pollForUpdates');
     expect(stage('_lastMyGamesSig')).toBe('R1:0::0:1/2:u0');
+    answers['myFlags'] = () => ok([aRealm('R2', 'G2', { orders_submitted: true }), aRealm('R1', 'G1')]);
+    answers['dispatches'] = () => ok([{ game_id: 'G1', id: 2, from_index: 1, scope: 'public', to_indexes: [] }]);
+    await call('pollForUpdates');
+    expect(stage('_lastMyGamesSig')).toBe('R1:0::0:1/2:u1|R2:0::1:0/0:u0');
   });
   test("on an open report it only shows the banner when the realm's game has moved past the turn it opened at", async () => {
     onScreen('sec-report');
@@ -461,6 +480,11 @@ describe('the live poll and the Game Master offer', () => {
     await call('loadAllGames');
     expect(theAsked('offer')).toEqual([['U1']]);
     expect(banner.style.display).toBe('block');
+    expect(theElement('gm-offer-ask').style.display).toBe('block');
+    expect(theElement('gm-offer-done').style.display).toBe('none');
+    theElement('gm-offer-ask').style.display = 'none';
+    theElement('gm-offer-done').style.display = 'block';
+    await call('loadAllGames');
     expect(theElement('gm-offer-ask').style.display).toBe('block');
     expect(theElement('gm-offer-done').style.display).toBe('none');
     answers['offer'] = () => ok({ accepted_at: '2026-11-01T00:00:00Z' });
@@ -618,6 +642,8 @@ describe('Save and Submit', () => {
       <input type="hidden" id="ep-preschool-hired_5" value="Ice">
       <select id="ep-evilmode-hired_5"><option value="loot">loot</option></select>
       <div id="hired-hero-orders-b"></div>
+      <div id="hired-hero-orders-c"><select id="po-action-hired_8-0"><option value="Rest">Rest</option></select></div>
+      <input type="hidden" id="ep-tactics-hired_8" value="DF">
       <div id="resurrect-orders-a"><select id="po-action-resurrect_6-0"><option value="">none</option></select></div>
       <input type="hidden" id="ep-tactics-resurrect_6" value="AR">
       <input id="ep-notes-resurrect_6" value="rise">
@@ -642,6 +668,7 @@ describe('Save and Submit', () => {
     expect(orders['charm_7']?.[0]?.['action']).toBe('Explore');
     expect(sent['encounterPlans']).toEqual({
       hired_5: { tactics: ['ME', 'CS:ice'], notes: '', duelStance: 'refuse', evilMode: 'loot' },
+      hired_8: { tactics: ['DF'], notes: '', duelStance: 'refuse' },
       resurrect_6: { tactics: ['AR'], notes: 'rise', duelStance: 'refuse' },
       charm_7: { tactics: ['ME'], notes: '', duelStance: 'accept' },
     });
