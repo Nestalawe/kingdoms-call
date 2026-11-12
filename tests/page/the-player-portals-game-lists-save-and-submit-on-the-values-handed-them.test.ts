@@ -423,29 +423,42 @@ describe('the live poll and the Game Master offer', () => {
     await call('pollForUpdates');
     expect(asked.map((a) => a.what)).toEqual(['myFlags']);
   });
-  test('on the list it repaints when what the cards show changes, and not when it stays', async () => {
+  /** Whether a poll on the list repaints it (its cards read again). */
+  const aPollRepaints = async (): Promise<boolean> => {
+    const before = theAsked('myRealms').length;
+    await call('pollForUpdates');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    return theAsked('myRealms').length > before;
+  };
+  test('on the list it repaints when a part of what the cards show changes, and not when it stays', async () => {
     onScreen('sec-games');
-    stage('_lastMyGamesSig = null;');
-    answers['myFlags'] = () => ok([aRealm('R1', 'G1')]);
-    answers['turnAndState'] = () => ok([{ id: 'G1', turn: 3, status: 'active' }]);
-    answers['slots'] = () =>
-      ok([aSlot('G1', 0, { orders_submitted: true }), aSlot('G1', 1), aSlot('G1', 2, { is_bot: true })]);
     answers['myRealms'] = () => ok([aRealm('R1', 'G1')]);
     answers['cards'] = () => ok([aGame('G1')]);
-    await call('pollForUpdates');
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(theAsked('myRealms')).toHaveLength(1);
-    expect(stage('_lastMyGamesSig')).toBe('R1:3:active:0:1/2:u0');
-    await call('pollForUpdates');
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(theAsked('myRealms')).toHaveLength(1);
-    answers['turnAndState'] = () => ok([]);
-    await call('pollForUpdates');
-    expect(stage('_lastMyGamesSig')).toBe('R1:0::0:1/2:u0');
-    answers['myFlags'] = () => ok([aRealm('R2', 'G2', { orders_submitted: true }), aRealm('R1', 'G1')]);
-    answers['dispatches'] = () => ok([{ game_id: 'G1', id: 2, from_index: 1, scope: 'public', to_indexes: [] }]);
-    await call('pollForUpdates');
-    expect(stage('_lastMyGamesSig')).toBe('R1:0::0:1/2:u1|R2:0::1:0/0:u0');
+    answers['myFlags'] = () => ok([aRealm('R1', 'G1'), aRealm('R2', 'G2')]);
+    const games: Record<string, unknown>[] = [{ id: 'G1', turn: 3, status: 'active' }];
+    answers['turnAndState'] = () => ok(games);
+    const slots = [
+      aSlot('G1', 0, { orders_submitted: true }),
+      aSlot('G1', 1),
+      aSlot('G1', 2),
+      aSlot('G1', 3, { is_bot: true }),
+    ];
+    answers['slots'] = () => ok(slots);
+    const dispatches: Record<string, unknown>[] = [];
+    answers['dispatches'] = () => ok(dispatches);
+    await aPollRepaints();
+    expect(await aPollRepaints(), 'nothing changed').toBe(false);
+    games.push({ id: 'G2', turn: 0, status: '' });
+    expect(await aPollRepaints(), 'a game read at turn 0 and no state, as one not read').toBe(false);
+    games.splice(1, 1, { id: 'G2', turn: 1, status: '' });
+    expect(await aPollRepaints(), "a game's turn").toBe(true);
+    slots.push(aSlot('G2', 0));
+    expect(await aPollRepaints(), "a game's first slot").toBe(true);
+    slots.push(aSlot('G1', 4));
+    expect(await aPollRepaints(), 'one more realm to send its orders').toBe(true);
+    dispatches.push({ game_id: 'G1', id: 5, from_index: 1, scope: 'public', to_indexes: [] });
+    expect(await aPollRepaints(), 'an unread dispatch').toBe(true);
+    expect(await aPollRepaints(), 'nothing changed again').toBe(false);
   });
   test("on an open report it only shows the banner when the realm's game has moved past the turn it opened at", async () => {
     onScreen('sec-report');

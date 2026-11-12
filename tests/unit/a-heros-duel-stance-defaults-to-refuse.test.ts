@@ -42,7 +42,9 @@ test("a player's hero with no stance set refuses a duel; a chosen stance is kept
 
 test('every place the orders form writes a stance falls back to Refuse, and every fresh select opens on it', () => {
   const src = compactPage('kingdoms-call-player-portal.html');
-  const fallbacks = src.match(/duelStance:document\.getElementById\(`ep-duel-[^`]+`\)\?\.value\|\|'(\w+)'/g) ?? [];
+  // (each `duelStance: thisOrElse(theValueOfThePagesField(`ep-duel-…`), 'refuse')`, the field's value or its fallback:
+  // P1-16m typed what read `document.getElementById(…)?.value || 'refuse'`)
+  const fallbacks = src.match(/duelStance:thisOrElse\(theValueOfThePagesField\(`ep-duel-[^`]+`\),'(\w+)'/g) ?? [];
   expect(fallbacks.length, 'the submitted plan writes a stance in at least 5 places').toBeGreaterThanOrEqual(5);
   expect(
     fallbacks.filter((f) => !f.endsWith("'refuse'")),
