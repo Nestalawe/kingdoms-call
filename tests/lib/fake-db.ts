@@ -57,10 +57,10 @@ const refusedAsNotTheOverlord = (message: string): ADatabaseAnswer<never> => ({
 const none = (): ADatabaseAnswer<never[]> => ({ data: [], error: null, status: 200 });
 /** A change or deletion that matched no row (the database answers no error). */
 const nothingMatched = (): ADatabaseAnswer<null> => ({ data: null, error: null, status: 204 });
-/** One row asked for, and none there (the database's words for a single row's read that matched none). */
+/** One row asked for, and none there (the local database's words for a single row's read that matched none). */
 const noSuchRow = (): ADatabaseAnswer<never> => ({
   data: null,
-  error: { message: 'JSON object requested, multiple (or no) rows returned' },
+  error: { message: 'Cannot coerce the result to a single JSON object' },
   status: 406,
 });
 /** A new row the access rules refuse (no one signed in), in the database's words. */
