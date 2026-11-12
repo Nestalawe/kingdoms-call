@@ -206,7 +206,10 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   the page before its scripts run (`bootJsdom(html, { db })`, which sets it on the window under
   `THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER`); only `src/db/` reads that name (a static test). The fake doesn't
   imitate the access rules; beyond the version, it holds no account (no session, no names, no role) and no game, and
-  the Overlord's functions refuse.
+  the Overlord's functions refuse. Two fakes hold a world a test stages and reads back: the Overlord's
+  (`makeAFakeDbHoldingTheOverlordsWorld`: accounts, offers, games, realms, reported dispatches, the Overlord's
+  functions with the database's refusals) and the Hall of Fame's (`makeAFakeDbHoldingTheHallOfFame`: its entries and
+  the changes sent).
 
 ## A site change that needs a database change
 

@@ -1,9 +1,9 @@
 // claude_lb_render_0927.js — end-to-end render smoke test for kingdoms-call-leaderboard.html.
 // Builds real Hall-of-Fame rows with the GM portal's own buildGameRecords, serves them to the
-// leaderboard page through a stub Supabase client in JSDOM, then renders every tab and checks the
+// leaderboard page through the fake database (lib/fake-db.ts) in JSDOM, then renders every tab and checks the
 // output for exceptions, empty boards, and undefined/NaN leaking into the HTML. Also exercises GM
 // mode (?gm=1) and the edit / hide / delete controls.
-const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {sourceFrom}=require('./lib/source.ts'); const {leaderboardStub}=require('./lib/stub-db');
+const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {sourceFrom}=require('./lib/source.ts'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
 const LB_FILE=process.argv[2]||sitePath('kingdoms-call-leaderboard.html');
 
 // ── 1. real builder, stub engine tables ────────────────────────────────────────────────────────
@@ -87,9 +87,9 @@ for(let i=0;i<14;i++){
   ROWS.push(row);
 }
 
-// ── 2. stub Supabase and render the page ───────────────────────────────────────────────────────
+// ── 2. the fake database and render the page ───────────────────────────────────────────────────
 const CALLS=[];
-const makeSb=(signedIn,isGm)=>leaderboardStub({rows:()=>ROWS,calls:CALLS,signedIn,isGm});
+const makeDb=(signedIn,isGm)=>makeAFakeDbHoldingTheHallOfFame(DB_VERSION,{rows:()=>ROWS,changes:CALLS,signedIn,isGm}).db;
 
 let fails=0;
 function check(cond,msg){ if(!cond){ fails++; console.log('FAIL: '+msg); } }
@@ -98,7 +98,7 @@ async function run(gmMode){
   const errs=[];
   const dom=bootJsdom(readPage(LB_FILE),{
     pretendToBeVisual:false, url:'https://example.test/kingdoms-call-leaderboard.html'+(gmMode?'?gm=1':''),
-    supabase:{createClient:()=>makeSb(gmMode,gmMode)},
+    supabase:{createClient:()=>({})}, db:makeDb(gmMode,gmMode),
     setup(w){
       w.addEventListener('error',e=>errs.push(e.message));
       w.confirm=()=>true; w.alert=m=>errs.push('alert: '+m);
