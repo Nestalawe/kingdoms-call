@@ -543,7 +543,8 @@ describe('Save and Submit', () => {
       <select id="ep-duel-h1"><option value="">none</option></select>
       <select id="ep-evilmode-h1"><option value="">none</option></select>
       <input type="hidden" id="ep-tactics-h2" value="AR,ME">
-      <input id="ep-notes-h2" value="hold the ford">`);
+      <input id="ep-notes-h2" value="hold the ford">
+      <input type="hidden" id="ep-tactics-h3" value="DF">`);
     await call('doSaveOrders');
     const saved = theSaved('draft');
     expect(theAsked('draft')[0]?.[0]).toBe('R1');
@@ -554,6 +555,7 @@ describe('Save and Submit', () => {
     expect(saved['encounterPlans']).toEqual({
       h1: { tactics: ['ME', 'CS:fire'], notes: '', duelStance: 'refuse' },
       h2: { tactics: ['AR', 'ME'], notes: 'hold the ford', duelStance: 'refuse' },
+      h3: { tactics: ['DF'], notes: '', duelStance: 'refuse' },
     });
     expect(saved['kingSkills']).toEqual({
       h2: { skills: { Melee: 2 }, pending: 0, name: '', temper: '', base: { Melee: 1 } },
@@ -659,5 +661,23 @@ describe('Save and Submit', () => {
     expect(textOf('orders-submit-wrap')).toContain('Submit Orders for Turn 3');
     call('cancelSubmit');
     expect(textOf('orders-msg')).toBe('');
+    stage('currentReport = null;');
+    call('cancelSubmit');
+    expect(textOf('orders-submit-wrap')).toContain('Submit Orders for Turn 1');
+  });
+  test('Submit marks its button as saving while it asks, and a report with no turn sends turn 1', async () => {
+    stage(`currentReport = ${JSON.stringify({ characters: [] })};`);
+    stage('currentGamePlayer = { id: "R1", game_id: "G1" };');
+    form('');
+    call('cancelSubmit');
+    let seen: unknown[] = [];
+    answers['turn'] = () => {
+      const btn = theElement('submit-btn');
+      seen = [Reflect.get(btn, 'disabled'), btn.textContent];
+      return ok({ turn: 1 });
+    };
+    await call('doSubmitOrders');
+    expect(seen).toEqual([true, 'Saving…']);
+    expect(theSaved('submit')['forTurn']).toBe(1);
   });
 });

@@ -55,6 +55,9 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **An element looked up before the HTML written into it is built** (`el.innerHTML = kcHtml\`…\``) is read through
   `theElementWithTheId` after the HTML is built into a `const`: the page builds the right side before a missing element
   throws.
+- **An element looked up before an await and written after it** (the game lists' `el`, read at the top, written on
+  each path) keeps its lookup; each write reads it through a reader that throws for `null` (`theElementFound`), so a
+  missing element still stops the code where the write did.
 
 ## Writing into the page
 
@@ -89,6 +92,9 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **An `async` function that awaits nothing** (a page global no caller awaits: Resubmit) is a plain function (lint's
   `require-await`): its promise was read by nobody, and its body throws only where the page holds none of an element
   every screen holds.
+- **An `async` function handed to `setInterval`** (the live poll) is wrapped,
+  `setInterval(() => { void pollForUpdates(); }, ms)` (lint's `no-misused-promises`): the same call each tick, with no
+  arguments, its promise still unread.
 
 ## The page's globals
 

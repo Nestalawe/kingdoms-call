@@ -75,7 +75,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   goes through a reader typed `unknown` that compares them so (`isTheSavedChoice`): the compiler refuses `==` between
   `string` and `number`. **A level a table may lack, handed to a rule that only compares it** (`_projLvl[school]`, the
   casts a school allows) is `Number(x)`: `NaN` meets no level, as `undefined` did. **A name read as a key that may be
-  missing** (an item's spell) is `String(x)` before it is handed on: `'undefined'` is the key `undefined` was read as.
+  missing** (an item's spell) is `String(x)` before it is handed on: `'undefined'` is the key `undefined` was read as.- **`new Date(x)` on a value of any kind** (a deadline as a game's state holds it) is `Reflect.construct(Date, [x])`,
+  read into an `unknown` and checked `instanceof Date` (`theDateOf`, `game-lists.ts`): the constructor reads the value
+  as before, which `Date`'s parameter types refuse. `JSON.parse(text)` of a game's state goes through a reader typed
+  `unknown` (`theStateParsed`), so its `any` stays inside.
+
 ## Lists, tables, sets and maps
 
 - **A table of lists read by any words, else one of its rows** (`SUSPEND_FOR[how] || SUSPEND_FOR.day`) is typed with that
@@ -191,3 +195,5 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A list only asked whether it holds a number** (a province's neighbours, typed `unknown[]`, handed to the
   consecration's checks) is filtered to its numbers (`theNumbersAmong`): no other value is a province's number. Where
   the place is a forecast with no id, `id ?? NaN` (`theIdOrNoProvince`) matches none, as `undefined` did.
+- **`.some` on a value of any kind** (a game's heroes, as parsed) goes through a reader that gives a list as it is and
+  throws, for any other value, the `TypeError` the call threw (`theListToSearch`, `game-lists.ts`).

@@ -98,6 +98,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   after the loops: the compiler forgets what a callback sets in a `let`; the same callbacks run in the same order.
 - **`{}` handed where a typed hero is needed** (`find(…) || list[i] || {}`) is an object whose `id` reads `undefined`
   and isn't its own enumerable field (`theEmptyHero`, `pre-orders.ts`): every read the field makes gives what `{}` gave.
+- **A page global tested before an await and written after it** (`if (currentGamePlayer) currentGamePlayer.orders = …`
+  after Submit's database call), which the compiler takes as still narrowed, is read again through a function that
+  returns it (`theSeatOpenNow`, `briefing-and-submit.ts`): another handler may have changed it meanwhile; the test stays.
 
 ## Parameters, shapes and claims
 
