@@ -494,6 +494,24 @@ export interface Db {
       realm: number,
     ) => PromiseLike<ADatabaseAnswer<ATurnsLog[]>>;
   };
+  /** The orders (game_players' orders: the realm's draft or submitted orders, one JSON text), as the player writes them,
+   *  and the turn they are for (games). Each writes only the realm `realm` (P2-05 later checks them in the database). */
+  readonly theOrders: {
+    /** Saves the draft `orders` of the realm `realm`: its orders no longer submitted. */
+    readonly saveThisRealmsDraft: (realm: string, orders: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Saves the orders `orders` of the realm `realm` (its hero order merged in), whether submitted or not. */
+    readonly saveThisRealmsHeroOrder: (realm: string, orders: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Revise: the realm `realm`'s orders no longer submitted, its orders kept. */
+    readonly reopenThisRealmsOrders: (realm: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Submits the orders `orders` of the realm `realm`, at the time `submittedAt`. */
+    readonly submitThisRealmsOrders: (
+      realm: string,
+      orders: string,
+      submittedAt: string,
+    ) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The turn the game `game` is on (Submit checks it has not moved on). */
+    readonly theTurnOfThisGame: (game: string) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'turn'>>>;
+  };
 }
 
 /** The page's Db, on its own client: each function sends the query the page sent on that client before. */
@@ -691,6 +709,19 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
     theChroniclesLogs: {
       theLogOfThisRealmInThisTurn: (game, turn, realm) =>
         client.from('turn_logs').select('*').eq('game_id', game).eq('turn', turn).eq('player_index', realm).limit(1),
+    },
+    theOrders: {
+      saveThisRealmsDraft: (realm, orders) =>
+        client.from('game_players').update({ orders, orders_submitted: false }).eq('id', realm),
+      saveThisRealmsHeroOrder: (realm, orders) => client.from('game_players').update({ orders }).eq('id', realm),
+      reopenThisRealmsOrders: (realm) =>
+        client.from('game_players').update({ orders_submitted: false }).eq('id', realm),
+      submitThisRealmsOrders: (realm, orders, submittedAt) =>
+        client
+          .from('game_players')
+          .update({ orders, orders_submitted: true, last_submitted_at: submittedAt })
+          .eq('id', realm),
+      theTurnOfThisGame: (game) => client.from('games').select('turn').eq('id', game).single(),
     },
   };
 }

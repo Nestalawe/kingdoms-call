@@ -26,7 +26,7 @@ import {
   txtGlyph,
 } from './map-symbols.ts';
 import { heroBlocksP, heroGroupP, refreshHeroMoveButtonsP } from './move-analysis.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { asItsGuardReadsIt } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import type { AProvinceThePopupReads } from './map-symbols.ts';
 import type { TheReportAsTheTitlesReadIt } from './titles.ts';
@@ -1406,7 +1406,7 @@ export async function persistHeroOrder(): Promise<void> {
     );
   Reflect.set(raw, 'heroOrder', heroOrder.slice());
   const payload = JSON.stringify(raw);
-  const { error } = await sb.from('game_players').update({ orders: payload }).eq('id', gp.id);
+  const { error } = await thePagesDb.theOrders.saveThisRealmsHeroOrder(gp.id, payload);
   if (error) {
     console.warn('persistHeroOrder:', error.message);
     return;

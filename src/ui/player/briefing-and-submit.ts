@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { SEASONS } from './items-and-heroes.ts';
 import { collectMessages } from './init.ts';
 import { setMobileView } from './layout.ts';
@@ -212,13 +212,7 @@ export async function doSaveOrders(): Promise<void> {
     heroOrder: currentHeroOrderP(),
     forTurn: _draftTurn,
   });
-  const { error: saveErr } = await sb
-    .from('game_players')
-    .update({
-      orders: _payload,
-      orders_submitted: false,
-    })
-    .eq('id', gp.id);
+  const { error: saveErr } = await thePagesDb.theOrders.saveThisRealmsDraft(gp.id, _payload);
   if (saveErr) {
     console.error('Save draft error:', saveErr.message);
     return;
@@ -246,7 +240,7 @@ export async function doSubmitOrders(): Promise<void> {
   }
 
   // Safety: verify the turn hasn't advanced since the player loaded the form
-  const { data: freshGame } = await sb.from('games').select('turn').eq('id', currentGamePlayer?.game_id).single();
+  const { data: freshGame } = await thePagesDb.theOrders.theTurnOfThisGame(currentGamePlayer?.game_id);
   const expectedTurn = currentReport?._liveTurn || currentReport?.turn || 1;
   if (freshGame && freshGame.turn !== expectedTurn) {
     document.getElementById('orders-msg').innerHTML =
@@ -398,14 +392,11 @@ export async function doSubmitOrders(): Promise<void> {
     heroOrder: currentHeroOrderP(),
     forTurn: expectedTurn,
   });
-  const { error } = await sb
-    .from('game_players')
-    .update({
-      orders: _subPayload,
-      orders_submitted: true,
-      last_submitted_at: new Date().toISOString(),
-    })
-    .eq('id', currentGamePlayer.id);
+  const { error } = await thePagesDb.theOrders.submitThisRealmsOrders(
+    currentGamePlayer.id,
+    _subPayload,
+    new Date().toISOString(),
+  );
   if (error) {
     document.getElementById('orders-msg').innerHTML = kcHtml`<div class="msg-error">Error: ${error.message}</div>`;
     restoreSubmitWrap('Submit');

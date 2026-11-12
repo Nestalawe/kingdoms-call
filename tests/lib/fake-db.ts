@@ -258,6 +258,13 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
     theChroniclesLogs: {
       theLogOfThisRealmInThisTurn: answering('from:turn_logs', none),
     },
+    theOrders: {
+      saveThisRealmsDraft: answering('from:game_players', nothingMatched),
+      saveThisRealmsHeroOrder: answering('from:game_players', nothingMatched),
+      reopenThisRealmsOrders: answering('from:game_players', nothingMatched),
+      submitThisRealmsOrders: answering('from:game_players', nothingMatched),
+      theTurnOfThisGame: answering('from:games', noSuchRow),
+    },
   };
   return { db, calls };
 }

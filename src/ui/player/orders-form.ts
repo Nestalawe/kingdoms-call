@@ -63,7 +63,7 @@ import {
   effMagicLvl,
   skillsUnseenP,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { asItsGuardReadsIt } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
@@ -1096,7 +1096,7 @@ export async function reviseOrders(): Promise<void> {
   // Mark orders as not submitted so the player can edit and resubmit
   const gp = currentGamePlayer;
   if (!gp) return;
-  const { error } = await sb.from('game_players').update({ orders_submitted: false }).eq('id', String(gp.id));
+  const { error } = await thePagesDb.theOrders.reopenThisRealmsOrders(String(gp.id));
   if (error) {
     console.error(error);
     return;
