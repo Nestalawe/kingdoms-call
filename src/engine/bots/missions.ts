@@ -27,6 +27,7 @@ import {
   darkPactBlood,
   darkPactCost,
   darkPactKinds,
+  stormedLastTurn,
   stormTargets,
   tradePactPrice,
   tradePactPriceOwned,
@@ -2098,20 +2099,22 @@ export function botKingKitOrder(G, pi, c, P, L) {
       // enemy has more companies there than the realm has
       if (!ready('call_storm') || !botCanAfford(L, CALL_STORM_COST)) return null;
       let best = null;
-      stormTargets(G, pi).forEach((X) => {
-        let foe = 0;
-        let own = X.owner === pi ? (X.garrisonArmies || []).length : 0;
-        (G.characters || []).forEach((h) => {
-          if (!h || !h.alive || h.location !== X.id) return;
-          const n = (h.armies || []).filter((a) => a && !a._phantom).length;
-          if (h.player === pi) own += n;
-          else if (h.player != null && botRelationRaw(G, pi, h.player) === 'enemy') foe += n;
+      stormTargets(G, pi)
+        .filter((X) => !stormedLastTurn(G, X)) // round 28: not where a storm broke last turn
+        .forEach((X) => {
+          let foe = 0;
+          let own = X.owner === pi ? (X.garrisonArmies || []).length : 0;
+          (G.characters || []).forEach((h) => {
+            if (!h || !h.alive || h.location !== X.id) return;
+            const n = (h.armies || []).filter((a) => a && !a._phantom).length;
+            if (h.player === pi) own += n;
+            else if (h.player != null && botRelationRaw(G, pi, h.player) === 'enemy') foe += n;
+          });
+          if (X.owner != null && X.owner !== pi && botRelationRaw(G, pi, X.owner) === 'enemy')
+            foe += (X.garrisonArmies || []).length;
+          const gain = foe - own;
+          if (foe >= 2 && gain >= 1 && (!best || gain > best.gain)) best = { X, gain }; // round 23: looser
         });
-        if (X.owner != null && X.owner !== pi && botRelationRaw(G, pi, X.owner) === 'enemy')
-          foe += (X.garrisonArmies || []).length;
-        const gain = foe - own;
-        if (foe >= 2 && gain >= 1 && (!best || gain > best.gain)) best = { X, gain }; // round 23: looser
-      });
       if (!best) return null;
       botSpend(L, CALL_STORM_COST);
       return {

@@ -9,6 +9,7 @@ import type { Army, Character, Province } from '../../schemas/saved-game-state.t
 import {
   alignProto,
   BARROW_GRAVES_HUMANOID,
+  captivesColumnFallsBack,
   BARROW_GRAVES_WILD,
   DIVINE_POWER_ABSOLUTION,
   DIVINE_GIFTS,
@@ -327,13 +328,28 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
   // pays when it can), and a captor slain sets him free where he fell.
   for (const c of G.characters) {
     if (c._captiveOf == null) continue;
-    if (c.armies.length) c.armies = []; // round 26: a captive's column scatters (one taken before a battle kept it)
+    if (c.armies.length) {
+      // round 28: a captive's column falls back leaderless to his realm's nearest province (rounds 26-27: it scattered)
+      const n = c.armies.length;
+      const back = captivesColumnFallsBack(G, c, c.location);
+      if (c.player != null && back)
+        line(
+          c.player,
+          `${c.name} is held to ransom: the ${String(n)} compan${n === 1 ? 'y' : 'ies'} of the column fall back leaderless to ${back}.`,
+          null,
+          'explore',
+        );
+    }
+    c._captiveTurn ??= G.turn - 1; // taken during the turn just ended
     const captor = G.characters.find((h) => h.id === c._captiveOf);
     const owner = c.player == null ? null : G.players[c.player];
     const league = captor?.player == null ? null : G.players[captor.player];
     const free = (where: Character['location'], why: string): void => {
       delete c._captiveOf;
       delete c._ransom;
+      delete c._captiveTurn;
+      const old = provinces[c.location];
+      if (old) old.characters = old.characters.filter((id) => id !== c.id);
       c.location = where;
       const pv = provinces[where];
       if (pv && !pv.characters.includes(c.id)) pv.characters.push(c.id);
@@ -345,13 +361,25 @@ export function alignmentPrototypeNewTurnSteps(turnContext: TurnContext): void {
       continue;
     }
     const ransom = c._ransom ?? 0;
-    if (owner && owner.gold >= ransom && (!owner._isBot || owner.gold >= ransom + 5)) {
+    // round 28: held one full turn before his realm may pay; then freed at his own capital (or his realm's first
+    // province, or where his captor stands if it holds none)
+    const held = G.turn - c._captiveTurn;
+    if (held >= 2 && owner && owner.gold >= ransom && (!owner._isBot || owner.gold >= ransom + 5)) {
       owner.gold -= ransom;
       league.gold += ransom;
       line(captor.player ?? 0, `💰 ${owner.name} pays ${String(ransom)}g to the League for ${c.name}'s freedom.`, null);
-      free(captor.location, `💰 The ransom of ${String(ransom)}g is paid:`);
+      const cap = provinces[owner.homeProvinceId];
+      const own = cap?.owner === owner.id ? cap : provinces.find((pv) => pv.owner === owner.id && pv.terrain !== 'sea');
+      free(own ? own.id : captor.location, `💰 The ransom of ${String(ransom)}g is paid:`);
       continue;
     }
+    if (held === 1 && c.player != null)
+      line(
+        c.player,
+        `⛓ ${c.name} is held to ransom by ${captor.name} of ${league.name}: ${String(ransom)}g frees them from next turn (paid from the treasury if it can).`,
+        null,
+        'explore',
+      );
     // still held: the captive travels with his captor
     const from = provinces[c.location];
     if (from) from.characters = from.characters.filter((id) => id !== c.id);

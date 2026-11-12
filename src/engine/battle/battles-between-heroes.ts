@@ -1648,6 +1648,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
         });
         prov._battleUnresolved = true;
         _heldField = true;
+      } else if (ransomAfterALostBattle(turnContext, atk, def, prov, defArmies.length, narrative, true)) {
+        // PROTOTYPE Neutral (round 28): trapped with no road out, the beaten commander is taken for ransom
       } else {
         narrate(narrative, { kind: 'the defender has nowhere to retreat', defName });
         _noEscapeRoll(def.armies, def.name, narrative);
@@ -1865,6 +1867,8 @@ export function combatVsChar(turnContext, atk, def, prov) {
         });
         prov._battleUnresolved = true;
         _heldField = true;
+      } else if (ransomAfterALostBattle(turnContext, def, atk, prov, atkArmies.length, narrative, true)) {
+        // PROTOTYPE Neutral (round 28): trapped with no road out, the beaten commander is taken for ransom
       } else {
         narrate(narrative, {
           kind: 'the attacker has nowhere to retreat',

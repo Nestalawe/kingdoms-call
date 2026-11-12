@@ -281,6 +281,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
       if (a._wildHuntUntilTurn != null) return s;
       if (a._musterUntilTurn != null) return s; // PROTOTYPE Good (round 24): the Beacons' muster serves without wages
+      if (a._pactFreeUntilTurn != null && G.turn <= a._pactFreeUntilTurn) return s; // PROTOTYPE Evil (round 28): a Dark Pact company's first three turns
       if (a._slave) return s; // PROTOTYPE Evil: slaves are paid nothing
       if (a._isSkeletal) {
         _skelN += 1;
@@ -457,6 +458,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         if (army._temporary) return;
         if (army._wildHuntUntilTurn != null) return; // Wild Hunt beasts draw no wage, so they cannot be disbanded for one
         if (army._musterUntilTurn != null) return; // PROTOTYPE Good (round 24): nor the Beacons' muster
+        if (army._pactFreeUntilTurn != null && G.turn <= army._pactFreeUntilTurn) return; // PROTOTYPE Evil (round 28): nor a Dark Pact company in its free turns
         if (army._isSkeletal && gdActive(turnContext, p.id, 'Undead')) return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
         // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons)
         // still free

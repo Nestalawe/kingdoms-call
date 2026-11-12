@@ -25,8 +25,7 @@ import {
 import { emitBattle } from '../battle/battle-report-lines-and-force-markers.ts';
 import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { resolveCharVsChar } from '../personal-combat/duels-and-character-encounters.ts';
-import { crusadeQuarry, protoAlignOf } from '../alignment-prototypes.ts';
-import { KC_SKILLS } from '../../content/kingdoms-call-data.ts';
+import { captivesColumnFallsBack, crusadeQuarry, protoAlignOf, ransomPrice } from '../alignment-prototypes.ts';
 
 // PROTOTYPE Neutral (master list): Ransom — a Neutral kit hero who set out to capture (encounterPlan.ransom) spares the
 // hero he beats in a personal encounter and holds him to ransom: 1g for every skill level the captive has. The captive
@@ -36,16 +35,13 @@ export function ransomCapture(turnContext, winner, loser, prov, targetsPi, duelC
   if (!winner || !loser || winner.player == null || loser.player == null) return false;
   if (protoAlignOf(G, winner.player) !== 'Neutral' || !(winner.encounterPlan || {}).ransom) return false;
   if (loser.isKing || loser._captiveOf != null || _escapesTheEnd(loser)) return false;
-  const ransom = Math.max(
-    1,
-    (KC_SKILLS || []).reduce((s, k) => s + ((loser.skills || {})[k] || 0), 0),
-  );
+  const ransom = ransomPrice(loser); // round 28: 3g a skill level
   loser.hp = 1;
   loser.alive = true;
   loser.killedThisTurn = true;
   loser._captiveOf = winner.id;
   loser._ransom = ransom;
-  loser.armies = []; // his column scatters
+  captivesColumnFallsBack(G, loser, prov.id); // round 28: his column falls back leaderless to his realm's nearest province
   emit(turnContext, {
     type: 'combat',
     text: `⛓ Ransom: ${winner.name} spares ${loser.name} and holds them to ransom — ${String(ransom)}g to the League buys their freedom.`,

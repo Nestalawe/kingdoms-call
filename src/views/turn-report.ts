@@ -866,6 +866,7 @@ export function buildTurnReport(view, itsLines = null) {
   let _discUpkeepR = 0; // `upkeep` discoveries (mirrors the collector)
   let armyWages = [...allArmiesForWages, ...garrisonArmiesForWages].reduce((s, a) => {
     if (a._temporary || a._wildHuntUntilTurn != null || a._musterUntilTurn != null) return s; // the Beacons' muster too (round 24)
+    if (a._pactFreeUntilTurn != null && a._pactFreeUntilTurn >= _nextTurn) return s; // a Dark Pact company in its free turns (round 28)
     /* Wild Hunt beasts serve the old gods, not a paymaster */ if (a._isSkeletal) return s + 1;
     /* skeletons are a flat 1g everywhere */ let w = ARMY_COST_TR[a.type] || 2;
     if (_druidHalfWageR.has(a)) w = Math.max(1, Math.floor(w * 0.5));

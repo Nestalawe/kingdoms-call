@@ -234,10 +234,10 @@ export function ransomInAPreBattleDuel(turnContext, winner, loser) {
 // PROTOTYPE Neutral (round 27): Ransom after a battle the League wins: the beaten commander (not a king) whose host was
 // routed is taken alive when a League hero there carries the ransom plan. Tells the battle's narrative and returns
 // true when he is taken (he then makes no retreat).
-export function ransomAfterALostBattle(turnContext, winner, loser, prov, before, narrative) {
+export function ransomAfterALostBattle(turnContext, winner, loser, prov, before, narrative, trapped?) {
   const { G } = turnContext;
   if (!winner || !loser || !prov || _escapesTheEnd(loser)) return false;
-  const line = ransomTakenAfterBattle(G, winner.player, loser, prov.id, before, (loser.armies || []).length);
+  const line = ransomTakenAfterBattle(G, winner.player, loser, prov.id, before, (loser.armies || []).length, !!trapped);
   if (!line) return false;
   loser.armies = []; // the battle's own record of him, if it is a copy
   loser._captiveOf = (G.characters.find((h) => h.id === loser.id) || loser)._captiveOf;

@@ -174,6 +174,7 @@ export function resolveGrowTheWildOrder(turnContext: TurnContext, c: Character, 
 export const TRADE_PACT_PER_TAX = 4; // round 6 (round 5: 5; round 4: 4; rounds 1-3: 3)
 export const TRADE_PACT_OWNED_MULT = 2; // round 26: another realm's province costs twice as much
 export const TRADE_PACT_SEAL_FROM_PHASE = 2; // round 27: a pact on another realm's land is sealed in the third phase or later
+export const TRADE_PACT_NOTICE_COST = 3; // round 28: what the envoys' notice costs the League
 export const TRADE_PACT_NOTICE_TURNS = 2; // round 26: the envoys' notice stands this many turns
 export const TRADE_PACT_PER_DEFENDER = 3; // round 4 (rounds 1-3: 2)
 export function tradePactPrice(pv: Province): number {
@@ -261,6 +262,25 @@ export function resolveTradePactOrder(
       G.turn - pv._pactNoticeTurn <= TRADE_PACT_NOTICE_TURNS;
     if (!noticed || pv._pactNoticeTurn === G.turn) {
       if (!noticed) {
+        // round 28: sending envoys costs 3g, and the League keeps one embassy at a time
+        const other = G.world.provinces.find(
+          (x) =>
+            x.id !== pv.id &&
+            x._pactNoticeBy === c.player &&
+            x._pactNoticeTurn != null &&
+            G.turn - x._pactNoticeTurn <= TRADE_PACT_NOTICE_TURNS &&
+            x.owner != null &&
+            x.owner !== c.player,
+        );
+        if (other) {
+          refuse(
+            turnContext,
+            c,
+            `${c.name}: the League's envoys are already in ${other.name} — one embassy at a time. Seal that pact or let its notice lapse first.`,
+          );
+          return;
+        }
+        if (!pay(turnContext, c, player, TRADE_PACT_NOTICE_COST, `the embassy to ${pv.name}`)) return;
         pv._pactNoticeBy = c.player ?? undefined;
         pv._pactNoticeTurn = G.turn;
         realmLine(
@@ -613,6 +633,9 @@ export const STORM_MAX_DEMOTED = 4; // round 27: and drops at most four a qualit
 const wokenStones = (G: GameState, pi: number, pv: Province): boolean =>
   pv.features.some(isPaganStones) && pv._riteActivatedBy === pi;
 /** The provinces realm `pi`'s king may call the storm down on. */
+/** Round 28: did a storm strike `pv` last turn? Then none can be called down on it this turn. */
+export const stormedLastTurn = (G: GameState, pv: Province): boolean =>
+  pv._stormTurn != null && G.turn - pv._stormTurn === 1;
 export function stormTargets(G: GameState, pi: number): Province[] {
   const out = new Set<Province>();
   for (const pv of G.world.provinces) {
@@ -644,12 +667,26 @@ export function resolveCallDownTheStormOrder(
     );
     return;
   }
+  // round 28: no storm on the same province two turns running (the sky must gather again)
+  if (stormedLastTurn(G, pv)) {
+    refuse(
+      turnContext,
+      c,
+      `${c.name}: a storm broke over ${pv.name} last turn — the sky must gather a turn before it can be called down there again.`,
+    );
+    return;
+  }
   if (!pay(turnContext, c, player, CALL_STORM_COST, 'the storm (the offering burned on the stones)')) return;
   noteKingOrder(G, pl, 'call_storm');
   pv._stormTurn = G.turn;
   let destroyed = 0;
   let fell = 0;
   const hit: string[] = []; // round 27: the companies the storm struck, by name
+  const hitOf = new Map<number, string[]>(); // round 28: and each realm's own, for its line
+  const note = (owner: number | null, text: string): void => {
+    hit.push(text);
+    if (owner != null) hitOf.set(owner, [...(hitOf.get(owner) ?? []), text]);
+  };
   const struck = new Set<number>();
   const strike = (list: Army[], owner: number | null): Army[] => {
     const kept: Army[] = [];
@@ -661,14 +698,14 @@ export function resolveCallDownTheStormOrder(
       if (owner != null) struck.add(owner);
       if (destroyed < STORM_MAX_DESTROYED && kcRng() < STORM_DESTROY_CHANCE) {
         destroyed += 1;
-        hit.push(`${a.unitName || a.type} destroyed`);
+        note(owner, `${a.unitName || a.type} destroyed`);
         continue;
       }
       const qi = TIERS.indexOf(a.quality);
       if (fell < STORM_MAX_DEMOTED && qi > 0 && !a._isSkeletal && kcRng() < STORM_DEMOTE_CHANCE) {
         a.quality = TIERS[qi - 1] ?? a.quality;
         fell += 1;
-        hit.push(`${a.unitName || a.type} down to ${a.quality}`);
+        note(owner, `${a.unitName || a.type} down to ${a.quality}`);
       }
       kept.push(a);
     }
@@ -691,7 +728,7 @@ export function resolveCallDownTheStormOrder(
         turnContext,
         o,
         'combat',
-        `⛈ A storm called by ${pl.name} breaks over ${pv.name}: your companies there are scattered and battered (${String(destroyed)} destroyed in all, ${String(fell)} fallen a tier).`,
+        `⛈ A storm called by ${pl.name} breaks over ${pv.name}: your companies there are scattered and battered (${String(destroyed)} destroyed in all, ${String(fell)} fallen a tier)${hitOf.get(o)?.length ? `. Yours: ${(hitOf.get(o) ?? []).join('; ')}` : ''}.`,
         pv,
       );
 }
@@ -711,6 +748,7 @@ export function darkPactKinds(G: GameState, pi: number): string[] {
   return [...kinds];
 }
 const ARMY_COST: Record<string, number> = ARMY_COST_MASTER;
+export const DARK_PACT_FREE_TURNS = 3; // round 28: a pact company draws no wages for its first three turns
 export const DARK_PACT_FROM_AFAR_MULT = 2; // round 25: a pact with no monster province of the realm's own costs double
 export const darkPactCost = (kind: string): number => DARK_PACT_COST_MULT * (ARMY_COST[kind] ?? 5);
 /** The blood the pact asks: 40% of the king's current HP, rounded down, at least 1. */
@@ -744,12 +782,12 @@ export function resolveDarkPactOrder(
   }
   const cost = darkPactCost(kind) * (fromAfar ? DARK_PACT_FROM_AFAR_MULT : 1);
   const blood = darkPactBlood(c);
-  // round 27: no pact while the king is below half his strength (one king had bled himself to 7 of 27 HP)
-  if (c.hp * 2 < (c.maxHp || 20)) {
+  // round 28: no pact while the king is below a third of his strength (round 27: half, which shut a wounded king out for good)
+  if (c.hp * 3 < (c.maxHp || 20)) {
     refuse(
       turnContext,
       c,
-      `${c.name}: the pact wants strong blood — the king is below half his strength (${String(c.hp)} of ${String(c.maxHp || 20)} HP) and must mend first.`,
+      `${c.name}: the pact wants strong blood — the king is below a third of his strength (${String(c.hp)} of ${String(c.maxHp || 20)} HP) and must mend first.`,
     );
     return;
   }
@@ -764,13 +802,14 @@ export function resolveDarkPactOrder(
   if (!pay(turnContext, c, player, cost, `the pact for ${kind}`)) return;
   c.hp -= blood;
   const u: Army = { type: kind, quality: DARK_PACT_QUALITY, race: 'Primal', unitName: armyUnitNameOf(kind) };
+  u._pactFreeUntilTurn = G.turn + DARK_PACT_FREE_TURNS - 1; // round 28: no wages this turn and the two after
   c.armies.push(u);
   noteKingOrder(G, pl, 'dark_pact');
   realmLine(
     turnContext,
     c.player,
     'hire',
-    `😈 Dark Pact${fromAfar ? ' (called from afar, at twice the price)' : ''}: ${c.name} cuts the bargain in his own blood (${String(cost)}g, −${String(blood)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, ${DARK_PACT_QUALITY}) joins the king's host.`,
+    `😈 Dark Pact${fromAfar ? ' (called from afar, at twice the price)' : ''}: ${c.name} cuts the bargain in his own blood (${String(cost)}g, −${String(blood)} HP → ${String(c.hp)}). Something answers: ${u.unitName} (${kind}, ${DARK_PACT_QUALITY}) joins the king's host, and asks no wages for ${String(DARK_PACT_FREE_TURNS)} turns.`,
     prov,
   );
 }

@@ -5,6 +5,7 @@
 // is a decided rule: the Google Doc "Kingdoms Call - Alignments: ideas round 1" says what each kit is for.
 import { KC_QUALITY_UP, KC_UNIT_CLASS } from '../content/kingdoms-call-data.ts';
 import type { Army, Character, GameState, Province, ProvinceFeature, Realm } from '../schemas/saved-game-state.ts';
+import { hexDistP } from './world/map-helpers.ts';
 
 /** Is the prototype kit of `align` switched on in this game? */
 export function alignProto(G: GameState, align: string | null | undefined): boolean {
@@ -224,6 +225,27 @@ export function bredMonstersAtHome(G: GameState, pi: number): Set<Army> {
   }
   return out;
 }
+export const RANSOM_PER_SKILL_LEVEL = 3; // round 28 (rounds 19-27: 1g a skill level)
+/** What frees a captive: 3g for every skill level he has, at least 3g. */
+export function ransomPrice(c: Character): number {
+  const levels = Object.values(c.skills).reduce((s: number, v) => s + (v ?? 0), 0);
+  return RANSOM_PER_SKILL_LEVEL * Math.max(1, levels);
+}
+/** Round 28: a taken hero's surviving companies fall back, leaderless, into the garrison of his realm's nearest land
+ *  province (rounds 19-27: they scattered). Returns that province's name, or '' when his realm holds no land (they scatter). */
+export function captivesColumnFallsBack(G: GameState, c: Character, fromProvId: number): string {
+  const left = c.armies.filter((a) => !a._phantom && a._wildHuntUntilTurn == null);
+  c.armies = [];
+  const from = G.world.provinces[fromProvId];
+  if (!left.length || c.player == null || !from) return '';
+  const pi = c.player;
+  const home = G.world.provinces
+    .filter((pv) => pv.owner === pi && pv.terrain !== 'sea')
+    .sort((a, b) => hexDistP(a, from, G.world.cols) - hexDistP(b, from, G.world.cols) || a.id - b.id)[0];
+  if (!home) return '';
+  home.garrisonArmies.push(...left);
+  return home.name;
+}
 /** Round 26 (Neutral, Ransom): the League's hero beat `loser` in a duel before a battle while carrying the ransom plan:
  *  the loser is taken, not slain (the real records, found by id: battles fight on copies). Returns the line to tell, or
  *  '' when there is no capture. */
@@ -232,10 +254,7 @@ export function ransomTakenInBattle(G: GameState, winner: Character, loser: Char
   const l = G.characters.find((h) => h.id === loser.id) ?? loser;
   if (w.player == null || l.player == null || protoAlignOf(G, w.player) !== 'Neutral') return '';
   if (w.encounterPlan?.ransom !== true || l.isKing || l._captiveOf != null) return '';
-  const ransom = Math.max(
-    1,
-    Object.values(l.skills).reduce((s: number, v) => s + (v ?? 0), 0),
-  );
+  const ransom = ransomPrice(l);
   l.hp = 1;
   l.alive = true;
   l.killedThisTurn = true;
@@ -244,8 +263,9 @@ export function ransomTakenInBattle(G: GameState, winner: Character, loser: Char
   return `⛓ Ransom: ${w.name} spares ${l.name} and holds them to ransom — ${String(ransom)}g to the League buys their freedom.`;
 }
 /** Round 27 (Neutral, Ransom): `loser` (not a king) lost a battle in province `provId` to the League realm `leaguePi`, and
- *  his host was routed (half or more of its `before` companies gone, `left` remain). If a League hero standing there
- *  carries the ransom plan, the loser is taken: what is left of his column scatters. Returns the line to tell, or ''. */
+ *  his host was routed (half or more of its `before` companies gone, `left` remain) or `trapped` with no road out
+ *  (round 28). If a League hero standing there carries the ransom plan, the loser is taken; what is left of his column
+ *  falls back leaderless to his realm's nearest province (round 28). Returns the line to tell, or ''. */
 export function ransomTakenAfterBattle(
   G: GameState,
   leaguePi: number | null | undefined,
@@ -253,24 +273,29 @@ export function ransomTakenAfterBattle(
   provId: number,
   before: number,
   left: number,
+  trapped: boolean,
 ): string {
   if (leaguePi == null || protoAlignOf(G, leaguePi) !== 'Neutral') return '';
   const l = G.characters.find((h) => h.id === loser.id) ?? loser;
   if (l.player == null || l.player === leaguePi || l.isKing || !l.alive || l._captiveOf != null) return '';
-  if (before < 1 || left * 2 > before) return '';
+  if (before < 1 || (!trapped && left * 2 > before)) return '';
   const captor = G.characters.find(
     (h) => h.alive && h.player === leaguePi && h.location === provId && h.encounterPlan?.ransom === true,
   );
   if (!captor) return '';
-  const ransom = Math.max(
-    1,
-    Object.values(l.skills).reduce((s: number, v) => s + (v ?? 0), 0),
-  );
+  const ransom = ransomPrice(l);
   l._captiveOf = captor.id;
   l._ransom = ransom;
-  l.armies = [];
+  const n = l.armies.length;
+  const back = captivesColumnFallsBack(G, l, provId);
   l.location = captor.location;
-  return `⛓ Ransom: ${l.name}'s host is broken and ${captor.name} takes them alive — ${String(ransom)}g to the League buys their freedom. What is left of the column scatters.`;
+  const column =
+    n === 0
+      ? ''
+      : back
+        ? ` What is left of the column (${String(n)} compan${n === 1 ? 'y' : 'ies'}) falls back leaderless to ${back}.`
+        : ' What is left of the column scatters.';
+  return `⛓ Ransom: ${l.name}'s host is broken and ${captor.name} takes them alive — ${String(ransom)}g to the League buys their freedom, once a full turn has passed.${column}`;
 }
 /** Round 26 (Undead): may realm `pi`'s skeletons stand as a garrison in `pv` without a necromancer? A held barrow or a
  *  blighted province: the dead of that soil. */
@@ -490,8 +515,8 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
 export function protoProvinceTaxAdd(G: GameState, pl: Realm, pv: Province, taxSoFar: number): number {
   if (pv.terrain === 'sea' || !alignProto(G, pl.alignment)) return 0;
   const base = pv.tax;
-  if (pl.alignment === 'Good' && base <= 4 && !isWild(pv)) return 3; // round 21: tax 4 or less (master list: 3); round 8: +3
-  if (pl.alignment === 'Good' && base === 5 && !isWild(pv)) return 2; // round 25: tax 5 pays +2 (round 24: +3)
+  if (pl.alignment === 'Good' && base <= 4 && !isWild(pv)) return 2; // round 28: +2 (rounds 8-27: +3) on tax 4 or less
+  if (pl.alignment === 'Good' && base === 5 && !isWild(pv)) return 1; // round 28: +1 on tax 5 (round 25: +2)
   if (pl.alignment === 'Neutral' && base >= 4) return Math.round(taxSoFar * 0.5);
   return 0;
 }

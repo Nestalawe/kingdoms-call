@@ -144,6 +144,7 @@ export const ArmySchema = z.object({
   _slave: z.boolean().optional(),
   _kitGarrison: z.boolean().optional(),
   _merc: z.boolean().optional(), // Neutral (round 2): a mercenary company hired under the kit, a condottiere
+  _pactFreeUntilTurn: z.number().optional(), // Evil (round 28): a Dark Pact company draws no wage through this turn
   _musterUntilTurn: z.number().optional(), // Good (round 24): a Beacons company serves wage-free through this turn, then goes home
 });
 export type Army = z.infer<typeof ArmySchema>;
@@ -268,6 +269,7 @@ export const CharacterSchema = z.object({
   _soulBoundBy: z.number().optional(), // Divine hero slain by an Undead kit hero: the realm whose reliquary holds his soul
   _captiveOf: z.number().optional(), // Neutral (Ransom): the id of the hero who holds this one to ransom
   _ransom: z.number().optional(), // Neutral (Ransom): the gold that frees him
+  _captiveTurn: z.number().optional(), // Neutral (Ransom, round 28): the turn he was taken (he is held one full turn)
   _charmImmuneTurn: z.number().optional(),
   _charmResist: z.number().optional(),
   _invisTurn: z.number().optional(),
