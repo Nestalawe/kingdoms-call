@@ -258,6 +258,11 @@ describe("the Overlord's accounts", () => {
     expect(page.revokePanel(anAccount('n', '', null)).querySelector('strong')?.textContent).toBe('');
   });
 
+  test('an account whose name is blank is labelled by its email, and one with a blank email too "(no name)"', () => {
+    expect(page.label(anAccount('m', '', 'm@example.test'))).toBe('m@example.test');
+    expect(page.label(anAccount('e', '', ''))).toBe('(no name)');
+  });
+
   test('the Delete panel asks for the name of an account with no email, and its button waits for it', () => {
     const panel = page.deletePanel(anAccount('b', 'Bram Vey', null));
     expect(panel.querySelector('label')?.textContent).toBe('Type their name to confirm');

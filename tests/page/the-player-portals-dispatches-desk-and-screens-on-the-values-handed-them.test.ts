@@ -1,9 +1,9 @@
 // The player portal's Dispatches panel, its two-column desk and its screens on the values handed them (plan P1-16l): the
 // lines P1-16l changed in dispatches.ts, layout.ts and init.ts that the screen tours don't reach, or reach only in part
 // (npm run proof:tours), each run here on the value that reaches it, so a fault planted in one is red: the roster's and
-// the thread's fallbacks, the database's refusals in their words, the unread marks, a channel clicked, a dispatch
-// reported and sent, the group picker, the desk's panels and its watcher, a province located, the turn buttons and a
-// section jumped to.
+// the thread's fallbacks, the poll's newest id (P1-21r), the database's refusals in their words, the unread marks, a
+// channel clicked, a dispatch reported and sent, the group picker, the desk's panels and its watcher, a province located,
+// the turn buttons and a section jumped to.
 // Level 4 (page): the three files load the page's start-up (its database client), so no lower level reaches them; the
 // portal is booted in jsdom (tests/lib/boot.js) on a fake Db at an older database, so it stops at its notice with every
 // module loaded, and each case stages the panel's state as the tours do.
@@ -67,7 +67,10 @@ function theFakeDb(): Db {
       ...bare.theDispatches,
       oneDispatchsId: () => Promise.resolve(answers.probe()),
       theNewestDispatchesOfThisGame: () => Promise.resolve(answers.newest()),
-      theDispatchesOfThisGameAfterThisOne: () => Promise.resolve(answers.after()),
+      theDispatchesOfThisGameAfterThisOne: (_game, after) => {
+        sent.push({ what: 'after', row: after });
+        return Promise.resolve(answers.after());
+      },
       theDispatchesOfThisGameBeforeThisOne: () => Promise.resolve(answers.before()),
       thisRealmsReadMarksInThisGame: () => Promise.resolve(answers.reads()),
       sendThisDispatch: (row) => {
@@ -280,6 +283,23 @@ describe('the thread', () => {
     await call('refreshMessages', true);
     expect(stage('_msgErr')).toBe('the read was refused');
     expect(textOf('msg-note')).toBe('the read was refused');
+  });
+  test('the poll asks only for the dispatches after the newest held, and takes in the new one', async () => {
+    answers.newest = () => ({
+      data: Array.from({ length: 50 }, (_, i) => aDispatch(59 - i, 1)),
+      error: null,
+      status: 200,
+    });
+    await openTheDispatches();
+    answers.after = () => ({ data: [aDispatch(60, 2)], error: null, status: 200 });
+    await call('refreshMessages', false);
+    expect(theSent('after')).toEqual([59]);
+    expect(stage('_msgRows.map((r) => r.id).at(-1)')).toBe(60);
+  });
+  test('a realm whose name is blank is named "Realm N"', async () => {
+    await openTheDispatches();
+    stage('_msgRealms[2].name = "";');
+    expect(call('msgRealmName', 2)).toBe('Realm 3');
   });
   test('older dispatches: refused in their words, or taken in before the held ones', async () => {
     answers.newest = () => ({ data: [aDispatch(30, 1)], error: null, status: 200 });
