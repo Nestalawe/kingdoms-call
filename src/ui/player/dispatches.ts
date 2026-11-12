@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { sb } from './startup.ts';
+import { sb, thePagesDb } from './startup.ts';
 import { _tintForDarkTooltip } from './map-symbols.ts';
 import { renderPlayerMap } from './map.ts';
 
@@ -42,8 +42,6 @@ import { renderPlayerMap } from './map.ts';
 // be auth.uid(). The "must have met them" rule, by contrast, is enforced only in this UI — a
 // determined player could address an unmet realm straight through the API. That leaks nothing (they
 // still cannot READ anything not addressed to them) and is recorded in DEV_LOG as a known limit.
-export const KC_MSG_TABLE = 'game_messages';
-export const KC_MSG_READS = 'game_message_reads';
 export const MSG_POLL_MS = 8000; // tick length while the Dispatches view is open
 export const MSG_SLOW_EVERY = 4; // … and one tick in four when it is not (≈32s, for the unread badge)
 export const MSG_MAX_LEN = 500; // the database refuses longer (P0-23, ruling D-05)
@@ -286,7 +284,7 @@ export async function initMessaging(gameId, myIndex, report, game) {
 }
 export async function probeMessagesTable() {
   try {
-    const { error } = await sb.from(KC_MSG_TABLE).select('id').limit(1);
+    const { error } = await thePagesDb.theDispatches.oneDispatchsId();
     _msgTableOk = !error;
     if (error) _msgErr = error.message;
   } catch (e) {
@@ -298,12 +296,7 @@ export async function probeMessagesTable() {
 export async function loadMessageReads() {
   if (!_msgGameId || _msgMyIndex == null) return;
   try {
-    const { data, error } = await sb
-      .from(KC_MSG_READS)
-      .select('reads')
-      .eq('game_id', _msgGameId)
-      .eq('player_index', _msgMyIndex)
-      .maybeSingle();
+    const { data, error } = await thePagesDb.theDispatches.thisRealmsReadMarksInThisGame(_msgGameId, _msgMyIndex);
     if (error) throw error;
     const r = data && data.reads;
     _msgReads = r && typeof r === 'object' && !Array.isArray(r) ? { ...r } : {};
@@ -323,16 +316,13 @@ export async function saveMessageReads() {
   if (!_msgReadsDirty || !_msgGameId || _msgMyIndex == null || !currentUser) return;
   _msgReadsDirty = false;
   try {
-    await sb.from(KC_MSG_READS).upsert(
-      {
-        game_id: _msgGameId,
-        player_index: _msgMyIndex,
-        user_id: currentUser.id,
-        reads: _msgReads,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'game_id,player_index' },
-    );
+    await thePagesDb.theDispatches.writeTheseReadMarks({
+      game_id: _msgGameId,
+      player_index: _msgMyIndex,
+      user_id: currentUser.id,
+      reads: _msgReads,
+      updated_at: new Date().toISOString(),
+    });
   } catch (e) {
     /* read marks are a convenience; a failure only means a badge lingers */
   }
@@ -388,13 +378,9 @@ export async function refreshMessages(force) {
   }
   _msgBusy = true;
   try {
-    const cols = 'id,turn,from_index,to_indexes,scope,body,created_at';
-    let q = sb.from(KC_MSG_TABLE).select(cols).eq('game_id', _msgGameId);
-    q =
-      _msgMaxId > 0
-        ? q.gt('id', _msgMaxId).order('id', { ascending: true }).limit(MSG_PAGE)
-        : q.order('id', { ascending: false }).limit(MSG_PAGE);
-    const { data, error } = await q;
+    const { data, error } = await (_msgMaxId > 0
+      ? thePagesDb.theDispatches.theDispatchesOfThisGameAfterThisOne(_msgGameId, _msgMaxId, MSG_PAGE)
+      : thePagesDb.theDispatches.theNewestDispatchesOfThisGame(_msgGameId, MSG_PAGE));
     if (error) throw error;
     let rows = _msgArr(data);
     const wasFirst = _msgMaxId <= 0;
@@ -440,13 +426,11 @@ export async function loadOlderMessages() {
   _msgLoadingOlder = true;
   renderMessageThread();
   try {
-    const { data, error } = await sb
-      .from(KC_MSG_TABLE)
-      .select('id,turn,from_index,to_indexes,scope,body,created_at')
-      .eq('game_id', _msgGameId)
-      .lt('id', _msgMinId)
-      .order('id', { ascending: false })
-      .limit(MSG_PAGE);
+    const { data, error } = await thePagesDb.theDispatches.theDispatchesOfThisGameBeforeThisOne(
+      _msgGameId,
+      _msgMinId,
+      MSG_PAGE,
+    );
     if (error) throw error;
     const page = _msgArr(data);
     _msgMoreOlder = page.length >= MSG_PAGE;
@@ -655,7 +639,9 @@ export function onMessagesShown() {
 // their own reports (message_reports' read rule), so a reported dispatch stays marked after a reload.
 export async function loadMyReports() {
   if (!_msgGameId) return;
-  const { data, error } = await sb.from('message_reports').select('message_id').eq('game_id', String(_msgGameId));
+  const { data, error } = await thePagesDb.theReportedDispatches.theDispatchesThisAccountReportedInThisGame(
+    String(_msgGameId),
+  );
   if (!error) _msgReported = new Set(_msgArr(data).map((r) => String(r.message_id)));
 }
 export async function reportMessage(id) {
@@ -666,7 +652,7 @@ export async function reportMessage(id) {
     '',
   );
   if (why == null) return;
-  const { error } = await sb.from('message_reports').insert({
+  const { error } = await thePagesDb.theReportedDispatches.reportThisDispatch({
     message_id: _msgNum(id),
     game_id: String(_msgGameId),
     reporter_index: _msgMyIndex,
@@ -739,7 +725,7 @@ export async function sendMessage() {
   const turn =
     _msgNum(currentGamePlayer && currentGamePlayer._liveTurn) || _msgNum(currentReport && currentReport._liveTurn);
   try {
-    const { error } = await sb.from(KC_MSG_TABLE).insert({
+    const { error } = await thePagesDb.theDispatches.sendThisDispatch({
       game_id: _msgGameId,
       turn: turn,
       from_index: _msgMyIndex,

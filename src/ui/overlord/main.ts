@@ -155,7 +155,7 @@ export async function loadGames() {
   GAMES = rows;
 }
 export async function loadReports() {
-  const { data, error } = await sb.rpc('gm_reported_messages', { p_game: null });
+  const { data, error } = await thePagesDb.theReportedDispatches.theDispatchesReportedToThisAccount(null);
   if (error) {
     fill('reports', el('div', { class: 'msg-error' }, error.message));
     return;
@@ -663,7 +663,7 @@ export function renderReports() {
 }
 export async function deleteDispatch(r) {
   if (!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
-  const { error } = await sb.from('game_messages').delete().eq('id', r.message_id);
+  const { error } = await thePagesDb.theDispatches.deleteThisDispatch(r.message_id);
   if (error) {
     say('error', error.message);
     return;

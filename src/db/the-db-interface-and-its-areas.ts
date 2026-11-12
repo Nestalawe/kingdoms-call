@@ -9,11 +9,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database.types.ts';
 
 /** The generated types, but for a database function's argument that takes null on purpose (the generator writes every
- *  argument as never null): account_suspend's p_until (null: until the suspension is lifted). */
+ *  argument as never null): account_suspend's p_until (null: until the suspension is lifted) and gm_reported_messages'
+ *  p_game (null: every game's). */
 export type TheDatabase = Omit<Database, 'public'> & {
   readonly public: Omit<Database['public'], 'Functions'> & {
-    readonly Functions: Omit<Database['public']['Functions'], 'account_suspend'> & {
+    readonly Functions: Omit<Database['public']['Functions'], 'account_suspend' | 'gm_reported_messages'> & {
       readonly account_suspend: { Args: { p_user: string; p_until: string | null }; Returns: undefined };
+      readonly gm_reported_messages: {
+        Args: { p_game: string | null };
+        Returns: Database['public']['Functions']['gm_reported_messages']['Returns'];
+      };
     };
   };
 };
@@ -163,6 +168,24 @@ export type AFinishedGameForTheHallOfFame = Pick<
 
 /** A game's name, state and turn, as the Stats tab names it. */
 export type AGamesNameStatusAndTurn = Pick<ARow<'games'>, 'id' | 'name' | 'status' | 'turn'>;
+
+/** A dispatch (game_messages), as the Dispatches panel reads it: never its sender's account. */
+export type ADispatch = Pick<
+  ARow<'game_messages'>,
+  'id' | 'turn' | 'from_index' | 'to_indexes' | 'scope' | 'body' | 'created_at'
+>;
+
+/** A dispatch's game, sender and addressees, as a game card counts its unread dispatches: never its words. */
+export type ADispatchsGameAndRealms = Pick<
+  ARow<'game_messages'>,
+  'id' | 'game_id' | 'from_index' | 'to_indexes' | 'scope'
+>;
+
+/** A realm's read marks in a game (game_message_reads): the last dispatch it has seen in each channel. */
+export type ARealmsReadMarks = Pick<ARow<'game_message_reads'>, 'game_id' | 'player_index' | 'reads'>;
+
+/** A reported dispatch, as gm_reported_messages() answers it: the dispatch, its report and its reporter. */
+export type AReportedDispatch = Database['public']['Functions']['gm_reported_messages']['Returns'][number];
 
 /** The database, as the pages reach it: one area a row of P1-17. */
 export interface Db {
@@ -337,6 +360,64 @@ export interface Db {
       games: readonly string[],
     ) => PromiseLike<ADatabaseAnswer<Pick<ARow<'games'>, 'id'>[]>>;
   };
+  /** The dispatches (game_messages: one row a dispatch; game_message_reads: one row a realm a game, its read marks). */
+  readonly theDispatches: {
+    /** One dispatch's id, if any: the probe that game_messages is there. */
+    readonly oneDispatchsId: () => PromiseLike<ADatabaseAnswer<Pick<ADispatch, 'id'>[]>>;
+    /** One read mark's game, if any: the probe that game_message_reads is there. */
+    readonly oneReadMarksGame: () => PromiseLike<ADatabaseAnswer<Pick<ARealmsReadMarks, 'game_id'>[]>>;
+    /** The newest `count` dispatches of the game `game` the signed-in account may read, the newest first. */
+    readonly theNewestDispatchesOfThisGame: (game: string, count: number) => PromiseLike<ADatabaseAnswer<ADispatch[]>>;
+    /** The first `count` dispatches of the game `game` after the dispatch `after` (by id) the signed-in account may
+     *  read, the oldest first. */
+    readonly theDispatchesOfThisGameAfterThisOne: (
+      game: string,
+      after: number,
+      count: number,
+    ) => PromiseLike<ADatabaseAnswer<ADispatch[]>>;
+    /** The last `count` dispatches of the game `game` before the dispatch `before` (by id) the signed-in account may
+     *  read, the newest first. */
+    readonly theDispatchesOfThisGameBeforeThisOne: (
+      game: string,
+      before: number,
+      count: number,
+    ) => PromiseLike<ADatabaseAnswer<ADispatch[]>>;
+    /** The newest 3,000 dispatches of the games `games` the signed-in account may read, the newest first: their games
+     *  and realms only. */
+    readonly theNewestDispatchesOfTheseGamesGamesAndRealms: (
+      games: readonly string[],
+    ) => PromiseLike<ADatabaseAnswer<ADispatchsGameAndRealms[]>>;
+    /** The dispatch `dispatch` sent. */
+    readonly sendThisDispatch: (dispatch: ANewRow<'game_messages'>) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The dispatch `id` deleted (its reports with it). */
+    readonly deleteThisDispatch: (id: number) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The realm `realm`'s read marks in the game `game`, if it has any. */
+    readonly thisRealmsReadMarksInThisGame: (
+      game: string,
+      realm: number,
+    ) => PromiseLike<ADatabaseAnswer<Pick<ARealmsReadMarks, 'reads'>>>;
+    /** The read marks of the account `account` in the games `games`. */
+    readonly thisAccountsReadMarksInTheseGames: (
+      games: readonly string[],
+      account: string,
+    ) => PromiseLike<ADatabaseAnswer<ARealmsReadMarks[]>>;
+    /** The read marks `marks` written, over the realm's in that game if it has some. */
+    readonly writeTheseReadMarks: (marks: ANewRow<'game_message_reads'>) => PromiseLike<ADatabaseAnswer<null>>;
+  };
+  /** The reported dispatches (message_reports: one row a dispatch a player reported; gm_reported_messages()). */
+  readonly theReportedDispatches: {
+    /** The dispatches of the game `game` the signed-in account has reported. */
+    readonly theDispatchesThisAccountReportedInThisGame: (
+      game: string,
+    ) => PromiseLike<ADatabaseAnswer<Pick<ARow<'message_reports'>, 'message_id'>[]>>;
+    /** The report `report` made. */
+    readonly reportThisDispatch: (report: ANewRow<'message_reports'>) => PromiseLike<ADatabaseAnswer<null>>;
+    /** gm_reported_messages(): the reported dispatches of the game `game` (null: of every game) reported to the
+     *  signed-in account (the game's GM, if they play no realm in it; the Overlord, every one). */
+    readonly theDispatchesReportedToThisAccount: (
+      game: string | null,
+    ) => PromiseLike<ADatabaseAnswer<AReportedDispatch[]>>;
+  };
 }
 
 /** The page's Db, on its own client: each function sends the query the page sent on that client before. */
@@ -452,6 +533,58 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
       theNameStatusAndTurnOfTheGamesThisGameMasterRuns: (gameMaster) =>
         client.from('games').select('id,name,status,turn').eq('gm_user_id', gameMaster),
       whichOfTheseGamesStillExist: (games) => client.from('games').select('id').in('id', games),
+    },
+    theDispatches: {
+      oneDispatchsId: () => client.from('game_messages').select('id').limit(1),
+      oneReadMarksGame: () => client.from('game_message_reads').select('game_id').limit(1),
+      theNewestDispatchesOfThisGame: (game, count) =>
+        client
+          .from('game_messages')
+          .select('id,turn,from_index,to_indexes,scope,body,created_at')
+          .eq('game_id', game)
+          .order('id', { ascending: false })
+          .limit(count),
+      theDispatchesOfThisGameAfterThisOne: (game, after, count) =>
+        client
+          .from('game_messages')
+          .select('id,turn,from_index,to_indexes,scope,body,created_at')
+          .eq('game_id', game)
+          .gt('id', after)
+          .order('id', { ascending: true })
+          .limit(count),
+      theDispatchesOfThisGameBeforeThisOne: (game, before, count) =>
+        client
+          .from('game_messages')
+          .select('id,turn,from_index,to_indexes,scope,body,created_at')
+          .eq('game_id', game)
+          .lt('id', before)
+          .order('id', { ascending: false })
+          .limit(count),
+      theNewestDispatchesOfTheseGamesGamesAndRealms: (games) =>
+        client
+          .from('game_messages')
+          .select('id,game_id,from_index,to_indexes,scope')
+          .in('game_id', games)
+          .order('id', { ascending: false })
+          .limit(3000),
+      sendThisDispatch: (dispatch) => client.from('game_messages').insert(dispatch),
+      deleteThisDispatch: (id) => client.from('game_messages').delete().eq('id', id),
+      thisRealmsReadMarksInThisGame: (game, realm) =>
+        client.from('game_message_reads').select('reads').eq('game_id', game).eq('player_index', realm).maybeSingle(),
+      thisAccountsReadMarksInTheseGames: (games, account) =>
+        client
+          .from('game_message_reads')
+          .select('game_id,player_index,reads')
+          .in('game_id', games)
+          .eq('user_id', account),
+      writeTheseReadMarks: (marks) =>
+        client.from('game_message_reads').upsert(marks, { onConflict: 'game_id,player_index' }),
+    },
+    theReportedDispatches: {
+      theDispatchesThisAccountReportedInThisGame: (game) =>
+        client.from('message_reports').select('message_id').eq('game_id', game),
+      reportThisDispatch: (report) => client.from('message_reports').insert(report),
+      theDispatchesReportedToThisAccount: (game) => client.rpc('gm_reported_messages', { p_game: game }),
     },
   };
 }

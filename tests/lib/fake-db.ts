@@ -3,8 +3,9 @@
 // (bootJsdom's opts.db, tests/lib/boot.js); a unit test calls code that takes a Db with it. It doesn't imitate the
 // access rules: the access layer's tests prove those against the local database. Each of P1-17's area rows adds its
 // area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
-// role and no offer; and no game, so no Hall of Fame entry and no statistics (a new entry refused, a change or deletion
-// matching nothing). The Overlord's functions refuse, as the database refuses anyone but the Overlord.
+// role and no offer; and no game, so no Hall of Fame entry, no statistics, no dispatch and no report (a new row refused,
+// a change or deletion matching nothing). The Overlord's functions refuse, as the database refuses anyone but the
+// Overlord.
 import type { ADatabaseAnswer, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 
 /** No answer at all (the network), as an answer the fake gives. */
@@ -199,6 +200,28 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
       everyGamesNameStatusAndTurn: answering('from:games', none),
       theNameStatusAndTurnOfTheGamesThisGameMasterRuns: answering('from:games', none),
       whichOfTheseGamesStillExist: answering('from:games', none),
+    },
+    theDispatches: {
+      oneDispatchsId: answering('from:game_messages', none),
+      oneReadMarksGame: answering('from:game_message_reads', none),
+      theNewestDispatchesOfThisGame: answering('from:game_messages', none),
+      theDispatchesOfThisGameAfterThisOne: answering('from:game_messages', none),
+      theDispatchesOfThisGameBeforeThisOne: answering('from:game_messages', none),
+      theNewestDispatchesOfTheseGamesGamesAndRealms: answering('from:game_messages', none),
+      sendThisDispatch: answering('from:game_messages', () => refusedByTheAccessRules('game_messages')),
+      deleteThisDispatch: answering('from:game_messages', nothingMatched),
+      thisRealmsReadMarksInThisGame: answering('from:game_message_reads', () => ({
+        data: null,
+        error: null,
+        status: 200,
+      })),
+      thisAccountsReadMarksInTheseGames: answering('from:game_message_reads', none),
+      writeTheseReadMarks: answering('from:game_message_reads', () => refusedByTheAccessRules('game_message_reads')),
+    },
+    theReportedDispatches: {
+      theDispatchesThisAccountReportedInThisGame: answering('from:message_reports', none),
+      reportThisDispatch: answering('from:message_reports', () => refusedByTheAccessRules('message_reports')),
+      theDispatchesReportedToThisAccount: answering('rpc:gm_reported_messages', none),
     },
   };
   return { db, calls };

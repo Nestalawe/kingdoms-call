@@ -2,15 +2,7 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { gameMetaOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { sb, thePagesDb } from './startup.ts';
-import {
-  KC_MSG_READS,
-  KC_MSG_TABLE,
-  _msgArr,
-  _msgNum,
-  msgChannelKeyOf,
-  _activeSectionId,
-  fetchGameSlots,
-} from './dispatches.ts';
+import { _msgArr, _msgNum, msgChannelKeyOf, _activeSectionId, fetchGameSlots } from './dispatches.ts';
 
 // ── LIVE UPDATE POLLING ────
 // A light background poll keeps the portal current without the player having to reload the page. It
@@ -239,20 +231,11 @@ export async function fetchUnreadDispatchCounts(mySlots, allSlots) {
     });
     const ids = Object.keys(mine);
     if (!ids.length) return out;
-    const { data: rows, error } = await sb
-      .from(KC_MSG_TABLE)
-      .select('id,game_id,from_index,to_indexes,scope')
-      .in('game_id', ids)
-      .order('id', { ascending: false })
-      .limit(3000);
+    const { data: rows, error } = await thePagesDb.theDispatches.theNewestDispatchesOfTheseGamesGamesAndRealms(ids);
     if (error || !rows) return out;
     let reads = [];
     try {
-      const r = await sb
-        .from(KC_MSG_READS)
-        .select('game_id,player_index,reads')
-        .in('game_id', ids)
-        .eq('user_id', currentUser.id);
+      const r = await thePagesDb.theDispatches.thisAccountsReadMarksInTheseGames(ids, currentUser.id);
       if (!r.error) reads = _msgArr(r.data);
     } catch (e) {}
     const seenBy = {};

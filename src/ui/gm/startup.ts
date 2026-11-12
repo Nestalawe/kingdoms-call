@@ -199,8 +199,8 @@ export function renderTelemetryBanner() {
 globalThis._kcHasMsg = false;
 export async function probeMessaging() {
   try {
-    const a = await sb.from('game_messages').select('id').limit(1);
-    const b = await sb.from('game_message_reads').select('game_id').limit(1);
+    const a = await thePagesDb.theDispatches.oneDispatchsId();
+    const b = await thePagesDb.theDispatches.oneReadMarksGame();
     _kcHasMsg = !a.error && !b.error;
     if (a.error) console.warn('game_messages probe:', a.error.message);
     if (b.error) console.warn('game_message_reads probe:', b.error.message);

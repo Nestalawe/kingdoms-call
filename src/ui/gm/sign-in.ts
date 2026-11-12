@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { sb, thePagesDb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { thisPagesBuild } from '../shared/a-newer-version-of-this-page.ts';
 
 export function show(id) {
@@ -116,7 +116,7 @@ export async function loadReportedDispatches(game) {
     return;
   }
   el.innerHTML = '<div class="msg-info">Loading…</div>';
-  const { data, error } = await sb.rpc('gm_reported_messages', { p_game: game.id });
+  const { data, error } = await thePagesDb.theReportedDispatches.theDispatchesReportedToThisAccount(game.id);
   if (!currentGame || String(currentGame.id) !== String(game.id)) return; // another game was opened meanwhile
   if (error) {
     el.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
@@ -142,7 +142,7 @@ export async function loadReportedDispatches(game) {
 }
 export async function deleteReportedDispatch(id) {
   if (!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
-  const { error } = await sb.from('game_messages').delete().eq('id', id);
+  const { error } = await thePagesDb.theDispatches.deleteThisDispatch(id);
   if (error) {
     alert(error.message);
     return;
