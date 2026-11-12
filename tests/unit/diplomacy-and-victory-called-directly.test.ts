@@ -105,7 +105,7 @@ const merge = (b: Board, sends: Record<number, RealmSends>) => {
  *  the phases, the log's context cleared. */
 const settle = (b: Board, which: Fn[] = [diplomacy, victory]) => {
   tc(b)._currentPhase = null;
-  tc(b)['_afterPhases'] = true;
+  tc(b)._afterPhases = true;
   b.tc._logCtx = { charId: null, phase: null };
   withCaseDice(engine, LANDS, () => {
     which.forEach((f) => f(b.tc));

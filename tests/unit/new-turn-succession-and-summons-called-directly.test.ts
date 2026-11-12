@@ -98,7 +98,7 @@ const G = (b: Board) => b.G as unknown as Raw & Board['G'];
 const settle = (b: Board) => {
   const turn = b.G.turn;
   tc(b)._currentPhase = null;
-  tc(b)['_afterPhases'] = true;
+  tc(b)._afterPhases = true;
   b.tc._logCtx = { charId: null, phase: null };
   newTurn(b.tc);
   return turn;
@@ -466,7 +466,7 @@ describe('The new turn: what only a direct call can stage', () => {
     delete (p as Raw)['garrisonArmies'];
     delete (p as Raw)['neutralDefenders'];
     delete p['features'];
-    delete G(b)['mercenaries'];
+    delete G(b).mercenaries;
     delete realm(b, 2)['discoveries'];
     const h = at(b, NO_TITLE_SKILLS);
     delete (h as Raw)['armies'];
@@ -476,7 +476,7 @@ describe('The new turn: what only a direct call can stage', () => {
       undefined,
       undefined,
     ]);
-    expect([G(b)['mercenaries'], realm(b, 2)['discoveries'], (h as Raw)['armies']]).toEqual([
+    expect([G(b).mercenaries, realm(b, 2)['discoveries'], (h as Raw)['armies']]).toEqual([
       undefined,
       undefined,
       undefined,

@@ -13,6 +13,9 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   the id, as a property read on `null` did; one of another kind stops it too, which no page meets (the tours run every
   such lookup). Read once where the old code first read it: the throw moves no earlier than the first statement the
   missing element would have stopped.
+- **A page's own lookup** (`const $ = (id) => document.getElementById(id)`, every caller reading it unchecked: the
+  Overlord page) is `theElementWithTheId(id, HTMLElement)`; a field of a kind (`$('si-email').value`) is read through
+  `theElementWithTheId(id, HTMLInputElement)` at its site.
 - **An element the code checks for** (`if (!wrap || !hidden) return;`) keeps its check and its `getElementById`: its
   absence is a case the code meets. Where the code then writes a field of a kind (`hidden.value = …`), the check names
   the kind: `if (!wrap || !(hidden instanceof HTMLInputElement)) return;`, where the page writes that element as that
@@ -41,11 +44,29 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 
 - **An event's target tested for `closest`** (`ev.target && ev.target.closest && ev.target.closest(sel)`, the order
   form's listeners) is `ev.target instanceof Element && ev.target.closest(sel)`: only an element has `closest`.
+- **A text walk's ancestors read for their namespace, classes or editing** (`el.namespaceURI`, `el.classList &&`,
+  `el.isContentEditable` on a `ParentNode`) are read behind `el instanceof Element` (`HTMLElement` for editing): a
+  fragment or the document has none, which the old reads gave as `undefined` (`linkProvinceNames`, `layout.ts`). A text
+  node's words, its parent and a match's group, which the walk makes sure, go through readers that throw, for none,
+  the `TypeError` the old read threw.
+- **A watcher kept in a `let` that a callback then reads** (`_deskFitObs = new ResizeObserver(…)`, then
+  `forEach((el) => _deskFitObs.observe(el))`) is made into a `const` and then kept: the callback keeps the `const`'s
+  type. `clearTimeout(t)` on a timer that may be `null` is `clearTimeout(t ?? undefined)`: both clear nothing.
 - **An element looked up before the HTML written into it is built** (`el.innerHTML = kcHtml\`…\``) is read through
   `theElementWithTheId` after the HTML is built into a `const`: the page builds the right side before a missing element
   throws.
+- **An element looked up before an await and written after it** (the game lists' `el`, read at the top, written on
+  each path) keeps its lookup; each write reads it through a reader that throws for `null` (`theElementFound`), so a
+  missing element still stops the code where the write did.
 
 ## Writing into the page
+
+- **A helper that makes an element** (the Overlord page's `el(tag, props, ...kids)` and `fill(id, ...kids)`) takes its tag
+  as `keyof HTMLElementTagNameMap` (`el('input', …)` is an `HTMLInputElement`). Its `kids.flat(Infinity)`, nothing
+  left out, is a reader that walks the lists and writes each child that isn't a node by `String`, as `append` and
+  `replaceChildren` do (`theNodesAndWordsOf`); a value of any kind handed as a child goes through `theChildAsElReadsIt`
+  (a list stays a list). An `on…` attribute goes through a reader that throws, for anything but a function, the
+  `TypeError` `addEventListener` threw (`theListenerIn`).
 
 - **`el.innerHTML = kcHtml\`…\``** is `el.innerHTML = String(kcHtml\`…\`)`: the setter writes the marked value by its
   `toString`, which is what `String` calls; the HTML lint rule accepts a call there.
@@ -63,11 +84,25 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   err.message` reads the message through `Reflect.get(Object(err), 'message')`, in words, after a check that throws for
   `null` or `undefined` as the read did (`theMessageOf`, `src/ui/player/start.ts`).
 
+- **A database's refusal thrown for the page's own `catch`** (`if (error) throw error;`, the answer's error an object
+  with its message, code and hint, not an `Error`) is thrown through a reader typed `unknown` (`theRefusalAsThrown`,
+  `dispatches.ts`): the same object reaches the `catch`, which reads its words and hint; lint's `only-throw-error`
+  refuses an object of a known type that isn't an `Error`, and wrapping it would lose its hint.
+
 - **An `async` function that awaits nothing** (a page global no caller awaits: Resubmit) is a plain function (lint's
   `require-await`): its promise was read by nobody, and its body throws only where the page holds none of an element
   every screen holds.
+- **An `async` function handed to `setInterval`** (the live poll) is wrapped,
+  `setInterval(() => { void pollForUpdates(); }, ms)` (lint's `no-misused-promises`): the same call each tick, with no
+  arguments, its promise still unread.
 
 ## The page's globals
+
+- **A mark the page writes on its seat or report** (`_liveTurn`), read `x && x._liveTurn`, goes through a reader typed
+  `unknown` (`holder && Reflect.get(Object(holder), '_liveTurn')`, `theLiveTurnHeldBy`): a missing holder gives itself,
+  as before (the Dispatches' `_msgNum(null)` is 0, `_msgNum(undefined)` is `null`).
+- **A page's `let` read only once it is set** (the Overlord page's `ME`, after sign-in) goes through a reader that throws,
+  for `null`, the `TypeError` the read threw (`theSignedInAccount`).
 
 - **A page global a freed file writes into** (the pre-order cards add their placeholders to the report's heroes, and the
   heir's fields write his name and temper) is typed with that field writable (`TheReportAsThePreOrderCardsHoldIt`'s

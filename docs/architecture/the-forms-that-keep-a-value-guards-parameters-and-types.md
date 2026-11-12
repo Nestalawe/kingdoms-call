@@ -10,7 +10,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   have thrown without it.
 - **A value guarded in one place and read unguarded in another** (a fight's narrative, a foe, a fighter's hero) keeps
   its type, and the guarded reads go through `asItsGuardReadsIt(value)` (in `rules-on-plain-values/`). A guard
-  on a field the schema requires stays where an untyped caller may still leave it out.
+  on a field the schema requires stays where an untyped caller may still leave it out; so does one on a field a database
+  function's generated type makes sure while its column may hold `null` (`gm_reported_messages`' `turn`): the callback
+  that reads it takes the row as its table holds it (`AReportedDispatchAsItsTablesHoldIt`).
 - **A `const` typed as a wide list is narrowed by its value** (`const l: readonly Army[] | null | undefined =
   hero.armies` is `Army[]`): type the object instead (`const h: AHeroAsEarlyWinterReadsHisArmies = hero`, his `armies`
   optional), or a callback's parameter; an object's optional field isn't narrowed away.
@@ -78,6 +80,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
   its test still reads it.
 
+- **A reader of any value as a list** (`Array.isArray(v) ? v : []`, the Dispatches' `_msgArr`), handed typed lists
+  and values of any kind, keeps a typed list's element type by an overload (`<Item>(v: readonly Item[] | null |
+  undefined): readonly Item[]`, then `(v: unknown): readonly unknown[]`): one body, the same value.
+
 - **A parameter set to its own default that callbacks read** (`hooks = hooks || {}`, then `hooks.duelSim` in a
   `forEach`) is a `const` of the old name set from the parameter renamed (`const hooks = hooksHanded ?? {};`): a
   callback keeps a `const`'s narrowing, not a reassigned parameter's. **`list.filter(p)[0]`** (lint's `prefer-find`)
@@ -92,6 +98,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   after the loops: the compiler forgets what a callback sets in a `let`; the same callbacks run in the same order.
 - **`{}` handed where a typed hero is needed** (`find(…) || list[i] || {}`) is an object whose `id` reads `undefined`
   and isn't its own enumerable field (`theEmptyHero`, `pre-orders.ts`): every read the field makes gives what `{}` gave.
+- **A page global tested before an await and written after it** (`if (currentGamePlayer) currentGamePlayer.orders = …`
+  after Submit's database call), which the compiler takes as still narrowed, is read again through a function that
+  returns it (`theSeatOpenNow`, `briefing-and-submit.ts`): another handler may have changed it meanwhile; the test stays.
 
 ## Parameters, shapes and claims
 

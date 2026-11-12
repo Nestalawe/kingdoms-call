@@ -35,7 +35,7 @@ test("every guardian's blow rolls its tier's base + its Melee", () => {
     const g = call('pcMonsterCombatant', { ...m, _hpFull: m.hp }) as Combatant;
     if (g['dmgBonus'] || g['gauntlets']) return; // a flat bonus on top: checked by its own passive
     const [lo, hi] = BASE[m.power] ?? [NaN, NaN];
-    const sk = m.melee || 1; // +1 a Melee level (item 20, 2026-10-14)
+    const sk = (m.melee ?? 0) || 1; // +1 a Melee level (item 20, 2026-10-14)
     let mn = 1e9;
     let mx = -1;
     for (let i = 0; i < 600; i++) {
@@ -84,7 +84,7 @@ test("a hero's blow is still 1–3 + ⌈Melee÷2⌉", () => {
     hmn = Math.min(hmn, v);
     hmx = Math.max(hmx, v);
   }
-  const gb = (ch.items as { name?: string }[]).some((it) => /Warbringer/.test(it.name ?? '')) ? 2 : 0;
+  const gb = (ch.items as { name?: string }[]).some((it) => (it.name ?? '').includes('Warbringer')) ? 2 : 0;
   expect([hmn, hmx]).toEqual([1 + hsk + gb, 3 + hsk + gb]);
 });
 
@@ -110,7 +110,7 @@ test('Grave Chill: −1 Melee for the next round, and only that round', () => {
   call('pcRoundStart', hero, narr); // the round after: gone
   expect(call('pcHitSkill', hero, 'melee'), `the round after, Melee is back to ${String(before)}`).toBe(before);
   expect(
-    wordsOf(narr).some((l) => /Melee/.test(l)),
+    wordsOf(narr).some((l) => l.includes('Melee')),
     'the battle report mentions the chill',
   ).toBe(true);
 });

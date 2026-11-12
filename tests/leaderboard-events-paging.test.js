@@ -3,7 +3,7 @@
 // per turn, so the order of rows within a turn is the database's choice and may differ between page
 // queries: rows at a page edge were skipped or read twice. A failed page was skipped silently and the
 // record saved from whatever had arrived. Unit (level 1): writeGameRecord against a stub that serves
-// the pages as a database may. writeGameRecord and what it calls in its own file are cut out of
+// the pages as a database may, through the page's Db made on it (plan P1-17g). writeGameRecord and what it calls in its own file are cut out of
 // src/ui/gm/hall-of-fame.ts by their syntax tree (tests/lib/source.ts) and run on their own, beside a probe in
 // buildGameRecords' place that keeps what it was given. (Until plan P1-09a they ran on the booted GM portal, with its
 // buildGameRecords stood in from outside, which a page of modules doesn't allow.)
@@ -15,6 +15,7 @@
 // outside)
 const vm=require('vm');
 const {pagedEventsStub}=require('./lib/stub-db'); const {sourceOf}=require('./lib/source.ts');
+const {makeTheDbFromItsClient}=require('../src/db/the-db-interface-and-its-areas.ts');
 const HOF='ui/gm/hall-of-fame.ts';
 const CUT=sourceOf(HOF,['_kcHasLb','_kcLbLastErr','writeGameRecord','_lbProfCache','_lbProfErr','lbProfileNames','_lbTally','lbCountRow']);
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -26,7 +27,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
     const calls=[]; const errs=[];
     let got=null;
     const ctx=vm.createContext({console:{warn(){},log(){},error(){}},
-      sb:pagedEventsStub({events,results,errorFrom,calls}),
+      thePagesDb:makeTheDbFromItsClient(pagedEventsStub({events,results,errorFrom,calls})),
       buildGameRecords:(gid,gameRow,players,res,ev)=>{ got=ev.slice(); return {game_id:gid,standings:[],records:{}}; },
       renderLeaderboardBanner(){}, parseGameState:()=>null});
     vm.runInContext(CUT+'\n_kcHasLb=true;',ctx);

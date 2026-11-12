@@ -2419,9 +2419,7 @@ export const CLAIRVOYANCE_CASES: CastSpellOrderCase[] = [
     check(o, s) {
       const m = mark(s);
       const p0 = must(o.world.players[0], 'realm 0');
-      const read = ((p0['_spiedHeroSkills'] as Record<string, Record<string, unknown>> | undefined) ?? {})[
-        String(m.id)
-      ];
+      const read = (p0['_spiedHeroSkills'] as Record<string, Record<string, unknown>> | undefined)?.[String(m.id)];
       return {
         got: {
           told: says(

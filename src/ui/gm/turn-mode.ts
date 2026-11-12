@@ -2,7 +2,6 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { SAFE_START_TURN } from '../../engine/army-tables.ts';
 import { sb } from './config.ts';
-import { openGame, renderOrdersStatus } from './game-detail.ts';
 import { TURN_MODES, normalizeTurnMode, parseGameState } from './startup.ts';
 import { isBotRow } from '../../engine/bots/setup.ts';
 import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -114,64 +113,6 @@ export function realmConcededIn(game, idx) {
   const gs = parseGameState(game);
   const pl = ((gs && gs.players) || [])[idx];
   return !!(pl && pl.conceded);
-}
-// ── GM: REMOVE A PLAYER FROM A GAME (2026-09-26, Toby item 4) ────
-// Available at every stage. In SETUP the row is simply deleted and the slot reopens (join assigns
-// the lowest free player_index, so the gap is filled by the next player to sign up). In a LIVE game
-// the realm CONCEDES first — the engine's existing concession machinery then holds every one of its
-// characters on Defend for the rest of the game, stops it making declarations or claims, excludes
-// it from the victory count and never waits on its orders — and only then is the seat deleted, so
-// the removed player can no longer reach the game at all. The realm's provinces, armies and
-// characters stay on the map exactly as they were; they simply never advance again.
-export async function removePlayer(gamePlayerId) {
-  if (!currentGame) return;
-  const row = (currentGamePlayers || []).find((p) => String(p.id) === String(gamePlayerId));
-  if (!row) {
-    return;
-  }
-  const msg = document.getElementById('detail-msg');
-  const who = row.display_name || `Realm ${row.player_index + 1}`;
-  const live = currentGame.status !== 'setup';
-  const warn = live
-    ? `Remove ${who} from "${currentGame.name}"?\n\nTheir realm CONCEDES the game immediately: every one of its characters will do nothing but Defend from now on, it can make no declarations and cannot win, and it is never waited on for orders. Its lands and armies stay on the map.\n\nThe player loses access to this game. This cannot be undone.`
-    : `Remove ${who} from "${currentGame.name}"?\n\nThe game has not started, so their slot simply reopens for another player. This cannot be undone.`;
-  if (!confirm(warn)) return;
-  msg.innerHTML = '<div class="msg-info">Removing player…</div>';
-  try {
-    if (live) {
-      const gs = parseGameState(currentGame);
-      const pl = ((gs && gs.players) || [])[row.player_index];
-      if (pl && !pl.conceded) {
-        pl.conceded = true;
-        pl.concededTurn = currentGame.turn;
-        pl._gmRemoved = true;
-        gs._gmRemovedRealms = Array.isArray(gs._gmRemovedRealms) ? gs._gmRemovedRealms : [];
-        if (!gs._gmRemovedRealms.includes(row.player_index)) gs._gmRemovedRealms.push(row.player_index);
-        const { error: sErr } = await sb
-          .from('games')
-          .update({ game_state: JSON.stringify(gs), ...metaPatch(gs) })
-          .eq('id', currentGame.id);
-        if (sErr) {
-          msg.innerHTML = kcHtml`<div class="msg-error">Could not record the concession: ${sErr.message}</div>`;
-          return;
-        }
-        currentGame.game_state = JSON.stringify(gs);
-        Object.assign(currentGame, metaPatch(gs));
-      }
-    }
-    const { error } = await sb.from('game_players').delete().eq('id', row.id);
-    if (error) {
-      msg.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
-      return;
-    }
-    msg.innerHTML = kcHtml`<div class="msg-success">${who} has been removed${live ? ' — their realm has conceded and will only defend from here on.' : ' and their slot is open again.'}</div>`;
-    await openGame(currentGame.id);
-    const _m2 = document.getElementById('detail-msg'); // openGame clears the panel — say it again
-    if (_m2)
-      _m2.innerHTML = kcHtml`<div class="msg-success">${who} has been removed${live ? ' — their realm has conceded and will only defend from here on.' : ' and their slot is open again.'}</div>`;
-  } catch (e) {
-    msg.innerHTML = kcHtml`<div class="msg-error">${e.message || 'Could not remove the player.'}</div>`;
-  }
 }
 // {ready, reason} for the auto-turn watcher. Requires an active game with at least one realm.
 export function autoTurnReady(game, rows, tm) {
@@ -349,46 +290,6 @@ export async function saveBotDiplomacy() {
   currentGame.game_state = JSON.stringify(gs);
   Object.assign(currentGame, metaPatch(gs));
   if (msg) msg.innerHTML = '<span style="color:#8c8">Saved — applies from the next turn resolved.</span>';
-}
-export async function saveTurnMode() {
-  const msg = document.getElementById('detail-turnmode-msg');
-  if (!currentGame) return;
-  const prev = turnModeOf(currentGame);
-  const tm = readTurnModeForm('detail');
-  // Reset the clock from now whenever the deadline settings change (or a deadline is first set).
-  if (tm.mode === 'deadline') {
-    const changed =
-      prev.mode !== 'deadline' || prev.time !== tm.time || prev.everyDays !== tm.everyDays || !prev.nextDeadlineAt;
-    tm.nextDeadlineAt = changed ? computeNextDeadline(tm, new Date()) : prev.nextDeadlineAt;
-  } else tm.nextDeadlineAt = null;
-  tm.turnRanAt = prev.turnRanAt || null;
-  const gs = parseGameState(currentGame);
-  gs.turnMode = tm;
-  if (msg) msg.innerHTML = '<span style="color:var(--stone)">Saving…</span>';
-  // Optimistic-concurrency guard: refuse to overwrite a state the watcher (in another tab) has just
-  // advanced.
-  const { data, error } = await sb
-    .from('games')
-    .update({ game_state: JSON.stringify(gs), ...metaPatch(gs) })
-    .eq('id', currentGame.id)
-    .eq('turn', currentGame.turn)
-    .select('id')
-    .maybeSingle();
-  if (error) {
-    if (msg) msg.innerHTML = kcHtml`<span style="color:#e88">${error.message}</span>`;
-    return;
-  }
-  if (!data) {
-    if (msg)
-      msg.innerHTML =
-        '<span style="color:#e88">The turn advanced while you were editing — reload the game and try again.</span>';
-    return;
-  }
-  currentGame.game_state = JSON.stringify(gs);
-  Object.assign(currentGame, metaPatch(gs));
-  if (msg) msg.innerHTML = '<span style="color:#8c8">Saved.</span>';
-  renderTurnModePanel(currentGame);
-  if (currentGame.status === 'active') renderOrdersStatus(currentGame);
 }
 
 // gs = the parsed game_state (setup cfg before Turn 0, the world G after it).

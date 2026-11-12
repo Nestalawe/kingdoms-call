@@ -1012,7 +1012,7 @@ describe('Properties of the four stages', () => {
         });
         run(tc, [DEFAULT_DEFEND]);
         const want = sendAny
-          ? sent.map((a) => (a ? a : 'defend: Defend'))
+          ? sent.map((a) => a ?? 'defend: Defend')
           : Array.from({ length: 5 }, () => 'defend: Defend');
         expect(ordersOf(b.G, must(h as Character | null, 'the hero'))).toEqual(want);
       }),

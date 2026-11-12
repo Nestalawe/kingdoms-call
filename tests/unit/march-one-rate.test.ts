@@ -28,7 +28,12 @@ const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
 const world = botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 });
 const tc = turnContext(engine, world);
-type Pools = { land: number; sea: number; seaActive: boolean; cap: string };
+interface Pools {
+  land: number;
+  sea: number;
+  seaActive: boolean;
+  cap: string;
+}
 const computeMovePoolMax = engineFn(engine, 'computeMovePoolMax') as (t: typeof tc, c: object) => Pools;
 const navalSpeedBonus = engineFn(engine, 'navalSpeedBonus') as (baseSpeed: number, level: number) => number;
 const botLandReach = engineFn(engine, 'botLandReach') as (c: object) => number;

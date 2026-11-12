@@ -6,21 +6,22 @@
 //
 // Level 4 (page): the card is the player portal's own code (_renderDiplomacyInto, on the portal's diploChoices), in
 // modules that load the portal's start-up (which calls supabase.createClient as it loads), so only the booted page
-// reaches it: the portal booted in jsdom (tests/lib/boot.js) on the stand-in database (tests/lib/stub-db.js's
-// cannedStub, which answers every read with nothing), the card drawn from a hand-made report.
+// reaches it: the portal booted in jsdom (tests/lib/boot.js) on the fake database (tests/lib/fake-db.ts's
+// makeAFakeDb, holding no account and no game), the card drawn from a hand-made report.
 //
 // Until plan P1-14h this was the card's part of tests/concede.test.js, the same boot and the same calls. Its checks
 // are kept as they were: "_renderDiplomacyInto found" as the function found on the booted page, and "player page
 // errors 0" as no page error and no console.error on the page.
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
-import { cannedStub } from '../lib/stub-db.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const errs: string[] = [];
 let P: PageWindow;
 beforeAll(async () => {
   P = bootJsdom(readPage('kingdoms-call-player-portal.html'), {
-    supabase: { createClient: () => cannedStub({ rows: () => ({}), writes: [] }) },
+    supabase: { createClient: () => ({}) },
+    db: makeAFakeDb([DB_VERSION]).db,
     setup(w) {
       w.addEventListener('error', (e) => errs.push(e.error?.stack ?? e.message));
       w.console.error = (...a: unknown[]) => errs.push('console.error: ' + a.map(String).join(' '));

@@ -77,7 +77,7 @@ const found = (b: Board) => tc(b)['whatTheSavesUpgradeFound'] as WhatTheSavesUpg
  *  phases, the log's context cleared. */
 const settle = (b: Board) => {
   tc(b)._currentPhase = null;
-  tc(b)['_afterPhases'] = true;
+  tc(b)._afterPhases = true;
   b.tc._logCtx = { charId: null, phase: null };
   afterThePhases(b.tc);
 };
@@ -230,7 +230,7 @@ describe('After the phases: what it calls', () => {
     expect(of('monarchRestProvId')).toEqual([[b.G, 0]]);
     expect(of('abandonHostOnFlight')).toEqual([[b.tc, coward]]);
     expect(of('reconcileProvinceCharacters')).toEqual([[b.tc]]);
-    expect(calls.filter((c) => c.fn === 'reconcileProvinceCharacters')[0]?.before).toBe(b.lines().length);
+    expect(calls.find((c) => c.fn === 'reconcileProvinceCharacters')?.before).toBe(b.lines().length);
   });
 
   test("a fallen commander's host is dispersed knowing who slew him, with no leaderless-host mark; the note goes after", () => {

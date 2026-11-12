@@ -134,7 +134,8 @@ describe('planted faults are refused, where they are', () => {
     const hero = (s['characters'] as Obj[]).find((c) => (c['armies'] as unknown[]).length);
     if (!hero) throw new Error('no hero with a company in the last state');
     const at = (s['characters'] as Obj[]).indexOf(hero);
-    ((hero['armies'] as Obj[])[0] ?? {})['_veteranOf'] = 3;
+    const army = (hero['armies'] as Obj[])[0];
+    if (army) army['_veteranOf'] = 3;
     expect(strictIssues(GameStateSchema, s)).toEqual([
       expect.stringMatching(new RegExp(`^characters\\.${String(at)}\\.armies\\.0: unrecognized_keys .*_veteranOf`)),
     ]);

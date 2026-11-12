@@ -6,7 +6,7 @@
 // moved, grouped and written into the orders the seat holds.
 // Level 4 (page): map.ts loads the page's start-up (its database client), so no lower level reaches it; the portal is
 // booted in jsdom (tests/lib/boot.js) on the fake Db at an older database, so it stops at its notice with every
-// module loaded, and its client is one that records the hero order's write.
+// module loaded, and the fake records the hero order's write (db.theOrders, plan P1-17k).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
 import { makeAFakeDb } from '../lib/fake-db.ts';
@@ -21,22 +21,22 @@ const call = (name: string, ...args: unknown[]): unknown => {
   return Reflect.apply(f, undefined, args);
 };
 const stage = (code: string): unknown => P.eval(code);
+const theFakeDb = makeAFakeDb(['20261010000000']).db;
 
 beforeAll(async () => {
   P = bootJsdom(readPage('kingdoms-call-player-portal.html'), {
-    supabase: {
-      createClient: () => ({
-        from: (table: string) => ({
-          update: (val: unknown) => ({
-            eq: (...eq: unknown[]) => {
-              writes.push({ table, val, eq });
-              return Promise.resolve({ error: null });
-            },
-          }),
-        }),
-      }),
+    supabase: { createClient: () => ({}) },
+    db: {
+      ...theFakeDb,
+      theOrders: {
+        ...theFakeDb.theOrders,
+        // the hero order's write, as the page's client sent it before (P1-17k): its table, its change, its filter
+        saveThisRealmsHeroOrder: (realm, orders) => {
+          writes.push({ table: 'game_players', val: { orders }, eq: ['id', realm] });
+          return Promise.resolve({ data: null, error: null, status: 204 });
+        },
+      },
     },
-    db: makeAFakeDb(['20261010000000']).db,
     url: 'https://example.org/p',
     setup(w) {
       w.addEventListener('error', (e) => errs.push(e.error?.stack ?? e.message));
@@ -221,6 +221,45 @@ describe('map.ts: the fullscreen map of a staged report', () => {
     hex?.dispatchEvent(new MouseEv('click', { bubbles: true }));
     doc.body.dispatchEvent(new (P['Event'] as typeof Event)('click', { bubbles: true }));
     expect(tt?.style.display).toBe('none');
+  });
+
+  test("the own-army banner: where the realm's own hero leads an army, never where only a rival's does", () => {
+    // Province 1 is held, with no hero list on the map: the held province's own list is read, as the view writes it
+    // (each hero's army count, a rival's too). Province 2's own hero leads an army.
+    const flagged = {
+      kingdom: { color: '#123456' },
+      playerIndex: 0,
+      ownedProvinces: [
+        {
+          id: 1,
+          name: 'Held Vale',
+          characters: [{ id: 'rival', isOwn: false, ownerName: 'Red Realm', ownerColor: '#a03030', armyCount: 3 }],
+        },
+        { id: 2, name: 'Home Wood' },
+      ],
+      worldMeta: {
+        cols: 2,
+        rows: 1,
+        centreCol: 0,
+        provinces: [
+          { id: 1, row: 0, col: 0, terrain: 'plain', name: 'Held Vale', tier: 'owned' },
+          {
+            id: 2,
+            row: 0,
+            col: 1,
+            terrain: 'forest',
+            name: 'Home Wood',
+            tier: 'owned',
+            characters: [{ id: 'own', isOwn: true, armyCount: 2 }],
+          },
+        ],
+      },
+    };
+    stage(`viewingReport = null; currentReport = ${JSON.stringify(flagged)};`);
+    call('showFullscreenMap');
+    const flags = [...doc.querySelectorAll('#map-fullscreen-modal .sym-flag')].map((f) => f.getAttribute('x'));
+    expect(flags, "one banner, at the bottom left of the own hero's province").toEqual(['8']);
+    expect(errs).toEqual([]);
   });
 
   test("a province lit from the report: its hex's outline, and taken off again", () => {

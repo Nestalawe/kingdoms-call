@@ -70,7 +70,7 @@ test('the player portal boots and links to the leaderboard and the rules', async
   const l = await links(page);
   expect
     .soft(
-      l.some((x) => x.startsWith('kingdoms-call-leaderboard.html|') && /Leaderboard/.test(x)),
+      l.some((x) => x.startsWith('kingdoms-call-leaderboard.html|') && x.includes('Leaderboard')),
       'no Leaderboard link',
     )
     .toBe(true);
@@ -82,7 +82,7 @@ test('the player portal boots and links to the leaderboard and the rules', async
     .toBe(true);
   expect
     .soft(
-      l.some((x) => /kingdoms-call-leaderboard\.html\?gm=1/.test(x)),
+      l.some((x) => x.includes('kingdoms-call-leaderboard.html?gm=1')),
       'link must NOT carry ?gm=1',
     )
     .toBe(false);

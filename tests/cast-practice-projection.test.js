@@ -13,11 +13,11 @@
 // Grand Cathedral stands, a White 1 priest's Bless in Spring spends no slot (Summer's Holy Symbol open) and Bless is open
 // after Spring's Holy Symbol, both closed without the Wonder. Level 4 (page): the dropdown as the live form builds it;
 // the copies test compares the form's count with the engine's on staged worlds
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const errs=[];
-  const d=bootJsdom(readPage('kingdoms-call-player-portal.html'),{supabase:{createClient:()=>cannedStub({rows:()=>({}),writes:[]})},
+  const d=bootJsdom(readPage('kingdoms-call-player-portal.html'),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,
     setup(w){
       w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
       w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' '));

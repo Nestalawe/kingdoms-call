@@ -104,7 +104,7 @@ async function main(): Promise<number> {
       if (!b || !h) continue;
       // Each replay must match its own side's games up to that turn, or its log isn't the one that was hashed.
       const same = (r: GameResult, g: KeptGame | undefined) =>
-        g != null && r.turns.join() === g.turns.slice(0, r.turns.length).join();
+        g?.turns.slice(0, r.turns.length).join() === r.turns.join();
       if (!same(b, baseById.get(id)) || !same(h, headById.get(id))) {
         replayNotes.push(
           `${id}: its replay didn't match its baseline, so its first difference isn't shown (does this pull request change the balance runner?).`,

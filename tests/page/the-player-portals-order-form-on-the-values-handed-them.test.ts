@@ -171,6 +171,29 @@ describe('a draft that cannot be read', () => {
   });
 });
 
+describe('a draft stamped for its turn (P1-21q)', () => {
+  test("Revise hands the form the report's turn, which an engine report doesn't carry: the draft for the live turn is kept", () => {
+    // openReport stamps the live turn on the report (_liveTurn); a report the engine wrote has turnNumber, not turn, so
+    // reviseOrders hands the form 1.
+    stage(
+      `currentReport = ${JSON.stringify({ turnNumber: 4, _liveTurn: 5, characters: [aHero] })}; reckoningCall = false;`,
+    );
+    call('buildOrdersForm', [aHero], false, JSON.stringify({ forTurn: 5, callReckoning: true }), 1);
+    expect(stage('reckoningCall')).toBe(true);
+    expect(doc.getElementById('orders-msg')?.textContent ?? '').not.toContain('set aside');
+  });
+  test('a draft stamped for an earlier turn is set aside, saying so', () => {
+    stage(
+      `currentReport = ${JSON.stringify({ turnNumber: 4, _liveTurn: 5, characters: [aHero] })}; reckoningCall = false;`,
+    );
+    call('buildOrdersForm', [aHero], false, JSON.stringify({ forTurn: 4, callReckoning: true }), 1);
+    expect(stage('reckoningCall')).toBe(false);
+    expect(doc.getElementById('orders-msg')?.textContent).toContain(
+      'Your saved draft was written for Turn 4 and has been set aside',
+    );
+  });
+});
+
 describe("the encounter plan's controls", () => {
   test('clearing the pre-battle magic empties its field and closes the picker', () => {
     here(

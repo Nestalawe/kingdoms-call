@@ -84,10 +84,10 @@ test('a cast refused because a practice failed spends no slot, and a later pract
     .map((l) => l.text)
     .join('\n');
   expect({
-    refused: /lacks the required White Magic skill/.test(t),
-    rose: /practises White Magic and improves to level 1!/.test(t),
-    limit: /casting limit/.test(t),
-    worked: /casts Bless Province \(White Magic 1\)/.test(t),
+    refused: t.includes('lacks the required White Magic skill'),
+    rose: t.includes('practises White Magic and improves to level 1!'),
+    limit: t.includes('casting limit'),
+    worked: t.includes('casts Bless Province (White Magic 1)'),
     rollsLeft: practiceDice.length,
   }).toEqual({ refused: true, rose: true, limit: false, worked: true, rollsLeft: 0 });
 });

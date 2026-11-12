@@ -235,15 +235,14 @@ too, and the run still shows "success". That is how the deploys of #184 to #186 
 ## A constant read at load time must live in a leaf module
 
 The site's code is ES modules: each file runs after the files it imports. That orders almost everything by
-itself, but not a cycle: when two files import each other (the engine has none since P1-13e5 and the player page none since P1-13e8; the GM page's UI has one), one of
+itself, but not a cycle: when two files import each other (the engine has none since P1-13e5, the player page none since P1-13e8 and the GM page none since P1-13e13), one of
 them runs first and finds the other's top-level `const`/`let` not yet set. Read as a file loads, that is a
 temporal-dead-zone `ReferenceError`, and at the top level it stops the page: the portal hangs on its spinner (the
 boot-failure reporter shows the error). Rolldown, the bundler, writes each top-level `const` as a `var`, so in the built
 bundle the read may instead find `undefined`, silently. Inside a function, read later, a cycle is harmless.
 
-**A new cycle fails `npm run lint:arch`** (P1-13a; CI and `npm run check` run it). The one known (the GM page's) is
-listed in `.dependency-cruiser-known-violations.json`, and P1-13e13 breaks it (P1-13e1 to P1-13e5 broke the engine's
-six, P1-13e6 to P1-13e8 the player page's). A cycle of `import type` only is let through: types
+**A new cycle fails `npm run lint:arch`** (P1-13a; CI and `npm run check` run it). None is known now (P1-13e1 to P1-13e5 broke the engine's
+six, P1-13e6 to P1-13e8 the player page's, P1-13e13 the GM page's). A cycle of `import type` only is let through: types
 are erased, so no code runs in its order.
 
 - **A constant another file reads as it loads lives in a file of its own that imports nothing** (P1-09b:

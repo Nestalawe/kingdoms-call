@@ -46,7 +46,7 @@ test('every guardian with a bow strikes in melee instead of breaking away', () =
     g.tactics = ['FI'];
     g.tacIdx = 0;
     const { t, s } = act(g, hero(['ME']), 'melee', 0.99);
-    if (!(/attacks \(/.test(t) && !/break away/.test(t) && s.range === 'melee'))
+    if (!(t.includes('attacks (') && !t.includes('break away') && s.range === 'melee'))
       broke.push(`${m.name}: ${t.split('\n')[0] ?? ''}`);
   });
   expect(broke).toEqual([]);

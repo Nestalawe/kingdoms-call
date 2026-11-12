@@ -98,9 +98,7 @@ test('a good share of perks are wards against magic', () => {
 
 test('no guardian wards the school it is weak to', () => {
   const clash = MON.filter((m) =>
-    perks(m).some(
-      (p) => p.fx.ward === 'schoolWard' && m.weak && m.weak.kind === 'school' && m.weak.key === p.fx.school,
-    ),
+    perks(m).some((p) => p.fx.ward === 'schoolWard' && m.weak?.kind === 'school' && m.weak.key === p.fx.school),
   ).map((m) => m.name);
   expect(clash).toEqual([]);
 });

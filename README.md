@@ -11,7 +11,7 @@ a Hall of Fame and two rulebooks. Live at <https://nestalawe.github.io/kingdoms-
 | `public/` | What is published as it is: `kc-config.js` (which database the site talks to) and the staging footer. supabase-js comes from npm. |
 | `site/` | The site as it is published, built from `src/` and `public/` by Vite (`npm run build`). Not in git: never edit it. |
 | `tests/` | The automated checks: [one line each](tests/every-test-its-level-and-what-it-checks.md), and [how to write one](tests/README.md). |
-| `tools/` | The build (`tools/build.ts`) and the dev server (`tools/dev.ts`, `npm run dev`), the checks an agent runs, the balance matrix. `tools/legacy/`: older content tools, kept for reference. |
+| `tools/` | The build (`tools/build.ts`) and the dev server (`tools/dev.ts`, `npm run dev`), the checks an agent runs, the balance matrix. |
 
 Only `site/` is published, so page addresses don't change. Before you open a page locally, run `npm run build`
 (`npm test` builds first), or serve `src/` with `npm run dev`, which only ever talks to a local Supabase

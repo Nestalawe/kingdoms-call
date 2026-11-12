@@ -102,7 +102,8 @@ function stage(a: Side, d: Side, { chieftain = false, botRealm }: { chieftain?: 
 /** A narrative's words: a line is its words, or a fact whose words the views write (theWordsOf, src/views/prose/). */
 const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
 const wordsOf = (narrative: unknown[]) => narrative.map((l) => (typeof l === 'string' ? l : theWordsOf(l)));
-const shaken = (narrative: unknown[]) => wordsOf(narrative).filter((l) => /'s force is demoralised — /.test(l)).length;
+const shaken = (narrative: unknown[]) =>
+  wordsOf(narrative).filter((l) => l.includes("'s force is demoralised — ")).length;
 const duelFought = (narrative: unknown[]) => wordsOf(narrative).some((l) => l.startsWith('⚔ — Personal duel: '));
 
 test(

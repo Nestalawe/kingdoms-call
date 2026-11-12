@@ -48,10 +48,13 @@ test("a hero's blow takes at most half a guardian's health", () => {
   const plain = MON.find(
     (m) =>
       m.power === 'Moderate' &&
-      !perksOf(m).some(
-        (p) =>
-          p.fx && (/cap|DR|spellPct|absorb|parry|dodge|lowHp/.exec(p.fx.ward ?? '') || p.fx['cap'] || p.fx['meleeDR']),
-      ),
+      !perksOf(m).some((p) => {
+        if (!p.fx) return p.fx;
+        const named = /cap|DR|spellPct|absorb|parry|dodge|lowHp/.exec(p.fx.ward ?? '');
+        if (named) return named;
+        if (p.fx['cap']) return p.fx['cap'];
+        return p.fx['meleeDR'];
+      }),
   );
   expect(plain, 'found a Moderate guardian with no ward of its own').toBeTruthy();
   if (!plain) return;

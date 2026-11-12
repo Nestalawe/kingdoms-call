@@ -1,9 +1,9 @@
-// Who edits the Hall of Fame (P0-22, rulings D-09 and D-11). Page level (jsdom, a stand-in database serving two
-// finished games, one run by gm-1 and one by gm-2), opened in GM mode (?gm=1):
+// Who edits the Hall of Fame (P0-22, rulings D-09 and D-11). Page level (jsdom, the fake database of lib/fake-db.ts
+// serving two finished games, one run by gm-1 and one by gm-2), opened in GM mode (?gm=1):
 //   - a GM gets edit controls on their own games' entries only (the database refuses the others since P0-22);
 //   - only the Overlord renames a player, through rename_player (the name only), and edits every entry;
 //   - a signed-in player gets no controls; the page never offers SQL to paste.
-const {readPage,bootJsdom}=require('./lib/boot'); const {leaderboardStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };
@@ -18,9 +18,9 @@ const ROWS=[entry('g-own','Marchwood','gm-1','10'),entry('g-other','Fenmoor','gm
 
 async function boot(who){
   const calls=[], errs=[];
-  const sb=leaderboardStub({rows:()=>ROWS,calls,signedIn:true,me:who.me,isGm:!!who.gm,isOverlord:!!who.overlord});
+  const fake=makeAFakeDbHoldingTheHallOfFame(DB_VERSION,{rows:()=>ROWS,changes:calls,signedIn:true,me:who.me,isGm:!!who.gm,isOverlord:!!who.overlord});
   const dom=bootJsdom(readPage('kingdoms-call-leaderboard.html'),{pretendToBeVisual:false,
-    url:'https://example.test/kingdoms-call-leaderboard.html?gm=1',supabase:{createClient:()=>sb},
+    url:'https://example.test/kingdoms-call-leaderboard.html?gm=1',supabase:{createClient:()=>({})},db:fake.db,
     setup(w){ w.addEventListener('error',e=>errs.push(e.message)); w.alert=m=>errs.push('alert: '+m);
       w.prompt=()=>'  Ada of the Ford '; w.console.error=(...a)=>errs.push('console.error: '+a.join(' ')); }});
   await wait(400);

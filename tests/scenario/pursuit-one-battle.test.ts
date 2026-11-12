@@ -141,7 +141,7 @@ test('(1) a hunter attacked by his quarry first holds the chase over to the next
     `the hunter closes in to ${X.name} in Spring (staging)`,
   ).toBe(true);
   const p1 = r.log.filter((e) => e.phase === 1);
-  const battles = p1.map(text).filter((t) => /^⚔ \*\*Battle for /.test(t));
+  const battles = p1.map(text).filter((t) => t.startsWith('⚔ **Battle for '));
   expect(
     battles.some((t) => t.includes(X.name)),
     `the quarry's attack on ${X.name} was fought (staging)`,

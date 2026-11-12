@@ -1,6 +1,5 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { SEASONS } from './items-and-heroes.ts';
 import { collectMessages } from './init.ts';
 import { setMobileView } from './layout.ts';
@@ -11,7 +10,27 @@ import {
   getOrderExtra,
   getOrderTarget,
   predictedLocation,
+  theValueOfAField,
+  theValueOfThePagesField,
 } from './the-orders-the-form-holds-handed-to-its-forecasts.ts';
+import {
+  inWords,
+  theFieldOrNoWords,
+  theWordsAFieldHolds,
+} from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
+import type { TheRealmsSeatAsThePageHoldsIt } from './map.ts';
+
+/** The realm's seat the page holds now (`currentGamePlayer`), read again after an await: another handler may have
+ *  changed it meanwhile, which the compiler's narrowing of a global doesn't see. */
+function theSeatOpenNow(): TheRealmsSeatAsThePageHoldsIt | null | undefined {
+  return currentGamePlayer;
+}
+/** `a || b` on values of any kind (a field's value, a hero's mark): `a` where it is truthy, else `b`. */
+function thisOrElse(a: unknown, b: unknown): unknown {
+  if (a) return a;
+  return b;
+}
 
 // ══ THE NEW PLAYER'S BRIEFING — RACE, ALIGNMENT, TEMPER ═══════════════════════════════════
 // STANDING RULE (Toby, 2026-09-27): these three boxes are the ONLY thing most players read before
@@ -21,11 +40,12 @@ import {
 export function updateAlignmentDesc() {
   const sel = document.getElementById('join-alignment');
   const desc = document.getElementById('join-alignment-desc');
-  if (!sel || !desc) return;
+  if (!(sel instanceof HTMLSelectElement) || !desc) return;
   // Alignment decides your realm's signature order, its battle fervour, and which heroes will
   // serve you (the further a hero's own alignment sits from yours, the more they cost; Divine and
   // Undead will never serve one another). Only ONE realm per game may be Divine, and one Undead.
-  const DESCS = {
+  // Each description is words, none empty: `?? ''` gives what `|| ''` gave.
+  const DESCS: Readonly<Partial<Record<string, string>>> = {
     Divine:
       '✨ **Divine:** The holy crown. Best battle fervour in the game (50% chance your host fights fanatically). Your king may **Consecrate** provinces: +50% tax and much stiffer defence. A fallen character returns to life one turn later on consecrated ground — no other realm can do that. Heroes heal twice as fast resting. Will not hire Undead heroes, and dark ones cost extra. One Divine realm per game.',
     Good: '⚔ **Good:** The steady defender. 40% fervour, +10% strength defending land you own, and better odds that your armies join up for a combined attack. **Call to Arms** gives the king a free garrison unit in one of your provinces every turn. Heroes of most alignments are cheap to hire. A forgiving choice.',
@@ -39,18 +59,20 @@ export function updateAlignmentDesc() {
     Undead:
       '💀 **Undead:** The deathless. King starts with Necromancy +1 and a free skeletal unit. Skeletal armies cost just 1g, need no Druid skill, **always** fight fanatically (+50% under the king, +30% under a hero), and never lose men fleeing a lost battle. **Harvest the Field** raises a grave as a soldier for 2g with no magic at all. Will not hire Divine heroes. One Undead realm per game.',
   };
-  desc.innerHTML = bulletizeDesc(DESCS[sel.value] || '');
+  desc.innerHTML = String(bulletizeDesc(DESCS[sel.value] ?? ''));
 }
 
-export function unitAbilityText(type) {
-  return UNIT_ABILITIES[type] || '';
+export function unitAbilityText(type: string): string {
+  // Each ability is words, none empty: `?? ''` gives what `|| ''` gave.
+  const abilities: Readonly<Partial<Record<string, string>>> = UNIT_ABILITIES;
+  return abilities[type] ?? '';
 }
 // the unit ability descriptions were removed from the map pop-ups; instead they surface as a hover
 // tooltip on the unit's icon+label wherever units are listed in Your Realm and Your Provinces. Only
 // wraps when the unit actually has an always-on ability. Item 1: magic-item lore — the engine
 // attaches `lore` (a short narrative that states the effect in plain words) to every item in the
 // report; hovering the item's name shows it, like a unit's ability tip.
-export function itemLoreTip(it, inner) {
+export function itemLoreTip<Inner>(it: unknown, inner: Inner): Inner {
   // the description is printed after every item, so the hover pop-up is retired.
   return inner;
 }
@@ -60,11 +82,11 @@ export function itemLoreTip(it, inner) {
 // character's pack when the turn began (buildTurnReport → acquiredThisTurn); this prints that flag
 // as a small badge at the START of the item's line (2026-09-26b: was a separate line under it, with ✨,
 // which the game already uses elsewhere — now 🆕), in the Chronicle and in the orders form alike.
-export function itemAcquiredTagP(it) {
-  if (!it || !it.acquiredThisTurn) return '';
+export function itemAcquiredTagP(it: unknown) {
+  if (!it || !Reflect.get(Object(it), 'acquiredThisTurn')) return '';
   return kcHtml`<span title="Acquired this turn" style="display:inline-block;font-size:.7rem;color:#123008;background:#eaf5e2;border:1px solid #5d8a3c;border-radius:2px;padding:0 5px;margin-right:5px;vertical-align:1px;white-space:nowrap">🆕 Acquired this turn</span>`;
 }
-export function unitAbilityTip(type, inner) {
+export function unitAbilityTip(type: string, inner: unknown) {
   const ab = unitAbilityText(type);
   if (!ab) return inner;
   return kcHtml`<span title="${ab}" style="cursor:help;border-bottom:1px dotted var(--stone)">${inner}</span>`;
@@ -73,12 +95,13 @@ export function unitAbilityTip(type, inner) {
 export function updateRaceDesc() {
   const sel = document.getElementById('join-race');
   const desc = document.getElementById('join-race-desc');
-  if (!sel || !desc) return;
+  if (!(sel instanceof HTMLSelectElement) || !desc) return;
   // Race decides which troops your home province can raise, and carries one signature strength.
   // Two rules apply to everybody: a commander leading troops of their OWN race fights at +20% and
   // needs no Druid skill for them, and the two ancient feuds (Human↔Orc, Elf↔Dwarf) cost a
   // commander 20% when leading the rival kin's troops.
-  const DESCS = {
+  // Each description is words, none empty: `?? ''` gives what `|| ''` gave.
+  const DESCS: Readonly<Partial<Record<string, string>>> = {
     Human:
       '🛡 **Human:** The all-rounders — the widest choice of troops (Levies and sturdy Men-at-Arms, Longbows, the best horse in the game) and the strongest navy (the Galleons). Their units also **learn twice as fast**, so a Human army improves quickly with drilling and battle. No terrain is closed to them. Feud with Orcs. The easiest race to play.',
     Elven:
@@ -88,16 +111,17 @@ export function updateRaceDesc() {
     Orcish:
       '⚔ **Orcish:** The horde. Cheap, fast troops you can afford in numbers — Goblin Hordes (two a turn), Black Arrows, Warg Riders, Berserkers and flying Wyvern Riders. Orcish characters start with **18 HP instead of 15** and harden faster. Quality is poor; you win by numbers and speed. Feud with Humans.',
   };
-  desc.innerHTML = bulletizeDesc(DESCS[sel.value] || '');
+  desc.innerHTML = String(bulletizeDesc(DESCS[sel.value] ?? ''));
 }
 
 export function updateTemperDesc() {
   const sel = document.getElementById('join-temper');
   const desc = document.getElementById('join-temper-desc');
-  if (!sel || !desc) return;
+  if (!(sel instanceof HTMLSelectElement) || !desc) return;
   // Temper is how your KING behaves in personal combat — duels, lair guardians, ambushes. It does
   // nothing in army battles. It is the single biggest factor in whether your king survives.
-  const DESCS = {
+  // Each description is words, none empty: `?? ''` gives what `|| ''` gave.
+  const DESCS: Readonly<Partial<Record<string, string>>> = {
     Berserk:
       '🔥 **Berserk:** The hammer. +18% to hit and +3 damage in melee — far the hardest hitter — and shrugs off 12% of every blow and arrow. But enemies hit them 10% more easily, and they fight on until nearly dead. The most likely of all to be killed.',
     Brave:
@@ -107,7 +131,7 @@ export function updateTemperDesc() {
     Cowardly:
       '🏃 **Cowardly:** The archer and the spy. +22% archery, +15% to Steal, best in the game at breaking off and fleeing, and if struck down they may beg for mercy and be spared. Poor with a blade. The sensible choice for a king you cannot afford to lose.',
   };
-  desc.innerHTML = bulletizeDesc(DESCS[sel.value] || '');
+  desc.innerHTML = String(bulletizeDesc(DESCS[sel.value] ?? ''));
 }
 
 // ── SUBMIT-WRAP MARKUP — ONE SOURCE OF TRUTH ────
@@ -115,8 +139,8 @@ export function updateTemperDesc() {
 // by hand at each site, which is how the "Submit Anyway / Go Back" pair ended up somewhere else on
 // the page from the button they replace. Everything now routes through these two helpers so the
 // whole submit control stays in the sticky bottom block, together, at all times.
-export function normalSubmitWrapHtml(verb) {
-  const turn = currentReport?._liveTurn || currentReport?.turn || 1;
+export function normalSubmitWrapHtml(verb: string) {
+  const turn = (currentReport?._liveTurn ?? 0) || (currentReport?.turn ?? 0) || 1;
   return kcHtml`
     <button class="btn btn-ghost" onclick="doSaveOrders()" style="flex:0 0 auto;padding:10px 16px">💾 Save Draft</button>
     <button class="btn btn-crimson btn-full" id="submit-btn" onclick="submitOrders()" style="flex:1;padding:12px;font-size:.85rem">
@@ -129,7 +153,7 @@ export function normalSubmitWrapHtml(verb) {
 // actually misleads — saving a draft after hitting Resubmit, which writes orders_submitted=false
 // while the pill still claims the orders are in. This is the single place the flag and its
 // indicator are changed together; call it instead of touching either by hand.
-export function setOrdersSubmittedUI(submitted) {
+export function setOrdersSubmittedUI(submitted: unknown) {
   if (currentGamePlayer) currentGamePlayer.orders_submitted = !!submitted;
   const pill = document.getElementById('report-status-pill');
   if (pill)
@@ -138,41 +162,43 @@ export function setOrdersSubmittedUI(submitted) {
       : '<span class="pill pill-amber">⏳ Orders needed</span>';
 }
 
-export function restoreSubmitWrap(verb): void {
+export function restoreSubmitWrap(verb: string): void {
   const w = document.getElementById('orders-submit-wrap');
   if (!w) return;
-  w.innerHTML = normalSubmitWrapHtml(verb);
+  w.innerHTML = String(normalSubmitWrapHtml(verb));
   w.style.display = 'flex';
   w.style.gap = '8px';
 }
 
 export function cancelSubmit() {
-  document.getElementById('orders-msg').innerHTML = '';
+  theElementWithTheId('orders-msg', HTMLElement).innerHTML = '';
   restoreSubmitWrap('Submit');
 }
 
 export async function doSaveOrders(): Promise<void> {
-  const chars = currentReport?.characters || [];
-  const orders = {};
-  const encounterPlans = {};
+  const chars = currentReport?.characters ?? [];
+  const orders: Partial<Record<string, unknown>> = {};
+  const encounterPlans: Partial<Record<string, unknown>> = {};
   chars.forEach((c) => {
     orders[c.id] = SEASONS.map((_, ph) => {
-      const action = document.getElementById(`po-action-${c.id}-${ph}`)?.value || '';
+      const action = theFieldOrNoWords(theValueOfThePagesField(`po-action-${String(c.id)}-${String(ph)}`));
       const target = getOrderTarget(c.id, ph);
       const extra = getOrderExtra(c.id, ph);
-      return { action, target, extra, desc: action + (target ? ' — ' + target : '') };
+      return { action, target, extra, desc: inWords(action) + (target ? ' — ' + inWords(target) : '') };
     });
-    const tacHidden = document.getElementById(`ep-tactics-${c.id}`);
-    const notesEl = document.getElementById(`ep-notes-${c.id}`);
-    const preSchool = (document.getElementById(`ep-preschool-${c.id}`)?.value || '').toLowerCase();
-    if (tacHidden) {
+    const tacHidden = document.getElementById(`ep-tactics-${String(c.id)}`);
+    const notesEl = document.getElementById(`ep-notes-${String(c.id)}`);
+    const preSchool = theWordsAFieldHolds(
+      theFieldOrNoWords(theValueOfThePagesField(`ep-preschool-${String(c.id)}`)),
+    ).toLowerCase();
+    if (tacHidden instanceof HTMLInputElement) {
       const tacts = (tacHidden.value || 'ME').split(',').filter(Boolean);
       if (preSchool) tacts.push(`CS:${preSchool}`);
       encounterPlans[c.id] = {
         tactics: tacts,
-        notes: notesEl?.value || '',
-        duelStance: document.getElementById(`ep-duel-${c.id}`)?.value || 'refuse',
-        evilMode: document.getElementById(`ep-evilmode-${c.id}`)?.value || undefined,
+        notes: theFieldOrNoWords(notesEl ? theValueOfAField(notesEl) : undefined),
+        duelStance: thisOrElse(theValueOfThePagesField(`ep-duel-${String(c.id)}`), 'refuse'),
+        evilMode: thisOrElse(theValueOfThePagesField(`ep-evilmode-${String(c.id)}`), undefined),
       };
     }
   });
@@ -186,20 +212,20 @@ export async function doSaveOrders(): Promise<void> {
     console.warn('doSaveOrders: blocked — viewing past turn report');
     return;
   }
-  const kingSkills = {};
+  const kingSkills: Partial<Record<string, unknown>> = {};
   chars.forEach((c) => {
     if (c._isHeir)
       kingSkills[c.id] = {
-        skills: c.skills || {},
-        pending: c._pendingSkillAllocation || 0,
-        name: c.name || '',
-        temper: c.temper || '',
-        base: c._heirBase || c.skills || {},
+        skills: c.skills ?? {},
+        pending: thisOrElse(c._pendingSkillAllocation, 0),
+        name: c.name ?? '',
+        temper: c.temper ?? '',
+        base: c._heirBase ?? c.skills ?? {},
       };
   });
   // Stamp the draft with the turn it belongs to, as a submission is — so neither this form nor the
   // GM engine can mistake last turn's draft for this turn's orders.
-  const _draftTurn = currentReport?._liveTurn || currentReport?.turn || 1;
+  const _draftTurn = (currentReport?._liveTurn ?? 0) || (currentReport?.turn ?? 0) || 1;
   const _payload = JSON.stringify({
     orders,
     encounterPlans,
@@ -212,13 +238,7 @@ export async function doSaveOrders(): Promise<void> {
     heroOrder: currentHeroOrderP(),
     forTurn: _draftTurn,
   });
-  const { error: saveErr } = await sb
-    .from('game_players')
-    .update({
-      orders: _payload,
-      orders_submitted: false,
-    })
-    .eq('id', gp.id);
+  const { error: saveErr } = await thePagesDb.theOrders.saveThisRealmsDraft(gp.id, _payload);
   if (saveErr) {
     console.error('Save draft error:', saveErr.message);
     return;
@@ -238,72 +258,76 @@ export async function doSaveOrders(): Promise<void> {
 }
 
 export async function doSubmitOrders(): Promise<void> {
-  const chars = currentReport?.characters || [];
+  const chars = currentReport?.characters ?? [];
   const btn = document.getElementById('submit-btn');
-  if (btn) {
+  if (btn instanceof HTMLButtonElement) {
     btn.disabled = true;
     btn.textContent = 'Saving…';
   }
 
   // Safety: verify the turn hasn't advanced since the player loaded the form
-  const { data: freshGame } = await sb.from('games').select('turn').eq('id', currentGamePlayer?.game_id).single();
-  const expectedTurn = currentReport?._liveTurn || currentReport?.turn || 1;
+  const { data: freshGame } = await thePagesDb.theOrders.theTurnOfThisGame(String(currentGamePlayer?.game_id));
+  const expectedTurn = (currentReport?._liveTurn ?? 0) || (currentReport?.turn ?? 0) || 1;
   if (freshGame && freshGame.turn !== expectedTurn) {
-    document.getElementById('orders-msg').innerHTML =
-      kcHtml`<div class="msg-error">⚠ The GM has already resolved this turn. Your orders were not saved — please reload the page to see your new turn report.</div>`;
+    const resolved = String(
+      kcHtml`<div class="msg-error">⚠ The GM has already resolved this turn. Your orders were not saved — please reload the page to see your new turn report.</div>`,
+    );
+    theElementWithTheId('orders-msg', HTMLElement).innerHTML = resolved;
     restoreSubmitWrap('Submit');
     return; // rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
   if (!currentGamePlayer?.id) {
-    document.getElementById('orders-msg').innerHTML =
+    theElementWithTheId('orders-msg', HTMLElement).innerHTML =
       '<div class="msg-error">Session error — please reload the page.</div>';
     restoreSubmitWrap('Submit');
     return; // rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
 
-  const orders = {};
-  const encounterPlans = {};
+  const orders: Partial<Record<string, unknown>> = {};
+  const encounterPlans: Partial<Record<string, unknown>> = {};
   chars.forEach((c) => {
     orders[c.id] = SEASONS.map((_, ph) => {
-      const action = document.getElementById(`po-action-${c.id}-${ph}`)?.value || 'Defend';
+      const action = thisOrElse(theValueOfThePagesField(`po-action-${String(c.id)}-${String(ph)}`), 'Defend');
       const target = getOrderTarget(c.id, ph);
       const extra = getOrderExtra(c.id, ph);
       const _spyName =
-        action === 'Spy' && String(target || '').startsWith('char:')
-          ? ((currentReport || {}).visibleChars || []).find((x) => String(x.id) === String(target).slice(5))?.name ||
+        action === 'Spy' && inWords(theFieldOrNoWords(target)).startsWith('char:')
+          ? ((currentReport?.visibleChars ?? []).find((x) => inWords(x.id) === inWords(target).slice(5))?.name ?? '') ||
             null
           : null;
       const desc =
-        action +
+        inWords(action) +
         (target &&
         action !== 'Move' &&
         action !== 'Defend' &&
         action !== 'Rest' &&
         action !== 'Spy' &&
         action !== 'Explore'
-          ? ` — ${target}`
+          ? ` — ${inWords(target)}`
           : '') +
         (_spyName ? ` — on ${_spyName}` : '');
       // 2026-09-29: a Search Lair order names its lair by index within a province — send the province
       // this form was written for, so the engine never searches a different lair if the move there fails.
       if (action === 'Search Lair' || action === 'Search Feature') {
         const _pl = predictedLocation(c.id, ph);
-        if (_pl && _pl.id != null) return { action, target, extra, desc, prov: _pl.id };
+        if (_pl?.id != null) return { action, target, extra, desc, prov: _pl.id };
       }
       return { action, target, extra, desc };
     });
     // Collect encounter plan
-    const tacHidden = document.getElementById(`ep-tactics-${c.id}`);
-    const notesEl = document.getElementById(`ep-notes-${c.id}`);
-    const preSchool = (document.getElementById(`ep-preschool-${c.id}`)?.value || '').toLowerCase();
-    if (tacHidden) {
+    const tacHidden = document.getElementById(`ep-tactics-${String(c.id)}`);
+    const notesEl = document.getElementById(`ep-notes-${String(c.id)}`);
+    const preSchool = theWordsAFieldHolds(
+      theFieldOrNoWords(theValueOfThePagesField(`ep-preschool-${String(c.id)}`)),
+    ).toLowerCase();
+    if (tacHidden instanceof HTMLInputElement) {
       const tacts = (tacHidden.value || 'ME').split(',').filter(Boolean);
       if (preSchool) tacts.push(`CS:${preSchool}`);
       encounterPlans[c.id] = {
         tactics: tacts,
-        notes: notesEl?.value || '',
-        duelStance: document.getElementById(`ep-duel-${c.id}`)?.value || 'refuse',
-        evilMode: document.getElementById(`ep-evilmode-${c.id}`)?.value || undefined,
+        notes: theFieldOrNoWords(notesEl ? theValueOfAField(notesEl) : undefined),
+        duelStance: thisOrElse(theValueOfThePagesField(`ep-duel-${String(c.id)}`), 'refuse'),
+        evilMode: thisOrElse(theValueOfThePagesField(`ep-evilmode-${String(c.id)}`), undefined),
       };
     }
   });
@@ -313,21 +337,21 @@ export async function doSubmitOrders(): Promise<void> {
     if (!sel) return;
     const cid = sel.id.replace(/^po-action-/, '').replace(/-\d+$/, '');
     orders[cid] = SEASONS.map((_, ph) => ({
-      action: document.getElementById(`po-action-${cid}-${ph}`)?.value || 'Defend',
+      action: thisOrElse(theValueOfThePagesField(`po-action-${cid}-${String(ph)}`), 'Defend'),
       target: getOrderTarget(cid, ph),
       extra: getOrderExtra(cid, ph),
       desc: '',
     }));
     const hTac = document.getElementById(`ep-tactics-${cid}`);
-    if (hTac) {
+    if (hTac instanceof HTMLInputElement) {
       const hTacts = (hTac.value || 'ME').split(',').filter(Boolean);
-      const hPre = (document.getElementById(`ep-preschool-${cid}`)?.value || '').toLowerCase();
+      const hPre = theWordsAFieldHolds(theFieldOrNoWords(theValueOfThePagesField(`ep-preschool-${cid}`))).toLowerCase();
       if (hPre) hTacts.push(`CS:${hPre}`);
       encounterPlans[cid] = {
         tactics: hTacts,
-        notes: document.getElementById(`ep-notes-${cid}`)?.value || '',
-        duelStance: document.getElementById(`ep-duel-${cid}`)?.value || 'refuse',
-        evilMode: document.getElementById(`ep-evilmode-${cid}`)?.value || undefined,
+        notes: theFieldOrNoWords(theValueOfThePagesField(`ep-notes-${cid}`)),
+        duelStance: thisOrElse(theValueOfThePagesField(`ep-duel-${cid}`), 'refuse'),
+        evilMode: thisOrElse(theValueOfThePagesField(`ep-evilmode-${cid}`), undefined),
       };
     }
   });
@@ -338,17 +362,17 @@ export async function doSubmitOrders(): Promise<void> {
     if (!sel) return;
     const rid = sel.id.replace(/^po-action-/, '').replace(/-\d+$/, '');
     orders[rid] = SEASONS.map((_, ph) => ({
-      action: document.getElementById(`po-action-${rid}-${ph}`)?.value || 'Defend',
+      action: thisOrElse(theValueOfThePagesField(`po-action-${rid}-${String(ph)}`), 'Defend'),
       target: getOrderTarget(rid, ph),
       extra: getOrderExtra(rid, ph),
       desc: '',
     }));
     const rTac = document.getElementById(`ep-tactics-${rid}`);
-    if (rTac) {
+    if (rTac instanceof HTMLInputElement) {
       encounterPlans[rid] = {
         tactics: (rTac.value || 'ME').split(',').filter(Boolean),
-        notes: document.getElementById(`ep-notes-${rid}`)?.value || '',
-        duelStance: document.getElementById(`ep-duel-${rid}`)?.value || 'refuse',
+        notes: theFieldOrNoWords(theValueOfThePagesField(`ep-notes-${rid}`)),
+        duelStance: thisOrElse(theValueOfThePagesField(`ep-duel-${rid}`), 'refuse'),
       };
     }
   });
@@ -360,30 +384,30 @@ export async function doSubmitOrders(): Promise<void> {
     if (!sel) return;
     const cid = sel.id.replace(/^po-action-/, '').replace(/-\d+$/, '');
     orders[cid] = SEASONS.map((_, ph) => ({
-      action: document.getElementById(`po-action-${cid}-${ph}`)?.value || 'Defend',
+      action: thisOrElse(theValueOfThePagesField(`po-action-${cid}-${String(ph)}`), 'Defend'),
       target: getOrderTarget(cid, ph),
       extra: getOrderExtra(cid, ph),
       desc: '',
     }));
     const cTac = document.getElementById(`ep-tactics-${cid}`);
-    if (cTac) {
+    if (cTac instanceof HTMLInputElement) {
       encounterPlans[cid] = {
         tactics: (cTac.value || 'ME').split(',').filter(Boolean),
-        notes: document.getElementById(`ep-notes-${cid}`)?.value || '',
-        duelStance: document.getElementById(`ep-duel-${cid}`)?.value || 'refuse',
+        notes: theFieldOrNoWords(theValueOfThePagesField(`ep-notes-${cid}`)),
+        duelStance: thisOrElse(theValueOfThePagesField(`ep-duel-${cid}`), 'refuse'),
       };
     }
   });
   // Collect royal-succession skill allocations for any newly-crowned heir.
-  const kingSkills = {};
+  const kingSkills: Partial<Record<string, unknown>> = {};
   chars.forEach((c) => {
     if (c._isHeir)
       kingSkills[c.id] = {
-        skills: c.skills || {},
-        pending: c._pendingSkillAllocation || 0,
-        name: c.name || '',
-        temper: c.temper || '',
-        base: c._heirBase || c.skills || {},
+        skills: c.skills ?? {},
+        pending: thisOrElse(c._pendingSkillAllocation, 0),
+        name: c.name ?? '',
+        temper: c.temper ?? '',
+        base: c._heirBase ?? c.skills ?? {},
       };
   });
   const _subPayload = JSON.stringify({
@@ -398,29 +422,29 @@ export async function doSubmitOrders(): Promise<void> {
     heroOrder: currentHeroOrderP(),
     forTurn: expectedTurn,
   });
-  const { error } = await sb
-    .from('game_players')
-    .update({
-      orders: _subPayload,
-      orders_submitted: true,
-      last_submitted_at: new Date().toISOString(),
-    })
-    .eq('id', currentGamePlayer.id);
+  const { error } = await thePagesDb.theOrders.submitThisRealmsOrders(
+    currentGamePlayer.id,
+    _subPayload,
+    new Date().toISOString(),
+  );
   if (error) {
-    document.getElementById('orders-msg').innerHTML = kcHtml`<div class="msg-error">Error: ${error.message}</div>`;
+    const refused = String(kcHtml`<div class="msg-error">Error: ${error.message}</div>`);
+    theElementWithTheId('orders-msg', HTMLElement).innerHTML = refused;
     restoreSubmitWrap('Submit');
     return; // rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }
   // 2026-09-23: keep the in-memory copy equal to what was SUBMITTED. Only a draft save updated it,
   // so Revise Orders (without a reload) re-filled the form from the last DRAFT — any change made
   // after that draft was silently lost from the revised form.
-  if (currentGamePlayer) currentGamePlayer.orders = _subPayload;
-  document.getElementById('orders-msg').innerHTML = '';
-  document.getElementById('orders-submit-wrap').innerHTML = kcHtml`
+  const seat = theSeatOpenNow();
+  if (seat) seat.orders = _subPayload;
+  theElementWithTheId('orders-msg', HTMLElement).innerHTML = '';
+  const sent = String(kcHtml`
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%">
       <span style="color:var(--forest);font-size:.85rem;flex:1">✓ Orders submitted successfully! The GM will be notified.</span>
       <button class="btn btn-ghost" style="padding:8px 16px;font-size:.8rem" onclick="resubmitOrders()">↺ Resubmit Orders</button>
-    </div>`;
+    </div>`);
+  theElementWithTheId('orders-submit-wrap', HTMLElement).innerHTML = sent;
   setOrdersSubmittedUI(true);
   // On mobile, drop the player back to the Turn Report now their orders are in.
   setMobileView('report');

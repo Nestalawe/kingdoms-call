@@ -62,8 +62,12 @@ const sight = {
 /** Each staged line's kind, beside the log as the words pass hands it: none (null), as a line with no fact. */
 const noKinds = (log: readonly Entry[]) => log.map(() => null);
 
-type Line = { text: string; charId: unknown; phase: unknown };
-type Entry = {
+interface Line {
+  text: string;
+  charId: unknown;
+  phase: unknown;
+}
+interface Entry {
   type: string;
   text: string;
   actor: number | null;
@@ -75,7 +79,7 @@ type Entry = {
   charIds: null;
   phase: number | null;
   spy?: boolean;
-};
+}
 
 // fast-check's run count for every property (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. The test's time
 // limit is 50 ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s. A log takes 1 ms to read

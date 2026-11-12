@@ -19,8 +19,8 @@ declare const KC_CONFIG: Readonly<{
 declare const supabase: TheSupabaseGlobal;
 declare const KC_RNG_SEED: number | undefined;
 
-/** A page variable's value, untyped until P1-16. */
-type PageState = any;
+/** A page variable's value, unknown to a typed file until P1-16 types it. */
+type PageState = unknown;
 
 // ui/gm/startup.ts
 declare var _kcHasTel: PageState;
@@ -30,7 +30,8 @@ declare var _kcHasMsg: PageState;
 declare var _autoWatcherTimer: PageState;
 declare var _autoRunBusy: PageState;
 // ui/gm/config.ts (and ui/player/items-and-heroes.ts: each page declares its own)
-declare var currentUser: PageState;
+/** The signed-in account (null before sign-in): its id, as the player page's dispatches read it. */
+declare var currentUser: { readonly id: string } | null;
 // ui/gm/config.ts
 declare var currentGame: PageState;
 declare var currentGamePlayers: PageState;
@@ -46,17 +47,19 @@ declare var _pendingTurn0: PageState;
 // ui/leaderboard/main.ts
 declare var GAMES: PageState;
 // ui/player/dispatches.ts
-declare var _msgGameId: PageState;
-declare var _msgMyIndex: PageState;
-declare var _msgRows: PageState;
-declare var _msgMoreOlder: PageState;
-declare var _msgLoadingOlder: PageState;
-declare var _msgRealms: PageState;
-declare var _msgChannel: PageState;
-declare var _msgTableOk: PageState;
-declare var _msgErr: PageState;
-declare var _msgOut: PageState;
-declare var _msgBlockOut: PageState;
+declare var _msgGameId: string | null;
+declare var _msgMyIndex: number | null;
+declare var _msgRows: import('./ui/player/dispatches.ts').TheDispatchAsThePanelHoldsIt[];
+declare var _msgMoreOlder: boolean;
+declare var _msgLoadingOlder: boolean;
+/** The realms the Dispatches panel knows, by index. */
+declare var _msgRealms: Partial<Record<string, import('./ui/player/dispatches.ts').ARealmAsTheDispatchesKnowIt>>;
+declare var _msgChannel: string;
+/** Whether game_messages is there: null until it is probed. */
+declare var _msgTableOk: boolean | null;
+declare var _msgErr: string | null;
+declare var _msgOut: 'conceded' | 'eliminated' | null;
+declare var _msgBlockOut: boolean;
 // ui/player/game-lists.ts
 declare var _pollTimer: PageState;
 // ui/player/init.ts
@@ -80,7 +83,7 @@ declare var concedeGame: PageState;
 /** The research's leads kept this turn, by the pair's key (items-and-heroes.ts). */
 declare var discoveryChoices: Partial<Record<string, unknown>>;
 // ui/player/layout.ts
-declare var _msgEnabled: PageState;
+declare var _msgEnabled: boolean;
 declare var _deskLeftView: PageState;
 // ui/player/order-targets.ts
 /** This turn's saved draft, by hero: each phase's order as saved (the target fields read it before the form exists), as

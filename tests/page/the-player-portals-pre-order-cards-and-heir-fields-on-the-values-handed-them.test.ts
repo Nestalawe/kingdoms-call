@@ -305,3 +305,41 @@ describe("a card's orders poured back from the saved draft (P1-16h1)", () => {
     doc.getElementById('pd-test')?.remove();
   });
 });
+
+describe('the second mutation run’s cases (P1-21q)', () => {
+  test("a hired hero's saved plan with no duel stance keeps the card's stance; one saved is put back", () => {
+    const fake = 'hired_11_via_1_ph0';
+    stage(
+      `currentReport = ${JSON.stringify({ characters: [{ id: fake, name: 'New Hire', hiredInPhase: 0, skills: {}, armies: [], items: [] }] })};`,
+    );
+    const duel = `<select id="ep-duel-${fake}"><option value="refuse">refuse</option><option value="accept" selected>accept</option></select>`;
+    doc.body.insertAdjacentHTML('beforeend', `<div id="pd-test">${duel}</div>`);
+    call('_fillSyntheticOrderCard', fake, [], { tactics: ['ME'], notes: 'Hold the ford' });
+    expect(field(`ep-duel-${fake}`).value).toBe('accept');
+    call('_fillSyntheticOrderCard', fake, [], { tactics: ['ME'], duelStance: 'refuse' });
+    expect(field(`ep-duel-${fake}`).value).toBe('refuse');
+    doc.getElementById('pd-test')?.remove();
+  });
+  test('a charmed wanderer with no pay, or a pay of 0, is held at a pay of 1; one paid 3 at 3', () => {
+    const payOf = (pay: number | undefined): unknown => {
+      stage(
+        `currentReport = ${JSON.stringify({
+          characters: [{ id: 1, name: 'Charmer', skills: {}, armies: [], items: [] }],
+          visibleChars: [{ id: 5, name: 'Wandering Wren', isKing: false, armies: 0, locationId: 3, pay }],
+        })};`,
+      );
+      doc.body.insertAdjacentHTML(
+        'beforeend',
+        `<div id="cw-test"><div class="orders-char-block"><select id="po-action-1-0"></select></div></div>`,
+      );
+      call('injectCharmOrders', 1, 0, 5, 'charm-orders-test');
+      const held = stage(`(currentReport.characters.find((c) => c.id === 'charm_5_via_1_ph0') || {}).pay`);
+      doc.getElementById('cw-test')?.remove();
+      doc.getElementById('charm-orders-test')?.remove();
+      return held;
+    };
+    expect(payOf(0)).toBe(1);
+    expect(payOf(undefined)).toBe(1);
+    expect(payOf(3)).toBe(3);
+  });
+});

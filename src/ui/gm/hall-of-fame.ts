@@ -40,7 +40,7 @@ globalThis._kcHasLb = false;
 globalThis._kcLbLastErr = null;
 export async function probeLeaderboard() {
   try {
-    const { error } = await sb.from('game_records').select('game_id').limit(1);
+    const { error } = await thePagesDb.theHallOfFame.oneEntrysGame();
     _kcHasLb = !error;
     if (error) console.warn('game_records probe:', error.message);
   } catch (e) {
@@ -601,7 +601,7 @@ export async function writeGameRecord(gameId, opts) {
   opts = opts || {};
   try {
     const gid = String(gameId);
-    const { data: results, error: rErr } = await sb.from('game_results').select('*').eq('game_id', gid);
+    const { data: results, error: rErr } = await thePagesDb.theStatistics.theResultsOfThisGame(gid);
     if (rErr || !results || !results.length) return false;
     // 2026-10-09 (Toby item 5): ordered by turn AND realm. There is one row per realm per turn, so
     // ordering by turn alone left the order within a turn to the database, which may differ from one
@@ -609,13 +609,11 @@ export async function writeGameRecord(gameId, opts) {
     // stops the build, rather than saving a record from part of the game over a complete one.
     const events = [];
     for (let from = 0; ; from += 500) {
-      const { data, error } = await sb
-        .from('turn_events')
-        .select('turn,player_index,is_bot,realm,race,alignment,post,outcomes')
-        .eq('game_id', gid)
-        .order('turn')
-        .order('player_index')
-        .range(from, from + 499);
+      const { data, error } = await thePagesDb.theStatistics.thisGamesTurnRecordsForItsEntryFromRowToRow(
+        gid,
+        from,
+        from + 499,
+      );
       if (error) {
         _kcLbLastErr = 'Could not read the turn history of game ' + gid + ': ' + error.message;
         renderLeaderboardBanner();
@@ -628,13 +626,7 @@ export async function writeGameRecord(gameId, opts) {
       players = opts.players || null,
       gs = opts.gs || null;
     if (!gameRow || !players || !gs) {
-      const { data: full } = await sb
-        .from('games')
-        .select(
-          'id,name,gm_user_id,created_at,max_turns,meta,game_state,game_players(id,player_index,user_id,display_name)',
-        )
-        .eq('id', gid)
-        .maybeSingle();
+      const { data: full } = await thePagesDb.theHallOfFamesGames.thisGameWithItsWorldAndRealms(gid);
       if (full) {
         gameRow = gameRow || full;
         players = players || full.game_players || [];
@@ -647,17 +639,13 @@ export async function writeGameRecord(gameId, opts) {
     const row = buildGameRecords(gid, gameRow, players || [], results, events, gs, await lbProfileNames(players));
     if (!row) return false;
     lbCountRow(row);
-    const { data: old } = await sb
-      .from('game_records')
-      .select('note,hidden,game_name')
-      .eq('game_id', gid)
-      .maybeSingle();
+    const { data: old } = await thePagesDb.theHallOfFame.theGameMastersNotesOnThisGamesEntry(gid);
     if (old) {
       if (old.note) row.note = old.note;
       if (old.hidden) row.hidden = true;
       if (old.game_name) row.game_name = old.game_name;
     }
-    const { error } = await sb.from('game_records').upsert([row], { onConflict: 'game_id' });
+    const { error } = await thePagesDb.theHallOfFame.writeTheseEntries([row]);
     if (error) {
       _kcLbLastErr = error.message;
       renderLeaderboardBanner();
@@ -723,21 +711,12 @@ export async function backfillGameRecords(force) {
     if (el) el.textContent = t;
   };
   try {
-    const { data: games } = await sb
-      .from('games')
-      .select('id,name,gm_user_id,created_at,max_turns,meta')
-      .eq('gm_user_id', currentUser.id)
-      .eq('status', 'complete');
+    const { data: games } = await thePagesDb.theHallOfFamesGames.theFinishedGamesThisGameMasterRuns(currentUser.id);
     // paged (2026-10-09): one row per realm per game passes the database's 1000-row answer limit
     // after a hundred or so games, and the games past it were never offered for a record
     const res = [];
     for (let from = 0; ; from += 1000) {
-      const { data, error } = await sb
-        .from('game_results')
-        .select('game_id')
-        .order('game_id')
-        .order('player_index')
-        .range(from, from + 999);
+      const { data, error } = await thePagesDb.theStatistics.theGameOfEveryResultFromRowToRow(from, from + 999);
       if (error) {
         say('Could not read the finished games: ' + error.message);
         return 0;
@@ -746,7 +725,7 @@ export async function backfillGameRecords(force) {
       if (!data || data.length < 1000) break;
     }
     const withResults = new Set(res.map((r) => r.game_id));
-    const { data: have } = await sb.from('game_records').select('game_id');
+    const { data: have } = await thePagesDb.theHallOfFame.theGameOfEveryEntry();
     const done = new Set((have || []).map((r) => r.game_id));
     // every game that HAS results — this GM's finished games, plus recorded games since deleted
     const todo = [...withResults].filter((id) => force || !done.has(id));

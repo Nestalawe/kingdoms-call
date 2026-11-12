@@ -16,8 +16,8 @@ import { expect, test } from 'vitest';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const SELF = path.relative(ROOT, import.meta.filename);
-/** Kept, not run: the quarantined tests and the older export tools. */
-const SKIPPED = new Set(['tests/quarantine', 'tools/legacy', 'node_modules']);
+/** Kept, not run: the quarantined tests. */
+const SKIPPED = new Set(['tests/quarantine', 'node_modules']);
 /** Harnesses that stage other modes on purpose, and why. */
 const EXEMPT: Record<string, string> = {
   'tests/lib/screens.js':

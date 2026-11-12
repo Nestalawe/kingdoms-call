@@ -109,7 +109,7 @@ Each page's version is in its HTML, filled in by `tools/build.ts` after Vite:
   digits of the SHA-256 of its HTML before the build line and the metas are filled in). The HTML names its hashed
   files, so the fingerprint changes exactly when the page or one of its files does; the bundles never hold the commit.
 - **`version.json`**, beside the pages: `{ "commit", "time", "pages": { "<page>.html": "<fingerprint>", … } }`.
-- **Who reads them.** `KC_BUILD_STAMP` (`ui/gm/startup.ts`) and `runningBuildStamp()` (`ui/gm/auto-turn.ts`) are the
+- **Who reads them.** `KC_BUILD_STAMP` (`ui/gm/startup.ts`) and `runningBuildStamp()` (`ui/gm/sign-in.ts`) are the
   meta's commit, 7 characters: telemetry rows (`GM 3f2a9c1 tel3`), Hall of Fame records (`lb3`), the Stats export and
   each report's `engineStamp` carry it. `src/ui/shared/a-newer-version-of-this-page.ts` compares this page's
   fingerprint with the one `version.json` names for it: another one counts once this page has known of it for 10
@@ -182,12 +182,20 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   and out, the password and the name kept with the sign-in), `db.theAccountsNames` (`profiles`: id, name, joining day)
   and `db.theRoles` (`is_game_master`, `is_site_admin`, the Game Master offer and its answer). Then the Overlord page's
   `db.theOverlordsAccounts` (`overlord_accounts`, suspending, lifting, deleting, offering, withdrawing and revoking Game
-  Master) and `db.theOverlordsGames` (every game a page at a time, `reassign_game`, the realms' names). A `Db` function
+  Master) and `db.theOverlordsGames` (every game a page at a time, `reassign_game`, the realms' names). Then the Hall of
+  Fame and the statistics (the leaderboard, the GM page's Hall of Fame, Stats tab and probe): `db.theHallOfFame`
+  (`game_records`, `rename_player`), `db.theStatistics` (`turn_events`, `game_results`) and `db.theHallOfFamesGames`
+  (the games they read). Then the messages: `db.theDispatches` (`game_messages`, `game_message_reads`) and
+  `db.theReportedDispatches` (`message_reports`, `gm_reported_messages`). Then the player's games and realms:
+  `db.thePlayersRealms` (`game_players`, joining, `get_game_slots`), `db.thePlayersGames` and `db.theChroniclesLogs`
+  (`turn_logs`). Then the orders, as they are: `db.theOrders` (the draft, the hero order, Revise, Submit and its turn
+  check; P2-05 later changes only these). The player page makes no call on `sb`. A `Db` function
   sends the query the page sent before and answers as supabase-js does (`data`, `error`, `status`; the sign-in's `data`
   and `error`), so the page's error paths stay the same. Every other call is still on the page's `sb`.
 - **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
   compiler error. They write every function's argument as never null: `TheDatabase` (beside `Db`) widens the ones that
-  take null on purpose (`account_suspend`'s `p_until`). Never edit them by hand: run `npx supabase@2.120.0 gen types
+  take null on purpose (`account_suspend`'s `p_until`), and a dispatch's sender, which the player page sends as null
+  with no account signed in. Never edit them by hand: run `npx supabase@2.120.0 gen types
   typescript --local > src/db/database.types.ts` against the local database with every migration applied, then
   `npx prettier --write src/db/database.types.ts`. CI's `db` job generates them again from its own local database and
   compares: a stale file fails it.
@@ -202,7 +210,11 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   the page before its scripts run (`bootJsdom(html, { db })`, which sets it on the window under
   `THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER`); only `src/db/` reads that name (a static test). The fake doesn't
   imitate the access rules; beyond the version, it holds no account (no session, no names, no role) and no game, and
-  the Overlord's functions refuse.
+  the Overlord's functions refuse. Three fakes hold a world a test stages and reads back: the Overlord's
+  (`makeAFakeDbHoldingTheOverlordsWorld`: accounts, offers, games, realms, reported dispatches, the Overlord's
+  functions with the database's refusals), the Hall of Fame's (`makeAFakeDbHoldingTheHallOfFame`: its entries and
+  the changes sent) and the player's (`makeAFakeDbHoldingThePlayersWorld`: the signed-in account, names, games,
+  realms, a join's unique numbers, a dispatch's refusal, and each read asking for another account's realms).
 
 ## A site change that needs a database change
 

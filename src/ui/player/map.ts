@@ -26,7 +26,7 @@ import {
   txtGlyph,
 } from './map-symbols.ts';
 import { heroBlocksP, heroGroupP, refreshHeroMoveButtonsP } from './move-analysis.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { asItsGuardReadsIt } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import type { AProvinceThePopupReads } from './map-symbols.ts';
 import type { TheReportAsTheTitlesReadIt } from './titles.ts';
@@ -120,6 +120,12 @@ function theOrdersHeldOrNone(held: unknown): unknown {
 export interface TheRealmsSeatAsThePageHoldsIt {
   readonly id?: string | null | undefined;
   orders?: unknown;
+  /** Its game (the game lists and Submit read it). */
+  readonly game_id?: string | undefined;
+  /** Whether its orders are in (Submit and Revise write it). */
+  orders_submitted?: boolean | undefined;
+  /** The game's live turn, which the report screen writes on it as it opens (the page's own mark). */
+  _liveTurn?: number | undefined;
 }
 
 // ── EVERY PROVINCE NAME IN THE REPORT IS A MAP LINK (2026-09-20, Toby) ── Rather than editing the
@@ -1406,7 +1412,7 @@ export async function persistHeroOrder(): Promise<void> {
     );
   Reflect.set(raw, 'heroOrder', heroOrder.slice());
   const payload = JSON.stringify(raw);
-  const { error } = await sb.from('game_players').update({ orders: payload }).eq('id', gp.id);
+  const { error } = await thePagesDb.theOrders.saveThisRealmsHeroOrder(gp.id, payload);
   if (error) {
     console.warn('persistHeroOrder:', error.message);
     return;

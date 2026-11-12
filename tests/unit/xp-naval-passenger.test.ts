@@ -53,8 +53,18 @@ const engine = loadEngine({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
 const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
-type Roll = { id: unknown; skill: string; base: unknown; mult: unknown };
-type Hero = { id: unknown; alive: boolean; player: number | null; armies: object[] };
+interface Roll {
+  id: unknown;
+  skill: string;
+  base: unknown;
+  mult: unknown;
+}
+interface Hero {
+  id: unknown;
+  alive: boolean;
+  player: number | null;
+  armies: object[];
+}
 // Records every experience roll as it starts, as the hook on trySkillGain's first line did.
 vm.runInContext(
   `{ const tryOne=trySkillGain;

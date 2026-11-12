@@ -102,7 +102,7 @@ const settle = (b: Board) => {
   const turn = b.G.turn;
   b.G.turn = turn + 1;
   tc(b)._currentPhase = null;
-  tc(b)['_afterPhases'] = true;
+  tc(b)._afterPhases = true;
   b.tc._logCtx = { charId: null, phase: null };
   titleIntel(b.tc);
   titleChanges(b.tc);
@@ -315,7 +315,7 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
   test('a save with no turn counts as turn 1 once moved on: not yet public', () => {
     const b = fresh();
     tc(b)._currentPhase = null;
-    tc(b)['_afterPhases'] = true;
+    tc(b)._afterPhases = true;
     b.tc._logCtx = { charId: null, phase: null };
     (b.G as unknown as Raw)['turn'] = null;
     titleIntel(b.tc);
@@ -325,9 +325,9 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
 
   test('turn 4 is not yet public and turn 5 is, as the stages see the turn', () => {
     const at4 = fresh();
-    G(at4)['turn'] = 3;
+    G(at4).turn = 3;
     const at5 = fresh();
-    G(at5)['turn'] = 4;
+    G(at5).turn = 4;
     expect([said(after(at4)).length, said(after(at5)).length]).toEqual([0, 4]);
   });
 
@@ -624,7 +624,7 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
 
   test('a hero’s title a save records held by a realm but no hero is not lost by that realm when another realm’s hero takes it', () => {
     const b = fresh();
-    G(b)['turn'] = 6;
+    G(b).turn = 6;
     const k0 = kingOf(b, 0).id;
     const m = titled(b, 0, seatOf(b, 0), { tactical: 1 });
     lastTurn(
@@ -639,7 +639,7 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
 
   test('a hero who holds his title as he changes realms: neither realm wins or loses it (today’s rule)', () => {
     const b = fresh();
-    G(b)['turn'] = 6;
+    G(b).turn = 6;
     const k0 = kingOf(b, 0).id;
     const m = titled(b, 0, seatOf(b, 0), { tactical: 1 });
     lastTurn(
@@ -654,7 +654,7 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
 
   test('a realm’s title taken by a realm with no living king: lost to that realm, not vacant, and no hero named', () => {
     const b = fresh();
-    G(b)['turn'] = 6;
+    G(b).turn = 6;
     kingOf(b, 0).alive = false;
     const k1 = kingOf(b, 1).id;
     taxes(b, 10, 5, 5);
@@ -677,7 +677,7 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
 
   test('if the standings fail after a public turn, every title held last turn is lost to nobody', () => {
     const b = fresh();
-    G(b)['turn'] = 6;
+    G(b).turn = 6;
     const k1 = kingOf(b, 1).id;
     lastTurn(b, true, { throne: [k1, 1] }, { colossus: [k1, 1] });
     let o: Outcome | undefined;
@@ -720,7 +720,7 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
 
   test('a hero’s title held last turn by a hero of no realm is lost by nobody; a hero of no realm wins nothing', () => {
     const b = fresh();
-    G(b)['turn'] = 6;
+    G(b).turn = 6;
     const k0 = kingOf(b, 0).id;
     lastTurn(
       b,
@@ -1287,7 +1287,7 @@ describe('The titles at the turn’s end: properties', () => {
         fc.boolean(),
         (curMajor, curMinor, wasMajor, wasMinor, wasPublic, snap) => {
           const b = fresh();
-          G(b)['turn'] = 6;
+          G(b).turn = 6;
           const rOf = (h: number | null | undefined) => (h == null ? null : (h - 1) % 3);
           const pair = (h: number | null | undefined): [number | null, number | null] => [h ?? null, rOf(h)];
           if (snap)

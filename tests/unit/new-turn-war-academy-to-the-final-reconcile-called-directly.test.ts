@@ -111,7 +111,7 @@ const settle = (b: Board) => {
   const turn = b.G.turn;
   b.G.turn = turn + 1;
   tc(b)._currentPhase = null;
-  tc(b)['_afterPhases'] = true;
+  tc(b)._afterPhases = true;
   b.tc._logCtx = { charId: null, phase: null };
   secondPart(b.tc);
   return turn;

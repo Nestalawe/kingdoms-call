@@ -63,7 +63,7 @@ import {
   effMagicLvl,
   skillsUnseenP,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
-import { sb } from './startup.ts';
+import { thePagesDb } from './startup.ts';
 import { asItsGuardReadsIt } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
@@ -77,6 +77,8 @@ export interface AHeroAsTheOrderFormBuildsHim extends AHeroAsThePreOrderCardsHol
   readonly alignment?: string | null | undefined;
   skills?: Partial<Record<string, number>> | null | undefined;
   _pendingSkillAllocation?: unknown;
+  /** The heir's skills as crowned (the order form snapshots them). */
+  readonly _heirBase?: Partial<Record<string, number>> | null | undefined;
 }
 /** The report as the order form holds it: its heroes (which it orders and filters), the order of them the engine kept,
  *  and the fallen the read-only view names. */
@@ -1096,7 +1098,7 @@ export async function reviseOrders(): Promise<void> {
   // Mark orders as not submitted so the player can edit and resubmit
   const gp = currentGamePlayer;
   if (!gp) return;
-  const { error } = await sb.from('game_players').update({ orders_submitted: false }).eq('id', String(gp.id));
+  const { error } = await thePagesDb.theOrders.reopenThisRealmsOrders(String(gp.id));
   if (error) {
     console.error(error);
     return;

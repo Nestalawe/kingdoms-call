@@ -150,7 +150,7 @@ describe('The set-up: what it calls', () => {
     const noted = calls.map((c) => [(c.args[0] as Character).id, c.args[1]]);
     expect(noted).toEqual(b.G.characters.filter((c) => c.alive && c.player != null).map((c) => [c.id, c.player]));
     expect(noted).toContainEqual([h.id, 1]);
-    expect([g['race'], g['_isNeutralGuard']]).toEqual(['Monster', true]);
+    expect([g.race, g._isNeutralGuard]).toEqual(['Monster', true]);
   });
 
   test.each([0, 1, 5])(

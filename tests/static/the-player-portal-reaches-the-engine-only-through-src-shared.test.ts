@@ -332,7 +332,7 @@ describe('src/shared/ re-exports only from src/engine/rules-on-plain-values/', (
   test('every import a file of src/shared/ makes is of a file of the folder that is there', () => {
     const outside = files.flatMap((file) =>
       importsOf(file)
-        .filter(({ resolved }) => resolved === null || !resolved.startsWith(RULES))
+        .filter(({ resolved }) => !resolved?.startsWith(RULES))
         .map(({ names }) => `${file} imports ${names}`),
     );
     const missing = files.flatMap((file) =>

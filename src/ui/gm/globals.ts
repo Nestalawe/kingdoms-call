@@ -22,7 +22,6 @@ import {
   changePassword,
   closeChangePassword,
   deleteReportedDispatch,
-  doSignIn,
   doSignOut,
   loadReportedDispatches,
   show,
@@ -35,7 +34,6 @@ import {
   openEditInvites,
   renderGameList,
   renderInviteCheckboxes,
-  saveEditInvites,
   showNewGame,
   toggleInvite,
   updateBotHint,
@@ -43,7 +41,7 @@ import {
   updateMaxPlayersForMap,
   updateSeaHint,
 } from './game-list.ts';
-import { openGame } from './game-detail.ts';
+import { openGame, removePlayer, saveEditInvites, saveTurnMode } from './game-detail.ts';
 import { backfillHomeRosters } from '../../engine/world/tables.ts';
 import { deleteGame, loadTurnLog } from './turn-log.ts';
 import { commitTurn0, runTurn0 } from './turn-zero.ts';
@@ -73,14 +71,8 @@ import {
   renderLeaderboardBanner,
   writeGameRecord,
 } from './hall-of-fame.ts';
-import {
-  removePlayer,
-  saveBlockEliminated,
-  saveBotDiplomacy,
-  saveTurnMode,
-  updateTurnModeFields,
-} from './turn-mode.ts';
-import { autoTurnTick, refreshIfNewerBuild } from './auto-turn.ts';
+import { saveBlockEliminated, saveBotDiplomacy, updateTurnModeFields } from './turn-mode.ts';
+import { autoTurnTick, refreshIfNewerBuild, doSignIn } from './auto-turn.ts';
 import { BOT_SKILL_BUILD, generateBotSetups } from '../../engine/bots/setup.ts';
 import { botBattleForce } from '../../engine/bots/intel.ts';
 import { generateNewGame } from '../../engine/world/generate.ts';
@@ -109,7 +101,7 @@ Object.assign(window, {
   createGame, // ui/gm/game-list.ts
   deleteGame, // ui/gm/turn-log.ts
   deleteReportedDispatch, // ui/gm/sign-in.ts
-  doSignIn, // ui/gm/sign-in.ts
+  doSignIn, // ui/gm/auto-turn.ts
   doSignOut, // ui/gm/sign-in.ts
   exportStats, // ui/gm/stats-tab.ts
   forgetDeletedGames, // ui/gm/stats-tab.ts
@@ -118,7 +110,7 @@ Object.assign(window, {
   openEditInvites, // ui/gm/game-list.ts
   openGame, // ui/gm/game-detail.ts
   openStats, // ui/gm/stats-tab.ts
-  removePlayer, // ui/gm/turn-mode.ts
+  removePlayer, // ui/gm/game-detail.ts
   renderGameList, // ui/gm/game-list.ts
   renderInviteCheckboxes, // ui/gm/game-list.ts
   renderStats, // ui/gm/stats-tab.ts
@@ -126,8 +118,8 @@ Object.assign(window, {
   runTurn0, // ui/gm/turn-zero.ts
   saveBlockEliminated, // ui/gm/turn-mode.ts
   saveBotDiplomacy, // ui/gm/turn-mode.ts
-  saveEditInvites, // ui/gm/game-list.ts
-  saveTurnMode, // ui/gm/turn-mode.ts
+  saveEditInvites, // ui/gm/game-detail.ts
+  saveTurnMode, // ui/gm/game-detail.ts
   setGameArchived, // ui/gm/game-list.ts
   show, // ui/gm/sign-in.ts
   showNewGame, // ui/gm/game-list.ts

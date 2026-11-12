@@ -7,13 +7,13 @@
 //
 // Level 4 (page): poSeaAnalysis is the portal's own code, in a module that loads the portal's start-up (which calls
 // supabase.createClient as it loads), so only the booted page reaches it: the portal booted in jsdom (tests/lib/boot.js)
-// on the stand-in database (tests/lib/stub-db.js's cannedStub, which answers every read with nothing).
+// on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account and no game).
 //
 // Until plan P1-14e this was the Move notice's part of tests/island-back.test.js, the same boot and the same calls; its
 // six checks are kept as they were.
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
-import { cannedStub } from '../lib/stub-db.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { makeAFakeDb } from '../lib/fake-db.ts';
 
 interface Analysis {
   cap: string;
@@ -25,7 +25,8 @@ const errs: string[] = [];
 let P: PageWindow;
 beforeAll(async () => {
   P = bootJsdom(readPage('kingdoms-call-player-portal.html'), {
-    supabase: { createClient: () => cannedStub({ rows: () => ({}), writes: [] }) },
+    supabase: { createClient: () => ({}) },
+    db: makeAFakeDb([DB_VERSION]).db,
     url: 'https://example.org/pp',
     setup(w) {
       w.addEventListener('error', (e) => errs.push(e.error?.stack ?? e.message));

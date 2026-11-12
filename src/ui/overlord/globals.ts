@@ -1,4 +1,4 @@
-import { $, doSignIn, doSignOut, loadAll, renderAccounts, sb } from './main.ts';
+import { $, doSignIn, doSignOut, loadAll, renderAccounts } from './main.ts';
 
 // ── The Overlord page's deliberate globals (plan P1-09b; P1-09's Decision 7) ────
 // The page's scripts are ES modules (P1-09d), so a top-level name belongs to its own file: an inline on…="…" handler, a
@@ -19,5 +19,4 @@ Object.assign(window, {
 // The names its tests reach.
 Object.assign(window, {
   $, // ui/overlord/main.ts
-  sb, // ui/overlord/main.ts
 });

@@ -10,10 +10,11 @@
 // `kc-merge` (`tools/merging/kc-merge.zsh`), run in zsh with a fake `gh` and `git` (each call recorded, each answer
 // from a staged state): a pull request it merges (a group's top, or one alone) whose branch holds main and whose head
 // has no CodeQL scan gets one empty commit pushed to its branch, with a message saying why, then is merged once its
-// checks pass; with the label `staging` it asks first (the answer from stdin), and a "no" pushes nothing; an open
+// checks pass, and a branch moved meanwhile is never overwritten (the push refused, it stops); with the label `staging`
+// it asks first (the answer from stdin), and a "no" pushes nothing; an open
 // code-scanning alert after the scan stops it, listing the rule, tool and place, with nothing merged; no CodeQL scan
 // started within 10 minutes stops it, saying why; its advice never says to close and reopen. Each case is red on
-// main's kc-merge.zsh before 0b. The clock is faked: the tool's wait between polls adds to zsh's SECONDS.
+// main's kc-merge.zsh before 0b (the moved branch's, P1-21q's, on a forced push). The clock is faked: the tool's wait between polls adds to zsh's SECONDS.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -98,7 +99,16 @@ if (tool === 'gh') {
     const [sha, ref] = args.at(-1).split(':');
     const made = state.made.find((c) => c.sha === sha);
     const pr = branchPr(ref);
-    if (made === undefined || pr === undefined || made.parent !== pr.headRefOid) unknown();
+    if (made === undefined || pr === undefined) unknown();
+    // A push made after the branch moved on GitHub (state.movedMeanwhile): a plain push is refused, as git refuses one
+    // that isn't a fast-forward; a forced one overwrites the branch.
+    if (state.movedMeanwhile !== '') { pr.headRefOid = state.movedMeanwhile; state.movedMeanwhile = ''; }
+    const forced = args.some((a) => a === '-f' || a === '--force' || a.startsWith('--force-') || a.startsWith('+'));
+    if (made.parent !== pr.headRefOid && !forced) {
+      record(true); save();
+      process.stderr.write(' ! [rejected] (fetch first)\nerror: failed to push some refs\n');
+      process.exit(1);
+    }
     record(true);
     state.pushes.push({ branch: pr.headRefName, ...made });
     pushed(pr, sha);
@@ -173,6 +183,7 @@ function aStack() {
     made: [] as { sha: string; parent: string; message: string }[],
     pushes: [] as { branch: string; sha: string; parent: string; message: string }[],
     fetched: '',
+    movedMeanwhile: '',
   };
 }
 type Staged = ReturnType<typeof aStack>;
@@ -285,6 +296,19 @@ describe('kc-merge starts the CodeQL scan the merge needs', () => {
     const { said, after, merges } = kcMerge(staged, '--group 600-601');
     expect(after.pushes).toHaveLength(1);
     expect(said).toMatch(/No CodeQL scan has started on #601's last commit \(e{7}\) in 10 minutes: stopping\./);
+    expect(merges).toEqual([]);
+    expect(said).toContain('kc-merge exited 1');
+  });
+
+  test('a branch moved after kc-merge read it is not overwritten: the push is refused, and it stops', LIMIT, () => {
+    const staged = aStack();
+    const MOVED = 'c'.repeat(40);
+    staged.movedMeanwhile = MOVED;
+    const { said, after, calls, merges } = kcMerge(staged, '--group 600-601');
+    expect(calls.filter((c) => !c.known)).toEqual([]);
+    expect(after.pushes).toEqual([]);
+    expect(after.prs['601'].headRefOid).toBe(MOVED);
+    expect(said).toContain("Couldn't push the empty commit to 'row-two': stopping.");
     expect(merges).toEqual([]);
     expect(said).toContain('kc-merge exited 1');
   });

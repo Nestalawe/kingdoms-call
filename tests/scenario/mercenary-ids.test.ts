@@ -40,7 +40,8 @@ test('bands made in a turn are numbered for the turn, and can be hired by those 
         { type: 'Shieldwall Levies', quality: 'Average', unitName: 'First Levy', race: 'Human' },
         { type: 'Shieldwall Levies', quality: 'Average', unitName: 'Second Levy', race: 'Human' },
       ];
-      (S.players[0] ?? {}).gold = 100;
+      const first = S.players[0];
+      if (first) first.gold = 100;
       S.mercenaries = [];
       return { king: king.id, turn: S.turn };
     },

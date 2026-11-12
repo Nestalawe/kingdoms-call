@@ -99,7 +99,7 @@ function chaseStoodIn(body: () => void): [unknown, unknown, unknown][] {
   const was = g['advancePursuit'];
   const calls: [unknown, unknown, unknown][] = [];
   g['advancePursuit'] = (_tc: unknown, c: Character, ph: number) => {
-    calls.push([c.id, ph, JSON.parse(JSON.stringify(c['_pursuit'] ?? null))]);
+    calls.push([c.id, ph, JSON.parse(JSON.stringify(c._pursuit ?? null))]);
   };
   try {
     body();
@@ -174,7 +174,7 @@ describe('Encounter Character, called directly: the chase it sets', () => {
     const calls = chaseStoodIn(() => {
       play(b, h, o('encounter', q.id), 2);
     });
-    expect({ calls, chase: h['_pursuit'], watch: h['_defend'] }).toEqual({
+    expect({ calls, chase: h._pursuit, watch: h._defend }).toEqual({
       calls: [[h.id, 2, { targetId: q.id, active: true, setPhase: 2 }]],
       chase: { targetId: q.id, active: true, setPhase: 2 },
       watch: undefined,
@@ -202,12 +202,12 @@ describe('Encounter Character, called directly: the chase it sets', () => {
       const b = fresh();
       const q = rival(b);
       const h = at(b);
-      if (side === 'hunter') h['_encounteredThisPhase'] = q.id;
-      else q['_encounteredThisPhase'] = h.id;
+      if (side === 'hunter') h._encounteredThisPhase = q.id;
+      else q._encounteredThisPhase = h.id;
       const calls = chaseStoodIn(() => {
         play(b, h, o('encounter', q.id));
       });
-      expect({ side, calls, chase: h['_pursuit'], lines: linesOf(b, h).length }).toEqual({
+      expect({ side, calls, chase: h._pursuit, lines: linesOf(b, h).length }).toEqual({
         side,
         calls: [],
         chase: undefined,
@@ -220,8 +220,8 @@ describe('Encounter Character, called directly: the chase it sets', () => {
     const b = fresh();
     const q = rival(b);
     const h = at(b);
-    h['_encounteredThisPhase'] = 12345;
-    q['_encounteredThisPhase'] = 54321;
+    h._encounteredThisPhase = 12345;
+    q._encounteredThisPhase = 54321;
     expect(
       chaseStoodIn(() => {
         play(b, h, o('encounter', q.id));
@@ -339,7 +339,7 @@ describe('Defend, called directly: the watch in each of its states', () => {
     const h = general(b);
     h['_defendReactedPhase'] = 0;
     play(b, h, { ...o('defend'), _pinned: true } as Order);
-    expect({ lines: linesOf(b, h).length, watch: h['_defend'], reacted: h['_defendReactedPhase'] }).toEqual({
+    expect({ lines: linesOf(b, h).length, watch: h._defend, reacted: h['_defendReactedPhase'] }).toEqual({
       lines: 0,
       watch: undefined,
       reacted: 0,
@@ -352,7 +352,7 @@ describe('Defend, called directly: the watch in each of its states', () => {
     Object.assign(h, { _defend: { centre: b.X.id, active: false, setPhase: 1 } });
     h['_defendSpent'] = { turn: b.G.turn, ph: 1 };
     play(b, h, o('defend'), 1);
-    expect({ text: textOf(b, h), watch: h['_defend'] }).toEqual({
+    expect({ text: textOf(b, h), watch: h._defend }).toEqual({
       text: `🛡 ${h.name} has met this season's threat in battle — their Defend order is done, and they set no new watch until ordered to Defend in a later season.`,
       watch: { centre: b.X.id, active: false, setPhase: 1 },
     });
@@ -377,7 +377,7 @@ describe('Defend, called directly: the watch in each of its states', () => {
     Object.assign(h, { _defend: { centre: b.X.id, active: true, setPhase: 2, preActivated: true, carried: false } });
     h['_defendReactedPhase'] = 2;
     play(b, h, o('defend'), 2);
-    expect({ lines: linesOf(b, h).length, watch: h['_defend'], reacted: h['_defendReactedPhase'] }).toEqual({
+    expect({ lines: linesOf(b, h).length, watch: h._defend, reacted: h['_defendReactedPhase'] }).toEqual({
       lines: 0,
       watch: { centre: b.X.id, active: true, setPhase: 2, carried: false },
       reacted: 2,
@@ -421,7 +421,7 @@ describe('Defend, called directly: the watch in each of its states', () => {
     const h = general(b);
     h['_defendReactedPhase'] = 1;
     play(b, h, o('defend'), 2);
-    expect({ reacted: h['_defendReactedPhase'], watch: h['_defend'] }).toEqual({
+    expect({ reacted: h['_defendReactedPhase'], watch: h._defend }).toEqual({
       reacted: undefined,
       watch: { centre: b.X.id, active: true, setPhase: 2, carried: false },
     });
@@ -441,7 +441,7 @@ describe('Defend, called directly: the watch in each of its states', () => {
     play(b, h, o('defend'), 2);
     play(b, lone, o('defend'), 2);
     expect({
-      watch: h['_defend'],
+      watch: h._defend,
       general: textOf(b, h).split('\n')[0]?.slice(0, 30),
       lone: textOf(b, lone).split('\n')[0]?.slice(0, 30),
     }).toEqual({
@@ -461,7 +461,7 @@ describe('Defend, called directly: the watch in each of its states', () => {
     const b = fresh();
     const h = general(b);
     play(b, h, o('defend', ring1(b, 0).id), 0);
-    expect(h['_defend']).toEqual({ centre: b.X.id, active: true, setPhase: 0, carried: false });
+    expect(h._defend).toEqual({ centre: b.X.id, active: true, setPhase: 0, carried: false });
   });
 });
 

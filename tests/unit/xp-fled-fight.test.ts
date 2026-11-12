@@ -11,7 +11,12 @@ import { personalCombatEngine, type Character, type Combatant, type FightResult 
 
 const { call, pinned, turnContext } = await personalCombatEngine();
 const experience = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
-type Roll = { id: unknown; skill: string; base: unknown; mult: unknown };
+interface Roll {
+  id: unknown;
+  skill: string;
+  base: unknown;
+  mult: unknown;
+}
 const [stays, runs] = (turnContext.G['characters'] as Character[]).filter((c) => c.alive && c.player != null);
 const mk = (c: Character, t: string[]) => {
   const h = call('pcCharCombatant', {

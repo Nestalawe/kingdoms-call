@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { bootJsdom } from '../lib/boot.js';
 
 let page: Document;
-let probeTelemetry: () => Promise<boolean>;
+let probeTelemetry: () => Promise<unknown>;
 /** The error each table's read answers with (null: the table is there). */
 const errors: Record<string, { message: string } | null> = { turn_events: null, game_results: null };
 

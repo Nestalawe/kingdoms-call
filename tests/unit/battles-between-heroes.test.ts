@@ -91,7 +91,7 @@ const wordsOf = (line: unknown): unknown =>
 // every land company a realm can raise on open plains, with its race (the garrisons stay home)
 const COMPANIES = Object.entries(vm.runInContext('PROVINCE_ARMIES_P.plain', engine) as Record<string, string[]>)
   .flatMap(([race, types]) => types.map((type) => ({ type, race })))
-  .filter((c) => !/Garrison/.test(c.type));
+  .filter((c) => !c.type.includes('Garrison'));
 const QUALITIES = vm.runInContext('KC_QUALITY_TIERS', engine) as string[];
 const TERRAINS = ['plain', 'forest', 'jungle', 'mountain', 'desert'] as const;
 const STANCES = ['challenge', 'accept', 'refuse'] as const;

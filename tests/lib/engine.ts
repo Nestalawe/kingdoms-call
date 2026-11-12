@@ -92,7 +92,7 @@ export async function buildEngineBundle(src = SRC): Promise<string> {
   // file's name was changed in the bundle: none may be.
   const tail = /\nexport \{([^}]*)\};\s*$/.exec(code);
   if (!tail) throw new Error("the engine's bundle doesn't end with its exports");
-  const renamed = (tail[1] ?? '').split(',').filter((e) => / as /.test(e));
+  const renamed = (tail[1] ?? '').split(',').filter((e) => e.includes(' as '));
   if (renamed.length) throw new Error(`the engine's bundle renames ${renamed.join(',')}`);
   return code.slice(0, tail.index + 1);
 }

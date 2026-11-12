@@ -1,53 +1,11 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { sb, thePagesDb } from './config.ts';
-import { loadGames } from './game-list.ts';
-import { openGame } from './game-detail.ts';
-import { backfillGameMeta } from './game-list.ts';
-import { probeGameMeta, probeMessaging, probeTelemetry } from './startup.ts';
-import { backfillGameResults } from './hall-of-fame.ts';
-import { probeLeaderboard } from './hall-of-fame.ts';
-import { startAutoTurnWatcher } from './auto-turn.ts';
-
-// ── INIT ────
-export async function init() {
-  document.getElementById('spinner').style.display = 'none';
-  const {
-    data: { session },
-  } = await thePagesDb.signingIn.theSessionKeptInThisBrowser();
-  if (session) {
-    currentUser = session.user;
-    onSignedIn();
-  } else show('sec-auth');
-}
+import { thePagesDb } from './config.ts';
+import { thisPagesBuild } from '../shared/a-newer-version-of-this-page.ts';
 
 export function show(id) {
   document.querySelectorAll('section').forEach((s) => s.classList.remove('section-active'));
   document.getElementById(id)?.classList.add('section-active');
-}
-
-// ── AUTH ────
-export async function doSignIn() {
-  const email = document.getElementById('si-email').value.trim();
-  const pwd = document.getElementById('si-password').value;
-  const msg = document.getElementById('auth-msg');
-  if (!email || !pwd) {
-    msg.innerHTML = '<div class="msg-error">Please enter your email and password.</div>';
-    return;
-  }
-  msg.innerHTML = '<div class="msg-info">Signing in…</div>';
-  const { data, error } = await thePagesDb.signingIn.signInWithEmailAndPassword(email, pwd);
-  if (error) {
-    let m = error.message;
-    if (m.includes('Email not confirmed'))
-      m =
-        'Email not confirmed. In Supabase → Authentication → Providers → Email, turn off "Confirm email", then try again. Or confirm your account in Supabase → Authentication → Users.';
-    if (m.includes('Invalid login')) m = 'Email or password incorrect.';
-    msg.innerHTML = kcHtml`<div class="msg-error">${m}</div>`;
-    return;
-  }
-  currentUser = data.user;
-  onSignedIn();
 }
 
 export async function doSignOut() {
@@ -110,31 +68,6 @@ export async function submitChangePassword() {
   }
 }
 
-export async function onSignedIn() {
-  document.getElementById('gm-email-display').textContent = currentUser.email;
-  if (!(await gmPortalAllowed())) return; // P0-32c: Game Masters and the Overlord only; nothing else loads
-  // Master GM mode (P0-32g, R-097): the Overlord sees every game and runs any of them by hand, but creates none.
-  document.getElementById('gm-role-label').textContent = _kcOverlord ? 'Overlord · Master GM' : 'Game Master';
-  document.getElementById('new-game-btn').style.display = _kcOverlord ? 'none' : '';
-  document.getElementById('overlord-filter-wrap').style.display = _kcOverlord ? 'block' : 'none';
-  show('sec-games');
-  await probeGameMeta(); // Disk-IO fix (2026-09-25): is the light `games.meta` column there?
-  probeTelemetry().then((ok) => {
-    if (ok) backfillGameResults();
-  }); // telemetry tables (2026-09-25) — never blocks sign-in
-  probeLeaderboard(); // Hall-of-Fame table (2026-09-27); records are built on game-over or by button, never at sign-in
-  probeMessaging(); // player-messaging tables (2026-09-27); the GM portal only reports whether they exist
-  await loadGames();
-  // Automatic turn modes only fire while a signed-in GM tab is open. Never for the Overlord (P0-32g): one tab
-  // resolving every game would be heavy and a single point of failure. Each game's own GM tab runs its turns.
-  if (!_kcOverlord) startAutoTurnWatcher();
-  // The sign-in backfills read only the signed-in account's own games, so they do nothing for the Overlord.
-  backfillGameMeta(); // one-off: stamp meta on any game that predates the column (no-op after)
-  // The Overlord page links each game here as ?game=<id> (P0-32f): open it straight away.
-  const _openId = _kcOverlord && new URLSearchParams(location.search).get('game');
-  if (_openId) openGame(_openId);
-}
-
 // P0-32c: the GM portal is for Game Masters (an accepted offer, P0-32b) and the Overlord. Anyone else, or a
 // check that fails, gets the "not a Game Master" page and nothing else: no game list, no watcher, no probes.
 // Master GM mode (P0-32g): true while the Overlord is signed in. The database lets the Overlord do every GM action on
@@ -183,7 +116,7 @@ export async function loadReportedDispatches(game) {
     return;
   }
   el.innerHTML = '<div class="msg-info">Loading…</div>';
-  const { data, error } = await sb.rpc('gm_reported_messages', { p_game: game.id });
+  const { data, error } = await thePagesDb.theReportedDispatches.theDispatchesReportedToThisAccount(game.id);
   if (!currentGame || String(currentGame.id) !== String(game.id)) return; // another game was opened meanwhile
   if (error) {
     el.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
@@ -209,10 +142,32 @@ export async function loadReportedDispatches(game) {
 }
 export async function deleteReportedDispatch(id) {
   if (!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
-  const { error } = await sb.from('game_messages').delete().eq('id', id);
+  const { error } = await thePagesDb.theDispatches.deleteThisDispatch(id);
   if (error) {
     alert(error.message);
     return;
   }
   await loadReportedDispatches(currentGame);
+}
+export function setAutoTurnStatus(html) {
+  const el = document.getElementById('auto-turn-status');
+  if (!el) return;
+  el.style.display = html ? 'block' : 'none';
+  el.innerHTML = html || '';
+}
+// ── AUTO-REFRESH TO THE NEWEST UPLOADED BUILD ────
+// A GM tab left open for days keeps running the engine it loaded, however many newer builds have
+// been uploaded since. So the moment an automatic turn is DUE — and BEFORE it is resolved, so the
+// new engine is the one that resolves it — the watcher asks whether a newer GM page is ready
+// (ui/shared/a-newer-version-of-this-page.ts, plan P1-06): version.json, read afresh, names another
+// fingerprint for this page, first seen at least 10 minutes ago (GitHub's cache can hand out the old
+// page for 10 minutes after a deploy). If so it reloads the tab. After the reload the GM is still
+// signed in (Supabase keeps the session), onSignedIn restarts the watcher, and its first tick runs
+// the turn on the new build. No newer page → no reload, the turn simply runs.
+// LOOP GUARD: sessionStorage remembers "already reloaded for <game>:<turn>", so whatever a server
+// or CDN does with caching, one due turn can cause at most ONE reload. No sessionStorage, a file://
+// page or a failed download of version.json → never reload; the turn runs on the current build.
+// Which GM build is running: the 7-character commit of the page's kc-build meta (tools/build.ts).
+export function runningBuildStamp() {
+  return thisPagesBuild();
 }

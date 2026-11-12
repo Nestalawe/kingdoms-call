@@ -105,14 +105,12 @@ job and in `npm run check`, with its rules in `.dependency-cruiser.mts`, every o
   Overlord page reach it only through `shared/` and `views/`.
 - **No cycle through imports that bring code**: a cycle of `import type` only is let through. Every import resolves.
 
-**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (12 findings)
-and let through (`--ignore-known`): the 11 findings of the GM page's import cycle (7 files), and the prose's one,
-the explore and search lines' import of `itemLoreLines` from `engine/items/tiers-and-hoards.ts` (P1-13l, Theo's
+**What broke a rule when the rules came in** is listed in `.dependency-cruiser-known-violations.json` (1 finding)
+and let through (`--ignore-known`): the prose's one, the explore and search lines' import of `itemLoreLines` from `engine/items/tiers-and-hoards.ts` (P1-13l, Theo's
 agreement; it leaves with the fix of the items' other names the engine adds to the content as it loads). P1-13e broke the
 engine's six cycles by moving code, one cycle a pull request: P1-13e1 the four two-file cycles in one, P1-13e2 the
-core, and P1-13e3 to P1-13e5 the bots' cycle in three steps; P1-13e6 to e8 the player page's in three more. **The
-engine and the player page have no import cycle now**, and the no-cycle rule keeps it so; the GM page's comes next
-(P1-17a moved `db/`'s page code into the page). The ratchet counts the list
+core, and P1-13e3 to P1-13e5 the bots' cycle in three steps; P1-13e6 to e8 the player page's in three more, and P1-13e13 the GM page's (P1-17a first moved `db/`'s page code into it). **No
+code has an import cycle now**, and the no-cycle rule keeps it so. The ratchet counts the list
 (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no longer
 occurs: when you fix one, remove it in the same pull request with
 `npx depcruise src --baseline --baseline-mode shrink-only`. Never add a finding to it. A cut that leaves part of a
@@ -205,8 +203,8 @@ src_ui_overlord_-->src_db_
 src_ui_overlord_-->src_ui_shared_
 src_ui_player_-->src_content_
 src_ui_player_-->src_ui_shared_
-src_ui_player_-->src_shared_
 src_ui_player_-->src_db_
+src_ui_player_-->src_shared_
 src_views_-->src_engine_
 src_views_-->src_engine_rules_on_plain_values_
 src_views_-->src_engine_rules_

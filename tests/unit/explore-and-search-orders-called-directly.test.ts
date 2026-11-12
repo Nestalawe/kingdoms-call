@@ -396,7 +396,7 @@ describe('Search Lair, called directly: what follows the fight', () => {
     });
     expect(textOf(b, h)).toContain('escapes with 8g lifted from the Drowned Mill');
     expect(textOf(b, h)).toContain('(~22g still hidden here.)');
-    expect(f['monster']).not.toHaveProperty('_treasureStolen');
+    expect(f.monster).not.toHaveProperty('_treasureStolen');
   });
 
   test('a thief who empties the hoard, and one who finds it already empty: both leave the realm knowing it is bare', () => {

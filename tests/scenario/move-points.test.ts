@@ -25,7 +25,12 @@ const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 });
 type Raw = Record<string, unknown>;
-type Order = { action: string; target: string; extra: string; desc: string };
+interface Order {
+  action: string;
+  target: string;
+  extra: string;
+  desc: string;
+}
 const rest = (): Order => ({ action: 'rest', target: '', extra: '', desc: '' });
 const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
   p: Province,

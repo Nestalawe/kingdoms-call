@@ -250,7 +250,7 @@ function unseenHeroes(t: Turn): string[] {
   if (typeof turn !== 'number') return [];
   /** Where he cast it: its phase, and its place in the GM log (a line before it in the same phase came first). */
   const castAt = (c: Character) => {
-    const i = t.gmLog.findIndex((e) => e.charId === c.id && /weaves Invisibility/.test(String(e.text)));
+    const i = t.gmLog.findIndex((e) => e.charId === c.id && String(e.text).includes('weaves Invisibility'));
     const phase = t.gmLog[i]?.phase;
     return { from: typeof phase === 'number' ? phase : 0, index: i };
   };

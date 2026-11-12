@@ -91,9 +91,9 @@ export const phasesSaying = (o: Outcome, what: string) =>
 export const duelKills = (o: Outcome, c: Character) =>
   (char(o, c)['tm'] as { duelKills?: number } | undefined)?.duelKills ?? 0;
 /** The hero's watch as the turn left it (undefined if he keeps none). */
-export const watch = (o: Outcome, c: Character) => char(o, c)['_defend'];
+export const watch = (o: Outcome, c: Character) => char(o, c)._defend;
 /** The hero's chase as the turn left it (undefined if he set out on none). */
-export const chase = (o: Outcome, c: Character) => char(o, c)['_pursuit'];
+export const chase = (o: Outcome, c: Character) => char(o, c)._pursuit;
 export const there = (s: Staged) => must(s.there, 'the province');
 export const mark = (s: Staged) => must(s.mark, 'the mark');
 

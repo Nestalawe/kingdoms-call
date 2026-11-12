@@ -246,7 +246,7 @@ export const PHASE_START_CASES: PhaseStageCase[] = [
     name: 'a stale "fought a stalled battle in Spring" mark from the save does not hold his column in Spring',
     stage(b) {
       const h = leads(at(b, { march: 0 }), companies(2));
-      h['_foughtStalledBattlePhase'] = 0;
+      h._foughtStalledBattlePhase = 0;
       return { hero: h, orders: [one(h, order('move', ring1(b, 0).id))], there: ring1(b, 0) };
     },
     check(o, s) {
@@ -264,7 +264,7 @@ export const PHASE_START_CASES: PhaseStageCase[] = [
     stage(b) {
       const q = rival(b, { at: ring1(b, 0) });
       const h = at(b, { spy: 3 });
-      h['_encounteredThisPhase'] = q.id;
+      h._encounteredThisPhase = q.id;
       return { hero: h, mark: q, orders: [one(h, hunt(q))] };
     },
     check(o, s) {

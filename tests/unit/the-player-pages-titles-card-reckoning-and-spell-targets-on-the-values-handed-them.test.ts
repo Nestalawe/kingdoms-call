@@ -203,6 +203,16 @@ describe('titles.ts: the race line and the Titles card', () => {
     expect(text('report-titles')).toContain('in a 2-realm game');
   });
 
+  test("a bar the engine hands as a fraction shows its own whole percentage: 55% after a 2-realm game's first eroding turn", () => {
+    // reckoningThreshold hands 55 / 100 (0.55), which times 100 is 55.00000000000001; likewise 56 / 100 (4 realms,
+    // three eroding turns, a bloc of three).
+    g['reckoningCall'] = false;
+    for (const bar of [55, 56]) {
+      renderTitles({ titles: { public: true, myShare: 0.5, threshold: bar / 100, myOwnShare: 0.5, callerMin: 0.2 } });
+      expect(text('report-titles')).toContain(`50% of the world; ${String(bar)}% is needed to Call the Reckoning.`);
+    }
+  });
+
   test('the minor titles: none, none held, held', () => {
     expect(renderMinorTitles(null)).toBe('');
     expect(words(renderMinorTitles({ minor: {} }))).toContain('Your characters hold no minor titles yet.');

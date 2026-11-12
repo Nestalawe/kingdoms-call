@@ -5,7 +5,7 @@
 //   · on the board, searching for a realm shows that realm's own entries in every list.
 // Unit (level 1) on the real builder sliced out of the GM portal, then a page render (level 4, jsdom)
 // of the real leaderboard from the rows it built. Made-up realms and heroes.
-const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {sourceFrom}=require('./lib/source.ts'); const {leaderboardStub}=require('./lib/stub-db');
+const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {sourceFrom}=require('./lib/source.ts'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 // The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
@@ -48,7 +48,7 @@ ok(of('title_throne',0)&&of('title_throne',0).v===42,'…as is the holder at the
 (async()=>{
   const errs=[];
   const dom=bootJsdom(readPage('kingdoms-call-leaderboard.html'),{pretendToBeVisual:false,url:'https://example.test/kingdoms-call-leaderboard.html',
-    supabase:{createClient:()=>leaderboardStub({rows:()=>[JSON.parse(JSON.stringify(row))],calls:[],signedIn:false,isGm:false})},
+    supabase:{createClient:()=>({})},db:makeAFakeDbHoldingTheHallOfFame(DB_VERSION,{rows:()=>[JSON.parse(JSON.stringify(row))],changes:[],signedIn:false,isGm:false}).db,
     setup(w){ w.addEventListener('error',e=>errs.push(e.message)); w.console.error=(...a)=>errs.push(a.join(' ')); }});
   await new Promise(r=>setTimeout(r,400));
   const w=dom.window, d=w.document;

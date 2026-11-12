@@ -78,7 +78,7 @@ const trees = new Map<string, { text: string; tree: ts.SourceFile }>();
  *  file that no longer parses can't read as one with nothing in it. */
 function treeOf(file: string, text: string): ts.SourceFile {
   const kept = trees.get(file);
-  if (kept && kept.text === text) return kept.tree;
+  if (kept?.text === text) return kept.tree;
   const tree = ts.createSourceFile(
     file,
     text,
