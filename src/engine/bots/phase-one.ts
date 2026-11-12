@@ -37,6 +37,12 @@ import {
   botSchoolLimit,
 } from './strategy.ts';
 import { skillLevel } from '../titles/perks.ts';
+import {
+  STORM_DEMOTE_CHANCE,
+  STORM_DESTROY_CHANCE,
+  STORM_MAX_DEMOTED,
+  STORM_MAX_DESTROYED,
+} from '../orders/alignment-prototype-orders.ts';
 
 // ══ PHASE-ONE PASS (2026-09-29, Toby: "use phase 1 orders wisely") ═════════════════════════════════
 // Engine facts it relies on: within a phase every NON-MOVING order (recruit, hand-over, cast,
@@ -87,6 +93,8 @@ export function botIsFiller(o) {
 // The planner treats a pinned province as sea this year — no attack into it, and no longer a "trap"
 // beside a target — so the generals strike the unflooded provinces around it instead.
 export const BOT_PIN_EDGE = 1.2;
+// A company the storm drops a quality tier fights about this much weaker (step 7's estimate of a storm's cost).
+export const BOT_STORM_TIER_COST = 0.15;
 export function botPins(G, pi) {
   const cache = botTurnCache(G);
   cache.pins = cache.pins || {};
@@ -755,6 +763,62 @@ export function runBotPhaseOne(G, botIdxSet, stage) {
           spring.add(hero.id);
           entered.add(A.N.id);
         });
+    }
+    // K: STORM, THEN STRIKE (bot improvements, step 7: plan the turn as a sequence). The king's storm on a province
+    // costs its defenders companies before anyone marches in that phase (an order that does not move resolves first),
+    // so a general standing beside it, with no attack of his own written, strikes it in the storm's phase or later
+    // when the companies the storm should cost bring it within his margin. One general a storm, the strongest.
+    {
+      const T = botTuning(G, pi);
+      mine.forEach((k) => {
+        const ko = G.turnOrders[k.id] || [];
+        const si = ko.findIndex((x) => x && x.action === 'call_storm');
+        if (si < 0) return;
+        const m = /^prov:(\d+)$/.exec(String(ko[si].target || '').trim());
+        const X = m ? G.world.provinces[Number(m[1])] : null;
+        if (!X || X.terrain === 'sea' || entered.has(X.id)) return;
+        const enemyLand = X.owner != null && X.owner !== pi && botRelationRaw(G, pi, X.owner) === 'enemy';
+        const hosts = botEnemyHostsIn(G, pi, X);
+        if (!enemyLand && !hosts.length) return;
+        let def = enemyLand ? botTargetDefence(G, pi, X) : 0;
+        if (!enemyLand)
+          hosts.forEach((e) => {
+            def += botBattleForce(G, e, null, X.terrain, { defending: true, viewerPi: pi }) * BOT_DEF_BONUS;
+          });
+        const n =
+          (enemyLand ? (X.garrisonArmies || []).length : 0) +
+          hosts.reduce((t, e) => t + (e.armies || []).filter((a) => a && !a._phantom).length, 0);
+        if (!(def > 0) || !n) return;
+        const lost = Math.min(STORM_MAX_DESTROYED, n * STORM_DESTROY_CHANCE);
+        const fell = Math.min(STORM_MAX_DEMOTED, (n - lost) * STORM_DEMOTE_CHANCE);
+        const after = def * ((n - lost) / n) * (1 - (BOT_STORM_TIER_COST * fell) / n);
+        let best = null;
+        mine.forEach((g) => {
+          if (g.id === k.id || !leaderIds.has(g.id) || !(g.armies || []).length || spring.has(g.id)) return;
+          const P = G.world.provinces[g.location];
+          if (!P || P._battleUnresolved || !botAdj(G, P, X) || P.id === X.id) return;
+          const o = G.turnOrders[g.id] || [];
+          if (o.some((x) => x && BOT_P1.reloc.has(x.action))) return; // he has a march of his own written
+          const str = botBattleForce(G, g, null, X.terrain);
+          if (str < after * botMarginFor(G, pi, g, T)) return;
+          if (!best || str > best.str) best = { g, P, str };
+        });
+        if (!best) return;
+        let d = -1;
+        for (let i = 0; i < 6; i++) {
+          const N = botNeighbourProv(G, best.P, i);
+          if (N && N.id === X.id) d = i;
+        }
+        if (d < 0) return;
+        const o = G.turnOrders[best.g.id];
+        const out = o.slice(0, si).map((x) => (x && !BOT_P1.reloc.has(x.action) ? x : hold('Wait for the storm')));
+        while (out.length < si) out.push(hold('Wait for the storm'));
+        out.push({ action: 'move', target: String(X.id), extra: '', desc: 'Attack ' + X.name + ' (after the storm)' });
+        while (out.length < 5) out.push(hold('Hold ' + X.name));
+        G.turnOrders[best.g.id] = out.slice(0, 5);
+        spring.add(best.g.id);
+        entered.add(X.id);
+      });
     }
     // S: SECOND FRONT (2026-09-29, Toby: attack more than one province a year). A general whose host can
     // spare a detachment strong enough to take ANOTHER province next to where he stands — and still beat
