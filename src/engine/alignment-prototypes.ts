@@ -240,7 +240,7 @@ export function captivesColumnFallsBack(G: GameState, c: Character, fromProvId: 
   if (!left.length || c.player == null || !from) return '';
   const pi = c.player;
   const home = G.world.provinces
-    .filter((pv) => pv.owner === pi && pv.terrain !== 'sea')
+    .filter((pv) => pv.owner === pi && pv.terrain !== 'sea' && pv.id !== from.id) // never the battlefield itself
     .sort((a, b) => hexDistP(a, from, G.world.cols) - hexDistP(b, from, G.world.cols) || a.id - b.id)[0];
   if (!home) return '';
   home.garrisonArmies.push(...left);
