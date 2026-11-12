@@ -1,5 +1,5 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
-import { kitTactics } from '../alignment-prototypes.ts';
+import { isBarrow, kitTactics } from '../alignment-prototypes.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
@@ -52,6 +52,7 @@ import {
   botSeaReach,
   botSpend,
   botUnderAttack,
+  botSkillOf,
 } from './strategy.ts';
 import {
   botChainHops,
@@ -148,6 +149,60 @@ export function botResurrectErrands(G, pi, all, roles, assigned) {
     D.push({ pi, grave: g.id, monarch: !!g._monarch, mage: c.id, hops: best.path.length });
   });
 }
+// ══ BARROW KEEPERS (bot improvements, step 6) ════
+// A held barrow refills its graves every turn, and its dead rise only to Skeletal Armies cast where they lie. Each held
+// barrow with graves gets a keeper before any other errand: the nearest hero who counts Necromancy 1 or more (a barrow
+// lifts every hero of the realm) and is not the main general, within three marches through the realm's land, unless he
+// already leads three companies of the dead (he takes those to the host). He walks there, raises as often as his
+// Necromancy allows in the phases left, and leaves the risen in the barrow's garrison (where the dead stand without a
+// master) while it holds fewer than four of them.
+export const BOT_BARROW_GARRISON = 4;
+export function botBarrowKeepers(G, pi, all, roles, assigned) {
+  if (kitTactics(G, pi) !== 'Undead') return;
+  const pl = (G.players || [])[pi];
+  if (!pl) return;
+  const barrows = (pl.provinces || [])
+    .map((id) => G.world.provinces[id])
+    .filter((X) => X && X.owner === pi && (X.features || []).some(isBarrow) && (X.battleGraves || []).length > 0)
+    .sort((a, b) => (b.battleGraves || []).length - (a.battleGraves || []).length);
+  barrows.forEach((X) => {
+    let best = null;
+    all.forEach((c) => {
+      if (assigned.has(c.id) || c._isHeir || c.id === roles.primaryId) return;
+      if ((c.armies || []).filter((a) => a && a._isSkeletal).length >= 3) return;
+      if ((c.armies || []).some((a) => a && !a._isSkeletal)) return; // a living column has its own work
+      if (botSkillOf(G, c, 'necromancy') < 1) return;
+      const hp = c.hp != null ? c.hp : c.maxHp || 20;
+      if (hp < (c.maxHp || 20) * 0.5) return;
+      const P = G.world.provinces[c.location];
+      if (!P) return;
+      const path = P.id === X.id ? [] : botPathDirs(G, pi, P, X.id, 3, !(c.armies || []).length);
+      if (!path || path.length > 3) return;
+      if (!best || path.length < best.path.length) best = { c, path };
+    });
+    if (!best) return;
+    const c = best.c;
+    const out = best.path.map((d) => botMoveOrder(d, 'To keep the barrow of ' + X.name));
+    const casts = Math.min(botSchoolLimit(botSkillOf(G, c, 'necromancy')), 5 - out.length);
+    for (let i = 0; i < casts; i++)
+      out.push({
+        action: 'cast_spell',
+        target: 'Skeletal Armies',
+        extra: '',
+        desc: 'Raise the barrow dead of ' + X.name,
+      });
+    const held = (X.garrisonArmies || []).filter((a) => a && a._isSkeletal).length;
+    if (out.length < 5 && held < BOT_BARROW_GARRISON)
+      out.push({
+        action: 'leave_army',
+        target: 'all',
+        extra: '-1',
+        desc: 'The risen dead hold the barrow of ' + X.name,
+      });
+    G.turnOrders[c.id] = botFillOrders(G, pi, c, [], out);
+    assigned.add(c.id);
+  });
+}
 export function runBotMovement(G, botIdxSet, hooks) {
   hooks = hooks || {};
   if (!botIdxSet || !botIdxSet.size || !G.world) return;
@@ -210,6 +265,7 @@ export function runBotMovement(G, botIdxSet, hooks) {
     // Feeders and unarmed characters are planned after the leaders so a leader's muster claims the
     // province's recruit slots first.
     botResurrectErrands(G, pi, all, roles, assigned); // 2026-09-28 (Toby): white mages raise the realm's fallen first
+    botBarrowKeepers(G, pi, all, roles, assigned); // step 6: a keeper raises the dead at every barrow with graves
     const ordered = [...leaders, ...all.filter((c) => !roles.leaders.includes(c.id))];
     ordered.forEach((c) => {
       if (assigned.has(c.id)) return;
