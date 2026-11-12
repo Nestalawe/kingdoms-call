@@ -266,7 +266,7 @@ export async function doSubmitOrders(): Promise<void> {
   }
 
   // Safety: verify the turn hasn't advanced since the player loaded the form
-  const { data: freshGame } = await thePagesDb.theOrders.theTurnOfThisGame(currentGamePlayer?.game_id);
+  const { data: freshGame } = await thePagesDb.theOrders.theTurnOfThisGame(String(currentGamePlayer?.game_id));
   const expectedTurn = (currentReport?._liveTurn ?? 0) || (currentReport?.turn ?? 0) || 1;
   if (freshGame && freshGame.turn !== expectedTurn) {
     const resolved = String(
