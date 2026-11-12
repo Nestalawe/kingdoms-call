@@ -13,6 +13,9 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   the id, as a property read on `null` did; one of another kind stops it too, which no page meets (the tours run every
   such lookup). Read once where the old code first read it: the throw moves no earlier than the first statement the
   missing element would have stopped.
+- **A page's own lookup** (`const $ = (id) => document.getElementById(id)`, every caller reading it unchecked: the
+  Overlord page) is `theElementWithTheId(id, HTMLElement)`; a field of a kind (`$('si-email').value`) is read through
+  `theElementWithTheId(id, HTMLInputElement)` at its site.
 - **An element the code checks for** (`if (!wrap || !hidden) return;`) keeps its check and its `getElementById`: its
   absence is a case the code meets. Where the code then writes a field of a kind (`hidden.value = …`), the check names
   the kind: `if (!wrap || !(hidden instanceof HTMLInputElement)) return;`, where the page writes that element as that
@@ -47,6 +50,13 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 
 ## Writing into the page
 
+- **A helper that makes an element** (the Overlord page's `el(tag, props, ...kids)` and `fill(id, ...kids)`) takes its tag
+  as `keyof HTMLElementTagNameMap` (`el('input', …)` is an `HTMLInputElement`). Its `kids.flat(Infinity)`, nothing
+  left out, is a reader that walks the lists and writes each child that isn't a node by `String`, as `append` and
+  `replaceChildren` do (`theNodesAndWordsOf`); a value of any kind handed as a child goes through `theChildAsElReadsIt`
+  (a list stays a list). An `on…` attribute goes through a reader that throws, for anything but a function, the
+  `TypeError` `addEventListener` threw (`theListenerIn`).
+
 - **`el.innerHTML = kcHtml\`…\``** is `el.innerHTML = String(kcHtml\`…\`)`: the setter writes the marked value by its
   `toString`, which is what `String` calls; the HTML lint rule accepts a call there.
 
@@ -68,6 +78,9 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   every screen holds.
 
 ## The page's globals
+
+- **A page's `let` read only once it is set** (the Overlord page's `ME`, after sign-in) goes through a reader that throws,
+  for `null`, the `TypeError` the read threw (`theSignedInAccount`).
 
 - **A page global a freed file writes into** (the pre-order cards add their placeholders to the report's heroes, and the
   heir's fields write his name and temper) is typed with that field writable (`TheReportAsThePreOrderCardsHoldIt`'s

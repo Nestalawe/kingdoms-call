@@ -57,8 +57,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   power's words) goes. `!!x` on a flag is `x` (`Boolean(asItsGuardReadsIt(x))` if it may be missing).
 - **`s[0].toUpperCase()` on words the code has tested non-empty** (a skill's name capitalised) is `s.charAt(0)`, the same
   letter: an index read is `string | undefined` to the compiler.
-- **`/^merc_/.test(s)` on words** is `s.startsWith('merc_')`. A company's name `armyUnitName` draws is read through
-  `theNameDrawn`, which throws for none (its type allows none; it always draws or composes one).
+- **`/^merc_/.test(s)` on words** is `s.startsWith('merc_')`, and `/Invalid login/.test(s)` is
+  `s.includes('Invalid login')`. A company's name `armyUnitName` draws is read through `theNameDrawn`, which throws for
+  none (its type allows none; it always draws or composes one).
+- **`new Date(x)` on `string | null`** is `new Date(x ?? 0)`: `Date` reads `null` as 0 (the Overlord page's suspension).
 - **`pool[id]--` on a record's number that may be missing** (a hero's move points) is `pool[id] = Number(pool[id]) - 1`:
   a missing one becomes `NaN` either way.
 - **A number a typed callee may give as `undefined`** (`effSkillOf` for no hero) is read `Number(x)` where it is counted
@@ -74,6 +76,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   casts a school allows) is `Number(x)`: `NaN` meets no level, as `undefined` did. **A name read as a key that may be
   missing** (an item's spell) is `String(x)` before it is handed on: `'undefined'` is the key `undefined` was read as.
 ## Lists, tables, sets and maps
+
+- **A table of lists read by any words, else one of its rows** (`SUSPEND_FOR[how] || SUSPEND_FOR.day`) is typed with that
+  row named and an index signature `| undefined`; its `||` is `??` (a list is never falsy).
 
 - **A deal from a deck the code has just filled** (`if (!d.length) d = shuffleP(cards); return d.pop()`) goes through
   a check that throws for none (`theCardDealt`); a table literal whose every value is drawn (`{ plain: rP(4, 9), … }[t]`,
