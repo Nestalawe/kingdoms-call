@@ -430,7 +430,7 @@ export interface FervourSide {
   isAttacker: boolean;
   leader: Character | null | undefined;
   monsterTypes: Set<string>;
-  /** the other side's companies, when known (round 8: the Crusade against the wild reads them) */
+  /** the other side's companies, when known (round 8: Smite the Unholy against beasts reads them) */
   enemyArmies?: Army[];
 }
 const nothing: Fervour = { mult: 1, label: '' };
@@ -450,13 +450,14 @@ export function protoFervour(G: GameState, pi: number, armies: Army[], side: Fer
       // round 20: the Proclaimed Crusade's ×1.5 against the named realm's hosts is back (the master list had dropped it);
       // Divine Power 3 no longer puts the ×1.5 in every battle (the gifts of the faith are elsewhere now)
       const proclaimed = enemyPi != null && pl._crusadeVs === enemyPi && (pl._crusadeUntil ?? -1) >= G.turn;
-      if (enemyAlign === 'Undead') return { mult: CRUSADE_VS_UNDEAD_MULT, label: 'Crusade against the Undead ×1.75' }; // round 5
+      if (enemyAlign === 'Undead')
+        return { mult: CRUSADE_VS_UNDEAD_MULT, label: 'Smite the Unholy ×1.75 (the Undead)' }; // round 5; round 29: renamed from the Crusade
       if (proclaimed) return { mult: 1.5, label: 'Proclaimed Crusade ×1.5' };
       // round 8: the Crusade is against the wild too — any host with a creature or monster company in it
       if ((side.enemyArmies ?? []).some((a) => CREATURES.has(a.type) || MONSTERS.has(a.type)))
-        return { mult: 1.5, label: 'Crusade against the wild ×1.5' };
+        return { mult: 1.5, label: 'Smite the Unholy ×1.5 (beasts)' };
       if (dark || (isAttacker && monsterWild) || holy)
-        return { mult: 1.5, label: holy && !dark ? 'Crusade: holy ground ×1.5' : 'Crusade ×1.5' };
+        return { mult: 1.5, label: holy && !dark ? 'Smite the Unholy ×1.5 (holy ground)' : 'Smite the Unholy ×1.5' };
       return nothing;
     }
     case 'Good': {
