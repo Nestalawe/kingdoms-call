@@ -1343,26 +1343,33 @@ export function botMasteryPre(G, pi, c, P, ctx) {
 }
 // ══ DUELS (Sept 2026, Toby): a general's duel stance is a judgement, not a temper ════
 // The engine let a bot commander's Temper pick the stance — a Brave lord with Melee 0 rode out to die.
-// Now every bot character carries a stance set here each turn: CHALLENGE only when he is a real duellist
-// (a fighting skill or battle school at 4+, 80%+ health) and any enemy general seen within two hexes
-// is forecast beaten (on the skills our spies know); ACCEPT when he can hold his own (a duel skill at
-// 2+, 60%+ health); REFUSE when he cannot (the 20% morale cost is cheaper than a dead general).
+// Now every bot character carries a stance set here each turn, from the duel forecast (the engine's own personal
+// combat on copies) against every enemy general seen within two hexes, on the skills our spies know. A challenger rides
+// out only when he expects to win, so a challenge answered unforecast is a gamble (bot improvements, step 3):
+//   REFUSE — no duelling skill at 2+, or under 60% health, or a forecast that falls short of the terms below (the 20%
+//     morale cost is cheaper than a dead general).
+//   ACCEPT — a hero at 50%+ to win against each general seen; a king at 60%+ and 10% or less to fall (a fallen king
+//     costs the crown). Seeing no general: a hero accepts from a duelling skill of 2, a king only from 4.
+//   CHALLENGE — a real duellist (a duelling skill at 4+, 80%+ health) forecast at 65%+ against each general seen; a
+//     king also risks 10% or less of falling. Seeing no general, a hero challenges as before; a king only accepts.
 // botDuelSkill (a character's best duelling skill) is in bots/strategy.ts.
+export const BOT_DUEL = { heroAccept: 0.5, kingAccept: 0.6, kingFelled: 0.1, challenge: 0.65 };
 export function botDuelStance(G, pi, c, duelSim) {
   const hp = c.hp != null ? c.hp : c.maxHp || 20,
     mhp = c.maxHp || 20;
   const d = botDuelSkill(c);
   if (d < 2 || hp < mhp * 0.6) return 'refuse';
-  if (d < 4 || hp < mhp * 0.8) return 'accept';
+  const fit = d >= 4 && hp >= mhp * 0.8; // a real duellist, fit to ride out
   const P = G.world.provinces[c.location];
-  if (!P) return 'accept';
-  const near = [P];
-  for (let i = 0; i < 6; i++) {
-    const N = botNeighbourProv(G, P, i);
-    if (N) near.push(N);
-  }
+  const near = P ? [P] : [];
+  if (P)
+    for (let i = 0; i < 6; i++) {
+      const N = botNeighbourProv(G, P, i);
+      if (N) near.push(N);
+    }
   const I = botEnemyIntel(G, pi);
-  let worst = null;
+  let win = null,
+    felled = 0;
   (G.characters || []).forEach((e) => {
     if (!(
       e &&
@@ -1377,11 +1384,19 @@ export function botDuelStance(G, pi, c, duelSim) {
     const loc = botSeesChar(G, pi, e) ? e.location : r && (G.turn || 0) - r.turn <= 2 ? r.provId : null;
     if (loc == null || !near.some((x) => x.id === loc)) return;
     const f = typeof duelSim === 'function' ? duelSim(c, botAssumedChar(G, pi, e), 16) : null;
-    const win = f ? f.win : botDuelRating(c) >= botDuelRating(botAssumedChar(G, pi, e)) * 1.3 ? 0.7 : 0.4;
-    if (worst == null || win < worst) worst = win;
+    const w = f ? f.win : botDuelRating(c) >= botDuelRating(botAssumedChar(G, pi, e)) * 1.3 ? 0.7 : 0.4;
+    const fl = f ? f.felled : w >= 0.7 ? 0.05 : 0.3;
+    if (win == null || w < win) win = w;
+    if (fl > felled) felled = fl;
   });
-  if (worst != null && worst < 0.65) return 'accept';
-  return 'challenge';
+  if (win == null) {
+    if (c.isKing) return d >= 4 ? 'accept' : 'refuse';
+    return fit ? 'challenge' : 'accept';
+  }
+  const safe = !c.isKing || felled <= BOT_DUEL.kingFelled;
+  if (fit && safe && win >= BOT_DUEL.challenge) return 'challenge';
+  if (safe && win >= (c.isKing ? BOT_DUEL.kingAccept : BOT_DUEL.heroAccept)) return 'accept';
+  return 'refuse';
 }
 export function botSetDuelStances(G, pi, duelSim) {
   (G.characters || []).forEach((c) => {
