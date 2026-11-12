@@ -5,7 +5,7 @@
     "tsNocheckUi": 20,
     "tsIgnore": 0,
     "eslintDisable": 0,
-    "stubDbTests": 49,
+    "stubDbTests": 37,
     "allowlistEntries": 1,
     "javascriptFiles": 85,
     "quarantinedTests": 4,

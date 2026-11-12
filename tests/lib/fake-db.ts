@@ -644,10 +644,10 @@ export interface ADispatchRefused {
   readonly details: string | null;
 }
 /** What the player page reads, held by the fake: who is signed in (`me`, else no one), the accounts' names, the games
- *  and their realms (as tests/lib/stub-db.js's makeStub held them: a test may add one later, and reads a join back), and
- *  what a dispatch sent is refused with (`dispatchRefused`, none: sent). The fake answers each read as its query asks
- *  (its filters, never the access rules), and notes in `readsOfAnotherAccountsRealms` each read of the realms that asks
- *  for an account other than `me`'s, or for a realm not `me`'s. */
+ *  and their realms (as makeStub, in tests/lib/stub-db.js, held them: a test may add one later, and reads a join
+ *  back), and what a dispatch sent is refused with (`dispatchRefused`, none: sent). The fake answers each read as its
+ *  query asks (its filters, never the access rules), and notes in `readsOfAnotherAccountsRealms` each read of the
+ *  realms that asks for an account other than `me`'s, or for a realm not `me`'s. */
 export interface ThePlayersWorld {
   readonly me: string | null;
   readonly names: readonly AnAccountsName[];
