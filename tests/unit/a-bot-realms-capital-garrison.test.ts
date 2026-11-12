@@ -33,7 +33,7 @@ function stage(o: { lairSwitch: boolean; turn: number; enemyBeside: boolean }) {
   if (!next || !rich) throw new Error('no neighbours');
   b.own(next, 0);
   b.own(rich, 0);
-  rich.tax = 8;
+  rich['tax'] = 8;
   if (o.enemyBeside) hero(b, { player: 1, at: next, troops: 4 });
   return { capital: garrisonTarget(b.G, b.X, 0), rich: garrisonTarget(b.G, rich, 0) };
 }

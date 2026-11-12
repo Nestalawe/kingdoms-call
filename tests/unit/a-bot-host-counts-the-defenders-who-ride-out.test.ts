@@ -33,14 +33,14 @@ function stage(riders: number | null) {
   G['turn'] = 10;
   b.own(b.X, 0);
   b.ring1.forEach((p) => {
-    p.tax = 1;
+    p['tax'] = 1;
   });
   const target = b.ring1[0];
   if (!target) throw new Error('no neighbour');
   const beside = b.ring1.find((p) => p !== target && b.nbrs(target).includes(p));
   if (!beside) throw new Error('no province beside both');
   b.own(target, 1);
-  target.tax = 9;
+  target['tax'] = 9;
   target.garrisonArmies = [{ type: 'Men-at-Arms', quality: 'Regular', race: 'Human', unitName: 'Watch of the Gate' }];
   if (riders != null) {
     b.own(beside, 0);
