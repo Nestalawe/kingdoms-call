@@ -5,13 +5,15 @@
 // Level 1 (unit): the page's file imports in Node once its config, the `supabase` global and a Db are handed in (as
 // the-overlords-games-list-reads-every-page-of-games.test.ts does); each function is called directly on a staged list.
 // A page test would boot the page and sign the Overlord in to reach each list.
-import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import type {
+  ASignInAnswer,
   AGameAsTheOverlordListsIt,
   AnAccountAsTheOverlordSeesIt,
   AReportedDispatch,
   ARealmsName,
   Db,
+  TheSignedInAccount,
 } from '../../src/db/the-db-interface-and-its-areas.ts';
 import { THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER } from '../../src/db/the-pages-database-client.ts';
 import { bootJsdom } from '../lib/boot.js';
@@ -51,6 +53,12 @@ let games: AGameAsTheOverlordListsIt[] = [];
 let accounts: AnAccountAsTheOverlordSeesIt[] = [];
 let reports: AReportedDispatch[] = [];
 let realms: ARealmsName[] = [];
+/** What signing in answers, and the session the browser keeps after it. */
+let signedIn: ASignInAnswer = { data: { user: null, session: null }, error: null };
+let keptSession: TheSignedInAccount | null = null;
+/** The email and password each sign-in was asked with, and how often the page asked whether it is the Overlord's. */
+const signIns: [string, string][] = [];
+let overlordChecks = 0;
 /** The suspensions asked for: the account and the end. */
 const suspensions: [string, string | null][] = [];
 type ThePage = typeof import('../../src/ui/overlord/main.ts');
@@ -65,6 +73,22 @@ beforeAll(async () => {
   const db: Db = {
     ...fake.db,
     theDatabasesVersion: { askTheDatabaseItsVersion: () => new Promise(() => undefined) },
+    signingIn: {
+      ...fake.db.signingIn,
+      signInWithEmailAndPassword: (email, password) => {
+        signIns.push([email, password]);
+        return Promise.resolve(signedIn);
+      },
+      theSessionKeptInThisBrowser: () =>
+        Promise.resolve({ data: { session: keptSession ? { user: keptSession } : null }, error: null }),
+    },
+    theRoles: {
+      ...fake.db.theRoles,
+      isTheSignedInAccountTheOverlord: () => {
+        overlordChecks++;
+        return answer(false);
+      },
+    },
     theOverlordsGames: {
       ...fake.db.theOverlordsGames,
       everyGameNewestFirstFromRowToRow: (from) => answer(from === 0 ? games : []),
@@ -88,7 +112,9 @@ beforeAll(async () => {
     },
   };
   const { window } = bootJsdom(
-    '<!doctype html><html><body><div id="msg"></div><input id="acct-q"><div id="accounts"></div>' +
+    '<!doctype html><html><body><div id="sec-auth"></div><div id="sec-denied"></div><div id="sec-main"></div>' +
+      '<div id="auth-msg"></div><input id="si-email"><input id="si-password"><div id="denied-msg"></div>' +
+      '<span id="me-email"></span><div id="msg"></div><input id="acct-q"><div id="accounts"></div>' +
       '<div id="games"></div><div id="reports"></div></body></html>',
   );
   Object.assign(globalThis, {
@@ -111,9 +137,16 @@ beforeEach(() => {
   reports = [];
   realms = [];
   suspensions.length = 0;
-  const q = doc.getElementById('acct-q');
-  if (q && 'value' in q) q.value = '';
+  signIns.length = 0;
+  overlordChecks = 0;
+  keptSession = null;
+  type('acct-q', '');
 });
+/** Types `words` into the field `id`. */
+function type(id: string, words: string): void {
+  const field = doc.getElementById(id);
+  if (field && 'value' in field) field.value = words;
+}
 
 /** The cells of a row, as its words. */
 const cells = (selector: string): string[] => [...doc.querySelectorAll(selector + ' > td')].map((td) => td.textContent);
@@ -173,9 +206,10 @@ describe("the Overlord's games list", () => {
 
 describe("the Overlord's accounts", () => {
   test('an account with no name shows "(no name)", one with no email nothing; no sign-in a dash', async () => {
-    accounts = [anAccount('a', null, 'a@example.test'), anAccount('b', 'Bram Vey', null)];
+    accounts = [anAccount('a', null, 'a@example.test'), anAccount('b', 'Bram Vey', null), anAccount('e', '', null)];
     await page.loadAccounts();
     page.renderAccounts();
+    expect(cells('#accounts tr[data-user="e"]')[0]).toBe('(no name)');
     expect(cells('#accounts tr[data-user="a"]').slice(0, 4)).toEqual([
       '(no name)',
       'a@example.test',
@@ -195,8 +229,7 @@ describe("the Overlord's accounts", () => {
       anAccount('c', 'Cy', 'c@example.test'),
     ];
     await page.loadAccounts();
-    const box = doc.getElementById('acct-q');
-    if (box && 'value' in box) box.value = q;
+    type('acct-q', q);
     page.renderAccounts();
     expect([...doc.querySelectorAll('#accounts tr[data-user]')].map((tr) => tr.getAttribute('data-user'))).toEqual(
       found,
@@ -209,6 +242,7 @@ describe("the Overlord's accounts", () => {
       anAccount('z', 'Zed', null, 'game_master'),
       anAccount('m', '', 'm@example.test', 'game_master'),
       anAccount('b', 'Bram', null, 'game_master'),
+      anAccount('n', null, 'n@example.test', 'game_master'),
     ];
     games = [aGame('G1', 'a', {})];
     await Promise.all([page.loadAccounts(), page.loadGames()]);
@@ -217,6 +251,7 @@ describe("the Overlord's accounts", () => {
     expect([...panel.querySelectorAll('option')].map((o) => o.textContent)).toEqual([
       'Hand over to…',
       'm@example.test',
+      'n@example.test',
       'Bram',
       'Zed',
     ]);
@@ -249,6 +284,8 @@ describe("the Overlord's accounts", () => {
     expect(text('msg')).toBe('a@example.test is no longer a Game Master.');
     await page.offerGm(anAccount('b', '', null));
     expect(text('msg')).toBe("Offered Game Master to null. They'll see it at the top of their player portal.");
+    await page.suspend(a, 'day');
+    expect(text('msg')).toBe('a@example.test is suspended for a day.');
     await page.suspend(anAccount('c', null, null), 'day');
     expect(text('msg')).toBe('(no name) is suspended for a day.');
   });
@@ -320,5 +357,40 @@ describe("the Overlord's reported dispatches", () => {
       '(a deleted game) · from Realm 1 to every realm · reported by Realm 2',
       'Made-up game G1 · Turn 3 · from Thornmere to  · reported by Realm 3',
     ]);
+  });
+});
+
+describe("the Overlord page's sign-in", () => {
+  const ada: TheSignedInAccount = { id: 'ada', email: 'ada@example.test', user_metadata: {} };
+  const kept: TheSignedInAccount = { id: 'kept', email: 'kept@example.test', user_metadata: {} };
+
+  test.for([
+    ['Invalid login credentials', 'Email or password incorrect.'],
+    ['Email not confirmed', 'Email not confirmed'],
+  ] as const)('a refusal that says %j reads %j', async ([message, shown]) => {
+    signedIn = { data: { user: null, session: null }, error: { message } };
+    type('si-email', ' ada@example.test ');
+    type('si-password', 'a made-up password');
+    await page.doSignIn();
+    expect(signIns).toEqual([['ada@example.test', 'a made-up password']]);
+    expect(text('auth-msg')).toBe(shown);
+    expect(overlordChecks).toBe(0);
+  });
+
+  test.for([
+    ['the account signing in answers', ada, kept, 'ada'],
+    ['none answers, the session kept', null, kept, 'kept'],
+    ['none answers and none is kept', null, null, null],
+  ] as const)('%s: the page is signed in as it', async ([, user, session, id]) => {
+    signedIn = { data: { user, session: null }, error: null };
+    keptSession = session;
+    type('si-email', 'ada@example.test');
+    type('si-password', 'a made-up password');
+    await page.doSignIn();
+    expect(page.ME?.id ?? null).toBe(id);
+    await vi.waitFor(() => {
+      expect(overlordChecks).toBe(id === null ? 0 : 1);
+    });
+    expect(text('auth-msg')).toBe('');
   });
 });
