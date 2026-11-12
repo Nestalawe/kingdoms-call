@@ -277,7 +277,6 @@ describe('the thread', () => {
   test("a refresh refused, or one that throws, shows the database's words in the note", async () => {
     await openTheDispatches();
     answers.newest = () => ({ data: null, error: { message: 'the read was refused' }, status: 401 });
-    stage('_msgMaxId = 0;');
     await call('refreshMessages', true);
     expect(stage('_msgErr')).toBe('the read was refused');
     expect(textOf('msg-note')).toBe('the read was refused');

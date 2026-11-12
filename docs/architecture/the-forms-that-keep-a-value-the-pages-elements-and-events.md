@@ -44,6 +44,14 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 
 - **An event's target tested for `closest`** (`ev.target && ev.target.closest && ev.target.closest(sel)`, the order
   form's listeners) is `ev.target instanceof Element && ev.target.closest(sel)`: only an element has `closest`.
+- **A text walk's ancestors read for their namespace, classes or editing** (`el.namespaceURI`, `el.classList &&`,
+  `el.isContentEditable` on a `ParentNode`) are read behind `el instanceof Element` (`HTMLElement` for editing): a
+  fragment or the document has none, which the old reads gave as `undefined` (`linkProvinceNames`, `layout.ts`). A text
+  node's words, its parent and a match's group, which the walk makes sure, go through readers that throw, for none,
+  the `TypeError` the old read threw.
+- **A watcher kept in a `let` that a callback then reads** (`_deskFitObs = new ResizeObserver(…)`, then
+  `forEach((el) => _deskFitObs.observe(el))`) is made into a `const` and then kept: the callback keeps the `const`'s
+  type. `clearTimeout(t)` on a timer that may be `null` is `clearTimeout(t ?? undefined)`: both clear nothing.
 - **An element looked up before the HTML written into it is built** (`el.innerHTML = kcHtml\`…\``) is read through
   `theElementWithTheId` after the HTML is built into a `const`: the page builds the right side before a missing element
   throws.
@@ -73,12 +81,20 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   err.message` reads the message through `Reflect.get(Object(err), 'message')`, in words, after a check that throws for
   `null` or `undefined` as the read did (`theMessageOf`, `src/ui/player/start.ts`).
 
+- **A database's refusal thrown for the page's own `catch`** (`if (error) throw error;`, the answer's error an object
+  with its message, code and hint, not an `Error`) is thrown through a reader typed `unknown` (`theRefusalAsThrown`,
+  `dispatches.ts`): the same object reaches the `catch`, which reads its words and hint; lint's `only-throw-error`
+  refuses an object of a known type that isn't an `Error`, and wrapping it would lose its hint.
+
 - **An `async` function that awaits nothing** (a page global no caller awaits: Resubmit) is a plain function (lint's
   `require-await`): its promise was read by nobody, and its body throws only where the page holds none of an element
   every screen holds.
 
 ## The page's globals
 
+- **A mark the page writes on its seat or report** (`_liveTurn`), read `x && x._liveTurn`, goes through a reader typed
+  `unknown` (`holder && Reflect.get(Object(holder), '_liveTurn')`, `theLiveTurnHeldBy`): a missing holder gives itself,
+  as before (the Dispatches' `_msgNum(null)` is 0, `_msgNum(undefined)` is `null`).
 - **A page's `let` read only once it is set** (the Overlord page's `ME`, after sign-in) goes through a reader that throws,
   for `null`, the `TypeError` the read threw (`theSignedInAccount`).
 

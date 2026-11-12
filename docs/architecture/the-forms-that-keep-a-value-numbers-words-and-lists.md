@@ -43,6 +43,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `odds?.[String(pi)]`, its parameter `number | null | undefined`: a `null` reads the key `'null'`, as before.
 - **`${x}` on a value of any kind once `x !== null` has narrowed it** (the turn a stale order names) is read into a
   `const` typed `unknown` first, then `${String(shown)}`: lint's `no-base-to-string` refuses the narrowed `{}`.
+- **`isNaN(d)` on a `Date`** is `isNaN(d.getTime())`: `isNaN` reads a date by its `valueOf`, which is `getTime()`.
 - **`parseInt(x)`** on a number or a regular expression's group is `parseInt(String(x))`: `parseInt` reads its argument
   as words. `s.match(re)` with no `g` flag is `re.exec(s)`, the same result.
 - **Flags subtracted in a sort** (`y.fly - x.fly`, flying first) are `Number(y.fly) - Number(x.fly)`: the same order.

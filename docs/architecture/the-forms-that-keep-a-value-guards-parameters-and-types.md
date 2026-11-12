@@ -80,6 +80,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A rule's switch that holds one value today** (`ARCHERY_PARTING_SHOT = true`) is typed by an alias of `boolean`, so
   its test still reads it.
 
+- **A reader of any value as a list** (`Array.isArray(v) ? v : []`, the Dispatches' `_msgArr`), handed typed lists
+  and values of any kind, keeps a typed list's element type by an overload (`<Item>(v: readonly Item[] | null |
+  undefined): readonly Item[]`, then `(v: unknown): readonly unknown[]`): one body, the same value.
+
 - **A parameter set to its own default that callbacks read** (`hooks = hooks || {}`, then `hooks.duelSim` in a
   `forEach`) is a `const` of the old name set from the parameter renamed (`const hooks = hooksHanded ?? {};`): a
   callback keeps a `const`'s narrowing, not a reassigned parameter's. **`list.filter(p)[0]`** (lint's `prefer-find`)

@@ -194,7 +194,8 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   and `error`), so the page's error paths stay the same. Every other call is still on the page's `sb`.
 - **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
   compiler error. They write every function's argument as never null: `TheDatabase` (beside `Db`) widens the ones that
-  take null on purpose (`account_suspend`'s `p_until`). Never edit them by hand: run `npx supabase@2.120.0 gen types
+  take null on purpose (`account_suspend`'s `p_until`), and a dispatch's sender, which the player page sends as null
+  with no account signed in. Never edit them by hand: run `npx supabase@2.120.0 gen types
   typescript --local > src/db/database.types.ts` against the local database with every migration applied, then
   `npx prettier --write src/db/database.types.ts`. CI's `db` job generates them again from its own local database and
   compares: a stale file fails it.
