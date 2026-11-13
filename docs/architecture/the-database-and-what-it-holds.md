@@ -192,7 +192,9 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   check; P2-05 later changes only these). The player page makes no call on `sb`. Then the GM's games:
   `db.theGameMastersGames` (the list, a game, making, changing, archiving, the backfill) and `db.theGameMastersRealms`
   (removing a realm), then the GM's turn log, `db.theGameMastersTurnLogs`, and deleting a game,
-  `db.theDeletionOfAGame` (its rows in each of 8 tables, one function a table). A `Db` function
+  `db.theDeletionOfAGame` (its rows in each of 8 tables, one function a table). Then the turn's shell,
+  `db.theTurnAsTheGameMasterRunsIt` (the game and its realms read, the orders cleared and put back, the save while on
+  its turn, the reports, the logs), and the statistics it writes (`db.theStatistics`). A `Db` function
   sends the query the page sent before and answers as supabase-js does (`data`, `error`, `status`; the sign-in's `data`
   and `error`), so the page's error paths stay the same. Every other call is still on the page's `sb`.
 - **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
