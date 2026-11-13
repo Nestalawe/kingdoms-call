@@ -32,3 +32,21 @@ export function theDateOf(value: unknown): Date {
   if (made instanceof Date) return made;
   throw new TypeError('the Date constructor made no date');
 }
+/**
+ * `a + b` on values of any kind (a game's record as parsed from JSON: a score, a count, a name), as JavaScript adds
+ * them: words where either side is words once read as a `+` reads it, else the two read as numbers. An object or a list
+ * (all JSON holds besides words, numbers, flags and none) reads as its words (`[object Object]`, its elements joined),
+ * as `+` reads one; JSON holds no date, symbol or big number, the kinds a `+` reads otherwise.
+ */
+export function theSumAsJavaScriptMakesIt(a: unknown, b: unknown): number | string {
+  const left = aSideAsAPlusReadsIt(a);
+  const right = aSideAsAPlusReadsIt(b);
+  if (typeof left === 'string' || typeof right === 'string') return String(left) + String(right);
+  return Number(left) + Number(right);
+}
+/** One side of a `+` as it reads it: an object or a list as its words, any other value as it is. */
+function aSideAsAPlusReadsIt(side: unknown): unknown {
+  if (typeof side !== 'object' || side === null) return side;
+  const held: unknown = side;
+  return String(held);
+}
