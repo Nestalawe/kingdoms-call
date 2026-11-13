@@ -604,6 +604,30 @@ export interface Db {
     /** Removes the realm `realm` from its game. */
     readonly removeThisRealm: (realm: string) => PromiseLike<ADatabaseAnswer<null>>;
   };
+  /** The turns' logs (turn_logs), as the GM page reads a turn's whole log. */
+  readonly theGameMastersTurnLogs: {
+    /** The GM's whole log (realm -1) of the game `game` in the turn `turn`, every column. */
+    readonly theWholeLogOfThisGameInThisTurn: (game: string, turn: number) => PromiseLike<ADatabaseAnswer<ATurnsLog[]>>;
+  };
+  /** Deleting a game: its rows in each table that holds them, as the GM page removes them, one table a function. */
+  readonly theDeletionOfAGame: {
+    /** Removes every log of the game `game` (turn_logs). */
+    readonly removeThisGamesTurnLogs: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Removes every dispatch of the game `game` (game_messages). */
+    readonly removeThisGamesDispatches: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Removes every realm's read marks of the game `game` (game_message_reads). */
+    readonly removeThisGamesReadMarks: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Removes every statistics row of the game `game`'s turns (turn_events). */
+    readonly removeThisGamesTurnEvents: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Removes every result of the game `game` (game_results). */
+    readonly removeThisGamesResults: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Removes the game `game`'s Hall of Fame entry (game_records). */
+    readonly removeThisGamesHallOfFameEntry: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Removes every realm of the game `game` (game_players). */
+    readonly removeThisGamesRealms: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Removes the game `game` itself (games). */
+    readonly removeThisGame: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+  };
 }
 
 // The GM page's list's columns, held as the page held them (ui/gm/startup.ts's gamesListCols, until P1-17m): with the
@@ -880,6 +904,20 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
     },
     theGameMastersRealms: {
       removeThisRealm: (realm) => client.from('game_players').delete().eq('id', realm),
+    },
+    theGameMastersTurnLogs: {
+      theWholeLogOfThisGameInThisTurn: (game, turn) =>
+        client.from('turn_logs').select('*').eq('game_id', game).eq('turn', turn).eq('player_index', -1),
+    },
+    theDeletionOfAGame: {
+      removeThisGamesTurnLogs: (game) => client.from('turn_logs').delete().eq('game_id', game),
+      removeThisGamesDispatches: (game) => client.from('game_messages').delete().eq('game_id', game),
+      removeThisGamesReadMarks: (game) => client.from('game_message_reads').delete().eq('game_id', game),
+      removeThisGamesTurnEvents: (game) => client.from('turn_events').delete().eq('game_id', game),
+      removeThisGamesResults: (game) => client.from('game_results').delete().eq('game_id', game),
+      removeThisGamesHallOfFameEntry: (game) => client.from('game_records').delete().eq('game_id', game),
+      removeThisGamesRealms: (game) => client.from('game_players').delete().eq('game_id', game),
+      removeThisGame: (game) => client.from('games').delete().eq('id', game),
     },
   };
 }

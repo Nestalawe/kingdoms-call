@@ -1,7 +1,7 @@
 {
   "src/db/the-db-interface-and-its-areas.ts": {
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 9
+      "count": 10
     }
   },
   "src/engine/battle/battle-report-lines-and-force-markers.ts": {
@@ -379,9 +379,6 @@
   "src/ui/gm/turn-log.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
     }
   },
   "src/ui/gm/turn-mode.ts": {

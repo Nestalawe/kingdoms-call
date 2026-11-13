@@ -293,6 +293,19 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
     theGameMastersRealms: {
       removeThisRealm: answering('from:game_players', nothingMatched),
     },
+    theGameMastersTurnLogs: {
+      theWholeLogOfThisGameInThisTurn: answering('from:turn_logs', none),
+    },
+    theDeletionOfAGame: {
+      removeThisGamesTurnLogs: answering('from:turn_logs', nothingMatched),
+      removeThisGamesDispatches: answering('from:game_messages', nothingMatched),
+      removeThisGamesReadMarks: answering('from:game_message_reads', nothingMatched),
+      removeThisGamesTurnEvents: answering('from:turn_events', nothingMatched),
+      removeThisGamesResults: answering('from:game_results', nothingMatched),
+      removeThisGamesHallOfFameEntry: answering('from:game_records', nothingMatched),
+      removeThisGamesRealms: answering('from:game_players', nothingMatched),
+      removeThisGame: answering('from:games', nothingMatched),
+    },
   };
   return { db, calls };
 }
