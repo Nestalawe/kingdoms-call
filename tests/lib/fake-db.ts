@@ -1086,7 +1086,7 @@ export type TheGameMastersTables = Record<
   | 'site_admins',
   ARowTheGameMastersWorldHolds[]
 >;
-/** What the GM page reads and changes, held by the fake (plan P1-17q2), as tests/lib/stub-db.js's makeStub held it:
+/** What the GM page reads and changes, held by the fake (plan P1-17q2), as the stand-in makeStub held it (tests/lib/stub-db.js):
  *  who is signed in (`me`, else no one: gm1, a Game Master, unless a test says otherwise), the tables, the columns an
  *  older database lacks (`missingColumns`, "table.column": a query naming one is refused in the database's words), the
  *  calls that fail (`failing`, "table.op" or "rpc.name": that call answers that error), and every call made (`calls`,
