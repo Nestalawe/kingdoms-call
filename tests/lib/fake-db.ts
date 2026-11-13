@@ -214,6 +214,9 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
       deleteThisGamesTurnRecords: answering('from:turn_events', nothingMatched),
       deleteTheseGamesResults: answering('from:game_results', nothingMatched),
       deleteTheseGamesTurnRecords: answering('from:turn_events', nothingMatched),
+      writeTheseResults: answering('from:game_results', () => refusedByTheAccessRules('game_results')),
+      writeTheseTurnRecords: answering('from:turn_events', () => refusedByTheAccessRules('turn_events')),
+      theGamesOfTheseGamesResults: answering('from:game_results', none),
     },
     theHallOfFamesGames: {
       oneGameThisGameMasterRuns: answering('from:games', none),
@@ -222,6 +225,8 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
       everyGamesNameStatusAndTurn: answering('from:games', none),
       theNameStatusAndTurnOfTheGamesThisGameMasterRuns: answering('from:games', none),
       whichOfTheseGamesStillExist: answering('from:games', none),
+      theIdNameAndStateOfTheFinishedGamesThisGameMasterRuns: answering('from:games', none),
+      thisGamesIdNameAndWorldWithEveryColumnOfItsRealms: answering('from:games', noSuchRow),
     },
     theDispatches: {
       oneDispatchsId: answering('from:game_messages', none),
@@ -305,6 +310,16 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
       removeThisGamesHallOfFameEntry: answering('from:game_records', nothingMatched),
       removeThisGamesRealms: answering('from:game_players', nothingMatched),
       removeThisGame: answering('from:games', nothingMatched),
+    },
+    theTurnAsTheGameMasterRunsIt: {
+      thisGameEveryColumn: answering('from:games', noSuchRow),
+      everyRealmOfThisGame: answering('from:game_players', none),
+      clearTheOrdersOfEveryRealmOfThisGame: answering('from:game_players', nothingMatched),
+      saveThisGameWhileOnThisTurnAndAnswerItsId: answering('from:games', noneMatchedOfOne),
+      giveThisRealmItsTurnReport: answering('from:game_players', nothingMatched),
+      writeThisLog: answering('from:turn_logs', () => refusedByTheAccessRules('turn_logs')),
+      theTurnOfThisGameIfItIsThere: answering('from:games', noneMatchedOfOne),
+      putBackThisRealmsOrders: answering('from:game_players', nothingMatched),
     },
   };
   return { db, calls };
