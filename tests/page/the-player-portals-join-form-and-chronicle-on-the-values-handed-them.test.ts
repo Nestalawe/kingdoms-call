@@ -151,6 +151,9 @@ describe('the join form', () => {
     expect(info).toContain('Game Master: the Game Master');
     expect(info).toContain('World size: —');
     expect(info).toContain('3/4 players have already joined. There is 1 open slot.');
+    await theJoinFormOpen('', null, 4, 3);
+    expect(textOf('join-game-info')).toContain('Game Master: the Game Master');
+    expect(textOf('join-game-info')).toContain('World size: —');
     await theJoinFormOpen('Warden Pell', '4 realms', 4, 2);
     expect(textOf('join-game-info')).toContain('Game Master: Warden Pell');
     expect(textOf('join-game-info')).toContain('World size: 4 realms');
@@ -396,6 +399,13 @@ describe('the chronicle', () => {
         phase: 1,
       },
       {
+        text: side({ name: 'Lone Scout', armies: [{ type: 'Scouts' }] }),
+        battleId: 'b1',
+        bTier: 'k',
+        charId: 1,
+        phase: 1,
+      },
+      {
         text: side({ name: 'Orc Chief', guard: true, armies: [{ type: 'Orcs' }] }),
         battleId: 'b1',
         bTier: 'd',
@@ -416,6 +426,7 @@ describe('the chronicle', () => {
     expect(short).toContain(' unit, ');
     expect(short).toContain(' Knights</div>');
     expect(short).toContain('>Vale Guard</span> holds — no armies');
+    expect(short).toContain('>Lone Scout</span>  — 1 unit: ');
     expect(short).toContain('<span style="color:#555;font-weight:700">Vale Guard</span>');
     expect(short).not.toContain('Orc Chief');
     expect(textOf('report-log')).toContain('⚑FORCE⚑null');
