@@ -4,7 +4,11 @@
 // companies it sent overland off the copy only: the real heroes still led the very same companies. In one balance game
 // a company so sent was in a garrison and in a hero's column at once; it died with the garrison in the next phase, and
 // the hero's ships later put the same, dead, record ashore in another garrison, which the save's check refused. Now a
-// company the split garrisons overland leaves every hero's column, as the ships it leaves ashore already do.
+// company the split garrisons overland leaves every hero's column, as the ships it leaves ashore already do; a company
+// that rallied into the battle from a garrison or a leaderless host loses the marks it carried there; and the split hands
+// the companies it sent overland back to its caller (the turn's _companiesSentOverland), which takes them off the
+// garrison and the leaderless hosts it keeps in lists of its own (that part: tests/scenario/a-beaten-fleets-left-over-
+// garrison-and-leaderless-companies-are-in-one-place.test.ts).
 // Level 1 (unit): navalSplitRetreat called directly on the engine's modules, on a world the engine makes (no turn is
 // played). Not lower: the split reads the map around the beaten side. The copy is made as the battle makes it.
 import '../lib/the-whole-engine.ts';
@@ -23,6 +27,7 @@ interface Army {
   quality: string;
   race: string;
   unitName: string;
+  [key: string]: unknown;
 }
 interface Character {
   id: number;
@@ -132,8 +137,17 @@ test('a company the beaten fleet sends overland to a garrison is led by no hero 
   // the defender leads one hull and two companies of horse; the hero beside him two more
   const defender = lead(9101, [company('Galleon Fleet', 1), company('Gilded Lances', 1), company('Gilded Lances', 2)]);
   const ally = lead(9102, [company('Gilded Lances', 3), company('Gilded Lances', 4)]);
+  // the companies that rallied into the battle, from the garrison and from a fallen hero's leaderless host, with the
+  // marks the Move order gives them; Green, so the weakest, the first the hull leaves behind
+  const fromTheGarrison: Army = {
+    ...company('Shieldwall Levies', 1),
+    quality: 'Green',
+    _fromGarrison: true,
+    _garrisonOf: site.id,
+  };
+  const fromAHost: Army = { ...company('Shieldwall Levies', 2), quality: 'Green', _fromLeaderless: 9103 };
   // the battle's pooled copy of the beaten side, as the Move order makes it: the same company records
-  const pooled: Character = { ...defender, armies: [...defender.armies, ...ally.armies] };
+  const pooled: Character = { ...defender, armies: [...defender.armies, ...ally.armies, fromTheGarrison, fromAHost] };
   const tc = addTheFieldsResolveTurnAdds(
     createTurnContext(...([G, [], 3] as unknown as Parameters<typeof createTurnContext>)),
     { KC_SEASONS, isBotRow },
@@ -150,4 +164,14 @@ test('a company the beaten fleet sends overland to a garrison is led by no hero 
     h.armies.filter((a) => ashore.includes(a)).map((a) => `${h.name}: ${a.unitName}`),
   );
   expect(stillLed, 'no hero still leads a company now in the garrison').toEqual([]);
+  expect(ashore, 'the rallied companies, the weakest, are among those sent overland').toEqual(
+    expect.arrayContaining([fromTheGarrison, fromAHost]),
+  );
+  const marked = ashore.filter((a) => ['_fromGarrison', '_garrisonOf', '_fromLeaderless'].some((k) => k in a));
+  expect(
+    marked.map((a) => a.unitName),
+    'no company in the garrison keeps a rally mark',
+  ).toEqual([]);
+  const tcSent = (tc as unknown as { _companiesSentOverland: Army[] })._companiesSentOverland;
+  expect(tcSent, 'the split hands back exactly the companies it sent overland').toEqual(ashore);
 });

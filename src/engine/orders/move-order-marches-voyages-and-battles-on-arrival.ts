@@ -1410,6 +1410,7 @@ export function resolveMoveOrder(
         });
         return;
       } // MARCH L7 slip
+      turnContext._companiesSentOverland = []; // what this battle's beaten fleet sends overland (navalSplitRetreat)
       const battle = combatVsChar(turnContext, combinedAtk, combinedDef, toProv);
       const theBattleAsItsGuardsReadIt = asItsGuardReadsIt(battle); // read unguarded below too
       syncLeaderCopy(turnContext, _atkLead, combinedAtk);
@@ -1498,21 +1499,24 @@ export function resolveMoveOrder(
       // report announced hulls holding the field, then deleted them and handed the attacker
       // the province in the same breath. Hold them aside from here on.
       const _navalHeld = navalHeldIn(toProv);
+      // ...and the companies a beaten fleet sent overland to a garrison elsewhere: the garrison they rallied from, a
+      // leaderless host and the real heroes all still hold them, so they come off every list below with the hulls.
+      const _leftElsewhere = [..._navalHeld, ...turnContext._companiesSentOverland];
       // combatVsChar fights on a POOLED COPY, and syncLeaderCopy deliberately does not write
       // `armies` back — the caller splits the pooled list to its owners, and it only strips
       // the dead. A hull the naval retreat took off the copy's list was therefore still on
       // the real commander's, so the same object ended up marching inland with him AND
       // sitting in the province garrison. Take the stranded hulls off every real party
       // member on both sides; they belong to the ground now.
-      if (_navalHeld.length) {
+      if (_leftElsewhere.length) {
         [c, ...pvpReinforcements, defChar, ...defReinforcements].forEach((ch: Character | null | undefined) => {
           if (!ch || !Array.isArray(ch.armies)) return;
           const _n = ch.armies.length;
-          ch.armies = ch.armies.filter((a) => !_navalHeld.includes(a));
+          ch.armies = ch.armies.filter((a) => !_leftElsewhere.includes(a));
           if (ch.armies.length !== _n && typeof refreshMovePool === 'function') refreshMovePool(turnContext, ch);
         });
       }
-      const _garrisonSurv = _garrisonHere.filter((a) => !a._died && !a._disbanded && !_navalHeld.includes(a));
+      const _garrisonSurv = _garrisonHere.filter((a) => !a._died && !a._disbanded && !_leftElsewhere.includes(a));
       _garrisonSurv.forEach((a) => {
         delete a._fromGarrison;
       });
@@ -1520,7 +1524,7 @@ export function resolveMoveOrder(
       // out, retire the corpse's host flag so it stops being a combatant.
       _leaderlessHosts.forEach((dc) => {
         dc.armies = (asItsGuardReadsIt(dc.armies) ?? []).filter(
-          (a: ArmyInABattle) => !a._died && !a._disbanded && !_navalHeld.includes(a),
+          (a: ArmyInABattle) => !a._died && !a._disbanded && !_leftElsewhere.includes(a),
         );
         dc.armies.forEach((a: AUnitAsTheMarchMarksIt) => {
           delete a._fromLeaderless;
