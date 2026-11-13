@@ -1086,16 +1086,18 @@ export type TheGameMastersTables = Record<
   | 'site_admins',
   ARowTheGameMastersWorldHolds[]
 >;
-/** What the GM page reads and changes, held by the fake (plan P1-17q2), as the stand-in makeStub held it (tests/lib/stub-db.js):
- *  who is signed in (`me`, else no one: gm1, a Game Master, unless a test says otherwise), the tables, the columns an
- *  older database lacks (`missingColumns`, "table.column": a query naming one is refused in the database's words), the
- *  calls that fail (`failing`, "table.op" or "rpc.name": that call answers that error), and every call made (`calls`,
- *  "table.op" or "rpc.name", in order). Each function answers as its query asks (its filters, order, limit and single
- *  row), never by the access rules; a change is made to the rows held. */
+/** What the GM page reads and changes, held by the fake (plan P1-17q2), as the stand-in makeStub held it
+ *  (tests/lib/stub-db.js): who is signed in (`me`, else no one: gm1, a Game Master, unless a test says otherwise), the
+ *  tables, the columns an older database lacks (`missingColumns`, "table.column") and the tables it lacks
+ *  (`missingTables`), each refused in the database's words when a query names it, the calls that fail (`failing`,
+ *  "table.op" or "rpc.name": that call answers that error), and every call made (`calls`, "table.op" or "rpc.name", in
+ *  order). Each function answers as its query asks (its filters, order, limit and single row), never by the access
+ *  rules; a change is made to the rows held. */
 export interface TheGameMastersWorld {
   me: string | null;
   readonly tables: TheGameMastersTables;
   readonly missingColumns: Set<string>;
+  readonly missingTables: Set<string>;
   readonly failing: Record<string, { readonly message: string; readonly code?: string }>;
   readonly calls: string[];
 }
@@ -1121,6 +1123,7 @@ export function aGameMastersWorld(): TheGameMastersWorld {
       site_admins: [],
     },
     missingColumns: new Set(),
+    missingTables: new Set(),
     failing: {},
     calls: [],
   };
@@ -1143,6 +1146,12 @@ interface AQuery {
   readonly payload?: unknown;
   readonly onConflict?: string;
 }
+
+/** The GM's world as a spec hands it to Chromium, as data: its sets as lists. */
+export type TheGameMastersWorldAsData = Omit<TheGameMastersWorld, 'missingColumns' | 'missingTables'> & {
+  readonly missingColumns: readonly string[];
+  readonly missingTables: readonly string[];
+};
 
 /** A fake database, up to date at `version`, holding the GM's `world` (plan P1-17q2). */
 export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: TheGameMastersWorld): AFakeDb {
@@ -1213,6 +1222,12 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
     world.calls.push(q.table + '.' + q.op);
     const failure = world.failing[q.table + '.' + q.op];
     if (failure) return { data: null, error: failure, status: 400 };
+    if (world.missingTables.has(q.table))
+      return {
+        data: null,
+        error: { message: `relation "public.${q.table}" does not exist`, code: '42P01' },
+        status: 404,
+      };
     const missing = missingColumnOf(q);
     if (missing !== undefined)
       return q.payload === undefined

@@ -7,7 +7,7 @@ import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { build, type Rolldown } from 'vite';
 import { DB_VERSION, routeExternal } from '../lib/boot.js';
-import type { ThePlayersWorld } from '../lib/fake-db.ts';
+import type { TheGameMastersWorldAsData, ThePlayersWorld } from '../lib/fake-db.ts';
 
 let bundled: Promise<string> | undefined;
 /** The install script and the fake as one classic script (once a worker). */
@@ -38,9 +38,12 @@ function theFakeBundled(): Promise<string> {
 }
 
 /** Routes the page's other sites as routeExternal does (kc-config.js's dead address, no fonts), and hands the page the
- *  fake before its scripts run: one holding the player's `world` (makeAFakeDbHoldingThePlayersWorld), else one holding
- *  no account (makeAFakeDb), each up to date (DB_VERSION). */
-export async function handThePageTheFakeDb(page: Page, world?: ThePlayersWorld): Promise<void> {
+ *  fake before its scripts run: one holding the player's `world` (makeAFakeDbHoldingThePlayersWorld) or the GM's
+ *  (makeAFakeDbHoldingTheGameMastersWorld), else one holding no account (makeAFakeDb), each up to date (DB_VERSION). */
+export async function handThePageTheFakeDb(
+  page: Page,
+  world?: ThePlayersWorld | TheGameMastersWorldAsData,
+): Promise<void> {
   const fake = await theFakeBundled();
   // the data first, as the argument (Playwright hands it over as JSON); the install script reads it
   await page.addInitScript<unknown>(
