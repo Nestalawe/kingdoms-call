@@ -41,6 +41,7 @@ interface APage {
   readonly errors: string[];
   readonly call: (name: string, ...args: unknown[]) => unknown;
   readonly body: () => string;
+  readonly prompted: unknown[];
 }
 interface Booting {
   readonly rows: readonly AHallOfFameEntry[];
@@ -54,6 +55,7 @@ interface Booting {
 async function boot(o: Booting): Promise<APage> {
   const changes: AChangeTheHallOfFameSent[] = [];
   const errors: string[] = [];
+  const prompted: unknown[] = [];
   const fake = makeAFakeDbHoldingTheHallOfFame(DB_VERSION, {
     rows: () => o.rows,
     changes,
@@ -72,7 +74,10 @@ async function boot(o: Booting): Promise<APage> {
       Object.assign(w, {
         alert: (m: string) => errors.push('alert: ' + m),
         confirm: () => o.confirm ?? true,
-        prompt: () => (o.prompt === undefined ? 'Ada' : o.prompt),
+        prompt: (_words: string, held: unknown) => {
+          prompted.push(held);
+          return o.prompt === undefined ? 'Ada' : o.prompt;
+        },
       });
     },
   });
@@ -83,7 +88,7 @@ async function boot(o: Booting): Promise<APage> {
     if (typeof f !== 'function') throw new Error('no ' + name);
     return Reflect.apply(f, W, args);
   };
-  return { W, doc, changes, errors, call, body: () => doc.getElementById('body')?.textContent ?? '' };
+  return { W, doc, changes, errors, call, body: () => doc.getElementById('body')?.textContent ?? '', prompted };
 }
 const setControl = (p: APage, id: string, value: string): void => {
   const el = p.doc.getElementById(id);
@@ -193,6 +198,30 @@ describe("the filters, on a game's setup as its row holds it", () => {
     expect(p.body()).toContain('No recorded game matches these filters.');
     expect(p.doc.getElementById('filter-count')?.textContent).toBe('0 of 2 recorded games');
   });
+  test('the filters at their edges: one bot, no humans, bots held as nothing, no realms, a sea share of 28', async () => {
+    const p = await boot({
+      rows: [
+        anEntry('e', { setup: { realms: 3, humans: 0, bots: 1 } }),
+        anEntry('f', { setup: { realms: 2, bots: '' } }),
+        anEntry('g', { setup: { realms: 2, bots: 1, humans: 1, seaPct: 28 } }),
+        anEntry('i', { setup: { realms: 0, humans: 2 } }),
+      ],
+    });
+    const by = (id: string, value: string): unknown[] => {
+      p.call('resetFilters');
+      setControl(p, id, value);
+      return filteredIds(p);
+    };
+    expect(by('f-kind', 'human')).toEqual(['f', 'i']);
+    expect(by('f-kind', 'withbots')).toEqual(['e', 'g']);
+    expect(by('f-kind', 'allbot')).toEqual(['e']);
+    expect(by('f-bots', '0')).toEqual(['f', 'i']);
+    expect(by('f-realms', '0')).toEqual([]);
+    expect(by('f-sea', 'lo')).toEqual(['g']);
+    by('f-humans', '1');
+    p.call('render');
+    expect(p.doc.getElementById('filter-count')?.textContent).toBe('1 of 4 recorded games');
+  });
   test("the filters' choices: the numbers in order, the maps by their words", async () => {
     const p = await boot({
       rows: [
@@ -234,6 +263,32 @@ describe("the boards' sums and sorts, on a record's values as its row holds them
     expect(rows).toHaveLength(3);
     expect(p.body()).toContain('Human realms7');
   });
+  test('the champions: a tie on wins ordered by scores added as words; a profile with no name', async () => {
+    const p = await boot({
+      rows: [
+        anEntry('a', {
+          standings: [
+            { uid: 'u-1', realm: 'A1', score: '5' },
+            { uid: 'u-2', realm: 'B1', score: 20 },
+          ],
+        }),
+        anEntry('b', {
+          standings: [
+            { uid: 'u-1', realm: 'A2', score: 6 },
+            { uid: 'u-7', player: 'Pat', realm: 'C1' },
+          ],
+        }),
+      ],
+      names: [
+        { id: 'u-1', name: 'Ada' },
+        { id: 'u-2', name: 'Bo' },
+        { id: 'u-7', name: null },
+      ],
+    });
+    p.call('setTab', 'champions');
+    const names = [...p.doc.querySelectorAll('#champ-table tr td:nth-child(2)')].map((c) => c.textContent);
+    expect(names).toEqual(['Ada', 'Bo', 'Pat']);
+  });
   test('the humans and bots, the finest campaigns and the games: a standing that is none stops the board', async () => {
     const rows = [anEntry('a', { standings: [{ realm: 'R1', score: 2 }] })];
     const p = await boot({ rows });
@@ -260,6 +315,7 @@ describe("the boards' sums and sorts, on a record's values as its row holds them
           standings: [{ pi: 0, realm: 'Osk', race: 'Elf', al: 'Good' }],
           records: {
             sk_stealth: { v: 4, pi: 0, t: 3, det: 'at night', who: 'Lira' },
+            most_heroes: { v: '1e999', pi: 0, t: 0 },
             guardian_slain: [{ v: 3.4, pi: 0 }, { v: '9' }],
             fastest_ten: [
               { v: 9, pi: 0 },
@@ -274,6 +330,8 @@ describe("the boards' sums and sorts, on a record's values as its row holds them
     expect(text).toContain('Highest stealth4Lira · Osk');
     expect(text).toContain('Elf · Good · turn 3 · at night ·  · 10 Oct 2026');
     expect(text).toContain('PowerfulOsk');
+    expect(text).toContain('📖 Skills at their heightHighest stealth');
+    expect(text).toContain('Largest courtMost living heroes serving at once—OskElf · Good · turn 0 ·');
     expect(text).toContain('Legendarythe game itself');
     expect(text).toMatch(/turn 4Old \(P\)/);
   });
@@ -297,7 +355,7 @@ describe("the boards' sums and sorts, on a record's values as its row holds them
         }),
       ],
     });
-    setControl(p, 'f-q', 'osk');
+    setControl(p, 'f-q', 'OSK');
     p.call('setTab', 'achievements');
     expect(p.body()).toContain('Showing only the realms and players matching your search');
     expect(p.body()).toContain('5Osk');
@@ -316,14 +374,15 @@ describe("the boards' sums and sorts, on a record's values as its row holds them
             { al: 'Evil' },
           ],
         }),
-        anEntry('b', { victory: null, turns: 7, setup: { realms: 2 } }),
+        anEntry('b', { victory: null, turns: 8, setup: { realms: 2 } }),
+        anEntry('c', { victory: '', turns: 2, setup: { realms: 1 } }),
       ],
     });
     p.call('setTab', 'peoples');
     const text = p.body();
     expect(text).toContain('Elf2150%5312');
     expect(text).toContain('Elf · Good11100%102');
-    expect(text).toContain('unfinished200%416');
+    expect(text).toContain('unfinished300%3107');
   });
   test('the games: a missing turn count, a sea share, a bot winner, a fate and the totals held as words', async () => {
     const p = await boot({
@@ -339,12 +398,24 @@ describe("the boards' sums and sorts, on a record's values as its row holds them
             { realm: 'R2', outHow: 'eliminated', bot: true },
           ],
           totals: { battles: '3', spells: null, deaths: 0 },
+          winner_player: 'Wyn',
+        }),
+        anEntry('b', {
+          finished_at: 'soon',
+          winner_realm: '',
+          victory: '',
+          standings: [
+            { realm: 'Q1', player: 'Quill' },
+            { realm: 'Q2', player: 'Wren', winner: true },
+          ],
         }),
       ],
+      names: [{ id: 'u-7', name: null }],
     });
     p.call('setTab', 'games');
     const text = p.body();
-    expect(text).toContain('Game a—3 (2👤 1🤖)1normal5×4 · 30% sea— bot—');
+    expect(text).toContain('Game a—3 (2👤 1🤖)1normal5×4 · 30% sea— (Wyn)—');
+    expect(text).toContain('—Game b122 (2👤 0🤖)all human—— (Wren)—');
     expect(text).toContain('—R1———————2conceded turn 4');
     expect(text).toContain('eliminated');
     expect(text).toContain('3 battles · 0 units destroyed');
@@ -358,14 +429,16 @@ describe("the Game Master's diagnostics and edits", () => {
       rows: [
         anEntry('a', { build: null, finished_at: null, standings: [{ uid: 'u-1', realm: 'R' }, 0] }),
         anEntry('b', { build: 'lb1', standings: [{ realm: 'S', player: 'S' }] }),
+        anEntry('c', { build: 'lb2', standings: [{ uid: 'u-3', realm: 'T' }] }),
+        anEntry('d', { build: '', standings: [{ realm: 'U' }] }),
       ],
       names: [{ id: 'u-2', name: 'Bo' }],
     });
     const text = p.body();
-    expect(text).toContain('2 of 2 games were recorded by an older build');
+    expect(text).toContain('3 of 4 games were recorded by an older build');
     expect(text).toContain('Newest row built bylb1');
-    expect(text).toContain('unknown · lb1');
-    expect(text).toContain('1 player slots carry an account, but none of them matches');
+    expect(text).toMatch(/Builds present\s*unknown · lb1 · lb2\s*Human/);
+    expect(text).toContain('2 player slots carry an account, but none of them matches');
   });
   test('the edit box of a game with no date or note, opened and closed; a game shown and hidden', async () => {
     const p = await boot({ gm: true, rows: [anEntry('a', { finished_at: null, note: null })] });
@@ -385,17 +458,20 @@ describe("the Game Master's diagnostics and edits", () => {
     const p = await boot({ gm: true, rows: [anEntry('a', {})] });
     p.call('setTab', 'games');
     setControl(p, 'e-name-a', '  ');
-    setControl(p, 'e-note-a', ' late ');
+    setControl(p, 'e-note-a', '  ');
     setControl(p, 'e-date-a', '2026-03-04');
     await p.call('saveGame', 'a');
     expect(p.changes.at(-1)).toEqual({
       table: 'game_records',
       op: 'update',
-      payload: { game_name: null, note: 'late', finished_at: '2026-03-04T12:00:00.000Z' },
+      payload: { game_name: null, note: null, finished_at: '2026-03-04T12:00:00.000Z' },
     });
     expect(p.doc.getElementById('e-msg-a')?.textContent).toBe('Saved.');
     await wait(600);
     expect(p.body()).toContain('4 Mar 2026');
+    p.call('setTab', 'games');
+    p.doc.getElementById('e-msg-a')?.remove();
+    expect(await refused(p.call('saveGame', 'a'))).toMatch(/^TypeError/);
   });
   test('Save refused: the refusal in the box', async () => {
     const p = await boot({
@@ -431,7 +507,11 @@ describe("the Game Master's diagnostics and edits", () => {
         ...db,
         theStatistics: {
           ...db.theStatistics,
-          deleteThisGamesTurnRecords: () => Promise.resolve({ data: null, error: { message: 'kept' }, status: 403 }),
+          deleteThisGamesResults: () => Promise.resolve({ data: null, error: null, status: 204 }),
+        },
+        theHallOfFame: {
+          ...db.theHallOfFame,
+          deleteThisGamesEntry: () => Promise.resolve({ data: null, error: { message: 'kept' }, status: 403 }),
         },
       }),
     });
@@ -441,6 +521,7 @@ describe("the Game Master's diagnostics and edits", () => {
     const kept = await boot({ gm: true, confirm: false, rows: [anEntry('a', {})] });
     await kept.call('deleteRecord', 'zz', false);
     expect(kept.changes.filter((c) => c.op === 'delete')).toEqual([]);
+    expect(filteredIds(kept)).toEqual(['a']);
   });
   test('the Overlord renames a player: cancelled, empty, refused, done', async () => {
     const rows = [anEntry('a', { standings: [{ uid: 'u-1', realm: 'R' }] })];
@@ -452,6 +533,7 @@ describe("the Game Master's diagnostics and edits", () => {
     expect(empty.doc.getElementById('rename-msg')?.textContent).toBe('A player needs a name — nothing changed.');
     const done = await boot({ overlord: true, prompt: ' Bea ', rows, names: [{ id: 'u-1', name: 'Ann' }] });
     await done.call('renamePlayer', 'u-1');
+    expect(done.prompted).toEqual(['Ann']);
     expect(done.changes).toContainEqual({ rpc: 'rename_player', args: { p_user: 'u-1', p_name: 'Bea' } });
     expect(done.doc.getElementById('rename-msg')?.textContent).toBe('Renamed to Bea — on every game they have played.');
   });

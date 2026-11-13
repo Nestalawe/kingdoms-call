@@ -90,6 +90,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   into a view: each field the value `x.field` gave (`unknown`), each list's elements with `!x`'s nothings (`null`, `0`,
   `false`, `''`) kept as they were, and a value that should be a list but isn't kept, so walking it throws as before
   (`src/ui/leaderboard/a-game-in-the-hall-of-fame-as-the-board-reads-it.ts`).
+- **`a.localeCompare(b)` on a value of any kind** (a record's own label) goes through a reader that compares words and,
+  for any other value, throws the `TypeError` the call threw (`theLabelsCompared`, the Hall of Fame). **A table read by a
+  value of any kind** (the board's people by an account's id) is read by `String(key)` through a reader typed `unknown`
+  (`theKeyOf`): the words JavaScript reads a key as, which lint's `no-base-to-string` refuses written out.
 
 ## Lists, tables, sets and maps
 
