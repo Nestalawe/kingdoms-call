@@ -2,22 +2,22 @@
 // go separately"). The example: the games.meta column. With it hidden in the in-memory database, the GM
 // portal must notice (probeGameMeta), and a turn must still resolve and save, because writing an unknown
 // column fails the whole save (docs/traps.md, "A new column must be optional at the write site").
-// Copy this shape for a new table or column: hide it (MISSING / MISSING_COLS), then use the feature.
+// Copy this shape for a new table or column: hide it (the fake's missingColumns, lib/fake-db.ts), then use the feature.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // With the `games.meta` column hidden in the in-memory database, the GM portal notices, says so, and a turn still
 // resolves and saves without writing it. The example to copy for site code that must cope without its database change
 // ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately))
-const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };
 
 (async()=>{
-  const S=makeStub();
-  S.MISSING_COLS.add('games.meta');
+  const S=aGameMastersWorld();
+  S.missingColumns.add('games.meta');
   const errs=[];
-  const dom=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:S.supabase,setup(w){
+  const dom=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:{createClient:()=>({})},db:makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION,S).db,setup(w){
     w.addEventListener('error',e=>errs.push(e.error&&e.error.stack||e.message));
     w.onunhandledrejection=e=>errs.push(String(e.reason&&e.reason.stack||e.reason));
     w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' '));
@@ -37,19 +37,19 @@ const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log
   W.eval(`(function(){ const g=generateNewGame(__sp,{cols:8,rows:7},0,{seaPct:20});
     g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
     g.botDifficulty='hard'; g.botDiplomacy='normal'; window.__G=g; })()`);   // a whole save, as Turn 0 writes it (the GM page's stop, P1-15f8)
-  S.DB.games.push({id:'G1',name:'Missing meta',gm_user_id:'gm1',status:'active',turn:1,max_players:3,max_turns:0,
+  S.tables.games.push({id:'G1',name:'Missing meta',gm_user_id:'gm1',status:'active',turn:1,max_players:3,max_turns:0,
     created_at:new Date().toISOString(),game_state:W.eval('JSON.stringify(__G)')});       // no meta: the column isn't there
-  for(let i=0;i<3;i++) S.DB.game_players.push({id:'gp'+i,game_id:'G1',user_id:null,player_index:i,display_name:'Realm'+i,
+  for(let i=0;i<3;i++) S.tables.game_players.push({id:'gp'+i,game_id:'G1',user_id:null,player_index:i,display_name:'Realm'+i,
     orders_submitted:false,orders:null,turn_report:JSON.stringify({isBot:true,playerSetup:{}})});
 
   errs.length=0;
-  W.__game=JSON.parse(JSON.stringify(S.DB.games[0]));
+  W.__game=JSON.parse(JSON.stringify(S.tables.games[0]));
   let res=null, thrown=null;
   try{ res=await W.eval('runTurn({auto:true,game:__game,reason:"meta-missing"})'); }catch(e){ thrown=e&&e.message||String(e); }
   await new Promise(r=>setTimeout(r,60));
   check(!thrown&&res&&res.ok===true,'a turn resolves and reports success'+(thrown?': '+thrown:res&&res.error?': '+res.error:` (got ${JSON.stringify(res)})`));
-  check(S.DB.games[0].turn===2,`and is saved (the game is on turn ${S.DB.games[0].turn}, expected 2)`);
-  check(!('meta' in S.DB.games[0]),'nothing wrote the missing column');
+  check(S.tables.games[0].turn===2,`and is saved (the game is on turn ${S.tables.games[0].turn}, expected 2)`);
+  check(!('meta' in S.tables.games[0]),'nothing wrote the missing column');
   check(!errs.length,'no page errors'+(errs.length?': '+errs[0].split('\n')[0]:''));
 
   process.exit(fails?1:0);

@@ -1067,3 +1067,720 @@ export function makeAFakeDbHoldingTheGameMastersTurn(version: string, world: The
   };
   return { db, calls };
 }
+
+/** A row the GM's world holds, as a test stages it (a script may stage only the columns it needs). */
+export type ARowTheGameMastersWorldHolds = Record<string, unknown>;
+/** The tables the GM's world holds. */
+export type TheGameMastersTables = Record<
+  | 'profiles'
+  | 'games'
+  | 'game_players'
+  | 'turn_logs'
+  | 'turn_events'
+  | 'game_results'
+  | 'game_records'
+  | 'game_messages'
+  | 'game_message_reads'
+  | 'message_reports'
+  | 'game_masters'
+  | 'site_admins',
+  ARowTheGameMastersWorldHolds[]
+>;
+/** What the GM page reads and changes, held by the fake (plan P1-17q2), as tests/lib/stub-db.js's makeStub held it:
+ *  who is signed in (`me`, else no one: gm1, a Game Master, unless a test says otherwise), the tables, the columns an
+ *  older database lacks (`missingColumns`, "table.column": a query naming one is refused in the database's words), the
+ *  calls that fail (`failing`, "table.op" or "rpc.name": that call answers that error), and every call made (`calls`,
+ *  "table.op" or "rpc.name", in order). Each function answers as its query asks (its filters, order, limit and single
+ *  row), never by the access rules; a change is made to the rows held. */
+export interface TheGameMastersWorld {
+  me: string | null;
+  readonly tables: TheGameMastersTables;
+  readonly missingColumns: Set<string>;
+  readonly failing: Record<string, { readonly message: string; readonly code?: string }>;
+  readonly calls: string[];
+}
+
+/** The GM's world as makeStub began: gm1 signed in, a Game Master named Test GM, and nothing else. */
+export function aGameMastersWorld(): TheGameMastersWorld {
+  return {
+    me: 'gm1',
+    tables: {
+      profiles: [{ id: 'gm1', name: 'Test GM' }],
+      games: [],
+      game_players: [],
+      turn_logs: [],
+      turn_events: [],
+      game_results: [],
+      game_records: [],
+      game_messages: [],
+      game_message_reads: [],
+      message_reports: [],
+      game_masters: [
+        { user_id: 'gm1', offered_at: '2026-10-01T00:00:00Z', offered_by: null, accepted_at: '2026-10-01T00:00:00Z' },
+      ],
+      site_admins: [],
+    },
+    missingColumns: new Set(),
+    failing: {},
+    calls: [],
+  };
+}
+
+type ATableTheGameMastersWorldHolds = keyof TheGameMastersTables;
+/** A filter of a query: a column, how it is compared, and the value. */
+type AFilter = readonly [kind: 'eq' | 'in' | 'is' | 'gt' | 'lt', column: string, value: unknown];
+/** A query a function of the GM's world sends: its table, what it does, the columns it names (its select), its
+ *  filters, its order, how many rows, and the change, row or rows it sends. */
+interface AQuery {
+  readonly table: ATableTheGameMastersWorldHolds;
+  readonly op: 'select' | 'insert' | 'upsert' | 'update' | 'delete';
+  readonly columns?: string;
+  readonly filters?: readonly AFilter[];
+  readonly order?: readonly (readonly [column: string, ascending: boolean])[];
+  readonly limit?: number;
+  readonly range?: readonly [from: number, to: number];
+  readonly one?: 'single' | 'maybe';
+  readonly payload?: unknown;
+  readonly onConflict?: string;
+}
+
+/** A fake database, up to date at `version`, holding the GM's `world` (plan P1-17q2). */
+export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: TheGameMastersWorld): AFakeDb {
+  const fake = makeAFakeDb([version]);
+  const { calls } = fake;
+  let next = 1;
+  const clone = <T>(v: T): T => structuredClone(v);
+  const isObject = (v: unknown): v is ARowTheGameMastersWorldHolds => typeof v === 'object' && v !== null;
+  const same = (a: unknown, b: unknown) => String(a) === String(b);
+  const compare = (a: unknown, b: unknown) =>
+    typeof a === 'number' && typeof b === 'number' ? a - b : String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
+  const matches = (row: ARowTheGameMastersWorldHolds, [kind, column, value]: AFilter) => {
+    const v = row[column];
+    if (kind === 'eq') return same(v, value);
+    if (kind === 'in') return Array.isArray(value) && value.some((x) => same(x, v));
+    if (kind === 'is') return value === null ? v == null : v === value;
+    if (kind === 'gt') return Number(v) > Number(value);
+    return Number(v) < Number(value);
+  };
+  const payloadRows = (payload: unknown): ARowTheGameMastersWorldHolds[] =>
+    (Array.isArray(payload) ? payload : [payload]).filter(isObject);
+  /** The first column the query names that the database lacks, or none. */
+  const missingColumnOf = (q: AQuery): string | undefined => {
+    const gone = [...world.missingColumns]
+      .filter((k) => k.startsWith(q.table + '.'))
+      .map((k) => k.slice(q.table.length + 1));
+    if (!gone.length) return undefined;
+    const selected = (q.columns ?? '')
+      .replace(/\([^)]*\)/g, '')
+      .split(',')
+      .map((s) => s.trim());
+    const named = [
+      ...(q.op === 'select' ? selected : []),
+      ...(q.filters ?? []).map((f) => f[1]),
+      ...(q.order ?? []).map((o) => o[0]),
+      ...payloadRows(q.payload).flatMap((p) => Object.keys(p)),
+    ];
+    return gone.find((c) => named.includes(c));
+  };
+  /** The rows the query's filters, order and limit find. */
+  const found = (q: AQuery) => {
+    let rows = world.tables[q.table].filter((r) => (q.filters ?? []).every((f) => matches(r, f)));
+    for (const [column, ascending] of [...(q.order ?? [])].reverse())
+      rows = rows.slice().sort((a, b) => (ascending ? 1 : -1) * compare(a[column], b[column]));
+    if (q.range) rows = rows.slice(q.range[0], q.range[1] + 1);
+    if (q.limit !== undefined) rows = rows.slice(0, q.limit);
+    return rows;
+  };
+  /** The rows found, each game with its realms when the query asks for them. */
+  const shown = (q: AQuery, rows: ARowTheGameMastersWorldHolds[]) =>
+    /game_players\s*\(/.test(q.columns ?? '')
+      ? rows.map((g) => ({
+          ...clone(g),
+          game_players: clone(world.tables.game_players.filter((p) => same(p['game_id'], g['id']))),
+        }))
+      : clone(rows);
+  const one = (q: AQuery, rows: unknown[]) => {
+    if (q.one === 'single')
+      return rows.length === 1
+        ? { data: rows[0], error: null, status: 200 }
+        : { data: null, error: { message: 'Cannot coerce the result to a single JSON object' }, status: 406 };
+    if (q.one === 'maybe') return { data: rows[0] ?? null, error: null, status: 200 };
+    return { data: rows, error: null, status: 200 };
+  };
+  /** Runs the query on the world's rows, and answers as the database does. */
+  const run = (name: string, q: AQuery) => {
+    calls.push(name);
+    world.calls.push(q.table + '.' + q.op);
+    const failure = world.failing[q.table + '.' + q.op];
+    if (failure) return { data: null, error: failure, status: 400 };
+    const missing = missingColumnOf(q);
+    if (missing !== undefined)
+      return q.payload === undefined
+        ? { data: null, error: { message: `column ${q.table}.${missing} does not exist`, code: '42703' }, status: 400 }
+        : {
+            data: null,
+            error: {
+              message: `Could not find the '${missing}' column of '${q.table}' in the schema cache`,
+              code: 'PGRST204',
+            },
+            status: 400,
+          };
+    const table = world.tables[q.table];
+    if (q.op === 'select') return one(q, shown(q, found(q)));
+    if (q.op === 'insert') {
+      const made = payloadRows(q.payload).map((p) => {
+        const row = { id: p['id'] ?? 'row' + String(next++), ...p };
+        table.push(row);
+        return row;
+      });
+      return q.one === undefined ? { data: null, error: null, status: 201 } : one(q, clone(made));
+    }
+    if (q.op === 'upsert') {
+      const keys = (q.onConflict ?? 'id').split(',').map((s) => s.trim());
+      for (const p of payloadRows(q.payload)) {
+        const hit = table.find((x) => keys.every((k) => same(x[k], p[k])));
+        if (hit) Object.assign(hit, p);
+        else table.push({ id: 'row' + String(next++), ...p });
+      }
+      return { data: null, error: null, status: 201 };
+    }
+    if (q.op === 'update') {
+      const hits = found(q);
+      for (const r of hits) Object.assign(r, q.payload);
+      return q.one === undefined ? { data: null, error: null, status: 204 } : one(q, clone(hits));
+    }
+    const doomed = new Set(found(q));
+    world.tables[q.table] = table.filter((r) => !doomed.has(r));
+    return { data: null, error: null, status: 204 };
+  };
+  const query =
+    <A extends unknown[], T>(name: string, q: (...args: A) => AQuery) =>
+    (...args: A): Promise<T> =>
+      // handed on as the Db's type: the world holds rows as the tests stage them
+      Promise.resolve(run(name, q(...args)) as T);
+  const me = () => world.me;
+  const rpc =
+    <A extends unknown[], T>(fn: string, answer: (...args: A) => unknown) =>
+    (...args: A): Promise<T> => {
+      calls.push('rpc:' + fn);
+      world.calls.push('rpc.' + fn);
+      const failure = world.failing['rpc.' + fn];
+      const answered = failure
+        ? { data: null, error: failure, status: 400 }
+        : { data: answer(...args), error: null, status: 200 };
+      return Promise.resolve(answered as T);
+    };
+  const eq = (column: string, value: unknown): AFilter => ['eq', column, value];
+  const inList = (column: string, value: unknown): AFilter => ['in', column, value];
+  const newestFirst = [['created_at', false]] as const;
+  const A_GAME_IN_THE_LIST =
+    'id,name,gm_user_id,status,turn,max_players,max_turns,created_at,meta, game_players(id,game_id,user_id,player_index,display_name,orders_submitted)';
+  const isTheOverlord = () => world.tables.site_admins.some((r) => same(r['user_id'], me()));
+  const session = () => {
+    const id = me();
+    return id === null ? null : { user: { id, user_metadata: {} } };
+  };
+  const db: Db = {
+    ...fake.db,
+    signingIn: {
+      ...fake.db.signingIn,
+      theSessionKeptInThisBrowser: () => {
+        calls.push('auth:getSession');
+        return Promise.resolve({ data: { session: session() }, error: null });
+      },
+      signInWithEmailAndPassword: () => {
+        calls.push('auth:signInWithPassword');
+        return Promise.resolve({ data: { user: null, session: null }, error: null });
+      },
+      signOut: () => {
+        calls.push('auth:signOut');
+        return Promise.resolve({ error: null });
+      },
+    },
+    theAccountsNames: {
+      ...fake.db.theAccountsNames,
+      theNamesOfTheseAccounts: query('from:profiles', (ids: readonly string[]) => ({
+        table: 'profiles',
+        op: 'select',
+        columns: 'id,name',
+        filters: [inList('id', ids)],
+      })),
+      theNameOfEveryAccount: query('from:profiles', () => ({ table: 'profiles', op: 'select', columns: 'id,name' })),
+      theNameAndJoiningDateOfEveryAccountInNameOrder: query('from:profiles', () => ({
+        table: 'profiles',
+        op: 'select',
+        columns: 'id,name,created_at',
+        order: [['name', true]],
+      })),
+    },
+    theRoles: {
+      ...fake.db.theRoles,
+      isTheSignedInAccountAGameMaster: rpc('is_game_master', () =>
+        world.tables.game_masters.some((r) => same(r['user_id'], me()) && r['accepted_at'] != null),
+      ),
+      isTheSignedInAccountTheOverlord: rpc('is_site_admin', isTheOverlord),
+    },
+    theReportedDispatches: {
+      ...fake.db.theReportedDispatches,
+      theDispatchesReportedToThisAccount: rpc('gm_reported_messages', (game: string | null) => {
+        const t = world.tables;
+        const mayGm = (g: unknown) =>
+          t.games.some((x) => same(x['id'], g) && same(x['gm_user_id'], me())) &&
+          !t.game_players.some((p) => same(p['game_id'], g) && same(p['user_id'], me()));
+        return t.message_reports
+          .map((r) => ({ r, m: t.game_messages.find((m) => same(m['id'], r['message_id'])) }))
+          .filter(
+            ({ m }) => m && (game == null || same(m['game_id'], game)) && (isTheOverlord() || mayGm(m['game_id'])),
+          )
+          .map(({ r, m }) => ({
+            report_id: r['id'],
+            message_id: m?.['id'],
+            game_id: m?.['game_id'],
+            turn: m?.['turn'],
+            from_index: m?.['from_index'],
+            to_indexes: m?.['to_indexes'],
+            scope: m?.['scope'],
+            body: m?.['body'],
+            sent_at: m?.['created_at'],
+            reporter_index: r['reporter_index'],
+            reason: r['reason'],
+            reported_at: r['created_at'],
+          }));
+      }),
+    },
+    theDispatches: {
+      ...fake.db.theDispatches,
+      oneDispatchsId: query('from:game_messages', () => ({
+        table: 'game_messages',
+        op: 'select',
+        columns: 'id',
+        limit: 1,
+      })),
+      oneReadMarksGame: query('from:game_message_reads', () => ({
+        table: 'game_message_reads',
+        op: 'select',
+        columns: 'game_id',
+        limit: 1,
+      })),
+      deleteThisDispatch: query('from:game_messages', (id: number) => ({
+        table: 'game_messages',
+        op: 'delete',
+        filters: [eq('id', id)],
+      })),
+    },
+    theHallOfFame: {
+      ...fake.db.theHallOfFame,
+      oneEntrysGame: query('from:game_records', () => ({
+        table: 'game_records',
+        op: 'select',
+        columns: 'game_id',
+        limit: 1,
+      })),
+      theGameOfEveryEntry: query('from:game_records', () => ({
+        table: 'game_records',
+        op: 'select',
+        columns: 'game_id',
+      })),
+      theGameMastersNotesOnThisGamesEntry: query('from:game_records', (game: string) => ({
+        table: 'game_records',
+        op: 'select',
+        columns: 'note,hidden,game_name',
+        filters: [eq('game_id', game)],
+        one: 'maybe',
+      })),
+      writeTheseEntries: query('from:game_records', (entries: unknown) => ({
+        table: 'game_records',
+        op: 'upsert',
+        payload: entries,
+        onConflict: 'game_id',
+      })),
+      deleteTheseGamesEntries: query('from:game_records', (games: readonly string[]) => ({
+        table: 'game_records',
+        op: 'delete',
+        filters: [inList('game_id', games)],
+      })),
+    },
+    theStatistics: {
+      ...fake.db.theStatistics,
+      oneTurnRecordsId: query('from:turn_events', () => ({
+        table: 'turn_events',
+        op: 'select',
+        columns: 'id',
+        limit: 1,
+      })),
+      oneGameResultsId: query('from:game_results', () => ({
+        table: 'game_results',
+        op: 'select',
+        columns: 'id',
+        limit: 1,
+      })),
+      theResultsOfThisGame: query('from:game_results', (game: string) => ({
+        table: 'game_results',
+        op: 'select',
+        columns: '*',
+        filters: [eq('game_id', game)],
+      })),
+      thisGamesTurnRecordsForItsEntryFromRowToRow: query(
+        'from:turn_events',
+        (game: string, from: number, to: number) => ({
+          table: 'turn_events',
+          op: 'select',
+          columns: 'turn,player_index,is_bot,realm,race,alignment,post,outcomes',
+          filters: [eq('game_id', game)],
+          order: [
+            ['turn', true],
+            ['player_index', true],
+          ],
+          range: [from, to],
+        }),
+      ),
+      theGameOfEveryResultFromRowToRow: query('from:game_results', (from: number, to: number) => ({
+        table: 'game_results',
+        op: 'select',
+        columns: 'game_id',
+        order: [
+          ['game_id', true],
+          ['player_index', true],
+        ],
+        range: [from, to],
+      })),
+      everyTurnRecordFromRowToRow: query('from:turn_events', (from: number, to: number) => ({
+        table: 'turn_events',
+        op: 'select',
+        columns: 'game_id,turn,player_index,is_bot,bot_difficulty,realm,race,alignment,orders,pre,post,outcomes',
+        order: [
+          ['game_id', true],
+          ['turn', true],
+          ['player_index', true],
+        ],
+        range: [from, to],
+      })),
+      everyResultFromRowToRow: query('from:game_results', (from: number, to: number) => ({
+        table: 'game_results',
+        op: 'select',
+        columns: '*',
+        range: [from, to],
+      })),
+      deleteTheseGamesResults: query('from:game_results', (games: readonly string[]) => ({
+        table: 'game_results',
+        op: 'delete',
+        filters: [inList('game_id', games)],
+      })),
+      deleteTheseGamesTurnRecords: query('from:turn_events', (games: readonly string[]) => ({
+        table: 'turn_events',
+        op: 'delete',
+        filters: [inList('game_id', games)],
+      })),
+      writeTheseResults: query('from:game_results', (results: unknown) => ({
+        table: 'game_results',
+        op: 'upsert',
+        payload: results,
+        onConflict: 'game_id,player_index',
+      })),
+      writeTheseTurnRecords: query('from:turn_events', (records: unknown) => ({
+        table: 'turn_events',
+        op: 'upsert',
+        payload: records,
+        onConflict: 'game_id,turn,player_index',
+      })),
+      theGamesOfTheseGamesResults: query('from:game_results', (games: readonly string[]) => ({
+        table: 'game_results',
+        op: 'select',
+        columns: 'game_id',
+        filters: [inList('game_id', games)],
+      })),
+    },
+    theHallOfFamesGames: {
+      ...fake.db.theHallOfFamesGames,
+      thisGameWithItsWorldAndRealms: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns:
+          'id,name,gm_user_id,created_at,max_turns,meta,game_state,game_players(id,player_index,user_id,display_name)',
+        filters: [eq('id', game)],
+        one: 'maybe',
+      })),
+      theFinishedGamesThisGameMasterRuns: query('from:games', (gameMaster: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,gm_user_id,created_at,max_turns,meta',
+        filters: [eq('gm_user_id', gameMaster), eq('status', 'complete')],
+      })),
+      everyGamesNameStatusAndTurn: query('from:games', () => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,status,turn',
+      })),
+      theNameStatusAndTurnOfTheGamesThisGameMasterRuns: query('from:games', (gameMaster: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,status,turn',
+        filters: [eq('gm_user_id', gameMaster)],
+      })),
+      whichOfTheseGamesStillExist: query('from:games', (games: readonly string[]) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id',
+        filters: [inList('id', games)],
+      })),
+      theIdNameAndStateOfTheFinishedGamesThisGameMasterRuns: query('from:games', (gameMaster: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,status',
+        filters: [eq('gm_user_id', gameMaster), eq('status', 'complete')],
+      })),
+      thisGamesIdNameAndWorldWithEveryColumnOfItsRealms: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,game_state,game_players(*)',
+        filters: [eq('id', game)],
+        one: 'single',
+      })),
+    },
+    theGameMastersGames: {
+      ...fake.db.theGameMastersGames,
+      oneGamesMeta: query('from:games', () => ({ table: 'games', op: 'select', columns: 'id,meta', limit: 1 })),
+      theGamesThisGameMasterRunsNewestFirst: query('from:games', (gameMaster: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: A_GAME_IN_THE_LIST,
+        filters: [eq('gm_user_id', gameMaster)],
+        order: newestFirst,
+      })),
+      theGamesThisGameMasterRunsNewestFirstEveryColumn: query('from:games', (gameMaster: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: '*, game_players(*)',
+        filters: [eq('gm_user_id', gameMaster)],
+        order: newestFirst,
+      })),
+      everyGameNewestFirstFromRowToRow: query('from:games', (from: number, to: number) => ({
+        table: 'games',
+        op: 'select',
+        columns: A_GAME_IN_THE_LIST,
+        order: newestFirst,
+        range: [from, to],
+      })),
+      everyGameNewestFirstFromRowToRowEveryColumn: query('from:games', (from: number, to: number) => ({
+        table: 'games',
+        op: 'select',
+        columns: '*, game_players(*)',
+        order: newestFirst,
+        range: [from, to],
+      })),
+      theActiveGamesThisGameMasterRuns: query('from:games', (gameMaster: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: A_GAME_IN_THE_LIST,
+        filters: [eq('gm_user_id', gameMaster), eq('status', 'active')],
+      })),
+      theActiveGamesThisGameMasterRunsEveryColumn: query('from:games', (gameMaster: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: '*, game_players(*)',
+        filters: [eq('gm_user_id', gameMaster), eq('status', 'active')],
+      })),
+      thisGameWithItsRealms: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: '*, game_players(*)',
+        filters: [eq('id', game)],
+        one: 'single',
+      })),
+      makeThisGame: query('from:games', (game: unknown) => ({
+        table: 'games',
+        op: 'insert',
+        payload: game,
+        one: 'single',
+      })),
+      thisGamesTurnAndWorld: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,turn,game_state',
+        filters: [eq('id', game)],
+        one: 'single',
+      })),
+      theGamesThisGameMasterRunsWithNoMeta: query('from:games', (gameMaster: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,game_state',
+        filters: [eq('gm_user_id', gameMaster), ['is', 'meta', null]],
+      })),
+      changeThisGame: query('from:games', (game: string, change: unknown) => ({
+        table: 'games',
+        op: 'update',
+        payload: change,
+        filters: [eq('id', game)],
+      })),
+      changeThisGameAndAnswerItsId: query('from:games', (game: string, change: unknown) => ({
+        table: 'games',
+        op: 'update',
+        payload: change,
+        filters: [eq('id', game)],
+        one: 'maybe',
+      })),
+      changeThisGameWhileOnThisTurnAndAnswerItsId: query(
+        'from:games',
+        (game: string, turn: number, change: unknown) => ({
+          table: 'games',
+          op: 'update',
+          payload: change,
+          filters: [eq('id', game), eq('turn', turn)],
+          one: 'maybe',
+        }),
+      ),
+      keepTheRealmsThatAreOutOfThisGameFromSendingDispatches: query('from:games', (game: string, keep: boolean) => ({
+        table: 'games',
+        op: 'update',
+        payload: { block_eliminated_msgs: keep },
+        filters: [eq('id', game)],
+        one: 'maybe',
+      })),
+    },
+    theGameMastersRealms: {
+      removeThisRealm: query('from:game_players', (realm: string) => ({
+        table: 'game_players',
+        op: 'delete',
+        filters: [eq('id', realm)],
+      })),
+    },
+    theGameMastersTurnLogs: {
+      theWholeLogOfThisGameInThisTurn: query('from:turn_logs', (game: string, turn: number) => ({
+        table: 'turn_logs',
+        op: 'select',
+        columns: '*',
+        filters: [eq('game_id', game), eq('turn', turn), eq('player_index', -1)],
+      })),
+    },
+    theDeletionOfAGame: {
+      removeThisGamesTurnLogs: query('from:turn_logs', (game: string) => ({
+        table: 'turn_logs',
+        op: 'delete',
+        filters: [eq('game_id', game)],
+      })),
+      removeThisGamesDispatches: query('from:game_messages', (game: string) => ({
+        table: 'game_messages',
+        op: 'delete',
+        filters: [eq('game_id', game)],
+      })),
+      removeThisGamesReadMarks: query('from:game_message_reads', (game: string) => ({
+        table: 'game_message_reads',
+        op: 'delete',
+        filters: [eq('game_id', game)],
+      })),
+      removeThisGamesTurnEvents: query('from:turn_events', (game: string) => ({
+        table: 'turn_events',
+        op: 'delete',
+        filters: [eq('game_id', game)],
+      })),
+      removeThisGamesResults: query('from:game_results', (game: string) => ({
+        table: 'game_results',
+        op: 'delete',
+        filters: [eq('game_id', game)],
+      })),
+      removeThisGamesHallOfFameEntry: query('from:game_records', (game: string) => ({
+        table: 'game_records',
+        op: 'delete',
+        filters: [eq('game_id', game)],
+      })),
+      removeThisGamesRealms: query('from:game_players', (game: string) => ({
+        table: 'game_players',
+        op: 'delete',
+        filters: [eq('game_id', game)],
+      })),
+      removeThisGame: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'delete',
+        filters: [eq('id', game)],
+      })),
+    },
+    theTurnAsTheGameMasterRunsIt: {
+      thisGameEveryColumn: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: '*',
+        filters: [eq('id', game)],
+        one: 'single',
+      })),
+      everyRealmOfThisGame: query('from:game_players', (game: string) => ({
+        table: 'game_players',
+        op: 'select',
+        columns: '*',
+        filters: [eq('game_id', game)],
+      })),
+      clearTheOrdersOfEveryRealmOfThisGame: query('from:game_players', (game: string) => ({
+        table: 'game_players',
+        op: 'update',
+        payload: { orders: null, orders_submitted: false },
+        filters: [eq('game_id', game)],
+      })),
+      saveThisGameWhileOnThisTurnAndAnswerItsId: query('from:games', (game: string, turn: number, change: unknown) => ({
+        table: 'games',
+        op: 'update',
+        payload: change,
+        filters: [eq('id', game), eq('turn', turn)],
+        one: 'maybe',
+      })),
+      giveThisRealmItsTurnReport: query('from:game_players', (realm: string, report: string) => ({
+        table: 'game_players',
+        op: 'update',
+        payload: { turn_report: report },
+        filters: [eq('id', realm)],
+      })),
+      writeThisLog: query('from:turn_logs', (log: unknown) => ({ table: 'turn_logs', op: 'insert', payload: log })),
+      theTurnOfThisGameIfItIsThere: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'turn',
+        filters: [eq('id', game)],
+        one: 'maybe',
+      })),
+      putBackThisRealmsOrders: query('from:game_players', (realm: string, orders: unknown, submitted: boolean) => ({
+        table: 'game_players',
+        op: 'update',
+        payload: { orders, orders_submitted: submitted },
+        filters: [eq('id', realm)],
+      })),
+    },
+    theTurnZeroAsTheGameMasterRunsIt: {
+      everyRealmOfThisGame: query('from:game_players', (game: string) => ({
+        table: 'game_players',
+        op: 'select',
+        columns: '*',
+        filters: [eq('game_id', game)],
+      })),
+      removeEveryBotsRealmOfThisGame: query('from:game_players', (game: string) => ({
+        table: 'game_players',
+        op: 'delete',
+        filters: [eq('game_id', game), ['is', 'user_id', null]],
+      })),
+      makeThisBotsRealm: query('from:game_players', (realm: unknown) => ({
+        table: 'game_players',
+        op: 'insert',
+        payload: realm,
+        one: 'single',
+      })),
+      startThisGame: query('from:games', (game: string, change: unknown) => ({
+        table: 'games',
+        op: 'update',
+        payload: change,
+        filters: [eq('id', game)],
+      })),
+      giveThisRealmItsFirstReport: query('from:game_players', (realm: string, report: string) => ({
+        table: 'game_players',
+        op: 'update',
+        payload: { turn_report: report, orders: null, orders_submitted: false },
+        filters: [eq('id', realm)],
+      })),
+      writeThisLog: query('from:turn_logs', (log: unknown) => ({ table: 'turn_logs', op: 'insert', payload: log })),
+      thisGameWithItsRealms: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: '*, game_players(*)',
+        filters: [eq('id', game)],
+        one: 'single',
+      })),
+    },
+  };
+  return { db, calls };
+}
