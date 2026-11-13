@@ -1374,7 +1374,7 @@ export function botHostsBesideATargetThatRideToItsDefence(
       force += botEffForce(G, e, undefined);
       units += theUnitsWithGapsOf(e).length;
     }
-    const r = botRememberedHostAt(G, pi, K.id);
+    const r = botRememberedHostAt(G, pi, K.id, N.owner); // the owner's alone: another realm's host does not ride in
     force += r.strength;
     units += r.units;
   }

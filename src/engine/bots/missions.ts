@@ -812,14 +812,16 @@ export function botAllyNear(G: GameState, pi: number, X: Province | null | undef
 // memory is exactly what a human's past reports hold. A remembered host that is no longer visible still
 // counts against a target for three turns (it may still be there), and remembered heroes are hunted.
 // botUpdateIntel, which records what the realm saw, and botEnemyIntel, which reads it back, are in bots/strategy.ts.
-// Remembered at-war hosts last seen in province `provId` within three turns and not visible now: {units,strength}.
-export function botRememberedHostAt(G: GameState, pi: number, provId: number) {
+// Remembered at-war hosts last seen in province `provId` within three turns and not visible now: {units,strength};
+// with `onlyOf`, only that realm's hosts.
+export function botRememberedHostAt(G: GameState, pi: number, provId: number, onlyOf?: number | null) {
   const I = botEnemyIntel(G, pi);
   let units = 0,
     strength = 0;
   const turn = G.turn || 0;
   Object.entries(I.generals).forEach(([k, r]) => {
     if (r.provId !== provId || turn - r.turn > 3 || botRelationRaw(G, pi, r.player) !== 'enemy') return;
+    if (onlyOf != null && r.player !== onlyOf) return;
     const e = theCharactersOf(G).find((x) => x?.id === +k);
     if (!e?.alive) return;
     if (botSeesChar(G, pi, e)) return; // visible hosts are counted by the scorer itself
