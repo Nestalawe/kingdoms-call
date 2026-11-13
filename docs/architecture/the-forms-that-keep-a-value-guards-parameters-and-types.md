@@ -271,3 +271,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   (`itemSlot`'s: a report's item always has its name), with the fields the item fields read (`equipped`, `desc`,
   `_spent`, the spell an item casts): the forecasts hand the report's own items back, so the type the code reads them as
   is theirs (P1-16f).
+- **A battle side parsed from its log line** (`⚑FORCE⚑{json}`) goes through a check that throws, for none, the
+  `TypeError` its first field's read threw, and is read field by field as `unknown` (`theForceTheMarkerHolds`); its
+  companies through a check of the same kind typed as the army label takes them (`theCompanyTheMarkerLists`). Inside
+  the `try` that drew it as a plain line, every throw still lands there.
