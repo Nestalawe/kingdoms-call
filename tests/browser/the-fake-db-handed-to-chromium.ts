@@ -53,12 +53,9 @@ export async function handThePageTheFakeDb(page: Page, world?: ThePlayersWorld):
   const install = world
     ? `${THE_BUNDLES_NAME}.makeAFakeDbHoldingThePlayersWorld(${JSON.stringify(DB_VERSION)}, world)`
     : `${THE_BUNDLES_NAME}.makeAFakeDb([${JSON.stringify(DB_VERSION)}])`;
-  await page.addInitScript({
-    content:
-      `${fake}\n;(function(){ var world=${JSON.stringify(world ?? null)};` +
-      ` window[${JSON.stringify(THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER)}]=world;` +
-      ` window[${JSON.stringify(THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER)}]=${install}.db;` +
-      ` window.supabase={createClient:function(){ return {}; }}; })();`,
-  });
+  // one template, so tests/static/page-globals.test.ts reads it (it reads no page name)
+  await page.addInitScript(
+    `${fake}\n;(function(){ var world=${JSON.stringify(world ?? null)}; window[${JSON.stringify(THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER)}]=world; window[${JSON.stringify(THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER)}]=${install}.db; window.supabase={createClient:function(){ return {}; }}; })();`,
+  );
   await routeExternal(page, '');
 }

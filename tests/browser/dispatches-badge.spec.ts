@@ -36,8 +36,8 @@ const STAGE = `(()=>{ const D=${THE_WORLD};
 
 // Run in the page: a dispatch written by somebody else, straight into the world, as their browser would (the next id,
 // private when it names its addressees).
-const ARRIVES = (d: string) => `(()=>{ const D=${THE_WORLD}, m=${d};
-  D.dispatches.push({id:D.dispatches.length+1,created_at:new Date().toISOString(),scope:m.to_indexes.length?'private':'public',...m}); })()`;
+const ARRIVES = `m=>{ const D=${THE_WORLD};
+  D.dispatches.push({id:D.dispatches.length+1,created_at:new Date().toISOString(),scope:m.to_indexes.length?'private':'public',...m}); }`;
 
 const BADGE = `(()=>{ const b=document.getElementById('desk-msg-badge'), t=document.getElementById('desk-msg-tab');
   const r=b&&b.getBoundingClientRect(); return {txt:(b&&b.textContent)||'', shown:!!t&&t.style.display!=='none'&&!!r&&r.width>0}; })()`;
@@ -58,7 +58,7 @@ test('the Dispatches count shows at once on switching view, clears when read, an
   expect((await badge()).txt, 'no count before any dispatch has arrived').toBe('');
 
   // A dispatch arrives; the player moves the left panel from Map to Report.
-  await page.evaluate(ARRIVES(`{game_id:'G1',from_index:1,to_indexes:[],body:'Well met, neighbour.',turn:2}`));
+  await page.evaluate(`(${ARRIVES})({game_id:'G1',from_index:1,to_indexes:[],body:'Well met, neighbour.',turn:2})`);
   await page.locator('#desk-left .desk-tabs button[data-view="report"]').click();
   await expect
     .poll(badge, { message: 'switching to Report shows the count on the Dispatches tab at once', timeout: 1000 })
@@ -74,7 +74,7 @@ test('the Dispatches count shows at once on switching view, clears when read, an
   await page.locator('#desk-left .desk-tabs button[data-view="map"]').click();
   await page.waitForFunction('_deskLeftView === "map"');
   const n0 = Number((await badge()).txt || 0);
-  await page.evaluate(ARRIVES(`{game_id:'G1',from_index:1,to_indexes:[0],body:'A word in private.',turn:2}`));
+  await page.evaluate(`(${ARRIVES})({game_id:'G1',from_index:1,to_indexes:[0],body:'A word in private.',turn:2})`);
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect
     .poll(badge, {
