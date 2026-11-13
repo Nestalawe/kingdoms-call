@@ -14,7 +14,8 @@ import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-
 import { armyLabel } from './skills-and-projections.ts';
 import { fetchGameSlots } from './dispatches.ts';
 import { SKILL_COLUMNS } from './move-analysis.ts';
-import { isAList, loadAllGames, theField, theSignedInAccountsId, theStateParsed, thisOrElse } from './game-lists.ts';
+import { loadAllGames, theSignedInAccountsId, theStateParsed } from './game-lists.ts';
+import { isAList, theField, thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
 
 /** The game the join form is for, as the open game's card hands it (the page's `joiningGame`). */
 type TheGameBeingJoined = NonNullable<typeof joiningGame>;

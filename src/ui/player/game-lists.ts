@@ -2,6 +2,13 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { gameMetaOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { thePagesDb } from './startup.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
+import {
+  isAList,
+  theDateOf,
+  theField,
+  theListToSearch,
+  thisOrElse,
+} from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { _msgArr, _msgNum, msgChannelKeyOf, _activeSectionId, fetchGameSlots } from './dispatches.ts';
 import type {
@@ -12,36 +19,9 @@ import type {
   ARealmsSlot,
 } from '../../db/the-db-interface-and-its-areas.ts';
 
-/** `value[key]` as JavaScript reads it (a game's state as parsed from JSON): for none, the TypeError that read throws. */
-export function theField(value: unknown, key: PropertyKey): unknown {
-  if (value === null || value === undefined) {
-    throw new TypeError(`Cannot read properties of ${String(value)} (reading '${String(key)}')`);
-  }
-  return Reflect.get(Object(value), key);
-}
-/** `a || b` on values of any kind (a game's state as parsed): `a` where it is truthy, else `b`. */
-export function thisOrElse(a: unknown, b: unknown): unknown {
-  if (a) return a;
-  return b;
-}
 /** A game's state parsed from its JSON text: any value. */
 export function theStateParsed(text: string): unknown {
   return JSON.parse(text);
-}
-/** `new Date(value)` on a value of any kind (a deadline as a game's state holds it), as the constructor reads it. */
-function theDateOf(value: unknown): Date {
-  const made: unknown = Reflect.construct(Date, [value]);
-  if (made instanceof Date) return made;
-  throw new TypeError('the Date constructor made no date');
-}
-/** Whether a value is a list (of values of any kind). */
-export function isAList(value: unknown): value is readonly unknown[] {
-  return Array.isArray(value);
-}
-/** A list a value of a game's state holds, as `.some` reads it: any other value throws the TypeError `.some` threw. */
-function theListToSearch(value: unknown): readonly unknown[] {
-  if (isAList(value)) return value;
-  throw new TypeError('the value searched is not a list');
 }
 /** The signed-in account's id, as `currentUser.id` read it: before sign-in, the TypeError that read threw. */
 export function theSignedInAccountsId(): string {

@@ -15,13 +15,19 @@ type ANewDispatch = Omit<TheGeneratedTables['game_messages']['Insert'], 'from_us
   from_user_id?: string | null;
 };
 
+/** A game's change as the GM page sends it: its meta any value (the summary built from the world as parsed, which
+ *  supabase-js writes as JSON). */
+type AGamesChange = Omit<TheGeneratedTables['games']['Update'], 'meta'> & { meta?: unknown };
+
 /** The generated types, but for a database function's argument that takes null on purpose (the generator writes every
  *  argument as never null): account_suspend's p_until (null: until the suspension is lifted) and gm_reported_messages'
- *  p_game (null: every game's); and a dispatch's sender, which the page may send as null (`ANewDispatch`). */
+ *  p_game (null: every game's); a dispatch's sender, which the page may send as null (`ANewDispatch`); and a game's
+ *  meta, which the GM page sends as it built it (`AGamesChange`). */
 export type TheDatabase = Omit<Database, 'public'> & {
   readonly public: Omit<Database['public'], 'Functions' | 'Tables'> & {
-    readonly Tables: Omit<TheGeneratedTables, 'game_messages'> & {
+    readonly Tables: Omit<TheGeneratedTables, 'game_messages' | 'games'> & {
       readonly game_messages: Omit<TheGeneratedTables['game_messages'], 'Insert'> & { Insert: ANewDispatch };
+      readonly games: Omit<TheGeneratedTables['games'], 'Update'> & { Update: AGamesChange };
     };
     readonly Functions: Omit<Database['public']['Functions'], 'account_suspend' | 'gm_reported_messages'> & {
       readonly account_suspend: { Args: { p_user: string; p_until: string | null }; Returns: undefined };
@@ -128,7 +134,7 @@ export type ARealmsName = Pick<
 /** A table's row, its new row and its change, as the generated types give them. */
 type ARow<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 type ANewRow<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
-type AChange<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];
+type AChange<T extends keyof TheDatabase['public']['Tables']> = TheDatabase['public']['Tables'][T]['Update'];
 
 /** A Hall of Fame entry (game_records): one finished game's row, as the GM page built it. */
 export type AHallOfFameEntry = ARow<'game_records'>;

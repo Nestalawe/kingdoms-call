@@ -1,9 +1,22 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { thisPagesBuild } from '../shared/a-newer-version-of-this-page.ts';
 import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { computeStandings } from '../../engine/titles/reckoning.ts';
 import { thePagesDb } from './config.ts';
 import { kcHtml } from '../shared/kc-safe.ts';
+import { theField, thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
+import type { AGameWithItsRealms, ARealm } from '../../db/the-db-interface-and-its-areas.ts';
+import type { TheStatisticsOfTheTurn } from '../../views/the-statistics-of-the-turn.ts';
+
+/** The game the GM has opened, as the game screen's read gives it (game-detail.ts and turn-zero.ts set `currentGame`
+ *  to it): every column, with its realms'. */
+export type TheGameTheGmHasOpen = AGameWithItsRealms;
+/** The realms of the game the GM has opened, as `currentGamePlayers` holds them (none before a game is opened). */
+export type TheRealmsOfTheGameTheGmHasOpen = readonly ARealm[];
+/** A games row as the GM page reads its settings: its `meta` and `game_state` columns, JSON words or parsed. */
+export interface AGamesRowAsItsSettingsAreRead {
+  readonly meta?: unknown;
+  readonly game_state?: unknown;
+}
 
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
 // first read. Raise it when this page needs a newer database change (docs/traps.md, "A site change that needs
@@ -31,21 +44,45 @@ export const TURN_MODES = {
   auto: 'Automatic — runs when all orders are in',
   deadline: 'Automatic with deadline',
 };
-export function parseGameState(game) {
+/** A game's world or setup, parsed from its row: any value JSON holds (never a falsy one: `{}` for none). */
+export function parseGameState(game: AGamesRowAsItsSettingsAreRead | null | undefined): unknown {
   if (!game) return {};
   try {
-    const gs = typeof game.game_state === 'string' ? JSON.parse(game.game_state) : game.game_state;
-    return gs || {};
-  } catch (e) {
+    const gs: unknown = typeof game.game_state === 'string' ? JSON.parse(game.game_state) : game.game_state;
+    return thisOrElse(gs, {});
+  } catch {
     return {};
   }
 }
-export function normalizeTurnMode(tm) {
-  tm = tm && typeof tm === 'object' ? tm : {};
-  const mode = ['manual', 'auto', 'deadline'].includes(tm.mode) ? tm.mode : 'manual';
-  const time = /^\d{2}:\d{2}$/.test(tm.time || '') ? tm.time : '20:00';
-  const everyDays = Math.max(1, Math.min(30, parseInt(tm.everyDays) || 1));
-  return { mode, time, everyDays, nextDeadlineAt: tm.nextDeadlineAt || null, turnRanAt: tm.turnRanAt || null };
+/** The three ways a turn is run. */
+export type ATurnModesName = keyof typeof TURN_MODES;
+/** Whether a value is one of the three ways a turn is run, as `['manual', 'auto', 'deadline'].includes` read it. */
+function isATurnModesName(mode: unknown): mode is ATurnModesName {
+  return mode === 'manual' || mode === 'auto' || mode === 'deadline';
+}
+/** A game's turn mode, as normalizeTurnMode gives it: its time and deadlines as the mode held them (the time: any value
+ *  whose words are HH:MM). */
+export interface ATurnMode {
+  mode: ATurnModesName;
+  time: unknown;
+  everyDays: number;
+  nextDeadlineAt: unknown;
+  turnRanAt: unknown;
+}
+export function normalizeTurnMode(tm: unknown): ATurnMode {
+  const held: object = tm && typeof tm === 'object' ? tm : {};
+  const heldMode: unknown = Reflect.get(held, 'mode');
+  const mode = isATurnModesName(heldMode) ? heldMode : 'manual';
+  const heldTime: unknown = Reflect.get(held, 'time');
+  const time = /^\d{2}:\d{2}$/.test(String(thisOrElse(heldTime, ''))) ? heldTime : '20:00';
+  const everyDays = Math.max(1, Math.min(30, parseInt(String(Reflect.get(held, 'everyDays'))) || 1));
+  return {
+    mode,
+    time,
+    everyDays,
+    nextDeadlineAt: thisOrElse(Reflect.get(held, 'nextDeadlineAt'), null),
+    turnRanAt: thisOrElse(Reflect.get(held, 'turnRanAt'), null),
+  };
 }
 // ════
 // GAME META — the light summary column (Disk-IO fix, 2026-09-25)
@@ -67,7 +104,7 @@ export let _kcHasMeta = false;
 // The plain "missing from the database" message every probe below shows. Since P0-17 the database changes
 // only through migrations, applied by the deploy before the site goes live, so there is no SQL to paste:
 // seeing this means the database is behind this copy of the site.
-export function kcMissingMsg(title, what, effect) {
+export function kcMissingMsg(title: string, what: unknown, effect: string) {
   return kcHtml`<div class="msg-error"><strong>${title}</strong> — the database has no ${what}, so ${effect}. The deploy adds it to the database before the site goes live, so this copy of the site is ahead of its database: tell Theo.</div>`;
 }
 export async function probeGameMeta() {
@@ -75,17 +112,19 @@ export async function probeGameMeta() {
     const { error } = await thePagesDb.theGameMastersGames.oneGamesMeta();
     _kcHasMeta = !error;
     if (error) console.warn('games.meta probe:', error.message);
-  } catch (e) {
+  } catch {
     _kcHasMeta = false;
   }
   const el = document.getElementById('msg-games');
   if (el)
     el.innerHTML = _kcHasMeta
       ? ''
-      : kcMissingMsg(
-          'Disk-IO fix not active',
-          kcHtml`<code>games.meta</code> column`,
-          "this tab is still pulling every game's full world and reports once a minute",
+      : String(
+          kcMissingMsg(
+            'Disk-IO fix not active',
+            kcHtml`<code>games.meta</code> column`,
+            "this tab is still pulling every game's full world and reports once a minute",
+          ),
         );
   return _kcHasMeta;
 }
@@ -104,15 +143,15 @@ export async function probeGameMeta() {
 // An archived game is NOT hidden from the leaderboard — nothing is deleted, so the Hall of Fame
 // keeps its record. To take a finished game off the board, use the Hall-of-Fame `hidden` flag
 // instead; that is what it is for.
-export function gameArchived(game) {
+export function gameArchived(game: AGamesRowAsItsSettingsAreRead | null | undefined) {
   const m = gameMetaOf(game);
-  if (m && m.archived !== undefined) return !!m.archived;
-  return !!parseGameState(game).archived;
+  if (m?.['archived'] !== undefined) return !!m['archived'];
+  return !!theField(parseGameState(game), 'archived');
 }
-export function gameArchivedAt(game) {
+export function gameArchivedAt(game: AGamesRowAsItsSettingsAreRead | null | undefined) {
   const m = gameMetaOf(game);
-  if (m && m.archivedAt) return m.archivedAt;
-  return parseGameState(game).archivedAt || null;
+  if (m?.['archivedAt']) return m['archivedAt'];
+  return thisOrElse(theField(parseGameState(game), 'archivedAt'), null);
 }
 // ════
 // GAME TELEMETRY (2026-09-25) — every realm's orders, situation and results, turn by turn
@@ -146,7 +185,7 @@ export async function probeTelemetry() {
     _kcHasTel = !a.error && !b.error;
     if (a.error) console.warn('turn_events probe:', a.error.message);
     if (b.error) console.warn('game_results probe:', b.error.message);
-  } catch (e) {
+  } catch {
     _kcHasTel = false;
   }
   renderTelemetryBanner();
@@ -156,13 +195,17 @@ export function renderTelemetryBanner() {
   const el = document.getElementById('msg-telemetry');
   if (!el) return;
   if (!_kcHasTel) {
-    el.innerHTML = kcMissingMsg(
-      '📈 Game telemetry not active',
-      kcHtml`<code>turn_events</code> / <code>game_results</code> tables`,
-      'nothing is being recorded for the Stats tab or for bot training',
+    el.innerHTML = String(
+      kcMissingMsg(
+        '📈 Game telemetry not active',
+        kcHtml`<code>turn_events</code> / <code>game_results</code> tables`,
+        'nothing is being recorded for the Stats tab or for bot training',
+      ),
     );
   } else if (_kcTelLastErr) {
-    el.innerHTML = kcHtml`<div class="msg-error"><strong>📈 Telemetry write failed</strong> on the last turn run: ${_kcTelLastErr}. The turn itself was saved; only the statistics row was lost.</div>`;
+    el.innerHTML = String(
+      kcHtml`<div class="msg-error"><strong>📈 Telemetry write failed</strong> on the last turn run: ${_kcTelLastErr}. The turn itself was saved; only the statistics row was lost.</div>`,
+    );
   } else el.innerHTML = '';
 }
 // ════════════════════════════════════════════════════════════════════════════════════════════════
@@ -197,7 +240,7 @@ export async function probeMessaging() {
     _kcHasMsg = !a.error && !b.error;
     if (a.error) console.warn('game_messages probe:', a.error.message);
     if (b.error) console.warn('game_message_reads probe:', b.error.message);
-  } catch (e) {
+  } catch {
     _kcHasMsg = false;
   }
   renderMessagingBanner();
@@ -208,36 +251,53 @@ export function renderMessagingBanner() {
   if (!el) return;
   el.innerHTML = _kcHasMsg
     ? ''
-    : kcMissingMsg(
-        '✉ Player messaging not active',
-        kcHtml`<code>game_messages</code> / <code>game_message_reads</code> tables`,
-        'the Dispatches panel in the player portal cannot send or receive',
+    : String(
+        kcMissingMsg(
+          '✉ Player messaging not active',
+          kcHtml`<code>game_messages</code> / <code>game_message_reads</code> tables`,
+          'the Dispatches panel in the player portal cannot send or receive',
+        ),
       );
 }
 
 // Final standings order: score, then tax base, then treasury (the Reckoning tie-break).
-export function telRankOrder(gs) {
+/** A realm's standing read by its index, as `standings[i].score` read it: none throws the TypeError that read threw. */
+function theScoreOfTheStandingAt(standings: ReturnType<typeof computeStandings>['standings'], i: number): number {
+  const standing = standings[i];
+  if (standing === undefined) throw new TypeError("Cannot read properties of undefined (reading 'score')");
+  return standing.score;
+}
+export function telRankOrder(gs: Parameters<typeof computeStandings>[0]) {
   const s = computeStandings(gs);
   const idx = s.standings.map((st) => st.index);
   idx.sort(
     (a, b) =>
-      s.standings[b].score - s.standings[a].score ||
-      (s.taxByPlayer[b] || 0) - (s.taxByPlayer[a] || 0) ||
-      (s.goldByPlayer[b] || 0) - (s.goldByPlayer[a] || 0),
+      theScoreOfTheStandingAt(s.standings, b) - theScoreOfTheStandingAt(s.standings, a) ||
+      (Number(s.taxByPlayer[b]) || 0) - (Number(s.taxByPlayer[a]) || 0) ||
+      (Number(s.goldByPlayer[b]) || 0) - (Number(s.goldByPlayer[a]) || 0),
   );
-  const rank = {};
+  const rank: Record<number, number> = {};
   idx.forEach((pi, i) => {
     rank[pi] = i + 1;
   });
   return { rank, standings: s };
 }
-export function telBotDifficultyOf(gs) {
-  return (gs && gs.botDifficulty) || 'hard';
+export function telBotDifficultyOf(gs: unknown) {
+  return thisOrElse(gs ? theField(gs, 'botDifficulty') : gs, 'hard');
 } // 2026-09-26: 'hard' is the only strength now; older saves keep whatever word they carry
+/** A realm's snapshot as the outcomes read it (a turn's telemetry's, before and after the turn): its numbers by name. */
+type ARealmsSnapshotAsTheOutcomesReadIt = Readonly<Partial<Record<string, unknown>>>;
 // The per-realm view of what the collectors caught this turn, plus the before/after deltas.
-export function telOutcomesFor(gs, pi, tel, pre, post, rank) {
-  const B = (tel.battles || []).filter((b) => b.atkPi === pi || b.defPi === pi);
-  const mine = (b) => b.atkPi === pi;
+export function telOutcomesFor(
+  _gs: unknown,
+  pi: number,
+  tel: Readonly<Partial<TheStatisticsOfTheTurn>>,
+  pre: ARealmsSnapshotAsTheOutcomesReadIt | null | undefined,
+  post: ARealmsSnapshotAsTheOutcomesReadIt | null | undefined,
+  rank: number | null | undefined,
+) {
+  const B = (tel.battles ?? []).filter((b) => b.atkPi === pi || b.defPi === pi);
+  const mine = (b: TheStatisticsOfTheTurn['battles'][number]) => b.atkPi === pi;
   const battles = {
     fought: B.length,
     asAttacker: B.filter(mine).length,
@@ -246,7 +306,7 @@ export function telOutcomesFor(gs, pi, tel, pre, post, rank) {
     unitsKilled: B.reduce((s, b) => s + (mine(b) ? b.defLost : b.atkLost), 0),
     list: B.map((b) => ({ ...b, side: mine(b) ? 'atk' : 'def', win: mine(b) ? b.won : !b.won })),
   };
-  const E = (tel.encounters || []).filter((e) => e.pi === pi);
+  const E = (tel.encounters ?? []).filter((e) => e.pi === pi);
   const encounters = {
     fought: E.length,
     won: E.filter((e) => e.won).length,
@@ -254,22 +314,26 @@ export function telOutcomesFor(gs, pi, tel, pre, post, rank) {
     heroKilled: E.filter((e) => e.killed).length,
     list: E,
   };
-  const C = (tel.captures || []).filter((c) => c.from === pi || c.to === pi);
+  const C = (tel.captures ?? []).filter((c) => c.from === pi || c.to === pi);
   const captures = {
     gained: C.filter((c) => c.to === pi).length,
     lost: C.filter((c) => c.from === pi).length,
     list: C,
   };
-  const D = (tel.deaths || []).filter((d) => d.pi === pi || d.killerPi === pi);
+  const D = (tel.deaths ?? []).filter((d) => d.pi === pi || d.killerPi === pi);
   const deaths = {
     own: D.filter((d) => d.pi === pi).length,
     king: D.some((d) => d.pi === pi && d.king),
     killed: D.filter((d) => d.killerPi === pi && d.pi !== pi).length,
     list: D,
   };
-  const S = (tel.spells || []).filter((x) => x.pi === pi);
+  const S = (tel.spells ?? []).filter((x) => x.pi === pi);
   const spells = { cast: S.length, ok: S.filter((x) => x.ok).length, list: S };
-  const d = (k) => (post && pre && post[k] != null && pre[k] != null ? post[k] - pre[k] : null);
+  const d = (k: string) => {
+    const after = post?.[k];
+    const before = pre?.[k];
+    return after != null && before != null ? Number(after) - Number(before) : null;
+  };
   return {
     battles,
     encounters,
@@ -287,7 +351,7 @@ export function telOutcomesFor(gs, pi, tel, pre, post, rank) {
       discoveries: d('discoveries'),
       explored: d('explored'),
     },
-    rank: rank || null,
-    score: post && post._score != null ? post._score : null,
+    rank: (rank ?? 0) || null,
+    score: post?.['_score'] ?? null,
   };
 }

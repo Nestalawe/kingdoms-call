@@ -27,7 +27,8 @@ declare var _kcHasTel: PageState;
 declare var _kcTelLastErr: PageState;
 declare var _kcHasMsg: PageState;
 // ui/gm/auto-turn.ts
-declare var _autoWatcherTimer: PageState;
+/** The auto-turn watcher's timer, while it runs (setInterval's). */
+declare var _autoWatcherTimer: ReturnType<typeof setInterval> | null;
 declare var _autoRunBusy: PageState;
 // ui/gm/config.ts (and ui/player/items-and-heroes.ts: each page declares its own)
 /** The signed-in account (null before sign-in): its id, as the player page's dispatches read it, and its address and
@@ -38,8 +39,9 @@ declare var currentUser: {
   readonly user_metadata?: Readonly<Record<string, unknown>> | undefined;
 } | null;
 // ui/gm/config.ts
-declare var currentGame: PageState;
-declare var currentGamePlayers: PageState;
+/** The game the GM has opened (null before one is), as the game screen's read gives it. */
+declare var currentGame: import('./ui/gm/startup.ts').TheGameTheGmHasOpen | null;
+declare var currentGamePlayers: import('./ui/gm/startup.ts').TheRealmsOfTheGameTheGmHasOpen | null | undefined;
 // ui/gm/game-list.ts
 declare var _invitablePlayers: PageState;
 declare var _inviteSelected: PageState;

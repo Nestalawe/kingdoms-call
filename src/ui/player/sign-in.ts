@@ -3,7 +3,8 @@ import { kcHtml } from '../shared/kc-safe.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 import { thePagesDb } from './startup.ts';
 import { show } from './init.ts';
-import { startUpdatePolling, loadAllGames, theSignedInAccountsId, thisOrElse } from './game-lists.ts';
+import { startUpdatePolling, loadAllGames, theSignedInAccountsId } from './game-lists.ts';
+import { thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
 import { openReport } from './report.ts';
 import { saveMessageReads, stopMessagePolling, theRefusalAsThrown } from './dispatches.ts';
 
