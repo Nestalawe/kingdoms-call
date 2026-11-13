@@ -23,6 +23,7 @@ import {
   botEnemyChars,
   botEnemyHostsIn,
   botFieldRecruitTokens,
+  botGarrisonOrder,
   botHexDist,
   botHomeId,
   botInContact,
@@ -39,6 +40,7 @@ import { skillLevel } from '../titles/perks.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
+import type { ABotRealmsLedger } from './intel.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 
 // Its types (plan P1-10b42): each parameter typed as wide as the body's guards, so each guard stays.
@@ -237,6 +239,41 @@ export function botSafeStep(G: GameState, pi: number, P: Province, awayFrom: Pro
   }
   return best;
 }
+// THE EMERGENCY LEVY: `body` runs with the realm's wage ceiling raised as for an enemy at hand (BOT_P1.levyCap, at least
+// BOT_P1.levyWages above what it pays now), and the ceiling is put back however `body` ends. The muster in contact and
+// the garrison levy before a king's flight both raise companies under it.
+export function botUnderTheEmergencyLevy<T>(L: ABotRealmsLedger, body: () => T): T {
+  const cap0 = L.upkeepCap;
+  L.upkeepCap = Math.max(cap0 * BOT_P1.levyCap, (L.upkeep || 0) + BOT_P1.levyWages);
+  try {
+    return body();
+  } finally {
+    L.upkeepCap = cap0;
+  }
+}
+// GARRISON LEVY (bot improvements, 2026-11): what a character leaving province P of ours raises into its garrison as
+// he goes, under the emergency levy past the wage ceiling: the field companies P recruits, else its garrison companies.
+export function botGarrisonLevy(
+  G: GameState,
+  pi: number,
+  c: Character,
+  P: Province,
+  L: ABotRealmsLedger,
+): PhaseOrder | null {
+  if (P.owner !== pi || !(asItsGuardReadsIt(P.armyTypes) ?? []).length) return null;
+  return botUnderTheEmergencyLevy(L, () => {
+    const toks = botFieldRecruitTokens(G, pi, c, P, L).filter((t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? ''));
+    const ro = botRecruitOrder(toks, null);
+    if (ro)
+      return {
+        ...ro,
+        target: ro.target + ',to:garrison',
+        desc: 'Raise the garrison of ' + P.name + ' (' + ro.desc.toLowerCase() + ', the enemy is at hand)',
+      };
+    const go = botGarrisonOrder(G, pi, P, L);
+    return go ? { ...go, desc: go.desc + ' (the enemy is at hand)' } : null;
+  });
+}
 export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | null | undefined, stage: string) {
   const MUSTER = stage === 'muster';
   if (!botIdxSet?.size || !asItsGuardReadsIt(G.world)) return;
@@ -430,6 +467,10 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           }
         }
         if (!danger) return;
+        // Bot improvements (2026-11): leaving the capital or rich land of ours with an enemy host next door, he first raises
+        // its garrison in Spring (orders that don't move resolve before anyone marches), with the emergency levy, and leaves
+        // in the second phase. With an enemy host already here he leaves (or cloaks) at once: no phase is spent in its reach.
+        const levy = valuable(P) && !here.length ? botGarrisonLevy(G, pi, c, P, L) : null;
         if (
           (Number(asItsGuardReadsIt(c.skills)?.illusory) || 0) >= 1 &&
           !o.some((x) => x?.target === theNameOfTheSpell('invisibility'))
@@ -440,13 +481,17 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
             extra: '',
             desc: 'Cast Invisibility (evacuate: an enemy host is at hand)',
           });
+          if (levy) o.unshift(levy);
           o.length = 5;
           spring.add(c.id);
           return;
         }
         const st = botSafeStep(G, pi, P, P);
         if (!st) return;
-        const out: PhaseOrder[] = [botMoveOrder(st.i, 'Evacuate to ' + st.N.name + ' (an enemy host is at hand)')];
+        const out: PhaseOrder[] = [
+          ...(levy ? [levy] : []),
+          botMoveOrder(st.i, 'Evacuate to ' + st.N.name + ' (an enemy host is at hand)'),
+        ];
         while (out.length < 5) out.push(hold());
         turnOrders[c.id] = out;
         spring.add(c.id);
@@ -462,16 +507,11 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         if (end < 0) end = 5;
         if (end === 0 && /^(Attack|Assault|Lightning strike)/.test(o[0]?.desc ?? '')) return; // striking first outranks mustering
         if (o.slice(0, end).some((x) => x && (x.action === 'recruit' || x.action === 'pickup_army'))) return;
-        const _cap0 = L.upkeepCap;
-        L.upkeepCap = Math.max(_cap0 * BOT_P1.levyCap, (L.upkeep || 0) + BOT_P1.levyWages); // EMERGENCY LEVY
-        let toks: string[];
-        try {
-          toks = botFieldRecruitTokens(G, pi, c, P, L).filter(
+        const toks = botUnderTheEmergencyLevy(L, () =>
+          botFieldRecruitTokens(G, pi, c, P, L).filter(
             (t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? '') || c._botRole === 'admiral',
-          );
-        } finally {
-          L.upkeepCap = _cap0;
-        }
+          ),
+        );
         const ro = botRecruitOrder(toks, null);
         if (!ro) return;
         ro.desc += ' (war chest — the enemy is at hand)';
