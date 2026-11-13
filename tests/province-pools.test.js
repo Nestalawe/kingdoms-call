@@ -12,12 +12,12 @@
 // that could offer three does, a two-unit list gives both, every province offers its garrison and every coastal one its
 // fleet; the rulebook states the rule and its table of units by terrain and race matches the game's list. Simulation
 // level: world generation is one long function and the property is over whole worlds
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const N=+(process.argv[2]||4);
 (async()=>{
   const errs=[];
-  const d=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:{createClient:()=>cannedStub({rows:()=>({}),writes:[]})},
+  const d=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,
     setup(w){ w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
       w.console.error=(...a)=>{ const t=a.map(String).join(' '); if(/Could not load|stub|fetch/i.test(t)) return; errs.push('console.error: '+t); };
       w.console.warn=()=>{}; w.console.log=()=>{}; }});

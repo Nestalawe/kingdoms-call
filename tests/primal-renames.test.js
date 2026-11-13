@@ -16,7 +16,7 @@
 // `migrateLegacyUnitNames` on a staged running game renames companies, recruit pools, defenders, graves and the
 // province races (Leviathan waters become Kraken waters), and is idempotent
 const fs=require('fs'), vm=require('vm');
-const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {compactPage,pageInitializer,scriptOf}=require('./lib/source.ts');
 const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,MIGRATED,RACE_RENAMED}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -77,7 +77,7 @@ const OLD=Object.keys(RENAMED), NEW=[...new Set(Object.values(RENAMED))];
   ok(/replace\('Eldritch Kraken','Kraken'\)/.test(gm)||/'Primal:Kraken'/.test(gm.slice(gm.indexOf('PRIMAL_SEA_TYPES.slice()'))),'a Kraken sea is still the race "Primal:Kraken"');
 
   // ── The booted GM portal: the migration, the abilities ──
-  const errors=[]; const dom=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:{createClient:()=>nullStub()},url:'https://example.org/gm',
+  const errors=[]; const dom=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,url:'https://example.org/gm',
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
   await new Promise(r=>setTimeout(r,1200));
   ok(errors.length===0,'the GM portal boots'+(errors.length?' — '+errors[0].split('\n')[0]:''));
