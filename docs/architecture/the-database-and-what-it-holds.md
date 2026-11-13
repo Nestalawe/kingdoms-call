@@ -60,7 +60,7 @@ in `supabase/tests/database/`. Their logic is SQL (plpgsql), not JavaScript, and
 **`games.meta`** is a ~1 KB summary of the world (turn mode, which realms are exempt from orders, map
 size, bot set-up, archived flag, …), built by `buildGameMeta` and written by every path that writes
 `game_state` (through `metaPatch`). Lists and the watcher read `meta` with light column lists
-(`gamesListCols()`) instead of loading every world. That stopped a Disk IO drain in Sept 2026
+(`theGameMastersGames`' light lists) instead of loading every world. That stopped a Disk IO drain in Sept 2026
 ([traps.md](../traps.md#select-on-big-tables)).
 
 **Telemetry, results and records** use `game_id` as text, with no foreign key, so they outlive a
@@ -143,7 +143,7 @@ Selecting `*` reads those columns from disk every time, however little of the ro
 a once-a-minute watcher doing exactly that drained the database's Disk IO budget (~810 KB per tick,
 down to ~1 KB after the fix).
 
-- Pollers, lists and anything that runs often select named columns (`gamesListCols()`) and read
+- Pollers, lists and anything that runs often select named columns (`Db`'s light lists) and read
   summaries from `games.meta`.
 - Load the full world only when it's really needed (resolving a turn, opening one game), once.
 - Before adding a big column or a new poller, grep every `.select('*')` on that table. The poller is

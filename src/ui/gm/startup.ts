@@ -2,7 +2,7 @@
 import { thisPagesBuild } from '../shared/a-newer-version-of-this-page.ts';
 import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { computeStandings } from '../../engine/titles/reckoning.ts';
-import { sb, thePagesDb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { kcHtml } from '../shared/kc-safe.ts';
 
 // The oldest database this page works with (P0-34): a migration's version. kcDbGuard checks it before the
@@ -72,7 +72,7 @@ export function kcMissingMsg(title, what, effect) {
 }
 export async function probeGameMeta() {
   try {
-    const { error } = await sb.from('games').select('id,meta').limit(1);
+    const { error } = await thePagesDb.theGameMastersGames.oneGamesMeta();
     _kcHasMeta = !error;
     if (error) console.warn('games.meta probe:', error.message);
   } catch (e) {
@@ -88,13 +88,6 @@ export async function probeGameMeta() {
           "this tab is still pulling every game's full world and reports once a minute",
         );
   return _kcHasMeta;
-}
-// Column lists for the two list-style reads. With the column in place they carry no world and no
-// report; without it the old heavy shape is used so nothing is lost.
-export const GAME_LITE_COLS = 'id,name,gm_user_id,status,turn,max_players,max_turns,created_at,meta';
-export const PLAYER_LITE_COLS = 'id,game_id,user_id,player_index,display_name,orders_submitted';
-export function gamesListCols() {
-  return _kcHasMeta ? `${GAME_LITE_COLS}, game_players(${PLAYER_LITE_COLS})` : '*, game_players(*)';
 }
 // ════════════════════════════════════════════════════════════════════════════════════════════════
 // ARCHIVE A GAME (2026-09-27, Toby item 1)

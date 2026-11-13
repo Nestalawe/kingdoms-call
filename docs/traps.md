@@ -43,7 +43,7 @@ catch a page that no longer boots. [Detail](architecture/the-build-from-src-to-s
 
 ## `select('*')` on big tables
 
-Pollers, lists and anything that runs often select named columns (`gamesListCols()`) and read summaries from
+Pollers, lists and anything that runs often select named columns (`Db`'s light lists) and read summaries from
 `games.meta`; the full world is loaded only when it's really needed, once. Example: `games.game_state` is hundreds of
 KB per game; in Sept 2026 a once-a-minute watcher selecting `*` drained the database's Disk IO budget (~810 KB a tick,
 ~1 KB after the fix). Checks: lint

@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { SAFE_START_TURN } from '../../engine/army-tables.ts';
-import { sb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { TURN_MODES, normalizeTurnMode, parseGameState } from './startup.ts';
 import { isBotRow } from '../../engine/bots/setup.ts';
 import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -206,12 +206,10 @@ export async function saveBlockEliminated(on) {
     }
   };
   say('Saving…', 'var(--stone)');
-  const { data, error } = await sb
-    .from('games')
-    .update({ block_eliminated_msgs: !!on })
-    .eq('id', currentGame.id)
-    .select('id,block_eliminated_msgs')
-    .maybeSingle();
+  const { data, error } = await thePagesDb.theGameMastersGames.keepTheRealmsThatAreOutOfThisGameFromSendingDispatches(
+    currentGame.id,
+    !!on,
+  );
   if (error || !data) {
     const b = document.getElementById('detail-block-eliminated');
     if (b) b.checked = !on;
@@ -270,13 +268,11 @@ export async function saveBotDiplomacy() {
   const gs = parseGameState(currentGame);
   gs.botDiplomacy = v;
   if (msg) msg.innerHTML = '<span style="color:var(--stone)">Saving…</span>';
-  const { data, error } = await sb
-    .from('games')
-    .update({ game_state: JSON.stringify(gs), ...metaPatch(gs) })
-    .eq('id', currentGame.id)
-    .eq('turn', currentGame.turn)
-    .select('id')
-    .maybeSingle();
+  const { data, error } = await thePagesDb.theGameMastersGames.changeThisGameWhileOnThisTurnAndAnswerItsId(
+    currentGame.id,
+    currentGame.turn,
+    { game_state: JSON.stringify(gs), ...metaPatch(gs) },
+  );
   if (error) {
     if (msg) msg.innerHTML = kcHtml`<span style="color:#e88">${error.message}</span>`;
     return;

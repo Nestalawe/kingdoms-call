@@ -1,8 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
 import { kcRng } from '../../engine/rng.ts';
-import { sb, thePagesDb } from './config.ts';
-import { gameArchived, gamesListCols, probeGameMeta, probeMessaging, probeTelemetry } from './startup.ts';
+import { thePagesDb } from './config.ts';
+import { _kcHasMeta, gameArchived, probeGameMeta, probeMessaging, probeTelemetry } from './startup.ts';
 import { autoTurnReady, fmtDeadline, turnModeOf } from './turn-mode.ts';
 import { runTurn } from './turn-shell.ts';
 import { checkForANewerVersion } from '../shared/a-newer-version-of-this-page.ts';
@@ -74,11 +74,9 @@ export async function autoTurnTick() {
   try {
     // Disk-IO (2026-09-25): light columns only — this runs once a minute for as long as the tab is
     // open. runTurn loads the full world itself when a turn is actually due.
-    const { data, error } = await sb
-      .from('games')
-      .select(gamesListCols())
-      .eq('gm_user_id', currentUser.id)
-      .eq('status', 'active');
+    const { data, error } = _kcHasMeta
+      ? await thePagesDb.theGameMastersGames.theActiveGamesThisGameMasterRuns(currentUser.id)
+      : await thePagesDb.theGameMastersGames.theActiveGamesThisGameMasterRunsEveryColumn(currentUser.id);
     if (error || !data) return;
     // An ARCHIVED game is put away, so the watcher leaves it alone (2026-09-27 item 1).
     const watched = data

@@ -69,6 +69,8 @@ const noSuchRow = (): ADatabaseAnswer<never> => ({
   error: { message: 'Cannot coerce the result to a single JSON object' },
   status: 406,
 });
+/** At most one row asked for (maybeSingle), and none there: no row and no error. */
+const noneMatchedOfOne = (): ADatabaseAnswer<null> => ({ data: null, error: null, status: 200 });
 /** A new row the access rules refuse (no one signed in), in the database's words. */
 const refusedByTheAccessRules = (table: string): ADatabaseAnswer<never> => ({
   data: null,
@@ -270,6 +272,26 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
       reopenThisRealmsOrders: answering('from:game_players', nothingMatched),
       submitThisRealmsOrders: answering('from:game_players', nothingMatched),
       theTurnOfThisGame: answering('from:games', noSuchRow),
+    },
+    theGameMastersGames: {
+      oneGamesMeta: answering('from:games', none),
+      theGamesThisGameMasterRunsNewestFirst: answering('from:games', none),
+      theGamesThisGameMasterRunsNewestFirstEveryColumn: answering('from:games', none),
+      everyGameNewestFirstFromRowToRow: answering('from:games', none),
+      everyGameNewestFirstFromRowToRowEveryColumn: answering('from:games', none),
+      theActiveGamesThisGameMasterRuns: answering('from:games', none),
+      theActiveGamesThisGameMasterRunsEveryColumn: answering('from:games', none),
+      thisGameWithItsRealms: answering('from:games', noSuchRow),
+      makeThisGame: answering('from:games', () => refusedByTheAccessRules('games')),
+      thisGamesTurnAndWorld: answering('from:games', noSuchRow),
+      theGamesThisGameMasterRunsWithNoMeta: answering('from:games', none),
+      changeThisGame: answering('from:games', nothingMatched),
+      changeThisGameAndAnswerItsId: answering('from:games', noneMatchedOfOne),
+      changeThisGameWhileOnThisTurnAndAnswerItsId: answering('from:games', noneMatchedOfOne),
+      keepTheRealmsThatAreOutOfThisGameFromSendingDispatches: answering('from:games', noneMatchedOfOne),
+    },
+    theGameMastersRealms: {
+      removeThisRealm: answering('from:game_players', nothingMatched),
     },
   };
   return { db, calls };

@@ -1,8 +1,8 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { sb, thePagesDb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
-import { gameArchived, gameArchivedAt, gamesListCols } from './startup.ts';
+import { gameArchived, gameArchivedAt } from './startup.ts';
 import { metaPatch } from './turn-mode.ts';
 import {
   fmtAgo,
@@ -26,14 +26,12 @@ export async function loadGames() {
   const el = document.getElementById('games-list');
   el.innerHTML = '<div class="msg-info">Loading…</div>';
   // Disk-IO (2026-09-25): the list needs name / turn / status / meta and the slots' submitted flags —
-  // never the world or the reports. See gamesListCols.
+  // never the world or the reports. See src/db's A_GAME_IN_THE_GAME_MASTERS_LIST.
   const { data, error } = _kcOverlord
     ? await loadEveryGame()
-    : await sb
-        .from('games')
-        .select(gamesListCols())
-        .eq('gm_user_id', currentUser.id)
-        .order('created_at', { ascending: false });
+    : _kcHasMeta
+      ? await thePagesDb.theGameMastersGames.theGamesThisGameMasterRunsNewestFirst(currentUser.id)
+      : await thePagesDb.theGameMastersGames.theGamesThisGameMasterRunsNewestFirstEveryColumn(currentUser.id);
   if (error) {
     el.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
     return;
@@ -53,11 +51,9 @@ export async function loadGames() {
 export async function loadEveryGame() {
   const rows = [];
   for (let from = 0; ; from += 200) {
-    const { data, error } = await sb
-      .from('games')
-      .select(gamesListCols())
-      .order('created_at', { ascending: false })
-      .range(from, from + 199);
+    const { data, error } = _kcHasMeta
+      ? await thePagesDb.theGameMastersGames.everyGameNewestFirstFromRowToRow(from, from + 199)
+      : await thePagesDb.theGameMastersGames.everyGameNewestFirstFromRowToRowEveryColumn(from, from + 199);
     if (error) return { data: null, error };
     rows.push(...(data || []));
     if (!data || data.length < 200) break;
@@ -511,20 +507,16 @@ export async function createGame() {
     _cfg.visibility = 'private';
     _cfg.invited = invited;
   }
-  const { data: game, error } = await sb
-    .from('games')
-    .insert({
-      name,
-      gm_user_id: currentUser.id,
-      status: 'setup',
-      turn: 0,
-      max_players: maxP,
-      max_turns: maxTurns,
-      game_state: JSON.stringify(_cfg),
-      ...metaPatch(_cfg),
-    })
-    .select()
-    .single();
+  const { data: game, error } = await thePagesDb.theGameMastersGames.makeThisGame({
+    name,
+    gm_user_id: currentUser.id,
+    status: 'setup',
+    turn: 0,
+    max_players: maxP,
+    max_turns: maxTurns,
+    game_state: JSON.stringify(_cfg),
+    ...metaPatch(_cfg),
+  });
   if (error) {
     const isRLS = error.message?.includes('row-level security') || error.code === '42501';
     msg.innerHTML = kcHtml`<div class="msg-error">${error.message}${isRLS ? kcHtml`<br><small>Add an INSERT policy on the games table in your Supabase dashboard.</small>` : ''}</div>`;
@@ -545,7 +537,7 @@ export async function setGameArchived(gameId, archived) {
   if (!gameId) return;
   const msg = document.getElementById('detail-msg') || document.getElementById('msg-games');
   if (msg) msg.innerHTML = kcHtml`<div class="msg-info">${archived ? 'Archiving' : 'Restoring'}…</div>`;
-  const { data: row, error } = await sb.from('games').select('id,turn,game_state').eq('id', gameId).single();
+  const { data: row, error } = await thePagesDb.theGameMastersGames.thisGamesTurnAndWorld(gameId);
   if (error || !row) {
     if (msg) msg.innerHTML = kcHtml`<div class="msg-error">${(error && error.message) || 'Game not found.'}</div>`;
     return;
@@ -558,12 +550,11 @@ export async function setGameArchived(gameId, archived) {
     delete gs.archived;
     delete gs.archivedAt;
   }
-  let q = sb
-    .from('games')
-    .update({ game_state: JSON.stringify(gs), ...metaPatch(gs) })
-    .eq('id', gameId);
-  if (row.turn != null) q = q.eq('turn', row.turn); // the turn must not have moved under us
-  const { data: done, error: e2 } = await q.select('id').maybeSingle();
+  const change = { game_state: JSON.stringify(gs), ...metaPatch(gs) };
+  const { data: done, error: e2 } =
+    row.turn != null // the turn must not have moved under us
+      ? await thePagesDb.theGameMastersGames.changeThisGameWhileOnThisTurnAndAnswerItsId(gameId, row.turn, change)
+      : await thePagesDb.theGameMastersGames.changeThisGameAndAnswerItsId(gameId, change);
   if (e2) {
     if (msg) msg.innerHTML = kcHtml`<div class="msg-error">${e2.message}</div>`;
     return;
@@ -587,18 +578,13 @@ export function toggleArchivedView() {
 export async function backfillGameMeta() {
   if (!_kcHasMeta || !currentUser) return 0;
   try {
-    const { data, error } = await sb
-      .from('games')
-      .select('id,game_state')
-      .eq('gm_user_id', currentUser.id)
-      .is('meta', null);
+    const { data, error } = await thePagesDb.theGameMastersGames.theGamesThisGameMasterRunsWithNoMeta(currentUser.id);
     if (error || !data || !data.length) return 0;
     let n = 0;
     for (const g of data) {
-      const { error: e2 } = await sb
-        .from('games')
-        .update({ meta: buildGameMeta(parseGameState(g)) })
-        .eq('id', g.id);
+      const { error: e2 } = await thePagesDb.theGameMastersGames.changeThisGame(g.id, {
+        meta: buildGameMeta(parseGameState(g)),
+      });
       if (!e2) n++;
     }
     if (n) console.log(`[meta] backfilled ${n} game(s)`);

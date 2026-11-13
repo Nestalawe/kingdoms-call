@@ -221,6 +221,20 @@ export type AGameForItsReport = Pick<
 /** A turn's log (turn_logs: one row a game, turn and realm; realm -1, the GM's whole log), every column. */
 export type ATurnsLog = ARow<'turn_logs'>;
 
+/** A game in the GM page's list, its light columns and its realms' (games.meta there): never the world or a report. */
+export type AGameInTheGameMastersList = Pick<
+  AGame,
+  'id' | 'name' | 'gm_user_id' | 'status' | 'turn' | 'max_players' | 'max_turns' | 'created_at' | 'meta'
+> & {
+  readonly game_players: Pick<
+    ARealm,
+    'id' | 'game_id' | 'user_id' | 'player_index' | 'display_name' | 'orders_submitted'
+  >[];
+};
+
+/** A game, every column, with every column of its realms (the GM page's game screen; its list without games.meta). */
+export type AGameWithItsRealms = AGame & { readonly game_players: ARealm[] };
+
 /** The database, as the pages reach it: one area a row of P1-17. */
 export interface Db {
   /** The version guard's (src/db/kc-db-guard.ts, P0-34). */
@@ -522,7 +536,82 @@ export interface Db {
     /** The turn the game `game` is on (Submit checks it has not moved on). */
     readonly theTurnOfThisGame: (game: string) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'turn'>>>;
   };
+  /** The GM's games (games), as the GM page lists, opens, makes, sets, archives and backfills them. */
+  readonly theGameMastersGames: {
+    /** One game's id and meta: whether the database has the games.meta column. */
+    readonly oneGamesMeta: () => PromiseLike<ADatabaseAnswer<Pick<AGame, 'id' | 'meta'>[]>>;
+    /** The games the Game Master `gameMaster` runs, newest first: their light columns and their realms'. */
+    readonly theGamesThisGameMasterRunsNewestFirst: (
+      gameMaster: string,
+    ) => PromiseLike<ADatabaseAnswer<AGameInTheGameMastersList[]>>;
+    /** The same, every column (for a database without the meta column). */
+    readonly theGamesThisGameMasterRunsNewestFirstEveryColumn: (
+      gameMaster: string,
+    ) => PromiseLike<ADatabaseAnswer<AGameWithItsRealms[]>>;
+    /** Every game, newest first, from the row `from` to the row `to`: their light columns and their realms'. */
+    readonly everyGameNewestFirstFromRowToRow: (
+      from: number,
+      to: number,
+    ) => PromiseLike<ADatabaseAnswer<AGameInTheGameMastersList[]>>;
+    /** The same, every column (for a database without the meta column). */
+    readonly everyGameNewestFirstFromRowToRowEveryColumn: (
+      from: number,
+      to: number,
+    ) => PromiseLike<ADatabaseAnswer<AGameWithItsRealms[]>>;
+    /** The active games the Game Master `gameMaster` runs: their light columns and their realms'. */
+    readonly theActiveGamesThisGameMasterRuns: (
+      gameMaster: string,
+    ) => PromiseLike<ADatabaseAnswer<AGameInTheGameMastersList[]>>;
+    /** The same, every column (for a database without the meta column). */
+    readonly theActiveGamesThisGameMasterRunsEveryColumn: (
+      gameMaster: string,
+    ) => PromiseLike<ADatabaseAnswer<AGameWithItsRealms[]>>;
+    /** The game `game`, every column, with every column of its realms. */
+    readonly thisGameWithItsRealms: (game: string) => PromiseLike<ADatabaseAnswer<AGameWithItsRealms>>;
+    /** Makes the game `game`, and answers its row, every column, as the database made it. */
+    readonly makeThisGame: (game: ANewRow<'games'>) => PromiseLike<ADatabaseAnswer<AGame>>;
+    /** The game `game`'s turn and world (archiving reads them). */
+    readonly thisGamesTurnAndWorld: (
+      game: string,
+    ) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'id' | 'turn' | 'game_state'>>>;
+    /** The ids and worlds of the games the Game Master `gameMaster` runs that have no meta yet. */
+    readonly theGamesThisGameMasterRunsWithNoMeta: (
+      gameMaster: string,
+    ) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'id' | 'game_state'>[]>>;
+    /** Changes the game `game` by `change`. */
+    readonly changeThisGame: (game: string, change: AChange<'games'>) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Changes the game `game` by `change`, and answers its id (none if no game matched). */
+    readonly changeThisGameAndAnswerItsId: (
+      game: string,
+      change: AChange<'games'>,
+    ) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'id'> | null>>;
+    /** Changes the game `game` by `change` only while it is still on the turn `turn`, and answers its id (none if it
+     *  has moved on). */
+    readonly changeThisGameWhileOnThisTurnAndAnswerItsId: (
+      game: string,
+      turn: number,
+      change: AChange<'games'>,
+    ) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'id'> | null>>;
+    /** Sets whether realms that are out of the game `game` are kept from sending dispatches, and answers the setting
+     *  (none if no game matched). */
+    readonly keepTheRealmsThatAreOutOfThisGameFromSendingDispatches: (
+      game: string,
+      keep: boolean,
+    ) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'id' | 'block_eliminated_msgs'> | null>>;
+  };
+  /** The realms of the GM's games (game_players), as the GM page removes one. */
+  readonly theGameMastersRealms: {
+    /** Removes the realm `realm` from its game. */
+    readonly removeThisRealm: (realm: string) => PromiseLike<ADatabaseAnswer<null>>;
+  };
 }
+
+// The GM page's list's columns, held as the page held them (ui/gm/startup.ts's gamesListCols, until P1-17m): with the
+// games.meta column, the light columns and the realms'; without it, every column of both, so a list read on a database
+// without that column loses nothing. A list of columns held in a constant isn't read by the column rule (Parked).
+const A_GAME_IN_THE_GAME_MASTERS_LIST =
+  'id,name,gm_user_id,status,turn,max_players,max_turns,created_at,meta, game_players(id,game_id,user_id,player_index,display_name,orders_submitted)';
+const EVERY_COLUMN_OF_A_GAME_IN_THE_GAME_MASTERS_LIST = '*, game_players(*)';
 
 /** The page's Db, on its own client: each function sends the query the page sent on that client before. */
 export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
@@ -732,6 +821,65 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
           .update({ orders, orders_submitted: true, last_submitted_at: submittedAt })
           .eq('id', realm),
       theTurnOfThisGame: (game) => client.from('games').select('turn').eq('id', game).single(),
+    },
+    theGameMastersGames: {
+      oneGamesMeta: () => client.from('games').select('id,meta').limit(1),
+      theGamesThisGameMasterRunsNewestFirst: (gameMaster) =>
+        client
+          .from('games')
+          .select(A_GAME_IN_THE_GAME_MASTERS_LIST)
+          .eq('gm_user_id', gameMaster)
+          .order('created_at', { ascending: false }),
+      theGamesThisGameMasterRunsNewestFirstEveryColumn: (gameMaster) =>
+        client
+          .from('games')
+          .select(EVERY_COLUMN_OF_A_GAME_IN_THE_GAME_MASTERS_LIST)
+          .eq('gm_user_id', gameMaster)
+          .order('created_at', { ascending: false }),
+      everyGameNewestFirstFromRowToRow: (from, to) =>
+        client
+          .from('games')
+          .select(A_GAME_IN_THE_GAME_MASTERS_LIST)
+          .order('created_at', { ascending: false })
+          .range(from, to),
+      everyGameNewestFirstFromRowToRowEveryColumn: (from, to) =>
+        client
+          .from('games')
+          .select(EVERY_COLUMN_OF_A_GAME_IN_THE_GAME_MASTERS_LIST)
+          .order('created_at', { ascending: false })
+          .range(from, to),
+      theActiveGamesThisGameMasterRuns: (gameMaster) =>
+        client
+          .from('games')
+          .select(A_GAME_IN_THE_GAME_MASTERS_LIST)
+          .eq('gm_user_id', gameMaster)
+          .eq('status', 'active'),
+      theActiveGamesThisGameMasterRunsEveryColumn: (gameMaster) =>
+        client
+          .from('games')
+          .select(EVERY_COLUMN_OF_A_GAME_IN_THE_GAME_MASTERS_LIST)
+          .eq('gm_user_id', gameMaster)
+          .eq('status', 'active'),
+      thisGameWithItsRealms: (game) => client.from('games').select('*, game_players(*)').eq('id', game).single(),
+      makeThisGame: (game) => client.from('games').insert(game).select().single(),
+      thisGamesTurnAndWorld: (game) => client.from('games').select('id,turn,game_state').eq('id', game).single(),
+      theGamesThisGameMasterRunsWithNoMeta: (gameMaster) =>
+        client.from('games').select('id,game_state').eq('gm_user_id', gameMaster).is('meta', null),
+      changeThisGame: (game, change) => client.from('games').update(change).eq('id', game),
+      changeThisGameAndAnswerItsId: (game, change) =>
+        client.from('games').update(change).eq('id', game).select('id').maybeSingle(),
+      changeThisGameWhileOnThisTurnAndAnswerItsId: (game, turn, change) =>
+        client.from('games').update(change).eq('id', game).eq('turn', turn).select('id').maybeSingle(),
+      keepTheRealmsThatAreOutOfThisGameFromSendingDispatches: (game, keep) =>
+        client
+          .from('games')
+          .update({ block_eliminated_msgs: keep })
+          .eq('id', game)
+          .select('id,block_eliminated_msgs')
+          .maybeSingle(),
+    },
+    theGameMastersRealms: {
+      removeThisRealm: (realm) => client.from('game_players').delete().eq('id', realm),
     },
   };
 }
