@@ -214,7 +214,10 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   (`makeAFakeDbHoldingTheOverlordsWorld`: accounts, offers, games, realms, reported dispatches, the Overlord's
   functions with the database's refusals), the Hall of Fame's (`makeAFakeDbHoldingTheHallOfFame`: its entries and
   the changes sent) and the player's (`makeAFakeDbHoldingThePlayersWorld`: the signed-in account, names, games,
-  realms, a join's unique numbers, a dispatch's refusal, and each read asking for another account's realms).
+  realms, a join's unique numbers, a dispatch's refusal, each read asking for another account's realms, and, when a
+  test gives them, the dispatches and read marks). In Chromium, `handThePageTheFakeDb(page, world?)`
+  (`tests/browser/the-fake-db-handed-to-chromium.ts`) bundles the fake (Vite, once a worker) and an init script sets it
+  under the same name, with the world on the window (`kcTheFakesWorld`) for the spec to stage.
 
 ## A site change that needs a database change
 
