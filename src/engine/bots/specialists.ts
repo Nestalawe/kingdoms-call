@@ -1353,10 +1353,10 @@ export function botHomeThreat(G: GameState, pi: number) {
   }
   return best;
 }
-// RIDERS (bot improvements, 2026-11): a general on Defend rides into a neighbouring province of his realm when it is
+// THE HOSTS BESIDE A TARGET THAT RIDE TO ITS DEFENCE (bot improvements, 2026-11): a general on Defend rides into a neighbouring province of his realm when it is
 // attacked, so the hosts of N's owner the realm can see (or saw lately) beside N count in N's defence, as players count
 // them. A host pinned by our flood cannot ride; one standing in `fromId` (where we attack from) is fought there.
-export function botRidersFor(
+export function botHostsBesideATargetThatRideToItsDefence(
   G: GameState,
   pi: number,
   N: Province,
@@ -1449,7 +1449,9 @@ export function botScanTargets(
     }
     const rem = enemyTarget ? botRememberedHostAt(G, pi, N.id) : { units: 0, strength: 0 };
     targetStr += rem.strength * BOT_DEF_BONUS; // Sept 2026: a host seen here lately may still be here
-    const ride = enemyTarget ? botRidersFor(G, pi, N, P.id, _pins) : { force: 0, units: 0 };
+    const ride = enemyTarget
+      ? botHostsBesideATargetThatRideToItsDefence(G, pi, N, P.id, _pins)
+      : { force: 0, units: 0 };
     targetStr += ride.force * BOT_DEF_BONUS; // 2026-11: the owner's hosts beside it ride in
     let effMargin = ec.hasKing ? margin * 0.9 : margin;
     effMargin = botHostMargin(effMargin, ec.units + rem.units + ride.units); // 1.5–2× against a general
@@ -1605,7 +1607,9 @@ export function botDistantStrike(
           }
           const rem = enemyTarget ? botRememberedHostAt(G, pi, X.id) : { units: 0, strength: 0 };
           tStr += rem.strength * BOT_DEF_BONUS;
-          const ride = enemyTarget ? botRidersFor(G, pi, X, N.id, _pins) : { force: 0, units: 0 };
+          const ride = enemyTarget
+            ? botHostsBesideATargetThatRideToItsDefence(G, pi, X, N.id, _pins)
+            : { force: 0, units: 0 };
           tStr += ride.force * BOT_DEF_BONUS; // 2026-11: the owner's hosts beside it ride in
           let effMargin = ec.hasKing ? margin * 0.9 : margin;
           effMargin = botHostMargin(effMargin, ec.units + rem.units + ride.units);

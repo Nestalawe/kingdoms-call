@@ -14,9 +14,9 @@ import { botBattleForce, botTuning } from '../../src/engine/bots/intel.ts';
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 /** Realm 0's host of six companies in the middle province (realm 0's), beside a rich province of realm 1's (at war)
- *  held by one garrison company; the rest of the ring is poor unowned land. With `riders`, a host of realm 1's
+ *  held by one garrison company; the rest of the ring is poor unowned land. With `besideIt`, a host of realm 1's
  *  stands in a province next to both (realm 0's, so in sight). Returns the province the bot attacks. */
-function stage(riders: number | null) {
+function stage(besideIt: number | null) {
   const b = aBotBoard(SEED);
   b.G.turn = 10;
   b.own(b.X, 0);
@@ -31,9 +31,9 @@ function stage(riders: number | null) {
   b.own(target, 1);
   target.tax = 9;
   target.garrisonArmies = [{ type: 'Men-at-Arms', quality: 'Regular', race: 'Human', unitName: 'Watch of the Gate' }];
-  if (riders != null) {
+  if (besideIt != null) {
     b.own(beside, 0);
-    b.hero({ player: 1, at: beside, troops: riders });
+    b.hero({ player: 1, at: beside, troops: besideIt });
   }
   const staged = b.hero({ player: 0, at: b.X, troops: 6 });
   const G = b.state();
