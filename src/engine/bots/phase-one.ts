@@ -459,9 +459,10 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           }
         }
         if (!danger) return;
-        // Bot improvements (2026-11): leaving the capital or rich land of ours, he first raises its garrison in Spring
-        // (orders that don't move resolve before anyone marches), with the emergency levy; he leaves in the second phase.
-        const levy = valuable(P) ? botGarrisonLevy(G, pi, c, P, L) : null;
+        // Bot improvements (2026-11): leaving the capital or rich land of ours with an enemy host next door, he first raises
+        // its garrison in Spring (orders that don't move resolve before anyone marches), with the emergency levy, and leaves
+        // in the second phase. With an enemy host already here he leaves (or cloaks) at once: no phase is spent in its reach.
+        const levy = valuable(P) && !here.length ? botGarrisonLevy(G, pi, c, P, L) : null;
         if (
           (Number(asItsGuardReadsIt(c.skills)?.illusory) || 0) >= 1 &&
           !o.some((x) => x?.target === theNameOfTheSpell('invisibility'))
