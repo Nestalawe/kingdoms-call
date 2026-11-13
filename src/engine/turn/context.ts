@@ -16,7 +16,7 @@
 // TurnContext, below the function, is the context's type (plan P1-10a2); LogLine, the type of a line of the log, is the
 // events file's.
 import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
-import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type {
   EventButItsWords,
   LogLine,
@@ -125,6 +125,7 @@ export function createTurnContext<TheState>(
     // that has been lost, the realm's wealthiest remaining province — so the destination reflects
     // final ownership. Desert/mountain 30%, plains 45%, forest/jungle 60%.
     _elvenEscapeQueue: [],
+    _companiesSentOverland: [],
     // CLAIRVOYANCE watch snapshot. targetChar._clairvoyantBy is cleared at turn-end BEFORE the
     // per-player reports are built, so record each caster's active watch here (one per player — a new
     // casting replaces the old) to survive into report generation. { playerIndex: {charId, fromPhase}
@@ -279,6 +280,10 @@ export interface TurnContext {
   /** A simulated fight is running (the odds of a lair, a bot's forecast): no skill may rise. */
   _pcSimulating: boolean;
   _elvenEscapeQueue: ElvenEscape[];
+  /** The companies a beaten fleet sent overland to a garrison (navalSplitRetreat), handed back to the caller of the
+   *  battle: one that rallied a garrison or a leaderless host into its pooled copy takes them off those lists, as it
+   *  takes off the ships left ashore. Emptied before each such battle; never saved. */
+  _companiesSentOverland: Army[];
   /** Each realm's Clairvoyance watch, by realm. */
   clairWatch: Record<number, { charId: number; fromPhase: number }>;
   /** The realms with a hero in each province at the start of each phase: by phase, then a Map by province. */

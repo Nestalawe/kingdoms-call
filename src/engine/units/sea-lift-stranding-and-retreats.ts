@@ -562,6 +562,23 @@ export function navalSplitRetreat(
             units: theUnitsAsTheLineNamesThem(temps),
           });
         if (real.length) {
+          // A battle fights on a pooled COPY of the beaten side's column, so the heroes it was pooled from still lead
+          // these very companies: take them off every hero's column (they belong to the shore's garrison now; five
+          // callers fight on pooled copies, and only two sweep their parties afterwards), and drop the marks a company
+          // rallied from a garrison or a leaderless host carries, as _navalLeaveBehind does. The companies are handed
+          // back to the caller (_companiesSentOverland): one that rallied a garrison or a leaderless host keeps those in
+          // lists of its own, and takes these off them as it takes off the ships left ashore.
+          turnContext._companiesSentOverland.push(...real);
+          real.forEach((a) => {
+            delete a._fromGarrison;
+            delete a._fromLeaderless;
+            delete a._garrisonOf;
+          });
+          (asItsGuardReadsIt(G.characters) ?? []).forEach((h: Character | null | undefined) => {
+            if (!h || !Array.isArray(h.armies) || !h.armies.some((a) => real.includes(a))) return;
+            h.armies = h.armies.filter((a) => !real.includes(a));
+            if (h !== ch) refreshMovePool(turnContext, h);
+          });
           shore.garrisonArmies = (asItsGuardReadsIt(shore.garrisonArmies) ?? []).concat(real);
           narrate(narrative, {
             kind: 'units the fleet cannot carry fall back overland and join a garrison',

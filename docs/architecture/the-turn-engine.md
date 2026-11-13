@@ -206,7 +206,7 @@
   type) just after the save is parsed. It holds the state and the GM's log (`turnLog`, which only `emit` writes: every
   line enters through it with its audience, in `engine/turn/events-and-their-audiences.ts`; there is no `log()`;
   [traps.md](../traps.md#a-line-goes-through-emit)), the collectors (`_tel`, `battleCommanders`, …), the movement
-  pools (`movePoints`, `seaMovePoints`, …), `SEASONS`, `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`,
+  pools (`movePoints`, `seaMovePoints`, …), `SEASONS`, `recruitedThisTurn`, `_intrusionAcc`, `_elvenEscapeQueue`, `_companiesSentOverland`,
   `presenceByPhase`, `clairWatch`, `_reports`, `_botPlayerIdx`, `_distCache`, `_warFrontAtStart`, `_warFrontProvs`,
   `lightLandMoves`, `lightSeaMoves`, `diploDeclarations`, `reckoningCalls`, `staleOrderWarnings`, `safeStartRefused`,
   `discoveryChoicePicks`, `playerMessages`, `_botEncounteredAtStart` and `whatTheSavesUpgradeFound` (what the save's
