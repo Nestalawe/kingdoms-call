@@ -78,7 +78,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `string` and `number`. **A level a table may lack, handed to a rule that only compares it** (`_projLvl[school]`, the
   casts a school allows) is `Number(x)`: `NaN` meets no level, as `undefined` did. **A name read as a key that may be
   missing** (an item's spell) is `String(x)` before it is handed on: `'undefined'` is the key `undefined` was read as.- **`new Date(x)` on a value of any kind** (a deadline as a game's state holds it) is `Reflect.construct(Date, [x])`,
-  read into an `unknown` and checked `instanceof Date` (`theDateOf`, `game-lists.ts`): the constructor reads the value
+  read into an `unknown` and checked `instanceof Date` (`theDateOf`, `src/ui/shared/`): the constructor reads the value
   as before, which `Date`'s parameter types refuse. `JSON.parse(text)` of a game's state goes through a reader typed
   `unknown` (`theStateParsed`), so its `any` stays inside.
 
@@ -198,7 +198,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   consecration's checks) is filtered to its numbers (`theNumbersAmong`): no other value is a province's number. Where
   the place is a forecast with no id, `id ?? NaN` (`theIdOrNoProvince`) matches none, as `undefined` did.
 - **`.some` on a value of any kind** (a game's heroes, as parsed) goes through a reader that gives a list as it is and
-  throws, for any other value, the `TypeError` the call threw (`theListToSearch`, `game-lists.ts`).
+  throws, for any other value, the `TypeError` the call threw (`theListToSearch`, `src/ui/shared/`).
+- **`/re/.test(x || '')` on a value of any kind** (a turn mode's time, as a game's state holds it) is
+  `re.test(String(thisOrElse(x, '')))`, and the value it lets through is kept as it was, typed `unknown`
+  (`normalizeTurnMode`'s `time`); `.split` on it later checks for words first and throws the `TypeError` the call threw.
 - **`k in table` with a key of any kind** (a log line's hero id, as the chronicle files it) is `String(k) in table` (`inWords(k)`
   once `k != null` has narrowed it, for lint's `no-base-to-string`), and the read by it `table[String(k)]`: `in` and an index read a key by the same conversion (no log holds a symbol). **Names
   of any kind sorted by their length** (`b.length - a.length`, the chronicle's tinted names) read it through

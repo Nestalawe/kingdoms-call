@@ -233,6 +233,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `null` the schema's `optional()` doesn't name (a bot's second role where none ranks: `theSecondRoleWritten`).
 - **A constant flag set `false`** (`BOT_SLAYER_FIGHTERS_ONLY`, a choice kept off) is read through a reader typed
   `boolean` (`theSlayersMustFight`): read as it is, lint's `no-unnecessary-condition` calls the test always false.
+- **The readers of a value of any kind** (`theField`, `thisOrElse`, `isAList`, `theListToSearch`, `theDateOf`) are in
+  `src/ui/shared/a-value-of-any-kind-read-as-javascript-reads-it.ts`, which every page may import (P1-16p). A field
+  written on a game's state as parsed (`gs.botDiplomacy = v`) is `Reflect.set` after a check that throws, for a value
+  that isn't an object, the `TypeError` the write threw in a module. A column the page sends as it built it from such a
+  state (a game's `meta`) takes any value in `TheDatabase` (`AGamesChange`, types only): supabase-js writes it as JSON.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does (for `null`, the TypeError that read throws: a game's setup, `bots/setup.ts`).
 - **What a realm sent, parsed from JSON or as its slot row holds it** (its orders, read field by field) goes through one
