@@ -52,7 +52,7 @@ declare var _kcLbLastErr: PageState;
 // ui/gm/turn-zero.ts
 declare var _pendingTurn0: PageState;
 // ui/leaderboard/main.ts
-declare var GAMES: PageState;
+declare var GAMES: import('./ui/leaderboard/a-game-in-the-hall-of-fame-as-the-board-reads-it.ts').AGameAsTheBoardHoldsIt[];
 // ui/player/dispatches.ts
 declare var _msgGameId: string | null;
 declare var _msgMyIndex: number | null;
