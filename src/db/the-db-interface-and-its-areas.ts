@@ -675,6 +675,24 @@ export interface Db {
       submitted: boolean,
     ) => PromiseLike<ADatabaseAnswer<null>>;
   };
+  /** Turn 0, as the GM page starts a game (src/ui/gm/turn-zero.ts): its realms read, the bots' realms made afresh, the
+   *  new world saved, each realm's first report and log written, and the game read again. */
+  readonly theTurnZeroAsTheGameMasterRunsIt: {
+    /** Every realm of the game `game`, every column. */
+    readonly everyRealmOfThisGame: (game: string) => PromiseLike<ADatabaseAnswer<ARealm[]>>;
+    /** Removes every bot's realm of the game `game` (the realms with no account). */
+    readonly removeEveryBotsRealmOfThisGame: (game: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Makes the bot's realm `realm`, and answers its row, every column, as the database made it. */
+    readonly makeThisBotsRealm: (realm: ANewRow<'game_players'>) => PromiseLike<ADatabaseAnswer<ARealm>>;
+    /** Starts the game `game`: changes it by `change` (its status, turn, world and meta). */
+    readonly startThisGame: (game: string, change: AChange<'games'>) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Gives the realm `realm` its first report `report` (one JSON text), with no orders and none submitted. */
+    readonly giveThisRealmItsFirstReport: (realm: string, report: string) => PromiseLike<ADatabaseAnswer<null>>;
+    /** Writes the log `log` (a realm's first report, kept for turn 0). */
+    readonly writeThisLog: (log: ANewRow<'turn_logs'>) => PromiseLike<ADatabaseAnswer<null>>;
+    /** The game `game`, every column, with every column of its realms (an error when there is none). */
+    readonly thisGameWithItsRealms: (game: string) => PromiseLike<ADatabaseAnswer<AGameWithItsRealms>>;
+  };
 }
 
 // The GM page's list's columns, held as the page held them (ui/gm/startup.ts's gamesListCols, until P1-17m): with the
@@ -988,6 +1006,20 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
       theTurnOfThisGameIfItIsThere: (game) => client.from('games').select('turn').eq('id', game).maybeSingle(),
       putBackThisRealmsOrders: (realm, orders, submitted) =>
         client.from('game_players').update({ orders, orders_submitted: submitted }).eq('id', realm),
+    },
+    theTurnZeroAsTheGameMasterRunsIt: {
+      everyRealmOfThisGame: (game) => client.from('game_players').select('*').eq('game_id', game),
+      removeEveryBotsRealmOfThisGame: (game) =>
+        client.from('game_players').delete().eq('game_id', game).is('user_id', null),
+      makeThisBotsRealm: (realm) => client.from('game_players').insert(realm).select().single(),
+      startThisGame: (game, change) => client.from('games').update(change).eq('id', game),
+      giveThisRealmItsFirstReport: (realm, report) =>
+        client
+          .from('game_players')
+          .update({ turn_report: report, orders: null, orders_submitted: false })
+          .eq('id', realm),
+      writeThisLog: (log) => client.from('turn_logs').insert(log),
+      thisGameWithItsRealms: (game) => client.from('games').select('*, game_players(*)').eq('id', game).single(),
     },
   };
 }

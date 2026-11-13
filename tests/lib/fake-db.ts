@@ -321,6 +321,15 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
       theTurnOfThisGameIfItIsThere: answering('from:games', noneMatchedOfOne),
       putBackThisRealmsOrders: answering('from:game_players', nothingMatched),
     },
+    theTurnZeroAsTheGameMasterRunsIt: {
+      everyRealmOfThisGame: answering('from:game_players', none),
+      removeEveryBotsRealmOfThisGame: answering('from:game_players', nothingMatched),
+      makeThisBotsRealm: answering('from:game_players', () => refusedByTheAccessRules('game_players')),
+      startThisGame: answering('from:games', nothingMatched),
+      giveThisRealmItsFirstReport: answering('from:game_players', nothingMatched),
+      writeThisLog: answering('from:turn_logs', () => refusedByTheAccessRules('turn_logs')),
+      thisGameWithItsRealms: answering('from:games', noSuchRow),
+    },
   };
   return { db, calls };
 }

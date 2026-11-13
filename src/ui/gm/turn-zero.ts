@@ -1,7 +1,7 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
 import { SKILL_LABELS } from '../../engine/army-tables.ts';
-import { sb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { MAP_MAX_PLAYERS } from './game-list.ts';
 import { renderOrdersStatus } from './game-detail.ts';
 import { seedUsedHeroNames } from '../../engine/names.ts';
@@ -27,7 +27,9 @@ export async function runTurn0() {
   msg.innerHTML = '<div class="msg-info">⏳ Preparing world setup…</div>';
 
   // Reload player list fresh
-  const { data: players, error: pErr } = await sb.from('game_players').select('*').eq('game_id', currentGame.id);
+  const { data: players, error: pErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.everyRealmOfThisGame(
+    currentGame.id,
+  );
   if (pErr) {
     msg.innerHTML = kcHtml`<div class="msg-error">Could not load players: ${pErr.message}</div>`;
     return;
@@ -186,33 +188,29 @@ export async function commitTurn0() {
     // 1. Persist bot rows first (clean slate: remove any leftover bot rows from an aborted run).
     // Bots are the only rows with a null user_id, so this only ever deletes bots.
     if (botSetups.length > 0) {
-      await sb.from('game_players').delete().eq('game_id', currentGame.id).is('user_id', null);
+      await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.removeEveryBotsRealmOfThisGame(currentGame.id);
       for (const b of botSetups) {
-        const { data: brow, error: bErr } = await sb
-          .from('game_players')
-          .insert({
-            game_id: currentGame.id,
-            user_id: null,
-            player_index: b.id,
-            display_name: b.kingdomName,
-            orders_submitted: false,
-            // isBot marker lives in the JSON (no DB column needed); playerSetup mirrors a human join.
-            turn_report: JSON.stringify({
-              isBot: true,
-              playerSetup: {
-                kingName: b.kingName,
-                kingdomName: b.kingdomName,
-                race: b.race,
-                alignment: b.alignment,
-                temper: b.temper,
-                skills: b.skills,
-              },
-              status: 'bot',
-              waitingForTurn0: true,
-            }),
-          })
-          .select()
-          .single();
+        const { data: brow, error: bErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.makeThisBotsRealm({
+          game_id: currentGame.id,
+          user_id: null,
+          player_index: b.id,
+          display_name: b.kingdomName,
+          orders_submitted: false,
+          // isBot marker lives in the JSON (no DB column needed); playerSetup mirrors a human join.
+          turn_report: JSON.stringify({
+            isBot: true,
+            playerSetup: {
+              kingName: b.kingName,
+              kingdomName: b.kingdomName,
+              race: b.race,
+              alignment: b.alignment,
+              temper: b.temper,
+              skills: b.skills,
+            },
+            status: 'bot',
+            waitingForTurn0: true,
+          }),
+        });
         if (bErr) {
           msg.innerHTML = kcHtml`<div class="msg-error">Could not create bot realm: ${bErr.message}</div>`;
           return;
@@ -252,15 +250,12 @@ export async function commitTurn0() {
     }
     seedUsedArmyNames(gameState);
     seedUsedHeroNames(gameState);
-    const { error: saveErr } = await sb
-      .from('games')
-      .update({
-        status: 'active',
-        turn: 1,
-        game_state: JSON.stringify(gameState),
-        ...metaPatch(gameState),
-      })
-      .eq('id', currentGame.id);
+    const { error: saveErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.startThisGame(currentGame.id, {
+      status: 'active',
+      turn: 1,
+      game_state: JSON.stringify(gameState),
+      ...metaPatch(gameState),
+    });
     if (saveErr) {
       msg.innerHTML = kcHtml`<div class="msg-error">Error saving game: ${saveErr.message}</div>`;
       return;
@@ -272,30 +267,31 @@ export async function commitTurn0() {
     for (const sp of setupPlayers) {
       const report = buildTurnReport(playerView(gameState, sp.id)); // what the realm sees of the new world; no turn's lines yet
       report.engineStamp = typeof runningBuildStamp === 'function' ? runningBuildStamp() : null; // which GM build wrote it
-      const { error: rErr } = await sb
-        .from('game_players')
-        .update({
-          turn_report: sp.isBot
-            ? JSON.stringify({
-                isBot: true,
-                report,
-                playerSetup: {
-                  kingName: sp.kingName,
-                  kingdomName: sp.kingdomName,
-                  race: sp.race,
-                  alignment: sp.alignment,
-                  temper: sp.temper,
-                  skills: sp.skills,
-                },
-              })
-            : JSON.stringify(report),
-          orders: null,
-          orders_submitted: false,
-        })
-        .eq('id', sp.gamePlayerId);
+      const { error: rErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.giveThisRealmItsFirstReport(
+        sp.gamePlayerId,
+        sp.isBot
+          ? JSON.stringify({
+              isBot: true,
+              report,
+              playerSetup: {
+                kingName: sp.kingName,
+                kingdomName: sp.kingdomName,
+                race: sp.race,
+                alignment: sp.alignment,
+                temper: sp.temper,
+                skills: sp.skills,
+              },
+            })
+          : JSON.stringify(report),
+      );
       if (rErr) reportErrors.push(rErr.message);
       try {
-        await sb.from('turn_logs').insert({ game_id: currentGame.id, player_index: sp.id, turn: 0, entries: report });
+        await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.writeThisLog({
+          game_id: currentGame.id,
+          player_index: sp.id,
+          turn: 0,
+          entries: report,
+        });
       } catch (snapErr) {
         /* best-effort */
       }
@@ -314,7 +310,7 @@ export async function commitTurn0() {
     document.getElementById('detail-run-turn0-wrap').style.display = 'none';
     document.getElementById('detail-orders-card').style.display = 'block';
     document.getElementById('detail-log-card').style.display = 'none';
-    const { data: refreshed } = await sb.from('games').select('*, game_players(*)').eq('id', currentGame.id).single();
+    const { data: refreshed } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.thisGameWithItsRealms(currentGame.id);
     if (refreshed) {
       currentGame = refreshed;
       currentGamePlayers = refreshed.game_players || [];
