@@ -13,19 +13,19 @@ import type {
 } from '../../db/the-db-interface-and-its-areas.ts';
 
 /** `value[key]` as JavaScript reads it (a game's state as parsed from JSON): for none, the TypeError that read throws. */
-function theField(value: unknown, key: PropertyKey): unknown {
+export function theField(value: unknown, key: PropertyKey): unknown {
   if (value === null || value === undefined) {
     throw new TypeError(`Cannot read properties of ${String(value)} (reading '${String(key)}')`);
   }
   return Reflect.get(Object(value), key);
 }
 /** `a || b` on values of any kind (a game's state as parsed): `a` where it is truthy, else `b`. */
-function thisOrElse(a: unknown, b: unknown): unknown {
+export function thisOrElse(a: unknown, b: unknown): unknown {
   if (a) return a;
   return b;
 }
 /** A game's state parsed from its JSON text: any value. */
-function theStateParsed(text: string): unknown {
+export function theStateParsed(text: string): unknown {
   return JSON.parse(text);
 }
 /** `new Date(value)` on a value of any kind (a deadline as a game's state holds it), as the constructor reads it. */
@@ -35,7 +35,7 @@ function theDateOf(value: unknown): Date {
   throw new TypeError('the Date constructor made no date');
 }
 /** Whether a value is a list (of values of any kind). */
-function isAList(value: unknown): value is readonly unknown[] {
+export function isAList(value: unknown): value is readonly unknown[] {
   return Array.isArray(value);
 }
 /** A list a value of a game's state holds, as `.some` reads it: any other value throws the TypeError `.some` threw. */
@@ -44,7 +44,7 @@ function theListToSearch(value: unknown): readonly unknown[] {
   throw new TypeError('the value searched is not a list');
 }
 /** The signed-in account's id, as `currentUser.id` read it: before sign-in, the TypeError that read threw. */
-function theSignedInAccountsId(): string {
+export function theSignedInAccountsId(): string {
   if (currentUser === null) throw new TypeError("Cannot read properties of null (reading 'id')");
   return currentUser.id;
 }

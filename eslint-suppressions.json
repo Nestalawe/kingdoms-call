@@ -425,20 +425,6 @@
       "count": 5
     }
   },
-  "src/ui/player/join-and-chronicle.ts": {
-    "@typescript-eslint/no-dynamic-delete": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 7
-    },
-    "no-empty": {
-      "count": 2
-    },
-    "prefer-const": {
-      "count": 4
-    }
-  },
   "src/ui/player/report.ts": {
     "@typescript-eslint/no-dynamic-delete": {
       "count": 1

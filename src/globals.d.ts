@@ -69,8 +69,8 @@ declare var viewingReport: import('./ui/player/map.ts').TheReportAsTheMapDrawsIt
 declare var viewedTurn: PageState;
 // ui/player/items-and-heroes.ts
 declare var currentProfile: PageState;
-declare var joiningGame: PageState;
-declare var joinSkills: PageState;
+declare var joiningGame: import('./ui/player/join-and-chronicle.ts').TheGameBeingJoined | null;
+declare var joinSkills: Record<string, number>;
 /** The realm's seat in the open game (the map writes its hero order into it). */
 declare var currentGamePlayer: import('./ui/player/map.ts').TheRealmsSeatAsThePageHoldsIt | null | undefined;
 /** The report the page shows: as the order form's forecasts, the page's lists, the map's popups, the Titles card, the map
