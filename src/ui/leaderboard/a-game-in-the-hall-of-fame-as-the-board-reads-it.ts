@@ -28,6 +28,11 @@ export function theColumnParsed(column: unknown): unknown {
   return column;
 }
 
+/** A JSON column parsed, else `otherwise` where it parsed to nothing `||` passes over: `jp(column) || otherwise`. */
+export function theColumnParsedOrElse(column: unknown, otherwise: unknown): unknown {
+  return thisOrElse(theColumnParsed(column), otherwise);
+}
+
 /** How a game was set up (its `setup` column), as the board's filters and lines read it. */
 export interface TheSetUpAsTheBoardReadsIt {
   readonly bots: unknown;
@@ -106,7 +111,7 @@ export interface AGameAsTheBoardHoldsIt extends Omit<AHallOfFameEntry, 'setup' |
 
 /** A game's setup, `jp(setup) || {}` read field by field. */
 export function theSetUpAsTheBoardReadsIt(column: unknown): TheSetUpAsTheBoardReadsIt {
-  const setup = thisOrElse(theColumnParsed(column), {});
+  const setup = theColumnParsedOrElse(column, {});
   return {
     bots: theFieldOfSomething(setup, 'bots'),
     realms: theFieldOfSomething(setup, 'realms'),
@@ -120,7 +125,7 @@ export function theSetUpAsTheBoardReadsIt(column: unknown): TheSetUpAsTheBoardRe
 }
 /** A game's totals, `jp(totals) || {}` read field by field. */
 export function theTotalsAsTheBoardReadsThem(column: unknown): TheTotalsAsTheBoardReadsThem {
-  const totals = thisOrElse(theColumnParsed(column), {});
+  const totals = theColumnParsedOrElse(column, {});
   return {
     battles: theFieldOfSomething(totals, 'battles'),
     casualties: theFieldOfSomething(totals, 'casualties'),
@@ -168,7 +173,7 @@ function aStandingRead(held: unknown): AStandingAsTheBoardReadsIt {
 }
 /** A game's standings, `jp(standings) || []`: a list's elements read (each nothing kept), any other value kept. */
 export function theStandingsAsTheBoardHoldsThem(column: unknown): AGameAsTheBoardHoldsIt['standings'] {
-  const standings = thisOrElse(theColumnParsed(column), []);
+  const standings = theColumnParsedOrElse(column, []);
   if (!isAList(standings)) return { heldAsItWas: standings };
   return standings.map((held) => (isNothing(held) ? held : aStandingRead(held)));
 }
@@ -182,7 +187,7 @@ export function theStandingsOf(
 /** A game's records, `Object.entries(jp(records) || {})`: each record's entries (one entry, or a list of them, as the
  *  rows before lb3 and after wrote them), those that are something with a value read field by field. */
 export function theRecordsAsTheBoardReadsThem(column: unknown): readonly ARecordAsTheBoardReadsIt[] {
-  const held = thisOrElse(theColumnParsed(column), {});
+  const held = theColumnParsedOrElse(column, {});
   if (held === null || held === undefined) return [];
   const records: readonly [string, unknown][] = Object.entries(held);
   return records.map(([key, record]) => {

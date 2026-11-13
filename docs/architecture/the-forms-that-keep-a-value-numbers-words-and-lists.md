@@ -82,6 +82,15 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   as before, which `Date`'s parameter types refuse. `JSON.parse(text)` of a game's state goes through a reader typed
   `unknown` (`theStateParsed`), so its `any` stays inside.
 
+- **`a + b` on values of any kind** (a score a game's record holds, added up) goes through `theSumAsJavaScriptMakesIt`
+  (`src/ui/shared/`): words where either side reads as words, else the two as numbers, as `+` gives; `Number(a) + Number(b)`
+  would turn a score held as words into a number. `a - b`, `a / b`, `a < 30` and `Math.max(a, b)` already read each side
+  as a number: `Number(a) - Number(b)` is the same.
+- **Database JSON read in many sums and sorts** (the Hall of Fame's `game_records`) is read once, where the page loads it,
+  into a view: each field the value `x.field` gave (`unknown`), each list's elements with `!x`'s nothings (`null`, `0`,
+  `false`, `''`) kept as they were, and a value that should be a list but isn't kept, so walking it throws as before
+  (`src/ui/leaderboard/a-game-in-the-hall-of-fame-as-the-board-reads-it.ts`).
+
 ## Lists, tables, sets and maps
 
 - **A table of lists read by any words, else one of its rows** (`SUSPEND_FOR[how] || SUSPEND_FOR.day`) is typed with that

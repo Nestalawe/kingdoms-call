@@ -2,6 +2,7 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { kcDbGuard } from '../../db/kc-db-guard.ts';
 import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
+import { theColumnParsedOrElse } from './a-game-in-the-hall-of-fame-as-the-board-reads-it.ts';
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // KINGDOMS CALL — HALL OF FAME
@@ -378,10 +379,10 @@ export async function loadAll(force) {
   }
   GAMES = rows.map((r) => ({
     ...r,
-    setup: jp(r.setup) || {},
-    standings: jp(r.standings) || [],
-    records: jp(r.records) || {},
-    totals: jp(r.totals) || {},
+    setup: theColumnParsedOrElse(r.setup, {}),
+    standings: theColumnParsedOrElse(r.standings, []),
+    records: theColumnParsedOrElse(r.records, {}),
+    totals: theColumnParsedOrElse(r.totals, {}),
   }));
   // the people behind the realms, by their current name
   PEOPLE = {};
@@ -400,17 +401,6 @@ export async function loadAll(force) {
   $('spinner').style.display = 'none';
   $('main').style.display = 'block';
   render();
-}
-export function jp(v) {
-  if (v == null) return null;
-  if (typeof v === 'string') {
-    try {
-      return JSON.parse(v);
-    } catch (e) {
-      return null;
-    }
-  }
-  return v;
 }
 
 export function buildFilterOptions() {

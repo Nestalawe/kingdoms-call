@@ -8,6 +8,7 @@ import { describe, expect, test } from 'vitest';
 import type { AHallOfFameEntry } from '../../src/db/the-db-interface-and-its-areas.ts';
 import {
   theColumnParsed,
+  theColumnParsedOrElse,
   theGameAsTheBoardHoldsIt,
   theRecordsAsTheBoardReadsThem,
   theSetUpAsTheBoardReadsIt,
@@ -78,6 +79,15 @@ describe('a JSON column parsed, as jp parsed it', () => {
     expect(theColumnParsed(held)).toBe(held);
     expect(theColumnParsed(0)).toBe(0);
   });
+  test('else the value handed, where it parsed to nothing || passes over (jp(x) || {})', () => {
+    const otherwise = {};
+    for (const column of [null, undefined, 'not JSON', '0', 0, false, '""', 'false', 'null']) {
+      expect(theColumnParsedOrElse(column, otherwise)).toBe(otherwise);
+    }
+    expect(theColumnParsedOrElse('[]', otherwise)).toStrictEqual([]);
+    expect(theColumnParsedOrElse('"x"', otherwise)).toBe('x');
+    expect(theColumnParsedOrElse(7, otherwise)).toBe(7);
+  });
 });
 
 describe("a game's setup and totals, read field by field after || {}", () => {
@@ -134,6 +144,9 @@ describe("a game's standings, as (g.standings || []) walked them", () => {
   test('none, or words that are no JSON, is no standing; words of a list are parsed', () => {
     expect(theStandingsOf({ standings: theStandingsAsTheBoardHoldsThem(null) })).toStrictEqual([]);
     expect(theStandingsOf({ standings: theStandingsAsTheBoardHoldsThem('oops') })).toStrictEqual([]);
+    for (const nothing of [0, false, '0', 'false', '""']) {
+      expect(theStandingsOf({ standings: theStandingsAsTheBoardHoldsThem(nothing) })).toStrictEqual([]);
+    }
     expect(theStandingsOf({ standings: theStandingsAsTheBoardHoldsThem('[{"realm":"Osk"}]') })[0]).toMatchObject({
       realm: 'Osk',
     });
