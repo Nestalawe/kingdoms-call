@@ -239,6 +239,18 @@ export function botSafeStep(G: GameState, pi: number, P: Province, awayFrom: Pro
   }
   return best;
 }
+// THE EMERGENCY LEVY: `body` runs with the realm's wage ceiling raised as for an enemy at hand (BOT_P1.levyCap, at least
+// BOT_P1.levyWages above what it pays now), and the ceiling is put back however `body` ends. The muster in contact and
+// the garrison levy before a king's flight both raise companies under it.
+export function botUnderTheEmergencyLevy<T>(L: ABotRealmsLedger, body: () => T): T {
+  const cap0 = L.upkeepCap;
+  L.upkeepCap = Math.max(cap0 * BOT_P1.levyCap, (L.upkeep || 0) + BOT_P1.levyWages);
+  try {
+    return body();
+  } finally {
+    L.upkeepCap = cap0;
+  }
+}
 // GARRISON LEVY (bot improvements, 2026-11): what a character leaving province P of ours raises into its garrison as
 // he goes, under the emergency levy past the wage ceiling: the field companies P recruits, else its garrison companies.
 export function botGarrisonLevy(
@@ -249,9 +261,7 @@ export function botGarrisonLevy(
   L: ABotRealmsLedger,
 ): PhaseOrder | null {
   if (P.owner !== pi || !(asItsGuardReadsIt(P.armyTypes) ?? []).length) return null;
-  const cap0 = L.upkeepCap;
-  L.upkeepCap = Math.max(cap0 * BOT_P1.levyCap, (L.upkeep || 0) + BOT_P1.levyWages);
-  try {
+  return botUnderTheEmergencyLevy(L, () => {
     const toks = botFieldRecruitTokens(G, pi, c, P, L).filter((t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? ''));
     const ro = botRecruitOrder(toks, null);
     if (ro)
@@ -262,9 +272,7 @@ export function botGarrisonLevy(
       };
     const go = botGarrisonOrder(G, pi, P, L);
     return go ? { ...go, desc: go.desc + ' (the enemy is at hand)' } : null;
-  } finally {
-    L.upkeepCap = cap0;
-  }
+  });
 }
 export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | null | undefined, stage: string) {
   const MUSTER = stage === 'muster';
@@ -499,16 +507,11 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         if (end < 0) end = 5;
         if (end === 0 && /^(Attack|Assault|Lightning strike)/.test(o[0]?.desc ?? '')) return; // striking first outranks mustering
         if (o.slice(0, end).some((x) => x && (x.action === 'recruit' || x.action === 'pickup_army'))) return;
-        const _cap0 = L.upkeepCap;
-        L.upkeepCap = Math.max(_cap0 * BOT_P1.levyCap, (L.upkeep || 0) + BOT_P1.levyWages); // EMERGENCY LEVY
-        let toks: string[];
-        try {
-          toks = botFieldRecruitTokens(G, pi, c, P, L).filter(
+        const toks = botUnderTheEmergencyLevy(L, () =>
+          botFieldRecruitTokens(G, pi, c, P, L).filter(
             (t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? '') || c._botRole === 'admiral',
-          );
-        } finally {
-          L.upkeepCap = _cap0;
-        }
+          ),
+        );
         const ro = botRecruitOrder(toks, null);
         if (!ro) return;
         ro.desc += ' (war chest — the enemy is at hand)';

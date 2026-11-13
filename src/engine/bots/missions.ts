@@ -1538,6 +1538,11 @@ export function botMasteryPre(
 //     king also risks 10% or less of falling. Seeing no general, a hero challenges as before; a king only accepts.
 // botDuelSkill (a character's best duelling skill) is in bots/strategy.ts.
 export const BOT_DUEL = { heroAccept: 0.5, kingAccept: 0.6, kingFelled: 0.1, challenge: 0.65 };
+// With no forecaster handed in (the plan always hands one in; a direct call may not), the duelling ratings stand in, as
+// before: a commander rated 1.3× his foe or more counts as winning 70% of the time, any other 40%. His odds of falling
+// are set either side of the king's limit (BOT_DUEL.kingFelled): only the one rated clearly stronger counts as safe
+// enough for a king to answer.
+export const BOT_DUEL_WITHOUT_A_FORECAST = { felledWhenStronger: 0.05, felledOtherwise: 0.3 };
 export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: ADuelForecaster | null | undefined) {
   const hp = asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20),
     mhp = c.maxHp || 20;
@@ -1568,7 +1573,11 @@ export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: A
     if (loc == null || !near.some((x) => x.id === loc)) continue;
     const f = typeof duelSim === 'function' ? duelSim(c, botAssumedChar(G, pi, e), 16) : null;
     const w = f ? f.win : botDuelRating(c) >= botDuelRating(botAssumedChar(G, pi, e)) * 1.3 ? 0.7 : 0.4;
-    const fl = f ? f.felled : w >= 0.7 ? 0.05 : 0.3;
+    const fl = f
+      ? f.felled
+      : w >= 0.7
+        ? BOT_DUEL_WITHOUT_A_FORECAST.felledWhenStronger
+        : BOT_DUEL_WITHOUT_A_FORECAST.felledOtherwise;
     if (win == null || w < win) win = w;
     if (fl > felled) felled = fl;
   }
