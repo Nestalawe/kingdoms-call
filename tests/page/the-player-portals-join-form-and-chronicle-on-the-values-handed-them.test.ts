@@ -336,7 +336,13 @@ describe('the chronicle', () => {
       ],
       {
         titles: { gameOver: { winnerName: '' } },
-        allKingdoms: [null, { name: '' }, { name: 'Thornmere', color: '#3366aa' }, { name: 'Vale' }],
+        allKingdoms: [
+          null,
+          { name: '' },
+          { name: 'Thornmere', color: '#3366aa' },
+          { name: 'Vale' },
+          { color: '#aa0000' },
+        ],
       },
     );
     const html = theChronicleOf(report);
@@ -361,6 +367,7 @@ describe('the chronicle', () => {
       { text: 'Taxes are paid.' },
       { text: 'A storm in spring.', phase: 0, type: null },
       { text: 'A realm stirs.', phase: 7 },
+      { text: ' [Intelligence] An indented whisper.', phase: 0 },
       { text: 'Brand fights.', charId: 2, phase: 3 },
       { text: 'Brand pins.', charId: 2, phase: 3, pinNotice: true },
     ]);
@@ -373,7 +380,10 @@ describe('the chronicle', () => {
     expect(text).not.toContain('The ground shakes far away.');
     expect(html).toContain('<div class="log-entry " style="">A storm in spring.</div>');
     const events = text.slice(text.indexOf('Realm Events'));
-    expect(events).toMatch(/Spring A storm in spring\. End of Turn Taxes are paid\.A realm stirs\./);
+    expect(html).toMatch(/A courier reaches <span style="color:#[0-9a-f]+">Aldric<\/span>\./);
+    expect(events).toMatch(
+      /Spring A storm in spring\.\s*\[Intelligence\] An indented whisper\. End of Turn Taxes are paid\.A realm stirs\./,
+    );
   });
   test("a battle's sides: the short view counts each kind, a side of no armies says so; a marker that can't be read is a line", () => {
     const side = (o: Record<string, unknown>) => `⚑FORCE⚑${JSON.stringify(o)}`;
@@ -427,6 +437,7 @@ describe('the chronicle', () => {
     expect(short).toContain(' Knights</div>');
     expect(short).toContain('>Vale Guard</span> holds — no armies');
     expect(short).toContain('>Lone Scout</span>  — 1 unit: ');
+    expect(short).toContain('The clash at the ford</span><span style="flex:1"></span><button');
     expect(short).toContain('<span style="color:#555;font-weight:700">Vale Guard</span>');
     expect(short).not.toContain('Orc Chief');
     expect(textOf('report-log')).toContain('⚑FORCE⚑null');
@@ -442,7 +453,7 @@ describe('the chronicle', () => {
     const report = aReport(
       [
         {
-          text: 'Aldric meets Grimjaw, the Wyrm, Sly Tom, Red Wat, Bors, Old Mag, Ser Kay and the Hollow Crown near Fenwatch.',
+          text: 'Aldric meets Grimjaw, the Wyrm, Sly Tom, Red Wat, Bors, Old Mag, Ser Kay, Iron Vale and the Hollow Crown near Fenwatch.',
           charId: 1,
           phase: 0,
         },
@@ -471,18 +482,19 @@ describe('the chronicle', () => {
             {},
           ],
         },
-        allKingdoms: [{ name: 'Hollow Crown', color: '#22aa22' }, null],
-        nameColors: [null, { name: 'Ser Kay', color: '', neutral: false }, {}],
+        allKingdoms: [{ name: 'Hollow Crown', color: '#22aa22' }, null, { name: 'Iron Vale' }],
+        nameColors: [null, { name: 'Ser Kay', color: '', neutral: false }, {}, { name: 'Iron Vale', color: '#2244aa' }],
       },
     );
-    const html = theChronicleOf(report);
+    const html = theChronicleOf(report, aReport([]));
     expect(html).toContain('<span style="color:#5a0a9a">Grimjaw</span>');
     expect(html).toContain('<span style="color:#5a0a9a">Fenwatch</span>');
     expect(html).not.toMatch(/<span style="color:[^"]*">the Wyrm<\/span>/);
     expect(html).toMatch(/<span style="color:#[0-9a-f]+">Sly Tom<\/span>, Red Wat, /);
     expect(html).toContain('<span style="color:#8f6a38">Bors</span>');
-    expect(html).toContain('<span style="color:#555">Old Mag</span>, Ser Kay and');
+    expect(html).toContain('<span style="color:#555">Old Mag</span>, Ser Kay, <span');
     expect(html).toMatch(/<span style="color:#[0-9a-f]+">Hollow Crown<\/span>/);
+    expect(html).toMatch(/<span style="color:#[0-9a-f]+">Iron Vale<\/span>/);
     expect(html).not.toMatch(/<span style="color:[^"]*">Aldric<\/span> meets/);
   });
   test('the intelligence: each title its block, a tag of no name, lines by phase and none; the dispatches their own section', () => {
@@ -491,13 +503,14 @@ describe('the chronicle', () => {
       { text: '[The Throne] Vale has 3 armies.' },
       { text: '[Intelligence] Spies saw Vale.', phase: 2 },
       { text: 'Rumour: [Intelligence] a fleet.' },
+      { text: '[Intelligence] A fleet sighted.' },
       { text: 'From Vale: hail.', type: 'message' },
     ]);
     const html = theChronicleOf(report);
     expect(html.split('[The Throne]</span>')).toHaveLength(2);
     expect(html).toContain('Vale holds 40 gold.</div><div class="ti-line">Vale has 3 armies.');
     expect(html).toContain('[Intel]</span> Spies saw Vale.');
-    expect(html.indexOf('General')).toBeLessThan(html.indexOf('Rumour: '));
+    expect(textOf('report-log')).toMatch(/General\s*\[Intel\] A fleet sighted\./);
     expect(html).toContain('Dispatches');
     expect(html).toContain('From Vale: hail.');
   });
