@@ -84,7 +84,8 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   `void kcDbGuard(…).then(…)`: the same promise, its rejection still unhandled (lint's `no-floating-promises`).
 - **A `catch` callback** takes its error as `unknown` (lint's `use-unknown-in-catch-callback-variable`); `'…' +
   err.message` reads the message through `Reflect.get(Object(err), 'message')`, in words, after a check that throws for
-  `null` or `undefined` as the read did (`theMessageOf`, `src/ui/player/start.ts`).
+  `null` or `undefined` as the read did, in its words (`theMessageOf`, `src/ui/player/sign-in.ts`); `${e.message ||
+  'x'}` is `thisOrElse(theMessageReadOff(e), 'x')`, the message as read.
 
 - **A database's refusal thrown for the page's own `catch`** (`if (error) throw error;`, the answer's error an object
   with its message, code and hint, not an `Error`) is thrown through a reader typed `unknown` (`theRefusalAsThrown`,

@@ -34,7 +34,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 
 - **`x || ''` on a value of any kind** (an order field's value as the page's snapshot holds it, `unknown`) goes through a
   reader written with an `if` that hands back `unknown` (`theFieldOrNoWords`): `x ?? ''` keeps a `0` or a `false`, and
-  `x || ''` narrows to `{}`, which `no-base-to-string` refuses written out. Such a value is written out through a reader
+  `x || ''` narrows to `{}`, which `no-base-to-string` refuses written out. `x || <a read that may throw>` on such a
+  value (a name, else the address's first part) is a reader that makes the read only for a falsy `x`
+  (`theNameOrTheAddress`, `sign-in.ts`): `thisOrElse` would make it first. Such a value is written out through a reader
   typed `unknown` (`inWords`: `String` inside it).
 ## Numbers, words and conversions
 
