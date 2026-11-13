@@ -563,7 +563,9 @@ describe('the labels', () => {
 
   test('every statistic in the committed baselines has one, and no two share one', () => {
     const all = [...new Set(names)];
-    expect(all.length).toBeGreaterThan(100);
+    // The baselines were read in full: every headline statistic, which every game records, is in them. (Not a count of
+    // all the names: the slices by the realm's leading unit come and go with the games' course.)
+    expect(Object.keys(BASE_LABELS).filter((k) => !all.includes(k))).toEqual([]);
     expect(all.filter((k) => labelOf(k) == null)).toEqual([]);
     const labels = all.map((k) => labelOf(k));
     expect(new Set(labels).size).toBe(labels.length);
