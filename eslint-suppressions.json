@@ -439,14 +439,6 @@
       "count": 4
     }
   },
-  "src/ui/player/sign-in.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    },
-    "no-empty": {
-      "count": 3
-    }
-  },
   "src/views/every-realms-report-and-the-lines-each-realm-reads.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1

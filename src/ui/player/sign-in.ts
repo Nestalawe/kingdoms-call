@@ -1,24 +1,54 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
+import type { AnAnswerToTheGameMasterOffer } from '../../db/the-db-interface-and-its-areas.ts';
 import { kcHtml } from '../shared/kc-safe.ts';
+import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 import { thePagesDb } from './startup.ts';
 import { show } from './init.ts';
-import { startUpdatePolling, loadAllGames } from './game-lists.ts';
+import { startUpdatePolling, loadAllGames, theSignedInAccountsId, thisOrElse } from './game-lists.ts';
 import { openReport } from './report.ts';
-import { saveMessageReads, stopMessagePolling } from './dispatches.ts';
+import { saveMessageReads, stopMessagePolling, theRefusalAsThrown } from './dispatches.ts';
+
+/** What was thrown's message, in words, as `'…' + err.message` wrote it: an error's message; `undefined` for a value
+ *  with none; nothing thrown (`null`, `undefined`) throws the TypeError reading its message threw. */
+export function theMessageOf(err: unknown): string {
+  return String(theMessageReadOff(err));
+}
+/** What was thrown's message, as `err.message` read it: an error's message; `undefined` for a value with none; nothing
+ *  thrown (`null`, `undefined`) throws the TypeError reading its message threw, in its words. */
+function theMessageReadOff(err: unknown): unknown {
+  if (err === null || err === undefined)
+    throw new TypeError(`Cannot read properties of ${String(err)} (reading 'message')`);
+  return Reflect.get(Object(err), 'message');
+}
+/** The signed-in account, as a read of one of its fields read it: none throws the TypeError that read threw. */
+function theAccountSignedIn(field: string): NonNullable<typeof currentUser> {
+  if (currentUser === null) throw new TypeError(`Cannot read properties of null (reading '${field}')`);
+  return currentUser;
+}
+/** The name a player is shown by, as `name || <the address's first part>` gave it: the address is read only for no
+ *  name. */
+function theNameOrTheAddress(name: unknown): unknown {
+  if (name) return name;
+  return theAddressOf(theAccountSignedIn('email')).split('@')[0];
+}
+/** The account's address, as `.split` read it: none throws the TypeError that read threw. */
+function theAddressOf(account: { readonly email?: string | undefined }): string {
+  if (account.email === undefined) throw new TypeError("Cannot read properties of undefined (reading 'split')");
+  return account.email;
+}
 
 // ── AUTH ────
-export function setAuthTab(tab) {
-  document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
-  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
-  document.getElementById('auth-signin').style.display = tab === 'signin' ? 'block' : 'none';
-  document.getElementById('auth-signup').style.display = tab === 'signup' ? 'block' : 'none';
-  document.getElementById('auth-msg').innerHTML = '';
+export function setAuthTab(tab: unknown) {
+  theElementWithTheId('tab-signin', HTMLElement).classList.toggle('active', tab === 'signin');
+  theElementWithTheId('tab-signup', HTMLElement).classList.toggle('active', tab === 'signup');
+  theElementWithTheId('auth-signin', HTMLElement).style.display = tab === 'signin' ? 'block' : 'none';
+  theElementWithTheId('auth-signup', HTMLElement).style.display = tab === 'signup' ? 'block' : 'none';
+  theElementWithTheId('auth-msg', HTMLElement).innerHTML = '';
 }
 
 export async function doSignIn() {
-  const email = document.getElementById('si-email').value.trim();
-  const pwd = document.getElementById('si-password').value;
-  const msg = document.getElementById('auth-msg');
+  const email = theElementWithTheId('si-email', HTMLInputElement).value.trim();
+  const pwd = theElementWithTheId('si-password', HTMLInputElement).value;
+  const msg = theElementWithTheId('auth-msg', HTMLElement);
   if (!email || !pwd) {
     msg.innerHTML = '<div class="msg-error">Please enter your email and password.</div>';
     return;
@@ -30,7 +60,7 @@ export async function doSignIn() {
     if (m.includes('Email not confirmed'))
       m = 'Account not confirmed yet. Ask your GM, or check your email for a confirmation link.';
     if (m.includes('Invalid login')) m = 'Email or password incorrect. Check your details and try again.';
-    msg.innerHTML = kcHtml`<div class="msg-error">${m}</div>`;
+    msg.innerHTML = String(kcHtml`<div class="msg-error">${m}</div>`);
     return;
   }
   currentUser = data.user;
@@ -38,11 +68,11 @@ export async function doSignIn() {
 }
 
 export async function doSignUp() {
-  const name = document.getElementById('su-name').value.trim();
-  const email = document.getElementById('su-email').value.trim();
-  const pwd = document.getElementById('su-password').value;
-  const pwd2 = document.getElementById('su-password2').value;
-  const msg = document.getElementById('auth-msg');
+  const name = theElementWithTheId('su-name', HTMLInputElement).value.trim();
+  const email = theElementWithTheId('su-email', HTMLInputElement).value.trim();
+  const pwd = theElementWithTheId('su-password', HTMLInputElement).value;
+  const pwd2 = theElementWithTheId('su-password2', HTMLInputElement).value;
+  const msg = theElementWithTheId('auth-msg', HTMLElement);
   if (!name || !email || !pwd) {
     msg.innerHTML = '<div class="msg-error">Please fill in all fields.</div>';
     return;
@@ -58,13 +88,15 @@ export async function doSignUp() {
   msg.innerHTML = '<div class="msg-info">Creating account…</div>';
   const { data, error } = await thePagesDb.signingIn.signUpWithEmailPasswordAndName(email, pwd, name);
   if (error) {
-    msg.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
+    msg.innerHTML = String(kcHtml`<div class="msg-error">${error.message}</div>`);
     return;
   }
   if (data.user && !data.session) {
     msg.innerHTML =
       '<div class="msg-success">Account created! Check your email for a confirmation link, then sign in.</div>';
-    setTimeout(() => setAuthTab('signin'), 3000);
+    setTimeout(() => {
+      setAuthTab('signin');
+    }, 3000);
   } else if (data.user) {
     currentUser = data.user;
     await onSignedIn();
@@ -75,7 +107,9 @@ export async function doSignOut() {
   try {
     stopMessagePolling();
     await saveMessageReads();
-  } catch (e) {} // flush read marks before the session goes
+  } catch {
+    // flush read marks before the session goes
+  }
   await thePagesDb.signingIn.signOut();
   currentUser = null;
   currentProfile = null;
@@ -92,12 +126,12 @@ export async function doSignOut() {
 // player on every game they have ever played rather than splitting their record in two.
 export function changeDisplayName() {
   if (document.getElementById('dn-overlay')) return;
-  const cur = (currentProfile && currentProfile.name) || currentUser?.user_metadata?.display_name || '';
+  const cur = thisOrElse((currentProfile?.name ?? '') || currentUser?.user_metadata?.['display_name'], '');
   const ov = document.createElement('div');
   ov.id = 'dn-overlay';
   ov.style.cssText =
     'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999';
-  ov.innerHTML = kcHtml`
+  ov.innerHTML = String(kcHtml`
     <div style="background:#f5ecd8;color:#1a1208;border:2px solid #c8922a;border-radius:6px;padding:20px;max-width:380px;width:90%">
       <div style="font-family:'Cinzel',serif;font-size:1rem;margin-bottom:6px;color:#7a1c1c">✏ Change Display Name</div>
       <div style="font-size:.8rem;margin-bottom:12px;color:#4a3a22">This is <strong>you</strong>, not your realm. Your realm is named afresh in every game you join; this name follows you across all of them and is what the Hall of Fame records your wins under. Changing it updates your name on every game you have played.</div>
@@ -108,9 +142,9 @@ export function changeDisplayName() {
         <button onclick="closeDisplayName()" style="padding:7px 14px;border:1px solid #999;background:#eee;border-radius:3px;cursor:pointer">Cancel</button>
         <button onclick="submitDisplayName()" style="padding:7px 14px;border:none;background:#7a1c1c;color:#fff;border-radius:3px;cursor:pointer">Save Name</button>
       </div>
-    </div>`;
+    </div>`);
   document.body.appendChild(ov);
-  const f = document.getElementById('dn-name');
+  const f = theElementWithTheId('dn-name', HTMLInputElement);
   f.focus();
   f.select();
 }
@@ -119,8 +153,8 @@ export function closeDisplayName() {
   if (o) o.remove();
 }
 export async function submitDisplayName() {
-  const msg = document.getElementById('dn-msg');
-  const name = (document.getElementById('dn-name').value || '').trim();
+  const msg = theElementWithTheId('dn-msg', HTMLElement);
+  const name = (theElementWithTheId('dn-name', HTMLInputElement).value || '').trim();
   if (name.length < 2) {
     msg.innerHTML = '<span style="color:#c00">Please give a name of at least two characters.</span>';
     return;
@@ -128,21 +162,25 @@ export async function submitDisplayName() {
   msg.innerHTML = '<span style="color:#231e16">Saving…</span>';
   try {
     // upsert, not update: an account created before the profiles trigger existed has no row yet
-    const { error } = await thePagesDb.theAccountsNames.giveThisAccountItsName(currentUser.id, name);
+    const { error } = await thePagesDb.theAccountsNames.giveThisAccountItsName(theSignedInAccountsId(), name);
     if (error) {
-      msg.innerHTML = kcHtml`<span style="color:#c00">${error.message}</span>`;
+      msg.innerHTML = String(kcHtml`<span style="color:#c00">${error.message}</span>`);
       return;
     }
     try {
       await thePagesDb.signingIn.changeTheNameKeptWithTheSignIn(name);
-    } catch (e) {} // keep the auth copy in step; not fatal
-    currentProfile = Object.assign({}, currentProfile || {}, { id: currentUser.id, name });
+    } catch {
+      // keep the auth copy in step; not fatal
+    }
+    currentProfile = Object.assign({}, currentProfile ?? {}, { id: theSignedInAccountsId(), name });
     const el = document.getElementById('player-name-display');
     if (el) el.textContent = name;
     msg.innerHTML = '<span style="color:#1d5a1d">✓ Saved — this is your name on every game you have played.</span>';
     setTimeout(closeDisplayName, 1400);
   } catch (e) {
-    msg.innerHTML = kcHtml`<span style="color:#c00">${e.message || 'Could not save the name.'}</span>`;
+    msg.innerHTML = String(
+      kcHtml`<span style="color:#c00">${thisOrElse(theMessageReadOff(e), 'Could not save the name.')}</span>`,
+    );
   }
 }
 
@@ -167,16 +205,16 @@ export function changePassword() {
       </div>
     </div>`;
   document.body.appendChild(ov);
-  document.getElementById('cp-new').focus();
+  theElementWithTheId('cp-new', HTMLElement).focus();
 }
 export function closeChangePassword() {
   const o = document.getElementById('cp-overlay');
   if (o) o.remove();
 }
 export async function submitChangePassword() {
-  const p1 = document.getElementById('cp-new').value;
-  const p2 = document.getElementById('cp-new2').value;
-  const msg = document.getElementById('cp-msg');
+  const p1 = theElementWithTheId('cp-new', HTMLInputElement).value;
+  const p2 = theElementWithTheId('cp-new2', HTMLInputElement).value;
+  const msg = theElementWithTheId('cp-msg', HTMLElement);
   if (!p1 || p1.length < 6) {
     msg.innerHTML = '<span style="color:#c00">Password must be at least 6 characters.</span>';
     return;
@@ -189,32 +227,40 @@ export async function submitChangePassword() {
   try {
     const { error } = await thePagesDb.signingIn.changeThePassword(p1);
     if (error) {
-      msg.innerHTML = kcHtml`<span style="color:#c00">${error.message}</span>`;
+      msg.innerHTML = String(kcHtml`<span style="color:#c00">${error.message}</span>`);
       return;
     }
     msg.innerHTML = '<span style="color:#1d5a1d">✓ Password updated.</span>';
     setTimeout(closeChangePassword, 1200);
   } catch (e) {
-    msg.innerHTML = kcHtml`<span style="color:#c00">${e.message || 'Update failed.'}</span>`;
+    msg.innerHTML = String(
+      kcHtml`<span style="color:#c00">${thisOrElse(theMessageReadOff(e), 'Update failed.')}</span>`,
+    );
   }
 }
 
 export async function onSignedIn() {
   // Load profile
-  const { data: profile } = await thePagesDb.theAccountsNames.theNameOfThisAccount(currentUser.id); // never email (P0-31)
+  const { data: profile } = await thePagesDb.theAccountsNames.theNameOfThisAccount(theSignedInAccountsId()); // never email (P0-31)
   currentProfile = profile;
-  const displayName = profile?.name || currentUser.user_metadata?.display_name || currentUser.email.split('@')[0];
-  document.getElementById('player-name-display').textContent = displayName;
+  const displayName = theNameOrTheAddress(
+    (profile?.name ?? '') || theAccountSignedIn('user_metadata').user_metadata?.['display_name'],
+  );
+  Reflect.set(theElementWithTheId('player-name-display', HTMLElement), 'textContent', displayName);
   // a game opened from My Games reloads the page with "#game=<slot>" in the address, so this fresh
   // load lands straight in that game's report (and a browser refresh while reading a report comes
   // back to the same report, not to My Games). The games list still loads, in the background, so
   // polling and the "← My Games" list are ready when needed.
-  const _gm = (location.hash || '').match(/^#game=([A-Za-z0-9_-]+)$/);
+  const _gm = /^#game=([A-Za-z0-9_-]+)$/.exec(location.hash || '');
   if (_gm) {
     show('sec-report');
     loadAllGames()
-      .then(() => startUpdatePolling())
-      .catch(() => {});
+      .then(() => {
+        startUpdatePolling();
+      })
+      .catch(() => {
+        // the report opens whether or not the games list loads
+      });
     await openReport(_gm[1]);
     return;
   }
@@ -225,18 +271,20 @@ export async function onSignedIn() {
 // open a game with a FULL browser reload. The reload picks up the latest portal build and a clean
 // state; the hash tells onSignedIn which report to open. Nothing unsaved can be lost here — this is
 // only reachable from the My Games list, never from inside an orders form.
-export function openGameFresh(gamePlayerId) {
+export function openGameFresh(gamePlayerId: string | number | boolean) {
   try {
     history.replaceState(null, '', location.pathname + location.search + '#game=' + encodeURIComponent(gamePlayerId));
-  } catch (e) {}
+  } catch {
+    // the reload still opens My Games
+  }
   location.reload();
 }
-export async function answerGmOffer(fn) {
-  const ask = document.getElementById('gm-offer-ask'),
-    msg = document.getElementById('gm-offer-msg');
+export async function answerGmOffer(fn: AnAnswerToTheGameMasterOffer) {
+  const ask = theElementWithTheId('gm-offer-ask', HTMLElement);
   ask.querySelectorAll('button').forEach((b) => {
     b.disabled = true;
   });
+  const msg = theElementWithTheId('gm-offer-msg', HTMLElement);
   msg.innerHTML = '';
   const { error } = await thePagesDb.theRoles.answerTheGameMasterOffer(fn);
   ask.querySelectorAll('button').forEach((b) => {
@@ -251,31 +299,32 @@ export async function answerGmOffer(fn) {
 }
 export async function acceptGmOffer() {
   if (!(await answerGmOffer('gm_accept_offer'))) return;
-  document.getElementById('gm-offer-ask').style.display = 'none';
-  document.getElementById('gm-offer-done').style.display = 'block';
+  theElementWithTheId('gm-offer-ask', HTMLElement).style.display = 'none';
+  theElementWithTheId('gm-offer-done', HTMLElement).style.display = 'block';
 }
 export async function declineGmOffer() {
   if (!confirm('Turn down the offer to become a Game Master? The Overlord would have to offer again.')) return;
-  if (await answerGmOffer('gm_decline_offer')) document.getElementById('gm-offer-banner').style.display = 'none';
+  if (await answerGmOffer('gm_decline_offer'))
+    theElementWithTheId('gm-offer-banner', HTMLElement).style.display = 'none';
 }
 
 // ── INIT ────
 export async function init() {
   try {
-    document.getElementById('spinner').style.display = 'none';
+    theElementWithTheId('spinner', HTMLElement).style.display = 'none';
     const {
       data: { session },
       error,
     } = await thePagesDb.signingIn.theSessionKeptInThisBrowser();
-    if (error) throw error;
+    if (error) throw theRefusalAsThrown(error);
     if (session) {
       currentUser = session.user;
       await onSignedIn();
     } else show('sec-auth');
   } catch (e) {
-    document.getElementById('spinner').style.display = 'block';
-    document.getElementById('spinner').textContent =
-      'Connection error: ' + e.message + '. Check your internet connection and refresh.';
+    theElementWithTheId('spinner', HTMLElement).style.display = 'block';
+    theElementWithTheId('spinner', HTMLElement).textContent =
+      'Connection error: ' + theMessageOf(e) + '. Check your internet connection and refresh.';
     console.error('Init failed:', e);
   }
 }

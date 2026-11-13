@@ -30,8 +30,13 @@ declare var _kcHasMsg: PageState;
 declare var _autoWatcherTimer: PageState;
 declare var _autoRunBusy: PageState;
 // ui/gm/config.ts (and ui/player/items-and-heroes.ts: each page declares its own)
-/** The signed-in account (null before sign-in): its id, as the player page's dispatches read it. */
-declare var currentUser: { readonly id: string } | null;
+/** The signed-in account (null before sign-in): its id, as the player page's dispatches read it, and its address and
+ *  sign-up fields, as its sign-in reads them. */
+declare var currentUser: {
+  readonly id: string;
+  readonly email?: string | undefined;
+  readonly user_metadata?: Readonly<Record<string, unknown>> | undefined;
+} | null;
 // ui/gm/config.ts
 declare var currentGame: PageState;
 declare var currentGamePlayers: PageState;
@@ -68,7 +73,8 @@ declare var currentGamePlayerId: PageState;
 declare var viewingReport: import('./ui/player/map.ts').TheReportAsTheMapDrawsIt | null | undefined;
 declare var viewedTurn: PageState;
 // ui/player/items-and-heroes.ts
-declare var currentProfile: PageState;
+/** The signed-in account's name, as profiles holds it (ui/player/sign-in.ts). */
+declare var currentProfile: { readonly id: string; readonly name: string | null } | null;
 /** The game the join form is for, as the open game's card hands it (ui/player/join-and-chronicle.ts). */
 declare var joiningGame: {
   readonly id: string;
