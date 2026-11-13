@@ -8,6 +8,9 @@ meant for `main`.
 
 | Path | What |
 |---|---|
+| `IMPLEMENTATION.md` | The requirements for building the new alignment abilities into the live game, for a fresh session: what to build, Toby's decisions, the cases the games found, how to build it on `main`. |
+| `METHOD.md` | How the kits were tested and compared, for engineers. |
+| `matrix/` | The scripts that play the bot matrix with the kits on and compare the runs. |
 | `harness-source.md` | The harness: one game file holds a whole game, and you play every realm by hand, turn by turn. Kept as text (see that file for why): save its code block as `tools/handplay/handplay.ts` to run it, and don't commit that file. |
 | `brief.md` | The rules brief each game was played from: how to write orders, every kit ability, lessons from the first games, and the changes of rounds 25 to 28 at the end (later sections replace earlier ones). |
 | `reports/gN-report.md` | One report per hand-played game (g1 to g41): result, how each alignment played, report and order problems found, balance observations. g1 to g9 are 3- and 4-realm games of 16 turns; g10 to g18 ten realms, 16 turns; g19 to g41 ten realms, 20 turns. |
