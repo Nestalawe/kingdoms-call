@@ -1,11 +1,11 @@
 // Site code must cope while its database change is missing (supabase/README.md, "Database and site changes
-// go separately"). The example: the games.meta column. With it hidden in the in-memory database, the GM
+// go separately"). The example: the games.meta column. With it hidden in the fake database, the GM
 // portal must notice (probeGameMeta), and a turn must still resolve and save, because writing an unknown
 // column fails the whole save (docs/traps.md, "A new column must be optional at the write site").
 // Copy this shape for a new table or column: hide it (the fake's missingColumns, lib/fake-db.ts), then use the feature.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// With the `games.meta` column hidden in the in-memory database, the GM portal notices, says so, and a turn still
+// With the `games.meta` column hidden in the fake database, the GM portal notices, says so, and a turn still
 // resolves and saves without writing it. The example to copy for site code that must cope without its database change
 // ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately))
 const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');

@@ -167,7 +167,7 @@ without the database pull request it needs (not stacked on it) meets a staging d
 change, and old copies of the site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
 (as `probeGameMeta` does), and spread `{}` instead of the field while it's absent (`metaPatch`). Readers
 prefer the new column and fall back to the old source. Prove it with a test that hides the column
-(`MISSING_COLS` in `tests/lib/stub-db.js`), as `tests/meta-missing-turn.test.js` does. This is why database
+(the fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/meta-missing-turn.test.js` does. This is why database
 and site changes go in separate PRs ([supabase/README.md](../../supabase/README.md#database-and-site-changes-go-separately)).
 
 ## The access layer: `src/db/`
@@ -218,13 +218,14 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   the page before its scripts run (`bootJsdom(html, { db })`, which sets it on the window under
   `THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER`); only `src/db/` reads that name (a static test). The fake doesn't
   imitate the access rules; beyond the version, it holds no account (no session, no names, no role) and no game, and
-  the Overlord's functions refuse. Four fakes hold a world a test stages and reads back: the Overlord's
+  the Overlord's functions refuse. Five fakes hold a world a test stages and reads back: the Overlord's
   (`makeAFakeDbHoldingTheOverlordsWorld`: accounts, offers, games, realms, reported dispatches, the Overlord's
   functions with the database's refusals), the Hall of Fame's (`makeAFakeDbHoldingTheHallOfFame`: its entries and
   the changes sent), the player's (`makeAFakeDbHoldingThePlayersWorld`: the signed-in account, names, games,
   realms, a join's unique numbers, a dispatch's refusal, each read asking for another account's realms, and, when a
-  test gives them, the dispatches and read marks) and the GM's turn (`makeAFakeDbHoldingTheGameMastersTurn`: the game and
-  realms each read finds, the changes sent). In Chromium, `handThePageTheFakeDb(page, world?)`
+  test gives them, the dispatches and read marks), the GM's turn (`makeAFakeDbHoldingTheGameMastersTurn`: the game and
+  realms each read finds, the changes sent) and the GM's world (`makeAFakeDbHoldingTheGameMastersWorld`: the tables
+  each query reads and changes, a missing column or table, a failing call). In Chromium, `handThePageTheFakeDb(page, world?)`
   (`tests/browser/the-fake-db-handed-to-chromium.ts`) bundles the fake (Vite, once a worker) and an init script sets it
   under the same name, with the world on the window (`kcTheFakesWorld`) for the spec to stage.
 

@@ -5,9 +5,9 @@
 // area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
 // role and no offer; and no game, so no realm, no slot, no turn's log, no Hall of Fame entry, no statistics, no dispatch
 // and no report (a new row refused, a change or deletion matching nothing, a single row's read finding none). The
-// Overlord's functions refuse, as the database refuses anyone but the Overlord. Four fakes below hold a world a test
-// stages and reads back: the Overlord's page's and the Hall of Fame's (plan P1-17i), the player's (P1-17l) and the GM's
-// turn (P1-17q).
+// Overlord's functions refuse, as the database refuses anyone but the Overlord. Five fakes below hold a world a test
+// stages and reads back: the Overlord's page's and the Hall of Fame's (plan P1-17i), the player's (P1-17l), the GM's
+// turn (P1-17q) and the GM's world (P1-17q2).
 import type {
   ADatabaseAnswer,
   AGame,
