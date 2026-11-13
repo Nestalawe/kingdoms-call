@@ -8,7 +8,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { ThePlayersWorld } from '../lib/fake-db.ts';
 import { bootScenario } from '../lib/scenario.js';
 import { playerPortalSignedIn } from './started.ts';
-import { handThePageTheFakeDb, THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER } from './the-fake-db-handed-to-chromium.ts';
+import { handThePageTheFakeDb } from './the-fake-db-handed-to-chromium.ts';
 
 // The turn is played once per worker. Its page gets the seed the script's (its process's first page) got from
 // KC_SEED, whatever else this worker has booted (tests/lib/boot.js).
@@ -46,11 +46,35 @@ const WORLD: ThePlayersWorld = {
   readMarks: [],
 };
 
-// Run in the page as the script had it: the player's game, with the report as its turn report.
-const STAGE = `rep=>{ const D=window[${JSON.stringify(THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER)}];
-  D.games.push({id:'G1',name:'Test',gm_user_id:'gm1',status:'active',turn:rep.turnNumber||1,max_players:2});
-  D.realms.push({id:'gp0',game_id:'G1',player_index:0,user_id:'u0',display_name:'Aldoria',
-    orders_submitted:false,orders:null,turn_report:JSON.stringify(rep)}); }`;
+// Run in the page as the script had it: the player's game, with the report as its turn report (handed over as data).
+const STAGE = (rep: Record<string, unknown> | null): void => {
+  const D: unknown = Reflect.get(window, 'kcTheFakesWorld');
+  // the script's rep.turnNumber||1, read through a helper typed boolean
+  const given: unknown = rep?.['turnNumber'];
+  const truthy = (v: unknown): boolean => Boolean(v);
+  const turn = truthy(given) ? given : 1;
+  const games: unknown = typeof D === 'object' && D !== null ? Reflect.get(D, 'games') : null;
+  const realms: unknown = typeof D === 'object' && D !== null ? Reflect.get(D, 'realms') : null;
+  if (!Array.isArray(games) || !Array.isArray(realms)) throw new Error('the fake holds no world');
+  games.push({
+    id: 'G1',
+    name: 'Test',
+    gm_user_id: 'gm1',
+    status: 'active',
+    turn,
+    max_players: 2,
+  });
+  realms.push({
+    id: 'gp0',
+    game_id: 'G1',
+    player_index: 0,
+    user_id: 'u0',
+    display_name: 'Aldoria',
+    orders_submitted: false,
+    orders: null,
+    turn_report: JSON.stringify(rep),
+  });
+};
 
 // Run in the page as the script had it: shows the map the way a player would, then measures it.
 const SHOW_AND_MEASURE = `(async()=>{
@@ -127,7 +151,7 @@ async function open(page: Page): Promise<Seen> {
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto('/kingdoms-call-player-portal.html');
   await playerPortalSignedIn(page);
-  await page.evaluate(`(${STAGE})(${JSON.stringify(rep)})`);
+  await page.evaluate(STAGE, rep);
   await page.evaluate('openReport("gp0")');
   // The report is open once its map is drawn.
   await page.waitForFunction(() => document.querySelector('#report-map-svg g[data-prov] polygon') !== null);

@@ -8,7 +8,7 @@
 import { expect, test } from '@playwright/test';
 import type { ThePlayersWorld } from '../lib/fake-db.ts';
 import { playerPortalSignedIn } from './started.ts';
-import { handThePageTheFakeDb, THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER } from './the-fake-db-handed-to-chromium.ts';
+import { handThePageTheFakeDb } from './the-fake-db-handed-to-chromium.ts';
 
 test.use({ viewport: { width: 1400, height: 900 } });
 
@@ -23,10 +23,9 @@ const WORLD: ThePlayersWorld = {
   dispatches: [],
   readMarks: [],
 };
-const THE_WORLD = `window[${JSON.stringify(THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER)}]`;
 
 // Run in the page as the script had it: two realms in an active game, nobody has read anything.
-const STAGE = `(()=>{ const D=${THE_WORLD};
+const STAGE = `(()=>{ const D=window.kcTheFakesWorld;
   const report={playerIndex:0,playerName:'Aldoria',turnNumber:2,kingdom:{color:'#b8433a',alignment:'Neutral',race:'Human',gold:20},
     diplomacy:{alliancesAllowed:true,known:[{index:1,name:'Bruneth',color:'#6fbf73',relation:'neutral'}]},characters:[],provinces:[]};
   D.games.push({id:'G1',name:'Test',gm_user_id:'gm1',status:'active',turn:2,max_players:2});
@@ -36,7 +35,7 @@ const STAGE = `(()=>{ const D=${THE_WORLD};
 
 // Run in the page: a dispatch written by somebody else, straight into the world, as their browser would (the next id,
 // private when it names its addressees).
-const ARRIVES = `m=>{ const D=${THE_WORLD};
+const ARRIVES = `m=>{ const D=window.kcTheFakesWorld;
   D.dispatches.push({id:D.dispatches.length+1,created_at:new Date().toISOString(),scope:m.to_indexes.length?'private':'public',...m}); }`;
 
 const BADGE = `(()=>{ const b=document.getElementById('desk-msg-badge'), t=document.getElementById('desk-msg-tab');
