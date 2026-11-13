@@ -253,6 +253,7 @@ export function resolveUnitGainInProvince(
     const _rbP = pickBattleCommander(turnContext, enemyChar, defReinf, _rbPooled, prov, false); // best defender commands
     const theLeader = theCommanderPicked(_rbP.leader);
     const combinedDef = { ...theLeader, armies: _rbPooled };
+    turnContext._companiesSentOverland = []; // what this battle's beaten fleet sends overland (navalSplitRetreat)
     const theBattleFought = combatVsChar(turnContext, c, combinedDef, prov);
     battle = theBattleFought;
     syncLeaderCopy(turnContext, theLeader, combinedDef);
@@ -343,17 +344,19 @@ export function resolveUnitGainInProvince(
     // 2026-09-27 (Toby): hulls the beaten defender left ashore (navalSplitRetreat) are sitting in
     // prov.garrisonArmies but are not the standing garrison — keep them out of the sweep below.
     const _navalHeldUG = navalHeldIn(prov);
-    if (_navalHeldUG.length) {
+    // ...and the companies a beaten fleet sent overland to a garrison elsewhere (the move handler's sweep says why)
+    const _leftElsewhereUG = [..._navalHeldUG, ...turnContext._companiesSentOverland];
+    if (_leftElsewhereUG.length) {
       // same pooled-copy split as the move handler: hulls left ashore come off the real
       // commanders' lists, or they would march away and hold the ground at the same time.
       [c, enemyChar, ...defReinf].forEach((d: Character | null | undefined) => {
         if (!d || !Array.isArray(d.armies)) return;
         const _n = d.armies.length;
-        d.armies = d.armies.filter((a) => !_navalHeldUG.includes(a));
+        d.armies = d.armies.filter((a) => !_leftElsewhereUG.includes(a));
         if (d.armies.length !== _n && typeof refreshMovePool === 'function') refreshMovePool(turnContext, d);
       });
     }
-    const _garSurv = _garHere.filter((a) => !a._died && !a._disbanded && !_navalHeldUG.includes(a));
+    const _garSurv = _garHere.filter((a) => !a._died && !a._disbanded && !_leftElsewhereUG.includes(a));
     _garSurv.forEach((a) => {
       delete a._fromGarrison;
     });
