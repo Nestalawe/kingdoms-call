@@ -181,17 +181,18 @@ describe("the database's probes (startup.ts)", () => {
 describe("a realm's statistics (startup.ts)", () => {
   test('telRankOrder: by score, then the tax base, then the treasury', () => {
     const world = {
-      players: [{ gold: 5 }, { gold: 9 }, { gold: 0 }],
+      players: [{ gold: 2 }, { gold: 9 }, { gold: 0 }, { gold: 1 }, { gold: 3 }],
       world: {
         provinces: [
           { owner: 0, tax: 2 },
-          { owner: 1, tax: 2 },
+          { owner: 1, tax: 1 },
           { owner: 2, tax: 3 },
         ],
       },
     } as unknown as Parameters<typeof startup.telRankOrder>[0];
     const { rank } = startup.telRankOrder(world);
-    expect(rank).toEqual({ 2: 1, 1: 2, 0: 3 });
+    // the Throne (the most tax) 20 to realm 2, the Vault (the most gold) 10 to realm 1; the rest by tax, then gold
+    expect(rank).toEqual({ 2: 1, 1: 2, 0: 3, 4: 4, 3: 5 });
   });
   test('telBotDifficultyOf: the word the game carries, else hard', () => {
     expect(startup.telBotDifficultyOf({ botDifficulty: 'easy' })).toBe('easy');
@@ -214,8 +215,8 @@ describe("a realm's statistics (startup.ts)", () => {
       null,
       1,
       tel,
-      { gold: 10, tax: null, units: '4' },
-      { gold: 4, units: 9, _score: 0 },
+      { gold: 10, tax: null, units: '4', provinces: null },
+      { gold: 4, units: 9, _score: 0, provinces: 3 },
       2,
     );
     expect(o.battles).toMatchObject({ fought: 2, asAttacker: 1, won: 1, unitsLost: 7, unitsKilled: 8 });
@@ -255,6 +256,7 @@ describe('the sign-in and the reported dispatches (sign-in.ts)', () => {
     answers['isOverlord'] = { data: null, error: { message: 'no answer' } };
     expect(await signIn.gmPortalAllowed()).toBe(false);
     expect(textOf('not-gm-msg')).toBe("Couldn't check whether you're a Game Master (no answer). Reload to try again.");
+    expect(page.getElementById('not-gm-msg')?.className).toBe('msg-error');
     expect(signIn._kcOverlord).toBe(false);
     answers['isOverlord'] = { data: true, error: null };
     expect(await signIn.gmPortalAllowed()).toBe(true);
@@ -271,6 +273,7 @@ describe('the sign-in and the reported dispatches (sign-in.ts)', () => {
     G['currentGamePlayers'] = [
       { player_index: 0, display_name: 'Ashen Reach', user_id: 'u0' },
       { player_index: 1, display_name: '', user_id: 'u1' },
+      { player_index: 7, display_name: 'Nobody Yet' },
     ];
     answers['reported'] = {
       data: [
@@ -294,6 +297,16 @@ describe('the sign-in and the reported dispatches (sign-in.ts)', () => {
           reason: 'rude',
           body: 'b2',
         },
+        {
+          message_id: 6,
+          turn: 0,
+          scope: 'private',
+          to_indexes: [0],
+          from_index: 1,
+          reporter_index: 0,
+          reason: '',
+          body: 'b3',
+        },
       ],
       error: null,
     };
@@ -304,9 +317,10 @@ describe('the sign-in and the reported dispatches (sign-in.ts)', () => {
     expect(lines).toEqual([
       'from Ashen Reach to Realm 2, Realm 5 · reported by Realm 2',
       'Turn 3 · from Realm 3 to every realm · reported by Ashen Reach · “rude”',
+      'Turn 0 · from Realm 2 to Ashen Reach · reported by Ashen Reach',
     ]);
     const buttons = [...page.querySelectorAll('#detail-reports button')].map((b) => b.getAttribute('onclick'));
-    expect(buttons).toEqual(['deleteReportedDispatch(0)', 'deleteReportedDispatch(5)']);
+    expect(buttons).toEqual(['deleteReportedDispatch(0)', 'deleteReportedDispatch(5)', 'deleteReportedDispatch(6)']);
     expect(calls).toEqual([['reported', ['G1']]]);
   });
   test('the reported dispatches: a realm played here, another game opened meanwhile, an error, none', async () => {
@@ -377,6 +391,8 @@ describe('the sign-in and the reported dispatches (sign-in.ts)', () => {
     signIn.setAutoTurnStatus('');
     expect(page.getElementById('auto-turn-status')?.style.display).toBe('none');
     expect(page.getElementById('auto-turn-status')?.innerHTML).toBe('');
+    signIn.setAutoTurnStatus(null);
+    expect(page.getElementById('auto-turn-status')?.innerHTML).toBe('');
   });
 });
 
@@ -391,6 +407,7 @@ describe('the turn modes (turn-mode.ts)', () => {
       new Date(2026, 10, 15, 9, 0).toISOString(),
     );
     expect(() => turnMode.computeNextDeadline({ time: ['07:30'] }, from)).toThrow(TypeError);
+    expect(typeof turnMode.computeNextDeadline({ time: '09:00' }, '')).toBe('string');
   });
   test('fmtDeadline, fmtLastRun, asDate and fmtAgo: none, a bad value, and a time', () => {
     expect(turnMode.fmtDeadline('')).toBe('—');
@@ -412,7 +429,7 @@ describe('the turn modes (turn-mode.ts)', () => {
   });
   test('the realms the turn waits on: out, exempt by the meta or the world, conceded, a bot, in', () => {
     const world = {
-      players: [{ provinces: [1] }, { conceded: true }, { provinces: [] }, null, { _eliminated: 1 }],
+      players: [{ provinces: [1] }, { conceded: true }, { provinces: [] }, null, { _eliminated: 1, provinces: [2] }],
       characters: [null, { alive: true, player: 2 }],
     };
     expect([0, 1, 2, 3, 4, 5].map((i) => turnMode.realmExemptFromOrders(world, i))).toEqual([
@@ -430,6 +447,7 @@ describe('the turn modes (turn-mode.ts)', () => {
     expect(turnMode.realmExemptIn({ meta: { v: 1, exempt: 'x' }, game_state: world }, 1)).toBe(true);
     expect(turnMode.realmConcededIn({ game_state: world }, 1)).toBe(true);
     expect(turnMode.realmConcededIn({ game_state: world }, 3)).toBe(false);
+    expect(turnMode.realmConcededIn({ game_state: world }, 0)).toBe(false);
     const game = { status: 'active', meta: { v: 1, exempt: [1], turnMode: { mode: 'auto' } } };
     const rows = [
       { user_id: 'a', player_index: 0, orders_submitted: false },
@@ -438,9 +456,15 @@ describe('the turn modes (turn-mode.ts)', () => {
     ];
     expect(turnMode.ordersWaitingOn(rows, game).map((p) => p.player_index)).toEqual([0]);
     expect(turnMode.ordersWaitingOn(null, game)).toEqual([]);
+    const later = [
+      { user_id: 'b', player_index: 2, orders_submitted: true },
+      { user_id: 'c', player_index: 3, orders_submitted: false },
+    ];
+    expect(turnMode.ordersWaitingOn(later, game).map((p) => p.player_index)).toEqual([3]);
     expect(turnMode.autoTurnReady(game, rows, null)).toEqual({ ready: false, reason: 'waiting on 1' });
     expect(turnMode.autoTurnReady(null, rows, null).reason).toBe('not active');
     expect(turnMode.autoTurnReady(game, [], null).reason).toBe('no realms');
+    expect(turnMode.autoTurnReady(game, [{ user_id: null, player_index: 2 }], null).reason).toBe('all orders in');
     expect(turnMode.autoTurnReady(game, rows, turnMode.turnModeOf({})).reason).toBe('manual');
     const passed = startup.normalizeTurnMode({ mode: 'deadline', nextDeadlineAt: '2000-01-01T00:00:00Z' });
     expect(turnMode.autoTurnReady(game, rows, passed).reason).toBe('deadline passed');
@@ -457,6 +481,7 @@ describe('the turn modes (turn-mode.ts)', () => {
     );
     expect(turnMode.turnModeSummary({ mode: 'deadline', time: '06:00' })).toBe('⏱ Auto · deadline — (06:00 daily)');
     expect(turnMode.seaPctOf({ meta: { v: 1, seaPct: 30 } })).toBe(30);
+    expect(turnMode.seaPctOf({ game_state: { seaPct: 0, world: { seaPct: 40 } } })).toBe(20);
     expect(turnMode.seaPctOf({ game_state: { seaPct: 25, world: { seaPct: 40 } } })).toBe(25);
     expect(turnMode.seaPctOf({ game_state: { world: { seaPct: 40 } } })).toBe(40);
     expect(turnMode.seaPctOf({ game_state: { world: null } })).toBe(turnMode.seaPctOf({}));
@@ -572,5 +597,6 @@ describe('the turn modes (turn-mode.ts)', () => {
       archived: true,
     });
     expect(turnMode.buildGameMeta('words')).toEqual(turnMode.buildGameMeta({}));
+    expect(Object.keys(turnMode.buildGameMeta({ world: null }))).toEqual(['v', 'turnMode']);
   });
 });
