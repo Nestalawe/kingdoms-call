@@ -13,8 +13,11 @@ import type {
   AGameAsTheOverlordListsIt,
   AHallOfFameEntry,
   AnAccountsName,
+  ADispatch,
+  ADispatchsGameAndRealms,
   ARealm,
   ARealmsName,
+  ARealmsReadMarks,
   ARealmsSlot,
   Db,
 } from '../../src/db/the-db-interface-and-its-areas.ts';
@@ -643,11 +646,18 @@ export interface ADispatchRefused {
   readonly hint: string | null;
   readonly details: string | null;
 }
+/** A dispatch the player's world holds, with its game. */
+export type ADispatchThePlayersWorldHolds = ADispatch & Pick<ADispatchsGameAndRealms, 'game_id'>;
+/** A realm's read marks the player's world holds, with the account that wrote them. */
+export type ReadMarksThePlayersWorldHolds = ARealmsReadMarks & { readonly user_id: string };
 /** What the player page reads, held by the fake: who is signed in (`me`, else no one), the accounts' names, the games
  *  and their realms (as makeStub, in tests/lib/stub-db.js, held them: a test may add one later, and reads a join
- *  back), and what a dispatch sent is refused with (`dispatchRefused`, none: sent). The fake answers each read as its
- *  query asks (its filters, never the access rules), and notes in `readsOfAnotherAccountsRealms` each read of the
- *  realms that asks for an account other than `me`'s, or for a realm not `me`'s. */
+ *  back), and what a dispatch sent is refused with (`dispatchRefused`, none: sent). With `dispatches` and `readMarks`
+ *  (plan P1-17l2), it holds the dispatches and the read marks too: a test may add a dispatch later, as another
+ *  player's browser would, and a dispatch sent and read marks written are kept (without them, none is held). The fake
+ *  answers each read as its query asks (its filters, never the access rules), and notes in
+ *  `readsOfAnotherAccountsRealms` each read of the realms that asks for an account other than `me`'s, or for a realm
+ *  not `me`'s. */
 export interface ThePlayersWorld {
   readonly me: string | null;
   readonly names: readonly AnAccountsName[];
@@ -655,6 +665,8 @@ export interface ThePlayersWorld {
   readonly realms: ARealm[];
   dispatchRefused: ADispatchRefused | null;
   readonly readsOfAnotherAccountsRealms: string[];
+  readonly dispatches?: ADispatchThePlayersWorldHolds[];
+  readonly readMarks?: ReadMarksThePlayersWorldHolds[];
 }
 
 /** A fake database, up to date at `version`, holding the player's `world`. */
@@ -679,6 +691,24 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
     return copies(world.realms.filter((r) => r.user_id === account));
   };
   const gamesAmong = (ids: readonly string[]): AGame[] => copies(world.games.filter((g) => ids.includes(g.id)));
+  /** The dispatches held of the games `games`, by id, the newest or the oldest first. */
+  const dispatchesOf = (
+    games: readonly string[],
+    order: 'newest first' | 'oldest first',
+  ): ADispatchThePlayersWorldHolds[] =>
+    copies((world.dispatches ?? []).filter((d) => games.includes(d.game_id))).sort((a, b) =>
+      order === 'newest first' ? b.id - a.id : a.id - b.id,
+    );
+  /** A dispatch as the page reads it: its columns, without its game. */
+  const asRead = (d: ADispatchThePlayersWorldHolds): ADispatch => ({
+    id: d.id,
+    turn: d.turn,
+    from_index: d.from_index,
+    to_indexes: d.to_indexes,
+    scope: d.scope,
+    body: d.body,
+    created_at: d.created_at,
+  });
   const gameOf = (id: string): AGame | undefined => world.games.find((g) => g.id === id);
   /** A realm's setup in a game still in setup (its turn report's playerSetup), as get_game_slots reads it. */
   const alignmentInSetup = (realm: ARealm): string | null => {
@@ -789,10 +819,95 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
     },
     theDispatches: {
       ...fake.db.theDispatches,
-      sendThisDispatch: answering('from:game_messages', () =>
-        world.dispatchRefused === null
-          ? { data: null, error: null, status: 201 }
-          : { data: null, error: world.dispatchRefused, status: 400 },
+      theNewestDispatchesOfThisGame: answering('from:game_messages', (game: string, count: number) =>
+        rows(dispatchesOf([game], 'newest first').slice(0, count).map(asRead)),
+      ),
+      theDispatchesOfThisGameAfterThisOne: answering(
+        'from:game_messages',
+        (game: string, after: number, count: number) =>
+          rows(
+            dispatchesOf([game], 'oldest first')
+              .filter((d) => d.id > after)
+              .slice(0, count)
+              .map(asRead),
+          ),
+      ),
+      theDispatchesOfThisGameBeforeThisOne: answering(
+        'from:game_messages',
+        (game: string, before: number, count: number) =>
+          rows(
+            dispatchesOf([game], 'newest first')
+              .filter((d) => d.id < before)
+              .slice(0, count)
+              .map(asRead),
+          ),
+      ),
+      theNewestDispatchesOfTheseGamesGamesAndRealms: answering('from:game_messages', (games: readonly string[]) =>
+        rows(
+          dispatchesOf(games, 'newest first')
+            .slice(0, 3000)
+            .map((d): ADispatchsGameAndRealms => ({
+              id: d.id,
+              game_id: d.game_id,
+              from_index: d.from_index,
+              to_indexes: d.to_indexes,
+              scope: d.scope,
+            })),
+        ),
+      ),
+      sendThisDispatch: answering(
+        'from:game_messages',
+        (dispatch: Parameters<Db['theDispatches']['sendThisDispatch']>[0]) => {
+          if (world.dispatchRefused !== null) return { data: null, error: world.dispatchRefused, status: 400 };
+          const held = world.dispatches;
+          if (held !== undefined)
+            held.push({
+              id: held.reduce((most, d) => Math.max(most, d.id), 0) + 1,
+              game_id: dispatch.game_id,
+              turn: dispatch.turn ?? null,
+              from_index: dispatch.from_index,
+              to_indexes: dispatch.to_indexes ?? [],
+              scope: dispatch.scope ?? 'public',
+              body: dispatch.body,
+              created_at: new Date().toISOString(),
+            });
+          return { data: null, error: null, status: 201 };
+        },
+      ),
+      thisRealmsReadMarksInThisGame: answering('from:game_message_reads', (game: string, realm: number) => {
+        const marks = (world.readMarks ?? []).find((m) => m.game_id === game && m.player_index === realm);
+        return { data: marks === undefined ? null : { reads: structuredClone(marks.reads) }, error: null, status: 200 };
+      }),
+      thisAccountsReadMarksInTheseGames: answering(
+        'from:game_message_reads',
+        (games: readonly string[], account: string) =>
+          rows(
+            (world.readMarks ?? [])
+              .filter((m) => games.includes(m.game_id) && m.user_id === account)
+              .map((m): ARealmsReadMarks => ({
+                game_id: m.game_id,
+                player_index: m.player_index,
+                reads: structuredClone(m.reads),
+              })),
+          ),
+      ),
+      writeTheseReadMarks: answering(
+        'from:game_message_reads',
+        (marks: Parameters<Db['theDispatches']['writeTheseReadMarks']>[0]) => {
+          const held = world.readMarks;
+          if (held === undefined) return refusedByTheAccessRules('game_message_reads');
+          // upserted on (game_id, player_index), as the page's query asks; reads' default is the column's, {}
+          const written: ReadMarksThePlayersWorldHolds = {
+            game_id: marks.game_id,
+            player_index: marks.player_index,
+            user_id: marks.user_id,
+            reads: structuredClone(marks.reads ?? {}),
+          };
+          const i = held.findIndex((m) => m.game_id === marks.game_id && m.player_index === marks.player_index);
+          if (i === -1) held.push(written);
+          else held[i] = written;
+          return { data: null, error: null, status: 201 };
+        },
       ),
     },
   };

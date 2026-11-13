@@ -6,20 +6,38 @@
 //
 // "At once" is within the time the script gave it: each count must show within that, not at the slow poll.
 import { expect, test } from '@playwright/test';
-import { routeExternal } from '../lib/boot.js';
-import { browserSource } from '../lib/stub-db.js';
+import type { ThePlayersWorld } from '../lib/fake-db.ts';
 import { playerPortalSignedIn } from './started.ts';
+import { handThePageTheFakeDb, THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER } from './the-fake-db-handed-to-chromium.ts';
 
 test.use({ viewport: { width: 1400, height: 900 } });
 
+// The player's world the fake holds (tests/lib/fake-db.ts), signed in as u0: no game yet, no dispatch, no read mark.
+const WORLD: ThePlayersWorld = {
+  me: 'u0',
+  names: [{ id: 'u0', name: 'Test GM' }],
+  games: [],
+  realms: [],
+  dispatchRefused: null,
+  readsOfAnotherAccountsRealms: [],
+  dispatches: [],
+  readMarks: [],
+};
+const THE_WORLD = `window[${JSON.stringify(THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER)}]`;
+
 // Run in the page as the script had it: two realms in an active game, nobody has read anything.
-const STAGE = `(()=>{ const D=window.__DB; D.reset();
+const STAGE = `(()=>{ const D=${THE_WORLD};
   const report={playerIndex:0,playerName:'Aldoria',turnNumber:2,kingdom:{color:'#b8433a',alignment:'Neutral',race:'Human',gold:20},
     diplomacy:{alliancesAllowed:true,known:[{index:1,name:'Bruneth',color:'#6fbf73',relation:'neutral'}]},characters:[],provinces:[]};
-  D.db.games.push({id:'G1',name:'Test',gm_user_id:'gm1',status:'active',turn:2,max_players:2});
-  [0,1].forEach(i=>D.db.game_players.push({id:'gp'+i,game_id:'G1',player_index:i,user_id:'u'+i,display_name:i?'Bruneth':'Aldoria',
+  D.games.push({id:'G1',name:'Test',gm_user_id:'gm1',status:'active',turn:2,max_players:2});
+  [0,1].forEach(i=>D.realms.push({id:'gp'+i,game_id:'G1',player_index:i,user_id:'u'+i,display_name:i?'Bruneth':'Aldoria',
     orders_submitted:false,orders:null,turn_report:JSON.stringify(i?{playerIndex:1}:report)}));
-  D.db.game_message_reads.push({game_id:'G1',player_index:0,user_id:'u0',reads:{}}); })()`;
+  D.readMarks.push({game_id:'G1',player_index:0,user_id:'u0',reads:{}}); })()`;
+
+// Run in the page: a dispatch written by somebody else, straight into the world, as their browser would (the next id,
+// private when it names its addressees).
+const ARRIVES = (d: string) => `(()=>{ const D=${THE_WORLD}, m=${d};
+  D.dispatches.push({id:D.dispatches.length+1,created_at:new Date().toISOString(),scope:m.to_indexes.length?'private':'public',...m}); })()`;
 
 const BADGE = `(()=>{ const b=document.getElementById('desk-msg-badge'), t=document.getElementById('desk-msg-tab');
   const r=b&&b.getBoundingClientRect(); return {txt:(b&&b.textContent)||'', shown:!!t&&t.style.display!=='none'&&!!r&&r.width>0}; })()`;
@@ -28,7 +46,7 @@ test('the Dispatches count shows at once on switching view, clears when read, an
   page,
 }) => {
   const errs: string[] = [];
-  await routeExternal(page, browserSource.messaging);
+  await handThePageTheFakeDb(page, WORLD);
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto('/kingdoms-call-player-portal.html');
   await playerPortalSignedIn(page);
@@ -40,9 +58,7 @@ test('the Dispatches count shows at once on switching view, clears when read, an
   expect((await badge()).txt, 'no count before any dispatch has arrived').toBe('');
 
   // A dispatch arrives; the player moves the left panel from Map to Report.
-  await page.evaluate(
-    `window.__DB.inject({game_id:'G1',from_index:1,to_indexes:[],body:'Well met, neighbour.',turn:2})`,
-  );
+  await page.evaluate(ARRIVES(`{game_id:'G1',from_index:1,to_indexes:[],body:'Well met, neighbour.',turn:2}`));
   await page.locator('#desk-left .desk-tabs button[data-view="report"]').click();
   await expect
     .poll(badge, { message: 'switching to Report shows the count on the Dispatches tab at once', timeout: 1000 })
@@ -58,9 +74,7 @@ test('the Dispatches count shows at once on switching view, clears when read, an
   await page.locator('#desk-left .desk-tabs button[data-view="map"]').click();
   await page.waitForFunction('_deskLeftView === "map"');
   const n0 = Number((await badge()).txt || 0);
-  await page.evaluate(
-    `window.__DB.inject({game_id:'G1',from_index:1,to_indexes:[0],body:'A word in private.',turn:2})`,
-  );
+  await page.evaluate(ARRIVES(`{game_id:'G1',from_index:1,to_indexes:[0],body:'A word in private.',turn:2}`));
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect
     .poll(badge, {

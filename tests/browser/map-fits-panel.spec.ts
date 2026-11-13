@@ -5,10 +5,10 @@
 // Layout only exists in a real browser, so this is a Chromium page test. The report comes from a real
 // turn on a made-up 8×7 world (jsdom GM portal, seeded); no database.
 import { expect, test, type Page } from '@playwright/test';
-import { routeExternal } from '../lib/boot.js';
+import type { ThePlayersWorld } from '../lib/fake-db.ts';
 import { bootScenario } from '../lib/scenario.js';
-import { browserSource } from '../lib/stub-db.js';
 import { playerPortalSignedIn } from './started.ts';
+import { handThePageTheFakeDb, THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER } from './the-fake-db-handed-to-chromium.ts';
 
 // The turn is played once per worker. Its page gets the seed the script's (its process's first page) got from
 // KC_SEED, whatever else this worker has booted (tests/lib/boot.js).
@@ -34,10 +34,22 @@ interface Seen {
   lastRowReached: boolean;
 }
 
+// The player's world the fake holds (tests/lib/fake-db.ts), signed in as u0: no game yet, no dispatch, no read mark.
+const WORLD: ThePlayersWorld = {
+  me: 'u0',
+  names: [{ id: 'u0', name: 'Test GM' }],
+  games: [],
+  realms: [],
+  dispatchRefused: null,
+  readsOfAnotherAccountsRealms: [],
+  dispatches: [],
+  readMarks: [],
+};
+
 // Run in the page as the script had it: the player's game, with the report as its turn report.
-const STAGE = `rep=>{ const D=window.__DB; D.reset();
-  D.db.games.push({id:'G1',name:'Test',gm_user_id:'gm1',status:'active',turn:rep.turnNumber||1,max_players:2});
-  D.db.game_players.push({id:'gp0',game_id:'G1',player_index:0,user_id:'u0',display_name:'Aldoria',
+const STAGE = `rep=>{ const D=window[${JSON.stringify(THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER)}];
+  D.games.push({id:'G1',name:'Test',gm_user_id:'gm1',status:'active',turn:rep.turnNumber||1,max_players:2});
+  D.realms.push({id:'gp0',game_id:'G1',player_index:0,user_id:'u0',display_name:'Aldoria',
     orders_submitted:false,orders:null,turn_report:JSON.stringify(rep)}); }`;
 
 // Run in the page as the script had it: shows the map the way a player would, then measures it.
@@ -111,7 +123,7 @@ test.describe('phone', () => {
 async function open(page: Page): Promise<Seen> {
   const rep = await report();
   const errs: string[] = [];
-  await routeExternal(page, browserSource.messaging);
+  await handThePageTheFakeDb(page, WORLD);
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto('/kingdoms-call-player-portal.html');
   await playerPortalSignedIn(page);
