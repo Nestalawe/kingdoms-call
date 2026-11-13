@@ -27,7 +27,7 @@
 // the states with what those games don't reach staged (a research pair, an heir, the column arranged in another order
 // than the world's, a hero at a mastery's level; and, P1-15e3, the spare heroes beside a wandering hero who will serve,
 // beside a rival realm's hero, by a Weak lair they know with Sage 1 on five turns running, and in the orders for turn
-// 6; and a realm met and at peace on turn 6), 51 states in all, the realm's report opened and the form given the scripted realm's choices
+// 6; and a realm met and at peace on turn 6), 48 states in all, the realm's report opened and the form given the scripted realm's choices
 // (`tools/balance/scripted.ts`) as a player gives them: each order through its select and `onActionChange`, its target
 // through its field and its change (the Encounter Character list, the Recruit Armies boxes, the Spy, Search Lair, Hire
 // Hero, Research and Practice Skill fields; a hire's card made by its field's change and its plan driven as a hero's),
@@ -401,14 +401,23 @@ describe('each kind of choice the copy makes is driven at least once', () => {
   const picked = each.flatMap(({ chose }) => Object.values(chose.orders).flatMap((o) => o.filter((x) => x != null)));
   const gave = (action: string, target?: (t: string) => boolean): boolean =>
     picked.some((o) => o.action === action && (!target || target(o.target)));
-  const wanderers = new Set(
-    STATES.flatMap((s) => s.state.characters.filter((c) => c.player == null).map((c) => `char:${String(c.id)}`)),
-  );
+  // A Spy's target, read in the state the order was given in: a hero can be a wanderer in one state and a realm's in
+  // another (hired, released), so a set of every state's wanderers would miscount him.
+  const spiedOn = (wanderer: boolean): boolean =>
+    each.some(({ s, chose }) =>
+      Object.values(chose.orders).some((o) =>
+        o.some((x) => {
+          if (x?.action !== 'Spy' || !x.target.startsWith('char:')) return false;
+          const c = s.state.characters.find((y) => `char:${String(y.id)}` === x.target);
+          return c != null && (c.player == null) === wanderer;
+        }),
+      ),
+    );
   const kinds: [string, boolean][] = [
     ['an Encounter Character order', gave('Encounter Character')],
     ['a Recruit Armies order', gave('Recruit Armies')],
-    ['a Spy on a wandering hero', gave('Spy', (t) => wanderers.has(t))],
-    ['a Spy on a rival realm’s hero', gave('Spy', (t) => t.startsWith('char:') && !wanderers.has(t))],
+    ['a Spy on a wandering hero', spiedOn(true)],
+    ['a Spy on a rival realm’s hero', spiedOn(false)],
     ['a Search Lair order', gave('Search Lair')],
     [
       'a Hire Hero order, with its card’s plan',
