@@ -27,7 +27,7 @@
 // the states with what those games don't reach staged (a research pair, an heir, the column arranged in another order
 // than the world's, a hero at a mastery's level; and, P1-15e3, the spare heroes beside a wandering hero who will serve,
 // beside a rival realm's hero, by a Weak lair they know with Sage 1 on five turns running, and in the orders for turn
-// 6), 50 states in all, the realm's report opened and the form given the scripted realm's choices
+// 6; and a realm met and at peace on turn 6), 51 states in all, the realm's report opened and the form given the scripted realm's choices
 // (`tools/balance/scripted.ts`) as a player gives them: each order through its select and `onActionChange`, its target
 // through its field and its change (the Encounter Character list, the Recruit Armies boxes, the Spy, Search Lair, Hire
 // Hero, Research and Practice Skill fields; a hire's card made by its field's change and its plan driven as a hero's),
@@ -140,7 +140,8 @@ function withWhatTheGamesDontReachStaged(from: AState, reportOn: (state: State) 
  *  realm at peace (so no hero chases), its heroes but the king unarmed in a province of its own where no one else
  *  stands, and then: a wandering hero beside them who will serve (one hires him, the other spies on him); a rival's
  *  hero beside them (each spies on him); a Weak lair they know there and Sage 1, on five turns running (each order
- *  of the rest in turn: Search Lair, Research, Practice Skill, Explore, Rest); and the orders for turn 6 (a release).
+ *  of the rest in turn: Search Lair, Research, Practice Skill, Explore, Rest); the orders for turn 6 (a release); and
+ *  turn 6 again with a realm that holds land met and at peace (the declaration of war, whatever the games' course).
  *  Each report built by the views. */
 function theSpareHeroesOrdersStaged(from: AState, reportOn: (state: State) => Report): AState[] {
   const moveTo = (S: State, c: State['characters'][number], to: number) => {
@@ -202,6 +203,18 @@ function theSpareHeroesOrdersStaged(from: AState, reportOn: (state: State) => Re
       ),
     ),
     staged('the orders for turn 6', () => undefined, 6),
+    staged(
+      'a realm met and at peace, turn 6',
+      (S) => {
+        const realm = S.players[SCRIPTED_REALM];
+        const other = S.world.provinces.find(
+          (p) => p.owner != null && p.owner !== SCRIPTED_REALM && p.terrain !== 'sea',
+        );
+        if (!realm || other?.owner == null) throw new Error(`${from.name}: no other realm holding land to meet`);
+        realm._encountered = [other.owner];
+      },
+      6,
+    ),
   ];
 }
 
