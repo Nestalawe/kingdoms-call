@@ -11,6 +11,7 @@ import type {
   ADatabaseAnswer,
   AGame,
   AGameAsTheOverlordListsIt,
+  AGameWithItsRealms,
   AHallOfFameEntry,
   AnAccountsName,
   ADispatch,
@@ -967,6 +968,99 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
           else held[i] = written;
           return { data: null, error: null, status: 201 };
         },
+      ),
+    },
+  };
+  return { db, calls };
+}
+
+/** A change the GM page sent while it ran a turn (a row's `update`, `insert` or `upsert`, by its table, with what it
+ *  sent: `val`, as tests/lib/stub-db.js's cannedStub noted it), or a deletion (no `val`). */
+export interface AChangeTheGameMastersTurnSent {
+  readonly table: string;
+  readonly val?: unknown;
+}
+/** What the GM page reads while it runs a turn, held by the fake (plan P1-17q): the one game every read of a game
+ *  finds (`theGame`, read again at each call; none: no row), and the realms every read of a game's realms finds
+ *  (`theRealms`). No account is signed in; every list of games, of turn logs and of statistics finds none. The
+ *  changes the page sends are noted in `changes`, in order, and change nothing held: the game is saved on its turn,
+ *  and the save answers its id, while the game is held. */
+export interface TheGameMastersTurnsWorld {
+  readonly theGame: () => AGameWithItsRealms | null;
+  readonly theRealms: () => readonly ARealm[];
+  readonly changes: AChangeTheGameMastersTurnSent[];
+}
+
+/** A fake database, up to date at `version`, holding the GM's turn's `world`. */
+export function makeAFakeDbHoldingTheGameMastersTurn(version: string, world: TheGameMastersTurnsWorld): AFakeDb {
+  const fake = makeAFakeDb([version]);
+  const { calls } = fake;
+  const answering =
+    <A extends unknown[], T>(name: string, answer: (...args: A) => T) =>
+    (...args: A): Promise<T> => {
+      calls.push(name);
+      return Promise.resolve(answer(...args));
+    };
+  const found = <T>(data: T | null): ADatabaseAnswer<T> => ({ data, error: null, status: 200 });
+  /** Notes `val` sent to `table`, and answers as the database does (no error, no row). */
+  const noted = (table: string, val?: unknown): ADatabaseAnswer<null> => {
+    world.changes.push(val === undefined ? { table } : { table, val });
+    return { data: null, error: null, status: 204 };
+  };
+  /** Notes `val` sent to `table`, and answers the held game's id (none once no game is held). */
+  const notedAnsweringTheGamesId = (table: string, val: unknown): ADatabaseAnswer<{ id: string }> => {
+    world.changes.push({ table, val });
+    const game = world.theGame();
+    return found(game ? { id: game.id } : null);
+  };
+  const db: Db = {
+    ...fake.db,
+    theGameMastersGames: {
+      ...fake.db.theGameMastersGames,
+      thisGameWithItsRealms: answering('from:games', () => found(world.theGame())),
+      thisGamesTurnAndWorld: answering('from:games', () => found(world.theGame())),
+      changeThisGame: answering('from:games', (_game: string, change: unknown) => noted('games', change)),
+      changeThisGameAndAnswerItsId: answering('from:games', (_game: string, change: unknown) =>
+        notedAnsweringTheGamesId('games', change),
+      ),
+      changeThisGameWhileOnThisTurnAndAnswerItsId: answering(
+        'from:games',
+        (_game: string, _turn: number, change: unknown) => notedAnsweringTheGamesId('games', change),
+      ),
+    },
+    theHallOfFame: {
+      ...fake.db.theHallOfFame,
+      writeTheseEntries: answering('from:game_records', (entries: unknown) => noted('game_records', entries)),
+    },
+    theHallOfFamesGames: {
+      ...fake.db.theHallOfFamesGames,
+      thisGameWithItsWorldAndRealms: answering('from:games', () => found(world.theGame())),
+    },
+    theStatistics: {
+      ...fake.db.theStatistics,
+      writeTheseResults: answering('from:game_results', (results: unknown) => noted('game_results', results)),
+      writeTheseTurnRecords: answering('from:turn_events', (records: unknown) => noted('turn_events', records)),
+    },
+    theTurnAsTheGameMasterRunsIt: {
+      thisGameEveryColumn: answering('from:games', () => found(world.theGame())),
+      everyRealmOfThisGame: answering('from:game_players', () => found(world.theRealms().slice())),
+      clearTheOrdersOfEveryRealmOfThisGame: answering('from:game_players', () =>
+        noted('game_players', { orders: null, orders_submitted: false }),
+      ),
+      saveThisGameWhileOnThisTurnAndAnswerItsId: answering(
+        'from:games',
+        (_game: string, _turn: number, change: unknown) => notedAnsweringTheGamesId('games', change),
+      ),
+      giveThisRealmItsTurnReport: answering('from:game_players', (_realm: string, report: string) =>
+        noted('game_players', { turn_report: report }),
+      ),
+      writeThisLog: answering('from:turn_logs', (log: unknown) => noted('turn_logs', log)),
+      theTurnOfThisGameIfItIsThere: answering('from:games', () => {
+        const game = world.theGame();
+        return found(game ? { turn: game.turn } : null);
+      }),
+      putBackThisRealmsOrders: answering('from:game_players', (_realm: string, orders: unknown, submitted: boolean) =>
+        noted('game_players', { orders, orders_submitted: submitted }),
       ),
     },
   };

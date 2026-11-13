@@ -1,5 +1,5 @@
 // Kingdoms Call — headless engine fuzz for the 2026-09-27 (v…-1753) changes.
-// Boots the real GM portal under jsdom with a Supabase stub and runs whole turns of all-bot games,
+// Boots the real GM portal under jsdom with the fake database (tests/lib/fake-db.ts) and runs whole turns of all-bot games,
 // and watches for any throw out of runTurn and any uncaught window error. Also samples the Orcish war-spoils discount
 // the wage pass actually charged (p._lastWages.orcSpoilsG) so items 8 & 9 are exercised live. Its personal-combat
 // fuzz is tests/unit/fuzz-personal-combat.test.ts (plan P1-08f).
@@ -9,14 +9,14 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // All-bot turns: no crash; Orc wage discount stays a whole, non-negative number. Its personal-combat fuzz is
 // `unit/fuzz-personal-combat.test.ts` (P1-08f)
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./lib/fake-db.ts');
 const GMF=process.argv[2]||'kingdoms-call-gm-portal.html'; const GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5;
 const html=readPage(GMF);
 
 let ROWS={}; const WRITES=[];
-const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});
+const fakeDb=()=>makeAFakeDbHoldingTheGameMastersTurn(DB_VERSION,{theGame:()=>ROWS.games_one??null,theRealms:()=>ROWS.game_players_list??[],changes:WRITES}).db;
 const errors=[];
-const dom=bootJsdom(html,{supabase:{createClient:()=>sbStub()},
+const dom=bootJsdom(html,{supabase:{createClient:()=>({})},db:fakeDb(),
   setup(w){
     w.addEventListener('error',e=>errors.push('GM: '+(e.error&&e.error.stack||e.message)));
     w.onunhandledrejection=e=>errors.push('GM rejection: '+(e.reason&&e.reason.stack||e.reason));

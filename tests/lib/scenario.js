@@ -12,15 +12,15 @@
 // character not given orders Rests all turn. `seed` fixes the page's own Math.random (bootJsdom's opts.seed); by
 // default it comes from KC_SEED and how many pages this process has booted. `now` pins the page's clock (bootJsdom's
 // opts.now). `telemetry` has the page write its statistics rows, as it does once it has found the turn_events table
-// (its own probe, run here as sign-in runs it, finds it on the stand-in database): the balance scenarios
+// (its own probe, run here as sign-in runs it, finds it on the fake database, tests/lib/fake-db.ts): the balance scenarios
 // (tests/balance/scenarios/) read them. (The code-anchor hooks, `inject`, are gone since plan P1-09a: a test that must
 // reach inside the turn plays it in the engine's bare vm, tests/lib/scenario-in-the-vm.ts.)
-const {readPage,bootJsdom}=require('./boot'); const {cannedStub}=require('./stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./boot'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./fake-db.ts');
 
 async function bootScenario(opts={}){
   const html=readPage(opts.page||'kingdoms-call-gm-portal.html');
   let ROWS={}; const WRITES=[]; const errs=[];
-  const d=bootJsdom(html,{seed:opts.seed,now:opts.now,supabase:{createClient:()=>cannedStub({rows:()=>ROWS,writes:WRITES})},
+  const d=bootJsdom(html,{seed:opts.seed,now:opts.now,supabase:{createClient:()=>({})},db:makeAFakeDbHoldingTheGameMastersTurn(DB_VERSION,{theGame:()=>ROWS.games_one??null,theRealms:()=>ROWS.game_players_list??[],changes:WRITES}).db,
     setup(w){
       w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
       w.console.error=(...a)=>{ const t=a.map(String).join(' '); if(/Could not load|stub|fetch/i.test(t)) return; errs.push('console.error: '+t); };

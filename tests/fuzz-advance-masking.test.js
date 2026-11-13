@@ -1,14 +1,14 @@
 // Kingdoms Call — headless fuzz for v2026.09.27-2331: advance-and-strike combat, unmet-realm masking,
-// archive meta round-trip. Boots the real GM portal under jsdom with a Supabase stub. Its advance-and-strike combat
+// archive meta round-trip. Boots the real GM portal under jsdom with the fake database (tests/lib/fake-db.ts). Its advance-and-strike combat
 // fuzz is tests/unit/fuzz-personal-combat.test.ts (plan P1-08f).
 //   node tests/fuzz-advance-masking.test.js [gm-portal.html] [games] [turns] [bots]
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./lib/fake-db.ts');
 const GMF=process.argv[2]||'kingdoms-call-gm-portal.html'; const GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5;
 const html=readPage(GMF);
 let ROWS={}; const WRITES=[];
-const sbStub=()=>cannedStub({rows:()=>ROWS,writes:WRITES});
+const fakeDb=()=>makeAFakeDbHoldingTheGameMastersTurn(DB_VERSION,{theGame:()=>ROWS.games_one??null,theRealms:()=>ROWS.game_players_list??[],changes:WRITES}).db;
 const errors=[];
-const dom=bootJsdom(html,{supabase:{createClient:()=>sbStub()},
+const dom=bootJsdom(html,{supabase:{createClient:()=>({})},db:fakeDb(),
   setup(w){
     w.addEventListener('error',e=>errors.push('GM: '+(e.error&&e.error.stack||e.message)));
     w.onunhandledrejection=e=>errors.push('GM rejection: '+(e.reason&&e.reason.stack||e.reason));
