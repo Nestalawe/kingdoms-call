@@ -69,7 +69,15 @@ declare var viewingReport: import('./ui/player/map.ts').TheReportAsTheMapDrawsIt
 declare var viewedTurn: PageState;
 // ui/player/items-and-heroes.ts
 declare var currentProfile: PageState;
-declare var joiningGame: import('./ui/player/join-and-chronicle.ts').TheGameBeingJoined | null;
+/** The game the join form is for, as the open game's card hands it (ui/player/join-and-chronicle.ts). */
+declare var joiningGame: {
+  readonly id: string;
+  readonly name: string;
+  readonly maxP: number;
+  readonly joined: number;
+  readonly gmName: string | null | undefined;
+  readonly worldSize: string | null | undefined;
+} | null;
 declare var joinSkills: Record<string, number>;
 /** The realm's seat in the open game (the map writes its hero order into it). */
 declare var currentGamePlayer: import('./ui/player/map.ts').TheRealmsSeatAsThePageHoldsIt | null | undefined;

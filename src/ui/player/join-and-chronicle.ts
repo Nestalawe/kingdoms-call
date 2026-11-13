@@ -17,14 +17,7 @@ import { SKILL_COLUMNS } from './move-analysis.ts';
 import { isAList, loadAllGames, theField, theSignedInAccountsId, theStateParsed, thisOrElse } from './game-lists.ts';
 
 /** The game the join form is for, as the open game's card hands it (the page's `joiningGame`). */
-export interface TheGameBeingJoined {
-  readonly id: string;
-  readonly name: string;
-  readonly maxP: number;
-  readonly joined: number;
-  readonly gmName: string | null | undefined;
-  readonly worldSize: string | null | undefined;
-}
+type TheGameBeingJoined = NonNullable<typeof joiningGame>;
 /** The game being joined now (`joiningGame`), read again after an await: another card's click may have changed it
  *  meanwhile, which the compiler's narrowing of a global doesn't see. */
 function theGameBeingJoinedNow(): TheGameBeingJoined | null {
