@@ -70,9 +70,9 @@ describe('src/globals.d.ts', () => {
     'a declared global missing from it, or one too many, is found (planted)',
     timeLimitForTheWork({ everyFileReads: 2 }),
     () => {
-      const without = text.replace(/^declare var currentGame: PageState;\n/m, '');
+      const without = text.replace(/^declare var _autoRunBusy: PageState;\n/m, '');
       expect(without).not.toBe(text);
-      expect(differences(SRC, without)).toEqual([`currentGame: a declared global, not declared in ${DTS}`]);
+      expect(differences(SRC, without)).toEqual([`_autoRunBusy: a declared global, not declared in ${DTS}`]);
       const extra = text + 'declare var _goneLongAgo: PageState;\n';
       expect(differences(SRC, extra)).toEqual([`_goneLongAgo: declared in ${DTS}, but no file declares it`]);
     },
