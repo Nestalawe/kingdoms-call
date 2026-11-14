@@ -32,8 +32,9 @@ writes each realm's report. Players only submit orders and read what they're giv
   `the-registry-of-discovery-effects.ts`:
   [its file](architecture/the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md); a perk's,
   `the-registry-of-guardian-perks.ts`: [its file](architecture/the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md); an alignment ability's: [its file](architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md)), naming its effect at each
-  stage of a hook point; the resolvers ask the stage's runner. An alignment order is one row of the alignment abilities'
-  file, given as an order; its entry says who may give it, and its resolver (`src/engine/orders/alignment/`) what it does. `src/content/kingdoms-call-data.ts`
+  stage of a hook point; the resolvers ask the stage's runner. A realm's alignment's abilities, its orders among them, are rows
+  of the alignment abilities' file (an order's resolver: `src/engine/orders/alignment/`); the marks they leave on a
+  province, one module in `src/engine/world/`. `src/content/kingdoms-call-data.ts`
   is the one source of the tables both portals read, and `src/shared/` is the player portal's one door to the engine's
   rules on plain values.
 - **A saved game** ([a-saved-game-its-version-its-upgrade-its-check.md](architecture/a-saved-game-its-version-its-upgrade-its-check.md)).
