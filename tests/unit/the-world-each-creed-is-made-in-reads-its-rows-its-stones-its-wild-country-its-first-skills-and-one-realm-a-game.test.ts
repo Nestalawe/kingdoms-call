@@ -8,14 +8,15 @@
 // before the row; then a seeded world of seven realms, one of each creed, and the same world with its Pagan made Good,
 // read what world creation made of them with no die (so on any seed); and the bots' setup (GM turn zero with bots, which
 // the balance matrix doesn't play) never deals a second Divine or Undead realm. The wild country a capital opens beside
-// needs a free neighbour, which a world may not have: its readers are pinned here, its worlds by
-// tests/unit/the-two-crowns-have-wild-country-within-two-provinces.test.ts, tests/two-crowns.test.js and the matrix.
+// needs a free neighbour, which a world may not have: so (P1-21t) a planted copy of src/ gives every capital one, and
+// records each wild host the pass raises there: a Druidic capital's is a Creature, an Evil one's a Monster, on any seed.
 //
 // Level 1 (unit): the readers called directly, and generateNewGame and generateBotSetups called on the engine's
-// modules, the dice seeded (kcRng), no turn played. Not lower: a static test can't build a world, and the readers'
+// modules (a planted copy's too), the dice seeded (kcRng), no turn played. Not lower: a static test can't build a world, and the readers'
 // answers are the rows' as code reads them.
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { KC_ALIGNMENTS } from '../../src/content/kingdoms-call-data.ts';
+import path from 'node:path';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { KC_ALIGNMENTS, KC_UNIT_CLASS } from '../../src/content/kingdoms-call-data.ts';
 import { kcRng } from '../../src/engine/rng.ts';
 import { BOT_UNIQUE_ALIGNS, generateBotSetups } from '../../src/engine/bots/setup.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
@@ -30,6 +31,9 @@ import {
   theSkillAWandererOfTheAlignmentIsSureOf,
   theWanderingHeroesDeckOfAlignments,
 } from '../../src/engine/rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
+import { plantBefore, plantedSrc, replaceInitializer } from '../lib/source.ts';
+import { importTheWholeEngineFrom } from '../lib/the-whole-engine.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 type TheSetUps = Parameters<typeof generateNewGame>[0];
 
@@ -140,4 +144,79 @@ test("the bots' setup deals no second Divine or Undead realm: none beside a huma
   expect([botsAlone.filter((a) => a === 'Divine').length, botsAlone.filter((a) => a === 'Undead').length]).toEqual([
     1, 1,
   ]);
+});
+
+/** The wild country the pass makes beside each capital in the planted copy: the realm's alignment, and the army types
+ *  of the province it made wild (none when it made none). */
+const THE_RECORDER = '__kcTheWildHostsBesideACapital';
+const raised: { alignment: unknown; armyTypes: readonly string[] }[] = [];
+
+describe('every capital given a free neighbour (a planted copy of src/), on KC_SEED', () => {
+  let planted: ReturnType<typeof plantedSrc> | undefined;
+  let theGame: typeof generateNewGame | undefined, theDice: typeof kcRng | undefined;
+  afterAll(() => {
+    planted?.remove();
+    Reflect.deleteProperty(globalThis, THE_RECORDER);
+  });
+  // the copy made and its modules imported: every file of src/ twice
+  beforeAll(
+    async () => {
+      Reflect.set(globalThis, THE_RECORDER, (alignment: unknown, armyTypes: readonly string[] | undefined) => {
+        raised.push({ alignment, armyTypes: armyTypes ?? [] });
+      });
+      planted = plantedSrc({
+        'engine/world/generate.ts': (code, file) =>
+          plantBefore(
+            // the free neighbours of a capital: its own when it has some, else every cell beside it (never none)
+            replaceInitializer(
+              code,
+              file,
+              'generateNewGame',
+              '_freeNbrs',
+              '_allFreeNbrs.length > 0 ? _allFreeNbrs : getNeighborsP(best, cols, rows, provinces)',
+            ),
+            file,
+            'generateNewGame',
+            '_ringPrimal',
+            `Reflect.get(globalThis, '${THE_RECORDER}')(sp.alignment, provinces.find((q) => q.id === best._alignPrimalId)?.armyTypes);`,
+          ),
+      });
+      await importTheWholeEngineFrom(planted.dir);
+      const generate = (await import(
+        path.join(planted.dir, 'engine/world/generate.ts')
+      )) as typeof import('../../src/engine/world/generate.ts');
+      const rng = (await import(path.join(planted.dir, 'engine/rng.ts'))) as typeof import('../../src/engine/rng.ts');
+      theGame = generate.generateNewGame;
+      theDice = rng.kcRng;
+    },
+    timeLimitForTheWork({ everyFileReads: 2 }).timeout,
+  );
+
+  test('a Druidic capital opens beside a Creature host and an Evil one beside a Monster host, the Pagan beside one or the other', () => {
+    if (!theGame || !theDice) throw new Error("the planted copy's engine was not imported");
+    theDice.seed(Number(process.env['KC_SEED']) >>> 0 || 1);
+    theGame(sevenRealms('Pagan'), { cols: 18, rows: 12 }, 0, { seaPct: 30 });
+    // a province of one kind only: every army type a Creature, or every one a Monster
+    const kindOf = (armyTypes: readonly string[]) =>
+      armyTypes.length === 0
+        ? 'none'
+        : armyTypes.every((u) => KC_UNIT_CLASS.creature.includes(u))
+          ? 'Creature'
+          : armyTypes.every((u) => KC_UNIT_CLASS.monster.includes(u))
+            ? 'Monster'
+            : armyTypes.join(', ');
+    const each = raised.map(({ alignment, armyTypes }) => [alignment, kindOf(armyTypes)]);
+    // the Pagan's stones' province is a Creature or a Monster one, as the dice say: read as either
+    expect(
+      each.map(([a, kind]) => [a, a === 'Pagan' && (kind === 'Creature' || kind === 'Monster') ? 'either' : kind]),
+    ).toEqual([
+      ['Divine', 'none'],
+      ['Good', 'none'],
+      ['Druidic', 'Creature'],
+      ['Neutral', 'none'],
+      ['Pagan', 'either'],
+      ['Evil', 'Monster'],
+      ['Undead', 'none'],
+    ]);
+  });
 });

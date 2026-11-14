@@ -22,9 +22,9 @@
 // still a peer, "Practice Skill" written either way, the drills' dice (Human folk doubled, the dead never drilled,
 // Naval for fleets, the new level); the Colossus and the Iron Heart Talisman; the Breakthrough's dice; lines no
 // matrix game reaches (P1-10b28): the field's last discovery's point of tax, a Human wanderer no quick learner, a
-// wanderer's Rest with no realm's blessing. Properties: a practice raises a skill by one at most, never past 5,
-// certainly beside a better comrade; a Rest never takes HP away or heals past the maximum; a Breakthrough makes one
-// discovery of the realm's table, never one it knew. Planted faults: in the PR (P1-08j4)
+// wanderer's Rest with no realm's blessing; a Divine Rest's odd heal rounded up (P1-21t). Properties: a practice
+// raises a skill by one at most, never past 5, certainly beside a better comrade; a Rest never takes HP away or heals
+// past the maximum; a Breakthrough makes one discovery of the realm's table, never one it knew. Planted faults: in the PR (P1-08j4)
 import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
@@ -795,6 +795,22 @@ describe('Rest, called directly', () => {
     b.tc._logCtx = { charId: h.id, phase: 0 };
     fn('resolveRestOrder')(b.tc, h, provOf(b.tc, h));
     expect({ healed: healed(b, h), hp: h.hp }).toEqual({ healed: 6, hp: 11 });
+  });
+
+  // the mutation session of 2026-11-15 (P1-21t): a rest of 3 is the smallest whose half again isn't whole
+  test('a Divine realm’s hero rests half as much again, rounded up: 3 hit points become 5, a Neutral’s stay 3', () => {
+    const rests = (alignment: string) => {
+      const b = fresh();
+      realm(b)['alignment'] = alignment;
+      const h = at(b, { king: true, hp: 10 });
+      h.hp = 2;
+      play(b, h, o('rest'));
+      return { healed: healed(b, h), hp: h.hp };
+    };
+    expect([rests('Divine'), rests('Neutral')]).toEqual([
+      { healed: 5, hp: 7 },
+      { healed: 3, hp: 5 },
+    ]);
   });
 
   test(
