@@ -14,6 +14,8 @@ writes each realm's report. Players only submit orders and read what they're giv
 
 ## The parts
 
+- **Making a change** ([making-a-change-the-six-kinds-and-the-plans-format.md](architecture/making-a-change-the-six-kinds-and-the-plans-format.md)).
+  The six kinds of work, what differs between them, and the one format every plan takes.
 - **Where a change goes** ([where-a-change-goes-from-an-item-in-game-terms-to-the-files.md](architecture/where-a-change-goes-from-an-item-in-game-terms-to-the-files.md)).
   From an item in game terms to its files, docs, rulings and tests, and the search that finds every copy of a rule.
 - **The build** ([the-build-from-src-to-site.md](architecture/the-build-from-src-to-site.md)). `npm run build` (`tools/build.ts`)
