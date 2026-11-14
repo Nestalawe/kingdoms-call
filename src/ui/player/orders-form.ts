@@ -64,7 +64,10 @@ import {
   skillsUnseenP,
 } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import { thePagesDb } from './startup.ts';
-import { asItsGuardReadsIt } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  asItsGuardReadsIt,
+  doesAnAlignmentConquerByADoctrine,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import type { AHeroAsThePreOrderCardsHoldHim, TheReportAsThePreOrderCardsHoldIt } from './pre-orders.ts';
@@ -557,7 +560,7 @@ export function buildOrdersForm(
             </div>
           </div>
           ${
-            report.kingdom?.alignment === 'Evil'
+            doesAnAlignmentConquerByADoctrine(report.kingdom?.alignment)
               ? kcHtml`
           <!-- EVIL — conquest doctrine: Terror (loot + fear) or Enslave (chained garrisons) -->
           <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8c48a">

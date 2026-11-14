@@ -1,6 +1,10 @@
 import { kcArg, kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
 import { KC_TERRAIN_COLORS } from '../../content/kingdoms-call-data.ts';
-import { skillFameLabelM, topSkillOf } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  doesAnAlignmentBreakAnAllianceIntoWar,
+  skillFameLabelM,
+  topSkillOf,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import { GD_BY_ALIGNMENT, GUARD_POWER_COLORS_P, realmOfP } from './items-and-heroes.ts';
 import { unitEmoji } from './order-chances.ts';
@@ -955,8 +959,7 @@ export function _renderDiplomacyInto(
       } else {
         // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
         // for an Evil or Undead crown, which goes straight to war.
-        const _darkCrowns: readonly unknown[] = ['Evil', 'Undead'];
-        const _darkSelf = _darkCrowns.includes(reportRead.kingdom?.alignment);
+        const _darkSelf = doesAnAlignmentBreakAnAllianceIntoWar(reportRead.kingdom?.alignment); // their rows (P1-19ax2)
         controls = btn(k.index, 'enemy', _darkSelf ? 'Break Alliance — War' : 'Break Alliance', '#8a1c1c');
       }
       return kcHtml`<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">

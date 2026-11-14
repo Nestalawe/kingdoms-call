@@ -23,6 +23,7 @@ import {
   whatAMarchsOrderNames,
   whereAHandOversRisenDeadGo,
   whereARecruitedCompanyMusters,
+  doesAnAlignmentDeclareWarWithoutWarning,
   theCompaniesABloodOfferingGivesAndRaises,
   itemSlot,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
@@ -468,8 +469,7 @@ function theRelationAMarchMeetsAtTheBorderOf(
   const known = (report.diplomacy?.known ?? []).find((k) => k?.index === owner);
   const now = (known?.relation ?? '') || 'neutral';
   const declared: unknown = known && orders.declarations ? Reflect.get(Object(orders.declarations), owner) : null;
-  const theCreedsThatWarNoWarning: readonly (string | null | undefined)[] = ['Evil', 'Undead'];
-  const withoutWarning = theCreedsThatWarNoWarning.includes(report.kingdom?.alignment);
+  const withoutWarning = doesAnAlignmentDeclareWarWithoutWarning(report.kingdom?.alignment); // their rows (P1-19ax2)
   return declared === 'enemy' && withoutWarning ? 'enemy' : now;
 }
 function aMarchTheTurnRefuses(
