@@ -492,7 +492,7 @@ export const ALIGNMENT_ABILITIES = {
 export type AlignmentAbilitySlug = keyof typeof ALIGNMENT_ABILITIES;
 
 /** An alignment order's slug: a key of a row given as an order. */
-export type AlignmentOrderSlug = {
+type AlignmentOrderSlug = {
   [S in AlignmentAbilitySlug]: (typeof ALIGNMENT_ABILITIES)[S] extends AnAlignmentAbilityGivenAsAnOrder ? S : never;
 }[AlignmentAbilitySlug];
 
