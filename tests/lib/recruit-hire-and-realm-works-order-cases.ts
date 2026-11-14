@@ -947,6 +947,24 @@ export const CONSECRATE_ORDER_CASES: RecruitHireAndWorksOrderCase[] = [
     },
   },
   {
+    name: 'Consecrate: a hero of another crown who is not the king hears first that only the king may',
+    stage(b) {
+      holds(b, b.X);
+      creed(b, 'Good');
+      return { hero: at(b, { skills: skilled({ white: 1 }) }), here: b.X, orders: plan(order('consecrate')) };
+    },
+    check(o) {
+      return {
+        got: {
+          holy: realmOf(o, 0)['consecratedProvIds'] ?? [],
+          king: says(o, 'only the anointed King can consecrate ground'),
+          creed: says(o, 'the gods answer only Divine crowns'),
+        },
+        want: { holy: [], king: true, creed: false },
+      };
+    },
+  },
+  {
     name: 'Consecrate: only a province of the realm’s own',
     stage(b) {
       settled(b.X);
@@ -1141,6 +1159,24 @@ export const CALL_TO_ARMS_ORDER_CASES: RecruitHireAndWorksOrderCase[] = [
           refused: says(o, "only the KING's voice carries the Call to Arms."),
         },
         want: { garrison: [], refused: true },
+      };
+    },
+  },
+  {
+    name: 'Call to Arms: a hero of another crown who is not the king hears first that only a Good crown may',
+    stage(b) {
+      const there = ring1(b, 0);
+      holds(b, there);
+      return { hero: at(b), here: b.X, there, orders: plan(order('call_to_arms', there.id)) };
+    },
+    check(o, { there }) {
+      return {
+        got: {
+          garrison: garrison(o, must(there, 'there')),
+          creed: says(o, 'only the folk of a Good realm rise'),
+          king: says(o, "only the KING's voice carries the Call to Arms."),
+        },
+        want: { garrison: [], creed: true, king: false },
       };
     },
   },
@@ -1381,6 +1417,22 @@ export const BROKER_ORDER_CASES: RecruitHireAndWorksOrderCase[] = [
       return {
         got: { refused: says(o, "only the KING commands the realm's brokers."), spied: says(o, 'spies on') },
         want: { refused: true, spied: false },
+      };
+    },
+  },
+  {
+    name: 'Broker: a hero of another crown who is not the king hears first that only a Neutral crown keeps them',
+    stage(b) {
+      return { hero: at(b), here: b.X, orders: plan(order('broker', `spy:${String(b.X.id)}`)) };
+    },
+    check(o) {
+      return {
+        got: {
+          creed: says(o, 'only a Neutral crown keeps the web of factors'),
+          king: says(o, "only the KING commands the realm's brokers."),
+          spied: says(o, 'spies on'),
+        },
+        want: { creed: true, king: false, spied: false },
       };
     },
   },
