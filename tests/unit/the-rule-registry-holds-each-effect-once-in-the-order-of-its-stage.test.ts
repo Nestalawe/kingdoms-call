@@ -45,7 +45,8 @@
 // its runners of the prices and the scholars, and the Druid waiver (read in rules-on-plain-values), give what the
 // engine wrote before: Neutral's 2g off a mercenary band, Divine's Bless at 2 by the king and 1.8 by another (the
 // spell's own 1.6 for any other creed), Neutral's Sage level × 5, and no Druid need for a Creature under a Druidic realm
-// or leader, or a Monster under an Evil one.
+// or leader, or a Monster under an Evil one. Since P1-19aw2 its runner of who may give an alignment order refuses as
+// each resolver did: Consecrate the king before the creed, Call to Arms and Broker the creed first, the others the creed.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it

@@ -61,12 +61,12 @@ import type { Character, Item, Province, ProvinceFeature, Realm } from '../../sc
 import type { TurnContext } from '../turn/context.ts';
 
 // ── THE EXPLORE AND SEARCH ORDERS (plan P1-08j2: the second family taken out of processOrder in resolveTurn) ──
-// Six orders a hero spends a phase on where he stands: Explore, Perform Rite, Hunting Rumours, Search Lair, Chart the
-// Unknown (Explorer 7) and Discover Lost Ruin (Explorer 9), each once processOrder has read the order and checked he
-// may act (a mastery once a turn, a search written for another province). Each takes the turn's context first
-// (src/engine/turn/context.ts), then the values processOrder worked out before it that it reads, in the order
-// processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a case-level break
-// became a return.
+// Five orders a hero spends a phase on where he stands: Explore, Hunting Rumours, Search Lair, Chart the Unknown
+// (Explorer 7) and Discover Lost Ruin (Explorer 9), each once processOrder has read the order and checked he may act (a
+// mastery once a turn, a search written for another province); Perform Rite is in src/engine/orders/alignment/. Each
+// takes the turn's context first (src/engine/turn/context.ts), then the values processOrder worked out before it that
+// it reads, in the order processOrder declares them. Each body keeps processOrder's indent (plan P1-08's Decisions); a
+// case-level break became a return.
 /** A lair with a guardian, as Hunting Rumours asks after it. */
 type ALairWithAGuardian = ProvinceFeature & { readonly monster: NonNullable<ProvinceFeature['monster']> };
 /** A site as the search reads it: its guardian marked when a thief has made off with part of his hoard (the fight's

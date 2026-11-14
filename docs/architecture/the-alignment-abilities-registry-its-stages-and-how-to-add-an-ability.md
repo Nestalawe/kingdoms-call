@@ -23,7 +23,8 @@ in `src/engine/rules/alignment-abilities/`, a file per group of stages.
 - **A row's key** is unique against the discoveries' names and their effects' slugs (ad04 is "Tithes", so no key may be
   `'tithes'`). The five alignment orders (`consecrate`, `call-to-arms`, `broker`, `harvest-the-field`, `perform-rite`)
   are rows given as an order (`howItIsUsed`: `"a king's order"` or `"a hero's order"`), each with its `key`, `name` and
-  `theOtherNamesTheTurnReads`, and an empty entry: each order's resolver is its rule. `THE_ALIGNMENT_ORDERS` holds them
+  `theOtherNamesTheTurnReads`, and an entry at one stage, who may give it (below); what each does is its resolver's,
+  one file each in `src/engine/orders/alignment/`. `THE_ALIGNMENT_ORDERS` holds them
   in the order of `ALIGNMENT_ORDER_KEYS` (one left out, or a row not given as an order, fails to compile), so the
   order kinds are the five, never an always-on row's key.
 - **The registry** ends `satisfies Record<AlignmentAbilitySlug, AlignmentAbilityEntry>`, both ways, as the other
@@ -87,6 +88,15 @@ in `src/engine/rules-on-plain-values/`, which the player portal shares and which
 reads the rows' alignments, the realm's or the leader's own (Decision G), and their entries have no stage (the
 registry's unit test lists them).
 
+**Who may give an order** (P1-19aw2, `alignment-abilities/who-may-give-an-alignment-order.ts`): Decision H reverses
+P1-19's Decision 2 (no registry entry for an order).
+
+| Stage (`orderValidity`) | Its abilities | Where it is asked, and what it gives |
+|---|---|---|
+| **who may give an alignment order** | the five orders | each order's resolver, before it reads the province or the target; the first check that refuses the hero, in the order's own order (Consecrate the king, then the creed; Call to Arms and Broker the creed, then the king; Harvest the Field and Perform Rite the creed alone), or null. The resolver writes its own line for it. The rest of each order's refusals (its province, its gold, once a turn) stay in its resolver |
+
+The runner is handed the order's row (`THE_ALIGNMENT_ORDERS.consecrate`), so the resolvers name no order's key.
+
 ## Outside the family
 
 - **The ladder of alignments** (hire wages by distance, the Divine-Undead hiring ban, mercy by the foe's alignment,
@@ -106,10 +116,14 @@ registry's unit test lists them).
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order; each row's alignment one, its key no discovery's name or slug, and the five orders' keys rows given
-  as an order, with empty entries; the runners' sums
+  as an order, each with its one `orderValidity` stage; the runners' sums
   (the trade's, over 301 incomes, against `neutralTradeGold`; the consecrated tax's, over 301 taxes; zeal's chance by
   creed, the doubling, the fervours against the old `Math.max`, the other battle factors' and the Banner's, the
-  prices', the scholars' and the Druid waiver's by creed).
+  prices', the scholars' and the Druid waiver's by creed; who may give each order, by creed and king, against the
+  resolvers' old order).
+- `tests/lib/recruit-hire-and-realm-works-order-cases.ts` (unit, and a whole turn in `tests/scenario/`): each order's
+  refusals and outcomes; a hero of another crown who is not the king hears Consecrate's king line, and Call to Arms'
+  and Broker's creed line.
 - `tests/unit/the-sides-of-a-battle-between-heroes-in-the-lines-no-matrix-game-reaches.test.ts`: the doubling, with
   staged dice, after the discoveries' share; `…the-sides-and-the-defenders-of-a-battle-against-a-province-…`: the
   other battle factors at both battles.

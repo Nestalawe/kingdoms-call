@@ -29,8 +29,8 @@ import type { Army, Character, Province } from '../../schemas/saved-game-state.t
 import type { TurnContext } from '../turn/context.ts';
 
 // ── THE REALM'S WORKS (plan P1-08j3: the third family taken out of processOrder in resolveTurn) ──
-// The orders of a realm's creed (Consecrate, Call to Arms, Broker, Harvest the Field, and the refusal of the removed
-// Awaken the Wild and Call from the Pit) and three masteries (Awaken Grove, Wild Calling, Grand Design), each once
+// The refusal of a creed's removed orders (Awaken the Wild and Call from the Pit) and three masteries (Awaken Grove,
+// Wild Calling, Grand Design); the creeds' own orders are in src/engine/orders/alignment/ (P1-19aw2). Each runs once
 // processOrder has read the order and checked he may act (a mastery once a turn; a charmed hero refuses a creed's rite
 // or a mastery). Each takes the turn's context first (src/engine/turn/context.ts), then the values processOrder worked
 // out before it that it reads, in the order processOrder declares them. Each body keeps processOrder's indent (plan
