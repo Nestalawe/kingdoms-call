@@ -24,7 +24,13 @@
 // row; each row's kind is a kind of a perk of MONSTERS_P, no two rows share a kind, and every kind of MONSTERS_P has its
 // row; a row names the items' effect of its own ward or rider exactly when an item carries it; and an entry with no
 // stage is a kind whose row names the items' effect, or one listed as still read inline (THE_PERKS_STILL_READ_INLINE,
-// which P1-19aj emptied), and no listed kind has a stage.
+// which P1-19aj emptied), and no listed kind has a stage. Since P1-19at1 the alignment abilities' registry
+// (src/engine/rules/the-registry-of-alignment-abilities.ts) is held to the same: each effect once in its stage's order
+// (THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES), each order naming only entries with an effect there, each
+// content row with its entry and each entry with its row; each row's alignment is one, its key, read as words, is no
+// discovery's name and no discovery effect's slug, and the five alignment orders' keys are left free for their rows. Its
+// runner of "turnEnd: a realm's alignment adds to its tax" gives a Neutral realm a fifth of its provinces' income,
+// rounded down, and any other realm nothing, as neutralTradeGold (which Early Winter and the report ask) did before.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -36,7 +42,9 @@
 // entry, a row's kind no discovery has, two rows of one kind, a kind of content with no row and not listed, and a kind
 // listed that has a row; in the guardian perks', an entry left out of its order, a row with no entry, a kind no perk
 // has, two rows of one kind, a row naming another kind's item effect, a shared kind naming none, an own kind naming
-// one, a kind of content with no row, an entry with no stage unlisted, and a kind listed with a stage.
+// one, a kind of content with no row, an entry with no stage unlisted, and a kind listed with a stage; in the alignment
+// abilities', an entry left out of its order, a row with no entry, an alignment that isn't one, a key that is a
+// discovery's name or an effect's slug, and one of the orders' keys taken.
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import {
@@ -71,6 +79,14 @@ import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_GUARDIAN_PERKS,
   THE_REGISTRY_OF_GUARDIAN_PERKS,
 } from '../../src/engine/rules/the-registry-of-guardian-perks.ts';
+import { ALIGNMENT_ABILITIES } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES,
+  THE_REGISTRY_OF_ALIGNMENT_ABILITIES,
+  whatARealmsAlignmentAddsToItsTax,
+} from '../../src/engine/rules/the-registry-of-alignment-abilities.ts';
+import { A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX } from '../../src/engine/rules/alignment-abilities/a-realms-alignment-at-the-turns-end.ts';
+import { neutralTradeGold } from '../../src/engine/grand-design.ts';
 
 /** The registry as this test reads it: each entry's effects by hook point and stage, and each stage's order. */
 type Entries = Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, unknown>>>>>>;
@@ -595,4 +611,105 @@ test("planted in the guardian perks' registry, an entry left out of its order, a
     'dodge has no row',
     'aura has no row',
   ]);
+});
+
+/** An alignment ability's row as this test reads it (its alignment as any string, so a planted row may name one that
+ *  isn't). */
+type AbilityRows = Readonly<Record<string, { readonly alignment: string }>>;
+
+/** The discoveries' names and their effects' slugs, lower case, which no ability's key, read as words, may be. */
+const THE_DISCOVERIES_NAMES: ReadonlySet<string> = new Set([
+  ...SAGE_DISCOVERIES_P.map((d) => d.name.toLowerCase()),
+  ...Object.keys(DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS).map((slug) => slug.replace(/-/g, ' ')),
+]);
+/** The five alignment orders' keys, left free for their rows (plan P1-19's alignment abilities family, row P1-19aw1). */
+const THE_ORDERS_KEYS = ['consecrate', 'call-to-arms', 'broker', 'harvest-the-field', 'perform-rite'];
+
+/** What an ability's row breaks: its alignment an alignment, its key no discovery's name or effect's slug, and none of
+ *  the orders' keys. */
+function whatAnAlignmentAbilitysRowBreaks(
+  slug: string,
+  row: { readonly name: string; readonly alignment: string },
+): string[] {
+  const broken: string[] = [];
+  if (!alignments.has(row.alignment)) broken.push(`${slug}'s alignment, ${row.alignment}, is not an alignment`);
+  if (THE_DISCOVERIES_NAMES.has(slug.replace(/-/g, ' '))) broken.push(`${slug} reads as a discovery's name or slug`);
+  if (THE_ORDERS_KEYS.includes(slug)) broken.push(`${slug} is an alignment order's key, left free for its row`);
+  return broken;
+}
+
+const ABILITY_ENTRIES: Entries = THE_REGISTRY_OF_ALIGNMENT_ABILITIES;
+const ABILITY_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES;
+const ABILITY_ROWS: AbilityRows = ALIGNMENT_ABILITIES;
+/** The rows with their slug as the name the shared check reads (an ability has no name unless it is an order). */
+const ABILITIES_REGISTRY = (entries: Entries, orders: Orders, rows: AbilityRows) =>
+  whatTheRegistryBreaks(
+    entries,
+    orders,
+    Object.fromEntries(Object.entries(rows).map(([slug, row]) => [slug, { name: slug, alignment: row.alignment }])),
+    whatAnAlignmentAbilitysRowBreaks,
+  );
+
+test("the alignment abilities' registry holds each effect once, in the order of its stage, and each content row is sound", () => {
+  expect(ABILITIES_REGISTRY(ABILITY_ENTRIES, ABILITY_ORDERS, ABILITY_ROWS)).toEqual([]);
+  expect(Object.keys(ABILITY_ENTRIES).length).toBeGreaterThan(0);
+  const ordered = new Set(Object.values(ABILITY_ORDERS).flatMap((stages) => Object.values(stages).flat()));
+  expect([...ordered].sort()).toEqual(Object.keys(ABILITY_ENTRIES).sort());
+});
+
+test("planted in the alignment abilities' registry, an entry left out of its order, a row with no entry, an alignment that isn't one, a discovery's name or slug as a key, and an order's key taken, are found", () => {
+  const orders: Orders = { ...ABILITY_ORDERS, turnEnd: { "a realm's alignment adds to its tax": [] } };
+  const rows: AbilityRows = {
+    ...ABILITY_ROWS,
+    tithes: { alignment: 'Divine' },
+    'province-tax': { alignment: 'Neutral' },
+    broker: { alignment: 'Neutral' },
+    'planted-ability': { alignment: 'Mercantile' },
+  };
+  expect(ABILITIES_REGISTRY(ABILITY_ENTRIES, orders, rows)).toEqual([
+    "neutral-trade is in the order of turnEnd: a realm's alignment adds to its tax 0 times",
+    "tithes reads as a discovery's name or slug",
+    'tithes has a content row and no entry',
+    "province-tax reads as a discovery's name or slug",
+    'province-tax has a content row and no entry',
+    "broker is an alignment order's key, left free for its row",
+    'broker has a content row and no entry',
+    "planted-ability's alignment, Mercantile, is not an alignment",
+    'planted-ability has a content row and no entry',
+  ]);
+});
+
+/** Incomes as Early Winter's collection and the report's forecast may hand them: whole sums, and what a guard reads as
+ *  none. */
+const INCOMES: readonly (number | null | undefined)[] = [
+  ...Array.from({ length: 301 }, (_, i) => i),
+  null,
+  undefined,
+  Number.NaN,
+];
+
+test('neutralTradeGold gives a Neutral realm a fifth of its income, rounded down, and any other realm, or none, nothing', () => {
+  for (const alignment of [...KC_ALIGNMENTS, undefined])
+    for (const income of INCOMES)
+      expect(neutralTradeGold({ alignment }, income), `${String(alignment)}, ${String(income)}`).toBe(
+        alignment === 'Neutral' ? Math.floor((Number(income) || 0) / 5) : 0,
+      );
+  expect([
+    neutralTradeGold(null, 10),
+    neutralTradeGold(undefined, 10),
+    neutralTradeGold({ alignment: 'Neutral' }, 10),
+  ]).toEqual([0, 0, 2]);
+});
+
+test('the runner of "a realm\'s alignment adds to its tax" and the Neutral trade\'s effect give what neutralTradeGold gives', () => {
+  for (const alignment of [...KC_ALIGNMENTS, undefined, null])
+    for (const income of INCOMES) {
+      const theGold = whatARealmsAlignmentAddsToItsTax(alignment, { theIncome: income });
+      expect(theGold, `${String(alignment)}, ${String(income)}`).toBe(
+        neutralTradeGold({ alignment: alignment ?? undefined }, income),
+      );
+    }
+  expect(INCOMES.map((income) => A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX['neutral-trade']({ theIncome: income }))).toEqual(
+    INCOMES.map((income) => neutralTradeGold({ alignment: 'Neutral' }, income)),
+  );
 });
