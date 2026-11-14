@@ -1,6 +1,8 @@
 // The Hall of Fame's page on the values handed it (plan P1-16j2): the lines P1-16j2 changed in
 // src/ui/leaderboard/main.ts that the screen tours don't reach, or reach only in part (its filters, its sums and
 // sorts on a record's odd JSON, the GM's edits, the reads that fail), each pinned to what the untyped page gave.
+// And (P1-21s) each record's best entry first, the most or the least as the record asks, and a third place counted
+// in the top 3.
 // Level 4 (page): the page boots in jsdom on the fake database (tests/lib/fake-db.ts) holding made-up entries; the
 // file can't be imported alone (it boots itself on import), and its sums show only on its screens.
 import { describe, expect, test } from 'vitest';
@@ -360,6 +362,31 @@ describe("the boards' sums and sorts, on a record's values as its row holds them
     expect(p.body()).toContain('Showing only the realms and players matching your search');
     expect(p.body()).toContain('5Osk');
     expect(p.body()).not.toContain('Vey');
+  });
+  test("the achievements: each record's best entry first, the most where more is best and the least where less is", async () => {
+    const p = await boot({
+      rows: [
+        anEntry('a', { records: { most_land: { v: 5, pi: 0 }, fastest_ten: { v: 20, pi: 0, d: 'min' } } }),
+        anEntry('b', { records: { most_land: { v: 9, pi: 0 }, fastest_ten: { v: 80, pi: 0, d: 'min' } } }),
+      ],
+    });
+    p.call('setTab', 'achievements');
+    const firstOf = (words: string): unknown => {
+      const card = [...p.doc.querySelectorAll('.ach')].find((c) => c.querySelector('.n')?.textContent === words);
+      return card?.querySelector('li .v')?.textContent;
+    };
+    expect(firstOf('Most land provinces held at once')).toBe('9');
+    expect(firstOf('Earliest turn a realm reached ten')).toBe('turn 20');
+  });
+  test('the champions: a third place counts as a finish in the top 3', async () => {
+    const p = await boot({
+      rows: [anEntry('a', { standings: [{ uid: 'u-1', realm: 'R1', rank: 3, score: 4 }] })],
+      names: [{ id: 'u-1', name: 'Ada' }],
+    });
+    p.call('setTab', 'champions');
+    const cells = [...p.doc.querySelectorAll('#champ-table tr:nth-child(2) td')].map((c) => c.textContent);
+    expect(cells[1]).toBe('Ada');
+    expect(cells[5]).toBe('1');
   });
   test('the races and creeds: sums held as words, a game with no victory and no turns', async () => {
     const p = await boot({
