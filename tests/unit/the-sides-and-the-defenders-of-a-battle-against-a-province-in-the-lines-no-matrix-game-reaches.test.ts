@@ -450,3 +450,150 @@ describe("a battle against a province's defenders, in the lines no game reaches 
     expect(atk?.location).toBe(0);
   });
 });
+
+// Since P1-19au2, the battle factors of a realm's alignment the alignment abilities' registry took, which only the matrix
+// pinned, at both battles (`def`: combatVsChar, realm 1's king defending; `defenders`: combatVsNPC, realm 1's garrison
+// or the province's own defenders): consecrated ground's −15% to an Undead or Evil attacker, Righteous Defence, Home of
+// the Wild (the realm's or only the commander's creed), the Reign of Fear and the Deathless March. Each is read in the
+// battle's lines (its own line, and its factor in the strength ladder), none hangs on a die, and each is shown not to
+// act for a creed that doesn't hold it. They pass on the row's base as on the row.
+/** The realms' creeds and what else the staging sets on them (each realm's discoveries none). */
+const theRealms = (G: World, ...each: readonly Record<string, unknown>[]): void => {
+  const realms = (G as unknown as { players: Record<string, unknown>[] }).players;
+  each.forEach((what, i) => Object.assign(realms[i] ?? {}, { discoveries: [] }, what));
+};
+/** Whether a line holds the words. */
+const aLineHolds = (words: readonly string[], part: string): boolean => words.some((w) => w.includes(part));
+
+describe.each(['def', 'defenders'] as const)(
+  "a realm's alignment's battle factors, in a battle with %s (plan P1-19au2)",
+  (site) => {
+    test.each([
+      ['Undead', true],
+      ['Evil', true],
+      ['Neutral', false],
+    ] as const)(
+      "a %s attacker of a province its owner consecrated: weakened %s, at ×0.85 among the whole force's factors",
+      (creed, weakened) => {
+        const shown = aBattle(
+          { atk: companies(2, 'Average'), [site]: companies(2, 'Average') },
+          false,
+          (G, _a, _d, f) => {
+            theRealms(G, { alignment: creed }, { alignment: 'Divine', consecratedProvIds: [f.id] });
+            f.owner = 1;
+          },
+        );
+        expect(aLineHolds(shown.words, `The ground of ${shown.province} is consecrated`)).toBe(weakened);
+        expect(aLineHolds(shown.words, 'consecrated ground ×0.85')).toBe(weakened);
+      },
+    );
+
+    test.each([
+      ['Good', true],
+      ['Neutral', false],
+    ] as const)(
+      'realm 1 %s defending a province it owns: Righteous Defence %s, its position ×1.1 the harder',
+      (creed, held) => {
+        const theLadder = (alignment: string) =>
+          aBattle({ atk: companies(2, 'Average'), [site]: companies(2, 'Average') }, false, (G, _a, _d, f) => {
+            theRealms(G, { alignment: 'Neutral' }, { alignment });
+            f.owner = 1;
+          });
+        const shown = theLadder(creed);
+        expect(aLineHolds(shown.words, 'Righteous Defence')).toBe(held);
+        // the plain's position is ×1.25 (the base of the row's ladder, staged as Neutral); Righteous Defence lifts it ×1.1
+        expect(aLineHolds(shown.words, "defender's position ×1.25 ")).toBe(!held);
+        expect(aLineHolds(shown.words, "defender's position ×1.375 ")).toBe(held);
+      },
+    );
+
+    test.each([
+      ['the realm', 'Druidic', 'Neutral', true],
+      ['the commander alone', 'Neutral', 'Druidic', true],
+      ['neither', 'Neutral', 'Neutral', false],
+    ] as const)(
+      'Creatures in a forest, %s Druidic: Home of the Wild a step of each unit',
+      (_, realm, commander, wild) => {
+        const shown = aBattle(
+          { atk: companies(2, 'Average', 'Forest Ents'), [site]: companies(2, 'Average') },
+          false,
+          (G, atk, _d, f) => {
+            theRealms(G, { alignment: realm }, { alignment: 'Neutral' });
+            atk['alignment'] = commander;
+            f.terrain = 'forest';
+          },
+        );
+        expect(aLineHolds(shown.words, 'Home of the Wild ×1.5 (2 units)')).toBe(wild);
+      },
+    );
+
+    test.each([
+      ['Evil', true],
+      ['Neutral', false],
+    ] as const)(
+      "a %s attacker's Monsters on ground his realm's Terror grips: the Reign of Fear %s, a ×1.5 step of each",
+      (creed, fear) => {
+        const shown = aBattle(
+          { atk: companies(2, 'Average', 'Cave Trolls'), [site]: companies(2, 'Average') },
+          false,
+          (G, _a, _d, f) => {
+            theRealms(G, { alignment: creed }, { alignment: 'Neutral' });
+            Object.assign(f, { _terrorStacks: 1, _terrorisedBy: 0 });
+          },
+        );
+        expect(aLineHolds(shown.words, 'Reign of Fear —')).toBe(fear);
+        expect(aLineHolds(shown.words, 'Reign of Fear ×1.5 (2 units)')).toBe(fear);
+      },
+    );
+
+    test.each([
+      ['Undead', true],
+      ['Neutral', false],
+    ] as const)(
+      "a %s attacker's host of skeletons alone, beaten with no road out: the Deathless March %s",
+      (creed, deathless) => {
+        vi.spyOn(retreats, 'retreatOptions').mockReturnValue([]);
+        // the beaten keep every company: the march has someone to make it
+        vi.spyOn(fates, 'rollUnitFates').mockImplementation((force) => ({
+          survived: (force ?? []).length,
+          died: 0,
+          promoted: 0,
+          demoted: 0,
+          disbanded: 0,
+          held: 0,
+        }));
+        const skeletons = companies(1, 'Green').map((a) => ({ ...a, _isSkeletal: true }));
+        const shown = aBattle({ atk: skeletons, [site]: companies(8, 'Elite') }, false, (G) => {
+          theRealms(G, { alignment: creed }, { alignment: 'Neutral' });
+        });
+        expect(aLineHolds(shown.words, '💀 Deathless March —')).toBe(deathless);
+      },
+    );
+  },
+);
+
+test.each([
+  ['Undead', true],
+  ['Neutral', false],
+] as const)(
+  "a battle between heroes: a %s defender's host of skeletons alone, beaten with no road out: the Deathless March %s (plan P1-19au2)",
+  (creed, deathless) => {
+    vi.spyOn(retreats, 'retreatOptions').mockReturnValue([]);
+    vi.spyOn(fates, 'rollUnitFates').mockImplementation((force) => ({
+      survived: (force ?? []).length,
+      died: 0,
+      promoted: 0,
+      demoted: 0,
+      disbanded: 0,
+      held: 0,
+    }));
+    const shown = aBattle(
+      { atk: companies(8, 'Elite'), def: companies(1, 'Green').map((a) => ({ ...a, _isSkeletal: true })) },
+      false,
+      (G) => {
+        theRealms(G, { alignment: 'Neutral' }, { alignment: creed });
+      },
+    );
+    expect(aLineHolds(shown.words, '💀 Deathless March —')).toBe(deathless);
+  },
+);
