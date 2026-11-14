@@ -97,6 +97,20 @@ P1-19's Decision 2 (no registry entry for an order).
 
 The runner is handed the order's row (`THE_ALIGNMENT_ORDERS.consecrate`), so the resolvers name no order's key.
 
+**The fallen, the Rest, the harvest and the conquests** (P1-19ax1,
+`alignment-abilities/the-fallen-the-rest-the-harvest-and-the-conquests-of-a-realms-alignment.ts`): new stages on
+today's hooks (Decision C: no "hero's fate" hook). Each runner gives the first ability's value, or null for none.
+
+| Stage | Its ability | Where it is asked, and what it gives |
+|---|---|---|
+| `turnStart`: **a realm's alignment raises its fallen on holy ground** | Divine grace | the turn's start (7d), for each grave: one full turn in death and half health; a monarch's death, 7a-bis and the succession (7b) ask only whether it gives one (the waiting king's gate, which decides whether the heir's draws run) |
+| `orderOutcome`: **a realm's alignment raises a rest's heal** | the Divine Rest | `resolveRestOrder`, when Medical Arts doesn't heal in full; `Math.ceil(heal × 1.5)`; the line's "Divine" is "not null" |
+| `fate`: **a realm's alignment claims gold for each foe destroyed** | Pagan's Blood Harvest | `bloodHarvest`, both battles' victories; its 1g, before the discoveries add theirs |
+| `fate`: **a realm's alignment conquers by a doctrine** | Evil's plunder or enslave | `applyEvilConquest` (11 sites): `50 / 100` of the tax, a Green unit, 3 turns; both battles' Terror after a decisive victory ask whether it gives one |
+
+The capture of consecrated land (Undead 100%, Evil 50%: R-045) stays in `fame-and-consecration.ts`: the books state
+50% for every conqueror (parked), so no row's words would be true until they are mended. A unit case pins its rise.
+
 ## Outside the family
 
 - **The ladder of alignments** (hire wages by distance, the Divine-Undead hiring ban, mercy by the foe's alignment,

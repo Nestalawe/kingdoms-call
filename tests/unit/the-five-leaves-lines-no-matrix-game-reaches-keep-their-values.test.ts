@@ -14,6 +14,8 @@
 //   hero's order or the stage, a column's units left out or of no name, and the rises of the Iron Throne;
 // - since the mutation session of 2026-10-31, the altars cast down by a Good or a Neutral column, whose troops can't
 //   rise: the line says they take no pride in it.
+// - since P1-19ax1, the capture's rise itself: each unit of an Undead column rises, of an Evil one on a die under a
+//   half, of any other creed none, with no die drawn (only the matrix pinned it before).
 // Level 1 (unit): each is a plain function on staged values, called directly on the engine's modules (plan P1-14a); a
 // static check can't run them, and no game reaches these lines. The staged values carry only the fields each reads, so
 // their type is given by assertion (`as never`), as the views' unit cases give a staged world's. The dice are fixed

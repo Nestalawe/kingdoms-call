@@ -47,6 +47,9 @@
 // spell's own 1.6 for any other creed), Neutral's Sage level × 5, and no Druid need for a Creature under a Druidic realm
 // or leader, or a Monster under an Evil one. Since P1-19aw2 its runner of who may give an alignment order refuses as
 // each resolver did: Consecrate the king before the creed, Call to Arms and Broker the creed first, the others the creed.
+// Since P1-19ax1 its runners of Divine grace, the Divine Rest, the Blood Harvest and the conquest doctrine give each
+// creed what the engine's checks gave: Divine one turn in death and half health, Divine ×1.5 rounded up, Pagan 1g a
+// foe, Evil 0.5 of the tax, a Green unit and 3 turns; null for every other creed and for none.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
