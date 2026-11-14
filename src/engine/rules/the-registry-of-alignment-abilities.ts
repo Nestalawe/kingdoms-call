@@ -231,6 +231,20 @@ export const THE_REGISTRY_OF_ALIGNMENT_ABILITIES = {
         A_HEROS_OWN_ALIGNMENT_MAKES_HIM_UNDEAD['an-undead-hero-is-undead-in-personal-combat'],
     },
   },
+  // the world (P1-19ay1): read in src/engine/rules-on-plain-values/ (world creation asks them at no stage of a turn,
+  // and the player portal shares the last two: the join form), so these twelve have no effect here
+  'a-divine-king-starts-with-white-magic': {},
+  'a-druidic-king-starts-with-druid': {},
+  'an-evil-king-starts-with-druid': {},
+  'a-pagan-king-starts-with-explorer': {},
+  'an-undead-king-starts-with-necromancy': {},
+  'an-undead-king-starts-with-a-skeletal-company': {},
+  'a-pagan-capital-opens-beside-the-ritual-stones': {},
+  'a-druidic-capital-opens-beside-creatures': {},
+  'an-evil-capital-opens-beside-monsters': {},
+  'a-druidic-wanderer-knows-the-druids-craft': {},
+  'one-divine-realm-a-game': {},
+  'one-undead-realm-a-game': {},
   // the five alignment orders (P1-19aw1): who may give each (P1-19aw2); what each does is its resolver's, in
   // src/engine/orders/alignment/
   consecrate: {

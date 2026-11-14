@@ -1,7 +1,10 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import type { KcSafeHtml } from '../shared/kc-safe.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
-import { asItsGuardReadsIt } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import {
+  asItsGuardReadsIt,
+  theAlignmentsOnlyOneRealmAGameMayHold,
+} from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.ts';
 import { thePagesDb } from './startup.ts';
@@ -71,7 +74,7 @@ export async function showJoinGame(
 
   // Update alignment dropdown
   const alignSel = theElementWithTheId('join-alignment', HTMLSelectElement);
-  const UNIQUE_ALIGNS = ['Divine', 'Undead'];
+  const UNIQUE_ALIGNS = theAlignmentsOnlyOneRealmAGameMayHold();
   const warningParts: string[] = [];
   Array.from(alignSel.options).forEach((opt) => {
     if (UNIQUE_ALIGNS.includes(opt.value) && takenAlignments.has(opt.value)) {
@@ -255,7 +258,7 @@ export async function doJoinGame(gameId: string) {
   const msg = document.getElementById('join-msg');
 
   // Re-check alignment uniqueness at submit time (in case someone bypassed the dropdown)
-  const UNIQUE_ALIGNS_CHECK = ['Divine', 'Undead'];
+  const UNIQUE_ALIGNS_CHECK = theAlignmentsOnlyOneRealmAGameMayHold();
   if (UNIQUE_ALIGNS_CHECK.includes(alignment)) {
     const { data: slots2 } = await fetchGameSlots([gameId]);
     const takenNow = new Set(slots2.map((s) => s.alignment).filter(Boolean));

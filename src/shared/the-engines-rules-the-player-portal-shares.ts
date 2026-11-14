@@ -31,7 +31,8 @@
 // the foe, with the items a hero uses and his mastery tier, since P1-11e38: the army card shows it; a guarded value
 // read as it is, since P1-16e: the map's guards on a province's place, which its type requires; the creeds that war
 // without warning, break an alliance into war and conquer by a doctrine, since P1-19ax2: the march's forecast, the
-// diplomacy card's button and the order form's doctrine).
+// diplomacy card's button and the order form's doctrine; the alignments one realm a game may hold, since P1-19ay1: the
+// join form).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -133,6 +134,7 @@ export {
   doesAnAlignmentConquerByADoctrine,
   doesAnAlignmentDeclareWarWithoutWarning,
 } from '../engine/rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
+export { theAlignmentsOnlyOneRealmAGameMayHold } from '../engine/rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
 export { theLevelAHerosSkillCountsAt } from '../engine/rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
 export { normaliseAction } from '../engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 export {

@@ -14,7 +14,7 @@
 // reads each row's numbers against the rulebook's creed section, gold paragraph and orders table, the intro's table, and the player
 // page's two texts of its creed (the turn report's summary, the join form's description), and each order's name, creed
 // and king's mark too. How to add an ability: docs/architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md.
-import type { KC_ALIGNMENTS, KC_QUALITY_TIERS } from './kingdoms-call-data.ts';
+import type { KC_ALIGNMENTS, KC_QUALITY_TIERS, KC_SKILLS } from './kingdoms-call-data.ts';
 
 /** How the books write a number of an ability: as it is (2 as `2`), as a word (2 as `two`), the turns something lasts
  *  beyond this one as the turn it lasts until (1 as `the following turn`), a share as a percentage (20 as `20%`), a
@@ -60,6 +60,8 @@ interface AnAlignmentAbilityAlwaysOn extends WhatEveryAlignmentAbilityGives {
   /** The creeds of the foes it acts against, where the books name them (P1-19au2: the hosts consecrated ground
    *  weakens). */
   readonly theCreedsItActsAgainst?: readonly (typeof KC_ALIGNMENTS)[number][];
+  /** The skill it gives a hero, by its key, where it gives one (P1-19ay1: a king's starting skill, a wanderer's). */
+  readonly theSkillItGives?: (typeof KC_SKILLS)[number];
 }
 
 /** An ability given as an order: by the king alone (the books mark it "king"), or by any hero of the realm; only a
@@ -497,6 +499,82 @@ export const ALIGNMENT_ABILITIES = {
   // an Undead hero fights as one of the undead in personal combat (what turns or banes the undead strikes him)
   // (P1-19ax2): his own alignment, not his realm's
   'an-undead-hero-is-undead-in-personal-combat': { howItIsUsed: 'always on', alignment: 'Undead', theNumbers: {} },
+  // the world (P1-19ay1), each read in src/engine/rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-
+  // country-its-first-skills-and-one-realm-a-game.ts: a king, and an heir crowned later, starts with a skill a level more
+  'a-divine-king-starts-with-white-magic': {
+    howItIsUsed: 'always on',
+    alignment: 'Divine',
+    theSkillItGives: 'white',
+    theNumbers: {
+      theLevelsMore: { value: 1, writtenAs: 'as it is', inItsCreedsSection: 'Your king starts with White Magic +{N}' },
+    },
+  },
+  'a-druidic-king-starts-with-druid': {
+    howItIsUsed: 'always on',
+    alignment: 'Druidic',
+    theSkillItGives: 'druid',
+    theNumbers: {
+      theLevelsMore: {
+        value: 1,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'Your king starts with Druid +{N} (heirs too), and ALL Creature',
+      },
+    },
+  },
+  'an-evil-king-starts-with-druid': {
+    howItIsUsed: 'always on',
+    alignment: 'Evil',
+    theSkillItGives: 'druid',
+    theNumbers: {
+      theLevelsMore: {
+        value: 1,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'Your king starts with Druid +{N} (heirs too), and ALL Monster',
+      },
+    },
+  },
+  'a-pagan-king-starts-with-explorer': {
+    howItIsUsed: 'always on',
+    alignment: 'Pagan',
+    theSkillItGives: 'explorer',
+    theNumbers: {
+      theLevelsMore: {
+        value: 1,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'Your king starts with Explorer +{N} (heirs too)',
+      },
+    },
+  },
+  'an-undead-king-starts-with-necromancy': {
+    howItIsUsed: 'always on',
+    alignment: 'Undead',
+    theSkillItGives: 'necromancy',
+    theNumbers: {
+      theLevelsMore: {
+        value: 1,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'Your king starts with Necromancy +{N} (heirs too)',
+      },
+    },
+  },
+  // an Undead king starts with a company of skeletal Shieldwall Levies besides his realm's own
+  'an-undead-king-starts-with-a-skeletal-company': { howItIsUsed: 'always on', alignment: 'Undead', theNumbers: {} },
+  // a capital opens beside wild country: a Pagan's beside a primal forest or jungle with ritual stones, a Druidic's
+  // beside Creatures, an Evil's beside Monsters (and a Druidic's or an Evil's has its kind within two provinces too)
+  'a-pagan-capital-opens-beside-the-ritual-stones': { howItIsUsed: 'always on', alignment: 'Pagan', theNumbers: {} },
+  'a-druidic-capital-opens-beside-creatures': { howItIsUsed: 'always on', alignment: 'Druidic', theNumbers: {} },
+  'an-evil-capital-opens-beside-monsters': { howItIsUsed: 'always on', alignment: 'Evil', theNumbers: {} },
+  // a Druidic wandering hero is dealt the Druid skill if his deal didn't give it him
+  'a-druidic-wanderer-knows-the-druids-craft': {
+    howItIsUsed: 'always on',
+    alignment: 'Druidic',
+    theSkillItGives: 'druid',
+    theNumbers: {},
+  },
+  // only one realm a game may be Divine, and one Undead (the join form, read through src/shared/, and the bots' setup;
+  // the turn doesn't check it)
+  'one-divine-realm-a-game': { howItIsUsed: 'always on', alignment: 'Divine', theNumbers: {} },
+  'one-undead-realm-a-game': { howItIsUsed: 'always on', alignment: 'Undead', theNumbers: {} },
   // the five alignment orders (P1-19aw1), each given as an order: a Divine king consecrates a province
   consecrate: {
     howItIsUsed: "a king's order",
@@ -634,6 +712,9 @@ export interface ARungOfTheLadder {
   readonly theChanceAFoeSparesAPlea: ANumberOfTheLadder;
   /** Whether a foe of this alignment refuses it with laughter (its words drawn by no die), not one of two lines. */
   readonly aFoesRefusalIsLaughter: boolean;
+  /** The cards of this alignment in the wandering heroes' deck (P1-19ay1): the deck holds each rung's, in the rungs'
+   *  order, and deals a wanderer his alignment from it (a die drawn by the order). */
+  readonly theWanderersCardsInTheDeck: ANumberOfTheLadder;
 }
 
 /** The ladder: its rungs in order, and its numbers. */
@@ -660,6 +741,7 @@ export const THE_LADDER_OF_THE_ALIGNMENTS: TheLadderOfTheAlignments = {
       alignment: 'Divine',
       theChanceAFoeSparesAPlea: { value: 75, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_75 },
       aFoesRefusalIsLaughter: false,
+      theWanderersCardsInTheDeck: { value: 1, writtenAs: 'as it is' },
     },
     {
       alignment: 'Good',
@@ -670,21 +752,25 @@ export const THE_LADDER_OF_THE_ALIGNMENTS: TheLadderOfTheAlignments = {
         inItsCreedsSection: 'A felled Cowardly enemy who begs your mercy is spared {N} of the time',
       },
       aFoesRefusalIsLaughter: false,
+      theWanderersCardsInTheDeck: { value: 2, writtenAs: 'as it is' },
     },
     {
       alignment: 'Druidic',
       theChanceAFoeSparesAPlea: { value: 75, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_75 },
       aFoesRefusalIsLaughter: false,
+      theWanderersCardsInTheDeck: { value: 4, writtenAs: 'as it is' },
     },
     {
       alignment: 'Neutral',
       theChanceAFoeSparesAPlea: { value: 50, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_50 },
       aFoesRefusalIsLaughter: false,
+      theWanderersCardsInTheDeck: { value: 6, writtenAs: 'as it is' },
     },
     {
       alignment: 'Pagan',
       theChanceAFoeSparesAPlea: { value: 50, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_50 },
       aFoesRefusalIsLaughter: false,
+      theWanderersCardsInTheDeck: { value: 4, writtenAs: 'as it is' },
     },
     {
       alignment: 'Evil',
@@ -695,11 +781,13 @@ export const THE_LADDER_OF_THE_ALIGNMENTS: TheLadderOfTheAlignments = {
         inItsCreedsSection: 'A felled Cowardly enemy begging your mercy is spared only {N} of the time',
       },
       aFoesRefusalIsLaughter: true,
+      theWanderersCardsInTheDeck: { value: 2, writtenAs: 'as it is' },
     },
     {
       alignment: 'Undead',
       theChanceAFoeSparesAPlea: { value: 20, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_20 },
       aFoesRefusalIsLaughter: true,
+      theWanderersCardsInTheDeck: { value: 1, writtenAs: 'as it is' },
     },
   ],
   theNumbers: {
@@ -722,3 +810,18 @@ export const THE_LADDER_OF_THE_ALIGNMENTS: TheLadderOfTheAlignments = {
     theStepsAKingsHeroesAreDealtWithin: { value: 1, writtenAs: 'as it is' },
   },
 };
+
+// The sites of the world (P1-19ay1): a table of the sites world creation places, each with the alignment that must be
+// in the game for it to be placed at all (with none, no die is drawn for it). Read in src/engine/rules-on-plain-values/
+// the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts.
+
+/** A site of the world: the alignment a realm of the game must hold for world creation to place it. */
+export interface ASiteOfTheWorld {
+  readonly theAlignmentThatMustBeInTheGame: (typeof KC_ALIGNMENTS)[number];
+}
+
+/** The sites of the world, by kind: the ritual stones (the old gods' standing stones, where a Pagan realm performs its
+ *  rites) first. */
+export const THE_SITES_OF_THE_WORLD = {
+  'the-ritual-stones': { theAlignmentThatMustBeInTheGame: 'Pagan' },
+} as const satisfies Readonly<Record<string, ASiteOfTheWorld>>;

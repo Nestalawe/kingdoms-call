@@ -2,6 +2,7 @@ import { ARMY_UNIT_NAMES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { RACES_P, TEMPERS_P } from '../world/tables.ts';
 import { ALIGNMENTS_P, alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { theAlignmentsOnlyOneRealmAGameMayHold } from '../rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
 import { _toRoman, nextHeroName } from '../names.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { BOT_ALLY_ALIGN_DIST } from './intel.ts';
@@ -111,9 +112,8 @@ export const BOT_SKILL_BUILD = {
   Evil: { melee: 2, tactical: 1, necromancy: 1 },
   Undead: { necromancy: 2, melee: 1, tactical: 1 },
 };
-// Divine & Undead are one-per-game — mirrors the human join rule (player portal
-// UNIQUE_ALIGNS_CHECK).
-export const BOT_UNIQUE_ALIGNS = ['Divine', 'Undead'];
+// Divine & Undead are one-per-game — the human join rule's rows (player portal UNIQUE_ALIGNS_CHECK: P1-19ay1).
+export const BOT_UNIQUE_ALIGNS = theAlignmentsOnlyOneRealmAGameMayHold();
 // Race → a signature unit whose faction-name pool (ARMY_UNIT_NAMES) we borrow for realm names.
 // This reuses existing themed pools rather than inventing new name content (the engine has no
 // realm-name generator: human players type theirs).
