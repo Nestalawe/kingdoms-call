@@ -40,7 +40,11 @@
 // Since P1-19au2 its runners of the other battle factors and the Banner give what the engine wrote before: 0.85 to an
 // Undead or Evil attacker on consecrated ground (1 to any other), Righteous Defence's 1.1, Home of the Wild's 1.5 to a
 // Creature in forest or jungle (the realm's or the commander's creed), the Reign of Fear's 1.5 to a Monster, the
-// Deathless March to a host of skeletons alone, and the Banner's 15 points, each to its creed alone.
+// Deathless March to a host of skeletons alone, and the Banner's 15 points, each to its creed alone. Since P1-19av1
+// its runners of the prices and the scholars, and the Druid waiver (read in rules-on-plain-values), give what the
+// engine wrote before: Neutral's 2g off a mercenary band, Divine's Bless at 2 by the king and 1.8 by another (the
+// spell's own 1.6 for any other creed), Neutral's Sage level × 5, and no Druid need for a Creature under a Druidic realm
+// or leader, or a Monster under an Evil one.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -104,7 +108,11 @@ import {
   theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
   theFactorConsecratedGroundWeakensAnAttackersHostBy,
   whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite,
+  theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice,
+  theYieldOfABlessARealmsAlignmentGives,
+  whatARealmsAlignmentAddsToResearch,
 } from '../../src/engine/rules/the-registry-of-alignment-abilities.ts';
+import { druidNeedWaivedByAlignment } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import {
   A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX,
   A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX,
@@ -673,11 +681,25 @@ const ABILITIES_REGISTRY = (entries: Entries, orders: Orders, rows: AbilityRows)
     whatAnAlignmentAbilitysRowBreaks,
   );
 
+/** The abilities read in src/engine/rules-on-plain-values/, which the player portal shares and which may import only
+ *  src/content, so their entries have no stage (P1-19av1: the Druid waiver, druidNeedWaivedByAlignment). */
+const THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES: readonly string[] = [
+  'creatures-follow-without-a-druid',
+  'monsters-follow-without-a-druid',
+];
+
 test("the alignment abilities' registry holds each effect once, in the order of its stage, and each content row is sound", () => {
   expect(ABILITIES_REGISTRY(ABILITY_ENTRIES, ABILITY_ORDERS, ABILITY_ROWS)).toEqual([]);
   expect(Object.keys(ABILITY_ENTRIES).length).toBeGreaterThan(0);
   const ordered = new Set(Object.values(ABILITY_ORDERS).flatMap((stages) => Object.values(stages).flat()));
-  expect([...ordered].sort()).toEqual(Object.keys(ABILITY_ENTRIES).sort());
+  expect([...ordered].sort()).toEqual(
+    Object.keys(ABILITY_ENTRIES)
+      .filter((slug) => !THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES.includes(slug))
+      .sort(),
+  );
+  // each one listed is an entry with no stage, and none in any stage's order
+  for (const slug of THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES)
+    expect(ABILITY_ENTRIES[slug], `${slug}'s entry`).toEqual({});
 });
 
 test("planted in the alignment abilities' registry, an entry left out of its order, a row with no entry, an alignment that isn't one, a discovery's name or slug as a key, and an order's key taken, are found", () => {
@@ -844,5 +866,34 @@ test("the runners of the other battle factors and the Banner give each creed wha
               ? 1.5
               : null,
           );
+  }
+});
+
+test("the runners of the prices and the scholars, and the Druid waiver, give each creed what the engine's checks gave before", () => {
+  const creeds = [...KC_ALIGNMENTS, null, undefined] as const;
+  for (const a of creeds) {
+    const said = String(a);
+    // the mercenary discount: `baseMercCost - (alignment === 'Neutral' ? 2 : 0) + …`
+    expect(theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(a), said).toBe(a === 'Neutral' ? 2 : 0);
+    // Bless Province: `(isKing && divine ? 2.0 : divine ? 1.8 : 1.6) + the discoveries'` (the same float, bit for bit)
+    for (const isTheCasterTheKing of [true, false])
+      for (const theDiscoveries of [0, 0.2])
+        expect(
+          (theYieldOfABlessARealmsAlignmentGives(a, { isTheCasterTheKing }) ?? 1.6) + theDiscoveries,
+          `${said}, ${String(isTheCasterTheKing)}, ${String(theDiscoveries)}`,
+        ).toBe((isTheCasterTheKing && a === 'Divine' ? 2.0 : a === 'Divine' ? 1.8 : 1.6) + theDiscoveries);
+    expect(theYieldOfABlessARealmsAlignmentGives(a, { isTheCasterTheKing: false }) !== null, said).toBe(a === 'Divine');
+    // the Neutral scholars: `alignment === 'Neutral' ? sageLevel * 5 : 0`
+    for (const theSageLevel of [0, 1, 2, 3, 4, 5, Number.NaN])
+      expect(whatARealmsAlignmentAddsToResearch(a, { theSageLevel }), `${said}, ${String(theSageLevel)}`).toBe(
+        a === 'Neutral' ? theSageLevel * 5 : 0,
+      );
+    // the Druid waiver: `(Creature && (realm === 'Druidic' || leader === 'Druidic')) || (Monster && (… 'Evil'))`
+    for (const b of creeds)
+      for (const unitType of ['Forest Ents', 'Cave Trolls', 'Men-at-Arms'])
+        expect(druidNeedWaivedByAlignment(unitType, a, b), `${said}, ${String(b)}, ${unitType}`).toBe(
+          (unitType === 'Forest Ents' && (a === 'Druidic' || b === 'Druidic')) ||
+            (unitType === 'Cave Trolls' && (a === 'Evil' || b === 'Evil')),
+        );
   }
 });

@@ -37,6 +37,21 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'resolveMoveOrder',
     "P1-19au2, the Banner of Fellowship: its points at both of the columns' rolls, from its row",
   ],
+  [
+    'src/engine/orders/spells/white-magic-spells-the-cast-spell-order-works.ts',
+    'workBlessProvince',
+    "P1-19av1, Bless Province's rates: the Divine blessing's yield, from its row",
+  ],
+  [
+    'src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts',
+    'druidNeedWaivedByAlignment',
+    "P1-19av1, the Druid waiver: the Druidic Creatures' and the Evil Monsters' alignments, from their rows",
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolveResearchOrder',
+    'P1-19av1, the Neutral scholars: their points a Sage level, from their row',
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

@@ -504,6 +504,11 @@ test("the abilities' numbers are the ones the books state today", () => {
     'home-of-the-wild': { theStrengthOfACreature: 1.5 },
     'reign-of-fear': { theStrengthOfAMonster: 1.5 },
     'the-deathless-march': {},
+    'the-neutral-mercenary-discount': { theGoldLess: 2 },
+    'the-divine-blessing': { byTheRealmsCasters: 80, byTheKingInPerson: 100 },
+    'creatures-follow-without-a-druid': {},
+    'monsters-follow-without-a-druid': {},
+    'neutral-scholars': { thePointsASageLevelAdds: 5 },
   });
 });
 
