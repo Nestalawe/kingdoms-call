@@ -117,6 +117,10 @@ import {
   theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice,
   theYieldOfABlessARealmsAlignmentGives,
   whatARealmsAlignmentAddsToResearch,
+  theReturnARealmsAlignmentGivesItsFallen,
+  theFactorARealmsAlignmentRaisesARestsHealBy,
+  theGoldARealmsAlignmentClaimsForEachFoeDestroyed,
+  theConquestDoctrineOfARealmsAlignment,
 } from '../../src/engine/rules/the-registry-of-alignment-abilities.ts';
 import { druidNeedWaivedByAlignment } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import {
@@ -916,6 +920,50 @@ test("the runners of the prices and the scholars, and the Druid waiver, give eac
           (unitType === 'Forest Ents' && (a === 'Druidic' || b === 'Druidic')) ||
             (unitType === 'Cave Trolls' && (a === 'Evil' || b === 'Evil')),
         );
+  }
+});
+
+test("the runners of Divine grace, the Divine Rest, the Blood Harvest and the conquest doctrine give each creed what the engine's checks gave before", () => {
+  for (const a of [...KC_ALIGNMENTS, null, undefined] as const) {
+    const said = String(a);
+    // Divine grace: `alignment === 'Divine'` at the death, 7a-bis, 7b and 7d; then `killedOnTurn + 2` and
+    // `Math.floor(maxHp * 0.5) || 8`
+    const theReturn = theReturnARealmsAlignmentGivesItsFallen(a);
+    expect(theReturn, said).toEqual(a === 'Divine' ? { theFullTurnsInDeath: 1, theShareOfHealth: 0.5 } : null);
+    // the Divine Rest: `isDivineKingdom ? Math.ceil(baseHeal * 1.5) : baseHeal`
+    const f = theFactorARealmsAlignmentRaisesARestsHealBy(a);
+    expect(f !== null, said).toBe(a === 'Divine');
+    for (let baseHeal = 1; baseHeal <= 60; baseHeal++)
+      expect(f !== null ? Math.ceil(baseHeal * f) : baseHeal, `${said}, ${String(baseHeal)}`).toBe(
+        a === 'Divine' ? Math.ceil(baseHeal * 1.5) : baseHeal,
+      );
+    // the Blood Harvest: `alignment !== 'Pagan'` returns; then `destroyed * (BLOOD_HARVEST_PER_UNIT (1) + the discoveries')`
+    expect(theGoldARealmsAlignmentClaimsForEachFoeDestroyed(a), said).toBe(a === 'Pagan' ? 1 : null);
+    // the conquest doctrine: `alignment !== 'Evil'` returns; then `tax * (0.5 + the discoveries')`, a 'Green' garrison
+    // unit and `G.turn + 3` (both battles' Terror: `alignment === 'Evil'`)
+    expect(theConquestDoctrineOfARealmsAlignment(a), said).toEqual(
+      a === 'Evil'
+        ? {
+            theShareOfTheTaxPlundered: 0.5,
+            theGradeOfTheEnslavedGarrison: 'Green',
+            theTurnsTheEnslavedProvincePaysLess: 3,
+          }
+        : null,
+    );
+  }
+  // a Divine realm's return, as the old literals gave it
+  const theDivineReturn = theReturnARealmsAlignmentGivesItsFallen('Divine') ?? {
+    theFullTurnsInDeath: 0,
+    theShareOfHealth: 0,
+  };
+  for (const [killedOnTurn, maxHp] of [
+    [0, 1],
+    [3, 15],
+    [7, 31],
+    [12, 0],
+  ] as const) {
+    expect(killedOnTurn + theDivineReturn.theFullTurnsInDeath + 1).toBe(killedOnTurn + 2);
+    expect(Math.floor(maxHp * theDivineReturn.theShareOfHealth) || 8).toBe(Math.floor(maxHp * 0.5) || 8);
   }
 });
 
