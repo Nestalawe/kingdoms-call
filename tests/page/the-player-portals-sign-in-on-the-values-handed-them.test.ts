@@ -173,6 +173,12 @@ describe('the name a player is shown by, once signed in', () => {
     ).toBe('resolved');
     expect(textOf('player-name-display')).toBe('Pell');
   });
+  test('with a blank name in the profile, the name given at sign-up', async () => {
+    expect(await signedInAs({ id: 'U1', email: 'pell@example.org', user_metadata: { display_name: 'Pell' } }, '')).toBe(
+      'resolved',
+    );
+    expect(textOf('player-name-display')).toBe('Pell');
+  });
   test('with neither, the first part of the address', async () => {
     expect(await signedInAs({ id: 'U1', email: 'osric.vane@example.org', user_metadata: {} }, '')).toBe('resolved');
     expect(textOf('player-name-display')).toBe('osric.vane');
