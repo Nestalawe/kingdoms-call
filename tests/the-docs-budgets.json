@@ -14,6 +14,7 @@
     "folder": "docs/architecture",
     "maxBytesEach": 30000
   },
+  "folders": [{ "folder": "docs/decisions", "maxBytesEach": 9000 }],
   "trapEntries": {
     "file": "docs/traps.md",
     "maxBytesEach": 1500

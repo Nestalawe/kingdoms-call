@@ -5,6 +5,8 @@
 // Level 0 (static): it reads files and nothing runs.
 // - Each file named in the budgets stays within its bytes, and so do the files read first, together.
 // - Each topic file under docs/architecture/ stays within its bytes.
+// - Each Markdown file in each folder of one-off docs ("folders": docs/decisions/ and the like) stays within its
+//   folder's bytes, and each such folder exists.
 // - Each entry of docs/traps.md (a "## " heading and the text under it) stays within its bytes.
 // - Each Claude Code skill (a folder under the skills' folder: its SKILL.md and any file beside it) stays within its
 //   bytes, so a skill stays a few steps that point at the docs.
@@ -21,6 +23,7 @@ interface TheDocsBudgets {
   files: Record<string, number>;
   readFirst: { files: string[]; maxBytesTogether: number };
   topicFiles: { folder: string; maxBytesEach: number };
+  folders: { folder: string; maxBytesEach: number }[];
   trapEntries: { file: string; maxBytesEach: number };
   skills: { folder: string; maxBytesEach: number };
   claudeMdLines: { file: string; maxCharactersALineOutsideItsTables: number };
@@ -96,6 +99,20 @@ describe('the docs an agent reads first', () => {
       .filter((file) => bytesOf(file) > maxBytesEach)
       .map((file) => `${file}: ${String(bytesOf(file))} bytes, budget ${String(maxBytesEach)}`);
     expect(over, 'Split the topic in two, or cut it to what is true now').toEqual([]);
+  });
+
+  test('each file in a folder of one-off docs stays within its budget', () => {
+    const missing = BUDGETS.folders.filter(({ folder }) => !exists(folder)).map(({ folder }) => folder);
+    expect(missing, 'These budgeted folders are missing').toEqual([]);
+    const over = BUDGETS.folders.flatMap(({ folder, maxBytesEach }) =>
+      fs
+        .readdirSync(path.join(ROOT, folder))
+        .filter((f) => f.endsWith('.md'))
+        .map((f) => `${folder}/${f}`)
+        .filter((file) => bytesOf(file) > maxBytesEach)
+        .map((file) => `${file}: ${String(bytesOf(file))} bytes, budget ${String(maxBytesEach)}`),
+    );
+    expect(over, 'Cut it to what is true now, or split it into two files').toEqual([]);
   });
 
   test('each trap stays within its budget', () => {

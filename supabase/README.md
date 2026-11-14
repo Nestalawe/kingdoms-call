@@ -139,7 +139,8 @@ Merging to `main` runs `.github/workflows/deploy.yml`: **test → migrate produc
 
 `migrate-production` applies only the migrations listed in step 1, and refuses to touch a database that has
 migrations the repo doesn't, or that is missing older ones. Nobody applies a migration from a laptop to the
-live database, and nobody pastes SQL into its SQL Editor.
+live database, and nobody pastes SQL into its SQL Editor, but in
+[break-glass](#break-glass-the-one-exception).
 
 **While a run waits for Toby, every later deploy waits behind it**, including site-only fixes
 ([traps.md](../docs/traps.md#a-migration-waiting-for-approval-holds-every-deploy)).
@@ -151,6 +152,14 @@ with no history and no game tables is refused: the pipeline never builds one fro
 **Staging's database** is never migrated by this pipeline: it's emptied and rebuilt for each pull request put
 on it (`.github/scripts/migrations.js reset staging`), so it can hold an unmerged pull request's migrations.
 Nobody applies a migration by hand.
+
+## Break-glass: the one exception
+
+If the live site is broken and the pipeline is too slow, Toby may paste a merged pull request's rollback SQL into
+the live database's SQL Editor himself; nobody asks him to. An agent then commits the same SQL as a new migration, so
+that git matches the live database again. The pipeline runs that migration on the live database too, so every
+rollback is written to be safe to run twice (`if exists`, `if not exists`, `or replace`). This is the only time SQL
+is pasted by hand.
 
 ## The access-rule tests
 
