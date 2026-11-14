@@ -15,7 +15,8 @@
 // discoveries, never the attacker's (Righteous Fervour, +30% defending, held by one realm or the other; both realms
 // Neutral, 10%, and every die at 0.3, so a side is seized at 40% and not at 10%).
 // Since P1-19au1, the consecrated doubling, which no test pinned: a defender on his realm's consecrated ground has his
-// chance of zeal doubled after his realm's discoveries' share (every die at 0.6: 80% seizes him, 40% or 50% wouldn't).
+// chance of zeal doubled after his realm's discoveries' share (every die at 0.6: 80% seizes him, 40% or 50% wouldn't);
+// and each side's chance is its own realm's creed's (Good's 40% against Neutral's 10%, every die at 0.3).
 // Since P1-12d31, the pursuits' lines (no game reaches a Shield Fort leaving the Manticore Pride or the Shark Shoals
 // nothing, nor the Shark Shoals tearing into the beaten): each names the winner and the loser, with the War-Horn's and
 // the no-room lines before them naming each side. Which pursuits each force makes and whether a Shield Fort holds are
@@ -325,6 +326,37 @@ describe.each([false, true])('a battle between heroes, both commanders slain bef
     },
   );
 });
+
+describe.each([false, true])(
+  "each side's chance of zeal is its own realm's creed's, both commanders slain before it: %s (plan P1-19au1)",
+  (slain) => {
+    test.each([
+      ['Good', 'Neutral'],
+      ['Neutral', 'Good'],
+    ] as const)('the attacker %s, the defender %s: only the Good side is seized', (atkCreed, defCreed) => {
+      // Every die at 0.3: Good's 40% seizes its side, Neutral's 10% doesn't, so a side read at the other's creed would
+      // swap the line.
+      const shown = aBattle(
+        { atk: companies(2, 'Average'), def: companies(2, 'Average') },
+        slain,
+        (G) => {
+          const realms = (G as unknown as { players: { alignment?: string; discoveries?: { id: string }[] }[] })
+            .players;
+          realms.forEach((realm, i) => {
+            realm.alignment = i === 0 ? atkCreed : defCreed;
+            realm.discoveries = [];
+          });
+        },
+        () => 0.3,
+      );
+      expect(shown.words.filter((w) => w.includes('fanatical zeal'))).toEqual([
+        atkCreed === 'Good'
+          ? `${sideOf(shown.atk, slain)}'s forces fight with fanatical zeal! (+30% attacking strength)`
+          : `${sideOf(shown.def, slain)}'s forces fight with fanatical zeal! (+30% defending strength)`,
+      ]);
+    });
+  },
+);
 
 describe.each([false, true])(
   "a defender on his realm's consecrated ground, both commanders slain before it: %s (plan P1-19au1)",
