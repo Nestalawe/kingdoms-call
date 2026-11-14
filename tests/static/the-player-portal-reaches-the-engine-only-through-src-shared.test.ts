@@ -38,7 +38,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
-import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../../src/content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { filesUnder, ROOT } from '../../tools/build.ts';
 import { pageModules } from '../../tools/pages.ts';
@@ -458,7 +458,7 @@ describe('the player portal reaches the engine only through src/shared/', () => 
     expect(called.filter((name) => name === creedCheck)).toHaveLength(THE_WIDGETS_CREED_ORDERS);
     expect(called.filter((name) => name === kingCheck)).toHaveLength(THE_WIDGETS_KINGS_ORDERS);
     // and no comparison of the realm's creed with the name of one
-    const creeds = Object.values(THE_ALIGNMENT_ORDERS).map((order) => order.creed);
+    const creeds = Object.values(THE_ALIGNMENT_ORDERS).map((order) => order.alignment);
     const comparing = new RegExp(`alignment[^\\n]*?!==?\\s*['"](${creeds.join('|')})['"]`);
     expect(comparing.exec(textOfFunction(widget, 'buildTargetField'))).toBeNull();
     // the numbers

@@ -7,7 +7,7 @@ import {
   SAGE_DISCOVERIES_P,
   TITLE_DEFS,
 } from '../content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   ARMY_COST_MASTER,
   ARMY_SPEED_MASTER,

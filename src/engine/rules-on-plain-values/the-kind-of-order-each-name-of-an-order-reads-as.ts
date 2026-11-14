@@ -4,7 +4,7 @@
 // share them (P1-11a). The turn reads each order's action (a spelling the order form or a bot wrote) as one kind of
 // order: processOrder's switch and the phase pipeline (turn/phase-intents-and-dependency-ordering.ts) read it so; the
 // order form reads its own orders so to put a season's heroes in the turn's order (moved as they were, P1-11e20).
-import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 // The kinds of order (plan P1-10a2): PHASE_ACTION_MAP's values, what an order's action reads as. A phase order's own
 // type is PhaseOrder (src/schemas/orders-a-realm-submits.ts), whose action is a spelling the form or a bot wrote. Every

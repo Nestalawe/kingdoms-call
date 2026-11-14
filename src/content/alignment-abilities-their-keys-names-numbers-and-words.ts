@@ -3,24 +3,29 @@
 // numbers the books state for it, each with how and where the books write it. The alignment abilities' registry
 // (src/engine/rules/the-registry-of-alignment-abilities.ts) has one entry for each row and no other: a row with no
 // entry, or an entry with no row, fails to compile. A row's key is unique against the discoveries' names (a test reads
-// it), and the five alignment orders' keys stay free for their rows (`consecrate`, `call-to-arms`, `broker`,
-// `harvest-the-field`, `perform-rite`: today in alignment-orders-their-keys-names-creeds-numbers-and-words.ts). The
+// it). Since P1-19aw1 the five alignment orders are rows given as an order (`consecrate`, `call-to-arms`, `broker`,
+// `harvest-the-field`, `perform-rite`): each gives the key the turn dispatches it by, its name as the books and the
+// order form write it, and the other names the turn reads for it; THE_ALIGNMENT_ORDERS holds them, in the order of
+// ALIGNMENT_ORDER_KEYS (src/engine/army-tables.ts, built from them: a key that is no kind of order fails to compile).
+// The removed orders (Awaken the Wild and Call from the Pit, 2026-10-12) have no row: the turn keeps their refusal. The
+// player page reads the orders' names, alignments and king's marks through src/engine/rules-on-plain-values/the-
+// alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts (P1-11d7), as the resolvers' checks do. The
 // words test (tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts)
 // reads each row's numbers against the rulebook's creed section, gold paragraph and orders table, the intro's table, and the player
-// page's two texts of its creed (the turn report's summary, the join form's description). How to add an ability:
-// docs/architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md.
-import type { KC_ALIGNMENTS } from './kingdoms-call-data.ts';
+// page's two texts of its creed (the turn report's summary, the join form's description), and each order's name, creed
+// and king's mark too. How to add an ability: docs/architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md.
+import type { KC_ALIGNMENTS, KC_QUALITY_TIERS } from './kingdoms-call-data.ts';
 
 /** How the books write a number of an ability: as it is (2 as `2`), as a word (2 as `two`), the turns something lasts
  *  beyond this one as the turn it lasts until (1 as `the following turn`), a share as a percentage (20 as `20%`), a
- *  factor as a multiplier (1.25 as `×1.25`), or how many times as a multiple (2 as `double`). */
+ *  factor as a multiplier (1.25 as `×1.25`), or how many times as a multiple (2 as `double`); a grade as its name. */
 export type HowTheBooksWriteAnAlignmentAbilitysNumber =
   'as it is' | 'as a word' | 'as the turn it lasts until' | 'as a percentage' | 'as a multiplier' | 'as a multiple';
 
 /** A number the books state for an ability: its value, how the books write it, and the words around it where they state
  *  it (`{N}` the value as written; the words as a reader sees them, without the page's markup). */
 export interface ANumberOfAnAlignmentAbility {
-  readonly value: number;
+  readonly value: number | (typeof KC_QUALITY_TIERS)[number];
   readonly writtenAs: HowTheBooksWriteAnAlignmentAbilitysNumber;
   /** In its creed's section in the rulebook ("The Seven Alignments"): its heading or the ability's own entry. */
   readonly inItsCreedsSection: string;
@@ -50,9 +55,9 @@ interface AnAlignmentAbilityAlwaysOn extends WhatEveryAlignmentAbilityGives {
   readonly theCreedsItActsAgainst?: readonly (typeof KC_ALIGNMENTS)[number][];
 }
 
-/** An ability given as an order: by the king alone, or by any hero of the realm. No row is one yet (row P1-19aw1 moves
- *  the five alignment orders here). */
-interface AnAlignmentAbilityGivenAsAnOrder extends WhatEveryAlignmentAbilityGives {
+/** An ability given as an order: by the king alone (the books mark it "king"), or by any hero of the realm; only a
+ *  realm of its alignment may give it (P1-19aw1: the five alignment orders). */
+export interface AnAlignmentAbilityGivenAsAnOrder extends WhatEveryAlignmentAbilityGives {
   readonly howItIsUsed: "a king's order" | "a hero's order";
   /** The key the turn dispatches the order by (an order's `action`, as the bots write it). */
   readonly key: string;
@@ -394,10 +399,112 @@ export const ALIGNMENT_ABILITIES = {
       },
     },
   },
+  // the five alignment orders (P1-19aw1; before, src/content/alignment-orders-…): a Divine king consecrates a province
+  consecrate: {
+    howItIsUsed: "a king's order",
+    alignment: 'Divine',
+    key: 'consecrate',
+    name: 'Consecrate',
+    theOtherNamesTheTurnReads: ['consecrate province'],
+    theNumbers: {},
+  },
+  'call-to-arms': {
+    howItIsUsed: "a king's order",
+    alignment: 'Good',
+    key: 'call_to_arms',
+    name: 'Call to Arms',
+    theOtherNamesTheTurnReads: [],
+    theNumbers: {
+      // the grade a mustered company has, unless the realm's discoveries raise it (Muster Rolls)
+      theGradeMustered: {
+        value: 'Green',
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'a free {N} garrison unit',
+        inTheReportsSummary: 'a free {N} garrison unit',
+      },
+    },
+  },
+  broker: {
+    howItIsUsed: "a king's order",
+    alignment: 'Neutral',
+    key: 'broker',
+    name: 'Broker',
+    theOtherNamesTheTurnReads: [],
+    theNumbers: {
+      thePriceOfWordFromAProvince: {
+        value: 2,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'has ever seen for {N}g',
+        inTheReportsSummary: 'has ever seen for {N}g',
+      },
+    },
+  },
+  'harvest-the-field': {
+    howItIsUsed: "a hero's order",
+    alignment: 'Undead',
+    key: 'harvest_field',
+    name: 'Harvest the Field',
+    theOtherNamesTheTurnReads: [],
+    theNumbers: {
+      // the carters' price, less with the realm's discoveries (Corpse-Carters), never below nothing
+      thePrice: {
+        value: 2,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'as a Skeletal unit for {N}g',
+        inTheIntrosTable: 'from a grave for {N} gold',
+        inTheReportsSummary: 'as a Skeletal unit for {N}g',
+        inTheJoinForm: 'raises a grave as a soldier for {N}g',
+      },
+    },
+  },
+  'perform-rite': {
+    howItIsUsed: "a hero's order",
+    alignment: 'Pagan',
+    key: 'rite',
+    name: 'Perform Rite',
+    theOtherNamesTheTurnReads: [],
+    theNumbers: {
+      theWildHuntsBeasts: {
+        value: 2,
+        writtenAs: 'as a word',
+        inItsCreedsSection: 'the Wild Hunt binds {N} of',
+        inTheReportsSummary: 'the Wild Hunt binds {N} of',
+        inTheJoinForm: 'the Wild Hunt binds {N} of',
+      },
+      // the turns the bound beasts serve beyond this one, more with the realm's discoveries
+      theWildHuntsTurnsMore: {
+        value: 1,
+        writtenAs: 'as the turn it lasts until',
+        inItsCreedsSection: 'serve until the end of {N}',
+        inTheReportsSummary: 'as Veterans until the end of {N}',
+      },
+      theBloodOfferingsGrades: {
+        value: 2,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'by +{N} quality tiers',
+        inTheReportsSummary: '(+{N} quality tiers each',
+      },
+    },
+  },
 } as const satisfies Readonly<Record<string, AnAlignmentAbility>>;
 
 /** An ability's slug: a key of the rows. */
 export type AlignmentAbilitySlug = keyof typeof ALIGNMENT_ABILITIES;
+
+/** An alignment order's slug: a key of a row given as an order. */
+export type AlignmentOrderSlug = {
+  [S in AlignmentAbilitySlug]: (typeof ALIGNMENT_ABILITIES)[S] extends AnAlignmentAbilityGivenAsAnOrder ? S : never;
+}[AlignmentAbilitySlug];
+
+/** The alignment orders: each row given as an order, and no other (one left out, or one that isn't, fails to compile),
+ *  by slug, in the order of ALIGNMENT_ORDER_KEYS. */
+export const THE_ALIGNMENT_ORDERS = {
+  consecrate: ALIGNMENT_ABILITIES.consecrate,
+  'call-to-arms': ALIGNMENT_ABILITIES['call-to-arms'],
+  broker: ALIGNMENT_ABILITIES.broker,
+  'harvest-the-field': ALIGNMENT_ABILITIES['harvest-the-field'],
+  'perform-rite': ALIGNMENT_ABILITIES['perform-rite'],
+} satisfies { readonly [S in AlignmentOrderSlug]: (typeof ALIGNMENT_ABILITIES)[S] };
 
 // The alignments' ladder (P1-19av2): a table beside the rows, not abilities. The rungs run down the moral spectrum from
 // holiest to unholiest, and their order is data: a wandering hero's wage is set by the steps between two rungs, Divine

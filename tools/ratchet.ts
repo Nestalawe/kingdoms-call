@@ -23,7 +23,7 @@ import {
   SAGE_DISCOVERIES_P,
   SPELL_DEFS_P,
 } from '../src/content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const BASELINE_FILE = path.join(ROOT, 'tests', 'ratchet.json');

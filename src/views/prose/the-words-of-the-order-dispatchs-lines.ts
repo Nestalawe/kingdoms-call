@@ -5,7 +5,7 @@
 // names are the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts's, read here on the order's
 // action. A kind with no words here is a compile error (the `never` below).
 import type { TheFactOfTheOrderDispatchsLine } from '../../engine/orders/the-facts-the-order-dispatchs-lines-record.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { MASTERY_ORDER_LABEL } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 
 /** The alignment orders' keys, from the content's rows (plan P1-13g: each reader builds its lookups from the rows; the

@@ -102,7 +102,7 @@ import { warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMess
 import { relKeyOf } from '../../src/engine/realms/relations-and-captures.ts';
 import { earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill } from '../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../../src/engine/titles/perks.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';

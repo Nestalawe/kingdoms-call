@@ -1,6 +1,7 @@
 // Each alignment order's name, creed and numbers are in the books as its row says (plan P1-19's alignment orders,
-// Decision 3): for every row of the content's alignment orders (src/content/alignment-orders-their-keys-names-creeds-
-// numbers-and-words.ts, the rows the turn's gate reads, and the turn, the dispatch and the bots will), the rulebook's
+// Decision 3): for every alignment order (THE_ALIGNMENT_ORDERS: since P1-19aw1 the rows given as an order in
+// src/content/alignment-abilities-their-keys-names-numbers-and-words.ts, the rows the turn's gate, the turn, the dispatch
+// and the bots read; its creed the row's alignment, the king's mark its "a king's order"), the rulebook's
 // orders table ("Your alignment's signature action") gives its name in its creed's row, with the "king" mark if and only
 // if the king alone gives it; the rulebook's creed section ("The Seven Alignments") has an entry of that name, marked
 // "(king" if and only if the king alone gives it, stating each of its numbers in the words its row gives; and the
@@ -11,7 +12,7 @@
 // (P1-11d9). The GM's statistics label Consecrate, Call to Arms and the Broker by their rows' names; "Harvest Field" and
 // "Rite" are the GM's own words. So a number, a name, a creed or the king's mark changed in content, and not in the
 // books or the page's texts (or there, and not in content), turns this red. Since P1-19at1 each alignment ability's
-// numbers (src/content/alignment-abilities-their-keys-names-numbers-and-words.ts) are held the same way: each stated in
+// numbers (the rows always on, in the same file) are held the same way: each stated in
 // the words its row gives in its creed's section of the rulebook, the rulebook's paragraph on gold, its creed's row of
 // the rulebook's orders table (since P1-19at2), its creed's row of the intro's table, and the page's two texts of its
 // creed, where its row says the place states it. Since P1-19av2 the alignments' ladder (THE_LADDER_OF_THE_ALIGNMENTS,
@@ -24,16 +25,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 import {
-  THE_ALIGNMENT_ORDERS,
-  type ANumberOfAnAlignmentOrder,
-  type AnAlignmentOrder,
-} from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
-import {
   ALIGNMENT_ABILITIES,
+  THE_ALIGNMENT_ORDERS,
   THE_LADDER_OF_THE_ALIGNMENTS,
   type ANumberOfAnAlignmentAbility,
   type ANumberOfTheLadder,
   type AnAlignmentAbility,
+  type AnAlignmentAbilityGivenAsAnOrder,
   type TheLadderOfTheAlignments,
 } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { ROOT } from '../../tools/build.ts';
@@ -41,7 +39,7 @@ import { entriesOf, stringsOf } from '../lib/source.ts';
 
 const RULEBOOK = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules.html'), 'utf8');
 const INTRO = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules-intro.html'), 'utf8');
-const ROWS: readonly AnAlignmentOrder[] = Object.values(THE_ALIGNMENT_ORDERS);
+const ROWS: readonly AnAlignmentAbilityGivenAsAnOrder[] = Object.values(THE_ALIGNMENT_ORDERS);
 const KING = '<span class="pill k">king</span>';
 
 /** The markup dropped, again until none is left (a tag a first pass would leave behind is dropped too). */
@@ -80,12 +78,12 @@ const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'e
 const THE_TURN_IT_LASTS_UNTIL: Readonly<Record<number, string>> = { 1: 'the following turn' };
 const THE_MULTIPLES: Readonly<Record<number, string>> = { 2: 'double' };
 /** A number as the books write it, as its row says. */
-function written(n: ANumberOfAnAlignmentOrder | ANumberOfAnAlignmentAbility | ANumberOfTheLadder): string {
+function written(n: ANumberOfAnAlignmentAbility | ANumberOfTheLadder): string {
   if (n.writtenAs === 'as it is') return String(n.value);
   if (n.writtenAs === 'as a percentage') return `${String(n.value)}%`;
   if (n.writtenAs === 'as a multiplier') return `×${String(n.value)}`;
   if (n.writtenAs === 'as a multiple') {
-    const m = THE_MULTIPLES[n.value];
+    const m = typeof n.value === 'number' ? THE_MULTIPLES[n.value] : undefined;
     if (m === undefined) throw new Error(`no words for ${String(n.value)} as a multiple`);
     return m;
   }
@@ -125,8 +123,11 @@ function theHeadingOfItsCreedsSection(b: TheBooks, creed: string): string {
   return at < 0 || end < 0 ? '' : asAReaderSeesIt(section.slice(at, end));
 }
 
+/** Whether the king alone gives the order (the books mark it "king"). */
+const theKingAlone = (row: AnAlignmentAbilityGivenAsAnOrder): boolean => row.howItIsUsed === "a king's order";
+
 /** What a row breaks in the books: each place its name, creed, king's mark or a number isn't as the row says. */
-function whatARowBreaks(row: AnAlignmentOrder, b: TheBooks): string[] {
+function whatARowBreaks(row: AnAlignmentAbilityGivenAsAnOrder, b: TheBooks): string[] {
   const broken: string[] = [];
   const named = `<strong>${row.name}</strong>`;
   // the rulebook's orders table
@@ -134,23 +135,23 @@ function whatARowBreaks(row: AnAlignmentOrder, b: TheBooks): string[] {
   const [cells] = inTheTable;
   if (inTheTable.length !== 1 || !cells) broken.push(`the orders table has ${String(inTheTable.length)} rows of it`);
   else {
-    if (!asAReaderSeesIt(cells[0] ?? '').endsWith(` ${row.creed}`)) broken.push("the orders table's creed");
-    if ((cells[1] ?? '').includes(KING) !== row.theKingAlone) broken.push("the orders table's king mark");
+    if (!asAReaderSeesIt(cells[0] ?? '').endsWith(` ${row.alignment}`)) broken.push("the orders table's creed");
+    if ((cells[1] ?? '').includes(KING) !== theKingAlone(row)) broken.push("the orders table's king mark");
   }
   // the rulebook's creed section
-  const entries = theEntriesOfItsCreedsSection(b, row.creed).filter((e) => e.startsWith(row.name));
+  const entries = theEntriesOfItsCreedsSection(b, row.alignment).filter((e) => e.startsWith(row.name));
   const [entry] = entries;
   if (entries.length !== 1 || entry === undefined)
     broken.push(`its creed's section has ${String(entries.length)} entries of it`);
   else {
-    if (entry.startsWith(`${row.name} (king`) !== row.theKingAlone) broken.push("its creed's section's king mark");
+    if (entry.startsWith(`${row.name} (king`) !== theKingAlone(row)) broken.push("its creed's section's king mark");
     for (const [what, n] of Object.entries(row.theNumbers)) {
       const words = n.inItsCreedsSection.replace('{N}', written(n));
       if (!entry.includes(words)) broken.push(`its creed's section's ${what}: "${words}"`);
     }
   }
   // the intro's table
-  const inTheIntro = theIntrosTable(b).filter((c) => (c[0] ?? '').includes(`<strong>${row.creed}</strong>`));
+  const inTheIntro = theIntrosTable(b).filter((c) => (c[0] ?? '').includes(`<strong>${row.alignment}</strong>`));
   const action = inTheIntro[0]?.at(-1) ?? '';
   if (inTheIntro.length !== 1 || !action.startsWith(named)) broken.push("the intro's table's name");
   else
@@ -174,11 +175,11 @@ const THE_JOIN_FORM = 'ui/player/briefing-and-submit.ts';
 const asAReaderSeesThePagesText = (text: string): string => text.split('**').join('').replace(/\s+/g, ' ').trim();
 
 /** What a row breaks in the page's texts: each place its name or a number isn't as the row says. */
-function whatARowBreaksInThePagesTexts(row: AnAlignmentOrder, texts: ThePagesTexts): string[] {
+function whatARowBreaksInThePagesTexts(row: AnAlignmentAbilityGivenAsAnOrder, texts: ThePagesTexts): string[] {
   const broken: string[] = [];
-  const summary = texts.theReportsSummaries[row.creed];
+  const summary = texts.theReportsSummaries[row.alignment];
   if (summary === undefined) broken.push('the report has no summary of its creed');
-  const descriptions = texts.theJoinFormsStrings.filter((s) => s.includes(`**${row.creed}:**`));
+  const descriptions = texts.theJoinFormsStrings.filter((s) => s.includes(`**${row.alignment}:**`));
   const [description] = descriptions;
   if (descriptions.length !== 1)
     broken.push(`the join form has ${String(descriptions.length)} descriptions of its creed`);
@@ -216,7 +217,11 @@ const TEXTS: ThePagesTexts = {
 };
 
 /** A row with one of its numbers planted as another value. */
-const aRowWithTheNumber = (row: AnAlignmentOrder, what: string, value: number): AnAlignmentOrder => {
+const aRowWithTheNumber = (
+  row: AnAlignmentAbilityGivenAsAnOrder,
+  what: string,
+  value: number,
+): AnAlignmentAbilityGivenAsAnOrder => {
   const n = row.theNumbers[what];
   if (!n) throw new Error(`no ${what}`);
   return { ...row, theNumbers: { ...row.theNumbers, [what]: { ...n, value } } };
@@ -252,7 +257,7 @@ test('neither table names a signature order with no row, and each creed has one 
   const names = ROWS.map((row) => row.name);
   expect(theOrdersNamed(theOrdersTable(BOOKS), (cells) => cells[1])).toEqual(names);
   expect(theOrdersNamed(theIntrosTable(BOOKS), (cells) => cells.at(-1)).sort()).toEqual([...names].sort());
-  expect(new Set(ROWS.map((row) => row.creed)).size).toBe(ROWS.length);
+  expect(new Set(ROWS.map((row) => row.alignment)).size).toBe(ROWS.length);
 });
 
 test("the rows' numbers are the ones the books state today", () => {
@@ -287,11 +292,11 @@ test('planted, a number, a king mark or a creed in a row alone, or a number in a
     `its creed's section's theWildHuntsBeasts: "the Wild Hunt binds three of"`,
   ]);
   expect(() => whatARowBreaks(aPrice(rite, 'theWildHuntsTurnsMore', 2), BOOKS)).toThrow(/no words for 2/);
-  expect(whatARowBreaks({ ...harvest, theKingAlone: true }, BOOKS)).toEqual([
+  expect(whatARowBreaks({ ...harvest, howItIsUsed: "a king's order" }, BOOKS)).toEqual([
     "the orders table's king mark",
     "its creed's section's king mark",
   ]);
-  expect(whatARowBreaks({ ...broker, creed: 'Good' }, BOOKS)).toEqual([
+  expect(whatARowBreaks({ ...broker, alignment: 'Good' }, BOOKS)).toEqual([
     "the orders table's creed",
     "its creed's section has 0 entries of it",
     "the intro's table's name",
@@ -355,7 +360,7 @@ test('planted, a "3g" in each of the page\'s texts, or a number or a name in a r
     "the join form's description's name",
   ]);
   expect(
-    whatARowBreaksInThePagesTexts({ ...broker, creed: 'Druidic' }, aJoinFormWith('**Druidic:**', 'Druidic:')),
+    whatARowBreaksInThePagesTexts({ ...broker, alignment: 'Druidic' }, aJoinFormWith('**Druidic:**', 'Druidic:')),
   ).toEqual([
     'the join form has 0 descriptions of its creed',
     "the report's summary's name",
@@ -428,8 +433,10 @@ test.for([
   for (const words of saidBefore) expect(seen, `${text} no longer says "${words}"`).not.toContain(words);
 });
 
-/** Each alignment ability's row, by its slug. */
-const ABILITIES: readonly (readonly [slug: string, row: AnAlignmentAbility])[] = Object.entries(ALIGNMENT_ABILITIES);
+/** Each alignment ability's row always on, by its slug (the orders, above). */
+const ABILITIES: readonly (readonly [slug: string, row: AnAlignmentAbility])[] = Object.entries(
+  ALIGNMENT_ABILITIES,
+).filter(([, row]) => row.howItIsUsed === 'always on');
 
 /** The rulebook's paragraph on gold, as a reader sees it. */
 const theParagraphOnGold = (b: TheBooks): string =>

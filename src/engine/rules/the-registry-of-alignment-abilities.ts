@@ -174,6 +174,13 @@ export const THE_REGISTRY_OF_ALIGNMENT_ABILITIES = {
   'neutral-scholars': {
     orderOutcome: { "a realm's alignment adds to research": A_REALMS_ALIGNMENT_ADDS_TO_RESEARCH['neutral-scholars'] },
   },
+  // the five alignment orders (P1-19aw1): each order's resolver is its rule and reads its row, so these have no effect
+  // here yet (row P1-19aw2 gives each its refusals at orderValidity)
+  consecrate: {},
+  'call-to-arms': {},
+  broker: {},
+  'harvest-the-field': {},
+  'perform-rite': {},
 } satisfies Record<AlignmentAbilitySlug, AlignmentAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once; the runner asks them in this order. */

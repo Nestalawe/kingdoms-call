@@ -7,7 +7,7 @@ import { thePagesDb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
 import { fortuneWinChance } from '../../engine/rules-on-plain-values/the-fortune-of-a-battle-its-curve-and-the-win-chance-it-gives.ts';
 import { KC_TEL_V } from './startup.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 // ════
 // STATS TAB (2026-09-25) — reads turn_events + game_results and answers the balance questions.

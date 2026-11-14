@@ -28,7 +28,8 @@
 // (src/engine/rules/the-registry-of-alignment-abilities.ts) is held to the same: each effect once in its stage's order
 // (THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES), each order naming only entries with an effect there, each
 // content row with its entry and each entry with its row; each row's alignment is one, its key, read as words, is no
-// discovery's name and no discovery effect's slug, and the five alignment orders' keys are left free for their rows. Its
+// discovery's name and no discovery effect's slug, and the five alignment orders' keys are its rows given as an order
+// (since P1-19aw1; their entries have no stage). Its
 // runner of "turnEnd: a realm's alignment adds to its tax" gives a Neutral realm a fifth of its provinces' income,
 // rounded down, and any other realm nothing, as neutralTradeGold (which Early Winter and the report ask) did before.
 // Since P1-19at2 its runner of "turnEnd: a realm's consecrated ground raises a province's tax" gives a province's tax
@@ -646,26 +647,31 @@ test("planted in the guardian perks' registry, an entry left out of its order, a
 
 /** An alignment ability's row as this test reads it (its alignment as any string, so a planted row may name one that
  *  isn't). */
-type AbilityRows = Readonly<Record<string, { readonly alignment: string }>>;
+type AbilityRows = Readonly<Record<string, { readonly alignment: string; readonly howItIsUsed?: string }>>;
 
 /** The discoveries' names and their effects' slugs, lower case, which no ability's key, read as words, may be. */
 const THE_DISCOVERIES_NAMES: ReadonlySet<string> = new Set([
   ...SAGE_DISCOVERIES_P.map((d) => d.name.toLowerCase()),
   ...Object.keys(DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS).map((slug) => slug.replace(/-/g, ' ')),
 ]);
-/** The five alignment orders' keys, left free for their rows (plan P1-19's alignment abilities family, row P1-19aw1). */
+/** The five alignment orders' keys, each a row given as an order (plan P1-19's alignment abilities family, row
+ *  P1-19aw1). */
 const THE_ORDERS_KEYS = ['consecrate', 'call-to-arms', 'broker', 'harvest-the-field', 'perform-rite'];
+/** Whether a row is given as an order (a king's or a hero's), not always on. */
+const isGivenAsAnOrder = (row: { readonly howItIsUsed?: string | undefined }): boolean =>
+  row.howItIsUsed === "a king's order" || row.howItIsUsed === "a hero's order";
 
-/** What an ability's row breaks: its alignment an alignment, its key no discovery's name or effect's slug, and none of
- *  the orders' keys. */
+/** What an ability's row breaks: its alignment an alignment, its key no discovery's name or effect's slug, and an
+ *  order's key a row given as an order. */
 function whatAnAlignmentAbilitysRowBreaks(
   slug: string,
-  row: { readonly name: string; readonly alignment: string },
+  row: { readonly name: string; readonly alignment: string; readonly howItIsUsed?: string | undefined },
 ): string[] {
   const broken: string[] = [];
   if (!alignments.has(row.alignment)) broken.push(`${slug}'s alignment, ${row.alignment}, is not an alignment`);
   if (THE_DISCOVERIES_NAMES.has(slug.replace(/-/g, ' '))) broken.push(`${slug} reads as a discovery's name or slug`);
-  if (THE_ORDERS_KEYS.includes(slug)) broken.push(`${slug} is an alignment order's key, left free for its row`);
+  if (THE_ORDERS_KEYS.includes(slug) && !isGivenAsAnOrder(row))
+    broken.push(`${slug} is an alignment order's key, on a row not given as an order`);
   return broken;
 }
 
@@ -677,7 +683,12 @@ const ABILITIES_REGISTRY = (entries: Entries, orders: Orders, rows: AbilityRows)
   whatTheRegistryBreaks(
     entries,
     orders,
-    Object.fromEntries(Object.entries(rows).map(([slug, row]) => [slug, { name: slug, alignment: row.alignment }])),
+    Object.fromEntries(
+      Object.entries(rows).map(([slug, row]) => [
+        slug,
+        { name: slug, alignment: row.alignment, howItIsUsed: row.howItIsUsed },
+      ]),
+    ),
     whatAnAlignmentAbilitysRowBreaks,
   );
 
@@ -692,17 +703,20 @@ test("the alignment abilities' registry holds each effect once, in the order of 
   expect(ABILITIES_REGISTRY(ABILITY_ENTRIES, ABILITY_ORDERS, ABILITY_ROWS)).toEqual([]);
   expect(Object.keys(ABILITY_ENTRIES).length).toBeGreaterThan(0);
   const ordered = new Set(Object.values(ABILITY_ORDERS).flatMap((stages) => Object.values(stages).flat()));
+  // (the orders' resolvers are their rules: their entries have no stage until row P1-19aw2)
+  const theOrders = Object.keys(ABILITY_ROWS).filter((slug) => isGivenAsAnOrder(ABILITY_ROWS[slug] ?? {}));
+  expect(theOrders).toEqual(THE_ORDERS_KEYS);
   expect([...ordered].sort()).toEqual(
     Object.keys(ABILITY_ENTRIES)
-      .filter((slug) => !THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES.includes(slug))
+      .filter((slug) => !THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES.includes(slug) && !theOrders.includes(slug))
       .sort(),
   );
   // each one listed is an entry with no stage, and none in any stage's order
-  for (const slug of THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES)
+  for (const slug of [...THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES, ...theOrders])
     expect(ABILITY_ENTRIES[slug], `${slug}'s entry`).toEqual({});
 });
 
-test("planted in the alignment abilities' registry, an entry left out of its order, a row with no entry, an alignment that isn't one, a discovery's name or slug as a key, and an order's key taken, are found", () => {
+test("planted in the alignment abilities' registry, an entry left out of its order, a row with no entry, an alignment that isn't one, a discovery's name or slug as a key, and an order's key on a row not given as an order, are found", () => {
   const orders: Orders = {
     ...ABILITY_ORDERS,
     turnEnd: { ...ABILITY_ORDERS['turnEnd'], "a realm's alignment adds to its tax": [] },
@@ -716,12 +730,11 @@ test("planted in the alignment abilities' registry, an entry left out of its ord
   };
   expect(ABILITIES_REGISTRY(ABILITY_ENTRIES, orders, rows)).toEqual([
     "neutral-trade is in the order of turnEnd: a realm's alignment adds to its tax 0 times",
+    "broker is an alignment order's key, on a row not given as an order",
     "tithes reads as a discovery's name or slug",
     'tithes has a content row and no entry',
     "province-tax reads as a discovery's name or slug",
     'province-tax has a content row and no entry',
-    "broker is an alignment order's key, left free for its row",
-    'broker has a content row and no entry',
     "planted-ability's alignment, Mercantile, is not an alignment",
     'planted-ability has a content row and no entry',
   ]);

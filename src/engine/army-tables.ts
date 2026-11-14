@@ -1,6 +1,6 @@
 import { KC_QUALITY_TIERS, KC_SKILL_LABELS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../content/kingdoms-call-data.ts';
 import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import type { Army, Character, GameState, Province } from '../schemas/saved-game-state.ts';
 import type { OrderKind } from './rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';

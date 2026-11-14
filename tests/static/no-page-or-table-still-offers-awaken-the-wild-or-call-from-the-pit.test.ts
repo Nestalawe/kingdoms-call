@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from 'vitest';
-import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { readPage } from '../lib/boot.js';
 import { compactOf, compactPage, pageSource, SRC } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';

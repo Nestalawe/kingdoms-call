@@ -1,5 +1,5 @@
 import { ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS } from '../../content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS } from '../names.ts';
 import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
