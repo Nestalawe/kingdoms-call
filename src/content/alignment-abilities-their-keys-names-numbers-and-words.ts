@@ -398,3 +398,122 @@ export const ALIGNMENT_ABILITIES = {
 
 /** An ability's slug: a key of the rows. */
 export type AlignmentAbilitySlug = keyof typeof ALIGNMENT_ABILITIES;
+
+// The alignments' ladder (P1-19av2): a table beside the rows, not abilities. The rungs run down the moral spectrum from
+// holiest to unholiest, and their order is data: a wandering hero's wage is set by the steps between two rungs, Divine
+// and Undead (the full gulf) never serve each other, a king's starting heroes are dealt within a step of his rung (a die
+// drawn by the order: reorder the rungs and every world changes), and the bots court and fight by the steps. Each rung
+// gives the mercy a foe of its alignment shows a felled coward's plea (his own alignment, not his realm's: Decision G).
+// Read in src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts (the player portal shares it).
+
+/** A number of the ladder: its value, how the books write it, and the words around it where they state it (`{N}` the
+ *  value as written; the words as a reader sees them, without the page's markup); a place not given doesn't state it. */
+export interface ANumberOfTheLadder {
+  readonly value: number;
+  readonly writtenAs: HowTheBooksWriteAnAlignmentAbilitysNumber;
+  /** In the rulebook's paragraph on the alignments ("Alignment sets your battle fervour…"), where it states it. */
+  readonly inTheRulebooksParagraphOnTheAlignments?: string;
+  /** In the rulebook's paragraph on hiring a wandering hero ("When you hire a wandering hero…"), where it states it. */
+  readonly inTheRulebooksParagraphOnHiring?: string;
+  /** In the rulebook's entry on the Cowardly temper ("Cowardly — Opening Shot & Beg for Mercy"), where it states it. */
+  readonly inTheRulebooksEntryOnTheCowardly?: string;
+  /** A rung's number: in its creed's section in the rulebook ("The Seven Alignments"), where it states it. */
+  readonly inItsCreedsSection?: string;
+}
+
+/** A rung of the ladder: an alignment, and what a foe of it does when a felled coward begs him for mercy. */
+export interface ARungOfTheLadder {
+  readonly alignment: (typeof KC_ALIGNMENTS)[number];
+  /** The chance a foe of this alignment spares the plea (a foe of no alignment, or one the ladder doesn't hold, spares
+   *  it at the resolver's own 50%). */
+  readonly theChanceAFoeSparesAPlea: ANumberOfTheLadder;
+  /** Whether a foe of this alignment refuses it with laughter (its words drawn by no die), not one of two lines. */
+  readonly aFoesRefusalIsLaughter: boolean;
+}
+
+/** The ladder: its rungs in order, and its numbers. */
+export interface TheLadderOfTheAlignments {
+  readonly theRungs: readonly ARungOfTheLadder[];
+  readonly theNumbers: {
+    /** A wandering hero's wage at no distance (and one step), in gold a turn. */
+    readonly theWageOfAHeroAtNoDistance: ANumberOfTheLadder;
+    /** The steps between the hirer's rung and the hero's for each gold more. */
+    readonly theStepsForEachGoldMore: ANumberOfTheLadder;
+    /** The steps of the full gulf (Divine to Undead), at which a hero refuses to serve. */
+    readonly theStepsOfTheGulf: ANumberOfTheLadder;
+    /** The steps from his king's rung a starting hero is dealt within (the books don't state it). */
+    readonly theStepsAKingsHeroesAreDealtWithin: ANumberOfTheLadder;
+  };
+}
+
+const AT_75 = 'spared {N} of the time by a Good, Divine or Druidic foe';
+const AT_50 = '{N} by Neutral or Pagan';
+const AT_20 = '{N} by Evil or Undead';
+export const THE_LADDER_OF_THE_ALIGNMENTS: TheLadderOfTheAlignments = {
+  theRungs: [
+    {
+      alignment: 'Divine',
+      theChanceAFoeSparesAPlea: { value: 75, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_75 },
+      aFoesRefusalIsLaughter: false,
+    },
+    {
+      alignment: 'Good',
+      theChanceAFoeSparesAPlea: {
+        value: 75,
+        writtenAs: 'as a percentage',
+        inTheRulebooksEntryOnTheCowardly: AT_75,
+        inItsCreedsSection: 'A felled Cowardly enemy who begs your mercy is spared {N} of the time',
+      },
+      aFoesRefusalIsLaughter: false,
+    },
+    {
+      alignment: 'Druidic',
+      theChanceAFoeSparesAPlea: { value: 75, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_75 },
+      aFoesRefusalIsLaughter: false,
+    },
+    {
+      alignment: 'Neutral',
+      theChanceAFoeSparesAPlea: { value: 50, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_50 },
+      aFoesRefusalIsLaughter: false,
+    },
+    {
+      alignment: 'Pagan',
+      theChanceAFoeSparesAPlea: { value: 50, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_50 },
+      aFoesRefusalIsLaughter: false,
+    },
+    {
+      alignment: 'Evil',
+      theChanceAFoeSparesAPlea: {
+        value: 20,
+        writtenAs: 'as a percentage',
+        inTheRulebooksEntryOnTheCowardly: AT_20,
+        inItsCreedsSection: 'A felled Cowardly enemy begging your mercy is spared only {N} of the time',
+      },
+      aFoesRefusalIsLaughter: true,
+    },
+    {
+      alignment: 'Undead',
+      theChanceAFoeSparesAPlea: { value: 20, writtenAs: 'as a percentage', inTheRulebooksEntryOnTheCowardly: AT_20 },
+      aFoesRefusalIsLaughter: true,
+    },
+  ],
+  theNumbers: {
+    theWageOfAHeroAtNoDistance: {
+      value: 2,
+      writtenAs: 'as it is',
+      inTheRulebooksParagraphOnTheAlignments: 'a wandering hero costs {N}g/turn',
+      inTheRulebooksParagraphOnHiring: '{N}g for a close match',
+    },
+    theStepsForEachGoldMore: {
+      value: 2,
+      writtenAs: 'as a word',
+      inTheRulebooksParagraphOnTheAlignments: '+1g for every {N} steps between your alignment and theirs',
+    },
+    theStepsOfTheGulf: {
+      value: 6,
+      writtenAs: 'as a word',
+      inTheRulebooksParagraphOnTheAlignments: 'across the full gulf of {N} steps',
+    },
+    theStepsAKingsHeroesAreDealtWithin: { value: 1, writtenAs: 'as it is' },
+  },
+};

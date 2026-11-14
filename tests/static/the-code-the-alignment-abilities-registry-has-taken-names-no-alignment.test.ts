@@ -52,6 +52,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'resolveResearchOrder',
     'P1-19av1, the Neutral scholars: their points a Sage level, from their row',
   ],
+  [
+    'src/engine/personal-combat/resolve-personal-combat.ts',
+    'resolvePersonalCombat',
+    "P1-19av2, mercy: a plea's odds and the foe's laughter, from the ladder's rung of his alignment",
+  ],
+  [
+    'src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts',
+    'heroHireWage',
+    "P1-19av2, the hire wage and the gulf's ban: their gold and steps, from the ladder's numbers",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

@@ -14,7 +14,10 @@
 // numbers (src/content/alignment-abilities-their-keys-names-numbers-and-words.ts) are held the same way: each stated in
 // the words its row gives in its creed's section of the rulebook, the rulebook's paragraph on gold, its creed's row of
 // the rulebook's orders table (since P1-19at2), its creed's row of the intro's table, and the page's two texts of its
-// creed, where its row says the place states it.
+// creed, where its row says the place states it. Since P1-19av2 the alignments' ladder (THE_LADDER_OF_THE_ALIGNMENTS,
+// a table beside the rows) is held so too: its rungs are the seven alignments in the order both books list them, and
+// its numbers (the wage, the steps, the gulf, each rung's mercy) are in the rulebook's paragraphs on the alignments and
+// on hiring, and its entry on the Cowardly, in the words the table gives.
 // Level 0 (static): the content's rows imported (plain data), both books read as written in src/, the page's texts and
 // the GM's labels read by their syntax trees (tests/lib/source.ts); nothing runs.
 import fs from 'node:fs';
@@ -27,8 +30,11 @@ import {
 } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
 import {
   ALIGNMENT_ABILITIES,
+  THE_LADDER_OF_THE_ALIGNMENTS,
   type ANumberOfAnAlignmentAbility,
+  type ANumberOfTheLadder,
   type AnAlignmentAbility,
+  type TheLadderOfTheAlignments,
 } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { ROOT } from '../../tools/build.ts';
 import { entriesOf, stringsOf } from '../lib/source.ts';
@@ -74,7 +80,7 @@ const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'e
 const THE_TURN_IT_LASTS_UNTIL: Readonly<Record<number, string>> = { 1: 'the following turn' };
 const THE_MULTIPLES: Readonly<Record<number, string>> = { 2: 'double' };
 /** A number as the books write it, as its row says. */
-function written(n: ANumberOfAnAlignmentOrder | ANumberOfAnAlignmentAbility): string {
+function written(n: ANumberOfAnAlignmentOrder | ANumberOfAnAlignmentAbility | ANumberOfTheLadder): string {
   if (n.writtenAs === 'as it is') return String(n.value);
   if (n.writtenAs === 'as a percentage') return `${String(n.value)}%`;
   if (n.writtenAs === 'as a multiplier') return `×${String(n.value)}`;
@@ -612,5 +618,115 @@ test("planted, the consecrated ground's share in its row alone, or in each place
   };
   expect(whatAnAbilitysRowBreaks(tax, BOOKS, aJoinForm)).toEqual([
     `the join form's description's theShareMoreTax: "Consecrate provinces: +50% tax"`,
+  ]);
+});
+
+// The alignments' ladder (P1-19av2): its rungs in the books' order, and each of its numbers in the words it gives.
+/** Each number of the ladder, by what it is (a rung's mercy by its alignment). */
+const theLaddersNumbers = (
+  ladder: TheLadderOfTheAlignments,
+): (readonly [what: string, n: ANumberOfTheLadder, creed?: string])[] => [
+  ...Object.entries(ladder.theNumbers),
+  ...ladder.theRungs.map(
+    (rung) => [`${rung.alignment}'s mercy`, rung.theChanceAFoeSparesAPlea, rung.alignment] as const,
+  ),
+];
+/** What the ladder breaks in the rulebook: each place one of its numbers isn't in the words it gives. */
+function whatTheLadderBreaks(ladder: TheLadderOfTheAlignments, b: TheBooks): string[] {
+  const broken: string[] = [];
+  const paragraphs = [
+    ['the paragraph on the alignments', '<p>Alignment sets your battle fervour', '</p>'],
+    ['the paragraph on hiring', '<p>When you <strong>hire a wandering hero</strong>', '</p>'],
+    ["the Cowardly's entry", '<li><strong>Cowardly — Opening Shot &amp; Beg for Mercy.</strong>', '</li>'],
+  ] as const;
+  const [onTheAlignments, onHiring, onTheCowardly] = paragraphs.map(([, from, to]) =>
+    asAReaderSeesIt(thePartOf(b.rulebook, from, to)),
+  );
+  for (const [what, n, creed] of theLaddersNumbers(ladder)) {
+    const places = [
+      [paragraphs[0][0], n.inTheRulebooksParagraphOnTheAlignments, onTheAlignments],
+      [paragraphs[1][0], n.inTheRulebooksParagraphOnHiring, onHiring],
+      [paragraphs[2][0], n.inTheRulebooksEntryOnTheCowardly, onTheCowardly],
+      ["its creed's section", n.inItsCreedsSection, creed ? theEntriesOfItsCreedsSection(b, creed).join(' ') : ''],
+    ] as const;
+    for (const [place, phrase, seen] of places) {
+      if (phrase === undefined) continue;
+      const words = phrase.replace('{N}', written(n));
+      if (!(seen ?? '').includes(words)) broken.push(`${place}'s ${what}: "${words}"`);
+    }
+  }
+  return broken;
+}
+
+test("the ladder's rungs are the seven alignments, in the order both books list them", () => {
+  const order = THE_LADDER_OF_THE_ALIGNMENTS.theRungs.map((rung) => rung.alignment);
+  expect(order).toEqual(['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead']);
+  for (const book of [RULEBOOK, INTRO]) expect(asAReaderSeesIt(book)).toContain(order.join(', '));
+});
+
+test("the ladder's numbers are in the rulebook as it says, and are the ones the books state today", () => {
+  expect(whatTheLadderBreaks(THE_LADDER_OF_THE_ALIGNMENTS, BOOKS)).toEqual([]);
+  expect(Object.fromEntries(theLaddersNumbers(THE_LADDER_OF_THE_ALIGNMENTS).map(([k, n]) => [k, n.value]))).toEqual({
+    theWageOfAHeroAtNoDistance: 2,
+    theStepsForEachGoldMore: 2,
+    theStepsOfTheGulf: 6,
+    theStepsAKingsHeroesAreDealtWithin: 1,
+    "Divine's mercy": 75,
+    "Good's mercy": 75,
+    "Druidic's mercy": 75,
+    "Neutral's mercy": 50,
+    "Pagan's mercy": 50,
+    "Evil's mercy": 20,
+    "Undead's mercy": 20,
+  });
+  expect(
+    THE_LADDER_OF_THE_ALIGNMENTS.theRungs.filter((rung) => rung.aFoesRefusalIsLaughter).map((r) => r.alignment),
+  ).toEqual(['Evil', 'Undead']);
+});
+
+// Planted: a number of the ladder changed in the table alone, or in the rulebook alone; each is found where planted.
+test('planted, a number of the ladder in the table alone, or in the rulebook alone, is found', () => {
+  const ladder = THE_LADDER_OF_THE_ALIGNMENTS;
+  const { theNumbers, theRungs } = ladder;
+  expect(
+    whatTheLadderBreaks(
+      {
+        ...ladder,
+        theNumbers: {
+          ...theNumbers,
+          theWageOfAHeroAtNoDistance: { ...theNumbers.theWageOfAHeroAtNoDistance, value: 3 },
+          theStepsOfTheGulf: { ...theNumbers.theStepsOfTheGulf, value: 5 },
+        },
+        theRungs: theRungs.map((rung) =>
+          rung.alignment === 'Evil'
+            ? { ...rung, theChanceAFoeSparesAPlea: { ...rung.theChanceAFoeSparesAPlea, value: 25 } }
+            : rung,
+        ),
+      },
+      BOOKS,
+    ),
+  ).toEqual([
+    `the paragraph on the alignments's theWageOfAHeroAtNoDistance: "a wandering hero costs 3g/turn"`,
+    `the paragraph on hiring's theWageOfAHeroAtNoDistance: "3g for a close match"`,
+    `the paragraph on the alignments's theStepsOfTheGulf: "across the full gulf of five steps"`,
+    `the Cowardly's entry's Evil's mercy: "25% by Evil or Undead"`,
+    `its creed's section's Evil's mercy: "A felled Cowardly enemy begging your mercy is spared only 25% of the time"`,
+  ]);
+  const aBookWith = (from: string, to: string): TheBooks => {
+    expect(RULEBOOK.split(from)).toHaveLength(2);
+    return { ...BOOKS, rulebook: RULEBOOK.replace(from, to) };
+  };
+  expect(whatTheLadderBreaks(ladder, aBookWith('mercy is spared <strong>75%</strong>', 'mercy is spared 70%'))).toEqual(
+    [`its creed's section's Good's mercy: "A felled Cowardly enemy who begs your mercy is spared 75% of the time"`],
+  );
+  expect(whatTheLadderBreaks(ladder, aBookWith('+1g for every two steps', '+1g for every three steps'))).toEqual([
+    `the paragraph on the alignments's theStepsForEachGoldMore: "+1g for every two steps between your alignment and theirs"`,
+  ]);
+  expect(
+    whatTheLadderBreaks(ladder, aBookWith('life: spared <strong>75%</strong>', 'life: spared <strong>70%</strong>')),
+  ).toEqual([
+    `the Cowardly's entry's Divine's mercy: "spared 75% of the time by a Good, Divine or Druidic foe"`,
+    `the Cowardly's entry's Good's mercy: "spared 75% of the time by a Good, Divine or Druidic foe"`,
+    `the Cowardly's entry's Druidic's mercy: "spared 75% of the time by a Good, Divine or Druidic foe"`,
   ]);
 });

@@ -28,6 +28,7 @@ import {
 } from './tables.ts';
 import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { ALIGNMENTS_P } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { THE_LADDER_OF_THE_ALIGNMENTS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { ABILITIES_P, shuffleP } from '../battle/fortune.ts';
 import {
   SEA_GUARDIAN_NAMES,
@@ -1567,6 +1568,8 @@ export function generateNewGame(
     // hero at his side (who would lead his native troops at −20%).
     const _RACE_RIVAL: Readonly<Partial<Record<string, string>>> = { ...KC_RIVAL_RACE };
     const heroIds: number[] = [];
+    // each is dealt an alignment within the ladder's steps of the king's (P1-19av2: one), by the rungs' order
+    const _within = THE_LADDER_OF_THE_ALIGNMENTS.theNumbers.theStepsAKingsHeroesAreDealtWithin.value;
     for (let h = 0; h < 2; h++) {
       const hid = allChars.length;
       const hSkills: Partial<Record<string, number>> = {};
@@ -1575,7 +1578,7 @@ export function generateNewGame(
         hSkills[sk] = (hSkills[sk] ?? 0) + 1;
       }
       const heroAlign = theOneMadeSure(
-        ALIGNMENTS_P[Math.max(0, Math.min(6, ALIGNMENTS_P.indexOf(sp.alignment) + rP(-1, 1)))],
+        ALIGNMENTS_P[Math.max(0, Math.min(6, ALIGNMENTS_P.indexOf(sp.alignment) + rP(-_within, _within)))],
       );
       const _hRace =
         h === 0
