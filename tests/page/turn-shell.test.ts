@@ -906,8 +906,9 @@ describe("the GM's log keeps each line's kind, and the GM page draws a force's r
 // A turn run elsewhere while this run resolved it (P1-21s): the conditional save matches no row, and the run is
 // discarded with nothing put back, as the other run spent the orders. On the fake databases (tests/lib/fake-db.ts):
 // the GM's world, which honours the save's turn, with the game moved on to Turn 2 between the fresh read and the
-// save; and the GM's turn, with the game gone by the save.
-describe('a turn run elsewhere meanwhile, on the fake database', () => {
+// save; and the GM's turn, with the game gone by the save. And the GM's log of a turn on the GM's world: the GM's
+// whole log, never a realm's own log of that turn.
+describe("on the fake databases: a turn run elsewhere meanwhile, and the GM's log of a turn", () => {
   // Boots the GM portal on the fake `db`; then `held` is given the game's row and its realms' rows on Turn 1.
   async function bootOnTheFake(
     db: Db,
@@ -972,6 +973,32 @@ describe('a turn run elsewhere meanwhile, on the fake database', () => {
       expect(orders, 'the orders were not put back').toEqual(spent);
       expect(world.tables.games[0]?.['turn']).toBe(2);
       expect(String(world.tables.games[0]?.['game_state']), "this run's world was not saved").toBe(before);
+    } finally {
+      t.W.close();
+    }
+  }, 30_000);
+
+  test("the GM's log of a turn, on the GM's world: the GM's whole log only, never a realm's own log of that turn", async () => {
+    const world = aGameMastersWorld();
+    const t = await bootOnTheFake(makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION, world).db, (game, realms) => {
+      world.tables.games.push(game);
+      world.tables.game_players.push(...realms);
+    });
+    try {
+      const game = world.tables.games[0] ?? {};
+      const state = JSON.parse(String(game['game_state'])) as { characters: { id: number; player: number }[] };
+      const hero = state.characters.find((c) => c.player === 0);
+      if (!hero) throw new Error('realm 0 has no hero');
+      const line = (text: string) => ({ type: 'move', text, charId: hero.id, phase: 0 });
+      world.tables.turn_logs.push(
+        { id: 'L1', game_id: 'G1', player_index: -1, turn: 1, entries: [line('The GM sees the ford held.')] },
+        { id: 'L2', game_id: 'G1', player_index: 0, turn: 1, entries: [line("Realm0's own report line.")] },
+      );
+      t.W['currentGame'] = game;
+      await t.W.eval("loadTurnLog('G1',1)");
+      const shown = String(t.W.eval("document.getElementById('detail-log').textContent"));
+      expect(shown).toContain('The GM sees the ford held.');
+      expect(shown).not.toContain("Realm0's own report line.");
     } finally {
       t.W.close();
     }
