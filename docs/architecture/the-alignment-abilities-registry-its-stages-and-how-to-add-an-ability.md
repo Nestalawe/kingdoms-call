@@ -61,6 +61,17 @@ asked by both battles (`combatVsChar`, `combatVsNPC`) where they read the old ta
 The battles still draw the rolls themselves, where they did: between heroes the attacker's, then the defender's, both
 always (even at 0, and when a fervour wins); against a province's defenders the attacker's alone.
 
+**The other battle factors, and the Banner** (P1-19au2, `alignment-abilities/the-other-battle-factors-of-a-realms-alignment.ts`):
+
+| Stage | Its ability | Where it is asked, and what it gives |
+|---|---|---|
+| `strength`: **consecrated ground weakens an attacker's host** | Divine's −15% (no name in the books; the creeds it strikes are its row's list) | both battles, for a province its owner consecrated, handed the attacker's alignment as a fact; the factor in its place among the whole force's factors, `(100 − 15) / 100`, exactly 0.85 |
+| `strength`: **a realm's alignment strengthens its defence of its own ground** | Good's Righteous Defence | both battles, after the siegecraft and before the own-ground discoveries; `defBonus *=` its `1 + 10 / 100`, exactly 1.1 |
+| `strength`: **a realm's alignment strengthens a unit in the wild** | Druidic's Home of the Wild | `armStr`, after the unit's abilities, the realm's or the commander's creed; one rounded step (×1.5) |
+| `strength`: **a realm's alignment strengthens a unit by its reign of fear** | Evil's Reign of Fear | `armStr`, after Terror, for an attacker on ground its Terror grips: its own rounded step; both battles' lines ask it of each unit |
+| `fate`: **a realm's alignment holds a beaten host on the field** | Undead's Deathless March | the three routs (each its own companies), first in each chain |
+| `movementCost`: **a realm's alignment helps converging columns unite** | Good's Banner of Fellowship | `resolveMoveOrder`, both rolls; its 15 points |
+
 ## Outside the family
 
 - **The ladder of alignments** (hire wages by distance, the Divine-Undead hiring ban, mercy by the foe's alignment,
@@ -78,15 +89,17 @@ always (even at 0, and when a fervour wins); against a province's defenders the 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order; each row's alignment one, and its key no discovery's name or slug and no order's; the runners' sums
   (the trade's, over 301 incomes, against `neutralTradeGold`; the consecrated tax's, over 301 taxes; zeal's chance by
-  creed, the doubling, and the fervours against the old `Math.max`).
+  creed, the doubling, the fervours against the old `Math.max`, and the other battle factors' and the Banner's by
+  creed).
 - `tests/unit/the-sides-of-a-battle-between-heroes-in-the-lines-no-matrix-game-reaches.test.ts`: the doubling, with
-  staged dice, after the discoveries' share.
+  staged dice, after the discoveries' share; `…the-sides-and-the-defenders-of-a-battle-against-a-province-…`: the
+  other battle factors at both battles.
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts`: each number
   of each row in each place its row names.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
-  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1): the functions taken name no alignment, and the
+  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1, 133 after P1-19au2): the functions taken name no alignment, and the
   engine's names of an alignment outside `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
   the count stays above 0.
 
