@@ -197,10 +197,10 @@ export const THE_REGISTRY_OF_ALIGNMENT_ABILITIES = {
       "a realm's alignment raises a rest's heal": A_REALMS_ALIGNMENT_RAISES_A_RESTS_HEAL['the-divine-rest'],
     },
   },
-  'blood-harvest': {
+  'a-pagan-victors-blood-harvest': {
     fate: {
       "a realm's alignment claims gold for each foe destroyed":
-        A_REALMS_ALIGNMENT_CLAIMS_GOLD_FOR_EACH_FOE_DESTROYED['blood-harvest'],
+        A_REALMS_ALIGNMENT_CLAIMS_GOLD_FOR_EACH_FOE_DESTROYED['a-pagan-victors-blood-harvest'],
     },
   },
   'plunder-or-enslave': {
@@ -249,7 +249,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES = {
   },
   fate: {
     "a realm's alignment holds a beaten host on the field": ['the-deathless-march'],
-    "a realm's alignment claims gold for each foe destroyed": ['blood-harvest'],
+    "a realm's alignment claims gold for each foe destroyed": ['a-pagan-victors-blood-harvest'],
     "a realm's alignment conquers by a doctrine": ['plunder-or-enslave'],
   },
   turnStart: {

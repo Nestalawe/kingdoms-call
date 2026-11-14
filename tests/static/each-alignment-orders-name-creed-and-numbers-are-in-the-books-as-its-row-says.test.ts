@@ -531,7 +531,7 @@ test("the abilities' numbers are the ones the books state today", () => {
     'neutral-scholars': { thePointsASageLevelAdds: 5 },
     'divine-grace': { theFullTurnsInDeath: 1, theShareOfHealthTheFallenRiseWith: 0.5 },
     'the-divine-rest': { theFactorOfTheHeal: 1.5 },
-    'blood-harvest': { theGoldForEachFoeDestroyed: 1 },
+    'a-pagan-victors-blood-harvest': { theGoldForEachFoeDestroyed: 1 },
     'plunder-or-enslave': {
       theShareOfTheTaxPlundered: 50,
       theGradeOfTheEnslavedGarrison: 'Green',

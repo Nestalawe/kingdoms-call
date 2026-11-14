@@ -19,6 +19,7 @@ import {
 import type { TurnContext } from './context.ts';
 import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { theReturnARealmsAlignmentGivesItsFallen } from '../rules/the-registry-of-alignment-abilities.ts';
 import type { Character, GameState, Grave, Province, Realm } from '../../schemas/saved-game-state.ts';
 
 /** The state as the new turn's end clears it: the turn's lists of the heroes raised and the orders held for the
@@ -237,11 +238,14 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     .filter(
       (g): g is ADivineRealmsGrave =>
         g.player !== null &&
-        G.players[g.player]?.alignment === 'Divine' &&
+        theReturnARealmsAlignmentGivesItsFallen(G.players[g.player]?.alignment) !== null && // Divine grace (its row)
         (!g._monarch || G.characters.some((h) => h.id === g.id && h._divineReturn)),
     )
     .forEach((grave) => {
-      if (G.turn < (grave.killedOnTurn || 0) + 2) return; // still serving their turn in death
+      // its turns in death and its share of health, from the row (a pure read: the filter took it, so it gives one)
+      const theReturn = theReturnARealmsAlignmentGivesItsFallen(G.players[grave.player]?.alignment);
+      if (theReturn === null) return;
+      if (G.turn < (grave.killedOnTurn || 0) + theReturn.theFullTurnsInDeath + 1) return; // still serving their turn in death
       const hero = G.characters.find((h) => h.id === grave.id);
       if (!hero) return;
       const _wasKing = !!grave._monarch; // Divine kings return the same way
@@ -276,7 +280,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
       }
       // Resurrect — strip armies and items (divine gift, not a free ride)
       hero.alive = true;
-      hero.hp = Math.floor(hero.maxHp * 0.5) || 8;
+      hero.hp = Math.floor(hero.maxHp * theReturn.theShareOfHealth) || 8;
       hero.killedThisTurn = false;
       hero.armies = [];
       hero.items = [];

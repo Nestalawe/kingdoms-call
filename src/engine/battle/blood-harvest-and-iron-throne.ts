@@ -1,8 +1,8 @@
 import { kcRng } from '../rng.ts';
-import { BLOOD_HARVEST_PER_UNIT } from '../items/tiers-and-hoards.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { gdActive } from '../discoveries.ts';
 import { whatARealmsDiscoveriesAddToABloodHarvest } from '../rules/the-registry-of-discovery-effects.ts';
+import { theGoldARealmsAlignmentClaimsForEachFoeDestroyed } from '../rules/the-registry-of-alignment-abilities.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';
@@ -29,12 +29,15 @@ export function bloodHarvest(
 ) {
   const { G } = turnContext;
   if (winner?.player == null || !(destroyed > 0)) return;
-  if (G.players[winner.player]?.alignment !== 'Pagan') return;
+  // the Blood Harvest's gold for each foe (the alignment abilities' registry's since P1-19ax1: "fate: a realm's
+  // alignment claims gold for each foe destroyed"), from its row
+  const theGoldForEachFoe = theGoldARealmsAlignmentClaimsForEachFoeDestroyed(G.players[winner.player]?.alignment);
+  if (theGoldForEachFoe === null) return;
   const _pl = G.players[winner.player];
   if (!_pl) return; // a Pagan realm: its alignment was read above
   // + ap09 Skull Tithe (the discoveries' registry's since plan P1-19af: "fate: a realm's discoveries add to a blood
   // harvest")
-  const _take = destroyed * (BLOOD_HARVEST_PER_UNIT + whatARealmsDiscoveriesAddToABloodHarvest(_pl));
+  const _take = destroyed * (theGoldForEachFoe + whatARealmsDiscoveriesAddToABloodHarvest(_pl));
   _pl.gold = (_pl.gold || 0) + _take;
   narrate(narrative, {
     kind: 'the blood harvest claims offerings from the fallen enemy units',

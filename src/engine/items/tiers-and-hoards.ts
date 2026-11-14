@@ -58,7 +58,6 @@ export function theTurnsAWildHuntServesBeyondThisOne(
 ): number {
   return WILD_HUNT_TURNS + theTurnsARealmsDiscoveriesLengthenTheWildHuntBy(hisRealm);
 }
-export const BLOOD_HARVEST_PER_UNIT = 1; // gold per enemy unit destroyed in a Pagan victory
 export const FEATURE_POOLS_P = {
   plain: [
     'Ancient Battlefield',

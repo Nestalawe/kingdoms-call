@@ -435,7 +435,7 @@ export const ALIGNMENT_ABILITIES = {
     },
   },
   // a Pagan victor's blood harvest: gold for each enemy unit destroyed (the discoveries add theirs to it: Skull Tithe)
-  'blood-harvest': {
+  'a-pagan-victors-blood-harvest': {
     howItIsUsed: 'always on',
     alignment: 'Pagan',
     theNumbers: {

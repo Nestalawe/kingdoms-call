@@ -14,6 +14,7 @@ import {
   doesARealmsAlignmentHoldABeatenHostOnTheField,
   theAlignmentASideFightsUnder,
   theChanceOfZealARealmsAlignmentGivesASide,
+  theConquestDoctrineOfARealmsAlignment,
   theChanceOfZealOfADefenderOnConsecratedGround,
   theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
   theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
@@ -1459,7 +1460,7 @@ export function combatVsChar(
   if (
     isDecisivePvP &&
     _pvpWinner.player !== null &&
-    G.players[_pvpWinner.player]?.alignment === 'Evil' &&
+    theConquestDoctrineOfARealmsAlignment(G.players[_pvpWinner.player]?.alignment) !== null && // its row (P1-19ax1)
     ((_pvpWinner.encounterPlan?.evilMode ?? '') || 'terror') === 'terror'
   ) {
     spreadTerror(turnContext, prov, _pvpWinner.player, narrative);

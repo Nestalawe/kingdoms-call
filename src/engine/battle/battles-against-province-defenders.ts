@@ -15,6 +15,7 @@ import {
   doesARealmsAlignmentHoldABeatenHostOnTheField,
   theAlignmentASideFightsUnder,
   theChanceOfZealARealmsAlignmentGivesASide,
+  theConquestDoctrineOfARealmsAlignment,
   theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
   theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
   theFactorConsecratedGroundWeakensAnAttackersHostBy,
@@ -1846,7 +1847,7 @@ export function combatVsNPC(
     if (
       isDecisive &&
       c.player !== null && // (a hero of no realm has no realm's alignment)
-      theAttackersRealm?.alignment === 'Evil' &&
+      theConquestDoctrineOfARealmsAlignment(theAttackersRealm?.alignment) !== null && // its row (P1-19ax1)
       ((c.encounterPlan?.evilMode ?? '') || 'terror') === 'terror'
     ) {
       spreadTerror(turnContext, prov, c.player, narrative);

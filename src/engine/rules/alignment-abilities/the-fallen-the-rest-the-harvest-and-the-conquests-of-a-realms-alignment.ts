@@ -37,7 +37,8 @@ export const A_REALMS_ALIGNMENT_RAISES_A_RESTS_HEAL = {
 
 /** "fate: a realm's alignment claims gold for each foe destroyed": the Blood Harvest, its row's gold. */
 export const A_REALMS_ALIGNMENT_CLAIMS_GOLD_FOR_EACH_FOE_DESTROYED = {
-  'blood-harvest': () => ALIGNMENT_ABILITIES['blood-harvest'].theNumbers.theGoldForEachFoeDestroyed.value,
+  'a-pagan-victors-blood-harvest': () =>
+    ALIGNMENT_ABILITIES['a-pagan-victors-blood-harvest'].theNumbers.theGoldForEachFoeDestroyed.value,
 } satisfies Partial<
   Record<
     AlignmentAbilitySlug,

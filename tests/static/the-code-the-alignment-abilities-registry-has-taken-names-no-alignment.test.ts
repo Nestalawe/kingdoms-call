@@ -62,6 +62,26 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'heroHireWage',
     "P1-19av2, the hire wage and the gulf's ban: their gold and steps, from the ladder's numbers",
   ],
+  [
+    'src/engine/heroes/hero-death-and-leaderless-hosts.ts',
+    'handleHeroDeath',
+    "P1-19ax1, Divine grace: whether a fallen monarch's realm raises its fallen, from its row",
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolveRestOrder',
+    'P1-19ax1, the Divine Rest: its factor, from its row',
+  ],
+  [
+    'src/engine/battle/blood-harvest-and-iron-throne.ts',
+    'bloodHarvest',
+    'P1-19ax1, the Blood Harvest: its gold for each foe, from its row',
+  ],
+  [
+    'src/engine/realms/relations-and-captures.ts',
+    'applyEvilConquest',
+    "P1-19ax1, the conquest doctrine: its plunder, its garrison's grade and its turns, from its row",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
