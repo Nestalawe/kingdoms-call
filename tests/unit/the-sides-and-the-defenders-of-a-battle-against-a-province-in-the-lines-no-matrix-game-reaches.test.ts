@@ -524,6 +524,8 @@ describe.each(['def', 'defenders'] as const)(
           },
         );
         expect(aLineHolds(shown.words, 'Home of the Wild ×1.5 (2 units)')).toBe(wild);
+        // the host's units after the step, as the row's base gives them (a lower figure without it)
+        expect(aLineHolds(shown.words, 'Units: base 44 → 60 (')).toBe(wild);
       },
     );
 
@@ -543,6 +545,8 @@ describe.each(['def', 'defenders'] as const)(
         );
         expect(aLineHolds(shown.words, 'Reign of Fear —')).toBe(fear);
         expect(aLineHolds(shown.words, 'Reign of Fear ×1.5 (2 units)')).toBe(fear);
+        // the host's units after the step, as the row's base gives them (a lower figure without it)
+        expect(aLineHolds(shown.words, 'Units: base 44 → 54 (')).toBe(fear);
       },
     );
 
