@@ -57,7 +57,8 @@ live database changes, then the site deploys.
 Approve it promptly: while this run waits, every other update to the site waits behind it. Rejecting it
 leaves the live database untouched and the site not deployed.
 
-Nobody changes either database by hand, and nobody pastes SQL into Supabase.
+Nobody changes either database by hand, and nobody pastes SQL into Supabase, except in
+[break-glass](../supabase/README.md#break-glass-the-one-exception).
 
 ## A change that needs both
 

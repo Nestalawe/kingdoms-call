@@ -139,7 +139,7 @@ Merging to `main` runs `.github/workflows/deploy.yml`: **test → migrate produc
 
 `migrate-production` applies only the migrations listed in step 1, and refuses to touch a database that has
 migrations the repo doesn't, or that is missing older ones. Nobody applies a migration from a laptop to the
-live database, and nobody pastes SQL into its SQL Editor, but in
+live database, and nobody pastes SQL into its SQL Editor, except in
 [break-glass](#break-glass-the-one-exception).
 
 **While a run waits for Toby, every later deploy waits behind it**, including site-only fixes

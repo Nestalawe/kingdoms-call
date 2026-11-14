@@ -36,8 +36,8 @@ Toby answered D-01 to D-07 on 2026-09-29, and D-08 to D-13 on 2026-10-11.
 - **D-12:** superseded by D-13 the same day. Players don't ask to become GMs; the Overlord offers it.
 - **D-13 (a to h, and its four follow-ups):** the Overlord and the Game Masters:
   [R-097](../rulings/R-097-game-masters-and-the-overlord.md). Who reads private dispatches, and where a report goes
-  when the GM plays (D-13g, follow-up 1): [R-073](../rulings/R-073-private-dispatches.md). Decided, not yet built: a
-  GM sees less of their own games, on screen (D-13d; plan step P2-15).
+  when the GM plays (D-13g, follow-up 1): [R-073](../rulings/R-073-private-dispatches.md). Decided, its detail still
+  Toby's to rule, and not yet built: a GM sees less of their own games, on screen (D-13d; plan step P2-15).
 
 ## Theo's decisions on how the work runs
 
