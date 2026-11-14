@@ -31,6 +31,7 @@ import {
 } from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import { TM, creditMapped, perkTier } from '../titles/perks.ts';
 import { whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite } from '../rules/the-registry-of-discovery-effects.ts';
+import { whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite } from '../rules/the-registry-of-alignment-abilities.ts';
 import {
   emit,
   narrateAt,
@@ -839,8 +840,9 @@ export function resolveMoveOrder(
       // GOOD — Banner of Fellowship: allies rally to an honourable cause (+15pp unify).
       // + sd04 Signal Fires (the discoveries' registry's since plan P1-19af: "movementCost: a realm's discoveries help
       // converging columns unite")
+      // (the Banner's points: the alignment abilities' registry's runner, P1-19au2)
       const _goodUnify =
-        (G.players[c.player]?.alignment === 'Good' ? 15 : 0) +
+        whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite(G.players[c.player]?.alignment) +
         whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(G.players[c.player]);
       const unifyChancePct = Math.min(100, contingentUnifyChance(marchLvl, unifyDist, false) + _goodUnify); // sd04 Signal Fires is now a `unify` effect
       const unifyRoll = d100();
@@ -1242,7 +1244,7 @@ export function resolveMoveOrder(
         const unifyPct = Math.min(
           100,
           contingentUnifyChance(marchLvl, unifyDist, false) +
-            (G.players[c.player]?.alignment === 'Good' ? 15 : 0) +
+            whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite(G.players[c.player]?.alignment) +
             whatARealmsDiscoveriesAddToConvergingColumnsChanceToUnite(G.players[c.player]),
         ); // GOOD — Banner of Fellowship; + sd04 Signal Fires (the discoveries' registry's, P1-19af)
         const roll = d100();

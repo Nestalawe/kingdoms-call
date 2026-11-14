@@ -32,6 +32,11 @@ const TOP = '(top)';
  *  took it. */
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/grand-design.ts', 'neutralTradeGold', 'P1-19at1, the Neutral trade: its alignment, from its row'],
+  [
+    'src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts',
+    'resolveMoveOrder',
+    "P1-19au2, the Banner of Fellowship: its points at both of the columns' rolls, from its row",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

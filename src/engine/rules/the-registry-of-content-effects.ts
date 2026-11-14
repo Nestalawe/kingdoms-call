@@ -1364,6 +1364,28 @@ export interface ASideAsItsFervourIsWeighed {
   readonly theForce: readonly { readonly type: string; readonly _isSkeletal?: boolean | undefined }[];
 }
 
+/** An attacker of a province on its owner's consecrated ground, as the ground weighs his host (both battles). */
+export interface AnAttackerOnConsecratedGround {
+  /** The alignment his side fights under (Neutral for a realm of none). */
+  readonly theAttackersAlignment: string;
+}
+
+/** A unit of a force, as Home of the Wild weighs it (armStr, after the unit's abilities). */
+export interface AUnitAsTheWildWeighsIt {
+  readonly theUnitType: string;
+  readonly theTerrain: string | null | undefined;
+}
+
+/** A unit of a host attacking ground its realm's Terror grips, as the Reign of Fear weighs it (armStr, after Terror). */
+export interface AUnitAsTheReignOfFearWeighsIt {
+  readonly theUnitType: string;
+}
+
+/** A beaten host's companies, as its realm's alignment weighs whether it holds the field (both battles' routs). */
+export interface ABeatenHostsCompanies {
+  readonly theCompanies: readonly { readonly _isSkeletal?: boolean | undefined }[];
+}
+
 /** Where a hero casts, as a discovery's `ctx` names it: before a battle, in an order, in a personal combat. */
 export type WhereAHeroCasts = 'battle' | 'action' | 'duel';
 
@@ -1775,6 +1797,20 @@ export interface TheStagesOfEachHookPoint {
     /** The factor a side's realm's alignment's fervour lifts the whole force by, or nothing (both battles, after the
      *  zeal rolls; the alignment abilities' registry: the runner takes the strongest, zeal's among them). */
     readonly "a realm's alignment stirs a side's fervour": (facts: ASideAsItsFervourIsWeighed) => number | null;
+    /** The factor consecrated ground weakens an attacker's host by, or nothing (both battles, for a province its owner
+     *  consecrated; the alignment abilities' registry, P1-19au2). */
+    readonly "consecrated ground weakens an attacker's host": (facts: AnAttackerOnConsecratedGround) => number | null;
+    /** The factor a realm's alignment strengthens its defence of a province it owns by (both battles, after the
+     *  siegecraft, before the own-ground discoveries; the alignment abilities' registry). */
+    readonly "a realm's alignment strengthens its defence of its own ground": () => number;
+    /** The factor a unit fights at in the wild, or nothing (armStr, after the unit's abilities: one rounded step; the
+     *  runner asks the abilities the realm's or the commander's alignment holds). */
+    readonly "a realm's alignment strengthens a unit in the wild": (facts: AUnitAsTheWildWeighsIt) => number | null;
+    /** The factor a unit fights at attacking ground its realm's Terror grips, or nothing (armStr, after Terror: one
+     *  rounded step; both battles' lines ask it too). */
+    readonly "a realm's alignment strengthens a unit by its reign of fear": (
+      facts: AUnitAsTheReignOfFearWeighsIt,
+    ) => number | null;
     /** Whether a discovery the commander's realm holds lets a winged beast he leads follow him without his Druid
      *  (dragonTamed: the runner asks each effect of the kind the realm holds). */
     readonly "a realm's discoveries let a beast follow without its Druid": (
@@ -1823,6 +1859,9 @@ export interface TheStagesOfEachHookPoint {
     readonly 'a hull is sunk before the battle': (facts: AUnitAndTheEnemyHullsAfloat) => number | null;
     /** Whether a beaten force holds, never routing (shieldFortHolds, before the rout). */
     readonly 'the beaten force holds': (facts: ABeatenForceAndItsFrontLine) => boolean;
+    /** Whether a beaten host's realm's alignment holds it on the field, with no flight losses (both battles' routs,
+     *  first of each chain; the alignment abilities' registry, P1-19au2). */
+    readonly "a realm's alignment holds a beaten host on the field": (facts: ABeatenHostsCompanies) => boolean;
     /** A pursuit of the beaten by the winning force, or nothing (the rout of both battles, before the beaten units'
      *  death rolls). */
     readonly 'the winner runs the beaten down': (facts: AWinningForceOnItsGround) => APursuitOfTheBeaten | null;
@@ -1887,6 +1926,9 @@ export interface TheStagesOfEachHookPoint {
     /** The points a discovery a realm holds adds to the chance a column converging on a hero's battle unites with his
      *  force; the runner adds them (resolveMoveOrder, both its rolls). */
     readonly "a realm's discoveries help converging columns unite": (theEffect: TheEffectOfADiscovery) => number;
+    /** The points a realm's alignment adds to the chance a column converging on a hero's battle unites with his force
+     *  (resolveMoveOrder, both its rolls; the alignment abilities' registry, P1-19au2). */
+    readonly "a realm's alignment helps converging columns unite": () => number;
   };
   /** The checks the Cast Spell order makes of the spell named, before it is worked and as it is (plan P1-19's spells
    *  family: its row P1-19y typed them; the spells' registry, one spell an order, found by its name). In the order the

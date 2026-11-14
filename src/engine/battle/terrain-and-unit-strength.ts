@@ -1,11 +1,14 @@
 import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
+  theFactorARealmsAlignmentStrengthensAUnitInTheWildBy,
+} from '../rules/the-registry-of-alignment-abilities.ts';
 import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import {
   AERIAL_TYPES,
-  CREATURE_ARMIES,
   FLYING_TYPES,
-  MONSTER_ARMIES,
   SEA_TYPES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { missileCap, unitAbilityMult, whyEveryShotGlancesOff } from './strength.ts';
@@ -706,9 +709,14 @@ export function armStr(
   }
   // REIGN OF FEAR (2026-10-13): an Evil realm's Monsters on ground its own Terror still grips (ctx.reignOfFear,
   // read at the call site before the Terror is consumed). 2026-10-12 (Toby): only when they ATTACK there.
-  if (ctx && ctx.reignOfFear && ctx.isAttacker && playerAlignment === 'Evil' && MONSTER_ARMIES.has(army.type)) {
-    str = Math.round(str * REIGN_OF_FEAR_MULT);
-    if (_tr) _tr.push({ reason: { kind: 'the reign of fear', multiplier: REIGN_OF_FEAR_MULT } });
+  // (its runner, the alignment abilities' registry's, P1-19au2: one rounded step)
+  const _reignOfFear =
+    ctx && ctx.reignOfFear && ctx.isAttacker
+      ? theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear(playerAlignment, { theUnitType: army.type })
+      : null;
+  if (_reignOfFear !== null) {
+    str = Math.round(str * _reignOfFear);
+    if (_tr) _tr.push({ reason: { kind: 'the reign of fear', multiplier: _reignOfFear } });
   }
   // PRE-BATTLE DAMAGE (arrows, battle magic, primal strikes, flak). 2026-09-24 (Toby): in a battle
   // the ladder calls armStr with opts.deferDamage and subtracts the damage in ladderRow AFTER every
@@ -751,13 +759,14 @@ export function armStr(
     if (_tr) _tr.push({ reason: { kind: "the unit's ability", unitType: army.type, multiplier: abilityM } });
   }
   // DRUIDIC — Home of the Wild: Creature armies of a Druidic realm fight ×1.5 in forest and
-  // jungle (the long-advertised bonus, previously described but never implemented).
-  if (
-    (playerAlignment === 'Druidic' || heroChar?.alignment === 'Druidic') &&
-    (terrain === 'forest' || terrain === 'jungle') &&
-    CREATURE_ARMIES.has(army.type)
-  ) {
-    str = Math.round(str * 1.5);
+  // jungle (the long-advertised bonus, previously described but never implemented); a Druidic commander brings it too
+  // (its runner, the alignment abilities' registry's, P1-19au2: one rounded step).
+  const _homeOfTheWild = theFactorARealmsAlignmentStrengthensAUnitInTheWildBy(playerAlignment, heroChar?.alignment, {
+    theUnitType: army.type,
+    theTerrain: terrain,
+  });
+  if (_homeOfTheWild !== null) {
+    str = Math.round(str * _homeOfTheWild);
     if (_tr) _tr.push({ reason: { kind: 'the home of the wild' } });
   }
   // ── LIVE TITLE PERK ── Grand Marshal (land) / Sea Lord (at sea): the title-holder's armies
@@ -876,4 +885,5 @@ export function finishSide(
 // province still gripped by that realm's own Terror — the mirror of the Druids' Home of the Wild, on ground
 // Evil makes its own by winning. 2026-10-12 (Toby): only when they ATTACK there, never when defending it. Read at battle start, BEFORE consumeTerror
 // clears the stacks (reignOfFearHere), and applied in armStr through ctx.reignOfFear.
-export const REIGN_OF_FEAR_MULT = 1.5;
+// Its number is its row's (the alignment abilities' registry, P1-19au2); the battles' lines name it.
+export const REIGN_OF_FEAR_MULT = ALIGNMENT_ABILITIES['reign-of-fear'].theNumbers.theStrengthOfAMonster.value;

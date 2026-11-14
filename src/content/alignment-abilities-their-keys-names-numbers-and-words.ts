@@ -45,6 +45,9 @@ interface WhatEveryAlignmentAbilityGives {
 /** An ability its realms hold without an order: it acts at its stages whenever they are reached. */
 interface AnAlignmentAbilityAlwaysOn extends WhatEveryAlignmentAbilityGives {
   readonly howItIsUsed: 'always on';
+  /** The creeds of the foes it acts against, where the books name them (P1-19au2: the hosts consecrated ground
+   *  weakens). */
+  readonly theCreedsItActsAgainst?: readonly (typeof KC_ALIGNMENTS)[number][];
 }
 
 /** An ability given as an order: by the king alone, or by any hero of the realm. No row is one yet (row P1-19aw1 moves
@@ -244,6 +247,89 @@ export const ALIGNMENT_ABILITIES = {
         inTheReportsSummary: '{N} (+30%) under any other commander',
       },
     },
+  },
+  // a Divine realm's consecrated ground weakens an Undead or Evil host attacking it: the host fights a share weaker
+  // (P1-19au2). Gated by the consecration list, as the tax is; the attacker's creed by the row's list. No name in the
+  // books (the Evil section states it too, in words no field reads)
+  'consecrated-ground-weakens-an-unholy-attacker': {
+    howItIsUsed: 'always on',
+    alignment: 'Divine',
+    theCreedsItActsAgainst: ['Undead', 'Evil'],
+    theNumbers: {
+      theShareWeaker: {
+        value: 15,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Undead and Evil hosts attacking it fight at −{N}',
+        inTheReportsSummary: 'Undead and Evil hosts attacking it fight at −{N}',
+      },
+    },
+  },
+  // a Good realm's Righteous Defence: its defenders of a province it owns hold a share stronger (P1-19au2)
+  'righteous-defence': {
+    howItIsUsed: 'always on',
+    alignment: 'Good',
+    theNumbers: {
+      theShareStronger: {
+        value: 10,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Righteous Defence: any army defending a province you own fights at +{N}',
+        inTheIntrosTable: '+{N} when defending your own provinces',
+        inTheReportsSummary: 'Righteous Defence: any army defending a province you own fights at +{N}',
+        inTheJoinForm: '+{N} strength defending land you own',
+      },
+    },
+  },
+  // a Good realm's Banner of Fellowship: its converging columns unite more readily, by percentage points (P1-19au2)
+  'banner-of-fellowship': {
+    howItIsUsed: 'always on',
+    alignment: 'Good',
+    theNumbers: {
+      thePointsMoreReadily: {
+        value: 15,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'allied contingents converging on the same battle unify +{N} more readily',
+        inTheReportsSummary: 'allied contingents converging on the same battle unify {N} more readily',
+      },
+    },
+  },
+  // a Druidic realm's Home of the Wild: its Creature units fight at a factor in forest and jungle, each rounded; a
+  // Druidic commander brings it to any realm's Creatures he leads (P1-19au2)
+  'home-of-the-wild': {
+    howItIsUsed: 'always on',
+    alignment: 'Druidic',
+    theNumbers: {
+      theStrengthOfACreature: {
+        value: 1.5,
+        writtenAs: 'as a multiplier',
+        inItsCreedsSection: 'Home of the Wild: in forest and jungle your Creature armies fight at {N}',
+        inTheIntrosTable: 'Creatures fight {N} in forest and jungle',
+        inTheReportsSummary: 'your Creature armies fight at {N} strength',
+        inTheJoinForm: 'Creature armies fight at {N} in forest and jungle',
+      },
+    },
+  },
+  // an Evil realm's Reign of Fear: its Monster units attacking a province its own Terror still grips fight at a factor,
+  // each rounded (P1-19au2)
+  'reign-of-fear': {
+    howItIsUsed: 'always on',
+    alignment: 'Evil',
+    theNumbers: {
+      theStrengthOfAMonster: {
+        value: 1.5,
+        writtenAs: 'as a multiplier',
+        inItsCreedsSection: 'Reign of Fear: your Monsters fight at {N} when they attack a province',
+        inTheIntrosTable: 'Monsters {N} attacking ground under your Terror',
+        inTheReportsSummary: 'your Monsters fight at {N} when they attack a province your own Terror still grips',
+        inTheJoinForm: 'your Monsters fight {N} attacking ground your Terror grips',
+      },
+    },
+  },
+  // an Undead realm's Deathless March: a beaten host of skeletons alone, with no line of retreat, stands and holds the
+  // field, and takes no flight losses (P1-19au2). The books state no number for it
+  'the-deathless-march': {
+    howItIsUsed: 'always on',
+    alignment: 'Undead',
+    theNumbers: {},
   },
 } as const satisfies Readonly<Record<string, AnAlignmentAbility>>;
 

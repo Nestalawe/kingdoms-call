@@ -11,8 +11,13 @@ import {
   whatAUnitsStrikeMayDoBeforeTheBattle,
 } from '../rules/the-registry-of-spell-effects.ts';
 import {
+  doesARealmsAlignmentHoldABeatenHostOnTheField,
+  theAlignmentASideFightsUnder,
   theChanceOfZealARealmsAlignmentGivesASide,
   theChanceOfZealOfADefenderOnConsecratedGround,
+  theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
+  theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
+  theFactorConsecratedGroundWeakensAnAttackersHostBy,
   theFervourOfASide,
 } from '../rules/the-registry-of-alignment-abilities.ts';
 import { QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
@@ -34,7 +39,6 @@ import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, ladder
 import { pursuitsOfTheBeaten, shieldFortHolds, tacMulted, theFractionThePursuitsAdd } from '../units/movement.ts';
 import {
   AERIAL_TYPES,
-  MONSTER_ARMIES,
   SEA_TYPES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import {
@@ -406,10 +410,14 @@ export function combatVsChar(
     [_fearAtk, theAttackersRealm, atk.name, atkArmies],
     [_fearDef, theDefendersRealm, def.name, defArmies],
   ] as const) {
+    // (the Reign of Fear's runner, the alignment abilities' registry's, P1-19au2: a unit it strengthens)
     if (
       _f &&
-      _hr?.alignment === 'Evil' &&
-      _ar.some((a: ArmyInABattle | null | undefined) => a && MONSTER_ARMIES.has(a.type))
+      _ar.some(
+        (a: ArmyInABattle | null | undefined) =>
+          a &&
+          theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear(_hr?.alignment, { theUnitType: a.type }) !== null,
+      )
     )
       narrate(narrative, {
         kind: 'the province still cowers under a reign of fear',
@@ -500,10 +508,14 @@ export function combatVsChar(
       });
     }
   }
-  // GOOD — Righteous Defence: +10% when a Good player defends a province they own.
-  if (prov.owner === def.player && theDefendersRealm?.alignment === 'Good') {
-    defBonus *= 1.1;
-    narrate(narrative, { kind: "the defender's host defends ground held justly", defName: defSide });
+  // GOOD — Righteous Defence: +10% when a Good player defends a province they own (the alignment abilities'
+  // registry's runner, P1-19au2).
+  if (prov.owner === def.player) {
+    const _righteous = theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy(theDefendersRealm?.alignment);
+    if (_righteous !== null) {
+      defBonus *= _righteous;
+      narrate(narrative, { kind: "the defender's host defends ground held justly", defName: defSide });
+    }
   }
   {
     const _dOwnP =
@@ -545,7 +557,7 @@ export function combatVsChar(
   // (2026-09-23d: "📊 X leads the defense: Tactical N" retired — the deployment line and the ladder both name it.)
 
   // Fanaticism: each side's chance of zeal its realm's alignment gives (the alignment abilities' registry, P1-19au1)
-  const atkAlign = (theAttackersRealm?.alignment ?? '') || 'Neutral';
+  const atkAlign = theAlignmentASideFightsUnder(theAttackersRealm?.alignment);
   // (The Wyverns' Dread, −15% to the other side's fanaticism, was retired with the unit abilities,
   // 2026-10-11: Terror From Above now bears on the enemy's strongest front unit, in battleFaceSide.)
   const _atkFanPct = Math.max(
@@ -1261,8 +1273,10 @@ export function combatVsChar(
     narrate(narrative, { kind: 'the attacker storms ashore in a raid on the coast', atkName: atkSide });
   } // 2026-09-23e: only a coast attacked from the sea
   // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
-  // consecrated province).
-  const _consecPenalty = _consecratedHere && (atkAlign === 'Undead' || atkAlign === 'Evil') ? 0.85 : 1;
+  // consecrated province; the alignment abilities' registry's runner, P1-19au2).
+  const _consecPenalty = _consecratedHere
+    ? theFactorConsecratedGroundWeakensAnAttackersHostBy({ theAttackersAlignment: atkAlign })
+    : 1;
   if (_consecPenalty < 1)
     narrate(narrative, {
       kind: "the consecrated ground of the province weakens the attacker's host",
@@ -1797,8 +1811,9 @@ export function combatVsChar(
     }
     // DWARF — Shield Fort: trapped, the Guard hold contested WITHOUT extra no-escape losses; with
     // a path open, they withdraw in good order (mechanics applied above) — no pin.
-    const _dmDef =
-      def.armies.length > 0 && def.armies.every((a) => a._isSkeletal) && theDefendersRealm?.alignment === 'Undead';
+    const _dmDef = doesARealmsAlignmentHoldABeatenHostOnTheField(theDefendersRealm?.alignment, {
+      theCompanies: def.armies,
+    });
     // 2026-09-27 (Toby item 3): the naval split. Evaluated once, ahead of the branch chain, so a
     // mixed column whose hulls can still sail is never filed as "nowhere to retreat". A host that
     // is still the stronger and means to fight on (_wantsToStay) keeps that choice, and a dead
@@ -1990,8 +2005,9 @@ export function combatVsChar(
     }
     // DWARF — Shield Fort: trapped, the Guard hold contested WITHOUT extra no-escape losses; with
     // a path open, they withdraw in good order (mechanics applied above) — no pin.
-    const _dmAtk =
-      atk.armies.length > 0 && atk.armies.every((a) => a._isSkeletal) && theAttackersRealm?.alignment === 'Undead';
+    const _dmAtk = doesARealmsAlignmentHoldABeatenHostOnTheField(theAttackersRealm?.alignment, {
+      theCompanies: atk.armies,
+    });
     // 2026-09-27 (Toby item 3): the naval split — see the defender's block above for the reasoning.
     // (the winner's force and the winner, handed here once, are read by nothing)
     const _atkStays = atkFriendlyAdj.length > 0 && _wantsToStay(atk.armies, atk);

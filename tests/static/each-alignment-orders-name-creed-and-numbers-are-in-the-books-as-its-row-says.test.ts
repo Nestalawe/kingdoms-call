@@ -498,6 +498,12 @@ test("the abilities' numbers are the ones the books state today", () => {
     'consecrated-ground-doubles-a-defenders-zeal': { theTimesTheChance: 2 },
     'savage-fury': { theStrengthOfTheHost: 1.25 },
     'skeletal-fervour': { underTheKing: 1.5, underAnyOtherCommander: 1.3 },
+    'consecrated-ground-weakens-an-unholy-attacker': { theShareWeaker: 15 },
+    'righteous-defence': { theShareStronger: 10 },
+    'banner-of-fellowship': { thePointsMoreReadily: 15 },
+    'home-of-the-wild': { theStrengthOfACreature: 1.5 },
+    'reign-of-fear': { theStrengthOfAMonster: 1.5 },
+    'the-deathless-march': {},
   });
 });
 
