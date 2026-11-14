@@ -1981,7 +1981,7 @@ export interface TheStagesOfEachHookPoint {
      *  (Consecrate asks the king before the creed; Call to Arms and Broker the creed first; Harvest the Field and
      *  Perform Rite the creed alone), or null when he may give it (each order's resolver, before it reads his province
      *  or his target, and refuses with its own line: the alignment abilities' registry, P1-19aw2). */
-    readonly "who may give an alignment order": (
+    readonly 'who may give an alignment order': (
       facts: AHeroAsTheChecksOfAnAlignmentOrderReadHim,
     ) => TheCheckAnAlignmentOrderRefusesAHeroOn | null;
   };
