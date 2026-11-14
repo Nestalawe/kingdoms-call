@@ -18,9 +18,16 @@ import type { KC_ALIGNMENTS, KC_QUALITY_TIERS } from './kingdoms-call-data.ts';
 
 /** How the books write a number of an ability: as it is (2 as `2`), as a word (2 as `two`), the turns something lasts
  *  beyond this one as the turn it lasts until (1 as `the following turn`), a share as a percentage (20 as `20%`), a
- *  factor as a multiplier (1.25 as `×1.25`), or how many times as a multiple (2 as `double`); a grade as its name. */
+ *  factor as a multiplier (1.25 as `×1.25`), how many times as a multiple (2 as `double`), or a share as a fraction
+ *  (0.5 as `half`); a grade as its name. */
 export type HowTheBooksWriteAnAlignmentAbilitysNumber =
-  'as it is' | 'as a word' | 'as the turn it lasts until' | 'as a percentage' | 'as a multiplier' | 'as a multiple';
+  | 'as it is'
+  | 'as a word'
+  | 'as the turn it lasts until'
+  | 'as a percentage'
+  | 'as a multiplier'
+  | 'as a multiple'
+  | 'as a fraction';
 
 /** A number the books state for an ability: its value, how the books write it, and the words around it where they state
  *  it (`{N}` the value as written; the words as a reader sees them, without the page's markup). */
@@ -396,6 +403,69 @@ export const ALIGNMENT_ABILITIES = {
         value: 5,
         writtenAs: 'as a percentage',
         inItsCreedsSection: 'each Sage level adds a further +{N} discovery chance',
+      },
+    },
+  },
+  // Divine grace (P1-19ax1): a Divine realm's slain heroes, its king included, spend a full turn in death and rise at
+  // half health on the nearest consecrated province it holds, spending its consecration (the turn's start, 7d); a
+  // waiting king is not succeeded while one stays. Gated by the realm's alignment at the death, the succession and the
+  // return
+  'divine-grace': {
+    howItIsUsed: 'always on',
+    alignment: 'Divine',
+    theNumbers: {
+      theFullTurnsInDeath: {
+        value: 1,
+        writtenAs: 'as a word',
+        inItsCreedsSection: 'spends {N} full turn in death',
+      },
+      theShareOfHealthTheFallenRiseWith: {
+        value: 0.5,
+        writtenAs: 'as a fraction',
+        inItsCreedsSection: 'returns to life at the start of the turn after that, at {N} health',
+      },
+    },
+  },
+  // a Divine realm's Rest heals more: the Rest's heal times its factor, rounded up (Medical Arts' full heal goes first)
+  'the-divine-rest': {
+    howItIsUsed: 'always on',
+    alignment: 'Divine',
+    theNumbers: {
+      theFactorOfTheHeal: { value: 1.5, writtenAs: 'as a multiplier', inItsCreedsSection: 'Rest heals {N}' },
+    },
+  },
+  // a Pagan victor's blood harvest: gold for each enemy unit destroyed (the discoveries add theirs to it: Skull Tithe)
+  'blood-harvest': {
+    howItIsUsed: 'always on',
+    alignment: 'Pagan',
+    theNumbers: {
+      theGoldForEachFoeDestroyed: {
+        value: 1,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'Blood Harvest: +{N}g per enemy unit',
+      },
+    },
+  },
+  // an Evil hero's conquest doctrine, set on his orders: Terror plunders a share of the province's tax (and a decisive
+  // victory under it lays Terror), Enslave presses a free garrison unit and the province pays less tax for some turns
+  'plunder-or-enslave': {
+    howItIsUsed: 'always on',
+    alignment: 'Evil',
+    theNumbers: {
+      theShareOfTheTaxPlundered: {
+        value: 50,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: "Terror plunders {N} of the province's tax value",
+      },
+      theGradeOfTheEnslavedGarrison: {
+        value: 'Green',
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'presses the beaten folk into a free {N} garrison unit',
+      },
+      theTurnsTheEnslavedProvincePaysLess: {
+        value: 3,
+        writtenAs: 'as it is',
+        inItsCreedsSection: '1g less tax for {N} turns',
       },
     },
   },

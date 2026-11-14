@@ -35,6 +35,12 @@ import {
   A_REALMS_ALIGNMENT_CUTS_A_MERCENARY_BANDS_PRICE,
   A_REALMS_ALIGNMENT_RAISES_A_BLESSS_YIELD,
 } from './alignment-abilities/the-prices-and-the-scholars-of-a-realms-alignment.ts';
+import {
+  A_REALMS_ALIGNMENT_CLAIMS_GOLD_FOR_EACH_FOE_DESTROYED,
+  A_REALMS_ALIGNMENT_CONQUERS_BY_A_DOCTRINE,
+  A_REALMS_ALIGNMENT_RAISES_A_RESTS_HEAL,
+  A_REALMS_ALIGNMENT_RAISES_ITS_FALLEN_ON_HOLY_GROUND,
+} from './alignment-abilities/the-fallen-the-rest-the-harvest-and-the-conquests-of-a-realms-alignment.ts';
 import { WHO_MAY_GIVE_AN_ALIGNMENT_ORDER } from './alignment-abilities/who-may-give-an-alignment-order.ts';
 import type {
   ABeatenHostsCompanies,
@@ -51,6 +57,8 @@ import type {
   AUnitAsTheReignOfFearWeighsIt,
   AUnitAsTheWildWeighsIt,
   TheTaxOfAProvinceOnConsecratedGround,
+  TheConquestDoctrineOfARealmsAlignment,
+  TheReturnARealmsAlignmentGivesItsFallen,
 } from './the-registry-of-content-effects.ts';
 
 /** An entry: the ability's effect at each stage it acts in. */
@@ -178,6 +186,28 @@ export const THE_REGISTRY_OF_ALIGNMENT_ABILITIES = {
   'neutral-scholars': {
     orderOutcome: { "a realm's alignment adds to research": A_REALMS_ALIGNMENT_ADDS_TO_RESEARCH['neutral-scholars'] },
   },
+  'divine-grace': {
+    turnStart: {
+      "a realm's alignment raises its fallen on holy ground":
+        A_REALMS_ALIGNMENT_RAISES_ITS_FALLEN_ON_HOLY_GROUND['divine-grace'],
+    },
+  },
+  'the-divine-rest': {
+    orderOutcome: {
+      "a realm's alignment raises a rest's heal": A_REALMS_ALIGNMENT_RAISES_A_RESTS_HEAL['the-divine-rest'],
+    },
+  },
+  'blood-harvest': {
+    fate: {
+      "a realm's alignment claims gold for each foe destroyed":
+        A_REALMS_ALIGNMENT_CLAIMS_GOLD_FOR_EACH_FOE_DESTROYED['blood-harvest'],
+    },
+  },
+  'plunder-or-enslave': {
+    fate: {
+      "a realm's alignment conquers by a doctrine": A_REALMS_ALIGNMENT_CONQUERS_BY_A_DOCTRINE['plunder-or-enslave'],
+    },
+  },
   // the five alignment orders (P1-19aw1): who may give each (P1-19aw2); what each does is its resolver's, in
   // src/engine/orders/alignment/
   consecrate: {
@@ -219,6 +249,11 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES = {
   },
   fate: {
     "a realm's alignment holds a beaten host on the field": ['the-deathless-march'],
+    "a realm's alignment claims gold for each foe destroyed": ['blood-harvest'],
+    "a realm's alignment conquers by a doctrine": ['plunder-or-enslave'],
+  },
+  turnStart: {
+    "a realm's alignment raises its fallen on holy ground": ['divine-grace'],
   },
   movementCost: {
     "a realm's alignment helps converging columns unite": ['banner-of-fellowship'],
@@ -230,6 +265,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES = {
     "a realm's alignment cuts a mercenary band's price": ['the-neutral-mercenary-discount'],
     "a realm's alignment raises a Bless's yield": ['the-divine-blessing'],
     "a realm's alignment adds to research": ['neutral-scholars'],
+    "a realm's alignment raises a rest's heal": ['the-divine-rest'],
   },
   turnEnd: {
     "a realm's alignment adds to its tax": ['neutral-trade'],
@@ -249,6 +285,7 @@ const FATE = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.fate;
 const MOVEMENT_COST = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.movementCost;
 const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.orderOutcome;
 const ORDER_VALIDITY = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.orderValidity;
+const TURN_START = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.turnStart;
 
 /** The abilities of a stage's order the alignment holds, in the order. */
 const theAbilitiesOfTheStageAnAlignmentHolds = (
@@ -475,4 +512,47 @@ export function theCheckAnAlignmentOrderRefusesAHeroOn(
   const theStage = 'who may give an alignment order';
   const slug = ORDER_VALIDITY[theStage].find((s) => ROWS[s] === theOrder);
   return (slug === undefined ? undefined : ENTRIES[slug].orderValidity?.[theStage]?.(facts)) ?? null;
+}
+
+/** The runner of "turnStart: a realm's alignment raises its fallen on holy ground" (the turn's start, 7d, for each
+ *  grave; a monarch's death, 7a-bis and the succession, 7b, ask whether it gives one): the return of the first ability
+ *  the realm's alignment holds, or null when it holds none (its fallen stay dead, its king is succeeded). */
+export function theReturnARealmsAlignmentGivesItsFallen(
+  theAlignment: string | null | undefined,
+): TheReturnARealmsAlignmentGivesItsFallen | null {
+  const theStage = "a realm's alignment raises its fallen on holy ground";
+  const [slug] = theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, TURN_START[theStage]);
+  return (slug === undefined ? undefined : ENTRIES[slug].turnStart?.[theStage]?.()) ?? null;
+}
+
+/** The runner of "orderOutcome: a realm's alignment raises a rest's heal" (resolveRestOrder, when Medical Arts doesn't
+ *  heal him in full, before the Colossus and the discoveries add theirs): the factor of the first ability the resting
+ *  hero's realm's alignment holds, or null when it holds none (the Rest's own heal then; the line names a Divine
+ *  realm's Rest by it). */
+export function theFactorARealmsAlignmentRaisesARestsHealBy(theAlignment: string | null | undefined): number | null {
+  const theStage = "a realm's alignment raises a rest's heal";
+  const [slug] = theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, ORDER_OUTCOME[theStage]);
+  return (slug === undefined ? undefined : ENTRIES[slug].orderOutcome?.[theStage]?.()) ?? null;
+}
+
+/** The runner of "fate: a realm's alignment claims gold for each foe destroyed" (bloodHarvest, both battles' victories,
+ *  before the discoveries add theirs): the gold of the first ability the victor's realm's alignment holds, or null when
+ *  it holds none (no harvest then). */
+export function theGoldARealmsAlignmentClaimsForEachFoeDestroyed(
+  theAlignment: string | null | undefined,
+): number | null {
+  const theStage = "a realm's alignment claims gold for each foe destroyed";
+  const [slug] = theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, FATE[theStage]);
+  return (slug === undefined ? undefined : ENTRIES[slug].fate?.[theStage]?.()) ?? null;
+}
+
+/** The runner of "fate: a realm's alignment conquers by a doctrine" (applyEvilConquest, at every conquest site; both
+ *  battles, whether a decisive victory under the Terror doctrine lays Terror): the doctrine of the first ability the
+ *  conqueror's realm's alignment holds, or null when it holds none. */
+export function theConquestDoctrineOfARealmsAlignment(
+  theAlignment: string | null | undefined,
+): TheConquestDoctrineOfARealmsAlignment | null {
+  const theStage = "a realm's alignment conquers by a doctrine";
+  const [slug] = theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, FATE[theStage]);
+  return (slug === undefined ? undefined : ENTRIES[slug].fate?.[theStage]?.()) ?? null;
 }

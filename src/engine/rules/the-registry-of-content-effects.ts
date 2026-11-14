@@ -1683,6 +1683,23 @@ export interface AHeroAsTheChecksOfAnAlignmentOrderReadHim {
   readonly theAlignmentOfHisRealm: string | null | undefined;
 }
 
+/** How a realm's alignment raises its fallen on holy ground (Divine grace: the death, the succession and the turn's
+ *  start read it, P1-19ax1): the full turns the fallen spend in death, and the share of their maximum health they rise
+ *  with. */
+export interface TheReturnARealmsAlignmentGivesItsFallen {
+  readonly theFullTurnsInDeath: number;
+  readonly theShareOfHealth: number;
+}
+
+/** The conquest doctrine a realm's alignment holds (applyEvilConquest, and both battles' Terror, P1-19ax1): the share
+ *  of a province's tax its Terror plunders, the grade of the garrison unit Enslave presses, and the turns the enslaved
+ *  province pays less tax beyond this one. */
+export interface TheConquestDoctrineOfARealmsAlignment {
+  readonly theShareOfTheTaxPlundered: number;
+  readonly theGradeOfTheEnslavedGarrison: 'Green';
+  readonly theTurnsTheEnslavedProvincePaysLess: number;
+}
+
 /** The check of who may give an alignment order that refuses a hero: his realm isn't of the order's creed, or he isn't
  *  the king and the king alone gives it. */
 export type TheCheckAnAlignmentOrderRefusesAHeroOn = 'his realm is not of its creed' | 'he is not the king';
@@ -1886,6 +1903,12 @@ export interface TheStagesOfEachHookPoint {
     /** Whether a beaten host's realm's alignment holds it on the field, with no flight losses (both battles' routs,
      *  first of each chain; the alignment abilities' registry, P1-19au2). */
     readonly "a realm's alignment holds a beaten host on the field": (facts: ABeatenHostsCompanies) => boolean;
+    /** The gold an ability of a victor's realm's alignment claims for each enemy unit destroyed, before the discoveries
+     *  add theirs (bloodHarvest, both battles: the alignment abilities' registry, P1-19ax1). */
+    readonly "a realm's alignment claims gold for each foe destroyed": () => number;
+    /** The conquest doctrine an ability of a conqueror's realm's alignment holds (applyEvilConquest, every conquest
+     *  site; both battles' Terror after a decisive victory: the alignment abilities' registry, P1-19ax1). */
+    readonly "a realm's alignment conquers by a doctrine": () => TheConquestDoctrineOfARealmsAlignment;
     /** A pursuit of the beaten by the winning force, or nothing (the rout of both battles, before the beaten units'
      *  death rolls). */
     readonly 'the winner runs the beaten down': (facts: AWinningForceOnItsGround) => APursuitOfTheBeaten | null;
@@ -2030,6 +2053,9 @@ export interface TheStagesOfEachHookPoint {
      *  begins; the runner gives the first effect's, or nothing if the realm holds none
      *  (startPhaseHealingSnapshotsAndStalledBattles, which rounds it and writes the line). */
     readonly "a realm's discoveries dress a fighter's wounds": (theEffect: TheEffectOfADiscovery) => number;
+    /** How an ability of a realm's alignment raises its fallen on holy ground (the turn's start, 7d; the death and the
+     *  succession ask whether it does: the alignment abilities' registry, P1-19ax1). */
+    readonly "a realm's alignment raises its fallen on holy ground": () => TheReturnARealmsAlignmentGivesItsFallen;
   };
   readonly turnEnd: {
     /** The unit a province raises into its garrison, or nothing (Early Winter, after the wages: plan P1-19's second
@@ -2235,6 +2261,9 @@ export interface TheStagesOfEachHookPoint {
     /** The points an ability of a scholar's realm's alignment adds to his chance of a discovery; the runner adds them
      *  (resolveResearchOrder, and the report's odds: the alignment abilities' registry, plan P1-19av1). */
     readonly "a realm's alignment adds to research": (facts: AResearchARealmsAlignmentMayHelp) => number;
+    /** The factor an ability of a resting hero's realm's alignment raises his Rest's heal by, rounded up (resolveRestOrder,
+     *  when Medical Arts doesn't heal him in full: the alignment abilities' registry, P1-19ax1). */
+    readonly "a realm's alignment raises a rest's heal": () => number;
   };
   /** A hero's own figures a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19p, typed it). */
   readonly aHerosStanding: {

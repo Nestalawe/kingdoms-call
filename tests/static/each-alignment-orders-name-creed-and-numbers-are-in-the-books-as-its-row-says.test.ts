@@ -77,6 +77,8 @@ const theRowsOf = (table: string): string[][] =>
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const THE_TURN_IT_LASTS_UNTIL: Readonly<Record<number, string>> = { 1: 'the following turn' };
 const THE_MULTIPLES: Readonly<Record<number, string>> = { 2: 'double' };
+/** A share as the books write it as a fraction (P1-19ax1: Divine grace's half health). */
+const THE_FRACTIONS: Readonly<Record<number, string>> = { 0.5: 'half' };
 /** A number as the books write it, as its row says. */
 function written(n: ANumberOfAnAlignmentAbility | ANumberOfTheLadder): string {
   if (n.writtenAs === 'as it is') return String(n.value);
@@ -86,6 +88,11 @@ function written(n: ANumberOfAnAlignmentAbility | ANumberOfTheLadder): string {
     const m = typeof n.value === 'number' ? THE_MULTIPLES[n.value] : undefined;
     if (m === undefined) throw new Error(`no words for ${String(n.value)} as a multiple`);
     return m;
+  }
+  if (n.writtenAs === 'as a fraction') {
+    const f = typeof n.value === 'number' ? THE_FRACTIONS[n.value] : undefined;
+    if (f === undefined) throw new Error(`no words for ${String(n.value)} as a fraction`);
+    return f;
   }
   const words = n.writtenAs === 'as a word' ? WORDS : THE_TURN_IT_LASTS_UNTIL;
   const w = typeof n.value === 'number' ? words[n.value] : undefined;
@@ -522,6 +529,14 @@ test("the abilities' numbers are the ones the books state today", () => {
     'creatures-follow-without-a-druid': {},
     'monsters-follow-without-a-druid': {},
     'neutral-scholars': { thePointsASageLevelAdds: 5 },
+    'divine-grace': { theFullTurnsInDeath: 1, theShareOfHealthTheFallenRiseWith: 0.5 },
+    'the-divine-rest': { theFactorOfTheHeal: 1.5 },
+    'blood-harvest': { theGoldForEachFoeDestroyed: 1 },
+    'plunder-or-enslave': {
+      theShareOfTheTaxPlundered: 50,
+      theGradeOfTheEnslavedGarrison: 'Green',
+      theTurnsTheEnslavedProvincePaysLess: 3,
+    },
   });
 });
 
