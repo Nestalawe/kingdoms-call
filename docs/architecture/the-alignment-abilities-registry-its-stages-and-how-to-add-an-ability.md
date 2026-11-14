@@ -72,6 +72,19 @@ always (even at 0, and when a fervour wins); against a province's defenders the 
 | `fate`: **a realm's alignment holds a beaten host on the field** | Undead's Deathless March | the three routs (each its own companies), first in each chain |
 | `movementCost`: **a realm's alignment helps converging columns unite** | Good's Banner of Fellowship | `resolveMoveOrder`, both rolls; its 15 points |
 
+**Prices and the scholars** (P1-19av1, `alignment-abilities/the-prices-and-the-scholars-of-a-realms-alignment.ts`):
+
+| Stage (`orderOutcome`) | Its ability | Where it is asked, and what it gives |
+|---|---|---|
+| **a realm's alignment cuts a mercenary band's price** | Neutral's 2g off | the Recruit Armies hire and the report's price, before the discoveries' and under the 1g floor; the gold, added |
+| **a realm's alignment raises a Bless's yield** | Divine's blessing | `workBlessProvince`; the whole yield, `1 + 100 / 100` by the king, `1 + 80 / 100` by another (exactly 2 and 1.8), or null for the spell's own 1.6; the discoveries are added after it. The line's "by a Divine realm" is "not null" |
+| **a realm's alignment adds to research** | Neutral's scholars | the Research order and the report's odds, after the Sage level's own points; the level × 5 |
+
+**The Druid waiver** (Druidic Creatures, Evil Monsters: two rows, no number) is read by `druidNeedWaivedByAlignment`
+in `src/engine/rules-on-plain-values/`, which the player portal shares and which may import only `src/content`: it
+reads the rows' alignments, the realm's or the leader's own (Decision G), and their entries have no stage (the
+registry's unit test lists them).
+
 ## Outside the family
 
 - **The ladder of alignments** (hire wages by distance, the Divine-Undead hiring ban, mercy by the foe's alignment,
@@ -89,8 +102,8 @@ always (even at 0, and when a fervour wins); against a province's defenders the 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order; each row's alignment one, and its key no discovery's name or slug and no order's; the runners' sums
   (the trade's, over 301 incomes, against `neutralTradeGold`; the consecrated tax's, over 301 taxes; zeal's chance by
-  creed, the doubling, the fervours against the old `Math.max`, and the other battle factors' and the Banner's by
-  creed).
+  creed, the doubling, the fervours against the old `Math.max`, the other battle factors' and the Banner's, the
+  prices', the scholars' and the Druid waiver's by creed).
 - `tests/unit/the-sides-of-a-battle-between-heroes-in-the-lines-no-matrix-game-reaches.test.ts`: the doubling, with
   staged dice, after the discoveries' share; `…the-sides-and-the-defenders-of-a-battle-against-a-province-…`: the
   other battle factors at both battles.
@@ -99,7 +112,7 @@ always (even at 0, and when a fervour wins); against a province's defenders the 
 - `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts`: each number
   of each row in each place its row names.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
-  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1, 133 after P1-19au2): the functions taken name no alignment, and the
+  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1, 133 after P1-19au2, 126 after P1-19av1): the functions taken name no alignment, and the
   engine's names of an alignment outside `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
   the count stays above 0.
 
