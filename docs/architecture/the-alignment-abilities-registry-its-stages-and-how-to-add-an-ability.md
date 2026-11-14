@@ -49,6 +49,18 @@ in `src/engine/rules/alignment-abilities/`, a file per group of stages.
   an earthquake and Sabotage, and before Enslave and the discoveries. It is handed the tax so far and returns the new
   tax, `Math.round(t * (1 + 50 / 100))`, exactly today's `Math.round(t * 1.5)`; the caller notes the uplift.
 
+**A side's zeal and fervour in a battle** (P1-19au1, `alignment-abilities/a-sides-zeal-and-fervour-in-a-battle.ts`),
+asked by both battles (`combatVsChar`, `combatVsNPC`) where they read the old table and constants:
+
+| Stage (`strength`) | Its abilities | What it is handed, and gives |
+|---|---|---|
+| **a realm's alignment gives a side its chance of zeal** | the seven creeds' zeal rows (Divine 50% to Undead 0%) | nothing; the creed's chance. The runner reads the side's realm's alignment (Neutral for none) and gives 0.1 for one no row holds, as the old `?? 0.1` did. The discoveries' share is added after it |
+| **consecrated ground stirs a defender's zeal** | the doubling (Divine; no name in the books) | the chance so far, after the discoveries' share; `Math.min(1, chance × 2)`. Only `combatVsChar`, for a defender on a province his realm owns and its consecration list holds: handed no alignment |
+| **a realm's alignment stirs a side's fervour** | skeletal fervour (Undead: ×1.5 under the king, ×1.3 under another), savage fury (Evil: ×1.25 with a Monster) | whether zeal seized the side, its king, its force; the strongest of 1, zeal's ×1.3 (the Divine row's: the books state it there) and each fervour that stirs, as the old `Math.max`, and the abilities that stirred (the lines name them) |
+
+The battles still draw the rolls themselves, where they did: between heroes the attacker's, then the defender's, both
+always (even at 0, and when a fervour wins); against a province's defenders the attacker's alone.
+
 ## Outside the family
 
 - **The ladder of alignments** (hire wages by distance, the Divine-Undead hiring ban, mercy by the foe's alignment,
@@ -65,13 +77,16 @@ in `src/engine/rules/alignment-abilities/`, a file per group of stages.
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order; each row's alignment one, and its key no discovery's name or slug and no order's; the runners' sums
-  (the trade's, over 301 incomes, against `neutralTradeGold`; the consecrated tax's, over 301 taxes).
+  (the trade's, over 301 incomes, against `neutralTradeGold`; the consecrated tax's, over 301 taxes; zeal's chance by
+  creed, the doubling, and the fervours against the old `Math.max`).
+- `tests/unit/the-sides-of-a-battle-between-heroes-in-the-lines-no-matrix-game-reaches.test.ts`: the doubling, with
+  staged dice, after the discoveries' share.
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts`: each number
   of each row in each place its row names.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
-  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2): the functions taken name no alignment, and the
+  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1): the functions taken name no alignment, and the
   engine's names of an alignment outside `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
   the count stays above 0.
 
