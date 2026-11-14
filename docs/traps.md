@@ -43,7 +43,7 @@ catch a page that no longer boots. [Detail](architecture/the-build-from-src-to-s
 
 ## `select('*')` on big tables
 
-Pollers, lists and anything that runs often select named columns (`gamesListCols()`) and read summaries from
+Pollers, lists and anything that runs often select named columns (`Db`'s light lists) and read summaries from
 `games.meta`; the full world is loaded only when it's really needed, once. Example: `games.game_state` is hundreds of
 KB per game; in Sept 2026 a once-a-minute watcher selecting `*` drained the database's Disk IO budget (~810 KB a tick,
 ~1 KB after the fix). Checks: lint
@@ -56,7 +56,7 @@ or `profiles`, and `profiles`' `email`; the reads there when it came in are in `
 Code that writes a new column copes while the column is missing. Example: a site pull request labelled `staging`
 without the database pull request it needs meets a staging database without the column, and old copies of the site
 can't be ruled out; writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
-(`probeGameMeta`), spread `{}` for the field while it's absent (`metaPatch`); readers fall back to the old source. Checks: a test that hides the column (`MISSING_COLS` in `tests/lib/stub-db.js`),
+(`probeGameMeta`), spread `{}` for the field while it's absent (`metaPatch`); readers fall back to the old source. Checks: a test that hides the column (the fake's `missingColumns`, `tests/lib/fake-db.ts`),
 as `tests/meta-missing-turn.test.js` does. This is why database and site changes go in separate PRs
 ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)).
 

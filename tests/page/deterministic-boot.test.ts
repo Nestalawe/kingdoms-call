@@ -13,14 +13,14 @@
 // (the page job), byte for byte. Level 4: the turn runs inside the booted page, on the page's own clock. TypeScript, in
 // `page/`
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { bootJsdom, readPage, seededRandom } from '../lib/boot.js';
-import { makeStub } from '../lib/stub-db.js';
+import { bootJsdom, DB_VERSION, readPage, seededRandom } from '../lib/boot.js';
+import { aGameMastersWorld, makeAFakeDbHoldingTheGameMastersWorld } from '../lib/fake-db.ts';
 
 const NOW = '2026-10-01T12:00:00Z';
 const REALMS = 4;
 
-// The stand-in database stamps rows with the test process's own clock; hold it still so only the page's clock
-// can make two runs differ.
+// Hold the test process's own clock still (the stand-in database stamped rows with it until plan P1-17q2), so only
+// the page's clock can make two runs differ.
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'], now: new Date(NOW) });
 });
@@ -31,10 +31,11 @@ afterEach(() => {
 // Boots the GM portal, makes a world where every realm is a bot, runs one turn, and returns what was saved.
 // `mathRandomSeed` sets the page's Math.random to another stream than its dice (by default both have `seed`).
 async function oneTurn(seed: number, now: string, mathRandomSeed?: number): Promise<string> {
-  const S = makeStub();
+  const S = aGameMastersWorld();
   const errors: string[] = [];
   const dom = bootJsdom(readPage('kingdoms-call-gm-portal.html'), {
-    supabase: S.supabase,
+    supabase: { createClient: () => ({}) },
+    db: makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION, S).db,
     seed,
     now,
     setup(w) {
@@ -66,8 +67,8 @@ async function oneTurn(seed: number, now: string, mathRandomSeed?: number): Prom
     W.eval(`(function(){ const g=generateNewGame(__sp,{cols:9,rows:7},0,{seaPct:35});
       g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
       g.botDifficulty='hard'; g.botDiplomacy='normal'; window.__G=g; })()`);
-    const games = S.DB['games'] ?? [];
-    const players = S.DB['game_players'] ?? [];
+    const games = S.tables.games;
+    const players = S.tables.game_players;
     games.push({
       id: 'G1',
       name: 'Determinism',
@@ -99,10 +100,10 @@ async function oneTurn(seed: number, now: string, mathRandomSeed?: number): Prom
     expect(result?.ok, 'the turn resolves').not.toBe(false);
     expect(games[0]?.['turn'], 'the turn moved on').toBe(2);
     return JSON.stringify({
-      games: S.DB['games'],
-      players: S.DB['game_players'],
-      logs: S.DB['turn_logs'],
-      events: S.DB['turn_events'],
+      games: S.tables.games,
+      players: S.tables.game_players,
+      logs: S.tables.turn_logs,
+      events: S.tables.turn_events,
     });
   } finally {
     W.close();

@@ -5,7 +5,7 @@ import { kcClock } from '../../engine/clock.ts';
 import { KC_BUILD_STAMP } from './startup.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../../engine/army-tables.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
-import { sb, thePagesDb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { kcMissingMsg, parseGameState } from './startup.ts';
 import { gameMetaOf } from '../../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { computeStandings } from '../../engine/titles/reckoning.ts';
@@ -832,7 +832,7 @@ export async function writeGameResults(gs, gameRow, players) {
   if (!_kcHasTel) return false;
   const rows = buildGameResultRows(gs, gameRow, players);
   if (!rows.length) return false;
-  const { error } = await sb.from('game_results').upsert(rows, { onConflict: 'game_id,player_index' });
+  const { error } = await thePagesDb.theStatistics.writeTheseResults(rows);
   if (error) {
     _kcTelLastErr = error.message;
     renderTelemetryBanner();
@@ -844,28 +844,17 @@ export async function writeGameResults(gs, gameRow, players) {
 export async function backfillGameResults() {
   if (!_kcHasTel || !currentUser) return 0;
   try {
-    const { data: games, error } = await sb
-      .from('games')
-      .select('id,name,status')
-      .eq('gm_user_id', currentUser.id)
-      .eq('status', 'complete');
+    const { data: games, error } =
+      await thePagesDb.theHallOfFamesGames.theIdNameAndStateOfTheFinishedGamesThisGameMasterRuns(currentUser.id);
     if (error || !games || !games.length) return 0;
-    const { data: have } = await sb
-      .from('game_results')
-      .select('game_id')
-      .in(
-        'game_id',
-        games.map((g) => String(g.id)),
-      );
+    const { data: have } = await thePagesDb.theStatistics.theGamesOfTheseGamesResults(games.map((g) => String(g.id)));
     const done = new Set((have || []).map((r) => r.game_id));
     let n = 0;
     for (const g of games) {
       if (done.has(String(g.id))) continue;
-      const { data: full } = await sb
-        .from('games')
-        .select('id,name,game_state,game_players(*)')
-        .eq('id', g.id)
-        .single();
+      const { data: full } = await thePagesDb.theHallOfFamesGames.thisGamesIdNameAndWorldWithEveryColumnOfItsRealms(
+        g.id,
+      );
       if (!full) continue;
       const gs = parseGameState(full);
       if (!gs || !gs.players) continue;
@@ -915,7 +904,7 @@ export async function writeTurnTelemetry(gs, gameRow, players, tel, turn) {
       build: `GM ${KC_BUILD_STAMP} tel${KC_TEL_V}`,
     });
   });
-  const { error } = await sb.from('turn_events').upsert(rows, { onConflict: 'game_id,turn,player_index' });
+  const { error } = await thePagesDb.theStatistics.writeTheseTurnRecords(rows);
   if (error) {
     _kcTelLastErr = error.message;
     renderTelemetryBanner();

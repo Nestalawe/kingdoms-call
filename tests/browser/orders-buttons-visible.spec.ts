@@ -2,9 +2,8 @@
 // scrolled to the top of a long orders form or half-way down, on a desktop window and on a phone.
 // Layout only exists in a real browser, so this is a Chromium page test. Made-up heroes; no database.
 import { expect, test } from '@playwright/test';
-import { routeExternal } from '../lib/boot.js';
-import { browserSource } from '../lib/stub-db.js';
 import { signedOut } from './started.ts';
+import { handThePageTheFakeDb } from './the-fake-db-handed-to-chromium.ts';
 
 interface Seen {
   tall: boolean;
@@ -42,8 +41,7 @@ for (const [label, viewport] of [
 
     test('Save Draft and Submit are on screen at the top of the orders and part-way down', async ({ page }) => {
       const errs: string[] = [];
-      await page.addInitScript(browserSource.null);
-      await routeExternal(page, '');
+      await handThePageTheFakeDb(page);
       page.on('pageerror', (e) => errs.push(e.message));
       await page.goto('/kingdoms-call-player-portal.html');
       await signedOut(page);

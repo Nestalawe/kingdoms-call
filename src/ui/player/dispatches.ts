@@ -140,7 +140,7 @@ function theWordsOfWhatTheDispatchesMet(e: unknown): string {
   return String(words);
 }
 // A database's refusal (its message, code and hint: not an Error), thrown as it is for the catch that reads it.
-function theRefusalAsThrown(error: unknown): unknown {
+export function theRefusalAsThrown(error: unknown): unknown {
   return error;
 }
 // The turn the page marks on its seat or report (`_liveTurn`), or the holder itself where it has none.

@@ -1,6 +1,6 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { sb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { _kcOverlord, loadReportedDispatches, show } from './sign-in.ts';
 import { invitedNames, loadInvitablePlayers, closeEditInvites } from './game-list.ts';
 import { loadTurnLog } from './turn-log.ts';
@@ -30,7 +30,7 @@ export async function openGame(gameId) {
   document.getElementById('detail-log-card').style.display = 'none';
   document.getElementById('detail-run-turn0-wrap').style.display = 'none';
 
-  const { data: game, error } = await sb.from('games').select('*, game_players(*)').eq('id', gameId).single();
+  const { data: game, error } = await thePagesDb.theGameMastersGames.thisGameWithItsRealms(gameId);
   if (error) {
     document.getElementById('detail-msg').innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
     return;
@@ -238,10 +238,10 @@ export async function saveEditInvites() {
   cfg.visibility = 'private';
   cfg.invited = invited;
   if (msg) msg.innerHTML = '<span style="color:var(--stone)">Saving…</span>';
-  const { error } = await sb
-    .from('games')
-    .update({ game_state: JSON.stringify(cfg), ...metaPatch(cfg) })
-    .eq('id', currentGame.id);
+  const { error } = await thePagesDb.theGameMastersGames.changeThisGame(currentGame.id, {
+    game_state: JSON.stringify(cfg),
+    ...metaPatch(cfg),
+  });
   if (error) {
     if (msg) msg.innerHTML = kcHtml`<span style="color:#e88">${error.message}</span>`;
     return;
@@ -283,10 +283,10 @@ export async function removePlayer(gamePlayerId) {
         pl._gmRemoved = true;
         gs._gmRemovedRealms = Array.isArray(gs._gmRemovedRealms) ? gs._gmRemovedRealms : [];
         if (!gs._gmRemovedRealms.includes(row.player_index)) gs._gmRemovedRealms.push(row.player_index);
-        const { error: sErr } = await sb
-          .from('games')
-          .update({ game_state: JSON.stringify(gs), ...metaPatch(gs) })
-          .eq('id', currentGame.id);
+        const { error: sErr } = await thePagesDb.theGameMastersGames.changeThisGame(currentGame.id, {
+          game_state: JSON.stringify(gs),
+          ...metaPatch(gs),
+        });
         if (sErr) {
           msg.innerHTML = kcHtml`<div class="msg-error">Could not record the concession: ${sErr.message}</div>`;
           return;
@@ -295,7 +295,7 @@ export async function removePlayer(gamePlayerId) {
         Object.assign(currentGame, metaPatch(gs));
       }
     }
-    const { error } = await sb.from('game_players').delete().eq('id', row.id);
+    const { error } = await thePagesDb.theGameMastersRealms.removeThisRealm(row.id);
     if (error) {
       msg.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
       return;
@@ -326,13 +326,11 @@ export async function saveTurnMode() {
   if (msg) msg.innerHTML = '<span style="color:var(--stone)">Saving…</span>';
   // Optimistic-concurrency guard: refuse to overwrite a state the watcher (in another tab) has just
   // advanced.
-  const { data, error } = await sb
-    .from('games')
-    .update({ game_state: JSON.stringify(gs), ...metaPatch(gs) })
-    .eq('id', currentGame.id)
-    .eq('turn', currentGame.turn)
-    .select('id')
-    .maybeSingle();
+  const { data, error } = await thePagesDb.theGameMastersGames.changeThisGameWhileOnThisTurnAndAnswerItsId(
+    currentGame.id,
+    currentGame.turn,
+    { game_state: JSON.stringify(gs), ...metaPatch(gs) },
+  );
   if (error) {
     if (msg) msg.innerHTML = kcHtml`<span style="color:#e88">${error.message}</span>`;
     return;

@@ -58,6 +58,8 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **An element looked up before an await and written after it** (the game lists' `el`, read at the top, written on
   each path) keeps its lookup; each write reads it through a reader that throws for `null` (`theElementFound`), so a
   missing element still stops the code where the write did.
+- **A box read for a value nobody reads** (`const race = …('join-race').value`, unused in `joinGame`) is looked up as a
+  bare call, `theElementWithTheId('join-race', HTMLSelectElement);`: the same throw for a missing box, nothing else.
 
 ## Writing into the page
 
@@ -82,12 +84,15 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   `void kcDbGuard(…).then(…)`: the same promise, its rejection still unhandled (lint's `no-floating-promises`).
 - **A `catch` callback** takes its error as `unknown` (lint's `use-unknown-in-catch-callback-variable`); `'…' +
   err.message` reads the message through `Reflect.get(Object(err), 'message')`, in words, after a check that throws for
-  `null` or `undefined` as the read did (`theMessageOf`, `src/ui/player/start.ts`).
+  `null` or `undefined` as the read did, in its words (`theMessageOf`, `src/ui/player/sign-in.ts`); `${e.message ||
+  'x'}` is `thisOrElse(theMessageReadOff(e), 'x')`, the message as read.
 
 - **A database's refusal thrown for the page's own `catch`** (`if (error) throw error;`, the answer's error an object
   with its message, code and hint, not an `Error`) is thrown through a reader typed `unknown` (`theRefusalAsThrown`,
   `dispatches.ts`): the same object reaches the `catch`, which reads its words and hint; lint's `only-throw-error`
   refuses an object of a known type that isn't an `Error`, and wrapping it would lose its hint.
+- **A refusal's field its answer type lacks** (`error.code === '23505'`, the join's second realm) is read
+  `Reflect.get(error, 'code')` into an `unknown`: the same field of the same object.
 
 - **An `async` function that awaits nothing** (a page global no caller awaits: Resubmit) is a plain function (lint's
   `require-await`): its promise was read by nobody, and its body throws only where the page holds none of an element
@@ -119,3 +124,6 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   A global read only by files that keep their line stays `PageState`. A derived report type may make a field its base
   leaves optional sure only where the base already does (the map's province keeps the forecasts' `row`, `col`); a guard
   on it reads it through `asItsGuardReadsIt`, which the player page takes from `src/shared/`.
+- **Parts of the report no typed reader declares** (the chronicle's sightings and names to tint) are read through a local
+  of a type with only the fields read, each element `object & { … }` (`TheReportAsTheChronicleTintsIt`): the report's
+  own types pass, and `viewingReport ?? currentReport ?? {}` is the same object `||` gave.

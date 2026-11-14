@@ -1,7 +1,7 @@
 {
   "src/db/the-db-interface-and-its-areas.ts": {
     "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 7
+      "count": 16
     }
   },
   "src/engine/battle/battle-report-lines-and-force-markers.ts": {
@@ -343,9 +343,6 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
-    },
     "no-useless-assignment": {
       "count": 2
     }
@@ -353,9 +350,6 @@
   "src/ui/gm/game-list.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 4
-    },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
     },
     "prefer-const": {
       "count": 2
@@ -365,16 +359,8 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 4
     },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
-    },
     "no-empty": {
       "count": 1
-    }
-  },
-  "src/ui/gm/startup.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 4
     }
   },
   "src/ui/gm/stats-tab.ts": {
@@ -385,22 +371,11 @@
   "src/ui/gm/turn-log.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 1
-    }
-  },
-  "src/ui/gm/turn-mode.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
     }
   },
   "src/ui/gm/turn-shell.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 3
-    },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 2
     },
     "prefer-const": {
       "count": 1
@@ -410,33 +385,11 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 4
     },
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 3
-    },
     "no-empty": {
       "count": 2
     },
     "prefer-const": {
       "count": 1
-    }
-  },
-  "src/ui/leaderboard/main.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 5
-    }
-  },
-  "src/ui/player/join-and-chronicle.ts": {
-    "@typescript-eslint/no-dynamic-delete": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 7
-    },
-    "no-empty": {
-      "count": 2
-    },
-    "prefer-const": {
-      "count": 4
     }
   },
   "src/ui/player/report.ts": {
@@ -451,14 +404,6 @@
     },
     "prefer-const": {
       "count": 4
-    }
-  },
-  "src/ui/player/sign-in.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    },
-    "no-empty": {
-      "count": 3
     }
   },
   "src/views/every-realms-report-and-the-lines-each-realm-reads.ts": {

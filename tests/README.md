@@ -153,7 +153,8 @@ image's `onerror` really firing). They are not part of `npm test`.
 - **The site is served from one folder, as deployed**, by `browser/server.ts` (`lib/boot.js`'s `serve`), which
   Playwright starts on port 4173: `site/`, or the copy in `KC_SITE` (`KC_SITE=/tmp/broken-site npx playwright test`).
   A server already on the port is never reused. Specs open pages by path (`page.goto('/kingdoms-call-gm-portal.html')`)
-  and answer supabase-js with a stand-in (`routeExternal`, `lib/stub-db.js`'s `browserSource`).
+  and answer supabase-js with a stand-in (`routeExternal`, `lib/stub-db.js`'s `browserSource`), or hand the player
+  page the fake (`browser/the-fake-db-handed-to-chromium.ts`).
 - **The same answer every time**, as in Vitest: the Node check (`setup/global.ts`), the time zone and locale
   (`setup/fixed.mts`, in Node and in the browser), `KC_SEED` with the same default. No retries, and a `.only` fails
   the run. A failing spec keeps its trace in `test-results/` (in CI, the run's `playwright-traces` download).

@@ -2,7 +2,7 @@
 import { kcHtml } from '../shared/kc-safe.ts';
 import { kcRng } from '../../engine/rng.ts';
 import { kcClock } from '../../engine/clock.ts';
-import { sb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { loadGames } from './game-list.ts';
 import { openGame } from './game-detail.ts';
 import { normalizeTurnMode } from './startup.ts';
@@ -91,8 +91,12 @@ export async function runTurn(opts) {
 
   try {
     // 1. Load fresh data
-    const { data: freshGame, error: gErr } = await sb.from('games').select('*').eq('id', gameRow.id).single();
-    const { data: freshPlayers, error: pErr } = await sb.from('game_players').select('*').eq('game_id', gameRow.id);
+    const { data: freshGame, error: gErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.thisGameEveryColumn(
+      gameRow.id,
+    );
+    const { data: freshPlayers, error: pErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.everyRealmOfThisGame(
+      gameRow.id,
+    );
     if (gErr || pErr || !freshGame) {
       msg.innerHTML = kcHtml`<div class="msg-error">Could not load game: ${gErr?.message || pErr?.message}</div>`;
       return { ok: false, committed: false, error: 'could not load game' };
@@ -128,10 +132,9 @@ export async function runTurn(opts) {
     ordersSnapshot = freshPlayers
       .filter((p) => p.user_id && p.orders)
       .map((p) => ({ id: p.id, orders: p.orders, submitted: !!p.orders_submitted }));
-    const { error: clearErr } = await sb
-      .from('game_players')
-      .update({ orders: null, orders_submitted: false })
-      .eq('game_id', gameRow.id);
+    const { error: clearErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.clearTheOrdersOfEveryRealmOfThisGame(
+      gameRow.id,
+    );
     if (clearErr) {
       // Nothing was cleared (one update, all or nothing), so nothing needs putting back. Stop before the
       // turn runs: a turn saved over orders still marked "in" would let the watcher run the next turn at
@@ -172,23 +175,22 @@ export async function runTurn(opts) {
     // match and we abort WITHOUT restoring orders (the other run consumed them) — the double-run
     // guard for automatic modes.
     _saveSent = true;
-    const { data: _savedRow, error: saveErr } = await sb
-      .from('games')
-      .update({
-        game_state: JSON.stringify(G),
-        ...metaPatch(G),
-        turn: G.turn,
-        // Victory (#7): no turn limit. The game is complete only when decided by the Reckoning or by
-        // elimination (G.gameOver). max_turns is retained only as an optional GM hard-backstop below.
-        status:
-          G.gameOver || (G.maxTurns && G.maxTurns > 0 && G.turn > G.maxTurns && G.maxTurnsHardStop)
-            ? 'complete'
-            : 'active',
-      })
-      .eq('id', gameRow.id)
-      .eq('turn', expectedTurnToRun)
-      .select('id')
-      .maybeSingle();
+    const { data: _savedRow, error: saveErr } =
+      await thePagesDb.theTurnAsTheGameMasterRunsIt.saveThisGameWhileOnThisTurnAndAnswerItsId(
+        gameRow.id,
+        expectedTurnToRun,
+        {
+          game_state: JSON.stringify(G),
+          ...metaPatch(G),
+          turn: G.turn,
+          // Victory (#7): no turn limit. The game is complete only when decided by the Reckoning or by
+          // elimination (G.gameOver). max_turns is retained only as an optional GM hard-backstop below.
+          status:
+            G.gameOver || (G.maxTurns && G.maxTurns > 0 && G.turn > G.maxTurns && G.maxTurnsHardStop)
+              ? 'complete'
+              : 'active',
+        },
+      );
     if (saveErr) throw new Error(`Error saving: ${saveErr.message}`); // the catch re-reads the turn: an error doesn't prove the save failed
     if (!_savedRow) {
       _saveConflict = true;
@@ -207,12 +209,10 @@ export async function runTurn(opts) {
     let reportErrors = [];
     for (const { gp, report } of reports) {
       report.engineStamp = typeof runningBuildStamp === 'function' ? runningBuildStamp() : null; // which GM build wrote it: the page's to know, not the engine's
-      const { error: rErr } = await sb
-        .from('game_players')
-        .update({
-          turn_report: JSON.stringify(report),
-        })
-        .eq('id', gp.id);
+      const { error: rErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.giveThisRealmItsTurnReport(
+        gp.id,
+        JSON.stringify(report),
+      );
       if (rErr) reportErrors.push(gp.player_index + ': ' + rErr.message);
 
       // Save a per-player snapshot of this report so the player portal can render the correct MAP and
@@ -220,7 +220,7 @@ export async function runTurn(opts) {
       // "Turn N results" the player sees. Stored as a separate turn_logs row
       // (player_index = this player) — the GM full log uses player_index = -1.
       try {
-        await sb.from('turn_logs').insert({
+        await thePagesDb.theTurnAsTheGameMasterRunsIt.writeThisLog({
           game_id: gameRow.id,
           player_index: gp.player_index,
           turn: G.turn - 1,
@@ -233,7 +233,7 @@ export async function runTurn(opts) {
 
     // 11. Save full log to turn_logs table: the turn's lines in words, as the views wrote them (P1-12c3), in the form
     // the GM log has always been stored in.
-    await sb.from('turn_logs').insert({
+    await thePagesDb.theTurnAsTheGameMasterRunsIt.writeThisLog({
       game_id: gameRow.id,
       player_index: -1, // -1 = full GM log
       turn: G.turn - 1,
@@ -285,7 +285,9 @@ export async function runTurn(opts) {
     if (_saveSent && !_turnCommitted && !_saveConflict) {
       let _turnNow = null;
       try {
-        const { data: _g, error: _gErr } = await sb.from('games').select('turn').eq('id', gameRow.id).maybeSingle();
+        const { data: _g, error: _gErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.theTurnOfThisGameIfItIsThere(
+          gameRow.id,
+        );
         if (!_gErr && _g) _turnNow = _g.turn;
       } catch (_re) {
         /* unknown: handled below */
@@ -303,7 +305,7 @@ export async function runTurn(opts) {
       try {
         const _res = await Promise.all(
           ordersSnapshot.map((snap) =>
-            sb.from('game_players').update({ orders: snap.orders, orders_submitted: snap.submitted }).eq('id', snap.id),
+            thePagesDb.theTurnAsTheGameMasterRunsIt.putBackThisRealmsOrders(snap.id, snap.orders, snap.submitted),
           ),
         );
         _restoreFailed = _res.some((r) => r && r.error);

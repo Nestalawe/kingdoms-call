@@ -5,7 +5,7 @@
 // The same KC_SEED plays the same games (P1-04a): the page's clock is pinned (some ids are made from
 // it), and the games are in manual turn mode, so the auto-turn watcher neither reads the clock nor
 // runs a turn by itself at a moment that depends on load.
-const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
 const {checkTurn,describeBreaches}=require('./lib/invariants.ts');
 
 const GAMES=parseInt(process.argv[2]||'10'), TURNS=parseInt(process.argv[3]||'6');
@@ -13,10 +13,10 @@ const DIRS=['NW','NE','W','E','SW','SE'];
 const ACTIONS=['defend','defend','rest','practice','recruit','move','move','research','search','explore'];
 
 (async()=>{
-  const S=makeStub();
+  const S=aGameMastersWorld();
   let html=readPage('kingdoms-call-gm-portal.html');
   const errs=[];
-  const dom=bootJsdom(html,{supabase:S.supabase,now:'2026-10-01T12:00:00Z',setup(w){
+  const dom=bootJsdom(html,{supabase:{createClient:()=>({})},db:makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION,S).db,now:'2026-10-01T12:00:00Z',setup(w){
     w.addEventListener('error',e=>errs.push(e.error&&e.error.stack||e.message));
     w.onunhandledrejection=e=>errs.push(String(e.reason&&e.reason.stack||e.reason));
     w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' '));
@@ -39,7 +39,7 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
     const M=MAPS[gi%MAPS.length];
     const seaPct=[20,35,50,65,80][gi%5];
     const nHumans=Math.max(1,Math.min(M.n-1, 1+ri(M.n-1)));
-    S.DB.games.length=0; S.DB.game_players.length=0; S.DB.turn_logs.length=0; S.DB.turn_events.length=0; S.DB.game_results.length=0;
+    S.tables.games.length=0; S.tables.game_players.length=0; S.tables.turn_logs.length=0; S.tables.turn_events.length=0; S.tables.game_results.length=0;
     W.__sp=Array.from({length:M.n},(_,i)=>({id:i,gamePlayerId:'gp'+i,isBot:i>=nHumans,
       name:'Realm'+i,kingName:'King'+i,kingdomName:'Realm'+i,race:RACES[ri(4)],alignment:ALIGNS[i%7],
       temper:'Brave',skills:{melee:1,tactical:1,march:1,white:1,naval:(i%3===0?1:0),sage:1,explorer:1}}));
@@ -50,16 +50,16 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
         g.botDifficulty='hard'; g.botDiplomacy=${gi%2?"'hostile'":"'normal'"}; window.__G=g; })()`);
     }catch(e){ crashes.push('worldgen: '+e.message); continue; }
 
-    S.DB.games.push({id:'G'+gi,name:'Fuzz '+gi,gm_user_id:'gm1',status:'active',turn:1,
+    S.tables.games.push({id:'G'+gi,name:'Fuzz '+gi,gm_user_id:'gm1',status:'active',turn:1,
       max_players:M.n,max_turns:0,created_at:new Date().toISOString(),
       game_state:W.eval('JSON.stringify(__G)'), meta:W.eval('JSON.parse(JSON.stringify(buildGameMeta(__G)))')});
-    for(let i=0;i<M.n;i++) S.DB.game_players.push({id:'G'+gi+'gp'+i,game_id:'G'+gi,
+    for(let i=0;i<M.n;i++) S.tables.game_players.push({id:'G'+gi+'gp'+i,game_id:'G'+gi,
       user_id:i<nHumans?('u'+i):null,player_index:i,display_name:'Realm'+i,
       orders_submitted:false,orders:null,
       turn_report:i<nHumans?JSON.stringify({}):JSON.stringify({isBot:true,playerSetup:{}})});
 
     for(let t=1;t<=TURNS;t++){
-      const row=S.DB.games[0];
+      const row=S.tables.games[0];
       if(row.status!=='active') break;
       // random orders for each human realm, from the live state
       const live=JSON.parse(row.game_state);
@@ -75,13 +75,13 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
             return {action:a,target:'',extra:'',desc:''};
           });
         });
-        const r=S.DB.game_players.find(p=>p.player_index===pi);
+        const r=S.tables.game_players.find(p=>p.player_index===pi);
         r.orders=JSON.stringify({orders,encounterPlans:{},kingSkills:{},diplomacy:{},discoveryChoices:{},
           callReckoning:false,concede:false,messages:[],heroOrder:[],forTurn:row.turn});
         r.orders_submitted=true;
       }
       errs.length=0;
-      const before=row.turn, nLogs=S.DB.turn_logs.length, nEvents=S.DB.turn_events.length;
+      const before=row.turn, nLogs=S.tables.turn_logs.length, nEvents=S.tables.turn_events.length;
       W.__game=JSON.parse(JSON.stringify(row));
       let res=null, thrown=null;
       try{ res=await W.eval('runTurn({auto:true,game:__game,reason:"fuzz"})'); }
@@ -92,10 +92,10 @@ const ACTIONS=['defend','defend','rest','practice','recruit','move','move','rese
       if(res&&res.ok===false){ failedRuns++; crashes.push(`G${gi} T${before} run failed: ${res.error}`); }
       if(errs.length) crashes.push(`G${gi} T${before} page error: ${errs[0].split('\n').slice(0,2).join(' | ')}`);
       // the invariants and the leak check, on the state the turn started from, the one it saved and its reports
-      const rows=S.DB.turn_logs.slice(nLogs);
-      const broke=checkTurn({before:live,after:JSON.parse(S.DB.games[0].game_state),
+      const rows=S.tables.turn_logs.slice(nLogs);
+      const broke=checkTurn({before:live,after:JSON.parse(S.tables.games[0].game_state),
         gmLog:rows.filter(l=>l.player_index===-1).flatMap(l=>l.entries),
-        telemetry:S.DB.turn_events.slice(nEvents),players:S.DB.game_players,
+        telemetry:S.tables.turn_events.slice(nEvents),players:S.tables.game_players,
         reports:rows.filter(l=>l.player_index>=0).map(l=>({realm:l.player_index,report:l.entries}))});
       if(broke.length){ breaches+=broke.length; crashes.push(describeBreaches(`G${gi} T${before} invariant`,broke)); }
     }

@@ -3,11 +3,11 @@
 // (35 → 53, 45 → 68, 50 → 75, 60 → 90, 65 and 70 → 95), so the whole table is checked too: no
 // special below 53% or above 95%. Running games take the new odds at their next turn
 // (GUARDIAN_TABLE_VER, migrateLairGuardiansV2). Level 1: the table and the migration are module level.
-const {readPage,bootJsdom}=require('./lib/boot'); const {cannedStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const errs=[];
-  const d=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:{createClient:()=>cannedStub({rows:()=>({}),writes:[]})},
+  const d=bootJsdom(readPage('kingdoms-call-gm-portal.html'),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,
     setup(w){ w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message))); w.console.warn=()=>{}; w.console.log=()=>{}; w.console.error=()=>{}; }});
   await new Promise(r=>setTimeout(r,400)); const W=d.window;
   const MON=W.eval('MONSTERS_P'); ok(MON.length>100,`the guardian table was read (${MON.length})`);

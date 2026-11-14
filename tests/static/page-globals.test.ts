@@ -51,7 +51,6 @@ import { timeLimitForTheWork } from '../lib/time-limits.ts';
 const UNREAD_ON_PURPOSE: Record<string, string[]> = {
   // the stand-in database for the browser (browserSource): it reads no page name
   'tests/browser/chromium-boot.spec.ts': ['page.addInitScript(browserSource.null)'],
-  'tests/browser/orders-buttons-visible.spec.ts': ['page.addInitScript(browserSource.null)'],
   // the screen tours' code, which page-globals.ts reads as every string of the file
   'tests/lib/screens.js': ['w.eval(code)', 'p.evaluate(code)'],
 };

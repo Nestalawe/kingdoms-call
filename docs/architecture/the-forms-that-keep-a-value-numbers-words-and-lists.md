@@ -34,7 +34,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 
 - **`x || ''` on a value of any kind** (an order field's value as the page's snapshot holds it, `unknown`) goes through a
   reader written with an `if` that hands back `unknown` (`theFieldOrNoWords`): `x ?? ''` keeps a `0` or a `false`, and
-  `x || ''` narrows to `{}`, which `no-base-to-string` refuses written out. Such a value is written out through a reader
+  `x || ''` narrows to `{}`, which `no-base-to-string` refuses written out. `x || <a read that may throw>` on such a
+  value (a name, else the address's first part) is a reader that makes the read only for a falsy `x`
+  (`theNameOrTheAddress`, `sign-in.ts`): `thisOrElse` would make it first. Such a value is written out through a reader
   typed `unknown` (`inWords`: `String` inside it).
 ## Numbers, words and conversions
 
@@ -76,9 +78,22 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `string` and `number`. **A level a table may lack, handed to a rule that only compares it** (`_projLvl[school]`, the
   casts a school allows) is `Number(x)`: `NaN` meets no level, as `undefined` did. **A name read as a key that may be
   missing** (an item's spell) is `String(x)` before it is handed on: `'undefined'` is the key `undefined` was read as.- **`new Date(x)` on a value of any kind** (a deadline as a game's state holds it) is `Reflect.construct(Date, [x])`,
-  read into an `unknown` and checked `instanceof Date` (`theDateOf`, `game-lists.ts`): the constructor reads the value
+  read into an `unknown` and checked `instanceof Date` (`theDateOf`, `src/ui/shared/`): the constructor reads the value
   as before, which `Date`'s parameter types refuse. `JSON.parse(text)` of a game's state goes through a reader typed
   `unknown` (`theStateParsed`), so its `any` stays inside.
+
+- **`a + b` on values of any kind** (a score a game's record holds, added up) goes through `theSumAsJavaScriptMakesIt`
+  (`src/ui/shared/`): words where either side reads as words, else the two as numbers, as `+` gives; `Number(a) + Number(b)`
+  would turn a score held as words into a number. `a - b`, `a / b`, `a < 30` and `Math.max(a, b)` already read each side
+  as a number: `Number(a) - Number(b)` is the same.
+- **Database JSON read in many sums and sorts** (the Hall of Fame's `game_records`) is read once, where the page loads it,
+  into a view: each field the value `x.field` gave (`unknown`), each list's elements with `!x`'s nothings (`null`, `0`,
+  `false`, `''`) kept as they were, and a value that should be a list but isn't kept, so walking it throws as before
+  (`src/ui/leaderboard/a-game-in-the-hall-of-fame-as-the-board-reads-it.ts`).
+- **`a.localeCompare(b)` on a value of any kind** (a record's own label) goes through a reader that compares words and,
+  for any other value, throws the `TypeError` the call threw (`theLabelsCompared`, the Hall of Fame). **A table read by a
+  value of any kind** (the board's people by an account's id) is read by `String(key)` through a reader typed `unknown`
+  (`theKeyOf`): the words JavaScript reads a key as, which lint's `no-base-to-string` refuses written out.
 
 ## Lists, tables, sets and maps
 
@@ -196,4 +211,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   consecration's checks) is filtered to its numbers (`theNumbersAmong`): no other value is a province's number. Where
   the place is a forecast with no id, `id ?? NaN` (`theIdOrNoProvince`) matches none, as `undefined` did.
 - **`.some` on a value of any kind** (a game's heroes, as parsed) goes through a reader that gives a list as it is and
-  throws, for any other value, the `TypeError` the call threw (`theListToSearch`, `game-lists.ts`).
+  throws, for any other value, the `TypeError` the call threw (`theListToSearch`, `src/ui/shared/`).
+- **`/re/.test(x || '')` on a value of any kind** (a turn mode's time, as a game's state holds it) is
+  `re.test(String(thisOrElse(x, '')))`, and the value it lets through is kept as it was, typed `unknown`
+  (`normalizeTurnMode`'s `time`); `.split` on it later checks for words first and throws the `TypeError` the call threw.
+- **`k in table` with a key of any kind** (a log line's hero id, as the chronicle files it) is `String(k) in table` (`inWords(k)`
+  once `k != null` has narrowed it, for lint's `no-base-to-string`), and the read by it `table[String(k)]`: `in` and an index read a key by the same conversion (no log holds a symbol). **Names
+  of any kind sorted by their length** (`b.length - a.length`, the chronicle's tinted names) read it through
+  `Number(Reflect.get(Object(n), 'length'))` (`theLengthOf`): the same number, or `NaN` where it was `undefined`.

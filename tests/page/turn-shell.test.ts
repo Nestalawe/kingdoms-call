@@ -24,6 +24,8 @@
 // Turn 0, then two turns, on the stand-in database, each message with nothing of the check. The staged games are
 // whole saves (Turn 0's settings: the bots' strength and diplomacy), as the stop needs.
 // And the GM's log (P1-12d39): each line the turn stores keeps its kind, and the GM page draws a force's rows by it.
+// And a turn run elsewhere meanwhile (P1-21s), on the fake databases: the save matches no row, so the run is
+// discarded and nothing is put back.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.ts)
 // around the engine's resolveTurn; the shell runs only in the booted page, against its database.
 //
@@ -69,7 +71,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import {
+  aGameMastersWorld,
+  makeAFakeDbHoldingTheGameMastersTurn,
+  makeAFakeDbHoldingTheGameMastersWorld,
+  type AChangeTheGameMastersTurnSent,
+} from '../lib/fake-db.ts';
+import type { AGameWithItsRealms, ARealm, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 import { loadEngine } from '../lib/engine.ts';
 import { GAME, newWorld, slotRows, slotRowsJson } from '../lib/matrix-game.ts';
 import { makeStub, type Row, type Stub } from '../lib/stub-db.js';
@@ -123,7 +132,12 @@ interface Staged {
 // Boots the GM portal (or `page`, a GM portal built from a planted copy of src/) and stages Turn 1 of a two-realm
 // game: realm 0 has sent its orders, realm 1 has saved a draft (any other payload counts as sent).
 async function stage(orders: [string, string] = [SENT, DRAFT], page?: string): Promise<Staged> {
-  return seat(await boot(4321, page), (W) => {
+  return seat(await boot(4321, page), twoRealmsOnTurnOne(orders));
+}
+
+// The world of a two-realm game on Turn 1, made in the booted page, and its slot rows with `orders`.
+function twoRealmsOnTurnOne(orders: [string, string]): (W: PageWindow) => { world: string; rows: Row[] } {
+  return (W) => {
     W['__sp'] = [0, 1].map((i) => ({
       id: i,
       gamePlayerId: 'gp' + String(i),
@@ -152,7 +166,7 @@ async function stage(orders: [string, string] = [SENT, DRAFT], page?: string): P
         turn_report: JSON.stringify({}),
       })),
     };
-  });
+  };
 }
 
 interface Booted {
@@ -187,19 +201,7 @@ function seat({ S, W, logged }: Booted, game: (W: PageWindow) => { world: string
   const { world, rows } = game(W);
   const games = S.DB['games'] ?? [];
   const players = S.DB['game_players'] ?? [];
-  W['__world'] = world;
-  games.push({
-    id: 'G1',
-    name: 'Failure path',
-    gm_user_id: 'gm1',
-    status: 'active',
-    turn: 1,
-    max_players: rows.length,
-    max_turns: 0,
-    created_at: new Date().toISOString(),
-    game_state: world,
-    meta: W.eval('JSON.parse(JSON.stringify(buildGameMeta(JSON.parse(__world))))'),
-  });
+  games.push(theGameRow(W, world, rows));
   players.push(...rows);
   const client = (S.supabase as { createClient(): Client }).createClient();
   return {
@@ -217,6 +219,23 @@ function seat({ S, W, logged }: Booted, game: (W: PageWindow) => { world: string
     game: () => games[0] ?? {},
     players: () => players,
     message: () => String(W.eval("document.getElementById('detail-msg').textContent")),
+  };
+}
+
+// The game's row on Turn 1, holding `world` (JSON) and its summary, for `rows`' realms.
+function theGameRow(W: PageWindow, world: string, rows: readonly Row[]): Row {
+  W['__world'] = world;
+  return {
+    id: 'G1',
+    name: 'Failure path',
+    gm_user_id: 'gm1',
+    status: 'active',
+    turn: 1,
+    max_players: rows.length,
+    max_turns: 0,
+    created_at: new Date().toISOString(),
+    game_state: world,
+    meta: W.eval('JSON.parse(JSON.stringify(buildGameMeta(JSON.parse(__world))))'),
   };
 }
 
@@ -882,4 +901,144 @@ describe("the GM's log keeps each line's kind, and the GM page draws a force's r
       t.W.close();
     }
   }, 60_000);
+});
+
+// A turn run elsewhere while this run resolved it (P1-21s): the conditional save matches no row, and the run is
+// discarded with nothing put back, as the other run spent the orders. On the fake databases (tests/lib/fake-db.ts):
+// the GM's world, which honours the save's turn, with the game moved on to Turn 2 between the fresh read and the
+// save; and the GM's turn, with the game gone by the save. And the GM's log of a turn on the GM's world: the GM's
+// whole log, never a realm's own log of that turn.
+describe("on the fake databases: a turn run elsewhere meanwhile, and the GM's log of a turn", () => {
+  // Boots the GM portal on the fake `db`; then `held` is given the game's row and its realms' rows on Turn 1.
+  async function bootOnTheFake(
+    db: Db,
+    held: (game: Row, realms: Row[]) => void,
+  ): Promise<{ W: PageWindow; message(): string }> {
+    const logged: string[] = [];
+    const { window: W } = bootJsdom(readPage('kingdoms-call-gm-portal.html'), {
+      supabase: { createClient: () => ({}) },
+      db,
+      seed: 4321,
+      now: NOW,
+      setup(w) {
+        w.console.error = (...a) => logged.push(a.map(String).join(' '));
+        w.console.warn = () => undefined;
+        w.console.log = () => undefined;
+      },
+    });
+    await new Promise((r) => setTimeout(r, 900));
+    expect(logged, 'the GM portal boots without errors').toEqual([]);
+    W['currentUser'] = { id: 'gm1' };
+    const { world, rows } = twoRealmsOnTurnOne([SENT, DRAFT])(W);
+    held(theGameRow(W, world, rows), rows);
+    return {
+      W,
+      message: () => String(W.eval("document.getElementById('detail-msg').textContent")),
+    };
+  }
+  async function runTheTurn(W: PageWindow, game: Row): Promise<Outcome> {
+    W['__game'] = structuredClone(game);
+    W.eval('window.confirm=()=>true;');
+    const result = (await W.eval('runTurn({game:__game})')) as Outcome | undefined;
+    await new Promise((r) => setTimeout(r, 30));
+    return result ?? { error: 'runTurn returned ' + String(result) };
+  }
+  const discarded = /Turn 1 was already run elsewhere \(another GM tab or device\) — this run was discarded\./;
+
+  test("the game on Turn 2 by the save: the run is discarded, the orders stay spent, the other run's turn stands", async () => {
+    const world = aGameMastersWorld();
+    const fake = makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION, world);
+    const area = fake.db.theTurnAsTheGameMasterRunsIt;
+    const db: Db = {
+      ...fake.db,
+      theTurnAsTheGameMasterRunsIt: {
+        ...area,
+        saveThisGameWhileOnThisTurnAndAnswerItsId: (game, turn, change) => {
+          for (const g of world.tables.games) g['turn'] = 2;
+          return area.saveThisGameWhileOnThisTurnAndAnswerItsId(game, turn, change);
+        },
+      },
+    };
+    const t = await bootOnTheFake(db, (game, realms) => {
+      world.tables.games.push(game);
+      world.tables.game_players.push(...realms);
+    });
+    try {
+      const before = String(world.tables.games[0]?.['game_state']);
+      const result = await runTheTurn(t.W, world.tables.games[0] ?? {});
+      expect(result).toMatchObject({ ok: false, committed: false, conflict: true });
+      expect(t.message()).toMatch(discarded);
+      expect(t.message()).toContain('Nothing was changed by this run.');
+      const orders = world.tables.game_players.map((p) => ({ orders: p['orders'], submitted: p['orders_submitted'] }));
+      expect(orders, 'the orders were not put back').toEqual(spent);
+      expect(world.tables.games[0]?.['turn']).toBe(2);
+      expect(String(world.tables.games[0]?.['game_state']), "this run's world was not saved").toBe(before);
+    } finally {
+      t.W.close();
+    }
+  }, 30_000);
+
+  test("the GM's log of a turn, on the GM's world: the GM's whole log only, never a realm's own log of that turn", async () => {
+    const world = aGameMastersWorld();
+    const t = await bootOnTheFake(makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION, world).db, (game, realms) => {
+      world.tables.games.push(game);
+      world.tables.game_players.push(...realms);
+    });
+    try {
+      const game = world.tables.games[0] ?? {};
+      const state = JSON.parse(String(game['game_state'])) as { characters: { id: number; player: number }[] };
+      const hero = state.characters.find((c) => c.player === 0);
+      if (!hero) throw new Error('realm 0 has no hero');
+      const line = (text: string) => ({ type: 'move', text, charId: hero.id, phase: 0 });
+      world.tables.turn_logs.push(
+        { id: 'L1', game_id: 'G1', player_index: -1, turn: 1, entries: [line('The GM sees the ford held.')] },
+        { id: 'L2', game_id: 'G1', player_index: 0, turn: 1, entries: [line("Realm0's own report line.")] },
+      );
+      t.W['currentGame'] = game;
+      await t.W.eval("loadTurnLog('G1',1)");
+      const shown = String(t.W.eval("document.getElementById('detail-log').textContent"));
+      expect(shown).toContain('The GM sees the ford held.');
+      expect(shown).not.toContain("Realm0's own report line.");
+    } finally {
+      t.W.close();
+    }
+  }, 30_000);
+
+  test('the game gone by the save: the run is discarded, and no orders are put back', async () => {
+    const held: { game: Row | null; realms: Row[] } = { game: null, realms: [] };
+    const changes: AChangeTheGameMastersTurnSent[] = [];
+    const fake = makeAFakeDbHoldingTheGameMastersTurn(DB_VERSION, {
+      // the rows as the page reads them: staged by this test as the stand-in held them
+      theGame: () => held.game as AGameWithItsRealms | null,
+      theRealms: () => held.realms as ARealm[],
+      changes,
+    });
+    const area = fake.db.theTurnAsTheGameMasterRunsIt;
+    let saves = 0;
+    const db: Db = {
+      ...fake.db,
+      theTurnAsTheGameMasterRunsIt: {
+        ...area,
+        saveThisGameWhileOnThisTurnAndAnswerItsId: (id, turn, change) => {
+          saves++;
+          held.game = null;
+          return area.saveThisGameWhileOnThisTurnAndAnswerItsId(id, turn, change);
+        },
+      },
+    };
+    const t = await bootOnTheFake(db, (row, rows) => {
+      held.game = row;
+      held.realms = rows;
+    });
+    try {
+      const result = await runTheTurn(t.W, held.game ?? {});
+      expect(saves).toBe(1);
+      expect(result).toMatchObject({ ok: false, committed: false, conflict: true });
+      expect(t.message()).toMatch(discarded);
+      const after = changes.slice(changes.findIndex((c) => c.table === 'games') + 1);
+      expect(after, 'nothing is written after the save: no report, no log, no orders put back').toEqual([]);
+    } finally {
+      t.W.close();
+    }
+  }, 30_000);
 });

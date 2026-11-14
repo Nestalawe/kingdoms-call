@@ -27,14 +27,21 @@ declare var _kcHasTel: PageState;
 declare var _kcTelLastErr: PageState;
 declare var _kcHasMsg: PageState;
 // ui/gm/auto-turn.ts
-declare var _autoWatcherTimer: PageState;
+/** The auto-turn watcher's timer, while it runs (setInterval's). */
+declare var _autoWatcherTimer: ReturnType<typeof setInterval> | null;
 declare var _autoRunBusy: PageState;
 // ui/gm/config.ts (and ui/player/items-and-heroes.ts: each page declares its own)
-/** The signed-in account (null before sign-in): its id, as the player page's dispatches read it. */
-declare var currentUser: { readonly id: string } | null;
+/** The signed-in account (null before sign-in): its id, as the player page's dispatches read it, and its address and
+ *  sign-up fields, as its sign-in reads them. */
+declare var currentUser: {
+  readonly id: string;
+  readonly email?: string | undefined;
+  readonly user_metadata?: Readonly<Record<string, unknown>> | undefined;
+} | null;
 // ui/gm/config.ts
-declare var currentGame: PageState;
-declare var currentGamePlayers: PageState;
+/** The game the GM has opened (null before one is), as the game screen's read gives it. */
+declare var currentGame: import('./ui/gm/startup.ts').TheGameTheGmHasOpen | null;
+declare var currentGamePlayers: import('./ui/gm/startup.ts').TheRealmsOfTheGameTheGmHasOpen | null | undefined;
 // ui/gm/game-list.ts
 declare var _invitablePlayers: PageState;
 declare var _inviteSelected: PageState;
@@ -45,7 +52,7 @@ declare var _kcLbLastErr: PageState;
 // ui/gm/turn-zero.ts
 declare var _pendingTurn0: PageState;
 // ui/leaderboard/main.ts
-declare var GAMES: PageState;
+declare var GAMES: import('./ui/leaderboard/a-game-in-the-hall-of-fame-as-the-board-reads-it.ts').AGameAsTheBoardHoldsIt[];
 // ui/player/dispatches.ts
 declare var _msgGameId: string | null;
 declare var _msgMyIndex: number | null;
@@ -68,9 +75,18 @@ declare var currentGamePlayerId: PageState;
 declare var viewingReport: import('./ui/player/map.ts').TheReportAsTheMapDrawsIt | null | undefined;
 declare var viewedTurn: PageState;
 // ui/player/items-and-heroes.ts
-declare var currentProfile: PageState;
-declare var joiningGame: PageState;
-declare var joinSkills: PageState;
+/** The signed-in account's name, as profiles holds it (ui/player/sign-in.ts). */
+declare var currentProfile: { readonly id: string; readonly name: string | null } | null;
+/** The game the join form is for, as the open game's card hands it (ui/player/join-and-chronicle.ts). */
+declare var joiningGame: {
+  readonly id: string;
+  readonly name: string;
+  readonly maxP: number;
+  readonly joined: number;
+  readonly gmName: string | null | undefined;
+  readonly worldSize: string | null | undefined;
+} | null;
+declare var joinSkills: Record<string, number>;
 /** The realm's seat in the open game (the map writes its hero order into it). */
 declare var currentGamePlayer: import('./ui/player/map.ts').TheRealmsSeatAsThePageHoldsIt | null | undefined;
 /** The report the page shows: as the order form's forecasts, the page's lists, the map's popups, the Titles card, the map

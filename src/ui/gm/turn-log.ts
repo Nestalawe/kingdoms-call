@@ -1,14 +1,14 @@
 // @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
 import { KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.ts';
-import { sb } from './config.ts';
+import { thePagesDb } from './config.ts';
 import { show } from './sign-in.ts';
 import { loadGames } from './game-list.ts';
 import { parseGameState } from './startup.ts';
 import { THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE } from '../../views/the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
 
 export async function loadTurnLog(gameId, turn) {
-  const { data } = await sb.from('turn_logs').select('*').eq('game_id', gameId).eq('turn', turn).eq('player_index', -1);
+  const { data } = await thePagesDb.theGameMastersTurnLogs.theWholeLogOfThisGameInThisTurn(gameId, turn);
   const el = document.getElementById('detail-log');
   if (!data || data.length === 0) {
     el.innerHTML = '<div style="color:#3a3224;font-size:.85rem;font-style:italic">No log entries yet.</div>';
@@ -179,13 +179,13 @@ export async function deleteGame(gameId) {
   const msg = document.getElementById('detail-msg');
   msg.innerHTML = '<div class="msg-info">Deleting…</div>';
   // Delete players first (cascade should handle it, but be explicit)
-  await sb.from('turn_logs').delete().eq('game_id', gameId);
+  await thePagesDb.theDeletionOfAGame.removeThisGamesTurnLogs(gameId);
   // Dispatches BEFORE the games row: the delete policy on game_messages checks that the caller is the
   // GM of a game with this id, so once the games row is gone nobody can remove them any more.
   if (_kcHasMsg) {
     try {
-      await sb.from('game_messages').delete().eq('game_id', String(gameId));
-      await sb.from('game_message_reads').delete().eq('game_id', String(gameId));
+      await thePagesDb.theDeletionOfAGame.removeThisGamesDispatches(String(gameId));
+      await thePagesDb.theDeletionOfAGame.removeThisGamesReadMarks(String(gameId));
     } catch (e) {
       console.warn('dispatch cleanup:', e);
     }
@@ -194,21 +194,21 @@ export async function deleteGame(gameId) {
   // exists, so this must happen while it still does.
   if (_kcHasTel) {
     try {
-      await sb.from('turn_events').delete().eq('game_id', String(gameId));
-      await sb.from('game_results').delete().eq('game_id', String(gameId));
+      await thePagesDb.theDeletionOfAGame.removeThisGamesTurnEvents(String(gameId));
+      await thePagesDb.theDeletionOfAGame.removeThisGamesResults(String(gameId));
     } catch (e) {
       console.warn('telemetry cleanup:', e);
     }
   }
   if (_kcHasLb) {
     try {
-      await sb.from('game_records').delete().eq('game_id', String(gameId));
+      await thePagesDb.theDeletionOfAGame.removeThisGamesHallOfFameEntry(String(gameId));
     } catch (e) {
       console.warn('leaderboard cleanup:', e);
     }
   }
-  await sb.from('game_players').delete().eq('game_id', gameId);
-  const { error } = await sb.from('games').delete().eq('id', gameId);
+  await thePagesDb.theDeletionOfAGame.removeThisGamesRealms(gameId);
+  const { error } = await thePagesDb.theDeletionOfAGame.removeThisGame(gameId);
   if (error) {
     msg.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
     return;

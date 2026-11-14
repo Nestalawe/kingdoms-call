@@ -1,10 +1,16 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
+import type { KcSafeHtml } from '../shared/kc-safe.ts';
 import { thePagesDb } from './config.ts';
 import { thisPagesBuild } from '../shared/a-newer-version-of-this-page.ts';
+import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
+import { theField, thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
+import type { TheRealmsOfTheGameTheGmHasOpen } from './startup.ts';
+import type { AReportedDispatch } from '../../db/the-db-interface-and-its-areas.ts';
 
-export function show(id) {
-  document.querySelectorAll('section').forEach((s) => s.classList.remove('section-active'));
+export function show(id: string) {
+  document.querySelectorAll('section').forEach((s) => {
+    s.classList.remove('section-active');
+  });
   document.getElementById(id)?.classList.add('section-active');
 }
 
@@ -36,16 +42,16 @@ export function changePassword() {
       </div>
     </div>`;
   document.body.appendChild(ov);
-  document.getElementById('cp-new').focus();
+  theElementWithTheId('cp-new', HTMLInputElement).focus();
 }
 export function closeChangePassword() {
   const o = document.getElementById('cp-overlay');
   if (o) o.remove();
 }
 export async function submitChangePassword() {
-  const p1 = document.getElementById('cp-new').value;
-  const p2 = document.getElementById('cp-new2').value;
-  const msg = document.getElementById('cp-msg');
+  const p1 = theElementWithTheId('cp-new', HTMLInputElement).value;
+  const p2 = theElementWithTheId('cp-new2', HTMLInputElement).value;
+  const msg = theElementWithTheId('cp-msg', HTMLElement);
   if (!p1 || p1.length < 6) {
     msg.innerHTML = '<span style="color:#c00">Password must be at least 6 characters.</span>';
     return;
@@ -58,13 +64,15 @@ export async function submitChangePassword() {
   try {
     const { error } = await thePagesDb.signingIn.changeThePassword(p1);
     if (error) {
-      msg.innerHTML = kcHtml`<span style="color:#c00">${error.message}</span>`;
+      msg.innerHTML = String(kcHtml`<span style="color:#c00">${error.message}</span>`);
       return;
     }
     msg.innerHTML = '<span style="color:#1d5a1d">✓ Password updated.</span>';
     setTimeout(closeChangePassword, 1200);
   } catch (e) {
-    msg.innerHTML = kcHtml`<span style="color:#c00">${e.message || 'Update failed.'}</span>`;
+    msg.innerHTML = String(
+      kcHtml`<span style="color:#c00">${thisOrElse(theField(e, 'message'), 'Update failed.')}</span>`,
+    );
   }
 }
 
@@ -78,10 +86,10 @@ export async function gmPortalAllowed() {
     thePagesDb.theRoles.isTheSignedInAccountAGameMaster(),
     thePagesDb.theRoles.isTheSignedInAccountTheOverlord(),
   ]);
-  const err = gm.error || ov.error;
+  const err = gm.error ?? ov.error;
   _kcOverlord = !err && ov.data === true;
   if (!err && (gm.data === true || ov.data === true)) return true;
-  const msg = document.getElementById('not-gm-msg');
+  const msg = theElementWithTheId('not-gm-msg', HTMLElement);
   msg.className = err ? 'msg-error' : 'msg-info';
   msg.textContent = err
     ? `Couldn't check whether you're a Game Master (${err.message}). Reload to try again.`
@@ -99,48 +107,58 @@ export async function gmPortalAllowed() {
 // A player reports a dispatch they received; the game's GM sees it here (gm_reported_messages), with the reporter
 // and their reason, and may delete it. A GM who plays a realm in the game sees none: its reports go to the Overlord.
 // Every player-written string is shown as text (kcHtml).
-export async function loadReportedDispatches(game) {
+/** A reported dispatch as the card reads it: its turn and its reason as the tables hold them (none where they hold
+ *  null), and its addressees as given. */
+type AReportedDispatchAsTheCardReadsIt = Omit<AReportedDispatch, 'turn' | 'reason' | 'to_indexes'> & {
+  readonly turn: number | null | undefined;
+  readonly reason: string | null | undefined;
+  readonly to_indexes: readonly number[] | null | undefined;
+};
+export async function loadReportedDispatches(
+  game:
+    | { readonly id: string; readonly game_players?: TheRealmsOfTheGameTheGmHasOpen | null | undefined }
+    | null
+    | undefined,
+) {
   const card = document.getElementById('detail-reports-card'),
     el = document.getElementById('detail-reports');
   if (!card || !el) return;
   card.style.display = 'none';
   if (!game || !_kcHasMsg) return;
   card.style.display = 'block';
-  if (
-    (game.game_players || currentGamePlayers || []).some(
-      (p) => p.user_id && currentUser && p.user_id === currentUser.id,
-    )
-  ) {
+  if ((game.game_players ?? currentGamePlayers ?? []).some((p) => p.user_id && p.user_id === currentUser?.id)) {
     el.innerHTML =
       '<div class="msg-info">You play a realm in this game, so its reported dispatches go to the Overlord, not to you.</div>';
     return;
   }
   el.innerHTML = '<div class="msg-info">Loading…</div>';
   const { data, error } = await thePagesDb.theReportedDispatches.theDispatchesReportedToThisAccount(game.id);
-  if (!currentGame || String(currentGame.id) !== String(game.id)) return; // another game was opened meanwhile
+  if (currentGame?.id !== game.id) return; // another game was opened meanwhile
   if (error) {
-    el.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
+    el.innerHTML = String(kcHtml`<div class="msg-error">${error.message}</div>`);
     return;
   }
-  const rows = Array.isArray(data) ? data : [];
+  const rows: readonly AReportedDispatchAsTheCardReadsIt[] = Array.isArray(data) ? data : [];
   if (!rows.length) {
     el.innerHTML = '<div style="color:var(--stone);font-size:.85rem">No dispatches reported.</div>';
     return;
   }
-  const realm = (i) => {
-    const p = (currentGamePlayers || []).find((x) => Number(x.player_index) === Number(i));
-    return (p && p.display_name) || 'Realm ' + (Number(i) + 1);
+  const realm = (i: number) => {
+    const p = (currentGamePlayers ?? []).find((x) => x.player_index === i);
+    return (p?.display_name ?? '') || 'Realm ' + String(i + 1);
   };
-  el.innerHTML = kcHtml`${rows.map((r) => {
-    const to = r.scope === 'public' ? 'every realm' : (r.to_indexes || []).map(realm).join(', ');
-    return kcHtml`<div class="player-slot" style="display:block">
-      <div style="font-size:.78rem;color:var(--stone)">${r.turn != null ? 'Turn ' + r.turn + ' · ' : ''}from <strong>${realm(r.from_index)}</strong> to ${to} · reported by <strong>${realm(r.reporter_index)}</strong>${r.reason ? ' · “' + r.reason + '”' : ''}</div>
+  el.innerHTML = String(
+    kcHtml`${rows.map((r) => {
+      const to = r.scope === 'public' ? 'every realm' : (r.to_indexes ?? []).map(realm).join(', ');
+      return kcHtml`<div class="player-slot" style="display:block">
+      <div style="font-size:.78rem;color:var(--stone)">${r.turn != null ? 'Turn ' + String(r.turn) + ' · ' : ''}from <strong>${realm(r.from_index)}</strong> to ${to} · reported by <strong>${realm(r.reporter_index)}</strong>${r.reason ? ' · “' + r.reason + '”' : ''}</div>
       <div style="margin:6px 0;white-space:pre-wrap">${r.body}</div>
-      <button class="btn btn-crimson" style="font-size:.66rem" onclick="deleteReportedDispatch(${kcArg(Number(r.message_id) || 0)})">Delete this dispatch</button>
+      <button class="btn btn-crimson" style="font-size:.66rem" onclick="deleteReportedDispatch(${kcArg(r.message_id || 0)})">Delete this dispatch</button>
     </div>`;
-  })}`;
+    })}`,
+  );
 }
-export async function deleteReportedDispatch(id) {
+export async function deleteReportedDispatch(id: number) {
   if (!confirm('Delete this dispatch for everyone in the game? Its reports go with it.')) return;
   const { error } = await thePagesDb.theDispatches.deleteThisDispatch(id);
   if (error) {
@@ -149,11 +167,11 @@ export async function deleteReportedDispatch(id) {
   }
   await loadReportedDispatches(currentGame);
 }
-export function setAutoTurnStatus(html) {
+export function setAutoTurnStatus(html: KcSafeHtml | string | null | undefined) {
   const el = document.getElementById('auto-turn-status');
   if (!el) return;
   el.style.display = html ? 'block' : 'none';
-  el.innerHTML = html || '';
+  el.innerHTML = html ? String(html) : '';
 }
 // ── AUTO-REFRESH TO THE NEWEST UPLOADED BUILD ────
 // A GM tab left open for days keeps running the engine it loaded, however many newer builds have

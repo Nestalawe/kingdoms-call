@@ -1,7 +1,23 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { kcDbGuard } from '../../db/kc-db-guard.ts';
+import type { AHallOfFameEntry } from '../../db/the-db-interface-and-its-areas.ts';
 import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
+import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
+import {
+  theDateOf,
+  theField,
+  theSumAsJavaScriptMakesIt,
+  thisOrElse,
+} from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
+import {
+  theGameAsTheBoardHoldsIt,
+  theStandingAsItsFieldsRead,
+  theStandingsOf,
+  type AGameAsTheBoardHoldsIt,
+  type AStandingAsTheBoardReadsIt,
+  type AnEntryAsTheBoardReadsIt,
+  type NothingAListHolds,
+} from './a-game-in-the-hall-of-fame-as-the-board-reads-it.ts';
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 // KINGDOMS CALL — HALL OF FAME
@@ -16,6 +32,10 @@ import { makeThePagesDatabase } from '../../db/the-pages-database-client.ts';
 // account's own games' entries (it owns at least one row in `games`), or every entry for the Overlord, who
 // alone renames players (P0-22, rulings D-09, D-11). The database enforces the same, so ?gm=1 by itself
 // grants nothing.
+//
+// TYPES (plan P1-16j). Each entry's four JSON columns are read once, when the page loads them, into the views of
+// ./a-game-in-the-hall-of-fame-as-the-board-reads-it.ts: their fields are values of any kind, so a sum goes through
+// theSumAsJavaScriptMakesIt and a `||` through thisOrElse, each giving the value the untyped page gave.
 if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load: reload the page.');
 export const SUPABASE_URL = KC_CONFIG.supabaseUrl;
 export const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
@@ -26,15 +46,24 @@ export const thePagesDb = thePagesDatabase.db;
 // a database change").
 export const KC_DB_MIN = '20261012064100';
 
+/** An element of a game's standings, as the board's lists hold it: a standing, or a nothing `!st` passes over. */
+type AStandingOrNothing = AStandingAsTheBoardReadsIt | NothingAListHolds;
+/** What kcHtml makes: HTML whose values are escaped. */
+type ShownHtml = ReturnType<typeof kcHtml>;
+/** A record's entry, with the game it was set in (`{ ...e, g }`). */
+interface AnEntryOfAGame extends AnEntryAsTheBoardReadsIt {
+  readonly g: AGameAsTheBoardHoldsIt;
+}
+
 // A declared global (plan P1-09b): one binding the page's files and its tests share (ui/leaderboard/globals.ts says why).
 globalThis.GAMES = [];
 export let TAB = 'champions',
   GM = false,
   OVERLORD = false,
-  ME = null,
-  PEOPLE = {};
+  ME: { readonly id: string } | null = null,
+  PEOPLE: Partial<Record<string, string>> = {};
 // May the signed-in account edit this entry? Its GM, or the Overlord (the database's rule, P0-22).
-export const canEdit = (g) => OVERLORD || !!(ME && g && g.gm_user_id === ME.id);
+export const canEdit = (g: AGameAsTheBoardHoldsIt): boolean => OVERLORD || (ME !== null && g.gm_user_id === ME.id);
 // ── REALM ≠ PLAYER ────────────────────────────────────────────────────────────────────────────
 // A realm name is per game — the same person rules Aranthia one season and the Vale the next. The
 // PERSON is their auth account, and their name lives in `profiles.name`. Every player statistic on
@@ -46,36 +75,75 @@ export const canEdit = (g) => OVERLORD || !!(ME && g && g.gm_user_id === ME.id);
 // FIRST build (lb1) put the KINGDOM name in that field, so a legacy row would otherwise print the
 // realm twice. Any stored name equal to the realm is therefore refused outright — it is either
 // that bug or a realm named after its ruler, and in both cases it tells the reader nothing.
-export const personName = (st) => {
+export const personName = (st: AStandingOrNothing): unknown => {
   if (!st) return null;
-  if (st.uid && PEOPLE[st.uid]) return PEOPLE[st.uid];
+  // PEOPLE read by the account's id as JavaScript reads a key: in words
+  const known = st.uid ? PEOPLE[theKeyOf(st.uid)] : undefined;
+  if (known) return known;
   if (st.player && st.player !== st.realm) return st.player;
   return null;
 };
-export const isLegacyRow = (g) =>
-  !(g && /lb[2-9]/.test(String(g.build || ''))) || !(g && (g.standings || []).some((st) => st && !st.bot && st.uid));
+export const isLegacyRow = (g: AGameAsTheBoardHoldsIt): boolean =>
+  !/lb[2-9]/.test(g.build ?? '') || !theStandingsOf(g).some((st) => st && !st.bot && st.uid);
 // A record points at a realm by index; who that was lives once, in its game's standings.
-export function whoOf(e) {
-  const st = ((e.g && e.g.standings) || []).find((x) => x && x.pi === e.pi);
+export function whoOf(e: AnEntryOfAGame): {
+  realm: unknown;
+  player: unknown;
+  race: unknown;
+  al: unknown;
+  bot: boolean;
+  uid: unknown;
+} {
+  const st = theStandingsOf(e.g).find((x) => x && x.pi === e.pi);
   if (st)
-    return { realm: st.realm, player: personName(st), race: st.race, al: st.al, bot: !!st.bot, uid: st.uid || null };
+    return {
+      realm: st.realm,
+      player: personName(st),
+      race: st.race,
+      al: st.al,
+      bot: !!st.bot,
+      uid: thisOrElse(st.uid, null),
+    };
   // a row written by the first build (lb1) carried the identity on the record itself
   return {
-    realm: e.realm || null,
-    player: e.player || null,
-    race: e.race || null,
-    al: e.al || null,
+    realm: thisOrElse(e.realm, null),
+    player: thisOrElse(e.player, null),
+    race: thisOrElse(e.race, null),
+    al: thisOrElse(e.al, null),
     bot: !!e.bot,
     uid: null,
   };
 }
-export const $ = (id) => document.getElementById(id);
-export const nf = (n) =>
-  n == null || !isFinite(n) ? '—' : Number(n).toLocaleString('en-NZ', { maximumFractionDigits: 2 });
-export const dstr = (s) => {
+export const $ = (id: string): HTMLElement | null => document.getElementById(id);
+/** An element looked up earlier, where the page reads it without a test: for none, the TypeError that read threw. */
+function theElementFound(found: HTMLElement | null, id: string): HTMLElement {
+  if (found === null) throw new TypeError(`the page holds no element with the id "${id}"`);
+  return found;
+}
+/** The value of one of the filters' or the edit box's controls (an `<input>` or a `<select>`), by its id. */
+function theControl(id: string): HTMLInputElement | HTMLSelectElement {
+  const found = $(id);
+  if (found instanceof HTMLInputElement || found instanceof HTMLSelectElement) return found;
+  throw new TypeError(`the page's element with the id "${id}" is no input or select`);
+}
+/** A value read as a key of a table, as JavaScript reads one: in words (an object's, its `[object Object]`). */
+function theKeyOf(value: unknown): string {
+  return String(value);
+}
+/** `a.localeCompare(b)` on a label of any kind (a record's own label, as its row holds it): words compared, any other
+ *  value the TypeError the call threw (only words have localeCompare). */
+function theLabelsCompared(a: unknown, b: unknown): number {
+  if (typeof a !== 'string') throw new TypeError('a.localeCompare is not a function');
+  return a.localeCompare(String(b));
+}
+export const nf = (n: unknown): string =>
+  n === null || n === undefined || !isFinite(Number(n))
+    ? '—'
+    : Number(n).toLocaleString('en-NZ', { maximumFractionDigits: 2 });
+export const dstr = (s: unknown): string => {
   if (!s) return '—';
-  const d = new Date(s);
-  return isNaN(d) ? '—' : d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+  const d = theDateOf(s);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 // ── THE ACHIEVEMENT CATALOGUE ─────────────────────────────────────────────────────────────────
@@ -83,7 +151,15 @@ export const dstr = (s) => {
 // emits the keys; a key missing from here still appears, under "Other records", with its key
 // prettified — so the two can never fall out of step in a way that loses a record.
 // f: int · pct · x (a multiplier) · power (guardian band) · hp · turn
-export const KC_CAT = [
+/** A record's entry in the catalogue: its category, label, note, format and, where the least is best, 'min'. */
+interface AnAchievement {
+  readonly c: string;
+  readonly l: string | null;
+  readonly n?: string;
+  readonly f: string;
+  readonly d?: string;
+}
+export const KC_CAT: readonly (readonly [category: string, title: string])[] = [
   ['realm', '👑 Realm & dominion'],
   ['conquest', '⚔ Conquest'],
   ['armies', '🛡 Hosts & armies'],
@@ -98,7 +174,7 @@ export const KC_CAT = [
   ['games', '🌍 The games themselves'],
   ['other', '❓ Other records'],
 ];
-export const KC_ACH = {
+export const KC_ACH: Readonly<Partial<Record<string, AnAchievement>>> = {
   most_provinces: { c: 'realm', l: 'Widest realm', n: 'Most provinces held at one moment', f: 'int' },
   most_land: { c: 'realm', l: 'Greatest landholder', n: 'Most land provinces held at once', f: 'int' },
   most_sea: { c: 'realm', l: 'Master of the waves', n: 'Most sea provinces held at once', f: 'int' },
@@ -294,32 +370,33 @@ export const KC_ACH = {
   most_lairs_game: { c: 'games', l: 'Most lairs fought', f: 'int' },
   most_spells_game: { c: 'games', l: 'Most spells cast', f: 'int' },
 };
-export const POWER_WORD = ['—', 'Weak', 'Moderate', 'Powerful', 'Legendary'];
-export function achDef(key) {
-  if (KC_ACH[key]) return KC_ACH[key];
-  if (key.indexOf('sk_') === 0) return { c: 'skills', l: null, f: 'int' };
-  if (key.indexOf('title_') === 0) return { c: 'titles', l: null, f: 'int' };
+export const POWER_WORD: readonly string[] = ['—', 'Weak', 'Moderate', 'Powerful', 'Legendary'];
+export function achDef(key: string): AnAchievement {
+  const known = KC_ACH[key];
+  if (known) return known;
+  if (key.startsWith('sk_')) return { c: 'skills', l: null, f: 'int' };
+  if (key.startsWith('title_')) return { c: 'titles', l: null, f: 'int' };
   return { c: 'other', l: null, f: 'int' };
 }
-export function achLabel(key, rec) {
-  if (rec && rec.lbl) return rec.lbl;
+export function achLabel(key: string, rec: AnEntryAsTheBoardReadsIt | undefined): unknown {
+  if (rec?.lbl) return rec.lbl;
   const d = KC_ACH[key];
-  if (d && d.l) return d.l;
+  if (d?.l) return d.l;
   return key
     .replace(/^sk_/, 'Highest ')
     .replace(/^title_/, 'Title: ')
     .replace(/_/g, ' ')
     .replace(/^./, (c) => c.toUpperCase());
 }
-export function fmtVal(v, f) {
-  if (v == null) return '—';
+export function fmtVal(v: unknown, f: string): string {
+  if (v === null || v === undefined) return '—';
   switch (f) {
     case 'pct':
       return nf(v) + '%';
     case 'x':
       return nf(v) + '×';
     case 'power':
-      return POWER_WORD[Math.max(0, Math.min(4, Math.round(v)))] || nf(v);
+      return (POWER_WORD[Math.max(0, Math.min(4, Math.round(Number(v))))] ?? '') || nf(v);
     case 'hp':
       return nf(v) + ' hp';
     case 'turn':
@@ -330,14 +407,14 @@ export function fmtVal(v, f) {
 }
 
 // ── LOADING ───────────────────────────────────────────────────────────────────────────────────
-export async function loadAll(force) {
+export async function loadAll(): Promise<void> {
   const msg = $('msg');
   try {
     const {
       data: { session },
     } = await thePagesDb.signingIn.theSessionKeptInThisBrowser();
     ME = session ? session.user : null;
-  } catch (e) {
+  } catch {
     ME = null;
   }
   GM = false;
@@ -348,196 +425,218 @@ export async function loadAll(force) {
         thePagesDb.theHallOfFamesGames.oneGameThisGameMasterRuns(ME.id),
         thePagesDb.theRoles.isTheSignedInAccountTheOverlord(),
       ]);
-      OVERLORD = !!(ov && !ov.error && ov.data === true);
-      GM = OVERLORD || !!(data && data.length);
-    } catch (e) {
+      OVERLORD = !ov.error && ov.data === true;
+      GM = OVERLORD || !!data?.length;
+    } catch {
       GM = false;
       OVERLORD = false;
     }
   }
-  $('gm-pill').innerHTML = GM ? '<span class="btn btn-gold" style="cursor:default">✏ GM editing on</span>' : '';
-  $('show-hidden-wrap').style.display = GM ? 'inline-flex' : 'none';
+  theElementWithTheId('gm-pill', HTMLElement).innerHTML = GM
+    ? '<span class="btn btn-gold" style="cursor:default">✏ GM editing on</span>'
+    : '';
+  theElementWithTheId('show-hidden-wrap', HTMLElement).style.display = GM ? 'inline-flex' : 'none';
 
-  const rows = [];
+  const rows: AHallOfFameEntry[] = [];
   try {
     for (let from = 0; ; from += 200) {
       const { data, error } = await thePagesDb.theHallOfFame.everyEntryNewestFinishedFirstFromRowToRow(
         from,
         from + 199,
       );
-      if (error) throw error;
-      rows.push(...(data || []));
+      if (error) {
+        const refusal: unknown = error;
+        throw refusal;
+      }
+      rows.push(...(data ?? []));
       if (!data || data.length < 200) break;
     }
   } catch (e) {
-    $('spinner').style.display = 'none';
-    $('main').style.display = 'block';
-    msg.innerHTML = kcHtml`<div class="msg-error"><strong>The Hall of Fame could not be read.</strong> ${e.message || e}<br>If you are the Game Master, open the GM portal — the game list shows the one statement to run in Supabase that creates the <code>game_records</code> table.</div>`;
-    $('body').innerHTML = '';
+    theElementWithTheId('spinner', HTMLElement).style.display = 'none';
+    theElementWithTheId('main', HTMLElement).style.display = 'block';
+    theElementFound(msg, 'msg').innerHTML = String(
+      kcHtml`<div class="msg-error"><strong>The Hall of Fame could not be read.</strong> ${thisOrElse(theField(e, 'message'), e)}<br>If you are the Game Master, open the GM portal — the game list shows the one statement to run in Supabase that creates the <code>game_records</code> table.</div>`,
+    );
+    theElementWithTheId('body', HTMLElement).innerHTML = '';
     return;
   }
-  GAMES = rows.map((r) => ({
-    ...r,
-    setup: jp(r.setup) || {},
-    standings: jp(r.standings) || [],
-    records: jp(r.records) || {},
-    totals: jp(r.totals) || {},
-  }));
+  GAMES = rows.map(theGameAsTheBoardHoldsIt);
   // the people behind the realms, by their current name
   PEOPLE = {};
   try {
     const { data: profs } = await thePagesDb.theAccountsNames.theNameOfEveryAccount();
-    (profs || []).forEach((r) => {
-      if (r && r.id && r.name) PEOPLE[r.id] = r.name;
+    (profs ?? []).forEach((r) => {
+      if (r.id && r.name) PEOPLE[r.id] = r.name;
     });
-  } catch (e) {
+  } catch {
     /* signed out, or the profiles policy does not cover this reader — snapshot names are used */
   }
-  msg.innerHTML = GAMES.length
+  theElementFound(msg, 'msg').innerHTML = GAMES.length
     ? ''
     : '<div class="msg-info">No finished games have been recorded yet. A game joins the Hall of Fame the moment it ends; the GM can also add older games from the GM portal’s Stats tab.</div>';
   buildFilterOptions();
-  $('spinner').style.display = 'none';
-  $('main').style.display = 'block';
+  theElementWithTheId('spinner', HTMLElement).style.display = 'none';
+  theElementWithTheId('main', HTMLElement).style.display = 'block';
   render();
 }
-export function jp(v) {
-  if (v == null) return null;
-  if (typeof v === 'string') {
-    try {
-      return JSON.parse(v);
-    } catch (e) {
-      return null;
-    }
-  }
-  return v;
-}
 
-export function buildFilterOptions() {
-  const opt = (sel, vals, fmt) => {
-    const el = $(sel),
+export function buildFilterOptions(): void {
+  const opt = (sel: string, vals: readonly unknown[]): void => {
+    const el = theElementWithTheId(sel, HTMLSelectElement),
       cur = el.value;
-    el.replaceChildren(el.options[0], ...vals.map((v) => new Option(String(fmt ? fmt(v) : v), String(v))));
+    const any = el.options.item(0);
+    if (any === null) throw new TypeError(`the select "${sel}" holds no first option`);
+    el.replaceChildren(any, ...vals.map((v) => new Option(String(v), String(v))));
     el.value = cur;
   };
-  const uniqNum = (k) => [...new Set(GAMES.map((g) => g.setup[k]).filter((v) => v != null))].sort((a, b) => a - b);
+  const uniqNum = (k: 'bots' | 'realms' | 'humans'): unknown[] =>
+    [...new Set(GAMES.map((g) => g.setup[k]).filter((v) => v !== null && v !== undefined))].sort(
+      (a, b) => Number(a) - Number(b),
+    );
   opt('f-bots', uniqNum('bots'));
   opt('f-realms', uniqNum('realms'));
   opt('f-humans', uniqNum('humans'));
-  const maps = [...new Set(GAMES.map(mapKey).filter(Boolean))].sort();
+  const maps = [...new Set(GAMES.map((g) => mapKey(g)).filter(Boolean))].sort(asTheDefaultSortOrdersThem);
   opt('f-map', maps);
 }
-export function mapKey(g) {
-  const s = g.setup || {};
-  return s.cols && s.rows ? s.cols + '×' + s.rows : s.mapSize || null;
+/** The order `.sort()` with no comparer gives values of any kind (none here: a filter has taken it out): by their words. */
+function asTheDefaultSortOrdersThem(a: unknown, b: unknown): number {
+  const x = String(a),
+    y = String(b);
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+export function mapKey(g: AGameAsTheBoardHoldsIt): unknown {
+  const s = g.setup;
+  return s.cols && s.rows
+    ? theSumAsJavaScriptMakesIt(theSumAsJavaScriptMakesIt(s.cols, '×'), s.rows)
+    : thisOrElse(s.mapSize, null);
+}
+/** How many bots a game had, and how many humans: `s.bots || 0`, and `s.humans`, else the realms less the bots. */
+function theBotsAndHumansOf(g: AGameAsTheBoardHoldsIt): { readonly bots: unknown; readonly humans: unknown } {
+  const s = g.setup,
+    bots = thisOrElse(s.bots, 0);
+  return {
+    bots,
+    humans: s.humans ?? Number(thisOrElse(s.realms, 0)) - Number(bots),
+  };
 }
 
 // ── FILTERING ─────────────────────────────────────────────────────────────────────────────────
-export function filtered() {
-  const v = (id) => $(id).value,
+export function filtered(): AGameAsTheBoardHoldsIt[] {
+  const v = (id: string): string => theControl(id).value,
     q = (v('f-q') || '').trim().toLowerCase();
   const from = v('f-from') ? new Date(v('f-from') + 'T00:00:00') : null;
   const to = v('f-to') ? new Date(v('f-to') + 'T23:59:59') : null;
-  const showHidden = GM && $('f-hidden').checked;
+  const showHidden = GM && theElementWithTheId('f-hidden', HTMLInputElement).checked;
   return GAMES.filter((g) => {
-    const s = g.setup || {},
-      bots = s.bots || 0,
-      humans = s.humans != null ? s.humans : (s.realms || 0) - bots;
+    const s = g.setup,
+      { bots, humans } = theBotsAndHumansOf(g);
     if (g.hidden && !showHidden) return false;
     const kind = v('f-kind');
-    if (kind === 'human' && bots > 0) return false;
-    if (kind === 'withbots' && bots < 1) return false;
-    if (kind === 'allbot' && humans > 0) return false;
-    if (kind === 'mixed' && !(bots > 0 && humans > 0)) return false;
+    if (kind === 'human' && Number(bots) > 0) return false;
+    if (kind === 'withbots' && Number(bots) < 1) return false;
+    if (kind === 'allbot' && Number(humans) > 0) return false;
+    if (kind === 'mixed' && !(Number(bots) > 0 && Number(humans) > 0)) return false;
     if (v('f-bots') !== '' && String(bots) !== v('f-bots')) return false;
-    if (v('f-diplo') !== '' && (s.diplomacy || 'normal') !== v('f-diplo')) return false;
-    if (v('f-realms') !== '' && String(s.realms || '') !== v('f-realms')) return false;
+    if (v('f-diplo') !== '' && thisOrElse(s.diplomacy, 'normal') !== v('f-diplo')) return false;
+    if (v('f-realms') !== '' && String(thisOrElse(s.realms, '')) !== v('f-realms')) return false;
     if (v('f-humans') !== '' && String(humans) !== v('f-humans')) return false;
     if (v('f-map') !== '' && mapKey(g) !== v('f-map')) return false;
-    const sp = s.seaPct;
-    if (v('f-sea') === 'lo' && !(sp != null && sp < 30)) return false;
-    if (v('f-sea') === 'mid' && !(sp != null && sp >= 30 && sp <= 45)) return false;
-    if (v('f-sea') === 'hi' && !(sp != null && sp > 45)) return false;
-    if (v('f-vic') !== '' && (g.victory || '') !== v('f-vic')) return false;
-    const t = g.turns || 0;
+    const sp = s.seaPct,
+      some = sp !== null && sp !== undefined;
+    if (v('f-sea') === 'lo' && !(some && Number(sp) < 30)) return false;
+    if (v('f-sea') === 'mid' && !(some && Number(sp) >= 30 && Number(sp) <= 45)) return false;
+    if (v('f-sea') === 'hi' && !(some && Number(sp) > 45)) return false;
+    if (v('f-vic') !== '' && (g.victory ?? '') !== v('f-vic')) return false;
+    const t = g.turns ?? 0;
     if (v('f-len') === 's' && !(t <= 10)) return false;
     if (v('f-len') === 'm' && !(t > 10 && t <= 20)) return false;
     if (v('f-len') === 'l' && !(t > 20)) return false;
-    if (from && new Date(g.finished_at || 0) < from) return false;
-    if (to && new Date(g.finished_at || 0) > to) return false;
+    if (from && new Date((g.finished_at ?? '') || 0) < from) return false;
+    if (to && new Date((g.finished_at ?? '') || 0) > to) return false;
     if (q) {
-      const hay = [g.game_name, g.winner_realm, g.note]
-        .concat((g.standings || []).map((x) => [x.realm, x.player, personName(x)].filter(Boolean).join(' ')))
+      const said: unknown[] = [g.game_name, g.winner_realm, g.note];
+      const hay = said
+        .concat(
+          theStandingsOf(g).map((x) => {
+            const st = theStandingAsItsFieldsRead(x);
+            return [st.realm, st.player, personName(x)].filter(Boolean).join(' ');
+          }),
+        )
         .join(' ')
         .toLowerCase();
-      if (hay.indexOf(q) < 0) return false;
+      if (!hay.includes(q)) return false;
     }
     return true;
   });
 }
-export function resetFilters() {
-  ['f-kind', 'f-bots', 'f-diplo', 'f-realms', 'f-humans', 'f-map', 'f-sea', 'f-vic', 'f-len'].forEach(
-    (i) => ($(i).value = ''),
-  );
-  $('f-from').value = '';
-  $('f-to').value = '';
-  $('f-q').value = '';
-  if ($('f-hidden')) $('f-hidden').checked = false;
+export function resetFilters(): void {
+  ['f-kind', 'f-bots', 'f-diplo', 'f-realms', 'f-humans', 'f-map', 'f-sea', 'f-vic', 'f-len'].forEach((i) => {
+    theControl(i).value = '';
+  });
+  theControl('f-from').value = '';
+  theControl('f-to').value = '';
+  theControl('f-q').value = '';
+  const hidden = $('f-hidden');
+  if (hidden) theElementWithTheId('f-hidden', HTMLInputElement).checked = false;
   render();
 }
-export function setTab(t) {
+export function setTab(t: string): void {
   TAB = t;
-  ['champions', 'achievements', 'peoples', 'games'].forEach((x) => $('tb-' + x).classList.toggle('active', x === t));
+  ['champions', 'achievements', 'peoples', 'games'].forEach((x) => {
+    theElementWithTheId('tb-' + x, HTMLElement).classList.toggle('active', x === t);
+  });
   render();
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────────────────────────
-export function render() {
+export function render(): void {
   const G = filtered();
-  $('filter-count').textContent = `${G.length} of ${GAMES.length} recorded game${GAMES.length === 1 ? '' : 's'}`;
-  const el = $('body');
+  theElementWithTheId('filter-count', HTMLElement).textContent =
+    `${String(G.length)} of ${String(GAMES.length)} recorded game${GAMES.length === 1 ? '' : 's'}`;
+  const el = theElementWithTheId('body', HTMLElement);
   if (!GAMES.length) {
     el.innerHTML = '';
-    $('foot').textContent = '';
+    theElementWithTheId('foot', HTMLElement).textContent = '';
     return;
   }
   if (!G.length) {
     el.innerHTML = '<div class="card"><div class="msg-warning">No recorded game matches these filters.</div></div>';
     return;
   }
-  if (TAB === 'champions') el.innerHTML = renderChampions(G);
-  else if (TAB === 'achievements') el.innerHTML = renderAchievements(G);
-  else if (TAB === 'peoples') el.innerHTML = renderPeoples(G);
-  else el.innerHTML = renderGames(G);
+  if (TAB === 'champions') el.innerHTML = String(renderChampions(G));
+  else if (TAB === 'achievements') el.innerHTML = String(renderAchievements(G));
+  else if (TAB === 'peoples') el.innerHTML = String(renderPeoples(G));
+  else el.innerHTML = String(renderGames(G));
   const last = G.map((g) => g.finished_at)
-    .filter(Boolean)
+    .filter((d): d is string => Boolean(d))
     .sort()
     .slice(-1)[0];
-  $('foot').textContent = 'Kingdoms Call — Hall of Fame · most recent game recorded ' + dstr(last);
+  theElementWithTheId('foot', HTMLElement).textContent =
+    'Kingdoms Call — Hall of Fame · most recent game recorded ' + dstr(last);
 }
 
 // GM-only. Answers, on the page, the question "why are the names wrong?" — which of the three
 // possible causes is in play: rows written by the old builder, no player account on the slots, or
 // `profiles` unreadable.
-export function lbDiagnostics(G) {
+export function lbDiagnostics(G: readonly AGameAsTheBoardHoldsIt[]): ShownHtml {
   const legacy = G.filter(isLegacyRow);
   let humanSlots = 0,
     withUid = 0,
     named = 0;
-  G.forEach((g) =>
-    (g.standings || []).forEach((st) => {
+  G.forEach((g) => {
+    theStandingsOf(g).forEach((st) => {
       if (!st || st.bot) return;
       humanSlots++;
       if (st.uid) withUid++;
       if (personName(st)) named++;
-    }),
-  );
-  const builds = [...new Set(G.map((g) => String(g.build || 'unknown')))];
+    });
+  });
+  const builds = [...new Set(G.map((g) => (g.build ?? '') || 'unknown'))];
   const newest =
-    (G.slice().sort((a, b) => String(b.finished_at || '').localeCompare(String(a.finished_at || '')))[0] || {}).build ||
-    '—';
+    (G.slice().sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''))[0]?.build ?? '') || '—';
   const peopleN = Object.keys(PEOPLE).length;
-  const warn = [];
+  const warn: ShownHtml[] = [];
   if (legacy.length)
     warn.push(kcHtml`<div class="msg-warning" style="margin:8px 0 0"><strong>${legacy.length} of ${G.length} games were recorded by an older build of the GM portal</strong>, which stored the realm name where the player's name belongs. Those games show no player until they are rebuilt.<br>
     In the GM portal: check its footer shows <strong>a build from 27 September 2026 or later</strong> first — if it does not, hard-reload it (Ctrl/Cmd+Shift+R), because a cached copy will rebuild with the same fault. Then 📈 Stats → <strong>↻ Rebuild all</strong>.</div>`);
@@ -558,31 +657,53 @@ export function lbDiagnostics(G) {
       <tr><th>Names read from profiles</th><td class="num">${peopleN}</td><td class="muted">${peopleN ? 'read live, so a rename shows everywhere at once' : 'falling back to the name stored with each game'}</td></tr>
     </table>${warn}</div>`;
 }
-export function winnerName(g) {
-  const st = (g.standings || []).find((x) => x && x.winner);
-  return (st && personName(st)) || g.winner_player || null;
+export function winnerName(g: AGameAsTheBoardHoldsIt): unknown {
+  const st = theStandingsOf(g).find((x) => x && x.winner);
+  return thisOrElse(thisOrElse(st ? personName(st) : st, g.winner_player), null);
 }
-export function pctBar(n, d) {
+export function pctBar(n: number, d: number): ShownHtml {
   const p = d ? Math.round((100 * n) / d) : 0;
   return kcHtml`<div class="bar" title="${p}%"><i style="width:${p}%"></i></div>`;
 }
 
 // —— CHAMPIONS ————————————————————————————————————————————————————————————————————————————————
-export function renderChampions(G) {
+/** One person's line on the Champions table, as the standings add it up (a score or a rank held as words adds as
+ *  words, as before). */
+interface AChampionsLine {
+  readonly key: unknown;
+  readonly uid: unknown;
+  readonly name: unknown;
+  games: number;
+  wins: number;
+  podium: number;
+  rankSum: number | string;
+  ranked: number;
+  score: number | string;
+  best: number;
+  titles: number | string;
+  readonly realms: Set<unknown>;
+}
+/** A champion's key, `st.uid || (nm ? 'name:' + nm : null)`: the account, else the name (the `+` only then). */
+function theChampionsKey(uid: unknown, nm: unknown): unknown {
+  if (uid) return uid;
+  return nm ? theSumAsJavaScriptMakesIt('name:', nm) : null;
+}
+export function renderChampions(G: readonly AGameAsTheBoardHoldsIt[]): ShownHtml {
   // One line per PERSON, keyed on their account id — not on a realm name and not on the name they
   // happened to be using at the time. A player who ruled Aranthia, then the Vale, then Karn is one
   // champion with three realms listed, and renaming themselves moves the whole line.
-  const byPlayer = {};
-  G.forEach((g) =>
-    (g.standings || []).forEach((st) => {
+  const byPlayer: Partial<Record<string, AChampionsLine>> = {};
+  G.forEach((g) => {
+    theStandingsOf(g).forEach((st) => {
       if (!st || st.bot) return;
       const nm = personName(st);
-      const key = st.uid || (nm ? 'name:' + nm : null);
+      const key = theChampionsKey(st.uid, nm);
       if (!key) return;
-      const a = (byPlayer[key] = byPlayer[key] || {
+      // byPlayer read by the key as JavaScript reads a key: in words
+      const a = (byPlayer[theKeyOf(key)] ??= {
         key,
-        uid: st.uid || null,
-        name: nm || '(name not recorded)',
+        uid: thisOrElse(st.uid, null),
+        name: thisOrElse(nm, '(name not recorded)'),
         games: 0,
         wins: 0,
         podium: 0,
@@ -597,19 +718,19 @@ export function renderChampions(G) {
       if (st.winner) a.wins++;
       if (st.rank) {
         a.ranked++;
-        a.rankSum += st.rank;
-        if (st.rank <= 3) a.podium++;
+        a.rankSum = theSumAsJavaScriptMakesIt(a.rankSum, st.rank);
+        if (Number(st.rank) <= 3) a.podium++;
       }
-      a.score += st.score || 0;
-      a.best = Math.max(a.best, st.score || 0);
-      a.titles += (st.titles || []).length;
+      a.score = theSumAsJavaScriptMakesIt(a.score, thisOrElse(st.score, 0));
+      a.best = Math.max(a.best, Number(thisOrElse(st.score, 0)));
+      a.titles = theSumAsJavaScriptMakesIt(a.titles, theField(thisOrElse(st.titles, []), 'length'));
       if (st.realm) a.realms.add(st.realm);
-    }),
-  );
-  const rows = Object.values(byPlayer).sort(
-    (a, b) => b.wins - a.wins || b.wins / b.games - a.wins / a.games || b.score - a.score,
-  );
-  const out = [];
+    });
+  });
+  const rows = Object.values(byPlayer)
+    .filter((r) => r !== undefined)
+    .sort((a, b) => b.wins - a.wins || b.wins / b.games - a.wins / a.games || Number(b.score) - Number(a.score));
+  const out: (ShownHtml | '')[] = [];
   if (GM) out.push(lbDiagnostics(G));
   out.push(kcHtml`<div class="card"><h2>🏆 Champions — the players</h2>`);
   out.push(
@@ -626,9 +747,9 @@ export function renderChampions(G) {
       out.push(
         kcHtml`<tr><td>${i + 1}</td><td><strong>${r.name}</strong></td><td class="num">${r.games}</td><td class="num">${r.wins}</td>`,
         kcHtml`<td style="min-width:90px">${pctBar(r.wins, r.games)}<span class="muted">${Math.round((100 * r.wins) / r.games)}%</span></td>`,
-        kcHtml`<td class="num">${r.podium}</td><td class="num">${r.ranked ? (r.rankSum / r.ranked).toFixed(1) : '—'}</td>`,
+        kcHtml`<td class="num">${r.podium}</td><td class="num">${r.ranked ? (Number(r.rankSum) / r.ranked).toFixed(1) : '—'}</td>`,
         kcHtml`<td class="num">${nf(r.best)}</td><td class="num">${r.titles}</td>`,
-        kcHtml`<td class="muted">${rl.slice(0, 4).join(', ')}${rl.length > 4 ? ' +' + (rl.length - 4) : ''}</td>`,
+        kcHtml`<td class="muted">${rl.slice(0, 4).join(', ')}${rl.length > 4 ? ' +' + String(rl.length - 4) : ''}</td>`,
         OVERLORD
           ? kcHtml`<td>${r.uid ? kcHtml`<button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="renamePlayer(${kcArg(r.uid)})">✏</button>` : kcHtml`<span class="muted" title="This player has no account on record — nothing to rename">—</span>`}</td>`
           : '',
@@ -644,8 +765,9 @@ export function renderChampions(G) {
     hW = 0,
     bG = 0,
     bW = 0;
-  G.forEach((g) =>
-    (g.standings || []).forEach((st) => {
+  G.forEach((g) => {
+    theStandingsOf(g).forEach((held) => {
+      const st = theStandingAsItsFieldsRead(held);
       if (st.bot) {
         bG++;
         if (st.winner) bW++;
@@ -653,8 +775,8 @@ export function renderChampions(G) {
         hG++;
         if (st.winner) hW++;
       }
-    }),
-  );
+    });
+  });
   out.push(
     kcHtml`<div class="card"><h2>⚖ Humans against the bots</h2><table class="kc">`,
     kcHtml`<tr><th>Side</th><th class="num">Realms played</th><th class="num">Wins</th><th>Win rate</th></tr>`,
@@ -664,18 +786,25 @@ export function renderChampions(G) {
   );
 
   // best single performances
-  const perf = [];
-  G.forEach((g) => (g.standings || []).forEach((st) => perf.push({ g, st })));
-  perf.sort((a, b) => (b.st.score || 0) - (a.st.score || 0));
+  const perf: { readonly g: AGameAsTheBoardHoldsIt; readonly st: AStandingOrNothing }[] = [];
+  G.forEach((g) => {
+    theStandingsOf(g).forEach((st) => perf.push({ g, st }));
+  });
+  perf.sort(
+    (a, b) =>
+      Number(thisOrElse(theStandingAsItsFieldsRead(b.st).score, 0)) -
+      Number(thisOrElse(theStandingAsItsFieldsRead(a.st).score, 0)),
+  );
   out.push(
     kcHtml`<div class="card"><h2>⭐ Finest single campaigns</h2><table class="kc">`,
     kcHtml`<tr><th>#</th><th>Realm</th><th>Player</th><th class="num">Score</th><th class="num">Provinces</th><th class="num">Strength</th><th class="num">Titles</th><th>Game</th><th>Date</th></tr>`,
   );
   perf.slice(0, 20).forEach((p, i) => {
+    const st = theStandingAsItsFieldsRead(p.st);
     out.push(
-      kcHtml`<tr><td>${i + 1}</td><td><strong>${p.st.realm}</strong>${p.st.winner ? kcHtml`<span class="pill pill-green">won</span>` : ''}</td>`,
-      kcHtml`<td>${p.st.bot ? kcHtml`<span class="pill pill-grey">bot</span>` : personName(p.st) || '—'}</td>`,
-      kcHtml`<td class="num">${nf(p.st.score)}</td><td class="num">${nf(p.st.prov)}</td><td class="num">${nf(p.st.str)}</td><td class="num">${(p.st.titles || []).length}</td>`,
+      kcHtml`<tr><td>${i + 1}</td><td><strong>${st.realm}</strong>${st.winner ? kcHtml`<span class="pill pill-green">won</span>` : ''}</td>`,
+      kcHtml`<td>${st.bot ? kcHtml`<span class="pill pill-grey">bot</span>` : thisOrElse(personName(p.st), '—')}</td>`,
+      kcHtml`<td class="num">${nf(st.score)}</td><td class="num">${nf(st.prov)}</td><td class="num">${nf(st.str)}</td><td class="num">${theField(thisOrElse(st.titles, []), 'length')}</td>`,
       kcHtml`<td class="muted">${p.g.game_name}</td><td class="muted">${dstr(p.g.finished_at)}</td></tr>`,
     );
   });
@@ -688,29 +817,33 @@ export function renderChampions(G) {
 // rows built before lb3 hold one {entry}: the game's best — both are read). When the search box names
 // a realm or a player, each game that has them contributes only THEIR entries, so a player can find
 // every feat of theirs, not only the ones that make the top eight.
-export function renderAchievements(G) {
-  const q = (($('f-q') && $('f-q').value) || '').trim().toLowerCase();
-  const whoMatch = (st) =>
-    !!q && [st.realm, st.player, personName(st)].filter(Boolean).join(' ').toLowerCase().indexOf(q) >= 0;
-  const byKey = {};
+export function renderAchievements(G: readonly AGameAsTheBoardHoldsIt[]): ShownHtml {
+  const box = $('f-q');
+  const q = (box ? theControl('f-q').value : '').trim().toLowerCase();
+  const whoMatch = (st: AStandingAsTheBoardReadsIt): boolean =>
+    !!q && [st.realm, st.player, personName(st)].filter(Boolean).join(' ').toLowerCase().includes(q);
+  const byKey: Partial<Record<string, AnEntryOfAGame[]>> = {};
   let narrowed = false;
-  G.forEach((g) => {
-    const mine = new Set((g.standings || []).filter((st) => st && whoMatch(st)).map((st) => st.pi));
+  for (const g of G) {
+    const mine = new Set(
+      theStandingsOf(g)
+        .filter((st): st is AStandingAsTheBoardReadsIt => (st ? whoMatch(st) : false))
+        .map((st) => st.pi),
+    );
     if (mine.size) narrowed = true;
-    Object.entries(g.records || {}).forEach(([k, r]) => {
-      (Array.isArray(r) ? r : [r]).forEach((e) => {
-        if (!e || e.v == null) return;
+    g.records.forEach(({ key: k, entries }) => {
+      entries.forEach((e) => {
         if (mine.size && !mine.has(e.pi)) return;
-        (byKey[k] = byKey[k] || []).push({ ...e, g });
+        (byKey[k] ??= []).push({ ...e, g });
       });
     });
-  });
-  const cats = {};
+  }
+  const cats: Partial<Record<string, string[]>> = {};
   Object.keys(byKey).forEach((k) => {
     const d = achDef(k);
-    (cats[d.c] = cats[d.c] || []).push(k);
+    (cats[d.c] ??= []).push(k);
   });
-  const out = [];
+  const out: (ShownHtml | '')[] = [];
   out.push(
     kcHtml`<div class="card"><h2>🎖 Achievements</h2><div class="muted">${
       narrowed
@@ -719,15 +852,18 @@ export function renderAchievements(G) {
     }</div></div>`,
   );
   KC_CAT.forEach(([cat, title]) => {
-    const keys = (cats[cat] || []).sort((a, b) => achLabel(a, byKey[a][0]).localeCompare(achLabel(b, byKey[b][0])));
+    const keys = (cats[cat] ?? []).sort((a, b) =>
+      theLabelsCompared(achLabel(a, byKey[a]?.[0]), achLabel(b, byKey[b]?.[0])),
+    );
     if (!keys.length) return;
     out.push(kcHtml`<div class="card"><h2>${title}</h2><div class="ach-grid">`);
     keys.forEach((k) => {
+      const held = byKey[k] ?? [];
       const def = achDef(k),
-        dir = byKey[k][0].d === 'min' || def.d === 'min' ? 'min' : 'max';
-      const list = byKey[k]
+        dir = held[0]?.d === 'min' || def.d === 'min' ? 'min' : 'max';
+      const list = held
         .slice()
-        .sort((a, b) => (dir === 'min' ? a.v - b.v : b.v - a.v))
+        .sort((a, b) => (dir === 'min' ? Number(a.v) - Number(b.v) : Number(b.v) - Number(a.v)))
         .slice(0, 8);
       out.push(kcHtml`<div class="ach"><div class="t">${achLabel(k, list[0])}</div>`);
       if (def.n) out.push(kcHtml`<div class="n">${def.n}</div>`);
@@ -735,18 +871,21 @@ export function renderAchievements(G) {
       list.forEach((e, i) => {
         const id = whoOf(e);
         const who = e.who ? kcHtml`${e.who} · ` : '';
-        const realm = id.realm ? id.realm : e.pi == null ? kcHtml`<span class="muted">the game itself</span>` : '—';
+        const realm = thisOrElse(
+          id.realm,
+          e.pi === null || e.pi === undefined ? kcHtml`<span class="muted">the game itself</span>` : '—',
+        );
         const owner = id.player
           ? kcHtml` <span class="muted">(${id.player})</span>`
           : id.bot
             ? kcHtml` <span class="pill pill-grey">bot</span>`
             : '';
-        const bits = [];
+        const bits: unknown[] = [];
         if (id.race) bits.push(id.race);
         if (id.al) bits.push(id.al);
-        if (e.t != null) bits.push('turn ' + e.t);
+        if (e.t !== null && e.t !== undefined) bits.push(theSumAsJavaScriptMakesIt('turn ', e.t));
         if (e.det) bits.push(e.det);
-        bits.push((e.g.game_name == null ? '' : e.g.game_name) + ' · ' + dstr(e.g.finished_at));
+        bits.push((e.g.game_name ?? '') + ' · ' + dstr(e.g.finished_at));
         out.push(
           kcHtml`<li class="${i === 0 ? 'top1' : ''}"><span class="v">${fmtVal(e.v, def.f)}</span><span class="w">${who}${realm}${owner}<span class="sm">${bits.join(' · ')}</span></span></li>`,
         );
@@ -759,23 +898,35 @@ export function renderAchievements(G) {
 }
 
 // —— RACES & CREEDS ————————————————————————————————————————————————————————————————————————————
-export function renderPeoples(G) {
-  const tally = (pick) => {
-    const m = {};
-    G.forEach((g) =>
-      (g.standings || []).forEach((st) => {
+/** One line of a Races & Creeds table, as the standings add it up. */
+interface ATallysLine {
+  readonly k: unknown;
+  n: number;
+  w: number;
+  score: number | string;
+  prov: number | string;
+}
+export function renderPeoples(G: readonly AGameAsTheBoardHoldsIt[]): ShownHtml {
+  const tally = (pick: (st: AStandingAsTheBoardReadsIt) => unknown): ATallysLine[] => {
+    const m: Partial<Record<string, ATallysLine>> = {};
+    G.forEach((g) => {
+      theStandingsOf(g).forEach((held) => {
+        const st = theStandingAsItsFieldsRead(held);
         const k = pick(st);
         if (!k) return;
-        const a = (m[k] = m[k] || { k, n: 0, w: 0, score: 0, prov: 0 });
+        // m read by the key as JavaScript reads a key: in words
+        const a = (m[theKeyOf(k)] ??= { k, n: 0, w: 0, score: 0, prov: 0 });
         a.n++;
         if (st.winner) a.w++;
-        a.score += st.score || 0;
-        a.prov += st.prov || 0;
-      }),
-    );
-    return Object.values(m).sort((a, b) => b.w / b.n - a.w / a.n || b.n - a.n);
+        a.score = theSumAsJavaScriptMakesIt(a.score, thisOrElse(st.score, 0));
+        a.prov = theSumAsJavaScriptMakesIt(a.prov, thisOrElse(st.prov, 0));
+      });
+    });
+    return Object.values(m)
+      .filter((a) => a !== undefined)
+      .sort((a, b) => b.w / b.n - a.w / a.n || b.n - a.n);
   };
-  const tbl = (title, rows, head) => {
+  const tbl = (title: string, rows: readonly ATallysLine[], head: string): ShownHtml | '' => {
     if (!rows.length) return '';
     const out = [
       kcHtml`<div class="card"><h2>${title}</h2><table class="kc"><tr><th>${head}</th><th class="num">Realms</th><th class="num">Wins</th><th>Win rate</th><th class="num">Avg score</th><th class="num">Avg provinces</th></tr>`,
@@ -784,7 +935,7 @@ export function renderPeoples(G) {
       out.push(
         kcHtml`<tr><td><strong>${r.k}</strong></td><td class="num">${r.n}</td><td class="num">${r.w}</td>`,
         kcHtml`<td style="min-width:100px">${pctBar(r.w, r.n)}<span class="muted">${Math.round((100 * r.w) / r.n)}%</span></td>`,
-        kcHtml`<td class="num">${nf(Math.round(r.score / r.n))}</td><td class="num">${nf(Math.round((10 * r.prov) / r.n) / 10)}</td></tr>`,
+        kcHtml`<td class="num">${nf(Math.round(Number(r.score) / r.n))}</td><td class="num">${nf(Math.round((10 * Number(r.prov)) / r.n) / 10)}</td></tr>`,
       );
     });
     out.push(kcHtml`</table></div>`);
@@ -803,22 +954,23 @@ export function renderPeoples(G) {
     ),
     tbl(
       '🔀 By race and creed',
-      tally((s) => (s.race && s.al ? s.race + ' · ' + s.al : null)),
+      tally((s) => (s.race && s.al ? theSumAsJavaScriptMakesIt(theSumAsJavaScriptMakesIt(s.race, ' · '), s.al) : null)),
       'Race · Alignment',
     ),
     tbl(
       '🎲 By how the game ended',
       (() => {
-        const m = {};
+        const m: Partial<Record<string, ATallysLine>> = {};
         G.forEach((g) => {
-          const k = g.victory || 'unfinished';
-          const a = (m[k] = m[k] || { k, n: 0, w: 0, score: 0, prov: 0 });
+          const k = (g.victory ?? '') || 'unfinished';
+          const a = (m[k] ??= { k, n: 0, w: 0, score: 0, prov: 0 });
           a.n++;
           a.w += 0;
-          a.score += g.turns || 0;
-          a.prov += g.setup.realms || 0;
+          a.score = theSumAsJavaScriptMakesIt(a.score, g.turns ?? 0);
+          a.prov = theSumAsJavaScriptMakesIt(a.prov, thisOrElse(g.setup.realms, 0));
         });
         return Object.values(m)
+          .filter((a) => a !== undefined)
           .map((a) => ({ k: a.k, n: a.n, w: 0, score: a.score, prov: a.prov }))
           .sort((a, b) => b.n - a.n);
       })(),
@@ -828,8 +980,8 @@ export function renderPeoples(G) {
 }
 
 // —— GAMES ————————————————————————————————————————————————————————————————————————————————————
-export function renderGames(G) {
-  const out = [kcHtml`<div class="card"><h2>📜 Every recorded game</h2>`];
+export function renderGames(G: readonly AGameAsTheBoardHoldsIt[]): ShownHtml {
+  const out: (ShownHtml | '')[] = [kcHtml`<div class="card"><h2>📜 Every recorded game</h2>`];
   out.push(
     kcHtml`<div class="muted" style="margin-bottom:9px">Newest first. Click a game to see its final standings.${GM ? (OVERLORD ? ' As the Overlord you can rename any game, change its date, add a note, hide it from the board, or delete it.' : ' As a Game Master you can rename your own games, change their date, add a note, hide them from the board, or delete them.') : ''}</div>`,
   );
@@ -837,9 +989,8 @@ export function renderGames(G) {
     kcHtml`<table class="kc"><tr><th>Date</th><th>Game</th><th class="num">Turns</th><th>Realms</th><th>Bots</th><th>Map</th><th>Won by</th><th>How</th>${GM ? kcHtml`<th></th>` : ''}</tr>`,
   );
   G.forEach((g) => {
-    const s = g.setup || {},
-      bots = s.bots || 0,
-      humans = s.humans != null ? s.humans : (s.realms || 0) - bots;
+    const s = g.setup,
+      { bots, humans } = theBotsAndHumansOf(g);
     const dip =
       s.diplomacy === 'hostile'
         ? kcHtml`<span class="pill pill-red">aggressive</span>`
@@ -850,12 +1001,12 @@ export function renderGames(G) {
       kcHtml`<tr class="gamerow${g.hidden ? ' hidden-row' : ''}" onclick="toggleGame(${kcArg(g.game_id)})">`,
       kcHtml`<td class="muted">${dstr(g.finished_at)}</td>`,
       kcHtml`<td><strong>${g.game_name}</strong>${g.hidden ? kcHtml`<span class="pill pill-amber">hidden</span>` : ''}${g.note ? kcHtml`<span class="sm muted"> · ${g.note}</span>` : ''}</td>`,
-      kcHtml`<td class="num">${g.turns || '—'}</td>`,
-      kcHtml`<td>${s.realms || '—'} <span class="muted">(${humans}👤 ${bots}🤖)</span></td>`,
+      kcHtml`<td class="num">${(g.turns ?? 0) || '—'}</td>`,
+      kcHtml`<td>${thisOrElse(s.realms, '—')} <span class="muted">(${humans}👤 ${bots}🤖)</span></td>`,
       kcHtml`<td>${bots ? kcHtml`${bots}${dip}` : kcHtml`<span class="pill pill-green">all human</span>`}</td>`,
-      kcHtml`<td class="muted">${mapKey(g) || '—'}${s.seaPct != null ? ' · ' + s.seaPct + '% sea' : ''}</td>`,
-      kcHtml`<td>${g.winner_realm || '—'}${winnerName(g) ? kcHtml` <span class="muted">(${winnerName(g)})</span>` : g.winner_is_bot ? kcHtml` <span class="pill pill-grey">bot</span>` : ''}</td>`,
-      kcHtml`<td class="muted">${g.victory || '—'}</td>`,
+      kcHtml`<td class="muted">${thisOrElse(mapKey(g), '—')}${s.seaPct !== null && s.seaPct !== undefined ? theSumAsJavaScriptMakesIt(theSumAsJavaScriptMakesIt(' · ', s.seaPct), '% sea') : ''}</td>`,
+      kcHtml`<td>${(g.winner_realm ?? '') || '—'}${winnerName(g) ? kcHtml` <span class="muted">(${winnerName(g)})</span>` : g.winner_is_bot ? kcHtml` <span class="pill pill-grey">bot</span>` : ''}</td>`,
+      kcHtml`<td class="muted">${(g.victory ?? '') || '—'}</td>`,
       GM
         ? kcHtml`<td>${canEdit(g) ? kcHtml`<button class="btn btn-ghost" style="font-size:.6rem;padding:3px 8px" onclick="event.stopPropagation();toggleEdit(${kcArg(g.game_id)})">✏</button>` : ''}</td>`
         : '',
@@ -868,32 +1019,33 @@ export function renderGames(G) {
   out.push(kcHtml`</table></div>`);
   return kcHtml`${out}`;
 }
-export function gameDetail(g) {
+export function gameDetail(g: AGameAsTheBoardHoldsIt): ShownHtml {
   const out = [kcHtml`<div style="padding:4px 0 8px">`];
   out.push(
     kcHtml`<table class="kc"><tr><th class="num">Rank</th><th>Realm</th><th>Player</th><th>Race</th><th>Creed</th><th class="num">Score</th><th class="num">Provinces</th><th class="num">Gold</th><th class="num">Strength</th><th class="num">Titles</th><th>Fate</th></tr>`,
   );
-  (g.standings || []).forEach((st) => {
+  theStandingsOf(g).forEach((held) => {
+    const st = theStandingAsItsFieldsRead(held);
     out.push(
-      kcHtml`<tr><td class="num">${st.rank || '—'}</td><td><strong>${st.realm}</strong>${st.winner ? kcHtml`<span class="pill pill-green">victor</span>` : ''}</td>`,
-      kcHtml`<td>${st.bot ? kcHtml`<span class="pill pill-grey">bot</span>` : personName(st) || '—'}</td><td>${st.race || '—'}</td><td>${st.al || '—'}</td>`,
-      kcHtml`<td class="num">${nf(st.score)}</td><td class="num">${nf(st.prov)}</td><td class="num">${nf(st.gold)}</td><td class="num">${nf(st.str)}</td><td class="num">${(st.titles || []).length}</td>`,
-      kcHtml`<td class="muted">${st.outHow ? st.outHow + (st.outTurn ? ' turn ' + st.outTurn : '') : 'survived'}</td></tr>`,
+      kcHtml`<tr><td class="num">${thisOrElse(st.rank, '—')}</td><td><strong>${st.realm}</strong>${st.winner ? kcHtml`<span class="pill pill-green">victor</span>` : ''}</td>`,
+      kcHtml`<td>${st.bot ? kcHtml`<span class="pill pill-grey">bot</span>` : thisOrElse(personName(held), '—')}</td><td>${thisOrElse(st.race, '—')}</td><td>${thisOrElse(st.al, '—')}</td>`,
+      kcHtml`<td class="num">${nf(st.score)}</td><td class="num">${nf(st.prov)}</td><td class="num">${nf(st.gold)}</td><td class="num">${nf(st.str)}</td><td class="num">${theField(thisOrElse(st.titles, []), 'length')}</td>`,
+      kcHtml`<td class="muted">${st.outHow ? theSumAsJavaScriptMakesIt(st.outHow, st.outTurn ? theSumAsJavaScriptMakesIt(' turn ', st.outTurn) : '') : 'survived'}</td></tr>`,
     );
   });
   out.push(kcHtml`</table>`);
-  const t = g.totals || {};
+  const t = g.totals;
   out.push(
-    kcHtml`<div class="muted" style="margin-top:7px">${nf(t.battles || 0)} battles · ${nf(t.casualties || 0)} units destroyed · ${nf(t.captures || 0)} provinces changed hands · ${nf(t.lairs || 0)} lair fights · ${nf(t.spells || 0)} spells cast · ${nf(t.deaths || 0)} characters killed · started ${dstr(g.started_at)}${GM ? kcHtml` · recorded by <code>${g.build || 'unknown'}</code>` : ''}</div>`,
+    kcHtml`<div class="muted" style="margin-top:7px">${nf(thisOrElse(t.battles, 0))} battles · ${nf(thisOrElse(t.casualties, 0))} units destroyed · ${nf(thisOrElse(t.captures, 0))} provinces changed hands · ${nf(thisOrElse(t.lairs, 0))} lair fights · ${nf(thisOrElse(t.spells, 0))} spells cast · ${nf(thisOrElse(t.deaths, 0))} characters killed · started ${dstr(g.started_at)}${GM ? kcHtml` · recorded by <code>${(g.build ?? '') || 'unknown'}</code>` : ''}</div>`,
   );
   if (GM && canEdit(g)) {
-    const d = (g.finished_at || '').slice(0, 10);
+    const d = (g.finished_at ?? '').slice(0, 10);
     out.push(kcHtml`<div class="gmbox" id="edit-${g.game_id}" style="display:none">
       <h4>Game Master — edit this record</h4>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">
         <div><label>Name on the board</label><input type="text" id="e-name-${g.game_id}" value="${g.game_name}"></div>
         <div><label>Date played</label><input type="date" id="e-date-${g.game_id}" value="${d}"></div>
-        <div style="grid-column:1/-1"><label>Note</label><input type="text" id="e-note-${g.game_id}" value="${g.note || ''}" placeholder="e.g. the first Reckoning played to the wire"></div>
+        <div style="grid-column:1/-1"><label>Note</label><input type="text" id="e-note-${g.game_id}" value="${g.note ?? ''}" placeholder="e.g. the first Reckoning played to the wire"></div>
       </div>
       <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px">
         <button class="btn btn-gold" style="font-size:.66rem" onclick="saveGame(${kcArg(g.game_id)})">Save</button>
@@ -908,34 +1060,39 @@ export function gameDetail(g) {
   out.push(kcHtml`</div>`);
   return kcHtml`${out}`;
 }
-export function toggleGame(id) {
+export function toggleGame(id: string): void {
   const r = $('det-' + id);
   if (r) r.style.display = r.style.display === 'none' ? 'table-row' : 'none';
 }
-export function toggleEdit(id) {
+export function toggleEdit(id: string): void {
   const r = $('det-' + id);
-  if (r && r.style.display === 'none') r.style.display = 'table-row';
+  if (r?.style.display === 'none') r.style.display = 'table-row';
   const b = $('edit-' + id);
   if (b) b.style.display = b.style.display === 'none' ? 'block' : 'none';
 }
-export async function saveGame(id) {
+export async function saveGame(id: string): Promise<void> {
   const msg = $('e-msg-' + id);
-  const name = $('e-name-' + id).value.trim(),
-    note = $('e-note-' + id).value.trim(),
-    date = $('e-date-' + id).value;
-  const patch = { game_name: name || null, note: note || null };
+  const name = theControl('e-name-' + id).value.trim(),
+    note = theControl('e-note-' + id).value.trim(),
+    date = theControl('e-date-' + id).value;
+  const patch: { game_name: string | null; note: string | null; finished_at?: string } = {
+    game_name: name || null,
+    note: note || null,
+  };
   if (date) patch.finished_at = new Date(date + 'T12:00:00').toISOString();
   const { error } = await thePagesDb.theHallOfFame.changeThisGamesEntry(id, patch);
   if (error) {
-    msg.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
+    theElementFound(msg, 'e-msg-' + id).innerHTML = String(kcHtml`<div class="msg-error">${error.message}</div>`);
     return;
   }
-  msg.innerHTML = '<div class="msg-success">Saved.</div>';
+  theElementFound(msg, 'e-msg-' + id).innerHTML = '<div class="msg-success">Saved.</div>';
   const g = GAMES.find((x) => x.game_id === id);
   if (g) Object.assign(g, patch);
-  setTimeout(() => render(), 500);
+  setTimeout(() => {
+    render();
+  }, 500);
 }
-export async function setHidden(id, hide) {
+export async function setHidden(id: string, hide: boolean): Promise<void> {
   const { error } = await thePagesDb.theHallOfFame.changeThisGamesEntry(id, { hidden: hide });
   if (error) {
     alert(error.message);
@@ -949,13 +1106,13 @@ export async function setHidden(id, hide) {
 // rename_player (P0-22, ruling D-11) writes `profiles.name`, the one place a person's name lives, and nothing
 // else; the Overlord only. Nothing in game_records is rewritten: the board reads names live, so the change shows
 // on every past game at once.
-export async function renamePlayer(uid) {
-  const cur = PEOPLE[uid] || '';
+export async function renamePlayer(uid: string): Promise<void> {
+  const cur = PEOPLE[uid] ?? '';
   const name = prompt(
     'Player name on the leaderboard.\n\nThis is the person, not their realm — it changes on every game they have played.',
     cur,
   );
-  if (name == null) return;
+  if (name === null) return;
   const t = name.trim();
   const msg = $('rename-msg');
   if (!t) {
@@ -965,29 +1122,31 @@ export async function renamePlayer(uid) {
   const { error } = await thePagesDb.theHallOfFame.renameThisPlayer(uid, t);
   if (error) {
     if (msg)
-      msg.innerHTML = kcHtml`<div class="msg-error"><strong>Could not rename that player.</strong> ${error.message}</div>`;
+      msg.innerHTML = String(
+        kcHtml`<div class="msg-error"><strong>Could not rename that player.</strong> ${error.message}</div>`,
+      );
     return;
   }
   PEOPLE[uid] = t;
   render();
   const m2 = $('rename-msg');
-  if (m2) m2.innerHTML = kcHtml`<div class="msg-success">Renamed to ${t} — on every game they have played.</div>`;
+  if (m2)
+    m2.innerHTML = String(kcHtml`<div class="msg-success">Renamed to ${t} — on every game they have played.</div>`);
 }
-export async function deleteRecord(id, purge) {
+export async function deleteRecord(id: string, purge: boolean): Promise<void> {
   const g = GAMES.find((x) => x.game_id === id);
   const nm = g ? g.game_name : id;
   const q = purge
-    ? `Delete EVERYTHING recorded about “${nm}” — its Hall-of-Fame entry, its result rows and every recorded turn? This cannot be undone.`
-    : `Remove “${nm}” from the Hall of Fame? Its recorded turns are kept, so the GM portal can rebuild the entry later.`;
+    ? `Delete EVERYTHING recorded about “${String(nm)}” — its Hall-of-Fame entry, its result rows and every recorded turn? This cannot be undone.`
+    : `Remove “${String(nm)}” from the Hall of Fame? Its recorded turns are kept, so the GM portal can rebuild the entry later.`;
   if (!confirm(q)) return;
-  let err = null;
   const r1 = await thePagesDb.theHallOfFame.deleteThisGamesEntry(id);
-  err = err || r1.error;
+  let err: { readonly message: string } | null = r1.error;
   if (purge) {
     const r2 = await thePagesDb.theStatistics.deleteThisGamesResults(id);
-    err = err || r2.error;
+    err = err ?? r2.error;
     const r3 = await thePagesDb.theStatistics.deleteThisGamesTurnRecords(id);
-    err = err || r3.error;
+    err = err ?? r3.error;
   }
   if (err) {
     alert(err.message);
@@ -998,4 +1157,4 @@ export async function deleteRecord(id, purge) {
   render();
 }
 
-kcDbGuard(thePagesDb, KC_DB_MIN).then(() => loadAll());
+void kcDbGuard(thePagesDb, KC_DB_MIN).then(() => loadAll());

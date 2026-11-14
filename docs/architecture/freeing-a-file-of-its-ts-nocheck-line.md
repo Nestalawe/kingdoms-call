@@ -4,9 +4,9 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-15 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+9 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
 (0 since P1-17c typed `src/db/kc-db-guard.ts`: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`,
-`src/content/`, `src/schemas/` and `src/shared/`), which P1-10b freed, and `tsNocheckUi` (15: the UI's pages in `src/ui/`, `src/rulebook/`, and any
+`src/content/`, `src/schemas/` and `src/shared/`), which P1-10b freed, and `tsNocheckUi` (9: the UI's pages in `src/ui/`, `src/rulebook/`, and any
 other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
 an annotation or a `satisfies` written there is a claim nobody checks: a wrong parameter type compiles, and so does a
