@@ -31,7 +31,7 @@ writes each realm's report. Players only submit orders and read what they're giv
   [its file](architecture/the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md); a discovery's,
   `the-registry-of-discovery-effects.ts`:
   [its file](architecture/the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md); a perk's,
-  `the-registry-of-guardian-perks.ts`: [its file](architecture/the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md)), naming its effect at each
+  `the-registry-of-guardian-perks.ts`: [its file](architecture/the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md); an alignment ability's: [its file](architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md)), naming its effect at each
   stage of a hook point; the resolvers ask the stage's runner. An alignment order is one row of
   `src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts` and no registry entry: its resolver is
   its rule (P1-19ap). `src/content/kingdoms-call-data.ts`
