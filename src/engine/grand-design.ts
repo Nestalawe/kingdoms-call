@@ -1,3 +1,5 @@
+import { whatARealmsAlignmentAddsToItsTax } from './rules/the-registry-of-alignment-abilities.ts';
+
 // The game's state as these functions read it: the turn's, a report's or the GM page's, or an older save's, so a
 // realm, a province, a field or a list may be missing (the guards below say so). Today's GameState passes.
 interface RealmAsTheseRead {
@@ -90,13 +92,14 @@ export function homeFounderOf(gs: StateAsTheseRead | null | undefined, provId: n
   return null;
 }
 
-// Neutral trade bonus: +20% of province tax income, rounded down. Exact integer division so the
-// end-of-turn collector and the Tax Income forecast can never disagree by a floating-point hair.
+// What a realm's alignment adds to its tax (the Neutral trade bonus: +20% of province tax income, rounded down), asked
+// by the end-of-turn collector and the Tax Income forecast alike. The alignment abilities' registry's since plan
+// P1-19at1 ("turnEnd: a realm's alignment adds to its tax"), its share in the ability's row.
 export function neutralTradeGold(
   pl: Pick<RealmAsTheseRead, 'alignment'> | null | undefined,
   income: number | null | undefined,
 ) {
-  return pl?.alignment === 'Neutral' ? Math.floor((Number(income) || 0) / 5) : 0;
+  return whatARealmsAlignmentAddsToItsTax(pl?.alignment, { theIncome: income });
 }
 
 export const HOME_FLEET_BY_RACE: Readonly<Record<string, string | undefined>> = {

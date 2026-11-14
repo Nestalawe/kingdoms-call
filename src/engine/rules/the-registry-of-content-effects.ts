@@ -1615,6 +1615,12 @@ export interface TheIncomeTaxationRecordsAddsTo {
   readonly theCeiling: number | null | undefined;
 }
 
+/** The provinces' tax income a realm's alignment adds to, as Early Winter's collection and the report's forecast hand
+ *  it (after the provinces' own tax, the discoveries' and the Wonder's). */
+export interface TheIncomeARealmsAlignmentAddsTo {
+  readonly theIncome: number | null | undefined;
+}
+
 /** A realm's treasury and its ceiling, as the interest discoveries read them (the collection and the report). */
 export interface ATreasuryARealmsDiscoveriesMayEarnInterestOn {
   readonly theTreasury: number;
@@ -1944,6 +1950,10 @@ export interface TheStagesOfEachHookPoint {
       theEffect: TheEffectOfADiscovery,
       facts: TheIncomeTaxationRecordsAddsTo,
     ) => number;
+    /** The gold an ability of a realm's alignment adds to its tax from the provinces' income; the runner adds those of
+     *  the abilities its alignment holds, in the stage's order (neutralTradeGold, which Early Winter's collection and the
+     *  report's forecast ask: the alignment abilities' registry, plan P1-19at1). */
+    readonly "a realm's alignment adds to its tax": (facts: TheIncomeARealmsAlignmentAddsTo) => number;
     /** The interest a discovery a realm holds earns on its treasury, under the ceiling; the runner adds them (Early
      *  Winter, and the report's forecast). */
     readonly "a realm's discoveries earn interest": (
