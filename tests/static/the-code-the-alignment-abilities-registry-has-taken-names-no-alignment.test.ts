@@ -82,6 +82,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'applyEvilConquest',
     "P1-19ax1, the conquest doctrine: its plunder, its garrison's grade and its turns, from its row",
   ],
+  [
+    'src/engine/turn/new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-final-reconcile.ts',
+    'newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile',
+    "P1-19ax1 and ax2, Divine grace's return and the graves on Undead land: their numbers, from their rows",
+  ],
+  [
+    'src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts',
+    'diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings',
+    'P1-19ax2, a broken alliance: the creeds that go to war, from their rows',
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcCharCombatant',
+    "P1-19ax2, an Undead hero in personal combat: his own alignment's row",
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts',
+    'theRisenDeadFollowAHandOverTo',
+    "P1-19ax2, the risen dead's hand-over: the creed they follow, from its row",
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts',
+    TOP,
+    'P1-19ax2, war without warning, a broken alliance and the doctrine for the portal: their rows',
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

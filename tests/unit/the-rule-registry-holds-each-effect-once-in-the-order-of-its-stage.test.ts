@@ -50,6 +50,9 @@
 // Since P1-19ax1 its runners of Divine grace, the Divine Rest, the Blood Harvest and the conquest doctrine give each
 // creed what the engine's checks gave: Divine one turn in death and half health, Divine ×1.5 rounded up, Pagan 1g a
 // foe, Evil 0.5 of the tax, a Green unit and 3 turns; null for every other creed and for none.
+// Since P1-19ax2 the graves on Undead land (0.05, else 0.1), an Undead hero as undead in personal combat, and the
+// shared readers of war without warning, a broken alliance, the doctrine and the risen dead's hand-over, as the
+// engine's and the page's checks gave them.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -124,7 +127,15 @@ import {
   theFactorARealmsAlignmentRaisesARestsHealBy,
   theGoldARealmsAlignmentClaimsForEachFoeDestroyed,
   theConquestDoctrineOfARealmsAlignment,
+  theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt,
+  isAHeroOfTheAlignmentUndeadInPersonalCombat,
 } from '../../src/engine/rules/the-registry-of-alignment-abilities.ts';
+import {
+  doesAnAlignmentBreakAnAllianceIntoWar,
+  doesAnAlignmentConquerByADoctrine,
+  doesAnAlignmentDeclareWarWithoutWarning,
+} from '../../src/engine/rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
+import { theRisenDeadFollowAHandOverTo } from '../../src/engine/rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
 import { druidNeedWaivedByAlignment } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import {
   A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX,
@@ -705,10 +716,16 @@ const ABILITIES_REGISTRY = (entries: Entries, orders: Orders, rows: AbilityRows)
   );
 
 /** The abilities read in src/engine/rules-on-plain-values/, which the player portal shares and which may import only
- *  src/content, so their entries have no stage (P1-19av1: the Druid waiver, druidNeedWaivedByAlignment). */
+ *  src/content, so their entries have no stage (P1-19av1: the Druid waiver, druidNeedWaivedByAlignment; P1-19ax2: war
+ *  without warning, a broken alliance, the risen dead's hand-over). */
 const THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES: readonly string[] = [
   'creatures-follow-without-a-druid',
   'monsters-follow-without-a-druid',
+  'war-without-warning-of-an-evil-realm',
+  'war-without-warning-of-an-undead-realm',
+  'a-broken-alliance-means-war-for-an-evil-realm',
+  'a-broken-alliance-means-war-for-an-undead-realm',
+  'the-risen-dead-follow-only-the-undead',
 ];
 
 test("the alignment abilities' registry holds each effect once, in the order of its stage, and each content row is sound", () => {
@@ -968,6 +985,33 @@ test("the runners of Divine grace, the Divine Rest, the Blood Harvest and the co
     expect(killedOnTurn + theDivineReturn.theFullTurnsInDeath + 1).toBe(killedOnTurn + 2);
     expect(Math.floor(maxHp * theDivineReturn.theShareOfHealth) || 8).toBe(Math.floor(maxHp * 0.5) || 8);
   }
+});
+
+test("the graves, the undead, war without warning, a broken alliance, the doctrine and the risen dead give each creed what the engine's and the page's checks gave before", () => {
+  for (const a of [...KC_ALIGNMENTS, null, undefined, '', 'Mercantile'] as const) {
+    const said = String(a);
+    // the graves: `owner != null && alignment === 'Undead' ? 0.05 : 0.1`
+    expect(theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt(a) ?? 0.1, said).toBe(a === 'Undead' ? 0.05 : 0.1);
+    // personal combat: `isUndead: ch.alignment === 'Undead'`
+    expect(isAHeroOfTheAlignmentUndeadInPersonalCombat(a), said).toBe(a === 'Undead');
+    // the turn's and the forecast's `['Evil', 'Undead'].includes(alignment)`, the reckoning's and the card's too
+    expect(doesAnAlignmentDeclareWarWithoutWarning(a), said).toBe(['Evil', 'Undead'].includes(String(a)));
+    expect(doesAnAlignmentBreakAnAllianceIntoWar(a), said).toBe(['Evil', 'Undead'].includes(String(a)));
+    // the order form's `report.kingdom?.alignment === 'Evil'`
+    expect(doesAnAlignmentConquerByADoctrine(a), said).toBe(a === 'Evil');
+    // the hand-over: `!recipient || recipient.alignment === 'Undead' || recipient.hisRealmsAlignment === 'Undead'`
+    for (const b of [...KC_ALIGNMENTS, null, undefined] as const)
+      expect(theRisenDeadFollowAHandOverTo({ alignment: a, hisRealmsAlignment: b }), `${said}, ${String(b)}`).toBe(
+        a === 'Undead' || b === 'Undead',
+      );
+  }
+  expect(theRisenDeadFollowAHandOverTo(null)).toBe(true);
+  // a value the page may hold that is no string: none of them
+  for (const v of [0, Number.NaN, {}, ['Evil']])
+    expect([doesAnAlignmentDeclareWarWithoutWarning(v), doesAnAlignmentBreakAnAllianceIntoWar(v)]).toEqual([
+      false,
+      false,
+    ]);
 });
 
 test('the runner of "who may give an alignment order" refuses as each resolver\'s own checks did, in its own order', () => {

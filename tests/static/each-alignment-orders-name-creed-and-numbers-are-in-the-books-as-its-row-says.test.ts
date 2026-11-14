@@ -537,6 +537,13 @@ test("the abilities' numbers are the ones the books state today", () => {
       theGradeOfTheEnslavedGarrison: 'Green',
       theTurnsTheEnslavedProvincePaysLess: 3,
     },
+    'graves-keep-on-undead-land': { theShareOfTheGravesThatRotEachTurn: 5 },
+    'war-without-warning-of-an-evil-realm': {},
+    'war-without-warning-of-an-undead-realm': {},
+    'a-broken-alliance-means-war-for-an-evil-realm': {},
+    'a-broken-alliance-means-war-for-an-undead-realm': {},
+    'the-risen-dead-follow-only-the-undead': {},
+    'an-undead-hero-is-undead-in-personal-combat': {},
   });
 });
 

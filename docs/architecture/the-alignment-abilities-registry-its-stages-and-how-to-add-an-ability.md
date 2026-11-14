@@ -108,6 +108,18 @@ today's hooks (Decision C: no "hero's fate" hook). Each runner gives the first a
 | `fate`: **a realm's alignment claims gold for each foe destroyed** | Pagan's Blood Harvest | `bloodHarvest`, both battles' victories; its 1g, before the discoveries add theirs |
 | `fate`: **a realm's alignment conquers by a doctrine** | Evil's plunder or enslave | `applyEvilConquest` (11 sites): `50 / 100` of the tax, a Green unit, 3 turns; both battles' Terror after a decisive victory ask whether it gives one |
 
+**The graves and the undead** (P1-19ax2, `alignment-abilities/the-graves-and-the-undead-of-a-realms-alignment.ts`):
+
+| Stage | Its ability | Where it is asked, and what it gives |
+|---|---|---|
+| `turnEnd`: **a realm's alignment keeps the graves on its land** | Undead's slow graves | 7e of the new turn, for a province a realm holds, before the discoveries keep them; `5 / 100` (exactly 0.05), or null for the turn's 0.1 |
+| `aHerosStanding`: **a hero's own alignment makes him undead** | an Undead hero | personal combat's combatant of a hero; his own alignment (Decision G) |
+
+War without warning, a broken alliance into war (two rows each: Evil, Undead) and the risen dead's hand-over are read in
+`src/engine/rules-on-plain-values/` (the player portal shares them through `src/shared/`: the march's forecast, the
+diplomacy card, the forecasts' replay), with empty entries; so is whether a creed sets a doctrine (the order form).
+The line "declares war without warning" keeps its own `'Undead'` (its words, not the rule).
+
 The capture of consecrated land (Undead 100%, Evil 50%: R-045) stays in `fame-and-consecration.ts`: the books state
 50% for every conqueror (parked), so no row's words would be true until they are mended. A unit case pins its rise.
 
