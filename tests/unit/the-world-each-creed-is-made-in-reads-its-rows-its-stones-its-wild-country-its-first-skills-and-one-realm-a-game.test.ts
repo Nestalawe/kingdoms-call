@@ -95,7 +95,7 @@ const sevenRealms = (pagansCreed: string): TheSetUps =>
     skills: {},
   }));
 
-test('a seeded world of every creed: the kings start with their creed’s skill and the Undead king his skeletons, the Pagan, Druidic and Evil capitals open beside their wild country, every Druidic wanderer knows the Druid’s craft, and the stones stand only with a Pagan in the game', () => {
+test('a seeded world of every creed: the kings start with their creed’s skill and the Undead king his skeletons, every Druidic wanderer knows the Druid’s craft, and the stones stand only with a Pagan in the game', () => {
   kcRng.seed(11);
   const w = generateNewGame(sevenRealms('Pagan'), { cols: 18, rows: 12 }, 0, { seaPct: 30 });
   kcRng.seed(11);
