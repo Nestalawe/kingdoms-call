@@ -123,13 +123,25 @@ The line "declares war without warning" keeps its own `'Undead'` (its words, not
 The capture of consecrated land (Undead 100%, Evil 50%: R-045) stays in `fame-and-consecration.ts`: the books state
 50% for every conqueror (parked), so no row's words would be true until they are mended. A unit case pins its rise.
 
+**The world** (P1-19ay1): world creation asks its rows once, at no stage of a turn, through
+`src/engine/rules-on-plain-values/the-world-each-creed-is-made-in-…` (empty entries; the join form shares the last):
+
+| Rows | What world creation (or the succession) reads |
+|---|---|
+| `THE_SITES_OF_THE_WORLD` (a table) | the ritual stones are placed only with a Pagan in the game: with none, no die is drawn for them |
+| the capitals' three | a Pagan capital opens beside a wild forest or jungle with the stones, a Druidic one beside Creatures, an Evil one beside Monsters (and these two have theirs within two provinces); the dice keep their order |
+| the kings' five | a king's skill a level more (`theSkillItGives`, its number), and an heir's at the succession |
+| the skeleton, the wanderer | the Undead king's skeletal company; a Druidic wanderer's Druid 1 |
+| one realm a game (two) | Divine and Undead: the join form and the bots' setup; the turn doesn't check it |
+
 ## Outside the family
 
 - **The ladder of alignments** (hire wages by distance, the Divine-Undead hiring ban, mercy by the foe's alignment,
   heroes dealt within one step, the bots' diplomacy by distance) is a table beside the rows, not abilities:
   `THE_LADDER_OF_THE_ALIGNMENTS` in the content file (P1-19av2), with no registry entry. Its rungs' order is data (the
   heroes' deal draws by it). `alignments-and-a-wandering-heros-hire-wage.ts` reads it (`heroHireWage`, mercy's
-  chance and laughter: the foe's own alignment), and the player portal shares that file.
+  chance and laughter: the foe's own alignment), and the player portal shares that file. Its rungs also give the
+  wanderers' deck of alignments (P1-19ay1: 1, 2, 4, 6, 4, 2, 1 cards, dealt in the rungs' order).
 - **Skeletal upkeep** and its disband order are a unit's rule: any realm with skeletons pays it (Necromancy, the Iron
   Throne), not Undead's alone.
 - **The creed discoveries, the alignment-only items, guardians' Anathema and the Grand Designs** keep their own
