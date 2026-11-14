@@ -30,7 +30,8 @@ in `src/engine/rules/alignment-abilities/`, a file per group of stages.
   `THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES`. Within a stage the effects run in the order the list gives,
   and every multiply keeps today's order.
 - **A runner is handed the alignment the rule reads**: the realm's today; the leader's or the fighter's own where the
-  rule reads his (the Druid waiver, mercy), never another one. It asks, in the stage's order, the effects of the
+  rule reads his (the Druid waiver, mercy), never another one. A rule gated by something else today is handed that
+  instead, and no alignment: the consecrated ground's tax is gated by the realm's consecration list. It asks, in the stage's order, the effects of the
   abilities that alignment holds, and adds, multiplies or picks them as the old code did. The resolvers keep their
   names and ask the runner.
 - **No effect draws a die.** An effect that rolls returns its chance, and the resolver draws where it drew before.
@@ -42,6 +43,11 @@ in `src/engine/rules/alignment-abilities/`, a file per group of stages.
 - `turnEnd`'s **a realm's alignment adds to its tax** (the Neutral trade; `neutralTradeGold`, which Early Winter's
   collection and the report's forecast ask, both with the provinces' income after their own tax, the discoveries'
   and the Wonder's). It is handed the income, and returns the gold. The runner adds them.
+- `turnEnd`'s **a realm's consecrated ground raises a province's tax** (P1-19at2; Divine's +50%, a row with no name:
+  the books never name it, and its key must not read as discovery ad04's "Tithes"). Early Winter's collection and the
+  report's forecast ask it for a province the realm's consecration list holds (`isConsecrated`, as before), after Bless,
+  an earthquake and Sabotage, and before Enslave and the discoveries. It is handed the tax so far and returns the new
+  tax, `Math.round(t * (1 + 50 / 100))`, exactly today's `Math.round(t * 1.5)`; the caller notes the uplift.
 
 ## Outside the family
 
@@ -59,13 +65,13 @@ in `src/engine/rules/alignment-abilities/`, a file per group of stages.
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order; each row's alignment one, and its key no discovery's name or slug and no order's; the runners' sums
-  (the trade's, over 301 incomes, against `neutralTradeGold`).
+  (the trade's, over 301 incomes, against `neutralTradeGold`; the consecrated tax's, over 301 taxes).
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts`: each number
   of each row in each place its row names.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
-  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it): the functions taken name no alignment, and the
+  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2): the functions taken name no alignment, and the
   engine's names of an alignment outside `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
   the count stays above 0.
 
