@@ -38,6 +38,7 @@ a hint by its words or its function's name, not by the file's name.
 | Spells: the cast chance, battle magic, Plague and the Bless ward | `chances-and-lair-grades.ts`, `magic/`, the Cast Spell order's `orders/spells/` |
 | Magic items | `items/`, and their effects in `rules/magic-items/` |
 | Discoveries | `discoveries.ts`, and their effects in `rules/discoveries/` |
+| A realm's alignment: its creed's rules, its orders, the marks it leaves on a province | the rows in `src/content/alignment-abilities-their-keys-names-numbers-and-words.ts`, their effects in `rules/alignment-abilities/`, the orders in `orders/alignment/`, the marks in `world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts` |
 | Imperial titles: who holds one, the reckoning (the merit toward one is added by the order or spell that earns it: search its counter) | `titles/` |
 | Sight: who sees whom, spotting, what a province shows | `sight/`, and `src/views/what-each-realm-may-see-of-the-world.ts` |
 | The warnings of a rival's hero in your land | `turn/intrusion-warnings.ts` |
@@ -69,17 +70,19 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   [A new army unit is a dozen tables](../traps.md#a-new-army-unit-is-a-dozen-tables); keep a table's order:
   [Order is data](../traps.md#order-is-data).
 
-### A new or changed content effect (an ability, an item's power, a spell's, a discovery's, a perk)
+### A new or changed content effect (an ability, an item's power, a spell's, a discovery's, a perk, an alignment's)
 
 - **Where:** one row in `src/content/` and one entry in its registry, `src/engine/rules/the-registry-of-*.ts`, with the
   effect in `src/engine/rules/<family>/`. Never an `if` on the content's name inside a resolver
   ([the guardrails](../ARCHITECTURE.md#the-codes-guardrails)).
 - **The detail:** [the rule registry](the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry); a
-  spell's, a discovery's or a perk's own "how to add" section in
+  spell's, a discovery's, a perk's or an alignment ability's own "how to add" section in
   [the spells' registry](the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md#how-to-add-a-spells-effect),
-  [the discoveries'](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md#how-to-add-a-discoverys-effect)
-  and [the guardian perks'](the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md#how-to-add-a-perk).
-- **The trap:** [An effect reads only what its hook hands it](../traps.md#an-effect-reads-only-what-its-hook-hands-it).
+  [the discoveries'](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md#how-to-add-a-discoverys-effect),
+  [the guardian perks'](the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md#how-to-add-a-perk)
+  and [the alignment abilities'](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#how-to-add-an-ability).
+- **The trap:** [An effect reads only what its hook hands it](../traps.md#an-effect-reads-only-what-its-hook-hands-it);
+  for an alignment's rule, [A realm's alignment's rule is a row of its abilities](../traps.md#a-realms-alignments-rule-is-a-row-of-its-abilities).
 
 ### A battle's or a fight's rule
 
@@ -103,9 +106,9 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   (`tools/balance/`, a dangerous path).
 - **The tests:** each family's cases, `tests/lib/<family>-cases.ts`, run once called directly (`tests/unit/*-called-directly.test.ts`)
   and once in a whole turn (`tests/scenario/*-in-a-whole-turn.test.ts`).
-- **The detail:** [An alignment order is written in a dozen places](../traps.md#an-alignment-order-is-written-in-a-dozen-places),
-  [a mastery order](adding-or-changing-content-units-orders-and-discoveries.md#a-mastery-order-is-one-row-and-its-resolvers-level),
-  and where the form's copies are ([A rule written twice](../traps.md#a-rule-written-twice-must-change-twice)).
+- **The detail:** for an alignment order, [A realm's alignment's rule is a row of its abilities](../traps.md#a-realms-alignments-rule-is-a-row-of-its-abilities);
+  for [a mastery order](adding-or-changing-content-units-orders-and-discoveries.md#a-mastery-order-is-one-row-and-its-resolvers-level),
+  its row and level; and where the form's copies are ([A rule written twice](../traps.md#a-rule-written-twice-must-change-twice)).
 
 ### What a report says, and who reads it
 
