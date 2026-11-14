@@ -2122,6 +2122,10 @@ export interface TheStagesOfEachHookPoint {
     /** The rate the graves of a province a realm holds rot at under a discovery it holds, or nothing (its row writes
      *  none: the ground's own); the runner keeps the lowest (the new turn's graves, which roll each). */
     readonly "a realm's discoveries keep the graves": (theEffect: TheEffectOfADiscovery) => number | null;
+    /** The share of the battlefield graves on a realm's land that rots each turn, an ability of its alignment gives; the
+     *  runner gives the first's, or nothing (7e of the new turn, before the discoveries keep them: the alignment
+     *  abilities' registry, P1-19ax2). */
+    readonly "a realm's alignment keeps the graves on its land": () => number;
     /** The chance a discovery a realm holds gives each company at its capital to train up a grade at the new turn; the
      *  runner gives the first effect's, or nothing if the realm holds none (the new turn's War Academy, which rolls). */
     readonly "a realm's discoveries promote the capital's armies": (theEffect: TheEffectOfADiscovery) => number;
@@ -2267,6 +2271,9 @@ export interface TheStagesOfEachHookPoint {
   };
   /** A hero's own figures a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19p, typed it). */
   readonly aHerosStanding: {
+    /** Whether an ability of a hero's own alignment makes him one of the undead in personal combat (his combatant, as
+     *  personal combat builds it: the alignment abilities' registry, P1-19ax2). */
+    readonly "a hero's own alignment makes him undead": () => boolean;
     /** The hit points a held item adds to its bearer's maximum (itemMaxHpBonus, and applyItemMaxHp to know whether
      *  an item granted or lost changes it; the items' registry: the runner counts two copies of one name once). */
     readonly 'maximum HP': (theItem: AHeldCopysOwnNumbers) => number;

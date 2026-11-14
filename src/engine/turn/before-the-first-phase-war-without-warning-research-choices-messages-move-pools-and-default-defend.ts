@@ -18,6 +18,7 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from './events-and-their-audiences.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { doesAnAlignmentDeclareWarWithoutWarning } from '../rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
 import type { TurnContext } from './context.ts';
 import type { Dispatch } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Realm } from '../../schemas/saved-game-state.ts';
@@ -157,7 +158,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
     const _npW = theRealmsOf(G).length;
     for (let a = 0; a < _npW; a++) {
       const pa = G.players[a];
-      if (!pa || !['Evil', 'Undead'].includes(pa.alignment)) continue;
+      if (!pa || !doesAnAlignmentDeclareWarWithoutWarning(pa.alignment)) continue; // their rows (P1-19ax2)
       const decl = diploDeclarations[a] ?? {};
       for (let b = 0; b < _npW; b++) {
         if (b === a || decl[b] !== 'enemy') continue;

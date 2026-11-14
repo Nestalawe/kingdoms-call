@@ -469,6 +469,34 @@ export const ALIGNMENT_ABILITIES = {
       },
     },
   },
+  // an Undead realm's battlefield graves rot more slowly on its own land: the share of them that rots each turn (any
+  // other land's: 10%, the turn's own; the discoveries may keep them longer: Embalmers) (P1-19ax2)
+  'graves-keep-on-undead-land': {
+    howItIsUsed: 'always on',
+    alignment: 'Undead',
+    theNumbers: {
+      theShareOfTheGravesThatRotEachTurn: {
+        value: 5,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Battlefield graves in your provinces decay at {N} per turn instead of 10%',
+      },
+    },
+  },
+  // an Evil or an Undead realm's declaration of war on a realm it has met stands from the turn's first phase, with no
+  // warning (P1-19ax2). Read in src/engine/rules-on-plain-values/, which the player portal shares (the forecast of a
+  // march). The books state no number for it
+  'war-without-warning-of-an-evil-realm': { howItIsUsed: 'always on', alignment: 'Evil', theNumbers: {} },
+  'war-without-warning-of-an-undead-realm': { howItIsUsed: 'always on', alignment: 'Undead', theNumbers: {} },
+  // an Evil or an Undead realm that breaks an alliance goes to war with its ally, not to neutral (R-044; P1-19ax2).
+  // Read in src/engine/rules-on-plain-values/, which the player portal shares (the diplomacy card's button)
+  'a-broken-alliance-means-war-for-an-evil-realm': { howItIsUsed: 'always on', alignment: 'Evil', theNumbers: {} },
+  'a-broken-alliance-means-war-for-an-undead-realm': { howItIsUsed: 'always on', alignment: 'Undead', theNumbers: {} },
+  // the risen dead follow a hand-over to a comrade only if he is Undead himself or serves an Undead realm (P1-19ax2).
+  // Read in src/engine/rules-on-plain-values/, which the player portal shares (the forecasts' replay)
+  'the-risen-dead-follow-only-the-undead': { howItIsUsed: 'always on', alignment: 'Undead', theNumbers: {} },
+  // an Undead hero fights as one of the undead in personal combat (what turns or banes the undead strikes him)
+  // (P1-19ax2): his own alignment, not his realm's
+  'an-undead-hero-is-undead-in-personal-combat': { howItIsUsed: 'always on', alignment: 'Undead', theNumbers: {} },
   // the five alignment orders (P1-19aw1), each given as an order: a Divine king consecrates a province
   consecrate: {
     howItIsUsed: "a king's order",

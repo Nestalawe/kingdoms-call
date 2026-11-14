@@ -17,7 +17,7 @@
     "discoveryChecksInEngine": 0,
     "guardianPerkChecksInEngine": 0,
     "alignmentOrderChecksInEngine": 0,
-    "alignmentChecksInEngine": 109,
+    "alignmentChecksInEngine": 101,
     "eslintSuppressions": 277,
     "knownArchitectureViolations": 1,
     "unusedCode": 16

@@ -26,6 +26,7 @@ import type { TurnContext } from './context.ts';
 import type { TheFactOfADiplomacyOrVictoryLine } from './the-facts-diplomacy-and-victorys-lines-record.ts';
 import type { ARealmsStanding } from '../titles/reckoning.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { doesAnAlignmentBreakAnAllianceIntoWar } from '../rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
 import type { Character, Realm } from '../../schemas/saved-game-state.ts';
 
 // ── DIPLOMACY RESOLUTION AND VICTORY (plan P1-08k4: two stages taken out of resolveTurn's own body) ────────────────
@@ -89,10 +90,8 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         let _brokenPact = false;
         if (da === 'enemy' || db === 'enemy') {
           if (cur === 'allied') {
-            const _dark = (pi: number) => {
-              const theDarkAlignments: readonly (string | undefined)[] = ['Evil', 'Undead'];
-              return theDarkAlignments.includes(G.players[pi]?.alignment);
-            };
+            // R-044's dark crowns, from their rows (the alignment abilities' family, P1-19ax2)
+            const _dark = (pi: number) => doesAnAlignmentBreakAnAllianceIntoWar(G.players[pi]?.alignment);
             next = (da === 'enemy' && _dark(a)) || (db === 'enemy' && _dark(b)) ? 'enemy' : 'neutral';
             _brokenPact = next === 'neutral';
           } else next = 'enemy';

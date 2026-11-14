@@ -5,6 +5,7 @@
 // Up (src/engine/orders/), so the order form's forecast of what a hero will hold can ask the same rules. A company is
 // read as its realm sees it (`seenAs`: the engine hands unitAsItsRealmSeesIt, the report's companies are seen so
 // already), and handed back as it came.
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS } from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import {
   countsAgainstBeastCommand,
@@ -87,7 +88,10 @@ export interface AHandOversRecipientAsTheRisenDeadJudgeHim {
 /** Whether risen dead follow a hand-over to where it goes: into a garrison (no recipient) always; to a comrade only if
  *  he is Undead himself or serves an Undead realm. */
 export function theRisenDeadFollowAHandOverTo(recipient: AHandOversRecipientAsTheRisenDeadJudgeHim | null): boolean {
-  return !recipient || recipient.alignment === 'Undead' || recipient.hisRealmsAlignment === 'Undead';
+  // its row's alignment (P1-19ax2: read here, not through the registry's runner, since the player portal shares this
+  // file and it may import only src/content)
+  const theUndead = ALIGNMENT_ABILITIES['the-risen-dead-follow-only-the-undead'].alignment;
+  return !recipient || recipient.alignment === theUndead || recipient.hisRealmsAlignment === theUndead;
 }
 
 /** Where a hand-over's companies go, by the risen dead among them: where they refuse to follow (theyFollow false),

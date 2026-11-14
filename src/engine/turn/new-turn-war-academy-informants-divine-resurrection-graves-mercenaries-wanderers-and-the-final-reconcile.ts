@@ -19,7 +19,10 @@ import {
 import type { TurnContext } from './context.ts';
 import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
-import { theReturnARealmsAlignmentGivesItsFallen } from '../rules/the-registry-of-alignment-abilities.ts';
+import {
+  theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt,
+  theReturnARealmsAlignmentGivesItsFallen,
+} from '../rules/the-registry-of-alignment-abilities.ts';
 import type { Character, GameState, Grave, Province, Realm } from '../../schemas/saved-game-state.ts';
 
 /** The state as the new turn's end clears it: the turn's lists of the heroes raised and the orders held for the
@@ -311,7 +314,12 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // provinces owned by an UNDEAD realm (necromantic preservation — the advertised perk, now real).
   G.world.provinces.forEach((p) => {
     if (!p.battleGraves || p.battleGraves.length === 0) return;
-    let decay = p.owner != null && G.players[p.owner]?.alignment === 'Undead' ? 0.05 : 0.1;
+    // the Undead land's rate (the alignment abilities' registry's since P1-19ax2: "turnEnd: a realm's alignment keeps
+    // the graves on its land"), from its row; any other land's 0.1
+    let decay =
+      p.owner != null
+        ? (theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt(G.players[p.owner]?.alignment) ?? 0.1)
+        : 0.1;
     // az08 Embalmers (the discoveries' registry's since plan P1-19ag: "turnEnd: a realm's discoveries keep the graves",
     // the lowest rate)
     if (p.owner != null) decay = theRateARealmsDiscoveriesLetTheGravesRotAt(G.players[p.owner], decay);

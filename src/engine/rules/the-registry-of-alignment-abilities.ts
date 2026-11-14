@@ -41,6 +41,10 @@ import {
   A_REALMS_ALIGNMENT_RAISES_A_RESTS_HEAL,
   A_REALMS_ALIGNMENT_RAISES_ITS_FALLEN_ON_HOLY_GROUND,
 } from './alignment-abilities/the-fallen-the-rest-the-harvest-and-the-conquests-of-a-realms-alignment.ts';
+import {
+  A_HEROS_OWN_ALIGNMENT_MAKES_HIM_UNDEAD,
+  A_REALMS_ALIGNMENT_KEEPS_THE_GRAVES_ON_ITS_LAND,
+} from './alignment-abilities/the-graves-and-the-undead-of-a-realms-alignment.ts';
 import { WHO_MAY_GIVE_AN_ALIGNMENT_ORDER } from './alignment-abilities/who-may-give-an-alignment-order.ts';
 import type {
   ABeatenHostsCompanies,
@@ -208,6 +212,25 @@ export const THE_REGISTRY_OF_ALIGNMENT_ABILITIES = {
       "a realm's alignment conquers by a doctrine": A_REALMS_ALIGNMENT_CONQUERS_BY_A_DOCTRINE['plunder-or-enslave'],
     },
   },
+  'graves-keep-on-undead-land': {
+    turnEnd: {
+      "a realm's alignment keeps the graves on its land":
+        A_REALMS_ALIGNMENT_KEEPS_THE_GRAVES_ON_ITS_LAND['graves-keep-on-undead-land'],
+    },
+  },
+  // read in src/engine/rules-on-plain-values/, which the player portal shares (P1-19ax2: war without warning, a broken
+  // alliance, the risen dead's hand-over), so these five have no effect here
+  'war-without-warning-of-an-evil-realm': {},
+  'war-without-warning-of-an-undead-realm': {},
+  'a-broken-alliance-means-war-for-an-evil-realm': {},
+  'a-broken-alliance-means-war-for-an-undead-realm': {},
+  'the-risen-dead-follow-only-the-undead': {},
+  'an-undead-hero-is-undead-in-personal-combat': {
+    aHerosStanding: {
+      "a hero's own alignment makes him undead":
+        A_HEROS_OWN_ALIGNMENT_MAKES_HIM_UNDEAD['an-undead-hero-is-undead-in-personal-combat'],
+    },
+  },
   // the five alignment orders (P1-19aw1): who may give each (P1-19aw2); what each does is its resolver's, in
   // src/engine/orders/alignment/
   consecrate: {
@@ -270,6 +293,10 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES = {
   turnEnd: {
     "a realm's alignment adds to its tax": ['neutral-trade'],
     "a realm's consecrated ground raises a province's tax": ['consecrated-ground-tax'],
+    "a realm's alignment keeps the graves on its land": ['graves-keep-on-undead-land'],
+  },
+  aHerosStanding: {
+    "a hero's own alignment makes him undead": ['an-undead-hero-is-undead-in-personal-combat'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -286,6 +313,7 @@ const MOVEMENT_COST = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.movemen
 const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.orderOutcome;
 const ORDER_VALIDITY = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.orderValidity;
 const TURN_START = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.turnStart;
+const A_HEROS_STANDING = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.aHerosStanding;
 
 /** The abilities of a stage's order the alignment holds, in the order. */
 const theAbilitiesOfTheStageAnAlignmentHolds = (
@@ -555,4 +583,24 @@ export function theConquestDoctrineOfARealmsAlignment(
   const theStage = "a realm's alignment conquers by a doctrine";
   const [slug] = theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, FATE[theStage]);
   return (slug === undefined ? undefined : ENTRIES[slug].fate?.[theStage]?.()) ?? null;
+}
+
+/** The runner of "turnEnd: a realm's alignment keeps the graves on its land" (7e of the new turn, for a province a
+ *  realm holds, before the discoveries keep them): the share of the graves that rots each turn, of the first ability
+ *  the realm's alignment holds, or null when it holds none (the turn's own 0.1 then). */
+export function theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt(
+  theAlignment: string | null | undefined,
+): number | null {
+  const theStage = "a realm's alignment keeps the graves on its land";
+  const [slug] = theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, TURN_END[theStage]);
+  return (slug === undefined ? undefined : ENTRIES[slug].turnEnd?.[theStage]?.()) ?? null;
+}
+
+/** The runner of "aHerosStanding: a hero's own alignment makes him undead" (personal combat's combatant of a hero):
+ *  whether an ability his own alignment holds makes him one of the undead. */
+export function isAHeroOfTheAlignmentUndeadInPersonalCombat(theAlignment: string | null | undefined): boolean {
+  const theStage = "a hero's own alignment makes him undead";
+  return theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, A_HEROS_STANDING[theStage]).some(
+    (slug) => ENTRIES[slug].aHerosStanding?.[theStage]?.() ?? false,
+  );
 }
