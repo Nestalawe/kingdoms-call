@@ -717,7 +717,7 @@ const ABILITIES_REGISTRY = (entries: Entries, orders: Orders, rows: AbilityRows)
 
 /** The abilities read in src/engine/rules-on-plain-values/, which the player portal shares and which may import only
  *  src/content, so their entries have no stage (P1-19av1: the Druid waiver, druidNeedWaivedByAlignment; P1-19ax2: war
- *  without warning, a broken alliance, the risen dead's hand-over). */
+ *  without warning, a broken alliance, the risen dead's hand-over; P1-19ay1: the world). */
 const THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES: readonly string[] = [
   'creatures-follow-without-a-druid',
   'monsters-follow-without-a-druid',
@@ -726,6 +726,19 @@ const THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES: readonly string[] = [
   'a-broken-alliance-means-war-for-an-evil-realm',
   'a-broken-alliance-means-war-for-an-undead-realm',
   'the-risen-dead-follow-only-the-undead',
+  // P1-19ay1: the world, which world creation asks at no stage of a turn (the join form shares the last two)
+  'a-divine-king-starts-with-white-magic',
+  'a-druidic-king-starts-with-druid',
+  'an-evil-king-starts-with-druid',
+  'a-pagan-king-starts-with-explorer',
+  'an-undead-king-starts-with-necromancy',
+  'an-undead-king-starts-with-a-skeletal-company',
+  'a-pagan-capital-opens-beside-the-ritual-stones',
+  'a-druidic-capital-opens-beside-creatures',
+  'an-evil-capital-opens-beside-monsters',
+  'a-druidic-wanderer-knows-the-druids-craft',
+  'one-divine-realm-a-game',
+  'one-undead-realm-a-game',
 ];
 
 test("the alignment abilities' registry holds each effect once, in the order of its stage, and each content row is sound", () => {

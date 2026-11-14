@@ -544,6 +544,18 @@ test("the abilities' numbers are the ones the books state today", () => {
     'a-broken-alliance-means-war-for-an-undead-realm': {},
     'the-risen-dead-follow-only-the-undead': {},
     'an-undead-hero-is-undead-in-personal-combat': {},
+    'a-divine-king-starts-with-white-magic': { theLevelsMore: 1 },
+    'a-druidic-king-starts-with-druid': { theLevelsMore: 1 },
+    'an-evil-king-starts-with-druid': { theLevelsMore: 1 },
+    'a-pagan-king-starts-with-explorer': { theLevelsMore: 1 },
+    'an-undead-king-starts-with-necromancy': { theLevelsMore: 1 },
+    'an-undead-king-starts-with-a-skeletal-company': {},
+    'a-pagan-capital-opens-beside-the-ritual-stones': {},
+    'a-druidic-capital-opens-beside-creatures': {},
+    'an-evil-capital-opens-beside-monsters': {},
+    'a-druidic-wanderer-knows-the-druids-craft': {},
+    'one-divine-realm-a-game': {},
+    'one-undead-realm-a-game': {},
   });
 });
 
