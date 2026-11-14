@@ -24,8 +24,8 @@ changing a rule, read its ruling; never "fix" what a ruling says is deliberate w
 
 ## Where documentation goes
 
-Every doc says what is true now; history lives in git and the PRs. A static test checks the budgets
-(`tests/the-docs-budgets.json`): change one only with a reason in the PR, never to make the check pass.
+Every doc says what is true now (`docs/explorations/` excepted); history lives in git and the PRs. A static test
+checks the budgets (`tests/the-docs-budgets.json`): change one only with a reason in the PR, never to make the check pass.
 
 | What | Where | Budget |
 |---|---|---|
@@ -64,15 +64,14 @@ green. **All new code is TypeScript** (P1-09e), type-checked (no new `@ts-nochec
 
 ## How work arrives
 
-- **Toby's batches:** numbered items in game terms, sometimes with pasted battle reports; start with the skill
-  `taking-in-a-batch-of-tobys-items`. **One PR per
-  batch, one commit per item** (decision D-06). Commit message `Item N: <short title>`; PR title
-  `Batch YYYY-MM-DD: <a few items>`; branch `batch/YYYY-MM-DD` (the date you open it). If one item
-  isn't ready, split it out rather than holding the batch.
-- **Plan steps:** PR title `[P0-13] Per-environment config`, branch `p0-13-per-environment-config`. Open draft
-  PRs whose titles start with `[P` are the live view of work in progress. Plan steps are grouped in
-  phases; a **unit** is a set of steps done together in one sitting (e.g. the cutover).
-- Open a **draft PR early**, and fill in the template as you go.
+- **Start all work with the skill `/making-a-change`**: it names the kind of work and writes its plan
+  ([the six kinds](docs/architecture/making-a-change-the-six-kinds-and-the-plans-format.md)).
+- **Toby's batches** (numbered items in game terms) are changes: **one PR per batch, one commit per item** (D-06).
+  Commit message `Item N: <short title>`; PR title `Batch YYYY-MM-DD: <a few items>`; branch `batch/YYYY-MM-DD` (the
+  date you open it). Split out an item that isn't ready; don't hold the batch.
+- **Plan steps:** PR title `[P0-13] Per-environment config`, branch `p0-13-per-environment-config`. Open draft PRs
+  titled `[P` are work in progress. Steps are grouped in phases; a **unit** is a set of steps done together in one
+  sitting (e.g. the cutover).
 
 **Staging** is a separate test site with its own database and no real players (how: **[docs/staging.md](docs/staging.md)**).
 **Whether a PR goes there is your call, from the risk** ([when](docs/staging.md#when-a-change-needs-staging)): say in
