@@ -2,7 +2,8 @@
 // join-and-chronicle.ts that the screen tours don't reach, or reach only in part (npm run proof:tours), each run here on
 // the value that reaches it, so a fault planted in one is red: the join form (its box, its skills, its checks before the
 // realm is sent, the database's refusals), and the chronicle (the game's end, the heroes' sections by phase, the
-// battles' sides, the tinted names, the intelligence and the dispatches).
+// battles' sides, the tinted names, a name that starts another tinted whole (P1-21s), the intelligence and the
+// dispatches).
 // Level 4 (page): the file loads the page's start-up (its database client), so no lower level reaches it; the portal is
 // booted in jsdom (tests/lib/boot.js) on a fake Db at an older database, so it stops at its notice with every module
 // loaded, and each case stages the screen's state as the tours do.
@@ -496,6 +497,27 @@ describe('the chronicle', () => {
     expect(html).toMatch(/<span style="color:#[0-9a-f]+">Hollow Crown<\/span>/);
     expect(html).toMatch(/<span style="color:#[0-9a-f]+">Iron Vale<\/span>/);
     expect(html).not.toMatch(/<span style="color:[^"]*">Aldric<\/span> meets/);
+  });
+  test('a name that starts another: the longer is tinted whole, in its own colour', () => {
+    const report = aReport(
+      [
+        { text: 'Aldric rides to Ashen Reach.', charId: 1, phase: 0 },
+        { text: 'Ashen holds the ford.', charId: 1, phase: 0 },
+      ],
+      {
+        allKingdoms: [
+          { name: 'Ashen', color: '#aa2222' },
+          { name: 'Ashen Reach', color: '#2222aa' },
+        ],
+      },
+    );
+    theChronicleOf(report, aReport([]));
+    const tinted = (colour: string) =>
+      [...theElement('report-log').querySelectorAll('span')]
+        .filter((span) => span.getAttribute('style') === 'color:' + colour)
+        .map((span) => span.textContent);
+    expect(tinted('#2222aa')).toEqual(['Ashen Reach']);
+    expect(tinted('#aa2222')).toContain('Ashen');
   });
   test('the intelligence: each title its block, a tag of no name, lines by phase and none; the dispatches their own section', () => {
     const report = aReport([
