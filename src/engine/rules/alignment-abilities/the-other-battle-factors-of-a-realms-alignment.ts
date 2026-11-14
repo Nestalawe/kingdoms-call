@@ -18,17 +18,14 @@ import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effect
 
 type TheStrengthsStages = TheStagesOfEachHookPoint['strength'];
 
-/** The creeds a row acts against, as a list of names. */
-const theCreedsItActsAgainst = (theCreeds: readonly string[]): readonly string[] => theCreeds;
-
 /** "strength: consecrated ground weakens an attacker's host": an attacker of a creed the row names fights at 1 less
  *  its share, as (100 − 15) / 100, exactly the 0.85 it was. */
 export const CONSECRATED_GROUND_WEAKENS_AN_ATTACKERS_HOST = {
   'consecrated-ground-weakens-an-unholy-attacker': (facts) => {
     const row = ALIGNMENT_ABILITIES['consecrated-ground-weakens-an-unholy-attacker'];
-    return theCreedsItActsAgainst(row.theCreedsItActsAgainst).includes(facts.theAttackersAlignment)
-      ? (100 - row.theNumbers.theShareWeaker.value) / 100
-      : null;
+    // (the row's list, read as names: its `as const` literals can't be asked for any string)
+    const theCreeds: readonly string[] = row.theCreedsItActsAgainst;
+    return theCreeds.includes(facts.theAttackersAlignment) ? (100 - row.theNumbers.theShareWeaker.value) / 100 : null;
   },
 } satisfies Partial<Record<AlignmentAbilitySlug, TheStrengthsStages["consecrated ground weakens an attacker's host"]>>;
 
