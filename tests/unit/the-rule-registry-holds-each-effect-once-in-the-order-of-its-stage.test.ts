@@ -33,7 +33,10 @@
 // rounded down, and any other realm nothing, as neutralTradeGold (which Early Winter and the report ask) did before.
 // Since P1-19at2 its runner of "turnEnd: a realm's consecrated ground raises a province's tax" gives a province's tax
 // ×1.5, rounded to the nearest gold, as Early Winter and the report wrote it, whatever realm holds the ground (it is
-// handed no alignment: the consecration list gates it).
+// handed no alignment: the consecration list gates it). Since P1-19au1 its runners of the battles' zeal and fervour give
+// what both battles wrote before: each creed's chance of zeal as the old table (0.1 for an alignment none holds), the
+// defender's chance on consecrated ground doubled after the discoveries' share, at most 1, and the strongest of zeal's
+// ×1.3, the skeletal legions' ×1.5 under the king or ×1.3 under another, and savage fury's ×1.25 (old Math.max).
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -86,6 +89,9 @@ import { ALIGNMENT_ABILITIES } from '../../src/content/alignment-abilities-their
 import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES,
   THE_REGISTRY_OF_ALIGNMENT_ABILITIES,
+  theChanceOfZealARealmsAlignmentGivesASide,
+  theChanceOfZealOfADefenderOnConsecratedGround,
+  theFervourOfASide,
   theTaxOfAProvinceOnConsecratedGround,
   whatARealmsAlignmentAddsToItsTax,
 } from '../../src/engine/rules/the-registry-of-alignment-abilities.ts';
@@ -734,4 +740,59 @@ test('the runner of "a realm\'s consecrated ground raises a province\'s tax" and
   ).toEqual(taxes.map((t) => Math.round(t * 1.5)));
   // a half rounds up, as Math.round does: 1 → 2, 3 → 5, 5 → 8
   expect([1, 3, 5].map((theTax) => theTaxOfAProvinceOnConsecratedGround({ theTax }))).toEqual([2, 5, 8]);
+});
+
+test('the runner of "a realm\'s alignment gives a side its chance of zeal" gives each creed\'s chance as the old table did, and 0.1 to any other', () => {
+  const theOldTable: Readonly<Record<string, number>> = {
+    Divine: 0.5,
+    Good: 0.4,
+    Druidic: 0.2,
+    Neutral: 0.1,
+    Pagan: 0.15,
+    Evil: 0.25,
+    Undead: 0.0,
+  };
+  for (const alignment of KC_ALIGNMENTS)
+    expect(theChanceOfZealARealmsAlignmentGivesASide(alignment), alignment).toBe(theOldTable[alignment]);
+  // a realm of none, or none given, fights as Neutral; an alignment none holds, at the old `?? 0.1`
+  expect([null, undefined, '', 'Mercantile'].map((a) => theChanceOfZealARealmsAlignmentGivesASide(a))).toEqual([
+    0.1, 0.1, 0.1, 0.1,
+  ]);
+});
+
+test('the runner of "consecrated ground stirs a defender\'s zeal" doubles the chance so far, at most 1, as before', () => {
+  const chances = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.4, 0.45, 0.5, 0.55, 0.7, 0.8, 1, 1.3];
+  expect(chances.map((theChance) => theChanceOfZealOfADefenderOnConsecratedGround({ theChance }))).toEqual(
+    chances.map((c) => Math.min(1, c * 2)),
+  );
+});
+
+test('the runner of "a realm\'s alignment stirs a side\'s fervour" gives the strongest of zeal and the fervours, as the old Math.max did', () => {
+  const forces = {
+    'no skeleton and no Monster': [{ type: 'Men-at-Arms' }],
+    'a skeletal unit': [{ type: 'Men-at-Arms' }, { type: 'Men-at-Arms', _isSkeletal: true }],
+    'a Monster': [{ type: 'Men-at-Arms' }, { type: 'Cave Trolls' }],
+    'a skeletal unit and a Monster': [{ type: 'Cave Trolls' }, { type: 'Men-at-Arms', _isSkeletal: true }],
+    'no unit': [],
+  };
+  for (const alignment of [...KC_ALIGNMENTS, null, undefined])
+    for (const [what, theForce] of Object.entries(forces))
+      for (const isItLedByTheKing of [true, false])
+        for (const isItSeizedByZeal of [true, false]) {
+          const align = (alignment ?? '') || 'Neutral';
+          const skeletal = theForce.some((a) => '_isSkeletal' in a && a._isSkeletal);
+          const monster = theForce.some((a) => a.type === 'Cave Trolls');
+          const skelKing = align === 'Undead' && isItLedByTheKing && skeletal;
+          const skelHero = align === 'Undead' && !isItLedByTheKing && skeletal;
+          const evilMonster = align === 'Evil' && monster;
+          const fervour = theFervourOfASide(alignment, { isItSeizedByZeal, isItLedByTheKing, theForce });
+          const said = `${String(alignment)}, ${what}, king ${String(isItLedByTheKing)}, zeal ${String(isItSeizedByZeal)}`;
+          expect(fervour.theFactor, said).toBe(
+            Math.max(1, isItSeizedByZeal ? 1.3 : 1, skelKing ? 1.5 : 1, evilMonster ? 1.25 : 1, skelHero ? 1.3 : 1),
+          );
+          expect(fervour.theAbilitiesThatStirredIt, said).toEqual([
+            ...(skelKing || skelHero ? ['skeletal-fervour'] : []),
+            ...(evilMonster ? ['savage-fury'] : []),
+          ]);
+        }
 });
