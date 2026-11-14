@@ -1,6 +1,10 @@
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
-import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
+import { consecCaptureXpPct } from '../heroes/fame-and-consecration.ts';
+import {
+  enslaveAProvinceUntil,
+  liftConsecratedGround,
+} from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { whatARealmsDiscoveriesAddToAConquestsPlunder } from '../rules/the-registry-of-discovery-effects.ts';
 import { theConquestDoctrineOfARealmsAlignment } from '../rules/the-registry-of-alignment-abilities.ts';
@@ -71,10 +75,7 @@ export function breakConsecrationOnCapture(
   const { G } = turnContext;
   const pl = G.players[prev];
   if (!pl) return;
-  const list = consecratedIds(pl);
-  const at = list.indexOf(prov.id);
-  if (at < 0) return;
-  list.splice(at, 1);
+  if (!liftConsecratedGround(pl, prov.id)) return; // wiped at capture, by the marks' module (plan P1-19ay2)
   emit(turnContext, {
     type: 'system',
     fact: {
@@ -263,7 +264,7 @@ export function applyEvilConquest(
       race: (prov.race ?? '') || 'Human',
       unitName: armyUnitName(enType),
     });
-    prov._enslavedUntil = G.turn + theDoctrine.theTurnsTheEnslavedProvincePaysLess;
+    enslaveAProvinceUntil(prov, G.turn + theDoctrine.theTurnsTheEnslavedProvincePaysLess); // the marks' module lays it
     emit(turnContext, {
       type: 'combat',
       fact: {

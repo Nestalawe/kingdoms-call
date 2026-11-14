@@ -7,7 +7,8 @@
 // src/views/turn-report.ts in plan P1-12b1, so the engine imports no view), which read no turn context.
 import { emit, recordForTheStatistics } from './events-and-their-audiences.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
-import { consecratedIds, relOfReport } from '../heroes/fame-and-consecration.ts';
+import { relOfReport } from '../heroes/fame-and-consecration.ts';
+import { consecratedIds } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { LEGENDARY_NAMES_P } from '../items/equipment.ts';
 import type { UnitOfATypeAndQuality } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import type { TurnContext } from './context.ts';

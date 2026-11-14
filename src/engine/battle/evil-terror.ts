@@ -4,6 +4,12 @@ import {
   TERROR_PCT_PER_STACK,
 } from '../rules-on-plain-values/the-terror-an-evil-victory-leaves-its-share-a-stack-and-its-most-stacks.ts';
 import { getNeighborsP } from '../world/map-helpers.ts';
+import {
+  layATerrorStackOnAProvince,
+  liftTheTerrorFromAProvinceItsRealmHolds,
+  spendTheTerrorOnAProvince,
+  terrorLingersOnAProvince,
+} from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves } from '../rules/the-registry-of-discovery-effects.ts';
 import type { Army, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
@@ -11,9 +17,10 @@ import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 
 // ── EVIL TERROR (plan P1-08c: lifted out of resolveTurn) ────
-// Terror after an Evil victory: whether it grips a province for its realm (reignOfFearHere), its spread to the battle
-// province and its neighbours (spreadTerror), and its toll on the next defenders there (consumeTerror). spreadTerror
-// takes the turn's context first (src/engine/turn/context.ts); the other two read no turn state.
+// Terror after an Evil victory: its spread to the battle province and its neighbours (spreadTerror), and its toll on the
+// next defenders there (consumeTerror). spreadTerror takes the turn's context first (src/engine/turn/context.ts);
+// consumeTerror reads no turn state. The mark itself (whether it grips a province for its realm, reignOfFearHere; its
+// stacks laid, lifted and spent) is the marks' module's (src/engine/world/the-marks-on-a-province-…, plan P1-19ay2).
 // ── EVIL TERROR EFFECT ────
 // A decisive Evil victory terrorises the battle province AND every adjacent province. Terror
 // lingers until the next battle fought there, demoralising whoever defends
@@ -21,9 +28,6 @@ import { narrate } from '../turn/events-and-their-audiences.ts';
 // holding more is read as 3. The two figures, TERROR_PCT_PER_STACK and TERROR_MAX_STACKS, are on plain values
 // (src/engine/rules-on-plain-values/the-terror-an-evil-victory-leaves-its-share-a-stack-and-its-most-stacks.ts) because
 // buildTurnReport reads them too (terrorReadingOf).
-export function reignOfFearHere(prov: Province | null | undefined, playerIdx: number | null | undefined) {
-  return !!(prov && playerIdx != null && (prov._terrorStacks || 0) > 0 && prov._terrorisedBy === playerIdx);
-}
 export function spreadTerror(
   turnContext: TurnContext,
   battleProv: Province,
@@ -36,12 +40,14 @@ export function spreadTerror(
   targets.forEach((tp) => {
     if (seen.has(tp.id)) return;
     seen.add(tp.id);
-    tp._terrorStacks = Math.min(TERROR_MAX_STACKS, (tp._terrorStacks || 0) + 1);
-    tp._terrorTurn = G.turn;
-    tp._terrorisedBy = byPlayer;
-    // ae03 Reign of Terror (the discoveries' registry's since plan P1-19af: "fate: a realm's discoveries add to the terror
-    // a victory leaves", which the line asks too)
-    tp._terrorPct = TERROR_PCT_PER_STACK + whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves(G.players[byPlayer]);
+    // the stack laid by the marks' module (plan P1-19ay2); ae03 Reign of Terror (the discoveries' registry's since plan
+    // P1-19af: "fate: a realm's discoveries add to the terror a victory leaves", which the line asks too)
+    layATerrorStackOnAProvince(
+      tp,
+      G.turn,
+      byPlayer,
+      TERROR_PCT_PER_STACK + whatARealmsDiscoveriesAddToTheTerrorAVictoryLeaves(G.players[byPlayer]),
+    );
   });
   if (narrative) {
     const adjNames = getNeighborsP(battleProv, G.world.cols, G.world.rows, G.world.provinces)
@@ -68,14 +74,12 @@ export function consumeTerror(
   // battle can never consume the terror it itself created. (Previously gated to
   // _terrorTurn<G.turn, which wrongly denied the demoralise effect to same-turn follow-up
   // attacks.)
-  if (!prov._terrorStacks || prov._terrorTurn === undefined) return false;
+  if (!terrorLingersOnAProvince(prov)) return false;
   // Terror never demoralises the forces of the very Evil player who caused it: if that player now
   // controls this province, their own defenders are unshaken by the fear they themselves spread.
   // Clear the lingering terror without effect (it has no one left to terrify here).
   if (prov._terrorisedBy !== undefined && prov._terrorisedBy !== null && prov.owner === prov._terrorisedBy) {
-    delete prov._terrorStacks;
-    delete prov._terrorTurn;
-    delete prov._terrorisedBy;
+    liftTheTerrorFromAProvinceItsRealmHolds(prov);
     return false;
   }
   const stacks = Math.min(TERROR_MAX_STACKS, prov._terrorStacks);
@@ -91,9 +95,6 @@ export function consumeTerror(
       terrorPct: dispFloor(frac * 100),
       terrorStacks: stacks,
     });
-  delete prov._terrorStacks;
-  delete prov._terrorTurn;
-  delete prov._terrorisedBy;
-  delete prov._terrorPct;
+  spendTheTerrorOnAProvince(prov);
   return true;
 }

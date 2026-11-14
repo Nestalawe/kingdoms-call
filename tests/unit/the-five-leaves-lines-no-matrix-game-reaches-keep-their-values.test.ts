@@ -38,10 +38,10 @@ import {
   normaliseOwnedNames,
   normaliseStrandedGuards,
   ownedConsecratedProvs,
-  provinceConsecrated,
   relOfReport,
   spotEnemyInOwnedProvince,
 } from '../../src/engine/heroes/fame-and-consecration.ts';
+import { provinceConsecrated } from '../../src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { itemNameList } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import {
   ITEM_LORE_BY_NAME,

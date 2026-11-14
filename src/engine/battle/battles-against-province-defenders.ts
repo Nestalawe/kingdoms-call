@@ -59,7 +59,8 @@ import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-s
 import { homeFounderOf } from '../grand-design.ts';
 import { battleFortune, shuffleP } from './fortune.ts';
 import { recordBattleGraves } from '../graves.ts';
-import { demoteGuardToWanderer, isConsecrated } from '../heroes/fame-and-consecration.ts';
+import { demoteGuardToWanderer } from '../heroes/fame-and-consecration.ts';
+import { isConsecrated } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { activeItems } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
@@ -110,7 +111,8 @@ import {
 import { realCharOf } from './best-commander.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { druidShortfallLine, forceMarker, terrainNoteList } from './battle-report-lines-and-force-markers.ts';
-import { consumeTerror, reignOfFearHere, spreadTerror } from './evil-terror.ts';
+import { consumeTerror, spreadTerror } from './evil-terror.ts';
+import { reignOfFearHere } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { battleSpellUseful, pickBattleSpell } from '../magic/pre-battle-spell-choice.ts';
 import { bloodHarvest, ironThroneRaise } from './blood-harvest-and-iron-throne.ts';
 import { raidLandedHere } from './raid-the-coast-and-landing-parties.ts';

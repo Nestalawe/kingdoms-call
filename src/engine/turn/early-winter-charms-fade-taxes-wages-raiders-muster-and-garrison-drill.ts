@@ -11,7 +11,10 @@ import {
   theWageABeastPaysUnderADruid,
 } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { neutralTradeGold } from '../grand-design.ts';
-import { isConsecrated } from '../heroes/fame-and-consecration.ts';
+import {
+  isConsecrated,
+  theEnslavedProvinceStillPaysLess,
+} from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { activeItems } from '../items/equipment.ts';
 import { GARRISON_DRILL_LEVEL, UNIT_DRILL_BASE, humanXPMult } from '../units/drill-and-spoils.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
@@ -169,7 +172,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         t = theTaxOfAProvinceOnConsecratedGround({ theTax: t });
         _consecBonus += t - _cb;
       } // DIVINE — Consecrate: hallowed ground prospers (+50%)
-      if (pv._enslavedUntil != null && pv._enslavedUntil >= G.turn) t = Math.max(0, t - 1); // EVIL — Enslave: resentment (−1 tax while it lasts)
+      if (theEnslavedProvinceStillPaysLess(pv, G.turn)) t = Math.max(0, t - 1); // EVIL — Enslave: resentment (−1 tax while it lasts)
       if (pv._earthquakeTax) t = Math.max(0, t - (pv._earthquakeTax || 0));
       // every province-tax discovery (sd11 / sd15 / sd18 and the heritage & creed ones), capped
       // per discovery — see discTaxAdd. Keep in step with buildTurnReport.

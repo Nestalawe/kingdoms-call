@@ -1,6 +1,7 @@
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
-import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
+import { nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
+import { liftConsecratedGround } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import {
   doARealmsDiscoveriesChartAProvince,
   doARealmsDiscoveriesHealTheWounded,
@@ -276,11 +277,7 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         delete hero._divineReturn;
         if (playerP) delete playerP._resurrectableMonarchId;
       }
-      {
-        const _cl = consecratedIds(playerP);
-        const _ci = _cl.indexOf(homeProv.id);
-        if (_ci >= 0) _cl.splice(_ci, 1);
-      }
+      liftConsecratedGround(playerP, homeProv.id); // the return spends it (the marks' module, plan P1-19ay2)
       // Resurrect — strip armies and items (divine gift, not a free ride)
       hero.alive = true;
       hero.hp = Math.floor(hero.maxHp * theReturn.theShareOfHealth) || 8;

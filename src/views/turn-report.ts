@@ -34,7 +34,11 @@ import {
 import { neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
 import { itemLore, theTurnsAWildHuntServesBeyondThisOne, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
-import { isConsecrated, theConsecrationsAKingMayHold } from '../engine/heroes/fame-and-consecration.ts';
+import { theConsecrationsAKingMayHold } from '../engine/heroes/fame-and-consecration.ts';
+import {
+  isConsecrated,
+  theEnslavedProvinceStillPaysLess,
+} from '../engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
 import { theExplorationTheMoversItemsAdd } from '../engine/rules/the-registry-of-magic-item-effects.ts';
 import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
@@ -1018,7 +1022,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       t = theTaxOfAProvinceOnConsecratedGround({ theTax: t });
       _consecG += t - _cb;
     }
-    if (pv._enslavedUntil != null && pv._enslavedUntil >= _nextTurn) {
+    if (theEnslavedProvinceStillPaysLess(pv, _nextTurn)) {
       const _e0 = t;
       t = Math.max(0, t - 1);
       _enslaveReduction += _e0 - t;

@@ -1,6 +1,10 @@
 import { monarchRestProvId } from '../grand-design.ts';
 import { senseGravesUnderfoot } from '../graves.ts';
-import { consecratedIds, relOfReport } from '../heroes/fame-and-consecration.ts';
+import { relOfReport } from '../heroes/fame-and-consecration.ts';
+import {
+  consecratedIds,
+  keepOnlyTheConsecratedGroundARealmHolds,
+} from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { maxHpPlayers } from '../heroes/skills-and-hp.ts';
 import { applyItemMaxHp } from '../personal-combat/helpers.ts';
@@ -199,7 +203,7 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
               env: true,
             });
         });
-      pl.consecratedProvIds = kept;
+      keepOnlyTheConsecratedGroundARealmHolds(pl, kept); // the marks' module fades the rest (plan P1-19ay2)
     }
   });
 

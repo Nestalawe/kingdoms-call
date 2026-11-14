@@ -28,7 +28,7 @@
       "count": 1
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 4
+      "count": 2
     }
   },
   "src/engine/battle/ladder.ts": {
@@ -331,6 +331,11 @@
       "count": 1
     },
     "@typescript-eslint/restrict-plus-operands": {
+      "count": 2
+    }
+  },
+  "src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2
     }
   },

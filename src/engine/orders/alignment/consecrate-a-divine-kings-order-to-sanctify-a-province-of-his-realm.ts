@@ -4,7 +4,10 @@
 // realm's works' file held it until P1-19aw2. It draws no die.
 import { THE_ALIGNMENT_ORDERS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { homeProvinceIdFor } from '../../grand-design.ts';
-import { consecratedIds } from '../../heroes/fame-and-consecration.ts';
+import {
+  consecratedIds,
+  layConsecratedGround,
+} from '../../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { getNeighborsP } from '../../world/map-helpers.ts';
 import { theConsecrationsAKingMayHold } from '../../heroes/fame-and-consecration.ts';
 import {
@@ -156,7 +159,7 @@ export function resolveConsecrateOrder(
     return;
   }
   const { theConsecrated: _cList, theLimit: _cLimit } = theAnswer;
-  _cList.push(prov.id);
+  layConsecratedGround(_cList, prov.id); // the marks' module lays it (plan P1-19ay2)
   // 2026-10-15 (Toby, D8): no Hierophant merit — only a Divine king can consecrate, so it was a
   // creed-only route to a title. Bless Province, Holy Symbol and Resurrect still count.
   emit(turnContext, {
