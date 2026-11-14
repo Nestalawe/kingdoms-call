@@ -1,8 +1,8 @@
 # Making a change: the six kinds and the plan's format
 
 Every piece of work starts with the skill `making-a-change` (type `/making-a-change`). It leads the work through the
-same steps whatever its kind. This file says what each kind is, what differs between them, and the one format every
-plan takes. The rules themselves are in [CLAUDE.md](../../CLAUDE.md#rules) and the docs it links; this file points to
+same steps whatever its kind. This file says what each kind is, what differs between them, the one format every
+plan takes, and how work too big for one PR is found, scoped and built as a stack (a tranche). The rules themselves are in [CLAUDE.md](../../CLAUDE.md#rules) and the docs it links; this file points to
 them and doesn't restate them.
 
 ## The six kinds
@@ -116,11 +116,63 @@ for Toby; the rest can be technical.
 - **Output:** a write-up in `docs/explorations/<name>.md`, in a docs-only PR, so that the change starts from `main`
   ([what it holds](../explorations/README.md)). The chosen option is then built as a change.
 
-## The two stops
+## A tranche: a stack of pull requests
 
-The skill stops twice for a person:
-1. **After the plan.** Nothing is built before "go". In a run, the scoping Theo approved is that go; a new question
-   found during the run is stored for Toby, not decided.
+Work too big for one PR is a **tranche**: a set of rows, one PR each, built one on top of the other as a stack and
+merged together. Each row is one kind (most often a refactor); a tranche can hold rows of several kinds, each still one
+concern.
+
+### Finding the next tranche
+
+Asked "what next?", the skill proposes tranches before planning one:
+1. **Read the goal first, not the order of a list.** The next tranche is the one that brings the goal closest; a road
+   written earlier is an input, and a recommendation nobody answered isn't a decision.
+2. **Read where things stand:** the open PRs, the steps in progress, the known defects and the questions waiting for
+   Toby (in `plan/`, if the clone has it), and the counts in `tests/ratchet.json` on `main`.
+3. **Give two or three candidates**, each with what it delivers against the goal, its rows (about how many), its risk
+   (the files it shares with other work, staging, the database, Theo's look), and what it leaves for later. Recommend
+   one.
+4. ⏸ **Stop.** The person picks, or changes it.
+
+### Scoping a tranche
+
+The tranche's plan is the seven parts above. Its rows (part 3) add, for each row:
+- an id and a short name; its kind;
+- its base (the row before; the first from `main`) and what it depends on;
+- its size (in minutes, from the last tranche's rows of the same kind), and a split it may make if it grows;
+- the counts it lowers, measured on `main` at the scoping, not copied from an older plan;
+- whether Theo must look (a ✓ step, `.github/dangerous-paths`, who can see or change data).
+
+A fork found while scoping is a question with a recommendation. In an unattended run, the run takes the recommended
+option only when it serves the goal and is safe and easy to undo, and says so in its note; a rule of the game is never
+decided this way (it waits for Toby). The approved scoping is the go for every row: a row whose own plan goes beyond
+its line stops and reports.
+
+The plan lives where the person keeps their plans (`plan/`, if the clone has it). Otherwise it goes into the first
+row's PR description, and each row's PR links to it.
+
+### Building a tranche as a stack
+
+- **One conductor, an agent per row.** The conductor writes no code. It gives each row to its own agent with a brief
+  (the row's line of the plan, the lessons so far) and checks the result against the line.
+- **Each row's agent goes through steps 3 to 10 of the skill** as its kind, on a branch from the row before. Its PR
+  opens as a draft and joins one GitHub Stack (`gh stack link`), so each row is reviewed and scanned on its own.
+- **A row commits as it goes**, so a session lost to an error resumes from its last commit, not from the start. The
+  conductor checks on each agent regularly and resumes one that has stopped.
+- **A clock, if unattended:** a time after which no row starts, and the time the note is due. A row that runs long is
+  asked what is left, and split if its line allows it.
+- **The close:** a mutation session over the tranche's code for a large tranche (it checks that the tests catch
+  planted faults); then one staging pass on the top PR, with one numbered list for the whole stack.
+- **The note** for the person: first what needs them (anything stopped, any fork decided, any dangerous path), then
+  what was built, the counts from the start to the top, and their steps: try the staging list, mark the PRs ready, read
+  each row's alerts, and merge the stack as one group from its top (`gh stack merge <top> --merge`).
+
+## The stops
+
+The skill stops for a person:
+1. **After the plan.** Nothing is built before "go". For a tranche there is one more stop before it: picking the
+   tranche. In a run, the scoping the person approved is the go; a new question found during the run is stored for
+   Toby, not decided.
 2. **Before a PR is marked ready.** Staging, if needed, comes with a numbered list Toby can follow.
 
 Nobody but Toby merges ([CLAUDE.md](../../CLAUDE.md#rules), "Never" 1).
