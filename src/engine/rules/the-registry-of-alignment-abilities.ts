@@ -29,8 +29,15 @@ import {
   A_REALMS_ALIGNMENT_STRENGTHENS_ITS_DEFENCE_OF_ITS_OWN_GROUND,
   CONSECRATED_GROUND_WEAKENS_AN_ATTACKERS_HOST,
 } from './alignment-abilities/the-other-battle-factors-of-a-realms-alignment.ts';
+import {
+  A_REALMS_ALIGNMENT_ADDS_TO_RESEARCH,
+  A_REALMS_ALIGNMENT_CUTS_A_MERCENARY_BANDS_PRICE,
+  A_REALMS_ALIGNMENT_RAISES_A_BLESSS_YIELD,
+} from './alignment-abilities/the-prices-and-the-scholars-of-a-realms-alignment.ts';
 import type {
   ABeatenHostsCompanies,
+  ABlessAsARealmsAlignmentWeighsIt,
+  AResearchARealmsAlignmentMayHelp,
   AChanceOfZealOnConsecratedGround,
   AnAttackerOnConsecratedGround,
   ASideAsItsFervourIsWeighed,
@@ -149,6 +156,24 @@ export const THE_REGISTRY_OF_ALIGNMENT_ABILITIES = {
         A_REALMS_ALIGNMENT_HOLDS_A_BEATEN_HOST_ON_THE_FIELD['the-deathless-march'],
     },
   },
+  'the-neutral-mercenary-discount': {
+    orderOutcome: {
+      "a realm's alignment cuts a mercenary band's price":
+        A_REALMS_ALIGNMENT_CUTS_A_MERCENARY_BANDS_PRICE['the-neutral-mercenary-discount'],
+    },
+  },
+  'the-divine-blessing': {
+    orderOutcome: {
+      "a realm's alignment raises a Bless's yield": A_REALMS_ALIGNMENT_RAISES_A_BLESSS_YIELD['the-divine-blessing'],
+    },
+  },
+  // read by druidNeedWaivedByAlignment in src/engine/rules-on-plain-values/, which the player portal shares (it may
+  // import only src/content), so these two have no effect here
+  'creatures-follow-without-a-druid': {},
+  'monsters-follow-without-a-druid': {},
+  'neutral-scholars': {
+    orderOutcome: { "a realm's alignment adds to research": A_REALMS_ALIGNMENT_ADDS_TO_RESEARCH['neutral-scholars'] },
+  },
 } satisfies Record<AlignmentAbilitySlug, AlignmentAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once; the runner asks them in this order. */
@@ -177,6 +202,11 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES = {
   movementCost: {
     "a realm's alignment helps converging columns unite": ['banner-of-fellowship'],
   },
+  orderOutcome: {
+    "a realm's alignment cuts a mercenary band's price": ['the-neutral-mercenary-discount'],
+    "a realm's alignment raises a Bless's yield": ['the-divine-blessing'],
+    "a realm's alignment adds to research": ['neutral-scholars'],
+  },
   turnEnd: {
     "a realm's alignment adds to its tax": ['neutral-trade'],
     "a realm's consecrated ground raises a province's tax": ['consecrated-ground-tax'],
@@ -193,6 +223,7 @@ const TURN_END = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.turnEnd;
 const STRENGTH = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.strength;
 const FATE = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.fate;
 const MOVEMENT_COST = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.movementCost;
+const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.orderOutcome;
 
 /** The abilities of a stage's order the alignment holds, in the order. */
 const theAbilitiesOfTheStageAnAlignmentHolds = (
@@ -367,6 +398,43 @@ export function whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite(
   const theStage = "a realm's alignment helps converging columns unite";
   return theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, MOVEMENT_COST[theStage]).reduce(
     (thePoints, slug) => thePoints + (ENTRIES[slug].movementCost?.[theStage]?.() ?? 0),
+    0,
+  );
+}
+
+/** The runner of "orderOutcome: a realm's alignment cuts a mercenary band's price" (resolveRecruitArmiesOrder, and the
+ *  report's price, each before the discoveries' and under its own floor of 1g): the gold of the abilities the
+ *  alignment holds, added (0 for none). */
+export function theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(theAlignment: string | null | undefined): number {
+  const theStage = "a realm's alignment cuts a mercenary band's price";
+  return theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, ORDER_OUTCOME[theStage]).reduce(
+    (theGold, slug) => theGold + (ENTRIES[slug].orderOutcome?.[theStage]?.() ?? 0),
+    0,
+  );
+}
+
+/** The runner of "orderOutcome: a realm's alignment raises a Bless's yield" (workBlessProvince, before the discoveries
+ *  add theirs): the whole yield of the first ability the caster's realm's alignment holds, or null when it holds none
+ *  (the spell's own yield then; the line names a Divine realm's blessing by it). */
+export function theYieldOfABlessARealmsAlignmentGives(
+  theAlignment: string | null | undefined,
+  facts: ABlessAsARealmsAlignmentWeighsIt,
+): number | null {
+  const theStage = "a realm's alignment raises a Bless's yield";
+  const [slug] = theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, ORDER_OUTCOME[theStage]);
+  return (slug === undefined ? undefined : ENTRIES[slug].orderOutcome?.[theStage]?.(facts)) ?? null;
+}
+
+/** The runner of "orderOutcome: a realm's alignment adds to research" (resolveResearchOrder, and the report's odds,
+ *  after the Sage level's own points): the points of the abilities the scholar's realm's alignment holds, added (0
+ *  for none). */
+export function whatARealmsAlignmentAddsToResearch(
+  theAlignment: string | null | undefined,
+  facts: AResearchARealmsAlignmentMayHelp,
+): number {
+  const theStage = "a realm's alignment adds to research";
+  return theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, ORDER_OUTCOME[theStage]).reduce(
+    (thePoints, slug) => thePoints + (ENTRIES[slug].orderOutcome?.[theStage]?.(facts) ?? 0),
     0,
   );
 }

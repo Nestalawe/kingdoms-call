@@ -70,7 +70,11 @@ import {
   theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom,
   theCutsAndCeilingsARealmsHeroWageDiscoveriesMakeAndTheirRoom,
 } from '../engine/rules/the-registry-of-discovery-effects.ts';
-import { theTaxOfAProvinceOnConsecratedGround } from '../engine/rules/the-registry-of-alignment-abilities.ts';
+import {
+  theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice,
+  theTaxOfAProvinceOnConsecratedGround,
+  whatARealmsAlignmentAddsToResearch,
+} from '../engine/rules/the-registry-of-alignment-abilities.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
@@ -528,7 +532,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
             rawLevel: raw('sage'),
             chance:
               Number(eff('sage')) * per +
-              (pl.alignment === 'Neutral' ? Number(eff('sage')) * 5 : 0) +
+              whatARealmsAlignmentAddsToResearch(pl.alignment, { theSageLevel: Number(eff('sage')) }) + // (P1-19av1)
               ((_minT['loreseeker'] ?? view.titles.lastTurnsMinorHoldersOfItsHeroes['loreseeker'])?.charId === c.id
                 ? per
                 : 0) +
@@ -861,11 +865,12 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       unitName: merc.unitName,
       race: (merc.race ?? '') || null,
       // Hire price, so the Recruit Armies order form can list mercenaries beside native units.
-      // Neutral realms get 2g off (min 1g), as the hire takes it — mirrored from the recruit handler.
+      // Neutral realms get 2g off (min 1g), as the hire takes it: the rule the hire reads (the alignment abilities'
+      // registry's since plan P1-19av1).
       cost: Math.max(
         1,
         ((ARMY_COST_MASTER[String(merc.type)] ?? 0) || 2) -
-          (player.alignment === 'Neutral' ? 2 : 0) +
+          theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(player.alignment) +
           whatARealmsDiscoveriesAddToAMercenaryBandsPrice(player, { theUnitsType: theTypeEveryBandHolds(merc.type) }),
       ), // + merc discoveries (the discoveries' registry's since plan P1-19ae: the rule the hire reads)
       location: (p2?.name ?? '') || 'unknown',

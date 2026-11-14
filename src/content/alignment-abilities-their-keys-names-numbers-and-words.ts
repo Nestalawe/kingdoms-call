@@ -331,6 +331,69 @@ export const ALIGNMENT_ABILITIES = {
     alignment: 'Undead',
     theNumbers: {},
   },
+  // a Neutral realm's mercenary discount: a mercenary band costs it gold less than the going rate, never under 1g
+  // (P1-19av1; the books give it no name of its own: it is part of the "Cheapest court")
+  'the-neutral-mercenary-discount': {
+    howItIsUsed: 'always on',
+    alignment: 'Neutral',
+    theNumbers: {
+      theGoldLess: {
+        value: 2,
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'mercenary bands cost {N}g less than the going rate',
+        inTheReportsSummary: 'Mercenary bands cost {N}g less to hire than the going rate',
+      },
+    },
+  },
+  // a Divine realm's blessing: its casters' Bless Province yields a share of the province's tax value more than other
+  // realms' (the spell's own 60%), and its king's in person more still (P1-19av1). Each is the spell's whole yield
+  // before the discoveries add theirs, `1 + 80 / 100` and `1 + 100 / 100`, exactly 1.8 and 2 as before
+  'the-divine-blessing': {
+    howItIsUsed: 'always on',
+    alignment: 'Divine',
+    theNumbers: {
+      byTheRealmsCasters: {
+        value: 80,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: "Bless Province adds {N} of a province's tax value (others 60%)",
+        inTheReportsSummary: "Bless Province adds {N} of a province's tax value rather than 60%",
+      },
+      byTheKingInPerson: {
+        value: 100,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'when the King casts it the province yields +{N}',
+        inTheReportsSummary: 'the province yields a full {N} more',
+      },
+    },
+  },
+  // a Druidic realm's Creatures follow its heroes with no Druid need, as they follow a Druidic wandering hero (his own
+  // creed counts: Decision G). Read by druidNeedWaivedByAlignment, in src/engine/rules-on-plain-values/ (the player
+  // portal shares it), so its entry in the registry is empty (P1-19av1). The books state no number for it
+  'creatures-follow-without-a-druid': {
+    howItIsUsed: 'always on',
+    alignment: 'Druidic',
+    theNumbers: {},
+  },
+  // an Evil realm's Monsters follow its heroes with no Druid need, as they follow an Evil wandering hero: the mirror of
+  // the Druidic one, read in the same place (P1-19av1). The books state no number for it
+  'monsters-follow-without-a-druid': {
+    howItIsUsed: 'always on',
+    alignment: 'Evil',
+    theNumbers: {},
+  },
+  // a Neutral realm's scholars: each Sage level adds a further share to a Research's chance of a discovery, doubling
+  // the base rate (P1-19av1)
+  'neutral-scholars': {
+    howItIsUsed: 'always on',
+    alignment: 'Neutral',
+    theNumbers: {
+      thePointsASageLevelAdds: {
+        value: 5,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'each Sage level adds a further +{N} discovery chance',
+      },
+    },
+  },
 } as const satisfies Readonly<Record<string, AnAlignmentAbility>>;
 
 /** An ability's slug: a key of the rows. */

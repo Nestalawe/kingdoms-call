@@ -1663,6 +1663,17 @@ export interface TheIncomeARealmsAlignmentAddsTo {
   readonly theIncome: number | null | undefined;
 }
 
+/** A Bless as its caster's realm's alignment weighs it (workBlessProvince: plan P1-19av1). */
+export interface ABlessAsARealmsAlignmentWeighsIt {
+  readonly isTheCasterTheKing: boolean;
+}
+
+/** A Research as its scholar's realm's alignment weighs it (resolveResearchOrder, the report's odds: plan P1-19av1). */
+export interface AResearchARealmsAlignmentMayHelp {
+  /** His Sage level, as the order (or the report) reads it. */
+  readonly theSageLevel: number;
+}
+
 /** A realm's treasury and its ceiling, as the interest discoveries read them (the collection and the report). */
 export interface ATreasuryARealmsDiscoveriesMayEarnInterestOn {
   readonly theTreasury: number;
@@ -2193,6 +2204,17 @@ export interface TheStagesOfEachHookPoint {
     /** The share of the province's tax a discovery the caster's realm holds adds to a Bless; the runner adds them
      *  (workBlessProvince). */
     readonly "a realm's discoveries add to a Bless": (theEffect: TheEffectOfADiscovery) => number;
+    /** The gold an ability of a realm's alignment cuts from a mercenary band's price; the runner adds them
+     *  (resolveRecruitArmiesOrder, and the report's price, before the discoveries': the alignment abilities' registry,
+     *  plan P1-19av1). */
+    readonly "a realm's alignment cuts a mercenary band's price": () => number;
+    /** The whole yield of a Bless an ability of the caster's realm's alignment gives, in place of the spell's own; the
+     *  runner takes the first the alignment holds (workBlessProvince, before the discoveries add theirs: the alignment
+     *  abilities' registry, plan P1-19av1). */
+    readonly "a realm's alignment raises a Bless's yield": (facts: ABlessAsARealmsAlignmentWeighsIt) => number;
+    /** The points an ability of a scholar's realm's alignment adds to his chance of a discovery; the runner adds them
+     *  (resolveResearchOrder, and the report's odds: the alignment abilities' registry, plan P1-19av1). */
+    readonly "a realm's alignment adds to research": (facts: AResearchARealmsAlignmentMayHelp) => number;
   };
   /** A hero's own figures a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19p, typed it). */
   readonly aHerosStanding: {

@@ -11,6 +11,7 @@ import { TM } from '../../titles/perks.ts';
 import { graveServedOther } from '../../heroes/charms-and-neutrals.ts';
 import { applyPendingSynthPlan } from '../../discoveries.ts';
 import { whatARealmsDiscoveriesAddToABless } from '../../rules/the-registry-of-discovery-effects.ts';
+import { theYieldOfABlessARealmsAlignmentGives } from '../../rules/the-registry-of-alignment-abilities.ts';
 import {
   emit,
   logSplit,
@@ -437,12 +438,16 @@ export function workBlessProvince({ turnContext, G, c, targetProv }: TheNamesAnA
   // DIVINE: a Divine realm's casters bless at +80% (the long-advertised alignment bonus,
   // previously described but never implemented — engine now honours it), and the Divine
   // KING himself blesses at +100% — the gods answer their anointed in full.
-  const _divineKingdom = G.players[c.player]?.alignment === 'Divine';
+  // (the realm's alignment's yield, 2 or 1.8, or null for the spell's own 1.6: the alignment abilities' registry's since
+  // plan P1-19av1)
+  const _alignmentsYield = theYieldOfABlessARealmsAlignmentGives(G.players[c.player]?.alignment, {
+    isTheCasterTheKing: c.isKing,
+  });
+  const _divineKingdom = _alignmentsYield !== null;
   const _divineKingBless = c.isKing && _divineKingdom;
   // ad09 Rites of Plenty (+0.2; the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries add
   // to a Bless")
-  targetProv._blessedMult =
-    (_divineKingBless ? 2.0 : _divineKingdom ? 1.8 : 1.6) + whatARealmsDiscoveriesAddToABless(G.players[c.player]);
+  targetProv._blessedMult = (_alignmentsYield ?? 1.6) + whatARealmsDiscoveriesAddToABless(G.players[c.player]);
   emit(turnContext, {
     type: 'explore',
     fact: {

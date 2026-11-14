@@ -30,6 +30,7 @@ import {
   whatARealmsDiscoveriesAddToPractice,
   whatARealmsDiscoveriesAddToResearch,
 } from '../rules/the-registry-of-discovery-effects.ts';
+import { whatARealmsAlignmentAddsToResearch } from '../rules/the-registry-of-alignment-abilities.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat, recalcHeroPay, theSkillInPlayAsALineTellsIt } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
@@ -156,8 +157,11 @@ export function resolveResearchOrder(
       _rcat = _to;
     }
   }
-  // Neutral alignment: double sage discovery chance (pragmatic scholars)
-  const neutralSageBonus = G.players[c.player]?.alignment === 'Neutral' ? sageLevel * 5 : 0;
+  // the realm's alignment's scholars (Neutral: double sage discovery chance, pragmatic scholars; the alignment
+  // abilities' registry's since plan P1-19av1)
+  const neutralSageBonus = whatARealmsAlignmentAddsToResearch(G.players[c.player]?.alignment, {
+    theSageLevel: sageLevel,
+  });
   const perLevel = 5;
   // The discovery-chance benefit CAPS at level 5 (via effStat); levels 6+ grant the Sage's
   // distinct mastery orders instead of a further per-level climb.
