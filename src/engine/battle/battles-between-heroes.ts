@@ -10,7 +10,12 @@ import {
   whatABattleSpellDoesBeforeTheBattle,
   whatAUnitsStrikeMayDoBeforeTheBattle,
 } from '../rules/the-registry-of-spell-effects.ts';
-import { FANATIC_CHANCE_BY_ALIGN, QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
+import {
+  theChanceOfZealARealmsAlignmentGivesASide,
+  theChanceOfZealOfADefenderOnConsecratedGround,
+  theFervourOfASide,
+} from '../rules/the-registry-of-alignment-abilities.ts';
+import { QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
 import { battleMarginBand, rollUnitFates } from './fates.ts';
 import {
   battleDeploy,
@@ -539,16 +544,13 @@ export function combatVsChar(
   if (isHome) narrate(narrative, { kind: 'the defenders fight on home ground' });
   // (2026-09-23d: "📊 X leads the defense: Tactical N" retired — the deployment line and the ladder both name it.)
 
-  // Fanaticism
-  const atkFanChance: Readonly<Partial<Record<string, number>>> = { ...FANATIC_CHANCE_BY_ALIGN };
-  const defFanChance: Readonly<Partial<Record<string, number>>> = { ...FANATIC_CHANCE_BY_ALIGN };
+  // Fanaticism: each side's chance of zeal its realm's alignment gives (the alignment abilities' registry, P1-19au1)
   const atkAlign = (theAttackersRealm?.alignment ?? '') || 'Neutral';
-  const defAlign = (theDefendersRealm?.alignment ?? '') || 'Neutral';
   // (The Wyverns' Dread, −15% to the other side's fanaticism, was retired with the unit abilities,
   // 2026-10-11: Terror From Above now bears on the enemy's strongest front unit, in battleFaceSide.)
   const _atkFanPct = Math.max(
     0,
-    (atkFanChance[atkAlign] ?? 0.1) +
+    theChanceOfZealARealmsAlignmentGivesASide(theAttackersRealm?.alignment) +
       whatARealmsDiscoveriesAddToASidesFanaticism(theAttackersRealm, {
         theSide: 'atk',
         theGround: prov.terrain,
@@ -557,7 +559,7 @@ export function combatVsChar(
   ); // fanatic discoveries
   let _defFanPct = Math.max(
     0,
-    (defFanChance[defAlign] ?? 0.1) +
+    theChanceOfZealARealmsAlignmentGivesASide(theDefendersRealm?.alignment) +
       whatARealmsDiscoveriesAddToASidesFanaticism(theDefendersRealm, {
         theSide: 'def',
         theGround: prov.terrain,
@@ -568,34 +570,33 @@ export function combatVsChar(
   // fanatical zeal (they fight before the altars of their gods).
   const _consecratedHere = def.player != null && isConsecrated(theDefendersRealm, prov.id) && prov.owner === def.player;
   if (_consecratedHere) {
-    _defFanPct = Math.min(1, _defFanPct * 2);
+    _defFanPct = theChanceOfZealOfADefenderOnConsecratedGround({ theChance: _defFanPct });
   }
+  // Both sides roll, the attacker first, always (even at 0, and when a fervour wins).
   const atkFanatic = kcRng() < _atkFanPct;
   const defFanatic = kcRng() < _defFanPct;
-  // Skeletal armies are always fanatical ONLY when led by the Undead king in person.
-  const atkSkelFanatic = atkAlign === 'Undead' && atk.isKing && atkArmies.some((a) => a._isSkeletal);
-  const defSkelFanatic = defAlign === 'Undead' && def.isKing && defArmies.some((a) => a._isSkeletal);
-  const atkSkelHero = atkAlign === 'Undead' && !atk.isKing && atkArmies.some((a) => a._isSkeletal);
-  const defSkelHero = defAlign === 'Undead' && !def.isKing && defArmies.some((a) => a._isSkeletal);
-  // Evil: Monster armies +25%. (Wild Ferocity, the Druidic ×1.25 with any Creature, retired 2026-10-13.)
-  const atkEvilMonster = atkAlign === 'Evil' && atkArmies.some((a) => MONSTER_ARMIES.has(a.type));
-  const defEvilMonster = defAlign === 'Evil' && defArmies.some((a) => MONSTER_ARMIES.has(a.type));
   // Strongest fervour counts (max) — the old precedence chain let a ×1.3 zeal roll mask the
-  // skeletal bonus once that bonus rose above it.
-  const atkFanMult = Math.max(
-    1,
-    atkFanatic ? 1.3 : 1,
-    atkSkelFanatic ? UNDEAD_SKEL_KING_FAN : 1,
-    atkEvilMonster ? 1.25 : 1,
-    atkSkelHero ? UNDEAD_SKEL_HERO_FAN : 1,
-  );
-  const defFanMult = Math.max(
-    1,
-    defFanatic ? 1.3 : 1,
-    defSkelFanatic ? UNDEAD_SKEL_KING_FAN : 1,
-    defEvilMonster ? 1.25 : 1,
-    defSkelHero ? UNDEAD_SKEL_HERO_FAN : 1,
-  );
+  // skeletal bonus once that bonus rose above it. Skeletal armies fight with fervour under any Undead
+  // commander, the more under the king in person; an Evil host with Monsters fights with savage fury.
+  // (Wild Ferocity, the Druidic ×1.25 with any Creature, retired 2026-10-13.)
+  const atkFervour = theFervourOfASide(theAttackersRealm?.alignment, {
+    isItSeizedByZeal: atkFanatic,
+    isItLedByTheKing: atk.isKing,
+    theForce: atkArmies,
+  });
+  const defFervour = theFervourOfASide(theDefendersRealm?.alignment, {
+    isItSeizedByZeal: defFanatic,
+    isItLedByTheKing: def.isKing,
+    theForce: defArmies,
+  });
+  const atkSkelFanatic = atkFervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && atk.isKing;
+  const defSkelFanatic = defFervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && def.isKing;
+  const atkSkelHero = atkFervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && !atk.isKing;
+  const defSkelHero = defFervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && !def.isKing;
+  const atkEvilMonster = atkFervour.theAbilitiesThatStirredIt.includes('savage-fury');
+  const defEvilMonster = defFervour.theAbilitiesThatStirredIt.includes('savage-fury');
+  const atkFanMult = atkFervour.theFactor;
+  const defFanMult = defFervour.theFactor;
   if (atkSkelFanatic)
     narrate(narrative, {
       kind: "a side's skeletal legions fight with fanaticism under their undead king",

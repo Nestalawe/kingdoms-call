@@ -1350,6 +1350,20 @@ export interface ASideAsItsFanaticismIsRolled {
   readonly theForce: readonly (AUnitAsTheDiscoveriesReadIt | null | undefined)[] | null | undefined;
 }
 
+/** A side's chance of zeal so far, a hero's defending his realm's consecrated ground (combatVsChar, after the realm's
+ *  fanaticism discoveries). */
+export interface AChanceOfZealOnConsecratedGround {
+  readonly theChance: number;
+}
+
+/** A side of a battle, as its realm's alignment's fervour weighs it (both battles, after the zeal rolls). */
+export interface ASideAsItsFervourIsWeighed {
+  /** Whether its zeal roll seized it. */
+  readonly isItSeizedByZeal: boolean;
+  readonly isItLedByTheKing: boolean;
+  readonly theForce: readonly { readonly type: string; readonly _isSkeletal?: boolean | undefined }[];
+}
+
 /** Where a hero casts, as a discovery's `ctx` names it: before a battle, in an order, in a personal combat. */
 export type WhereAHeroCasts = 'battle' | 'action' | 'duel';
 
@@ -1752,6 +1766,15 @@ export interface TheStagesOfEachHookPoint {
       theEffect: TheEffectOfADiscovery,
       facts: ASideAsItsFanaticismIsRolled,
     ) => number | null;
+    /** A side's chance of zeal its realm's alignment gives, before its discoveries' (both battles; the runner asks the
+     *  one ability the alignment holds; the alignment abilities' registry, P1-19au1). The resolver draws the roll. */
+    readonly "a realm's alignment gives a side its chance of zeal": () => number;
+    /** A defender's chance of zeal on his realm's consecrated ground, from the chance so far (combatVsChar, after the
+     *  discoveries'; the alignment abilities' registry). */
+    readonly "consecrated ground stirs a defender's zeal": (facts: AChanceOfZealOnConsecratedGround) => number;
+    /** The factor a side's realm's alignment's fervour lifts the whole force by, or nothing (both battles, after the
+     *  zeal rolls; the alignment abilities' registry: the runner takes the strongest, zeal's among them). */
+    readonly "a realm's alignment stirs a side's fervour": (facts: ASideAsItsFervourIsWeighed) => number | null;
     /** Whether a discovery the commander's realm holds lets a winged beast he leads follow him without his Druid
      *  (dragonTamed: the runner asks each effect of the kind the realm holds). */
     readonly "a realm's discoveries let a beast follow without its Druid": (

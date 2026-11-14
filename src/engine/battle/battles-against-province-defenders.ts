@@ -11,7 +11,11 @@ import {
   whatABattleSpellDoesBeforeTheBattle,
   whatAUnitsStrikeMayDoBeforeTheBattle,
 } from '../rules/the-registry-of-spell-effects.ts';
-import { BATTLE_MAGIC_SPELL_NAMES, FANATIC_CHANCE_BY_ALIGN, QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
+import {
+  theChanceOfZealARealmsAlignmentGivesASide,
+  theFervourOfASide,
+} from '../rules/the-registry-of-alignment-abilities.ts';
+import { BATTLE_MAGIC_SPELL_NAMES, QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
 import { battleMarginBand, rollUnitFates } from './fates.ts';
 import {
   battleDeploy,
@@ -1451,35 +1455,30 @@ export function combatVsNPC(
     if (theAttackerAsTheGuardsReadHim) delete c._phantasmalBonus;
   }
 
-  // Fanaticism check
+  // Fanaticism check: the attacker's chance of zeal its realm's alignment gives (the alignment abilities' registry,
+  // P1-19au1); the defenders never roll
   const align = (theAttackersRealm?.alignment ?? '') || 'Neutral';
-  const FANATIC_CHANCE: Readonly<Partial<Record<string, number>>> = { ...FANATIC_CHANCE_BY_ALIGN };
   const fanatic =
     kcRng() <
-    (FANATIC_CHANCE[align] ?? 0.1) +
+    theChanceOfZealARealmsAlignmentGivesASide(theAttackersRealm?.alignment) +
       whatARealmsDiscoveriesAddToASidesFanaticism(theAttackersRealm, {
         theSide: 'atk',
         theGround: prov.terrain,
         theForce: armies,
       }); // fanatic discoveries
-  // Skeletal armies are always fanatical ONLY when led by the Undead king in person — other
-  // heroes serving the Undead realm do not inspire the same undying zeal.
-  const skeletalFanatic = align === 'Undead' && c.isKing && armies.some((a) => a._isSkeletal);
   // Undead skeletal legions never waver under ANY of the realm's commanders — the king's presence
-  // merely sharpens it (×1.3 king-led, ×1.2 hero-led). Honours the long-advertised "fight with
-  // 100% fanaticism in every battle" rather than the old king-only rule.
-  const skelHeroFanatic = align === 'Undead' && !c.isKing && armies.some((a) => a._isSkeletal);
-  // Evil: Monster armies get +25% fanaticism on top of base. (The Druidic mirror, Wild Ferocity — ×1.25
-  // for a host with any Creature — was retired on 2026-10-13 (Toby, Creatures and Monsters I): the Druidic
-  // crown keeps its waiver, Home of the Wild and mastery.)
-  const evilMonsterFanatic = align === 'Evil' && armies.some((a) => MONSTER_ARMIES.has(a.type));
-  const fanMult = Math.max(
-    1,
-    fanatic ? 1.3 : 1,
-    skeletalFanatic ? UNDEAD_SKEL_KING_FAN : 1,
-    evilMonsterFanatic ? 1.25 : 1,
-    skelHeroFanatic ? UNDEAD_SKEL_HERO_FAN : 1,
-  ); // strongest counts (2026-09-23b)
+  // merely sharpens it (×1.5 king-led, ×1.3 hero-led). Evil: a host with Monster armies fights with savage
+  // fury. (The Druidic mirror, Wild Ferocity — ×1.25 for a host with any Creature — was retired on 2026-10-13
+  // (Toby, Creatures and Monsters I): the Druidic crown keeps its waiver, Home of the Wild and mastery.)
+  const fervour = theFervourOfASide(theAttackersRealm?.alignment, {
+    isItSeizedByZeal: fanatic,
+    isItLedByTheKing: c.isKing,
+    theForce: armies,
+  });
+  const skeletalFanatic = fervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && c.isKing;
+  const skelHeroFanatic = fervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && !c.isKing;
+  const evilMonsterFanatic = fervour.theAbilitiesThatStirredIt.includes('savage-fury');
+  const fanMult = fervour.theFactor; // strongest counts (2026-09-23b)
   if (evilMonsterFanatic && !fanatic)
     narrate(narrative, { kind: "the attacker's monsters are driven to savage fury", cName: atkSide });
   if (fanatic && !skeletalFanatic && !skelHeroFanatic)

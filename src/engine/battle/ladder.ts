@@ -1,4 +1,5 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { BATTLE_LINE_MULTS, battleLineTotal, flankLineMults } from './lines.ts';
 import type { BattleGrid } from './lines.ts';
@@ -172,8 +173,10 @@ export const ARCHERY_MISSILE_PCT = 0.05;
 // UNDEAD — undying fanaticism (2026-09-23b, Toby): a host with skeletal units in it, led by the Undead
 // KING in person ×1.5, by any other Undead commander ×1.3 (was ×1.3 / ×1.2). Whole force, no roll.
 // Undead's own zeal roll is 0%. Where several fervours apply the strongest one counts (max, never stacked).
-export const UNDEAD_SKEL_KING_FAN = 1.5,
-  UNDEAD_SKEL_HERO_FAN = 1.3;
+// The two factors are the skeletal fervour's row (the alignment abilities' registry, P1-19au1), which the battles ask;
+// the battles' lines name them by these.
+export const UNDEAD_SKEL_KING_FAN = ALIGNMENT_ABILITIES['skeletal-fervour'].theNumbers.underTheKing.value,
+  UNDEAD_SKEL_HERO_FAN = ALIGNMENT_ABILITIES['skeletal-fervour'].theNumbers.underAnyOtherCommander.value;
 export const MISSILE_ARMIES_MASTER = new Set(KC_UNIT_CLASS.missile);
 
 // Add primal armies to ARMY_UNIT_NAMES

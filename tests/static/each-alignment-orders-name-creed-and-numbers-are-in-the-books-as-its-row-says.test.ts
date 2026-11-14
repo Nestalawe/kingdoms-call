@@ -72,10 +72,17 @@ const theRowsOf = (table: string): string[][] =>
 
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const THE_TURN_IT_LASTS_UNTIL: Readonly<Record<number, string>> = { 1: 'the following turn' };
+const THE_MULTIPLES: Readonly<Record<number, string>> = { 2: 'double' };
 /** A number as the books write it, as its row says. */
 function written(n: ANumberOfAnAlignmentOrder | ANumberOfAnAlignmentAbility): string {
   if (n.writtenAs === 'as it is') return String(n.value);
   if (n.writtenAs === 'as a percentage') return `${String(n.value)}%`;
+  if (n.writtenAs === 'as a multiplier') return `×${String(n.value)}`;
+  if (n.writtenAs === 'as a multiple') {
+    const m = THE_MULTIPLES[n.value];
+    if (m === undefined) throw new Error(`no words for ${String(n.value)} as a multiple`);
+    return m;
+  }
   const words = n.writtenAs === 'as a word' ? WORDS : THE_TURN_IT_LASTS_UNTIL;
   const w = typeof n.value === 'number' ? words[n.value] : undefined;
   if (w === undefined) throw new Error(`no words for ${String(n.value)} ${n.writtenAs}`);
@@ -102,6 +109,14 @@ function theEntriesOfItsCreedsSection(b: TheBooks, creed: string): string[] {
   const next = section.indexOf('<h3>', at + 4);
   const its = section.slice(at, next < 0 ? undefined : next);
   return [...its.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((li) => asAReaderSeesIt(li[1] ?? ''));
+}
+
+/** The heading of a creed's section in the rulebook, as a reader sees it ("💀 Undead — zeal 0%"), or nothing. */
+function theHeadingOfItsCreedsSection(b: TheBooks, creed: string): string {
+  const section = thePartOf(b.rulebook, '<section id="alignments">', '</section>');
+  const at = section.search(new RegExp(`<h3>[^<]* ${creed} <span`));
+  const end = section.indexOf('</h3>', at);
+  return at < 0 || end < 0 ? '' : asAReaderSeesIt(section.slice(at, end));
 }
 
 /** What a row breaks in the books: each place its name, creed, king's mark or a number isn't as the row says. */
@@ -434,7 +449,11 @@ function whatAnAbilitysRowBreaks(row: AnAlignmentAbility, b: TheBooks, texts: Th
   const summary = texts.theReportsSummaries[row.alignment];
   for (const [what, n] of Object.entries(row.theNumbers)) {
     const places = [
-      ["its creed's section", n.inItsCreedsSection, theEntriesOfItsCreedsSection(b, row.alignment).join(' ')],
+      [
+        "its creed's section",
+        n.inItsCreedsSection,
+        [theHeadingOfItsCreedsSection(b, row.alignment), ...theEntriesOfItsCreedsSection(b, row.alignment)].join(' '),
+      ],
       ["the rulebook's paragraph on gold", n.inTheRulebooksParagraphOnGold, theParagraphOnGold(b)],
       ["the rulebook's orders table", n.inTheRulebooksOrdersTable, theOrdersTableRowOf(b, row.alignment)],
       ["the intro's table", n.inTheIntrosTable, theIntrosRowOf(b, row.alignment)],
@@ -469,6 +488,16 @@ test("the abilities' numbers are the ones the books state today", () => {
   ).toEqual({
     'neutral-trade': { theShareOfTheProvincesIncome: 20 },
     'consecrated-ground-tax': { theShareMoreTax: 50 },
+    'zeal-of-a-divine-realm': { theChanceOfZeal: 50, theStrengthOfZeal: 1.3 },
+    'zeal-of-a-good-realm': { theChanceOfZeal: 40 },
+    'zeal-of-a-druidic-realm': { theChanceOfZeal: 20 },
+    'zeal-of-a-neutral-realm': { theChanceOfZeal: 10 },
+    'zeal-of-a-pagan-realm': { theChanceOfZeal: 15 },
+    'zeal-of-an-evil-realm': { theChanceOfZeal: 25 },
+    'zeal-of-an-undead-realm': { theChanceOfZeal: 0 },
+    'consecrated-ground-doubles-a-defenders-zeal': { theTimesTheChance: 2 },
+    'savage-fury': { theStrengthOfTheHost: 1.25 },
+    'skeletal-fervour': { underTheKing: 1.5, underAnyOtherCommander: 1.3 },
   });
 });
 

@@ -250,16 +250,8 @@ export const BATTLE_MAGIC_SPELL_NAMES = [
   'Psychic Blast',
   'Control Undead',
 ];
-// Chance an army is seized by fanatical zeal, by the realm's alignment.
-export const FANATIC_CHANCE_BY_ALIGN = {
-  Divine: 0.5,
-  Good: 0.4,
-  Druidic: 0.2,
-  Neutral: 0.1,
-  Pagan: 0.15,
-  Evil: 0.25,
-  Undead: 0.0,
-};
+// (The chance an army is seized by fanatical zeal, by the realm's alignment, is each creed's zeal row: the alignment
+// abilities' registry, P1-19au1.)
 // Lair guardian grade as a number ('' = unknown). The bot's lair ladder and its target sorting.
 export const GUARDIAN_POWER_RANK = { '': 0, Weak: 1, Moderate: 2, Powerful: 3, Legendary: 4 };
 // Steal from a lair: the success penalty (percentage points) for the guardian's grade.

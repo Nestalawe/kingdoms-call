@@ -12,16 +12,17 @@
 import type { KC_ALIGNMENTS } from './kingdoms-call-data.ts';
 
 /** How the books write a number of an ability: as it is (2 as `2`), as a word (2 as `two`), the turns something lasts
- *  beyond this one as the turn it lasts until (1 as `the following turn`), or a share as a percentage (20 as `20%`). */
+ *  beyond this one as the turn it lasts until (1 as `the following turn`), a share as a percentage (20 as `20%`), a
+ *  factor as a multiplier (1.25 as `×1.25`), or how many times as a multiple (2 as `double`). */
 export type HowTheBooksWriteAnAlignmentAbilitysNumber =
-  'as it is' | 'as a word' | 'as the turn it lasts until' | 'as a percentage';
+  'as it is' | 'as a word' | 'as the turn it lasts until' | 'as a percentage' | 'as a multiplier' | 'as a multiple';
 
 /** A number the books state for an ability: its value, how the books write it, and the words around it where they state
  *  it (`{N}` the value as written; the words as a reader sees them, without the page's markup). */
 export interface ANumberOfAnAlignmentAbility {
   readonly value: number;
   readonly writtenAs: HowTheBooksWriteAnAlignmentAbilitysNumber;
-  /** In the ability's own entry of its creed's section in the rulebook ("The Seven Alignments"). */
+  /** In its creed's section in the rulebook ("The Seven Alignments"): its heading or the ability's own entry. */
   readonly inItsCreedsSection: string;
   /** In the rulebook's paragraph on gold ("Your gold comes chiefly…"), where it states it. */
   readonly inTheRulebooksParagraphOnGold?: string;
@@ -95,6 +96,152 @@ export const ALIGNMENT_ABILITIES = {
         inTheIntrosTable: '+{N} tax and holy ground',
         inTheReportsSummary: 'Consecrated ground yields +{N} tax',
         inTheJoinForm: 'Consecrate provinces: +{N} tax',
+      },
+    },
+  },
+  // each creed's chance of fanatical zeal: before each battle a side rolls for it, and on a success fights at the
+  // strength of zeal (P1-19au1). The books state that strength once among the creeds, in the Divine entry ("zeal = your
+  // force fights at ×1.30"), so the Divine row holds it, and every creed's zeal (and a realm of none) fights at it
+  'zeal-of-a-divine-realm': {
+    howItIsUsed: 'always on',
+    alignment: 'Divine',
+    theNumbers: {
+      theChanceOfZeal: {
+        value: 50,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Fanatical zeal {N}',
+        inTheIntrosTable: 'Divine {N}',
+        inTheReportsSummary: 'Your armies fight with a {N} chance of fanatical zeal',
+        inTheJoinForm: '({N} chance your host fights fanatically)',
+      },
+      theStrengthOfZeal: {
+        value: 1.3,
+        writtenAs: 'as a multiplier',
+        inItsCreedsSection: 'zeal = your force fights at {N}0 for that battle',
+      },
+    },
+  },
+  'zeal-of-a-good-realm': {
+    howItIsUsed: 'always on',
+    alignment: 'Good',
+    theNumbers: {
+      theChanceOfZeal: {
+        value: 40,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Fanatical zeal {N}',
+        inTheIntrosTable: 'Good {N}',
+        inTheReportsSummary: 'Your armies fight with a solid {N} chance of fanaticism',
+      },
+    },
+  },
+  'zeal-of-a-druidic-realm': {
+    howItIsUsed: 'always on',
+    alignment: 'Druidic',
+    theNumbers: {
+      theChanceOfZeal: {
+        value: 20,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Fanatical zeal {N}',
+        inTheIntrosTable: 'Druidic {N}',
+        inTheReportsSummary: 'Your armies fight with a {N} chance of fanaticism',
+      },
+    },
+  },
+  'zeal-of-a-neutral-realm': {
+    howItIsUsed: 'always on',
+    alignment: 'Neutral',
+    theNumbers: {
+      theChanceOfZeal: {
+        value: 10,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Fanatical zeal {N}',
+        inTheIntrosTable: 'Neutral {N}',
+        inTheReportsSummary: 'Your armies fight with a {N} chance of fanaticism',
+      },
+    },
+  },
+  'zeal-of-a-pagan-realm': {
+    howItIsUsed: 'always on',
+    alignment: 'Pagan',
+    theNumbers: {
+      theChanceOfZeal: {
+        value: 15,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Fanatical zeal {N}',
+        inTheIntrosTable: 'Pagan {N}',
+        inTheReportsSummary: 'Your armies fight with a {N} chance of fanaticism',
+      },
+    },
+  },
+  'zeal-of-an-evil-realm': {
+    howItIsUsed: 'always on',
+    alignment: 'Evil',
+    theNumbers: {
+      theChanceOfZeal: {
+        value: 25,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Fanatical zeal {N}',
+        inTheIntrosTable: 'Evil {N}',
+        inTheReportsSummary: 'Your armies fight with a {N} base chance of fanaticism',
+      },
+    },
+  },
+  // the Undead's zeal is 0: the books write it in the creed's heading ("zeal 0%"), and its entry "No zeal roll"
+  'zeal-of-an-undead-realm': {
+    howItIsUsed: 'always on',
+    alignment: 'Undead',
+    theNumbers: {
+      theChanceOfZeal: { value: 0, writtenAs: 'as a percentage', inItsCreedsSection: 'Undead — zeal {N}' },
+    },
+  },
+  // a Divine realm's consecrated ground: a hero defending it, on a province his realm owns, rolls zeal at double the
+  // chance, at most certain (P1-19au1). Gated by the consecration list, not by the alignment, as the tax is; no name in
+  // the books
+  'consecrated-ground-doubles-a-defenders-zeal': {
+    howItIsUsed: 'always on',
+    alignment: 'Divine',
+    theNumbers: {
+      theTimesTheChance: {
+        value: 2,
+        writtenAs: 'as a multiple',
+        inItsCreedsSection: 'defenders there roll zeal at {N} chance',
+      },
+    },
+  },
+  // an Evil realm's savage fury: a host with any Monster in it fights at a factor, no roll (P1-19au1)
+  'savage-fury': {
+    howItIsUsed: 'always on',
+    alignment: 'Evil',
+    theNumbers: {
+      theStrengthOfTheHost: {
+        value: 1.25,
+        writtenAs: 'as a multiplier',
+        inItsCreedsSection: 'fights at {N} in every battle',
+        inTheIntrosTable: 'a host with a Monster fights {N}',
+        inTheReportsSummary: 'a host with any of them in it fights at {N} in every battle',
+        inTheJoinForm: 'lifts the whole host to {N} in every battle',
+      },
+    },
+  },
+  // an Undead realm's skeletal fervour (its undying fanaticism): a host with any skeletal unit in it fights at a
+  // factor under the king in person, and a smaller one under any other commander, no roll (P1-19au1)
+  'skeletal-fervour': {
+    howItIsUsed: 'always on',
+    alignment: 'Undead',
+    theNumbers: {
+      underTheKing: {
+        value: 1.5,
+        writtenAs: 'as a multiplier',
+        inItsCreedsSection: 'fights at {N} when the King leads it in person',
+        inTheIntrosTable: '({N} under the king)',
+        inTheReportsSummary: '{N} (+50%) when the king leads them in person',
+      },
+      underAnyOtherCommander: {
+        value: 1.3,
+        writtenAs: 'as a multiplier',
+        inItsCreedsSection: 'and {N} under any other commander',
+        inTheIntrosTable: 'Skeletal hosts fight {N}',
+        inTheReportsSummary: '{N} (+30%) under any other commander',
       },
     },
   },
