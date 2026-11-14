@@ -108,7 +108,7 @@ export const PHASE_ACTION_MAP = {
   'rest & heal': 'rest',
   'rest and heal': 'rest',
   // the alignment orders: each row's key, its name as the form writes it (in lower case) and the other names the turn
-  // reads, to its key (plan P1-19's alignment orders, Decision 3; the rows: src/content/alignment-orders-…)
+  // reads, to its key (plan P1-19's alignment orders, Decision 3; the rows: THE_ALIGNMENT_ORDERS, src/content/alignment-abilities-…)
   ...Object.fromEntries(
     Object.values(THE_ALIGNMENT_ORDERS).flatMap((order) =>
       [order.key, order.name.toLowerCase(), ...order.theOtherNamesTheTurnReads].map((name) => [name, order.key]),

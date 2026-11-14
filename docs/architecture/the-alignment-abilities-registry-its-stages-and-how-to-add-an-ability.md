@@ -21,9 +21,11 @@ in `src/engine/rules/alignment-abilities/`, a file per group of stages.
   its row, and keeps the sum as the code wrote it: the trade's 20 divides the income by `100 / 20`, exactly 5, as
   `income / 5` did (`income * 0.2` would drift by a gold).
 - **A row's key** is unique against the discoveries' names and their effects' slugs (ad04 is "Tithes", so no key may be
-  `'tithes'`), and the five alignment orders' keys (`consecrate`, `call-to-arms`, `broker`, `harvest-the-field`,
-  `perform-rite`) are left for their rows: today the orders are rows of
-  `src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts`, with no registry entry.
+  `'tithes'`). The five alignment orders (`consecrate`, `call-to-arms`, `broker`, `harvest-the-field`, `perform-rite`)
+  are rows given as an order (`howItIsUsed`: `"a king's order"` or `"a hero's order"`), each with its `key`, `name` and
+  `theOtherNamesTheTurnReads`, and an empty entry: each order's resolver is its rule. `THE_ALIGNMENT_ORDERS` holds them
+  in the order of `ALIGNMENT_ORDER_KEYS` (one left out, or a row not given as an order, fails to compile), so the
+  order kinds are the five, never an always-on row's key.
 - **The registry** ends `satisfies Record<AlignmentAbilitySlug, AlignmentAbilityEntry>`, both ways, as the other
   registries do: a row with no entry, or an entry with no row, fails to compile. Its stages are the hook points' own
   (one union, `TheStagesOfEachHookPoint`, in `the-registry-of-content-effects.ts`); its orders are its own list,
@@ -103,7 +105,8 @@ registry's unit test lists them).
 ## The tests
 
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
-  stage's order; each row's alignment one, and its key no discovery's name or slug and no order's; the runners' sums
+  stage's order; each row's alignment one, its key no discovery's name or slug, and the five orders' keys rows given
+  as an order, with empty entries; the runners' sums
   (the trade's, over 301 incomes, against `neutralTradeGold`; the consecrated tax's, over 301 taxes; zeal's chance by
   creed, the doubling, the fervours against the old `Math.max`, the other battle factors' and the Banner's, the
   prices', the scholars' and the Druid waiver's by creed).

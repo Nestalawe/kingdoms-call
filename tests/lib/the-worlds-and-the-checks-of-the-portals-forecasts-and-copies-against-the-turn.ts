@@ -3951,7 +3951,7 @@ function theOptionsOf(markup: string): { value: string; words: string; selected:
     selected: /\bselected\b/.test(m[1] ?? ''),
   }));
 }
-/** The numbers of a creed's orders as its row gives them (src/content/alignment-orders-…). */
+/** The numbers of a creed's orders as its row gives them (THE_ALIGNMENT_ORDERS, src/content/alignment-abilities-…). */
 const theRowsNumber = (order: keyof typeof THE_ALIGNMENT_ORDERS, n: string): unknown => {
   const numbers: Readonly<Record<string, { readonly value: unknown } | undefined>> =
     THE_ALIGNMENT_ORDERS[order].theNumbers;

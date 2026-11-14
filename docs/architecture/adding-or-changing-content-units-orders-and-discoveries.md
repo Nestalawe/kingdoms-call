@@ -148,8 +148,8 @@ false. (Reign of Fear fires only for the attacker since 2026-10-12, so the defen
 
 ## An alignment order is written in a dozen places
 
-Each order is one row of `THE_ALIGNMENT_ORDERS` (`src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts`):
-its key, its name, the other names the turn reads, its creed, whether the king alone gives it, and the numbers the books
+Each order is one row of `THE_ALIGNMENT_ORDERS` (`src/content/alignment-abilities-their-keys-names-numbers-and-words.ts`):
+its key, its name, the other names the turn reads, its creed (`alignment`), whether the king alone gives it (`howItIsUsed`), and the numbers the books
 state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows (and so is the
 order dispatch's prose's own set, for the charmed hero's line), and so are the
 order-name map's entries for them (`PHASE_ACTION_MAP`: each row's key, its name in lower case and its other names);

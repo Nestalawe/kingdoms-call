@@ -1,6 +1,6 @@
 // The code the alignment orders' rows have taken names no order's key (plan P1-19's alignment orders, Decision 4): each
-// function (or file's top level) the content's rows (src/content/alignment-orders-their-keys-names-creeds-numbers-and-
-// words.ts) have taken holds no string naming an alignment order's key (`'consecrate'`, `'harvest_field'`), whatever
+// function (or file's top level) the content's rows (THE_ALIGNMENT_ORDERS, in src/content/alignment-abilities-their-
+// keys-names-numbers-and-words.ts) have taken holds no string naming an alignment order's key (`'consecrate'`, `'harvest_field'`), whatever
 // the code does with it (compared, a `case`, a lookup, an order written, a list, a map's value, a literal type, or in a
 // function nested inside), but the literal types its entry lists as left (OrderKind's, in the order-name map's file).
 // It reads a row's key instead. Each row of the family adds what it takes. With them, the

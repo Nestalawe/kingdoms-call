@@ -96,7 +96,7 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 - **Where:** `src/engine/orders/`, one file a family of orders, each file's name listing its orders. The checks before
   a hero's order, and the switch that picks its resolver, are in
   `src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`. An alignment order is one row
-  of `src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts`, and a mastery order one row of
+  of `src/content/alignment-abilities-their-keys-names-numbers-and-words.ts`, and a mastery order one row of
   `src/content/mastery-orders-their-keys-names-skills-and-levels.ts`.
 - **What a realm sends:** its shape is `src/schemas/orders-a-realm-submits.ts`; the player's form is in `src/ui/player/`.
   The bots give orders too (`src/engine/bots/`), and the balance matrix's scripted realm copies what the form sends

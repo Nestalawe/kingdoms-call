@@ -399,7 +399,7 @@ export const ALIGNMENT_ABILITIES = {
       },
     },
   },
-  // the five alignment orders (P1-19aw1; before, src/content/alignment-orders-…): a Divine king consecrates a province
+  // the five alignment orders (P1-19aw1), each given as an order: a Divine king consecrates a province
   consecrate: {
     howItIsUsed: "a king's order",
     alignment: 'Divine',
