@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the hand-written database stand-in, tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -15,6 +15,7 @@ import { z } from 'zod';
 import {
   _ITEM_NAME_ALTS,
   ALL_MAGIC_ITEMS_P,
+  KC_ALIGNMENTS,
   KC_SKILLS,
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
@@ -556,6 +557,48 @@ export function alignmentOrderChecksInEngine(codeFiles: readonly (readonly [file
   return n;
 }
 
+// The engine's naming of an alignment (plan P1-19's alignment abilities family, Decision A): a string naming one of the
+// seven alignments (KC_ALIGNMENTS, in content: `'Neutral'`, `'Undead'`), anywhere but a literal type (a check, a `case`,
+// a lookup, a list, a map's key or value), counted by syntax tree in the files of src/engine/ outside src/engine/rules/,
+// as alignmentOrderChecksInEngine counts the orders' keys. The family's rows take them out (a rule reads its ability's
+// row, through the registry's runner), so the count only falls; the bots' (Decision B), the lines no row moves and a
+// race's name that is an alignment's too (`'Undead'`) count as well, so it won't reach 0 with the family.
+// tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts counts the functions the
+// registry has taken, with alignmentChecksByFunction, at 0 each.
+/** Every alignment's name, as content writes it. */
+export const ALIGNMENT_VOCABULARY: ReadonlySet<string> = new Set<string>(KC_ALIGNMENTS);
+/** Each function of a file, by its name, with the alignments' names in it (0 for a function with none); one inside a
+ *  nested function that has no name counts for the named one around it, and one outside any function for '(top)'. */
+export function alignmentChecksByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      ALIGNMENT_VOCABULARY.has(node.text) &&
+      !ts.isLiteralTypeNode(node.parent)
+    )
+      counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)');
+  return counts;
+}
+/** The alignments' names in the files of src/engine/ outside src/engine/rules/ (the files unitNameChecksInEngine
+ *  counts), for the files given as [path from the repository's root, text]. */
+export function alignmentChecksInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    if (!countsUnitNameChecks(file)) continue;
+    for (const count of alignmentChecksByFunction(file, text).values()) n += count;
+  }
+  return n;
+}
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -645,6 +688,7 @@ export function measure(): Counts {
     discoveryChecksInEngine: discoveryChecksInEngine(codeFiles),
     guardianPerkChecksInEngine: guardianPerkChecksInEngine(codeFiles),
     alignmentOrderChecksInEngine: alignmentOrderChecksInEngine(codeFiles),
+    alignmentChecksInEngine: alignmentChecksInEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),
