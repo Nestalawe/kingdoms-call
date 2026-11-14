@@ -88,7 +88,10 @@ registry's unit test lists them).
 ## Outside the family
 
 - **The ladder of alignments** (hire wages by distance, the Divine-Undead hiring ban, mercy by the foe's alignment,
-  heroes dealt within one step, the bots' diplomacy by distance) is a table beside the rows, not abilities.
+  heroes dealt within one step, the bots' diplomacy by distance) is a table beside the rows, not abilities:
+  `THE_LADDER_OF_THE_ALIGNMENTS` in the content file (P1-19av2), with no registry entry. Its rungs' order is data (the
+  heroes' deal draws by it). `alignments-and-a-wandering-heros-hire-wage.ts` reads it (`heroHireWage`, mercy's
+  chance and laughter: the foe's own alignment), and the player portal shares that file.
 - **Skeletal upkeep** and its disband order are a unit's rule: any realm with skeletons pays it (Necromancy, the Iron
   Throne), not Undead's alone.
 - **The creed discoveries, the alignment-only items, guardians' Anathema and the Grand Designs** keep their own
@@ -110,9 +113,11 @@ registry's unit test lists them).
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts`: each number
-  of each row in each place its row names.
+  of each row in each place its row names; the ladder's rungs in the books' order, and its numbers in the rulebook.
+- `tests/unit/the-combat-item-and-guardian-lines-no-matrix-game-reaches-keep-their-values.test.ts`: a plea's odds by
+  the foe's alignment (75/50/20), and the Evil and Undead's laughter.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
-  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1, 133 after P1-19au2, 126 after P1-19av1): the functions taken name no alignment, and the
+  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1, 133 after P1-19au2, 126 after P1-19av1, 119 after P1-19av2): the functions taken name no alignment, and the
   engine's names of an alignment outside `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
   the count stays above 0.
 
