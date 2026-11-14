@@ -18,7 +18,6 @@ import {
   resolveDiscoverLostRuinOrder,
   resolveExploreOrder,
   resolveHuntingRumoursOrder,
-  resolvePerformRiteOrder,
   resolveSearchLairOrder,
 } from './explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
 import {
@@ -27,14 +26,15 @@ import {
 } from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
 import {
   resolveAwakenGroveOrder,
-  resolveBrokerOrder,
-  resolveCallToArmsOrder,
-  resolveConsecrateOrder,
   resolveGrandDesignOrder,
-  resolveHarvestTheFieldOrder,
   resolveRemovedAwakenTheWildAndCallFromThePitOrders,
   resolveWildCallingOrder,
 } from './realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
+import { resolveConsecrateOrder } from './alignment/consecrate-a-divine-kings-order-to-sanctify-a-province-of-his-realm.ts';
+import { resolveCallToArmsOrder } from './alignment/call-to-arms-a-good-kings-order-to-muster-a-company-from-his-folk.ts';
+import { resolveBrokerOrder } from './alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts';
+import { resolveHarvestTheFieldOrder } from './alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts';
+import { resolvePerformRiteOrder } from './alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts';
 import {
   resolvePracticeSkillOrder,
   resolveResearchBreakthroughOrder,

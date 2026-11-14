@@ -108,6 +108,11 @@ import '../../engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts
 import '../../engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
 import '../../engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
 import '../../engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
+import '../../engine/orders/alignment/consecrate-a-divine-kings-order-to-sanctify-a-province-of-his-realm.ts';
+import '../../engine/orders/alignment/call-to-arms-a-good-kings-order-to-muster-a-company-from-his-folk.ts';
+import '../../engine/orders/alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts';
+import '../../engine/orders/alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts';
+import '../../engine/orders/alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts';
 import '../../engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts';
 import '../../engine/orders/item-orders-equip-use-and-send-magic-items.ts';
 import '../../engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.ts';

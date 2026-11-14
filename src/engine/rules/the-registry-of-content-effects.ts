@@ -1674,6 +1674,19 @@ export interface AResearchARealmsAlignmentMayHelp {
   readonly theSageLevel: number;
 }
 
+/** The hero who gives an alignment order, as the checks of who may give it read him (its resolver: the alignment
+ *  abilities' registry, P1-19aw2). */
+export interface AHeroAsTheChecksOfAnAlignmentOrderReadHim {
+  /** Whether he is his realm's king (none: he is not). */
+  readonly isHeTheKing: boolean | null | undefined;
+  /** His realm's alignment (none: a realm whose creed isn't known). */
+  readonly theAlignmentOfHisRealm: string | null | undefined;
+}
+
+/** The check of who may give an alignment order that refuses a hero: his realm isn't of the order's creed, or he isn't
+ *  the king and the king alone gives it. */
+export type TheCheckAnAlignmentOrderRefusesAHeroOn = 'his realm is not of its creed' | 'he is not the king';
+
 /** A realm's treasury and its ceiling, as the interest discoveries read them (the collection and the report). */
 export interface ATreasuryARealmsDiscoveriesMayEarnInterestOn {
   readonly theTreasury: number;
@@ -1964,6 +1977,13 @@ export interface TheStagesOfEachHookPoint {
      *  (heroHireWage then asks the most; plan P1-19ae: resolveHireHeroOrder, resolveBrokerOrder, the Charm, and
      *  playerView's wages for the report). */
     readonly "a realm's discoveries waive the hiring ban": (theEffect: TheEffectOfADiscovery) => boolean;
+    /** The first check of who may give an alignment order that refuses the hero, in the order's own order of checks
+     *  (Consecrate asks the king before the creed; Call to Arms and Broker the creed first; Harvest the Field and
+     *  Perform Rite the creed alone), or null when he may give it (each order's resolver, before it reads his province
+     *  or his target, and refuses with its own line: the alignment abilities' registry, P1-19aw2). */
+    readonly "who may give an alignment order": (
+      facts: AHeroAsTheChecksOfAnAlignmentOrderReadHim,
+    ) => TheCheckAnAlignmentOrderRefusesAHeroOn | null;
   };
   /** A hero's experience (plan P1-19's discoveries family: its row P1-19ac typed it). */
   readonly experience: {

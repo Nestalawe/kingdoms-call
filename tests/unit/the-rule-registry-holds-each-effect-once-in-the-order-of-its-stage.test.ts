@@ -94,9 +94,13 @@ import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_GUARDIAN_PERKS,
   THE_REGISTRY_OF_GUARDIAN_PERKS,
 } from '../../src/engine/rules/the-registry-of-guardian-perks.ts';
-import { ALIGNMENT_ABILITIES } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  ALIGNMENT_ABILITIES,
+  THE_ALIGNMENT_ORDERS,
+} from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES,
+  theCheckAnAlignmentOrderRefusesAHeroOn,
   THE_REGISTRY_OF_ALIGNMENT_ABILITIES,
   theChanceOfZealARealmsAlignmentGivesASide,
   theChanceOfZealOfADefenderOnConsecratedGround,
@@ -703,16 +707,19 @@ test("the alignment abilities' registry holds each effect once, in the order of 
   expect(ABILITIES_REGISTRY(ABILITY_ENTRIES, ABILITY_ORDERS, ABILITY_ROWS)).toEqual([]);
   expect(Object.keys(ABILITY_ENTRIES).length).toBeGreaterThan(0);
   const ordered = new Set(Object.values(ABILITY_ORDERS).flatMap((stages) => Object.values(stages).flat()));
-  // (the orders' resolvers are their rules: their entries have no stage until row P1-19aw2)
+  // (the orders' entries have one stage, who may give each, P1-19aw2: in the rows' order)
   const theOrders = Object.keys(ABILITY_ROWS).filter((slug) => isGivenAsAnOrder(ABILITY_ROWS[slug] ?? {}));
   expect(theOrders).toEqual(THE_ORDERS_KEYS);
+  expect(ABILITY_ORDERS['orderValidity']).toEqual({ 'who may give an alignment order': THE_ORDERS_KEYS });
+  for (const slug of theOrders)
+    expect(Object.keys(ABILITY_ENTRIES[slug] ?? {}), `${slug}'s entry`).toEqual(['orderValidity']);
   expect([...ordered].sort()).toEqual(
     Object.keys(ABILITY_ENTRIES)
-      .filter((slug) => !THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES.includes(slug) && !theOrders.includes(slug))
+      .filter((slug) => !THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES.includes(slug))
       .sort(),
   );
   // each one listed is an entry with no stage, and none in any stage's order
-  for (const slug of [...THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES, ...theOrders])
+  for (const slug of THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES)
     expect(ABILITY_ENTRIES[slug], `${slug}'s entry`).toEqual({});
 });
 
@@ -909,4 +916,38 @@ test("the runners of the prices and the scholars, and the Druid waiver, give eac
             (unitType === 'Cave Trolls' && (a === 'Evil' || b === 'Evil')),
         );
   }
+});
+
+test('the runner of "who may give an alignment order" refuses as each resolver\'s own checks did, in its own order', () => {
+  // each resolver before P1-19aw2: Consecrate `if (!isKing) …; if (alignment !== 'Divine') …`; Call to Arms and Broker
+  // the creed, then the king; Harvest the Field and Perform Rite the creed alone
+  const theOldChecks = {
+    consecrate: ['king', 'Divine'],
+    'call-to-arms': ['Good', 'king'],
+    broker: ['Neutral', 'king'],
+    'harvest-the-field': ['Undead'],
+    'perform-rite': ['Pagan'],
+  } as const;
+  for (const [slug, theChecks] of Object.entries(theOldChecks))
+    for (const theAlignmentOfHisRealm of [...KC_ALIGNMENTS, null, undefined])
+      for (const isHeTheKing of [true, false, null, undefined]) {
+        const theOldRefusal =
+          theChecks
+            .map((check) =>
+              check === 'king'
+                ? isHeTheKing === true
+                  ? null
+                  : 'he is not the king'
+                : theAlignmentOfHisRealm === check
+                  ? null
+                  : 'his realm is not of its creed',
+            )
+            .find((r) => r !== null) ?? null;
+        const theRow = Object.entries(THE_ALIGNMENT_ORDERS).find(([s]) => s === slug)?.[1];
+        if (theRow === undefined) throw new TypeError(`no row ${slug}`);
+        expect(
+          theCheckAnAlignmentOrderRefusesAHeroOn(theRow, { isHeTheKing, theAlignmentOfHisRealm }),
+          `${slug}, ${String(theAlignmentOfHisRealm)}, king ${String(isHeTheKing)}`,
+        ).toBe(theOldRefusal);
+      }
 });

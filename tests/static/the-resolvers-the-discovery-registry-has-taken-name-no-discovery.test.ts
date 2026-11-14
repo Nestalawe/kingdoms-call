@@ -135,7 +135,7 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     theExploreLines(6),
   ],
   [
-    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'src/engine/orders/alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts',
     'resolvePerformRiteOrder',
     "P1-19ad, a realm's discoveries lengthen the wild hunt",
   ],
@@ -175,7 +175,7 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     "P1-19ae, a realm's discoveries waive the hiring ban",
   ],
   [
-    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'src/engine/orders/alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts',
     'resolveBrokerOrder',
     "P1-19ae, a realm's discoveries waive the hiring ban",
     // the Broker's spying, `'spy'`: the word of the kind of a spy's discoveries, but no discovery's
@@ -192,18 +192,18 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     "P1-19ae, a realm's discoveries waive the hiring ban",
   ],
   [
-    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'src/engine/orders/alignment/consecrate-a-divine-kings-order-to-sanctify-a-province-of-his-realm.ts',
     'resolveConsecrateOrder',
     "P1-19ae, a realm's discoveries add to the consecrations a crown may hold",
     theExploreLines(1),
   ],
   [
-    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'src/engine/orders/alignment/call-to-arms-a-good-kings-order-to-muster-a-company-from-his-folk.ts',
     'resolveCallToArmsOrder',
     "P1-19ae, a realm's discoveries raise a call to arms' quality",
   ],
   [
-    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'src/engine/orders/alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts',
     'resolveHarvestTheFieldOrder',
     "P1-19ae, a realm's discoveries cut the corpse-carters' cost",
   ],

@@ -9,6 +9,7 @@
 // add-an-ability.md.
 import {
   ALIGNMENT_ABILITIES,
+  THE_ALIGNMENT_ORDERS,
   type AlignmentAbilitySlug,
   type AnAlignmentAbility,
 } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
@@ -34,8 +35,11 @@ import {
   A_REALMS_ALIGNMENT_CUTS_A_MERCENARY_BANDS_PRICE,
   A_REALMS_ALIGNMENT_RAISES_A_BLESSS_YIELD,
 } from './alignment-abilities/the-prices-and-the-scholars-of-a-realms-alignment.ts';
+import { WHO_MAY_GIVE_AN_ALIGNMENT_ORDER } from './alignment-abilities/who-may-give-an-alignment-order.ts';
 import type {
   ABeatenHostsCompanies,
+  AHeroAsTheChecksOfAnAlignmentOrderReadHim,
+  TheCheckAnAlignmentOrderRefusesAHeroOn,
   ABlessAsARealmsAlignmentWeighsIt,
   AResearchARealmsAlignmentMayHelp,
   AChanceOfZealOnConsecratedGround,
@@ -174,13 +178,23 @@ export const THE_REGISTRY_OF_ALIGNMENT_ABILITIES = {
   'neutral-scholars': {
     orderOutcome: { "a realm's alignment adds to research": A_REALMS_ALIGNMENT_ADDS_TO_RESEARCH['neutral-scholars'] },
   },
-  // the five alignment orders (P1-19aw1): each order's resolver is its rule and reads its row, so these have no effect
-  // here yet (row P1-19aw2 gives each its refusals at orderValidity)
-  consecrate: {},
-  'call-to-arms': {},
-  broker: {},
-  'harvest-the-field': {},
-  'perform-rite': {},
+  // the five alignment orders (P1-19aw1): who may give each (P1-19aw2); what each does is its resolver's, in
+  // src/engine/orders/alignment/
+  consecrate: {
+    orderValidity: { 'who may give an alignment order': WHO_MAY_GIVE_AN_ALIGNMENT_ORDER.consecrate },
+  },
+  'call-to-arms': {
+    orderValidity: { 'who may give an alignment order': WHO_MAY_GIVE_AN_ALIGNMENT_ORDER['call-to-arms'] },
+  },
+  broker: {
+    orderValidity: { 'who may give an alignment order': WHO_MAY_GIVE_AN_ALIGNMENT_ORDER.broker },
+  },
+  'harvest-the-field': {
+    orderValidity: { 'who may give an alignment order': WHO_MAY_GIVE_AN_ALIGNMENT_ORDER['harvest-the-field'] },
+  },
+  'perform-rite': {
+    orderValidity: { 'who may give an alignment order': WHO_MAY_GIVE_AN_ALIGNMENT_ORDER['perform-rite'] },
+  },
 } satisfies Record<AlignmentAbilitySlug, AlignmentAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once; the runner asks them in this order. */
@@ -209,6 +223,9 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES = {
   movementCost: {
     "a realm's alignment helps converging columns unite": ['banner-of-fellowship'],
   },
+  orderValidity: {
+    'who may give an alignment order': ['consecrate', 'call-to-arms', 'broker', 'harvest-the-field', 'perform-rite'],
+  },
   orderOutcome: {
     "a realm's alignment cuts a mercenary band's price": ['the-neutral-mercenary-discount'],
     "a realm's alignment raises a Bless's yield": ['the-divine-blessing'],
@@ -231,6 +248,7 @@ const STRENGTH = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.strength;
 const FATE = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.fate;
 const MOVEMENT_COST = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.movementCost;
 const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.orderOutcome;
+const ORDER_VALIDITY = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES.orderValidity;
 
 /** The abilities of a stage's order the alignment holds, in the order. */
 const theAbilitiesOfTheStageAnAlignmentHolds = (
@@ -444,4 +462,17 @@ export function whatARealmsAlignmentAddsToResearch(
     (thePoints, slug) => thePoints + (ENTRIES[slug].orderOutcome?.[theStage]?.(facts) ?? 0),
     0,
   );
+}
+
+/** The runner of "orderValidity: who may give an alignment order" (each alignment order's resolver, in
+ *  src/engine/orders/alignment/, before it reads the hero's province or his target, and refuses with its own line): the
+ *  check the order's entry asks first, in its own order, that refuses the hero, or null when he may give it. The order
+ *  is handed as its row (THE_ALIGNMENT_ORDERS'), as the checks were handed it before. */
+export function theCheckAnAlignmentOrderRefusesAHeroOn(
+  theOrder: (typeof THE_ALIGNMENT_ORDERS)[keyof typeof THE_ALIGNMENT_ORDERS],
+  facts: AHeroAsTheChecksOfAnAlignmentOrderReadHim,
+): TheCheckAnAlignmentOrderRefusesAHeroOn | null {
+  const theStage = 'who may give an alignment order';
+  const slug = ORDER_VALIDITY[theStage].find((s) => ROWS[s] === theOrder);
+  return (slug === undefined ? undefined : ENTRIES[slug].orderValidity?.[theStage]?.(facts)) ?? null;
 }
