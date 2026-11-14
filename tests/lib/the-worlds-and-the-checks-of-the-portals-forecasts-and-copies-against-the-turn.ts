@@ -102,7 +102,7 @@ import { warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMess
 import { relKeyOf } from '../../src/engine/realms/relations-and-captures.ts';
 import { earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill } from '../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { computeMinorTitles, computeStandings } from '../../src/engine/titles/reckoning.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../../src/engine/titles/perks.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
@@ -3951,7 +3951,7 @@ function theOptionsOf(markup: string): { value: string; words: string; selected:
     selected: /\bselected\b/.test(m[1] ?? ''),
   }));
 }
-/** The numbers of a creed's orders as its row gives them (src/content/alignment-orders-…). */
+/** The numbers of a creed's orders as its row gives them (THE_ALIGNMENT_ORDERS, src/content/alignment-abilities-…). */
 const theRowsNumber = (order: keyof typeof THE_ALIGNMENT_ORDERS, n: string): unknown => {
   const numbers: Readonly<Record<string, { readonly value: unknown } | undefined>> =
     THE_ALIGNMENT_ORDERS[order].theNumbers;

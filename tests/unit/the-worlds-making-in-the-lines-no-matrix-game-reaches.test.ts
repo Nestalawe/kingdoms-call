@@ -148,6 +148,28 @@ test('an eleventh realm, past the ten colours, takes the fallback colour', () =>
   expect(colours[10]).toBe(REALM_COLOUR_FALLBACK);
 });
 
+// The alignments' ladder (plan P1-19av2): each king's two starting heroes are dealt an alignment within one step of his
+// (the ladder's steps, by its rungs' order). Ten realms of the five middle alignments, so no step is cut at an end: every
+// hero is within one step, and with twenty heroes dealt some are one step off (the deal is spread, not his own).
+test("a king's two starting heroes are dealt alignments within one step of his own", () => {
+  const RUNGS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'];
+  const middle = ['Good', 'Druidic', 'Neutral', 'Pagan', 'Evil'];
+  const w = aWorld(
+    realms(10, (i) => ({ alignment: middle[i % middle.length] ?? '' })),
+    20,
+    12,
+    20,
+  );
+  const steps = w.players.flatMap((p) => {
+    const king = w.characters.find((c) => c.id === p.king);
+    return w.characters
+      .filter((c) => c.player === p.id && !c.isKing)
+      .map((h) => Math.abs(RUNGS.indexOf(String(h.alignment)) - RUNGS.indexOf(String(king?.alignment))));
+  });
+  expect(steps).toHaveLength(20);
+  expect(Math.max(...steps)).toBe(1);
+});
+
 /** The modules a world is made with: this checkout's, or a planted copy's. */
 interface TheMaking {
   generateNewGame: typeof generateNewGame;

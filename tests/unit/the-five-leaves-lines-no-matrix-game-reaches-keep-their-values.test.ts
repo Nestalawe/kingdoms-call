@@ -14,6 +14,8 @@
 //   hero's order or the stage, a column's units left out or of no name, and the rises of the Iron Throne;
 // - since the mutation session of 2026-10-31, the altars cast down by a Good or a Neutral column, whose troops can't
 //   rise: the line says they take no pride in it.
+// - since P1-19ax1, the capture's rise itself: each unit of an Undead column rises, of an Evil one on a die under a
+//   half, of any other creed none, with no die drawn (only the matrix pinned it before).
 // Level 1 (unit): each is a plain function on staged values, called directly on the engine's modules (plan P1-14a); a
 // static check can't run them, and no game reaches these lines. The staged values carry only the fields each reads, so
 // their type is given by assertion (`as never`), as the views' unit cases give a staged world's. The dice are fixed
@@ -36,10 +38,10 @@ import {
   normaliseOwnedNames,
   normaliseStrandedGuards,
   ownedConsecratedProvs,
-  provinceConsecrated,
   relOfReport,
   spotEnemyInOwnedProvince,
 } from '../../src/engine/heroes/fame-and-consecration.ts';
+import { provinceConsecrated } from '../../src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { itemNameList } from '../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 import {
   ITEM_LORE_BY_NAME,
@@ -465,6 +467,51 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
           "✨ Thorn's column casts down the altars of Wendmeadow — the ground is holy no longer. The troops take no pride in the sacrilege.",
         ]);
       }
+    });
+
+    // the pin of the capture's rise (P1-19ax1): an Undead column's units rise on any die, an Evil one's on a die under
+    // a half, and any other creed's draw none; the table stays in fame-and-consecration.ts (its books' words differ)
+    test('the altars cast down: each unit of an Undead column rises, of an Evil one on a die under a half, of others none', () => {
+      const theRise = (alignment: string, die: number) => {
+        const g = G();
+        const tc = aTurn({
+          ...g,
+          players: [...g.players.slice(0, 1), { name: 'Varn', alignment, consecratedProvIds: [] }],
+        });
+        const column = [
+          { type: 'Shieldwall Levies', quality: 'Green', unitName: 'the Old Guard' },
+          { type: 'Shieldwall Levies', quality: 'Elite', unitName: 'the Iron Few' },
+          { type: 'Shieldwall Levies', quality: 'Green', unitName: 'the Bone Wall', _isSkeletal: true },
+          { type: 'Shieldwall Levies', quality: 'Average', unitName: 'the Grey Spears' },
+        ];
+        let draws = 0;
+        const was = kcRng.use(() => {
+          draws++;
+          return die;
+        });
+        try {
+          breakConsecrationOnCapture(
+            tc,
+            { id: 0, name: 'Wendmeadow' },
+            0,
+            1,
+            { id: 9, name: 'Thorn', armies: column },
+            2,
+          );
+        } finally {
+          kcRng.use(was);
+        }
+        return { qualities: column.map((u) => u.quality), draws };
+      };
+      // a die a unit: the Elite and the skeletal draw none
+      expect(theRise('Undead', 0.99)).toEqual({ qualities: ['Average', 'Elite', 'Green', 'Veteran'], draws: 2 });
+      expect(theRise('Evil', 0.49)).toEqual({ qualities: ['Average', 'Elite', 'Green', 'Veteran'], draws: 2 });
+      expect(theRise('Evil', 0.5)).toEqual({ qualities: ['Green', 'Elite', 'Green', 'Average'], draws: 2 });
+      for (const alignment of ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan'])
+        expect(theRise(alignment, 0), alignment).toEqual({
+          qualities: ['Green', 'Elite', 'Green', 'Average'],
+          draws: 0,
+        });
     });
   });
 

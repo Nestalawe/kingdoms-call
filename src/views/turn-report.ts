@@ -7,7 +7,7 @@ import {
   SAGE_DISCOVERIES_P,
   TITLE_DEFS,
 } from '../content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   ARMY_COST_MASTER,
   ARMY_SPEED_MASTER,
@@ -34,7 +34,11 @@ import {
 import { neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
 import { itemLore, theTurnsAWildHuntServesBeyondThisOne, wildHuntPrice } from '../engine/items/tiers-and-hoards.ts';
-import { isConsecrated, theConsecrationsAKingMayHold } from '../engine/heroes/fame-and-consecration.ts';
+import { theConsecrationsAKingMayHold } from '../engine/heroes/fame-and-consecration.ts';
+import {
+  isConsecrated,
+  theEnslavedProvinceStillPaysLess,
+} from '../engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
 import { theExplorationTheMoversItemsAdd } from '../engine/rules/the-registry-of-magic-item-effects.ts';
 import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
@@ -70,6 +74,11 @@ import {
   theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom,
   theCutsAndCeilingsARealmsHeroWageDiscoveriesMakeAndTheirRoom,
 } from '../engine/rules/the-registry-of-discovery-effects.ts';
+import {
+  theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice,
+  theTaxOfAProvinceOnConsecratedGround,
+  whatARealmsAlignmentAddsToResearch,
+} from '../engine/rules/the-registry-of-alignment-abilities.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
@@ -527,7 +536,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
             rawLevel: raw('sage'),
             chance:
               Number(eff('sage')) * per +
-              (pl.alignment === 'Neutral' ? Number(eff('sage')) * 5 : 0) +
+              whatARealmsAlignmentAddsToResearch(pl.alignment, { theSageLevel: Number(eff('sage')) }) + // (P1-19av1)
               ((_minT['loreseeker'] ?? view.titles.lastTurnsMinorHoldersOfItsHeroes['loreseeker'])?.charId === c.id
                 ? per
                 : 0) +
@@ -860,11 +869,12 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       unitName: merc.unitName,
       race: (merc.race ?? '') || null,
       // Hire price, so the Recruit Armies order form can list mercenaries beside native units.
-      // Neutral realms get 2g off (min 1g), as the hire takes it — mirrored from the recruit handler.
+      // Neutral realms get 2g off (min 1g), as the hire takes it: the rule the hire reads (the alignment abilities'
+      // registry's since plan P1-19av1).
       cost: Math.max(
         1,
         ((ARMY_COST_MASTER[String(merc.type)] ?? 0) || 2) -
-          (player.alignment === 'Neutral' ? 2 : 0) +
+          theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(player.alignment) +
           whatARealmsDiscoveriesAddToAMercenaryBandsPrice(player, { theUnitsType: theTypeEveryBandHolds(merc.type) }),
       ), // + merc discoveries (the discoveries' registry's since plan P1-19ae: the rule the hire reads)
       location: (p2?.name ?? '') || 'unknown',
@@ -1009,10 +1019,10 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
     // the collector: after Bless (a transient we still skip), before Enslave / earthquake damage.
     if (isConsecrated(player, pv.id)) {
       const _cb = t;
-      t = Math.round(t * 1.5);
+      t = theTaxOfAProvinceOnConsecratedGround({ theTax: t });
       _consecG += t - _cb;
     }
-    if (pv._enslavedUntil != null && pv._enslavedUntil >= _nextTurn) {
+    if (theEnslavedProvinceStillPaysLess(pv, _nextTurn)) {
       const _e0 = t;
       t = Math.max(0, t - 1);
       _enslaveReduction += _e0 - t;

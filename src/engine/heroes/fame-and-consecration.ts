@@ -1,5 +1,9 @@
 import { homeFounderOf } from '../grand-design.ts';
 import { hexDistP } from '../world/map-helpers.ts';
+import {
+  consecratedIds,
+  type ARealmAsConsecrationReadsIt,
+} from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { perkTier, skillLevel } from '../titles/perks.ts';
 import { discProvCoastal } from '../discoveries.ts';
 import {
@@ -11,12 +15,6 @@ import type { GameState, Province, SkillLevels } from '../../schemas/saved-game-
 
 // Its types (plan P1-10b9): each parameter typed as wide as the body's guards (plan P1-10b's Decision 3), so each guard
 // stays, though a state the turn hands always holds what it guards. Ids are plain numbers (the schema brands them).
-/** A realm as consecration reads it: its alignment, and its consecrated provinces (an older save's single one the
- *  save's upgrade folds into the list first: plan P1-15f3). */
-interface ARealmAsConsecrationReadsIt {
-  readonly alignment?: string | undefined;
-  consecratedProvIds?: number[] | undefined;
-}
 /** A province as consecration and spotting read it. */
 interface AProvinceAsTheseRead {
   readonly id: number;
@@ -68,11 +66,9 @@ export const MITHRIL_ARMOUR = {
 };
 // duplicate items of the SAME type (same name) do NOT stack — a character may hold several, but
 // only ONE of each name has any effect. Every place that sums item effects runs the item list
-// through this first. (Different items that happen to share a stat still stack normally.) a Divine
-// realm may now hold MULTIPLE consecrated provinces — up to the king's White skill level, that many
-// at any one time. Consecration is stored as a LIST
-// (player.consecratedProvIds); this helper returns it (the save's upgrade folds a legacy single `consecratedProvId`
-// into the list).
+// through this first. (Different items that happen to share a stat still stack normally.) Consecration itself (its list,
+// whether a province is consecrated, laid, lifted and faded) is the marks' module's (src/engine/world/the-marks-on-a-
+// province-…, plan P1-19ay2).
 // 2026-09-24 (Toby item 7): only the profane profit from casting down altars — an UNDEAD realm's
 // column always rises a level, an EVIL realm's has a 50% chance per unit, everyone else gains nothing.
 export const CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT = { Undead: 100, Evil: 50 };
@@ -80,15 +76,6 @@ export function consecCaptureXpPct(pl: { readonly alignment: string } | null | u
   // the table read by any alignment's name
   const pctByAlignment: Readonly<Partial<Record<string, number>>> = CONSEC_CAPTURE_XP_PCT_BY_ALIGNMENT;
   return (pl && pctByAlignment[pl.alignment]) ?? 0; // 100 or 50, never 0
-}
-export function consecratedIds(pl: ARealmAsConsecrationReadsIt | null | undefined) {
-  if (!pl) return [];
-  // a new game's realm holds no list until its first read (an older save's single field: the upgrade folds it)
-  if (!Array.isArray(pl.consecratedProvIds)) pl.consecratedProvIds = [];
-  return pl.consecratedProvIds;
-}
-export function isConsecrated(pl: ARealmAsConsecrationReadsIt | null | undefined, provId: number) {
-  return consecratedIds(pl).includes(provId);
 }
 // DIVINE RETURN needs holy ground. The consecrated provinces a realm still OWNS — the only places a
 // fallen Divine character can be restored. `nearestConsecratedProv` picks the one closest (hex
@@ -176,17 +163,6 @@ export function normaliseStrandedGuards(gs: {
     }
   });
   return n;
-}
-// consecration is holy ground anyone can SEE (altars, standing stones), not a private fact of the
-// owner. This tells us whether a province is consecrated by its CURRENT owner, so the map can mark
-// it for every player who can see the province — not only the Divine king who blessed it.
-export function provinceConsecrated(
-  gs: Pick<TheStateAsTheseReadIt, 'players'> | null | undefined,
-  prov: Pick<AProvinceAsTheseRead, 'id' | 'owner'> | null | undefined,
-) {
-  if (prov?.owner == null) return false;
-  const owner = gs?.players?.[prov.owner];
-  return !!owner && isConsecrated(owner, prov.id);
 }
 // relation lookup usable at MODULE level (buildTurnReport can't reach the runTurn-nested
 // areEnemies/relationBetween). Relations live in gs.relations keyed "min-max".

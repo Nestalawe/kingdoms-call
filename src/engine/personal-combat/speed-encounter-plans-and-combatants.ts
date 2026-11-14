@@ -2,6 +2,7 @@ import { NPC_SCHOOL_SPELL } from '../army-tables.ts';
 import { temperOf } from '../world/tables.ts';
 import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd } from '../names.ts';
 import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
+import { isAHeroOfTheAlignmentUndeadInPersonalCombat } from '../rules/the-registry-of-alignment-abilities.ts';
 import { activeItems, effTemper } from '../items/equipment.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { dedupeItemsByName } from '../rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
@@ -366,7 +367,7 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakes
     status: pcNewStatus(),
     castSpells: [],
     castSchool: {}, // per-combat spell limits
-    isUndead: ch.alignment === 'Undead',
+    isUndead: isAHeroOfTheAlignmentUndeadInPersonalCombat(ch.alignment), // his own alignment's row (P1-19ax2)
     // ── LEVEL 6/8 SKILL PERKS (personal combat) ──
     // Math.max(raw, effStat+minors) versions above — "+2 Melee" items never reached the damage
     // roll.)

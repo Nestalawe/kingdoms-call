@@ -495,3 +495,58 @@ describe('a plea granted after a harm that is no blow (plan P1-12d28)', () => {
     expect([res.fledBy === spared, spared.hp]).toEqual([true, 1]);
   });
 });
+
+// The mercy a foe shows a felled coward's plea, by the foe's own alignment (plan P1-19av2: the alignments' ladder, its
+// mercy a column, Decision D; no case pinned it before): 75% from a Good, Divine or Druidic foe, 50% from a Neutral or
+// Pagan one (and one of no alignment), 20% from an Evil or Undead one; and a refusal from an Evil or Undead foe is his
+// laughter, with no die drawn for its words, where any other's is one of two lines, by the dice.
+describe("a plea's odds and its refusal, by the foe's own alignment (plan P1-19av2)", () => {
+  /** The kinds of the lines that refuse a plea. */
+  const THE_REFUSALS: readonly string[] = [
+    'the foe knows nothing of mercy',
+    'the foe laughs at the plea',
+    'the foe is deaf to the plea',
+    'there is no pity in the foe',
+  ];
+  /** A hero of the world, renamed, as a fight takes him up (pcCharCombatant), of the alignment given. */
+  const aHero = (id: number, name: string, temper: string, alignment: string) =>
+    pc.call('pcCharCombatant', { ...clone(pc.base), id, name, temper, alignment }) as AFighterInAPersonalCombat;
+  /** A coward felled by a lingering burn before any blow, by a Brave foe of the alignment given, every die at `r`: the
+   *  plea's odds and the refusal's kind (none if granted). */
+  function aPlea(alignment: string, r: number) {
+    const spared = aHero(9103, 'Made-up Tamsin', 'Cowardly', 'Neutral'),
+      foe = aHero(9104, 'Made-up Corvane', 'Brave', alignment);
+    spared.hp = 2;
+    spared.status.dot = [
+      { dmg: 5, rounds: 2, source: { kind: 'a combat item', itemName: "Vial of Alchemist's Fire" } },
+    ];
+    const res = pc.pinned(r, () => pc.call('resolvePersonalCombat', spared, foe, { maxRounds: 3 })) as {
+      narrative: NarrativeLine[];
+    };
+    const lines = res.narrative.filter((l) => typeof l !== 'string');
+    const plea = lines.find((l) => 'odds' in l);
+    const refused = kinds(lines).find((k) => THE_REFUSALS.includes(k));
+    return { mercy: plea && 'odds' in plea ? plea.odds : undefined, refused };
+  }
+  test.for([
+    ['Divine', 75],
+    ['Good', 75],
+    ['Druidic', 75],
+    ['Neutral', 50],
+    ['Pagan', 50],
+    ['', 50],
+    ['Evil', 20],
+    ['Undead', 20],
+  ] as const)('a %s foe spares a plea at %i%%', ([alignment, mercy]) => {
+    expect(aPlea(alignment, 0.01).mercy).toEqual({ mercy, shown: 2, granted: true });
+  });
+  test.for([
+    ['Divine', 'there is no pity in the foe'],
+    ['Neutral', 'there is no pity in the foe'],
+    ['', 'there is no pity in the foe'],
+    ['Evil', 'the foe laughs at the plea'],
+    ['Undead', 'the foe laughs at the plea'],
+  ] as const)('a %s foe refusing it: %s', ([alignment, refused]) => {
+    expect(aPlea(alignment, 0.99)).toMatchObject({ refused });
+  });
+});

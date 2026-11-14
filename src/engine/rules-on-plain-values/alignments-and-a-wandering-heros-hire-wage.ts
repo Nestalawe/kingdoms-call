@@ -2,14 +2,18 @@
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a).
-import { KC_ALIGNMENTS } from '../../content/kingdoms-call-data.ts';
+import {
+  THE_LADDER_OF_THE_ALIGNMENTS,
+  type ARungOfTheLadder,
+} from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 /** A hero as heroSkillTotal reads him: his skills, by name. */
 export interface HeroOfSkills {
   readonly skills?: Readonly<Record<string, number | undefined>> | null | undefined;
 }
 
-export const ALIGNMENTS_P: string[] = KC_ALIGNMENTS.slice();
+// The ladder's rungs, in its order (P1-19av2: the table beside the alignment abilities' rows, in content).
+export const ALIGNMENTS_P: string[] = THE_LADDER_OF_THE_ALIGNMENTS.theRungs.map((rung) => rung.alignment);
 // ── Alignment spectrum & hero hire economics ────
 // ALIGNMENTS_P doubles as the moral SPECTRUM: Divine(0) … Neutral(3) … Undead(6). A wandering
 // hero's wage is 2g base +1g per 2 steps of distance from the hiring KINGDOM's alignment — Neutral
@@ -40,7 +44,29 @@ export function heroHireWage(
   waiveBan?: boolean,
   hero?: HeroOfSkills | null,
 ): number | null {
+  const { theWageOfAHeroAtNoDistance, theStepsForEachGoldMore, theStepsOfTheGulf } =
+    THE_LADDER_OF_THE_ALIGNMENTS.theNumbers;
   const d = alignDistP(kingdomAlign, heroAlign);
-  if (d >= 6 && !waiveBan) return null; // Divine <-> Undead: will never serve
-  return 2 + Math.floor(Math.min(d, 6) / 2) + (hero ? heroSkillWage(hero) : 0);
+  if (d >= theStepsOfTheGulf.value && !waiveBan) return null; // Divine <-> Undead: will never serve
+  return (
+    theWageOfAHeroAtNoDistance.value +
+    Math.floor(Math.min(d, theStepsOfTheGulf.value) / theStepsForEachGoldMore.value) +
+    (hero ? heroSkillWage(hero) : 0)
+  );
+}
+// ── Mercy, by the foe's own alignment (P1-19av2: a column of the ladder, Decision D) ────
+// A felled coward begs his foe for mercy; the foe's own alignment (his, or his temper item's: Decision G) sets the chance
+// he spares him, and whether a refusal is his laughter. The resolver draws the dice, where it drew them before.
+/** The rung of an alignment, or none (no alignment, or one the ladder doesn't hold). */
+function theRungOf(alignment: string): ARungOfTheLadder | undefined {
+  return THE_LADDER_OF_THE_ALIGNMENTS.theRungs.find((rung) => rung.alignment === alignment);
+}
+/** The chance, in percent, a foe of this alignment spares a felled coward's plea; none for an alignment the ladder
+ *  doesn't hold (the resolver's own 50% then). */
+export function theChanceAFoeOfThisAlignmentSparesAPlea(alignment: string): number | undefined {
+  return theRungOf(alignment)?.theChanceAFoeSparesAPlea.value;
+}
+/** Whether a foe of this alignment refuses a plea with laughter (no die drawn for its words); not one of none. */
+export function aFoeOfThisAlignmentLaughsAtAPlea(alignment: string): boolean {
+  return theRungOf(alignment)?.aFoesRefusalIsLaughter ?? false;
 }

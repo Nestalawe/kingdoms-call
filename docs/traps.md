@@ -285,20 +285,28 @@ the orders' cases marked "(item 24)" in `tests/lib/recruit-hire-and-realm-works-
 
 ## Terror is spent at battle start
 
-Anything that must know whether a province is "under Terror" for a battle reads it **before** `consumeTerror`, which
-runs at the start of every battle and deletes `_terrorStacks`, `_terrorisedBy` and the rest. Example: Reign of Fear
-reads it through `reignOfFearHere` before the call, in both battle paths, and hands the answer on in the strength
-context (`ctx.reignOfFear`); read after, it is always false. Checks: `terror-three-stacks` and
+Anything that must know whether a province is "under Terror" for a battle reads it **before** `consumeTerror`
+(`src/engine/battle/evil-terror.ts`), which runs at the start of every battle and spends the mark with the marks'
+module's `spendTheTerrorOnAProvince`: `_terrorStacks`, `_terrorisedBy` and the rest are deleted. Example: Reign of Fear
+asks the module's `reignOfFearHere` before the call, in both battle paths, and hands the answer on in the strength
+context (`ctx.reignOfFear`); read after, it is always false. Checks: `terror-three-stacks`,
+`the-marks-on-a-province-each-read-laid-lifted-and-faded` and
 `an-evil-realms-report-reads-the-terror-gripping-each-province`.
 
-## An alignment order is written in a dozen places
+## A realm's alignment's rule is a row of its abilities
 
-An alignment order is a row of `THE_ALIGNMENT_ORDERS` (`src/content/`). The turn (the gate, the order-name map, the
-`case`, the resolver), the report's prices, the bots, the portal's order list and target widget, and the GM's three
-labels read it. Still written by hand: the GM's label keys, "Harvest Field" and "Rite"; `ACTION_DISPLAY_ORDER`; the
-widget's "VETERAN". Grep `harvest_field`. A removed order keeps its `case` as a refusal, for saves. Example: a missed place refuses, hides
-or misprices the order, and throws nothing. Checks: the words test (the row against the books, the page's creed texts
-and the GM's labels); the door's static test (the portal reads the rows).
+A rule a realm holds by its alignment (a creed's zeal, the Neutral trade, a creed's order) is one row of
+`src/content/alignment-abilities-their-keys-names-numbers-and-words.ts`, each number as the books write it, and one
+entry of `src/engine/rules/the-registry-of-alignment-abilities.ts`: the resolver asks its stage's runner, never
+`alignment === '…'`. A mark it leaves on a province (consecrated ground, Terror, Enslave) is laid and wiped only by
+`src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts`. An order's row also needs its
+`case`, its resolver in `src/engine/orders/alignment/` and its widget on the form; still written by hand: the GM's
+labels "Harvest Field" and "Rite", `ACTION_DISPLAY_ORDER`, the widget's "VETERAN" (grep `harvest_field`). A removed
+order keeps its `case` as a refusal, for saves. Example: the trade's 20 divides the income by `100 / 20`, exactly 5, as
+`income / 5` did; `income * 0.2` would drift by a gold. Checks: the ratchet's `alignmentChecksInEngine` (it only
+falls); the words test (each row's numbers in the books); the registry's unit test and compile check; the static test
+of the functions it has taken. [The guide](architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md);
+[full text](architecture/adding-or-changing-content-units-orders-and-discoveries.md#a-realms-alignments-rule-is-a-row-of-its-abilities).
 
 ## A fate line names two companies
 

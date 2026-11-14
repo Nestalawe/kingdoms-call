@@ -4,6 +4,7 @@
 // share them (P1-11a). These read a unit as its realm sees it (the report's names: skeletal, temporary, wildHunt) and
 // the levels and alignments each side works out for itself: the engine hands its own unit through
 // unitAsItsRealmSeesIt, and works out the leader's Druid from his skills and items (P1-11b, Decisions 2 and 3).
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { KC_DRUID_LEVELS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { CREATURE_ARMIES, MONSTER_ARMIES } from './units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 
@@ -136,9 +137,13 @@ export function druidNeedWaivedByAlignment(
   realmAlignment: string | null | undefined,
   leaderAlignment: string | null | undefined,
 ): boolean {
+  // the two abilities' rows (P1-19av1): read here, not through the registry's runner, since the player portal shares
+  // this file and it may import only src/content
+  const creatures = ALIGNMENT_ABILITIES['creatures-follow-without-a-druid'].alignment;
+  const monsters = ALIGNMENT_ABILITIES['monsters-follow-without-a-druid'].alignment;
   return (
-    (CREATURE_ARMIES.has(unitType) && (realmAlignment === 'Druidic' || leaderAlignment === 'Druidic')) ||
-    (MONSTER_ARMIES.has(unitType) && (realmAlignment === 'Evil' || leaderAlignment === 'Evil'))
+    (CREATURE_ARMIES.has(unitType) && (realmAlignment === creatures || leaderAlignment === creatures)) ||
+    (MONSTER_ARMIES.has(unitType) && (realmAlignment === monsters || leaderAlignment === monsters))
   );
 }
 /** The Druid a leader needs to lead a unit of this type at full strength, the waivers counted: none where his realm's

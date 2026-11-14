@@ -24,7 +24,35 @@
 // row; each row's kind is a kind of a perk of MONSTERS_P, no two rows share a kind, and every kind of MONSTERS_P has its
 // row; a row names the items' effect of its own ward or rider exactly when an item carries it; and an entry with no
 // stage is a kind whose row names the items' effect, or one listed as still read inline (THE_PERKS_STILL_READ_INLINE,
-// which P1-19aj emptied), and no listed kind has a stage.
+// which P1-19aj emptied), and no listed kind has a stage. Since P1-19at1 the alignment abilities' registry
+// (src/engine/rules/the-registry-of-alignment-abilities.ts) is held to the same: each effect once in its stage's order
+// (THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES), each order naming only entries with an effect there, each
+// content row with its entry and each entry with its row; each row's alignment is one, its key, read as words, is no
+// discovery's name and no discovery effect's slug, and the five alignment orders' keys are its rows given as an order
+// (since P1-19aw1; their entries have no stage). Its
+// runner of "turnEnd: a realm's alignment adds to its tax" gives a Neutral realm a fifth of its provinces' income,
+// rounded down, and any other realm nothing, as neutralTradeGold (which Early Winter and the report ask) did before.
+// Since P1-19at2 its runner of "turnEnd: a realm's consecrated ground raises a province's tax" gives a province's tax
+// ×1.5, rounded to the nearest gold, as Early Winter and the report wrote it, whatever realm holds the ground (it is
+// handed no alignment: the consecration list gates it). Since P1-19au1 its runners of the battles' zeal and fervour give
+// what both battles wrote before: each creed's chance of zeal as the old table (0.1 for an alignment none holds), the
+// defender's chance on consecrated ground doubled after the discoveries' share, at most 1, and the strongest of zeal's
+// ×1.3, the skeletal legions' ×1.5 under the king or ×1.3 under another, and savage fury's ×1.25 (old Math.max).
+// Since P1-19au2 its runners of the other battle factors and the Banner give what the engine wrote before: 0.85 to an
+// Undead or Evil attacker on consecrated ground (1 to any other), Righteous Defence's 1.1, Home of the Wild's 1.5 to a
+// Creature in forest or jungle (the realm's or the commander's creed), the Reign of Fear's 1.5 to a Monster, the
+// Deathless March to a host of skeletons alone, and the Banner's 15 points, each to its creed alone. Since P1-19av1
+// its runners of the prices and the scholars, and the Druid waiver (read in rules-on-plain-values), give what the
+// engine wrote before: Neutral's 2g off a mercenary band, Divine's Bless at 2 by the king and 1.8 by another (the
+// spell's own 1.6 for any other creed), Neutral's Sage level × 5, and no Druid need for a Creature under a Druidic realm
+// or leader, or a Monster under an Evil one. Since P1-19aw2 its runner of who may give an alignment order refuses as
+// each resolver did: Consecrate the king before the creed, Call to Arms and Broker the creed first, the others the creed.
+// Since P1-19ax1 its runners of Divine grace, the Divine Rest, the Blood Harvest and the conquest doctrine give each
+// creed what the engine's checks gave: Divine one turn in death and half health, Divine ×1.5 rounded up, Pagan 1g a
+// foe, Evil 0.5 of the tax, a Green unit and 3 turns; null for every other creed and for none.
+// Since P1-19ax2 the graves on Undead land (0.05, else 0.1), an Undead hero as undead in personal combat, and the
+// shared readers of war without warning, a broken alliance, the doctrine and the risen dead's hand-over, as the
+// engine's and the page's checks gave them.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -36,7 +64,9 @@
 // entry, a row's kind no discovery has, two rows of one kind, a kind of content with no row and not listed, and a kind
 // listed that has a row; in the guardian perks', an entry left out of its order, a row with no entry, a kind no perk
 // has, two rows of one kind, a row naming another kind's item effect, a shared kind naming none, an own kind naming
-// one, a kind of content with no row, an entry with no stage unlisted, and a kind listed with a stage.
+// one, a kind of content with no row, an entry with no stage unlisted, and a kind listed with a stage; in the alignment
+// abilities', an entry left out of its order, a row with no entry, an alignment that isn't one, a key that is a
+// discovery's name or an effect's slug, and one of the orders' keys taken.
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import {
@@ -71,6 +101,47 @@ import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_GUARDIAN_PERKS,
   THE_REGISTRY_OF_GUARDIAN_PERKS,
 } from '../../src/engine/rules/the-registry-of-guardian-perks.ts';
+import {
+  ALIGNMENT_ABILITIES,
+  THE_ALIGNMENT_ORDERS,
+} from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES,
+  theCheckAnAlignmentOrderRefusesAHeroOn,
+  THE_REGISTRY_OF_ALIGNMENT_ABILITIES,
+  theChanceOfZealARealmsAlignmentGivesASide,
+  theChanceOfZealOfADefenderOnConsecratedGround,
+  theFervourOfASide,
+  theTaxOfAProvinceOnConsecratedGround,
+  whatARealmsAlignmentAddsToItsTax,
+  doesARealmsAlignmentHoldABeatenHostOnTheField,
+  theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
+  theFactorARealmsAlignmentStrengthensAUnitInTheWildBy,
+  theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
+  theFactorConsecratedGroundWeakensAnAttackersHostBy,
+  whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite,
+  theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice,
+  theYieldOfABlessARealmsAlignmentGives,
+  whatARealmsAlignmentAddsToResearch,
+  theReturnARealmsAlignmentGivesItsFallen,
+  theFactorARealmsAlignmentRaisesARestsHealBy,
+  theGoldARealmsAlignmentClaimsForEachFoeDestroyed,
+  theConquestDoctrineOfARealmsAlignment,
+  theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt,
+  isAHeroOfTheAlignmentUndeadInPersonalCombat,
+} from '../../src/engine/rules/the-registry-of-alignment-abilities.ts';
+import {
+  doesAnAlignmentBreakAnAllianceIntoWar,
+  doesAnAlignmentConquerByADoctrine,
+  doesAnAlignmentDeclareWarWithoutWarning,
+} from '../../src/engine/rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
+import { theRisenDeadFollowAHandOverTo } from '../../src/engine/rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
+import { druidNeedWaivedByAlignment } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import {
+  A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX,
+  A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX,
+} from '../../src/engine/rules/alignment-abilities/a-realms-alignment-at-the-turns-end.ts';
+import { neutralTradeGold } from '../../src/engine/grand-design.ts';
 
 /** The registry as this test reads it: each entry's effects by hook point and stage, and each stage's order. */
 type Entries = Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, unknown>>>>>>;
@@ -595,4 +666,397 @@ test("planted in the guardian perks' registry, an entry left out of its order, a
     'dodge has no row',
     'aura has no row',
   ]);
+});
+
+/** An alignment ability's row as this test reads it (its alignment as any string, so a planted row may name one that
+ *  isn't). */
+type AbilityRows = Readonly<Record<string, { readonly alignment: string; readonly howItIsUsed?: string }>>;
+
+/** The discoveries' names and their effects' slugs, lower case, which no ability's key, read as words, may be. */
+const THE_DISCOVERIES_NAMES: ReadonlySet<string> = new Set([
+  ...SAGE_DISCOVERIES_P.map((d) => d.name.toLowerCase()),
+  ...Object.keys(DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS).map((slug) => slug.replace(/-/g, ' ')),
+]);
+/** The five alignment orders' keys, each a row given as an order (plan P1-19's alignment abilities family, row
+ *  P1-19aw1). */
+const THE_ORDERS_KEYS = ['consecrate', 'call-to-arms', 'broker', 'harvest-the-field', 'perform-rite'];
+/** Whether a row is given as an order (a king's or a hero's), not always on. */
+const isGivenAsAnOrder = (row: { readonly howItIsUsed?: string | undefined }): boolean =>
+  row.howItIsUsed === "a king's order" || row.howItIsUsed === "a hero's order";
+
+/** What an ability's row breaks: its alignment an alignment, its key no discovery's name or effect's slug, and an
+ *  order's key a row given as an order. */
+function whatAnAlignmentAbilitysRowBreaks(
+  slug: string,
+  row: { readonly name: string; readonly alignment: string; readonly howItIsUsed?: string | undefined },
+): string[] {
+  const broken: string[] = [];
+  if (!alignments.has(row.alignment)) broken.push(`${slug}'s alignment, ${row.alignment}, is not an alignment`);
+  if (THE_DISCOVERIES_NAMES.has(slug.replace(/-/g, ' '))) broken.push(`${slug} reads as a discovery's name or slug`);
+  if (THE_ORDERS_KEYS.includes(slug) && !isGivenAsAnOrder(row))
+    broken.push(`${slug} is an alignment order's key, on a row not given as an order`);
+  return broken;
+}
+
+const ABILITY_ENTRIES: Entries = THE_REGISTRY_OF_ALIGNMENT_ABILITIES;
+const ABILITY_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES;
+const ABILITY_ROWS: AbilityRows = ALIGNMENT_ABILITIES;
+/** The rows with their slug as the name the shared check reads (an ability has no name unless it is an order). */
+const ABILITIES_REGISTRY = (entries: Entries, orders: Orders, rows: AbilityRows) =>
+  whatTheRegistryBreaks(
+    entries,
+    orders,
+    Object.fromEntries(
+      Object.entries(rows).map(([slug, row]) => [
+        slug,
+        { name: slug, alignment: row.alignment, howItIsUsed: row.howItIsUsed },
+      ]),
+    ),
+    whatAnAlignmentAbilitysRowBreaks,
+  );
+
+/** The abilities read in src/engine/rules-on-plain-values/, which the player portal shares and which may import only
+ *  src/content, so their entries have no stage (P1-19av1: the Druid waiver, druidNeedWaivedByAlignment; P1-19ax2: war
+ *  without warning, a broken alliance, the risen dead's hand-over; P1-19ay1: the world). */
+const THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES: readonly string[] = [
+  'creatures-follow-without-a-druid',
+  'monsters-follow-without-a-druid',
+  'war-without-warning-of-an-evil-realm',
+  'war-without-warning-of-an-undead-realm',
+  'a-broken-alliance-means-war-for-an-evil-realm',
+  'a-broken-alliance-means-war-for-an-undead-realm',
+  'the-risen-dead-follow-only-the-undead',
+  // P1-19ay1: the world, which world creation asks at no stage of a turn (the join form shares the last two)
+  'a-divine-king-starts-with-white-magic',
+  'a-druidic-king-starts-with-druid',
+  'an-evil-king-starts-with-druid',
+  'a-pagan-king-starts-with-explorer',
+  'an-undead-king-starts-with-necromancy',
+  'an-undead-king-starts-with-a-skeletal-company',
+  'a-pagan-capital-opens-beside-the-ritual-stones',
+  'a-druidic-capital-opens-beside-creatures',
+  'an-evil-capital-opens-beside-monsters',
+  'a-druidic-wanderer-knows-the-druids-craft',
+  'one-divine-realm-a-game',
+  'one-undead-realm-a-game',
+];
+
+test("the alignment abilities' registry holds each effect once, in the order of its stage, and each content row is sound", () => {
+  expect(ABILITIES_REGISTRY(ABILITY_ENTRIES, ABILITY_ORDERS, ABILITY_ROWS)).toEqual([]);
+  expect(Object.keys(ABILITY_ENTRIES).length).toBeGreaterThan(0);
+  const ordered = new Set(Object.values(ABILITY_ORDERS).flatMap((stages) => Object.values(stages).flat()));
+  // (the orders' entries have one stage, who may give each, P1-19aw2: in the rows' order)
+  const theOrders = Object.keys(ABILITY_ROWS).filter((slug) => isGivenAsAnOrder(ABILITY_ROWS[slug] ?? {}));
+  expect(theOrders).toEqual(THE_ORDERS_KEYS);
+  expect(ABILITY_ORDERS['orderValidity']).toEqual({ 'who may give an alignment order': THE_ORDERS_KEYS });
+  for (const slug of theOrders)
+    expect(Object.keys(ABILITY_ENTRIES[slug] ?? {}), `${slug}'s entry`).toEqual(['orderValidity']);
+  expect([...ordered].sort()).toEqual(
+    Object.keys(ABILITY_ENTRIES)
+      .filter((slug) => !THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES.includes(slug))
+      .sort(),
+  );
+  // each one listed is an entry with no stage, and none in any stage's order
+  for (const slug of THE_ABILITIES_READ_IN_THE_RULES_THE_PORTAL_SHARES)
+    expect(ABILITY_ENTRIES[slug], `${slug}'s entry`).toEqual({});
+});
+
+test("planted in the alignment abilities' registry, an entry left out of its order, a row with no entry, an alignment that isn't one, a discovery's name or slug as a key, and an order's key on a row not given as an order, are found", () => {
+  const orders: Orders = {
+    ...ABILITY_ORDERS,
+    turnEnd: { ...ABILITY_ORDERS['turnEnd'], "a realm's alignment adds to its tax": [] },
+  };
+  const rows: AbilityRows = {
+    ...ABILITY_ROWS,
+    tithes: { alignment: 'Divine' },
+    'province-tax': { alignment: 'Neutral' },
+    broker: { alignment: 'Neutral' },
+    'planted-ability': { alignment: 'Mercantile' },
+  };
+  expect(ABILITIES_REGISTRY(ABILITY_ENTRIES, orders, rows)).toEqual([
+    "neutral-trade is in the order of turnEnd: a realm's alignment adds to its tax 0 times",
+    "broker is an alignment order's key, on a row not given as an order",
+    "tithes reads as a discovery's name or slug",
+    'tithes has a content row and no entry',
+    "province-tax reads as a discovery's name or slug",
+    'province-tax has a content row and no entry',
+    "planted-ability's alignment, Mercantile, is not an alignment",
+    'planted-ability has a content row and no entry',
+  ]);
+});
+
+/** Incomes as Early Winter's collection and the report's forecast may hand them: whole sums, and what a guard reads as
+ *  none. */
+const INCOMES: readonly (number | null | undefined)[] = [
+  ...Array.from({ length: 301 }, (_, i) => i),
+  null,
+  undefined,
+  Number.NaN,
+];
+
+test('neutralTradeGold gives a Neutral realm a fifth of its income, rounded down, and any other realm, or none, nothing', () => {
+  for (const alignment of [...KC_ALIGNMENTS, undefined])
+    for (const income of INCOMES)
+      expect(neutralTradeGold({ alignment }, income), `${String(alignment)}, ${String(income)}`).toBe(
+        alignment === 'Neutral' ? Math.floor((Number(income) || 0) / 5) : 0,
+      );
+  expect([
+    neutralTradeGold(null, 10),
+    neutralTradeGold(undefined, 10),
+    neutralTradeGold({ alignment: 'Neutral' }, 10),
+  ]).toEqual([0, 0, 2]);
+});
+
+test('the runner of "a realm\'s alignment adds to its tax" and the Neutral trade\'s effect give what neutralTradeGold gives', () => {
+  for (const alignment of [...KC_ALIGNMENTS, undefined, null])
+    for (const income of INCOMES) {
+      const theGold = whatARealmsAlignmentAddsToItsTax(alignment, { theIncome: income });
+      expect(theGold, `${String(alignment)}, ${String(income)}`).toBe(
+        neutralTradeGold({ alignment: alignment ?? undefined }, income),
+      );
+    }
+  expect(INCOMES.map((income) => A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX['neutral-trade']({ theIncome: income }))).toEqual(
+    INCOMES.map((income) => neutralTradeGold({ alignment: 'Neutral' }, income)),
+  );
+});
+
+test('the runner of "a realm\'s consecrated ground raises a province\'s tax" and its effect give the tax ×1.5, rounded, as before', () => {
+  const taxes = Array.from({ length: 301 }, (_, i) => i);
+  expect(taxes.map((theTax) => theTaxOfAProvinceOnConsecratedGround({ theTax }))).toEqual(
+    taxes.map((t) => Math.round(t * 1.5)),
+  );
+  expect(
+    taxes.map((theTax) => A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX['consecrated-ground-tax']({ theTax })),
+  ).toEqual(taxes.map((t) => Math.round(t * 1.5)));
+  // a half rounds up, as Math.round does: 1 → 2, 3 → 5, 5 → 8
+  expect([1, 3, 5].map((theTax) => theTaxOfAProvinceOnConsecratedGround({ theTax }))).toEqual([2, 5, 8]);
+});
+
+test('the runner of "a realm\'s alignment gives a side its chance of zeal" gives each creed\'s chance as the old table did, and 0.1 to any other', () => {
+  const theOldTable: Readonly<Record<string, number>> = {
+    Divine: 0.5,
+    Good: 0.4,
+    Druidic: 0.2,
+    Neutral: 0.1,
+    Pagan: 0.15,
+    Evil: 0.25,
+    Undead: 0.0,
+  };
+  for (const alignment of KC_ALIGNMENTS)
+    expect(theChanceOfZealARealmsAlignmentGivesASide(alignment), alignment).toBe(theOldTable[alignment]);
+  // a realm of none, or none given, fights as Neutral; an alignment none holds, at the old `?? 0.1`
+  expect([null, undefined, '', 'Mercantile'].map((a) => theChanceOfZealARealmsAlignmentGivesASide(a))).toEqual([
+    0.1, 0.1, 0.1, 0.1,
+  ]);
+});
+
+test('the runner of "consecrated ground stirs a defender\'s zeal" doubles the chance so far, at most 1, as before', () => {
+  const chances = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.4, 0.45, 0.5, 0.55, 0.7, 0.8, 1, 1.3];
+  expect(chances.map((theChance) => theChanceOfZealOfADefenderOnConsecratedGround({ theChance }))).toEqual(
+    chances.map((c) => Math.min(1, c * 2)),
+  );
+});
+
+test('the runner of "a realm\'s alignment stirs a side\'s fervour" gives the strongest of zeal and the fervours, as the old Math.max did', () => {
+  const forces = {
+    'no skeleton and no Monster': [{ type: 'Men-at-Arms' }],
+    'a skeletal unit': [{ type: 'Men-at-Arms' }, { type: 'Men-at-Arms', _isSkeletal: true }],
+    'a Monster': [{ type: 'Men-at-Arms' }, { type: 'Cave Trolls' }],
+    'a skeletal unit and a Monster': [{ type: 'Cave Trolls' }, { type: 'Men-at-Arms', _isSkeletal: true }],
+    'no unit': [],
+  };
+  for (const alignment of [...KC_ALIGNMENTS, null, undefined])
+    for (const [what, theForce] of Object.entries(forces))
+      for (const isItLedByTheKing of [true, false])
+        for (const isItSeizedByZeal of [true, false]) {
+          const align = (alignment ?? '') || 'Neutral';
+          const skeletal = theForce.some((a) => '_isSkeletal' in a && a._isSkeletal);
+          const monster = theForce.some((a) => a.type === 'Cave Trolls');
+          const skelKing = align === 'Undead' && isItLedByTheKing && skeletal;
+          const skelHero = align === 'Undead' && !isItLedByTheKing && skeletal;
+          const evilMonster = align === 'Evil' && monster;
+          const fervour = theFervourOfASide(alignment, { isItSeizedByZeal, isItLedByTheKing, theForce });
+          const said = `${String(alignment)}, ${what}, king ${String(isItLedByTheKing)}, zeal ${String(isItSeizedByZeal)}`;
+          expect(fervour.theFactor, said).toBe(
+            Math.max(1, isItSeizedByZeal ? 1.3 : 1, skelKing ? 1.5 : 1, evilMonster ? 1.25 : 1, skelHero ? 1.3 : 1),
+          );
+          expect(fervour.theAbilitiesThatStirredIt, said).toEqual([
+            ...(skelKing || skelHero ? ['skeletal-fervour'] : []),
+            ...(evilMonster ? ['savage-fury'] : []),
+          ]);
+        }
+});
+
+test("the runners of the other battle factors and the Banner give each creed what the engine's checks gave before", () => {
+  const creeds = [...KC_ALIGNMENTS, 'Neutral', null, undefined] as const;
+  for (const a of creeds) {
+    const said = String(a);
+    // consecrated ground: `(atkAlign === 'Undead' || atkAlign === 'Evil') ? 0.85 : 1`
+    // (the battles hand it the alignment the side fights under: a string, Neutral for a realm of none)
+    expect(theFactorConsecratedGroundWeakensAnAttackersHostBy({ theAttackersAlignment: a ?? 'Neutral' }), said).toBe(
+      a === 'Undead' || a === 'Evil' ? 0.85 : 1,
+    );
+    // Righteous Defence: `alignment === 'Good'`, then `defBonus *= 1.1`
+    expect(theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy(a), said).toBe(a === 'Good' ? 1.1 : null);
+    // the Reign of Fear: `playerAlignment === 'Evil' && MONSTER_ARMIES.has(army.type)`, then ×1.5
+    for (const theUnitType of ['Cave Trolls', 'Forest Ents', 'Men-at-Arms'])
+      expect(theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear(a, { theUnitType }), said).toBe(
+        a === 'Evil' && theUnitType === 'Cave Trolls' ? 1.5 : null,
+      );
+    // the Deathless March: `armies.length > 0 && armies.every((a) => a._isSkeletal) && alignment === 'Undead'`
+    for (const theCompanies of [[], [{ _isSkeletal: true }], [{ _isSkeletal: true }, {}], [{ _isSkeletal: false }]])
+      expect(doesARealmsAlignmentHoldABeatenHostOnTheField(a, { theCompanies }), said).toBe(
+        theCompanies.length > 0 && theCompanies.every((c) => c._isSkeletal === true) && a === 'Undead',
+      );
+    // the Banner of Fellowship: `alignment === 'Good' ? 15 : 0`
+    expect(whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite(a), said).toBe(a === 'Good' ? 15 : 0);
+    // Home of the Wild: `(realm === 'Druidic' || commander === 'Druidic') && forest or jungle && a Creature`, then ×1.5
+    for (const b of creeds)
+      for (const theTerrain of ['forest', 'jungle', 'plain', null])
+        for (const theUnitType of ['Forest Ents', 'Cave Trolls'])
+          expect(
+            theFactorARealmsAlignmentStrengthensAUnitInTheWildBy(a, b, { theUnitType, theTerrain }),
+            `${said}, ${String(b)}, ${String(theTerrain)}, ${theUnitType}`,
+          ).toBe(
+            (a === 'Druidic' || b === 'Druidic') &&
+              (theTerrain === 'forest' || theTerrain === 'jungle') &&
+              theUnitType === 'Forest Ents'
+              ? 1.5
+              : null,
+          );
+  }
+});
+
+test("the runners of the prices and the scholars, and the Druid waiver, give each creed what the engine's checks gave before", () => {
+  const creeds = [...KC_ALIGNMENTS, null, undefined] as const;
+  for (const a of creeds) {
+    const said = String(a);
+    // the mercenary discount: `baseMercCost - (alignment === 'Neutral' ? 2 : 0) + …`
+    expect(theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(a), said).toBe(a === 'Neutral' ? 2 : 0);
+    // Bless Province: `(isKing && divine ? 2.0 : divine ? 1.8 : 1.6) + the discoveries'` (the same float, bit for bit)
+    for (const isTheCasterTheKing of [true, false])
+      for (const theDiscoveries of [0, 0.2])
+        expect(
+          (theYieldOfABlessARealmsAlignmentGives(a, { isTheCasterTheKing }) ?? 1.6) + theDiscoveries,
+          `${said}, ${String(isTheCasterTheKing)}, ${String(theDiscoveries)}`,
+        ).toBe((isTheCasterTheKing && a === 'Divine' ? 2.0 : a === 'Divine' ? 1.8 : 1.6) + theDiscoveries);
+    expect(theYieldOfABlessARealmsAlignmentGives(a, { isTheCasterTheKing: false }) !== null, said).toBe(a === 'Divine');
+    // the Neutral scholars: `alignment === 'Neutral' ? sageLevel * 5 : 0`
+    for (const theSageLevel of [0, 1, 2, 3, 4, 5, Number.NaN])
+      expect(whatARealmsAlignmentAddsToResearch(a, { theSageLevel }), `${said}, ${String(theSageLevel)}`).toBe(
+        a === 'Neutral' ? theSageLevel * 5 : 0,
+      );
+    // the Druid waiver: `(Creature && (realm === 'Druidic' || leader === 'Druidic')) || (Monster && (… 'Evil'))`
+    for (const b of creeds)
+      for (const unitType of ['Forest Ents', 'Cave Trolls', 'Men-at-Arms'])
+        expect(druidNeedWaivedByAlignment(unitType, a, b), `${said}, ${String(b)}, ${unitType}`).toBe(
+          (unitType === 'Forest Ents' && (a === 'Druidic' || b === 'Druidic')) ||
+            (unitType === 'Cave Trolls' && (a === 'Evil' || b === 'Evil')),
+        );
+  }
+});
+
+test("the runners of Divine grace, the Divine Rest, the Blood Harvest and the conquest doctrine give each creed what the engine's checks gave before", () => {
+  for (const a of [...KC_ALIGNMENTS, null, undefined] as const) {
+    const said = String(a);
+    // Divine grace: `alignment === 'Divine'` at the death, 7a-bis, 7b and 7d; then `killedOnTurn + 2` and
+    // `Math.floor(maxHp * 0.5) || 8`
+    const theReturn = theReturnARealmsAlignmentGivesItsFallen(a);
+    expect(theReturn, said).toEqual(a === 'Divine' ? { theFullTurnsInDeath: 1, theShareOfHealth: 0.5 } : null);
+    // the Divine Rest: `isDivineKingdom ? Math.ceil(baseHeal * 1.5) : baseHeal`
+    const f = theFactorARealmsAlignmentRaisesARestsHealBy(a);
+    expect(f !== null, said).toBe(a === 'Divine');
+    for (let baseHeal = 1; baseHeal <= 60; baseHeal++)
+      expect(f !== null ? Math.ceil(baseHeal * f) : baseHeal, `${said}, ${String(baseHeal)}`).toBe(
+        a === 'Divine' ? Math.ceil(baseHeal * 1.5) : baseHeal,
+      );
+    // the Blood Harvest: `alignment !== 'Pagan'` returns; then `destroyed * (BLOOD_HARVEST_PER_UNIT (1) + the discoveries')`
+    expect(theGoldARealmsAlignmentClaimsForEachFoeDestroyed(a), said).toBe(a === 'Pagan' ? 1 : null);
+    // the conquest doctrine: `alignment !== 'Evil'` returns; then `tax * (0.5 + the discoveries')`, a 'Green' garrison
+    // unit and `G.turn + 3` (both battles' Terror: `alignment === 'Evil'`)
+    expect(theConquestDoctrineOfARealmsAlignment(a), said).toEqual(
+      a === 'Evil'
+        ? {
+            theShareOfTheTaxPlundered: 0.5,
+            theGradeOfTheEnslavedGarrison: 'Green',
+            theTurnsTheEnslavedProvincePaysLess: 3,
+          }
+        : null,
+    );
+  }
+  // a Divine realm's return, as the old literals gave it
+  const theDivineReturn = theReturnARealmsAlignmentGivesItsFallen('Divine') ?? {
+    theFullTurnsInDeath: 0,
+    theShareOfHealth: 0,
+  };
+  for (const [killedOnTurn, maxHp] of [
+    [0, 1],
+    [3, 15],
+    [7, 31],
+    [12, 0],
+  ] as const) {
+    expect(killedOnTurn + theDivineReturn.theFullTurnsInDeath + 1).toBe(killedOnTurn + 2);
+    expect(Math.floor(maxHp * theDivineReturn.theShareOfHealth) || 8).toBe(Math.floor(maxHp * 0.5) || 8);
+  }
+});
+
+test("the graves, the undead, war without warning, a broken alliance, the doctrine and the risen dead give each creed what the engine's and the page's checks gave before", () => {
+  for (const a of [...KC_ALIGNMENTS, null, undefined, '', 'Mercantile'] as const) {
+    const said = String(a);
+    // the graves: `owner != null && alignment === 'Undead' ? 0.05 : 0.1`
+    expect(theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt(a) ?? 0.1, said).toBe(a === 'Undead' ? 0.05 : 0.1);
+    // personal combat: `isUndead: ch.alignment === 'Undead'`
+    expect(isAHeroOfTheAlignmentUndeadInPersonalCombat(a), said).toBe(a === 'Undead');
+    // the turn's and the forecast's `['Evil', 'Undead'].includes(alignment)`, the reckoning's and the card's too
+    expect(doesAnAlignmentDeclareWarWithoutWarning(a), said).toBe(['Evil', 'Undead'].includes(String(a)));
+    expect(doesAnAlignmentBreakAnAllianceIntoWar(a), said).toBe(['Evil', 'Undead'].includes(String(a)));
+    // the order form's `report.kingdom?.alignment === 'Evil'`
+    expect(doesAnAlignmentConquerByADoctrine(a), said).toBe(a === 'Evil');
+    // the hand-over: `!recipient || recipient.alignment === 'Undead' || recipient.hisRealmsAlignment === 'Undead'`
+    for (const b of [...KC_ALIGNMENTS, null, undefined] as const)
+      expect(theRisenDeadFollowAHandOverTo({ alignment: a, hisRealmsAlignment: b }), `${said}, ${String(b)}`).toBe(
+        a === 'Undead' || b === 'Undead',
+      );
+  }
+  expect(theRisenDeadFollowAHandOverTo(null)).toBe(true);
+  // a value the page may hold that is no string: none of them
+  for (const v of [0, Number.NaN, {}, ['Evil']])
+    expect([doesAnAlignmentDeclareWarWithoutWarning(v), doesAnAlignmentBreakAnAllianceIntoWar(v)]).toEqual([
+      false,
+      false,
+    ]);
+});
+
+test('the runner of "who may give an alignment order" refuses as each resolver\'s own checks did, in its own order', () => {
+  // each resolver before P1-19aw2: Consecrate `if (!isKing) …; if (alignment !== 'Divine') …`; Call to Arms and Broker
+  // the creed, then the king; Harvest the Field and Perform Rite the creed alone
+  const theOldChecks = {
+    consecrate: ['king', 'Divine'],
+    'call-to-arms': ['Good', 'king'],
+    broker: ['Neutral', 'king'],
+    'harvest-the-field': ['Undead'],
+    'perform-rite': ['Pagan'],
+  } as const;
+  for (const [slug, theChecks] of Object.entries(theOldChecks))
+    for (const theAlignmentOfHisRealm of [...KC_ALIGNMENTS, null, undefined])
+      for (const isHeTheKing of [true, false, null, undefined]) {
+        const theOldRefusal =
+          theChecks
+            .map((check) =>
+              check === 'king'
+                ? isHeTheKing === true
+                  ? null
+                  : 'he is not the king'
+                : theAlignmentOfHisRealm === check
+                  ? null
+                  : 'his realm is not of its creed',
+            )
+            .find((r) => r !== null) ?? null;
+        const theRow = Object.entries(THE_ALIGNMENT_ORDERS).find(([s]) => s === slug)?.[1];
+        if (theRow === undefined) throw new TypeError(`no row ${slug}`);
+        expect(
+          theCheckAnAlignmentOrderRefusesAHeroOn(theRow, { isHeTheKing, theAlignmentOfHisRealm }),
+          `${slug}, ${String(theAlignmentOfHisRealm)}, king ${String(isHeTheKing)}`,
+        ).toBe(theOldRefusal);
+      }
 });

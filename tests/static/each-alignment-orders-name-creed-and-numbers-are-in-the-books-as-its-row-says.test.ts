@@ -1,6 +1,7 @@
 // Each alignment order's name, creed and numbers are in the books as its row says (plan P1-19's alignment orders,
-// Decision 3): for every row of the content's alignment orders (src/content/alignment-orders-their-keys-names-creeds-
-// numbers-and-words.ts, the rows the turn's gate reads, and the turn, the dispatch and the bots will), the rulebook's
+// Decision 3): for every alignment order (THE_ALIGNMENT_ORDERS: since P1-19aw1 the rows given as an order in
+// src/content/alignment-abilities-their-keys-names-numbers-and-words.ts, the rows the turn's gate, the turn, the dispatch
+// and the bots read; its creed the row's alignment, the king's mark its "a king's order"), the rulebook's
 // orders table ("Your alignment's signature action") gives its name in its creed's row, with the "king" mark if and only
 // if the king alone gives it; the rulebook's creed section ("The Seven Alignments") has an entry of that name, marked
 // "(king" if and only if the king alone gives it, stating each of its numbers in the words its row gives; and the
@@ -10,23 +11,35 @@
 // string that opens on the creed in bold) name it, and state each number in the words its row gives for that place
 // (P1-11d9). The GM's statistics label Consecrate, Call to Arms and the Broker by their rows' names; "Harvest Field" and
 // "Rite" are the GM's own words. So a number, a name, a creed or the king's mark changed in content, and not in the
-// books or the page's texts (or there, and not in content), turns this red.
+// books or the page's texts (or there, and not in content), turns this red. Since P1-19at1 each alignment ability's
+// numbers (the rows always on, in the same file) are held the same way: each stated in
+// the words its row gives in its creed's section of the rulebook, the rulebook's paragraph on gold, its creed's row of
+// the rulebook's orders table (since P1-19at2), its creed's row of the intro's table, and the page's two texts of its
+// creed, where its row says the place states it. Since P1-19av2 the alignments' ladder (THE_LADDER_OF_THE_ALIGNMENTS,
+// a table beside the rows) is held so too: its rungs are the seven alignments in the order both books list them, and
+// its numbers (the wage, the steps, the gulf, each rung's mercy) are in the rulebook's paragraphs on the alignments and
+// on hiring, and its entry on the Cowardly, in the words the table gives.
 // Level 0 (static): the content's rows imported (plain data), both books read as written in src/, the page's texts and
 // the GM's labels read by their syntax trees (tests/lib/source.ts); nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from 'vitest';
 import {
+  ALIGNMENT_ABILITIES,
   THE_ALIGNMENT_ORDERS,
-  type ANumberOfAnAlignmentOrder,
-  type AnAlignmentOrder,
-} from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+  THE_LADDER_OF_THE_ALIGNMENTS,
+  type ANumberOfAnAlignmentAbility,
+  type ANumberOfTheLadder,
+  type AnAlignmentAbility,
+  type AnAlignmentAbilityGivenAsAnOrder,
+  type TheLadderOfTheAlignments,
+} from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { ROOT } from '../../tools/build.ts';
 import { entriesOf, stringsOf } from '../lib/source.ts';
 
 const RULEBOOK = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules.html'), 'utf8');
 const INTRO = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules-intro.html'), 'utf8');
-const ROWS: readonly AnAlignmentOrder[] = Object.values(THE_ALIGNMENT_ORDERS);
+const ROWS: readonly AnAlignmentAbilityGivenAsAnOrder[] = Object.values(THE_ALIGNMENT_ORDERS);
 const KING = '<span class="pill k">king</span>';
 
 /** The markup dropped, again until none is left (a tag a first pass would leave behind is dropped too). */
@@ -63,9 +76,24 @@ const theRowsOf = (table: string): string[][] =>
 
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const THE_TURN_IT_LASTS_UNTIL: Readonly<Record<number, string>> = { 1: 'the following turn' };
+const THE_MULTIPLES: Readonly<Record<number, string>> = { 2: 'double' };
+/** A share as the books write it as a fraction (P1-19ax1: Divine grace's half health). */
+const THE_FRACTIONS: Readonly<Record<number, string>> = { 0.5: 'half' };
 /** A number as the books write it, as its row says. */
-function written(n: ANumberOfAnAlignmentOrder): string {
+function written(n: ANumberOfAnAlignmentAbility | ANumberOfTheLadder): string {
   if (n.writtenAs === 'as it is') return String(n.value);
+  if (n.writtenAs === 'as a percentage') return `${String(n.value)}%`;
+  if (n.writtenAs === 'as a multiplier') return `×${String(n.value)}`;
+  if (n.writtenAs === 'as a multiple') {
+    const m = typeof n.value === 'number' ? THE_MULTIPLES[n.value] : undefined;
+    if (m === undefined) throw new Error(`no words for ${String(n.value)} as a multiple`);
+    return m;
+  }
+  if (n.writtenAs === 'as a fraction') {
+    const f = typeof n.value === 'number' ? THE_FRACTIONS[n.value] : undefined;
+    if (f === undefined) throw new Error(`no words for ${String(n.value)} as a fraction`);
+    return f;
+  }
   const words = n.writtenAs === 'as a word' ? WORDS : THE_TURN_IT_LASTS_UNTIL;
   const w = typeof n.value === 'number' ? words[n.value] : undefined;
   if (w === undefined) throw new Error(`no words for ${String(n.value)} ${n.writtenAs}`);
@@ -94,8 +122,19 @@ function theEntriesOfItsCreedsSection(b: TheBooks, creed: string): string[] {
   return [...its.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((li) => asAReaderSeesIt(li[1] ?? ''));
 }
 
+/** The heading of a creed's section in the rulebook, as a reader sees it ("💀 Undead — zeal 0%"), or nothing. */
+function theHeadingOfItsCreedsSection(b: TheBooks, creed: string): string {
+  const section = thePartOf(b.rulebook, '<section id="alignments">', '</section>');
+  const at = section.search(new RegExp(`<h3>[^<]* ${creed} <span`));
+  const end = section.indexOf('</h3>', at);
+  return at < 0 || end < 0 ? '' : asAReaderSeesIt(section.slice(at, end));
+}
+
+/** Whether the king alone gives the order (the books mark it "king"). */
+const theKingAlone = (row: AnAlignmentAbilityGivenAsAnOrder): boolean => row.howItIsUsed === "a king's order";
+
 /** What a row breaks in the books: each place its name, creed, king's mark or a number isn't as the row says. */
-function whatARowBreaks(row: AnAlignmentOrder, b: TheBooks): string[] {
+function whatARowBreaks(row: AnAlignmentAbilityGivenAsAnOrder, b: TheBooks): string[] {
   const broken: string[] = [];
   const named = `<strong>${row.name}</strong>`;
   // the rulebook's orders table
@@ -103,23 +142,23 @@ function whatARowBreaks(row: AnAlignmentOrder, b: TheBooks): string[] {
   const [cells] = inTheTable;
   if (inTheTable.length !== 1 || !cells) broken.push(`the orders table has ${String(inTheTable.length)} rows of it`);
   else {
-    if (!asAReaderSeesIt(cells[0] ?? '').endsWith(` ${row.creed}`)) broken.push("the orders table's creed");
-    if ((cells[1] ?? '').includes(KING) !== row.theKingAlone) broken.push("the orders table's king mark");
+    if (!asAReaderSeesIt(cells[0] ?? '').endsWith(` ${row.alignment}`)) broken.push("the orders table's creed");
+    if ((cells[1] ?? '').includes(KING) !== theKingAlone(row)) broken.push("the orders table's king mark");
   }
   // the rulebook's creed section
-  const entries = theEntriesOfItsCreedsSection(b, row.creed).filter((e) => e.startsWith(row.name));
+  const entries = theEntriesOfItsCreedsSection(b, row.alignment).filter((e) => e.startsWith(row.name));
   const [entry] = entries;
   if (entries.length !== 1 || entry === undefined)
     broken.push(`its creed's section has ${String(entries.length)} entries of it`);
   else {
-    if (entry.startsWith(`${row.name} (king`) !== row.theKingAlone) broken.push("its creed's section's king mark");
+    if (entry.startsWith(`${row.name} (king`) !== theKingAlone(row)) broken.push("its creed's section's king mark");
     for (const [what, n] of Object.entries(row.theNumbers)) {
       const words = n.inItsCreedsSection.replace('{N}', written(n));
       if (!entry.includes(words)) broken.push(`its creed's section's ${what}: "${words}"`);
     }
   }
   // the intro's table
-  const inTheIntro = theIntrosTable(b).filter((c) => (c[0] ?? '').includes(`<strong>${row.creed}</strong>`));
+  const inTheIntro = theIntrosTable(b).filter((c) => (c[0] ?? '').includes(`<strong>${row.alignment}</strong>`));
   const action = inTheIntro[0]?.at(-1) ?? '';
   if (inTheIntro.length !== 1 || !action.startsWith(named)) broken.push("the intro's table's name");
   else
@@ -143,11 +182,11 @@ const THE_JOIN_FORM = 'ui/player/briefing-and-submit.ts';
 const asAReaderSeesThePagesText = (text: string): string => text.split('**').join('').replace(/\s+/g, ' ').trim();
 
 /** What a row breaks in the page's texts: each place its name or a number isn't as the row says. */
-function whatARowBreaksInThePagesTexts(row: AnAlignmentOrder, texts: ThePagesTexts): string[] {
+function whatARowBreaksInThePagesTexts(row: AnAlignmentAbilityGivenAsAnOrder, texts: ThePagesTexts): string[] {
   const broken: string[] = [];
-  const summary = texts.theReportsSummaries[row.creed];
+  const summary = texts.theReportsSummaries[row.alignment];
   if (summary === undefined) broken.push('the report has no summary of its creed');
-  const descriptions = texts.theJoinFormsStrings.filter((s) => s.includes(`**${row.creed}:**`));
+  const descriptions = texts.theJoinFormsStrings.filter((s) => s.includes(`**${row.alignment}:**`));
   const [description] = descriptions;
   if (descriptions.length !== 1)
     broken.push(`the join form has ${String(descriptions.length)} descriptions of its creed`);
@@ -185,7 +224,11 @@ const TEXTS: ThePagesTexts = {
 };
 
 /** A row with one of its numbers planted as another value. */
-const aRowWithTheNumber = (row: AnAlignmentOrder, what: string, value: number): AnAlignmentOrder => {
+const aRowWithTheNumber = (
+  row: AnAlignmentAbilityGivenAsAnOrder,
+  what: string,
+  value: number,
+): AnAlignmentAbilityGivenAsAnOrder => {
   const n = row.theNumbers[what];
   if (!n) throw new Error(`no ${what}`);
   return { ...row, theNumbers: { ...row.theNumbers, [what]: { ...n, value } } };
@@ -221,7 +264,7 @@ test('neither table names a signature order with no row, and each creed has one 
   const names = ROWS.map((row) => row.name);
   expect(theOrdersNamed(theOrdersTable(BOOKS), (cells) => cells[1])).toEqual(names);
   expect(theOrdersNamed(theIntrosTable(BOOKS), (cells) => cells.at(-1)).sort()).toEqual([...names].sort());
-  expect(new Set(ROWS.map((row) => row.creed)).size).toBe(ROWS.length);
+  expect(new Set(ROWS.map((row) => row.alignment)).size).toBe(ROWS.length);
 });
 
 test("the rows' numbers are the ones the books state today", () => {
@@ -256,11 +299,11 @@ test('planted, a number, a king mark or a creed in a row alone, or a number in a
     `its creed's section's theWildHuntsBeasts: "the Wild Hunt binds three of"`,
   ]);
   expect(() => whatARowBreaks(aPrice(rite, 'theWildHuntsTurnsMore', 2), BOOKS)).toThrow(/no words for 2/);
-  expect(whatARowBreaks({ ...harvest, theKingAlone: true }, BOOKS)).toEqual([
+  expect(whatARowBreaks({ ...harvest, howItIsUsed: "a king's order" }, BOOKS)).toEqual([
     "the orders table's king mark",
     "its creed's section's king mark",
   ]);
-  expect(whatARowBreaks({ ...broker, creed: 'Good' }, BOOKS)).toEqual([
+  expect(whatARowBreaks({ ...broker, alignment: 'Good' }, BOOKS)).toEqual([
     "the orders table's creed",
     "its creed's section has 0 entries of it",
     "the intro's table's name",
@@ -324,7 +367,7 @@ test('planted, a "3g" in each of the page\'s texts, or a number or a name in a r
     "the join form's description's name",
   ]);
   expect(
-    whatARowBreaksInThePagesTexts({ ...broker, creed: 'Druidic' }, aJoinFormWith('**Druidic:**', 'Druidic:')),
+    whatARowBreaksInThePagesTexts({ ...broker, alignment: 'Druidic' }, aJoinFormWith('**Druidic:**', 'Druidic:')),
   ).toEqual([
     'the join form has 0 descriptions of its creed',
     "the report's summary's name",
@@ -395,4 +438,336 @@ test.for([
   expect(seen, `${text} is found once`).not.toBe('');
   for (const words of says) expect(seen, `${text} says "${words}"`).toContain(words);
   for (const words of saidBefore) expect(seen, `${text} no longer says "${words}"`).not.toContain(words);
+});
+
+/** Each alignment ability's row always on, by its slug (the orders, above). */
+const ABILITIES: readonly (readonly [slug: string, row: AnAlignmentAbility])[] = Object.entries(
+  ALIGNMENT_ABILITIES,
+).filter(([, row]) => row.howItIsUsed === 'always on');
+
+/** The rulebook's paragraph on gold, as a reader sees it. */
+const theParagraphOnGold = (b: TheBooks): string =>
+  asAReaderSeesIt(thePartOf(b.rulebook, '<p>Your gold comes chiefly', '</p>'));
+/** A creed's row of the rulebook's orders table, as a reader sees it. */
+const theOrdersTableRowOf = (b: TheBooks, creed: string): string =>
+  theOrdersTable(b)
+    .filter((cells) => asAReaderSeesIt(cells[0] ?? '').endsWith(` ${creed}`))
+    .map((cells) => asAReaderSeesIt(cells.join(' ')))
+    .join(' ');
+/** A creed's row of the intro's table, as a reader sees it. */
+const theIntrosRowOf = (b: TheBooks, creed: string): string =>
+  theRowsOf(thePartOf(b.intro, '<h3>The seven alignments</h3>', '</table>'))
+    .filter((cells) => (cells[0] ?? '').includes(`<strong>${creed}</strong>`))
+    .map((cells) => asAReaderSeesIt(cells.join(' ')))
+    .join(' ');
+
+/** What an ability's row breaks in the books and the page's texts: each place one of its numbers isn't in the words its
+ *  row gives. */
+function whatAnAbilitysRowBreaks(row: AnAlignmentAbility, b: TheBooks, texts: ThePagesTexts): string[] {
+  const broken: string[] = [];
+  const descriptions = texts.theJoinFormsStrings.filter((s) => s.includes(`**${row.alignment}:**`));
+  const summary = texts.theReportsSummaries[row.alignment];
+  for (const [what, n] of Object.entries(row.theNumbers)) {
+    const places = [
+      [
+        "its creed's section",
+        n.inItsCreedsSection,
+        [theHeadingOfItsCreedsSection(b, row.alignment), ...theEntriesOfItsCreedsSection(b, row.alignment)].join(' '),
+      ],
+      ["the rulebook's paragraph on gold", n.inTheRulebooksParagraphOnGold, theParagraphOnGold(b)],
+      ["the rulebook's orders table", n.inTheRulebooksOrdersTable, theOrdersTableRowOf(b, row.alignment)],
+      ["the intro's table", n.inTheIntrosTable, theIntrosRowOf(b, row.alignment)],
+      ["the report's summary", n.inTheReportsSummary, asAReaderSeesThePagesText(summary ?? '')],
+      [
+        "the join form's description",
+        n.inTheJoinForm,
+        descriptions.length === 1 ? asAReaderSeesThePagesText(descriptions[0] ?? '') : '',
+      ],
+    ] as const;
+    for (const [place, phrase, seen] of places) {
+      if (phrase === undefined) continue;
+      const words = phrase.replace('{N}', written(n));
+      if (!seen.includes(words)) broken.push(`${place}'s ${what}: "${words}"`);
+    }
+  }
+  return broken;
+}
+
+test.for(ABILITIES)("%s: its numbers are in both books and the page's texts as its row says", ([, row]) => {
+  expect(whatAnAbilitysRowBreaks(row, BOOKS, TEXTS)).toEqual([]);
+});
+
+test("the abilities' numbers are the ones the books state today", () => {
+  expect(
+    Object.fromEntries(
+      ABILITIES.map(([slug, row]) => [
+        slug,
+        Object.fromEntries(Object.entries(row.theNumbers).map(([k, n]) => [k, n.value])),
+      ]),
+    ),
+  ).toEqual({
+    'neutral-trade': { theShareOfTheProvincesIncome: 20 },
+    'consecrated-ground-tax': { theShareMoreTax: 50 },
+    'zeal-of-a-divine-realm': { theChanceOfZeal: 50, theStrengthOfZeal: 1.3 },
+    'zeal-of-a-good-realm': { theChanceOfZeal: 40 },
+    'zeal-of-a-druidic-realm': { theChanceOfZeal: 20 },
+    'zeal-of-a-neutral-realm': { theChanceOfZeal: 10 },
+    'zeal-of-a-pagan-realm': { theChanceOfZeal: 15 },
+    'zeal-of-an-evil-realm': { theChanceOfZeal: 25 },
+    'zeal-of-an-undead-realm': { theChanceOfZeal: 0 },
+    'consecrated-ground-doubles-a-defenders-zeal': { theTimesTheChance: 2 },
+    'savage-fury': { theStrengthOfTheHost: 1.25 },
+    'skeletal-fervour': { underTheKing: 1.5, underAnyOtherCommander: 1.3 },
+    'consecrated-ground-weakens-an-unholy-attacker': { theShareWeaker: 15 },
+    'righteous-defence': { theShareStronger: 10 },
+    'banner-of-fellowship': { thePointsMoreReadily: 15 },
+    'home-of-the-wild': { theStrengthOfACreature: 1.5 },
+    'reign-of-fear': { theStrengthOfAMonster: 1.5 },
+    'the-deathless-march': {},
+    'the-neutral-mercenary-discount': { theGoldLess: 2 },
+    'the-divine-blessing': { byTheRealmsCasters: 80, byTheKingInPerson: 100 },
+    'creatures-follow-without-a-druid': {},
+    'monsters-follow-without-a-druid': {},
+    'neutral-scholars': { thePointsASageLevelAdds: 5 },
+    'divine-grace': { theFullTurnsInDeath: 1, theShareOfHealthTheFallenRiseWith: 0.5 },
+    'the-divine-rest': { theFactorOfTheHeal: 1.5 },
+    'a-pagan-victors-blood-harvest': { theGoldForEachFoeDestroyed: 1 },
+    'plunder-or-enslave': {
+      theShareOfTheTaxPlundered: 50,
+      theGradeOfTheEnslavedGarrison: 'Green',
+      theTurnsTheEnslavedProvincePaysLess: 3,
+    },
+    'graves-keep-on-undead-land': { theShareOfTheGravesThatRotEachTurn: 5 },
+    'war-without-warning-of-an-evil-realm': {},
+    'war-without-warning-of-an-undead-realm': {},
+    'a-broken-alliance-means-war-for-an-evil-realm': {},
+    'a-broken-alliance-means-war-for-an-undead-realm': {},
+    'the-risen-dead-follow-only-the-undead': {},
+    'an-undead-hero-is-undead-in-personal-combat': {},
+    'a-divine-king-starts-with-white-magic': { theLevelsMore: 1 },
+    'a-druidic-king-starts-with-druid': { theLevelsMore: 1 },
+    'an-evil-king-starts-with-druid': { theLevelsMore: 1 },
+    'a-pagan-king-starts-with-explorer': { theLevelsMore: 1 },
+    'an-undead-king-starts-with-necromancy': { theLevelsMore: 1 },
+    'an-undead-king-starts-with-a-skeletal-company': {},
+    'a-pagan-capital-opens-beside-the-ritual-stones': {},
+    'a-druidic-capital-opens-beside-creatures': {},
+    'an-evil-capital-opens-beside-monsters': {},
+    'a-druidic-wanderer-knows-the-druids-craft': {},
+    'one-divine-realm-a-game': {},
+    'one-undead-realm-a-game': {},
+  });
+});
+
+// Planted: an ability's number changed in its row alone, or in one place alone (the rulebook's creed section, its
+// paragraph on gold, the intro, the report's summary, the join form); each is found, in the place it was planted.
+test("planted, an ability's number in its row alone, or in each place that states it alone, is found", () => {
+  const trade = ALIGNMENT_ABILITIES['neutral-trade'];
+  const n = trade.theNumbers.theShareOfTheProvincesIncome;
+  expect(
+    whatAnAbilitysRowBreaks(
+      { ...trade, theNumbers: { theShareOfTheProvincesIncome: { ...n, value: 25 } } },
+      BOOKS,
+      TEXTS,
+    ),
+  ).toEqual([
+    `its creed's section's theShareOfTheProvincesIncome: "Trade: province tax income is +25%"`,
+    `the rulebook's paragraph on gold's theShareOfTheProvincesIncome: "Neutral realms add a +25% trade bonus (rounded down)"`,
+    `the intro's table's theShareOfTheProvincesIncome: "+25% tax"`,
+    `the report's summary's theShareOfTheProvincesIncome: "Province tax income flows 25% richer"`,
+    `the join form's description's theShareOfTheProvincesIncome: "+25% tax from every province"`,
+  ]);
+  const aBookWith = (from: string, to: string, inTheIntro = false): TheBooks => {
+    const page = inTheIntro ? INTRO : RULEBOOK;
+    expect(page.split(from)).toHaveLength(2);
+    return inTheIntro ? { ...BOOKS, intro: page.replace(from, to) } : { ...BOOKS, rulebook: page.replace(from, to) };
+  };
+  expect(
+    whatAnAbilitysRowBreaks(trade, aBookWith('tax income is <strong>+20%</strong>', 'tax income is +25%'), TEXTS),
+  ).toEqual([`its creed's section's theShareOfTheProvincesIncome: "Trade: province tax income is +20%"`]);
+  expect(
+    whatAnAbilitysRowBreaks(trade, aBookWith('<strong>+20% trade bonus</strong>', '+25% trade bonus'), TEXTS),
+  ).toEqual([
+    `the rulebook's paragraph on gold's theShareOfTheProvincesIncome: "Neutral realms add a +20% trade bonus (rounded down)"`,
+  ]);
+  expect(whatAnAbilitysRowBreaks(trade, aBookWith('+20% tax; cheapest', '+25% tax; cheapest', true), TEXTS)).toEqual([
+    `the intro's table's theShareOfTheProvincesIncome: "+20% tax"`,
+  ]);
+  const summary = TEXTS.theReportsSummaries['Neutral'] ?? '';
+  expect(summary.split('flows 20% richer')).toHaveLength(2);
+  const aSummary: ThePagesTexts = {
+    ...TEXTS,
+    theReportsSummaries: { ...TEXTS.theReportsSummaries, Neutral: summary.replace('flows 20%', 'flows 25%') },
+  };
+  expect(whatAnAbilitysRowBreaks(trade, BOOKS, aSummary)).toEqual([
+    `the report's summary's theShareOfTheProvincesIncome: "Province tax income flows 20% richer"`,
+  ]);
+  expect(TEXTS.theJoinFormsStrings.filter((s) => s.includes('+20% tax from every province'))).toHaveLength(1);
+  const aJoinForm: ThePagesTexts = {
+    ...TEXTS,
+    theJoinFormsStrings: TEXTS.theJoinFormsStrings.map((s) => s.replace('+20% tax from', '+25% tax from')),
+  };
+  expect(whatAnAbilitysRowBreaks(trade, BOOKS, aJoinForm)).toEqual([
+    `the join form's description's theShareOfTheProvincesIncome: "+20% tax from every province"`,
+  ]);
+});
+
+// Planted (P1-19at2): the consecrated ground's 50% changed in its row alone, or in each of the six places alone (the
+// rulebook's creed section and orders table, the intro, the report's summary, the join form); each is found where planted.
+test("planted, the consecrated ground's share in its row alone, or in each place that states it alone, is found", () => {
+  const tax = ALIGNMENT_ABILITIES['consecrated-ground-tax'];
+  const n = tax.theNumbers.theShareMoreTax;
+  expect(
+    whatAnAbilitysRowBreaks({ ...tax, theNumbers: { theShareMoreTax: { ...n, value: 40 } } }, BOOKS, TEXTS),
+  ).toEqual([
+    `its creed's section's theShareMoreTax: "Consecrated ground gives +40% tax"`,
+    `the rulebook's orders table's theShareMoreTax: "+40% tax, stauncher defenders"`,
+    `the intro's table's theShareMoreTax: "+40% tax and holy ground"`,
+    `the report's summary's theShareMoreTax: "Consecrated ground yields +40% tax"`,
+    `the join form's description's theShareMoreTax: "Consecrate provinces: +40% tax"`,
+  ]);
+  const aBookWith = (from: string, to: string, inTheIntro = false): TheBooks => {
+    const page = inTheIntro ? INTRO : RULEBOOK;
+    expect(page.split(from)).toHaveLength(2);
+    return inTheIntro ? { ...BOOKS, intro: page.replace(from, to) } : { ...BOOKS, rulebook: page.replace(from, to) };
+  };
+  expect(
+    whatAnAbilitysRowBreaks(tax, aBookWith('ground gives <strong>+50% tax</strong>', 'ground gives +40% tax'), TEXTS),
+  ).toEqual([`its creed's section's theShareMoreTax: "Consecrated ground gives +50% tax"`]);
+  expect(whatAnAbilitysRowBreaks(tax, aBookWith('+50% tax, stauncher', '+40% tax, stauncher'), TEXTS)).toEqual([
+    `the rulebook's orders table's theShareMoreTax: "+50% tax, stauncher defenders"`,
+  ]);
+  expect(
+    whatAnAbilitysRowBreaks(tax, aBookWith('+50% tax and holy ground', '+40% tax and holy ground', true), TEXTS),
+  ).toEqual([`the intro's table's theShareMoreTax: "+50% tax and holy ground"`]);
+  const summary = TEXTS.theReportsSummaries['Divine'] ?? '';
+  expect(summary.split('yields +50% tax')).toHaveLength(2);
+  const aSummary: ThePagesTexts = {
+    ...TEXTS,
+    theReportsSummaries: {
+      ...TEXTS.theReportsSummaries,
+      Divine: summary.replace('yields +50% tax', 'yields +40% tax'),
+    },
+  };
+  expect(whatAnAbilitysRowBreaks(tax, BOOKS, aSummary)).toEqual([
+    `the report's summary's theShareMoreTax: "Consecrated ground yields +50% tax"`,
+  ]);
+  expect(TEXTS.theJoinFormsStrings.filter((s) => s.includes('provinces: +50% tax'))).toHaveLength(1);
+  const aJoinForm: ThePagesTexts = {
+    ...TEXTS,
+    theJoinFormsStrings: TEXTS.theJoinFormsStrings.map((s) => s.replace('provinces: +50% tax', 'provinces: +40% tax')),
+  };
+  expect(whatAnAbilitysRowBreaks(tax, BOOKS, aJoinForm)).toEqual([
+    `the join form's description's theShareMoreTax: "Consecrate provinces: +50% tax"`,
+  ]);
+});
+
+// The alignments' ladder (P1-19av2): its rungs in the books' order, and each of its numbers in the words it gives.
+/** Each number of the ladder, by what it is (a rung's mercy by its alignment). */
+const theLaddersNumbers = (
+  ladder: TheLadderOfTheAlignments,
+): (readonly [what: string, n: ANumberOfTheLadder, creed?: string])[] => [
+  ...Object.entries(ladder.theNumbers),
+  ...ladder.theRungs.map(
+    (rung) => [`${rung.alignment}'s mercy`, rung.theChanceAFoeSparesAPlea, rung.alignment] as const,
+  ),
+];
+/** What the ladder breaks in the rulebook: each place one of its numbers isn't in the words it gives. */
+function whatTheLadderBreaks(ladder: TheLadderOfTheAlignments, b: TheBooks): string[] {
+  const broken: string[] = [];
+  const paragraphs = [
+    ['the paragraph on the alignments', '<p>Alignment sets your battle fervour', '</p>'],
+    ['the paragraph on hiring', '<p>When you <strong>hire a wandering hero</strong>', '</p>'],
+    ["the Cowardly's entry", '<li><strong>Cowardly — Opening Shot &amp; Beg for Mercy.</strong>', '</li>'],
+  ] as const;
+  const [onTheAlignments, onHiring, onTheCowardly] = paragraphs.map(([, from, to]) =>
+    asAReaderSeesIt(thePartOf(b.rulebook, from, to)),
+  );
+  for (const [what, n, creed] of theLaddersNumbers(ladder)) {
+    const places = [
+      [paragraphs[0][0], n.inTheRulebooksParagraphOnTheAlignments, onTheAlignments],
+      [paragraphs[1][0], n.inTheRulebooksParagraphOnHiring, onHiring],
+      [paragraphs[2][0], n.inTheRulebooksEntryOnTheCowardly, onTheCowardly],
+      ["its creed's section", n.inItsCreedsSection, creed ? theEntriesOfItsCreedsSection(b, creed).join(' ') : ''],
+    ] as const;
+    for (const [place, phrase, seen] of places) {
+      if (phrase === undefined) continue;
+      const words = phrase.replace('{N}', written(n));
+      if (!(seen ?? '').includes(words)) broken.push(`${place}'s ${what}: "${words}"`);
+    }
+  }
+  return broken;
+}
+
+test("the ladder's rungs are the seven alignments, in the order both books list them", () => {
+  const order = THE_LADDER_OF_THE_ALIGNMENTS.theRungs.map((rung) => rung.alignment);
+  expect(order).toEqual(['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead']);
+  for (const book of [RULEBOOK, INTRO]) expect(asAReaderSeesIt(book)).toContain(order.join(', '));
+});
+
+test("the ladder's numbers are in the rulebook as it says, and are the ones the books state today", () => {
+  expect(whatTheLadderBreaks(THE_LADDER_OF_THE_ALIGNMENTS, BOOKS)).toEqual([]);
+  expect(Object.fromEntries(theLaddersNumbers(THE_LADDER_OF_THE_ALIGNMENTS).map(([k, n]) => [k, n.value]))).toEqual({
+    theWageOfAHeroAtNoDistance: 2,
+    theStepsForEachGoldMore: 2,
+    theStepsOfTheGulf: 6,
+    theStepsAKingsHeroesAreDealtWithin: 1,
+    "Divine's mercy": 75,
+    "Good's mercy": 75,
+    "Druidic's mercy": 75,
+    "Neutral's mercy": 50,
+    "Pagan's mercy": 50,
+    "Evil's mercy": 20,
+    "Undead's mercy": 20,
+  });
+  expect(
+    THE_LADDER_OF_THE_ALIGNMENTS.theRungs.filter((rung) => rung.aFoesRefusalIsLaughter).map((r) => r.alignment),
+  ).toEqual(['Evil', 'Undead']);
+});
+
+// Planted: a number of the ladder changed in the table alone, or in the rulebook alone; each is found where planted.
+test('planted, a number of the ladder in the table alone, or in the rulebook alone, is found', () => {
+  const ladder = THE_LADDER_OF_THE_ALIGNMENTS;
+  const { theNumbers, theRungs } = ladder;
+  expect(
+    whatTheLadderBreaks(
+      {
+        ...ladder,
+        theNumbers: {
+          ...theNumbers,
+          theWageOfAHeroAtNoDistance: { ...theNumbers.theWageOfAHeroAtNoDistance, value: 3 },
+          theStepsOfTheGulf: { ...theNumbers.theStepsOfTheGulf, value: 5 },
+        },
+        theRungs: theRungs.map((rung) =>
+          rung.alignment === 'Evil'
+            ? { ...rung, theChanceAFoeSparesAPlea: { ...rung.theChanceAFoeSparesAPlea, value: 25 } }
+            : rung,
+        ),
+      },
+      BOOKS,
+    ),
+  ).toEqual([
+    `the paragraph on the alignments's theWageOfAHeroAtNoDistance: "a wandering hero costs 3g/turn"`,
+    `the paragraph on hiring's theWageOfAHeroAtNoDistance: "3g for a close match"`,
+    `the paragraph on the alignments's theStepsOfTheGulf: "across the full gulf of five steps"`,
+    `the Cowardly's entry's Evil's mercy: "25% by Evil or Undead"`,
+    `its creed's section's Evil's mercy: "A felled Cowardly enemy begging your mercy is spared only 25% of the time"`,
+  ]);
+  const aBookWith = (from: string, to: string): TheBooks => {
+    expect(RULEBOOK.split(from)).toHaveLength(2);
+    return { ...BOOKS, rulebook: RULEBOOK.replace(from, to) };
+  };
+  expect(whatTheLadderBreaks(ladder, aBookWith('mercy is spared <strong>75%</strong>', 'mercy is spared 70%'))).toEqual(
+    [`its creed's section's Good's mercy: "A felled Cowardly enemy who begs your mercy is spared 75% of the time"`],
+  );
+  expect(whatTheLadderBreaks(ladder, aBookWith('+1g for every two steps', '+1g for every three steps'))).toEqual([
+    `the paragraph on the alignments's theStepsForEachGoldMore: "+1g for every two steps between your alignment and theirs"`,
+  ]);
+  expect(
+    whatTheLadderBreaks(ladder, aBookWith('life: spared <strong>75%</strong>', 'life: spared <strong>70%</strong>')),
+  ).toEqual([
+    `the Cowardly's entry's Divine's mercy: "spared 75% of the time by a Good, Divine or Druidic foe"`,
+    `the Cowardly's entry's Good's mercy: "spared 75% of the time by a Good, Divine or Druidic foe"`,
+    `the Cowardly's entry's Druidic's mercy: "spared 75% of the time by a Good, Divine or Druidic foe"`,
+  ]);
 });

@@ -9,7 +9,7 @@
 // read from src/ by its syntax tree (tests/lib/source.ts): the value it is declared with, at top level or inside a
 // function; until plan P1-09a it was matched in the built GM portal's text.
 const fs=require('fs'), path=require('path');
-const {compactPage,initializersOf,pageScripts}=require('./lib/source.ts');
+const {compactOf,compactPage,initializersOf,pageScripts}=require('./lib/source.ts');
 const GM='kingdoms-call-gm-portal.html';
 const SITE=process.env.KC_SITE||path.join(__dirname,'..','site');
 const stripTags=s=>{ let t=String(s); for(;;){ const u=t.replace(/<[^>]*>/g,''); if(u===t) return u; t=u; } }; // until stable (as the other words tests do)
@@ -99,8 +99,12 @@ ok(R.includes(`Rest — recover ${Math.round(rest*100)}% of maximum hit points`)
 // Every home holds a Weak lair (R-018).
 ok(R.includes('Every home province holds a Weak lair'),'the world section promises the home lair');
 
-// Graves crumble 10% a turn.
-ok(/\?0\.05:0\.1;/.test(compactPage(GM)),'the engine\'s grave decay is 10% (5% under an Undead realm)');
+// Graves crumble 10% a turn: the turn's own rate, and 5% under an Undead realm, its row's 5 / 100 (since P1-19ax2 the
+// Undead rate is a row of the alignment abilities' family, read through the registry's runner).
+ok(/LetsTheGravesOnItsLandRotAt\(G\.players\[p\.owner\]\?\.alignment\)\?\?0\.1:0\.1;/.test(compactPage(GM))&&
+  /'graves-keep-on-undead-land':\{howItIsUsed:'always on',alignment:'Undead',theNumbers:\{theShareOfTheGravesThatRotEachTurn:\{value:5,/.test(compactOf('content/alignment-abilities-their-keys-names-numbers-and-words.ts'))&&
+  /\['graves-keep-on-undead-land'\]\.theNumbers\.theShareOfTheGravesThatRotEachTurn\.value\/100\}/.test(compactOf('engine/rules/alignment-abilities/the-graves-and-the-undead-of-a-realms-alignment.ts')),
+  'the engine\'s grave decay is 10% (5% under an Undead realm)');
 ok(R.includes('grave has a 10% chance a turn to crumble'),'the rulebook gives the 10% grave decay');
 
 // The Druid ward misses elementals and aberrations.

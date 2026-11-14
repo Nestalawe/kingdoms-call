@@ -7,7 +7,7 @@ import {
   doARealmsDiscoveriesWeightTheLinesBehindTheFront,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
-import { consecratedIds } from '../heroes/fame-and-consecration.ts';
+import { consecratedIds } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import {
   enemyCharVisibleTo,
   featDiscovered,

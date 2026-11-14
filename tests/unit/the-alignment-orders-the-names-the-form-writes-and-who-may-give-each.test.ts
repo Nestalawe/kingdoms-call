@@ -10,7 +10,7 @@
 // Level 1 (unit): two functions of a row and a creed or a rank, and the form's names.
 import { expect, test } from 'vitest';
 import { KC_ALIGNMENTS } from '../../src/content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   aHeroMayGiveTheAlignmentOrderAsKingOrNot,
   aRealmOfThisCreedMayGiveTheAlignmentOrder,
@@ -56,7 +56,14 @@ test('the names the order form writes: each by its slug, and the orders by their
     'Perform Rite',
   ]);
   const byName = theAlignmentOrdersByTheNameTheFormWrites();
-  expect(Object.entries(byName).map(([name, order]) => [name, order.key, order.creed, order.theKingAlone])).toEqual([
+  expect(
+    Object.entries(byName).map(([name, order]) => [
+      name,
+      order.key,
+      order.alignment,
+      order.howItIsUsed === "a king's order",
+    ]),
+  ).toEqual([
     ['Consecrate', 'consecrate', 'Divine', true],
     ['Call to Arms', 'call_to_arms', 'Good', true],
     ['Broker', 'broker', 'Neutral', true],

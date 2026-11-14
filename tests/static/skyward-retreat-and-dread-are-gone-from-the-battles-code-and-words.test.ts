@@ -75,7 +75,7 @@ describe("Dread is gone: Wyverns overhead no longer cut the other side's fanatic
   });
 
   test("each side's fanaticism chance reads its own force once, and the other side's not at all", () => {
-    const fanaticism = compactCode(statementsBetween(BETWEEN_HEROES, 'combatVsChar', 'atkFanChance', 'defFanatic'));
+    const fanaticism = compactCode(statementsBetween(BETWEEN_HEROES, 'combatVsChar', '_atkFanPct', 'defFanatic'));
     const reads = (name: string) => fanaticism.match(new RegExp(`\\b${name}\\b`, 'g'))?.length ?? 0;
     expect(reads('atkArmies')).toBe(1);
     expect(reads('defArmies')).toBe(1);

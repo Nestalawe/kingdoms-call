@@ -1,6 +1,7 @@
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
-import { consecratedIds, nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
+import { nearestConsecratedProv, normaliseStrandedGuards } from '../heroes/fame-and-consecration.ts';
+import { liftConsecratedGround } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import {
   doARealmsDiscoveriesChartAProvince,
   doARealmsDiscoveriesHealTheWounded,
@@ -19,6 +20,10 @@ import {
 import type { TurnContext } from './context.ts';
 import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import {
+  theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt,
+  theReturnARealmsAlignmentGivesItsFallen,
+} from '../rules/the-registry-of-alignment-abilities.ts';
 import type { Character, GameState, Grave, Province, Realm } from '../../schemas/saved-game-state.ts';
 
 /** The state as the new turn's end clears it: the turn's lists of the heroes raised and the orders held for the
@@ -237,11 +242,14 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
     .filter(
       (g): g is ADivineRealmsGrave =>
         g.player !== null &&
-        G.players[g.player]?.alignment === 'Divine' &&
+        theReturnARealmsAlignmentGivesItsFallen(G.players[g.player]?.alignment) !== null && // Divine grace (its row)
         (!g._monarch || G.characters.some((h) => h.id === g.id && h._divineReturn)),
     )
     .forEach((grave) => {
-      if (G.turn < (grave.killedOnTurn || 0) + 2) return; // still serving their turn in death
+      // its turns in death and its share of health, from the row (a pure read: the filter took it, so it gives one)
+      const theReturn = theReturnARealmsAlignmentGivesItsFallen(G.players[grave.player]?.alignment);
+      if (theReturn === null) return;
+      if (G.turn < (grave.killedOnTurn || 0) + theReturn.theFullTurnsInDeath + 1) return; // still serving their turn in death
       const hero = G.characters.find((h) => h.id === grave.id);
       if (!hero) return;
       const _wasKing = !!grave._monarch; // Divine kings return the same way
@@ -269,14 +277,10 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
         delete hero._divineReturn;
         if (playerP) delete playerP._resurrectableMonarchId;
       }
-      {
-        const _cl = consecratedIds(playerP);
-        const _ci = _cl.indexOf(homeProv.id);
-        if (_ci >= 0) _cl.splice(_ci, 1);
-      }
+      liftConsecratedGround(playerP, homeProv.id); // the return spends it (the marks' module, plan P1-19ay2)
       // Resurrect — strip armies and items (divine gift, not a free ride)
       hero.alive = true;
-      hero.hp = Math.floor(hero.maxHp * 0.5) || 8;
+      hero.hp = Math.floor(hero.maxHp * theReturn.theShareOfHealth) || 8;
       hero.killedThisTurn = false;
       hero.armies = [];
       hero.items = [];
@@ -307,7 +311,12 @@ export function newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWa
   // provinces owned by an UNDEAD realm (necromantic preservation — the advertised perk, now real).
   G.world.provinces.forEach((p) => {
     if (!p.battleGraves || p.battleGraves.length === 0) return;
-    let decay = p.owner != null && G.players[p.owner]?.alignment === 'Undead' ? 0.05 : 0.1;
+    // the Undead land's rate (the alignment abilities' registry's since P1-19ax2: "turnEnd: a realm's alignment keeps
+    // the graves on its land"), from its row; any other land's 0.1
+    let decay =
+      p.owner != null
+        ? (theRateARealmsAlignmentLetsTheGravesOnItsLandRotAt(G.players[p.owner]?.alignment) ?? 0.1)
+        : 0.1;
     // az08 Embalmers (the discoveries' registry's since plan P1-19ag: "turnEnd: a realm's discoveries keep the graves",
     // the lowest rate)
     if (p.owner != null) decay = theRateARealmsDiscoveriesLetTheGravesRotAt(G.players[p.owner], decay);

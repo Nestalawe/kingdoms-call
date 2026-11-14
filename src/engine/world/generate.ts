@@ -28,6 +28,17 @@ import {
 } from './tables.ts';
 import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import { ALIGNMENTS_P } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { THE_LADDER_OF_THE_ALIGNMENTS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  doTheRitualStonesStandWithARealmOf,
+  doesACapitalOfTheAlignmentOpenBesideCreatures,
+  doesACapitalOfTheAlignmentOpenBesideMonsters,
+  doesACapitalOfTheAlignmentOpenBesideTheRitualStones,
+  doesAKingOfTheAlignmentStartWithASkeletalCompany,
+  theSkillAKingOfTheAlignmentStartsWith,
+  theSkillAWandererOfTheAlignmentIsSureOf,
+  theWanderingHeroesDeckOfAlignments,
+} from '../rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
 import { ABILITIES_P, shuffleP } from '../battle/fortune.ts';
 import {
   SEA_GUARDIAN_NAMES,
@@ -170,7 +181,8 @@ export function generateNewGame(
   // Ritual sites (the old faith's standing stones) are only usable by a Pagan realm's Perform Rite.
   // With no Pagan player in the game they are dead weight — nobody can ever use them — so we
   // suppress them entirely at world gen. See the ritual-site block in the feature pass below.
-  const hasPaganPlayer = setupPlayers.some((sp) => sp.alignment === 'Pagan');
+  // (the sites' table holds the alignment that must be in the game: P1-19ay1)
+  const hasPaganPlayer = setupPlayers.some((sp) => doTheRitualStonesStandWithARealmOf(sp.alignment));
   // the content's tables by any name: the humanoid races, the primal units' rows, the land armies by terrain and race,
   // the features by terrain, the units' names by type
   const humanoidRaces: ReadonlySet<string | null | undefined> = HUMANOID_RACES_GEN;
@@ -1324,8 +1336,12 @@ export function generateNewGame(
     // mirror). We convert a free neighbour, preferring one that is NOT the king's own-race homeland
     // guaranteed above.
     {
+      // the wild country a capital of the realm's alignment opens beside, from its rows (P1-19ay1)
       const _align = sp.alignment;
-      if (_align === 'Pagan' || _align === 'Druidic' || _align === 'Evil') {
+      const _besideTheStones = doesACapitalOfTheAlignmentOpenBesideTheRitualStones(_align),
+        _besideCreatures = doesACapitalOfTheAlignmentOpenBesideCreatures(_align),
+        _besideMonsters = doesACapitalOfTheAlignmentOpenBesideMonsters(_align);
+      if (_besideTheStones || _besideCreatures || _besideMonsters) {
         const _allFreeNbrs = getNeighborsP(best, cols, rows, provinces).filter(
           (n) => n.terrain !== 'sea' && n.owner == null,
         );
@@ -1347,7 +1363,7 @@ export function generateNewGame(
           return notOwn.length ? notOwn : list;
         };
         let cand: AProvinceAsTheWorldIsMadeIt | undefined;
-        if (_align === 'Pagan') {
+        if (_besideTheStones) {
           const pool = _pick(_freeNbrs);
           // prefer an existing forest/jungle neighbour; else re-terrain one to forest/jungle
           cand = pool.find((n) => n.terrain === 'forest' || n.terrain === 'jungle') ?? pool[0];
@@ -1360,8 +1376,8 @@ export function generateNewGame(
           cand = _pick(_freeNbrs)[0];
         }
         if (cand) {
-          const creatureOnly = _align === 'Druidic',
-            monsterOnly = _align === 'Evil';
+          const creatureOnly = _besideCreatures,
+            monsterOnly = _besideMonsters;
           const bank = creatureOnly
             ? (creaturesByTerrain[cand.terrain] ?? ['Stone Giants'])
             : monsterOnly
@@ -1379,7 +1395,7 @@ export function generateNewGame(
             unitName: theOneMadeSure(armyUnitName(primalUnit)),
           }));
           cand.npcArmies = cand.neutralDefenders.length;
-          if (_align === 'Pagan' && !cand.features.some((f) => f.ritualSite)) {
+          if (_besideTheStones && !cand.features.some((f) => f.ritualSite)) {
             cand.features.push({
               name: theOneMadeSure(RITUAL_SITE_NAMES[Math.floor(kcRng() * RITUAL_SITE_NAMES.length)]),
               ritualSite: true,
@@ -1458,13 +1474,12 @@ export function generateNewGame(
 
     // Build king skills
     const kingSkills: Partial<Record<string, number>> = { melee: 2, archery: 1, sage: 1 };
-    if (sp.alignment === 'Divine') kingSkills['white'] = (kingSkills['white'] ?? 0) + 1;
-    if (sp.alignment === 'Druidic') kingSkills['druid'] = (kingSkills['druid'] ?? 0) + 1;
-    if (sp.alignment === 'Evil') kingSkills['druid'] = (kingSkills['druid'] ?? 0) + 1; // 2026-10-13 (Toby): the mirror — an Evil king drives his Monsters from turn one
-    if (sp.alignment === 'Pagan') kingSkills['explorer'] = (kingSkills['explorer'] ?? 0) + 1; // the old faith walks the wild places
-    if (sp.alignment === 'Undead') {
-      kingSkills['necromancy'] = (kingSkills['necromancy'] ?? 0) + 1;
-    }
+    // his alignment's skill a level more, from its row (P1-19ay1): Divine White, Druidic Druid, Evil Druid (2026-10-13,
+    // Toby: the mirror — an Evil king drives his Monsters from turn one), Pagan Explorer (the old faith walks the wild
+    // places), Undead Necromancy
+    const _kingsSkill = theSkillAKingOfTheAlignmentStartsWith(sp.alignment);
+    if (_kingsSkill)
+      kingSkills[_kingsSkill.theSkill] = (kingSkills[_kingsSkill.theSkill] ?? 0) + _kingsSkill.theLevelsMore;
     // Normalise any mixed-case skill keys from the join form to engine keys
     const SKILL_NORM: Readonly<Partial<Record<string, string>>> = {
       Melee: 'melee',
@@ -1548,8 +1563,8 @@ export function generateNewGame(
     ABILITIES_P.forEach((ab) => {
       king.aptitude[ab] = rP(1, 4);
     });
-    // Undead kings get one skeletal starter army in addition to normal starting armies
-    if (sp.alignment === 'Undead') {
+    // Undead kings get one skeletal starter army in addition to normal starting armies (its row: P1-19ay1)
+    if (doesAKingOfTheAlignmentStartWithASkeletalCompany(sp.alignment)) {
       king.armies.push({
         type: 'Shieldwall Levies',
         quality: 'Average',
@@ -1567,6 +1582,8 @@ export function generateNewGame(
     // hero at his side (who would lead his native troops at −20%).
     const _RACE_RIVAL: Readonly<Partial<Record<string, string>>> = { ...KC_RIVAL_RACE };
     const heroIds: number[] = [];
+    // each is dealt an alignment within the ladder's steps of the king's (P1-19av2: one), by the rungs' order
+    const _within = THE_LADDER_OF_THE_ALIGNMENTS.theNumbers.theStepsAKingsHeroesAreDealtWithin.value;
     for (let h = 0; h < 2; h++) {
       const hid = allChars.length;
       const hSkills: Partial<Record<string, number>> = {};
@@ -1575,7 +1592,7 @@ export function generateNewGame(
         hSkills[sk] = (hSkills[sk] ?? 0) + 1;
       }
       const heroAlign = theOneMadeSure(
-        ALIGNMENTS_P[Math.max(0, Math.min(6, ALIGNMENTS_P.indexOf(sp.alignment) + rP(-1, 1)))],
+        ALIGNMENTS_P[Math.max(0, Math.min(6, ALIGNMENTS_P.indexOf(sp.alignment) + rP(-_within, _within)))],
       );
       const _hRace =
         h === 0
@@ -1688,7 +1705,11 @@ export function generateNewGame(
     const _crowns = players
       .map((pl) => ({
         pl,
-        want: pl.alignment === 'Druidic' ? 'creature' : pl.alignment === 'Evil' ? 'monster' : null,
+        want: doesACapitalOfTheAlignmentOpenBesideCreatures(pl.alignment)
+          ? 'creature'
+          : doesACapitalOfTheAlignmentOpenBesideMonsters(pl.alignment)
+            ? 'monster'
+            : null,
         home: provinces[pl.homeProvinceId],
       }))
       .filter((x): x is ACrownWantingWildCountry => Boolean(x.want && x.home));
@@ -1915,16 +1936,8 @@ export function generateNewGame(
   const _dealPrimary = _mkDeck(NEUTRAL_SKILL_POOL);
   const _dealSecondary = _mkDeck(NEUTRAL_SKILL_POOL);
   // Alignment mix: Divine/Undead 5%, Good/Evil 10%, Druidic/Pagan 20%, Neutral 30% — encoded as a
-  // 20-card deck (1/2/4/6/4/2/1) so every 20 neutral heroes hit the mix exactly.
-  const _dealAlign = _mkDeck([
-    ...Array<string>(1).fill('Divine'),
-    ...Array<string>(2).fill('Good'),
-    ...Array<string>(4).fill('Druidic'),
-    ...Array<string>(6).fill('Neutral'),
-    ...Array<string>(4).fill('Pagan'),
-    ...Array<string>(2).fill('Evil'),
-    ...Array<string>(1).fill('Undead'),
-  ]);
+  // 20-card deck (1/2/4/6/4/2/1) so every 20 neutral heroes hit the mix exactly (the ladder's column: P1-19ay1).
+  const _dealAlign = _mkDeck(theWanderingHeroesDeckOfAlignments());
   const _dealRace = _mkDeck(RACES_P);
   const _dealTemper = _mkDeck(TEMPERS_P.slice(0, 4));
   // ── SECRET Easter egg: reserve Garreth the Independent and pick which neutral LAND province he
@@ -1967,7 +1980,8 @@ export function generateNewGame(
       // Druidic neutral heroes are guaranteed the Druid skill (needed to lead primal armies without
       // penalty); if the deal didn't already give it, fold it into the level-1 slot.
       let wAlign = _dealAlign();
-      if (wAlign === 'Druidic' && !hSkills['druid']) hSkills['druid'] = 1;
+      const _wanderersSkill = theSkillAWandererOfTheAlignmentIsSureOf(wAlign);
+      if (_wanderersSkill !== undefined && !hSkills[_wanderersSkill]) hSkills[_wanderersSkill] = 1;
       const _isGarreth = lp.id === _garrethProvId;
       if (_isGarreth) wAlign = 'Neutral'; // Garreth/the Independent are Neutral-pool names — keep it consistent
       const baseName = _isGarreth ? 'Garreth the Independent' : nextHeroName(wAlign);

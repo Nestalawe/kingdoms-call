@@ -30,6 +30,7 @@ import type {
   TheOneWhoSlewAHero,
 } from './the-facts-a-heros-death-lines-record.ts';
 import type { EventButItsWords } from '../turn/events-and-their-audiences.ts';
+import { theReturnARealmsAlignmentGivesItsFallen } from '../rules/the-registry-of-alignment-abilities.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { Character, Grave } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
@@ -670,13 +671,15 @@ export function handleHeroDeath(
     // one they replaced is lost forever (its grave is purged), and so on down the line of
     // succession.
     const pKing = deadChar.player != null ? G.players[deadChar.player] : null;
+    // (a pure read: whether his realm's alignment raises its fallen, Divine grace: the alignment abilities' registry)
+    const theRealmRaisesItsFallen = theReturnARealmsAlignmentGivesItsFallen(pKing?.alignment) !== null;
     //a DIVINE king is not succeeded — the divine return them, exactly as their heroes
     // (one full turn in death, then back at half HP on consecrated/wealthiest ground, without armies or items).
     // The return needs CONSECRATED ground: with none, the king is succeeded like any other.
     if (
       pKing &&
       deadChar.player != null && // (sure: his realm was found by it)
-      pKing.alignment === 'Divine' &&
+      theRealmRaisesItsFallen &&
       (asItsGuardReadsIt(pKing.provinces) ?? []).length > 0 &&
       ownedConsecratedProvs(G, deadChar.player).length > 0
     ) {
@@ -693,7 +696,7 @@ export function handleHeroDeath(
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: asItsGuardReadsIt(deadChar.location) ?? undefined,
       });
-    } else if (pKing?.alignment === 'Divine') {
+    } else if (theRealmRaisesItsFallen) {
       emit(turnContext, {
         type: 'system',
         fact: { kind: 'a fallen Divine monarch has no holy ground to return to', heroName: deadChar.name },

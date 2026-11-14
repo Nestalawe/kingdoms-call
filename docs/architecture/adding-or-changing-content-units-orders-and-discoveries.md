@@ -140,22 +140,38 @@ The orders' cases marked "(item 24)" in `tests/lib/recruit-hire-and-realm-works-
 
 ## Terror is spent at battle start
 
-`consumeTerror` runs at the start of every battle and deletes the province's `_terrorStacks`, `_terrorisedBy` and
-the rest once it has demoralised the defenders. Anything that must know whether a province is "under Terror"
-for that battle (Reign of Fear reads it through `reignOfFearHere`) reads it **before** the call, in both battle
-paths, and hands the answer on through the strength context (`ctx.reignOfFear`). Read it after and it is always
-false. (Reign of Fear fires only for the attacker since 2026-10-12, so the defender's answer is always false.)
+`consumeTerror` (`src/engine/battle/evil-terror.ts`) runs at the start of every battle and, once it has demoralised the
+defenders, spends the mark with the marks' module's `spendTheTerrorOnAProvince`
+(`src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts`), which deletes the province's
+`_terrorStacks`, `_terrorisedBy` and the rest. Anything that must know whether a province is "under Terror" for that
+battle (Reign of Fear asks the module's `reignOfFearHere`) reads it **before** the call, in both battle paths, and hands
+the answer on through the strength context (`ctx.reignOfFear`). Read it after and it is always false. (Reign of Fear
+fires only for the attacker since 2026-10-12, so the defender's answer is always false.) Where Terror's own realm now
+holds the province, `consumeTerror` lifts it unspent instead (`liftTheTerrorFromAProvinceItsRealmHolds`): no defender
+is shaken.
 
-## An alignment order is written in a dozen places
+## A realm's alignment's rule is a row of its abilities
 
-Each order is one row of `THE_ALIGNMENT_ORDERS` (`src/content/alignment-orders-their-keys-names-creeds-numbers-and-words.ts`):
-its key, its name, the other names the turn reads, its creed, whether the king alone gives it, and the numbers the books
+A rule a realm holds by its alignment is one row of
+`src/content/alignment-abilities-their-keys-names-numbers-and-words.ts` and one entry of
+`src/engine/rules/the-registry-of-alignment-abilities.ts`, its effect at a stage in `src/engine/rules/alignment-abilities/`;
+the resolver keeps its name and asks the stage's runner, which is handed the alignment the rule reads. The engine's
+names of an alignment outside `src/engine/rules/` are counted by the ratchet (`alignmentChecksInEngine`), and the count
+only falls: the bots' checks and the lines that choose words, not rules, still count. The marks such a rule leaves on a
+province (consecrated ground, Terror, Enslave) are laid, lifted and faded by
+`src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts`, each mark keeping its field of the
+save. The stages, the marks, what stays outside the family and how to add an ability:
+[the family's guide](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md).
+
+The five alignment orders are its rows given as an order, which `THE_ALIGNMENT_ORDERS` holds, each with
+its key, its name, the other names the turn reads, its creed (`alignment`), whether the king alone gives it (`howItIsUsed`), and the numbers the books
 state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows (and so is the
 order dispatch's prose's own set, for the charmed hero's line), and so are the
 order-name map's entries for them (`PHASE_ACTION_MAP`: each row's key, its name in lower case and its other names);
 the order switch's `case`s read their row's key. Who may give one is two checks of
 `src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts` (a realm of
-the row's creed; the king, where the row marks it his alone): each resolver asks them, and so does the player portal's
+the row's creed; the king, where the row marks it his alone): each resolver asks them through the registry's
+runner (`src/engine/rules/alignment-abilities/who-may-give-an-alignment-order.ts`), in the order's own order, and so does the player portal's
 order list (`actionsFor`), whose `ACTIONS` and `ALIGN_ACTIONS` read the names and rows from that file too, and so does its target widget (`buildTargetField`: the same two checks). The numbers the books state come from the row (the price of word, the muster's grade, the carters'
 price, the Wild Hunt's beasts and turns, the Blood Offering's tiers); the target widget's words, the Move note's bound beasts, the Blood Offering's hint and the gold ledger's prices read them there, each the report's figure first where the turn's differs (the carters' price, the Wild Hunt's term, Consecrate's home and limit: questions 36 and 41); Call to Arms' company and the companies a Blood Offering may take, gives and raises (its rows and hint) are the turn's own rules, through `src/shared/`. The turn and the report price the carters with one
 function (`theCorpseCartersPriceForARealm`), and the report's price of word is the row's. The bots write each key from

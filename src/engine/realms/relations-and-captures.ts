@@ -1,8 +1,13 @@
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
-import { consecCaptureXpPct, consecratedIds } from '../heroes/fame-and-consecration.ts';
+import { consecCaptureXpPct } from '../heroes/fame-and-consecration.ts';
+import {
+  enslaveAProvinceUntil,
+  liftConsecratedGround,
+} from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { whatARealmsDiscoveriesAddToAConquestsPlunder } from '../rules/the-registry-of-discovery-effects.ts';
+import { theConquestDoctrineOfARealmsAlignment } from '../rules/the-registry-of-alignment-abilities.ts';
 import {
   emit,
   recordForTheStatistics,
@@ -70,10 +75,7 @@ export function breakConsecrationOnCapture(
   const { G } = turnContext;
   const pl = G.players[prev];
   if (!pl) return;
-  const list = consecratedIds(pl);
-  const at = list.indexOf(prov.id);
-  if (at < 0) return;
-  list.splice(at, 1);
+  if (!liftConsecratedGround(pl, prov.id)) return; // wiped at capture, by the marks' module (plan P1-19ay2)
   emit(turnContext, {
     type: 'system',
     fact: {
@@ -245,7 +247,10 @@ export function applyEvilConquest(
 ) {
   const { G } = turnContext;
   if (!cc || !prov || !pl) return;
-  if (G.players[cc.player]?.alignment !== 'Evil') return;
+  // the conquest doctrine (the alignment abilities' registry's since P1-19ax1: "fate: a realm's alignment conquers by a
+  // doctrine"), its numbers from its row
+  const theDoctrine = theConquestDoctrineOfARealmsAlignment(G.players[cc.player]?.alignment);
+  if (theDoctrine === null) return;
   if (prov._evilConqTurn === G.turn) return;
   prov._evilConqTurn = G.turn;
   const mode = (cc.encounterPlan?.evilMode ?? '') || 'terror';
@@ -255,11 +260,11 @@ export function applyEvilConquest(
     prov.garrisonArmies ??= [];
     prov.garrisonArmies.push({
       type: enType,
-      quality: 'Green',
+      quality: theDoctrine.theGradeOfTheEnslavedGarrison,
       race: (prov.race ?? '') || 'Human',
       unitName: armyUnitName(enType),
     });
-    prov._enslavedUntil = G.turn + 3;
+    enslaveAProvinceUntil(prov, G.turn + theDoctrine.theTurnsTheEnslavedProvincePaysLess); // the marks' module lays it
     emit(turnContext, {
       type: 'combat',
       fact: {
@@ -289,7 +294,8 @@ export function applyEvilConquest(
       });
     const loot = Math.floor(
       (Number(prov.tax) || 0) *
-        (0.5 + whatARealmsDiscoveriesAddToAConquestsPlunder(G.players[cc.player], { theGround: prov.terrain })),
+        (theDoctrine.theShareOfTheTaxPlundered +
+          whatARealmsDiscoveriesAddToAConquestsPlunder(G.players[cc.player], { theGround: prov.terrain })),
     ); // + plunder discoveries (the discoveries' registry's since plan P1-19af: "fate: a realm's discoveries add to a
     // conquest's plunder")
     if (loot > 0) {

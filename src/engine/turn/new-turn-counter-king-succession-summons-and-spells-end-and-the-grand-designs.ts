@@ -12,6 +12,8 @@ import {
 import type { TurnContext } from './context.ts';
 import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { theReturnARealmsAlignmentGivesItsFallen } from '../rules/the-registry-of-alignment-abilities.ts';
+import { theSkillAKingOfTheAlignmentStartsWith } from '../rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
 import type { Army, Character, Mercenary, Province, Realm, SkillLevels } from '../../schemas/saved-game-state.ts';
 
 /** A hero as the succession crowns him: his id and his realm's index plain numbers (the brands are the saved state's)
@@ -129,7 +131,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
   // come back (only a king can consecrate, so none can be made while he lies dead): the grace is
   // lost now and 7b crowns an heir in this same pass.
   (asItsGuardReadsIt(G.players) ?? []).forEach((p: Realm | null | undefined, pi) => {
-    if (p?.alignment !== 'Divine') return;
+    if (theReturnARealmsAlignmentGivesItsFallen(p?.alignment) === null) return; // Divine grace (its row)
     G.characters
       .filter((c) => c.isKing && c.player === pi && !c.alive && c._divineReturn)
       .forEach((k) => {
@@ -154,7 +156,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     } // reigning king is fine
     //a Divine king awaiting divine return is NOT replaced by an heir (while the realm holds land).
     if (
-      p.alignment === 'Divine' &&
+      theReturnARealmsAlignmentGivesItsFallen(p.alignment) !== null && // Divine grace (its row)
       (asItsGuardReadsIt(p.provinces) ?? []).length > 0 &&
       G.characters.some(
         (c) =>
@@ -200,11 +202,9 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     const deadKing = G.characters.find((c) => c.isKing && c.player === pi && !c.alive);
     if (deadKing) deadKing.isKing = false; // demote the fallen king so the realm has exactly one monarch
     const heirSkills: SkillLevels = { melee: 2, archery: 1, sage: 1 };
-    if (p.alignment === 'Divine') heirSkills.white = (heirSkills.white ?? 0) + 1;
-    if (p.alignment === 'Druidic') heirSkills.druid = (heirSkills.druid ?? 0) + 1;
-    if (p.alignment === 'Evil') heirSkills.druid = (heirSkills.druid ?? 0) + 1; // 2026-10-13: as the king
-    if (p.alignment === 'Pagan') heirSkills.explorer = (heirSkills.explorer ?? 0) + 1;
-    if (p.alignment === 'Undead') heirSkills.necromancy = (heirSkills.necromancy ?? 0) + 1;
+    // his alignment's skill a level more, as the king's (its row: P1-19ay1)
+    const heirsSkill = theSkillAKingOfTheAlignmentStartsWith(p.alignment);
+    if (heirsSkill) heirSkills[heirsSkill.theSkill] = (heirSkills[heirsSkill.theSkill] ?? 0) + heirsSkill.theLevelsMore;
     // (a test stands in an engine with no name-giver: tests/unit/new-turn-succession-and-summons-called-directly.test.ts)
     const heirName =
       typeof asItsGuardReadsIt(nextHeroName) === 'function'

@@ -39,6 +39,7 @@ import {
   doARealmsDiscoveriesWaiveTheHiringBan,
   whatARealmsDiscoveriesAddToAMercenaryBandsPrice,
 } from '../rules/the-registry-of-discovery-effects.ts';
+import { theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice } from '../rules/the-registry-of-alignment-abilities.ts';
 import {
   emit,
   notifyTarget,
@@ -308,11 +309,11 @@ export function resolveRecruitArmiesOrder(
         continue;
       }
       const baseMercCost = (ARMY_COST_P[merc.type] ?? 0) || 2;
-      // Neutral alignment: mercenaries cost 2g less (min 1g)
+      // the realm's alignment's cut (Neutral: 2g less; min 1g: the alignment abilities' registry's since plan P1-19av1)
       const mCost = Math.max(
         1,
         baseMercCost -
-          (G.players[c.player]?.alignment === 'Neutral' ? 2 : 0) +
+          theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(G.players[c.player]?.alignment) +
           whatARealmsDiscoveriesAddToAMercenaryBandsPrice(G.players[c.player], { theUnitsType: merc.type }),
       ); // + merc discoveries (the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries cut a
       // company's price", which the report's price asks too)

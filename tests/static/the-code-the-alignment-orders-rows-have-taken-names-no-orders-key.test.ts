@@ -1,6 +1,6 @@
 // The code the alignment orders' rows have taken names no order's key (plan P1-19's alignment orders, Decision 4): each
-// function (or file's top level) the content's rows (src/content/alignment-orders-their-keys-names-creeds-numbers-and-
-// words.ts) have taken holds no string naming an alignment order's key (`'consecrate'`, `'harvest_field'`), whatever
+// function (or file's top level) the content's rows (THE_ALIGNMENT_ORDERS, in src/content/alignment-abilities-their-
+// keys-names-numbers-and-words.ts) have taken holds no string naming an alignment order's key (`'consecrate'`, `'harvest_field'`), whatever
 // the code does with it (compared, a `case`, a lookup, an order written, a list, a map's value, a literal type, or in a
 // function nested inside), but the literal types its entry lists as left (OrderKind's, in the order-name map's file).
 // It reads a row's key instead. Each row of the family adds what it takes. With them, the
@@ -36,8 +36,15 @@ const TOP = '(top)';
  *  (the plan's Decision 5: P1-10 derives or checks them), in the order written. */
 const ORDER_KINDS_LITERAL_TYPES = ['consecrate', 'call_to_arms', 'broker', 'harvest_field', 'rite'];
 
-/** The file of the realm's works: four of the five resolvers. */
-const REALM_WORKS = 'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
+/** The five resolvers' files (src/engine/orders/alignment/, since P1-19aw2: the realm's works' file held four, the
+ *  explore and search orders' the Rite). */
+const CONSECRATE = 'src/engine/orders/alignment/consecrate-a-divine-kings-order-to-sanctify-a-province-of-his-realm.ts';
+const CALL_TO_ARMS = 'src/engine/orders/alignment/call-to-arms-a-good-kings-order-to-muster-a-company-from-his-folk.ts';
+const BROKER = 'src/engine/orders/alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts';
+const HARVEST_THE_FIELD =
+  'src/engine/orders/alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts';
+const PERFORM_RITE =
+  'src/engine/orders/alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts';
 
 /** The bots' file of missions: three of the five functions the bots' row has taken. */
 const BOTS_MISSIONS = 'src/engine/bots/missions.ts';
@@ -58,16 +65,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, left: re
     "P1-19aq, the dispatch: the switch's five cases",
     [],
   ],
-  [REALM_WORKS, 'resolveConsecrateOrder', 'P1-19ar, Consecrate: its creed and the king, from its row', []],
-  [REALM_WORKS, 'resolveCallToArmsOrder', "P1-19ar, Call to Arms: its creed, the king, the muster's grade", []],
-  [REALM_WORKS, 'resolveBrokerOrder', 'P1-19ar, the Broker: its creed, the king, the price of word', []],
-  [REALM_WORKS, 'resolveHarvestTheFieldOrder', "P1-19ar, Harvest the Field: its creed, the carters' price", []],
-  [
-    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
-    'resolvePerformRiteOrder',
-    "P1-19ar, Perform Rite: its creed, the Blood Offering's grades",
-    [],
-  ],
+  [CONSECRATE, 'resolveConsecrateOrder', 'P1-19ar, Consecrate: its creed and the king, from its row', []],
+  [CALL_TO_ARMS, 'resolveCallToArmsOrder', "P1-19ar, Call to Arms: its creed, the king, the muster's grade", []],
+  [BROKER, 'resolveBrokerOrder', 'P1-19ar, the Broker: its creed, the king, the price of word', []],
+  [HARVEST_THE_FIELD, 'resolveHarvestTheFieldOrder', "P1-19ar, Harvest the Field: its creed, the carters' price", []],
+  [PERFORM_RITE, 'resolvePerformRiteOrder', "P1-19ar, Perform Rite: its creed, the Blood Offering's grades", []],
   [BOTS_MISSIONS, 'botSignaturePre', "P1-19as, the bots' orders: each creed's order written, the two prices", []],
   [BOTS_MISSIONS, 'botRitePre', "P1-19as, the bots' Perform Rite: the order written twice", []],
   [BOTS_MISSIONS, 'botRunSlayerSchool', "P1-19as, the bots' busy list: Consecrate", []],

@@ -10,7 +10,18 @@ import {
   whatABattleSpellDoesBeforeTheBattle,
   whatAUnitsStrikeMayDoBeforeTheBattle,
 } from '../rules/the-registry-of-spell-effects.ts';
-import { FANATIC_CHANCE_BY_ALIGN, QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
+import {
+  doesARealmsAlignmentHoldABeatenHostOnTheField,
+  theAlignmentASideFightsUnder,
+  theChanceOfZealARealmsAlignmentGivesASide,
+  theConquestDoctrineOfARealmsAlignment,
+  theChanceOfZealOfADefenderOnConsecratedGround,
+  theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
+  theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
+  theFactorConsecratedGroundWeakensAnAttackersHostBy,
+  theFervourOfASide,
+} from '../rules/the-registry-of-alignment-abilities.ts';
+import { QUALITY_TIERS, SKILL_LABELS } from '../army-tables.ts';
 import { battleMarginBand, rollUnitFates } from './fates.ts';
 import {
   battleDeploy,
@@ -29,7 +40,6 @@ import { ARCHERY_MISSILE_PCT, UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, ladder
 import { pursuitsOfTheBeaten, shieldFortHolds, tacMulted, theFractionThePursuitsAdd } from '../units/movement.ts';
 import {
   AERIAL_TYPES,
-  MONSTER_ARMIES,
   SEA_TYPES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import {
@@ -45,7 +55,7 @@ import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-s
 import { homeFounderOf } from '../grand-design.ts';
 import { battleFortune, shuffleP } from './fortune.ts';
 import { recordBattleGraves } from '../graves.ts';
-import { isConsecrated } from '../heroes/fame-and-consecration.ts';
+import { isConsecrated } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { activeItems } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
@@ -94,7 +104,8 @@ import { getSeaCapability } from '../units/movement-pools.ts';
 import { realCharOf } from './best-commander.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { druidShortfallLine, forceMarker, terrainNoteList } from './battle-report-lines-and-force-markers.ts';
-import { consumeTerror, reignOfFearHere, spreadTerror } from './evil-terror.ts';
+import { consumeTerror, spreadTerror } from './evil-terror.ts';
+import { reignOfFearHere } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { pickBattleSpell } from '../magic/pre-battle-spell-choice.ts';
 import { bloodHarvest, ironThroneRaise } from './blood-harvest-and-iron-throne.ts';
 import { raidLandedHere } from './raid-the-coast-and-landing-parties.ts';
@@ -401,10 +412,14 @@ export function combatVsChar(
     [_fearAtk, theAttackersRealm, atk.name, atkArmies],
     [_fearDef, theDefendersRealm, def.name, defArmies],
   ] as const) {
+    // (the Reign of Fear's runner, the alignment abilities' registry's, P1-19au2: a unit it strengthens)
     if (
       _f &&
-      _hr?.alignment === 'Evil' &&
-      _ar.some((a: ArmyInABattle | null | undefined) => a && MONSTER_ARMIES.has(a.type))
+      _ar.some(
+        (a: ArmyInABattle | null | undefined) =>
+          a &&
+          theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear(_hr?.alignment, { theUnitType: a.type }) !== null,
+      )
     )
       narrate(narrative, {
         kind: 'the province still cowers under a reign of fear',
@@ -495,10 +510,14 @@ export function combatVsChar(
       });
     }
   }
-  // GOOD — Righteous Defence: +10% when a Good player defends a province they own.
-  if (prov.owner === def.player && theDefendersRealm?.alignment === 'Good') {
-    defBonus *= 1.1;
-    narrate(narrative, { kind: "the defender's host defends ground held justly", defName: defSide });
+  // GOOD — Righteous Defence: +10% when a Good player defends a province they own (the alignment abilities'
+  // registry's runner, P1-19au2).
+  if (prov.owner === def.player) {
+    const _righteous = theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy(theDefendersRealm?.alignment);
+    if (_righteous !== null) {
+      defBonus *= _righteous;
+      narrate(narrative, { kind: "the defender's host defends ground held justly", defName: defSide });
+    }
   }
   {
     const _dOwnP =
@@ -539,16 +558,13 @@ export function combatVsChar(
   if (isHome) narrate(narrative, { kind: 'the defenders fight on home ground' });
   // (2026-09-23d: "📊 X leads the defense: Tactical N" retired — the deployment line and the ladder both name it.)
 
-  // Fanaticism
-  const atkFanChance: Readonly<Partial<Record<string, number>>> = { ...FANATIC_CHANCE_BY_ALIGN };
-  const defFanChance: Readonly<Partial<Record<string, number>>> = { ...FANATIC_CHANCE_BY_ALIGN };
-  const atkAlign = (theAttackersRealm?.alignment ?? '') || 'Neutral';
-  const defAlign = (theDefendersRealm?.alignment ?? '') || 'Neutral';
+  // Fanaticism: each side's chance of zeal its realm's alignment gives (the alignment abilities' registry, P1-19au1)
+  const atkAlign = theAlignmentASideFightsUnder(theAttackersRealm?.alignment);
   // (The Wyverns' Dread, −15% to the other side's fanaticism, was retired with the unit abilities,
   // 2026-10-11: Terror From Above now bears on the enemy's strongest front unit, in battleFaceSide.)
   const _atkFanPct = Math.max(
     0,
-    (atkFanChance[atkAlign] ?? 0.1) +
+    theChanceOfZealARealmsAlignmentGivesASide(theAttackersRealm?.alignment) +
       whatARealmsDiscoveriesAddToASidesFanaticism(theAttackersRealm, {
         theSide: 'atk',
         theGround: prov.terrain,
@@ -557,7 +573,7 @@ export function combatVsChar(
   ); // fanatic discoveries
   let _defFanPct = Math.max(
     0,
-    (defFanChance[defAlign] ?? 0.1) +
+    theChanceOfZealARealmsAlignmentGivesASide(theDefendersRealm?.alignment) +
       whatARealmsDiscoveriesAddToASidesFanaticism(theDefendersRealm, {
         theSide: 'def',
         theGround: prov.terrain,
@@ -568,34 +584,33 @@ export function combatVsChar(
   // fanatical zeal (they fight before the altars of their gods).
   const _consecratedHere = def.player != null && isConsecrated(theDefendersRealm, prov.id) && prov.owner === def.player;
   if (_consecratedHere) {
-    _defFanPct = Math.min(1, _defFanPct * 2);
+    _defFanPct = theChanceOfZealOfADefenderOnConsecratedGround({ theChance: _defFanPct });
   }
+  // Both sides roll, the attacker first, always (even at 0, and when a fervour wins).
   const atkFanatic = kcRng() < _atkFanPct;
   const defFanatic = kcRng() < _defFanPct;
-  // Skeletal armies are always fanatical ONLY when led by the Undead king in person.
-  const atkSkelFanatic = atkAlign === 'Undead' && atk.isKing && atkArmies.some((a) => a._isSkeletal);
-  const defSkelFanatic = defAlign === 'Undead' && def.isKing && defArmies.some((a) => a._isSkeletal);
-  const atkSkelHero = atkAlign === 'Undead' && !atk.isKing && atkArmies.some((a) => a._isSkeletal);
-  const defSkelHero = defAlign === 'Undead' && !def.isKing && defArmies.some((a) => a._isSkeletal);
-  // Evil: Monster armies +25%. (Wild Ferocity, the Druidic ×1.25 with any Creature, retired 2026-10-13.)
-  const atkEvilMonster = atkAlign === 'Evil' && atkArmies.some((a) => MONSTER_ARMIES.has(a.type));
-  const defEvilMonster = defAlign === 'Evil' && defArmies.some((a) => MONSTER_ARMIES.has(a.type));
   // Strongest fervour counts (max) — the old precedence chain let a ×1.3 zeal roll mask the
-  // skeletal bonus once that bonus rose above it.
-  const atkFanMult = Math.max(
-    1,
-    atkFanatic ? 1.3 : 1,
-    atkSkelFanatic ? UNDEAD_SKEL_KING_FAN : 1,
-    atkEvilMonster ? 1.25 : 1,
-    atkSkelHero ? UNDEAD_SKEL_HERO_FAN : 1,
-  );
-  const defFanMult = Math.max(
-    1,
-    defFanatic ? 1.3 : 1,
-    defSkelFanatic ? UNDEAD_SKEL_KING_FAN : 1,
-    defEvilMonster ? 1.25 : 1,
-    defSkelHero ? UNDEAD_SKEL_HERO_FAN : 1,
-  );
+  // skeletal bonus once that bonus rose above it. Skeletal armies fight with fervour under any Undead
+  // commander, the more under the king in person; an Evil host with Monsters fights with savage fury.
+  // (Wild Ferocity, the Druidic ×1.25 with any Creature, retired 2026-10-13.)
+  const atkFervour = theFervourOfASide(theAttackersRealm?.alignment, {
+    isItSeizedByZeal: atkFanatic,
+    isItLedByTheKing: atk.isKing,
+    theForce: atkArmies,
+  });
+  const defFervour = theFervourOfASide(theDefendersRealm?.alignment, {
+    isItSeizedByZeal: defFanatic,
+    isItLedByTheKing: def.isKing,
+    theForce: defArmies,
+  });
+  const atkSkelFanatic = atkFervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && atk.isKing;
+  const defSkelFanatic = defFervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && def.isKing;
+  const atkSkelHero = atkFervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && !atk.isKing;
+  const defSkelHero = defFervour.theAbilitiesThatStirredIt.includes('skeletal-fervour') && !def.isKing;
+  const atkEvilMonster = atkFervour.theAbilitiesThatStirredIt.includes('savage-fury');
+  const defEvilMonster = defFervour.theAbilitiesThatStirredIt.includes('savage-fury');
+  const atkFanMult = atkFervour.theFactor;
+  const defFanMult = defFervour.theFactor;
   if (atkSkelFanatic)
     narrate(narrative, {
       kind: "a side's skeletal legions fight with fanaticism under their undead king",
@@ -1260,8 +1275,10 @@ export function combatVsChar(
     narrate(narrative, { kind: 'the attacker storms ashore in a raid on the coast', atkName: atkSide });
   } // 2026-09-23e: only a coast attacked from the sea
   // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
-  // consecrated province).
-  const _consecPenalty = _consecratedHere && (atkAlign === 'Undead' || atkAlign === 'Evil') ? 0.85 : 1;
+  // consecrated province; the alignment abilities' registry's runner, P1-19au2).
+  const _consecPenalty = _consecratedHere
+    ? theFactorConsecratedGroundWeakensAnAttackersHostBy({ theAttackersAlignment: atkAlign })
+    : 1;
   if (_consecPenalty < 1)
     narrate(narrative, {
       kind: "the consecrated ground of the province weakens the attacker's host",
@@ -1444,7 +1461,7 @@ export function combatVsChar(
   if (
     isDecisivePvP &&
     _pvpWinner.player !== null &&
-    G.players[_pvpWinner.player]?.alignment === 'Evil' &&
+    theConquestDoctrineOfARealmsAlignment(G.players[_pvpWinner.player]?.alignment) !== null && // its row (P1-19ax1)
     ((_pvpWinner.encounterPlan?.evilMode ?? '') || 'terror') === 'terror'
   ) {
     spreadTerror(turnContext, prov, _pvpWinner.player, narrative);
@@ -1796,8 +1813,9 @@ export function combatVsChar(
     }
     // DWARF — Shield Fort: trapped, the Guard hold contested WITHOUT extra no-escape losses; with
     // a path open, they withdraw in good order (mechanics applied above) — no pin.
-    const _dmDef =
-      def.armies.length > 0 && def.armies.every((a) => a._isSkeletal) && theDefendersRealm?.alignment === 'Undead';
+    const _dmDef = doesARealmsAlignmentHoldABeatenHostOnTheField(theDefendersRealm?.alignment, {
+      theCompanies: def.armies,
+    });
     // 2026-09-27 (Toby item 3): the naval split. Evaluated once, ahead of the branch chain, so a
     // mixed column whose hulls can still sail is never filed as "nowhere to retreat". A host that
     // is still the stronger and means to fight on (_wantsToStay) keeps that choice, and a dead
@@ -1989,8 +2007,9 @@ export function combatVsChar(
     }
     // DWARF — Shield Fort: trapped, the Guard hold contested WITHOUT extra no-escape losses; with
     // a path open, they withdraw in good order (mechanics applied above) — no pin.
-    const _dmAtk =
-      atk.armies.length > 0 && atk.armies.every((a) => a._isSkeletal) && theAttackersRealm?.alignment === 'Undead';
+    const _dmAtk = doesARealmsAlignmentHoldABeatenHostOnTheField(theAttackersRealm?.alignment, {
+      theCompanies: atk.armies,
+    });
     // 2026-09-27 (Toby item 3): the naval split — see the defender's block above for the reasoning.
     // (the winner's force and the winner, handed here once, are read by nothing)
     const _atkStays = atkFriendlyAdj.length > 0 && _wantsToStay(atk.armies, atk);

@@ -31,6 +31,10 @@ import type {
   TheFactOfAPersonalCombatsLine,
 } from './the-facts-a-personal-combats-lines-record.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import {
+  aFoeOfThisAlignmentLaughsAtAPlea,
+  theChanceAFoeOfThisAlignmentSparesAPlea,
+} from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { theChanceAMirrorImageIsSeenThrough } from '../rules/the-registry-of-spell-effects.ts';
 import {
   theAuraPenaltyAFightersAuraLaysOnHisFoe,
@@ -537,9 +541,8 @@ export function resolvePersonalCombat(
     if (cbt.hp <= 0 && cbt.kind === 'character' && temperOf(cbt.temper).mercy && !state.fledBy && !cbt._begged) {
       const theFoesHero = asItsGuardReadsIt<AHeroAsTheMercyReadsHim>(foe.ref);
       const foeAlign = (foe.alignment ?? '') || (theFoesHero?.alignment ?? '');
-      let mercy = 50;
-      if (foeAlign === 'Good' || foeAlign === 'Divine' || foeAlign === 'Druidic') mercy = 75;
-      else if (foeAlign === 'Evil' || foeAlign === 'Undead') mercy = 20;
+      // the ladder's mercy, by the foe's own alignment (P1-19av2); one of none, 50
+      const mercy = theChanceAFoeOfThisAlignmentSparesAPlea(foeAlign) ?? 50;
       const _r = kcRng() * 100,
         _granted = _r < mercy,
         _shown = Math.floor(_r) + 1; // same odds as ever; shown as a d100
@@ -673,7 +676,7 @@ export function resolvePersonalCombat(
                 strikeKind: _k,
                 strikeClass: _cls,
               }
-            : foeAlign === 'Evil' || foeAlign === 'Undead'
+            : aFoeOfThisAlignmentLaughsAtAPlea(foeAlign)
               ? {
                   kind: 'the foe laughs at the plea',
                   foeWho,

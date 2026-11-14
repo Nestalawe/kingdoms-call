@@ -997,7 +997,7 @@ describe('what a hero holds: what the order form says he will carry and lead, an
 describe('the orders: what the order form offers a hero, and what the creed orders’ fields say (P1-11d3)', () => {
   test('the creed orders’ fields say what their rows and the turn say: Call to Arms’ grade and company, the Broker’s and the carters’ price, the grave the carters raise, the Wild Hunt’s beasts and term, the Blood Offering’s marks and grades, where a king may consecrate', () => {
     // On realm 0's report under each creed, the form's buildTargetField (its words and its marks) against the rows
-    // (src/content/alignment-orders-…) and processOrder on the state: a Call to Arms in a province whose first company
+    // (THE_ALIGNMENT_ORDERS, src/content/alignment-abilities-…) and processOrder on the state: a Call to Arms in a province whose first company
     // is a garrison (a Green Human Garrison), whose first is not (the garrison all the same) and whose companies hold
     // none (its race's: an Elven Garrison), word bought from a province (2g), Harvest the Field (2g; nothing with
     // Corpse-Carters, the row's 2g on a report that names no price; the most experienced of two graves; a grade higher

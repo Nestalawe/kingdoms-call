@@ -1350,6 +1350,42 @@ export interface ASideAsItsFanaticismIsRolled {
   readonly theForce: readonly (AUnitAsTheDiscoveriesReadIt | null | undefined)[] | null | undefined;
 }
 
+/** A side's chance of zeal so far, a hero's defending his realm's consecrated ground (combatVsChar, after the realm's
+ *  fanaticism discoveries). */
+export interface AChanceOfZealOnConsecratedGround {
+  readonly theChance: number;
+}
+
+/** A side of a battle, as its realm's alignment's fervour weighs it (both battles, after the zeal rolls). */
+export interface ASideAsItsFervourIsWeighed {
+  /** Whether its zeal roll seized it. */
+  readonly isItSeizedByZeal: boolean;
+  readonly isItLedByTheKing: boolean;
+  readonly theForce: readonly { readonly type: string; readonly _isSkeletal?: boolean | undefined }[];
+}
+
+/** An attacker of a province on its owner's consecrated ground, as the ground weighs his host (both battles). */
+export interface AnAttackerOnConsecratedGround {
+  /** The alignment his side fights under (Neutral for a realm of none). */
+  readonly theAttackersAlignment: string;
+}
+
+/** A unit of a force, as Home of the Wild weighs it (armStr, after the unit's abilities). */
+export interface AUnitAsTheWildWeighsIt {
+  readonly theUnitType: string;
+  readonly theTerrain: string | null | undefined;
+}
+
+/** A unit of a host attacking ground its realm's Terror grips, as the Reign of Fear weighs it (armStr, after Terror). */
+export interface AUnitAsTheReignOfFearWeighsIt {
+  readonly theUnitType: string;
+}
+
+/** A beaten host's companies, as its realm's alignment weighs whether it holds the field (both battles' routs). */
+export interface ABeatenHostsCompanies {
+  readonly theCompanies: readonly { readonly _isSkeletal?: boolean | undefined }[];
+}
+
 /** Where a hero casts, as a discovery's `ctx` names it: before a battle, in an order, in a personal combat. */
 export type WhereAHeroCasts = 'battle' | 'action' | 'duel';
 
@@ -1615,6 +1651,59 @@ export interface TheIncomeTaxationRecordsAddsTo {
   readonly theCeiling: number | null | undefined;
 }
 
+/** A province's tax so far, on a realm's consecrated ground, as Early Winter's collection and the report's forecast
+ *  hand it. */
+export interface TheTaxOfAProvinceOnConsecratedGround {
+  readonly theTax: number;
+}
+
+/** The provinces' tax income a realm's alignment adds to, as Early Winter's collection and the report's forecast hand
+ *  it (after the provinces' own tax, the discoveries' and the Wonder's). */
+export interface TheIncomeARealmsAlignmentAddsTo {
+  readonly theIncome: number | null | undefined;
+}
+
+/** A Bless as its caster's realm's alignment weighs it (workBlessProvince: plan P1-19av1). */
+export interface ABlessAsARealmsAlignmentWeighsIt {
+  readonly isTheCasterTheKing: boolean;
+}
+
+/** A Research as its scholar's realm's alignment weighs it (resolveResearchOrder, the report's odds: plan P1-19av1). */
+export interface AResearchARealmsAlignmentMayHelp {
+  /** His Sage level, as the order (or the report) reads it. */
+  readonly theSageLevel: number;
+}
+
+/** The hero who gives an alignment order, as the checks of who may give it read him (its resolver: the alignment
+ *  abilities' registry, P1-19aw2). */
+export interface AHeroAsTheChecksOfAnAlignmentOrderReadHim {
+  /** Whether he is his realm's king (none: he is not). */
+  readonly isHeTheKing: boolean | null | undefined;
+  /** His realm's alignment (none: a realm whose creed isn't known). */
+  readonly theAlignmentOfHisRealm: string | null | undefined;
+}
+
+/** How a realm's alignment raises its fallen on holy ground (Divine grace: the death, the succession and the turn's
+ *  start read it, P1-19ax1): the full turns the fallen spend in death, and the share of their maximum health they rise
+ *  with. */
+export interface TheReturnARealmsAlignmentGivesItsFallen {
+  readonly theFullTurnsInDeath: number;
+  readonly theShareOfHealth: number;
+}
+
+/** The conquest doctrine a realm's alignment holds (applyEvilConquest, and both battles' Terror, P1-19ax1): the share
+ *  of a province's tax its Terror plunders, the grade of the garrison unit Enslave presses, and the turns the enslaved
+ *  province pays less tax beyond this one. */
+export interface TheConquestDoctrineOfARealmsAlignment {
+  readonly theShareOfTheTaxPlundered: number;
+  readonly theGradeOfTheEnslavedGarrison: 'Green';
+  readonly theTurnsTheEnslavedProvincePaysLess: number;
+}
+
+/** The check of who may give an alignment order that refuses a hero: his realm isn't of the order's creed, or he isn't
+ *  the king and the king alone gives it. */
+export type TheCheckAnAlignmentOrderRefusesAHeroOn = 'his realm is not of its creed' | 'he is not the king';
+
 /** A realm's treasury and its ceiling, as the interest discoveries read them (the collection and the report). */
 export interface ATreasuryARealmsDiscoveriesMayEarnInterestOn {
   readonly theTreasury: number;
@@ -1740,6 +1829,29 @@ export interface TheStagesOfEachHookPoint {
       theEffect: TheEffectOfADiscovery,
       facts: ASideAsItsFanaticismIsRolled,
     ) => number | null;
+    /** A side's chance of zeal its realm's alignment gives, before its discoveries' (both battles; the runner asks the
+     *  one ability the alignment holds; the alignment abilities' registry, P1-19au1). The resolver draws the roll. */
+    readonly "a realm's alignment gives a side its chance of zeal": () => number;
+    /** A defender's chance of zeal on his realm's consecrated ground, from the chance so far (combatVsChar, after the
+     *  discoveries'; the alignment abilities' registry). */
+    readonly "consecrated ground stirs a defender's zeal": (facts: AChanceOfZealOnConsecratedGround) => number;
+    /** The factor a side's realm's alignment's fervour lifts the whole force by, or nothing (both battles, after the
+     *  zeal rolls; the alignment abilities' registry: the runner takes the strongest, zeal's among them). */
+    readonly "a realm's alignment stirs a side's fervour": (facts: ASideAsItsFervourIsWeighed) => number | null;
+    /** The factor consecrated ground weakens an attacker's host by, or nothing (both battles, for a province its owner
+     *  consecrated; the alignment abilities' registry, P1-19au2). */
+    readonly "consecrated ground weakens an attacker's host": (facts: AnAttackerOnConsecratedGround) => number | null;
+    /** The factor a realm's alignment strengthens its defence of a province it owns by (both battles, after the
+     *  siegecraft, before the own-ground discoveries; the alignment abilities' registry). */
+    readonly "a realm's alignment strengthens its defence of its own ground": () => number;
+    /** The factor a unit fights at in the wild, or nothing (armStr, after the unit's abilities: one rounded step; the
+     *  runner asks the abilities the realm's or the commander's alignment holds). */
+    readonly "a realm's alignment strengthens a unit in the wild": (facts: AUnitAsTheWildWeighsIt) => number | null;
+    /** The factor a unit fights at attacking ground its realm's Terror grips, or nothing (armStr, after Terror: one
+     *  rounded step; both battles' lines ask it too). */
+    readonly "a realm's alignment strengthens a unit by its reign of fear": (
+      facts: AUnitAsTheReignOfFearWeighsIt,
+    ) => number | null;
     /** Whether a discovery the commander's realm holds lets a winged beast he leads follow him without his Druid
      *  (dragonTamed: the runner asks each effect of the kind the realm holds). */
     readonly "a realm's discoveries let a beast follow without its Druid": (
@@ -1788,6 +1900,15 @@ export interface TheStagesOfEachHookPoint {
     readonly 'a hull is sunk before the battle': (facts: AUnitAndTheEnemyHullsAfloat) => number | null;
     /** Whether a beaten force holds, never routing (shieldFortHolds, before the rout). */
     readonly 'the beaten force holds': (facts: ABeatenForceAndItsFrontLine) => boolean;
+    /** Whether a beaten host's realm's alignment holds it on the field, with no flight losses (both battles' routs,
+     *  first of each chain; the alignment abilities' registry, P1-19au2). */
+    readonly "a realm's alignment holds a beaten host on the field": (facts: ABeatenHostsCompanies) => boolean;
+    /** The gold an ability of a victor's realm's alignment claims for each enemy unit destroyed, before the discoveries
+     *  add theirs (bloodHarvest, both battles: the alignment abilities' registry, P1-19ax1). */
+    readonly "a realm's alignment claims gold for each foe destroyed": () => number;
+    /** The conquest doctrine an ability of a conqueror's realm's alignment holds (applyEvilConquest, every conquest
+     *  site; both battles' Terror after a decisive victory: the alignment abilities' registry, P1-19ax1). */
+    readonly "a realm's alignment conquers by a doctrine": () => TheConquestDoctrineOfARealmsAlignment;
     /** A pursuit of the beaten by the winning force, or nothing (the rout of both battles, before the beaten units'
      *  death rolls). */
     readonly 'the winner runs the beaten down': (facts: AWinningForceOnItsGround) => APursuitOfTheBeaten | null;
@@ -1852,6 +1973,9 @@ export interface TheStagesOfEachHookPoint {
     /** The points a discovery a realm holds adds to the chance a column converging on a hero's battle unites with his
      *  force; the runner adds them (resolveMoveOrder, both its rolls). */
     readonly "a realm's discoveries help converging columns unite": (theEffect: TheEffectOfADiscovery) => number;
+    /** The points a realm's alignment adds to the chance a column converging on a hero's battle unites with his force
+     *  (resolveMoveOrder, both its rolls; the alignment abilities' registry, P1-19au2). */
+    readonly "a realm's alignment helps converging columns unite": () => number;
   };
   /** The checks the Cast Spell order makes of the spell named, before it is worked and as it is (plan P1-19's spells
    *  family: its row P1-19y typed them; the spells' registry, one spell an order, found by its name). In the order the
@@ -1876,6 +2000,13 @@ export interface TheStagesOfEachHookPoint {
      *  (heroHireWage then asks the most; plan P1-19ae: resolveHireHeroOrder, resolveBrokerOrder, the Charm, and
      *  playerView's wages for the report). */
     readonly "a realm's discoveries waive the hiring ban": (theEffect: TheEffectOfADiscovery) => boolean;
+    /** The first check of who may give an alignment order that refuses the hero, in the order's own order of checks
+     *  (Consecrate asks the king before the creed; Call to Arms and Broker the creed first; Harvest the Field and
+     *  Perform Rite the creed alone), or null when he may give it (each order's resolver, before it reads his province
+     *  or his target, and refuses with its own line: the alignment abilities' registry, P1-19aw2). */
+    readonly 'who may give an alignment order': (
+      facts: AHeroAsTheChecksOfAnAlignmentOrderReadHim,
+    ) => TheCheckAnAlignmentOrderRefusesAHeroOn | null;
   };
   /** A hero's experience (plan P1-19's discoveries family: its row P1-19ac typed it). */
   readonly experience: {
@@ -1922,6 +2053,9 @@ export interface TheStagesOfEachHookPoint {
      *  begins; the runner gives the first effect's, or nothing if the realm holds none
      *  (startPhaseHealingSnapshotsAndStalledBattles, which rounds it and writes the line). */
     readonly "a realm's discoveries dress a fighter's wounds": (theEffect: TheEffectOfADiscovery) => number;
+    /** How an ability of a realm's alignment raises its fallen on holy ground (the turn's start, 7d; the death and the
+     *  succession ask whether it does: the alignment abilities' registry, P1-19ax1). */
+    readonly "a realm's alignment raises its fallen on holy ground": () => TheReturnARealmsAlignmentGivesItsFallen;
   };
   readonly turnEnd: {
     /** The unit a province raises into its garrison, or nothing (Early Winter, after the wages: plan P1-19's second
@@ -1943,6 +2077,17 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's discoveries add to the realm's tax": (
       theEffect: TheEffectOfADiscovery,
       facts: TheIncomeTaxationRecordsAddsTo,
+    ) => number;
+    /** The gold an ability of a realm's alignment adds to its tax from the provinces' income; the runner adds those of
+     *  the abilities its alignment holds, in the stage's order (neutralTradeGold, which Early Winter's collection and the
+     *  report's forecast ask: the alignment abilities' registry, plan P1-19at1). */
+    readonly "a realm's alignment adds to its tax": (facts: TheIncomeARealmsAlignmentAddsTo) => number;
+    /** The tax of a province on a realm's consecrated ground, from its tax so far (after Bless, an earthquake and
+     *  Sabotage; before Enslave and the discoveries); the runner hands each effect, in the stage's order, the tax the
+     *  one before gave. The caller asks whether the realm's consecration list holds the province, as before (Early
+     *  Winter's collection and the report's forecast: the alignment abilities' registry, plan P1-19at2). */
+    readonly "a realm's consecrated ground raises a province's tax": (
+      facts: TheTaxOfAProvinceOnConsecratedGround,
     ) => number;
     /** The interest a discovery a realm holds earns on its treasury, under the ceiling; the runner adds them (Early
      *  Winter, and the report's forecast). */
@@ -1977,6 +2122,10 @@ export interface TheStagesOfEachHookPoint {
     /** The rate the graves of a province a realm holds rot at under a discovery it holds, or nothing (its row writes
      *  none: the ground's own); the runner keeps the lowest (the new turn's graves, which roll each). */
     readonly "a realm's discoveries keep the graves": (theEffect: TheEffectOfADiscovery) => number | null;
+    /** The share of the battlefield graves on a realm's land that rots each turn, an ability of its alignment gives; the
+     *  runner gives the first's, or nothing (7e of the new turn, before the discoveries keep them: the alignment
+     *  abilities' registry, P1-19ax2). */
+    readonly "a realm's alignment keeps the graves on its land": () => number;
     /** The chance a discovery a realm holds gives each company at its capital to train up a grade at the new turn; the
      *  runner gives the first effect's, or nothing if the realm holds none (the new turn's War Academy, which rolls). */
     readonly "a realm's discoveries promote the capital's armies": (theEffect: TheEffectOfADiscovery) => number;
@@ -2105,9 +2254,26 @@ export interface TheStagesOfEachHookPoint {
     /** The share of the province's tax a discovery the caster's realm holds adds to a Bless; the runner adds them
      *  (workBlessProvince). */
     readonly "a realm's discoveries add to a Bless": (theEffect: TheEffectOfADiscovery) => number;
+    /** The gold an ability of a realm's alignment cuts from a mercenary band's price; the runner adds them
+     *  (resolveRecruitArmiesOrder, and the report's price, before the discoveries': the alignment abilities' registry,
+     *  plan P1-19av1). */
+    readonly "a realm's alignment cuts a mercenary band's price": () => number;
+    /** The whole yield of a Bless an ability of the caster's realm's alignment gives, in place of the spell's own; the
+     *  runner takes the first the alignment holds (workBlessProvince, before the discoveries add theirs: the alignment
+     *  abilities' registry, plan P1-19av1). */
+    readonly "a realm's alignment raises a Bless's yield": (facts: ABlessAsARealmsAlignmentWeighsIt) => number;
+    /** The points an ability of a scholar's realm's alignment adds to his chance of a discovery; the runner adds them
+     *  (resolveResearchOrder, and the report's odds: the alignment abilities' registry, plan P1-19av1). */
+    readonly "a realm's alignment adds to research": (facts: AResearchARealmsAlignmentMayHelp) => number;
+    /** The factor an ability of a resting hero's realm's alignment raises his Rest's heal by, rounded up (resolveRestOrder,
+     *  when Medical Arts doesn't heal him in full: the alignment abilities' registry, P1-19ax1). */
+    readonly "a realm's alignment raises a rest's heal": () => number;
   };
   /** A hero's own figures a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19p, typed it). */
   readonly aHerosStanding: {
+    /** Whether an ability of a hero's own alignment makes him one of the undead in personal combat (his combatant, as
+     *  personal combat builds it: the alignment abilities' registry, P1-19ax2). */
+    readonly "a hero's own alignment makes him undead": () => boolean;
     /** The hit points a held item adds to its bearer's maximum (itemMaxHpBonus, and applyItemMaxHp to know whether
      *  an item granted or lost changes it; the items' registry: the runner counts two copies of one name once). */
     readonly 'maximum HP': (theItem: AHeldCopysOwnNumbers) => number;
