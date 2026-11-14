@@ -70,6 +70,7 @@ import {
   theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom,
   theCutsAndCeilingsARealmsHeroWageDiscoveriesMakeAndTheirRoom,
 } from '../engine/rules/the-registry-of-discovery-effects.ts';
+import { theTaxOfAProvinceOnConsecratedGround } from '../engine/rules/the-registry-of-alignment-abilities.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
@@ -1009,7 +1010,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
     // the collector: after Bless (a transient we still skip), before Enslave / earthquake damage.
     if (isConsecrated(player, pv.id)) {
       const _cb = t;
-      t = Math.round(t * 1.5);
+      t = theTaxOfAProvinceOnConsecratedGround({ theTax: t });
       _consecG += t - _cb;
     }
     if (pv._enslavedUntil != null && pv._enslavedUntil >= _nextTurn) {

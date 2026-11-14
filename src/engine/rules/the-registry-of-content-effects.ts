@@ -1615,6 +1615,12 @@ export interface TheIncomeTaxationRecordsAddsTo {
   readonly theCeiling: number | null | undefined;
 }
 
+/** A province's tax so far, on a realm's consecrated ground, as Early Winter's collection and the report's forecast
+ *  hand it. */
+export interface TheTaxOfAProvinceOnConsecratedGround {
+  readonly theTax: number;
+}
+
 /** The provinces' tax income a realm's alignment adds to, as Early Winter's collection and the report's forecast hand
  *  it (after the provinces' own tax, the discoveries' and the Wonder's). */
 export interface TheIncomeARealmsAlignmentAddsTo {
@@ -1954,6 +1960,13 @@ export interface TheStagesOfEachHookPoint {
      *  the abilities its alignment holds, in the stage's order (neutralTradeGold, which Early Winter's collection and the
      *  report's forecast ask: the alignment abilities' registry, plan P1-19at1). */
     readonly "a realm's alignment adds to its tax": (facts: TheIncomeARealmsAlignmentAddsTo) => number;
+    /** The tax of a province on a realm's consecrated ground, from its tax so far (after Bless, an earthquake and
+     *  Sabotage; before Enslave and the discoveries); the runner hands each effect, in the stage's order, the tax the
+     *  one before gave. The caller asks whether the realm's consecration list holds the province, as before (Early
+     *  Winter's collection and the report's forecast: the alignment abilities' registry, plan P1-19at2). */
+    readonly "a realm's consecrated ground raises a province's tax": (
+      facts: TheTaxOfAProvinceOnConsecratedGround,
+    ) => number;
     /** The interest a discovery a realm holds earns on its treasury, under the ceiling; the runner adds them (Early
      *  Winter, and the report's forecast). */
     readonly "a realm's discoveries earn interest": (

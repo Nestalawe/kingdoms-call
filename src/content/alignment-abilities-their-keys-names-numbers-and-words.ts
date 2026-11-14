@@ -6,7 +6,7 @@
 // it), and the five alignment orders' keys stay free for their rows (`consecrate`, `call-to-arms`, `broker`,
 // `harvest-the-field`, `perform-rite`: today in alignment-orders-their-keys-names-creeds-numbers-and-words.ts). The
 // words test (tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts)
-// reads each row's numbers against the rulebook's creed section and gold paragraph, the intro's table, and the player
+// reads each row's numbers against the rulebook's creed section, gold paragraph and orders table, the intro's table, and the player
 // page's two texts of its creed (the turn report's summary, the join form's description). How to add an ability:
 // docs/architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md.
 import type { KC_ALIGNMENTS } from './kingdoms-call-data.ts';
@@ -25,6 +25,8 @@ export interface ANumberOfAnAlignmentAbility {
   readonly inItsCreedsSection: string;
   /** In the rulebook's paragraph on gold ("Your gold comes chiefly…"), where it states it. */
   readonly inTheRulebooksParagraphOnGold?: string;
+  /** In its order's row of the rulebook's orders table ("Your alignment's signature action"), where it states it. */
+  readonly inTheRulebooksOrdersTable?: string;
   /** In its creed's row of the intro's table "The seven alignments", where it states it. */
   readonly inTheIntrosTable?: string;
   /** In its creed's summary on the player's turn report (the report's `ALIGNMENT_SUMMARIES`), where it states it. */
@@ -75,6 +77,24 @@ export const ALIGNMENT_ABILITIES = {
         inTheIntrosTable: '+{N} tax',
         inTheReportsSummary: 'Province tax income flows {N} richer',
         inTheJoinForm: '+{N} tax from every province',
+      },
+    },
+  },
+  // a Divine realm's consecrated ground prospers: a province its consecration list holds pays a share more tax, rounded
+  // (the books give it no name: "+50% tax"; the turn's line "from consecrated ground"). Gated by the consecration list,
+  // not by the alignment: only a Divine king consecrates, so no other realm holds one
+  'consecrated-ground-tax': {
+    howItIsUsed: 'always on',
+    alignment: 'Divine',
+    theNumbers: {
+      theShareMoreTax: {
+        value: 50,
+        writtenAs: 'as a percentage',
+        inItsCreedsSection: 'Consecrated ground gives +{N} tax',
+        inTheRulebooksOrdersTable: '+{N} tax, stauncher defenders',
+        inTheIntrosTable: '+{N} tax and holy ground',
+        inTheReportsSummary: 'Consecrated ground yields +{N} tax',
+        inTheJoinForm: 'Consecrate provinces: +{N} tax',
       },
     },
   },

@@ -13,7 +13,8 @@
 // books or the page's texts (or there, and not in content), turns this red. Since P1-19at1 each alignment ability's
 // numbers (src/content/alignment-abilities-their-keys-names-numbers-and-words.ts) are held the same way: each stated in
 // the words its row gives in its creed's section of the rulebook, the rulebook's paragraph on gold, its creed's row of
-// the intro's table, and the page's two texts of its creed, where its row says the place states it.
+// the rulebook's orders table (since P1-19at2), its creed's row of the intro's table, and the page's two texts of its
+// creed, where its row says the place states it.
 // Level 0 (static): the content's rows imported (plain data), both books read as written in src/, the page's texts and
 // the GM's labels read by their syntax trees (tests/lib/source.ts); nothing runs.
 import fs from 'node:fs';
@@ -412,6 +413,12 @@ const ABILITIES: readonly (readonly [slug: string, row: AnAlignmentAbility])[] =
 /** The rulebook's paragraph on gold, as a reader sees it. */
 const theParagraphOnGold = (b: TheBooks): string =>
   asAReaderSeesIt(thePartOf(b.rulebook, '<p>Your gold comes chiefly', '</p>'));
+/** A creed's row of the rulebook's orders table, as a reader sees it. */
+const theOrdersTableRowOf = (b: TheBooks, creed: string): string =>
+  theOrdersTable(b)
+    .filter((cells) => asAReaderSeesIt(cells[0] ?? '').endsWith(` ${creed}`))
+    .map((cells) => asAReaderSeesIt(cells.join(' ')))
+    .join(' ');
 /** A creed's row of the intro's table, as a reader sees it. */
 const theIntrosRowOf = (b: TheBooks, creed: string): string =>
   theRowsOf(thePartOf(b.intro, '<h3>The seven alignments</h3>', '</table>'))
@@ -429,6 +436,7 @@ function whatAnAbilitysRowBreaks(row: AnAlignmentAbility, b: TheBooks, texts: Th
     const places = [
       ["its creed's section", n.inItsCreedsSection, theEntriesOfItsCreedsSection(b, row.alignment).join(' ')],
       ["the rulebook's paragraph on gold", n.inTheRulebooksParagraphOnGold, theParagraphOnGold(b)],
+      ["the rulebook's orders table", n.inTheRulebooksOrdersTable, theOrdersTableRowOf(b, row.alignment)],
       ["the intro's table", n.inTheIntrosTable, theIntrosRowOf(b, row.alignment)],
       ["the report's summary", n.inTheReportsSummary, asAReaderSeesThePagesText(summary ?? '')],
       [
@@ -458,7 +466,10 @@ test("the abilities' numbers are the ones the books state today", () => {
         Object.fromEntries(Object.entries(row.theNumbers).map(([k, n]) => [k, n.value])),
       ]),
     ),
-  ).toEqual({ 'neutral-trade': { theShareOfTheProvincesIncome: 20 } });
+  ).toEqual({
+    'neutral-trade': { theShareOfTheProvincesIncome: 20 },
+    'consecrated-ground-tax': { theShareMoreTax: 50 },
+  });
 });
 
 // Planted: an ability's number changed in its row alone, or in one place alone (the rulebook's creed section, its
@@ -511,5 +522,55 @@ test("planted, an ability's number in its row alone, or in each place that state
   };
   expect(whatAnAbilitysRowBreaks(trade, BOOKS, aJoinForm)).toEqual([
     `the join form's description's theShareOfTheProvincesIncome: "+20% tax from every province"`,
+  ]);
+});
+
+// Planted (P1-19at2): the consecrated ground's 50% changed in its row alone, or in each of the six places alone (the
+// rulebook's creed section and orders table, the intro, the report's summary, the join form); each is found where planted.
+test("planted, the consecrated ground's share in its row alone, or in each place that states it alone, is found", () => {
+  const tax = ALIGNMENT_ABILITIES['consecrated-ground-tax'];
+  const n = tax.theNumbers.theShareMoreTax;
+  expect(
+    whatAnAbilitysRowBreaks({ ...tax, theNumbers: { theShareMoreTax: { ...n, value: 40 } } }, BOOKS, TEXTS),
+  ).toEqual([
+    `its creed's section's theShareMoreTax: "Consecrated ground gives +40% tax"`,
+    `the rulebook's orders table's theShareMoreTax: "+40% tax, stauncher defenders"`,
+    `the intro's table's theShareMoreTax: "+40% tax and holy ground"`,
+    `the report's summary's theShareMoreTax: "Consecrated ground yields +40% tax"`,
+    `the join form's description's theShareMoreTax: "Consecrate provinces: +40% tax"`,
+  ]);
+  const aBookWith = (from: string, to: string, inTheIntro = false): TheBooks => {
+    const page = inTheIntro ? INTRO : RULEBOOK;
+    expect(page.split(from)).toHaveLength(2);
+    return inTheIntro ? { ...BOOKS, intro: page.replace(from, to) } : { ...BOOKS, rulebook: page.replace(from, to) };
+  };
+  expect(
+    whatAnAbilitysRowBreaks(tax, aBookWith('ground gives <strong>+50% tax</strong>', 'ground gives +40% tax'), TEXTS),
+  ).toEqual([`its creed's section's theShareMoreTax: "Consecrated ground gives +50% tax"`]);
+  expect(whatAnAbilitysRowBreaks(tax, aBookWith('+50% tax, stauncher', '+40% tax, stauncher'), TEXTS)).toEqual([
+    `the rulebook's orders table's theShareMoreTax: "+50% tax, stauncher defenders"`,
+  ]);
+  expect(
+    whatAnAbilitysRowBreaks(tax, aBookWith('+50% tax and holy ground', '+40% tax and holy ground', true), TEXTS),
+  ).toEqual([`the intro's table's theShareMoreTax: "+50% tax and holy ground"`]);
+  const summary = TEXTS.theReportsSummaries['Divine'] ?? '';
+  expect(summary.split('yields +50% tax')).toHaveLength(2);
+  const aSummary: ThePagesTexts = {
+    ...TEXTS,
+    theReportsSummaries: {
+      ...TEXTS.theReportsSummaries,
+      Divine: summary.replace('yields +50% tax', 'yields +40% tax'),
+    },
+  };
+  expect(whatAnAbilitysRowBreaks(tax, BOOKS, aSummary)).toEqual([
+    `the report's summary's theShareMoreTax: "Consecrated ground yields +50% tax"`,
+  ]);
+  expect(TEXTS.theJoinFormsStrings.filter((s) => s.includes('provinces: +50% tax'))).toHaveLength(1);
+  const aJoinForm: ThePagesTexts = {
+    ...TEXTS,
+    theJoinFormsStrings: TEXTS.theJoinFormsStrings.map((s) => s.replace('provinces: +50% tax', 'provinces: +40% tax')),
+  };
+  expect(whatAnAbilitysRowBreaks(tax, BOOKS, aJoinForm)).toEqual([
+    `the join form's description's theShareMoreTax: "Consecrate provinces: +50% tax"`,
   ]);
 });

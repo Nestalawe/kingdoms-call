@@ -12,11 +12,15 @@ import {
   type AlignmentAbilitySlug,
   type AnAlignmentAbility,
 } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
-import { A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX } from './alignment-abilities/a-realms-alignment-at-the-turns-end.ts';
+import {
+  A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX,
+  A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX,
+} from './alignment-abilities/a-realms-alignment-at-the-turns-end.ts';
 import type {
   HookPointName,
   TheIncomeARealmsAlignmentAddsTo,
   TheStagesOfEachHookPoint,
+  TheTaxOfAProvinceOnConsecratedGround,
 } from './the-registry-of-content-effects.ts';
 
 /** An entry: the ability's effect at each stage it acts in. */
@@ -28,11 +32,20 @@ export const THE_REGISTRY_OF_ALIGNMENT_ABILITIES = {
   'neutral-trade': {
     turnEnd: { "a realm's alignment adds to its tax": A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX['neutral-trade'] },
   },
+  'consecrated-ground-tax': {
+    turnEnd: {
+      "a realm's consecrated ground raises a province's tax":
+        A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX['consecrated-ground-tax'],
+    },
+  },
 } satisfies Record<AlignmentAbilitySlug, AlignmentAbilityEntry>;
 
 /** Each stage's order: the entries with an effect at the stage, each once; the runner asks them in this order. */
 export const THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES = {
-  turnEnd: { "a realm's alignment adds to its tax": ['neutral-trade'] },
+  turnEnd: {
+    "a realm's alignment adds to its tax": ['neutral-trade'],
+    "a realm's consecrated ground raises a province's tax": ['consecrated-ground-tax'],
+  },
 } as const satisfies {
   readonly [H in HookPointName]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly AlignmentAbilitySlug[];
@@ -59,5 +72,17 @@ export function whatARealmsAlignmentAddsToItsTax(
   return theAbilitiesOfTheStageAnAlignmentHolds(theAlignment, TURN_END[theStage]).reduce(
     (theGold, slug) => theGold + (ENTRIES[slug].turnEnd?.[theStage]?.(facts) ?? 0),
     0,
+  );
+}
+
+/** The runner of "turnEnd: a realm's consecrated ground raises a province's tax" (Early Winter's collection and the
+ *  report's forecast, for a province the realm's consecration list holds): the province's tax after each effect of the
+ *  stage, in its order, each handed the tax the one before gave. It is handed no alignment: the consecration list gates
+ *  it, as before. */
+export function theTaxOfAProvinceOnConsecratedGround(facts: TheTaxOfAProvinceOnConsecratedGround): number {
+  const theStage = "a realm's consecrated ground raises a province's tax";
+  return TURN_END[theStage].reduce(
+    (theTax, slug) => ENTRIES[slug].turnEnd?.[theStage]?.({ theTax }) ?? theTax,
+    facts.theTax,
   );
 }

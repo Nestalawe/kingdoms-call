@@ -31,6 +31,9 @@
 // discovery's name and no discovery effect's slug, and the five alignment orders' keys are left free for their rows. Its
 // runner of "turnEnd: a realm's alignment adds to its tax" gives a Neutral realm a fifth of its provinces' income,
 // rounded down, and any other realm nothing, as neutralTradeGold (which Early Winter and the report ask) did before.
+// Since P1-19at2 its runner of "turnEnd: a realm's consecrated ground raises a province's tax" gives a province's tax
+// ×1.5, rounded to the nearest gold, as Early Winter and the report wrote it, whatever realm holds the ground (it is
+// handed no alignment: the consecration list gates it).
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -83,9 +86,13 @@ import { ALIGNMENT_ABILITIES } from '../../src/content/alignment-abilities-their
 import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES,
   THE_REGISTRY_OF_ALIGNMENT_ABILITIES,
+  theTaxOfAProvinceOnConsecratedGround,
   whatARealmsAlignmentAddsToItsTax,
 } from '../../src/engine/rules/the-registry-of-alignment-abilities.ts';
-import { A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX } from '../../src/engine/rules/alignment-abilities/a-realms-alignment-at-the-turns-end.ts';
+import {
+  A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX,
+  A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX,
+} from '../../src/engine/rules/alignment-abilities/a-realms-alignment-at-the-turns-end.ts';
 import { neutralTradeGold } from '../../src/engine/grand-design.ts';
 
 /** The registry as this test reads it: each entry's effects by hook point and stage, and each stage's order. */
@@ -658,7 +665,10 @@ test("the alignment abilities' registry holds each effect once, in the order of 
 });
 
 test("planted in the alignment abilities' registry, an entry left out of its order, a row with no entry, an alignment that isn't one, a discovery's name or slug as a key, and an order's key taken, are found", () => {
-  const orders: Orders = { ...ABILITY_ORDERS, turnEnd: { "a realm's alignment adds to its tax": [] } };
+  const orders: Orders = {
+    ...ABILITY_ORDERS,
+    turnEnd: { ...ABILITY_ORDERS['turnEnd'], "a realm's alignment adds to its tax": [] },
+  };
   const rows: AbilityRows = {
     ...ABILITY_ROWS,
     tithes: { alignment: 'Divine' },
@@ -712,4 +722,16 @@ test('the runner of "a realm\'s alignment adds to its tax" and the Neutral trade
   expect(INCOMES.map((income) => A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX['neutral-trade']({ theIncome: income }))).toEqual(
     INCOMES.map((income) => neutralTradeGold({ alignment: 'Neutral' }, income)),
   );
+});
+
+test('the runner of "a realm\'s consecrated ground raises a province\'s tax" and its effect give the tax ×1.5, rounded, as before', () => {
+  const taxes = Array.from({ length: 301 }, (_, i) => i);
+  expect(taxes.map((theTax) => theTaxOfAProvinceOnConsecratedGround({ theTax }))).toEqual(
+    taxes.map((t) => Math.round(t * 1.5)),
+  );
+  expect(
+    taxes.map((theTax) => A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX['consecrated-ground-tax']({ theTax })),
+  ).toEqual(taxes.map((t) => Math.round(t * 1.5)));
+  // a half rounds up, as Math.round does: 1 → 2, 3 → 5, 5 → 8
+  expect([1, 3, 5].map((theTax) => theTaxOfAProvinceOnConsecratedGround({ theTax }))).toEqual([2, 5, 8]);
 });

@@ -41,6 +41,7 @@ import {
   doARealmsDiscoveriesAddToTheRealmsTax,
   whatARealmsDiscoveriesEarnInInterest,
 } from '../rules/the-registry-of-discovery-effects.ts';
+import { theTaxOfAProvinceOnConsecratedGround } from '../rules/the-registry-of-alignment-abilities.ts';
 import type { TurnContext } from './context.ts';
 import type { AGarrisonCompanyDrilledAGrade, ATitlesPerkOfGold } from './the-facts-early-winters-lines-record.ts';
 import type { Character, Realm } from '../../schemas/saved-game-state.ts';
@@ -165,7 +166,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       if (pv._blessedTurn === G.turn) t = Math.round(t * (Number(pv._blessedMult) || 1.6)); // Bless Province: +60% (or +100% from a Divine king)
       if (isConsecrated(p, pv.id)) {
         const _cb = t;
-        t = Math.round(t * 1.5);
+        t = theTaxOfAProvinceOnConsecratedGround({ theTax: t });
         _consecBonus += t - _cb;
       } // DIVINE — Consecrate: hallowed ground prospers (+50%)
       if (pv._enslavedUntil != null && pv._enslavedUntil >= G.turn) t = Math.max(0, t - 1); // EVIL — Enslave: resentment (−1 tax while it lasts)

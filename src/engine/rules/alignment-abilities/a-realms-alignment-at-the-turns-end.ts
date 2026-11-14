@@ -1,5 +1,6 @@
 // A realm's alignment at the turn's end (plan P1-19's alignment abilities family, row P1-19at1): the abilities that add
-// to a realm's tax ("turnEnd: a realm's alignment adds to its tax"). Each is handed the facts of its stage and reads its
+// to a realm's tax ("turnEnd: a realm's alignment adds to its tax") and, from row P1-19at2, raise a province's tax on
+// consecrated ground ("turnEnd: a realm's consecrated ground raises a province's tax"). Each is handed the facts of its stage and reads its
 // numbers from its row (src/content/alignment-abilities-their-keys-names-numbers-and-words.ts); the runner
 // (the-registry-of-alignment-abilities.ts) asks those the realm's alignment holds. No effect draws a die.
 import {
@@ -20,3 +21,14 @@ export const A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX = {
         (100 / ALIGNMENT_ABILITIES['neutral-trade'].theNumbers.theShareOfTheProvincesIncome.value),
     ),
 } satisfies Partial<Record<AlignmentAbilitySlug, TheTurnsEndsStages["a realm's alignment adds to its tax"]>>;
+
+/** "turnEnd: a realm's consecrated ground raises a province's tax": the province pays its row's share more, rounded to
+ *  the nearest gold. The factor is 1 + 50 / 100, exactly 1.5, so the sum is `Math.round(t * 1.5)` as before. */
+export const A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX = {
+  'consecrated-ground-tax': (facts) =>
+    Math.round(
+      facts.theTax * (1 + ALIGNMENT_ABILITIES['consecrated-ground-tax'].theNumbers.theShareMoreTax.value / 100),
+    ),
+} satisfies Partial<
+  Record<AlignmentAbilitySlug, TheTurnsEndsStages["a realm's consecrated ground raises a province's tax"]>
+>;
