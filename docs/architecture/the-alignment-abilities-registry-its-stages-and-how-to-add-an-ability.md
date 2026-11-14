@@ -135,6 +135,18 @@ form shares the last):
 | the skeleton, the wanderer | the Undead king's skeletal company; a Druidic wanderer's Druid 1 |
 | one realm a game (two) | Divine and Undead: the join form and the bots' setup; the turn doesn't check it |
 
+**The marks on a province** (P1-19ay2): what an ability leaves on a province is read, laid, lifted and faded in one
+module, `src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts` (not in `rules/`: it
+writes state). Each mark keeps its save field and its own wipe; its numbers stay on the rows:
+
+| Mark | Read | Laid | Lifted, faded |
+|---|---|---|---|
+| consecrated ground (the realm's list) | `isConsecrated`, `provinceConsecrated` | Consecrate | wiped at capture; spent by a Divine return; faded as the season closes once not held |
+| Terror (on the province) | `reignOfFearHere` | a decisive win (`spreadTerror`) | spent at the next battle there (`consumeTerror`); lifted unspent where its realm holds it |
+| Enslave (`_enslavedUntil`) | `theEnslavedProvinceStillPaysLess` | an enslaving conquest | fades once its last turn is past |
+
+A new mark is an optional field of the save, with its read, lay and wipe here.
+
 ## Outside the family
 
 - **The ladder of alignments** (hire wages by distance, the Divine-Undead hiring ban, mercy by the foe's alignment,
@@ -176,6 +188,8 @@ form shares the last):
   `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1, 133 after P1-19au2, 126 after P1-19av1, 119 after P1-19av2): the functions taken name no alignment, and the
   engine's names of an alignment outside `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
   the count stays above 0.
+- `tests/unit/the-marks-on-a-province-each-read-laid-lifted-and-faded.test.ts`: each mark read, laid and lifted
+  through the turn's own callers (with the cases its header names, each read, lay, lift and fade).
 
 ## How to add an ability
 
