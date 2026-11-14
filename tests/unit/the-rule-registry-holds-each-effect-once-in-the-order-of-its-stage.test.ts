@@ -37,6 +37,10 @@
 // what both battles wrote before: each creed's chance of zeal as the old table (0.1 for an alignment none holds), the
 // defender's chance on consecrated ground doubled after the discoveries' share, at most 1, and the strongest of zeal's
 // ×1.3, the skeletal legions' ×1.5 under the king or ×1.3 under another, and savage fury's ×1.25 (old Math.max).
+// Since P1-19au2 its runners of the other battle factors and the Banner give what the engine wrote before: 0.85 to an
+// Undead or Evil attacker on consecrated ground (1 to any other), Righteous Defence's 1.1, Home of the Wild's 1.5 to a
+// Creature in forest or jungle (the realm's or the commander's creed), the Reign of Fear's 1.5 to a Monster, the
+// Deathless March to a host of skeletons alone, and the Banner's 15 points, each to its creed alone.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -94,6 +98,12 @@ import {
   theFervourOfASide,
   theTaxOfAProvinceOnConsecratedGround,
   whatARealmsAlignmentAddsToItsTax,
+  doesARealmsAlignmentHoldABeatenHostOnTheField,
+  theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
+  theFactorARealmsAlignmentStrengthensAUnitInTheWildBy,
+  theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
+  theFactorConsecratedGroundWeakensAnAttackersHostBy,
+  whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite,
 } from '../../src/engine/rules/the-registry-of-alignment-abilities.ts';
 import {
   A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX,
@@ -795,4 +805,44 @@ test('the runner of "a realm\'s alignment stirs a side\'s fervour" gives the str
             ...(evilMonster ? ['savage-fury'] : []),
           ]);
         }
+});
+
+test("the runners of the other battle factors and the Banner give each creed what the engine's checks gave before", () => {
+  const creeds = [...KC_ALIGNMENTS, 'Neutral', null, undefined] as const;
+  for (const a of creeds) {
+    const said = String(a);
+    // consecrated ground: `(atkAlign === 'Undead' || atkAlign === 'Evil') ? 0.85 : 1`
+    // (the battles hand it the alignment the side fights under: a string, Neutral for a realm of none)
+    expect(theFactorConsecratedGroundWeakensAnAttackersHostBy({ theAttackersAlignment: a ?? 'Neutral' }), said).toBe(
+      a === 'Undead' || a === 'Evil' ? 0.85 : 1,
+    );
+    // Righteous Defence: `alignment === 'Good'`, then `defBonus *= 1.1`
+    expect(theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy(a), said).toBe(a === 'Good' ? 1.1 : null);
+    // the Reign of Fear: `playerAlignment === 'Evil' && MONSTER_ARMIES.has(army.type)`, then ×1.5
+    for (const theUnitType of ['Cave Trolls', 'Forest Ents', 'Men-at-Arms'])
+      expect(theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear(a, { theUnitType }), said).toBe(
+        a === 'Evil' && theUnitType === 'Cave Trolls' ? 1.5 : null,
+      );
+    // the Deathless March: `armies.length > 0 && armies.every((a) => a._isSkeletal) && alignment === 'Undead'`
+    for (const theCompanies of [[], [{ _isSkeletal: true }], [{ _isSkeletal: true }, {}], [{ _isSkeletal: false }]])
+      expect(doesARealmsAlignmentHoldABeatenHostOnTheField(a, { theCompanies }), said).toBe(
+        theCompanies.length > 0 && theCompanies.every((c) => c._isSkeletal === true) && a === 'Undead',
+      );
+    // the Banner of Fellowship: `alignment === 'Good' ? 15 : 0`
+    expect(whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite(a), said).toBe(a === 'Good' ? 15 : 0);
+    // Home of the Wild: `(realm === 'Druidic' || commander === 'Druidic') && forest or jungle && a Creature`, then ×1.5
+    for (const b of creeds)
+      for (const theTerrain of ['forest', 'jungle', 'plain', null])
+        for (const theUnitType of ['Forest Ents', 'Cave Trolls'])
+          expect(
+            theFactorARealmsAlignmentStrengthensAUnitInTheWildBy(a, b, { theUnitType, theTerrain }),
+            `${said}, ${String(b)}, ${String(theTerrain)}, ${theUnitType}`,
+          ).toBe(
+            (a === 'Druidic' || b === 'Druidic') &&
+              (theTerrain === 'forest' || theTerrain === 'jungle') &&
+              theUnitType === 'Forest Ents'
+              ? 1.5
+              : null,
+          );
+  }
 });
