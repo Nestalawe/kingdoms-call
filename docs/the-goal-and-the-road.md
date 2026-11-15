@@ -31,9 +31,9 @@ recorded here.
 
 Toby's first changes are **the new alignment abilities**. They arrive as **one batch an alignment** (his answer of 15
 November), and each batch's pull request says what it changes. Two rulings set how they reach the game: each reaches
-every running game as it goes live ([R-178](rulings/R-178-rule-changes-reach-running-games.md)), and they are built as
+every running game as it goes live ([R-177](rulings/R-177-rule-changes-reach-running-games.md)), and they are built as
 the test games played them
-([R-179](rulings/R-179-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md)). Each batch builds from
+([R-178](rulings/R-178-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md)). Each batch builds from
 Toby's sheet (below). Three questions wait for his answer before the batches of the alignments they touch
 ([the questions](questions-for-toby.md)).
 
@@ -43,7 +43,7 @@ Both are Toby's own. They are named here and not copied, until he agrees to it.
 - **His design document** sets out the game he is aiming for: his design targets, and the phases in which he will
   redesign the game, item by item. The design matrix will score each option of a rule against those targets.
 - **His sheet of the new alignment abilities** says what each ability does. Each batch of Thursday's changes builds
-  from it, with the lines [R-179](rulings/R-179-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md)
+  from it, with the lines [R-178](rulings/R-178-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md)
   adds.
 
 ## Batch-ready
@@ -98,7 +98,7 @@ Also on the road:
   15 November). Its running cost is checked first. It is a step still to be planned, with a database
   part.
 - **No rulesets.** A rule change reaches every running game, so no game keeps the rules it started with
-  ([R-178](rulings/R-178-rule-changes-reach-running-games.md)).
+  ([R-177](rulings/R-177-rule-changes-reach-running-games.md)).
 - **Experiments stay off `main`**, as content overlays or branches tried through the design matrix. Only the chosen
   design takes the full pull-request routine. Each design item names the rulings it replaces.
 - **Can wait, where the redesign will rewrite the code:** the rulings Toby has answered outside the areas a batch
