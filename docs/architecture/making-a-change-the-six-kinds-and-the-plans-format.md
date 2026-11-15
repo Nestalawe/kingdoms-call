@@ -125,8 +125,8 @@ concern.
 ### Finding the next tranche
 
 Asked "what next?", the skill proposes tranches before planning one:
-1. **Read [the goal](../the-goal-and-the-road.md) first, not the order of a list.** The next tranche is the one that brings the goal closest; a road
-   written earlier is an input, and a recommendation nobody answered isn't a decision.
+1. **Read [the goal](../the-goal-and-the-road.md) first, not the order of a list.** The next tranche is the one that
+   brings the goal closest; a road written earlier is an input, and a recommendation nobody answered isn't a decision.
 2. **Read where things stand:** the open PRs, the steps in progress ([the backlog](../backlog/README.md)), the known
    defects, the [questions waiting for Toby](../questions-for-toby.md), and the counts in `tests/ratchet.json` on `main`.
 3. **Give two or three candidates**, each with what it delivers against the goal, its rows (about how many), its risk

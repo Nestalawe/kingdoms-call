@@ -28,8 +28,8 @@ pages before and after the change). If Toby finds a problem on staging, that's a
 
 1. Add the label **`staging`** to the pull request.
 2. Wait for the comment **"🧪 On staging"** on the pull request (a few minutes: it waits for the pull request's
-   CI checks to pass, then staging's database is rebuilt for it). If CI fails, nothing goes on staging: the
-   staging check turns red and says which CI job failed.
+   CI checks to pass, then staging's database is rebuilt for it: `main`'s migrations, then its own). If CI fails,
+   nothing goes on staging: the staging check turns red and says which CI job failed.
    Every page's footer on staging then says **"Staging · PR #N · abc1234"**: check it names this pull request.
    The GM portal, the player portal, the Hall of Fame and the Overlord page also show their build line, e.g.
    "build 3f2a9c1 · 22 Oct 2026, 10:15". On staging it names the commit actually built, GitHub's merge of the pull
