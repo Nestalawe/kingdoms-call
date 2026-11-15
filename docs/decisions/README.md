@@ -51,8 +51,8 @@ Toby answered D-01 to D-07 on 2026-09-29, and D-08 to D-13 on 2026-10-11.
 - **One lane** (2026-10-16; from 19 November, 2026-11-13): one piece of work at a time on `main`. Batches come first,
   by day, each from `main`. Refactor runs go overnight only when no batch's pull request is open, and merge before the
   next batch starts. A batch never waits for a run.
-- **Batch-ready** (2026-10-30): Toby's batches resume once the code is batch-ready, not at the end of Phase 1. `main`
-  has been batch-ready since 2026-11-10, and Toby's changes start on 19 November (2026-11-13).
+- **Batch-ready** (2026-10-30): Toby's batches resume once the code is batch-ready, not at the end of Phase 1
+  ([what it means, and where the work is](../the-goal-and-the-road.md#batch-ready)).
 - **Live bugs first** (2026-10-16, again 2026-11-01): a bug Toby reports from live play is fixed in its own pull
   request from `main`, ahead of the next planned step, test first
   ([CLAUDE.md](../../CLAUDE.md#rules), "When something slips through").
