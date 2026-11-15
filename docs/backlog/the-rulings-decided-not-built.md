@@ -1,10 +1,12 @@
 # The backlog: the rulings to build
 
-Part of the [Next](the-next-group-what-the-road-works-on-now-and-what-players-notice.md) group of
+Part of the [Later](the-later-group-what-serves-a-later-outcome-or-waits.md) group of
 [the backlog](README.md), in the same columns ([how to read a row](README.md#how-to-read-a-row)). Each ruling a maintainer decided and the game doesn't follow yet
 (its status "Decided, not built") is a row of its own; the pull request that builds it sets the ruling to
-**Confirmed** ([adding a ruling](../rulings/README.md#adding-a-ruling)). Placed in Next on one assumption: players
-notice each of them in running games, and each is decided. A static test checks that each such ruling has its row
+**Confirmed** ([adding a ruling](../rulings/README.md#adding-a-ruling)). Placed in Later on one assumption: each is
+decided, and the rulings come after the rebuild
+([the order of work](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)). A static
+test checks that each such ruling has its row
 (`tests/static/the-backlogs-statuses-follow-their-pull-requests-and-each-ruling-to-build-has-a-row.test.ts`).
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR |
@@ -35,7 +37,6 @@ notice each of them in running games, and each is decided. A static test checks 
 | P1-23az | [R-173](../rulings/R-173-the-call-to-arms-note-names-muster-rolls-chance.md): the Call to Arms note names Muster Rolls' chance of an Average company | Players: the note says what the turn does; nothing changes in play | Phase 1 | Small | ✓ | ⬜ | |
 | P1-23bb | [R-175](../rulings/R-175-the-hire-list-says-a-heros-price-and-his-wage-under-granaries.md): under Granaries the hire list says a hero's price and his wage after it | Players: the list gives both figures; nothing changes in play | Phase 1 | Small | ✓ | ⬜ | |
 | P1-23bc | [R-176](../rulings/R-176-enslaves-tax-cut-says-this-turn-and-the-next-3.md): Enslave's tax cut written as "this turn and the next 3" | Players: every text gives the four tax days; nothing changes in play | Phase 1 | Small | ✓ | ⬜ | |
-| B-05 | [R-178](../rulings/R-178-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md): the new alignment abilities, one batch an alignment, built as the test games played them; the design document brought up to match | Players: each alignment's new abilities reach every running game as its batch lands | The ground for the redesign | Large | – | ⬜ | |
 
 ## The decisions in force
 

@@ -3,10 +3,11 @@
 Every open item, in one list: what it delivers, its impact, the outcome it serves, its size, who must look at it, and
 where it is. What comes next is the top of the list ([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs));
 each outcome is in [the goal and the road](../the-goal-and-the-road.md). The list runs in four parts:
-1. [**The top, in order**](#the-top-in-order): the next rows, in strict order, each with why it is there.
-2. [**Next**](the-next-group-what-the-road-works-on-now-and-what-players-notice.md): rows to place in the top soon, with
-   [the rulings to build](the-rulings-decided-not-built.md).
-3. [**Later**](the-later-group-what-serves-a-later-outcome-or-waits.md): rows that serve a later outcome, or wait.
+1. [**The top, in order**](#the-top-in-order): the next rows, grouped by tranche, each with why it is there.
+2. [**Next**](the-next-group-what-the-road-works-on-now-and-what-players-notice.md): the rebuild's other rows, to place
+   in the top soon.
+3. [**Later**](the-later-group-what-serves-a-later-outcome-or-waits.md): first the rulings and the known defects,
+   with [the rulings to build](the-rulings-decided-not-built.md); then the rows that serve a later outcome, or wait.
 4. [**Not yet assessed**](#not-yet-assessed): rows whose impact no one has described yet.
 
 Finished items are a record, in three files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
@@ -39,40 +40,52 @@ Finished items are a record, in three files: [Phase 0, and P1-01 to P1-10](finis
 - **PR:** the pull requests so far. A step with lettered rows lists its open rows after it; its finished rows are in
   the finished list.
 - **After:** a row that must wait for another says so at the end of its "What".
-- **Why here:** in the top only, one line of reasoning for the row's place.
+- **Why here:** in the top and in Later's first group, one line of reasoning for the row's place.
 
 ## The top, in order
 
-What comes next is the first row. Each row's place comes from its impact against the rows above and below it, and a
-maintainer validates it ([ordering the backlog](../ways-of-working/ordering-the-backlog-by-impact.md)). The first
-pass placed these rows on [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours),
-taken as its assumptions: **harm in live play first, then what unblocks the most rows, then the maintainers' time,
-then tidying.** Among rows of equal harm, the harm more games meet goes first, then the row that unblocks others,
-then the smaller row. A known defect is placed only when it is plainly harm in live play: its row says players notice
-it in running games, the turn's result is wrong (not only its words), and its fix needs no new ruling.
+What comes next is the first row of the first group. The top is grouped by tranche, a heading a group, its rows in
+order; inside a group, the rows' "After" decides the order. The order of work is
+[the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours) of
+ordering the backlog, and a maintainer validates each row's place. The rulings and the known defects come after the rebuild: they head
+[Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
+
+### 1. T6, the types finished: part 4
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| P1-23ap | [R-164](../rulings/R-164-a-garrison-with-no-hero-fights-with-its-realms-rules.md): a garrison with no hero fights with its realm's rules, as a hero's host would, the new alignment abilities included | Players: a lone garrison defends with its realm's creed and discoveries; unblocks the defence rows of the new abilities | Phase 1 | Large | ✓ | ⬜ | | Harm in live play wherever a garrison fights alone (today as against neutral guards); unblocks the new abilities' defence rows (B-05) |
-| P1-23aq | [R-164](../rulings/R-164-a-garrison-with-no-hero-fights-with-its-realms-rules.md)'s zeal part: such a garrison rolls its creed's zeal, at double the chance on consecrated ground | Players: a lone garrison on consecrated ground rolls zeal, until the new abilities remove zeal | Phase 1 | Small | ✓ | ⬜ | | The same garrisons; Small: after P1-23ap, or in its pull request |
-| P1-23m | [R-144](../rulings/R-144-only-the-human-garrison-holds-the-gate.md): only the Human Garrison holds the gate | Players: a siege goes as the unit's text says | Phase 1 | Small | ✓ | ⬜ | | Harm in every siege: today Hold the Gate spares every garrison, not only the Human Garrison; Small |
-| P1-23al | [R-160](../rulings/R-160-steel-armour-and-military-discipline-read-alike-against-neutral-guards.md): Steel Armour and Military Discipline work against neutral guards as between heroes | Players: two discoveries do the same against guards as against heroes | Phase 1 | Small | ✓ | ⬜ | | Harm in battles against guards for each realm with Steel Armour or Military Discipline; Small |
-| KD-049 | **Counter-spy discoveries never take anything off a Spy** (found 2026-10-19 in P1-08j6, Spy; live, players can notice it). Cipher Scripts, Watchmen and six creed discoveries (`effect.kind:'counterSpy'`) are worked out only from the province the order names (`targetProvForSpy`). But the order form and the bots send no province (`target:''`), so the reduction is always 0. Example: Realm B knows Cipher Scripts ("45% lower success"); Realm A's Spy 1 hero spies on B's province where he stands at 40%, not 0%. Fix: read the province he stands in when the order names none; a change in play, so its own PR with a balance report and playtester notes. A P1-08j6 case pins today's behaviour. | Players: counter-spy discoveries cut a Spy's chance, as their texts say | Phase 1 | Small | – | ⬜ | | Harm in each Spy order against a realm with a counter-spy discovery: eight discoveries take nothing off; Small |
-| P1-23as | [R-166](../rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md): four rout rules work against a province's guards as between heroes | Players: four unit abilities reach battles against guards | Phase 1 | Medium | ✓ | ⬜ | | Harm in battles against guards: four rout rules never reach them; Medium |
-| P1-23k | [R-140](../rulings/R-140-messenger-birds-is-retired.md): Messenger Birds is retired | Players: a discovery that does nothing leaves the research list | Phase 1 | Medium | ✓ | ⬜ | | Harm for each realm that researches Messenger Birds: it does nothing; Medium |
-| P1-23l | [R-145](../rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md): new games' guardians have the table's HP; running games keep theirs | Players of new games: guardians as tough as the table says | Phase 1 | Small | ✓ | ⬜ | | Harm in every new game: its guardians start below the table's HP; Small |
-| P1-23j | [R-142](../rulings/R-142-a-declaration-of-war-meets-the-realm-that-declared-it.md): a declaration of war meets the realm that declared it | Players: a realm at war can write to its foe | Phase 1 | Small | ✓ | ⬜ | | Harm when a realm declares war on one that never met it: the realm declared on can't answer; Small |
-| P1-23an | [R-162](../rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md): battle magic takes effect at one moment in both kinds of battle | Players: a battle spell does the same against guards as against heroes | Phase 1 | Medium | ✓ | ⬜ | | Harm in battles with battle magic: today it takes effect at different moments in the two kinds of battle; Medium |
-| P1-23am | [R-161](../rulings/R-161-a-commander-slain-before-the-battle-takes-his-skills-out-of-it.md): a commander slain in the duel before a battle takes his skills out of it | Players: a fallen commander's Druid and Archery leave the battle | Phase 1 | Small | ✓ | ⬜ | | Harm after a duel before a battle: the fallen commander's skills still count; Small |
-| P1-23n | [R-146](../rulings/R-146-flak-screen-engages-every-flyer.md): Flak Screen engages every flyer | Players: beasts that fly are shot at too | Phase 1 | Small | ✓ | ⬜ | | Harm wherever Flak Screen meets beasts that fly: it leaves them be; Small |
-| P1-23v | [R-153](../rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md): the Ring and the Helm shrug off a killing blow; four texts state the 30% | Players: two items save a hero as their texts promise | Phase 1 | Large | ✓ | ⬜ | | Harm for a hero with the Ring or the Helm: today they act as the other second-wind items do; Large, so below the small rows |
-| KD-047 | **A Philosopher's Stone can never be worked** (found 2026-10-19 in P1-08j5, Use Item; live, players can notice it): at load the engine keeps only the Legendary relic's entry (`LEGENDARY_ITEMS_P`, `effect:{stat:'promoteAll'}`), but Use Item, the order form (`ACTIVE_ITEM_STATS`) and the bots (`bots/missions.js`) look for `massPromote`; nothing reads `promoteAll`. E.g. a king who uses the Stone reads "a passive item … its power is always active", his Green companies stay Green and he keeps the Stone. Fix: one name for the power (the data's, or all three readers'), with a test of the Stone as a lair deals it; a change in play, so its own PR with a balance report and playtester notes. P1-08j5's tests pin today's behaviour. | Players: the Philosopher's Stone promotes its realm's companies, as its text says | Phase 1 | Small | – | ⬜ | | Harm for a realm that holds the Stone: using it does nothing; Small, one pull request with KD-048 |
-| KD-048 | **Three more relics never work: the Crystal Orb, the Cloak of Many Faces and the Kraken Figurehead** (found 2026-10-19 in P1-08j6, Spy; live, players can notice them). The Philosopher's Stone's fault: at load `_retierAndBalanceItems` keeps the relics' `LEGENDARY_ITEMS_P` entries, whose powers (`spyAuto`, `untargetable`, `fleetQuality`) nothing reads; the readers look for the older names (`oracle`, `hidden`, `navalBonus`). E.g. a hero of no Spy with the Crystal Orb reads "20% [roll 64 ✗]", not an automatic success. Fix: with the Stone's, one PR (one name per power), with a balance report and playtester notes. P1-08j6's tests pin today's behaviour and test the older copies (`oldCrystalOrb`, `oldCloakOfManyFaces`). | Players: the Crystal Orb, the Cloak of Many Faces and the Kraken Figurehead work as their texts say | Phase 1 | Small | – | ⬜ | | Harm for the holders of three relics, whose powers nothing reads; with KD-047 |
-| P1-23p | [R-148](../rulings/R-148-each-banner-gives-its-own-number.md): each banner gives its own number, the stronger of two | Players: a banner gives what its text says | Phase 1 | Small | ✓ | ⬜ | | Harm for the holders of the two relic standards: +2, not +4 and +6; Small |
-| P1-23ai | [R-157](../rulings/R-157-a-lair-beast-talked-down-by-parley-counts-as-pacified.md): a lair beast talked down by parley counts as pacified, not slain | Players: a parley earns half the Monster-Bane merit and no hit points | Phase 1 | Small | ✓ | ⬜ | | Harm when a hero talks a lair beast down: it counts as slain; Small |
-| P1-23aj | [R-158](../rulings/R-158-invisibility-waits-while-a-hero-leads-armies.md): Invisibility waits while a hero leads armies; the order form says so | Players: an invisible hero who leads armies is seen and fought | Phase 1 | Medium | ✓ | ⬜ | | Harm when an invisible hero leads armies: he stays unseen; Medium |
-| P1-23ba | [R-174](../rulings/R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md): a fleet ordered to a far coast lands as it would next door; the form's forecast follows | Players at sea: a fleet sent to a far coast lands instead of staying put | Phase 1 | Medium | ✓ | ⬜ | | Harm at sea: a fleet ordered to a far coast stays put; Medium |
-| P1-23h | [R-138](../rulings/R-138-an-onlooker-with-a-hero-there-reads-a-battles-one-line-summary.md): an onlooker with a hero there reads a battle's one-line summary | Players: a realm with a hero on the spot learns how a battle there ended | Phase 1 | Small | ✓ | ⬜ | | Harm in what a realm learns: an onlooker with a hero there isn't told how the battle ended; Small |
+| P1-16o2 | `report.ts` freed, on a maintainer's answer of 14 November: a type predicate at the one read, which checks only that the report is an object | Maintainers: the whole player page is typed | Phase 1 | Large | – | ⬜ | | T6 part 4, the rebuild in progress: `report.ts` freed, so the whole player page is typed; unblocks P1-16q |
+| P1-16q | The Hall of Fame's file freed. After P1-16o2 | Maintainers: one more page typed | Phase 1 | Large | – | ⬜ | | T6 part 4: one more page typed; after P1-16o2, unblocks P1-16r |
+| P1-17q3 | `tests/page/turn-shell.test.ts` onto the typed fake: its expected values become `Db` functions' names | Maintainers: one more page test on the fake | Phase 1 | Small | – | ⬜ | | T6 part 4: the turn shell's page test on the typed fake; unblocks P1-17r |
+| P1-17r | The tests of several pages onto the fake. After P1-17q3 | Maintainers: the page tests stop reading `stub-db` | Phase 1 | Medium | – | ⬜ | | T6 part 4: the page tests off `stub-db` finish part 4; unblocks P1-17s1 |
+
+### 2. T6, the types finished: part 5
+
+| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
+|---|---|---|---|---|---|---|---|---|
+| P1-16r | `stats-tab` freed. After P1-16q | Maintainers: one more page typed | Phase 1 | Large | – | ⬜ | | T6 part 5: one more page typed; after P1-16q, unblocks P1-16s |
+| P1-16s | `game-list`, `turn-log` and `game-detail` freed. After P1-16r | Maintainers: three more pages typed | Phase 1 | Medium | – | ⬜ | | T6 part 5: three more pages typed; unblocks P1-16t |
+| P1-16t | `turn-shell`, `auto-turn` and `turn-zero` freed: every page typed, no `@ts-nocheck` line left in the UI. After P1-16s | Maintainers: every page typed; unblocks P1-16u | Phase 1 | Medium | – | ⬜ | | T6 part 5: the last pages typed; unblocks P1-16u |
+| P1-16u | The 16 reads of every column in `src/db/` name their columns, and the compiler proves each page reads only those. After P1-16t | Maintainers: each page's reads are typed column by column | Phase 1 | Small | – | ⬜ | | T6 part 5: each page's reads typed column by column; unblocks P1-16v |
+| P1-16v | Lint refuses `@ts-nocheck` everywhere; the ratchet's two counts of it retire. After P1-16u | Maintainers: no file can opt out of the compiler again | Phase 1 | Small | ✓ | ⬜ | | T6 part 5: the ban on `@ts-nocheck` finishes P1-16 |
+| P1-17s1 | The balance matrix plays on the fake, its `writes` column recorded at `Db`'s calls. After P1-17r | Maintainers: the matrix records what reaches the database; unblocks P1-17s2 | Phase 1 | Medium | ✓ | ⬜ | | T6 part 5: the matrix plays on the fake; after P1-17r, unblocks P1-17s2 |
+| P1-17s2 | `stub-db` deleted, each rule it copied named beside the access-layer test that covers it. After P1-17s1 | Maintainers: one fake of the database instead of two | Phase 1 | Small | – | ⬜ | | T6 part 5: `stub-db` deleted finishes P1-17, and T6 with it |
+
+### 3. Phase 1's rest
+
+| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
+|---|---|---|---|---|---|---|---|---|
+| P1-10z | P1-10's rest: an exhaustive `switch` over the order kinds (with `assertNever`), coverage thresholds, and a content completeness test | Maintainers: an order kind left out fails to compile, and lost coverage fails CI; closes a Phase 1 criterion | Phase 1 | Medium | – | ⬜ | | Phase 1's rest: closes P1-10, a Phase 1 criterion; unblocks P1-24 |
+| P1-14z | P1-14's rest: the old test files in JavaScript, the tests on the engine's vm loader, and `tests/legacy.test.ts` | Maintainers: every test is TypeScript on the engine's modules; closes a Phase 1 criterion | Phase 1 | Large | – | ⬜ | | Phase 1's rest: every test in TypeScript closes P1-14, a Phase 1 criterion; unblocks P1-24 |
+| P1-13z | P1-13's rest: the one known import-rule finding, the prose's import of the item lore lines from the engine | Maintainers: the known-findings list empties, so every import is checked | Phase 1 | Small | ✓ | ⬜ | | Phase 1's rest: the known-findings list empties, which closes P1-13 |
+| P1-12z | P1-12's "done when" checked on `main`, and the step closed | Maintainers: one Phase 1 criterion confirmed with evidence | Phase 1 | Small | ✓ | ⬜ | | Phase 1's rest: P1-12 confirmed on `main`, and closed |
+| P1-11z | P1-11's rest: the differences the copies test still pins go as the maintainers rule on them; the alignment orders' portal half (with P1-19) | Players: the order form says what the turn does in the cases still pinned; closes P1-11 | Phase 1 | Medium | – | ⬜ | | Phase 1's rest: closes P1-11; its portal half goes with P1-19's |
+
+### 4. T7, the rules pulled out
+
+| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
+|---|---|---|---|---|---|---|---|---|
+| B-06 | The rules pulled out: each family of rules counted and moved into the content, each with its bot valuation hook | The maintainers: a redesign item becomes a content change | The ground for the redesign | Large | – | ⬜ | | T7, the next tranche after Phase 1's rest: a redesign item becomes a content change |
 
 ## Not yet assessed
 

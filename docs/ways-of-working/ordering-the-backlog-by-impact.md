@@ -19,8 +19,10 @@ answers four questions:
 ## 2. Find where it would go
 
 Pick the part of the backlog first:
-- **The top, in order**, or **Next**: it serves the outcome the road works on now, or players notice it.
-- **Later**: it serves a later outcome of [the road](../the-goal-and-the-road.md#the-outcomes), or it waits.
+- **The top, in order**, or **Next**: it is part of the rebuild (Phase 1's tranches), or it is one of the owner's key
+  game changes, which a maintainer slots in among them.
+- **Later**: a ruling to build or a known defect, once assessed (its first group, after the rebuild); or it serves a
+  later outcome of [the road](../the-goal-and-the-road.md#the-outcomes), or it waits.
 - **Not yet assessed**: no one can describe its impact yet. A new defect starts here, as a `KD-` row.
 
 Then read the rows around the place where it would go.
@@ -29,16 +31,19 @@ Then read the rows around the place where it would go.
 
 Compare the item with the row just above that place and the row just below it, impact against impact. When nothing
 else decides, the default order is:
-1. **Harm in live play:** a running game does something its rules and rulings don't say, and players notice.
-2. **What unblocks the most rows.**
-3. **The maintainers' time:** a check, a tool or a doc that saves it.
-4. **Tidying:** names, dead code, comments.
+1. **The rebuild, tranche by tranche:** the tranche in progress, then the next one planned. A maintainer slots the
+   owner's key game changes in among them.
+2. **Then the known defects and the rulings to build, by impact:**
+   1. **harm in live play:** a running game does something its rules and rulings don't say, and players notice;
+   2. **what unblocks the most rows;**
+   3. **the maintainers' time:** a check, a tool or a doc that saves it;
+   4. **tidying:** names, dead code, comments.
 
 ## 4. Propose a position
 
-Say where the row goes (after which row, and before which) and why, in one line of reasoning. For example: "Above
-P1-16q: in running games, a garrison with no hero doesn't roll its realm's zeal yet, as R-164 says it should (harm in
-live play); P1-16q types one more page."
+Say where the row goes (after which row, and before which) and why, in one line of reasoning. For example: "In Later's
+first group, above P1-23al: in every siege today, Hold the Gate spares every garrison, where R-144 says only the Human
+Garrison holds the gate (harm in live play); P1-23al touches only battles against guards."
 
 ## 5. Stop for a maintainer
 
