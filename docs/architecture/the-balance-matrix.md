@@ -175,3 +175,13 @@ change" without having looked. Local tools in `tools/proof/` (its
 
 The coverage is measured on the vm's half only. The page's half plays the same games and saves the same states, but it
 also runs the portal's shell, so a line only the page reaches reads "not reached".
+
+## The GM page's shared files are engine paths by name
+
+`ENGINE_PATHS` (`tools/balance/engine-paths.ts`) takes `src/ui/gm/**` whole, but the files of `src/ui/shared/` one by
+one: the folder's other files are other pages' code, and a change to them can't change a game. So when a GM page's file
+starts importing a shared file (the element helper, the reload banner), add that file to the list in the same pull
+request. Without it, a change to that file alone would skip the balance job, and a change in play could merge unseen.
+`tests/static/harness.test.ts` is red until the engine paths under `src/` are exactly the GM page's sources
+(`tools/pages.ts`), the pages' templates, `src/schemas/` and `src/db/`, and the runner refuses to play a page that
+loads a file not on the list. The file is a dangerous path (`tools/balance/**`), so the pull request names it.

@@ -334,4 +334,6 @@ after its merge. If the branch stays, merging the stacked pull request puts it o
 says "Merged", nothing deploys (P0-20's site half and P0-21 did this, and were opened again as #56 and #57).
 The `merges-into-main` check (`.github/workflows/merges-into-main.yml`) is red on any pull request whose base
 isn't `main`; don't merge one while it's red. When you open a stacked pull request, say in its first line
-which pull request must be merged first.
+which pull request must be merged first. Once its base moves to `main`, GitHub may still test the stale merge with
+the old base (a label added or removed reuses it): merge `main` into the branch, and check that CI's "Merge … into
+<`main`'s commit>" line names `main`'s head, before saying it is green.

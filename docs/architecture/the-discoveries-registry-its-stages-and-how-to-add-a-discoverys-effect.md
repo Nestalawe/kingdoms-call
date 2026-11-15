@@ -193,7 +193,8 @@ widens (Parked). The bots' strength estimates (`botEffForce`, `botBattleForce`, 
   `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae, 23 after P1-19af, 5 after P1-19ag, 0 after P1-19ah): the functions taken name no
   discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
   but means something else (the Evil doctrine `'terror'` in both battles; the Spy skill `'spy'`, a line's type
-  `'explore'`) is listed beside its function.
+  `'explore'`) is listed beside its function. The count reads any `.kind` or `.type` compared with such words, whatever
+  the object, so a new plain field compared with words is named otherwise (`action`).
 - `tests/static/each-discoverys-numbers-are-in-its-text.test.ts`: each number of each effect is in its discovery's
   `desc` (365 of 368; the 3 gaps listed with why).
 - `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games

@@ -335,6 +335,15 @@ gives no row and no error, so a new feature that reads another game directly fin
 subquery reads `games` runs under the caller's own read rules: ask a `security definer` function instead, as the Hall
 of Fame record rules ask `game_exists`. Checks: `tests/games-for-their-players.test.js` (`RULES.ownGamesOnly`).
 
+## The GM page's shared files are engine paths by name
+
+When a file of the GM page starts importing a file of `src/ui/shared/`, add that file to `ENGINE_PATHS`
+(`tools/balance/engine-paths.ts`, a dangerous path) in the same pull request. Example: the list names the GM page's
+shared files one by one, because the folder's other files are other pages' code; without the line, a change to the
+new file wouldn't run the balance matrix. Checks: `tests/static/harness.test.ts` is red until the engine paths under
+`src/` are exactly the page's sources, the templates, the schemas and `src/db/`.
+[Detail](architecture/the-balance-matrix.md#the-gm-pages-shared-files-are-engine-paths-by-name).
+
 ## A sort comparator must give the same answer every time
 
 Never sort with a random or argument-less comparator: to shuffle, use `shuffleP(arr, rnd)` (Fisher-Yates); to order
@@ -366,7 +375,8 @@ retyped or now required) also bumps `schemaVersion`: a numbered step in `THE_NUM
 number in `the-saved-games-version-this-build-writes.ts`, and a fixture of the new version
 (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`), never edited once merged. Example: a field renamed with no step: every live
 save keeps the old name, which the new code never reads. Version 2 is one (P1-15f5): `botDiplomacy` now required, its
-step giving an older save "normal". Checks:
+step giving an older save "normal". A `refactor-only` change retypes no field: a `z.unknown()` stays, and the code
+narrows the value where it reads it. Checks:
 `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` fails until a step mends every older fixture,
 and on a version without its fixture. [Detail](architecture/a-saved-game-its-version-its-upgrade-its-check.md#a-change-to-the-saves-shape-needs-its-version).
 
@@ -408,5 +418,7 @@ also gives back what an earlier migration took away, the next time anyone genera
 Don't merge a pull request whose base isn't `main`; when you open a stacked one, say in its first line which pull
 request must merge first ([staging.md](staging.md#a-change-that-needs-both)). Example: GitHub moves a stacked pull
 request onto `main` only when its base branch is deleted after its merge; if the branch stays, merging puts it on the
-leftover branch, GitHub says "Merged" and nothing deploys (it happened twice, reopened as #56 and #57). Checks: the
-`merges-into-main` check (`.github/workflows/merges-into-main.yml`) is red on any pull request whose base isn't `main`.
+leftover branch, GitHub says "Merged" and nothing deploys (it happened twice, reopened as #56 and #57). Once its base
+is `main`, GitHub may still test the old merge: merge `main` into the branch, and read CI's "Merge … into" line, before
+calling it green. Checks: the `merges-into-main` check (`.github/workflows/merges-into-main.yml`) is red on any pull
+request whose base isn't `main`; nothing checks the old merge.

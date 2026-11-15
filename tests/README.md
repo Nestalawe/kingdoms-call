@@ -59,6 +59,22 @@ level and why a lower one wouldn't do.
 | 3 | simulation | Plays whole seeded games (fuzz runs, the report-leak runs) |
 | 4 | page | Boots a page in jsdom against the stand-in database; the browser specs are page tests in Chromium |
 
+## What each level is for, and what the tests don't do
+
+- **Staging is acceptance, not validation:** it answers "is this what I meant?". A bug found there, in a simulation or
+  in live play is a test missing lower down (CLAUDE.md, "When something slips through").
+- **A live bug becomes a scenario:** from Toby's description (his pasted report stays in the session), the smallest
+  made-up state and orders that show it, as a scenario or a unit test.
+- **A system the bots never reach** gets a bot doctrine or a scripted realm in the matrix; a real game is never
+  imported.
+- **The nightly run** (`.github/workflows/nightly.yml`: `npm run test:full` with a random seed, printed first) blocks
+  nothing. Repeat a failure with `KC_SEED=<seed> npm run test:full`, then add a test at the lowest level that shows it.
+- **Deliberately not done**, because the levels cover the risk more cheaply, or it hasn't happened: real data replayed
+  in CI; random streams keyed by event; bot orders recorded as inputs; old builds kept runnable to replay past turns;
+  real turns exported to reproduce a bug (no live bug has needed one); pages tested against the real database (the
+  local Supabase tests the access layer; pages use its fake); home-made test tools. When to think again:
+  [Phase 4](../docs/the-goal-and-the-road.md#phase-4-turns-run-by-a-server).
+
 ## Writing a new test
 
 - **New tests are TypeScript Vitest tests in `tests/<level>/`**, e.g. `tests/page/deterministic-boot.test.ts`, or,
@@ -75,6 +91,8 @@ level and why a lower one wouldn't do.
   site's code through `lib/source.ts`, the database through `lib/stub-db.js`
   ([how-the-tests-reach-the-site.md](../docs/architecture/how-the-tests-reach-the-site.md)). Tests use synthetic,
   seeded data only.
+- **Stage a world where a wrong read gives another answer:** a value read off the king needs a world whose first hero
+  isn't the king.
 
 ## Proving it fails first
 
@@ -89,6 +107,7 @@ A test that can't fail proves nothing (CLAUDE.md, "Fail first"). Show it red wit
   changes. One exception: a static test that a resolver the rule registry has taken names no unit type, item effect,
   spell, discovery, guardian perk, alignment order's key or alignment is red on its row's base by design (plan P1-19:
   `static/the-resolvers-the-*-has-taken-*.test.ts`, `static/the-code-the-*-taken-names-no-*.test.ts`).
+- **A planted fault that stays green** is staged until it is red, or the pull request says why.
 - **A stand-in must be reached:** a test that stands a function in has a check that fails when it isn't
   ([traps.md](../docs/traps.md#a-stand-in-on-a-module-reaches-calls-from-other-files-only)).
 
@@ -103,7 +122,8 @@ A test's outcome must not depend on luck (CLAUDE.md, "A test's outcome must not 
   `repeats` in any test file (`harness` checks both). A test that logs with `console.error` or leaves a rejected
   promise unhandled fails, unless it says it expects that with `vi.spyOn(console, 'error')` (`setup/each.ts`).
 - **When a test passes only on some seeds,** restructure it: stage the state directly, or make the odds overwhelming.
-  Never retries, loops, re-runs, re-seeding or a seed that happens to pass.
+  Never retries, loops, re-runs, re-seeding or a seed that happens to pass. A branch no seeded world reaches is staged
+  directly, never found by searching seeds.
 - **Failures say how to repeat them.** Under Vitest's report, a footer (`setup/reporter.ts`) prints the seed and, for
   each failed test, the command that repeats it.
 
@@ -118,7 +138,8 @@ matrixGamesPlayed: 1 }).timeout)`). A property test whose inputs grow with `KC_F
 `static/a-hook-or-test-that-plays-a-whole-matrix-game-…` check both. The static tests type in no limit of their own.
 Every run's footer (`setup/reporter.ts`) names each test or hook that used more than half its limit ("Near its limit:
 …, 9.4 s of 10 s"; a hook timed by `setup/hook-times.ts`), or says none did: read it on the nightly, and size the work
-before it fails. It never fails a run.
+before it fails. It never fails a run. A test on `main` past its limit reds every pull request: size its work in a pull
+request of its own, never re-run it. Profile a slow test before sizing it (`node --cpu-prof --import tsx <script>`).
 
 ## The quick check, the ratchet and CI
 
@@ -128,7 +149,8 @@ before it fails. It never fails a run.
   Anything else (the site, a test script, `setup/`, a config, the docs) runs every level but page, because
   `vitest related` can't see what the test scripts load: each runs in its own process and reads `site/` (built from
   `src/`) by file name. Page and the browser specs run in CI. Claude Code runs the check before an agent finishes, and
-  the type check, ESLint and Prettier after each edit (`.claude/settings.json`, `tools/hooks/`).
+  the type check, ESLint and Prettier after each edit (`.claude/settings.json`, `tools/hooks/`). A change of types can
+  raise a lint finding in a file it didn't touch, so run `npx eslint .` over the whole tree before a push.
 - **The ratchet** (`npm run ratchet`, `tools/ratchet.ts`): counts of `@ts-nocheck` (in two: `tsNocheckEngineSide`,
   the engine's side of `src/`, and `tsNocheckUi`, every other file), `@ts-ignore` and `@ts-expect-error`,
   `eslint-disable`, allowlist entries (the HTML rule's reviewed exceptions, `HTML_EXCEPTIONS` in `eslint.config.js`),
@@ -143,7 +165,9 @@ before it fails. It never fails a run.
   in three parts and the job that joins them ([below](#the-balance-matrix-in-brief)), and `db` (pgTAP, the generated
   types' freshness, the access layer's tests). Each takes
   `node_modules` from a cache keyed on the lock file, `.npmrc`, Node and the runner, and runs `npm ci` only on a miss.
-  The job named `ci` passes only when all but `db` passed; `ci` and `db` are the required checks.
+  The job named `ci` passes only when all but `db` passed; `ci` and `db` are the required checks. A job that fails while
+  the runner sets up (`supabase db start`, an `apt-get`) may be re-run once, said in the pull request; a failing test
+  is never re-run.
 
 ## Browser specs
 

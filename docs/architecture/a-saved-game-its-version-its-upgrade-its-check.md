@@ -183,6 +183,9 @@ older save.
   in `THE_NUMBERED_STEPS_OF_THE_UPGRADE` that mends a save of the version before, the new number, and a fixture of the
   new version (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`). A step runs once, on a save below
   its version, after the passes before the check, and stays safe to repeat.
+- **A `refactor-only` change retypes no field.** Narrowing a `z.unknown()` field of `src/schemas/saved-game-state.ts`
+  (or its elements) is a retype: the check would refuse a live save that holds another value there. A refactor leaves
+  the field as it is and narrows the value where the code reads it.
 - **A fixture is never edited once merged** (as a merged migration): it is what a build of its day saved. The script
   refuses to write over one. `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` upgrades every
   fixture, parses it strictly and plays a turn on it, so an older fixture fails until a step mends it, and a version
