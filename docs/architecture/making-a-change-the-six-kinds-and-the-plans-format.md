@@ -124,16 +124,18 @@ concern.
 
 ### Finding the next tranche
 
-Asked "what next?", the skill proposes tranches before planning one:
-1. **Start from the top of [the backlog](../backlog/README.md):** what comes next is its top, in one lane
-   ([the decisions](../decisions/README.md#the-decisions-on-how-the-work-runs)). [The goal](../the-goal-and-the-road.md)
-   says what each row serves; a recommendation nobody answered isn't a decision.
-2. **Read where things stand:** the open PRs, the steps in progress ([the backlog](../backlog/README.md)), the known
-   defects, the [questions waiting for the maintainers](../questions-for-the-maintainers.md), and the counts in `tests/ratchet.json` on `main`.
-3. **Give two or three candidates**, each with what it delivers against the goal, its rows (about how many), its risk
-   (the files it shares with other work, staging, the database, a maintainer's look), and what it leaves for later. Recommend
-   one.
-4. ⏸ **Stop.** The person picks, or changes it.
+Asked "what next?", the answer is **the top of [the backlog](../backlog/README.md#the-top-in-order)**: its first row
+not yet started, in one lane ([the decisions](../decisions/README.md#the-decisions-on-how-the-work-runs)).
+1. **Check that it can start:** nothing else is open against `main` (the open PRs), and nothing it waits for (its
+   "After") is still open.
+2. **Scope it**, as one PR or a tranche ([scoping a tranche](#scoping-a-tranche)), and ⏸ stop for a go.
+3. **Only if the top is unclear** (the ordered top is empty, or its first rows are blocked): give two or three
+   candidates from the top and Next, each with what it delivers, its risk (the files it shares with other work,
+   staging, the database, a maintainer's look) and what it leaves for later. Recommend one, and ⏸ stop: the person
+   picks.
+
+A new item (a batch's item, a defect, a ruling to build, a step found while scoping) gets its place in the backlog
+before work on it starts: [ordering the backlog by impact](../ways-of-working/ordering-the-backlog-by-impact.md).
 
 ### Scoping a tranche
 

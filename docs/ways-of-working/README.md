@@ -10,6 +10,7 @@ link to it.
 - [Who does what: the roles, the review by kind, who merges, and the owner's keys](who-does-what-the-roles-the-review-by-kind-and-the-owners-keys.md)
 - [Private data: what is private, and how each kind is handled](private-data-what-is-private-and-how-each-kind-is-handled.md)
 - [Scoping a tranche, and deciding a fork in a run](scoping-a-tranche-and-deciding-a-fork-in-a-run.md)
+- [Ordering the backlog by impact](ordering-the-backlog-by-impact.md)
 - [A row of a stack: from its branch to its report, and the proof it gives](a-row-of-a-stack-from-its-branch-to-its-report-and-the-proof-it-gives.md)
 - [A mutation session: faults made on purpose, and the tests they leave](a-mutation-session-faults-made-on-purpose-and-the-tests-they-leave.md)
 - [Explaining a pull request: its intent and its impact](explaining-a-pull-request-its-intent-and-its-impact.md)
