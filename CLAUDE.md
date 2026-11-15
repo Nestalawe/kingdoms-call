@@ -73,8 +73,8 @@ green. **All new code is TypeScript**, type-checked (no new `@ts-nocheck`; no `a
 - **Start all work with the skill `/making-a-change`**: it names the kind of work and writes its plan
   ([the six kinds](docs/architecture/making-a-change-the-six-kinds-and-the-plans-format.md)).
 - **Batches** (numbered items in game terms) are changes: **one PR per batch, one commit per item** (D-06).
-- **The steps** are in [the backlog](docs/backlog/README.md), grouped in phases, toward
-  [the goal](docs/the-goal-and-the-road.md). Each stream's titles, branches and commits:
+- **The steps** are in [the backlog](docs/backlog/README.md); its top comes next, in
+  [one lane](docs/decisions/README.md). Each stream's titles, branches and commits:
   [who does what](docs/ways-of-working/who-does-what-the-roles-the-review-by-kind-and-the-owners-keys.md#the-roles).
 
 **Staging** is a separate test site with its own database and no real players ([how](docs/staging.md)). **Whether a

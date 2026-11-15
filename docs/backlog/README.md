@@ -3,8 +3,9 @@
 Every open step of the plan, a row each: what it delivers, its size, who must look at it, what it waits for, and
 where it is. Finished steps are listed, with their pull requests, in three files:
 [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
-[P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md) and [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md). Why the
-steps come in this order, and each phase's goal: [the goal and the road](../the-goal-and-the-road.md).
+[P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md) and [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md). What
+comes next is the top of the backlog, by impact ([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs));
+each phase's goal: [the goal and the road](../the-goal-and-the-road.md).
 
 ## How to read a row
 
@@ -77,9 +78,9 @@ steps come in this order, and each phase's goal: [the goal and the road](../the-
 | P1-23ab | [R-139](../rulings/R-139-the-rulebooks-footers-say-when-their-rules-last-changed.md): each rulebook's footer says when its rules last changed, from the history; touches `.github/` and needs staging | Medium | ✓ | – | P1-23aa | ⬜ | |
 | P1-24 | Long, descriptive names: a glossary a maintainer agrees, then the renames, one area a pull request (saved-state, content and database names left out) | Large | – | – | P1-10, P1-14, P1-19 | ⬜ | |
 
-The maintainers' answers of 2 to 15 November, R-155 to R-176, are decided and not yet built, and have no step of their own.
-They can wait: each is built inside the batch that touches its area
-([the road](../the-goal-and-the-road.md#the-road-after-thursday)).
+The maintainers' answers of 2 to 15 November, R-155 to R-176, are decided and not yet built, and have no row yet.
+Each is a backlog item of its own, positioned by its impact
+([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs)).
 
 ## The decisions in force
 

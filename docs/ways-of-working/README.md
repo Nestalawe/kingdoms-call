@@ -44,6 +44,6 @@ Elsewhere: [the decisions](../decisions/README.md), [the rulings](../rulings/REA
   ([traps.md](../traps.md#a-job-after-a-skipped-job-is-skipped-unless-its-if-says-otherwise)).
 - **A red nightly run blocks nothing.** Repeat it with its seed, then add a test
   ([tests/README.md](../../tests/README.md#what-each-level-is-for-and-what-the-tests-dont-do)).
-- **One lane, and stacks for big work:** [the decisions](../decisions/README.md#the-decisions-on-how-the-work-runs).
+- **One lane, the backlog's top next, and stacks for big work:** [the decisions](../decisions/README.md#the-decisions-on-how-the-work-runs).
 - Database and site changes in separate pull requests, and each ruling in the pull request that builds it:
   [CLAUDE.md](../../CLAUDE.md).

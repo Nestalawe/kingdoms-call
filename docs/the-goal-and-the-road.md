@@ -11,8 +11,8 @@ recorded here.
 - **The alignment abilities family** (the registry the new alignment abilities are built in) merged on 15 November
   ([its registry](architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md)).
 - **The types are nearly finished.** Every engine file is typed. Nine of the UI's files still start with
-  `@ts-nocheck`, and 19 test files still use the old database stub (`stub-db`). Their last rows run overnight after
-  Thursday, when no batch is open.
+  `@ts-nocheck`, and 19 test files still use the old database stub (`stub-db`). Their last rows are in
+  [the backlog](backlog/README.md).
 - **Phase 0 is passed; Phase 1 is under way** (its batch-ready part met); Phases 2 and 3 have steps waiting; Phase 4
   waits for the design phases.
 
@@ -21,11 +21,10 @@ recorded here.
 1. **16 and 17 November:** the plan's public parts move into `docs/` (this file is one of them).
 2. **18 November:** the batch rehearsal: the docs a batch agent reads are checked against `main`, `/making-a-change`
    is tried on made-up changes, and the open items in the first areas are listed. Its fixes are one pull request.
-3. **From 19 November:** the batches, one lane at a time on `main`
-   ([one lane](decisions/README.md#the-decisions-on-how-the-work-runs)).
-4. **Not yet decided** (a maintainer's choice): what runs overnight beside the batches. The options are the rules pulled out
-   (recommended), the design matrix first, or neither until the first batches settle
-   ([after Thursday](#the-road-after-thursday)).
+3. **From 19 November:** the top of [the backlog](backlog/README.md), one piece of work at a time, each positioned by
+   its impact ([the decisions](decisions/README.md#the-decisions-on-how-the-work-runs)). The batches of the new
+   alignment abilities ([below](#the-changes-from-thursday-19-november)) are backlog items too; so are the rules pulled
+   out and the design matrix ([after Thursday](#the-road-after-thursday)).
 
 ## The changes from Thursday 19 November
 
@@ -34,8 +33,8 @@ November), and each batch's pull request says what it changes. Two rulings set h
 every running game as it goes live ([R-177](rulings/R-177-rule-changes-reach-running-games.md)), and they are built as
 the test games played them
 ([R-178](rulings/R-178-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md)). Each batch builds from
-the abilities sheet (below). Three questions wait for an answer before the batches of the alignments they touch
-([the questions](questions-for-the-maintainers.md)).
+the abilities sheet (below). The questions still open are in [the questions
+file](questions-for-the-maintainers.md).
 
 ## The design documents
 
@@ -60,7 +59,7 @@ is batch-ready when all four of these hold:
 4. **The save is versioned** and checked before a turn runs
    ([a saved game](architecture/a-saved-game-its-version-its-upgrade-its-check.md)). Met on 10 November.
 
-The rest of Phase 1 goes on beside the batches, in the one lane.
+The rest of Phase 1 is in [the backlog](backlog/README.md).
 
 ## The levels
 
@@ -71,8 +70,7 @@ The road to batches was planned on 1 November in levels:
   types in the battles, the orders and the views, their old test scripts as Vitest tests, the import rules of the
   views and the prose, and the docs and skills a batch agent uses. **This was the target** (a maintainer, 1 November). Every
   piece is on `main`: the last, the player portal's copies file, was retired on 12 November.
-- **Level 4 is the rest of Phase 1**, done beside the batches as code is touched. Since 8 November, part of it comes
-  first: the whole codebase is typed before the redesign starts
+- **Level 4 is the rest of Phase 1**, in the backlog. Part of it: the whole codebase is typed
   ([the decision](decisions/README.md#the-decisions-on-how-the-work-runs), "Type the whole codebase").
 
 ## The road after Thursday
@@ -91,7 +89,7 @@ The order, each a tranche of about 15 to 30 rows, a run, and a merge as one grou
 | T5: the saves | Batch-ready: every save versioned and checked before a turn runs; the engine's turn files typed | Done, 10 November |
 | T6: the types finished | No `@ts-nocheck` left; `stub-db` deleted; the pages reach the database only through `src/db/` (done) | The last rows after 19 November |
 | T7: the rules pulled out | A redesign item becomes a content change: a count for each family first, then the families in the order of the design phases, each with its bot valuation hook | Next, if a maintainer chooses it |
-| Lane B: the instruments, in `tools/` only | The design matrix and its scorecard (the cost a game measured first), then the tool that reads players' games, then the page that shows the game as it is | Beside T6 and T7, if a maintainer chooses it |
+| The instruments, in `tools/` only | The design matrix and its scorecard (the cost a game measured first), then the tool that reads players' games, then the page that shows the game as it is | If a maintainer chooses it |
 
 Also on the road:
 - **A long-lived playtest site**, with its own database, where players try a rule's options (a maintainer's answer of
@@ -101,8 +99,7 @@ Also on the road:
   ([R-177](rulings/R-177-rule-changes-reach-running-games.md)).
 - **Experiments stay off `main`**, as content overlays or branches tried through the design matrix. Only the chosen
   design takes the full pull-request routine. Each design item names the rulings it replaces.
-- **Can wait, where the redesign will rewrite the code:** the rulings the maintainers have answered outside the areas a batch
-  touches (each built inside the batch that touches it), the renames (P1-24), the state reshapes (P1-20), and the
+- **Can wait, where the redesign will rewrite the code:** the renames (P1-24), the state reshapes (P1-20), and the
   rest of the duplication work.
 
 ## The phases

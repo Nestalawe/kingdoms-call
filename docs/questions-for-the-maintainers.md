@@ -13,6 +13,9 @@ the question (for example "2026-11-20: (1)"). Then click **Commit changes**.
   maintainers"). Either maintainer answers.
 - **Kept here** with what its answer unlocks, so that the questions are answered together, in one sitting
   ([the decision](decisions/README.md#the-decisions-on-how-the-work-runs), "Questions stored, asked in one sitting").
+- **Checked against the rulings:** each question ends with a line *Touches:*, the rulings it was checked against
+  in [the rulings' index](rulings/README.md), by id, or "none". A static test checks the line
+  (`tests/static/each-open-question-names-the-rulings-it-was-checked-against.test.ts`).
 - **Numbered** in one series. A number is never reused.
 - **Answered:** an answer becomes a ruling at once. The next pull request adds the ruling, with the status "Decided,
   not built", and takes the question out of this file ([adding a ruling](rulings/README.md#adding-a-ruling)). Building
@@ -37,3 +40,8 @@ also gives his Great Bears ×1.5 in the Elder Wood.
 
 *Unlocks:* the fix of a known defect, "Home of the Wild lifts a Druidic hero's Creatures in any realm, which the books
 don't say".
+
+*Touches:* [R-030](rulings/R-030-fervour.md) (a Druidic host's fervour),
+[R-036](rulings/R-036-druid-mastery.md) (a Druidic realm's Creatures need no Druid level) and
+[R-164](rulings/R-164-a-garrison-with-no-hero-fights-with-its-realms-rules.md) (a garrison's Home of the Wild is its
+realm's).
