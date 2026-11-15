@@ -1,5 +1,7 @@
 # Finished steps: P1-11 and P1-12
 
+**A record, for looking up an id; not read for work.**
+
 Each finished step of the plan, with the pull request that built it and that pull request's own title. A step
 built in lettered rows says "done in its rows", and its rows follow it. "Done" alone: the step needed no pull
 request (an account or a setting). Open steps are in [the backlog](README.md); the other finished steps:
@@ -7,6 +9,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-11
 
+- P1-11: delivered in its rows, below: the player portal uses the engine's functions, and the copies file is gone; the rest is P1-11z
 - P1-11a: done in its rows, below
 - P1-11a1: #173 The two casting limits get one engine function each
 - P1-11a2: #174 The player portal's copies checked against the engine
@@ -87,6 +90,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-12
 
+- P1-12: delivered in its rows, below: every report line a fact through `emit`, and each realm's report built from what it sees; the rest is P1-12z
 - P1-12a: done in its rows, below
 - P1-12a1: #195 Every realm's report in the balance matrix
 - P1-12a2: #196 The door: every line of the GM's log through emit
@@ -105,6 +109,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-12c4: #221 Personal combat's lines record facts, and a line for one realm alone in a fight is a kind whose audience says so
 - P1-12c5: #222 A battle between heroes' lines record facts, and the views write their words
 - P1-12c6: #223 The rest of battle/'s lines record facts, and the views write their words
+- P1-12d: done in its rows, below
 - P1-12d1: #257 The GM page's words tests read the prose: a page's files follow its imports into src/views/prose/
 - P1-12d2: #258 Personal combat's words into the prose: its facts hold values and copies, a static test of values not words
 - P1-12d3: #259 The battles' words into the prose, but the ladder's and the grid's: their facts hold values and copies, a victory's verb by its index

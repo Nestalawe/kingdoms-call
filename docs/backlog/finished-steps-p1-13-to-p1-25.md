@@ -1,5 +1,7 @@
 # Finished steps: P1-13 to P1-25
 
+**A record, for looking up an id; not read for work.**
+
 Each finished step of the plan, with the pull request that built it and that pull request's own title. A step
 built in lettered rows says "done in its rows", and its rows follow it. "Done" alone: the step needed no pull
 request (an account or a setting). Open steps are in [the backlog](README.md); the other finished steps:
@@ -7,6 +9,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-13
 
+- P1-13: delivered in its rows, below: the architecture rules as checks (dependency-cruiser, knip, ESLint); the rest is P1-13z
 - P1-13a: #180 The layers of src/ and no new import cycle, checked by dependency-cruiser; unused code counted by knip
 - P1-13b: #181 Every lint rule an error, the type-aware rules on src/'s checked files, today's findings in ESLint's suppressions
 - P1-13c: #182 The engine reads no page, clock or database, the dice come only from kcRng(), and the big tables are read by named columns: as lint rules
@@ -38,6 +41,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-14
 
+- P1-14: delivered in its rows, below: tests moved down a level and into TypeScript Vitest tests; the rest is P1-14z
 - P1-14a: #193 The engine's modules for tests, and two old scripts as four TypeScript tests
 - P1-14b: #194 Personal combat's tests on the engine's modules, and six words scripts as TypeScript tests
 - P1-14c: #388 Five battle, duel and page scripts as TypeScript tests
@@ -95,6 +99,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-16l: #551 The player page's dispatches, desk and screens freed of their ts-nocheck lines
 - P1-16m: #552 The player page's game lists, join descriptions, Save and Submit freed of their ts-nocheck lines
 - P1-16n: #556 The player page's join form and chronicle freed of their ts-nocheck line
+- P1-16o: done in its row o1, below; the rest is P1-16o2
 - P1-16o1: #557 The player page's sign-in freed of its ts-nocheck line
 - P1-16p: #565 The GM page's start-up, sign-in and turn-mode files freed of their ts-nocheck line
 

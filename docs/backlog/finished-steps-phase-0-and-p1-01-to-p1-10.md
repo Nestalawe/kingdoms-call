@@ -1,5 +1,7 @@
 # Finished steps: Phase 0, and P1-01 to P1-10
 
+**A record, for looking up an id; not read for work.**
+
 Each finished step of the plan, with the pull request that built it and that pull request's own title. A step
 built in lettered rows says "done in its rows", and its rows follow it. "Done" alone: the step needed no pull
 request (an account or a setting). Open steps are in [the backlog](README.md); the other finished steps:
@@ -148,6 +150,7 @@ Dropped (ids are never reused): P0-14, on 2026-10-14; P0-26, on 2026-10-15.
 
 ## P1-10
 
+- P1-10: delivered in its rows, below: strict types for the engine, the views, the shared code and the content; the rest is P1-10z
 - P1-10a: done in its rows, below
 - P1-10a1: #177 The saved game state's types, from Zod schemas
 - P1-10a2: #178 The content's and the turn's types: unit tables that fail to compile when a unit is missing

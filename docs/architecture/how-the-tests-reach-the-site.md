@@ -23,7 +23,7 @@
   the seed and `console`, and returns the context, where the bundle's top-level names are the globals. It reads
   `src/`, not the built site (`src` names another copy, built again whenever the copy changes). The run builds this
   checkout's bundle once (`setup/global.ts`, into `node_modules/.cache/kc/`, its path in `KC_ENGINE_BUNDLE`); another
-  copy's is built the first time a process asks (about a second). P1-14 moves the tests to importing the engine's
+  copy's is built the first time a process asks (about a second). P1-14z moves the tests to importing the engine's
   modules ("The engine's modules", next); until then the ratchet counts the test files on the loader
   (`vmLoaderTests`), which only falls.
   There the turn is `resolveTurn` (`src/engine/run-turn.ts`, P1-18d): give it the saved state (JSON), the slot rows

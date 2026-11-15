@@ -58,7 +58,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   side, the ground and the force (`discFanaticApplies`, now the effect's file's). The runner adds them; the battle rolls
   as before.
 - **A realm's discoveries let a beast follow without its Druid** (Dragon Taming, `flyingNoDruid`; `dragonTamed`):
-  handed the unit's type. The player portal's copy stays (P1-11); the parity test compares them.
+  handed the unit's type. The player portal's copy stays (P1-11z); the parity test compares them.
 - **A realm's discoveries add to the whole army** (both battles): no entry holds it. War Drums, the one such discovery,
   has been an ordinary unit strength effect since 2026-09-21, so its runner returns 0, as `discoveryArmyBonus` did
   (Parked "Three dead paths in `discoveries.ts`").

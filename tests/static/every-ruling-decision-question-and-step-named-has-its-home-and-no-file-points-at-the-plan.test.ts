@@ -7,8 +7,8 @@
 // - Each D-NN (and D-NNa) is a decision of docs/decisions/README.md.
 // - Each question number ("question 21", "questions 36, 39 and 41") is open in docs/questions-for-the-maintainers.md, or named
 //   by a ruling (its source: the ruling is the answered question's home).
-// - Each step id (P1-16, P1-11e29) is a row of docs/backlog/README.md, or in its finished list (a finished step, or
-//   one dropped: "P0-14, on 2026-10-14").
+// - Each step id (P1-16, P1-11e29) is a row of the backlog (docs/backlog/README.md and its groups' files), or in its
+//   finished list (a finished step, or one dropped: "P0-14, on 2026-10-14").
 // - No backlog row is done or dropped (those leave it for the finished list), and none is in the finished list too.
 // - No file git keeps names NEXT.md, PARKED.md or STATUS.md, or a path inside plan/ (naming the folder itself, as
 //   .gitignore and the copies of the tree do, is fine). One file is let off, with its reason (THE_PLANS_FOLDER_ON_PURPOSE).
@@ -99,13 +99,13 @@ const ANSWERED_QUESTIONS = new Set(
     .flatMap((f) => questionNumbersIn(read(f)).map((q) => q.number)),
 );
 
-const BACKLOG = 'docs/backlog/README.md';
 const FINISHED_LISTS = filesIn('docs/backlog').filter((f) => f.includes('/finished-steps-'));
+/** The backlog: its README and its groups' files (Later, the rulings to build), every file but the finished lists. */
+const BACKLOG = filesIn('docs/backlog').filter((f) => !f.includes('/finished-steps-'));
 const STEP = /\bP\d-\d{2}[a-z0-9]*\b/g;
 
 /** The backlog's open rows: each id with its status cell. */
-const OPEN_ROWS: { id: string; status: string }[] = read(BACKLOG)
-  .split('\n')
+const OPEN_ROWS: { id: string; status: string }[] = BACKLOG.flatMap((f) => read(f).split('\n'))
   .filter((line) => /^\| P\d-/.test(line))
   .map((line) => {
     const cells = line.split('|').map((c) => c.trim());

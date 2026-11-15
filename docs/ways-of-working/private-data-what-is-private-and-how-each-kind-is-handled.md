@@ -31,7 +31,7 @@ environment reviewers and Actions minutes, with no other vendor and no extra cos
    fixture or CI job reads the live database. A save fixture is made from a seeded bot game
    (`tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`), never from a live game.
 4. **Live data never reaches git.** A turn exported with its names removed is deferred
-   ([P2-08](../backlog/README.md#phase-2-the-database-decides-and-turns-are-kept)): a live bug becomes a made-up test
+   ([P2-08](../backlog/the-later-group-what-serves-a-later-outcome-or-waits.md#phase-2-the-database-decides-and-turns-are-kept)): a live bug becomes a made-up test
    from a maintainer's description ([tests/README.md](../../tests/README.md#what-each-level-is-for-and-what-the-tests-dont-do)).
 5. **A bug report:** the text a maintainer pastes stays in the Claude Code session. The test and the pull request use made-up
    names.
