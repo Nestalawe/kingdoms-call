@@ -19,7 +19,7 @@
 //   drawn up for battle, and in the Clairvoyance feed the roll lines too; any other kind is read, whatever its words
 //   open with. Every other line here is staged with no kind (null), as a line with no fact.
 // - A force drawn up for battle carries its kind into the realm's chronicle, and no other line does, whatever its words
-//   open with: the pages draw a force's rows by it alone.
+//   open with and whatever lines the realm can't read come before it: the pages draw a force's rows by it alone.
 // - One realm's report (buildTurnReport, src/views/turn-report.ts, P1-10b30) on its view (playerView) of a world
 //   staged for it, which no game of the matrix builds: a Good realm's Wonder's tax, a skeleton's wage, a Wonder's realm
 //   wherever the map shows it, and the hero it watches by Clairvoyance and the heroes beside a province it spied, each
@@ -295,6 +295,40 @@ test("a force drawn up for battle carries its kind into the realm's chronicle; e
     ['⚑FORCE⚑{"name":"Aldric"}', 'a force drawn up for battle'],
     ['⚑FORCE⚑ [a battle decided]', undefined],
     ['⚑FORCE⚑ [a line with no fact]', undefined],
+  ]);
+});
+
+test("a line the realm can't read, before a force's row: the kind sits on the force's row alone", () => {
+  // Realm 0 reads its king's lines, not a line realm 1 alone is told (staged first, with no kind).
+  const king = G.characters.find((c) => c.player === 0 && c.alive);
+  const rival = G.characters.find((c) => c.player === 1 && c.alive);
+  if (!king || !rival) throw new Error('realm 0 or realm 1 has no living hero');
+  const about = (hero: { id: number }, realm: number, text: string): Entry => ({
+    type: 'combat',
+    text,
+    actor: realm,
+    targets: [realm],
+    public: false,
+    provinceId: null,
+    charId: hero.id,
+    charIds: null,
+    phase: 1,
+  });
+  const staged: [Entry, string | null][] = [
+    [about(rival, 1, '[told to realm 1 alone]'), null],
+    [about(king, 0, '⚑FORCE⚑{"name":"Aldric"}'), 'a force drawn up for battle'],
+    [about(king, 0, '⚑FORCE⚑ [a battle decided]'), 'a battle is decided'],
+  ];
+  const read = playerEvents(
+    staged.map(([e]) => ({ ...e })),
+    tc.G,
+    0,
+    sight,
+    staged.map(([, kind]) => kind),
+  ).lastTurnLog.map((l): [string, unknown] => [l.text, l.kind]);
+  expect(read).toEqual([
+    ['⚑FORCE⚑{"name":"Aldric"}', 'a force drawn up for battle'],
+    ['⚑FORCE⚑ [a battle decided]', undefined],
   ]);
 });
 

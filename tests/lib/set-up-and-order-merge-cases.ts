@@ -2007,6 +2007,54 @@ export const FORM_CASES: SetUpCase[] = [
       },
     }),
   },
+  {
+    name: 'a phase sent as a list (one holding an order, one holding very long text) is set aside: the hero Defends in it, the other phases are kept, the GM is told once, and neither list is on the save',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      const phases = [[{ ...order('rest'), desc: SET_ASIDE_WORDS }], [LONG_TEXT], ...plan(order('rest')).slice(2)];
+      return { hero: h, orders: [[h, phases as unknown as Order[]]] };
+    },
+    check: (o, s) => ({
+      got: {
+        orders: ordersOf(o.first, hero(s)),
+        told: told(o, notInTheGamesForms(nm(o, 1), [hero(s).id])),
+        theOrderOnTheSave: JSON.stringify(o.world).includes(SET_ASIDE_WORDS),
+        theTextOnTheSave: JSON.stringify(o.world).includes(LONG_TEXT),
+      },
+      want: {
+        orders: [DEFEND, DEFEND, REST, REST, REST],
+        told: GM_ONLY,
+        theOrderOnTheSave: false,
+        theTextOnTheSave: false,
+      },
+    }),
+    merged: (m, s) => ({
+      got: { orders: ordersOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: {
+        orders: [null, null, REST, REST, REST],
+        warnings: [notInTheGamesForms(nameOf(must(s.board, 'board'), 1), [hero(s).id])],
+      },
+    }),
+  },
+  {
+    name: 'an order whose target is a number, sent for another realm’s hero, is told to the GM once, as for a hero not in the realm’s service',
+    stage: (b) => {
+      const h = realmHero(b, 2);
+      const march = plan({ ...order('move'), target: ring1(b, 0).id } as unknown as Order);
+      return { hero: h, sends: { 1: { orders: { [h.id]: march } } } };
+    },
+    check: (o, s) => ({
+      got: { orders: ordersOf(o.first, hero(s)), told: starting(o, '⚠ Set aside') },
+      want: { orders: [REST, REST, REST, REST, REST], told: [notInService(nm(o, 1), [hero(s).id])] },
+    }),
+    merged: (m, s) => ({
+      got: { orders: ordersOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: {
+        orders: [REST, REST, REST, REST, REST],
+        warnings: [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).id])],
+      },
+    }),
+  },
   ...(
     [
       ['raise', 'resurrect_4321_via_12_ph2', '_pendingResurrectOrders', 4321],
@@ -2144,6 +2192,12 @@ export const OFFERED_CASES: SetUpCase[] = [
     true,
   ),
   aPlanSent(
+    'a spell’s name the game doesn’t have is left out, whatever the name (toString, constructor), and the GM is told of the hero',
+    { tactics: ['ME', 'CA:toString', 'CA:constructor'], duelStance: 'refuse' },
+    { tactics: ['ME'], duelStance: 'refuse' },
+    true,
+  ),
+  aPlanSent(
     'the tactics an older form wrote are kept too (Melee, Archery, Talk, Scout, Steal, a spell left unnamed)',
     { tactics: ['MELEE', 'ARCHERY', 'TALK', 'SCOUT', 'STEAL', 'SPELL', 'CS:necromancy'], duelStance: 'accept' },
     { tactics: ['MELEE', 'ARCHERY', 'TALK', 'SCOUT', 'STEAL', 'SPELL', 'CS:necromancy'], duelStance: 'accept' },
@@ -2171,6 +2225,18 @@ export const OFFERED_CASES: SetUpCase[] = [
     'a duel stance the game doesn’t offer is left out (the hero refuses a challenge, as with none), and the GM is told',
     { tactics: ['FL'], duelStance: 'charge' },
     { tactics: ['FL'] },
+    true,
+  ),
+  aPlanSent(
+    'a duel stance in capital letters (Challenge) is left out (the hero refuses a challenge, as with none), the plan keeps the rest, and the GM is told',
+    { tactics: ['ME'], notes: 'For the river', duelStance: 'Challenge' },
+    { tactics: ['ME'], notes: 'For the river' },
+    true,
+  ),
+  aPlanSent(
+    'and so is one all in capitals (REFUSE)',
+    { tactics: ['ME'], notes: 'For the river', duelStance: 'REFUSE' },
+    { tactics: ['ME'], notes: 'For the river' },
     true,
   ),
   aPlanSent(
