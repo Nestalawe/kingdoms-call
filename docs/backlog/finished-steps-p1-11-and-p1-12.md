@@ -1,0 +1,144 @@
+# Finished steps: P1-11 and P1-12
+
+Each finished step of the plan, with the pull request that built it and that pull request's own title. A step
+built in lettered rows says "done in its rows", and its rows follow it. "Done" alone: the step needed no pull
+request (an account or a setting). Open steps are in [the backlog](README.md); the other finished steps:
+[Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md), [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md).
+
+## P1-11
+
+- P1-11a: done in its rows, below
+- P1-11a1: #173 The two casting limits get one engine function each
+- P1-11a2: #174 The player portal's copies checked against the engine
+- P1-11a3: #175 The rules on plain values move into one engine folder
+- P1-11a4: #176 The player portal uses the engine's own rules, through src/shared/
+- P1-11b: done in its rows, below
+- P1-11b1: #214 The parity test checks the portal's copies that read the realm, the report's shape or the world
+- P1-11b2: #215 The beast command and the Druid rule in one file the player portal can share; the turn report asks the shared flying rule
+- P1-11b3: #216 The player portal counts beasts and works out the Druid rule with the engine's own functions
+- P1-11b4: #217 The player portal's Move order note counts the sea lift with the engine's own rule
+- P1-11c1: #334 The order form's Cast Spell tables and checks, and the army card's kin: parity cases
+- P1-11c2: #335 The order form's spells and the mark check, in the engine's shared folder
+- P1-11c3: #336 The order form's Cast Spell tables, made by the engine folder's functions
+- P1-11c4: #337 The order form's target field asks the engine's mark check
+- P1-11c5: #338 The army card's kin and feud ask the battle's own rule
+- P1-11d1: #373 Parity cases, the march: the order form's hex tables, where a hero will stand, what marching in maps
+- P1-11d2: #374 Parity cases, what a hero holds: the items he carries, the companies he leads, the garrison
+- P1-11d3: #375 Parity cases, the orders: the order list, its 46 names, the creed orders' fields
+- P1-11d4: #376 Parity cases, gold and practice: the treasury ledger, the Practice Skill note, the co-trainers
+- P1-11d5: #377 The hex step in the shared rules: getNeighborsP and neighborInDir call one function
+- P1-11d6: #378 The order form's three hex tables call the shared hex step
+- P1-11d7: #379 The alignment door: the resolvers' creed and king checks and the order list call one file
+- P1-11d8: #380 The target widget, the Move note, the ledger and the once-a-turn list read the alignment orders' rows
+- P1-11d9: #381 The words test reads the report's and the join form's creed texts; the GM's three labels read the rows
+- P1-11d10: #382 The masteries' table in the content: the order form's table and the turn's mastery keys and labels read it
+- P1-11d11: #383 The 20 mastery resolvers read their level from the masteries' table
+- P1-11d12: #384 The beasts' two sets and the Druid mastery's guard come from the engine
+- P1-11d13: #385 The spell hints read their row-held figures from the rows, and a words test reads each hint
+- P1-11d14: #386 The Explore gain is one function the turn and the order form both call
+- P1-11e1: #494 A guardian's brute strength reads as it fights (R-137)
+- P1-11e2: #446 The losses tally follows the battle (R-127)
+- P1-11e2b: #462 A leaderless host's trapped company counts for its own side in the losses tally
+- P1-11e3: #461 The order form's forecasts in one file
+- P1-11e4: #447 The march's rules on plain values: the ground, a neutral border, ships over land
+- P1-11e5: #448 The move pools on plain values, and the pool a step spends
+- P1-11e6: #449 The share a march maps and the coast a voyage charts, on plain values
+- P1-11e7: #450 A shortest route's first step, on plain values
+- P1-11e8: #451 Each own hero's card names the share his worn items add to a march
+- P1-11e9: #463 The march forecast reads a Forced March by direction, as the turn does
+- P1-11e10: #464 A march the turn refuses leaves him where he is on the order form
+- P1-11e11: #465 The march forecast stops a hero where his pace runs out
+- P1-11e12: #466 The march forecast takes one step toward a far province
+- P1-11e13: #467 The Explore note counts every cloak and Naval 6's charting when a hero marches in
+- P1-11e14: #452 What a hero holds, on plain values: Send Item, a hand-over's companies, a Pick Up's garrison
+- P1-11e15: #453 What a hero holds, on plain values: a beast command's room, where a recruited company musters
+- P1-11e16: #454 What a hero holds, on plain values: the order the heroes act in a phase, who must act first
+- P1-11e17: #468 The order form's forecasts read one replay of the phases' orders
+- P1-11e18: #469 "All items" on the order form keeps the Mithril suit with its wearer
+- P1-11e19: #470 Recruits, hand-overs and Pick Up on the order form move companies as the turn does
+- P1-11e20: #471 The order form hands a season's items over in the turn's order, a comrade marching in first
+- P1-11e21: #472 Steal is offered on the order form on the Thief the turn counts
+- P1-11e22: #455 The orders' rules on plain values: a Call to Arms' company, a Blood Offering's companies, a Consecration's checks
+- P1-11e23: #456 The orders' and gold's rules on plain values: a practice alone's chance, a Druid's half price and wage, the Host-Leader's cut
+- P1-11e24: #457 The realm's report: its home, its king's consecrations, the Wild Hunt's term, its Druidic Wonder, its upkeep room
+- P1-11e25: #473 Consecrate's note on the order form follows the turn: the home and the limit
+- P1-11e26: #474 The creed orders' notes follow the turn: Call to Arms' company, Harvest's grave and price, the Wild Hunt's term
+- P1-11e27: #475 The Blood Offering's rows follow the turn: a company it can't take locked, the hint naming what it gives and raises
+- P1-11e28: #476 The Practice Skill note quotes the turn's chance: a Human of a Human realm ×1.5, no roll at level 5
+- P1-11e29: #477 The treasury ledger counts a Druid 6 hero's half price and wage for a beast, and the Host-Leader where the report names him
+- P1-11e30: #478 The treasury ledger counts the upkeep discoveries under their cap, and Granaries on a hero hired
+- P1-11e31: #479 The army card's sea note counts the flyers' lift with the hulls, as the turn does
+- P1-11e32: #458 The level a hero's skill counts at, and his items each name once, on plain values
+- P1-11e33: #480 The order form counts a hero's magic level as the turn does: a trained 5 at most, two Dreamstones once
+- P1-11e34: #481 The hero card's upkeep halves a Druid 6 leader's beasts, as the turn charges them
+- P1-11e35: #459 Druid 8's and Necromancy 6's lifts of a unit's quality, and the minor titles' army perks, on plain values
+- P1-11e36: #482 The unit-strength discoveries' effect and their product on plain values
+- P1-11e37: #483 The commander's items' strength steps on plain values
+- P1-11e37b: #484 The items' index on plain values: which effects a held item carries
+- P1-11e38: #485 The hero card's strength of a unit follows the turn before the ground and the foe
+- P1-11e39: #486 The spell hints and their blurbs say what the turn does: Telekinetic Storm, Plague, Lightning Bolt, Hand of Death
+- P1-11e40: #487 The Evil and Pagan texts and the Charm row say what the turn does: each hero's doctrine, the Wild Hunt's two Veterans, the Chronicle's skills and items
+- P1-11e41: #488 The order form's forecasts read the report and the orders handed to them
+- P1-11e42: #506 The order form's ledger, chance notes, order list and magic levels read the report and the orders handed to them
+- P1-11e43: #507 The copies file narrowed to the page files no test can import; the forecasts' cases imported (merged through #509)
+
+## P1-12
+
+- P1-12a: done in its rows, below
+- P1-12a1: #195 Every realm's report in the balance matrix
+- P1-12a2: #196 The door: every line of the GM's log through emit
+- P1-12a3: #197 Battles and personal combat: every line through emit
+- P1-12a4: #198 The rest of the engine: every line through emit, and log() gone
+- P1-12b: done in its rows, below
+- P1-12b1: #199 The sight rules, the Terror constants and the telemetry's snapshots move into the engine
+- P1-12b2: #200 Views write nothing: the Spy stealth is an engine step the shell calls before the reports
+- P1-12b3: #201 The reports move into the views: playerEvents, the shell calls them, and the leak check's audience check
+- P1-12b4: #202 What each realm may see of the world, part 1: the map and the provinces read only the realm's view
+- P1-12b5: #203 What each realm may see of the world, part 2: the report is built from the realm's view and its lines alone
+- P1-12c: done in its rows, below
+- P1-12c1: #218 A line is filed under the hero whose order is resolving only when it already reaches his realm
+- P1-12c2: #219 Every event names its hero
+- P1-12c3: #220 A typed line records a fact, and the views write its words: the force markers first
+- P1-12c4: #221 Personal combat's lines record facts, and a line for one realm alone in a fight is a kind whose audience says so
+- P1-12c5: #222 A battle between heroes' lines record facts, and the views write their words
+- P1-12c6: #223 The rest of battle/'s lines record facts, and the views write their words
+- P1-12d1: #257 The GM page's words tests read the prose: a page's files follow its imports into src/views/prose/
+- P1-12d2: #258 Personal combat's words into the prose: its facts hold values and copies, a static test of values not words
+- P1-12d3: #259 The battles' words into the prose, but the ladder's and the grid's: their facts hold values and copies, a victory's verb by its index
+- P1-12d4: #260 The strength ladder and the grid in the prose: typed reasons, abilities by slug, the faced clause by kind
+- P1-12d5: #261 The other folders' lines a battle takes as words, as kinds: the sea lift's, a hero's death's, the wanderer's escape; the route by kind
+- P1-12d6: #262 orders/' small families as facts: encounter and defend, the dispatch, items, research and practice, recruit and hire
+- P1-12d7: #263 orders/' army orders, realm works and war masteries as facts; the beast command's words into the prose
+- P1-12d8: #264 orders/' espionage and explore and search lines as facts; a rival's skill and the odds as a realm is shown them
+- P1-12d9: #265 The Cast Spell order's lines as facts; why a charmed mind turns on its enchanter as a record
+- P1-12d10: #266 The move order's lines as facts; orders/ writes no line's words
+- P1-12d11: #281 The slain lines a fact: reportHeroFall takes "a hero is slain outside a battle"
+- P1-12d12: #282 heroes/' lines as kinds: the chase, experience and hit points, the equip note at a death
+- P1-12d13: #283 titles/' lines as kinds: the title intelligence
+- P1-12d14: #284 units/' lines as kinds: the Defend watch, a stranding at sea, the war-spoils
+- P1-12d15: #285 turn/' opening lines as kinds: before the first phase, the new turn, a phase's
+- P1-12d16: #286 turn/' season's close as kinds: after the phases, diplomacy and victory, Early Winter
+- P1-12d17: #301 The other folders' lines as kinds: espionage, realms, magic, world, bots and the Spy stealth
+- P1-12d18: #302 No line handed as words: TurnEvent and NarrativeLine facts only, emit throws on words, the lint rule refuses them
+- P1-12d19: #303 Personal combat's words through a parameter as values: a daze's and a lingering harm's source
+- P1-12d20: #304 The battles' words through a parameter as values: a fate's verb, a force header's verb, a battle's severity
+- P1-12d21: #305 An item's equip note as records: the engine settles the slots and records how a hero carries each item, the prose writes the note
+- P1-12d22: #306 A battle between heroes' sides as records, in the kinds only it writes: the prose writes the label
+- P1-12d23: #307 A battle against a province's defenders' sides and defenders as records, with the kinds both battles write: the prose writes the label
+- P1-12d24: #308 A stalled battle's hosts and defenders, a newly gathered host and a beaten guard as records: the prose writes the label
+- P1-12d25: #309 A unit's, a fighter's and a realm's tag's labels as records: the prose writes the label
+- P1-12d26: #319 A battle's outcome merged by sense: 22 kinds become 2
+- P1-12d27: #321 A unit's fate merged by sense: 15 kinds become 2
+- P1-12d28: #320 A unit's owner in its fate's line as a record
+- P1-12d29: #322 The force header's name as its record
+- P1-12d30: #323 The battle's report lines' sides as records
+- P1-12d31: #324 The pre-battle and pursuit lines' sides as records
+- P1-12d32: #325 The sea lift's sides as records
+- P1-12d33: #357 The turn's statistics are facts filed through one door
+- P1-12d34: #358 A battle's line takes its tier from its kind
+- P1-12d35: #359 A battle's losses tally is written from the facts of its lines
+- P1-12d36: #360 The spy and Clairvoyance feeds pass over a line by its kind
+- P1-12d37: #361 Every event of a type-checked file names its phase
+- P1-12d38: #362 Every event of an untyped file names its phase, emit throws on one left out, and the lint rule refuses it
+- P1-12d39: #500 The GM log stores each line's kind (merged through #509)
+- P1-12d40: #501 The matrix reads the stored kinds (merged through #509)
