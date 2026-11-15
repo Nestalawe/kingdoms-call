@@ -30,7 +30,8 @@
 // and concession going nowhere, its Reckoning call taken); the per-turn lists missing when the merge runs (made) or
 // holding this turn's orders already (added to); the set-up leaving the lists empty and every hero's phases a list of
 // his own; a save with no map, a gap among the provinces or a garrison's companies; a gap in the realms' list not
-// stopping the conceded hold; an heir named by his id as text. Properties (fast-check): the set-up leaves every living
+// stopping the conceded hold; an heir named by his id as text; every tactic the order form offers, and every one a
+// wanderer's own plan names, kept. Properties (fast-check): the set-up leaves every living
 // realm hero, and only them, five empty phases, the per-turn lists empty, each living realm hero's realm in his record
 // once; the merge writes exactly the hero orders sent
 // as lists for the realm's own heroes and holds exactly the written orders with their numbers read, in order, passing
@@ -66,6 +67,9 @@ import {
   type Staged,
 } from '../lib/set-up-and-order-merge-cases.ts';
 import { realm } from '../lib/cast-spell-order-cases.ts';
+import { ENCOUNTER_TACTICS, ENCOUNTER_VALID } from '../../src/ui/player/move-analysis.ts';
+import { NPC_SCHOOL_SPELL } from '../../src/engine/army-tables.ts';
+import { KC_MAGIC_SCHOOLS } from '../../src/content/kingdoms-call-data.ts';
 import { board, must, order, plan, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
@@ -741,6 +745,24 @@ describe('What the merge’s typed reads keep (P1-10b50: each a value the old re
     const h = realmHero(b, 1);
     mergedWith(b, 1, { ...forTurn(b), encounterPlans: { [h.id]: { tactics: ['ME', 3, null, true, 'AR'] } } });
     expect(h['encounterPlan']).toEqual({ tactics: ['ME', 'AR'] });
+  });
+
+  test('every tactic the order form offers is kept, and every one a wanderer’s own plan names: each code, each spell, each school', () => {
+    const b = fresh();
+    const offered = [
+      ...ENCOUNTER_TACTICS.filter((t) => t.code !== 'CS').map((t) => t.code),
+      ...Object.values(ENCOUNTER_VALID)
+        .flat()
+        .map((spell) => `CA:${spell}`),
+      ...Object.values(NPC_SCHOOL_SPELL).map((spell) => `CA:${spell}`),
+      ...KC_MAGIC_SCHOOLS.map((school) => `CS:${school}`),
+    ];
+    const heroes = offered.map(() => realmHero(b, 1));
+    setUp(b.tc);
+    const plans = Object.fromEntries(heroes.map((h, i) => [h.id, { tactics: [offered[i]], duelStance: 'refuse' }]));
+    mergedWith(b, 1, { ...forTurn(b), encounterPlans: plans });
+    expect(heroes.map((h) => h['encounterPlan'])).toEqual(offered.map((t) => ({ tactics: [t], duelStance: 'refuse' })));
+    expect(collected(merged(b), 'staleOrderWarnings')).toEqual([]);
   });
 
   test('a seat the save doesn’t have, sending for heroes not its own, is told as “a player”’s', () => {

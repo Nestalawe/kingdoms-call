@@ -7,14 +7,17 @@
 // land, becomes a wanderer; no company carries a stranded hull's marker into the turn; a hero in a realm's service loses
 // his "(wandering)" tag, told at the turn's end (the set-up keeps the count); last turn's orders and scratch lists are gone;
 // every living hero of a realm notes the realm he serves. The merge: each realm that sent orders has them read, as text
-// or as an object, in the form of today or an older one; its heroes' order in its column kept; its declarations (or the
+// or as an object, in the form of today or an older one; its heroes' order in its column kept (its own living heroes,
+// each once, in the order sent); its declarations (or the
 // Safe Start's refusal), research choices, Reckoning call, messages and concession taken for the stages that act on
 // them; orders sent for another turn refused, and told; the orders written for a hero it means to raise, hire or charm
 // held until that lands; a conceded realm's heroes made to hold; its encounter plans set (or held, for a hero not yet
 // its own); and a new heir's skills, name and temper applied. What a realm sends is taken only for its own heroes (the
 // rest set aside, and the GM told); a phase's order is kept only in a form the game uses (its name, target, extra
 // choice and line each text or left out; the rest set aside, so the hero Defends in that phase, and the GM told); a plan
-// keeps only the fields a plan has; an heir's skills are taken only as his crowned skills plus at most his points.
+// keeps only the fields a plan has, each within what the game offers (at most six known tactics and one school for the
+// pre-battle magic, a battlecry of at most 200 letters, a duel stance and a conquest doctrine from their lists; the rest
+// set aside, and the GM told); an heir's skills are taken only as his crowned skills plus at most his points.
 // scenario/set-up-and-order-merge-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/set-up-and-order-merge-called-directly.test.ts calls the two stages directly on the staged world. A case stages
 // its world and what each realm sends; after the turn it reads what it needs from the world (as the first phase began,
@@ -716,6 +719,17 @@ export const READ_CASES: SetUpCase[] = [
 
 // ── The heroes' order in the column ──────────────────────────────────────────────────────────────────────────────
 const heroOrderOf = (w: World, pi: number) => must(w.players[pi], 'realm ' + String(pi))['heroOrder'] ?? null;
+/** 205 ids in a row, from just below the lowest of realm `pi`'s living heroes: every one of them among them. */
+const theFirst205From = (b: Board, pi: number) => {
+  const own = b.G.characters.filter((c) => c.alive && c.player === pi).map((c) => c.id);
+  const from = Math.min(...own) - 1;
+  return Array.from({ length: 205 }, (_, i) => from + i);
+};
+/** The ids, as text, of realm `pi`'s living heroes among `ids`, in their order. */
+const ownAmong = (s: Staged, pi: number, ids: number[]) =>
+  ids
+    .filter((id) => must(s.board, 'board').G.characters.some((c) => c.id === id && c.alive && c.player === pi))
+    .map(String);
 export const HERO_ORDER_CASES: SetUpCase[] = [
   {
     name: 'the order a realm keeps its heroes in is kept on the realm, every id as text',
@@ -734,16 +748,52 @@ export const HERO_ORDER_CASES: SetUpCase[] = [
     }),
   },
   {
-    name: 'only the first 200 places of a realm’s order are kept',
-    stage: () => ({ sends: { 2: { heroOrder: Array.from({ length: 205 }, (_, i) => i) } } }),
-    check: (o) => {
-      const kept = heroOrderOf(o.world, 2) as string[];
-      return { got: { n: kept.length, last: kept[199] }, want: { n: 200, last: '199' } };
+    name: 'a realm’s order keeps only its own living heroes, each once, in the order sent',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      const k = kingOf(b, 1);
+      const fallen = realmHero(b, 1, { alive: false });
+      const foreign = realmHero(b, 2);
+      const w = wanderer(b);
+      const sent = [k.id, foreign.id, String(h.id), w.id, fallen.id, 'x', h.id, 987654, String(k.id)];
+      return { hero: h, others: [k], sends: { 1: { heroOrder: sent } } };
     },
-    merged: (m) => {
-      const kept = heroOrderOf(m.G, 2) as string[];
-      return { got: { n: kept.length, last: kept[199] }, want: { n: 200, last: '199' } };
+    check: (o, s) => ({
+      got: { order: heroOrderOf(o.world, 1) },
+      want: { order: [String(other(s, 0).id), String(hero(s).id)] },
+    }),
+    merged: (m, s) => ({
+      got: { order: heroOrderOf(m.G, 1) },
+      want: { order: [String(other(s, 0).id), String(hero(s).id)] },
+    }),
+  },
+  {
+    name: 'an order of 205 places keeps only the realm’s own living heroes among them',
+    stage: (b) => {
+      realmHero(b, 2);
+      return { sends: { 2: { heroOrder: theFirst205From(b, 2) } } };
     },
+    check: (o, s) => {
+      const want = ownAmong(s, 2, theFirst205From(must(s.board, 'board'), 2));
+      return { got: { order: heroOrderOf(o.world, 2), n: want.length }, want: { order: want, n: 2 } };
+    },
+    merged: (m, s) => {
+      const want = ownAmong(s, 2, theFirst205From(must(s.board, 'board'), 2));
+      return { got: { order: heroOrderOf(m.G, 2), n: want.length }, want: { order: want, n: 2 } };
+    },
+  },
+  {
+    name: 'an order holding numbers, lists, objects and very long text keeps only the realm’s own heroes: the turn finishes',
+    stage: (b) => {
+      const h = realmHero(b, 0);
+      const sent = [{ id: h.id }, [h.id], LONG_TEXT, null, true, h.id, ...Array.from({ length: 5000 }, () => h.id)];
+      return { hero: h, sends: { 0: { heroOrder: sent } } };
+    },
+    check: (o, s) => ({
+      got: { order: heroOrderOf(o.world, 0), onTheSave: JSON.stringify(o.world).includes(LONG_TEXT) },
+      want: { order: [String(hero(s).id)], onTheSave: false },
+    }),
+    merged: (m, s) => ({ got: { order: heroOrderOf(m.G, 0) }, want: { order: [String(hero(s).id)] } }),
   },
   {
     name: 'an order that isn’t a list leaves the realm’s order as it was',
@@ -776,9 +826,12 @@ export const HERO_ORDER_CASES: SetUpCase[] = [
   },
   {
     name: 'an order sent with orders for another turn is still kept (it is read first)',
-    stage: (b) => ({ hero: realmHero(b, 1), sends: { 1: { heroOrder: ['3'], forTurn: b.G.turn + 1 } } }),
-    check: (o) => ({ got: { order: heroOrderOf(o.world, 1) }, want: { order: ['3'] } }),
-    merged: (m) => ({ got: { order: heroOrderOf(m.G, 1) }, want: { order: ['3'] } }),
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      return { hero: h, sends: { 1: { heroOrder: [String(h.id)], forTurn: b.G.turn + 1 } } };
+    },
+    check: (o, s) => ({ got: { order: heroOrderOf(o.world, 1) }, want: { order: [String(hero(s).id)] } }),
+    merged: (m, s) => ({ got: { order: heroOrderOf(m.G, 1) }, want: { order: [String(hero(s).id)] } }),
   },
 ];
 
@@ -1441,7 +1494,7 @@ export const HELD_ORDER_CASES: SetUpCase[] = [
 
 // ── Encounter plans ──────────────────────────────────────────────────────────────────────────────────────────────
 const FLEE = { tactics: ['FL'], duelStance: 'refuse' };
-const STAND = { tactics: ['MA', 'MA'], duelStance: 'accept' };
+const STAND = { tactics: ['ME', 'FI'], duelStance: 'accept' };
 const FULL = { tactics: ['FL', 'CS:white'], notes: 'For the crown!', duelStance: 'refuse', evilMode: 'enslave' };
 export const PLAN_CASES: SetUpCase[] = [
   {
@@ -2012,6 +2065,247 @@ export const FORM_CASES: SetUpCase[] = [
   },
 ];
 
+// ── Encounter plans within what the game offers ──────────────────────────────────────────────────────────────────
+/** The GM's line when a realm's encounter plans hold parts the game doesn't offer (by the heroes' ids): those parts
+ *  are set aside, and each plan keeps the rest. */
+export const planPartsSetAside = (realmName: string, ids: (string | number)[]) =>
+  `⚠ Set aside from ${realmName}'s orders: parts of encounter plans that are not among what the game offers, for heroes ${ids.map(String).join(', ')}; each keeps the rest of his plan.`;
+const planIn = (w: World, c: Character) => charIn(w, c)['encounterPlan'] ?? null;
+/** The first 201 letters of the very long text: a battlecry holding them holds more than 200. */
+const OVER_200 = 'Q'.repeat(201);
+/** A case where realm 1's hero is sent `sent` as his plan and keeps `kept`, the GM told of him or told nothing. */
+const aPlanSent = (name: string, sent: Raw, kept: Raw, toldOfHim: boolean): SetUpCase => ({
+  name,
+  stage: (b) => {
+    const h = realmHero(b, 1);
+    return { hero: h, sends: { 1: { encounterPlans: { [h.id]: sent } } } };
+  },
+  check: (o, s) => ({
+    got: {
+      plan: planIn(o.world, hero(s)),
+      told: toldOfHim ? told(o, planPartsSetAside(nm(o, 1), [hero(s).id])) : starting(o, '⚠ Set aside'),
+    },
+    want: { plan: kept, told: toldOfHim ? GM_ONLY : [] },
+  }),
+  merged: (m, s) => ({
+    got: { plan: planIn(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+    want: {
+      plan: kept,
+      warnings: toldOfHim ? [planPartsSetAside(nameOf(must(s.board, 'board'), 1), [hero(s).id])] : [],
+    },
+  }),
+});
+const A150_B150 = 'A'.repeat(150) + 'B'.repeat(150);
+export const OFFERED_CASES: SetUpCase[] = [
+  aPlanSent(
+    'a battlecry of 300 letters is kept as its first 200, and the GM is told nothing',
+    { tactics: ['ME'], notes: A150_B150, duelStance: 'refuse' },
+    { tactics: ['ME'], notes: A150_B150.slice(0, 200), duelStance: 'refuse' },
+    false,
+  ),
+  aPlanSent(
+    'a battlecry of 200 letters is kept whole',
+    { tactics: ['ME'], notes: 'C'.repeat(200), duelStance: 'refuse' },
+    { tactics: ['ME'], notes: 'C'.repeat(200), duelStance: 'refuse' },
+    false,
+  ),
+  {
+    name: 'a battlecry of very long text: the turn finishes, and neither the save nor the log holds more than its first 200 letters',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      return { hero: h, sends: { 1: { encounterPlans: { [h.id]: { tactics: ['ME'], notes: LONG_TEXT } } } } };
+    },
+    check: (o, s) => ({
+      got: {
+        notes: (planIn(o.world, hero(s)) as Raw | null)?.['notes'] ?? null,
+        onTheSave: JSON.stringify(o.world).includes(OVER_200),
+        inTheLog: o.all.some((l) => l.text.includes(OVER_200)),
+      },
+      want: { notes: LONG_TEXT.slice(0, 200), onTheSave: false, inTheLog: false },
+    }),
+    merged: (m, s) => ({
+      got: { notes: (planIn(m.G, hero(s)) as Raw | null)?.['notes'] ?? null },
+      want: { notes: LONG_TEXT.slice(0, 200) },
+    }),
+  },
+  aPlanSent(
+    'a plan keeps only the tactics the game offers, in the order sent, and the GM is told of the hero',
+    {
+      tactics: ['ME', 'MA', 'FI', 'CA:Fireball', 'CA:Fireballs', 'me', 'CS:cooking', 'CS:White', 'FL', 'CS:white'],
+      duelStance: 'refuse',
+    },
+    { tactics: ['ME', 'FI', 'CA:Fireball', 'FL', 'CS:white'], duelStance: 'refuse' },
+    true,
+  ),
+  aPlanSent(
+    'a tactic of another kind (a number, a list, an object) is left out, and the GM is told of the hero',
+    { tactics: ['FL', 5, ['ME'], { code: 'ME' }], duelStance: 'refuse' },
+    { tactics: ['FL'], duelStance: 'refuse' },
+    true,
+  ),
+  aPlanSent(
+    'the tactics an older form wrote are kept too (Melee, Archery, Talk, Scout, Steal, a spell left unnamed)',
+    { tactics: ['MELEE', 'ARCHERY', 'TALK', 'SCOUT', 'STEAL', 'SPELL', 'CS:necromancy'], duelStance: 'accept' },
+    { tactics: ['MELEE', 'ARCHERY', 'TALK', 'SCOUT', 'STEAL', 'SPELL', 'CS:necromancy'], duelStance: 'accept' },
+    false,
+  ),
+  aPlanSent(
+    'and their short forms (AR, FIRE, ARROW, FLEE, TA, SC)',
+    { tactics: ['AR', 'FIRE', 'ARROW', 'FLEE', 'TA', 'SC'], duelStance: 'refuse' },
+    { tactics: ['AR', 'FIRE', 'ARROW', 'FLEE', 'TA', 'SC'], duelStance: 'refuse' },
+    false,
+  ),
+  aPlanSent(
+    'a plan keeps at most six tactics and one school for the pre-battle magic, the first sent, and the GM is told of the hero',
+    { tactics: ['CS:white', 'ME', 'FI', 'FL', 'CA', 'FI', 'ST', 'ME', 'CS:psychic'], duelStance: 'refuse' },
+    { tactics: ['CS:white', 'ME', 'FI', 'FL', 'CA', 'FI', 'ST'], duelStance: 'refuse' },
+    true,
+  ),
+  aPlanSent(
+    'six tactics and a school are kept whole',
+    { tactics: ['ME', 'FI', 'FL', 'CA:Lightning Bolt', 'FI', 'FL', 'CS:elemental'], duelStance: 'refuse' },
+    { tactics: ['ME', 'FI', 'FL', 'CA:Lightning Bolt', 'FI', 'FL', 'CS:elemental'], duelStance: 'refuse' },
+    false,
+  ),
+  aPlanSent(
+    'a duel stance the game doesn’t offer is left out (the hero refuses a challenge, as with none), and the GM is told',
+    { tactics: ['FL'], duelStance: 'charge' },
+    { tactics: ['FL'] },
+    true,
+  ),
+  aPlanSent(
+    'a conquest doctrine the game doesn’t offer is left out (the hero conquers by Terror, as with none), and the GM is told',
+    { tactics: ['FL'], duelStance: 'refuse', evilMode: 'plunder' },
+    { tactics: ['FL'], duelStance: 'refuse' },
+    true,
+  ),
+  aPlanSent(
+    'a duel stance and a doctrine of another kind (a number, an object) are left out, and the GM is told',
+    { tactics: ['FL'], duelStance: 3, evilMode: { mode: 'terror' } },
+    { tactics: ['FL'] },
+    true,
+  ),
+  aPlanSent(
+    'the stance Challenge and the doctrine Enslave are kept',
+    { tactics: ['ME'], duelStance: 'challenge', evilMode: 'enslave' },
+    { tactics: ['ME'], duelStance: 'challenge', evilMode: 'enslave' },
+    false,
+  ),
+  aPlanSent(
+    'the stance Accept and the doctrine Terror are kept',
+    { tactics: ['ME'], duelStance: 'accept', evilMode: 'terror' },
+    { tactics: ['ME'], duelStance: 'accept', evilMode: 'terror' },
+    false,
+  ),
+  {
+    name: 'a plan on the card of a hero a realm means to hire keeps only what the game offers, its battlecry 200 letters, and the GM is told the hero’s id',
+    stage: () => ({
+      sends: {
+        2: {
+          encounterPlans: {
+            hired_77_via_9_ph1: { tactics: ['ME', 'MA'], notes: 'D'.repeat(250), duelStance: 'charge' },
+          },
+        },
+      },
+    }),
+    check: (o) => ({
+      got: { held: held(o.first, '_pendingSynthPlans'), told: told(o, planPartsSetAside(nm(o, 2), [77])) },
+      want: { held: [{ heroId: 77, player: 2, plan: { tactics: ['ME'], notes: 'D'.repeat(200) } }], told: GM_ONLY },
+    }),
+    merged: (m, s) => ({
+      got: { held: held(m.G, '_pendingSynthPlans'), warnings: collected(m, 'staleOrderWarnings') },
+      want: {
+        held: [{ heroId: 77, player: 2, plan: { tactics: ['ME'], notes: 'D'.repeat(200) } }],
+        warnings: [planPartsSetAside(nameOf(must(s.board, 'board'), 2), [77])],
+      },
+    }),
+  },
+  {
+    name: 'plans for its own hero and another realm’s, each with a tactic the game doesn’t offer: the other set aside as before, the GM told of its own hero',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      const foreign = realmHero(b, 2);
+      const odd = { tactics: ['ME', 'MA'], duelStance: 'refuse' };
+      return { hero: h, others: [foreign], sends: { 1: { encounterPlans: { [h.id]: odd, [foreign.id]: odd } } } };
+    },
+    check: (o, s) => ({
+      got: { plan: planIn(o.world, hero(s)), told: starting(o, '⚠ Set aside') },
+      want: {
+        plan: { tactics: ['ME'], duelStance: 'refuse' },
+        told: [notInService(nm(o, 1), [other(s, 0).id]), planPartsSetAside(nm(o, 1), [hero(s).id])],
+      },
+    }),
+    merged: (m, s) => ({
+      got: { plan: planIn(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: {
+        plan: { tactics: ['ME'], duelStance: 'refuse' },
+        warnings: [
+          notInService(nameOf(must(s.board, 'board'), 1), [other(s, 0).id]),
+          planPartsSetAside(nameOf(must(s.board, 'board'), 1), [hero(s).id]),
+        ],
+      },
+    }),
+  },
+  {
+    name: 'a plan and an order of heroes holding numbers, lists, objects and very long text: the turn finishes, another realm’s hero marches, and the save keeps each within what the game offers',
+    stage: (b) => {
+      const h = realmHero(b, 0);
+      const rival = realmHero(b, 2);
+      const sent = {
+        tactics: [
+          LONG_TEXT,
+          7,
+          ['ME'],
+          { code: 'ME' },
+          'CA:' + LONG_TEXT,
+          'CS:' + LONG_TEXT,
+          ...Array.from({ length: 1000 }, () => 'ME'),
+        ],
+        notes: LONG_TEXT,
+        duelStance: LONG_TEXT,
+        evilMode: [LONG_TEXT],
+      };
+      return {
+        hero: h,
+        others: [rival],
+        places: [ring1(b, 2)],
+        orders: [[rival, plan(order('move', ring1(b, 2).id))]],
+        sends: { 0: { encounterPlans: { [h.id]: sent }, heroOrder: [LONG_TEXT, h.id, { id: h.id }, [h.id]] } },
+      };
+    },
+    check: (o, s) => ({
+      got: {
+        plan: planIn(o.world, hero(s)),
+        order: heroOrderOf(o.world, 0),
+        othersMarched: otherMarched(o, s),
+        told: told(o, planPartsSetAside(nm(o, 0), [hero(s).id])),
+        onTheSave: JSON.stringify(o.world).includes(OVER_200),
+        inTheLog: o.all.some((l) => l.text.includes(OVER_200)),
+      },
+      want: {
+        plan: { tactics: ['ME', 'ME', 'ME', 'ME', 'ME', 'ME'], notes: LONG_TEXT.slice(0, 200) },
+        order: [String(hero(s).id)],
+        othersMarched: true,
+        told: GM_ONLY,
+        onTheSave: false,
+        inTheLog: false,
+      },
+    }),
+    merged: (m, s) => ({
+      got: {
+        plan: planIn(m.G, hero(s)),
+        order: heroOrderOf(m.G, 0),
+        warnings: collected(m, 'staleOrderWarnings'),
+      },
+      want: {
+        plan: { tactics: ['ME', 'ME', 'ME', 'ME', 'ME', 'ME'], notes: LONG_TEXT.slice(0, 200) },
+        order: [String(hero(s).id)],
+        warnings: [planPartsSetAside(nameOf(must(s.board, 'board'), 0), [hero(s).id])],
+      },
+    }),
+  },
+];
+
 // ── The turn's record of orders ──────────────────────────────────────────────────────────────────────────────────
 const recordOf = (o: Outcome, pi: number) => must(o.record[String(pi)], 'the record of realm ' + String(pi));
 export const RECORD_CASES: SetUpCase[] = [
@@ -2070,5 +2364,6 @@ export const SET_UP_CASES: [string, SetUpCase[]][] = [
   ['a new heir’s choices', HEIR_CASES],
   ['only a realm’s own heroes', OWN_CASES],
   ['orders in the forms the game uses', FORM_CASES],
+  ['encounter plans within what the game offers', OFFERED_CASES],
   ['the turn’s record of orders', RECORD_CASES],
 ];

@@ -1,5 +1,6 @@
-import { safeStartLocked } from '../army-tables.ts';
-import { KC_SKILLS } from '../../content/kingdoms-call-data.ts';
+import { COMBAT_ONLY_TACTICS, safeStartLocked } from '../army-tables.ts';
+import { KC_MAGIC_SCHOOLS, KC_SKILLS, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { DUEL_STANCES_P } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { TEMPERS_P } from '../world/tables.ts';
 import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
@@ -18,15 +19,18 @@ import type { Character, GameState, Province, Realm, SkillLevels } from '../../s
 //      (its four turn-start repairs, since P1-15f2) kept on the save, told at the turn's end; then the turn's orders
 //      and its scratch lists start empty, every living hero noting the realm he serves, and every living realm's hero
 //      starts with five empty phases (Defend, later);
-//   4. the merge of the realms' orders: each realm that sent orders has its hero order kept, its declarations (or the
+//   4. the merge of the realms' orders: each realm that sent orders has its hero order kept (its own living heroes, each
+//      once, in the order sent), its declarations (or the
 //      Safe Start's refusal), research choices, Reckoning call, messages and concession collected for later stages,
 //      orders stamped for another turn refused, the orders of heroes it means to hire, raise or charm held until the
 //      order lands, every other hero's phases written, a conceded realm's heroes made to hold, its encounter plans
 //      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied. A realm's orders,
 //      encounter plans and heir's choices are taken only for its own heroes (the rest set aside, and the GM told); a
 //      phase's order only in a form the game uses (its name, target, extra choice and line each text or left out; the
-//      rest set aside, the phase left empty, and the GM told); a plan keeps only the fields a plan has; an heir's skills
-//      only as his crowned skills plus at most his points.
+//      rest set aside, the phase left empty, and the GM told); a plan keeps only the fields a plan has, each within what
+//      the game offers (at most six known tactics and one school, a battlecry of at most 200 letters, a stance and a
+//      doctrine from their lists; the rest set aside, and the GM told); an heir's skills only as his crowned skills plus
+//      at most his points.
 // But for the first, each takes the turn's context (src/engine/turn/context.ts) and nothing else: the merge makes the
 // collectors afresh each turn, joins them to the context and fills them (staleOrderWarnings, diploDeclarations,
 // safeStartRefused, discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read there
@@ -155,24 +159,93 @@ function heroOfTheRealm(G: Pick<GameState, 'characters'>, pi: number, charId: st
   return ch?.player === pi ? ch : null;
 }
 
-// An encounter plan as a realm sends it, kept to the fields a plan has (its tactics, notes, duel stance and an Evil
-// hero's conquest doctrine), each of its kind; null when what was sent is no plan.
-function encounterPlanAsAPlanHasIt(plan: unknown): NonNullable<Character['encounterPlan']> | null {
+/** The actions of an encounter a plan may name by their code alone, beside those a duel keeps (`COMBAT_ONLY_TACTICS`:
+ *  Melee, Fire Arrow, Cast Spell and Flee, with an older form's names for them): Talk, Steal and Scout, as personal
+ *  combat reads them (pcAct), each by its code and its name. */
+const THE_ACTIONS_ONLY_AN_ENCOUNTER_TAKES: readonly string[] = ['TA', 'TALK', 'ST', 'STEAL', 'SC', 'SCOUT'];
+/** How many tactics a plan holds (the order form's six), beside one school for the pre-battle magic (`CS:<school>`). */
+const THE_TACTICS_A_PLAN_HOLDS = 6;
+/** The conquest doctrines an Evil hero may follow (the order form's two). */
+const THE_CONQUEST_DOCTRINES: readonly string[] = ['terror', 'enslave'];
+/** Whether a tactic is one the game offers: an action's code, `CA:<spell>` for a spell the game has, or `CS:<school>`
+ *  for a school of magic. */
+function aTacticTheGameOffers(t: string): boolean {
+  if (t.startsWith('CA:')) return Object.hasOwn(SPELL_DEFS_P, t.slice(3));
+  if (t.startsWith('CS:')) {
+    const schools: readonly string[] = KC_MAGIC_SCHOOLS;
+    return schools.includes(t.slice(3));
+  }
+  return COMBAT_ONLY_TACTICS.has(t) || THE_ACTIONS_ONLY_AN_ENCOUNTER_TAKES.includes(t);
+}
+/** A plan's tactics as its realm sent them, kept to those the game offers, at most six and one school, the first sent
+ *  in the order sent; and whether any was set aside. */
+function theTacticsThePlanHolds(sent: readonly unknown[]): { tactics: string[]; anySetAside: boolean } {
+  const tactics: string[] = [];
+  let actions = 0;
+  let aSchool = false;
+  let anySetAside = false;
+  for (const t of sent) {
+    const isASchool = typeof t === 'string' && t.startsWith('CS:');
+    if (
+      typeof t !== 'string' ||
+      !aTacticTheGameOffers(t) ||
+      (isASchool ? aSchool : actions >= THE_TACTICS_A_PLAN_HOLDS)
+    ) {
+      anySetAside = true;
+      continue;
+    }
+    if (isASchool) aSchool = true;
+    else actions++;
+    tactics.push(t);
+  }
+  return { tactics, anySetAside };
+}
+// An encounter plan as a realm sends it, kept to the fields a plan has (its tactics, battlecry, duel stance and an
+// Evil hero's conquest doctrine), each of its kind and within what the game offers: the tactics as
+// theTacticsThePlanHolds keeps them, the battlecry its first 200 letters (R-183), the stance one of the three and the
+// doctrine one of the two (each else left out, so the hero does as with none); with whether a part was set aside (a
+// tactic, a stance or a doctrine sent but not kept; a battlecry is cut, not set aside). Null when what was sent is no
+// plan.
+function encounterPlanAsAPlanHasIt(
+  plan: unknown,
+): { plan: NonNullable<Character['encounterPlan']>; anySetAside: boolean } | null {
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return null;
   const sent = itOrAnEmptyObject(plan);
   const kept: NonNullable<Character['encounterPlan']> = {};
+  let anySetAside = false;
   const tactics = sent['tactics'];
   if (Array.isArray(tactics)) {
-    const sentTactics: readonly unknown[] = tactics;
-    kept.tactics = sentTactics.filter((t): t is string => typeof t === 'string');
+    const held = theTacticsThePlanHolds(tactics);
+    kept.tactics = held.tactics;
+    anySetAside = held.anySetAside;
   }
   const notes = sent['notes'];
-  if (typeof notes === 'string') kept.notes = notes;
+  if (typeof notes === 'string') kept.notes = notes.slice(0, 200);
   const duelStance = sent['duelStance'];
-  if (typeof duelStance === 'string') kept.duelStance = duelStance;
+  if (typeof duelStance === 'string' && DUEL_STANCES_P.includes(duelStance)) kept.duelStance = duelStance;
+  else if (duelStance !== undefined && duelStance !== null) anySetAside = true;
   const evilMode = sent['evilMode'];
-  if (typeof evilMode === 'string') kept.evilMode = evilMode;
-  return kept;
+  if (typeof evilMode === 'string' && THE_CONQUEST_DOCTRINES.includes(evilMode)) kept.evilMode = evilMode;
+  else if (evilMode !== undefined && evilMode !== null) anySetAside = true;
+  return { plan: kept, anySetAside };
+}
+/** A realm's order of its heroes in its column as it sent it, kept to its own living heroes (by id, as text), each
+ *  once, in the order sent. */
+function theRealmsOwnLivingHeroesInTheOrderSent(
+  G: Pick<GameState, 'characters'>,
+  pi: number,
+  sent: readonly unknown[],
+): string[] {
+  const own = new Set(
+    theCharactersOf(G)
+      .filter((c) => c?.alive && c.player === pi)
+      .map((c) => String(c?.id)),
+  );
+  const kept = new Set<string>();
+  for (const id of sent) {
+    if ((typeof id === 'string' || typeof id === 'number') && own.has(String(id))) kept.add(String(id));
+  }
+  return [...kept];
 }
 
 /** The fields of a phase's order the game reads as text: its name, target, extra choice and the form's line. */
@@ -270,8 +343,7 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
       if (Array.isArray(heroOrderSent)) {
         const itsRealm = G.players[gp.player_index];
         if (itsRealm) {
-          const heroOrderAsSent: readonly unknown[] = heroOrderSent;
-          itsRealm.heroOrder = heroOrderAsSent.slice(0, 200).map(String);
+          itsRealm.heroOrder = theRealmsOwnLivingHeroesInTheOrderSent(G, gp.player_index, heroOrderSent);
         }
       }
       if (raw['orders'] !== undefined && raw['encounterPlans'] !== undefined) {
@@ -421,7 +493,12 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
             }));
           });
       });
-      // Apply encounter plans to characters.
+      // Apply encounter plans to characters. The heroes (by id) whose plan held parts the game doesn't offer, set aside
+      // (the GM is told, once, below).
+      const planPartsSetAside: string[] = [];
+      const notePlanPartsSetAsideFor = (heroId: string) => {
+        if (!planPartsSetAside.includes(heroId)) planPartsSetAside.push(heroId);
+      };
       Object.entries(epObj).forEach(([charId, plan]) => {
         const syn = /^(?:hired|resurrect|charm)_(\d+)_via_.+_ph\d+$/.exec(charId); // allow synthetic (nested) caster id
         if (syn) {
@@ -430,15 +507,21 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
           // turn to turn, so writing it here let a rival set a hero's combat stance for good.
           const kept = encounterPlanAsAPlanHasIt(plan);
           if (!kept) return;
+          const heroId = parseInt(String(syn[1]));
           G._pendingSynthPlans ??= [];
-          G._pendingSynthPlans.push({ heroId: parseInt(String(syn[1])), player: gp.player_index, plan: kept });
+          G._pendingSynthPlans.push({ heroId, player: gp.player_index, plan: kept.plan });
+          if (kept.anySetAside) notePlanPartsSetAsideFor(String(heroId));
           return;
         }
         const kept = encounterPlanAsAPlanHasIt(plan);
         if (!kept) return;
         const ch = heroOfTheRealm(G, gp.player_index, charId);
-        if (ch) ch.encounterPlan = kept;
-        else setAside(charId);
+        if (!ch) {
+          setAside(charId);
+          return;
+        }
+        ch.encounterPlan = kept.plan;
+        if (kept.anySetAside) notePlanPartsSetAsideFor(charId);
       });
       // Apply royal-succession skill allocations to a newly-crowned heir, then retire the flags.
       Object.entries(kingSkillsObj).forEach(([charId, allocSent]) => {
@@ -474,6 +557,10 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
       if (notInAFormTheGameUses.length)
         staleOrderWarnings.push(
           `⚠ Set aside from ${realmName}'s orders: orders not in a form the game uses, for heroes ${notInAFormTheGameUses.join(', ')}; each Defends in that phase instead.`,
+        ); // logged (to the GM alone) once the turn's log exists
+      if (planPartsSetAside.length)
+        staleOrderWarnings.push(
+          `⚠ Set aside from ${realmName}'s orders: parts of encounter plans that are not among what the game offers, for heroes ${planPartsSetAside.join(', ')}; each keeps the rest of his plan.`,
         ); // logged (to the GM alone) once the turn's log exists
     });
 }

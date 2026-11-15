@@ -28,9 +28,9 @@
 // every living realm hero. The merge: a seat nobody holds and a realm that sent nothing not read; orders as an object
 // or as text, in today's form or the older one (each hero's phases alone), all read; a payload with no encounter plans
 // (or with plans and no orders) read as the older form, one with plans set to nothing in today's; the rows read
-// whatever their order; phases that aren't a list given to nobody. The heroes' order in the column kept as text, the
-// first 200 places, an order that isn't a list leaving it as it was, in the older form too and from a payload for
-// another turn. Orders for another turn (later or earlier) refused, the GM told, the hero Defending, no encounter plan
+// whatever their order; phases that aren't a list given to nobody. The heroes' order in the column kept as text, only
+// the realm's own living heroes, each once (of 205 places, of numbers, lists, objects and very long text), an order
+// that isn't a list leaving it as it was, in the older form too and from a payload for another turn. Orders for another turn (later or earlier) refused, the GM told, the hero Defending, no encounter plan
 // or heir's choices taken, though the realm's declaration, messages and concession are (the concession told first);
 // orders with no turn on them read. Declarations taken (war made at the turn's end), set aside under Safe Start (war or
 // Treat) with the realm alone told, nothing told for none or neutral, Safe Start over with the orders for turn 6 and
@@ -57,9 +57,13 @@
 // Defending in that phase, the GM alone told, another realm's hero marching as ordered, and nothing of it on the save;
 // a phase sent as a number or as text set aside; a held order for a hero to be raised, hired or charmed set aside, the
 // GM told his id (once for two cards); very long text in each field kept, another realm's hero marching as ordered,
-// none of it on the save or in the log; fields each text or left out kept, nothing told. The record of orders: a
-// realm's heroes'
-// orders, declarations, Reckoning call, concession and plans as merged; nothing for a realm that sent nothing. Level 2:
+// none of it on the save or in the log; fields each text or left out kept, nothing told. Encounter plans within what
+// the game offers: a battlecry cut to its first 200 letters (very long text too, none of it past 200 on the save or in
+// the log), 200 letters kept whole; only known tactics kept (an older form's too), at most six and one school, the GM
+// alone told; a stance or a doctrine not on its list left out, the GM told; a card's plan cut alike; a plan and an
+// order of heroes holding numbers, lists, objects and very long text, the turn finishing and another realm's hero
+// marching. The record of orders: a realm's heroes' orders, declarations, Reckoning call, concession and plans as
+// merged; nothing for a realm that sent nothing. Level 2:
 // the stages are what the turn does first, and every stage after them reads what they set
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
