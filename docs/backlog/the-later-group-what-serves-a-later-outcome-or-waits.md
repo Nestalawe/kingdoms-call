@@ -7,7 +7,7 @@ first, or is deferred (⏸). A row moves up once it is assessed against its neig
 
 ## The rulings and the known defects, after the rebuild
 
-They come after the rebuild ([the order of work](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)).
+They come after the rebuild, as [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours) places them.
 The first ordering pass placed these rows by impact. Among rows of equal harm, the harm more games meet goes first,
 then the row that unblocks others, then the smaller row. A known defect was placed only when it is plainly harm in
 live play: its row says players notice it in running games, the turn's result is wrong (not only its words), and its
@@ -46,6 +46,7 @@ fix needs no new ruling. The last four rows joined from Next. The other rulings 
 | P1-20 | State reshapes that earn their place: items get ids first | Maintainers: an item can be named in a rule or a test by its id; closes a Phase 1 criterion | Phase 1 | Medium | – | ⬜ | |
 | P1-24 | Long, descriptive names: a glossary a maintainer agrees, then the renames, one area a pull request (saved-state, content and database names left out). After P1-10z, P1-14z and P1-19 | Maintainers: names say what the code does; closes a Phase 1 criterion | Phase 1 | Large | – | ⬜ | |
 | B-03 | The people's names in code and config comments and messages: `.github/scripts/*.js` (the dangerous-paths warning and the migrations summary's label, pinned by `tests/dangerous-paths.test.js` and `tests/migrations.test.js`), `.github/workflows/*.yml`, `.github/dependabot.yml`, `.github/dangerous-paths`, the root `README.md`, `tests/README.md`, the header of `tests/rulings.test.js`, and comments in `src/` and `tests/`: roles instead, and the names test extended to them | Maintainers: the warnings and comments say "a maintainer", as the docs do | Phase 1 | Small | ✓ | ⬜ | |
+| B-11 | A maintainer decides on #218's balance comment, which quotes the first lines whose filing changed: hidden on GitHub, or kept. No newer comment quotes a line | Maintainers: an old comment out of view, or kept on purpose; tidying | Phase 1 | Small | – | ⬜ | |
 
 ## Phase 2: the database decides, and turns are kept
 

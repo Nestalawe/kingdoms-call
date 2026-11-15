@@ -4,7 +4,7 @@ Every open item, in one list: what it delivers, its impact, the outcome it serve
 where it is. What comes next is the top of the list ([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs));
 each outcome is in [the goal and the road](../the-goal-and-the-road.md). The list runs in four parts:
 1. [**The top, in order**](#the-top-in-order): the next rows, grouped by tranche, each with why it is there.
-2. [**Next**](the-next-group-what-the-road-works-on-now-and-what-players-notice.md): the rebuild's other rows, to place
+2. [**Next**](the-next-group-the-rebuilds-other-rows.md): the rebuild's other rows, to place
    in the top soon.
 3. [**Later**](the-later-group-what-serves-a-later-outcome-or-waits.md): first the rulings and the known defects,
    with [the rulings to build](the-rulings-decided-not-built.md); then the rows that serve a later outcome, or wait.
@@ -45,9 +45,9 @@ Finished items are a record, in three files: [Phase 0, and P1-01 to P1-10](finis
 ## The top, in order
 
 What comes next is the first row of the first group. The top is grouped by tranche, a heading a group, its rows in
-order; inside a group, the rows' "After" decides the order. The order of work is
-[the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours) of
-ordering the backlog, and a maintainer validates each row's place. The rulings and the known defects come after the rebuild: they head
+order; inside a group, the rows' "After" decides the order. The order of work is this list's order, and lives only
+here: each row is placed by [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)
+of ordering the backlog, and a maintainer validates its place. The rulings and the known defects come after the rebuild: they head
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
 
 ### 1. T6, the types finished: part 4

@@ -5,7 +5,7 @@ Part of the [Later](the-later-group-what-serves-a-later-outcome-or-waits.md) gro
 (its status "Decided, not built") is a row of its own; the pull request that builds it sets the ruling to
 **Confirmed** ([adding a ruling](../rulings/README.md#adding-a-ruling)). Placed in Later on one assumption: each is
 decided, and the rulings come after the rebuild
-([the order of work](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)). A static
+([the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours) a row is placed by). A static
 test checks that each such ruling has its row
 (`tests/static/the-backlogs-statuses-follow-their-pull-requests-and-each-ruling-to-build-has-a-row.test.ts`).
 

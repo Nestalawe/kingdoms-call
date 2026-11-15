@@ -46,5 +46,5 @@ Elsewhere: [the decisions](../decisions/README.md), [the rulings](../rulings/REA
 - **A red nightly run blocks nothing.** Repeat it with its seed, then add a test
   ([tests/README.md](../../tests/README.md#what-each-level-is-for-and-what-the-tests-dont-do)).
 - **One lane, the backlog's top next, and stacks for big work:** [the decisions](../decisions/README.md#the-decisions-on-how-the-work-runs).
-- Database and site changes in separate pull requests, and each ruling in the pull request that builds it:
-  [CLAUDE.md](../../CLAUDE.md).
+- Database and site changes in separate pull requests ([CLAUDE.md](../../CLAUDE.md)), and each answer a ruling at
+  once, "Decided, not built" until its own pull request builds it ([adding a ruling](../rulings/README.md#adding-a-ruling)).
