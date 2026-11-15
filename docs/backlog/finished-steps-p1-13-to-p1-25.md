@@ -59,10 +59,12 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-15b2: #238 The schema learns what a human realm's orders save: the portal's battle plan, every mastery order's mark, the rare orders' fields
 - P1-15c: #236 The version: every save says its shape, an older GM page refuses a newer save, and the made-up saves of versions 0 and 1
 - P1-15d: #237 The check at load: before each turn the save is checked against its description; the turn still runs and the GM is told
+- P1-15e: done in its rows, below
 - P1-15e1: #241 The balance matrix fails a game on the save's check
 - P1-15e2: #242 The scripted realm sends what the player portal sends
 - P1-15e2b: #243 The held chase comes from a required named balance scenario
 - P1-15e3: #244 The scripted realm's spare heroes give the orders the form offers them
+- P1-15f: done in its rows, below
 - P1-15f1: #492 The three flagged passes into the save's upgrade
 - P1-15f2: #493 The four turn-start repairs into the save's upgrade
 - P1-15f3: #495 The reads that write an old save's field become passes of the upgrade
@@ -82,6 +84,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-16e: #535 titles.ts and map.ts freed of their ts-nocheck lines; the map's one call typed as it stands
 - P1-16f: #536 order-targets.ts freed of its ts-nocheck line
 - P1-16g: #537 pre-orders.ts freed of its ts-nocheck line; briefing-and-submit's return types where read
+- P1-16h: done in its rows, below
 - P1-16h1: #538 The saved draft's types widened to what a parsed draft holds
 - P1-16h2: #539 orders-form.ts freed of its ts-nocheck line; Revise's call typed as it stands
 - P1-16i: #540 The tests', tools' and root config's lint suppressions to 0; tools/legacy/ deleted
@@ -176,14 +179,19 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-19at: done in its rows, below
 - P1-19at1: #574 The alignment abilities' frame, and Neutral's trade through it
 - P1-19at2: #575 The consecrated ground's +50% tax through the alignment abilities' registry
+- P1-19au: done in its rows, below
 - P1-19au1: #577 Zeal by alignment, the consecrated doubling and the fervours through the alignment abilities' registry
 - P1-19au2: #578 The other battle factors and the Banner of Fellowship through the alignment abilities' registry
+- P1-19av: done in its rows, below
 - P1-19av1: #579 Prices and the Druids through the alignment abilities' registry: the mercenary discount, Bless Province's rates, the Druid waiver and Neutral scholars
 - P1-19av2: #580 The alignments' ladder as a table beside the rows: hire wages and the gulf, mercy by the foe's alignment, the heroes' deal
+- P1-19aw: done in its rows, below
 - P1-19aw1: #581 The five alignment orders become rows of the alignment abilities' file; the old file goes
 - P1-19aw2: #582 The alignment orders' refusals and outcomes: who may give each through the registry, each order in its own file
+- P1-19ax: done in its rows, below
 - P1-19ax1: #583 Heroes and the turn, part 1: Divine grace, the Divine Rest, the Blood Harvest and the conquest doctrine through the alignment abilities' registry
 - P1-19ax2: #584 Heroes and the turn, part 2: the graves on Undead land, war without warning, a broken alliance, the risen dead and an Undead hero through the alignment abilities' registry
+- P1-19ay: done in its rows, below
 - P1-19ay1: #585 The world through the alignment abilities' family: the ritual stones' site, the wild country beside a capital, kings' first skills, the Undead king's skeleton, the wanderers, and one Divine and one Undead realm a game
 - P1-19ay2: #586 The marks on a province through one module: consecrated ground, Terror and Enslave read, laid, lifted and faded in one place
 - P1-19az: #587 The close of the alignment abilities family: its trap, the Terror trap on the marks' module, the overview and where a change goes

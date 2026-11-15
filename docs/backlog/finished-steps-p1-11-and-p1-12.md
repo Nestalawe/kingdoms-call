@@ -17,11 +17,13 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-11b2: #215 The beast command and the Druid rule in one file the player portal can share; the turn report asks the shared flying rule
 - P1-11b3: #216 The player portal counts beasts and works out the Druid rule with the engine's own functions
 - P1-11b4: #217 The player portal's Move order note counts the sea lift with the engine's own rule
+- P1-11c: done in its rows, below
 - P1-11c1: #334 The order form's Cast Spell tables and checks, and the army card's kin: parity cases
 - P1-11c2: #335 The order form's spells and the mark check, in the engine's shared folder
 - P1-11c3: #336 The order form's Cast Spell tables, made by the engine folder's functions
 - P1-11c4: #337 The order form's target field asks the engine's mark check
 - P1-11c5: #338 The army card's kin and feud ask the battle's own rule
+- P1-11d: done in its rows, below
 - P1-11d1: #373 Parity cases, the march: the order form's hex tables, where a hero will stand, what marching in maps
 - P1-11d2: #374 Parity cases, what a hero holds: the items he carries, the companies he leads, the garrison
 - P1-11d3: #375 Parity cases, the orders: the order list, its 46 names, the creed orders' fields
@@ -36,6 +38,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-11d12: #384 The beasts' two sets and the Druid mastery's guard come from the engine
 - P1-11d13: #385 The spell hints read their row-held figures from the rows, and a words test reads each hint
 - P1-11d14: #386 The Explore gain is one function the turn and the order form both call
+- P1-11e: done in its rows, below
 - P1-11e1: #494 A guardian's brute strength reads as it fights (R-137)
 - P1-11e2: #446 The losses tally follows the battle (R-127)
 - P1-11e2b: #462 A leaderless host's trapped company counts for its own side in the losses tally

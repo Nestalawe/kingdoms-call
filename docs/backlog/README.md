@@ -9,18 +9,19 @@ steps come in this order, and each phase's goal: [the goal and the road](../the-
 ## How to read a row
 
 - **Id:** `P<phase>-<nn>`, for example `P1-16`. A step built in several pull requests gets lettered rows (`P1-16q`),
-  and a row split in two gets a number (`P1-16o1`, `P1-16o2`). An id is never reused or renumbered. A dropped step
-  stays in the list, marked dropped.
+  and a row split in two gets a number (`P1-16o1`, `P1-16o2`). An id is never reused or renumbered: a dropped step
+  keeps its id, and the finished list names it as dropped.
 - **Size:** Small is one small pull request; Medium is one larger pull request, or two or three small ones; Large is
   a series, often in lettered rows. Sizes compare steps; they are not times.
-- **Theo ✓:** talk it through with Theo before it merges (D-07: [the decisions](../decisions/README.md)). It touches
-  security, the database, CI and deploy, or the harness.
+- **Theo ✓:** talk it through with Theo before it merges
+  ([D-07](../decisions/README.md#tobys-decisions-d-01-to-d-13)). It touches security, the database, CI and deploy, or
+  the harness.
 - **🔑:** part of the step needs Toby's admin access: the repository's settings, a production approval, Supabase's
   live project, or his claude.ai Project. Toby or Theo can pick up any other step, or start an agent on it.
 - **Who:** an agent does each step unless the row says otherwise.
-- **Unit:** a set of steps that go together, in a fixed order (expand, wait, then contract), because only part of it
-  would break the live site. Unit A, the cutover (P0-07 to P0-11), and Unit B (P0-20, then P0-21) are done. Unit C is
-  P2-06, then a wait, then P2-07.
+- **Unit:** a set of steps that go together, in a fixed order (expand, wait, then contract), because doing only part of
+  it would break the live site. Unit A, the cutover (P0-07 to P0-11), and Unit B (P0-20, then P0-21) are done. Unit C
+  is P2-06, then a wait, then P2-07.
 - **Status:** ⬜ not started · 🟦 in progress · 👀 in review · ⛔ blocked (the row says why) · ⏸ deferred.
   A step that is done (✅) or dropped (✖) leaves the backlog for the finished list.
 - **PR:** the pull requests so far. A step with lettered rows lists its open rows below it; its finished rows are in
@@ -82,8 +83,8 @@ They can wait: each is built inside the batch that touches its area
 
 ## The decisions in force
 
-Each series was planned by the run that built it, on its recommendations; Theo may veto any of them. Each row checks
-its figures again on its base.
+Each series was planned by a run, which builds on its own recommendations; Theo may veto any of them. Each row
+checks its figures again on its base.
 
 ### P1-16: the UI typed
 
@@ -148,7 +149,7 @@ Each row says what the step delivers.
 | P2-12 | Turn logs trimmed 30 days after a game ends (D-04) | Medium | ✓ | ✓ | P2-11 | ⬜ | |
 | P2-13 | A way to reproduce a live bug. Deferred: a live bug becomes a made-up test from Toby's description | Small | – | – | P2-08 | ⏸ | |
 | P2-15 | A GM sees less of their own games, on screen (D-13d), once Toby rules on the detail | Medium | – | – | P0-32g, Toby's ruling | ⬜ | |
-| P2-14 | Players told what Phase 2 changed; the plan's private repository archived. Toby and Theo do it | Small | ✓ | ✓ | P2-05, P2-07, P2-16 | ⬜ | |
+| P2-14 | Players told what Phase 2 changed. Toby and Theo do it | Small | ✓ | ✓ | P2-05, P2-07, P2-16 | ⬜ | |
 
 D-02, D-04, D-10 and D-13: [the decisions](../decisions/README.md#tobys-decisions-d-01-to-d-13).
 

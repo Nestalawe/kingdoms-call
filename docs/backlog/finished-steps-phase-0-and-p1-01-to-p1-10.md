@@ -107,9 +107,11 @@ Dropped (ids are never reused): P0-14, on 2026-10-14; P0-26, on 2026-10-15.
 - P1-08f: #139 Lift duels, encounters, lair odds and hero death out of runTurn
 - P1-08g: #140 Lift combatVsNPC and the pre-battle duel out of runTurn
 - P1-08h: #141 Lift combatVsChar out of runTurn
+- P1-08i: done in its rows, below
 - P1-08i1: #142 Lift the phase intents, routes and province bookkeeping out of runTurn
 - P1-08i2: #143 Lift the Defend watch out of runTurn
 - P1-08i3: #144 Lift pursuit, stalled battles, unit gain and war fronts out of runTurn
+- P1-08j: done in its rows, below
 - P1-08j1: #145 Lift the Move order out of runTurn
 - P1-08j2: #146 Lift the explore and search orders out of runTurn
 - P1-08j3: #147 Lift the recruit, hire and works orders out of runTurn
@@ -119,6 +121,7 @@ Dropped (ids are never reused): P0-14, on 2026-10-14; P0-26, on 2026-10-15.
 - P1-08j7: #151 Lift Cast Spell out of runTurn
 - P1-08j8: #152 Lift the war orders out of runTurn
 - P1-08j9: #153 Lift processOrder, the order dispatcher, out of runTurn
+- P1-08k: done in its rows, below
 - P1-08k1: #154 Lift the phase's four stages out of runTurn
 - P1-08k2: #155 Lift Early Winter out of runTurn
 - P1-08k3: #156 Lift after the phases out of runTurn
@@ -128,6 +131,7 @@ Dropped (ids are never reused): P0-14, on 2026-10-14; P0-26, on 2026-10-15.
 - P1-08k6: #160 Lift the titles at the turn's end out of runTurn
 - P1-08k7: #161 Lift the set-up and the order merge out of runTurn
 - P1-08k8: #162 Lift before the first phase out of runTurn
+- P1-08l: done in its rows, below
 - P1-08l1: #163 Lift bot diplomacy out of runTurn
 - P1-08l2: #164 Lift the bots' plan out of runTurn
 - P1-08m: #165 Pass the turn's seed into resolveTurn
