@@ -145,7 +145,7 @@ to paste SQL. **Database and site changes go in separate PRs**, each working wit
 ([why](supabase/README.md#database-and-site-changes-go-separately)): database first, then site, then any removal
 ([their rules](supabase/README.md#the-rules-every-database-change-follows)).
 
-## Dangerous paths: talk it through with Theo
+## Dangerous paths: talk it through with a maintainer
 
 Some changes get a maintainer's eye before they merge (decision D-07); nothing on GitHub enforces it.
 - **Paths:** a PR that changes a path in `.github/dangerous-paths` gets a warning comment that never blocks the merge.
