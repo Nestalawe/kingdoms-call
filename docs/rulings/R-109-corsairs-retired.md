@@ -12,3 +12,5 @@ already raised is kept and fights as before. No rulebook or page a player reads 
 Letters of Marque, the Human discovery that only strengthened Corsairs, now strengthens the Galleon Fleet the
 same way: +30% when attacking. Toby (2026-10-15): "for now make it affect Galleons instead of Corsairs. We will be
 doing a full discoveries review later."
+
+**Note:** A Corsair company already raised loses its two old abilities once [R-147](R-147-old-corsair-companies-fight-as-plain-fleets.md) is built.

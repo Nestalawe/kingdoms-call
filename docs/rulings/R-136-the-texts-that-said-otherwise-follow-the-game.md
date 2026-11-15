@@ -27,7 +27,8 @@ row and the Pagan texts say what the turn does:
 
 - **An Evil conquest** follows the doctrine set on the conquering hero's orders. *Terror* plunders 50% of the
   province's tax value in gold at once. *Enslave* takes no gold: it presses the beaten folk into a free Green garrison
-  unit, and the province pays 1g less tax for 3 turns. Where the folk aren't humanoid, he plunders. The texts no longer
+  unit, and the province pays 1g less tax this turn and the next 3
+  ([R-176](R-176-enslaves-tax-cut-says-this-turn-and-the-next-3.md)). Where the folk aren't humanoid, he plunders. The texts no longer
   say every conquest plunders.
 - **Charm:** as the Charm takes hold, the charmer's Chronicle lists the hero's skills and the magic items he carries,
   as the order form's hint says. The rulebook said the charmer never sees them.
@@ -42,7 +43,7 @@ Example: a Plague swept Wendmeadow last spring, and Sir Bram's spearmen came thr
 comes, they roll at half the chance. The hint said they were "immunised"; it now says "half the chance".
 
 Example: Lord Thorn, an Evil hero, takes Wendmeadow with Enslave on his orders. His realm gains no gold, a Green
-company of the folk joins the garrison in chains, and the province pays 1g less tax for 3 turns. The report had said
+company of the folk joins the garrison in chains, and the province pays 1g less tax this turn and the next 3. The report had said
 every conquest plunders half the tax.
 
 The turn is not changed. The question was: six texts said otherwise than the turn (these four spells' hints, the

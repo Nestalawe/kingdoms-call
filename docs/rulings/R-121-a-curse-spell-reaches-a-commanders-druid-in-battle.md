@@ -10,9 +10,7 @@ check counts his Druid as the Curse left it, as his Druid mastery already did: u
 left fight weaker, 20% for each level short. Example: a commander of Druid 4 leading Cave Trolls (which need Druid 4)
 is cursed in Spring; his Druid is 2, so in a Summer battle his trolls fight at 60% strength.
 
-**Open:** (plan question 50) a Curse cast on the commander during the battle itself halves his Druid after the
-check has counted it to 5, while the mastery halves his whole Druid. A Druid 8 commander's Titan Warbeasts fight at
-40% there, not 80%. Today's figure stands until Toby rules.
+A Curse cast on the commander during the battle itself: [R-159](R-159-a-curse-in-battle-halves-a-master-druids-whole-druid.md).
 
 The question was: a cursed commander's beasts fought at full strength, though the turn's Druid mastery counted his
 Druid halved. Option 1: "the battle counts the Curse too, as the mastery does".

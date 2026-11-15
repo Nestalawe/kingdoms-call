@@ -26,3 +26,5 @@ where the turn makes no roll; the ledger left out the Host-Leader, Druid 6 and t
 ledger and the note follow the turn". Option 2 (not taken): the turn follows them.
 
 In Toby's words: "(1)"
+
+**Note:** Once [R-172](R-172-a-company-under-the-host-leader-still-pays-at-least-1-gold.md) is built, a company the Host-Leader leads still pays at least 1g, on the ledger too.

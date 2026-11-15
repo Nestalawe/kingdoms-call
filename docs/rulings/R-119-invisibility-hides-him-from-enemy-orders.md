@@ -12,9 +12,9 @@ hero (Curse, Psychic Blast, Charm and the others whose mark must stand in the ca
 cost no casting slot, and the Informant Network passes him over. The acting realm reads only its order's own "no one
 here" line, which names no one and doesn't say where he is. A realm that watches him by Clairvoyance still finds him
 (R-110: only Clairvoyance sees through Invisibility). Part 2: when he acts on a realm, that realm still learns who he
-is, as before. Not decided here, and left as they were (plan question 29): a Clairvoyance cast at him after he turned
-invisible, the host he leads (ride-outs, battles, a Rampage or Rain of Arrows on his companies, the duel before a
-battle), and what a spy who stays sees of him.
+is, as before. A Clairvoyance cast at him and what a spy who stays sees of him:
+[R-155](R-155-clairvoyance-finds-an-invisible-hero-and-a-spy-who-stays-loses-him.md). A hero who leads armies:
+[R-158](R-158-invisibility-waits-while-a-hero-leads-armies.md).
 
 The question was: once a hero's Invisibility holds, does an enemy order or reaction aimed at him still reach him, and
 does acting on a realm reveal him to it? Part 1, option 1: "every enemy order and reaction aimed at him misses him

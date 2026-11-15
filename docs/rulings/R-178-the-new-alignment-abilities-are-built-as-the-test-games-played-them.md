@@ -1,0 +1,16 @@
+# R-178: The new alignment abilities are built as the test games played them
+
+- **Decided:** 2026-11-15, Toby
+- **Status:** Confirmed
+- **Source:** Plan question 74 (Toby's answer of 2026-11-15); not yet built
+- **Enforced by:** no test yet
+
+The new alignment abilities are built as the test games played them, and Toby's document is brought up to match. See
+also [R-164](R-164-a-garrison-with-no-hero-fights-with-its-realms-rules.md).
+
+**Note:** Decided, not yet built.
+
+The question was: build what the test games played, or the document as written? Option 1: "build what was played, and
+add these to the sheet".
+
+In Toby's words: "(1): build what was played … and add these lines to the sheet"
