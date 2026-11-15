@@ -16,8 +16,8 @@ a maintainer validates it. The how, with an example:
 2. **Find where it would go:** the top, Next, Later, or Not yet assessed
    ([how to read a row](../../../docs/backlog/README.md#how-to-read-a-row)). Read its rulings, its open questions
    and any `KD-` row that is the same defect.
-3. **Compare it with its neighbours,** the rows just above and below. When nothing else decides: harm in live play
-   first, then what unblocks the most rows, then the maintainers' time, then tidying.
+3. **Compare it with its neighbours,** the rows just above and below. When nothing else decides:
+   [the default order](../../../docs/ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours).
 4. **Propose a position** with one line of reasoning (the "Why here" of the top).
 5. ⏸ **Stop for a maintainer.** Work on the item starts only once its place is validated.
 6. **Record the position** in the PR that adds or moves the row: the row, its place and its reasoning line.
