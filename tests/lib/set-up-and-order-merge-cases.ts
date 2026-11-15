@@ -12,8 +12,9 @@
 // them; orders sent for another turn refused, and told; the orders written for a hero it means to raise, hire or charm
 // held until that lands; a conceded realm's heroes made to hold; its encounter plans set (or held, for a hero not yet
 // its own); and a new heir's skills, name and temper applied. What a realm sends is taken only for its own heroes (the
-// rest set aside, and the GM told); a plan keeps only the fields a plan has; an heir's skills are taken only as his
-// crowned skills plus at most his points.
+// rest set aside, and the GM told); a phase's order is kept only in a form the game uses (its name, target, extra
+// choice and line each text or left out; the rest set aside, so the hero Defends in that phase, and the GM told); a plan
+// keeps only the fields a plan has; an heir's skills are taken only as his crowned skills plus at most his points.
 // scenario/set-up-and-order-merge-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/set-up-and-order-merge-called-directly.test.ts calls the two stages directly on the staged world. A case stages
 // its world and what each realm sends; after the turn it reads what it needs from the world (as the first phase began,
@@ -1849,6 +1850,168 @@ export const OWN_CASES: SetUpCase[] = [
   },
 ];
 
+// ── Orders in the forms the game uses ────────────────────────────────────────────────────────────────────────────
+/** The GM's line when a realm sends orders not in a form the game uses (by the heroes' ids): those orders are set
+ *  aside, and the hero Defends in that phase. */
+export const notInTheGamesForms = (realmName: string, ids: (string | number)[]) =>
+  `⚠ Set aside from ${realmName}'s orders: orders not in a form the game uses, for heroes ${ids.map(String).join(', ')}; each Defends in that phase instead.`;
+/** A value of each kind but text, as an order's field may hold it. */
+const NOT_TEXT: [string, (b: Board) => unknown][] = [
+  ['a number', (b) => ring1(b, 0).id],
+  ['a list', (b) => [String(ring1(b, 0).id)]],
+  ['an object', (b) => ({ prov: ring1(b, 0).id })],
+  ['nothing (null)', () => null],
+];
+/** Very long text: 100,000 letters. */
+const LONG_TEXT = 'Q'.repeat(100_000);
+/** The words a set-aside order's line holds, to look for on the save after the turn. */
+const SET_ASIDE_WORDS = 'Words of an order set aside';
+/** Realm 0's hero marching out in the first phase, `field` of that order holding `value`; and realm 2's hero
+ *  marching as usual. */
+const marchWith = (b: Board, field: keyof Order, value: (b: Board) => unknown): Staged => {
+  const h = realmHero(b, 0);
+  const march: Order = { ...order('move', ring1(b, 0).id), desc: SET_ASIDE_WORDS, [field]: value(b) };
+  const rival = realmHero(b, 2);
+  return {
+    hero: h,
+    others: [rival],
+    there: ring1(b, 0),
+    places: [ring1(b, 2)],
+    orders: [
+      [h, plan(march)],
+      [rival, plan(order('move', ring1(b, 2).id))],
+    ],
+  };
+};
+/** Realm 2's hero marched as usual (the other realms' orders resolved). */
+const otherMarched = (o: Outcome, s: Staged) => whereIs(o.world, other(s, 0)) === must(s.places?.[0], 'a place').id;
+const FIELDS: (keyof Order)[] = ['action', 'target', 'extra', 'desc'];
+export const FORM_CASES: SetUpCase[] = [
+  ...FIELDS.flatMap((field) =>
+    NOT_TEXT.map(([kind, value]): SetUpCase => ({
+      name: `an order whose ${field} is ${kind} is set aside, the GM is told, the hero Defends in that phase, and another realm’s hero marches as ordered`,
+      stage: (b) => marchWith(b, field, value),
+      check: (o, s) => ({
+        got: {
+          orders: ordersOf(o.first, hero(s)),
+          at: whereIs(o.world, hero(s)),
+          othersMarched: otherMarched(o, s),
+          told: told(o, notInTheGamesForms(nm(o, 0), [hero(s).id])),
+          onTheSave: JSON.stringify(o.world).includes(SET_ASIDE_WORDS),
+        },
+        want: {
+          orders: [DEFEND, REST, REST, REST, REST],
+          at: hero(s).location,
+          othersMarched: true,
+          told: GM_ONLY,
+          onTheSave: false,
+        },
+      }),
+      merged: (m, s) => ({
+        got: { orders: ordersOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+        want: {
+          orders: [null, REST, REST, REST, REST],
+          warnings: [notInTheGamesForms(nameOf(must(s.board, 'board'), 0), [hero(s).id])],
+        },
+      }),
+    })),
+  ),
+  ...FIELDS.map((field): SetUpCase => ({
+    name: `an order whose ${field} is very long text is kept as sent, the GM is told nothing, and another realm’s hero marches as ordered`,
+    stage: (b) => marchWith(b, field, () => LONG_TEXT),
+    check: (o, s) => ({
+      got: {
+        othersMarched: otherMarched(o, s),
+        told: starting(o, '⚠ Set aside'),
+        onTheSave: JSON.stringify(o.world).includes(LONG_TEXT),
+        inTheLog: o.all.some((l) => l.text.includes(LONG_TEXT)),
+      },
+      want: { othersMarched: true, told: [], onTheSave: false, inTheLog: false },
+    }),
+    merged: (m, s) => ({
+      got: {
+        kept: (m.G.turnOrders as Record<string, Raw[]>)[String(hero(s).id)]?.[0]?.[field] ?? null,
+        warnings: collected(m, 'staleOrderWarnings'),
+      },
+      want: { kept: LONG_TEXT, warnings: [] },
+    }),
+  })),
+  {
+    name: 'a phase sent as a number or as text, not an order, is set aside: the hero Defends in it, and the GM is told once',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      return { hero: h, orders: [[h, [7, 'rest', ...plan(order('rest')).slice(2)] as unknown as Order[]]] };
+    },
+    check: (o, s) => ({
+      got: { orders: ordersOf(o.first, hero(s)), told: told(o, notInTheGamesForms(nm(o, 1), [hero(s).id])) },
+      want: { orders: [DEFEND, DEFEND, REST, REST, REST], told: GM_ONLY },
+    }),
+    merged: (m, s) => ({
+      got: { orders: ordersOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: {
+        orders: [null, null, REST, REST, REST],
+        warnings: [notInTheGamesForms(nameOf(must(s.board, 'board'), 1), [hero(s).id])],
+      },
+    }),
+  },
+  ...(
+    [
+      ['raise', 'resurrect_4321_via_12_ph2', '_pendingResurrectOrders', 4321],
+      ['hire', 'hired_77_via_9_ph1', '_pendingHireOrders', 77],
+      ['charm', 'charm_88_via_12_ph0', '_pendingCharmOrders', 88],
+    ] as const
+  ).map(([means, card, list, heroId]): SetUpCase => ({
+    name: `an order of a hero a realm means to ${means} whose target is a number is set aside from the held orders, and the GM is told the hero’s id`,
+    stage: (b) => ({
+      sends: { 2: { orders: { [card]: plan({ ...order('move'), target: ring1(b, 0).id } as unknown as Order) } } },
+    }),
+    check: (o) => ({
+      got: {
+        held: held(o.first, list).map((h) => h['orders']),
+        told: told(o, notInTheGamesForms(nm(o, 2), [heroId])),
+      },
+      want: { held: [[null, ...plan().slice(1)]], told: GM_ONLY },
+    }),
+    merged: (m, s) => ({
+      got: { held: held(m.G, list).map((h) => h['orders']), warnings: collected(m, 'staleOrderWarnings') },
+      want: {
+        held: [[null, ...plan().slice(1)]],
+        warnings: [notInTheGamesForms(nameOf(must(s.board, 'board'), 2), [heroId])],
+      },
+    }),
+  })),
+  {
+    name: 'two held cards for one hero, each with an order not in a form the game uses: the GM is told the hero once',
+    stage: (b) => {
+      const odd = plan({ ...order('move'), target: ring1(b, 0).id } as unknown as Order);
+      return { sends: { 2: { orders: { resurrect_500_via_10_ph1: odd, resurrect_500_via_20_ph3: odd } } } };
+    },
+    check: (o) => ({
+      got: { told: starting(o, '⚠ Set aside') },
+      want: { told: [notInTheGamesForms(nm(o, 2), [500])] },
+    }),
+    merged: (m, s) => ({
+      got: { warnings: collected(m, 'staleOrderWarnings') },
+      want: { warnings: [notInTheGamesForms(nameOf(must(s.board, 'board'), 2), [500])] },
+    }),
+  },
+  {
+    name: 'orders whose fields are each text, or left out, are kept as sent: the GM is told nothing',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      return { hero: h, orders: [[h, plan({ action: 'rest' } as unknown as Order)]] };
+    },
+    check: (o, s) => ({
+      got: { orders: ordersOf(o.first, hero(s)), told: starting(o, '⚠ Set aside') },
+      want: { orders: [REST, REST, REST, REST, REST], told: [] },
+    }),
+    merged: (m, s) => ({
+      got: { orders: ordersOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
+      want: { orders: [REST, REST, REST, REST, REST], warnings: [] },
+    }),
+  },
+];
+
 // ── The turn's record of orders ──────────────────────────────────────────────────────────────────────────────────
 const recordOf = (o: Outcome, pi: number) => must(o.record[String(pi)], 'the record of realm ' + String(pi));
 export const RECORD_CASES: SetUpCase[] = [
@@ -1906,5 +2069,6 @@ export const SET_UP_CASES: [string, SetUpCase[]][] = [
   ['encounter plans', PLAN_CASES],
   ['a new heir’s choices', HEIR_CASES],
   ['only a realm’s own heroes', OWN_CASES],
+  ['orders in the forms the game uses', FORM_CASES],
   ['the turn’s record of orders', RECORD_CASES],
 ];

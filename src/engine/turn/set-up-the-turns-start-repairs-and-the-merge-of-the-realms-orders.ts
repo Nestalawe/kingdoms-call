@@ -24,7 +24,9 @@ import type { Character, GameState, Province, Realm, SkillLevels } from '../../s
 //      order lands, every other hero's phases written, a conceded realm's heroes made to hold, its encounter plans
 //      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied. A realm's orders,
 //      encounter plans and heir's choices are taken only for its own heroes (the rest set aside, and the GM told); a
-//      plan keeps only the fields a plan has; an heir's skills only as his crowned skills plus at most his points.
+//      phase's order only in a form the game uses (its name, target, extra choice and line each text or left out; the
+//      rest set aside, the phase left empty, and the GM told); a plan keeps only the fields a plan has; an heir's skills
+//      only as his crowned skills plus at most his points.
 // But for the first, each takes the turn's context (src/engine/turn/context.ts) and nothing else: the merge makes the
 // collectors afresh each turn, joins them to the context and fills them (staleOrderWarnings, diploDeclarations,
 // safeStartRefused, discoveryChoicePicks, reckoningCalls, playerMessages), which later stages and the bots read there
@@ -173,6 +175,26 @@ function encounterPlanAsAPlanHasIt(plan: unknown): NonNullable<Character['encoun
   return kept;
 }
 
+/** The fields of a phase's order the game reads as text: its name, target, extra choice and the form's line. */
+const THE_FIELDS_OF_AN_ORDER_READ_AS_TEXT = ['action', 'target', 'extra', 'desc'] as const;
+/** Whether a phase's order is in a form the game uses: an empty phase (`null` or none), or an order whose name, target,
+ *  extra choice and line are each text or left out. */
+function anOrderInAFormTheGameUses(sent: unknown): boolean {
+  if (sent === null || sent === undefined) return true;
+  if (typeof sent !== 'object' || Array.isArray(sent)) return false;
+  const fields = itOrAnEmptyObject(sent);
+  return THE_FIELDS_OF_AN_ORDER_READ_AS_TEXT.every((k) => fields[k] === undefined || typeof fields[k] === 'string');
+}
+/** A hero's phases as his realm sent them, each order not in a form the game uses set aside (its phase left empty, so
+ *  he Defends in it), and whether one was. The list as it was sent when every order is in a form the game uses. */
+function thePhasesWithEachOrderInAFormTheGameUses(phases: readonly unknown[]): {
+  phases: readonly unknown[];
+  anySetAside: boolean;
+} {
+  if (phases.every(anOrderInAFormTheGameUses)) return { phases, anySetAside: false };
+  return { phases: phases.map((o) => (anOrderInAFormTheGameUses(o) ? o : null)), anySetAside: true };
+}
+
 // A new heir's skills as his realm sends them, if they are his crowned skills (as the save holds them) plus at most the
 // points he may place (_pendingSkillAllocation), no more than 2 in one skill (the player portal's rule, as for a new
 // king), each a skill the game has, at a whole level; otherwise null.
@@ -307,11 +329,18 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
       const setAside = (charId: string) => {
         if (!notItsOwn.includes(charId)) notItsOwn.push(charId);
       };
+      // The heroes (by id) with an order not in a form the game uses, set aside (the GM is told, once, below).
+      const notInAFormTheGameUses: string[] = [];
       // (each hero's phases as the realm sent them, a list of anything: written through a view of the same record)
       const turnOrdersAsSent: Record<string, unknown> = G.turnOrders;
       Object.entries(ordersObj).forEach(([charId, phaseOrders]) => {
         if (charId === 'heroOrder') return; // an array, but not a character's phase orders
         if (!Array.isArray(phaseOrders)) return;
+        const phasesAsSent: readonly unknown[] = phaseOrders;
+        const { phases, anySetAside } = thePhasesWithEachOrderInAFormTheGameUses(phasesAsSent);
+        const noteTheOrdersSetAsideFor = (heroId: string) => {
+          if (anySetAside && !notInAFormTheGameUses.includes(heroId)) notInAFormTheGameUses.push(heroId);
+        };
         // Handle synthetic RESURRECTION IDs: 'resurrect_HEROID_via_CASTERID_phPH' A player who orders
         // Resurrect in phase PH may pre-write orders for the hero they intend to raise, exactly as
         // they can for a hero they intend to hire. These are held as PENDING and are only written
@@ -328,8 +357,9 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
             casterId: parseInt(String(resMatch[2])),
             castPhase: parseInt(String(resMatch[3])),
             player: gp.player_index,
-            orders: phaseOrders,
+            orders: phases,
           });
+          noteTheOrdersSetAsideFor(String(parseInt(String(resMatch[1]))));
           return;
         }
         // Handle synthetic hired hero IDs: 'hired_HEROID_via_CHARID_phPH'.
@@ -347,8 +377,9 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
             viaId: String(hiredMatch[2]), // the hiring character's id (or a nested synthetic id)
             plannedPhase: parseInt(String(hiredMatch[3])),
             player: gp.player_index,
-            orders: phaseOrders,
+            orders: phases,
           });
+          noteTheOrdersSetAsideFor(String(parseInt(String(hiredMatch[1]))));
           return;
         }
         // Handle synthetic CHARM IDs: 'charm_HEROID_via_CASTERID_phPH'. A player who orders Charm on
@@ -364,15 +395,17 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
             casterId: parseInt(String(charmMatch[2])),
             castPhase: parseInt(String(charmMatch[3])),
             player: gp.player_index,
-            orders: phaseOrders,
+            orders: phases,
           });
+          noteTheOrdersSetAsideFor(String(parseInt(String(charmMatch[1]))));
           return;
         }
         if (!heroOfTheRealm(G, gp.player_index, charId)) {
           setAside(charId);
           return;
         }
-        turnOrdersAsSent[charId] = phaseOrders;
+        turnOrdersAsSent[charId] = phases;
+        noteTheOrdersSetAsideFor(charId);
       });
       // a conceded realm's characters ALWAYS hold — override whatever was submitted.
       theRealmsOf(G).forEach((p, pi) => {
@@ -437,6 +470,10 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
       if (notItsOwn.length)
         staleOrderWarnings.push(
           `⚠ Set aside from ${realmName}'s orders: what it sent for heroes not in its service (${notItsOwn.join(', ')}).`,
+        ); // logged (to the GM alone) once the turn's log exists
+      if (notInAFormTheGameUses.length)
+        staleOrderWarnings.push(
+          `⚠ Set aside from ${realmName}'s orders: orders not in a form the game uses, for heroes ${notInAFormTheGameUses.join(', ')}; each Defends in that phase instead.`,
         ); // logged (to the GM alone) once the turn's log exists
     });
 }

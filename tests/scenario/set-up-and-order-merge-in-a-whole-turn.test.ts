@@ -52,7 +52,13 @@
 // a whole level, sent by skill, else set aside with the GM told; an unknown temper and an empty name leaving his own; a
 // hero not an heir left alone; an heir sent nothing still an heir. Only a realm's own heroes: orders, plans and heir's
 // choices for another realm's hero or a wanderer set aside, whichever row comes first, the GM told in one line per
-// realm, each hero once in the order sent; nothing told when all are its own. The record of orders: a realm's heroes'
+// realm, each hero once in the order sent; nothing told when all are its own. Orders in the forms the game uses: an
+// order whose name, target, extra choice or line is a number, a list, an object or nothing set aside, the hero
+// Defending in that phase, the GM alone told, another realm's hero marching as ordered, and nothing of it on the save;
+// a phase sent as a number or as text set aside; a held order for a hero to be raised, hired or charmed set aside, the
+// GM told his id (once for two cards); very long text in each field kept, another realm's hero marching as ordered,
+// none of it on the save or in the log; fields each text or left out kept, nothing told. The record of orders: a
+// realm's heroes'
 // orders, declarations, Reckoning call, concession and plans as merged; nothing for a realm that sent nothing. Level 2:
 // the stages are what the turn does first, and every stage after them reads what they set
 import { describe, expect, test } from 'vitest';

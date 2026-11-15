@@ -244,7 +244,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   reader that hands it back typed `Readonly<Partial<Record<string, unknown>>>` for any value but `null` and `undefined`,
   and for those throws the `TypeError` its first field's read threw (`theOrdersAsTheRealmSentThem`); a field's `x || {}`
   through an `if` reader (`itOrAnEmptyObject`). What the merge keeps as it was sent (a realm's declarations, research
-  picks and messages, a hero's phases) is written into the context's typed record through a view of the same record
+  picks and messages, a hero's phases, each order in them kept only when its name, target, extra choice and line are
+  text or left out) is written into the context's typed record through a view of the same record
   typed `Record<number, unknown>`, and read back through a local typed as wide as the reader's guards (`Partial<Dispatch>
   | null | undefined`).
 - **A unit an estimate weighs that holds no name** (the bots' estimates of a neutral mix) is a member of the grid row's
