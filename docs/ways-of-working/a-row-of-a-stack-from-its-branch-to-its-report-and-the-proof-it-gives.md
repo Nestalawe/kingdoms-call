@@ -48,8 +48,8 @@ cases it leaves on code they don't. So each row gives the tier its change needs.
 
 **Planting, for tier 1:** make one throwaway copy of the row's tree, with `node_modules` linked in, never the row's own
 tree. For each fault: plant it, run only the tests that guard that line (`npx vitest run <files>`), note red or green,
-and put the copy back. Don't replay the balance matrix for a plant. **A plant that stays green is staged until it is
-red**, or the pull request says why it can't be: never left silent. Plants in code the matrix reaches are covered by
+and put the copy back. Don't replay the balance matrix for a plant. A plant that stays green is never left silent
+([tests/README.md](../../tests/README.md#proving-it-fails-first)). Plants in code the matrix reaches are covered by
 the stack's [mutation session](a-mutation-session-faults-made-on-purpose-and-the-tests-they-leave.md), not by the row.
 
 ## What goes first under `CHOICES MADE WITHOUT THEO`
