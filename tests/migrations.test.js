@@ -4,13 +4,13 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The migration pipeline's logic: a merged migration never changes and new ones are named and ordered; a pull request
-// never changes both the database and the site; each database gets only the migrations Toby was shown before approving
-// (anything else is refused); a database that predates the pipeline has its baseline recorded, never run; an empty one
-// is refused; the summary Toby reads (production, then the site: staging isn't migrated on a merge); a failed CLI call
-// never prints the database password; a staging rebuild (`reset staging`) refuses any target but staging, the live
-// project however it's named, and any database that isn't the staging project; a connection failure says the free
-// project may have paused; its summary; and the whole rebuild run against a stand-in CLI giving the real CLI's answers
-// (JSON, except `DO` for the seed), every step in order
+// never changes both the database and the site (the database's generated types go with it); each database gets only the
+// migrations Toby was shown before approving (anything else is refused); a database that predates the pipeline has its
+// baseline recorded, never run; an empty one is refused; the summary Toby reads (production, then the site: staging
+// isn't migrated on a merge); a failed CLI call never prints the database password; a staging rebuild (`reset staging`)
+// refuses any target but staging, the live project however it's named, and any database that isn't the staging project;
+// a connection failure says the free project may have paused; its summary; and the whole rebuild run against a stand-in
+// CLI giving the real CLI's answers (JSON, except `DO` for the seed), every step in order
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {parseNameStatus,classify,mixedChange,decide,planSummary,applySummary,cliError,scrub,migrationKind,resetGuard,connectHint,resetSummary}=require('../.github/scripts/migrations.js');
@@ -186,6 +186,14 @@ test('a pull request changes the database or the site, never both',()=>{
   assert.match(msg,/1 migration file\) and the site \(2 files\)/);
   assert.match(msg,/Split it in two: first the database change/);
   assert.match(msg,/supabase\/README\.md#database-and-site-changes-go-separately/);
+});
+
+test('a database pull request may carry the types generated from it, and no other site file',()=>{
+  const mig=`${D}${NEXT}_banners.sql`;
+  assert.equal(mixedChange([mig,'src/db/database.types.ts']),null);
+  const msg=mixedChange([mig,'src/db/database.types.ts','src/engine/run-turn.ts']);
+  assert.match(msg,/1 migration file\) and the site \(1 file\)/);
+  assert.match(mixedChange([mig,'src/db/other.types.ts']),/the site \(1 file\)/,'only that one file, by its exact path');
 });
 
 // ---- Staging follows the pull request (P0-33): `reset staging` rebuilds the staging database ----

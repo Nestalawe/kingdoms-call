@@ -45,3 +45,25 @@ don't say".
 [R-036](rulings/R-036-druid-mastery.md) (a Druidic realm's Creatures need no Druid level) and
 [R-164](rulings/R-164-a-garrison-with-no-hero-fights-with-its-realms-rules.md) (a garrison's Home of the Wild is its
 realm's).
+
+## 80. After the turn's deadline, may a realm still save a draft or revise its orders?
+
+Found on 2026-11-15.
+
+[R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) refuses orders sent after the deadline. It
+doesn't say whether a realm may still save a draft, change the order of its heroes, or press Revise between the
+deadline and the moment the GM's tab runs the turn. The deadline is 20:00. At 20:10 Bram saves a draft with a new
+march for Sir Aldric; the GM's tab runs the turn at 21:00.
+
+1. **Refused too, with the same message.** Impact: after the deadline the order form saves nothing, and the turn runs
+   on what each realm had saved by 20:00. This is how P2-05's database function is built until a maintainer rules.
+2. **Allowed, but they don't count this turn.** Impact: Bram can keep working on his draft after 20:00, and the turn
+   still runs on what he had saved by 20:00. The turn would need to tell a draft saved late from one saved in time:
+   a change to the turn.
+
+*Assessment:* option 1: one rule for every change after the deadline, and nothing more to build.
+
+*Unlocks:* the late-orders rule of P2-05 set for good (one line of its database function).
+
+*Touches:* [R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) (orders sent after the
+deadline are refused).

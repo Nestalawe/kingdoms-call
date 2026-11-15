@@ -23,7 +23,8 @@
 // is saved, and the message names the place, and still does once the page has refreshed the game; and a new game's
 // Turn 0, then two turns, on the stand-in database, each message with nothing of the check. The staged games are
 // whole saves (Turn 0's settings: the bots' strength and diplomacy), as the stop needs.
-// And the GM's log (P1-12d39): each line the turn stores keeps its kind, and the GM page draws a force's rows by it.
+// And the GM's log (P1-12d39): each line the turn stores keeps its kind, and the GM page draws a force's rows by it
+// alone (a line of an older turn, with none, as its words), in its colour of six hex digits or the default grey.
 // And a turn run elsewhere meanwhile (P1-21s), on the fake databases: the save matches no row, so the run is
 // discarded and nothing is put back.
 // Level 4 (page): these are the GM portal's database calls, made by the turn's shell (runTurn, src/ui/gm/turn-shell.ts)
@@ -861,7 +862,7 @@ describe("the GM's log keeps each line's kind, and the GM page draws a force's r
     }
   }, 60_000);
 
-  test("a force's rows are drawn by the line's kind, and an older turn's line, with none, by its words", async () => {
+  test("a force's rows are drawn by the line's kind alone, and an older turn's line, with none, as its words", async () => {
     const t = await stage();
     try {
       const world = JSON.parse(String(t.game()['game_state'])) as { characters: { id: number; player: number }[] };
@@ -893,10 +894,39 @@ describe("the GM's log keeps each line's kind, and the GM page draws a force's r
       );
       expect(ofAnotherKind).not.toContain('• Veteran Dragons');
       const older = await drawn([line(aForce('Cass of Morrow', 'Archers'))]);
-      expect(older, "an older turn's line, with no kind: a force's rows by its words, as before").toContain(
-        '• Veteran Archers',
-      );
-      expect(older).not.toContain('⚑FORCE⚑');
+      expect(older, "an older turn's line, with no kind: its words").toContain(aForce('Cass of Morrow', 'Archers'));
+      expect(older).not.toContain('• Veteran Archers');
+    } finally {
+      t.W.close();
+    }
+  }, 60_000);
+
+  test("a force's colour of another form than #rrggbb is drawn in the default grey", async () => {
+    const t = await stage();
+    try {
+      const world = JSON.parse(String(t.game()['game_state'])) as { characters: { id: number; player: number }[] };
+      const hero = world.characters.find((c) => c.player === 0);
+      if (!hero) throw new Error('realm 0 has no hero');
+      const force = (name: string, color: unknown) => ({
+        type: 'combat',
+        text: marked({ name, color, verb: 'attacks', armies: [{ quality: 'Green', type: 'Footmen' }] }),
+        charId: hero.id,
+        phase: 1,
+        kind: A_FORCE,
+      });
+      (t.S.DB['turn_logs'] ?? []).push({
+        id: 'L9',
+        game_id: 'G1',
+        player_index: -1,
+        turn: 9,
+        entries: [force('Aldric', '#aa3333'), force('Brenna', 'red'), force('Corin', '#a33'), force('Dara', 7)],
+      });
+      t.W['currentGame'] = t.game();
+      await t.W.eval("loadTurnLog('G1',9)");
+      const html = String(t.W.eval("document.getElementById('detail-log').innerHTML"));
+      expect(html).toContain('<span style="color:#aa3333">Aldric</span>');
+      for (const name of ['Brenna', 'Corin', 'Dara'])
+        expect(html, name).toContain(`<span style="color:#555">${name}</span>`);
     } finally {
       t.W.close();
     }

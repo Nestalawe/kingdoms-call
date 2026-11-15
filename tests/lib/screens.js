@@ -184,7 +184,7 @@ const gmPortal={
         ],
         turn_logs:[{id:'tl1',game_id:'G1',turn:2,player_index:-1,entries:[
           {phase:0,charId:'c0',text:`**${N('hero',0)}** marches on ${L.province}`},
-          {phase:1,charId:'c0',text:'⚑FORCE⚑'+force},
+          {phase:1,charId:'c0',text:'⚑FORCE⚑'+force,kind:'a force drawn up for battle'},
           {phase:2,charId:'c1',text:`⚔ Battle at ${L.field}: **${N('hero',1)}** against ${N('realm',0)}`},
           {phase:3,charId:'c1',text:`📊 ${N('realm',1)} │ 12 │ 7`},
           {phase:4,charId:'c0',text:`⚠ ${L.cry}`},
@@ -346,13 +346,15 @@ const playerPortal={
     const T={unit:N('unit',0),cry:N('cry',0),parting:N('parting',0),dispatch:N('dispatch',1),verb:N('verb',0),old:N('hero',9),gmLog:N('hero',13)};
     const force=(name,color,verb,armies,extra)=>'⚑FORCE⚑'+json({name,color,verb,armies,...(extra||{})});
     const battle=(tier,text,extra)=>({type:'combat',charId:'c0',phase:1,battleId:'b1',bTier:tier,text,...(extra||{})});
+    // a force's row carries its kind in the realm's report: the Chronicle draws its rows by it alone
+    const A_FORCE={kind:'a force drawn up for battle'};
     const lastTurnLog=[
       {type:'move',charId:'c0',phase:0,text:`**${C.king}** marches from ${P.home} to ${P.field}, crying "${T.cry}"`},
       {type:'event',charId:'c0',phase:0,pinNotice:true,text:`${C.king} is still locked in the battle at ${P.field}`},
       battle('k',`⚔ **Battle for ${P.field}** — ${R.own} against ${R.rival}`),
-      battle('d',force(`${C.king} (${R.own})`,'#a33',`${T.verb}, leading`,[{type:'Free Lances',quality:'Veteran',unitName:T.unit},{type:'Noble Griffons',quality:'Elite',phantom:true}])),
-      battle('d',force(C.enemy,'#36c','defends — 2 defending units',[],{neutral:false})),
-      battle('d',force(C.chief,null,'stands guard',[{type:'Shieldwall Levies',quality:'Green'}],{guard:true})),
+      battle('d',force(`${C.king} (${R.own})`,'#aa3333',`${T.verb}, leading`,[{type:'Free Lances',quality:'Veteran',unitName:T.unit},{type:'Noble Griffons',quality:'Elite',phantom:true}]),A_FORCE),
+      battle('d',force(C.enemy,'#3366cc','defends — 2 defending units',[],{neutral:false}),A_FORCE),
+      battle('d',force(C.chief,null,'stands guard',[{type:'Shieldwall Levies',quality:'Green'}],{guard:true}),A_FORCE),
       battle('d',`   ${C.enemy} strikes **${C.king}** for 3 — "${T.parting}"`),
       battle('d',`📊 Battle lines │ ${R.own} │ 12.75 │ 7`),
       battle('t',`⚰ Losses: ${T.unit} falls`),
@@ -435,7 +437,7 @@ const playerPortal={
       titles:{public:false,publicFromTurn:5},allKingdoms:[{name:R.own,color:'#a33'}],
       lastTurnLog:[{type:'move',charId:'c0',phase:0,text:`**${C.king}** rides to ${P.home}`},
         {type:'combat',charId:'c0',phase:1,text:`⚔ **Battle for ${P.home}** against ${T.old}`},
-        {type:'combat',charId:'c0',phase:1,text:force(C.king,'#a33','attacks',[{type:'Free Lances',quality:'Green'}])},
+        {type:'combat',charId:'c0',phase:1,text:force(C.king,'#aa3333','attacks',[{type:'Free Lances',quality:'Green'}]),...A_FORCE},
         {type:'event',charId:'c0',phase:2,text:`${C.king} is wounded — "${T.parting}"`},
         {type:'system',text:`[Intelligence] ${N('intel',2)}`}]};
     // ── The orders (PR 5) ── The same turn report with what the order form reads: three heroes of p1 with numeric ids,

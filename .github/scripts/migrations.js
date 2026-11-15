@@ -86,10 +86,14 @@ function classify(changes,existing=[],{allowDelete=false}={}){
 // database when Toby approves it, the site straight after), and players keep old pages open, so each must
 // work without the other; separate pull requests make that the shape of the work. The why, for Toby:
 // supabase/README.md, "Database and site changes go separately". The site's files are under src/ (built into site/,
-// which isn't in git, since P1-05).
+// which isn't in git, since P1-05). The one exception: the database's types, generated from the migrated database
+// (CI's db job checks them), are only read while type-checking and aren't in the built site, so they go with the
+// migration that changes them.
 const WHY='https://github.com/Nestalawe/kingdoms-call/blob/main/supabase/README.md#database-and-site-changes-go-separately';
+const GENERATED_DATABASE_TYPES='src/db/database.types.ts';
 function mixedChange(files){
-  const db=files.filter(f=>f.startsWith(`${DIR}/`)), site=files.filter(f=>f.startsWith('src/'));
+  const db=files.filter(f=>f.startsWith(`${DIR}/`));
+  const site=files.filter(f=>f.startsWith('src/')&&f!==GENERATED_DATABASE_TYPES);
   if(!db.length||!site.length) return null;
   return `This pull request changes both the database (${db.length} migration file${db.length>1?'s':''}) and the site `
     +`(${site.length} file${site.length>1?'s':''}). Split it in two: first the database change, which must work with `

@@ -338,6 +338,11 @@ export function playerEvents(
       return pre + (cap ? 'An unknown realm' : 'an unknown realm');
     });
   };
+  // A force drawn up for battle carries its kind into the realm's chronicle (the pages draw its rows by it alone); no
+  // other line carries one.
+  const theForcesRows = new Set(
+    turnLog.filter((_e, at) => theKindOfEachLine[at] === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE),
+  );
   const lastTurnLog = _filteredLog.map((e) => ({
     // Preserve charId and phase so the player portal can group entries correctly
     type: e.type,
@@ -348,6 +353,7 @@ export function playerEvents(
     env: Boolean(asItsGuardReadsIt(e.env)), // routed to Province Reports, kept OUT of Chronicle / Realm Events
     ...(e.gameEnd ? { gameEnd: true } : {}), // 2026-09-28: shown at the TOP of the player report, under the Game-is-Decided banner
     ...(e.battleId != null ? { battleId: e.battleId, bTier: e.bTier } : {}), // 2026-09-23d: battle folding (player portal)
+    ...(theForcesRows.has(e) ? { kind: THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE } : {}),
   }));
   // ── Task 7(a): CLAIRVOYANCE FEED ────
   // If this player watched an enemy character via Clairvoyance, surface everything that character

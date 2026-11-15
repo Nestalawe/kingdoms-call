@@ -6,6 +6,7 @@ import { show } from './sign-in.ts';
 import { loadGames } from './game-list.ts';
 import { parseGameState } from './startup.ts';
 import { THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE } from '../../views/the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
+import { aColourOfSixHexDigitsOrNone } from '../../engine/rules-on-plain-values/a-forces-row-on-a-page-its-kind-and-its-colour-of-six-hex-digits.ts';
 
 export async function loadTurnLog(gameId, turn) {
   const { data } = await thePagesDb.theGameMastersTurnLogs.theWholeLogOfThisGameInThisTurn(gameId, turn);
@@ -29,14 +30,12 @@ export async function loadTurnLog(gameId, turn) {
 
   function renderEntry(e) {
     const raw0 = e.text || '';
-    // A force's rows, by the line's kind (stored since plan P1-12d39); a line of an older turn, stored with no kind, by
-    // its words opening with the force marker, as before.
-    const aForcesRow =
-      e.kind !== undefined ? e.kind === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE : raw0.startsWith('⚑FORCE⚑');
-    if (aForcesRow) {
+    // A force's rows, by the line's kind alone (stored since plan P1-12d39); a line of an older turn, stored with no
+    // kind, is drawn as its words, whatever they open with. Its colour is six hex digits, or the default grey.
+    if (e.kind === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE) {
       try {
         const f = JSON.parse(raw0.slice(7));
-        const col = f.neutral ? '#555' : f.color || '#555';
+        const col = f.neutral ? '#555' : aColourOfSixHexDigitsOrNone(f.color) || '#555';
         const rows = (f.armies || []).length
           ? f.armies.map(
               (a) =>

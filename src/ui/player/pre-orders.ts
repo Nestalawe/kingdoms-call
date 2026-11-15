@@ -776,7 +776,7 @@ export function injectResurrectOrders(
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
     <div style="margin-top:6px">
       <label style="font-size:.72rem">Describe their battlecry:</label>
-      <input type="text" id="ep-notes-${fakeId}" placeholder="e.g. Death held me only briefly." style="font-size:.8rem;margin-top:2px">
+      <input type="text" id="ep-notes-${fakeId}" maxlength="200" placeholder="e.g. Death held me only briefly." style="font-size:.8rem;margin-top:2px">
     </div>`);
   card.appendChild(epDiv);
   return card;
@@ -948,7 +948,7 @@ export function injectCharmOrders(charId: unknown, ph: number, heroId: unknown, 
     <input type="hidden" id="ep-preschool-${fakeId}" value="">
     <div style="margin-top:6px">
       <label style="font-size:.72rem">Describe their battlecry:</label>
-      <input type="text" id="ep-notes-${fakeId}" placeholder="e.g. Your cause is mine now." style="font-size:.8rem;margin-top:2px">
+      <input type="text" id="ep-notes-${fakeId}" maxlength="200" placeholder="e.g. Your cause is mine now." style="font-size:.8rem;margin-top:2px">
     </div>`);
   card.appendChild(epDiv);
 }
@@ -1140,7 +1140,7 @@ export function injectHiredHeroOrders(charId: unknown, ph: number): void {
     </div>
     <div style="margin-top:6px">
       <label style="font-size:.72rem">Describe your battlecry:</label>
-      <input type="text" id="ep-notes-${hiredCharId}" placeholder="e.g. For glory and the fallen — none shall pass!"
+      <input type="text" id="ep-notes-${hiredCharId}" maxlength="200" placeholder="e.g. For glory and the fallen — none shall pass!"
         style="font-size:.8rem;margin-top:2px">
     </div>`);
   card.appendChild(epDiv);

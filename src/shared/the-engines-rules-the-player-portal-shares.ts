@@ -32,11 +32,15 @@
 // read as it is, since P1-16e: the map's guards on a province's place, which its type requires; the creeds that war
 // without warning, break an alliance into war and conquer by a doctrine, since P1-19ax2: the march's forecast, the
 // diplomacy card's button and the order form's doctrine; the alignments one realm a game may hold, since P1-19ay1: the
-// join form).
+// join form; a force's row's kind and its colour of six hex digits: the Chronicle draws a force's rows by them).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 export { dispFloor } from '../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
+export {
+  THE_KIND_A_FORCES_ROW_CARRIES,
+  aColourOfSixHexDigitsOrNone,
+} from '../engine/rules-on-plain-values/a-forces-row-on-a-page-its-kind-and-its-colour-of-six-hex-digits.ts';
 export { asItsGuardReadsIt } from '../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 export {
   alignDistP,

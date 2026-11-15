@@ -60,13 +60,15 @@ refuses it); every migration has pgTAP tests.
   all, the deploy refuses until it's back).
 - **A new migration sorts after every merged one.** If another one merged first with a later timestamp,
   rename yours with a fresh one before merging.
-- A pull request changes the database or the site, never both (next section).
+- A pull request changes the database or the site, never both (next section); a migration's pull request carries
+  the types regenerated from it (`src/db/database.types.ts`).
 
 ## Database and site changes go separately
 
 **In short:** a change that needs both a database change and a site change is done as two pull requests:
 the database change first, then the site change. Each one has to work without the other. CI's `db` check
-refuses a pull request that changes both.
+refuses a pull request that changes both. The one exception is `src/db/database.types.ts`, the types generated
+from the migrated database: they aren't in the built site, so they go with the migration that changes them.
 
 **Why.** The database and the site go live at different moments, and old copies of the site stay around:
 - the database changes when the owner approves it, which may be a while after the merge;

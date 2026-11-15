@@ -240,8 +240,11 @@ check finds were made.
   `tests/unit/the-views-write-each-lines-words.test.ts`, `a-battles-losses-tally-is-written-from-the-facts-of-its-lines`.
 - The GM's log in words is the old line forms, key for key and in the same order (the old `log()`'s 17 keys;
   `form: 'bare'`, the 14 of the lines once pushed directly; `notFor` last when `except` is given), with no fact in it
-  and, since P1-12d39, its fact's `kind` last; the GM page's log draws a force's rows by it, and an older turn's line,
-  with no kind, by its words; the balance matrix reads its chase figures by it (P1-12d40). The matrix hashes the
+  and, since P1-12d39, its fact's `kind` last; the balance matrix reads its chase figures by it (P1-12d40). A realm's
+  report carries the kind on a force's row alone (`playerEvents`). The GM page's log and the player portal's Chronicle
+  draw a force's rows by that kind alone, and a line with none (an older turn's) as its words, whatever they open
+  with; a force's colour only as six hex digits, any other form in the default grey
+  (`src/engine/rules-on-plain-values/a-forces-row-on-a-page-its-kind-and-its-colour-of-six-hex-digits.ts`). The matrix hashes the
   stored log (`writes`), and every realm's report is compared line for line (`npm run balance`). `tests/unit/emit-writes-the-lines-log-wrote.test.ts`
   checks the forms (its oracle against copies of the old code ran from P1-12a2 to P1-12a4, until every caller was
   converted).

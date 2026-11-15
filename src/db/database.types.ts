@@ -571,6 +571,10 @@ export type Database = {
       };
       reassign_game: { Args: { p_game: string; p_new_gm: string }; Returns: undefined };
       rename_player: { Args: { p_name: string; p_user: string }; Returns: undefined };
+      submit_orders: {
+        Args: { p_for_turn: number; p_game: string; p_orders: Json; p_submitted: boolean };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;

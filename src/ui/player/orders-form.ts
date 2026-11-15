@@ -577,10 +577,10 @@ export function buildOrdersForm(
 
           <div style="margin-top:6px">
             <label style="font-size:.72rem">Describe your battlecry:</label>
-            <input type="text" id="ep-notes-${c.id}" value="${thisOrThat(theDraftsField(savedEP, 'notes'), '')}"
+            <input type="text" id="ep-notes-${c.id}" maxlength="200" value="${thisOrThat(theDraftsField(savedEP, 'notes'), '')}"
               placeholder="e.g. For glory and the fallen — none shall pass!"
               style="font-size:.8rem;margin-top:2px">
-            <div style="font-size:.68rem;color:#2f281c;margin-top:2px">Shouted at any enemy — monster or rival — as combat begins.</div>
+            <div style="font-size:.68rem;color:#2f281c;margin-top:2px">Shouted at any enemy — monster or rival — as combat begins. At most 200 letters.</div>
           </div>
         </div>
 

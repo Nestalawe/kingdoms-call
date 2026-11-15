@@ -2,6 +2,8 @@ import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import type { KcSafeHtml } from '../shared/kc-safe.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 import {
+  THE_KIND_A_FORCES_ROW_CARRIES,
+  aColourOfSixHexDigitsOrNone,
   asItsGuardReadsIt,
   theAlignmentsOnlyOneRealmAGameMayHold,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
@@ -397,6 +399,9 @@ interface ALineOfTheLogAsTheChronicleReadsIt {
   readonly battleId?: unknown;
   readonly bTier?: unknown;
   readonly pinNotice?: unknown;
+  /** A force drawn up for battle's kind, which a realm's report carries on a force's row alone: the chronicle draws a
+   *  force's rows by it, and a line without it as its words, whatever they open with. */
+  readonly kind?: unknown;
 }
 /** A hero of the realm, as the chronicle gives him his own section. */
 interface AHeroTheChronicleNames {
@@ -719,8 +724,10 @@ export function buildChronicle(
 
     // ── Items 2 & 3: battle-force markers + player-colour map ────
     // The engine emits '⚑FORCE⚑{json}' lines for each side of a battle (name, owner colour, neutral
-    // flag, role/verb, army roster). We expand those into icon rows (like "Your Realm") and tint
-    // every participant's name in the owner's map colour; neutral names go dark grey.
+    // flag, role/verb, army roster), and the realm's report gives each its kind: a force's row is read by that kind
+    // alone, and its colour only as six hex digits (any other form is none: the default grey). We expand those into
+    // icon rows (like "Your Realm") and tint every participant's name in the owner's map colour; neutral names go
+    // dark grey.
     const NEUTRAL_COLOR = '#555';
     const nameColors = new Map<unknown, { readonly color: unknown; readonly neutral: boolean }>(); // name (and bare/realm variants) → {color|null, neutral}
     // a local chieftain (neutral-province guard) is registered with guard=true and is tinted
@@ -746,17 +753,18 @@ export function buildChronicle(
     lines.forEach((eOrNone) => {
       const e = theLineRead(eOrNone);
       const t = e.text ?? '';
-      if (t.startsWith('⚑FORCE⚑')) {
+      if (e.kind === THE_KIND_A_FORCES_ROW_CARRIES) {
         try {
           const f = theForceTheMarkerHolds(t.slice(7), 'name');
-          _registerName(f.name, f.color, f.neutral, !!f.guard);
+          const itsColour = aColourOfSixHexDigitsOrNone(f.color);
+          _registerName(f.name, itsColour, f.neutral, !!f.guard);
           // tint every custom-NAMED unit in the force too, so battle lines that reference a unit by
           // its name (archery, pre-battle magic, casualties, pursuit…) show whose it is. Generic type
           // names (e.g. "Elven Bowmen") can belong to either side and stay untinted.
           theListOfTheMarker(thisOrElse(f.armies, [])).forEach((a) => {
             const un = a && theField(a, 'unitName');
             if (un && un !== theField(a, 'type') && !inWords(un).startsWith('undefined'))
-              _registerName(un, f.color, f.neutral, !!f.guard);
+              _registerName(un, itsColour, f.neutral, !!f.guard);
           });
         } catch {
           // a marker line that can't be read tints nothing
@@ -837,7 +845,7 @@ export function buildChronicle(
         ? CHIEFTAIN_MARKER_COLOR
         : f.neutral
           ? NEUTRAL_COLOR
-          : thisOrElse(reportColour(f.color), NEUTRAL_COLOR);
+          : thisOrElse(reportColour(aColourOfSixHexDigitsOrNone(f.color)), NEUTRAL_COLOR);
       // 2026-09-23d: the short battle view shows each side on ONE line — who, what they did, and a
       // count of each unit type — instead of the full roster.
       if (compact) {
@@ -874,7 +882,7 @@ export function buildChronicle(
     ): KcSafeHtml {
       opt ??= {};
       const raw0 = e.text ?? '';
-      if (raw0.startsWith('⚑FORCE⚑')) {
+      if (e.kind === THE_KIND_A_FORCES_ROW_CARRIES) {
         try {
           return renderForceBlock(theForceTheMarkerHolds(raw0.slice(7), 'guard'), !!opt.compact);
         } catch {

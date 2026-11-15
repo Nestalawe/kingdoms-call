@@ -14,7 +14,7 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 |---|---|
 | `profiles` | One row per account: display name |
 | `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below), `block_eliminated_msgs` (the GM's switch "Block eliminated realms from sending dispatches", P0-25; off by default). Created only by a Game Master, in their own name; never by the Overlord. The Overlord reads, saves and deletes any game, as Master GM; no save changes a game's GM: only `reassign_game` (Overlord only, to a Game Master) hands a game over |
-| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's, but the Overlord reads, changes and removes any slot and adds bot slots, as Master GM; one realm per slot number in a game. Other realms' slots are meant to be seen only through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B) |
+| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's, but the Overlord reads, changes and removes any slot and adds bot slots, as Master GM; one realm per slot number in a game. Other realms' slots are meant to be seen only through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B). `submit_orders()` saves orders for a realm's player, in a running game, for this turn, before its deadline (P2-05, R-184; unused yet) |
 | `turn_logs` | Per-turn log and report snapshots (`player_index: -1` is the GM's full log). Written by the game's GM or the Overlord |
 | `turn_events` | Telemetry: one row per realm per resolved turn (orders, before/after snapshots, outcomes) |
 | `game_results` | One row per realm when a game ends |
@@ -206,7 +206,7 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   with no account signed in. Never edit them by hand: run `npx supabase@2.120.0 gen types
   typescript --local > src/db/database.types.ts` against the local database with every migration applied, then
   `npx prettier --write src/db/database.types.ts`. CI's `db` job generates them again from its own local database and
-  compares: a stale file fails it.
+  compares: a stale file fails it. So a migration's pull request carries them (the one `src/` file it may change).
 - **The access layer's tests** (`tests/db/`, `npm run test:db`; not in `npm test`): each `Db` function called on a
   supabase-js client of the local Supabase as each role that matters (signed out, a player, a rival, the game's GM,
   another GM, the Overlord), checking what it returns or refuses: the query and the access rules together. CI's `db`
