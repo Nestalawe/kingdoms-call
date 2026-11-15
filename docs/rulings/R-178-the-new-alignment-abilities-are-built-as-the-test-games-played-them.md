@@ -1,8 +1,8 @@
 # R-178: The new alignment abilities are built as the test games played them
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 74 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 74: are the new alignment abilities built as the test games played them, or as the design document is written? Answer: option 1, as played, and the document is brought up to match.
 - **Enforced by:** no test yet
 
 The new alignment abilities are built as the test games played them, and the design document is brought up to match. See

@@ -1,8 +1,8 @@
 # R-172: A company the Host-Leader leads still pays at least 1 gold
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 64 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 64: the Host-Leader's perk says each company pays at least 1 gold, and the turn lets a 1-gold company cost nothing: which is right? Answer: option 2 (not the recommendation), the game follows the words.
 - **Enforced by:** no test yet
 
 The Host-Leader's perk does what its words say, "−1 per unit (min 1)": each company the title's holder leads

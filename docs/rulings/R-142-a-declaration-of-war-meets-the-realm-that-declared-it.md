@@ -1,8 +1,8 @@
 # R-142: A declaration of war counts as meeting the realm that declared it
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 12 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 12: does a declaration of war count as meeting the realm that declared it, as an overture does? Answer: option 1, it does.
 - **Enforced by:** no test yet
 
 A realm that is declared war on meets the realm that declared it, as an overture meets its sender

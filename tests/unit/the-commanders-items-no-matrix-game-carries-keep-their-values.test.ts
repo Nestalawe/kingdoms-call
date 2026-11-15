@@ -13,7 +13,7 @@
 // counts (R-120, R-121): beside his king wearing the Crown of Command (in no matrix game), a Druid 3 commander's Cave
 // Trolls fight at full strength; with the Crown elsewhere, or its wearer gone by the battle's phase (Toby's proviso: a
 // cast then counts without it too), a level short; under a Curse spell (his Druid 4 halved to 2), two levels short,
-// ×0.6; and the corner plan question 50 keeps: a battle's Curse halves a Druid 8 commander's Druid after the check
+// ×0.6; and the corner question 50 (R-159) keeps: a battle's Curse halves a Druid 8 commander's Druid after the check
 // stops it at 5, his Titan Warbeasts ×0.4.
 // Level 1 (unit): armStr called directly on the engine's modules (plan P1-14a), with no turn played; no die is drawn.
 // The matrix meets none of the five, so no lower level and no game sees them (P1-19's scoping: the Standard +3 and the
@@ -174,7 +174,7 @@ describe("the battle's Druid check counts a commander's Druid as every rule does
     expect(line?.shortfalls.map((s) => s.unitType)).toEqual(['Cave Trolls']);
     expect(line?.shortfalls[0]?.penalty).toBeCloseTo(0.6, 9);
   });
-  test("a battle's Curse on a Druid 8 commander's Druid: counted to 5, then halved to 2, his Titan Warbeasts ×0.4 (plan question 50 keeps it)", () => {
+  test("a battle's Curse on a Druid 8 commander's Druid: counted to 5, then halved to 2, his Titan Warbeasts ×0.4 (question 50 keeps it)", () => {
     // The mastery halves his whole Druid (8 to 4); the check stops it at 5 first. Toby hasn't ruled on the corner, so
     // the check keeps today's figure.
     const c = commander(8, { _curseHalveStat: 'druid' });

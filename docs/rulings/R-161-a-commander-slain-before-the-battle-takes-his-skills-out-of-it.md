@@ -1,8 +1,8 @@
 # R-161: A commander slain in the duel before a battle takes his skills out of it
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 52 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 52: the two kinds of battle count the skills of a commander slain in the duel otherwise: which is right? Answer: option 1, his skills leave the battle in both: no Druid, no Archery.
 - **Enforced by:** no test yet
 
 A commander who falls in the duel before a battle takes his skills out of it, in both kinds of battle: his

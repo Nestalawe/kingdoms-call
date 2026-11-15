@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-02, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 32, built in PR #366
+- **Source:** Question 32: does a Curse halve a commander's Druid in battle, as it does his Druid mastery? Answer: option 1, the battle counts the Curse too. Built in PR #366.
 - **Enforced by:** [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts)
 
 A Curse spell halves every skill of the hero it strikes for the rest of the turn. In a battle that turn, the Druid

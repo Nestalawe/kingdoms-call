@@ -1,8 +1,8 @@
 # R-149: The lancer's, the legion's and the bowman's items name every unit the battle lifts
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 21 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 21: the lancer's, the legion's and the bowman's items name fewer units than the battle lifts: which is right? Answer: option 1, the texts say what the battle does.
 - **Enforced by:** no test yet
 
 The items that lift one kind of company in battle say every unit the battle lifts, and the siege items say what

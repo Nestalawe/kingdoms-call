@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-02, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 27, built in PR #372
+- **Source:** Question 27: against neutral guards, battle magic followed other rules than between two heroes: should one rule hold in every battle? Answer: option 1, one rule everywhere, as between heroes. Built in PR #372.
 - **Enforced by:** [`the-battle-magic-lines-no-matrix-game-reaches-keep-their-values`](../../tests/unit/the-battle-magic-lines-no-matrix-game-reaches-keep-their-values.test.ts), [`the-battle-spells-each-copy-casts-keep-their-values`](../../tests/unit/the-battle-spells-each-copy-casts-keep-their-values.test.ts)
 
 Battle magic before an army battle works the same way in a battle between two heroes' hosts, in a hero's battle

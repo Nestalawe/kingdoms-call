@@ -1,8 +1,8 @@
 # R-167: The Spy order's odds are written as the turn gives them
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 59 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 59: the Spy order's odds are written otherwise than the turn gives them: which is right? Answer: option 1, the words follow the game.
 - **Enforced by:** no test yet
 
 The order form, the province Spy note and the rulebook give the Spy order's odds as the turn does: spying on a

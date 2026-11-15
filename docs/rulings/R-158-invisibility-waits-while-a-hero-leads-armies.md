@@ -1,8 +1,8 @@
 # R-158: Invisibility waits while a hero leads armies
 
 - **Decided:** 2026-11-05, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan questions 29 (a maintainer's answer of 2026-11-02) and 47 (2026-11-05); not yet built
+- **Status:** Decided, not built
+- **Source:** Questions 29 (2026-11-02) and 47 (2026-11-05): the answer to question 29 says invisibility has no effect on a hero leading armies; is the spell then lost, or does it wait? Answer: option 1, the spell waits; it isn't lost.
 - **Enforced by:** no test yet
 
 Invisibility has no effect on a hero while he leads armies: he is seen and fought as if he had no spell (spells

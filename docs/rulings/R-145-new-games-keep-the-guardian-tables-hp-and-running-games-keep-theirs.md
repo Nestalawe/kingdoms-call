@@ -1,8 +1,8 @@
 # R-145: New games' guardians have the guardian table's HP; running games keep theirs
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan questions 17 (a maintainer's answer of 2026-10-31) and 31 (2026-11-02); not yet built
+- **Status:** Decided, not built
+- **Source:** Questions 17 (2026-10-31) and 31 (2026-11-02): do new games' guardians have the guardian table's HP, and what happens to the games started since 14 October? Answer: option 1 to both: new games keep the table's HP, and running games stay as they are.
 - **Enforced by:** no test yet
 
 A new game's guardians have the hit points the guardian table gives them

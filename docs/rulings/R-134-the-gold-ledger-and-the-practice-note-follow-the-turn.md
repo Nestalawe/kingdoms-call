@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 43, built in PR #476 (the practice note) and the ledger's PRs stacked on it (P1-11e29, P1-11e30)
+- **Source:** Question 43: the practice note and the gold ledger said otherwise than the turn: which is right? Answer: option 1, the ledger and the note follow the turn. Built in PR #476 (the practice note) and the ledger's PRs stacked on it (P1-11e29, P1-11e30).
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts), [`each-hero-wage-discoverys-cut-or-ceiling-and-its-room-and-a-wage-after-each-of-them`](../../tests/unit/each-hero-wage-discoverys-cut-or-ceiling-and-its-room-and-a-wage-after-each-of-them.test.ts)
 
 The note under a Practice Skill order quotes the chance the turn rolls when a hero practises alone, by the turn's own

@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan questions 69 and 73 (a maintainer's answers of 2026-11-15)
+- **Source:** Questions 69 and 73 (2026-11-15): does each game keep the ruleset it started with, and do running games get the new alignment abilities? Answer: to the first, option 2 (not the recommendation), changes reach running games, as today; to the second, option 1, every game gets each ability as it goes live.
 - **Enforced by:** no test yet
 
 There is one set of rules. A change reaches every game, running ones too, from its next turn; no game keeps the

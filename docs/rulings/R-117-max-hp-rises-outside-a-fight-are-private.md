@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 9, built in PR #316
+- **Source:** Question 9: when a hero's maximum HP rises outside a fight, does every realm with eyes there read it, or only his own? Answer: option 1, his own realm alone, wherever the rise comes from. Built in PR #316.
 - **Enforced by:** [`hp-gain-private`](../../tests/unit/hp-gain-private.test.ts), [`stalled-battles-unit-gain-and-war-fronts`](../../tests/unit/stalled-battles-unit-gain-and-war-fronts.test.ts), [`report-leaks`](../../tests/unit/report-leaks.test.ts)
 
 When a hero's maximum HP rises outside a fight (an item picked up, bought or given, a title, a discovery), the line

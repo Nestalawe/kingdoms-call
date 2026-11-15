@@ -1,8 +1,8 @@
 # R-157: A lair beast talked down by parley counts as pacified, not slain
 
 - **Decided:** 2026-11-05, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 38 (a maintainer's answer of 2026-11-05); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 38: a lair beast talked down by parley counts as a kill in play, and as half the merit in the code's notes: which is right? Answer: option 1, a parley pacifies the beast: half the merit, no hit points.
 - **Enforced by:** no test yet
 
 A lair beast won over by parley counts as pacified: half the Monster-Bane merit, and no earned hit points.

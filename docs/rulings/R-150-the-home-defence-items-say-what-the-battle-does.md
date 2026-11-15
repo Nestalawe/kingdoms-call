@@ -1,8 +1,8 @@
 # R-150: The home-defence items say what the battle does
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 22 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 22: the home-defence items' texts say a quality tier, and the battle gives ×1.25 at the capital alone: which is right? Answer: option 1, the texts say what the battle does.
 - **Enforced by:** no test yet
 
 The home-defence items (the Mantle of the Marches, the Banner of the Realm and their kind) say: "defending your

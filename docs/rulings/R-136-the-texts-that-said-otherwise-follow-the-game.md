@@ -2,8 +2,7 @@
 
 - **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 46, built in the pull requests of P1-11e39 (the spell hints and their blurbs), stacked on
-  PR #485, and P1-11e40 (the Evil and Pagan texts and the Charm row), stacked on PR #486
+- **Source:** Question 46: six texts (four spells' hints, the report's Evil and Pagan words, the rulebook's Charm row) said otherwise than the turn: which is right? Answer: option 1, the words follow the game. Built in the pull requests of P1-11e39 (the spell hints and their blurbs), stacked on PR #485, and P1-11e40 (the Evil and Pagan texts and the Charm row), stacked on PR #486.
 - **Enforced by:** [`each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table`](../../tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts),
   [`each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says`](../../tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts)
 

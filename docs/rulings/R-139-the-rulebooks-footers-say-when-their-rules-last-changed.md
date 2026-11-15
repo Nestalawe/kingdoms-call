@@ -1,8 +1,8 @@
 # R-139: Each rulebook's footer says when its rules last changed
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 3 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 3: what do the rulebooks' footers say: a hand-typed version, or when their rules last changed? Answer: option 2, "Rules last changed <date>", worked out from the history by the build.
 - **Enforced by:** no test yet
 
 Each rulebook's footer reads "Rules last changed <date>", worked out by the build from the repository's history,

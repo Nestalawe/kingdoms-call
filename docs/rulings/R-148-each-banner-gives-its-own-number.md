@@ -1,8 +1,8 @@
 # R-148: Each banner gives the strength its own text says
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 20 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 20: the banners' texts give more strength than the battle does: which is right? Answer: option 1, each banner gives its own number.
 - **Enforced by:** no test yet
 
 Each banner gives the armies its bearer leads the strength its own text says: the two relic standards (the

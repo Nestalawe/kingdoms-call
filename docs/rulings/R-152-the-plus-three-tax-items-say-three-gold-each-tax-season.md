@@ -1,8 +1,8 @@
 # R-152: The "+3% tax" items say +3 gold each tax season
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 24 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 24: four tax items say +3% and give 3 gold: which is right? Answer: option 1, the texts say what the turn does.
 - **Enforced by:** no test yet
 
 The Ring of the Assessor, the Coif of the Ledger-Keeper, the Tally-Sticks of the Reeve and the Plain

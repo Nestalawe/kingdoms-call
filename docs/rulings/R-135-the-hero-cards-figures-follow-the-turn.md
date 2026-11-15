@@ -2,9 +2,7 @@
 
 - **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 45, built in the pull requests of P1-11e31 (the sea note), stacked on PR #477, and
-  P1-11e33 (the magic level), stacked on PR #479, P1-11e34 (the upkeep), stacked on PR #480, and P1-11e38 (the
-  strength), stacked on PR #484
+- **Source:** Question 45: the hero card's figures left out lifts and costs the turn counts: which is right? Answer: option 1, the card and the form follow the turn. Built in the pull requests of P1-11e31 (the sea note), stacked on PR #477, and P1-11e33 (the magic level), stacked on PR #479, P1-11e34 (the upkeep), stacked on PR #480, and P1-11e38 (the strength), stacked on PR #484.
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts),
   [`the-strength-a-unit-has-before-the-ground-and-the-foe`](../../tests/unit/the-strength-a-unit-has-before-the-ground-and-the-foe.test.ts)
 

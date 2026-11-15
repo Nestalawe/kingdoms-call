@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 37, built in PR #446
+- **Source:** Question 37: the losses tally counted risen trolls as lost, and could give a company to the wrong side: which is right? Answer: option 1, the tally follows the battle. Built in PR #446.
 - **Enforced by:** [`a-battles-losses-tally-is-written-from-the-facts-of-its-lines`](../../tests/unit/a-battles-losses-tally-is-written-from-the-facts-of-its-lines.test.ts)
 
 The "⚰ Losses" line under a battle sums up the casualty lines above it, as the battle and the game's statistics count

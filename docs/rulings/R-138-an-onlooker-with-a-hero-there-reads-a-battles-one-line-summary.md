@@ -1,8 +1,8 @@
 # R-138: A realm with a hero where two other realms fight reads the battle's one-line summary
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 2 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 2: does a realm with a hero beside a battle between two other realms read anything of it? Answer: option 1, it reads the battle's one-line summary, as the code's comments promise.
 - **Enforced by:** no test yet
 
 When two realms fight a battle in a province, a third realm with a hero standing there at the battle's phase

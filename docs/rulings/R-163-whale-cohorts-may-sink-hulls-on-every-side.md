@@ -1,8 +1,8 @@
 # R-163: Whale Cohorts may sink hulls on every side
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 54 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 54: a guard's Whale Cohorts never sink an attacker's hull: may they? Answer: option 1, every side's whales may sink the other side's hulls, in both kinds of battle, at one moment.
 - **Enforced by:** no test yet
 
 Every side's Whale Cohorts may roll the other side's hulls over, in a battle between heroes and against a

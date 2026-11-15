@@ -1,8 +1,8 @@
 # R-151: The Shield-Wall Rune's text says what the battle does
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 23 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 23: the Shield-Wall Rune holds only against neutral guards, and for the whole host, which its text doesn't say: which is right? Answer: option 1, the text says what the battle does.
 - **Enforced by:** no test yet
 
 The Shield-Wall Rune and the items like it say: "beaten by neutral guards, the host you lead stands its

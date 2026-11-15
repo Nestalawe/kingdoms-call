@@ -1,8 +1,8 @@
 # R-141: Illusory Terrain fools the Intelligence report and the order forms too, as it fools the map
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 11 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 11: Illusory Terrain fools the map; does it fool the Intelligence report and the order forms too? Answer: option 1, they show the false land too, until one of the realm's heroes enters.
 - **Enforced by:** no test yet
 
 A province under another realm's Illusory Terrain shows its false land everywhere that realm reads it: the map,

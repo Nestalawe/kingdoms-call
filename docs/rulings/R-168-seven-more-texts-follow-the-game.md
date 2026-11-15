@@ -1,8 +1,8 @@
 # R-168: Seven more texts say what the turn does
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 60 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 60: seven more texts say otherwise than the turn: which is right? Answer: option 1, the words follow the game.
 - **Enforced by:** no test yet
 
 Seven texts say what the turn does; nothing changes in play:

@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 44, built from PR #463 on
+- **Source:** Question 44: the march forecast kept a hero marching where the turn stops him: which is right? Answer: option 1, the forecast follows the turn. Built from PR #463 on.
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The order form works out where each hero will stand in every later phase, and what his marches will map, from the

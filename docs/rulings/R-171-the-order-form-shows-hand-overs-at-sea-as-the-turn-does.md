@@ -1,8 +1,8 @@
 # R-171: The order form shows hand-overs and Pick Ups at sea as the turn does them
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 63 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 63: after hand-overs and Pick Ups at sea, the order form shows a column overfilling its ships: which is right? Answer: option 1, the form follows the turn.
 - **Enforced by:** no test yet
 
 At sea, the turn refuses a hand-over that would leave either column without the ships to carry it, and sends

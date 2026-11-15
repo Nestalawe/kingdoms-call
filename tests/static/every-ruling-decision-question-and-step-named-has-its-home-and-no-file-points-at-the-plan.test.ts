@@ -158,9 +158,7 @@ describe('every fact the repository names has its home in docs/', () => {
     expect(FINISHED_STEPS.has('P0-14')).toBe(true);
     expect(ANSWERED_QUESTIONS.size).toBeGreaterThan(20);
     expect(
-      questionNumbersIn('Plan questions 17 (of 2026-10-31) and 31 (2026-11-02); question 45 (a), 2026').map(
-        (q) => q.number,
-      ),
+      questionNumbersIn('Questions 17 (of 2026-10-31) and 31 (2026-11-02); question 45 (a), 2026').map((q) => q.number),
     ).toEqual(['17', '31', '45']);
   });
 

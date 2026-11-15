@@ -1,8 +1,8 @@
 # R-146: Flak Screen engages every flyer, beasts too
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 18 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 18: does Flak Screen engage every enemy flyer, as its blurb says, or winged riders only, as the turn and the rulebook do? Answer: option 2, every flyer, beasts too, as the blurb reads.
 - **Enforced by:** no test yet
 
 Each Gnomish Gyrocopter's Flak Screen engages one enemy flying unit before the battle (−30% strength), as its

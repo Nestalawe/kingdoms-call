@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-02, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 28 (b), built in PR #367
+- **Source:** Question 28 (b): the army card took a Druid shortfall off otherwise than the battle, so it could show one more: which is right? Answer: option 1, each forecast follows the turn. Built in PR #367.
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The army card on a player's report shows each unit's strength as the battle counts it. Where the unit's commander

@@ -1,8 +1,8 @@
 # R-174: A fleet ordered to a far coast lands as it would next door
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 66 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 66: a fleet lands on the coast next door, but not on a far coast it is ordered to: which is right? Answer: option 1, the road lands her where the step next door would.
 - **Enforced by:** no test yet
 
 One rule for the step, however far the target: a column of ships alone that may land on the coast next door may

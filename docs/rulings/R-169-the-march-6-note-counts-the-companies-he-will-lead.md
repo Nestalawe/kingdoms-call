@@ -1,8 +1,8 @@
 # R-169: The Explore note counts March 6's share on the companies he will lead
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 61 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 61: the Explore note and the turn count March 6's share on different companies: which is right? Answer: option 1, the note counts the companies he will lead as he marches in.
 - **Enforced by:** no test yet
 
 The Explore note counts a March 6 hero's share on the companies he leads as he marches in, as the turn does.

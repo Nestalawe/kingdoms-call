@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 42, built from PR #469 on
+- **Source:** Question 42: what the order form said a hero would hold differed from the turn in six ways: which is right? Answer: option 1, the form follows the turn. Built from PR #469 on.
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The order form works out what each hero will carry and lead, and what a province's garrison will hold, in every later

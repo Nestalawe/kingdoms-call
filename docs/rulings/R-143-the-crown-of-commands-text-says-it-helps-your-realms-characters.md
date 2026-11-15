@@ -1,8 +1,8 @@
 # R-143: The Crown of Command's text says it helps your own realm's characters
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 14 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 14: the Crown of Command's text says it helps friend or foe, and the turn helps the wearer's realm only: which is right? Answer: option 1, the text follows the turn.
 - **Enforced by:** no test yet
 
 The Crown of Command gives +1 to every skill of its wearer's own realm's characters in his province, as the

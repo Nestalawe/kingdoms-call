@@ -1,8 +1,8 @@
 # R-144: Only the Human Garrison holds the gate
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 16 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 16: the books give Hold the Gate to the Human Garrison, and the turn to every garrison: which is right? Answer: option 1, only the Human Garrison holds the gate, as the books say.
 - **Enforced by:** no test yet
 
 Hold the Gate (never hit from the side when defending) belongs to the Human Garrison alone, as both rulebooks

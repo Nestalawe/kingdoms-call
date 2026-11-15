@@ -1,8 +1,8 @@
 # R-140: Messenger Birds is retired
 
 - **Decided:** 2026-10-31, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 10 (a maintainer's answer of 2026-10-31); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 10: what becomes of Messenger Birds, a discovery that does nothing? Answer: option 3, it is retired for now.
 - **Enforced by:** no test yet
 
 Messenger Birds is retired for now: no realm is offered it. Its text promises warnings from provinces two steps

@@ -2,8 +2,7 @@
 
 - **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 34, built in the pull request of P1-11e1 (the perk's words, and running games' guardians
-  re-stamped), stacked on PR #493
+- **Source:** Question 34: a guardian's perk said a flat bonus on a special, where the fight multiplies it: which is right? Answer: option 1, the words follow the game. Built in the pull request of P1-11e1 (the perk's words, and running games' guardians re-stamped), stacked on PR #493.
 - **Enforced by:** [`each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table`](../../tests/static/each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table.test.ts),
   [`a-saved-games-old-shapes-are-mended-before-the-turn`](../../tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts)
 

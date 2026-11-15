@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-11, a maintainer
 - **Status:** Confirmed
-- **Source:** A maintainer's answer of 2026-10-11 (plan decision D-08); PRs #59, #61
+- **Source:** Decision D-08 (2026-10-11): how does a GM find the players to invite? Answer: by name, never by email. PRs #59, #61.
 - **Enforced by:** [`profiles-no-email`](../../tests/profiles-no-email.test.js), [`eslint-rule-big-tables-and-profiles-are-read-by-named-columns`](../../tests/unit/eslint-rule-big-tables-and-profiles-are-read-by-named-columns.test.ts), [`06_profiles.test.sql`](../../supabase/tests/database/06_profiles.test.sql)
 
 A GM inviting players finds them by name; where two share a name, the month each joined is shown. A player's email is readable only by its owner.

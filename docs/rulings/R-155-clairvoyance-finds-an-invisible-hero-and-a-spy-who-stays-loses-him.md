@@ -1,8 +1,8 @@
 # R-155: Clairvoyance finds an invisible hero, and a spy who stays doesn't see what he does once he has vanished
 
 - **Decided:** 2026-11-02, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 29 (a maintainer's answer of 2026-11-02); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 29: three edges of Invisibility that R-119 left open: does Clairvoyance find him, how is his host seen and fought, and does a spy who stays see what he does once he has vanished? Answer: option 1, Clairvoyance finds him and the spy who stays doesn't see him, "but also, invisibility should have no effect on a hero leading armies" (R-158).
 - **Enforced by:** no test yet
 
 Two edges of Invisibility ([R-119](R-119-invisibility-hides-him-from-enemy-orders.md)):

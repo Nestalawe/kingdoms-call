@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 1, built in PR #369
+- **Source:** Question 1: the rulebook and the turn let the Warlock cast one more spell of his best school; does the order form offer it too? Answer: option 1, the form offers it, as the rulebook and the turn do. Built in PR #369.
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts), [`spells-each-school-allows-a-turn-and-a-fight`](../../tests/unit/spells-each-school-allows-a-turn-and-a-fight.test.ts), [`cast-practice-projection`](../../tests/cast-practice-projection.test.js)
 
 A hero who holds the Warlock minor title may cast one more action spell a turn in his best school: the school he has

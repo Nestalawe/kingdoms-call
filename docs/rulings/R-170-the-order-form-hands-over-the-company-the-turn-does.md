@@ -1,8 +1,8 @@
 # R-170: A hand-over that names a kind of company moves the one the turn moves, on the order form too
 
 - **Decided:** 2026-11-15, a maintainer
-- **Status:** Confirmed
-- **Source:** Plan question 62 (a maintainer's answer of 2026-11-15); not yet built
+- **Status:** Decided, not built
+- **Source:** Question 62: a hand-over that names a kind of company moves one company on the order form and another in the turn: which is right? Answer: option 1, the form follows the turn.
 - **Enforced by:** no test yet
 
 A hand-over (or a Disband) that names a kind of company moves the first company whose name or kind matches, and
