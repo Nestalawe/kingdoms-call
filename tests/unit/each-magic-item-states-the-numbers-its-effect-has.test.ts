@@ -18,17 +18,13 @@
 // buckler's, the second wind's and the low-HP ward's shares of his maximum HP; the combat items, whose numbers each
 // copy carries itself, but the terror's chance, bane's double, the Lock-Pick's steal and the Warbringer Gauntlets' blow
 // (plan P1-19s); the kinds of item the treasury weighs as a whole, whose worth no text states (plan P1-19t)) are listed, so a number added to one is checked.
-// The known gaps are listed by name, each with its Parked entry, and checked to be still gaps (so the exception leaves
-// with the fix): the two relic standards say +4 and +6 and give +2 (NEXT.md question 20; Parked "The two relic
-// standards give +2, not their +4 and +6"); five siege items say "Siege bonus +1" (question 21: Parked "Thirty items'
-// texts name fewer units, or another rule, than the battle gives"); no home-defence item states its ×1.25 (question 22:
-// Parked "The home-defence items say a quality tier in any province of one's own; the battle gives ×1.25 at the home
-// alone"); six second-wind items don't say it acts below 30% of the bearer's maximum HP, two of them saying it saves
-// him from a killing blow at 1 HP (question 25: Parked "Six second-wind items don't say the 30% it acts below; two
-// describe another rule"); neither terror item says a foe flees half the time (question 26: Parked "The two terror
-// items don't say a foe flees half the time"); the Mirror Shard says its illusions are "harder to disbelieve", not that
-// the chance is halved (Parked "Mirror Image's and Invisibility's texts leave out numbers, and the Mirror Shard's its
-// half"). The units an item reaches are words this test can't match to a set (question 21).
+// The known gaps are listed by name, each with its known defect's id, and checked to be still gaps (so the exception
+// leaves with the fix): the two relic standards say +4 and +6 and give +2 (question 20, R-148, not yet built; KD-036);
+// five siege items say "Siege bonus +1" (question 21: KD-092); no home-defence item states its ×1.25 (question 22:
+// KD-260); six second-wind items don't say it acts below 30% of the bearer's maximum HP, two of them saying it saves
+// him from a killing blow at 1 HP (question 25: KD-091); neither terror item says a foe flees half the time (question
+// 26: KD-090); the Mirror Shard says its illusions are "harder to disbelieve", not that the chance is halved (KD-087).
+// The units an item reaches are words this test can't match to a set (question 21).
 // Level 1 (unit), not static: the items in play exist only after the engine's load-time pass (src/engine/items/
 // equipment.ts and tiers-and-hoards.ts rewrite the list: 711 items), so the whole engine is imported first.
 import '../lib/the-whole-engine.ts';
@@ -42,21 +38,16 @@ import {
 import { theEffectsAnItemCarries } from '../../src/engine/rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts';
 
-/** The items whose texts don't state their effect's number yet, by the row's slug, each with its Parked entry. */
-const SIEGE_WORDS =
-  'Parked "Thirty items\' texts name fewer units, or another rule, than the battle gives" (NEXT.md question 21)';
-const HOME_DEFENCE_WORDS =
-  'Parked "The home-defence items say a quality tier in any province of one\'s own; the battle gives ×1.25 at the home alone" (NEXT.md question 22)';
-const SECOND_WIND_WORDS =
-  'Parked "Six second-wind items don\'t say the 30% it acts below; two describe another rule" (NEXT.md question 25)';
-const TERROR_WORDS = 'Parked "The two terror items don\'t say a foe flees half the time" (NEXT.md question 26)';
-const MIRROR_SHARD_WORDS =
-  "Parked \"Mirror Image's and Invisibility's texts leave out numbers, and the Mirror Shard's its half\"";
+/** The items whose texts don't state their effect's number yet, by the row's slug, each with its known defect's id. */
+const SIEGE_WORDS = 'KD-092 (question 21, R-149, not yet built)';
+const HOME_DEFENCE_WORDS = 'KD-260 (question 22, R-150, not yet built)';
+const SECOND_WIND_WORDS = 'KD-091 (question 25, R-153, not yet built)';
+const TERROR_WORDS = 'KD-090 (question 26, R-154, not yet built)';
+const MIRROR_SHARD_WORDS = 'KD-087';
 const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, string>>>> = {
   'army-bonus': {
-    'Battle Standard': 'Parked "The two relic standards give +2, not their +4 and +6" (NEXT.md question 20)',
-    'Standard of the Nine Legions':
-      'Parked "The two relic standards give +2, not their +4 and +6" (NEXT.md question 20)',
+    'Battle Standard': 'KD-036 (question 20, R-148, not yet built)',
+    'Standard of the Nine Legions': 'KD-036 (question 20, R-148, not yet built)',
   },
   'siege-bonus': {
     'Cloak of the Siege Engineer': SIEGE_WORDS,

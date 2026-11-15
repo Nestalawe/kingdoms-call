@@ -11,8 +11,8 @@
 // Until plan P1-14i this was the static half of tests/skill-names-capitalised.test.js. Its five patterns are kept as they
 // were. Since plan P1-12d the lines' words are the views' (src/views/prose/), written from the fact the engine records,
 // so four of them match no code a raw key could come from any more: the school's name is the fact's `schoolLabel`, set
-// by the engine, and a skill list's names are the views' (Parked "Eleven checks in the old battle, order and report
-// scripts can't fail"). Two checks are added so the same faults fail (stricter: plan P1-14's Decision 2): every
+// by the engine, and a skill list's names are the views' (a known defect fixed by P1-14l, "Eleven checks in the old
+// battle, order and report scripts can't fail"). Two checks are added so the same faults fail (stricter: plan P1-14's Decision 2): every
 // `schoolLabel` the engine records is the school's name, and no skill list prints its key. The item descriptions' check
 // reads a description with an apostrophe in it to its end (the old one stopped at the apostrophe).
 import { expect, test } from 'vitest';

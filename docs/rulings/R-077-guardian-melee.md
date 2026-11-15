@@ -1,6 +1,6 @@
 # R-077: Guardian melee grows by grade
 
-- **Decided:** 2026-10-08, Toby
+- **Decided:** 2026-10-08, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #8, ruling 2
 - **Enforced by:** [`guardian-melee`](../../tests/unit/guardian-melee.test.ts)

@@ -1,6 +1,6 @@
 # R-028: Resurrect raises only your own fallen and heroes never sworn to another crown
 
-- **Decided:** 2026-09-23, Toby
+- **Decided:** 2026-09-23, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.23-1616 §6 (item 2); v2026.09.27-1802 §271
 - **Enforced by:** no test yet

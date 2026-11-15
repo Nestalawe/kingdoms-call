@@ -1,6 +1,6 @@
 # R-064: Odds against an unknown rival show only the outcome
 
-- **Decided:** 2026-09-27, Toby
+- **Decided:** 2026-09-27, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.27-1802 §267 (item 5)
 - **Enforced by:** no test yet

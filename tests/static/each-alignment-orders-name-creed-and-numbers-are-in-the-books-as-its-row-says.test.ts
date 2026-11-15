@@ -376,11 +376,11 @@ test('planted, a "3g" in each of the page\'s texts, or a number or a name in a r
 });
 
 // The words of the turn's rule the Evil and Pagan texts state (the intro's Evil row too: it restates the plunder), and
-// the words they said before, which none may (R-136, plan question 46 (d) and (f)): an Evil hero conquers by the
+// the words they said before, which none may (R-136, question 46 (d) and (f)): an Evil hero conquers by the
 // doctrine on his orders, Terror plundering 50% of the province's tax and Enslave pressing a free Green garrison unit,
 // the province paying 1g less tax for 3 turns, as the order form and the turn's line say (src/engine/realms/relations-
 // and-captures.ts, applyEvilConquest; the tax in src/engine/turn/early-winter-…ts, which counts the turn of the conquest
-// too: plan question 68); the Wild Hunt binds two of a province's creatures, as Veterans until the end of the following
+// too: question 68, R-176); the Wild Hunt binds two of a province's creatures, as Veterans until the end of the following
 // turn (its row's numbers, above).
 const THE_EVIL_BONUS_LINES = stringsOf(THE_REPORTS_SUMMARIES).filter((s) =>
   s.includes('<strong>Evil bonuses</strong>'),

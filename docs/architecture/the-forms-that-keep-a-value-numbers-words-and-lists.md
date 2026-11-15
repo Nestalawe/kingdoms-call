@@ -130,7 +130,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   test (`it?.effect?.use === use`); a list looked up with a value that may be missing (`includes`, `has`) through a
   local `readonly (string | undefined)[]` or `ReadonlySet<string | undefined>`. `x == null || !list.includes(x)` in a
   filter that returns on a miss; a swap that may meet `undefined` checks `k in list`. A field only an older save holds, or one
-  no code writes (a realm's `eliminated`, Parked), is read through a local type that adds it
+  no code writes (a realm's `eliminated`, KD-099), is read through a local type that adds it
   as `unknown`.
 - **`(table[a] || {})[b]`** is read in two steps, `const cell = table[a] ?? {};` then `cell[b] ?? …`: lint's
   `table[a]?.[b]` reads `undefined` where the old read a field of the empty object (a `b` such as `constructor`).

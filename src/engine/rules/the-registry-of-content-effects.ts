@@ -1860,7 +1860,7 @@ export interface TheStagesOfEachHookPoint {
     ) => boolean;
     /** The share a discovery a realm holds adds to its whole army's strength (both battles). No entry holds it: War
      *  Drums, the one such discovery, is an ordinary unit strength effect since 2026-09-21, so the runner adds
-     *  nothing (Parked "Three dead paths in discoveries.ts"). */
+     *  nothing (KD-207). */
     readonly "a realm's discoveries add to the whole army": (theEffect: TheEffectOfADiscovery) => number;
     /** The weights a discovery gives the lines behind the front, as its row writes them, or none (Flanking Tactics:
      *  a side whose realm holds an effect of the stage has its lines weighted, and flankLineMults reads the weights

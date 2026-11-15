@@ -1,6 +1,6 @@
 # R-081: Movement costs of conquest
 
-- **Decided:** 2026-10-08, Toby
+- **Decided:** 2026-10-08, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #8, ruling 6
 - **Enforced by:** [`move-points`](../../tests/scenario/move-points.test.ts)

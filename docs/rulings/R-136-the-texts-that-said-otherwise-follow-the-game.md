@@ -1,9 +1,8 @@
 # R-136: The texts that said otherwise follow the game
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 46, built in the pull requests of P1-11e39 (the spell hints and their blurbs), stacked on
-  PR #485, and P1-11e40 (the Evil and Pagan texts and the Charm row), stacked on PR #486
+- **Source:** Question 46: six texts (four spells' hints, the report's Evil and Pagan words, the rulebook's Charm row) said otherwise than the turn: which is right? Answer: option 1, the words follow the game. Built in the pull requests of P1-11e39 (the spell hints and their blurbs), stacked on PR #485, and P1-11e40 (the Evil and Pagan texts and the Charm row), stacked on PR #486.
 - **Enforced by:** [`each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table`](../../tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts),
   [`each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says`](../../tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts)
 
@@ -27,7 +26,8 @@ row and the Pagan texts say what the turn does:
 
 - **An Evil conquest** follows the doctrine set on the conquering hero's orders. *Terror* plunders 50% of the
   province's tax value in gold at once. *Enslave* takes no gold: it presses the beaten folk into a free Green garrison
-  unit, and the province pays 1g less tax for 3 turns. Where the folk aren't humanoid, he plunders. The texts no longer
+  unit, and the province pays 1g less tax this turn and the next 3
+  ([R-176](R-176-enslaves-tax-cut-says-this-turn-and-the-next-3.md)). Where the folk aren't humanoid, he plunders. The texts no longer
   say every conquest plunders.
 - **Charm:** as the Charm takes hold, the charmer's Chronicle lists the hero's skills and the magic items he carries,
   as the order form's hint says. The rulebook said the charmer never sees them.
@@ -42,7 +42,7 @@ Example: a Plague swept Wendmeadow last spring, and Sir Bram's spearmen came thr
 comes, they roll at half the chance. The hint said they were "immunised"; it now says "half the chance".
 
 Example: Lord Thorn, an Evil hero, takes Wendmeadow with Enslave on his orders. His realm gains no gold, a Green
-company of the folk joins the garrison in chains, and the province pays 1g less tax for 3 turns. The report had said
+company of the folk joins the garrison in chains, and the province pays 1g less tax this turn and the next 3. The report had said
 every conquest plunders half the tax.
 
 The turn is not changed. The question was: six texts said otherwise than the turn (these four spells' hints, the
@@ -50,4 +50,4 @@ report's Evil and Pagan words, the rulebook's Charm row). Option 1: "the words f
 the game follows the words. The spells' hints and blurbs are P1-11e39's; the Evil and Pagan words and the Charm row are
 P1-11e40's.
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

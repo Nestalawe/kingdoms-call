@@ -1,6 +1,6 @@
 # R-060: Province events are seen only by those who can see the province
 
-- **Decided:** 2026-09-27, Toby
+- **Decided:** 2026-09-27, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.27-1719 §251 (item 6)
 - **Enforced by:** [`every-realms-report-in-whole-bot-games-passes-the-leak-check`](../../tests/simulation/every-realms-report-in-whole-bot-games-passes-the-leak-check.test.ts)

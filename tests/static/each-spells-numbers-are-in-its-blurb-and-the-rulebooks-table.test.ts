@@ -25,7 +25,7 @@
 // its row's sums), stand in their places among its words.
 // A row whose spell has no hint is listed with why; a hint's known gaps are listed as the other texts' are.
 // Since P1-11e39 (R-136), the hints and blurbs of Telekinetic Storm, Plague, Lightning Bolt and Hand of Death say what
-// the turn does (plan question 46 (a) to (c)): each states the words of the turn's rule, and none the words it said
+// the turn does (question 46 (a) to (c)): each states the words of the turn's rule, and none the words it said
 // before.
 // Level 0 (static): the content's spells, the hints' module (it imports only the content) and the rulebook's source are
 // files; nothing of the engine runs.
@@ -41,9 +41,8 @@ import {
 import { SPELL_HINTS } from '../../src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts';
 import { ROOT } from '../../tools/build.ts';
 
-const SPIRITWRACKS_BLURB = 'Parked "Spiritwrack\'s blurb leaves out three of its combat numbers"';
-const MIRROR_AND_INVISIBILITY =
-  "Parked \"Mirror Image's and Invisibility's texts leave out numbers, and the Mirror Shard's its half\"";
+const SPIRITWRACKS_BLURB = 'KD-086';
+const MIRROR_AND_INVISIBILITY = 'KD-087';
 /** A Mirror Image's chance to be seen through, as no text gives it yet: a guardian's, and its bounds. */
 const A_GUARDIANS_DISBELIEF = `a guardian's chance to see through it, and its bounds, are in neither text (${MIRROR_AND_INVISIBILITY})`;
 /** Where a text states a spell's numbers: its blurb's, its rulebook row's or its order-form hint's part for a use. */
@@ -467,7 +466,7 @@ test.for([
   }
 });
 
-// The rulebook's Charm row says what the turn shows the charmer, as the hint does (R-136, plan question 46 (e)): as the
+// The rulebook's Charm row says what the turn shows the charmer, as the hint does (R-136, question 46 (e)): as the
 // Charm takes hold, his Chronicle lists the charmed hero's skills and magic items (src/engine/orders/spells/psychic-
 // spells-…ts, the Charm's line), and no longer that he never sees them.
 test("the rulebook's Charm row says the Chronicle lists the charmed hero's skills and magic items (R-136)", () => {

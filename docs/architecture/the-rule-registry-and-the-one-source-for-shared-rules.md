@@ -99,7 +99,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   stage's order once (`tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`); each row's,
   and each ability a table holds, name and numbers in both books (`tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts`); no unit
   type named in a function the registry has taken (`tests/static/the-resolvers-the-registry-has-taken-name-no-unit-type.test.ts`),
-  and, outside the registry, the ratchet's `unitNameChecksInEngine`, which only falls; the layer rule ([ARCHITECTURE.md](../ARCHITECTURE.md#the-layers-and-the-module-map)).
+  and, outside the registry, the ratchet's `unitNameChecksInEngine`, which only falls; the layer rule ([its file](the-layers-of-src-and-the-module-map-generated-from-its-imports.md)).
 - **How to add an ability** of a stage already written: its row in
   `src/content/unit-abilities-their-names-numbers-and-words.ts`; its effect in the stage's file under
   `src/engine/rules/unit-abilities/`, reading its numbers from its row (another ability is asked by its slug, never by a
@@ -217,8 +217,8 @@ A **magic item's effect** (from P1-19m) is one row in
   `theWorthOfItInTheTreasury`; a key no row holds stays `equipment.ts`'s. `itemSlot` reads content's keys.
 - **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
   desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
-  the known gaps listed with their Parked
-  entries); no item effect key or item named, no item field of its own and no ward's field read, in a function the
+  the known gaps listed with their known
+  defects' ids); no item effect key or item named, no item field of its own and no ward's field read, in a function the
   registry has taken (`tests/static/the-resolvers-the-item-registry-has-taken-name-no-item-effect.test.ts`), and,
   outside the registry, the ratchet's `itemEffectChecksInEngine`, which only falls; the effects no matrix game meets, by
   a case each: the commander's items, the battles', the orders' (their orders'
@@ -245,7 +245,7 @@ perks'** (P1-19ai): [its file](the-guardian-perks-registry-its-stages-and-how-to
   plain literals. Nothing in the file may reference portal code. `PRIMAL_ARMY_DEFS_P` is the one place a
   Creature's or Monster's cost, strength, move, sub-race and pre-battle strike are written; the GM master
   tables and the player portal's speeds are built from it, and `tests/lib/primal-decided.js` (the wild roster
-  Toby decided on 2026-10-13) holds it, the class lists, the Druid ladder and the books to the decided figures.
+  decided on 2026-10-13) holds it, the class lists, the Druid ladder and the books to the decided figures.
 - **Shared rule tables** (the block headed `SHARED RULE TABLES`): every `KC_*` table, e.g.
   `KC_UNIT_CLASS` (unit classes as ordered lists), `KC_UNIT_TYPE` (each unit's one type word: infantry,
   ranged, cavalry, flyer or naval), `KC_DRUID_LEVELS`, `KC_UNIT_BASE_STR`, `KC_SKILLS`,

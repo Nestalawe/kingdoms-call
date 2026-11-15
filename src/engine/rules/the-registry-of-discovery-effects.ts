@@ -620,7 +620,7 @@ export function aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(
 /** The runner of "strength: a realm's discoveries add to the whole army" (both battles, beside the realm's other
  *  bonuses): what discoveries add to the whole army's strength. No entry holds the stage (sd02 War Drums is now an
  *  ordinary `unitStr` effect, armStr's, under the ×1.30 ceiling), so it adds nothing: discoveryArmyBonus's body, moved
- *  as it was (Parked "Three dead paths in discoveries.ts"). */
+ *  as it was (KD-207). */
 export function whatARealmsDiscoveriesAddToTheWholeArmy(): number {
   return 0;
 }

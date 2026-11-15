@@ -23,7 +23,7 @@
   the seed and `console`, and returns the context, where the bundle's top-level names are the globals. It reads
   `src/`, not the built site (`src` names another copy, built again whenever the copy changes). The run builds this
   checkout's bundle once (`setup/global.ts`, into `node_modules/.cache/kc/`, its path in `KC_ENGINE_BUNDLE`); another
-  copy's is built the first time a process asks (about a second). P1-14 moves the tests to importing the engine's
+  copy's is built the first time a process asks (about a second). P1-14z moves the tests to importing the engine's
   modules ("The engine's modules", next); until then the ratchet counts the test files on the loader
   (`vmLoaderTests`), which only falls.
   There the turn is `resolveTurn` (`src/engine/run-turn.ts`, P1-18d): give it the saved state (JSON), the slot rows
@@ -132,7 +132,7 @@
   character and mercenary band on the map; no line of a dead character's own after the phase they died in (battle
   lines excepted: a fallen commander's leaderless host fights on under his id, R-019); `orders_submitted` cleared.
   `turn-fuzz` and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
-  `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (Theo, 2026-10-17: no
+  `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (a maintainer, 2026-10-17: no
   engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: none.
 - **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
   rule and let fast-check make up the inputs: heroes, guardians, hits, small worlds, orders. Every dice roll in the
@@ -145,7 +145,8 @@
 - **The nightly run** (`.github/workflows/nightly.yml`, P1-04d) runs `npm run test:full` every night with a random
   `KC_SEED`, printed first in its log and summary. A red night blocks nothing: repeat it with that seed (locally, or
   Run workflow with the seed), then add a test at the lowest level that shows the problem, or, while the refactor
-  runs, ask Theo whether to park it in `KNOWN_BREACHES`.
+  runs, give it a `KD-` row in [Not yet assessed](../backlog/README.md#not-yet-assessed) and ask a maintainer whether
+  `KNOWN_BREACHES` lets it pass until that row is fixed.
 - **`lib/report-leaks.ts`** is what no realm's report may show it, as five pure checks on one turn and its
   reports (`turn_logs` rows with `player_index` ≥ 0), run by `checkTurn` (and `checkLeaks`, the leak checks alone):
   - **another realm's private line**: a line on the `PRIVATE_LINES` list (a hit-point rise, Invisibility, moving
@@ -251,3 +252,9 @@
 - **`KC_SITE=<folder>`** points every test, and the browser specs' server, at another copy of the site, e.g. a
   deliberately broken one to prove a check fails. Not the tests that read `src/` (`lib/engine.ts`, `lib/source.ts`,
   the engine's modules, [above](#how-the-tests-reach-the-site)): their fail-first proof is a planted copy of the branch.
+
+## CodeQL reads the tests too, and any alert fails the merge
+
+The rule, and what checks it, are in [traps.md](../traps.md#codeql-reads-the-tests-too-and-any-alert-fails-the-merge).
+CodeQL follows the value, not the meaning: `[was, text] = [text, text.replace(/<[^>]*>/g, '')]` in a loop is still an
+alert, and `was = text; text = text.replace(…)` is not.

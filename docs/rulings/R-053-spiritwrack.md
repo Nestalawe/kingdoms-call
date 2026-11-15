@@ -1,6 +1,6 @@
 # R-053: Spiritwrack silences
 
-- **Decided:** 2026-09-26, Toby
+- **Decided:** 2026-09-26, a maintainer
 - **Status:** Superseded
 - **Source:** DEV_LOG v2026.09.26-1536 §236 item 3
 - **Enforced by:** no test yet

@@ -122,7 +122,7 @@ diplomacy card, the forecasts' replay), with empty entries; so is whether a cree
 The line "declares war without warning" keeps its own `'Undead'` (its words, not the rule).
 
 The capture of consecrated land (Undead 100%, Evil 50%: R-045) stays in `fame-and-consecration.ts`: the books state
-50% for every conqueror (parked), so no row's words would be true until they are mended. A unit case pins its rise.
+50% for every conqueror (KD-125), so no row's words would be true until they are mended. A unit case pins its rise.
 
 **The world** (P1-19ay1): world creation asks its rows once, at no stage of a turn, through `rules-on-plain-values/`'s
 `the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts` (empty entries; the join
@@ -186,8 +186,8 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
 - `tests/unit/the-combat-item-and-guardian-lines-no-matrix-game-reaches-keep-their-values.test.ts`: a plea's odds by
   the foe's alignment (75/50/20), and the Evil and Undead's laughter.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
-  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1, 133 after P1-19au2, 126 after P1-19av1, 119 after P1-19av2, 109 after P1-19ax1, 101 after P1-19ax2, 70 after P1-19ay1): the functions taken name no alignment, and the
-  engine's names of an alignment outside `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
+  `alignmentChecksInEngine`: the functions taken name no alignment, and the engine's names of an alignment outside
+  `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
   the count stays above 0.
 - `tests/unit/the-marks-on-a-province-each-read-laid-lifted-and-faded.test.ts`: each mark read, laid and lifted
   through the turn's own callers (with the cases its header names, each read, lay, lift and fade).

@@ -1,6 +1,6 @@
 # R-021: Only a king may run down another king
 
-- **Decided:** 2026-09-21, Toby
+- **Decided:** 2026-09-21, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.21-1033 §6 (item 6)
 - **Enforced by:** no test yet

@@ -147,7 +147,7 @@ describe('a feature an older save marked discovered stays known to every realm',
 
 describe('a hero whose items hide his face can’t be named by an Encounter Character order', () => {
   /** The Cloak of Many Faces as an older save holds it (the relic a lair deals today carries `untargetable`, which
-   *  nothing reads: Parked "Three more relics never work"). */
+   *  nothing reads: KD-048). */
   const oldCloak = { id: 7, name: 'Cloak of Many Faces', slot: 'cloak', effect: { stat: 'hidden', bonus: 1 } };
   const theReasonFor = (items: unknown[]) =>
     encounterUntargetableReason(world(hero(1, 1, FAR_AWAY, { items })).characters[1]);

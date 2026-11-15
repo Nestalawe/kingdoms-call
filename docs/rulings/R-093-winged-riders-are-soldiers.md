@@ -1,6 +1,6 @@
 # R-093: The winged riders are soldiers of their race
 
-- **Decided:** 2026-10-11, Toby
+- **Decided:** 2026-10-11, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #44 (decisions 7 and 10 of the army-balance session)
 - **Enforced by:** [`flyers-soldiers`](../../tests/flyers-soldiers.test.js), [`flyers-soldiers-words`](../../tests/flyers-soldiers-words.test.js)

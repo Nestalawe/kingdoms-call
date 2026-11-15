@@ -1,8 +1,8 @@
 # R-125: Three forecasts follow the turn: the Loremaster's Explore, a spare Traveller's Cloak and a Naval 8 hero's ships
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 15, built in PR #371
+- **Source:** Question 15: three forecasts (the Loremaster's Explore, a spare Traveller's Cloak, a Naval 8 hero's ships) said otherwise than the turn: which is right? Answer: option 1, each forecast follows the turn. Built in PR #371.
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
 
 The order form and the army card forecast what the turn does, in three places where they did not:
@@ -18,4 +18,4 @@ The order form and the army card forecast what the turn does, in three places wh
 The turn is unchanged. The question was: three forecasts didn't follow the turn. Option 1: "each forecast follows the
 turn".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

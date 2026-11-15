@@ -101,8 +101,8 @@ the turn reads it.
   place not on its known list stops the turn before anything is written: the orders stay in, and the message says "The
   saved game holds 1 thing this build of Kingdoms Call doesn't know, so the turn did not run." and names each place (at
   most ten, then a count; `src/views/prose/what-the-saves-check-found-in-words.ts`). The known list
-  (`THE_KNOWN_LEAKS_A_TURN_STILL_RUNS_ON`) holds the Parked leaks of a battle's marks (a garrison company's
-  `_tempStrReduction`, `_archeryRed`, `_died` and `_fromGarrison`; a hero's `_slainBy`), each naming its Parked entry;
+  (`THE_KNOWN_LEAKS_A_TURN_STILL_RUNS_ON`) holds the known leaks of a battle's marks (a garrison company's
+  `_tempStrReduction`, `_archeryRed`, `_died` and `_fromGarrison`; a hero's `_slainBy`), each naming its known defect;
   each leak's fix removes its entry. On a known place the turn runs, and, as before the stop, its end tells the GM in
   one line of the GM's log, which no realm reads (`[Save check] The saved game holds 1 thing …, and the turn ran on it
   as it was. …`); `resolveTurn` returns the list, and the shell's message says the same, and shows it again once the
@@ -168,7 +168,9 @@ games.
   (brute strength's, R-137).
 - **Items:** `migrateItemTiers` re-stamps only an item's tier. An item's effect stays as it was when
   awarded, so changing an effect doesn't reach items players already hold. Whether it should is a
-  design decision for Toby: raise it as a ruling, don't decide it in code.
+  design decision for the maintainers: raise it as a ruling, don't decide it in code.
+  The items' registry reads each held copy's own key and numbers, and its content rows hold only the numbers the code
+  wrote inline, so a held copy acts, fights and is weighed (its role, its tier's floor) by what it carries.
 
 ## A change to the save's shape needs its version
 
@@ -182,7 +184,11 @@ older save.
   save can't meet as it is (a field renamed, moved, retyped, or now required) also bumps the version: a numbered step
   in `THE_NUMBERED_STEPS_OF_THE_UPGRADE` that mends a save of the version before, the new number, and a fixture of the
   new version (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`). A step runs once, on a save below
-  its version, after the passes before the check, and stays safe to repeat.
+  its version, after the passes before the check, and stays safe to repeat. A field renamed with no step: every live save keeps
+  the old name, which the new code never reads.
+- **A `refactor-only` change retypes no field.** Narrowing a `z.unknown()` field of `src/schemas/saved-game-state.ts`
+  (or its elements) is a retype: the check would refuse a live save that holds another value there. A refactor leaves
+  the field as it is and narrows the value where the code reads it.
 - **A fixture is never edited once merged** (as a merged migration): it is what a build of its day saved. The script
   refuses to write over one. `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts` upgrades every
   fixture, parses it strictly and plays a turn on it, so an older fixture fails until a step mends it, and a version
@@ -208,7 +214,7 @@ writes, or a battle's mark that leaked into the save).
 - **Name a place by its path and kind, never its value.** The GM's line and the turn's message may be passed on, so
   they hold no name or text from a game: a key that isn't a number or a name as code writes one is shown as "(a key)".
 - **A place reported is a fix of its own**: a field the code saves goes into the schema (optional, with what writes
-  it); a battle's mark that leaked is a Parked bug. Since the stop (P1-15f8), a place not on the known list stops the
+  it); a battle's mark that leaked is a known defect, with its backlog row. Since the stop (P1-15f8), a place not on the known list stops the
   turn on the GM page; a leak's place stays on that list, its turn played and told, until its fix removes the entry.
 - **A staged world in a test is not a save.** A world made by `generateNewGame` alone lacks what Turn 0 adds (the turn
   mode, the bots' settings), and a hero a test stands on the board lacks fields a real one holds, so a turn played on

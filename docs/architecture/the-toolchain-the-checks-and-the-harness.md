@@ -12,7 +12,7 @@ Playwright Test runs the browser specs in `tests/browser/` (`playwright.config.t
 strictly, and the site's since P1-09e (`npm run typecheck`, `tsconfig.json`); ESLint with typescript-eslint lints them
 (`npm run lint`, `eslint.config.js`); dependency-cruiser checks the layers of `src/` and that no import cycle appears
 (`npm run lint:arch`, `.dependency-cruiser.mts`), and knip finds unused code (`npm run knip`, `knip.ts`), since P1-13a
-([ARCHITECTURE.md](../ARCHITECTURE.md#the-layers-and-the-module-map)); Prettier formats them (`npm run format`). Node is pinned exactly (`.nvmrc`, `engine-strict` in
+([the layers](the-layers-of-src-and-the-module-map-generated-from-its-imports.md)); Prettier formats them (`npm run format`). Node is pinned exactly (`.nvmrc`, `engine-strict` in
 `.npmrc`), and Dependabot proposes updates weekly (`.github/dependabot.yml`). Prettier formats the site's own
 TypeScript and CSS in `src/` too (since P1-09c), and `public/`'s two scripts, but not the HTML templates, where
 whitespace is content. ESLint lints the site's modules (`src/**/*.ts`) in a tier of their own: ESLint's recommended rules and typescript-eslint's `strict` set, which read the code, not its types. A file
@@ -21,8 +21,8 @@ sets too, `strictTypeChecked` and `stylisticTypeChecked`, as the tests and tools
 doesn't, since with nothing checked every value is `any`. `eslint.config.js` reads which files are which from the
 files themselves, so a file freed from the switch-off meets the type-aware sets in that same PR. Only one rule of those
 sets is off: `non-nullable-type-assertion-style`, which asks for `x!` where `no-non-null-assertion` forbids it.
-**Every rule is an error; none warns**. What the rules found when they came in (830 findings: the 346 the
-site's tier found as the code became TypeScript, what the type-aware sets found, and P1-13c's 21 reads of the database) is listed in
+**Every rule is an error; none warns**. What the rules found when they came in (what the site's tier found as
+the code became TypeScript, what the type-aware sets found, and P1-13c's reads of the database) is listed in
 `eslint-suppressions.json`, ESLint's own bulk suppressions, per file and rule with a count. The command line reads it
 (`npm run lint`, `npm run check`, the edit hook): a new finding fails, and a listed one that no longer occurs fails too
 until it is taken out of the list (`npx eslint --prune-suppressions`,
@@ -63,22 +63,22 @@ The harness runs itself. Claude Code hooks, committed in `.claude/settings.json`
 finish (`tools/hooks/before-stop.ts`). `npm run check` (`tools/check.ts`) runs the import rules over all of `src/`
 (`npm run lint:arch`) and checks what the branch changes: the
 TypeScript tests that import a changed file (`vitest related`), or every level but page when anything else changed,
-since the test scripts load `site/` (built from `src/`) by file name and `vitest related` can't follow that. `npm run ratchet`
-(`tools/ratchet.ts`) keeps the counts in `tests/ratchet.json` from rising: switched-off checks, allowlist entries,
-JavaScript files, quarantined tests, tests on `tests/lib/stub-db.js`, tests on the engine's `vm` loader
-(`vmLoaderTests`, P1-09d: P1-14 moves them to the engine's modules), the engine's checks of a unit by its type's name
-outside the rule registry (`unitNameChecksInEngine`, P1-19a: each row of P1-19 lowers it), and of an item's effect by
-its key or an item by its name outside it (`itemEffectChecksInEngine`, P1-19m: each row of the items family lowers it), and of a
-spell by its name or its `fn` outside it (`spellChecksInEngine`, P1-19u: each row of the spells family lowers it), and of a
-discovery by its id or an effect by its kind outside it (`discoveryChecksInEngine`, P1-19aa: the discoveries family's rows
-lowered it to 0), and of a guardian's perk outside it (`guardianPerkChecksInEngine`, P1-19ai: a kind of perk compared or
-looked up, a field of the wards a fighter wears or a ward only a perk sets, a rider read in personal combat; each row of
-the perks lowers it), and of an alignment by its name outside it (`alignmentChecksInEngine`, P1-19at1: each row of the
-alignment abilities lowers it), ESLint's suppressed findings
-(`eslintSuppressions`, P1-13b; the site's lint warnings, `eslintWarnings`, before it), the import rules' known violations (`knownArchitectureViolations`) and what knip finds unused (`unusedCode`,
-both P1-13a). `tests/static/harness.test.ts` fails if any
-of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a
-dangerous path.
+since the test scripts load `site/` (built from `src/`) by file name and `vitest related` can't follow that.
+
+**The ratchet** (`npm run ratchet`, `tools/ratchet.ts`) lets the harness only get stronger. It counts what weakens
+the harness, or what a step of the backlog is still taking out: switched-off checks, allowlist entries, JavaScript
+files, quarantined tests, tests on the database stand-in (`tests/lib/stub-db.js`) or on the engine's `vm` loader, the
+engine's checks of content by name outside the [rule registry](the-rule-registry-and-the-one-source-for-shared-rules.md)
+(a family each), ESLint's suppressed findings, the import rules' known violations and what knip finds unused. It
+fails when a count is above its baseline, and `tests/static/harness.test.ts` makes `npm test` and CI fail with it.
+When a count falls, lower its baseline in the same pull request (`npm run ratchet -- --update` only ever lowers it);
+never raise one. **Where to look:** `tests/ratchet.json` for each count today, `tools/ratchet.ts` for what each
+counts, and [the backlog](../backlog/README.md) for the steps that lower them. The docs name a count by its key
+(`stubDbTests`, say) and never give its figure, which goes stale the day the count falls
+(`tests/static/no-line-of-the-docs-pairs-a-ratchet-count-with-a-figure.test.ts`).
+
+`tests/static/harness.test.ts` also fails if the hooks, the ratchet, or the strict compiler and lint settings are
+missing or weakened, and every harness file is a dangerous path.
 
 The balance matrix (`npm run balance`, `tools/balance/`, P1-02a) measures engine changes: 60 seeded games played in
 the GM portal (48 all-bot, 12 with a realm whose orders the runner chooses and sends as the player portal sends them:
@@ -116,7 +116,7 @@ CI's balance job plays it whenever it plays the matrix. Today one: `a-chase-held
 by an unresolved battle, which the matrix's games meet only by luck (20 runs, about 3 s).
 **The mutant scorer** (`npm run mutants -- <folder>`, `tools/mutants/run.ts`, P1-21a) measures the tests themselves:
 "if the code were wrong, would we notice?". A mutant is a small fault in `src/`, written as a patch by a mutation
-session (the plan's protocol), with an `Area:` and an `Imitates:` line (the real bug it imitates) before the diff. The
+session ([its routine](../ways-of-working/a-mutation-session-faults-made-on-purpose-and-the-tests-they-leave.md)), with an `Area:` and an `Imitates:` line (the real bug it imitates) before the diff. The
 scorer first runs every stage on the checkout's `HEAD` with no patch (the control run; the tree must be clean, and any
 red stops it), then each patch, one at a time, in a throwaway git worktree in the system's temporary folder with
 `node_modules` copied in without its caches: `npm run build` (red means the patch is broken), then the compiler, lint
@@ -208,7 +208,7 @@ it answered 1, but `pctRoll`, in `d100`'s own file, kept calling the real `d100`
 
 ## A fixed lint finding must leave the suppressions
 
-Every lint rule is an error. What the rules found when they came in (809 findings) is listed in
+Every lint rule is an error. What the rules found when they came in is listed in
 `eslint-suppressions.json`: ESLint's bulk suppressions, which say, per file and rule, how many findings that file may
 hold. ESLint's command line reads it (`npm run lint`, `npm run check`, the edit hook); its API (`new ESLint()`, as
 `tests/static/harness.test.ts` uses) doesn't. The ratchet counts the list (`eslintSuppressions`), so it only falls.
@@ -239,15 +239,16 @@ because of two such sorts.
 
 ## The repository's files, folder by folder
 
-CLAUDE.md's file map gives one short row a path; this is the full map.
+The repository's file map, one row a path; CLAUDE.md links it.
 
 | Path | What |
 |---|---|
-| `src/` | The site's source, TypeScript modules (most files still say `// @ts-nocheck`: P1-10 and P1-16 type them). `npm run build` (Vite) builds it into `site/` (git-ignored): what is published and what every test opens ([ARCHITECTURE.md](the-build-from-src-to-site.md#the-build-src-becomes-site)). `*.html` (the pages' templates), `engine/` (the turn engine, bots, world generation; `engine/rules-on-plain-values/`: the rules of a hero, an army, an item or a number, which import only `src/content`; `engine/rules/`: the rule registry, each content effect's entry and its effects at the stages of the hook points, which import only that folder, the rules on plain values and `src/content`; `engine/saves/`: a saved game's version and its upgrade, run before every turn), `shared/` (the player portal's one door to them: it re-exports from that folder only), `views/` (every realm's turn report, the lines each realm reads, and what it may see of the world, `playerView`; the sight rules it applies are `engine/sight/`'s; `views/prose/`: the words of each line, which the engine records as a fact; with `engine/`, the engine: bundled and loaded alone in Node, `tests/lib/engine.ts`), `db/` (`kc-db-guard.ts`: the version guard; telemetry), `schemas/` (the saved state's and the submitted orders' Zod schemas, which give the world its types; imported for code only by the save's upgrade, whose check at load parses with them), `content/kingdoms-call-data.ts` and `content/unit-abilities-their-names-numbers-and-words.ts` (the rows of the abilities the registry holds, and every unit's ability blurb, `UNIT_ABILITIES`, which the player portal shows), `ui/<page>/` (each page's styles and code; `page.ts`, its entry, imports its files in order, `globals.ts`, last, what it keeps on `window`), `ui/shared/` (`kc-safe.ts`: `kcHtml`/`kcEsc`, the one way a page builds HTML, [ARCHITECTURE.md](the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#how-a-page-builds-html)), `rulebook/`, `globals.d.ts` (the names the modules read without importing them). `public/`: copied as it is (`kc-config.js`: which database; `kc-staging-footer.js`); supabase-js comes from npm ([ARCHITECTURE.md](../ARCHITECTURE.md#supabase-js-the-copy-served-with-the-site)) |
+| `src/` | The site's source, TypeScript modules (most files still say `// @ts-nocheck`: P1-10 and P1-16 type them). `npm run build` (Vite) builds it into `site/` (git-ignored): what is published and what every test opens ([ARCHITECTURE.md](the-build-from-src-to-site.md#the-build-src-becomes-site)). `*.html` (the pages' templates), `engine/` (the turn engine, bots, world generation; `engine/rules-on-plain-values/`: the rules of a hero, an army, an item or a number, which import only `src/content`; `engine/rules/`: the rule registry, each content effect's entry and its effects at the stages of the hook points, which import only that folder, the rules on plain values and `src/content`; `engine/saves/`: a saved game's version and its upgrade, run before every turn), `shared/` (the player portal's one door to them: it re-exports from that folder only), `views/` (every realm's turn report, the lines each realm reads, and what it may see of the world, `playerView`; the sight rules it applies are `engine/sight/`'s; `views/prose/`: the words of each line, which the engine records as a fact; with `engine/`, the engine: bundled and loaded alone in Node, `tests/lib/engine.ts`), `db/` (`kc-db-guard.ts`: the version guard; telemetry), `schemas/` (the saved state's and the submitted orders' Zod schemas, which give the world its types; imported for code only by the save's upgrade, whose check at load parses with them), `content/kingdoms-call-data.ts` and `content/unit-abilities-their-names-numbers-and-words.ts` (the rows of the abilities the registry holds, and every unit's ability blurb, `UNIT_ABILITIES`, which the player portal shows), `ui/<page>/` (each page's styles and code; `page.ts`, its entry, imports its files in order, `globals.ts`, last, what it keeps on `window`), `ui/shared/` (`kc-safe.ts`: `kcHtml`/`kcEsc`, the one way a page builds HTML, [ARCHITECTURE.md](the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#how-a-page-builds-html)), `rulebook/`, `globals.d.ts` (the names the modules read without importing them). `public/`: copied as it is (`kc-config.js`: which database; `kc-staging-footer.js`); supabase-js comes from npm ([ARCHITECTURE.md](the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#supabase-js-a-copy-served-with-the-site)) |
+| `public/` | Copied as it is into `site/`: `kc-config.js` (which database), `kc-staging-footer.js` |
 | `supabase/` | The database: `schemas/` (the desired structure, one file per table with its access rules), `migrations/` (generated from it, then reviewed), `config.toml`, `tests/` (the access-rule tests, pgTAP). How to change it: `supabase/README.md`. `.github/workflows/schema-pull.yml` reads the live structure |
 | `tests/` | `suite.ts` (every test script, with its level), `legacy.test.ts` (runs them in Vitest), `*.test.js` (the test scripts), `<level>/*.test.ts` (new tests: TypeScript, Vitest), `browser/*.spec.ts` (browser specs: Playwright Test, Chromium), `setup/` (the run's checks and footer), `lib/boot.js` (the one way to load a page), `lib/stub-db.js` (in-memory Supabase stand-in), `lib/invariants.ts` and `lib/report-leaks.ts` (what must hold after every turn; what no report may show), `fixtures/saves/` (a made-up save of each version, `version-<n>.json`), `quarantine/` (kept, not run) |
 | `vitest.config.mts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js`, `.dependency-cruiser.mts`, `knip.ts`, `.prettierrc.json`, `.nvmrc`, `.npmrc`, `.claude/settings.json` | The toolchain: tests by level, browser specs, strict TypeScript, lint (every rule an error; what the rules found when they came in is listed in `eslint-suppressions.json`), the layers and no import cycle (dependency-cruiser; what broke a rule when it came in is listed in `.dependency-cruiser-known-violations.json`), unused code (knip, `npm run knip`), formatting, the exact Node version, the Claude Code hooks |
-| `tools/` | `build.ts` (`npm run build`), `dev.ts` (`npm run dev`), `pages.ts` (which files make each page), `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `module-map.ts` (the module map in `docs/ARCHITECTURE.md`), `eslint-rules/` (the project's own lint rules, the plugin `kc`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`; its report, `npm run balance:report`; named scenarios in `tests/balance/scenarios/`, `npm run balance -- <scenario>`), `mutants/` (the mutant scorer, `npm run mutants -- <folder>`: does a fault in `src/` turn a check red? Local only, never in CI), `github/` (the script that posts the balance report on a PR), `deploy/` (what the deploy's and staging's build jobs run before the upload: it keeps the files a cached page still names), `saves/` (the script that makes a save fixture from a seeded bot game), `merging/kc-merge.zsh` (shell helpers to merge a PR, or a range of them one after the other, and wait for the deploy, sourced by hand: zsh, not TypeScript, since no build runs it; how to load it is in its first lines; `unit/kc-merge-starts-the-codeql-scan-…` runs it in zsh with a fake `gh` and `git`, so CI's unit job and the nightly install zsh) |
-| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level (unit and scenario in two halves), the browser specs, the balance matrix in three parts, joined, and its report when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once Toby approves, then build `site/` in a job that can only read, and publish it to Pages from another), `balance-report.yml` (posts the balance report on a PR once CI finishes, and warns while "What changes in play" is missing), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, Toby approves), `nightly.yml` (`npm run test:full` with a random seed every night; blocks nothing) |
+| `tools/` | `build.ts` (`npm run build`), `dev.ts` (`npm run dev`), `pages.ts` (which files make each page), `check.ts` (`npm run check`), `hooks/` (the Claude Code hooks), `ratchet.ts` (`npm run ratchet`; baseline `tests/ratchet.json`), `module-map.ts` (the module map in its topic file), `eslint-rules/` (the project's own lint rules, the plugin `kc`), `balance/` (the balance matrix, `npm run balance`; baselines in `tests/balance/baseline/`; its report, `npm run balance:report`; named scenarios in `tests/balance/scenarios/`, `npm run balance -- <scenario>`), `mutants/` (the mutant scorer, `npm run mutants -- <folder>`: does a fault in `src/` turn a check red? Local only, never in CI), `github/` (the script that posts the balance report on a PR), `deploy/` (what the deploy's and staging's build jobs run before the upload: it keeps the files a cached page still names), `saves/` (the script that makes a save fixture from a seeded bot game), `merging/kc-merge.zsh` (shell helpers to merge a PR, or a range of them one after the other, and wait for the deploy, sourced by hand: zsh, not TypeScript, since no build runs it; how to load it is in its first lines; `unit/kc-merge-starts-the-codeql-scan-…` runs it in zsh with a fake `gh` and `git`, so CI's unit job and the nightly install zsh) |
+| `.github/workflows/` | `ci.yml` (on every PR, jobs side by side: static checks, each test level (unit and scenario in two halves), the browser specs, the balance matrix in three parts, joined, and its report when an engine path changed, the database; `ci` and `db` are the required checks; `deploy.yml` calls it), `deploy.yml` (on `main`: test, migrate production once the owner approves, then build `site/` in a job that can only read, and publish it to Pages from another), `balance-report.yml` (posts the balance report on a PR once CI finishes, and warns while "What changes in play" is missing), `dangerous-paths.yml` (warns on a PR that changes a dangerous path), `merges-into-main.yml` (red on a PR that would merge into a branch other than `main`, e.g. a stacked PR whose base hasn't merged yet), `overlord.yml` (sets the Overlord account on the live database; run by hand, the owner approves), `nightly.yml` (`npm run test:full` with a random seed every night; blocks nothing) |
 | `.github/dangerous-paths`, `.github/scripts/dangerous-paths.js`, `.github/pull_request_template.md` | The dangerous-paths list and the warning's logic (see below); the PR template (fill in every section) |
-| `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), Toby's rulings (`rulings/`) |
+| `docs/` | Architecture, traps, how to try a change on staging (`staging.md`), the rulings (`rulings/`) |

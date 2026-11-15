@@ -1,60 +1,71 @@
 # Rulings
 
-Toby's decisions about how the game works, one file each. **Read the ruling before changing a rule it covers**,
+The maintainers' decisions about how the game works, one file each. **Read the ruling before changing a rule it covers**,
 and don't "fix" something a ruling says is deliberate without a fresh ruling.
 
 A ruling is a decision about the game players experience: combat, magic, movement, the economy, what a report
 shows, who can read what. Not here: how we work (`CLAUDE.md`), the numbers bots are tuned with (code comments
-beside the bot code), and the plan's own decisions.
+beside the bot code), and [the decisions on how the work runs](../decisions/README.md).
 
 ## Status
 
-- **Confirmed:** Toby decided it; the source says where.
+- **Confirmed:** a maintainer decided it; the source says where.
+- **Decided, not built:** a maintainer decided it, and the game doesn't do it yet. The file's **Note:** says
+  "not yet built", and what is left. Building it is a row of [the backlog](../backlog/README.md); the pull request that
+  builds it sets **Confirmed** and names its tests under **Enforced by**.
 - **To confirm:** it's how the game works today, but the call was an agent's judgement, or the record doesn't say
-  Toby made it.
+  a maintainer made it.
 - **Superseded:** a later ruling replaced it (the file names which). Kept as the record.
-- **(open question)** in the index: the ruling stands, with one point Toby hasn't settled, written under **Open:**
+- **(open question)** in the index: the ruling stands, with one point the maintainers haven't settled, written under **Open:**
   in the file.
 
-Where a rule is still decided but not yet built, the file says so in a **Note:**.
-
-## Toby: confirming the list (once)
+## The maintainers: confirming the list (once)
 
 Read the index below. For each ruling, either it stands (say nothing), or tell us what's wrong. The **To confirm**
 rows and the **open questions** come first. Your answers go into the files, in one pull request.
 
 ## Adding a ruling
 
-When Toby rules on a design fork, the pull request that builds it adds the ruling:
+**An answer becomes a ruling at once.** When a maintainer answers a question, the next pull request adds the ruling,
+with the status **Decided, not built**, and takes the question out of
+[the questions file](../questions-for-the-maintainers.md). Building it is a row of [the backlog](../backlog/README.md).
+A pull request that adds a ruling and builds it too (a batch item a maintainer answered on the way) sets **Confirmed**
+at once.
 
 1. A new file `R-NNN-short-name.md`, the next number, in this shape:
 
    ```
    # R-NNN: <the rule, as a title>
 
-   - **Decided:** <date>, Toby
-   - **Status:** Confirmed
-   - **Source:** PR #<number> (the question and his answer)
-   - **Enforced by:** <each test that holds it, linked>, or no test yet
+   - **Decided:** <date>, a maintainer
+   - **Status:** Decided, not built
+   - **Source:** Question <N>: <the question, in one line>? Answer: <the answer>.
+   - **Enforced by:** no test yet
 
    <the rule, in plain words, for a future agent>
 
-   In Toby's words: "<his answer, if he wrote one>"
+   **Note:** Decided, not yet built.
+
+   In the maintainer's words: "<the answer, if one was written>"
    ```
 
 2. A row in the index below.
 3. If it changes an earlier ruling, mark that one **Superseded** and name the new one in it.
 
-`npm test`'s `rulings` check keeps the files and the index in step, and checks that every test named under
-**Enforced by** exists and runs in `npm test`.
+`npm test`'s `rulings` check keeps the files and the index in step, checks that every test named under
+**Enforced by** exists and runs in `npm test`, and that a ruling is **Decided, not built** exactly when its Note says
+"not yet built".
 
 ## Sources
 
 - **DEV_LOG §N (build v…)**: the engineering log of the claude.ai Project, 13–30 September 2026, before the game
-  moved to this repo. It isn't in the repo; Toby and Theo hold it privately. Section numbers and build stamps are
+  moved to this repo. It isn't in the repo; the maintainers hold it privately. Section numbers and build stamps are
   given so either can find the passage.
 - **PR #N**: this repo's pull requests, from the cutover on 8 October 2026.
-- **Plan decision D-NN**: Toby's answers to the questions in the private plan; each file says what he decided.
+- **Decision D-NN**: a maintainer's answers, one line each in [the decisions](../decisions/README.md); the source
+  gives the question in one line, then the answer.
+- **Question N**: a question a maintainer answered, numbered in [the questions file](../questions-for-the-maintainers.md)'s
+  series; the source gives the question in one line, then the answer.
 
 ## Index
 
@@ -107,7 +118,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-045](R-045-consecration-capture-experience.md) | Taking holy ground: experience by the conqueror's crown | 2026-09-24 | Confirmed | no test yet |
 | [R-046](R-046-unmet-realms-are-nameless.md) | Realms you have not met are nameless | 2026-09-24 | Confirmed | [`fuzz-advance-masking`](../../tests/fuzz-advance-masking.test.js), [`what-each-realm-may-see-of-the-world`](../../tests/unit/what-each-realm-may-see-of-the-world.test.ts) |
 | [R-047](R-047-two-recruits-at-home.md) | Two recruits a season only in your founding capital | 2026-09-24 | Confirmed (open question) | no test yet |
-| [R-048](R-048-heroes-not-yet-joined.md) | A hero being hired is unknown until he joins | 2026-09-24 | Confirmed (open question) | no test yet |
+| [R-048](R-048-heroes-not-yet-joined.md) | A hero being hired is unknown until he joins | 2026-09-24 | Confirmed | no test yet |
 | [R-049](R-049-charmed-heroes-and-items.md) | A charmed hero handles no items | 2026-09-24 | Confirmed | no test yet |
 | [R-050](R-050-bonus-tax-gold-cap.md) | Bonus tax gold is capped at 5% of base tax | 2026-09-24 | Confirmed (open question) | no test yet |
 | [R-051](R-051-item-tiers-by-role.md) | What each lair grade holds | 2026-09-24 | Confirmed | no test yet |
@@ -180,7 +191,7 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-118](R-118-a-spy-who-stays-sees-deeds-not-news.md) | A spy who stays in a province sees what rival heroes do there, never their realm's news | 2026-10-31 | Confirmed | [`realm-reports`](../../tests/unit/realm-reports.test.ts), [`report-leaks`](../../tests/unit/report-leaks.test.ts), [`hp-gain-private`](../../tests/unit/hp-gain-private.test.ts) |
 | [R-119](R-119-invisibility-hides-him-from-enemy-orders.md) | Every enemy order and reaction aimed at a hero whose Invisibility holds misses him | 2026-10-31 | Confirmed | [`espionage-orders-called-directly`](../../tests/unit/espionage-orders-called-directly.test.ts), [`cast-spell-order-called-directly`](../../tests/unit/cast-spell-order-called-directly.test.ts), [`pursuits-and-the-catch-roll`](../../tests/unit/pursuits-and-the-catch-roll.test.ts), [`war-orders-called-directly`](../../tests/unit/war-orders-called-directly.test.ts), [`defend-watches`](../../tests/unit/defend-watches.test.ts), [`new-turn-war-academy-to-the-final-reconcile-called-directly`](../../tests/unit/new-turn-war-academy-to-the-final-reconcile-called-directly.test.ts), [`report-leaks`](../../tests/unit/report-leaks.test.ts), [`the-spell-texts-say-what-personal-combat-does`](../../tests/static/the-spell-texts-say-what-personal-combat-does.test.ts) |
 | [R-120](R-120-the-crown-of-command-counts-everywhere.md) | The Crown of Command counts everywhere, while its wearer stands beside the hero | 2026-10-31 | Confirmed | [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts), [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts) |
-| [R-121](R-121-a-curse-spell-reaches-a-commanders-druid-in-battle.md) | A Curse spell halves a commander's Druid in battle too, as it does his Druid mastery | 2026-11-02 | Confirmed (open question) | [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts) |
+| [R-121](R-121-a-curse-spell-reaches-a-commanders-druid-in-battle.md) | A Curse spell halves a commander's Druid in battle too, as it does his Druid mastery | 2026-11-02 | Confirmed | [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts) |
 | [R-122](R-122-the-army-card-takes-a-druid-shortfall-off-as-the-battle-does.md) | The army card takes a Druid shortfall off as the battle does | 2026-11-02 | Confirmed | [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts) |
 | [R-123](R-123-the-warlock-casts-one-more-spell-of-his-best-school.md) | The Warlock casts one more spell of his best school each turn, and the order form offers it | 2026-10-31 | Confirmed | [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts), [`spells-each-school-allows-a-turn-and-a-fight`](../../tests/unit/spells-each-school-allows-a-turn-and-a-fight.test.ts), [`cast-practice-projection`](../../tests/cast-practice-projection.test.js) |
 | [R-124](R-124-a-grand-cathedrals-bless-costs-no-casting-slot-on-the-order-form-too.md) | A Grand Cathedral's Bless Province costs no casting slot, on the order form too | 2026-11-02 | Confirmed | [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts), [`spells-each-school-allows-a-turn-and-a-fight`](../../tests/unit/spells-each-school-allows-a-turn-and-a-fight.test.ts), [`what-each-realm-may-see-of-the-world`](../../tests/unit/what-each-realm-may-see-of-the-world.test.ts), [`cast-practice-projection`](../../tests/cast-practice-projection.test.js) |
@@ -197,3 +208,48 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 | [R-135](R-135-the-hero-cards-figures-follow-the-turn.md) | The hero card's figures follow the turn: the army card's sea note pools the flyers' lift with the hulls, as the turn and the Move note do; the order form's magic level is the turn's (a trained level counts to 5, two items of one name once); the card's upkeep halves a Druid 6 leader's or a Druidic Wonder's beasts; its strength is the turn's before the discoveries, the ground and the foe | 2026-11-05 | Confirmed | [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts), [`the-strength-a-unit-has-before-the-ground-and-the-foe`](../../tests/unit/the-strength-a-unit-has-before-the-ground-and-the-foe.test.ts) |
 | [R-136](R-136-the-texts-that-said-otherwise-follow-the-game.md) | The texts that said otherwise follow the game: four spells' hints and blurbs, the Evil and Pagan texts and the rulebook's Charm row say what the turn does | 2026-11-05 | Confirmed | [`each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table`](../../tests/static/each-spells-numbers-are-in-its-blurb-and-the-rulebooks-table.test.ts), [`each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says`](../../tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts) |
 | [R-137](R-137-a-guardians-brute-strength-reads-as-it-fights.md) | A guardian's brute strength reads as it fights: "+N damage on every blow; a special's weight multiplies it", running games' guardians re-stamped | 2026-11-05 | Confirmed | [`each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table`](../../tests/static/each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table.test.ts), [`a-saved-games-old-shapes-are-mended-before-the-turn`](../../tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts) |
+| [R-138](R-138-an-onlooker-with-a-hero-there-reads-a-battles-one-line-summary.md) | A realm with a hero where two other realms fight reads the battle's one-line summary | 2026-10-31 | Decided, not built | no test yet |
+| [R-139](R-139-the-rulebooks-footers-say-when-their-rules-last-changed.md) | Each rulebook's footer says when its rules last changed | 2026-10-31 | Decided, not built | no test yet |
+| [R-140](R-140-messenger-birds-is-retired.md) | Messenger Birds is retired | 2026-10-31 | Decided, not built | no test yet |
+| [R-141](R-141-illusory-terrain-fools-the-intelligence-report-and-the-order-forms-too.md) | Illusory Terrain fools the Intelligence report and the order forms too, as it fools the map | 2026-10-31 | Decided, not built | no test yet |
+| [R-142](R-142-a-declaration-of-war-meets-the-realm-that-declared-it.md) | A declaration of war counts as meeting the realm that declared it | 2026-10-31 | Decided, not built | no test yet |
+| [R-143](R-143-the-crown-of-commands-text-says-it-helps-your-realms-characters.md) | The Crown of Command's text says it helps your own realm's characters | 2026-10-31 | Decided, not built | no test yet |
+| [R-144](R-144-only-the-human-garrison-holds-the-gate.md) | Only the Human Garrison holds the gate | 2026-10-31 | Decided, not built | no test yet |
+| [R-145](R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) | New games' guardians have the guardian table's HP; running games keep theirs | 2026-10-31 | Decided, not built | no test yet |
+| [R-146](R-146-flak-screen-engages-every-flyer.md) | Flak Screen engages every flyer, beasts too | 2026-10-31 | Decided, not built | no test yet |
+| [R-147](R-147-old-corsair-companies-fight-as-plain-fleets.md) | Old Corsair companies fight as plain fleets | 2026-10-31 | Decided, not built | no test yet |
+| [R-148](R-148-each-banner-gives-its-own-number.md) | Each banner gives the strength its own text says | 2026-10-31 | Decided, not built | no test yet |
+| [R-149](R-149-the-lancers-the-legions-and-the-bowmans-items-name-the-units-the-battle-lifts.md) | The lancer's, the legion's and the bowman's items name every unit the battle lifts | 2026-10-31 | Decided, not built | no test yet |
+| [R-150](R-150-the-home-defence-items-say-what-the-battle-does.md) | The home-defence items say what the battle does | 2026-10-31 | Decided, not built | no test yet |
+| [R-151](R-151-the-shield-wall-runes-text-says-what-the-battle-does.md) | The Shield-Wall Rune's text says what the battle does | 2026-10-31 | Decided, not built | no test yet |
+| [R-152](R-152-the-plus-three-tax-items-say-three-gold-each-tax-season.md) | The "+3% tax" items say +3 gold each tax season | 2026-10-31 | Decided, not built | no test yet |
+| [R-153](R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) | The Ring of the Unbroken Pulse and the Great Helm of the Deathless shrug off a killing blow; four more items state the 30% | 2026-10-31 | Decided, not built | no test yet |
+| [R-154](R-154-the-terror-items-say-the-foe-flees-half-the-time.md) | The terror items say the foe flees half the time | 2026-10-31 | Decided, not built | no test yet |
+| [R-155](R-155-clairvoyance-finds-an-invisible-hero-and-a-spy-who-stays-loses-him.md) | Clairvoyance finds an invisible hero, and a spy who stays doesn't see what he does once he has vanished | 2026-11-02 | Decided, not built | no test yet |
+| [R-156](R-156-the-broker-reaches-what-the-realms-map-shows.md) | The Broker reaches what the realm's map shows | 2026-11-05 | Decided, not built | no test yet |
+| [R-157](R-157-a-lair-beast-talked-down-by-parley-counts-as-pacified.md) | A lair beast talked down by parley counts as pacified, not slain | 2026-11-05 | Decided, not built | no test yet |
+| [R-158](R-158-invisibility-waits-while-a-hero-leads-armies.md) | Invisibility waits while a hero leads armies | 2026-11-05 | Decided, not built | no test yet |
+| [R-159](R-159-a-curse-in-battle-halves-a-master-druids-whole-druid.md) | A Curse in battle halves a master Druid's whole Druid | 2026-11-15 | Decided, not built | no test yet |
+| [R-160](R-160-steel-armour-and-military-discipline-read-alike-against-neutral-guards.md) | Steel Armour and Military Discipline work against neutral guards as between heroes | 2026-11-15 | Decided, not built | no test yet |
+| [R-161](R-161-a-commander-slain-before-the-battle-takes-his-skills-out-of-it.md) | A commander slain in the duel before a battle takes his skills out of it | 2026-11-15 | Decided, not built | no test yet |
+| [R-162](R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md) | Battle magic takes effect at one moment in both kinds of battle | 2026-11-15 | Decided, not built | no test yet |
+| [R-163](R-163-whale-cohorts-may-sink-hulls-on-every-side.md) | Whale Cohorts may sink hulls on every side | 2026-11-15 | Decided, not built | no test yet |
+| [R-164](R-164-a-garrison-with-no-hero-fights-with-its-realms-rules.md) | A realm's garrison with no hero fights with its realm's rules, the new alignment abilities included | 2026-11-15 | Decided, not built | no test yet |
+| [R-165](R-165-a-stalled-battle-on-a-third-realms-land-leaves-the-province-to-its-owner.md) | A stalled battle on a third realm's land leaves the province to its owner | 2026-11-15 | Decided, not built | no test yet |
+| [R-166](R-166-the-rout-rules-work-against-guards-as-between-heroes.md) | The rout rules work against a province's guards as between heroes | 2026-11-15 | Decided, not built | no test yet |
+| [R-167](R-167-the-spy-orders-odds-are-written-as-the-turn-gives-them.md) | The Spy order's odds are written as the turn gives them | 2026-11-15 | Decided, not built | no test yet |
+| [R-168](R-168-seven-more-texts-follow-the-game.md) | Seven more texts say what the turn does | 2026-11-15 | Decided, not built | no test yet |
+| [R-169](R-169-the-march-6-note-counts-the-companies-he-will-lead.md) | The Explore note counts March 6's share on the companies he will lead | 2026-11-15 | Decided, not built | no test yet |
+| [R-170](R-170-the-order-form-hands-over-the-company-the-turn-does.md) | A hand-over that names a kind of company moves the one the turn moves, on the order form too | 2026-11-15 | Decided, not built | no test yet |
+| [R-171](R-171-the-order-form-shows-hand-overs-at-sea-as-the-turn-does.md) | The order form shows hand-overs and Pick Ups at sea as the turn does them | 2026-11-15 | Decided, not built | no test yet |
+| [R-172](R-172-a-company-under-the-host-leader-still-pays-at-least-1-gold.md) | A company the Host-Leader leads still pays at least 1 gold | 2026-11-15 | Decided, not built | no test yet |
+| [R-173](R-173-the-call-to-arms-note-names-muster-rolls-chance.md) | The Call to Arms note names Muster Rolls' chance of an Average company | 2026-11-15 | Decided, not built | no test yet |
+| [R-174](R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md) | A fleet ordered to a far coast lands as it would next door | 2026-11-15 | Decided, not built | no test yet |
+| [R-175](R-175-the-hire-list-says-a-heros-price-and-his-wage-under-granaries.md) | Under Granaries the hire list says a hero's price and his wage after it | 2026-11-15 | Decided, not built | no test yet |
+| [R-176](R-176-enslaves-tax-cut-says-this-turn-and-the-next-3.md) | Enslave's tax cut is written as "this turn and the next 3" | 2026-11-15 | Decided, not built | no test yet |
+| [R-177](R-177-rule-changes-reach-running-games.md) | Rule changes reach running games | 2026-11-15 | Confirmed | no test yet |
+| [R-178](R-178-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md) | The new alignment abilities are built as the test games played them | 2026-11-15 | Decided, not built | no test yet |
+| [R-179](R-179-only-your-own-realm-reads-your-heros-maximum-hp-falling-or-its-new-reckoning.md) | Only your own realm reads your hero's maximum HP falling outside a fight, or its one-time new reckoning | 2026-11-02 | Decided, not built | no test yet |
+| [R-180](R-180-pick-up-army-takes-only-a-garrison-of-a-province-your-realm-holds.md) | Pick Up Army takes only a garrison of a province your realm holds | 2026-11-15 | Decided, not built | no test yet |
+| [R-181](R-181-a-wandering-hero-charmed-into-service-gives-no-mastery-orders-in-the-turn-of-the-charm.md) | A wandering hero charmed into service gives no mastery orders in the turn of the charm | 2026-11-15 | Decided, not built | no test yet |
+| [R-182](R-182-what-a-realm-learns-of-another-realms-heroes-follows-the-maps-sight-rule.md) | What a realm learns of another realm's heroes follows the map's sight rule | 2026-11-15 | Decided, not built | no test yet |

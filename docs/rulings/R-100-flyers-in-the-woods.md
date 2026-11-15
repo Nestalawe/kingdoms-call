@@ -1,6 +1,6 @@
 # R-100: Flyers fight at ×0.75 in forest and jungle
 
-- **Decided:** 2026-10-12, Toby
+- **Decided:** 2026-10-12, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #75 item 19
 - **Enforced by:** [`battle-tweaks`](../../tests/unit/battle-tweaks.test.ts)

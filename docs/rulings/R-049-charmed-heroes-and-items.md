@@ -1,6 +1,6 @@
 # R-049: A charmed hero handles no items
 
-- **Decided:** 2026-09-24, Toby
+- **Decided:** 2026-09-24, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.24-1554 §160
 - **Enforced by:** no test yet

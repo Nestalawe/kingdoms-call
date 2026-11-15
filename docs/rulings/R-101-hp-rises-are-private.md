@@ -1,6 +1,6 @@
 # R-101: Only your own heroes' HP rises are shown
 
-- **Decided:** 2026-10-12, Toby
+- **Decided:** 2026-10-12, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #75 item 20
 - **Enforced by:** [`hp-gain-private`](../../tests/unit/hp-gain-private.test.ts)

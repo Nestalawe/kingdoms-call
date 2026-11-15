@@ -1,8 +1,8 @@
 # R-131: The creed orders' notes follow the turn
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 36, built in PR #473 (part a) and PR #474 (parts b and c)
+- **Source:** Question 36: three creed orders' notes said otherwise than the turn: which is right? Answer: option 1, each note follows the turn. Built in PR #473 (part a) and PR #474 (parts b and c).
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts), [`the-player-portal-reaches-the-engine-only-through-src-shared`](../../tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts)
 
 Each creed order's note on the order form says what the turn will do with the order. The turn is the rule.
@@ -23,4 +23,4 @@ holds its Wonder. Example: graves of Green and Veteran spearmen lie in the field
 The question was: three notes said otherwise than the turn. Option 1: "each note follows the turn". Option 2 (not
 taken): the turn follows the notes.
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

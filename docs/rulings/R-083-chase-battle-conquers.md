@@ -1,6 +1,6 @@
 # R-083: A chase battle won conquers the province
 
-- **Decided:** 2026-10-09, Toby
+- **Decided:** 2026-10-09, a maintainer
 - **Status:** Confirmed
 - **Source:** PRs #11 and #19
 - **Enforced by:** [`pursuit-one-battle`](../../tests/scenario/pursuit-one-battle.test.ts)

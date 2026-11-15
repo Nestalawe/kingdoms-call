@@ -1,6 +1,6 @@
 # Where a change goes: from an item in game terms to the files
 
-Toby's items speak of the game: a spell, a title, a warning in the report. This file takes an item from those words to
+A batch's items speak of the game: a spell, a title, a warning in the report. This file takes an item from those words to
 the folders and files that hold it, the topic file and the traps with the detail, the rulings that bind it and the tests
 that pin it. It names places and links to the rules; it restates none of them. Read [CLAUDE.md](../../CLAUDE.md) first.
 
@@ -194,7 +194,7 @@ A change to what a saved game holds follows [CLAUDE.md's rule](../../CLAUDE.md#r
   mended) and `tests/unit/a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts` (the stop). The
   balance matrix fails a game on any place the check finds.
 - **A GM page opened before a bump's deploy** refuses a save of the new version ("Reload this page"): the PR's top
-  half tells Toby to reload every open GM page after the deploy.
+  half tells the maintainers to reload every open GM page after the deploy.
 
 ## The test for an item
 

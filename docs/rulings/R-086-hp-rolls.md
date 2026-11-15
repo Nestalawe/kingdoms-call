@@ -1,6 +1,6 @@
 # R-086: Hit-point rolls after a fight
 
-- **Decided:** 2026-10-09, Toby
+- **Decided:** 2026-10-09, a maintainer
 - **Status:** Confirmed
 - **Source:** PRs #11 and #19
 - **Enforced by:** [`hp-wound-gain`](../../tests/unit/hp-wound-gain.test.ts)

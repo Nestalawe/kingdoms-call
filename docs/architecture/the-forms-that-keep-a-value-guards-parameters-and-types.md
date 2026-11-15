@@ -172,7 +172,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   it through (`refuseASaveThatIsNotAGameInPlay`, an assertion: provinces, realms and a list of heroes); the check after
   the upgrade names where its shape differs, and the turn runs on it as it is. `resolveTurn` makes it first.
 - **A claim the compiler can't check is made only through a check that holds it**: a copy made through JSON parses into
-  `unknown` and a type predicate holds when `JSON.stringify(copy) === JSON.stringify(original)` (Theo, 2026-10-30); a
+  `unknown` and a type predicate holds when `JSON.stringify(copy) === JSON.stringify(original)` (a maintainer, 2026-10-30); a
   hero handed to a callee that needs his name as words passes a predicate `typeof hero.name === 'string'`; a caster
   passes `servesARealm` (only a hero of a realm acts in a phase), so each `c.player` after it is a realm's index. Each check
   never fails on a sound save, and throws if it does. A typed callee that takes a value its caller may lack (a hero's

@@ -4,10 +4,11 @@ What a file that keeps its ts-nocheck line checks (nothing), and how a file is f
 
 ## `@ts-nocheck` checks nothing in the file
 
-9 files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
-(0 since P1-17c typed `src/db/kc-db-guard.ts`: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`,
-`src/content/`, `src/schemas/` and `src/shared/`), which P1-10b freed, and `tsNocheckUi` (9: the UI's pages in `src/ui/`, `src/rulebook/`, and any
-other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file on one side can't make
+Some files of `src/` still start with a `// @ts-nocheck` line, counted by the ratchet in two: `tsNocheckEngineSide`
+(`src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`, `src/content/`, `src/schemas/` and `src/shared/`), which
+P1-10b freed and P1-17c finished with `src/db/kc-db-guard.ts`, and `tsNocheckUi` (the UI's pages in `src/ui/`,
+`src/rulebook/`, and any other file, `tests/` and `tools/` too), which P1-16 frees. Each only falls, so freeing a file
+on one side can't make
 room for a new line on the other. TypeScript reports no error anywhere in such a file. A type,
 an annotation or a `satisfies` written there is a claim nobody checks: a wrong parameter type compiles, and so does a
 table with a key left out.
@@ -37,7 +38,7 @@ table with a key left out.
 - **Don't write the line's text in a comment:** the ratchet and `tests/static/harness.test.ts` count it anywhere in
   a file of `src/`. Say "its ts-nocheck line" instead.
 - **A freed file meets the type-aware lint rules** in the same PR ([traps.md](../traps.md#a-fixed-lint-finding-must-leave-the-suppressions)):
-  fix every finding there, and suppress none (P1-10b's Choice 1), so `eslintSuppressions` doesn't rise. Each fix keeps
+  fix every finding there, and suppress none (as P1-10b chose), so `eslintSuppressions` doesn't rise. Each fix keeps
   every value too: a `||` that a `0`, `''` or `false` reaches becomes an explicit check, not `??`; a guard that a
   caller still keeping its line may need stays, its parameter typed optional; a `no-unsafe-*` finding from a callee
   that keeps its line is met by typing the value where the freed file takes it. A finding that can't be fixed without

@@ -1,6 +1,6 @@
 <!--
-Title: "Batch YYYY-MM-DD: <a few items>" for Toby's batches, "[P0-NN] <step>" for plan steps.
-Write the top half for Toby, in game terms. Engineering detail goes in the lower sections.
+Title: "Batch YYYY-MM-DD: <a few items>" for a batch, "[P0-NN] <step>" for the backlog's steps.
+Write the top half for the maintainers, in game terms. Engineering detail goes in the lower sections.
 Public repo: no live-game names, pasted report or dispatch text, account ids, emails or secrets, and
 no description of security weaknesses (keep security fixes neutrally worded). See CLAUDE.md.
 Delete these comments, and any section that doesn't apply (write "None" rather than leaving it blank).
@@ -15,8 +15,8 @@ For a batch: one commit per item, message "Item N: <short title>", in the same o
 
 ## What changes in play
 
-<!-- For an engine change whose balance report isn't "no change" (CI posts the report as a comment). Write it for Toby,
-in game terms: a few sentences on what players will notice, what got stronger or weaker, and anything surprising.
+<!-- For an engine change whose balance report isn't "no change" (CI posts the report as a comment). Write it for the
+maintainers, in game terms: a few sentences on what players will notice, what got stronger or weaker, and anything surprising.
 1. Predict first, before running the matrix: from the item alone, write what it should change.
 2. Then write this section from the prediction, the report's first differences and slices, and a named scenario's
    figures for the rule's direct effect (`npm run balance -- <scenario>`, tests/balance/scenarios/; add one if none fits).
@@ -31,16 +31,16 @@ Expected: …
 
 ## Rulings
 
-<!-- Needed: the question, numbered options with a recommendation, and a short in-game example.
-Recorded: the new docs/rulings/R-NNN-name.md file(s) in this PR, the ruling in Toby's words, and the test that enforces it. -->
+<!-- Needed: the question, numbered options, each with its impact, an assessment, and a short in-game example.
+Recorded: the new docs/rulings/R-NNN-name.md file(s) in this PR, the ruling in the maintainer's words, and the test that enforces it. -->
 
 None.
 
 ## Staging
 
 <!-- One line: "Needed / not needed, because …" (docs/staging.md, "When a change needs staging").
-If needed: a numbered checklist Toby can follow without reading code: which game, which screen, what to do,
-what he should see. If not: which tests or proofs below cover the risks staging would have closed. -->
+If needed: a numbered checklist a maintainer can follow without reading code: which game, which screen, what
+to do, what to see. If not: which tests or proofs below cover the risks staging would have closed. -->
 
 Not needed, because …
 
@@ -60,7 +60,7 @@ change (on main, or against a copy via KC_SITE). Or say "refactor-only": new tes
 
 ## Database
 
-<!-- None, or: the exact SQL; its rollback SQL; and, in plain words, what Toby is approving.
+<!-- None, or: the exact SQL; its rollback SQL; and, in plain words, what the owner is approving.
 A PR changes the database OR the site, never both (supabase/README.md, "Database and site changes go
 separately"). Answer whichever applies:
 - Migration PR: does the live site work with it applied? (No access-rule test of what the game needs was
@@ -71,9 +71,9 @@ None.
 
 ## Checklist
 
-- [ ] Needs Theo? Say so in the first line of the description if this changes who can see or change
-      data, is a ✓ plan step or a unit step. (A change to a path in `.github/dangerous-paths` gets a warning
-      comment anyway; talk it through with Theo before merging.)
-- [ ] Updates STATUS? (Plan steps only; batches don't. See "Never" 6 in `CLAUDE.md`.)
+- [ ] Needs a maintainer's look? Say so in the first line of the description if this changes who can see or change
+      data, is a step with Maintainer ✓ in the backlog, or a unit step. (A change to a path in `.github/dangerous-paths` gets a
+      warning comment anyway; talk it through with a maintainer before merging.)
+- [ ] Updates the home of each fact it changes? (A step's PR its backlog row; see "Where documentation goes" in `CLAUDE.md`.)
 - [ ] Rule changes are mirrored everywhere the rule is restated (engine, player portal, rulebooks).
 - [ ] `docs/ARCHITECTURE.md` / `docs/traps.md` / `CLAUDE.md` updated, if this makes them wrong.

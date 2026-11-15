@@ -16,7 +16,7 @@ The live game's database structure, under version control since plan step P0-15 
 These are CLAUDE.md's rules for a database change, beside the how-to below. Database and site changes go in
 separate PRs ([below](#database-and-site-changes-go-separately)), database first, then site, then any removal.
 - **A migration PR** works with the site that's live now: it never loosens or removes an access-rule test of what the
-  game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of what Toby is approving.
+  game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of what the owner is approving.
 - **A site PR** that uses a new table or column either **copes** while it's missing (probe and fall back:
   [traps.md](../docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), with a test that hides it
   (`MISSING` / `MISSING_COLS` in `tests/lib/stub-db.js`; example: `tests/meta-missing-turn.test.js`), or
@@ -47,7 +47,7 @@ refuses it); every migration has pgTAP tests.
    `GRANT DELETE, INSERT, SELECT, UPDATE … TO "authenticated";` (and a `GRANT SELECT … TO "anon"` only if a
    signed-out page reads it). The generator then writes the matching migration; `00_privileges` fails if it's
    missing.
-6. The PR states the rollback, and what Toby is approving, in plain words (see `CLAUDE.md`).
+6. The PR states the rollback, and what the owner is approving, in plain words (see `CLAUDE.md`).
 7. A new table that testers will want rows in on staging gets made-up ones in `seeds/staging.sql`, inside its
    `DO` block (the CLI runs the file as one statement), written so a second run changes nothing
    (`ON CONFLICT DO NOTHING`). Then label the pull request `staging` and try it there before merging.
@@ -69,7 +69,7 @@ the database change first, then the site change. Each one has to work without th
 refuses a pull request that changes both.
 
 **Why.** The database and the site go live at different moments, and old copies of the site stay around:
-- the database changes when Toby approves it, which may be a while after the merge;
+- the database changes when the owner approves it, which may be a while after the merge;
 - the site changes straight after each merge;
 - a player who opened the game yesterday still has yesterday's page in their tab, and a GM's tab keeps
   running turns with the page it loaded;
@@ -80,13 +80,13 @@ So for a while, new pages meet the old database, or old pages meet the new one. 
 something breaks in that window. Usually it's quiet (a list that doesn't load), but it can be a turn that
 fails to save.
 
-**An example.** Say Toby wants each realm to fly a **war banner** that the GM sets, kept in a new `banner`
+**An example.** Say a maintainer wants each realm to fly a **war banner** that the GM sets, kept in a new `banner`
 column of `game_players`:
 1. **The database pull request** adds the empty column, plus the tests that say who can set it. Nothing on
-   the site uses it yet, so it can go live whenever Toby approves, and nobody notices.
+   the site uses it yet, so it can go live whenever the owner approves, and nobody notices.
 2. **The site pull request** shows and sets the banner. It checks the column is there first; if it isn't,
    the banner simply doesn't appear. Its branch is made from the database pull request's branch
-   ("stacked"), so on staging it has the column: Toby tries the whole feature before either is merged.
+   ("stacked"), so on staging it has the column: a maintainer tries the whole feature before either is merged.
 3. **Removing something** (an old column, an old access rule) goes **last**, in its own pull request, once
    no page in use reads it any more. That's expand, then contract.
 
@@ -122,9 +122,9 @@ Merging to `main` runs `.github/workflows/deploy.yml`: **test → migrate produc
 (plan steps P0-17, P0-33). Staging isn't touched.
 1. **`migrations`** lists the migrations added since the commit that's live on the site, with their SQL and
    their pull requests, in the run's summary. With none, the site deploys straight after the tests.
-2. **`migrate-production`** waits for **Toby's approval** (the run page's **Review deployments** button,
+2. **`migrate-production`** waits for **the owner's approval** (the run page's **Review deployments** button,
    in the `production` environment). The change was tried on staging before merging, so the approval is
-   about timing: once the conditions in the pull request's "What Toby is approving" are met (e.g. "the site PR
+   about timing: once the conditions in the pull request's "What the owner is approving" are met (e.g. "the site PR
    is live", "players were asked to reload").
    - The summary says what each migration does to the data already there: **rules only** (access rules,
      permissions, functions, indexes), **adds rows**, or ⚠️ **changes or removes data** (`update`, `delete`,
@@ -134,14 +134,15 @@ Merging to `main` runs `.github/workflows/deploy.yml`: **test → migrate produc
      just after a daily backup): nothing else undoes it. None has so far. An automatic, encrypted copy before
      such a migration is planned for when the first one comes (the copy must never be readable in this public
      repo's Actions).
-3. **`deploy`** publishes the site, only if production was migrated. If Toby rejects it, or anything fails,
+3. **`deploy`** publishes the site, only if production was migrated. If the owner rejects it, or anything fails,
    the site doesn't deploy, and the next push to `main` (or a manual run of Deploy) asks again.
 
 `migrate-production` applies only the migrations listed in step 1, and refuses to touch a database that has
 migrations the repo doesn't, or that is missing older ones. Nobody applies a migration from a laptop to the
-live database, and nobody pastes SQL into its SQL Editor.
+live database, and nobody pastes SQL into its SQL Editor, except in
+[break-glass](#break-glass-the-one-exception).
 
-**While a run waits for Toby, every later deploy waits behind it**, including site-only fixes
+**While a run waits for the owner, every later deploy waits behind it**, including site-only fixes
 ([traps.md](../docs/traps.md#a-migration-waiting-for-approval-holds-every-deploy)).
 
 **The first run on a database** that predates the pipeline (the live one, which has no migration history)
@@ -151,6 +152,14 @@ with no history and no game tables is refused: the pipeline never builds one fro
 **Staging's database** is never migrated by this pipeline: it's emptied and rebuilt for each pull request put
 on it (`.github/scripts/migrations.js reset staging`), so it can hold an unmerged pull request's migrations.
 Nobody applies a migration by hand.
+
+## Break-glass: the one exception
+
+If the live site is broken and the pipeline is too slow, the owner may paste a merged pull request's rollback SQL into
+the live database's SQL Editor; nobody asks the owner to. An agent then commits the same SQL as a new migration, so
+that git matches the live database again. The pipeline runs that migration on the live database too, so every
+rollback is written to be safe to run twice (`if exists`, `if not exists`, `or replace`). This is the only time SQL
+is pasted by hand.
 
 ## The access-rule tests
 

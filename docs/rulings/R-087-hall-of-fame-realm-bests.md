@@ -1,6 +1,6 @@
 # R-087: The Hall of Fame keeps every realm's best
 
-- **Decided:** 2026-10-09, Toby
+- **Decided:** 2026-10-09, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #20 (item 5)
 - **Enforced by:** [`leaderboard-realm-bests`](../../tests/leaderboard-realm-bests.test.js), [`a-battle-spell-and-a-hero-fallen-this-turn-reach-the-turns-statistics`](../../tests/unit/a-battle-spell-and-a-hero-fallen-this-turn-reach-the-turns-statistics.test.ts), [`the-gm-page-writes-each-realms-statistics-with-its-battle-spells-and-titles`](../../tests/page/the-gm-page-writes-each-realms-statistics-with-its-battle-spells-and-titles.test.ts)

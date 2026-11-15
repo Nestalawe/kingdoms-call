@@ -1,6 +1,6 @@
 # R-084: Retreats never into a flood
 
-- **Decided:** 2026-10-09, Toby
+- **Decided:** 2026-10-09, a maintainer
 - **Status:** Confirmed
 - **Source:** PRs #11 and #19
 - **Enforced by:** [`retreat-dry-ground`](../../tests/unit/retreat-dry-ground.test.ts)

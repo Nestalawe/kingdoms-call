@@ -1,6 +1,6 @@
 # R-108: One lair per name and one of each guardian per province
 
-- **Decided:** 2026-10-13, Toby
+- **Decided:** 2026-10-13, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #76 item 4
 - **Enforced by:** [`lair-province-unique`](../../tests/lair-province-unique.test.js)

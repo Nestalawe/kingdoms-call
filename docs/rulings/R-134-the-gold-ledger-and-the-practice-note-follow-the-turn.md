@@ -1,8 +1,8 @@
 # R-134: The gold ledger and the practice note follow the turn
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 43, built in PR #476 (the practice note) and the ledger's PRs stacked on it (P1-11e29, P1-11e30)
+- **Source:** Question 43: the practice note and the gold ledger said otherwise than the turn: which is right? Answer: option 1, the ledger and the note follow the turn. Built in PR #476 (the practice note) and the ledger's PRs stacked on it (P1-11e29, P1-11e30).
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts), [`each-hero-wage-discoverys-cut-or-ceiling-and-its-room-and-a-wage-after-each-of-them`](../../tests/unit/each-hero-wage-discoverys-cut-or-ceiling-and-its-room-and-a-wage-after-each-of-them.test.ts)
 
 The note under a Practice Skill order quotes the chance the turn rolls when a hero practises alone, by the turn's own
@@ -25,4 +25,6 @@ The turn is not changed. The question was: the note said 15% where the turn roll
 where the turn makes no roll; the ledger left out the Host-Leader, Druid 6 and the discoveries' cap. Option 1: "the
 ledger and the note follow the turn". Option 2 (not taken): the turn follows them.
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"
+
+**Note:** Once [R-172](R-172-a-company-under-the-host-leader-still-pays-at-least-1-gold.md) is built, a company the Host-Leader leads still pays at least 1g, on the ledger too.

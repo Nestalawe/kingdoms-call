@@ -12,7 +12,7 @@
 // vm, not the engine's modules: the audience check needs every event as it is emitted, with its audience, and emit is
 // called inside its own file (src/engine/turn/events-and-their-audiences.ts), where a vi.spyOn on its module can't
 // reach (docs/traps.md); in the vm it is stood in by name. So the games play at seed 1, as since plan P1-09a, not from
-// KC_SEED (plan P1-14's Decision 6; Parked "The leak fuzz can't move to the engine's modules").
+// KC_SEED (plan P1-14's Decision 6).
 //
 // Until plan P1-14i this was tests/report-privacy.test.js, a script on the same vm. Its checks are kept as they were:
 // the leak check on every turn, every turn's events recorded, a report for every realm every turn, and a turn that

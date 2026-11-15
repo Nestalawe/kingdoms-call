@@ -1,6 +1,6 @@
 # R-027: Neutral heroes grow slowly and never past 5
 
-- **Decided:** 2026-09-23, Toby
+- **Decided:** 2026-09-23, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.23-1616 §5 (item 1)
 - **Enforced by:** no test yet

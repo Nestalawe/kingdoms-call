@@ -1,6 +1,6 @@
 # R-089: Battle lines: the front, the flanks and the second line
 
-- **Decided:** 2026-10-11, Toby
+- **Decided:** 2026-10-11, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #39 (the army-balance session)
 - **Enforced by:** [`the-battle-grid-places-each-unit-by-its-role-in-the-front-the-lines-behind-the-flanks-and-the-air`](../../tests/unit/the-battle-grid-places-each-unit-by-its-role-in-the-front-the-lines-behind-the-flanks-and-the-air.test.ts), [`both-battles-report-the-front-the-grid-the-ladder-and-the-scout`](../../tests/unit/both-battles-report-the-front-the-grid-the-ladder-and-the-scout.test.ts), [`the-books-give-the-battle-lines-the-engines-fronts-facings-and-line-up`](../../tests/static/the-books-give-the-battle-lines-the-engines-fronts-facings-and-line-up.test.ts)

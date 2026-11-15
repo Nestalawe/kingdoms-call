@@ -7,7 +7,8 @@
 # The seed is printed first, in the log and in the run's summary. A red run blocks nothing (no branch requires it).
 # Repeat a failure with that seed, locally (KC_SEED=<seed> npm run test:full) or here (Run workflow, with the seed).
 # What it found becomes a test at the lowest level that shows it (tests/README.md), or, while the refactor runs, a
-# parked breach (KNOWN_BREACHES in tests/lib/invariants.ts) for Theo to decide.
+# KD- row in the backlog (docs/backlog/README.md, "Not yet assessed"), and a maintainer decides whether
+# KNOWN_BREACHES (tests/lib/invariants.ts) lets it pass until that row is fixed.
 #
 # GitHub runs schedules only from main; Run workflow (workflow_dispatch) runs it on any branch.
 name: Nightly

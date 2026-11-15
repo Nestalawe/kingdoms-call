@@ -6,8 +6,8 @@
 //                    guards, the defenders' bonus by 10%): Terror From Above, in the battle grid, took its place
 // Neither rule has a function left to call, so their absence is read from the code by its syntax tree
 // (tests/lib/source.ts: one canonical layout, comments left out). The old scripts' four patterns are kept as they
-// were; two of them could match no code written today (Parked: "Eleven checks in the old battle, order and report
-// scripts can't fail"): `a.type==='Eagle Riders'){narr.push` (a battle's lines are facts written with narrate now,
+// were; two of them could match no code written today (a known defect fixed by P1-14l, "Eleven checks in the old battle,
+// order and report scripts can't fail"): `a.type==='Eagle Riders'){narr.push` (a battle's lines are facts written with narrate now,
 // not strings pushed) and `_wyvAtk?0.15` / `_wyvDef?0.15` (one spelling of one variable). So each rule gets checks
 // that see it however it came back: the two battle files' code names neither unit (a unit's rule is the registry's,
 // src/engine/rules/), every no-escape roll draws its die first for every trapped unit, and each side's fanaticism

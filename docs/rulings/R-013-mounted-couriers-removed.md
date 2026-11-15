@@ -1,6 +1,6 @@
 # R-013: Mounted Couriers removed
 
-- **Decided:** 2026-09-21, Toby
+- **Decided:** 2026-09-21, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.21-1240
 - **Enforced by:** no test yet

@@ -1,6 +1,6 @@
 # R-113: Spiritwrack counts White to 5
 
-- **Decided:** 2026-10-15, Toby
+- **Decided:** 2026-10-15, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #89 item 7 (decision D5 on a player's rulebook review)
 - **Enforced by:** [`spiritwrack-five`](../../tests/unit/spiritwrack-five.test.ts)

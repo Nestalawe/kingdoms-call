@@ -202,8 +202,8 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
 /** The reads of an item's own field a taken function still holds, by the function, each left to a later step (the
  *  items family's Decisions don't take them): matched with the words above, so one more, or one gone, turns it red. */
 const READS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = {
-  // `.drumTierUp`: the War Drum's chance to lift a unit a tier, which no row of the items family takes (Parked "The War
-  // Drum's tier-up is an item effect no row of P1-19's items family takes", found by P1-19n). The Ember Rune's
+  // `.drumTierUp`: the War Drum's chance to lift a unit a tier, which no row of the items family takes (KD-037, found
+  // by P1-19n). The Ember Rune's
   // `.emberTwo` went with the spells family's first row (P1-19u: "strength: a hero's items change his battle spell")
   combatVsChar: ['.drumTierUp'],
   combatVsNPC: ['.drumTierUp'],

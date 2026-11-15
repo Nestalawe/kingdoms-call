@@ -36,7 +36,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   the check of the last save, which no turn loads (`upgradeGameState` from `src/`, on a copy: a game's end is written
   by its last turn). With `KC_SITE` the line is that copy's and the last save's check this checkout's. Not an
   invariant: `checkTurn` also runs on the staged worlds of `turn-fuzz` and the fixtures test, which lack what Turn 0
-  adds. A place found on `main` whose fix waits is parked and let through by a narrow entry (one path and kind) in
+  adds. A place found on `main` whose fix waits gets its backlog row and is let through by a narrow entry (one path and kind) in
   its `KNOWN_PLACES_THE_SAVE_CHECK_FINDS`, empty today; its fix removes the entry. Since the scripted realm sends what
   the portal sends, the matrix also sees what a human realm's plans and orders save (a plan's duel stance
   and doctrine, with no bot's marks), but only for the orders it gives: since P1-15e3 those above, so also Release
@@ -175,3 +175,13 @@ change" without having looked. Local tools in `tools/proof/` (its
 
 The coverage is measured on the vm's half only. The page's half plays the same games and saves the same states, but it
 also runs the portal's shell, so a line only the page reaches reads "not reached".
+
+## The GM page's shared files are engine paths by name
+
+`ENGINE_PATHS` (`tools/balance/engine-paths.ts`) takes `src/ui/gm/**` whole, but the files of `src/ui/shared/` one by
+one: the folder's other files are other pages' code, and a change to them can't change a game. So when a GM page's file
+starts importing a shared file (the element helper, the reload banner), add that file to the list in the same pull
+request. Without it, a change to that file alone would skip the balance job, and a change in play could merge unseen.
+`tests/static/harness.test.ts` is red until the engine paths under `src/` are exactly the GM page's sources
+(`tools/pages.ts`), the pages' templates, `src/schemas/` and `src/db/`, and the runner refuses to play a page that
+loads a file not on the list. The file is a dangerous path (`tools/balance/**`), so the pull request names it.

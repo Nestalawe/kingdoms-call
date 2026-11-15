@@ -1,6 +1,6 @@
 # R-112: The Dreamstone's round comes after Psychic Blast's doubling
 
-- **Decided:** 2026-10-15, Toby
+- **Decided:** 2026-10-15, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #89 item 6 (decision D4 on a player's rulebook review)
 - **Enforced by:** [`blast-dreamstone`](../../tests/unit/blast-dreamstone.test.ts)

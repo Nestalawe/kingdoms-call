@@ -1,6 +1,6 @@
 # R-104: The Evil and Druidic crowns
 
-- **Decided:** 2026-10-13, Toby
+- **Decided:** 2026-10-13, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #60; PR #75 items A and 22 (2026-10-13)
 - **Enforced by:** [`two-crowns`](../../tests/two-crowns.test.js), [`primal-roster`](../../tests/primal-roster.test.js), [`primal-words`](../../tests/primal-words.test.js), [`call-from-the-pit-and-awaken-the-wild-given-in-a-turn-raise-nothing-and-are-refused-in-plain-words`](../../tests/scenario/call-from-the-pit-and-awaken-the-wild-given-in-a-turn-raise-nothing-and-are-refused-in-plain-words.test.ts), [`no-page-or-table-still-offers-awaken-the-wild-or-call-from-the-pit`](../../tests/static/no-page-or-table-still-offers-awaken-the-wild-or-call-from-the-pit.test.ts)

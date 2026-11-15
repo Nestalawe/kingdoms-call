@@ -33,7 +33,7 @@ const THE_SIZES = [
   'rate',
 ] as const;
 const THE_NUMBERS_IN_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
-const DEAD_PATHS = 'Parked "Three dead paths in `discoveries.ts`": the row\'s own `max` is never read';
+const DEAD_PATHS = "KD-207: the row's own `max` is never read";
 /** The numbers a text doesn't state, by the discovery's id and the effect's field, each with why. */
 const KNOWN_GAPS: Readonly<Record<string, string>> = {
   'sd12 interest.max': DEAD_PATHS,

@@ -56,7 +56,7 @@ export const A_REALMS_DISCOVERIES_ADD_TO_CATCHING_A_SPY = {
 } satisfies Partial<Record<DiscoveryEffectSlug, TheOrdersStages["a realm's discoveries add to catching a spy"]>>;
 
 /** "orderOutcome: a realm's discoveries keep a spy's success quiet" (Disguise Techniques, `spyDisguise`): its `pct`,
- *  0.5 for a row that writes none (discParam's fallback, which no row reads: Parked "discParam's fallbacks"). */
+ *  0.5 for a row that writes none (discParam's fallback, which no row reads: KD-193). */
 export const A_REALMS_DISCOVERIES_KEEP_A_SPYS_SUCCESS_QUIET = {
   'disguise-techniques': (e) => e.pct ?? 0.5,
 } satisfies Partial<Record<DiscoveryEffectSlug, TheOrdersStages["a realm's discoveries keep a spy's success quiet"]>>;
@@ -130,7 +130,7 @@ export const A_REALMS_DISCOVERIES_SPOT_A_HERO_LURKING_IN_ITS_PROVINCE = {
 >;
 
 /** "visibility: a realm's discoveries map the provinces around an explorer" (Ancient Lore, `adjacentReveal`): its
- *  `pct`, 10 for a row that writes none (discParam's fallback, which no row reads: Parked "discParam's fallbacks"). */
+ *  `pct`, 10 for a row that writes none (discParam's fallback, which no row reads: KD-193). */
 export const A_REALMS_DISCOVERIES_MAP_THE_PROVINCES_AROUND_AN_EXPLORER = {
   'ancient-lore': (e) => e.pct ?? 10,
 } satisfies Partial<

@@ -58,10 +58,10 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   side, the ground and the force (`discFanaticApplies`, now the effect's file's). The runner adds them; the battle rolls
   as before.
 - **A realm's discoveries let a beast follow without its Druid** (Dragon Taming, `flyingNoDruid`; `dragonTamed`):
-  handed the unit's type. The player portal's copy stays (P1-11); the parity test compares them.
+  handed the unit's type. The player portal's copy stays (P1-11z); the parity test compares them.
 - **A realm's discoveries add to the whole army** (both battles): no entry holds it. War Drums, the one such discovery,
   has been an ordinary unit strength effect since 2026-09-21, so its runner returns 0, as `discoveryArmyBonus` did
-  (Parked "Three dead paths in `discoveries.ts`").
+  (KD-207).
 - `aHerosStanding`'s **a realm's discoveries add to a caster's chance** (`cast`): handed the school and where he casts,
   as the effect's `ctx` names it (`'battle'`, `'action'`, `'duel'`). Asked by `applyPreBattleMagic` and the hero's cast
   in `combatVsNPC`, and since P1-19ac by `castChanceFor` (the Cast Spell order, and the report's odds) and
@@ -81,7 +81,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - **A realm's discoveries carry a fallen unit home** (Homeward Song, `elvenEscape`; `recordBattleGraves`): the points
   added to a fallen Elven unit's chance of slipping away home. The runner adds them; the graves roll as before.
 - **A realm's discoveries drag a hero from the field** (Battlefield Surgery, `nearDeathSurvival`; `handleHeroDeath`):
-  the chance, as its row writes it (0.2 for a row with none: the old fallback, Parked). The runner gives the first
+  the chance, as its row writes it (0.2 for a row with none: the old fallback, KD-193). The runner gives the first
   effect's chance, or nothing if the realm holds none; the hero's death rolls as before.
 
 **The fighter and his rise** (P1-19ac, `discoveries/a-realms-discoveries-in-its-heroes-fights-and-their-rise.ts`):
@@ -108,7 +108,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   asks. Each effect returns its share, and the runner adds them. The report's odds ask the spy's stage with no province
   (`THE_REPORTS_ODDS_NAME_NO_PROVINCE`): an effect for a ground or a coast doesn't count, one for a home does, as before.
 - **A realm's discoveries keep a spy's success quiet** (Disguise Techniques, `spyDisguise`): the chance, as its row
-  writes it (0.5 for a row with none: the old fallback, Parked). The runner gives the first effect's; the order rolls.
+  writes it (0.5 for a row with none: the old fallback, KD-193). The runner gives the first effect's; the order rolls.
 - **A realm's discoveries add to exploring** (`explore`): the factor on the ground it lists. The runner multiplies them,
   for the Explore order and for `discExploreMult`, which the report ships: one rule.
 - **… lengthen the wild hunt** (`wildHunt`), **… add to a lair's gold** (`lairGold`, handed the hero's race too) and
@@ -121,7 +121,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 - `visibility`'s first stages: **a realm's discoveries spot a hero lurking in its province** (`spotLurker`;
   `spotEnemyInOwnedProvince`, before the chance's bounds), handed the ground, and its home and coast as questions; and
   **… map the provinces around an explorer** (Ancient Lore, `adjacentReveal`): the share, 10 for a row with none (the
-  old fallback, Parked). What a realm sees is unchanged: every realm's report is identical.
+  old fallback, KD-193). What a realm sees is unchanged: every realm's report is identical.
 
 **The recruits and the realm's works** (P1-19ae, `discoveries/a-realms-discoveries-in-its-recruits-and-its-works.ts`):
 
@@ -159,7 +159,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   It returns its `bonus` and its own `max`. The runner caps each effect at the realm's ceiling (5% of its base tax,
   `taxBonusCap`, shared with the items' tax gold) and its `max`, and keeps what each has paid in the caller's account.
 - **… add to the realm's tax** (Taxation Records, `taxPct`): its share of the income, rounded down, under the ceiling
-  (5% and 99g for a row with none: the old fallbacks, Parked). Two runners, as Flanking Tactics has: whether a realm
+  (5% and 99g for a row with none: the old fallbacks, KD-193). Two runners, as Flanking Tactics has: whether a realm
   holds it (Early Winter and the report ask first), and the gold of the first discovery in content with it
   (`taxRecordsGold`, which is asked with no realm).
 - **… earn interest** (`interest`): its share of the treasury, rounded down, under the ceiling; Early Winter and the
@@ -179,7 +179,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
 
 **Messenger Birds and the bots** (P1-19ah): `visibility`'s **… widen the warnings it hears** (Messenger Birds,
 `extendedIntel`; `playerEvents`, building a realm's report): yes or no. Moved as it was: nothing reads the set it
-widens (Parked). The bots' strength estimates (`botEffForce`, `botBattleForce`, `botDruidShortfall`,
+widens (KD-041). The bots' strength estimates (`botEffForce`, `botBattleForce`, `botDruidShortfall`,
 `botRecruitableTypes`) ask the battles' runners for Dragon Taming and Flanking Tactics, handed the commander's realm.
 
 ## How it is checked
@@ -190,10 +190,11 @@ widens (Parked). The bots' strength estimates (`botEffForce`, `botBattleForce`, 
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae, 23 after P1-19af, 5 after P1-19ag, 0 after P1-19ah): the functions taken name no
-  discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
+  `discoveryChecksInEngine`: the functions taken name no discovery's id and no kind, and the engine's checks outside
+  the registry only fall. A string that is a kind's name
   but means something else (the Evil doctrine `'terror'` in both battles; the Spy skill `'spy'`, a line's type
-  `'explore'`) is listed beside its function.
+  `'explore'`) is listed beside its function. The count reads any `.kind` or `.type` compared with such words, whatever
+  the object, so a new plain field compared with words is named otherwise (`action`).
 - `tests/static/each-discoverys-numbers-are-in-its-text.test.ts`: each number of each effect is in its discovery's
   `desc` (365 of 368; the 3 gaps listed with why).
 - `tests/unit/the-discovery-effects-no-matrix-game-meets-keep-their-values.test.ts`: the effects the matrix's games

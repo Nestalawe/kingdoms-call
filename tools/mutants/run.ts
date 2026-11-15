@@ -5,8 +5,8 @@
 // - The base is this checkout's HEAD commit, and the tree must be clean (no uncommitted change to a tracked file), so a
 //   test committed for a mutant is in place when that mutant is scored again. The table names the commit.
 // - The folder holds the patches (*.patch, scored in name order), and gets results.json and each stage's output
-//   (logs/<patch>/<stage>.log). It must be one git would never commit (outside the repository, or ignored there:
-//   plan/mutants/<date>-<area>/ by default): the patches say where the tests are weak, and this repository is public.
+//   (logs/<patch>/<stage>.log). It must be one git would never commit (outside the repository, or one git ignores
+//   there): the patches say where the tests are weak, and this repository is public.
 // - results.json is written after the control run and again after each patch (to another file, then renamed, so a
 //   killed run never leaves half of one): the base commit, the control's stage times, the limits, and every patch
 //   scored so far, each with the SHA-256 of its patch file.
@@ -502,7 +502,7 @@ async function score(argv: readonly string[], o: ScorerOptions): Promise<number>
   if (!inside.startsWith('..') && !path.isAbsolute(inside)) {
     if (inside === '' || !git(root, ['check-ignore', '-q', '--', inside]).ok)
       throw new Stop(
-        `${folder} is a folder git would commit: the patches say where the tests are weak, and this repository is public. Use a folder outside it, or one it ignores (plan/mutants/<date>-<area>/).`,
+        `${folder} is a folder git would commit: the patches say where the tests are weak, and this repository is public. Use a folder outside it, or one it ignores.`,
       );
   }
 

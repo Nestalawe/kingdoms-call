@@ -43,7 +43,7 @@ effects are in `src/engine/rules/guardian-perks/`.
   approach the perk turns (blows, arrows or spells), or nothing. A tough hide turns blows, arrow-proof arrows, spell
   resistance spells. A perk counts by its `ward`, or by a field of the ward's own name (the older form the rule has
   always read). The runner gathers them over his perks, and `monsterTraits` keeps each hidden multiplier of his nature
-  for an approach turned at 1 or below. So a guardian never resists and is weak to the same thing (Toby, 2026-10-08).
+  for an approach turned at 1 or below. So a guardian never resists and is weak to the same thing (a maintainer, 2026-10-08).
   The hidden multipliers themselves, and their clamps, stay in `monsterTraits`: no book states them.
 - `personalCombat`'s **a guardian's perks: his grade's cap beside his own** (`pcMonsterCombatant`, once his perks are on
   him): handed his grade's cap (`GUARDIAN_BODY_CAP_PCT`; 0 for none) and the wards his perks gave him. It returns the
@@ -102,8 +102,8 @@ same effect, as a hero's item does. Each stage holds one effect, and its runner 
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-guardian-registry-has-taken-name-no-perk.test.ts`, with the ratchet's
-  `guardianPerkChecksInEngine` (42 before P1-19ai, 37 after it, 19 after P1-19aj, 0 after P1-19ak): the functions taken
-  name no kind of perk, and no check of a perk is left in the engine outside the registries.
+  `guardianPerkChecksInEngine`: the functions taken name no kind of perk, and no check of a perk is left in the engine
+  outside the registries.
 - `tests/static/each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table.test.ts`: every perk's `desc` is its
   kind's form with its number, and each kind's value at each grade is in the rulebook's table; the grade's cap, the
   sustain's fade and a second wind's share are in the rulebook. The form a ruling sets (brute strength's, R-137) is
