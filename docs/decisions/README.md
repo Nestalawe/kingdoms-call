@@ -57,8 +57,9 @@ Toby answered D-01 to D-07 on 2026-09-29, and D-08 to D-13 on 2026-10-11.
   request from `main`, ahead of the next planned step, test first
   ([CLAUDE.md](../../CLAUDE.md#rules), "When something slips through").
 - **Questions stored, asked in one sitting** (2026-10-21): every question for Toby that an agent finds is stored, with
-  the fix it unlocks, so that he answers them together. Each fix is its own pull request after his answer. How a
-  question is written: [CLAUDE.md](../../CLAUDE.md#rules), "Design forks go to Toby".
+  the fix it unlocks, in [the questions waiting for him](../questions-for-toby.md), so that he answers them together.
+  Each fix is its own pull request after his answer. How a question is written: [CLAUDE.md](../../CLAUDE.md#rules),
+  "Design forks go to Toby".
 - **Type the whole codebase** (2026-11-08): every file is typed before Toby's redesign starts, so that its refactors
   are checked by the compiler. No new `@ts-nocheck` ([CLAUDE.md](../../CLAUDE.md#commands)); the files still marked
   are freed ([how](../architecture/freeing-a-file-of-its-ts-nocheck-line.md)).
